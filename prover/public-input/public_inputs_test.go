@@ -1,8 +1,11 @@
 package public_input
 
 import (
+	"math/rand"
 	"testing"
 
+	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/polynomial"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,5 +37,30 @@ func TestAggregation(t *testing.T) {
 	for i := range testCases {
 		res := testCases[i].Inputs.GetPublicInputHex()
 		require.Equal(t, testCases[i].Res, res)
+	}
+}
+
+func TestPolyEvalBls12377(t *testing.T) {
+	for _, length := range []int{2} {
+
+		data := make([]byte, 0, length*fr377.Bytes)
+		c := make(polynomial.Polynomial, length+1)
+
+		var evaluationPoint fr377.Element
+		evaluationPoint.MustSetRandom()
+
+		c0 := int64(rand.Intn(100))
+
+		c[0].SetInt64(c0)
+		for i := len(c) - 1; i > 0; i-- {
+			c[i].MustSetRandom()
+			data = append(data, c[i].Marshal()...)
+		}
+		want := c.Eval(&evaluationPoint)
+
+		got, err := polyEvalBls12377(data, c0, evaluationPoint.Marshal())
+		require.NoError(t, err)
+
+		require.Equal(t, want.Marshal(), got[:])
 	}
 }

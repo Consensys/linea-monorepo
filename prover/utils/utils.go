@@ -299,6 +299,7 @@ func RangeSlice[T constraints.Integer](length int, startingPoints ...T) []T {
 	return res
 }
 
+// FillRange modifies dst into [start, start+1, ..., start+len(dst)-1]
 func FillRange[T constraints.Integer](dst []T, start T) {
 	for l := range dst {
 		dst[l] = T(l) + start

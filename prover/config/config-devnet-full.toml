@@ -12,7 +12,7 @@ conflated_traces_dir = "./"
 requests_root_dir = "./"
 ignore_compatibility_check=true
 
-[blob_decompression]
+[data_availability]
 prover_mode = "full"
 
 [aggregation]

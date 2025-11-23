@@ -124,7 +124,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			LastFinalizedRollingHashNumber: pi.LastFinalizedRollingHashMsgNumber,
 			InitialStateRootHash:           pi.InitialStateRootHash[:],
 
-			NbDecompression:      pi.NbDecompression,
+			NbDataAvailability:   pi.NbDecompression,
 			ChainID:              pi.ChainID,
 			L2MessageServiceAddr: pi.L2MessageServiceAddr[:],
 		},
@@ -149,7 +149,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 
 type AggregationFPIQSnark struct {
 	ParentShnarf                   [32]frontend.Variable
-	NbDecompression                frontend.Variable
+	NbDataAvailability             frontend.Variable
 	InitialStateRootHash           frontend.Variable
 	LastFinalizedBlockNumber       frontend.Variable
 	LastFinalizedBlockTimestamp    frontend.Variable

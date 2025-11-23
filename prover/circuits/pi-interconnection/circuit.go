@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"slices"
 
+	gkrposeidon2compressor "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -17,16 +18,12 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
-	"github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/cmp"
-	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	dataavailability "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
@@ -39,12 +36,12 @@ import (
 )
 
 type Circuit struct {
-	AggregationPublicInput   [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
-	ExecutionPublicInput     []frontend.Variable  `gnark:",public"`
-	DecompressionPublicInput []frontend.Variable  `gnark:",public"`
+	AggregationPublicInput      [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
+	ExecutionPublicInput        []frontend.Variable  `gnark:",public"`
+	DataAvailabilityPublicInput []frontend.Variable  `gnark:",public"`
 
-	DecompressionFPIQ []decompression.FunctionalPublicInputQSnark
-	ExecutionFPIQ     []execution.FunctionalPublicInputQSnark
+	DataAvailabilityFPIQ []dataavailability.FunctionalPublicInputQSnark
+	ExecutionFPIQ        []execution.FunctionalPublicInputQSnark
 
 	public_input.AggregationFPIQSnark
 
@@ -59,7 +56,6 @@ type Circuit struct {
 	ChainID              uint64
 
 	MaxNbCircuits int // possibly useless TODO consider removing
-	UseGkrMimc    bool
 }
 
 // type alias to denote a wizard-compilation suite. This is used when calling
@@ -71,52 +67,35 @@ func (c *Circuit) Define(api frontend.API) error {
 	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)
 	api.AssertIsEqual(c.L2MessageServiceAddr[:], c.AggregationFPIQSnark.L2MessageServiceAddr)
 
-	maxNbDecompression, maxNbExecution := len(c.DecompressionPublicInput), len(c.ExecutionPublicInput)
-	if len(c.DecompressionFPIQ) != maxNbDecompression || len(c.ExecutionFPIQ) != maxNbExecution {
+	maxNbDA, maxNbExecution := len(c.DataAvailabilityPublicInput), len(c.ExecutionPublicInput)
+	if len(c.DataAvailabilityFPIQ) != maxNbDA || len(c.ExecutionFPIQ) != maxNbExecution {
 		return errors.New("public / functional public input length mismatch")
 	}
 
 	c.AggregationFPIQSnark.RangeCheck(api)
 
 	// implicit: CHECK_DECOMP_LIMIT
-	rDecompression := internal.NewRange(api, c.NbDecompression, len(c.DecompressionPublicInput))
+	rDA := internal.NewRange(api, c.NbDataAvailability, len(c.DataAvailabilityPublicInput))
 	hshK := c.Keccak.NewHasher(api)
 
-	// equivalently, nbBatchesSums[i] is the index of the first execution circuit associated with the i+1-st decompression circuit
-	nbBatchesSums := rDecompression.PartialSumsF(func(i int) frontend.Variable { return c.DecompressionFPIQ[i].NbBatches })
+	// nbBatchesSums[i] is the index of the first execution circuit associated with the i+1-st data availability circuit.
+	// Past the last DA circuit, this value remains constant.
+	nbBatchesSums := rDA.PartialSumsF(func(i int) frontend.Variable { return api.Mul(rDA.InRange[i], c.DataAvailabilityFPIQ[i].NbBatches) })
 	nbExecution := nbBatchesSums[len(nbBatchesSums)-1] // implicit: CHECK_NB_EXEC
 
 	// These two checks prevents constructing a proof where no execution or no
 	// compression proofs are provided. This is to prevent corner cases from
 	// arising.
-	api.AssertIsDifferent(c.NbDecompression, 0)
+	api.AssertIsDifferent(c.NbDataAvailability, 0)
 	api.AssertIsDifferent(nbExecution, 0)
 
 	if c.MaxNbCircuits > 0 { // CHECK_CIRCUIT_LIMIT
-		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDecompression), c.MaxNbCircuits)
-	}
-
-	var (
-		hshM hash.FieldHasher
-	)
-	if c.UseGkrMimc {
-		hFac := gkrmimc.NewHasherFactory(api)
-		hshM = hFac.NewHasher()
-		if c.Keccak.Wc != nil {
-			c.Keccak.Wc.HasherFactory = hFac
-			c.Keccak.Wc.FS = fiatshamir.NewGnarkFiatShamir(api, hFac)
-		}
-	} else {
-		if hsh, err := mimc.NewMiMC(api); err != nil {
-			return err
-		} else {
-			hshM = &hsh
-		}
+		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDataAvailability), c.MaxNbCircuits)
 	}
 
 	batchHashes := make([]frontend.Variable, len(c.ExecutionPublicInput))
 	for i, pi := range c.ExecutionFPIQ {
-		batchHashes[i] = pi.DataChecksum
+		batchHashes[i] = pi.DataChecksum.TotalChecksum
 	}
 
 	finalStateRootHashes := logderivlookup.New(api)
@@ -125,10 +104,21 @@ func (c *Circuit) Define(api frontend.API) error {
 		finalStateRootHashes.Insert(pi.FinalStateRootHash)
 	}
 
-	blobBatchHashes := internal.ChecksumSubSlices(api, hshM, batchHashes, internal.VarSlice{Values: nbBatchesSums, Length: c.NbDecompression})
+	compressor, err := gkrposeidon2compressor.NewCompressor(api)
+	if err != nil {
+		return err
+	}
 
-	shnarfParams := make([]ShnarfIteration, len(c.DecompressionPublicInput))
-	for i, piq := range c.DecompressionFPIQ {
+	blobBatchHashes := make([]frontend.Variable, maxNbDA)
+	for i := range blobBatchHashes {
+		blobBatchHashes[i] = c.DataAvailabilityFPIQ[i].AllBatchesSum
+	}
+	if err = internal.MerkleDamgardChecksumSubSlices(api, compressor, 0, batchHashes, internal.VarSlice{Values: nbBatchesSums, Length: c.NbDataAvailability}, blobBatchHashes); err != nil {
+		return err
+	}
+
+	shnarfParams := make([]ShnarfIteration, len(c.DataAvailabilityPublicInput))
+	for i, piq := range c.DataAvailabilityFPIQ {
 		piq.RangeCheck(api)
 
 		shnarfParams[i] = ShnarfIteration{ // prepare shnarf verification data
@@ -139,7 +129,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 
 		// "open" decompression circuit public input
-		api.AssertIsEqual(c.DecompressionPublicInput[i], api.Mul(rDecompression.InRange[i], piq.Sum(api, hshM, blobBatchHashes[i])))
+		api.AssertIsEqual(c.DataAvailabilityPublicInput[i], api.Mul(rDA.InRange[i], piq.Sum(api)))
 	}
 
 	shnarfs := ComputeShnarfs(&hshK, c.ParentShnarf, shnarfParams)
@@ -200,7 +190,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		finalBlockNum = pi.FinalBlockNumber
 		finalState = pi.FinalStateRootHash
 
-		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api, hshM))) // "open" execution circuit public input
+		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api))) // "open" execution circuit public input
 
 		if len(pi.L2MessageHashes.Values) != execMaxNbL2Msg {
 			return errors.New("number of L2 messages must be the same for all executions")
@@ -232,9 +222,9 @@ func (c *Circuit) Define(api frontend.API) error {
 		FinalBlockNumber: rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
 		// implicit CHECK_FINAL_TIME
 		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
-		FinalShnarf:            rDecompression.LastArray32(shnarfs), // implicit CHECK_FINAL_SHNARF
-		FinalRollingHash:       finalRollingHash,                    // implicit CHECK_FINAL_RHASH
-		FinalRollingHashNumber: finalRollingHashMsgNum,              // implicit CHECK_FINAL_RHASH_NUM
+		FinalShnarf:            rDA.LastArray32(shnarfs), // implicit CHECK_FINAL_SHNARF
+		FinalRollingHash:       finalRollingHash,         // implicit CHECK_FINAL_RHASH
+		FinalRollingHashNumber: finalRollingHashMsgNum,   // implicit CHECK_FINAL_RHASH_NUM
 		L2MsgMerkleTreeDepth:   c.L2MessageMerkleDepth,
 	}
 
@@ -314,27 +304,26 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 		}
 	}
 	return config.PublicInput{
-		MaxNbDecompression: len(c.Circuit.DecompressionFPIQ),
-		MaxNbExecution:     len(c.Circuit.ExecutionFPIQ),
-		ExecutionMaxNbMsg:  executionNbMsg,
-		L2MsgMerkleDepth:   c.Circuit.L2MessageMerkleDepth,
-		L2MsgMaxNbMerkle:   c.Circuit.L2MessageMaxNbMerkle,
-		MaxNbCircuits:      c.Circuit.MaxNbCircuits,
+		MaxNbDA:           len(c.Circuit.DataAvailabilityFPIQ),
+		MaxNbExecution:    len(c.Circuit.ExecutionFPIQ),
+		ExecutionMaxNbMsg: executionNbMsg,
+		L2MsgMerkleDepth:  c.Circuit.L2MessageMerkleDepth,
+		L2MsgMaxNbMerkle:  c.Circuit.L2MessageMaxNbMerkle,
+		MaxNbCircuits:     c.Circuit.MaxNbCircuits,
 	}, nil
 }
 
 func allocateCircuit(cfg config.PublicInput) Circuit {
 	res := Circuit{
-		DecompressionPublicInput: make([]frontend.Variable, cfg.MaxNbDecompression),
-		ExecutionPublicInput:     make([]frontend.Variable, cfg.MaxNbExecution),
-		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, cfg.MaxNbDecompression),
-		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
-		L2MessageMerkleDepth:     cfg.L2MsgMerkleDepth,
-		L2MessageMaxNbMerkle:     cfg.L2MsgMaxNbMerkle,
-		MaxNbCircuits:            cfg.MaxNbCircuits,
-		L2MessageServiceAddr:     types.EthAddress(cfg.L2MsgServiceAddr),
-		ChainID:                  cfg.ChainID,
-		UseGkrMimc:               true,
+		DataAvailabilityPublicInput: make([]frontend.Variable, cfg.MaxNbDA),
+		ExecutionPublicInput:        make([]frontend.Variable, cfg.MaxNbExecution),
+		DataAvailabilityFPIQ:        make([]dataavailability.FunctionalPublicInputQSnark, cfg.MaxNbDA),
+		ExecutionFPIQ:               make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
+		L2MessageMerkleDepth:        cfg.L2MsgMerkleDepth,
+		L2MessageMaxNbMerkle:        cfg.L2MsgMaxNbMerkle,
+		MaxNbCircuits:               cfg.MaxNbCircuits,
+		L2MessageServiceAddr:        types.EthAddress(cfg.L2MsgServiceAddr),
+		ChainID:                     cfg.ChainID,
 	}
 
 	for i := range res.ExecutionFPIQ {
@@ -345,7 +334,7 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 }
 
 func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
-	nbShnarf := c.MaxNbDecompression
+	nbShnarf := c.MaxNbDA
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
 	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, 2)
 	for i := 0; i < nbShnarf; i++ {
@@ -434,7 +423,7 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 
 }
 
-// GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution from the compiled constraint system
+// GetMaxNbCircuitsSum computes MaxNbDA + MaxNbExecution from the compiled constraint system
 // TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
 	return cs.GetNbPublicVariables() - 2
@@ -450,6 +439,6 @@ const (
 func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
 	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
 	return utils.RightPad(
-		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDecompression)
+		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDA)
 
 }

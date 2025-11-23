@@ -4,13 +4,13 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 // RecursionCircuit is a gnark-circuit doing the recursion of a
@@ -74,7 +74,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	w := r.WizardVerifier
 
 	if !r.withoutGkr {
-		w.HasherFactory = gkrmimc.NewHasherFactory(api)
+		w.HasherFactory = gnarkutil.GkrPoseidon2HasherFactory(api)
 		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
 	}
 
