@@ -238,5 +238,7 @@ public abstract class ModexpMetadata {
     return false;
   }
 
+  public abstract boolean allXbsesAreInBounds();
+
   public abstract int getLeadLogByteMultiplier();
 }

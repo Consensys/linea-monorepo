@@ -50,4 +50,9 @@ public class LondonModexpMetadata extends ModexpMetadata {
   public boolean loadRawLeadingWord() {
     return callData().size() > BASE_MIN_OFFSET + bbsInt() && !ebs().isZero();
   }
+
+  @Override
+  public boolean allXbsesAreInBounds() {
+    return true;
+  }
 }

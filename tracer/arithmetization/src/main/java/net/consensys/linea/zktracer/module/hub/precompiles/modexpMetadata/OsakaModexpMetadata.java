@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata;
 
 import static net.consensys.linea.zktracer.TraceOsaka.EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND;
+import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.*;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase;
 import net.consensys.linea.zktracer.types.MemoryRange;
@@ -60,5 +61,12 @@ public class OsakaModexpMetadata extends LondonModexpMetadata {
   @Override
   public boolean loadRawLeadingWord() {
     return callData().size() > BASE_MIN_OFFSET + normalizedBbsInt() && normalizedEbsInt() != 0;
+  }
+
+  @Override
+  public boolean allXbsesAreInBounds() {
+    return tracedIsWithinBounds(MODEXP_XBS_CASE_BBS)
+        && tracedIsWithinBounds(MODEXP_XBS_CASE_EBS)
+        && tracedIsWithinBounds(MODEXP_XBS_CASE_MBS);
   }
 }
