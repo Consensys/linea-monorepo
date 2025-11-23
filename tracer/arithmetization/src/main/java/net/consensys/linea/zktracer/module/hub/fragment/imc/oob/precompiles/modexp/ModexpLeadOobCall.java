@@ -72,19 +72,19 @@ public class ModexpLeadOobCall extends OobCall {
   @Override
   public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
-    final OobExoCall ebsIsZeroCall = callToIsZero(wcp, metadata.ebs());
+    final OobExoCall ebsIsZeroCall = callToIsZero(wcp, metadata.normalizedEbs());
     exoCalls.add(ebsIsZeroCall);
     final boolean ebsIsZero = bytesToBoolean(ebsIsZeroCall.result());
 
     // row i + 1
     final OobExoCall ebsLessThan32Call =
-        callToLT(wcp, metadata.ebs(), Bytes.ofUnsignedInt(EBS_MIN_OFFSET));
+        callToLT(wcp, metadata.normalizedEbs(), Bytes.ofUnsignedInt(EBS_MIN_OFFSET));
     exoCalls.add(ebsLessThan32Call);
     final boolean ebsLessThan32 = bytesToBoolean(ebsLessThan32Call.result());
 
     // row i + 2
     final OobExoCall callDataContainsExponentBytesCall =
-        callToLT(wcp, metadata.bbs().add(BASE_MIN_OFFSET), cds);
+        callToLT(wcp, EWord.of(metadata.normalizedBbs()).add(BASE_MIN_OFFSET), cds);
     exoCalls.add(callDataContainsExponentBytesCall);
     final boolean callDataContainsExponentBytes =
         bytesToBoolean(callDataContainsExponentBytesCall.result());
@@ -94,7 +94,7 @@ public class ModexpLeadOobCall extends OobCall {
         callDataContainsExponentBytes
             ? callToLT(
                 wcp,
-                cds.subtract(BASE_MIN_OFFSET).subtract(metadata.bbs()),
+                cds.subtract(BASE_MIN_OFFSET).subtract(metadata.normalizedBbsInt()),
                 Bytes.ofUnsignedInt(WORD_SIZE))
             : noCall();
     exoCalls.add(compCall);
@@ -110,15 +110,16 @@ public class ModexpLeadOobCall extends OobCall {
       setCdsCutoff(
           comp
               ? (cds.toUnsignedBigInteger()
-                  .subtract(BigInteger.valueOf(96).add(metadata.bbs().toUnsignedBigInteger()))
+                  .subtract(
+                      BigInteger.valueOf(96).add(metadata.normalizedBbs().toUnsignedBigInteger()))
                   .intValue())
               : 32);
     }
     // Set ebsCutoff
-    setEbsCutoff(ebsLessThan32 ? metadata.ebs().intValue() : 32);
+    setEbsCutoff(ebsLessThan32 ? metadata.normalizedEbsInt() : 32);
 
     // Set subEbs32
-    setSubEbs32(ebsLessThan32 ? 0 : metadata.ebs().intValue() - 32);
+    setSubEbs32(ebsLessThan32 ? 0 : metadata.normalizedEbsInt() - 32);
   }
 
   @Override

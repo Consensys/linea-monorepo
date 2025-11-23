@@ -67,6 +67,8 @@ public class LondonModexpSubsection extends PrecompileSubsection {
 
     this.modexpMetadata = modexpMetadata;
 
+    /// call data size analysis
+    ///////////////////////////
     if (modexpMetadata.unprovableModexp()) {
       hub.modexpEffectiveCall().detectEvent();
       hub.defers().unscheduleForContextReEntry(this, hub.currentFrame());
@@ -75,6 +77,8 @@ public class LondonModexpSubsection extends PrecompileSubsection {
     }
     firstImcFragment.callOob(new ModexpCallDataSizeOobCall(modexpMetadata));
 
+    /// bbs extraction and analysis
+    ///////////////////////////////
     final ImcFragment secondImcFragment = ImcFragment.empty(hub);
     fragments().add(secondImcFragment);
     if (modexpMetadata.extractBbs()) {
@@ -83,6 +87,8 @@ public class LondonModexpSubsection extends PrecompileSubsection {
     }
     secondImcFragment.callOob(getForkAppropriateModexpXbsOobCall(MODEXP_XBS_CASE_BBS));
 
+    /// ebs extraction and analysis
+    ///////////////////////////////
     final ImcFragment thirdImcFragment = ImcFragment.empty(hub);
     fragments().add(thirdImcFragment);
     if (modexpMetadata.extractEbs()) {
@@ -91,6 +97,8 @@ public class LondonModexpSubsection extends PrecompileSubsection {
     }
     thirdImcFragment.callOob(getForkAppropriateModexpXbsOobCall(MODEXP_XBS_CASE_EBS));
 
+    /// mbs extraction and analysis
+    ///////////////////////////////
     final ImcFragment fourthImcFragment = ImcFragment.empty(hub);
     fragments().add(fourthImcFragment);
     if (modexpMetadata.extractMbs()) {
@@ -99,6 +107,8 @@ public class LondonModexpSubsection extends PrecompileSubsection {
     }
     fourthImcFragment.callOob(getForkAppropriateModexpXbsOobCall(MODEXP_XBS_CASE_MBS));
 
+    /// leading exponent word extraction, analysis and exponent log computation
+    ///////////////////////////////////////////////////////////////////////////
     final ImcFragment fifthImcFragment = ImcFragment.empty(hub);
     fragments().add(fifthImcFragment);
     fifthImcFragment.callOob(new ModexpLeadOobCall(modexpMetadata));
@@ -109,6 +119,8 @@ public class LondonModexpSubsection extends PrecompileSubsection {
       fifthImcFragment.callExp(modexpLogCallToExp);
     }
 
+    /// MODEXP pricing row
+    //////////////////////
     final ImcFragment sixthImcFragment = ImcFragment.empty(hub);
     fragments().add(sixthImcFragment);
     // Note: we must compute the callee gas here as the eponymous PrecompileSubsection field gets

@@ -65,8 +65,9 @@ import org.junit.jupiter.api.Assumptions;
 
 @Slf4j
 public class BlockchainReferenceTestTools {
+
   // Keep the forkName and the zkevm_fork in github worklow in PascalCase
-  private static final Fork fork = getForkOrDefault(PRAGUE);
+  private static final Fork fork = getForkOrDefault(OSAKA);
   private static final ReferenceTestProtocolSchedules REFERENCE_TEST_PROTOCOL_SCHEDULES =
       ReferenceTestProtocolSchedules.create();
   private static final List<String> NETWORKS_TO_RUN = List.of(toPascalCase(fork));
@@ -85,327 +86,317 @@ public class BlockchainReferenceTestTools {
       PARAMS.ignoreAll();
     }
 
-    /*
-     * Tests below are ignored specifically for Prague run
-     * They are all from the ethereum/execution-spec-tests repo
-     */
+    // ignore for v5.0 Osaka v1 release : type 3 and 4 transactions
+    // PARAMS.ignore("/prague/eip6110_deposits/");
+    PARAMS.ignore("/prague/eip7685_general_purpose_el_requests/");
+    PARAMS.ignore(
+        "/prague/eip7623_increase_calldata_cost/test_transaction_validity.py::test_transaction_validity_type_(3|4)");
+    PARAMS.ignore(
+        "/cancun/eip4788_beacon_root/test_beacon_root_contract.py::test_tx_to_beacon_root_contract\\[fork_(Prague|Osaka)-tx_type_(3|4)-blockchain_test-call_beacon_root_contract_True-auto_access_list_\\w+");
+    PARAMS.ignore(
+        "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumption::test_full_gas_consumption\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-exact_gas-type_(3|4)");
+    PARAMS.ignore(
+        "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumption::test_full_gas_consumption\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-extra_gas-type_(3|4)");
+    PARAMS.ignore(
+        "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumptionBelowDataFloor::test_gas_consumption_below_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-exact_gas-type_(3|4)");
+    PARAMS.ignore(
+        "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumptionBelowDataFloor::test_gas_consumption_below_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-exact_gas-type_4");
+    PARAMS.ignore(
+        "/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-refund_type_RefundType.AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
+    PARAMS.ignore(
+        "/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-refund_type_RefundType.AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
+    PARAMS.ignore(
+        "/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-refund_type_RefundType.STORAGE_CLEAR|AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
+    // note : called none0 and none1 but are txs of type 4 and 3 respectively
+    PARAMS.ignore(
+        "/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_(Prague|Osaka)-tx_gas_limit_cap_none0-blockchain_test_from_state_test\\]");
+    PARAMS.ignore(
+        "/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_(Prague|Osaka)-tx_gas_limit_cap_none1-blockchain_test_from_state_test\\]");
+    PARAMS.ignore(
+        "/istanbul/eip1344_chainid/test_chainid.py::test_chainid\\[fork_(Prague|Osaka)-typed_transaction_(3|4)*");
+    PARAMS.ignore(
+        "/osaka/eip7934_block_rlp_limit/test_max_block_rlp_size.py::test_block_at_rlp_limit_with_logs*");
+    PARAMS.ignore(
+        "/osaka/eip7934_block_rlp_limit/test_max_block_rlp_size.py::test_block_rlp_size_at_limit_with_all_typed_transactions*");
 
-    if (isPostPrague(fork)) {
+    // type 3 (BLOB):
+    PARAMS.ignore("/cancun/eip4844_blobs/");
+    PARAMS.ignore("/Cancun/stEIP4844_blobtransactions");
+    PARAMS.ignore(
+        "/osaka/eip7918_blob_reserve_price/test_blob_base_fee.py::test_reserve_price_various_base_fee_scenarios*");
+    PARAMS.ignore(
+        "/osaka/eip7918_blob_reserve_price/test_blob_base_fee.py::test_reserve_price_boundary*");
+    PARAMS.ignore("/osaka/eip7594*");
 
-      // TODO: should be re-enabled for Prague v2.0
-      PARAMS.ignore("/prague/eip2537_bls_12_381_precompiles/");
-      PARAMS.ignore("/prague/eip7702_set_code_tx/");
+    // type 4 (7702):
+    PARAMS.ignore(
+        "tests/osaka/eip7939_count_leading_zeros/test_count_leading_zeros.py::test_clz_from_set_code");
+    PARAMS.ignore("/prague/eip7702_set_code_tx/");
+    PARAMS.ignore(
+        "tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Osaka-tx_gas_limit_cap_over(0|1)-blockchain_test_from_state_test*");
+    PARAMS.ignore(
+        "tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_tx_gas_limit_cap_authorized_tx\\[fork_Osaka-blockchain_test_from_state_test-exceed_tx_gas_limit_False-correct_intrinsic_cost_in_transaction_gas_limit_True\\]*");
 
-      // ignore for v1.0 Prague release : type 3 and 4 transactions
-      PARAMS.ignore("/cancun/eip4844_blobs/");
-      PARAMS.ignore("/Cancun/stEIP4844_blobtransactions");
-      PARAMS.ignore("/prague/eip6110_deposits/");
-      PARAMS.ignore("/prague/eip7251_consolidations/");
-      PARAMS.ignore("/prague/eip7685_general_purpose_el_requests/");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_transaction_validity.py::test_transaction_validity_type_3");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_transaction_validity.py::test_transaction_validity_type_4");
-      PARAMS.ignore(
-          "/cancun/eip4788_beacon_root/test_beacon_root_contract.py::test_tx_to_beacon_root_contract\\[fork_Prague-tx_type_3-blockchain_test-call_beacon_root_contract_True-auto_access_list_\\w+");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumption::test_full_gas_consumption\\[fork_Prague-blockchain_test_from_state_test-exact_gas-type_3");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumption::test_full_gas_consumption\\[fork_Prague-blockchain_test_from_state_test-exact_gas-type_4");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumption::test_full_gas_consumption\\[fork_Prague-blockchain_test_from_state_test-extra_gas-type_3");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumption::test_full_gas_consumption\\[fork_Prague-blockchain_test_from_state_test-extra_gas-type_4");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumptionBelowDataFloor::test_gas_consumption_below_data_floor\\[fork_Prague-blockchain_test_from_state_test-exact_gas-type_3");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumptionBelowDataFloor::test_gas_consumption_below_data_floor\\[fork_Prague-blockchain_test_from_state_test-exact_gas-type_4");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_Prague-blockchain_test_from_state_test-refund_type_RefundType.AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_Prague-blockchain_test_from_state_test-refund_type_RefundType.AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
-      PARAMS.ignore(
-          "/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_Prague-blockchain_test_from_state_test-refund_type_RefundType.STORAGE_CLEAR|AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
-      PARAMS.ignore(
-          "/cancun/eip4788_beacon_root/test_beacon_root_contract.py::test_tx_to_beacon_root_contract");
-      // note : called none0 and none1 but are txs of type 4 and 3 respectively
-      PARAMS.ignore(
-          "/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Prague-tx_gas_limit_cap_none0-blockchain_test_from_state_test\\]");
-      PARAMS.ignore(
-          "/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Prague-tx_gas_limit_cap_none1-blockchain_test_from_state_test\\]");
-      PARAMS.ignore(
-          "/istanbul/eip1344_chainid/test_chainid.py::test_chainid\\[fork_Prague-typed_transaction_3*");
-      PARAMS.ignore(
-          "/istanbul/eip1344_chainid/test_chainid.py::test_chainid\\[fork_Prague-typed_transaction_4*");
+    // tests that timeout and pass locally
+    // Log when launching locally
+    // Test Name:
+    // tests/frontier/scenarios/test_scenarios.py::test_scenarios[fork_Prague-blockchain_test-test_program_program_BLOCKHASH-debug][Prague]
+    // PASSED (27m 52s)
+    PARAMS.ignore(
+        "frontier/scenarios/test_scenarios.py::test_scenarios\\[fork_(Prague|Osaka)-blockchain_test-test_program_program_BLOCKHASH-debug\\]");
 
-      // tests that timeout and pass locally
-      // Log when launching locally
-      // Test Name:
-      // tests/frontier/scenarios/test_scenarios.py::test_scenarios[fork_Prague-blockchain_test-test_program_program_BLOCKHASH-debug][Prague]
-      // PASSED (27m 52s)
-      PARAMS.ignore(
-          "frontier/scenarios/test_scenarios.py::test_scenarios\\[fork_Prague-blockchain_test-test_program_program_BLOCKHASH-debug\\]");
+    // tests that timeout even locally
+    // Log when launching locally
+    // Test Name:
+    // tests/cancun/eip1153_tstore/test_tstorage.py::test_run_until_out_of_gas[fork_Prague-tx_gas_limit_0x055d4a80-blockchain_test_from_state_test-tstore_wide_address_space][Prague] FAILED (1h 3m)
+    // java.util.concurrent.TimeoutException: execution(java.lang.String,
+    // org.hyperledger.besu.ethereum.referencetests.BlockchainReferenceTestCaseSpec, boolean)
+    // timed
+    // out after 60 minutes
+    PARAMS.ignore("/cancun/eip1153_tstore/test_tstorage.py::test_run_until_out_of_gas");
 
-      // tests that timeout even locally
-      // Log when launching locally
-      // Test Name:
-      // tests/cancun/eip1153_tstore/test_tstorage.py::test_run_until_out_of_gas[fork_Prague-tx_gas_limit_0x055d4a80-blockchain_test_from_state_test-tstore_wide_address_space][Prague] FAILED (1h 3m)
-      // java.util.concurrent.TimeoutException: execution(java.lang.String,
-      // org.hyperledger.besu.ethereum.referencetests.BlockchainReferenceTestCaseSpec, boolean)
-      // timed
-      // out after 60 minutes
-      PARAMS.ignore("/cancun/eip1153_tstore/test_tstorage.py::test_run_until_out_of_gas");
-
-      // withdrawals
-      PARAMS.ignore("/prague/eip7002_el_triggerable_withdrawals/");
-      PARAMS.ignore("/prague/eip7002_el_triggerable_withdrawals_and_transfers/");
-      PARAMS.ignore(
-          "cancun/eip4788_beacon_root/test_beacon_root_contract.py::test_multi_block_beacon_root_timestamp_calls");
-      PARAMS.ignore("shanghai/eip4895_withdrawals/test_withdrawals.py::test_balance_within_block");
-      PARAMS.ignore("shanghai/eip4895_withdrawals/test_withdrawals.py::test_use_value_in_contract");
-
-      // Arithmetization restriction: recipient address is a precompile
-      PARAMS.ignore(
-          "osaka/eip7883_modexp_gas_increase/test_modexp_thresholds.py::test_modexp_used_in_transaction_entry_points");
-    }
-    /*
-     * Tests ignored below regroup tests from different forks. They are labelled from the ethereum/execution-spec-tests from Prague and on
-     */
+    // withdrawals are not supported by Linea
+    PARAMS.ignore("/prague/eip7002_el_triggerable_withdrawals/");
+    PARAMS.ignore("/prague/eip7002_el_triggerable_withdrawals_and_transfers/");
+    PARAMS.ignore(
+        "cancun/eip4788_beacon_root/test_beacon_root_contract.py::test_multi_block_beacon_root_timestamp_calls");
+    PARAMS.ignore("shanghai/eip4895_withdrawals/test_withdrawals.py::test_balance_within_block");
+    PARAMS.ignore("shanghai/eip4895_withdrawals/test_withdrawals.py::test_use_value_in_contract");
 
     // ignore tests that are failing in Besu too
-    if (isPostPrague(fork)) {
-      // From ethereum/execution-spec-tests repo
-      PARAMS.ignore(
-          "RevertInCreateInInitCreate2Paris\\[fork_Prague-blockchain_test_from_state_test-\\]");
-      PARAMS.ignore(
-          "create2collisionStorageParis\\[fork_Prague-blockchain_test_from_state_test-d0\\]");
-      PARAMS.ignore(
-          "create2collisionStorageParis\\[fork_Prague-blockchain_test_from_state_test-d1\\]");
-      PARAMS.ignore(
-          "create2collisionStorageParis\\[fork_Prague-blockchain_test_from_state_test-d2\\]");
-      PARAMS.ignore(
-          "dynamicAccountOverwriteEmpty_Paris\\[fork_Prague-blockchain_test_from_state_test-\\]");
-    }
+    PARAMS.ignore(
+        "RevertInCreateInInitCreate2Paris\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-\\]");
+    PARAMS.ignore(
+        "create2collisionStorageParis\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0\\]");
+    PARAMS.ignore(
+        "create2collisionStorageParis\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1\\]");
+    PARAMS.ignore(
+        "create2collisionStorageParis\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d2\\]");
+    PARAMS.ignore(
+        "dynamicAccountOverwriteEmpty_Paris\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-\\]");
 
     // Arithmetization restriction: recipient address is a precompile.
-    if (isPostPrague(fork)) {
-      // From the ethereum/execution-spec-tests repo
-      PARAMS.ignore("modexpRandomInput\\[fork_Prague-blockchain_test_from_state_test-d0-g0\\]");
-      PARAMS.ignore("modexpRandomInput\\[fork_Prague-blockchain_test_from_state_test-d0-g1\\]");
-      PARAMS.ignore("modexpRandomInput\\[fork_Prague-blockchain_test_from_state_test-d1-g0\\]");
-      PARAMS.ignore("modexpRandomInput\\[fork_Prague-blockchain_test_from_state_test-d1-g1\\]");
-      PARAMS.ignore("modexpRandomInput\\[fork_Prague-blockchain_test_from_state_test-d2-g0\\]");
-      PARAMS.ignore("modexpRandomInput\\[fork_Prague-blockchain_test_from_state_test-d2-g1\\]");
-      PARAMS.ignore("randomStatetest642\\[fork_Prague-blockchain_test_from_state_test-\\]");
-      PARAMS.ignore("randomStatetest644\\[fork_Prague-blockchain_test_from_state_test-\\]");
-      PARAMS.ignore("randomStatetest645\\[fork_Prague-blockchain_test_from_state_test--v0\\]");
-      PARAMS.ignore("randomStatetest645\\[fork_Prague-blockchain_test_from_state_test--v1\\]");
-    }
+    PARAMS.ignore(
+        "osaka/eip7883_modexp_gas_increase/test_modexp_thresholds.py::test_modexp_used_in_transaction_entry_points");
+    PARAMS.ignore(
+        "modexpRandomInput\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0-g0\\]");
+    PARAMS.ignore(
+        "modexpRandomInput\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0-g1\\]");
+    PARAMS.ignore(
+        "modexpRandomInput\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1-g0\\]");
+    PARAMS.ignore(
+        "modexpRandomInput\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1-g1\\]");
+    PARAMS.ignore(
+        "modexpRandomInput\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d2-g0\\]");
+    PARAMS.ignore(
+        "modexpRandomInput\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d2-g1\\]");
+    PARAMS.ignore("randomStatetest642\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-\\]");
+    PARAMS.ignore("randomStatetest644\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-\\]");
+    PARAMS.ignore(
+        "randomStatetest645\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--v0\\]");
+    PARAMS.ignore(
+        "randomStatetest645\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--v1\\]");
+    PARAMS.ignore(
+        "test_p256verify.py::test_precompile_as_tx_entry_point\\[fork_Osaka-blockchain_test_from_state_test-valid_entry_point\\]\\[Osaka\\]");
 
     // Consumes a huge amount of memory.
-    if (isPostPrague(fork)) {
-      // From the ethereum/execution-spec-tests repo
-      PARAMS.ignore(
-          "stStaticCall/static_Return50000_2Filler.json::static_Return50000_2\\[fork_Prague-blockchain_test_from_state_test-\\]");
-    }
+    PARAMS.ignore(
+        "stStaticCall/static_Return50000_2Filler.json::static_Return50000_2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-\\]");
 
-    // Balance is more than 128 bits
-    if (isPostPrague(fork)) {
-      // From the ethereum/execution-spec-tests repo
-      PARAMS.ignore(
-          "stMemoryStressTest/CALLCODE_BoundsFiller.json::CALLCODE_Bounds\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALLCODE_BoundsFiller.json::CALLCODE_Bounds\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALLCODE_Bounds2Filler.json::CALLCODE_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALLCODE_Bounds2Filler.json::CALLCODE_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALLCODE_Bounds3Filler.json::CALLCODE_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALLCODE_Bounds3Filler.json::CALLCODE_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALLCODE_Bounds4Filler.json::CALLCODE_Bounds4\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALLCODE_Bounds4Filler.json::CALLCODE_Bounds4\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALLCODE_Bounds4Filler.json::CALLCODE_Bounds4\\[fork_Prague-blockchain_test_from_state_test--g2\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/static_CALL_BoundsFiller.json::static_CALL_Bounds\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/static_CALL_BoundsFiller.json::static_CALL_Bounds\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/static_CALL_Bounds2Filler.json::static_CALL_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/static_CALL_Bounds2Filler.json::static_CALL_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/static_CALL_Bounds2aFiller.json::static_CALL_Bounds2a\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/static_CALL_Bounds2aFiller.json::static_CALL_Bounds2a\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/static_CALL_Bounds3Filler.json::static_CALL_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/static_CALL_Bounds3Filler.json::static_CALL_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALL_BoundsFiller.json::CALL_Bounds\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALL_BoundsFiller.json::CALL_Bounds\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALL_Bounds2Filler.json::CALL_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALL_Bounds2Filler.json::CALL_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALL_Bounds2aFiller.json::CALL_Bounds2a\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALL_Bounds2aFiller.json::CALL_Bounds2a\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALL_Bounds3Filler.json::CALL_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALL_Bounds3Filler.json::CALL_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CALL_Bounds3Filler.json::CALL_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g2\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CREATE_BoundsFiller.json::CREATE_Bounds\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CREATE_BoundsFiller.json::CREATE_Bounds\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CREATE_Bounds2Filler.json::CREATE_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CREATE_Bounds2Filler.json::CREATE_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CREATE_Bounds3Filler.json::CREATE_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CREATE_Bounds3Filler.json::CREATE_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/CREATE_Bounds3Filler.json::CREATE_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g2\\]");
-      PARAMS.ignore(
-          "stCreate2/CREATE2_BoundsFiller.json::CREATE2_Bounds\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stCreate2/CREATE2_BoundsFiller.json::CREATE2_Bounds\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stCreate2/CREATE2_Bounds2Filler.json::CREATE2_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stCreate2/CREATE2_Bounds2Filler.json::CREATE2_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stCreate2/CREATE2_Bounds3Filler.json::CREATE2_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stCreate2/CREATE2_Bounds3Filler.json::CREATE2_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stCreate2/CREATE2_Bounds3Filler.json::CREATE2_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g2\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/DELEGATECALL_BoundsFiller.json::DELEGATECALL_Bounds\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/DELEGATECALL_BoundsFiller.json::DELEGATECALL_Bounds\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/DELEGATECALL_Bounds2Filler.json::DELEGATECALL_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/DELEGATECALL_Bounds2Filler.json::DELEGATECALL_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/DELEGATECALL_Bounds3Filler.json::DELEGATECALL_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/DELEGATECALL_Bounds3Filler.json::DELEGATECALL_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/DELEGATECALL_Bounds3Filler.json::DELEGATECALL_Bounds3\\[fork_Prague-blockchain_test_from_state_test--g2\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/MSTORE_BoundsFiller.json::MSTORE_Bounds\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/MSTORE_BoundsFiller.json::MSTORE_Bounds\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/MSTORE_Bounds2Filler.json::MSTORE_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/MSTORE_Bounds2Filler.json::MSTORE_Bounds2\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/MSTORE_Bounds2aFiller.json::MSTORE_Bounds2a\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/MSTORE_Bounds2aFiller.json::MSTORE_Bounds2a\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore("HighGasLimit\\[fork_Prague-blockchain_test_from_state_test-\\]");
-      PARAMS.ignore(
-          "stInitCodeTest/OutOfGasContractCreationFiller.json::OutOfGasContractCreation\\[fork_Prague-blockchain_test_from_state_test-d0-g0\\]");
-      PARAMS.ignore(
-          "stInitCodeTest/OutOfGasContractCreationFiller.json::OutOfGasContractCreation\\[fork_Prague-blockchain_test_from_state_test-d0-g1\\]");
-      PARAMS.ignore(
-          "stInitCodeTest/OutOfGasContractCreationFiller.json::OutOfGasContractCreation\\[fork_Prague-blockchain_test_from_state_test-d1-g0\\]");
-      PARAMS.ignore(
-          "stInitCodeTest/OutOfGasContractCreationFiller.json::OutOfGasContractCreation\\[fork_Prague-blockchain_test_from_state_test-d1-g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/RETURN_BoundsFiller.json::RETURN_Bounds\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/RETURN_BoundsFiller.json::RETURN_Bounds\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stMemoryStressTest/RETURN_BoundsFiller.json::RETURN_Bounds\\[fork_Prague-blockchain_test_from_state_test--g2\\]");
-      PARAMS.ignore(
-          "stCallCreateCallCodeTest/Call1024PreCallsFiller.json::Call1024PreCalls\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stCallCreateCallCodeTest/Call1024PreCallsFiller.json::Call1024PreCalls\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stStaticCall/static_Call1024PreCallsFiller.json::static_Call1024PreCalls\\[fork_Prague-blockchain_test_from_state_test-d0\\]");
-      PARAMS.ignore(
-          "stStaticCall/static_Call1024PreCallsFiller.json::static_Call1024PreCalls\\[fork_Prague-blockchain_test_from_state_test-d1\\]");
-      PARAMS.ignore(
-          "stStaticCall/static_Call1024PreCalls2Filler.json::static_Call1024PreCalls2\\[fork_Prague-blockchain_test_from_state_test-d0\\]");
-      PARAMS.ignore(
-          "stStaticCall/static_Call1024PreCalls2Filler.json::static_Call1024PreCalls2\\[fork_Prague-blockchain_test_from_state_test-d1\\]");
-      PARAMS.ignore(
-          "stStaticCall/static_Call1024PreCalls3Filler.json::static_Call1024PreCalls3\\[fork_Prague-blockchain_test_from_state_test-d0\\]");
-      PARAMS.ignore(
-          "stStaticCall/static_Call1024PreCalls3Filler.json::static_Call1024PreCalls3\\[fork_Prague-blockchain_test_from_state_test-d1\\]");
-      PARAMS.ignore("static_RETURN_Bounds\\[fork_Prague-blockchain_test_from_state_test-\\]");
-      PARAMS.ignore(
-          "stStaticCall/static_RETURN_BoundsOOGFiller.json::static_RETURN_BoundsOOG\\[fork_Prague-blockchain_test_from_state_test-d0\\]");
-      PARAMS.ignore(
-          "stStaticCall/static_RETURN_BoundsOOGFiller.json::static_RETURN_BoundsOOG\\[fork_Prague-blockchain_test_from_state_test-d1\\]");
-      PARAMS.ignore(
-          "stDelegatecallTestHomestead/Call1024PreCallsFiller.json::Call1024PreCalls\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stDelegatecallTestHomestead/Call1024PreCallsFiller.json::Call1024PreCalls\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stDelegatecallTestHomestead/Call1024PreCallsFiller.json::Call1024PreCalls\\[fork_Prague-blockchain_test_from_state_test--g2\\]");
-      PARAMS.ignore("Create2OnDepth1023\\[fork_Prague-blockchain_test_from_state_test-\\]");
-      PARAMS.ignore(
-          "stCreate2/Create2RecursiveFiller.json::Create2Recursive\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
-      PARAMS.ignore(
-          "stCreate2/Create2RecursiveFiller.json::Create2Recursive\\[fork_Prague-blockchain_test_from_state_test--g1\\]");
-      PARAMS.ignore(
-          "stCreate2/Create2RecursiveFiller.json::Create2Recursive\\[fork_Prague-blockchain_test_from_state_test--g2\\]");
-      PARAMS.ignore("Create2OnDepth1024\\[fork_Prague-blockchain_test_from_state_test-\\]");
-      PARAMS.ignore(
-          "stTransactionTest/OverflowGasRequire2Filler.json::OverflowGasRequire2\\[fork_Prague-blockchain_test_from_state_test-\\]");
-      PARAMS.ignore(
-          "stStaticCall/static_Call50000_ecrecFiller.json::static_Call50000_ecrec\\[fork_Prague-blockchain_test_from_state_test-d0\\]");
-      PARAMS.ignore(
-          "stStaticCall/static_Call50000_ecrecFiller.json::static_Call50000_ecrec\\[fork_Prague-blockchain_test_from_state_test-d1\\]");
-    }
+    // Balance is more than 128 bits (arithmetization limitation).
+    PARAMS.ignore(
+        "stMemoryStressTest/CALLCODE_BoundsFiller.json::CALLCODE_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALLCODE_BoundsFiller.json::CALLCODE_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALLCODE_Bounds2Filler.json::CALLCODE_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALLCODE_Bounds2Filler.json::CALLCODE_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALLCODE_Bounds3Filler.json::CALLCODE_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALLCODE_Bounds3Filler.json::CALLCODE_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALLCODE_Bounds4Filler.json::CALLCODE_Bounds4\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALLCODE_Bounds4Filler.json::CALLCODE_Bounds4\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALLCODE_Bounds4Filler.json::CALLCODE_Bounds4\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g2\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/static_CALL_BoundsFiller.json::static_CALL_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/static_CALL_BoundsFiller.json::static_CALL_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/static_CALL_Bounds2Filler.json::static_CALL_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/static_CALL_Bounds2Filler.json::static_CALL_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/static_CALL_Bounds2aFiller.json::static_CALL_Bounds2a\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/static_CALL_Bounds2aFiller.json::static_CALL_Bounds2a\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/static_CALL_Bounds3Filler.json::static_CALL_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/static_CALL_Bounds3Filler.json::static_CALL_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALL_BoundsFiller.json::CALL_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALL_BoundsFiller.json::CALL_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALL_Bounds2Filler.json::CALL_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALL_Bounds2Filler.json::CALL_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALL_Bounds2aFiller.json::CALL_Bounds2a\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALL_Bounds2aFiller.json::CALL_Bounds2a\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALL_Bounds3Filler.json::CALL_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALL_Bounds3Filler.json::CALL_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CALL_Bounds3Filler.json::CALL_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g2\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CREATE_BoundsFiller.json::CREATE_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CREATE_BoundsFiller.json::CREATE_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CREATE_Bounds2Filler.json::CREATE_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CREATE_Bounds2Filler.json::CREATE_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CREATE_Bounds3Filler.json::CREATE_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CREATE_Bounds3Filler.json::CREATE_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/CREATE_Bounds3Filler.json::CREATE_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g2\\]");
+    PARAMS.ignore(
+        "stCreate2/CREATE2_BoundsFiller.json::CREATE2_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stCreate2/CREATE2_BoundsFiller.json::CREATE2_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stCreate2/CREATE2_Bounds2Filler.json::CREATE2_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stCreate2/CREATE2_Bounds2Filler.json::CREATE2_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stCreate2/CREATE2_Bounds3Filler.json::CREATE2_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stCreate2/CREATE2_Bounds3Filler.json::CREATE2_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stCreate2/CREATE2_Bounds3Filler.json::CREATE2_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g2\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/DELEGATECALL_BoundsFiller.json::DELEGATECALL_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/DELEGATECALL_BoundsFiller.json::DELEGATECALL_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/DELEGATECALL_Bounds2Filler.json::DELEGATECALL_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/DELEGATECALL_Bounds2Filler.json::DELEGATECALL_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/DELEGATECALL_Bounds3Filler.json::DELEGATECALL_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/DELEGATECALL_Bounds3Filler.json::DELEGATECALL_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/DELEGATECALL_Bounds3Filler.json::DELEGATECALL_Bounds3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g2\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/MSTORE_BoundsFiller.json::MSTORE_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/MSTORE_BoundsFiller.json::MSTORE_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/MSTORE_Bounds2Filler.json::MSTORE_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/MSTORE_Bounds2Filler.json::MSTORE_Bounds2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/MSTORE_Bounds2aFiller.json::MSTORE_Bounds2a\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/MSTORE_Bounds2aFiller.json::MSTORE_Bounds2a\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore("HighGasLimit\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-\\]");
+    PARAMS.ignore(
+        "stInitCodeTest/OutOfGasContractCreationFiller.json::OutOfGasContractCreation\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0-g0\\]");
+    PARAMS.ignore(
+        "stInitCodeTest/OutOfGasContractCreationFiller.json::OutOfGasContractCreation\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0-g1\\]");
+    PARAMS.ignore(
+        "stInitCodeTest/OutOfGasContractCreationFiller.json::OutOfGasContractCreation\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1-g0\\]");
+    PARAMS.ignore(
+        "stInitCodeTest/OutOfGasContractCreationFiller.json::OutOfGasContractCreation\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1-g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/RETURN_BoundsFiller.json::RETURN_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/RETURN_BoundsFiller.json::RETURN_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stMemoryStressTest/RETURN_BoundsFiller.json::RETURN_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g2\\]");
+    PARAMS.ignore(
+        "stCallCreateCallCodeTest/Call1024PreCallsFiller.json::Call1024PreCalls\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stCallCreateCallCodeTest/Call1024PreCallsFiller.json::Call1024PreCalls\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stStaticCall/static_Call1024PreCallsFiller.json::static_Call1024PreCalls\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0\\]");
+    PARAMS.ignore(
+        "stStaticCall/static_Call1024PreCallsFiller.json::static_Call1024PreCalls\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1\\]");
+    PARAMS.ignore(
+        "stStaticCall/static_Call1024PreCalls2Filler.json::static_Call1024PreCalls2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0\\]");
+    PARAMS.ignore(
+        "stStaticCall/static_Call1024PreCalls2Filler.json::static_Call1024PreCalls2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1\\]");
+    PARAMS.ignore(
+        "stStaticCall/static_Call1024PreCalls3Filler.json::static_Call1024PreCalls3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0\\]");
+    PARAMS.ignore(
+        "stStaticCall/static_Call1024PreCalls3Filler.json::static_Call1024PreCalls3\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1\\]");
+    PARAMS.ignore("static_RETURN_Bounds\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-\\]");
+    PARAMS.ignore(
+        "stStaticCall/static_RETURN_BoundsOOGFiller.json::static_RETURN_BoundsOOG\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0\\]");
+    PARAMS.ignore(
+        "stStaticCall/static_RETURN_BoundsOOGFiller.json::static_RETURN_BoundsOOG\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1\\]");
+    PARAMS.ignore(
+        "stDelegatecallTestHomestead/Call1024PreCallsFiller.json::Call1024PreCalls\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stDelegatecallTestHomestead/Call1024PreCallsFiller.json::Call1024PreCalls\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stDelegatecallTestHomestead/Call1024PreCallsFiller.json::Call1024PreCalls\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g2\\]");
+    PARAMS.ignore("Create2OnDepth1023\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-\\]");
+    PARAMS.ignore(
+        "stCreate2/Create2RecursiveFiller.json::Create2Recursive\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0\\]");
+    PARAMS.ignore(
+        "stCreate2/Create2RecursiveFiller.json::Create2Recursive\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1\\]");
+    PARAMS.ignore(
+        "stCreate2/Create2RecursiveFiller.json::Create2Recursive\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g2\\]");
+    PARAMS.ignore("Create2OnDepth1024\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-\\]");
+    PARAMS.ignore(
+        "stTransactionTest/OverflowGasRequire2Filler.json::OverflowGasRequire2\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-\\]");
+    PARAMS.ignore(
+        "stStaticCall/static_Call50000_ecrecFiller.json::static_Call50000_ecrec\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0\\]");
+    PARAMS.ignore(
+        "stStaticCall/static_Call50000_ecrecFiller.json::static_Call50000_ecrec\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1\\]");
 
     // Deployment transaction to an account with nonce / code
-    if (isPostPrague(fork)) {
-      // From the ethereum/execution-spec-tests repo
-      PARAMS.ignore(
-          "TransactionCollisionToEmptyButCode\\[fork_Prague-blockchain_test_from_state_test--g0-v0\\]");
-      PARAMS.ignore(
-          "TransactionCollisionToEmptyButCode\\[fork_Prague-blockchain_test_from_state_test--g0-v1\\]");
-      PARAMS.ignore(
-          "TransactionCollisionToEmptyButCode\\[fork_Prague-blockchain_test_from_state_test--g1-v0\\]");
-      PARAMS.ignore(
-          "TransactionCollisionToEmptyButCode\\[fork_Prague-blockchain_test_from_state_test--g1-v1\\]");
-      PARAMS.ignore(
-          "TransactionCollisionToEmptyButNonce\\[fork_Prague-blockchain_test_from_state_test--g0-v0\\]");
-      PARAMS.ignore(
-          "TransactionCollisionToEmptyButNonce\\[fork_Prague-blockchain_test_from_state_test--g0-v1\\]");
-      PARAMS.ignore(
-          "TransactionCollisionToEmptyButNonce\\[fork_Prague-blockchain_test_from_state_test--g1-v0\\]");
-      PARAMS.ignore(
-          "TransactionCollisionToEmptyButNonce\\[fork_Prague-blockchain_test_from_state_test--g1-v1\\]");
-      PARAMS.ignore(
-          "initCollidingWithNonEmptyAccount\\[fork_Prague-blockchain_test_from_state_test-d0\\]");
-      PARAMS.ignore(
-          "initCollidingWithNonEmptyAccount\\[fork_Prague-blockchain_test_from_state_test-d1\\]");
-      PARAMS.ignore(
-          "initCollidingWithNonEmptyAccount\\[fork_Prague-blockchain_test_from_state_test-d2\\]");
-      PARAMS.ignore(
-          "initCollidingWithNonEmptyAccount\\[fork_Prague-blockchain_test_from_state_test-d3\\]");
-      PARAMS.ignore(
-          "initCollidingWithNonEmptyAccount\\[fork_Prague-blockchain_test_from_state_test-d4\\]");
-    }
+    PARAMS.ignore(
+        "TransactionCollisionToEmptyButCode\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0-v0\\]");
+    PARAMS.ignore(
+        "TransactionCollisionToEmptyButCode\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0-v1\\]");
+    PARAMS.ignore(
+        "TransactionCollisionToEmptyButCode\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1-v0\\]");
+    PARAMS.ignore(
+        "TransactionCollisionToEmptyButCode\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1-v1\\]");
+    PARAMS.ignore(
+        "TransactionCollisionToEmptyButNonce\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0-v0\\]");
+    PARAMS.ignore(
+        "TransactionCollisionToEmptyButNonce\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g0-v1\\]");
+    PARAMS.ignore(
+        "TransactionCollisionToEmptyButNonce\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1-v0\\]");
+    PARAMS.ignore(
+        "TransactionCollisionToEmptyButNonce\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--g1-v1\\]");
+    PARAMS.ignore(
+        "initCollidingWithNonEmptyAccount\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d0\\]");
+    PARAMS.ignore(
+        "initCollidingWithNonEmptyAccount\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d1\\]");
+    PARAMS.ignore(
+        "initCollidingWithNonEmptyAccount\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d2\\]");
+    PARAMS.ignore(
+        "initCollidingWithNonEmptyAccount\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d3\\]");
+    PARAMS.ignore(
+        "initCollidingWithNonEmptyAccount\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-d4\\]");
+
+    // EIP-7251 not supported by Linea: "World State Root does not match expected value"
+    PARAMS.ignore("/prague/eip7251_consolidations/");
 
     // Prior to Osaka MODEXP had unsupported arguments in the arithmetization
     if (forkPredatesOsaka(fork)) {
@@ -456,6 +447,12 @@ public class BlockchainReferenceTestTools {
           "test_modexp_thresholds.py::test_modexp_variable_gas_cost\\[fork_.*-blockchain_test_from_state_test-Z[2347]\\]");
       PARAMS.ignore(
           "test_modexp_thresholds.py::test_modexp_variable_gas_cost\\[fork_.*-blockchain_test_from_state_test-Z1[2-5]\\]");
+    }
+
+    if (forkPredatesAmsterdam(fork)) {
+      // EIP-7610 is proposed for Amsterdam (and will be supported by Linea) but previous fork
+      // contains EIP-7610 in BlockchainReferenceTest_42 ...
+      PARAMS.ignore("tests/paris/eip7610_*");
     }
   }
 
@@ -524,7 +521,19 @@ public class BlockchainReferenceTestTools {
     return param;
   }
 
+  // static boolean kzgIsInitialized = false;
+
   public static void executeTest(final BlockchainReferenceTestCaseSpec spec) {
+    // TODO: dear developer of the future, this may be needed in case tests fail due to KZG
+    //  / point evaluation is not initialized
+    // Initialize KZG library once for all reference tests
+    /*
+    if (!kzgIsInitialized) {
+      KZGPointEvalPrecompiledContract.init();
+      kzgIsInitialized = true;
+    }
+     */
+
     final BlockHeader genesisBlockHeader = spec.getGenesisBlockHeader();
     final ProtocolContext context = spec.buildProtocolContext();
     final MutableWorldState worldState =

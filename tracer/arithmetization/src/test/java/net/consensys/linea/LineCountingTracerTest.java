@@ -79,6 +79,10 @@ public class LineCountingTracerTest extends TracerTestBase {
         counter.getModulesToCount().stream().map(module -> module.moduleKey().toString()).toList();
 
     for (Fork fork : Fork.values()) {
+      // TODO: reenable me when Amsterdam is supported
+      if (isPostAmsterdam(fork)) {
+        return;
+      }
       final ChainConfig config = MAINNET_TESTCONFIG(fork);
       final ZkTracer tracer = new ZkTracer(config);
       final List<String> tracerModules =

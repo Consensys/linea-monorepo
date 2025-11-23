@@ -112,6 +112,7 @@ dependencies {
   testImplementation "${besuArtifactGroup}.internal:besu-metrics-core"
   testImplementation "${besuArtifactGroup}.internal:besu-testutil"
   testImplementation "${besuArtifactGroup}.internal:besu-util"
+  implementation "org.hyperledger.besu:gnark:1.4.1-SNAPSHOT"
 
   testImplementation 'io.consensys.tuweni:tuweni-bytes'
   testImplementation 'io.consensys.tuweni:tuweni-units'

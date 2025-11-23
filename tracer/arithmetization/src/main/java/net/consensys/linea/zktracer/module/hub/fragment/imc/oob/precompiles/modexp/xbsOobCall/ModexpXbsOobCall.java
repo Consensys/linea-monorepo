@@ -109,12 +109,7 @@ public abstract class ModexpXbsOobCall extends OobCall {
     };
   }
 
-  protected boolean computeMax() {
-    return switch (modexpXbsCase) {
-      case MODEXP_XBS_CASE_BBS, MODEXP_XBS_CASE_EBS -> false;
-      case MODEXP_XBS_CASE_MBS -> true;
-    };
-  }
+  protected abstract boolean computeMax();
 
   @Override
   public Trace.Oob trace(Trace.Oob trace) {

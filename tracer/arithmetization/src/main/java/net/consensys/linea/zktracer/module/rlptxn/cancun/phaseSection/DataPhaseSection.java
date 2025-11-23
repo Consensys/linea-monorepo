@@ -71,7 +71,7 @@ public class DataPhaseSection extends PhaseSection {
     // trace the limbs
     int zeros = tx.numberOfZeroBytesInPayload();
     int nonZeros = tx.numberOfNonzeroBytesInPayload();
-    final short ctMax = (short) (limbs.size() - 1);
+    final int ctMax = limbs.size() - 1;
     for (int ct = 0; ct <= ctMax; ct++) {
       final InstructionDataPricing currentLimb = limbs.get(ct);
       traceTransactionConstantValues(trace, tracedValues);
