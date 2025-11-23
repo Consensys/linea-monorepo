@@ -118,6 +118,10 @@ public class BlockchainReferenceTestTools {
         "/osaka/eip7934_block_rlp_limit/test_max_block_rlp_size.py::test_block_at_rlp_limit_with_logs*");
     PARAMS.ignore(
         "/osaka/eip7934_block_rlp_limit/test_max_block_rlp_size.py::test_block_rlp_size_at_limit_with_all_typed_transactions*");
+    PARAMS.ignore(
+        "prague/eip7623_increase_calldata_cost/test_eip_mainnet.py::test_eip_7623\\[fork_Prague-blockchain_test_from_state_test----type_3\\]\\[Prague\\]");
+    PARAMS.ignore(
+        "prague/eip7623_increase_calldata_cost/test_eip_mainnet.py::test_eip_7623\\[fork_Prague-blockchain_test_from_state_test----type_4\\]\\[Prague\\]");
 
     // type 3 (BLOB):
     PARAMS.ignore("/cancun/eip4844_blobs/");
