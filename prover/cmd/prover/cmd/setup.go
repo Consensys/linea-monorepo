@@ -57,13 +57,6 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		return fmt.Errorf("%s failed to read config file: %w", cmdName, err)
 	}
 
-	// Fail fast if the dictionary file is not found but was specified.
-	if args.DictPath != "" {
-		if _, err := os.Stat(args.DictPath); err != nil {
-			return fmt.Errorf("%s dictionary file not found: %w", cmdName, err)
-		}
-	}
-
 	// Parse inCircuits
 	inCircuits, err := parseCircuitInputs(args.Circuits)
 	if err != nil {
