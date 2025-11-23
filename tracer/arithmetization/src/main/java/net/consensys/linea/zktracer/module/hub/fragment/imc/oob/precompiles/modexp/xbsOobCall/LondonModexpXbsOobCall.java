@@ -78,4 +78,12 @@ public class LondonModexpXbsOobCall extends ModexpXbsOobCall {
   protected boolean xbsIsOutOfBounds() {
     return false;
   }
+
+  @Override
+  protected boolean computeMax() {
+    return switch (modexpXbsCase) {
+      case MODEXP_XBS_CASE_BBS, MODEXP_XBS_CASE_EBS -> false;
+      case MODEXP_XBS_CASE_MBS -> true;
+    };
+  }
 }

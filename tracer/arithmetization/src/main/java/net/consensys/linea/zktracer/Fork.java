@@ -35,7 +35,8 @@ public enum Fork {
   SHANGHAI(EVM_SHANGHAI),
   CANCUN(EVM_CANCUN),
   PRAGUE(EVM_PRAGUE),
-  OSAKA(EVM_OSAKA) // not yet live on L1
+  OSAKA(EVM_OSAKA), // live on L1 2025/12/03
+  AMSTERDAM(EVM_AMSTERDAM) // for Q? 2026
 ;
   private final int releaseNumber;
 
@@ -55,6 +56,7 @@ public enum Fork {
       case CANCUN -> "cancun";
       case PRAGUE -> "prague";
       case OSAKA -> "osaka";
+        // case AMSTERDAM -> "amsterdam";
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }
@@ -95,12 +97,20 @@ public enum Fork {
     return forkIsAtLeast(fork, OSAKA);
   }
 
+  public static boolean isPostAmsterdam(Fork fork) {
+    return forkIsAtLeast(fork, AMSTERDAM);
+  }
+
   private static boolean forkPredates(Fork fork, Fork threshold) {
     return !forkIsAtLeast(fork, threshold);
   }
 
   public static boolean forkPredatesOsaka(Fork fork) {
     return forkPredates(fork, OSAKA);
+  }
+
+  public static boolean forkPredatesAmsterdam(Fork fork) {
+    return forkPredates(fork, AMSTERDAM);
   }
 
   /**
@@ -118,6 +128,7 @@ public enum Fork {
       case MainnetHardforkId.CANCUN -> CANCUN;
       case MainnetHardforkId.PRAGUE -> PRAGUE;
       case MainnetHardforkId.OSAKA -> OSAKA;
+        // case MainnetHardforkId.AMSTERDAM -> AMSTERDAM;
       default -> throw new IllegalArgumentException(
           "Fork not supported by the tracer: " + hardForkId);
     };
@@ -126,7 +137,6 @@ public enum Fork {
   /**
    * Start a Besu Blockchain service and retrieve the hardfork id for a given block range
    *
-   * @param context the context on which to start the service
    * @param fromBlock the block number at which to retrieve the hardfork id
    * @param toBlock the block number at which to retrieve the hardfork id
    * @return Fork corresponding Fork instance if the hardfork id is the same between fromBlock and

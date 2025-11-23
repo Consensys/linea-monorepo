@@ -14,6 +14,8 @@
  */
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.xbsOobCall;
 
+import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.MODEXP_XBS_CASE_BBS;
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -78,5 +80,14 @@ public class OsakaModexpXbsOobCall extends LondonModexpXbsOobCall {
   @Override
   boolean xbsNormalizedIsNonZeroTracedValue() {
     return xbsNormalizedIsNonZero();
+  }
+
+  @Override
+  protected boolean computeMax() {
+    return switch (modexpXbsCase) {
+      case MODEXP_XBS_CASE_BBS, MODEXP_XBS_CASE_EBS -> false;
+      case MODEXP_XBS_CASE_MBS -> getForkAppropriateModexpMetadata()
+          .tracedIsWithinBounds(MODEXP_XBS_CASE_BBS);
+    };
   }
 }

@@ -15,10 +15,12 @@
 
 package net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.module.Util.rightPaddedSlice;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.*;
+import static net.consensys.linea.zktracer.types.Conversions.bytesToShort;
 import static net.consensys.linea.zktracer.types.Conversions.safeLongToInt;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
@@ -61,8 +63,22 @@ public abstract class ModexpMetadata {
     return normalize(MODEXP_XBS_CASE_BBS);
   }
 
+  public short normalizedBbsInt() {
+    final short result = bytesToShort(normalizedBbs());
+    checkArgument(
+        ((0 <= result) && result <= getMaxInputSize()), "Normalized BBS out of bounds: " + result);
+    return result;
+  }
+
   public Bytes normalizedEbs() {
     return normalize(MODEXP_XBS_CASE_EBS);
+  }
+
+  public short normalizedEbsInt() {
+    final short result = bytesToShort(normalizedEbs());
+    checkArgument(
+        ((0 <= result) && result <= getMaxInputSize()), "Normalized EBS out of bounds: " + result);
+    return result;
   }
 
   public Bytes normalizedMbs() {
@@ -149,9 +165,7 @@ public abstract class ModexpMetadata {
     return Words.clampedToInt(mbs());
   }
 
-  public boolean loadRawLeadingWord() {
-    return callData().size() > BASE_MIN_OFFSET + bbsInt() && !ebs().isZero();
-  }
+  public abstract boolean loadRawLeadingWord();
 
   public boolean extractModulus() {
     return (callData().size() > BASE_MIN_OFFSET + bbsInt() + ebsInt()) && !mbs().isZero();
@@ -224,5 +238,5 @@ public abstract class ModexpMetadata {
     return false;
   }
 
-  public abstract int getForkAppropriateLeadLogByteMultiplier();
+  public abstract int getLeadLogByteMultiplier();
 }

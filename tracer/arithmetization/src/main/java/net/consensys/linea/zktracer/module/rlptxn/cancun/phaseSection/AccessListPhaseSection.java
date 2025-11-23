@@ -21,7 +21,7 @@ import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES16_PREF
 import static net.consensys.linea.zktracer.module.rlputilsOld.Pattern.outerRlpSize;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
-import static net.consensys.linea.zktracer.types.Conversions.bytesToShort;
+import static net.consensys.linea.zktracer.types.Conversions.bytesToInt;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,10 +52,10 @@ public class AccessListPhaseSection extends PhaseSection {
     final List<AccessListEntry> accessList =
         tx.getBesuTransaction().getAccessList().orElse(List.of());
 
-    final List<Short> accessListTupleSizes = new ArrayList<>(accessList.size());
+    final List<Integer> accessListTupleSizes = new ArrayList<>(accessList.size());
     for (AccessListEntry entry : accessList) {
       accessListTupleSizes.add(
-          (short) (RLP_ADDRESS_BYTE_SIZE + outerRlpSize(33 * entry.storageKeys().size())));
+          RLP_ADDRESS_BYTE_SIZE + outerRlpSize(33 * entry.storageKeys().size()));
     }
 
     phaseSize = accessListTupleSizes.stream().mapToInt(Pattern::outerRlpSize).sum();
@@ -106,8 +106,7 @@ public class AccessListPhaseSection extends PhaseSection {
     private final InstructionByteStringPrefix keysRlpPrefix;
     private final List<InstructionBytes32> keys;
 
-    private EntrySubSection(
-        RlpUtils rlpUtils, Trm trm, AccessListEntry entry, short tupleByteSize) {
+    private EntrySubSection(RlpUtils rlpUtils, Trm trm, AccessListEntry entry, int tupleByteSize) {
       final InstructionByteStringPrefix entryRlpPrefixCall =
           new InstructionByteStringPrefix(tupleByteSize, (byte) 0x00, true);
       entryRlpPrefix = (InstructionByteStringPrefix) rlpUtils.call(entryRlpPrefixCall);
@@ -148,7 +147,7 @@ public class AccessListPhaseSection extends PhaseSection {
     }
 
     public void trace(Trace.Rlptxn trace, GenericTracedValue tracedValues) {
-      short tupleSize = bytesToShort(entryRlpPrefix.byteStringLength());
+      int tupleSize = bytesToInt(entryRlpPrefix.byteStringLength());
       short totalStorageForThisAddress = (short) keys.size();
 
       totalAddress -= 1;

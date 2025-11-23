@@ -32,7 +32,7 @@ public class LondonModexpMetadata extends ModexpMetadata {
   }
 
   @Override
-  public int getForkAppropriateLeadLogByteMultiplier() {
+  public int getLeadLogByteMultiplier() {
     return 8;
   }
 
@@ -44,5 +44,10 @@ public class LondonModexpMetadata extends ModexpMetadata {
   @Override
   public Bytes normalize(ModexpXbsCase modexpXbsCase) {
     return xbs(modexpXbsCase).lo();
+  }
+
+  @Override
+  public boolean loadRawLeadingWord() {
+    return callData().size() > BASE_MIN_OFFSET + bbsInt() && !ebs().isZero();
   }
 }
