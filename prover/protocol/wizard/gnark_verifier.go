@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -124,7 +125,8 @@ type VerifierCircuit struct {
 	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
 	// possible.
-	FS *fiatshamir.GnarkFS `gnark:"-"`
+	FS    *fiatshamir.GnarkFS          `gnark:"-"`
+	BLSFS *fiatshamir_bls12377.GnarkFS `gnark:"-"`
 
 	// Coins stores all the coins sampled by the verifier circuit. It is not
 	// part of the witness since the coins are constructed from the assigned
@@ -349,6 +351,9 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	for i := 0; i < 8; i++ {
 		c.FS.Update(c.Spec.FiatShamirSetup[i].String())
 	}
+	for i := 0; i < 8; i++ {
+		c.FS.Update(c.Spec.FiatShamirSetup[i].String())
+	}
 
 	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
 
@@ -427,7 +432,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			continue
 		}
 		cn := c.Spec.Coins.Data(coinName)
-		value := cn.SampleGnark(c.FS, zkSeed)
+		value := cn.SampleGnark(c.BLSFS, zkSeed)
 
 		fmt.Printf("inserting coin %v\n", coinName)
 		c.Coins.InsertNew(coinName, value)

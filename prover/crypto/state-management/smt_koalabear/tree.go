@@ -10,17 +10,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-// Config specifies the parameters of the tree (choice of hash function, depth).
-type Config struct {
-
-	// Depth depth of the tree
-	Depth int
-}
-
 // Tree represents a binary sparse Merkle-tree (SMT).
 type Tree struct {
-	// Config of the hash function
-	Config *Config
+	Depth int
 	// Root stores the root of the tree
 	Root field.Octuplet
 	// OccupiedLeaves continuously list of the occupied leaves. For the toy
@@ -50,43 +42,51 @@ func EmptyLeaf() field.Octuplet {
 
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
-func hashLR(config *Config, nodeL, nodeR field.Octuplet) field.Octuplet {
+func hashLR(nodeL, nodeR field.Octuplet) field.Octuplet {
 	var d field.Octuplet
 	hasher := poseidon2_koalabear.NewMDHasher()
-	hasher.WriteElements(nodeL[:])
-	hasher.WriteElements(nodeR[:])
+	hasher.WriteElements(nodeL[:]...)
+	hasher.WriteElements(nodeR[:]...)
 	d = hasher.SumElement()
 	return d
 }
 
 // NewEmptyTree creates and returns an empty tree with the provided config.
-func NewEmptyTree(conf *Config) *Tree {
-	// Computes the empty nodes
-	emptyNodes := make([]field.Octuplet, conf.Depth-1)
+func NewEmptyTree(depths ...int) *Tree {
+	// Default depth is 40 if no input is provided
+	depth := 40
+	if len(depths) > 0 && depths[0] > 0 {
+		depth = depths[0]
+	} // Computes the empty nodes
+	emptyNodes := make([]field.Octuplet, depth-1)
 	prevNode := EmptyLeaf()
 
 	for i := range emptyNodes {
-		newNode := hashLR(conf, prevNode, prevNode)
+		newNode := hashLR(prevNode, prevNode)
 		emptyNodes[i] = newNode
 		prevNode = newNode
 	}
 
 	// Stores the initial root separately
-	root := hashLR(conf, prevNode, prevNode)
+	root := hashLR(prevNode, prevNode)
 
 	return &Tree{
-		Config:         conf,
+		Depth:          depth,
 		Root:           root,
 		OccupiedLeaves: make([]field.Octuplet, 0),
-		OccupiedNodes:  make([][]field.Octuplet, conf.Depth-1),
+		OccupiedNodes:  make([][]field.Octuplet, depth-1),
 		EmptyNodes:     emptyNodes,
 	}
+}
+
+func (t *Tree) GetRoot() field.Octuplet {
+	return t.Root
 }
 
 // GetLeaf returns a leaf by position or an error if the leaf is out of bounds.
 func (t *Tree) GetLeaf(pos int) (field.Octuplet, error) {
 	// Check that the accessed node is within the bounds of the SMT
-	maxPos := 1 << t.Config.Depth
+	maxPos := 1 << t.Depth
 	if pos >= maxPos {
 		return field.Octuplet{}, fmt.Errorf("out of bound: %v", pos)
 	}
@@ -119,7 +119,7 @@ func (t *Tree) MustGetLeaf(pos int) field.Octuplet {
 // (for config.Depth == 40)
 func (t *Tree) getNode(level, posInLevel int) field.Octuplet {
 	switch {
-	case level == t.Config.Depth:
+	case level == t.Depth:
 		// The only logical posInLevels value is zero in this case
 		if posInLevel > 0 {
 			utils.Panic("there is only one root but posInLevel was %v", posInLevel)
@@ -130,9 +130,9 @@ func (t *Tree) getNode(level, posInLevel int) field.Octuplet {
 			utils.Panic("sanity-check failed : the root is zero.")
 		}
 		return t.Root
-	case level >= 1 && level <= t.Config.Depth-1:
+	case level >= 1 && level <= t.Depth-1:
 		// Check that the accessed node is within the bounds of the SMT
-		maxPos := 1 << (t.Config.Depth - level)
+		maxPos := 1 << (t.Depth - level)
 		if posInLevel >= maxPos {
 			utils.Panic("nodeID is out of bound")
 		}
@@ -166,7 +166,7 @@ func (t *Tree) getNode(level, posInLevel int) field.Octuplet {
 // (for config.Depth == 40)
 func (t *Tree) updateNode(level, posInLevel int, newVal field.Octuplet) {
 	switch {
-	case level == t.Config.Depth:
+	case level == t.Depth:
 		// The only logical posInLevels value is zero in this case
 		if posInLevel > 0 {
 			utils.Panic("there is only one root but posInLevel was %v", posInLevel)
@@ -177,9 +177,9 @@ func (t *Tree) updateNode(level, posInLevel int, newVal field.Octuplet) {
 			utils.Panic("sanity-check failed : the root is zero.")
 		}
 		t.Root = newVal
-	case level >= 1 && level < t.Config.Depth:
+	case level >= 1 && level < t.Depth:
 		// Check that the accessed node is within the bounds of the SMT
-		maxPos := 1 << (t.Config.Depth - level)
+		maxPos := 1 << (t.Depth - level)
 		if posInLevel >= maxPos {
 			utils.Panic("node is out of bound level %v (maxPos %v), pos=%v", level, maxPos, posInLevel)
 		}
@@ -191,7 +191,7 @@ func (t *Tree) updateNode(level, posInLevel int, newVal field.Octuplet) {
 		t.OccupiedNodes[level-1][posInLevel] = newVal
 	case level == 0:
 		// Check that the accessed node is within the bounds of the SMT
-		maxPos := 1 << t.Config.Depth
+		maxPos := 1 << t.Depth
 		if posInLevel >= maxPos {
 			utils.Panic("nodeID is out of bound")
 		}
@@ -217,17 +217,17 @@ func (t *Tree) updateNode(level, posInLevel int, newVal field.Octuplet) {
 func (t *Tree) reserveLevel(level, newSize int) {
 
 	// Edge-case, level out of bound
-	if level > t.Config.Depth {
+	if level > t.Depth {
 		utils.Panic("level out of bound %v", level)
 	}
 
 	// Edge : case root level
-	if level == t.Config.Depth {
+	if level == t.Depth {
 		utils.Panic("tried extending the root level %v", newSize)
 	}
 
 	// Will work for both the leaves and the intermediate nodes
-	if newSize > 1<<(t.Config.Depth-level) {
+	if newSize > 1<<(t.Depth-level) {
 		utils.Panic("overextending the tree %v, %v", level, newSize)
 	}
 
@@ -274,8 +274,7 @@ func BuildComplete(leaves []field.Octuplet) *Tree {
 	}
 
 	depth := utils.Log2Ceil(numLeaves)
-	config := &Config{Depth: depth}
-	tree := NewEmptyTree(config)
+	tree := NewEmptyTree(depth)
 	tree.OccupiedLeaves = leaves
 	currLevels := leaves
 
@@ -285,12 +284,12 @@ func BuildComplete(leaves []field.Octuplet) *Tree {
 		if len(nextLevel) >= 64 {
 			parallel.Execute(len(nextLevel), func(start, end int) {
 				for k := start; k < end; k++ {
-					nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
+					nextLevel[k] = hashLR(currLevels[2*k], currLevels[2*k+1])
 				}
 			})
 		} else {
 			for k := range nextLevel {
-				nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
+				nextLevel[k] = hashLR(currLevels[2*k], currLevels[2*k+1])
 			}
 		}
 
@@ -304,6 +303,6 @@ func BuildComplete(leaves []field.Octuplet) *Tree {
 	}
 
 	// And overwrite the root
-	tree.Root = hashLR(config, currLevels[0], currLevels[1])
+	tree.Root = hashLR(currLevels[0], currLevels[1])
 	return tree
 }

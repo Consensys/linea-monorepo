@@ -79,7 +79,7 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 	}
 
 	// Check that the opening's hkeys make a correct sandwich
-	hkey := hash(v.Config, trace.Key)
+	hkey := hash(trace.Key)
 	if Bytes32Cmp(hkey, trace.OpeningMinus.HKey) < 1 || Bytes32Cmp(hkey, trace.OpeningPlus.HKey) > -1 {
 		return fmt.Errorf(
 			"sandwich is incorrect expected %x < %x < %x",
@@ -88,14 +88,14 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 	}
 
 	// Test membership of leaf minus
-	leafMinus := hash(v.Config, &trace.OpeningMinus)
-	if !trace.ProofMinus.Verify(v.Config, types.Bytes32ToOctuplet(leafMinus), types.Bytes32ToOctuplet(trace.SubRoot)) {
+	leafMinus := hash(&trace.OpeningMinus)
+	if smt_koalabear.Verify(&trace.ProofMinus, types.Bytes32ToOctuplet(leafMinus), types.Bytes32ToOctuplet(trace.SubRoot)) != nil {
 		return fmt.Errorf("merkle proof verification failed : minus")
 	}
 
 	// Test membership of leaf plus
-	leafPlus := hash(v.Config, &trace.OpeningPlus)
-	if !trace.ProofPlus.Verify(v.Config, types.Bytes32ToOctuplet(leafPlus), types.Bytes32ToOctuplet(trace.SubRoot)) {
+	leafPlus := hash(&trace.OpeningPlus)
+	if smt_koalabear.Verify(&trace.ProofPlus, types.Bytes32ToOctuplet(leafPlus), types.Bytes32ToOctuplet(trace.SubRoot)) != nil {
 		return fmt.Errorf("merkle proof verification failed : plus")
 	}
 
@@ -109,22 +109,21 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 
 // DeferMerkleChecks implements the [Trace] interface.
 func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
-	config *smt_koalabear.Config,
 	appendTo []smt_koalabear.ProvedClaim,
 ) []smt_koalabear.ProvedClaim {
 
 	// Test membership of leaf minus
-	leafMinus := hash(config, &trace.OpeningMinus)
+	leafMinus := hash(&trace.OpeningMinus)
 
 	// Test membership of leaf plus
-	leafPlus := hash(config, &trace.OpeningPlus)
+	leafPlus := hash(&trace.OpeningPlus)
 
 	appendTo = append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.ProofMinus, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leafMinus)})
 	return append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.ProofPlus, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leafPlus)})
 }
 
-func (trace ReadZeroTrace[K, V]) HKey(cfg *smt_koalabear.Config) Bytes32 {
-	return hash(cfg, trace.Key)
+func (trace ReadZeroTrace[K, V]) HKey() Bytes32 {
+	return hash(trace.Key)
 }
 
 func (trace ReadZeroTrace[K, V]) RWInt() int {

@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -71,8 +70,8 @@ func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEv
 // Update the fiat-shamir state with the alleged evaluations. We assume that
 // the verifer always computes the values of X upfront on his own. Therefore
 // there is no need to include them in the FS.
-func (p UnivariateEvalParams) UpdateFS(state *poseidon2_koalabear.MDHasher) {
-	fiatshamir.UpdateExt(state, p.ExtYs...)
+func (p UnivariateEvalParams) UpdateFS(state *fiatshamir_koalabear.FS) {
+	state.UpdateExt(p.ExtYs...)
 }
 
 // Test that the polynomial evaluation holds

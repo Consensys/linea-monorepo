@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
@@ -33,7 +32,7 @@ func TestEmptyAccumulatorPoseidon2(t *testing.T) {
 		)
 
 		// also checks its hash value (i.e, the corresponding leaf in the tree)
-		require.Equal(t, "0x2f5de7ad279a134761de0d89702e52743b2f04f41b86cc5400dfae1d4b981340", leafOpening.Hash(acc.Config()).Hex())
+		require.Equal(t, "0x2f5de7ad279a134761de0d89702e52743b2f04f41b86cc5400dfae1d4b981340", leafOpening.Hash().Hex())
 	}
 
 	// check the value of the second leaf opening. It should be tail with an updated prev value
@@ -46,7 +45,7 @@ func TestEmptyAccumulatorPoseidon2(t *testing.T) {
 		)
 
 		// also check its hash value
-		require.Equal(t, "0x5c73480b5e85fc2c3ab61fc155cf475b74590d005d8916b85fdd5c32773b1255", leafOpening.Hash(acc.Config()).Hex())
+		require.Equal(t, "0x5c73480b5e85fc2c3ab61fc155cf475b74590d005d8916b85fdd5c32773b1255", leafOpening.Hash().Hex())
 	}
 
 	// root of the subtree (e.g. exluding the next free node)
@@ -89,7 +88,7 @@ func TestInsertionRootHashPoseidon2(t *testing.T) {
 		)
 
 		// also checks its hash value (i.e, the corresponding leaf in the tree)
-		leaf := leafOpening.Hash(acc.Config())
+		leaf := leafOpening.Hash()
 		require.Equal(t, "0x22e7a2ea33304d915fd93eac62b418ba7ca915131bea42827670d7f31a3b3445", leaf.Hex())
 	}
 
@@ -103,7 +102,7 @@ func TestInsertionRootHashPoseidon2(t *testing.T) {
 		)
 
 		// also check its hash value
-		leaf := leafOpening.Hash(acc.Config())
+		leaf := leafOpening.Hash()
 		require.Equal(t, "0x7172ab730766d9b6367938c031afbd13607d95796a60930945ab6b88434339b2", leaf.Hex())
 	}
 
@@ -117,7 +116,7 @@ func TestInsertionRootHashPoseidon2(t *testing.T) {
 		)
 
 		// also check its hash value
-		leaf := leafOpening.Hash(acc.Config())
+		leaf := leafOpening.Hash()
 		require.Equal(t, "0x42bee0052f812f13511ced262f95e62d5e572dc971f68fa8759914a441332ff1", leaf.Hex())
 	}
 
@@ -204,10 +203,8 @@ func TestInsertAndDeleteRootHashPoseidon2(t *testing.T) {
 }
 
 func newTestAccumulatorPoseidon2() *accumulator.ProverState[types.EthAddress, types.Account] {
-	config := &smt_koalabear.Config{
-		Depth: 40,
-	}
-	return accumulator.InitializeProverState[types.EthAddress, types.Account](config, locationTesting)
+
+	return accumulator.InitializeProverState[types.EthAddress, types.Account](locationTesting)
 }
 
 // Test the root after inserting a new entry, without dummy key and value types
@@ -340,10 +337,8 @@ type DummyFullKey = types.FullBytes32
 type DummyFullVal = types.FullBytes32
 
 func newTestAccumulatorPoseidon2DummyFullVal() *accumulator.ProverState[DummyFullKey, DummyFullVal] {
-	config := &smt_koalabear.Config{
-		Depth: 40,
-	}
-	return accumulator.InitializeProverState[DummyFullKey, DummyFullVal](config, locationTesting)
+
+	return accumulator.InitializeProverState[DummyFullKey, DummyFullVal](locationTesting)
 }
 
 // Test Proof from InsertAndProve after inserting two new entries
@@ -564,7 +559,7 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 		)
 
 		// also check its hash value
-		leaf := leafOpening.Hash(acc.Config())
+		leaf := leafOpening.Hash()
 		require.Equal(t, "0x138908925d5ba2be424ecce93083d6eb69cf099a24f0722460397ab1584cc36f", leaf.Hex())
 	}
 	fmt.Printf("Proof: %v\n\n", trace4.Proof.String())

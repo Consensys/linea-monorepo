@@ -1,27 +1,27 @@
-package fiatshamir
+package fiatshamir_bls12377
 
 import (
 	"math"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type GnarkFS struct {
-	hasher poseidon2_koalabear.GnarkMDHasher
+	hasher poseidon2_bls12377.GnarkMDHasher
 	// pointer to the gnark-API (also passed to the hasher but behind an
 	// interface). This is needed to perform bit-decomposition.
 	api frontend.API
 }
 
 func NewGnarkFS(api frontend.API) *GnarkFS {
-	hasher, _ := poseidon2_koalabear.NewGnarkMDHasher(api)
+	hasher, _ := poseidon2_bls12377.NewGnarkMDHasher(api)
 	return &GnarkFS{
 		hasher: hasher,
 		api:    api,
@@ -29,71 +29,38 @@ func NewGnarkFS(api frontend.API) *GnarkFS {
 }
 
 // SetState mutates the fiat-shamir state of
-func (fs *GnarkFS) SetState(state poseidon2_koalabear.Octuplet) {
+func (fs *GnarkFS) SetStateFrElmt(state frontend.Variable) {
 	fs.hasher.Reset()
 	fs.hasher.SetState(state)
 }
 
 // State mutates returns the state of the fiat-shamir hasher. The
 // function will also updates its own state with unprocessed inputs.
-func (fs *GnarkFS) State() poseidon2_koalabear.Octuplet {
+func (fs *GnarkFS) StateFrElmt() frontend.Variable {
 	return fs.hasher.State()
 }
 
 // Update updates the Fiat-Shamir state with a vector of frontend.Variable
 // representing field element each.
-func (fs *GnarkFS) Update(vec ...frontend.Variable) {
+func (fs *GnarkFS) UpdateFrElmt(vec ...frontend.Variable) {
 	fs.hasher.Write(vec...)
-}
-func (fs *GnarkFS) UpdateExt(vec ...gnarkfext.E4Gen) {
-	for i := 0; i < len(vec); i++ {
-		fs.hasher.Write(vec[i].B0.A0.AsNative())
-		fs.hasher.Write(vec[i].B0.A1.AsNative())
-		fs.hasher.Write(vec[i].B1.A0.AsNative())
-		fs.hasher.Write(vec[i].B1.A1.AsNative())
-	}
 }
 
 // UpdateVec updates the Fiat-Shamir state with a matrix of field element.
-func (fs *GnarkFS) UpdateVec(mat ...[]frontend.Variable) {
+func (fs *GnarkFS) UpdateVecFrElmt(mat ...[]frontend.Variable) {
 	for i := range mat {
-		fs.Update(mat[i]...)
+		fs.UpdateFrElmt(mat[i]...)
 	}
 }
 
 // RandomField returns a single valued fiat-shamir hash
-// TODO@yao: for big field compilation, we want a random coin that is in gnarkfext.E4Gen, the koala hash output will not fit in field elements for the big field compilation,
-func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
+func (fs *GnarkFS) RandomFrElmt() frontend.Variable {
 	defer fs.safeguardUpdate()
-
-	// Generate a random field element
-	var value fext.Element
-	value.B0.A0 = field.NewFromString("3")
-	value.B0.A1 = field.NewFromString("5")
-	value.B1.A0 = field.NewFromString("7")
-	value.B1.A1 = field.NewFromString("11")
-	var res gnarkfext.E4Gen
-	res.B0.A0 = zk.ValueOf(value.B0.A0.String())
-	res.B0.A1 = zk.ValueOf(value.B0.A1.String())
-	res.B1.A0 = zk.ValueOf(value.B1.A0.String())
-	res.B1.A1 = zk.ValueOf(value.B1.A1.String())
-	return res
-}
-
-func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVariable {
-	var res [8]zk.WrappedVariable
-	bits := api.ToBinary(value, 256)
-
-	for i := 0; i < 8; i++ {
-		limbBits := append(bits[32*i:32*i+30], frontend.Variable(0), frontend.Variable(0))
-		res[i] = zk.WrapFrontendVariable(api.FromBinary(limbBits...))
-	}
-
-	return res
+	return fs.hasher.Sum()
 }
 
 // RandomManyIntegers returns a vector of variable that will contain small integers
-func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []zk.WrappedVariable {
+func (fs *GnarkFS) RandomManyFrElmts(num, upperBound int) []frontend.Variable {
 
 	// Even `1` would be wierd, there would be only one acceptable coin value.
 	if upperBound < 1 {
@@ -105,7 +72,7 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []zk.WrappedVariable 
 	}
 
 	if num == 0 {
-		return []zk.WrappedVariable{}
+		return []frontend.Variable{}
 	}
 
 	defer fs.safeguardUpdate()
@@ -117,14 +84,14 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []zk.WrappedVariable 
 		// the division is rounded-down)
 		maxNumChallsPerDigest = (field.Bits - 1) / int(challsBitSize)
 		// res stores the function result
-		res = make([]zk.WrappedVariable, 0, num)
+		res = make([]frontend.Variable, 0, num)
 		// challCount stores the number of generated small integers
 		challCount = 0
 	)
 
 	for {
 		digest := fs.hasher.Sum()
-		digestBits := fs.api.ToBinary(digest[0])
+		digestBits := fs.api.ToBinary(digest)
 
 		for i := 0; i < maxNumChallsPerDigest; i++ {
 			// Stopping condition, we computed enough challenges
@@ -136,7 +103,7 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []zk.WrappedVariable 
 			// a new challenge to be returned.
 			newChall := fs.api.FromBinary(digestBits[:challsBitSize]...)
 			digestBits = digestBits[challsBitSize:]
-			res = append(res, zk.WrapFrontendVariable(newChall))
+			res = append(res, newChall)
 			challCount++
 		}
 
@@ -150,6 +117,47 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []zk.WrappedVariable 
 
 		fs.safeguardUpdate()
 	}
+}
+
+// ------------------------------------------------------
+// List of methods to updae the FS state with koala elmts
+
+func (fs *GnarkFS) UpdateElmts(vec ...zk.WrappedVariable) {
+	fs.hasher.WriteWVs(vec...)
+}
+
+func (fs *GnarkFS) UpdateVecElmts(vec ...[]zk.WrappedVariable) {
+	v := make([]zk.WrappedVariable, len(vec))
+	for _, _v := range vec {
+		v = append(v, _v...)
+	}
+	fs.UpdateElmts(v...)
+}
+
+func (fs *GnarkFS) RandomField() zk.Octuplet {
+	r := fs.RandomFrElmt() // the safeguard update is called
+	res := encoding.EncodeFVTo8WVs(fs.api, r)
+	return res
+}
+
+func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
+	r := fs.RandomField() // the safeguard update is called
+	res := gnarkfext.E4Gen{}
+	res.B0.A0 = r[0]
+	res.B0.A1 = r[1]
+	res.B1.A0 = r[2]
+	res.B1.A1 = r[3]
+	return res
+}
+
+// Used to sample opened column indices in gnark circuits
+func (fs *GnarkFS) RandomManyIntegers(n int, upperBound int) []zk.Octuplet {
+	res := make([]zk.Octuplet, n)
+	for i := 0; i < n; i++ {
+		r := fs.RandomFrElmt()
+		res[i] = encoding.EncodeFVTo8WVs(fs.api, r)
+	}
+	return res
 }
 
 // safeguardUpdate updates the state as a safeguard by appending a field element

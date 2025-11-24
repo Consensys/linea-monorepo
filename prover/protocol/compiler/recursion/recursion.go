@@ -355,7 +355,7 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		NumCols:               srcVortexCtx.NumCols,
 		MaxCommittedRound:     srcVortexCtx.MaxCommittedRound,
 		NumOpenedCol:          srcVortexCtx.NumOpenedCol,
-		VortexParams:          srcVortexCtx.VortexParams,
+		VortexKoalaParams:     srcVortexCtx.VortexKoalaParams,
 		SisParams:             srcVortexCtx.SisParams,
 		RoundStatus:           srcVortexCtx.RoundStatus,
 

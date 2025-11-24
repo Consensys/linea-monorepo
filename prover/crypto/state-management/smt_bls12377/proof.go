@@ -1,30 +1,32 @@
 package smt_bls12377
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
+
+var ErrInvalidProof = errors.New("can't verify Merkle proof")
 
 // ProvedClaim is the composition of a proof with the claim it proves.
 type ProvedClaim struct {
 	Proof      Proof
-	Root, Leaf types.Bytes32
+	Root, Leaf fr.Element
 }
 
 // Proof represents a Merkle proof of membership for the Merkle-tree
 type Proof struct {
-	Path     int             `json:"leafIndex"` // Position of the leaf
-	Siblings []types.Bytes32 `json:"siblings"`  // length 40
+	Path     int          `json:"leafIndex"` // Position of the leaf
+	Siblings []fr.Element `json:"siblings"`  // length 40
 }
 
 // Prove returns a Merkle proof  of membership of the leaf at position `pos` and
 // an error if the position is out of bounds.
 func (t *Tree) Prove(pos int) (Proof, error) {
-	depth := t.Config.Depth
-	siblings := make([]types.Bytes32, depth)
+	depth := t.Depth
+	siblings := make([]fr.Element, depth)
 	idx := pos
 
 	if pos >= 1<<depth {
@@ -62,38 +64,17 @@ func (t *Tree) MustProve(pos int) Proof {
 }
 
 // RecoverRoot returns the root recovered from the Merkle proof.
-func (p *Proof) RecoverRoot(conf *Config, leaf types.Bytes32) (types.Bytes32, error) {
+func RecoverRoot(p *Proof, leaf fr.Element) (fr.Element, error) {
 
-	if p.Path > 1<<conf.Depth {
-		return types.Bytes32{}, fmt.Errorf("invalid proof: path is %v larger than the number of leaves in the tree %v", p.Path, 1<<len(p.Siblings))
-	}
-
-	if p.Path < 0 {
-		return types.Bytes32{}, fmt.Errorf("invalid proof: path is negative %v", p.Path)
-	}
-
-	if len(p.Siblings) != conf.Depth {
-		return types.Bytes32{}, fmt.Errorf("the proof contains %v siblings but the tree has a depth of %v", len(p.Siblings), conf.Depth)
-	}
-
-	var (
-		current = leaf
-		idx     = p.Path
-	)
-	fmt.Printf("idx:= %v\n", idx)
+	current := leaf
+	idx := p.Path
 
 	for _, sibling := range p.Siblings {
 		left, right := current, sibling
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = outerHashLR(conf, left, right)
-		var leftElem, rightElem, currentElem fr.Element
-		fmt.Printf("bits:= %v\n", idx&1)
-		fmt.Printf("leftElem non-circuit=%v\n", leftElem.SetBytes(left[:]))
-		fmt.Printf("rightElem non-circuit=%v\n", rightElem.SetBytes(right[:]))
-		fmt.Printf("current non-circuit=%v\n", currentElem.SetBytes(current[:]))
-
+		current = hashLR(left, right)
 		idx >>= 1
 	}
 
@@ -107,13 +88,15 @@ func (p *Proof) RecoverRoot(conf *Config, leaf types.Bytes32) (types.Bytes32, er
 }
 
 // Verify the Merkle-proof against a hash and a root
-func (p *Proof) Verify(conf *Config, leaf, root types.Bytes32) bool {
-	actual, err := p.RecoverRoot(conf, leaf)
+func Verify(p *Proof, leaf, root fr.Element) error {
+	actual, err := RecoverRoot(p, leaf)
 	if err != nil {
-		fmt.Printf("mtree verify: %v\n", err.Error())
-		return false
+		return err
 	}
-	return actual == root
+	if !actual.Equal(&root) {
+		return ErrInvalidProof
+	}
+	return nil
 }
 
 // String pretty-prints a proof

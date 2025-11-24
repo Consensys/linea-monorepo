@@ -3,6 +3,9 @@ package vortex
 import (
 	"fmt"
 
+	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -12,7 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // ExplicitPolynomialEval is a [wizard.VerifierAction] that evaluates the
@@ -140,7 +142,7 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 
 	return vortex.VerifyOpening(&vortex.VerifierInputs{
 		AlgebraicCheckInputs: vortex.AlgebraicCheckInputs{
-			Koalabear_Params: *ctx.VortexParams,
+			Koalabear_Params: *ctx.VortexKoalaParams,
 			X:                x,
 			Ys:               ctx.getYs(run),
 			OpeningProof:     *proof,
@@ -165,7 +167,7 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	}
 
 	var (
-		gnarkNoSisRoots = []types.Bytes32{}
+		gnarkNoSisRoots = []bls12377.Element{}
 
 		// Slice of true value of length equal to the number of no SIS round
 		// + 1 (if SIS is not applied to precomputed)
@@ -178,13 +180,13 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
 
-		var precompRootF [vortex_bls12377.GnarkKoalabearNumElements]field.Element
-		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
+		var precompRootF [encoding.GnarkKoalabearNumElements]field.Element
+		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
 			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
 			precompRootF[i] = precompRootSv.IntoRegVecSaveAlloc()[0]
 		}
 
-		gnarkNoSisRoots = append(gnarkNoSisRoots, vortex_bls12377.DecodeKoalabearToBLS12377(precompRootF))
+		gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12377(precompRootF))
 		flagForNoSISRounds = append(flagForNoSISRounds, true)
 
 	}
@@ -201,15 +203,15 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 			continue
 		}
 
-		var precompRootF [vortex_bls12377.GnarkKoalabearNumElements]field.Element
-		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
+		var precompRootF [encoding.GnarkKoalabearNumElements]field.Element
+		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
 			rootSv := run.GetColumn(ctx.Items.GnarkMerkleRoots[round][i].GetColID())
 			precompRootF[i] = rootSv.IntoRegVecSaveAlloc()[0]
 		}
 
 		switch ctx.RoundStatus[round] {
 		case IsOnlyPoseidon2Applied:
-			gnarkNoSisRoots = append(gnarkNoSisRoots, vortex_bls12377.DecodeKoalabearToBLS12377(precompRootF))
+			gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12377(precompRootF))
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		default:
 			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
@@ -232,7 +234,7 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	proof.Columns = ctx.RecoverSelectedColumns(run, entryList)
 	x := run.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
-	packedMProofs := [vortex_bls12377.GnarkKoalabearNumElements]smartvectors.SmartVector{}
+	packedMProofs := [encoding.GnarkKoalabearNumElements]smartvectors.SmartVector{}
 	for i := range packedMProofs {
 		packedMProofs[i] = run.GetColumn(ctx.MerkleProofName(i))
 	}
@@ -240,14 +242,14 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	merkleProofs := ctx.unpackGnarkMerkleProofs(packedMProofs, entryList)
 	return vortex_bls12377.VerifyOpening(&vortex_bls12377.VerifierInputs{
 		AlgebraicCheckInputs: vortex.AlgebraicCheckInputs{
-			Koalabear_Params: *ctx.VortexParams,
+			Koalabear_Params: *ctx.VortexKoalaParams,
 			X:                x,
 			Ys:               ctx.getYs(run),
 			OpeningProof:     *proof,
 			RandomCoin:       randomCoin,
 			EntryList:        entryList,
 		},
-		BLS12_377_Params:         *ctx.GnarkVortexParams,
+		BLS12_377_Params:         *ctx.VortexBLSParams,
 		MerkleRoots:              gnarkNoSisRoots,
 		MerkleProofs:             merkleProofs,
 		IsSISReplacedByPoseidon2: IsSISReplacedByPoseidon2,

@@ -1,26 +1,14 @@
-package vortex
+package encoding
 
 import (
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
-
-// Function to encode a 256-bit frontend.Variable into 8 zk.WrappedVariable objects, each representing 30-bit limbs.
-func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVariable {
-	var res [8]zk.WrappedVariable
-	bits := api.ToBinary(value, 256)
-
-	for i := 0; i < 8; i++ {
-		limbBits := append(bits[32*i:32*i+30], frontend.Variable(0), frontend.Variable(0))
-		res[i] = zk.WrapFrontendVariable(api.FromBinary(limbBits...))
-	}
-
-	return res
-}
 
 // Function to encode 8 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
 func Encode8WVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Variable {
@@ -37,7 +25,7 @@ func Encode8WVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Var
 		copy(bits[31*i:], limbBits) // 8 leading padding bits come first
 	}
 	for i := 248; i < 256; i++ {
-		bits[i] = 0 // Explicitly set last 8 bits to zero (most significant bits)
+		bits[i] = frontend.Variable(0) // Explicitly set last 8 bits to zero (most significant bits)
 	}
 
 	return api.FromBinary(bits...)
@@ -62,42 +50,29 @@ func EncodeWVsToFVs(api frontend.API, values []zk.WrappedVariable) []frontend.Va
 	return res
 }
 
-func Encode8KoalabearToBigInt(elements [8]field.Element) *big.Int {
-	expectedResult := big.NewInt(0)
+// Function to encode a 256-bit frontend.Variable into 8 zk.WrappedVariable objects, each representing 30-bit limbs.
+func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVariable {
+
+	var res [8]zk.WrappedVariable
+	bits := api.ToBinary(value, 256)
+
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+
 	for i := 0; i < 8; i++ {
-		part := big.NewInt(int64(elements[7-i].Bits()[0]))
-
-		shift := uint(31 * i)                   // Shift based on little-endian order
-		part.Lsh(part, shift)                   // Shift left by the appropriate position for little-endian
-		expectedResult.Or(expectedResult, part) // Bitwise OR to combine
+		limbBits := append(bits[32*i : 32*i+30])
+		res[i] = apiGen.FromBinary(limbBits...)
 	}
-	return expectedResult
-}
 
-func EncodeKoalabearsToBytes(elements []field.Element) []byte {
-	var res []byte
-	for len(elements) != 0 {
-		var buf [8]field.Element
-		var bufBytes [32]byte
-		// in this case we left pad by zeroes
-		if len(elements) < 8 {
-			copy(buf[8-len(elements):], elements[:])
-			elements = elements[:0]
-		} else {
-			copy(buf[:], elements[:8])
-			elements = elements[8:]
-		}
-		bytes := Encode8KoalabearToBigInt(buf).Bytes()
-		copy(bufBytes[32-len(bytes):], bytes) // left pad with zeroes to 32 bytes
-		res = append(res, bufBytes[:]...)
-	}
 	return res
 }
 
 // BLS to Koalabear encoding
 const GnarkKoalabearNumElements = 11
 
-func DecodeKoalabearToBLS12377(elements [11]field.Element) types.Bytes32 {
+func DecodeKoalabearToBLS12377(elements [11]field.Element) fr.Element {
 	expectedResult := big.NewInt(0)
 	for i := 0; i < 10; i++ {
 		part := big.NewInt(int64(elements[10-i].Bits()[0]))
@@ -114,15 +89,19 @@ func DecodeKoalabearToBLS12377(elements [11]field.Element) types.Bytes32 {
 	var res types.Bytes32
 	expectedBytes := expectedResult.Bytes()
 	copy(res[32-len(expectedBytes):], expectedBytes) // left pad with zeroes to 32 bytes
-	return res
+
+	var resElem fr.Element
+	resElem.SetBytes(res[:])
+	return resElem
 }
 
-func EncodeBLS12377ToKoalabear(encoded types.Bytes32) [GnarkKoalabearNumElements]field.Element {
+func EncodeBLS12377ToKoalabear(encoded fr.Element) [GnarkKoalabearNumElements]field.Element {
 	// Initialize an empty array to store the results
 	var elements, res [11]field.Element
 
+	bytes := encoded.Bytes()
 	// Convert the bytes32 to big.Int
-	value := new(big.Int).SetBytes(encoded[:])
+	value := new(big.Int).SetBytes(bytes[:])
 
 	// Loop to extract each 24-bit chunk
 	for i := 0; i < 11; i++ {

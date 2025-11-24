@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -148,7 +150,8 @@ type ProverRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *poseidon2_koalabear.MDHasher
+	FS    *fiatshamir_koalabear.FS
+	BLSFS *fiatshamir_bls12377.FS
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
@@ -779,7 +782,7 @@ func (run *ProverRuntime) goNextRound() {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		value := info.Sample(run.FS, seed)
+		value := info.Sample(run.BLSFS, seed)
 		run.Coins.InsertNew(myCoin, value)
 	}
 

@@ -6,8 +6,7 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark/frontend"
-	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -51,8 +50,8 @@ type LogDerivSumParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (l LogDerivSumParams) UpdateFS(fs *poseidon2_koalabear.MDHasher) {
-	fiatshamir.UpdateGeneric(fs, l.Sum)
+func (l LogDerivSumParams) UpdateFS(fs *fiatshamir_koalabear.FS) {
+	fs.UpdateGeneric(l.Sum)
 }
 
 // NewLogDerivativeSum creates the new context LogDerivativeSum.

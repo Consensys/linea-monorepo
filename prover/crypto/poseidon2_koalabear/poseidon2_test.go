@@ -1,6 +1,7 @@
 package poseidon2_koalabear
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
@@ -39,16 +40,16 @@ func (ghc *GnarkMDHasherCircuit) Define(api frontend.API) error {
 func getGnarkMDHasherCircuitWitness() (*GnarkMDHasherCircuit, *GnarkMDHasherCircuit) {
 
 	// values to hash
-	nbElmts := 2
+	nbElmts := 16
 	vals := make([]field.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		// vals[i].SetRandom()
-		vals[i].SetUint64(uint64(10 + i))
+		vals[i].SetRandom()
+		// vals[i].SetUint64(uint64(10 + i))
 	}
 
 	// sum
 	phasher := NewMDHasher()
-	phasher.WriteElements(vals)
+	phasher.WriteElements(vals...)
 	res := phasher.SumElement()
 
 	// create witness and circuit
@@ -62,6 +63,7 @@ func getGnarkMDHasherCircuitWitness() (*GnarkMDHasherCircuit, *GnarkMDHasherCirc
 		witness.Ouput[i] = res[i].String()
 	}
 
+	fmt.Printf("Expected hash: %v\n", res)
 	return &circuit, &witness
 
 }

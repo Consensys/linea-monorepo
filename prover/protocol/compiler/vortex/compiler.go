@@ -7,12 +7,12 @@ import (
 	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 
 	"github.com/consensys/linea-monorepo/prover/crypto"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -212,12 +212,13 @@ type Ctx struct {
 	// Maximum round number for non-SIS rounds
 	MaxCommittedRoundNonSIS int
 	// The vortex parameters
-	VortexParams *vortex.Params
+	VortexKoalaParams *vortex_koalabear.Params
 
-	GnarkVortexParams *vortex_bls12377.GnarkParams
+	VortexBLSParams *vortex_bls12377.Params
 
 	// The SIS hashing parameters
 	SisParams *ringsis.Params
+	SisKey    *ringsis.Key
 	// Optional parameter
 	NumOpenedCol int
 
@@ -242,13 +243,13 @@ type Ctx struct {
 			// Merkle Root of the precomputeds columns
 			MerkleRoot [blockSize]ifaces.Column
 			// Committed matrix (rs encoded) of the precomputed columns
-			CommittedMatrix vortex.EncodedMatrix
+			CommittedMatrix vortex_koalabear.EncodedMatrix
 			// Tree in case of Merkle mode
 			Tree *smt_koalabear.Tree
 			// colHashes used in self recursion
 			DhWithMerkle []field.Element
 
-			GnarkMerkleRoot   [vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
+			GnarkMerkleRoot   [encoding.GnarkKoalabearNumElements]ifaces.Column
 			GnarkTree         *smt_bls12377.Tree
 			GnarkDhWithMerkle []bls12377.Element
 		}
@@ -271,8 +272,8 @@ type Ctx struct {
 		// in the wizard.
 		MerkleRoots [][blockSize]ifaces.Column
 
-		GnarkMerkleProofs [vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
-		GnarkMerkleRoots  [][vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
+		GnarkMerkleProofs [encoding.GnarkKoalabearNumElements]ifaces.Column
+		GnarkMerkleRoots  [][encoding.GnarkKoalabearNumElements]ifaces.Column
 	}
 
 	// IsSelfrecursed is a flag that tells the verifier Vortex to perform a
@@ -301,7 +302,7 @@ type Ctx struct {
 		Enabled               bool
 		Name                  string
 		PrecomputedValue      [blockSize]field.Element
-		PrecomputedGnarkValue [vortex_bls12377.GnarkKoalabearNumElements]field.Element
+		PrecomputedGnarkValue [encoding.GnarkKoalabearNumElements]field.Element
 	}
 }
 
@@ -321,11 +322,11 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			Precomputeds struct {
 				PrecomputedColums []ifaces.Column
 				MerkleRoot        [blockSize]ifaces.Column
-				CommittedMatrix   vortex.EncodedMatrix
+				CommittedMatrix   vortex_koalabear.EncodedMatrix
 				Tree              *smt_koalabear.Tree
 				DhWithMerkle      []field.Element
 
-				GnarkMerkleRoot   [vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
+				GnarkMerkleRoot   [encoding.GnarkKoalabearNumElements]ifaces.Column
 				GnarkTree         *smt_bls12377.Tree
 				GnarkDhWithMerkle []bls12377.Element
 			}
@@ -338,8 +339,8 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			MerkleProofs        [blockSize]ifaces.Column
 			MerkleRoots         [][blockSize]ifaces.Column
 
-			GnarkMerkleProofs [vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
-			GnarkMerkleRoots  [][vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
+			GnarkMerkleProofs [encoding.GnarkKoalabearNumElements]ifaces.Column
+			GnarkMerkleRoots  [][encoding.GnarkKoalabearNumElements]ifaces.Column
 		}{},
 		// Declare the by rounds/sis rounds/non-sis rounds commitments
 		CommitmentsByRounds:       collection.NewVecVec[ifaces.ColID](),
@@ -357,7 +358,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	fmt.Printf("okok, Vortex compiler options applied\n")
 	// Preallocate all the merkle roots for all rounds
 	if ctx.IsBLS {
-		ctx.Items.GnarkMerkleRoots = make([][vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column, comp.NumRounds())
+		ctx.Items.GnarkMerkleRoots = make([][encoding.GnarkKoalabearNumElements]ifaces.Column, comp.NumRounds())
 	} else {
 		ctx.Items.MerkleRoots = make([][blockSize]ifaces.Column, comp.NumRounds())
 	}
@@ -505,7 +506,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	// columns.
 	if ctx.IsBLS {
 
-		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
+		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
 			ctx.Items.GnarkMerkleRoots[round][i] = ctx.Comp.InsertProof(
 				round,
 				ifaces.ColID(ctx.MerkleRootName(round, i)),
@@ -597,10 +598,13 @@ func (ctx *Ctx) generateVortexParams() {
 		sisParams = &ringsis.StdParams
 	}
 	if ctx.IsBLS {
-		ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
-		ctx.GnarkVortexParams = vortex_bls12377.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, smt_bls12377.Poseidon2, smt_bls12377.Poseidon2)
+		koalaParams := vortex_koalabear.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
+		ctx.VortexKoalaParams = &koalaParams
+		blsParams := vortex_bls12377.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
+		ctx.VortexBLSParams = &blsParams
 	} else {
-		ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
+		koalaParams := vortex_koalabear.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
+		ctx.VortexKoalaParams = &koalaParams
 	}
 }
 
@@ -608,7 +612,7 @@ func (ctx *Ctx) generateVortexParams() {
 func (ctx *Ctx) NbColsToOpen() int {
 
 	// opportunistic sanity-check : params should be set by now
-	if ctx.VortexParams == nil && ctx.GnarkVortexParams == nil {
+	if ctx.VortexKoalaParams == nil && ctx.VortexBLSParams == nil {
 		utils.Panic("VortexParams and GnarkVortexParams were not set")
 	}
 
@@ -963,7 +967,7 @@ func (ctx *Ctx) MerkleProofSize() int {
 // Commit to the precomputed columns
 func (ctx *Ctx) commitPrecomputeds() {
 	var (
-		committedMatrix vortex.EncodedMatrix
+		committedMatrix vortex_koalabear.EncodedMatrix
 	)
 	precomputeds := ctx.Items.Precomputeds.PrecomputedColums
 	numPrecomputeds := len(precomputeds)
@@ -997,9 +1001,9 @@ func (ctx *Ctx) commitPrecomputeds() {
 			// We increase the number of committed rows for SIS rounds
 			// in this case
 			ctx.CommittedRowsCountSIS += numPrecomputeds
-			committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
+			committedMatrix, _, tree, colHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
 		} else {
-			committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+			committedMatrix, _, tree, colHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
 		}
 
 		ctx.Items.Precomputeds.DhWithMerkle = colHashes
@@ -1019,22 +1023,21 @@ func (ctx *Ctx) commitPrecomputeds() {
 			tree      *smt_bls12377.Tree
 			colHashes []bls12377.Element
 		)
-		committedMatrix = ctx.VortexParams.EncodeRows(pols)
-		tree, colHashes = ctx.GnarkVortexParams.CommitMerkleWithoutSIS(committedMatrix)
+		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(committedMatrix)
 		var rootBLS bls12377.Element
-		rootBLS.SetBytes(tree.Root[:])
+		rootBLS = tree.Root
 		fmt.Printf("Gnark precomputed Merkle root compiler: %v\n", rootBLS.String())
 
 		ctx.Items.Precomputeds.GnarkDhWithMerkle = colHashes
 		ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
 		ctx.Items.Precomputeds.GnarkTree = tree
 
-		roots := vortex_bls12377.EncodeBLS12377ToKoalabear(tree.Root)
+		roots := encoding.EncodeBLS12377ToKoalabear(tree.Root)
 
 		fmt.Printf("Gnark precomputed Merkle root compiler (encoded): %v\n", vector.Prettify(roots[:]))
 
 		// And assign the 1-sized column to contain the root
-		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
+		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
 			ctx.Items.Precomputeds.GnarkMerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(ctx.PrecomputedGnarkMerkleRootName(i), smartvectors.NewConstant(roots[i], 1), true)
 		}
 

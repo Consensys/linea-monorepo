@@ -1,4 +1,4 @@
-package fiatshamir
+package fiatshamir_koalabear
 
 import (
 	"fmt"

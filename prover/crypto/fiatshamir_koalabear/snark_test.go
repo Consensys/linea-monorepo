@@ -1,4 +1,4 @@
-package fiatshamir
+package fiatshamir_koalabear
 
 import (
 	"testing"
@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,14 +33,14 @@ func (c *FSCircuit) Define(api frontend.API) error {
 
 func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 
-	h := poseidon2_koalabear.NewMDHasher()
+	fs := NewFS()
 	var a, b koalabear.Element
 	a.SetRandom()
 	b.SetRandom()
-	Update(h, a)
-	r1 := RandomFext(h)
-	Update(h, b)
-	r2 := RandomFext(h)
+	fs.Update(a)
+	r1 := fs.RandomFext()
+	fs.Update(b)
+	r2 := fs.RandomFext()
 
 	var circuit, witness FSCircuit
 	witness.A = a.String()

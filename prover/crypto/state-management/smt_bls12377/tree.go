@@ -3,35 +3,31 @@ package smt_bls12377
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
+
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
-
-// Config specifies the parameters of the tree (choice of hash function, depth).
-type Config struct {
-	// HashFunc is a function returning initialized hashers.
-	HashFunc func() Hasher
-	// Depth is the depth of the tree
-	Depth int
-}
 
 // Tree represents a binary sparse Merkle-tree (SMT).
 type Tree struct {
+	Depth int
+
 	// Config of the hash function
-	Config *Config
+	// Config *Config
 	// Root stores the root of the tree
-	Root types.Bytes32
+	Root fr.Element
 	// OccupiedLeaves continuously list of the occupied leaves. For the toy
 	// implementation we track all the leaves.
-	OccupiedLeaves []types.Bytes32
+	OccupiedLeaves []fr.Element
 	// Occupied not stores all the node with a non-trivial value in the tree.
 	//
 	// Does not include the root. (So there are 39 levels and not 40).
 	// Returns a node at a given level:
 	// 	- 0 is the level just above the leaves
 	// 	- 38 is the level just below the root
-	OccupiedNodes [][]types.Bytes32
+	OccupiedNodes [][]fr.Element
 	// EmptyNodes stores the value of the trivial nodes of the SMT (i.e the one
 	// corresponding to empty sub-trees).
 	//
@@ -39,65 +35,63 @@ type Tree struct {
 	// so the first position contains the empty node for the level one.
 	// So there are 39, and not 40 levels. That way, the indexing stays
 	// consistent with "OccupiedNode"
-	EmptyNodes []types.Bytes32
+	EmptyNodes []fr.Element
 }
 
-// EmptyLeaf returns an empty leaf (e.g. the zero bytes value).
-func EmptyLeaf() types.Bytes32 {
-	return types.Bytes32{}
+// EmptyLeaf returns an empty leaf (e.g. the zero value).
+func EmptyLeaf() fr.Element {
+	return fr.Element{}
 }
 
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
-func outerHashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
-
-	var d types.Bytes32
-	if config.HashFunc != nil {
-		hasher := config.HashFunc()
-		// Write one Octuplet (32 bytes) at a time
-		nodeL.WriteTo(hasher)
-		nodeR.WriteTo(hasher)
-		d = types.AsBytes32(hasher.Sum(nil))
-	} else {
-		panic("missing a hash function")
-	}
+func hashLR(nodeL, nodeR fr.Element) fr.Element {
+	var d fr.Element
+	hasher := poseidon2_bls12377.NewMDHasher()
+	hasher.WriteElements(nodeL)
+	hasher.WriteElements(nodeR)
+	d = hasher.SumElement()
 	return d
 }
 
-// NewEmptyTree creates and returns an empty tree with the provided config.
-func NewEmptyTree(conf *Config) *Tree {
+// NewEmptyTree creates and returns an empty tree
+func NewEmptyTree(depth int) *Tree {
 	// Computes the empty nodes
-	emptyNodes := make([]types.Bytes32, conf.Depth-1)
+	emptyNodes := make([]fr.Element, depth-1)
 	prevNode := EmptyLeaf()
 
 	for i := range emptyNodes {
-		newNode := outerHashLR(conf, prevNode, prevNode)
+		newNode := hashLR(prevNode, prevNode)
 		emptyNodes[i] = newNode
 		prevNode = newNode
 	}
 
 	// Stores the initial root separately
-	root := outerHashLR(conf, prevNode, prevNode)
+	root := hashLR(prevNode, prevNode)
 
 	return &Tree{
-		Config:         conf,
+		Depth:          depth,
 		Root:           root,
-		OccupiedLeaves: make([]types.Bytes32, 0),
-		OccupiedNodes:  make([][]types.Bytes32, conf.Depth-1),
+		OccupiedLeaves: make([]fr.Element, 0),
+		OccupiedNodes:  make([][]fr.Element, depth-1),
 		EmptyNodes:     emptyNodes,
 	}
 }
 
+func (t *Tree) GetRoot() fr.Element {
+	return t.Root
+}
+
 // GetLeaf returns a leaf by position or an error if the leaf is out of bounds.
-func (t *Tree) GetLeaf(pos int) (types.Bytes32, error) {
+func (t *Tree) GetLeaf(pos int) (fr.Element, error) {
 	// Check that the accessed node is within the bounds of the SMT
-	maxPos := 1 << t.Config.Depth
+	maxPos := 1 << t.Depth
 	if pos >= maxPos {
-		return types.Bytes32{}, fmt.Errorf("out of bound: %v", pos)
+		return fr.Element{}, fmt.Errorf("out of bound: %v", pos)
 	}
 
 	if pos < 0 {
-		return types.Bytes32{}, fmt.Errorf("negative position: %v", pos)
+		return fr.Element{}, fmt.Errorf("negative position: %v", pos)
 	}
 	// Check if this is an empty leaf
 	if pos >= len(t.OccupiedLeaves) {
@@ -108,7 +102,7 @@ func (t *Tree) GetLeaf(pos int) (types.Bytes32, error) {
 }
 
 // MustGetLeaf is as [Tree.GetLeaf] but panics on errors.
-func (t *Tree) MustGetLeaf(pos int) types.Bytes32 {
+func (t *Tree) MustGetLeaf(pos int) fr.Element {
 	l, err := t.GetLeaf(pos)
 	if err != nil {
 		utils.Panic("could not get leaf: %v", err.Error())
@@ -122,22 +116,22 @@ func (t *Tree) MustGetLeaf(pos int) types.Bytes32 {
 //   - 40 is the root
 //
 // (for config.Depth == 40)
-func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
+func (t *Tree) getNode(level, posInLevel int) fr.Element {
 	switch {
-	case level == t.Config.Depth:
+	case level == t.Depth:
 		// The only logical posInLevels value is zero in this case
 		if posInLevel > 0 {
 			utils.Panic("there is only one root but posInLevel was %v", posInLevel)
 		}
 		// Opportunistic sanity-checks. Parenthesis are necessary because
 		// of a hole in my linter.
-		if t.Root == (types.Bytes32{}) {
+		if t.Root == (fr.Element{}) {
 			utils.Panic("sanity-check failed : the root is zero.")
 		}
 		return t.Root
-	case level >= 1 && level <= t.Config.Depth-1:
+	case level >= 1 && level <= t.Depth-1:
 		// Check that the accessed node is within the bounds of the SMT
-		maxPos := 1 << (t.Config.Depth - level)
+		maxPos := 1 << (t.Depth - level)
 		if posInLevel >= maxPos {
 			utils.Panic("nodeID is out of bound")
 		}
@@ -147,7 +141,7 @@ func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
 		}
 		// Or return an non-empty one
 		res := t.OccupiedNodes[level-1][posInLevel]
-		if res == (types.Bytes32{}) {
+		if res == (fr.Element{}) {
 			utils.Panic("sanity-check : intermediary node is 0")
 		}
 		return res
@@ -169,22 +163,22 @@ func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
 //   - 40 is the root
 //
 // (for config.Depth == 40)
-func (t *Tree) updateNode(level, posInLevel int, newVal types.Bytes32) {
+func (t *Tree) updateNode(level, posInLevel int, newVal fr.Element) {
 	switch {
-	case level == t.Config.Depth:
+	case level == t.Depth:
 		// The only logical posInLevels value is zero in this case
 		if posInLevel > 0 {
 			utils.Panic("there is only one root but posInLevel was %v", posInLevel)
 		}
 		// Opportunistic sanity-checks. Parenthesis are necessary because
 		// of a hole in my linter.
-		if t.Root == (types.Bytes32{}) {
+		if t.Root == (fr.Element{}) {
 			utils.Panic("sanity-check failed : the root is zero.")
 		}
 		t.Root = newVal
-	case level >= 1 && level < t.Config.Depth:
+	case level >= 1 && level < t.Depth:
 		// Check that the accessed node is within the bounds of the SMT
-		maxPos := 1 << (t.Config.Depth - level)
+		maxPos := 1 << (t.Depth - level)
 		if posInLevel >= maxPos {
 			utils.Panic("node is out of bound level %v (maxPos %v), pos=%v", level, maxPos, posInLevel)
 		}
@@ -196,7 +190,7 @@ func (t *Tree) updateNode(level, posInLevel int, newVal types.Bytes32) {
 		t.OccupiedNodes[level-1][posInLevel] = newVal
 	case level == 0:
 		// Check that the accessed node is within the bounds of the SMT
-		maxPos := 1 << t.Config.Depth
+		maxPos := 1 << t.Depth
 		if posInLevel >= maxPos {
 			utils.Panic("nodeID is out of bound")
 		}
@@ -222,17 +216,17 @@ func (t *Tree) updateNode(level, posInLevel int, newVal types.Bytes32) {
 func (t *Tree) reserveLevel(level, newSize int) {
 
 	// Edge-case, level out of bound
-	if level > t.Config.Depth {
+	if level > t.Depth {
 		utils.Panic("level out of bound %v", level)
 	}
 
 	// Edge : case root level
-	if level == t.Config.Depth {
+	if level == t.Depth {
 		utils.Panic("tried extending the root level %v", newSize)
 	}
 
 	// Will work for both the leaves and the intermediate nodes
-	if newSize > 1<<(t.Config.Depth-level) {
+	if newSize > 1<<(t.Depth-level) {
 		utils.Panic("overextending the tree %v, %v", level, newSize)
 	}
 
@@ -242,7 +236,7 @@ func (t *Tree) reserveLevel(level, newSize int) {
 			return
 		}
 		// else, we add extra "empty leaves" at the end of the slice
-		padding := make([]types.Bytes32, newSize-len(t.OccupiedLeaves))
+		padding := make([]fr.Element, newSize-len(t.OccupiedLeaves))
 		for i := range padding {
 			padding[i] = EmptyLeaf()
 		}
@@ -258,18 +252,16 @@ func (t *Tree) reserveLevel(level, newSize int) {
 		return
 	}
 	// else, we add extra "empty nodes" at the end of the slice
-	padding := make([]types.Bytes32, newSize-len(t.OccupiedNodes[level-1]))
+	padding := make([]fr.Element, newSize-len(t.OccupiedNodes[level-1]))
 	for i := range padding {
 		padding[i] = t.EmptyNodes[level-1]
 	}
 	t.OccupiedNodes[level-1] = append(t.OccupiedNodes[level-1], padding...)
 }
 
-// BuildComplete builds from scratch a complete Merkle-tree. Requires that the
-// input leaves are powers of 2. The depth of the tree is deduced from the list.
-//
-// It panics if the number of leaves is a non-power of 2.
-func BuildComplete(leaves []types.Bytes32, hashFunc func() Hasher) *Tree {
+// BuildComplete builds a Merkle-tree. Requires that the
+// input leaves are powers of 2.
+func BuildComplete(leaves []fr.Element) *Tree {
 
 	numLeaves := len(leaves)
 
@@ -277,28 +269,23 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() Hasher) *Tree {
 		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
 	}
 
-	if hashFunc == nil {
-		panic("missing a hash function")
-	}
 	depth := utils.Log2Ceil(numLeaves)
-	config := &Config{HashFunc: hashFunc, Depth: depth}
-
-	tree := NewEmptyTree(config)
+	tree := NewEmptyTree(depth)
 	tree.OccupiedLeaves = leaves
 	currLevels := leaves
 
 	for i := 0; i < depth-1; i++ {
-		nextLevel := make([]types.Bytes32, len(currLevels)/2)
+		nextLevel := make([]fr.Element, len(currLevels)/2)
 		// TODO @gbotrel revisit parallelization here
 		if len(nextLevel) >= 64 {
 			parallel.Execute(len(nextLevel), func(start, end int) {
 				for k := start; k < end; k++ {
-					nextLevel[k] = outerHashLR(config, currLevels[2*k], currLevels[2*k+1])
+					nextLevel[k] = hashLR(currLevels[2*k], currLevels[2*k+1])
 				}
 			})
 		} else {
 			for k := range nextLevel {
-				nextLevel[k] = outerHashLR(config, currLevels[2*k], currLevels[2*k+1])
+				nextLevel[k] = hashLR(currLevels[2*k], currLevels[2*k+1])
 			}
 		}
 
@@ -312,6 +299,6 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() Hasher) *Tree {
 	}
 
 	// And overwrite the root
-	tree.Root = outerHashLR(config, currLevels[0], currLevels[1])
+	tree.Root = hashLR(currLevels[0], currLevels[1])
 	return tree
 }

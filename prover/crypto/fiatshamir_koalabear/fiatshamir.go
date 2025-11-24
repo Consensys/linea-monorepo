@@ -1,4 +1,4 @@
-package fiatshamir
+package fiatshamir_koalabear
 
 import (
 	"math"
@@ -12,11 +12,19 @@ import (
 
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
 
-func Update(h *poseidon2_koalabear.MDHasher, vec ...field.Element) {
-	h.WriteElements(vec)
+type FS struct {
+	h *poseidon2_koalabear.MDHasher
 }
 
-func UpdateExt(h *poseidon2_koalabear.MDHasher, vec ...fext.Element) {
+func NewFS() FS {
+	return FS{h: poseidon2_koalabear.NewMDHasher()}
+}
+
+func (fs *FS) Update(vec ...field.Element) {
+	fs.h.WriteElements(vec...)
+}
+
+func (fs *FS) UpdateExt(vec ...fext.Element) {
 	pad := make([]field.Element, 4*len(vec))
 	for i := 0; i < len(vec); i++ {
 		pad[4*i].Set(&vec[i].B0.A0)
@@ -24,9 +32,9 @@ func UpdateExt(h *poseidon2_koalabear.MDHasher, vec ...fext.Element) {
 		pad[4*i+2].Set(&vec[i].B1.A0)
 		pad[4*i+3].Set(&vec[i].B1.A1)
 	}
-	h.WriteElements(pad)
+	fs.h.WriteElements(pad...)
 }
-func UpdateGeneric(h *poseidon2_koalabear.MDHasher, vec ...fext.GenericFieldElem) {
+func (fs *FS) UpdateGeneric(vec ...fext.GenericFieldElem) {
 	if len(vec) == 0 {
 		return
 	}
@@ -34,58 +42,57 @@ func UpdateGeneric(h *poseidon2_koalabear.MDHasher, vec ...fext.GenericFieldElem
 	// Marshal the elements in a vector of bytes
 	for _, f := range vec {
 		if f.GetIsBase() {
-			Update(h, f.Base)
+			fs.Update(f.Base)
 		} else {
-			UpdateExt(h, f.Ext)
+			fs.UpdateExt(f.Ext)
 		}
 	}
 }
-func UpdateVec(h *poseidon2_koalabear.MDHasher, vecs ...[]field.Element) {
+func (fs *FS) UpdateVec(vecs ...[]field.Element) {
 	for i := range vecs {
-		Update(h, vecs[i]...)
+		fs.Update(vecs[i]...)
 	}
 }
 
 // UpdateVec updates the Fiat-Shamir state by passing one of more slices of
 // field elements.
-func UpdateVecExt(h *poseidon2_koalabear.MDHasher, vecs ...[]fext.Element) {
+func (fs *FS) UpdateVecExt(vecs ...[]fext.Element) {
 	for i := range vecs {
-		UpdateExt(h, vecs[i]...)
+		fs.UpdateExt(vecs[i]...)
 	}
 }
 
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
-func UpdateSV(h *poseidon2_koalabear.MDHasher, sv smartvectors.SmartVector) {
+func (fs *FS) UpdateSV(sv smartvectors.SmartVector) {
 	if sv.Len() == 0 {
 		return
 	}
 
 	vec := make([]field.Element, sv.Len())
 	sv.WriteInSlice(vec)
-	Update(h, vec...)
+	fs.Update(vec...)
 }
 
-func RandomField(h *poseidon2_koalabear.MDHasher) field.Octuplet {
-	res := h.SumElement()
-	safeguardUpdate(h)
+func (fs *FS) RandomField() field.Octuplet {
+	res := fs.h.SumElement()
+	fs.safeguardUpdate()
 	return res
 }
 
-func RandomFext(h *poseidon2_koalabear.MDHasher) fext.Element {
-	// s := h.SumElement()
+func (fs *FS) RandomFext() fext.Element {
+	s := fs.h.SumElement()
 	var res fext.Element
-	//TODO@yao: fix the function and RandomFieldExt in snark.go
-	res.B0.A0 = field.NewFromString("3")
-	res.B0.A1 = field.NewFromString("5")
-	res.B1.A0 = field.NewFromString("7")
-	res.B1.A1 = field.NewFromString("11")
+	res.B0.A0 = s[0]
+	res.B0.A1 = s[1]
+	res.B1.A0 = s[2]
+	res.B1.A1 = s[3]
 
-	UpdateExt(h, fext.NewFromUint(0, 0, 0, 0)) // safefuard update
+	fs.UpdateExt(fext.NewFromUint(0, 0, 0, 0)) // safefuard update
 	return res
 }
 
-func RandomManyIntegers(h *poseidon2_koalabear.MDHasher, num, upperBound int) []int {
+func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
 
 	// Even `1` would be wierd, there would be only one acceptable coin value.
 	if upperBound < 1 {
@@ -100,7 +107,7 @@ func RandomManyIntegers(h *poseidon2_koalabear.MDHasher, num, upperBound int) []
 		return []int{}
 	}
 
-	defer safeguardUpdate(h)
+	defer fs.safeguardUpdate()
 
 	var (
 		// challsBitSize stores the number of bits required instantiate each
@@ -118,7 +125,7 @@ func RandomManyIntegers(h *poseidon2_koalabear.MDHasher, num, upperBound int) []
 	)
 
 	for {
-		digest := h.Sum(nil)
+		digest := fs.h.Sum(nil)
 		buffer := NewBitReader(digest[:], field.Bits-1)
 
 		// Increase the counter
@@ -137,8 +144,8 @@ func RandomManyIntegers(h *poseidon2_koalabear.MDHasher, num, upperBound int) []
 		}
 
 		// This is guarded by the condition to prevent the [State] updating
-		// twice in a row when exiting the function. Recall that we have a
-		// defer of the safeguard update in the function. This handles the
+		// twice in a row when exiting the func (fs *FS)tion. Recall that we have a
+		// defer of the safeguard update in the func (fs *FS)tion. This handles the
 		// edge-case where the number of requested field elements is a multiple
 		// of the number of challenges we can generate with a single field
 		// element.
@@ -148,10 +155,10 @@ func RandomManyIntegers(h *poseidon2_koalabear.MDHasher, num, upperBound int) []
 
 		// This updates ensures that for the next iterations of the loop and the
 		// next randomness comsumption uses a fresh randomness.
-		safeguardUpdate(h)
+		fs.safeguardUpdate()
 	}
 }
 
-func safeguardUpdate(h *poseidon2_koalabear.MDHasher) {
-	Update(h, field.Zero())
+func (fs *FS) safeguardUpdate() {
+	fs.Update(field.Zero())
 }

@@ -3,6 +3,8 @@ package vortex
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+
 	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
@@ -11,7 +13,6 @@ import (
 	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -44,7 +45,7 @@ type ReassignPrecomputedRootAction struct {
 func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
 	fmt.Printf("okok, run ReassignPrecomputedRootAction\n")
 	if r.IsBLS {
-		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
+		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
 			run.AssignColumn(
 				r.Items.Precomputeds.MerkleRoot[i].GetColID(),
 				smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedGnarkValue[i], 1),
@@ -80,7 +81,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	var (
-		committedMatrix vortex.EncodedMatrix
+		committedMatrix vortex_bls12377.EncodedMatrix
 		sisColHashes    []field.Element // column hashes generated from SisTransversalHash
 		noSisColHashes  []field.Element // column hashes generated from noSisTransversalHash, using LeafHashFunc
 	)
@@ -101,11 +102,10 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 			tree      *smt_bls12377.Tree
 			colHashes []bls12377.Element
 		)
-		committedMatrix = ctx.VortexParams.EncodeRows(pols)
-		tree, colHashes = ctx.GnarkVortexParams.CommitMerkleWithoutSIS(committedMatrix)
+		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(committedMatrix)
 
 		var rootBLS bls12377.Element
-		rootBLS.SetBytes(tree.Root[:])
+		rootBLS = tree.Root
 		fmt.Printf("Gnark precomputed Merkle root1: %v\n", rootBLS.String())
 		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		run.State.InsertNew(ctx.MerkleTreeName(round), tree)
@@ -117,18 +117,18 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 				run.State.InsertNew(ctx.NoSisHashName(round), colHashes)
 			}
 		}
-		roots := vortex_bls12377.EncodeBLS12377ToKoalabear(tree.Root)
+		roots := encoding.EncodeBLS12377ToKoalabear(tree.Root)
 
-		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
+		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
 			run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(roots[i], 1))
 		}
 	} else {
 		var tree *smt_koalabear.Tree
 
 		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
-			committedMatrix, tree, noSisColHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+			committedMatrix, _, tree, noSisColHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedMatrix, tree, sisColHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
+			committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
 		}
 
 		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
@@ -204,7 +204,7 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-	proof.LinearCombination = ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
+	proof.LinearCombination = ctx.VortexKoalaParams.InitOpeningWithLC(committedSV, randomCoinLC)
 	fmt.Printf("proof.LinearCombination:%v\n", proof.LinearCombination.Pretty())
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
@@ -234,7 +234,7 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
+		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
 
 		// Push pols to the right stack
 		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
@@ -252,7 +252,7 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 	randomCoinLC := run.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
-	proof := ctx.VortexParams.InitOpeningFromAlreadyEncodedLC(committedSV, randomCoinLC)
+	proof := ctx.VortexKoalaParams.InitOpeningFromAlreadyEncodedLC(committedSV, randomCoinLC)
 
 	run.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
@@ -268,8 +268,8 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	fmt.Printf("okok OpenSelectedColumnsProverAction\n")
 
 	var (
-		committedMatricesSIS   = []vortex.EncodedMatrix{}
-		committedMatricesNoSIS = []vortex.EncodedMatrix{}
+		committedMatricesSIS   = []vortex_bls12377.EncodedMatrix{}
+		committedMatricesNoSIS = []vortex_bls12377.EncodedMatrix{}
 		treesSIS               = []*smt_koalabear.Tree{}
 		treesNoSIS             = []*smt_koalabear.Tree{}
 		gnarkTrees             = []*smt_bls12377.Tree{}
@@ -304,7 +304,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			continue
 		}
 		// Fetch it from the state
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
+		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
 		// and delete it because it won't be needed anymore and its very heavy
 		run.State.Del(ctx.VortexProverStateName(round))
 
@@ -470,10 +470,10 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt_koalabear.Proof) [8]smartvectors
 }
 
 // pack a list of merkle-proofs in a vector as used in the merkle proof module
-func (ctx *Ctx) packGnarkMerkleProofs(proofs [][]smt_bls12377.Proof) [vortex_bls12377.GnarkKoalabearNumElements]smartvectors.SmartVector {
+func (ctx *Ctx) packGnarkMerkleProofs(proofs [][]smt_bls12377.Proof) [encoding.GnarkKoalabearNumElements]smartvectors.SmartVector {
 
 	depth := len(proofs[0][0].Siblings) // depth of the Merkle-tree
-	res := [vortex_bls12377.GnarkKoalabearNumElements][]field.Element{}
+	res := [encoding.GnarkKoalabearNumElements][]field.Element{}
 	for i := range res {
 		res[i] = make([]field.Element, ctx.MerkleProofSize())
 	}
@@ -518,7 +518,7 @@ func (ctx *Ctx) packGnarkMerkleProofs(proofs [][]smt_bls12377.Proof) [vortex_bls
 			for k := range p.Siblings {
 				// The proof stores the sibling bottom-up but
 				// we want to pack the proof in top-down order.
-				koalaElems := vortex_bls12377.EncodeBLS12377ToKoalabear(types.AsBytes32(p.Siblings[depth-1-k][:]))
+				koalaElems := encoding.EncodeBLS12377ToKoalabear(p.Siblings[depth-1-k])
 
 				for coord := range res {
 					res[coord][numProofWritten*depth+k] = koalaElems[coord]
@@ -529,7 +529,7 @@ func (ctx *Ctx) packGnarkMerkleProofs(proofs [][]smt_bls12377.Proof) [vortex_bls
 	}
 
 	// return smartvectors.NewRegular(res)
-	resSV := [vortex_bls12377.GnarkKoalabearNumElements]smartvectors.SmartVector{}
+	resSV := [encoding.GnarkKoalabearNumElements]smartvectors.SmartVector{}
 	for i := range res {
 		resSV[i] = smartvectors.NewRegular(res[i])
 	}
@@ -577,7 +577,7 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackGnarkMerkleProofs(sv [vortex_bls12377.GnarkKoalabearNumElements]smartvectors.SmartVector, entryList []int) (proofs [][]smt_bls12377.Proof) {
+func (ctx *Ctx) unpackGnarkMerkleProofs(sv [encoding.GnarkKoalabearNumElements]smartvectors.SmartVector, entryList []int) (proofs [][]smt_bls12377.Proof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -598,7 +598,7 @@ func (ctx *Ctx) unpackGnarkMerkleProofs(sv [vortex_bls12377.GnarkKoalabearNumEle
 			}
 			proof := smt_bls12377.Proof{
 				Path:     entryList[j],
-				Siblings: make([]types.Bytes32, depth),
+				Siblings: make([]bls12377.Element, depth),
 			}
 
 			// parse the siblings accounting for the fact that we

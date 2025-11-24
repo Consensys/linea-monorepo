@@ -1,8 +1,9 @@
 package vortex
 
 import (
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
@@ -66,7 +67,7 @@ func AddPrecomputedMerkleRootToPublicInputs(name string) VortexOp {
 			Enabled               bool
 			Name                  string
 			PrecomputedValue      [blockSize]field.Element
-			PrecomputedGnarkValue [vortex_bls12377.GnarkKoalabearNumElements]field.Element
+			PrecomputedGnarkValue [encoding.GnarkKoalabearNumElements]field.Element
 		}{Enabled: true, Name: name}
 	}
 }

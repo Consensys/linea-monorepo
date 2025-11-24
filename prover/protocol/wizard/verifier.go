@@ -3,6 +3,8 @@ package wizard
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -95,7 +97,8 @@ type VerifierRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *poseidon2_koalabear.MDHasher
+	FS    *fiatshamir_koalabear.FS
+	BLSFS *fiatshamir_bls12377.FS
 
 	// State stores arbitrary data that can be used by the verifier. This
 	// can be used to communicate values between verifier states.
@@ -170,8 +173,9 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
 		QueriesParams: proof.QueriesParams,
-		FS:            poseidon2_koalabear.NewMDHasher(),
-		State:         make(map[string]interface{}),
+		FS:            fiatshamir_koalabear.NewFS(),
+
+		State: make(map[string]interface{}),
 	}
 
 	fiatshamir.Update(runtime.FS, c.FiatShamirSetup[:]...)
@@ -283,7 +287,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		value := info.Sample(run.FS, seed)
+		value := info.Sample(run.BLSFS, seed)
 		run.Coins.InsertNew(myCoin, value)
 	}
 }
