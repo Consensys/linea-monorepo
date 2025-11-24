@@ -5,7 +5,7 @@ import { RlpEncoder } from "../../libraries/RlpEncoder.sol";
 
 /**
  * @title Interface to manage forced transactions on L1.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 interface IForcedTransactionGateway {
@@ -70,6 +70,17 @@ interface IForcedTransactionGateway {
   );
 
   /**
+   * @notice Emitted when the useDenyList toggle state changes.
+   * @param useDenyList The feature toggle enabled status.
+   */
+  event UseDenyListSet(bool useDenyList);
+
+  /**
+   * @dev Thrown when an address is on the deny list.
+   */
+  error AddressIsDenied();
+
+  /**
    * @dev Thrown when the max gas limit configured will be exceeded.
    */
   error MaxGasLimitExceeded();
@@ -110,6 +121,11 @@ interface IForcedTransactionGateway {
   error FinalizationStateIncorrect(bytes32 expected, bytes32 value);
 
   /**
+   * @dev Thrown when the toggle status requested is already set.
+   */
+  error UseDenyListAlreadySet(bool requestedExistingStatus);
+
+  /**
    * @notice Function to submit forced transactions.
    * @param _forcedTransaction The fields required for the transaction excluding chainId.
    * @param _lastFinalizedState The last finalized state validated to use the timestamp in block number calculation.
@@ -118,4 +134,10 @@ interface IForcedTransactionGateway {
     Eip1559Transaction memory _forcedTransaction,
     LastFinalizedState calldata _lastFinalizedState
   ) external;
+
+  /**
+   * @notice Function to change the useDenyList feature toggle state.
+   * @param _useDenyList The feature toggle enabled status.
+   */
+  function setDenyListFeatureToggle(bool _useDenyList) external;
 }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 /**
  * @title Interface to manage forced transaction storage.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 interface IAcceptForcedTransactions {

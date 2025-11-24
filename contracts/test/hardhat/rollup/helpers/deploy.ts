@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 
 import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { CallForwardingProxy, ForcedTransactionGateway, Mimc, TestLineaRollup } from "contracts/typechain-types";
+import { CallForwardingProxy, ForcedTransactionGateway, GovernedDenyList, Mimc, TestLineaRollup } from "contracts/typechain-types";
 import { getAccountsFixture, getRoleAddressesFixture } from "./";
 import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
@@ -87,15 +87,39 @@ export async function deployLineaRollupFixture() {
   return { verifier, lineaRollup };
 }
 
-export async function deployForcedTransactionGatewayFixture() {
-  const { lineaRollup } = await deployLineaRollupFixture();
+export async function deployGovernedDenyListFixture() {
+  const { securityCouncil, nonAuthorizedAccount } = await loadFixture(getAccountsFixture);
 
+  const governedDenyListFactory = await ethers.getContractFactory("GovernedDenyList");
+
+  const governedDenyList = (await governedDenyListFactory.deploy(
+    securityCouncil.address,
+    [nonAuthorizedAccount]
+  )) as unknown as GovernedDenyList;
+
+  await governedDenyList.waitForDeployment();
+
+  return { governedDenyList };
+}
+
+export async function deployMimcFixture() {
   const mimc = (await deployFromFactory("Mimc")) as unknown as Mimc;
   await mimc.waitForDeployment();
+  return { mimc };
+}
+
+
+export async function deployForcedTransactionGatewayFixture() {
+  const { mimc } = await loadFixture(deployMimcFixture);
+  const { securityCouncil } = await loadFixture(getAccountsFixture);
+  const { lineaRollup } = await loadFixture(deployLineaRollupFixture);
+
 
   const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
     libraries: { Mimc: await mimc.getAddress() },
   });
+  const { governedDenyList } = await loadFixture(deployGovernedDenyListFixture);
+
 
   const forcedTransactionGateway = (await forcedTransactionGatewayFactory.deploy(
     await lineaRollup.getAddress(),
@@ -103,11 +127,13 @@ export async function deployForcedTransactionGatewayFixture() {
     THREE_DAYS_IN_SECONDS,
     MAX_GAS_LIMIT,
     MAX_INPUT_LENGTH_LIMIT,
+    securityCouncil.address,
+    await governedDenyList.getAddress()
   )) as unknown as ForcedTransactionGateway;
 
   await forcedTransactionGateway.waitForDeployment();
 
-  return { lineaRollup, forcedTransactionGateway };
+  return { lineaRollup, forcedTransactionGateway , governedDenyList, mimc};
 }
 
 async function deployTestPlonkVerifierForDataAggregation(): Promise<string> {

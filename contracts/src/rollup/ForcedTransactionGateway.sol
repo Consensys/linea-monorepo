@@ -3,15 +3,18 @@ pragma solidity 0.8.30;
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { IAcceptForcedTransactions } from "./interfaces/IAcceptForcedTransactions.sol";
 import { IForcedTransactionGateway } from "./interfaces/IForcedTransactionGateway.sol";
+import { IGovernedDenyList } from "./interfaces/IGovernedDenyList.sol";
 import { Mimc } from "../libraries/Mimc.sol";
 import { RlpEncoder } from "../libraries/RlpEncoder.sol";
 import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+
 /**
  * @title Contract to manage forced transactions on L1.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract ForcedTransactionGateway is IForcedTransactionGateway {
+contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   using Mimc for *;
   using RlpEncoder for *;
   using FinalizedStateHashing for *;
@@ -38,24 +41,35 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
   /// @notice Contains the maximum calldata length allowed for a forced transaction.
   uint256 public immutable MAX_INPUT_LENGTH_LIMIT;
 
+  /// @notice Contains the destination address to store the forced transactions on.
+  IGovernedDenyList public immutable GOVERNED_DENY_LIST;
+
+  bool public useDenyList = true;
+
   constructor(
     address _lineaRollup,
     uint256 _destinationChainId,
     uint256 _l2BlockBuffer,
     uint256 _maxGasLimit,
-    uint256 _maxInputLengthBuffer
+    uint256 _maxInputLengthBuffer,
+    address _defaultAdmin,
+    address _denyList
   ) {
     require(_lineaRollup != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_destinationChainId != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_l2BlockBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_maxGasLimit != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_maxInputLengthBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_defaultAdmin != address(0), IGenericErrors.ZeroAddressNotAllowed());
+    require(_denyList != address(0), IGenericErrors.ZeroAddressNotAllowed());
 
     LINEA_ROLLUP = IAcceptForcedTransactions(_lineaRollup);
     DESTINATION_CHAIN_ID = _destinationChainId;
     L2_BLOCK_BUFFER = _l2BlockBuffer;
     MAX_GAS_LIMIT = _maxGasLimit;
     MAX_INPUT_LENGTH_LIMIT = _maxInputLengthBuffer;
+    GOVERNED_DENY_LIST = IGovernedDenyList(_denyList);
+    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
   }
 
   /**
@@ -82,6 +96,8 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     require(_forcedTransaction.yParity <= 1, YParityGreaterThanOne(_forcedTransaction.yParity));
     require(_forcedTransaction.to >= address(PRECOMPILE_ADDRESS_LIMIT), ToAddressTooLow());
 
+    /// @dev Splitting into bytes concat causes mismatched values due to the access list.
+    /// @dev Placing here avoids stack issues.
     bytes32 mimcHashedPayload = Mimc.hash(
       abi.encode(
         DESTINATION_CHAIN_ID,
@@ -158,6 +174,11 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       );
     }
 
+    if (useDenyList) {
+      require(!GOVERNED_DENY_LIST.addressIsDenied(signer), AddressIsDenied());
+      require(!GOVERNED_DENY_LIST.addressIsDenied(_forcedTransaction.to), AddressIsDenied());
+    }
+
     uint256 expectedBlockNumber;
     unchecked {
       /// @dev The computation uses 1s block time making block number and seconds interchangable,
@@ -180,5 +201,11 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       forcedTransactionRollingHash,
       abi.encodePacked(hex"02", RlpEncoder._encodeList(signedTransactionFields))
     );
+  }
+
+  function setDenyListFeatureToggle(bool _useDenyList) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    require(useDenyList != _useDenyList, UseDenyListAlreadySet(_useDenyList));
+    useDenyList = _useDenyList;
+    emit UseDenyListSet(_useDenyList);
   }
 }

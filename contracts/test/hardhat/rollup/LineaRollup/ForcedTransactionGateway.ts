@@ -1,12 +1,12 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ForcedTransactionGateway, Mimc, TestLineaRollup } from "contracts/typechain-types";
+import { ForcedTransactionGateway, GovernedDenyList, Mimc, TestLineaRollup } from "contracts/typechain-types";
 import transactionWithoutCalldata from "../../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
 import transactionWithCalldataAndAccessList from "../../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
 import transactionWithCalldata from "../../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
 import l2SendMessageTransaction from "../../_testData/eip1559RlpEncoderTransactions/l2SendMessage.json";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 
 import {
   getAccountsFixture,
@@ -38,8 +38,9 @@ import { toBeHex, zeroPadValue } from "ethers";
 import { expect } from "chai";
 import { deployFromFactory } from "../../common/deployment";
 
-describe("Linea Rollup contract: Forced Transactions", () => {
+describe.only("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
+  let governedDenyList: GovernedDenyList;
   let forcedTransactionGateway: ForcedTransactionGateway;
   let mimcLibrary: Mimc;
   let mimcLibraryAddress: string;
@@ -56,12 +57,15 @@ describe("Linea Rollup contract: Forced Transactions", () => {
   };
 
   before(async () => {
+  
     ({ nonAuthorizedAccount, securityCouncil } = await loadFixture(getAccountsFixture));
   });
 
   beforeEach(async () => {
-    ({ lineaRollup, forcedTransactionGateway } = await loadFixture(deployForcedTransactionGatewayFixture));
 
+    ({ lineaRollup, forcedTransactionGateway, governedDenyList, mimc: mimcLibrary } = await loadFixture(deployForcedTransactionGatewayFixture));
+    mimcLibraryAddress = await mimcLibrary.getAddress();
+    
     await lineaRollup
       .connect(securityCouncil)
       .grantRole(FORCED_TRANSACTION_SENDER_ROLE, await forcedTransactionGateway.getAddress());
@@ -77,16 +81,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       forcedTransactionRollingHash: HASH_ZERO,
       timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
     };
-
-    async function deployMimc() {
-      mimcLibrary = (await deployFromFactory("Mimc")) as Mimc;
-      await mimcLibrary.waitForDeployment();
-      mimcLibraryAddress = await mimcLibrary.getAddress();
-    }
-
-    // Unsure why the following two lines do not work in before block
-    // If we deploy mimic or eip1559RlpEncoder in before block, and try to invoke the contracts, we get a weird error
-    await loadFixture(deployMimc);
   });
 
   describe("Contract Construction", () => {
@@ -103,6 +97,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           THREE_DAYS_IN_SECONDS,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          await governedDenyList.getAddress()
         ),
         "ZeroAddressNotAllowed",
       );
@@ -121,6 +117,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           THREE_DAYS_IN_SECONDS,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          await governedDenyList.getAddress()
         ),
         "ZeroValueNotAllowed",
       );
@@ -139,6 +137,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           0,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          await governedDenyList.getAddress()
         ),
         "ZeroValueNotAllowed",
       );
@@ -157,6 +157,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           THREE_DAYS_IN_SECONDS,
           0,
           MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          await governedDenyList.getAddress()
         ),
         "ZeroValueNotAllowed",
       );
@@ -175,8 +177,50 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           THREE_DAYS_IN_SECONDS,
           MAX_GAS_LIMIT,
           0,
+          securityCouncil.address,
+          await governedDenyList.getAddress()
         ),
         "ZeroValueNotAllowed",
+      );
+    });
+
+    it("Should fail if the default admin is the zero address", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+          ADDRESS_ZERO,
+          await governedDenyList.getAddress()
+        ),
+        "ZeroAddressNotAllowed",
+      );
+    });
+
+    it("Should fail if the deny list address is zero address", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          ADDRESS_ZERO,
+        ),
+        "ZeroAddressNotAllowed",
       );
     });
   });
@@ -391,6 +435,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     });
 
     it("Should emit the ForcedTransactionAdded event on adding a transaction", async () => {
+
+      console.log("val", await governedDenyList.addressIsDenied(securityCouncil.address));
       // use a way future dated timestamp and mimc the calculation for the block number
       const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
         lineaRollup,
