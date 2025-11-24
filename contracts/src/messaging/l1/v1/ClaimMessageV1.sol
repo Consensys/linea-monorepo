@@ -10,7 +10,7 @@ import { MessageHashing } from "../../libraries/MessageHashing.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract ClaimMessageV1 is L1MessageServiceV1, IClaimMessageV1 {
+abstract contract ClaimMessageV1 is IClaimMessageV1, L1MessageServiceV1 {
   using MessageHashing for *;
 
   /**

@@ -33,6 +33,11 @@ interface IAcceptCalldataBlobs is IShnarfDataAcceptorBase {
   error EmptySubmissionData();
 
   /**
+   * @dev Thrown when bytes length is not a multiple of 32.
+   */
+  error BytesLengthNotMultipleOf32();
+
+  /**
    * @notice Submit blobs using compressed data via calldata.
    * @dev OPERATOR_ROLE is required to execute.
    * @param _submission The supporting data for compressed data submission including compressed data.

@@ -5,11 +5,6 @@
       "type": "constructor"
     },
     {
-      "inputs": [],
-      "name": "BytesLengthNotMultipleOf32",
-      "type": "error"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint256",
@@ -191,11 +186,6 @@
       "type": "error"
     },
     {
-      "inputs": [],
-      "name": "LastFinalizationTimeNotLapsed",
-      "type": "error"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint32",
@@ -269,11 +259,6 @@
         }
       ],
       "name": "MissingRollingHashForMessageNumber",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "OnlyNonFallbackOperator",
       "type": "error"
     },
     {

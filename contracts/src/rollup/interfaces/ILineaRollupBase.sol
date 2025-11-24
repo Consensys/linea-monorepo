@@ -130,11 +130,6 @@ interface ILineaRollupBase {
   event LineaRollupBaseInitialized(BaseInitializationData InitializationData);
 
   /**
-   * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the fallback operator address.
-   */
-  error LastFinalizationTimeNotLapsed();
-
-  /**
    * @dev Thrown when finalizationData.l1RollingHash does not exist on L1 (Feedback loop).
    */
   error L1RollingHashDoesNotExistOnL1(uint256 messageNumber, bytes32 rollingHash);
@@ -165,19 +160,9 @@ interface ILineaRollupBase {
   error MissingRollingHashForMessageNumber(uint256 messageNumber);
 
   /**
-   * @dev Thrown when bytes length is not a multiple of 32.
-   */
-  error BytesLengthNotMultipleOf32();
-
-  /**
    * @dev Thrown when a shnarf does not exist for the final blob being finalized.
    */
   error FinalBlobNotSubmitted(bytes32 shnarf);
-
-  /**
-   * @dev Thrown when the fallback operator tries to renounce their operator role.
-   */
-  error OnlyNonFallbackOperator();
 
   /**
    * @notice Returns the ABI version and not the reinitialize version.

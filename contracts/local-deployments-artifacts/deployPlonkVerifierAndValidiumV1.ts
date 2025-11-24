@@ -57,7 +57,6 @@ async function main() {
   const validiumRateLimitPeriodInSeconds = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_PERIOD");
   const validiumRateLimitAmountInWei = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_AMOUNT");
   const validiumGenesisTimestamp = getRequiredEnvVar("VALIDIUM_GENESIS_TIMESTAMP");
-  const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
   const validiumName = "Validium";
   const validiumImplementationName = "Validium";
 
@@ -114,7 +113,6 @@ async function main() {
       roleAddresses,
       pauseTypeRoles,
       unpauseTypeRoles,
-      fallbackOperator: multiCallAddress,
       defaultAdmin: validiumSecurityCouncil,
       shnarfProvider: ADDRESS_ZERO,
     },

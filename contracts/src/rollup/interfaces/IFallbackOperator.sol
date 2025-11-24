@@ -22,6 +22,16 @@ interface IFallbackOperator {
   event FallbackOperatorAddressSet(address indexed caller, address indexed fallbackOperator);
 
   /**
+   * @dev Thrown when the fallback operator tries to renounce their operator role.
+   */
+  error OnlyNonFallbackOperator();
+
+  /**
+   * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the fallback operator address.
+   */
+  error LastFinalizationTimeNotLapsed();
+
+  /**
    * @notice Sets the fallback operator role to the specified address if six months have passed since the last finalization.
    * @dev Reverts if six months have not passed since the last finalization.
    * @param _messageNumber Last finalized L1 message number as part of the feedback loop.

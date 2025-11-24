@@ -10,7 +10,7 @@
 
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers } from "hardhat";
-import { LINEA_ROLLUP_ROLES } from "contracts/common/constants";
+import { LINEA_ROLLUP_ROLES, VALIDIUM_ROLES } from "contracts/common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import { OPERATOR_ROLE } from "../../common/constants";
 
@@ -25,6 +25,17 @@ export async function getAccountsFixture() {
 export async function getRoleAddressesFixture() {
   const { securityCouncil, operator } = await loadFixture(getAccountsFixture);
   const roleAddresses = generateRoleAssignments(LINEA_ROLLUP_ROLES, await securityCouncil.getAddress(), [
+    {
+      role: OPERATOR_ROLE,
+      addresses: [operator.address],
+    },
+  ]);
+  return roleAddresses;
+}
+
+export async function getValidiumRoleAddressesFixture() {
+  const { securityCouncil, operator } = await loadFixture(getAccountsFixture);
+  const roleAddresses = generateRoleAssignments(VALIDIUM_ROLES, await securityCouncil.getAddress(), [
     {
       role: OPERATOR_ROLE,
       addresses: [operator.address],
