@@ -50,10 +50,10 @@ func setDefaultProverPhaseCmds() {
 
 	// Set default cmds for limitless prover invoking the --phase flag
 	var (
-		bootstrapCmd      = "prover prove --phase=bootstrap --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}"
-		glCmd             = "prover prove --phase=gl --config {{.ConfFile}} --in {{.InFile}} --out /dev/null"
-		lppCmd            = "prover prove --phase=lpp --config {{.ConfFile}} --in {{.InFile}} --out /dev/null"
-		conglomerationCmd = "prover prove --phase=conglomeration --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}"
+		bootstrapCmd      = "GOMEMLIMIT=16GiB prover prove --phase=bootstrap --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}"
+		glCmd             = "GOMEMLIMIT=32GiB prover prove --phase=gl --config {{.ConfFile}} --in {{.InFile}} --out /dev/null"
+		lppCmd            = "GOMEMLIMIT=32GiB prover prove --phase=lpp --config {{.ConfFile}} --in {{.InFile}} --out /dev/null"
+		conglomerationCmd = "GOMEMLIMIT=64GiB prover prove --phase=conglomeration --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}"
 	)
 
 	viper.SetDefault("controller.prover_phase.bootstrap_cmd", bootstrapCmd)
@@ -77,7 +77,8 @@ func setDefaultExecLimitlessParams() {
 	viper.SetDefault("exec_limitless.witness_dir", "/shared/tmp/exec-limitless/witness")
 	viper.SetDefault("exec_limitless.subproofs_dir", "/shared/tmp/exec-limitless/subproofs")
 	viper.SetDefault("exec_limitless.shared_rnd_dir", "/shared/tmp/exec-limitless/commit")
-	viper.SetDefault("exec_limitless.timeout_seconds", 5400)
+	viper.SetDefault("exec_limitless.poll_interval_seconds", 60)
+	viper.SetDefault("exec_limitless.timeout_seconds", 2400)
 }
 
 func setDefaultDebugFlags() {

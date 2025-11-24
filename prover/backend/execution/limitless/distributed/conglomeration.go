@@ -99,7 +99,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 				proofGL = &distributed.SegmentProof{}
 			)
 
-			jobErr = files.WaitForFileAtPath(ctx, req.GLProofFiles[i], true, fmt.Sprintf("Waiting for GL proof %d", i))
+			jobErr = files.WaitForFileAtPath(ctx, req.GLProofFiles[i], time.Duration(cfg.ExecutionLimitless.PollInterval), true, fmt.Sprintf("Waiting for GL proof %d at path %s", i, req.GLProofFiles[i]))
 			if jobErr != nil {
 				logrus.Errorf("error waiting for GL proof %d: %s - Cancelling context", i, jobErr)
 				return jobErr
@@ -165,7 +165,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 				proofLPP = &distributed.SegmentProof{}
 			)
 
-			jobErr = files.WaitForFileAtPath(ctx, req.LPPProofFiles[i], true, fmt.Sprintf("Waiting for LPP proof %d", i))
+			jobErr = files.WaitForFileAtPath(ctx, req.LPPProofFiles[i], time.Duration(cfg.ExecutionLimitless.PollInterval), true, fmt.Sprintf("Waiting for LPP proof %d", i))
 			if jobErr != nil {
 				logrus.Errorf("error waiting for LPP proof %d: %s - Cancelling context", i, jobErr)
 				return jobErr

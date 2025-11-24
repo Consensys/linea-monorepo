@@ -305,7 +305,8 @@ type ExecutionLimitless struct {
 	SharedRandomnessDir string `mapstructure:"shared_rnd_dir"`
 	SharedFailureDir    string `mapstructure:"shared_failure_dir"`
 
-	Timeout int `mapstructure:"timeout_seconds" validate:"gt=0,number"`
+	PollInterval int `mapstructure:"poll_interval_seconds" validate:"gt=0,number"`
+	Timeout      int `mapstructure:"timeout_seconds" validate:"gt=0,number"`
 }
 
 type Execution struct {

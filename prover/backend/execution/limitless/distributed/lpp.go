@@ -102,7 +102,7 @@ func waitForSharedRandomnessFile(cfg *config.Config, req *LPPRequest) error {
 	defer cancel()
 
 	msg := fmt.Sprintf("Waiting for shared randomness file with configured timeout:%d sec", cfg.ExecutionLimitless.Timeout)
-	err := files.WaitForFileAtPath(ctx, req.SharedRandomnessFile, true, msg)
+	err := files.WaitForFileAtPath(ctx, req.SharedRandomnessFile, time.Duration(cfg.ExecutionLimitless.PollInterval), true, msg)
 	if err != nil {
 		return fmt.Errorf("error waiting for shared randomness file: %w", err)
 	}

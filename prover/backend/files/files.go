@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/fsnotify/fsnotify"
@@ -201,70 +202,95 @@ func RemoveMatchingFiles(pattern string, isLog bool) (bool, error) {
 	return true, nil
 }
 
-// WaitForFileAtPath waits until the given file exists or the context is done.
-// It returns nil on success, or ctx.Err() / watcher error otherwise.
-func WaitForFileAtPath(ctx context.Context, file string, reportMissing bool, msg string) error {
+// WaitForFileAtPath waits until file exists or context done.
+// Uses fsnotify when possible but falls back to polling every pollInterval.
+func WaitForFileAtPath(ctx context.Context, file string, pollInterval time.Duration, reportMissing bool, msg string) error {
 	logrus.Infoln(msg)
-
 	dir := filepath.Dir(file)
 
-	// Create watcher
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return fmt.Errorf("creating watcher: %w", err)
-	}
-	defer watcher.Close()
-
-	if err := watcher.Add(dir); err != nil {
-		return fmt.Errorf("adding watch on %s: %w", dir, err)
-	}
-
-	// Initial check
+	// Quick initial stat
 	if _, err := os.Stat(file); err == nil {
-		logrus.Infof("found: %s", file)
+		logrus.Infof("found: %s (initial stat)", file)
 		return nil
 	}
 
-	done := make(chan struct{})
+	// Try to create watcher; if it fails (most likely in K8s), we fall back to polling alone.
+	watcher, werr := fsnotify.NewWatcher()
+	if werr != nil {
+		logrus.Warnf("fsnotify.NewWatcher failed, falling back to polling: %v", werr)
+		watcher = nil
+	} else {
+		// only attempt Add if watcher created and dir exists
+		if err := watcher.Add(dir); err != nil {
+			logrus.Warnf("watcher.Add(%s) failed, falling back to polling: %v", dir, err)
+			watcher.Close()
+			watcher = nil
+		}
+	}
 
-	// Event loop
+	pollInterval = pollInterval * time.Second
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case event, ok := <-watcher.Events:
-				if !ok {
+			case <-ticker.C:
+				if _, err := os.Stat(file); err == nil {
+					logrus.Infof("found: %s (poll)", file)
 					return
 				}
-				if event.Has(fsnotify.Create) || event.Has(fsnotify.Write) {
-					if event.Name == file {
-						logrus.Infof("found: %s", event.Name)
-						return
+			default:
+				// give priority to watcher events if present
+				if watcher != nil {
+					select {
+					case event, ok := <-watcher.Events:
+						if !ok {
+							return
+						}
+						if (event.Op&fsnotify.Create != 0) || (event.Op&fsnotify.Write != 0) {
+							if event.Name == file {
+								logrus.Infof("found: %s (event)", event.Name)
+								return
+							}
+						}
+					case err, ok := <-watcher.Errors:
+						if !ok {
+							return
+						}
+						logrus.Errorf("watcher error: %v", err)
+					default:
+						// nothing now
+						time.Sleep(10 * time.Millisecond)
 					}
+				} else {
+					// no watcher -> only polling path (already handled by ticker)
+					time.Sleep(10 * time.Millisecond)
 				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				logrus.Errorf("watcher error: %v", err)
 			}
 		}
 	}()
 
 	<-done
 
-	// Success or context timeout?
 	if ctx.Err() != nil {
 		if reportMissing {
 			if _, err := os.Stat(file); err != nil {
 				logrus.Infof("missing file: %s", file)
 			}
 		}
+		if watcher != nil {
+			watcher.Close()
+		}
 		return ctx.Err()
 	}
 
+	if watcher != nil {
+		watcher.Close()
+	}
 	return nil
 }
 
