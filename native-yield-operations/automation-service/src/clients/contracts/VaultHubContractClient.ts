@@ -60,8 +60,9 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
       logs: txReceipt.logs,
     });
 
-    const etherWithdrawn = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.etherWithdrawn as bigint;
-    return etherWithdrawn ?? 0n;
+    const etherWithdrawn =
+      logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.etherWithdrawn ?? 0n;
+    return etherWithdrawn;
   }
 
   /**
@@ -79,7 +80,8 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
       logs: txReceipt.logs,
     });
 
-    const transferred = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.transferred as bigint;
-    return transferred ?? 0n;
+    const transferred =
+      logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.transferred ?? 0n;
+    return transferred;
   }
 }

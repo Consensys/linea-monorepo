@@ -22,6 +22,6 @@ export function getNodeOperatorFeesPaidFromTxReceipt(txReceipt: TransactionRecei
     logs: txReceipt.logs,
   });
 
-  const fee = logs.find((log) => log.address.toLowerCase() === dashboardAddress.toLowerCase())?.args.fee as bigint;
+  const fee = logs.find((log) => log.address.toLowerCase() === dashboardAddress.toLowerCase())?.args.fee ?? 0n;
   return fee ?? 0n;
 }
