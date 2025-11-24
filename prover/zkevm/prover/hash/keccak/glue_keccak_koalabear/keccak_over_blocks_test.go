@@ -20,7 +20,7 @@ import (
 const nbHashes = 10
 
 // makes Define and Prove function for testing [NewKeccakOverBlocks]
-func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
+func MakeTestCaseKeccakOverBlocks(t *testing.T, providers [][]byte) (
 	define wizard.DefineFunc,
 	prover wizard.MainProverStep,
 ) {
@@ -60,7 +60,7 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 		// check the hash result
 		permTrace := keccak.GenerateTrace(mod.Inputs.Provider)
 		// extract hash result from the module
-		actualHashes := mod.Outputs.ExtractHashResult(run)
+		actualHashes := mod.Outputs.GetDigests(run)
 		if len(actualHashes) != len(permTrace.HashOutPut) {
 			t.Fatalf("expected %d hashes, got %d", len(permTrace.HashOutPut), len(actualHashes))
 		}
@@ -74,7 +74,7 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 	return define, prover
 }
 
-func TestCustomizedKeccak(t *testing.T) {
+func TestKeccakOverBlocks(t *testing.T) {
 	var providers [][]byte
 	// generate 20 random slices of bytes
 	for i := 0; i < nbHashes; i++ {
@@ -85,7 +85,7 @@ func TestCustomizedKeccak(t *testing.T) {
 		providers = append(providers, slice)
 	}
 
-	definer, prover := MakeTestCaseCustomizedKeccak(t, providers)
+	definer, prover := MakeTestCaseKeccakOverBlocks(t, providers)
 	comp := wizard.Compile(definer, dummy.Compile)
 
 	proof := wizard.Prove(comp, prover)

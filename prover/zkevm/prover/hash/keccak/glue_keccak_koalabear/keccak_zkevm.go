@@ -1,5 +1,3 @@
-//go:build exclude
-
 // The keccak package accumulates the providers from different zkEVM modules,
 //
 //	and proves the hash consistency over the unified provider.
@@ -10,11 +8,13 @@ package keccak
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
 )
+
+const nbChunks = 8 // 16 bytes data are represented in 8 chunks of 2 bytes each.
 
 // ShakiraProverAction is a ProverAction for the SHAKIRA module, serializable for
 // KeccakZkEVM. It assigns the ManuallyShifted column.
@@ -125,14 +125,14 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP) (generic.GenericByteMod
 		Data: generic.GenDataModule{
 			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
 			Index:   comp.Columns.GetHandle("shakiradata.INDEX"),
-			Limbs:   []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
+			Limbs:   common.GetMultiHandle(comp, "shakiradata.LIMB", nbChunks),
 			NBytes:  comp.Columns.GetHandle("shakiradata.nBYTES"),
 			ToHash:  comp.Columns.GetHandle("shakiradata.IS_KECCAK_DATA"),
 		},
 		Info: generic.GenInfoModule{
 			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
-			HashLo:  []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
-			HashHi:  []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
+			HashLo:  common.GetMultiHandle(comp, "shakiradata.LIMB", nbChunks),
+			HashHi:  common.GetMultiHandle(comp, "shakiradata.LIMB", nbChunks),
 			// Before, we usse to pass column.Shift(IsHashHi, -1) but this does
 			// not work with the prover distribution as the column is used as
 			// a filter for a projection query.
@@ -151,14 +151,14 @@ func getRlpAddArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModul
 		Data: generic.GenDataModule{
 			HashNum: comp.Columns.GetHandle("rlpaddr.STAMP"),
 			Index:   comp.Columns.GetHandle("rlpaddr.INDEX"),
-			Limbs:   []ifaces.Column{comp.Columns.GetHandle("rlpaddr.LIMB")},
+			Limbs:   common.GetMultiHandle(comp, "rlpaddr.LIMB", nbChunks),
 			NBytes:  comp.Columns.GetHandle("rlpaddr.nBYTES"),
 			ToHash:  comp.Columns.GetHandle("rlpaddr.LC"),
 		},
 		Info: generic.GenInfoModule{
 			HashNum:  comp.Columns.GetHandle("rlpaddr.STAMP"),
-			HashLo:   []ifaces.Column{comp.Columns.GetHandle("rlpaddr.DEP_ADDR_LO")},
-			HashHi:   []ifaces.Column{comp.Columns.GetHandle("rlpaddr.RAW_ADDR_HI")},
+			HashLo:   common.GetMultiHandle(comp, "rlpaddr.DEP_ADDR_LO", nbChunks),
+			HashHi:   common.GetMultiHandle(comp, "rlpaddr.RAW_ADDR_HI", nbChunks),
 			IsHashLo: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),
 			IsHashHi: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),
 		},
