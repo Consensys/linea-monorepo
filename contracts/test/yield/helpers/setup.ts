@@ -21,7 +21,6 @@ import {
   ONE_ETHER,
   ONE_GWEI,
   VALIDATOR_WITNESS_TYPE,
-  ZERO_VALUE,
 } from "../../common/constants";
 import { ClaimMessageWithProofParams } from "./types";
 import { generateLidoUnstakePermissionlessWitness, randomBytes32 } from "./proof";
@@ -135,7 +134,8 @@ export const setupLineaRollupMessageMerkleTree = async (
   data: string,
   securityCouncil: SignerWithAddress,
 ): Promise<ClaimMessageWithProofParams> => {
-  const messageNumber = await lineaRollup.nextMessageNumber();
+  // Generate random L2 message number (not correlated with L1's nextMessageNumber)
+  const messageNumber = ethers.toBigInt(ethers.randomBytes(32));
   const expectedBytes = await encodeSendMessage(from, to, 0n, value, messageNumber, data);
 
   const messageHash = ethers.keccak256(expectedBytes);
@@ -156,9 +156,6 @@ export const setupLineaRollupMessageMerkleTree = async (
     merkleRoot: root,
     data: data,
   };
-
-  // Send empty message to increment the messageNumber
-  await lineaRollup.sendMessage(ethers.Wallet.createRandom().address, ZERO_VALUE, EMPTY_CALLDATA);
 
   return claimParams;
 };
