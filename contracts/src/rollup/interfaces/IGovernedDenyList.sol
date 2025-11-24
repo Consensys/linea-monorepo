@@ -7,7 +7,6 @@ pragma solidity ^0.8.30;
  * @custom:security-contact security-report@linea.build
  */
 interface IGovernedDenyList {
-
   event DeniedStatusesSet(address[] deniedAddresses, bool isDenied);
 
   /**

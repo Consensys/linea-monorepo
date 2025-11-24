@@ -6,7 +6,7 @@ import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTrans
 import transactionWithCalldataAndAccessList from "../../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
 import transactionWithCalldata from "../../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
 import l2SendMessageTransaction from "../../_testData/eip1559RlpEncoderTransactions/l2SendMessage.json";
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 
 import {
   getAccountsFixture,
@@ -36,9 +36,8 @@ import {
 } from "../../common/constants";
 import { toBeHex, zeroPadValue } from "ethers";
 import { expect } from "chai";
-import { deployFromFactory } from "../../common/deployment";
 
-describe.only("Linea Rollup contract: Forced Transactions", () => {
+describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
   let governedDenyList: GovernedDenyList;
   let forcedTransactionGateway: ForcedTransactionGateway;
@@ -57,15 +56,18 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
   };
 
   before(async () => {
-  
     ({ nonAuthorizedAccount, securityCouncil } = await loadFixture(getAccountsFixture));
   });
 
   beforeEach(async () => {
-
-    ({ lineaRollup, forcedTransactionGateway, governedDenyList, mimc: mimcLibrary } = await loadFixture(deployForcedTransactionGatewayFixture));
+    ({
+      lineaRollup,
+      forcedTransactionGateway,
+      governedDenyList,
+      mimc: mimcLibrary,
+    } = await loadFixture(deployForcedTransactionGatewayFixture));
     mimcLibraryAddress = await mimcLibrary.getAddress();
-    
+
     await lineaRollup
       .connect(securityCouncil)
       .grantRole(FORCED_TRANSACTION_SENDER_ROLE, await forcedTransactionGateway.getAddress());
@@ -98,7 +100,7 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
-          await governedDenyList.getAddress()
+          await governedDenyList.getAddress(),
         ),
         "ZeroAddressNotAllowed",
       );
@@ -118,7 +120,7 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
-          await governedDenyList.getAddress()
+          await governedDenyList.getAddress(),
         ),
         "ZeroValueNotAllowed",
       );
@@ -138,7 +140,7 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
-          await governedDenyList.getAddress()
+          await governedDenyList.getAddress(),
         ),
         "ZeroValueNotAllowed",
       );
@@ -158,7 +160,7 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
           0,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
-          await governedDenyList.getAddress()
+          await governedDenyList.getAddress(),
         ),
         "ZeroValueNotAllowed",
       );
@@ -178,7 +180,7 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
           MAX_GAS_LIMIT,
           0,
           securityCouncil.address,
-          await governedDenyList.getAddress()
+          await governedDenyList.getAddress(),
         ),
         "ZeroValueNotAllowed",
       );
@@ -198,7 +200,7 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           ADDRESS_ZERO,
-          await governedDenyList.getAddress()
+          await governedDenyList.getAddress(),
         ),
         "ZeroAddressNotAllowed",
       );
@@ -435,8 +437,6 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
     });
 
     it("Should emit the ForcedTransactionAdded event on adding a transaction", async () => {
-
-      console.log("val", await governedDenyList.addressIsDenied(securityCouncil.address));
       // use a way future dated timestamp and mimc the calculation for the block number
       const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
         lineaRollup,
@@ -532,6 +532,36 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
       );
 
       expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).greaterThan(0);
+    });
+
+    it("Fails to add the transaction due with `to` on the denied list.", async () => {
+      expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).equal(0);
+
+      await governedDenyList
+        .connect(securityCouncil)
+        .setAddressesDeniedStatus([l2SendMessageTransaction.result.to], true);
+
+      const asyncCall = forcedTransactionGateway.submitForcedTransaction(
+        buildEip1559Transaction(l2SendMessageTransaction.result),
+        defaultFinalizedState,
+      );
+
+      await expectRevertWithCustomError(forcedTransactionGateway, asyncCall, "AddressIsDenied");
+    });
+
+    it("Fails to add the transaction due with `from` on the denied list.", async () => {
+      expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).equal(0);
+
+      await governedDenyList
+        .connect(securityCouncil)
+        .setAddressesDeniedStatus([l2SendMessageTransaction.result.from], true);
+
+      const asyncCall = forcedTransactionGateway.submitForcedTransaction(
+        buildEip1559Transaction(l2SendMessageTransaction.result),
+        defaultFinalizedState,
+      );
+
+      await expectRevertWithCustomError(forcedTransactionGateway, asyncCall, "AddressIsDenied");
     });
 
     it("Updates the forcedTransactionRollingHashes on the Linea Rollup", async () => {
