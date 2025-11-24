@@ -95,7 +95,7 @@ func TestAssignInsert(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, valueToLimbs(16, 0), getLimbsFromRow(builder.leaves[:], 2))
+	assert.Equal(t, valueToLimbs(8, 0), getLimbsFromRow(builder.leaves[:], 2))
 	assert.Equal(t, getLimbsFromRow(builder.roots[:], 1), getLimbsFromRow(builder.roots[:], 2))
 	assert.Equal(t, getLimbsFromRow(builder.roots[:], 3), getLimbsFromRow(builder.roots[:], 4))
 	assert.Equal(t, getLimbsFromRow(builder.positions[:], 0), getLimbsFromRow(builder.positions[:], 1))
@@ -103,7 +103,7 @@ func TestAssignInsert(t *testing.T) {
 	assert.Equal(t, getLimbsFromRow(builder.positions[:], 4), getLimbsFromRow(builder.positions[:], 5))
 
 	// assertCorrectMerkleProof(t, builder)
-	// // Verify the Merkle proofs along with the reuse in the wizard
+	// Verify the Merkle proofs along with the reuse in the wizard
 	// assertCorrectMerkleProofsUsingWizard(t, builder)
 }
 

@@ -513,7 +513,9 @@ func (a *assignmentBuilder) pushRow(
 }
 
 func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isEmptyLeaf bool) {
-	var zeroBlock field.Octuplet
+	var (
+		zeroBlock field.Octuplet
+	)
 	if !isEmptyLeaf {
 		prevFrBytes := uint64To64Bytes(uint64(leafOpening.Prev))
 		prevFrLimbs := divideFieldBytesToFieldLimbs(prevFrBytes, hashU64)
@@ -552,8 +554,10 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		isEmpty := field.Zero()
 		a.isEmptyLeaf = append(a.isEmptyLeaf, isEmpty)
 	} else {
-		intermZeroLimbs := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
-		intermOneLimbs := vortex.CompressPoseidon2(intermZeroLimbs, zeroBlock)
+		intermZeroLimbs_ := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
+		intermZeroLimbs := vortex.CompressPoseidon2(intermZeroLimbs_, zeroBlock)
+		intermOneLimbs_ := vortex.CompressPoseidon2(intermZeroLimbs, zeroBlock)
+		intermOneLimbs := vortex.CompressPoseidon2(intermOneLimbs_, zeroBlock)
 		intermTwoLimbs := vortex.CompressPoseidon2(intermOneLimbs, zeroBlock)
 		leafHashesLimbs := vortex.CompressPoseidon2(intermTwoLimbs, zeroBlock)
 
