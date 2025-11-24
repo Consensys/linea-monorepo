@@ -32,6 +32,8 @@ const createValidEnv = () => ({
   WEB3SIGNER_TLS_ENABLED: "true",
   API_PORT: "3000",
   SHOULD_SUBMIT_VAULT_REPORT: "true",
+  YIELD_REPORT_POSITIVE_YIELD_THRESHOLD_WEI: "1000000000000000000",
+  YIELD_REPORT_LIDO_PROTOCOL_FEE_THRESHOLD_WEI: "500000000000000000",
 });
 
 describe("configSchema", () => {
@@ -46,6 +48,8 @@ describe("configSchema", () => {
     expect(parsed.MIN_WITHDRAWAL_THRESHOLD_ETH).toBe(42n);
     expect(parsed.WEB3SIGNER_TLS_ENABLED).toBe(true);
     expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(true);
+    expect(parsed.YIELD_REPORT_POSITIVE_YIELD_THRESHOLD_WEI).toBe(1000000000000000000n);
+    expect(parsed.YIELD_REPORT_LIDO_PROTOCOL_FEE_THRESHOLD_WEI).toBe(500000000000000000n);
     expect(parsed.LINEA_ROLLUP_ADDRESS).toBe(getAddress(env.LINEA_ROLLUP_ADDRESS));
     expect(parsed.LAZY_ORACLE_ADDRESS).toBe(getAddress(env.LAZY_ORACLE_ADDRESS));
     expect(parsed.VAULT_HUB_ADDRESS).toBe(getAddress(env.VAULT_HUB_ADDRESS));
