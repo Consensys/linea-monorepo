@@ -107,6 +107,13 @@ jobs:
       zkevm_fork: PRAGUE
       tests-with-ssh: false
 
+  unit-tests-osaka:
+    needs: [ build ]
+    uses: ./.github/workflows/reusable-unit-tests.yml
+    with:
+      zkevm_fork: OSAKA
+      tests-with-ssh: false
+
   # ==================================================================
   # Fast Replay Tests
   # ==================================================================
