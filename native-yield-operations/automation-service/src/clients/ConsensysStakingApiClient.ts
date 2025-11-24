@@ -81,6 +81,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
         publicKey: v.publicKey,
         validatorIndex: v.validatorIndex,
         pendingWithdrawalAmount: pendingAmount,
+        // N.B We expect amounts from GraphQL API and Beacon Chain RPC URL to be in gwei units, not wei.
         withdrawableAmount: safeSub(safeSub(v.balance, pendingAmount), ONE_GWEI * 32n),
       };
     });
