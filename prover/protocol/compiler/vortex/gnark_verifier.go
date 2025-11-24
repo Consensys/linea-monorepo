@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	crypto_vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
@@ -89,56 +88,24 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
-	// function that will defer the hashing to gkr
-	makePoseidon2Hasherfunc := func(_ frontend.API) (poseidon2_bls12377.GnarkMDHasher, error) {
-		// factory := vr.GetHasherFactory()
-		// if factory != nil {
-		// 	h := vr.GetHasherFactory().NewHasher() //TODO@yao: here the hasher facroty should be able to create poseidon2_bls12377.GnarkMDHasher to be consistent with the hasher
-		// 	return h, nil
-		// }
-		h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
-		return h, err
-	}
-
 	packedMProofs := [encoding.GnarkKoalabearNumElements][]zk.WrappedVariable{}
 	for i := range packedMProofs {
 		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
 	}
-	proof.MerkleProofs = ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
+	merkleProofs := ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
 
-	// pass the parameters for a merkle-mode sis verification
-	params := crypto_vortex.Params{}
-	// params.HasherFunc = makePoseidon2Hasherfunc
-	// params.NoSisHasher = makePoseidon2Hasherfunc
-	// params.Key = ctx.VortexKoalaParams.Key
-
-	logTwoDegree := 9
-	logTwoBound := 16
-
-	params = vortex_bls12377.NewParams(
-		rate,
-		polySize,
-		nbPolys*nCommitments,
-		logTwoDegree,
-		logTwoBound)
-
-	err := crypto_vortex.GnarkVerify(api, params, c.Proof, c.Vi, []frontend.Variable{})
-	if err != nil {
-		return err
+	Vi := crypto_vortex.GnarkVerifierInput{}
+	Vi.Alpha = randomCoin
+	Vi.X = x
+	for i := 0; i < len(entryList); i++ {
+		Vi.EntryList[i] = entryList[i].AsNative()
 	}
-	vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, c.Proof.Columns, c.MerkleProofs, c.Roots)
 
-	//todo@yao:replace below with above
-	vortex_bls12377.GnarkVerifyOpeningWithMerkleProof(
-		api,
-		params,
-		roots,
-		proof,
-		x,
-		ctx.gnarkGetYs(api, vr),
-		randomCoin,
-		entryList,
-	)
+	Vi.Ys = ctx.gnarkGetYs(api, vr)
+
+	crypto_vortex.GnarkVerify(api, ctx.VortexKoalaParams.Params, proof, Vi, roots)
+
+	vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, merkleProofs, roots)
 
 }
 

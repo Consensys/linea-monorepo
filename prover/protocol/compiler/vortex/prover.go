@@ -204,6 +204,7 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
+
 	proof.LinearCombination = ctx.VortexKoalaParams.InitOpeningWithLC(committedSV, randomCoinLC)
 	fmt.Printf("proof.LinearCombination:%v\n", proof.LinearCombination.Pretty())
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
@@ -604,11 +605,11 @@ func (ctx *Ctx) unpackGnarkMerkleProofs(sv [encoding.GnarkKoalabearNumElements]s
 			// parse the siblings accounting for the fact that we
 			// are inversing the order.
 			for k := range proof.Siblings {
-				var v [vortex_bls12377.GnarkKoalabearNumElements]field.Element
+				var v [encoding.GnarkKoalabearNumElements]field.Element
 				for coord := 0; coord < len(v); coord++ {
 					v[coord] = sv[coord].Get(curr)
 				}
-				proof.Siblings[depth-k-1] = vortex_bls12377.DecodeKoalabearToBLS12377(v)
+				proof.Siblings[depth-k-1] = encoding.DecodeKoalabearToBLS12377(v)
 				curr++
 			}
 
