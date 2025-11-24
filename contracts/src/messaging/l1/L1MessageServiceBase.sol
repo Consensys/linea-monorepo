@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.30;
 
-import { LineaRollupPauseManager } from "../../../security/pausing/LineaRollupPauseManager.sol";
-import { RateLimiter } from "../../../security/limiting/RateLimiter.sol";
-import { L1MessageManagerV1 } from "./L1MessageManagerV1.sol";
-import { TransientStorageReentrancyGuardUpgradeable } from "../../../security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol";
-import { IMessageService } from "../../interfaces/IMessageService.sol";
-import { MessageHashing } from "../../libraries/MessageHashing.sol";
+import { LineaRollupPauseManager } from "../../security/pausing/LineaRollupPauseManager.sol";
+import { RateLimiter } from "../../security/limiting/RateLimiter.sol";
+import { L1MessageManagerV1 } from "./v1/L1MessageManagerV1.sol";
+import { TransientStorageReentrancyGuardUpgradeable } from "../../security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol";
+import { IMessageService } from "../interfaces/IMessageService.sol";
+import { MessageHashing } from "../libraries/MessageHashing.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract L1MessageServiceV1 is
+abstract contract L1MessageServiceBase is
   RateLimiter,
   L1MessageManagerV1,
   TransientStorageReentrancyGuardUpgradeable,
