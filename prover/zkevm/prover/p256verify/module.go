@@ -11,7 +11,7 @@ import (
 
 const (
 	NAME_P256_VERIFY = "P256_VERIFY"
-	moduleName       = "ECDATA"
+	moduleName       = "ecdata"
 	ROUND_NR         = 0
 )
 
@@ -34,8 +34,8 @@ func newP256VerifyDataSource(comp *wizard.CompiledIOP) *p256VerifyDataSource {
 		CS:       comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_P256_VERIFY")),
 		Limb:     comp.Columns.GetHandle(colNameFn("LIMB")),
 		Index:    comp.Columns.GetHandle(colNameFn("INDEX")),
-		IsData:   comp.Columns.GetHandle(colNameFn("DATA_P256_VERIFY_FLAG")),
-		IsResult: comp.Columns.GetHandle(colNameFn("RSLT_P256_VERIFY_FLAG")),
+		IsData:   comp.Columns.GetHandle(colNameFn("IS_P256_VERIFY_DATA")),
+		IsResult: comp.Columns.GetHandle(colNameFn("IS_P256_VERIFY_RESULT")),
 	}
 }
 
