@@ -200,6 +200,8 @@ func setDefaultTracesLimit() {
 	viper.SetDefault("traces_limits.BYTE_128", 131072)
 	viper.SetDefault("traces_limits.BYTE_256", 131072)
 	viper.SetDefault("traces_limits.SIGNEXTEND", 131072)
+	viper.SetDefault("traces_limits.MAX3_U128", 131072)
+	viper.SetDefault("traces_limits.MAXLOG", 131072)
 	// End of new modules for Osaka
 	viper.SetDefault("traces_limits.PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS", 0)
 	viper.SetDefault("traces_limits.PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS", 0)
@@ -366,6 +368,8 @@ func setDefaultTracesLimit() {
 	viper.SetDefault("traces_limits_large.BYTE_128", 262144)
 	viper.SetDefault("traces_limits_large.BYTE_256", 262144)
 	viper.SetDefault("traces_limits_large.SIGNEXTEND", 262144)
+	viper.SetDefault("traces_limits_large.MAX3_U128", 262144)
+	viper.SetDefault("traces_limits_large.MAXLOG", 262144)
 	// End of new modules for Osaka
 	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS", 0)
 	viper.SetDefault("traces_limits_large.PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS", 0)

@@ -140,6 +140,8 @@ type TracesLimits struct {
 	BYTE_128      int `mapstructure:"BYTE_128" validate:"power_of_2" corset:"byte128"`
 	BYTE_256      int `mapstructure:"BYTE_256" validate:"power_of_2" corset:"byte256"`
 	SIGNEXTEND    int `mapstructure:"SIGNEXTEND" validate:"power_of_2" corset:"signextend"`
+	MAX3_U128     int `mapstructure:"MAX3_U128" validate:"power_of_2" corset:"max3_u128"`
+	MAXLOG        int `mapstructure:"MAXLOG" validate:"power_of_2" corset:"maxlog"`
 	// End of new modules for Osaka
 
 	// reference tables
@@ -345,6 +347,8 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.BYTE_128 *= by
 	tl.BYTE_256 *= by
 	tl.SIGNEXTEND *= by
+	tl.MAX3_U128 *= by
+	tl.MAXLOG *= by
 	// End of new modules for Osaka
 	// beta v4.0
 	tl.PrecompileBlsPointEvaluationEffectiveCalls *= by
@@ -517,6 +521,8 @@ func GetTestTracesLimits() *TracesLimits {
 		BYTE_128:      131072,
 		BYTE_256:      131072,
 		SIGNEXTEND:    131072,
+		MAX3_U128:     131072,
+		MAXLOG:        131072,
 		// End of new modules for Osaka
 
 		// beta v4.0
