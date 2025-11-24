@@ -25,7 +25,7 @@ type ChainIDFetcher struct {
 	NBytesChainID ifaces.Column // a column used to fetch the number of bytes of the ChainID limb data
 }
 
-// NewTimestampFetcher returns a new TimestampFetcher with initialized columns that are not constrained.
+// NewChainIDFetcher returns a new ChainIDFetcher with initialized columns that are not constrained.
 func NewChainIDFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.BlockDataCols) ChainIDFetcher {
 	size := bdc.Ct.Size()
 	res := ChainIDFetcher{
@@ -36,16 +36,19 @@ func NewChainIDFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.BlockDa
 	return res
 }
 
-// DefineTimestampFetcher specifies the constraints of the TimestampFetcher with respect to the BlockDataCols
+// DefineChainIDFetcher specifies the constraints of the ChainIDFetcher with respect to the BlockDataCols
 func DefineChainIDFetcher(comp *wizard.CompiledIOP, fetcher *ChainIDFetcher, name string, bdc *arith.BlockDataCols) {
-	// constrain fetcher ChainID to contain the value of the last block's chainID
-	// we only populate the first entry of the ChainID column
+	// Constrain fetcher ChainID to equal the last block's chainID from BlockDataCols.
+	// Both sides are shifted by ChainIDOffset=-3 to maintain consistent negative offsets,
+	// which is required by the distributed module's limitless feature. The constraint
+	// ChainID[-3] == DataLo[-3] is enforced, and ChainID must be constant (see below),
+	// ensuring the chain ID value is consistent across all positions.
 	comp.InsertLocal(
 		0,
 		ifaces.QueryIDf("%s_%s", name, "LAST_LOCAL"),
 		sym.Sub(
-			fetcher.ChainID,                         // first position of the ChainID column
-			column.Shift(bdc.DataLo, ChainIDOffset), // corresponding position in the arithmetization's BlockDataCols
+			column.Shift(fetcher.ChainID, ChainIDOffset), // ChainID at offset -3
+			column.Shift(bdc.DataLo, ChainIDOffset),      // DataLo at offset -3 (last block's chain ID)
 		),
 	)
 
@@ -59,11 +62,12 @@ func DefineChainIDFetcher(comp *wizard.CompiledIOP, fetcher *ChainIDFetcher, nam
 		),
 	)
 
-	// require this to be a constant column
+	// require both ChainID and NBytesChainID to be constant columns.
+	commonconstraints.MustBeConstant(comp, fetcher.ChainID)
 	commonconstraints.MustBeConstant(comp, fetcher.NBytesChainID)
 }
 
-// AssignTimestampFetcher assigns the data in the TimestampFetcher using data fetched from the BlockDataCols
+// AssignChainIDFetcher assigns the data in the ChainIDFetcher using data fetched from the BlockDataCols
 func AssignChainIDFetcher(run *wizard.ProverRuntime, fetcher *ChainIDFetcher, bdc *arith.BlockDataCols) {
 	size := bdc.Ct.Size()
 	var (
