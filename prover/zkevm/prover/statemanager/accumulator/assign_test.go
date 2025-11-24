@@ -154,7 +154,7 @@ func TestAssignDelete(t *testing.T) {
 	traceDelete := acc.DeleteAndProve(types.FullBytes32FromHex("0x32"))
 	pushDeletionRows(builder, traceDelete)
 
-	assert.Equal(t, valueToLimbs(16, 0), getLimbsFromRow(builder.leaves[:], 3))
+	assert.Equal(t, valueToLimbs(8, 0), getLimbsFromRow(builder.leaves[:], 3))
 	assert.Equal(t, getLimbsFromRow(builder.roots[:], 1), getLimbsFromRow(builder.roots[:], 2))
 	assert.Equal(t, getLimbsFromRow(builder.roots[:], 3), getLimbsFromRow(builder.roots[:], 4))
 	assert.Equal(t, vector.ForTest(1, 0, 0, 0, 0, 0), builder.isFirst)
