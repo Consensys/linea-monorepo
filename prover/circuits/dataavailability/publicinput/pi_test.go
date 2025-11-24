@@ -36,8 +36,8 @@ import (
 const (
 	msbNbBits            = (fr381.Bits - 1) % 8
 	msbMask              = 1<<msbNbBits - 1
-	testDataDir          = "../../../../contracts/test/testData/compressedDataEip4844"
-	testDataNoEip4844Dir = "../../../../contracts/test/testData/compressedData"
+	testDataDir          = "../../../../contracts/test/hardhat/_testData/compressedDataEip4844"
+	testDataNoEip4844Dir = "../../../../contracts/test/hardhat/_testData/compressedData"
 )
 
 func createRandomBlobElems(n int) [][]byte {
@@ -202,7 +202,8 @@ func decodeHexHL(t *testing.T, s string) (r [2]frontend.Variable) {
 
 	scalars, err := internal.Bls12381ScalarToBls12377Scalars(b)
 	assert.NoError(t, err)
-	utils.Copy(r[:], scalars[:])
+	r[0] = scalars[0][:]
+	r[1] = scalars[1][:]
 
 	return
 }
