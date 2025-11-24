@@ -6,8 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	keccakfkoalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/iokeccakf"
+	keccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf/iokeccakf"
 )
 
 // KeccakOverBlockInputs stores the inputs required for [NewKeccakOverBlocks]
@@ -23,7 +23,7 @@ type KeccakOverBlocks struct {
 	Inputs  KeccakOverBlockInputs
 	Blocks  *iokeccakf.KeccakFBlocks
 	Outputs *iokeccakf.KeccakFOutputs
-	KeccakF *keccakfkoalabear.Module
+	KeccakF *keccakf.Module
 }
 
 // NewKeccakOverBlocks implements the utilities for proving keccak hash over the given blocks.
@@ -35,7 +35,7 @@ func NewKeccakOverBlocks(comp *wizard.CompiledIOP, inp KeccakOverBlockInputs) *K
 		blocks = iokeccakf.NewKeccakFBlocks(comp, inp.LaneInfo, inp.KeccakfSize)
 
 		// run keccakF
-		keccakf = keccakfkoalabear.NewModule(comp, keccakfkoalabear.KeccakfInputs{
+		keccakf = keccakf.NewModule(comp, keccakf.KeccakfInputs{
 			Blocks:       blocks.Blocks,
 			IsBlock:      blocks.IsBlock,
 			IsFirstBlock: blocks.IsFirstBlock,

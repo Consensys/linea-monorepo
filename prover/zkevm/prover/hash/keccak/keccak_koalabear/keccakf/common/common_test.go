@@ -1,10 +1,9 @@
-package common_test
+package common
 
 import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
 func TestDecomposeUint32(t *testing.T) {
@@ -12,7 +11,7 @@ func TestDecomposeUint32(t *testing.T) {
 	const nb = 2
 	n := uint64(15972)            // 11^4+11^3
 	expected := []uint64{1331, 1} // precomputed expected result
-	result := common.DecomposeU64(n, base, nb)
+	result := DecomposeU64(n, base, nb)
 	if len(result) != nb {
 		t.Fatalf("expected %v limbs, but got %v", nb, len(result))
 	}
@@ -31,7 +30,7 @@ func TestCleanBaseChi(t *testing.T) {
 	for _, v := range n {
 		nField = append(nField, field.NewElement(v))
 	}
-	cleaned := common.CleanBaseChi(nField)
+	cleaned := CleanBaseChi(nField)
 
 	for i := 0; i < len(expected); i++ {
 		if cleaned[i].Uint64() != expected[i] {

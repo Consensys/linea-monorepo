@@ -9,8 +9,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
-	keccakfkoalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/iokeccakf"
+	keccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf/iokeccakf"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 )
 
@@ -75,7 +75,7 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 				IsLaneActive:         packing.Repacked.IsLaneActive,
 			},
 
-			KeccakfSize: keccakfkoalabear.NumRows(maxNumKeccakF),
+			KeccakfSize: keccakf.NumRows(maxNumKeccakF),
 		}
 
 		cKeccak = NewKeccakOverBlocks(comp, cKeccakInp)
