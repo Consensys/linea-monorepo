@@ -27,6 +27,10 @@ const (
 	NbElemPerHash = 8
 	// NbElemForHasingU64 represents the number of field elements per 64-bit integers.
 	NbElemForHasingU64 = 16
+	// NbBytesForEncodingU64 represents the number of bytes for encoding a 64-bit integer.
+	NbBytesForEncodingU64 = 64
+	// NbBytesForEncodingFieldHash represents the number of bytes for encoding a field hash.
+	NbBytesForEncodingFieldHash = 32
 )
 
 // FlattenColumn flattens multiple limb columns and an accompanying mask into single columns,

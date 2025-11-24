@@ -27,6 +27,15 @@ type leafOpenings struct {
 	hVal [common.NbElemPerHash][]field.Element
 }
 
+type hashType int
+
+const (
+	// denote the hashtype for hashing u64 values
+	hashU64 hashType = iota
+	// denote the hashtype for hashing field hashes
+	hashFieldElements
+)
+
 // assignmentBuilder is used to build the assignment of the [Module] module
 // and is implemented like a writer.
 type assignmentBuilder struct {
@@ -376,38 +385,33 @@ func (a *assignmentBuilder) pushRow(
 ) {
 	// Populates leaves, leafHashes, and isEmptyLeaf from leafOpening by Posseidon2 block compression
 	a.computeLeaf(leafOpening, isEmptyLeaf)
-	var rootFr field.Element
-	if err := rootFr.SetBytesCanonical(root[:]); err != nil {
-		panic(err)
-	}
 
-	rootFrLimbs := divideFieldBytesToFieldLimbs(root[:])
+	rootFrLimbs := divideFieldBytesToFieldLimbs(root[:], hashFieldElements)
 	for i, limb := range rootFrLimbs {
 		a.roots[i] = append(a.roots[i], limb)
 	}
 
 	// Insert Row 3 operations
 	isInsRow3 := field.Zero()
-	insPath := field.Zero()
+	insPath := uint64(0)
 	if isInsertRow3 {
 		isInsRow3 = field.One()
-		insPath = field.NewElement(uint64(proof.Path))
+		insPath = uint64(proof.Path)
 	}
 
-	insPathBytes := insPath.Bytes()
-	insPathLimbs := divideFieldBytesToFieldLimbs(insPathBytes[:])
-
+	insPathBytes := uint64To64Bytes(insPath)
+	insPathLimbs := divideFieldBytesToFieldLimbs(insPathBytes[:], hashU64)
 	a.isInsertRow3 = append(a.isInsertRow3, isInsRow3)
 
 	// accumulatorCounter will increment when a new row is pushed
-	accumulatorCounterBytes := uint64ToBytes(uint64(len(a.accumulatorCounter[0])))
-	accumulatorCounterLimbs := divideFieldBytesToFieldLimbs(accumulatorCounterBytes)
+	accumulatorCounterBytes := uint64To64Bytes(uint64(len(a.accumulatorCounter[0])))
+	accumulatorCounterLimbs := divideFieldBytesToFieldLimbs(accumulatorCounterBytes, hashU64)
 
-	posBytes := uint64ToBytes(uint64(proof.Path))
-	posLimbs := divideFieldBytesToFieldLimbs(posBytes)
+	posBytes := uint64To64Bytes(uint64(proof.Path))
+	posLimbs := divideFieldBytesToFieldLimbs(posBytes, hashU64)
 
-	nextFreeNodeFrBytes := uint64ToBytes(uint64(nextFreeNode))
-	nextFreeNodeFrLimbs := divideFieldBytesToFieldLimbs(nextFreeNodeFrBytes)
+	nextFreeNodeFrBytes := uint64To64Bytes(uint64(nextFreeNode))
+	nextFreeNodeFrLimbs := divideFieldBytesToFieldLimbs(nextFreeNodeFrBytes, hashU64)
 
 	for i, posLimb := range posLimbs {
 		a.positions[i] = append(a.positions[i], posLimb)
@@ -511,14 +515,14 @@ func (a *assignmentBuilder) pushRow(
 func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isEmptyLeaf bool) {
 	var zeroBlock field.Octuplet
 	if !isEmptyLeaf {
-		prevFrBytes := uint64ToBytes(uint64(leafOpening.Prev))
-		prevFrLimbs := divideFieldBytesToFieldLimbs(prevFrBytes)
+		prevFrBytes := uint64To64Bytes(uint64(leafOpening.Prev))
+		prevFrLimbs := divideFieldBytesToFieldLimbs(prevFrBytes, hashU64)
 
-		nextFrBytes := uint64ToBytes(uint64(leafOpening.Next))
-		nextFrLimbs := divideFieldBytesToFieldLimbs(nextFrBytes)
+		nextFrBytes := uint64To64Bytes(uint64(leafOpening.Next))
+		nextFrLimbs := divideFieldBytesToFieldLimbs(nextFrBytes, hashU64)
 
-		hKeyFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HKey[:])
-		hValFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HVal[:])
+		hKeyFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HKey[:], hashFieldElements)
+		hValFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HVal[:], hashFieldElements)
 
 		intermZeroLimbs := vortex.CompressPoseidon2(zeroBlock, vortex.Hash(prevFrLimbs))
 		intermOneLimbs := vortex.CompressPoseidon2(intermZeroLimbs, vortex.Hash(nextFrLimbs))
@@ -663,9 +667,9 @@ func pushInsertionRows[K, V io.WriterTo](
 	// Sandwitch assignment for row 1
 	hKey := hash(trace.Key)
 
-	hKeyFrLimbs := divideFieldBytesToFieldLimbs(hKey[:])
-	hKeyMinusFrLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenMinus.HKey[:])
-	hKeyPlusFrLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenPlus.HKey[:])
+	hKeyFrLimbs := divideFieldBytesToFieldLimbs(hKey[:], hashFieldElements)
+	hKeyMinusFrLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenMinus.HKey[:], hashFieldElements)
+	hKeyPlusFrLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenPlus.HKey[:], hashFieldElements)
 
 	for i := range a.hKey {
 		a.hKey[i] = append(a.hKey[i], hKeyFrLimbs[i])
@@ -674,17 +678,17 @@ func pushInsertionRows[K, V io.WriterTo](
 	}
 
 	// Pointer assignment for row 1
-	leafMinusNextBytes := uint64ToBytes(uint64(trace.OldOpenMinus.Next))
-	leafMinusNextLimbs := divideFieldBytesToFieldLimbs(leafMinusNextBytes)
+	leafMinusNextBytes := uint64To64Bytes(uint64(trace.OldOpenMinus.Next))
+	leafMinusNextLimbs := divideFieldBytesToFieldLimbs(leafMinusNextBytes, hashU64)
 
-	leafMinusIndexBytes := uint64ToBytes(uint64(trace.ProofMinus.Path))
-	leafMinusIndexLimbs := divideFieldBytesToFieldLimbs(leafMinusIndexBytes)
+	leafMinusIndexBytes := uint64To64Bytes(uint64(trace.ProofMinus.Path))
+	leafMinusIndexLimbs := divideFieldBytesToFieldLimbs(leafMinusIndexBytes, hashU64)
 
-	leafPlusIndexBytes := uint64ToBytes(uint64(trace.ProofPlus.Path))
-	leafPlusIndexLimbs := divideFieldBytesToFieldLimbs(leafPlusIndexBytes)
+	leafPlusIndexBytes := uint64To64Bytes(uint64(trace.ProofPlus.Path))
+	leafPlusIndexLimbs := divideFieldBytesToFieldLimbs(leafPlusIndexBytes, hashU64)
 
-	leafPlusPrevBytes := uint64ToBytes(uint64(trace.OldOpenPlus.Prev))
-	leafPlusPrevLimbs := divideFieldBytesToFieldLimbs(leafPlusPrevBytes)
+	leafPlusPrevBytes := uint64To64Bytes(uint64(trace.OldOpenPlus.Prev))
+	leafPlusPrevLimbs := divideFieldBytesToFieldLimbs(leafPlusPrevBytes, hashU64)
 
 	for i := range leafMinusNextLimbs {
 		a.leafMinusNext[i] = append(a.leafMinusNext[i], leafMinusNextLimbs[i])
@@ -852,26 +856,26 @@ func pushDeletionRows[K, V io.WriterTo](
 	)
 	// Pointer assignment for row 1
 
-	leafMinusNextBytes := uint64ToBytes(uint64(trace.OldOpenMinus.Next))
-	leafMinusNextLimbs := divideFieldBytesToFieldLimbs(leafMinusNextBytes)
+	leafMinusNextBytes := uint64To64Bytes(uint64(trace.OldOpenMinus.Next))
+	leafMinusNextLimbs := divideFieldBytesToFieldLimbs(leafMinusNextBytes, hashU64)
 
-	leafMinusIndexBytes := uint64ToBytes(uint64(trace.ProofMinus.Path))
-	leafMinusIndexLimbs := divideFieldBytesToFieldLimbs(leafMinusIndexBytes)
+	leafMinusIndexBytes := uint64To64Bytes(uint64(trace.ProofMinus.Path))
+	leafMinusIndexLimbs := divideFieldBytesToFieldLimbs(leafMinusIndexBytes, hashU64)
 
-	leafPlusIndexBytes := uint64ToBytes(uint64(trace.ProofPlus.Path))
-	leafPlusIndexLimbs := divideFieldBytesToFieldLimbs(leafPlusIndexBytes)
+	leafPlusIndexBytes := uint64To64Bytes(uint64(trace.ProofPlus.Path))
+	leafPlusIndexLimbs := divideFieldBytesToFieldLimbs(leafPlusIndexBytes, hashU64)
 
-	leafPlusPrevBytes := uint64ToBytes(uint64(trace.OldOpenPlus.Prev))
-	leafPlusPrevLimbs := divideFieldBytesToFieldLimbs(leafPlusPrevBytes)
+	leafPlusPrevBytes := uint64To64Bytes(uint64(trace.OldOpenPlus.Prev))
+	leafPlusPrevLimbs := divideFieldBytesToFieldLimbs(leafPlusPrevBytes, hashU64)
 
-	leafDeletedIndexBytes := uint64ToBytes(uint64(trace.ProofDeleted.Path))
-	leafDeletedIndexLimbs := divideFieldBytesToFieldLimbs(leafDeletedIndexBytes)
+	leafDeletedIndexBytes := uint64To64Bytes(uint64(trace.ProofDeleted.Path))
+	leafDeletedIndexLimbs := divideFieldBytesToFieldLimbs(leafDeletedIndexBytes, hashU64)
 
-	leafDeletedNextBytes := uint64ToBytes(uint64(trace.DeletedOpen.Next))
-	leafDeletedNextLimbs := divideFieldBytesToFieldLimbs(leafDeletedNextBytes)
+	leafDeletedNextBytes := uint64To64Bytes(uint64(trace.DeletedOpen.Next))
+	leafDeletedNextLimbs := divideFieldBytesToFieldLimbs(leafDeletedNextBytes, hashU64)
 
-	leafDeletedPrevBytes := uint64ToBytes(uint64(trace.DeletedOpen.Prev))
-	leafDeletedPrevLimbs := divideFieldBytesToFieldLimbs(leafDeletedPrevBytes)
+	leafDeletedPrevBytes := uint64To64Bytes(uint64(trace.DeletedOpen.Prev))
+	leafDeletedPrevLimbs := divideFieldBytesToFieldLimbs(leafDeletedPrevBytes, hashU64)
 
 	for i := range leafMinusNextLimbs {
 		a.leafMinusNext[i] = append(a.leafMinusNext[i], leafMinusNextLimbs[i])
@@ -1030,9 +1034,9 @@ func pushReadZeroRows[K, V io.WriterTo](
 
 	// Sandwitch assignment for row 1
 	hKey := hash(trace.Key)
-	hKeyFrLimbs := divideFieldBytesToFieldLimbs(hKey[:])
-	hKeyMinusFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningMinus.HKey[:])
-	hKeyPlusFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningPlus.HKey[:])
+	hKeyFrLimbs := divideFieldBytesToFieldLimbs(hKey[:], hashFieldElements)
+	hKeyMinusFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningMinus.HKey[:], hashFieldElements)
+	hKeyPlusFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningPlus.HKey[:], hashFieldElements)
 	for i := range a.hKey {
 		a.hKey[i] = append(a.hKey[i], hKeyFrLimbs[i])
 		a.hKeyMinus[i] = append(a.hKeyMinus[i], hKeyMinusFrLimbs[i])
@@ -1041,17 +1045,17 @@ func pushReadZeroRows[K, V io.WriterTo](
 
 	// Pointer assignment for row1
 
-	leafMinusNextBytes := uint64ToBytes(uint64(trace.OpeningMinus.Next))
-	leafMinusNextLimbs := divideFieldBytesToFieldLimbs(leafMinusNextBytes)
+	leafMinusNextBytes := uint64To64Bytes(uint64(trace.OpeningMinus.Next))
+	leafMinusNextLimbs := divideFieldBytesToFieldLimbs(leafMinusNextBytes, hashU64)
 
-	leafMinusIndexBytes := uint64ToBytes(uint64(trace.ProofMinus.Path))
-	leafMinusIndexLimbs := divideFieldBytesToFieldLimbs(leafMinusIndexBytes)
+	leafMinusIndexBytes := uint64To64Bytes(uint64(trace.ProofMinus.Path))
+	leafMinusIndexLimbs := divideFieldBytesToFieldLimbs(leafMinusIndexBytes, hashU64)
 
-	leafPlusIndexBytes := uint64ToBytes(uint64(trace.ProofPlus.Path))
-	leafPlusIndexLimbs := divideFieldBytesToFieldLimbs(leafPlusIndexBytes)
+	leafPlusIndexBytes := uint64To64Bytes(uint64(trace.ProofPlus.Path))
+	leafPlusIndexLimbs := divideFieldBytesToFieldLimbs(leafPlusIndexBytes, hashU64)
 
-	leafPlusPrevBytes := uint64ToBytes(uint64(trace.OpeningPlus.Prev))
-	leafPlusPrevLimbs := divideFieldBytesToFieldLimbs(leafPlusPrevBytes)
+	leafPlusPrevBytes := uint64To64Bytes(uint64(trace.OpeningPlus.Prev))
+	leafPlusPrevLimbs := divideFieldBytesToFieldLimbs(leafPlusPrevBytes, hashU64)
 
 	for i := range leafMinusNextLimbs {
 		a.leafMinusNext[i] = append(a.leafMinusNext[i], leafMinusNextLimbs[i])
@@ -1178,32 +1182,64 @@ func hashLR(conf *smt.Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
 // divideFieldBytesToFieldLimbs divides a byte slice representing a field element into
 // a slice of `field.Element`s, where each `field.Element` represents a "limb"
 // of the original field element. This function assumes that each limb is
-// 4 bytes long and that these 2 bytes are placed at the 62nd and 63rd
-// (0-indexed) positions within a 64-byte array before being set as a
-// `field.Element` in canonical form.
-func divideFieldBytesToFieldLimbs(elementBytes []byte) []field.Element {
+// 4 bytes long before being set as a `field.Element` in canonical form.
+func divideFieldBytesToFieldLimbs(elementBytes []byte, toHash hashType) []field.Element {
+	// Sanity check on input length
+	switch toHash {
+	case hashU64:
+		if len(elementBytes) != common.NbBytesForEncodingU64 {
+			panic("elementBytes length for u64 is not 64")
+		}
+	case hashFieldElements:
+		if len(elementBytes) != common.NbBytesForEncodingFieldHash {
+			panic("elementBytes length for field hash is not 32")
+		}
+	default:
+		panic("unsupported hashType")
+	}
+	// declare the result slice of field elements
 	var res []field.Element
-	for _, limbBytes := range common.SplitBytes(elementBytes) {
+	switch toHash {
+	case hashU64:
+		res = make([]field.Element, 0, common.NbElemForHasingU64)
+	case hashFieldElements:
+		res = make([]field.Element, 0, common.NbElemPerHash)
+	default:
+		panic("unsupported hashType")
+	}
+	// each field element is a chunk of 4 bytes
+	for _, limbBytes := range common.SplitBytes(elementBytes, 4) {
 		var elementFr field.Element
 
-		var bytesPadded [64]byte
-		bytesPadded[62] = limbBytes[0]
-		bytesPadded[63] = limbBytes[1]
-
-		if err := elementFr.SetBytesCanonical(bytesPadded[:]); err != nil {
+		if err := elementFr.SetBytesCanonical(limbBytes[:]); err != nil {
 			panic(err)
 		}
 
 		res = append(res, elementFr)
 	}
+	// Sanity check on output length
+	switch toHash {
+	case hashU64:
+		if len(res) != common.NbElemForHasingU64 {
+			panic("res length is not equal to NbElemForHasingU64")
+		}
+	case hashFieldElements:
+		if len(res) != common.NbElemPerHash {
+			panic("res length is not equal to NbElemPerHash")
+		}
+	default:
+		panic("unsupported hashType")
+	}
 
 	return res
 }
 
-// uint64ToBytes converts a `uint64` number into an 8-byte slice assuming
+// uint64To64Bytes converts a `uint64` number into an 8-byte slice assuming
 // Big-Endian byte order.
-func uint64ToBytes(num uint64) []byte {
+func uint64To64Bytes(num uint64) []byte {
 	bytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes, num)
-	return bytes
+	// We copy every 2 bytes from tmp into res, left padded by 2 zero-bytes.
+	res := types.LeftPadded48Zeros(types.LeftPadded(bytes[:]))
+	return res
 }
