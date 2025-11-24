@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
-	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -41,7 +41,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 
 	var (
 		pcs               = run.Spec.PcsCtxs.(*vortex.Ctx)
-		committedMatrices []vCom.EncodedMatrix
+		committedMatrices []vortex_koalabear.EncodedMatrix
 		sisHashes         [][]field.Element
 		trees             []*smt_koalabear.Tree
 		mimcHashes        [][]field.Element
@@ -59,7 +59,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		)
 
 		if committedMatrix != nil {
-			committedMatrices = append(committedMatrices, committedMatrix.(vCom.EncodedMatrix))
+			committedMatrices = append(committedMatrices, committedMatrix.(vortex_koalabear.EncodedMatrix))
 		} else {
 			committedMatrices = append(committedMatrices, nil)
 		}

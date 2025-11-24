@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
-	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -77,7 +77,7 @@ type Witness struct {
 
 	// CommittedMatrices are the list of the Reed-Solomon matrices
 	// for each committed round. They are needed by the prover of the self-recursion.
-	CommittedMatrices []vCom.EncodedMatrix
+	CommittedMatrices []vortex_koalabear.EncodedMatrix
 
 	// SisHashes is the list of the SIS hashes of the vortex columns
 	// for each committed round. They are needed by the prover of the self-recursion.

@@ -437,7 +437,7 @@ func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters) {
 			params.RsInverseRate,
 			false,
 			vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
-			vortex.WithOptionalSISHashingThreshold(ringsis.StdParams.OutputSize()),
+			vortex.WithOptionalSISHashingThreshold(1<<ringsis.StdParams.LogTwoDegree),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)

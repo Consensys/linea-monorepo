@@ -16,8 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
-	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -276,8 +274,8 @@ func (run *ProverRuntime) NumRounds() int {
 func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
-	fs := poseidon2_koalabear.NewMDHasher()
-	fiatshamir.Update(fs, c.FiatShamirSetup[:]...)
+	fs := fiatshamir_koalabear.NewFS()
+	fs.Update(c.FiatShamirSetup[:]...)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
@@ -286,13 +284,12 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 		QueriesParams:      collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
 		Coins:              collection.NewMapping[coin.Name, interface{}](),
 		State:              collection.NewMapping[string, interface{}](),
-		FS:                 fs,
+		FS:                 &fs,
 		currRound:          0,
 		lock:               &sync.Mutex{},
 		FiatShamirHistory:  make([][2][]field.Element, c.NumRounds()),
 		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
-	fmt.Printf("okok1 \n")
 	stateBytes := fs.State()
 	var state koalabear.Element
 	state.SetBytes(stateBytes)
@@ -737,7 +734,7 @@ func (run *ProverRuntime) goNextRound() {
 			}
 
 			instance := run.GetMessage(msgName)
-			fiatshamir.UpdateSV(run.FS, instance)
+			run.FS.UpdateSV(instance)
 		}
 
 		/*
@@ -1066,7 +1063,7 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() *poseidon2_koalabear.MDHasher {
+func (run *ProverRuntime) Fs() *fiatshamir_koalabear.FS {
 	return run.FS
 }
 

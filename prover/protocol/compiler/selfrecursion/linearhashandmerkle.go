@@ -46,7 +46,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	sisLeavesSize := utils.NextPowerOfTwo(sisLeavesSizeUnpadded)
 	// sis hash is also the preimage of poseidon2 hash, poseidon2 hash takes every 8 elements as input at a time
 	// sisHashColChunks stores the number of poseidon2 hashes computed for one sis hash column
-	sisHashColSize := ctx.VortexCtx.SisParams.OutputSize()
+	sisHashColSize := ctx.VortexCtx.SisKey.OutputSize()
 	sisHashColChunks := (sisHashColSize + blockSize - 1) / blockSize
 	sisHashTotalChunksUnpadded := sisHashColChunks * sisLeavesSizeUnpadded
 	sisHashTotalChunks := utils.NextPowerOfTwo(sisHashTotalChunksUnpadded)
@@ -389,12 +389,12 @@ type linearHashMerkleProverActionBuilder struct {
 // linearHashMerkleProverActionBuilder
 func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *linearHashMerkleProverActionBuilder {
 	lmp := linearHashMerkleProverActionBuilder{}
-	lmp.ConcatSisHashQ = make([]field.Element, a.SisLeavesSizeUnpadded*a.Ctx.VortexCtx.SisParams.OutputSize())
+	lmp.ConcatSisHashQ = make([]field.Element, a.SisLeavesSizeUnpadded*a.Ctx.VortexCtx.SisKey.OutputSize())
 	lmp.MerklePositions = make([]field.Element, 0, a.LeavesSizeUnpadded)
 	lmp.MerkleSisPositions = make([]field.Element, 0, a.SisLeavesSizeUnpadded)
 	lmp.MerkleNonSisPositions = make([]field.Element, 0, a.NonSisRoundLeavesSizeUnpadded)
 	lmp.NonSisHashPreimages = make([][]field.Element, 0, a.NumRoundNonSis)
-	lmp.SisHashSize = a.Ctx.VortexCtx.SisParams.OutputSize()
+	lmp.SisHashSize = a.Ctx.VortexCtx.SisKey.OutputSize()
 	lmp.NumOpenedCol = a.Ctx.VortexCtx.NbColsToOpen()
 	lmp.TotalNumRounds = a.Ctx.VortexCtx.MaxCommittedRound
 	lmp.CommittedRound = 0
@@ -522,7 +522,7 @@ func processPrecomputedRound(
 			copy(lmp.ConcatSisHashQ[destStart:destStart+lmp.SisHashSize], sisHash)
 
 			hasher := poseidon2_koalabear.NewMDHasher()
-			hasher.WriteElements(sisHash)
+			hasher.WriteElements(sisHash...)
 			leaf := hasher.SumElement()
 			for j := 0; j < blockSize; j++ {
 				lmp.MerkleSisLeaves[j] = append(lmp.MerkleSisLeaves[j], leaf[j])
@@ -554,7 +554,7 @@ func processPrecomputedRound(
 			// Also compute the leaf from the column
 			// to check sanity
 			hasher := poseidon2_koalabear.NewMDHasher()
-			hasher.WriteElements(nonSisPreimage)
+			hasher.WriteElements(nonSisPreimage...)
 			leaf_ := hasher.SumElement()
 			// Sanity check
 			// The leaf computed from the precomputed column
@@ -656,7 +656,7 @@ func processRound(
 				lmp.SisHashToHash = poseidon2W.PrepareToHashWitness(lmp.SisHashToHash, sisHash, tohashDestStart)
 
 				hasher := poseidon2_koalabear.NewMDHasher()
-				hasher.WriteElements(sisHash)
+				hasher.WriteElements(sisHash...)
 				leaf := hasher.SumElement()
 
 				for j := 0; j < blockSize; j++ {
@@ -706,7 +706,7 @@ func processRound(
 				// to check sanity
 
 				hasher := poseidon2_koalabear.NewMDHasher()
-				hasher.WriteElements(poseidon2Preimage)
+				hasher.WriteElements(poseidon2Preimage...)
 				leaf_ := hasher.SumElement()
 
 				if leaf != leaf_ {

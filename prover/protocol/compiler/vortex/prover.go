@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -346,7 +347,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	// the Merkle proofs in the prover runtime
 
 	if ctx.IsBLS {
-		merkleProofs := proof.GnarkComplete(entryList, committedMatrices, gnarkTrees)
+		merkleProofs := vortex_bls12377.SelectColumnsAndMerkleProofs(&proof, entryList, committedMatrices, gnarkTrees)
 
 		packedMProofs := ctx.packGnarkMerkleProofs(merkleProofs)
 
@@ -356,7 +357,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 	} else {
 
-		merkleProofs := proof.Complete(entryList, committedMatrices, trees)
+		merkleProofs := vortex_koalabear.SelectColumnsAndMerkleProofs(&proof, entryList, committedMatrices, trees)
 
 		packedMProofs := ctx.packMerkleProofs(merkleProofs)
 
@@ -378,14 +379,14 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 	// Handle SIS round
 	if len(committedMatricesSIS) > 0 {
-		sisProof.Complete(entryList, committedMatricesSIS, treesSIS)
+		vortex_koalabear.SelectColumnsAndMerkleProofs(&sisProof, entryList, committedMatricesSIS, treesSIS)
 		sisSelectedCols := sisProof.Columns
 		// Assign the opened columns
 		ctx.assignOpenedColumns(run, entryList, sisSelectedCols, SelfRecursionSIS)
 	}
 	// Handle non SIS round
 	if len(committedMatricesNoSIS) > 0 {
-		nonSisProof.Complete(entryList, committedMatricesNoSIS, treesNoSIS)
+		vortex_koalabear.SelectColumnsAndMerkleProofs(&nonSisProof, entryList, committedMatricesNoSIS, treesNoSIS)
 		nonSisSelectedCols := nonSisProof.Columns
 		ctx.assignOpenedColumns(run, entryList, nonSisSelectedCols, SelfRecursionPoseidon2Only)
 		// Store the selected columns for the non sis round

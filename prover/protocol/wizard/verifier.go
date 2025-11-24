@@ -5,8 +5,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
-	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -57,7 +55,7 @@ type Runtime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
-	Fs() *poseidon2_koalabear.MDHasher
+	Fs() *fiatshamir_koalabear.FS
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -168,17 +166,18 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 	/*
 		Instantiate an empty assigment for the verifier
 	*/
+	fs := fiatshamir_koalabear.NewFS()
 	runtime := VerifierRuntime{
 		Spec:          c,
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
 		QueriesParams: proof.QueriesParams,
-		FS:            fiatshamir_koalabear.NewFS(),
+		FS:            &fs,
 
 		State: make(map[string]interface{}),
 	}
 
-	fiatshamir.Update(runtime.FS, c.FiatShamirSetup[:]...)
+	runtime.FS.Update(c.FiatShamirSetup[:]...)
 
 	/*
 		Insert the verifying key into the messages
@@ -245,7 +244,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 				}
 
 				instance := run.GetColumn(msgName)
-				fiatshamir.UpdateSV(run.FS, instance)
+				run.FS.UpdateSV(instance)
 			}
 
 			/*
@@ -508,7 +507,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() *poseidon2_koalabear.MDHasher {
+func (run *VerifierRuntime) Fs() *fiatshamir_koalabear.FS {
 	return run.FS
 }
 

@@ -66,6 +66,23 @@ func (k Key) maxNumLimbsHashable() int {
 	return k.modulusDegree() * len(k.SisGnarkCrypto.A)
 }
 
+// MaxNumFieldHashable returns a positive integer indicating how many field
+// elements can be provided to the hasher together at once in a single hash.
+func (key *Key) MaxNumFieldHashable() int {
+
+	var (
+		// numLimbsTotal counts the number of ring elements totalling the SIS key
+		numLimbsTotal = key.maxNumLimbsHashable()
+		// numLimbsPerField contains the number of limbs needed to represent one field
+		// element. The DivCeil is important because we want to ensure that
+		// *all* the bits of the inbound field element can be represented in
+		// `numLimbsPerField`.
+		numLimbsPerField = utils.DivCeil(8*field.Bytes, key.LogTwoBound())
+	)
+
+	return numLimbsTotal / numLimbsPerField
+}
+
 // GenerateKey generates a ring-SIS key from a set of a [Params] and a max
 // number of elements to hash
 func GenerateKey(logTwoDegree, logTwoBound int, maxNumFieldToHash int) *Key {
