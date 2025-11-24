@@ -5,21 +5,18 @@ import (
 	"math/big"
 	"math/bits"
 
-	"github.com/consensys/gnark-crypto/hash"
 	gkrposeidon2 "github.com/consensys/gnark/std/hash/poseidon2/gkr-poseidon2"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	gkrposeidon2compressor "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
-
-	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/compress/lzss"
 	"github.com/consensys/gnark/std/rangecheck"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
@@ -88,11 +85,6 @@ func parseHeader(api frontend.API, expectedBytesPerBatch []frontend.Variable, bl
 	api.AssertIsLessOrEqual(nbBatches, maxNbBatches)
 
 	return
-}
-
-type BatchesSumsChecker struct {
-	Compressor   hash.Compressor
-	MaxNbBatches int
 }
 
 type batchPackingIteration struct {
@@ -321,10 +313,6 @@ func CheckBatchesPartialSums(api frontend.API, nbBatches frontend.Variable, blob
 	}
 
 	return nil
-}
-
-func (c *BatchesSumsChecker) PartialChecksumBatchesPackedHint(_ *big.Int, ins, outs []*big.Int) error {
-	return gnarkutil.PartialChecksumBatchesLooselyPackedHint(c.MaxNbBatches, c.Compressor, ins, outs)
 }
 
 func init() {
