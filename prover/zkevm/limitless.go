@@ -44,7 +44,7 @@ var LimitlessCompilationParams = distributed.CompilationParams{
 	FixedNbPublicInput:           1 << 10,
 	InitialCompilerSize:          1 << 18,
 	InitialCompilerSizeConglo:    1 << 13,
-	ColumnProfileMPTS:            []int{17, 317, 30, 3, 4, 15, 0, 1},
+	ColumnProfileMPTS:            []int{17, 335, 37, 3, 5, 15, 0, 1},
 	ColumnProfileMPTSPrecomputed: 22,
 }
 

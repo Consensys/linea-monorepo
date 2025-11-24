@@ -195,6 +195,13 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	// weight.
 	for i := range disc.Modules {
 
+		// If there's only one submodule, keep the BaseSize from advice as-is.
+		// The reduction algorithm is meant to balance multiple submodules, but with
+		// a single submodule, the BaseSize specification is already the answer.
+		if len(disc.Modules[i].SubModules) == 1 {
+			continue
+		}
+
 		// weightTotalInitial is the weight of the module using the initial
 		// number of rows.
 		weightTotalInitial := 0
