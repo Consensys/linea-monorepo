@@ -102,9 +102,9 @@ func TestAssignInsert(t *testing.T) {
 	assert.Equal(t, getLimbsFromRow(builder.positions[:], 2), getLimbsFromRow(builder.positions[:], 3))
 	assert.Equal(t, getLimbsFromRow(builder.positions[:], 4), getLimbsFromRow(builder.positions[:], 5))
 
-	// assertCorrectMerkleProof(t, builder)
+	assertCorrectMerkleProof(t, builder)
 	// Verify the Merkle proofs along with the reuse in the wizard
-	// assertCorrectMerkleProofsUsingWizard(t, builder)
+	assertCorrectMerkleProofsUsingWizard(t, builder)
 }
 
 func TestAssignUpdate(t *testing.T) {
@@ -256,7 +256,9 @@ func TestAssignReadNonZero(t *testing.T) {
 func assertCorrectMerkleProof(t *testing.T, builder *assignmentBuilder) {
 	proofs := builder.proofs
 	for i, proof := range proofs {
-		assert.Equal(t, true, proof.Verify(statemanager.POSEIDON2_CONFIG, field.Octuplet(builder.leaves[i]), field.Octuplet(builder.roots[i])))
+		leaf := field.Octuplet(getLimbsFromRow(builder.leaves[:], i))
+		root := field.Octuplet(getLimbsFromRow(builder.roots[:], i))
+		assert.Equal(t, true, proof.Verify(statemanager.POSEIDON2_CONFIG, leaf, root))
 	}
 }
 
@@ -276,7 +278,7 @@ func assertCorrectMerkleProofsUsingWizard(t *testing.T, builder *assignmentBuild
 	define := func(b *wizard.Builder) {
 		proofcol = merkle.NewProof(b.CompiledIOP, 0, "PROOF", builder.MerkleTreeDepth, size)
 
-		for i := 0; i < common.NbLimbU256; i++ {
+		for i := 0; i < common.NbElemPerHash; i++ {
 			rootscol[i] = b.RegisterCommit(ifaces.ColIDf("ROOTS_%d", i), size)
 			leavescol[i] = b.RegisterCommit(ifaces.ColIDf("LEAVES_%d", i), size)
 		}
