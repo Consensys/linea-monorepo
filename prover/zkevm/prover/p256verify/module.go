@@ -79,5 +79,6 @@ func (pv *P256Verify) Assign(run *wizard.ProverRuntime) {
 }
 
 func NewP256VerifyZkEvm(comp *wizard.CompiledIOP, limits *Limits) *P256Verify {
-	return newP256Verify(comp, limits, newP256VerifyDataSource(comp))
+	return newP256Verify(comp, limits, newP256VerifyDataSource(comp)).
+		WithCircuit(comp, query.PlonkRangeCheckOption(16, 6, true))
 }
