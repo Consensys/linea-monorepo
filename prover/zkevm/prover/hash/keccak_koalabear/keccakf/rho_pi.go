@@ -3,7 +3,7 @@ package keccakfkoalabear
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf/common"
 )
 
 // rhoPi module, responsible for updating the state in the rhoPi step of keccakf

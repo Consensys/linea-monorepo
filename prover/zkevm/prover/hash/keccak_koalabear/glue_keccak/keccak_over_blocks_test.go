@@ -12,8 +12,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	keccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf/iokeccakf"
+	keccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf/iokeccakf"
 	"github.com/stretchr/testify/assert"
 )
 
