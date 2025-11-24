@@ -524,8 +524,11 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		hKeyFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HKey[:], hashFieldElements)
 		hValFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HVal[:], hashFieldElements)
 
-		intermZeroLimbs := vortex.CompressPoseidon2(zeroBlock, vortex.Hash(prevFrLimbs))
-		intermOneLimbs := vortex.CompressPoseidon2(intermZeroLimbs, vortex.Hash(nextFrLimbs))
+		// As prevFrLimbs, nextFrLimbs are of 16 limbs, we hash them in two steps
+		intermZeroLimbs_ := vortex.CompressPoseidon2(zeroBlock, vortex.Hash(prevFrLimbs[0:8]))
+		intermZeroLimbs := vortex.CompressPoseidon2(intermZeroLimbs_, vortex.Hash(prevFrLimbs[8:16]))
+		intermOneLimbs_ := vortex.CompressPoseidon2(intermZeroLimbs, vortex.Hash(nextFrLimbs[0:8]))
+		intermOneLimbs := vortex.CompressPoseidon2(intermOneLimbs_, vortex.Hash(nextFrLimbs[8:16]))
 		intermTwoLimbs := vortex.CompressPoseidon2(intermOneLimbs, vortex.Hash(hKeyFrLimbs))
 		leafLimbs := vortex.CompressPoseidon2(intermTwoLimbs, vortex.Hash(hValFrLimbs))
 
