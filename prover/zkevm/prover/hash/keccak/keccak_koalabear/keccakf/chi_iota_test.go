@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf/common"
 	"github.com/stretchr/testify/assert"
 )
 

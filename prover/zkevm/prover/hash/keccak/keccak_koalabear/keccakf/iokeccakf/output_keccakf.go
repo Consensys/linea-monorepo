@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
+	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf/common"
 )
 
 const HashSizeBytes = 32 // keccak256

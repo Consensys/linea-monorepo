@@ -12,8 +12,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	keccakfkoalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/iokeccakf"
+	keccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf/iokeccakf"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,7 +31,7 @@ func MakeTestCaseKeccakOverBlocks(t *testing.T, providers [][]byte) (
 		maxNumKeccakF = nbHashes*(nbHashes+1)/2 + nbHashes // first hash 2 blocks, second 3 blocks, ..., last 11 blocks.
 		nbRowsPerLane = generic.KeccakUsecase.LaneSizeBytes() / common.LimbBytes
 		laneSize      = utils.NextPowerOfTwo(maxNumKeccakF * generic.KeccakUsecase.NbOfLanesPerBlock() * nbRowsPerLane)
-		keccakfSize   = keccakfkoalabear.NumRows(maxNumKeccakF)
+		keccakfSize   = keccakf.NumRows(maxNumKeccakF)
 	)
 
 	define = func(builder *wizard.Builder) {

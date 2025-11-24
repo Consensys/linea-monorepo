@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
+	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/acc_module"
 )
 
 const nbChunks = 8 // 16 bytes data are represented in 8 chunks of 2 bytes each.
