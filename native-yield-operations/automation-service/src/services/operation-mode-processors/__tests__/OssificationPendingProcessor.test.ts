@@ -124,7 +124,7 @@ describe("OssificationPendingProcessor", () => {
       )) as typeof attempt);
   });
 
-  const createProcessor = () =>
+  const createProcessor = (shouldSubmitVaultReport: boolean = true) =>
     new OssificationPendingProcessor(
       logger,
       metricsUpdater,
@@ -134,6 +134,7 @@ describe("OssificationPendingProcessor", () => {
       lidoReportClient,
       beaconClient,
       yieldProvider,
+      shouldSubmitVaultReport,
     );
 
   it("processes trigger events, submits reports, and progresses ossification", async () => {
@@ -207,5 +208,21 @@ describe("OssificationPendingProcessor", () => {
     expect(lidoReportClient.getLatestSubmitVaultReportParams).toHaveBeenCalledWith(vaultAddress);
     expect(metricsRecorder.recordProgressOssificationMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
+  });
+
+  it("skips vault report submission when shouldSubmitVaultReport is false", async () => {
+    const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(1000).mockReturnValueOnce(1600);
+
+    const processor = createProcessor(false);
+    await processor.process();
+
+    expect(lidoReportClient.getLatestSubmitVaultReportParams).not.toHaveBeenCalled();
+    expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
+    expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith("_process - Skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)");
+    expect(yieldManager.progressPendingOssification).toHaveBeenCalledWith(yieldProvider);
+    expect(metricsRecorder.recordProgressOssificationMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
+
+    performanceSpy.mockRestore();
   });
 });

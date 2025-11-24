@@ -126,7 +126,7 @@ describe("YieldReportingProcessor", () => {
     weiToGweiNumberMock.mockImplementation((value: bigint) => Number(value));
   });
 
-  const createProcessor = () =>
+  const createProcessor = (shouldSubmitVaultReport: boolean = true) =>
     new YieldReportingProcessor(
       logger,
       metricsUpdater,
@@ -138,6 +138,7 @@ describe("YieldReportingProcessor", () => {
       beaconClient,
       yieldProvider,
       l2Recipient,
+      shouldSubmitVaultReport,
     );
 
   it("_process - processes staking surplus flow and records metrics", async () => {
@@ -188,6 +189,28 @@ describe("YieldReportingProcessor", () => {
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledTimes(1);
     expect(yieldManager.unpauseStakingIfNotAlready).not.toHaveBeenCalled();
     expect(beaconClient.submitWithdrawalRequestsToFulfilAmount).not.toHaveBeenCalled();
+
+    performanceSpy.mockRestore();
+  });
+
+  it("_process - skips vault report submission when shouldSubmitVaultReport is false", async () => {
+    yieldManager.getRebalanceRequirements
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
+
+    const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(200);
+
+    const processor = createProcessor(false);
+    await processor.process();
+
+    expect(lidoReportClient.getLatestSubmitVaultReportParams).not.toHaveBeenCalled();
+    expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
+    expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith(
+      "_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
+    );
+    expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
 
     performanceSpy.mockRestore();
   });
@@ -476,6 +499,29 @@ describe("YieldReportingProcessor", () => {
 
     expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
     expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report succeeded");
+    expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
+      yieldProvider,
+      expect.objectContaining({ isOk: expect.any(Function) }),
+    );
+    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: yield report succeeded");
+  });
+
+  it("_handleSubmitLatestVaultReport skips vault report submission when shouldSubmitVaultReport is false", async () => {
+    const processor = createProcessor(false);
+    (processor as unknown as { vault: Address }).vault = vaultAddress;
+
+    await (
+      processor as unknown as {
+        _handleSubmitLatestVaultReport(): Promise<void>;
+      }
+    )._handleSubmitLatestVaultReport();
+
+    expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
+    expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith(
+      "_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
+    );
+    expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
     expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
       yieldProvider,
       expect.objectContaining({ isOk: expect.any(Function) }),

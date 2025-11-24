@@ -26,6 +26,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
    * @param {ILidoAccountingReportClient} lidoAccountingReportClient - Client for submitting Lido accounting reports.
    * @param {IBeaconChainStakingClient} beaconChainStakingClient - Client for managing beacon chain staking operations.
    * @param {Address} yieldProvider - The yield provider address to process.
+   * @param {boolean} shouldSubmitVaultReport - Whether to submit the vault accounting report. Can be set to false if other actors are expected to submit.
    */
   constructor(
     private readonly logger: ILogger,
@@ -36,6 +37,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
     private readonly lidoAccountingReportClient: ILidoAccountingReportClient,
     private readonly beaconChainStakingClient: IBeaconChainStakingClient,
     private readonly yieldProvider: Address,
+    private readonly shouldSubmitVaultReport: boolean,
   ) {}
 
   /**
@@ -74,19 +76,23 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
       "submitMaxAvailableWithdrawalRequests failed (tolerated)",
     );
 
-    this.logger.info("_process - Fetching latest vault report");
-    // Submit vault report if available
-    const vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
-    await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(vault);
-    this.logger.info("_process - Submitting latest vault report");
-    const vaultReportResult = await attempt(
-      this.logger,
-      () => this.lidoAccountingReportClient.submitLatestVaultReport(vault),
-      "submitLatestVaultReport failed (tolerated)",
-    );
-    if (vaultReportResult.isOk()) {
-      this.logger.info("_process - Successfully submitted latest vault report");
-      this.metricsUpdater.incrementLidoVaultAccountingReport(vault);
+    // Submit vault report if available and enabled
+    if (this.shouldSubmitVaultReport) {
+      this.logger.info("_process - Fetching latest vault report");
+      const vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
+      await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(vault);
+      this.logger.info("_process - Submitting latest vault report");
+      const vaultReportResult = await attempt(
+        this.logger,
+        () => this.lidoAccountingReportClient.submitLatestVaultReport(vault),
+        "submitLatestVaultReport failed (tolerated)",
+      );
+      if (vaultReportResult.isOk()) {
+        this.logger.info("_process - Successfully submitted latest vault report");
+        this.metricsUpdater.incrementLidoVaultAccountingReport(vault);
+      }
+    } else {
+      this.logger.info("_process - Skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)");
     }
 
     // Process Pending Ossification

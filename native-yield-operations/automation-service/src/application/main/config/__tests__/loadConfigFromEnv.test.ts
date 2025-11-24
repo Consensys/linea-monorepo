@@ -33,6 +33,7 @@ const createValidEnv = () => ({
   WEB3SIGNER_TRUSTSTORE_PASSPHRASE: "truststore-pass",
   WEB3SIGNER_TLS_ENABLED: "true",
   API_PORT: "3000",
+  SHOULD_SUBMIT_VAULT_REPORT: "true",
 });
 
 describe("loadConfigFromEnv", () => {

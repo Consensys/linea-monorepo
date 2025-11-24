@@ -32,6 +32,7 @@ const createValidEnv = () => ({
   WEB3SIGNER_TRUSTSTORE_PASSPHRASE: "truststore-pass",
   WEB3SIGNER_TLS_ENABLED: "true",
   API_PORT: "3000",
+  SHOULD_SUBMIT_VAULT_REPORT: "true",
 });
 
 describe("toClientConfig", () => {
@@ -73,6 +74,7 @@ describe("toClientConfig", () => {
       rebalanceToleranceBps: env.REBALANCE_TOLERANCE_BPS,
       maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
       minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
+      shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,
       web3signer: {
         url: env.WEB3SIGNER_URL,
         publicKey: env.WEB3SIGNER_PUBLIC_KEY,

@@ -53,8 +53,10 @@ export const configSchema = z
     L2_YIELD_RECIPIENT: Address,
     // Polling interval in milliseconds for watching blockchain events.
     TRIGGER_EVENT_POLL_INTERVAL_MS: z.coerce.number().int().positive(),
-    // Maximum idle duration (in milliseconds) before automatically executing pending operations
+    // Maximum idle duration (in milliseconds) before automatically executing pending operations.
     TRIGGER_MAX_INACTION_MS: z.coerce.number().int().positive(),
+    // Whether to submit the vault accounting report. Can set to false if we expect other actors to submit.
+    SHOULD_SUBMIT_VAULT_REPORT: z.coerce.boolean(),
     // Retry delay in milliseconds between contract read attempts after failures.
     CONTRACT_READ_RETRY_TIME_MS: z.coerce.number().int().positive(),
     /** Rebalance tolerance in basis points (1 bps = 0.01%, max 10000 bps = 100%).

@@ -213,6 +213,7 @@ export class NativeYieldAutomationServiceBootstrap {
       this.beaconChainStakingClient,
       config.contractAddresses.lidoYieldProviderAddress,
       config.contractAddresses.l2YieldRecipientAddress,
+      config.shouldSubmitVaultReport,
     );
 
     this.ossificationPendingOperationModeProcessor = new OssificationPendingProcessor(
@@ -224,6 +225,7 @@ export class NativeYieldAutomationServiceBootstrap {
       this.lidoAccountingReportClient,
       this.beaconChainStakingClient,
       config.contractAddresses.lidoYieldProviderAddress,
+      config.shouldSubmitVaultReport,
     );
 
     this.ossificationCompleteOperationModeProcessor = new OssificationCompleteProcessor(

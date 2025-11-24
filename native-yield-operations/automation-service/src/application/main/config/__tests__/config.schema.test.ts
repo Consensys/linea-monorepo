@@ -31,6 +31,7 @@ const createValidEnv = () => ({
   WEB3SIGNER_TRUSTSTORE_PASSPHRASE: "truststore-pass",
   WEB3SIGNER_TLS_ENABLED: "true",
   API_PORT: "3000",
+  SHOULD_SUBMIT_VAULT_REPORT: "true",
 });
 
 describe("configSchema", () => {
@@ -44,6 +45,7 @@ describe("configSchema", () => {
     expect(parsed.API_PORT).toBe(3000);
     expect(parsed.MIN_WITHDRAWAL_THRESHOLD_ETH).toBe(42n);
     expect(parsed.WEB3SIGNER_TLS_ENABLED).toBe(true);
+    expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(true);
     expect(parsed.LINEA_ROLLUP_ADDRESS).toBe(getAddress(env.LINEA_ROLLUP_ADDRESS));
     expect(parsed.LAZY_ORACLE_ADDRESS).toBe(getAddress(env.LAZY_ORACLE_ADDRESS));
     expect(parsed.VAULT_HUB_ADDRESS).toBe(getAddress(env.VAULT_HUB_ADDRESS));

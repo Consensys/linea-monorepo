@@ -31,6 +31,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @param {IBeaconChainStakingClient} beaconChainStakingClient - Client for managing beacon chain staking operations.
    * @param {Address} yieldProvider - The yield provider address to process.
    * @param {Address} l2YieldRecipient - The L2 yield recipient address for yield reporting.
+   * @param {boolean} shouldSubmitVaultReport - Whether to submit the vault accounting report. Can be set to false if other actors are expected to submit.
    */
   constructor(
     private readonly logger: ILogger,
@@ -43,6 +44,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly beaconChainStakingClient: IBeaconChainStakingClient,
     private readonly yieldProvider: Address,
     private readonly l2YieldRecipient: Address,
+    private readonly shouldSubmitVaultReport: boolean,
   ) {}
 
   /**
@@ -99,9 +101,11 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   private async _process(): Promise<void> {
     // Fetch initial data
     this.vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
-    const [, initialRebalanceRequirements] = await Promise.all([
-      this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(this.vault),
+    const [initialRebalanceRequirements] = await Promise.all([
       this.yieldManagerContractClient.getRebalanceRequirements(),
+      this.shouldSubmitVaultReport
+        ? this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(this.vault)
+        : Promise.resolve(),
     ]);
     this.logger.info(
       `_process - Initial data fetch: initialRebalanceRequirements=${JSON.stringify(initialRebalanceRequirements, bigintReplacer, 2)}`,
@@ -244,23 +248,28 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   }
 
   /**
-   * @notice Submits the latest vault report and then reports yield to the yield manager.
+   * @notice Submits the latest vault report (if enabled) and then reports yield to the yield manager.
    * @dev Uses `tryResult` to safely handle failures without throwing.
    *      - If submitting the vault report fails, the execution will continue to report yield.
    *        A key assumption is that it is safe to submit multiple yield reports for the same vault report.
    * @dev We tolerate report submission errors because they should not block rebalances
+   * @dev If shouldSubmitVaultReport is false, skips vault report submission but still reports yield.
    * @returns {Promise<void>} A promise that resolves when both operations are attempted (regardless of success/failure).
    */
   private async _handleSubmitLatestVaultReport() {
-    // First call: submit vault report
-    const vaultResult = await attempt(
-      this.logger,
-      () => this.lidoAccountingReportClient.submitLatestVaultReport(this.vault),
-      "_handleSubmitLatestVaultReport: submitLatestVaultReport failed",
-    );
-    if (vaultResult.isOk()) {
-      this.logger.info("_handleSubmitLatestVaultReport: vault report succeeded");
-      this.metricsUpdater.incrementLidoVaultAccountingReport(this.vault);
+    // First call: submit vault report (if enabled)
+    if (this.shouldSubmitVaultReport) {
+      const vaultResult = await attempt(
+        this.logger,
+        () => this.lidoAccountingReportClient.submitLatestVaultReport(this.vault),
+        "_handleSubmitLatestVaultReport: submitLatestVaultReport failed",
+      );
+      if (vaultResult.isOk()) {
+        this.logger.info("_handleSubmitLatestVaultReport: vault report succeeded");
+        this.metricsUpdater.incrementLidoVaultAccountingReport(this.vault);
+      }
+    } else {
+      this.logger.info("_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)");
     }
 
     // Second call: report yield

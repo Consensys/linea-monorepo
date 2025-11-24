@@ -17,6 +17,7 @@ import { transports } from "winston";
  *   - rebalanceToleranceBps: Rebalance tolerance in basis points
  *   - maxValidatorWithdrawalRequestsPerTransaction: Maximum withdrawal requests per transaction
  *   - minWithdrawalThresholdEth: Minimum withdrawal threshold in ETH
+ *   - shouldSubmitVaultReport: Whether to submit the vault accounting report
  *   - web3signer: Web3Signer URL, public key (address or secp pubkey compressed/uncompressed), keystore, truststore, and TLS settings
  *   - loggerOptions: Winston logger configuration with console transport
  */
@@ -55,6 +56,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
   rebalanceToleranceBps: env.REBALANCE_TOLERANCE_BPS,
   maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
   minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
+  shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,
   web3signer: {
     url: env.WEB3SIGNER_URL,
     publicKey: env.WEB3SIGNER_PUBLIC_KEY as Hex, // address or secp pubkey (compressed/uncompressed)
