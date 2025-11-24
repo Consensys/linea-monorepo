@@ -57,7 +57,7 @@ func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVari
 	}
 
 	for i := 0; i < 8; i++ {
-		limbBits := append(bits[32*i:32*i+30], frontend.Variable(0), frontend.Variable(0))
+		limbBits := append(bits[32*i : 32*i+30])
 		res[i] = apiGen.FromBinary(limbBits...)
 	}
 

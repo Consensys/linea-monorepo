@@ -2,70 +2,66 @@ package fiatshamir_bls12377
 
 import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
 
-func UpdateFrElmt(h *poseidon2_bls12377.MDHasher, vec ...fr.Element) {
-	h.WriteElements(vec...)
+type FS struct {
+	h *poseidon2_bls12377.MDHasher
 }
 
-// func UpdateExt(h *poseidon2_bls12377.MDHasher, vec ...fext.Element) {
-// 	pad := make([]fr.Element, 4*len(vec))
-// 	for i := 0; i < len(vec); i++ {
-// 		pad[4*i].Set(&vec[i].B0.A0)
-// 		pad[4*i+1].Set(&vec[i].B0.A1)
-// 		pad[4*i+2].Set(&vec[i].B1.A0)
-// 		pad[4*i+3].Set(&vec[i].B1.A1)
-// 	}
-// 	h.WriteElements(pad)
-// }
+func NewFS() FS {
+	return FS{h: poseidon2_bls12377.NewMDHasher()}
+}
 
-// func UpdateGeneric(h *poseidon2_bls12377.MDHasher, vec ...fext.GenericFieldElem) {
-// 	if len(vec) == 0 {
-// 		return
-// 	}
+// --------------------------------------------------
+// List of methods to updae the FS state with frElmts
+func (fs *FS) UpdateFrElmt(vec ...fr.Element) {
+	fs.h.WriteElements(vec...)
+}
 
-// 	// Marshal the elements in a vector of bytes
-// 	for _, f := range vec {
-// 		if f.GetIsBase() {
-// 			Update(h, f.Base)
-// 		} else {
-// 			UpdateExt(h, f.Ext)
-// 		}
-// 	}
-// }
-
-func UpdateVecFrElmt(h *poseidon2_bls12377.MDHasher, vecs ...[]fr.Element) {
+func (fs *FS) UpdateVecFrElmt(vecs ...[]fr.Element) {
 	for i := range vecs {
-		UpdateFrElmt(h, vecs[i]...)
+		fs.UpdateFrElmt(vecs[i]...)
 	}
 }
 
-// UpdateVec updates the Fiat-Shamir state by passing one of more slices of
-// field elements.
-// func UpdateVecExt(h *poseidon2_bls12377.MDHasher, vecs ...[]fext.Element) {
-// 	for i := range vecs {
-// 		UpdateExt(h, vecs[i]...)
-// 	}
-// }
+func (fs *FS) RandomFieldFrElmt() fr.Element {
+	res := fs.h.SumElement()
+	fs.safeguardUpdate()
+	return res
+}
 
-// UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
-// has a length of zero.
-// func UpdateSV(h *poseidon2_bls12377.MDHasher, sv smartvectors.SmartVector) {
-// 	if sv.Len() == 0 {
-// 		return
-// 	}
+// ------------------------------------------------------
+// List of methods to updae the FS state with koala elmts
 
-// 	vec := make([]fr.Element, sv.Len())
-// 	sv.WriteInSlice(vec)
-// 	Update(h, vec...)
-// }
+func (fs *FS) UpdateElmts(vec ...field.Element) {
+	fs.h.WriteKoalabearElements(vec...)
+}
 
-func RandomFieldFrElmt(h *poseidon2_bls12377.MDHasher) fr.Element {
-	res := h.SumElement()
-	safeguardUpdate(h)
+func (fs *FS) UpdateVecElmts(vec ...[]field.Element) {
+	v := make([]field.Element, len(vec))
+	for _, _v := range vec {
+		v = append(v, _v...)
+	}
+	fs.UpdateElmts(v...)
+}
+
+func (fs *FS) RandomField() field.Octuplet {
+	r := fs.RandomFieldFrElmt() // the safeguard update is called
+	res := encoding.EncodeFrElementToOctuplet(r)
+	return res
+}
+
+func (fs *FS) RandomManyIntegers(n int) []field.Octuplet {
+	res := make([]field.Octuplet, n)
+	for i := 0; i < n; i++ {
+		r := fs.RandomFieldFrElmt()
+		res[i] = encoding.EncodeFrElementToOctuplet(r)
+	}
 	return res
 }
 
@@ -148,6 +144,6 @@ func RandomFieldFrElmt(h *poseidon2_bls12377.MDHasher) fr.Element {
 // 	}
 // }
 
-func safeguardUpdate(h *poseidon2_bls12377.MDHasher) {
-	UpdateFrElmt(h, fr.Element{})
+func (fs *FS) safeguardUpdate() {
+	fs.UpdateFrElmt(fr.Element{})
 }

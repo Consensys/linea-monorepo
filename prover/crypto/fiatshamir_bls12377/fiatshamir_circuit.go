@@ -4,9 +4,11 @@ import (
 	"math"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -51,13 +53,13 @@ func (fs *GnarkFS) UpdateVecFrElmt(mat ...[]frontend.Variable) {
 }
 
 // RandomField returns a single valued fiat-shamir hash
-func (fs *GnarkFS) RandomField() frontend.Variable {
+func (fs *GnarkFS) RandomFrElmt() frontend.Variable {
 	defer fs.safeguardUpdate()
 	return fs.hasher.Sum()
 }
 
 // RandomManyIntegers returns a vector of variable that will contain small integers
-func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
+func (fs *GnarkFS) RandomManyFrElmts(num, upperBound int) []frontend.Variable {
 
 	// Even `1` would be wierd, there would be only one acceptable coin value.
 	if upperBound < 1 {
@@ -114,6 +116,36 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 
 		fs.safeguardUpdate()
 	}
+}
+
+// ------------------------------------------------------
+// List of methods to updae the FS state with koala elmts
+
+func (fs *GnarkFS) UpdateElmts(vec ...zk.WrappedVariable) {
+	fs.hasher.WriteWVs(vec...)
+}
+
+func (fs *GnarkFS) UpdateVecElmts(vec ...[]zk.WrappedVariable) {
+	v := make([]zk.WrappedVariable, len(vec))
+	for _, _v := range vec {
+		v = append(v, _v...)
+	}
+	fs.UpdateElmts(v...)
+}
+
+func (fs *GnarkFS) RandomField() zk.Octuplet {
+	r := fs.RandomFrElmt() // the safeguard update is called
+	res := encoding.EncodeFVTo8WVs(fs.api, r)
+	return res
+}
+
+func (fs *GnarkFS) RandomManyIntegers(n int) []zk.Octuplet {
+	res := make([]zk.Octuplet, n)
+	for i := 0; i < n; i++ {
+		r := fs.RandomFrElmt()
+		res[i] = encoding.EncodeFVTo8WVs(fs.api, r)
+	}
+	return res
 }
 
 // safeguardUpdate updates the state as a safeguard by appending a field element
