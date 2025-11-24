@@ -1207,7 +1207,10 @@ func countConstraintsOfPlonkCirc(piw *query.PlonkInWizard) int {
 		hasAddGates = piw.PlonkOptions[0].RangeCheckAddGateForRangeCheck
 	}
 
-	ccs, _, _ := plonkinternal.CompileCircuitWithRangeCheck(piw.Circuit, hasAddGates)
+	ccs, _, err := plonkinternal.CompileCircuitWithRangeCheck(piw.Circuit, hasAddGates)
+	if err != nil {
+		utils.Panic("unable to compile plonk-in-wizard circuit %s: %v", piw.ID, err)
+	}
 	nbConstraints := ccs.GetNbConstraints()
 	return nbConstraints
 }
