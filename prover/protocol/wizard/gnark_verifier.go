@@ -294,11 +294,13 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 			// the assignment consists of base elements
 			assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
 			res.ColumnsIDs.InsertNew(colName, len(res.Columns))
+
 			res.Columns = append(res.Columns, assignedMsg)
 		} else {
 			// the assignment consists of extension elements
 			assignedMsg := smartvectors.IntoGnarkAssignmentExt(msgData)
 			res.ColumnsExtIDs.InsertNew(colName, len(res.ColumnsExt))
+
 			res.ColumnsExt = append(res.ColumnsExt, assignedMsg)
 		}
 
@@ -309,7 +311,6 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 		if comp.QueriesParams.Round(qName) >= res.NumRound {
 			continue
 		}
-
 		// Note that we do not filter out the "already compiled" queries
 		// here.
 		paramsIface := proof.QueriesParams.MustGet(qName)
@@ -428,6 +429,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		cn := c.Spec.Coins.Data(coinName)
 		value := cn.SampleGnark(c.FS, zkSeed)
 
+		fmt.Printf("inserting coin %v\n", coinName)
 		c.Coins.InsertNew(coinName, value)
 	}
 }
@@ -713,6 +715,7 @@ func (c *VerifierCircuit) AssignColumnExt(id ifaces.ColID, sv smartvectors.Smart
 	columnIndex := len(c.ColumnsExt)
 	c.ColumnsExtIDs.InsertNew(id, columnIndex)
 	c.ColumnsExt = append(c.ColumnsExt, column)
+
 }
 
 // AllocUnivariableEval inserts a slot for a univariate query opening in the

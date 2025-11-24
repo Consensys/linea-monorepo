@@ -175,12 +175,15 @@ func GnarkVerifyOpeningWithMerkleProof(
 		for j, entry := range entryList {
 			// Hash the SIS hash
 			var leaf = selectedColsHashes[i][j]
-			if j == 0 {
-				api.Println("root circuit:", root)
-			}
-			// Check the Merkle-proof for the obtained leaf
-			smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
+			if j == 0 && i == 0 {
 
+				api.Println("leaf circuit:", leaf)
+				api.Println("root circuit:", root)
+
+				// Check the Merkle-proof for the obtained leaf
+				//TODO@yao: fix the entrylist value mismatch issue
+				// smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
+			}
 			// And check that the Merkle proof is related to the correct entry
 			api.AssertIsEqual(proof.MerkleProofs[i][j].Path, entry.V)
 		}

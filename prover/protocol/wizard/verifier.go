@@ -1,6 +1,8 @@
 package wizard
 
 import (
+	"fmt"
+
 	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -328,6 +330,7 @@ func (run *VerifierRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.IntegerVec)
 	}
 	// If this panics, it means we generates the coins wrongly
+	fmt.Printf("VerifierRuntime GetRandomCoinIntegerVec=%v\n", run.Coins.MustGet(name).([]int))
 	return run.Coins.MustGet(name).([]int)
 }
 

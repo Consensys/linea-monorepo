@@ -80,6 +80,8 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	// Collect the random entry List and the random coin
 	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
 
+	fmt.Printf("Vortex Verifier entryList: %v\n", ctx.RandColSelectionName())
+	api.Println("Vortex Verifier entryList:", entryList[0])
 	// Collect the opened columns and split them "by-commitment-rounds"
 	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
@@ -99,7 +101,6 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	for i := range packedMProofs {
 		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
 	}
-
 	proof.MerkleProofs = ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
 
 	// pass the parameters for a merkle-mode sis verification

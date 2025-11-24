@@ -593,6 +593,9 @@ func (ctx *Ctx) unpackGnarkMerkleProofs(sv [vortex_bls12377.GnarkKoalabearNumEle
 		proofs[i] = make([]smt_bls12377.Proof, numEntries)
 		for j := range proofs[i] {
 			// initialize the proof that we are parsing
+			if i == 0 && j == 0 {
+				fmt.Printf("unpackGnarkMerkleProofs: depth=%v, entry=%v\n", depth, entryList[j])
+			}
 			proof := smt_bls12377.Proof{
 				Path:     entryList[j],
 				Siblings: make([]types.Bytes32, depth),
