@@ -97,34 +97,80 @@ func EncodeKoalabearsToBytes(elements []field.Element) []byte {
 // BLS to Koalabear encoding
 const GnarkKoalabearNumElements = 11
 
-func EncodeBLS12377ToKoalabear(elements types.Bytes32) [GnarkKoalabearNumElements]field.Element {
+func DecodeKoalabearToBLS12377(elements [11]field.Element) types.Bytes32 {
+	expectedResult := big.NewInt(0)
+	for i := 0; i < 10; i++ {
+		part := big.NewInt(int64(elements[10-i].Bits()[0]))
 
-	var res [GnarkKoalabearNumElements]field.Element
-	for i := 0; i < GnarkKoalabearNumElements; i++ {
-		var bytes [4]byte
-		if i != GnarkKoalabearNumElements-1 {
-			copy(bytes[1:], elements[i*3:(i+1)*3])
-		} else {
-			copy(bytes[2:], elements[30:32])
-		}
-		res[i].SetBytes(bytes[:])
+		shift := uint(24 * i)                   // Shift based on little-endian order
+		part.Lsh(part, shift)                   // Shift left by the appropriate position for little-endian
+		expectedResult.Or(expectedResult, part) // Bitwise OR to combine
 	}
-	return res
-}
+	part := big.NewInt(int64(elements[0].Bits()[0]))
 
-func DecodeKoalabearToBLS12377(elements [GnarkKoalabearNumElements]field.Element) types.Bytes32 {
+	shift := uint(24 * 10) // Shift based on little-endian order
+	part.Lsh(part, shift)  // Shift left by the appropriate position for little-endian
+	expectedResult.Or(expectedResult, part)
 	var res types.Bytes32
+	expectedBytes := expectedResult.Bytes()
+	copy(res[32-len(expectedBytes):], expectedBytes) // left pad with zeroes to 32 bytes
+	return res
+}
+
+func EncodeBLS12377ToKoalabear(encoded types.Bytes32) [GnarkKoalabearNumElements]field.Element {
+	// Initialize an empty array to store the results
+	var elements, res [11]field.Element
+
+	// Convert the bytes32 to big.Int
+	value := new(big.Int).SetBytes(encoded[:])
+
+	// Loop to extract each 24-bit chunk
+	for i := 0; i < 11; i++ {
+		// Extract the corresponding 24-bit chunk by applying a mask
+		chunk := new(big.Int).And(value, big.NewInt(0xFFFFFF)) // Mask for 24 bits (0xFFFFFF = 24 ones in binary)
+
+		// Set the extracted chunk to the corresponding field.Element (element[i])
+		elements[i].SetBigInt(chunk)
+
+		// Right shift the `value` to move to the next chunk
+		value.Rsh(value, 24) // Move to the next 24-bit chunk
+	}
+
+	// Since field.Elements are processed in little-endian order, reverse the array
 	for i := 0; i < GnarkKoalabearNumElements; i++ {
-		if i != GnarkKoalabearNumElements-1 {
-			bytes := elements[i].Bytes()
-			copy(res[i*3:(i+1)*3], bytes[1:])
-		} else {
-			bytes := elements[i].Bytes()
-			copy(res[30:32], bytes[2:])
-		}
+		res[i] = elements[GnarkKoalabearNumElements-1-i]
 	}
 	return res
 }
+
+// func EncodeBLS12377ToKoalabear(elements types.Bytes32) [GnarkKoalabearNumElements]field.Element {
+
+// 	var res [GnarkKoalabearNumElements]field.Element
+// 	for i := 0; i < GnarkKoalabearNumElements; i++ {
+// 		var bytes [4]byte
+// 		if i != GnarkKoalabearNumElements-1 {
+// 			copy(bytes[1:], elements[i*3:(i+1)*3])
+// 		} else {
+// 			copy(bytes[2:], elements[30:32])
+// 		}
+// 		res[i].SetBytes(bytes[:])
+// 	}
+// 	return res
+// }
+
+// func DecodeKoalabearToBLS12377(elements [GnarkKoalabearNumElements]field.Element) types.Bytes32 {
+// 	var res types.Bytes32
+// 	for i := 0; i < GnarkKoalabearNumElements; i++ {
+// 		if i != GnarkKoalabearNumElements-1 {
+// 			bytes := elements[i].Bytes()
+// 			copy(res[i*3:(i+1)*3], bytes[1:])
+// 		} else {
+// 			bytes := elements[i].Bytes()
+// 			copy(res[30:32], bytes[2:])
+// 		}
+// 	}
+// 	return res
+// }
 
 // Function to encode 11 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
 func Encode11WVsToFV(api frontend.API, values [GnarkKoalabearNumElements]zk.WrappedVariable) frontend.Variable {
@@ -145,4 +191,5 @@ func Encode11WVsToFV(api frontend.API, values [GnarkKoalabearNumElements]zk.Wrap
 	copy(bits[240:], limbBits) // 8 leading padding bits come first
 
 	return api.FromBinary(bits...)
+
 }

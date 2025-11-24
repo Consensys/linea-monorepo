@@ -37,11 +37,15 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
 		preRoots := [vortex_bls12377.GnarkKoalabearNumElements]zk.WrappedVariable{}
+		// apiGen, _ := zk.NewGenericApi(api)
 
 		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
 			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
 			preRoots[i] = precompRootSv[0]
 		}
+		fmt.Printf("Gnark precomputed Merkle root verifier: \n")
+		api.Println(vortex_bls12377.Encode11WVsToFV(api, preRoots))
+
 		roots = append(roots, vortex_bls12377.Encode11WVsToFV(api, preRoots))
 	}
 
@@ -57,6 +61,8 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
 			preRoots[i] = rootSv[0]
 		}
+		// apiGen, _ := zk.NewGenericApi(api)
+		// apiGen.Println(preRoots[:]...)
 		roots = append(roots, vortex_bls12377.Encode11WVsToFV(api, preRoots))
 
 	}
@@ -67,7 +73,9 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	proof := vortex_bls12377.GProof{}
 	proof.Rate = uint64(ctx.BlowUpFactor)
 	proof.RsDomain = fft.NewDomain(uint64(ctx.NumEncodedCols()), fft.WithCache())
-	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName())
+	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName()) //TODO@yao: this is correct, remove it
+	// ext4, _ := gnarkfext.NewExt4(api)
+	// ext4.Println(proof.LinearCombination...)
 
 	// Collect the random entry List and the random coin
 	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
@@ -77,12 +85,12 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
 	// function that will defer the hashing to gkr
-	factoryHasherFunc := func(_ frontend.API) (poseidon2_bls12377.GnarkMDHasher, error) {
-		factory := vr.GetHasherFactory()
-		if factory != nil {
-			h := vr.GetHasherFactory().NewHasher() //TODO@yao: here the hasher facroty should be able to create poseidon2_bls12377.GnarkMDHasher to be consistent with the hasher
-			return h, nil
-		}
+	makePoseidon2Hasherfunc := func(_ frontend.API) (poseidon2_bls12377.GnarkMDHasher, error) {
+		// factory := vr.GetHasherFactory()
+		// if factory != nil {
+		// 	h := vr.GetHasherFactory().NewHasher() //TODO@yao: here the hasher facroty should be able to create poseidon2_bls12377.GnarkMDHasher to be consistent with the hasher
+		// 	return h, nil
+		// }
 		h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
 		return h, err
 	}
@@ -96,11 +104,10 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// pass the parameters for a merkle-mode sis verification
 	params := vortex_bls12377.GParams{}
-	params.HasherFunc = factoryHasherFunc
-	params.NoSisHasher = factoryHasherFunc
+	params.HasherFunc = makePoseidon2Hasherfunc
+	params.NoSisHasher = makePoseidon2Hasherfunc
 	params.Key = ctx.VortexParams.Key
 
-	api.Println(roots...)
 	vortex_bls12377.GnarkVerifyOpeningWithMerkleProof(
 		api,
 		params,
@@ -306,6 +313,8 @@ func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [vortex_bls12377.Gn
 				for coord := 0; coord < vortex_bls12377.GnarkKoalabearNumElements; coord++ {
 					v[coord] = sv[coord][curr]
 				}
+				// apiGen, _ := zk.NewGenericApi(api)
+				// apiGen.Println(v[:]...)
 				proof.Siblings[depth-k-1] = vortex_bls12377.Encode11WVsToFV(api, v)
 				curr++
 			}

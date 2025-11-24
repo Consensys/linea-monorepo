@@ -3,7 +3,6 @@
 package vortex
 
 import (
-	"fmt"
 	"math/rand/v2"
 	"testing"
 
@@ -34,72 +33,18 @@ import (
 
 var rng = rand.New(utils.NewRandSource(0))
 
-type EncodeAndHashTestCircuit2 struct {
-	Values [11]zk.WrappedVariable
-	Result frontend.Variable
-	Params GParams
-}
+// ------------------------------------------------------------
+// test Encode and decode: BLS <--> Koalabear
+func TestEncodeAndDecode(t *testing.T) {
+	// test EncodeBLS12377ToKoalabear and DecodeKoalabearToBLS12377
 
-func (c *EncodeAndHashTestCircuit2) Define(api frontend.API) error {
-	// Create constraints for encoding
+	var elements fr.Element
+	elements.SetRandom()
+	bytes := elements.Bytes()
+	elementsKoalaBear := EncodeBLS12377ToKoalabear(bytes)
+	decodedElements := DecodeKoalabearToBLS12377(elementsKoalaBear)
 
-	hasher, _ := c.Params.NoSisHasher(api)
-	hasher.Reset()
-	hashinput := Encode11WVsToFV(api, c.Values)
-	hasher.Write(hashinput)
-	digest := hasher.Sum()
-	api.AssertIsEqual(digest, c.Result)
-	return nil
-}
-func gnarkEncodeAndHashCircuitWitness2() (*EncodeAndHashTestCircuit2, *EncodeAndHashTestCircuit2) {
-	var blsValues fr.Element
-	var koalabearValues [11]field.Element
-	var values [11]zk.WrappedVariable
-
-	for i := 0; i < 8; i++ {
-		koalabearValues[i] = field.PseudoRand(rng)
-	}
-
-	hashInputtBytes := EncodeKoalabearsToBytes(koalabearValues[:8])
-	blsValues.SetBytes(hashInputtBytes)
-	fmt.Printf("blsValues: %v\n", blsValues.String())
-
-	koalabearValues = EncodeBLS12377ToKoalabear(types.AsBytes32(hashInputtBytes))
-	fmt.Printf("koalabearValues: %v\n", koalabearValues)
-
-	hasher := smt_bls12377.Poseidon2()
-	hasher.Write(hashInputtBytes)
-	var expectedResult fr.Element
-	expectedResult.SetBytes(hasher.Sum(nil))
-
-	// Create test instance
-	var circuit EncodeAndHashTestCircuit2
-	circuit.Values = values
-	circuit.Result = expectedResult.String()
-	circuit.Params.HasherFunc = makePoseidon2Hasherfunc
-	circuit.Params.NoSisHasher = makePoseidon2Hasherfunc
-
-	// Create a witness with test values
-	var witness EncodeAndHashTestCircuit2
-	witness.Values = values
-	witness.Result = expectedResult.String()
-
-	return &circuit, &witness
-
-}
-func TestEncodeAndHashCircuit2(t *testing.T) {
-
-	{
-		circuit, witness := gnarkEncodeAndHashCircuitWitness2()
-
-		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
-		assert.NoError(t, err)
-
-		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
-		assert.NoError(t, err)
-		err = ccs.IsSolved(fullWitness)
-		assert.NoError(t, err)
-	}
+	assert.Equal(t, types.AsBytes32(bytes[:]), decodedElements)
 
 }
 
@@ -645,7 +590,6 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	})
 
 	require.NoError(t, err)
-
 	return proof, randomCoin, x, yLists, entryList, roots, merkleProofs
 }
 

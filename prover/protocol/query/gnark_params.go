@@ -86,7 +86,6 @@ func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 
 // Returns a gnark assignment for the present parameters
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
-
 	return GnarkUnivariateEvalParams{
 		ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
 		ExtX:  gnarkfext.NewE4Gen(p.ExtX),

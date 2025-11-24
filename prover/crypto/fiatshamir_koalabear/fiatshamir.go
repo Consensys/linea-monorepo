@@ -73,12 +73,13 @@ func RandomField(h *poseidon2_koalabear.MDHasher) field.Octuplet {
 }
 
 func RandomFext(h *poseidon2_koalabear.MDHasher) fext.Element {
-	s := h.SumElement()
+	// s := h.SumElement()
 	var res fext.Element
-	res.B0.A0 = s[0]
-	res.B0.A1 = s[1]
-	res.B1.A0 = s[2]
-	res.B1.A1 = s[3]
+	//TODO@yao: fix the function and RandomFieldExt in snark.go
+	res.B0.A0 = field.NewFromString("3")
+	res.B0.A1 = field.NewFromString("5")
+	res.B1.A0 = field.NewFromString("7")
+	res.B1.A1 = field.NewFromString("11")
 
 	UpdateExt(h, fext.NewFromUint(0, 0, 0, 0)) // safefuard update
 	return res

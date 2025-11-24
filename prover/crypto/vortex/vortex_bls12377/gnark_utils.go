@@ -280,7 +280,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Elem
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
 	var accOmega field.Element
 	accOmega.SetOne()
-	wGen := zk.ValueOf(gen.String())
+	wGen := zk.ValueOf(gen)
 	var wAccOmega zk.WrappedVariable
 	for i := uint64(1); i < cardinality; i++ {
 		res[i] = *ext4.MulByFp(&res[i-1], wGen)          // res[i] <- ω * res[i-1]
@@ -390,49 +390,52 @@ func GnarkVerifyCommon(
 		proof.RsDomain.Generator,
 		proof.RsDomain.Cardinality)
 	alphaYPrime := gnarkEvalCanonicalExt(api, yjoined, randomCoin)
-
-	ext4.Println(randomCoin)
 	ext4.AssertIsEqual(&alphaY, &alphaYPrime)
 
 	// Size of the hash of 1 column
 	numRounds := len(ys)
 	selectedColSisDigests := make([][]frontend.Variable, numRounds)
 
-	// for j, selectedColID := range entryList {
+	for j, selectedColID := range entryList {
 
-	// 	// Will carry the concatenation of the columns for the same entry j
-	// 	fullCol := []zk.WrappedVariable{}
+		// Will carry the concatenation of the columns for the same entry j
+		fullCol := []zk.WrappedVariable{}
 
-	// 	for i := range selectedColSisDigests {
+		for i := range selectedColSisDigests {
 
-	// 		if j == 0 {
-	// 			selectedColSisDigests[i] = make([]frontend.Variable, len(entryList))
-	// 		}
+			if j == 0 {
+				selectedColSisDigests[i] = make([]frontend.Variable, len(entryList))
+			}
 
-	// 		// Entries of the selected columns #j contained in the commitment #i.
-	// 		selectedSubCol := proof.Columns[i][j]
-	// 		fullCol = append(fullCol, selectedSubCol...)
+			// Entries of the selected columns #j contained in the commitment #i.
+			selectedSubCol := proof.Columns[i][j]
+			fullCol = append(fullCol, selectedSubCol...)
 
-	// 		// Check consistency between the opened column and the commitment
-	// 		if !params.HasNoSisHasher() {
-	// 			panic("the vortex verifier circuit only supports a no-SIS hasher")
-	// 		}
+			// Check consistency between the opened column and the commitment
+			if !params.HasNoSisHasher() {
+				panic("the vortex verifier circuit only supports a no-SIS hasher")
+			}
 
-	// 		hasher, _ := params.NoSisHasher(api)
-	// 		hasher.Reset()
-	// 		hashinput := EncodeWVsToFVs(api, selectedSubCol)
-	// 		hasher.Write(hashinput...)
-	// 		digest := hasher.Sum()
+			hasher, _ := params.NoSisHasher(api)
+			hasher.Reset()
+			hashinput := EncodeWVsToFVs(api, selectedSubCol)
 
-	// 		selectedColSisDigests[i][j] = digest
-	// 	}
+			hasher.Write(hashinput...)
+			digest := hasher.Sum()
 
-	// 	// Check the linear combination is consistent with the opened column
-	// 	y := gnarkEvalCanonical(api, fullCol, randomCoin)
-	// 	v := Mux(api, selectedColID.V, proof.LinearCombination...)
-	// 	ext4.AssertIsEqual(&y, &v)
+			selectedColSisDigests[i][j] = digest
+		}
 
-	// }
+		// Check the linear combination is consistent with the opened column
+		y := gnarkEvalCanonical(api, fullCol, randomCoin)
+		v := Mux(api, selectedColID.V, proof.LinearCombination...)
+		ext4.AssertIsEqual(&y, &v) //TODO@yao: re-enable this check
+		// if j == 0 {
+		// 	ext4.Println(y)
+		// 	ext4.Println(v)
+		// }
+
+	}
 	return selectedColSisDigests, nil
 }
 

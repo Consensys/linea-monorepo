@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/ecc/bls24-317/fr"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -143,11 +144,15 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 				hasher := smt_bls12377.Poseidon2()
 				hasher.Reset()
 				colBytes := EncodeKoalabearsToBytes(selectedSubCol)
+
 				hasher.Write(colBytes[:])
 				leaf = types.AsBytes32(hasher.Sum(nil))
 
 			}
-
+			if j == 0 {
+				var rootElem fr.Element
+				fmt.Printf("root non-circuit=%v\n", rootElem.SetBytes(root[:]))
+			}
 			// Check the Merkle-proof for the obtained leaf
 			ok := mProof.Verify(mTreeHashConfig, leaf, root)
 			if !ok {

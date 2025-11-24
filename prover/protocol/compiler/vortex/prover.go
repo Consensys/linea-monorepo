@@ -104,6 +104,9 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 		committedMatrix = ctx.VortexParams.EncodeRows(pols)
 		tree, colHashes = ctx.GnarkVortexParams.CommitMerkleWithoutSIS(committedMatrix)
 
+		var rootBLS bls12377.Element
+		rootBLS.SetBytes(tree.Root[:])
+		fmt.Printf("Gnark precomputed Merkle root1: %v\n", rootBLS.String())
 		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		run.State.InsertNew(ctx.MerkleTreeName(round), tree)
 
@@ -115,9 +118,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 			}
 		}
 		roots := vortex_bls12377.EncodeBLS12377ToKoalabear(tree.Root)
-		var root bls12377.Element
-		root.SetBytes(tree.Root[:])
-		fmt.Printf("Gnark precomputed Merkle root2: %v\n", root.String())
+
 		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
 			run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(roots[i], 1))
 		}
@@ -199,9 +200,12 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 	fmt.Printf("randomCoinLC:%v, %v\n", ctx.Items.Alpha.Name, randomCoinLC.String())
+	fmt.Printf("committedSV :%v\n", committedSV[0].Pretty())
+
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
 	proof.LinearCombination = ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
+	fmt.Printf("proof.LinearCombination:%v\n", proof.LinearCombination.Pretty())
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
 
