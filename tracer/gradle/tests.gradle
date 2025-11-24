@@ -14,14 +14,19 @@ import java.time.LocalTime
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import de.undercouch.gradle.tasks.download.Download
+buildscript {
+  ext {
+    besuShomeiPluginVersion = "${libs.versions.besuShomeiPluginVersion.get()}"
+    besuShomeiPluginBaseUrl = "https://github.com/Consensys/besu-shomei-plugin/releases/download/"
+  }
+}
 
 
 apply plugin: 'jacoco'
 jacoco {
   toolVersion = '0.8.12'
 }
-
+apply plugin: 'de.undercouch.download'
 apply plugin: 'com.adarshr.test-logger'
 
 /*
@@ -251,7 +256,7 @@ tasks.register("jacocoFastReplayTestsReport", JacocoReport) {
     xml.required = true
   }
 
-  sourceSets project(":arithmetization").sourceSets.main
+  sourceSets project(":tracer:arithmetization").sourceSets.main
   executionData(fastReplayTests)
 }
 
@@ -260,7 +265,7 @@ tasks.register("jacocoNightlyTestsReport", JacocoReport) {
     xml.required = true
   }
 
-  sourceSets project(":arithmetization").sourceSets.main
+  sourceSets project(":tracer:arithmetization").sourceSets.main
   executionData(nightlyTests)
 }
 
@@ -269,7 +274,7 @@ tasks.register("jacocoWeeklyTestsReport", JacocoReport) {
     xml.required = true
   }
 
-  sourceSets project(":arithmetization").sourceSets.main
+  sourceSets project(":tracer:arithmetization").sourceSets.main
   executionData(weeklyTests)
 }
 
@@ -278,7 +283,7 @@ tasks.register("jacocoPrcCallTestsReport", JacocoReport) {
     xml.required = true
   }
 
-  sourceSets project(":arithmetization").sourceSets.main
+  sourceSets project(":tracer:arithmetization").sourceSets.main
   executionData(prcCallTests)
 }
 
@@ -296,7 +301,7 @@ tasks.register("jacocoUnitFastReplayWeeklyNightlyReferenceBlockchainAndStateTest
     xml.outputLocation = layout.buildDirectory.file('reports/jacocoConcatenate/jacocoUnitAndReferenceTestsReport.xml')
   }
 
-  sourceSets project(":arithmetization").sourceSets.main
+  sourceSets project(":tracer:arithmetization").sourceSets.main
   executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
 }
 
@@ -305,8 +310,8 @@ tasks.register("jacocoUnitFastReplayWeeklyNightlyReferenceBlockchainAndStateTest
 // =============================================================================
 
 tasks.register("copyTracerPlugin", Copy) {
-  dependsOn(project(":plugins").tasks.findByPath("jar"))
-  from project(":plugins").tasks.findByPath("jar").outputs.files.collect()
+  dependsOn(project(":tracer:plugins").tasks.findByPath("jar"))
+  from project(":tracer:plugins").tasks.findByPath("jar").outputs.files.collect()
   into "${System.getProperty("besu.plugins.dir")}"
 }
 

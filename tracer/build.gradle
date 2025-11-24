@@ -1,6 +1,10 @@
 
 buildscript {
   ext {
+    releaseVersion = "beta-v4.0-rc12"
+    besuVersion = "${libs.versions.besu.get()}"
+    distributionIdentifier = "linea-tracer"
+    distributionBaseUrl = "https://github.com/Consensys/linea-besu-upstream/releases/download/"
     besuIdentifier = "besu-${besuVersion}"
     besuFilename = "${besuIdentifier}.tar.gz"
     besuUrl = "${distributionBaseUrl}${besuVersion}/${besuFilename}"
@@ -11,7 +15,9 @@ buildscript {
 
 plugins {
   id 'java-library'
-  id "org.sonarqube" version "4.3.1.3277"
+  alias(libs.plugins.sonarQube)
+  alias(libs.plugins.dependencyManagement)
+  alias(libs.plugins.testLogger)
 }
 
 sonar {

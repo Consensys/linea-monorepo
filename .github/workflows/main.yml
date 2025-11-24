@@ -120,6 +120,8 @@ jobs:
             linea-besu-package:
               - 'linea-besu-package/versions.env'
               - 'linea-besu-package/scripts/assemble-packages.sh'
+            tracer:
+              - 'tracer/**'
 
       - name: Filter out commit changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 #v3.0.2
@@ -170,6 +172,7 @@ jobs:
       smart_contracts_changed: ${{ needs.filter-commit-changes.outputs.smart-contracts }}
       staterecovery_changed: false # disable until we have time to address it ${{ needs.filter-commit-changes.outputs.staterecovery }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
+      tracer_changed: ${{ needs.filter-commit-changes.outputs.tracer }}
     secrets: inherit
 
   get-has-changes-requiring-e2e-testing:

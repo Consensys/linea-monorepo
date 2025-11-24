@@ -12,15 +12,15 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import de.undercouch.gradle.tasks.download.Download
+apply plugin: 'de.undercouch.download'
 
-def besuDistTar = new File(new File(buildDir, "downloads"), rootProject.besuFilename)
+def besuDistTar = new File(new File(buildDir, "downloads"), project.besuFilename)
 task downloadBesu {
   outputs.file(besuDistTar)
   doLast {
     try {
       download.run {
-        src rootProject.besuUrl
+        src project.besuUrl
         dest besuDistTar
         onlyIfModified true
       }
@@ -30,11 +30,11 @@ task downloadBesu {
                       ? file("${findProperty('useLocalBesuDir')}".replaceFirst('^~', System.getProperty('user.home')))
                       : new File(projectDir, "../../besu")
 
-      def localBesuFile = new File("${localBesuDir.canonicalPath}/build/distributions/${rootProject.besuFilename}")
+      def localBesuFile = new File("${localBesuDir.canonicalPath}/build/distributions/${project.besuFilename}")
 
-      logger.warn("Could not download " + rootProject.besuUrl + " trying local copy from " + localBesuFile + " as fallback")
+      logger.warn("Could not download " + project.besuUrl + " trying local copy from " + localBesuFile + " as fallback")
       if (!file(localBesuFile).exists()) {
-        throw new GradleException("Could not download Besu distribution from: " + rootProject.besuUrl +
+        throw new GradleException("Could not download Besu distribution from: " + project.besuUrl +
                 ", and could not find it locally at ${localBesuFile} either")
       }
 
@@ -53,7 +53,7 @@ task unTarBesu(type: Copy) {
   into besuDistTar.parentFile
 }
 
-def besuLibDir = new File(besuDistTar.parentFile, rootProject.besuIdentifier + '/lib')
+def besuLibDir = new File(besuDistTar.parentFile, project.besuIdentifier + '/lib')
 def besuLibs = []
 
 def excludeBesuProvidedDeps = {
