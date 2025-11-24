@@ -23,13 +23,9 @@ MMU                 = 524288
 MOD                 = 131072
 MUL                 = 65536
 MXP                 = 524288
-PHONEY_RLP          = 65536 # can probably get lower
-PUB_LOG             = 16384
-PUB_LOG_INFO        = 16384
 ROM                 = 1048576
 ROM_LEX             = 1048576
 SHF                 = 65536
-TX_RLP              = 131072
 TRM                 = 131072
 WCP                 = 262144
 LOG_DATA            = 262144
@@ -43,8 +39,6 @@ STP                 = 262144
 OOB                 = 262144
 BLOCK_DATA          = 26
 BLOCK_HASH          = 6
-BLS                 = 1
-POINT_EVAL          = 1
 
 #
 # Block-specific limits
@@ -84,6 +78,7 @@ PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS = 0
 PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS = 0
 PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS = 0
 PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS = 0
+PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS = 0
 
 BLS_DATA = 8192
 RLP_UTILS = 262144
