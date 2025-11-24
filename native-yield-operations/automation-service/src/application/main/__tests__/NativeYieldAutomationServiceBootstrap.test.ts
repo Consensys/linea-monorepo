@@ -179,9 +179,6 @@ const createBootstrapConfig = () => ({
   rebalanceToleranceBps: 500,
   maxValidatorWithdrawalRequestsPerTransaction: 16,
   minWithdrawalThresholdEth: 42n,
-  shouldSubmitVaultReport: true,
-  yieldReportPositiveYieldThresholdWei: 1000000000000000000n,
-  yieldReportLidoProtocolFeeThresholdWei: 500000000000000000n,
   web3signer: {
     url: "https://web3signer.example.com",
     publicKey:

@@ -18,8 +18,6 @@ import { transports } from "winston";
  *   - maxValidatorWithdrawalRequestsPerTransaction: Maximum withdrawal requests per transaction
  *   - minWithdrawalThresholdEth: Minimum withdrawal threshold in ETH
  *   - shouldSubmitVaultReport: Whether to submit the vault accounting report
- *   - yieldReportPositiveYieldThresholdWei: Minimum threshold for new positive yield to submit a reportYield transaction
- *   - yieldReportLidoProtocolFeeThresholdWei: Minimum threshold for outstanding Lido protocol fees to submit a reportYield transaction
  *   - web3signer: Web3Signer URL, public key (address or secp pubkey compressed/uncompressed), keystore, truststore, and TLS settings
  *   - loggerOptions: Winston logger configuration with console transport
  */
@@ -59,8 +57,6 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
   maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
   minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
   shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,
-  yieldReportPositiveYieldThresholdWei: env.YIELD_REPORT_POSITIVE_YIELD_THRESHOLD_WEI,
-  yieldReportLidoProtocolFeeThresholdWei: env.YIELD_REPORT_LIDO_PROTOCOL_FEE_THRESHOLD_WEI,
   web3signer: {
     url: env.WEB3SIGNER_URL,
     publicKey: env.WEB3SIGNER_PUBLIC_KEY as Hex, // address or secp pubkey (compressed/uncompressed)

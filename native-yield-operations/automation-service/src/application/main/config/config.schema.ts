@@ -57,22 +57,6 @@ export const configSchema = z
     TRIGGER_MAX_INACTION_MS: z.coerce.number().int().positive(),
     // Whether to submit the vault accounting report. Can set to false if we expect other actors to submit.
     SHOULD_SUBMIT_VAULT_REPORT: z.coerce.boolean(),
-    /** Minimum threshold for new positive yield (in wei) to submit a reportYield transaction.
-     * A reportYield transaction will be submitted if the new positive yield is >= this threshold
-     * OR if outstanding Lido protocol fees are >= YIELD_REPORT_LIDO_PROTOCOL_FEE_THRESHOLD_WEI.
-     */
-    YIELD_REPORT_POSITIVE_YIELD_THRESHOLD_WEI: z
-      .union([z.string(), z.number(), z.bigint()])
-      .transform((val) => BigInt(val))
-      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
-    /** Minimum threshold for outstanding Lido protocol fees (in wei) to submit a reportYield transaction.
-     * A reportYield transaction will be submitted if outstanding Lido protocol fees are >= this threshold
-     * OR if new positive yield is >= YIELD_REPORT_POSITIVE_YIELD_THRESHOLD_WEI.
-     */
-    YIELD_REPORT_LIDO_PROTOCOL_FEE_THRESHOLD_WEI: z
-      .union([z.string(), z.number(), z.bigint()])
-      .transform((val) => BigInt(val))
-      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     // Retry delay in milliseconds between contract read attempts after failures.
     CONTRACT_READ_RETRY_TIME_MS: z.coerce.number().int().positive(),
     /** Rebalance tolerance in basis points (1 bps = 0.01%, max 10000 bps = 100%).
@@ -94,7 +78,7 @@ export const configSchema = z
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     /** Web3Signer service URL for transaction signing.
-     * The service signs transactions using the key specified by WEB3SIGNER_PUBLIC_KEY.
+     * The service signs transactions using the key specified by WEB3SIGNER_PUBLIC_KEY. 
      * Must be a valid HTTPS (not HTTP) URL.
      */
     WEB3SIGNER_URL: z.string().url(),
