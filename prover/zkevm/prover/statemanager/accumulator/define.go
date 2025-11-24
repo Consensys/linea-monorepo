@@ -120,14 +120,14 @@ type Module struct {
 	Cols struct {
 		Leaves    [common.NbElemPerHash]ifaces.Column
 		Roots     [common.NbElemPerHash]ifaces.Column
-		Positions [common.NbLimbU64]ifaces.Column
+		Positions [common.NbElemForHasingU64]ifaces.Column
 		Proofs    *merkle.FlatProof
 		// Column to verify reuse of Merkle proofs in INSERT, DELETE, and UPDATE operations
 		UseNextMerkleProof ifaces.Column
 		// Column denoting the active area of the accumulator module
 		IsActiveAccumulator ifaces.Column
 		// Columns to check sequentiality of the accumulator module with Merkle module
-		AccumulatorCounter [common.NbLimbU64]ifaces.Column
+		AccumulatorCounter [common.NbElemForHasingU64]ifaces.Column
 		// Column to verify the two equalities of intermediateRoot1 and intermediateRoot3, and empty
 		// leafs for INSERT and DELETE operation and one equality of root in IsReadZero operation
 		IsFirst ifaces.Column
@@ -156,19 +156,19 @@ type Module struct {
 
 		// Columns for the pointer check
 		// Columns storing the index of the minus leaf
-		LeafMinusIndex [common.NbLimbU64]ifaces.Column
+		LeafMinusIndex [common.NbElemForHasingU64]ifaces.Column
 		// Columns storing the index of the next leaf of the minus leaf
-		LeafMinusNext [common.NbLimbU64]ifaces.Column
+		LeafMinusNext [common.NbElemForHasingU64]ifaces.Column
 		// Columns storing the index of the plus leaf
-		LeafPlusIndex [common.NbLimbU64]ifaces.Column
+		LeafPlusIndex [common.NbElemForHasingU64]ifaces.Column
 		// Columns storing the index of the previous leaf of the plus leaf
-		LeafPlusPrev [common.NbLimbU64]ifaces.Column
+		LeafPlusPrev [common.NbElemForHasingU64]ifaces.Column
 		// Columns storing the index of the deleted leaf
-		LeafDeletedIndex [common.NbLimbU64]ifaces.Column
+		LeafDeletedIndex [common.NbElemForHasingU64]ifaces.Column
 		// Columns storing the index of the previous leaf of the deleted leaf
-		LeafDeletedPrev [common.NbLimbU64]ifaces.Column
+		LeafDeletedPrev [common.NbElemForHasingU64]ifaces.Column
 		// Columns storing the index of the next leaf of the deleted leaf
-		LeafDeletedNext [common.NbLimbU64]ifaces.Column
+		LeafDeletedNext [common.NbElemForHasingU64]ifaces.Column
 
 		// Columns for leaf hashing check
 		// LeafOpening contains four columns corresponding to HKey, HVal, Prev, and Next
@@ -184,12 +184,12 @@ type Module struct {
 
 		// Columns to check NextFreeNode consistency
 		// NextFreeNode stores the nextFreeNode for each row of every operation
-		NextFreeNode [common.NbLimbU64]ifaces.Column
+		NextFreeNode [common.NbElemForHasingU64]ifaces.Column
 		// NextFreeNodeIncremented stores a value that indicates how much NextFreeNode[i] is increased
 		// relative to the NextFreeNode[i-1]
-		NextFreeNodeIncremented [common.NbLimbU64]ifaces.Column
+		NextFreeNodeIncremented [common.NbElemForHasingU64]ifaces.Column
 		// InsertionPath stores the index of the newly inserted leaf by INSERT
-		InsertionPath [common.NbLimbU64]ifaces.Column
+		InsertionPath [common.NbElemForHasingU64]ifaces.Column
 		// IsInsertRow3 is one for row 3 of INSERT operation
 		IsInsertRow3 ifaces.Column
 

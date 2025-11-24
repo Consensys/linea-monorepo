@@ -208,7 +208,7 @@ func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 		mt.roots[i] = append(mt.roots[i], rootOct[i])
 	}
 	// compute position limbs
-	limbs := uint64To16BitLimbs(uint64(row.pos))
+	limbs := uint64To4BitLimbs(uint64(row.pos))
 	for i := 0; i < limbPerU64; i++ {
 		mt.pos[i] = append(mt.pos[i], field.NewElement(limbs[i]))
 
@@ -217,13 +217,25 @@ func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 	mt.isActive = append(mt.isActive, field.One())
 }
 
-// uint64To16BitLimbs splits v into four 16-bit limbs (big-endian order):
+// uint64To4BitLimbs splits v into four 16-bit limbs (big-endian order):
 // limbs[3] = low 16 bits, limbs[0] = highest 16 bits.
-func uint64To16BitLimbs(v uint64) [4]uint64 {
-	var limbs [4]uint64
-	limbs[3] = uint64(v & 0xFFFF)
-	limbs[2] = uint64((v >> 16) & 0xFFFF)
-	limbs[1] = uint64((v >> 32) & 0xFFFF)
-	limbs[0] = uint64((v >> 48) & 0xFFFF)
+func uint64To4BitLimbs(v uint64) [16]uint64 {
+	var limbs [16]uint64
+	limbs[15] = uint64(v & 0xF)
+	limbs[14] = uint64((v >> 4) & 0xF)
+	limbs[13] = uint64((v >> 8) & 0xF)
+	limbs[12] = uint64((v >> 12) & 0xF)
+	limbs[11] = uint64((v >> 16) & 0xF)
+	limbs[10] = uint64((v >> 20) & 0xF)
+	limbs[9] = uint64((v >> 24) & 0xF)
+	limbs[8] = uint64((v >> 28) & 0xF)
+	limbs[7] = uint64((v >> 32) & 0xF)
+	limbs[6] = uint64((v >> 36) & 0xF)
+	limbs[5] = uint64((v >> 40) & 0xF)
+	limbs[4] = uint64((v >> 44) & 0xF)
+	limbs[3] = uint64((v >> 48) & 0xF)
+	limbs[2] = uint64((v >> 52) & 0xF)
+	limbs[1] = uint64((v >> 56) & 0xF)
+	limbs[0] = uint64((v >> 60) & 0xF)
 	return limbs
 }

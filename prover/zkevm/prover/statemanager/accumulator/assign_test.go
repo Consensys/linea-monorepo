@@ -268,7 +268,7 @@ func assertCorrectMerkleProofsUsingWizard(t *testing.T, builder *assignmentBuild
 		proofcol              *merkle.FlatProof
 		rootscol              [common.NbElemPerHash]ifaces.Column
 		leavescol             [common.NbElemPerHash]ifaces.Column
-		poscol                [common.NbLimbU64]ifaces.Column
+		poscol                [common.NbElemForHasingU64]ifaces.Column
 		useNextMerkleProofCol ifaces.Column
 		isActiveCol           ifaces.Column
 	)
@@ -281,7 +281,7 @@ func assertCorrectMerkleProofsUsingWizard(t *testing.T, builder *assignmentBuild
 			leavescol[i] = b.RegisterCommit(ifaces.ColIDf("LEAVES_%d", i), size)
 		}
 
-		for i := 0; i < common.NbLimbU64; i++ {
+		for i := 0; i < common.NbElemForHasingU64; i++ {
 			poscol[i] = b.RegisterCommit(ifaces.ColIDf("POS_%d", i), size)
 		}
 

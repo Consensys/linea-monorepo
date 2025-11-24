@@ -49,7 +49,7 @@ type assignmentBuilder struct {
 	// [Accumulator.Cols.Leaves] column.
 	leaves [common.NbElemPerHash][]field.Element
 	// positions stores the positions of the leaves in the merkle tree for which we give the Merkle proof. This corresponds to the [Accumulator.Cols.Positions] column.
-	positions [common.NbLimbU64][]field.Element
+	positions [common.NbElemForHasingU64][]field.Element
 	// roots stores the roots of the merkle tree. This corresponds
 	// to the [Accumulator.Cols.Roots] column.
 	roots [common.NbElemPerHash][]field.Element
@@ -63,7 +63,7 @@ type assignmentBuilder struct {
 	isActive []field.Element
 	// accumulatorCounter counts the number of rows in the accumulator. It is used to check the
 	// sequentiality of leaves and roots in accumulator and the merkle module
-	accumulatorCounter [common.NbLimbU64][]field.Element
+	accumulatorCounter [common.NbElemForHasingU64][]field.Element
 	// isFirst is one at the first row of any operation. This corresponds to the [Accumulator.IsFirst] column
 	isFirst []field.Element
 	// isInsert is one when we have an INSERT operation. It is
@@ -89,19 +89,19 @@ type assignmentBuilder struct {
 	hKeyPlus [common.NbElemPerHash][]field.Element
 	// Pointer check columns
 	// leafMinusIndex is the index of the minus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafMinusIndex]
-	leafMinusIndex [common.NbLimbU64][]field.Element
+	leafMinusIndex [common.NbElemForHasingU64][]field.Element
 	// leafMinusNext is the index of the Next leaf of the minus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafMinusNext]
-	leafMinusNext [common.NbLimbU64][]field.Element
+	leafMinusNext [common.NbElemForHasingU64][]field.Element
 	// leafMinusNext is the index of the plus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafPlusIndex]
-	leafPlusIndex [common.NbLimbU64][]field.Element
+	leafPlusIndex [common.NbElemForHasingU64][]field.Element
 	// leafPlusPrev is the index of the Previous leaf of the plus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafPlusPrev]
-	leafPlusPrev [common.NbLimbU64][]field.Element
+	leafPlusPrev [common.NbElemForHasingU64][]field.Element
 	// leafDeletedIndex is the index of the Deleted leaf for DELETE. This corresponds to the [Accumulator.Column.LeafDeletedIndex]
-	leafDeletedIndex [common.NbLimbU64][]field.Element
+	leafDeletedIndex [common.NbElemForHasingU64][]field.Element
 	// leafDeletedPrev is the index of the Previous leaf of the Deleted leaf for DELETE. This corresponds to the [Accumulator.Column.LeafDeletedPrev]
-	leafDeletedPrev [common.NbLimbU64][]field.Element
+	leafDeletedPrev [common.NbElemForHasingU64][]field.Element
 	// leafDeletedNext is the index of the Previous leaf of the Deleted leaf for DELETE. This corresponds to the [Accumulator.Column.LeafDeletedNext]
-	leafDeletedNext [common.NbLimbU64][]field.Element
+	leafDeletedNext [common.NbElemForHasingU64][]field.Element
 	// leafOpening is a tuple of four columns containing
 	// Prev, Next, HKey, HVal of a leaf. This corresponds to the [Accumulator.Column.LeafOpening]
 	leafOpening leafOpenings
@@ -112,10 +112,10 @@ type assignmentBuilder struct {
 	// isEmptyLeaf is one when Leaves contains empty leaf and does not match with LeafHash
 	isEmptyLeaf []field.Element
 	// nextFreeNode contains the nextFreeNode for each row of every operation
-	nextFreeNode [common.NbLimbU64][]field.Element
+	nextFreeNode [common.NbElemForHasingU64][]field.Element
 	// insertionPath is the path of a newly inserted leaf when INSERT happens,
 	// it is zero otherwise
-	insertionPath [common.NbLimbU64][]field.Element
+	insertionPath [common.NbElemForHasingU64][]field.Element
 	// isInsertRow3 is one for row 3 of INSERT operation
 	isInsertRow3 []field.Element
 	// intermTopRoot contains the intermediate MiMC state hash
