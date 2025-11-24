@@ -39,8 +39,8 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	}
 	a = allocateCircuit(cfg)
 
-	if len(r.DataAvailabilities) > cfg.MaxNbDA {
-		err = fmt.Errorf("failing CHECK_DECOMP_LIMIT:\n\t%d decompression proofs exceeds maximum of %d", len(r.DataAvailabilities), cfg.MaxNbDA)
+	if len(r.DataAvailabilities) > cfg.MaxNbDataAvailability {
+		err = fmt.Errorf("failing CHECK_DECOMP_LIMIT:\n\t%d decompression proofs exceeds maximum of %d", len(r.DataAvailabilities), cfg.MaxNbDataAvailability)
 		return
 	}
 	if len(r.Executions) > cfg.MaxNbExecution {
@@ -67,7 +67,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	// the corresponding execution data hashes. These are then checked against
 	// the execution proof public inputs.
 	execDataChecksums := make([][]byte, 0, len(r.Executions))
-	shnarfs := make([][]byte, cfg.MaxNbDA)
+	shnarfs := make([][]byte, cfg.MaxNbDataAvailability)
 	// Decompression FPI
 	for i, p := range r.DataAvailabilities {
 		var blobData [1024 * 128]byte

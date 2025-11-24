@@ -14,12 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
 )
 
-/*
-// Compile builds the circuit
-func Compile(config config.DataAvailability) constraint.ConstraintSystem {
-	return v2.Compile(dictionaryNbBytes)
-}*/
-
 // Assign the circuit with concrete data. Returns the assigned circuit and the
 // public input computed during the assignment.
 func Assign(config config.CircuitSizes, blobData []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (circuit frontend.Circuit, publicInput fr.Element, snarkHash []byte, err error) {

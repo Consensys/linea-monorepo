@@ -16,7 +16,7 @@ prover_mode = "dev"
 [aggregation]
 prover_mode = "full"
 num_proofs = [10]
-allowed_inputs = ["execution-dummy", "execution", "blob-decompression-dummy"]
+allowed_inputs = ["execution-dummy", "execution", "data-availability-dummy"]
 verifier_id = 1
 
 [layer2]

@@ -40,11 +40,11 @@ func TestSingleBlockBlob(t *testing.T) {
 func TestSingleBlockBlobE2E(t *testing.T) {
 	req := pitesting.AssignSingleBlockBlob(t)
 	cfg := config.PublicInput{
-		MaxNbDA:           len(req.DataAvailabilities),
-		MaxNbExecution:    len(req.Executions),
-		ExecutionMaxNbMsg: 1,
-		L2MsgMerkleDepth:  5,
-		L2MsgMaxNbMerkle:  1,
+		MaxNbDataAvailability: len(req.DataAvailabilities),
+		MaxNbExecution:        len(req.Executions),
+		ExecutionMaxNbMsg:     1,
+		L2MsgMerkleDepth:      5,
+		L2MsgMaxNbMerkle:      1,
 	}
 	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
 	assert.NoError(t, err)
@@ -271,12 +271,12 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 		}
 
 		cfg := config.PublicInput{
-			MaxNbDA:           len(req.DataAvailabilities) + slack[0],
-			MaxNbExecution:    len(req.Executions) + slack[1],
-			ExecutionMaxNbMsg: 1 + slack[2],
-			L2MsgMerkleDepth:  5,
-			L2MsgMaxNbMerkle:  1 + slack[3],
-			MockKeccakWizard:  true,
+			MaxNbDataAvailability: len(req.DataAvailabilities) + slack[0],
+			MaxNbExecution:        len(req.Executions) + slack[1],
+			ExecutionMaxNbMsg:     1 + slack[2],
+			L2MsgMerkleDepth:      5,
+			L2MsgMaxNbMerkle:      1 + slack[3],
+			MockKeccakWizard:      true,
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {

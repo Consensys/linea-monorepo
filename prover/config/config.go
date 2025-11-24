@@ -277,7 +277,7 @@ type Aggregation struct {
 
 	// AllowedInputs determines the "inner" plonk circuits the "outer" aggregation circuit can aggregate.
 	// Order matters.
-	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large execution-limitless blob-decompression-dummy blob-decompression-v0 blob-decompression-v1 emulation-dummy aggregation emulation public-input-interconnection"`
+	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large execution-limitless data-availability-dummy data-availability-v2 emulation-dummy aggregation emulation public-input-interconnection"`
 
 	// note @gbotrel keeping that around in case we need to support two emulation contract
 	// during a migration.
@@ -304,12 +304,12 @@ func (cfg *WithRequestDir) DirDone() string {
 }
 
 type PublicInput struct {
-	MaxNbDA           int `mapstructure:"max_nb_da" validate:"gte=0"`
-	MaxNbExecution    int `mapstructure:"max_nb_execution" validate:"gte=0"`
-	MaxNbCircuits     int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDA + MaxNbExecution
-	ExecutionMaxNbMsg int `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
-	L2MsgMerkleDepth  int `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
-	L2MsgMaxNbMerkle  int `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
+	MaxNbDataAvailability int `mapstructure:"max_nb_data_availability" validate:"gte=0"`
+	MaxNbExecution        int `mapstructure:"max_nb_execution" validate:"gte=0"`
+	MaxNbCircuits         int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDA + MaxNbExecution
+	ExecutionMaxNbMsg     int `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
+	L2MsgMerkleDepth      int `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
+	L2MsgMaxNbMerkle      int `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
 
 	// not serialized
 

@@ -23,7 +23,7 @@ func setDefaultValues() {
 	viper.SetDefault("debug.performance_monitor.profile", "prover-rounds")
 
 	viper.SetDefault("controller.enable_execution", true)
-	viper.SetDefault("controller.enable_blob_decompression", true)
+	viper.SetDefault("controller.enable_data_availability", true)
 	viper.SetDefault("controller.enable_aggregation", true)
 
 	// Set the default values for the retry delays
@@ -46,7 +46,7 @@ func setDefaultValues() {
 func setDefaultPaths() {
 	viper.SetDefault("execution.conflated_traces_dir", "/shared/traces/conflated")
 	viper.SetDefault("execution.requests_root_dir", "/shared/prover-execution")
-	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/prover-compression")
+	viper.SetDefault("data_availability.requests_root_dir", "/shared/prover-compression")
 	viper.SetDefault("aggregation.requests_root_dir", "/shared/prover-aggregation")
 	viper.SetDefault("debug.performance_monitor.profile_dir", "/shared/prover-execution/profiling")
 }

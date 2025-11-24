@@ -304,20 +304,20 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 		}
 	}
 	return config.PublicInput{
-		MaxNbDA:           len(c.Circuit.DataAvailabilityFPIQ),
-		MaxNbExecution:    len(c.Circuit.ExecutionFPIQ),
-		ExecutionMaxNbMsg: executionNbMsg,
-		L2MsgMerkleDepth:  c.Circuit.L2MessageMerkleDepth,
-		L2MsgMaxNbMerkle:  c.Circuit.L2MessageMaxNbMerkle,
-		MaxNbCircuits:     c.Circuit.MaxNbCircuits,
+		MaxNbDataAvailability: len(c.Circuit.DataAvailabilityFPIQ),
+		MaxNbExecution:        len(c.Circuit.ExecutionFPIQ),
+		ExecutionMaxNbMsg:     executionNbMsg,
+		L2MsgMerkleDepth:      c.Circuit.L2MessageMerkleDepth,
+		L2MsgMaxNbMerkle:      c.Circuit.L2MessageMaxNbMerkle,
+		MaxNbCircuits:         c.Circuit.MaxNbCircuits,
 	}, nil
 }
 
 func allocateCircuit(cfg config.PublicInput) Circuit {
 	res := Circuit{
-		DataAvailabilityPublicInput: make([]frontend.Variable, cfg.MaxNbDA),
+		DataAvailabilityPublicInput: make([]frontend.Variable, cfg.MaxNbDataAvailability),
 		ExecutionPublicInput:        make([]frontend.Variable, cfg.MaxNbExecution),
-		DataAvailabilityFPIQ:        make([]dataavailability.FunctionalPublicInputQSnark, cfg.MaxNbDA),
+		DataAvailabilityFPIQ:        make([]dataavailability.FunctionalPublicInputQSnark, cfg.MaxNbDataAvailability),
 		ExecutionFPIQ:               make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
 		L2MessageMerkleDepth:        cfg.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:        cfg.L2MsgMaxNbMerkle,
@@ -334,7 +334,7 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 }
 
 func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
-	nbShnarf := c.MaxNbDA
+	nbShnarf := c.MaxNbDataAvailability
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
 	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, 2)
 	for i := 0; i < nbShnarf; i++ {
@@ -439,6 +439,6 @@ const (
 func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
 	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
 	return utils.RightPad(
-		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDA)
+		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDataAvailability)
 
 }

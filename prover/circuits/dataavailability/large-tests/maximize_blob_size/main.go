@@ -11,23 +11,34 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
-	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
+	v2 "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
+	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
-const maxNbBatches = 100
+const (
+	maxNbBatches = 100
+	dictNbBytes  = 65536
+)
 
-func nbConstraints(config config.CircuitSizes) int {
-	fmt.Printf("*********************\nfor blob of size %d B or %.2fKB:\n", config.MaxUncompressedNbBytes, float32(config.MaxUncompressedNbBytes)/1024)
+func nbConstraints(maxUncompressedNbBytes int) int {
+	fmt.Printf("*********************\nfor blob of size %d B or %.2fKB:\n", maxUncompressedNbBytes, float32(maxUncompressedNbBytes)/1024)
 	c := v2.Circuit{
-		BlobBytes:    make([]frontend.Variable, 32*4096),
-		Dict:         make([]frontend.Variable, 64*1024),
-		CircuitSizes: config,
+		BlobBytes: make([]frontend.Variable, 32*4096),
+		Dict:      make([]frontend.Variable, dictNbBytes),
+		FuncPI: v2.FunctionalPublicInputSnark{
+			BatchSums: make([]execution.DataChecksumSnark, maxNbBatches),
+		},
+		CircuitSizes: config.CircuitSizes{
+			MaxUncompressedNbBytes: maxUncompressedNbBytes,
+			MaxNbBatches:           maxNbBatches,
+			DictNbBytes:            dictNbBytes,
+		},
 	}
 	runtime.GC()
 
 	if *flagProfile {
-		p := profile.Start(profile.WithPath(fmt.Sprintf("da-circuit-%sK.pprof", formatFloat(float64(config.MaxUncompressedNbBytes)/1024.0))))
+		p := profile.Start(profile.WithPath(fmt.Sprintf("da-circuit-%sK.pprof", formatFloat(float64(maxUncompressedNbBytes)/1024.0))))
 		defer p.Stop()
 	}
 
@@ -70,8 +81,7 @@ func main() {
 		}
 		fmt.Print("bounds given.")
 	} else { // only one value given, start crawling
-		v := nbConstraints(config.CircuitSizes{
-			MaxUncompressedNbBytes: *flagStart, MaxNbBatches: maxNbBatches})
+		v := nbConstraints(*flagStart)
 		a, b = *flagStart, *flagStart
 
 		if v > *flagTargetNbConstraints {
@@ -79,8 +89,7 @@ func main() {
 			for v > *flagTargetNbConstraints {
 				b = a
 				a = max(a-*flagCrawlStep, 0)
-				v = nbConstraints(config.CircuitSizes{
-					MaxUncompressedNbBytes: a, MaxNbBatches: maxNbBatches})
+				v = nbConstraints(a)
 				*flagCrawlStep *= 2
 			}
 		} else if v < *flagTargetNbConstraints {
@@ -88,7 +97,7 @@ func main() {
 			for v < *flagTargetNbConstraints {
 				a = b
 				b += *flagCrawlStep
-				v = nbConstraints(config.CircuitSizes{MaxUncompressedNbBytes: b, MaxNbBatches: maxNbBatches})
+				v = nbConstraints(b)
 				*flagCrawlStep *= 2
 			}
 		}
@@ -103,7 +112,7 @@ func main() {
 
 	for b > a {
 		m := (b + a) / 2
-		v := nbConstraints(config.CircuitSizes{MaxUncompressedNbBytes: m, MaxNbBatches: maxNbBatches})
+		v := nbConstraints(m)
 		if v > *flagTargetNbConstraints {
 			b = m
 		}

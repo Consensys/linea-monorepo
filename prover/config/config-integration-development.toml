@@ -17,8 +17,8 @@ prover_mode = "dev"
 num_proofs = [10]
 allowed_inputs = [
     "execution-dummy",
-    "blob-decompression-dummy",
-    "blob-decompression-v0",
+    "data-availability-dummy",
+    "data-availability-v2",
 ]
 verifier_id = 0
 
