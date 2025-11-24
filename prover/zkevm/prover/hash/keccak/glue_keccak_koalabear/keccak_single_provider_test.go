@@ -1,5 +1,3 @@
-//go:build exclude
-
 package keccak
 
 import (
@@ -23,8 +21,8 @@ func MakeTestCaseKeccak(t *testing.T, c makeTestCaseGBM) (
 
 	define = func(builder *wizard.Builder) {
 		comp := builder.CompiledIOP
-		gdm = testdata.CreateGenDataModule(comp, c.Name, c.SizeData, 1)
-		gim = testdata.CreateGenInfoModule(comp, c.Name, c.SizeInfo, 1)
+		gdm = testdata.CreateGenDataModule(comp, c.Name, c.SizeData, 8)
+		gim = testdata.CreateGenInfoModule(comp, c.Name, c.SizeInfo, 8)
 
 		inp := KeccakSingleProviderInput{
 			MaxNumKeccakF: maxNumKeccakF,
@@ -66,4 +64,14 @@ var testCasesGBMSingleProvider = makeTestCaseGBM{
 	IsHashHi: []int{1, 0, 0, 1, 1, 1, 0},
 	IsHashLo: []int{0, 1, 0, 0, 1, 1, 1}, // shift
 
+}
+
+type makeTestCaseGBM struct {
+	Name     string
+	SizeData int
+	HashNum  []int
+	ToHash   []int
+	SizeInfo int
+	IsHashHi []int
+	IsHashLo []int
 }

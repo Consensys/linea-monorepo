@@ -1,5 +1,3 @@
-//go:build exclude
-
 package keccak
 
 import (
@@ -25,8 +23,8 @@ func MakeTestCaseKeccakZkEVM(t *testing.T, c []makeTestCaseGBM) (
 	define = func(builder *wizard.Builder) {
 		comp := builder.CompiledIOP
 		for i := range gdms {
-			gdms[i] = testdata.CreateGenDataModule(comp, c[i].Name, c[i].SizeData, 1)
-			gims[i] = testdata.CreateGenInfoModule(comp, c[i].Name, c[i].SizeInfo, 1)
+			gdms[i] = testdata.CreateGenDataModule(comp, c[i].Name, c[i].SizeData, nbChunks)
+			gims[i] = testdata.CreateGenInfoModule(comp, c[i].Name, c[i].SizeInfo, nbChunks)
 			gbm[i] = generic.GenericByteModule{
 				Data: gdms[i],
 				Info: gims[i],
@@ -59,16 +57,6 @@ func TestKeccakZkEVM(t *testing.T) {
 
 	proof := wizard.Prove(comp, prover)
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
-}
-
-type makeTestCaseGBM struct {
-	Name     string
-	SizeData int
-	HashNum  []int
-	ToHash   []int
-	SizeInfo int
-	IsHashHi []int
-	IsHashLo []int
 }
 
 var testCasesGBMMultiProvider = []makeTestCaseGBM{

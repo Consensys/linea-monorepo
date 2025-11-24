@@ -1,9 +1,6 @@
 package iokeccakf
 
 import (
-	"encoding/binary"
-
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -21,9 +18,12 @@ var (
 )
 
 type KeccakFOutputs struct {
-	Hash    []ifaces.Column // hash result represented in chunks of  bytes
-	IsHash  ifaces.Column
-	hashNum ifaces.Column
+	HashBytes []ifaces.Column // hash result represented in chunks of  bytes
+	Hash      []ifaces.Column // hash result represented in chunks of 2 bytes. This is the final output.
+	IsHash    ifaces.Column   // indicates whether this row contains a hash output
+	hashNum   ifaces.Column   // number of hashes outputted up to this row
+	// prover action to assign the output columns Hash from HashBytes.
+	pa wizard.ProverAction
 }
 
 // it first applies to-basex to get laneX, then a projection query to map lanex to blocks
@@ -34,8 +34,8 @@ func NewOutputKeccakF(comp *wizard.CompiledIOP,
 
 	var (
 		output = &KeccakFOutputs{
-			Hash:    make([]ifaces.Column, NbChunksHash),
-			hashNum: comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_HASH_NUM"), isBase2.Size(), true),
+			HashBytes: make([]ifaces.Column, NbChunksHash),
+			hashNum:   comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_HASH_NUM"), isBase2.Size(), true),
 		}
 	)
 
@@ -43,7 +43,7 @@ func NewOutputKeccakF(comp *wizard.CompiledIOP,
 	j := 0
 	for x := 0; x < 4; x++ {
 		for z := 0; z < kcommon.NumSlices; z++ {
-			output.Hash[j] = stateCurr[x][0][z]
+			output.HashBytes[j] = stateCurr[x][0][z]
 			j++
 		}
 	}
@@ -64,6 +64,11 @@ func NewOutputKeccakF(comp *wizard.CompiledIOP,
 		ifaces.QueryIDf("KECCAKF_HASHNUM_FIRST_ROW"),
 		sym.Sub(output.hashNum, output.IsHash),
 	)
+
+	// combine every two bytes into one to form the final hash output
+	twoByTwo := common.NewTwoByTwoCombination(comp, output.HashBytes)
+	output.Hash = twoByTwo.CombinationCols
+	output.pa = twoByTwo
 
 	return output
 
@@ -86,20 +91,23 @@ func (o *KeccakFOutputs) Run(run *wizard.ProverRuntime) {
 		}
 	}
 	hashNum.PadAndAssign(run)
+	// assign the  2-byte hash output columns from the 1-byte  hash output columns.
+	o.pa.Run(run)
+
 }
 
 // helper function to extract the hash Digests, ignoring the rows where isHash = 0
-func (o *KeccakFOutputs) ExtractHashResult(run *wizard.ProverRuntime) (hashes []keccak.Digest) {
+func (o *KeccakFOutputs) GetDigests(run *wizard.ProverRuntime) (hashes []keccak.Digest) {
 
 	var (
-		hashCol = make([][]field.Element, len(o.Hash))
-		size    = o.Hash[0].Size()
+		hashCol = make([][]field.Element, len(o.HashBytes))
+		size    = o.HashBytes[0].Size()
 		isHash  = o.IsHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
 
-	for i := range o.Hash {
+	for i := range o.HashBytes {
 		hashCol[i] = make([]field.Element, size)
-		hashCol[i] = o.Hash[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		hashCol[i] = o.HashBytes[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 
 	// we just look at row%23 = 0 since the hash results are possibaly stored there.
@@ -109,7 +117,7 @@ func (o *KeccakFOutputs) ExtractHashResult(run *wizard.ProverRuntime) (hashes []
 		if isHash[row].IsOne() {
 			var a keccak.Digest
 			for j := range hashCol {
-				a[j] = LEBytes(&hashCol[j][row])[0] // take the least significant byte
+				a[j] = hashCol[j][row].Bytes()[field.Bytes-1] // we take the last byte since each column stores one byte
 			}
 			hashes = append(hashes, a)
 		}
@@ -117,21 +125,4 @@ func (o *KeccakFOutputs) ExtractHashResult(run *wizard.ProverRuntime) (hashes []
 	}
 
 	return hashes
-}
-
-// helper func to convert 32 columns of one byte to  16 columns of 2 bytes
-func TwoByTwoCombination() {
-
-}
-
-func LittleEndianBytes(f field.Element) (res [field.Bytes]byte) {
-	f.Uint64()
-	binary.LittleEndian.PutUint64(res[:], f.Uint64())
-	return
-}
-
-// Bytes returns the value of z as a little-endian byte array
-func LEBytes(z *field.Element) (res [field.Bytes]byte) {
-	koalabear.LittleEndian.PutElement(&res, *z)
-	return
 }
