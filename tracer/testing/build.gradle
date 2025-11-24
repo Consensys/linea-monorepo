@@ -1,0 +1,66 @@
+import org.web3j.solidity.gradle.plugin.EVMVersion
+import org.web3j.gradle.plugin.GenerateContractWrappers
+
+plugins {
+  id "common-plugins"
+  id "org.web3j" version "4.12.2"
+  id "linea.yul-plugin"
+}
+
+apply from: rootProject.file("gradle/java.gradle")
+apply from: rootProject.file("gradle/dependency-management.gradle")
+apply from: rootProject.file('gradle/common-dependencies.gradle')
+apply from: rootProject.file("gradle/lint.gradle")
+
+dependencies {
+  implementation project(path: ':arithmetization')
+
+  implementation "${besuArtifactGroup}:besu-datatypes"
+  implementation "${besuArtifactGroup}:besu-evm"
+  implementation "${besuArtifactGroup}:besu-plugin-api"
+  implementation "${besuArtifactGroup}.internal:besu-acceptance-tests-dsl"
+  implementation "${besuArtifactGroup}.internal:besu-config"
+  implementation "${besuArtifactGroup}.internal:besu-consensus-clique"
+  implementation "${besuArtifactGroup}.internal:besu-consensus-common"
+  implementation "${besuArtifactGroup}.internal:besu-crypto-algorithms"
+  implementation "${besuArtifactGroup}.internal:besu-crypto-services"
+  implementation "${besuArtifactGroup}.internal:besu-ethereum-api"
+  implementation "${besuArtifactGroup}.internal:besu-ethereum-core"
+  implementation "${besuArtifactGroup}.internal:besu-ethereum-referencetests"
+  implementation "${besuArtifactGroup}.internal:besu-ethereum-rlp"
+  implementation "${besuArtifactGroup}.internal:besu-metrics-core"
+  implementation "${besuArtifactGroup}.internal:besu-testutil"
+  implementation "${besuArtifactGroup}:gnark"
+  implementation group: "${besuArtifactGroup}.internal", name: "besu-ethereum-core", classifier: "test-support", version: "${besuVersion}"
+  implementation "io.consensys.protocols.shomei:shomei:${shomeiVersion}"
+  implementation "io.consensys.protocols.shomei:shomei-server:${shomeiVersion}"
+  implementation 'io.micrometer:micrometer-registry-prometheus:1.11.1'
+  implementation 'org.awaitility:awaitility'
+  implementation 'com.google.code.gson:gson'
+  implementation 'com.google.guava:guava'
+  implementation 'org.assertj:assertj-core'
+  implementation 'org.junit.jupiter:junit-jupiter-api'
+}
+
+node {
+  download = false
+}
+
+tasks.withType(GenerateContractWrappers.class).configureEach {
+  mustRunAfter(processResources)
+}
+
+web3j {
+  generatedPackageName = "net.consensys.linea.testing.generated"
+}
+
+solidity {
+  optimize = false
+  prettyJson = true
+  evmVersion = EVMVersion.LONDON // TODO: how to make it dynamic ?
+}
+
+yul {
+  solcVersion = "0.8.26"
+  compilerJsonTemplatePath = "src/main/resources/templates/compiler_yul.json.template"
+}
