@@ -9,7 +9,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccak_koalabear/keccakf/common"
+	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf/common"
 )
 
 const (
