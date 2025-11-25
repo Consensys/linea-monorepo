@@ -77,9 +77,9 @@ func RandomFext(h *poseidon2_koalabear.MDHasher) fext.Element {
 	var res fext.Element
 	//TODO@yao: fix the function and RandomFieldExt in snark.go
 	res.B0.A0 = field.NewFromString("3")
-	res.B0.A1 = field.NewFromString("5")
-	res.B1.A0 = field.NewFromString("7")
-	res.B1.A1 = field.NewFromString("11")
+	res.B0.A1 = field.NewFromString("0")
+	res.B1.A0 = field.NewFromString("0")
+	res.B1.A1 = field.NewFromString("0")
 
 	UpdateExt(h, fext.NewFromUint(0, 0, 0, 0)) // safefuard update
 	return res

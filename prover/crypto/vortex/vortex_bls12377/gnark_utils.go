@@ -204,8 +204,9 @@ func gnarkEvalCanonical(api frontend.API, p []zk.WrappedVariable, z gnarkfext.E4
 	res := *ext4.Zero()
 	s := len(p)
 	for i := 0; i < len(p); i++ {
+		pext := gnarkfext.FromBase(p[s-1-i])
 		res = *ext4.Mul(&res, &z)
-		res = *ext4.AddByBase(&res, p[s-1-i])
+		res = *ext4.Add(&res, &pext)
 	}
 	return res
 }
@@ -396,7 +397,7 @@ func GnarkVerifyCommon(
 	numRounds := len(ys)
 	selectedColSisDigests := make([][]frontend.Variable, numRounds)
 
-	for j, _ := range entryList {
+	for j, selectedColID := range entryList {
 
 		// Will carry the concatenation of the columns for the same entry j
 		fullCol := []zk.WrappedVariable{}
@@ -427,13 +428,11 @@ func GnarkVerifyCommon(
 		}
 
 		// Check the linear combination is consistent with the opened column
-		// y := gnarkEvalCanonical(api, fullCol, randomCoin)
-		// v := Mux(api, selectedColID.V, proof.LinearCombination...)
-		// ext4.AssertIsEqual(&y, &v) //TODO@yao: re-enable this check
-		// if j == 0 {
-		// 	ext4.Println(y)
-		// 	ext4.Println(v)
-		// }
+		y := gnarkEvalCanonical(api, fullCol, randomCoin)
+		v := Mux(api, selectedColID.V, proof.LinearCombination...)
+		ext4.Println(y)
+		ext4.Println(v)
+		ext4.AssertIsEqual(&y, &v) //TODO@yao: re-enable this check
 
 	}
 	return selectedColSisDigests, nil

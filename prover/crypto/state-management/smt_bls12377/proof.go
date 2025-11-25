@@ -3,7 +3,6 @@ package smt_bls12377
 import (
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -80,7 +79,7 @@ func (p *Proof) RecoverRoot(conf *Config, leaf types.Bytes32) (types.Bytes32, er
 		current = leaf
 		idx     = p.Path
 	)
-	fmt.Printf("idx:= %v\n", idx)
+	// fmt.Printf("idx:= %v\n", idx)
 
 	for _, sibling := range p.Siblings {
 		left, right := current, sibling
@@ -88,11 +87,11 @@ func (p *Proof) RecoverRoot(conf *Config, leaf types.Bytes32) (types.Bytes32, er
 			left, right = right, left
 		}
 		current = outerHashLR(conf, left, right)
-		var leftElem, rightElem, currentElem fr.Element
-		fmt.Printf("bits:= %v\n", idx&1)
-		fmt.Printf("leftElem non-circuit=%v\n", leftElem.SetBytes(left[:]))
-		fmt.Printf("rightElem non-circuit=%v\n", rightElem.SetBytes(right[:]))
-		fmt.Printf("current non-circuit=%v\n", currentElem.SetBytes(current[:]))
+		// var leftElem, rightElem, currentElem fr.Element
+		// fmt.Printf("bits:= %v\n", idx&1)
+		// fmt.Printf("leftElem non-circuit=%v\n", leftElem.SetBytes(left[:]))
+		// fmt.Printf("rightElem non-circuit=%v\n", rightElem.SetBytes(right[:]))
+		// fmt.Printf("current non-circuit=%v\n", currentElem.SetBytes(current[:]))
 
 		idx >>= 1
 	}

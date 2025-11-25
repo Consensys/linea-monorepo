@@ -69,14 +69,17 @@ func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
 	// Generate a random field element
 	var value fext.Element
 	value.B0.A0 = field.NewFromString("3")
-	value.B0.A1 = field.NewFromString("5")
-	value.B1.A0 = field.NewFromString("7")
-	value.B1.A1 = field.NewFromString("11")
+	value.B0.A1 = field.NewFromString("0")
+	value.B1.A0 = field.NewFromString("0")
+	value.B1.A1 = field.NewFromString("0")
 	var res gnarkfext.E4Gen
 	res.B0.A0 = zk.ValueOf(value.B0.A0.String())
 	res.B0.A1 = zk.ValueOf(value.B0.A1.String())
 	res.B1.A0 = zk.ValueOf(value.B1.A0.String())
 	res.B1.A1 = zk.ValueOf(value.B1.A1.String())
+	ext4, _ := gnarkfext.NewExt4(fs.api)
+	ext4.Println(res)
+
 	return res
 }
 

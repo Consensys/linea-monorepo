@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/ecc/bls24-317/fr"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -149,27 +148,26 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 				leaf = types.AsBytes32(hasher.Sum(nil))
 
 			}
-			if j == 0 && i == 0 {
 
-				var rootElem, leafElem, sibElem fr.Element
-				fmt.Printf("root non-circuit=%v\n", rootElem.SetBytes(root[:]))
-				fmt.Printf("leaf non-circuit=%v\n", leafElem.SetBytes(leaf[:]))
-				fmt.Printf("proof0 circuit=%v\n", sibElem.SetBytes(mProof.Siblings[0][:]))
-				fmt.Printf("proof1 circuit=%v\n", sibElem.SetBytes(mProof.Siblings[1][:]))
-				fmt.Printf("proof2 circuit=%v\n", sibElem.SetBytes(mProof.Siblings[2][:]))
-				fmt.Printf("proof3 circuit=%v\n", sibElem.SetBytes(mProof.Siblings[3][:]))
+			// var rootElem, leafElem, sibElem fr.Element
+			// fmt.Printf("root non-circuit=%v\n", rootElem.SetBytes(root[:]))
+			// fmt.Printf("leaf non-circuit=%v\n", leafElem.SetBytes(leaf[:]))
+			// fmt.Printf("proof0 circuit=%v\n", sibElem.SetBytes(mProof.Siblings[0][:]))
+			// fmt.Printf("proof1 circuit=%v\n", sibElem.SetBytes(mProof.Siblings[1][:]))
+			// fmt.Printf("proof2 circuit=%v\n", sibElem.SetBytes(mProof.Siblings[2][:]))
+			// fmt.Printf("proof3 circuit=%v\n", sibElem.SetBytes(mProof.Siblings[3][:]))
 
-				// Check the Merkle-proof for the obtained leaf
-				ok := mProof.Verify(mTreeHashConfig, leaf, root)
-				if !ok {
-					return fmt.Errorf("merkle proof failed for com #%v and entry %v (mProof.path=%v)", i, j, mProof.Path)
-				}
-
-				// And check that the Merkle proof is related to the correct entry
-				if mProof.Path != entry {
-					return fmt.Errorf("expected the Merkle proof to hold for position %v but was %v", entry, mProof.Path)
-				}
+			// Check the Merkle-proof for the obtained leaf
+			ok := mProof.Verify(mTreeHashConfig, leaf, root)
+			if !ok {
+				return fmt.Errorf("merkle proof failed for com #%v and entry %v (mProof.path=%v)", i, j, mProof.Path)
 			}
+
+			// And check that the Merkle proof is related to the correct entry
+			if mProof.Path != entry {
+				return fmt.Errorf("expected the Merkle proof to hold for position %v but was %v", entry, mProof.Path)
+			}
+
 		}
 	}
 

@@ -997,9 +997,9 @@ func (ctx *Ctx) commitPrecomputeds() {
 			// We increase the number of committed rows for SIS rounds
 			// in this case
 			ctx.CommittedRowsCountSIS += numPrecomputeds
-			committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
+			committedMatrix, tree, _ = ctx.VortexParams.CommitMerkleWithSIS(pols)
 		} else {
-			committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+			committedMatrix, tree, _ = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
 		}
 
 		ctx.Items.Precomputeds.DhWithMerkle = colHashes
