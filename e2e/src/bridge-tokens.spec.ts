@@ -1,12 +1,12 @@
-import { ethers, toBeHex } from "ethers";
 import { describe, expect, it } from "@jest/globals";
-import { config } from "./config/tests-config";
-import { waitForEvents, etherToWei, LineaEstimateGasClient } from "./common/utils";
+import { waitForEvents, etherToWei } from "./common/utils";
 import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
+import { parseEther } from "viem";
+import { config } from "./config/tests-config/setup";
 
 const l1AccountManager = config.getL1AccountManager();
 const l2AccountManager = config.getL2AccountManager();
-const bridgeAmount = ethers.parseEther("100");
+const bridgeAmount = parseEther("100");
 const messageSentEventMessageNumberIndex = 4;
 const messageSentEventMessageHashIndex = 6;
 

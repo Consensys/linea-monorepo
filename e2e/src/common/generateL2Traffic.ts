@@ -1,6 +1,6 @@
-import { config } from "./../config/tests-config";
-import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "./utils";
 import * as dotenv from "dotenv";
+import { config } from "../config/tests-config/setup";
+import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "./utils";
 
 dotenv.config();
 
@@ -8,7 +8,12 @@ async function main() {
   console.log("Generating L2 traffic...");
 
   const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"));
-  const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(pollingAccount, 2_500);
+  const walletClient = config.L2.client.walletClient({ account: pollingAccount });
+  const publicClient = config.L2.client.publicClient();
+
+  const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(walletClient, publicClient, {
+    pollingInterval: 2_500,
+  });
 
   process.on("SIGINT", () => {
     console.log("Caught interrupt signal.");
