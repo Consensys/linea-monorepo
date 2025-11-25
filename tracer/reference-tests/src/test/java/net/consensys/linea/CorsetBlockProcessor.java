@@ -64,7 +64,8 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
         blockReward,
         miningBeneficiaryCalculator,
         skipZeroBlockRewards,
-        protocolSchedule);
+        protocolSchedule,
+        BalConfiguration.DEFAULT);
     this.protocolSchedule = protocolSchedule;
     this.zkTracer = zkTracer;
   }
@@ -95,7 +96,8 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
             worldState,
             protocolSpec,
             preExecutionProcessor.createBlockHashLookup(blockchain, blockHeader),
-            OperationTracer.NO_TRACING);
+            OperationTracer.NO_TRACING,
+            Optional.empty());
     preExecutionProcessor.process(blockProcessingContext, Optional.empty());
 
     for (final Transaction transaction : transactions) {
@@ -162,7 +164,8 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       try {
         maybeWithdrawalsProcessor
             .get()
-            .processWithdrawals(maybeWithdrawals.get(), worldState.updater(), Optional.empty());
+            .processWithdrawals(
+                maybeWithdrawals.get(), worldState.updater(), Optional.empty(), Optional.empty());
       } catch (final Exception e) {
         log.error("failed processing withdrawals", e);
         return new BlockProcessingResult(Optional.empty(), e);

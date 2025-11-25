@@ -50,6 +50,7 @@ import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
 import org.hyperledger.besu.ethereum.core.Difficulty;
 import org.hyperledger.besu.ethereum.core.MiningConfiguration;
+import org.hyperledger.besu.ethereum.mainnet.BalConfiguration;
 import org.hyperledger.besu.ethereum.mainnet.MainnetProtocolSpecFactory;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSchedule;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
@@ -165,7 +166,7 @@ public class ExecutionEnvironment {
             MiningConfiguration.MINING_DISABLED,
             badBlockManager,
             false,
-            false,
+            BalConfiguration.DEFAULT,
             new NoOpMetricsSystem());
 
     final MainnetProtocolSpecFactory protocol =
@@ -176,7 +177,7 @@ public class ExecutionEnvironment {
             EvmConfiguration.DEFAULT,
             MiningConfiguration.MINING_DISABLED,
             false,
-            false,
+            BalConfiguration.DEFAULT,
             new NoOpMetricsSystem());
 
     final ProtocolSpecBuilder builder =
