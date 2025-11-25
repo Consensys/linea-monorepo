@@ -163,7 +163,7 @@ task(
       console.log("Claiming message...");
       const tx = await lineaRollup.claimMessageWithProof({
         proof,
-        messageNumber: 1,
+        messageNumber,
         leafIndex: leafIndex,
         from: fromAddress,
         to: toAddress!,
