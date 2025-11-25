@@ -22,7 +22,7 @@ import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.utils.Numeric;
 
-public class TransactionTraceLimitTest extends LineaPluginTestBase {
+public class TransactionTraceLimitTest extends LineaPluginTestBasePrague {
 
   private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
   private static final BigInteger VALUE = BigInteger.ZERO;
@@ -37,6 +37,7 @@ public class TransactionTraceLimitTest extends LineaPluginTestBase {
 
   @Test
   public void transactionsMinedInSeparateBlocksTest() throws Exception {
+    buildNewBlocksInBackground();
     final DummyAdder dummyAdder = deployDummyAdder();
     final Web3j web3j = minerNode.nodeRequests().eth();
     final String contractAddress = dummyAdder.getContractAddress();
