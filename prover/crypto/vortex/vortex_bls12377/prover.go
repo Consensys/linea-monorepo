@@ -4,8 +4,23 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+func Prove(
+	entryList []int,
+	encodedMatrices []EncodedMatrix,
+	trees []*smt_bls12377.Tree, alpha fext.Element) (*vortex.OpeningProof, [][]smt_bls12377.Proof) {
+
+	proof := &vortex.OpeningProof{}
+
+	vortex.LinearCombination(proof, encodedMatrices, alpha)
+
+	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
+
+	return proof, merkleProofs
+}
 
 // SelectColumnsAndMerkleProofs completes the proof adding the columns pointed by entryList
 // (implictly the random positions pointed to by the verifier).

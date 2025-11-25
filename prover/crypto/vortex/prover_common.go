@@ -24,7 +24,7 @@ type OpeningProof struct {
 // n is the size of each vector v[i]
 //
 // TODO @thomaspiellard why not use directly smarvectorext.LinComb ??
-func LinearCombination(v [][]smartvectors.SmartVector, randomCoin fext.Element) smartvectors.SmartVector {
+func LinearCombination(proof *OpeningProof, v [][]smartvectors.SmartVector, randomCoin fext.Element) {
 
 	n := v[0][0].Len()
 	linComb := make([]fext.Element, n)
@@ -69,7 +69,5 @@ func LinearCombination(v [][]smartvectors.SmartVector, randomCoin fext.Element) 
 		copy(linComb[start:stop], localLinComb)
 	})
 
-	linCombSV := smartvectors.NewRegularExt(linComb)
-
-	return linCombSV
+	proof.LinearCombination = smartvectors.NewRegularExt(linComb)
 }
