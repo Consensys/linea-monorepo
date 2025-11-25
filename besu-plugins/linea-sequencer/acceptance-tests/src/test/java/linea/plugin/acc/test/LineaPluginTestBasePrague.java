@@ -57,6 +57,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.EngineAPIService;
 import org.hyperledger.besu.tests.acceptance.dsl.node.RunnableNode;
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory;
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory.CliqueOptions;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.web3j.crypto.Blob;
 import org.web3j.crypto.BlobUtils;
@@ -81,7 +82,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   private static final BigInteger VALUE = BigInteger.ZERO;
   private static final String DATA = "0x";
   private static final SECP256K1 secp256k1 = new SECP256K1();
-  private static final ScheduledExecutorService consensusScheduler =
+  private final ScheduledExecutorService consensusScheduler =
       Executors.newSingleThreadScheduledExecutor();
   private Long blockTimeSeconds = null;
   protected Boolean buildBlocksInBackground = true;
@@ -112,6 +113,16 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     this.engineApiService = new EngineAPIService(minerNode, ethTransactions, mapper);
     this.blockTimeSeconds = getDefaultSlotTimeSeconds();
     buildNewBlocksInBackground();
+  }
+
+  @AfterEach
+  @Override
+  public void stop() {
+    try {
+      consensusScheduler.shutdownNow();
+    } finally {
+      super.stop();
+    }
   }
 
   // Ideally GenesisConfigurationFactory.createCliqueGenesisConfig would support a custom genesis
