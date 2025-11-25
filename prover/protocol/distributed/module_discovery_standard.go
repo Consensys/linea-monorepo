@@ -195,12 +195,11 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	// weight.
 	for i := range disc.Modules {
 
-		// If there's only one submodule, keep the BaseSize from advice as-is.
-		// The reduction algorithm is meant to balance multiple submodules, but with
-		// a single submodule, the BaseSize specification is already the answer.
-		if len(disc.Modules[i].SubModules) == 1 {
-			continue
-		}
+		// Store the original BaseSize from advice for each submodule as the minimum allowed size.
+		// For submodules with Plonk circuits, BaseSize represents the required number of public
+		// inputs and must not be reduced.
+		baseSizes := make([]int, len(disc.Modules[i].NewSizes))
+		copy(baseSizes, disc.Modules[i].NewSizes)
 
 		// weightTotalInitial is the weight of the module using the initial
 		// number of rows.
@@ -236,6 +235,11 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				numRow := disc.Modules[i].NewSizes[j]
 				if !disc.Modules[i].SubModules[j].HasPrecomputed {
 					numRow /= reduction
+					// Only enforce BaseSize floor for submodules with Plonk circuits, as they have
+					// strict requirements for the number of public inputs matching the circuit size
+					if disc.Modules[i].SubModules[j].NbConstraintsOfPlonkCirc > 0 && numRow < baseSizes[j] {
+						numRow = baseSizes[j]
+					}
 				}
 
 				if numRow < 1 {
@@ -256,6 +260,10 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		for j := range disc.Modules[i].SubModules {
 			if !disc.Modules[i].SubModules[j].HasPrecomputed {
 				disc.Modules[i].NewSizes[j] /= bestReduction
+				// Only enforce BaseSize floor for submodules with Plonk circuits
+				if disc.Modules[i].SubModules[j].NbConstraintsOfPlonkCirc > 0 && disc.Modules[i].NewSizes[j] < baseSizes[j] {
+					disc.Modules[i].NewSizes[j] = baseSizes[j]
+				}
 			}
 		}
 	}
