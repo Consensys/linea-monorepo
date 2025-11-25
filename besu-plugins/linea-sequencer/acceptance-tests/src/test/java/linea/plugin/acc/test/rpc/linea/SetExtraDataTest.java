@@ -8,17 +8,8 @@
  */
 package linea.plugin.acc.test.rpc.linea;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.google.common.base.Strings;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.List;
-import linea.plugin.acc.test.LineaPluginTestBase;
+import linea.plugin.acc.test.LineaPluginTestBasePrague;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
@@ -41,7 +32,17 @@ import org.web3j.protocol.http.HttpService;
 import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.TransactionManager;
 
-public class SetExtraDataTest extends LineaPluginTestBase {
+import java.io.IOException;
+import java.math.BigInteger;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class SetExtraDataTest extends LineaPluginTestBasePrague {
   protected static final int FIXED_GAS_COST_WEI = 0;
   protected static final int VARIABLE_GAS_COST_WEI = 1_000_000_000;
   protected static final double MIN_MARGIN = 1.5;
