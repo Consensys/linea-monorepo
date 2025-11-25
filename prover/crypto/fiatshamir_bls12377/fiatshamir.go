@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
@@ -56,11 +57,23 @@ func (fs *FS) RandomField() field.Octuplet {
 	return res
 }
 
-func (fs *FS) RandomManyIntegers(n int) []field.Octuplet {
-	res := make([]field.Octuplet, n)
-	for i := 0; i < n; i++ {
-		r := fs.RandomFieldFrElmt()
-		res[i] = encoding.EncodeFrElementToOctuplet(r)
+func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
+	n := utils.NextPowerOfTwo(upperBound)
+	mask := n - 1
+	i := 0
+	res := make([]int, num)
+	for i < num {
+		// thake the remainder mod n of each limb
+		c := fs.RandomField()
+		for j := 0; j < 8; j++ {
+			b := c[j].Bits()
+			res[i] = int(b[0]) & mask
+			i++
+			fs.safeguardUpdate()
+			if i >= num {
+				break
+			}
+		}
 	}
 	return res
 }

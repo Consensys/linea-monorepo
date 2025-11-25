@@ -21,7 +21,10 @@ type FSCircuit struct {
 	C  [2]zk.WrappedVariable
 	D  [10]zk.WrappedVariable
 	R3 zk.Octuplet
-	R4 [2]zk.Octuplet
+
+	R4    []frontend.Variable
+	n     int
+	bound int
 }
 
 func (c *FSCircuit) Define(api frontend.API) error {
@@ -39,8 +42,6 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	// koalabear octuplet
 	fs.UpdateElmts(c.C[:]...)
 	e := fs.RandomField()
-	fs.UpdateElmts(c.D[:]...)
-	f := fs.RandomManyIntegers(2)
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		return err
@@ -48,10 +49,11 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	for i := 0; i < 8; i++ {
 		apiGen.AssertIsEqual(e[i], c.R3[i])
 	}
-	for i := 0; i < len(f); i++ {
-		for j := 0; j < 8; j++ {
-			apiGen.AssertIsEqual(f[i][j], c.R4[i][j])
-		}
+
+	fs.UpdateElmts(c.D[:]...)
+	res := fs.RandomManyIntegers(c.n, c.bound)
+	for i := 0; i < len(res); i++ {
+		api.AssertIsEqual(res[i], c.R4[i])
 	}
 
 	return nil
@@ -80,8 +82,11 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	}
 	fs.UpdateElmts(c[:]...)
 	r3 := fs.RandomField()
+
 	fs.UpdateElmts(d[:]...)
-	r4 := fs.RandomManyIntegers(2)
+	n := 5
+	bound := 8
+	r4 := fs.RandomManyIntegers(n, bound)
 
 	var circuit, witness FSCircuit
 	witness.A = a.String()
@@ -96,11 +101,15 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	for i := 0; i < 8; i++ {
 		witness.R3[i] = zk.ValueOf(r3[i].String())
 	}
-	for i := 0; i < 2; i++ {
-		for j := 0; j < 8; j++ {
-			witness.R4[i][j] = zk.ValueOf(r4[i][j].String())
-		}
+
+	circuit.n = n
+	circuit.bound = bound
+	witness.R4 = make([]frontend.Variable, n)
+	circuit.R4 = make([]frontend.Variable, n)
+	for i := 0; i < n; i++ {
+		witness.R4[i] = r4[i]
 	}
+
 	return &circuit, &witness
 }
 
