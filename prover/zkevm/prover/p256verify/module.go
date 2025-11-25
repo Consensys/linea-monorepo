@@ -19,7 +19,7 @@ func colNameFn(colName string) ifaces.ColID {
 	return ifaces.ColID(fmt.Sprintf("%s.%s", moduleName, colName))
 }
 
-type p256VerifyDataSource struct {
+type P256VerifyDataSource struct {
 	ID       ifaces.Column
 	CS       ifaces.Column
 	Limb     ifaces.Column
@@ -28,8 +28,8 @@ type p256VerifyDataSource struct {
 	IsResult ifaces.Column
 }
 
-func newP256VerifyDataSource(comp *wizard.CompiledIOP) *p256VerifyDataSource {
-	return &p256VerifyDataSource{
+func newP256VerifyDataSource(comp *wizard.CompiledIOP) *P256VerifyDataSource {
+	return &P256VerifyDataSource{
 		ID:       comp.Columns.GetHandle(colNameFn("ID")),
 		CS:       comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_P256_VERIFY")),
 		Limb:     comp.Columns.GetHandle(colNameFn("LIMB")),
@@ -40,14 +40,14 @@ func newP256VerifyDataSource(comp *wizard.CompiledIOP) *p256VerifyDataSource {
 }
 
 type P256Verify struct {
-	*p256VerifyDataSource
-	p256VerifyGnarkData *plonk.Alignment
+	*P256VerifyDataSource
+	P256VerifyGnarkData *plonk.Alignment
 	*Limits
 }
 
-func newP256Verify(_ *wizard.CompiledIOP, limits *Limits, src *p256VerifyDataSource) *P256Verify {
+func newP256Verify(_ *wizard.CompiledIOP, limits *Limits, src *P256VerifyDataSource) *P256Verify {
 	res := &P256Verify{
-		p256VerifyDataSource: src,
+		P256VerifyDataSource: src,
 		Limits:               limits,
 	}
 
@@ -56,25 +56,25 @@ func newP256Verify(_ *wizard.CompiledIOP, limits *Limits, src *p256VerifyDataSou
 
 func (pv *P256Verify) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *P256Verify {
 	nbRowsPerCircuit := nbRows * pv.Limits.NbInputInstances
-	maxNbCircuits := (pv.p256VerifyDataSource.CS.Size() + nbRowsPerCircuit - 1) / nbRowsPerCircuit
+	maxNbCircuits := (pv.P256VerifyDataSource.CS.Size() + nbRowsPerCircuit - 1) / nbRowsPerCircuit
 
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_ALIGNMENT", NAME_P256_VERIFY),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  pv.p256VerifyDataSource.CS,
-		DataToCircuit:      pv.p256VerifyDataSource.Limb,
+		DataToCircuitMask:  pv.P256VerifyDataSource.CS,
+		DataToCircuit:      pv.P256VerifyDataSource.Limb,
 		Circuit:            newP256VerifyCircuit(pv.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		PlonkOptions:       options,
 		InputFillerKey:     input_filler_key,
 	}
-	pv.p256VerifyGnarkData = plonk.DefineAlignment(comp, toAlign)
+	pv.P256VerifyGnarkData = plonk.DefineAlignment(comp, toAlign)
 	return pv
 }
 
 func (pv *P256Verify) Assign(run *wizard.ProverRuntime) {
-	if pv.p256VerifyGnarkData != nil {
-		pv.p256VerifyGnarkData.Assign(run)
+	if pv.P256VerifyGnarkData != nil {
+		pv.P256VerifyGnarkData.Assign(run)
 	}
 }
 

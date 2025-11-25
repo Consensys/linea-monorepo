@@ -51,7 +51,7 @@ func (c baseElementWizard) ToElement(api frontend.API, fp *emulated.Field[basefi
 	return fp.NewElement(Plimbs)
 }
 
-type p256VerifyInstance struct {
+type P256VerifyInstance struct {
 	H        scalarElementWizard           `gnark:",public"`
 	R        scalarElementWizard           `gnark:",public"`
 	S        scalarElementWizard           `gnark:",public"`
@@ -61,7 +61,7 @@ type p256VerifyInstance struct {
 }
 
 type multiP256VerifyInstanceCircuit struct {
-	Instances []p256VerifyInstance
+	Instances []P256VerifyInstance
 }
 
 func (c *multiP256VerifyInstanceCircuit) Define(api frontend.API) error {
@@ -94,6 +94,6 @@ func (c *multiP256VerifyInstanceCircuit) Define(api frontend.API) error {
 
 func newP256VerifyCircuit(limits *Limits) frontend.Circuit {
 	return &multiP256VerifyInstanceCircuit{
-		Instances: make([]p256VerifyInstance, limits.NbInputInstances),
+		Instances: make([]P256VerifyInstance, limits.NbInputInstances),
 	}
 }

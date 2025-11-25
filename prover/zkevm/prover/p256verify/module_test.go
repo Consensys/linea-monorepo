@@ -27,7 +27,7 @@ func testP256Verify(t *testing.T, withCircuit bool, path string, limits *Limits)
 	var p256Verify *P256Verify
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
-			p256VerifySource := &p256VerifyDataSource{
+			p256VerifySource := &P256VerifyDataSource{
 				ID:       ct.GetCommit(b, "ID"),
 				CS:       ct.GetCommit(b, "CIRCUIT_SELECTOR_P256_VERIFY"),
 				Limb:     ct.GetCommit(b, "LIMB"),
