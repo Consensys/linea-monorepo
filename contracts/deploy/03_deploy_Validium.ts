@@ -16,22 +16,22 @@ import {
 } from "../common/constants";
 
 const func: DeployFunction = async function () {
-  const contractName = "LineaRollup";
+  const contractName = "Validium";
 
-  // LineaRollup DEPLOYED AS UPGRADEABLE PROXY
+  // Validium DEPLOYED AS UPGRADEABLE PROXY
   const verifierAddress = getRequiredEnvVar("PLONKVERIFIER_ADDRESS");
-  const lineaRollupInitialStateRootHash = getRequiredEnvVar("VALIDIUM_INITIAL_STATE_ROOT_HASH");
-  const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("VALIDIUM_INITIAL_L2_BLOCK_NUMBER");
-  const lineaRollupSecurityCouncil = getRequiredEnvVar("VALIDIUM_SECURITY_COUNCIL");
-  const lineaRollupOperators = getRequiredEnvVar("VALIDIUM_OPERATORS").split(",");
-  const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_PERIOD");
-  const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_AMOUNT");
-  const lineaRollupGenesisTimestamp = getRequiredEnvVar("VALIDIUM_GENESIS_TIMESTAMP");
+  const validiumInitialStateRootHash = getRequiredEnvVar("VALIDIUM_INITIAL_STATE_ROOT_HASH");
+  const validiumInitialL2BlockNumber = getRequiredEnvVar("VALIDIUM_INITIAL_L2_BLOCK_NUMBER");
+  const validiumSecurityCouncil = getRequiredEnvVar("VALIDIUM_SECURITY_COUNCIL");
+  const validiumOperators = getRequiredEnvVar("VALIDIUM_OPERATORS").split(",");
+  const validiumRateLimitPeriodInSeconds = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_PERIOD");
+  const validiumRateLimitAmountInWei = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_AMOUNT");
+  const validiumGenesisTimestamp = getRequiredEnvVar("VALIDIUM_GENESIS_TIMESTAMP");
 
   const pauseTypeRoles = getEnvVarOrDefault("VALIDIUM_PAUSE_TYPE_ROLES", VALIDIUM_PAUSE_TYPES_ROLES);
   const unpauseTypeRoles = getEnvVarOrDefault("VALIDIUM_UNPAUSE_TYPE_ROLES", VALIDIUM_UNPAUSE_TYPES_ROLES);
-  const defaultRoleAddresses = generateRoleAssignments(VALIDIUM_ROLES, lineaRollupSecurityCouncil, [
-    { role: OPERATOR_ROLE, addresses: lineaRollupOperators },
+  const defaultRoleAddresses = generateRoleAssignments(VALIDIUM_ROLES, validiumSecurityCouncil, [
+    { role: OPERATOR_ROLE, addresses: validiumOperators },
   ]);
   const roleAddresses = getEnvVarOrDefault("VALIDIUM_ROLE_ADDRESSES", defaultRoleAddresses);
 
@@ -39,16 +39,16 @@ const func: DeployFunction = async function () {
     "Validium",
     [
       {
-        initialStateRootHash: lineaRollupInitialStateRootHash,
-        initialL2BlockNumber: lineaRollupInitialL2BlockNumber,
-        genesisTimestamp: lineaRollupGenesisTimestamp,
+        initialStateRootHash: validiumInitialStateRootHash,
+        initialL2BlockNumber: validiumInitialL2BlockNumber,
+        genesisTimestamp: validiumGenesisTimestamp,
         defaultVerifier: verifierAddress,
-        rateLimitPeriodInSeconds: lineaRollupRateLimitPeriodInSeconds,
-        rateLimitAmountInWei: lineaRollupRateLimitAmountInWei,
+        rateLimitPeriodInSeconds: validiumRateLimitPeriodInSeconds,
+        rateLimitAmountInWei: validiumRateLimitAmountInWei,
         roleAddresses,
         pauseTypeRoles,
         unpauseTypeRoles,
-        defaultAdmin: lineaRollupSecurityCouncil,
+        defaultAdmin: validiumSecurityCouncil,
       },
     ],
     {
@@ -64,4 +64,4 @@ const func: DeployFunction = async function () {
 };
 
 export default func;
-func.tags = ["LineaRollup"];
+func.tags = ["Validium"];

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 /**
- * @title Interface declaring pre-existing cross-chain messaging functions, events and errors.
+ * @title Interface declaring pre-existing cross-chain messaging-claiming function.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */

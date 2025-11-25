@@ -6,7 +6,7 @@ import { IClaimMessageV1 } from "../../interfaces/IClaimMessageV1.sol";
 import { MessageHashing } from "../../libraries/MessageHashing.sol";
 
 /**
- * @title Contract to manage cross-chain messaging on L1.
+ * @title Contract to manage pre-existing cross-chain messaging-claiming function.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
