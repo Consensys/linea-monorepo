@@ -11,6 +11,7 @@ enum class TracingModuleV2 : TracingModule {
   BLAKE_MODEXP_DATA,
   BLOCK_DATA,
   BLOCK_HASH,
+  BLS_DATA,
   EC_DATA,
   EUC,
   EXP,
@@ -28,6 +29,7 @@ enum class TracingModuleV2 : TracingModule {
   RLP_ADDR,
   RLP_TXN,
   RLP_TXN_RCPT,
+  RLP_UTILS,
   ROM,
   ROM_LEX,
   SHAKIRA_DATA,
@@ -67,19 +69,14 @@ enum class TracingModuleV2 : TracingModule {
   PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS,
   PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS,
 
+  // Precompile added in beta-v4.4 (Osaka HF)
+  PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS,
+
   // Block-specific limits
   BLOCK_KECCAK,
   BLOCK_L1_SIZE,
   BLOCK_L2_L1_LOGS,
   BLOCK_TRANSACTIONS,
-
-  // Introduced by limitless proof
-  BLS,
-  POINT_EVAL,
-
-  // Introduced from beta-v4.0-rc6-CANCUN and present on Cancun
-  BLS_DATA,
-  RLP_UTILS,
   ;
 
   companion object {
@@ -89,6 +86,7 @@ enum class TracingModuleV2 : TracingModule {
       BLAKE_MODEXP_DATA,
       BLOCK_DATA,
       BLOCK_HASH,
+      BLS_DATA,
       EC_DATA,
       EUC,
       EXP,
@@ -106,6 +104,7 @@ enum class TracingModuleV2 : TracingModule {
       RLP_ADDR,
       RLP_TXN,
       RLP_TXN_RCPT,
+      RLP_UTILS,
       ROM,
       ROM_LEX,
       SHAKIRA_DATA,
@@ -114,10 +113,6 @@ enum class TracingModuleV2 : TracingModule {
       TRM,
       TXN_DATA,
       WCP,
-      BLS,
-      POINT_EVAL,
-      BLS_DATA,
-      RLP_UTILS,
     )
   }
 }
