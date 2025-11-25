@@ -64,7 +64,7 @@ import { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollu
 import { Typed } from "ethers";
 import { IPermissionsManager } from "contracts/typechain-types/src/rollup/LineaRollup";
 
-kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
+kzg.loadTrustedSetup(0, `${__dirname}/../_testData/trusted_setup.txt`);
 
 describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
