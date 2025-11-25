@@ -13,7 +13,7 @@ const (
 	NAME_BLS_MAP = "BLS_MAP"
 )
 
-type blsMapDataSource struct {
+type BlsMapDataSource struct {
 	ID      ifaces.Column
 	CsMap   ifaces.Column
 	Limb    ifaces.Column
@@ -23,14 +23,14 @@ type blsMapDataSource struct {
 	IsRes   ifaces.Column
 }
 
-func newMapDataSource(comp *wizard.CompiledIOP, g group) *blsMapDataSource {
+func newMapDataSource(comp *wizard.CompiledIOP, g Group) *BlsMapDataSource {
 	var mapString string
 	if g == G1 {
 		mapString = "MAP_FP_TO_G1"
 	} else {
 		mapString = "MAP_FP2_TO_G2"
 	}
-	return &blsMapDataSource{
+	return &BlsMapDataSource{
 		ID:      comp.Columns.GetHandle(colNameFn("ID")),
 		CsMap:   comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_BLS_" + mapString)),
 		Index:   comp.Columns.GetHandle(colNameFn("INDEX")),
@@ -42,17 +42,17 @@ func newMapDataSource(comp *wizard.CompiledIOP, g group) *blsMapDataSource {
 }
 
 type BlsMap struct {
-	*blsMapDataSource
-	alignedGnarkData *plonk.Alignment
+	*BlsMapDataSource
+	AlignedGnarkData *plonk.Alignment
 	*Limits
-	group
+	Group
 }
 
-func newMap(_ *wizard.CompiledIOP, g group, limits *Limits, src *blsMapDataSource) *BlsMap {
+func newMap(_ *wizard.CompiledIOP, g Group, limits *Limits, src *BlsMapDataSource) *BlsMap {
 	res := &BlsMap{
-		blsMapDataSource: src,
+		BlsMapDataSource: src,
 		Limits:           limits,
-		group:            g,
+		Group:            g,
 	}
 	return res
 }
@@ -60,24 +60,24 @@ func newMap(_ *wizard.CompiledIOP, g group, limits *Limits, src *blsMapDataSourc
 func (bm *BlsMap) WithMapCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMap {
 	// gnark circuits takes the inputs as is. To get the bound on the number of circuits we need
 	// to divide the maximum number of inputs instances with the number of instances per circuit
-	maxNbInstances := bm.blsMapDataSource.CsMap.Size() / nbRowsPerMap(bm.group)
-	maxNbCircuits := maxNbInstances/bm.Limits.nbMapInputInstances(bm.group) + 1
+	maxNbInstances := bm.BlsMapDataSource.CsMap.Size() / nbRowsPerMap(bm.Group)
+	maxNbCircuits := maxNbInstances/bm.Limits.nbMapInputInstances(bm.Group) + 1
 	toAlign := &plonk.CircuitAlignmentInput{
-		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_MAP, bm.group.String()),
+		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_MAP, bm.Group.String()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bm.blsMapDataSource.CsMap,
-		DataToCircuit:      bm.blsMapDataSource.Limb,
-		Circuit:            NewMapCircuit(bm.group, bm.Limits),
+		DataToCircuitMask:  bm.BlsMapDataSource.CsMap,
+		DataToCircuit:      bm.BlsMapDataSource.Limb,
+		Circuit:            NewMapCircuit(bm.Group, bm.Limits),
 		NbCircuitInstances: maxNbCircuits,
-		InputFillerKey:     mapToGroupInputFillerKey(bm.group),
+		InputFillerKey:     mapToGroupInputFillerKey(bm.Group),
 		PlonkOptions:       options,
 	}
-	bm.alignedGnarkData = plonk.DefineAlignment(comp, toAlign)
+	bm.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
 	return bm
 }
 
 func (bm *BlsMap) Assign(run *wizard.ProverRuntime) {
-	if bm.alignedGnarkData != nil {
-		bm.alignedGnarkData.Assign(run)
+	if bm.AlignedGnarkData != nil {
+		bm.AlignedGnarkData.Assign(run)
 	}
 }

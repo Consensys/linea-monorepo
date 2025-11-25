@@ -28,7 +28,7 @@ const (
 	nbGtLimbs = 12 * nbFpLimbs // representation according to gnark - we don't use Gt in arithmetization, only in glue for accumulation
 )
 
-func nbLimbs(g group) int {
+func nbLimbs(g Group) int {
 	switch g {
 	case G1:
 		return nbG1Limbs

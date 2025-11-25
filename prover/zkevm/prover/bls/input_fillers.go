@@ -27,7 +27,7 @@ func init() {
 	plonk.RegisterInputFiller(pointEvalFailureInputFillerKey, inputFillerPointEvaluationFailure)
 }
 
-func membershipInputFillerKey(g group, m membership) string {
+func membershipInputFillerKey(g Group, m membership) string {
 	base := "bls12381-%s-membership-input-filler"
 	switch m {
 	case CURVE:
@@ -39,7 +39,7 @@ func membershipInputFillerKey(g group, m membership) string {
 	}
 }
 
-func newMembershipInputFiller(g group, _ membership) plonk.InputFiller {
+func newMembershipInputFiller(g Group, _ membership) plonk.InputFiller {
 	// we generate points not on curve --> also not in group
 	return func(circuitInstance, inputIndex int) field.Element {
 		nbL := nbLimbs(g)
@@ -137,7 +137,7 @@ func inputFillerFinalExp(circuitInstance, inputIndex int) field.Element {
 	return res
 }
 
-func mapToGroupInputFillerKey(g group) string {
+func mapToGroupInputFillerKey(g Group) string {
 	return fmt.Sprintf("bls12381-map-%s-to-%s-input-filler", g.StringMap(), g.String())
 }
 

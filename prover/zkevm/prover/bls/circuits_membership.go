@@ -86,7 +86,7 @@ func newMultiCheckableCircuit[T checkableInstance](nbInstances int) *multiChecka
 	}
 }
 
-func newCheckCircuit(g group, membership membership, limits *Limits) frontend.Circuit {
+func newCheckCircuit(g Group, membership membership, limits *Limits) frontend.Circuit {
 	switch g {
 	case G1:
 		switch membership {

@@ -14,7 +14,7 @@ const (
 	nbRowsPerG2Mul = nbFrLimbs + 3*nbG2Limbs // 1 scalar, 1 point, 1 previous accumulator, 1 next accumulator
 )
 
-func nbRowsPerMul(g group) int {
+func nbRowsPerMul(g Group) int {
 	switch g {
 	case G1:
 		return nbRowsPerG1Mul
@@ -73,7 +73,7 @@ func (c *multiMulCircuit[C, T]) Define(api frontend.API) error {
 	return nil
 }
 
-func newMulCircuit(g group, limits *Limits) frontend.Circuit {
+func newMulCircuit(g Group, limits *Limits) frontend.Circuit {
 	switch g {
 	case G1:
 		return &multiMulCircuit[g1ElementWizard, sw_bls12381.G1Affine]{Instances: make([]mulInstance[g1ElementWizard, sw_bls12381.G1Affine], limits.NbG1MulInputInstances)}

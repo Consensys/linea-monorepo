@@ -11,7 +11,7 @@ const (
 	NAME_BLS_POINTEVAL = "BLS_POINTEVAL"
 )
 
-type blsPointEvalDataSource struct {
+type BlsPointEvalDataSource struct {
 	ID                 ifaces.Column
 	CsPointEval        ifaces.Column
 	CsPointEvalInvalid ifaces.Column
@@ -22,8 +22,8 @@ type blsPointEvalDataSource struct {
 	IsRes              ifaces.Column
 }
 
-func newPointEvalDataSource(comp *wizard.CompiledIOP) *blsPointEvalDataSource {
-	return &blsPointEvalDataSource{
+func newPointEvalDataSource(comp *wizard.CompiledIOP) *BlsPointEvalDataSource {
+	return &BlsPointEvalDataSource{
 		ID:                 comp.Columns.GetHandle(colNameFn("ID")),
 		CsPointEval:        comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_POINT_EVALUATION")),
 		CsPointEvalInvalid: comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_POINT_EVALUATION_FAILURE")),
@@ -36,15 +36,15 @@ func newPointEvalDataSource(comp *wizard.CompiledIOP) *blsPointEvalDataSource {
 }
 
 type BlsPointEval struct {
-	*blsPointEvalDataSource
-	alignedGnarkData        *plonk.Alignment
-	alignedFailureGnarkData *plonk.Alignment
+	*BlsPointEvalDataSource
+	AlignedGnarkData        *plonk.Alignment
+	AlignedFailureGnarkData *plonk.Alignment
 	*Limits
 }
 
-func newPointEval(_ *wizard.CompiledIOP, limits *Limits, src *blsPointEvalDataSource) *BlsPointEval {
+func newPointEval(_ *wizard.CompiledIOP, limits *Limits, src *BlsPointEvalDataSource) *BlsPointEval {
 	res := &BlsPointEval{
-		blsPointEvalDataSource: src,
+		BlsPointEvalDataSource: src,
 		Limits:                 limits,
 	}
 	return res
@@ -54,44 +54,44 @@ func (bp *BlsPointEval) WithPointEvalCircuit(comp *wizard.CompiledIOP, options .
 	// the gnark circuit takes exactly the same rows as provided by the arithmetization. So
 	// to get the bound on the number of circuits we just need to divide by the size of the
 	// addition circuit input instances
-	maxNbInstances := bp.blsPointEvalDataSource.CsPointEval.Size() / nbRowsPerPointEval
+	maxNbInstances := bp.BlsPointEvalDataSource.CsPointEval.Size() / nbRowsPerPointEval
 	maxNbCircuits := maxNbInstances/bp.Limits.NbPointEvalInputInstances + 1
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_BLS_POINTEVAL,
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.blsPointEvalDataSource.CsPointEval,
-		DataToCircuit:      bp.blsPointEvalDataSource.Limb,
+		DataToCircuitMask:  bp.BlsPointEvalDataSource.CsPointEval,
+		DataToCircuit:      bp.BlsPointEvalDataSource.Limb,
 		Circuit:            newMultiPointEvalCircuit(bp.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     pointEvalInputFillerKey,
 		PlonkOptions:       options,
 	}
-	bp.alignedGnarkData = plonk.DefineAlignment(comp, toAlign)
+	bp.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
 	return bp
 }
 
 func (bp *BlsPointEval) WithPointEvalFailureCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPointEval {
-	maxNbInstances := bp.blsPointEvalDataSource.CsPointEvalInvalid.Size() / nbRowsPerPointEval
+	maxNbInstances := bp.BlsPointEvalDataSource.CsPointEvalInvalid.Size() / nbRowsPerPointEval
 	maxNbCircuits := maxNbInstances/bp.Limits.NbPointEvalFailureInputInstances + 1
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_BLS_POINTEVAL + "_FAILURE",
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.blsPointEvalDataSource.CsPointEvalInvalid,
-		DataToCircuit:      bp.blsPointEvalDataSource.Limb,
+		DataToCircuitMask:  bp.BlsPointEvalDataSource.CsPointEvalInvalid,
+		DataToCircuit:      bp.BlsPointEvalDataSource.Limb,
 		Circuit:            newMultiPointEvalFailureCircuit(bp.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     pointEvalFailureInputFillerKey,
 		PlonkOptions:       options,
 	}
-	bp.alignedFailureGnarkData = plonk.DefineAlignment(comp, toAlign)
+	bp.AlignedFailureGnarkData = plonk.DefineAlignment(comp, toAlign)
 	return bp
 }
 
 func (bp *BlsPointEval) Assign(run *wizard.ProverRuntime) {
-	if bp.alignedGnarkData != nil {
-		bp.alignedGnarkData.Assign(run)
+	if bp.AlignedGnarkData != nil {
+		bp.AlignedGnarkData.Assign(run)
 	}
-	if bp.alignedFailureGnarkData != nil {
-		bp.alignedFailureGnarkData.Assign(run)
+	if bp.AlignedFailureGnarkData != nil {
+		bp.AlignedFailureGnarkData.Assign(run)
 	}
 }

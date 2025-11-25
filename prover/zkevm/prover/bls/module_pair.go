@@ -19,7 +19,7 @@ const (
 	NAME_UNALIGNED_PAIR = "UNALIGNED_BLS_PAIR"
 )
 
-type blsPairDataSource struct {
+type BlsPairDataSource struct {
 	ID             ifaces.Column
 	CsPair         ifaces.Column
 	CsG1Membership ifaces.Column
@@ -32,8 +32,8 @@ type blsPairDataSource struct {
 	SuccessBit     ifaces.Column
 }
 
-func newPairDataSource(comp *wizard.CompiledIOP) *blsPairDataSource {
-	return &blsPairDataSource{
+func newPairDataSource(comp *wizard.CompiledIOP) *BlsPairDataSource {
+	return &BlsPairDataSource{
 		ID:             comp.Columns.GetHandle(colNameFn("ID")),
 		CsPair:         comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_BLS_PAIRING_CHECK")),
 		CsG1Membership: comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_G1_MEMBERSHIP")),
@@ -48,21 +48,21 @@ func newPairDataSource(comp *wizard.CompiledIOP) *blsPairDataSource {
 }
 
 type BlsPair struct {
-	*blsPairDataSource
-	*unalignedPairData
-	alignedMillerLoopData        *plonk.Alignment
-	alignedFinalExpData          *plonk.Alignment
-	alignedG1MembershipGnarkData *plonk.Alignment
-	alignedG2MembershipGnarkData *plonk.Alignment
+	*BlsPairDataSource
+	*UnalignedPairData
+	AlignedMillerLoopData        *plonk.Alignment
+	AlignedFinalExpData          *plonk.Alignment
+	AlignedG1MembershipGnarkData *plonk.Alignment
+	AlignedG2MembershipGnarkData *plonk.Alignment
 	*Limits
 }
 
-func newPair(comp *wizard.CompiledIOP, limits *Limits, src *blsPairDataSource) *BlsPair {
+func newPair(comp *wizard.CompiledIOP, limits *Limits, src *BlsPairDataSource) *BlsPair {
 	ucmd := newUnalignedPairData(comp, src)
 
 	res := &BlsPair{
-		blsPairDataSource: src,
-		unalignedPairData: ucmd,
+		BlsPairDataSource: src,
+		UnalignedPairData: ucmd,
 		Limits:            limits,
 	}
 
@@ -70,13 +70,13 @@ func newPair(comp *wizard.CompiledIOP, limits *Limits, src *blsPairDataSource) *
 }
 
 func (bp *BlsPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
-	maxNbMlCircuits := bp.maxNbPairInputs/bp.Limits.NbMillerLoopInputInstances + 1
-	maxNbFeCircuits := bp.maxNbPairInputs/bp.Limits.NbFinalExpInputInstances + 1
+	maxNbMlCircuits := bp.MaxNbPairInputs/bp.Limits.NbMillerLoopInputInstances + 1
+	maxNbFeCircuits := bp.MaxNbPairInputs/bp.Limits.NbFinalExpInputInstances + 1
 	toAlignMl := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_ML", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.unalignedPairData.GnarkIsActiveMillerLoop,
-		DataToCircuit:      bp.unalignedPairData.GnarkDataMillerLoop,
+		DataToCircuitMask:  bp.UnalignedPairData.GnarkIsActiveMillerLoop,
+		DataToCircuit:      bp.UnalignedPairData.GnarkDataMillerLoop,
 		Circuit:            newMultiMillerLoopMulCircuit(bp.Limits),
 		NbCircuitInstances: maxNbMlCircuits,
 		InputFillerKey:     millerLoopInputFillerKey,
@@ -85,70 +85,70 @@ func (bp *BlsPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query
 	toAlignFe := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_FE", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.unalignedPairData.GnarkIsActiveFinalExp,
-		DataToCircuit:      bp.unalignedPairData.GnarkDataFinalExp,
+		DataToCircuitMask:  bp.UnalignedPairData.GnarkIsActiveFinalExp,
+		DataToCircuit:      bp.UnalignedPairData.GnarkDataFinalExp,
 		Circuit:            newMultiMillerLoopFinalExpCircuit(bp.Limits),
 		NbCircuitInstances: maxNbFeCircuits,
 		InputFillerKey:     finalExpInputFillerKey,
 		PlonkOptions:       options,
 	}
-	bp.alignedMillerLoopData = plonk.DefineAlignment(comp, toAlignMl)
-	bp.alignedFinalExpData = plonk.DefineAlignment(comp, toAlignFe)
+	bp.AlignedMillerLoopData = plonk.DefineAlignment(comp, toAlignMl)
+	bp.AlignedFinalExpData = plonk.DefineAlignment(comp, toAlignFe)
 	return bp
 }
 
 func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
-	maxNbInputs := bp.unalignedPairData.GnarkIsActiveG1Membership.Size() / nbG1Limbs
+	maxNbInputs := bp.UnalignedPairData.GnarkIsActiveG1Membership.Size() / nbG1Limbs
 	maxNbCircuits := maxNbInputs/bp.Limits.nbGroupMembershipInputInstances(G1) + 1
 	toAlignG1Ms := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_G1_MEMBERSHIP", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.unalignedPairData.GnarkIsActiveG1Membership,
-		DataToCircuit:      bp.blsPairDataSource.Limb,
+		DataToCircuitMask:  bp.UnalignedPairData.GnarkIsActiveG1Membership,
+		DataToCircuit:      bp.BlsPairDataSource.Limb,
 		Circuit:            newCheckCircuit(G1, GROUP, bp.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     membershipInputFillerKey(G1, GROUP),
 		PlonkOptions:       options,
 	}
-	bp.alignedG1MembershipGnarkData = plonk.DefineAlignment(comp, toAlignG1Ms)
+	bp.AlignedG1MembershipGnarkData = plonk.DefineAlignment(comp, toAlignG1Ms)
 	return bp
 }
 
 func (bp *BlsPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
-	maxNbInputs := bp.unalignedPairData.GnarkIsActiveG2Membership.Size() / nbG2Limbs
+	maxNbInputs := bp.UnalignedPairData.GnarkIsActiveG2Membership.Size() / nbG2Limbs
 	maxNbCircuits := maxNbInputs/bp.Limits.nbGroupMembershipInputInstances(G2) + 1
 	toAlignG2Ms := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_G2_MEMBERSHIP", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.unalignedPairData.GnarkIsActiveG2Membership,
-		DataToCircuit:      bp.blsPairDataSource.Limb,
+		DataToCircuitMask:  bp.UnalignedPairData.GnarkIsActiveG2Membership,
+		DataToCircuit:      bp.BlsPairDataSource.Limb,
 		Circuit:            newCheckCircuit(G2, GROUP, bp.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     membershipInputFillerKey(G2, GROUP),
 		PlonkOptions:       options,
 	}
-	bp.alignedG2MembershipGnarkData = plonk.DefineAlignment(comp, toAlignG2Ms)
+	bp.AlignedG2MembershipGnarkData = plonk.DefineAlignment(comp, toAlignG2Ms)
 	return bp
 }
 
 func (bp *BlsPair) Assign(run *wizard.ProverRuntime) {
-	bp.unalignedPairData.Assign(run)
-	if bp.alignedMillerLoopData != nil {
-		bp.alignedMillerLoopData.Assign(run)
+	bp.UnalignedPairData.Assign(run)
+	if bp.AlignedMillerLoopData != nil {
+		bp.AlignedMillerLoopData.Assign(run)
 	}
-	if bp.alignedFinalExpData != nil {
-		bp.alignedFinalExpData.Assign(run)
+	if bp.AlignedFinalExpData != nil {
+		bp.AlignedFinalExpData.Assign(run)
 	}
-	if bp.alignedG1MembershipGnarkData != nil {
-		bp.alignedG1MembershipGnarkData.Assign(run)
+	if bp.AlignedG1MembershipGnarkData != nil {
+		bp.AlignedG1MembershipGnarkData.Assign(run)
 	}
-	if bp.alignedG2MembershipGnarkData != nil {
-		bp.alignedG2MembershipGnarkData.Assign(run)
+	if bp.AlignedG2MembershipGnarkData != nil {
+		bp.AlignedG2MembershipGnarkData.Assign(run)
 	}
 }
 
-type unalignedPairData struct {
-	*blsPairDataSource
+type UnalignedPairData struct {
+	*BlsPairDataSource
 	IsActive           ifaces.Column
 	IsFirstLine        ifaces.Column
 	IsLastLine         ifaces.Column
@@ -169,10 +169,10 @@ type unalignedPairData struct {
 	GnarkIsActiveFinalExp ifaces.Column
 	GnarkDataFinalExp     ifaces.Column
 
-	maxNbPairInputs int
+	MaxNbPairInputs int
 }
 
-func newUnalignedPairData(comp *wizard.CompiledIOP, src *blsPairDataSource) *unalignedPairData {
+func newUnalignedPairData(comp *wizard.CompiledIOP, src *BlsPairDataSource) *UnalignedPairData {
 	// for bounding the size of the alignment, we assume the worst case inputs where we have many pairing checks with
 	// a single input. A single pairing check input is G1 and G2 element
 	maxNbPairInputs := src.CsPair.Size()/(nbG1Limbs+nbG2Limbs) + 1
@@ -180,8 +180,8 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, src *blsPairDataSource) *una
 	createColFnUa := createColFn(comp, NAME_UNALIGNED_PAIR, utils.NextPowerOfTwo(maxNbPairInputs))
 	createColFnMl := createColFn(comp, NAME_UNALIGNED_PAIR, utils.NextPowerOfTwo(maxNbPairInputs*nbRowsPerMillerLoop))
 	createColFnFe := createColFn(comp, NAME_UNALIGNED_PAIR, utils.NextPowerOfTwo(maxNbPairInputs*nbRowsPerFinalExp))
-	ucmd := &unalignedPairData{
-		blsPairDataSource:         src,
+	ucmd := &UnalignedPairData{
+		BlsPairDataSource:         src,
 		IsActive:                  createColFnUa("IS_ACTIVE"),
 		IsFirstLine:               createColFnUa("IS_FIRST_LINE"),
 		IsLastLine:                createColFnUa("IS_LAST_LINE"),
@@ -192,7 +192,7 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, src *blsPairDataSource) *una
 		GnarkDataFinalExp:         createColFnFe("GNARK_DATA_FE"),
 		GnarkIsActiveG1Membership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "GNARK_IS_ACTIVE_G1_MEMBERSHIP"), max(src.SuccessBit.Size(), src.CsG1Membership.Size())),
 		GnarkIsActiveG2Membership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "GNARK_IS_ACTIVE_G2_MEMBERSHIP"), max(src.SuccessBit.Size(), src.CsG2Membership.Size())),
-		maxNbPairInputs:           maxNbPairInputs,
+		MaxNbPairInputs:           maxNbPairInputs,
 	}
 
 	for i := range ucmd.PointG1 {
@@ -225,7 +225,7 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, src *blsPairDataSource) *una
 	return ucmd
 }
 
-func (d *unalignedPairData) csInputMask(comp *wizard.CompiledIOP) {
+func (d *UnalignedPairData) csInputMask(comp *wizard.CompiledIOP) {
 	// assert that the GnarkIsActiveG1Membership and GnarkIsActiveG2Membership
 	// are set correctly. We only call the subgroup membership for
 	// non-membership checks (all membership checks are done inside Miller
@@ -251,7 +251,7 @@ func (d *unalignedPairData) csInputMask(comp *wizard.CompiledIOP) {
 	)
 }
 
-func (d *unalignedPairData) csProjectionUnaligned(comp *wizard.CompiledIOP) {
+func (d *UnalignedPairData) csProjectionUnaligned(comp *wizard.CompiledIOP) {
 	filtersB := make([]ifaces.Column, nbG1Limbs+nbG2Limbs+2)
 	columnsB := make([][]ifaces.Column, nbG1Limbs+nbG2Limbs+2)
 	for i := range nbG1Limbs {
@@ -269,13 +269,13 @@ func (d *unalignedPairData) csProjectionUnaligned(comp *wizard.CompiledIOP) {
 	prj := query.ProjectionMultiAryInput{
 		FiltersA: []ifaces.Column{d.SuccessBit},
 		FiltersB: filtersB,
-		ColumnsA: [][]ifaces.Column{{d.blsPairDataSource.Limb}},
+		ColumnsA: [][]ifaces.Column{{d.BlsPairDataSource.Limb}},
 		ColumnsB: columnsB,
 	}
 	comp.InsertProjection(ifaces.QueryIDf("%s_PROJECTION_DATA", NAME_UNALIGNED_PAIR), prj)
 }
 
-func (d *unalignedPairData) csProjectionGnarkDataMillerLoop(comp *wizard.CompiledIOP) {
+func (d *UnalignedPairData) csProjectionGnarkDataMillerLoop(comp *wizard.CompiledIOP) {
 	// we map everything except the last input to the Miller loop circuit. We
 	// need to constrain the mask
 	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_NOT_LAST_LINE", NAME_UNALIGNED_PAIR),
@@ -311,7 +311,7 @@ func (d *unalignedPairData) csProjectionGnarkDataMillerLoop(comp *wizard.Compile
 	comp.InsertProjection(ifaces.QueryIDf("%s_PROJECTION_ML_DATA", NAME_UNALIGNED_PAIR), prj)
 }
 
-func (d *unalignedPairData) csProjectionGnarkDataFinalExp(comp *wizard.CompiledIOP) {
+func (d *UnalignedPairData) csProjectionGnarkDataFinalExp(comp *wizard.CompiledIOP) {
 	filtersA := make([]ifaces.Column, nbGtLimbs+nbG1Limbs+nbG2Limbs+2)
 	columnsA := make([][]ifaces.Column, nbGtLimbs+nbG1Limbs+nbG2Limbs+2)
 	for i := range nbGtLimbs {
@@ -339,7 +339,7 @@ func (d *unalignedPairData) csProjectionGnarkDataFinalExp(comp *wizard.CompiledI
 	comp.InsertProjection(ifaces.QueryIDf("%s_PROJECTION_FE_DATA", NAME_UNALIGNED_PAIR), prj)
 }
 
-func (d *unalignedPairData) csAccumulatorInit(comp *wizard.CompiledIOP) {
+func (d *UnalignedPairData) csAccumulatorInit(comp *wizard.CompiledIOP) {
 	// ensures that the first line accumulator is zero in Gt
 	for i := range nbGtLimbs {
 		if i == 3 {
@@ -353,10 +353,10 @@ func (d *unalignedPairData) csAccumulatorInit(comp *wizard.CompiledIOP) {
 	}
 }
 
-func (d *unalignedPairData) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
+func (d *UnalignedPairData) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
 	// ensure that the current accumulator is equal to the next accumulator on previous line.
 	// we need to cancel out if current line is the first line where the current accumulator is zero
-	// (checked in [unalignedPairData.csAccumulatorInit])
+	// (checked in [UnalignedPairData.csAccumulatorInit])
 	for i := range nbGtLimbs {
 		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_ACCUMULATOR_CONSISTENCY_%d", NAME_UNALIGNED_PAIR, i),
 			sym.Mul(
@@ -368,13 +368,13 @@ func (d *unalignedPairData) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
 	}
 }
 
-func (d *unalignedPairData) Assign(run *wizard.ProverRuntime) {
+func (d *UnalignedPairData) Assign(run *wizard.ProverRuntime) {
 	d.assignMembershipMask(run)
 	d.assignUnaligned(run)
 	d.assignGnarkData(run)
 }
 
-func (d *unalignedPairData) assignMembershipMask(run *wizard.ProverRuntime) {
+func (d *UnalignedPairData) assignMembershipMask(run *wizard.ProverRuntime) {
 	// assigns the masks (CS_G1_MEMBERSHIP AND !SUCCESS_BIT) and
 	// (CS_G2_MEMBERSHIP AND !SUCCESS_BIT) columns which are used for filtering
 	// the inputs going to group non-membership circuit.
@@ -400,7 +400,7 @@ func (d *unalignedPairData) assignMembershipMask(run *wizard.ProverRuntime) {
 	dstG2Membership.PadAndAssign(run, field.Zero())
 }
 
-func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
+func (d *UnalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 	var (
 		srcID         = d.ID.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcSuccessBit = d.SuccessBit.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -554,7 +554,7 @@ func (d *unalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 	}
 }
 
-func (d *unalignedPairData) assignGnarkData(run *wizard.ProverRuntime) {
+func (d *UnalignedPairData) assignGnarkData(run *wizard.ProverRuntime) {
 	var (
 		srcIsActive   = d.IsActive.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcIsLastLine = d.IsLastLine.GetColAssignment(run).IntoRegVecSaveAlloc()

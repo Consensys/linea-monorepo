@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
 
-func testBlsMsm(t *testing.T, withCircuit bool, g group, path string, limits *Limits) {
+func testBlsMsm(t *testing.T, withCircuit bool, g Group, path string, limits *Limits) {
 	files, err := filepath.Glob(path)
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func testBlsMsm(t *testing.T, withCircuit bool, g group, path string, limits *Li
 			if cmp == nil {
 				cmp = wizard.Compile(
 					func(b *wizard.Builder) {
-						blsMsmSource := &blsMsmDataSource{
+						blsMsmSource := &BlsMsmDataSource{
 							ID:           ct.GetCommit(b, "ID"),
 							CsMul:        ct.GetCommit(b, "CIRCUIT_SELECTOR_"+g.String()+"_MSM"),
 							CsMembership: ct.GetCommit(b, "CIRCUIT_SELECTOR_"+g.String()+"_MEMBERSHIP"),
