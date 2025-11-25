@@ -1,20 +1,21 @@
 import { task } from "hardhat/config";
 import { getTaskCliOrEnvValue } from "../../common/helpers/environmentHelper";
 import { hexlify, randomBytes, AbiCoder } from "ethers";
+import { delay } from "../../common/helpers/general";
 
 /*
   *******************************************************************************************
-  Setup TestLineaRollup.claimMessageWithProof by adding L2->L1 message merkle tree root.
+  Setup and execute TestLineaRollup.claimMessageWithProof.
 
   1) Signer must have DEFAULT_ADMIN_ROLE role for TestLineaRollup
-  ) At least 1 ether balance (CONNECT_DEPOSIT) on the YieldManager
+  2) TestLineaRollup must have >= `value` balance
 
   -------------------------------------------------------------------------------------------
   Example (Hoodi):
   -------------------------------------------------------------------------------------------
   CUSTOM_PRIVATE_KEY=<key> \
   CUSTOM_BLOCKCHAIN_URL=https://0xrpc.io/hoodi \
-  npx hardhat addL2MerkleRoots \
+  npx hardhat addAndClaimMessage \
     --linea-rollup-address <address> \
     --to <address> \
     --value <uint256> \
@@ -42,7 +43,10 @@ function encodeSendMessage(
 const randomBytes32 = (): string => hexlify(randomBytes(32));
 
 // TASKS
-task("addL2MerkleRoots", "Setup TestLineaRollup.claimMessageWithProof by adding L2->L1 message merkle tree root")
+task(
+  "addAndClaimMessage",
+  "Setup and execute TestLineaRollup.claimMessageWithProof by adding L2->L1 message merkle tree root",
+)
   .addOptionalParam("lineaRollupAddress")
   .addOptionalParam("from")
   .addOptionalParam("to")
@@ -125,14 +129,16 @@ task("addL2MerkleRoots", "Setup TestLineaRollup.claimMessageWithProof by adding 
     // Add merkle root to LineaRollup
     console.log("\nAdding merkle root to LineaRollup...");
     console.log("  NOTE: Signer must have DEFAULT_ADMIN_ROLE");
-    const tx = await lineaRollup.addL2MerkleRoots([generatedRoot], proofDepth);
-    console.log("  Transaction hash:", tx.hash);
-    const receipt = await tx.wait();
-    console.log("  Transaction confirmed in block:", receipt?.blockNumber);
+    {
+      const tx = await lineaRollup.addL2MerkleRoots([generatedRoot], proofDepth);
+      console.log("  Transaction hash:", tx.hash);
+      const receipt = await tx.wait();
+      console.log("  Transaction confirmed in block:", receipt?.blockNumber);
+    }
 
     // Output claim parameters
     console.log("\n=== Claim Parameters ===");
-    console.log("These parameters can be used to claim the message:");
+    console.log("Claim parameters:");
     console.log(
       JSON.stringify(
         {
@@ -151,4 +157,24 @@ task("addL2MerkleRoots", "Setup TestLineaRollup.claimMessageWithProof by adding 
         2,
       ),
     );
+    {
+      console.log("Waiting for 10 seconds...");
+      await delay(10000);
+      console.log("Claiming message...");
+      const tx = await lineaRollup.claimMessageWithProof({
+        proof,
+        messageNumber: 1,
+        leafIndex: leafIndex,
+        from: fromAddress,
+        to: toAddress!,
+        fee: fee.toString(),
+        value,
+        feeRecipient: ethers.ZeroAddress,
+        merkleRoot: generatedRoot,
+        data,
+      });
+      console.log("  Transaction hash:", tx.hash);
+      const receipt = await tx.wait();
+      console.log("  Transaction confirmed in block:", receipt?.blockNumber);
+    }
   });

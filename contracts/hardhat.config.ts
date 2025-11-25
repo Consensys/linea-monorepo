@@ -15,7 +15,7 @@ import "./scripts/operational/setRateLimitTask";
 import "./scripts/operational/setVerifierAddressTask";
 import "./scripts/operational/setRemoteTokenBridgeTask";
 import "./scripts/operational/setMessageServiceOnTokenBridgeTask";
-
+import "./scripts/operational/addAndClaimMessage";
 import "solidity-docgen";
 
 dotenv.config();
