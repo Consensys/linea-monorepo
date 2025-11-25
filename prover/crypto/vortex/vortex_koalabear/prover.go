@@ -3,6 +3,7 @@ package vortex_koalabear
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -15,7 +16,12 @@ func Prove(
 
 	proof := &vortex.OpeningProof{}
 
-	vortex.LinearCombination(proof, encodedMatrices, alpha)
+	_encodedMatrices := make([]smartvectors.SmartVector, 0, len(encodedMatrices))
+	for _, m := range encodedMatrices {
+		_encodedMatrices = append(_encodedMatrices, m...)
+	}
+
+	vortex.LinearCombination(proof, _encodedMatrices, alpha)
 
 	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
 

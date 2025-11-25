@@ -24,23 +24,18 @@ type OpeningProof struct {
 // n is the size of each vector v[i]
 //
 // TODO @thomaspiellard why not use directly smarvectorext.LinComb ??
-func LinearCombination(proof *OpeningProof, v [][]smartvectors.SmartVector, randomCoin fext.Element) {
+func LinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, randomCoin fext.Element) {
 
-	n := v[0][0].Len()
+	n := v[0].Len()
 	linComb := make([]fext.Element, n)
-
-	_v := make([]smartvectors.SmartVector, 0, len(v))
-	for _, c := range v {
-		_v = append(_v, c...)
-	}
 
 	parallel.Execute(len(linComb), func(start, stop int) {
 
 		x := fext.One()
 		scratch := make(vectorext.Vector, stop-start)
 		localLinComb := make(vectorext.Vector, stop-start)
-		for i := range _v {
-			_sv := _v[i]
+		for i := range v {
+			_sv := v[i]
 			// we distinguish the case of a regular vector and constant to avoid
 			// unnecessary allocations and copies
 			switch _svt := _sv.(type) {
