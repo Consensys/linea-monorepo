@@ -178,6 +178,16 @@ describe("YieldReportingProcessor", () => {
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.UNSTAKE, rebalanceAmount: 5n });
 
+    // Mock _shouldReportYield to return true
+    const dashboardAddress = "0x4444444444444444444444444444444444444444" as Address;
+    yieldManager.getLidoDashboardAddress.mockResolvedValue(dashboardAddress);
+    dashboardClient.peekUnpaidLidoProtocolFees.mockResolvedValue(600000000000000000n); // above threshold
+    yieldManager.peekYieldReport.mockResolvedValue({
+      yieldAmount: 2000000000000000000n,
+      outstandingNegativeYield: 0n,
+      yieldProvider,
+    });
+
     const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(250);
 
     const processor = createProcessor();
@@ -229,6 +239,16 @@ describe("YieldReportingProcessor", () => {
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
+
+    // Mock _shouldReportYield to return true
+    const dashboardAddress = "0x4444444444444444444444444444444444444444" as Address;
+    yieldManager.getLidoDashboardAddress.mockResolvedValue(dashboardAddress);
+    dashboardClient.peekUnpaidLidoProtocolFees.mockResolvedValue(600000000000000000n); // above threshold
+    yieldManager.peekYieldReport.mockResolvedValue({
+      yieldAmount: 2000000000000000000n,
+      outstandingNegativeYield: 0n,
+      yieldProvider,
+    });
 
     const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(200);
 
@@ -486,6 +506,9 @@ describe("YieldReportingProcessor", () => {
 
     const processor = createProcessor();
     (processor as unknown as { vault: Address }).vault = vaultAddress;
+    const shouldReportYieldSpy = jest
+      .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
+      .mockResolvedValue(true);
 
     await (
       processor as unknown as {
@@ -493,12 +516,14 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleSubmitLatestVaultReport();
 
+    expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
     expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
     expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
       yieldProvider,
       expect.objectContaining({ isOk: expect.any(Function) }),
     );
+    shouldReportYieldSpy.mockRestore();
   });
 
   it("_handleSubmitLatestVaultReport continues execution when yield reporting fails", async () => {
@@ -506,6 +531,9 @@ describe("YieldReportingProcessor", () => {
 
     const processor = createProcessor();
     (processor as unknown as { vault: Address }).vault = vaultAddress;
+    const shouldReportYieldSpy = jest
+      .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
+      .mockResolvedValue(true);
 
     await (
       processor as unknown as {
@@ -513,14 +541,20 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleSubmitLatestVaultReport();
 
+    expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
     expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
     expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report succeeded");
+    expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
     expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
+    shouldReportYieldSpy.mockRestore();
   });
 
   it("_handleSubmitLatestVaultReport logs success when both steps succeed", async () => {
     const processor = createProcessor();
     (processor as unknown as { vault: Address }).vault = vaultAddress;
+    const shouldReportYieldSpy = jest
+      .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
+      .mockResolvedValue(true);
 
     await (
       processor as unknown as {
@@ -528,18 +562,24 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleSubmitLatestVaultReport();
 
+    expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
     expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
     expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report succeeded");
+    expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
     expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
       yieldProvider,
       expect.objectContaining({ isOk: expect.any(Function) }),
     );
     expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: yield report succeeded");
+    shouldReportYieldSpy.mockRestore();
   });
 
   it("_handleSubmitLatestVaultReport skips vault report submission when shouldSubmitVaultReport is false", async () => {
     const processor = createProcessor(false);
     (processor as unknown as { vault: Address }).vault = vaultAddress;
+    const shouldReportYieldSpy = jest
+      .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
+      .mockResolvedValue(true);
 
     await (
       processor as unknown as {
@@ -547,6 +587,7 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleSubmitLatestVaultReport();
 
+    expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
     expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith(
@@ -558,6 +599,28 @@ describe("YieldReportingProcessor", () => {
       expect.objectContaining({ isOk: expect.any(Function) }),
     );
     expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: yield report succeeded");
+    shouldReportYieldSpy.mockRestore();
+  });
+
+  it("_handleSubmitLatestVaultReport skips yield reporting when _shouldReportYield returns false", async () => {
+    const processor = createProcessor();
+    (processor as unknown as { vault: Address }).vault = vaultAddress;
+    const shouldReportYieldSpy = jest
+      .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
+      .mockResolvedValue(false);
+
+    await (
+      processor as unknown as {
+        _handleSubmitLatestVaultReport(): Promise<void>;
+      }
+    )._handleSubmitLatestVaultReport();
+
+    expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
+    expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
+    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report succeeded");
+    expect(yieldManager.reportYield).not.toHaveBeenCalled();
+    expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
+    shouldReportYieldSpy.mockRestore();
   });
 
   describe("_shouldReportYield", () => {

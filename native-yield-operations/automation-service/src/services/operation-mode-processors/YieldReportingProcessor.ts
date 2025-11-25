@@ -289,14 +289,16 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     }
 
     // Second call: report yield
-    const yieldResult = await attempt(
-      this.logger,
-      () => this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient),
-      "_handleSubmitLatestVaultReport - reportYield failed",
-    );
-    if (yieldResult.isOk()) {
-      this.logger.info("_handleSubmitLatestVaultReport: yield report succeeded");
-      await this.operationModeMetricsRecorder.recordReportYieldMetrics(this.yieldProvider, yieldResult);
+    if (await this._shouldReportYield()) {
+      const yieldResult = await attempt(
+        this.logger,
+        () => this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient),
+        "_handleSubmitLatestVaultReport - reportYield failed",
+      );
+      if (yieldResult.isOk()) {
+        this.logger.info("_handleSubmitLatestVaultReport: yield report succeeded");
+        await this.operationModeMetricsRecorder.recordReportYieldMetrics(this.yieldProvider, yieldResult);
+      }
     }
   }
 
