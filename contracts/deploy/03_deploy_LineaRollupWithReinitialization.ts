@@ -6,12 +6,12 @@ import {
   LINEA_ROLLUP_PAUSE_TYPES_ROLES,
   LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
   PAUSE_ALL_ROLE,
-  PAUSE_BLOB_SUBMISSION_ROLE,
+  PAUSE_DATA_SUBMISSION_ROLE,
   PAUSE_FINALIZATION_ROLE,
   PAUSE_L1_L2_ROLE,
   PAUSE_L2_L1_ROLE,
   UNPAUSE_ALL_ROLE,
-  UNPAUSE_BLOB_SUBMISSION_ROLE,
+  UNPAUSE_DATA_SUBMISSION_ROLE,
   UNPAUSE_FINALIZATION_ROLE,
   UNPAUSE_L1_L2_ROLE,
   UNPAUSE_L2_L1_ROLE,
@@ -20,7 +20,6 @@ import {
 } from "contracts/common/constants";
 
 const func: DeployFunction = async function () {
-  const fallbackOperatorAddress = getRequiredEnvVar("LINEA_ROLLUP_FALLBACK_OPERATOR");
   const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
 
   const newRoles = [
@@ -30,8 +29,8 @@ const func: DeployFunction = async function () {
     UNPAUSE_ALL_ROLE,
     UNPAUSE_L1_L2_ROLE,
     UNPAUSE_L2_L1_ROLE,
-    PAUSE_BLOB_SUBMISSION_ROLE,
-    UNPAUSE_BLOB_SUBMISSION_ROLE,
+    PAUSE_DATA_SUBMISSION_ROLE,
+    UNPAUSE_DATA_SUBMISSION_ROLE,
     PAUSE_FINALIZATION_ROLE,
     UNPAUSE_FINALIZATION_ROLE,
     USED_RATE_LIMIT_RESETTER_ROLE,
@@ -66,12 +65,7 @@ const func: DeployFunction = async function () {
       [
         proxyAddress,
         newContract,
-        LineaRollup__factory.createInterface().encodeFunctionData("reinitializeLineaRollupV6", [
-          newRoleAddresses,
-          LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-          LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-          fallbackOperatorAddress,
-        ]),
+        LineaRollup__factory.createInterface().encodeFunctionData("reinitializeV8"),
       ],
     ),
   ]);

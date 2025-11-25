@@ -16,9 +16,9 @@ import {
   PAUSE_L2_L1_ROLE,
   UNPAUSE_L2_L1_ROLE,
   PAUSE_FINALIZATION_ROLE,
-  PAUSE_BLOB_SUBMISSION_ROLE,
+  PAUSE_DATA_SUBMISSION_ROLE,
   UNPAUSE_FINALIZATION_ROLE,
-  UNPAUSE_BLOB_SUBMISSION_ROLE,
+  UNPAUSE_DATA_SUBMISSION_ROLE,
   SECURITY_COUNCIL_ROLE,
   BLOB_SUBMISSION_PAUSE_TYPE,
   CALLDATA_SUBMISSION_PAUSE_TYPE,
@@ -64,8 +64,8 @@ describe("PauseManager", () => {
       pauseManager.grantRole(UNPAUSE_L1_L2_ROLE, pauseManagerAccount.address),
       pauseManager.grantRole(PAUSE_L2_L1_ROLE, pauseManagerAccount.address),
       pauseManager.grantRole(UNPAUSE_L2_L1_ROLE, pauseManagerAccount.address),
-      pauseManager.grantRole(PAUSE_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address),
-      pauseManager.grantRole(UNPAUSE_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(PAUSE_DATA_SUBMISSION_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(UNPAUSE_DATA_SUBMISSION_ROLE, pauseManagerAccount.address),
       pauseManager.grantRole(PAUSE_FINALIZATION_ROLE, pauseManagerAccount.address),
       pauseManager.grantRole(UNPAUSE_FINALIZATION_ROLE, pauseManagerAccount.address),
       // Roles for securityCouncil
@@ -73,7 +73,7 @@ describe("PauseManager", () => {
       pauseManager.grantRole(UNPAUSE_ALL_ROLE, securityCouncil.address),
       pauseManager.grantRole(UNPAUSE_L1_L2_ROLE, securityCouncil.address),
       pauseManager.grantRole(UNPAUSE_L2_L1_ROLE, securityCouncil.address),
-      pauseManager.grantRole(UNPAUSE_BLOB_SUBMISSION_ROLE, securityCouncil.address),
+      pauseManager.grantRole(UNPAUSE_DATA_SUBMISSION_ROLE, securityCouncil.address),
       pauseManager.grantRole(UNPAUSE_FINALIZATION_ROLE, securityCouncil.address),
       pauseManager.grantRole(SECURITY_COUNCIL_ROLE, securityCouncil.address),
     ]);
@@ -361,7 +361,7 @@ describe("PauseManager", () => {
 
       it("cannot pause the BLOB_SUBMISSION_PAUSE_TYPE as non-manager", async () => {
         await expect(pauseByType(BLOB_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_BLOB_SUBMISSION_ROLE),
+          buildAccessErrorMessage(nonManager, PAUSE_DATA_SUBMISSION_ROLE),
         );
       });
 
@@ -369,13 +369,13 @@ describe("PauseManager", () => {
         await pauseByType(BLOB_SUBMISSION_PAUSE_TYPE);
 
         await expect(unPauseByType(BLOB_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, UNPAUSE_BLOB_SUBMISSION_ROLE),
+          buildAccessErrorMessage(nonManager, UNPAUSE_DATA_SUBMISSION_ROLE),
         );
       });
 
       it("cannot pause the CALLDATA_SUBMISSION_PAUSE_TYPE as non-manager", async () => {
         await expect(pauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_BLOB_SUBMISSION_ROLE),
+          buildAccessErrorMessage(nonManager, PAUSE_DATA_SUBMISSION_ROLE),
         );
       });
 
@@ -383,7 +383,7 @@ describe("PauseManager", () => {
         await pauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE);
 
         await expect(unPauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, UNPAUSE_BLOB_SUBMISSION_ROLE),
+          buildAccessErrorMessage(nonManager, UNPAUSE_DATA_SUBMISSION_ROLE),
         );
       });
 

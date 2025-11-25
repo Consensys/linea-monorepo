@@ -11,7 +11,7 @@ import {
   SHNARF_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
 import { TestValidium } from "contracts/typechain-types";
-import { deployValidiumFixture, getAccountsFixture, getRoleAddressesFixture } from "./helpers";
+import { deployValidiumFixture, getAccountsFixture, getValidiumRoleAddressesFixture } from "./helpers";
 import {
   ADDRESS_ZERO,
   GENERAL_PAUSE_TYPE,
@@ -57,7 +57,7 @@ describe("Validium contract", () => {
   before(async () => {
     ({ admin, securityCouncil, operator, nonAuthorizedAccount, alternateShnarfProviderAddress } =
       await loadFixture(getAccountsFixture));
-    roleAddresses = await loadFixture(getRoleAddressesFixture);
+    roleAddresses = await loadFixture(getValidiumRoleAddressesFixture);
   });
 
   beforeEach(async () => {

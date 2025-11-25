@@ -8,10 +8,10 @@ import {
   LogContractDeployment,
 } from "../common/helpers";
 import {
-  LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_ROLES,
-  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+  VALIDIUM_INITIALIZE_SIGNATURE,
+  VALIDIUM_PAUSE_TYPES_ROLES,
+  VALIDIUM_ROLES,
+  VALIDIUM_UNPAUSE_TYPES_ROLES,
   OPERATOR_ROLE,
 } from "../common/constants";
 
@@ -20,24 +20,23 @@ const func: DeployFunction = async function () {
 
   // LineaRollup DEPLOYED AS UPGRADEABLE PROXY
   const verifierAddress = getRequiredEnvVar("PLONKVERIFIER_ADDRESS");
-  const lineaRollupInitialStateRootHash = getRequiredEnvVar("LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH");
-  const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER");
-  const lineaRollupSecurityCouncil = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
-  const lineaRollupOperators = getRequiredEnvVar("LINEA_ROLLUP_OPERATORS").split(",");
-  const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
-  const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
-  const lineaRollupGenesisTimestamp = getRequiredEnvVar("LINEA_ROLLUP_GENESIS_TIMESTAMP");
-  const MultiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+  const lineaRollupInitialStateRootHash = getRequiredEnvVar("VALIDIUM_INITIAL_STATE_ROOT_HASH");
+  const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("VALIDIUM_INITIAL_L2_BLOCK_NUMBER");
+  const lineaRollupSecurityCouncil = getRequiredEnvVar("VALIDIUM_SECURITY_COUNCIL");
+  const lineaRollupOperators = getRequiredEnvVar("VALIDIUM_OPERATORS").split(",");
+  const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_PERIOD");
+  const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_AMOUNT");
+  const lineaRollupGenesisTimestamp = getRequiredEnvVar("VALIDIUM_GENESIS_TIMESTAMP");
 
-  const pauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_PAUSE_TYPE_ROLES", LINEA_ROLLUP_PAUSE_TYPES_ROLES);
-  const unpauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_UNPAUSE_TYPE_ROLES", LINEA_ROLLUP_UNPAUSE_TYPES_ROLES);
-  const defaultRoleAddresses = generateRoleAssignments(LINEA_ROLLUP_ROLES, lineaRollupSecurityCouncil, [
+  const pauseTypeRoles = getEnvVarOrDefault("VALIDIUM_PAUSE_TYPE_ROLES", VALIDIUM_PAUSE_TYPES_ROLES);
+  const unpauseTypeRoles = getEnvVarOrDefault("VALIDIUM_UNPAUSE_TYPE_ROLES", VALIDIUM_UNPAUSE_TYPES_ROLES);
+  const defaultRoleAddresses = generateRoleAssignments(VALIDIUM_ROLES, lineaRollupSecurityCouncil, [
     { role: OPERATOR_ROLE, addresses: lineaRollupOperators },
   ]);
-  const roleAddresses = getEnvVarOrDefault("LINEA_ROLLUP_ROLE_ADDRESSES", defaultRoleAddresses);
+  const roleAddresses = getEnvVarOrDefault("VALIDIUM_ROLE_ADDRESSES", defaultRoleAddresses);
 
   const contract = await deployUpgradableFromFactory(
-    "LineaRollup",
+    "Validium",
     [
       {
         initialStateRootHash: lineaRollupInitialStateRootHash,
@@ -51,10 +50,9 @@ const func: DeployFunction = async function () {
         unpauseTypeRoles,
         defaultAdmin: lineaRollupSecurityCouncil,
       },
-      MultiCallAddress
     ],
     {
-      initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+      initializer: VALIDIUM_INITIALIZE_SIGNATURE,
       unsafeAllow: ["constructor"],
     },
   );

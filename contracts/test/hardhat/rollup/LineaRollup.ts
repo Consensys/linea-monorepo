@@ -55,6 +55,7 @@ import {
   generateKeccak256,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
+import { generateRoleAssignments } from "contracts/common/helpers";
 
 kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
 
@@ -817,7 +818,15 @@ describe("Linea Rollup contract", () => {
         upgradedContract,
       );
     });
-
+  });
+  describe("Upgrading", () => {
+    roleAddresses = generateRoleAssignments(LINEA_ROLLUP_ROLES, await securityCouncil.getAddress(), [
+      {
+        role: OPERATOR_ROLE,
+        addresses: [operator.address],
+      },
+    ]);
+    
     it("Should be able to upgrade", async () => {
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
@@ -825,7 +834,7 @@ describe("Linea Rollup contract", () => {
       );
 
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-        call: { fn: "reinitializeSettingShnarfProvider", args: [] },
+        call: { fn: "reinitializeV8", args: [] },
         kind: "transparent",
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
@@ -843,7 +852,7 @@ describe("Linea Rollup contract", () => {
       );
 
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-        call: { fn: "reinitializeSettingShnarfProvider", args: [] },
+        call: { fn: "reinitializeV8", args: [] },
         kind: "transparent",
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
@@ -855,7 +864,7 @@ describe("Linea Rollup contract", () => {
 
       await expectRevertWithReason(
         upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-          call: { fn: "reinitializeSettingShnarfProvider", args: [] },
+          call: { fn: "reinitializeV8", args: [] },
           kind: "transparent",
           unsafeAllowRenames: true,
           unsafeAllow: ["incorrect-initializer-order"],
@@ -867,7 +876,7 @@ describe("Linea Rollup contract", () => {
     it("Should fail to upgrade if not proxy admin", async () => {
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.connect(nonAuthorizedAccount).reinitializeSettingShnarfProvider(),
+        lineaRollup.connect(nonAuthorizedAccount).reinitializeV8(),
         "CallerNotProxyAdmin",
       );
     });

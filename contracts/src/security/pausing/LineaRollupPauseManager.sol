@@ -21,21 +21,15 @@ abstract contract LineaRollupPauseManager is PauseManager {
   /// @notice This is used to unpause L2 to L1 communication.
   bytes32 public constant UNPAUSE_L2_L1_ROLE = keccak256("UNPAUSE_L2_L1_ROLE");
 
-  /// @notice This is used to pause blob submission.
-  bytes32 public constant PAUSE_BLOB_SUBMISSION_ROLE = keccak256("PAUSE_BLOB_SUBMISSION_ROLE");
+  /// @notice This is used to pause data submission.
+  bytes32 public constant PAUSE_DATA_SUBMISSION_ROLE = keccak256("PAUSE_DATA_SUBMISSION_ROLE");
 
-  /// @notice This is used to unpause blob submission.
-  bytes32 public constant UNPAUSE_BLOB_SUBMISSION_ROLE = keccak256("UNPAUSE_BLOB_SUBMISSION_ROLE");
+  /// @notice This is used to unpause data submission.
+  bytes32 public constant UNPAUSE_DATA_SUBMISSION_ROLE = keccak256("UNPAUSE_DATA_SUBMISSION_ROLE");
 
   /// @notice This is used to pause finalization submission.
   bytes32 public constant PAUSE_FINALIZATION_ROLE = keccak256("PAUSE_FINALIZATION_ROLE");
 
   /// @notice This is used to unpause finalization submission.
   bytes32 public constant UNPAUSE_FINALIZATION_ROLE = keccak256("UNPAUSE_FINALIZATION_ROLE");
-
-  /// @notice This is used to pause shnarf submission.
-  bytes32 public constant PAUSE_SHNARF_SUBMISSION_ROLE = keccak256("PAUSE_SHNARF_SUBMISSION_ROLE");
-
-  /// @notice This is used to unpause shnarf submission.
-  bytes32 public constant UNPAUSE_SHNARF_SUBMISSION_ROLE = keccak256("UNPAUSE_SHNARF_SUBMISSION_ROLE");
 }

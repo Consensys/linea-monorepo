@@ -7,7 +7,8 @@ import { IProvideShnarf } from "./dataAvailability/interfaces/IProvideShnarf.sol
 import { ClaimMessageV1 } from "../messaging/l1/v1/ClaimMessageV1.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { LivenessRecovery } from "./LivenessRecovery.sol";
-
+import { IPermissionsManager } from "../security/access/interfaces/IPermissionsManager.sol";
+import { IPauseManager } from "../security/pausing/interfaces/IPauseManager.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
@@ -48,12 +49,18 @@ contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, 
   /**
    * @notice Reinitializes LineaRollup and sets the _shnarfProvider to itself.
    */
-  function reinitializeSettingShnarfProvider() external reinitializer(8) {
+  function reinitializeV8(
+  IPermissionsManager.RoleAddress[] calldata _roleAddresses,
+  IPauseManager.PauseTypeRole[] calldata _pauseTypeRoles,
+  IPauseManager.PauseTypeRole[] calldata _unpauseTypeRoles) external reinitializer(8) {
     address proxyAdmin;
     assembly {
       proxyAdmin := sload(PROXY_ADMIN_SLOT)
     }
     require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
+
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
+    __Permissions_init(_roleAddresses);
 
     shnarfProvider = IProvideShnarf(address(this));
   }
