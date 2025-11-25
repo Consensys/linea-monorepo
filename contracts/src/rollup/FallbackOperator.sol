@@ -9,6 +9,9 @@ import { IFallbackOperator } from "./interfaces/IFallbackOperator.sol";
  * @custom:security-contact security-report@linea.build
  */
 abstract contract FallbackOperator is LineaRollupBase, IFallbackOperator {
+  /// @dev In practice, when used, this is expected to be a close approximation to 6 months, and is intentional.
+  uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
+
   /// @dev Keep 50 free storage slots for inheriting contracts.
   uint256[50] private __gap_FallbackOperator;
 

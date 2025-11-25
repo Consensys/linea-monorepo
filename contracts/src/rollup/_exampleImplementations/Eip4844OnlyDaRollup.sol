@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { CalldataBlobAcceptor } from "../../../rollup/CalldataBlobAcceptor.sol";
-import { L1MessageService } from "../../../messaging/l1/L1MessageService.sol";
-import { IMessageService } from "../../../messaging/interfaces/IMessageService.sol";
+import { Eip4844BlobAcceptor } from "../dataAvailability/Eip4844BlobAcceptor.sol";
+import { LineaRollupBase } from "../LineaRollupBase.sol";
+import { L1MessageService } from "../../messaging/l1/L1MessageService.sol";
+import { IMessageService } from "../../messaging/interfaces/IMessageService.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
-contract CalldataOnlyDaRollup is CalldataBlobAcceptor {
+contract Eip4844OnlyDaRollup is LineaRollupBase, Eip4844BlobAcceptor {
   error DirectETHSendingDisallowed();
   error FeeSendingDisallowed();
   error OnlyAllowedSendersToRemoteReceiver();

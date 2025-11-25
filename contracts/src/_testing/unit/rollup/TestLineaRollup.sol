@@ -3,7 +3,7 @@ pragma solidity 0.8.30;
 
 import { LineaRollup } from "../../../rollup/LineaRollup.sol";
 import { LineaRollupBase } from "../../../rollup/LineaRollupBase.sol";
-import { CalldataBlobAcceptor } from "../../../rollup/CalldataBlobAcceptor.sol";
+import { CalldataBlobAcceptor } from "../../../rollup/dataAvailability/CalldataBlobAcceptor.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer

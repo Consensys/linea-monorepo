@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { Eip4844BlobAcceptor } from "./Eip4844BlobAcceptor.sol";
-import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
+import { LineaRollupBase } from "./LineaRollupBase.sol";
+import { Eip4844BlobAcceptor } from "./dataAvailability/Eip4844BlobAcceptor.sol";
+import { IProvideShnarf } from "./dataAvailability/interfaces/IProvideShnarf.sol";
 import { ClaimMessageV1 } from "../messaging/l1/v1/ClaimMessageV1.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { FallbackOperator } from "./FallbackOperator.sol";
@@ -12,7 +13,7 @@ import { FallbackOperator } from "./FallbackOperator.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is FallbackOperator, Eip4844BlobAcceptor, ClaimMessageV1 {
+contract LineaRollup is LineaRollupBase, FallbackOperator, Eip4844BlobAcceptor, ClaimMessageV1 {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();

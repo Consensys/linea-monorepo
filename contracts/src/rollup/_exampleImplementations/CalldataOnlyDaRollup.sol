@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { Eip4844BlobAcceptor } from "../../../rollup/Eip4844BlobAcceptor.sol";
-import { L1MessageService } from "../../../messaging/l1/L1MessageService.sol";
-import { IMessageService } from "../../../messaging/interfaces/IMessageService.sol";
+import { CalldataBlobAcceptor } from "../dataAvailability/CalldataBlobAcceptor.sol";
+import { L1MessageService } from "../../messaging/l1/L1MessageService.sol";
+import { IMessageService } from "../../messaging/interfaces/IMessageService.sol";
+import { LineaRollupBase } from "../LineaRollupBase.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
-contract Eip4844OnlyDaRollup is Eip4844BlobAcceptor {
+contract CalldataOnlyDaRollup is LineaRollupBase, CalldataBlobAcceptor {
+  /**
+   * @dev These are examples of custom events and functionality.
+   */
+
   error DirectETHSendingDisallowed();
   error FeeSendingDisallowed();
   error OnlyAllowedSendersToRemoteReceiver();
@@ -45,6 +49,9 @@ contract Eip4844OnlyDaRollup is Eip4844BlobAcceptor {
     __LineaRollup_init(_initializationData, genesisShnarf);
   }
 
+  /**
+   * @dev This is an example of new custom functionality.
+   */
   function setAllowedMessageSenderState(
     address _allowedSender,
     bool _isAllowedToSend
@@ -56,6 +63,9 @@ contract Eip4844OnlyDaRollup is Eip4844BlobAcceptor {
     emit AllowedMessageSenderStateSet(_allowedSender, _isAllowedToSend);
   }
 
+  /**
+   * @dev This is an example of new custom functionality.
+   */
   function setRemoteReceiver(address _receiver) external onlyRole(REMOTE_RECEIVER_SETTER_ROLE) {
     if (remoteReceivers[_receiver]) {
       revert MessageReceiverAlreadySet(_receiver);
@@ -65,6 +75,9 @@ contract Eip4844OnlyDaRollup is Eip4844BlobAcceptor {
     emit RemoteReceiverSet(_receiver);
   }
 
+  /**
+   * @dev This is an example override of the sendMessage to add custom functionality.
+   */
   function sendMessage(
     address _to,
     uint256 _fee,
@@ -86,10 +99,7 @@ contract Eip4844OnlyDaRollup is Eip4844BlobAcceptor {
   }
 
   /**
-   * @notice Claims and delivers a cross-chain message using a Merkle proof.
-   * @dev if tree depth is empty, it will revert with L2MerkleRootDoesNotExist.
-   * @dev if tree depth is different than proof size, it will revert with ProofLengthDifferentThanMerkleDepth.
-   * @param _params Collection of claim data with proof and supporting data.
+   * @dev This is an example override of the _claimMessageWithProof to add custom functionality.
    */
   function _claimMessageWithProof(ClaimMessageWithProofParams calldata _params) internal virtual override {
     // custom code here

@@ -5,7 +5,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollupBase } from "./interfaces/ILineaRollupBase.sol";
-import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
+import { IProvideShnarf } from "./dataAvailability/interfaces/IProvideShnarf.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 /**
@@ -51,9 +51,6 @@ abstract contract LineaRollupBase is
 
   /// @dev The expected point evaluation field element length returned.
   uint256 internal constant POINT_EVALUATION_FIELD_ELEMENTS_LENGTH = 4096;
-
-  /// @dev In practice, when used, this is expected to be a close approximation to 6 months, and is intentional.
-  uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 
   /// @notice This is the ABI version and not the reinitialize version.
   string private constant _CONTRACT_VERSION = "7.0";

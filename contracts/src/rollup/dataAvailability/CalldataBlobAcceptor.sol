@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import { IAcceptCalldataBlobs } from "./interfaces/IAcceptCalldataBlobs.sol";
 import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
-import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
+import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
 import { ShnarfDataAcceptorBase } from "./ShnarfDataAcceptorBase.sol";
 
 /**

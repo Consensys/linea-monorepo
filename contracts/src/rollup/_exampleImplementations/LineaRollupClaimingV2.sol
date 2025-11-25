@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { Eip4844BlobAcceptor } from "../../../rollup/Eip4844BlobAcceptor.sol";
-import { CalldataBlobAcceptor } from "../../../rollup/CalldataBlobAcceptor.sol";
-import { IProvideShnarf } from "../../../rollup/interfaces/IProvideShnarf.sol";
-
+import { Eip4844BlobAcceptor } from "../dataAvailability/Eip4844BlobAcceptor.sol";
+import { CalldataBlobAcceptor } from "../dataAvailability/CalldataBlobAcceptor.sol";
+import { IProvideShnarf } from "../dataAvailability/interfaces/IProvideShnarf.sol";
+import { LineaRollupBase } from "../LineaRollupBase.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollupClaimingV2 is Eip4844BlobAcceptor, CalldataBlobAcceptor {
+contract LineaRollupClaimingV2 is LineaRollupBase, Eip4844BlobAcceptor, CalldataBlobAcceptor {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();

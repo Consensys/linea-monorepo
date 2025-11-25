@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import { IAcceptEip4844Blobs } from "./interfaces/IAcceptEip4844Blobs.sol";
 import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
-import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
+import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
 import { ShnarfDataAcceptorBase } from "./ShnarfDataAcceptorBase.sol";
 /**
  * @title Contract to manage EIP-4844 blob submission.
