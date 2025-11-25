@@ -8,7 +8,7 @@ import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
-import { IAcceptForcedTransactions } from "./interfaces/IAcceptForcedTransactions.sol";
+import { IAcceptForcedTransactions } from "./forcedTransactions/interfaces/IAcceptForcedTransactions.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
-import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
+import { IGenericErrors } from "../../interfaces/IGenericErrors.sol";
 import { IAcceptForcedTransactions } from "./interfaces/IAcceptForcedTransactions.sol";
 import { IForcedTransactionGateway } from "./interfaces/IForcedTransactionGateway.sol";
 import { IGovernedDenyList } from "./interfaces/IGovernedDenyList.sol";
-import { Mimc } from "../libraries/Mimc.sol";
-import { RlpEncoder } from "../libraries/RlpEncoder.sol";
-import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
+import { Mimc } from "../../libraries/Mimc.sol";
+import { RlpEncoder } from "../../libraries/RlpEncoder.sol";
+import { FinalizedStateHashing } from "../../libraries/FinalizedStateHashing.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
@@ -44,6 +44,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   /// @notice Contains the destination address to store the forced transactions on.
   IGovernedDenyList public immutable GOVERNED_DENY_LIST;
 
+  /// @notice Toggles the feature switch for using the deny list checking.
   bool public useDenyList = true;
 
   constructor(

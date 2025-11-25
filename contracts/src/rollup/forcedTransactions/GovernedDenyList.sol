@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
-import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
+import { IGenericErrors } from "../../interfaces/IGenericErrors.sol";
 import { IGovernedDenyList } from "./interfaces/IGovernedDenyList.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
- * @title Contract to manage forced transactions on L1.
+ * @title Contract to manage denied addresses on L1.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
