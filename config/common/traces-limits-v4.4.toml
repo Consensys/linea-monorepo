@@ -1,4 +1,5 @@
 [traces-limits]
+# Module limits of the beta-v4.4 release (Osaka)
 #
 # Arithmetization module limits
 #
@@ -7,6 +8,7 @@ BIN                 = 262144
 BLAKE_MODEXP_DATA   = 16384
 BLOCK_DATA          = 4096
 BLOCK_HASH          = 2048
+BLS_DATA            = 65536
 EC_DATA             = 65536
 EUC                 = 65536
 EXP                 = 65536
@@ -24,6 +26,7 @@ OOB                 = 262144
 RLP_ADDR            = 4096
 RLP_TXN             = 131072
 RLP_TXN_RCPT        = 65536
+RLP_UTILS           = 131072
 ROM                 = 8388608
 ROM_LEX             = 1024
 SHAKIRA_DATA        = 65536
@@ -62,6 +65,8 @@ PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS                 = 0
 PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS                  = 0
 PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS                  = 0
 PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS                  = 0
+# Precompiles introduced from beta-v4.4
+PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS              = 128
 #
 # Block-specific limits
 #
@@ -69,12 +74,4 @@ BLOCK_KECCAK        = 8192
 BLOCK_L1_SIZE       = 1000000
 BLOCK_L2_L1_LOGS    = 16
 BLOCK_TRANSACTIONS  = 300
-#
-# limitless proof limits
-#
-BLS                 = 0
-POINT_EVAL          = 0
 
-# Introduced from beta-v4.0-rc6-CANCUN and present on Cancun
-BLS_DATA                = 8192
-RLP_UTILS               = 131072
