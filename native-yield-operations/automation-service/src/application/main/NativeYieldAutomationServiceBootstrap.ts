@@ -200,6 +200,7 @@ export class NativeYieldAutomationServiceBootstrap {
       this.metricsUpdater,
       this.yieldManagerContractClient,
       this.vaultHubContractClient,
+      this.viemBlockchainClientAdapter,
     );
 
     this.yieldReportingOperationModeProcessor = new YieldReportingProcessor(

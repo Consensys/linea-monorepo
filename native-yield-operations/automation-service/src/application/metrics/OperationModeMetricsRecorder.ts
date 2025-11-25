@@ -1,13 +1,13 @@
 // Take operation results and record the relevant figures into metrics
 
-import { Address, TransactionReceipt } from "viem";
+import { Address, PublicClient, TransactionReceipt } from "viem";
 import { Result } from "neverthrow";
 import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
-import { ILogger, weiToGweiNumber } from "@consensys/linea-shared-utils";
+import { IBlockchainClient, ILogger, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
-import { getNodeOperatorFeesPaidFromTxReceipt } from "../../clients/contracts/getNodeOperatorFeesPaidFromTxReceipt.js";
+import { DashboardContractClient } from "../../clients/contracts/DashboardContractClient.js";
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
 
 /**
@@ -23,12 +23,14 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
    * @param {INativeYieldAutomationMetricsUpdater} metricsUpdater - Service for updating metrics.
    * @param {IYieldManager<TransactionReceipt>} yieldManagerClient - Client for interacting with YieldManager contracts.
    * @param {IVaultHub<TransactionReceipt>} vaultHubClient - Client for interacting with VaultHub contracts.
+   * @param {IBlockchainClient<PublicClient, TransactionReceipt>} blockchainClient - Blockchain client for creating dashboard contract clients.
    */
   constructor(
     private readonly logger: ILogger,
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
     private readonly yieldManagerClient: IYieldManager<TransactionReceipt>,
     private readonly vaultHubClient: IVaultHub<TransactionReceipt>,
+    private readonly blockchainClient: IBlockchainClient<PublicClient, TransactionReceipt>,
   ) {
     void this.logger;
   }
@@ -55,7 +57,8 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
       this.yieldManagerClient.getLidoDashboardAddress(yieldProvider),
     ]);
 
-    const nodeOperatorFeesDisbursed = getNodeOperatorFeesPaidFromTxReceipt(receipt, dashboard);
+    const dashboardClient = new DashboardContractClient(this.blockchainClient, dashboard);
+    const nodeOperatorFeesDisbursed = dashboardClient.getNodeOperatorFeesPaidFromTxReceipt(receipt);
     if (nodeOperatorFeesDisbursed != 0n) {
       this.metricsUpdater.addNodeOperatorFeesPaid(vault, weiToGweiNumber(nodeOperatorFeesDisbursed));
     }
@@ -100,7 +103,8 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     this.metricsUpdater.addReportedYieldAmount(vault, weiToGweiNumber(yieldReport.yieldAmount));
     this.metricsUpdater.setCurrentNegativeYieldLastReport(vault, weiToGweiNumber(yieldReport.outstandingNegativeYield));
 
-    const nodeOperatorFeesDisbursed = getNodeOperatorFeesPaidFromTxReceipt(receipt, dashboard);
+    const dashboardClient = new DashboardContractClient(this.blockchainClient, dashboard);
+    const nodeOperatorFeesDisbursed = dashboardClient.getNodeOperatorFeesPaidFromTxReceipt(receipt);
     if (nodeOperatorFeesDisbursed != 0n) {
       this.metricsUpdater.addNodeOperatorFeesPaid(vault, weiToGweiNumber(nodeOperatorFeesDisbursed));
     }

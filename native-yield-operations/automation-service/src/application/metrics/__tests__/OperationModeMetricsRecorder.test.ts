@@ -1,13 +1,13 @@
 import { jest } from "@jest/globals";
 import { ok, err } from "neverthrow";
 import { OperationModeMetricsRecorder } from "../OperationModeMetricsRecorder.js";
-import type { TransactionReceipt, Address } from "viem";
-import type { ILogger } from "@consensys/linea-shared-utils";
+import type { TransactionReceipt, Address, PublicClient } from "viem";
+import type { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import type { INativeYieldAutomationMetricsUpdater } from "../../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IYieldManager } from "../../../core/clients/contracts/IYieldManager.js";
 import type { IVaultHub } from "../../../core/clients/contracts/IVaultHub.js";
 import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
-import * as NodeOperatorModule from "../../../clients/contracts/getNodeOperatorFeesPaidFromTxReceipt.js";
+import { DashboardContractClient } from "../../../clients/contracts/DashboardContractClient.js";
 
 const ONE_GWEI = 1_000_000_000n;
 const toWei = (gwei: number): bigint => BigInt(gwei) * ONE_GWEI;
@@ -51,7 +51,14 @@ const createVaultHubMock = () =>
     getLidoFeePaymentFromTxReceipt: jest.fn(),
   }) as unknown as jest.Mocked<IVaultHub<TransactionReceipt>>;
 
-const getNodeOperatorFeesPaidFromTxReceiptMock = jest.spyOn(NodeOperatorModule, "getNodeOperatorFeesPaidFromTxReceipt");
+const createBlockchainClientMock = () =>
+  ({
+    getBlockchainClient: jest.fn(),
+  }) as unknown as jest.Mocked<IBlockchainClient<PublicClient, TransactionReceipt>>;
+
+jest.mock("../../../clients/contracts/DashboardContractClient.js", () => ({
+  DashboardContractClient: jest.fn(),
+}));
 
 describe("OperationModeMetricsRecorder", () => {
   const yieldProvider = "0xyieldprovider" as Address;
@@ -60,9 +67,18 @@ describe("OperationModeMetricsRecorder", () => {
   const dashboardAddress = "0xdashboard" as Address;
   const receipt = {} as TransactionReceipt;
 
+  let dashboardClientInstance: jest.Mocked<DashboardContractClient>;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    getNodeOperatorFeesPaidFromTxReceiptMock.mockClear();
+    dashboardClientInstance = {
+      getNodeOperatorFeesPaidFromTxReceipt: jest.fn(),
+      getAddress: jest.fn(),
+      getContract: jest.fn(),
+    } as unknown as jest.Mocked<DashboardContractClient>;
+    (DashboardContractClient as jest.MockedClass<typeof DashboardContractClient>).mockImplementation(
+      () => dashboardClientInstance,
+    );
   });
 
   const setupRecorder = () => {
@@ -70,10 +86,17 @@ describe("OperationModeMetricsRecorder", () => {
     const metricsUpdater = createMetricsUpdaterMock();
     const yieldManagerClient = createYieldManagerMock();
     const vaultHubClient = createVaultHubMock();
+    const blockchainClient = createBlockchainClientMock();
 
-    const recorder = new OperationModeMetricsRecorder(logger, metricsUpdater, yieldManagerClient, vaultHubClient);
+    const recorder = new OperationModeMetricsRecorder(
+      logger,
+      metricsUpdater,
+      yieldManagerClient,
+      vaultHubClient,
+      blockchainClient,
+    );
 
-    return { recorder, metricsUpdater, yieldManagerClient, vaultHubClient };
+    return { recorder, metricsUpdater, yieldManagerClient, vaultHubClient, blockchainClient };
   };
 
   describe("recordProgressOssificationMetrics", () => {
@@ -99,11 +122,11 @@ describe("OperationModeMetricsRecorder", () => {
     });
 
     it("records node operator, lido fee, and liability metrics when values are non-zero", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient } = setupRecorder();
+      const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient, blockchainClient } = setupRecorder();
 
       yieldManagerClient.getLidoStakingVaultAddress.mockResolvedValueOnce(vaultAddress);
       yieldManagerClient.getLidoDashboardAddress.mockResolvedValueOnce(dashboardAddress);
-      getNodeOperatorFeesPaidFromTxReceiptMock.mockReturnValueOnce(toWei(5));
+      dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt.mockReturnValueOnce(toWei(5));
       vaultHubClient.getLidoFeePaymentFromTxReceipt.mockReturnValueOnce(toWei(3));
       vaultHubClient.getLiabilityPaymentFromTxReceipt.mockReturnValueOnce(toWei(7));
 
@@ -112,7 +135,8 @@ describe("OperationModeMetricsRecorder", () => {
         ok<TransactionReceipt | undefined, Error>(receipt),
       );
 
-      expect(getNodeOperatorFeesPaidFromTxReceiptMock).toHaveBeenCalledWith(receipt, dashboardAddress);
+      expect(DashboardContractClient).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
+      expect(dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt).toHaveBeenCalledWith(receipt);
       expect(metricsUpdater.addNodeOperatorFeesPaid).toHaveBeenCalledWith(vaultAddress, 5);
       expect(metricsUpdater.addLidoFeesPaid).toHaveBeenCalledWith(vaultAddress, 3);
       expect(metricsUpdater.addLiabilitiesPaid).toHaveBeenCalledWith(vaultAddress, 7);
@@ -123,7 +147,7 @@ describe("OperationModeMetricsRecorder", () => {
 
       yieldManagerClient.getLidoStakingVaultAddress.mockResolvedValueOnce(vaultAddress);
       yieldManagerClient.getLidoDashboardAddress.mockResolvedValueOnce(dashboardAddress);
-      getNodeOperatorFeesPaidFromTxReceiptMock.mockReturnValueOnce(0n);
+      dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt.mockReturnValueOnce(0n);
       vaultHubClient.getLidoFeePaymentFromTxReceipt.mockReturnValueOnce(0n);
       vaultHubClient.getLiabilityPaymentFromTxReceipt.mockReturnValueOnce(0n);
 
@@ -167,7 +191,7 @@ describe("OperationModeMetricsRecorder", () => {
     });
 
     it("records yield metrics and payouts when report is available", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient } = setupRecorder();
+      const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient, blockchainClient } = setupRecorder();
 
       yieldManagerClient.getYieldReportFromTxReceipt.mockReturnValueOnce({
         yieldAmount: toWei(11),
@@ -176,12 +200,14 @@ describe("OperationModeMetricsRecorder", () => {
       });
       yieldManagerClient.getLidoStakingVaultAddress.mockResolvedValueOnce(vaultAddress);
       yieldManagerClient.getLidoDashboardAddress.mockResolvedValueOnce(dashboardAddress);
-      getNodeOperatorFeesPaidFromTxReceiptMock.mockReturnValueOnce(toWei(4));
+      dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt.mockReturnValueOnce(toWei(4));
       vaultHubClient.getLidoFeePaymentFromTxReceipt.mockReturnValueOnce(toWei(6));
       vaultHubClient.getLiabilityPaymentFromTxReceipt.mockReturnValueOnce(toWei(8));
 
       await recorder.recordReportYieldMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(receipt));
 
+      expect(DashboardContractClient).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
+      expect(dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt).toHaveBeenCalledWith(receipt);
       expect(yieldManagerClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(alternateYieldProvider);
       expect(metricsUpdater.incrementReportYield).toHaveBeenCalledWith(vaultAddress);
       expect(metricsUpdater.addReportedYieldAmount).toHaveBeenCalledWith(vaultAddress, 11);
