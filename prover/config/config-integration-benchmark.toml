@@ -1,7 +1,7 @@
 environment = "integration-benchmark"
 version = "3.0.0"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
-log_level = 1                                  # TODO @gbotrel will be refactored with new logger. 
+log_level = 1                                  # TODO @gbotrel will be refactored with new logger.
 
 [controller]
 retry_delays = [0, 1]
@@ -83,7 +83,7 @@ PRECOMPILE_BLS_PAIRING_CHECK_MILLER_LOOPS           = 0
 PRECOMPILE_BLS_FINAL_EXPONENTIATIONS                = 0
 PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS         = 0
 PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS        = 0
-PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS                 = 0
+PRECOMPILE_BLS_C1_MEMBERSHIP_CALLS                  = 0
 PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS                  = 0
 PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS                  = 0
 PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS                  = 0
@@ -155,7 +155,7 @@ PRECOMPILE_BLS_PAIRING_CHECK_MILLER_LOOPS           = 0
 PRECOMPILE_BLS_FINAL_EXPONENTIATIONS                = 0
 PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS         = 0
 PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS        = 0
-PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS                 = 0
+PRECOMPILE_BLS_C1_MEMBERSHIP_CALLS                  = 0
 PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS                  = 0
 PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS                  = 0
 PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS                  = 0

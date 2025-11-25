@@ -160,7 +160,7 @@ type TracesLimits struct {
 	PrecompileBlsFinalExponentiations              int `mapstructure:"PRECOMPILE_BLS_FINAL_EXPONENTIATIONS"`
 	PrecompileBlsMapFpToG1EffectiveCalls           int `mapstructure:"PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS"`
 	PrecompileBlsMapFp2ToG2EffectiveCalls          int `mapstructure:"PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS"`
-	PrecompileBlsC1MembershipChecks                int `mapstructure:"PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS"`
+	PrecompileBlsC1MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_C1_MEMBERSHIP_CALLS"`
 	PrecompileBlsC2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS"`
 	PrecompileBlsG1MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS"`
 	PrecompileBlsG2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS"`
@@ -324,7 +324,7 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.PrecompileBlsFinalExponentiations *= by
 	tl.PrecompileBlsMapFpToG1EffectiveCalls *= by
 	tl.PrecompileBlsMapFp2ToG2EffectiveCalls *= by
-	tl.PrecompileBlsC1MembershipChecks *= by
+	tl.PrecompileBlsC1MembershipCalls *= by
 	tl.PrecompileBlsC2MembershipCalls *= by
 	tl.PrecompileBlsG1MembershipCalls *= by
 	tl.PrecompileBlsG2MembershipCalls *= by
@@ -480,7 +480,7 @@ func GetTestTracesLimits() *TracesLimits {
 		PrecompileBlsFinalExponentiations:              0,
 		PrecompileBlsMapFpToG1EffectiveCalls:           0,
 		PrecompileBlsMapFp2ToG2EffectiveCalls:          0,
-		PrecompileBlsC1MembershipChecks:                0,
+		PrecompileBlsC1MembershipCalls:                 0,
 		PrecompileBlsC2MembershipCalls:                 0,
 		PrecompileBlsG1MembershipCalls:                 0,
 		PrecompileBlsG2MembershipCalls:                 0,
