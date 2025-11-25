@@ -304,10 +304,14 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * Determines whether yield should be reported based on configurable thresholds.
    * Checks both the yield amount and unpaid Lido protocol fees against their respective thresholds.
    * Returns true if either threshold is met or exceeded.
+   * Sets gauge metrics for peeked values when reads are successful.
    *
    * @returns {Promise<boolean>} True if yield should be reported (either threshold met), false otherwise.
    */
   async _shouldReportYield(): Promise<boolean> {
+    // Get vault address first
+    const vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
+
     // First, get dashboard address
     const dashboardAddress = await this.yieldManagerContractClient.getLidoDashboardAddress(this.yieldProvider);
     const dashboardClient = new DashboardContractClient(this.blockchainClient, dashboardAddress);
@@ -323,11 +327,19 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       `_shouldReportYield - unpaidLidoProtocolFees=${JSON.stringify(unpaidLidoProtocolFees, bigintReplacer)}, yieldReport=${JSON.stringify(yieldReport, bigintReplacer)}`,
     );
 
+    // Set gauge metrics for peeked values
+    const outstandingNegativeYield = yieldReport?.outstandingNegativeYield ?? 0n;
+    const yieldAmount = yieldReport?.yieldAmount ?? 0n;
+    await Promise.all([
+      this.metricsUpdater.setLastPeekedNegativeYieldReport(vault, weiToGweiNumber(outstandingNegativeYield)),
+      this.metricsUpdater.setLastPeekedPositiveYieldReport(vault, weiToGweiNumber(yieldAmount)),
+      this.metricsUpdater.setLastPeekUnpaidLidoProtocolFees(vault, weiToGweiNumber(unpaidLidoProtocolFees)),
+    ]);
+
     // Compare unpaid fees to threshold
     const feesThresholdMet = unpaidLidoProtocolFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
 
-    // Compare yield amount to threshold (handle undefined case)
-    const yieldAmount = yieldReport?.yieldAmount ?? 0n;
+    // Compare yield amount to threshold
     const yieldThresholdMet = yieldAmount >= this.minPositiveYieldToReportWei;
 
     // Return true if either threshold is met

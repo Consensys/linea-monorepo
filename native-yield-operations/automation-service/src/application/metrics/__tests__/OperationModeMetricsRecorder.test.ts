@@ -26,7 +26,9 @@ const createMetricsUpdaterMock = (): jest.Mocked<INativeYieldAutomationMetricsUp
     recordOperationModeDuration: jest.fn(),
     incrementReportYield: jest.fn(),
     addReportedYieldAmount: jest.fn(),
-    setCurrentNegativeYieldLastReport: jest.fn(async () => undefined),
+    setLastPeekedNegativeYieldReport: jest.fn(async () => undefined),
+    setLastPeekedPositiveYieldReport: jest.fn(async () => undefined),
+    setLastPeekUnpaidLidoProtocolFees: jest.fn(async () => undefined),
     addNodeOperatorFeesPaid: jest.fn(),
     addLiabilitiesPaid: jest.fn(),
     addLidoFeesPaid: jest.fn(),
@@ -211,7 +213,7 @@ describe("OperationModeMetricsRecorder", () => {
       expect(yieldManagerClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(alternateYieldProvider);
       expect(metricsUpdater.incrementReportYield).toHaveBeenCalledWith(vaultAddress);
       expect(metricsUpdater.addReportedYieldAmount).toHaveBeenCalledWith(vaultAddress, 11);
-      expect(metricsUpdater.setCurrentNegativeYieldLastReport).toHaveBeenCalledWith(vaultAddress, 2);
+      expect(metricsUpdater.setLastPeekedNegativeYieldReport).toHaveBeenCalledWith(vaultAddress, 2);
       expect(metricsUpdater.addNodeOperatorFeesPaid).toHaveBeenCalledWith(vaultAddress, 4);
       expect(metricsUpdater.addLidoFeesPaid).toHaveBeenCalledWith(vaultAddress, 6);
       expect(metricsUpdater.addLiabilitiesPaid).toHaveBeenCalledWith(vaultAddress, 8);
