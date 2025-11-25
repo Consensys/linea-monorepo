@@ -38,7 +38,7 @@ SHAKIRA_DATA        = 262144
 STP                 = 262144
 OOB                 = 262144
 BLOCK_DATA          = 26
-BLOCK_HASH          = 6
+BLOCK_HASH          = 2048
 
 #
 # Block-specific limits
