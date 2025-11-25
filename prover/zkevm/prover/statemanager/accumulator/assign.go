@@ -105,9 +105,9 @@ type assignmentBuilder struct {
 	// leafOpening is a tuple of four columns containing
 	// Prev, Next, HKey, HVal of a leaf. This corresponds to the [Accumulator.Column.LeafOpening]
 	leafOpening leafOpenings
-	// interm is a slice containing 3 intermediate hash states. This corresponds to the [Accumulator.Column.Interm]
+	// interm is a slice containing 5 intermediate hash states. This corresponds to the [Accumulator.Column.Interm]
 	interm [common.NbElemPerHash][][]field.Element
-	// leafHash contains sequential MiMC hashes of leafOpening. It matches with Leaves except when there is empty leaf. This corresponds to the [Accumulator.Column.LeafHashes]
+	// leafHash contains sequential Poseidon2 hashes of leafOpening. It matches with Leaves except when there is empty leaf. This corresponds to the [Accumulator.Column.LeafHashes]
 	leafHashes [common.NbElemPerHash][]field.Element
 	// isEmptyLeaf is one when Leaves contains empty leaf and does not match with LeafHash
 	isEmptyLeaf []field.Element
@@ -118,9 +118,9 @@ type assignmentBuilder struct {
 	insertionPath [common.NbElemForHasingU64][]field.Element
 	// isInsertRow3 is one for row 3 of INSERT operation
 	isInsertRow3 []field.Element
-	// intermTopRoot contains the intermediate MiMC state hash
+	// intermTopRoot contains the intermediate Poseidon2 state hash
 	intermTopRoot [common.NbElemPerHash][]field.Element
-	// topRoot contains the MiMC hash of SubTreeRoot and NextFreeNode
+	// topRoot contains the Poseidon2 hash of SubTreeRoot and NextFreeNode
 	topRoot [common.NbElemPerHash][]field.Element
 }
 
@@ -176,7 +176,7 @@ func newAssignmentBuilder(s Settings) *assignmentBuilder {
 		amb.intermTopRoot[i] = make([]field.Element, 0, amb.NumRows())
 		amb.topRoot[i] = make([]field.Element, 0, amb.NumRows())
 
-		amb.interm[i] = make([][]field.Element, 3)
+		amb.interm[i] = make([][]field.Element, 5)
 		for j := 0; j < len(amb.interm[i]); j++ {
 			amb.interm[i][j] = make([]field.Element, 0, amb.NumRows())
 		}
@@ -424,7 +424,7 @@ func (a *assignmentBuilder) pushRow(
 
 	a.proofs = append(a.proofs, proof)
 
-	// We assign intermTopRoot = MiMC(zero, root), and topRoot = MiMC(interm, nextFreeNode)
+	// We assign intermTopRoot = Poseidon2(zero, root), and topRoot = Poseidon2(interm, nextFreeNode)
 	intermTopRootFrLimbs := common.BlockCompression([]field.Element{field.Zero()}, nextFreeNodeFrLimbs)
 	topRootFrLimbs := common.BlockCompression(intermTopRootFrLimbs, rootFrLimbs)
 	for i := range a.intermTopRoot {
@@ -527,12 +527,12 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		hValFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HVal[:], hashFieldElements)
 
 		// As prevFrLimbs, nextFrLimbs are of 16 limbs, we hash them in two steps
-		intermZeroLimbs_ := vortex.CompressPoseidon2(zeroBlock, vortex.Hash(prevFrLimbs[0:8]))
-		intermZeroLimbs := vortex.CompressPoseidon2(intermZeroLimbs_, vortex.Hash(prevFrLimbs[8:16]))
-		intermOneLimbs_ := vortex.CompressPoseidon2(intermZeroLimbs, vortex.Hash(nextFrLimbs[0:8]))
-		intermOneLimbs := vortex.CompressPoseidon2(intermOneLimbs_, vortex.Hash(nextFrLimbs[8:16]))
-		intermTwoLimbs := vortex.CompressPoseidon2(intermOneLimbs, vortex.Hash(hKeyFrLimbs))
-		leafLimbs := vortex.CompressPoseidon2(intermTwoLimbs, vortex.Hash(hValFrLimbs))
+		intermZeroLimbs := vortex.CompressPoseidon2(zeroBlock, vortex.Hash(prevFrLimbs[0:common.NbElemPerHash]))
+		intermOneLimbs := vortex.CompressPoseidon2(intermZeroLimbs, vortex.Hash(prevFrLimbs[common.NbElemPerHash:common.NbElemForHasingU64]))
+		intermTwoLimbs := vortex.CompressPoseidon2(intermOneLimbs, vortex.Hash(nextFrLimbs[0:common.NbElemPerHash]))
+		intermThreeLimbs := vortex.CompressPoseidon2(intermTwoLimbs, vortex.Hash(nextFrLimbs[common.NbElemPerHash:common.NbElemForHasingU64]))
+		intermFourLimbs := vortex.CompressPoseidon2(intermThreeLimbs, vortex.Hash(hKeyFrLimbs))
+		leafLimbs := vortex.CompressPoseidon2(intermFourLimbs, vortex.Hash(hValFrLimbs))
 
 		for i := range prevFrLimbs {
 			a.leafOpening.prev[i] = append(a.leafOpening.prev[i], prevFrLimbs[i])
@@ -549,17 +549,19 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 			a.interm[i][0] = append(a.interm[i][0], intermZeroLimbs[i])
 			a.interm[i][1] = append(a.interm[i][1], intermOneLimbs[i])
 			a.interm[i][2] = append(a.interm[i][2], intermTwoLimbs[i])
+			a.interm[i][3] = append(a.interm[i][3], intermThreeLimbs[i])
+			a.interm[i][4] = append(a.interm[i][4], intermFourLimbs[i])
 		}
 
 		isEmpty := field.Zero()
 		a.isEmptyLeaf = append(a.isEmptyLeaf, isEmpty)
 	} else {
-		intermZeroLimbs_ := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
-		intermZeroLimbs := vortex.CompressPoseidon2(intermZeroLimbs_, zeroBlock)
-		intermOneLimbs_ := vortex.CompressPoseidon2(intermZeroLimbs, zeroBlock)
-		intermOneLimbs := vortex.CompressPoseidon2(intermOneLimbs_, zeroBlock)
+		intermZeroLimbs := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
+		intermOneLimbs := vortex.CompressPoseidon2(intermZeroLimbs, zeroBlock)
 		intermTwoLimbs := vortex.CompressPoseidon2(intermOneLimbs, zeroBlock)
-		leafHashesLimbs := vortex.CompressPoseidon2(intermTwoLimbs, zeroBlock)
+		intermThreeLimbs := vortex.CompressPoseidon2(intermTwoLimbs, zeroBlock)
+		intermFourLimbs := vortex.CompressPoseidon2(intermThreeLimbs, zeroBlock)
+		leafHashesLimbs := vortex.CompressPoseidon2(intermFourLimbs, zeroBlock)
 
 		for i := range a.leafOpening.prev {
 			a.leafOpening.prev[i] = append(a.leafOpening.prev[i], field.Zero())
@@ -577,6 +579,8 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 			a.interm[i][0] = append(a.interm[i][0], intermZeroLimbs[i])
 			a.interm[i][1] = append(a.interm[i][1], intermOneLimbs[i])
 			a.interm[i][2] = append(a.interm[i][2], intermTwoLimbs[i])
+			a.interm[i][3] = append(a.interm[i][3], intermThreeLimbs[i])
+			a.interm[i][4] = append(a.interm[i][4], intermFourLimbs[i])
 		}
 
 		isEmpty := field.One()

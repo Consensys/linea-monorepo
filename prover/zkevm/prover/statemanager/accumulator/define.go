@@ -31,7 +31,7 @@ The main verification steps of the Accumulator module is as follows,
 1. First and foremost is to verify each of the above operations from the traces. For example, an UPDATE operation
 consists of two merkle proofs on the same tree: one with the old leaf and another with the new leaf. Therefore,
 to verify an UPDATE, we need to separately verify these two merkle proofs. We also need to verify the fact that
-they are for the same Merkle tree. We call it verifying "reuse of Merkle proof". These verifications are delegated
+they are for the same Merkle tree. We call it verifying the "reuse of Merkle proof". These verifications are delegated
 to the Merkle module and the technique for this is described in merkle/merkleproof.md.
 
 As a result, an UPDATE induces two rows in the Accumulator module. Also, INSERT and DELETE have three consicutive
@@ -51,11 +51,11 @@ We use a dedicated wizard called Byte32cmp to verify this.
 
 4. The sparse merkle tree follows a linked list structure. We need to verify that this property is maintained for every operations. For example, for INSERT, we neeed to verify that leafMinus.Next = leafPlus.Index before insertion. We call these verification the "pointer check". We have global constraints for this check for INSERT, DELETE, and READ-ZERO.
 
-5. We check that Leave is the MiMC hash of the leaf opening, a tuple of {PREV, NEXT, HKEY, HVAL}.
+5. We check that Leave is the Poseidon2 hash of the leaf opening, a tuple of {PREV, NEXT, HKEY, HVAL}.
 
 6. We check that NextFreeNode is constant throughout the rows of each operation except INSERT. For INSERT, it is incremented by 1 in row 3.
 
-7. We check that TopRoot is the MiMC hash of NextFreeNode and the ROOT.
+7. We check that TopRoot is the Poseidon2 hash of NextFreeNode and the ROOT.
 
 8. We constraint that every column is zero in the inactive area.
 */
@@ -105,10 +105,10 @@ const (
 
 // structure for leaf opening
 type LeafOpenings struct {
-	HKey [common.NbElemPerHash]ifaces.Column
-	HVal [common.NbElemPerHash]ifaces.Column
 	Prev [common.NbElemForHasingU64]ifaces.Column
 	Next [common.NbElemForHasingU64]ifaces.Column
+	HKey [common.NbElemPerHash]ifaces.Column
+	HVal [common.NbElemPerHash]ifaces.Column
 }
 
 // Module module
@@ -173,11 +173,11 @@ type Module struct {
 		// Columns for leaf hashing check
 		// LeafOpening contains four columns corresponding to HKey, HVal, Prev, and Next
 		LeafOpenings LeafOpenings
-		// Interm contains the three intermediate states corresponding to the MiMC block computation divided into limbs
+		// Interm contains the three intermediate states corresponding to the Poseidon2 block computation divided into limbs
 		Interm [common.NbElemPerHash][]ifaces.Column
-		// Zero contains the column with zero value, used in the MiMc query
+		// Zero contains the column with zero value, used in the Poseidon2 query
 		Zero ifaces.Column
-		// LeafHash contains the leafHashes (the final MiMC block), equals with Leaves, except when it is empty leaf
+		// LeafHash contains the leafHashes (the final Poseidon2 block), equals with Leaves, except when it is empty leaf
 		LeafHashes [common.NbElemPerHash]ifaces.Column
 		// IsEmptyLeaf is one when Leaves contains empty leaf and does not match with LeafHash
 		IsEmptyLeaf ifaces.Column
@@ -194,9 +194,9 @@ type Module struct {
 		IsInsertRow3 ifaces.Column
 
 		// Columns for hashing the top root
-		// IntermTopRoot contains the intermediate MiMC state hash
+		// IntermTopRoot contains the intermediate Poseidon2 state hash
 		IntermTopRoot [common.NbElemPerHash]ifaces.Column
-		// TopRoot contains the MiMC hash of Roots and NextFreeNode
+		// TopRoot contains the Poseidon2 hash of Roots and NextFreeNode
 		TopRoot [common.NbElemPerHash]ifaces.Column
 	}
 
@@ -316,7 +316,7 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	am.checkPointer()
 
 	// Check leaf hashes
-	// am.checkLeafHashes()
+	am.checkLeafHashes()
 
 	// Check NextFreeNode is constant through a segment unless there is an INSERT operation
 	am.checkNextFreeNode()
@@ -348,14 +348,16 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 }
 
 func (am *Module) commitLeafHashingCols() {
-	ACCUMULATOR_INTERM := make([]ifaces.ColID, 3)
+	ACCUMULATOR_INTERM := make([]ifaces.ColID, 5)
 	ACCUMULATOR_LEAF_OPENING_PREV := "ACCUMULATOR_LEAF_OPENING_PREV"
 	ACCUMULATOR_LEAF_OPENING_NEXT := "ACCUMULATOR_LEAF_OPENING_NEXT"
 	ACCUMULATOR_LEAF_OPENING_HKEY := "ACCUMULATOR_LEAF_OPENING_HKEY"
 	ACCUMULATOR_LEAF_OPENING_HVAL := "ACCUMULATOR_LEAF_OPENING_HVAL"
-	ACCUMULATOR_INTERM[0] = "ACCUMULATOR_INTERM_PREV"
-	ACCUMULATOR_INTERM[1] = "ACCUMULATOR_INTERM_NEXT"
-	ACCUMULATOR_INTERM[2] = "ACCUMULATOR_INTERM_HKEY"
+	ACCUMULATOR_INTERM[0] = "ACCUMULATOR_INTERM_PREV_FIRST"
+	ACCUMULATOR_INTERM[1] = "ACCUMULATOR_INTERM_PREV_SECOND"
+	ACCUMULATOR_INTERM[2] = "ACCUMULATOR_INTERM_NEXT_FIRST"
+	ACCUMULATOR_INTERM[3] = "ACCUMULATOR_INTERM_NEXT_SECOND"
+	ACCUMULATOR_INTERM[4] = "ACCUMULATOR_INTERM_HKEY"
 	am.Cols.Zero = verifiercol.NewConstantCol(field.Zero(), am.NumRows(), "merkle-tree-accumulator")
 
 	for i := range am.Cols.LeafOpenings.Prev {
@@ -364,7 +366,7 @@ func (am *Module) commitLeafHashingCols() {
 	}
 
 	for i := 0; i < common.NbElemPerHash; i++ {
-		am.Cols.Interm[i] = make([]ifaces.Column, 3)
+		am.Cols.Interm[i] = make([]ifaces.Column, 5)
 		am.Cols.LeafOpenings.HKey[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_HKEY, i), am.NumRows(), true)
 		am.Cols.LeafOpenings.HVal[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_HVAL, i), am.NumRows(), true)
 		am.Cols.LeafHashes[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_HASHES_NAME, i), am.NumRows(), true)
@@ -676,38 +678,36 @@ func (am *Module) checkPointer() {
 }
 
 func (am *Module) checkLeafHashes() {
-	//cols := am.Cols
+	cols := am.Cols
 
-	panic("TODO: change the MiMC queries and replace them by Poseidon. Also review the [common.NbElemPerHash] loop")
+	for i := 0; i < common.NbElemPerHash; i++ {
 
-	// for i := 0; i < common.NbElemPerHash; i++ {
+		// TODO: fix Poseidon2 query
+		am.comp.InsertPoseidon2(am.Round, am.qname("Poseidon2_PREV_%d", i), cols.LeafOpenings.Prev[0], cols.Zero, cols.Interm[i][0], nil)
+		am.comp.InsertPoseidon2(am.Round, am.qname("Poseidon2_NEXT_%d", i), cols.LeafOpenings.Next[0], cols.Interm[i][0], cols.Interm[i][1], nil)
 
-	// 	// TODO: fix MiMC query
-	// 	am.comp.InsertMiMC(am.Round, am.qname("MIMC_PREV_%d", i), cols.LeafOpenings.Prev[0], cols.Zero, cols.Interm[i][0], nil)
-	// 	am.comp.InsertMiMC(am.Round, am.qname("MIMC_NEXT_%d", i), cols.LeafOpenings.Next[0], cols.Interm[i][0], cols.Interm[i][1], nil)
+		// TODO: fix Poseidon2 query
+		am.comp.InsertPoseidon2(am.Round, am.qname("Poseidon2_HKEY"), cols.LeafOpenings.HKey[0], cols.Interm[1][0], cols.Interm[2][0], nil)
+		am.comp.InsertPoseidon2(am.Round, am.qname("Poseidon2_HVAL_LEAF_%d", i), cols.LeafOpenings.HVal[0], cols.Interm[2][0], cols.LeafHashes[i], nil)
 
-	// 	// TODO: fix MiMC query
-	// 	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HKEY"), cols.LeafOpenings.HKey[0], cols.Interm[1][0], cols.Interm[2][0], nil)
-	// 	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HVAL_LEAF_%d", i), cols.LeafOpenings.HVal[0], cols.Interm[2][0], cols.LeafHashes[i], nil)
+		// Global: IsActive[i] * (1 - IsEmptyLeaf[i]) * (Leaves[i] - LeafHashes[i])
+		expr1 := symbolic.Sub(cols.Leaves[i], cols.LeafHashes[i])
+		expr2 := symbolic.Sub(symbolic.NewConstant(1), cols.IsEmptyLeaf)
+		expr3 := symbolic.Mul(cols.IsActiveAccumulator, expr1, expr2)
+		am.comp.InsertGlobal(am.Round, am.qname("LEAF_HASH_EQUALITY_%d", i), expr3)
+	}
+	// Booleaninty of IsEmptyLeaf: IsActive[i] * (IsEmptyLeaf^2[i] - IsEmptyLeaf[i])
+	expr4 := symbolic.Sub(symbolic.Square(cols.IsEmptyLeaf), cols.IsEmptyLeaf)
+	expr4 = symbolic.Mul(expr4, cols.IsActiveAccumulator)
+	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_BOOLEANITY"), expr4)
 
-	// 	// Global: IsActive[i] * (1 - IsEmptyLeaf[i]) * (Leaves[i] - LeafHashes[i])
-	// 	expr1 := symbolic.Sub(cols.Leaves[i], cols.LeafHashes[i])
-	// 	expr2 := symbolic.Sub(symbolic.NewConstant(1), cols.IsEmptyLeaf)
-	// 	expr3 := symbolic.Mul(cols.IsActiveAccumulator, expr1, expr2)
-	// 	am.comp.InsertGlobal(am.Round, am.qname("LEAF_HASH_EQUALITY_%d", i), expr3)
-	// }
-	// // Booleaninty of IsEmptyLeaf: IsActive[i] * (IsEmptyLeaf^2[i] - IsEmptyLeaf[i])
-	// expr4 := symbolic.Sub(symbolic.Square(cols.IsEmptyLeaf), cols.IsEmptyLeaf)
-	// expr4 = symbolic.Mul(expr4, cols.IsActiveAccumulator)
-	// am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_BOOLEANITY"), expr4)
-
-	// // IsEmptyLeaf is set to true if and only if it is the third row for INSERT, or fourth row for DELETE
-	// // i.e. IsActiveAccumulator[i] * (IsEmptyLeaf[i] - IsFirst[i-2] * IsInsert[i-2] - IsFirst[i-3] * IsDelete[i-3])
-	// expr5 := symbolic.Mul(cols.IsActiveAccumulator,
-	// 	symbolic.Sub(cols.IsEmptyLeaf,
-	// 		symbolic.Mul(column.Shift(cols.IsFirst, -2), column.Shift(cols.IsInsert, -2)),
-	// 		symbolic.Mul(column.Shift(cols.IsFirst, -3), column.Shift(cols.IsDelete, -3))))
-	// am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_ONE_FOR_INSERT_THIRD_ROW_AND_DELETE_FOURTH_ROW"), expr5)
+	// IsEmptyLeaf is set to true if and only if it is the third row for INSERT, or fourth row for DELETE
+	// i.e. IsActiveAccumulator[i] * (IsEmptyLeaf[i] - IsFirst[i-2] * IsInsert[i-2] - IsFirst[i-3] * IsDelete[i-3])
+	expr5 := symbolic.Mul(cols.IsActiveAccumulator,
+		symbolic.Sub(cols.IsEmptyLeaf,
+			symbolic.Mul(column.Shift(cols.IsFirst, -2), column.Shift(cols.IsInsert, -2)),
+			symbolic.Mul(column.Shift(cols.IsFirst, -3), column.Shift(cols.IsDelete, -3))))
+	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_ONE_FOR_INSERT_THIRD_ROW_AND_DELETE_FOURTH_ROW"), expr5)
 }
 
 func (am *Module) checkNextFreeNode() {
@@ -803,8 +803,8 @@ func (am *Module) checkTopRootHash() {
 	//cols := am.Cols
 	//
 	//for i := 0; i < common.NbElemPerHash; i++ {
-	//	am.comp.InsertMiMC(am.Round, am.qname("MIMC_INTERM_TOP_ROOT_%d", i), cols.NextFreeNode, cols.Zero, cols.IntermTopRoot[i], nil)
-	//	am.comp.InsertMiMC(am.Round, am.qname("MIMC_TOP_ROOT_%d", i), cols.Roots, cols.IntermTopRoot[i], cols.TopRoot[i], nil)
+	//	am.comp.InsertPoseidon2(am.Round, am.qname("Poseidon2_INTERM_TOP_ROOT_%d", i), cols.NextFreeNode, cols.Zero, cols.IntermTopRoot[i], nil)
+	//	am.comp.InsertPoseidon2(am.Round, am.qname("Poseidon2_TOP_ROOT_%d", i), cols.Roots, cols.IntermTopRoot[i], cols.TopRoot[i], nil)
 	//}
 }
 
@@ -849,7 +849,7 @@ func (am *Module) checkZeroInInactive() {
 	am.colZeroAtInactive(cols.IsReadNonZero)
 	// Skipping Interm, Zero, and LeafHashes as two of them contain zero hashes and
 	// Zero is a verifier column. The padding area of Interm and LeafHashes
-	// are already constrained by the MiMC query
+	// are already constrained by the Poseidon2 query
 	am.colZeroAtInactive(cols.IsEmptyLeaf)
 	am.colZeroAtInactive(cols.IsInsertRow3)
 	// Again skipping IntermTopRoot and TopRoot as they contain zero hashes
