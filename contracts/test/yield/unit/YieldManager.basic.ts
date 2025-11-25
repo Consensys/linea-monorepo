@@ -823,6 +823,7 @@ describe("YieldManager contract - basic operations", () => {
       expect(yieldProviderData.userFunds).to.equal(0n);
       expect(yieldProviderData.yieldReportedCumulative).to.equal(0n);
       expect(yieldProviderData.lstLiabilityPrincipal).to.equal(0n);
+      expect(yieldProviderData.lastReportedNegativeYield).to.equal(0n);
 
       expect(await yieldManager.isYieldProviderKnown(providerAddress)).to.equal(true);
       expect(await yieldManager.userFunds(providerAddress)).to.equal(0n);
@@ -969,6 +970,7 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderYieldReportedCumulative(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderLastReportedNegativeYield(mockYieldProviderAddress)).to.equal(0n);
     });
 
     it("Adding three providers, then removing the first, should leave the middle provider with stable index", async () => {
@@ -1083,6 +1085,7 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderYieldReportedCumulative(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderLastReportedNegativeYield(mockYieldProviderAddress)).to.equal(0n);
     });
 
     it("Adding three providers, then removing the first, should leave the middle provider with stable index", async () => {

@@ -9,6 +9,7 @@ import {
   getWithdrawLSTCall,
   incrementBalance,
   ossifyYieldProvider,
+  setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability,
   setWithdrawalReserveToMinimum,
 } from "../helpers";
 import {
@@ -276,19 +277,62 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldProvider.connect(securityCouncil).fundYieldProvider(yieldProviderAddress, ZERO_VALUE);
       await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
     });
-    it("If not ossified, should fund the Dashboard", async () => {
-      const beforeVaultBalance = await ethers.provider.getBalance(mockStakingVaultAddress);
-      const fundAmount = ONE_ETHER;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(beforeVaultBalance + fundAmount);
-    });
-    it("Should revert if ossified", async () => {
-      await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
+    it("Should revert if ossification initiatied", async () => {
+      await yieldManager.setYieldProviderIsOssificationInitiated(yieldProviderAddress, true);
       const fundAmount = ONE_ETHER;
       const call = fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
       await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringOssification", [
         OperationType.FUND_YIELD_PROVIDER,
       ]);
+    });
+
+    it("Should revert if staking paused", async () => {
+      await yieldManager.connect(securityCouncil).pauseStaking(yieldProviderAddress);
+      const fundAmount = ONE_ETHER;
+      const call = fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
+      await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringStakingPause", [
+        OperationType.FUND_YIELD_PROVIDER,
+      ]);
+    });
+
+    it("Should revert if initiated ossification", async () => {
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).setYieldProviderIsStakingPaused(yieldProviderAddress, false);
+      const fundAmount = ONE_ETHER;
+      const call = fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
+      await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringOssification", [
+        OperationType.FUND_YIELD_PROVIDER,
+      ]);
+    });
+
+    it("Should revert if ossified", async () => {
+      await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
+      await yieldManager.connect(securityCouncil).setYieldProviderIsStakingPaused(yieldProviderAddress, false);
+      const fundAmount = ONE_ETHER;
+      const call = fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
+      await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringOssification", [
+        OperationType.FUND_YIELD_PROVIDER,
+      ]);
+    });
+    it("If not ossified, should fund the Dashboard and pay max LST liability", async () => {
+      const beforeVaultBalance = await ethers.provider.getBalance(mockStakingVaultAddress);
+      const fundAmount = ONE_ETHER;
+
+      // Setup LST liability principal < fundAmount
+      const lstLiabilityPrincipal = ONE_ETHER / 2n;
+      await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, lstLiabilityPrincipal);
+      await setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability(
+        lstLiabilityPrincipal,
+        yieldManager,
+        yieldProviderAddress,
+        mockSTETH,
+        mockDashboard,
+      );
+
+      // Do funding
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
+      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(beforeVaultBalance + fundAmount);
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
     });
   });
 
@@ -300,13 +344,39 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     it("Should successfully withdraw when not ossifed", async () => {
       const withdrawAmount = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
-      await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .safeWithdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
     });
     it("Should successfully withdraw when ossified", async () => {
       const withdrawAmount = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
       await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
-      await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .safeWithdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
+    });
+    it("If VaultHub is connected, should perform max possible LST liability", async () => {
+      // Setup LST liability principal < fundAmount
+      const lstLiabilityPrincipal = ONE_ETHER / 2n;
+      await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, lstLiabilityPrincipal);
+      await setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability(
+        lstLiabilityPrincipal,
+        yieldManager,
+        yieldProviderAddress,
+        mockSTETH,
+        mockDashboard,
+      );
+      // Setup VaultHub connected
+      await mockVaultHub.setIsVaultConnectedReturn(true);
+
+      // Act
+      const withdrawAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .safeWithdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
     });
   });
 
@@ -341,6 +411,15 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager.connect(securityCouncil).unpauseStaking(yieldProviderAddress);
       await expectRevertWithCustomError(yieldProvider, call, "UnpauseStakingForbiddenWhenOssified");
     });
+    it("Should successfully sync LST liability", async () => {
+      await yieldManager.connect(nativeYieldOperator).pauseStaking(yieldProviderAddress);
+      await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, 1n);
+      await expect(yieldManager.connect(nativeYieldOperator).unpauseStaking(yieldProviderAddress)).to.be.reverted;
+      // Will sync to this if below current lstLiabilityPrincipal.
+      await mockSTETH.setPooledEthBySharesRoundUpReturn(0n);
+      // If it didn't sync lstLiabilityPrincipal to 0, the below will revert.
+      yieldManager.connect(nativeYieldOperator).unpauseStaking(yieldProviderAddress);
+    });
   });
 
   describe("withdraw LST", () => {
@@ -365,15 +444,23 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       );
     });
     it("Should revert withdraw LST when ossification pending", async () => {
+      // Setup fund
       const withdrawAmount = ONE_ETHER;
+      const recipient = ethers.Wallet.createRandom().address;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
+
+      // Add L1MessageService balance
+      const l1MessageService = await yieldManager.L1_MESSAGE_SERVICE();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
+
+      // Initiate ossification
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      const call = getWithdrawLSTCall(
-        mockLineaRollup,
-        yieldManager,
-        yieldProvider,
-        nativeYieldOperator,
-        withdrawAmount,
-      );
+
+      const call = yieldManager
+        .connect(l1Signer)
+        .withdrawLST(await yieldProvider.getAddress(), withdrawAmount, recipient);
       await expectRevertWithCustomError(yieldProvider, call, "MintLSTDisabledDuringOssification");
     });
     it("Should revert withdraw LST when ossifed", async () => {
@@ -495,7 +582,6 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       expect(registrationData[0]).eq(YieldProviderVendor.LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR);
       expect(registrationData[1]).eq(expectedDashboardAddress);
       expect(registrationData[2]).eq(expectedVaultAddress);
-      console.log(await getBalance(yieldManager));
       expect(await getBalance(yieldManager)).eq(beforeYieldManagerBalance - ONE_ETHER);
       expect(await getBalance(mockVaultFactory)).eq(beforeVaultFactoryBalance + ONE_ETHER);
     });
@@ -517,9 +603,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldProvider.connect(securityCouncil).exitVendorContracts(yieldProviderAddress, EMPTY_CALLDATA);
       await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
     });
-    it("Should succeed with empty vendorExitData", async () => {
+    it("Should revert with empty vendorExitData", async () => {
       const call = yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, EMPTY_CALLDATA);
-      await expect(call).to.not.be.reverted;
+      await expectRevertWithCustomError(yieldProvider, call, "NoVendorExitDataProvided");
     });
     it("Should revert if newVaultAddress = 0", async () => {
       const call = yieldManager
