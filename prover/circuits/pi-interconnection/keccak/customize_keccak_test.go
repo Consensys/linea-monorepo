@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testCustomizedKeccak(compilationSuite compilationSuite) func(*testing.T) {
+func testCustomizedKeccak(maxNbKeccakF int, compilationSuite ...func(*wizard.CompiledIOP)) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Log("compiling")
-		c := NewWizardVerifierSubCircuit(400, compilationSuite...)
+		c := NewWizardVerifierSubCircuit(maxNbKeccakF, compilationSuite...)
 		t.Log("proving")
 
 		var providers [][]byte
@@ -38,6 +38,6 @@ func testCustomizedKeccak(compilationSuite compilationSuite) func(*testing.T) {
 }
 
 func TestCustomizedKeccak(t *testing.T) {
-	t.Run("dummy", testCustomizedKeccak(compilationSuite{dummy.Compile}))
-	t.Run("wizard", testCustomizedKeccak(WizardCompilationParameters()))
+	t.Run("dummy", testCustomizedKeccak(400, dummy.Compile))
+	t.Run("wizard", testCustomizedKeccak(100, WizardCompilationParameters()...))
 }
