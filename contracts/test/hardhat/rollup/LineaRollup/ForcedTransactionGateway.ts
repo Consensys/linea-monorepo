@@ -231,13 +231,13 @@ describe("Linea Rollup contract: Forced Transactions", () => {
   describe("Toggling the deny list feature", () => {
     it("Should fail to toggle if unauthorized", async () => {
       await expectRevertWithReason(
-        forcedTransactionGateway.connect(nonAuthorizedAccount).setDenyListFeatureToggle(false),
+        forcedTransactionGateway.connect(nonAuthorizedAccount).toggleUseDenyList(false),
         buildAccessErrorMessage(nonAuthorizedAccount, DEFAULT_ADMIN_ROLE),
       );
     });
 
     it("Should fail to toggle if the status is the same", async () => {
-      const asyncCall = forcedTransactionGateway.connect(securityCouncil).setDenyListFeatureToggle(true);
+      const asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(true);
       await expectRevertWithCustomError(forcedTransactionGateway, asyncCall, "UseDenyListAlreadySet", [true]);
     });
 
@@ -245,17 +245,17 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       let useDenyList = await forcedTransactionGateway.useDenyList();
       expect(useDenyList).to.be.true;
 
-      await forcedTransactionGateway.connect(securityCouncil).setDenyListFeatureToggle(false);
+      await forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(false);
 
       useDenyList = await forcedTransactionGateway.useDenyList();
       expect(useDenyList).to.be.false;
     });
 
     it("Should emit UseDenyListSet when changed", async () => {
-      let asyncCall = forcedTransactionGateway.connect(securityCouncil).setDenyListFeatureToggle(false);
+      let asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(false);
       await expectEvent(forcedTransactionGateway, asyncCall, "UseDenyListSet", [false]);
 
-      asyncCall = forcedTransactionGateway.connect(securityCouncil).setDenyListFeatureToggle(true);
+      asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(true);
       await expectEvent(forcedTransactionGateway, asyncCall, "UseDenyListSet", [true]);
 
       const useDenyList = await forcedTransactionGateway.useDenyList();
@@ -607,7 +607,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         .connect(securityCouncil)
         .setAddressesDeniedStatus([l2SendMessageTransaction.result.to], true);
 
-      await forcedTransactionGateway.connect(securityCouncil).setDenyListFeatureToggle(false);
+      await forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(false);
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
@@ -624,7 +624,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         .connect(securityCouncil)
         .setAddressesDeniedStatus([l2SendMessageTransaction.result.from], true);
 
-      await forcedTransactionGateway.connect(securityCouncil).setDenyListFeatureToggle(false);
+      await forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(false);
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
