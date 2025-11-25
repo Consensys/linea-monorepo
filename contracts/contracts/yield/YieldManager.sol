@@ -786,7 +786,6 @@ contract YieldManager is
       revert StakingAlreadyPaused();
     }
     _pauseStaking(_yieldProvider);
-    emit YieldProviderStakingPaused(_yieldProvider);
   }
 
   /**
@@ -796,6 +795,7 @@ contract YieldManager is
   function _pauseStaking(address _yieldProvider) internal {
     _delegatecallYieldProvider(_yieldProvider, abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)));
     _getYieldProviderStorage(_yieldProvider).isStakingPaused = true;
+    emit YieldProviderStakingPaused(_yieldProvider);
   }
 
   /**
@@ -837,7 +837,6 @@ contract YieldManager is
       revert UnpauseStakingForbiddenDuringPendingOssification();
     }
     _unpauseStaking(_yieldProvider);
-    emit YieldProviderStakingUnpaused(_yieldProvider);
   }
 
   /**
@@ -847,6 +846,7 @@ contract YieldManager is
   function _unpauseStaking(address _yieldProvider) internal {
     _delegatecallYieldProvider(_yieldProvider, abi.encodeCall(IYieldProvider.unpauseStaking, (_yieldProvider)));
     _getYieldProviderStorage(_yieldProvider).isStakingPaused = false;
+    emit YieldProviderStakingUnpaused(_yieldProvider);
   }
 
   /**
