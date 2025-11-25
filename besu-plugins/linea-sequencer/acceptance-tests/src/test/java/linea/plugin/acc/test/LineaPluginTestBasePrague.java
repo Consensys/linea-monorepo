@@ -155,13 +155,13 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
         () -> {
           try {
             if (buildBlocksInBackground) {
-              buildNewBlock(Instant.now().getEpochSecond(), blockTimeSeconds * 1000);
+              buildNewBlock(Instant.now().getEpochSecond(), blockTimeSeconds * 1000 - 200);
             }
           } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
           }
         },
-        blockTimeSeconds,
+        0,
         blockTimeSeconds,
         TimeUnit.SECONDS);
   }
