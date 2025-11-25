@@ -19,7 +19,7 @@ const (
 	NAME_UNALIGNED_MSM = "UNALIGNED_BLS_MSM"
 )
 
-type blsMsmDataSource struct {
+type BlsMsmDataSource struct {
 	ID           ifaces.Column
 	CsMul        ifaces.Column
 	CsMembership ifaces.Column
@@ -30,8 +30,8 @@ type blsMsmDataSource struct {
 	IsRes        ifaces.Column
 }
 
-func newMsmDataSource(comp *wizard.CompiledIOP, g group) *blsMsmDataSource {
-	return &blsMsmDataSource{
+func newMsmDataSource(comp *wizard.CompiledIOP, g Group) *BlsMsmDataSource {
+	return &BlsMsmDataSource{
 		ID:           comp.Columns.GetHandle(colNameFn("ID")),
 		CsMul:        comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_BLS_" + g.String() + "_MSM")),
 		CsMembership: comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_" + g.String() + "_MEMBERSHIP")),
@@ -44,33 +44,33 @@ func newMsmDataSource(comp *wizard.CompiledIOP, g group) *blsMsmDataSource {
 }
 
 type BlsMsm struct {
-	*blsMsmDataSource
-	*unalignedMsmData
+	*BlsMsmDataSource
+	*UnalignedMsmData
 	AlignedGnarkMsmData             *plonk.Alignment
 	AlignedGnarkGroupMembershipData *plonk.Alignment
 	*Limits
-	group
+	Group
 }
 
-func newMsm(comp *wizard.CompiledIOP, g group, limits *Limits, src *blsMsmDataSource) *BlsMsm {
+func newMsm(comp *wizard.CompiledIOP, g Group, limits *Limits, src *BlsMsmDataSource) *BlsMsm {
 	umsm := newUnalignedMsmData(comp, g, src)
 
 	return &BlsMsm{
-		blsMsmDataSource: src,
-		unalignedMsmData: umsm,
+		BlsMsmDataSource: src,
+		UnalignedMsmData: umsm,
 		Limits:           limits,
-		group:            g,
+		Group:            g,
 	}
 }
 
 func (bm *BlsMsm) WithMsmCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMsm {
-	nbCircuits := bm.maxNbMsmInputs/bm.Limits.nbMulInputInstances(bm.group) + 1
+	nbCircuits := bm.MaxNbMsmInputs/bm.Limits.nbMulInputInstances(bm.Group) + 1
 	toAlignMsm := &plonk.CircuitAlignmentInput{
-		Name:               fmt.Sprintf("%s_%s_MSM", NAME_BLS_MSM, bm.group.String()),
+		Name:               fmt.Sprintf("%s_%s_MSM", NAME_BLS_MSM, bm.Group.String()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bm.unalignedMsmData.GnarkIsActiveMsm,
-		DataToCircuit:      bm.unalignedMsmData.GnarkDataMsm,
-		Circuit:            newMulCircuit(bm.group, bm.Limits),
+		DataToCircuitMask:  bm.UnalignedMsmData.GnarkIsActiveMsm,
+		DataToCircuit:      bm.UnalignedMsmData.GnarkDataMsm,
+		Circuit:            newMulCircuit(bm.Group, bm.Limits),
 		NbCircuitInstances: nbCircuits,
 		PlonkOptions:       options,
 	}
@@ -82,17 +82,17 @@ func (bm *BlsMsm) WithMsmCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 func (bm *BlsMsm) WithGroupMembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMsm {
 	// compute the bound on the number of circuits we need. First we estimate a bound on the number of possible
 	// maximum number of G1/G2 points which could go to the membership circuit.
-	nbInputs := bm.blsMsmDataSource.CsMembership.Size() / nbLimbs(bm.group)
+	nbInputs := bm.BlsMsmDataSource.CsMembership.Size() / nbLimbs(bm.Group)
 	// and by knowing how many inputs every circuit takes, we can bound the number of circuits as well
-	nbCircuits := nbInputs/bm.Limits.nbGroupMembershipInputInstances(bm.group) + 1
+	nbCircuits := nbInputs/bm.Limits.nbGroupMembershipInputInstances(bm.Group) + 1
 	toAlignMembership := &plonk.CircuitAlignmentInput{
-		Name:               fmt.Sprintf("%s_%s_GROUP_MEMBERSHIP", NAME_BLS_MSM, bm.group.String()),
+		Name:               fmt.Sprintf("%s_%s_GROUP_MEMBERSHIP", NAME_BLS_MSM, bm.Group.String()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bm.blsMsmDataSource.CsMembership,
-		DataToCircuit:      bm.blsMsmDataSource.Limb,
-		Circuit:            newCheckCircuit(bm.group, GROUP, bm.Limits),
+		DataToCircuitMask:  bm.BlsMsmDataSource.CsMembership,
+		DataToCircuit:      bm.BlsMsmDataSource.Limb,
+		Circuit:            newCheckCircuit(bm.Group, GROUP, bm.Limits),
 		NbCircuitInstances: nbCircuits,
-		InputFillerKey:     membershipInputFillerKey(bm.group, GROUP),
+		InputFillerKey:     membershipInputFillerKey(bm.Group, GROUP),
 		PlonkOptions:       options,
 	}
 
@@ -101,7 +101,7 @@ func (bm *BlsMsm) WithGroupMembershipCircuit(comp *wizard.CompiledIOP, options .
 }
 
 func (bm *BlsMsm) Assign(run *wizard.ProverRuntime) {
-	bm.unalignedMsmData.Assign(run)
+	bm.UnalignedMsmData.Assign(run)
 	if bm.AlignedGnarkMsmData != nil {
 		bm.AlignedGnarkMsmData.Assign(run)
 	}
@@ -110,8 +110,8 @@ func (bm *BlsMsm) Assign(run *wizard.ProverRuntime) {
 	}
 }
 
-type unalignedMsmData struct {
-	*blsMsmDataSource
+type UnalignedMsmData struct {
+	*BlsMsmDataSource
 	IsDataAndCsMul   ifaces.Column // indicates if source is data and has CS_MSM set
 	IsResultAndCsMul ifaces.Column // indicates if source is result and has CS_MSM set
 	// this part is used to define the accumulators and indicate if the
@@ -127,11 +127,11 @@ type unalignedMsmData struct {
 	GnarkIsActiveMsm ifaces.Column
 	GnarkDataMsm     ifaces.Column
 
-	group          group
-	maxNbMsmInputs int
+	Group          Group
+	MaxNbMsmInputs int
 }
 
-func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, src *blsMsmDataSource) *unalignedMsmData {
+func newUnalignedMsmData(comp *wizard.CompiledIOP, g Group, src *BlsMsmDataSource) *UnalignedMsmData {
 	// obtain the maximum number of rows which are coming from the arithmetization.
 	maxNbRows := max(src.CsMul.Size(), src.IsData.Size(), src.IsRes.Size())
 	// assuming the worst case where there is single long MSM. Then we have
@@ -143,8 +143,8 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, src *blsMsmDataSourc
 
 	createCol1 := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), utils.NextPowerOfTwo(maxNbMsmInputs))
 	createCol2 := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), utils.NextPowerOfTwo(maxNbRowsAligned))
-	res := &unalignedMsmData{
-		blsMsmDataSource:   src,
+	res := &UnalignedMsmData{
+		BlsMsmDataSource:   src,
 		IsDataAndCsMul:     comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_DATA_AND_CS_MSM", g.String()), maxNbRows),
 		IsResultAndCsMul:   comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_RESULT_AND_CS_MSM", g.String()), maxNbRows),
 		IsActive:           createCol1("IS_ACTIVE"),
@@ -155,8 +155,8 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, src *blsMsmDataSourc
 		IsLastLine:         createCol1("IS_LAST_LINE"),
 		GnarkIsActiveMsm:   createCol2("GNARK_IS_ACTIVE_MSM"),
 		GnarkDataMsm:       createCol2("GNARK_DATA_MSM"),
-		group:              g,
-		maxNbMsmInputs:     maxNbMsmInputs,
+		Group:              g,
+		MaxNbMsmInputs:     maxNbMsmInputs,
 	}
 
 	for i := range res.Scalar {
@@ -185,18 +185,17 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, src *blsMsmDataSourc
 	return res
 }
 
-func (d *unalignedMsmData) csInputMasks(comp *wizard.CompiledIOP) {
+func (d *UnalignedMsmData) csInputMasks(comp *wizard.CompiledIOP) {
 	// we need to compute the IS_DATA && CS_MUL column which is used for projection
-	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_IS_DATA_AND_CS_MUL", NAME_UNALIGNED_MSM, d.group.String()), sym.Sub(d.IsDataAndCsMul, sym.Mul(d.IsData, d.CsMul)))
-	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_IS_RESULT_AND_CS_MUL", NAME_UNALIGNED_MSM, d.group.String()), sym.Sub(d.IsResultAndCsMul, sym.Mul(d.IsRes, d.CsMul)))
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_IS_DATA_AND_CS_MUL", NAME_UNALIGNED_MSM, d.Group.String()), sym.Sub(d.IsDataAndCsMul, sym.Mul(d.IsData, d.CsMul)))
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_IS_RESULT_AND_CS_MUL", NAME_UNALIGNED_MSM, d.Group.String()), sym.Sub(d.IsResultAndCsMul, sym.Mul(d.IsRes, d.CsMul)))
 }
 
-func (d *unalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
+func (d *UnalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
 	// ensures that the data limbs from source are projected into columns of the
 	// unaligned module properly. It additionally constraints IsActive to
 	// correspond to the number of lines in the source.
-	nbL := nbLimbs(d.group)
-
+	nbL := nbLimbs(d.Group)
 	filtersB := make([]ifaces.Column, nbL+nbFrLimbs)
 	columnsB := make([][]ifaces.Column, nbL+nbFrLimbs)
 	for i := range nbL {
@@ -210,14 +209,14 @@ func (d *unalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
 	prj := query.ProjectionMultiAryInput{
 		FiltersA: []ifaces.Column{d.IsDataAndCsMul},
 		FiltersB: filtersB,
-		ColumnsA: [][]ifaces.Column{{d.blsMsmDataSource.Limb}},
+		ColumnsA: [][]ifaces.Column{{d.BlsMsmDataSource.Limb}},
 		ColumnsB: columnsB,
 	}
-	comp.InsertProjection(ifaces.QueryIDf("%s_%s_PROJECTION_DATA", NAME_UNALIGNED_MSM, d.group.String()), prj)
+	comp.InsertProjection(ifaces.QueryIDf("%s_%s_PROJECTION_DATA", NAME_UNALIGNED_MSM, d.Group.String()), prj)
 }
 
-func (d *unalignedMsmData) csProjectionResult(comp *wizard.CompiledIOP) {
-	nbL := nbLimbs(d.group)
+func (d *UnalignedMsmData) csProjectionResult(comp *wizard.CompiledIOP) {
+	nbL := nbLimbs(d.Group)
 
 	filtersB := make([]ifaces.Column, nbL)
 	columnsB := make([][]ifaces.Column, nbL)
@@ -228,27 +227,27 @@ func (d *unalignedMsmData) csProjectionResult(comp *wizard.CompiledIOP) {
 	prj := query.ProjectionMultiAryInput{
 		FiltersA: []ifaces.Column{d.IsResultAndCsMul},
 		FiltersB: filtersB,
-		ColumnsA: [][]ifaces.Column{{d.blsMsmDataSource.Limb}},
+		ColumnsA: [][]ifaces.Column{{d.BlsMsmDataSource.Limb}},
 		ColumnsB: columnsB,
 	}
-	comp.InsertProjection(ifaces.QueryIDf("%s_%s_PROJECTION_RESULT", NAME_UNALIGNED_MSM, d.group.String()), prj)
+	comp.InsertProjection(ifaces.QueryIDf("%s_%s_PROJECTION_RESULT", NAME_UNALIGNED_MSM, d.Group.String()), prj)
 }
 
-func (d *unalignedMsmData) csAccumulatorInit(comp *wizard.CompiledIOP) {
+func (d *UnalignedMsmData) csAccumulatorInit(comp *wizard.CompiledIOP) {
 	// ensures that the first line accumulator is zero
-	nbL := nbLimbs(d.group)
+	nbL := nbLimbs(d.Group)
 	for i := range nbL {
-		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_ACCUMULATOR_INIT_%d", NAME_UNALIGNED_MSM, d.group.String(), i), sym.Mul(d.CurrentAccumulator[i], d.IsFirstLine))
+		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_ACCUMULATOR_INIT_%d", NAME_UNALIGNED_MSM, d.Group.String(), i), sym.Mul(d.CurrentAccumulator[i], d.IsFirstLine))
 	}
 }
 
-func (d *unalignedMsmData) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
+func (d *UnalignedMsmData) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
 	// ensure that the current accumulator is equal to the next accumulator on previous line.
 	// we need to cancel out if current line is the first line where the current accumulator is zero
-	// (checked in [unalignedMsmData.csAccumulatorInit])
-	nbL := nbLimbs(d.group)
+	// (checked in [UnalignedMsmData.csAccumulatorInit])
+	nbL := nbLimbs(d.Group)
 	for i := range nbL {
-		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_ACCUMULATOR_CONSISTENCY_%d", NAME_UNALIGNED_MSM, d.group.String(), i),
+		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_ACCUMULATOR_CONSISTENCY_%d", NAME_UNALIGNED_MSM, d.Group.String(), i),
 			sym.Mul(
 				d.IsActive,
 				sym.Sub(1, d.IsFirstLine),
@@ -258,13 +257,13 @@ func (d *unalignedMsmData) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
 	}
 }
 
-func (d *unalignedMsmData) Assign(run *wizard.ProverRuntime) {
+func (d *UnalignedMsmData) Assign(run *wizard.ProverRuntime) {
 	d.assignDataAndMul(run)
 	d.assignUnaligned(run)
 	d.assignGnarkData(run)
 }
 
-func (d *unalignedMsmData) assignDataAndMul(run *wizard.ProverRuntime) {
+func (d *UnalignedMsmData) assignDataAndMul(run *wizard.ProverRuntime) {
 	var (
 		srcLimb   = d.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcIsData = d.IsData.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -284,7 +283,7 @@ func (d *unalignedMsmData) assignDataAndMul(run *wizard.ProverRuntime) {
 	dstIsResultAndCs.PadAndAssign(run, field.Zero())
 }
 
-func (d *unalignedMsmData) assignUnaligned(run *wizard.ProverRuntime) {
+func (d *UnalignedMsmData) assignUnaligned(run *wizard.ProverRuntime) {
 	var (
 		srcID      = d.ID.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcLimb    = d.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -295,7 +294,7 @@ func (d *unalignedMsmData) assignUnaligned(run *wizard.ProverRuntime) {
 		srcIsRes   = d.IsRes.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
 
-	nbL := nbLimbs(d.group)
+	nbL := nbLimbs(d.Group)
 	var (
 		dstIsActive = common.NewVectorBuilder(d.IsActive)
 
@@ -354,7 +353,7 @@ func (d *unalignedMsmData) assignUnaligned(run *wizard.ProverRuntime) {
 				}
 				dstIsLastLine.PushZero()
 				// compute the next accumulator
-				nextAccumulator = nativeScalarMulAndSum(d.group, currAccumulator, srcLimb[ptr:ptr+nbL], srcLimb[ptr+nbL:ptr+nbL+nbFrLimbs])
+				nextAccumulator = nativeScalarMulAndSum(d.Group, currAccumulator, srcLimb[ptr:ptr+nbL], srcLimb[ptr+nbL:ptr+nbL+nbFrLimbs])
 				for i := range nbL {
 					// copy the next accumulator limbs
 					dstNextAccumulator[i].PushField(nextAccumulator[i])
@@ -393,8 +392,8 @@ func (d *unalignedMsmData) assignUnaligned(run *wizard.ProverRuntime) {
 	}
 }
 
-func (d *unalignedMsmData) assignGnarkData(run *wizard.ProverRuntime) {
-	nbL := nbLimbs(d.group)
+func (d *UnalignedMsmData) assignGnarkData(run *wizard.ProverRuntime) {
+	nbL := nbLimbs(d.Group)
 
 	// we now need to transpose again the limbs into the gnark input format.
 	// This is essentially mapping the lines of current accumulator, point,

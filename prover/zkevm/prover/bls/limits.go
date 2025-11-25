@@ -52,7 +52,7 @@ type Limits struct {
 	NbPointEvalFailureInputInstances int
 }
 
-func (l *Limits) nbAddInputInstances(g group) int {
+func (l *Limits) nbAddInputInstances(g Group) int {
 	switch g {
 	case G1:
 		return l.NbG1AddInputInstances
@@ -63,7 +63,7 @@ func (l *Limits) nbAddInputInstances(g group) int {
 	}
 }
 
-func (l *Limits) nbMapInputInstances(g group) int {
+func (l *Limits) nbMapInputInstances(g Group) int {
 	switch g {
 	case G1:
 		return l.NbG1MapToInputInstances
@@ -74,7 +74,7 @@ func (l *Limits) nbMapInputInstances(g group) int {
 	}
 }
 
-func (l *Limits) nbMulInputInstances(g group) int {
+func (l *Limits) nbMulInputInstances(g Group) int {
 	switch g {
 	case G1:
 		return l.NbG1MulInputInstances
@@ -85,7 +85,7 @@ func (l *Limits) nbMulInputInstances(g group) int {
 	}
 }
 
-func (l *Limits) nbCurveMembershipInputInstances(g group) int {
+func (l *Limits) nbCurveMembershipInputInstances(g Group) int {
 	switch g {
 	case G1:
 		return l.NbC1MembershipInputInstances
@@ -96,7 +96,7 @@ func (l *Limits) nbCurveMembershipInputInstances(g group) int {
 	}
 }
 
-func (l *Limits) nbGroupMembershipInputInstances(g group) int {
+func (l *Limits) nbGroupMembershipInputInstances(g Group) int {
 	switch g {
 	case G1:
 		return l.NbG1MembershipInputInstances

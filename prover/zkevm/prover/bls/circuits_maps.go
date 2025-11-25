@@ -15,7 +15,7 @@ const (
 	nbRowsPerG2Map = 2*nbFpLimbs + nbG2Limbs // input is Fp2 element and expected output is G2 element
 )
 
-func nbRowsPerMap(g group) int {
+func nbRowsPerMap(g Group) int {
 	switch g {
 	case G1:
 		return nbRowsPerG1Map
@@ -71,7 +71,7 @@ func (c *multiMapCircuit[C, T]) Define(api frontend.API) error {
 	return nil
 }
 
-func NewMapCircuit(g group, limits *Limits) frontend.Circuit {
+func NewMapCircuit(g Group, limits *Limits) frontend.Circuit {
 	switch g {
 	case G1:
 		res := &multiMapCircuit[g1ElementWizard, sw_bls12381.G1Affine]{

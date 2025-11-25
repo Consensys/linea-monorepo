@@ -14,7 +14,7 @@ const (
 	nbRowsPerG2Add = 3 * nbG2Limbs // 2 for the inputs, 1 for the output
 )
 
-func nbRowsPerAdd(g group) int {
+func nbRowsPerAdd(g Group) int {
 	switch g {
 	case G1:
 		return nbRowsPerG1Add
@@ -61,7 +61,7 @@ func (c *multiAddCircuit[C, T]) Define(api frontend.API) error {
 	return nil
 }
 
-func newAddCircuit(g group, limits *Limits) frontend.Circuit {
+func newAddCircuit(g Group, limits *Limits) frontend.Circuit {
 	switch g {
 	case G1:
 		return &multiAddCircuit[g1ElementWizard, sw_bls12381.G1Affine]{Instances: make([]addInstance[g1ElementWizard, sw_bls12381.G1Affine], limits.NbG1AddInputInstances)}
