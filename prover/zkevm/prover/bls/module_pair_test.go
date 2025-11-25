@@ -45,7 +45,7 @@ func testBlsPair(t *testing.T, withCircuit bool) {
 			if cmp == nil {
 				cmp = wizard.Compile(
 					func(b *wizard.Builder) {
-						blsPairSource := &blsPairDataSource{
+						blsPairSource := &BlsPairDataSource{
 							ID:             ct.GetCommit(b, "ID"),
 							CsPair:         ct.GetCommit(b, "CS_PAIRING_CHECK"),
 							CsG1Membership: ct.GetCommit(b, "CS_G1_MEMBERSHIP"),

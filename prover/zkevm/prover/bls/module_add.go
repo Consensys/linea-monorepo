@@ -13,7 +13,7 @@ const (
 	NAME_BLS_ADD = "BLS_ADD"
 )
 
-type blsAddDataSource struct {
+type BlsAddDataSource struct {
 	ID                ifaces.Column
 	CsAdd             ifaces.Column
 	CsCurveMembership ifaces.Column
@@ -24,8 +24,8 @@ type blsAddDataSource struct {
 	IsRes             ifaces.Column
 }
 
-func newAddDataSource(comp *wizard.CompiledIOP, g group) *blsAddDataSource {
-	return &blsAddDataSource{
+func newAddDataSource(comp *wizard.CompiledIOP, g Group) *BlsAddDataSource {
+	return &BlsAddDataSource{
 		ID:                comp.Columns.GetHandle(colNameFn("ID")),
 		CsAdd:             comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_BLS_" + g.String() + "_ADD")),
 		Limb:              comp.Columns.GetHandle(colNameFn("LIMB")),
@@ -38,19 +38,19 @@ func newAddDataSource(comp *wizard.CompiledIOP, g group) *blsAddDataSource {
 }
 
 type BlsAdd struct {
-	*blsAddDataSource
-	alignedAddGnarkData             *plonk.Alignment
-	alignedCurveMembershipGnarkData *plonk.Alignment
+	*BlsAddDataSource
+	AlignedAddGnarkData             *plonk.Alignment
+	AlignedCurveMembershipGnarkData *plonk.Alignment
 
 	*Limits
-	group
+	Group
 }
 
-func newAdd(_ *wizard.CompiledIOP, g group, limits *Limits, src *blsAddDataSource) *BlsAdd {
+func newAdd(_ *wizard.CompiledIOP, g Group, limits *Limits, src *BlsAddDataSource) *BlsAdd {
 	res := &BlsAdd{
-		blsAddDataSource: src,
+		BlsAddDataSource: src,
 		Limits:           limits,
-		group:            g,
+		Group:            g,
 	}
 
 	return res
@@ -60,44 +60,44 @@ func (ba *BlsAdd) WithAddCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 	// the gnark circuit takes exactly the same rows as provided by the arithmetization. So
 	// to get the bound on the number of circuits we just need to divide by the size of the
 	// addition circuit input instances
-	maxNbInstances := ba.blsAddDataSource.CsAdd.Size() / nbRowsPerAdd(ba.group)
-	maxNbCircuits := maxNbInstances/ba.Limits.nbAddInputInstances(ba.group) + 1
+	maxNbInstances := ba.BlsAddDataSource.CsAdd.Size() / nbRowsPerAdd(ba.Group)
+	maxNbCircuits := maxNbInstances/ba.Limits.nbAddInputInstances(ba.Group) + 1
 
 	toAlignAdd := &plonk.CircuitAlignmentInput{
-		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_ADD, ba.group.String()),
+		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_ADD, ba.Group.String()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  ba.blsAddDataSource.CsAdd,
-		DataToCircuit:      ba.blsAddDataSource.Limb,
-		Circuit:            newAddCircuit(ba.group, ba.Limits),
+		DataToCircuitMask:  ba.BlsAddDataSource.CsAdd,
+		DataToCircuit:      ba.BlsAddDataSource.Limb,
+		Circuit:            newAddCircuit(ba.Group, ba.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		PlonkOptions:       options,
 	}
-	ba.alignedAddGnarkData = plonk.DefineAlignment(comp, toAlignAdd)
+	ba.AlignedAddGnarkData = plonk.DefineAlignment(comp, toAlignAdd)
 	return ba
 }
 
 func (ba *BlsAdd) WithCurveMembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsAdd {
-	maxNbCircuits := ba.blsAddDataSource.CsCurveMembership.Size() / ba.Limits.nbCurveMembershipInputInstances(ba.group)
+	maxNbCircuits := ba.BlsAddDataSource.CsCurveMembership.Size() / ba.Limits.nbCurveMembershipInputInstances(ba.Group)
 
 	toAlignCurveMembership := &plonk.CircuitAlignmentInput{
-		Name:               fmt.Sprintf("%s_%s_CURVE_MEMBERSHIP_ALIGNMENT", NAME_BLS_ADD, ba.group.StringCurve()),
+		Name:               fmt.Sprintf("%s_%s_CURVE_MEMBERSHIP_ALIGNMENT", NAME_BLS_ADD, ba.Group.StringCurve()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  ba.blsAddDataSource.CsCurveMembership,
-		DataToCircuit:      ba.blsAddDataSource.Limb,
-		Circuit:            newCheckCircuit(ba.group, CURVE, ba.Limits),
+		DataToCircuitMask:  ba.BlsAddDataSource.CsCurveMembership,
+		DataToCircuit:      ba.BlsAddDataSource.Limb,
+		Circuit:            newCheckCircuit(ba.Group, CURVE, ba.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		PlonkOptions:       options,
-		InputFillerKey:     membershipInputFillerKey(ba.group, CURVE),
+		InputFillerKey:     membershipInputFillerKey(ba.Group, CURVE),
 	}
-	ba.alignedCurveMembershipGnarkData = plonk.DefineAlignment(comp, toAlignCurveMembership)
+	ba.AlignedCurveMembershipGnarkData = plonk.DefineAlignment(comp, toAlignCurveMembership)
 	return ba
 }
 
 func (ba *BlsAdd) Assign(run *wizard.ProverRuntime) {
-	if ba.alignedAddGnarkData != nil {
-		ba.alignedAddGnarkData.Assign(run)
+	if ba.AlignedAddGnarkData != nil {
+		ba.AlignedAddGnarkData.Assign(run)
 	}
-	if ba.alignedCurveMembershipGnarkData != nil {
-		ba.alignedCurveMembershipGnarkData.Assign(run)
+	if ba.AlignedCurveMembershipGnarkData != nil {
+		ba.AlignedCurveMembershipGnarkData.Assign(run)
 	}
 }

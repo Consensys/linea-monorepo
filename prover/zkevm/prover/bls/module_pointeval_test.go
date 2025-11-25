@@ -43,7 +43,7 @@ func testPointEval(t *testing.T, withCircuit bool) {
 			if cmp == nil {
 				cmp = wizard.Compile(
 					func(b *wizard.Builder) {
-						pointEvalSource := &blsPointEvalDataSource{
+						pointEvalSource := &BlsPointEvalDataSource{
 							ID:                 ct.GetCommit(b, "ID"),
 							CsPointEval:        ct.GetCommit(b, "CIRCUIT_SELECTOR_POINT_EVALUATION"),
 							CsPointEvalInvalid: ct.GetCommit(b, "CIRCUIT_SELECTOR_POINT_EVALUATION_FAILURE"),

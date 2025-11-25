@@ -18,7 +18,7 @@ func set(nbL int, q *fp.Element, limbs []field.Element) {
 	q.SetBytes(buf)
 }
 
-func nativeScalarMulAndSum(g group, currentAccumulator []field.Element, point []field.Element, scalar []field.Element) (nextAccumulator []field.Element) {
+func nativeScalarMulAndSum(g Group, currentAccumulator []field.Element, point []field.Element, scalar []field.Element) (nextAccumulator []field.Element) {
 	nbL := nbLimbs(g)
 	if len(scalar) != nbFrLimbs {
 		panic(fmt.Sprintf("scalar must have exactly %d limbs, got %d", nbFrLimbs, len(scalar)))

@@ -11,10 +11,10 @@ const (
 	moduleName = "blsdata"
 )
 
-type group int
+type Group int
 
 const (
-	G1 group = iota
+	G1 Group = iota
 	G2
 )
 
@@ -27,7 +27,7 @@ const (
 
 const ROUND_NR = 0
 
-func (g group) String() string {
+func (g Group) String() string {
 	switch g {
 	case G1:
 		return "G1"
@@ -38,7 +38,7 @@ func (g group) String() string {
 	}
 }
 
-func (g group) StringCurve() string {
+func (g Group) StringCurve() string {
 	switch g {
 	case G1:
 		return "C1"
@@ -49,7 +49,7 @@ func (g group) StringCurve() string {
 	}
 }
 
-func (g group) StringMap() string {
+func (g Group) StringMap() string {
 	switch g {
 	case G1:
 		return "FP"

@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
 
-func testBlsAdd(t *testing.T, withCircuit bool, g group, path string, limits *Limits) {
+func testBlsAdd(t *testing.T, withCircuit bool, g Group, path string, limits *Limits) {
 	f, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
 		t.Fatal("csv file does not exist, please run `go generate` to generate the test data")
@@ -27,7 +27,7 @@ func testBlsAdd(t *testing.T, withCircuit bool, g group, path string, limits *Li
 	var blsAdd *BlsAdd
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
-			blsAddSource := &blsAddDataSource{
+			blsAddSource := &BlsAddDataSource{
 				CsAdd:             ct.GetCommit(b, "CIRCUIT_SELECTOR_"+g.String()+"_ADD"),
 				Limb:              ct.GetCommit(b, "LIMB"),
 				Index:             ct.GetCommit(b, "INDEX"),
