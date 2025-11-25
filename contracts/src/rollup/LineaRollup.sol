@@ -50,9 +50,10 @@ contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, 
    * @notice Reinitializes LineaRollup and sets the _shnarfProvider to itself.
    */
   function reinitializeV8(
-  IPermissionsManager.RoleAddress[] calldata _roleAddresses,
-  IPauseManager.PauseTypeRole[] calldata _pauseTypeRoles,
-  IPauseManager.PauseTypeRole[] calldata _unpauseTypeRoles) external reinitializer(8) {
+    IPermissionsManager.RoleAddress[] calldata _roleAddresses,
+    IPauseManager.PauseTypeRole[] calldata _pauseTypeRoles,
+    IPauseManager.PauseTypeRole[] calldata _unpauseTypeRoles
+  ) external reinitializer(8) {
     address proxyAdmin;
     assembly {
       proxyAdmin := sload(PROXY_ADMIN_SLOT)

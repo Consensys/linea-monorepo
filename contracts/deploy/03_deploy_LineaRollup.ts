@@ -51,7 +51,7 @@ const func: DeployFunction = async function () {
         unpauseTypeRoles,
         defaultAdmin: lineaRollupSecurityCouncil,
       },
-      MultiCallAddress
+      MultiCallAddress,
     ],
     {
       initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,

@@ -40,8 +40,8 @@ import {
   OPERATOR_ROLE,
   TEST_PUBLIC_VERIFIER_INDEX,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-  BLOB_SUBMISSION_PAUSE_TYPE,
   ADDRESS_ZERO,
+  STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "../../common/constants";
 import { deployUpgradableFromFactory } from "../../common/deployment";
 import {
@@ -229,16 +229,16 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     );
   });
 
-  it("Should revert if BLOB_SUBMISSION_PAUSE_TYPE is enabled", async () => {
+  it("Should revert if STATE_DATA_SUBMISSION_PAUSE_TYPE is enabled", async () => {
     const { blobDataSubmission, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
-    await lineaRollup.connect(securityCouncil).pauseByType(BLOB_SUBMISSION_PAUSE_TYPE);
+    await lineaRollup.connect(securityCouncil).pauseByType(STATE_DATA_SUBMISSION_PAUSE_TYPE);
 
     await expectRevertWithCustomError(
       lineaRollup,
       lineaRollup.connect(operator).submitBlobs(blobDataSubmission, parentShnarf, finalShnarf),
       "IsPaused",
-      [BLOB_SUBMISSION_PAUSE_TYPE],
+      [STATE_DATA_SUBMISSION_PAUSE_TYPE],
     );
   });
 
