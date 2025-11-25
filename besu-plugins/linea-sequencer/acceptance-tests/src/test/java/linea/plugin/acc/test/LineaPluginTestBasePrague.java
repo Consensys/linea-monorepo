@@ -81,7 +81,9 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   private static final BigInteger VALUE = BigInteger.ZERO;
   private static final String DATA = "0x";
   private static final SECP256K1 secp256k1 = new SECP256K1();
-  private static final ScheduledExecutorService consensusScheduler = Executors.newSingleThreadScheduledExecutor();
+  private static final ScheduledExecutorService consensusScheduler =
+      Executors.newSingleThreadScheduledExecutor();
+  private Long blockTimeSeconds = null;
 
   // Override this in subclasses to use a different genesis file template
   protected String getGenesisFileTemplatePath() {
@@ -107,6 +109,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     cluster.start(minerNode);
     mapper = new ObjectMapper();
     this.engineApiService = new EngineAPIService(minerNode, ethTransactions, mapper);
+    this.blockTimeSeconds = getDefaultSlotTimeSeconds();
   }
 
   // Ideally GenesisConfigurationFactory.createCliqueGenesisConfig would support a custom genesis
@@ -135,24 +138,24 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   }
 
   protected void buildNewBlocksInBackground() {
-    final long defaultSlotTimeSeconds = getDefaultSlotTimeSeconds();
-    consensusScheduler.scheduleAtFixedRate(() ->
-      {
-        try {
-          buildNewBlock(Instant.now().getEpochSecond(), defaultSlotTimeSeconds * 1000);
-        } catch (IOException | InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    , defaultSlotTimeSeconds, defaultSlotTimeSeconds, TimeUnit.SECONDS);
+    consensusScheduler.scheduleAtFixedRate(
+        () -> {
+          try {
+            buildNewBlock(Instant.now().getEpochSecond(), blockTimeSeconds * 1000);
+          } catch (IOException | InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+        },
+        blockTimeSeconds,
+        blockTimeSeconds,
+        TimeUnit.SECONDS);
   }
 
   // No-arg override for simple test cases, we take sensible defaults from the genesis config
   protected void buildNewBlock() throws IOException, InterruptedException {
     var latestTimestamp = this.minerNode.execute(ethTransactions.block()).getTimestamp();
-    final long defaultSlotTimeSeconds = getDefaultSlotTimeSeconds();
     this.engineApiService.buildNewBlock(
-        latestTimestamp.longValue() + defaultSlotTimeSeconds, defaultSlotTimeSeconds * 1000);
+        latestTimestamp.longValue() + blockTimeSeconds, blockTimeSeconds * 1000);
   }
 
   private long getDefaultSlotTimeSeconds() {
