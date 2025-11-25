@@ -1,19 +1,19 @@
 package keccak
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/logdata"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/zkevm/prover/hash/keccak"
 )
 
 type module struct {

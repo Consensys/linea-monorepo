@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/wizard"
 	"github.com/stretchr/testify/assert"
 )
 
