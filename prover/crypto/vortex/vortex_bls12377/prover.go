@@ -3,9 +3,29 @@ package vortex_bls12377
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+func Prove(
+	entryList []int,
+	encodedMatrices []EncodedMatrix,
+	trees []*smt_bls12377.Tree, alpha fext.Element) (*vortex.OpeningProof, [][]smt_bls12377.Proof) {
+
+	proof := &vortex.OpeningProof{}
+
+	_encodedMatrices := make([]smartvectors.SmartVector, 0, len(encodedMatrices))
+	for _, m := range encodedMatrices {
+		_encodedMatrices = append(_encodedMatrices, m...)
+	}
+	vortex.LinearCombination(proof, _encodedMatrices, alpha)
+
+	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
+
+	return proof, merkleProofs
+}
 
 // SelectColumnsAndMerkleProofs completes the proof adding the columns pointed by entryList
 // (implictly the random positions pointed to by the verifier).

@@ -57,11 +57,7 @@ func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, p
 	}
 
 	// Generate the proof
-	proof := &vortex.OpeningProof{}
-	proof.LinearCombination = vortex.LinearCombination(encodedMatrices, vi.Alpha)
-
-	var merkleProofs [][]smt_bls12377.Proof
-	merkleProofs = SelectColumnsAndMerkleProofs(proof, vi.EntryList, encodedMatrices, trees)
+	proof, merkleProofs := Prove(vi.EntryList, encodedMatrices, trees, vi.Alpha)
 
 	return &vortexInstance, proof, vi, commitments, merkleProofs
 }

@@ -3,9 +3,29 @@ package vortex_koalabear
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+func Prove(
+	entryList []int,
+	encodedMatrices []EncodedMatrix,
+	trees []*smt_koalabear.Tree, alpha fext.Element) (*vortex.OpeningProof, [][]smt_koalabear.Proof) {
+
+	proof := &vortex.OpeningProof{}
+
+	_encodedMatrices := make([]smartvectors.SmartVector, 0, len(encodedMatrices))
+	for _, m := range encodedMatrices {
+		_encodedMatrices = append(_encodedMatrices, m...)
+	}
+	vortex.LinearCombination(proof, _encodedMatrices, alpha)
+
+	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
+
+	return proof, merkleProofs
+}
 
 // SelectColumnsAndMerkleProofs completes the proof adding the columns pointed by entryList
 // (implictly the random positions pointed to by the verifier).
