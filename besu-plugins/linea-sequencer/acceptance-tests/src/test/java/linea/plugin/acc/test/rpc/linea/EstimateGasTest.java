@@ -236,7 +236,7 @@ public class EstimateGasTest extends LineaPluginTestBasePrague {
     assertThat(respLinea.getError().getCode()).isEqualTo(-32004);
     assertThat(respLinea.getError().getMessage())
         .isEqualTo(
-            "Upfront cost exceeds account balance (transaction up-front cost 0x208cbab601 exceeds transaction sender account balance 0x0)");
+            "Upfront cost exceeds account balance (transaction up-front cost 0x2094ddc28d exceeds transaction sender account balance 0x0)");
   }
 
   @Test
