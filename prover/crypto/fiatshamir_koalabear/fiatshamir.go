@@ -1,8 +1,6 @@
 package fiatshamir_koalabear
 
 import (
-	"math"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -93,70 +91,24 @@ func (fs *FS) RandomFext() fext.Element {
 }
 
 func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
-
-	// Even `1` would be wierd, there would be only one acceptable coin value.
-	if upperBound < 1 {
-		utils.Panic("UpperBound was %v", upperBound)
-	}
-
-	if !utils.IsPowerOfTwo(upperBound) {
-		utils.Panic("Expected a power of two but got %v", upperBound)
-	}
-
-	if num == 0 {
-		return []int{}
-	}
-
-	defer fs.safeguardUpdate()
-
-	var (
-		// challsBitSize stores the number of bits required instantiate each
-		// small integer.
-		challsBitSize = math.Ceil(math.Log2(float64(upperBound)))
-		// Number of challenges computable with one call to hash (implicitly,
-		// the division is rounded down). The "-1" corresponds to the fact that
-		// the most significant bit of a field element cannot be assumed to
-		// contain exactly 1 bit of entropy since the modulus of the field is
-		// never a power of 2.
-		maxNumChallsPerDigest = (field.Bits - 1) / int(challsBitSize)
-		// res stores the preallocated result slice, to which all generated
-		// small integers will be appended.
-		res = make([]int, 0, num)
-	)
-
-	for {
-		digest := fs.h.Sum(nil)
-		buffer := NewBitReader(digest[:], field.Bits-1)
-
-		// Increase the counter
-
-		for i := 0; i < maxNumChallsPerDigest; i++ {
-			// Stopping condition, we computed enough challenges
-			if len(res) >= num {
-				return res
+	n := utils.NextPowerOfTwo(upperBound)
+	mask := n - 1
+	i := 0
+	res := make([]int, num)
+	for i < num {
+		// thake the remainder mod n of each limb
+		c := fs.RandomField()
+		for j := 0; j < 8; j++ {
+			b := c[j].Bits()
+			res[i] = int(b[0]) & mask
+			i++
+			fs.safeguardUpdate()
+			if i >= num {
+				break
 			}
-
-			newChall, err := buffer.ReadInt(int(challsBitSize))
-			if err != nil {
-				utils.Panic("could not instantiate the buffer for a single field element")
-			}
-			res = append(res, int(newChall)%upperBound)
 		}
-
-		// This is guarded by the condition to prevent the [State] updating
-		// twice in a row when exiting the func (fs *FS)tion. Recall that we have a
-		// defer of the safeguard update in the func (fs *FS)tion. This handles the
-		// edge-case where the number of requested field elements is a multiple
-		// of the number of challenges we can generate with a single field
-		// element.
-		if len(res) >= num {
-			return res
-		}
-
-		// This updates ensures that for the next iterations of the loop and the
-		// next randomness comsumption uses a fresh randomness.
-		fs.safeguardUpdate()
 	}
+	return res
 }
 
 func (fs *FS) safeguardUpdate() {

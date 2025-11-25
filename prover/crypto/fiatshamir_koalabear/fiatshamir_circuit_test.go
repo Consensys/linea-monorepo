@@ -11,8 +11,10 @@ import (
 )
 
 type FSCircuit struct {
-	A, B   frontend.Variable
-	R1, R2 gnarkfext.E4Gen
+	A, B     frontend.Variable
+	R1, R2   gnarkfext.E4Gen
+	R3       []frontend.Variable
+	n, bound int
 }
 
 func (c *FSCircuit) Define(api frontend.API) error {
@@ -25,9 +27,14 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-
 	ext4.AssertIsEqual(&a, &c.R1)
 	ext4.AssertIsEqual(&b, &c.R2)
+
+	r := fs.RandomManyIntegers(c.n, c.bound)
+	for i := 0; i < c.n; i++ {
+		api.AssertIsEqual(r[i], c.R3[i])
+	}
+
 	return nil
 }
 
@@ -42,12 +49,22 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	fs.Update(b)
 	r2 := fs.RandomFext()
 
+	n := 4
+	bound := 8
+	r3 := fs.RandomManyIntegers(n, bound)
+
 	var circuit, witness FSCircuit
+	circuit.n = n
+	circuit.bound = bound
+	circuit.R3 = make([]frontend.Variable, n)
 	witness.A = a.String()
 	witness.B = b.String()
-
 	witness.R1 = gnarkfext.NewE4Gen(r1)
 	witness.R2 = gnarkfext.NewE4Gen(r2)
+	witness.R3 = make([]frontend.Variable, n)
+	for i := 0; i < n; i++ {
+		witness.R3[i] = r3[i]
+	}
 
 	return &circuit, &witness
 }
