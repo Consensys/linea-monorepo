@@ -215,6 +215,9 @@ export class NativeYieldAutomationServiceBootstrap {
       config.contractAddresses.lidoYieldProviderAddress,
       config.contractAddresses.l2YieldRecipientAddress,
       config.reporting.shouldSubmitVaultReport,
+      this.viemBlockchainClientAdapter,
+      config.reporting.minPositiveYieldToReportWei,
+      config.reporting.minUnpaidLidoProtocolFeesToReportYieldWei,
     );
 
     this.ossificationPendingOperationModeProcessor = new OssificationPendingProcessor(
