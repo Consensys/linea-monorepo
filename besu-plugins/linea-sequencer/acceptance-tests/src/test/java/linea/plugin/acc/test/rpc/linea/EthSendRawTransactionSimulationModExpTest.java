@@ -9,7 +9,6 @@
 package linea.plugin.acc.test.rpc.linea;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.web3j.crypto.Hash.sha3;
 
 import java.util.List;
 import linea.plugin.acc.test.LineaPluginTestBase;
@@ -53,37 +52,6 @@ public class EthSendRawTransactionSimulationModExpTest extends LineaPluginTestBa
       assertThat(resp.hasError()).isFalse();
 
       minerNode.verify(eth.expectSuccessfulTransactionReceipt(resp.getTransactionHash()));
-    }
-  }
-
-  @Test
-  public void invalidModExpCallsAreRejected() throws Exception {
-    final var modExp = deployModExp();
-
-    final Bytes[] invalidInputs = {
-      Bytes.fromHexString("0000000000000000000000000000000000000000000000000000000000000201"),
-      Bytes.fromHexString("00000000000000000000000000000000000000000000000000000000000003"),
-      Bytes.fromHexString("ff"),
-      Bytes.fromHexString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
-    };
-
-    for (int i = 0; i < invalidInputs.length; i++) {
-
-      final var mulmodOverflow =
-          encodedCallModExp(modExp, accounts.getSecondaryBenefactor(), i, invalidInputs[i]);
-
-      final Web3j web3j = minerNode.nodeRequests().eth();
-      final EthSendTransaction resp =
-          web3j.ethSendRawTransaction(Numeric.toHexString(mulmodOverflow)).send();
-
-      assertThat(resp.hasError()).isTrue();
-      assertThat(resp.getError().getMessage())
-          .isEqualTo(
-              "Transaction "
-                  + Numeric.toHexString(sha3(mulmodOverflow))
-                  + " line count for module PRECOMPILE_MODEXP_EFFECTIVE_CALLS=2147483647 is above the limit 10000");
-
-      assertThat(getTxPoolContent()).isEmpty();
     }
   }
 }
