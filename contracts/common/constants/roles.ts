@@ -17,6 +17,13 @@ export const PAUSE_L1_L2_ROLE = generateKeccak256(["string"], ["PAUSE_L1_L2_ROLE
 export const UNPAUSE_L1_L2_ROLE = generateKeccak256(["string"], ["UNPAUSE_L1_L2_ROLE"], { encodePacked: true });
 export const PAUSE_L2_L1_ROLE = generateKeccak256(["string"], ["PAUSE_L2_L1_ROLE"], { encodePacked: true });
 export const UNPAUSE_L2_L1_ROLE = generateKeccak256(["string"], ["UNPAUSE_L2_L1_ROLE"], { encodePacked: true });
+export const PAUSE_BLOB_SUBMISSION_ROLE = generateKeccak256(["string"], ["PAUSE_BLOB_SUBMISSION_ROLE"], {
+  encodePacked: true,
+});
+export const UNPAUSE_BLOB_SUBMISSION_ROLE = generateKeccak256(["string"], ["UNPAUSE_BLOB_SUBMISSION_ROLE"], {
+  encodePacked: true,
+});
+
 export const PAUSE_STATE_DATA_SUBMISSION_ROLE = generateKeccak256(["string"], ["PAUSE_STATE_DATA_SUBMISSION_ROLE"], {
   encodePacked: true,
 });
@@ -111,8 +118,8 @@ export const LINEA_ROLLUP_ROLES = [
   PAUSE_L2_L1_ROLE,
   UNPAUSE_L1_L2_ROLE,
   UNPAUSE_L2_L1_ROLE,
-  PAUSE_STATE_DATA_SUBMISSION_ROLE,
-  UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
+  PAUSE_BLOB_SUBMISSION_ROLE,
+  UNPAUSE_BLOB_SUBMISSION_ROLE,
   PAUSE_FINALIZATION_ROLE,
   UNPAUSE_FINALIZATION_ROLE,
 ];

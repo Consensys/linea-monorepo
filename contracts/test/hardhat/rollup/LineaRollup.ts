@@ -66,7 +66,7 @@ import { IPermissionsManager } from "contracts/typechain-types/src/rollup/LineaR
 
 kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
 
-describe.only("Linea Rollup contract", () => {
+describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
   let verifier: string;
   let callForwardingProxy: CallForwardingProxy;
