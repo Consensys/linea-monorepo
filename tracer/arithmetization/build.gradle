@@ -17,7 +17,7 @@ plugins {
   id 'java-library'
   id 'common-plugins'
   id 'com.github.hierynomus.license'
-  id "de.undercouch.download"
+  id 'net.consensys.besu-plugin-library'
 }
 
 group = 'net.consensys.linea.besu.plugin'
@@ -25,7 +25,6 @@ version = rootProject.version
 
 apply from: rootProject.file("gradle/java.gradle")
 apply from: rootProject.file("gradle/dependency-management.gradle")
-apply from: rootProject.file("gradle/common-dependencies.gradle")
 apply from: rootProject.file("gradle/corset.gradle")
 apply from: rootProject.file("gradle/tests.gradle")
 apply from: rootProject.file("gradle/build-aliases.gradle")
@@ -33,31 +32,13 @@ apply from: rootProject.file("gradle/check-licenses.gradle")
 apply from: rootProject.file("gradle/lint.gradle")
 
 dependencies {
-  implementation "${besuArtifactGroup}:besu-datatypes"
-  implementation "${besuArtifactGroup}:besu-evm"
-  implementation "${besuArtifactGroup}:besu-plugin-api"
-  implementation "${besuArtifactGroup}.internal:besu-consensus-clique"
-  implementation "${besuArtifactGroup}.internal:besu-crypto-algorithms"
-  implementation "${besuArtifactGroup}.internal:besu-ethereum-api"
-  implementation "${besuArtifactGroup}.internal:besu-ethereum-core"
-  implementation "${besuArtifactGroup}.internal:besu-ethereum-rlp"
-
-  implementation "org.hyperledger.besu:gnark:1.4.1-SNAPSHOT"
-  // implementation "${besuArtifactGroup}:gnark"
-  implementation 'net.java.dev.jna:jna:5.13.0'
-
+  implementation 'org.hyperledger.besu:gnark:1.4.1-SNAPSHOT'
   implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-  implementation 'info.picocli:picocli'
-  implementation 'com.google.code.gson:gson'
-
-  implementation 'io.consensys.tuweni:tuweni-bytes'
-  implementation 'io.consensys.tuweni:tuweni-units'
-  implementation 'io.consensys.tuweni:tuweni-toml'
-
-  implementation 'io.vertx:vertx-web'
-
-  testImplementation project(path: ':testing')
+  testImplementation project(':testing')
+  testImplementation 'org.assertj:assertj-core'
   testImplementation 'org.junit.platform:junit-platform-launcher'
+  testImplementation 'org.junit.jupiter:junit-jupiter-api'
+  testImplementation 'org.junit.jupiter:junit-jupiter-params'
 }
 
 jar {
@@ -75,14 +56,3 @@ jar {
 }
 
 apply from: rootProject.file("gradle/publishing.gradle")
-
-configure(allprojects) {
-  repositories {
-    maven {
-      url 'https://hyperledger.jfrog.io/artifactory/besu-maven'
-      content { includeGroupByRegex('org\\.hyperledger\\..*') }
-    }
-
-    mavenCentral()
-  }
-}

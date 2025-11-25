@@ -305,9 +305,14 @@ tasks.register("jacocoUnitFastReplayWeeklyNightlyReferenceBlockchainAndStateTest
 // =============================================================================
 
 tasks.register("copyTracerPlugin", Copy) {
-  dependsOn(project(":plugins").tasks.findByPath("jar"))
-  from project(":plugins").tasks.findByPath("jar").outputs.files.collect()
+  dependsOn(project(":plugins").tasks.findByPath("distZip"))
+  from zipTree(project(":plugins").tasks.findByPath("distZip").outputs.files.singleFile)
   into "${System.getProperty("besu.plugins.dir")}"
+  eachFile { fcp ->
+    fcp.relativePath = new RelativePath(true, fcp.file.name)
+  }
+  includeEmptyDirs = false
+  duplicatesStrategy = DuplicatesStrategy.FAIL
 }
 
 tasks.register("downloadShomeiBesuPlugin", Download) {
