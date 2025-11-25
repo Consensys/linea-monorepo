@@ -25,18 +25,30 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Set;
 
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ZkTracer;
 
 @Slf4j
-@RequiredArgsConstructor
 public class TraceWriter {
-  private static final String TRACE_FILE_EXTENSION = ".lt";
-  private static final String TRACE_TEMP_FILE_EXTENSION = ".lt.tmp";
+  private final String traceFileExtension;
+  private final String tempTraceFileExtension;
 
   final Path tracesOutputDirPath;
+
+  public TraceWriter(Path tracesOutputDirPath, boolean traceCompression) {
+    this.tracesOutputDirPath = tracesOutputDirPath;
+    // Configure trace file extensions.  These provide indication during trace generation as to
+    // whether compression
+    // should be used, or not.
+    if (traceCompression) {
+      traceFileExtension = ".lt.gz";
+      tempTraceFileExtension = ".lt.tmp.gz";
+    } else {
+      traceFileExtension = ".lt";
+      tempTraceFileExtension = ".lt.tmp";
+    }
+  }
 
   /**
    * Check whether the corresponding trace file already exists, or not.
@@ -57,7 +69,7 @@ public class TraceWriter {
         generateOutputFileName(
             startBlockNumber, endBlockNumber, expectedTracesEngineVersion, besuVersion);
     // Generate and resolve the original and final trace file path.
-    return generateOutputFilePath(tracesOutputDirPath, origTraceFileName + TRACE_FILE_EXTENSION);
+    return generateOutputFilePath(tracesOutputDirPath, origTraceFileName + traceFileExtension);
   }
 
   @SneakyThrows(IOException.class)
@@ -73,14 +85,14 @@ public class TraceWriter {
             startBlockNumber, endBlockNumber, expectedTracesEngineVersion, besuVersion);
     // Generate and resolve the original and final trace file path.
     final Path origTraceFilePath =
-        generateOutputFilePath(tracesOutputDirPath, origTraceFileName + TRACE_FILE_EXTENSION);
+        generateOutputFilePath(tracesOutputDirPath, origTraceFileName + traceFileExtension);
     // Write the trace at the original and final trace file path, but with the suffix .tmp at the
     // end of the file.
     final Path tmpTraceFilePath =
         writeToTmpFile(
             tracer,
             origTraceFileName + ".",
-            TRACE_TEMP_FILE_EXTENSION,
+            tempTraceFileExtension,
             startBlockNumber,
             endBlockNumber);
     // After trace writing is complete, rename the file by removing the .tmp prefix, indicating

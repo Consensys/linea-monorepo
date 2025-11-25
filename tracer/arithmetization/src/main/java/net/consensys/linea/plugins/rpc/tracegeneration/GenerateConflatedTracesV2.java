@@ -64,9 +64,17 @@ public class GenerateConflatedTracesV2 {
       final LineaL1L2BridgeSharedConfiguration lineaL1L2BridgeSharedConfiguration) {
     this.besuContext = besuContext;
     this.requestLimiter = requestLimiter;
-    this.traceWriter = new TraceWriter(Paths.get(endpointConfiguration.tracesOutputPath()));
+    this.traceWriter =
+        new TraceWriter(
+            Paths.get(endpointConfiguration.tracesOutputPath()),
+            endpointConfiguration.traceCompression());
     this.l1L2BridgeSharedConfiguration = lineaL1L2BridgeSharedConfiguration;
     this.traceFileCaching = endpointConfiguration.caching();
+    // log configuration
+    log.info("trace file caching {}", this.traceFileCaching ? "enabled." : "disabled.");
+    log.info(
+        "trace file compression {}",
+        endpointConfiguration.traceCompression() ? "enabled." : "disabled.");
   }
 
   public String getNamespace() {

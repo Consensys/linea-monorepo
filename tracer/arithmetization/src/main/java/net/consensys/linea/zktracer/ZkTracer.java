@@ -17,8 +17,9 @@ package net.consensys.linea.zktracer;
 import static net.consensys.linea.zktracer.ChainConfig.FORK_LINEA_CHAIN;
 import static net.consensys.linea.zktracer.Fork.getTraceFromFork;
 
+import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.zip.GZIPOutputStream;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,7 @@ import net.consensys.linea.zktracer.module.DebugMode;
 import net.consensys.linea.zktracer.module.hub.*;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.FiniteList;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
@@ -131,39 +134,60 @@ public class ZkTracer implements LineCountingTracer {
   public void writeToFile(final Path filename, long startBlock, long endBlock) {
     maybeThrowTracingExceptions();
     final List<Module> modulesToTrace = hub.getModulesToTrace();
-    final List<Trace.ColumnHeader> headers =
-        modulesToTrace.stream().flatMap(m -> m.columnHeaders(trace).stream()).toList();
     // Configure metadata
-    trace.addMetadata("releaseVersion", ZkTracer.class.getPackage().getSpecificationVersion());
-    trace.addMetadata("chainId", this.chain.id.toString());
-    trace.addMetadata("fork", this.chain.fork.toString());
-    trace.addMetadata("l2L1LogSmcAddress", this.chain.bridgeConfiguration.contract().toString());
-    trace.addMetadata("l2L1LogTopic", this.chain.bridgeConfiguration.topic().toString());
+    final Map<String, Object> metadata = buildMetaData(startBlock, endBlock);
+    // Construct (in memory) trace file
+    LtTraceFile ltf = LtTraceFile.of(metadata, trace, modulesToTrace);
+    //
+    try (FileOutputStream fout = new FileOutputStream(filename.toString())) {
+      // Compress file (if requested)
+      if (FilenameUtils.getExtension(filename.toString()).equals("gz")) {
+        // GZIPOutputStream has an internal buffer, so no need for separate buffered output stream.
+        try (GZIPOutputStream gzOut = new GZIPOutputStream(fout, 65536)) {
+          ltf.write(gzOut);
+          gzOut.flush();
+        }
+      } else {
+        try (BufferedOutputStream bout = new BufferedOutputStream(fout, 65536)) {
+          ltf.write(bout);
+          bout.flush();
+        }
+      }
+      // Flush to disk
+      fout.flush();
+    } catch (IOException e) {
+      log.error("Error while writing file {}", filename);
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Construct the metadata to be embedded in the generated trace file.
+   *
+   * @param startBlock
+   * @param endBlock
+   * @return
+   */
+  private Map<String, Object> buildMetaData(long startBlock, long endBlock) {
+    HashMap<String, Object> metadata = new HashMap<>(trace.getMetaData());
+    metadata.put("releaseVersion", ZkTracer.class.getPackage().getSpecificationVersion());
+    metadata.put("chainId", this.chain.id.toString());
+    metadata.put("fork", this.chain.fork.toString());
+    metadata.put("l2L1LogSmcAddress", this.chain.bridgeConfiguration.contract().toString());
+    metadata.put("l2L1LogTopic", this.chain.bridgeConfiguration.topic().toString());
     // include block range
     final Map<String, String> range = new HashMap<>();
     range.put("start", Long.toString(startBlock));
     range.put("end", Long.toString(endBlock));
-    trace.addMetadata("conflation", range);
+    metadata.put("conflation", range);
     // include line counts
     final Map<String, String> lineCounts = new HashMap<>();
     for (Module m : hub.getTracelessModules()) {
       lineCounts.put(m.moduleKey().toString(), Integer.toString(m.lineCount()));
     }
-    trace.addMetadata("lineCounts", lineCounts);
+    metadata.put("lineCounts", lineCounts);
     //
-    try (RandomAccessFile file = new RandomAccessFile(filename.toString(), "rw")) {
-      // Open trace for writing
-      trace.open(file, headers);
-      // Commit each module
-      for (Module m : modulesToTrace) {
-        m.commit(trace);
-      }
-      // Close the file
-      file.getChannel().force(false);
-    } catch (IOException e) {
-      log.error("Error while writing to the file {}", filename);
-      throw new RuntimeException(e);
-    }
+    return metadata;
   }
 
   @Override

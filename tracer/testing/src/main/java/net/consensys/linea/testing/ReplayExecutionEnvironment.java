@@ -106,7 +106,7 @@ public class ReplayExecutionEnvironment {
   public void checkTracer(String inputFilePath, long startBlock, long endBlock) {
     // Generate the output file path based on the input file path
     Path inputPath = Paths.get(inputFilePath);
-    String outputFileName = inputPath.getFileName().toString().replace(".json.gz", ".lt");
+    String outputFileName = inputPath.getFileName().toString().replace(".json.gz", ".lt.gz");
     Path outputPath = inputPath.getParent().resolve(outputFileName);
     this.zkTracer.writeToFile(outputPath, startBlock, endBlock);
     log.info("trace written to `{}`", outputPath);
