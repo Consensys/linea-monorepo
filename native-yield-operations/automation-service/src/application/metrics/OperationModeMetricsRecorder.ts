@@ -101,7 +101,6 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
 
     this.metricsUpdater.incrementReportYield(vault);
     this.metricsUpdater.addReportedYieldAmount(vault, weiToGweiNumber(yieldReport.yieldAmount));
-    this.metricsUpdater.setLastPeekedNegativeYieldReport(vault, weiToGweiNumber(yieldReport.outstandingNegativeYield));
 
     const dashboardClient = new DashboardContractClient(this.blockchainClient, dashboard);
     const nodeOperatorFeesDisbursed = dashboardClient.getNodeOperatorFeesPaidFromTxReceipt(receipt);

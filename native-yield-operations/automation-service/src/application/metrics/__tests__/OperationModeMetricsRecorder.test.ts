@@ -213,7 +213,6 @@ describe("OperationModeMetricsRecorder", () => {
       expect(yieldManagerClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(alternateYieldProvider);
       expect(metricsUpdater.incrementReportYield).toHaveBeenCalledWith(vaultAddress);
       expect(metricsUpdater.addReportedYieldAmount).toHaveBeenCalledWith(vaultAddress, 11);
-      expect(metricsUpdater.setLastPeekedNegativeYieldReport).toHaveBeenCalledWith(vaultAddress, 2);
       expect(metricsUpdater.addNodeOperatorFeesPaid).toHaveBeenCalledWith(vaultAddress, 4);
       expect(metricsUpdater.addLidoFeesPaid).toHaveBeenCalledWith(vaultAddress, 6);
       expect(metricsUpdater.addLiabilitiesPaid).toHaveBeenCalledWith(vaultAddress, 8);
