@@ -1,8 +1,8 @@
 export default class Account {
-  public readonly privateKey: string;
-  public readonly address: string;
+  public readonly privateKey: `0x${string}`;
+  public readonly address: `0x${string}`;
 
-  constructor(privateKey: string, address: string) {
+  constructor(privateKey: `0x${string}`, address: `0x${string}`) {
     this.privateKey = privateKey;
     this.address = address;
   }

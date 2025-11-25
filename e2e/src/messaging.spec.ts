@@ -1,9 +1,17 @@
-import { ethers, toBeHex, Wallet } from "ethers";
 import { describe, expect, it } from "@jest/globals";
 import type { Logger } from "winston";
-import { config } from "./config/tests-config";
-import { encodeFunctionCall, etherToWei, LineaEstimateGasClient, waitForEvents } from "./common/utils";
-import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
+import {
+  encodeFunctionCall,
+  estimateLineaGas,
+  etherToWei,
+  getMessageSentEventFromLogs,
+  waitForEvents,
+} from "./common/utils";
+import { DummyContractAbi, L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
+import { PrivateKeyAccount, toHex } from "viem";
+import { randomBytes } from "crypto";
+import { config } from "./config/tests-config/setup";
+import { L2RpcEndpointType } from "./config/tests-config/setup/clients/l2-client";
 
 async function sendL1ToL2Message(
   logger: Logger,
@@ -13,44 +21,43 @@ async function sendL1ToL2Message(
     fee = 0n,
     withCalldata = false,
   }: {
-    l1Account: Wallet;
-    l2Account: Wallet;
+    l1Account: PrivateKeyAccount;
+    l2Account: PrivateKeyAccount;
     fee: bigint;
     withCalldata: boolean;
   },
 ) {
-  const dummyContract = config.getL2DummyContract(l2Account);
-  const lineaRollup = config.getLineaRollupContract(l1Account);
+  const dummyContract = config.l2WalletClient({ account: l2Account }).contracts.dummy;
+  const lineaRollup = config.l1WalletClient({ account: l1Account }).contracts.rollup;
 
   const calldata = withCalldata
-    ? encodeFunctionCall(dummyContract.interface, "setPayload", [ethers.randomBytes(100)])
+    ? encodeFunctionCall({
+        abi: DummyContractAbi,
+        functionName: "setPayload",
+        args: [toHex(randomBytes(100).toString("hex"))],
+      })
     : "0x";
-  const destinationAddress = withCalldata
-    ? await dummyContract.getAddress()
-    : "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
+  const destinationAddress = withCalldata ? dummyContract.address : "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
-  const l1Provider = config.getL1Provider();
-  const { maxPriorityFeePerGas, maxFeePerGas } = await l1Provider.getFeeData();
+  const l1PublicClient = config.l1PublicClient();
+  const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.estimateFeesPerGas();
 
   logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
-  const tx = await lineaRollup.sendMessage(destinationAddress, fee, calldata, {
+  const txHash = await lineaRollup.sendMessage([destinationAddress, fee, calldata], {
     value: fee,
     maxPriorityFeePerGas,
     maxFeePerGas,
   });
 
-  logger.debug(`sendMessage transaction sent. transactionHash=${tx.hash}`);
+  logger.debug(`sendMessage transaction sent. transactionHash=${txHash}`);
 
-  let receipt = await tx.wait();
-  while (!receipt) {
-    logger.debug(`Waiting for transaction to be mined... transactionHash=${tx.hash}`);
-    receipt = await tx.wait();
-  }
+  logger.debug(`Waiting for transaction to be mined... transactionHash=${txHash}`);
+  const receipt = await l1PublicClient.waitForTransactionReceipt({ hash: txHash });
 
-  logger.debug(`Transaction mined. transactionHash=${tx.hash} status=${receipt.status}`);
+  logger.debug(`Transaction mined. transactionHash=${txHash} status=${receipt.status}`);
 
-  return { tx, receipt };
+  return { txHash, receipt };
 }
 
 async function sendL2ToL1Message(
@@ -61,49 +68,53 @@ async function sendL2ToL1Message(
     fee = 0n,
     withCalldata = false,
   }: {
-    l1Account: Wallet;
-    l2Account: Wallet;
+    l1Account: PrivateKeyAccount;
+    l2Account: PrivateKeyAccount;
     fee: bigint;
     withCalldata: boolean;
   },
 ) {
-  const dummyContract = config.getL1DummyContract(l1Account);
-  const l2MessageService = config.getL2MessageServiceContract(l2Account);
-  const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
+  const dummyContract = config.l1WalletClient({ account: l1Account }).contracts.dummy;
+  const l2MessageService = config.l2WalletClient({ account: l2Account }).contracts.messageService;
+  const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpointType.BesuNode });
 
   const calldata = withCalldata
-    ? encodeFunctionCall(dummyContract.interface, "setPayload", [ethers.randomBytes(100)])
+    ? encodeFunctionCall({
+        abi: DummyContractAbi,
+        functionName: "setPayload",
+        args: [toHex(randomBytes(100).toString("hex"))],
+      })
     : "0x";
 
-  const destinationAddress = withCalldata ? await dummyContract.getAddress() : l1Account.address;
+  const destinationAddress = withCalldata ? await dummyContract.address : l1Account.address;
 
-  const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await lineaEstimateGasClient.lineaEstimateGas(
-    l2Account.address,
-    await l2MessageService.getAddress(),
-    l2MessageService.interface.encodeFunctionData("sendMessage", [destinationAddress, fee, calldata]),
-    toBeHex(etherToWei("0.001")),
-  );
+  const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await estimateLineaGas(l2PublicClient, {
+    account: l2Account,
+    to: l2MessageService.address,
+    data: encodeFunctionCall({
+      abi: L2MessageServiceV1Abi,
+      functionName: "sendMessage",
+      args: [destinationAddress, fee, calldata],
+    }),
+    value: etherToWei("0.001"),
+  });
   logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
-  const tx = await l2MessageService.sendMessage(destinationAddress, fee, calldata, {
+  const txHash = await l2MessageService.sendMessage([destinationAddress, fee, calldata], {
     value: fee,
     maxPriorityFeePerGas,
     maxFeePerGas,
     gasLimit,
   });
 
-  logger.debug(`sendMessage transaction sent. transactionHash=${tx.hash}`);
+  logger.debug(`sendMessage transaction sent. transactionHash=${txHash}`);
 
-  let receipt = await tx.wait();
+  logger.debug(`Waiting for transaction to be mined... transactionHash=${txHash}`);
+  const receipt = await config.l1PublicClient().waitForTransactionReceipt({ hash: txHash });
 
-  while (!receipt) {
-    logger.debug(`Waiting for transaction to be mined... transactionHash=${tx.hash}`);
-    receipt = await tx.wait();
-  }
+  logger.debug(`Transaction mined. transactionHash=${txHash} status=${receipt.status}`);
 
-  logger.debug(`Transaction mined. transactionHash=${tx.hash} status=${receipt.status}`);
-
-  return { tx, receipt };
+  return { txHash, receipt };
 }
 
 const l1AccountManager = config.getL1AccountManager();
@@ -118,23 +129,26 @@ describe("Messaging test suite", () => {
         l2AccountManager.generateAccount(),
       ]);
 
-      const { tx, receipt } = await sendL1ToL2Message(logger, {
+      const { txHash, receipt } = await sendL1ToL2Message(logger, {
         l1Account,
         l2Account,
         fee: etherToWei("1.1"),
         withCalldata: true,
       });
 
-      const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
-      const messageHash = messageSentEvent.topics[3];
-      logger.debug(`L1 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+      const [messageSentEvent] = getMessageSentEventFromLogs([receipt]);
+      const messageHash = messageSentEvent.messageHash;
+      logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${txHash}`);
 
       logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-      const l2MessageService = config.getL2MessageServiceContract();
-      const [messageClaimedEvent] = await waitForEvents(
-        l2MessageService,
-        l2MessageService.filters.MessageClaimed(messageHash),
-      );
+      const l2PublicClient = config.l2PublicClient();
+      const [messageClaimedEvent] = await waitForEvents(l2PublicClient, {
+        abi: L2MessageServiceV1Abi,
+        eventName: "MessageClaimed",
+        args: {
+          _messageHash: messageHash,
+        },
+      });
 
       expect(messageClaimedEvent).toBeDefined();
       logger.debug(
@@ -152,23 +166,26 @@ describe("Messaging test suite", () => {
         l2AccountManager.generateAccount(),
       ]);
 
-      const { tx, receipt } = await sendL1ToL2Message(logger, {
+      const { txHash, receipt } = await sendL1ToL2Message(logger, {
         l1Account,
         l2Account,
         fee: etherToWei("1.1"),
         withCalldata: false,
       });
 
-      const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
-      const messageHash = messageSentEvent.topics[3];
-      logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${tx.hash}`);
+      const [messageSentEvent] = getMessageSentEventFromLogs([receipt]);
+      const messageHash = messageSentEvent.messageHash;
+      logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${txHash}`);
 
       logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-      const l2MessageService = config.getL2MessageServiceContract();
-      const [messageClaimedEvent] = await waitForEvents(
-        l2MessageService,
-        l2MessageService.filters.MessageClaimed(messageHash),
-      );
+      const l2PublicClient = config.l2PublicClient();
+      const [messageClaimedEvent] = await waitForEvents(l2PublicClient, {
+        abi: L2MessageServiceV1Abi,
+        eventName: "MessageClaimed",
+        args: {
+          _messageHash: messageHash,
+        },
+      });
       expect(messageClaimedEvent).toBeDefined();
       logger.debug(
         `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
@@ -186,23 +203,28 @@ describe("Messaging test suite", () => {
         l2AccountManager.generateAccount(),
       ]);
 
-      const { tx, receipt } = await sendL1ToL2Message(logger, {
+      const { txHash, receipt } = await sendL1ToL2Message(logger, {
         l1Account,
         l2Account,
         fee: 0n,
         withCalldata: false,
       });
 
-      const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
-      const messageHash = messageSentEvent.topics[3];
-      logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${tx.hash}`);
+      const [messageSentEvent] = getMessageSentEventFromLogs([receipt]);
+      const messageHash = messageSentEvent.messageHash;
+      logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${txHash}`);
 
       logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-      const l2MessageService = config.getL2MessageServiceContract();
-      const [messageClaimedEvent] = await waitForEvents(
-        l2MessageService,
-        l2MessageService.filters.MessageClaimed(messageHash),
-      );
+      const l2PublicClient = config.l2PublicClient();
+      const [messageClaimedEvent] = await waitForEvents(l2PublicClient, {
+        abi: L2MessageServiceV1Abi,
+        eventName: "MessageClaimed",
+        args: {
+          _messageHash: messageHash,
+        },
+        pollingIntervalMs: 1_000,
+      });
+
       expect(messageClaimedEvent).toBeDefined();
       logger.debug(
         `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
@@ -219,31 +241,37 @@ describe("Messaging test suite", () => {
         l2AccountManager.generateAccount(),
       ]);
 
-      const lineaRollup = config.getLineaRollupContract();
-      const { tx, receipt } = await sendL2ToL1Message(logger, {
+      const l1PublicClient = config.l1PublicClient();
+      const { txHash, receipt } = await sendL2ToL1Message(logger, {
         l1Account,
         l2Account,
         fee: etherToWei("0.001"),
         withCalldata: true,
       });
 
-      const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
-      const messageHash = messageSentEvent.topics[3];
-      logger.debug(`L2 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+      const [messageSentEvent] = getMessageSentEventFromLogs([receipt]);
+      const messageHash = messageSentEvent.messageHash;
+      logger.debug(`L2 message sent. messageHash=${messageHash} transactionHash=${txHash}`);
 
       logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
-      await waitForEvents(
-        lineaRollup,
-        lineaRollup.filters.L2MessagingBlockAnchored(messageSentEvent.blockNumber),
-        1_000,
-      );
+      await waitForEvents(l1PublicClient, {
+        abi: LineaRollupV6Abi,
+        eventName: "L2MessagingBlockAnchored",
+        args: {
+          l2Block: messageSentEvent.blockNumber,
+        },
+        pollingIntervalMs: 1_000,
+      });
 
       logger.debug(`Waiting for MessageClaimed event on L1... messageHash=${messageHash}`);
-      const [messageClaimedEvent] = await waitForEvents(
-        lineaRollup,
-        lineaRollup.filters.MessageClaimed(messageHash),
-        1_000,
-      );
+      const [messageClaimedEvent] = await waitForEvents(l1PublicClient, {
+        abi: LineaRollupV6Abi,
+        eventName: "MessageClaimed",
+        args: {
+          _messageHash: messageHash,
+        },
+        pollingIntervalMs: 1_000,
+      });
 
       expect(messageClaimedEvent).toBeDefined();
       logger.debug(
@@ -261,31 +289,37 @@ describe("Messaging test suite", () => {
         l2AccountManager.generateAccount(),
       ]);
 
-      const lineaRollup = config.getLineaRollupContract();
-      const { tx, receipt } = await sendL2ToL1Message(logger, {
+      const l1PublicClient = config.l1PublicClient();
+      const { txHash, receipt } = await sendL2ToL1Message(logger, {
         l1Account,
         l2Account,
         fee: etherToWei("0.001"),
         withCalldata: false,
       });
 
-      const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
-      const messageHash = messageSentEvent.topics[3];
-      logger.debug(`L2 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+      const [messageSentEvent] = getMessageSentEventFromLogs([receipt]);
+      const messageHash = messageSentEvent.messageHash;
+      logger.debug(`L2 message sent. messageHash=${messageHash} transactionHash=${txHash}`);
 
       logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
-      await waitForEvents(
-        lineaRollup,
-        lineaRollup.filters.L2MessagingBlockAnchored(messageSentEvent.blockNumber),
-        1_000,
-      );
+      await waitForEvents(l1PublicClient, {
+        abi: LineaRollupV6Abi,
+        eventName: "L2MessagingBlockAnchored",
+        args: {
+          l2Block: messageSentEvent.blockNumber,
+        },
+        pollingIntervalMs: 1_000,
+      });
 
       logger.debug(`Waiting for MessageClaimed event on L1. messageHash=${messageHash}`);
-      const [messageClaimedEvent] = await waitForEvents(
-        lineaRollup,
-        lineaRollup.filters.MessageClaimed(messageHash),
-        1_000,
-      );
+      const [messageClaimedEvent] = await waitForEvents(l1PublicClient, {
+        abi: LineaRollupV6Abi,
+        eventName: "MessageClaimed",
+        args: {
+          _messageHash: messageHash,
+        },
+        pollingIntervalMs: 1_000,
+      });
 
       expect(messageClaimedEvent).toBeDefined();
 

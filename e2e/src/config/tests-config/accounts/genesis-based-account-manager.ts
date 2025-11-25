@@ -1,7 +1,7 @@
-import { ethers, Provider } from "ethers";
 import { readFileSync } from "fs";
 import Account from "./account";
 import { AccountManager } from "./account-manager";
+import { Client, getAddress } from "viem";
 
 interface GenesisJson {
   config: {
@@ -25,21 +25,22 @@ function readGenesisFileAccounts(genesisJson: GenesisJson): Account[] {
   for (const address in alloc) {
     const accountData = alloc[address];
     if (accountData.privateKey) {
-      const addr = ethers.getAddress(address);
-      accounts.push(new Account(accountData.privateKey, addr));
+      const prefixedAddress = address.startsWith("0x") ? address : `0x${address}`;
+      const addr = getAddress(prefixedAddress);
+      accounts.push(new Account(accountData.privateKey as `0x${string}`, addr));
     }
   }
   return accounts;
 }
 
 class GenesisBasedAccountManager extends AccountManager {
-  constructor(provider: Provider, genesisFilePath: string) {
+  constructor(client: Client, genesisFilePath: string) {
     const genesisJson = readJsonFile(genesisFilePath);
     const genesis = genesisJson as GenesisJson;
     const chainId = genesis.config.chainId;
     const whaleAccounts = readGenesisFileAccounts(genesis);
 
-    super(provider, whaleAccounts, chainId);
+    super(client, whaleAccounts, chainId);
   }
 }
 

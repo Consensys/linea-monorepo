@@ -14,7 +14,7 @@
     "test:e2e:sendbundle:local": "TEST_ENV=local npx jest ./src/send-bundle.spec.ts",
     "test:e2e:dev": "TEST_ENV=dev npx jest --config ./jest.testnet.config.ts --bail --runInBand --testPathIgnorePatterns=restart.spec.ts --testPathIgnorePatterns=linea-besu-fleet.spec.ts --testPathIgnorePatterns=liveness.spec.ts",
     "test:e2e:sepolia": "TEST_ENV=sepolia npx jest --config ./jest.testnet.config.ts --bail --runInBand --testPathIgnorePatterns=restart.spec.ts --testPathIgnorePatterns=linea-besu-fleet.spec.ts --testPathIgnorePatterns=liveness.spec.ts",
-    "postinstall": "typechain --target ethers-v6 --out-dir ./src/typechain '../contracts/local-deployments-artifacts/**/*.json'",
+    "postinstall": "npx ts-node ./scripts/generateAbi.ts",
     "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix",
     "clean": "rimraf node_modules src/typechain"
   },
@@ -22,16 +22,14 @@
   "license": "(MIT OR Apache-2.0)",
   "devDependencies": {
     "@jest/globals": "catalog:",
-    "@openzeppelin/upgrades-core": "1.42.1",
-    "@typechain/ethers-v6": "catalog:",
     "@types/jest": "catalog:",
     "async-mutex": "^0.5.0",
     "child_process": "1.0.2",
     "dotenv": "catalog:",
-    "ethers": "catalog:",
     "jest": "catalog:",
     "ts-jest": "catalog:",
-    "typechain": "catalog:",
-    "winston": "catalog:"
+    "viem": "catalog:",
+    "winston": "catalog:",
+    "zod": "catalog:"
   }
 }
