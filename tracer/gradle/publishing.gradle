@@ -30,6 +30,11 @@ tasks.register('javadocJar', Jar) {
   from javadoc.destinationDir
 }
 
+tasks.withType(GenerateModuleMetadata).configureEach {
+    // We want to enforce the dependency on Besu BOM
+    suppressedValidationErrors.add('enforced-platform')
+}
+
 publishing {
   repositories {
     maven {
