@@ -22,7 +22,7 @@ import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.utils.Numeric;
 
-public class TransactionTraceLimitLimitlessTest extends LineaPluginTestBase {
+public class TransactionTraceLimitLimitlessTest extends LineaPluginTestBasePrague {
 
   private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
   private static final BigInteger VALUE = BigInteger.ZERO;
@@ -65,6 +65,7 @@ public class TransactionTraceLimitLimitlessTest extends LineaPluginTestBase {
       final byte[] signedTransaction = TransactionEncoder.signMessage(transaction, credentials);
       final EthSendTransaction response =
           web3j.ethSendRawTransaction(Numeric.toHexString(signedTransaction)).send();
+      this.buildNewBlock();
       hashes.add(response.getTransactionHash());
     }
 
