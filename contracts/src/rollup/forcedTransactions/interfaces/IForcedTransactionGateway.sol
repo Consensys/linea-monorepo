@@ -132,12 +132,13 @@ interface IForcedTransactionGateway {
    */
   function submitForcedTransaction(
     Eip1559Transaction memory _forcedTransaction,
-    LastFinalizedState calldata _lastFinalizedState
+    LastFinalizedState memory _lastFinalizedState
   ) external;
 
   /**
-   * @notice Function to change the useDenyList feature toggle state.
-   * @param _useDenyList The feature toggle enabled status.
+   * @notice Function to toggle the usage of the deny list.
+   * @dev Only callable by an account with the DEFAULT_ADMIN_ROLE.
+   * @param _useDenyList Bool indicating whether or not to use the deny list.
    */
-  function setDenyListFeatureToggle(bool _useDenyList) external;
+  function toggleUseDenyList(bool _useDenyList) external;
 }

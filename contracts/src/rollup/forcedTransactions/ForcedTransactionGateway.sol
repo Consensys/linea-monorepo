@@ -80,7 +80,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
    */
   function submitForcedTransaction(
     Eip1559Transaction memory _forcedTransaction,
-    LastFinalizedState calldata _lastFinalizedState
+    LastFinalizedState memory _lastFinalizedState
   ) external {
     require(_forcedTransaction.gasLimit >= MIN_GAS_LIMIT, GasLimitTooLow());
     require(_forcedTransaction.gasLimit <= MAX_GAS_LIMIT, MaxGasLimitExceeded());
@@ -204,7 +204,12 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     );
   }
 
-  function setDenyListFeatureToggle(bool _useDenyList) external onlyRole(DEFAULT_ADMIN_ROLE) {
+  /**
+   * @notice Function to toggle the usage of the deny list.
+   * @dev Only callable by an account with the DEFAULT_ADMIN_ROLE.
+   * @param _useDenyList Bool indicating whether or not to use the deny list.
+   */
+  function toggleUseDenyList(bool _useDenyList) external onlyRole(DEFAULT_ADMIN_ROLE) {
     require(useDenyList != _useDenyList, UseDenyListAlreadySet(_useDenyList));
     useDenyList = _useDenyList;
     emit UseDenyListSet(_useDenyList);
