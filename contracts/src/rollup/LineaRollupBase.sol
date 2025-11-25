@@ -83,9 +83,9 @@ abstract contract LineaRollupBase is
   /// @notice Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
   bytes32 public currentFinalizedState;
 
-  /// @notice The address of the fallback operator.
+  /// @notice The address of the liveness recovery operator.
   /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
-  address public fallbackOperator;
+  address public livenessRecoveryOperator;
 
   /// @notice The address of the shnarf provider.
   /// @dev Default is address(this).

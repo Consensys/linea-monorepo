@@ -8,8 +8,8 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestLineaRollup is LineaRollup, CalldataBlobAcceptor {
-  function setFallbackOperatorAddress(address _fallbackOperator) external {
-    fallbackOperator = _fallbackOperator;
+  function setLivenessRecoveryOperatorAddress(address _livenessRecoveryOperator) external {
+    livenessRecoveryOperator = _livenessRecoveryOperator;
   }
 
   function addRollingHash(uint256 _messageNumber, bytes32 _messageHash) external {
@@ -50,7 +50,7 @@ contract TestLineaRollup is LineaRollup, CalldataBlobAcceptor {
 
   /**
    * @notice Revokes `role` from the calling account.
-   * @dev Fallback operator cannot renounce role. Reverts with OnlyNonFallbackOperator.
+   * @dev Liveness recovery operator cannot renounce role. Reverts with OnlyNonLivenessRecoveryOperator.
    * @param _role The role to renounce.
    * @param _account The account to renounce - can only be the _msgSender().
    */

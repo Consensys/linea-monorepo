@@ -127,7 +127,7 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
     });
 
-    it("Should revert if the fallback operator address is zero address", async () => {
+    it("Should revert if the liveness recovery operator address is zero address", async () => {
       const initializationData = {
         initialStateRootHash: parentStateRootHash,
         initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
@@ -671,15 +671,15 @@ describe("Linea Rollup contract", () => {
     });
   });
 
-  describe("fallback operator Role", () => {
+  describe("liveness recovery operator Role", () => {
     const expectedLastFinalizedState = calculateLastFinalizedState(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
 
-    it("Should revert if trying to set fallback operator role before six months have passed", async () => {
+    it("Should revert if trying to set liveness recovery operator role before six months have passed", async () => {
       const initialBlock = await ethers.provider.getBlock("latest");
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
         "LastFinalizationTimeNotLapsed",
       );
     });
@@ -690,7 +690,7 @@ describe("Linea Rollup contract", () => {
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, 123456789n),
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, 123456789n),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -702,7 +702,7 @@ describe("Linea Rollup contract", () => {
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setFallbackOperator(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        lineaRollup.setLivenessRecoveryOperator(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -715,32 +715,32 @@ describe("Linea Rollup contract", () => {
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setFallbackOperator(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        lineaRollup.setLivenessRecoveryOperator(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
     });
 
-    it("Should set the fallback operator role after six months have passed", async () => {
+    it("Should set the liveness recovery operator role after six months have passed", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
 
       await expectEvent(
         lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
-        "FallbackOperatorRoleGranted",
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "LivenessRecoveryOperatorRoleGranted",
         [admin.address, FALLBACK_OPERATOR_ADDRESS],
       );
 
       expect(await lineaRollup.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
     });
 
-    it("Should revert if trying to renounce role as fallback operator", async () => {
+    it("Should revert if trying to renounce role as liveness recovery operator", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
 
       await expectEvent(
         lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
-        "FallbackOperatorRoleGranted",
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "LivenessRecoveryOperatorRoleGranted",
         [admin.address, FALLBACK_OPERATOR_ADDRESS],
       );
 
@@ -748,10 +748,10 @@ describe("Linea Rollup contract", () => {
 
       const renounceCall = lineaRollup.renounceRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS);
 
-      expectRevertWithCustomError(lineaRollup, renounceCall, "OnlyNonFallbackOperator");
+      await expectRevertWithCustomError(lineaRollup, renounceCall, "OnlyNonLivenessRecoveryOperator");
     });
 
-    it("Should renounce role if not fallback operator", async () => {
+    it("Should renounce role if not liveness recovery operator", async () => {
       expect(await lineaRollup.hasRole(OPERATOR_ROLE, operator.address)).to.be.true;
 
       const renounceCall = lineaRollup.connect(operator).renounceRole(OPERATOR_ROLE, operator.address);
@@ -788,14 +788,14 @@ describe("Linea Rollup contract", () => {
 
       const upgradedContract = await newLineaRollup.waitForDeployment();
 
-      await upgradedContract.setFallbackOperatorAddress(forwardingProxyAddress);
+      await upgradedContract.setLivenessRecoveryOperatorAddress(forwardingProxyAddress);
 
       // Grants deployed callforwarding proxy as operator
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
       await expectEvent(
         upgradedContract,
-        upgradedContract.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
-        "FallbackOperatorRoleGranted",
+        upgradedContract.setLivenessRecoveryOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "LivenessRecoveryOperatorRoleGranted",
         [admin.address, forwardingProxyAddress],
       );
 
