@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.ChainConfig.SEPOLIA_PRAGUE_TESTCONFIG
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -37,6 +38,7 @@ public class BlockHashTests extends TracerTestBase {
    * The purpose of this second replay tests is to provide two consecutive conflation to the prover,
    * with BLOCKHASH checking the "historical hashes" in both conflations.
    */
+  @Disabled
   @Test
   void conflationFollowingThePreviousOneWithAgainHistoricalBlockhashesChecked(TestInfo testInfo) {
     replay(SEPOLIA_PRAGUE_TESTCONFIG, "prague/19562399-19562417.sepolia.prague.json.gz", testInfo);

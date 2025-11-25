@@ -99,7 +99,7 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
     hub.defers().scheduleForPostExecution(this);
   }
 
-  public void callBlockhashForParent(BlockHeader blockHeader) {
+  public void callBlockhashForParent(ProcessableBlockHeader blockHeader) {
     final long blockNumber = blockHeader.getNumber();
     checkArgument(blockNumber > 0, "BLOCKHASH can't be called for genesis block");
     final Bytes32 parentBlockNumber = longToBytes32(blockNumber - 1);
