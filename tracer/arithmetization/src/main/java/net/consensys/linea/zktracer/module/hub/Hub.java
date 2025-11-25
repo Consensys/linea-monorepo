@@ -295,7 +295,7 @@ public abstract class Hub implements Module {
   final IncrementingModule blsG1MapFp2ToG2EffectiveCall =
       new IncrementingModule(PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS);
   final IncrementingModule blsC1MembershipCalls =
-      new IncrementingModule(PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS);
+      new IncrementingModule(PRECOMPILE_BLS_C1_MEMBERSHIP_CALLS);
   final IncrementingModule blsC2MembershipCalls =
       new IncrementingModule(PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS);
   final IncrementingModule blsG1MembershipCalls =
