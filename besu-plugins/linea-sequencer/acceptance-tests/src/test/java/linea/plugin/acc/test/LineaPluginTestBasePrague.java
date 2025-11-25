@@ -100,7 +100,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
             "miner1",
             getCliqueOptions(),
             getTestCliOptions(),
-            Set.of("LINEA", "MINER"),
+            Set.of("LINEA", "MINER", "PLUGINS"),
             true,
             DEFAULT_REQUESTED_PLUGINS);
     minerNode.setTransactionPoolConfiguration(
