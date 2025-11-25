@@ -60,9 +60,19 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
       logs: txReceipt.logs,
     });
 
-    const fee =
-      logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.fee ?? 0n;
+    const fee = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.fee ?? 0n;
     return fee;
   }
-}
 
+  /**
+   * Peeks the unpaid Lido protocol fees from the Dashboard contract.
+   * Reads the obligations() function which returns a tuple of [sharesToBurn, feesToSettle].
+   * Returns the feesToSettle value, representing the amount of unpaid Lido protocol fees.
+   *
+   * @returns {Promise<bigint>} The unpaid Lido protocol fees amount in wei.
+   */
+  async peekUnpaidLidoProtocolFees(): Promise<bigint> {
+    const [, feesToSettle] = await this.contract.read.obligations();
+    return feesToSettle;
+  }
+}

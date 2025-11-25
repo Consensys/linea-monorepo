@@ -28,7 +28,12 @@ describe("DashboardContractClient", () => {
 
   let blockchainClient: MockProxy<IBlockchainClient<PublicClient, TransactionReceipt>>;
   let publicClient: PublicClient;
-  const viemContractStub = { abi: DashboardABI } as any;
+  const viemContractStub = {
+    abi: DashboardABI,
+    read: {
+      obligations: jest.fn(),
+    },
+  } as any;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -135,6 +140,31 @@ describe("DashboardContractClient", () => {
 
     expect(fee).toBe(0n);
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns unpaid Lido protocol fees from obligations", async () => {
+    const client = createClient();
+    const sharesToBurn = 1000n;
+    const feesToSettle = 500n;
+    viemContractStub.read.obligations.mockResolvedValueOnce([sharesToBurn, feesToSettle]);
+
+    const result = await client.peekUnpaidLidoProtocolFees();
+
+    expect(result).toBe(feesToSettle);
+    expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
+    expect(viemContractStub.read.obligations).toHaveBeenCalledWith();
+  });
+
+  it("returns zero when there are no unpaid fees", async () => {
+    const client = createClient();
+    const sharesToBurn = 0n;
+    const feesToSettle = 0n;
+    viemContractStub.read.obligations.mockResolvedValueOnce([sharesToBurn, feesToSettle]);
+
+    const result = await client.peekUnpaidLidoProtocolFees();
+
+    expect(result).toBe(0n);
+    expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
   });
 });
 
