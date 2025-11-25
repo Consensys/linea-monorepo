@@ -84,6 +84,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
   private static final ScheduledExecutorService consensusScheduler =
       Executors.newSingleThreadScheduledExecutor();
   private Long blockTimeSeconds = null;
+  protected Boolean buildBlocksInBackground = true;
 
   // Override this in subclasses to use a different genesis file template
   protected String getGenesisFileTemplatePath() {
@@ -110,6 +111,7 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     mapper = new ObjectMapper();
     this.engineApiService = new EngineAPIService(minerNode, ethTransactions, mapper);
     this.blockTimeSeconds = getDefaultSlotTimeSeconds();
+    buildNewBlocksInBackground();
   }
 
   // Ideally GenesisConfigurationFactory.createCliqueGenesisConfig would support a custom genesis
@@ -141,7 +143,9 @@ public abstract class LineaPluginTestBasePrague extends LineaPluginTestBase {
     consensusScheduler.scheduleAtFixedRate(
         () -> {
           try {
-            buildNewBlock(Instant.now().getEpochSecond(), blockTimeSeconds * 1000);
+            if (buildBlocksInBackground) {
+              buildNewBlock(Instant.now().getEpochSecond(), blockTimeSeconds * 1000);
+            }
           } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
           }

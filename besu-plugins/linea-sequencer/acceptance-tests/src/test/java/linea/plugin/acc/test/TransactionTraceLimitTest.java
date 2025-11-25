@@ -37,7 +37,6 @@ public class TransactionTraceLimitTest extends LineaPluginTestBasePrague {
 
   @Test
   public void transactionsMinedInSeparateBlocksTest() throws Exception {
-    buildNewBlocksInBackground();
     final DummyAdder dummyAdder = deployDummyAdder();
     final Web3j web3j = minerNode.nodeRequests().eth();
     final String contractAddress = dummyAdder.getContractAddress();
