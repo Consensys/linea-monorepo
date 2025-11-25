@@ -269,7 +269,9 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
         this.metricsUpdater.incrementLidoVaultAccountingReport(this.vault);
       }
     } else {
-      this.logger.info("_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)");
+      this.logger.info(
+        "_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
+      );
     }
 
     // Second call: report yield
