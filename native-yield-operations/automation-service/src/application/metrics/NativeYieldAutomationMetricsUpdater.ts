@@ -113,12 +113,13 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   /**
    * Records a rebalance operation amount.
    * Increments the rebalance amount counter for the specified direction.
+   * Skips recording if direction is NONE or amount is non-positive.
    *
-   * @param {RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE} direction - The direction of the rebalance (STAKE or UNSTAKE).
+   * @param {RebalanceDirection} direction - The direction of the rebalance (NONE, STAKE, or UNSTAKE).
    * @param {number} amountGwei - The rebalance amount in gwei. Must be greater than 0 to be recorded.
    */
-  public recordRebalance(direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE, amountGwei: number): void {
-    if (amountGwei <= 0) return;
+  public recordRebalance(direction: RebalanceDirection, amountGwei: number): void {
+    if (direction === RebalanceDirection.NONE || amountGwei <= 0) return;
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
       { direction },

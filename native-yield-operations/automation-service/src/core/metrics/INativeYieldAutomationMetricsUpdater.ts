@@ -4,7 +4,7 @@ import { OperationMode } from "../enums/OperationModeEnums.js";
 import { OperationModeExecutionStatus } from "./LineaNativeYieldAutomationServiceMetrics.js";
 
 export interface INativeYieldAutomationMetricsUpdater {
-  recordRebalance(direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE, amountGwei: number): void;
+  recordRebalance(direction: RebalanceDirection, amountGwei: number): void;
 
   addValidatorPartialUnstakeAmount(validatorPubkey: Hex, amountGwei: number): void;
 
