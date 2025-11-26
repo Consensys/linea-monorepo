@@ -53,7 +53,7 @@ func NewParams(rate, nbColumns, maxNbRows, logTwoDegree, logTwoBound int) Params
 //
 // [h() .. ....   h()] := v
 // Compute MT of v
-func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_bls12377.Tree, []fr.Element) {
+func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_bls12377.Tree, []field.Element) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.
@@ -64,10 +64,10 @@ func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (En
 
 	var commitment Commitment
 
-	colHashes := p.sisTransversalHash(encodedMatrix)
+	leaf, colHashes := p.sisTransversalHash(encodedMatrix)
 
 	tree := smt_bls12377.BuildComplete(
-		colHashes,
+		leaf,
 	)
 
 	commitment = tree.Root
@@ -75,7 +75,7 @@ func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (En
 	return encodedMatrix, commitment, tree, colHashes
 }
 
-func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) []fr.Element {
+func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) ([]fr.Element, []field.Element) {
 
 	// sisHashes = [ [a, b ...], ... ] where [a, b, ...] is the sis hash of a column, a, b etc are on koalabear
 	// let h = poseidon2_bls377
@@ -97,7 +97,7 @@ func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) []fr.Element {
 			leaves[chunkID] = hasher.SumElement()
 		}
 	})
-	return leaves
+	return leaves, sisHashes
 }
 
 // CommitMerkleWithoutSIS
