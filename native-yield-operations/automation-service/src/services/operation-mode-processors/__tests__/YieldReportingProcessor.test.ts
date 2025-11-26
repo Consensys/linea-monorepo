@@ -633,7 +633,6 @@ describe("YieldReportingProcessor", () => {
 
     beforeEach(() => {
       yieldManager.getLidoDashboardAddress.mockResolvedValue(dashboardAddress);
-      yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
     });
 
     it("returns true when both thresholds are met", async () => {
@@ -819,9 +818,9 @@ describe("YieldReportingProcessor", () => {
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
       const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      (processor as unknown as { vault: Address }).vault = vaultAddress;
       await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
-      expect(yieldManager.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
       expect(metricsUpdater.setLastPeekedNegativeYieldReport).toHaveBeenCalledWith(vaultAddress, 1000000000000000000);
       expect(metricsUpdater.setLastPeekedPositiveYieldReport).toHaveBeenCalledWith(vaultAddress, 2000000000000000000);
       expect(metricsUpdater.setLastPeekUnpaidLidoProtocolFees).toHaveBeenCalledWith(vaultAddress, 600000000000000000);
@@ -834,6 +833,7 @@ describe("YieldReportingProcessor", () => {
       yieldManager.peekYieldReport.mockResolvedValue(undefined);
 
       const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      (processor as unknown as { vault: Address }).vault = vaultAddress;
       await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       // When yieldReport is undefined, these metrics should not be called

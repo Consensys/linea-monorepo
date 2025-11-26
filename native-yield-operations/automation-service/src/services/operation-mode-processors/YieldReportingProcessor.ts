@@ -302,10 +302,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @returns {Promise<boolean>} True if yield should be reported (either threshold met), false otherwise.
    */
   async _shouldReportYield(): Promise<boolean> {
-    // Get vault address first
-    const vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
-
-    // First, get dashboard address
+    // Get dashboard address
     const dashboardAddress = await this.yieldManagerContractClient.getLidoDashboardAddress(this.yieldProvider);
     const dashboardClient = DashboardContractClient.getOrCreate(dashboardAddress);
 
@@ -327,14 +324,14 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       const outstandingNegativeYield = yieldReport?.outstandingNegativeYield;
       const yieldAmount = yieldReport?.yieldAmount;
       await Promise.all([
-        this.metricsUpdater.setLastPeekedNegativeYieldReport(vault, weiToGweiNumber(outstandingNegativeYield)),
-        this.metricsUpdater.setLastPeekedPositiveYieldReport(vault, weiToGweiNumber(yieldAmount)),
+        this.metricsUpdater.setLastPeekedNegativeYieldReport(this.vault, weiToGweiNumber(outstandingNegativeYield)),
+        this.metricsUpdater.setLastPeekedPositiveYieldReport(this.vault, weiToGweiNumber(yieldAmount)),
       ]);
       yieldThresholdMet = yieldAmount >= this.minPositiveYieldToReportWei;
     }
 
     if (unpaidLidoProtocolFees !== undefined) {
-      await this.metricsUpdater.setLastPeekUnpaidLidoProtocolFees(vault, weiToGweiNumber(unpaidLidoProtocolFees));
+      await this.metricsUpdater.setLastPeekUnpaidLidoProtocolFees(this.vault, weiToGweiNumber(unpaidLidoProtocolFees));
       feesThresholdMet = unpaidLidoProtocolFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
     }
 
