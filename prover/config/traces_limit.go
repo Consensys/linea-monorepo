@@ -125,24 +125,6 @@ type TracesLimits struct {
 	U24  int `mapstructure:"U24" validate:"power_of_2" corset:"u24"`
 	U23  int `mapstructure:"U23" validate:"power_of_2" corset:"u23"`
 	U20  int `mapstructure:"U20" validate:"power_of_2" corset:"u20"`
-	// Start of new modules for Osaka
-	BIT_XOAN_U2   int `mapstructure:"BIT_XOAN_U2" validate:"power_of_2" corset:"bit_xoan_u2"`
-	BIT_XOAN_U4   int `mapstructure:"BIT_XOAN_U4" validate:"power_of_2" corset:"bit_xoan_u4"`
-	BIT_XOAN_U8   int `mapstructure:"BIT_XOAN_U8" validate:"power_of_2" corset:"bit_xoan_u8"`
-	BIT_XOAN_U16  int `mapstructure:"BIT_XOAN_U16" validate:"power_of_2" corset:"bit_xoan_u16"`
-	BIT_XOAN_U32  int `mapstructure:"BIT_XOAN_U32" validate:"power_of_2" corset:"bit_xoan_u32"`
-	BIT_XOAN_U64  int `mapstructure:"BIT_XOAN_U64" validate:"power_of_2" corset:"bit_xoan_u64"`
-	BIT_XOAN_U128 int `mapstructure:"BIT_XOAN_U128" validate:"power_of_2" corset:"bit_xoan_u128"`
-	BIT_XOAN_U256 int `mapstructure:"BIT_XOAN_U256" validate:"power_of_2" corset:"bit_xoan_u256"`
-	BYTE_16       int `mapstructure:"BYTE_16" validate:"power_of_2" corset:"byte16"`
-	BYTE_32       int `mapstructure:"BYTE_32" validate:"power_of_2" corset:"byte32"`
-	BYTE_64       int `mapstructure:"BYTE_64" validate:"power_of_2" corset:"byte64"`
-	BYTE_128      int `mapstructure:"BYTE_128" validate:"power_of_2" corset:"byte128"`
-	BYTE_256      int `mapstructure:"BYTE_256" validate:"power_of_2" corset:"byte256"`
-	SIGNEXTEND    int `mapstructure:"SIGNEXTEND" validate:"power_of_2" corset:"signextend"`
-	MAX3_U128     int `mapstructure:"MAX3_U128" validate:"power_of_2" corset:"max3_u128"`
-	MAXLOG        int `mapstructure:"MAXLOG" validate:"power_of_2" corset:"maxlog"`
-	// End of new modules for Osaka
 
 	// reference tables
 	Binreftable int `mapstructure:"BIN_REFERENCE_TABLE" validate:"power_of_2" corset:"binreftable"`
@@ -179,16 +161,35 @@ type TracesLimits struct {
 	PrecompileBlsFinalExponentiations              int `mapstructure:"PRECOMPILE_BLS_FINAL_EXPONENTIATIONS"`
 	PrecompileBlsMapFpToG1EffectiveCalls           int `mapstructure:"PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS"`
 	PrecompileBlsMapFp2ToG2EffectiveCalls          int `mapstructure:"PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS"`
-	PrecompileBlsC1MembershipChecks                int `mapstructure:"PRECOMPILE_BLS_C1_MEMBERSHIP_CHECKS"`
+	PrecompileBlsC1MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_C1_MEMBERSHIP_CALLS"`
 	PrecompileBlsC2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS"`
 	PrecompileBlsG1MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS"`
 	PrecompileBlsG2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS"`
-	Bls                                            int `mapstructure:"BLS" corset:"bls"`
-	PointEval                                      int `mapstructure:"POINT_EVAL" corset:"pointeval"`
 	BlsData                                        int `mapstructure:"BLS_DATA" validate:"power_of_2" corset:"blsdata"`
 	RlpUtils                                       int `mapstructure:"RLP_UTILS" validate:"power_of_2" corset:"rlputils"`
 	PowerReferenceTable                            int `mapstructure:"POWER_REFERENCE_TABLE" validate:"power_of_2" corset:"power"`
 	BlsReferenceTable                              int `mapstructure:"BLS_REFERENCE_TABLE" validate:"power_of_2" corset:"blsreftable"`
+
+	// Start of new Osaka modules
+	PrecompileP256VerifyEffectiveCalls int `mapstructure:"PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS"`
+
+	BIT_XOAN_U2   int `mapstructure:"BIT_XOAN_U2" validate:"power_of_2" corset:"bit_xoan_u2"`
+	BIT_XOAN_U4   int `mapstructure:"BIT_XOAN_U4" validate:"power_of_2" corset:"bit_xoan_u4"`
+	BIT_XOAN_U8   int `mapstructure:"BIT_XOAN_U8" validate:"power_of_2" corset:"bit_xoan_u8"`
+	BIT_XOAN_U16  int `mapstructure:"BIT_XOAN_U16" validate:"power_of_2" corset:"bit_xoan_u16"`
+	BIT_XOAN_U32  int `mapstructure:"BIT_XOAN_U32" validate:"power_of_2" corset:"bit_xoan_u32"`
+	BIT_XOAN_U64  int `mapstructure:"BIT_XOAN_U64" validate:"power_of_2" corset:"bit_xoan_u64"`
+	BIT_XOAN_U128 int `mapstructure:"BIT_XOAN_U128" validate:"power_of_2" corset:"bit_xoan_u128"`
+	BIT_XOAN_U256 int `mapstructure:"BIT_XOAN_U256" validate:"power_of_2" corset:"bit_xoan_u256"`
+	BYTE_16       int `mapstructure:"BYTE_16" validate:"power_of_2" corset:"byte16"`
+	BYTE_32       int `mapstructure:"BYTE_32" validate:"power_of_2" corset:"byte32"`
+	BYTE_64       int `mapstructure:"BYTE_64" validate:"power_of_2" corset:"byte64"`
+	BYTE_128      int `mapstructure:"BYTE_128" validate:"power_of_2" corset:"byte128"`
+	BYTE_256      int `mapstructure:"BYTE_256" validate:"power_of_2" corset:"byte256"`
+	SIGNEXTEND    int `mapstructure:"SIGNEXTEND" validate:"power_of_2" corset:"signextend"`
+	MAX3_U128     int `mapstructure:"MAX3_U128" validate:"power_of_2" corset:"max3_u128"`
+	MAXLOG        int `mapstructure:"MAXLOG" validate:"power_of_2" corset:"maxlog"`
+	// End of new Osaka modules
 }
 
 func (tl *TracesLimits) Checksum() string {
@@ -332,7 +333,27 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.U24 *= by
 	tl.U23 *= by
 	tl.U20 *= by
-	// Start of new modules for Osaka
+	// beta v4.0
+	tl.PrecompileBlsPointEvaluationEffectiveCalls *= by
+	tl.PrecompilePointEvaluationFailureEffectiveCalls *= by
+	tl.PrecompileBlsG1AddEffectiveCalls *= by
+	tl.PrecompileBlsG1MsmEffectiveCalls *= by
+	tl.PrecompileBlsG2AddEffectiveCalls *= by
+	tl.PrecompileBlsG2MsmEffectiveCalls *= by
+	tl.PrecompileBlsPairingCheckMillerLoops *= by
+	tl.PrecompileBlsFinalExponentiations *= by
+	tl.PrecompileBlsMapFpToG1EffectiveCalls *= by
+	tl.PrecompileBlsMapFp2ToG2EffectiveCalls *= by
+	tl.PrecompileBlsC1MembershipCalls *= by
+	tl.PrecompileBlsC2MembershipCalls *= by
+	tl.PrecompileBlsG1MembershipCalls *= by
+	tl.PrecompileBlsG2MembershipCalls *= by
+	tl.BlsData *= by
+	tl.RlpUtils *= by
+
+	// Start of new Osaka modules
+	tl.PrecompileP256VerifyEffectiveCalls *= by
+
 	tl.BIT_XOAN_U2 *= by
 	tl.BIT_XOAN_U4 *= by
 	tl.BIT_XOAN_U8 *= by
@@ -349,26 +370,7 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.SIGNEXTEND *= by
 	tl.MAX3_U128 *= by
 	tl.MAXLOG *= by
-	// End of new modules for Osaka
-	// beta v4.0
-	tl.PrecompileBlsPointEvaluationEffectiveCalls *= by
-	tl.PrecompilePointEvaluationFailureEffectiveCalls *= by
-	tl.PrecompileBlsG1AddEffectiveCalls *= by
-	tl.PrecompileBlsG1MsmEffectiveCalls *= by
-	tl.PrecompileBlsG2AddEffectiveCalls *= by
-	tl.PrecompileBlsG2MsmEffectiveCalls *= by
-	tl.PrecompileBlsPairingCheckMillerLoops *= by
-	tl.PrecompileBlsFinalExponentiations *= by
-	tl.PrecompileBlsMapFpToG1EffectiveCalls *= by
-	tl.PrecompileBlsMapFp2ToG2EffectiveCalls *= by
-	tl.PrecompileBlsC1MembershipChecks *= by
-	tl.PrecompileBlsC2MembershipCalls *= by
-	tl.PrecompileBlsG1MembershipCalls *= by
-	tl.PrecompileBlsG2MembershipCalls *= by
-	tl.Bls *= by
-	tl.PointEval *= by
-	tl.BlsData *= by
-	tl.RlpUtils *= by
+	// End of new Osaka modules
 }
 
 func GetTestTracesLimits() *TracesLimits {
@@ -412,7 +414,7 @@ func GetTestTracesLimits() *TracesLimits {
 		PrecompileRipemdBlocks:               0,
 		PrecompileModexpEffectiveCalls:       32,
 		PrecompileModexpEffectiveCalls4096:   1,
-		PrecompileEcaddEffectiveCalls:        256,
+		PrecompileEcaddEffectiveCalls:        1024,
 		PrecompileEcmulEffectiveCalls:        40,
 		PrecompileEcpairingEffectiveCalls:    16,
 		PrecompileEcpairingMillerLoops:       64,
@@ -425,127 +427,126 @@ func GetTestTracesLimits() *TracesLimits {
 		BlockTransactions:                    300,
 		ShomeiMerkleProofs:                   16384,
 		// Beta 4.0 internal modules
-		BitShl256:        131072,
-		BitShl256U7:      131072,
-		BitShl256U6:      131072,
-		BitShl256U5:      131072,
-		BitShl256U4:      131072,
-		BitShl256U3:      131072,
-		BitShl256U2:      131072,
-		BitShl256U1:      131072,
-		BitShr256:        131072,
-		BitShr256U7:      131072,
-		BitShr256U6:      131072,
-		BitShr256U5:      131072,
-		BitShr256U4:      131072,
-		BitShr256U3:      131072,
-		BitShr256U2:      131072,
-		BitShr256U1:      131072,
-		BitSar256:        131072,
-		BitSar256U7:      131072,
-		BitSar256U6:      131072,
-		BitSar256U5:      131072,
-		BitSar256U4:      131072,
-		BitSar256U3:      131072,
-		BitSar256U2:      131072,
-		BitSar256U1:      131072,
-		CallGasExtra:     131072,
-		FillBytesBetween: 131072,
-		GasOutOfPocket:   131072,
-		Log2:             131072,
-		Log2U128:         131072,
-		Log2U64:          131072,
-		Log2U32:          131072,
-		Log2U16:          131072,
-		Log2U8:           131072,
-		Log2U4:           131072,
-		Log2U2:           131072,
-		Log256:           131072,
-		Log256U128:       131072,
-		Log256U64:        131072,
-		Log256U32:        131072,
-		Log256U16:        131072,
-		SetByte256:       131072,
-		SetByte128:       131072,
-		SetByte64:        131072,
-		SetByte32:        131072,
-		SetByte16:        131072,
-		Min25664:         131072,
-		U128:             131072,
-		U127:             131072,
-		U126:             131072,
-		U125:             131072,
-		U124:             131072,
-		U123:             131072,
-		U120:             131072,
-		U119:             131072,
-		U112:             131072,
-		U111:             131072,
-		U96:              131072,
-		U95:              131072,
-		U64:              131072,
-		U63:              131072,
-		U62:              131072,
-		U61:              131072,
-		U60:              131072,
-		U59:              131072,
-		U58:              131072,
-		U56:              131072,
-		U55:              131072,
-		U48:              131072,
-		U47:              131072,
-		U36:              131072,
-		U32:              131072,
-		U31:              131072,
-		U30:              131072,
-		U29:              131072,
-		U28:              131072,
-		U27:              131072,
-		U26:              131072,
-		U24:              131072,
-		U23:              131072,
-		U20:              131072,
-
-		// Start of new modules for Osaka
-		BIT_XOAN_U2:   131072,
-		BIT_XOAN_U4:   131072,
-		BIT_XOAN_U8:   131072,
-		BIT_XOAN_U16:  131072,
-		BIT_XOAN_U32:  131072,
-		BIT_XOAN_U64:  131072,
-		BIT_XOAN_U128: 131072,
-		BIT_XOAN_U256: 131072,
-		BYTE_16:       131072,
-		BYTE_32:       131072,
-		BYTE_64:       131072,
-		BYTE_128:      131072,
-		BYTE_256:      131072,
-		SIGNEXTEND:    131072,
-		MAX3_U128:     131072,
-		MAXLOG:        131072,
-		// End of new modules for Osaka
-
+		BitShl256:        262144,
+		BitShl256U7:      262144,
+		BitShl256U6:      262144,
+		BitShl256U5:      262144,
+		BitShl256U4:      262144,
+		BitShl256U3:      262144,
+		BitShl256U2:      262144,
+		BitShl256U1:      262144,
+		BitShr256:        262144,
+		BitShr256U7:      262144,
+		BitShr256U6:      262144,
+		BitShr256U5:      262144,
+		BitShr256U4:      262144,
+		BitShr256U3:      262144,
+		BitShr256U2:      262144,
+		BitShr256U1:      262144,
+		BitSar256:        262144,
+		BitSar256U7:      262144,
+		BitSar256U6:      262144,
+		BitSar256U5:      262144,
+		BitSar256U4:      262144,
+		BitSar256U3:      262144,
+		BitSar256U2:      262144,
+		BitSar256U1:      262144,
+		CallGasExtra:     262144,
+		FillBytesBetween: 262144,
+		GasOutOfPocket:   262144,
+		Log2:             262144,
+		Log2U128:         262144,
+		Log2U64:          262144,
+		Log2U32:          262144,
+		Log2U16:          262144,
+		Log2U8:           262144,
+		Log2U4:           262144,
+		Log2U2:           262144,
+		Log256:           262144,
+		Log256U128:       262144,
+		Log256U64:        262144,
+		Log256U32:        262144,
+		Log256U16:        262144,
+		SetByte256:       262144,
+		SetByte128:       262144,
+		SetByte64:        262144,
+		SetByte32:        262144,
+		SetByte16:        262144,
+		Min25664:         262144,
+		U128:             262144,
+		U127:             262144,
+		U126:             262144,
+		U125:             262144,
+		U124:             262144,
+		U123:             262144,
+		U120:             262144,
+		U119:             262144,
+		U112:             262144,
+		U111:             262144,
+		U96:              262144,
+		U95:              262144,
+		U64:              262144,
+		U63:              262144,
+		U62:              262144,
+		U61:              262144,
+		U60:              262144,
+		U59:              262144,
+		U58:              262144,
+		U56:              262144,
+		U55:              262144,
+		U48:              262144,
+		U47:              262144,
+		U36:              262144,
+		U32:              262144,
+		U31:              262144,
+		U30:              262144,
+		U29:              262144,
+		U28:              262144,
+		U27:              262144,
+		U26:              262144,
+		U24:              262144,
+		U23:              262144,
+		U20:              262144,
 		// beta v4.0
-		PrecompileBlsPointEvaluationEffectiveCalls:     0,
-		PrecompilePointEvaluationFailureEffectiveCalls: 0,
-		PrecompileBlsG1AddEffectiveCalls:               0,
-		PrecompileBlsG1MsmEffectiveCalls:               0,
-		PrecompileBlsG2AddEffectiveCalls:               0,
-		PrecompileBlsG2MsmEffectiveCalls:               0,
-		PrecompileBlsPairingCheckMillerLoops:           0,
-		PrecompileBlsFinalExponentiations:              0,
-		PrecompileBlsMapFpToG1EffectiveCalls:           0,
-		PrecompileBlsMapFp2ToG2EffectiveCalls:          0,
-		PrecompileBlsC1MembershipChecks:                0,
-		PrecompileBlsC2MembershipCalls:                 0,
-		PrecompileBlsG1MembershipCalls:                 0,
-		PrecompileBlsG2MembershipCalls:                 0,
-		Bls:                                            0,
-		PointEval:                                      0,
+		PrecompileBlsPointEvaluationEffectiveCalls:     1,
+		PrecompilePointEvaluationFailureEffectiveCalls: 2,
+		PrecompileBlsG1AddEffectiveCalls:               8,
+		PrecompileBlsG1MsmEffectiveCalls:               4,
+		PrecompileBlsG2AddEffectiveCalls:               8,
+		PrecompileBlsG2MsmEffectiveCalls:               4,
+		PrecompileBlsPairingCheckMillerLoops:           8,
+		PrecompileBlsFinalExponentiations:              2,
+		PrecompileBlsMapFpToG1EffectiveCalls:           4,
+		PrecompileBlsMapFp2ToG2EffectiveCalls:          4,
+		PrecompileBlsC1MembershipCalls:                 8,
+		PrecompileBlsC2MembershipCalls:                 8,
+		PrecompileBlsG1MembershipCalls:                 8,
+		PrecompileBlsG2MembershipCalls:                 8,
 		BlsData:                                        4096,
 		RlpUtils:                                       131072,
 		PowerReferenceTable:                            32,
-		BlsReferenceTable:                              256,
+		BlsReferenceTable:                              512,
+
+		// Start of new Osaka modules
+		PrecompileP256VerifyEffectiveCalls: 128,
+
+		BIT_XOAN_U2:   262144,
+		BIT_XOAN_U4:   262144,
+		BIT_XOAN_U8:   262144,
+		BIT_XOAN_U16:  262144,
+		BIT_XOAN_U32:  262144,
+		BIT_XOAN_U64:  262144,
+		BIT_XOAN_U128: 262144,
+		BIT_XOAN_U256: 262144,
+		BYTE_16:       262144,
+		BYTE_32:       262144,
+		BYTE_64:       262144,
+		BYTE_128:      262144,
+		BYTE_256:      262144,
+		SIGNEXTEND:    262144,
+		MAX3_U128:     262144,
+		MAXLOG:        262144,
+		// End of new Osaka modules
 	}
 
 	return traceLimits
