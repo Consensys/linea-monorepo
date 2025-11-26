@@ -1,5 +1,5 @@
 import { mock, MockProxy } from "jest-mock-extended";
-import type { IBlockchainClient } from "@consensys/linea-shared-utils";
+import type { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import type { PublicClient, TransactionReceipt, Address } from "viem";
 import { DashboardABI } from "../../../core/abis/Dashboard.js";
 
@@ -27,6 +27,7 @@ describe("DashboardContractClient", () => {
   const contractAddress = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
 
   let blockchainClient: MockProxy<IBlockchainClient<PublicClient, TransactionReceipt>>;
+  let logger: MockProxy<ILogger>;
   let publicClient: PublicClient;
   const viemContractStub = {
     abi: DashboardABI,
@@ -38,15 +39,23 @@ describe("DashboardContractClient", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     blockchainClient = mock<IBlockchainClient<PublicClient, TransactionReceipt>>();
+    logger = mock<ILogger>();
     publicClient = {} as PublicClient;
     blockchainClient.getBlockchainClient.mockReturnValue(publicClient);
     mockedGetContract.mockReturnValue(viemContractStub);
     // Clear static state before each test
     (DashboardContractClient as any).blockchainClient = undefined;
+    (DashboardContractClient as any).logger = undefined;
     (DashboardContractClient as any).clientCache.clear();
   });
 
-  const createClient = () => new DashboardContractClient(blockchainClient, contractAddress);
+  const createClient = () => {
+    // Initialize logger if not already initialized (needed for constructor)
+    if (!(DashboardContractClient as any).logger) {
+      DashboardContractClient.initialize(blockchainClient, logger);
+    }
+    return new DashboardContractClient(blockchainClient, contractAddress);
+  };
 
   const buildReceipt = (logs: Array<{ address: string; data: string; topics: string[] }>): TransactionReceipt =>
     ({
@@ -170,11 +179,25 @@ describe("DashboardContractClient", () => {
     expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
   });
 
+  it("returns undefined and logs error when obligations call fails", async () => {
+    DashboardContractClient.initialize(blockchainClient, logger);
+    const client = createClient();
+    const error = new Error("Contract call failed");
+    viemContractStub.read.obligations.mockRejectedValueOnce(error);
+
+    const result = await client.peekUnpaidLidoProtocolFees();
+
+    expect(result).toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith(`peekUnpaidLidoProtocolFees failed, error=${error}`);
+    expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
+  });
+
   describe("initialize", () => {
-    it("sets the static blockchainClient", () => {
-      DashboardContractClient.initialize(blockchainClient);
+    it("sets the static blockchainClient and logger", () => {
+      DashboardContractClient.initialize(blockchainClient, logger);
 
       expect((DashboardContractClient as any).blockchainClient).toBe(blockchainClient);
+      expect((DashboardContractClient as any).logger).toBe(logger);
     });
   });
 
@@ -187,8 +210,19 @@ describe("DashboardContractClient", () => {
       );
     });
 
+    it("throws error when logger is not initialized", () => {
+      (DashboardContractClient as any).blockchainClient = blockchainClient;
+      (DashboardContractClient as any).logger = undefined;
+
+      expect(() => {
+        DashboardContractClient.getOrCreate(contractAddress);
+      }).toThrow(
+        "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() before use",
+      );
+    });
+
     it("creates and caches a new client when not cached", () => {
-      DashboardContractClient.initialize(blockchainClient);
+      DashboardContractClient.initialize(blockchainClient, logger);
 
       const client = DashboardContractClient.getOrCreate(contractAddress);
 
@@ -202,7 +236,7 @@ describe("DashboardContractClient", () => {
     });
 
     it("returns cached client when already exists", () => {
-      DashboardContractClient.initialize(blockchainClient);
+      DashboardContractClient.initialize(blockchainClient, logger);
 
       const client1 = DashboardContractClient.getOrCreate(contractAddress);
       mockedGetContract.mockClear();
@@ -213,7 +247,7 @@ describe("DashboardContractClient", () => {
     });
 
     it("creates separate clients for different addresses", () => {
-      DashboardContractClient.initialize(blockchainClient);
+      DashboardContractClient.initialize(blockchainClient, logger);
       const otherAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
 
       const client1 = DashboardContractClient.getOrCreate(contractAddress);
@@ -235,7 +269,7 @@ describe("DashboardContractClient", () => {
     });
 
     it("uses static blockchainClient when parameter is undefined", () => {
-      DashboardContractClient.initialize(blockchainClient);
+      DashboardContractClient.initialize(blockchainClient, logger);
 
       const client = new DashboardContractClient(undefined as any, contractAddress);
 
@@ -251,7 +285,7 @@ describe("DashboardContractClient", () => {
       const staticClient = mock<IBlockchainClient<PublicClient, TransactionReceipt>>();
       const staticPublicClient = {} as PublicClient;
       staticClient.getBlockchainClient.mockReturnValue(staticPublicClient);
-      DashboardContractClient.initialize(staticClient);
+      DashboardContractClient.initialize(staticClient, logger);
 
       const client = new DashboardContractClient(blockchainClient, contractAddress);
 
@@ -261,6 +295,17 @@ describe("DashboardContractClient", () => {
         address: contractAddress,
         client: publicClient, // Should use parameter client, not static
       });
+    });
+
+    it("throws error when logger is not initialized", () => {
+      (DashboardContractClient as any).blockchainClient = blockchainClient;
+      (DashboardContractClient as any).logger = undefined;
+
+      expect(() => {
+        new DashboardContractClient(blockchainClient, contractAddress);
+      }).toThrow(
+        "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() or provided to constructor",
+      );
     });
   });
 });

@@ -130,7 +130,7 @@ describe("YieldReportingProcessor", () => {
       peekUnpaidLidoProtocolFees: jest.fn(),
     } as unknown as jest.Mocked<DashboardContractClient>;
 
-    DashboardContractClient.initialize(blockchainClient);
+    DashboardContractClient.initialize(blockchainClient, logger);
     (DashboardContractClientMock as any).getOrCreate = jest.fn().mockReturnValue(dashboardClient);
 
     lazyOracle.waitForVaultsReportDataUpdatedEvent.mockResolvedValue({

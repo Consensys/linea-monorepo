@@ -323,14 +323,15 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     // Set gauge metrics for peeked values
     const outstandingNegativeYield = yieldReport?.outstandingNegativeYield ?? 0n;
     const yieldAmount = yieldReport?.yieldAmount ?? 0n;
+    const unpaidFees = unpaidLidoProtocolFees ?? 0n;
     await Promise.all([
       this.metricsUpdater.setLastPeekedNegativeYieldReport(vault, weiToGweiNumber(outstandingNegativeYield)),
       this.metricsUpdater.setLastPeekedPositiveYieldReport(vault, weiToGweiNumber(yieldAmount)),
-      this.metricsUpdater.setLastPeekUnpaidLidoProtocolFees(vault, weiToGweiNumber(unpaidLidoProtocolFees)),
+      this.metricsUpdater.setLastPeekUnpaidLidoProtocolFees(vault, weiToGweiNumber(unpaidFees)),
     ]);
 
     // Compare unpaid fees to threshold
-    const feesThresholdMet = unpaidLidoProtocolFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
+    const feesThresholdMet = unpaidFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
 
     // Compare yield amount to threshold
     const yieldThresholdMet = yieldAmount >= this.minPositiveYieldToReportWei;

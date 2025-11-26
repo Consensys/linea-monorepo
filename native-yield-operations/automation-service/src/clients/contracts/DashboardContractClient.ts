@@ -1,4 +1,4 @@
-import { IBlockchainClient } from "@consensys/linea-shared-utils";
+import { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import { Address, getContract, GetContractReturnType, parseEventLogs, PublicClient, TransactionReceipt } from "viem";
 import { IDashboard } from "../../core/clients/contracts/IDashboard.js";
 import { DashboardABI } from "../../core/abis/Dashboard.js";
@@ -10,17 +10,21 @@ import { DashboardABI } from "../../core/abis/Dashboard.js";
 export class DashboardContractClient implements IDashboard<TransactionReceipt> {
   private static readonly clientCache = new Map<Address, DashboardContractClient>();
   private static blockchainClient: IBlockchainClient<PublicClient, TransactionReceipt> | undefined;
+  private static logger: ILogger | undefined;
 
   private readonly contract: GetContractReturnType<typeof DashboardABI, PublicClient, Address>;
+  private readonly logger: ILogger;
 
   /**
-   * Initializes the static blockchain client for all DashboardContractClient instances.
+   * Initializes the static blockchain client and logger for all DashboardContractClient instances.
    * Should be called once during application startup.
    *
    * @param {IBlockchainClient<PublicClient, TransactionReceipt>} blockchainClient - Blockchain client for reading contract data.
+   * @param {ILogger} logger - Logger instance for logging operations.
    */
-  static initialize(blockchainClient: IBlockchainClient<PublicClient, TransactionReceipt>): void {
+  static initialize(blockchainClient: IBlockchainClient<PublicClient, TransactionReceipt>, logger: ILogger): void {
     this.blockchainClient = blockchainClient;
+    this.logger = logger;
   }
 
   /**
@@ -39,6 +43,12 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
         "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() or provided to constructor",
       );
     }
+    if (!DashboardContractClient.logger) {
+      throw new Error(
+        "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() or provided to constructor",
+      );
+    }
+    this.logger = DashboardContractClient.logger;
     this.contract = getContract({
       abi: DashboardABI,
       address: contractAddress,
@@ -59,6 +69,11 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
     if (!this.blockchainClient) {
       throw new Error(
         "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() before use",
+      );
+    }
+    if (!this.logger) {
+      throw new Error(
+        "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() before use",
       );
     }
 
@@ -116,8 +131,13 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
    *
    * @returns {Promise<bigint>} The unpaid Lido protocol fees amount in wei.
    */
-  async peekUnpaidLidoProtocolFees(): Promise<bigint> {
-    const [, feesToSettle] = await this.contract.read.obligations();
-    return feesToSettle;
+  async peekUnpaidLidoProtocolFees(): Promise<bigint | undefined> {
+    try {
+      const [, feesToSettle] = await this.contract.read.obligations();
+      return feesToSettle ?? 0n;
+    } catch (error) {
+      this.logger.error(`peekUnpaidLidoProtocolFees failed, error=${error}`);
+      return undefined;
+    }
   }
 }

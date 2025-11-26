@@ -133,7 +133,10 @@ export class NativeYieldAutomationServiceBootstrap {
       getChain(config.dataSources.chainId),
       this.web3SignerClient,
     );
-    DashboardContractClient.initialize(this.viemBlockchainClientAdapter);
+    DashboardContractClient.initialize(
+      this.viemBlockchainClientAdapter,
+      new WinstonLogger(DashboardContractClient.name, config.loggerOptions),
+    );
     this.yieldManagerContractClient = new YieldManagerContractClient(
       new WinstonLogger(YieldManagerContractClient.name, config.loggerOptions),
       this.viemBlockchainClientAdapter,

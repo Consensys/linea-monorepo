@@ -82,7 +82,8 @@ describe("OperationModeMetricsRecorder", () => {
       getContract: jest.fn(),
     } as unknown as jest.Mocked<DashboardContractClient>;
     const blockchainClient = createBlockchainClientMock();
-    DashboardContractClient.initialize(blockchainClient);
+    const logger = createLoggerMock();
+    DashboardContractClient.initialize(blockchainClient, logger);
     (DashboardContractClient.getOrCreate as jest.MockedFunction<typeof DashboardContractClient.getOrCreate>).mockReturnValue(
       dashboardClientInstance,
     );
