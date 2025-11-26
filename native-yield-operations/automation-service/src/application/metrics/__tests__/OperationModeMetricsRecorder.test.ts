@@ -28,7 +28,7 @@ const createMetricsUpdaterMock = (): jest.Mocked<INativeYieldAutomationMetricsUp
     addReportedYieldAmount: jest.fn(),
     setLastPeekedNegativeYieldReport: jest.fn(async () => undefined),
     setLastPeekedPositiveYieldReport: jest.fn(async () => undefined),
-    setLastPeekUnpaidLidoProtocolFees: jest.fn(async () => undefined),
+    setLastSettleableLidoFees: jest.fn(async () => undefined),
     addNodeOperatorFeesPaid: jest.fn(),
     addLiabilitiesPaid: jest.fn(),
     addLidoFeesPaid: jest.fn(),

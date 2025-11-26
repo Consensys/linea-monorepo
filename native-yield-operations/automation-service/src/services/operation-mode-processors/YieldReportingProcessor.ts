@@ -328,7 +328,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     }
 
     if (settleableLidoFees !== undefined) {
-      await this.metricsUpdater.setLastPeekUnpaidLidoProtocolFees(this.vault, weiToGweiNumber(settleableLidoFees));
+      await this.metricsUpdater.setLastSettleableLidoFees(this.vault, weiToGweiNumber(settleableLidoFees));
       feesThresholdMet = settleableLidoFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
     }
 

@@ -73,8 +73,8 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createGauge(
-      LineaNativeYieldAutomationServiceMetrics.LastPeekUnpaidLidoProtocolFees,
-      "Unpaid Lido protocol fees from the last peek",
+      LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
+      "Settleable Lido protocol fees from the last query",
       ["vault_address"],
     );
 
@@ -227,16 +227,16 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   /**
-   * Sets the unpaid Lido protocol fees from the last peek for a specific vault.
+   * Sets the settleable Lido protocol fees from the last query for a specific vault.
    *
    * @param {Address} vaultAddress - The address of the vault.
-   * @param {number} feesAmount - The unpaid fees amount. Must be non-negative to be recorded.
+   * @param {number} feesAmount - The settleable fees amount. Must be non-negative to be recorded.
    * @returns {Promise<void>} A promise that resolves when the gauge is set.
    */
-  public async setLastPeekUnpaidLidoProtocolFees(vaultAddress: Address, feesAmount: number): Promise<void> {
+  public async setLastSettleableLidoFees(vaultAddress: Address, feesAmount: number): Promise<void> {
     if (feesAmount < 0) return;
     this.metricsService.setGauge(
-      LineaNativeYieldAutomationServiceMetrics.LastPeekUnpaidLidoProtocolFees,
+      LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
       { vault_address: vaultAddress },
       feesAmount,
     );

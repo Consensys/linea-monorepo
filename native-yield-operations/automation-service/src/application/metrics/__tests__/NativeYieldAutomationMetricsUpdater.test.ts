@@ -76,8 +76,8 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       ["vault_address"],
     );
     expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastPeekUnpaidLidoProtocolFees,
-      "Unpaid Lido protocol fees from the last peek",
+      LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
+      "Settleable Lido protocol fees from the last query",
       ["vault_address"],
     );
     expect(metricsService.createCounter).toHaveBeenCalledWith(
@@ -285,16 +285,16 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     });
   });
 
-  describe("setLastPeekUnpaidLidoProtocolFees", () => {
+  describe("setLastSettleableLidoFees", () => {
     it("sets gauge when value is non-negative", async () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekUnpaidLidoProtocolFees(vaultAddress, 789);
+      await updater.setLastSettleableLidoFees(vaultAddress, 789);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.LastPeekUnpaidLidoProtocolFees,
+        LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
         { vault_address: vaultAddress },
         789,
       );
@@ -305,7 +305,7 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekUnpaidLidoProtocolFees(vaultAddress, -1);
+      await updater.setLastSettleableLidoFees(vaultAddress, -1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });

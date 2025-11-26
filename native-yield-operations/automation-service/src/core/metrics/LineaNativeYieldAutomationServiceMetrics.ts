@@ -35,9 +35,9 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `vault_address`
   LastPeekedPositiveYieldReport = "linea_native_yield_automation_service_last_peeked_positive_yield_report",
 
-  // Gauge representing unpaid Lido protocol fees from the last peek
+  // Gauge representing settleable Lido protocol fees from the last query
   // Single label `vault_address`
-  LastPeekUnpaidLidoProtocolFees = "linea_native_yield_automation_service_last_peek_unpaid_lido_protocol_fees",
+  LastSettleableLidoFees = "linea_native_yield_automation_service_last_settleable_lido_fees",
 
   // Counter that increments by the node operator fees paid
   // Single label `vault_address`

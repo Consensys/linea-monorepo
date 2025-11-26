@@ -74,7 +74,7 @@ describe("YieldReportingProcessor", () => {
       recordRebalance: jest.fn(),
       setLastPeekedNegativeYieldReport: jest.fn(),
       setLastPeekedPositiveYieldReport: jest.fn(),
-      setLastPeekUnpaidLidoProtocolFees: jest.fn(),
+      setLastSettleableLidoFees: jest.fn(),
     } as unknown as jest.Mocked<INativeYieldAutomationMetricsUpdater>;
 
     metricsRecorder = {
@@ -801,7 +801,7 @@ describe("YieldReportingProcessor", () => {
 
       expect(metricsUpdater.setLastPeekedNegativeYieldReport).toHaveBeenCalledWith(vaultAddress, 1000000000000000000);
       expect(metricsUpdater.setLastPeekedPositiveYieldReport).toHaveBeenCalledWith(vaultAddress, 2000000000000000000);
-      expect(metricsUpdater.setLastPeekUnpaidLidoProtocolFees).toHaveBeenCalledWith(vaultAddress, 600000000000000000);
+      expect(metricsUpdater.setLastSettleableLidoFees).toHaveBeenCalledWith(vaultAddress, 600000000000000000);
     });
 
     it("sets metrics with zero values when yieldReport is undefined", async () => {
@@ -818,7 +818,7 @@ describe("YieldReportingProcessor", () => {
       expect(metricsUpdater.setLastPeekedNegativeYieldReport).not.toHaveBeenCalled();
       expect(metricsUpdater.setLastPeekedPositiveYieldReport).not.toHaveBeenCalled();
       // Only unpaid fees metric should be set when unpaidFees is defined
-      expect(metricsUpdater.setLastPeekUnpaidLidoProtocolFees).toHaveBeenCalledWith(vaultAddress, 300000000000000000);
+      expect(metricsUpdater.setLastSettleableLidoFees).toHaveBeenCalledWith(vaultAddress, 300000000000000000);
     });
   });
 });
