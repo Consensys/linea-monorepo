@@ -504,10 +504,15 @@ describe("YieldManagerContractClient", () => {
   it("skips safeMaxAddToWithdrawalReserve when below the threshold", async () => {
     const client = createClient({ minWithdrawalThresholdEth: 2n });
     const addSpy = jest.spyOn(client, "safeAddToWithdrawalReserve").mockResolvedValue(undefined as any);
-    jest.spyOn(client, "getAvailableUnstakingRebalanceBalance").mockResolvedValue(2n * ONE_ETHER - 1n);
+    const belowThresholdBalance = 2n * ONE_ETHER - 1n;
+    const minThreshold = 2n * ONE_ETHER;
+    jest.spyOn(client, "getAvailableUnstakingRebalanceBalance").mockResolvedValue(belowThresholdBalance);
 
     await expect(client.safeMaxAddToWithdrawalReserve(yieldProvider)).resolves.toBeUndefined();
     expect(addSpy).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith(
+      `safeMaxAddToWithdrawalReserve - skipping as availableWithdrawalBalance=${belowThresholdBalance} is below the minimum withdrawal threshold of ${minThreshold}`,
+    );
   });
 
   it("extracts withdrawal events from receipts emitted by the contract", () => {
