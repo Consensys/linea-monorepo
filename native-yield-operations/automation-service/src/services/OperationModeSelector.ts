@@ -35,8 +35,7 @@ export class OperationModeSelector implements IOperationModeSelector {
     private readonly ossificationCompleteOperationModeProcessor: IOperationModeProcessor,
     private readonly yieldProvider: Address,
     private readonly contractReadRetryTimeMs: number,
-  ) {
-  }
+  ) {}
 
   /**
    * Starts the operation mode selection loop.
@@ -81,6 +80,7 @@ export class OperationModeSelector implements IOperationModeSelector {
    */
   private async selectOperationModeLoop(): Promise<void> {
     while (this.isRunning) {
+      let currentMode: OperationMode = OperationMode.UNKNOWN;
       try {
         const [isOssificationInitiated, isOssified] = await Promise.all([
           this.yieldManagerContractClient.isOssificationInitiated(this.yieldProvider),
@@ -88,16 +88,19 @@ export class OperationModeSelector implements IOperationModeSelector {
         ]);
 
         if (isOssified) {
+          currentMode = OperationMode.OSSIFICATION_COMPLETE_MODE;
           this.logger.info("Selected OSSIFICATION_COMPLETE_MODE");
           await this.ossificationCompleteOperationModeProcessor.process();
           this.logger.info("Completed OSSIFICATION_COMPLETE_MODE");
           this.metricsUpdater.incrementOperationModeExecution(OperationMode.OSSIFICATION_COMPLETE_MODE);
         } else if (isOssificationInitiated) {
+          currentMode = OperationMode.OSSIFICATION_PENDING_MODE;
           this.logger.info("Selected OSSIFICATION_PENDING_MODE");
           await this.ossificationPendingOperationModeProcessor.process();
           this.logger.info("Completed OSSIFICATION_PENDING_MODE");
           this.metricsUpdater.incrementOperationModeExecution(OperationMode.OSSIFICATION_PENDING_MODE);
         } else {
+          currentMode = OperationMode.YIELD_REPORTING_MODE;
           this.logger.info("Selected YIELD_REPORTING_MODE");
           await this.yieldReportingOperationModeProcessor.process();
           this.logger.info("Completed YIELD_REPORTING_MODE");
@@ -105,6 +108,7 @@ export class OperationModeSelector implements IOperationModeSelector {
         }
       } catch (error) {
         this.logger.error(`selectOperationModeLoop error, retrying in ${this.contractReadRetryTimeMs}ms`, { error });
+        this.metricsUpdater.incrementOperationModeFailure(currentMode);
         await wait(this.contractReadRetryTimeMs);
       }
     }

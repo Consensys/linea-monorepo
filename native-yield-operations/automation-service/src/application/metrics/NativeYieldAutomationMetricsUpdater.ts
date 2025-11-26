@@ -108,6 +108,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       ["mode"],
     );
 
+    this.metricsService.createCounter(
+      LineaNativeYieldAutomationServiceMetrics.OperationModeFailureTotal,
+      "Operation mode failures grouped by mode",
+      ["mode"],
+    );
+
     this.metricsService.createHistogram(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionDurationSeconds,
       OPERATION_MODE_DURATION_BUCKETS,
@@ -310,6 +316,17 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    */
   public incrementOperationModeExecution(mode: OperationMode): void {
     this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal, {
+      mode,
+    });
+  }
+
+  /**
+   * Increments the counter for operation mode failures, grouped by mode.
+   *
+   * @param {OperationMode} mode - The operation mode that failed.
+   */
+  public incrementOperationModeFailure(mode: OperationMode): void {
+    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeFailureTotal, {
       mode,
     });
   }

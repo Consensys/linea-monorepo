@@ -64,6 +64,10 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `mode`
   OperationModeExecutionTotal = "linea_native_yield_automation_service_operation_mode_execution_total",
 
+  // Counter that increments each time an operation mode fails execution.
+  // Single label `mode`
+  OperationModeFailureTotal = "linea_native_yield_automation_service_operation_mode_failure_total",
+
   // Histogram that tracks time for each operation mode run.
   // Single label `mode`
   OperationModeExecutionDurationSeconds = "linea_native_yield_automation_service_operation_mode_execution_duration_seconds",

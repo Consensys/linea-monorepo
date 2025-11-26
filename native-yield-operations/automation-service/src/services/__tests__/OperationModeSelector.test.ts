@@ -153,5 +153,82 @@ describe("OperationModeSelector", () => {
     expect(waitMock).toHaveBeenCalledWith(retryTime);
     expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
     expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(OperationMode.YIELD_REPORTING_MODE);
+    expect(metricsUpdater.incrementOperationModeFailure).toHaveBeenCalledWith(OperationMode.UNKNOWN);
+  });
+
+  it("increments failure metric with UNKNOWN when error occurs during contract reads", async () => {
+    const error = new Error("contract read failed");
+    const retryTime = 100;
+
+    yieldManager.isOssificationInitiated.mockRejectedValueOnce(error);
+    yieldManager.isOssificationInitiated.mockResolvedValueOnce(false);
+    yieldManager.isOssified.mockResolvedValueOnce(false);
+
+    const selector = createSelector(retryTime);
+    yieldReportingProcessor.process.mockImplementation(async () => {
+      selector.stop();
+    });
+
+    await selector.start();
+
+    expect(metricsUpdater.incrementOperationModeFailure).toHaveBeenCalledWith(OperationMode.UNKNOWN);
+  });
+
+  it("increments failure metric with specific mode when error occurs during processor execution", async () => {
+    const error = new Error("processor failed");
+    const retryTime = 100;
+
+    yieldManager.isOssificationInitiated.mockResolvedValue(false);
+    yieldManager.isOssified.mockResolvedValue(false);
+    yieldReportingProcessor.process.mockRejectedValueOnce(error);
+
+    const selector = createSelector(retryTime);
+    yieldReportingProcessor.process.mockImplementation(async () => {
+      selector.stop();
+    });
+
+    await selector.start();
+
+    expect(metricsUpdater.incrementOperationModeFailure).toHaveBeenCalledWith(OperationMode.YIELD_REPORTING_MODE);
+  });
+
+  it("increments failure metric with OSSIFICATION_PENDING_MODE when error occurs during pending processor execution", async () => {
+    const error = new Error("pending processor failed");
+    const retryTime = 100;
+
+    yieldManager.isOssificationInitiated.mockResolvedValue(true);
+    yieldManager.isOssified.mockResolvedValue(false);
+    ossificationPendingProcessor.process.mockRejectedValueOnce(error);
+
+    const selector = createSelector(retryTime);
+    ossificationPendingProcessor.process.mockImplementation(async () => {
+      selector.stop();
+    });
+
+    await selector.start();
+
+    expect(metricsUpdater.incrementOperationModeFailure).toHaveBeenCalledWith(
+      OperationMode.OSSIFICATION_PENDING_MODE,
+    );
+  });
+
+  it("increments failure metric with OSSIFICATION_COMPLETE_MODE when error occurs during complete processor execution", async () => {
+    const error = new Error("complete processor failed");
+    const retryTime = 100;
+
+    yieldManager.isOssificationInitiated.mockResolvedValue(true);
+    yieldManager.isOssified.mockResolvedValue(true);
+    ossificationCompleteProcessor.process.mockRejectedValueOnce(error);
+
+    const selector = createSelector(retryTime);
+    ossificationCompleteProcessor.process.mockImplementation(async () => {
+      selector.stop();
+    });
+
+    await selector.start();
+
+    expect(metricsUpdater.incrementOperationModeFailure).toHaveBeenCalledWith(
+      OperationMode.OSSIFICATION_COMPLETE_MODE,
+    );
   });
 });

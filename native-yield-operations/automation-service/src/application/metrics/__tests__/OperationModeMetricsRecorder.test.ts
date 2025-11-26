@@ -34,6 +34,7 @@ const createMetricsUpdaterMock = (): jest.Mocked<INativeYieldAutomationMetricsUp
     addLidoFeesPaid: jest.fn(),
     incrementLidoVaultAccountingReport: jest.fn(),
     incrementOperationModeExecution: jest.fn(),
+    incrementOperationModeFailure: jest.fn(),
     incrementOperationModeTrigger: jest.fn(),
     addValidatorPartialUnstakeAmount: jest.fn(),
     incrementValidatorExit: jest.fn(),

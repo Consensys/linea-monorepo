@@ -32,5 +32,7 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   incrementOperationModeExecution(mode: OperationMode): void;
 
+  incrementOperationModeFailure(mode: OperationMode): void;
+
   recordOperationModeDuration(mode: OperationMode, durationSeconds: number): void;
 }

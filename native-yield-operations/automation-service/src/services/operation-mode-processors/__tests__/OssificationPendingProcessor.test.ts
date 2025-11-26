@@ -56,6 +56,7 @@ describe("OssificationPendingProcessor", () => {
       addLiabilitiesPaid: jest.fn(),
       addLidoFeesPaid: jest.fn(),
       incrementOperationModeExecution: jest.fn(),
+      incrementOperationModeFailure: jest.fn(),
       addValidatorPartialUnstakeAmount: jest.fn(),
       incrementValidatorExit: jest.fn(),
       incrementReportYield: jest.fn(),

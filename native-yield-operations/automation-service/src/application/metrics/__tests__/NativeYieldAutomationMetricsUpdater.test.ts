@@ -105,6 +105,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       "Operation mode executions grouped by mode",
       ["mode"],
     );
+    expect(metricsService.createCounter).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.OperationModeFailureTotal,
+      "Operation mode failures grouped by mode",
+      ["mode"],
+    );
     expect(metricsService.createHistogram).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionDurationSeconds,
       [1, 5, 10, 30, 60, 120, 180, 300, 600, 900, 1200],
@@ -381,6 +386,19 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     expect(metricsService.incrementCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
       { mode: OperationMode.OSSIFICATION_PENDING_MODE },
+    );
+  });
+
+  it("increments operation mode failure counter", () => {
+    const metricsService = createMetricsServiceMock();
+    const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+    jest.clearAllMocks();
+
+    updater.incrementOperationModeFailure(OperationMode.YIELD_REPORTING_MODE);
+
+    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.OperationModeFailureTotal,
+      { mode: OperationMode.YIELD_REPORTING_MODE },
     );
   });
 
