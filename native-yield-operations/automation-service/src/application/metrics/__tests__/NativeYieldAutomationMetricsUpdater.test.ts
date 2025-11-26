@@ -124,15 +124,49 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("does not increment when amount is non-positive", () => {
+    it("increments counter when amount is zero", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
       updater.recordRebalance(RebalanceDirection.UNSTAKE, 0);
+
+      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
+        { direction: RebalanceDirection.UNSTAKE },
+        0,
+      );
+    });
+
+    it("increments counter when amount is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
       updater.recordRebalance(RebalanceDirection.UNSTAKE, -10);
 
-      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
+        { direction: RebalanceDirection.UNSTAKE },
+        -10,
+      );
+    });
+
+    it("increments counter when direction is NONE", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.recordRebalance(RebalanceDirection.NONE, 0);
+
+      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
+        { direction: RebalanceDirection.NONE },
+        0,
+      );
     });
   });
 
