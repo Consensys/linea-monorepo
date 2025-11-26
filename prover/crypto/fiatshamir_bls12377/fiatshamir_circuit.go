@@ -117,7 +117,7 @@ func (fs *GnarkFS) SetState(s zk.Octuplet) {
 	fs.hasher.SetState(state)
 }
 
-func (fs *GnarkFS) GetState() zk.Octuplet {
+func (fs *GnarkFS) State() zk.Octuplet {
 	state := fs.hasher.State()
 	return encoding.EncodeFVTo8WVs(fs.api, state)
 }

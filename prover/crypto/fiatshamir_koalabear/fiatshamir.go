@@ -115,7 +115,7 @@ func (fs *FS) SetState(s field.Octuplet) {
 	fs.h.SetStateOctuplet(s)
 }
 
-func (fs *FS) GetState() field.Octuplet {
+func (fs *FS) State() field.Octuplet {
 	return fs.h.GetStateOctuplet()
 }
 

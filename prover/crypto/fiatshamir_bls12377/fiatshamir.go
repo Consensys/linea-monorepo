@@ -97,7 +97,7 @@ func (fs *FS) SetState(s field.Octuplet) {
 	fs.h.SetState(bState[:])
 }
 
-func (fs *FS) GetState() field.Octuplet {
+func (fs *FS) State() field.Octuplet {
 	bState := fs.h.State()
 	var state fr.Element
 	state.SetBytes(bState)
