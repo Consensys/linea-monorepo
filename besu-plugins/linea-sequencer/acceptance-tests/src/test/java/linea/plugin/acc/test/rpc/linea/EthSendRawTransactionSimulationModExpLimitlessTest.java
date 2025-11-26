@@ -11,7 +11,7 @@ package linea.plugin.acc.test.rpc.linea;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import linea.plugin.acc.test.LineaPluginPoSTestBase;
+import linea.plugin.acc.test.LineaPluginTestBasePrague;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,7 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.utils.Numeric;
 
-public class EthSendRawTransactionSimulationModExpLimitlessTest extends LineaPluginPoSTestBase {
+public class EthSendRawTransactionSimulationModExpLimitlessTest extends LineaPluginTestBasePrague {
 
   @Override
   public List<String> getTestCliOptions() {
