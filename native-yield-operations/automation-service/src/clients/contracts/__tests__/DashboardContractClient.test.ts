@@ -54,7 +54,7 @@ describe("DashboardContractClient", () => {
     if (!(DashboardContractClient as any).logger) {
       DashboardContractClient.initialize(blockchainClient, logger);
     }
-    return new DashboardContractClient(blockchainClient, contractAddress);
+    return new DashboardContractClient(contractAddress);
   };
 
   const buildReceipt = (logs: Array<{ address: string; data: string; topics: string[] }>): TransactionReceipt =>
@@ -272,18 +272,18 @@ describe("DashboardContractClient", () => {
   });
 
   describe("constructor", () => {
-    it("throws error when neither parameter nor static client is provided", () => {
+    it("throws error when blockchainClient is not initialized", () => {
       expect(() => {
-        new DashboardContractClient(undefined as any, contractAddress);
+        new DashboardContractClient(contractAddress);
       }).toThrow(
-        "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() or provided to constructor",
+        "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() before use",
       );
     });
 
-    it("uses static blockchainClient when parameter is undefined", () => {
+    it("uses static blockchainClient when initialized", () => {
       DashboardContractClient.initialize(blockchainClient, logger);
 
-      const client = new DashboardContractClient(undefined as any, contractAddress);
+      const client = new DashboardContractClient(contractAddress);
 
       expect(client).toBeInstanceOf(DashboardContractClient);
       expect(mockedGetContract).toHaveBeenCalledWith({
@@ -293,30 +293,14 @@ describe("DashboardContractClient", () => {
       });
     });
 
-    it("prefers parameter blockchainClient over static one", () => {
-      const staticClient = mock<IBlockchainClient<PublicClient, TransactionReceipt>>();
-      const staticPublicClient = {} as PublicClient;
-      staticClient.getBlockchainClient.mockReturnValue(staticPublicClient);
-      DashboardContractClient.initialize(staticClient, logger);
-
-      const client = new DashboardContractClient(blockchainClient, contractAddress);
-
-      expect(client).toBeInstanceOf(DashboardContractClient);
-      expect(mockedGetContract).toHaveBeenCalledWith({
-        abi: DashboardABI,
-        address: contractAddress,
-        client: publicClient, // Should use parameter client, not static
-      });
-    });
-
     it("throws error when logger is not initialized", () => {
       (DashboardContractClient as any).blockchainClient = blockchainClient;
       (DashboardContractClient as any).logger = undefined;
 
       expect(() => {
-        new DashboardContractClient(blockchainClient, contractAddress);
+        new DashboardContractClient(contractAddress);
       }).toThrow(
-        "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() or provided to constructor",
+        "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() before use",
       );
     });
   });

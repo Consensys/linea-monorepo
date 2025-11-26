@@ -29,30 +29,26 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
 
   /**
    * Creates a new DashboardContractClient instance.
+   * Requires blockchainClient and logger to be initialized via initialize() before use.
    *
-   * @param {IBlockchainClient<PublicClient, TransactionReceipt>} contractClientLibrary - Blockchain client for reading contract data.
    * @param {Address} contractAddress - The address of the Dashboard contract.
    */
-  constructor(
-    contractClientLibrary: IBlockchainClient<PublicClient, TransactionReceipt>,
-    private readonly contractAddress: Address,
-  ) {
-    const clientLibrary = contractClientLibrary ?? DashboardContractClient.blockchainClient;
-    if (!clientLibrary) {
+  constructor(private readonly contractAddress: Address) {
+    if (!DashboardContractClient.blockchainClient) {
       throw new Error(
-        "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() or provided to constructor",
+        "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() before use",
       );
     }
     if (!DashboardContractClient.logger) {
       throw new Error(
-        "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() or provided to constructor",
+        "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() before use",
       );
     }
     this.logger = DashboardContractClient.logger;
     this.contract = getContract({
       abi: DashboardABI,
       address: contractAddress,
-      client: clientLibrary.getBlockchainClient(),
+      client: DashboardContractClient.blockchainClient.getBlockchainClient(),
     });
   }
 
@@ -82,7 +78,7 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
       return cached;
     }
 
-    const client = new DashboardContractClient(this.blockchainClient, contractAddress);
+    const client = new DashboardContractClient(contractAddress);
     this.clientCache.set(contractAddress, client);
     return client;
   }
