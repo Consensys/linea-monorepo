@@ -28,7 +28,9 @@ jest.mock("@consensys/linea-shared-utils", () => {
 });
 
 jest.mock("../../../clients/contracts/DashboardContractClient.js", () => ({
-  DashboardContractClient: jest.fn(),
+  DashboardContractClient: {
+    getOrCreate: jest.fn(),
+  },
 }));
 
 import { attempt, msToSeconds, weiToGweiNumber } from "@consensys/linea-shared-utils";
@@ -61,7 +63,7 @@ describe("YieldReportingProcessor", () => {
   const attemptMock = attempt as jest.MockedFunction<typeof attempt>;
   const msToSecondsMock = msToSeconds as jest.MockedFunction<typeof msToSeconds>;
   const weiToGweiNumberMock = weiToGweiNumber as jest.MockedFunction<typeof weiToGweiNumber>;
-  const DashboardContractClientMock = DashboardContractClient as jest.MockedClass<typeof DashboardContractClient>;
+  const DashboardContractClientMock = DashboardContractClient as jest.Mocked<typeof DashboardContractClient>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -127,7 +129,7 @@ describe("YieldReportingProcessor", () => {
       peekUnpaidLidoProtocolFees: jest.fn(),
     } as unknown as jest.Mocked<DashboardContractClient>;
 
-    DashboardContractClientMock.mockImplementation(() => dashboardClient);
+    (DashboardContractClientMock as any).getOrCreate = jest.fn().mockReturnValue(dashboardClient);
 
     lazyOracle.waitForVaultsReportDataUpdatedEvent.mockResolvedValue({
       result: OperationTrigger.TIMEOUT,
@@ -649,7 +651,7 @@ describe("YieldReportingProcessor", () => {
 
       expect(result).toBe(true);
       expect(yieldManager.getLidoDashboardAddress).toHaveBeenCalledWith(yieldProvider);
-      expect(DashboardContractClientMock).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
+      expect(DashboardContractClientMock.getOrCreate).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
       expect(dashboardClient.peekUnpaidLidoProtocolFees).toHaveBeenCalledTimes(1);
       expect(yieldManager.peekYieldReport).toHaveBeenCalledWith(yieldProvider, l2Recipient);
       expect(logger.info).toHaveBeenCalledWith(

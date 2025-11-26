@@ -316,7 +316,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     // First, get dashboard address
     const dashboardAddress = await this.yieldManagerContractClient.getLidoDashboardAddress(this.yieldProvider);
-    const dashboardClient = new DashboardContractClient(this.blockchainClient, dashboardAddress);
+    const dashboardClient = DashboardContractClient.getOrCreate(this.blockchainClient, dashboardAddress);
 
     // Use Promise.all to concurrently fetch both values
     const [unpaidLidoProtocolFees, yieldReport] = await Promise.all([

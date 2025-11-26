@@ -57,7 +57,7 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
       this.yieldManagerClient.getLidoDashboardAddress(yieldProvider),
     ]);
 
-    const dashboardClient = new DashboardContractClient(this.blockchainClient, dashboard);
+    const dashboardClient = DashboardContractClient.getOrCreate(this.blockchainClient, dashboard);
     const nodeOperatorFeesDisbursed = dashboardClient.getNodeOperatorFeesPaidFromTxReceipt(receipt);
     if (nodeOperatorFeesDisbursed != 0n) {
       this.metricsUpdater.addNodeOperatorFeesPaid(vault, weiToGweiNumber(nodeOperatorFeesDisbursed));
@@ -102,7 +102,7 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     this.metricsUpdater.incrementReportYield(vault);
     this.metricsUpdater.addReportedYieldAmount(vault, weiToGweiNumber(yieldReport.yieldAmount));
 
-    const dashboardClient = new DashboardContractClient(this.blockchainClient, dashboard);
+    const dashboardClient = DashboardContractClient.getOrCreate(this.blockchainClient, dashboard);
     const nodeOperatorFeesDisbursed = dashboardClient.getNodeOperatorFeesPaidFromTxReceipt(receipt);
     if (nodeOperatorFeesDisbursed != 0n) {
       this.metricsUpdater.addNodeOperatorFeesPaid(vault, weiToGweiNumber(nodeOperatorFeesDisbursed));

@@ -8,6 +8,8 @@ import { DashboardABI } from "../../core/abis/Dashboard.js";
  * Provides methods for extracting payment information from transaction receipts by decoding contract events.
  */
 export class DashboardContractClient implements IDashboard<TransactionReceipt> {
+  private static readonly clientCache = new Map<Address, DashboardContractClient>();
+
   private readonly contract: GetContractReturnType<typeof DashboardABI, PublicClient, Address>;
 
   /**
@@ -25,6 +27,28 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
       address: contractAddress,
       client: this.contractClientLibrary.getBlockchainClient(),
     });
+  }
+
+  /**
+   * Gets or creates a DashboardContractClient instance for the given dashboard address.
+   * Uses a static cache to reuse instances for the same dashboard address.
+   *
+   * @param {IBlockchainClient<PublicClient, TransactionReceipt>} contractClientLibrary - Blockchain client for reading contract data.
+   * @param {Address} contractAddress - The address of the Dashboard contract.
+   * @returns {DashboardContractClient} The cached or newly created DashboardContractClient instance.
+   */
+  static getOrCreate(
+    contractClientLibrary: IBlockchainClient<PublicClient, TransactionReceipt>,
+    contractAddress: Address,
+  ): DashboardContractClient {
+    const cached = this.clientCache.get(contractAddress);
+    if (cached) {
+      return cached;
+    }
+
+    const client = new DashboardContractClient(contractClientLibrary, contractAddress);
+    this.clientCache.set(contractAddress, client);
+    return client;
   }
 
   /**

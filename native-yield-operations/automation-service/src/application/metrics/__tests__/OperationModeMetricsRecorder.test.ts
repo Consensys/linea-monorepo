@@ -59,7 +59,9 @@ const createBlockchainClientMock = () =>
   }) as unknown as jest.Mocked<IBlockchainClient<PublicClient, TransactionReceipt>>;
 
 jest.mock("../../../clients/contracts/DashboardContractClient.js", () => ({
-  DashboardContractClient: jest.fn(),
+  DashboardContractClient: {
+    getOrCreate: jest.fn(),
+  },
 }));
 
 describe("OperationModeMetricsRecorder", () => {
@@ -78,8 +80,8 @@ describe("OperationModeMetricsRecorder", () => {
       getAddress: jest.fn(),
       getContract: jest.fn(),
     } as unknown as jest.Mocked<DashboardContractClient>;
-    (DashboardContractClient as jest.MockedClass<typeof DashboardContractClient>).mockImplementation(
-      () => dashboardClientInstance,
+    (DashboardContractClient.getOrCreate as jest.MockedFunction<typeof DashboardContractClient.getOrCreate>).mockReturnValue(
+      dashboardClientInstance,
     );
   });
 
@@ -137,7 +139,7 @@ describe("OperationModeMetricsRecorder", () => {
         ok<TransactionReceipt | undefined, Error>(receipt),
       );
 
-      expect(DashboardContractClient).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
+      expect(DashboardContractClient.getOrCreate).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
       expect(dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt).toHaveBeenCalledWith(receipt);
       expect(metricsUpdater.addNodeOperatorFeesPaid).toHaveBeenCalledWith(vaultAddress, 5);
       expect(metricsUpdater.addLidoFeesPaid).toHaveBeenCalledWith(vaultAddress, 3);
@@ -208,7 +210,7 @@ describe("OperationModeMetricsRecorder", () => {
 
       await recorder.recordReportYieldMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(receipt));
 
-      expect(DashboardContractClient).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
+      expect(DashboardContractClient.getOrCreate).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
       expect(dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt).toHaveBeenCalledWith(receipt);
       expect(yieldManagerClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(alternateYieldProvider);
       expect(metricsUpdater.incrementReportYield).toHaveBeenCalledWith(vaultAddress);
