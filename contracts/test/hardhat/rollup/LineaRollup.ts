@@ -10,8 +10,8 @@ import secondCompressedDataContent from "../_testData/compressedData/blocks-47-8
 import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
 
 import {
-  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
   PAUSE_STATE_DATA_SUBMISSION_ROLE,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
@@ -196,8 +196,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
@@ -223,8 +223,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [...roleAddresses.slice(1)],
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
@@ -246,8 +246,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [...roleAddresses.slice(1)],
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
         defaultAdmin: ADDRESS_ZERO,
         shnarfProvider: ADDRESS_ZERO,
       };
@@ -273,8 +273,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
@@ -320,8 +320,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
@@ -347,8 +347,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
@@ -375,8 +375,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: alternateShnarfProviderAddress.address,
       };
@@ -416,8 +416,8 @@ describe("Linea Rollup contract", () => {
           rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
           rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
           roleAddresses,
-          pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-          unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+          pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+          unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
           defaultAdmin: securityCouncil.address,
           shnarfProvider: ADDRESS_ZERO,
         },

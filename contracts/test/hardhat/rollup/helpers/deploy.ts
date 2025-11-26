@@ -4,8 +4,8 @@ import { ethers } from "hardhat";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 
 import {
-  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
 } from "contracts/common/constants";
@@ -104,8 +104,8 @@ export async function deployLineaRollupFixture() {
     rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
     rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
     roleAddresses,
-    pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-    unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+    pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+    unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
     defaultAdmin: securityCouncil.address,
     shnarfProvider: ADDRESS_ZERO,
   };
