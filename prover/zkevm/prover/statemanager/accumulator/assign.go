@@ -118,8 +118,10 @@ type assignmentBuilder struct {
 	insertionPath [common.NbElemForHasingU64][]field.Element
 	// isInsertRow3 is one for row 3 of INSERT operation
 	isInsertRow3 []field.Element
-	// intermTopRoot contains the intermediate Poseidon2 state hash
-	intermTopRoot [common.NbElemPerHash][]field.Element
+	// intermZeroTopRoot contains the the first intermediate Poseidon2 state hash
+	intermZeroTopRoot [common.NbElemPerHash][]field.Element
+	// intermOneTopRoot contains the second intermediate Poseidon2 state hash
+	intermOneTopRoot [common.NbElemPerHash][]field.Element
 	// topRoot contains the Poseidon2 hash of SubTreeRoot and NextFreeNode
 	topRoot [common.NbElemPerHash][]field.Element
 }
@@ -173,7 +175,7 @@ func newAssignmentBuilder(s Settings) *assignmentBuilder {
 
 		amb.leafOpening.hKey[i] = make([]field.Element, 0, amb.NumRows())
 		amb.leafOpening.hVal[i] = make([]field.Element, 0, amb.NumRows())
-		amb.intermTopRoot[i] = make([]field.Element, 0, amb.NumRows())
+		amb.intermZeroTopRoot[i] = make([]field.Element, 0, amb.NumRows())
 		amb.topRoot[i] = make([]field.Element, 0, amb.NumRows())
 
 		amb.interm[i] = make([][]field.Element, 5)
@@ -354,13 +356,14 @@ func (am *Module) assignTopRootCols(
 	paddedSize := am.NumRows()
 
 	// compute the padding values for intermTopRoot and topRoot
-	var zeroBlock field.Octuplet
-	intermTopRootPadLimbs := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
-	topRootPadLimbs := vortex.CompressPoseidon2(intermTopRootPadLimbs, zeroBlock)
+	// var zeroBlock field.Octuplet
+	// intermTopRootPadLimbs := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
+	// topRootPadLimbs := vortex.CompressPoseidon2(intermTopRootPadLimbs, zeroBlock)
 
-	for i := range cols.IntermTopRoot {
-		run.AssignColumn(cols.IntermTopRoot[i].GetColID(), smartvectors.RightPadded(builder.intermTopRoot[i], intermTopRootPadLimbs[i], paddedSize))
-		run.AssignColumn(cols.TopRoot[i].GetColID(), smartvectors.RightPadded(builder.topRoot[i], topRootPadLimbs[i], paddedSize))
+	for i := range cols.IntermZeroTopRoot {
+		run.AssignColumn(cols.IntermZeroTopRoot[i].GetColID(), smartvectors.RightPadded(builder.intermZeroTopRoot[i], field.Zero(), paddedSize))
+		run.AssignColumn(cols.IntermOneTopRoot[i].GetColID(), smartvectors.RightPadded(builder.intermOneTopRoot[i], field.Zero(), paddedSize))
+		run.AssignColumn(cols.TopRoot[i].GetColID(), smartvectors.RightPadded(builder.topRoot[i], field.Zero(), paddedSize))
 	}
 }
 
@@ -424,11 +427,19 @@ func (a *assignmentBuilder) pushRow(
 
 	a.proofs = append(a.proofs, proof)
 
-	// We assign intermTopRoot = Poseidon2(zero, root), and topRoot = Poseidon2(interm, nextFreeNode)
-	intermTopRootFrLimbs := common.BlockCompression([]field.Element{field.Zero()}, nextFreeNodeFrLimbs)
-	topRootFrLimbs := common.BlockCompression(intermTopRootFrLimbs, rootFrLimbs)
-	for i := range a.intermTopRoot {
-		a.intermTopRoot[i] = append(a.intermTopRoot[i], intermTopRootFrLimbs[i])
+	// We assign intermZeroTopRoot = Poseidon2(zero, root), intermOneTopRoot = Poseidon2(intermZeroTopRoot, nextFreeNodeFirst)
+	// and topRoot = Poseidon2(intermOneTopRoot, nextFreeNodeSecond).
+	// We also assume nextFreeNodeFrLimbs is of length 2*common.NbElemPerHash
+	nextFreeNodeFirst := nextFreeNodeFrLimbs[0:common.NbElemPerHash]
+	nextFreeNodeSecond := nextFreeNodeFrLimbs[common.NbElemPerHash : 2*common.NbElemPerHash]
+	zeroBlock := field.Octuplet{}
+
+	intermZeroTopRootFrLimbs := common.BlockCompression(zeroBlock[:], rootFrLimbs)
+	intermOneTopRootFrLimbs := common.BlockCompression(intermZeroTopRootFrLimbs, nextFreeNodeFirst)
+	topRootFrLimbs := common.BlockCompression(intermOneTopRootFrLimbs, nextFreeNodeSecond)
+	for i := range a.intermZeroTopRoot {
+		a.intermZeroTopRoot[i] = append(a.intermZeroTopRoot[i], intermZeroTopRootFrLimbs[i])
+		a.intermOneTopRoot[i] = append(a.intermOneTopRoot[i], intermOneTopRootFrLimbs[i])
 		a.topRoot[i] = append(a.topRoot[i], topRootFrLimbs[i])
 	}
 

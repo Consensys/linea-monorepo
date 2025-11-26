@@ -99,7 +99,8 @@ const (
 	ACCUMULATOR_IS_INSERT_ROW3_NAME       ifaces.ColID = "ACCUMULATOR_IS_INSERT_ROW3"
 	ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME ifaces.ColID = "ACCUMULATOR_NEXT_FREE_NODE_SHIFT"
 	// Columns for hashing the top root
-	ACCUMULATOR_INTERM_TOP_ROOT_NAME ifaces.ColID = "ACCUMULATOR_INTERM_TOP_ROOT"
+	ACCUMULATOR_INTERM_ZERO_TOP_ROOT_NAME ifaces.ColID = "ACCUMULATOR_INTERM_ZERO_TOP_ROOT"
+	ACCUMULATOR_INTERM_ONE_TOP_ROOT_NAME  ifaces.ColID = "ACCUMULATOR_INTERM_ONE_TOP_ROOT"
 	ACCUMULATOR_TOP_ROOT_NAME        ifaces.ColID = "ACCUMULATOR_TOP_ROOT"
 )
 
@@ -194,8 +195,10 @@ type Module struct {
 		IsInsertRow3 ifaces.Column
 
 		// Columns for hashing the top root
-		// IntermTopRoot contains the intermediate Poseidon2 state hash
-		IntermTopRoot [common.NbElemPerHash]ifaces.Column
+		// IntermZeroTopRoot contains the the first intermediate Poseidon2 state hash
+		IntermZeroTopRoot [common.NbElemPerHash]ifaces.Column
+		// IntermOneTopRoot contains the second intermediate Poseidon2 state hash
+		IntermOneTopRoot [common.NbElemPerHash]ifaces.Column
 		// TopRoot contains the Poseidon2 hash of Roots and NextFreeNode
 		TopRoot [common.NbElemPerHash]ifaces.Column
 	}
@@ -239,7 +242,8 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 		am.Cols.HKeyPlus[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_HKEY_PLUS_NAME, i), am.NumRows(), true)
 
 		// TopRoot hash check columns commitments
-		am.Cols.IntermTopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_TOP_ROOT_NAME, i), am.NumRows(), true)
+		am.Cols.IntermZeroTopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_ZERO_TOP_ROOT_NAME, i), am.NumRows(), true)
+		am.Cols.IntermOneTopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_ONE_TOP_ROOT_NAME, i), am.NumRows(), true)
 		am.Cols.TopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_TOP_ROOT_NAME, i), am.NumRows(), true)
 	}
 
@@ -714,7 +718,7 @@ func (am *Module) checkLeafHashes() {
 		expr3 := symbolic.Mul(cols.IsActiveAccumulator, expr1, expr2)
 		am.comp.InsertGlobal(am.Round, am.qnamef("LEAF_HASH_EQUALITY_%d", i), expr3)
 	}
-	
+
 	// Booleaninty of IsEmptyLeaf: IsActive[i] * (IsEmptyLeaf^2[i] - IsEmptyLeaf[i])
 	expr4 := symbolic.Sub(symbolic.Square(cols.IsEmptyLeaf), cols.IsEmptyLeaf)
 	expr4 = symbolic.Mul(expr4, cols.IsActiveAccumulator)
@@ -816,15 +820,13 @@ func (am *Module) checkNextFreeNode() {
 }
 
 func (am *Module) checkTopRootHash() {
-
-	panic("add Poseidon query here")
-
-	//cols := am.Cols
-	//
-	//for i := 0; i < common.NbElemPerHash; i++ {
-	//	am.comp.InsertPoseidon2(am.Round, am.qname("Poseidon2_INTERM_TOP_ROOT_%d", i), cols.NextFreeNode, cols.Zero, cols.IntermTopRoot[i], nil)
-	//	am.comp.InsertPoseidon2(am.Round, am.qname("Poseidon2_TOP_ROOT_%d", i), cols.Roots, cols.IntermTopRoot[i], cols.TopRoot[i], nil)
-	//}
+	cols := am.Cols
+	// we assume the length of NextFreeNode is 2 * common.NbElemPerHash
+	nextFreeNodeFirst := cols.NextFreeNode[0:common.NbElemPerHash]
+	nextFreeNodeSecond := cols.NextFreeNode[common.NbElemPerHash : 2*common.NbElemPerHash]
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_INTERM_ZERO_TOP_ROOT"), cols.Roots, cols.Zero, cols.IntermZeroTopRoot, cols.IsActiveAccumulator)
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_INTERM_ONE_TOP_ROOT"), cols.IntermZeroTopRoot, [8]ifaces.Column(nextFreeNodeFirst), cols.IntermOneTopRoot, cols.IsActiveAccumulator)
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_TOP_ROOT"), [8]ifaces.Column(nextFreeNodeSecond), cols.IntermOneTopRoot, cols.TopRoot, cols.IsActiveAccumulator)
 }
 
 func (am *Module) checkZeroInInactive() {
