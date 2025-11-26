@@ -78,7 +78,6 @@ describe("YieldReportingProcessor", () => {
     } as unknown as jest.Mocked<ILogger>;
 
     metricsUpdater = {
-      incrementOperationModeTrigger: jest.fn(),
       recordOperationModeDuration: jest.fn(),
       incrementLidoVaultAccountingReport: jest.fn(),
       recordRebalance: jest.fn(),
@@ -197,10 +196,6 @@ describe("YieldReportingProcessor", () => {
     await processor.process();
 
     expect(lazyOracle.waitForVaultsReportDataUpdatedEvent).toHaveBeenCalledTimes(1);
-    expect(metricsUpdater.incrementOperationModeTrigger).toHaveBeenCalledWith(
-      OperationMode.YIELD_REPORTING_MODE,
-      OperationTrigger.TIMEOUT,
-    );
     expect(yieldManager.pauseStakingIfNotAlready).not.toHaveBeenCalled();
     expect(yieldExtension.transferFundsForNativeYield).toHaveBeenCalledWith(stakeAmount);
     expect(metricsUpdater.recordRebalance).toHaveBeenCalledWith(RebalanceDirection.STAKE, Number(stakeAmount));

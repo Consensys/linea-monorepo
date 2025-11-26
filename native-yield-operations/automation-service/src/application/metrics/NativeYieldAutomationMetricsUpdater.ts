@@ -2,7 +2,6 @@ import { IMetricsService } from "@consensys/linea-shared-utils";
 import {
   LineaNativeYieldAutomationServiceMetrics,
   OperationModeExecutionStatus,
-  OperationTrigger,
 } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
 import { Address, Hex } from "viem";
@@ -95,12 +94,6 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.LidoFeesPaidTotal,
       "Lido fees paid by automation per vault",
       ["vault_address"],
-    );
-
-    this.metricsService.createCounter(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal,
-      "Operation mode triggers grouped by mode and triggers",
-      ["mode", "trigger"],
     );
 
     this.metricsService.createCounter(
@@ -289,19 +282,6 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       vaultAddress,
       amountGwei,
     );
-  }
-
-  /**
-   * Increments the counter for operation mode triggers, grouped by mode and trigger type.
-   *
-   * @param {OperationMode} mode - The operation mode that was triggered.
-   * @param {OperationTrigger} trigger - The trigger that caused the mode to be activated.
-   */
-  public incrementOperationModeTrigger(mode: OperationMode, trigger: OperationTrigger): void {
-    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal, {
-      mode,
-      trigger,
-    });
   }
 
   /**

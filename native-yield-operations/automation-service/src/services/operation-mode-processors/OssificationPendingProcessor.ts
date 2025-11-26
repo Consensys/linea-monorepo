@@ -50,8 +50,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
    * @returns {Promise<void>} A promise that resolves when the processing cycle completes.
    */
   public async process(): Promise<void> {
-    const triggerEvent = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
-    this.metricsUpdater.incrementOperationModeTrigger(OperationMode.OSSIFICATION_PENDING_MODE, triggerEvent.result);
+    await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
     const startedAt = performance.now();
     await this._process();
     const durationMs = performance.now() - startedAt;

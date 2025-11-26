@@ -54,12 +54,6 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // N.B. Only accounts for payments by the automation service, but external actors can also trigger payment
   LidoFeesPaidTotal = "linea_native_yield_automation_service_lido_fees_paid_total",
 
-  // Counter that increments each time an operation mode is triggered.
-  // Labels:
-  // i.) `mode`
-  // i.) `operation_trigger` - VaultsReportDataUpdated_event vs timeout
-  OperationModeTriggerTotal = "linea_native_yield_automation_service_operation_mode_trigger_total",
-
   // Counter that increments each time an operation mode completes execution.
   // Labels:
   // i.) `mode`

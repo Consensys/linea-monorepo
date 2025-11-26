@@ -48,7 +48,6 @@ describe("OssificationPendingProcessor", () => {
     } as unknown as jest.Mocked<ILogger>;
 
     metricsUpdater = {
-      incrementOperationModeTrigger: jest.fn(),
       recordOperationModeDuration: jest.fn(),
       incrementLidoVaultAccountingReport: jest.fn(),
       recordRebalance: jest.fn(),
@@ -147,10 +146,6 @@ describe("OssificationPendingProcessor", () => {
     await processor.process();
 
     expect(lazyOracle.waitForVaultsReportDataUpdatedEvent).toHaveBeenCalledTimes(1);
-    expect(metricsUpdater.incrementOperationModeTrigger).toHaveBeenCalledWith(
-      OperationMode.OSSIFICATION_PENDING_MODE,
-      OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT,
-    );
     expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
     expect(yieldManager.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
     expect(lidoReportClient.getLatestSubmitVaultReportParams).toHaveBeenCalledWith(vaultAddress);

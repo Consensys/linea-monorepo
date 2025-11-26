@@ -4,7 +4,6 @@ import { NativeYieldAutomationMetricsUpdater } from "../NativeYieldAutomationMet
 import {
   LineaNativeYieldAutomationServiceMetrics,
   OperationModeExecutionStatus,
-  OperationTrigger,
 } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
@@ -95,11 +94,6 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       LineaNativeYieldAutomationServiceMetrics.LidoFeesPaidTotal,
       "Lido fees paid by automation per vault",
       ["vault_address"],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal,
-      "Operation mode triggers grouped by mode and triggers",
-      ["mode", "trigger"],
     );
     expect(metricsService.createCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
@@ -357,19 +351,6 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
         expect(metricsService.incrementCounter).not.toHaveBeenCalled();
       });
     });
-  });
-
-  it("increments operation mode trigger counter", () => {
-    const metricsService = createMetricsServiceMock();
-    const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-    jest.clearAllMocks();
-
-    updater.incrementOperationModeTrigger(OperationMode.YIELD_REPORTING_MODE, OperationTrigger.TIMEOUT);
-
-    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal,
-      { mode: OperationMode.YIELD_REPORTING_MODE, trigger: OperationTrigger.TIMEOUT },
-    );
   });
 
   it("increments operation mode execution counter with default success status", () => {

@@ -37,7 +37,6 @@ const createMetricsUpdaterMock = () => {
     addNodeOperatorFeesPaid: jest.fn(),
     addLiabilitiesPaid: jest.fn(),
     addLidoFeesPaid: jest.fn(),
-    incrementOperationModeTrigger: jest.fn(),
     incrementOperationModeExecution: jest.fn(),
     recordOperationModeDuration: jest.fn(),
   };
