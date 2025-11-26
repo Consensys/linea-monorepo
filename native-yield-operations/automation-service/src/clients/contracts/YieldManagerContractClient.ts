@@ -514,7 +514,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     amount: bigint,
   ): Promise<TransactionReceipt | undefined> {
     const availableWithdrawalBalance = await this.getAvailableUnstakingRebalanceBalance(yieldProvider);
-    if (availableWithdrawalBalance < this.minWithdrawalThresholdEth * ONE_ETHER) return undefined;
+    if (availableWithdrawalBalance < this.minWithdrawalThresholdEth * ONE_ETHER) {
+      this.logger.info(
+        `safeAddToWithdrawalReserveIfAboveThreshold - skipping as availableWithdrawalBalance=${availableWithdrawalBalance} is below the minimum withdrawal threshold of ${this.minWithdrawalThresholdEth * ONE_ETHER}`,
+      );
+      return undefined;
+    }
     return await this.safeAddToWithdrawalReserve(yieldProvider, amount);
   }
 
