@@ -176,7 +176,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.NONE) {
       // No-op
       this.logger.info("_handleRebalance - no rebalance pathway, calling _handleSubmitLatestVaultReport");
-      this.metricsUpdater.recordRebalance(RebalanceDirection.NONE, 0);
+      this.metricsUpdater.recordRebalance(RebalanceDirection.STAKE, 0);
       await this._handleSubmitLatestVaultReport();
       return;
     } else if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.STAKE) {
