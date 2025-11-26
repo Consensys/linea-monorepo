@@ -346,10 +346,10 @@ func (st *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Ent
 		}
 	}
 
-	// Move the input (in-progress) file to requests-done with a .success suffix.
-	cLog.Infof("Moving %v to %v with the success prefix", job.OriginalFile, job.Def.dirDone())
-
-	jobDone := job.DoneFile(status)
+	// --- After conglomeration finishes, trim the boostrap suffix marker to indicate full success ---
+	if job.Def.Name == jobNameConglomeration {
+		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, config.SuccessSuffix)
+	}
 
 	// Limitless-specific renaming
 	if job.Def.Name == jobNameBootstrap {
@@ -357,19 +357,27 @@ func (st *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Ent
 		// This is because it is technically incorrect to consider moving the entire file move to
 		// `requests-done` folder with success prefix. So we prepend`.bootstrap` suffix to indicate that
 		// at this moment only bootstrap is successful. The entire file
-		// should be moved only after conglomeration is successful. At this point, we should just trim the
-		// bootstrap suffix to indicate the entire request is successful.
-		jobDone = strings.Replace(jobDone, "-getZkProof.json."+config.SuccessSuffix, "-getZkProof.json."+config.BootstrapPartialSucessSuffix, 1)
-		cLog.Info("Added suffix to indicate partial success (bootstrap phase only).")
-	}
+		// should be moved only after conglomeration is successful.
+		// Stay in execution/requests/, only change suffix
 
-	if err := os.Rename(job.InProgressPath(), jobDone); err != nil {
-		cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), jobDone, err)
-	}
+		var (
+			current = job.InProgressPath()
+			target  = filepath.Join(filepath.Dir(job.InProgressPath()),
+				job.OriginalFile+"."+config.BootstrapPartialSucessSuffix,
+			)
+		)
 
-	// --- After conglomeration finishes, trim the boostrap suffix marker to indicate full success ---
-	if job.Def.Name == jobNameConglomeration {
-		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, config.SuccessSuffix)
+		if err := os.Rename(current, target); err != nil {
+			cLog.Errorf("Error renaming bootstrap job %v → %v: %v", current, target, err)
+		}
+		cLog.Infof("Bootstrap completed. Staying in requests and marked partial success: %v → %v", current, target)
+	} else {
+		// Move the input (in-progress) file to requests-done with a .success suffix.
+		cLog.Infof("Moving %v to %v with the success prefix", job.OriginalFile, job.Def.dirDone())
+		jobDone := job.DoneFile(status)
+		if err := os.Rename(job.InProgressPath(), jobDone); err != nil {
+			cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), jobDone, err)
+		}
 	}
 
 	// Set active job to nil once the job is successful and notify the job is done
@@ -592,7 +600,7 @@ func (st *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Ent
 }
 
 func replaceExecDoneSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, oldSuffix, newSuffix string) {
-	pattern := filepath.Join(cfg.Execution.DirDone(), fmt.Sprintf("%d-%d-*.%s", job.Start, job.End, oldSuffix))
+	pattern := filepath.Join(cfg.Execution.DirFrom(), fmt.Sprintf("%d-%d-*.%s", job.Start, job.End, oldSuffix))
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		cLog.Errorf("Glob pattern failed for %v: %v", pattern, err)
@@ -607,11 +615,17 @@ func replaceExecDoneSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, old
 		cLog.Warnf("Multiple files match pattern %v, using first: %v", pattern, matches)
 	}
 
-	oldFile := matches[0]
-	newFile := strings.TrimSuffix(oldFile, "."+oldSuffix) + "." + newSuffix
+	var (
+		oldFile = matches[0]
+		newFile = strings.TrimSuffix(oldFile, "."+oldSuffix) + "." + newSuffix
+		dir     = filepath.Dir(newFile)
+		base    = filepath.Base(newFile)
+		doneDir = strings.Replace(dir, cfg.Execution.DirFrom(), cfg.Execution.DirDone(), 1) // Change dir from "requests" → "requests-done"
+	)
 
+	// Overwrite newFile so that it can be finally placed in requests-done dir
+	newFile = filepath.Join(doneDir, base)
 	cLog.Infof("Renaming file: %v → %v", oldFile, newFile)
-
 	if err := os.Rename(oldFile, newFile); err != nil {
 		cLog.Errorf("Failed to rename %v → %v: %v", oldFile, newFile, err)
 	} else {

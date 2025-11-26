@@ -209,7 +209,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 		return nil, fmt.Errorf("conglomeration failed: %w", res.err)
 	}
 
-	logrus.Infoln("Successfully aggregated all GL and LPP execution sub-proofs.")
+	logrus.Infof("Successfully aggregated all %d GL and %d LPP execution sub-proofs.", req.NumGL, req.NumLPP)
 
 	// -- 5. Load setup (in background started earlier maybe)
 	execReq := &execution.Request{}

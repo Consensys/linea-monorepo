@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
@@ -13,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless/distributed"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type ProverArgs struct {
@@ -88,8 +90,21 @@ func handleBootstrapJob(cfg *config.Config, args ProverArgs) error {
 		return err
 	}
 
+	// local helper: takes the input filename and appends the bootstrap partial success suffix
+	// after trimming the inprogress suffix
+	makeBootstrapDoneFile := func(input string) string {
+		file := filepath.Base(input)
+		// find `.inprogress` + suffix
+		if idx := strings.Index(file, config.InProgressSufix); idx != -1 {
+			return file[:idx] + config.BootstrapPartialSucessSuffix
+		}
+
+		utils.Panic("failed to find %q in %q", config.InProgressSufix, file)
+		return "" // unreachable
+	}
+
 	metadata := &distributed.Metadata{
-		BootstrapRequestDoneFile: files.DoneFilePath(args.Input, config.BootstrapPartialSucessSuffix),
+		BootstrapRequestDoneFile: filepath.Join(filepath.Dir(args.Input), makeBootstrapDoneFile(args.Input)),
 		StartBlock:               sbr,
 		EndBlock:                 ebr,
 	}

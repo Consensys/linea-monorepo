@@ -246,23 +246,6 @@ func WaitForFileAtPath(ctx context.Context, file string, pollInterval time.Durat
 	return nil
 }
 
-// DoneFilePath replaces "requests" -> "requests-done" and
-// ".inprogress.<anything>" -> to given suffix (eg. ".success.parital.bootstrap")
-func DoneFilePath(inProgressPath, suffix string) string {
-	dir := filepath.Dir(inProgressPath)
-	base := filepath.Base(inProgressPath)
-
-	// Change dir from "requests" → "requests-done"
-	doneDir := strings.Replace(dir, "requests", "requests-done", 1)
-
-	// Strip everything after ".inprogress.*" and add the suffix
-	if idx := strings.Index(base, config.InProgressSufix); idx != -1 {
-		base = base[:idx] + suffix
-	}
-
-	return filepath.Join(doneDir, base)
-}
-
 // ReadRequest reads and decodes a request from a file
 func ReadRequest(path string, into any) error {
 	f, err := os.Open(path)
