@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/fsnotify/fsnotify"
 	"github.com/sirupsen/logrus"
 )
 
@@ -206,26 +205,11 @@ func RemoveMatchingFiles(pattern string, isLog bool) (bool, error) {
 // Uses fsnotify when possible but falls back to polling every pollInterval.
 func WaitForFileAtPath(ctx context.Context, file string, pollInterval time.Duration, reportMissing bool, msg string) error {
 	logrus.Infoln(msg)
-	dir := filepath.Dir(file)
 
 	// Quick initial stat
 	if _, err := os.Stat(file); err == nil {
 		logrus.Infof("found: %s (initial stat)", file)
 		return nil
-	}
-
-	// Try to create watcher; if it fails (most likely in K8s), we fall back to polling alone.
-	watcher, werr := fsnotify.NewWatcher()
-	if werr != nil {
-		logrus.Warnf("fsnotify.NewWatcher failed, falling back to polling: %v", werr)
-		watcher = nil
-	} else {
-		// only attempt Add if watcher created and dir exists
-		if err := watcher.Add(dir); err != nil {
-			logrus.Warnf("watcher.Add(%s) failed, falling back to polling: %v", dir, err)
-			watcher.Close()
-			watcher = nil
-		}
 	}
 
 	pollInterval = pollInterval * time.Second
@@ -243,33 +227,6 @@ func WaitForFileAtPath(ctx context.Context, file string, pollInterval time.Durat
 					logrus.Infof("found: %s (poll)", file)
 					return
 				}
-			default:
-				// give priority to watcher events if present
-				if watcher != nil {
-					select {
-					case event, ok := <-watcher.Events:
-						if !ok {
-							return
-						}
-						if (event.Op&fsnotify.Create != 0) || (event.Op&fsnotify.Write != 0) {
-							if event.Name == file {
-								logrus.Infof("found: %s (event)", event.Name)
-								return
-							}
-						}
-					case err, ok := <-watcher.Errors:
-						if !ok {
-							return
-						}
-						logrus.Errorf("watcher error: %v", err)
-					default:
-						// nothing now
-						time.Sleep(10 * time.Millisecond)
-					}
-				} else {
-					// no watcher -> only polling path (already handled by ticker)
-					time.Sleep(10 * time.Millisecond)
-				}
 			}
 		}
 	}()
@@ -282,15 +239,10 @@ func WaitForFileAtPath(ctx context.Context, file string, pollInterval time.Durat
 				logrus.Infof("missing file: %s", file)
 			}
 		}
-		if watcher != nil {
-			watcher.Close()
-		}
+
 		return ctx.Err()
 	}
 
-	if watcher != nil {
-		watcher.Close()
-	}
 	return nil
 }
 
