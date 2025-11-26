@@ -29,7 +29,7 @@ import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.utils.Numeric;
 
-public class ExcludedPrecompilesTest extends LineaPluginTestBasePrague {
+public class ExcludedPrecompilesTest extends LineaPluginPoSTestBase {
   private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
   private static final BigInteger GAS_PRICE = DefaultGasProvider.GAS_PRICE;
 
