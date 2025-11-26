@@ -205,8 +205,7 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-
-	proof.LinearCombination = ctx.VortexKoalaParams.InitOpeningWithLC(committedSV, randomCoinLC)
+	vortex.LinearCombination(proof, committedSV, randomCoinLC) //TODO@yao:check the committedSV is encoded metrix or not
 	fmt.Printf("proof.LinearCombination:%v\n", proof.LinearCombination.Pretty())
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
@@ -254,7 +253,8 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 	randomCoinLC := run.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
-	proof := ctx.VortexKoalaParams.InitOpeningFromAlreadyEncodedLC(committedSV, randomCoinLC)
+	proof := &vortex.OpeningProof{}
+	vortex.LinearCombination(proof, committedSV, randomCoinLC) //TODO@yao:check the committedSV is encoded metrix or not
 
 	run.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }

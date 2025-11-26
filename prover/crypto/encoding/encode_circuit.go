@@ -69,7 +69,7 @@ func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVari
 	return res
 }
 
-// BLS to Koalabear encoding
+// BLS to Koalabear encoding, BLS -- > Koalabear --> BLS
 const GnarkKoalabearNumElements = 11
 
 func DecodeKoalabearToBLS12377(elements [11]field.Element) fr.Element {

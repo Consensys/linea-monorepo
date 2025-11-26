@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	crypto_vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex"
-	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
