@@ -75,7 +75,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	proof := crypto_vortex.GnarkProof{}
 	// proof.Rate = uint64(ctx.BlowUpFactor)
 	// proof.RsDomain = fft.NewDomain(uint64(ctx.NumEncodedCols()), fft.WithCache())
-	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName()) //TODO@yao: this is correct, remove it
+	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName())
 	// ext4, _ := gnarkfext.NewExt4(api)
 	// ext4.Println(proof.LinearCombination...)
 

@@ -652,7 +652,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 		ctx.LinCombRandCoinName(),
 		coin.FieldExt,
 	)
-
+	fmt.Printf("ctx.NumEncodedCols(): %v\n", ctx.NumEncodedCols())
 	// registers the linear combination claimed by the prover
 	ctx.Items.Ualpha = ctx.Comp.InsertProof(
 		lastRound+1,
@@ -1023,7 +1023,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 			tree      *smt_bls12377.Tree
 			colHashes []bls12377.Element
 		)
-		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(committedMatrix)
+		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(pols)
 		var rootBLS bls12377.Element
 		rootBLS = tree.Root
 		fmt.Printf("Gnark precomputed Merkle root compiler: %v\n", rootBLS.String())

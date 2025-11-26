@@ -103,7 +103,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 			tree      *smt_bls12377.Tree
 			colHashes []bls12377.Element
 		)
-		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(committedMatrix)
+		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(pols)
 
 		var rootBLS bls12377.Element
 		rootBLS = tree.Root
