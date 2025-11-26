@@ -8,6 +8,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -107,18 +108,18 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 		switch ctx.RoundStatus[round] {
 		case IsOnlyPoseidon2Applied:
 			noSisRoots = append(noSisRoots, precompRootF)
-			flagForNoSISRounds = append(flagForNoSISRounds, true)
+			flagForNoSISRounds = append(flagForNoSISRounds, false)
 		case IsSISApplied:
 			sisRoots = append(sisRoots, precompRootF)
-			flagForSISRounds = append(flagForSISRounds, false)
+			flagForSISRounds = append(flagForSISRounds, true)
 		default:
 			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
 		}
 	}
 
-	// assign the roots and the IsSISReplacedByPoseidon2 flags
+	// assign the roots and the WithSis flags
 	roots := append(noSisRoots, sisRoots...)
-	IsSISReplacedByPoseidon2 := append(flagForNoSISRounds, flagForSISRounds...)
+	WithSis := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
 	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
@@ -140,19 +141,14 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 
 	merkleProofs := ctx.unpackMerkleProofs(packedMProofs, entryList)
 
-	return vortex.VerifyOpening(&vortex.VerifierInputs{
-		AlgebraicCheckInputs: vortex.AlgebraicCheckInputs{
-			Koalabear_Params: *ctx.VortexKoalaParams,
-			X:                x,
-			Ys:               ctx.getYs(run),
-			OpeningProof:     *proof,
-			RandomCoin:       randomCoin,
-			EntryList:        entryList,
-		},
-		MerkleRoots:              roots,
-		MerkleProofs:             merkleProofs,
-		IsSISReplacedByPoseidon2: IsSISReplacedByPoseidon2,
-	})
+	var vi vortex.VerifierInput
+	vi.X = x
+	vi.Alpha = randomCoin
+	vi.EntryList = entryList
+	vi.Ys = ctx.getYs(run)
+
+	return vortex_koalabear.Verify(ctx.VortexKoalaParams, proof, &vi, roots, merkleProofs, WithSis)
+
 }
 
 func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
@@ -187,8 +183,10 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 		}
 
 		gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12377(precompRootF))
-		flagForNoSISRounds = append(flagForNoSISRounds, true)
+		flagForNoSISRounds = append(flagForNoSISRounds, false)
 
+	} else {
+		flagForSISRounds = append(flagForSISRounds, true)
 	}
 
 	// Collect all the roots: rounds by rounds
@@ -212,14 +210,16 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 		switch ctx.RoundStatus[round] {
 		case IsOnlyPoseidon2Applied:
 			gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12377(precompRootF))
-			flagForNoSISRounds = append(flagForNoSISRounds, true)
+			flagForNoSISRounds = append(flagForNoSISRounds, false)
+		case IsSISApplied:
+			flagForSISRounds = append(flagForSISRounds, true)
 		default:
 			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
 		}
 	}
 
-	// assign the roots and the IsSISReplacedByPoseidon2 flags
-	IsSISReplacedByPoseidon2 := append(flagForNoSISRounds, flagForSISRounds...)
+	// assign the roots and the WithSis flags
+	WithSis := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
 	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
@@ -240,20 +240,14 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	}
 
 	merkleProofs := ctx.unpackGnarkMerkleProofs(packedMProofs, entryList)
-	return vortex_bls12377.VerifyOpening(&vortex_bls12377.VerifierInputs{
-		AlgebraicCheckInputs: vortex.AlgebraicCheckInputs{
-			Koalabear_Params: *ctx.VortexKoalaParams,
-			X:                x,
-			Ys:               ctx.getYs(run),
-			OpeningProof:     *proof,
-			RandomCoin:       randomCoin,
-			EntryList:        entryList,
-		},
-		BLS12_377_Params:         *ctx.VortexBLSParams,
-		MerkleRoots:              gnarkNoSisRoots,
-		MerkleProofs:             merkleProofs,
-		IsSISReplacedByPoseidon2: IsSISReplacedByPoseidon2,
-	})
+
+	var vi vortex.VerifierInput
+	vi.X = x
+	vi.Alpha = randomCoin
+	vi.EntryList = entryList
+	vi.Ys = ctx.getYs(run)
+
+	return vortex_bls12377.Verify(ctx.VortexBLSParams, proof, &vi, gnarkNoSisRoots, merkleProofs, WithSis)
 
 }
 
