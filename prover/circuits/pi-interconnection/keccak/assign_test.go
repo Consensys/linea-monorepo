@@ -3,9 +3,10 @@ package keccak
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"

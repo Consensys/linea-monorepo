@@ -1,10 +1,11 @@
 package fastpolyext_test
 
 import (
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field/fext"
-	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/fft"
 	"github.com/stretchr/testify/require"

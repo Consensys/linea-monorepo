@@ -8,8 +8,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // NewRepeatedPattern creates a new [RepeatedPattern] column. Any can be either a column or

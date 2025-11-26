@@ -3,8 +3,9 @@
 package ringsis_64_16
 
 import (
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"math/big"
+
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 )
 
 // PrecomputeTwiddlesCoset precomputes twiddlesCoset from twiddles and coset table

@@ -1,9 +1,10 @@
 package fft
 
 import (
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"math/bits"
 	"runtime"
+
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 )
 
 // BitReverse applies the bit-reversal permutation to v.

@@ -7,10 +7,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/zkevm/prover/hash/importpad"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/zkevm/prover/hash/packing"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // KeccakSingleProviderInput stores the inputs for [NewKeccakSingleProvider]

@@ -1,8 +1,9 @@
 package fext
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"math/bits"
+
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 )
 
 var rSquare = fr.Element{

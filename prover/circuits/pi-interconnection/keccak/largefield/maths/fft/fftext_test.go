@@ -17,11 +17,12 @@
 package fft
 
 import (
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/polyext"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field/fext"
 	"math/big"
 	"strconv"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/polyext"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field/fext"
 
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"

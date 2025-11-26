@@ -8,8 +8,8 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,7 +24,7 @@ func main() {
 		ExecutionMaxNbMsg:     16,
 		L2MsgMerkleDepth:      5,
 		L2MsgMaxNbMerkle:      10,
-	}, dummy.Compile)
+	}, keccak.WizardCompilationParameters()...)
 
 	var t test_utils.FakeTestingT
 	assert.NoError(t, err)

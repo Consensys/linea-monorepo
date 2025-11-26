@@ -1,9 +1,10 @@
 package fastpolyext
 
 import (
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field/fext"
-	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"

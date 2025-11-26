@@ -2,6 +2,7 @@ package fastpolyext
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field/fext"
 

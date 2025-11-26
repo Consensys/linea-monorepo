@@ -19,11 +19,12 @@ package fext
 import (
 	"encoding/binary"
 	"errors"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"math/big"
 	"math/bits"
 	"math/rand/v2"
+
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 
 	"strings"
 

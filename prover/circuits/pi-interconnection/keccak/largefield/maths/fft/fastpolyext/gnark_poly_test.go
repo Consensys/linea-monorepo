@@ -2,12 +2,13 @@ package fastpolyext_test
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field/fext/gnarkfext"
-	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )

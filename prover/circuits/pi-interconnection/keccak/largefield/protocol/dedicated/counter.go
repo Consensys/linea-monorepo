@@ -10,8 +10,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // NewCyclicCounter creates a structured [CyclicCounter]. When passing period
