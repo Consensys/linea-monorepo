@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
-func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, polySize, rate int, withSis bool) (
+func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, polySize, rate int, WithSis []bool) (
 	*Params,
 	*vortex.OpeningProof,
 	vortex.VerifierInput,
@@ -49,7 +49,7 @@ func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, p
 
 	encodedMatrices := make([]EncodedMatrix, nCommitments)
 	for j := range commitments {
-		if withSis {
+		if WithSis[j] {
 			encodedMatrices[j], commitments[j], trees[j], _ = vortexInstance.CommitMerkleWithSIS(polyLists[j])
 		} else {
 			encodedMatrices[j], commitments[j], trees[j], _ = vortexInstance.CommitMerkleWithoutSIS(polyLists[j])
@@ -68,24 +68,18 @@ func TestVerifier(t *testing.T) {
 	nbPolys := 15
 	polySize := 1 << 10
 	rate := 2
+	WithSis := make([]bool, nCommitments)
 
-	// with sis
-	{
-		params, proof, vi, commitments, merkleProofs := getProofVortexNCommitmentsWithMerkle(t, nCommitments, nbPolys, polySize, rate, true)
+	WithSis[0] = false
+	WithSis[1] = true
+	WithSis[2] = false
+	WithSis[3] = false
 
-		err := Verify(params, proof, &vi, commitments, merkleProofs, WithSis())
-		if err != nil {
-			t.Fatal(err)
-		}
+	params, proof, vi, commitments, merkleProofs := getProofVortexNCommitmentsWithMerkle(t, nCommitments, nbPolys, polySize, rate, WithSis)
+
+	err := Verify(params, proof, &vi, commitments, merkleProofs, WithSis)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	// without sis
-	{
-		params, proof, vi, commitments, merkleProofs := getProofVortexNCommitmentsWithMerkle(t, nCommitments, nbPolys, polySize, rate, false)
-
-		err := Verify(params, proof, &vi, commitments, merkleProofs)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
 }

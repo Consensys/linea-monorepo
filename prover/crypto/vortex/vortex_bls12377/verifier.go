@@ -1,6 +1,7 @@
 package vortex_bls12377
 
 import (
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -22,8 +23,8 @@ func (p *GParams) HasNoSisHasher() bool {
 
 // Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
 // The leaves are poseidon2_bls12377(sis(columns[i][j]))
-func CheckColumnInclusionSis(sis *ringsis.Key, columns [][][]field.Element,
-	merkleProofs [][]smt_bls12377.Proof, commitments []Commitment) error {
+func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,
+	merkleProofs [][]smt_bls12377.Proof, commitments []Commitment, WithSis []bool) error {
 
 	sisHash := make([]field.Element, sis.OutputSize())
 	// var leaf fr.Element
@@ -31,12 +32,21 @@ func CheckColumnInclusionSis(sis *ringsis.Key, columns [][][]field.Element,
 	for i := 0; i < len(commitments); i++ {
 
 		for j := 0; j < len(columns[i]); j++ {
+			var leaf fr.Element
 
-			// compute leaf = poseidon2_bls12377(columns[i][j]))
-			sis.SisGnarkCrypto.Hash(columns[i][j], sisHash)
-			h.Reset()
-			h.WriteKoalabearElements(sisHash...)
-			leaf := h.SumElement()
+			if WithSis[i] {
+				// compute leaf = poseidon2_bls12377(columns[i][j]))
+				sis.SisGnarkCrypto.Hash(columns[i][j], sisHash)
+				h.Reset()
+				h.WriteKoalabearElements(sisHash...)
+				leaf = h.SumElement()
+			} else {
+				// compute leaf = poseidon2_bls12377(columns[i][j]))
+				h.Reset()
+				h.WriteKoalabearElements(columns[i][j]...)
+				leaf = h.SumElement()
+
+			}
 
 			// check merkle proof
 			err := smt_bls12377.Verify(&merkleProofs[i][j], leaf, commitments[i])
@@ -49,65 +59,13 @@ func CheckColumnInclusionSis(sis *ringsis.Key, columns [][][]field.Element,
 	return nil
 }
 
-// Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
-// The leaves are poseidon2_bls12377(columns[i][j])
-func CheckColumnInclusionNoSis(columns [][][]field.Element,
-	merkleProofs [][]smt_bls12377.Proof, commitments []Commitment) error {
+func Verify(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput, commitments []Commitment, merkleProofs [][]smt_bls12377.Proof, WithSis []bool) error {
 
-	for i := 0; i < len(commitments); i++ {
-
-		h := poseidon2_bls12377.NewMDHasher()
-
-		for j := 0; j < len(columns[i]); j++ {
-
-			// compute leaf = poseidon2_bls12377(columns[i][j]))
-			h.WriteKoalabearElements(columns[i][j]...)
-			leaf := h.SumElement()
-			h.Reset()
-
-			// check merkle proof
-			err := smt_bls12377.Verify(&merkleProofs[i][j], leaf, commitments[i])
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-type config struct {
-	withSis bool
-}
-
-type VerifierOption func(c *config) error
-
-func WithSis() VerifierOption {
-	return func(c *config) error {
-		c.withSis = true
-		return nil
-	}
-}
-
-func VerifySIS(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput, commitments []Commitment, merkleProofs [][]smt_bls12377.Proof) error {
-
-	err := VerifyCommon(params, proof, vi)
-	if err != nil {
-		return err
-	}
-
-	err = CheckColumnInclusionSis(params.Key, proof.Columns,
-		merkleProofs, commitments)
-
-	return err
-}
-
-func Verify(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput, commitments []Commitment, merkleProofs [][]smt_bls12377.Proof, option ...VerifierOption) error {
-
-	var c config
-	for _, opts := range option {
-		err := opts(&c)
-		if err != nil {
-			return err
+	// If WithSis is not assigned, we assign them with default true values
+	if WithSis == nil {
+		WithSis = make([]bool, len(merkleProofs))
+		for i := range WithSis {
+			WithSis[i] = true
 		}
 	}
 
@@ -116,13 +74,8 @@ func Verify(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput
 		return err
 	}
 
-	if c.withSis {
-		err = CheckColumnInclusionSis(params.Key, proof.Columns,
-			merkleProofs, commitments)
-	} else {
-		err = CheckColumnInclusionNoSis(proof.Columns,
-			merkleProofs, commitments)
-	}
+	err = CheckColumnInclusion(params.Key, proof.Columns,
+		merkleProofs, commitments, WithSis)
 
 	return err
 }

@@ -598,8 +598,8 @@ func (ctx *Ctx) generateVortexParams() {
 		sisParams = &ringsis.StdParams
 	}
 	if ctx.IsBLS {
-		koalaParams := vortex_koalabear.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
-		ctx.VortexKoalaParams = &koalaParams
+		// koalaParams := vortex_koalabear.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
+		// ctx.VortexKoalaParams = &koalaParams
 		blsParams := vortex_bls12377.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
 		ctx.VortexBLSParams = &blsParams
 	} else {
