@@ -779,7 +779,7 @@ func (run *ProverRuntime) goNextRound() {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		value := info.Sample(run.BLSFS, seed)
+		value := info.Sample(run.BLSFS, seed) //TODO@thomas TODO@yao we need to run it for both BLS and Koala FS
 		run.Coins.InsertNew(myCoin, value)
 	}
 

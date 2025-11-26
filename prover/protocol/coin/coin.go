@@ -102,6 +102,7 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
+//TODO@thomas TODO@yao we need to run it for both BLS and Koala FS, make the fs into interface?
 func (info *Info) Sample(fs *fiatshamir_bls12377.FS, seed field.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
