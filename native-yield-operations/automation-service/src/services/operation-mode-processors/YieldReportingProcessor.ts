@@ -320,21 +320,23 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       `_shouldReportYield - unpaidLidoProtocolFees=${JSON.stringify(unpaidLidoProtocolFees, bigintReplacer)}, yieldReport=${JSON.stringify(yieldReport, bigintReplacer)}`,
     );
 
-    // Set gauge metrics for peeked values
-    const outstandingNegativeYield = yieldReport?.outstandingNegativeYield ?? 0n;
-    const yieldAmount = yieldReport?.yieldAmount ?? 0n;
-    const unpaidFees = unpaidLidoProtocolFees ?? 0n;
-    await Promise.all([
-      this.metricsUpdater.setLastPeekedNegativeYieldReport(vault, weiToGweiNumber(outstandingNegativeYield)),
-      this.metricsUpdater.setLastPeekedPositiveYieldReport(vault, weiToGweiNumber(yieldAmount)),
-      this.metricsUpdater.setLastPeekUnpaidLidoProtocolFees(vault, weiToGweiNumber(unpaidFees)),
-    ]);
+    let yieldThresholdMet = false;
+    let feesThresholdMet = false;
 
-    // Compare unpaid fees to threshold
-    const feesThresholdMet = unpaidFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
+    if (yieldReport !== undefined) {
+      const outstandingNegativeYield = yieldReport?.outstandingNegativeYield;
+      const yieldAmount = yieldReport?.yieldAmount;
+      await Promise.all([
+        this.metricsUpdater.setLastPeekedNegativeYieldReport(vault, weiToGweiNumber(outstandingNegativeYield)),
+        this.metricsUpdater.setLastPeekedPositiveYieldReport(vault, weiToGweiNumber(yieldAmount)),
+      ]);
+      yieldThresholdMet = yieldAmount >= this.minPositiveYieldToReportWei;
+    }
 
-    // Compare yield amount to threshold
-    const yieldThresholdMet = yieldAmount >= this.minPositiveYieldToReportWei;
+    if (unpaidLidoProtocolFees !== undefined) {
+      await this.metricsUpdater.setLastPeekUnpaidLidoProtocolFees(vault, weiToGweiNumber(unpaidLidoProtocolFees));
+      feesThresholdMet = unpaidLidoProtocolFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
+    }
 
     // Return true if either threshold is met
     return feesThresholdMet || yieldThresholdMet;
