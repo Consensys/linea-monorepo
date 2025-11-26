@@ -201,8 +201,8 @@ public class ZkCounter implements LineCountingTracer {
       new IncrementingModule(PRECOMPILE_LARGE_MODEXP_EFFECTIVE_CALLS);
 
   // related to Blake
-  private final IncrementAndDetectModule blakeEffectiveCall =
-      new IncrementAndDetectModule(PRECOMPILE_BLAKE_EFFECTIVE_CALLS);
+  private final IncrementingModule blakeEffectiveCall =
+      new IncrementingModule(PRECOMPILE_BLAKE_EFFECTIVE_CALLS);
   private final BlakeRounds blakeRounds = new BlakeRounds();
 
   // related to Shakira:
