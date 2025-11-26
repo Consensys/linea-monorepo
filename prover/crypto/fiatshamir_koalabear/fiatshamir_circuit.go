@@ -26,18 +26,6 @@ func NewGnarkFS(api frontend.API) *GnarkFS {
 	}
 }
 
-// SetState mutates the fiat-shamir state of
-func (fs *GnarkFS) SetState(state poseidon2_koalabear.Octuplet) {
-	fs.hasher.Reset()
-	fs.hasher.SetState(state)
-}
-
-// State mutates returns the state of the fiat-shamir hasher. The
-// function will also updates its own state with unprocessed inputs.
-func (fs *GnarkFS) State() poseidon2_koalabear.Octuplet {
-	return fs.hasher.State()
-}
-
 // Update updates the Fiat-Shamir state with a vector of frontend.Variable
 // representing field element each.
 func (fs *GnarkFS) Update(vec ...frontend.Variable) {
@@ -98,6 +86,18 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 		}
 	}
 	return res
+}
+
+// SetState mutates the fiat-shamir state of
+func (fs *GnarkFS) SetState(state poseidon2_koalabear.Octuplet) {
+	fs.hasher.Reset()
+	fs.hasher.SetState(state)
+}
+
+// State mutates returns the state of the fiat-shamir hasher. The
+// function will also updates its own state with unprocessed inputs.
+func (fs *GnarkFS) State() poseidon2_koalabear.Octuplet {
+	return fs.hasher.State()
 }
 
 // safeguardUpdate updates the state as a safeguard by appending a field element

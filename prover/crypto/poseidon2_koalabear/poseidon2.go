@@ -57,6 +57,10 @@ func (d *MDHasher) SetStateOctuplet(state field.Octuplet) {
 	}
 }
 
+func (d *MDHasher) GetStateOctuplet() field.Octuplet {
+	return d.state
+}
+
 // WriteElements adds a slice of field elements to the running hash.
 func (d *MDHasher) WriteElements(elmts ...field.Element) {
 	quo := (len(d.buffer) + len(elmts)) / maxSizeBuf

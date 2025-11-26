@@ -111,6 +111,14 @@ func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
 	return res
 }
 
+func (fs *FS) SetState(s field.Octuplet) {
+	fs.h.SetStateOctuplet(s)
+}
+
+func (fs *FS) GetState() field.Octuplet {
+	return fs.h.GetStateOctuplet()
+}
+
 func (fs *FS) safeguardUpdate() {
 	fs.Update(field.Zero())
 }
