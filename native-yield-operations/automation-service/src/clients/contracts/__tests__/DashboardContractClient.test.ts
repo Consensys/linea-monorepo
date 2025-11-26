@@ -41,6 +41,9 @@ describe("DashboardContractClient", () => {
     publicClient = {} as PublicClient;
     blockchainClient.getBlockchainClient.mockReturnValue(publicClient);
     mockedGetContract.mockReturnValue(viemContractStub);
+    // Clear static state before each test
+    (DashboardContractClient as any).blockchainClient = undefined;
+    (DashboardContractClient as any).clientCache.clear();
   });
 
   const createClient = () => new DashboardContractClient(blockchainClient, contractAddress);
@@ -165,6 +168,100 @@ describe("DashboardContractClient", () => {
 
     expect(result).toBe(0n);
     expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
+  });
+
+  describe("initialize", () => {
+    it("sets the static blockchainClient", () => {
+      DashboardContractClient.initialize(blockchainClient);
+
+      expect((DashboardContractClient as any).blockchainClient).toBe(blockchainClient);
+    });
+  });
+
+  describe("getOrCreate", () => {
+    it("throws error when blockchainClient is not initialized", () => {
+      expect(() => {
+        DashboardContractClient.getOrCreate(contractAddress);
+      }).toThrow(
+        "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() before use",
+      );
+    });
+
+    it("creates and caches a new client when not cached", () => {
+      DashboardContractClient.initialize(blockchainClient);
+
+      const client = DashboardContractClient.getOrCreate(contractAddress);
+
+      expect(client).toBeInstanceOf(DashboardContractClient);
+      expect(client.getAddress()).toBe(contractAddress);
+      expect(mockedGetContract).toHaveBeenCalledWith({
+        abi: DashboardABI,
+        address: contractAddress,
+        client: publicClient,
+      });
+    });
+
+    it("returns cached client when already exists", () => {
+      DashboardContractClient.initialize(blockchainClient);
+
+      const client1 = DashboardContractClient.getOrCreate(contractAddress);
+      mockedGetContract.mockClear();
+      const client2 = DashboardContractClient.getOrCreate(contractAddress);
+
+      expect(client1).toBe(client2);
+      expect(mockedGetContract).not.toHaveBeenCalled();
+    });
+
+    it("creates separate clients for different addresses", () => {
+      DashboardContractClient.initialize(blockchainClient);
+      const otherAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
+
+      const client1 = DashboardContractClient.getOrCreate(contractAddress);
+      const client2 = DashboardContractClient.getOrCreate(otherAddress);
+
+      expect(client1).not.toBe(client2);
+      expect(client1.getAddress()).toBe(contractAddress);
+      expect(client2.getAddress()).toBe(otherAddress);
+    });
+  });
+
+  describe("constructor", () => {
+    it("throws error when neither parameter nor static client is provided", () => {
+      expect(() => {
+        new DashboardContractClient(undefined as any, contractAddress);
+      }).toThrow(
+        "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() or provided to constructor",
+      );
+    });
+
+    it("uses static blockchainClient when parameter is undefined", () => {
+      DashboardContractClient.initialize(blockchainClient);
+
+      const client = new DashboardContractClient(undefined as any, contractAddress);
+
+      expect(client).toBeInstanceOf(DashboardContractClient);
+      expect(mockedGetContract).toHaveBeenCalledWith({
+        abi: DashboardABI,
+        address: contractAddress,
+        client: publicClient,
+      });
+    });
+
+    it("prefers parameter blockchainClient over static one", () => {
+      const staticClient = mock<IBlockchainClient<PublicClient, TransactionReceipt>>();
+      const staticPublicClient = {} as PublicClient;
+      staticClient.getBlockchainClient.mockReturnValue(staticPublicClient);
+      DashboardContractClient.initialize(staticClient);
+
+      const client = new DashboardContractClient(blockchainClient, contractAddress);
+
+      expect(client).toBeInstanceOf(DashboardContractClient);
+      expect(mockedGetContract).toHaveBeenCalledWith({
+        abi: DashboardABI,
+        address: contractAddress,
+        client: publicClient, // Should use parameter client, not static
+      });
+    });
   });
 });
 
