@@ -101,10 +101,17 @@ class ForksSchedule(
 
     other as ForksSchedule
 
-    return forks == other.forks
+    if (chainId != other.chainId) return false
+    if (forks.toSet() != other.forks.toSet()) return false
+
+    return true
   }
 
-  override fun hashCode(): Int = forks.hashCode()
+  override fun hashCode(): Int {
+    var result = chainId.hashCode()
+    result = 31 * result + forks.hashCode()
+    return result
+  }
 
   override fun toString(): String = "ForksSchedule(chainId=$chainId, forks=$forks)"
 }

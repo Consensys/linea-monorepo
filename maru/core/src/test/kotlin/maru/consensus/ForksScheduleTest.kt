@@ -8,7 +8,10 @@
  */
 package maru.consensus
 
+import kotlin.random.Random
+import maru.core.Validator
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -121,35 +124,6 @@ class ForksScheduleTest {
   }
 
   @Test
-  fun equality() {
-    val fork1 = ForkSpec(timestampSeconds = 1000UL, blockTimeSeconds = 10u, configuration = consensusConfig)
-    val fork2 = ForkSpec(timestampSeconds = 2000UL, blockTimeSeconds = 20u, configuration = consensusConfig)
-    val forks1 = listOf(fork1, fork2)
-    val forks2 = listOf(fork1, fork2)
-
-    val schedule1 = ForksSchedule(expectedChainId, forks1)
-    val schedule2 = ForksSchedule(expectedChainId, forks2)
-
-    assertThat(schedule1).isEqualTo(schedule2)
-    assertThat(schedule1.hashCode()).isEqualTo(schedule2.hashCode())
-  }
-
-  @Test
-  fun inequality() {
-    val fork1 = ForkSpec(timestampSeconds = 1000UL, blockTimeSeconds = 10u, configuration = consensusConfig)
-    val fork2 = ForkSpec(timestampSeconds = 2000UL, blockTimeSeconds = 20u, configuration = consensusConfig)
-    val fork3 = ForkSpec(timestampSeconds = 3000UL, blockTimeSeconds = 30u, configuration = consensusConfig)
-    val forks1 = listOf(fork1, fork2)
-    val forks2 = listOf(fork1, fork3)
-
-    val schedule1 = ForksSchedule(expectedChainId, forks1)
-    val schedule2 = ForksSchedule(expectedChainId, forks2)
-
-    assertThat(schedule1).isNotEqualTo(schedule2)
-    assertThat(schedule1.hashCode()).isNotEqualTo(schedule2.hashCode())
-  }
-
-  @Test
   fun `getForkByConfigType throws exception when config class not found`() {
     val qbftFork = ForkSpec(timestampSeconds = 1000UL, blockTimeSeconds = 10u, configuration = qbftConsensusConfig)
     val forks = listOf(qbftFork)
@@ -256,5 +230,84 @@ class ForksScheduleTest {
 
     // Test with timestamp exactly one more than second fork
     assertThat(schedule.getNextForkByTimestamp(2001UL)).isNull()
+  }
+
+  @Nested
+  inner class EqualsAndHashCode {
+    val validators = setOf(Validator(Random.nextBytes(20)))
+    val difficultyAwareQbftFork =
+      ForkSpec(
+        timestampSeconds = 1000UL,
+        blockTimeSeconds = 10u,
+        configuration =
+          DifficultyAwareQbftConfig(
+            postTtdConfig =
+              QbftConsensusConfig(
+                validatorSet = validators,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+              ),
+            terminalTotalDifficulty = 1000UL,
+          ),
+      )
+    val qbftFork =
+      ForkSpec(
+        timestampSeconds = 2000UL,
+        blockTimeSeconds = 10u,
+        configuration =
+          QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+          ),
+      )
+
+    @Test
+    fun `equals should return false with different consensus config`() {
+      val schedule1 = ForksSchedule(expectedChainId, listOf(qbftFork))
+      val schedule1Instance2 = ForksSchedule(expectedChainId, listOf(qbftFork))
+      val schedule2 = ForksSchedule(expectedChainId, listOf(difficultyAwareQbftFork))
+      val schedule2Instance2 = ForksSchedule(expectedChainId, listOf(difficultyAwareQbftFork))
+
+      assertThat(schedule1).isNotEqualTo(schedule2)
+      assertThat(schedule1).isEqualTo(schedule1Instance2)
+      assertThat(schedule2).isEqualTo(schedule2Instance2)
+
+      assertThat(schedule1.hashCode()).isNotEqualTo(schedule2.hashCode())
+      assertThat(schedule1.hashCode()).isEqualTo(schedule1Instance2.hashCode())
+      assertThat(schedule2.hashCode()).isEqualTo(schedule2Instance2.hashCode())
+    }
+
+    @Test
+    fun `equals should return take multiple forks into correct order`() {
+      val forkList =
+        listOf(
+          difficultyAwareQbftFork,
+          qbftFork.copy(timestampSeconds = difficultyAwareQbftFork.timestampSeconds + 1000UL),
+        )
+      val forkList2 =
+        listOf(
+          difficultyAwareQbftFork,
+          qbftFork.copy(
+            timestampSeconds = difficultyAwareQbftFork.timestampSeconds + 1000UL,
+            configuration =
+              QbftConsensusConfig(
+                validatorSet = validators,
+                fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Prague),
+              ),
+          ),
+        )
+
+      val schedule1 = ForksSchedule(expectedChainId, forkList)
+      val schedule1Instance2 = ForksSchedule(expectedChainId, forkList.reversed())
+      val schedule2 = ForksSchedule(expectedChainId, forkList2)
+      val schedule2Instance2 = ForksSchedule(expectedChainId, forkList2.reversed())
+
+      assertThat(schedule1).isNotEqualTo(schedule2)
+      assertThat(schedule1).isEqualTo(schedule1Instance2)
+      assertThat(schedule2).isEqualTo(schedule2Instance2)
+
+      assertThat(schedule1.hashCode()).isNotEqualTo(schedule2.hashCode())
+      assertThat(schedule1.hashCode()).isEqualTo(schedule1Instance2.hashCode())
+      assertThat(schedule2.hashCode()).isEqualTo(schedule2Instance2.hashCode())
+    }
   }
 }
