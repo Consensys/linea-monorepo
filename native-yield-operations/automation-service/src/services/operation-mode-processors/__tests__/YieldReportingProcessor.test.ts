@@ -634,7 +634,7 @@ describe("YieldReportingProcessor", () => {
       expect(vaultHubClient.settleableLidoFeesValue).toHaveBeenCalledTimes(1);
       expect(yieldManager.peekYieldReport).toHaveBeenCalledWith(yieldProvider, l2Recipient);
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("_shouldReportYield - settleableLidoFees="),
+        expect.stringContaining("_shouldReportYield - shouldReportYield=true, settleableLidoFees="),
       );
     });
 
@@ -780,7 +780,7 @@ describe("YieldReportingProcessor", () => {
 
       expect(logger.info).toHaveBeenCalledWith(
         expect.stringMatching(
-          /_shouldReportYield - settleableLidoFees="600000000000000000", yieldReport=.*"yieldAmount":"2000000000000000000"/,
+          /_shouldReportYield - shouldReportYield=true, settleableLidoFees="600000000000000000", yieldReport=.*"yieldAmount":"2000000000000000000"/,
         ),
       );
     });

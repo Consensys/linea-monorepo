@@ -310,11 +310,6 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       this.yieldManagerContractClient.peekYieldReport(this.yieldProvider, this.l2YieldRecipient),
     ]);
 
-    // Log both results
-    this.logger.info(
-      `_shouldReportYield - settleableLidoFees=${JSON.stringify(settleableLidoFees, bigintReplacer)}, yieldReport=${JSON.stringify(yieldReport, bigintReplacer)}`,
-    );
-
     let yieldThresholdMet = false;
     let feesThresholdMet = false;
 
@@ -333,7 +328,14 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       feesThresholdMet = settleableLidoFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
     }
 
+    const shouldReportYield = feesThresholdMet || yieldThresholdMet;
+
+    // Log both results
+    this.logger.info(
+      `_shouldReportYield - shouldReportYield=${shouldReportYield}, settleableLidoFees=${JSON.stringify(settleableLidoFees, bigintReplacer)}, yieldReport=${JSON.stringify(yieldReport, bigintReplacer)}`,
+    );
+
     // Return true if either threshold is met
-    return feesThresholdMet || yieldThresholdMet;
+    return shouldReportYield;
   }
 }
