@@ -139,9 +139,7 @@ func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	for _, y := range p.Ys {
-		fs.Update(y.AsNative())
-	}
+	fs.UpdateExt(p.ExtYs...)
 }
 
 // Update the fiat-shamir state with the the present field extension parameters
