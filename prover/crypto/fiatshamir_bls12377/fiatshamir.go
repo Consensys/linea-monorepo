@@ -87,76 +87,22 @@ func (fs *FS) RandomFext() fext.Element {
 	res.B1.A0 = s[2]
 	res.B1.A1 = s[3]
 
-	// fs.UpdateExt(fext.NewFromUint(0, 0, 0, 0)) // safefuard update
+	fs.safeguardUpdate()
 	return res
 }
 
-// func RandomManyIntegers(h *poseidon2_bls12377.MDHasher, num, upperBound int) []int {
+func (fs *FS) SetState(s field.Octuplet) {
+	state := encoding.EncodeKoalabearOctupletToFrElement(s)
+	bState := state.Bytes()
+	fs.h.SetState(bState[:])
+}
 
-// 	// Even `1` would be wierd, there would be only one acceptable coin value.
-// 	if upperBound < 1 {
-// 		utils.Panic("UpperBound was %v", upperBound)
-// 	}
-
-// 	if !utils.IsPowerOfTwo(upperBound) {
-// 		utils.Panic("Expected a power of two but got %v", upperBound)
-// 	}
-
-// 	if num == 0 {
-// 		return []int{}
-// 	}
-
-// 	defer safeguardUpdate(h)
-
-// 	var (
-// 		// challsBitSize stores the number of bits required instantiate each
-// 		// small integer.
-// 		challsBitSize = math.Ceil(math.Log2(float64(upperBound)))
-// 		// Number of challenges computable with one call to hash (implicitly,
-// 		// the division is rounded down). The "-1" corresponds to the fact that
-// 		// the most significant bit of a field element cannot be assumed to
-// 		// contain exactly 1 bit of entropy since the modulus of the field is
-// 		// never a power of 2.
-// 		maxNumChallsPerDigest = (field.Bits - 1) / int(challsBitSize)
-// 		// res stores the preallocated result slice, to which all generated
-// 		// small integers will be appended.
-// 		res = make([]int, 0, num)
-// 	)
-
-// 	for {
-// 		digest := h.Sum(nil)
-// 		buffer := NewBitReader(digest[:], field.Bits-1)
-
-// 		// Increase the counter
-
-// 		for i := 0; i < maxNumChallsPerDigest; i++ {
-// 			// Stopping condition, we computed enough challenges
-// 			if len(res) >= num {
-// 				return res
-// 			}
-
-// 			newChall, err := buffer.ReadInt(int(challsBitSize))
-// 			if err != nil {
-// 				utils.Panic("could not instantiate the buffer for a single field element")
-// 			}
-// 			res = append(res, int(newChall)%upperBound)
-// 		}
-
-// 		// This is guarded by the condition to prevent the [State] updating
-// 		// twice in a row when exiting the function. Recall that we have a
-// 		// defer of the safeguard update in the function. This handles the
-// 		// edge-case where the number of requested field elements is a multiple
-// 		// of the number of challenges we can generate with a single field
-// 		// element.
-// 		if len(res) >= num {
-// 			return res
-// 		}
-
-// 		// This updates ensures that for the next iterations of the loop and the
-// 		// next randomness comsumption uses a fresh randomness.
-// 		safeguardUpdate(h)
-// 	}
-// }
+func (fs *FS) GetState() field.Octuplet {
+	bState := fs.h.State()
+	var state fr.Element
+	state.SetBytes(bState)
+	return encoding.EncodeFrElementToOctuplet(state)
+}
 
 func (fs *FS) safeguardUpdate() {
 	fs.UpdateFrElmt(fr.Element{})

@@ -112,6 +112,16 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 	return res
 }
 
+func (fs *GnarkFS) SetState(s zk.Octuplet) {
+	state := encoding.Encode8WVsToFV(fs.api, s)
+	fs.hasher.SetState(state)
+}
+
+func (fs *GnarkFS) GetState() zk.Octuplet {
+	state := fs.hasher.State()
+	return encoding.EncodeFVTo8WVs(fs.api, state)
+}
+
 // safeguardUpdate updates the state as a safeguard by appending a field element
 // representing a "0". This is used every time a field element is consumed from
 // the hasher to ensure that the next field element will have a different
