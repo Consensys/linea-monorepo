@@ -193,12 +193,15 @@ describe("OperationModeMetricsRecorder", () => {
     });
 
     it("does nothing when yield report cannot be parsed", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const { recorder, logger, metricsUpdater, yieldManagerClient } = setupRecorder();
 
       yieldManagerClient.getYieldReportFromTxReceipt.mockReturnValueOnce(undefined);
 
       await recorder.recordReportYieldMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(receipt));
 
+      expect(logger.warn).toHaveBeenCalledWith(
+        "recordReportYieldMetrics - yield report not found in receipt, skipping metrics recording",
+      );
       expect(metricsUpdater.incrementReportYield).not.toHaveBeenCalled();
       expect(yieldManagerClient.getLidoStakingVaultAddress).not.toHaveBeenCalled();
     });
@@ -269,12 +272,15 @@ describe("OperationModeMetricsRecorder", () => {
     });
 
     it("does nothing when no withdrawal event is found", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const { recorder, logger, metricsUpdater, yieldManagerClient } = setupRecorder();
 
       yieldManagerClient.getWithdrawalEventFromTxReceipt.mockReturnValueOnce(undefined);
 
       await recorder.recordSafeWithdrawalMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(receipt));
 
+      expect(logger.warn).toHaveBeenCalledWith(
+        "recordSafeWithdrawalMetrics - withdrawal event not found in receipt, skipping metrics recording",
+      );
       expect(metricsUpdater.recordRebalance).not.toHaveBeenCalled();
     });
   });

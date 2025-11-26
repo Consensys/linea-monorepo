@@ -88,7 +88,10 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     }
 
     const yieldReport = this.yieldManagerClient.getYieldReportFromTxReceipt(receipt);
-    if (yieldReport === undefined) return;
+    if (yieldReport === undefined) {
+      this.logger.warn("recordReportYieldMetrics - yield report not found in receipt, skipping metrics recording");
+      return;
+    }
 
     const [vault, dashboard] = await Promise.all([
       this.yieldManagerClient.getLidoStakingVaultAddress(yieldReport.yieldProvider),
@@ -130,7 +133,12 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     }
 
     const event = this.yieldManagerClient.getWithdrawalEventFromTxReceipt(receipt);
-    if (!event) return;
+    if (!event) {
+      this.logger.warn(
+        "recordSafeWithdrawalMetrics - withdrawal event not found in receipt, skipping metrics recording",
+      );
+      return;
+    }
     const { reserveIncrementAmount } = event;
 
     this.metricsUpdater.recordRebalance(RebalanceDirection.UNSTAKE, weiToGweiNumber(reserveIncrementAmount));
