@@ -71,12 +71,12 @@ public class ExcludedPrecompilesLimitlessTest extends LineaPluginTestBasePrague 
           excludedPrecompiles
               .callRIPEMD160("I am not allowed here".getBytes(StandardCharsets.UTF_8))
               .encodeFunctionCall(),
-          "Tx 0xe4648fd59d4289e59b112bf60931336440d306c85c2aac5a8b0c64ab35bc55b7 line count for module PRECOMPILE_RIPEMD_BLOCKS=2147483647 is above the limit 671"),
+          "Tx 0xe4648fd59d4289e59b112bf60931336440d306c85c2aac5a8b0c64ab35bc55b7 line count for module PRECOMPILE_RIPEMD_BLOCKS=21 is above the limit 0"),
       new InvalidCall(
           Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY,
           0,
           encodedCallBlake2F(excludedPrecompiles),
-          "Tx 0x9f457b1b5244b03c54234f7f9e8225d4253135dd3c99a46dc527d115e7ea5dac line count for module PRECOMPILE_BLAKE_EFFECTIVE_CALLS=2147483647 is above the limit 0")
+          "Tx 0x9f457b1b5244b03c54234f7f9e8225d4253135dd3c99a46dc527d115e7ea5dac line count for module PRECOMPILE_BLAKE_EFFECTIVE_CALLS=1 is above the limit 0")
     };
 
     final var invalidTxHashes =
