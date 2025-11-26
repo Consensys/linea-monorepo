@@ -70,15 +70,15 @@ interface IForcedTransactionGateway {
   );
 
   /**
-   * @notice Emitted when the useDenyList toggle state changes.
-   * @param useDenyList The feature toggle enabled status.
+   * @notice Emitted when the useAddressFilter toggle state changes.
+   * @param useAddressFilter The feature toggle enabled status.
    */
-  event UseDenyListSet(bool useDenyList);
+  event AddressFilterSet(bool useAddressFilter);
 
   /**
-   * @dev Thrown when an address is on the deny list.
+   * @dev Thrown when an address is on the address filter.
    */
-  error AddressIsDenied();
+  error AddressIsFiltered();
 
   /**
    * @dev Thrown when the max gas limit configured will be exceeded.
@@ -123,7 +123,7 @@ interface IForcedTransactionGateway {
   /**
    * @dev Thrown when the toggle status requested is already set.
    */
-  error UseDenyListAlreadySet(bool requestedExistingStatus);
+  error AddressFilterAlreadySet(bool requestedExistingStatus);
 
   /**
    * @notice Function to submit forced transactions.
@@ -136,9 +136,9 @@ interface IForcedTransactionGateway {
   ) external;
 
   /**
-   * @notice Function to toggle the usage of the deny list.
+   * @notice Function to toggle the usage of the address filter.
    * @dev Only callable by an account with the DEFAULT_ADMIN_ROLE.
-   * @param _useDenyList Bool indicating whether or not to use the deny list.
+   * @param _useAddressFilter Bool indicating whether or not to use the address filter.
    */
-  function toggleUseDenyList(bool _useDenyList) external;
+  function toggleuseAddressFilter(bool _useAddressFilter) external;
 }

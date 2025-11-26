@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ForcedTransactionGateway, GovernedDenyList, Mimc, TestLineaRollup } from "contracts/typechain-types";
+import { ForcedTransactionGateway, AddressFilter, Mimc, TestLineaRollup } from "contracts/typechain-types";
 import transactionWithoutCalldata from "../../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
 import transactionWithCalldataAndAccessList from "../../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
@@ -40,7 +40,7 @@ import { DEFAULT_ADMIN_ROLE } from "contracts/common/constants";
 
 describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
-  let governedDenyList: GovernedDenyList;
+  let addressFilter: AddressFilter;
   let forcedTransactionGateway: ForcedTransactionGateway;
   let mimcLibrary: Mimc;
   let mimcLibraryAddress: string;
@@ -64,7 +64,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     ({
       lineaRollup,
       forcedTransactionGateway,
-      governedDenyList,
+      addressFilter,
       mimc: mimcLibrary,
     } = await loadFixture(deployForcedTransactionGatewayFixture));
     mimcLibraryAddress = await mimcLibrary.getAddress();
@@ -101,7 +101,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
-          await governedDenyList.getAddress(),
+          await addressFilter.getAddress(),
         ),
         "ZeroAddressNotAllowed",
       );
@@ -121,7 +121,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
-          await governedDenyList.getAddress(),
+          await addressFilter.getAddress(),
         ),
         "ZeroValueNotAllowed",
       );
@@ -141,7 +141,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
-          await governedDenyList.getAddress(),
+          await addressFilter.getAddress(),
         ),
         "ZeroValueNotAllowed",
       );
@@ -161,7 +161,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           0,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
-          await governedDenyList.getAddress(),
+          await addressFilter.getAddress(),
         ),
         "ZeroValueNotAllowed",
       );
@@ -181,7 +181,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_GAS_LIMIT,
           0,
           securityCouncil.address,
-          await governedDenyList.getAddress(),
+          await addressFilter.getAddress(),
         ),
         "ZeroValueNotAllowed",
       );
@@ -201,13 +201,13 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           ADDRESS_ZERO,
-          await governedDenyList.getAddress(),
+          await addressFilter.getAddress(),
         ),
         "ZeroAddressNotAllowed",
       );
     });
 
-    it("Should fail if the deny list address is zero address", async () => {
+    it("Should fail if the address filter address is zero address", async () => {
       const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
         libraries: { Mimc: mimcLibraryAddress },
       });
@@ -228,38 +228,38 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     });
   });
 
-  describe("Toggling the deny list feature", () => {
+  describe("Toggling the address filter feature", () => {
     it("Should fail to toggle if unauthorized", async () => {
       await expectRevertWithReason(
-        forcedTransactionGateway.connect(nonAuthorizedAccount).toggleUseDenyList(false),
+        forcedTransactionGateway.connect(nonAuthorizedAccount).toggleuseAddressFilter(false),
         buildAccessErrorMessage(nonAuthorizedAccount, DEFAULT_ADMIN_ROLE),
       );
     });
 
     it("Should fail to toggle if the status is the same", async () => {
-      const asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(true);
-      await expectRevertWithCustomError(forcedTransactionGateway, asyncCall, "UseDenyListAlreadySet", [true]);
+      const asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(true);
+      await expectRevertWithCustomError(forcedTransactionGateway, asyncCall, "AddressFilterAlreadySet", [true]);
     });
 
     it("Should toggle if the status is the different", async () => {
-      let useDenyList = await forcedTransactionGateway.useDenyList();
-      expect(useDenyList).to.be.true;
+      let useAddressFilter = await forcedTransactionGateway.useAddressFilter();
+      expect(useAddressFilter).to.be.true;
 
-      await forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(false);
+      await forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(false);
 
-      useDenyList = await forcedTransactionGateway.useDenyList();
-      expect(useDenyList).to.be.false;
+      useAddressFilter = await forcedTransactionGateway.useAddressFilter();
+      expect(useAddressFilter).to.be.false;
     });
 
-    it("Should emit UseDenyListSet when changed", async () => {
-      let asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(false);
-      await expectEvent(forcedTransactionGateway, asyncCall, "UseDenyListSet", [false]);
+    it("Should emit AddressFilterSet when changed", async () => {
+      let asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(false);
+      await expectEvent(forcedTransactionGateway, asyncCall, "AddressFilterSet", [false]);
 
-      asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(true);
-      await expectEvent(forcedTransactionGateway, asyncCall, "UseDenyListSet", [true]);
+      asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(true);
+      await expectEvent(forcedTransactionGateway, asyncCall, "AddressFilterSet", [true]);
 
-      const useDenyList = await forcedTransactionGateway.useDenyList();
-      expect(useDenyList).to.be.true;
+      const useAddressFilter = await forcedTransactionGateway.useAddressFilter();
+      expect(useAddressFilter).to.be.true;
     });
   });
 
@@ -570,44 +570,38 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).greaterThan(0);
     });
 
-    it("Fails to add the transaction with `to` on the denied list.", async () => {
+    it("Fails to add the transaction with `to` on the address filter list.", async () => {
       expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).equal(0);
 
-      await governedDenyList
-        .connect(securityCouncil)
-        .setAddressesDeniedStatus([l2SendMessageTransaction.result.to], true);
+      await addressFilter.connect(securityCouncil).setFilteredStatus([l2SendMessageTransaction.result.to], true);
 
       const asyncCall = forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
         defaultFinalizedState,
       );
 
-      await expectRevertWithCustomError(forcedTransactionGateway, asyncCall, "AddressIsDenied");
+      await expectRevertWithCustomError(forcedTransactionGateway, asyncCall, "AddressIsFiltered");
     });
 
-    it("Fails to add the transaction with `from` on the denied list.", async () => {
+    it("Fails to add the transaction with `from` on the address filter list.", async () => {
       expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).equal(0);
 
-      await governedDenyList
-        .connect(securityCouncil)
-        .setAddressesDeniedStatus([l2SendMessageTransaction.result.from], true);
+      await addressFilter.connect(securityCouncil).setFilteredStatus([l2SendMessageTransaction.result.from], true);
 
       const asyncCall = forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
         defaultFinalizedState,
       );
 
-      await expectRevertWithCustomError(forcedTransactionGateway, asyncCall, "AddressIsDenied");
+      await expectRevertWithCustomError(forcedTransactionGateway, asyncCall, "AddressIsFiltered");
     });
 
-    it("Adds the transaction with `to` on the denied list, but the feature is disabled.", async () => {
+    it("Adds the transaction with `to` on the address filter list, but the feature is disabled.", async () => {
       expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).equal(0);
 
-      await governedDenyList
-        .connect(securityCouncil)
-        .setAddressesDeniedStatus([l2SendMessageTransaction.result.to], true);
+      await addressFilter.connect(securityCouncil).setFilteredStatus([l2SendMessageTransaction.result.to], true);
 
-      await forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(false);
+      await forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(false);
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
@@ -617,14 +611,12 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).greaterThan(0);
     });
 
-    it("Adds the transaction with `from` on the denied list, but the feature is disabled.", async () => {
+    it("Adds the transaction with `from` on the address filter list, but the feature is disabled.", async () => {
       expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).equal(0);
 
-      await governedDenyList
-        .connect(securityCouncil)
-        .setAddressesDeniedStatus([l2SendMessageTransaction.result.from], true);
+      await addressFilter.connect(securityCouncil).setFilteredStatus([l2SendMessageTransaction.result.from], true);
 
-      await forcedTransactionGateway.connect(securityCouncil).toggleUseDenyList(false);
+      await forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(false);
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),

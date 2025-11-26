@@ -3,7 +3,7 @@ pragma solidity 0.8.30;
 import { IGenericErrors } from "../../interfaces/IGenericErrors.sol";
 import { IAcceptForcedTransactions } from "./interfaces/IAcceptForcedTransactions.sol";
 import { IForcedTransactionGateway } from "./interfaces/IForcedTransactionGateway.sol";
-import { IGovernedDenyList } from "./interfaces/IGovernedDenyList.sol";
+import { IAddressFilter } from "./interfaces/IAddressFilter.sol";
 import { Mimc } from "../../libraries/Mimc.sol";
 import { RlpEncoder } from "../../libraries/RlpEncoder.sol";
 import { FinalizedStateHashing } from "../../libraries/FinalizedStateHashing.sol";
@@ -41,11 +41,11 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   /// @notice Contains the maximum calldata length allowed for a forced transaction.
   uint256 public immutable MAX_INPUT_LENGTH_LIMIT;
 
-  /// @notice Contains the destination address to store the forced transactions on.
-  IGovernedDenyList public immutable GOVERNED_DENY_LIST;
+  /// @notice Contains the address for the transaction address filter .
+  IAddressFilter public immutable ADDRESS_FILTER;
 
-  /// @notice Toggles the feature switch for using the deny list checking.
-  bool public useDenyList = true;
+  /// @notice Toggles the feature switch for using the address filter.
+  bool public useAddressFilter = true;
 
   constructor(
     address _lineaRollup,
@@ -54,7 +54,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     uint256 _maxGasLimit,
     uint256 _maxInputLengthBuffer,
     address _defaultAdmin,
-    address _denyList
+    address _addressFilter
   ) {
     require(_lineaRollup != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_destinationChainId != 0, IGenericErrors.ZeroValueNotAllowed());
@@ -62,14 +62,14 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     require(_maxGasLimit != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_maxInputLengthBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_defaultAdmin != address(0), IGenericErrors.ZeroAddressNotAllowed());
-    require(_denyList != address(0), IGenericErrors.ZeroAddressNotAllowed());
+    require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
 
     LINEA_ROLLUP = IAcceptForcedTransactions(_lineaRollup);
     DESTINATION_CHAIN_ID = _destinationChainId;
     L2_BLOCK_BUFFER = _l2BlockBuffer;
     MAX_GAS_LIMIT = _maxGasLimit;
     MAX_INPUT_LENGTH_LIMIT = _maxInputLengthBuffer;
-    GOVERNED_DENY_LIST = IGovernedDenyList(_denyList);
+    ADDRESS_FILTER = IAddressFilter(_addressFilter);
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
   }
 
@@ -175,9 +175,9 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       );
     }
 
-    if (useDenyList) {
-      require(!GOVERNED_DENY_LIST.addressIsDenied(signer), AddressIsDenied());
-      require(!GOVERNED_DENY_LIST.addressIsDenied(_forcedTransaction.to), AddressIsDenied());
+    if (useAddressFilter) {
+      require(!ADDRESS_FILTER.addressIsFiltered(signer), AddressIsFiltered());
+      require(!ADDRESS_FILTER.addressIsFiltered(_forcedTransaction.to), AddressIsFiltered());
     }
 
     uint256 expectedBlockNumber;
@@ -205,13 +205,13 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   }
 
   /**
-   * @notice Function to toggle the usage of the deny list.
+   * @notice Function to toggle the usage of the address filter.
    * @dev Only callable by an account with the DEFAULT_ADMIN_ROLE.
-   * @param _useDenyList Bool indicating whether or not to use the deny list.
+   * @param _useAddressFilter Bool indicating whether or not to use the address filter.
    */
-  function toggleUseDenyList(bool _useDenyList) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    require(useDenyList != _useDenyList, UseDenyListAlreadySet(_useDenyList));
-    useDenyList = _useDenyList;
-    emit UseDenyListSet(_useDenyList);
+  function toggleuseAddressFilter(bool _useAddressFilter) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    require(useAddressFilter != _useAddressFilter, AddressFilterAlreadySet(_useAddressFilter));
+    useAddressFilter = _useAddressFilter;
+    emit AddressFilterSet(_useAddressFilter);
   }
 }

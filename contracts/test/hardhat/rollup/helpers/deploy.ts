@@ -7,7 +7,7 @@ import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from
 import {
   CallForwardingProxy,
   ForcedTransactionGateway,
-  GovernedDenyList,
+  AddressFilter,
   Mimc,
   TestLineaRollup,
 } from "contracts/typechain-types";
@@ -93,17 +93,17 @@ export async function deployLineaRollupFixture() {
   return { verifier, lineaRollup };
 }
 
-export async function deployGovernedDenyList(securityCouncil: string, nonAuthorizedAccount: string[]) {
-  const governedDenyListFactory = await ethers.getContractFactory("GovernedDenyList");
+export async function deployAddressFilter(securityCouncil: string, nonAuthorizedAccount: string[]) {
+  const AddressFilterFactory = await ethers.getContractFactory("AddressFilter");
 
-  const governedDenyList = (await governedDenyListFactory.deploy(
+  const addressFilter = (await AddressFilterFactory.deploy(
     securityCouncil,
     nonAuthorizedAccount,
-  )) as unknown as GovernedDenyList;
+  )) as unknown as AddressFilter;
 
-  await governedDenyList.waitForDeployment();
+  await addressFilter.waitForDeployment();
 
-  return { governedDenyList };
+  return { addressFilter };
 }
 
 export async function deployMimcFixture() {
@@ -121,7 +121,7 @@ export async function deployForcedTransactionGatewayFixture() {
     libraries: { Mimc: await mimc.getAddress() },
   });
 
-  const { governedDenyList } = await deployGovernedDenyList(securityCouncil.address, [nonAuthorizedAccount.address]);
+  const { addressFilter } = await deployAddressFilter(securityCouncil.address, [nonAuthorizedAccount.address]);
 
   const forcedTransactionGateway = (await forcedTransactionGatewayFactory.deploy(
     await lineaRollup.getAddress(),
@@ -130,18 +130,18 @@ export async function deployForcedTransactionGatewayFixture() {
     MAX_GAS_LIMIT,
     MAX_INPUT_LENGTH_LIMIT,
     securityCouncil.address,
-    await governedDenyList.getAddress(),
+    await addressFilter.getAddress(),
   )) as unknown as ForcedTransactionGateway;
 
   await forcedTransactionGateway.waitForDeployment();
 
-  return { lineaRollup, forcedTransactionGateway, governedDenyList, mimc };
+  return { lineaRollup, forcedTransactionGateway, addressFilter, mimc };
 }
 
-export async function deployGovernedDenyListFixture() {
+export async function deployAddressFilterFixture() {
   const { securityCouncil, nonAuthorizedAccount } = await loadFixture(getAccountsFixture);
-  const { governedDenyList } = await deployGovernedDenyList(securityCouncil.address, [nonAuthorizedAccount.address]);
-  return { governedDenyList };
+  const { addressFilter } = await deployAddressFilter(securityCouncil.address, [nonAuthorizedAccount.address]);
+  return { addressFilter };
 }
 
 async function deployTestPlonkVerifierForDataAggregation(): Promise<string> {
