@@ -101,7 +101,6 @@ tasks.register("jacocoReferenceExecutionSpecBlockchainTestsReport", JacocoReport
 dependencies {
   implementation project(':arithmetization')
   implementation project(':testing')
-  implementation "org.hyperledger.besu:gnark:1.4.1-SNAPSHOT"
   implementation 'org.junit.platform:junit-platform-launcher'
 
   testImplementation 'org.assertj:assertj-core'
