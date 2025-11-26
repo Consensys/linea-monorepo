@@ -154,6 +154,7 @@ export class NativeYieldAutomationServiceBootstrap {
     this.vaultHubContractClient = new VaultHubContractClient(
       this.viemBlockchainClientAdapter,
       config.contractAddresses.vaultHubAddress,
+      new WinstonLogger(VaultHubContractClient.name, config.loggerOptions),
     );
     this.lineaRollupYieldExtensionContractClient = new LineaRollupYieldExtensionContractClient(
       new WinstonLogger(LineaRollupYieldExtensionContractClient.name, config.loggerOptions),
@@ -216,6 +217,7 @@ export class NativeYieldAutomationServiceBootstrap {
       this.lineaRollupYieldExtensionContractClient,
       this.lidoAccountingReportClient,
       this.beaconChainStakingClient,
+      this.vaultHubContractClient,
       config.contractAddresses.lidoYieldProviderAddress,
       config.contractAddresses.l2YieldRecipientAddress,
       config.reporting.shouldSubmitVaultReport,

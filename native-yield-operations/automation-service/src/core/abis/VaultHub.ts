@@ -20,4 +20,11 @@ export const VaultHubABI = [
     name: "VaultRebalanced",
     type: "event",
   },
+  {
+    inputs: [{ internalType: "address", name: "_vault", type: "address" }],
+    name: "settleableLidoFeesValue",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;

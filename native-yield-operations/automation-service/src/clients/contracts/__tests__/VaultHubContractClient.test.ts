@@ -1,5 +1,5 @@
 import { mock, MockProxy } from "jest-mock-extended";
-import type { IBlockchainClient } from "@consensys/linea-shared-utils";
+import type { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import type { PublicClient, TransactionReceipt, Address } from "viem";
 import { VaultHubABI } from "../../../core/abis/VaultHub.js";
 
@@ -27,18 +27,20 @@ describe("VaultHubContractClient", () => {
   const contractAddress = "0x1111111111111111111111111111111111111111" as Address;
 
   let blockchainClient: MockProxy<IBlockchainClient<PublicClient, TransactionReceipt>>;
+  let logger: MockProxy<ILogger>;
   let publicClient: PublicClient;
-  const viemContractStub = { abi: VaultHubABI } as any;
+  const viemContractStub = { abi: VaultHubABI, read: { settleableLidoFeesValue: jest.fn() } } as any;
 
   beforeEach(() => {
     jest.clearAllMocks();
     blockchainClient = mock<IBlockchainClient<PublicClient, TransactionReceipt>>();
+    logger = mock<ILogger>();
     publicClient = {} as PublicClient;
     blockchainClient.getBlockchainClient.mockReturnValue(publicClient);
     mockedGetContract.mockReturnValue(viemContractStub);
   });
 
-  const createClient = () => new VaultHubContractClient(blockchainClient, contractAddress);
+  const createClient = () => new VaultHubContractClient(blockchainClient, contractAddress, logger);
 
   const buildReceipt = (logs: Array<{ address: string; data: string; topics: string[] }>): TransactionReceipt =>
     ({
@@ -163,5 +165,42 @@ describe("VaultHubContractClient", () => {
 
     expect(amount).toBe(0n);
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+  });
+
+  describe("settleableLidoFeesValue", () => {
+    const vaultAddress = "0x2222222222222222222222222222222222222222" as Address;
+
+    it("returns settleable Lido fees value when call succeeds", async () => {
+      const client = createClient();
+      const expectedValue = 1000000000000000000n;
+      viemContractStub.read.settleableLidoFeesValue.mockResolvedValueOnce(expectedValue);
+
+      const result = await client.settleableLidoFeesValue(vaultAddress);
+
+      expect(result).toBe(expectedValue);
+      expect(viemContractStub.read.settleableLidoFeesValue).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns zero when value is null", async () => {
+      const client = createClient();
+      viemContractStub.read.settleableLidoFeesValue.mockResolvedValueOnce(null);
+
+      const result = await client.settleableLidoFeesValue(vaultAddress);
+
+      expect(result).toBe(0n);
+      expect(viemContractStub.read.settleableLidoFeesValue).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns undefined and logs error when call fails", async () => {
+      const client = createClient();
+      const error = new Error("Contract call failed");
+      viemContractStub.read.settleableLidoFeesValue.mockRejectedValueOnce(error);
+
+      const result = await client.settleableLidoFeesValue(vaultAddress);
+
+      expect(result).toBeUndefined();
+      expect(logger.error).toHaveBeenCalledWith(`settleableLidoFeesValue failed, error=${error}`);
+      expect(viemContractStub.read.settleableLidoFeesValue).toHaveBeenCalledTimes(1);
+    });
   });
 });
