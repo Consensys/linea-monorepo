@@ -202,7 +202,7 @@ describe("YieldManagerContractClient", () => {
 
     expect(contractStub.simulate.reportYield).toHaveBeenCalledWith([yieldProvider, l2Recipient]);
     expect(result).toBeUndefined();
-    expect(logger.debug).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       `peekYieldReport failed, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2Recipient}`,
       { error: expect.any(Error) },
     );

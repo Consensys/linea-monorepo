@@ -597,7 +597,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
         yieldProvider,
       };
     } catch (error) {
-      this.logger.debug(
+      this.logger.error(
         `peekYieldReport failed, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}`,
         { error },
       );
