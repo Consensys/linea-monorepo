@@ -351,9 +351,6 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	for i := 0; i < 8; i++ {
 		c.FS.Update(c.Spec.FiatShamirSetup[i].String())
 	}
-	for i := 0; i < 8; i++ {
-		c.FS.Update(c.Spec.FiatShamirSetup[i].String())
-	}
 
 	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
 
@@ -393,9 +390,6 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 				msgContentFVs[i] = msgContent[i].AsNative()
 			}
 			c.FS.UpdateVec(msgContentFVs)
-
-			// msgContentExt := c.GetColumnExt(msg) //TODO@yao: check if this is correct
-			// c.FS.UpdateExt(msgContentExt...)
 		}
 
 		/*

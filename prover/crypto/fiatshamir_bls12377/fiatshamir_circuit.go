@@ -1,16 +1,14 @@
 package fiatshamir_bls12377
 
 import (
-	"math"
+	"math/bits"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
-
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
+
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 type GnarkFS struct {
@@ -59,66 +57,6 @@ func (fs *GnarkFS) RandomFrElmt() frontend.Variable {
 	return fs.hasher.Sum()
 }
 
-// RandomManyIntegers returns a vector of variable that will contain small integers
-func (fs *GnarkFS) RandomManyFrElmts(num, upperBound int) []frontend.Variable {
-
-	// Even `1` would be wierd, there would be only one acceptable coin value.
-	if upperBound < 1 {
-		utils.Panic("UpperBound was %v", upperBound)
-	}
-
-	if !utils.IsPowerOfTwo(upperBound) {
-		utils.Panic("Expected a power of two but got %v", upperBound)
-	}
-
-	if num == 0 {
-		return []frontend.Variable{}
-	}
-
-	defer fs.safeguardUpdate()
-
-	var (
-		// Compute the number of bytes to generate the challenges in bits
-		challsBitSize = int(math.Ceil(math.Log2(float64(upperBound))))
-		// Number of challenges computable with one call to hash (implicitly, the
-		// the division is rounded-down)
-		maxNumChallsPerDigest = (field.Bits - 1) / int(challsBitSize)
-		// res stores the function result
-		res = make([]frontend.Variable, 0, num)
-		// challCount stores the number of generated small integers
-		challCount = 0
-	)
-
-	for {
-		digest := fs.hasher.Sum()
-		digestBits := fs.api.ToBinary(digest)
-
-		for i := 0; i < maxNumChallsPerDigest; i++ {
-			// Stopping condition, we computed enough challenges
-			if challCount >= num {
-				return res
-			}
-
-			// Drains the first `challsBitSize` of the digestBits into
-			// a new challenge to be returned.
-			newChall := fs.api.FromBinary(digestBits[:challsBitSize]...)
-			digestBits = digestBits[challsBitSize:]
-			res = append(res, newChall)
-			challCount++
-		}
-
-		/*
-			This test prevents reupdating fs just before returning
-			and thus, safeguardupdating once more because of the defer.
-		*/
-		if challCount >= num {
-			return res
-		}
-
-		fs.safeguardUpdate()
-	}
-}
-
 // ------------------------------------------------------
 // List of methods to updae the FS state with koala elmts
 
@@ -139,7 +77,6 @@ func (fs *GnarkFS) RandomField() zk.Octuplet {
 	res := encoding.EncodeFVTo8WVs(fs.api, r)
 	return res
 }
-
 func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
 	r := fs.RandomField() // the safeguard update is called
 	res := gnarkfext.E4Gen{}
@@ -149,13 +86,27 @@ func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
 	res.B1.A1 = r[3]
 	return res
 }
-
-// Used to sample opened column indices in gnark circuits
-func (fs *GnarkFS) RandomManyIntegers(n int, upperBound int) []zk.Octuplet {
-	res := make([]zk.Octuplet, n)
-	for i := 0; i < n; i++ {
-		r := fs.RandomFrElmt()
-		res[i] = encoding.EncodeFVTo8WVs(fs.api, r)
+func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
+	apiGen, err := zk.NewGenericApi(fs.api)
+	if err != nil {
+		panic(err)
+	}
+	n := utils.NextPowerOfTwo(upperBound)
+	nbBits := bits.TrailingZeros(uint(n))
+	i := 0
+	res := make([]frontend.Variable, num)
+	for i < num {
+		// thake the remainder mod n of each limb
+		c := fs.RandomField()
+		for j := 0; j < 8; j++ {
+			b := apiGen.ToBinary(c[j])
+			res[i] = fs.api.FromBinary(b[:nbBits]...)
+			i++
+			fs.safeguardUpdate()
+			if i >= num {
+				break
+			}
+		}
 	}
 	return res
 }

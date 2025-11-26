@@ -20,7 +20,6 @@ func Prove(
 	for _, m := range encodedMatrices {
 		_encodedMatrices = append(_encodedMatrices, m...)
 	}
-
 	vortex.LinearCombination(proof, _encodedMatrices, alpha)
 
 	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)

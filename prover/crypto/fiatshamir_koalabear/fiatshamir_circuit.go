@@ -1,12 +1,11 @@
 package fiatshamir_koalabear
 
 import (
-	"math"
+	"math/bits"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -60,6 +59,12 @@ func (fs *GnarkFS) UpdateVec(mat ...[]frontend.Variable) {
 	}
 }
 
+func (fs *GnarkFS) RandomField() poseidon2_koalabear.Octuplet {
+	res := fs.hasher.Sum()
+	fs.safeguardUpdate()
+	return res
+}
+
 // RandomField returns a single valued fiat-shamir hash
 func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
 	defer fs.safeguardUpdate()
@@ -73,64 +78,26 @@ func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
 	return res
 }
 
-// RandomManyIntegers returns a vector of variable that will contain small integers
-func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []zk.WrappedVariable {
-
-	// Even `1` would be wierd, there would be only one acceptable coin value.
-	if upperBound < 1 {
-		utils.Panic("UpperBound was %v", upperBound)
-	}
-
-	if !utils.IsPowerOfTwo(upperBound) {
-		utils.Panic("Expected a power of two but got %v", upperBound)
-	}
-
-	if num == 0 {
-		return []zk.WrappedVariable{}
-	}
-
-	defer fs.safeguardUpdate()
-
-	var (
-		// Compute the number of bytes to generate the challenges in bits
-		challsBitSize = int(math.Ceil(math.Log2(float64(upperBound))))
-		// Number of challenges computable with one call to hash (implicitly, the
-		// the division is rounded-down)
-		maxNumChallsPerDigest = (field.Bits - 1) / int(challsBitSize)
-		// res stores the function result
-		res = make([]zk.WrappedVariable, 0, num)
-		// challCount stores the number of generated small integers
-		challCount = 0
-	)
-
-	for {
-		digest := fs.hasher.Sum()
-		digestBits := fs.api.ToBinary(digest[0])
-
-		for i := 0; i < maxNumChallsPerDigest; i++ {
-			// Stopping condition, we computed enough challenges
-			if challCount >= num {
-				return res
+func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
+	n := utils.NextPowerOfTwo(upperBound)
+	nbBits := bits.TrailingZeros(uint(n))
+	i := 0
+	res := make([]frontend.Variable, num)
+	for i < num {
+		// thake the remainder mod n of each limb
+		c := fs.RandomField()
+		for j := 0; j < 8; j++ {
+			b := fs.api.ToBinary(c[j])
+			res[i] = fs.api.FromBinary(b[:nbBits]...)
+			fs.api.Println(res[i])
+			i++
+			fs.safeguardUpdate()
+			if i >= num {
+				break
 			}
-
-			// Drains the first `challsBitSize` of the digestBits into
-			// a new challenge to be returned.
-			newChall := fs.api.FromBinary(digestBits[:challsBitSize]...)
-			digestBits = digestBits[challsBitSize:]
-			res = append(res, zk.WrapFrontendVariable(newChall))
-			challCount++
 		}
-
-		/*
-			This test prevents reupdating fs just before returning
-			and thus, safeguardupdating once more because of the defer.
-		*/
-		if challCount >= num {
-			return res
-		}
-
-		fs.safeguardUpdate()
 	}
+	return res
 }
 
 // safeguardUpdate updates the state as a safeguard by appending a field element

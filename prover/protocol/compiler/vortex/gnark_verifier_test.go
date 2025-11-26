@@ -95,17 +95,14 @@ func TestVortexGnarkVerifier(t *testing.T) {
 				if i < numPrecomputeds && round == 0 {
 					p := pr.Spec.Precomputed.MustGet(row.GetColID())
 					ys[round*nPols+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
-					ys[round*nPols+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					continue
 				}
 				p := smartvectors.Rand(polSize)
-				ys[round*nPols+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 				ys[round*nPols+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 				pr.AssignColumn(row.GetColID(), p)
 			}
 		}
 
-		pr.AssignUnivariateExt("EVAL", x, ys...)
 		pr.AssignUnivariateExt("EVAL", x, ys...)
 	}
 

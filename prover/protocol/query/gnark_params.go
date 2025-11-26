@@ -56,7 +56,6 @@ func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 	// return GnarkLogDerivSumParams{Sum: p.Sum}
 	tmp := p.Sum.GetExt()
 	return GnarkLogDerivSumParams{Sum: gnarkfext.NewE4Gen(tmp)} // TODO @thomas fixme (ext vs base)
-	return GnarkLogDerivSumParams{Sum: gnarkfext.NewE4Gen(tmp)} // TODO @thomas fixme (ext vs base)
 }
 
 // A gnark circuit version of InnerProductParams
@@ -126,33 +125,35 @@ func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	fs.Update(p.BaseY.AsNative())
-	fs.Update(p.BaseY.AsNative())
 }
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	fs.UpdateExt(p.Sum)
 	fs.UpdateExt(p.Sum)
 }
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	fs.UpdateExt(p.Prod)
-	fs.UpdateExt(p.Prod)
 }
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+	for _, y := range p.Ys {
+		fs.Update(y.AsNative())
+	}
+}
+
+// Update the fiat-shamir state with the the present field extension parameters
+func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFS) {
 	fs.UpdateExt(p.ExtYs...)
 }
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	fs.UpdateExt(p.FinalResult)
-	fs.UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		fs.Update(part.N0.AsNative(), part.N1.AsNative())
 		fs.Update(part.N0.AsNative(), part.N1.AsNative())
 	}
 }

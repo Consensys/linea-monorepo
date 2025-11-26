@@ -5,7 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
@@ -57,25 +57,38 @@ func (fs *FS) RandomField() field.Octuplet {
 	return res
 }
 
-// Used to sample opened column indices in gnark circuits
-func (fs *FS) RandomManyIntegers(n int, upperBound int) []field.Octuplet {
-	res := make([]field.Octuplet, n)
-	for i := 0; i < n; i++ {
-		r := fs.RandomFieldFrElmt()
-		res[i] = encoding.EncodeFrElementToOctuplet(r)
+func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
+	n := utils.NextPowerOfTwo(upperBound)
+	mask := n - 1
+	i := 0
+	res := make([]int, num)
+	for i < num {
+		// thake the remainder mod n of each limb
+		c := fs.RandomField()
+		for j := 0; j < 8; j++ {
+			b := c[j].Bits()
+			res[i] = int(b[0]) & mask
+			i++
+			fs.safeguardUpdate()
+			if i >= num {
+				break
+			}
+		}
 	}
 	return res
 }
 
-func (fs *FS) RandomFext() fext.Element {
-	s := fs.RandomField()
-	res := fext.Element{}
-	res.B0.A0 = s[0]
-	res.B0.A1 = s[1]
-	res.B1.A0 = s[2]
-	res.B1.A1 = s[3]
-	return res
-}
+// func RandomFext(h *poseidon2_bls12377.MDHasher) fext.Element {
+// 	s := h.SumElement()
+// 	var res fext.Element
+// 	res.B0.A0 = s[0]
+// 	res.B0.A1 = s[1]
+// 	res.B1.A0 = s[2]
+// 	res.B1.A1 = s[3]
+
+// 	UpdateExt(h, fext.NewFromUint(0, 0, 0, 0)) // safefuard update
+// 	return res
+// }
 
 // func RandomManyIntegers(h *poseidon2_bls12377.MDHasher, num, upperBound int) []int {
 
