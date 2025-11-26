@@ -3,7 +3,7 @@ package vortex
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
@@ -19,7 +19,7 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 
 	x := field.NewElement(478)
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2.NewPoseidon2, poseidon2.NewPoseidon2)
 	vec := smartvectors.Rand(1 << 10)
 	rsEncoded := params.rsEncode(vec, nil)
 
@@ -41,7 +41,7 @@ func TestReedSolomonConstant(t *testing.T) {
 
 	x := field.NewElement(478)
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2.NewPoseidon2, poseidon2.NewPoseidon2)
 	vec := smartvectors.NewConstant(field.NewElement(42), polySize)
 	rsEncoded := params.rsEncode(vec, nil)
 

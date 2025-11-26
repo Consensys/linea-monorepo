@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/std/compress"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2/gkrposeidon2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
@@ -133,7 +133,7 @@ func (h *Hasher) Finalize(c *wizard.VerifierCircuit) error {
 		h.api.AssertIsEqual(h.claimedOuts[i][1], expectedHashLo[i])
 	}
 
-	c.HasherFactory = gkrmimc.NewHasherFactory(h.api)
+	c.HasherFactory = gkrposeidon2.NewHasherFactory(h.api)
 
 	c.Verify(h.api)
 	return nil

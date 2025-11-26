@@ -10,7 +10,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/utils/unsafe"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
@@ -304,7 +304,7 @@ func unmarshalFrontendVariable(des *Deserializer, val any, _ reflect.Type) (refl
 
 func unmarshalHashGenerator(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 	f := func() hash.Hash {
-		return mimc.NewMiMC()
+		return poseidon2.NewPoseidon2()
 	}
 	return reflect.ValueOf(f), nil
 }

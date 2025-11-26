@@ -3,7 +3,7 @@ package mimc
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
@@ -124,7 +124,7 @@ func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
 			for i := 0; i < a.Ctx.Period; i++ {
 				pos := hashID*a.Ctx.Period + i
 				currentBlock := blocksWit.Get(pos)
-				new := mimc.BlockCompression(old, currentBlock)
+				new := poseidon2.BlockCompression(old, currentBlock)
 				olds[pos] = old
 				news[pos] = new
 				old = new
@@ -132,7 +132,7 @@ func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	padNew := mimc.BlockCompression(field.Zero(), field.Zero())
+	padNew := poseidon2.BlockCompression(field.Zero(), field.Zero())
 	oldSV := smartvectors.RightZeroPadded(olds, a.Ctx.ToHash.Size())
 	newSV := smartvectors.RightPadded(news, padNew, a.Ctx.ToHash.Size())
 	newCleanSV := smartvectors.RightZeroPadded(vector.DeepCopy(news), a.Ctx.ToHash.Size())

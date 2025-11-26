@@ -4,7 +4,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/gnark/std/hash/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/fft/fastpoly"
@@ -68,8 +68,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			h := vr.GetHasherFactory().NewHasher()
 			return h, nil
 		}
-		h, err := mimc.NewMiMC(api)
-		return &h, err
+		return poseidon2.New(api)
 	}
 
 	packedMProofs := vr.GetColumn(ctx.MerkleProofName())

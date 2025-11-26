@@ -3,8 +3,8 @@ package recursion
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2/gkrposeidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/vortex"
@@ -74,12 +74,12 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	w := r.WizardVerifier
 
 	if !r.withoutGkr {
-		w.HasherFactory = gkrmimc.NewHasherFactory(api)
+		w.HasherFactory = gkrposeidon2.NewHasherFactory(api)
 		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
 	}
 
 	if r.withExternalHasher {
-		w.HasherFactory = &mimc.ExternalHasherFactory{Api: api}
+		w.HasherFactory = &poseidon2.ExternalHasherFactory{Api: api}
 	}
 	// The below step is responsible for verifying all
 	// the verifier actions of all compilation steps.

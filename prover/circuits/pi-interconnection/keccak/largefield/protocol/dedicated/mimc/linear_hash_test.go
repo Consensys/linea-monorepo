@@ -3,7 +3,7 @@ package mimc_test
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
@@ -50,7 +50,7 @@ func TestLinearHash(t *testing.T) {
 				// and append the segment to th and the result
 				// to ex
 				segment := vector.Rand(period)
-				hasher := mimc.NewMiMC()
+				hasher := poseidon2.NewPoseidon2()
 
 				for _, x := range segment {
 					xbytes := x.Bytes()

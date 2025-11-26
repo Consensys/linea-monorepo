@@ -3,7 +3,7 @@ package common
 import (
 	"strconv"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/column"
@@ -104,6 +104,6 @@ func mimcVecCompression(oldState, block, newState []field.Element) {
 	}
 
 	for i := range oldState {
-		newState[i] = mimc.BlockCompression(oldState[i], block[i])
+		newState[i] = poseidon2.BlockCompression(oldState[i], block[i])
 	}
 }

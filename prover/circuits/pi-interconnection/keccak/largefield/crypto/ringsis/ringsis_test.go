@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/vector"
@@ -148,7 +148,7 @@ func TestHashModXnMinusOne(t *testing.T) {
 
 func TestLimbSplit(t *testing.T) {
 
-	randX := mimc.BlockCompression(field.Zero(), field.Zero())
+	randX := poseidon2.BlockCompression(field.Zero(), field.Zero())
 	randX.Inverse(&randX)
 
 	arrays := [][]field.Element{

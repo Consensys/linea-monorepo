@@ -1,7 +1,7 @@
 package selfrecursion
 
 import (
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/vortex"
@@ -402,7 +402,7 @@ func processPrecomputedRound(
 			destStart := i * lmp.SisHashSize
 			sisHash := precompColSisHash[srcStart : srcStart+lmp.SisHashSize]
 			copy(lmp.ConcatDhQ[destStart:destStart+lmp.SisHashSize], sisHash)
-			leaf := mimc.HashVec(sisHash)
+			leaf := poseidon2.HashVec(sisHash)
 			lmp.MerkleSisLeaves = append(lmp.MerkleSisLeaves, leaf)
 			precompSisLeaves = append(precompSisLeaves, leaf)
 			lmp.MerkleSisRoots = append(lmp.MerkleSisRoots, rootPrecomp)
@@ -423,7 +423,7 @@ func processPrecomputedRound(
 			mimcPreimage := a.Ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
 			// Also compute the leaf from the column
 			// to check sanity
-			leaf_ := mimc.HashVec(mimcPreimage)
+			leaf_ := poseidon2.HashVec(mimcPreimage)
 			if leaf != leaf_ {
 				utils.Panic("MiMC hash of the precomputed column %v does not match the leaf %v", leaf_, leaf)
 			}
@@ -502,7 +502,7 @@ func processRound(
 				destStart := sisRoundCount*lmp.NumOpenedCol*lmp.SisHashSize + i*lmp.SisHashSize
 				sisHash := colSisHash[srcStart : srcStart+lmp.SisHashSize]
 				copy(lmp.ConcatDhQ[destStart:destStart+lmp.SisHashSize], sisHash)
-				leaf := mimc.HashVec(sisHash)
+				leaf := poseidon2.HashVec(sisHash)
 				lmp.MerkleSisLeaves = append(lmp.MerkleSisLeaves, leaf)
 				sisRoundLeaves = append(sisRoundLeaves, leaf)
 				lmp.MerkleSisRoots = append(lmp.MerkleSisRoots, rooth)
@@ -534,7 +534,7 @@ func processRound(
 				leaf := mimcHash[0]
 				// Also compute the leaf from the column
 				// to check sanity
-				leaf_ := mimc.HashVec(mimcPreimage)
+				leaf_ := poseidon2.HashVec(mimcPreimage)
 				if leaf != leaf_ {
 					utils.Panic("MiMC hash of the non SIS column %v does not match the leaf %v", leaf_, leaf)
 				}

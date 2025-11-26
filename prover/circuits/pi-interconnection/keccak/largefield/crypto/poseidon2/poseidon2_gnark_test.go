@@ -1,4 +1,4 @@
-package mimc_test
+package poseidon2_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +19,7 @@ type Circuit struct {
 }
 
 func (circuit *Circuit) Define(api frontend.API) error {
-	res := mimc.GnarkBlockCompression(api, circuit.Old, circuit.Block)
+	res := poseidon2.GnarkBlockCompression(api, circuit.Old, circuit.Block)
 	api.AssertIsEqual(res, circuit.New)
 	return nil
 }
@@ -36,7 +36,7 @@ func TestGnarkCompression(t *testing.T) {
 	assignment := Circuit{
 		Block: 1,
 		Old:   2,
-		New:   mimc.BlockCompression(field.NewElement(2), field.NewElement(1)),
+		New:   poseidon2.BlockCompression(field.NewElement(2), field.NewElement(1)),
 	}
 
 	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())

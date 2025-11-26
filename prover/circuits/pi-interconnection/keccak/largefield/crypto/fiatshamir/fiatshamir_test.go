@@ -15,7 +15,7 @@ import (
 
 func TestFiatShamirSafeguardUpdate(t *testing.T) {
 
-	fs := NewMiMCFiatShamir()
+	fs := NewPoseidon2FiatShamir()
 
 	a := fs.RandomField()
 	b := fs.RandomField()
@@ -30,7 +30,7 @@ func TestFiatShamirRandomVec(t *testing.T) {
 		testName := fmt.Sprintf("%v-integers-of-%v-bits", testCase.NumIntegers, testCase.IntegerBitSize)
 		t.Run(testName, func(t *testing.T) {
 
-			fs := NewMiMCFiatShamir()
+			fs := NewPoseidon2FiatShamir()
 			fs.Update(field.NewElement(420))
 
 			var oldState, newState field.Element
@@ -60,28 +60,28 @@ func TestFiatShamirRandomVec(t *testing.T) {
 
 func TestBatchUpdates(t *testing.T) {
 
-	fs := NewMiMCFiatShamir()
+	fs := NewPoseidon2FiatShamir()
 	fs.Update(field.NewElement(2))
 	fs.Update(field.NewElement(2))
 	fs.Update(field.NewElement(1))
 	expectedVal := fs.RandomField()
 
 	t.Run("for a variadic call", func(t *testing.T) {
-		fs := NewMiMCFiatShamir()
+		fs := NewPoseidon2FiatShamir()
 		fs.Update(field.NewElement(2), field.NewElement(2), field.NewElement(1))
 		actualValue := fs.RandomField()
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for slice of field elements", func(t *testing.T) {
-		fs := NewMiMCFiatShamir()
+		fs := NewPoseidon2FiatShamir()
 		fs.UpdateVec(vector.ForTest(2, 2, 1))
 		actualValue := fs.RandomField()
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for multi-slice of field elements", func(t *testing.T) {
-		fs := NewMiMCFiatShamir()
+		fs := NewPoseidon2FiatShamir()
 		fs.UpdateVec(vector.ForTest(2, 2), vector.ForTest(1))
 		actualValue := fs.RandomField()
 		assert.Equal(t, expectedVal.String(), actualValue.String())
@@ -89,7 +89,7 @@ func TestBatchUpdates(t *testing.T) {
 
 	t.Run("for a smart-vector", func(t *testing.T) {
 		sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
-		fs := NewMiMCFiatShamir()
+		fs := NewPoseidon2FiatShamir()
 		fs.UpdateSV(sv)
 		actualValue := fs.RandomField()
 		assert.Equal(t, expectedVal.String(), actualValue.String())
@@ -113,7 +113,7 @@ func TestSamplingFromSeed(t *testing.T) {
 			totalSize    = 1000
 		)
 
-		fs := NewMiMCFiatShamir()
+		fs := NewPoseidon2FiatShamir()
 		fs.SetState([]field.Element{initialState})
 
 		for i := 0; i < totalSize; i++ {
@@ -135,8 +135,8 @@ func TestSamplingFromSeed(t *testing.T) {
 			rng    = rand.New(utils.NewRandSource(789))
 			state1 = field.PseudoRand(rng)
 			state2 = field.PseudoRand(rng)
-			fs1    = NewMiMCFiatShamir()
-			fs2    = NewMiMCFiatShamir()
+			fs1    = NewPoseidon2FiatShamir()
+			fs2    = NewPoseidon2FiatShamir()
 			seed   = field.PseudoRand(rng)
 			name   = "string-name"
 		)
@@ -160,7 +160,7 @@ func TestSamplingFromSeed(t *testing.T) {
 			initialState = field.PseudoRand(rng)
 			seed         = field.PseudoRand(rng)
 			name         = "ddqsdjqskljd"
-			fs           = NewMiMCFiatShamir()
+			fs           = NewPoseidon2FiatShamir()
 		)
 
 		fs.SetState([]field.Element{initialState})
@@ -181,7 +181,7 @@ func TestSamplingFromSeed(t *testing.T) {
 			initialState = field.PseudoRand(rng)
 			seed         = field.PseudoRand(rng)
 			name         = "ddqsdjqskljd"
-			fs           = NewMiMCFiatShamir()
+			fs           = NewPoseidon2FiatShamir()
 		)
 
 		fs.SetState([]field.Element{initialState})

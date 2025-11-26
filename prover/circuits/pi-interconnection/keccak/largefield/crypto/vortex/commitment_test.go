@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
@@ -24,7 +24,7 @@ func TestLinearCombination(t *testing.T) {
 	x := field.NewElement(478)
 	randomCoin := field.NewElement(1523)
 
-	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, poseidon2.NewPoseidon2, poseidon2.NewPoseidon2)
 
 	// Polynomials to commit to
 	polys := make([]smartvectors.SmartVector, nPolys)
@@ -50,8 +50,8 @@ func TestLinearCombination(t *testing.T) {
 
 // testCaseParameters is a corpus of valid parameters for Vortex
 var testCaseParameters = []*Params{
-	NewParams(2, 1<<4, 32, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
-	NewParams(4, 1<<3, 32, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
+	NewParams(2, 1<<4, 32, ringsis.StdParams, poseidon2.NewPoseidon2, poseidon2.NewPoseidon2),
+	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2.NewPoseidon2, poseidon2.NewPoseidon2),
 }
 
 func TestProver(t *testing.T) {
@@ -270,8 +270,8 @@ func TestVerifierNegative(t *testing.T) {
 			{3, 1, 15},
 		}
 		params = []*Params{
-			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
-			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
+			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewPoseidon2, poseidon2.NewPoseidon2),
+			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.NewPoseidon2, poseidon2.NewPoseidon2),
 		}
 
 		statementMutatorCorpus = []struct {

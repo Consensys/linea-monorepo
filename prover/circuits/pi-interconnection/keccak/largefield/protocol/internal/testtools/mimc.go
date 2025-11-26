@@ -1,7 +1,7 @@
 package testtools
 
 import (
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/ifaces"
@@ -151,11 +151,11 @@ func (m *MiMCTestcase) Assign(run *wizard.ProverRuntime) {
 				oldStatesWindow     = smartvectors.Window(m.OldStates[i])
 				oldStatesPadding, _ = smartvectors.PaddingVal(m.OldStates[i])
 				newStatesWindow     = make([]field.Element, len(blocksWindow))
-				newStatesPadding    = mimc.BlockCompression(oldStatesPadding, blocksPadding)
+				newStatesPadding    = poseidon2.BlockCompression(oldStatesPadding, blocksPadding)
 			)
 
 			for k := range blocksWindow {
-				newStatesWindow[k] = mimc.BlockCompression(
+				newStatesWindow[k] = poseidon2.BlockCompression(
 					oldStatesWindow[k],
 					blocksWindow[k],
 				)

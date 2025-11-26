@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/coin"
@@ -32,7 +32,7 @@ type GnarkRuntime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
 	Fs() *fiatshamir.GnarkFiatShamir
-	GetHasherFactory() mimc.HasherFactory
+	GetHasherFactory() poseidon2.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -132,7 +132,7 @@ type VerifierCircuit struct {
 	// in the circuit. It is used for efficiently computing the Fiat-Shamir
 	// hashes but also the MiMC Vortex column hashes that we use for the
 	// last round of the self-recursion.
-	HasherFactory mimc.HasherFactory `gnark:"-"`
+	HasherFactory poseidon2.HasherFactory `gnark:"-"`
 
 	// State is a generic-purpose data store that the verifier steps can use to
 	// communicate with each other across rounds.
@@ -700,12 +700,12 @@ func (c *VerifierCircuit) SetFs(fs *fiatshamir.GnarkFiatShamir) {
 
 // GetHasherFactory returns the hasher factory of the verifier circuit; nil
 // if none is set.
-func (c *VerifierCircuit) GetHasherFactory() mimc.HasherFactory {
+func (c *VerifierCircuit) GetHasherFactory() poseidon2.HasherFactory {
 	return c.HasherFactory
 }
 
 // SetHasherFactory sets the hasher factory of the verifier circuit
-func (c *VerifierCircuit) SetHasherFactory(hf mimc.HasherFactory) {
+func (c *VerifierCircuit) SetHasherFactory(hf poseidon2.HasherFactory) {
 	c.HasherFactory = hf
 }
 

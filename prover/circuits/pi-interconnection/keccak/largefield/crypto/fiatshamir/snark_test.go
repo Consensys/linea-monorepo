@@ -32,7 +32,7 @@ func TestGnarkRandomVec(t *testing.T) {
 			f := func(api frontend.API) error {
 
 				gnarkFs := NewGnarkFiatShamir(api, nil)
-				fs := NewMiMCFiatShamir()
+				fs := NewPoseidon2FiatShamir()
 
 				fs.Update(field.NewElement(2))
 				gnarkFs.Update(field.NewElement(2))
@@ -55,7 +55,7 @@ func TestGnarkRandomVec(t *testing.T) {
 func TestGnarkFiatShamirEmpty(t *testing.T) {
 
 	f := func(api frontend.API) error {
-		Y := NewMiMCFiatShamir().RandomField()
+		Y := NewPoseidon2FiatShamir().RandomField()
 		fs := NewGnarkFiatShamir(api, nil)
 		y := fs.RandomField()
 		api.AssertIsEqual(Y, y)
@@ -68,7 +68,7 @@ func TestGnarkFiatShamirEmpty(t *testing.T) {
 func TestGnarkUpdateVec(t *testing.T) {
 
 	f := func(api frontend.API) error {
-		fs := NewMiMCFiatShamir()
+		fs := NewPoseidon2FiatShamir()
 		fs.UpdateVec(vector.ForTest(2, 2, 1, 2))
 		y1 := fs.RandomField()
 

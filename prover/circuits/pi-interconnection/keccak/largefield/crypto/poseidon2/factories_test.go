@@ -1,4 +1,4 @@
-package mimc
+package poseidon2
 
 import (
 	"testing"
@@ -38,7 +38,7 @@ func (circuit *externalMimcFactoryTestLinear) Define(api frontend.API) error {
 	return nil
 }
 
-func TestMiMCFactories(t *testing.T) {
+func TestPoseidon2Factories(t *testing.T) {
 
 	var (
 		circuit            = &externalMimcFactoryTestLinear{}
@@ -47,7 +47,7 @@ func TestMiMCFactories(t *testing.T) {
 		assignment         = &externalMimcFactoryTestLinear{Inp: [16]frontend.Variable{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
 	)
 
-	solver.RegisterHint(MimcHintfunc)
+	solver.RegisterHint(Poseidon2Hintfunc)
 
 	ccs_, compileErr := frontend.Compile(blsField, builder, circuit)
 

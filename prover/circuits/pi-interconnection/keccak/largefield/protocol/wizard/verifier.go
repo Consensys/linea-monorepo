@@ -165,7 +165,7 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
 		QueriesParams: proof.QueriesParams,
-		FS:            fiatshamir.NewMiMCFiatShamir(),
+		FS:            fiatshamir.NewPoseidon2FiatShamir(),
 		State:         make(map[string]interface{}),
 	}
 

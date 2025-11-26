@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/consensys/gnark-crypto/hash"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -14,7 +14,7 @@ import (
 // State holds a Fiat-Shamir state. The Fiat-Shamir state can be updated by
 // providing field elements and can be consumed to generate either field
 // elements or sequences of small integers. The Fiat-Shamir instantiation relies
-// on the MiMC hash function and uses the following strategy for generating
+// on the Poseidon2 hash function and uses the following strategy for generating
 // random public coins:
 //
 //   - The messages are appended to the hasher as it is received by the Fiat-
@@ -37,15 +37,15 @@ type State struct {
 	NumCoinGenerated int
 }
 
-// NewMiMCFiatShamir constructs a fresh and empty Fiat-Shamir state.
-func NewMiMCFiatShamir() *State {
+// NewPoseidon2FiatShamir constructs a fresh and empty Fiat-Shamir state.
+func NewPoseidon2FiatShamir() *State {
 	return &State{
-		hasher: mimc.NewMiMC().(hash.StateStorer),
+		hasher: poseidon2.NewPoseidon2().(hash.StateStorer),
 	}
 }
 
 // State returns the internal state of the Fiat-Shamir hasher. Only works for
-// MiMC.
+// Poseidon2.
 func (s *State) State() []field.Element {
 	_ = s.hasher.Sum(nil)
 	b := s.hasher.State()

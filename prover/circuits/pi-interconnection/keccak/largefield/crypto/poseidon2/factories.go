@@ -1,4 +1,4 @@
-package mimc
+package poseidon2
 
 import (
 	"errors"
@@ -9,33 +9,33 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	ghash "github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/gnark/std/hash/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // HasherFactory is an interface implemented by structures that can construct a
-// MiMC hasher in a gnark circuit. Some implementation may leverage the GKR
-// protocol as in [gkrmimc.HasherFactory] or may trigger specific behaviors
+// Poseidon2 hasher in a gnark circuit. Some implementation may leverage the GKR
+// protocol as in [gkrposeidon2.HasherFactory] or may trigger specific behaviors
 // of Plonk in Wizard.
 type HasherFactory interface {
 	NewHasher() ghash.StateStorer
 }
 
 // BasicHasherFactory is a simple implementation of HasherFactory that returns
-// the standard MiMC hasher as in [NewMiMC].
+// the standard Poseidon2 hasher as in [NewPoseidon2].
 type BasicHasherFactory struct {
 	Api frontend.API
 }
 
 // ExternalHasherFactory is an implementation of the HasherFactory interface
-// that tags the variables happening in a MiMC hasher claim.
+// that tags the variables happening in a Poseidon2 hasher claim.
 type ExternalHasherFactory struct {
 	Api frontend.API
 }
 
 // ExternalHasher is an implementation of the [ghash.StateStorer] interface
-// that tags the variables happening in a MiMC hasher claim.
+// that tags the variables happening in a Poseidon2 hasher claim.
 type ExternalHasher struct {
 	api   frontend.API
 	data  []frontend.Variable
@@ -72,13 +72,13 @@ type storeCommitBuilder interface {
 	GetWiresConstraintExact(wires []frontend.Variable, addMissing bool) ([][2]int, error)
 }
 
-// NewHasher returns the standard MiMC hasher as in [NewMiMC].
+// NewHasher returns the standard Poseidon2 hasher as in [NewPoseidon2].
 func (f *BasicHasherFactory) NewHasher() ghash.StateStorer {
-	h, _ := mimc.NewMiMC(f.Api)
-	return &h
+	h, _ := poseidon2.New(f.Api)
+	return h
 }
 
-// NewHasher returns an external MiMC hasher.
+// NewHasher returns an external Poseidon2 hasher.
 func (f *ExternalHasherFactory) NewHasher() ghash.StateStorer {
 	return &ExternalHasher{api: f.Api, state: frontend.Variable(0)}
 }
@@ -117,7 +117,7 @@ func (h *ExternalHasher) Sum() frontend.Variable {
 }
 
 // SetState manually sets the state of the hasher to the provided value. In the
-// case of MiMC only a single frontend variable is expected to represent the
+// case of Poseidon2 only a single frontend variable is expected to represent the
 // state.
 func (h *ExternalHasher) SetState(newState []frontend.Variable) error {
 
@@ -126,14 +126,14 @@ func (h *ExternalHasher) SetState(newState []frontend.Variable) error {
 	}
 
 	if len(newState) != 1 {
-		return errors.New("the MiMC hasher expects a single field element to represent the state")
+		return errors.New("the Poseidon2 hasher expects a single field element to represent the state")
 	}
 
 	h.state = newState[0]
 	return nil
 }
 
-// State returns the inner-state of the hasher. In the context of MiMC only a
+// State returns the inner-state of the hasher. In the context of Poseidon2 only a
 // single field element is returned.
 func (h *ExternalHasher) State() []frontend.Variable {
 	_ = h.Sum() // to flush the hasher
@@ -141,11 +141,11 @@ func (h *ExternalHasher) State() []frontend.Variable {
 }
 
 // compress calls returns a frontend.Variable holding the result of applying
-// the compression function of MiMC over state and block. The alleged returned
+// the compression function of Poseidon2 over state and block. The alleged returned
 // result is pushed on the stack of all the claims to verify.
 func (h *ExternalHasher) compress(state, block frontend.Variable) frontend.Variable {
 
-	newState, err := h.api.Compiler().NewHint(MimcHintfunc, 1, state, block)
+	newState, err := h.api.Compiler().NewHint(Poseidon2Hintfunc, 1, state, block)
 	if err != nil {
 		panic(err)
 	}
@@ -187,7 +187,7 @@ func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilder, fu
 		}
 }
 
-// CheckHashExternally tags a MiMC hasher claim in the circuit
+// CheckHashExternally tags a Poseidon2 hasher claim in the circuit
 func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState frontend.Variable) {
 	f.claimTriplets = append(f.claimTriplets, [3]frontend.Variable{oldState, block, newState})
 }
@@ -236,10 +236,10 @@ func (builder *ExternalHasherBuilder) Compiler() frontend.Compiler {
 	return builder.storeCommitBuilder.Compiler()
 }
 
-// MimcHintfunc is a gnark hint that computes the MiMC compression function, it
-// is used to return the pending claims of the evaluation of the MiMC compression
+// Poseidon2Hintfunc is a gnark hint that computes the Poseidon2 compression function, it
+// is used to return the pending claims of the evaluation of the Poseidon2 compression
 // function.
-func MimcHintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error {
+func Poseidon2Hintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error {
 
 	if f.String() != field.Modulus().String() {
 		utils.Panic("Not the BLS field %d != %d", f, field.Modulus())

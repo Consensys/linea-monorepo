@@ -281,7 +281,7 @@ func (run *ProverRuntime) NumRounds() int {
 func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
-	fs := fiatshamir.NewMiMCFiatShamir()
+	fs := fiatshamir.NewPoseidon2FiatShamir()
 	fs.Update(c.FiatShamirSetup)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)

@@ -3,7 +3,7 @@ package merkle
 import (
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
@@ -562,8 +562,8 @@ func (cm *ComputeMod) assign(
 				}
 
 				// And run the mimc compression function
-				interm[row] = mimc.BlockCompression(field.Zero(), left[row])
-				nodehash[row] = mimc.BlockCompression(interm[row], right[row])
+				interm[row] = poseidon2.BlockCompression(field.Zero(), left[row])
+				nodehash[row] = poseidon2.BlockCompression(interm[row], right[row])
 			}
 
 			root = nodehash[proofNo*cm.Depth]
@@ -590,17 +590,17 @@ func (cm *ComputeMod) assign(
 		}
 	})
 
-	intermPadding := mimc.BlockCompression(field.Zero(), field.Zero())
+	intermPadding := poseidon2.BlockCompression(field.Zero(), field.Zero())
 	// Assign zero blocks in the inactive area when the actual number of proofs and maximum number of proofs
 	// are different
 	if cm.WithOptProofReuseCheck {
 		for i := numProofs * cm.Depth; i < numActiveRows; i++ {
 			interm[i] = intermPadding
-			nodehash[i] = mimc.BlockCompression(intermPadding, field.Zero())
+			nodehash[i] = poseidon2.BlockCompression(intermPadding, field.Zero())
 		}
 	}
 
-	nodeHashPadding := mimc.BlockCompression(intermPadding, field.Zero())
+	nodeHashPadding := poseidon2.BlockCompression(intermPadding, field.Zero())
 
 	// and assign the freshly computed columns
 	cols := cm.Cols

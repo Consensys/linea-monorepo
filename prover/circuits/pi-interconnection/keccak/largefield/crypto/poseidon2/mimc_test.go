@@ -1,18 +1,18 @@
-package mimc_test
+package poseidon2_test
 
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"github.com/stretchr/testify/require"
 )
 
-func TestMiMCBloc(t *testing.T) {
+func TestPoseidon2Block(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 
-		hasher := mimc.NewMiMC()
+		hasher := poseidon2.NewPoseidon2()
 
 		// old is set to zero
 		var x, old field.Element
@@ -22,7 +22,7 @@ func TestMiMCBloc(t *testing.T) {
 		x.SetRandom()
 		xBytes := x.Bytes()
 
-		newState := mimc.BlockCompression(old, x)
+		newState := poseidon2.BlockCompression(old, x)
 
 		hasher.Write(xBytes[:])
 		newBytes := hasher.Sum(nil)

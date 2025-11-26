@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/wizard"
 	"github.com/stretchr/testify/require"
@@ -26,8 +26,8 @@ type externalMimcFactoryTestLinear struct {
 func (circuit *externalMimcFactoryTestLinear) Define(api frontend.API) error {
 
 	var (
-		factory      = &mimc.ExternalHasherFactory{Api: api}
-		factoryBasic = &mimc.BasicHasherFactory{Api: api}
+		factory      = &poseidon2.ExternalHasherFactory{Api: api}
+		factoryBasic = &poseidon2.BasicHasherFactory{Api: api}
 		hasher       = factory.NewHasher()
 		hasherBasic  = factoryBasic.NewHasher()
 	)
@@ -41,9 +41,9 @@ func (circuit *externalMimcFactoryTestLinear) Define(api frontend.API) error {
 	return nil
 }
 
-func TestMiMCFactories(t *testing.T) {
+func TestPoseidon2Factories(t *testing.T) {
 
-	solver.RegisterHint(mimc.MimcHintfunc)
+	solver.RegisterHint(poseidon2.Poseidon2Hintfunc)
 
 	var (
 		blsField   = ecc.BLS12_377.ScalarField()

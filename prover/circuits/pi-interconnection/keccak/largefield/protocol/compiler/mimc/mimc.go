@@ -1,7 +1,8 @@
 package mimc
 
 import (
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/mimc"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/maths/field"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/ifaces"
@@ -95,11 +96,11 @@ func defineContext(comp *wizard.CompiledIOP) *MimcContext {
 		ifaces.ColIDf("MIMC_STACKED_NEW_STATES_%v_%v", comp.SelfRecursionCount, uniqueID(comp)),
 		totalSize)
 
-	for i := 0; i < len(mimc.Constants); i++ {
+	for i := 0; i < len(Constants); i++ {
 
 		var (
 			prev = ctx.StackedBlocks
-			ark  = mimc.Constants[i]
+			ark  = Constants[i]
 		)
 
 		if i > 0 {
@@ -129,7 +130,7 @@ func defineContext(comp *wizard.CompiledIOP) *MimcContext {
 
 	comp.InsertGlobal(round,
 		ifaces.QueryIDf("MIMC_STACKED_NEW_STATES_COMPUTATION_%v_%v", comp.SelfRecursionCount, uniqueID(comp)),
-		sym.Sub(ctx.StackedNewStates, ctx.StackedOldStates, ctx.StackedOldStates, ctx.StackedBlocks, ctx.RoundResults[len(mimc.Constants)-1]))
+		sym.Sub(ctx.StackedNewStates, ctx.StackedOldStates, ctx.StackedOldStates, ctx.StackedBlocks, ctx.RoundResults[len(Constants)-1]))
 
 	for i := range ctx.CompiledQueries {
 
@@ -173,7 +174,7 @@ func (ctx *MimcContext) Run(run *wizard.ProverRuntime) {
 		stackedBlocks    = make([]field.Element, 0)
 		stackedNewStates = make([]field.Element, 0)
 		totalSize        = ctx.StackedOldStates.Size()
-		mimcOfZero       = mimc.BlockCompression(field.NewElement(0), field.NewElement(0))
+		mimcOfZero       = poseidon2.BlockCompression(field.NewElement(0), field.NewElement(0))
 	)
 
 	for i := range ctx.CompiledQueries {
@@ -249,8 +250,8 @@ func (ctx *MimcContext) Run(run *wizard.ProverRuntime) {
 
 	var (
 		effectiveSize = len(stackedOldStates)
-		sumPow4s      = make([][]field.Element, len(mimc.Constants))
-		roundResults  = make([][]field.Element, len(mimc.Constants))
+		sumPow4s      = make([][]field.Element, len(Constants))
+		roundResults  = make([][]field.Element, len(Constants))
 	)
 
 	for i := range sumPow4s {
@@ -267,9 +268,9 @@ func (ctx *MimcContext) Run(run *wizard.ProverRuntime) {
 				k = stackedOldStates[row]
 			)
 
-			for mimcRound := 0; mimcRound < len(mimc.Constants); mimcRound++ {
+			for mimcRound := 0; mimcRound < len(Constants); mimcRound++ {
 
-				ark := mimc.Constants[mimcRound]
+				ark := Constants[mimcRound]
 
 				var (
 					// sum = (s + k + ark)
@@ -318,3 +319,13 @@ func (ctx *MimcContext) Run(run *wizard.ProverRuntime) {
 func uniqueID(comp *wizard.CompiledIOP) int {
 	return len(comp.Columns.AllKeys())
 }
+
+// Constants collects the MiMC constants parsed as field elements
+var Constants []field.Element = func() []field.Element {
+	bigConsts := mimc.GetConstants()
+	res := make([]field.Element, len(bigConsts))
+	for i := range res {
+		res[i].SetBigInt(&bigConsts[i])
+	}
+	return res
+}()
