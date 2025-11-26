@@ -3,21 +3,25 @@ package gkrmimc
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
-	gkrposeidon2 "github.com/consensys/gnark/std/hash/poseidon2/gkr-poseidon2"
+	gkr_mimc "github.com/consensys/gnark/std/hash/mimc/gkr-mimc"
 )
 
-type HasherFactory struct {
+type HasherFactory interface {
+	NewHasher() hash.StateStorer
+}
+
+type hasherFactory struct {
 	api frontend.API
 }
 
-func (f *HasherFactory) NewHasher() hash.StateStorer {
-	res, err := gkrposeidon2.New(f.api)
+func (f *hasherFactory) NewHasher() hash.StateStorer {
+	res, err := gkr_mimc.New(f.api)
 	if err != nil {
 		panic(err)
 	}
 	return res
 }
 
-func NewHasherFactory(api frontend.API) *HasherFactory {
-	return &HasherFactory{api: api}
+func NewHasherFactory(api frontend.API) HasherFactory {
+	return &hasherFactory{api: api}
 }

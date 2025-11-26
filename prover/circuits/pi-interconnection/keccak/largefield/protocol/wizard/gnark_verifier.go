@@ -68,11 +68,11 @@ type VerifierCircuitAnalytic struct {
 type VerifierCircuit struct {
 
 	// Spec points to the inner CompiledIOP and carries all the static
-	// informations related to the circuit.
+	// information related to the circuit.
 	Spec *CompiledIOP `gnark:"-"`
 
 	// Maps a query's name to a position in the arrays below. The reason we
-	// use this data-structure is because the [VerifierRuntime] offers
+	// use this data-structure is that the [VerifierRuntime] offers
 	// key-value access to the internal parameters of the struct and we
 	// cannot have maps of [frontend.Variable] in a gnark circuit (because we
 	// need a deterministic storage so that we are sure that the wires stay at
