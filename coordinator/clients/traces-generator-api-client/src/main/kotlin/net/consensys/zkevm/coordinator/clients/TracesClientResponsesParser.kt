@@ -31,7 +31,7 @@ object TracesClientResponsesParser {
     jsonRpcResponse: JsonRpcSuccessResponse,
   ): GetTracesCountersResponse = parseTracesCounterResponse(
     jsonRpcResponse,
-    ::parseTracesCountersV4,
+    ::parseTracesCountersV2,
   )
 
   internal fun parseTracesCounterResponseV4(
