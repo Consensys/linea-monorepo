@@ -146,6 +146,21 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
   }
 
   /**
+   * Gets the transaction receipt for a given transaction hash.
+   *
+   * @param {Hex} txHash - The transaction hash to query.
+   * @returns {Promise<TransactionReceipt | undefined>} The transaction receipt if found, undefined otherwise.
+   */
+  async getTxReceipt(txHash: Hex): Promise<TransactionReceipt | undefined> {
+    try {
+      return await this.blockchainClient.getTransactionReceipt({ hash: txHash });
+    } catch (error) {
+      this.logger.warn("getTxReceipt - failed to get transaction receipt", { txHash, error });
+      return undefined;
+    }
+  }
+
+  /**
    * Attempts to send a signed transaction with retry-on-timeout semantics.
    * On each retry, bumps gas fees by `gasRetryBumpBps` basis points.
    * Uses a single nonce for all retry attempts to prevent nonce conflicts.

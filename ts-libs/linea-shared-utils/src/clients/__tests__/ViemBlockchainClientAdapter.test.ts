@@ -6,6 +6,7 @@ import {
   PublicClient,
   TimeoutError,
   BaseError,
+  TransactionReceipt,
   createPublicClient,
   http,
   parseSignature,
@@ -66,6 +67,7 @@ const createPublicClientMock = () =>
     estimateFeesPerGas: jest.fn(),
     getTransactionCount: jest.fn(),
     estimateGas: jest.fn(),
+    getTransactionReceipt: jest.fn(),
   }) as unknown as jest.Mocked<PublicClient>;
 
 describe("ViemBlockchainClientAdapter", () => {
@@ -193,6 +195,68 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(publicClientMock.getChainId).toHaveBeenCalledTimes(1);
     expect(publicClientMock.getBalance).toHaveBeenCalledWith({ address: "0xabc" });
     expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(1);
+  });
+
+  describe("getTxReceipt", () => {
+    const txHash = "0x1234567890abcdef" as Hex;
+    const mockReceipt = {
+      transactionHash: txHash,
+      status: "success",
+      blockNumber: 12345n,
+      gasUsed: 21000n,
+    } as TransactionReceipt;
+
+    it("returns transaction receipt when found", async () => {
+      publicClientMock.getTransactionReceipt.mockResolvedValue(mockReceipt);
+
+      const result = await adapter.getTxReceipt(txHash);
+
+      expect(result).toEqual(mockReceipt);
+      expect(publicClientMock.getTransactionReceipt).toHaveBeenCalledWith({ hash: txHash });
+      expect(publicClientMock.getTransactionReceipt).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns undefined when transaction is not found", async () => {
+      const notFoundError = Object.assign(new BaseError("Transaction not found"), { code: -32001 });
+      publicClientMock.getTransactionReceipt.mockRejectedValue(notFoundError);
+
+      const result = await adapter.getTxReceipt(txHash);
+
+      expect(result).toBeUndefined();
+      expect(publicClientMock.getTransactionReceipt).toHaveBeenCalledWith({ hash: txHash });
+      expect(logger.warn).toHaveBeenCalledWith("getTxReceipt - failed to get transaction receipt", {
+        txHash,
+        error: notFoundError,
+      });
+    });
+
+    it("returns undefined and logs on network error", async () => {
+      const networkError = Object.assign(new BaseError("Network error"), { code: -32603 });
+      publicClientMock.getTransactionReceipt.mockRejectedValue(networkError);
+
+      const result = await adapter.getTxReceipt(txHash);
+
+      expect(result).toBeUndefined();
+      expect(publicClientMock.getTransactionReceipt).toHaveBeenCalledWith({ hash: txHash });
+      expect(logger.warn).toHaveBeenCalledWith("getTxReceipt - failed to get transaction receipt", {
+        txHash,
+        error: networkError,
+      });
+    });
+
+    it("returns undefined and logs on any error", async () => {
+      const genericError = new Error("Unexpected error");
+      publicClientMock.getTransactionReceipt.mockRejectedValue(genericError);
+
+      const result = await adapter.getTxReceipt(txHash);
+
+      expect(result).toBeUndefined();
+      expect(publicClientMock.getTransactionReceipt).toHaveBeenCalledWith({ hash: txHash });
+      expect(logger.warn).toHaveBeenCalledWith("getTxReceipt - failed to get transaction receipt", {
+        txHash,
+        error: genericError,
+      });
+    });
   });
 
   it("uses default constructor parameters and default tx value", async () => {

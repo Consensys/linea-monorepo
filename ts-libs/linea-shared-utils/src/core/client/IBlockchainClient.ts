@@ -8,4 +8,5 @@ export interface IBlockchainClient<TClient, TTransactionReceipt> {
   getBalance(address: Address): Promise<bigint>;
   sendSignedTransaction(contractAddress: Address, calldata: Hex, value?: bigint): Promise<TTransactionReceipt>;
   getSignerAddress(): Address;
+  getTxReceipt(txHash: Hex): Promise<TTransactionReceipt | undefined>;
 }
