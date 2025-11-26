@@ -102,8 +102,8 @@ func (info *GenericInfoAccumulator) declareColumns(comp *wizard.CompiledIOP, nbP
 		info.SFilters[i] = createCol("sFilterOut_%v", i)
 	}
 
-	info.Provider.HashHi = common.CreatMultiColumn(comp, GENERIC_ACCUMULATOR+"_sHash_Hi", info.Size, nbChunks, pragmas.RightPadded)
-	info.Provider.HashLo = common.CreatMultiColumn(comp, GENERIC_ACCUMULATOR+"_sHash_Lo", info.Size, nbChunks, pragmas.RightPadded)
+	info.Provider.HashHi = common.CreateMultiColumn(comp, GENERIC_ACCUMULATOR+"_sHash_Hi", info.Size, nbChunks, pragmas.RightPadded)
+	info.Provider.HashLo = common.CreateMultiColumn(comp, GENERIC_ACCUMULATOR+"_sHash_Lo", info.Size, nbChunks, pragmas.RightPadded)
 
 	info.Provider.IsHashHi = info.IsActive
 	info.Provider.IsHashLo = info.IsActive
