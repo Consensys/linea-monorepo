@@ -62,7 +62,7 @@ func (v *VerifierForSize) Run(run wizard.Runtime) error {
 
 // RunGnark implements the [wizard.VerifierAction] interface
 func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
+	fmt.Printf("verifying inner-product ...\n")
 	// ys stores the list of all the inner-product openings
 	ys := []gnarkfext.E4Gen{}
 	// expected stores the random linear combinations of the ys by batching

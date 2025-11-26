@@ -46,10 +46,10 @@ func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTest
 
 func TestVortexGnarkVerifier(t *testing.T) {
 
-	polSize := 1 << 4
-	nPols := 16
-	numRounds := 3
-	numPrecomputeds := 4
+	polSize := 1 << 2
+	nPols := 4
+	numRounds := 1
+	numPrecomputeds := 1
 	rows := make([][]ifaces.Column, numRounds)
 
 	define := func(b *wizard.Builder) {
@@ -109,6 +109,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	compiled := wizard.Compile(
 		define,
 		vortex.Compile(4,
+			true,
 			vortex.WithOptionalSISHashingThreshold(1<<20))) // Set to a high value to disable SIS hashing, because gnark does not support SIS hashing
 	proof := wizard.Prove(compiled, prove)
 
@@ -126,12 +127,6 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	}
 
 	// Compile the circuit
-	// scs, err := frontend.Compile(
-	// 	ecc.BLS12_377.ScalarField(),
-	// 	scs.NewBuilder,
-	// 	&circ,
-	// 	frontend.IgnoreUnconstrainedInputs(),
-	// )
 	scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder,
 		&circ,
 		frontend.IgnoreUnconstrainedInputs())

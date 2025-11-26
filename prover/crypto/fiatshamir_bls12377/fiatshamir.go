@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -78,17 +79,17 @@ func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
 	return res
 }
 
-// func RandomFext(h *poseidon2_bls12377.MDHasher) fext.Element {
-// 	s := h.SumElement()
-// 	var res fext.Element
-// 	res.B0.A0 = s[0]
-// 	res.B0.A1 = s[1]
-// 	res.B1.A0 = s[2]
-// 	res.B1.A1 = s[3]
+func (fs *FS) RandomFext() fext.Element {
+	s := fs.RandomField()
+	var res fext.Element
+	res.B0.A0 = s[0]
+	res.B0.A1 = s[1]
+	res.B1.A0 = s[2]
+	res.B1.A1 = s[3]
 
-// 	UpdateExt(h, fext.NewFromUint(0, 0, 0, 0)) // safefuard update
-// 	return res
-// }
+	// fs.UpdateExt(fext.NewFromUint(0, 0, 0, 0)) // safefuard update
+	return res
+}
 
 // func RandomManyIntegers(h *poseidon2_bls12377.MDHasher, num, upperBound int) []int {
 

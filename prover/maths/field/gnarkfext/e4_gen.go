@@ -22,6 +22,7 @@ func NewE4Gen(v fext.Element) E4Gen {
 	}
 }
 
+// TODO @yao: check if all calls to NewE4GenFromBase are correct
 func NewE4GenFromBase(v any) E4Gen {
 	var res E4Gen
 	res.B0.A0 = zk.ValueOf(v)
@@ -310,29 +311,12 @@ func (ext4 *Ext4) Println(a ...E4Gen) {
 		for i := 0; i < len(a); i++ {
 			if a[i].B0.A0.EVpointer == nil {
 				for j := 0; j < len(a[i].B0.A0.EV.Limbs); j++ {
-					ext4.ApiGen.NativeApi.Println(a[i].B0.A0.EV.Limbs[j])
+					ext4.ApiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.EV.Limbs[j], a[i].B0.A1.EV.Limbs[j], a[i].B1.A0.EV.Limbs[j], a[i].B1.A1.EV.Limbs[j])
 				}
-				for j := 0; j < len(a[i].B0.A1.EV.Limbs); j++ {
-					ext4.ApiGen.NativeApi.Println(a[i].B0.A1.EV.Limbs[j])
-				}
-				for j := 0; j < len(a[i].B1.A0.EV.Limbs); j++ {
-					ext4.ApiGen.NativeApi.Println(a[i].B1.A0.EV.Limbs[j])
-				}
-				for j := 0; j < len(a[i].B1.A1.EV.Limbs); j++ {
-					ext4.ApiGen.NativeApi.Println(a[i].B1.A1.EV.Limbs[j])
-				}
+
 			} else {
 				for j := 0; j < len(a[i].B0.A0.EVpointer.Limbs); j++ {
-					ext4.ApiGen.NativeApi.Println(a[i].B0.A0.EVpointer.Limbs[j])
-				}
-				for j := 0; j < len(a[i].B0.A1.EVpointer.Limbs); j++ {
-					ext4.ApiGen.NativeApi.Println(a[i].B0.A1.EVpointer.Limbs[j])
-				}
-				for j := 0; j < len(a[i].B1.A0.EVpointer.Limbs); j++ {
-					ext4.ApiGen.NativeApi.Println(a[i].B1.A0.EVpointer.Limbs[j])
-				}
-				for j := 0; j < len(a[i].B1.A1.EVpointer.Limbs); j++ {
-					ext4.ApiGen.NativeApi.Println(a[i].B1.A1.EVpointer.Limbs[j])
+					ext4.ApiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.EVpointer.Limbs[j], a[i].B0.A1.EVpointer.Limbs[j], a[i].B1.A0.EVpointer.Limbs[j], a[i].B1.A1.EVpointer.Limbs[j])
 				}
 			}
 		}

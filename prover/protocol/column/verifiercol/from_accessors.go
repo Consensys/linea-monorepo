@@ -83,7 +83,7 @@ func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.
 
 		for i := len(f.Accessors); i < f.Size_; i++ {
 			// res[i] = f.Padding
-			res[i] = zk.ValueOf(f.Padding.B0.A0) // @thomas fixme (should be ext)
+			res[i] = zk.ValueOf(f.Padding.B0.A0.String()) // @thomas fixme (should be ext) TODO@yao check
 		}
 		return res, nil
 	}
@@ -114,7 +114,7 @@ func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos 
 
 	if pos >= len(f.Accessors) {
 		// return f.Padding, nil
-		return zk.ValueOf(f.Padding.B0.A0), nil
+		return zk.ValueOf(f.Padding.B0.A0.String()), nil
 
 	}
 
@@ -193,7 +193,7 @@ func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.Wrapp
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
 		// res[i] = f.Padding
-		res[i] = zk.ValueOf(f.Padding) // TODO @thomas fixme
+		res[i] = zk.ValueOf(f.Padding.B0.A0.String()) // TODO @thomas fixme
 	}
 
 	return res
@@ -212,7 +212,7 @@ func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int)
 
 	if pos >= len(f.Accessors) {
 		// return f.Padding
-		return zk.ValueOf(f.Padding.B0.A0) // TODO @thomas fixme
+		return zk.ValueOf(f.Padding.B0.A0.String()) // TODO @thomas fixme
 	}
 
 	return f.Accessors[pos].GetFrontendVariable(nil, run)

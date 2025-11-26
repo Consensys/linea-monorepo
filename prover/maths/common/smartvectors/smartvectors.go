@@ -164,12 +164,12 @@ func IntoGnarkAssignment(sv SmartVector) []zk.WrappedVariable {
 	if err == nil {
 		for i := range res {
 			elem, _ := sv.GetBase(i)
-			res[i] = zk.ValueOf(elem)
+			res[i] = zk.ValueOf(elem.String())
 		}
 	} else {
 		for i := range res {
 			elem := sv.GetExt(i)
-			res[i] = zk.ValueOf(elem)
+			res[i] = zk.ValueOf(elem.String())
 		}
 	}
 	return res
@@ -182,12 +182,12 @@ func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.E4Gen {
 	if err == nil {
 		for i := range res {
 			elem, _ := sv.GetBase(i)
-			res[i] = gnarkfext.NewE4GenFromBase(elem)
+			res[i] = gnarkfext.NewE4GenFromBase(elem.String())
 		}
 	} else {
 		for i := range res {
 			elem := sv.GetExt(i)
-			res[i] = gnarkfext.NewE4GenFromBase(elem)
+			res[i] = gnarkfext.NewE4Gen(elem)
 		}
 	}
 	return res

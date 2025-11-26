@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
@@ -77,7 +78,15 @@ func (fs *GnarkFS) RandomField() zk.Octuplet {
 	res := encoding.EncodeFVTo8WVs(fs.api, r)
 	return res
 }
-
+func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
+	r := fs.RandomField() // the safeguard update is called
+	res := gnarkfext.E4Gen{}
+	res.B0.A0 = r[0]
+	res.B0.A1 = r[1]
+	res.B1.A0 = r[2]
+	res.B1.A1 = r[3]
+	return res
+}
 func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 	apiGen, err := zk.NewGenericApi(fs.api)
 	if err != nil {

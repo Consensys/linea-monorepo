@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -16,11 +17,11 @@ import (
 // circuit
 func GnarkDeriveEvaluationPoint(
 	api frontend.API, h ifaces.Column, upstream string,
-	cachedXs collection.Mapping[string, zk.WrappedVariable],
-	x zk.WrappedVariable,
-) (xRes []zk.WrappedVariable) {
+	cachedXs collection.Mapping[string, gnarkfext.E4Gen],
+	x gnarkfext.E4Gen,
+) (xRes []gnarkfext.E4Gen) { // Change return type to []gnarkfext.E4Gen
 
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
@@ -33,13 +34,13 @@ func GnarkDeriveEvaluationPoint(
 			// Else register the result in the cache
 			cachedXs.InsertNew(newUpstream, x)
 		}
-		return []zk.WrappedVariable{x}
+		return []gnarkfext.E4Gen{x}
 	}
 
 	switch inner := h.(type) {
 	case Shifted:
 		newUpstream := appendNodeToUpstream(upstream, inner)
-		var derivedX zk.WrappedVariable
+		var derivedX gnarkfext.E4Gen
 		// Early return if the result is cached
 		if cachedXs.Exists(newUpstream) {
 			derivedX = cachedXs.MustGet(newUpstream)
@@ -50,9 +51,9 @@ func GnarkDeriveEvaluationPoint(
 			if err != nil {
 				panic(err)
 			}
-			omegaN := zk.ValueOf(generator)
+			omegaN := zk.ValueOf(generator.String())
 			omegaN = gnarkutil.Exp(api, omegaN, inner.Offset)
-			derivedX = apiGen.Mul(x, omegaN)
+			derivedX = *ext4.MulByFp(&x, omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)
 		}
 		return GnarkDeriveEvaluationPoint(api, inner.Parent, newUpstream, cachedXs, derivedX)
@@ -67,9 +68,9 @@ func GnarkDeriveEvaluationPoint(
 // circuit.
 func GnarkVerifyYConsistency(
 	api frontend.API, h ifaces.Column, upstream string,
-	cachedXs collection.Mapping[string, zk.WrappedVariable],
-	finalYs collection.Mapping[string, zk.WrappedVariable],
-) (y zk.WrappedVariable) {
+	cachedXs collection.Mapping[string, gnarkfext.E4Gen],
+	finalYs collection.Mapping[string, gnarkfext.E4Gen],
+) (y gnarkfext.E4Gen) {
 
 	if !h.IsComposite() {
 		// Get the Y from the map. An absence from this map is unexpected at

@@ -2,7 +2,6 @@ package query
 
 import (
 	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -19,7 +18,7 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
 	exty := gnarkfext.NewE4Gen(p.ExtY)
 	return GnarkLocalOpeningParams{
-		BaseY:  zk.ValueOf(p.BaseY),
+		BaseY:  zk.ValueOf(p.BaseY.String()),
 		ExtY:   exty,
 		IsBase: p.IsBase,
 	}
@@ -74,39 +73,24 @@ func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
 
 // A gnark circuit version of univariate eval params
 type GnarkUnivariateEvalParams struct {
-	X      zk.WrappedVariable
-	Ys     []zk.WrappedVariable
-	ExtX   gnarkfext.E4Gen
-	ExtYs  []gnarkfext.E4Gen
-	IsBase bool
+	ExtX  gnarkfext.E4Gen
+	ExtYs []gnarkfext.E4Gen
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 	// no need to preallocate the x because its size is already known
 	return GnarkUnivariateEvalParams{
-		Ys:    make([]zk.WrappedVariable, len(p.Pols)),
 		ExtYs: make([]gnarkfext.E4Gen, len(p.Pols)),
 	}
 }
 
 // Returns a gnark assignment for the present parameters
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
-	if p.IsBase {
-		return GnarkUnivariateEvalParams{
-			Ys:    vector.IntoGnarkAssignment(p.Ys),
-			X:     zk.ValueOf(p.X),
-			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
-			ExtX:  gnarkfext.NewE4Gen(p.ExtX),
-		}
-	} else {
-		// extension query
-		return GnarkUnivariateEvalParams{
-			Ys:    nil,
-			X:     zk.ValueOf(0),
-			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
-			ExtX:  gnarkfext.NewE4Gen(p.ExtX),
-		}
+	return GnarkUnivariateEvalParams{
+		ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
+		ExtX:  gnarkfext.NewE4Gen(p.ExtX),
 	}
+
 }
 
 // GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions
@@ -155,9 +139,7 @@ func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	for _, y := range p.Ys {
-		fs.Update(y.AsNative())
-	}
+	fs.UpdateExt(p.ExtYs...)
 }
 
 // Update the fiat-shamir state with the the present field extension parameters

@@ -188,17 +188,15 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 	// Check the evaluation point is consistent with r
 	if params.ExtX != r {
 		return fmt.Errorf("(verifier of global queries) : Evaluation point of %v is incorrect (%v, expected %v)",
-			ctx.WitnessEval.QueryID, params.X.String(), r.String())
+			ctx.WitnessEval.QueryID, params.ExtX.String(), r.String())
 	}
 
 	// Collect the evaluation points
 	for j, handle := range univQuery.Pols {
 		var genericElem fext.GenericFieldElem
-		if params.IsBase {
-			genericElem = fext.NewESHashFromBase(params.Ys[j])
-		} else {
-			genericElem = fext.NewESHashFromExt(params.ExtYs[j])
-		}
+
+		genericElem = fext.NewESHashFromExt(params.ExtYs[j])
+
 		mapYs[handle.GetColID()] = genericElem
 	}
 
@@ -256,7 +254,7 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 
 // Verifier step, evaluate the constraint and checks that
 func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-
+	fmt.Printf("verifying global constraint ...\n")
 	e4Api, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
@@ -273,14 +271,14 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 	annulator = *e4Api.Sub(&annulator, &wOneExt)
 
 	// Get the parameters
-	api.AssertIsEqual(r, params.X) // check the evaluation is consistent with the other stuffs
+	api.AssertIsEqual(r, params.ExtX) // check the evaluation is consistent with the other stuffs
 
 	// Map all the evaluations and checks the evaluations points
-	mapYs := make(map[ifaces.ColID]zk.WrappedVariable)
+	mapYs := make(map[ifaces.ColID]gnarkfext.E4Gen)
 
 	// Collect the evaluation points
 	for j, handle := range univQuery.Pols {
-		mapYs[handle.GetColID()] = params.Ys[j]
+		mapYs[handle.GetColID()] = params.ExtYs[j]
 	}
 
 	for i, ratio := range ctx.Ratios {
@@ -288,7 +286,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 		board := ctx.AggregateExpressionsBoard[i]
 		metadatas := board.ListVariableMetadata()
 
-		evalInputs := make([]zk.WrappedVariable, len(metadatas))
+		evalInputs := make([]gnarkfext.E4Gen, len(metadatas))
 
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
@@ -299,22 +297,21 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 					utils.Panic("unsupported, coins are always over field extensions")
 				} else {
 					tmp := c.GetRandomCoinFieldExt(metadata.Name)
-					evalInputs[k] = tmp.B0.A0 // TODO @thomas fixme (ext vs base)
+					evalInputs[k] = tmp
 				}
 			case variables.X:
-				// evalInputs[k] = r
-				evalInputs[k] = r.B0.A0 // TODO @thomas fixme (ext vs base)
+				evalInputs[k] = r
 			case variables.PeriodicSample:
 				// evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r)
-				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r.B0.A0) // TODO @thomas fixme (ext vs base)
+				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r) // TODO @thomas fixme (ext vs base)
 			case ifaces.Accessor:
-				evalInputs[k] = metadata.GetFrontendVariable(api, c)
+				evalInputs[k] = metadata.GetFrontendVariableExt(api, c)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}
 		}
 
-		left := board.GnarkEval(api, evalInputs)
+		left := board.GnarkEvalExt(api, evalInputs)
 
 		// right : r^{n}-1 Q(r)
 		qr := quotientYs[i]
@@ -450,7 +447,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	}
 
 	// shiftedR.MulByFp(api, r, mulGenInv)
-	wrappedMulGenInv := zk.ValueOf(mulGenInv)
+	wrappedMulGenInv := zk.ValueOf(mulGenInv.String())
 	shiftedR = *e4Api.MulByFp(&r, wrappedMulGenInv)
 
 	var invOmegaN field.Element
@@ -462,7 +459,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		// Check that the provided value for x is the right one
 		providedX := params.ExtX
 		var expectedX gnarkfext.E4Gen
-		expectedX = gnarkfext.NewE4GenFromBase(invOmegaN)
+		expectedX = gnarkfext.NewE4GenFromBase(invOmegaN.String())
 		expectedX = gnarkutil.ExpExt(api, expectedX, i)
 		expectedX = *e4Api.Mul(&expectedX, &shiftedR)
 		ext4.AssertIsEqual(&providedX, &expectedX)
@@ -497,7 +494,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
 			var omegaInvPowK field.Element
 			omegaInvPowK.Exp(omegaRatioInv, big.NewInt(int64(k)))
-			wrappedOmegaInvPowK = zk.ValueOf(omegaInvPowK)
+			wrappedOmegaInvPowK = zk.ValueOf(omegaInvPowK.String())
 			tmp := e4Api.MulByFp(&rPowM, wrappedOmegaInvPowK)
 			tmp = e4Api.Sub(tmp, &wOne)
 			tmp = e4Api.Div(&ys[k], tmp)
@@ -506,7 +503,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			res = *e4Api.Mul(&res, tmp)
 		}
 
-		wrappedRatioInvField := zk.ValueOf(ratioInvField)
+		wrappedRatioInvField := zk.ValueOf(ratioInvField.String())
 		outerFactor := gnarkutil.ExpExt(api, shiftedR, n)
 		outerFactor = *e4Api.Sub(&outerFactor, &wOne)
 		outerFactor = *e4Api.MulByFp(&outerFactor, wrappedRatioInvField)

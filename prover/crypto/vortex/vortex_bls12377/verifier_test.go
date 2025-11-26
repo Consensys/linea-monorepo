@@ -50,9 +50,9 @@ func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, p
 	encodedMatrices := make([]EncodedMatrix, nCommitments)
 	for j := range commitments {
 		if withSis {
-			encodedMatrices[j], commitments[j], trees[j] = vortexInstance.CommitMerkleWithSIS(polyLists[j])
+			encodedMatrices[j], commitments[j], trees[j], _ = vortexInstance.CommitMerkleWithSIS(polyLists[j])
 		} else {
-			encodedMatrices[j], commitments[j], trees[j] = vortexInstance.CommitMerkleWithoutSIS(polyLists[j])
+			encodedMatrices[j], commitments[j], trees[j], _ = vortexInstance.CommitMerkleWithoutSIS(polyLists[j])
 		}
 	}
 

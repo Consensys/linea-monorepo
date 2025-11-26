@@ -502,6 +502,7 @@ func TestCompiler(t *testing.T) {
 				tc.Define,
 				vortex.Compile(
 					4,
+					false,
 					vortex.WithOptionalSISHashingThreshold(9),
 					vortex.WithSISParams(&ringsis.Params{
 						LogTwoBound:  16,

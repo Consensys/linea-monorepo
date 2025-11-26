@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -124,7 +125,8 @@ type VerifierCircuit struct {
 	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
 	// possible.
-	FS *fiatshamir.GnarkFS `gnark:"-"`
+	FS    *fiatshamir.GnarkFS          `gnark:"-"`
+	BLSFS *fiatshamir_bls12377.GnarkFS `gnark:"-"`
 
 	// Coins stores all the coins sampled by the verifier circuit. It is not
 	// part of the witness since the coins are constructed from the assigned
@@ -219,14 +221,12 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 			res.AllocColumnExt(colName, col.Size())
 		}
 	}
-
 	/*
 		Allocate the queries params also. Note that AllKeys does give a
 		deterministic order iteration and that's why we do not iterate
 		on the map directly.
 	*/
 	for _, qName := range comp.QueriesParams.AllKeys() {
-
 		// Note that we do not filter out the "already compiled" queries
 		// here.
 		qInfoIface := comp.QueriesParams.Data(qName)
@@ -291,30 +291,28 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 		logrus.Tracef("VERIFIER CIRCUIT : registering column %v (as %v) in circuit (#%v)", colName, status.String(), i)
 		msgDataIFace := proof.Messages.MustGet(colName)
 		msgData := msgDataIFace
-
 		// Perform the conversion to zk.WrappedVariable, element by element
 		if _, err := msgData.GetBase(0); err == nil {
 			// the assignment consists of base elements
 			assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
 			res.ColumnsIDs.InsertNew(colName, len(res.Columns))
+
 			res.Columns = append(res.Columns, assignedMsg)
 		} else {
 			// the assignment consists of extension elements
 			assignedMsg := smartvectors.IntoGnarkAssignmentExt(msgData)
 			res.ColumnsExtIDs.InsertNew(colName, len(res.ColumnsExt))
+
 			res.ColumnsExt = append(res.ColumnsExt, assignedMsg)
 		}
 
 	}
-
 	// Assigns the query parameters. Note that the iteration order is
 	// made deterministic to match the iteration order of the
 	for _, qName := range comp.QueriesParams.AllKeys() {
-
 		if comp.QueriesParams.Round(qName) >= res.NumRound {
 			continue
 		}
-
 		// Note that we do not filter out the "already compiled" queries
 		// here.
 		paramsIface := proof.QueriesParams.MustGet(qName)
@@ -388,7 +386,6 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 
 			msgContent := c.GetColumn(msg)
 			msgContentFVs := make([]frontend.Variable, len(msgContent))
-
 			for i := range msgContent {
 				msgContentFVs[i] = msgContent[i].AsNative()
 			}
@@ -428,9 +425,10 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		if c.Spec.Coins.IsSkippedFromVerifierTranscript(coinName) {
 			continue
 		}
-
 		cn := c.Spec.Coins.Data(coinName)
-		value := cn.SampleGnark(c.FS, zkSeed)
+		value := cn.SampleGnark(c.BLSFS, zkSeed)
+
+		fmt.Printf("inserting coin %v\n", coinName)
 		c.Coins.InsertNew(coinName, value)
 	}
 }
@@ -481,8 +479,8 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.E4Gen 
 
 	// intermediary use case, should be removed when all coins become field extensions
 	if infos.Type == coin.FieldExt {
-		res := c.Coins.MustGet(name).(zk.WrappedVariable)
-		return gnarkfext.NewE4GenFromBase(res)
+		res := c.Coins.MustGet(name).(gnarkfext.E4Gen)
+		return res
 	}
 
 	if infos.Type != coin.FieldExt {
@@ -501,8 +499,8 @@ func (c *VerifierCircuit) GetUnivariateParams(name ifaces.QueryID) query.GnarkUn
 
 	// Sanity-checks
 	info := c.GetUnivariateEval(name)
-	if len(info.Pols) != len(params.Ys) {
-		utils.Panic("(for %v) inconsistent lengths %v %v", name, len(info.Pols), len(params.Ys))
+	if len(info.Pols) != len(params.ExtYs) {
+		utils.Panic("(for %v) inconsistent lengths %v %v", name, len(info.Pols), len(params.ExtYs))
 	}
 	return params
 }
@@ -563,26 +561,25 @@ func (c *VerifierCircuit) GetHornerParams(name ifaces.QueryID) query.GnarkHorner
 // mirrors the function [VerifierRuntime.GetColumn]
 func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []zk.WrappedVariable {
 
-	// case where the column is part of the verification key
-	if c.Spec.Columns.Status(name) == column.VerifyingKey {
-		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
-		res := make([]zk.WrappedVariable, len(val))
-		// Return the column as an array of constants
-		for i := range val {
-			res[i] = zk.ValueOf(val[i])
+	if c.Spec.Columns.GetHandle(name).IsBase() {
+		res, err := c.GetColumnBase(name)
+		if err != nil {
+			utils.Panic("requested base element from underlying field extension")
+		}
+		return res
+	} else {
+		resExt := c.GetColumnExt(name)
+		res := make([]zk.WrappedVariable, len(resExt)*4)
+
+		for i := 0; i < len(resExt); i++ {
+			res[4*i] = resExt[i].B0.A0
+			res[4*i+1] = resExt[i].B0.A1
+			res[4*i+2] = resExt[i].B1.A0
+			res[4*i+3] = resExt[i].B1.A1
 		}
 		return res
 	}
 
-	msgID := c.ColumnsIDs.MustGet(name)
-	wrappedMsg := c.Columns[msgID]
-
-	size := c.Spec.Columns.GetSize(name)
-	if len(wrappedMsg) != size {
-		utils.Panic("bad dimension %v, spec expected %v", len(wrappedMsg), size)
-	}
-
-	return wrappedMsg
 }
 
 func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable, error) {
@@ -599,7 +596,7 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable
 		res := make([]zk.WrappedVariable, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = zk.ValueOf(val[i])
+			res[i] = zk.ValueOf(val[i].String())
 		}
 		return res, nil
 	}
@@ -717,6 +714,7 @@ func (c *VerifierCircuit) AssignColumnExt(id ifaces.ColID, sv smartvectors.Smart
 	columnIndex := len(c.ColumnsExt)
 	c.ColumnsExtIDs.InsertNew(id, columnIndex)
 	c.ColumnsExt = append(c.ColumnsExt, column)
+
 }
 
 // AllocUnivariableEval inserts a slot for a univariate query opening in the
@@ -911,7 +909,7 @@ func (c *VerifierCircuit) Analyze() *VerifierCircuitAnalytic {
 
 	for i := range c.UnivariateParams {
 		res.NumUnivariate++
-		res.WeightUnivariate += len(c.UnivariateParams[i].Ys)
+		res.WeightUnivariate += len(c.UnivariateParams[i].ExtYs)
 	}
 
 	res.NumGrandProduct += len(c.GrandProductParams)
@@ -985,7 +983,7 @@ func (a *VerifierCircuitAnalytic) WithDetails(c *VerifierCircuit) *VerifierCircu
 				continue
 			}
 			value := c.UnivariateParams[id]
-			a.addDetail(fmt.Sprintf("[UnivariateEval] size-circuit=%v name=%v", len(value.Ys), queryName))
+			a.addDetail(fmt.Sprintf("[UnivariateEval] size-circuit=%v name=%v", len(value.ExtYs), queryName))
 		}
 	}
 

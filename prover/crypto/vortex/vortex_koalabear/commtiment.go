@@ -52,7 +52,7 @@ func NewParams(rate, nbColumns, maxNbRows, logTwoDegree, logTwoBound int) Params
 //
 // [h() .. ....   h()] := v
 // Compute MT of v
-func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_koalabear.Tree) {
+func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_koalabear.Tree, []field.Element) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.
@@ -63,18 +63,18 @@ func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (En
 
 	var commitment Commitment
 
-	colHashes := p.sisTransversalHash(encodedMatrix)
+	leaf, colHashes := p.sisTransversalHash(encodedMatrix)
 
 	tree := smt_koalabear.BuildComplete(
-		colHashes,
+		leaf,
 	)
 
 	commitment = tree.Root
 
-	return encodedMatrix, commitment, tree
+	return encodedMatrix, commitment, tree, colHashes
 }
 
-func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) []field.Octuplet {
+func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) ([]field.Octuplet, []field.Element) {
 
 	// sisHashes = [ [a, b ...], ... ] where [a, b, ...] is the sis hash of a column, a, b etc are on koalabear
 	// let h = poseidon2_koalabear
@@ -96,7 +96,7 @@ func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) []field.Octupl
 			leaves[chunkID] = hasher.SumElement()
 		}
 	})
-	return leaves
+	return leaves, sisHashes
 }
 
 // CommitMerkleWithoutSIS
@@ -114,7 +114,7 @@ func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) []field.Octupl
 //
 // [h() .. ....   h()] := v
 // Compute MT of v
-func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_koalabear.Tree) {
+func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_koalabear.Tree, []field.Element) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(polysMatrix), p.MaxNbRows)
@@ -124,14 +124,18 @@ func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) 
 
 	var commitment Commitment
 
-	colHashes := p.noSisTransversalHash(encodedMatrix)
+	colHashesOcts := p.noSisTransversalHash(encodedMatrix)
+	colHashes := make([]field.Element, 0, len(colHashesOcts)*len(field.Octuplet{}))
+	for i := range colHashesOcts {
+		colHashes = append(colHashes, colHashesOcts[i][:]...)
+	}
 
 	tree := smt_koalabear.BuildComplete(
-		colHashes,
+		colHashesOcts,
 	)
 
 	commitment = tree.Root
-	return encodedMatrix, commitment, tree
+	return encodedMatrix, commitment, tree, colHashes
 }
 
 // Uses the no-sis hash function to hash the columns. It uses the leafHasher

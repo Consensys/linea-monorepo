@@ -1,12 +1,24 @@
 package vortex_bls12377
 
 import (
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
+
+// Gnark params
+type GParams struct {
+	Key         *ringsis.Key
+	HasherFunc  func(frontend.API) (poseidon2_bls12377.GnarkMDHasher, error)
+	NoSisHasher func(frontend.API) (poseidon2_bls12377.GnarkMDHasher, error)
+}
+
+func (p *GParams) HasNoSisHasher() bool {
+	return p.NoSisHasher != nil
+}
 
 // Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
 // The leaves are poseidon2_bls12377(sis(columns[i][j]))

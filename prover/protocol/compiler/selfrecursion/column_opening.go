@@ -50,11 +50,11 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 // each of them on the ring-SIS bound
 func (ctx *SelfRecursionCtx) RegistersSisPreimageLimbs() {
 	wholes := ctx.Columns.WholePreimagesSis
-	sisParams := ctx.VortexCtx.SisParams
+	sisKey := ctx.VortexCtx.SisKey
 
 	limbs := make([]ifaces.Column, len(wholes))
 	round := wholes[0].Round()
-	limbSize := wholes[0].Size() * sisParams.NumLimbs()
+	limbSize := wholes[0].Size() * sisKey.NumLimbs()
 
 	for i := range limbs {
 		limbs[i] = ctx.Comp.InsertCommit(
@@ -225,6 +225,7 @@ func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("verifying selfrecursion collapsing ...\n")
 	api.AssertIsEqual(
 		a.UAlphaQEval.GetFrontendVariable(api, run),
 		a.PreImageEval.GetFrontendVariable(api, run),
@@ -325,9 +326,9 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				ctx.Comp,
 				ctx.constencyUalphaQPreimageRight(),
 				ctx.Columns.PreimagesSisCollapse,
-				accessors.NewConstant(field.NewElement(1<<ctx.SisKey().LogTwoBound)),
+				accessors.NewConstant(field.NewElement(1<<ctx.SisKey().LogTwoBound())),
 				accessors.NewFromCoin(ctx.Coins.Alpha),
-				ctx.VortexCtx.SisParams.NumLimbs(),
+				ctx.VortexCtx.SisKey.NumLimbs(),
 				ctx.Columns.WholePreimagesSis[0].Size(),
 			)
 		}
@@ -361,7 +362,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 
 	// The below code is only executed only if there are non-zero SIS rounds
 	if ctx.Columns.ConcatenatedSisHashQ != nil {
-		sisDeg := ctx.VortexCtx.SisParams.OutputSize()
+		sisDeg := ctx.VortexCtx.SisKey.OutputSize()
 		// Currently, only powers of two SIS degree are allowed
 		// (in practice, we restrict ourselves to pure power of two)
 		// lattices instances.
@@ -426,7 +427,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 
 		// Declare Edual
 		ctx.Columns.Edual = ctx.Comp.InsertCommit(
-			round, ctx.eDual(), ctx.VortexCtx.SisParams.OutputSize(),
+			round, ctx.eDual(), ctx.VortexCtx.SisKey.OutputSize(),
 			false,
 		)
 
@@ -484,6 +485,7 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("verifying selfrecursion fold phase ...\n")
 	edual := a.Ctx.Columns.Edual.GetColAssignmentGnark(run)
 	dcollapse := a.Ctx.Columns.CollapsedSisHashQ.GetColAssignmentGnark(run)
 	rfold := run.GetRandomCoinFieldExt(a.Ctx.Coins.Fold.Name)
@@ -530,14 +532,14 @@ func (ctx *SelfRecursionCtx) FoldPhase() {
 	ctx.Columns.ACollapseFold = functionals.Fold(
 		ctx.Comp, ctx.Columns.ACollapsed,
 		accessors.NewFromCoin(ctx.Coins.Fold),
-		ctx.VortexCtx.SisParams.OutputSize(),
+		ctx.VortexCtx.SisKey.OutputSize(),
 	)
 
 	// Construct DmergeCollapseFold
 	ctx.Columns.PreimageCollapseFold = functionals.Fold(
 		ctx.Comp, ctx.Columns.PreimagesSisCollapse,
 		accessors.NewFromCoin(ctx.Coins.Fold),
-		ctx.VortexCtx.SisParams.OutputSize(),
+		ctx.VortexCtx.SisKey.OutputSize(),
 	)
 
 	// Mark Edual and the DmergeQCollapse fold as proof

@@ -107,7 +107,7 @@ func (ext2 *Ext2) Mul(e1, e2 *E2Gen) *E2Gen {
 
 	l31 := ext2.ApiGen.Add(ac, bd)
 
-	qnrE2 := zk.ValueOf(ext.qnrE2)
+	qnrE2 := zk.ValueOf(ext.qnrE2.String())
 	l41 := ext2.ApiGen.Mul(bd, qnrE2)
 
 	return &E2Gen{
@@ -140,7 +140,7 @@ func (ext2 *Ext2) MulByFp(e1 *E2Gen, c zk.WrappedVariable) *E2Gen {
 // MulByNonResidue multiplies an fp2 elmt by the imaginary elmt
 // ext.uSquare is the square of the imaginary root
 func (ext2 *Ext2) MulByNonResidue(e1 *E2Gen) *E2Gen {
-	qnrE2 := zk.ValueOf(ext.qnrE2)
+	qnrE2 := zk.ValueOf(ext.qnrE2.String())
 	return &E2Gen{
 		A0: ext2.ApiGen.Mul(e1.A1, qnrE2),
 		A1: e1.A0,

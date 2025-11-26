@@ -164,6 +164,7 @@ func (c *CheckHornerQuery) Run(run wizard.Runtime) error {
 }
 
 func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("verifying horner query ...\n")
 	params := run.GetHornerParams(c.Query.ID)
 	api.AssertIsEqual(params.FinalResult, 0)
 

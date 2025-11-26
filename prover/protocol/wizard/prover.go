@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
-	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -148,7 +148,8 @@ type ProverRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *poseidon2_koalabear.MDHasher
+	FS    *fiatshamir_koalabear.FS
+	BLSFS *fiatshamir_bls12377.FS
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
@@ -273,8 +274,8 @@ func (run *ProverRuntime) NumRounds() int {
 func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
-	fs := poseidon2_koalabear.NewMDHasher()
-	fiatshamir.Update(fs, c.FiatShamirSetup[:]...)
+	fs := fiatshamir_koalabear.NewFS()
+	fs.Update(c.FiatShamirSetup[:]...)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
@@ -283,13 +284,12 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 		QueriesParams:      collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
 		Coins:              collection.NewMapping[coin.Name, interface{}](),
 		State:              collection.NewMapping[string, interface{}](),
-		FS:                 fs,
+		FS:                 &fs,
 		currRound:          0,
 		lock:               &sync.Mutex{},
 		FiatShamirHistory:  make([][2][]field.Element, c.NumRounds()),
 		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
-
 	stateBytes := fs.State()
 	var state koalabear.Element
 	state.SetBytes(stateBytes)
@@ -487,6 +487,8 @@ func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 // as an integer vec before doing this call. Will also trigger the
 // "goNextRound" logic if appropriate.
 func (run *ProverRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
+	fmt.Printf("ProverRuntime GetRandomCoinIntegerVec=%v\n", run.getRandomCoinGeneric(name, coin.IntegerVec).([]int))
+
 	return run.getRandomCoinGeneric(name, coin.IntegerVec).([]int)
 }
 
@@ -732,7 +734,7 @@ func (run *ProverRuntime) goNextRound() {
 			}
 
 			instance := run.GetMessage(msgName)
-			fiatshamir.UpdateSV(run.FS, instance)
+			run.FS.UpdateSV(instance)
 		}
 
 		/*
@@ -764,7 +766,6 @@ func (run *ProverRuntime) goNextRound() {
 			fsHooks[i].Run(run)
 		}
 	}
-
 	seed := types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State()))
 
 	// Then assigns the coins for the new round. As the round
@@ -778,7 +779,7 @@ func (run *ProverRuntime) goNextRound() {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		value := info.Sample(run.FS, seed)
+		value := info.Sample(run.BLSFS, seed) //TODO@thomas TODO@yao we need to run it for both BLS and Koala FS
 		run.Coins.InsertNew(myCoin, value)
 	}
 
@@ -853,34 +854,6 @@ func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Ele
 	param := query.NewInnerProductParams(ys...)
 	run.QueriesParams.InsertNew(name, param)
 	return param
-}
-
-// AssignUnivariate assigns the evaluation point and the evaluation result
-// and claimed values for a univariate evaluation bearing `name` as an ID.
-//
-// The function will panic if:
-//   - the wrong number of `ys` value is provided. It should match the length
-//     of `bs` that was provided when registering the query.
-//   - no query with the name `name` are found in the [CompiledIOP] object.
-//   - parameters for this query have already been assigned
-//   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element, ys ...field.Element) {
-
-	// Global prover locks for accessing the maps
-	run.lock.Lock()
-	defer run.lock.Unlock()
-
-	// Make sure, it is done at the right round
-	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
-
-	// Check the length of ys
-	q := run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
-	if len(q.Pols) != len(ys) {
-		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
-	}
-	// Adds it to the assignments
-	params := query.NewUnivariateEvalParams(x, ys...)
-	run.QueriesParams.InsertNew(name, params)
 }
 
 func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
@@ -1090,7 +1063,7 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() *poseidon2_koalabear.MDHasher {
+func (run *ProverRuntime) Fs() *fiatshamir_koalabear.FS {
 	return run.FS
 }
 

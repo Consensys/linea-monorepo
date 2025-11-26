@@ -96,13 +96,13 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
+	fmt.Printf("verifying multipoint-to-singlepoint ...\n")
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
 		// polyOfRs stores the values of P_k(r) as returned in the query.
 		// The last value of the slice is the value of Q(r) where q
 		// is the quotient polynomial.
-		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
+		qr       = queryParams.ExtYs[len(va.NewQuery.Pols)-1]
 		polysAtR = va.cptEvaluationMapGnark(api, run)
 		r        = queryParams.ExtX
 		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)

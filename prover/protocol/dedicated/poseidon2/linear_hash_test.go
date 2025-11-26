@@ -62,7 +62,7 @@ func TestLinearHash(t *testing.T) {
 				// to ex
 				segment := vector.Rand(colSize)
 				hasher := poseidon2_koalabear.NewMDHasher()
-				hasher.WriteElements(segment)
+				hasher.WriteElements(segment...)
 				y := hasher.SumElement()
 
 				for j := 0; j < blockSize; j++ {

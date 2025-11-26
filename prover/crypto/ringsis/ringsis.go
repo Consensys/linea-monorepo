@@ -17,6 +17,15 @@ const (
 	RING_SIS_SEED int64 = 42069
 )
 
+// Standard parameter that we use for ring-SIS they are benchmarked at achieve
+// more than the 128 level of security.
+var StdParams = Params{LogTwoBound: 16, LogTwoDegree: 9}
+
+// Params encapsulates the parameters of a ring SIS instance
+type Params struct {
+	LogTwoBound, LogTwoDegree int
+}
+
 // Key encapsulates the public parameters of an instance of the ring-SIS hash
 // instance.
 type Key struct {
@@ -55,6 +64,23 @@ func (k Key) NumLimbs() int {
 
 func (k Key) maxNumLimbsHashable() int {
 	return k.modulusDegree() * len(k.SisGnarkCrypto.A)
+}
+
+// MaxNumFieldHashable returns a positive integer indicating how many field
+// elements can be provided to the hasher together at once in a single hash.
+func (key *Key) MaxNumFieldHashable() int {
+
+	var (
+		// numLimbsTotal counts the number of ring elements totalling the SIS key
+		numLimbsTotal = key.maxNumLimbsHashable()
+		// numLimbsPerField contains the number of limbs needed to represent one field
+		// element. The DivCeil is important because we want to ensure that
+		// *all* the bits of the inbound field element can be represented in
+		// `numLimbsPerField`.
+		numLimbsPerField = utils.DivCeil(8*field.Bytes, key.LogTwoBound())
+	)
+
+	return numLimbsTotal / numLimbsPerField
 }
 
 // GenerateKey generates a ring-SIS key from a set of a [Params] and a max
@@ -293,4 +319,11 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector, res []field.Element)
 	})
 
 	return res
+}
+
+// NumFieldPerPoly returns the number of field elements that can be hashed with
+// a single polynomial accumulation. The function returns 0 is a single field
+// requires more than one polynomial.
+func (p *Params) NumFieldPerPoly() int {
+	return (1 << p.LogTwoDegree * p.LogTwoBound) / (8 * field.Bytes)
 }

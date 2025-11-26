@@ -1,11 +1,15 @@
 package vortex
 
 import (
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"fmt"
+
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
+
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
-	vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
+	crypto_vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -16,11 +20,12 @@ import (
 )
 
 func (a *ExplicitPolynomialEval) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+	fmt.Printf("gnark vortex ExplicitPolynomialEval ...\n")
 	a.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
 }
 
 func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRuntime) {
-
+	fmt.Printf("verifying VortexVerifierAction ...\n")
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
 	// not need to
@@ -33,13 +38,17 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
-		preRoots := [blockSize]zk.WrappedVariable{}
+		preRoots := [encoding.GnarkKoalabearNumElements]zk.WrappedVariable{}
+		// apiGen, _ := zk.NewGenericApi(api)
 
-		for i := 0; i < blockSize; i++ {
-			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
+		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
+			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
 			preRoots[i] = precompRootSv[0]
 		}
-		roots = append(roots, vortex.Encode8WVsToFV(api, preRoots))
+		fmt.Printf("Gnark precomputed Merkle root verifier: \n")
+		api.Println(encoding.Encode11WVsToFV(api, preRoots))
+
+		roots = append(roots, encoding.Encode11WVsToFV(api, preRoots))
 	}
 
 	// Collect all the commitments : rounds by rounds
@@ -47,65 +56,56 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue // skip the dry rounds
 		}
-		preRoots := [blockSize]zk.WrappedVariable{}
+		//TODO@yao: check if this is correct, roots should be frontend.Variable, change all blockSize to vortex_bls12377.GnarkKoalabearNumElements
+		preRoots := [encoding.GnarkKoalabearNumElements]zk.WrappedVariable{}
 
-		for i := 0; i < blockSize; i++ {
-			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i)) // len 1 smart vector
+		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
+			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
 			preRoots[i] = rootSv[0]
 		}
-		roots = append(roots, vortex.Encode8WVsToFV(api, preRoots))
+		// apiGen, _ := zk.NewGenericApi(api)
+		// apiGen.Println(preRoots[:]...)
+		roots = append(roots, encoding.Encode11WVsToFV(api, preRoots))
 
 	}
 
 	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
-	proof := vortex.GProof{}
-	proof.Rate = uint64(ctx.BlowUpFactor)
-	proof.RsDomain = fft.NewDomain(uint64(ctx.NumEncodedCols()), fft.WithCache())
-	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName())
+	proof := crypto_vortex.GnarkProof{}
+	// proof.Rate = uint64(ctx.BlowUpFactor)
+	// proof.RsDomain = fft.NewDomain(uint64(ctx.NumEncodedCols()), fft.WithCache())
+	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName()) //TODO@yao: this is correct, remove it
+	// ext4, _ := gnarkfext.NewExt4(api)
+	// ext4.Println(proof.LinearCombination...)
 
 	// Collect the random entry List and the random coin
 	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
 
+	fmt.Printf("Vortex Verifier entryList: %v\n", ctx.RandColSelectionName())
+	api.Println("Vortex Verifier entryList:", entryList[0])
 	// Collect the opened columns and split them "by-commitment-rounds"
 	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
-	// function that will defer the hashing to gkr
-	factoryHasherFunc := func(_ frontend.API) (poseidon2_bls12377.GnarkMDHasher, error) {
-		factory := vr.GetHasherFactory()
-		if factory != nil {
-			h := vr.GetHasherFactory().NewHasher() //TODO@yao: here the hasher facroty should be able to create poseidon2_bls12377.GnarkMDHasher to be consistent with the hasher
-			return h, nil
-		}
-		h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
-		return h, err
-	}
-
-	packedMProofs := [8][]zk.WrappedVariable{}
+	packedMProofs := [encoding.GnarkKoalabearNumElements][]zk.WrappedVariable{}
 	for i := range packedMProofs {
 		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
 	}
+	merkleProofs := ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
 
-	proof.MerkleProofs = ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
+	Vi := crypto_vortex.GnarkVerifierInput{}
+	Vi.Alpha = randomCoin
+	Vi.X = x
+	for i := 0; i < len(entryList); i++ {
+		Vi.EntryList[i] = entryList[i].AsNative()
+	}
 
-	// pass the parameters for a merkle-mode sis verification
-	params := vortex.GParams{}
-	params.HasherFunc = factoryHasherFunc
-	params.NoSisHasher = factoryHasherFunc
-	params.Key = ctx.VortexParams.Key
+	Vi.Ys = ctx.gnarkGetYs(api, vr)
 
-	vortex.GnarkVerifyOpeningWithMerkleProof(
-		api,
-		params,
-		roots,
-		proof,
-		x,
-		ctx.gnarkGetYs(api, vr),
-		randomCoin,
-		entryList,
-	)
+	crypto_vortex.GnarkVerify(api, ctx.VortexKoalaParams.Params, proof, Vi, roots)
+
+	vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, merkleProofs, roots)
 
 }
 
@@ -117,7 +117,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]gnark
 
 	// Build an index table to efficiently lookup an alleged
 	// prover evaluation from its colID.
-	ysMap := make(map[ifaces.ColID]gnarkfext.E4Gen, len(params.Ys))
+	ysMap := make(map[ifaces.ColID]gnarkfext.E4Gen, len(params.ExtYs))
 	for i := range query.Pols {
 		ysMap[query.Pols[i].GetColID()] = params.ExtYs[i]
 	}
@@ -240,7 +240,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 	var (
 		params     = vr.GetUnivariateParams(ctx.Query.QueryID)
 		polys      = make([][]zk.WrappedVariable, 0)
-		expectedYs = make([]zk.WrappedVariable, 0)
+		expectedYs = make([]gnarkfext.E4Gen, 0)
 	)
 
 	for i, pol := range ctx.Query.Pols {
@@ -260,18 +260,19 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 		}
 
 		polys = append(polys, pol.GetColAssignmentGnark(vr))
-		expectedYs = append(expectedYs, params.Ys[i])
+		expectedYs = append(expectedYs, params.ExtYs[i])
 	}
 
 	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, params.ExtX)
 
-	for i := range polys {
-		api.AssertIsEqual(ys[i], expectedYs[i])
+	ext4, _ := gnarkfext.NewExt4(api)
+	for i := range expectedYs {
+		ext4.AssertIsEqual(&ys[i], &expectedYs[i])
 	}
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [8][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt_bls12377.GnarkProof) {
+func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [encoding.GnarkKoalabearNumElements][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt_bls12377.GnarkProof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -288,7 +289,7 @@ func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [8][]zk.WrappedVari
 		for j := range proofs[i] {
 			// initialize the proof that we are parsing
 			proof := smt_bls12377.GnarkProof{
-				Path:     entryList[j],
+				Path:     entryList[j].AsNative(),
 				Siblings: make([]frontend.Variable, depth),
 			}
 
@@ -296,13 +297,13 @@ func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [8][]zk.WrappedVari
 			// are inversing the order.
 			for k := range proof.Siblings {
 
-				utils.Panic("gnark SMT does not currently support hashes that are arrays of field elements")
-
-				var v [blockSize]zk.WrappedVariable
-				for coord := 0; coord < blockSize; coord++ {
+				var v [encoding.GnarkKoalabearNumElements]zk.WrappedVariable
+				for coord := 0; coord < encoding.GnarkKoalabearNumElements; coord++ {
 					v[coord] = sv[coord][curr]
 				}
-				proof.Siblings[depth-k-1] = vortex.Encode8WVsToFV(api, v)
+				// apiGen, _ := zk.NewGenericApi(api)
+				// apiGen.Println(v[:]...)
+				proof.Siblings[depth-k-1] = encoding.Encode11WVsToFV(api, v)
 				curr++
 			}
 

@@ -200,6 +200,7 @@ func TestSelfRecursionRandom(t *testing.T) {
 				define,
 				vortex.Compile(
 					2,
+					false,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&sisInstances),
 				),
@@ -230,6 +231,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 			define,
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -239,6 +241,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -248,6 +251,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -276,6 +280,7 @@ func TestSelfRecursionCommitPrecomputed(t *testing.T) {
 				define,
 				vortex.Compile(
 					2,
+					false,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&sisInstances),
 				),
@@ -308,6 +313,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 			define,
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(16),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -317,6 +323,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(16),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -326,6 +333,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(16),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -353,6 +361,7 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 		define,
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&ringsis.StdParams),
 			vortex.WithOptionalSISHashingThreshold(64),
@@ -371,6 +380,7 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 			logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
 			vortex.Compile(
 				8,
+				false,
 				vortex.ForceNumOpenedColumns(32),
 				vortex.WithSISParams(&ringsis.StdParams),
 				vortex.WithOptionalSISHashingThreshold(64),
@@ -394,6 +404,7 @@ func TestSelfRecursionManyLayersWithSerde(t *testing.T) {
 		define,
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&ringsis.StdParams),
 			vortex.WithOptionalSISHashingThreshold(64),
@@ -410,6 +421,7 @@ func TestSelfRecursionManyLayersWithSerde(t *testing.T) {
 			),
 			vortex.Compile(
 				8,
+				false,
 				vortex.ForceNumOpenedColumns(32),
 				vortex.WithSISParams(&ringsis.StdParams),
 				vortex.WithOptionalSISHashingThreshold(64),
