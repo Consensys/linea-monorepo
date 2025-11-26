@@ -22,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import linea.plugin.acc.test.LineaPluginPoSTestBase;
+import linea.plugin.acc.test.LineaPluginTestBasePrague;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
@@ -44,7 +44,7 @@ import org.junit.jupiter.api.Test;
 import org.web3j.protocol.core.Request;
 import org.web3j.protocol.http.HttpService;
 
-public class EstimateGasTest extends LineaPluginPoSTestBase {
+public class EstimateGasTest extends LineaPluginTestBasePrague {
   protected static final int FIXED_GAS_COST_WEI = 0;
   protected static final int VARIABLE_GAS_COST_WEI = 1_000_000_000;
   protected static final double MIN_MARGIN = 1.0;
