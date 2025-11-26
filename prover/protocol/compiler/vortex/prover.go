@@ -186,12 +186,15 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
-		pols := ctx.getPols(pr, round)
+		// pols := ctx.getPols(pr, round)
+		//TODO@yao: check pols --> committedMatrix
+		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
+
 		// Push pols to the right stack
 		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
-			committedSVNoSIS = append(committedSVNoSIS, pols...)
+			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedSVSIS = append(committedSVSIS, pols...)
+			committedSVSIS = append(committedSVSIS, committedMatrix...)
 		}
 	}
 	// Construct committedSV by stacking the No SIS round
@@ -254,7 +257,7 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC) //TODO@yao:check the committedSV is encoded metrix or not
+	vortex.LinearCombination(proof, committedSV, randomCoinLC)
 
 	run.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
