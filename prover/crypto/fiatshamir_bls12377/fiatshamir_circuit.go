@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
@@ -61,16 +62,38 @@ func (fs *GnarkFS) RandomFrElmt() frontend.Variable {
 // ------------------------------------------------------
 // List of methods to updae the FS state with koala elmts
 
-func (fs *GnarkFS) UpdateElmts(vec ...zk.WrappedVariable) {
+func (fs *GnarkFS) Update(vec ...zk.WrappedVariable) {
 	fs.hasher.WriteWVs(vec...)
 }
+func (fs *GnarkFS) UpdateExt(vec ...gnarkfext.E4Gen) {
+	for i := 0; i < len(vec); i++ {
+		fs.hasher.WriteWVs(vec[i].B0.A0)
+		fs.hasher.WriteWVs(vec[i].B0.A1)
+		fs.hasher.WriteWVs(vec[i].B1.A0)
+		fs.hasher.WriteWVs(vec[i].B1.A1)
+	}
+}
 
-func (fs *GnarkFS) UpdateVecElmts(vec ...[]zk.WrappedVariable) {
+func (fs *FS) UpdateGeneric(vec ...fext.GenericFieldElem) {
+	if len(vec) == 0 {
+		return
+	}
+
+	// Marshal the elements in a vector of bytes
+	for _, f := range vec {
+		if f.GetIsBase() {
+			fs.Update(f.Base)
+		} else {
+			fs.UpdateExt(f.Ext)
+		}
+	}
+}
+func (fs *GnarkFS) UpdateVec(vec ...[]zk.WrappedVariable) {
 	v := make([]zk.WrappedVariable, len(vec))
 	for _, _v := range vec {
 		v = append(v, _v...)
 	}
-	fs.UpdateElmts(v...)
+	fs.Update(v...)
 }
 
 func (fs *GnarkFS) RandomField() zk.Octuplet {

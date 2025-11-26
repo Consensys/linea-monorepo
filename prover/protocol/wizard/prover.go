@@ -26,7 +26,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -150,6 +149,7 @@ type ProverRuntime struct {
 	// included a second time. Use it externally at your own risks.
 	FS    *fiatshamir_koalabear.FS
 	BLSFS *fiatshamir_bls12377.FS
+	IsBLS bool
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
@@ -274,7 +274,7 @@ func (run *ProverRuntime) NumRounds() int {
 func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
-	fs := fiatshamir_koalabear.NewFS()
+	fs := fiatshamir_bls12377.NewFS()
 	fs.Update(c.FiatShamirSetup[:]...)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
@@ -284,15 +284,15 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 		QueriesParams:      collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
 		Coins:              collection.NewMapping[coin.Name, interface{}](),
 		State:              collection.NewMapping[string, interface{}](),
-		FS:                 &fs,
+		BLSFS:              &fs,
 		currRound:          0,
 		lock:               &sync.Mutex{},
 		FiatShamirHistory:  make([][2][]field.Element, c.NumRounds()),
 		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
-	stateBytes := fs.State()
+	stateOct := fs.State()
 	var state koalabear.Element
-	state.SetBytes(stateBytes)
+	state = stateOct[0] //TODO@yao: check if this is correct
 	runtime.FiatShamirHistory[0] = [2][]field.Element{
 		{state},
 		{state},
@@ -710,9 +710,9 @@ func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coi
 // parameters. This makes all the new coins available in the prover runtime.
 func (run *ProverRuntime) goNextRound() {
 
-	initialStateBytes := run.FS.State()
+	initialStateOct := run.BLSFS.State()
 	var initialState koalabear.Element
-	initialState.SetBytes(initialStateBytes)
+	initialState = initialStateOct[0] //TODO@yao: check if this is correct
 
 	if !run.Spec.DummyCompiled {
 
@@ -734,7 +734,7 @@ func (run *ProverRuntime) goNextRound() {
 			}
 
 			instance := run.GetMessage(msgName)
-			run.FS.UpdateSV(instance)
+			run.BLSFS.UpdateSV(instance)
 		}
 
 		/*
@@ -749,7 +749,7 @@ func (run *ProverRuntime) goNextRound() {
 			// Implicitly, this will panic whenever we start supporting
 			// a new type of query params
 			params := run.QueriesParams.MustGet(qName)
-			params.UpdateFS(run.FS)
+			params.UpdateFS(run.BLSFS)
 		}
 	}
 
@@ -766,7 +766,7 @@ func (run *ProverRuntime) goNextRound() {
 			fsHooks[i].Run(run)
 		}
 	}
-	seed := types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State()))
+	seed := run.BLSFS.State()
 
 	// Then assigns the coins for the new round. As the round
 	// incrementation is made lazily, we expect that there is
@@ -783,9 +783,9 @@ func (run *ProverRuntime) goNextRound() {
 		run.Coins.InsertNew(myCoin, value)
 	}
 
-	finalStateBytes := run.FS.State()
+	finalStateOct := run.BLSFS.State()
 	var finalState koalabear.Element
-	finalState.SetBytes(finalStateBytes)
+	finalState = finalStateOct[0] //TODO@yao: check if this is correct
 
 	run.FiatShamirHistory[run.currRound] = [2][]field.Element{
 		[]koalabear.Element{initialState},
@@ -1063,8 +1063,8 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() *fiatshamir_koalabear.FS {
-	return run.FS
+func (run *ProverRuntime) Fs() *fiatshamir_bls12377.FS {
+	return run.BLSFS
 }
 
 // FsHistory returns the Fiat-Shamir state history

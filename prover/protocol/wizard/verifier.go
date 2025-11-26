@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Proof generically represents a proof obtained from the wizard. This object does not
@@ -55,7 +54,7 @@ type Runtime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
-	Fs() *fiatshamir_koalabear.FS
+	Fs() *fiatshamir_bls12377.FS
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -166,18 +165,18 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 	/*
 		Instantiate an empty assigment for the verifier
 	*/
-	fs := fiatshamir_koalabear.NewFS()
+	fs := fiatshamir_bls12377.NewFS()
 	runtime := VerifierRuntime{
 		Spec:          c,
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
 		QueriesParams: proof.QueriesParams,
-		FS:            &fs,
+		BLSFS:         &fs,
 
 		State: make(map[string]interface{}),
 	}
 
-	runtime.FS.Update(c.FiatShamirSetup[:]...)
+	runtime.BLSFS.Update(c.FiatShamirSetup[:]...)
 
 	/*
 		Insert the verifying key into the messages
@@ -244,7 +243,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 				}
 
 				instance := run.GetColumn(msgName)
-				run.FS.UpdateSV(instance)
+				run.BLSFS.UpdateSV(instance)
 			}
 
 			/*
@@ -257,7 +256,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 				}
 
 				params := run.QueriesParams.MustGet(qName)
-				params.UpdateFS(run.FS)
+				params.UpdateFS(run.BLSFS)
 			}
 		}
 	}
@@ -273,7 +272,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 	}
 
-	seed := types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State()))
+	seed := run.BLSFS.State()
 
 	/*
 		Then assigns the coins for the new round. As the round incrementation
@@ -507,8 +506,8 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() *fiatshamir_koalabear.FS {
-	return run.FS
+func (run *VerifierRuntime) Fs() *fiatshamir_bls12377.FS {
+	return run.BLSFS
 }
 
 // GetSpec returns the compiled IOP

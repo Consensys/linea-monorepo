@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark/frontend"
-	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
+	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/google/uuid"
 )
 

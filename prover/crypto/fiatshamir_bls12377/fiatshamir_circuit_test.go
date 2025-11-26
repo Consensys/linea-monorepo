@@ -40,7 +40,7 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	api.AssertIsEqual(b, c.R2)
 
 	// koalabear octuplet
-	fs.UpdateElmts(c.C[:]...)
+	fs.Update(c.C[:]...)
 	e := fs.RandomField()
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
@@ -50,7 +50,7 @@ func (c *FSCircuit) Define(api frontend.API) error {
 		apiGen.AssertIsEqual(e[i], c.R3[i])
 	}
 
-	fs.UpdateElmts(c.D[:]...)
+	fs.Update(c.D[:]...)
 	res := fs.RandomManyIntegers(c.n, c.bound)
 	for i := 0; i < len(res); i++ {
 		api.AssertIsEqual(res[i], c.R4[i])
@@ -80,10 +80,10 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	for i := 0; i < 10; i++ {
 		d[i].SetRandom()
 	}
-	fs.UpdateElmts(c[:]...)
+	fs.Update(c[:]...)
 	r3 := fs.RandomField()
 
-	fs.UpdateElmts(d[:]...)
+	fs.Update(d[:]...)
 	n := 5
 	bound := 8
 	r4 := fs.RandomManyIntegers(n, bound)

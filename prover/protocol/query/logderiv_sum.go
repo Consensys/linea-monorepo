@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -50,7 +50,7 @@ type LogDerivSumParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (l LogDerivSumParams) UpdateFS(fs *fiatshamir_koalabear.FS) {
+func (l LogDerivSumParams) UpdateFS(fs *fiatshamir_bls12377.FS) {
 	fs.UpdateGeneric(l.Sum)
 }
 

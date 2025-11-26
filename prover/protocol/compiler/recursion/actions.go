@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // AssignVortexUAlpha assigns the UAlpha column for all the subproofs. As
@@ -93,7 +92,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		SisHashes:         sisHashes,
 		MimcHashes:        mimcHashes,
 		Trees:             trees,
-		FinalFS:           types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State())),
+		FinalFS:           run.FS.State(),
 		Pub:               pubs,
 	}
 }

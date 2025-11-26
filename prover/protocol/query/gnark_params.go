@@ -1,7 +1,7 @@
 package query
 
 import (
-	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -118,40 +118,40 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
 	fs.UpdateExt(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	fs.Update(p.BaseY.AsNative())
+func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
+	fs.Update(p.BaseY)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
 	fs.UpdateExt(p.Sum)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
 	fs.UpdateExt(p.Prod)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
 	fs.UpdateExt(p.ExtYs...)
 }
 
-// Update the fiat-shamir state with the the present field extension parameters
-func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFS) {
+// Update the fiat-shamir state with the present field extension parameters
+func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir_bls12377.GnarkFS) {
 	fs.UpdateExt(p.ExtYs...)
 }
 
-// Update the fiat-shamir state with the the present parameters
-func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+// Update the fiat-shamir state with the present parameters
+func (p GnarkHornerParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
 	fs.UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		fs.Update(part.N0.AsNative(), part.N1.AsNative())
+		fs.Update(part.N0, part.N1)
 	}
 }

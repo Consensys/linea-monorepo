@@ -34,7 +34,7 @@ type GnarkRuntime interface {
 	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
-	Fs() *fiatshamir.GnarkFS
+	Fs() *fiatshamir_bls12377.GnarkFS
 	GetHasherFactory() mimc.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
@@ -347,10 +347,13 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use
 	// GKR instead.
-	c.FS = fiatshamir.NewGnarkFS(api)
+	c.BLSFS = fiatshamir_bls12377.NewGnarkFS(api)
+
+	var zkWV [8]zk.WrappedVariable
 	for i := 0; i < 8; i++ {
-		c.FS.Update(c.Spec.FiatShamirSetup[i].String())
+		zkWV[i] = zk.ValueOf(c.Spec.FiatShamirSetup[i].String())
 	}
+	c.BLSFS.Update(zkWV[:]...)
 
 	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
 
@@ -385,11 +388,8 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			}
 
 			msgContent := c.GetColumn(msg)
-			msgContentFVs := make([]frontend.Variable, len(msgContent))
-			for i := range msgContent {
-				msgContentFVs[i] = msgContent[i].AsNative()
-			}
-			c.FS.UpdateVec(msgContentFVs)
+
+			c.BLSFS.UpdateVec(msgContent)
 		}
 
 		/*
@@ -402,7 +402,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			}
 
 			params := c.GetParams(qName)
-			params.UpdateFS(c.FS)
+			params.UpdateFS(c.BLSFS)
 		}
 	}
 
@@ -413,7 +413,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		}
 	}
 
-	seed := c.FS.State()
+	seed := c.BLSFS.State()
 
 	zkSeed := zk.Octuplet{}
 	for i := 0; i < 8; i++ {
@@ -833,13 +833,13 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) zk.Wrapp
 }
 
 // Fs returns the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFS {
-	return c.FS
+func (c *VerifierCircuit) Fs() *fiatshamir_bls12377.GnarkFS {
+	return c.BLSFS
 }
 
 // SetFs sets the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) SetFs(fs *fiatshamir.GnarkFS) {
-	c.FS = fs
+func (c *VerifierCircuit) SetFs(fs *fiatshamir_bls12377.GnarkFS) {
+	c.BLSFS = fs
 }
 
 // GetHasherFactory returns the hasher factory of the verifier circuit; nil

@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -40,16 +41,47 @@ func (fs *FS) RandomFieldFrElmt() fr.Element {
 // ------------------------------------------------------
 // List of methods to updae the FS state with koala elmts
 
-func (fs *FS) UpdateElmts(vec ...field.Element) {
+func (fs *FS) Update(vec ...field.Element) {
 	fs.h.WriteKoalabearElements(vec...)
 }
 
-func (fs *FS) UpdateVecElmts(vec ...[]field.Element) {
+func (fs *FS) UpdateExt(vec ...fext.Element) {
+	pad := make([]field.Element, 4*len(vec))
+	for i := 0; i < len(vec); i++ {
+		pad[4*i].Set(&vec[i].B0.A0)
+		pad[4*i+1].Set(&vec[i].B0.A1)
+		pad[4*i+2].Set(&vec[i].B1.A0)
+		pad[4*i+3].Set(&vec[i].B1.A1)
+	}
+	fs.h.WriteKoalabearElements(pad...)
+}
+
+func (fs *FS) UpdateVec(vec ...[]field.Element) {
 	v := make([]field.Element, len(vec))
 	for _, _v := range vec {
 		v = append(v, _v...)
 	}
-	fs.UpdateElmts(v...)
+	fs.Update(v...)
+}
+
+// UpdateVec updates the Fiat-Shamir state by passing one of more slices of
+// field elements.
+func (fs *FS) UpdateVecExt(vecs ...[]fext.Element) {
+	for i := range vecs {
+		fs.UpdateExt(vecs[i]...)
+	}
+}
+
+// UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
+// has a length of zero.
+func (fs *FS) UpdateSV(sv smartvectors.SmartVector) {
+	if sv.Len() == 0 {
+		return
+	}
+
+	vec := make([]field.Element, sv.Len())
+	sv.WriteInSlice(vec)
+	fs.Update(vec...)
 }
 
 func (fs *FS) RandomField() field.Octuplet {
