@@ -37,6 +37,7 @@ describe("YieldManagerContractClient", () => {
   const l2Recipient = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
   const l1MessageServiceAddress = "0x9999999999999999999999999999999999999999" as Address;
   const stakingVaultAddress = "0x8888888888888888888888888888888888888888" as Address;
+  const signerAddress = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
 
   let logger: MockProxy<ILogger>;
   let blockchainClient: MockProxy<IBlockchainClient<PublicClient, TransactionReceipt>>;
@@ -110,6 +111,7 @@ describe("YieldManagerContractClient", () => {
 
     mockedGetContract.mockReturnValue(contractStub as any);
     blockchainClient.getBalance.mockResolvedValue(0n);
+    blockchainClient.getSignerAddress.mockReturnValue(signerAddress);
     blockchainClient.sendSignedTransaction.mockResolvedValue({
       transactionHash: "0xreceipt",
     } as unknown as TransactionReceipt);
@@ -186,7 +188,9 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const result = await client.peekYieldReport(yieldProvider, l2Recipient);
 
-    expect(contractStub.simulate.reportYield).toHaveBeenCalledWith([yieldProvider, l2Recipient]);
+    expect(contractStub.simulate.reportYield).toHaveBeenCalledWith([yieldProvider, l2Recipient], {
+      account: signerAddress,
+    });
     expect(result).toEqual({
       yieldAmount: newReportedYield,
       outstandingNegativeYield,
@@ -200,7 +204,9 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const result = await client.peekYieldReport(yieldProvider, l2Recipient);
 
-    expect(contractStub.simulate.reportYield).toHaveBeenCalledWith([yieldProvider, l2Recipient]);
+    expect(contractStub.simulate.reportYield).toHaveBeenCalledWith([yieldProvider, l2Recipient], {
+      account: signerAddress,
+    });
     expect(result).toBeUndefined();
     expect(logger.error).toHaveBeenCalledWith(
       `peekYieldReport failed, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2Recipient}`,

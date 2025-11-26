@@ -589,7 +589,9 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    */
   async peekYieldReport(yieldProvider: Address, l2YieldRecipient: Address): Promise<YieldReport | undefined> {
     try {
-      const { result } = await this.contract.simulate.reportYield([yieldProvider, l2YieldRecipient]);
+      const { result } = await this.contract.simulate.reportYield([yieldProvider, l2YieldRecipient], {
+        account: this.contractClientLibrary.getSignerAddress(),
+      });
       const [newReportedYield, outstandingNegativeYield] = result;
       return {
         yieldAmount: newReportedYield,
