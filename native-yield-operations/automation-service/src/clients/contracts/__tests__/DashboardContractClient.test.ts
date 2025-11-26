@@ -179,6 +179,18 @@ describe("DashboardContractClient", () => {
     expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
   });
 
+  it("returns zero when feesToSettle is null", async () => {
+    const client = createClient();
+    const sharesToBurn = 1000n;
+    const feesToSettle = null;
+    viemContractStub.read.obligations.mockResolvedValueOnce([sharesToBurn, feesToSettle]);
+
+    const result = await client.peekUnpaidLidoProtocolFees();
+
+    expect(result).toBe(0n);
+    expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
+  });
+
   it("returns undefined and logs error when obligations call fails", async () => {
     DashboardContractClient.initialize(blockchainClient, logger);
     const client = createClient();
