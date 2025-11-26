@@ -15,7 +15,27 @@ data class L1SubmissionConfigToml(
   val fallbackGasPrice: FallbackGasPriceToml,
   val blob: BlobSubmissionConfigToml,
   val aggregation: AggregationSubmissionToml,
+  val dataSubmission: DataSubmission = DataSubmission.ROLLUP,
 ) {
+
+  enum class DataSubmission(val mame: String) {
+    ROLLUP("rollup"),
+    VALIDIUM("validium"),
+    ;
+
+    companion object {
+      fun valueOfIgnoreCase(name: String): DataSubmission {
+        return DataSubmission.entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
+          ?: throw IllegalArgumentException("Unknown data submission type: $name")
+      }
+    }
+    fun reified(): L1SubmissionConfig.DataSubmission {
+      return when (this) {
+        ROLLUP -> L1SubmissionConfig.DataSubmission.ROLLUP
+        VALIDIUM -> L1SubmissionConfig.DataSubmission.VALIDIUM
+      }
+    }
+  }
 
   data class DynamicGasPriceCapToml(
     val disabled: Boolean = false,
@@ -167,6 +187,7 @@ data class L1SubmissionConfigToml(
         gas = this.aggregation.gas.reified(),
         signer = this.aggregation.signer.reified(),
       ),
+      dataSubmission = this.dataSubmission.reified(),
     )
   }
 }

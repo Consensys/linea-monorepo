@@ -8,6 +8,7 @@ import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
+import linea.coordinator.config.v2.L1SubmissionConfig
 import linea.coordinator.config.v2.Type2StateProofManagerConfig
 import linea.coordinator.config.v2.isDisabled
 import linea.coordinator.config.v2.isEnabled
@@ -46,6 +47,7 @@ import net.consensys.zkevm.coordinator.app.conflation.ConflationApp
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
+import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
 import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.ethereum.coordination.EventDispatcher
@@ -294,7 +296,7 @@ class L1DependentApp(
     lastFinalizedBlock,
   ).get()
 
-  private val lineaSmartContractClientForDataSubmission: LineaRollupSmartContractClient = run {
+  private val lineaSmartContractClientForDataSubmission: LineaSmartContractClient = run {
     // The below gas provider will act as the primary gas provider if L1
     // dynamic gas pricing is disabled and will act as a fallback gas provider
     // if L1 dynamic gas pricing is enabled
@@ -313,20 +315,32 @@ class L1DependentApp(
       rpcUrl = configs.l1Submission.blob.l1Endpoint.toString(),
       log = LogManager.getLogger("clients.l1.eth.data-submission"),
     )
-    createLineaRollupContractClient(
-      contractAddress = configs.protocol.l1.contractAddress,
-      transactionManager = createTransactionManager(
-        vertx,
-        signerConfig = configs.l1Submission.blob.signer,
-        client = l1Web3jClient,
-      ),
-      contractGasProvider = primaryOrFallbackGasProvider,
-      web3jClient = l1Web3jClient,
-      smartContractErrors = smartContractErrors,
-      // eth_estimateGas would fail because we submit multiple blob tx
-      // and 2nd would fail with revert reason
-      useEthEstimateGas = false,
+    val transactionManager = createTransactionManager(
+      vertx,
+      signerConfig = configs.l1Submission.blob.signer,
+      client = l1Web3jClient,
     )
+    when (configs.l1Submission.dataSubmission) {
+      L1SubmissionConfig.DataSubmission.ROLLUP -> createLineaRollupContractClient(
+        contractAddress = configs.protocol.l1.contractAddress,
+        transactionManager = transactionManager,
+        contractGasProvider = primaryOrFallbackGasProvider,
+        web3jClient = l1Web3jClient,
+        smartContractErrors = smartContractErrors,
+        // eth_estimateGas would fail because we submit multiple blob tx
+        // and 2nd would fail with revert reason
+        useEthEstimateGas = false,
+      )
+
+      L1SubmissionConfig.DataSubmission.VALIDIUM -> createLineaValidiumContractClient(
+        contractAddress = configs.protocol.l1.contractAddress,
+        transactionManager = transactionManager,
+        contractGasProvider = primaryOrFallbackGasProvider,
+        web3jClient = l1Web3jClient,
+        smartContractErrors = smartContractErrors,
+        useEthEstimateGas = false,
+      )
+    }
   }
 
   private val highestAcceptedBlobTracker = HighestULongTracker(lastProcessedBlockNumber).also {
@@ -340,7 +354,7 @@ class L1DependentApp(
 
   private val alreadySubmittedBlobsFilter =
     L1ShnarfBasedAlreadySubmittedBlobsFilter(
-      lineaRollup = lineaSmartContractClientForDataSubmission,
+      lineaSmartContractClientReadOnly = lineaSmartContractClientForDataSubmission,
       acceptedBlobEndBlockNumberConsumer = { highestAcceptedBlobTracker(it) },
     )
 

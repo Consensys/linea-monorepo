@@ -9,7 +9,12 @@ data class L1SubmissionConfig(
   val fallbackGasPrice: FallbackGasPriceConfig,
   val blob: BlobSubmissionConfig,
   val aggregation: AggregationSubmissionConfig,
+  val dataSubmission: DataSubmission,
 ) : FeatureToggle {
+  enum class DataSubmission {
+    ROLLUP,
+    VALIDIUM,
+  }
   override val disabled: Boolean
     get() = blob.disabled && aggregation.disabled
 

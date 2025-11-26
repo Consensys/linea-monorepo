@@ -1,9 +1,11 @@
 package net.consensys.linea.contract.l1
 
+import build.linea.contract.ValidiumV1
 import linea.contract.l1.Web3JLineaValidiumSmartContractClientReadOnly
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.domain.gas.GasPriceCaps
 import linea.kotlin.toULong
+import linea.web3j.SmartContractErrors
 import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.Web3JContractAsyncHelper
 import net.consensys.zkevm.coordinator.clients.smartcontract.BlockAndNonce
@@ -12,7 +14,7 @@ import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ProofToFinalize
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
-import org.web3j.tx.Contract
+import org.web3j.tx.gas.ContractGasProvider
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
 
@@ -21,9 +23,42 @@ class Web3JLineaValidiumSmartContractClient(
   contractAddress: String,
   private val transactionManager: AsyncFriendlyTransactionManager,
   private val web3jContractHelper: Web3JContractAsyncHelper,
-  private val web3jLineaClient: Contract,
+  private val web3jLineaClient: ValidiumV1,
 ) : Web3JLineaValidiumSmartContractClientReadOnly(web3j, contractAddress), LineaValidiumSmartContractClient {
 
+  companion object {
+    fun load(
+      contractAddress: String,
+      web3j: Web3j,
+      transactionManager: AsyncFriendlyTransactionManager,
+      contractGasProvider: ContractGasProvider,
+      smartContractErrors: SmartContractErrors,
+      useEthEstimateGas: Boolean,
+    ): Web3JLineaValidiumSmartContractClient {
+      val web3JContractAsyncHelper = Web3JContractAsyncHelper(
+        contractAddress = contractAddress,
+        web3j = web3j,
+        transactionManager = transactionManager,
+        contractGasProvider = contractGasProvider,
+        smartContractErrors = smartContractErrors,
+        useEthEstimateGas = useEthEstimateGas,
+      )
+      val lineaValidiumEnhancedWrapper = LineaValidiumEnhancedWrapper(
+        contractAddress = contractAddress,
+        web3j = web3j,
+        transactionManager = transactionManager,
+        contractGasProvider = contractGasProvider,
+        web3jContractHelper = web3JContractAsyncHelper,
+      )
+      return Web3JLineaValidiumSmartContractClient(
+        contractAddress = contractAddress,
+        web3j = web3j,
+        transactionManager = transactionManager,
+        web3jContractHelper = web3JContractAsyncHelper,
+        web3jLineaClient = lineaValidiumEnhancedWrapper,
+      )
+    }
+  }
   override fun currentNonce(): ULong {
     return transactionManager.currentNonce().toULong()
   }

@@ -3,7 +3,7 @@ package linea.contract.l1
 import linea.domain.BlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-enum class LineaContractVersion : Comparable<LineaContractVersion> {
+enum class LineaRollupContractVersion : Comparable<LineaRollupContractVersion> {
   V6, // more efficient data submission and new events for state recovery
 }
 
@@ -51,7 +51,7 @@ interface LineaSmartContractClientReadOnly {
 
 interface LineaRollupSmartContractClientReadOnly :
   LineaSmartContractClientReadOnly,
-  ContractVersionProvider<LineaContractVersion>
+  ContractVersionProvider<LineaRollupContractVersion>
 
 interface LineaValidiumSmartContractClientReadOnly :
   LineaSmartContractClientReadOnly,
