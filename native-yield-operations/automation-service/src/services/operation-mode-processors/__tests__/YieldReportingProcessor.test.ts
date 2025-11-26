@@ -313,6 +313,7 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleRebalance({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
 
+    expect(metricsUpdater.recordRebalance).toHaveBeenCalledWith(RebalanceDirection.STAKE, 0);
     expect(submitSpy).toHaveBeenCalledTimes(1);
   });
 
