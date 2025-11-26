@@ -105,7 +105,7 @@ func (d *GenericDataAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProv
 
 	d.IsActive = createCol("IsActive")
 	d.Provider.HashNum = createCol("sHashNum")
-	d.Provider.Limbs = common.CreatMultiColumn(comp, GENERIC_ACCUMULATOR+"_sLimb", d.Size, nbChunks, pragmas.RightPadded)
+	d.Provider.Limbs = common.CreateMultiColumn(comp, GENERIC_ACCUMULATOR+"_sLimb", d.Size, nbChunks, pragmas.RightPadded)
 	d.Provider.NBytes = createCol("sNBytes")
 	d.Provider.Index = createCol("sIndex")
 	d.Provider.ToHash = d.IsActive

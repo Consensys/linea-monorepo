@@ -19,31 +19,8 @@ func GetMultiHandle(comp *wizard.CompiledIOP, baseColID string, count int) []ifa
 	return handles
 }
 
-// It commits to the columns of round zero, from the same module.
-func CreateColFn(comp *wizard.CompiledIOP, rootName string, size int, withPragmas pragmas.Pragma) func(name string, args ...interface{}) ifaces.Column {
-
-	return func(name string, args ...interface{}) ifaces.Column {
-		s := []string{rootName, name}
-		v := strings.Join(s, "_")
-		col := comp.InsertCommit(0, ifaces.ColIDf(v, args...), size, true)
-
-		switch withPragmas {
-		case pragmas.None:
-		case pragmas.LeftPadded:
-			pragmas.MarkLeftPadded(col)
-		case pragmas.RightPadded:
-			pragmas.MarkRightPadded(col)
-		case pragmas.FullColumnPragma:
-			pragmas.MarkFullColumn(col)
-		}
-
-		return col
-	}
-
-}
-
-// CreatMultiColumn creates multiple columns with names formatted as rootName_0, rootName_1, ..., rootName_{count-1}
-func CreatMultiColumn(comp *wizard.CompiledIOP, rootName string, size int, count int, withPragmas pragmas.Pragma) []ifaces.Column {
+// CreateMultiColumn creates multiple columns with names formatted as rootName_0, rootName_1, ..., rootName_{count-1}
+func CreateMultiColumn(comp *wizard.CompiledIOP, rootName string, size int, count int, withPragmas pragmas.Pragma) []ifaces.Column {
 	cols := make([]ifaces.Column, count)
 	createCol := CreateColFn(comp, rootName, size, withPragmas)
 	for i := 0; i < count; i++ {
@@ -68,4 +45,27 @@ func AssignMultiColumn(run *wizard.ProverRuntime, cols []ifaces.Column, values [
 	for i := range cols {
 		run.AssignColumn(cols[i].GetColID(), smartvectors.RightZeroPadded(values[i], size))
 	}
+}
+
+// CreateColFn commits to the columns of round zero, from the same module.
+func CreateColFn(comp *wizard.CompiledIOP, rootName string, size int, withPragmas pragmas.Pragma) func(name string, args ...interface{}) ifaces.Column {
+
+	return func(name string, args ...interface{}) ifaces.Column {
+		s := []string{rootName, name}
+		v := strings.Join(s, "_")
+		col := comp.InsertCommit(0, ifaces.ColIDf(v, args...), size, true)
+
+		switch withPragmas {
+		case pragmas.None:
+		case pragmas.LeftPadded:
+			pragmas.MarkLeftPadded(col)
+		case pragmas.RightPadded:
+			pragmas.MarkRightPadded(col)
+		case pragmas.FullColumnPragma:
+			pragmas.MarkFullColumn(col)
+		}
+
+		return col
+	}
+
 }
