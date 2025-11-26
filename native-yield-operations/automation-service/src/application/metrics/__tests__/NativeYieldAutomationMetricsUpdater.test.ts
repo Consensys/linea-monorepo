@@ -3,6 +3,7 @@ import { IMetricsService } from "@consensys/linea-shared-utils";
 import { NativeYieldAutomationMetricsUpdater } from "../NativeYieldAutomationMetricsUpdater.js";
 import {
   LineaNativeYieldAutomationServiceMetrics,
+  OperationModeExecutionStatus,
   OperationTrigger,
 } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
@@ -102,13 +103,8 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     );
     expect(metricsService.createCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      "Operation mode executions grouped by mode",
-      ["mode"],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeFailureTotal,
-      "Operation mode failures grouped by mode",
-      ["mode"],
+      "Operation mode executions grouped by mode and status",
+      ["mode", "status"],
     );
     expect(metricsService.createHistogram).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionDurationSeconds,
@@ -376,7 +372,7 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     );
   });
 
-  it("increments operation mode execution counter", () => {
+  it("increments operation mode execution counter with default success status", () => {
     const metricsService = createMetricsServiceMock();
     const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
     jest.clearAllMocks();
@@ -385,20 +381,33 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
 
     expect(metricsService.incrementCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      { mode: OperationMode.OSSIFICATION_PENDING_MODE },
+      { mode: OperationMode.OSSIFICATION_PENDING_MODE, status: OperationModeExecutionStatus.Success },
     );
   });
 
-  it("increments operation mode failure counter", () => {
+  it("increments operation mode execution counter with explicit success status", () => {
     const metricsService = createMetricsServiceMock();
     const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
     jest.clearAllMocks();
 
-    updater.incrementOperationModeFailure(OperationMode.YIELD_REPORTING_MODE);
+    updater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE, OperationModeExecutionStatus.Success);
 
     expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeFailureTotal,
-      { mode: OperationMode.YIELD_REPORTING_MODE },
+      LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
+      { mode: OperationMode.YIELD_REPORTING_MODE, status: OperationModeExecutionStatus.Success },
+    );
+  });
+
+  it("increments operation mode execution counter with failure status", () => {
+    const metricsService = createMetricsServiceMock();
+    const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+    jest.clearAllMocks();
+
+    updater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE, OperationModeExecutionStatus.Failure);
+
+    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
+      { mode: OperationMode.YIELD_REPORTING_MODE, status: OperationModeExecutionStatus.Failure },
     );
   });
 

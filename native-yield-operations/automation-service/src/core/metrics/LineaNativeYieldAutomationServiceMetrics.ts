@@ -61,12 +61,10 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   OperationModeTriggerTotal = "linea_native_yield_automation_service_operation_mode_trigger_total",
 
   // Counter that increments each time an operation mode completes execution.
-  // Single label `mode`
+  // Labels:
+  // i.) `mode`
+  // ii.) `status` - OperationModeExecutionStatus.Success | OperationModeExecutionStatus.Failure
   OperationModeExecutionTotal = "linea_native_yield_automation_service_operation_mode_execution_total",
-
-  // Counter that increments each time an operation mode fails execution.
-  // Single label `mode`
-  OperationModeFailureTotal = "linea_native_yield_automation_service_operation_mode_failure_total",
 
   // Histogram that tracks time for each operation mode run.
   // Single label `mode`
@@ -76,4 +74,9 @@ export enum LineaNativeYieldAutomationServiceMetrics {
 export enum OperationTrigger {
   VAULTS_REPORT_DATA_UPDATED_EVENT = "VAULTS_REPORT_DATA_UPDATED_EVENT",
   TIMEOUT = "TIMEOUT",
+}
+
+export enum OperationModeExecutionStatus {
+  Success = "success",
+  Failure = "failure",
 }

@@ -5,6 +5,7 @@ import { IOperationModeSelector } from "../core/services/operation-mode/IOperati
 import { IOperationModeProcessor } from "../core/services/operation-mode/IOperationModeProcessor.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../core/enums/OperationModeEnums.js";
+import { OperationModeExecutionStatus } from "../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
 /**
  * Selects and executes the appropriate operation mode based on the yield provider's ossification state.
@@ -92,23 +93,32 @@ export class OperationModeSelector implements IOperationModeSelector {
           this.logger.info("Selected OSSIFICATION_COMPLETE_MODE");
           await this.ossificationCompleteOperationModeProcessor.process();
           this.logger.info("Completed OSSIFICATION_COMPLETE_MODE");
-          this.metricsUpdater.incrementOperationModeExecution(OperationMode.OSSIFICATION_COMPLETE_MODE);
+          this.metricsUpdater.incrementOperationModeExecution(
+            OperationMode.OSSIFICATION_COMPLETE_MODE,
+            OperationModeExecutionStatus.Success,
+          );
         } else if (isOssificationInitiated) {
           currentMode = OperationMode.OSSIFICATION_PENDING_MODE;
           this.logger.info("Selected OSSIFICATION_PENDING_MODE");
           await this.ossificationPendingOperationModeProcessor.process();
           this.logger.info("Completed OSSIFICATION_PENDING_MODE");
-          this.metricsUpdater.incrementOperationModeExecution(OperationMode.OSSIFICATION_PENDING_MODE);
+          this.metricsUpdater.incrementOperationModeExecution(
+            OperationMode.OSSIFICATION_PENDING_MODE,
+            OperationModeExecutionStatus.Success,
+          );
         } else {
           currentMode = OperationMode.YIELD_REPORTING_MODE;
           this.logger.info("Selected YIELD_REPORTING_MODE");
           await this.yieldReportingOperationModeProcessor.process();
           this.logger.info("Completed YIELD_REPORTING_MODE");
-          this.metricsUpdater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE);
+          this.metricsUpdater.incrementOperationModeExecution(
+            OperationMode.YIELD_REPORTING_MODE,
+            OperationModeExecutionStatus.Success,
+          );
         }
       } catch (error) {
         this.logger.error(`selectOperationModeLoop error, retrying in ${this.contractReadRetryTimeMs}ms`, { error });
-        this.metricsUpdater.incrementOperationModeFailure(currentMode);
+        this.metricsUpdater.incrementOperationModeExecution(currentMode, OperationModeExecutionStatus.Failure);
         await wait(this.contractReadRetryTimeMs);
       }
     }

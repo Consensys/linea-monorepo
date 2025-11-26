@@ -5,6 +5,7 @@ import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.j
 import type { TransactionReceipt, Address } from "viem";
 import type { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
+import { OperationModeExecutionStatus } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
 jest.mock("@consensys/linea-shared-utils", () => {
   const actual = jest.requireActual("@consensys/linea-shared-utils");
@@ -69,7 +70,10 @@ describe("OperationModeSelector", () => {
     expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
     expect(ossificationPendingProcessor.process).not.toHaveBeenCalled();
     expect(ossificationCompleteProcessor.process).not.toHaveBeenCalled();
-    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(OperationMode.YIELD_REPORTING_MODE);
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.YIELD_REPORTING_MODE,
+      OperationModeExecutionStatus.Success,
+    );
     expect(waitMock).not.toHaveBeenCalled();
   });
 
@@ -89,6 +93,7 @@ describe("OperationModeSelector", () => {
     expect(ossificationCompleteProcessor.process).not.toHaveBeenCalled();
     expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
       OperationMode.OSSIFICATION_PENDING_MODE,
+      OperationModeExecutionStatus.Success,
     );
   });
 
@@ -108,6 +113,7 @@ describe("OperationModeSelector", () => {
     expect(ossificationPendingProcessor.process).not.toHaveBeenCalled();
     expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
       OperationMode.OSSIFICATION_COMPLETE_MODE,
+      OperationModeExecutionStatus.Success,
     );
   });
 
@@ -152,8 +158,14 @@ describe("OperationModeSelector", () => {
     expect(logger.error).toHaveBeenCalledWith(`selectOperationModeLoop error, retrying in ${retryTime}ms`, { error });
     expect(waitMock).toHaveBeenCalledWith(retryTime);
     expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
-    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(OperationMode.YIELD_REPORTING_MODE);
-    expect(metricsUpdater.incrementOperationModeFailure).toHaveBeenCalledWith(OperationMode.UNKNOWN);
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.YIELD_REPORTING_MODE,
+      OperationModeExecutionStatus.Success,
+    );
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.UNKNOWN,
+      OperationModeExecutionStatus.Failure,
+    );
   });
 
   it("increments failure metric with UNKNOWN when error occurs during contract reads", async () => {
@@ -171,7 +183,10 @@ describe("OperationModeSelector", () => {
 
     await selector.start();
 
-    expect(metricsUpdater.incrementOperationModeFailure).toHaveBeenCalledWith(OperationMode.UNKNOWN);
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.UNKNOWN,
+      OperationModeExecutionStatus.Failure,
+    );
   });
 
   it("increments failure metric with specific mode when error occurs during processor execution", async () => {
@@ -189,7 +204,10 @@ describe("OperationModeSelector", () => {
 
     await selector.start();
 
-    expect(metricsUpdater.incrementOperationModeFailure).toHaveBeenCalledWith(OperationMode.YIELD_REPORTING_MODE);
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.YIELD_REPORTING_MODE,
+      OperationModeExecutionStatus.Failure,
+    );
   });
 
   it("increments failure metric with OSSIFICATION_PENDING_MODE when error occurs during pending processor execution", async () => {
@@ -207,8 +225,9 @@ describe("OperationModeSelector", () => {
 
     await selector.start();
 
-    expect(metricsUpdater.incrementOperationModeFailure).toHaveBeenCalledWith(
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
       OperationMode.OSSIFICATION_PENDING_MODE,
+      OperationModeExecutionStatus.Failure,
     );
   });
 
@@ -227,8 +246,9 @@ describe("OperationModeSelector", () => {
 
     await selector.start();
 
-    expect(metricsUpdater.incrementOperationModeFailure).toHaveBeenCalledWith(
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
       OperationMode.OSSIFICATION_COMPLETE_MODE,
+      OperationModeExecutionStatus.Failure,
     );
   });
 });

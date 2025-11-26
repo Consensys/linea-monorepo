@@ -1,6 +1,7 @@
 import { IMetricsService } from "@consensys/linea-shared-utils";
 import {
   LineaNativeYieldAutomationServiceMetrics,
+  OperationModeExecutionStatus,
   OperationTrigger,
 } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
@@ -104,14 +105,8 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
 
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      "Operation mode executions grouped by mode",
-      ["mode"],
-    );
-
-    this.metricsService.createCounter(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeFailureTotal,
-      "Operation mode failures grouped by mode",
-      ["mode"],
+      "Operation mode executions grouped by mode and status",
+      ["mode", "status"],
     );
 
     this.metricsService.createHistogram(
@@ -310,24 +305,18 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   /**
-   * Increments the counter for operation mode executions, grouped by mode.
+   * Increments the counter for operation mode executions, grouped by mode and status.
    *
    * @param {OperationMode} mode - The operation mode that was executed.
+   * @param {OperationModeExecutionStatus} [status=OperationModeExecutionStatus.Success] - The execution status. Defaults to Success.
    */
-  public incrementOperationModeExecution(mode: OperationMode): void {
+  public incrementOperationModeExecution(
+    mode: OperationMode,
+    status: OperationModeExecutionStatus = OperationModeExecutionStatus.Success,
+  ): void {
     this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal, {
       mode,
-    });
-  }
-
-  /**
-   * Increments the counter for operation mode failures, grouped by mode.
-   *
-   * @param {OperationMode} mode - The operation mode that failed.
-   */
-  public incrementOperationModeFailure(mode: OperationMode): void {
-    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeFailureTotal, {
-      mode,
+      status,
     });
   }
 

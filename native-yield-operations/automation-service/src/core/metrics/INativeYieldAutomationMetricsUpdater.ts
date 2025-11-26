@@ -1,7 +1,7 @@
 import { Address, Hex } from "viem";
 import { RebalanceDirection } from "../entities/RebalanceRequirement.js";
 import { OperationMode } from "../enums/OperationModeEnums.js";
-import { OperationTrigger } from "./LineaNativeYieldAutomationServiceMetrics.js";
+import { OperationModeExecutionStatus, OperationTrigger } from "./LineaNativeYieldAutomationServiceMetrics.js";
 
 export interface INativeYieldAutomationMetricsUpdater {
   recordRebalance(direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE, amountGwei: number): void;
@@ -30,9 +30,7 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   incrementOperationModeTrigger(mode: OperationMode, trigger: OperationTrigger): void;
 
-  incrementOperationModeExecution(mode: OperationMode): void;
-
-  incrementOperationModeFailure(mode: OperationMode): void;
+  incrementOperationModeExecution(mode: OperationMode, status?: OperationModeExecutionStatus): void;
 
   recordOperationModeDuration(mode: OperationMode, durationSeconds: number): void;
 }

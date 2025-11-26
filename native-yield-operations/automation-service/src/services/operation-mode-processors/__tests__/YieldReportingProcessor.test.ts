@@ -85,7 +85,6 @@ describe("YieldReportingProcessor", () => {
       setLastPeekedNegativeYieldReport: jest.fn(),
       setLastPeekedPositiveYieldReport: jest.fn(),
       setLastPeekUnpaidLidoProtocolFees: jest.fn(),
-      incrementOperationModeFailure: jest.fn(),
     } as unknown as jest.Mocked<INativeYieldAutomationMetricsUpdater>;
 
     metricsRecorder = {
