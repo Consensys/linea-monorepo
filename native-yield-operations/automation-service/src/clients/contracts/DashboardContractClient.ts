@@ -9,8 +9,19 @@ import { DashboardABI } from "../../core/abis/Dashboard.js";
  */
 export class DashboardContractClient implements IDashboard<TransactionReceipt> {
   private static readonly clientCache = new Map<Address, DashboardContractClient>();
+  private static blockchainClient: IBlockchainClient<PublicClient, TransactionReceipt> | undefined;
 
   private readonly contract: GetContractReturnType<typeof DashboardABI, PublicClient, Address>;
+
+  /**
+   * Initializes the static blockchain client for all DashboardContractClient instances.
+   * Should be called once during application startup.
+   *
+   * @param {IBlockchainClient<PublicClient, TransactionReceipt>} blockchainClient - Blockchain client for reading contract data.
+   */
+  static initialize(blockchainClient: IBlockchainClient<PublicClient, TransactionReceipt>): void {
+    this.blockchainClient = blockchainClient;
+  }
 
   /**
    * Creates a new DashboardContractClient instance.
@@ -19,34 +30,44 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
    * @param {Address} contractAddress - The address of the Dashboard contract.
    */
   constructor(
-    private readonly contractClientLibrary: IBlockchainClient<PublicClient, TransactionReceipt>,
+    contractClientLibrary: IBlockchainClient<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
   ) {
+    const clientLibrary = contractClientLibrary ?? DashboardContractClient.blockchainClient;
+    if (!clientLibrary) {
+      throw new Error(
+        "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() or provided to constructor",
+      );
+    }
     this.contract = getContract({
       abi: DashboardABI,
       address: contractAddress,
-      client: this.contractClientLibrary.getBlockchainClient(),
+      client: clientLibrary.getBlockchainClient(),
     });
   }
 
   /**
    * Gets or creates a DashboardContractClient instance for the given dashboard address.
    * Uses a static cache to reuse instances for the same dashboard address.
+   * Requires blockchainClient to be initialized via initialize() before first use.
    *
-   * @param {IBlockchainClient<PublicClient, TransactionReceipt>} contractClientLibrary - Blockchain client for reading contract data.
    * @param {Address} contractAddress - The address of the Dashboard contract.
    * @returns {DashboardContractClient} The cached or newly created DashboardContractClient instance.
+   * @throws {Error} If blockchainClient has not been initialized.
    */
-  static getOrCreate(
-    contractClientLibrary: IBlockchainClient<PublicClient, TransactionReceipt>,
-    contractAddress: Address,
-  ): DashboardContractClient {
+  static getOrCreate(contractAddress: Address): DashboardContractClient {
+    if (!this.blockchainClient) {
+      throw new Error(
+        "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() before use",
+      );
+    }
+
     const cached = this.clientCache.get(contractAddress);
     if (cached) {
       return cached;
     }
 
-    const client = new DashboardContractClient(contractClientLibrary, contractAddress);
+    const client = new DashboardContractClient(this.blockchainClient, contractAddress);
     this.clientCache.set(contractAddress, client);
     return client;
   }

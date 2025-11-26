@@ -48,6 +48,7 @@ import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 import { VaultHubContractClient } from "../../clients/contracts/VaultHubContractClient.js";
 import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
 import { OperationModeMetricsRecorder } from "../metrics/OperationModeMetricsRecorder.js";
+import { DashboardContractClient } from "../../clients/contracts/DashboardContractClient.js";
 
 /**
  * Bootstrap class for the Native Yield Automation Service.
@@ -132,6 +133,7 @@ export class NativeYieldAutomationServiceBootstrap {
       getChain(config.dataSources.chainId),
       this.web3SignerClient,
     );
+    DashboardContractClient.initialize(this.viemBlockchainClientAdapter);
     this.yieldManagerContractClient = new YieldManagerContractClient(
       new WinstonLogger(YieldManagerContractClient.name, config.loggerOptions),
       this.viemBlockchainClientAdapter,
@@ -200,7 +202,6 @@ export class NativeYieldAutomationServiceBootstrap {
       this.metricsUpdater,
       this.yieldManagerContractClient,
       this.vaultHubContractClient,
-      this.viemBlockchainClientAdapter,
     );
 
     this.yieldReportingOperationModeProcessor = new YieldReportingProcessor(
@@ -215,7 +216,6 @@ export class NativeYieldAutomationServiceBootstrap {
       config.contractAddresses.lidoYieldProviderAddress,
       config.contractAddresses.l2YieldRecipientAddress,
       config.reporting.shouldSubmitVaultReport,
-      this.viemBlockchainClientAdapter,
       config.reporting.minPositiveYieldToReportWei,
       config.reporting.minUnpaidLidoProtocolFeesToReportYieldWei,
     );

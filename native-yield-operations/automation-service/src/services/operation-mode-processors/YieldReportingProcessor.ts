@@ -1,14 +1,7 @@
-import { Address, PublicClient, TransactionReceipt } from "viem";
+import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import {
-  bigintReplacer,
-  IBlockchainClient,
-  ILogger,
-  attempt,
-  msToSeconds,
-  weiToGweiNumber,
-} from "@consensys/linea-shared-utils";
+import { bigintReplacer, ILogger, attempt, msToSeconds, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
 import { RebalanceDirection, RebalanceRequirement } from "../../core/entities/RebalanceRequirement.js";
@@ -40,7 +33,6 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @param {Address} yieldProvider - The yield provider address to process.
    * @param {Address} l2YieldRecipient - The L2 yield recipient address for yield reporting.
    * @param {boolean} shouldSubmitVaultReport - Whether to submit the vault accounting report. Can be set to false if other actors are expected to submit.
-   * @param {IBlockchainClient<PublicClient, TransactionReceipt>} blockchainClient - Blockchain client for creating DashboardContractClient.
    * @param {bigint} minPositiveYieldToReportWei - Minimum positive yield amount (in wei) required before triggering a yield report.
    * @param {bigint} minUnpaidLidoProtocolFeesToReportYieldWei - Minimum unpaid Lido protocol fees amount (in wei) required before triggering a fee settlement.
    */
@@ -56,7 +48,6 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly yieldProvider: Address,
     private readonly l2YieldRecipient: Address,
     private readonly shouldSubmitVaultReport: boolean,
-    private readonly blockchainClient: IBlockchainClient<PublicClient, TransactionReceipt>,
     private readonly minPositiveYieldToReportWei: bigint,
     private readonly minUnpaidLidoProtocolFeesToReportYieldWei: bigint,
   ) {}
@@ -316,7 +307,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     // First, get dashboard address
     const dashboardAddress = await this.yieldManagerContractClient.getLidoDashboardAddress(this.yieldProvider);
-    const dashboardClient = DashboardContractClient.getOrCreate(this.blockchainClient, dashboardAddress);
+    const dashboardClient = DashboardContractClient.getOrCreate(dashboardAddress);
 
     // Use Promise.all to concurrently fetch both values
     const [unpaidLidoProtocolFees, yieldReport] = await Promise.all([

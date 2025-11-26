@@ -61,6 +61,7 @@ const createBlockchainClientMock = () =>
 jest.mock("../../../clients/contracts/DashboardContractClient.js", () => ({
   DashboardContractClient: {
     getOrCreate: jest.fn(),
+    initialize: jest.fn(),
   },
 }));
 
@@ -80,6 +81,8 @@ describe("OperationModeMetricsRecorder", () => {
       getAddress: jest.fn(),
       getContract: jest.fn(),
     } as unknown as jest.Mocked<DashboardContractClient>;
+    const blockchainClient = createBlockchainClientMock();
+    DashboardContractClient.initialize(blockchainClient);
     (DashboardContractClient.getOrCreate as jest.MockedFunction<typeof DashboardContractClient.getOrCreate>).mockReturnValue(
       dashboardClientInstance,
     );
@@ -90,17 +93,15 @@ describe("OperationModeMetricsRecorder", () => {
     const metricsUpdater = createMetricsUpdaterMock();
     const yieldManagerClient = createYieldManagerMock();
     const vaultHubClient = createVaultHubMock();
-    const blockchainClient = createBlockchainClientMock();
 
     const recorder = new OperationModeMetricsRecorder(
       logger,
       metricsUpdater,
       yieldManagerClient,
       vaultHubClient,
-      blockchainClient,
     );
 
-    return { recorder, metricsUpdater, yieldManagerClient, vaultHubClient, blockchainClient };
+    return { recorder, metricsUpdater, yieldManagerClient, vaultHubClient };
   };
 
   describe("recordProgressOssificationMetrics", () => {
@@ -126,7 +127,7 @@ describe("OperationModeMetricsRecorder", () => {
     });
 
     it("records node operator, lido fee, and liability metrics when values are non-zero", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient, blockchainClient } = setupRecorder();
+      const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient } = setupRecorder();
 
       yieldManagerClient.getLidoStakingVaultAddress.mockResolvedValueOnce(vaultAddress);
       yieldManagerClient.getLidoDashboardAddress.mockResolvedValueOnce(dashboardAddress);
@@ -139,7 +140,7 @@ describe("OperationModeMetricsRecorder", () => {
         ok<TransactionReceipt | undefined, Error>(receipt),
       );
 
-      expect(DashboardContractClient.getOrCreate).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
+      expect(DashboardContractClient.getOrCreate).toHaveBeenCalledWith(dashboardAddress);
       expect(dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt).toHaveBeenCalledWith(receipt);
       expect(metricsUpdater.addNodeOperatorFeesPaid).toHaveBeenCalledWith(vaultAddress, 5);
       expect(metricsUpdater.addLidoFeesPaid).toHaveBeenCalledWith(vaultAddress, 3);
@@ -195,7 +196,7 @@ describe("OperationModeMetricsRecorder", () => {
     });
 
     it("records yield metrics and payouts when report is available", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient, blockchainClient } = setupRecorder();
+      const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient } = setupRecorder();
 
       yieldManagerClient.getYieldReportFromTxReceipt.mockReturnValueOnce({
         yieldAmount: toWei(11),
@@ -210,7 +211,7 @@ describe("OperationModeMetricsRecorder", () => {
 
       await recorder.recordReportYieldMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(receipt));
 
-      expect(DashboardContractClient.getOrCreate).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
+      expect(DashboardContractClient.getOrCreate).toHaveBeenCalledWith(dashboardAddress);
       expect(dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt).toHaveBeenCalledWith(receipt);
       expect(yieldManagerClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(alternateYieldProvider);
       expect(metricsUpdater.incrementReportYield).toHaveBeenCalledWith(vaultAddress);

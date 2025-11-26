@@ -30,6 +30,7 @@ jest.mock("@consensys/linea-shared-utils", () => {
 jest.mock("../../../clients/contracts/DashboardContractClient.js", () => ({
   DashboardContractClient: {
     getOrCreate: jest.fn(),
+    initialize: jest.fn(),
   },
 }));
 
@@ -129,6 +130,7 @@ describe("YieldReportingProcessor", () => {
       peekUnpaidLidoProtocolFees: jest.fn(),
     } as unknown as jest.Mocked<DashboardContractClient>;
 
+    DashboardContractClient.initialize(blockchainClient);
     (DashboardContractClientMock as any).getOrCreate = jest.fn().mockReturnValue(dashboardClient);
 
     lazyOracle.waitForVaultsReportDataUpdatedEvent.mockResolvedValue({
@@ -169,7 +171,6 @@ describe("YieldReportingProcessor", () => {
       yieldProvider,
       l2Recipient,
       shouldSubmitVaultReport,
-      blockchainClient,
       minPositiveYieldToReportWei,
       minUnpaidLidoProtocolFeesToReportYieldWei,
     );
@@ -651,7 +652,7 @@ describe("YieldReportingProcessor", () => {
 
       expect(result).toBe(true);
       expect(yieldManager.getLidoDashboardAddress).toHaveBeenCalledWith(yieldProvider);
-      expect(DashboardContractClientMock.getOrCreate).toHaveBeenCalledWith(blockchainClient, dashboardAddress);
+      expect(DashboardContractClientMock.getOrCreate).toHaveBeenCalledWith(dashboardAddress);
       expect(dashboardClient.peekUnpaidLidoProtocolFees).toHaveBeenCalledTimes(1);
       expect(yieldManager.peekYieldReport).toHaveBeenCalledWith(yieldProvider, l2Recipient);
       expect(logger.info).toHaveBeenCalledWith(
