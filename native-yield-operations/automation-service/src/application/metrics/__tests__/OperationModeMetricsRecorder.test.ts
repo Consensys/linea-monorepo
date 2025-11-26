@@ -101,7 +101,7 @@ describe("OperationModeMetricsRecorder", () => {
       vaultHubClient,
     );
 
-    return { recorder, metricsUpdater, yieldManagerClient, vaultHubClient };
+    return { recorder, logger, metricsUpdater, yieldManagerClient, vaultHubClient };
   };
 
   describe("recordProgressOssificationMetrics", () => {
@@ -115,13 +115,16 @@ describe("OperationModeMetricsRecorder", () => {
     });
 
     it("does nothing when receipt is undefined", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const { recorder, logger, metricsUpdater, yieldManagerClient } = setupRecorder();
 
       await recorder.recordProgressOssificationMetrics(
         yieldProvider,
         ok<TransactionReceipt | undefined, Error>(undefined),
       );
 
+      expect(logger.warn).toHaveBeenCalledWith(
+        "recordProgressOssificationMetrics - receipt is undefined, skipping metrics recording",
+      );
       expect(yieldManagerClient.getLidoStakingVaultAddress).not.toHaveBeenCalled();
       expect(metricsUpdater.addNodeOperatorFeesPaid).not.toHaveBeenCalled();
     });
@@ -147,7 +150,7 @@ describe("OperationModeMetricsRecorder", () => {
       expect(metricsUpdater.addLiabilitiesPaid).toHaveBeenCalledWith(vaultAddress, 7);
     });
 
-    it("skips metric updates when all extracted values are zero", async () => {
+    it("records metric updates even when all extracted values are zero", async () => {
       const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient } = setupRecorder();
 
       yieldManagerClient.getLidoStakingVaultAddress.mockResolvedValueOnce(vaultAddress);
@@ -161,9 +164,11 @@ describe("OperationModeMetricsRecorder", () => {
         ok<TransactionReceipt | undefined, Error>(receipt),
       );
 
-      expect(metricsUpdater.addNodeOperatorFeesPaid).not.toHaveBeenCalled();
-      expect(metricsUpdater.addLidoFeesPaid).not.toHaveBeenCalled();
-      expect(metricsUpdater.addLiabilitiesPaid).not.toHaveBeenCalled();
+      expect(DashboardContractClient.getOrCreate).toHaveBeenCalledWith(dashboardAddress);
+      expect(dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt).toHaveBeenCalledWith(receipt);
+      expect(metricsUpdater.addNodeOperatorFeesPaid).toHaveBeenCalledWith(vaultAddress, 0);
+      expect(metricsUpdater.addLidoFeesPaid).toHaveBeenCalledWith(vaultAddress, 0);
+      expect(metricsUpdater.addLiabilitiesPaid).toHaveBeenCalledWith(vaultAddress, 0);
     });
   });
 
@@ -177,10 +182,13 @@ describe("OperationModeMetricsRecorder", () => {
     });
 
     it("does nothing when receipt is undefined", async () => {
-      const { recorder, metricsUpdater } = setupRecorder();
+      const { recorder, logger, metricsUpdater } = setupRecorder();
 
       await recorder.recordReportYieldMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(undefined));
 
+      expect(logger.warn).toHaveBeenCalledWith(
+        "recordReportYieldMetrics - receipt is undefined, skipping metrics recording",
+      );
       expect(metricsUpdater.incrementReportYield).not.toHaveBeenCalled();
     });
 
@@ -233,10 +241,13 @@ describe("OperationModeMetricsRecorder", () => {
     });
 
     it("does nothing when receipt is undefined", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const { recorder, logger, metricsUpdater, yieldManagerClient } = setupRecorder();
 
       await recorder.recordSafeWithdrawalMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(undefined));
 
+      expect(logger.warn).toHaveBeenCalledWith(
+        "recordSafeWithdrawalMetrics - receipt is undefined, skipping metrics recording",
+      );
       expect(metricsUpdater.recordRebalance).not.toHaveBeenCalled();
       expect(yieldManagerClient.getWithdrawalEventFromTxReceipt).not.toHaveBeenCalled();
     });
@@ -279,10 +290,13 @@ describe("OperationModeMetricsRecorder", () => {
     });
 
     it("does nothing when receipt is undefined", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const { recorder, logger, metricsUpdater, yieldManagerClient } = setupRecorder();
 
       await recorder.recordTransferFundsMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(undefined));
 
+      expect(logger.warn).toHaveBeenCalledWith(
+        "recordTransferFundsMetrics - receipt is undefined, skipping metrics recording",
+      );
       expect(metricsUpdater.addLiabilitiesPaid).not.toHaveBeenCalled();
       expect(yieldManagerClient.getLidoStakingVaultAddress).not.toHaveBeenCalled();
     });
@@ -298,7 +312,7 @@ describe("OperationModeMetricsRecorder", () => {
       expect(metricsUpdater.addLiabilitiesPaid).toHaveBeenCalledWith(vaultAddress, 12);
     });
 
-    it("skips liabilities when payment is zero", async () => {
+    it("records liabilities even when payment is zero", async () => {
       const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient } = setupRecorder();
 
       yieldManagerClient.getLidoStakingVaultAddress.mockResolvedValueOnce(vaultAddress);
@@ -306,7 +320,7 @@ describe("OperationModeMetricsRecorder", () => {
 
       await recorder.recordTransferFundsMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(receipt));
 
-      expect(metricsUpdater.addLiabilitiesPaid).not.toHaveBeenCalled();
+      expect(metricsUpdater.addLiabilitiesPaid).toHaveBeenCalledWith(vaultAddress, 0);
     });
   });
 });
