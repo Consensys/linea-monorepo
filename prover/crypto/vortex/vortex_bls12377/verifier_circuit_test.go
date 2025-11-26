@@ -37,11 +37,6 @@ func TestGnarkVerifier(t *testing.T) {
 	rate := 2
 	WithSis := make([]bool, nCommitments)
 
-	WithSis[0] = true
-	WithSis[1] = true
-	WithSis[2] = false
-	WithSis[3] = true
-
 	params, proof, vi, roots, merkleProofs := getProofVortexNCommitmentsWithMerkle(t, nCommitments, nbPolys, polySize, rate, WithSis)
 
 	var circuit, witness VerifierCircuit
