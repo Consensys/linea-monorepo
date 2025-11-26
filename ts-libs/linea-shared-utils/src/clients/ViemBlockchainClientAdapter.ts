@@ -106,6 +106,15 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
   }
 
   /**
+   * Gets the Ethereum address of the signer associated with this blockchain client.
+   *
+   * @returns {Address} The Ethereum address of the signer.
+   */
+  getSignerAddress(): Address {
+    return this.contractSignerClient.getAddress();
+  }
+
+  /**
    * Gets the chain ID of the connected blockchain network.
    *
    * @returns {Promise<number>} The chain ID of the blockchain network.

@@ -170,6 +170,11 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(adapter.getBlockchainClient()).toBe(publicClientMock);
   });
 
+  it("delegates to contract signer client for getSignerAddress", () => {
+    expect(adapter.getSignerAddress()).toBe("0xSIGNER");
+    expect(contractSignerClient.getAddress).toHaveBeenCalledTimes(1);
+  });
+
   it("delegates to public client for getChainId, getBalance, estimateGasFees", async () => {
     publicClientMock.getChainId.mockResolvedValue(5);
     publicClientMock.getBalance.mockResolvedValue(123n);
