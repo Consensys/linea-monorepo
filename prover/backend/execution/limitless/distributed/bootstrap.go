@@ -179,16 +179,16 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 
 	logrus.Info("Saving the witnesses")
 
-	wg, ctx := errgroup.WithContext(context.Background())
-	wg.SetLimit(numConcurrentWritingGoroutines)
+	wgGL, ctxGL := errgroup.WithContext(context.Background())
+	wgGL.SetLimit(numConcurrentWritingGoroutines)
 
 	for i, witnessGL := range witnessGLs {
 		i := i
-		wg.Go(func() error {
+		wgGL.Go(func() error {
 
 			select {
-			case <-ctx.Done():
-				return ctx.Err()
+			case <-ctxGL.Done():
+				return ctxGL.Err()
 			default:
 
 				var (
@@ -215,16 +215,19 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 	// This is because, if even one of the LPPs is saved before the GLs, the worker controller may pick-up the
 	// LPP sub-proof files before the GL sub-proof files - Which can affect the liveness of the entire
 	// proof flow
-	if err := wg.Wait(); err != nil {
+	if err := wgGL.Wait(); err != nil {
 		return fmt.Errorf("could not save GL witnesses: %v", err)
 	}
 
+	wgLPP, ctxLPP := errgroup.WithContext(context.Background())
+	wgLPP.SetLimit(numConcurrentWritingGoroutines)
+
 	for i, witnessLPP := range witnessLPPs {
 		i := i
-		wg.Go(func() error {
+		wgLPP.Go(func() error {
 			select {
-			case <-ctx.Done():
-				return ctx.Err()
+			case <-ctxLPP.Done():
+				return ctxLPP.Err()
 			default:
 
 				var (
@@ -246,7 +249,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 		})
 	}
 
-	if err := wg.Wait(); err != nil {
+	if err := wgLPP.Wait(); err != nil {
 		return fmt.Errorf("could not save LPP witnesses: %v", err)
 	}
 
