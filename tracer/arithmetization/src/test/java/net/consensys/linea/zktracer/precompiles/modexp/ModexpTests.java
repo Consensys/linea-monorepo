@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.precompiles;
+package net.consensys.linea.zktracer.precompiles.modexp;
 
 import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
