@@ -381,7 +381,7 @@ func GetTestTracesLimits() *TracesLimits {
 		Bin:                                  262144,
 		Blake2Fmodexpdata:                    16384,
 		Blockdata:                            4096,
-		Blockhash:                            2048,
+		Blockhash:                            4096,
 		Ecdata:                               65536,
 		Euc:                                  65536,
 		Exp:                                  65536,
