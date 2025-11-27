@@ -22,9 +22,13 @@ type FSCircuit struct {
 	D  [10]zk.WrappedVariable
 	R3 zk.Octuplet
 
+	// random many integers
 	R4    []frontend.Variable
 	n     int
 	bound int
+
+	// set state, get state
+	SetState, GetState zk.Octuplet
 }
 
 func (c *FSCircuit) Define(api frontend.API) error {
@@ -50,10 +54,18 @@ func (c *FSCircuit) Define(api frontend.API) error {
 		apiGen.AssertIsEqual(e[i], c.R3[i])
 	}
 
+	// random many integers
 	fs.Update(c.D[:]...)
 	res := fs.RandomManyIntegers(c.n, c.bound)
 	for i := 0; i < len(res); i++ {
 		api.AssertIsEqual(res[i], c.R4[i])
+	}
+
+	// set state, get state
+	fs.SetState(c.SetState)
+	getState := fs.State()
+	for i := 0; i < len(getState); i++ {
+		apiGen.AssertIsEqual(getState[i], c.GetState[i])
 	}
 
 	return nil
@@ -83,10 +95,19 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	fs.Update(c[:]...)
 	r3 := fs.RandomField()
 
+	// random many integers
 	fs.Update(d[:]...)
 	n := 5
 	bound := 8
 	r4 := fs.RandomManyIntegers(n, bound)
+
+	// set state, get state
+	var setState field.Octuplet
+	for i := 0; i < 8; i++ {
+		setState[i].SetRandom()
+	}
+	fs.SetState(setState)
+	getState := fs.State()
 
 	var circuit, witness FSCircuit
 	witness.A = a.String()
@@ -100,6 +121,8 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	}
 	for i := 0; i < 8; i++ {
 		witness.R3[i] = zk.ValueOf(r3[i].String())
+		witness.SetState[i] = zk.ValueOf(setState[i].String())
+		witness.GetState[i] = zk.ValueOf(getState[i].String())
 	}
 
 	circuit.n = n
