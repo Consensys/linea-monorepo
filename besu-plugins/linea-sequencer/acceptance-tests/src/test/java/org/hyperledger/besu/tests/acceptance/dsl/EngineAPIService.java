@@ -130,7 +130,7 @@ public class EngineAPIService {
     }
 
     final Call newPayloadRequest =
-        createNewPayloadRequest(
+        createNewPayloadRequestV5(
             executionPayload,
             expectedBlobVersionedHashes,
             parentBeaconBlockRoot,
@@ -157,7 +157,7 @@ public class EngineAPIService {
       final ArrayNode executionRequests)
       throws IOException, InterruptedException {
     final Call newPayloadRequest =
-        createNewPayloadRequest(
+        createNewPayloadRequestV5(
             executionPayload,
             expectedBlobVersionedHashes,
             parentBeaconBlockRoot,
@@ -197,22 +197,42 @@ public class EngineAPIService {
   private Call createGetPayloadRequest(final String payloadId) {
     ArrayNode params = mapper.createArrayNode();
     params.add(payloadId);
-    return createEngineCall("engine_getPayloadV4", params);
+    return createEngineCall("engine_getPayloadV5", params);
   }
 
-  private Call createNewPayloadRequest(
-      final ObjectNode executionPayload,
-      final ArrayNode expectedBlobVersionedHashes,
-      final String parentBeaconBlockRoot,
-      final ArrayNode executionRequests) {
-    ArrayNode params = mapper.createArrayNode();
-    params.add(executionPayload);
-    params.add(expectedBlobVersionedHashes);
-    params.add(parentBeaconBlockRoot);
-    params.add(executionRequests);
+  // private Call createNewPayloadRequestV4(
+  //     final ObjectNode executionPayload,
+  //     final ArrayNode expectedBlobVersionedHashes,
+  //     final String parentBeaconBlockRoot,
+  //     final ArrayNode executionRequests) {
+  //   ArrayNode params = mapper.createArrayNode();
+  //   params.add(executionPayload);
+  //   params.add(expectedBlobVersionedHashes);
+  //   params.add(parentBeaconBlockRoot);
+  //   params.add(executionRequests);
 
-    return createEngineCall("engine_newPayloadV4", params);
-  }
+  //   return createEngineCall("engine_newPayloadV4", params);
+  // }
+
+  private Call createNewPayloadRequestV5(
+    final ObjectNode executionPayload,
+    final ArrayNode expectedBlobVersionedHashes,
+    final String parentBeaconBlockRoot,
+    final ArrayNode executionRequests) {
+
+  // Add blockAccessList to executionPayload (required for V5)
+  // Use "0xc0" for empty BlockAccessList
+  executionPayload.put("blockAccessList", "0xc0");
+
+  ArrayNode params = mapper.createArrayNode();
+  params.add(executionPayload);
+  params.add(expectedBlobVersionedHashes);
+  params.add(parentBeaconBlockRoot);
+  params.add(executionRequests);
+
+  return createEngineCall("engine_newPayloadV5", params);
+}
+
 
   private Call createEngineCall(final String rpcMethod, ArrayNode params) {
     ObjectNode request = mapper.createObjectNode();
