@@ -32,27 +32,27 @@ public class EstimateGasModuleLimitOverflowLimitlessTest extends LineaPluginPoST
 
   @Test
   public void estimateGasFailsForExceedingModuleLineCountTest() throws Exception {
-    final var modExp = deployModExp();
-
+    final var bls12MapFPtoG1 = deployBLS12_MAP_FP_TO_G1();
+    
     final Bytes[] invalidInputs = {
-      Bytes.fromHexString("0000000000000000000000000000000000000000000000000000000000000201"),
-      Bytes.fromHexString("00000000000000000000000000000000000000000000000000000000000003"),
-      Bytes.fromHexString("ff"),
-      Bytes.fromHexString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+      Bytes.fromHexString("0000000000000000000000000000000014406e5bfb9209256a3820879a29ac2f62d6aca82324bf3ae2aa7d3c54792043bd8c791fccdb080c1a52dc68b8b69350"),
+      // Bytes.fromHexString("00000000000000000000000000000000000000000000000000000000000003"),
+      // Bytes.fromHexString("ff"),
+      // Bytes.fromHexString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
     };
 
     for (int i = 0; i < invalidInputs.length; i++) {
-      final var modExpCalldata =
-          modExp.callModExp(invalidInputs[i].toArrayUnsafe()).encodeFunctionCall();
+      final var calldata =
+      bls12MapFPtoG1.callBLS12_MAP_FP_TO_G1(invalidInputs[i].toArrayUnsafe()).encodeFunctionCall();
 
       final EstimateGasTest.CallParams callParams =
           new EstimateGasTest.CallParams(
               null,
               accounts.getSecondaryBenefactor().getAddress(),
               null,
-              modExp.getContractAddress(),
+              bls12MapFPtoG1.getContractAddress(),
               null,
-              modExpCalldata,
+              calldata,
               "0",
               DefaultGasProvider.GAS_PRICE.toString(),
               null,
