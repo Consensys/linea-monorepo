@@ -129,6 +129,7 @@ func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
+
 	fs.UpdateExt(p.Sum)
 }
 
@@ -139,6 +140,7 @@ func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
+
 	fs.UpdateExt(p.ExtYs...)
 }
 

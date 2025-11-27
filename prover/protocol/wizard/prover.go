@@ -722,6 +722,7 @@ func (run *ProverRuntime) goNextRound() {
 			the last one to "talk" in the protocol.
 		*/
 		msgsToFS := run.Spec.Columns.AllKeysInProverTranscript(run.currRound)
+
 		for _, msgName := range msgsToFS {
 
 			if run.Spec.Columns.IsExplicitlyExcludedFromProverFS(msgName) {
@@ -731,7 +732,6 @@ func (run *ProverRuntime) goNextRound() {
 			if run.Spec.Precomputed.Exists(msgName) {
 				continue
 			}
-
 			instance := run.GetMessage(msgName)
 			run.BLSFS.UpdateSV(instance)
 		}
@@ -740,6 +740,7 @@ func (run *ProverRuntime) goNextRound() {
 			Also include the prover's allegations for all evaluations
 		*/
 		paramsToFS := run.Spec.QueriesParams.AllKeysAt(run.currRound)
+
 		for _, qName := range paramsToFS {
 			if run.Spec.QueriesParams.IsSkippedFromProverTranscript(qName) {
 				continue

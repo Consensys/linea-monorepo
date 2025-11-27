@@ -213,8 +213,9 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
 	vortex.LinearCombination(proof, committedSV, randomCoinLC)
-	// fmt.Printf("proof.LinearCombination:%v\n", proof.LinearCombination.Pretty())
+	fmt.Printf("proof.LinearCombination:%v\n", proof.LinearCombination.Pretty())
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+
 }
 
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses

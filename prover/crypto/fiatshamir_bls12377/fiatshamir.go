@@ -1,13 +1,10 @@
 package fiatshamir_bls12377
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -45,20 +42,19 @@ func (fs *FS) RandomFieldFrElmt() fr.Element {
 // List of methods to updae the FS state with koala elmts
 
 func (fs *FS) Update(vec ...field.Element) {
+	// fmt.Printf("non-circuit: Updating FS with field elements %v \n", vector.Prettify(vec))
 	fs.h.WriteKoalabearElements(vec...)
 }
 
 func (fs *FS) UpdateExt(vec ...fext.Element) {
-	fmt.Printf("Updating FS with fext elements %v \n", vectorext.Prettify(vec))
+	// fmt.Printf("non-circuit: Updating FS with fext elements %v \n", vectorext.Prettify(vec))
 
-	pad := make([]field.Element, 4*len(vec))
 	for i := 0; i < len(vec); i++ {
-		pad[4*i].Set(&vec[i].B0.A0)
-		pad[4*i+1].Set(&vec[i].B0.A1)
-		pad[4*i+2].Set(&vec[i].B1.A0)
-		pad[4*i+3].Set(&vec[i].B1.A1)
+		fs.h.WriteKoalabearElements(vec[i].B0.A0)
+		fs.h.WriteKoalabearElements(vec[i].B0.A1)
+		fs.h.WriteKoalabearElements(vec[i].B1.A0)
+		fs.h.WriteKoalabearElements(vec[i].B1.A1)
 	}
-	fs.h.WriteKoalabearElements(pad...)
 }
 
 func (fs *FS) UpdateVec(vec ...[]field.Element) {
@@ -83,10 +79,15 @@ func (fs *FS) UpdateSV(sv smartvectors.SmartVector) {
 	if sv.Len() == 0 {
 		return
 	}
-
-	vec := make([]field.Element, sv.Len())
-	sv.WriteInSlice(vec)
-	fs.Update(vec...)
+	if smartvectors.IsBase(sv) {
+		vec := make([]field.Element, sv.Len())
+		sv.WriteInSlice(vec)
+		fs.Update(vec...)
+	} else {
+		vec := make([]fext.Element, sv.Len())
+		sv.WriteInSliceExt(vec)
+		fs.UpdateExt(vec...)
+	}
 }
 
 func (fs *FS) RandomField() field.Octuplet {

@@ -63,11 +63,12 @@ func (fs *GnarkFS) RandomFrElmt() frontend.Variable {
 // List of methods to updae the FS state with koala elmts
 
 func (fs *GnarkFS) Update(vec ...zk.WrappedVariable) {
+
 	fs.hasher.WriteWVs(vec...)
 }
 func (fs *GnarkFS) UpdateExt(vec ...gnarkfext.E4Gen) {
-	ext4, _ := gnarkfext.NewExt4(fs.api)
-	ext4.Println(vec...) // DEBUG
+	// ext4, _ := gnarkfext.NewExt4(fs.api)
+	// ext4.Println(vec...) // DEBUG
 	for i := 0; i < len(vec); i++ {
 		fs.hasher.WriteWVs(vec[i].B0.A0)
 		fs.hasher.WriteWVs(vec[i].B0.A1)
@@ -91,10 +92,14 @@ func (fs *FS) UpdateGeneric(vec ...fext.GenericFieldElem) {
 	}
 }
 func (fs *GnarkFS) UpdateVec(vec ...[]zk.WrappedVariable) {
-	v := make([]zk.WrappedVariable, len(vec))
+	v := make([]zk.WrappedVariable, 0, len(vec))
+
 	for _, _v := range vec {
 		v = append(v, _v...)
 	}
+	// apiGen, _ := zk.NewGenericApi(fs.api)
+	// apiGen.Println(vec[0]...) // DEBUG
+
 	fs.Update(v...)
 }
 

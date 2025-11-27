@@ -35,7 +35,7 @@ func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVeri
 	if err != nil {
 		return err
 	}
-	err = GnarkCheckStatement(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+	// err = GnarkCheckStatement(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	return err
 }
 

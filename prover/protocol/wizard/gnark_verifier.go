@@ -388,7 +388,6 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			}
 
 			msgContent := c.GetColumn(msg)
-
 			c.BLSFS.UpdateVec(msgContent)
 		}
 

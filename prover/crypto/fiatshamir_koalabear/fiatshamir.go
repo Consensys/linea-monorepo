@@ -67,9 +67,15 @@ func (fs *FS) UpdateSV(sv smartvectors.SmartVector) {
 		return
 	}
 
-	vec := make([]field.Element, sv.Len())
-	sv.WriteInSlice(vec)
-	fs.Update(vec...)
+	if smartvectors.IsBase(sv) {
+		vec := make([]field.Element, sv.Len())
+		sv.WriteInSlice(vec)
+		fs.Update(vec...)
+	} else {
+		vec := make([]fext.Element, sv.Len())
+		sv.WriteInSliceExt(vec)
+		fs.UpdateExt(vec...)
+	}
 }
 
 func (fs *FS) RandomField() field.Octuplet {
