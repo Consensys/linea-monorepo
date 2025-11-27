@@ -16,4 +16,9 @@ interface IGenericErrors {
    * @dev Thrown when a parameter is the zero hash.
    */
   error ZeroHashNotAllowed();
+
+  /**
+   * @dev Thrown when a parameter is zero.
+   */
+  error ZeroValueNotAllowed();
 }

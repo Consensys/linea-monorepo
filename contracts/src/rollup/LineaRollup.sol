@@ -23,4 +23,22 @@ contract LineaRollup is LineaRollupBase {
   function initialize(InitializationData calldata _initializationData) external initializer {
     __LineaRollup_init(_initializationData);
   }
+
+  /**
+   * @notice Sets forced transaction gateway and reinitializes the last finalized state including forced tx data.
+   * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
+   * @param _forcedTransactionGateway The address of the forced transaction gateway.
+   */
+  function reinitializeLineaRollupV7(address _forcedTransactionGateway) external reinitializer(7) {
+    if (_forcedTransactionGateway == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
+    nextForcedTransactionNumber = 1;
+
+    grantRole(FORCED_TRANSACTION_SENDER_ROLE, _forcedTransactionGateway);
+
+    /// @dev using the constants requires string memory and more complex code.
+    emit LineaRollupVersionChanged(bytes8("6.0"), bytes8("7.0"));
+  }
 }

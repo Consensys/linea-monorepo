@@ -4,16 +4,26 @@ import { ethers } from "hardhat";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 
 import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+import {
+  CallForwardingProxy,
+  ForcedTransactionGateway,
+  AddressFilter,
+  Mimc,
+  TestLineaRollup,
+} from "contracts/typechain-types";
 import { getAccountsFixture, getRoleAddressesFixture } from "./";
 import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   FALLBACK_OPERATOR_ADDRESS,
   INITIAL_WITHDRAW_LIMIT,
+  LINEA_MAINNET_CHAIN_ID,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+  MAX_GAS_LIMIT,
+  MAX_INPUT_LENGTH_LIMIT,
   ONE_DAY_IN_SECONDS,
+  THREE_DAYS_IN_SECONDS,
 } from "../../common/constants";
-import { deployUpgradableFromFactory } from "../../common/deployment";
+import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
   const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
@@ -81,6 +91,57 @@ export async function deployLineaRollupFixture() {
   })) as unknown as TestLineaRollup;
 
   return { verifier, lineaRollup };
+}
+
+export async function deployAddressFilter(securityCouncil: string, nonAuthorizedAccount: string[]) {
+  const AddressFilterFactory = await ethers.getContractFactory("AddressFilter");
+
+  const addressFilter = (await AddressFilterFactory.deploy(
+    securityCouncil,
+    nonAuthorizedAccount,
+  )) as unknown as AddressFilter;
+
+  await addressFilter.waitForDeployment();
+
+  return { addressFilter };
+}
+
+export async function deployMimcFixture() {
+  const mimc = (await deployFromFactory("Mimc")) as unknown as Mimc;
+  await mimc.waitForDeployment();
+  return { mimc };
+}
+
+export async function deployForcedTransactionGatewayFixture() {
+  const { securityCouncil, nonAuthorizedAccount } = await loadFixture(getAccountsFixture);
+  const { lineaRollup } = await loadFixture(deployLineaRollupFixture);
+  const { mimc } = await loadFixture(deployMimcFixture);
+
+  const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+    libraries: { Mimc: await mimc.getAddress() },
+  });
+
+  const { addressFilter } = await deployAddressFilter(securityCouncil.address, [nonAuthorizedAccount.address]);
+
+  const forcedTransactionGateway = (await forcedTransactionGatewayFactory.deploy(
+    await lineaRollup.getAddress(),
+    LINEA_MAINNET_CHAIN_ID,
+    THREE_DAYS_IN_SECONDS,
+    MAX_GAS_LIMIT,
+    MAX_INPUT_LENGTH_LIMIT,
+    securityCouncil.address,
+    await addressFilter.getAddress(),
+  )) as unknown as ForcedTransactionGateway;
+
+  await forcedTransactionGateway.waitForDeployment();
+
+  return { lineaRollup, forcedTransactionGateway, addressFilter, mimc };
+}
+
+export async function deployAddressFilterFixture() {
+  const { securityCouncil, nonAuthorizedAccount } = await loadFixture(getAccountsFixture);
+  const { addressFilter } = await deployAddressFilter(securityCouncil.address, [nonAuthorizedAccount.address]);
+  return { addressFilter };
 }
 
 async function deployTestPlonkVerifierForDataAggregation(): Promise<string> {
