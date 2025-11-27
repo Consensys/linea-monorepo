@@ -14,7 +14,6 @@ import java.util.List;
 import linea.plugin.acc.test.LineaPluginPoSTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import org.apache.tuweni.bytes.Bytes;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.web3j.tx.gas.DefaultGasProvider;
 
@@ -31,7 +30,6 @@ public class EstimateGasModuleLimitOverflowLimitlessTest extends LineaPluginPoST
         .build();
   }
 
-  @Disabled("Can't check over MODEXP to exclude the transaction, tmp disabled @Fabio")
   @Test
   public void estimateGasFailsForExceedingModuleLineCountTest() throws Exception {
     final var bls12MapFPtoG1 = deployBLS12_MAP_FP_TO_G1();
