@@ -16,7 +16,7 @@
 package net.consensys.linea.plugins.rpc.capture;
 
 import static net.consensys.linea.zktracer.Fork.getForkFromBesuBlockchainService;
-import static net.consensys.linea.zktracer.module.blockhash.Blockhash.retrieveHistoricalBlockHashes;
+import static net.consensys.linea.zktracer.types.PublicInputs.retrieveHistoricalBlockHashes;
 
 import java.util.Map;
 

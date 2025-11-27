@@ -18,6 +18,7 @@ package net.consensys.linea.testing;
 import static net.consensys.linea.reporting.TracerTestBase.chainConfig;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_BLOCK_NUMBER;
 import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;
+import static net.consensys.linea.zktracer.types.PublicInputs.getDefaultBlobBaseFees;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -29,6 +30,8 @@ import net.consensys.linea.blockcapture.snapshots.*;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.types.PublicInputs;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.core.*;
@@ -122,7 +125,10 @@ public class MultiBlockExecutionEnvironment {
     final Map<Long, Hash> historicalBlockhashes = conflationSnapshot.historicalBlockHashes();
     // Remove the last block number as it's not part of the historical blockhashes
     historicalBlockhashes.remove(conflationSnapshot.lastBlockNumber());
-    tracer = new ZkTracer(chainConfig, historicalBlockhashes);
+    tracer =
+        new ZkTracer(
+            chainConfig,
+            new PublicInputs(historicalBlockhashes, conflationSnapshot.blobBaseFees()));
     ReplayExecutionEnvironment.builder()
         .zkTracer(tracer)
         .useCoinbaseAddressFromBlockHeader(true)
@@ -167,7 +173,16 @@ public class MultiBlockExecutionEnvironment {
           block.header().number(), block.header().toBlockHeader().getBlockHash());
     }
 
+    final Map<Long, Bytes> blobBaseFees =
+        getDefaultBlobBaseFees(
+            blocks.getFirst().header().number(), blocks.getLast().header().number());
+
     return ConflationSnapshot.from(
-        testsChain.fork.name(), blocks, accountSnapshots, storageSnapshots, blockHashSnapshots);
+        testsChain.fork.name(),
+        blocks,
+        accountSnapshots,
+        storageSnapshots,
+        blockHashSnapshots,
+        blobBaseFees);
   }
 }

@@ -22,18 +22,22 @@ import static net.consensys.linea.zktracer.opcode.OpCode.CHAINID;
 import static net.consensys.linea.zktracer.opcode.OpCode.GASLIMIT;
 import static net.consensys.linea.zktracer.opcode.OpCode.PREVRANDAO;
 
+import java.util.Map;
+
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockdataOperation;
+import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockDataOperation;
 import net.consensys.linea.zktracer.module.blockdata.moduleOperation.ParisBlockDataOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 public class ParisBlockData extends LondonBlockData {
-  public ParisBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
-    super(hub, wcp, euc, chain);
+  public ParisBlockData(
+      Hub hub, Wcp wcp, Euc euc, ChainConfig chain, Map<Long, Bytes> blobBaseFees) {
+    super(hub, wcp, euc, chain, blobBaseFees);
   }
 
   @Override
@@ -42,7 +46,7 @@ public class ParisBlockData extends LondonBlockData {
   }
 
   @Override
-  protected BlockdataOperation setBlockDataOperation(
+  protected BlockDataOperation setBlockDataOperation(
       Hub hub,
       BlockHeader blockHeader,
       BlockHeader previousBlockHeader,
@@ -51,7 +55,8 @@ public class ParisBlockData extends LondonBlockData {
       Euc euc,
       ChainConfig chain,
       OpCode opCode,
-      long firstBlockNumber) {
+      long firstBlockNumber,
+      Map<Long, Bytes> blobBaseFees) {
     return new ParisBlockDataOperation(
         hub,
         blockHeader,
@@ -61,7 +66,8 @@ public class ParisBlockData extends LondonBlockData {
         euc,
         chain,
         opCode,
-        firstBlockNumber);
+        firstBlockNumber,
+        blobBaseFees);
   }
 
   @Override

@@ -387,7 +387,7 @@ public class ZkCounter implements LineCountingTracer {
             LogTopic.of(bridgeConfiguration.topic()));
     moduleToCount = Stream.concat(checkedModules().stream(), uncheckedModules().stream()).toList();
 
-    log.info("[ZkCounter] Created ZkCounter");
+    log.info("[ZkCounter] Created ZkCounter for fork {}", fork);
   }
 
   @Override

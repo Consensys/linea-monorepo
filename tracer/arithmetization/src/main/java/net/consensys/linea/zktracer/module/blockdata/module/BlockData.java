@@ -27,23 +27,25 @@ import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.ModuleName;
-import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockdataOperation;
+import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockDataOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 @RequiredArgsConstructor
-public abstract class Blockdata implements Module {
+public abstract class BlockData implements Module {
   private final Hub hub;
   private final Wcp wcp;
   private final Euc euc;
   private final ChainConfig chain;
-  @Getter private final List<BlockdataOperation> operations = new ArrayList<>();
+  protected final Map<Long, Bytes> blobBaseFees;
+  @Getter private final List<BlockDataOperation> operations = new ArrayList<>();
   @Getter private long firstBlockNumber;
 
   private boolean conflationFinished = false;
@@ -88,7 +90,7 @@ public abstract class Blockdata implements Module {
     final BlockHeader previousBlockHeader =
         operations.isEmpty() ? null : operations.getLast().blockHeader();
     for (OpCode opCode : opCodes) {
-      final BlockdataOperation operation =
+      final BlockDataOperation operation =
           setBlockDataOperation(
               hub,
               blockHeader,
@@ -98,12 +100,13 @@ public abstract class Blockdata implements Module {
               euc,
               chain,
               opCode,
-              firstBlockNumber);
+              firstBlockNumber,
+              blobBaseFees);
       operations.addLast(operation);
     }
   }
 
-  protected abstract BlockdataOperation setBlockDataOperation(
+  protected abstract BlockDataOperation setBlockDataOperation(
       Hub hub,
       BlockHeader blockHeader,
       BlockHeader previousBlockHeader,
@@ -112,7 +115,8 @@ public abstract class Blockdata implements Module {
       Euc euc,
       ChainConfig chain,
       OpCode opCode,
-      long firstBlockNumber);
+      long firstBlockNumber,
+      Map<Long, Bytes> blobBaseFees);
 
   protected abstract OpCode[] setOpCodes();
 
@@ -142,7 +146,7 @@ public abstract class Blockdata implements Module {
 
   @Override
   public void commit(Trace trace) {
-    for (BlockdataOperation blockData : operations) {
+    for (BlockDataOperation blockData : operations) {
       blockData.trace(trace.blockdata());
     }
   }

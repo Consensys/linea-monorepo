@@ -16,11 +16,9 @@
 package net.consensys.linea.zktracer.module.blockhash;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static net.consensys.linea.zktracer.Trace.BLOCKHASH_MAX_HISTORY;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.module.ModuleName.BLOCK_HASH;
 import static net.consensys.linea.zktracer.module.blockhash.BlockhashOperation.NB_ROWS_BLOCKHASH;
-import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes32;
 
 import java.util.HashMap;
@@ -46,7 +44,6 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 
 @Slf4j
 @Getter
@@ -127,10 +124,10 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
 
   private void addAndCheck(BlockhashOperation e) {
     operations.add(e);
-    checkBlockHashConsistancies(e);
+    checkBlockHashConsistencies(e);
   }
 
-  private void checkBlockHashConsistancies(BlockhashOperation op) {
+  private void checkBlockHashConsistencies(BlockhashOperation op) {
     // We have 4 LLARGE and one OLI call to WCP, made at the end of the conflation, so we need to
     // add line count to WCP
     wcp.additionalRows.add(4 * LLARGE + 1);
@@ -139,7 +136,7 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
     if (!op.blockhashRes().equals(Bytes32.ZERO)) {
       checkArgument(
           op.blockhashArg().trimLeadingZeros().size() <= 8, "Block number must fit in a long");
-      final long blockNumber = op.blockhashArg().trimLeadingZeros().toLong();
+      final long blockNumber = op.blockhashArg().toLong();
       successfulBlockhashAttempt.putIfAbsent(blockNumber, true);
       if (blockHashMap.containsKey(blockNumber)) {
         checkArgument(op.blockhashRes().equals(blockHashMap.get(blockNumber)));
@@ -226,43 +223,6 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
             ? 0
             : Math.max(0, blockHashMap.size() + 1 - successfulBlockhashAttempt().size());
     return operations().lineCount() + additionalOp * NB_ROWS_BLOCKHASH;
-  }
-
-  public static Map<Long, Hash> retrieveHistoricalBlockHashes(
-      BlockchainService blockchain,
-      long firstBlockNumberOfConflation,
-      long lastBlockNumberOfConflation) {
-
-    final Map<Long, Hash> historicalBlockHashes =
-        new HashMap<>(
-            (int)
-                (BLOCKHASH_MAX_HISTORY
-                    + lastBlockNumberOfConflation
-                    - firstBlockNumberOfConflation));
-
-    final long firstBlockToRetrieve =
-        Math.max(firstBlockNumberOfConflation - BLOCKHASH_MAX_HISTORY, 0);
-    final long lastBlockToRetrieve =
-        lastBlockNumberOfConflation == 0 ? 0 : lastBlockNumberOfConflation - 1;
-
-    for (long blockNumber = lastBlockToRetrieve;
-        blockNumber >= firstBlockToRetrieve;
-        blockNumber--) {
-      final long blockNumberAttempt = blockNumber;
-      final Hash hash =
-          blockchain
-              .getBlockByNumber(blockNumberAttempt)
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          "When retrieving historical blockhashes, block number: "
-                              + blockNumberAttempt
-                              + " was not found"))
-              .getBlockHeader()
-              .getBlockHash();
-      historicalBlockHashes.put(blockNumber, hash);
-    }
-    return historicalBlockHashes;
   }
 
   public short fromAbsoluteBlockToRelativeBlock(long absoluteBlock) {

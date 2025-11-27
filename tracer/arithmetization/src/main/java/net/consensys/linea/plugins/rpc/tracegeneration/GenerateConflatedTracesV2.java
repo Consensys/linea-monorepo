@@ -16,8 +16,10 @@
 package net.consensys.linea.plugins.rpc.tracegeneration;
 
 import static net.consensys.linea.zktracer.Fork.getForkFromBesuBlockchainService;
-import static net.consensys.linea.zktracer.module.blockhash.Blockhash.retrieveHistoricalBlockHashes;
+import static net.consensys.linea.zktracer.types.PublicInputs.getBlobBaseFees;
+import static net.consensys.linea.zktracer.types.PublicInputs.retrieveHistoricalBlockHashes;
 
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -34,6 +36,8 @@ import net.consensys.linea.tracewriter.TraceWriter;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.json.JsonConverter;
+import net.consensys.linea.zktracer.types.PublicInputs;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -127,16 +131,17 @@ public class GenerateConflatedTracesV2 {
           BesuServiceProvider.getBesuService(besuContext, BlockchainService.class);
       // Retrieve fork from Besu plugin API with block number
       final Fork fork = getForkFromBesuBlockchainService(blockchainService, fromBlock, toBlock);
+      final BigInteger chainId =
+          blockchainService
+              .getChainId()
+              .orElseThrow(() -> new IllegalStateException("ChainId must be provided"));
       final Map<Long, Hash> historicalBlockHashes =
           retrieveHistoricalBlockHashes(blockchainService, fromBlock, toBlock);
+      final Map<Long, Bytes> blobBaseFees = getBlobBaseFees(blockchainService, fromBlock, toBlock);
+      final PublicInputs publicInputs = new PublicInputs(historicalBlockHashes, blobBaseFees);
+
       final ZkTracer tracer =
-          new ZkTracer(
-              fork,
-              l1L2BridgeSharedConfiguration,
-              blockchainService
-                  .getChainId()
-                  .orElseThrow(() -> new IllegalStateException("ChainId must be provided")),
-              historicalBlockHashes);
+          new ZkTracer(fork, l1L2BridgeSharedConfiguration, chainId, publicInputs);
 
       traceService.trace(
           fromBlock,

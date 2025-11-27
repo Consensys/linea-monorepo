@@ -186,6 +186,10 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
           reaper.touchAddress(target);
         }
       }
+
+      case BLOBBASEFEE -> {
+        reaper.touchBlobBaseFee(frame.getBlockValues().getNumber(), frame.getBlobGasPrice());
+      }
     }
   }
 

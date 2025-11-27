@@ -21,7 +21,7 @@ import static net.consensys.linea.reporting.TracerTestBase.fork;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
 import static net.consensys.linea.zktracer.Fork.*;
 import static net.consensys.linea.zktracer.Trace.LINEA_BASE_FEE;
-import static net.consensys.linea.zktracer.module.ModuleName.*;
+import static net.consensys.linea.zktracer.types.PublicInputs.getDefaultBlobBaseFees;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -37,6 +37,7 @@ import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.*;
@@ -54,6 +55,8 @@ public class ToyExecutionEnvironmentV2 {
   public static final Address DEFAULT_COINBASE_ADDRESS =
       Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
   public static final long DEFAULT_BLOCK_NUMBER = 6678980;
+  public static final Map<Long, Bytes> DEFAULT_BLOB_BASE_FEES =
+      getDefaultBlobBaseFees(DEFAULT_BLOCK_NUMBER, DEFAULT_BLOCK_NUMBER);
   public static final long DEFAULT_TIME_STAMP = 1347310;
   public static final Hash DEFAULT_HASH =
       Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
@@ -66,6 +69,7 @@ public class ToyExecutionEnvironmentV2 {
   @Builder.Default private String customBesuNodeGenesis = null;
   @Builder.Default private Boolean oneTxPerBlockOnBesuNode = false;
   @Builder.Default private final long firstBlockNumber = DEFAULT_BLOCK_NUMBER;
+  @Builder.Default private static final Map<Long, Bytes> blobBaseFees = DEFAULT_BLOB_BASE_FEES;
 
   @Singular private final List<Transaction> transactions;
 
@@ -91,7 +95,7 @@ public class ToyExecutionEnvironmentV2 {
     return new ToyExecutionEnvironmentV2Builder()
         .unitTestsChain(chainConfig)
         .testInfo(testInfo)
-        .tracer(new ZkTracer(chainConfig));
+        .tracer(new ZkTracer(chainConfig, blobBaseFees));
   }
 
   public void run() {

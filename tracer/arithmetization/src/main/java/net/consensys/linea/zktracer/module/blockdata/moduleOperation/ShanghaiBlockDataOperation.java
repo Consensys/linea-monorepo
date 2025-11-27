@@ -17,12 +17,15 @@ package net.consensys.linea.zktracer.module.blockdata.moduleOperation;
 
 import static net.consensys.linea.zktracer.opcode.OpCode.PREVRANDAO;
 
+import java.util.Map;
+
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 public class ShanghaiBlockDataOperation extends ParisBlockDataOperation {
@@ -35,8 +38,19 @@ public class ShanghaiBlockDataOperation extends ParisBlockDataOperation {
       Euc euc,
       ChainConfig chain,
       OpCode opCode,
-      long firstBlockNumber) {
-    super(hub, blockHeader, prevBlockHeader, relTxMax, wcp, euc, chain, opCode, firstBlockNumber);
+      long firstBlockNumber,
+      Map<Long, Bytes> blobBaseFees) {
+    super(
+        hub,
+        blockHeader,
+        prevBlockHeader,
+        relTxMax,
+        wcp,
+        euc,
+        chain,
+        opCode,
+        firstBlockNumber,
+        blobBaseFees);
   }
 
   @Override

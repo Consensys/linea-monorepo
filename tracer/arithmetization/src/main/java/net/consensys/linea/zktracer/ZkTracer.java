@@ -16,6 +16,8 @@ package net.consensys.linea.zktracer;
 
 import static net.consensys.linea.zktracer.ChainConfig.FORK_LINEA_CHAIN;
 import static net.consensys.linea.zktracer.Fork.getTraceFromFork;
+import static net.consensys.linea.zktracer.types.PublicInputs.emptyHistoricalBlockhashes;
+import static net.consensys.linea.zktracer.types.PublicInputs.emptyPublicInputs;
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
@@ -38,11 +40,11 @@ import net.consensys.linea.zktracer.module.DebugMode;
 import net.consensys.linea.zktracer.module.hub.*;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.FiniteList;
+import net.consensys.linea.zktracer.types.PublicInputs;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
@@ -78,8 +80,8 @@ public class ZkTracer implements LineCountingTracer {
       final Fork fork,
       final LineaL1L2BridgeSharedConfiguration bridgeConfiguration,
       BigInteger chainId,
-      Map<Long, Hash> historicalBlockHashes) {
-    this(FORK_LINEA_CHAIN(fork, bridgeConfiguration, chainId), historicalBlockHashes);
+      PublicInputs publicInputs) {
+    this(FORK_LINEA_CHAIN(fork, bridgeConfiguration, chainId), publicInputs);
   }
 
   /**
@@ -97,8 +99,12 @@ public class ZkTracer implements LineCountingTracer {
     this(FORK_LINEA_CHAIN(fork, bridgeConfiguration, chainId));
   }
 
+  public ZkTracer(ChainConfig chain, Map<Long, Bytes> blobBaseFees) {
+    this(chain, emptyHistoricalBlockhashes(blobBaseFees));
+  }
+
   public ZkTracer(ChainConfig chain) {
-    this(chain, new HashMap<>());
+    this(chain, emptyPublicInputs());
   }
 
   /**
@@ -107,23 +113,27 @@ public class ZkTracer implements LineCountingTracer {
    *
    * @param chain
    */
-  public ZkTracer(ChainConfig chain, Map<Long, Hash> historicalBlockHashes) {
-    if (historicalBlockHashes.isEmpty()) {
+  public ZkTracer(ChainConfig chain, PublicInputs publicInputs) {
+    if (publicInputs.missingSomeInfos()) {
       log.info(
-          "[ZkTracer] No historical block hashes provided, assuming line counting only, testing, or tracing conflation of only genesis block. Tracing will fail.");
+          "[ZkTracer] Missing part of the public inputs, assuming line counting only, testing, or tracing very specific conflation. Tracing might fail. \nhistorical blockhashes size = {}\nblob base fees size = {}",
+          publicInputs.historicalBlockhashes() == null
+              ? 0
+              : publicInputs.historicalBlockhashes().size(),
+          publicInputs.blobBaseFees() == null ? 0 : publicInputs.blobBaseFees().size());
     }
     this.chain = chain;
-    this.hub =
+    hub =
         switch (chain.fork) {
-          case LONDON -> new LondonHub(chain, historicalBlockHashes);
-          case PARIS -> new ParisHub(chain, historicalBlockHashes);
-          case SHANGHAI -> new ShanghaiHub(chain, historicalBlockHashes);
-          case CANCUN -> new CancunHub(chain, historicalBlockHashes);
-          case PRAGUE -> new PragueHub(chain, historicalBlockHashes);
-          case OSAKA -> new OsakaHub(chain, historicalBlockHashes);
+          case LONDON -> new LondonHub(chain, publicInputs);
+          case PARIS -> new ParisHub(chain, publicInputs);
+          case SHANGHAI -> new ShanghaiHub(chain, publicInputs);
+          case CANCUN -> new CancunHub(chain, publicInputs);
+          case PRAGUE -> new PragueHub(chain, publicInputs);
+          case OSAKA -> new OsakaHub(chain, publicInputs);
           default -> throw new IllegalArgumentException("Unknown fork: " + chain.fork);
         };
-    this.trace = getTraceFromFork(chain.fork);
+    trace = getTraceFromFork(chain.fork);
     final DebugMode.PinLevel debugLevel = new DebugMode.PinLevel();
     this.debugMode =
         debugLevel.none() ? Optional.empty() : Optional.of(new DebugMode(debugLevel, this.hub));
