@@ -52,6 +52,9 @@ describe("BeaconNodeApiClient", () => {
       1,
       `getPendingPartialWithdrawals making GET request to url=${expectedUrl}`,
     );
+    expect(logger.info).toHaveBeenCalledWith(
+      `getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=${responseData.length}`,
+    );
     expect(logger.debug).toHaveBeenNthCalledWith(2, "getPendingPartialWithdrawals return value", {
       returnVal: responseData,
     });
@@ -75,6 +78,9 @@ describe("BeaconNodeApiClient", () => {
     const result = await client.getPendingPartialWithdrawals();
 
     expect(result).toEqual([]);
+    expect(logger.info).toHaveBeenCalledWith(
+      `getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=0`,
+    );
     expect(logger.error).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledTimes(2);
   });
