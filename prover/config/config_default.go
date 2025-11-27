@@ -380,7 +380,7 @@ func setDefaultTracesLimit() {
 	viper.SetDefault("traces_limits_large.BLS_REFERENCE_TABLE", 512)
 
 	// Start of new Osaka modules
-	viper.SetDefault("traces_limits.PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS", 256)
+	viper.SetDefault("traces_limits_large.PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS", 256)
 
 	viper.SetDefault("traces_limits_large.BIT_XOAN_U2", 524288)
 	viper.SetDefault("traces_limits_large.BIT_XOAN_U4", 524288)
