@@ -14,13 +14,22 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.callTests.prc.p256verify;
 
-import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.simpleCall;
+import static net.consensys.linea.zktracer.Fork.isPostOsaka;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CALL_STIPEND;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_P256_VERIFY;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___P256_VERIFY;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.simpleCallAndReturnDataSize;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.postCancun.fixedSizeFixedGasCost.P256VerifyOobCall;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -31,37 +40,95 @@ public class P256VerifyCallSuccessAndFailureCasesTest extends TracerTestBase {
 
   @Test
   void insufficientGasP256VerifyCall_ExpectedCallFailure(TestInfo testInfo) {
-
-    BytecodeCompiler pg = BytecodeCompiler.newProgram(chainConfig);
-    simpleCall(pg, STATICCALL, 6899, Address.P256_VERIFY, 0, 0, 0, 0, 32);
-
-    BytecodeRunner.of(pg.compile()).run(chainConfig, testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
+    simpleCallAndReturnDataSize(
+        program,
+        STATICCALL,
+        GAS_CONST_P256_VERIFY - 1,
+        Address.P256_VERIFY,
+        0,
+        0,
+        0,
+        0,
+        PRECOMPILE_RETURN_DATA_SIZE___P256_VERIFY);
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run(chainConfig, testInfo);
+    if (isPostOsaka(fork)) {
+      P256VerifyOobCall p256VerifyOobCall =
+          (P256VerifyOobCall)
+              bytecodeRunner.getHub().oob().operations().stream().toList().getLast().oobCall();
+      assertFalse(p256VerifyOobCall.isHubSuccess());
+      final Bytes returnDataSize = bytecodeRunner.getHub().currentFrame().frame().getStackItem(0);
+      assertTrue(returnDataSize.isZero());
+    }
   }
 
   @Test
   void sufficientGasWithStipendP256VerifyCall_ExpectedCallSuccess(TestInfo testInfo) {
-
-    BytecodeCompiler pg = BytecodeCompiler.newProgram(chainConfig);
-    simpleCall(pg, CALL, 6900 - 2300, Address.P256_VERIFY, 1, 0, 0, 0, 32);
-
-    BytecodeRunner.of(pg.compile()).run(chainConfig, testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
+    simpleCallAndReturnDataSize(
+        program,
+        CALL,
+        GAS_CONST_P256_VERIFY - GAS_CONST_G_CALL_STIPEND,
+        Address.P256_VERIFY,
+        1,
+        0,
+        0,
+        0,
+        PRECOMPILE_RETURN_DATA_SIZE___P256_VERIFY);
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run(chainConfig, testInfo);
+    if (isPostOsaka(fork)) {
+      P256VerifyOobCall p256VerifyOobCall =
+          (P256VerifyOobCall)
+              bytecodeRunner.getHub().oob().operations().stream().toList().getLast().oobCall();
+      assertTrue(p256VerifyOobCall.isHubSuccess());
+    }
   }
 
   @Test
   void sufficientGasAndInvalidCDSP256VerifyCall_ExpectedCallSuccess(TestInfo testInfo) {
-
-    BytecodeCompiler pg = BytecodeCompiler.newProgram(chainConfig);
-    simpleCall(pg, STATICCALL, 6900, Address.P256_VERIFY, 0, 0, 0, 0, 32);
-
-    BytecodeRunner.of(pg.compile()).run(chainConfig, testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
+    simpleCallAndReturnDataSize(
+        program,
+        STATICCALL,
+        GAS_CONST_P256_VERIFY,
+        Address.P256_VERIFY,
+        0,
+        0,
+        0,
+        0,
+        PRECOMPILE_RETURN_DATA_SIZE___P256_VERIFY);
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run(chainConfig, testInfo);
+    if (isPostOsaka(fork)) {
+      P256VerifyOobCall p256VerifyOobCall =
+          (P256VerifyOobCall)
+              bytecodeRunner.getHub().oob().operations().stream().toList().getLast().oobCall();
+      assertTrue(p256VerifyOobCall.isHubSuccess());
+    }
   }
 
   @Test
   void sufficientGasAndValidCDSP256VerifyCall_ExpectedCallSuccess(TestInfo testInfo) {
-
-    BytecodeCompiler pg = BytecodeCompiler.newProgram(chainConfig);
-    simpleCall(pg, STATICCALL, 6900, Address.P256_VERIFY, 0, 0, 160, 0, 32);
-
-    BytecodeRunner.of(pg.compile()).run(chainConfig, testInfo);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
+    simpleCallAndReturnDataSize(
+        program,
+        STATICCALL,
+        GAS_CONST_P256_VERIFY,
+        Address.P256_VERIFY,
+        0,
+        0,
+        PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY,
+        0,
+        PRECOMPILE_RETURN_DATA_SIZE___P256_VERIFY);
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run(chainConfig, testInfo);
+    if (isPostOsaka(fork)) {
+      P256VerifyOobCall p256VerifyOobCall =
+          (P256VerifyOobCall)
+              bytecodeRunner.getHub().oob().operations().stream().toList().getLast().oobCall();
+      assertTrue(p256VerifyOobCall.isHubSuccess());
+    }
   }
 }

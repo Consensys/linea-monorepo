@@ -72,6 +72,20 @@ public class Utilities {
     program.push(to).push(gas).op(callOpcode);
   }
 
+  public static void simpleCallAndReturnDataSize(
+      BytecodeCompiler program,
+      OpCode callOpcode,
+      int gas,
+      Address to,
+      int value,
+      int cdo,
+      int cds,
+      int rao,
+      int rac) {
+    simpleCall(program, callOpcode, gas, to, value, cdo, cds, rao, rac);
+    program.op(RETURNDATASIZE);
+  }
+
   public static void callCaller(
       BytecodeCompiler program,
       OpCode callOpcode,
