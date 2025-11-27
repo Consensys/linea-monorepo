@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
@@ -26,9 +27,12 @@ type OpeningProof struct {
 // TODO @thomaspiellard why not use directly smarvectorext.LinComb ??
 func LinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, randomCoin fext.Element) {
 
+	if len(v) == 0 {
+		utils.Panic("attempted to open an empty witness")
+	}
+
 	n := v[0].Len()
 	linComb := make([]fext.Element, n)
-
 	parallel.Execute(len(linComb), func(start, stop int) {
 
 		x := fext.One()

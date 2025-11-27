@@ -170,12 +170,15 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 		var precomputedSV = []smartvectors.SmartVector{}
 		for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
 			precomputedSV = append(precomputedSV, col.GetColAssignment(pr))
+			fmt.Printf("precomputedSV len %v\n", precomputedSV[0])
 		}
 		// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
 		if ctx.IsSISAppliedToPrecomputed() {
 			committedSVSIS = append(committedSVSIS, precomputedSV...)
 		} else {
 			committedSVNoSIS = append(committedSVNoSIS, precomputedSV...)
+			fmt.Printf("encoded committedSVNoSIS len %v\n", committedSVNoSIS[0].Len())
+
 		}
 	}
 
@@ -189,10 +192,12 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 		// pols := ctx.getPols(pr, round)
 		//TODO@yao: check pols --> committedMatrix
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
+		fmt.Printf("encoded committedMatrix len %v\n", committedMatrix[0].Len())
 
 		// Push pols to the right stack
 		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
 			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
+
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedSVSIS = append(committedSVSIS, committedMatrix...)
 		}
@@ -200,6 +205,7 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// Construct committedSV by stacking the No SIS round
 	// matrices before the SIS round matrices
 	committedSV := append(committedSVNoSIS, committedSVSIS...)
+	fmt.Printf("encoded len %v\n", committedSV[0].Len())
 
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)

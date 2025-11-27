@@ -463,7 +463,13 @@ func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []zk.WrappedVa
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.IntegerVec)
 	}
 	// If this panics, it means we generates the coins wrongly
-	return c.Coins.MustGet(name).([]zk.WrappedVariable)
+	coins := c.Coins.MustGet(name).([]frontend.Variable)
+	res := make([]zk.WrappedVariable, len(coins))
+	for i := 0; i < len(coins); i++ {
+		res[i] = zk.WrapFrontendVariable(coins[i])
+	}
+
+	return res
 }
 
 // GetRandomCoinFieldExt returns a field extension randomness. The coin should

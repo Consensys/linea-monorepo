@@ -866,7 +866,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	}
 
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
-
+	fmt.Printf("precomputedCols: %v\n", precomputedCols)
 	log := logrus.
 		WithField("where isSISAppliedForCommitment", !onlyPoseidon2Applied).
 		WithField("nbPrecomputedRows", nbUnskippedPrecomputedCols).

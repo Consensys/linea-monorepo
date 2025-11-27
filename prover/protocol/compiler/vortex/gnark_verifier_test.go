@@ -3,7 +3,6 @@
 package vortex_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -118,7 +117,6 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	valid := wizard.Verify(compiled, proof)
 	require.NoErrorf(t, valid, "the proof did not pass")
 
-	fmt.Printf("verifier passed=%v\n", proof)
 	// Run the proof verifier
 
 	// Allocate the circuit

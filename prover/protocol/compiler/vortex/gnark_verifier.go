@@ -87,7 +87,6 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	// Collect the opened columns and split them "by-commitment-rounds"
 	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
-
 	packedMProofs := [encoding.GnarkKoalabearNumElements][]zk.WrappedVariable{}
 	for i := range packedMProofs {
 		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
@@ -97,14 +96,15 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	Vi := crypto_vortex.GnarkVerifierInput{}
 	Vi.Alpha = randomCoin
 	Vi.X = x
+	Vi.EntryList = make([]frontend.Variable, len(entryList))
 	for i := 0; i < len(entryList); i++ {
 		Vi.EntryList[i] = entryList[i].AsNative()
 	}
-
 	Vi.Ys = ctx.gnarkGetYs(api, vr)
+	fmt.Printf("get ys ...\n")
 
 	crypto_vortex.GnarkVerify(api, ctx.VortexKoalaParams.Params, proof, Vi, roots)
-
+	fmt.Printf("Vortex Verifier passed ...\n")
 	vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, merkleProofs, roots)
 
 }

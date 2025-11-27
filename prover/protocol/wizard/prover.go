@@ -551,14 +551,8 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 		}
 		witness = w_
 	}
-	if smartvectors.IsBase(witness) {
-		if witness.Len() != handle.Size() {
-			utils.Panic("Bad length for %v, expected %v got %v\n", handle, handle.Size(), witness.Len())
-		}
-	} else {
-		if witness.Len()*4 != handle.Size() {
-			utils.Panic("Bad length for %v, expected %v got %v\n", handle, handle.Size(), witness.Len())
-		}
+	if witness.Len() != handle.Size() {
+		utils.Panic("Bad length for %v, expected %v got %v\n", handle, handle.Size(), witness.Len())
 	}
 
 	// This is supposed to be redundant with the checks we make when

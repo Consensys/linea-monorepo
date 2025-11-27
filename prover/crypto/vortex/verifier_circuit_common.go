@@ -1,6 +1,8 @@
 package vortex
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/polynomials"
@@ -28,14 +30,14 @@ type GnarkVerifierInput struct {
 }
 
 func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVerifierInput, roots []frontend.Variable) error {
-
+	fmt.Printf("Starting Vortex Gnark Verifier ...\n")
 	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}
-
+	fmt.Printf("LinComb ok ...\n")
 	err = GnarkCheckStatement(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
-
+	fmt.Printf("Statement ok ...\n")
 	return err
 }
 

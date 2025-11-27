@@ -38,6 +38,8 @@ func NewRsParams(size, rate int) *RsParams {
 	res.Domains[0] = fft.NewDomain(uint64(size), fft.WithShift(shift))
 	res.Domains[1] = fft.NewDomain(uint64(rate * size))
 
+	// fmt.Printf("NewRsParams: size=%v, rate=%v\n", size, rate)
+	// fmt.Printf("Domain0: cardinality=%v, Domain1=%v\n", res.Domains[0].Cardinality, res.Domains[1].Cardinality)
 	cosetTable, err := res.Domains[0].CosetTable()
 	// TODO @thomas fixme handle error
 	if err != nil {
@@ -120,6 +122,7 @@ func (p *RsParams) RsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVe
 // IsCodeword returns nil iff the argument `v` is a correct codeword and an
 // error is returned otherwise.
 func (p *RsParams) IsCodeword(v smartvectors.SmartVector) error {
+	fmt.Printf("IsCodeword: v.Len()=%v, p.NbEncodedColumns()=%v\n", v.Len(), p.NbEncodedColumns())
 	if v.Len() != p.NbEncodedColumns() {
 		return fmt.Errorf("invalid length for a codeword")
 	}

@@ -381,14 +381,8 @@ func (run *VerifierRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
 
 	// Just a sanity-check to ensure the message has the right size
 	expectedSize := run.Spec.Columns.GetSize(name)
-	if smartvectors.IsBase(msgIFace) {
-		if msgIFace.Len() != expectedSize {
-			utils.Panic("bad dimension %v, spec expected %v, column-name %v", msgIFace.Len(), expectedSize, name)
-		}
-	} else {
-		if msgIFace.Len()*4 != expectedSize {
-			utils.Panic("bad dimension %v, spec expected %v, column-name %v", msgIFace.Len()*4, expectedSize, name)
-		}
+	if msgIFace.Len() != expectedSize {
+		utils.Panic("bad dimension %v, spec expected %v, column-name %v", msgIFace.Len(), expectedSize, name)
 	}
 
 	return msgIFace
