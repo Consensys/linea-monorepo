@@ -239,6 +239,7 @@ type Ctx struct {
 		Precomputeds struct {
 			// List of the precomputeds columns that we are compiling if the
 			// the precomputed flag is set.
+			// TODO@yao: maybe not needed
 			PrecomputedColums []ifaces.Column
 			// Merkle Root of the precomputeds columns
 			MerkleRoot [blockSize]ifaces.Column

@@ -168,17 +168,13 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// Add the precomputed columns
 	if ctx.IsNonEmptyPrecomputed() {
 		var precomputedSV = []smartvectors.SmartVector{}
-		for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
-			precomputedSV = append(precomputedSV, col.GetColAssignment(pr))
-			fmt.Printf("precomputedSV len %v\n", precomputedSV[0])
-		}
+		precomputedSV = append(precomputedSV, ctx.Items.Precomputeds.CommittedMatrix...)
+
 		// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
 		if ctx.IsSISAppliedToPrecomputed() {
 			committedSVSIS = append(committedSVSIS, precomputedSV...)
 		} else {
 			committedSVNoSIS = append(committedSVNoSIS, precomputedSV...)
-			fmt.Printf("encoded committedSVNoSIS len %v\n", committedSVNoSIS[0].Len())
-
 		}
 	}
 

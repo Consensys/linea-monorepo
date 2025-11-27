@@ -104,7 +104,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	fmt.Printf("get ys ...\n")
 
 	crypto_vortex.GnarkVerify(api, ctx.VortexKoalaParams.Params, proof, Vi, roots)
-	fmt.Printf("Vortex Verifier passed ...\n")
+	// fmt.Printf("Vortex Verifier passed ...\n")
 	vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, merkleProofs, roots)
 
 }
