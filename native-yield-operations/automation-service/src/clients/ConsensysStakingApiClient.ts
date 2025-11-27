@@ -43,7 +43,8 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       return undefined;
     }
     const resp = data?.allValidators.nodes;
-    this.logger.debug("getActiveValidators succeded", { resp });
+    this.logger.info(`getActiveValidators succeeded, validatorCount=${resp?.length ?? 0}`);
+    this.logger.debug("getActiveValidators resp", { resp });
     return resp;
   }
 
@@ -100,7 +101,8 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       a.withdrawableAmount > b.withdrawableAmount ? -1 : a.withdrawableAmount < b.withdrawableAmount ? 1 : 0,
     );
 
-    this.logger.debug("getActiveValidatorsWithPendingWithdrawals return val", { joined });
+    this.logger.info(`getActiveValidatorsWithPendingWithdrawals succeeded, validatorCount=${joined.length}`);
+    this.logger.debug("getActiveValidatorsWithPendingWithdrawals joined", { joined });
     return joined;
   }
 
@@ -114,7 +116,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
   getTotalPendingPartialWithdrawalsWei(validatorList: ValidatorBalanceWithPendingWithdrawal[]): bigint {
     const totalGwei = validatorList.reduce((acc, v) => acc + v.pendingWithdrawalAmount, 0n);
     const totalWei = totalGwei * ONE_GWEI;
-    this.logger.debug(`getTotalPendingPartialWithdrawalsWei totalWei=${totalWei}`);
+    this.logger.info(`getTotalPendingPartialWithdrawalsWei totalWei=${totalWei}`);
     return totalWei;
   }
 }

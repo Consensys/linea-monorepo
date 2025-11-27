@@ -93,7 +93,8 @@ describe("ConsensysStakingApiClient", () => {
       expect(result).toEqual(validators);
       expect(retryMock).toHaveBeenCalledTimes(1);
       expect(apolloQueryMock).toHaveBeenCalledWith({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY });
-      expect(logger.debug).toHaveBeenCalledWith("getActiveValidators succeded", { resp: validators });
+      expect(logger.info).toHaveBeenCalledWith("getActiveValidators succeeded, validatorCount=1");
+      expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: validators });
     });
   });
 
@@ -175,7 +176,8 @@ describe("ConsensysStakingApiClient", () => {
       };
 
       expect(result).toEqual([expectedValidatorA, expectedValidatorB]);
-      expect(logger.debug).toHaveBeenCalledWith("getActiveValidatorsWithPendingWithdrawals return val", {
+      expect(logger.info).toHaveBeenCalledWith("getActiveValidatorsWithPendingWithdrawals succeeded, validatorCount=2");
+      expect(logger.debug).toHaveBeenCalledWith("getActiveValidatorsWithPendingWithdrawals joined", {
         joined: [expectedValidatorA, expectedValidatorB],
       });
 
@@ -307,7 +309,7 @@ describe("ConsensysStakingApiClient", () => {
       const totalWei = client.getTotalPendingPartialWithdrawalsWei(validators);
 
       expect(totalWei).toBe(4n * ONE_GWEI);
-      expect(logger.debug).toHaveBeenCalledWith("getTotalPendingPartialWithdrawalsWei totalWei=4000000000");
+      expect(logger.info).toHaveBeenCalledWith("getTotalPendingPartialWithdrawalsWei totalWei=4000000000");
     });
   });
 });
