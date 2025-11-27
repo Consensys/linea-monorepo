@@ -1157,19 +1157,6 @@
     },
     {
       "inputs": [],
-      "name": "PAUSE_BLOB_SUBMISSION_ROLE",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "PAUSE_DURATION",
       "outputs": [
         {
@@ -1222,7 +1209,7 @@
     },
     {
       "inputs": [],
-      "name": "PAUSE_SHNARF_SUBMISSION_ROLE",
+      "name": "PAUSE_STATE_DATA_SUBMISSION_ROLE",
       "outputs": [
         {
           "internalType": "bytes32",
@@ -1274,19 +1261,6 @@
     },
     {
       "inputs": [],
-      "name": "UNPAUSE_BLOB_SUBMISSION_ROLE",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "UNPAUSE_FINALIZATION_ROLE",
       "outputs": [
         {
@@ -1326,7 +1300,7 @@
     },
     {
       "inputs": [],
-      "name": "UNPAUSE_SHNARF_SUBMISSION_ROLE",
+      "name": "UNPAUSE_STATE_DATA_SUBMISSION_ROLE",
       "outputs": [
         {
           "internalType": "bytes32",
@@ -1543,19 +1517,6 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "fallbackOperator",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
         }
       ],
       "stateMutability": "view",
@@ -1924,6 +1885,19 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "livenessRecoveryOperator",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
         }
       ],
       "stateMutability": "view",

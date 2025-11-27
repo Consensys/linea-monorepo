@@ -7,8 +7,8 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestValidium is Validium {
-  function setFallbackOperatorAddress(address _fallbackOperator) external {
-    fallbackOperator = _fallbackOperator;
+  function setLivenessRecoveryOperatorAddress(address _livenessRecoveryOperator) external {
+    livenessRecoveryOperator = _livenessRecoveryOperator;
   }
 
   function addRollingHash(uint256 _messageNumber, bytes32 _messageHash) external {

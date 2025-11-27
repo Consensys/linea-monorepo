@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
-
-import { ShnarfDataAcceptor } from "./ShnarfDataAcceptor.sol";
-import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
+import { LineaRollupBase } from "./LineaRollupBase.sol";
+import { ShnarfDataAcceptor } from "./dataAvailability/ShnarfDataAcceptor.sol";
+import { LocalShnarfProvider } from "./dataAvailability/LocalShnarfProvider.sol";
 
 /**
  * @title Contract to manage Validium cross-chain messaging on L1 and proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract Validium is LocalShnarfProvider, ShnarfDataAcceptor {
+contract Validium is LineaRollupBase, LocalShnarfProvider, ShnarfDataAcceptor {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
