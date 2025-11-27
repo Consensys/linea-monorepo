@@ -414,7 +414,7 @@ func GetTestTracesLimits() *TracesLimits {
 		PrecompileRipemdBlocks:               0,
 		PrecompileModexpEffectiveCalls:       32,
 		PrecompileModexpEffectiveCalls4096:   1,
-		PrecompileEcaddEffectiveCalls:        1024,
+		PrecompileEcaddEffectiveCalls:        256,
 		PrecompileEcmulEffectiveCalls:        40,
 		PrecompileEcpairingEffectiveCalls:    16,
 		PrecompileEcpairingMillerLoops:       64,
