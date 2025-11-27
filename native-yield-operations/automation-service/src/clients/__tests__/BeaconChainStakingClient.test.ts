@@ -200,7 +200,7 @@ describe("BeaconChainStakingClient", () => {
       )._submitPartialWithdrawalRequests([], 1n * ONE_GWEI);
 
       expect(remaining).toBe(maxValidatorsPerTx);
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(logger.info).toHaveBeenCalledWith(
         "_submitPartialWithdrawalRequests - sortedValidatorList is empty, returning max withdrawal requests",
       );
       expect(unstakeMock).not.toHaveBeenCalled();
@@ -318,7 +318,7 @@ describe("BeaconChainStakingClient", () => {
         }
       )._submitValidatorExits(validators, 0);
 
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(logger.info).toHaveBeenCalledWith(
         "_submitValidatorExits - no remaining withdrawals or empty validator list, skipping",
         { remainingWithdrawals: 0, validatorListLength: 2 },
       );
@@ -342,7 +342,7 @@ describe("BeaconChainStakingClient", () => {
         }
       )._submitValidatorExits(validators, 2);
 
-      expect(logger.debug).toHaveBeenCalledWith("_submitValidatorExits - no validators to exit, skipping unstake");
+      expect(logger.info).toHaveBeenCalledWith("_submitValidatorExits - no validators to exit, skipping unstake");
       expect(unstakeMock).not.toHaveBeenCalled();
       expect(mocks.incrementValidatorExit).not.toHaveBeenCalled();
     });

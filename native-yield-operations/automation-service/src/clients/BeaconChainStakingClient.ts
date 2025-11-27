@@ -40,7 +40,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
    * @returns {Promise<void>} A promise that resolves when withdrawal requests are submitted (or silently returns if validator list is unavailable).
    */
   async submitWithdrawalRequestsToFulfilAmount(amountWei: bigint): Promise<void> {
-    this.logger.debug(
+    this.logger.info(
       `submitWithdrawalRequestsToFulfilAmount started: amountWei=${amountWei.toString()}; validatorLimit=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
     );
     const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
@@ -70,7 +70,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
    * @returns {Promise<void>} A promise that resolves when all withdrawal requests are submitted (or silently returns if validator list is unavailable).
    */
   async submitMaxAvailableWithdrawalRequests(): Promise<void> {
-    this.logger.debug(`submitMaxAvailableWithdrawalRequests started`);
+    this.logger.info(`submitMaxAvailableWithdrawalRequests started`);
     const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
     if (sortedValidatorList === undefined) {
       this.logger.error(
@@ -105,7 +105,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       amountsGwei: [],
     };
     if (sortedValidatorList.length === 0) {
-      this.logger.debug(
+      this.logger.info(
         "_submitPartialWithdrawalRequests - sortedValidatorList is empty, returning max withdrawal requests",
       );
       return this.maxValidatorWithdrawalRequestsPerTransaction;
@@ -143,7 +143,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
 
     // Return # of remaining shots (withdrawal requests remaining)
     const remainingWithdrawals = this.maxValidatorWithdrawalRequestsPerTransaction - withdrawalRequests.pubkeys.length;
-    this.logger.debug(`_submitPartialWithdrawalRequests remainingWithdrawal=${remainingWithdrawals}`);
+    this.logger.info(`_submitPartialWithdrawalRequests remainingWithdrawal=${remainingWithdrawals}`);
     return remainingWithdrawals;
   }
 
@@ -165,7 +165,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     );
     this.logger.debug(`_submitValidatorExits sortedValidatorList`, { sortedValidatorList });
     if (remainingWithdrawals === 0 || sortedValidatorList.length === 0) {
-      this.logger.debug("_submitValidatorExits - no remaining withdrawals or empty validator list, skipping", {
+      this.logger.info("_submitValidatorExits - no remaining withdrawals or empty validator list, skipping", {
         remainingWithdrawals,
         validatorListLength: sortedValidatorList.length,
       });
@@ -188,7 +188,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     }
 
     if (withdrawalRequests.amountsGwei.length === 0) {
-      this.logger.debug("_submitValidatorExits - no validators to exit, skipping unstake");
+      this.logger.info("_submitValidatorExits - no validators to exit, skipping unstake");
       return;
     }
     // Do unstake
