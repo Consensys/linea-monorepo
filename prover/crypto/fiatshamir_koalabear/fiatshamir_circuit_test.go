@@ -6,19 +6,30 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/stretchr/testify/assert"
 )
 
 type FSCircuit struct {
-	A, B     frontend.Variable
-	R1, R2   gnarkfext.E4Gen
+
+	// random fext
+	A, B   frontend.Variable
+	R1, R2 gnarkfext.E4Gen
+
+	// random many integers
 	R3       []frontend.Variable
 	n, bound int
+
+	// set state, get state
+	SetState, GetState poseidon2_koalabear.Octuplet
 }
 
 func (c *FSCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
+
+	// random fext
 	fs.Update(c.A)
 	a := fs.RandomFieldExt()
 	fs.Update(c.B)
@@ -30,9 +41,17 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	ext4.AssertIsEqual(&a, &c.R1)
 	ext4.AssertIsEqual(&b, &c.R2)
 
+	// random many integers
 	r := fs.RandomManyIntegers(c.n, c.bound)
 	for i := 0; i < c.n; i++ {
 		api.AssertIsEqual(r[i], c.R3[i])
+	}
+
+	// set state, get state
+	fs.SetState(c.SetState)
+	getState := fs.State()
+	for i := 0; i < len(getState); i++ {
+		api.AssertIsEqual(getState[i], c.GetState[i])
 	}
 
 	return nil
@@ -53,6 +72,13 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	bound := 8
 	r3 := fs.RandomManyIntegers(n, bound)
 
+	var setState field.Octuplet
+	for i := 0; i < 8; i++ {
+		setState[i].SetRandom()
+	}
+	fs.SetState(setState)
+	getSate := fs.State()
+
 	var circuit, witness FSCircuit
 	circuit.n = n
 	circuit.bound = bound
@@ -64,6 +90,10 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	witness.R3 = make([]frontend.Variable, n)
 	for i := 0; i < n; i++ {
 		witness.R3[i] = r3[i]
+	}
+	for i := 0; i < 8; i++ {
+		witness.SetState[i] = setState[i]
+		witness.GetState[i] = getSate[i]
 	}
 
 	return &circuit, &witness
