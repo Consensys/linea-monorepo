@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import { IAcceptEip4844Blobs } from "./interfaces/IAcceptEip4844Blobs.sol";
 import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
-import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
+import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
 import { ShnarfDataAcceptorBase } from "./ShnarfDataAcceptorBase.sol";
 /**
  * @title Contract to manage EIP-4844 blob submission.
@@ -23,7 +23,7 @@ abstract contract Eip4844BlobAcceptor is LocalShnarfProvider, ShnarfDataAcceptor
     BlobSubmission[] calldata _blobSubmissions,
     bytes32 _parentShnarf,
     bytes32 _finalBlobShnarf
-  ) external virtual whenTypeAndGeneralNotPaused(PauseType.BLOB_SUBMISSION) onlyRole(OPERATOR_ROLE) {
+  ) external virtual whenTypeAndGeneralNotPaused(PauseType.STATE_DATA_SUBMISSION) onlyRole(OPERATOR_ROLE) {
     _submitBlobs(_blobSubmissions, _parentShnarf, _finalBlobShnarf);
   }
 

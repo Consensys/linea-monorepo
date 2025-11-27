@@ -11,10 +11,10 @@ interface ILineaRollup is ILineaRollupBase {
   /**
    * @notice Initialization data structure for the LineaRollup contract.
    * @param baseInitializationData The initial state root hash at initialization used for proof verification.
-   * @param fallbackOperator The account to be given OPERATOR_ROLE on when the time since last finalization lapses.
+   * @param livenessRecoveryOperator The account to be given OPERATOR_ROLE on when the time since last finalization lapses.
    */
   struct InitializationData {
     BaseInitializationData baseInitializationData;
-    address fallbackOperator;
+    address livenessRecoveryOperator;
   }
 }

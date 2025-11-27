@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import { IShnarfDataAcceptorBase } from "./interfaces/IShnarfDataAcceptorBase.sol";
-import { LineaRollupBase } from "./LineaRollupBase.sol";
+import { LineaRollupBase } from "../LineaRollupBase.sol";
 
 /**
  * @title Contract to manage shared functions for shnarf accepting and storing.

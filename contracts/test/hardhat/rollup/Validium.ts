@@ -8,10 +8,10 @@ import secondCompressedDataContent from "../_testData/compressedData/blocks-47-8
 import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
-  SHNARF_SUBMISSION_PAUSE_TYPE,
+  STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
 import { TestValidium } from "contracts/typechain-types";
-import { deployValidiumFixture, getAccountsFixture, getRoleAddressesFixture } from "./helpers";
+import { deployValidiumFixture, getAccountsFixture, getValidiumRoleAddressesFixture } from "./helpers";
 import {
   ADDRESS_ZERO,
   GENERAL_PAUSE_TYPE,
@@ -57,7 +57,7 @@ describe("Validium contract", () => {
   before(async () => {
     ({ admin, securityCouncil, operator, nonAuthorizedAccount, alternateShnarfProviderAddress } =
       await loadFixture(getAccountsFixture));
-    roleAddresses = await loadFixture(getRoleAddressesFixture);
+    roleAddresses = await loadFixture(getValidiumRoleAddressesFixture);
   });
 
   beforeEach(async () => {
@@ -426,14 +426,14 @@ describe("Validium contract", () => {
       await expectRevertWithCustomError(validium, submitDataCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
     });
 
-    it("Should revert if SHNARF_SUBMISSION_PAUSE_TYPE is enabled", async () => {
-      await validium.connect(securityCouncil).pauseByType(SHNARF_SUBMISSION_PAUSE_TYPE);
+    it("Should revert if STATE_DATA_SUBMISSION_PAUSE_TYPE is enabled", async () => {
+      await validium.connect(securityCouncil).pauseByType(STATE_DATA_SUBMISSION_PAUSE_TYPE);
 
       const submitDataCall = validium
         .connect(operator)
         .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
 
-      await expectRevertWithCustomError(validium, submitDataCall, "IsPaused", [SHNARF_SUBMISSION_PAUSE_TYPE]);
+      await expectRevertWithCustomError(validium, submitDataCall, "IsPaused", [STATE_DATA_SUBMISSION_PAUSE_TYPE]);
     });
 
     it("Should revert with ShnarfAlreadySubmitted when submitting same compressed data twice in 2 separate transactions", async () => {
