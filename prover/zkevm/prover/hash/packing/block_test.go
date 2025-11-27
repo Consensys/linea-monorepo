@@ -47,7 +47,7 @@ func makeTestCaseBlockModule(uc generic.HashingUsecase) (
 			Lanes: laneRepacking{
 				IsLaneActive:         isActive,
 				Size:                 size,
-				IsFirstLaneOfNewHash: isFirstLaneOfHash,
+				IsBeginningOfNewHash: isFirstLaneOfHash,
 				Inputs: &laneRepackingInputs{
 					PckInp: PackingInput{Name: "TEST"},
 				},

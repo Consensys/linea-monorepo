@@ -73,7 +73,7 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 		cKeccakInp = KeccakOverBlockInputs{
 			LaneInfo: LaneInfo{
 				Lanes:                packing.Repacked.Lanes,
-				IsFirstLaneOfNewHash: packing.Repacked.IsFirstLaneOfNewHash,
+				IsFirstLaneOfNewHash: packing.Repacked.IsBeginningOfNewHash,
 				IsLaneActive:         packing.Repacked.IsLaneActive,
 			},
 

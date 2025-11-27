@@ -117,7 +117,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 			MaxNbCircuit:         utils.DivCeil(maxNumSha2F, inp.NbInstancesPerCircuitSha2Block),
 			PackedUint16:         packing.Repacked.Lanes,
 			Selector:             packing.Repacked.IsLaneActive,
-			IsFirstLaneOfNewHash: packing.Repacked.IsFirstLaneOfNewHash,
+			IsFirstLaneOfNewHash: packing.Repacked.IsBeginningOfNewHash,
 		}
 		cSha2 = newSha2BlockModule(comp, cSha2Inp).WithCircuit(comp)
 	)

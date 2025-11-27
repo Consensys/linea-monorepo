@@ -80,4 +80,8 @@ var testCases = []struct {
 		Name:    "Sha2",
 		UseCase: generic.Sha2Usecase,
 	},
+	{
+		Name:    "Poseidon2",
+		UseCase: generic.Poseidon2UseCase,
+	},
 }

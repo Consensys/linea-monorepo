@@ -87,7 +87,7 @@ func newBlock(comp *wizard.CompiledIOP, inp blockInput) block {
 	// if isFirstLaneOfNewHash = 1 then isBlockComplete = 1.
 	comp.InsertGlobal(0, ifaces.QueryID(name+"_EACH_HASH_HAS_COMPLETE_BLOCKS"),
 		sym.Mul(
-			inp.Lanes.IsFirstLaneOfNewHash,
+			inp.Lanes.IsBeginningOfNewHash,
 			sym.Sub(1, b.IsBlockComplete),
 		),
 	)

@@ -10,7 +10,8 @@ import (
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-const blockSize = 8
+// BlockSize is the number of field elements processed per block
+const BlockSize = 8
 
 // TODO @thomas fixme arbitrary max size of the buffer
 const maxSizeBuf = 1024
@@ -71,14 +72,14 @@ func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
 
 func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
 	for len(d.buffer) != 0 {
-		var buf [blockSize]field.Element
+		var buf [BlockSize]field.Element
 		// in this case we left pad by zeroes
-		if len(d.buffer) < blockSize {
-			copy(buf[blockSize-len(d.buffer):], d.buffer)
+		if len(d.buffer) < BlockSize {
+			copy(buf[BlockSize-len(d.buffer):], d.buffer)
 			d.buffer = d.buffer[:0]
 		} else {
 			copy(buf[:], d.buffer)
-			d.buffer = d.buffer[blockSize:]
+			d.buffer = d.buffer[BlockSize:]
 		}
 		d.state = vortex.CompressPoseidon2(d.state, buf)
 	}
@@ -138,22 +139,22 @@ func Poseidon2() *Poseidon2FieldHasherDigest {
 func Poseidon2Sponge(x []field.Element) (newState field.Octuplet) {
 	var state, xBlock field.Octuplet
 	for len(x) != 0 {
-		if len(x) < blockSize {
-			padded := make([]field.Element, blockSize)
-			copy(padded[blockSize-len(x):], x) // left-padding
+		if len(x) < BlockSize {
+			padded := make([]field.Element, BlockSize)
+			copy(padded[BlockSize-len(x):], x) // left-padding
 			x = padded
 		}
 
 		copy(xBlock[:], x[:])
 		state = vortex.CompressPoseidon2(state, xBlock)
-		x = x[blockSize:]
+		x = x[BlockSize:]
 	}
 	return state
 }
 
 // GnarkBlockCompression applies the MiMC permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
-func GnarkBlockCompressionMekle(api frontend.API, oldState, block [blockSize]frontend.Variable) (newState [blockSize]frontend.Variable) {
+func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]frontend.Variable) (newState [BlockSize]frontend.Variable) {
 	panic("unimplemented")
 }
 
