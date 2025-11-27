@@ -355,7 +355,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	for _, op := range options {
 		op(ctx)
 	}
-	fmt.Printf("okok, Vortex compiler options applied\n")
+	// fmt.Printf("okok, Vortex compiler options applied\n")
 	// Preallocate all the merkle roots for all rounds
 	if ctx.IsBLS {
 		ctx.Items.GnarkMerkleRoots = make([][encoding.GnarkKoalabearNumElements]ifaces.Column, comp.NumRounds())
@@ -865,7 +865,6 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	}
 
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
-	fmt.Printf("precomputedCols: %v\n", precomputedCols)
 	log := logrus.
 		WithField("where isSISAppliedForCommitment", !onlyPoseidon2Applied).
 		WithField("nbPrecomputedRows", nbUnskippedPrecomputedCols).

@@ -1,10 +1,13 @@
 package fiatshamir_bls12377
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -46,6 +49,8 @@ func (fs *FS) Update(vec ...field.Element) {
 }
 
 func (fs *FS) UpdateExt(vec ...fext.Element) {
+	fmt.Printf("Updating FS with fext elements %v \n", vectorext.Prettify(vec))
+
 	pad := make([]field.Element, 4*len(vec))
 	for i := 0; i < len(vec); i++ {
 		pad[4*i].Set(&vec[i].B0.A0)

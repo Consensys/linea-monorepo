@@ -1,8 +1,6 @@
 package vortex
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 
 	"github.com/consensys/gnark/frontend"
@@ -19,12 +17,12 @@ import (
 )
 
 func (a *ExplicitPolynomialEval) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	fmt.Printf("gnark vortex ExplicitPolynomialEval ...\n")
+	// fmt.Printf("gnark vortex ExplicitPolynomialEval ...\n")
 	a.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
 }
 
 func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRuntime) {
-	fmt.Printf("verifying VortexVerifierAction ...\n")
+	// fmt.Printf("verifying VortexVerifierAction ...\n")
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
 	// not need to
@@ -44,8 +42,8 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
 			preRoots[i] = precompRootSv[0]
 		}
-		fmt.Printf("Gnark precomputed Merkle root verifier: \n")
-		api.Println(encoding.Encode11WVsToFV(api, preRoots))
+		// fmt.Printf("Gnark precomputed Merkle root verifier: \n")
+		// api.Println(encoding.Encode11WVsToFV(api, preRoots))
 
 		roots = append(roots, encoding.Encode11WVsToFV(api, preRoots))
 	}
@@ -81,8 +79,8 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	// Collect the random entry List and the random coin
 	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
 
-	fmt.Printf("Vortex Verifier entryList: %v\n", ctx.RandColSelectionName())
-	api.Println("Vortex Verifier entryList:", entryList[0])
+	// fmt.Printf("Vortex Verifier entryList: %v\n", ctx.RandColSelectionName())
+	// api.Println("Vortex Verifier entryList:", entryList[0])
 	// Collect the opened columns and split them "by-commitment-rounds"
 	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX

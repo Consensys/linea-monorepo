@@ -1,8 +1,6 @@
 package vortex
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/polynomials"
@@ -30,7 +28,6 @@ type GnarkVerifierInput struct {
 }
 
 func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVerifierInput, roots []frontend.Variable) error {
-	fmt.Printf("Starting Vortex Gnark Verifier ...\n")
 	ext4, _ := gnarkfext.NewExt4(api)
 	ext4.Println(vi.Alpha)
 

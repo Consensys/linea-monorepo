@@ -153,7 +153,7 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 
 func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 
-	fmt.Printf("wizard VortexVerifierAction Run\n")
+	// fmt.Printf("wizard VortexVerifierAction Run\n")
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
