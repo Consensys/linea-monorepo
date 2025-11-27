@@ -19,7 +19,7 @@ import { transports } from "winston";
  *   - minWithdrawalThresholdEth: Minimum withdrawal threshold in ETH
  *   - reporting: Reporting configuration including shouldSubmitVaultReport, minPositiveYieldToReportWei, and minUnpaidLidoProtocolFeesToReportYieldWei
  *   - web3signer: Web3Signer URL, public key (address or secp pubkey compressed/uncompressed), keystore, truststore, and TLS settings
- *   - loggerOptions: Winston logger configuration with console transport
+ *   - loggerOptions: Winston logger configuration with console transport and log level from LOG_LEVEL env var (defaults to "info")
  */
 export const toClientConfig = (env: FlattenedConfigSchema) => ({
   dataSources: {
@@ -75,7 +75,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
     tlsEnabled: env.WEB3SIGNER_TLS_ENABLED,
   },
   loggerOptions: {
-    level: "info",
+    level: env.LOG_LEVEL ?? "info",
     transports: [new transports.Console()],
   },
 });

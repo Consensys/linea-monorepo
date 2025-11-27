@@ -203,4 +203,44 @@ describe("configSchema", () => {
       }
     });
   });
+
+  describe("LOG_LEVEL", () => {
+    it("accepts valid log levels", () => {
+      const validLevels = ["error", "warn", "info", "verbose", "debug", "silly"];
+
+      for (const level of validLevels) {
+        const env = {
+          ...createValidEnv(),
+          LOG_LEVEL: level,
+        };
+
+        const parsed = configSchema.parse(env);
+
+        expect(parsed.LOG_LEVEL).toBe(level);
+      }
+    });
+
+    it("accepts undefined LOG_LEVEL (optional)", () => {
+      const env = createValidEnv();
+      // LOG_LEVEL is not set
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.LOG_LEVEL).toBeUndefined();
+    });
+
+    it("rejects invalid log levels", () => {
+      const env = {
+        ...createValidEnv(),
+        LOG_LEVEL: "invalid",
+      };
+
+      const result = configSchema.safeParse(env);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.join(".") === "LOG_LEVEL")).toBe(true);
+      }
+    });
+  });
 });
