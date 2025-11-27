@@ -214,25 +214,24 @@ public class EngineAPIService {
     return createEngineCall("engine_newPayloadV4", params);
   }
 
-//   private Call createNewPayloadRequestV5(
-//     final ObjectNode executionPayload,
-//     final ArrayNode expectedBlobVersionedHashes,
-//     final String parentBeaconBlockRoot,
-//     final ArrayNode executionRequests) {
+  //   private Call createNewPayloadRequestV5(
+  //     final ObjectNode executionPayload,
+  //     final ArrayNode expectedBlobVersionedHashes,
+  //     final String parentBeaconBlockRoot,
+  //     final ArrayNode executionRequests) {
 
-//   // Add blockAccessList to executionPayload (required for V5)
-//   // Use "0xc0" for empty BlockAccessList
-//   executionPayload.put("blockAccessList", "0xc0");
+  //   // Add blockAccessList to executionPayload (required for V5)
+  //   // Use "0xc0" for empty BlockAccessList
+  //   executionPayload.put("blockAccessList", "0xc0");
 
-//   ArrayNode params = mapper.createArrayNode();
-//   params.add(executionPayload);
-//   params.add(expectedBlobVersionedHashes);
-//   params.add(parentBeaconBlockRoot);
-//   params.add(executionRequests);
+  //   ArrayNode params = mapper.createArrayNode();
+  //   params.add(executionPayload);
+  //   params.add(expectedBlobVersionedHashes);
+  //   params.add(parentBeaconBlockRoot);
+  //   params.add(executionRequests);
 
-//   return createEngineCall("engine_newPayloadV5", params);
-// }
-
+  //   return createEngineCall("engine_newPayloadV5", params);
+  // }
 
   private Call createEngineCall(final String rpcMethod, ArrayNode params) {
     ObjectNode request = mapper.createObjectNode();
