@@ -178,6 +178,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 	metadata.LPPProofFiles = make([]string, len(witnessLPPs))
 
 	logrus.Info("Saving the witnesses")
+
 	wg, ctx := errgroup.WithContext(context.Background())
 	wg.SetLimit(numConcurrentWritingGoroutines)
 
@@ -210,6 +211,14 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 		})
 	}
 
+	// Important to wait until all witnessGLs are saved before starting to write the LPP counterparts
+	// This is because, if even one of the LPPs is saved before the GLs, the worker controller may pick-up the
+	// LPP sub-proof files before the GL sub-proof files - Which can affect the liveness of the entire
+	// proof flow
+	if err := wg.Wait(); err != nil {
+		return fmt.Errorf("could not save GL witnesses: %v", err)
+	}
+
 	for i, witnessLPP := range witnessLPPs {
 		i := i
 		wg.Go(func() error {
@@ -238,7 +247,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 	}
 
 	if err := wg.Wait(); err != nil {
-		return fmt.Errorf("could not save witnesses: %v", err)
+		return fmt.Errorf("could not save LPP witnesses: %v", err)
 	}
 
 	sharedRandomnessFileName := fmt.Sprintf("%s-%s-commit.bin", metadata.StartBlock, metadata.EndBlock)
