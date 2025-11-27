@@ -19,17 +19,26 @@ class QbftConsensusValidator(
   private val bftExecutors: BftExecutors,
   private val eventQueueExecutor: Executor,
 ) : Protocol {
+  private var isRunning = false
+
+  @Synchronized
   override fun start() {
+    if (isRunning) {
+      return
+    }
     eventProcessor.start()
     bftExecutors.start()
     qbftController.start()
     eventQueueExecutor.execute(eventProcessor)
+    isRunning = true
   }
 
+  @Synchronized
   override fun pause() {
     eventProcessor.stop()
     bftExecutors.stop()
     qbftController.stop()
+    isRunning = false
   }
 
   override fun close() {
