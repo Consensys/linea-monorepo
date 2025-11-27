@@ -1,21 +1,10 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { tryVerifyContract, getDeployedContractAddress, getRequiredEnvVar } from "../common/helpers";
+import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 import { ethers, upgrades } from "hardhat";
 import { RollupRevenueVault__factory } from "contracts/typechain-types";
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments } = hre;
-
+const func: DeployFunction = async function () {
   const contractName = "RollupRevenueVault";
-  const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
-
-  // RollupRevenueVault DEPLOYED AS UPGRADEABLE PROXY
-  if (!existingContractAddress) {
-    console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
-  } else {
-    console.log(`Deploying new version, NB: ${existingContractAddress} will be overwritten if env SAVE_ADDRESS=true.`);
-  }
 
   const proxyAddress = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_ADDRESS");
 
