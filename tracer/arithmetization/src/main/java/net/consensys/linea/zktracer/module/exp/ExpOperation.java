@@ -54,8 +54,8 @@ public class ExpOperation extends ModuleOperation {
         final ModexpLogExpCall modexplogExpCall = (ModexpLogExpCall) expCall;
         // Extract inputs
         final ModexpMetadata modexpMetadata = modexplogExpCall.getModexpMetadata();
-        final int bbsInt = modexpMetadata.bbsInt();
-        final int ebsInt = modexpMetadata.ebsInt();
+        final int bbsInt = modexpMetadata.normalizedBbsInt();
+        final int ebsInt = modexpMetadata.normalizedEbsInt();
         checkArgument(
             modexpMetadata.callData().size() - BASE_MIN_OFFSET - bbsInt >= 0,
             "MODEXP call data unexpectedly short");

@@ -217,7 +217,7 @@ public abstract class ModexpMetadata {
     return EWord.of(
         rightPaddedSlice(
             callDataRange.getRawData(),
-            safeLongToInt(callDataRange.offset()) + BASE_MIN_OFFSET + bbsInt(),
+            safeLongToInt(callDataRange.offset()) + BASE_MIN_OFFSET + normalizedBbsInt(),
             WORD_SIZE));
   }
 
