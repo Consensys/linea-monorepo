@@ -234,9 +234,10 @@ public class EstimateGasTest extends LineaPluginPoSTestBase {
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
     assertThat(respLinea.hasError()).isTrue();
     assertThat(respLinea.getError().getCode()).isEqualTo(-32004);
+    // 0x1234000001 ~= 0x1234 * 16_777_216 (tx gas limit as of Osaka - https://eips.ethereum.org/EIPS/eip-7825)
     assertThat(respLinea.getError().getMessage())
         .isEqualTo(
-            "Upfront cost exceeds account balance (transaction up-front cost 0x2094ddc28d exceeds transaction sender account balance 0x0)");
+            "Upfront cost exceeds account balance (transaction up-front cost 0x1234000001 exceeds transaction sender account balance 0x0)");
   }
 
   @Test
