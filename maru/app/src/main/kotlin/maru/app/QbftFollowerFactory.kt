@@ -24,6 +24,7 @@ import maru.consensus.validation.QuorumOfSealsVerifier
 import maru.consensus.validation.SCEP256SealVerifier
 import maru.core.Protocol
 import maru.database.BeaconChain
+import maru.executionlayer.ExecutionLayerFactory.buildExecutionLayerManager
 import maru.p2p.P2PNetwork
 import net.consensys.linea.metrics.MetricsFacade
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
@@ -44,7 +45,7 @@ class QbftFollowerFactory(
 
     val elManager =
       validatorELNodeEngineApiWeb3JClient?.let {
-        Helpers.buildExecutionLayerManager(
+        buildExecutionLayerManager(
           web3JEngineApiClient = it,
           elFork = qbftConsensusConfig.elFork,
           metricsFacade = metricsFacade,

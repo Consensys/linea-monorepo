@@ -11,8 +11,10 @@ package maru.test.genesis
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import linea.kotlin.isSortedBy
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
+import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
 
@@ -87,25 +89,37 @@ class BesuGenesisFactory(
       var shanghaiTimestamp: ULong? = null
       var cancunTimestamp: ULong? = null
       var pragueTimestamp: ULong? = null
-      forks.forks.forEach { forkSpec ->
-        when (forkSpec.configuration.fork.elFork) {
-          ElFork.Paris -> {} // nothing to do, terminalTotalDifficulty already set
-          ElFork.Shanghai -> {
-            shanghaiTimestamp = forkSpec.timestampSeconds
-          }
+      var osakaTimestamp: ULong? = null
+      val forksInAscendingOrder = forks.forks.sortedBy { it.timestampSeconds }
+      val forksInDescendingOrder = forksInAscendingOrder.reversed()
+      forksInDescendingOrder
+        .forEach { forkSpec ->
+          when (forkSpec.configuration.fork.elFork) {
+            ElFork.Osaka -> {
+              shanghaiTimestamp = calculateForkTimestampOrNull(forksInAscendingOrder, ElFork.Shanghai) ?: 0UL
+              cancunTimestamp = calculateForkTimestampOrNull(forksInAscendingOrder, ElFork.Cancun) ?: 0UL
+              pragueTimestamp = calculateForkTimestampOrNull(forksInAscendingOrder, ElFork.Prague) ?: 0UL
+              osakaTimestamp = forkSpec.timestampSeconds
+            }
 
-          ElFork.Cancun -> {
-            shanghaiTimestamp = shanghaiTimestamp ?: forkSpec.timestampSeconds
-            cancunTimestamp = forkSpec.timestampSeconds
-          }
+            ElFork.Prague -> {
+              shanghaiTimestamp = calculateForkTimestampOrNull(forksInAscendingOrder, ElFork.Shanghai) ?: 0UL
+              cancunTimestamp = calculateForkTimestampOrNull(forksInAscendingOrder, ElFork.Cancun) ?: 0UL
+              pragueTimestamp = forkSpec.timestampSeconds
+            }
 
-          ElFork.Prague -> {
-            shanghaiTimestamp = shanghaiTimestamp ?: forkSpec.timestampSeconds
-            cancunTimestamp = cancunTimestamp ?: forkSpec.timestampSeconds
-            pragueTimestamp = forkSpec.timestampSeconds
+            ElFork.Cancun -> {
+              shanghaiTimestamp = calculateForkTimestampOrNull(forksInAscendingOrder, ElFork.Shanghai) ?: 0UL
+              cancunTimestamp = forkSpec.timestampSeconds
+            }
+
+            ElFork.Shanghai -> {
+              shanghaiTimestamp = forkSpec.timestampSeconds
+            }
+
+            ElFork.Paris -> {} // nothing to do, terminalTotalDifficulty already set
           }
         }
-      }
 
       // Additional fork-specific genesis updates can be added here
       return createGenesisWithClique(
@@ -117,7 +131,37 @@ class BesuGenesisFactory(
         shanghaiTimestamp,
         cancunTimestamp,
         pragueTimestamp,
+        osakaTimestamp,
       )
+    }
+
+    private fun calculateForkTimestampOrNull(
+      forks: List<ForkSpec>,
+      elFork: ElFork,
+    ): ULong? {
+      require(forks.isSortedBy { it.timestampSeconds }) {
+        "forks must be sorted in ascending order by timestampSeconds"
+      }
+      val forkTimestamp =
+        forks
+          .firstOrNull { it.configuration.fork.elFork == elFork }
+          ?.timestampSeconds
+      if (forkTimestamp != null) {
+        return forkTimestamp
+      }
+
+      val prevFork =
+        forks
+          .firstOrNull { it.configuration.fork.elFork.version < elFork.version }
+      val nextFork =
+        forks
+          .firstOrNull { it.configuration.fork.elFork.version > elFork.version }
+      // when not explicitly set, is in between explicitly set forks, shall be same as the next fork
+      if (nextFork != null && prevFork != null) {
+        return nextFork.timestampSeconds
+      }
+
+      return null
     }
 
     fun createGenesisWithClique(
@@ -129,6 +173,7 @@ class BesuGenesisFactory(
       shanghaiTimestamp: ULong? = null,
       cancunTimestamp: ULong? = null,
       pragueTimestamp: ULong? = null,
+      osakaTimestamp: ULong? = null,
     ): String {
       var updatedGenesis = createGenesisWithClique(genesisTemplate, chainId, cliqueBlockTimeSeconds, cliqueEmptyBlocks)
 
@@ -146,6 +191,9 @@ class BesuGenesisFactory(
       }
       if (pragueTimestamp != null) {
         updatedGenesis = setGenesisConfigProperty(updatedGenesis, "pragueTime", pragueTimestamp)
+      }
+      if (osakaTimestamp != null) {
+        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "osakaTime", osakaTimestamp)
       }
       return updatedGenesis
     }

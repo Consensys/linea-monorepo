@@ -28,7 +28,7 @@ enum class ElFork(
   Shanghai(0x2),
   Cancun(0x3),
   Prague(0x4),
-  // Osaka(0x5),
+  Osaka(0x5),
 }
 
 data class ChainFork(

@@ -45,6 +45,7 @@ import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.database.P2PState
 import maru.database.kv.KvDatabaseFactory
+import maru.executionlayer.ExecutionLayerFactory.buildExecutionEngineClient
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.finalization.LineaFinalizationProvider
 import maru.metrics.BesuMetricsCategoryAdapter
@@ -197,7 +198,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
       if (engineApiWeb3jClient != null) {
         ElFork.entries.associateWith {
           val engineApiClient =
-            Helpers.buildExecutionEngineClient(
+            buildExecutionEngineClient(
               web3JEngineApiClient = engineApiWeb3jClient,
               elFork = it,
               metricsFacade = metricsFacade,
