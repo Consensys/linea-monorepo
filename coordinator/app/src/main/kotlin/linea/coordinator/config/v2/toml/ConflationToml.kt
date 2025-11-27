@@ -6,6 +6,7 @@ import linea.coordinator.config.v2.ConflationConfig
 import net.consensys.linea.traces.TracesCountersV2
 import java.net.URL
 import java.time.Instant
+import kotlin.Boolean
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -44,12 +45,14 @@ data class ConflationToml(
 
   data class ProofAggregationToml(
     val proofsLimit: UInt = 300u,
+    val blobsLimit: UInt? = null,
     val deadline: Duration? = null,
     val deadlineCheckInterval: Duration = 30.seconds,
     val coordinatorPollingInterval: Duration = 3.seconds,
     val targetEndBlocks: List<ULong>? = null,
     val aggregationSizeMultipleOf: UInt = 1u,
     val timestampBasedHardForks: List<Instant> = emptyList(),
+    val waitForNoL2ActivityToTriggerAggregation: Boolean = false,
   ) {
     init {
       require(timestampBasedHardForks.toSet().size == timestampBasedHardForks.size) {
@@ -60,12 +63,14 @@ data class ConflationToml(
     fun reified(): ConflationConfig.ProofAggregation {
       return ConflationConfig.ProofAggregation(
         proofsLimit = this.proofsLimit,
+        blobsLimit = this.blobsLimit,
         deadline = this.deadline ?: Duration.INFINITE,
         deadlineCheckInterval = this.deadlineCheckInterval,
         coordinatorPollingInterval = this.coordinatorPollingInterval,
         targetEndBlocks = this.targetEndBlocks,
         aggregationSizeMultipleOf = this.aggregationSizeMultipleOf,
         timestampBasedHardForks = timestampBasedHardForks.map { it.toKotlinInstant() },
+        waitForNoL2ActivityToTriggerAggregation = this.waitForNoL2ActivityToTriggerAggregation,
       )
     }
   }
