@@ -23,6 +23,7 @@ const createLoggerMock = (): ILogger => ({
 const createMetricsUpdaterMock = () => {
   const addValidatorPartialUnstakeAmount = jest.fn();
   const incrementValidatorExit = jest.fn();
+  const setLastTotalPendingPartialWithdrawalsGwei = jest.fn(async () => undefined);
 
   const metricsUpdater: INativeYieldAutomationMetricsUpdater = {
     recordRebalance: jest.fn(),
@@ -34,6 +35,7 @@ const createMetricsUpdaterMock = () => {
     setLastPeekedNegativeYieldReport: jest.fn(async () => undefined),
     setLastPeekedPositiveYieldReport: jest.fn(async () => undefined),
     setLastSettleableLidoFees: jest.fn(async () => undefined),
+    setLastTotalPendingPartialWithdrawalsGwei,
     addNodeOperatorFeesPaid: jest.fn(),
     addLiabilitiesPaid: jest.fn(),
     addLidoFeesPaid: jest.fn(),
@@ -41,7 +43,12 @@ const createMetricsUpdaterMock = () => {
     recordOperationModeDuration: jest.fn(),
   };
 
-  return { metricsUpdater, addValidatorPartialUnstakeAmount, incrementValidatorExit };
+  return {
+    metricsUpdater,
+    addValidatorPartialUnstakeAmount,
+    incrementValidatorExit,
+    setLastTotalPendingPartialWithdrawalsGwei,
+  };
 };
 
 const createValidatorDataClientMock = () => {
@@ -88,7 +95,12 @@ const createValidator = (
 describe("BeaconChainStakingClient", () => {
   const setupClient = (maxValidatorsPerTx = 3) => {
     const logger = createLoggerMock();
-    const { metricsUpdater, addValidatorPartialUnstakeAmount, incrementValidatorExit } = createMetricsUpdaterMock();
+    const {
+      metricsUpdater,
+      addValidatorPartialUnstakeAmount,
+      incrementValidatorExit,
+      setLastTotalPendingPartialWithdrawalsGwei,
+    } = createMetricsUpdaterMock();
     const {
       client: validatorDataClient,
       getActiveValidatorsWithPendingWithdrawals,
@@ -116,6 +128,7 @@ describe("BeaconChainStakingClient", () => {
         incrementValidatorExit,
         getActiveValidatorsWithPendingWithdrawals,
         getTotalPendingPartialWithdrawalsWei,
+        setLastTotalPendingPartialWithdrawalsGwei,
       },
     };
   };
@@ -154,6 +167,7 @@ describe("BeaconChainStakingClient", () => {
         expect.stringContaining("submitWithdrawalRequestsToFulfilAmount - no remaining withdrawal amount needed"),
       );
       expect(mocks.getTotalPendingPartialWithdrawalsWei).toHaveBeenCalledWith(validators);
+      expect(mocks.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(4);
       expect(unstakeMock).not.toHaveBeenCalled();
       expect(mocks.addValidatorPartialUnstakeAmount).not.toHaveBeenCalled();
     });
@@ -174,6 +188,7 @@ describe("BeaconChainStakingClient", () => {
       await client.submitWithdrawalRequestsToFulfilAmount(amountWei);
 
       expect(mocks.getTotalPendingPartialWithdrawalsWei).toHaveBeenCalledWith(validators);
+      expect(mocks.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(0);
       expect(unstakeMock).toHaveBeenCalledTimes(1);
 
       const [, withdrawalRequests] = unstakeMock.mock.calls[0];

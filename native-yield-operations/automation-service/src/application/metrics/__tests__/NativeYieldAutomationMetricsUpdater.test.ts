@@ -80,6 +80,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       "Settleable Lido protocol fees from the last query",
       ["vault_address"],
     );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
+      "Total pending partial withdrawals in gwei",
+      [],
+    );
     expect(metricsService.createCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
       "Node operator fees paid by automation per vault",
@@ -340,6 +345,32 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       jest.clearAllMocks();
 
       await updater.setLastSettleableLidoFees(vaultAddress, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setLastTotalPendingPartialWithdrawalsGwei", () => {
+    it("sets gauge when value is non-negative", async () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      await updater.setLastTotalPendingPartialWithdrawalsGwei(1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
+        {},
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", async () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      await updater.setLastTotalPendingPartialWithdrawalsGwei(-1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });

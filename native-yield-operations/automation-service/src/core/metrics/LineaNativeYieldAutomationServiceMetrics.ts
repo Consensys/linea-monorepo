@@ -39,6 +39,9 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `vault_address`
   LastSettleableLidoFees = "linea_native_yield_automation_service_last_settleable_lido_fees",
 
+  // Gauge representing total pending partial withdrawals in gwei
+  LastTotalPendingPartialWithdrawalsGwei = "linea_native_yield_automation_service_last_total_pending_partial_withdrawals_gwei",
+
   // Counter that increments by the node operator fees paid
   // Single label `vault_address`
   // N.B. Only accounts for payments by the automation service, but external actors can also trigger payment

@@ -1,4 +1,4 @@
-import { ILogger, min, ONE_GWEI, safeSub } from "@consensys/linea-shared-utils";
+import { ILogger, min, ONE_GWEI, safeSub, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import { IBeaconChainStakingClient } from "../core/clients/IBeaconChainStakingClient.js";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
@@ -52,6 +52,9 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     }
     const totalPendingPartialWithdrawalsWei =
       this.validatorDataClient.getTotalPendingPartialWithdrawalsWei(sortedValidatorList);
+    await this.metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei(
+      weiToGweiNumber(totalPendingPartialWithdrawalsWei),
+    );
     const remainingWithdrawalAmountWei = safeSub(amountWei, totalPendingPartialWithdrawalsWei);
     if (remainingWithdrawalAmountWei === 0n) {
       this.logger.info(

@@ -22,6 +22,8 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   setLastSettleableLidoFees(vaultAddress: Address, feesAmount: number): Promise<void>;
 
+  setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): Promise<void>;
+
   addNodeOperatorFeesPaid(vaultAddress: Address, amountGwei: number): void;
 
   addLiabilitiesPaid(vaultAddress: Address, amountGwei: number): void;

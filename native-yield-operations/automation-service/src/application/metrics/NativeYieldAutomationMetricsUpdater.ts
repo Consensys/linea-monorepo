@@ -78,6 +78,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       ["vault_address"],
     );
 
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
+      "Total pending partial withdrawals in gwei",
+      [],
+    );
+
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
       "Node operator fees paid by automation per vault",
@@ -238,6 +244,21 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
       { vault_address: vaultAddress },
       feesAmount,
+    );
+  }
+
+  /**
+   * Sets the total pending partial withdrawals in gwei from the last query.
+   *
+   * @param {number} totalPendingPartialWithdrawalsGwei - The total pending partial withdrawals amount in gwei. Must be non-negative to be recorded.
+   * @returns {Promise<void>} A promise that resolves when the gauge is set.
+   */
+  public async setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): Promise<void> {
+    if (totalPendingPartialWithdrawalsGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
+      {},
+      totalPendingPartialWithdrawalsGwei,
     );
   }
 
