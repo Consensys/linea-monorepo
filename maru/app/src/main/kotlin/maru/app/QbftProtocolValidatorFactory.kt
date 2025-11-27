@@ -21,6 +21,7 @@ import maru.consensus.qbft.QbftValidatorFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.database.BeaconChain
+import maru.executionlayer.ExecutionLayerFactory.buildExecutionLayerManager
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
 import maru.syncing.CLSyncStatus
@@ -56,7 +57,7 @@ class QbftProtocolValidatorFactory(
     val qbftConsensusConfig = forkSpec.configuration as QbftConsensusConfig
 
     val payloadValidatorExecutionLayerManager =
-      Helpers.buildExecutionLayerManager(
+      buildExecutionLayerManager(
         web3JEngineApiClient = validatorELNodeEngineApiWeb3JClient,
         elFork = qbftConsensusConfig.elFork,
         metricsFacade = metricsFacade,

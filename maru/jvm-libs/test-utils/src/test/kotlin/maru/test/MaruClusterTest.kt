@@ -101,7 +101,7 @@ class MaruClusterTest {
     val forkTimeGap = 10.seconds
     cluster =
       MaruCluster(
-        terminalTotalDifficulty = 20UL,
+        terminalTotalDifficulty = terminalTotalDifficulty,
         chainForks =
           mapOf(
             Instant.fromEpochSeconds(0) to

@@ -26,7 +26,7 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
-class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
+open class PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
   web3jClient: Web3JClient,
   metricsFacade: MetricsFacade,
 ) : BaseWeb3JJsonRpcExecutionLayerEngineApiClient(web3jClient = web3jClient, metricsFacade = metricsFacade) {

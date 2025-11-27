@@ -151,6 +151,8 @@ class BeaconGenesisFactoryTest {
         Instant.fromEpochSeconds(1000) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
         Instant.fromEpochSeconds(2000) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
         Instant.fromEpochSeconds(3000) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+        Instant.fromEpochSeconds(4000) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Osaka),
+        Instant.fromEpochSeconds(5000) to ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
       )
 
     val result =
@@ -205,6 +207,24 @@ class BeaconGenesisFactoryTest {
                 QbftConsensusConfig(
                   validatorSet = validators.toSet(),
                   fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+                ),
+            ),
+            ForkSpec(
+              timestampSeconds = 4000UL,
+              blockTimeSeconds = 1U,
+              configuration =
+                QbftConsensusConfig(
+                  validatorSet = validators.toSet(),
+                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Osaka),
+                ),
+            ),
+            ForkSpec(
+              timestampSeconds = 5000UL,
+              blockTimeSeconds = 1U,
+              configuration =
+                QbftConsensusConfig(
+                  validatorSet = validators.toSet(),
+                  fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
                 ),
             ),
           ),

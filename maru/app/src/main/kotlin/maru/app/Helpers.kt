@@ -15,13 +15,7 @@ import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.blockimport.ElForkAwareBlockImporter
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.state.FinalizationProvider
-import maru.executionlayer.client.CancunWeb3JJsonRpcExecutionLayerEngineApiClient
-import maru.executionlayer.client.ExecutionLayerEngineApiClient
-import maru.executionlayer.client.ParisWeb3JJsonRpcExecutionLayerEngineApiClient
-import maru.executionlayer.client.PragueWeb3JJsonRpcExecutionLayerEngineApiClient
-import maru.executionlayer.client.ShanghaiWeb3JJsonRpcExecutionLayerEngineApiClient
-import maru.executionlayer.manager.ExecutionLayerManager
-import maru.executionlayer.manager.JsonRpcExecutionLayerManager
+import maru.executionlayer.ExecutionLayerFactory.buildExecutionLayerManager
 import maru.web3j.TekuWeb3JClientFactory
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.Logger
@@ -39,51 +33,6 @@ object Helpers {
         timeout = apiEndpointConfig.timeout,
         log = log,
       )
-
-  fun buildExecutionLayerManager(
-    web3JEngineApiClient: Web3JClient,
-    elFork: ElFork,
-    metricsFacade: MetricsFacade,
-  ): ExecutionLayerManager =
-    JsonRpcExecutionLayerManager(
-      executionLayerEngineApiClient =
-        buildExecutionEngineClient(
-          web3JEngineApiClient = web3JEngineApiClient,
-          elFork = elFork,
-          metricsFacade = metricsFacade,
-        ),
-    )
-
-  fun buildExecutionEngineClient(
-    web3JEngineApiClient: Web3JClient,
-    elFork: ElFork,
-    metricsFacade: MetricsFacade,
-  ): ExecutionLayerEngineApiClient =
-    when (elFork) {
-      ElFork.Paris ->
-        ParisWeb3JJsonRpcExecutionLayerEngineApiClient(
-          web3jClient = web3JEngineApiClient,
-          metricsFacade = metricsFacade,
-        )
-
-      ElFork.Shanghai ->
-        ShanghaiWeb3JJsonRpcExecutionLayerEngineApiClient(
-          web3jClient = web3JEngineApiClient,
-          metricsFacade = metricsFacade,
-        )
-
-      ElFork.Cancun ->
-        CancunWeb3JJsonRpcExecutionLayerEngineApiClient(
-          web3jClient = web3JEngineApiClient,
-          metricsFacade = metricsFacade,
-        )
-
-      ElFork.Prague ->
-        PragueWeb3JJsonRpcExecutionLayerEngineApiClient(
-          web3jClient = web3JEngineApiClient,
-          metricsFacade = metricsFacade,
-        )
-    }
 
   fun createBlockImportHandlers(
     elFork: ElFork,
