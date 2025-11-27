@@ -195,6 +195,12 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	// weight.
 	for i := range disc.Modules {
 
+		// Store the original BaseSize from advice for each submodule as the minimum allowed size.
+		// For submodules with Plonk circuits, BaseSize represents the required number of public
+		// inputs and must not be reduced.
+		baseSizes := make([]int, len(disc.Modules[i].NewSizes))
+		copy(baseSizes, disc.Modules[i].NewSizes)
+
 		// weightTotalInitial is the weight of the module using the initial
 		// number of rows.
 		weightTotalInitial := 0
@@ -229,6 +235,11 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				numRow := disc.Modules[i].NewSizes[j]
 				if !disc.Modules[i].SubModules[j].HasPrecomputed {
 					numRow /= reduction
+					// Only enforce BaseSize floor for submodules with Plonk circuits, as they have
+					// strict requirements for the number of public inputs matching the circuit size
+					if disc.Modules[i].SubModules[j].NbConstraintsOfPlonkCirc > 0 && numRow < baseSizes[j] {
+						numRow = baseSizes[j]
+					}
 				}
 
 				if numRow < 1 {
@@ -249,6 +260,10 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		for j := range disc.Modules[i].SubModules {
 			if !disc.Modules[i].SubModules[j].HasPrecomputed {
 				disc.Modules[i].NewSizes[j] /= bestReduction
+				// Only enforce BaseSize floor for submodules with Plonk circuits
+				if disc.Modules[i].SubModules[j].NbConstraintsOfPlonkCirc > 0 && disc.Modules[i].NewSizes[j] < baseSizes[j] {
+					disc.Modules[i].NewSizes[j] = baseSizes[j]
+				}
 			}
 		}
 	}
@@ -1200,7 +1215,10 @@ func countConstraintsOfPlonkCirc(piw *query.PlonkInWizard) int {
 		hasAddGates = piw.PlonkOptions[0].RangeCheckAddGateForRangeCheck
 	}
 
-	ccs, _, _ := plonkinternal.CompileCircuitWithRangeCheck(piw.Circuit, hasAddGates)
+	ccs, _, err := plonkinternal.CompileCircuitWithRangeCheck(piw.Circuit, hasAddGates)
+	if err != nil {
+		utils.Panic("unable to compile plonk-in-wizard circuit %s: %v", piw.ID, err)
+	}
 	nbConstraints := ccs.GetNbConstraints()
 	return nbConstraints
 }
