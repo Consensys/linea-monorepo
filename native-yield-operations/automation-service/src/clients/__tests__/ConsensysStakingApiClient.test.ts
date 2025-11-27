@@ -96,6 +96,23 @@ describe("ConsensysStakingApiClient", () => {
       expect(logger.info).toHaveBeenCalledWith("getActiveValidators succeeded, validatorCount=1");
       expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: validators });
     });
+
+    it("handles undefined nodes and logs validatorCount=0", async () => {
+      const { client, logger, retryMock, apolloQueryMock } = createClient();
+
+      apolloQueryMock.mockResolvedValue({
+        data: { allValidators: { nodes: undefined } },
+        error: undefined,
+      });
+
+      const result = await client.getActiveValidators();
+
+      expect(result).toBeUndefined();
+      expect(retryMock).toHaveBeenCalledTimes(1);
+      expect(apolloQueryMock).toHaveBeenCalledWith({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY });
+      expect(logger.info).toHaveBeenCalledWith("getActiveValidators succeeded, validatorCount=0");
+      expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: undefined });
+    });
   });
 
   describe("getActiveValidatorsWithPendingWithdrawals", () => {
