@@ -2,20 +2,25 @@ import { mock, MockProxy } from "jest-mock-extended";
 import type { ILogger } from "@consensys/linea-shared-utils";
 import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
+import type { IValidatorDataClient } from "../../core/clients/IValidatorDataClient.js";
+import type { ValidatorBalanceWithPendingWithdrawal } from "../../core/entities/ValidatorBalance.js";
 import type { TransactionReceipt, Address } from "viem";
 import type { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { OperationModeExecutionStatus } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+import { ONE_GWEI } from "@consensys/linea-shared-utils";
+import { ResultAsync } from "neverthrow";
 
 jest.mock("@consensys/linea-shared-utils", () => {
   const actual = jest.requireActual("@consensys/linea-shared-utils");
   return {
     ...actual,
     wait: jest.fn(),
+    attempt: jest.fn(),
   };
 });
 
-import { wait } from "@consensys/linea-shared-utils";
+import { wait, attempt } from "@consensys/linea-shared-utils";
 import { OperationModeSelector } from "../OperationModeSelector.js";
 
 describe("OperationModeSelector", () => {
@@ -24,10 +29,12 @@ describe("OperationModeSelector", () => {
   let logger: MockProxy<ILogger>;
   let metricsUpdater: MockProxy<INativeYieldAutomationMetricsUpdater>;
   let yieldManager: MockProxy<IYieldManager<TransactionReceipt>>;
+  let validatorDataClient: MockProxy<IValidatorDataClient>;
   let yieldReportingProcessor: MockProxy<IOperationModeProcessor>;
   let ossificationPendingProcessor: MockProxy<IOperationModeProcessor>;
   let ossificationCompleteProcessor: MockProxy<IOperationModeProcessor>;
   let waitMock: jest.MockedFunction<typeof wait>;
+  let attemptMock: jest.MockedFunction<typeof attempt>;
 
   const contractReadRetryTimeMs = 123;
 
@@ -36,6 +43,7 @@ describe("OperationModeSelector", () => {
       logger,
       metricsUpdater,
       yieldManager,
+      validatorDataClient,
       yieldReportingProcessor,
       ossificationPendingProcessor,
       ossificationCompleteProcessor,
@@ -48,12 +56,26 @@ describe("OperationModeSelector", () => {
     logger = mock<ILogger>();
     metricsUpdater = mock<INativeYieldAutomationMetricsUpdater>();
     yieldManager = mock<IYieldManager<TransactionReceipt>>();
+    validatorDataClient = mock<IValidatorDataClient>();
     yieldReportingProcessor = mock<IOperationModeProcessor>();
     ossificationPendingProcessor = mock<IOperationModeProcessor>();
     ossificationCompleteProcessor = mock<IOperationModeProcessor>();
 
     waitMock = wait as jest.MockedFunction<typeof wait>;
     waitMock.mockResolvedValue(undefined);
+
+    attemptMock = attempt as jest.MockedFunction<typeof attempt>;
+    attemptMock.mockImplementation((logger, fn, msg) => {
+      return ResultAsync.fromPromise(Promise.resolve().then(fn), (e) => {
+        const error = e instanceof Error ? e : new Error(String(e));
+        logger.warn(msg, { error });
+        return error;
+      });
+    });
+
+    // Default mock for validator data client
+    validatorDataClient.getActiveValidatorsWithPendingWithdrawals.mockResolvedValue([]);
+    validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(0n);
   });
 
   it("runs yield reporting mode when neither ossification flag is set", async () => {
@@ -252,5 +274,88 @@ describe("OperationModeSelector", () => {
       OperationMode.OSSIFICATION_COMPLETE_MODE,
       OperationModeExecutionStatus.Failure,
     );
+  });
+
+  describe("refreshGaugeMetrics", () => {
+    it("refreshes gauge metrics on each loop iteration", async () => {
+      yieldManager.isOssificationInitiated.mockResolvedValue(false);
+      yieldManager.isOssified.mockResolvedValue(false);
+
+      const validators: ValidatorBalanceWithPendingWithdrawal[] = [
+        {
+          balance: 32n,
+          effectiveBalance: 32n,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          pendingWithdrawalAmount: 3n,
+          withdrawableAmount: 0n,
+        },
+        {
+          balance: 32n,
+          effectiveBalance: 32n,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+          pendingWithdrawalAmount: 1n,
+          withdrawableAmount: 0n,
+        },
+      ];
+
+      validatorDataClient.getActiveValidatorsWithPendingWithdrawals.mockResolvedValue(validators);
+      validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(4n * ONE_GWEI);
+
+      const selector = createSelector();
+      yieldReportingProcessor.process.mockImplementation(async () => {
+        selector.stop();
+      });
+
+      await selector.start();
+
+      expect(attemptMock).toHaveBeenCalled();
+      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawals).toHaveBeenCalled();
+      expect(validatorDataClient.getTotalPendingPartialWithdrawalsWei).toHaveBeenCalledWith(validators);
+      expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(4);
+    });
+
+    it("handles undefined validator list gracefully", async () => {
+      yieldManager.isOssificationInitiated.mockResolvedValue(false);
+      yieldManager.isOssified.mockResolvedValue(false);
+
+      validatorDataClient.getActiveValidatorsWithPendingWithdrawals.mockResolvedValue(undefined);
+
+      const selector = createSelector();
+      yieldReportingProcessor.process.mockImplementation(async () => {
+        selector.stop();
+      });
+
+      await selector.start();
+
+      expect(attemptMock).toHaveBeenCalled();
+      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawals).toHaveBeenCalled();
+      expect(validatorDataClient.getTotalPendingPartialWithdrawalsWei).not.toHaveBeenCalled();
+      expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).not.toHaveBeenCalled();
+    });
+
+    it("logs warning but continues loop when refreshGaugeMetrics fails", async () => {
+      yieldManager.isOssificationInitiated.mockResolvedValue(false);
+      yieldManager.isOssified.mockResolvedValue(false);
+
+      const error = new Error("Failed to get validators");
+      validatorDataClient.getActiveValidatorsWithPendingWithdrawals.mockRejectedValue(error);
+
+      const selector = createSelector();
+      yieldReportingProcessor.process.mockImplementation(async () => {
+        selector.stop();
+      });
+
+      await selector.start();
+
+      expect(attemptMock).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Failed to refresh gauge metrics", { error });
+      expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
+      expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+        OperationMode.YIELD_REPORTING_MODE,
+        OperationModeExecutionStatus.Success,
+      );
+    });
   });
 });
