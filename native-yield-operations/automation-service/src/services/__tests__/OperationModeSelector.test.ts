@@ -335,7 +335,7 @@ describe("OperationModeSelector", () => {
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).not.toHaveBeenCalled();
     });
 
-    it("logs warning but continues loop when refreshGaugeMetrics fails", async () => {
+    it("logs warning and error details but continues loop when refreshGaugeMetrics fails", async () => {
       yieldManager.isOssificationInitiated.mockResolvedValue(false);
       yieldManager.isOssified.mockResolvedValue(false);
 
@@ -351,6 +351,11 @@ describe("OperationModeSelector", () => {
 
       expect(attemptMock).toHaveBeenCalled();
       expect(logger.warn).toHaveBeenCalledWith("Failed to refresh gauge metrics", { error });
+      expect(logger.error).toHaveBeenCalledWith("Failed to refresh gauge metrics with details", {
+        error: expect.objectContaining({ message: "Failed to get validators" }),
+        errorMessage: "Failed to get validators",
+        errorStack: expect.any(String),
+      });
       expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
       expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
         OperationMode.YIELD_REPORTING_MODE,

@@ -102,7 +102,18 @@ export class OperationModeSelector implements IOperationModeSelector {
    */
   private async selectOperationModeLoop(): Promise<void> {
     while (this.isRunning) {
-      await attempt(this.logger, () => this.refreshGaugeMetrics(), "Failed to refresh gauge metrics");
+      const refreshMetricsResult = await attempt(
+        this.logger,
+        () => this.refreshGaugeMetrics(),
+        "Failed to refresh gauge metrics",
+      );
+      if (refreshMetricsResult.isErr()) {
+        this.logger.error("Failed to refresh gauge metrics with details", {
+          error: refreshMetricsResult.error,
+          errorMessage: refreshMetricsResult.error.message,
+          errorStack: refreshMetricsResult.error.stack,
+        });
+      }
       let currentMode: OperationMode = OperationMode.UNKNOWN;
       try {
         const [isOssificationInitiated, isOssified] = await Promise.all([
