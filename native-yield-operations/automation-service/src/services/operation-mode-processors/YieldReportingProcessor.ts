@@ -315,15 +315,13 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     if (yieldReport !== undefined) {
       const outstandingNegativeYield = yieldReport?.outstandingNegativeYield;
       const yieldAmount = yieldReport?.yieldAmount;
-      await Promise.all([
-        this.metricsUpdater.setLastPeekedNegativeYieldReport(this.vault, weiToGweiNumber(outstandingNegativeYield)),
-        this.metricsUpdater.setLastPeekedPositiveYieldReport(this.vault, weiToGweiNumber(yieldAmount)),
-      ]);
+      this.metricsUpdater.setLastPeekedNegativeYieldReport(this.vault, weiToGweiNumber(outstandingNegativeYield));
+      this.metricsUpdater.setLastPeekedPositiveYieldReport(this.vault, weiToGweiNumber(yieldAmount));
       yieldThresholdMet = yieldAmount >= this.minPositiveYieldToReportWei;
     }
 
     if (settleableLidoFees !== undefined) {
-      await this.metricsUpdater.setLastSettleableLidoFees(this.vault, weiToGweiNumber(settleableLidoFees));
+      this.metricsUpdater.setLastSettleableLidoFees(this.vault, weiToGweiNumber(settleableLidoFees));
       feesThresholdMet = settleableLidoFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
     }
 

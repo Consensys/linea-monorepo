@@ -23,7 +23,7 @@ const createLoggerMock = (): ILogger => ({
 const createMetricsUpdaterMock = () => {
   const addValidatorPartialUnstakeAmount = jest.fn();
   const incrementValidatorExit = jest.fn();
-  const setLastTotalPendingPartialWithdrawalsGwei = jest.fn(async () => undefined);
+  const setLastTotalPendingPartialWithdrawalsGwei = jest.fn();
 
   const metricsUpdater: INativeYieldAutomationMetricsUpdater = {
     recordRebalance: jest.fn(),
@@ -32,9 +32,9 @@ const createMetricsUpdaterMock = () => {
     incrementLidoVaultAccountingReport: jest.fn(),
     incrementReportYield: jest.fn(),
     addReportedYieldAmount: jest.fn(),
-    setLastPeekedNegativeYieldReport: jest.fn(async () => undefined),
-    setLastPeekedPositiveYieldReport: jest.fn(async () => undefined),
-    setLastSettleableLidoFees: jest.fn(async () => undefined),
+    setLastPeekedNegativeYieldReport: jest.fn(),
+    setLastPeekedPositiveYieldReport: jest.fn(),
+    setLastSettleableLidoFees: jest.fn(),
     setLastTotalPendingPartialWithdrawalsGwei,
     addNodeOperatorFeesPaid: jest.fn(),
     addLiabilitiesPaid: jest.fn(),

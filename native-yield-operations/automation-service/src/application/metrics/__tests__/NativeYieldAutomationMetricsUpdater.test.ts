@@ -273,12 +273,12 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
   });
 
   describe("setLastPeekedNegativeYieldReport", () => {
-    it("sets gauge when value is non-negative", async () => {
+    it("sets gauge when value is non-negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekedNegativeYieldReport(vaultAddress, 123);
+      updater.setLastPeekedNegativeYieldReport(vaultAddress, 123);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastPeekedNegativeYieldReport,
@@ -287,24 +287,24 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("does not set gauge when value is negative", async () => {
+    it("does not set gauge when value is negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekedNegativeYieldReport(vaultAddress, -1);
+      updater.setLastPeekedNegativeYieldReport(vaultAddress, -1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastPeekedPositiveYieldReport", () => {
-    it("sets gauge when value is non-negative", async () => {
+    it("sets gauge when value is non-negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekedPositiveYieldReport(vaultAddress, 456);
+      updater.setLastPeekedPositiveYieldReport(vaultAddress, 456);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastPeekedPositiveYieldReport,
@@ -313,24 +313,24 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("does not set gauge when value is negative", async () => {
+    it("does not set gauge when value is negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekedPositiveYieldReport(vaultAddress, -1);
+      updater.setLastPeekedPositiveYieldReport(vaultAddress, -1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastSettleableLidoFees", () => {
-    it("sets gauge when value is non-negative", async () => {
+    it("sets gauge when value is non-negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastSettleableLidoFees(vaultAddress, 789);
+      updater.setLastSettleableLidoFees(vaultAddress, 789);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
@@ -339,24 +339,24 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("does not set gauge when value is negative", async () => {
+    it("does not set gauge when value is negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastSettleableLidoFees(vaultAddress, -1);
+      updater.setLastSettleableLidoFees(vaultAddress, -1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastTotalPendingPartialWithdrawalsGwei", () => {
-    it("sets gauge when value is non-negative", async () => {
+    it("sets gauge when value is non-negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastTotalPendingPartialWithdrawalsGwei(1000);
+      updater.setLastTotalPendingPartialWithdrawalsGwei(1000);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
@@ -365,12 +365,12 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("does not set gauge when value is negative", async () => {
+    it("does not set gauge when value is negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastTotalPendingPartialWithdrawalsGwei(-1);
+      updater.setLastTotalPendingPartialWithdrawalsGwei(-1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });

@@ -16,13 +16,13 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   addReportedYieldAmount(vaultAddress: Address, amountGwei: number): void;
 
-  setLastPeekedNegativeYieldReport(vaultAddress: Address, negativeYield: number): Promise<void>;
+  setLastPeekedNegativeYieldReport(vaultAddress: Address, negativeYield: number): void;
 
-  setLastPeekedPositiveYieldReport(vaultAddress: Address, yieldAmount: number): Promise<void>;
+  setLastPeekedPositiveYieldReport(vaultAddress: Address, yieldAmount: number): void;
 
-  setLastSettleableLidoFees(vaultAddress: Address, feesAmount: number): Promise<void>;
+  setLastSettleableLidoFees(vaultAddress: Address, feesAmount: number): void;
 
-  setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): Promise<void>;
+  setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): void;
 
   addNodeOperatorFeesPaid(vaultAddress: Address, amountGwei: number): void;
 

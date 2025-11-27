@@ -52,7 +52,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     }
     const totalPendingPartialWithdrawalsWei =
       this.validatorDataClient.getTotalPendingPartialWithdrawalsWei(sortedValidatorList);
-    await this.metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei(
+    this.metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei(
       weiToGweiNumber(totalPendingPartialWithdrawalsWei),
     );
     const remainingWithdrawalAmountWei = safeSub(amountWei, totalPendingPartialWithdrawalsWei);

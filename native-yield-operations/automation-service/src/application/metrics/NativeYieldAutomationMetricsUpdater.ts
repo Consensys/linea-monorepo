@@ -204,9 +204,8 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    *
    * @param {Address} vaultAddress - The address of the vault.
    * @param {number} negativeYield - The negative yield amount. Must be non-negative to be recorded.
-   * @returns {Promise<void>} A promise that resolves when the gauge is set.
    */
-  public async setLastPeekedNegativeYieldReport(vaultAddress: Address, negativeYield: number): Promise<void> {
+  public setLastPeekedNegativeYieldReport(vaultAddress: Address, negativeYield: number): void {
     if (negativeYield < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.LastPeekedNegativeYieldReport,
@@ -220,9 +219,8 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    *
    * @param {Address} vaultAddress - The address of the vault.
    * @param {number} yieldAmount - The yield amount. Must be non-negative to be recorded.
-   * @returns {Promise<void>} A promise that resolves when the gauge is set.
    */
-  public async setLastPeekedPositiveYieldReport(vaultAddress: Address, yieldAmount: number): Promise<void> {
+  public setLastPeekedPositiveYieldReport(vaultAddress: Address, yieldAmount: number): void {
     if (yieldAmount < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.LastPeekedPositiveYieldReport,
@@ -236,9 +234,8 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    *
    * @param {Address} vaultAddress - The address of the vault.
    * @param {number} feesAmount - The settleable fees amount. Must be non-negative to be recorded.
-   * @returns {Promise<void>} A promise that resolves when the gauge is set.
    */
-  public async setLastSettleableLidoFees(vaultAddress: Address, feesAmount: number): Promise<void> {
+  public setLastSettleableLidoFees(vaultAddress: Address, feesAmount: number): void {
     if (feesAmount < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
@@ -251,9 +248,8 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    * Sets the total pending partial withdrawals in gwei from the last query.
    *
    * @param {number} totalPendingPartialWithdrawalsGwei - The total pending partial withdrawals amount in gwei. Must be non-negative to be recorded.
-   * @returns {Promise<void>} A promise that resolves when the gauge is set.
    */
-  public async setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): Promise<void> {
+  public setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): void {
     if (totalPendingPartialWithdrawalsGwei < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
