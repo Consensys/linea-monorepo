@@ -79,22 +79,26 @@ describe("ConsensysStakingApiClient", () => {
 
     it("returns the validator list and logs success when the query succeeds", async () => {
       const { client, logger, retryMock, apolloQueryMock } = createClient();
-      const validators: ValidatorBalance[] = [
+      // GraphQL returns string values, which need to be converted to bigint
+      const graphqlResponse = [
+        { balance: "32", effectiveBalance: "32", publicKey: "validator-1", validatorIndex: "1" },
+      ];
+      const expectedValidators: ValidatorBalance[] = [
         { balance: 32n, effectiveBalance: 32n, publicKey: "validator-1", validatorIndex: 1n },
       ];
 
       apolloQueryMock.mockResolvedValue({
-        data: { allValidators: { nodes: validators } },
+        data: { allValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
 
       const result = await client.getActiveValidators();
 
-      expect(result).toEqual(validators);
+      expect(result).toEqual(expectedValidators);
       expect(retryMock).toHaveBeenCalledTimes(1);
       expect(apolloQueryMock).toHaveBeenCalledWith({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY });
       expect(logger.info).toHaveBeenCalledWith("getActiveValidators succeeded, validatorCount=1");
-      expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: validators });
+      expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: expectedValidators });
     });
 
     it("handles undefined nodes and logs validatorCount=0", async () => {

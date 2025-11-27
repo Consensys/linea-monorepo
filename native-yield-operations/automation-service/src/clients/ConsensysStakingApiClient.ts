@@ -43,9 +43,29 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       return undefined;
     }
     const resp = data?.allValidators.nodes;
-    this.logger.info(`getActiveValidators succeeded, validatorCount=${resp?.length ?? 0}`);
-    this.logger.debug("getActiveValidators resp", { resp });
-    return resp;
+    if (!resp) {
+      this.logger.info(`getActiveValidators succeeded, validatorCount=0`);
+      this.logger.debug("getActiveValidators resp", { resp: undefined });
+      return undefined;
+    }
+    // Convert GraphQL string responses to bigint
+    // GraphQL returns numeric values as strings, so we need to convert them
+    // BigInt() handles strings, numbers, and bigint values, so no type check needed
+    type GraphQLValidatorResponse = {
+      balance: string | bigint;
+      effectiveBalance: string | bigint;
+      publicKey: string;
+      validatorIndex: string | bigint;
+    };
+    const validators: ValidatorBalance[] = resp.map((v: GraphQLValidatorResponse) => ({
+      balance: BigInt(v.balance),
+      effectiveBalance: BigInt(v.effectiveBalance),
+      publicKey: v.publicKey,
+      validatorIndex: BigInt(v.validatorIndex),
+    }));
+    this.logger.info(`getActiveValidators succeeded, validatorCount=${validators.length}`);
+    this.logger.debug("getActiveValidators resp", { resp: validators });
+    return validators;
   }
 
   /**
