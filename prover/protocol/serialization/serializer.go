@@ -2,13 +2,10 @@ package serialization
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"hash"
-	"io"
 	"math/big"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,7 +15,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
-	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -1119,384 +1115,56 @@ func backReferenceFromCBORInt(n any) BackReference {
 	return BackReference(n.(uint64))
 }
 
-const (
-	opConst   = 0x01
-	opVar     = 0x02
-	opLinComb = 0x03
-	opProd    = 0x04
-	opPoly    = 0x05
-)
-
-func (s *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *serdeError) {
+func (ser *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *serdeError) {
 	if e == nil {
 		return 0, nil
 	}
 
-	// cache hit
-	if idx, ok := s.exprMap[e]; ok {
+	if idx, ok := ser.exprMap[e]; ok {
 		return BackReference(idx), nil
 	}
 
-	// Build board & flatten nodes in topo order (children before parent)
+	// Build a board once (dedup + topo), then pack from it.
 	board := e.Board()
-	var flatNodes []symbolic.Node
-	metadataMap := map[string]int{}
-	metadataList := []string{}
+	pg := symbolic.ToPackedExprFromBoard(board)
 
-	// collect nodes in level order (level 0 first ... root last) which is topo
-	for _, level := range board.Nodes {
-		for _, node := range level {
-			flatNodes = append(flatNodes, node)
-			// collect metadata strings for Variable nodes
-			if vv, ok := node.Operator.(symbolic.Variable); ok {
-				ms := vv.Metadata.String()
-				if _, exists := metadataMap[ms]; !exists {
-					metadataMap[ms] = len(metadataList)
-					metadataList = append(metadataList, ms)
-				}
-			}
-		}
-	}
-	// deterministic metadata ordering
-	sort.Strings(metadataList)
-	// rebuild metadataMap to match sorted list
-	metadataMap = map[string]int{}
-	for i, sstr := range metadataList {
-		metadataMap[sstr] = i
+	blob, err := pg.MarshalBinary()
+	if err != nil {
+		return 0, newSerdeErrorf("PackExpression: marshal graph: %v", err)
 	}
 
-	numNodes := len(flatNodes)
-	numMeta := len(metadataList)
-
-	var buf bytes.Buffer
-
-	// metadata table
-	writeVarint(&buf, uint64(numMeta))
-	for _, sstr := range metadataList {
-		writeVarint(&buf, uint64(len(sstr)))
-		buf.WriteString(sstr)
-	}
-
-	// node count
-	writeVarint(&buf, uint64(numNodes))
-
-	// when serializing child indices, we need a mapping from node (level,pos) to flat index.
-	// flat order is: for each level in board.Nodes (in order), nodes in that level appended.
-	// compute the cumulative start index per level:
-	levelStart := make([]int, len(board.Nodes))
-	cum := 0
-	for lvl := range board.Nodes {
-		levelStart[lvl] = cum
-		cum += len(board.Nodes[lvl])
-	}
-
-	// nodes: encode each node
-	for _, node := range flatNodes {
-		// opcode
-		switch node.Operator.(type) {
-		case symbolic.Constant:
-			buf.WriteByte(opConst)
-		case symbolic.Variable:
-			buf.WriteByte(opVar)
-		case symbolic.LinComb:
-			buf.WriteByte(opLinComb)
-		case symbolic.Product:
-			buf.WriteByte(opProd)
-		case symbolic.PolyEval:
-			buf.WriteByte(opPoly)
-		default:
-			return 0, newSerdeErrorf("PackExpression: unsupported operator %T", node.Operator)
-		}
-
-		// children: write count and indices
-		writeVarint(&buf, uint64(len(node.Children)))
-		for _, cid := range node.Children {
-			u := uint64(cid)
-			flatIdx := getFlatIndexFromUint(u, board)
-			writeVarint(&buf, uint64(flatIdx))
-		}
-
-		// payload by op
-		switch op := node.Operator.(type) {
-		case symbolic.Constant:
-			var bi big.Int
-			b := op.Val.BigInt(&bi).Bytes()
-			writeVarint(&buf, uint64(len(b)))
-			buf.Write(b)
-		case symbolic.Variable:
-			idx := metadataMap[op.Metadata.String()]
-			writeVarint(&buf, uint64(idx))
-		case symbolic.LinComb:
-			writeVarint(&buf, uint64(len(op.Coeffs)))
-			for _, c := range op.Coeffs {
-				// zigzag encode to handle negative coeffs
-				writeVarint(&buf, encodeZigZag(int64(c)))
-			}
-		case symbolic.Product:
-			writeVarint(&buf, uint64(len(op.Exponents)))
-			for _, ex := range op.Exponents {
-				if ex < 0 {
-					return 0, newSerdeErrorf("PackExpression: negative exponent %d", ex)
-				}
-				writeVarint(&buf, uint64(ex))
-			}
-		case symbolic.PolyEval:
-			// no extra payload
-		}
-	}
-
-	// stash bytes as PackedStructObject (single-element) to keep PackedObject.Expressions type
-	n := len(s.PackedObject.Expressions)
-	s.exprMap[e] = n
-	s.PackedObject.Expressions = append(s.PackedObject.Expressions, PackedStructObject{buf.Bytes()})
+	n := len(ser.PackedObject.Expressions)
+	ser.exprMap[e] = n
+	ser.PackedObject.Expressions = append(ser.PackedObject.Expressions, PackedStructObject{blob})
 
 	return BackReference(n), nil
 }
 
-func (d *Deserializer) UnpackExpression(v BackReference) (reflect.Value, *serdeError) {
-	if int(v) < 0 || int(v) >= len(d.PackedObject.Expressions) {
+func (de *Deserializer) UnpackExpression(v BackReference) (reflect.Value, *serdeError) {
+	idx := int(v)
+	if idx < 0 || idx >= len(de.PackedObject.Expressions) {
 		return reflect.Value{}, newSerdeErrorf("invalid expression backreference: %v", v)
 	}
 
-	if d.expressions[int(v)] != nil {
-		return reflect.ValueOf(d.expressions[int(v)]), nil
+	if de.expressions[idx] != nil {
+		return reflect.ValueOf(de.expressions[idx]), nil
 	}
 
-	// retrieve blob stored as PackedStructObject{[]byte}
-	rawObj := d.PackedObject.Expressions[int(v)]
+	rawObj := de.PackedObject.Expressions[idx]
 	if len(rawObj) == 0 {
 		return reflect.Value{}, newSerdeErrorf("UnpackExpression: empty packed struct")
 	}
 	dataBytes, ok := rawObj[0].([]byte)
 	if !ok {
-		return reflect.Value{}, newSerdeErrorf("UnpackExpression: expected []byte payload in PackedStructObject, got %T", rawObj[0])
-	}
-	r := bytes.NewReader(dataBytes)
-
-	numMeta, err := readVarint(r)
-	if err != nil {
-		return reflect.Value{}, newSerdeErrorf("UnpackExpression: read meta count: %v", err)
-	}
-	metas := make([]string, numMeta)
-	for i := uint64(0); i < numMeta; i++ {
-		l, err := readVarint(r)
-		if err != nil {
-			return reflect.Value{}, newSerdeErrorf("UnpackExpression: read meta len: %v", err)
-		}
-		buf := make([]byte, l)
-		if _, err := io.ReadFull(r, buf); err != nil {
-			return reflect.Value{}, newSerdeErrorf("UnpackExpression: read meta bytes: %v", err)
-		}
-		metas[i] = string(buf)
+		return reflect.Value{}, newSerdeErrorf("UnpackExpression: expected []byte payload, got %T", rawObj[0])
 	}
 
-	nodeCount, err := readVarint(r)
-	if err != nil {
-		return reflect.Value{}, newSerdeErrorf("UnpackExpression: read node count: %v", err)
-	}
-	if nodeCount == 0 {
-		return reflect.Value{}, nil
+	var pg symbolic.PackedExprGraph
+	if err := pg.UnmarshalBinary(dataBytes); err != nil {
+		return reflect.Value{}, newSerdeErrorf("UnpackExpression: unmarshal graph: %v", err)
 	}
 
-	// temporary storage for child indices & operators payload
-	type nodeTemp struct {
-		op         byte
-		childIdxs  []int
-		constBytes []byte
-		varMetaIdx int
-		linCoeffs  []int64
-		prodExps   []int
-	}
-	temp := make([]nodeTemp, nodeCount)
-
-	// Read node table (first pass)
-	for i := 0; i < int(nodeCount); i++ {
-		op, err := r.ReadByte()
-		if err != nil {
-			return reflect.Value{}, newSerdeErrorf("UnpackExpression: read op: %v", err)
-		}
-		temp[i].op = op
-
-		cc, err := readVarint(r)
-		if err != nil {
-			return reflect.Value{}, newSerdeErrorf("UnpackExpression: read child count: %v", err)
-		}
-		temp[i].childIdxs = make([]int, cc)
-		for j := uint64(0); j < cc; j++ {
-			ci, err := readVarint(r)
-			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("UnpackExpression: read child idx: %v", err)
-			}
-			temp[i].childIdxs[j] = int(ci)
-		}
-
-		switch op {
-		case opConst:
-			lb, err := readVarint(r)
-			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("UnpackExpression: read const len: %v", err)
-			}
-			bb := make([]byte, lb)
-			if _, err := io.ReadFull(r, bb); err != nil {
-				return reflect.Value{}, newSerdeErrorf("UnpackExpression: read const bytes: %v", err)
-			}
-			temp[i].constBytes = bb
-		case opVar:
-			mi, err := readVarint(r)
-			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("UnpackExpression: read meta idx: %v", err)
-			}
-			temp[i].varMetaIdx = int(mi)
-		case opLinComb:
-			cnt, err := readVarint(r)
-			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("UnpackExpression: read lin coeff cnt: %v", err)
-			}
-			temp[i].linCoeffs = make([]int64, cnt)
-			for k := uint64(0); k < cnt; k++ {
-				uv, err := readVarint(r)
-				if err != nil {
-					return reflect.Value{}, newSerdeErrorf("UnpackExpression: read lin coeff: %v", err)
-				}
-				temp[i].linCoeffs[k] = decodeZigZag(uv)
-			}
-		case opProd:
-			cnt, err := readVarint(r)
-			if err != nil {
-				return reflect.Value{}, newSerdeErrorf("UnpackExpression: read prod exp cnt: %v", err)
-			}
-			temp[i].prodExps = make([]int, cnt)
-			for k := uint64(0); k < cnt; k++ {
-				ev, err := readVarint(r)
-				if err != nil {
-					return reflect.Value{}, newSerdeErrorf("UnpackExpression: read prod exp: %v", err)
-				}
-				temp[i].prodExps[k] = int(ev)
-			}
-		case opPoly:
-			// nothing
-		default:
-			return reflect.Value{}, newSerdeErrorf("UnpackExpression: unknown op %v", op)
-		}
-	}
-
-	// Construct nodes (second pass: create expressions placeholders)
-	nodes := make([]*symbolic.Expression, nodeCount)
-	for i := 0; i < int(nodeCount); i++ {
-		switch temp[i].op {
-		case opConst:
-			var bi big.Int
-			bi.SetBytes(temp[i].constBytes)
-			nodes[i] = symbolic.NewConstant(&bi)
-		case opVar:
-			mi := temp[i].varMetaIdx
-			if mi < 0 || mi >= len(metas) {
-				return reflect.Value{}, newSerdeErrorf("UnpackExpression: invalid meta idx %d", mi)
-			}
-			nodes[i] = symbolic.NewVariable(symbolic.StringVar(metas[mi]))
-		case opLinComb:
-			coeffs := make([]int, len(temp[i].linCoeffs))
-			for k := range coeffs {
-				coeffs[k] = int(temp[i].linCoeffs[k])
-			}
-			nodes[i] = &symbolic.Expression{
-				Operator: symbolic.LinComb{Coeffs: coeffs},
-				Children: make([]*symbolic.Expression, len(temp[i].childIdxs)),
-			}
-		case opProd:
-			exps := temp[i].prodExps
-			nodes[i] = &symbolic.Expression{
-				Operator: symbolic.Product{Exponents: exps},
-				Children: make([]*symbolic.Expression, len(temp[i].childIdxs)),
-			}
-		case opPoly:
-			nodes[i] = &symbolic.Expression{
-				Operator: symbolic.PolyEval{},
-				Children: make([]*symbolic.Expression, len(temp[i].childIdxs)),
-			}
-		default:
-			return reflect.Value{}, newSerdeErrorf("UnpackExpression: unknown op %v", temp[i].op)
-		}
-	}
-
-	// Wire children (third pass)
-	for i := 0; i < int(nodeCount); i++ {
-		for j, ci := range temp[i].childIdxs {
-			if ci < 0 || ci >= len(nodes) {
-				return reflect.Value{}, newSerdeErrorf("UnpackExpression: bad child idx %d", ci)
-			}
-			nodes[i].Children[j] = nodes[ci]
-		}
-	}
-
-	// Recompute ESHash deterministically (topo order ensures children already done)
-	// Use smartvectors Evaluate trick: wrap children ESHash in sv.Constant and call op.Evaluate
-	for i := 0; i < int(nodeCount); i++ {
-		switch op := nodes[i].Operator.(type) {
-		case symbolic.Constant:
-			// already set by NewConstant
-		case symbolic.Variable:
-			// already set by NewVariable
-		case symbolic.LinComb:
-			eshInputs := make([]sv.SmartVector, len(nodes[i].Children))
-			for k := range eshInputs {
-				eshInputs[k] = sv.NewConstant(nodes[i].Children[k].ESHash, 1)
-			}
-			res := op.Evaluate(eshInputs).(*sv.Constant).Get(0)
-			nodes[i].ESHash = res
-		case symbolic.Product:
-			eshInputs := make([]sv.SmartVector, len(nodes[i].Children))
-			for k := range eshInputs {
-				eshInputs[k] = sv.NewConstant(nodes[i].Children[k].ESHash, 1)
-			}
-			res := op.Evaluate(eshInputs).(*sv.Constant).Get(0)
-			nodes[i].ESHash = res
-		case symbolic.PolyEval:
-			eshInputs := make([]sv.SmartVector, len(nodes[i].Children))
-			for k := range eshInputs {
-				eshInputs[k] = sv.NewConstant(nodes[i].Children[k].ESHash, 1)
-			}
-			res := op.Evaluate(eshInputs).(*sv.Constant).Get(0)
-			nodes[i].ESHash = res
-		}
-	}
-
-	// root is last node
-	root := nodes[len(nodes)-1]
-	d.expressions[int(v)] = root
-	return reflect.ValueOf(root), nil
-}
-
-// --- helpers used above ---
-
-func writeVarint(w *bytes.Buffer, v uint64) {
-	var tmp [binary.MaxVarintLen64]byte
-	n := binary.PutUvarint(tmp[:], v)
-	w.Write(tmp[:n])
-}
-
-func readVarint(r *bytes.Reader) (uint64, error) {
-	return binary.ReadUvarint(r)
-}
-
-// zigzag encode/decode for signed ints -> uvarint safe
-func encodeZigZag(x int64) uint64 {
-	return uint64((x << 1) ^ (x >> 63))
-}
-
-func decodeZigZag(u uint64) int64 {
-	return int64((u >> 1) ^ uint64((int64(u&1)<<63)>>63))
-}
-
-// compute flat index given underlying nodeID (uint64 layout: level<<32 | pos)
-// board.Nodes must be available to compute cumulative offsets.
-func getFlatIndexFromUint(u uint64, board symbolic.ExpressionBoard) int {
-	level := int(u >> 32)
-	pos := int(u & ((1 << 32) - 1))
-	// compute cumulative start of level
-	cum := 0
-	for i := 0; i < level; i++ {
-		cum += len(board.Nodes[i])
-	}
-	return cum + pos
+	expr := symbolic.FromPackedExpr(pg)
+	de.expressions[idx] = expr
+	return reflect.ValueOf(expr), nil
 }
