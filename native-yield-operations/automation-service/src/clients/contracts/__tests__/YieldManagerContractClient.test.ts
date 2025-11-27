@@ -224,7 +224,7 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const receipt = await client.fundYieldProvider(yieldProvider, amount);
 
-    expect(logger.debug).toHaveBeenCalledWith(
+    expect(logger.info).toHaveBeenCalledWith(
       `fundYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
     );
     expect(mockedEncodeFunctionData).toHaveBeenCalledWith({
@@ -248,7 +248,7 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const receipt = await client.reportYield(yieldProvider, l2Recipient);
 
-    expect(logger.debug).toHaveBeenCalledWith(
+    expect(logger.info).toHaveBeenCalledWith(
       `reportYield started, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2Recipient}`,
     );
     expect(mockedEncodeFunctionData).toHaveBeenCalledWith({
@@ -281,7 +281,10 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const receipt = await client.unstake(yieldProvider, withdrawalParams);
 
-    expect(logger.debug).toHaveBeenCalledWith(`unstake started, yieldProvider=${yieldProvider}`, {
+    expect(logger.info).toHaveBeenCalledWith(
+      `unstake started, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}`,
+    );
+    expect(logger.debug).toHaveBeenCalledWith(`unstake started withdrawalParams`, {
       withdrawalParams,
     });
     expect(mockedEncodeAbiParameters).toHaveBeenCalledWith(
@@ -316,9 +319,11 @@ describe("YieldManagerContractClient", () => {
     });
     expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata, fee);
     expect(logger.info).toHaveBeenCalledWith(
-      `unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`,
-      { withdrawalParams },
+      `unstake succeeded, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}, txHash=${txReceipt.transactionHash}`,
     );
+    expect(logger.debug).toHaveBeenCalledWith(`unstake succeeded withdrawalParams`, {
+      withdrawalParams,
+    });
     expect(receipt).toBe(txReceipt);
   });
 

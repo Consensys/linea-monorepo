@@ -167,7 +167,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
-    this.logger.debug(`fundYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
+    this.logger.info(`fundYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "fundYieldProvider",
@@ -189,7 +189,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TransactionReceipt> {
-    this.logger.debug(`reportYield started, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}`);
+    this.logger.info(`reportYield started, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "reportYield",
@@ -212,7 +212,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async unstake(yieldProvider: Address, withdrawalParams: WithdrawalRequests): Promise<TransactionReceipt> {
-    this.logger.debug(`unstake started, yieldProvider=${yieldProvider}`, { withdrawalParams });
+    this.logger.info(
+      `unstake started, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}`,
+    );
+    this.logger.debug(`unstake started withdrawalParams`, { withdrawalParams });
     const encodedWithdrawalParams = this._encodeLidoWithdrawalParams({
       ...withdrawalParams,
       refundRecipient: this.contractAddress,
@@ -229,9 +232,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       calldata,
       validatorWithdrawalFee,
     );
-    this.logger.info(`unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`, {
-      withdrawalParams,
-    });
+    this.logger.info(
+      `unstake succeeded, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}, txHash=${txReceipt.transactionHash}`,
+    );
+    this.logger.debug(`unstake succeeded withdrawalParams`, { withdrawalParams });
     return txReceipt;
   }
 
@@ -293,9 +297,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
-    this.logger.debug(
-      `safeAddToWithdrawalReserve started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
-    );
+    this.logger.info(`safeAddToWithdrawalReserve started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "safeAddToWithdrawalReserve",
@@ -316,7 +318,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async pauseStaking(yieldProvider: Address): Promise<TransactionReceipt> {
-    this.logger.debug(`pauseStaking started, yieldProvider=${yieldProvider}`);
+    this.logger.info(`pauseStaking started, yieldProvider=${yieldProvider}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "pauseStaking",
@@ -335,7 +337,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async unpauseStaking(yieldProvider: Address): Promise<TransactionReceipt> {
-    this.logger.debug(`unpauseStaking started, yieldProvider=${yieldProvider}`);
+    this.logger.info(`unpauseStaking started, yieldProvider=${yieldProvider}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "unpauseStaking",
@@ -354,7 +356,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async progressPendingOssification(yieldProvider: Address): Promise<TransactionReceipt> {
-    this.logger.debug(`progressPendingOssification started, yieldProvider=${yieldProvider}`);
+    this.logger.info(`progressPendingOssification started, yieldProvider=${yieldProvider}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "progressPendingOssification",
