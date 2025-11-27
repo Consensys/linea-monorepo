@@ -8,8 +8,8 @@ cp -T "/coordinator/coordinator-config-v2.toml" "coordinator-config-v2-hardforks
 
 fork_timestamp=$(($(date +%s) + 100))
 echo "Fork Timestamp: fork_timestamp"
-sed -i "s/%FORK_TIME%/fork_timestamp/g" genesis-maru.json
-sed -i "s/%FORK_TIME%/fork_timestamp/g" genesis-besu.json
+sed -i "s/%FORK_TIME%/$fork_timestamp/g" genesis-maru.json
+sed -i "s/%FORK_TIME%/$fork_timestamp/g" genesis-besu.json
 
 fork_timestamp_ms=$((fork_timestamp * 1000))
 sed -i'' "s/^\(timestamp-based-hard-forks[ ]*=[ ]*\).*/\1[${fork_timestamp_ms}]/" coordinator-config-v2-hardforks.toml
