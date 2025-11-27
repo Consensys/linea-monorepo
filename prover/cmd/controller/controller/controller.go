@@ -348,7 +348,7 @@ func (st *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Ent
 
 	// --- After conglomeration finishes, trim the boostrap suffix marker to indicate full success ---
 	if job.Def.Name == jobNameConglomeration {
-		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, config.SuccessSuffix)
+		replaceBootstrapParitalSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, config.SuccessSuffix)
 	}
 
 	// Limitless-specific renaming
@@ -441,7 +441,7 @@ func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Ent
 	// with the failure suffix in the cfg.Execution.DirDone path
 	if job.Def.Name == jobNameGL || job.Def.Name == jobNameLPP || job.Def.Name == jobNameConglomeration {
 		failSuffix := fmt.Sprintf("failure.%v_%v", config.FailSuffix, status.ExitCode)
-		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, failSuffix)
+		replaceBootstrapParitalSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, failSuffix)
 	}
 
 	// Write transient failure for limitless jobs - only genuine failures are written here
@@ -599,7 +599,7 @@ func (st *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Ent
 	}
 }
 
-func replaceExecDoneSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, oldSuffix, newSuffix string) {
+func replaceBootstrapParitalSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, oldSuffix, newSuffix string) {
 	pattern := filepath.Join(cfg.Execution.DirFrom(), fmt.Sprintf("%d-%d-*.%s", job.Start, job.End, oldSuffix))
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
