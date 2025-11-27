@@ -14,7 +14,6 @@ import (
 	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -653,7 +652,6 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 		ctx.LinCombRandCoinName(),
 		coin.FieldExt,
 	)
-	fmt.Printf("ctx.NumEncodedCols(): %v\n", ctx.NumEncodedCols())
 	// registers the linear combination claimed by the prover
 	ctx.Items.Ualpha = ctx.Comp.InsertProof(
 		lastRound+1,
@@ -1025,9 +1023,9 @@ func (ctx *Ctx) commitPrecomputeds() {
 			colHashes []bls12377.Element
 		)
 		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(pols)
-		var rootBLS bls12377.Element
-		rootBLS = tree.Root
-		fmt.Printf("Gnark precomputed Merkle root compiler: %v\n", rootBLS.String())
+		// var rootBLS bls12377.Element
+		// rootBLS = tree.Root
+		// fmt.Printf("Gnark precomputed Merkle root compiler: %v\n", rootBLS.String())
 
 		ctx.Items.Precomputeds.GnarkDhWithMerkle = colHashes
 		ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
@@ -1035,7 +1033,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 
 		roots := encoding.EncodeBLS12377ToKoalabear(tree.Root)
 
-		fmt.Printf("Gnark precomputed Merkle root compiler (encoded): %v\n", vector.Prettify(roots[:]))
+		// fmt.Printf("Gnark precomputed Merkle root compiler (encoded): %v\n", vector.Prettify(roots[:]))
 
 		// And assign the 1-sized column to contain the root
 		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {

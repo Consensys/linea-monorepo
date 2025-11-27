@@ -105,9 +105,9 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 		)
 		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(pols)
 
-		var rootBLS bls12377.Element
-		rootBLS = tree.Root
-		fmt.Printf("Gnark precomputed Merkle root1: %v\n", rootBLS.String())
+		// var rootBLS bls12377.Element
+		// rootBLS = tree.Root
+		// fmt.Printf("Gnark precomputed Merkle root1: %v\n", rootBLS.String())
 		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		run.State.InsertNew(ctx.MerkleTreeName(round), tree)
 
@@ -185,10 +185,14 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
+
+		//TODO@yao: remove below note
 		// pols := ctx.getPols(pr, round)
-		//TODO@yao: check pols --> committedMatrix
+		// old : pols 1, 2 , Open...()  linear combine then rs encode --> linea combinaation
+		// new : committedMatrix 1,2, 3,4,5,6,7,8 LINCOMB:  linear combine --> linea combination
+
+		// panic: take pols 1, 2 , call LINCOMB:
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
-		fmt.Printf("encoded committedMatrix len %v\n", committedMatrix[0].Len())
 
 		// Push pols to the right stack
 		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
@@ -201,17 +205,15 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// Construct committedSV by stacking the No SIS round
 	// matrices before the SIS round matrices
 	committedSV := append(committedSVNoSIS, committedSVSIS...)
-	fmt.Printf("encoded len %v\n", committedSV[0].Len())
 
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 	fmt.Printf("randomCoinLC:%v, %v\n", ctx.Items.Alpha.Name, randomCoinLC.String())
-	fmt.Printf("committedSV :%v\n", committedSV[0].Pretty())
 
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC) //TODO@yao:check the committedSV is encoded metrix or not
-	fmt.Printf("proof.LinearCombination:%v\n", proof.LinearCombination.Pretty())
+	vortex.LinearCombination(proof, committedSV, randomCoinLC)
+	// fmt.Printf("proof.LinearCombination:%v\n", proof.LinearCombination.Pretty())
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
 
@@ -272,7 +274,6 @@ type OpenSelectedColumnsProverAction struct {
 }
 
 func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
-	fmt.Printf("okok OpenSelectedColumnsProverAction\n")
 
 	var (
 		committedMatricesSIS   = []vortex_bls12377.EncodedMatrix{}
@@ -600,9 +601,6 @@ func (ctx *Ctx) unpackGnarkMerkleProofs(sv [encoding.GnarkKoalabearNumElements]s
 		proofs[i] = make([]smt_bls12377.Proof, numEntries)
 		for j := range proofs[i] {
 			// initialize the proof that we are parsing
-			if i == 0 && j == 0 {
-				fmt.Printf("unpackGnarkMerkleProofs: depth=%v, entry=%v\n", depth, entryList[j])
-			}
 			proof := smt_bls12377.Proof{
 				Path:     entryList[j],
 				Siblings: make([]bls12377.Element, depth),

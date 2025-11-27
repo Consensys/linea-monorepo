@@ -1,8 +1,6 @@
 package vortex
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -60,7 +58,6 @@ func NewParams(
 	if maxNbRows < 1 {
 		utils.Panic("The number of rows per matrix cannot be zero of negative: %v", maxNbRows)
 	}
-	fmt.Printf("NewParams: nbColumns=%v, rate=%v, maxNbRows=%v\n", nbColumns, rate, maxNbRows)
 	res := &Params{
 		RsParams:  reedsolomon.NewRsParams(nbColumns, rate),
 		NbColumns: nbColumns,

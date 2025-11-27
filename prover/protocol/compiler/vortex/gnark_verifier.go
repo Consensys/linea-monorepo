@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
-	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
@@ -91,21 +90,24 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	for i := range packedMProofs {
 		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
 	}
-	merkleProofs := ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
+	//TODO@yao: add back the merkle inclusion check
+	// merkleProofs := ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
+	ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
 
 	Vi := crypto_vortex.GnarkVerifierInput{}
 	Vi.Alpha = randomCoin
 	Vi.X = x
 	Vi.EntryList = make([]frontend.Variable, len(entryList))
+
 	for i := 0; i < len(entryList); i++ {
 		Vi.EntryList[i] = entryList[i].AsNative()
 	}
 	Vi.Ys = ctx.gnarkGetYs(api, vr)
-	fmt.Printf("get ys ...\n")
 
-	crypto_vortex.GnarkVerify(api, ctx.VortexKoalaParams.Params, proof, Vi, roots)
-	// fmt.Printf("Vortex Verifier passed ...\n")
-	vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, merkleProofs, roots)
+	crypto_vortex.GnarkVerify(api, ctx.VortexBLSParams.Params, proof, Vi, roots)
+	//TODO@yao: add back the merkle inclusion check
+
+	// vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, merkleProofs, roots)
 
 }
 

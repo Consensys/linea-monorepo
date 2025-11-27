@@ -1,8 +1,6 @@
 package vortex_bls12377
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
@@ -141,8 +139,6 @@ func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) 
 func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []fr.Element {
 
 	// Assert that all smart-vectors have the same numCols
-	fmt.Printf("nbCols: %v\n", len(v))
-
 	nbCols := v[0].Len()
 	for i := range v {
 		if v[i].Len() != nbCols {

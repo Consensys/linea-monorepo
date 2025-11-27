@@ -487,7 +487,7 @@ func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 // as an integer vec before doing this call. Will also trigger the
 // "goNextRound" logic if appropriate.
 func (run *ProverRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
-	fmt.Printf("ProverRuntime GetRandomCoinIntegerVec=%v\n", run.getRandomCoinGeneric(name, coin.IntegerVec).([]int))
+	// fmt.Printf("ProverRuntime GetRandomCoinIntegerVec=%v\n", run.getRandomCoinGeneric(name, coin.IntegerVec).([]int))
 
 	return run.getRandomCoinGeneric(name, coin.IntegerVec).([]int)
 }
