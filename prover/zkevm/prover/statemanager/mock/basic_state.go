@@ -17,13 +17,13 @@ type State map[types.EthAddress]*AccountState
 // it is meant to be used by the StateAccessFrame builder internally to
 // initialize the state and keep track of the state.
 type AccountState struct {
-	Nonce            int64
-	Balance          *big.Int
-	KeccakCodeHash   types.FullBytes32
-	MimcCodeHash     types.Bytes32
-	CodeSize         int64
-	Storage          map[types.FullBytes32]types.FullBytes32
-	DeploymentNumber int64
+	Nonce             int64
+	Balance           *big.Int
+	KeccakCodeHash    types.FullBytes32
+	Poseidon2CodeHash types.Bytes32
+	CodeSize          int64
+	Storage           map[types.FullBytes32]types.FullBytes32
+	DeploymentNumber  int64
 }
 
 // deepCopyState makes a hard copy of the state so that modifications of the
@@ -50,7 +50,7 @@ func (s State) InsertEOA(a types.EthAddress, nonce int64, balance *big.Int) {
 	s[a] = &AccountState{
 		Nonce:          nonce,
 		Balance:        balance,
-		MimcCodeHash:   statemanager.EmptyCodeHash(statemanager.POSEIDON2_CONFIG),
+		Poseidon2CodeHash:   statemanager.EmptyCodeHash(statemanager.POSEIDON2_CONFIG),
 		KeccakCodeHash: types.AsFullBytes32(statemanager.LEGACY_KECCAK_EMPTY_CODEHASH),
 		CodeSize:       0,
 	}
@@ -66,7 +66,7 @@ func (s State) InsertContract(a types.EthAddress, mimcCodeHash types.Bytes32, ke
 	s[a] = &AccountState{
 		Nonce:          0,
 		Balance:        &big.Int{},
-		MimcCodeHash:   mimcCodeHash,
+		Poseidon2CodeHash:   mimcCodeHash,
 		KeccakCodeHash: keccakCodeHash,
 		CodeSize:       codeSize,
 		Storage:        map[types.FullBytes32]types.FullBytes32{},
@@ -94,11 +94,11 @@ func (s State) SetCodeHash(a types.EthAddress, codeHash types.FullBytes32) {
 	s[a].KeccakCodeHash = codeHash
 }
 
-// SetMimcCodeHash initializes the mimc code hash of an account and initializes
+// SetPoseidon2CodeHash initializes the Poseidon2 code hash of an account and initializes
 // an empty account with the value. If the account does not already exist.
-func (s State) SetMimcCodeHash(a types.EthAddress, codeHash types.Bytes32) {
+func (s State) SetPoseidon2CodeHash(a types.EthAddress, codeHash types.Bytes32) {
 	s.initAccountIfNil(a)
-	s[a].MimcCodeHash = codeHash
+	s[a].Poseidon2CodeHash = codeHash
 }
 
 // SetCodeSize initializes the code size of an account and initializes the
@@ -138,9 +138,9 @@ func (s State) GetCodeHash(a types.EthAddress) types.FullBytes32 {
 
 // GetMimcCodeHash returns the Mimc code hash of an account and zero if the account does
 // not exist.
-func (s State) GetMimcCodeHash(a types.EthAddress) types.Bytes32 {
+func (s State) GetPoseidon2CodeHash(a types.EthAddress) types.Bytes32 {
 	s.initAccountIfNil(a)
-	return s[a].MimcCodeHash
+	return s[a].Poseidon2CodeHash
 }
 
 // SetCodeSize returns the code size of an account and initializes the

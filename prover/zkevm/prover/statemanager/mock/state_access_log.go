@@ -282,7 +282,7 @@ func (b *StateLogBuilder) InitContract(codeSize int64, keccakCodeHash types.Full
 	address := b.currAddress
 	state.SetCodeSize(address, codeSize)
 	state.SetCodeHash(address, keccakCodeHash)
-	state.SetMimcCodeHash(address, mimcCodeHash)
+	state.SetPoseidon2CodeHash(address, mimcCodeHash)
 	b.pushFrame(
 		StateAccessLog{
 			Block:   b.currBlock,
