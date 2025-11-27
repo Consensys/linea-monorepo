@@ -14,6 +14,8 @@
  */
 package net.consensys.linea.testing;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static java.lang.Long.parseLong;
 import static net.consensys.linea.testing.ShomeiNode.MerkelProofResponse;
 import static net.consensys.linea.zktracer.Fork.OSAKA;
@@ -175,6 +177,10 @@ public class BesuExecutionTools {
             new NetConditions(new NetTransactions()),
             new ThreadBesuNodeRunner());
     try {
+
+      checkArgument(
+          !transactions.isEmpty(), "At least one transaction (including null) is required");
+
       shomeiThread.start();
       besuCluster.start(besuNode);
 
@@ -186,23 +192,29 @@ public class BesuExecutionTools {
       Fork currentFork = nextFork;
       Iterator<Transaction> txs = transactions.iterator();
       Boolean txHasNext = txs.hasNext();
+      long firstBlockNumber = 0;
+      long finalBlockNumber = 0;
 
       while (txHasNext) {
         // Send transaction to the transaction pool with eth_sendRawTransaction
         // If oneTxPerBlock is true, we send one transaction per block
         if (oneTxPerBlock) {
-          String txHash =
-              besuNode.execute(
-                  ethTransactions.sendRawTransaction(txs.next().encoded().toHexString()));
-          txHashes.add(txHash);
+          final Transaction tx = txs.next();
+          if (tx != null) {
+            String txHash =
+                besuNode.execute(ethTransactions.sendRawTransaction(tx.encoded().toHexString()));
+            txHashes.add(txHash);
+          }
           txHasNext = txs.hasNext();
         } else {
           // Send all transactions in the same block
           while (txHasNext) {
-            String txHash =
-                besuNode.execute(
-                    ethTransactions.sendRawTransaction(txs.next().encoded().toHexString()));
-            txHashes.add(txHash);
+            final Transaction tx = txs.next();
+            if (tx != null) {
+              String txHash =
+                  besuNode.execute(ethTransactions.sendRawTransaction(tx.encoded().toHexString()));
+              txHashes.add(txHash);
+            }
             txHasNext = txs.hasNext();
           }
         }
@@ -220,10 +232,20 @@ public class BesuExecutionTools {
         currentFork = nextFork;
 
         // We trace the conflation
-        assertThat(blockNumbers).isNotEmpty();
-        long startBlockNumber = Collections.min(blockNumbers);
-        long endBlockNumber = Collections.max(blockNumbers);
-        TraceFile traceFile = traceAndCheckTracer(startBlockNumber, endBlockNumber, currentFork);
+        // For now conflations are composed of a single block triggered by
+        // callEngineAPIToBuildNewBlock
+        Block blockInfoUpdated = this.besuNode.execute(ethTransactions.block());
+        checkState(blockNumbers.isEmpty() == blockInfoUpdated.getTransactions().isEmpty());
+        if (blockNumbers.isEmpty()) {
+          // If the block has no transactions, we retrieve the block numbers to trace from the last
+          // traced until the latest block
+          firstBlockNumber = finalBlockNumber + 1;
+          finalBlockNumber = blockInfoUpdated.getNumber().longValue();
+        } else {
+          firstBlockNumber = Collections.min(blockNumbers);
+          finalBlockNumber = Collections.max(blockNumbers);
+        }
+        TraceFile traceFile = traceAndCheckTracer(firstBlockNumber, finalBlockNumber, currentFork);
         Path traceFilePath = Path.of(traceFile.conflatedTracesFileName());
 
         // Clean up for next transaction
@@ -235,8 +257,8 @@ public class BesuExecutionTools {
         requestAndStoreExecutionProof(
             besuNode,
             ethTransactions,
-            startBlockNumber,
-            endBlockNumber,
+            firstBlockNumber,
+            finalBlockNumber,
             traceFile,
             traceFilePath,
             testDataDir);

@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.blockhash;
 
 import static net.consensys.linea.zktracer.Trace.BLOCKHASH_MAX_HISTORY;
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 
 import java.util.List;
 
@@ -34,7 +35,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
 
+// Testing the annotation to see if it fixes CI issues
+@Execution(SAME_THREAD)
 @ExtendWith(UnitTestWatcher.class)
 public class BlockhashTest extends TracerTestBase {
 

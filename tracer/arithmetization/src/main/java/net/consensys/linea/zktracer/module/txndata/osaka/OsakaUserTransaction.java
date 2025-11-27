@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.txndata.osaka;
 
-import static net.consensys.linea.zktracer.Trace.EIP_7825_TRANSACTION_GAS_LIMIT_CAP;
+import static net.consensys.linea.zktracer.TraceOsaka.EIP_7825_TRANSACTION_GAS_LIMIT_CAP;
 
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
 import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.WcpRow;
