@@ -102,7 +102,12 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
       "_process - progressPendingOssification failed",
     );
     // Stop if failed.
-    if (ossificationResult.isErr()) return;
+    if (ossificationResult.isErr()) {
+      this.logger.error("_process - progressPendingOssification failed, stopping processing", {
+        error: ossificationResult.error,
+      });
+      return;
+    }
 
     await this.operationModeMetricsRecorder.recordProgressOssificationMetrics(this.yieldProvider, ossificationResult);
     this.logger.info("_process - Ossification completed, performing max safe withdrawal");

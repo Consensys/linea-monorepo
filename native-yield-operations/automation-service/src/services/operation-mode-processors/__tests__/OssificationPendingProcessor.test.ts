@@ -175,11 +175,15 @@ describe("OssificationPendingProcessor", () => {
   });
 
   it("returns early when progressPendingOssification fails", async () => {
-    yieldManager.progressPendingOssification.mockRejectedValue(new Error("progress failed"));
+    const error = new Error("progress failed");
+    yieldManager.progressPendingOssification.mockRejectedValue(error);
 
     const processor = createProcessor();
     await processor.process();
 
+    expect(logger.error).toHaveBeenCalledWith("_process - progressPendingOssification failed, stopping processing", {
+      error: expect.any(Error),
+    });
     expect(metricsRecorder.recordProgressOssificationMetrics).not.toHaveBeenCalled();
     expect(yieldManager.safeMaxAddToWithdrawalReserve).not.toHaveBeenCalled();
   });

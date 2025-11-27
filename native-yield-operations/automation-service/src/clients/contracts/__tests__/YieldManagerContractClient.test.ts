@@ -545,6 +545,7 @@ describe("YieldManagerContractClient", () => {
     );
 
     expect(event).toBeUndefined();
+    expect(logger.debug).toHaveBeenCalledWith("getWithdrawalEventFromTxReceipt - WithdrawalReserveAugmented event not found in receipt");
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
   });
 
@@ -596,6 +597,7 @@ describe("YieldManagerContractClient", () => {
     );
 
     expect(report).toBeUndefined();
+    expect(logger.debug).toHaveBeenCalledWith("getYieldReportFromTxReceipt - NativeYieldReported event not found in receipt");
   });
 
   it("ignores yield report logs from other contracts", () => {

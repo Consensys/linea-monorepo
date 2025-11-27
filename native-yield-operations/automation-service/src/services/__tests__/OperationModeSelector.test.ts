@@ -128,6 +128,7 @@ describe("OperationModeSelector", () => {
 
     await Promise.all([selector.start(), selector.start()]);
 
+    expect(logger.debug).toHaveBeenCalledWith("OperationModeSelector.start() - already running, skipping");
     expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
   });
 
@@ -136,6 +137,7 @@ describe("OperationModeSelector", () => {
 
     selector.stop();
 
+    expect(logger.debug).toHaveBeenCalledWith("OperationModeSelector.stop() - not running, skipping");
     expect(logger.info).not.toHaveBeenCalled();
   });
 

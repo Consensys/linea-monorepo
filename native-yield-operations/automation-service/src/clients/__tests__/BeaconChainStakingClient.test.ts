@@ -139,7 +139,7 @@ describe("BeaconChainStakingClient", () => {
     });
 
     it("skips submission when pending withdrawals already cover the amount", async () => {
-      const { client, unstakeMock, mocks } = setupClient();
+      const { client, logger, unstakeMock, mocks } = setupClient();
       const validators = [
         createValidator({ publicKey: "validator-1", withdrawableAmount: 3n }),
         createValidator({ publicKey: "validator-2", withdrawableAmount: 1n }),
@@ -150,6 +150,9 @@ describe("BeaconChainStakingClient", () => {
 
       await client.submitWithdrawalRequestsToFulfilAmount(amountWei);
 
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining("submitWithdrawalRequestsToFulfilAmount - no remaining withdrawal amount needed"),
+      );
       expect(mocks.getTotalPendingPartialWithdrawalsWei).toHaveBeenCalledWith(validators);
       expect(unstakeMock).not.toHaveBeenCalled();
       expect(mocks.addValidatorPartialUnstakeAmount).not.toHaveBeenCalled();
@@ -185,7 +188,7 @@ describe("BeaconChainStakingClient", () => {
   describe("_submitPartialWithdrawalRequests (private)", () => {
     it("returns max validator slots and skips unstake when the validator list is empty", async () => {
       const maxValidatorsPerTx = 3;
-      const { client, unstakeMock } = setupClient(maxValidatorsPerTx);
+      const { client, logger, unstakeMock } = setupClient(maxValidatorsPerTx);
 
       const remaining = await (
         client as unknown as {
@@ -197,6 +200,9 @@ describe("BeaconChainStakingClient", () => {
       )._submitPartialWithdrawalRequests([], 1n * ONE_GWEI);
 
       expect(remaining).toBe(maxValidatorsPerTx);
+      expect(logger.debug).toHaveBeenCalledWith(
+        "_submitPartialWithdrawalRequests - sortedValidatorList is empty, returning max withdrawal requests",
+      );
       expect(unstakeMock).not.toHaveBeenCalled();
     });
 
@@ -297,7 +303,7 @@ describe("BeaconChainStakingClient", () => {
 
   describe("_submitValidatorExits (private)", () => {
     it("returns immediately when no withdrawal slots remain", async () => {
-      const { client, unstakeMock, mocks } = setupClient();
+      const { client, logger, unstakeMock, mocks } = setupClient();
       const validators = [
         createValidator({ publicKey: "validator-1", withdrawableAmount: 0n }),
         createValidator({ publicKey: "validator-2", withdrawableAmount: 0n }),
@@ -312,12 +318,16 @@ describe("BeaconChainStakingClient", () => {
         }
       )._submitValidatorExits(validators, 0);
 
+      expect(logger.debug).toHaveBeenCalledWith(
+        "_submitValidatorExits - no remaining withdrawals or empty validator list, skipping",
+        { remainingWithdrawals: 0, validatorListLength: 2 },
+      );
       expect(unstakeMock).not.toHaveBeenCalled();
       expect(mocks.incrementValidatorExit).not.toHaveBeenCalled();
     });
 
     it("returns without unstaking when no validators qualify for exits", async () => {
-      const { client, unstakeMock, mocks } = setupClient();
+      const { client, logger, unstakeMock, mocks } = setupClient();
       const validators = [
         createValidator({ publicKey: "validator-1", withdrawableAmount: 1n }),
         createValidator({ publicKey: "validator-2", withdrawableAmount: 2n }),
@@ -332,6 +342,7 @@ describe("BeaconChainStakingClient", () => {
         }
       )._submitValidatorExits(validators, 2);
 
+      expect(logger.debug).toHaveBeenCalledWith("_submitValidatorExits - no validators to exit, skipping unstake");
       expect(unstakeMock).not.toHaveBeenCalled();
       expect(mocks.incrementValidatorExit).not.toHaveBeenCalled();
     });

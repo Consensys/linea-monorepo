@@ -106,10 +106,15 @@ describe("OperationModeMetricsRecorder", () => {
 
   describe("recordProgressOssificationMetrics", () => {
     it("does nothing when receipt is an error", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const { recorder, logger, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const error = new Error("boom");
 
-      await recorder.recordProgressOssificationMetrics(yieldProvider, err(new Error("boom")));
+      await recorder.recordProgressOssificationMetrics(yieldProvider, err(error));
 
+      expect(logger.warn).toHaveBeenCalledWith(
+        "recordProgressOssificationMetrics - transaction receipt result is error, skipping metrics recording",
+        { error },
+      );
       expect(yieldManagerClient.getLidoStakingVaultAddress).not.toHaveBeenCalled();
       expect(metricsUpdater.addNodeOperatorFeesPaid).not.toHaveBeenCalled();
     });
@@ -174,10 +179,15 @@ describe("OperationModeMetricsRecorder", () => {
 
   describe("recordReportYieldMetrics", () => {
     it("does nothing when receipt result is error", async () => {
-      const { recorder, metricsUpdater } = setupRecorder();
+      const { recorder, logger, metricsUpdater } = setupRecorder();
+      const error = new Error("boom");
 
-      await recorder.recordReportYieldMetrics(yieldProvider, err(new Error("boom")));
+      await recorder.recordReportYieldMetrics(yieldProvider, err(error));
 
+      expect(logger.warn).toHaveBeenCalledWith(
+        "recordReportYieldMetrics - transaction receipt result is error, skipping metrics recording",
+        { error },
+      );
       expect(metricsUpdater.incrementReportYield).not.toHaveBeenCalled();
     });
 
@@ -235,10 +245,15 @@ describe("OperationModeMetricsRecorder", () => {
 
   describe("recordSafeWithdrawalMetrics", () => {
     it("does nothing when receipt result is error", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const { recorder, logger, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const error = new Error("boom");
 
-      await recorder.recordSafeWithdrawalMetrics(yieldProvider, err(new Error("boom")));
+      await recorder.recordSafeWithdrawalMetrics(yieldProvider, err(error));
 
+      expect(logger.warn).toHaveBeenCalledWith(
+        "recordSafeWithdrawalMetrics - transaction receipt result is error, skipping metrics recording",
+        { error },
+      );
       expect(metricsUpdater.recordRebalance).not.toHaveBeenCalled();
       expect(yieldManagerClient.getWithdrawalEventFromTxReceipt).not.toHaveBeenCalled();
     });
@@ -287,10 +302,15 @@ describe("OperationModeMetricsRecorder", () => {
 
   describe("recordTransferFundsMetrics", () => {
     it("does nothing when receipt result is error", async () => {
-      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const { recorder, logger, metricsUpdater, yieldManagerClient } = setupRecorder();
+      const error = new Error("boom");
 
-      await recorder.recordTransferFundsMetrics(yieldProvider, err(new Error("boom")));
+      await recorder.recordTransferFundsMetrics(yieldProvider, err(error));
 
+      expect(logger.warn).toHaveBeenCalledWith(
+        "recordTransferFundsMetrics - transaction receipt result is error, skipping metrics recording",
+        { error },
+      );
       expect(metricsUpdater.addLiabilitiesPaid).not.toHaveBeenCalled();
       expect(yieldManagerClient.getLidoStakingVaultAddress).not.toHaveBeenCalled();
     });

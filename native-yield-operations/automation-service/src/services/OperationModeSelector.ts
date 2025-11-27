@@ -47,6 +47,7 @@ export class OperationModeSelector implements IOperationModeSelector {
    */
   public async start(): Promise<void> {
     if (this.isRunning) {
+      this.logger.debug("OperationModeSelector.start() - already running, skipping");
       return;
     }
 
@@ -62,6 +63,7 @@ export class OperationModeSelector implements IOperationModeSelector {
    */
   public stop(): void {
     if (!this.isRunning) {
+      this.logger.debug("OperationModeSelector.stop() - not running, skipping");
       return;
     }
 

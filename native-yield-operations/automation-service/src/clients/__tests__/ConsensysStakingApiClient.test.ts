@@ -99,19 +99,23 @@ describe("ConsensysStakingApiClient", () => {
 
   describe("getActiveValidatorsWithPendingWithdrawals", () => {
     it("returns undefined when active validator data is unavailable", async () => {
-      const { client, pendingWithdrawalsMock } = createClient();
+      const { client, logger, pendingWithdrawalsMock } = createClient();
       const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(undefined);
       pendingWithdrawalsMock.mockResolvedValueOnce([]);
 
       const result = await client.getActiveValidatorsWithPendingWithdrawals();
 
       expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "getActiveValidatorsWithPendingWithdrawals - failed to retrieve validators or pending withdrawals",
+        { allValidators: true, pendingWithdrawalsQueue: false },
+      );
       expect(pendingWithdrawalsMock).toHaveBeenCalledTimes(1);
       getActiveValidatorsSpy.mockRestore();
     });
 
     it("returns undefined when pending withdrawals cannot be fetched", async () => {
-      const { client, pendingWithdrawalsMock } = createClient();
+      const { client, logger, pendingWithdrawalsMock } = createClient();
       const validators: ValidatorBalance[] = [
         { balance: 32n, effectiveBalance: 32n, publicKey: "validator-1", validatorIndex: 1n },
       ];
@@ -121,6 +125,10 @@ describe("ConsensysStakingApiClient", () => {
       const result = await client.getActiveValidatorsWithPendingWithdrawals();
 
       expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "getActiveValidatorsWithPendingWithdrawals - failed to retrieve validators or pending withdrawals",
+        { allValidators: false, pendingWithdrawalsQueue: true },
+      );
       expect(getActiveValidatorsSpy).toHaveBeenCalledTimes(1);
       getActiveValidatorsSpy.mockRestore();
     });

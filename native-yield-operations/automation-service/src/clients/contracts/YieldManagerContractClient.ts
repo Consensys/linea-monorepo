@@ -557,7 +557,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     });
 
     const event = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase());
-    if (!event) return undefined;
+    if (!event) {
+      this.logger.debug("getWithdrawalEventFromTxReceipt - WithdrawalReserveAugmented event not found in receipt");
+      return undefined;
+    }
 
     const { reserveIncrementAmount, yieldProvider } = event.args;
     return { reserveIncrementAmount, yieldProvider };
@@ -579,7 +582,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     });
 
     const event = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase());
-    if (!event) return undefined;
+    if (!event) {
+      this.logger.debug("getYieldReportFromTxReceipt - NativeYieldReported event not found in receipt");
+      return undefined;
+    }
 
     const { yieldAmount, outstandingNegativeYield, yieldProvider } = event.args;
     return {

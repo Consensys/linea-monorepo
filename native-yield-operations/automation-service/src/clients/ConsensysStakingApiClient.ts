@@ -62,7 +62,16 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       this.getActiveValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
     ]);
-    if (allValidators === undefined || pendingWithdrawalsQueue === undefined) return undefined;
+    if (allValidators === undefined || pendingWithdrawalsQueue === undefined) {
+      this.logger.warn(
+        "getActiveValidatorsWithPendingWithdrawals - failed to retrieve validators or pending withdrawals",
+        {
+          allValidators: allValidators === undefined,
+          pendingWithdrawalsQueue: pendingWithdrawalsQueue === undefined,
+        },
+      );
+      return undefined;
+    }
 
     // 1️⃣ Aggregate duplicate pending withdrawals by validator index
     const pendingByValidator = new Map<number, bigint>();

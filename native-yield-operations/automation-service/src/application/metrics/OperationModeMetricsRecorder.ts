@@ -44,7 +44,15 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     yieldProvider: Address,
     txReceiptResult: Result<TransactionReceipt | undefined, Error>,
   ): Promise<void> {
-    if (txReceiptResult.isErr()) return;
+    if (txReceiptResult.isErr()) {
+      this.logger.warn(
+        "recordProgressOssificationMetrics - transaction receipt result is error, skipping metrics recording",
+        {
+          error: txReceiptResult.error,
+        },
+      );
+      return;
+    }
     const receipt = txReceiptResult.value;
     if (!receipt) {
       this.logger.warn("recordProgressOssificationMetrics - receipt is undefined, skipping metrics recording");
@@ -80,7 +88,12 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     yieldProvider: Address,
     txReceiptResult: Result<TransactionReceipt | undefined, Error>,
   ): Promise<void> {
-    if (txReceiptResult.isErr()) return;
+    if (txReceiptResult.isErr()) {
+      this.logger.warn("recordReportYieldMetrics - transaction receipt result is error, skipping metrics recording", {
+        error: txReceiptResult.error,
+      });
+      return;
+    }
     const receipt = txReceiptResult.value;
     if (!receipt) {
       this.logger.warn("recordReportYieldMetrics - receipt is undefined, skipping metrics recording");
@@ -125,7 +138,15 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     yieldProvider: Address,
     txReceiptResult: Result<TransactionReceipt | undefined, Error>,
   ): Promise<void> {
-    if (txReceiptResult.isErr()) return;
+    if (txReceiptResult.isErr()) {
+      this.logger.warn(
+        "recordSafeWithdrawalMetrics - transaction receipt result is error, skipping metrics recording",
+        {
+          error: txReceiptResult.error,
+        },
+      );
+      return;
+    }
     const receipt = txReceiptResult.value;
     if (!receipt) {
       this.logger.warn("recordSafeWithdrawalMetrics - receipt is undefined, skipping metrics recording");
@@ -160,7 +181,12 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     yieldProvider: Address,
     txReceiptResult: Result<TransactionReceipt | undefined, Error>,
   ): Promise<void> {
-    if (txReceiptResult.isErr()) return;
+    if (txReceiptResult.isErr()) {
+      this.logger.warn("recordTransferFundsMetrics - transaction receipt result is error, skipping metrics recording", {
+        error: txReceiptResult.error,
+      });
+      return;
+    }
     const receipt = txReceiptResult.value;
     if (!receipt) {
       this.logger.warn("recordTransferFundsMetrics - receipt is undefined, skipping metrics recording");

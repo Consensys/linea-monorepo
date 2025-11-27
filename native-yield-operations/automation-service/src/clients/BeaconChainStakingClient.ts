@@ -53,7 +53,12 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     const totalPendingPartialWithdrawalsWei =
       this.validatorDataClient.getTotalPendingPartialWithdrawalsWei(sortedValidatorList);
     const remainingWithdrawalAmountWei = safeSub(amountWei, totalPendingPartialWithdrawalsWei);
-    if (remainingWithdrawalAmountWei === 0n) return;
+    if (remainingWithdrawalAmountWei === 0n) {
+      this.logger.info(
+        `submitWithdrawalRequestsToFulfilAmount - no remaining withdrawal amount needed, amountWei=${amountWei.toString()}, totalPendingPartialWithdrawalsWei=${totalPendingPartialWithdrawalsWei.toString()}`,
+      );
+      return;
+    }
     await this._submitPartialWithdrawalRequests(sortedValidatorList, remainingWithdrawalAmountWei);
   }
 
@@ -96,7 +101,12 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       pubkeys: [],
       amountsGwei: [],
     };
-    if (sortedValidatorList.length === 0) return this.maxValidatorWithdrawalRequestsPerTransaction;
+    if (sortedValidatorList.length === 0) {
+      this.logger.debug(
+        "_submitPartialWithdrawalRequests - sortedValidatorList is empty, returning max withdrawal requests",
+      );
+      return this.maxValidatorWithdrawalRequestsPerTransaction;
+    }
     let totalWithdrawalRequestAmountWei = 0n;
 
     for (const v of sortedValidatorList) {
@@ -150,7 +160,13 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     this.logger.debug(`_submitValidatorExits started remainingWithdrawals=${remainingWithdrawals}`, {
       sortedValidatorList,
     });
-    if (remainingWithdrawals === 0 || sortedValidatorList.length === 0) return;
+    if (remainingWithdrawals === 0 || sortedValidatorList.length === 0) {
+      this.logger.debug("_submitValidatorExits - no remaining withdrawals or empty validator list, skipping", {
+        remainingWithdrawals,
+        validatorListLength: sortedValidatorList.length,
+      });
+      return;
+    }
     const withdrawalRequests: WithdrawalRequests = {
       pubkeys: [],
       amountsGwei: [],
@@ -167,7 +183,10 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       }
     }
 
-    if (withdrawalRequests.amountsGwei.length === 0) return;
+    if (withdrawalRequests.amountsGwei.length === 0) {
+      this.logger.debug("_submitValidatorExits - no validators to exit, skipping unstake");
+      return;
+    }
     // Do unstake
     await this.yieldManagerContractClient.unstake(this.yieldProvider, withdrawalRequests);
 
