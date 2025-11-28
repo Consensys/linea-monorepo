@@ -227,7 +227,7 @@ func (ext4 *Ext4) Conjugate(e1 E4Gen) *E4Gen {
 }
 
 // Select sets e to r1 if b=1, r2 otherwise
-func (ext4 *Ext4) Select(b zk.WrappedVariable, r1, r2 *E4Gen) *E4Gen {
+func (ext4 *Ext4) Select(b frontend.Variable, r1, r2 *E4Gen) *E4Gen {
 	return &E4Gen{
 		B0: *ext4.Ext2.Select(b, &r1.B0, &r2.B0),
 		B1: *ext4.Ext2.Select(b, &r1.B1, &r2.B1),
@@ -295,6 +295,24 @@ func (ext4 *Ext4) Exp(x *E4Gen, n *big.Int) *E4Gen {
 				res = ext4.Mul(res, x)
 			}
 		}
+	}
+
+	return res
+}
+
+// ExpVariableExponent exponentiates x by n in a gnark circuit. Where n is not fixed.
+// n is limited to n bits (max)
+func (ext4 *Ext4) ExpVariableExponent(api frontend.API, x E4Gen, exp frontend.Variable, expNumBits int) E4Gen {
+
+	expBits := api.ToBinary(exp, expNumBits)
+	res := NewE4GenFromBase(1)
+
+	for i := len(expBits) - 1; i >= 0; i-- {
+		if i != len(expBits)-1 {
+			res = *ext4.Mul(&res, &res)
+		}
+		tmp := *ext4.Mul(&res, &x)
+		res = *ext4.Select(expBits[i], &tmp, &res)
 	}
 
 	return res

@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -18,7 +17,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
@@ -357,14 +355,9 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	fmt.Printf("verifying horner result ...\n")
 	hornerQuery := c.Q
 	hornerParams := run.GetHornerParams(hornerQuery.ID)
-	res := zk.ValueOf(0)
+	res := gnarkfext.NewE4GenFromBase(0)
 
 	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-
-	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		panic(err)
 	}
@@ -381,9 +374,9 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 		// api.AssertIsEqual(api.Add(hornerParams.Parts[i].N0, ipCount), hornerParams.Parts[i].N1)
 		// TODO @thomas fixme (ext vs base)
-		extN0 := gnarkfext.FromBase(hornerParams.Parts[i].N0)
+		extN0 := gnarkfext.NewE4GenFromBase(hornerParams.Parts[i].N0)
 		extN0 = *e4Api.Add(&extN0, &ipCount)
-		extN1 := gnarkfext.FromBase(hornerParams.Parts[i].N1)
+		extN1 := gnarkfext.NewE4GenFromBase(hornerParams.Parts[i].N1)
 		e4Api.AssertIsEqual(&extN0, &extN1)
 	}
 
@@ -391,18 +384,18 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	// computed by inspecting the local openings.
 	for i, lo := range c.LocOpenings {
 
-		tmp := run.GetLocalPointEvalParams(lo.ID).BaseY
+		tmp := run.GetLocalPointEvalParams(lo.ID).ExtY
 		n0 := hornerParams.Parts[i].N0
-		x := hornerQuery.Parts[i].X.GetFrontendVariable(api, run)
+		x := hornerQuery.Parts[i].X.GetFrontendVariableExt(api, run)
 
-		xN0 := gnarkutil.ExpVariableExponent(api, x, n0, 64)
-		tmp = apiGen.Mul(tmp, xN0)
+		xN0 := e4Api.ExpVariableExponent(api, x, n0, 64)
+		tmp = *e4Api.Mul(&tmp, &xN0)
 
 		if hornerQuery.Parts[i].SignNegative {
-			tmp = apiGen.Neg(tmp)
+			tmp = *e4Api.Neg(&tmp)
 		}
 
-		res = apiGen.Add(res, tmp)
+		res = *e4Api.Add(&res, &tmp)
 	}
 
 	api.AssertIsEqual(res, hornerParams.FinalResult)

@@ -1,6 +1,7 @@
 package query
 
 import (
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -37,9 +38,9 @@ type GnarkGrandProductParams struct {
 // HornerParamsPartGnark is a [HornerParamsPart] in a gnark circuit.
 type HornerParamsPartGnark struct {
 	// N0 is an initial offset of the Horner query
-	N0 zk.WrappedVariable
+	N0 frontend.Variable
 	// N1 is the second offset of the Horner query
-	N1 zk.WrappedVariable
+	N1 frontend.Variable
 }
 
 // GnarkHornerParams represents the parameters of the Horner evaluation query
@@ -154,6 +155,6 @@ func (p GnarkHornerParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
 	fs.UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		fs.Update(part.N0, part.N1)
+		fs.Update(zk.ValueOf(part.N0), zk.ValueOf(part.N1))
 	}
 }

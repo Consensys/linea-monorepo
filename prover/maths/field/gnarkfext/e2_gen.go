@@ -193,7 +193,7 @@ func (ext2 *Ext2) AssertIsEqual(e, other *E2Gen) {
 }
 
 // Select sets e to r1 if b=1, r2 otherwise
-func (ext2 *Ext2) Select(b zk.WrappedVariable, r1, r2 *E2Gen) *E2Gen {
+func (ext2 *Ext2) Select(b frontend.Variable, r1, r2 *E2Gen) *E2Gen {
 	return &E2Gen{
 		A0: ext2.ApiGen.Select(b, r1.A0, r2.A0),
 		A1: ext2.ApiGen.Select(b, r1.A1, r2.A1),

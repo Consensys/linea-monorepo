@@ -3,9 +3,19 @@ package compiler_test
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitextension"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
@@ -14,12 +24,26 @@ import (
 var totalSuite = []func(comp *wizard.CompiledIOP){
 	poseidon2.CompilePoseidon2,
 
-	// plonkinwizard.Compile,
-	compiler.Arcane(
-		compiler.WithDebugMode("debug"),
-		compiler.WithStitcherMinSize(1),
-		compiler.WithTargetColSize(8),
-	),
+	// // plonkinwizard.Compile,
+	// compiler.Arcane(
+	// 	compiler.WithDebugMode("debug"),
+	// 	compiler.WithStitcherMinSize(1),
+	// 	compiler.WithTargetColSize(8),
+	// ),
+	specialqueries.RangeProof,
+	specialqueries.CompileFixedPermutations,
+	permutation.CompileViaGrandProduct,
+	logderivativesum.CompileLookups,
+	horner.CompileProjection,
+	innerproduct.Compile(),
+	stitchsplit.Stitcher(1, 8),
+	stitchsplit.Splitter(8),
+	localcs.Compile,
+	globalcs.Compile,
+	univariates.Naturalize,
+	mpts.Compile(),
+	splitextension.CompileSplitExtToBase,
+
 	dummy.Compile,
 
 	// vortex.Compile(2, vortex.ReplaceSisByMimc(), vortex.ForceNumOpenedColumns(2)),
@@ -52,9 +76,9 @@ func TestCompilersWithGnarkVerifier(t *testing.T) {
 	logrus.SetLevel(logrus.FatalLevel)
 
 	runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
-	// runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
-	// runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
-	// runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
+	runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
+	runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
 	// runTestListGnark(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
 	// runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
 	// runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
