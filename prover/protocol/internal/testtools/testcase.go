@@ -72,8 +72,16 @@ func RunTestShouldPassWithGnark(t *testing.T, tc Testcase, suite []func(comp *wi
 			tc.Define(b.CompiledIOP)
 		}
 
-		comp    = wizard.Compile(define, suite...)
-		proof   = wizard.Prove(comp, tc.Assign)
+		comp  = wizard.Compile(define, suite...)
+		proof = wizard.Prove(comp, tc.Assign)
+		err   = wizard.Verify(comp, proof)
+	)
+
+	if err != nil {
+		t.Logf("native verifier failed: %v", err)
+	}
+
+	var (
 		circuit = &verifierCircuit{
 			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
 		}
