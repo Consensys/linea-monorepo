@@ -321,16 +321,8 @@ func (ext4 *Ext4) ExpVariableExponent(api frontend.API, x E4Gen, exp frontend.Va
 // TODO@yao: remove it after debugging and recover NativeApi --> nativeApi
 func (ext4 *Ext4) Println(a ...E4Gen) {
 	for i := 0; i < len(a); i++ {
-		ext4.mixedAPI.Println(a[i].B0.A0)
-		ext4.mixedAPI.NativeApi.Println("+")
-		ext4.mixedAPI.Println(a[i].B0.A1)
-		ext4.mixedAPI.NativeApi.Println("*v+")
-		ext4.mixedAPI.Println(a[i].B1.A0)
-		ext4.mixedAPI.NativeApi.Println("*v**2+")
-		ext4.mixedAPI.Println(a[i].B1.A1)
-		ext4.mixedAPI.NativeApi.Println("*v**3")
+		ext4.mixedAPI.Println(a[i].B0.A0, a[i].B0.A1, a[i].B1.A0, a[i].B1.A1)
 	}
-
 }
 
 func (ext4 *Ext4) NewHint(f solver.Hint, nbOutputs int, inputs ...E4Gen) ([]E4Gen, error) {
