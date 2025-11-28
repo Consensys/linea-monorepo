@@ -6,14 +6,18 @@ import "encoding/binary"
 const LimbBytes = 2
 
 // SplitBytes splits the input slice into subarrays of the provided size.
-func SplitBytes(input []byte) [][]byte {
+func SplitBytes(input []byte, limbBytes ...int) [][]byte {
+	limbSize := LimbBytes
+	if len(limbBytes) > 0 {
+		limbSize = limbBytes[0]
+	}
 	if len(input) == 0 {
 		return [][]byte{}
 	}
 
 	var result [][]byte
-	for i := 0; i < len(input); i += LimbBytes {
-		end := i + LimbBytes
+	for i := 0; i < len(input); i += limbSize {
+		end := i + limbSize
 		if end > len(input) {
 			end = len(input)
 		}

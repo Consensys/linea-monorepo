@@ -300,9 +300,9 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 			}
 
 			// hashes
-			stateMimcHash := initialState.GetMimcCodeHash(address)
+			statePoseidon2Hash := initialState.GetPoseidon2CodeHash(address)
 
-			limbBytes := common.SplitBytes(stateMimcHash[:])
+			limbBytes := common.SplitBytes(statePoseidon2Hash[:])
 			for i := range common.NbLimbU256 {
 				prevMimcCodeHash[i].SetBytes(limbBytes[i])
 			}

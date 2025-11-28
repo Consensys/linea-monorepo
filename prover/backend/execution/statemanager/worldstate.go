@@ -3,8 +3,8 @@ package statemanager
 import (
 	"math/big"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -13,8 +13,8 @@ import (
 
 const WS_LOCATION = "0x"
 
-var MIMC_CONFIG = &smt.Config{
-	HashFunc: hashtypes.Poseidon2,
+var POSEIDON2_CONFIG = &smt.Config{
+	HashFunc: poseidon2.Poseidon2,
 	Depth:    40,
 }
 
@@ -74,7 +74,7 @@ func NewContractEmptyStorage(
 	}
 }
 
-var MIMC_EMPTY_STORAGE = EmptyStorageTrieHash(MIMC_CONFIG)
+var MIMC_EMPTY_STORAGE = EmptyStorageTrieHash(POSEIDON2_CONFIG)
 
 func NewAccountTrie(config *smt.Config) *AccountTrie {
 	return accumulator.InitializeProverState[Address, Account](config, WS_LOCATION)
