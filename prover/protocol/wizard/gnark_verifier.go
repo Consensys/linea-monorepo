@@ -362,7 +362,6 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 		c.GenerateCoinsForRound(api, round)
 
 		for _, step := range roundSteps {
-			fmt.Printf("verifier: running step %T for round %d\n", step, round)
 			step.RunGnark(api, c)
 		}
 	}

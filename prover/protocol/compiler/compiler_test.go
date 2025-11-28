@@ -75,21 +75,15 @@ func TestCompilersWithGnarkVerifier(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
 
-	// TESTS remain to be fixed
-
+	runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
+	runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
+	runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
+	runTestListGnark(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
+	runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
 	runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
-
-	// FULL LIST OF TESTS WITH GNARK VERIFIER
-
-	// runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
-	// runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
-	// runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
-	// runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
-	// runTestListGnark(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
-	// runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
-	// runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
-	// runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
-	// runTestListGnark(t, "poseidon2", testtools.ListOfPoseidon2Testcase)
+	runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	runTestListGnark(t, "poseidon2", testtools.ListOfPoseidon2Testcase)
 }
 
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {

@@ -127,13 +127,9 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 
 func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	y := run.GetGrandProductParams(c.Query.ID).Prod
-	d := zk.ValueOf(1)
+	d := gnarkfext.NewE4GenFromBase(1)
 
 	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		panic(err)
 	}
@@ -141,28 +137,28 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 	for _, e := range c.ExplicitNum {
 
 		col := column.GnarkEvalExprColumn(api, run, e.Board())
-		tmp := zk.ValueOf(1)
+		tmp := gnarkfext.NewE4GenFromBase(1)
 
 		for i := range col {
-			tmp = apiGen.Mul(tmp, col[i])
+			tmp = *ext4.Mul(&tmp, &col[i])
 		}
 
-		y = *ext4.MulByFp(&y, tmp)
+		y = *ext4.Mul(&y, &tmp)
 	}
 
 	for _, e := range c.ExplicitDen {
 
 		col := column.GnarkEvalExprColumn(api, run, e.Board())
-		tmp := zk.ValueOf(1)
+		tmp := gnarkfext.NewE4GenFromBase(1)
 
 		for i := range col {
-			tmp = apiGen.Mul(tmp, col[i])
+			tmp = *ext4.Mul(&tmp, &col[i])
 		}
 
-		d = apiGen.Mul(d, tmp)
+		d = *ext4.Mul(&d, &tmp)
 	}
 
-	y = *ext4.DivByBase(&y, d)
+	y = *ext4.Div(&y, &d)
 
 	e := gnarkfext.NewE4GenFromBase(1)
 	ext4.AssertIsEqual(&y, &e)

@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -180,35 +181,34 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 }
 
 // GnarkEvalExprColumn evaluates an expression in a gnark circuit setting
-func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []zk.WrappedVariable {
+func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []gnarkfext.E4Gen {
 
 	var (
 		metadata = board.ListVariableMetadata()
 		length   = ExprIsOnSameLengthHandles(&board)
-		res      = make([]zk.WrappedVariable, length)
+		res      = make([]gnarkfext.E4Gen, length)
 	)
 
 	for k := 0; k < length; k++ {
 
-		inputs := make([]zk.WrappedVariable, len(metadata))
+		inputs := make([]gnarkfext.E4Gen, len(metadata))
 
 		for i := range inputs {
 			switch m := metadata[i].(type) {
 			case ifaces.Column:
-				inputs[i] = m.GetColAssignmentGnarkAt(run, k)
+				inputs[i] = m.GetColAssignmentGnarkAtExt(run, k)
 			case coin.Info:
 				if m.IsBase() {
 					utils.Panic("unsupported, coins are always over field extensions")
 				} else {
-					tmp := run.GetRandomCoinFieldExt(m.Name)
-					// inputs[i] = run.GetRandomCoinFieldExt(m.Name)
-					inputs[i] = tmp.B0.A0 // @thomas fixme (ext vs base)
+
+					inputs[i] = run.GetRandomCoinFieldExt(m.Name)
 				}
 			case ifaces.Accessor:
-				inputs[i] = m.GetFrontendVariable(api, run)
+				inputs[i] = m.GetFrontendVariableExt(api, run)
 			case variables.PeriodicSample:
 				tmp := m.EvalAtOnDomain(k)
-				inputs[i] = zk.ValueOf(tmp.String())
+				inputs[i] = gnarkfext.FromBase(zk.ValueOf(tmp.String()))
 			case variables.X:
 				// there is no theoritical problem with this but there are
 				// no cases known where this happens so we just don't
@@ -217,7 +217,7 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 			}
 		}
 
-		res[k] = board.GnarkEval(api, inputs)
+		res[k] = board.GnarkEvalExt(api, inputs)
 	}
 
 	return res
