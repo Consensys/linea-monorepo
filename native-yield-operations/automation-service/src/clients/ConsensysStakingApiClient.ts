@@ -70,22 +70,24 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
 
   /**
    * Retrieves active validators with pending withdrawal information.
-   * Returns sorted in descending order of withdrawableValue (largest withdrawableAmount first).
+   * Returns sorted in ascending order of withdrawableValue (smallest withdrawableAmount first).
    * Performs the following steps:
    * 1️⃣ Aggregate duplicate pending withdrawals by validator index
    * 2️⃣ Join with validators and compute total pending amount
-   * ✅ Sort descending (largest withdrawableAmount first)
+   * ✅ Sort ascending (smallest withdrawableAmount first)
    *
-   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of validators with pending withdrawal data, sorted descending by withdrawableAmount, or undefined if data retrieval fails.
+   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of validators with pending withdrawal data, sorted ascending by withdrawableAmount, or undefined if data retrieval fails.
    */
-  async getActiveValidatorsWithPendingWithdrawals(): Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined> {
+  async getActiveValidatorsWithPendingWithdrawalsAscending(): Promise<
+    ValidatorBalanceWithPendingWithdrawal[] | undefined
+  > {
     const [allValidators, pendingWithdrawalsQueue] = await Promise.all([
       this.getActiveValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
     ]);
     if (allValidators === undefined || pendingWithdrawalsQueue === undefined) {
       this.logger.warn(
-        "getActiveValidatorsWithPendingWithdrawals - failed to retrieve validators or pending withdrawals",
+        "getActiveValidatorsWithPendingWithdrawalsAscending - failed to retrieve validators or pending withdrawals",
         {
           allValidators: allValidators === undefined,
           pendingWithdrawalsQueue: pendingWithdrawalsQueue === undefined,
@@ -116,13 +118,13 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       };
     });
 
-    // ✅ Sort descending (largest withdrawableAmount first)
+    // ✅ Sort ascending (smallest withdrawableAmount first)
     joined.sort((a, b) =>
-      a.withdrawableAmount > b.withdrawableAmount ? -1 : a.withdrawableAmount < b.withdrawableAmount ? 1 : 0,
+      a.withdrawableAmount < b.withdrawableAmount ? -1 : a.withdrawableAmount > b.withdrawableAmount ? 1 : 0,
     );
 
-    this.logger.info(`getActiveValidatorsWithPendingWithdrawals succeeded, validatorCount=${joined.length}`);
-    this.logger.debug("getActiveValidatorsWithPendingWithdrawals joined", { joined });
+    this.logger.info(`getActiveValidatorsWithPendingWithdrawalsAscending succeeded, validatorCount=${joined.length}`);
+    this.logger.debug("getActiveValidatorsWithPendingWithdrawalsAscending joined", { joined });
     return joined;
   }
 

@@ -119,17 +119,17 @@ describe("ConsensysStakingApiClient", () => {
     });
   });
 
-  describe("getActiveValidatorsWithPendingWithdrawals", () => {
+  describe("getActiveValidatorsWithPendingWithdrawalsAscending", () => {
     it("returns undefined when active validator data is unavailable", async () => {
       const { client, logger, pendingWithdrawalsMock } = createClient();
       const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(undefined);
       pendingWithdrawalsMock.mockResolvedValueOnce([]);
 
-      const result = await client.getActiveValidatorsWithPendingWithdrawals();
+      const result = await client.getActiveValidatorsWithPendingWithdrawalsAscending();
 
       expect(result).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith(
-        "getActiveValidatorsWithPendingWithdrawals - failed to retrieve validators or pending withdrawals",
+        "getActiveValidatorsWithPendingWithdrawalsAscending - failed to retrieve validators or pending withdrawals",
         { allValidators: true, pendingWithdrawalsQueue: false },
       );
       expect(pendingWithdrawalsMock).toHaveBeenCalledTimes(1);
@@ -144,18 +144,18 @@ describe("ConsensysStakingApiClient", () => {
       const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(validators);
       pendingWithdrawalsMock.mockResolvedValueOnce(undefined);
 
-      const result = await client.getActiveValidatorsWithPendingWithdrawals();
+      const result = await client.getActiveValidatorsWithPendingWithdrawalsAscending();
 
       expect(result).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith(
-        "getActiveValidatorsWithPendingWithdrawals - failed to retrieve validators or pending withdrawals",
+        "getActiveValidatorsWithPendingWithdrawalsAscending - failed to retrieve validators or pending withdrawals",
         { allValidators: false, pendingWithdrawalsQueue: true },
       );
       expect(getActiveValidatorsSpy).toHaveBeenCalledTimes(1);
       getActiveValidatorsSpy.mockRestore();
     });
 
-    it("aggregates pending withdrawals, computes withdrawable amounts, and sorts descending", async () => {
+    it("aggregates pending withdrawals, computes withdrawable amounts, and sorts ascending", async () => {
       const { client, logger, pendingWithdrawalsMock } = createClient();
 
       const validatorA: ValidatorBalance = {
@@ -183,7 +183,7 @@ describe("ConsensysStakingApiClient", () => {
       ];
       pendingWithdrawalsMock.mockResolvedValueOnce(pendingWithdrawals);
 
-      const result = await client.getActiveValidatorsWithPendingWithdrawals();
+      const result = await client.getActiveValidatorsWithPendingWithdrawalsAscending();
 
       const expectedValidatorA: ValidatorBalanceWithPendingWithdrawal = {
         ...validatorA,
@@ -196,16 +196,17 @@ describe("ConsensysStakingApiClient", () => {
         withdrawableAmount: safeSub(safeSub(validatorB.balance, 1n * ONE_GWEI), ONE_GWEI * 32n),
       };
 
-      expect(result).toEqual([expectedValidatorA, expectedValidatorB]);
-      expect(logger.info).toHaveBeenCalledWith("getActiveValidatorsWithPendingWithdrawals succeeded, validatorCount=2");
-      expect(logger.debug).toHaveBeenCalledWith("getActiveValidatorsWithPendingWithdrawals joined", {
-        joined: [expectedValidatorA, expectedValidatorB],
+      // With ascending sort: B (1 GWEI) should come before A (3 GWEI)
+      expect(result).toEqual([expectedValidatorB, expectedValidatorA]);
+      expect(logger.info).toHaveBeenCalledWith("getActiveValidatorsWithPendingWithdrawalsAscending succeeded, validatorCount=2");
+      expect(logger.debug).toHaveBeenCalledWith("getActiveValidatorsWithPendingWithdrawalsAscending joined", {
+        joined: [expectedValidatorB, expectedValidatorA],
       });
 
       getActiveValidatorsSpy.mockRestore();
     });
 
-    it("keeps already sorted validators when the first entry has the largest withdrawable amount", async () => {
+    it("sorts validators ascending by withdrawable amount", async () => {
       const { client, pendingWithdrawalsMock } = createClient();
 
       const validatorHigh: ValidatorBalance = {
@@ -239,7 +240,7 @@ describe("ConsensysStakingApiClient", () => {
         },
       ]);
 
-      const result = await client.getActiveValidatorsWithPendingWithdrawals();
+      const result = await client.getActiveValidatorsWithPendingWithdrawalsAscending();
 
       const expectedHigh: ValidatorBalanceWithPendingWithdrawal = {
         ...validatorHigh,
@@ -252,7 +253,8 @@ describe("ConsensysStakingApiClient", () => {
         withdrawableAmount: safeSub(safeSub(validatorLow.balance, 6n * ONE_GWEI), ONE_GWEI * 32n),
       };
 
-      expect(result).toEqual([expectedHigh, expectedLow]);
+      // With ascending sort: Low (2 GWEI) should come before High (11 GWEI)
+      expect(result).toEqual([expectedLow, expectedHigh]);
 
       getActiveValidatorsSpy.mockRestore();
     });
@@ -285,7 +287,7 @@ describe("ConsensysStakingApiClient", () => {
         },
       ]);
 
-      const result = await client.getActiveValidatorsWithPendingWithdrawals();
+      const result = await client.getActiveValidatorsWithPendingWithdrawalsAscending();
 
       const expectedEqualA: ValidatorBalanceWithPendingWithdrawal = {
         ...validatorEqualA,

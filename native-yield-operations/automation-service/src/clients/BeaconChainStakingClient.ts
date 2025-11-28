@@ -43,7 +43,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     this.logger.info(
       `submitWithdrawalRequestsToFulfilAmount started: amountWei=${amountWei.toString()}; validatorLimit=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
     );
-    const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
+    const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending();
     if (sortedValidatorList === undefined) {
       this.logger.error(
         "submitWithdrawalRequestsToFulfilAmount failed to get sortedValidatorList with pending withdrawals",
@@ -72,7 +72,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
    */
   async submitMaxAvailableWithdrawalRequests(): Promise<void> {
     this.logger.info(`submitMaxAvailableWithdrawalRequests started`);
-    const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
+    const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending();
     if (sortedValidatorList === undefined) {
       this.logger.error(
         "submitMaxAvailableWithdrawalRequests failed to get sortedValidatorList with pending withdrawals",

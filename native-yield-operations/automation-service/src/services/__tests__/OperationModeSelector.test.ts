@@ -74,7 +74,7 @@ describe("OperationModeSelector", () => {
     });
 
     // Default mock for validator data client
-    validatorDataClient.getActiveValidatorsWithPendingWithdrawals.mockResolvedValue([]);
+    validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValue([]);
     validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(0n);
   });
 
@@ -300,7 +300,7 @@ describe("OperationModeSelector", () => {
         },
       ];
 
-      validatorDataClient.getActiveValidatorsWithPendingWithdrawals.mockResolvedValue(validators);
+      validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValue(validators);
       validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(4n * ONE_GWEI);
 
       const selector = createSelector();
@@ -311,7 +311,7 @@ describe("OperationModeSelector", () => {
       await selector.start();
 
       expect(attemptMock).toHaveBeenCalled();
-      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawals).toHaveBeenCalled();
+      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending).toHaveBeenCalled();
       expect(validatorDataClient.getTotalPendingPartialWithdrawalsWei).toHaveBeenCalledWith(validators);
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(4);
     });
@@ -320,7 +320,7 @@ describe("OperationModeSelector", () => {
       yieldManager.isOssificationInitiated.mockResolvedValue(false);
       yieldManager.isOssified.mockResolvedValue(false);
 
-      validatorDataClient.getActiveValidatorsWithPendingWithdrawals.mockResolvedValue(undefined);
+      validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValue(undefined);
 
       const selector = createSelector();
       yieldReportingProcessor.process.mockImplementation(async () => {
@@ -330,7 +330,7 @@ describe("OperationModeSelector", () => {
       await selector.start();
 
       expect(attemptMock).toHaveBeenCalled();
-      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawals).toHaveBeenCalled();
+      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending).toHaveBeenCalled();
       expect(validatorDataClient.getTotalPendingPartialWithdrawalsWei).not.toHaveBeenCalled();
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).not.toHaveBeenCalled();
     });
@@ -340,7 +340,7 @@ describe("OperationModeSelector", () => {
       yieldManager.isOssified.mockResolvedValue(false);
 
       const error = new Error("Failed to get validators");
-      validatorDataClient.getActiveValidatorsWithPendingWithdrawals.mockRejectedValue(error);
+      validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockRejectedValue(error);
 
       const selector = createSelector();
       yieldReportingProcessor.process.mockImplementation(async () => {

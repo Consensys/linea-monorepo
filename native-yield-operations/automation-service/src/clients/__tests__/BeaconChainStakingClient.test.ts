@@ -52,7 +52,7 @@ const createMetricsUpdaterMock = () => {
 
 const createValidatorDataClientMock = () => {
   const getActiveValidators = jest.fn<() => Promise<ValidatorBalance[] | undefined>>();
-  const getActiveValidatorsWithPendingWithdrawals =
+  const getActiveValidatorsWithPendingWithdrawalsAscending =
     jest.fn<() => Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>>();
   const getTotalPendingPartialWithdrawalsWei = jest
     .fn<(validatorList: ValidatorBalanceWithPendingWithdrawal[]) => bigint>()
@@ -60,14 +60,14 @@ const createValidatorDataClientMock = () => {
 
   const client: IValidatorDataClient = {
     getActiveValidators,
-    getActiveValidatorsWithPendingWithdrawals,
+    getActiveValidatorsWithPendingWithdrawalsAscending,
     getTotalPendingPartialWithdrawalsWei,
   };
 
   return {
     client,
     getActiveValidators,
-    getActiveValidatorsWithPendingWithdrawals,
+    getActiveValidatorsWithPendingWithdrawalsAscending,
     getTotalPendingPartialWithdrawalsWei,
   };
 };
@@ -102,7 +102,7 @@ describe("BeaconChainStakingClient", () => {
     } = createMetricsUpdaterMock();
     const {
       client: validatorDataClient,
-      getActiveValidatorsWithPendingWithdrawals,
+      getActiveValidatorsWithPendingWithdrawalsAscending,
       getTotalPendingPartialWithdrawalsWei,
     } = createValidatorDataClientMock();
     const { mock: yieldManagerContractClient, unstakeMock } = createYieldManagerMock();
@@ -125,7 +125,7 @@ describe("BeaconChainStakingClient", () => {
       mocks: {
         addValidatorPartialUnstakeAmount,
         incrementValidatorExit,
-        getActiveValidatorsWithPendingWithdrawals,
+        getActiveValidatorsWithPendingWithdrawalsAscending,
         getTotalPendingPartialWithdrawalsWei,
         setLastTotalPendingPartialWithdrawalsGwei,
       },
@@ -139,7 +139,7 @@ describe("BeaconChainStakingClient", () => {
   describe("submitWithdrawalRequestsToFulfilAmount", () => {
     it("logs an error when validator data is unavailable", async () => {
       const { client, logger, unstakeMock, mocks } = setupClient();
-      mocks.getActiveValidatorsWithPendingWithdrawals.mockResolvedValueOnce(undefined);
+      mocks.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValueOnce(undefined);
 
       await client.submitWithdrawalRequestsToFulfilAmount(10n);
 
@@ -156,7 +156,7 @@ describe("BeaconChainStakingClient", () => {
         createValidator({ publicKey: "validator-1", withdrawableAmount: 3n }),
         createValidator({ publicKey: "validator-2", withdrawableAmount: 1n }),
       ];
-      mocks.getActiveValidatorsWithPendingWithdrawals.mockResolvedValueOnce(validators);
+      mocks.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValueOnce(validators);
       const amountWei = 4n * ONE_GWEI;
       mocks.getTotalPendingPartialWithdrawalsWei.mockReturnValueOnce(amountWei);
 
@@ -175,12 +175,13 @@ describe("BeaconChainStakingClient", () => {
       const maxValidatorsPerTx = 2;
       const { client, unstakeMock, mocks } = setupClient(maxValidatorsPerTx);
 
+      // Validators sorted ascending by withdrawableAmount (smallest first)
       const validators = [
         createValidator({ publicKey: "validator-1", withdrawableAmount: 2n }),
-        createValidator({ publicKey: "validator-2", withdrawableAmount: 5n }),
         createValidator({ publicKey: "validator-3", withdrawableAmount: 3n }),
+        createValidator({ publicKey: "validator-2", withdrawableAmount: 5n }),
       ];
-      mocks.getActiveValidatorsWithPendingWithdrawals.mockResolvedValueOnce(validators);
+      mocks.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValueOnce(validators);
       mocks.getTotalPendingPartialWithdrawalsWei.mockReturnValueOnce(0n);
       const amountWei = 3n * ONE_GWEI;
 
@@ -191,11 +192,12 @@ describe("BeaconChainStakingClient", () => {
       expect(unstakeMock).toHaveBeenCalledTimes(1);
 
       const [, withdrawalRequests] = unstakeMock.mock.calls[0];
-      expect(withdrawalRequests.pubkeys).toEqual(["validator-1" as Hex, "validator-2" as Hex]);
+      // With ascending sort, validator-1 (2n) and validator-3 (1n to reach 3n total) are processed
+      expect(withdrawalRequests.pubkeys).toEqual(["validator-1" as Hex, "validator-3" as Hex]);
       expect(withdrawalRequests.amountsGwei).toEqual([2n, 1n]);
 
       expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(1, "validator-1" as Hex, 2);
-      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(2, "validator-2" as Hex, 1);
+      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(2, "validator-3" as Hex, 1);
     });
   });
 
@@ -272,7 +274,7 @@ describe("BeaconChainStakingClient", () => {
   describe("submitMaxAvailableWithdrawalRequests", () => {
     it("logs an error when validator data is unavailable", async () => {
       const { client, logger, unstakeMock, mocks } = setupClient();
-      mocks.getActiveValidatorsWithPendingWithdrawals.mockResolvedValueOnce(undefined);
+      mocks.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValueOnce(undefined);
 
       await client.submitMaxAvailableWithdrawalRequests();
 
@@ -292,7 +294,7 @@ describe("BeaconChainStakingClient", () => {
         createValidator({ publicKey: "validator-3", withdrawableAmount: 0n }),
         createValidator({ publicKey: "validator-4", withdrawableAmount: 0n }),
       ];
-      mocks.getActiveValidatorsWithPendingWithdrawals.mockResolvedValueOnce(validators);
+      mocks.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValueOnce(validators);
 
       await client.submitMaxAvailableWithdrawalRequests();
 

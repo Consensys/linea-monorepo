@@ -81,7 +81,7 @@ export class OperationModeSelector implements IOperationModeSelector {
    * @returns {Promise<void>} A promise that resolves when the gauge is updated (or silently fails if validator data is unavailable).
    */
   private async refreshGaugeMetrics(): Promise<void> {
-    const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
+    const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending();
     if (sortedValidatorList === undefined) {
       return;
     }
