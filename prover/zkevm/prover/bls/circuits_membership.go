@@ -9,6 +9,35 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 )
 
+const (
+	nbRowsPerC1Membership = nbG1Limbs // point
+	nbRowsPerC2Membership = nbG2Limbs // point
+	nbRowsPerG1Membership = nbG1Limbs // point
+	nbRowsPerG2Membership = nbG2Limbs // point
+)
+
+func nbRowsPerCurveMembership(g Group) int {
+	switch g {
+	case G1:
+		return nbRowsPerC1Membership
+	case G2:
+		return nbRowsPerC2Membership
+	default:
+		panic("unknown group for nbRowsPerCurveMembership")
+	}
+}
+
+func nbRowsPerGroupMembership(g Group) int {
+	switch g {
+	case G1:
+		return nbRowsPerG1Membership
+	case G2:
+		return nbRowsPerG2Membership
+	default:
+		panic("unknown group for nbRowsPerGroupMembership")
+	}
+}
+
 type nonCurveMembershipInstance[C convertable[T], T element] struct {
 	// P is the purported element
 	P C `gnark:",public"`
