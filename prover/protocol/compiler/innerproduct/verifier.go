@@ -87,7 +87,8 @@ func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		expected = ys[0]
 	}
 
-	api.AssertIsEqual(expected, actual)
+	ext4, _ := gnarkfext.NewExt4(api)
+	ext4.AssertIsEqual(&expected, &actual)
 }
 
 func (v *VerifierForSize) Skip() {

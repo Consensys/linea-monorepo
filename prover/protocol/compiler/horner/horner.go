@@ -352,7 +352,6 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 }
 
 func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	fmt.Printf("verifying horner result ...\n")
 	hornerQuery := c.Q
 	hornerParams := run.GetHornerParams(hornerQuery.ID)
 	res := gnarkfext.NewE4GenFromBase(0)
@@ -397,8 +396,7 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 		res = *e4Api.Add(&res, &tmp)
 	}
-
-	api.AssertIsEqual(res, hornerParams.FinalResult)
+	e4Api.AssertIsEqual(&res, &hornerParams.FinalResult)
 }
 
 func (c *CheckHornerResult) Skip() {
