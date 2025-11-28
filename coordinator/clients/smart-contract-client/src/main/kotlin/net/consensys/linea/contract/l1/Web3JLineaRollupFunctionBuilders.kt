@@ -1,7 +1,7 @@
 package net.consensys.linea.contract.l1
 
 import build.linea.contract.LineaRollupV6
-import linea.contract.l1.LineaContractVersion
+import linea.contract.l1.LineaRollupContractVersion
 import linea.kotlin.toBigInteger
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ProofToFinalize
@@ -17,11 +17,11 @@ import java.util.Arrays
 
 internal object Web3JLineaRollupFunctionBuilders {
   fun buildSubmitBlobsFunction(
-    version: LineaContractVersion,
+    version: LineaRollupContractVersion,
     blobs: List<BlobRecord>,
   ): Function {
     return when (version) {
-      LineaContractVersion.V6 -> buildSubmitBlobsFunctionV6(blobs)
+      LineaRollupContractVersion.V6 -> buildSubmitBlobsFunctionV6(blobs)
     }
   }
 
@@ -65,14 +65,14 @@ internal object Web3JLineaRollupFunctionBuilders {
   }
 
   fun buildFinalizeBlocksFunction(
-    version: LineaContractVersion,
+    version: LineaRollupContractVersion,
     aggregationProof: ProofToFinalize,
     aggregationLastBlob: BlobRecord,
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long,
   ): Function {
     when (version) {
-      LineaContractVersion.V6 -> {
+      LineaRollupContractVersion.V6 -> {
         return buildFinalizeBlockFunctionV6(
           aggregationProof,
           aggregationLastBlob,
