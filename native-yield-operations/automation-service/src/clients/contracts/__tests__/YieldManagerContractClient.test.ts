@@ -18,7 +18,7 @@ jest.mock("viem", () => {
   };
 });
 
-import { getContract, encodeFunctionData, parseEventLogs, encodeAbiParameters } from "viem";
+import { concat, getContract, encodeFunctionData, parseEventLogs, encodeAbiParameters } from "viem";
 
 const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
 const mockedEncodeFunctionData = encodeFunctionData as jest.MockedFunction<typeof encodeFunctionData>;
@@ -37,6 +37,7 @@ describe("YieldManagerContractClient", () => {
   const l2Recipient = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
   const l1MessageServiceAddress = "0x9999999999999999999999999999999999999999" as Address;
   const stakingVaultAddress = "0x8888888888888888888888888888888888888888" as Address;
+  const signerAddress = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
 
   let logger: MockProxy<ILogger>;
   let blockchainClient: MockProxy<IBlockchainClient<PublicClient, TransactionReceipt>>;
@@ -110,6 +111,7 @@ describe("YieldManagerContractClient", () => {
 
     mockedGetContract.mockReturnValue(contractStub as any);
     blockchainClient.getBalance.mockResolvedValue(0n);
+    blockchainClient.getSignerAddress.mockReturnValue(signerAddress);
     blockchainClient.sendSignedTransaction.mockResolvedValue({
       transactionHash: "0xreceipt",
     } as unknown as TransactionReceipt);
@@ -186,7 +188,9 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const result = await client.peekYieldReport(yieldProvider, l2Recipient);
 
-    expect(contractStub.simulate.reportYield).toHaveBeenCalledWith([yieldProvider, l2Recipient]);
+    expect(contractStub.simulate.reportYield).toHaveBeenCalledWith([yieldProvider, l2Recipient], {
+      account: signerAddress,
+    });
     expect(result).toEqual({
       yieldAmount: newReportedYield,
       outstandingNegativeYield,
@@ -200,9 +204,11 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const result = await client.peekYieldReport(yieldProvider, l2Recipient);
 
-    expect(contractStub.simulate.reportYield).toHaveBeenCalledWith([yieldProvider, l2Recipient]);
+    expect(contractStub.simulate.reportYield).toHaveBeenCalledWith([yieldProvider, l2Recipient], {
+      account: signerAddress,
+    });
     expect(result).toBeUndefined();
-    expect(logger.debug).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       `peekYieldReport failed, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2Recipient}`,
       { error: expect.any(Error) },
     );
@@ -218,7 +224,7 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const receipt = await client.fundYieldProvider(yieldProvider, amount);
 
-    expect(logger.debug).toHaveBeenCalledWith(
+    expect(logger.info).toHaveBeenCalledWith(
       `fundYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
     );
     expect(mockedEncodeFunctionData).toHaveBeenCalledWith({
@@ -242,7 +248,7 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const receipt = await client.reportYield(yieldProvider, l2Recipient);
 
-    expect(logger.debug).toHaveBeenCalledWith(
+    expect(logger.info).toHaveBeenCalledWith(
       `reportYield started, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2Recipient}`,
     );
     expect(mockedEncodeFunctionData).toHaveBeenCalledWith({
@@ -275,27 +281,19 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const receipt = await client.unstake(yieldProvider, withdrawalParams);
 
-    expect(logger.debug).toHaveBeenCalledWith(`unstake started, yieldProvider=${yieldProvider}`, {
+    expect(logger.info).toHaveBeenCalledWith(
+      `unstake started, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}`,
+    );
+    expect(logger.debug).toHaveBeenCalledWith(`unstake started withdrawalParams`, {
       withdrawalParams,
     });
     expect(mockedEncodeAbiParameters).toHaveBeenCalledWith(
       [
-        {
-          type: "tuple",
-          components: [
-            { name: "pubkeys", type: "bytes[]" },
-            { name: "amounts", type: "uint64[]" },
-            { name: "refundRecipient", type: "address" },
-          ],
-        },
+        { name: "pubkeys", type: "bytes" },
+        { name: "amounts", type: "uint64[]" },
+        { name: "refundRecipient", type: "address" },
       ],
-      [
-        {
-          pubkeys: withdrawalParams.pubkeys,
-          amounts: withdrawalParams.amountsGwei,
-          refundRecipient: contractAddress,
-        },
-      ],
+      [concat(withdrawalParams.pubkeys), withdrawalParams.amountsGwei, contractAddress],
     );
     expect(publicClient.readContract).toHaveBeenCalledWith({
       address: stakingVaultAddress,
@@ -310,9 +308,11 @@ describe("YieldManagerContractClient", () => {
     });
     expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata, fee);
     expect(logger.info).toHaveBeenCalledWith(
-      `unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`,
-      { withdrawalParams },
+      `unstake succeeded, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}, txHash=${txReceipt.transactionHash}`,
     );
+    expect(logger.debug).toHaveBeenCalledWith(`unstake succeeded withdrawalParams`, {
+      withdrawalParams,
+    });
     expect(receipt).toBe(txReceipt);
   });
 
@@ -467,13 +467,18 @@ describe("YieldManagerContractClient", () => {
   it("adds to withdrawal reserve only when above threshold", async () => {
     const client = createClient({ minWithdrawalThresholdEth: 1n });
     const addSpy = jest.spyOn(client, "safeAddToWithdrawalReserve").mockResolvedValue(undefined as any);
+    const belowThresholdBalance = ONE_ETHER - 1n;
+    const minThreshold = 1n * ONE_ETHER;
     jest
       .spyOn(client, "getAvailableUnstakingRebalanceBalance")
-      .mockResolvedValueOnce(ONE_ETHER - 1n)
+      .mockResolvedValueOnce(belowThresholdBalance)
       .mockResolvedValueOnce(ONE_ETHER + 100n);
 
     await expect(client.safeAddToWithdrawalReserveIfAboveThreshold(yieldProvider, 5n)).resolves.toBeUndefined();
     expect(addSpy).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith(
+      `safeAddToWithdrawalReserveIfAboveThreshold - skipping as availableWithdrawalBalance=${belowThresholdBalance} is below the minimum withdrawal threshold of ${minThreshold}`,
+    );
 
     await client.safeAddToWithdrawalReserveIfAboveThreshold(yieldProvider, 7n);
     expect(addSpy).toHaveBeenCalledWith(yieldProvider, 7n);
@@ -493,10 +498,15 @@ describe("YieldManagerContractClient", () => {
   it("skips safeMaxAddToWithdrawalReserve when below the threshold", async () => {
     const client = createClient({ minWithdrawalThresholdEth: 2n });
     const addSpy = jest.spyOn(client, "safeAddToWithdrawalReserve").mockResolvedValue(undefined as any);
-    jest.spyOn(client, "getAvailableUnstakingRebalanceBalance").mockResolvedValue(2n * ONE_ETHER - 1n);
+    const belowThresholdBalance = 2n * ONE_ETHER - 1n;
+    const minThreshold = 2n * ONE_ETHER;
+    jest.spyOn(client, "getAvailableUnstakingRebalanceBalance").mockResolvedValue(belowThresholdBalance);
 
     await expect(client.safeMaxAddToWithdrawalReserve(yieldProvider)).resolves.toBeUndefined();
     expect(addSpy).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith(
+      `safeMaxAddToWithdrawalReserve - skipping as availableWithdrawalBalance=${belowThresholdBalance} is below the minimum withdrawal threshold of ${minThreshold}`,
+    );
   });
 
   it("extracts withdrawal events from receipts emitted by the contract", () => {
@@ -529,6 +539,7 @@ describe("YieldManagerContractClient", () => {
     );
 
     expect(event).toBeUndefined();
+    expect(logger.debug).toHaveBeenCalledWith("getWithdrawalEventFromTxReceipt - WithdrawalReserveAugmented event not found in receipt");
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
   });
 
@@ -580,6 +591,7 @@ describe("YieldManagerContractClient", () => {
     );
 
     expect(report).toBeUndefined();
+    expect(logger.debug).toHaveBeenCalledWith("getYieldReportFromTxReceipt - NativeYieldReported event not found in receipt");
   });
 
   it("ignores yield report logs from other contracts", () => {

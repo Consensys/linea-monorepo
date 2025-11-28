@@ -339,6 +339,12 @@ describe("LazyOracleContractClient", () => {
 
     watchArgs.onLogs?.([incompleteLog as any]);
 
+    expect(logger.debug).toHaveBeenCalledWith("waitForVaultsReportDataUpdatedEvent: Event args incomplete, skipping", {
+      hasTimestamp: true,
+      hasRefSlot: false,
+      hasRoot: true,
+      hasCid: true,
+    });
     expect(stopWatching).not.toHaveBeenCalled();
     expect(logger.info).not.toHaveBeenCalledWith("waitForVaultsReportDataUpdatedEvent detected", expect.anything());
     expect(clearTimeoutSpy).not.toHaveBeenCalled();

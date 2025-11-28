@@ -174,6 +174,12 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
           firstEvent.args?.root === undefined ||
           firstEvent.args?.cid === undefined
         ) {
+          this.logger.debug("waitForVaultsReportDataUpdatedEvent: Event args incomplete, skipping", {
+            hasTimestamp: firstEvent.args?.timestamp !== undefined,
+            hasRefSlot: firstEvent.args?.refSlot !== undefined,
+            hasRoot: firstEvent.args?.root !== undefined,
+            hasCid: firstEvent.args?.cid !== undefined,
+          });
           return;
         }
 

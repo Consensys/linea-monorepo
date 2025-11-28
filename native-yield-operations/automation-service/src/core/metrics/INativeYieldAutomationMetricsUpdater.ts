@@ -1,10 +1,10 @@
 import { Address, Hex } from "viem";
 import { RebalanceDirection } from "../entities/RebalanceRequirement.js";
 import { OperationMode } from "../enums/OperationModeEnums.js";
-import { OperationTrigger } from "./LineaNativeYieldAutomationServiceMetrics.js";
+import { OperationModeExecutionStatus } from "./LineaNativeYieldAutomationServiceMetrics.js";
 
 export interface INativeYieldAutomationMetricsUpdater {
-  recordRebalance(direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE, amountGwei: number): void;
+  recordRebalance(direction: RebalanceDirection, amountGwei: number): void;
 
   addValidatorPartialUnstakeAmount(validatorPubkey: Hex, amountGwei: number): void;
 
@@ -16,11 +16,13 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   addReportedYieldAmount(vaultAddress: Address, amountGwei: number): void;
 
-  setLastPeekedNegativeYieldReport(vaultAddress: Address, negativeYield: number): Promise<void>;
+  setLastPeekedNegativeYieldReport(vaultAddress: Address, negativeYield: number): void;
 
-  setLastPeekedPositiveYieldReport(vaultAddress: Address, yieldAmount: number): Promise<void>;
+  setLastPeekedPositiveYieldReport(vaultAddress: Address, yieldAmount: number): void;
 
-  setLastPeekUnpaidLidoProtocolFees(vaultAddress: Address, feesAmount: number): Promise<void>;
+  setLastSettleableLidoFees(vaultAddress: Address, feesAmount: number): void;
+
+  setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): void;
 
   addNodeOperatorFeesPaid(vaultAddress: Address, amountGwei: number): void;
 
@@ -28,9 +30,7 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   addLidoFeesPaid(vaultAddress: Address, amountGwei: number): void;
 
-  incrementOperationModeTrigger(mode: OperationMode, trigger: OperationTrigger): void;
-
-  incrementOperationModeExecution(mode: OperationMode): void;
+  incrementOperationModeExecution(mode: OperationMode, status?: OperationModeExecutionStatus): void;
 
   recordOperationModeDuration(mode: OperationMode, durationSeconds: number): void;
 }

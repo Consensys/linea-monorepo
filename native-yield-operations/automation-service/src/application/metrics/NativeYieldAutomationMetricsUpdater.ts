@@ -1,7 +1,7 @@
 import { IMetricsService } from "@consensys/linea-shared-utils";
 import {
   LineaNativeYieldAutomationServiceMetrics,
-  OperationTrigger,
+  OperationModeExecutionStatus,
 } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
 import { Address, Hex } from "viem";
@@ -73,9 +73,15 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createGauge(
-      LineaNativeYieldAutomationServiceMetrics.LastPeekUnpaidLidoProtocolFees,
-      "Unpaid Lido protocol fees from the last peek",
+      LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
+      "Settleable Lido protocol fees from the last query",
       ["vault_address"],
+    );
+
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
+      "Total pending partial withdrawals in gwei",
+      [],
     );
 
     this.metricsService.createCounter(
@@ -97,15 +103,9 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createCounter(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal,
-      "Operation mode triggers grouped by mode and triggers",
-      ["mode", "trigger"],
-    );
-
-    this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      "Operation mode executions grouped by mode",
-      ["mode"],
+      "Operation mode executions grouped by mode and status",
+      ["mode", "status"],
     );
 
     this.metricsService.createHistogram(
@@ -120,11 +120,10 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    * Records a rebalance operation amount.
    * Increments the rebalance amount counter for the specified direction.
    *
-   * @param {RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE} direction - The direction of the rebalance (STAKE or UNSTAKE).
-   * @param {number} amountGwei - The rebalance amount in gwei. Must be greater than 0 to be recorded.
+   * @param {RebalanceDirection} direction - The direction of the rebalance (NONE, STAKE, or UNSTAKE).
+   * @param {number} amountGwei - The rebalance amount in gwei.
    */
-  public recordRebalance(direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE, amountGwei: number): void {
-    if (amountGwei <= 0) return;
+  public recordRebalance(direction: RebalanceDirection, amountGwei: number): void {
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
       { direction },
@@ -205,9 +204,8 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    *
    * @param {Address} vaultAddress - The address of the vault.
    * @param {number} negativeYield - The negative yield amount. Must be non-negative to be recorded.
-   * @returns {Promise<void>} A promise that resolves when the gauge is set.
    */
-  public async setLastPeekedNegativeYieldReport(vaultAddress: Address, negativeYield: number): Promise<void> {
+  public setLastPeekedNegativeYieldReport(vaultAddress: Address, negativeYield: number): void {
     if (negativeYield < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.LastPeekedNegativeYieldReport,
@@ -221,9 +219,8 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    *
    * @param {Address} vaultAddress - The address of the vault.
    * @param {number} yieldAmount - The yield amount. Must be non-negative to be recorded.
-   * @returns {Promise<void>} A promise that resolves when the gauge is set.
    */
-  public async setLastPeekedPositiveYieldReport(vaultAddress: Address, yieldAmount: number): Promise<void> {
+  public setLastPeekedPositiveYieldReport(vaultAddress: Address, yieldAmount: number): void {
     if (yieldAmount < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.LastPeekedPositiveYieldReport,
@@ -233,18 +230,31 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   /**
-   * Sets the unpaid Lido protocol fees from the last peek for a specific vault.
+   * Sets the settleable Lido protocol fees from the last query for a specific vault.
    *
    * @param {Address} vaultAddress - The address of the vault.
-   * @param {number} feesAmount - The unpaid fees amount. Must be non-negative to be recorded.
-   * @returns {Promise<void>} A promise that resolves when the gauge is set.
+   * @param {number} feesAmount - The settleable fees amount. Must be non-negative to be recorded.
    */
-  public async setLastPeekUnpaidLidoProtocolFees(vaultAddress: Address, feesAmount: number): Promise<void> {
+  public setLastSettleableLidoFees(vaultAddress: Address, feesAmount: number): void {
     if (feesAmount < 0) return;
     this.metricsService.setGauge(
-      LineaNativeYieldAutomationServiceMetrics.LastPeekUnpaidLidoProtocolFees,
+      LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
       { vault_address: vaultAddress },
       feesAmount,
+    );
+  }
+
+  /**
+   * Sets the total pending partial withdrawals in gwei from the last query.
+   *
+   * @param {number} totalPendingPartialWithdrawalsGwei - The total pending partial withdrawals amount in gwei. Must be non-negative to be recorded.
+   */
+  public setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): void {
+    if (totalPendingPartialWithdrawalsGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
+      {},
+      totalPendingPartialWithdrawalsGwei,
     );
   }
 
@@ -291,26 +301,18 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   /**
-   * Increments the counter for operation mode triggers, grouped by mode and trigger type.
-   *
-   * @param {OperationMode} mode - The operation mode that was triggered.
-   * @param {OperationTrigger} trigger - The trigger that caused the mode to be activated.
-   */
-  public incrementOperationModeTrigger(mode: OperationMode, trigger: OperationTrigger): void {
-    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal, {
-      mode,
-      trigger,
-    });
-  }
-
-  /**
-   * Increments the counter for operation mode executions, grouped by mode.
+   * Increments the counter for operation mode executions, grouped by mode and status.
    *
    * @param {OperationMode} mode - The operation mode that was executed.
+   * @param {OperationModeExecutionStatus} [status=OperationModeExecutionStatus.Success] - The execution status. Defaults to Success.
    */
-  public incrementOperationModeExecution(mode: OperationMode): void {
+  public incrementOperationModeExecution(
+    mode: OperationMode,
+    status: OperationModeExecutionStatus = OperationModeExecutionStatus.Success,
+  ): void {
     this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal, {
       mode,
+      status,
     });
   }
 

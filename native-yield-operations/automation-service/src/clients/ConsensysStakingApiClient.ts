@@ -43,26 +43,58 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       return undefined;
     }
     const resp = data?.allValidators.nodes;
-    this.logger.debug("getActiveValidators succeded", { resp });
-    return resp;
+    if (!resp) {
+      this.logger.info(`getActiveValidators succeeded, validatorCount=0`);
+      this.logger.debug("getActiveValidators resp", { resp: undefined });
+      return undefined;
+    }
+    // Convert GraphQL string responses to bigint
+    // GraphQL returns numeric values as strings, so we need to convert them
+    // BigInt() handles strings, numbers, and bigint values, so no type check needed
+    type GraphQLValidatorResponse = {
+      balance: string | bigint;
+      effectiveBalance: string | bigint;
+      publicKey: string;
+      validatorIndex: string | bigint;
+    };
+    const validators: ValidatorBalance[] = resp.map((v: GraphQLValidatorResponse) => ({
+      balance: BigInt(v.balance),
+      effectiveBalance: BigInt(v.effectiveBalance),
+      publicKey: v.publicKey,
+      validatorIndex: BigInt(v.validatorIndex),
+    }));
+    this.logger.info(`getActiveValidators succeeded, validatorCount=${validators.length}`);
+    this.logger.debug("getActiveValidators resp", { resp: validators });
+    return validators;
   }
 
   /**
    * Retrieves active validators with pending withdrawal information.
-   * Returns sorted in descending order of withdrawableValue (largest withdrawableAmount first).
+   * Returns sorted in ascending order of withdrawableValue (smallest withdrawableAmount first).
    * Performs the following steps:
    * 1️⃣ Aggregate duplicate pending withdrawals by validator index
    * 2️⃣ Join with validators and compute total pending amount
-   * ✅ Sort descending (largest withdrawableAmount first)
+   * ✅ Sort ascending (smallest withdrawableAmount first)
    *
-   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of validators with pending withdrawal data, sorted descending by withdrawableAmount, or undefined if data retrieval fails.
+   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of validators with pending withdrawal data, sorted ascending by withdrawableAmount, or undefined if data retrieval fails.
    */
-  async getActiveValidatorsWithPendingWithdrawals(): Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined> {
+  async getActiveValidatorsWithPendingWithdrawalsAscending(): Promise<
+    ValidatorBalanceWithPendingWithdrawal[] | undefined
+  > {
     const [allValidators, pendingWithdrawalsQueue] = await Promise.all([
       this.getActiveValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
     ]);
-    if (allValidators === undefined || pendingWithdrawalsQueue === undefined) return undefined;
+    if (allValidators === undefined || pendingWithdrawalsQueue === undefined) {
+      this.logger.warn(
+        "getActiveValidatorsWithPendingWithdrawalsAscending - failed to retrieve validators or pending withdrawals",
+        {
+          allValidators: allValidators === undefined,
+          pendingWithdrawalsQueue: pendingWithdrawalsQueue === undefined,
+        },
+      );
+      return undefined;
+    }
 
     // 1️⃣ Aggregate duplicate pending withdrawals by validator index
     const pendingByValidator = new Map<number, bigint>();
@@ -86,12 +118,13 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       };
     });
 
-    // ✅ Sort descending (largest withdrawableAmount first)
+    // ✅ Sort ascending (smallest withdrawableAmount first)
     joined.sort((a, b) =>
-      a.withdrawableAmount > b.withdrawableAmount ? -1 : a.withdrawableAmount < b.withdrawableAmount ? 1 : 0,
+      a.withdrawableAmount < b.withdrawableAmount ? -1 : a.withdrawableAmount > b.withdrawableAmount ? 1 : 0,
     );
 
-    this.logger.debug("getActiveValidatorsWithPendingWithdrawals return val", { joined });
+    this.logger.info(`getActiveValidatorsWithPendingWithdrawalsAscending succeeded, validatorCount=${joined.length}`);
+    this.logger.debug("getActiveValidatorsWithPendingWithdrawalsAscending joined", { joined });
     return joined;
   }
 
@@ -105,7 +138,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
   getTotalPendingPartialWithdrawalsWei(validatorList: ValidatorBalanceWithPendingWithdrawal[]): bigint {
     const totalGwei = validatorList.reduce((acc, v) => acc + v.pendingWithdrawalAmount, 0n);
     const totalWei = totalGwei * ONE_GWEI;
-    this.logger.debug(`getTotalPendingPartialWithdrawalsWei totalWei=${totalWei}`);
+    this.logger.info(`getTotalPendingPartialWithdrawalsWei totalWei=${totalWei}`);
     return totalWei;
   }
 }

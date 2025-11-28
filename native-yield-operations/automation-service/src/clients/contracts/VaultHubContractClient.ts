@@ -1,4 +1,4 @@
-import { IBlockchainClient } from "@consensys/linea-shared-utils";
+import { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import { Address, getContract, GetContractReturnType, parseEventLogs, PublicClient, TransactionReceipt } from "viem";
 import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 import { VaultHubABI } from "../../core/abis/VaultHub.js";
@@ -15,10 +15,12 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
    *
    * @param {IBlockchainClient<PublicClient, TransactionReceipt>} contractClientLibrary - Blockchain client for reading contract data.
    * @param {Address} contractAddress - The address of the VaultHub contract.
+   * @param {ILogger} logger - Logger instance for logging operations.
    */
   constructor(
     private readonly contractClientLibrary: IBlockchainClient<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
+    private readonly logger: ILogger,
   ) {
     this.contract = getContract({
       abi: VaultHubABI,
@@ -83,5 +85,22 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
     const transferred =
       logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.transferred ?? 0n;
     return transferred;
+  }
+
+  /**
+   * Gets the settleable Lido protocol fees value for a given vault.
+   * Reads the settleableLidoFeesValue function which returns the amount of settleable Lido protocol fees.
+   *
+   * @param {Address} vault - The vault address to query.
+   * @returns {Promise<bigint | undefined>} The settleable Lido protocol fees amount in wei, or undefined on error.
+   */
+  async settleableLidoFeesValue(vault: Address): Promise<bigint | undefined> {
+    try {
+      const value = await this.contract.read.settleableLidoFeesValue([vault]);
+      return value ?? 0n;
+    } catch (error) {
+      this.logger.error(`settleableLidoFeesValue failed, error=${error}`);
+      return undefined;
+    }
   }
 }

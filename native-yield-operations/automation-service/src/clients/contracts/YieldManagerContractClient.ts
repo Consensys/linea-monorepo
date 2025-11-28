@@ -1,6 +1,7 @@
 import { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
+  concat,
   encodeAbiParameters,
   encodeFunctionData,
   getContract,
@@ -167,7 +168,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
-    this.logger.debug(`fundYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
+    this.logger.info(`fundYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "fundYieldProvider",
@@ -189,7 +190,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TransactionReceipt> {
-    this.logger.debug(`reportYield started, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}`);
+    this.logger.info(`reportYield started, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "reportYield",
@@ -212,7 +213,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async unstake(yieldProvider: Address, withdrawalParams: WithdrawalRequests): Promise<TransactionReceipt> {
-    this.logger.debug(`unstake started, yieldProvider=${yieldProvider}`, { withdrawalParams });
+    this.logger.info(
+      `unstake started, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}`,
+    );
+    this.logger.debug(`unstake started withdrawalParams`, { withdrawalParams });
     const encodedWithdrawalParams = this._encodeLidoWithdrawalParams({
       ...withdrawalParams,
       refundRecipient: this.contractAddress,
@@ -229,9 +233,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       calldata,
       validatorWithdrawalFee,
     );
-    this.logger.info(`unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`, {
-      withdrawalParams,
-    });
+    this.logger.info(
+      `unstake succeeded, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}, txHash=${txReceipt.transactionHash}`,
+    );
+    this.logger.debug(`unstake succeeded withdrawalParams`, { withdrawalParams });
     return txReceipt;
   }
 
@@ -242,24 +247,14 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Hex} The ABI-encoded withdrawal parameters.
    */
   private _encodeLidoWithdrawalParams(params: LidoStakingVaultWithdrawalParams): Hex {
+    const concatenatedPubkeys = concat(params.pubkeys);
     return encodeAbiParameters(
       [
-        {
-          type: "tuple",
-          components: [
-            { name: "pubkeys", type: "bytes[]" },
-            { name: "amounts", type: "uint64[]" },
-            { name: "refundRecipient", type: "address" },
-          ],
-        },
+        { name: "pubkeys", type: "bytes" },
+        { name: "amounts", type: "uint64[]" },
+        { name: "refundRecipient", type: "address" },
       ],
-      [
-        {
-          pubkeys: params.pubkeys,
-          amounts: params.amountsGwei,
-          refundRecipient: params.refundRecipient,
-        },
-      ],
+      [concatenatedPubkeys, params.amountsGwei, params.refundRecipient],
     );
   }
 
@@ -293,9 +288,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
-    this.logger.debug(
-      `safeAddToWithdrawalReserve started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
-    );
+    this.logger.info(`safeAddToWithdrawalReserve started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "safeAddToWithdrawalReserve",
@@ -316,7 +309,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async pauseStaking(yieldProvider: Address): Promise<TransactionReceipt> {
-    this.logger.debug(`pauseStaking started, yieldProvider=${yieldProvider}`);
+    this.logger.info(`pauseStaking started, yieldProvider=${yieldProvider}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "pauseStaking",
@@ -335,7 +328,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async unpauseStaking(yieldProvider: Address): Promise<TransactionReceipt> {
-    this.logger.debug(`unpauseStaking started, yieldProvider=${yieldProvider}`);
+    this.logger.info(`unpauseStaking started, yieldProvider=${yieldProvider}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "unpauseStaking",
@@ -354,7 +347,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    */
   async progressPendingOssification(yieldProvider: Address): Promise<TransactionReceipt> {
-    this.logger.debug(`progressPendingOssification started, yieldProvider=${yieldProvider}`);
+    this.logger.info(`progressPendingOssification started, yieldProvider=${yieldProvider}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "progressPendingOssification",
@@ -514,7 +507,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     amount: bigint,
   ): Promise<TransactionReceipt | undefined> {
     const availableWithdrawalBalance = await this.getAvailableUnstakingRebalanceBalance(yieldProvider);
-    if (availableWithdrawalBalance < this.minWithdrawalThresholdEth * ONE_ETHER) return undefined;
+    if (availableWithdrawalBalance < this.minWithdrawalThresholdEth * ONE_ETHER) {
+      this.logger.info(
+        `safeAddToWithdrawalReserveIfAboveThreshold - skipping as availableWithdrawalBalance=${availableWithdrawalBalance} is below the minimum withdrawal threshold of ${this.minWithdrawalThresholdEth * ONE_ETHER}`,
+      );
+      return undefined;
+    }
     return await this.safeAddToWithdrawalReserve(yieldProvider, amount);
   }
 
@@ -527,7 +525,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    */
   async safeMaxAddToWithdrawalReserve(yieldProvider: Address): Promise<TransactionReceipt | undefined> {
     const availableWithdrawalBalance = await this.getAvailableUnstakingRebalanceBalance(yieldProvider);
-    if (availableWithdrawalBalance < this.minWithdrawalThresholdEth * ONE_ETHER) return undefined;
+    if (availableWithdrawalBalance < this.minWithdrawalThresholdEth * ONE_ETHER) {
+      this.logger.info(
+        `safeMaxAddToWithdrawalReserve - skipping as availableWithdrawalBalance=${availableWithdrawalBalance} is below the minimum withdrawal threshold of ${this.minWithdrawalThresholdEth * ONE_ETHER}`,
+      );
+      return undefined;
+    }
     return await this.safeAddToWithdrawalReserve(yieldProvider, availableWithdrawalBalance);
   }
 
@@ -547,7 +550,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     });
 
     const event = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase());
-    if (!event) return undefined;
+    if (!event) {
+      this.logger.debug("getWithdrawalEventFromTxReceipt - WithdrawalReserveAugmented event not found in receipt");
+      return undefined;
+    }
 
     const { reserveIncrementAmount, yieldProvider } = event.args;
     return { reserveIncrementAmount, yieldProvider };
@@ -569,7 +575,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     });
 
     const event = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase());
-    if (!event) return undefined;
+    if (!event) {
+      this.logger.debug("getYieldReportFromTxReceipt - NativeYieldReported event not found in receipt");
+      return undefined;
+    }
 
     const { yieldAmount, outstandingNegativeYield, yieldProvider } = event.args;
     return {
@@ -589,7 +598,9 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    */
   async peekYieldReport(yieldProvider: Address, l2YieldRecipient: Address): Promise<YieldReport | undefined> {
     try {
-      const { result } = await this.contract.simulate.reportYield([yieldProvider, l2YieldRecipient]);
+      const { result } = await this.contract.simulate.reportYield([yieldProvider, l2YieldRecipient], {
+        account: this.contractClientLibrary.getSignerAddress(),
+      });
       const [newReportedYield, outstandingNegativeYield] = result;
       return {
         yieldAmount: newReportedYield,
@@ -597,7 +608,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
         yieldProvider,
       };
     } catch (error) {
-      this.logger.debug(
+      this.logger.error(
         `peekYieldReport failed, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}`,
         { error },
       );

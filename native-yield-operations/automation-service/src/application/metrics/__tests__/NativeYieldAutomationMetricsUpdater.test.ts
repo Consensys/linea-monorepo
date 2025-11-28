@@ -3,7 +3,7 @@ import { IMetricsService } from "@consensys/linea-shared-utils";
 import { NativeYieldAutomationMetricsUpdater } from "../NativeYieldAutomationMetricsUpdater.js";
 import {
   LineaNativeYieldAutomationServiceMetrics,
-  OperationTrigger,
+  OperationModeExecutionStatus,
 } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
@@ -76,9 +76,14 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       ["vault_address"],
     );
     expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastPeekUnpaidLidoProtocolFees,
-      "Unpaid Lido protocol fees from the last peek",
+      LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
+      "Settleable Lido protocol fees from the last query",
       ["vault_address"],
+    );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
+      "Total pending partial withdrawals in gwei",
+      [],
     );
     expect(metricsService.createCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
@@ -96,14 +101,9 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       ["vault_address"],
     );
     expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal,
-      "Operation mode triggers grouped by mode and triggers",
-      ["mode", "trigger"],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      "Operation mode executions grouped by mode",
-      ["mode"],
+      "Operation mode executions grouped by mode and status",
+      ["mode", "status"],
     );
     expect(metricsService.createHistogram).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionDurationSeconds,
@@ -129,15 +129,49 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("does not increment when amount is non-positive", () => {
+    it("increments counter when amount is zero", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
       updater.recordRebalance(RebalanceDirection.UNSTAKE, 0);
+
+      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
+        { direction: RebalanceDirection.UNSTAKE },
+        0,
+      );
+    });
+
+    it("increments counter when amount is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
       updater.recordRebalance(RebalanceDirection.UNSTAKE, -10);
 
-      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
+        { direction: RebalanceDirection.UNSTAKE },
+        -10,
+      );
+    });
+
+    it("increments counter when direction is NONE", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.recordRebalance(RebalanceDirection.NONE, 0);
+
+      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
+        { direction: RebalanceDirection.NONE },
+        0,
+      );
     });
   });
 
@@ -239,12 +273,12 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
   });
 
   describe("setLastPeekedNegativeYieldReport", () => {
-    it("sets gauge when value is non-negative", async () => {
+    it("sets gauge when value is non-negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekedNegativeYieldReport(vaultAddress, 123);
+      updater.setLastPeekedNegativeYieldReport(vaultAddress, 123);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastPeekedNegativeYieldReport,
@@ -253,24 +287,24 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("does not set gauge when value is negative", async () => {
+    it("does not set gauge when value is negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekedNegativeYieldReport(vaultAddress, -1);
+      updater.setLastPeekedNegativeYieldReport(vaultAddress, -1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastPeekedPositiveYieldReport", () => {
-    it("sets gauge when value is non-negative", async () => {
+    it("sets gauge when value is non-negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekedPositiveYieldReport(vaultAddress, 456);
+      updater.setLastPeekedPositiveYieldReport(vaultAddress, 456);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastPeekedPositiveYieldReport,
@@ -279,38 +313,64 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("does not set gauge when value is negative", async () => {
+    it("does not set gauge when value is negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekedPositiveYieldReport(vaultAddress, -1);
+      updater.setLastPeekedPositiveYieldReport(vaultAddress, -1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
-  describe("setLastPeekUnpaidLidoProtocolFees", () => {
-    it("sets gauge when value is non-negative", async () => {
+  describe("setLastSettleableLidoFees", () => {
+    it("sets gauge when value is non-negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekUnpaidLidoProtocolFees(vaultAddress, 789);
+      updater.setLastSettleableLidoFees(vaultAddress, 789);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.LastPeekUnpaidLidoProtocolFees,
+        LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
         { vault_address: vaultAddress },
         789,
       );
     });
 
-    it("does not set gauge when value is negative", async () => {
+    it("does not set gauge when value is negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      await updater.setLastPeekUnpaidLidoProtocolFees(vaultAddress, -1);
+      updater.setLastSettleableLidoFees(vaultAddress, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setLastTotalPendingPartialWithdrawalsGwei", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalPendingPartialWithdrawalsGwei(1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
+        {},
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalPendingPartialWithdrawalsGwei(-1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
@@ -358,20 +418,7 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     });
   });
 
-  it("increments operation mode trigger counter", () => {
-    const metricsService = createMetricsServiceMock();
-    const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-    jest.clearAllMocks();
-
-    updater.incrementOperationModeTrigger(OperationMode.YIELD_REPORTING_MODE, OperationTrigger.TIMEOUT);
-
-    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal,
-      { mode: OperationMode.YIELD_REPORTING_MODE, trigger: OperationTrigger.TIMEOUT },
-    );
-  });
-
-  it("increments operation mode execution counter", () => {
+  it("increments operation mode execution counter with default success status", () => {
     const metricsService = createMetricsServiceMock();
     const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
     jest.clearAllMocks();
@@ -380,7 +427,33 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
 
     expect(metricsService.incrementCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      { mode: OperationMode.OSSIFICATION_PENDING_MODE },
+      { mode: OperationMode.OSSIFICATION_PENDING_MODE, status: OperationModeExecutionStatus.Success },
+    );
+  });
+
+  it("increments operation mode execution counter with explicit success status", () => {
+    const metricsService = createMetricsServiceMock();
+    const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+    jest.clearAllMocks();
+
+    updater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE, OperationModeExecutionStatus.Success);
+
+    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
+      { mode: OperationMode.YIELD_REPORTING_MODE, status: OperationModeExecutionStatus.Success },
+    );
+  });
+
+  it("increments operation mode execution counter with failure status", () => {
+    const metricsService = createMetricsServiceMock();
+    const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+    jest.clearAllMocks();
+
+    updater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE, OperationModeExecutionStatus.Failure);
+
+    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
+      { mode: OperationMode.YIELD_REPORTING_MODE, status: OperationModeExecutionStatus.Failure },
     );
   });
 

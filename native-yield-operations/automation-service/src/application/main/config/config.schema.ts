@@ -130,6 +130,15 @@ export const configSchema = z
      * Must be between 1024 and 49000 (inclusive) to avoid system ports and common application ports.
      */
     API_PORT: z.coerce.number().int().min(1024).max(49000),
+    /** Winston logger level for controlling log verbosity.
+     * Valid values: "error", "warn", "info", "verbose", "debug", "silly".
+     * Defaults to "info" if not specified.
+     */
+    LOG_LEVEL: z
+      .enum(["error", "warn", "info", "verbose", "debug", "silly"], {
+        errorMap: () => ({ message: "LOG_LEVEL must be one of: error, warn, info, verbose, debug, silly" }),
+      })
+      .optional(),
   })
   .strip();
 

@@ -10,7 +10,7 @@ import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakin
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
-import { DashboardContractClient } from "../../clients/contracts/DashboardContractClient.js";
+import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 
 /**
  * Processor for YIELD_REPORTING_MODE operations.
@@ -30,6 +30,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @param {ILineaRollupYieldExtension<TransactionReceipt>} lineaRollupYieldExtensionClient - Client for interacting with LineaRollupYieldExtension contracts.
    * @param {ILidoAccountingReportClient} lidoAccountingReportClient - Client for submitting Lido accounting reports.
    * @param {IBeaconChainStakingClient} beaconChainStakingClient - Client for managing beacon chain staking operations.
+   * @param {IVaultHub<TransactionReceipt>} vaultHubContractClient - Client for interacting with VaultHub contracts.
    * @param {Address} yieldProvider - The yield provider address to process.
    * @param {Address} l2YieldRecipient - The L2 yield recipient address for yield reporting.
    * @param {boolean} shouldSubmitVaultReport - Whether to submit the vault accounting report. Can be set to false if other actors are expected to submit.
@@ -45,6 +46,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly lineaRollupYieldExtensionClient: ILineaRollupYieldExtension<TransactionReceipt>,
     private readonly lidoAccountingReportClient: ILidoAccountingReportClient,
     private readonly beaconChainStakingClient: IBeaconChainStakingClient,
+    private readonly vaultHubContractClient: IVaultHub<TransactionReceipt>,
     private readonly yieldProvider: Address,
     private readonly l2YieldRecipient: Address,
     private readonly shouldSubmitVaultReport: boolean,
@@ -62,8 +64,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @returns {Promise<void>} A promise that resolves when the processing cycle completes.
    */
   public async process(): Promise<void> {
-    const triggerEvent = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
-    this.metricsUpdater.incrementOperationModeTrigger(OperationMode.YIELD_REPORTING_MODE, triggerEvent.result);
+    await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
     const startedAt = performance.now();
     await this._process();
     const durationMs = performance.now() - startedAt;
@@ -302,20 +303,11 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @returns {Promise<boolean>} True if yield should be reported (either threshold met), false otherwise.
    */
   async _shouldReportYield(): Promise<boolean> {
-    // Get dashboard address
-    const dashboardAddress = await this.yieldManagerContractClient.getLidoDashboardAddress(this.yieldProvider);
-    const dashboardClient = DashboardContractClient.getOrCreate(dashboardAddress);
-
     // Use Promise.all to concurrently fetch both values
-    const [unpaidLidoProtocolFees, yieldReport] = await Promise.all([
-      dashboardClient.peekUnpaidLidoProtocolFees(),
+    const [settleableLidoFees, yieldReport] = await Promise.all([
+      this.vaultHubContractClient.settleableLidoFeesValue(this.vault),
       this.yieldManagerContractClient.peekYieldReport(this.yieldProvider, this.l2YieldRecipient),
     ]);
-
-    // Log both results
-    this.logger.info(
-      `_shouldReportYield - unpaidLidoProtocolFees=${JSON.stringify(unpaidLidoProtocolFees, bigintReplacer)}, yieldReport=${JSON.stringify(yieldReport, bigintReplacer)}`,
-    );
 
     let yieldThresholdMet = false;
     let feesThresholdMet = false;
@@ -323,19 +315,24 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     if (yieldReport !== undefined) {
       const outstandingNegativeYield = yieldReport?.outstandingNegativeYield;
       const yieldAmount = yieldReport?.yieldAmount;
-      await Promise.all([
-        this.metricsUpdater.setLastPeekedNegativeYieldReport(this.vault, weiToGweiNumber(outstandingNegativeYield)),
-        this.metricsUpdater.setLastPeekedPositiveYieldReport(this.vault, weiToGweiNumber(yieldAmount)),
-      ]);
+      this.metricsUpdater.setLastPeekedNegativeYieldReport(this.vault, weiToGweiNumber(outstandingNegativeYield));
+      this.metricsUpdater.setLastPeekedPositiveYieldReport(this.vault, weiToGweiNumber(yieldAmount));
       yieldThresholdMet = yieldAmount >= this.minPositiveYieldToReportWei;
     }
 
-    if (unpaidLidoProtocolFees !== undefined) {
-      await this.metricsUpdater.setLastPeekUnpaidLidoProtocolFees(this.vault, weiToGweiNumber(unpaidLidoProtocolFees));
-      feesThresholdMet = unpaidLidoProtocolFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
+    if (settleableLidoFees !== undefined) {
+      this.metricsUpdater.setLastSettleableLidoFees(this.vault, weiToGweiNumber(settleableLidoFees));
+      feesThresholdMet = settleableLidoFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
     }
 
+    const shouldReportYield = feesThresholdMet || yieldThresholdMet;
+
+    // Log both results
+    this.logger.info(
+      `_shouldReportYield - shouldReportYield=${shouldReportYield}, settleableLidoFees=${JSON.stringify(settleableLidoFees, bigintReplacer)}, yieldReport=${JSON.stringify(yieldReport, bigintReplacer)}`,
+    );
+
     // Return true if either threshold is met
-    return feesThresholdMet || yieldThresholdMet;
+    return shouldReportYield;
   }
 }

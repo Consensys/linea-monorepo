@@ -99,4 +99,38 @@ describe("toClientConfig", () => {
     expect(config.loggerOptions.transports).toHaveLength(1);
     expect(config.loggerOptions.transports[0]).toBeInstanceOf(transports.Console);
   });
+
+  it("defaults to 'info' log level when LOG_LEVEL is not provided", () => {
+    const env = configSchema.parse(createValidEnv());
+
+    const config = toClientConfig(env);
+
+    expect(config.loggerOptions.level).toBe("info");
+  });
+
+  it("uses custom LOG_LEVEL when provided", () => {
+    const env = configSchema.parse({
+      ...createValidEnv(),
+      LOG_LEVEL: "debug",
+    });
+
+    const config = toClientConfig(env);
+
+    expect(config.loggerOptions.level).toBe("debug");
+  });
+
+  it("accepts all valid Winston log levels", () => {
+    const validLevels = ["error", "warn", "info", "verbose", "debug", "silly"];
+
+    for (const level of validLevels) {
+      const env = configSchema.parse({
+        ...createValidEnv(),
+        LOG_LEVEL: level,
+      });
+
+      const config = toClientConfig(env);
+
+      expect(config.loggerOptions.level).toBe(level);
+    }
+  });
 });

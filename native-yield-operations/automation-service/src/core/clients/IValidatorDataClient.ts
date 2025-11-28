@@ -2,6 +2,6 @@ import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../enti
 
 export interface IValidatorDataClient {
   getActiveValidators(): Promise<ValidatorBalance[] | undefined>;
-  getActiveValidatorsWithPendingWithdrawals(): Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>;
+  getActiveValidatorsWithPendingWithdrawalsAscending(): Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>;
   getTotalPendingPartialWithdrawalsWei(validatorList: ValidatorBalanceWithPendingWithdrawal[]): bigint;
 }

@@ -40,6 +40,7 @@ export class BeaconNodeApiClient implements IBeaconNodeAPIClient {
       return undefined;
     }
     const returnVal = data.data;
+    this.logger.info(`getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=${returnVal?.length ?? 0}`);
     this.logger.debug("getPendingPartialWithdrawals return value", { returnVal });
     return returnVal;
   }

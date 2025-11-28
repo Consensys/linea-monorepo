@@ -13,7 +13,6 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
   private static logger: ILogger | undefined;
 
   private readonly contract: GetContractReturnType<typeof DashboardABI, PublicClient, Address>;
-  private readonly logger: ILogger;
 
   /**
    * Initializes the static blockchain client and logger for all DashboardContractClient instances.
@@ -44,7 +43,6 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
         "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() before use",
       );
     }
-    this.logger = DashboardContractClient.logger;
     this.contract = getContract({
       abi: DashboardABI,
       address: contractAddress,
@@ -118,22 +116,5 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
 
     const fee = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.fee ?? 0n;
     return fee;
-  }
-
-  /**
-   * Peeks the unpaid Lido protocol fees from the Dashboard contract.
-   * Reads the obligations() function which returns a tuple of [sharesToBurn, feesToSettle].
-   * Returns the feesToSettle value, representing the amount of unpaid Lido protocol fees.
-   *
-   * @returns {Promise<bigint>} The unpaid Lido protocol fees amount in wei.
-   */
-  async peekUnpaidLidoProtocolFees(): Promise<bigint | undefined> {
-    try {
-      const [, feesToSettle] = await this.contract.read.obligations();
-      return feesToSettle ?? 0n;
-    } catch (error) {
-      this.logger.error(`peekUnpaidLidoProtocolFees failed, error=${error}`);
-      return undefined;
-    }
   }
 }

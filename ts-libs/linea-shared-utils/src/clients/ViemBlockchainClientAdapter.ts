@@ -106,6 +106,15 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
   }
 
   /**
+   * Gets the Ethereum address of the signer associated with this blockchain client.
+   *
+   * @returns {Address} The Ethereum address of the signer.
+   */
+  getSignerAddress(): Address {
+    return this.contractSignerClient.getAddress();
+  }
+
+  /**
    * Gets the chain ID of the connected blockchain network.
    *
    * @returns {Promise<number>} The chain ID of the blockchain network.
@@ -134,6 +143,21 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
   async estimateGasFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }> {
     const { maxFeePerGas, maxPriorityFeePerGas } = await this.blockchainClient.estimateFeesPerGas();
     return { maxFeePerGas, maxPriorityFeePerGas };
+  }
+
+  /**
+   * Gets the transaction receipt for a given transaction hash.
+   *
+   * @param {Hex} txHash - The transaction hash to query.
+   * @returns {Promise<TransactionReceipt | undefined>} The transaction receipt if found, undefined otherwise.
+   */
+  async getTxReceipt(txHash: Hex): Promise<TransactionReceipt | undefined> {
+    try {
+      return await this.blockchainClient.getTransactionReceipt({ hash: txHash });
+    } catch (error) {
+      this.logger.warn("getTxReceipt - failed to get transaction receipt", { txHash, error });
+      return undefined;
+    }
   }
 
   /**

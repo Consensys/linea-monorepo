@@ -1,10 +1,12 @@
-import { ILogger, wait } from "@consensys/linea-shared-utils";
+import { ILogger, wait, attempt, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
 import { Address, TransactionReceipt } from "viem";
 import { IOperationModeSelector } from "../core/services/operation-mode/IOperationModeSelector.js";
 import { IOperationModeProcessor } from "../core/services/operation-mode/IOperationModeProcessor.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { OperationMode } from "../core/enums/OperationModeEnums.js";
+import { OperationModeExecutionStatus } from "../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
 /**
  * Selects and executes the appropriate operation mode based on the yield provider's ossification state.
@@ -20,6 +22,7 @@ export class OperationModeSelector implements IOperationModeSelector {
    * @param {ILogger} logger - Logger instance for logging operation mode selection and execution.
    * @param {INativeYieldAutomationMetricsUpdater} metricsUpdater - Service for updating operation mode metrics.
    * @param {IYieldManager<TransactionReceipt>} yieldManagerContractClient - Client for reading yield provider state from YieldManager contract.
+   * @param {IValidatorDataClient} validatorDataClient - Client for retrieving validator data.
    * @param {IOperationModeProcessor} yieldReportingOperationModeProcessor - Processor for YIELD_REPORTING_MODE operations.
    * @param {IOperationModeProcessor} ossificationPendingOperationModeProcessor - Processor for OSSIFICATION_PENDING_MODE operations.
    * @param {IOperationModeProcessor} ossificationCompleteOperationModeProcessor - Processor for OSSIFICATION_COMPLETE_MODE operations.
@@ -30,13 +33,13 @@ export class OperationModeSelector implements IOperationModeSelector {
     private readonly logger: ILogger,
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
+    private readonly validatorDataClient: IValidatorDataClient,
     private readonly yieldReportingOperationModeProcessor: IOperationModeProcessor,
     private readonly ossificationPendingOperationModeProcessor: IOperationModeProcessor,
     private readonly ossificationCompleteOperationModeProcessor: IOperationModeProcessor,
     private readonly yieldProvider: Address,
     private readonly contractReadRetryTimeMs: number,
-  ) {
-  }
+  ) {}
 
   /**
    * Starts the operation mode selection loop.
@@ -47,6 +50,7 @@ export class OperationModeSelector implements IOperationModeSelector {
    */
   public async start(): Promise<void> {
     if (this.isRunning) {
+      this.logger.debug("OperationModeSelector.start() - already running, skipping");
       return;
     }
 
@@ -62,11 +66,28 @@ export class OperationModeSelector implements IOperationModeSelector {
    */
   public stop(): void {
     if (!this.isRunning) {
+      this.logger.debug("OperationModeSelector.stop() - not running, skipping");
       return;
     }
 
     this.isRunning = false;
     this.logger.info(`Stopped selectOperationModeLoop`);
+  }
+
+  /**
+   * Refreshes gauge metrics by querying validator data and updating the total pending partial withdrawals gauge.
+   * Follows the same pattern as BeaconChainStakingClient.submitWithdrawalRequestsToFulfilAmount.
+   *
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated (or silently fails if validator data is unavailable).
+   */
+  private async refreshGaugeMetrics(): Promise<void> {
+    const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending();
+    if (sortedValidatorList === undefined) {
+      return;
+    }
+    const totalPendingPartialWithdrawalsWei =
+      this.validatorDataClient.getTotalPendingPartialWithdrawalsWei(sortedValidatorList);
+    this.metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei(weiToGweiNumber(totalPendingPartialWithdrawalsWei));
   }
 
   /**
@@ -81,6 +102,19 @@ export class OperationModeSelector implements IOperationModeSelector {
    */
   private async selectOperationModeLoop(): Promise<void> {
     while (this.isRunning) {
+      const refreshMetricsResult = await attempt(
+        this.logger,
+        () => this.refreshGaugeMetrics(),
+        "Failed to refresh gauge metrics",
+      );
+      if (refreshMetricsResult.isErr()) {
+        this.logger.error("Failed to refresh gauge metrics with details", {
+          error: refreshMetricsResult.error,
+          errorMessage: refreshMetricsResult.error.message,
+          errorStack: refreshMetricsResult.error.stack,
+        });
+      }
+      let currentMode: OperationMode = OperationMode.UNKNOWN;
       try {
         const [isOssificationInitiated, isOssified] = await Promise.all([
           this.yieldManagerContractClient.isOssificationInitiated(this.yieldProvider),
@@ -88,23 +122,36 @@ export class OperationModeSelector implements IOperationModeSelector {
         ]);
 
         if (isOssified) {
+          currentMode = OperationMode.OSSIFICATION_COMPLETE_MODE;
           this.logger.info("Selected OSSIFICATION_COMPLETE_MODE");
           await this.ossificationCompleteOperationModeProcessor.process();
           this.logger.info("Completed OSSIFICATION_COMPLETE_MODE");
-          this.metricsUpdater.incrementOperationModeExecution(OperationMode.OSSIFICATION_COMPLETE_MODE);
+          this.metricsUpdater.incrementOperationModeExecution(
+            OperationMode.OSSIFICATION_COMPLETE_MODE,
+            OperationModeExecutionStatus.Success,
+          );
         } else if (isOssificationInitiated) {
+          currentMode = OperationMode.OSSIFICATION_PENDING_MODE;
           this.logger.info("Selected OSSIFICATION_PENDING_MODE");
           await this.ossificationPendingOperationModeProcessor.process();
           this.logger.info("Completed OSSIFICATION_PENDING_MODE");
-          this.metricsUpdater.incrementOperationModeExecution(OperationMode.OSSIFICATION_PENDING_MODE);
+          this.metricsUpdater.incrementOperationModeExecution(
+            OperationMode.OSSIFICATION_PENDING_MODE,
+            OperationModeExecutionStatus.Success,
+          );
         } else {
+          currentMode = OperationMode.YIELD_REPORTING_MODE;
           this.logger.info("Selected YIELD_REPORTING_MODE");
           await this.yieldReportingOperationModeProcessor.process();
           this.logger.info("Completed YIELD_REPORTING_MODE");
-          this.metricsUpdater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE);
+          this.metricsUpdater.incrementOperationModeExecution(
+            OperationMode.YIELD_REPORTING_MODE,
+            OperationModeExecutionStatus.Success,
+          );
         }
       } catch (error) {
         this.logger.error(`selectOperationModeLoop error, retrying in ${this.contractReadRetryTimeMs}ms`, { error });
+        this.metricsUpdater.incrementOperationModeExecution(currentMode, OperationModeExecutionStatus.Failure);
         await wait(this.contractReadRetryTimeMs);
       }
     }

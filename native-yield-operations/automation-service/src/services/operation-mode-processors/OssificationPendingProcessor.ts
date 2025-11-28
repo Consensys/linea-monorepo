@@ -50,8 +50,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
    * @returns {Promise<void>} A promise that resolves when the processing cycle completes.
    */
   public async process(): Promise<void> {
-    const triggerEvent = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
-    this.metricsUpdater.incrementOperationModeTrigger(OperationMode.OSSIFICATION_PENDING_MODE, triggerEvent.result);
+    await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
     const startedAt = performance.now();
     await this._process();
     const durationMs = performance.now() - startedAt;
@@ -103,7 +102,12 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
       "_process - progressPendingOssification failed",
     );
     // Stop if failed.
-    if (ossificationResult.isErr()) return;
+    if (ossificationResult.isErr()) {
+      this.logger.error("_process - progressPendingOssification failed, stopping processing", {
+        error: ossificationResult.error,
+      });
+      return;
+    }
 
     await this.operationModeMetricsRecorder.recordProgressOssificationMetrics(this.yieldProvider, ossificationResult);
     this.logger.info("_process - Ossification completed, performing max safe withdrawal");

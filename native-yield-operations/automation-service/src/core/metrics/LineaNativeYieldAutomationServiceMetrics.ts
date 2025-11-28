@@ -35,9 +35,12 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `vault_address`
   LastPeekedPositiveYieldReport = "linea_native_yield_automation_service_last_peeked_positive_yield_report",
 
-  // Gauge representing unpaid Lido protocol fees from the last peek
+  // Gauge representing settleable Lido protocol fees from the last query
   // Single label `vault_address`
-  LastPeekUnpaidLidoProtocolFees = "linea_native_yield_automation_service_last_peek_unpaid_lido_protocol_fees",
+  LastSettleableLidoFees = "linea_native_yield_automation_service_last_settleable_lido_fees",
+
+  // Gauge representing total pending partial withdrawals in gwei
+  LastTotalPendingPartialWithdrawalsGwei = "linea_native_yield_automation_service_last_total_pending_partial_withdrawals_gwei",
 
   // Counter that increments by the node operator fees paid
   // Single label `vault_address`
@@ -54,14 +57,10 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // N.B. Only accounts for payments by the automation service, but external actors can also trigger payment
   LidoFeesPaidTotal = "linea_native_yield_automation_service_lido_fees_paid_total",
 
-  // Counter that increments each time an operation mode is triggered.
+  // Counter that increments each time an operation mode completes execution.
   // Labels:
   // i.) `mode`
-  // i.) `operation_trigger` - VaultsReportDataUpdated_event vs timeout
-  OperationModeTriggerTotal = "linea_native_yield_automation_service_operation_mode_trigger_total",
-
-  // Counter that increments each time an operation mode completes execution.
-  // Single label `mode`
+  // ii.) `status` - OperationModeExecutionStatus.Success | OperationModeExecutionStatus.Failure
   OperationModeExecutionTotal = "linea_native_yield_automation_service_operation_mode_execution_total",
 
   // Histogram that tracks time for each operation mode run.
@@ -72,4 +71,9 @@ export enum LineaNativeYieldAutomationServiceMetrics {
 export enum OperationTrigger {
   VAULTS_REPORT_DATA_UPDATED_EVENT = "VAULTS_REPORT_DATA_UPDATED_EVENT",
   TIMEOUT = "TIMEOUT",
+}
+
+export enum OperationModeExecutionStatus {
+  Success = "success",
+  Failure = "failure",
 }
