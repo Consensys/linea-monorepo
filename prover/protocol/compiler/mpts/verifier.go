@@ -152,10 +152,6 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
-			// tmp.Sub(api, pr, tmp) // Pk(r) - y_{ik}
-			// tmp.Mul(api, tmp, zetasOfR[i])
-			// tmp.Mul(api, tmp, rhoK)
-			// res.Add(api, res, tmp)
 			tmp = *e4Api.Sub(&pr, &tmp)
 			tmp = *e4Api.Mul(&tmp, &zetasOfR[i])
 			tmp = *e4Api.Mul(&tmp, &rhoK)
@@ -166,7 +162,11 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		rhoK = *e4Api.Mul(&rhoK, &rho)
 	}
 
-	api.AssertIsEqual(res, qr)
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+	ext4.AssertIsEqual(&res, &qr)
 }
 
 // cptEvaluationMap returns an evaluation map [Column] -> [Y] for all the

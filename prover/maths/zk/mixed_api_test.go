@@ -40,7 +40,6 @@ func (c *TestCircuit) Define(api frontend.API) error {
 
 	tmp = genApi.Neg(c.A)
 	genApi.AssertIsEqual(tmp, c.NegA)
-
 	return nil
 }
 

@@ -390,6 +390,11 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 				what was found in the sub queries.
 	*/
 
+	ext4, e := gnarkfext.NewExt4(api)
+	if e != nil {
+		panic("boom")
+	}
+
 	for originPolID, originH := range originalQuery.Pols {
 		subrepr := column.DownStreamBranch(originH)
 		recoveredX := column.GnarkDeriveEvaluationPoint(api, originH, "", cachedXs, originalQueryParams.ExtX)
@@ -401,12 +406,12 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 		qID := ctx.ReprToSubQueryID[subrepr]
 		submittedX := subQueriesParams[qID].ExtX
 		// Or it is a mismatch between the evaluation queries and the derived query
-		api.AssertIsEqual(recoveredX[0], submittedX)
+		ext4.AssertIsEqual(&recoveredX[0], &submittedX)
 
 		/*
 			Recovers the Y values
 		*/
 		recoveredY := column.GnarkVerifyYConsistency(api, originH, "", cachedXs, finalYs)
-		api.AssertIsEqual(recoveredY, originalQueryParams.ExtYs[originPolID])
+		ext4.AssertIsEqual(&recoveredY, &originalQueryParams.ExtYs[originPolID])
 	}
 }

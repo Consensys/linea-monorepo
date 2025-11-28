@@ -162,13 +162,11 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gna
 		wOmegaN := zk.ValueOf(omegaN.String())
 		x = *ext4.MulByFp(&x, wOmegaN)
 	}
-	//func (ext4 *Ext4) Exp(x *E4Gen, n *big.Int) *E4Gen {
 
 	denominator := ext4.Exp(&x, big.NewInt(int64(l)))
-	wOne := zk.ValueOf(1)
 	wnField := zk.ValueOf(nField.String())
 	wlField := zk.ValueOf(lField.String())
-	extEOne := gnarkfext.NewE4GenFromBase(wOne)
+	extEOne := gnarkfext.NewE4GenFromBase(1)
 	denominator = ext4.Sub(denominator, &extEOne)
 	denominator = ext4.MulByFp(denominator, wnField)
 	numerator := ext4.Exp(&x, big.NewInt(int64(n)))

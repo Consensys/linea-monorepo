@@ -271,7 +271,11 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 	annulator = *e4Api.Sub(&annulator, &wOneExt)
 
 	// Get the parameters
-	api.AssertIsEqual(r, params.ExtX) // check the evaluation is consistent with the other stuffs
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+	ext4.AssertIsEqual(&r, &params.ExtX) // check the evaluation is consistent with the other stuffs
 
 	// Map all the evaluations and checks the evaluations points
 	mapYs := make(map[ifaces.ColID]gnarkfext.E4Gen)
@@ -302,7 +306,6 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 			case variables.X:
 				evalInputs[k] = r
 			case variables.PeriodicSample:
-				// evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r)
 				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r) // TODO @thomas fixme (ext vs base)
 			case ifaces.Accessor:
 				evalInputs[k] = metadata.GetFrontendVariableExt(api, c)
@@ -315,9 +318,9 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 
 		// right : r^{n}-1 Q(r)
 		qr := quotientYs[i]
-		right := api.Mul(annulator, qr)
+		right := *ext4.Mul(&annulator, &qr)
 
-		api.AssertIsEqual(left, right)
+		ext4.AssertIsEqual(&left, &right)
 		logrus.Debugf("verifying global constraint : DONE")
 
 	}

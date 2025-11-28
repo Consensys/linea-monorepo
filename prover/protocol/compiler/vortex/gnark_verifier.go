@@ -18,12 +18,10 @@ import (
 )
 
 func (a *ExplicitPolynomialEval) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	// fmt.Printf("gnark vortex ExplicitPolynomialEval ...\n")
 	a.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
 }
 
 func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRuntime) {
-	// fmt.Printf("verifying VortexVerifierAction ...\n")
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
 	// not need to

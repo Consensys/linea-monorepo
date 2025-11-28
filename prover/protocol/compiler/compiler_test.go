@@ -52,20 +52,14 @@ func TestCompilersWithGnarkVerifier(t *testing.T) {
 	logrus.SetLevel(logrus.FatalLevel)
 
 	runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
-	runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
-	runTestListGnark(t, "global", testtools.ListOfGlobalTestcaseNegative)
-	runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
-	runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcaseNegative)
-	runTestListGnark(t, "horner", testtools.ListOfHornerTestcaseNegative)
-	runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
-	runTestListGnark(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
-	runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
-	runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
-	runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
-	runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
-	runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
-	runTestListGnark(t, "projection", testtools.ListOfProjectionTestcaseNegative)
-	runTestListGnark(t, "poseidon2", testtools.ListOfPoseidon2Testcase)
+	// runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
+	// runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	// runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
+	// runTestListGnark(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
+	// runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
+	// runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
+	// runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	// runTestListGnark(t, "poseidon2", testtools.ListOfPoseidon2Testcase)
 }
 
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {

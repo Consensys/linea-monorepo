@@ -14,7 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // The verifier gets all the query openings and multiply them together and
@@ -167,7 +166,8 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 
 	y = *ext4.DivByBase(&y, d)
 
-	api.AssertIsEqual(y, zk.ValueOf(1))
+	e := gnarkfext.NewE4GenFromBase(1)
+	ext4.AssertIsEqual(&y, &e)
 }
 
 func (c *CheckGrandProductIsOne) Skip() {
@@ -225,20 +225,19 @@ func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	fmt.Printf("verifying grand-product final product ...\n")
 	claimedProd := run.GetGrandProductParams(f.GrandProductID).Prod
 
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
 
 	// zProd stores the product of the ending values of the z columns
-	zProd := zk.ValueOf(1)
+	zProd := gnarkfext.NewE4GenFromBase(1)
 	for k := range f.ZOpenings {
-		utils.Panic("this should be expected to be extension fields")
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
-		zProd = apiGen.Mul(zProd, temp)
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
+		zProd = *ext4.Mul(&zProd, &temp)
 	}
 
-	api.AssertIsEqual(zProd, claimedProd)
+	ext4.AssertIsEqual(&zProd, &claimedProd)
 }
 
 func (f *FinalProductCheck) Skip() {

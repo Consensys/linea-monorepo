@@ -97,6 +97,14 @@ func NewGenericApi(api frontend.API) (GenericApi, error) {
 	}
 }
 
+func MustMakeGenericApi(api frontend.API) GenericApi {
+	g, err := NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+	return g
+}
+
 func (g *GenericApi) Type() VType {
 	if g.EmulatedApi == nil {
 		return Native
