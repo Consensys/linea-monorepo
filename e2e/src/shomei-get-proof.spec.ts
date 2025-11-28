@@ -1,13 +1,14 @@
 import { describe, it } from "@jest/globals";
-import { awaitUntil, getDockerImageTag, lineaGetProof, rollupGetZkEVMStateMerkleProofV0 } from "./common/utils";
+import { awaitUntil, getDockerImageTag } from "./common/utils";
 import { config } from "./config/tests-config/setup";
-import { L2RpcEndpointType } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { toHex } from "viem";
+import { LineaGetProofReturnType } from "./config/tests-config/setup/clients/extensions/linea-rpc/linea-get-proof";
 
 describe("Shomei Linea get proof test suite", () => {
-  const lineaRollupV6 = config.l1PublicClient().contracts.rollup;
-  const lineaShomeiFrontendClient = config.l2PublicClient({ type: L2RpcEndpointType.ShomeiFrontend });
-  const lineaShomeiClient = config.l2PublicClient({ type: L2RpcEndpointType.Shomei });
+  const lineaRollupV6 = config.l1PublicClient().getLineaRollup();
+  const lineaShomeiFrontendClient = config.l2PublicClient({ type: L2RpcEndpoint.ShomeiFrontend });
+  const lineaShomeiClient = config.l2PublicClient({ type: L2RpcEndpoint.Shomei });
 
   it.concurrent(
     "Call linea_getProof to Shomei frontend node and get a valid proof",
@@ -18,7 +19,7 @@ describe("Shomei Linea get proof test suite", () => {
       let targetL2BlockNumber = await awaitUntil(
         async () => {
           try {
-            return await lineaRollupV6.currentL2BlockNumber({ blockTag: "finalized" });
+            return await lineaRollupV6.read.currentL2BlockNumber({ blockTag: "finalized" });
           } catch (err) {
             if (!(err as Error).message.includes("could not decode result data")) {
               throw err;
@@ -37,12 +38,12 @@ describe("Shomei Linea get proof test suite", () => {
       const provingAddress = "0xfe3b557e8fb62b89f4916b721be55ceb828dbd73"; // from genesis file
       const getProofResponse = await awaitUntil(
         async () => {
-          let getProofResponse: Awaited<ReturnType<typeof lineaGetProof>> | null = null;
+          let getProofResponse: LineaGetProofReturnType | null = null;
           // Need to put all the latest currentL2BlockNumber in a list and traverse to get the proof
           // from one of them as we don't know on which finalized L2 block number the shomei frontend
           // was being notified
           for (const finalizedL2BlockNumber of finalizedL2BlockNumbers) {
-            getProofResponse = await lineaGetProof(lineaShomeiFrontendClient, {
+            getProofResponse = await lineaShomeiFrontendClient.lineaGetProof({
               address: provingAddress,
               storageKeys: [],
               blockParameter: toHex(finalizedL2BlockNumber),
@@ -53,7 +54,9 @@ describe("Shomei Linea get proof test suite", () => {
             }
           }
           if (!getProofResponse) {
-            const latestFinalizedL2BlockNumber = await lineaRollupV6.currentL2BlockNumber({ blockTag: "finalized" });
+            const latestFinalizedL2BlockNumber = await lineaRollupV6.read.currentL2BlockNumber({
+              blockTag: "finalized",
+            });
             if (!finalizedL2BlockNumbers.includes(latestFinalizedL2BlockNumber)) {
               finalizedL2BlockNumbers.push(latestFinalizedL2BlockNumber);
               logger.debug(
@@ -70,7 +73,7 @@ describe("Shomei Linea get proof test suite", () => {
 
       logger.debug(`targetL2BlockNumber=${targetL2BlockNumber}`);
 
-      const { zkEndStateRootHash } = await rollupGetZkEVMStateMerkleProofV0(lineaShomeiClient, {
+      const { zkEndStateRootHash } = await lineaShomeiClient.rollupGetZkEVMStateMerkleProofV0({
         startBlockNumber: Number(targetL2BlockNumber),
         endBlockNumber: Number(targetL2BlockNumber),
         zkStateManagerVersion: shomeiImageTag,
@@ -79,8 +82,8 @@ describe("Shomei Linea get proof test suite", () => {
       logger.debug(`zkEndStateRootHash=${zkEndStateRootHash}`);
       expect(zkEndStateRootHash).toBeDefined();
 
-      const l2SparseMerkleProofContract = config.l2PublicClient().contracts.sparseMerkleProof;
-      const isValid = await l2SparseMerkleProofContract.verifyProof([
+      const l2SparseMerkleProofContract = config.l2PublicClient().getSparseMerkleProofContract();
+      const isValid = await l2SparseMerkleProofContract.read.verifyProof([
         getProofResponse!.accountProof.proof.proofRelatedNodes,
         BigInt(getProofResponse!.accountProof.leafIndex),
         zkEndStateRootHash,
@@ -95,7 +98,7 @@ describe("Shomei Linea get proof test suite", () => {
       logger.debug(`originalStateRootHash=${zkEndStateRootHash}`);
       logger.debug(`modifiedStateRootHash=${modifiedStateRootHash}`);
 
-      const isInvalid = !(await l2SparseMerkleProofContract.verifyProof([
+      const isInvalid = !(await l2SparseMerkleProofContract.read.verifyProof([
         getProofResponse!.accountProof.proof.proofRelatedNodes,
         BigInt(getProofResponse!.accountProof.leafIndex),
         modifiedStateRootHash as `0x${string}`,

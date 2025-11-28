@@ -11,5 +11,5 @@
       "path": "../sdk/sdk-ethers"
     }
   ],
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts", "src/config/tests-config/setup/clients/extensions/linea-rpc"]
 }

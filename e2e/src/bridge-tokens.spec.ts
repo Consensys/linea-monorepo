@@ -1,14 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
-import { waitForEvents, etherToWei } from "./common/utils";
-import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
-import { parseEther } from "viem";
+import { waitForEvents, etherToWei, getMessageSentEventFromLogs, estimateLineaGas } from "./common/utils";
+import { encodeFunctionData, parseEther, toHex } from "viem";
 import { config } from "./config/tests-config/setup";
+import { L2MessageServiceV1Abi, LineaRollupV6Abi, TestERC20Abi, TokenBridgeV1_1Abi } from "./generated";
+import { getBridgedTokenContract } from "./config/tests-config/setup/contracts/contracts";
+import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 
 const l1AccountManager = config.getL1AccountManager();
 const l2AccountManager = config.getL2AccountManager();
 const bridgeAmount = parseEther("100");
-const messageSentEventMessageNumberIndex = 4;
-const messageSentEventMessageHashIndex = 6;
 
 describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
   it.concurrent("Bridge a token from L1 to L2", async () => {
@@ -17,90 +17,88 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       l2AccountManager.generateAccount(),
     ]);
 
-    const lineaRollup = config.getLineaRollupContract();
-    const l2MessageService = config.getL2MessageServiceContract();
-    const l1TokenBridge = config.getL1TokenBridgeContract();
-    const l2TokenBridge = config.getL2TokenBridgeContract();
-    const l1Token = config.getL1TokenContract();
-    const l1Provider = config.getL1Provider();
+    const l1PublicClient = config.l1PublicClient();
+    const l2PublicClient = config.l2PublicClient();
+
+    const l2MessageService = l2PublicClient.getL2MessageServiceContract();
+    const l1TokenBridge = l1PublicClient.getTokenBridgeContract();
+    const l1Token = l1PublicClient.getTestERC20Contract();
 
     logger.debug("Minting ERC20 tokens to L1 Account");
 
-    let { maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData();
-    const nonce = await l1Provider.getTransactionCount(l1Account.address, "latest");
+    let { maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } =
+      await l1PublicClient.estimateFeesPerGas();
+    const nonce = await l1PublicClient.getTransactionCount({ address: l1Account.address, blockTag: "latest" });
 
     logger.debug("Minting and approving tokens to L1 TokenBridge");
 
-    await Promise.all([
-      (
-        await l1Token.connect(l1Account).mint(l1Account.address, bridgeAmount, {
-          nonce: nonce,
-          maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
-          maxFeePerGas: l1MaxFeePerGas,
-        })
-      ).wait(),
-      (
-        await l1Token.connect(l1Account).approve(l1TokenBridge.getAddress(), bridgeAmount, {
-          maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
-          maxFeePerGas: l1MaxFeePerGas,
-          nonce: nonce + 1,
-        })
-      ).wait(),
+    const [mintTxHash, approveTxHash] = await Promise.all([
+      await l1Token.write.mint([l1Account.address, bridgeAmount], {
+        account: l1Account,
+        nonce: nonce,
+        maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+        maxFeePerGas: l1MaxFeePerGas,
+      }),
+      await l1Token.write.approve([l1TokenBridge.address, bridgeAmount], {
+        account: l1Account,
+        maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+        maxFeePerGas: l1MaxFeePerGas,
+        nonce: nonce + 1,
+      }),
     ]);
 
-    const l1TokenBridgeAddress = await l1TokenBridge.getAddress();
-    const l1TokenAddress = await l1Token.getAddress();
+    await l1PublicClient.waitForTransactionReceipt({ hash: mintTxHash });
+    await l1PublicClient.waitForTransactionReceipt({ hash: approveTxHash });
 
-    const allowanceL1Account = await l1Token.allowance(l1Account.address, l1TokenBridgeAddress);
+    const l1TokenBridgeAddress = l1TokenBridge.address;
+    const l1TokenAddress = l1Token.address;
+
+    const allowanceL1Account = await l1Token.read.allowance([l1Account.address, l1TokenBridgeAddress]);
     logger.debug(`Current allowance of L1 account to L1 TokenBridge is ${allowanceL1Account.toString()}`);
 
     logger.debug("Calling the bridgeToken function on the L1 TokenBridge contract");
 
-    ({ maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } = await l1Provider.getFeeData());
+    ({ maxPriorityFeePerGas: l1MaxPriorityFeePerGas, maxFeePerGas: l1MaxFeePerGas } =
+      await l1PublicClient.estimateFeesPerGas());
 
-    const bridgeTokenTx = await l1TokenBridge
-      .connect(l1Account)
-      .bridgeToken(l1TokenAddress, bridgeAmount, l2Account.address, {
-        value: etherToWei("0.01"),
-        maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
-        maxFeePerGas: l1MaxFeePerGas,
-      });
+    const bridgeTokenTxHash = await l1TokenBridge.write.bridgeToken([l1TokenAddress, bridgeAmount, l2Account.address], {
+      account: l1Account,
+      value: etherToWei("0.01"),
+      maxPriorityFeePerGas: l1MaxPriorityFeePerGas,
+      maxFeePerGas: l1MaxFeePerGas,
+    });
 
-    const bridgedTxReceipt = await bridgeTokenTx.wait();
+    const bridgedTxReceipt = await l1PublicClient.waitForTransactionReceipt({ hash: bridgeTokenTxHash });
 
-    const sentEventLog = bridgedTxReceipt?.logs.find((log) => log.topics[0] == MESSAGE_SENT_EVENT_SIGNATURE);
+    const messageSentEvents = getMessageSentEventFromLogs([bridgedTxReceipt]);
+    expect(messageSentEvents.length).toBeGreaterThan(0);
 
-    const messageSentEvent = lineaRollup.interface.decodeEventLog(
-      "MessageSent",
-      sentEventLog!.data,
-      sentEventLog!.topics,
-    );
-
-    const l1TokenBalance = await l1Token.balanceOf(l1Account.address);
+    const l1TokenBalance = await l1Token.read.balanceOf([l1Account.address]);
     logger.debug(`Token balance of L1 account is ${l1TokenBalance.toString()}`);
 
     expect(l1TokenBalance).toEqual(0n);
 
     logger.debug("Waiting for MessageSent event on L1.");
 
-    const messageNumber = messageSentEvent[messageSentEventMessageNumberIndex];
-    const messageHash = messageSentEvent[messageSentEventMessageHashIndex];
+    const messageNumber = messageSentEvents[0].messageNumber;
+    const messageHash = messageSentEvents[0].messageHash;
 
     logger.debug(`Message sent on L1. messageHash=${messageHash}`);
 
     logger.debug("Waiting for anchoring...");
 
-    const [rollingHashUpdatedEvent] = await waitForEvents(
-      l2MessageService,
-      l2MessageService.filters.RollingHashUpdated(),
-      1_000,
-      0,
-      "latest",
-      async (events) => events.filter((event) => event.args.messageNumber >= messageNumber),
-    );
+    const [rollingHashUpdatedEvent] = await waitForEvents(l2PublicClient, {
+      abi: L2MessageServiceV1Abi,
+      eventName: "RollingHashUpdated",
+      fromBlock: 0n,
+      toBlock: "latest",
+      pollingIntervalMs: 1_000,
+      criteria: async (events) => events.filter((event) => event.args.messageNumber! >= messageNumber),
+    });
+
     expect(rollingHashUpdatedEvent).not.toBeNull();
 
-    const anchoredStatus = await l2MessageService.inboxL1L2MessageStatus(messageHash);
+    const anchoredStatus = await l2MessageService.read.inboxL1L2MessageStatus([messageHash]);
 
     expect(anchoredStatus).toBeGreaterThan(0);
 
@@ -108,19 +106,28 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     logger.debug("Waiting for MessageClaimed event on L2...");
 
-    const [claimedEvent] = await waitForEvents(l2MessageService, l2MessageService.filters.MessageClaimed(messageHash));
+    const [claimedEvent] = await waitForEvents(l2PublicClient, {
+      abi: L2MessageServiceV1Abi,
+      eventName: "MessageClaimed",
+      args: {
+        _messageHash: messageHash,
+      },
+    });
     expect(claimedEvent).not.toBeNull();
 
-    const [newTokenDeployed] = await waitForEvents(l2TokenBridge, l2TokenBridge.filters.NewTokenDeployed());
+    const [newTokenDeployed] = await waitForEvents(l2PublicClient, {
+      abi: TokenBridgeV1_1Abi,
+      eventName: "NewTokenDeployed",
+    });
     expect(newTokenDeployed).not.toBeNull();
 
     logger.debug(`Message claimed on L2. event=${JSON.stringify(claimedEvent)}.`);
 
-    const l2Token = config.getL2BridgedTokenContract(newTokenDeployed.args.bridgedToken);
+    const l2Token = getBridgedTokenContract(l2PublicClient, newTokenDeployed.args.bridgedToken!);
 
     logger.debug("Verify the token balance on L2");
 
-    const l2TokenBalance = await l2Token.balanceOf(l2Account.address);
+    const l2TokenBalance = await l2Token.read.balanceOf([l2Account.address]);
     logger.debug(`Token balance of L2 account is ${l2TokenBalance.toString()}`);
 
     expect(l2TokenBalance).toEqual(bridgeAmount);
@@ -132,96 +139,117 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       l2AccountManager.generateAccount(),
     ]);
 
-    const lineaRollup = config.getLineaRollupContract();
-    const l2MessageService = config.getL2MessageServiceContract();
-    const l1TokenBridge = config.getL1TokenBridgeContract();
-    const l2TokenBridge = config.getL2TokenBridgeContract();
-    const l2Token = config.getL2TokenContract();
-    const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
-    const l2TokenAddress = await l2Token.getAddress();
-    const l2TokenBridgeAddress = await l2TokenBridge.getAddress();
+    const l1PublicClient = config.l1PublicClient();
+    const l2PublicClient = config.l2PublicClient();
+
+    const l2TokenBridge = l2PublicClient.getTokenBridgeContract();
+    const l2Token = l2PublicClient.getTestERC20Contract();
+    const lineaEstimateGasClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+    const l2TokenAddress = l2Token.address;
+    const l2TokenBridgeAddress = l2TokenBridge.address;
 
     // Mint token
-    let lineaEstimateGasFee = await lineaEstimateGasClient.lineaEstimateGas(
-      l2Account.address,
-      l2TokenAddress,
-      l2Token.interface.encodeFunctionData("mint", [l2Account.address, bridgeAmount]),
-    );
-    const mintResponse = await l2Token.connect(l2Account).mint(l2Account.address, bridgeAmount, {
+    let lineaEstimateGasFee = await estimateLineaGas(lineaEstimateGasClient, {
+      account: l2Account,
+      to: l2TokenAddress,
+      data: encodeFunctionData({
+        abi: TestERC20Abi,
+        functionName: "mint",
+        args: [l2Account.address, bridgeAmount],
+      }),
+    });
+    const mintTxHash = await l2Token.write.mint([l2Account.address, bridgeAmount], {
+      account: l2Account,
       maxPriorityFeePerGas: lineaEstimateGasFee.maxPriorityFeePerGas,
       maxFeePerGas: lineaEstimateGasFee.maxFeePerGas,
       gasLimit: lineaEstimateGasFee.gasLimit,
     });
-    const mintTxReceipt = await mintResponse.wait();
+
+    const mintTxReceipt = await l2PublicClient.waitForTransactionReceipt({ hash: mintTxHash });
     logger.debug(`Mint tx receipt received=${JSON.stringify(mintTxReceipt)}`);
 
     // Approve token
-    lineaEstimateGasFee = await lineaEstimateGasClient.lineaEstimateGas(
-      l2Account.address,
-      l2TokenAddress,
-      l2Token.interface.encodeFunctionData("approve", [l2TokenBridgeAddress, ethers.parseEther("100")]),
-    );
-
-    const approveResponse = await l2Token.connect(l2Account).approve(l2TokenBridgeAddress, ethers.parseEther("100"), {
+    lineaEstimateGasFee = await estimateLineaGas(lineaEstimateGasClient, {
+      account: l2Account,
+      to: l2TokenAddress,
+      data: encodeFunctionData({
+        abi: TestERC20Abi,
+        functionName: "approve",
+        args: [l2TokenBridgeAddress, parseEther("100")],
+      }),
+    });
+    const approveTxHash = await l2Token.write.approve([l2TokenBridgeAddress, parseEther("100")], {
+      account: l2Account,
       maxPriorityFeePerGas: lineaEstimateGasFee.maxPriorityFeePerGas,
       maxFeePerGas: lineaEstimateGasFee.maxFeePerGas,
       gasLimit: lineaEstimateGasFee.gasLimit,
     });
-    const approveTxReceipt = await approveResponse.wait();
+    const approveTxReceipt = await l2PublicClient.waitForTransactionReceipt({ hash: approveTxHash });
     logger.debug(`Approve tx receipt received=${JSON.stringify(approveTxReceipt)}`);
 
     // Retrieve token allowance
-    const allowanceL2Account = await l2Token.allowance(l2Account.address, l2TokenBridgeAddress);
+    const allowanceL2Account = await l2Token.read.allowance([l2Account.address, l2TokenBridgeAddress]);
     logger.debug(`Current allowance of L2 account to L2 TokenBridge is ${allowanceL2Account.toString()}`);
-    logger.debug(`Current balance of L2 account is ${await l2Token.balanceOf(l2Account)}`);
+    logger.debug(`Current balance of L2 account is ${await l2Token.read.balanceOf([l2Account.address])}`);
 
     logger.debug("Calling the bridgeToken function on the L2 TokenBridge contract");
 
     // Bridge token
-    logger.debug(`0.01 ether = ${toBeHex(etherToWei("0.01"))} wei`);
+    logger.debug(`0.01 ether = ${toHex(etherToWei("0.01"))} wei`);
 
-    lineaEstimateGasFee = await lineaEstimateGasClient.lineaEstimateGas(
-      l2Account.address,
-      l2TokenBridgeAddress,
-      l2TokenBridge.interface.encodeFunctionData("bridgeToken", [l2TokenAddress, bridgeAmount, l1Account.address]),
-      toBeHex(etherToWei("0.01")),
-    );
+    lineaEstimateGasFee = await estimateLineaGas(lineaEstimateGasClient, {
+      account: l2Account,
+      to: l2TokenBridgeAddress,
+      data: encodeFunctionData({
+        abi: TokenBridgeV1_1Abi,
+        functionName: "bridgeToken",
+        args: [l2TokenAddress, bridgeAmount, l1Account.address],
+      }),
+      value: etherToWei("0.01"),
+    });
 
-    const bridgeResponse = await l2TokenBridge
-      .connect(l2Account)
-      .bridgeToken(await l2Token.getAddress(), bridgeAmount, l1Account.address, {
+    const bridgeTokenTxHash = await l2TokenBridge.write.bridgeToken(
+      [l2Token.address, bridgeAmount, l1Account.address],
+      {
+        account: l2Account,
         value: etherToWei("0.01"),
         maxPriorityFeePerGas: lineaEstimateGasFee.maxPriorityFeePerGas,
         maxFeePerGas: lineaEstimateGasFee.maxFeePerGas,
         gasLimit: lineaEstimateGasFee.gasLimit,
-      });
-    const bridgeTxReceipt = await bridgeResponse.wait();
+      },
+    );
+    const bridgeTxReceipt = await l2PublicClient.waitForTransactionReceipt({ hash: bridgeTokenTxHash });
     logger.debug(`Bridge tx receipt received=${JSON.stringify(bridgeTxReceipt)}`);
 
-    const sentEventLog = bridgeTxReceipt?.logs.find((log) => log.topics[0] == MESSAGE_SENT_EVENT_SIGNATURE);
+    const messageSentEvents = getMessageSentEventFromLogs([bridgeTxReceipt]);
 
-    const messageSentEvent = l2MessageService.interface.decodeEventLog(
-      "MessageSent",
-      sentEventLog!.data,
-      sentEventLog!.topics,
-    );
-    const messageHash = messageSentEvent[messageSentEventMessageHashIndex];
+    expect(messageSentEvents.length).toBeGreaterThan(0);
+    const messageHash = messageSentEvents[0].messageHash;
 
     logger.debug("Waiting for L1 MessageClaimed event.");
 
-    const [claimedEvent] = await waitForEvents(lineaRollup, lineaRollup.filters.MessageClaimed(messageHash));
+    const [claimedEvent] = await waitForEvents(l1PublicClient, {
+      abi: LineaRollupV6Abi,
+      eventName: "MessageClaimed",
+      args: {
+        _messageHash: messageHash,
+      },
+    });
     expect(claimedEvent).not.toBeNull();
 
     logger.debug(`Message claimed on L1. event=${JSON.stringify(claimedEvent)}`);
 
-    const [newTokenDeployed] = await waitForEvents(l1TokenBridge, l1TokenBridge.filters.NewTokenDeployed());
+    const [newTokenDeployed] = await waitForEvents(l1PublicClient, {
+      abi: TokenBridgeV1_1Abi,
+      eventName: "NewTokenDeployed",
+    });
     expect(newTokenDeployed).not.toBeNull();
 
-    const l1BridgedToken = config.getL1BridgedTokenContract(newTokenDeployed.args.bridgedToken);
+    const l1BridgedToken = getBridgedTokenContract(l1PublicClient, newTokenDeployed.args.bridgedToken!);
 
     logger.debug("Verify the token balance on L1");
 
-    const l1BridgedTokenBalance = await l1BridgedToken.balanceOf(l1Account.address);
+    const l1BridgedTokenBalance = await l1BridgedToken.read.balanceOf([l1Account.address]);
     logger.debug(`Token balance of L1 account is ${l1BridgedTokenBalance.toString()}`);
 
     expect(l1BridgedTokenBalance).toEqual(bridgeAmount);

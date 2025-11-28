@@ -9,7 +9,7 @@ import {
 } from "./common/utils";
 import { config } from "./config/tests-config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
-import { L2RpcEndpointType } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 
 const l1AccountManager = config.getL1AccountManager();
 
@@ -37,7 +37,7 @@ describe("Submission and finalization test suite", () => {
             fee: messageFee,
             calldata: "0x",
           },
-          contractAddress: config.l1PublicClient().contracts.rollup.address,
+          contractAddress: config.l1PublicClient().getLineaRollup().address,
           value: messageValue,
         }),
       );
@@ -57,9 +57,9 @@ describe("Submission and finalization test suite", () => {
     it.concurrent(
       "Check L2 anchoring",
       async () => {
-        const lineaRollupV6 = config.l1PublicClient().contracts.rollup;
+        const lineaRollupV6 = config.l1PublicClient().getLineaRollup();
         const l1PublicClient = config.l1PublicClient();
-        const l2MessageService = config.l2PublicClient().contracts.messageService;
+        const l2MessageService = config.l2PublicClient().getL2MessageServiceContract();
 
         const { l1Messages } = await sendMessages();
 
@@ -77,8 +77,8 @@ describe("Submission and finalization test suite", () => {
         });
 
         const [lastNewMessageRollingHash, lastAnchoredL1MessageNumber] = await Promise.all([
-          lineaRollupV6.rollingHashes([rollingHashUpdatedEvent.args.messageNumber!]),
-          l2MessageService.lastAnchoredL1MessageNumber(),
+          lineaRollupV6.read.rollingHashes([rollingHashUpdatedEvent.args.messageNumber!]),
+          l2MessageService.read.lastAnchoredL1MessageNumber(),
         ]);
         expect(lastNewMessageRollingHash).toEqual(rollingHashUpdatedEvent.args.rollingHash);
         expect(lastAnchoredL1MessageNumber).toEqual(rollingHashUpdatedEvent.args.messageNumber);
@@ -91,9 +91,9 @@ describe("Submission and finalization test suite", () => {
     it.concurrent(
       "Check L1 data submission and finalization",
       async () => {
-        const lineaRollupV6 = config.l1PublicClient().contracts.rollup;
+        const lineaRollupV6 = config.l1PublicClient().getLineaRollup();
         const l1PublicClient = config.l1PublicClient();
-        const currentL2BlockNumber = await lineaRollupV6.currentL2BlockNumber();
+        const currentL2BlockNumber = await lineaRollupV6.read.currentL2BlockNumber();
 
         logger.debug("Waiting for DataSubmittedV3 used to finalize with proof...");
         await waitForEvents(l1PublicClient, {
@@ -117,8 +117,8 @@ describe("Submission and finalization test suite", () => {
         });
 
         const [lastBlockFinalized, newStateRootHash] = await Promise.all([
-          lineaRollupV6.currentL2BlockNumber(),
-          lineaRollupV6.stateRootHashes([dataFinalizedEvent.args.endBlockNumber!]),
+          lineaRollupV6.read.currentL2BlockNumber(),
+          lineaRollupV6.read.stateRootHashes([dataFinalizedEvent.args.endBlockNumber!]),
         ]);
 
         expect(lastBlockFinalized).toBeGreaterThanOrEqual(dataFinalizedEvent.args.endBlockNumber!);
@@ -132,7 +132,7 @@ describe("Submission and finalization test suite", () => {
     it.concurrent(
       "Check L2 safe/finalized tag update on sequencer",
       async () => {
-        const sequencerClient = config.l2PublicClient({ type: L2RpcEndpointType.Sequencer });
+        const sequencerClient = config.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
         if (!config.isLocal()) {
           logger.warn('Skipped the "Check L2 safe/finalized tag update on sequencer" test');
           return;
