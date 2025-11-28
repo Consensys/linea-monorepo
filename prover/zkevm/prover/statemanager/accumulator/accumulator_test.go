@@ -49,7 +49,7 @@ func TestShomei(t *testing.T) {
 		Location:   "this is the first trace",
 		Type:       2,
 		Underlying: traceInsert,
-		IsSkipped:  true,
+		IsSkipped:  false,
 	}
 	decodedTrace = append(decodedTrace, insertDecodedTrace)
 	// Generate a trace file for update
@@ -58,7 +58,7 @@ func TestShomei(t *testing.T) {
 		Location:   "this is the second trace",
 		Type:       3,
 		Underlying: traceUpdate,
-		IsSkipped:  true,
+		IsSkipped:  false,
 	}
 	decodedTrace = append(decodedTrace, updateDecodedTrace)
 	// Generate a trace file for delete
@@ -68,7 +68,7 @@ func TestShomei(t *testing.T) {
 		Location:   "this is the third trace",
 		Type:       4,
 		Underlying: traceDelete,
-		IsSkipped:  true,
+		IsSkipped:  false,
 	}
 	decodedTrace = append(decodedTrace, deleteDecodedTrace)
 	//  Generate a trace file for read zero
@@ -77,7 +77,7 @@ func TestShomei(t *testing.T) {
 		Location:   "this is the fourth trace",
 		Type:       1,
 		Underlying: traceReadZero,
-		IsSkipped:  true,
+		IsSkipped:  false,
 	}
 	decodedTrace = append(decodedTrace, readZeroDecodedTrace)
 	// Generate a trace file for read non zero
@@ -86,7 +86,7 @@ func TestShomei(t *testing.T) {
 		Location:   "this is the fifth trace",
 		Type:       0,
 		Underlying: traceReadNonZero,
-		IsSkipped:  true,
+		IsSkipped:  false,
 	}
 	decodedTrace = append(decodedTrace, readNonZeroDecodedTrace)
 	logrus.Infof("decoded trace length: %d", len(decodedTrace))
