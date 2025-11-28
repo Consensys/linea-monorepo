@@ -255,7 +255,7 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 // Verifier step, evaluate the constraint and checks that
 func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
 	fmt.Printf("verifying global constraint ...\n")
-	e4Api, err := gnarkfext.NewExt4(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
@@ -268,13 +268,8 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 	univQuery := c.GetUnivariateEval(ctx.WitnessEval.QueryID)
 
 	wOneExt := gnarkfext.NewE4GenFromBase(1)
-	annulator = *e4Api.Sub(&annulator, &wOneExt)
+	annulator = *ext4.Sub(&annulator, &wOneExt)
 
-	// Get the parameters
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
 	ext4.AssertIsEqual(&r, &params.ExtX) // check the evaluation is consistent with the other stuffs
 
 	// Map all the evaluations and checks the evaluations points
@@ -490,20 +485,19 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		ratioInvField.Inverse(&ratioInvField)
 		omegaRatioInv.Inverse(&omegaRatio)
 
-		var wrappedOmegaInvPowK zk.WrappedVariable
 		wOne := gnarkfext.NewE4GenFromBase(1)
 		for k := range ys {
 
 			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
-			var omegaInvPowK field.Element
-			omegaInvPowK.Exp(omegaRatioInv, big.NewInt(int64(k)))
-			wrappedOmegaInvPowK = zk.ValueOf(omegaInvPowK.String())
-			tmp := e4Api.MulByFp(&rPowM, wrappedOmegaInvPowK)
+			var tmpinit field.Element
+			tmpinit.Exp(omegaRatioInv, big.NewInt(int64(k)))
+			wrappedTmpInit := zk.ValueOf(tmpinit.String())
+			tmp := e4Api.MulByFp(&rPowM, wrappedTmpInit)
 			tmp = e4Api.Sub(tmp, &wOne)
 			tmp = e4Api.Div(&ys[k], tmp)
 
 			// res.MulByFp(api, res, tmp)
-			res = *e4Api.Mul(&res, tmp)
+			res = *e4Api.Add(&res, tmp)
 		}
 
 		wrappedRatioInvField := zk.ValueOf(ratioInvField.String())
