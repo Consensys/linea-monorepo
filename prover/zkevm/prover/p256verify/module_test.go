@@ -59,6 +59,7 @@ func testP256Verify(t *testing.T, withCircuit bool, path string, limits *Limits)
 func TestP256VerifyNoCircuit(t *testing.T) {
 	limits := &Limits{
 		NbInputInstances: 6,
+		LimitCalls:       640,
 	}
 	testP256Verify(t, false, "testdata/p256verify_inputs.csv", limits)
 }
@@ -66,6 +67,7 @@ func TestP256VerifyNoCircuit(t *testing.T) {
 func TestP256VerifyWithCircuit(t *testing.T) {
 	limits := &Limits{
 		NbInputInstances: 6,
+		LimitCalls:       640,
 	}
 	testP256Verify(t, true, "testdata/p256verify_inputs.csv", limits)
 }

@@ -7,6 +7,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -55,8 +57,19 @@ func newP256Verify(_ *wizard.CompiledIOP, limits *Limits, src *P256VerifyDataSou
 }
 
 func (pv *P256Verify) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *P256Verify {
-	nbRowsPerCircuit := nbRows * pv.Limits.NbInputInstances
-	maxNbCircuits := (pv.P256VerifyDataSource.CS.Size() + nbRowsPerCircuit - 1) / nbRowsPerCircuit
+	maxNbInstancesInputs := utils.DivCeil(pv.P256VerifyDataSource.CS.Size(), nbRows)
+	maxNbInstancesLimit := pv.Limits.LimitCalls
+	switch maxNbInstancesLimit {
+	case 0:
+		// we omit the circuit entirely when limit is 0
+		logrus.Warnf("P256 Verify circuit will be omitted as limit is set to 0")
+		return pv
+	case -1:
+		// we use the trace size as limit
+		maxNbInstancesLimit = maxNbInstancesInputs
+	}
+	maxNbInstances := min(maxNbInstancesInputs, maxNbInstancesLimit)
+	maxNbCircuits := utils.DivCeil(maxNbInstances, pv.Limits.NbInputInstances)
 
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_ALIGNMENT", NAME_P256_VERIFY),
