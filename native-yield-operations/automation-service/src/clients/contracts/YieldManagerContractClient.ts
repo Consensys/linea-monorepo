@@ -1,6 +1,7 @@
 import { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
+  concat,
   encodeAbiParameters,
   encodeFunctionData,
   getContract,
@@ -246,12 +247,13 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Hex} The ABI-encoded withdrawal parameters.
    */
   private _encodeLidoWithdrawalParams(params: LidoStakingVaultWithdrawalParams): Hex {
+    const concatenatedPubkeys = concat(params.pubkeys);
     return encodeAbiParameters(
       [
         {
           type: "tuple",
           components: [
-            { name: "pubkeys", type: "bytes[]" },
+            { name: "pubkeys", type: "bytes" },
             { name: "amounts", type: "uint64[]" },
             { name: "refundRecipient", type: "address" },
           ],
@@ -259,7 +261,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       ],
       [
         {
-          pubkeys: params.pubkeys,
+          pubkeys: concatenatedPubkeys,
           amounts: params.amountsGwei,
           refundRecipient: params.refundRecipient,
         },

@@ -18,7 +18,7 @@ jest.mock("viem", () => {
   };
 });
 
-import { getContract, encodeFunctionData, parseEventLogs, encodeAbiParameters } from "viem";
+import { concat, getContract, encodeFunctionData, parseEventLogs, encodeAbiParameters } from "viem";
 
 const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
 const mockedEncodeFunctionData = encodeFunctionData as jest.MockedFunction<typeof encodeFunctionData>;
@@ -292,7 +292,7 @@ describe("YieldManagerContractClient", () => {
         {
           type: "tuple",
           components: [
-            { name: "pubkeys", type: "bytes[]" },
+            { name: "pubkeys", type: "bytes" },
             { name: "amounts", type: "uint64[]" },
             { name: "refundRecipient", type: "address" },
           ],
@@ -300,7 +300,7 @@ describe("YieldManagerContractClient", () => {
       ],
       [
         {
-          pubkeys: withdrawalParams.pubkeys,
+          pubkeys: concat(withdrawalParams.pubkeys),
           amounts: withdrawalParams.amountsGwei,
           refundRecipient: contractAddress,
         },
