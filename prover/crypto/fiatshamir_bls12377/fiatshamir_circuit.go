@@ -14,14 +14,15 @@ import (
 )
 
 type GnarkFS struct {
-	hasher poseidon2_bls12377.GnarkMDHasher
+	koalaBuf []zk.WrappedVariable
+	hasher   poseidon2_bls12377.GnarkMDHasher
 	// pointer to the gnark-API (also passed to the hasher but behind an
 	// interface). This is needed to perform bit-decomposition.
 	api frontend.API
 }
 
-func NewGnarkFS(api frontend.API) *GnarkFS {
-	hasher, _ := poseidon2_bls12377.NewGnarkMDHasher(api)
+func NewGnarkFS(api frontend.API, verboseMode ...bool) *GnarkFS {
+	hasher, _ := poseidon2_bls12377.NewGnarkMDHasher(api, verboseMode...)
 	return &GnarkFS{
 		hasher: hasher,
 		api:    api,
@@ -43,6 +44,7 @@ func (fs *GnarkFS) StateFrElmt() frontend.Variable {
 // Update updates the Fiat-Shamir state with a vector of frontend.Variable
 // representing field element each.
 func (fs *GnarkFS) UpdateFrElmt(vec ...frontend.Variable) {
+	fs.flushKoala()
 	fs.hasher.Write(vec...)
 }
 
@@ -55,6 +57,7 @@ func (fs *GnarkFS) UpdateVecFrElmt(mat ...[]frontend.Variable) {
 
 // RandomField returns a single valued fiat-shamir hash
 func (fs *GnarkFS) RandomFrElmt() frontend.Variable {
+	fs.flushKoala()
 	defer fs.safeguardUpdate()
 	return fs.hasher.Sum()
 }
@@ -63,17 +66,17 @@ func (fs *GnarkFS) RandomFrElmt() frontend.Variable {
 // List of methods to updae the FS state with koala elmts
 
 func (fs *GnarkFS) Update(vec ...zk.WrappedVariable) {
-
-	fs.hasher.WriteWVs(vec...)
+	// fs.hasher.WriteWVs(vec...)
+	fs.koalaBuf = append(fs.koalaBuf, vec...)
 }
+
 func (fs *GnarkFS) UpdateExt(vec ...gnarkfext.E4Gen) {
 	// ext4, _ := gnarkfext.NewExt4(fs.api)
-	// ext4.Println(vec...) // DEBUG
 	for i := 0; i < len(vec); i++ {
-		fs.hasher.WriteWVs(vec[i].B0.A0)
-		fs.hasher.WriteWVs(vec[i].B0.A1)
-		fs.hasher.WriteWVs(vec[i].B1.A0)
-		fs.hasher.WriteWVs(vec[i].B1.A1)
+		fs.koalaBuf = append(fs.koalaBuf, vec[i].B0.A0)
+		fs.koalaBuf = append(fs.koalaBuf, vec[i].B0.A1)
+		fs.koalaBuf = append(fs.koalaBuf, vec[i].B1.A0)
+		fs.koalaBuf = append(fs.koalaBuf, vec[i].B1.A1)
 	}
 }
 
@@ -91,15 +94,12 @@ func (fs *FS) UpdateGeneric(vec ...fext.GenericFieldElem) {
 		}
 	}
 }
+
 func (fs *GnarkFS) UpdateVec(vec ...[]zk.WrappedVariable) {
 	v := make([]zk.WrappedVariable, 0, len(vec))
-
 	for _, _v := range vec {
 		v = append(v, _v...)
 	}
-	// apiGen, _ := zk.NewGenericApi(fs.api)
-	// apiGen.Println(vec[0]...) // DEBUG
-
 	fs.Update(v...)
 }
 
@@ -108,6 +108,7 @@ func (fs *GnarkFS) RandomField() zk.Octuplet {
 	res := encoding.EncodeFVTo8WVs(fs.api, r)
 	return res
 }
+
 func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
 	r := fs.RandomField() // the safeguard update is called
 	res := gnarkfext.E4Gen{}
@@ -157,5 +158,13 @@ func (fs *GnarkFS) State() zk.Octuplet {
 // the hasher to ensure that the next field element will have a different
 // value.
 func (fs *GnarkFS) safeguardUpdate() {
-	fs.hasher.Write(0)
+	fs.UpdateFrElmt(0)
+}
+
+func (fs *GnarkFS) flushKoala() {
+	if len(fs.koalaBuf) == 0 {
+		return
+	}
+	fs.hasher.WriteWVs(fs.koalaBuf...)
+	fs.koalaBuf = fs.koalaBuf[:0]
 }

@@ -2,10 +2,10 @@ package poseidon2_bls12377
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
@@ -20,7 +20,6 @@ const maxSizeBuf = 1024
 
 // MDHasher Merkle Damgard Hasher using Poseidon2 as compression function
 type MDHasher struct {
-	hash.StateStorer
 	maxValue types.Bytes32 // the maximal value obtainable with that hasher
 
 	// Sponge construction state
@@ -28,6 +27,8 @@ type MDHasher struct {
 
 	// data to hash
 	buffer []fr.Element
+
+	verbose bool
 }
 
 var (
@@ -44,13 +45,13 @@ func init() {
 }
 
 // Constructor for Poseidon2MDHasher
-func NewMDHasher() *MDHasher {
+func NewMDHasher(verbose ...bool) *MDHasher {
 	// var maxVal fr.Element
 	// maxVal.SetOne().Neg(&maxVal)
 	return &MDHasher{
-		StateStorer: poseidon2.NewMerkleDamgardHasher(),
-		state:       fr.Element{},
-		buffer:      make([]fr.Element, 0),
+		state:   fr.Element{},
+		buffer:  make([]fr.Element, 0),
+		verbose: len(verbose) > 0 && verbose[0],
 	}
 }
 
@@ -60,9 +61,31 @@ func (d *MDHasher) Reset() {
 	d.state = fr.Element{}
 }
 
-// SetStateFrElement modifies the state (??)
-func (d *MDHasher) SetStateFrElement(state fr.Element) {
-	d.state.Set(&state)
+func (d *MDHasher) SetStateFrElement(s fr.Element) {
+	d.Reset()
+	d.state.Set(&s)
+}
+
+// State returns the state of the hasher. The function must not mutate the
+// MDHasher. If it needs to flush the buffer to access the state, it will clone
+// the struct and flush there.
+func (d *MDHasher) State() fr.Element {
+
+	// If the buffer is clean, we can short-path the execution and directly
+	// return the state.
+	if len(d.buffer) == 0 {
+		return d.state
+	}
+
+	// If the buffer is not clean, we cannot clean it locally as it would modify
+	// the state of the hasher locally. Instead, we clone the buffer and flush
+	// the buffer on the clone.
+	clone := NewMDHasher()
+	clone.buffer = make([]fr.Element, len(d.buffer))
+	copy(clone.buffer, d.buffer)
+	clone.state = d.state
+	_ = clone.SumElement()
+	return clone.state
 }
 
 // WriteElements adds a slice of field elements to the running hash.
@@ -96,48 +119,12 @@ func compress(left, right fr.Element) fr.Element {
 }
 
 func (d *MDHasher) SumElement() fr.Element {
+	if d.verbose {
+		fmt.Printf("[native fs flush] oldState %v, buffer = %v\n", d.state.String(), fr.Vector(d.buffer).String())
+	}
 	for i := 0; i < len(d.buffer); i++ {
 		d.state = compress(d.state, d.buffer[i])
 	}
 	d.buffer = d.buffer[:0]
 	return d.state
 }
-
-// // WriteElements adds a slice of field elements to the running hash.
-// func (d *MDHasher) Write(p []byte) (int, error) {
-
-// 	elemByteSize := field.Bytes // 4 bytes = 1 field element
-
-// 	if len(p)%elemByteSize != 0 {
-// 		return 0, fmt.Errorf("input length is not a multiple of 4 byte size")
-// 	}
-// 	elems := make([]fr.Element, 0, len(p)/elemByteSize)
-
-// 	for start := 0; start < len(p); start += elemByteSize {
-// 		chunk := p[start : start+elemByteSize]
-
-// 		var elem fr.Element
-// 		elem.SetBytes(chunk)
-// 		elems = append(elems, elem)
-
-// 	}
-// 	d.WriteElements(elems)
-// 	return len(p), nil
-// }
-
-// // Sum computes the poseidon2 hash of msg
-// func (d *MDHasher) Sum(msg []byte) []byte {
-// 	d.Write(msg)
-// 	h := d.SumElement()
-// 	bytes := types.HashToBytes32(h)
-// 	return bytes[:]
-// }
-// func (d MDHasher) MaxBytes32() types.Bytes32 {
-// 	return d.maxValue
-// }
-
-// GnarkBlockCompression applies the MiMC permutation to a given block within
-// a gnark circuit and mirrors exactly [BlockCompression].
-// func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]zk.WrappedVariable) (newState [BlockSize]zk.WrappedVariable) {
-// 	panic("unimplemented")
-// }
