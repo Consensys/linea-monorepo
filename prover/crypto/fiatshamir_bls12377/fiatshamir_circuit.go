@@ -22,7 +22,10 @@ type GnarkFS struct {
 }
 
 func NewGnarkFS(api frontend.API, verboseMode ...bool) *GnarkFS {
-	hasher, _ := poseidon2_bls12377.NewGnarkMDHasher(api, verboseMode...)
+	hasher, err := poseidon2_bls12377.NewGnarkMDHasher(api, verboseMode...)
+	if err != nil {
+		panic(err)
+	}
 	return &GnarkFS{
 		hasher: hasher,
 		api:    api,
