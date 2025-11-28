@@ -289,22 +289,11 @@ describe("YieldManagerContractClient", () => {
     });
     expect(mockedEncodeAbiParameters).toHaveBeenCalledWith(
       [
-        {
-          type: "tuple",
-          components: [
-            { name: "pubkeys", type: "bytes" },
-            { name: "amounts", type: "uint64[]" },
-            { name: "refundRecipient", type: "address" },
-          ],
-        },
+        { name: "pubkeys", type: "bytes" },
+        { name: "amounts", type: "uint64[]" },
+        { name: "refundRecipient", type: "address" },
       ],
-      [
-        {
-          pubkeys: concat(withdrawalParams.pubkeys),
-          amounts: withdrawalParams.amountsGwei,
-          refundRecipient: contractAddress,
-        },
-      ],
+      [concat(withdrawalParams.pubkeys), withdrawalParams.amountsGwei, contractAddress],
     );
     expect(publicClient.readContract).toHaveBeenCalledWith({
       address: stakingVaultAddress,

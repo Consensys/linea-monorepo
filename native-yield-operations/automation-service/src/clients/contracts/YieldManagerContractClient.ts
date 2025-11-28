@@ -250,22 +250,11 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     const concatenatedPubkeys = concat(params.pubkeys);
     return encodeAbiParameters(
       [
-        {
-          type: "tuple",
-          components: [
-            { name: "pubkeys", type: "bytes" },
-            { name: "amounts", type: "uint64[]" },
-            { name: "refundRecipient", type: "address" },
-          ],
-        },
+        { name: "pubkeys", type: "bytes" },
+        { name: "amounts", type: "uint64[]" },
+        { name: "refundRecipient", type: "address" },
       ],
-      [
-        {
-          pubkeys: concatenatedPubkeys,
-          amounts: params.amountsGwei,
-          refundRecipient: params.refundRecipient,
-        },
-      ],
+      [concatenatedPubkeys, params.amountsGwei, params.refundRecipient],
     );
   }
 
