@@ -3,8 +3,8 @@ package linea.coordinator.config.v2.toml.decoders
 import com.sksamuel.hoplite.ConfigFailure
 import com.sksamuel.hoplite.ConfigResult
 import com.sksamuel.hoplite.DecoderContext
+import com.sksamuel.hoplite.LongNode
 import com.sksamuel.hoplite.Node
-import com.sksamuel.hoplite.NumberNode
 import com.sksamuel.hoplite.StringNode
 import com.sksamuel.hoplite.decoder.Decoder
 import com.sksamuel.hoplite.fp.invalid
@@ -74,8 +74,8 @@ class TomlKotlinInstantDecoder : Decoder<Instant> {
         { it.valid() },
         { ConfigFailure.DecodeError(node, type).invalid() },
       )
-      is NumberNode -> runCatching {
-        Instant.fromEpochSeconds(node.value as Long)
+      is LongNode -> runCatching {
+        Instant.fromEpochSeconds(node.value)
       }.fold(
         { it.valid() },
         { ConfigFailure.DecodeError(node, type).invalid() },
