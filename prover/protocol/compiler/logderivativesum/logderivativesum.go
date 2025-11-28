@@ -146,12 +146,12 @@ func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntim
 	for k := range f.ZOpenings {
 		// not using panic so that the compiler does not ask us to comment out
 		// the remainder of the loop
-		utils.Panic("this shoud default to extension fields")
+		// utils.Panic("this shoud default to extension fields")
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
 		zSum = *e4Api.Add(&zSum, &temp)
 	}
 
-	api.AssertIsEqual(zSum, claimedSum)
+	e4Api.AssertIsEqual(&zSum, &claimedSum)
 }
 
 func (f *FinalEvaluationCheck) Skip() {
