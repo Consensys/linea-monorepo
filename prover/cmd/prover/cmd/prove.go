@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 type ProverArgs struct {
@@ -163,6 +165,31 @@ func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
 	req := &distributed.Metadata{}
 	if err := files.ReadRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
+	}
+
+	// Get local id of conglomerator
+	var (
+		parts           = strings.Split(args.Input, "."+config.InProgressSufix+".")
+		localID         = parts[1]
+		marker          = fmt.Sprintf("%s.", config.InProgressSufix)
+		newInprogSuffix = marker + localID
+	)
+
+	if splits := strings.SplitN(req.BootstrapRequestDoneFile, config.BootstrapPartialSucessSuffix, 2); len(splits) == 2 {
+
+		var (
+			oldFile = req.BootstrapRequestDoneFile
+			newFile = splits[0] + newInprogSuffix
+		)
+
+		// Rename the original Bootstrap file with inprogress appended by localID so that we know
+		// which pod is going to deal with the conglomeration job
+		if err := os.Rename(oldFile, newFile); err != nil {
+			logrus.Printf("Failed to rename file: %v\n", err)
+		} else {
+			logrus.Printf("Renamed file: %s -> %s\n", oldFile, newFile)
+			req.BootstrapRequestDoneFile = newFile
+		}
 	}
 
 	resp, err := distributed.RunConglomerator(cfg, req)

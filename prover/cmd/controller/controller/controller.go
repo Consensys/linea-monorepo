@@ -348,7 +348,7 @@ func (st *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Ent
 
 	// --- After conglomeration finishes, trim the boostrap suffix marker to indicate full success ---
 	if job.Def.Name == jobNameConglomeration {
-		replaceBootstrapParitalSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, config.SuccessSuffix)
+		finalizeExecLimitlessStatus(cfg, cLog, job, config.SuccessSuffix)
 	}
 
 	// Limitless-specific renaming
@@ -441,7 +441,7 @@ func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Ent
 	// with the failure suffix in the cfg.Execution.DirDone path
 	if job.Def.Name == jobNameGL || job.Def.Name == jobNameLPP || job.Def.Name == jobNameConglomeration {
 		failSuffix := fmt.Sprintf("failure.%v_%v", config.FailSuffix, status.ExitCode)
-		replaceBootstrapParitalSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, failSuffix)
+		finalizeExecLimitlessStatus(cfg, cLog, job, failSuffix)
 	}
 
 	// Write transient failure for limitless jobs - only genuine failures are written here
@@ -599,37 +599,47 @@ func (st *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Ent
 	}
 }
 
-func replaceBootstrapParitalSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, oldSuffix, newSuffix string) {
-	pattern := filepath.Join(cfg.Execution.DirFrom(), fmt.Sprintf("%d-%d-*.%s", job.Start, job.End, oldSuffix))
+// finalizeExecLimitlessStatus replaces the suffix of the execution limitless job file with the new suffix
+// relevant only for limitless job
+func finalizeExecLimitlessStatus(cfg *config.Config, cLog *logrus.Entry, job *Job, newSuffix string) {
+
+	pattern := filepath.Join(cfg.Execution.DirFrom(), fmt.Sprintf("%d-%d-*.%s*", job.Start, job.End, config.InProgressSufix))
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		cLog.Errorf("Glob pattern failed for %v: %v", pattern, err)
 		return
 	}
-
 	if len(matches) == 0 {
 		cLog.Warnf("No file found matching %v (maybe already moved?)", pattern)
 		return
 	}
 	if len(matches) > 1 {
-		cLog.Warnf("Multiple files match pattern %v, using first: %v", pattern, matches)
+		cLog.Errorf("Multiple files match pattern %v instead of only one: %#v", pattern, matches)
+		return
 	}
 
+	oldFile := matches[0]
+
+	// find index of  oldSuffix (".inprogress") to remove everything from that point onward
+	marker := "." + config.InProgressSufix
+	idx := strings.Index(oldFile, marker)
+	if idx == -1 {
+		cLog.Errorf("unexpected filename format: %s (no %s found)", oldFile, marker)
+		return
+	}
 	var (
-		oldFile = matches[0]
-		newFile = strings.TrimSuffix(oldFile, "."+oldSuffix) + "." + newSuffix
-		dir     = filepath.Dir(newFile)
-		base    = filepath.Base(newFile)
-		doneDir = strings.Replace(dir, cfg.Execution.DirFrom(), cfg.Execution.DirDone(), 1) // Change dir from "requests" → "requests-done"
+		base        = oldFile[:idx] // everything up to but not including ".inprogress..."
+		newFileName = filepath.Base(base) + "." + newSuffix
+		dir         = filepath.Dir(base)
+		doneDir     = strings.Replace(dir, cfg.Execution.DirFrom(), cfg.Execution.DirDone(), 1) // requests -> requests-done
+		newFile     = filepath.Join(doneDir, newFileName)
 	)
 
-	// Overwrite newFile so that it can be finally placed in requests-done dir
-	newFile = filepath.Join(doneDir, base)
 	cLog.Infof("Renaming file: %v → %v", oldFile, newFile)
 	if err := os.Rename(oldFile, newFile); err != nil {
 		cLog.Errorf("Failed to rename %v → %v: %v", oldFile, newFile, err)
 	} else {
-		cLog.Infof("Successfully replaced suffix %q → %q for %d-%d", oldSuffix, newSuffix, job.Start, job.End)
+		cLog.Infof("Successfully replaced %s suffix with status:%s for conflation %d-%d", config.InProgressSufix, newSuffix, job.Start, job.End)
 	}
 }
 

@@ -19,7 +19,7 @@ const (
 	LargeSuffix = "large"
 
 	// Limitless prover stuffs
-	BootstrapPartialSucessSuffix = "inprogress.conglomerator"
+	BootstrapPartialSucessSuffix = "bootstrap.partial.success"
 	WitnessDir                   = "/tmp/witness"
 )
 

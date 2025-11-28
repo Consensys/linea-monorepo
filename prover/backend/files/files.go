@@ -201,8 +201,8 @@ func RemoveMatchingFiles(pattern string, isLog bool) (bool, error) {
 	return true, nil
 }
 
-// WaitForFileAtPath waits until file exists or context done.
-// Uses fsnotify when possible but falls back to polling every pollInterval.
+// WaitForFileAtPath : Polls every configured time interval for the file and
+// waits until the file is found or context is done.
 func WaitForFileAtPath(ctx context.Context, file string, pollInterval time.Duration, reportMissing bool, msg string) error {
 	logrus.Infoln(msg)
 
