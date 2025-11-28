@@ -1,9 +1,12 @@
 package wizard
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -242,6 +245,9 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 
 				instance := run.GetColumn(msgName)
 				run.BLSFS.UpdateSV(instance)
+
+				state := run.BLSFS.State()
+				fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
 			}
 
 			/*

@@ -148,7 +148,6 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 	vi.Ys = ctx.getYs(run)
 
 	return vortex_koalabear.Verify(ctx.VortexKoalaParams, proof, &vi, roots, merkleProofs, WithSis)
-
 }
 
 func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
@@ -248,7 +247,6 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	vi.Ys = ctx.getYs(run)
 
 	return vortex_bls12377.Verify(ctx.VortexBLSParams, proof, &vi, gnarkNoSisRoots, merkleProofs, WithSis)
-
 }
 
 // returns the number of committed rows for the given round. This takes
