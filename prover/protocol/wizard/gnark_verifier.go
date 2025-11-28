@@ -814,8 +814,8 @@ func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.Horner
 	c.HornerIDs.InsertNew(qName, len(c.HornerParams))
 	parts := make([]query.HornerParamsPartGnark, len(params.Parts))
 	for i := range params.Parts {
-		parts[i].N0 = zk.ValueOf(params.Parts[i].N0)
-		parts[i].N1 = zk.ValueOf(params.Parts[i].N1)
+		parts[i].N0 = params.Parts[i].N0
+		parts[i].N1 = params.Parts[i].N1
 	}
 	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{
 		FinalResult: gnarkfext.NewE4Gen(params.FinalResult),

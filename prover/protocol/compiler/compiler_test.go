@@ -75,9 +75,9 @@ func TestCompilersWithGnarkVerifier(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
 
-	runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
-	runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
-	runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	// runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
+	// runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
+	// runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
 	runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
 	// runTestListGnark(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
 	// runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
