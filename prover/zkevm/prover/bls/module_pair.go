@@ -149,15 +149,17 @@ func (bp *BlsPair) Assign(run *wizard.ProverRuntime) {
 
 type UnalignedPairData struct {
 	*BlsPairDataSource
-	IsActive           ifaces.Column
-	IsFirstLine        ifaces.Column
-	IsLastLine         ifaces.Column
-	IsNotLastLine      ifaces.Column
-	PointG1            [nbG1Limbs]ifaces.Column
-	PointG2            [nbG2Limbs]ifaces.Column
-	PrevAccumulator    [nbGtLimbs]ifaces.Column
-	CurrentAccumulator [nbGtLimbs]ifaces.Column
-	ExpectedResult     [2]ifaces.Column
+	IsPairingInstance   ifaces.Column
+	IsPairingAndSuccess ifaces.Column
+	IsActive            ifaces.Column
+	IsFirstLine         ifaces.Column
+	IsLastLine          ifaces.Column
+	IsNotLastLine       ifaces.Column
+	PointG1             [nbG1Limbs]ifaces.Column
+	PointG2             [nbG2Limbs]ifaces.Column
+	PrevAccumulator     [nbGtLimbs]ifaces.Column
+	CurrentAccumulator  [nbGtLimbs]ifaces.Column
+	ExpectedResult      [2]ifaces.Column
 
 	GnarkIsActiveG1Membership ifaces.Column
 	GnarkIsActiveG2Membership ifaces.Column
@@ -190,6 +192,8 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, src *BlsPairDataSource) *Una
 		GnarkDataMillerLoop:       createColFnMl("GNARK_DATA_ML"),
 		GnarkIsActiveFinalExp:     createColFnFe("GNARK_IS_ACTIVE_FE"),
 		GnarkDataFinalExp:         createColFnFe("GNARK_DATA_FE"),
+		IsPairingInstance:         comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "IS_PAIRING_INSTANCE"), max(src.IsData.Size(), src.IsRes.Size())),
+		IsPairingAndSuccess:       comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "IS_PAIRING_AND_SUCCESS"), max(src.IsData.Size(), src.IsRes.Size(), src.SuccessBit.Size())),
 		GnarkIsActiveG1Membership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "GNARK_IS_ACTIVE_G1_MEMBERSHIP"), max(src.SuccessBit.Size(), src.CsG1Membership.Size())),
 		GnarkIsActiveG2Membership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "GNARK_IS_ACTIVE_G2_MEMBERSHIP"), max(src.SuccessBit.Size(), src.CsG2Membership.Size())),
 		MaxNbPairInputs:           maxNbPairInputs,
@@ -211,6 +215,9 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, src *BlsPairDataSource) *Una
 		ucmd.ExpectedResult[i] = createColFnUa(fmt.Sprintf("EXPECTED_RESULT_%d", i))
 	}
 
+	// constraint: IS_PAIR_DATA || IS_PAIR_RES
+	// constraint: SUCCESS_BIT && (IS_PAIR_DATA || IS_PAIR_RES)
+	ucmd.csIsPairingInstance(comp)
 	// non-membership input mask
 	ucmd.csInputMask(comp)
 	// projection from source to unaligned
@@ -225,6 +232,27 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, src *BlsPairDataSource) *Una
 	return ucmd
 }
 
+func (c *UnalignedPairData) csIsPairingInstance(comp *wizard.CompiledIOP) {
+	// IsPairingInstance = IsData OR IsRes
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_IS_PAIRING_INSTANCE", NAME_BLS_PAIR),
+		sym.Sub(
+			c.IsPairingInstance,
+			c.IsData,
+			c.IsRes,
+		),
+	)
+	// IsPairingAndSuccess = SuccessBit AND (IsData OR IsRes)
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_IS_PAIRING_AND_SUCCESS", NAME_BLS_PAIR),
+		sym.Sub(
+			c.IsPairingAndSuccess,
+			sym.Mul(
+				c.SuccessBit,
+				c.IsPairingInstance,
+			),
+		),
+	)
+}
+
 func (d *UnalignedPairData) csInputMask(comp *wizard.CompiledIOP) {
 	// assert that the GnarkIsActiveG1Membership and GnarkIsActiveG2Membership
 	// are set correctly. We only call the subgroup membership for
@@ -236,7 +264,7 @@ func (d *UnalignedPairData) csInputMask(comp *wizard.CompiledIOP) {
 			d.GnarkIsActiveG1Membership,
 			sym.Mul(
 				d.CsG1Membership,
-				sym.Sub(1, d.SuccessBit),
+				sym.Sub(1, d.IsPairingAndSuccess),
 			),
 		),
 	)
@@ -245,7 +273,7 @@ func (d *UnalignedPairData) csInputMask(comp *wizard.CompiledIOP) {
 			d.GnarkIsActiveG2Membership,
 			sym.Mul(
 				d.CsG2Membership,
-				sym.Sub(1, d.SuccessBit),
+				sym.Sub(1, d.IsPairingAndSuccess),
 			),
 		),
 	)
@@ -267,7 +295,7 @@ func (d *UnalignedPairData) csProjectionUnaligned(comp *wizard.CompiledIOP) {
 		columnsB[nbG1Limbs+nbG2Limbs+i] = []ifaces.Column{d.ExpectedResult[i]}
 	}
 	prj := query.ProjectionMultiAryInput{
-		FiltersA: []ifaces.Column{d.SuccessBit},
+		FiltersA: []ifaces.Column{d.IsPairingAndSuccess},
 		FiltersB: filtersB,
 		ColumnsA: [][]ifaces.Column{{d.BlsPairDataSource.Limb}},
 		ColumnsB: columnsB,
@@ -379,23 +407,36 @@ func (d *UnalignedPairData) assignMembershipMask(run *wizard.ProverRuntime) {
 	// (CS_G2_MEMBERSHIP AND !SUCCESS_BIT) columns which are used for filtering
 	// the inputs going to group non-membership circuit.
 	var (
+		srcIsData         = d.IsData.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcIsRes          = d.IsRes.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcCsG1Membership = d.CsG1Membership.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcCsG2Membership = d.CsG2Membership.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcSuccessBit     = d.SuccessBit.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
 
 	var (
-		dstG1Membership = common.NewVectorBuilder(d.GnarkIsActiveG1Membership)
-		dstG2Membership = common.NewVectorBuilder(d.GnarkIsActiveG2Membership)
+		dstIsPairingInstance   = common.NewVectorBuilder(d.IsPairingInstance)
+		dstIsPairingAndSuccess = common.NewVectorBuilder(d.IsPairingAndSuccess)
+		dstG1Membership        = common.NewVectorBuilder(d.GnarkIsActiveG1Membership)
+		dstG2Membership        = common.NewVectorBuilder(d.GnarkIsActiveG2Membership)
 	)
 
-	for i := range srcCsG1Membership {
-		dstG1Membership.PushBoolean(srcCsG1Membership[i].IsOne() && srcSuccessBit[i].IsZero())
+	for i := range max(len(srcIsData), len(srcIsRes)) {
+		dstIsPairingInstance.PushBoolean(srcIsData[i].IsOne() || srcIsRes[i].IsOne())
 	}
-	for i := range srcCsG2Membership {
-		dstG2Membership.PushBoolean(srcCsG2Membership[i].IsOne() && srcSuccessBit[i].IsZero())
+	for i := range max(len(srcIsData), len(srcIsRes), len(srcSuccessBit)) {
+		dstIsPairingAndSuccess.PushBoolean((srcIsData[i].IsOne() || srcIsRes[i].IsOne()) && srcSuccessBit[i].IsOne())
 	}
 
+	for i := range srcCsG1Membership {
+		dstG1Membership.PushBoolean((srcIsData[i].IsOne() || srcIsRes[i].IsOne()) && srcCsG1Membership[i].IsOne() && srcSuccessBit[i].IsZero())
+	}
+	for i := range srcCsG2Membership {
+		dstG2Membership.PushBoolean((srcIsData[i].IsOne() || srcIsRes[i].IsOne()) && srcCsG2Membership[i].IsOne() && srcSuccessBit[i].IsZero())
+	}
+
+	dstIsPairingInstance.PadAndAssign(run, field.Zero())
+	dstIsPairingAndSuccess.PadAndAssign(run, field.Zero())
 	dstG1Membership.PadAndAssign(run, field.Zero())
 	dstG2Membership.PadAndAssign(run, field.Zero())
 }
