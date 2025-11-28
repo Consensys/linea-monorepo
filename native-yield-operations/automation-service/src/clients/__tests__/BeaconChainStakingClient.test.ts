@@ -5,8 +5,7 @@ import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/IN
 import type { IValidatorDataClient } from "../../core/clients/IValidatorDataClient.js";
 import type { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../../core/entities/ValidatorBalance.js";
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
-import type { Address, TransactionReceipt } from "viem";
-import { stringToHex } from "viem";
+import type { Address, Hex, TransactionReceipt } from "viem";
 import { ONE_GWEI } from "@consensys/linea-shared-utils";
 import type { WithdrawalRequests } from "../../core/entities/LidoStakingVaultWithdrawalParams.js";
 
@@ -192,11 +191,11 @@ describe("BeaconChainStakingClient", () => {
       expect(unstakeMock).toHaveBeenCalledTimes(1);
 
       const [, withdrawalRequests] = unstakeMock.mock.calls[0];
-      expect(withdrawalRequests.pubkeys).toEqual([stringToHex("validator-1"), stringToHex("validator-2")]);
+      expect(withdrawalRequests.pubkeys).toEqual(["validator-1" as Hex, "validator-2" as Hex]);
       expect(withdrawalRequests.amountsGwei).toEqual([2n, 1n]);
 
-      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(1, stringToHex("validator-1"), 2);
-      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(2, stringToHex("validator-2"), 1);
+      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(1, "validator-1" as Hex, 2);
+      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(2, "validator-2" as Hex, 1);
     });
   });
 
@@ -263,10 +262,10 @@ describe("BeaconChainStakingClient", () => {
       expect(remaining).toBe(maxValidatorsPerTx - 1);
       expect(unstakeMock).toHaveBeenCalledTimes(1);
       const [, requests] = unstakeMock.mock.calls[0];
-      expect(requests.pubkeys).toEqual([stringToHex("validator-1")]);
+      expect(requests.pubkeys).toEqual(["validator-1" as Hex]);
       expect(requests.amountsGwei).toEqual([1n]);
       expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledTimes(1);
-      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledWith(stringToHex("validator-1"), 1);
+      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledWith("validator-1" as Hex, 1);
     });
   });
 
@@ -300,19 +299,19 @@ describe("BeaconChainStakingClient", () => {
       expect(unstakeMock).toHaveBeenCalledTimes(2);
 
       const [, partialRequests] = unstakeMock.mock.calls[0];
-      expect(partialRequests.pubkeys).toEqual([stringToHex("validator-1"), stringToHex("validator-2")]);
+      expect(partialRequests.pubkeys).toEqual(["validator-1" as Hex, "validator-2" as Hex]);
       expect(partialRequests.amountsGwei).toEqual([2n, 3n]);
 
       const [, exitRequests] = unstakeMock.mock.calls[1];
-      expect(exitRequests.pubkeys).toEqual([stringToHex("validator-3")]);
+      expect(exitRequests.pubkeys).toEqual(["validator-3" as Hex]);
       expect(exitRequests.amountsGwei).toEqual([0n]);
 
       expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledTimes(2);
-      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(1, stringToHex("validator-1"), 2);
-      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(2, stringToHex("validator-2"), 3);
+      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(1, "validator-1" as Hex, 2);
+      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(2, "validator-2" as Hex, 3);
 
       expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(1);
-      expect(mocks.incrementValidatorExit).toHaveBeenCalledWith(stringToHex("validator-3"));
+      expect(mocks.incrementValidatorExit).toHaveBeenCalledWith("validator-3" as Hex);
     });
   });
 
@@ -384,14 +383,14 @@ describe("BeaconChainStakingClient", () => {
       expect(unstakeMock).toHaveBeenCalledTimes(1);
       const [, requests] = unstakeMock.mock.calls[0];
       expect(requests.pubkeys).toEqual([
-        stringToHex("validator-1"),
-        stringToHex("validator-2"),
-        stringToHex("validator-3"),
+        "validator-1" as Hex,
+        "validator-2" as Hex,
+        "validator-3" as Hex,
       ]);
       expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(3);
-      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(1, stringToHex("validator-1"));
-      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(2, stringToHex("validator-2"));
-      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(3, stringToHex("validator-3"));
+      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(1, "validator-1" as Hex);
+      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(2, "validator-2" as Hex);
+      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(3, "validator-3" as Hex);
     });
   });
 });

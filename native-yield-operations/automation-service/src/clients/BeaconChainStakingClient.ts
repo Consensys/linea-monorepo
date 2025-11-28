@@ -3,7 +3,7 @@ import { IBeaconChainStakingClient } from "../core/clients/IBeaconChainStakingCl
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
 import { WithdrawalRequests } from "../core/entities/LidoStakingVaultWithdrawalParams.js";
-import { Address, maxUint256, stringToHex, TransactionReceipt } from "viem";
+import { Address, Hex, maxUint256, TransactionReceipt } from "viem";
 import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 
@@ -123,7 +123,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       const amountToWithdrawGwei = amountToWithdrawWei / ONE_GWEI;
 
       if (amountToWithdrawGwei > 0n) {
-        withdrawalRequests.pubkeys.push(stringToHex(v.publicKey));
+        withdrawalRequests.pubkeys.push(v.publicKey as Hex);
         withdrawalRequests.amountsGwei.push(amountToWithdrawGwei);
         totalWithdrawalRequestAmountWei += amountToWithdrawWei;
       }
@@ -182,7 +182,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       if (withdrawalRequests.pubkeys.length >= this.maxValidatorWithdrawalRequestsPerTransaction) break;
 
       if (v.withdrawableAmount === 0n) {
-        withdrawalRequests.pubkeys.push(stringToHex(v.publicKey));
+        withdrawalRequests.pubkeys.push(v.publicKey as Hex);
         // 0 amount -> signal for validator exit
         withdrawalRequests.amountsGwei.push(0n);
       }
