@@ -1,8 +1,6 @@
 package vortex
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 
 	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
@@ -44,7 +42,6 @@ type ReassignPrecomputedRootAction struct {
 }
 
 func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
-	fmt.Printf("okok, run ReassignPrecomputedRootAction\n")
 	if r.IsBLS {
 		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
 			run.AssignColumn(
@@ -105,9 +102,6 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 		)
 		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(pols)
 
-		// var rootBLS bls12377.Element
-		// rootBLS = tree.Root
-		// fmt.Printf("Gnark precomputed Merkle root1: %v\n", rootBLS.String())
 		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		run.State.InsertNew(ctx.MerkleTreeName(round), tree)
 
@@ -208,12 +202,10 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
-	fmt.Printf("randomCoinLC:%v, %v\n", ctx.Items.Alpha.Name, randomCoinLC.String())
 
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
 	vortex.LinearCombination(proof, committedSV, randomCoinLC)
-	fmt.Printf("proof.LinearCombination:%v\n", proof.LinearCombination.Pretty())
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 
 }

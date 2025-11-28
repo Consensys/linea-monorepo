@@ -26,21 +26,15 @@ func GnarkRecoverRoot(
 
 	current := leaf
 	nbBits := len(proof.Siblings)
-	// api.Println("Path:", proof.Path)
 
 	b := api.ToBinary(proof.Path, nbBits)
-	// api.Println("bits:", b)
 	for i := 0; i < len(proof.Siblings); i++ {
 		h.Reset()
 		left := api.Select(b[i], proof.Siblings[i], current)
 		right := api.Select(b[i], current, proof.Siblings[i])
-		// api.Println("Left state:", left)
-		// api.Println("Right state:", right)
 
 		h.Write(left, right)
 		current = h.Sum()
-		// api.Println("Current state:", current)
-
 	}
 
 	return current, nil

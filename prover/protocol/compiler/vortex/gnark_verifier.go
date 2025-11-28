@@ -35,14 +35,11 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
 		preRoots := [encoding.GnarkKoalabearNumElements]zk.WrappedVariable{}
-		// apiGen, _ := zk.NewGenericApi(api)
 
 		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
 			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
 			preRoots[i] = precompRootSv[0]
 		}
-		// fmt.Printf("Gnark precomputed Merkle root verifier: \n")
-		// api.Println(encoding.Encode11WVsToFV(api, preRoots))
 
 		roots = append(roots, encoding.Encode11WVsToFV(api, preRoots))
 	}

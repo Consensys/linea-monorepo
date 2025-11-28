@@ -1,7 +1,6 @@
 package poseidon2_koalabear
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
@@ -63,7 +62,6 @@ func getGnarkMDHasherCircuitWitness() (*GnarkMDHasherCircuit, *GnarkMDHasherCirc
 		witness.Ouput[i] = res[i].String()
 	}
 
-	fmt.Printf("Expected hash: %v\n", res)
 	return &circuit, &witness
 
 }

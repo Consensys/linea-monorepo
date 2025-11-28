@@ -425,7 +425,6 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		cn := c.Spec.Coins.Data(coinName)
 		value := cn.SampleGnark(c.BLSFS, zkSeed)
 
-		// fmt.Printf("inserting coin %v\n", coinName)
 		c.Coins.InsertNew(coinName, value)
 	}
 }

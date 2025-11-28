@@ -209,7 +209,6 @@ Registers a new coin at a given rounds. Returns a [coin.Info] object.
 func (c *CompiledIOP) InsertCoin(round int, name coin.Name, type_ coin.Type, size ...int) coin.Info {
 	// Short-hand to access the compiled object
 	info := coin.NewInfo(name, type_, round, size...)
-	// fmt.Printf("Inserted coin %v \n", name)
 	c.Coins.AddToRound(round, name, info)
 	return info
 }

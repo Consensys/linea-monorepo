@@ -355,7 +355,6 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	for _, op := range options {
 		op(ctx)
 	}
-	// fmt.Printf("okok, Vortex compiler options applied\n")
 	// Preallocate all the merkle roots for all rounds
 	if ctx.IsBLS {
 		ctx.Items.GnarkMerkleRoots = make([][encoding.GnarkKoalabearNumElements]ifaces.Column, comp.NumRounds())
@@ -1022,17 +1021,11 @@ func (ctx *Ctx) commitPrecomputeds() {
 			colHashes []bls12377.Element
 		)
 		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(pols)
-		// var rootBLS bls12377.Element
-		// rootBLS = tree.Root
-		// fmt.Printf("Gnark precomputed Merkle root compiler: %v\n", rootBLS.String())
-
 		ctx.Items.Precomputeds.GnarkDhWithMerkle = colHashes
 		ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
 		ctx.Items.Precomputeds.GnarkTree = tree
 
 		roots := encoding.EncodeBLS12377ToKoalabear(tree.Root)
-
-		// fmt.Printf("Gnark precomputed Merkle root compiler (encoded): %v\n", vector.Prettify(roots[:]))
 
 		// And assign the 1-sized column to contain the root
 		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {

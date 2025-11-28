@@ -182,14 +182,11 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Ru
 		colID := ctx.NewQuery.Pols[i].GetColID()
 		evaluationMap[colID] = univParams.ExtYs[i]
 	}
-	fmt.Printf("x in cptEvaluationMapExt: %v\n", x.String())
 	for i, c := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
 		poly := c.GetColAssignment(run)
-		fmt.Printf("poly %v \n", poly.Pretty())
 
 		evaluationMap[colID] = smartvectors.EvaluateFextPolyLagrange(poly, x)
-		fmt.Printf("ys[%v]: %v\n", i, evaluationMap[colID])
 	}
 
 	return evaluationMap

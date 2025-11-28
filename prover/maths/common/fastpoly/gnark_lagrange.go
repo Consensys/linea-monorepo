@@ -308,17 +308,9 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]zk.WrappedVaria
 
 			tmp = *ext4.MulByFp(&innerProductTerms[k*maxSize/n], poly[k])
 			yUnscaled = *ext4.Add(&tmp, &yUnscaled)
-			if i == 0 {
-				api.Println("tmp:")
-				ext4.Println(tmp)
-				api.Println("yUnscaled:", k)
-				ext4.Println(yUnscaled)
-			}
+
 		}
-		if i == 0 {
-			api.Println("yUnscaled:")
-			ext4.Println(yUnscaled)
-		}
+
 		res[i] = *ext4.Mul(&yUnscaled, &scalingFactor)
 	}
 

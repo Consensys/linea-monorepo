@@ -77,7 +77,6 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 		for j := 0; j < 8; j++ {
 			b := fs.api.ToBinary(c[j])
 			res[i] = fs.api.FromBinary(b[:nbBits]...)
-			// fs.api.Println(res[i])
 			i++
 			fs.safeguardUpdate()
 			if i >= num {
