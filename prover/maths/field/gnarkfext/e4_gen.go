@@ -302,25 +302,17 @@ func (ext4 *Ext4) Exp(x *E4Gen, n *big.Int) *E4Gen {
 
 // TODO@yao: remove it after debugging and recover NativeApi --> nativeApi
 func (ext4 *Ext4) Println(a ...E4Gen) {
-	if ext4.ApiGen.Type() == zk.Native {
-		for i := 0; i < len(a); i++ {
-			ext4.ApiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.AsNative(), a[i].B0.A1.AsNative(), a[i].B1.A0.AsNative(), a[i].B1.A1.AsNative())
-		}
-	} else {
-
-		for i := 0; i < len(a); i++ {
-			if a[i].B0.A0.EVpointer == nil {
-				for j := 0; j < len(a[i].B0.A0.EV.Limbs); j++ {
-					ext4.ApiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.EV.Limbs[j], a[i].B0.A1.EV.Limbs[j], a[i].B1.A0.EV.Limbs[j], a[i].B1.A1.EV.Limbs[j])
-				}
-
-			} else {
-				for j := 0; j < len(a[i].B0.A0.EVpointer.Limbs); j++ {
-					ext4.ApiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.EVpointer.Limbs[j], a[i].B0.A1.EVpointer.Limbs[j], a[i].B1.A0.EVpointer.Limbs[j], a[i].B1.A1.EVpointer.Limbs[j])
-				}
-			}
-		}
+	for i := 0; i < len(a); i++ {
+		ext4.mixedAPI.Println(a[i].B0.A0)
+		ext4.mixedAPI.NativeApi.Println("+")
+		ext4.mixedAPI.Println(a[i].B0.A1)
+		ext4.mixedAPI.NativeApi.Println("*v+")
+		ext4.mixedAPI.Println(a[i].B1.A0)
+		ext4.mixedAPI.NativeApi.Println("*v**2+")
+		ext4.mixedAPI.Println(a[i].B1.A1)
+		ext4.mixedAPI.NativeApi.Println("*v**3")
 	}
+
 }
 
 func (ext4 *Ext4) NewHint(f solver.Hint, nbOutputs int, inputs ...E4Gen) ([]E4Gen, error) {
