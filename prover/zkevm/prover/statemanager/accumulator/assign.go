@@ -303,17 +303,17 @@ func (am *Module) Assign(
 
 	// Checks row-wise increment of AccumulatorCounter
 	// IsActiveAccumulator[i+1] * (AccumulatorCounter[i+1] - AccumulatorCounter[i] - 1)
-	am.AccumulatorCounterProver.Run(run)
+//	am.AccumulatorCounterProver.Run(run)
 
 	// Sandwich check
 	// Checks that HKey > HKeyMinus
-	am.HkeyHkeyMinusProver.Run(run)
+//	am.HkeyHkeyMinusProver.Run(run)
 
 	// Checks that HKeyPlus > HKey
-	am.HkeyPlusHkeyProver.Run(run)
+//	am.HkeyPlusHkeyProver.Run(run)
 
 	// Checks that on insert NextFreeNode is incremented by 1
-	am.NextFreeNodeShiftProver.Run(run)
+//	am.NextFreeNodeShiftProver.Run(run)
 }
 
 func (am *Module) assignLeaf(

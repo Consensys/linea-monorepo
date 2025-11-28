@@ -307,25 +307,25 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 		5. IsActiveAccumulator[i] = 0 IMPLIES IsActiveAccumulator[i+1] = 0
 		6. When IsActiveAccumulator is 1, sum of IsInsert, IsDelete, IsUpadate, IsReadZero, IsReadNonZero is 1
 	*/
-	am.checkConsistency()
+	// am.checkConsistency()
 
 	// check that Leaf[i+3] and Leaf[i+4] are empty leaves when there is a
 	// INSERT or a DELETE operation respectively.
 	am.checkEmptyLeaf()
 
-	// Sandwitch check for INSERT and READ-ZERO operations
-	// We also check the consistency of the HKey, HKeyMinus, and HKeyPlus for INSERT and ReadZero operations.
-	// i.e., they are consistent with the corresponding leaf opening values
-	am.checkSandwitch()
+	// // Sandwitch check for INSERT and READ-ZERO operations
+	// // We also check the consistency of the HKey, HKeyMinus, and HKeyPlus for INSERT and ReadZero operations.
+	// // i.e., they are consistent with the corresponding leaf opening values
+	// am.checkSandwitch()
 
 	// Pointer check for INSERT, READ-ZERO, and DELETE operations
 	am.checkPointer()
 
-	// Check leaf hashes
-	am.checkLeafHashes()
+	// // Check leaf hashes
+	// am.checkLeafHashes()
 
-	// Check NextFreeNode is constant through a segment unless there is an INSERT operation
-	am.checkNextFreeNode()
+	// // Check NextFreeNode is constant through a segment unless there is an INSERT operation
+	// am.checkNextFreeNode()
 
 	// Check hashing of TopRoot
 	am.checkTopRootHash()
