@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -79,11 +80,6 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
 			tmp.Sub(&pr, &tmp) // Pk(r) - y_{ik}
-			if k == 0 {
-				fmt.Printf("pr sub (%v,%v): %v\n", i, k, pr.String())
-
-			}
-
 			tmp.Mul(&tmp, &zetasOfR[i])
 			tmp.Mul(&tmp, &rhoK)
 			res.Add(&res, &tmp)
@@ -97,8 +93,7 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 		return fmt.Errorf("(verifier of %v) : Q(r) is incorrect (%v, expected %v)",
 			va.NewQuery.QueryID, qr.String(), res.String())
 	}
-	fmt.Printf("qr: %v\n", qr.String())
-	fmt.Printf("res: %v\n", res.String())
+
 	return nil
 }
 
@@ -109,7 +104,7 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		// The last value of the slice is the value of Q(r) where q
 		// is the quotient polynomial.
 		qr       = queryParams.ExtYs[len(va.NewQuery.Pols)-1]
-		polysAtR = va.cptEvaluationMapGnark(api, run)
+		polysAtR = va.cptEvaluationMapGnarkExt(api, run)
 		r        = queryParams.ExtX
 		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
 
@@ -159,11 +154,6 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
 			tmp = *e4Api.Sub(&pr, &tmp)
-			if k == 0 {
-
-				api.Println("pr:", i, k)
-				e4Api.Println(pr)
-			}
 			tmp = *e4Api.Mul(&tmp, &zetasOfR[i])
 			tmp = *e4Api.Mul(&tmp, &rhoK)
 			res = *e4Api.Add(&res, &tmp)
@@ -173,9 +163,6 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		// rhoK.Mul(api, rhoK, rho)
 		rhoK = *e4Api.Mul(&rhoK, &rho)
 	}
-
-	api.Println("res:")
-	e4Api.Println(res)
 
 	e4Api.AssertIsEqual(&res, &qr)
 }
@@ -217,7 +204,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 		x             = univParams.ExtX
 		polys         = make([][]zk.WrappedVariable, 0)
 	)
-	ext4, _ := gnarkfext.NewExt4(api)
+	// ext4, _ := gnarkfext.NewExt4(api)
 
 	for i := range ctx.NewQuery.Pols {
 		colID := ctx.NewQuery.Pols[i].GetColID()
@@ -242,8 +229,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 		polys = append(polys, poly)
 
 	}
-	api.Println("poly:")
-	ext4.ApiGen.Println(polys[0]...)
+
 	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, x)
 	for i := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
@@ -253,15 +239,15 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 	return evaluationMap
 }
 
-/*TODO@yao: fix the gnarkfext version of this function
+// TODO@yao: fix the gnarkfext version of this function
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api gnarkfext.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.Variable {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.E4Gen {
 
 	var (
-		evaluationMap = make(map[ifaces.ColID]gnarkfext.Variable)
+		evaluationMap = make(map[ifaces.ColID]gnarkfext.E4Gen)
 		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
 		x             = univParams.ExtX
-		polys         = make([][]gnarkfext.Variable, 0)
+		polys         = make([][]gnarkfext.E4Gen, 0)
 	)
 
 	for i := range ctx.NewQuery.Pols {
@@ -274,7 +260,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api gnar
 		polys = append(polys, poly)
 	}
 
-	ys := fastpoly.BatchInterpolateGnarkExt(api, polys, x)
+	ys := fastpolyext.BatchEvaluateLagrangeGnark(api, polys, x)
 
 	for i := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
@@ -282,4 +268,4 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api gnar
 	}
 
 	return evaluationMap
-}*/
+}
