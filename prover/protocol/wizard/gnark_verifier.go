@@ -18,7 +18,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/sirupsen/logrus"
 )
 
 // GnarkRuntime is the interface implemented by the struct [VerifierCircuit]
@@ -267,7 +266,7 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 
 	// Assigns the messages. Note that the iteration order is made
 	// consistent with `AllocateWizardCircuit`
-	for i, colName := range comp.Columns.AllKeys() {
+	for _, colName := range comp.Columns.AllKeys() {
 
 		col := comp.Columns.GetHandle(colName)
 
@@ -288,25 +287,23 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 			continue
 		}
 
-		logrus.Tracef("VERIFIER CIRCUIT : registering column %v (as %v) in circuit (#%v)", colName, status.String(), i)
-		msgDataIFace := proof.Messages.MustGet(colName)
-		msgData := msgDataIFace
-		// Perform the conversion to zk.WrappedVariable, element by element
-		if _, err := msgData.GetBase(0); err == nil {
-			// the assignment consists of base elements
-			assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
+		// Allocates the column in the circuit and indexes it
+		isBase := comp.Columns.GetHandle(colName).IsBase()
+		assignedSV := proof.Messages.MustGet(colName)
+		if isBase {
+			// the column is defined as a base field column so we assert that
+			// the assignment is a base field vector as well.
+			assignedMsg := smartvectors.IntoGnarkAssignment(assignedSV)
 			res.ColumnsIDs.InsertNew(colName, len(res.Columns))
-
 			res.Columns = append(res.Columns, assignedMsg)
 		} else {
 			// the assignment consists of extension elements
-			assignedMsg := smartvectors.IntoGnarkAssignmentExt(msgData)
+			assignedMsg := smartvectors.IntoGnarkAssignmentExt(assignedSV)
 			res.ColumnsExtIDs.InsertNew(colName, len(res.ColumnsExt))
-
 			res.ColumnsExt = append(res.ColumnsExt, assignedMsg)
 		}
-
 	}
+
 	// Assigns the query parameters. Note that the iteration order is
 	// made deterministic to match the iteration order of the
 	for _, qName := range comp.QueriesParams.AllKeys() {
@@ -348,6 +345,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	// It will instead use a standard MiMC hasher that does not use
 	// GKR instead.
 	c.BLSFS = fiatshamir_bls12377.NewGnarkFS(api)
+	c.FS = fiatshamir.NewGnarkFS(api)
 
 	var zkWV [8]zk.WrappedVariable
 	for i := 0; i < 8; i++ {
