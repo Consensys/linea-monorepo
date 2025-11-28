@@ -3,7 +3,9 @@ package testtools
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -70,21 +72,20 @@ func RunTestShouldPassWithGnark(t *testing.T, tc Testcase, suite []func(comp *wi
 			tc.Define(b.CompiledIOP)
 		}
 
-		_ = wizard.Compile(define, suite...)
-		// wizard.Compile(define, suite...)
-		// proof   = wizard.Prove(comp, tc.Assign)
-		// circuit = &verifierCircuit{
-		// 	C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
-		// }
-		// assignment = &verifierCircuit{
-		// 	C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
-		// }
-		// solveErr = test.IsSolved(circuit, assignment, ecc.BLS12_377.ScalarField())
+		comp    = wizard.Compile(define, suite...)
+		proof   = wizard.Prove(comp, tc.Assign)
+		circuit = &verifierCircuit{
+			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
+		}
+		assignment = &verifierCircuit{
+			C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+		}
+		solveErr = test.IsSolved(circuit, assignment, ecc.BLS12_377.ScalarField())
 	)
 
-	// if solveErr != nil {
-	// 	t.Fatal(solveErr)
-	// }
+	if solveErr != nil {
+		t.Fatal(solveErr)
+	}
 }
 
 func runTestShouldPass(t *testing.T, comp *wizard.CompiledIOP, prover wizard.MainProverStep) {
