@@ -5,7 +5,16 @@ import { L2Config, LocalL2Config } from "../../config/config-schema";
 import { createL2WriteContractsExtension } from "./extensions/l2-write-contracts";
 import { createL2ReadContractsExtension } from "./extensions/l2-read-contracts";
 
-export enum L2RpcEndpointType {
+export type L2RpcEndpointType =
+  | "default"
+  | "sequencer"
+  | "besuNode"
+  | "besuFollower"
+  | "shomei"
+  | "shomeiFrontend"
+  | "transactionExclusion";
+
+export enum L2RpcEndpoint {
   Default = "default",
   Sequencer = "sequencer",
   BesuNode = "besuNode",
@@ -26,7 +35,8 @@ export class L2Client {
   }
 
   public publicClient(params?: { type?: L2RpcEndpointType }) {
-    const { type = L2RpcEndpointType.Default } = params ?? {};
+    const { type = L2RpcEndpoint.Default } = params ?? {};
+
     const url = this.resolveRpcUrl(type);
     return this.factory
       .getPublic({ chainId: this.config.chainId, rpcUrl: url })
@@ -34,7 +44,7 @@ export class L2Client {
   }
 
   public walletClient(params?: { type?: L2RpcEndpointType; account: PrivateKeyAccount | undefined }) {
-    const { type = L2RpcEndpointType.Default, account } = params ?? {};
+    const { type = L2RpcEndpoint.Default, account } = params ?? {};
     const url = this.resolveRpcUrl(type);
     return this.factory
       .getWallet({ chainId: this.config.chainId, rpcUrl: url, account })
@@ -42,7 +52,7 @@ export class L2Client {
   }
 
   private resolveRpcUrl(type: L2RpcEndpointType): URL {
-    if (type === L2RpcEndpointType.Default) {
+    if (type === L2RpcEndpoint.Default) {
       return this.config.rpcUrl;
     }
 
@@ -51,30 +61,30 @@ export class L2Client {
     }
 
     switch (type) {
-      case L2RpcEndpointType.Sequencer:
+      case L2RpcEndpoint.Sequencer:
         return this.local.sequencerEndpoint;
 
-      case L2RpcEndpointType.BesuNode:
+      case L2RpcEndpoint.BesuNode:
         return this.local.besuNodeRpcUrl;
 
-      case L2RpcEndpointType.BesuFollower:
+      case L2RpcEndpoint.BesuFollower:
         if (!this.local.besuFollowerNodeRpcUrl) {
           throw new Error("besuFollowerNodeRpcUrl not configured.");
         }
         return this.local.besuFollowerNodeRpcUrl;
-      case L2RpcEndpointType.Shomei:
+      case L2RpcEndpoint.Shomei:
         if (!this.local.shomeiEndpoint) {
           throw new Error("shomeiEndpoint not configured.");
         }
         return this.local.shomeiEndpoint;
 
-      case L2RpcEndpointType.ShomeiFrontend:
+      case L2RpcEndpoint.ShomeiFrontend:
         if (!this.local.shomeiFrontendEndpoint) {
           throw new Error("shomeiFrontendEndpoint not configured.");
         }
         return this.local.shomeiFrontendEndpoint;
 
-      case L2RpcEndpointType.TransactionExclusion:
+      case L2RpcEndpoint.TransactionExclusion:
         if (!this.local.transactionExclusionEndpoint) {
           throw new Error("transactionExclusionEndpoint not configured.");
         }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
-import { etherToWei, getTransactionExclusionStatusV1, getTransactionHash, wait } from "./common/utils";
+import { etherToWei, getTransactionHash, wait } from "./common/utils";
 import { config } from "./config/tests-config/setup";
-import { L2RpcEndpointType } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { BaseError, encodeFunctionData } from "viem";
 import { TestContractAbi } from "./generated";
 
@@ -11,16 +11,16 @@ describe("Transaction exclusion test suite", () => {
   it.concurrent(
     "Should get the status of the rejected transaction reported from Besu RPC node",
     async () => {
-      const transactionExclusionClient = config.l2PublicClient({ type: L2RpcEndpointType.TransactionExclusion });
+      const transactionExclusionClient = config.l2PublicClient({ type: L2RpcEndpoint.TransactionExclusion });
 
       const l2Account = await l2AccountManager.generateAccount();
 
-      const l2WalletClient = config.l2WalletClient({ type: L2RpcEndpointType.BesuNode, account: l2Account });
-      const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpointType.BesuNode });
+      const l2WalletClient = config.l2WalletClient({ type: L2RpcEndpoint.BesuNode, account: l2Account });
+      const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
 
       const txRequest = {
         account: l2Account,
-        to: config.l2PublicClient().contracts.testContract.address,
+        to: config.l2PublicClient().getTestContract().address,
         data: encodeFunctionData({
           abi: TestContractAbi,
           functionName: "testAddmod",
@@ -50,7 +50,7 @@ describe("Transaction exclusion test suite", () => {
       let getResponse;
       do {
         await wait(1_000);
-        getResponse = await getTransactionExclusionStatusV1(transactionExclusionClient, { txHash: rejectedTxHash! });
+        getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1({ txHash: rejectedTxHash! });
       } while (!getResponse);
 
       logger.debug(`Transaction exclusion status received. response=${JSON.stringify(getResponse)}`);
@@ -63,19 +63,18 @@ describe("Transaction exclusion test suite", () => {
   );
 
   it.skip("Should get the status of the rejected transaction reported from Besu SEQUENCER node", async () => {
-    const transactionExclusionClient = config.l2PublicClient({ type: L2RpcEndpointType.TransactionExclusion });
+    const transactionExclusionClient = config.l2PublicClient({ type: L2RpcEndpoint.TransactionExclusion });
     const l2Account = await l2AccountManager.generateAccount();
-    const testContract = config.l2WalletClient({ type: L2RpcEndpointType.Sequencer, account: l2Account }).contracts
-      .testContract;
+    const testContract = config.l2WalletClient({ type: L2RpcEndpoint.Sequencer, account: l2Account }).getTestContract();
 
     // This shall be rejected by sequencer due to traces module limit overflow
-    const rejectedTxHash = await testContract.testAddmod([13000n, 31n]);
+    const rejectedTxHash = await testContract.write.testAddmod([13000n, 31n]);
     logger.debug(`Transaction rejected as expected (SEQUENCER). transactionHash=${rejectedTxHash}`);
 
     let getResponse;
     do {
       await wait(1_000);
-      getResponse = await getTransactionExclusionStatusV1(transactionExclusionClient, { txHash: rejectedTxHash! });
+      getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1({ txHash: rejectedTxHash! });
     } while (!getResponse);
 
     logger.debug(`Transaction exclusion status received. response=${JSON.stringify(getResponse)}`);

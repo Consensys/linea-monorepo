@@ -156,7 +156,7 @@ describe("Coordinator restart test suite", () => {
               fee: messageFee,
               calldata: "0x",
             },
-            contractAddress: config.l1PublicClient().contracts.rollup.address,
+            contractAddress: config.l1PublicClient().getLineaRollup().address,
             value: messageValue,
             nonce: l1MessageSenderNonce,
             maxPriorityFeePerGas,
@@ -202,7 +202,7 @@ describe("Coordinator restart test suite", () => {
               fee: messageFee,
               calldata: "0x",
             },
-            contractAddress: config.l1PublicClient().contracts.rollup.address,
+            contractAddress: config.l1PublicClient().getLineaRollup().address,
             value: messageValue,
             nonce: l1MessageSenderNonce,
             maxPriorityFeePerGas: l1Fees.maxPriorityFeePerGas,
@@ -232,12 +232,12 @@ describe("Coordinator restart test suite", () => {
         },
       });
 
-      const lineaRollup = config.l1PublicClient().contracts.rollup;
-      const l2MessageService = config.l2PublicClient().contracts.messageService;
+      const lineaRollup = config.l1PublicClient().getLineaRollup();
+      const l2MessageService = config.l2PublicClient().getL2MessageServiceContract();
 
       const [lastNewMessageRollingHashAfterRestart, lastAnchoredL1MessageNumberAfterRestart] = await Promise.all([
-        lineaRollup.rollingHashes([rollingHashUpdatedEventAfterRestart.args.messageNumber!]),
-        l2MessageService.lastAnchoredL1MessageNumber(),
+        lineaRollup.read.rollingHashes([rollingHashUpdatedEventAfterRestart.args.messageNumber!]),
+        l2MessageService.read.lastAnchoredL1MessageNumber(),
       ]);
 
       expect(lastNewMessageRollingHashAfterRestart).toEqual(rollingHashUpdatedEventAfterRestart.args.rollingHash);

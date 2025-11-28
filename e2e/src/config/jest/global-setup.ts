@@ -1,7 +1,6 @@
 /* eslint-disable no-var */
 import { deployContract, linkBytecode } from "../../common/deployments";
 import { estimateLineaGas, etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
-import { EMPTY_CONTRACT_CODE } from "../../common/constants";
 import { createTestLogger } from "../logger";
 import { encodeDeployData, parseGwei } from "viem";
 import {
@@ -18,17 +17,17 @@ import {
   TestContractAbiBytecode,
 } from "../../generated";
 import { config } from "../tests-config/setup";
-import { L2RpcEndpointType } from "../tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "../tests-config/setup/clients/l2-client";
 
 const logger = createTestLogger();
 
 export default async (): Promise<void> => {
   const dummyContractCode = await config
     .l1PublicClient()
-    .getCode({ address: config.l1PublicClient().contracts.dummy.address });
+    .getCode({ address: config.l1PublicClient().getDummyContract().address });
 
   // If this is empty, we have not deployed and prerequisites or configured token bridges.
-  if (dummyContractCode === EMPTY_CONTRACT_CODE) {
+  if (!dummyContractCode) {
     logger.info("Configuring once-off prerequisite contracts");
     await configureOnceOffPrerequisities();
   }
@@ -52,11 +51,11 @@ async function configureOnceOffPrerequisities() {
 
   const l1PublicClient = config.l1PublicClient();
   const l1WalletClient = config.l1WalletClient({ account });
-  const l2SequencerPublicClient = config.l2PublicClient({ type: L2RpcEndpointType.Sequencer });
-  const l2SequencerWalletClient = config.l2WalletClient({ type: L2RpcEndpointType.Sequencer, account: l2Account });
+  const l2SequencerPublicClient = config.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
+  const l2SequencerWalletClient = config.l2WalletClient({ type: L2RpcEndpoint.Sequencer, account: l2Account });
   const livenessSignerAccount = config.getL2AccountManager().whaleAccount(18);
 
-  const lineaRollup = l1WalletClient.contracts.rollup;
+  const lineaRollup = l1WalletClient.getLineaRollup();
 
   const [l1AccountNonce, l2AccountNonce] = await Promise.all([
     l1PublicClient.getTransactionCount({ address: account.address }),
@@ -67,7 +66,7 @@ async function configureOnceOffPrerequisities() {
   const to = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
   const calldata = "0x";
 
-  const l2BesuNodePublicClient = config.l2PublicClient({ type: L2RpcEndpointType.BesuNode })!;
+  const l2BesuNodePublicClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode })!;
   const [
     { maxPriorityFeePerGas, maxFeePerGas },
     { maxPriorityFeePerGas: maxPriorityFeePerGasTestContract, maxFeePerGas: maxFeePerGasTestContract },
@@ -164,7 +163,7 @@ async function configureOnceOffPrerequisities() {
       maxFeePerGas: maxFeePerGasLineaSequencerUptimeFeed,
     }),
     // Send ETH to the LineaRollup contract
-    await lineaRollup.sendMessage([to, fee, calldata], {
+    await lineaRollup.write.sendMessage([to, fee, calldata], {
       value: etherToWei("500"),
       gasPrice: parseGwei("300"),
       nonce: l1AccountNonce + 1,

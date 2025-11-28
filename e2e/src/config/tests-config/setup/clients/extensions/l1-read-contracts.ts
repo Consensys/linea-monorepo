@@ -1,51 +1,36 @@
-import { getContract } from "viem";
-import { DummyContractAbi, TestERC20Abi, TokenBridgeV1_1Abi, LineaRollupV6Abi } from "../../../../../generated";
+import { Account, Chain, Client, Transport } from "viem";
 import { L1Config } from "../../../config/config-schema";
-import { ClientFactory } from "../client-factory";
+import {
+  getDummyContract,
+  getLineaRollupContract,
+  getLineaRollupProxyAdminContract,
+  getTestERC20Contract,
+  getTokenBridgeContract,
+} from "../../contracts/contracts";
+
+type PublicActionsL1<
+  transport extends Transport,
+  chain extends Chain | undefined,
+  account extends Account | undefined,
+> = {
+  getLineaRollup: () => ReturnType<typeof getLineaRollupContract<transport, chain, account>>;
+  getLineaRollupProxyAdmin: () => ReturnType<typeof getLineaRollupProxyAdminContract<transport, chain, account>>;
+  getTestERC20Contract: () => ReturnType<typeof getTestERC20Contract<transport, chain, account>>;
+  getTokenBridgeContract: () => ReturnType<typeof getTokenBridgeContract<transport, chain, account>>;
+  getDummyContract: () => ReturnType<typeof getDummyContract<transport, chain, account>>;
+};
 
 export function createL1ReadContractsExtension(cfg: L1Config) {
-  return (client: ReturnType<ClientFactory["getPublic"]>) => ({
-    contracts: {
-      rollup: {
-        ...getContract({
-          abi: LineaRollupV6Abi,
-          address: cfg.lineaRollupAddress,
-          client,
-        }).read,
-        address: cfg.lineaRollupAddress,
-      },
-      proxyAdmin: {
-        ...getContract({
-          abi: TestERC20Abi,
-          address: cfg.lineaRollupProxyAdminAddress,
-          client,
-        }).read,
-        address: cfg.lineaRollupProxyAdminAddress,
-      },
-      erc20: {
-        ...getContract({
-          abi: TestERC20Abi,
-          address: cfg.l1TokenAddress,
-          client,
-        }).read,
-        address: cfg.l1TokenAddress,
-      },
-      tokenBridge: {
-        ...getContract({
-          abi: TokenBridgeV1_1Abi,
-          address: cfg.tokenBridgeAddress,
-          client,
-        }).read,
-        address: cfg.tokenBridgeAddress,
-      },
-      dummy: {
-        ...getContract({
-          abi: DummyContractAbi,
-          address: cfg.dummyContractAddress,
-          client,
-        }).read,
-        address: cfg.dummyContractAddress,
-      },
-    },
+  return <
+    chain extends Chain | undefined = Chain | undefined,
+    account extends Account | undefined = Account | undefined,
+  >(
+    client: Client<Transport, chain, account>,
+  ): PublicActionsL1<Transport, chain, account> => ({
+    getLineaRollup: () => getLineaRollupContract(client, cfg.lineaRollupAddress),
+    getLineaRollupProxyAdmin: () => getLineaRollupProxyAdminContract(client, cfg.lineaRollupProxyAdminAddress),
+    getTestERC20Contract: () => getTestERC20Contract(client, cfg.l1TokenAddress),
+    getTokenBridgeContract: () => getTokenBridgeContract(client, cfg.tokenBridgeAddress),
+    getDummyContract: () => getDummyContract(client, cfg.dummyContractAddress),
   });
 }

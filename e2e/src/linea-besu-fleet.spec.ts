@@ -2,23 +2,23 @@ import { describe, expect, it } from "@jest/globals";
 import { encodeFunctionData, toHex } from "viem";
 import { randomBytes } from "crypto";
 import { config } from "./config/tests-config/setup";
-import { L2RpcEndpointType } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { awaitUntil, estimateLineaGas } from "./common/utils";
 import { DummyContractAbi } from "./generated";
 
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Linea besu fleet test suite", () => {
-  const lineaRollupV6 = config.l1PublicClient().contracts.rollup;
-  const gasLeaderClient = config.l2PublicClient({ type: L2RpcEndpointType.BesuNode });
-  const gasFollowerClient = config.l2PublicClient({ type: L2RpcEndpointType.BesuFollower });
+  const lineaRollupV6 = config.l1PublicClient().getLineaRollup();
+  const gasLeaderClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+  const gasFollowerClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuFollower });
 
   it.concurrent("Responses from leader and follower should match", async () => {
     // Wait until the finalized L2 block number on L1 is greater than one
     await awaitUntil(
       async () => {
         try {
-          return await lineaRollupV6.currentL2BlockNumber({ blockTag: "finalized" });
+          return await lineaRollupV6.read.currentL2BlockNumber({ blockTag: "finalized" });
         } catch (err) {
           if (!(err as Error).message.includes("could not decode result data")) {
             throw err;
@@ -32,7 +32,7 @@ describe("Linea besu fleet test suite", () => {
     );
 
     const account = await l2AccountManager.generateAccount();
-    const dummyContract = config.l2PublicClient().contracts.dummy;
+    const dummyContract = config.l2PublicClient().getDummyContract();
     const randomPayload = toHex(randomBytes(1000).toString("hex"));
 
     // linea_estimateGas responses from leader and follower should match

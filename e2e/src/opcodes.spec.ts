@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { L2RpcEndpointType } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { config } from "./config/tests-config/setup";
 import { encodeFunctionCall, estimateLineaGas } from "./common/utils";
 import { OpcodeTesterAbi } from "./generated";
@@ -7,11 +7,11 @@ import { OpcodeTesterAbi } from "./generated";
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Opcodes test suite", () => {
-  const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpointType.BesuNode });
+  const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
 
   it.concurrent("Should be able to estimate the opcode execution gas using linea_estimateGas endpoint", async () => {
     const account = await l2AccountManager.generateAccount();
-    const opcodeTester = config.l2PublicClient().contracts.opcodeTester;
+    const opcodeTester = config.l2PublicClient().getOpcodeTesterContract();
 
     const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await estimateLineaGas(l2PublicClient, {
       account,
@@ -32,14 +32,14 @@ describe("Opcodes test suite", () => {
 
   it.concurrent("Should be able to execute all opcodes", async () => {
     const account = await l2AccountManager.generateAccount();
-    const opcodeTesterRead = config.l2PublicClient().contracts.opcodeTester;
-    const opcodeTesterWrite = config.l2WalletClient({ account }).contracts.opcodeTester;
+    const opcodeTesterRead = config.l2PublicClient().getOpcodeTesterContract();
+    const opcodeTesterWrite = config.l2WalletClient({ account }).getOpcodeTesterContract();
 
-    const valueBeforeExecution = await opcodeTesterRead.rollingBlockDetailComputations();
-    const txHash = await opcodeTesterWrite.executeAllOpcodes({ gas: 5_000_000n });
+    const valueBeforeExecution = await opcodeTesterRead.read.rollingBlockDetailComputations();
+    const txHash = await opcodeTesterWrite.write.executeAllOpcodes({ gas: 5_000_000n });
     await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 20_000 });
 
-    const valueAfterExecution = await opcodeTesterRead.rollingBlockDetailComputations();
+    const valueAfterExecution = await opcodeTesterRead.read.rollingBlockDetailComputations();
 
     logger.debug(`Value before execution: ${valueBeforeExecution}, value after execution: ${valueAfterExecution}`);
     expect(valueBeforeExecution).not.toEqual(valueAfterExecution);

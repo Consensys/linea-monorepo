@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config/setup";
-import { L2RpcEndpointType } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { awaitUntil, execDockerCommand, wait } from "./common/utils";
 import { LineaSequencerUptimeFeedAbi } from "./generated";
 
@@ -8,15 +8,15 @@ describe("Liveness test suite", () => {
   it.concurrent(
     "Should succeed to send liveness transactions after sequencer restarted",
     async () => {
-      const livenessContract = config.l2PublicClient().contracts.lineaSequencerUptimeFeed;
+      const livenessContract = config.l2PublicClient().getLineaSequencerUptimeFeedContract();
 
-      const latestAnswer = await livenessContract.latestAnswer();
+      const latestAnswer = await livenessContract.read.latestAnswer();
       logger.debug(`Latest Status is ${latestAnswer == 1n ? "Down" : "Up"}`);
 
       let lastBlockTimestamp: bigint = 0n;
       let lastBlockNumber: bigint = 0n;
-      const l2BesuNodeClient = config.l2PublicClient({ type: L2RpcEndpointType.BesuNode });
-      const sequencerClient = config.l2PublicClient({ type: L2RpcEndpointType.Sequencer });
+      const l2BesuNodeClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+      const sequencerClient = config.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
 
       try {
         await execDockerCommand("stop", "sequencer");

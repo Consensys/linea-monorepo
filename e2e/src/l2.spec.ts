@@ -3,23 +3,23 @@ import { encodeFunctionData, serializeTransaction, toHex } from "viem";
 import { randomBytes } from "crypto";
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
 import { config } from "./config/tests-config/setup";
-import { L2RpcEndpointType } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { DummyContractAbi } from "./generated";
-import { estimateLineaGas, etherToWei, getZkEVMBlockNumber } from "./common/utils";
+import { estimateLineaGas, etherToWei } from "./common/utils";
 
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Layer 2 test suite", () => {
-  const lineaEstimateGasClient = config.L2.client.publicClient({ type: L2RpcEndpointType.BesuNode });
+  const lineaEstimateGasClient = config.L2.client.publicClient({ type: L2RpcEndpoint.BesuNode });
 
   it.concurrent("Should revert if transaction data size is above the limit", async () => {
     const account = await l2AccountManager.generateAccount();
-    const dummyContract = config.l2WalletClient({ account }).contracts.dummy;
+    const dummyContract = config.l2WalletClient({ account }).getDummyContract();
 
     const oversizedData = toHex(randomBytes(TRANSACTION_CALLDATA_LIMIT).toString("hex"));
     logger.debug(`Generated oversized transaction data. dataLength=${oversizedData.length}`);
 
-    await expect(dummyContract.setPayload([oversizedData])).rejects.toThrow(
+    await expect(dummyContract.write.setPayload([oversizedData])).rejects.toThrow(
       "Calldata of transaction is greater than the allowed max of 30000",
     );
     logger.debug("Transaction correctly reverted due to oversized data.");
@@ -27,7 +27,7 @@ describe("Layer 2 test suite", () => {
 
   it.concurrent("Should succeed if transaction data size is below the limit", async () => {
     const account = await l2AccountManager.generateAccount();
-    const dummyContract = config.l2WalletClient({ account }).contracts.dummy;
+    const dummyContract = config.l2WalletClient({ account }).getDummyContract();
 
     const { maxPriorityFeePerGas, maxFeePerGas } = await estimateLineaGas(lineaEstimateGasClient, {
       account,
@@ -40,7 +40,7 @@ describe("Layer 2 test suite", () => {
     });
     logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
-    const txHash = await dummyContract.setPayload([toHex(randomBytes(1000).toString("hex"))], {
+    const txHash = await dummyContract.write.setPayload([toHex(randomBytes(1000).toString("hex"))], {
       maxPriorityFeePerGas: maxPriorityFeePerGas,
       maxFeePerGas: maxFeePerGas,
     });
@@ -174,8 +174,8 @@ describe("Layer 2 test suite", () => {
       // Skip this test for dev and uat environments
       return;
     }
-    const shomeiClient = config.l2PublicClient({ type: L2RpcEndpointType.Shomei });
-    const shomeiFrontendClient = config.l2PublicClient({ type: L2RpcEndpointType.ShomeiFrontend });
+    const shomeiClient = config.l2PublicClient({ type: L2RpcEndpoint.Shomei });
+    const shomeiFrontendClient = config.l2PublicClient({ type: L2RpcEndpoint.ShomeiFrontend });
 
     const l2PublicClient = config.l2PublicClient();
     const l2WalletClient = config.l2WalletClient({ account });
@@ -200,8 +200,8 @@ describe("Layer 2 test suite", () => {
       logger.debug(`EIP1559 transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
       const [shomeiBlock, shomeiFrontendBlock] = await Promise.all([
-        getZkEVMBlockNumber(shomeiClient),
-        getZkEVMBlockNumber(shomeiFrontendClient),
+        shomeiClient.getZkEVMBlockNumber(),
+        shomeiFrontendClient.getZkEVMBlockNumber(),
       ]);
       logger.debug(`shomeiBlock=${shomeiBlock}, shomeiFrontendBlock=${shomeiFrontendBlock}`);
 

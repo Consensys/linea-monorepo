@@ -11,7 +11,7 @@ import { DummyContractAbi, L2MessageServiceV1Abi, LineaRollupV6Abi } from "./gen
 import { PrivateKeyAccount, toHex } from "viem";
 import { randomBytes } from "crypto";
 import { config } from "./config/tests-config/setup";
-import { L2RpcEndpointType } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 
 async function sendL1ToL2Message(
   logger: Logger,
@@ -27,8 +27,8 @@ async function sendL1ToL2Message(
     withCalldata: boolean;
   },
 ) {
-  const dummyContract = config.l2WalletClient({ account: l2Account }).contracts.dummy;
-  const lineaRollup = config.l1WalletClient({ account: l1Account }).contracts.rollup;
+  const dummyContract = config.l2WalletClient({ account: l2Account }).getDummyContract();
+  const lineaRollup = config.l1WalletClient({ account: l1Account }).getLineaRollup();
 
   const calldata = withCalldata
     ? encodeFunctionCall({
@@ -44,7 +44,7 @@ async function sendL1ToL2Message(
 
   logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
-  const txHash = await lineaRollup.sendMessage([destinationAddress, fee, calldata], {
+  const txHash = await lineaRollup.write.sendMessage([destinationAddress, fee, calldata], {
     value: fee,
     maxPriorityFeePerGas,
     maxFeePerGas,
@@ -74,9 +74,9 @@ async function sendL2ToL1Message(
     withCalldata: boolean;
   },
 ) {
-  const dummyContract = config.l1WalletClient({ account: l1Account }).contracts.dummy;
-  const l2MessageService = config.l2WalletClient({ account: l2Account }).contracts.messageService;
-  const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpointType.BesuNode });
+  const dummyContract = config.l1WalletClient({ account: l1Account }).getDummyContract();
+  const l2MessageService = config.l2WalletClient({ account: l2Account }).getL2MessageServiceContract();
+  const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
 
   const calldata = withCalldata
     ? encodeFunctionCall({
@@ -100,7 +100,7 @@ async function sendL2ToL1Message(
   });
   logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
-  const txHash = await l2MessageService.sendMessage([destinationAddress, fee, calldata], {
+  const txHash = await l2MessageService.write.sendMessage([destinationAddress, fee, calldata], {
     value: fee,
     maxPriorityFeePerGas,
     maxFeePerGas,
