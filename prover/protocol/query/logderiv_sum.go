@@ -200,7 +200,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 	if noNumerator && noDenominator {
 		elem := field.NewElement(uint64(size))
-		return fext.NewESHashFromBase(elem), nil
+		return fext.NewGenFieldFromBase(elem), nil
 	}
 
 	if !noNumerator {
@@ -248,7 +248,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 				return fext.GenericFieldElem{}, errors.New("denominator is zero")
 			}
 
-			elemDenominatorWindow := fext.NewESHashFromExt(denominatorWindow[i])
+			elemDenominatorWindow := fext.NewGenFieldFromExt(denominatorWindow[i])
 			res.Add(&elemDenominatorWindow)
 		}
 
@@ -267,7 +267,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 			)
 
 			nbPaddingAsField.SetInt64(int64(nbPadding))
-			genericNbPaddingAsField := fext.NewESHashFromBase(nbPaddingAsField)
+			genericNbPaddingAsField := fext.NewGenFieldFromBase(nbPaddingAsField)
 			denominatorPadding.Mul(&genericNbPaddingAsField)
 			res.Add(&denominatorPadding)
 		}
@@ -299,7 +299,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 			res.Add(&res, &numeratorPadding)
 		}
 
-		return fext.NewESHashFromExt(res), nil
+		return fext.NewGenFieldFromExt(res), nil
 	}
 
 	// This implementation should catch 99% of the remaining cases. This follows
@@ -343,7 +343,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 				res.Add(&res, &tmp)
 			}
 
-			return fext.NewESHashFromExt(res), nil
+			return fext.NewGenFieldFromExt(res), nil
 		}
 	}
 
@@ -380,7 +380,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 		res.Add(&res, &tmp)
 	}
 
-	return fext.NewESHashFromExt(res), nil
+	return fext.NewGenFieldFromExt(res), nil
 }
 
 func (q LogDerivativeSum) UUID() uuid.UUID {

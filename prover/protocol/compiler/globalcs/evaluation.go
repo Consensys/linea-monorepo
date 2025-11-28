@@ -195,7 +195,7 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 	for j, handle := range univQuery.Pols {
 		var genericElem fext.GenericFieldElem
 
-		genericElem = fext.NewESHashFromExt(params.ExtYs[j])
+		genericElem = fext.NewGenFieldFromExt(params.ExtYs[j])
 
 		mapYs[handle.GetColID()] = genericElem
 	}

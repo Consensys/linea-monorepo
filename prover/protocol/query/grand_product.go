@@ -156,7 +156,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 				for k := range numeratorSlice {
 					tempResult.Mul(&tempResult, &numeratorSlice[k])
 				}
-				intermediateResult = fext.NewESHashFromBase(tempResult)
+				intermediateResult = fext.NewGenFieldFromBase(tempResult)
 			} else {
 				// for field extensions
 				numeratorSlice := numerator.IntoRegVecSaveAllocExt()
@@ -164,7 +164,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 				for k := range numeratorSlice {
 					tempResult.Mul(&tempResult, &numeratorSlice[k])
 				}
-				intermediateResult = fext.NewESHashFromExt(tempResult)
+				intermediateResult = fext.NewGenFieldFromExt(tempResult)
 			}
 			result.Mul(&intermediateResult)
 		}
@@ -197,7 +197,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 
 					tmp.Mul(&tmp, &denominatorSlice[k])
 				}
-				intermediateResult = fext.NewESHashFromBase(tmp)
+				intermediateResult = fext.NewGenFieldFromBase(tmp)
 			} else {
 				// for field extensions
 				tmp := fext.One()
@@ -210,7 +210,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 
 					tmp.Mul(&tmp, &denominatorSlice[k])
 				}
-				intermediateResult = fext.NewESHashFromExt(tmp)
+				intermediateResult = fext.NewGenFieldFromExt(tmp)
 			}
 
 			result.Div(&intermediateResult)

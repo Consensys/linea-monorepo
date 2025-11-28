@@ -78,9 +78,9 @@ func NewLocalOpeningParamsExt(z fext.Element) LocalOpeningParams {
 
 func (lop LocalOpeningParams) ToGenericGroupElement() fext.GenericFieldElem {
 	if lop.IsBase {
-		return fext.NewESHashFromBase(lop.BaseY)
+		return fext.NewGenFieldFromBase(lop.BaseY)
 	} else {
-		return fext.NewESHashFromExt(lop.ExtY)
+		return fext.NewGenFieldFromExt(lop.ExtY)
 	}
 }
 

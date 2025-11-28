@@ -15,31 +15,25 @@ import (
 
 // Represents a constant column
 type ConstCol struct {
-	Base       field.Element
-	Ext        fext.Element
-	IsBaseFlag bool
-	Size_      int
-	Name       string
+	F     fext.GenericFieldElem
+	Size_ int
+	Name  string
 }
 
 // NewConstantCol creates a new ConstCol column
 func NewConstantCol(elem field.Element, size int, name string) ifaces.Column {
 	return ConstCol{
-		Base:       elem,
-		Ext:        fext.Lift(elem),
-		IsBaseFlag: true,
-		Size_:      size,
-		Name:       name,
+		F:     fext.NewGenFieldFromBase(elem),
+		Size_: size,
+		Name:  name,
 	}
 }
 
 func NewConstantColExt(elem fext.Element, size int, name string) ifaces.Column {
 	return ConstCol{
-		Base:       field.Zero(),
-		Ext:        elem,
-		IsBaseFlag: false,
-		Size_:      size,
-		Name:       name,
+		F:     fext.NewGenFieldFromExt(elem),
+		Size_: size,
+		Name:  name,
 	}
 }
 
@@ -53,10 +47,7 @@ func (cc ConstCol) Round() int {
 // Returns a generic name from the column. Defined from the coin's.
 func (cc ConstCol) GetColID() ifaces.ColID {
 
-	val := cc.Base.String()
-	if !cc.IsBaseFlag {
-		val = cc.Ext.String()
-	}
+	val := cc.F.String()
 
 	if len(cc.Name) > 0 {
 		return ifaces.ColIDf("CONSTCOL_%v_%v", val, cc.Name)
@@ -75,77 +66,107 @@ func (cc ConstCol) Size() int {
 
 // Returns a constant smart-vector
 func (cc ConstCol) GetColAssignment(_ ifaces.Runtime) ifaces.ColAssignment {
-	return smartvectors.NewConstant(cc.Base, cc.Size_)
-}
-
-func (cc ConstCol) GetColAssignmentAtBase(_ ifaces.Runtime, _ int) (field.Element, error) {
-	if cc.IsBaseFlag {
-		return cc.Base, nil
-	} else {
-		return field.Zero(), fmt.Errorf("requested a base element from a verifier col over field extensions")
+	if cc.F.IsBase {
+		return smartvectors.NewConstant(cc.F.Base, cc.Size_)
 	}
+	return smartvectors.NewConstantExt(cc.F.Ext, cc.Size_)
 }
 
-func (cc ConstCol) GetColAssignmentAtExt(_ ifaces.Runtime, _ int) fext.Element {
-	return cc.Ext
+func (cc ConstCol) GetColAssignmentAtBase(_ ifaces.Runtime, n int) (field.Element, error) {
+
+	if n < 0 || n >= cc.Size_ {
+		utils.Panic("out of bound: size=%v pos=%v", cc.Size_, n)
+	}
+
+	f, err := cc.F.GetBase()
+	if err != nil {
+		return field.Element{}, fmt.Errorf("GetColAssignmentAtBase failed: %w", err)
+	}
+	return f, nil
+}
+
+func (cc ConstCol) GetColAssignmentAtExt(_ ifaces.Runtime, n int) fext.Element {
+	if n < 0 || n >= cc.Size_ {
+		utils.Panic("out of bound: size=%v pos=%v", cc.Size_, n)
+	}
+	return cc.F.GetExt()
 }
 
 // Returns the column as a list of gnark constants
 func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []zk.WrappedVariable {
 	res := make([]zk.WrappedVariable, cc.Size_)
+	x, err := cc.F.GetBase()
+	if err != nil {
+		utils.Panic("GetColAssignmentGnark failed: %v", err.Error())
+	}
+
 	for i := range res {
-		res[i] = zk.ValueOf(cc.Base.String())
+		res[i] = zk.ValueOf(x)
 	}
 	return res
 }
 
 func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
-	if cc.IsBaseFlag {
-		res := make([]zk.WrappedVariable, cc.Size_)
-		for i := range res {
-			res[i] = zk.ValueOf(cc.Base.String())
-		}
-		return res, nil
-	} else {
-		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
+
+	res := make([]zk.WrappedVariable, cc.Size_)
+	x, err := cc.F.GetBase()
+	if err != nil {
+		return nil, fmt.Errorf("GetColAssignmentGnarkBase failed: %w", err)
 	}
+
+	for i := range res {
+		res[i] = zk.ValueOf(x.String())
+	}
+
+	return res, nil
 }
 
 func (cc ConstCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
 	res := make([]gnarkfext.E4Gen, cc.Size_)
+	f := cc.F.GetExt()
 	for i := range res {
-		temp := gnarkfext.NewE4Gen(cc.Ext)
+		temp := gnarkfext.NewE4Gen(f)
 		res[i] = temp
 	}
 	return res
 }
 
 // Returns a particular position of the coin value
-func (cc ConstCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
-	return cc.Base
+func (cc ConstCol) GetColAssignmentAt(_ ifaces.Runtime, pos int) field.Element {
+
+	if pos < 0 || pos >= cc.Size_ {
+		utils.Panic("out of bound: size=%v pos=%v", cc.Size_, pos)
+	}
+
+	x, err := cc.F.GetBase()
+	if err != nil {
+		utils.Panic("GetColAssignmentGnark failed: %v", err.Error())
+	}
+
+	return x
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
-	if cc.IsBaseFlag {
-		return zk.ValueOf(cc.Base.String())
-	} else {
-		panic("requested a base element from a verifier col over field extensions")
-	}
+	f := cc.GetColAssignmentAt(nil, pos)
+	return zk.ValueOf(f.String())
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
-	if cc.IsBaseFlag {
-		return zk.ValueOf(cc.Base.String()), nil
-	} else {
-		return zk.ValueOf(0), fmt.Errorf("requested a base element from a verifier col over field extensions")
+	// this does the boundary check
+	f, err := cc.GetColAssignmentAtBase(nil, pos)
+	if err != nil {
+		return zk.WrappedVariable{}, fmt.Errorf("GetColAssignmentGnarkAtBase failed: %w", err)
 	}
+	return zk.ValueOf(f), nil
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
-	temp := gnarkfext.NewE4Gen(cc.Ext)
+	// this does the boundary check
+	f := cc.GetColAssignmentAtExt(nil, pos)
+	temp := gnarkfext.NewE4Gen(f)
 	return temp
 }
 
@@ -169,34 +190,26 @@ func (cc ConstCol) Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column {
 	}
 
 	// Copy the underlying cc, and assigns the new from and to
-	return NewConstantCol(cc.Base, to-from, cc.Name)
+	return ConstCol{
+		F:     cc.F,
+		Size_: to - from,
+		Name:  cc.Name,
+	}
 }
 
 func (cc ConstCol) IsBase() bool {
-	return cc.IsBaseFlag
+	return cc.F.IsBase
 }
 
 func (cc ConstCol) IsZero() bool {
-	if cc.IsBaseFlag {
-		return cc.Base.IsZero()
-	} else {
-		return cc.Ext.IsZero()
-	}
+	return cc.F.IsZero()
 }
 
 func (cc ConstCol) IsOne() bool {
-	if cc.IsBaseFlag {
-		return cc.Base.IsOne()
-	} else {
-		return cc.Ext.IsOne()
-	}
+	return cc.F.IsOne()
 }
 
 // Returns the string representation of the underlying field element
 func (cc ConstCol) StringField() string {
-	if cc.IsBaseFlag {
-		return cc.Base.String()
-	} else {
-		return cc.Ext.String()
-	}
+	return cc.F.String()
 }

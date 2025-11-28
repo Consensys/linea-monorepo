@@ -16,7 +16,7 @@ type GenericFieldElem struct {
 	IsBase bool
 }
 
-func NewESHashFromBase(base field.Element) GenericFieldElem {
+func NewGenFieldFromBase(base field.Element) GenericFieldElem {
 	var res GenericFieldElem
 	res.Base.Set(&base)
 	SetFromBase(&res.Ext, &base)
@@ -41,7 +41,7 @@ func (e *GenericFieldElem) GetExt() Element {
 	}
 }
 
-func NewESHashFromExt(ext Element) GenericFieldElem {
+func NewGenFieldFromExt(ext Element) GenericFieldElem {
 	var res GenericFieldElem
 	res.Ext.Set(&ext)
 	res.IsBase = false
@@ -219,11 +219,11 @@ func (e *GenericFieldElem) IsOne() bool {
 }
 
 func GenericFieldOne() GenericFieldElem {
-	return NewESHashFromBase(field.One())
+	return NewGenFieldFromBase(field.One())
 }
 
 func GenericFieldZero() GenericFieldElem {
-	return NewESHashFromBase(field.Zero())
+	return NewGenFieldFromBase(field.Zero())
 }
 
 func (e *GenericFieldElem) Square(inp *GenericFieldElem) *GenericFieldElem {
