@@ -297,10 +297,12 @@ func (g *GenericApi) Println(a ...WrappedVariable) {
 	} else {
 		for i := 0; i < len(a); i++ {
 			if a[i].EVpointer == nil {
+				g.EmulatedApi.Reduce(&a[i].EV)
 				for j := 0; j < len(a[i].EV.Limbs); j++ {
 					g.NativeApi.Println(a[i].EV.Limbs[j])
 				}
 			} else {
+				g.EmulatedApi.Reduce(a[i].EVpointer)
 				for j := 0; j < len(a[i].EVpointer.Limbs); j++ {
 					g.NativeApi.Println(a[i].EVpointer.Limbs[j])
 				}
