@@ -5,7 +5,6 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.datetime.plus
 import linea.domain.Block
 import linea.domain.createBlock
 import linea.domain.toEthGetBlockResponse

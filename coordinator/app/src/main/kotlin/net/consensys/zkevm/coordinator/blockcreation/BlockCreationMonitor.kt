@@ -140,7 +140,7 @@ class BlockCreationMonitor(
                       Instant.fromEpochSeconds(block.timestamp.toLong()),
 
                     )
-                    super.stop()
+                    this.stop()
                   }
                   notifyListener(block)
                     .whenSuccess {
@@ -161,7 +161,7 @@ class BlockCreationMonitor(
                     block.parentHash.encodeHex(),
                     expectedParentBlockHash.get().encodeHex(),
                   )
-                  super.stop()
+                  this.stop()
                 }
               } else {
                 SafeFuture.completedFuture(Unit)
