@@ -79,8 +79,9 @@ func TestCompilersWithGnarkVerifier(t *testing.T) {
 
 	runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
 	// runTestListGnark(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
-	// runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
 	// runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
+
+	// runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
 
 	// FULL LIST OF TESTS WITH GNARK VERIFIER
 

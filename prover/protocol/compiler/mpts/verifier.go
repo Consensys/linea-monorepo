@@ -79,9 +79,15 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
 			tmp.Sub(&pr, &tmp) // Pk(r) - y_{ik}
+			if k == 0 {
+				fmt.Printf("pr sub (%v,%v): %v\n", i, k, pr.String())
+
+			}
+
 			tmp.Mul(&tmp, &zetasOfR[i])
 			tmp.Mul(&tmp, &rhoK)
 			res.Add(&res, &tmp)
+
 		}
 
 		rhoK.Mul(&rhoK, &rho)
@@ -91,7 +97,8 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 		return fmt.Errorf("(verifier of %v) : Q(r) is incorrect (%v, expected %v)",
 			va.NewQuery.QueryID, qr.String(), res.String())
 	}
-
+	fmt.Printf("qr: %v\n", qr.String())
+	fmt.Printf("res: %v\n", res.String())
 	return nil
 }
 
@@ -152,20 +159,25 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
 			tmp = *e4Api.Sub(&pr, &tmp)
+			if k == 0 {
+
+				api.Println("pr:", i, k)
+				e4Api.Println(pr)
+			}
 			tmp = *e4Api.Mul(&tmp, &zetasOfR[i])
 			tmp = *e4Api.Mul(&tmp, &rhoK)
 			res = *e4Api.Add(&res, &tmp)
+
 		}
 
 		// rhoK.Mul(api, rhoK, rho)
 		rhoK = *e4Api.Mul(&rhoK, &rho)
 	}
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-	ext4.AssertIsEqual(&res, &qr)
+	api.Println("res:")
+	e4Api.Println(res)
+
+	e4Api.AssertIsEqual(&res, &qr)
 }
 
 // cptEvaluationMap returns an evaluation map [Column] -> [Y] for all the
@@ -183,11 +195,14 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Ru
 		colID := ctx.NewQuery.Pols[i].GetColID()
 		evaluationMap[colID] = univParams.ExtYs[i]
 	}
-
+	fmt.Printf("x in cptEvaluationMapExt: %v\n", x.String())
 	for i, c := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
 		poly := c.GetColAssignment(run)
+		fmt.Printf("poly %v \n", poly.Pretty())
+
 		evaluationMap[colID] = smartvectors.EvaluateFextPolyLagrange(poly, x)
+		fmt.Printf("ys[%v]: %v\n", i, evaluationMap[colID])
 	}
 
 	return evaluationMap
@@ -202,6 +217,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 		x             = univParams.ExtX
 		polys         = make([][]zk.WrappedVariable, 0)
 	)
+	ext4, _ := gnarkfext.NewExt4(api)
 
 	for i := range ctx.NewQuery.Pols {
 		colID := ctx.NewQuery.Pols[i].GetColID()
@@ -224,8 +240,10 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 
 		poly := c.GetColAssignmentGnark(run)
 		polys = append(polys, poly)
-	}
 
+	}
+	api.Println("poly:")
+	ext4.ApiGen.Println(polys[0]...)
 	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, x)
 	for i := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
