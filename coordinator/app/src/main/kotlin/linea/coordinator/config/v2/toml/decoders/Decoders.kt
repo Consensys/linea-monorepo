@@ -8,7 +8,6 @@ import com.sksamuel.hoplite.StringNode
 import com.sksamuel.hoplite.decoder.Decoder
 import com.sksamuel.hoplite.fp.invalid
 import com.sksamuel.hoplite.fp.valid
-import linea.coordinator.config.v2.toml.L1SubmissionConfigToml
 import linea.coordinator.config.v2.toml.SignerConfigToml
 import linea.kotlin.decodeHex
 import kotlin.reflect.KType
@@ -80,30 +79,5 @@ class TomlSignerTypeDecoder : Decoder<SignerConfigToml.SignerType> {
 
   override fun supports(type: KType): Boolean {
     return type.classifier == SignerConfigToml.SignerType::class
-  }
-}
-
-class TomlDataSubmissionDecoder : Decoder<L1SubmissionConfigToml.DataSubmission> {
-  override fun decode(
-    node: Node,
-    type: KType,
-    context: DecoderContext,
-  ): ConfigResult<L1SubmissionConfigToml.DataSubmission> {
-    return when (node) {
-      is StringNode -> runCatching {
-        L1SubmissionConfigToml.DataSubmission.valueOfIgnoreCase(node.value.lowercase())
-      }.fold(
-        { it.valid() },
-        { ConfigFailure.DecodeError(node, type).invalid() },
-      )
-
-      else -> {
-        ConfigFailure.DecodeError(node, type).invalid()
-      }
-    }
-  }
-
-  override fun supports(type: KType): Boolean {
-    return type.classifier == L1SubmissionConfigToml.DataSubmission::class
   }
 }

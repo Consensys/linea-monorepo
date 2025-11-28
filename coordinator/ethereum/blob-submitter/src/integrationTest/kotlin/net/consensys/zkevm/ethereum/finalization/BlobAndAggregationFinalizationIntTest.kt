@@ -144,7 +144,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
       )
 
       val aggregationSubmitter = AggregationSubmitterImpl(
-        lineaRollup = lineaRollupContractForAggregationSubmission,
+        lineaSmartContractClient = lineaRollupContractForAggregationSubmission,
         gasPriceCapProvider = FakeGasPriceCapProvider(),
         aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers),
         clock = fakeClock,
@@ -158,7 +158,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
         aggregationSubmitter = aggregationSubmitter,
         aggregationsRepository = aggregationsRepository,
         blobsRepository = blobsRepository,
-        lineaRollup = lineaRollupContractForAggregationSubmission,
+        lineaSmartContractClient = lineaRollupContractForAggregationSubmission,
         alreadySubmittedBlobsFilter = alreadySubmittedBlobFilter,
         vertx = vertx,
         clock = fakeClock,

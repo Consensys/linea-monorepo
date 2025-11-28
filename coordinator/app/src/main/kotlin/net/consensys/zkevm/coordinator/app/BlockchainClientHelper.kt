@@ -4,6 +4,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.http.HttpVersion
 import io.vertx.core.net.PfxOptions
 import io.vertx.ext.web.client.WebClientOptions
+import linea.coordinator.config.v2.L1SubmissionConfig
 import linea.coordinator.config.v2.SignerConfig
 import linea.kotlin.encodeHex
 import linea.web3j.SmartContractErrors
@@ -11,8 +12,7 @@ import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.l1.Web3JLineaRollupSmartContractClient
 import net.consensys.linea.contract.l1.Web3JLineaValidiumSmartContractClient
 import net.consensys.linea.httprest.client.VertxHttpRestClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaValidiumSmartContractClient
+import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
 import net.consensys.zkevm.ethereum.crypto.Web3SignerRestClient
 import net.consensys.zkevm.ethereum.crypto.Web3SignerTxSignService
 import net.consensys.zkevm.ethereum.signing.ECKeypairSignerAdapter
@@ -117,38 +117,33 @@ fun createTransactionManager(
   return AsyncFriendlyTransactionManager(client, transactionSignService, -1L)
 }
 
-fun createLineaRollupContractClient(
+fun createLineaContractClient(
+  dataAvailabilityType: L1SubmissionConfig.DataAvailability,
   contractAddress: String,
   transactionManager: AsyncFriendlyTransactionManager,
   contractGasProvider: ContractGasProvider,
   web3jClient: Web3j,
   smartContractErrors: SmartContractErrors,
   useEthEstimateGas: Boolean,
-): LineaRollupSmartContractClient {
-  return Web3JLineaRollupSmartContractClient.load(
-    contractAddress = contractAddress,
-    web3j = web3jClient,
-    transactionManager = transactionManager,
-    contractGasProvider = contractGasProvider,
-    smartContractErrors = smartContractErrors,
-    useEthEstimateGas = useEthEstimateGas,
-  )
-}
+): LineaSmartContractClient {
+  return when (dataAvailabilityType) {
+    L1SubmissionConfig.DataAvailability.ROLLUP ->
+      Web3JLineaRollupSmartContractClient.load(
+        contractAddress = contractAddress,
+        web3j = web3jClient,
+        transactionManager = transactionManager,
+        contractGasProvider = contractGasProvider,
+        smartContractErrors = smartContractErrors,
+        useEthEstimateGas = useEthEstimateGas,
+      )
 
-fun createLineaValidiumContractClient(
-  contractAddress: String,
-  transactionManager: AsyncFriendlyTransactionManager,
-  contractGasProvider: ContractGasProvider,
-  web3jClient: Web3j,
-  smartContractErrors: SmartContractErrors,
-  useEthEstimateGas: Boolean,
-): LineaValidiumSmartContractClient {
-  return Web3JLineaValidiumSmartContractClient.load(
-    contractAddress = contractAddress,
-    web3j = web3jClient,
-    transactionManager = transactionManager,
-    contractGasProvider = contractGasProvider,
-    smartContractErrors = smartContractErrors,
-    useEthEstimateGas = useEthEstimateGas,
-  )
+    L1SubmissionConfig.DataAvailability.VALIDIUM ->
+      Web3JLineaValidiumSmartContractClient.load(
+        contractAddress = contractAddress,
+        web3j = web3jClient,
+        transactionManager = transactionManager,
+        contractGasProvider = contractGasProvider,
+        smartContractErrors = smartContractErrors,
+        useEthEstimateGas = useEthEstimateGas,
+      ) }
 }

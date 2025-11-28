@@ -19,7 +19,7 @@ class L1SubmissionConfigParsingTest {
     val toml = """
     [l1-submission]
     disabled = true
-    data-submission = "validium"
+    data-availability = "VALIDIUM"
     [l1-submission.dynamic-gas-price-cap]
     disabled = true
     [l1-submission.dynamic-gas-price-cap.gas-price-cap-calculation]
@@ -119,7 +119,7 @@ class L1SubmissionConfigParsingTest {
     val config =
       L1SubmissionConfigToml(
         disabled = true,
-        dataSubmission = L1SubmissionConfigToml.DataSubmission.VALIDIUM,
+        dataAvailability = L1SubmissionConfigToml.DataAvailability.VALIDIUM,
         dynamicGasPriceCap = L1SubmissionConfigToml.DynamicGasPriceCapToml(
           disabled = true,
           gasPriceCapCalculation = L1SubmissionConfigToml.DynamicGasPriceCapToml.GasPriceCapCalculationToml(

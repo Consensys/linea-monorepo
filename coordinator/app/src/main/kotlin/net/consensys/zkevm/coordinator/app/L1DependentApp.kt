@@ -8,7 +8,6 @@ import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
-import linea.coordinator.config.v2.L1SubmissionConfig
 import linea.coordinator.config.v2.Type2StateProofManagerConfig
 import linea.coordinator.config.v2.isDisabled
 import linea.coordinator.config.v2.isEnabled
@@ -46,7 +45,6 @@ import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.coordinator.app.conflation.ConflationApp
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
 import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.domain.FinalizationSubmittedEvent
@@ -320,27 +318,17 @@ class L1DependentApp(
       signerConfig = configs.l1Submission.blob.signer,
       client = l1Web3jClient,
     )
-    when (configs.l1Submission.dataSubmission) {
-      L1SubmissionConfig.DataSubmission.ROLLUP -> createLineaRollupContractClient(
-        contractAddress = configs.protocol.l1.contractAddress,
-        transactionManager = transactionManager,
-        contractGasProvider = primaryOrFallbackGasProvider,
-        web3jClient = l1Web3jClient,
-        smartContractErrors = smartContractErrors,
-        // eth_estimateGas would fail because we submit multiple blob tx
-        // and 2nd would fail with revert reason
-        useEthEstimateGas = false,
-      )
-
-      L1SubmissionConfig.DataSubmission.VALIDIUM -> createLineaValidiumContractClient(
-        contractAddress = configs.protocol.l1.contractAddress,
-        transactionManager = transactionManager,
-        contractGasProvider = primaryOrFallbackGasProvider,
-        web3jClient = l1Web3jClient,
-        smartContractErrors = smartContractErrors,
-        useEthEstimateGas = false,
-      )
-    }
+    createLineaContractClient(
+      dataAvailabilityType = configs.l1Submission.dataAvailability,
+      contractAddress = configs.protocol.l1.contractAddress,
+      transactionManager = transactionManager,
+      contractGasProvider = primaryOrFallbackGasProvider,
+      web3jClient = l1Web3jClient,
+      // eth_estimateGas would fail because we submit multiple blob tx
+      // and 2nd would fail with revert reason
+      smartContractErrors = smartContractErrors,
+      useEthEstimateGas = false,
+    )
   }
 
   private val highestAcceptedBlobTracker = HighestULongTracker(lastProcessedBlockNumber).also {
@@ -431,7 +419,8 @@ class L1DependentApp(
           maxFeePerBlobGasCap = 0UL, // we do not submit blobs in finalization tx
         ),
       )
-      val lineaSmartContractClientForFinalization: LineaRollupSmartContractClient = createLineaRollupContractClient(
+      val lineaSmartContractClientForFinalization = createLineaContractClient(
+        dataAvailabilityType = configs.l1Submission.dataAvailability,
         contractAddress = configs.protocol.l1.contractAddress,
         transactionManager = finalizationTransactionManager,
         contractGasProvider = primaryOrFallbackGasProvider,
@@ -471,10 +460,10 @@ class L1DependentApp(
         ),
         aggregationsRepository = aggregationsRepository,
         blobsRepository = blobsRepository,
-        lineaRollup = lineaSmartContractClientForFinalization,
+        lineaSmartContractClient = lineaSmartContractClientForFinalization,
         alreadySubmittedBlobFilter = alreadySubmittedBlobsFilter,
         aggregationSubmitter = AggregationSubmitterImpl(
-          lineaRollup = lineaSmartContractClientForFinalization,
+          lineaSmartContractClient = lineaSmartContractClientForFinalization,
           gasPriceCapProvider = gasPriceCapProviderForFinalization,
           aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers),
         ),

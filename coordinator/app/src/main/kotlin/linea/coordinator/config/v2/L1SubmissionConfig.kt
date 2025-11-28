@@ -9,9 +9,9 @@ data class L1SubmissionConfig(
   val fallbackGasPrice: FallbackGasPriceConfig,
   val blob: BlobSubmissionConfig,
   val aggregation: AggregationSubmissionConfig,
-  val dataSubmission: DataSubmission,
+  val dataAvailability: DataAvailability,
 ) : FeatureToggle {
-  enum class DataSubmission {
+  enum class DataAvailability {
     ROLLUP,
     VALIDIUM,
   }
