@@ -3,6 +3,7 @@
 package vortex_test
 
 import (
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -79,8 +81,11 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	}
 
 	prove := func(pr *wizard.ProverRuntime) {
+
+		rng := rand.New(rand.NewPCG(0, 0))
+
 		ys := make([]fext.Element, len(rows)*len(rows[0]))
-		x := fext.RandomElement() // the evaluation point
+		x := fext.PseudoRand(rng) // the evaluation point
 
 		// assign the rows with random polynomials and collect the ys
 		for round := range rows {
@@ -97,7 +102,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 					ys[round*nPols+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					continue
 				}
-				p := smartvectors.Rand(polSize)
+				p := smartvectors.PseudoRand(rng, polSize)
 				ys[round*nPols+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 				pr.AssignColumn(row.GetColID(), p)
 			}
@@ -149,7 +154,16 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	if err != nil {
 		// When the error string is too large `require.NoError` does not print
 		// the error.
-		t.Logf("circuit solving failed : %v\n", err)
+		t.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
+
+		errDetail := test.IsSolved(
+			assignment,
+			assignment,
+			scs.Field(),
+		)
+
+		t.Logf("while running the plonk prover: %v", errDetail)
+
 		t.FailNow()
 	}
 
