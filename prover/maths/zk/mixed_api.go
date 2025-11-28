@@ -59,7 +59,7 @@ func WrapFrontendVariable(v frontend.Variable) WrappedVariable {
 }
 
 func (w *WrappedVariable) IsEmpty() bool {
-	return w.V == nil && len(w.EV.Limbs) == 0
+	return w.AsNative() == nil && w.V == nil && len(w.EV.Limbs) == 0
 }
 
 func (w *WrappedVariable) Initialize(field *big.Int) {

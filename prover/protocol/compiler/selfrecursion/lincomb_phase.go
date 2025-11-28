@@ -88,7 +88,6 @@ func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	fmt.Printf("verifying self recursion consistency between Ys and Ualpha ...\n")
 	ext4, _ := gnarkfext.NewExt4(api)
 
 	ys := a.Ctx.Columns.Ys.GetColAssignmentGnarkExt(run)

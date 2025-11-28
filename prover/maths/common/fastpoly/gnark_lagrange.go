@@ -224,7 +224,6 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]zk.WrappedVariable, 
 // The implementation relies on the barycentric interpolation formula and
 // leverages
 func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]zk.WrappedVariable, x gnarkfext.E4Gen) []gnarkfext.E4Gen {
-
 	if len(polys) == 0 {
 		return []gnarkfext.E4Gen{}
 	}
@@ -423,6 +422,6 @@ func powerVectorOfOmegaInv(n int) []zk.WrappedVariable {
 
 // isConstantZeroGnarkVariable returns true if the variable is a constant equal to zero
 func isConstantZeroGnarkVariable(api frontend.API, p zk.WrappedVariable) bool {
-	c, isC := api.Compiler().ConstantValue(p)
+	c, isC := api.Compiler().ConstantValue(p.AsNative())
 	return isC && c.IsInt64() && c.Int64() == 0
 }

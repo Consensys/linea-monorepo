@@ -225,7 +225,6 @@ func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	fmt.Printf("verifying selfrecursion collapsing ...\n")
 	api.AssertIsEqual(
 		a.UAlphaQEval.GetFrontendVariable(api, run),
 		a.PreImageEval.GetFrontendVariable(api, run),
@@ -485,7 +484,6 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	fmt.Printf("verifying selfrecursion fold phase ...\n")
 	edual := a.Ctx.Columns.Edual.GetColAssignmentGnark(run)
 	dcollapse := a.Ctx.Columns.CollapsedSisHashQ.GetColAssignmentGnark(run)
 	rfold := run.GetRandomCoinFieldExt(a.Ctx.Coins.Fold.Name)

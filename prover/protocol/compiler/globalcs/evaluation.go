@@ -254,7 +254,6 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 
 // Verifier step, evaluate the constraint and checks that
 func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	fmt.Printf("verifying global constraint ...\n")
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)

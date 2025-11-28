@@ -1,8 +1,6 @@
 package stitchsplit
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -262,7 +260,6 @@ func (a *QueryVerifierAction) Run(vr wizard.Runtime) error {
 }
 
 func (a *QueryVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	fmt.Printf("verifying stitchsplit\n")
 	a.Q.CheckGnark(api, wvc)
 }
 
