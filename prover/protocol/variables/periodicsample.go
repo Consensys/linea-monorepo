@@ -101,16 +101,20 @@ func (t PeriodicSample) EvalAtOutOfDomain(size int, x field.Element) field.Eleme
 
 // Evaluates the expression outside of the domain
 func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Element {
-	l := size / t.T
+	n := size
+	l := n / t.T
 	one := fext.One()
 	var lField, nField fext.Element
-	nField.B0.A0.SetUint64(uint64(size))
+	nField.B0.A0.SetUint64(uint64(n))
 	lField.B0.A0.SetUint64(uint64(l))
 
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
 		var shift field.Element
-		omegaN, _ := fft.Generator(uint64(size))
+		omegaN, err := fft.Generator(uint64(size))
+		if err != nil {
+			panic(err)
+		}
 		x.MulByElement(&x, shift.Exp(omegaN, big.NewInt(int64(-t.Offset))))
 	}
 
@@ -145,8 +149,8 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gna
 
 	n := size
 	l := n / t.T
-	lField := field.NewElement(uint64(l))
 	nField := field.NewElement(uint64(n))
+	lField := field.NewElement(uint64(l))
 
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
@@ -154,11 +158,7 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gna
 		if err != nil {
 			panic(err)
 		}
-		e := -t.Offset
-		if e < 0 {
-			e = -e
-		}
-		omegaN.Exp(omegaN, big.NewInt(int64(e)))
+		omegaN.Exp(omegaN, big.NewInt(int64(-t.Offset)))
 		wOmegaN := zk.ValueOf(omegaN.String())
 		x = *ext4.MulByFp(&x, wOmegaN)
 	}
