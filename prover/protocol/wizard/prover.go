@@ -709,9 +709,7 @@ func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coi
 // parameters. This makes all the new coins available in the prover runtime.
 func (run *ProverRuntime) goNextRound() {
 
-	initialStateOct := run.BLSFS.State()
-	var initialState koalabear.Element
-	initialState = initialStateOct[0] //TODO@yao: check if this is correct
+	initialState := run.BLSFS.State()
 
 	if !run.Spec.DummyCompiled {
 
@@ -784,12 +782,11 @@ func (run *ProverRuntime) goNextRound() {
 	}
 
 	finalStateOct := run.BLSFS.State()
-	var finalState koalabear.Element
-	finalState = finalStateOct[0] //TODO@yao: check if this is correct
+	finalState := finalStateOct
 
 	run.FiatShamirHistory[run.currRound] = [2][]field.Element{
-		[]koalabear.Element{initialState},
-		[]koalabear.Element{finalState},
+		initialState[:],
+		finalState[:],
 	}
 }
 
