@@ -267,6 +267,7 @@ func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *co
 			NbPointEvalFailureInputInstances: NbInputPerInstanceBLSPointEvalFailure,
 		},
 		P256Verify: p256verify.Limits{
+			LimitCalls:       tl.PrecompileP256VerifyEffectiveCalls,
 			NbInputInstances: NbInputPerInstanceP256Verify,
 		},
 	}
