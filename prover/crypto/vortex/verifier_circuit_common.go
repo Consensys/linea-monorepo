@@ -28,14 +28,11 @@ type GnarkVerifierInput struct {
 }
 
 func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVerifierInput, roots []frontend.Variable) error {
-	ext4, _ := gnarkfext.NewExt4(api)
-	ext4.Println(vi.Alpha)
-
 	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}
-	// err = GnarkCheckStatement(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+	err = GnarkCheckStatement(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	return err
 }
 
