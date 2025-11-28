@@ -1,6 +1,7 @@
 package zk
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
@@ -8,6 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/selector"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type VType uint
@@ -28,7 +30,17 @@ type WrappedVariable struct {
 type Octuplet [8]WrappedVariable
 
 func (w *WrappedVariable) AsNative() frontend.Variable {
-	return w.V
+	if w.V != nil {
+		return w.V
+	}
+	if len(w.EV.Limbs) == 1 {
+		return w.EV.Limbs[0]
+	}
+	if len(w.EVpointer.Limbs) == 1 {
+		return w.EVpointer.Limbs[0]
+	}
+	utils.Panic("unexpected shape for wrapped variable: %++v", w)
+	return nil // unreachable
 }
 
 func (w *WrappedVariable) AsEmulated() *emulated.Element[emulated.KoalaBear] {
@@ -305,4 +317,16 @@ func (g *GenericApi) Mux(sel frontend.Variable, inputs ...WrappedVariable) Wrapp
 		res := g.EmulatedApi.Mux(sel, _inputs...)
 		return WrappedVariable{EVpointer: res}
 	}
+}
+
+func (o Octuplet) AsNative() [8]frontend.Variable {
+	res := [8]frontend.Variable{}
+	for i := range res {
+		res[i] = o[i].AsNative()
+		if res[i] == nil {
+			panic("wrapped variable is nil")
+		}
+	}
+	fmt.Printf("[Octuplet.AsNative] res: %v\n", res)
+	return res
 }

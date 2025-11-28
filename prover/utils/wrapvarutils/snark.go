@@ -1,4 +1,4 @@
-package utils
+package wrapvarutils
 
 import (
 	"errors"
@@ -134,4 +134,10 @@ func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.W
 
 	// return nil
 	return zk.WrappedVariable{}
+}
+
+func ToVariableSlice[X any](s []X) []zk.WrappedVariable {
+	res := make([]zk.WrappedVariable, len(s))
+	Copy(res, s)
+	return res
 }
