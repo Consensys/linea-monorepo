@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -101,7 +100,7 @@ const (
 	// Columns for hashing the top root
 	ACCUMULATOR_INTERM_ZERO_TOP_ROOT_NAME ifaces.ColID = "ACCUMULATOR_INTERM_ZERO_TOP_ROOT"
 	ACCUMULATOR_INTERM_ONE_TOP_ROOT_NAME  ifaces.ColID = "ACCUMULATOR_INTERM_ONE_TOP_ROOT"
-	ACCUMULATOR_TOP_ROOT_NAME        ifaces.ColID = "ACCUMULATOR_TOP_ROOT"
+	ACCUMULATOR_TOP_ROOT_NAME             ifaces.ColID = "ACCUMULATOR_TOP_ROOT"
 )
 
 // structure for leaf opening
@@ -175,7 +174,7 @@ type Module struct {
 		// LeafOpening contains four columns corresponding to HKey, HVal, Prev, and Next
 		LeafOpenings LeafOpenings
 		// Interm contains the three intermediate states corresponding to the Poseidon2 block computation divided into limbs
-		Interm [common.NbElemPerHash][]ifaces.Column
+		IntermZero, IntermOne, IntermTwo, IntermThree, IntermFour [common.NbElemPerHash]ifaces.Column
 		// Zero contains the column with zero value, used in the Poseidon2 query
 		Zero [common.NbElemPerHash]ifaces.Column
 		// LeafHash contains the leafHashes (the final Poseidon2 block), equals with Leaves, except when it is empty leaf
@@ -362,31 +361,29 @@ func (am *Module) defineZero() {
 }
 
 func (am *Module) commitLeafHashingCols() {
-	ACCUMULATOR_INTERM := make([]ifaces.ColID, 5)
 	ACCUMULATOR_LEAF_OPENING_PREV := "ACCUMULATOR_LEAF_OPENING_PREV"
 	ACCUMULATOR_LEAF_OPENING_NEXT := "ACCUMULATOR_LEAF_OPENING_NEXT"
 	ACCUMULATOR_LEAF_OPENING_HKEY := "ACCUMULATOR_LEAF_OPENING_HKEY"
 	ACCUMULATOR_LEAF_OPENING_HVAL := "ACCUMULATOR_LEAF_OPENING_HVAL"
-	ACCUMULATOR_INTERM[0] = "ACCUMULATOR_INTERM_PREV_FIRST"
-	ACCUMULATOR_INTERM[1] = "ACCUMULATOR_INTERM_PREV_SECOND"
-	ACCUMULATOR_INTERM[2] = "ACCUMULATOR_INTERM_NEXT_FIRST"
-	ACCUMULATOR_INTERM[3] = "ACCUMULATOR_INTERM_NEXT_SECOND"
-	ACCUMULATOR_INTERM[4] = "ACCUMULATOR_INTERM_HKEY"
-
+	ACCUMULATOR_INTERM_ZERO := "ACCUMULATOR_INTERM_PREV_FIRST"
+	ACCUMULATOR_INTERM_ONE := "ACCUMULATOR_INTERM_PREV_SECOND"
+	ACCUMULATOR_INTERM_TWO := "ACCUMULATOR_INTERM_NEXT_FIRST"
+	ACCUMULATOR_INTERM_THREE := "ACCUMULATOR_INTERM_NEXT_SECOND"
+	ACCUMULATOR_INTERM_FOUR := "ACCUMULATOR_INTERM_HKEY"
 	for i := range am.Cols.LeafOpenings.Prev {
 		am.Cols.LeafOpenings.Prev[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_PREV, i), am.NumRows(), true)
 		am.Cols.LeafOpenings.Next[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_NEXT, i), am.NumRows(), true)
 	}
 
 	for i := 0; i < common.NbElemPerHash; i++ {
-		am.Cols.Interm[i] = make([]ifaces.Column, 5)
 		am.Cols.LeafOpenings.HKey[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_HKEY, i), am.NumRows(), true)
 		am.Cols.LeafOpenings.HVal[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_HVAL, i), am.NumRows(), true)
 		am.Cols.LeafHashes[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_HASHES_NAME, i), am.NumRows(), true)
-
-		for j := 0; j < len(am.Cols.Interm[i]); j++ {
-			am.Cols.Interm[i][j] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM[j], i), am.NumRows(), true)
-		}
+		am.Cols.IntermZero[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_ZERO, i), am.NumRows(), true)
+		am.Cols.IntermOne[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_ONE, i), am.NumRows(), true)
+		am.Cols.IntermTwo[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_TWO, i), am.NumRows(), true)
+		am.Cols.IntermThree[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_THREE, i), am.NumRows(), true)
+		am.Cols.IntermFour[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_FOUR, i), am.NumRows(), true)
 	}
 
 	am.Cols.IsEmptyLeaf = am.comp.InsertCommit(am.Round, ACCUMULATOR_IS_EMPTY_LEAF_NAME, am.NumRows(), true)
@@ -481,12 +478,11 @@ func (am *Module) checkConsistency() {
 		shiftedAccumulatorCounter[i] = column.Shift(am.Cols.AccumulatorCounter[i], 1)
 	}
 
-	offsetLimbs := []field.Element{field.Zero(), field.Zero(), field.Zero(), field.One()}
 	offsetCols := make([]ifaces.Column, len(am.Cols.AccumulatorCounter))
 	for i := range offsetCols {
 		offsetCols[i] = am.comp.InsertPrecomputed(
 			ifaces.ColIDf("%s_SHIFTED_OFFSET_%d", ACCUMULATOR_COUNTER_NAME, i),
-			smartvectors.NewConstant(offsetLimbs[i], am.NumRows()),
+			smartvectors.NewConstant(field.Zero(), am.NumRows()),
 		)
 	}
 
@@ -548,23 +544,23 @@ func (am *Module) checkConsistency() {
 
 func (am *Module) checkEmptyLeaf() {
 	// Creating the emptyLeaf column
-	emptyLeafBytes32 := types.Bytes32{}
-	emptyLeafBytes := emptyLeafBytes32[:]
-	var emptyLeafField field.Element
-	if err := emptyLeafField.SetBytesCanonical(emptyLeafBytes[:]); err != nil {
-		panic(err)
+	var (
+		emptyLeaf [common.NbElemPerHash]ifaces.Column
+	)
+	for i := range common.NbElemPerHash {
+		emptyLeaf[i] = verifiercol.NewConstantCol(field.Zero(), am.NumRows(), "accumulator-empty-leaf-element")
 	}
-	emptyLeaf := verifiercol.NewConstantCol(emptyLeafField, am.NumRows(), "accumulator-empty-leaves")
+
 	cols := am.Cols
 
 	for i := 0; i < common.NbElemPerHash; i++ {
 		// (Leaf[i+2] - emptyLeaf) * IsActiveAccumulator[i] * IsFirst[i] * IsInsert[i]
-		expr1 := symbolic.Sub(column.Shift(cols.Leaves[i], 2), emptyLeaf)
+		expr1 := symbolic.Sub(column.Shift(cols.Leaves[i], 2), emptyLeaf[i])
 		expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsInsert, expr1)
 		am.comp.InsertGlobal(am.Round, am.qnamef("EMPTY_LEAVES_FOR_INSERT_%d", i), expr1)
 
 		// (Leaf[i+3] - emptyLeaf) * IsActiveAccumulator[i] * IsFirst[i] * IsDelete[i]
-		expr2 := symbolic.Sub(column.Shift(cols.Leaves[i], 3), emptyLeaf)
+		expr2 := symbolic.Sub(column.Shift(cols.Leaves[i], 3), emptyLeaf[i])
 		expr2 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsDelete, expr2)
 		am.comp.InsertGlobal(am.Round, am.qnamef("EMPTY_LEAVES_FOR_DELETE_%d", i), expr2)
 	}
@@ -698,18 +694,18 @@ func (am *Module) checkLeafHashes() {
 	prevLast := cols.LeafOpenings.Prev[common.NbElemPerHash : 2*common.NbElemPerHash]
 	nextLast := cols.LeafOpenings.Next[common.NbElemPerHash : 2*common.NbElemPerHash]
 
-	// Interm[0] = Poseidon2(Zero, PrevFirst), old = Zero, Block = PrevFirst
-	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_PREV_FIRST"), [8]ifaces.Column(prevFirst), cols.Zero, [8]ifaces.Column(cols.Interm[0]), cols.IsActiveAccumulator)
-	// Interm[1] = Poseidon2(Interm[0], PrevLast), old = Interm[0], Block = PrevLast
-	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_PREV_LAST"), [8]ifaces.Column(prevLast), [8]ifaces.Column(cols.Interm[0]), [8]ifaces.Column(cols.Interm[1]), cols.IsActiveAccumulator)
-	// Interm[2] = Poseidon2(Interm[1], NextFirst), old = Interm[1], Block = NextFirst
-	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_NEXT_FIRST"), [8]ifaces.Column(nextFirst), [8]ifaces.Column(cols.Interm[1]), [8]ifaces.Column(cols.Interm[2]), cols.IsActiveAccumulator)
-	// Interm[3] = Poseidon2(Interm[2], NextLast), old = Interm[2], Block = NextLast
-	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_NEXT_LAST"), [8]ifaces.Column(nextLast), [8]ifaces.Column(cols.Interm[2]), [8]ifaces.Column(cols.Interm[3]), cols.IsActiveAccumulator)
-	// Interm[4] = Poseidon2(Interm[3], HKey), old = Interm[3], Block = HKey
-	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_HKEY"), [8]ifaces.Column(cols.LeafOpenings.HKey), [8]ifaces.Column(cols.Interm[3]), [8]ifaces.Column(cols.Interm[4]), cols.IsActiveAccumulator)
-	// LeafHashes = Poseidon2(Interm[4], HVal), old = Interm[4], Block = HVal
-	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_HVAL_LEAF"), [8]ifaces.Column(cols.LeafOpenings.HVal), [8]ifaces.Column(cols.Interm[4]), [8]ifaces.Column(cols.LeafHashes), cols.IsActiveAccumulator)
+	// IntermZero = Poseidon2(Zero, PrevFirst), old = Zero, Block = PrevFirst
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_PREV_FIRST"), [8]ifaces.Column(prevFirst), cols.Zero, [8]ifaces.Column(cols.IntermZero), cols.IsActiveAccumulator)
+	// IntermOne = Poseidon2(IntermZero, PrevLast), old = IntermZero, Block = PrevLast
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_PREV_LAST"), [8]ifaces.Column(prevLast), [8]ifaces.Column(cols.IntermZero), [8]ifaces.Column(cols.IntermOne), cols.IsActiveAccumulator)
+	// IntermTwo = Poseidon2(IntermOne, NextFirst), old = IntermOne, Block = NextFirst
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_NEXT_FIRST"), [8]ifaces.Column(nextFirst), [8]ifaces.Column(cols.IntermOne), [8]ifaces.Column(cols.IntermTwo), cols.IsActiveAccumulator)
+	// IntermThree = Poseidon2(IntermTwo, NextLast), old = IntermTwo, Block = NextLast
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_NEXT_LAST"), [8]ifaces.Column(nextLast), [8]ifaces.Column(cols.IntermTwo), [8]ifaces.Column(cols.IntermThree), cols.IsActiveAccumulator)
+	// IntermFour = Poseidon2(IntermThree, HKey), old = IntermThree, Block = HKey
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_HKEY"), [8]ifaces.Column(cols.LeafOpenings.HKey), [8]ifaces.Column(cols.IntermThree), [8]ifaces.Column(cols.IntermFour), cols.IsActiveAccumulator)
+	// LeafHashes = Poseidon2(IntermFour, HVal), old = IntermFour, Block = HVal
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_HVAL_LEAF"), [8]ifaces.Column(cols.LeafOpenings.HVal), [8]ifaces.Column(cols.IntermFour), [8]ifaces.Column(cols.LeafHashes), cols.IsActiveAccumulator)
 
 	// Global: IsActive[i] * (1 - IsEmptyLeaf[i]) * (Leaves[i] - LeafHashes[i])
 	for i := 0; i < common.NbElemPerHash; i++ {

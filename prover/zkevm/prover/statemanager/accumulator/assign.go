@@ -321,13 +321,8 @@ func (am *Module) assignLeaf(
 	builder *assignmentBuilder) {
 
 	var (
-		cols            = am.Cols
-		paddedSize      = am.NumRows()
-		zeroBlock       field.Octuplet
-		intermZeroLimbs = vortex.CompressPoseidon2(zeroBlock, zeroBlock)
-		intermOneLimbs  = vortex.CompressPoseidon2(intermZeroLimbs, zeroBlock)
-		intermTwoLimbs  = vortex.CompressPoseidon2(intermOneLimbs, zeroBlock)
-		leafLimbs       = vortex.CompressPoseidon2(intermTwoLimbs, zeroBlock)
+		cols       = am.Cols
+		paddedSize = am.NumRows()
 	)
 
 	run.AssignColumn(cols.IsEmptyLeaf.GetColID(), smartvectors.RightZeroPadded(builder.isEmptyLeaf, paddedSize))
@@ -338,15 +333,16 @@ func (am *Module) assignLeaf(
 	}
 
 	for i := range cols.LeafHashes {
-		run.AssignColumn(cols.LeafHashes[i].GetColID(), smartvectors.RightPadded(builder.leafHashes[i], leafLimbs[i], paddedSize))
-		run.AssignColumn(cols.Interm[i][0].GetColID(), smartvectors.RightPadded(builder.interm[i][0], intermZeroLimbs[i], paddedSize))
-		run.AssignColumn(cols.Interm[i][1].GetColID(), smartvectors.RightPadded(builder.interm[i][1], intermOneLimbs[i], paddedSize))
-		run.AssignColumn(cols.Interm[i][2].GetColID(), smartvectors.RightPadded(builder.interm[i][2], intermTwoLimbs[i], paddedSize))
-
+		run.AssignColumn(cols.LeafHashes[i].GetColID(), smartvectors.RightZeroPadded(builder.leafHashes[i], paddedSize))
+		run.AssignColumn(cols.IntermZero[i].GetColID(), smartvectors.RightZeroPadded(builder.interm[i][0], paddedSize))
+		run.AssignColumn(cols.IntermOne[i].GetColID(), smartvectors.RightZeroPadded(builder.interm[i][1], paddedSize))
+		run.AssignColumn(cols.IntermTwo[i].GetColID(), smartvectors.RightZeroPadded(builder.interm[i][2], paddedSize))
+		run.AssignColumn(cols.IntermThree[i].GetColID(), smartvectors.RightZeroPadded(builder.interm[i][3], paddedSize))
+		run.AssignColumn(cols.IntermFour[i].GetColID(), smartvectors.RightZeroPadded(builder.interm[i][4], paddedSize))
 		run.AssignColumn(cols.LeafOpenings.HKey[i].GetColID(), smartvectors.RightZeroPadded(builder.leafOpening.hKey[i], paddedSize))
 		run.AssignColumn(cols.LeafOpenings.HVal[i].GetColID(), smartvectors.RightZeroPadded(builder.leafOpening.hVal[i], paddedSize))
 	}
-	println()
+
 }
 
 func (am *Module) assignTopRootCols(
