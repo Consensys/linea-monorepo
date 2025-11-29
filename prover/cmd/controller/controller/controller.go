@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -22,13 +21,34 @@ import (
 )
 
 type ControllerState struct {
-	activeJob     *Job
+	activeJob   *Job
+	activeJobMu sync.Mutex
+
 	jobDoneChan   chan struct{}
 	jobDoneChanMu sync.Mutex
 
 	// per-job cancel so SIGUSR2 can cancel only the running child
 	currentJobCancel context.CancelFunc
 	cancelJobMu      sync.Mutex
+}
+
+func (st *ControllerState) setActiveJob(job *Job) {
+	st.activeJobMu.Lock()
+	st.activeJob = job
+	st.activeJobMu.Unlock()
+}
+
+func (st *ControllerState) clearActiveJob() {
+	st.activeJobMu.Lock()
+	st.activeJob = nil
+	st.activeJobMu.Unlock()
+}
+
+func (st *ControllerState) getActiveJob() *Job {
+	st.activeJobMu.Lock()
+	job := st.activeJob
+	st.activeJobMu.Unlock()
+	return job
 }
 
 // set the current job cancel func
@@ -121,17 +141,17 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 			// For graceful shutdown, do not sleep here and requeue only if
 			// the job is still active (timer already slept in signal handler) - See signal handler go routine
-			if !spotReclaimDetected.Load() && gracefulShutdownRequested.Load() && state.activeJob != nil {
-				cLog.Infof("Job %v did not finish before termination grace period. Requeuing...", state.activeJob.OriginalFile)
-
-				// Write transient failures for limitless jobs
-				err := state.writeTransientFailFile(cfg, cLog, CodeKilledByExtSig)
-				if err != nil {
-					utils.Panic("error while writing transient failure files:%v", err)
+			if !spotReclaimDetected.Load() && gracefulShutdownRequested.Load() {
+				if job := state.getActiveJob(); job != nil {
+					cLog.Infof("Job %v did not finish before termination grace period. Requeuing...", job.OriginalFile)
+					// Write transient failures for limitless jobs
+					if err := state.writeTransientFailFile(cfg, cLog, CodeKilledByExtSig); err != nil {
+						utils.Panic("error while writing transient failure files:%v", err)
+					}
+					state.requeueJob(cfg, cLog)
 				}
-
-				state.requeueJob(cfg, cLog)
 			}
+
 			return
 
 			// Processing a new job
@@ -160,26 +180,30 @@ func runController(ctx context.Context, cfg *config.Config) {
 			jobCtx, jobCancel := context.WithCancel(ctrlCtx)
 			state.setCurrentJobCancel(jobCancel)
 
+			// Claim active job for safe requeue mechanism
+			state.setActiveJob(job)
+
+			// Rm any prev. transient failure files and other intermediate files - relevant only for Limitless jobs
+			if err := state.preCleanForLimitlessJob(cfg); err != nil {
+				state.clearActiveJob()
+				jobCancel()
+				state.clearCurrentJobCancel()
+				// Assumed to be unreachable path
+				utils.Panic("error during precleaning files for limitless jobs:%v", err)
+			}
+
 			// If a shared-failure marker exists for this job, skip it and cleanup
 			// Relevant only for limitless controller
 			if state.shouldSkipDueToSharedFail(cfg, cLog, job) {
+				state.clearActiveJob()
 				jobCancel()
 				state.clearCurrentJobCancel()
-				numRetrySoFar++
+				numRetrySoFar = 0
 				continue
 			}
 
 			// Reset retry counter and claim the job
 			numRetrySoFar = 0
-
-			// Claim active job for safe requeue mechanism
-			state.activeJob = job
-
-			// Rm any prev. transient failure files and other intermediate files - relevant only for Limitless jobs
-			if err := state.preCleanForLimitlessJob(cfg); err != nil {
-				// Assumed to be unreachable path
-				utils.Panic("error during precleaning files for limitless jobs:%v", err)
-			}
 
 			// Run the command (potentially retrying in large mode) using jobCtx so it can be
 			// cancelled independently by SIGUSR2/peer abort.
@@ -223,11 +247,11 @@ func (st *ControllerState) notifyJobDone() {
 }
 
 func (st *ControllerState) requeueJob(cfg *config.Config, cLog *logrus.Entry) {
-	if st.activeJob == nil {
+	job := st.getActiveJob()
+	if job == nil {
 		return
 	}
 
-	job := st.activeJob
 	_ = os.Remove(job.TmpResponseFile(cfg))
 	if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
 		cLog.Errorf("Failed to requeue job %v: %v", job.InProgressPath(), err)
@@ -235,7 +259,7 @@ func (st *ControllerState) requeueJob(cfg *config.Config, cLog *logrus.Entry) {
 		cLog.Infof("REQUEUED job: %v", job.OriginalFile)
 	}
 
-	st.activeJob = nil
+	st.clearActiveJob()
 	st.notifyJobDone()
 }
 
@@ -270,7 +294,7 @@ func (st *ControllerState) handleSignals(ctrlCancel context.CancelFunc, cLog *lo
 				cLog.Info("Received SIGTERM: graceful shutdown requested")
 			}
 
-			if st.activeJob != nil {
+			if job := st.getActiveJob(); job != nil {
 				st.jobDoneChanMu.Lock()
 				if st.jobDoneChan == nil {
 					st.jobDoneChan = make(chan struct{})
@@ -278,13 +302,14 @@ func (st *ControllerState) handleSignals(ctrlCancel context.CancelFunc, cLog *lo
 				localJobDoneChan := st.jobDoneChan
 				st.jobDoneChanMu.Unlock()
 
+				jobName := job.OriginalFile
+
 				go func() {
-					cLog.Infof("Allowing in-flight job %s to finish (max %ds)...", st.activeJob.OriginalFile, cfg.Controller.TerminationGracePeriod)
+					cLog.Infof("Allowing in-flight job %s to finish (max %ds)...", jobName, cfg.Controller.TerminationGracePeriod)
 					select {
 					case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
 						cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
 						ctrlCancel()
-
 					case <-localJobDoneChan:
 						cLog.Info("Job finished before grace period expired. Cancelling context to exit immediately...")
 						ctrlCancel()
@@ -381,7 +406,7 @@ func (st *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Ent
 	}
 
 	// Set active job to nil once the job is successful and notify the job is done
-	st.activeJob = nil
+	st.clearActiveJob()
 	st.notifyJobDone()
 }
 
@@ -463,8 +488,14 @@ func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Ent
 // error propogation in the context of external signal or generic job failure.
 // This is relevant only for limitless jobs
 func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logrus.Entry, exitCode int) error {
+
+	job := st.getActiveJob()
+	if job == nil {
+		return nil
+	}
+
 	// Relevant only for limitless jobs (excl. conglomeration - final stage)
-	if !isExecLimitlessJob(st.activeJob) || st.activeJob.Def.Name == jobNameConglomeration {
+	if !isExecLimitlessJob(job) || job.Def.Name == jobNameConglomeration {
 		return nil
 	}
 
@@ -491,19 +522,23 @@ func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logr
 	}
 
 	return nil
-
 }
 
 func (st *ControllerState) preCleanForLimitlessJob(cfg *config.Config) error {
 
+	job := st.getActiveJob()
+	if job == nil {
+		return nil
+	}
+
 	// Relevant only for limitless jobs (excl. conglomeration - final stage does not write any transient failure file)
-	if !isExecLimitlessJob(st.activeJob) || st.activeJob.Def.Name == jobNameConglomeration {
+	if !isExecLimitlessJob(job) || job.Def.Name == jobNameConglomeration {
 		return nil
 	}
 
 	// Remove any transient failure files if present at the start before executing
-	// the job to remove stale failure files and prevent false-postives
-	sharedFilePattern := fmt.Sprintf("%d-%d-%s-failure_code*", st.activeJob.Start, st.activeJob.End, st.activeJob.Def.Name)
+	// the job to remove stale failure files and prevent false-negatives
+	sharedFilePattern := fmt.Sprintf("%d-%d-*-failure_code*", job.Start, job.End)
 
 	exists, err := files.RemoveMatchingFiles(filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFilePattern), true)
 
@@ -511,25 +546,22 @@ func (st *ControllerState) preCleanForLimitlessJob(cfg *config.Config) error {
 	if exists {
 		switch {
 
-		case st.activeJob.Def.Name == jobNameBootstrap:
+		case job.Def.Name == jobNameBootstrap:
 			// Prev. Bootstrapper dangling witness files needs to be removed here before the start of the job
 			// and not inside the child process. This is because dangling witness files could have already been picked
 			// up by other active workers.
 
 			// Get all possible dir paths where witness files can be created
 			var (
-				limitlessDirs  []string
 				witnessPattern = fmt.Sprintf("%d-%d-*", st.activeJob.Start, st.activeJob.End)
+
+				// INDEX hardcoded here
+				cleanupDirs = []string{
+					limitlessDirs[5], limitlessDirs[6], limitlessDirs[7], limitlessDirs[8],
+				}
 			)
 
-			for _, mod := range config.ALL_MODULES {
-				limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsFromSubDir))
-				limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir))
-				limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsFromSubDir))
-				limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir))
-			}
-
-			for _, dir := range limitlessDirs {
+			for _, dir := range cleanupDirs {
 				_, err := files.RemoveMatchingFiles(filepath.Join(dir, witnessPattern), true)
 				if err != nil {
 					return fmt.Errorf("error removing dangling witness pattern in prev. interrupted bootstrap job:%v", err)
@@ -537,7 +569,6 @@ func (st *ControllerState) preCleanForLimitlessJob(cfg *config.Config) error {
 			}
 		}
 	}
-
 	return err
 }
 
@@ -585,7 +616,7 @@ func (st *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Ent
 		cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
 
 	case gracefulShutdownRequested.Load():
-		if st.activeJob != nil {
+		if st.getActiveJob() != nil {
 			cLog.Infof("Context done: grace period expired, forcing shutdown")
 		} else {
 			cLog.Info("Context done: graceful shutdown complete")
@@ -640,6 +671,38 @@ func finalizeExecLimitlessStatus(cfg *config.Config, cLog *logrus.Entry, job *Jo
 		cLog.Errorf("Failed to rename %v → %v: %v", oldFile, newFile, err)
 	} else {
 		cLog.Infof("Successfully replaced %s suffix with status:%s for conflation %d-%d", config.InProgressSufix, newSuffix, job.Start, job.End)
+	}
+
+	if cfg.Controller.LimitlessJobs.TransientCleanup {
+		cLog.Infof("Cleanup enabled — pruning only successful transient sub-proof/witness artifacts for %d-%d", job.Start, job.End)
+
+		patternBase := fmt.Sprintf("%d-%d-*%s*", job.Start, job.End, config.SuccessSuffix)
+
+		// Extract all the indexes of requests-done path from limitlessDirs
+		// It is ok to hardcode it since we know the structure of limitlessDirs
+		cleanupDirs := []string{
+			limitlessDirs[2], limitlessDirs[4], limitlessDirs[6],
+			limitlessDirs[8], limitlessDirs[10], limitlessDirs[12],
+		}
+		for _, dir := range cleanupDirs {
+			pattern := filepath.Join(dir, patternBase)
+			matches, err := filepath.Glob(pattern)
+			if err != nil {
+				cLog.Errorf("glob failed for pattern %v: %v", pattern, err)
+				continue
+			}
+
+			if len(matches) == 0 {
+				continue
+			}
+
+			for _, f := range matches {
+				cLog.Infof("Removing transient file: %s", f)
+				if err := os.Remove(f); err != nil {
+					cLog.Errorf("Failed to remove %s: %v", f, err)
+				}
+			}
+		}
 	}
 }
 
