@@ -18,6 +18,7 @@ enable_gl = false
 gl_mods =  ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
 enable_lpp = false
 lpp_mods =  ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
+transient_cleanup = true 
 
 [execution]
 prover_mode = "limitless"
