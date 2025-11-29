@@ -5,6 +5,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -54,8 +56,19 @@ func (bp *BlsPointEval) WithPointEvalCircuit(comp *wizard.CompiledIOP, options .
 	// the gnark circuit takes exactly the same rows as provided by the arithmetization. So
 	// to get the bound on the number of circuits we just need to divide by the size of the
 	// addition circuit input instances
-	maxNbInstances := bp.BlsPointEvalDataSource.CsPointEval.Size() / nbRowsPerPointEval
-	maxNbCircuits := maxNbInstances/bp.Limits.NbPointEvalInputInstances + 1
+	maxNbInstancesInputs := utils.DivCeil(bp.BlsPointEvalDataSource.CsPointEval.Size(), nbRowsPerPointEval)
+	maxNbInstancesLimit := bp.LimitPointEvalCalls
+	switch maxNbInstancesLimit {
+	case 0:
+		// if limit is 0, then we omit the circuit
+		logrus.Warnf("BlsPointEval: omitting point evaluation circuit as limit is 0")
+		return bp
+	case -1:
+		// if limit is -1, then we take all the inputs
+		maxNbInstancesLimit = maxNbInstancesInputs
+	}
+	maxNbInstances := min(maxNbInstancesInputs, maxNbInstancesLimit)
+	maxNbCircuits := utils.DivCeil(maxNbInstances, bp.Limits.NbPointEvalInputInstances)
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_BLS_POINTEVAL,
 		Round:              ROUND_NR,
@@ -71,8 +84,19 @@ func (bp *BlsPointEval) WithPointEvalCircuit(comp *wizard.CompiledIOP, options .
 }
 
 func (bp *BlsPointEval) WithPointEvalFailureCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPointEval {
-	maxNbInstances := bp.BlsPointEvalDataSource.CsPointEvalInvalid.Size() / nbRowsPerPointEval
-	maxNbCircuits := maxNbInstances/bp.Limits.NbPointEvalFailureInputInstances + 1
+	maxNbInstancesInputs := utils.DivCeil(bp.BlsPointEvalDataSource.CsPointEvalInvalid.Size(), nbRowsPerPointEval)
+	maxNbInstancesLimit := bp.LimitPointEvalFailureCalls
+	switch maxNbInstancesLimit {
+	case 0:
+		// if limit is 0, then we omit the circuit
+		logrus.Warnf("BlsPointEval: omitting point evaluation failure circuit as limit is 0")
+		return bp
+	case -1:
+		// if limit is -1, then we take all the inputs
+		maxNbInstancesLimit = maxNbInstancesInputs
+	}
+	maxNbInstances := min(maxNbInstancesInputs, maxNbInstancesLimit)
+	maxNbCircuits := utils.DivCeil(maxNbInstances, bp.Limits.NbPointEvalFailureInputInstances)
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_BLS_POINTEVAL + "_FAILURE",
 		Round:              ROUND_NR,

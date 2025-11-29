@@ -7,6 +7,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -60,8 +62,19 @@ func newMap(_ *wizard.CompiledIOP, g Group, limits *Limits, src *BlsMapDataSourc
 func (bm *BlsMap) WithMapCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMap {
 	// gnark circuits takes the inputs as is. To get the bound on the number of circuits we need
 	// to divide the maximum number of inputs instances with the number of instances per circuit
-	maxNbInstances := bm.BlsMapDataSource.CsMap.Size() / nbRowsPerMap(bm.Group)
-	maxNbCircuits := maxNbInstances/bm.Limits.nbMapInputInstances(bm.Group) + 1
+	maxNbInstancesInputs := utils.DivCeil(bm.BlsMapDataSource.CsMap.Size(), nbRowsPerMap(bm.Group))
+	maxNbInstancesLimit := bm.limitMapCalls(bm.Group)
+	switch maxNbInstancesLimit {
+	case 0:
+		// if limit is 0, then we omit the circuit
+		logrus.Warnf("BlsMap: omitting map circuit for group %s as limit is 0", bm.Group.String())
+		return bm
+	case -1:
+		// if limit is -1, then we take all the inputs
+		maxNbInstancesLimit = maxNbInstancesInputs
+	}
+	maxNbInstances := min(maxNbInstancesInputs, maxNbInstancesLimit)
+	maxNbCircuits := utils.DivCeil(maxNbInstances, bm.Limits.nbMapInputInstances(bm.Group))
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_MAP, bm.Group.String()),
 		Round:              ROUND_NR,

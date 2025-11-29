@@ -7,6 +7,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -60,8 +62,19 @@ func (ba *BlsAdd) WithAddCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 	// the gnark circuit takes exactly the same rows as provided by the arithmetization. So
 	// to get the bound on the number of circuits we just need to divide by the size of the
 	// addition circuit input instances
-	maxNbInstances := ba.BlsAddDataSource.CsAdd.Size() / nbRowsPerAdd(ba.Group)
-	maxNbCircuits := maxNbInstances/ba.Limits.nbAddInputInstances(ba.Group) + 1
+	maxNbInstancesInputs := utils.DivCeil(ba.BlsAddDataSource.CsAdd.Size(), nbRowsPerAdd(ba.Group))
+	maxNbInstancesLimit := ba.limitAddCalls(ba.Group)
+	switch maxNbInstancesLimit {
+	case 0:
+		// if limit is 0, then we omit the circuit
+		logrus.Warnf("BlsAdd: omitting addition circuit for group %s as limit is 0", ba.Group.String())
+		return ba
+	case -1:
+		// if limit is -1, then we take all the inputs
+		maxNbInstancesLimit = maxNbInstancesInputs
+	}
+	maxNbInstances := min(maxNbInstancesInputs, maxNbInstancesLimit)
+	maxNbCircuits := utils.DivCeil(maxNbInstances, ba.Limits.nbAddInputInstances(ba.Group))
 
 	toAlignAdd := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_ADD, ba.Group.String()),
@@ -77,7 +90,19 @@ func (ba *BlsAdd) WithAddCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 }
 
 func (ba *BlsAdd) WithCurveMembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsAdd {
-	maxNbCircuits := ba.BlsAddDataSource.CsCurveMembership.Size() / ba.Limits.nbCurveMembershipInputInstances(ba.Group)
+	maxNbInstancesInputs := utils.DivCeil(ba.BlsAddDataSource.CsCurveMembership.Size(), nbRowsPerCurveMembership(ba.Group))
+	maxNbInstancesLimit := ba.limitCurveMembershipCalls(ba.Group)
+	switch maxNbInstancesLimit {
+	case 0:
+		// if limit is 0, then we omit the circuit
+		logrus.Warnf("BlsAdd: omitting curve membership circuit for group %s as limit is 0", ba.Group.String())
+		return ba
+	case -1:
+		// if limit is -1, then we take all the inputs
+		maxNbInstancesLimit = maxNbInstancesInputs
+	}
+	maxNbInstances := min(maxNbInstancesInputs, maxNbInstancesLimit)
+	maxNbCircuits := utils.DivCeil(maxNbInstances, ba.Limits.nbCurveMembershipInputInstances(ba.Group))
 
 	toAlignCurveMembership := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_CURVE_MEMBERSHIP_ALIGNMENT", NAME_BLS_ADD, ba.Group.StringCurve()),
