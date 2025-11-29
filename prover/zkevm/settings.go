@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
@@ -29,6 +30,7 @@ type Settings struct {
 	Ecpair           ecpair.Limits
 	Sha2             sha2.Settings
 	Bls              bls.Limits
+	P256Verify       p256verify.Limits
 	PublicInput      publicInput.Settings
 	CompilationSuite CompilationSuite
 	Metadata         wizard.VersionMetadata

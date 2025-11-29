@@ -56,6 +56,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 
 	ded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
@@ -178,6 +179,9 @@ func init() {
 	RegisterImplementation(bls.MultiMillerLoopFinalExpCircuit{})
 	RegisterImplementation(bls.MultiPointEvalCircuit{})
 	RegisterImplementation(bls.MultiPointEvalFailureCircuit{})
+
+	// P256 verify circuit implementations
+	RegisterImplementation(p256verify.MultiP256VerifyInstanceCircuit{})
 
 	// Dedicated and common types
 	RegisterImplementation(byte32cmp.MultiLimbCmp{})
