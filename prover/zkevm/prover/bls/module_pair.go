@@ -12,6 +12,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -70,36 +71,71 @@ func newPair(comp *wizard.CompiledIOP, limits *Limits, src *BlsPairDataSource) *
 }
 
 func (bp *BlsPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
-	maxNbMlCircuits := bp.MaxNbPairInputs/bp.Limits.NbMillerLoopInputInstances + 1
-	maxNbFeCircuits := bp.MaxNbPairInputs/bp.Limits.NbFinalExpInputInstances + 1
-	toAlignMl := &plonk.CircuitAlignmentInput{
-		Name:               fmt.Sprintf("%s_ML", NAME_BLS_PAIR),
-		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.UnalignedPairData.GnarkIsActiveMillerLoop,
-		DataToCircuit:      bp.UnalignedPairData.GnarkDataMillerLoop,
-		Circuit:            newMultiMillerLoopMulCircuit(bp.Limits),
-		NbCircuitInstances: maxNbMlCircuits,
-		InputFillerKey:     millerLoopInputFillerKey,
-		PlonkOptions:       options,
+	maxNbMillerLoopInstances := bp.LimitMillerLoopCalls
+	if maxNbMillerLoopInstances == -1 {
+		// if limit is -1, then we take all the inputs
+		maxNbMillerLoopInstances = bp.MaxNbPairInputs
 	}
-	toAlignFe := &plonk.CircuitAlignmentInput{
-		Name:               fmt.Sprintf("%s_FE", NAME_BLS_PAIR),
-		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.UnalignedPairData.GnarkIsActiveFinalExp,
-		DataToCircuit:      bp.UnalignedPairData.GnarkDataFinalExp,
-		Circuit:            newMultiMillerLoopFinalExpCircuit(bp.Limits),
-		NbCircuitInstances: maxNbFeCircuits,
-		InputFillerKey:     finalExpInputFillerKey,
-		PlonkOptions:       options,
+	maxNbMillerLoopInstances = min(bp.MaxNbPairInputs, maxNbMillerLoopInstances)
+	if maxNbMillerLoopInstances > 0 {
+		// we omit the circuit when the limit is explicitly 0
+		maxNbMlCircuits := utils.DivCeil(maxNbMillerLoopInstances, bp.Limits.NbMillerLoopInputInstances)
+		toAlignMl := &plonk.CircuitAlignmentInput{
+			Name:               fmt.Sprintf("%s_ML", NAME_BLS_PAIR),
+			Round:              ROUND_NR,
+			DataToCircuitMask:  bp.UnalignedPairData.GnarkIsActiveMillerLoop,
+			DataToCircuit:      bp.UnalignedPairData.GnarkDataMillerLoop,
+			Circuit:            newMultiMillerLoopMulCircuit(bp.Limits),
+			NbCircuitInstances: maxNbMlCircuits,
+			InputFillerKey:     millerLoopInputFillerKey,
+			PlonkOptions:       options,
+		}
+		bp.AlignedMillerLoopData = plonk.DefineAlignment(comp, toAlignMl)
+	} else {
+		logrus.Warnf("BlsPair: omitting Miller loop circuit as limit is 0")
 	}
-	bp.AlignedMillerLoopData = plonk.DefineAlignment(comp, toAlignMl)
-	bp.AlignedFinalExpData = plonk.DefineAlignment(comp, toAlignFe)
+
+	maxNbFinalExpInstancesInstances := bp.LimitFinalExpCalls
+	if maxNbFinalExpInstancesInstances == -1 {
+		// if limit is -1, then we take all the inputs
+		maxNbFinalExpInstancesInstances = bp.MaxNbPairInputs
+	}
+	maxNbFinalExpInstancesInstances = min(bp.MaxNbPairInputs, maxNbFinalExpInstancesInstances)
+
+	if maxNbFinalExpInstancesInstances > 0 {
+		// we omit the circuit when the limit is explicitly 0
+		maxNbFeCircuits := utils.DivCeil(maxNbFinalExpInstancesInstances, bp.Limits.NbFinalExpInputInstances)
+		toAlignFe := &plonk.CircuitAlignmentInput{
+			Name:               fmt.Sprintf("%s_FE", NAME_BLS_PAIR),
+			Round:              ROUND_NR,
+			DataToCircuitMask:  bp.UnalignedPairData.GnarkIsActiveFinalExp,
+			DataToCircuit:      bp.UnalignedPairData.GnarkDataFinalExp,
+			Circuit:            newMultiMillerLoopFinalExpCircuit(bp.Limits),
+			NbCircuitInstances: maxNbFeCircuits,
+			InputFillerKey:     finalExpInputFillerKey,
+			PlonkOptions:       options,
+		}
+		bp.AlignedFinalExpData = plonk.DefineAlignment(comp, toAlignFe)
+	} else {
+		logrus.Warnf("BlsPair: omitting Final Exponentiation circuit as limit is 0")
+	}
 	return bp
 }
 
 func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
-	maxNbInputs := bp.UnalignedPairData.GnarkIsActiveG1Membership.Size() / nbG1Limbs
-	maxNbCircuits := maxNbInputs/bp.Limits.nbGroupMembershipInputInstances(G1) + 1
+	maxNbInstancesInputs := utils.DivCeil(bp.UnalignedPairData.GnarkIsActiveG1Membership.Size(), nbG1Limbs)
+	maxNbInstancesLimit := bp.limitGroupMembershipCalls(G1)
+	switch maxNbInstancesLimit {
+	case 0:
+		// if limit is 0, then we omit the circuit
+		logrus.Warnf("BlsPair: omitting G1 membership circuit as limit is 0")
+		return bp
+	case -1:
+		// if limit is -1, then we take all the inputs
+		maxNbInstancesLimit = maxNbInstancesInputs
+	}
+	maxNbInstances := min(maxNbInstancesInputs, maxNbInstancesLimit)
+	maxNbCircuits := utils.DivCeil(maxNbInstances, bp.Limits.nbGroupMembershipInputInstances(G1))
 	toAlignG1Ms := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_G1_MEMBERSHIP", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
@@ -115,8 +151,19 @@ func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...
 }
 
 func (bp *BlsPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
-	maxNbInputs := bp.UnalignedPairData.GnarkIsActiveG2Membership.Size() / nbG2Limbs
-	maxNbCircuits := maxNbInputs/bp.Limits.nbGroupMembershipInputInstances(G2) + 1
+	maxNbInstancesInputs := utils.DivCeil(bp.UnalignedPairData.GnarkIsActiveG2Membership.Size(), nbG2Limbs)
+	maxNbInstancesLimit := bp.limitGroupMembershipCalls(G2)
+	switch maxNbInstancesLimit {
+	case 0:
+		// if limit is 0, then we omit the circuit
+		logrus.Warnf("BlsPair: omitting G2 membership circuit as limit is 0")
+		return bp
+	case -1:
+		// if limit is -1, then we take all the inputs
+		maxNbInstancesLimit = maxNbInstancesInputs
+	}
+	maxNbInstances := min(maxNbInstancesInputs, maxNbInstancesLimit)
+	maxNbCircuits := utils.DivCeil(maxNbInstances, bp.Limits.nbGroupMembershipInputInstances(G2))
 	toAlignG2Ms := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_G2_MEMBERSHIP", NAME_BLS_PAIR),
 		Round:              ROUND_NR,

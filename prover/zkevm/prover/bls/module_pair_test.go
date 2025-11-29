@@ -17,6 +17,10 @@ func testBlsPair(t *testing.T, withCircuit bool) {
 		NbFinalExpInputInstances:     4,
 		NbG1MembershipInputInstances: 4,
 		NbG2MembershipInputInstances: 4,
+		LimitMillerLoopCalls:         16,
+		LimitFinalExpCalls:           16,
+		LimitG1MembershipCalls:       64,
+		LimitG2MembershipCalls:       64,
 	}
 	files, err := filepath.Glob("testdata/bls_pairing_inputs-[0-9]*.csv")
 	if err != nil {
