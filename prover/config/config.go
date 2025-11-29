@@ -271,6 +271,7 @@ type LimitlessJobs struct {
 	GLMods              []string `mapstructure:"gl_mods" validate:"mod_entries"`
 	EnableLPP           bool     `mapstructure:"enable_lpp"`
 	LPPMods             []string `mapstructure:"lpp_mods" validate:"mod_entries"`
+	TransientCleanup    bool     `mapstructure:"transient_cleanup"`
 }
 
 type ProverPhaseCmd struct {
