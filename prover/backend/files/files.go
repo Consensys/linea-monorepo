@@ -267,12 +267,13 @@ func ReadRequest(path string, into any) error {
 // - otherwise -> ".failure"
 func OutcomeSuffix(err error) string {
 	if err == nil {
-		return ".success"
+		return "." + config.SuccessSuffix
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
-		return ".timeout"
+		return "." + config.TimeoutSuffix
 	}
-	return ".failure"
+	// requires manual investigation
+	return "." + config.FailSuffix + "_2"
 }
 
 // MarkAndMoveToDone first attempts to rename each path -> path+suffix,
