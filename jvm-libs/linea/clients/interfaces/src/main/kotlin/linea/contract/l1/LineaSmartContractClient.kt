@@ -52,6 +52,7 @@ interface LineaSmartContractClientReadOnly {
 interface LineaRollupSmartContractClientReadOnly :
   LineaSmartContractClientReadOnly,
   ContractVersionProvider<LineaContractVersion>
+
 interface LineaValidiumSmartContractClientReadOnly :
   LineaSmartContractClientReadOnly,
   ContractVersionProvider<LineaValidiumContractVersion>

@@ -292,6 +292,22 @@ class Web3JContractAsyncHelper(
       }
   }
 
+  fun sendShnarfDataTransactionAndGetTxHash(
+    function: Function,
+    gasPriceCaps: GasPriceCaps?,
+  ): SafeFuture<String> {
+    return getGasLimit(function)
+      .thenCompose { gasLimit ->
+        createAndSendRawTransaction(
+          function = function,
+          weiValue = BigInteger.ZERO,
+          gasPriceCaps = gasPriceCaps,
+          gasLimit = gasLimit,
+        )
+      }
+      .thenApply { it.transactionHash }
+  }
+
   fun sendBlobCarryingTransactionAndGetTxHash(
     function: Function,
     blobs: List<ByteArray>,
@@ -377,6 +393,40 @@ class Web3JContractAsyncHelper(
         ).let { tx ->
           web3j.informativeEthCall(tx, smartContractErrors)
         }
+      }
+  }
+
+  fun executeEthCall(
+    function: Function,
+    gasPriceCaps: GasPriceCaps?,
+    overrideGasLimit: BigInteger? = null,
+  ): SafeFuture<String?> {
+    return (overrideGasLimit?.let { SafeFuture.completedFuture(overrideGasLimit) } ?: getGasLimit(function))
+      .thenApply { gasLimit ->
+        Transaction(
+          /* from */
+          transactionManager.fromAddress,
+          /* nonce */
+          null,
+          /* gasPrice */
+          null,
+          /* gasLimit */
+          gasLimit,
+          /* to */
+          contractAddress,
+          /* value */
+          null,
+          /* data */
+          FunctionEncoder.encode(function),
+          /* chainId */
+          null,
+          /* maxPriorityFeePerGasCap */
+          gasPriceCaps?.maxPriorityFeePerGasCap?.toBigInteger(),
+          /* maxFeePerGasCap */
+          gasPriceCaps?.maxFeePerGasCap?.toBigInteger(),
+        )
+      }.thenCompose { tx ->
+        web3j.informativeEthCall(tx, smartContractErrors)
       }
   }
 
