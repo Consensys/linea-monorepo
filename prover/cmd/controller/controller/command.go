@@ -32,6 +32,8 @@ func init() {
 	rootCmd.MarkFlagRequired("local-id")
 }
 
+var limitlessDirs []string
+
 // cobra command
 func cobraControllerRunCmd(c *cobra.Command, args []string) {
 
@@ -59,8 +61,10 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 		cfg.Aggregation.DirTo(),
 	}
 
-	// Limitless specific dirs
-	limitlessDirs := []string{
+	// Limitless specific dirs - DO NOT CHANGE THE ORDER since we hardcode the
+	// index in the controller.go file. If you change the order here, you need
+	// to change it in the controller.go file as well
+	limitlessDirs = []string{
 		// Shared transitent failure dir for distributed error propogation
 		cfg.ExecutionLimitless.SharedFailureDir,
 
