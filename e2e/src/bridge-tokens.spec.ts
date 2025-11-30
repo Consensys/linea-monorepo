@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { waitForEvents, etherToWei, getMessageSentEventFromLogs, estimateLineaGas } from "./common/utils";
+import { waitForEvents, etherToWei, getMessageSentEventFromLogs, estimateLineaGas, serialize } from "./common/utils";
 import { encodeFunctionData, parseEther, toHex } from "viem";
 import { config } from "./config/tests-config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi, TestERC20Abi, TokenBridgeV1_1Abi } from "./generated";
@@ -102,7 +102,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     expect(anchoredStatus).toBeGreaterThan(0);
 
-    logger.debug(`Message anchored. event=${JSON.stringify(rollingHashUpdatedEvent)}`);
+    logger.debug(`Message anchored. event=${serialize(rollingHashUpdatedEvent)}`);
 
     logger.debug("Waiting for MessageClaimed event on L2...");
 
@@ -121,7 +121,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     });
     expect(newTokenDeployed).not.toBeNull();
 
-    logger.debug(`Message claimed on L2. event=${JSON.stringify(claimedEvent)}.`);
+    logger.debug(`Message claimed on L2. event=${serialize(claimedEvent)}.`);
 
     const l2Token = getBridgedTokenContract(l2PublicClient, newTokenDeployed.args.bridgedToken!);
 
@@ -166,7 +166,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     });
 
     const mintTxReceipt = await l2PublicClient.waitForTransactionReceipt({ hash: mintTxHash });
-    logger.debug(`Mint tx receipt received=${JSON.stringify(mintTxReceipt)}`);
+    logger.debug(`Mint tx receipt received=${serialize(mintTxReceipt)}`);
 
     // Approve token
     lineaEstimateGasFee = await estimateLineaGas(lineaEstimateGasClient, {
@@ -185,7 +185,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       gasLimit: lineaEstimateGasFee.gasLimit,
     });
     const approveTxReceipt = await l2PublicClient.waitForTransactionReceipt({ hash: approveTxHash });
-    logger.debug(`Approve tx receipt received=${JSON.stringify(approveTxReceipt)}`);
+    logger.debug(`Approve tx receipt received=${serialize(approveTxReceipt)}`);
 
     // Retrieve token allowance
     const allowanceL2Account = await l2Token.read.allowance([l2Account.address, l2TokenBridgeAddress]);
@@ -219,7 +219,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       },
     );
     const bridgeTxReceipt = await l2PublicClient.waitForTransactionReceipt({ hash: bridgeTokenTxHash });
-    logger.debug(`Bridge tx receipt received=${JSON.stringify(bridgeTxReceipt)}`);
+    logger.debug(`Bridge tx receipt received=${serialize(bridgeTxReceipt)}`);
 
     const messageSentEvents = getMessageSentEventFromLogs([bridgeTxReceipt]);
 
@@ -237,7 +237,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     });
     expect(claimedEvent).not.toBeNull();
 
-    logger.debug(`Message claimed on L1. event=${JSON.stringify(claimedEvent)}`);
+    logger.debug(`Message claimed on L1. event=${serialize(claimedEvent)}`);
 
     const [newTokenDeployed] = await waitForEvents(l1PublicClient, {
       abi: TokenBridgeV1_1Abi,

@@ -8,7 +8,7 @@ import {
 } from "./common/utils";
 import { config } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
-import { Hash, Hex, parseEther, toHex } from "viem";
+import { Hash, Hex, parseEther, toHex, TransactionReceipt } from "viem";
 
 describe("Send bundle test suite", () => {
   const l2AccountManager = config.getL2AccountManager();
@@ -42,18 +42,24 @@ describe("Send bundle test suite", () => {
       const targetBlockNumber = (await l2PublicClient.getBlockNumber()) + 5n;
       const replacementUUID = generateRandomUUIDv4();
 
-      await lineaSendBundleClient.lineaSendBundle({
+      const { bundleHash } = await lineaSendBundleClient.lineaSendBundle({
         txs,
         replacementUUID,
         blockNumber: toHex(targetBlockNumber),
       });
 
+      logger.debug(`Bundle sent. bundleHash=${bundleHash}`);
+
       const hasReachedTargetBlockNumber = await pollForBlockNumber(l2PublicClient, targetBlockNumber);
 
       expect(hasReachedTargetBlockNumber).toBeTruthy();
       for (const tx of txHashes) {
-        const receipt = await l2PublicClient.getTransactionReceipt({ hash: tx });
-        expect(receipt?.status).toStrictEqual(1);
+        let receipt: TransactionReceipt | undefined = undefined;
+        try {
+          receipt = await l2PublicClient.getTransactionReceipt({ hash: tx });
+          // eslint-disable-next-line no-empty
+        } catch {}
+        expect(receipt?.status).toStrictEqual("success");
       }
     },
     120_000,
@@ -89,18 +95,24 @@ describe("Send bundle test suite", () => {
       const targetBlockNumber = (await l2PublicClient.getBlockNumber()) + 5n;
       const replacementUUID = generateRandomUUIDv4();
 
-      await lineaSendBundleClient.lineaSendBundle({
+      const { bundleHash } = await lineaSendBundleClient.lineaSendBundle({
         txs,
         replacementUUID,
         blockNumber: toHex(targetBlockNumber),
       });
+
+      logger.debug(`Bundle sent. bundleHash=${bundleHash}`);
 
       const hasReachedTargetBlockNumber = await pollForBlockNumber(l2PublicClient, targetBlockNumber);
 
       expect(hasReachedTargetBlockNumber).toBeTruthy();
       // None of the bundled txs should be included as not all of them is valid
       for (const tx of txHashes) {
-        const receipt = await l2PublicClient.getTransactionReceipt({ hash: tx });
+        let receipt: TransactionReceipt | undefined = undefined;
+        try {
+          receipt = await l2PublicClient.getTransactionReceipt({ hash: tx });
+          // eslint-disable-next-line no-empty
+        } catch {}
         expect(receipt?.status).toBeUndefined();
       }
     },
@@ -135,11 +147,13 @@ describe("Send bundle test suite", () => {
       const targetBlockNumber = (await l2PublicClient.getBlockNumber()) + 10n;
       const replacementUUID = generateRandomUUIDv4();
 
-      await lineaSendBundleClient.lineaSendBundle({
+      const { bundleHash } = await lineaSendBundleClient.lineaSendBundle({
         txs,
         replacementUUID,
         blockNumber: toHex(targetBlockNumber),
       });
+
+      logger.debug(`Bundle sent. bundleHash=${bundleHash}`);
 
       await pollForBlockNumber(l2PublicClient, targetBlockNumber - 5n);
       const cancelled = await lineaCancelBundleClient.lineaCancelBundle({ replacementUUID });
@@ -149,7 +163,11 @@ describe("Send bundle test suite", () => {
 
       expect(hasReachedTargetBlockNumber).toBeTruthy();
       for (const tx of txHashes) {
-        const receipt = await l2PublicClient.getTransactionReceipt({ hash: tx });
+        let receipt: TransactionReceipt | undefined = undefined;
+        try {
+          receipt = await l2PublicClient.getTransactionReceipt({ hash: tx });
+          // eslint-disable-next-line no-empty
+        } catch {}
         expect(receipt?.status).toBeUndefined();
       }
     },

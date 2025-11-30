@@ -4,6 +4,7 @@ import { sendTransaction, SendTransactionParameters, waitForTransactionReceipt }
 import { EstimateGasParameters } from "viem/linea";
 import { Account, Chain, Client, Transport } from "viem";
 import { createTestLogger } from "../../config/logger";
+import { serialize } from "./misc";
 
 const logger = createTestLogger();
 
@@ -49,7 +50,7 @@ export async function sendTransactionsToGenerateTrafficWithInterval<
         `Transaction sent successfully. hash=${txHash} maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`,
       );
     } catch (error) {
-      logger.error(`Error sending transaction. error=${JSON.stringify(error)}`);
+      logger.error(`Error sending transaction. error=${serialize(error)}`);
     } finally {
       if (isRunning) {
         timeoutId = setTimeout(innerSendTransaction, pollingInterval);

@@ -19,7 +19,7 @@ describe("Layer 2 test suite", () => {
     const oversizedData = toHex(randomBytes(TRANSACTION_CALLDATA_LIMIT).toString("hex"));
     logger.debug(`Generated oversized transaction data. dataLength=${oversizedData.length}`);
 
-    await expect(dummyContract.write.setPayload([oversizedData])).rejects.toThrow(
+    await expect(dummyContract.write.setPayload([oversizedData], { gas: 5_000_000n })).rejects.toThrow(
       "Calldata of transaction is greater than the allowed max of 30000",
     );
     logger.debug("Transaction correctly reverted due to oversized data.");
@@ -49,7 +49,7 @@ describe("Layer 2 test suite", () => {
     const receipt = await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash });
     logger.debug(`Transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
-    expect(receipt?.status).toEqual(1);
+    expect(receipt?.status).toEqual("success");
   });
 
   it.concurrent("Should successfully send a legacy transaction", async () => {

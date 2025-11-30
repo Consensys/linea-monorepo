@@ -11,11 +11,8 @@ export class LocalTestSetup extends TestSetupCore {
 
     const localL2Client = new L2Client(localCfg, localCfg);
 
-    // const localL2Contracts = new L2Contracts(localL2Client, localCfg);
-
     this.L2 = {
       client: localL2Client,
-      // contracts: localL2Contracts,
     };
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { etherToWei, getTransactionHash, wait } from "./common/utils";
+import { etherToWei, getTransactionHash, serialize, wait } from "./common/utils";
 import { config } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { BaseError, encodeFunctionData } from "viem";
@@ -37,7 +37,7 @@ describe("Transaction exclusion test suite", () => {
       } catch (err) {
         if (err instanceof BaseError) {
           // This shall return error with traces limit overflow
-          logger.debug(`sendTransaction expected rejection: ${JSON.stringify(err)}`);
+          logger.debug(`sendTransaction expected rejection: ${serialize(err)}`);
           // assert it was indeed rejected by the traces module limit
           expect(err.message).toContain("is above the limit");
         }
@@ -53,7 +53,7 @@ describe("Transaction exclusion test suite", () => {
         getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1({ txHash: rejectedTxHash! });
       } while (!getResponse);
 
-      logger.debug(`Transaction exclusion status received. response=${JSON.stringify(getResponse)}`);
+      logger.debug(`Transaction exclusion status received. response=${serialize(getResponse)}`);
 
       expect(getResponse.txHash).toStrictEqual(rejectedTxHash);
       expect(getResponse.txRejectionStage).toStrictEqual("RPC");
@@ -77,7 +77,7 @@ describe("Transaction exclusion test suite", () => {
       getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1({ txHash: rejectedTxHash! });
     } while (!getResponse);
 
-    logger.debug(`Transaction exclusion status received. response=${JSON.stringify(getResponse)}`);
+    logger.debug(`Transaction exclusion status received. response=${serialize(getResponse)}`);
 
     expect(getResponse.txHash).toStrictEqual(rejectedTxHash);
     expect(getResponse.txRejectionStage).toStrictEqual("SEQUENCER");

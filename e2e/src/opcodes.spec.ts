@@ -32,12 +32,32 @@ describe("Opcodes test suite", () => {
 
   it.concurrent("Should be able to execute all opcodes", async () => {
     const account = await l2AccountManager.generateAccount();
-    const opcodeTesterRead = config.l2PublicClient().getOpcodeTesterContract();
+    const l2PublicClient = config.l2PublicClient();
+    const opcodeTesterRead = l2PublicClient.getOpcodeTesterContract();
     const opcodeTesterWrite = config.l2WalletClient({ account }).getOpcodeTesterContract();
 
     const valueBeforeExecution = await opcodeTesterRead.read.rollingBlockDetailComputations();
-    const txHash = await opcodeTesterWrite.write.executeAllOpcodes({ gas: 5_000_000n });
-    await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 20_000 });
+
+    const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await estimateLineaGas(l2PublicClient, {
+      account,
+      to: opcodeTesterRead.address,
+      data: encodeFunctionCall({
+        abi: OpcodeTesterAbi,
+        functionName: "executeAllOpcodes",
+      }),
+    });
+
+    logger.debug(
+      `Fetched fee data for opcode execution. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas} gasLimit=${gasLimit}`,
+    );
+
+    const txHash = await opcodeTesterWrite.write.executeAllOpcodes({
+      gas: gasLimit,
+      maxFeePerGas,
+      maxPriorityFeePerGas,
+    });
+
+    await l2PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 20_000 });
 
     const valueAfterExecution = await opcodeTesterRead.read.rollingBlockDetailComputations();
 

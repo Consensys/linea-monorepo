@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
-import { awaitUntil, execDockerCommand, wait } from "./common/utils";
+import { awaitUntil, execDockerCommand, serialize, wait } from "./common/utils";
 import { LineaSequencerUptimeFeedAbi } from "./generated";
 
 describe("Liveness test suite", () => {
@@ -38,7 +38,7 @@ describe("Liveness test suite", () => {
       }
 
       const targetBlockNumber = lastBlockNumber + 1n;
-      logger.debug(`targetBlockNumber=${JSON.stringify(targetBlockNumber)}`);
+      logger.debug(`targetBlockNumber=${targetBlockNumber.toString()}`);
 
       let i = 0;
       const livenessEvents = await awaitUntil(
@@ -65,7 +65,7 @@ describe("Liveness test suite", () => {
         150000,
       );
 
-      logger.debug(`livenessEvents=${JSON.stringify(livenessEvents)}`);
+      logger.debug(`livenessEvents=${serialize(livenessEvents)}`);
       expect(livenessEvents?.length).toBeGreaterThanOrEqual(2);
 
       // The first two transactions of the target block should be the transactions
@@ -74,7 +74,7 @@ describe("Liveness test suite", () => {
         blockNumber: targetBlockNumber,
         includeTransactions: true,
       });
-      logger.debug(`targetBlock=${JSON.stringify(targetBlock)}`);
+      logger.debug(`targetBlock=${serialize(targetBlock)}`);
       expect(targetBlock?.transactions.length).toBeGreaterThanOrEqual(2);
 
       const downtimeTransaction = targetBlock?.transactions.at(0);

@@ -7,6 +7,7 @@ import {
   sendMessage,
   etherToWei,
   wait,
+  serialize,
 } from "./common/utils";
 import { config } from "./config/tests-config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
@@ -68,10 +69,10 @@ describe("Coordinator restart test suite", () => {
       const lastDataFinalizedEventsBeforeRestart = dataFinalizedEventsBeforeRestart.slice(-1)[0];
 
       logger.debug(
-        `DataSubmittedV3 event before coordinator restart found. event=${JSON.stringify(lastDataSubmittedEventBeforeRestart)}`,
+        `DataSubmittedV3 event before coordinator restart found. event=${serialize(lastDataSubmittedEventBeforeRestart)}`,
       );
       logger.debug(
-        `DataFinalizedV3 event before coordinator restart found. event=${JSON.stringify(lastDataFinalizedEventsBeforeRestart)}`,
+        `DataFinalizedV3 event before coordinator restart found. event=${serialize(lastDataFinalizedEventsBeforeRestart)}`,
       );
 
       // Just some sanity checks
@@ -95,7 +96,7 @@ describe("Coordinator restart test suite", () => {
       });
 
       logger.debug(
-        `DataSubmittedV3 event after coordinator restart found. event=${JSON.stringify(dataSubmittedV3EventAfterRestart)}`,
+        `DataSubmittedV3 event after coordinator restart found. event=${serialize(dataSubmittedV3EventAfterRestart)}`,
       );
 
       logger.debug("Waiting for DataFinalizedV3 event after coordinator restart...");
@@ -112,7 +113,7 @@ describe("Coordinator restart test suite", () => {
       });
 
       logger.debug(
-        `DataFinalizedV3 event after coordinator restart found. event=${JSON.stringify(dataFinalizedEventAfterRestart)}`,
+        `DataFinalizedV3 event after coordinator restart found. event=${serialize(dataFinalizedEventAfterRestart)}`,
       );
 
       expect(dataFinalizedEventAfterRestart.args.endBlockNumber).toBeGreaterThan(

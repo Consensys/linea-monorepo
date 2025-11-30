@@ -1,5 +1,5 @@
 import { describe, it } from "@jest/globals";
-import { awaitUntil, getDockerImageTag } from "./common/utils";
+import { awaitUntil, getDockerImageTag, serialize } from "./common/utils";
 import { config } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { toHex } from "viem";
@@ -59,9 +59,7 @@ describe("Shomei Linea get proof test suite", () => {
             });
             if (!finalizedL2BlockNumbers.includes(latestFinalizedL2BlockNumber)) {
               finalizedL2BlockNumbers.push(latestFinalizedL2BlockNumber);
-              logger.debug(
-                `finalizedL2BlockNumbers=${JSON.stringify(finalizedL2BlockNumbers.map((it) => Number(it)))}`,
-              );
+              logger.debug(`finalizedL2BlockNumbers=${serialize(finalizedL2BlockNumbers.map((it) => Number(it)))}`);
             }
           }
           return getProofResponse;
