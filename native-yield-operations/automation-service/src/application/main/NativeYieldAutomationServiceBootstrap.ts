@@ -49,6 +49,7 @@ import { VaultHubContractClient } from "../../clients/contracts/VaultHubContract
 import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
 import { OperationModeMetricsRecorder } from "../metrics/OperationModeMetricsRecorder.js";
 import { DashboardContractClient } from "../../clients/contracts/DashboardContractClient.js";
+import { StakingVaultContractClient } from "../../clients/contracts/StakingVaultContractClient.js";
 
 /**
  * Bootstrap class for the Native Yield Automation Service.
@@ -136,6 +137,10 @@ export class NativeYieldAutomationServiceBootstrap {
     DashboardContractClient.initialize(
       this.viemBlockchainClientAdapter,
       new WinstonLogger(DashboardContractClient.name, config.loggerOptions),
+    );
+    StakingVaultContractClient.initialize(
+      this.viemBlockchainClientAdapter,
+      new WinstonLogger(StakingVaultContractClient.name, config.loggerOptions),
     );
     this.yieldManagerContractClient = new YieldManagerContractClient(
       new WinstonLogger(YieldManagerContractClient.name, config.loggerOptions),

@@ -76,6 +76,24 @@ jest.mock(
   { virtual: true },
 );
 jest.mock(
+  "../../../clients/contracts/DashboardContractClient.js",
+  () => ({
+    DashboardContractClient: {
+      initialize: jest.fn(),
+    },
+  }),
+  { virtual: true },
+);
+jest.mock(
+  "../../../clients/contracts/StakingVaultContractClient.js",
+  () => ({
+    StakingVaultContractClient: {
+      initialize: jest.fn(),
+    },
+  }),
+  { virtual: true },
+);
+jest.mock(
   "../../../clients/contracts/LineaRollupYieldExtensionContractClient.js",
   () => ({
     LineaRollupYieldExtensionContractClient: jest.fn().mockImplementation(() => ({})),

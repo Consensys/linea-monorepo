@@ -15,4 +15,12 @@ export const DashboardABI = [
     stateMutability: "view",
     type: "function",
   },
+  { inputs: [], name: "resumeBeaconChainDeposits", outputs: [], stateMutability: "nonpayable", type: "function" },
+  {
+    inputs: [],
+    name: "stakingVault",
+    outputs: [{ internalType: "contract IStakingVault", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
