@@ -31,6 +31,7 @@ func NewGnarkFS(api frontend.API) *GnarkFS {
 func (fs *GnarkFS) Update(vec ...frontend.Variable) {
 	fs.hasher.Write(vec...)
 }
+
 func (fs *GnarkFS) UpdateExt(vec ...gnarkfext.E4Gen) {
 	for i := 0; i < len(vec); i++ {
 		fs.hasher.Write(vec[i].B0.A0.AsNative())

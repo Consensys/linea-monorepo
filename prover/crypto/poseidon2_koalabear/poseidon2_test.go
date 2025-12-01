@@ -37,6 +37,7 @@ func (ghc *GnarkMDHasherCircuitWV) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
+
 	for i := 0; i < 8; i++ {
 		apiGen.AssertIsEqual(ghc.Ouput[i], res[i])
 	}
