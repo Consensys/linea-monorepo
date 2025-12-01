@@ -522,7 +522,7 @@ func GetTestTracesLimits() *TracesLimits {
 		PrecompileBlsC2MembershipCalls:                 8,
 		PrecompileBlsG1MembershipCalls:                 8,
 		PrecompileBlsG2MembershipCalls:                 8,
-		BlsData:                                        4096,
+		BlsData:                                        65536,
 		RlpUtils:                                       131072,
 		PowerReferenceTable:                            32,
 		BlsReferenceTable:                              512,
