@@ -44,7 +44,7 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  */
 @Slf4j
 public class ProfitableTransactionSelector implements PluginTransactionSelector {
-  private final Cache<Hash, Integer> compressedSizeCache =
+  private static final Cache<Hash, Integer> compressedSizeCache =
       CacheBuilder.newBuilder().maximumSize(10000).expireAfterWrite(30, TimeUnit.MINUTES).build();
 
   public enum Phase implements LabelValue {
