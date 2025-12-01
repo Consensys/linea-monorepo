@@ -1,7 +1,10 @@
-package mimccodehash
+package lineacodehash
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -16,8 +19,8 @@ type assignBuilder struct {
 	codeSize         [common.NbLimbU32][]field.Element
 	isNewHash        []field.Element
 	isHashEnd        []field.Element
-	prevState        [common.NbLimbU256][]field.Element
-	newState         [common.NbLimbU256][]field.Element
+	prevState        [poseidon2.BlockSize][]field.Element
+	newState         [poseidon2.BlockSize][]field.Element
 	isNonEmptyKeccak []field.Element
 }
 
@@ -31,6 +34,9 @@ func newAssignmentBuilder(length int) *assignBuilder {
 
 	for i := range common.NbLimbU256 {
 		ab.codeHash[i] = make([]field.Element, 0, length)
+	}
+
+	for i := range poseidon2.BlockSize {
 		ab.prevState[i] = make([]field.Element, 0, length)
 		ab.newState[i] = make([]field.Element, 0, length)
 	}
@@ -64,40 +70,28 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		rom.completeAssign(run)
 	}
 
-	var (
-		filter = rom.CounterIsEqualToNBytesMinusOne.GetColAssignment(run).IntoRegVecSaveAlloc()
+	filter := rom.CounterIsEqualToNBytesMinusOne.GetColAssignment(run).IntoRegVecSaveAlloc()
 
-		codeHash  [common.NbLimbU256][]field.Element
-		acc       [common.NbLimbU128][]field.Element
-		codeSize  [common.NbLimbU32][]field.Element
-		cfi       [common.NbLimbU32][]field.Element
-		cfiRomLex [common.NbLimbU32][]field.Element
-	)
+	codeHash := common.GetMultiColumnAssignment(run, romLex.CodeHash[:])
 
-	for i := range common.NbLimbU256 {
-		codeHash[i] = romLex.CodeHash[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-	}
+	acc := common.GetMultiColumnAssignment(run, rom.Acc[:])
 
-	for i := range common.NbLimbU128 {
-		acc[i] = rom.Acc[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-	}
+	codeSize := common.GetMultiColumnAssignment(run, rom.CodeSize[:])
 
-	for i := range common.NbLimbU32 {
-		codeSize[i] = rom.CodeSize[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-		cfi[i] = rom.CFI[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-		cfiRomLex[i] = romLex.CFIRomLex[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-	}
+	cfi := common.GetMultiColumnAssignment(run, rom.CFI[:])
+
+	cfiRomLex := common.GetMultiColumnAssignment(run, romLex.CFIRomLex[:])
 
 	// Since we need to operate on limb slices, we need to transpose limb columns.
-	cfiTransponed := transposeLimbs(cfi[:])
+	cfiTransposed := transposeLimbs(cfi[:])
 	cfiRomLexTransponed := transposeLimbs(cfiRomLex[:])
 
-	var length = len(cfiTransponed)
+	var length = len(cfiTransposed)
 	var builder = newAssignmentBuilder(length)
 
-	for i := 0; i < length; i++ {
+	for row := 0; row < length; row++ {
 
-		if !areLimbsZero(cfiTransponed[i]) && ((i+1 == length) || areLimbsZero(cfiTransponed[i+1])) {
+		if !areLimbsZero(cfiTransposed[row]) && ((row+1 == length) || areLimbsZero(cfiTransposed[row+1])) {
 			// This is the last row in the active area of the rom input.
 			// We assign one more row to make the assignment of the last row
 			// for other columns below work correctly, we exclude codeHash and
@@ -116,7 +110,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 			break
 		}
 
-		if filter[i].IsZero() {
+		if filter[row].IsZero() {
 			continue
 		}
 
@@ -125,38 +119,43 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 
 		// Inject the other incoming columns from the rom input
 		var cfiRow [common.NbLimbU32]field.Element
-		copy(cfiRow[:], cfiTransponed[i])
+		copy(cfiRow[:], cfiTransposed[row])
 		builder.cfi = append(builder.cfi, cfiRow)
 
 		for j := range builder.limb {
-			builder.limb[j] = append(builder.limb[j], acc[j][i])
+			builder.limb[j] = append(builder.limb[j], acc[j][row])
 		}
 
 		for j := range builder.codeSize {
-			builder.codeSize[j] = append(builder.codeSize[j], codeSize[j][i])
+			builder.codeSize[j] = append(builder.codeSize[j], codeSize[j][row])
 		}
 	}
 
+	transposedLimb := transposeLimbs(builder.limb[:])
 	// The content of this statement is constructing isNewHash and isHashEnd
 	// prevState and newState. However, it is only needed when there is any
 	// codehash to hash in the first place.
 	if len(builder.cfi) > 0 {
 
+		var (
+			prevState = make([]field.Element, poseidon2.BlockSize)
+		)
 		// Initialize the first row of the remaining columns
 		builder.isNewHash = append(builder.isNewHash, field.One())
 
-		// Detect if it is a one limb segment (at the begining) and assign IsHashEnd accordingly
+		// Detect if it is a one-limb segment (at the beginning) and assign IsHashEnd accordingly
 		if builder.cfi[1] != builder.cfi[0] {
 			builder.isHashEnd = append(builder.isHashEnd, field.One())
 		} else {
 			builder.isHashEnd = append(builder.isHashEnd, field.Zero())
 		}
 
-		for i := range common.NbLimbU256 {
+		for i := range poseidon2.BlockSize {
 			builder.prevState[i] = append(builder.prevState[i], field.Zero())
+			prevState[i] = field.Zero()
 		}
 
-		compression := common.BlockCompression(transposeLimbs(builder.prevState[:])[0], transposeLimbs(builder.limb[:])[0])
+		compression := vortex.CompressPoseidon2(field.Octuplet(prevState), field.Octuplet(transposedLimb[0]))
 		for i := range builder.newState {
 			builder.newState[i] = append(builder.newState[i], compression[i])
 		}
@@ -195,73 +194,49 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 				isOneLimbSegment = true
 			}
 
-			// Assign for begining of a segment
-			if isSegmentBegin {
+			switch {
+			case isSegmentBegin:
 				builder.isNewHash = append(builder.isNewHash, field.One())
 				builder.isHashEnd = append(builder.isHashEnd, field.Zero())
 
-				for j := range common.NbLimbU256 {
+				for j := range poseidon2.BlockSize {
 					builder.prevState[j] = append(builder.prevState[j], field.Zero())
+					prevState[j] = field.Zero()
 				}
-
-				compression = common.BlockCompression(transposeLimbs(builder.prevState[:])[i], transposeLimbs(builder.limb[:])[i])
-				for j := range common.NbLimbU256 {
-					builder.newState[j] = append(builder.newState[j], compression[j])
-				}
-
-				continue
-			}
-
-			// Assign for middle of a segment
-			if isSegmentMiddle {
+			case isSegmentMiddle:
 				builder.isNewHash = append(builder.isNewHash, field.Zero())
 				builder.isHashEnd = append(builder.isHashEnd, field.Zero())
 
-				for j := range common.NbLimbU256 {
+				for j := range poseidon2.BlockSize {
 					builder.prevState[j] = append(builder.prevState[j], builder.newState[j][i-1])
+					prevState[j] = builder.newState[j][i-1]
 				}
-
-				compression = common.BlockCompression(transposeLimbs(builder.prevState[:])[i], transposeLimbs(builder.limb[:])[i])
-				for j := range common.NbLimbU256 {
-					builder.newState[j] = append(builder.newState[j], compression[j])
-				}
-
-				continue
-			}
-
-			// Assign for end of a segment
-			if isSegmentEnd {
+			case isSegmentEnd:
 				builder.isNewHash = append(builder.isNewHash, field.Zero())
 				builder.isHashEnd = append(builder.isHashEnd, field.One())
 
-				for j := range common.NbLimbU256 {
+				for j := range poseidon2.BlockSize {
 					builder.prevState[j] = append(builder.prevState[j], builder.newState[j][i-1])
+					prevState[j] = builder.newState[j][i-1]
 				}
-
-				compression = common.BlockCompression(transposeLimbs(builder.prevState[:])[i], transposeLimbs(builder.limb[:])[i])
-				for j := range common.NbLimbU256 {
-					builder.newState[j] = append(builder.newState[j], compression[j])
-				}
-
-				continue
-			}
-
-			// Assign for a one limb segment
-			if isOneLimbSegment {
+			case isOneLimbSegment:
 				builder.isNewHash = append(builder.isNewHash, field.One())
 				builder.isHashEnd = append(builder.isHashEnd, field.One())
 
-				for j := range common.NbLimbU256 {
+				for j := range poseidon2.BlockSize {
 					builder.prevState[j] = append(builder.prevState[j], field.Zero())
+					prevState[j] = field.Zero()
 				}
-
-				compression = common.BlockCompression(transposeLimbs(builder.prevState[:])[i], transposeLimbs(builder.limb[:])[i])
-				for j := range common.NbLimbU256 {
-					builder.newState[j] = append(builder.newState[j], compression[j])
-				}
-
-				continue
+			default:
+				panic("invalid segment type")
 			}
+
+			compression = vortex.CompressPoseidon2(field.Octuplet(prevState), field.Octuplet(transposedLimb[i]))
+
+			for j := range poseidon2.BlockSize {
+				builder.newState[j] = append(builder.newState[j], compression[j])
+			}
+
 		}
 
 		// Assign codehash from the romLex input
@@ -313,7 +288,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		}
 	}
 
-	// Assign the columns of the mimc code hash module
+	// Assign the columns of the Poseidon2 code hash module
 	run.AssignColumn(mh.IsActive.GetColID(), smartvectors.RightZeroPadded(builder.isActive, mh.Inputs.Size))
 
 	for j := range builder.cfi[0] {
@@ -333,14 +308,18 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn(mh.IsHashEnd.GetColID(), smartvectors.RightZeroPadded(builder.isHashEnd, mh.Inputs.Size))
 	run.AssignColumn(mh.IsForConsistency.GetColID(), smartvectors.RightZeroPadded(builder.isNonEmptyKeccak, mh.Inputs.Size))
 
-	newStatePad := common.BlockCompression([]field.Element{field.Zero()}, []field.Element{field.Zero()})
+	newStatePad := vortex.CompressPoseidon2(field.Octuplet(vector.Zero(8)), field.Octuplet(vector.Zero(8)))
 	for i := range common.NbLimbU256 {
 		run.AssignColumn(mh.CodeHash[i].GetColID(), smartvectors.RightZeroPadded(builder.codeHash[i], mh.Inputs.Size))
+
+		// assign isEmptyKeccak[i]
+		mh.CptIsEmptyKeccak[i].Run(run)
+	}
+
+	for i := range poseidon2.BlockSize {
 		run.AssignColumn(mh.PrevState[i].GetColID(), smartvectors.RightZeroPadded(builder.prevState[i], mh.Inputs.Size))
 		// Assignment of new state with the zero hash padding
 		run.AssignColumn(mh.NewState[i].GetColID(), smartvectors.RightPadded(builder.newState[i], newStatePad[i], mh.Inputs.Size))
-
-		mh.CptIsEmptyKeccak[i].Run(run)
 	}
 
 	for i := range common.NbLimbU32 {

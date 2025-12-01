@@ -1,4 +1,4 @@
-package mimccodehash
+package lineacodehash
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -10,8 +10,8 @@ import (
 // of the Rom and the RomLew module. It is optional in the sense that it may
 // be omitted in tests but it is not optional in production.
 type inputModules struct {
-	RomInput    *RomInput
-	RomLexInput *RomLexInput
+	RomInput    *RomInput    // Provides bytecode data (limbs, code size)
+	RomLexInput *RomLexInput //Provides contract metadata and Keccak code hashes
 }
 
 // This function checks if the codehash module properly takes inputs from the
@@ -36,9 +36,9 @@ func (mch *Module) ConnectToRom(comp *wizard.CompiledIOP,
 	colB = append(colB, mch.Limb[:]...)
 	colB = append(colB, mch.CodeSize[:]...)
 
-	// Projection query between romInput and MiMCCodeHash module
+	// Projection query between romInput and POSEIDON2CodeHash module
 	comp.InsertProjection(
-		ifaces.QueryIDf("PROJECTION_ROM_MIMC_CODE_HASH_%v", mch.Inputs.Name),
+		ifaces.QueryIDf("PROJECTION_ROM_POSEIDON2_CODE_HASH_%v", mch.Inputs.Name),
 		query.ProjectionInput{ColumnA: colA,
 			ColumnB: colB,
 			FilterA: romInput.CounterIsEqualToNBytesMinusOne,
@@ -47,13 +47,13 @@ func (mch *Module) ConnectToRom(comp *wizard.CompiledIOP,
 	// Lookup between romLexInput and mch for
 	// {CFI, codeHash}
 	comp.InsertInclusion(0,
-		ifaces.QueryIDf("LOOKUP_MIMC_CODE_HASH_ROMLEX_%v", mch.Inputs.Name),
+		ifaces.QueryIDf("LOOKUP_POSEIDON2_CODE_HASH_ROMLEX_%v", mch.Inputs.Name),
 		append(mch.CFI[:], mch.CodeHash[:]...),
 		append(romLexInput.CFIRomLex[:], romLexInput.CodeHash[:]...))
 
 	// And the reverse lookup
 	comp.InsertInclusion(0,
-		ifaces.QueryIDf("LOOKUP_ROMLEX_MIMC_CODE_HASH_%v", mch.Inputs.Name),
+		ifaces.QueryIDf("LOOKUP_ROMLEX_POSEIDON2_CODE_HASH_%v", mch.Inputs.Name),
 		append(romLexInput.CFIRomLex[:], romLexInput.CodeHash[:]...),
 		append(mch.CFI[:], mch.CodeHash[:]...))
 
