@@ -461,6 +461,9 @@ func (c *CompiledIOP) InsertPrecomputed(name ifaces.ColID, v smartvectors.SmartV
 	// not have the same content but the same name, then we will end up with
 	// a very messed up bug that is hard to track.
 	if c.Columns.Exists(name) {
+		if c.Columns.GetHandle(name).Size() != v.Len() {
+			utils.Panic("Precomputed column %v is registered twice with different sizes (%v and %v)", name, c.Columns.GetHandle(name).Size(), v.Len())
+		}
 		return c.Columns.GetHandle(name)
 	}
 

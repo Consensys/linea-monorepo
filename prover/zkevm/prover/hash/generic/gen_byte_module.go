@@ -2,6 +2,7 @@ package generic
 
 import (
 	"bytes"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -35,9 +36,11 @@ type GenDataModule struct {
 
 // GenInfoModule collects the columns summarizing information about the result of the hash
 type GenInfoModule struct {
-	HashNum ifaces.Column   // Identifier for the hash. Allows joining with the data module
-	Hash    []ifaces.Column // The hash result
-	IsHash  ifaces.Column   // indicating the location of Hash
+	HashNum  ifaces.Column   // Identifier for the hash. Allows joining with the data module
+	HashHi   []ifaces.Column // The hash result
+	HashLo   []ifaces.Column // The hash result
+	IsHashHi ifaces.Column   // indicating the location of Hash
+	IsHashLo ifaces.Column   // indicating the location of Hash
 }
 
 // ScanStreams scans the receiver GenDataModule's assignment and returns the list

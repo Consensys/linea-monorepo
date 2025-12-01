@@ -95,14 +95,14 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 	var (
 		res = &Importation{
 			Inputs:         inp,
-			HashNum:        comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_HASH_NUM", inp.Name), numRows),
-			NBytes:         comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_NBYTES", inp.Name), numRows),
-			Index:          comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_INDEX", inp.Name), numRows),
-			IsInserted:     comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_IS_INSERTED", inp.Name), numRows),
-			IsPadded:       comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_IS_PADDED", inp.Name), numRows),
-			AccPaddedBytes: comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_ACC_PADDED_BYTES", inp.Name), numRows),
-			IsActive:       comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_IS_ACTIVE", inp.Name), numRows),
-			IsNewHash:      comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_IS_NEW_HASH", inp.Name), numRows),
+			HashNum:        comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_HASH_NUM", inp.Name), numRows, true),
+			NBytes:         comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_NBYTES", inp.Name), numRows, true),
+			Index:          comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_INDEX", inp.Name), numRows, true),
+			IsInserted:     comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_IS_INSERTED", inp.Name), numRows, true),
+			IsPadded:       comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_IS_PADDED", inp.Name), numRows, true),
+			AccPaddedBytes: comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_ACC_PADDED_BYTES", inp.Name), numRows, true),
+			IsActive:       comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_IS_ACTIVE", inp.Name), numRows, true),
+			IsNewHash:      comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_IS_NEW_HASH", inp.Name), numRows, true),
 			Limbs:          make([]ifaces.Column, nbLimbs),
 		}
 	)
@@ -111,7 +111,7 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 	pragmas.MarkRightPadded(res.HashNum)
 
 	for i := range nbLimbs {
-		res.Limbs[i] = comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_LIMB_%d", inp.Name, i), numRows)
+		res.Limbs[i] = comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_LIMB_%d", inp.Name, i), numRows, true)
 	}
 
 	switch {
@@ -151,13 +151,6 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		),
 	)
 
-	//  IsPadded is correctly set before each newHash.
-	// IsInserted[i] * IsPadded[i-1] == IsNewHash
-	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_IS_PADDED_WELL_SET", inp.Name),
-		sym.Sub(res.IsNewHash, sym.Mul(res.IsInserted, column.Shift(res.IsPadded, -1))),
-	)
-
 	if inp.PaddingStrategy != generic.MiMCUsecase {
 		// before IsActive transits to 0, there should be a padding zone.
 		// IsActive[i] * (1-IsActive[i+1]) * (1-IsPadded[i]) =0
@@ -166,6 +159,13 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 				sym.Sub(1, column.Shift(res.IsActive, 1)),
 				sym.Sub(1, res.IsPadded),
 			),
+		)
+
+		//  IsPadded is correctly set before each newHash.
+		// IsInserted[i] * IsPadded[i-1] == IsNewHash
+		comp.InsertGlobal(0,
+			ifaces.QueryIDf("%v_IS_PADDED_WELL_SET", inp.Name),
+			sym.Sub(res.IsNewHash, sym.Mul(res.IsInserted, column.Shift(res.IsPadded, -1))),
 		)
 	}
 

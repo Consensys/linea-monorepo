@@ -3,10 +3,13 @@
 package sha2
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
@@ -15,6 +18,7 @@ import (
 type Settings struct {
 	MaxNumSha2F                    int
 	NbInstancesPerCircuitSha2Block int
+	IsHashLoAssigner               *dedicated.ManuallyShifted
 }
 
 // Sha2SingleProviderInput stores the inputs for [newSha2SingleProvider]
@@ -51,21 +55,20 @@ func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings) *Sha2SingleProvider {
 			},
 			Info: generic.GenInfoModule{
 				HashNum: comp.Columns.GetHandle("shakiradata.ID"),
-				Hash:    []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
+				HashHi:  common.GetMultiHandle(comp, "shakiradata.LIMB", numLimbsPerState/2),
+				HashLo:  common.GetMultiHandle(comp, "shakiradata.LIMB_LO", numLimbsPerState/2),
 				// Before, we usse to pass column.Shift(IsHash, -1) but this does
 				// not work with the prover distribution as the column is used as
 				// a filter for a projection query.
-				IsHash: comp.Columns.GetHandle("shakiradata.SELECTOR_SHA2_RES"),
+				IsHashHi: comp.Columns.GetHandle("shakiradata.SELECTOR_SHA2_RES"),
 			},
 		},
 	}
 
-	panic("TODO: fix this so that it work for both the limitless prover and the small fields")
-	//
-	// man := dedicated.ManuallyShift(comp, sha2ProviderInput.Provider.Info.IsHashHi, -1, "shakiradata.SELECTOR_SHA2_RES_LO")
-	// pragmas.MarkLeftPadded(man.Natural)
-	// sha2ProviderInput.Provider.Info.IsHashLo = man.Natural
-	// sha2ProviderInput.IsHashLoAssigner = man
+	man := dedicated.ManuallyShift(comp, sha2ProviderInput.Provider.Info.IsHashHi, -1, "shakiradata.SELECTOR_SHA2_RES_LO")
+	pragmas.MarkLeftPadded(man.Natural)
+	sha2ProviderInput.Provider.Info.IsHashLo = man.Natural
+	sha2ProviderInput.IsHashLoAssigner = man
 
 	return newSha2SingleProvider(comp, sha2ProviderInput)
 }
@@ -114,17 +117,26 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 			MaxNbCircuit:         utils.DivCeil(maxNumSha2F, inp.NbInstancesPerCircuitSha2Block),
 			PackedUint16:         packing.Repacked.Lanes,
 			Selector:             packing.Repacked.IsLaneActive,
-			IsFirstLaneOfNewHash: packing.Repacked.IsFirstLaneOfNewHash,
+			IsFirstLaneOfNewHash: packing.Repacked.IsBeginningOfNewHash,
 		}
 		cSha2 = newSha2BlockModule(comp, cSha2Inp).WithCircuit(comp)
 	)
 
-	comp.InsertProjection("SHA2_RES",
+	comp.InsertProjection("SHA2_RES_HI",
 		query.ProjectionInput{
-			ColumnA: cSha2.Hash[:],
-			ColumnB: inp.Provider.Info.Hash,
+			ColumnA: cSha2.Hash[:numLimbsPerState/2],
+			ColumnB: inp.Provider.Info.HashHi,
 			FilterA: cSha2.IsEffFirstLaneOfNewHash,
-			FilterB: inp.Provider.Info.IsHash,
+			FilterB: inp.Provider.Info.IsHashHi,
+		},
+	)
+
+	comp.InsertProjection("SHA2_RES_LO",
+		query.ProjectionInput{
+			ColumnA: cSha2.Hash[numLimbsPerState/2:],
+			ColumnB: inp.Provider.Info.HashLo,
+			FilterA: cSha2.IsEffFirstLaneOfNewHash,
+			FilterB: inp.Provider.Info.IsHashLo,
 		},
 	)
 
@@ -138,13 +150,13 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 		Pa_packing:   packing,
 		Pa_cSha2:     cSha2,
 	}
-
 	return m
 }
 
 // It implements [wizard.ProverAction] for sha2.
 func (m *Sha2SingleProvider) Run(run *wizard.ProverRuntime) {
 
+	m.Inputs.IsHashLoAssigner.Assign(run)
 	// assign ImportAndPad module
 	m.Pa_importPad.Run(run)
 	// assign packing module

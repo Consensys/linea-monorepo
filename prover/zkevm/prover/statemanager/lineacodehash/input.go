@@ -1,4 +1,4 @@
-package mimccodehash
+package lineacodehash
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"

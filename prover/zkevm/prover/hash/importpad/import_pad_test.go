@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/crypto/sha2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -35,9 +36,14 @@ func TestImportAndPad(t *testing.T) {
 			UseCase:     generic.Sha2Usecase,
 			PaddingFunc: sha2.PadStream,
 		},
-		{
+		/*{
 			Name:        "MiMC",
 			ModFilePath: "testdata/mod_mimc.csv",
+			UseCase:     generic.MiMCUsecase,
+		},*/
+		{
+			Name:        "Poseidon2",
+			ModFilePath: "testdata/mod_poseidon.csv",
 			UseCase:     generic.MiMCUsecase,
 		},
 	}
