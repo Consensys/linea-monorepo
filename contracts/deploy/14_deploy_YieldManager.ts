@@ -44,6 +44,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   const initialMinimumWithdrawalReserveAmount = BigInt(getEnvVarOrDefault("MINIMUM_WITHDRAWAL_RESERVE_AMOUNT", 0));
   const initialTargetWithdrawalReserveAmount = BigInt(getEnvVarOrDefault("TARGET_WITHDRAWAL_RESERVE_AMOUNT", 0));
+
+  const withdrawLSTRateLimitPeriodSeconds = BigInt(getEnvVarOrDefault("WITHDRAW_LST_RATE_LIMIT_PERIOD_SECONDS", 86400));
+  const withdrawLSTRateLimitWei = BigInt(
+    getEnvVarOrDefault("WITHDRAW_LST_RATE_LIMIT_WEI", ethers.parseEther("5000").toString()),
+  );
+
   const gIFirstValidatorPrev = getEnvVarOrDefault("GI_FIRST_VALIDATOR_PREV", GI_FIRST_VALIDATOR_PREV);
   const gIFirstValidatorCurr = getEnvVarOrDefault("GI_FIRST_VALIDATOR_CURR", GI_FIRST_VALIDATOR_CURR);
   const pivotSlot = getEnvVarOrDefault("PIVOT_SLOT", PIVOT_SLOT);
@@ -82,6 +88,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     initialTargetWithdrawalReservePercentageBps: initialTargetWithdrawalReservePercentageBps,
     initialMinimumWithdrawalReserveAmount: initialMinimumWithdrawalReserveAmount,
     initialTargetWithdrawalReserveAmount: initialTargetWithdrawalReserveAmount,
+    withdrawLSTRateLimitPeriodSeconds: withdrawLSTRateLimitPeriodSeconds,
+    withdrawLSTRateLimitWei: withdrawLSTRateLimitWei,
   };
 
   const yieldManager = (await deployUpgradableFromFactoryWithConstructorArgs(
