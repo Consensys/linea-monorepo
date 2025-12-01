@@ -24,8 +24,7 @@ services:
   besu-node:
     hostname: el-client
     container_name: linea-besu
-    # TODO: Update to final Osaka-compatible version when available
-    image: consensys/linea-besu-package:beta-v4.4-rc[X]-YYYYMMDDHHMMSS-HASH
+    image: consensys/linea-besu-package:beta-v4.4-rc7-20251201181632-1fefac9
 
     platform: linux/amd64
     healthcheck:
