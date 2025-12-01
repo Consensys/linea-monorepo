@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -30,8 +30,8 @@ type InnerProductParams struct {
 }
 
 // Update the fiat-shamir state with inner-product params
-func (ipp InnerProductParams) UpdateFS(state *fiatshamir_bls12377.FS) {
-	state.UpdateVecExt(ipp.Ys)
+func (ipp InnerProductParams) UpdateFS(state *fiatshamir.FS) {
+	(*state).UpdateVecExt(ipp.Ys)
 }
 
 // Constructor for inner-product.

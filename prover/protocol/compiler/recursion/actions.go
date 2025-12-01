@@ -92,7 +92,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		SisHashes:         sisHashes,
 		MimcHashes:        mimcHashes,
 		Trees:             trees,
-		FinalFS:           run.FS.State(),
+		FinalFS:           (*run.KoalaFS).State(),
 		Pub:               pubs,
 	}
 }

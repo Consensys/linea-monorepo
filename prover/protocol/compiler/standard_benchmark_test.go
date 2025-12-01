@@ -316,7 +316,7 @@ func benchmarkCompilerWithoutSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = wizard.Prove(comp, sbc.NewAssigner(b))
+		_ = wizard.Prove(comp, sbc.NewAssigner(b), false)
 	}
 }
 
@@ -355,7 +355,7 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = wizard.Prove(comp, sbc.NewAssigner(b))
+		_ = wizard.Prove(comp, sbc.NewAssigner(b), false)
 	}
 }
 

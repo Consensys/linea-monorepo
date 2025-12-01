@@ -48,10 +48,10 @@ func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTest
 
 func TestVortexGnarkVerifier(t *testing.T) {
 
-	polSize := 1 << 2
-	nPols := 4
+	polSize := 1 << 4
+	nPols := 16
 	numRounds := 1
-	numPrecomputeds := 2
+	numPrecomputeds := 4
 	rows := make([][]ifaces.Column, numRounds)
 
 	define := func(b *wizard.Builder) {
@@ -116,10 +116,10 @@ func TestVortexGnarkVerifier(t *testing.T) {
 		vortex.Compile(4,
 			true,
 			vortex.WithOptionalSISHashingThreshold(1<<20))) // Set to a high value to disable SIS hashing, because gnark does not support SIS hashing
-	proof := wizard.Prove(compiled, prove)
+	proof := wizard.Prove(compiled, prove, true)
 
 	// Just as a sanity check, do not run the Plonk
-	valid := wizard.Verify(compiled, proof)
+	valid := wizard.Verify(compiled, proof, true)
 	require.NoErrorf(t, valid, "the proof did not pass")
 
 	// Run the proof verifier

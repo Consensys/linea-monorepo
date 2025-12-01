@@ -37,13 +37,13 @@ func (a *ExplicitPolynomialEval) Run(run wizard.Runtime) error {
 func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
 	if ctx.IsBLS {
-		return ctx.runGnark(run)
+		return ctx.runBLS(run)
 	} else {
-		return ctx.runNonGnark(run)
+		return ctx.runKoala(run)
 	}
 }
 
-func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
+func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -59,7 +59,6 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 		// precomputed. Otherwise, it is the first root of the no SIS roots.
 		noSisRoots = []field.Octuplet{}
 		sisRoots   = []field.Octuplet{}
-
 		// Slice of true value of length equal to the number of no SIS round
 		// + 1 (if SIS is not applied to precomputed)
 		flagForNoSISRounds = []bool{}
@@ -70,7 +69,6 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
-
 		var precompRootF field.Octuplet
 		for i := 0; i < blockSize; i++ {
 			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
@@ -84,7 +82,6 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 			noSisRoots = append(noSisRoots, precompRootF)
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		}
-
 	}
 
 	// Collect all the roots: rounds by rounds
@@ -106,12 +103,13 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 		}
 
 		switch ctx.RoundStatus[round] {
-		case IsOnlyPoseidon2Applied:
+		// IsOnlyPoseidon2Applied is equivalent to No SIS hashing applied
+		case IsNoSis:
 			noSisRoots = append(noSisRoots, precompRootF)
-			flagForNoSISRounds = append(flagForNoSISRounds, false)
+			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		case IsSISApplied:
 			sisRoots = append(sisRoots, precompRootF)
-			flagForSISRounds = append(flagForSISRounds, true)
+			flagForSISRounds = append(flagForSISRounds, false)
 		default:
 			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
 		}
@@ -119,7 +117,12 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 
 	// assign the roots and the WithSis flags
 	roots := append(noSisRoots, sisRoots...)
-	WithSis := append(flagForNoSISRounds, flagForSISRounds...)
+	IsSISReplacedByPoseidon2 := append(flagForNoSISRounds, flagForSISRounds...)
+
+	WithSis := make([]bool, len(IsSISReplacedByPoseidon2))
+	for i := range IsSISReplacedByPoseidon2 {
+		WithSis[i] = !IsSISReplacedByPoseidon2[i]
+	}
 
 	proof := &vortex.OpeningProof{}
 	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
@@ -150,7 +153,7 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 	return vortex_koalabear.Verify(ctx.VortexKoalaParams, proof, &vi, roots, merkleProofs, WithSis)
 }
 
-func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
+func (ctx *VortexVerifierAction) runBLS(run wizard.Runtime) error {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -160,30 +163,25 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	}
 
 	var (
-		gnarkNoSisRoots = []bls12377.Element{}
+		blsNoSisRoots = []bls12377.Element{}
 
 		// Slice of true value of length equal to the number of no SIS round
 		// + 1 (if SIS is not applied to precomputed)
-		flagForNoSISRounds = []bool{}
-		// Slice of false value of length equal to the number of SIS round
-		// + 1 (if SIS is applied to precomputed)
-		flagForSISRounds = []bool{}
+		WithSis = []bool{}
 	)
 
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
 
-		var precompRootF [encoding.GnarkKoalabearNumElements]field.Element
-		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
-			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
+		var precompRootF [encoding.KoalabearChunks]field.Element
+		for i := 0; i < encoding.KoalabearChunks; i++ {
+			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.BLSMerkleRoot[i].GetColID())
 			precompRootF[i] = precompRootSv.IntoRegVecSaveAlloc()[0]
 		}
 
-		gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12377(precompRootF))
-		flagForNoSISRounds = append(flagForNoSISRounds, false)
+		blsNoSisRoots = append(blsNoSisRoots, encoding.DecodeKoalabearToBLS12Root(precompRootF))
+		WithSis = append(WithSis, false)
 
-	} else {
-		flagForSISRounds = append(flagForSISRounds, true)
 	}
 
 	// Collect all the roots: rounds by rounds
@@ -198,25 +196,20 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 			continue
 		}
 
-		var precompRootF [encoding.GnarkKoalabearNumElements]field.Element
-		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
-			rootSv := run.GetColumn(ctx.Items.GnarkMerkleRoots[round][i].GetColID())
+		var precompRootF [encoding.KoalabearChunks]field.Element
+		for i := 0; i < encoding.KoalabearChunks; i++ {
+			rootSv := run.GetColumn(ctx.Items.BLSMerkleRoots[round][i].GetColID())
 			precompRootF[i] = rootSv.IntoRegVecSaveAlloc()[0]
 		}
 
 		switch ctx.RoundStatus[round] {
-		case IsOnlyPoseidon2Applied:
-			gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12377(precompRootF))
-			flagForNoSISRounds = append(flagForNoSISRounds, false)
-		case IsSISApplied:
-			flagForSISRounds = append(flagForSISRounds, true)
+		case IsNoSis:
+			blsNoSisRoots = append(blsNoSisRoots, encoding.DecodeKoalabearToBLS12Root(precompRootF))
+			WithSis = append(WithSis, false)
 		default:
 			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
 		}
 	}
-
-	// assign the roots and the WithSis flags
-	WithSis := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
 	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
@@ -231,12 +224,12 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	proof.Columns = ctx.RecoverSelectedColumns(run, entryList)
 	x := run.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
-	packedMProofs := [encoding.GnarkKoalabearNumElements]smartvectors.SmartVector{}
+	packedMProofs := [encoding.KoalabearChunks]smartvectors.SmartVector{}
 	for i := range packedMProofs {
 		packedMProofs[i] = run.GetColumn(ctx.MerkleProofName(i))
 	}
 
-	merkleProofs := ctx.unpackGnarkMerkleProofs(packedMProofs, entryList)
+	merkleProofs := ctx.unpackBLSMerkleProofs(packedMProofs, entryList)
 
 	var vi vortex.VerifierInput
 	vi.X = x
@@ -244,7 +237,7 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	vi.EntryList = entryList
 	vi.Ys = ctx.getYs(run)
 
-	return vortex_bls12377.Verify(ctx.VortexBLSParams, proof, &vi, gnarkNoSisRoots, merkleProofs, WithSis)
+	return vortex_bls12377.Verify(ctx.VortexBLSParams, proof, &vi, blsNoSisRoots, merkleProofs, WithSis)
 }
 
 // returns the number of committed rows for the given round. This takes
@@ -317,7 +310,7 @@ func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]fext.Element) {
 			ysRounds[i] = ysMap[name]
 		}
 		// conditionally append ysRounds to the SIS or no SIS list
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+		if ctx.RoundStatus[round] == IsNoSis {
 			ysNoSIS = append(ysNoSIS, ysRounds)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			ysSIS = append(ysSIS, ysRounds)
@@ -374,7 +367,7 @@ func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][]
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		// conditionally append the numRowsForRound
 		// to the SIS or no SIS list
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+		if ctx.RoundStatus[round] == IsNoSis {
 			numRowsPerNonSisRound = append(numRowsPerNonSisRound, numRowsForRound)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			numRowsPerSisRound = append(numRowsPerSisRound, numRowsForRound)

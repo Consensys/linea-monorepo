@@ -235,7 +235,7 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 
 		isPastFirstNonEmptyRound = true
 
-		if ctx.VortexCtx.RoundStatus[i] == vortex.IsOnlyPoseidon2Applied {
+		if ctx.VortexCtx.RoundStatus[i] == vortex.IsNoSis {
 			colSize := ctx.VortexCtx.GetNumPolsForNonSisRounds(i)
 			colChunks := (colSize + blockSize - 1) / blockSize
 			preimageChunksSizeUnpadded := colChunks * numLeaves
@@ -672,7 +672,7 @@ func processRound(
 			run.State.TryDel(colSisHashName)
 			lmp.CommittedRound++
 
-		} else if a.Ctx.VortexCtx.RoundStatus[round] == vortex.IsOnlyPoseidon2Applied {
+		} else if a.Ctx.VortexCtx.RoundStatus[round] == vortex.IsNoSis {
 			// Fetch the Poseidon2 hash values
 			colNoSisHashName := a.Ctx.VortexCtx.NoSisHashName(round)
 			colNonSisLeavesSV, found := run.State.TryGet(colNoSisHashName)

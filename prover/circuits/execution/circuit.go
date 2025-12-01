@@ -106,7 +106,7 @@ func assign(
 func (c *CircuitExecution) Define(api frontend.API) error {
 
 	c.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
-	c.WizardVerifier.FS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
+	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
 
 	c.WizardVerifier.Verify(api)
 	checkPublicInputs(

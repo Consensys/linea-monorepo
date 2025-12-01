@@ -115,6 +115,6 @@ func (ctx *Ctx) PrecomputedMerkleRootName(index int) ifaces.ColID {
 }
 
 // returns the name of the precomputed Gnark Merkle root when Merkle is applied
-func (ctx *Ctx) PrecomputedGnarkMerkleRootName(index int) ifaces.ColID {
-	return ifaces.ColIDf("VORTEX_PRECOMPUTED_GNARK_MERKLE_ROOT_%d_%d", ctx.SelfRecursionCount, index)
+func (ctx *Ctx) PrecomputedBLSMerkleRootName(index int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_PRECOMPUTED_BLS_MERKLE_ROOT_%d_%d", ctx.SelfRecursionCount, index)
 }

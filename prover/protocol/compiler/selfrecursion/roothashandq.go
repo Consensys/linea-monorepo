@@ -36,7 +36,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	for round, rh := range ctx.Columns.Rooth {
 		if ctx.VortexCtx.RoundStatus[round] == vortex.IsSISApplied {
 			rootHashSis = append(rootHashSis, rh)
-		} else if ctx.VortexCtx.RoundStatus[round] == vortex.IsOnlyPoseidon2Applied {
+		} else if ctx.VortexCtx.RoundStatus[round] == vortex.IsNoSis {
 			rootHashNonsis = append(rootHashNonsis, rh)
 		} else if ctx.VortexCtx.RoundStatus[round] == vortex.IsEmpty {
 			continue

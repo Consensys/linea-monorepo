@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
@@ -104,7 +105,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		hshM = hFac.NewHasher()
 		if c.Keccak.Wc != nil {
 			c.Keccak.Wc.HasherFactory = hFac
-			c.Keccak.Wc.FS = fiatshamir.NewGnarkFiatShamir(api, hFac)
+			c.Keccak.Wc.BLSFS = fiatshamir.NewGnarkFiatShamir(api, hFac)
 		}
 	} else {
 		if hsh, err := mimc.NewMiMC(api); err != nil {

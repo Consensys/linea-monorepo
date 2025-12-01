@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
-	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -33,7 +33,7 @@ type GnarkRuntime interface {
 	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
-	Fs() *fiatshamir_bls12377.GnarkFS
+	Fs() *fiatshamir.GnarkFS
 	GetHasherFactory() mimc.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
@@ -121,11 +121,10 @@ type VerifierCircuit struct {
 	// the proof. It is part of the witness of the gnark circuit.
 	HornerParams []query.GnarkHornerParams `gnark:",secret"`
 
-	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
+	// BLSFS is the Fiat-Shamir state, mirroring [VerifierRuntime.BLSFS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
 	// possible.
-	FS    *fiatshamir.GnarkFS          `gnark:"-"`
-	BLSFS *fiatshamir_bls12377.GnarkFS `gnark:"-"`
+	BLSFS fiatshamir.GnarkFS `gnark:"-"`
 
 	// Coins stores all the coins sampled by the verifier circuit. It is not
 	// part of the witness since the coins are constructed from the assigned
@@ -344,8 +343,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use
 	// GKR instead.
-	c.BLSFS = fiatshamir_bls12377.NewGnarkFS(api)
-	c.FS = fiatshamir.NewGnarkFS(api)
+	c.BLSFS = fiatshamir.NewGnarkFSKoalaBLS12377(api)
 
 	var zkWV [8]zk.WrappedVariable
 	for i := 0; i < 8; i++ {
@@ -399,7 +397,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			}
 
 			params := c.GetParams(qName)
-			params.UpdateFS(c.BLSFS)
+			params.UpdateFS(&c.BLSFS)
 		}
 	}
 
@@ -423,7 +421,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			continue
 		}
 		cn := c.Spec.Coins.Data(coinName)
-		value := cn.SampleGnark(c.BLSFS, zkSeed)
+		value := cn.SampleGnark(&c.BLSFS, zkSeed)
 
 		c.Coins.InsertNew(coinName, value)
 	}
@@ -835,8 +833,8 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) zk.Wrapp
 }
 
 // Fs returns the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) Fs() *fiatshamir_bls12377.GnarkFS {
-	return c.BLSFS
+func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFS {
+	return &c.BLSFS
 }
 
 // SetFs sets the Fiat-Shamir state of the verifier circuit

@@ -23,7 +23,7 @@ func (ctx *SelfRecursionCtx) ahName(key *ringsis.Key, start, length, maxSize int
 		utils.Panic("inconsistent arguments : %v + %v > %v", start, length, maxSize)
 	}
 
-	subName := ifaces.ColIDf("SISKEY_%v_%v_%v", key.LogTwoBound, key.OutputSize(), key.MaxNumFieldHashable())
+	subName := ifaces.ColIDf("SISKEY_%v_%v_%v", key.LogTwoBound(), key.OutputSize(), key.MaxNumFieldHashable())
 	name := ifaces.ColIDf("%v_%v_%v_%v_%v", subName, start, length, maxSize, ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
