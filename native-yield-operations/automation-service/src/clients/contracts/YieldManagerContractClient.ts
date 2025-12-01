@@ -405,7 +405,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     if (peekedYieldReport === undefined) {
       throw new Error("peekYieldReport returned undefined, cannot determine rebalance requirements");
     }
-    return this._isRebalanceRequired(
+    return this._getRebalanceRequirements(
       totalSystemBalance,
       l1MessageServiceBalance,
       effectiveTargetWithdrawalReserve,
@@ -432,7 +432,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @param {bigint} peekedYieldReportOutstandingNegativeYield - The outstanding negative yield from the peeked yield report.
    * @returns {RebalanceRequirement} The rebalance requirement containing direction (NONE, STAKE, or UNSTAKE) and amount.
    */
-  private _isRebalanceRequired(
+  private _getRebalanceRequirements(
     totalSystemBalance: bigint,
     l1MessageServiceBalance: bigint,
     effectiveTargetWithdrawalReserve: bigint,
