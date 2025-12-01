@@ -430,9 +430,9 @@ func (a *assignmentBuilder) pushRow(
 	nextFreeNodeSecond := nextFreeNodeFrLimbs[common.NbElemPerHash : 2*common.NbElemPerHash]
 	zeroBlock := field.Octuplet{}
 
-	intermZeroTopRootFrLimbs := common.BlockCompression(zeroBlock[:], rootFrLimbs)
-	intermOneTopRootFrLimbs := common.BlockCompression(intermZeroTopRootFrLimbs, nextFreeNodeFirst)
-	topRootFrLimbs := common.BlockCompression(intermOneTopRootFrLimbs, nextFreeNodeSecond)
+	intermZeroTopRootFrLimbs := vortex.CompressPoseidon2(zeroBlock, vortex.Hash(rootFrLimbs))
+	intermOneTopRootFrLimbs := vortex.CompressPoseidon2(intermZeroTopRootFrLimbs, vortex.Hash(nextFreeNodeFirst))
+	topRootFrLimbs := vortex.CompressPoseidon2(intermOneTopRootFrLimbs, vortex.Hash(nextFreeNodeSecond))
 	for i := range a.intermZeroTopRoot {
 		a.intermZeroTopRoot[i] = append(a.intermZeroTopRoot[i], intermZeroTopRootFrLimbs[i])
 		a.intermOneTopRoot[i] = append(a.intermOneTopRoot[i], intermOneTopRootFrLimbs[i])
