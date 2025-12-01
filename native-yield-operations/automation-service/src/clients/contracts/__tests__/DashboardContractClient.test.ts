@@ -34,6 +34,7 @@ describe("DashboardContractClient", () => {
     read: {
       obligations: jest.fn(),
       withdrawableValue: jest.fn(),
+      totalValue: jest.fn(),
     },
   } as any;
 
@@ -164,6 +165,17 @@ describe("DashboardContractClient", () => {
 
     expect(viemContractStub.read.withdrawableValue).toHaveBeenCalledTimes(1);
     expect(result).toBe(withdrawable);
+  });
+
+  it("reads totalValue via read and returns the result", async () => {
+    const total = 5000n;
+    viemContractStub.read.totalValue.mockResolvedValueOnce(total);
+
+    const client = createClient();
+    const result = await client.totalValue();
+
+    expect(viemContractStub.read.totalValue).toHaveBeenCalledTimes(1);
+    expect(result).toBe(total);
   });
 
   describe("initialize", () => {

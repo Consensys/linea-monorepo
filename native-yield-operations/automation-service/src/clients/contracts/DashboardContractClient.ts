@@ -126,4 +126,13 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
   async withdrawableValue(): Promise<bigint> {
     return this.contract.read.withdrawableValue();
   }
+
+  /**
+   * Gets the total value from the Dashboard contract.
+   *
+   * @returns {Promise<bigint>} The total value in wei.
+   */
+  async totalValue(): Promise<bigint> {
+    return this.contract.read.totalValue();
+  }
 }
