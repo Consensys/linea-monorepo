@@ -20,7 +20,7 @@ import secondCompressedDataContent from "../../_testData/compressedData/blocks-4
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
 import fourthCompressedDataMultipleContent from "../../_testData/compressedData/multipleProofs/blocks-120-153.json";
 
-import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
+import { LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES, LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
 import { TestLineaRollup } from "contracts/typechain-types";
 import {
   deployLineaRollupFixture,
@@ -42,8 +42,9 @@ import {
   OPERATOR_ROLE,
   TEST_PUBLIC_VERIFIER_INDEX,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-  BLOB_SUBMISSION_PAUSE_TYPE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
+  ADDRESS_ZERO,
+  STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "../../common/constants";
 import { deployUpgradableFromFactory } from "../../common/deployment";
 import {
@@ -132,13 +133,18 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     const operatorHDSigner = getWalletForIndex(2);
 
     const lineaRollupAddress = await lineaRollup.getAddress();
-    const { blobDataSubmission, compressedBlobs, finalShnarf } = generateBlobDataSubmission(0, 1);
+    const { blobDataSubmission, compressedBlobs } = generateBlobDataSubmission(0, 1);
     const nonExistingParentShnarf = generateRandomBytes(32);
+
+    const wrongExpectedShnarf = generateKeccak256(
+      ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
+      [HASH_ZERO, HASH_ZERO, blobDataSubmission[0].finalStateRootHash, HASH_ZERO, HASH_ZERO],
+    );
 
     const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
       blobDataSubmission,
       nonExistingParentShnarf,
-      finalShnarf,
+      wrongExpectedShnarf,
     ]);
 
     const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -164,7 +170,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     await expectRevertWithCustomError(
       lineaRollup,
       ethers.provider.broadcastTransaction(signedTx),
-      "ParentBlobNotSubmitted",
+      "ParentShnarfNotSubmitted",
       [nonExistingParentShnarf],
     );
   });
@@ -226,16 +232,16 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     );
   });
 
-  it("Should revert if BLOB_SUBMISSION_PAUSE_TYPE is enabled", async () => {
+  it("Should revert if STATE_DATA_SUBMISSION_PAUSE_TYPE is enabled", async () => {
     const { blobDataSubmission, parentShnarf, finalShnarf } = generateBlobDataSubmission(0, 1);
 
-    await lineaRollup.connect(securityCouncil).pauseByType(BLOB_SUBMISSION_PAUSE_TYPE);
+    await lineaRollup.connect(securityCouncil).pauseByType(STATE_DATA_SUBMISSION_PAUSE_TYPE);
 
     await expectRevertWithCustomError(
       lineaRollup,
       lineaRollup.connect(operator).submitBlobs(blobDataSubmission, parentShnarf, finalShnarf),
       "IsPaused",
-      [BLOB_SUBMISSION_PAUSE_TYPE],
+      [STATE_DATA_SUBMISSION_PAUSE_TYPE],
     );
   });
 
@@ -439,7 +445,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     await expectRevertWithCustomError(
       lineaRollup,
       ethers.provider.broadcastTransaction(signedTx2),
-      "DataAlreadySubmitted",
+      "ShnarfAlreadySubmitted",
       [finalShnarf],
     );
   });
@@ -849,15 +855,15 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
+        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
+        shnarfProvider: ADDRESS_ZERO,
       };
 
       const hierarchical_conglomeration_LineaRollup = (await deployUpgradableFromFactory(
         "TestLineaRollup",
-        [initializationData],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -998,15 +1004,15 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
+        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
+        shnarfProvider: ADDRESS_ZERO,
       };
 
       const hierarchical_conglomeration_LineaRollup = (await deployUpgradableFromFactory(
         "TestLineaRollup",
-        [initializationData],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],

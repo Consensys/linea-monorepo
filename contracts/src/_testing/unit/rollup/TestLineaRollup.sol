@@ -3,11 +3,14 @@ pragma solidity 0.8.30;
 
 import { LineaRollup } from "../../../rollup/LineaRollup.sol";
 import { FinalizedStateHashing } from "../../../libraries/FinalizedStateHashing.sol";
+import { LineaRollupBase } from "../../../rollup/LineaRollupBase.sol";
+import { CalldataBlobAcceptor } from "../../../rollup/dataAvailability/CalldataBlobAcceptor.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
-contract TestLineaRollup is LineaRollup {
-  function setFallbackOperatorManually(address _fallbackOperator) external {
-    fallbackOperator = _fallbackOperator;
+contract TestLineaRollup is LineaRollup, CalldataBlobAcceptor {
+  function setLivenessRecoveryOperatorAddress(address _livenessRecoveryOperator) external {
+    livenessRecoveryOperator = _livenessRecoveryOperator;
   }
 
   function addRollingHash(uint256 _messageNumber, bytes32 _messageHash) external {
@@ -27,7 +30,7 @@ contract TestLineaRollup is LineaRollup {
   }
 
   function setupParentShnarf(bytes32 _shnarf) external {
-    blobShnarfExists[_shnarf] = 1;
+    _blobShnarfExists[_shnarf] = 1;
   }
 
   function setLastFinalizedBlock(uint256 _blockNumber) external {
@@ -39,7 +42,7 @@ contract TestLineaRollup is LineaRollup {
   }
 
   function setShnarfFinalBlockNumber(bytes32 _shnarf, uint256 _finalBlockNumber) external {
-    blobShnarfExists[_shnarf] = _finalBlockNumber;
+    _blobShnarfExists[_shnarf] = _finalBlockNumber;
   }
 
   function setLastFinalizedStateV6(uint256 _messageNumber, bytes32 _rollingHash, uint256 _timestamp) external {
@@ -65,5 +68,18 @@ contract TestLineaRollup is LineaRollup {
   function setForcedTransactionBlockNumber(uint256 _blockNumber) external {
     uint256 currentForcedTxNumber = nextForcedTransactionNumber++;
     forcedTransactionL2BlockNumbers[currentForcedTxNumber] = _blockNumber;
+  }
+
+  /**
+   * @notice Revokes `role` from the calling account.
+   * @dev Liveness recovery operator cannot renounce role. Reverts with OnlyNonLivenessRecoveryOperator.
+   * @param _role The role to renounce.
+   * @param _account The account to renounce - can only be the _msgSender().
+   */
+  function renounceRole(
+    bytes32 _role,
+    address _account
+  ) public virtual override(LineaRollup, AccessControlUpgradeable) {
+    super.renounceRole(_role, _account);
   }
 }

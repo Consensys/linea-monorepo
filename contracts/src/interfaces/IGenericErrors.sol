@@ -21,4 +21,9 @@ interface IGenericErrors {
    * @dev Thrown when a parameter is zero.
    */
   error ZeroValueNotAllowed();
+
+  /**
+   * @dev Thrown when the caller is not the ProxyAdmin.
+   */
+  error CallerNotProxyAdmin();
 }
