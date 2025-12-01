@@ -1,7 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import {
   getMessageSentEventFromLogs,
-  sendMessage,
   waitForEvents,
   wait,
   getBlockByNumberOrBlockTag,
@@ -20,7 +19,8 @@ describe("Submission and finalization test suite", () => {
     const destinationAddress = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
     const l1MessageSender = await l1AccountManager.generateAccount();
-    const l1WalletClient = config.l1WalletClient({ account: l1MessageSender });
+    const lineaRollup = config.l1WalletClient({ account: l1MessageSender }).getLineaRollup();
+    const l1PublicClient = config.l1PublicClient();
 
     logger.debug("Sending messages on L1...");
 
@@ -28,24 +28,18 @@ describe("Submission and finalization test suite", () => {
     const l1MessagesPromises = [];
 
     for (let i = 0; i < 5; i++) {
-      l1MessagesPromises.push(
-        sendMessage(l1WalletClient, {
-          account: l1MessageSender,
-          chain: l1WalletClient.chain,
-          args: {
-            to: destinationAddress,
-            fee: messageFee,
-            calldata: "0x",
-          },
-          contractAddress: config.l1PublicClient().getLineaRollup().address,
-          value: messageValue,
-        }),
-      );
+      const txHash = await lineaRollup.write.sendMessage([destinationAddress, messageFee, "0x"], {
+        value: messageValue,
+      });
+
+      const receipt = await l1PublicClient.waitForTransactionReceipt({ hash: txHash });
+
+      l1MessagesPromises.push(receipt);
     }
 
     const l1Receipts = await Promise.all(l1MessagesPromises);
 
-    logger.debug("Messages sent on L1.");
+    logger.debug(`Messages sent on L1. txHashes=${l1Receipts.map((receipt) => receipt.transactionHash)}`);
 
     // Extract message events
     const l1Messages = getMessageSentEventFromLogs(l1Receipts);
@@ -73,11 +67,14 @@ describe("Submission and finalization test suite", () => {
           fromBlock: 0n,
           toBlock: "latest",
           pollingIntervalMs: 1_000,
-          criteria: async (events) => events.filter((event) => event.args.messageNumber! >= lastNewL1MessageNumber),
+          strict: true,
+          criteria: async (events) => events.filter((event) => event.args.messageNumber >= lastNewL1MessageNumber),
         });
 
+        expect(rollingHashUpdatedEvent).toBeDefined();
+
         const [lastNewMessageRollingHash, lastAnchoredL1MessageNumber] = await Promise.all([
-          lineaRollupV6.read.rollingHashes([rollingHashUpdatedEvent.args.messageNumber!]),
+          lineaRollupV6.read.rollingHashes([rollingHashUpdatedEvent.args.messageNumber]),
           l2MessageService.read.lastAnchoredL1MessageNumber(),
         ]);
         expect(lastNewMessageRollingHash).toEqual(rollingHashUpdatedEvent.args.rollingHash);
@@ -96,13 +93,16 @@ describe("Submission and finalization test suite", () => {
         const currentL2BlockNumber = await lineaRollupV6.read.currentL2BlockNumber();
 
         logger.debug("Waiting for DataSubmittedV3 used to finalize with proof...");
-        await waitForEvents(l1PublicClient, {
+        const [dataSubmittedEvent] = await waitForEvents(l1PublicClient, {
           abi: LineaRollupV6Abi,
           eventName: "DataSubmittedV3",
           fromBlock: 0n,
           toBlock: "latest",
           pollingIntervalMs: 1_000,
+          strict: true,
         });
+
+        expect(dataSubmittedEvent).toBeDefined();
 
         logger.debug("Waiting for DataFinalizedV3 event with proof...");
         const [dataFinalizedEvent] = await waitForEvents(l1PublicClient, {
@@ -114,14 +114,17 @@ describe("Submission and finalization test suite", () => {
             startBlockNumber: currentL2BlockNumber + 1n,
           },
           pollingIntervalMs: 1_000,
+          strict: true,
         });
+
+        expect(dataFinalizedEvent).toBeDefined();
 
         const [lastBlockFinalized, newStateRootHash] = await Promise.all([
           lineaRollupV6.read.currentL2BlockNumber(),
-          lineaRollupV6.read.stateRootHashes([dataFinalizedEvent.args.endBlockNumber!]),
+          lineaRollupV6.read.stateRootHashes([dataFinalizedEvent.args.endBlockNumber]),
         ]);
 
-        expect(lastBlockFinalized).toBeGreaterThanOrEqual(dataFinalizedEvent.args.endBlockNumber!);
+        expect(lastBlockFinalized).toBeGreaterThanOrEqual(dataFinalizedEvent.args.endBlockNumber);
         expect(newStateRootHash).toEqual(dataFinalizedEvent.args.finalStateRootHash);
 
         logger.debug(`Finalization with proof done. lastFinalizedBlockNumber=${lastBlockFinalized}`);

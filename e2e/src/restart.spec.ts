@@ -56,14 +56,19 @@ describe("Coordinator restart test suite", () => {
           eventName: "DataSubmittedV3",
           fromBlock: 0n,
           toBlock: "latest",
+          strict: true,
         }),
         waitForEvents(l1PublicClient, {
           abi: LineaRollupV6Abi,
           eventName: "DataFinalizedV3",
           fromBlock: 0n,
           toBlock: "latest",
+          strict: true,
         }),
       ]);
+
+      expect(dataSubmittedEventsBeforeRestart.length).toBeGreaterThan(0);
+      expect(dataFinalizedEventsBeforeRestart.length).toBeGreaterThan(0);
 
       const lastDataSubmittedEventBeforeRestart = dataSubmittedEventsBeforeRestart.slice(-1)[0];
       const lastDataFinalizedEventsBeforeRestart = dataFinalizedEventsBeforeRestart.slice(-1)[0];
@@ -91,9 +96,12 @@ describe("Coordinator restart test suite", () => {
         fromBlock: currentBlockNumberAfterRestart,
         toBlock: "latest",
         pollingIntervalMs: 1_000,
+        strict: true,
         criteria: async (events) =>
           events.filter((event) => event.blockNumber > lastDataSubmittedEventBeforeRestart.blockNumber),
       });
+
+      expect(dataSubmittedV3EventAfterRestart).toBeDefined();
 
       logger.debug(
         `DataSubmittedV3 event after coordinator restart found. event=${serialize(dataSubmittedV3EventAfterRestart)}`,
@@ -106,18 +114,21 @@ describe("Coordinator restart test suite", () => {
         fromBlock: currentBlockNumberAfterRestart,
         toBlock: "latest",
         pollingIntervalMs: 1_000,
+        strict: true,
         criteria: async (events) =>
           events.filter(
-            (event) => event.args.endBlockNumber! > lastDataFinalizedEventsBeforeRestart.args.endBlockNumber!,
+            (event) => event.args.endBlockNumber! > lastDataFinalizedEventsBeforeRestart.args.endBlockNumber,
           ),
       });
+
+      expect(dataFinalizedEventAfterRestart).toBeDefined();
 
       logger.debug(
         `DataFinalizedV3 event after coordinator restart found. event=${serialize(dataFinalizedEventAfterRestart)}`,
       );
 
       expect(dataFinalizedEventAfterRestart.args.endBlockNumber).toBeGreaterThan(
-        lastDataFinalizedEventsBeforeRestart.args.endBlockNumber!,
+        lastDataFinalizedEventsBeforeRestart.args.endBlockNumber,
       );
     },
     150_000,
@@ -176,16 +187,19 @@ describe("Coordinator restart test suite", () => {
       logger.debug(`Waiting for L1->L2 anchoring before coordinator restart. messageNumber=${lastNewL1MessageNumber}`);
 
       const l2PublicClient = config.l2PublicClient();
-      await waitForEvents(l2PublicClient, {
+      const [rollingHashUpdatedEvent] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
         eventName: "RollingHashUpdated",
         fromBlock: 0n,
         toBlock: "latest",
         pollingIntervalMs: 1_000,
+        strict: true,
         criteria: async (events) => {
-          return events.filter((event) => event.args.messageNumber! >= lastNewL1MessageNumber);
+          return events.filter((event) => event.args.messageNumber >= lastNewL1MessageNumber);
         },
       });
+
+      expect(rollingHashUpdatedEvent).toBeDefined();
 
       // Restart Coordinator
       await waitForCoordinatorRestart(logger);
@@ -228,16 +242,19 @@ describe("Coordinator restart test suite", () => {
         fromBlock: 0n,
         toBlock: "latest",
         pollingIntervalMs: 1_000,
+        strict: true,
         criteria: async (events) => {
-          return events.filter((event) => event.args.messageNumber! >= lastNewL1MessageNumberAfterRestart);
+          return events.filter((event) => event.args.messageNumber >= lastNewL1MessageNumberAfterRestart);
         },
       });
+
+      expect(rollingHashUpdatedEventAfterRestart).toBeDefined();
 
       const lineaRollup = config.l1PublicClient().getLineaRollup();
       const l2MessageService = config.l2PublicClient().getL2MessageServiceContract();
 
       const [lastNewMessageRollingHashAfterRestart, lastAnchoredL1MessageNumberAfterRestart] = await Promise.all([
-        lineaRollup.read.rollingHashes([rollingHashUpdatedEventAfterRestart.args.messageNumber!]),
+        lineaRollup.read.rollingHashes([rollingHashUpdatedEventAfterRestart.args.messageNumber]),
         l2MessageService.read.lastAnchoredL1MessageNumber(),
       ]);
 

@@ -148,6 +148,7 @@ describe("Messaging test suite", () => {
         args: {
           _messageHash: messageHash,
         },
+        strict: true,
       });
 
       expect(messageClaimedEvent).toBeDefined();
@@ -185,6 +186,7 @@ describe("Messaging test suite", () => {
         args: {
           _messageHash: messageHash,
         },
+        strict: true,
       });
       expect(messageClaimedEvent).toBeDefined();
       logger.debug(
@@ -223,6 +225,7 @@ describe("Messaging test suite", () => {
           _messageHash: messageHash,
         },
         pollingIntervalMs: 1_000,
+        strict: true,
       });
 
       expect(messageClaimedEvent).toBeDefined();
@@ -254,14 +257,17 @@ describe("Messaging test suite", () => {
       logger.debug(`L2 message sent. messageHash=${messageHash} transactionHash=${txHash}`);
 
       logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
-      await waitForEvents(l1PublicClient, {
+      const [l2MessagingBlockAnchoredEvent] = await waitForEvents(l1PublicClient, {
         abi: LineaRollupV6Abi,
         eventName: "L2MessagingBlockAnchored",
         args: {
           l2Block: messageSentEvent.blockNumber,
         },
         pollingIntervalMs: 1_000,
+        strict: true,
       });
+
+      expect(l2MessagingBlockAnchoredEvent).toBeDefined();
 
       logger.debug(`Waiting for MessageClaimed event on L1... messageHash=${messageHash}`);
       const [messageClaimedEvent] = await waitForEvents(l1PublicClient, {
@@ -271,6 +277,7 @@ describe("Messaging test suite", () => {
           _messageHash: messageHash,
         },
         pollingIntervalMs: 1_000,
+        strict: true,
       });
 
       expect(messageClaimedEvent).toBeDefined();
@@ -302,14 +309,17 @@ describe("Messaging test suite", () => {
       logger.debug(`L2 message sent. messageHash=${messageHash} transactionHash=${txHash}`);
 
       logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
-      await waitForEvents(l1PublicClient, {
+      const [l2MessagingBlockAnchoredEvent] = await waitForEvents(l1PublicClient, {
         abi: LineaRollupV6Abi,
         eventName: "L2MessagingBlockAnchored",
         args: {
           l2Block: messageSentEvent.blockNumber,
         },
         pollingIntervalMs: 1_000,
+        strict: true,
       });
+
+      expect(l2MessagingBlockAnchoredEvent).toBeDefined();
 
       logger.debug(`Waiting for MessageClaimed event on L1. messageHash=${messageHash}`);
       const [messageClaimedEvent] = await waitForEvents(l1PublicClient, {
@@ -319,6 +329,7 @@ describe("Messaging test suite", () => {
           _messageHash: messageHash,
         },
         pollingIntervalMs: 1_000,
+        strict: true,
       });
 
       expect(messageClaimedEvent).toBeDefined();

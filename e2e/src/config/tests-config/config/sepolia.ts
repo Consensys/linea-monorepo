@@ -17,14 +17,14 @@ const L1_WHALE_ACCOUNTS: Account[] = L1_WHALE_ACCOUNTS_PRIVATE_KEYS.map((private
   if (!isHex(privateKey) || !isAddress(L1_WHALE_ACCOUNTS_ADDRESSES[index])) {
     throw new Error(`Invalid hex string for L1 whale account private key at index ${index}`);
   }
-  return new Account(privateKey, L1_WHALE_ACCOUNTS_ADDRESSES[index]);
+  return new Account(privateKey, L1_WHALE_ACCOUNTS_ADDRESSES[index] as `0x${string}`);
 });
 
 const L2_WHALE_ACCOUNTS: Account[] = L2_WHALE_ACCOUNTS_PRIVATE_KEYS.map((privateKey, index) => {
   if (!isHex(privateKey) || !isAddress(L2_WHALE_ACCOUNTS_ADDRESSES[index])) {
     throw new Error(`Invalid hex string for L2 whale account private key at index ${index}`);
   }
-  return new Account(privateKey, L2_WHALE_ACCOUNTS_ADDRESSES[index]);
+  return new Account(privateKey, L2_WHALE_ACCOUNTS_ADDRESSES[index] as `0x${string}`);
 });
 
 const config: Config = {

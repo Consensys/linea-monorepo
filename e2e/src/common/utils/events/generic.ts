@@ -19,15 +19,8 @@ export async function getEvents<
     ) => Promise<GetContractEventsReturnType<Tabi, eventName, strict, fromBlock, toBlock>>;
   },
 ): Promise<GetContractEventsReturnType<Tabi, eventName, strict, fromBlock, toBlock>> {
-  const { address, abi, fromBlock, toBlock, eventName, criteria, strict } = params;
-  const events = await getContractEvents(client, {
-    address,
-    abi,
-    fromBlock,
-    toBlock,
-    eventName,
-    strict,
-  });
+  const { criteria, ...rest } = params;
+  const events = await getContractEvents(client, rest);
 
   if (criteria) {
     return await criteria(events);

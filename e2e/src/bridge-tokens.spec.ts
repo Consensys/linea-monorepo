@@ -93,10 +93,11 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       fromBlock: 0n,
       toBlock: "latest",
       pollingIntervalMs: 1_000,
-      criteria: async (events) => events.filter((event) => event.args.messageNumber! >= messageNumber),
+      strict: true,
+      criteria: async (events) => events.filter((event) => event.args.messageNumber >= messageNumber),
     });
 
-    expect(rollingHashUpdatedEvent).not.toBeNull();
+    expect(rollingHashUpdatedEvent).toBeDefined();
 
     const anchoredStatus = await l2MessageService.read.inboxL1L2MessageStatus([messageHash]);
 
@@ -112,18 +113,20 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       args: {
         _messageHash: messageHash,
       },
+      strict: true,
     });
-    expect(claimedEvent).not.toBeNull();
+    expect(claimedEvent).toBeDefined();
 
     const [newTokenDeployed] = await waitForEvents(l2PublicClient, {
       abi: TokenBridgeV1_1Abi,
       eventName: "NewTokenDeployed",
+      strict: true,
     });
-    expect(newTokenDeployed).not.toBeNull();
+    expect(newTokenDeployed).toBeDefined();
 
     logger.debug(`Message claimed on L2. event=${serialize(claimedEvent)}.`);
 
-    const l2Token = getBridgedTokenContract(l2PublicClient, newTokenDeployed.args.bridgedToken!);
+    const l2Token = getBridgedTokenContract(l2PublicClient, newTokenDeployed.args.bridgedToken);
 
     logger.debug("Verify the token balance on L2");
 
@@ -234,18 +237,20 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       args: {
         _messageHash: messageHash,
       },
+      strict: true,
     });
-    expect(claimedEvent).not.toBeNull();
+    expect(claimedEvent).toBeDefined();
 
     logger.debug(`Message claimed on L1. event=${serialize(claimedEvent)}`);
 
     const [newTokenDeployed] = await waitForEvents(l1PublicClient, {
       abi: TokenBridgeV1_1Abi,
       eventName: "NewTokenDeployed",
+      strict: true,
     });
-    expect(newTokenDeployed).not.toBeNull();
+    expect(newTokenDeployed).toBeDefined();
 
-    const l1BridgedToken = getBridgedTokenContract(l1PublicClient, newTokenDeployed.args.bridgedToken!);
+    const l1BridgedToken = getBridgedTokenContract(l1PublicClient, newTokenDeployed.args.bridgedToken);
 
     logger.debug("Verify the token balance on L1");
 
