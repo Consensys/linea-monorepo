@@ -25,9 +25,22 @@ const (
 )
 
 var (
-	ALL_MODULES = [10]string{
-		"ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK",
-		"SHA2", "ECDSA", "MODEXP_256", "G2_CHECK",
-		"STATIC", "TINY-STUFFS", "MODEXP_4096",
+	ALL_MODULES = [16]string{
+		"ARITH-OPS",
+		"BLS_G1",
+		"BLS_G2",
+		"BLS_KZG",
+		"BLS_PAIR",
+		"ECDSA",
+		"ECPAIRING",
+		"ELLIPTIC_CURVES",
+		"G2_CHECK",
+		"HUB-KECCAK",
+		"MODEXP_256",
+		"MODEXP_LARGE",
+		"P256",
+		"SHA2",
+		"STATIC",
+		"TINY-STUFFS",
 	}
 )

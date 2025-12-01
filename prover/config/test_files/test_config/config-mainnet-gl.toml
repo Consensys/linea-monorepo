@@ -15,9 +15,9 @@ termination_grace_period_seconds = 30
 enable_bootstrapper   = false 
 enable_conglomerator = false
 enable_gl = true   
-gl_mods =  ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
+gl_mods =  ["ARITH-OPS", "BLS_G1", "BLS_G2", "BLS_KZG", "BLS_PAIR", "ECDSA", "ECPAIRING", "ELLIPTIC_CURVES", "G2_CHECK", "HUB-KECCAK", "MODEXP_256", "MODEXP_LARGE", "P256", "SHA2", "STATIC", "TINY-STUFFS"]
 enable_lpp = false
-lpp_mods =  ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
+lpp_mods =  ["ARITH-OPS", "BLS_G1", "BLS_G2", "BLS_KZG", "BLS_PAIR", "ECDSA", "ECPAIRING", "ELLIPTIC_CURVES", "G2_CHECK", "HUB-KECCAK", "MODEXP_256", "MODEXP_LARGE", "P256", "SHA2", "STATIC", "TINY-STUFFS"]
 
 [execution]
 prover_mode = "limitless"
