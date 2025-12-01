@@ -315,7 +315,7 @@ func TestRunDistController(t *testing.T) {
 	// --- Assertions ---
 
 	// Bootstrap: done files live under the requests-root requests-done
-	require.FileExists(t, filepath.Join(conf.Execution.RequestsRootDir, config.RequestsDoneSubDir, bsSucc+".success"))
+	require.FileExists(t, filepath.Join(conf.Execution.RequestsRootDir, config.RequestsFromSubDir, bsSucc+"."+config.BootstrapPartialSucessSuffix))
 	require.FileExists(t, filepath.Join(conf.Execution.RequestsRootDir, config.RequestsDoneSubDir, bsFail+".failure.code_77"))
 
 	// Conglomeration (metadata) - these go to metadata/requests-done
