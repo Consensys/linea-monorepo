@@ -554,11 +554,7 @@ func (st *ControllerState) preCleanForLimitlessJob(cfg *config.Config) error {
 			// Get all possible dir paths where witness files can be created
 			var (
 				witnessPattern = fmt.Sprintf("%d-%d-*", st.activeJob.Start, st.activeJob.End)
-
-				// INDEX hardcoded here
-				cleanupDirs = []string{
-					limitlessDirs[5], limitlessDirs[6], limitlessDirs[7], limitlessDirs[8],
-				}
+				cleanupDirs    = append(witnessReqDirs, witnessDoneDirs...)
 			)
 
 			for _, dir := range cleanupDirs {
@@ -677,13 +673,10 @@ func finalizeExecLimitlessStatus(cfg *config.Config, cLog *logrus.Entry, job *Jo
 		cLog.Infof("Cleanup enabled — pruning only successful transient sub-proof/witness artifacts for %d-%d", job.Start, job.End)
 
 		patternBase := fmt.Sprintf("%d-%d-*%s*", job.Start, job.End, config.SuccessSuffix)
+		cleanupDirs := []string{metadataDoneDir, randomnessDoneDir}
+		cleanupDirs = append(cleanupDirs, witnessDoneDirs...)
+		cleanupDirs = append(cleanupDirs, subproofDoneDirs...)
 
-		// Extract all the indexes of requests-done path from limitlessDirs
-		// It is ok to hardcode it since we know the structure of limitlessDirs
-		cleanupDirs := []string{
-			limitlessDirs[2], limitlessDirs[4], limitlessDirs[6],
-			limitlessDirs[8], limitlessDirs[10], limitlessDirs[12],
-		}
 		for _, dir := range cleanupDirs {
 			pattern := filepath.Join(dir, patternBase)
 			matches, err := filepath.Glob(pattern)

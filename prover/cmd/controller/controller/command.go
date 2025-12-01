@@ -32,7 +32,19 @@ func init() {
 	rootCmd.MarkFlagRequired("local-id")
 }
 
-var limitlessDirs []string
+var (
+	limitlessDirs    []string
+	witnessReqDirs   []string
+	witnessDoneDirs  []string
+	subproofReqDirs  []string
+	subproofDoneDirs []string
+
+	sharedFailureDir  string
+	metadataReqDir    string
+	metadataDoneDir   string
+	randomnessReqDir  string
+	randomnessDoneDir string
+)
 
 // cobra command
 func cobraControllerRunCmd(c *cobra.Command, args []string) {
@@ -47,8 +59,7 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 	}
 	cfg.Controller.LocalID = fLocalID
 
-	// TODO @gbotrel @AlexandreBelling check who is responsible for creating the directories
-	// create the sub directories if they do not exist
+	// Base dirs
 	dirs := []string{
 		cfg.Execution.DirDone(),
 		cfg.Execution.DirFrom(),
@@ -61,38 +72,50 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 		cfg.Aggregation.DirTo(),
 	}
 
-	// Limitless specific dirs - DO NOT CHANGE THE ORDER since we hardcode the
-	// index in the controller.go file. If you change the order here, you need
-	// to change it in the controller.go file as well
-	limitlessDirs = []string{
-		// Shared transitent failure dir for distributed error propogation
-		cfg.ExecutionLimitless.SharedFailureDir,
+	// ===== Limitless Core Directories (static)
+	sharedFailureDir = cfg.ExecutionLimitless.SharedFailureDir
+	metadataReqDir = path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsFromSubDir)
+	metadataDoneDir = path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir)
 
-		path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsFromSubDir),
-		path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir),
+	randomnessReqDir = path.Join(cfg.ExecutionLimitless.SharedRandomnessDir, config.RequestsFromSubDir)
+	randomnessDoneDir = path.Join(cfg.ExecutionLimitless.SharedRandomnessDir, config.RequestsDoneSubDir)
 
-		path.Join(cfg.ExecutionLimitless.SharedRandomnessDir, config.RequestsFromSubDir),
-		path.Join(cfg.ExecutionLimitless.SharedRandomnessDir, config.RequestsDoneSubDir),
-	}
+	// register static dirs
+	limitlessDirs = append(limitlessDirs,
+		sharedFailureDir,
+		metadataReqDir, metadataDoneDir,
+		randomnessReqDir, randomnessDoneDir,
+	)
 
+	// ===== Dynamic Module-Based Dirs
 	for _, mod := range config.ALL_MODULES {
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsFromSubDir))
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir))
 
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsFromSubDir))
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir))
+		// Witness(GL/LPP) dirs
+		witnessReqDirs = append(witnessReqDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsFromSubDir))
+		witnessDoneDirs = append(witnessDoneDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir))
+		witnessReqDirs = append(witnessReqDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsFromSubDir))
+		witnessDoneDirs = append(witnessDoneDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir))
 
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", mod, config.RequestsFromSubDir))
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", mod, config.RequestsDoneSubDir))
-
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsFromSubDir))
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsDoneSubDir))
+		// Subproofs(GL/LPP) dirs
+		subproofReqDirs = append(subproofReqDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", mod, config.RequestsFromSubDir))
+		subproofDoneDirs = append(subproofDoneDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", mod, config.RequestsDoneSubDir))
+		subproofReqDirs = append(subproofReqDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsFromSubDir))
+		subproofDoneDirs = append(subproofDoneDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsDoneSubDir))
 	}
 
+	// Combine all for creation
+	limitlessDirs = append(limitlessDirs, witnessReqDirs...)
+	limitlessDirs = append(limitlessDirs, witnessDoneDirs...)
+	limitlessDirs = append(limitlessDirs, subproofReqDirs...)
+	limitlessDirs = append(limitlessDirs, subproofDoneDirs...)
+
+	// Final list
 	dirs = append(dirs, limitlessDirs...)
+
+	// Create
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			logrus.Fatalf("could not create the directory %s : %v", dir, err)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			logrus.Fatalf("could not create directory %s : %v", dir, err)
 		}
 	}
 
