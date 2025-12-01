@@ -20,6 +20,7 @@ import (
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/bls12_377"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/sirupsen/logrus"
 )
 
@@ -115,7 +116,7 @@ func readTraceFile(path string) io.ReadCloser {
 	if !strings.HasSuffix(path, ".gz") {
 		f, err := os.Open(path)
 		if err != nil {
-			utils.Panic("failed opening trace file %q: %s", path, err)
+			exit.OnMissingTraceFile(err)
 		}
 		return f
 	}
@@ -123,7 +124,7 @@ func readTraceFile(path string) io.ReadCloser {
 	// Case 2: gzipped file
 	f, err := os.Open(path)
 	if err != nil {
-		utils.Panic("unable to open gzipped trace file %q: %s", path, err)
+		exit.OnMissingTraceFile(err)
 	}
 
 	gzr, err := gzip.NewReader(f)
