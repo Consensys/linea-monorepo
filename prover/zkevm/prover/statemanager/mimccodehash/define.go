@@ -1,12 +1,14 @@
-package mimccodehash
+package lineacodehash
 
 import (
 	"fmt"
 	"math/big"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -15,16 +17,16 @@ import (
 
 const (
 	// Column names
-	MIMC_CODE_HASH_IS_ACTIVE_NAME       ifaces.ColID = "MIMC_CODE_HASH_IS_ACTIVE"
-	MIMC_CODE_HASH_CFI_NAME             ifaces.ColID = "MIMC_CODE_HASH_CFI"
-	MIMC_CODE_HASH_LIMB_NAME            ifaces.ColID = "MIMC_CODE_HASH_LIMB"
-	MIMC_CODE_HASH_IS_NEW_HASH_NAME     ifaces.ColID = "MIMC_CODE_HASH_IS_NEW_HASH"
-	MIMC_CODE_HASH_IS_HASH_END_NAME     ifaces.ColID = "MIMC_CODE_HASH_IS_HASH_END"
-	MIMC_CODE_HASH_PREV_STATE_NAME      ifaces.ColID = "MIMC_CODE_HASH_PREV_STATE"
-	MIMC_CODE_HASH_NEW_STATE_NAME       ifaces.ColID = "MIMC_CODE_HASH_NEW_STATE"
-	MIMC_CODE_HASH_CODE_SIZE_NAME       ifaces.ColID = "MIMC_CODE_HASH_CODE_SIZE"
-	MIMC_CODE_HASH_KECCAK_CODEHASH_NAME ifaces.ColID = "MIMC_CODE_HASH_KECCAK_CODEHASH"
-	MIMC_CODE_HASH_IS_FOR_CONSISTENCY   ifaces.ColID = "MIMC_CODE_HASH_IS_NON_EMPTY_CODEHASH"
+	POSEIDON2_CODE_HASH_IS_ACTIVE_NAME       ifaces.ColID = "POSEIDON2_CODE_HASH_IS_ACTIVE"
+	POSEIDON2_CODE_HASH_CFI_NAME             ifaces.ColID = "POSEIDON2_CODE_HASH_CFI"
+	POSEIDON2_CODE_HASH_LIMB_NAME            ifaces.ColID = "POSEIDON2_CODE_HASH_LIMB"
+	POSEIDON2_CODE_HASH_IS_NEW_HASH_NAME     ifaces.ColID = "POSEIDON2_CODE_HASH_IS_NEW_HASH"
+	POSEIDON2_CODE_HASH_IS_HASH_END_NAME     ifaces.ColID = "POSEIDON2_CODE_HASH_IS_HASH_END"
+	POSEIDON2_CODE_HASH_PREV_STATE_NAME      ifaces.ColID = "POSEIDON2_CODE_HASH_PREV_STATE"
+	POSEIDON2_CODE_HASH_NEW_STATE_NAME       ifaces.ColID = "POSEIDON2_CODE_HASH_NEW_STATE"
+	POSEIDON2_CODE_HASH_CODE_SIZE_NAME       ifaces.ColID = "POSEIDON2_CODE_HASH_CODE_SIZE"
+	POSEIDON2_CODE_HASH_KECCAK_CODEHASH_NAME ifaces.ColID = "POSEIDON2_CODE_HASH_KECCAK_CODEHASH"
+	POSEIDON2_CODE_HASH_IS_FOR_CONSISTENCY   ifaces.ColID = "POSEIDON2_CODE_HASH_IS_NON_EMPTY_CODEHASH"
 )
 
 // initEmptyKeccak initialises emptyKeccak variable from emptyKeccakString.
@@ -51,31 +53,31 @@ var (
 	emptyKeccak       = initEmptyKeccak()
 )
 
-// Inputs stores the caller's parameters to NewMiMCCodeHash
+// Inputs stores the caller's parameters to NewPOSEIDON2CodeHash
 type Inputs struct {
 	Round int
 	Name  string
 	Size  int
 }
 
-// Module stores all the columns responsible for computing the MiMC
+// Module stores all the columns responsible for computing the POSEIDON2
 // codehash of every contract occuring during the EVM computation.
 type Module struct {
 	// Inputs are the parameteress provided by the user of the struct
 	Inputs Inputs
 
 	// All the columns characterizing the module
-	IsActive  ifaces.Column
-	CFI       [common.NbLimbU32]ifaces.Column
-	Limb      [common.NbLimbU128]ifaces.Column
-	CodeHash  [common.NbLimbU256]ifaces.Column
-	CodeSize  [common.NbLimbU32]ifaces.Column
+	IsActive  ifaces.Column                    // lights-up when we are in the POSEIDON2 codehash computation area
+	CFI       [common.NbLimbU32]ifaces.Column  // an index column for the limbs, indicating to which contract they belong. It increments when a new codehash import starts.
+	Limb      [common.NbLimbU128]ifaces.Column // Contains the input to POSEIDON2, i.e., the code bytes of the contract
+	CodeHash  [common.NbLimbU256]ifaces.Column // Contains the imported keccak code hash
+	CodeSize  [common.NbLimbU32]ifaces.Column  //  size of the contract code in bytes, constant in a CFI segment.
 	IsNewHash ifaces.Column
 	IsHashEnd ifaces.Column
-	PrevState [common.NbLimbU256]ifaces.Column
+	PrevState [poseidon2.BlockSize]ifaces.Column // to hash the limbs; we have 8 columns of 2 bytes for limbs and 8 columns of 4-bytes for the state.
 
-	// Contains the MiMC code hash when IsHashEnd is 1
-	NewState [common.NbLimbU256]ifaces.Column
+	// Contains the POSEIDON2 code hash when IsHashEnd is 1
+	NewState [poseidon2.BlockSize]ifaces.Column
 
 	// inputModule stores the modules connected the present Module (e.g. Rom/RomLex)
 	// when they are not omitted.
@@ -86,41 +88,42 @@ type Module struct {
 	// state summary.
 	IsForConsistency ifaces.Column
 	IsEmptyKeccak    [common.NbLimbU256]ifaces.Column
-
 	CptIsEmptyKeccak [common.NbLimbU256]wizard.ProverAction
 }
 
-// NewModule registers and committing all the columns and queries in the mimc_code_hash module
+// NewModule registers and committing all the columns and queries in the POSEIDON2_code_hash module
 func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 
 	mh = Module{
 		Inputs:    inputs,
-		IsActive:  comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_ACTIVE_NAME, inputs.Size),
-		IsNewHash: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_NEW_HASH_NAME, inputs.Size),
-		IsHashEnd: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_HASH_END_NAME, inputs.Size),
+		IsActive:  comp.InsertCommit(inputs.Round, POSEIDON2_CODE_HASH_IS_ACTIVE_NAME, inputs.Size, true),
+		IsNewHash: comp.InsertCommit(inputs.Round, POSEIDON2_CODE_HASH_IS_NEW_HASH_NAME, inputs.Size, true),
+		IsHashEnd: comp.InsertCommit(inputs.Round, POSEIDON2_CODE_HASH_IS_HASH_END_NAME, inputs.Size, true),
 	}
 
-	for i := range common.NbLimbU128 {
-		mh.Limb[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_LIMB_NAME, i), inputs.Size)
-	}
+	copy(mh.Limb[:], common.CreateMultiColumn(comp, "POSEIDON2_CODE_HASH_LIMB_NAME", inputs.Size, common.NbLimbU128, pragmas.None))
 
-	for i := range common.NbLimbU32 {
-		mh.CodeSize[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_CODE_SIZE_NAME, i), inputs.Size)
-		mh.CFI[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_CFI_NAME, i), inputs.Size)
-	}
+	copy(mh.CodeSize[:], common.CreateMultiColumn(comp, "POSEIDON2_CODE_HASH_CODE_SIZE_NAME", inputs.Size, common.NbLimbU32, pragmas.None))
 
-	mh.IsForConsistency = comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_FOR_CONSISTENCY, inputs.Size)
+	copy(mh.CFI[:], common.CreateMultiColumn(comp, "POSEIDON2_CODE_HASH_CFI_NAME", inputs.Size, common.NbLimbU32, pragmas.None))
+
+	copy(mh.CodeHash[:], common.CreateMultiColumn(comp, "POSEIDON2_CODE_HASH_KECCAK_CODEHASH_NAME", inputs.Size, common.NbLimbU256, pragmas.None))
+
+	copy(mh.PrevState[:], common.CreateMultiColumn(comp, "POSEIDON2_CODE_HASH_PREV_STATE_NAME", inputs.Size, poseidon2.BlockSize, pragmas.None))
+
+	copy(mh.NewState[:], common.CreateMultiColumn(comp, "POSEIDON2_CODE_HASH_NEW_STATE_NAME", inputs.Size, poseidon2.BlockSize, pragmas.None))
+
+	mh.IsForConsistency = comp.InsertCommit(inputs.Round, POSEIDON2_CODE_HASH_IS_FOR_CONSISTENCY, inputs.Size, true)
 
 	for i := range common.NbLimbU256 {
-		mh.CodeHash[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_KECCAK_CODEHASH_NAME, i), inputs.Size)
-		mh.IsEmptyKeccak[i], mh.CptIsEmptyKeccak[i] = dedicated.IsZero(comp, sym.Sub(mh.CodeHash[i], emptyKeccak[i])).GetColumnAndProverAction()
 
-		mh.PrevState[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_PREV_STATE_NAME, i), inputs.Size)
-		mh.NewState[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_NEW_STATE_NAME, i), inputs.Size)
+		// IsEmptyKeccak[i] = 1 if CodeHash[i] = emptyKeccak[i]
+		mh.IsEmptyKeccak[i], mh.CptIsEmptyKeccak[i] = dedicated.IsZero(comp,
+			sym.Sub(mh.CodeHash[i], emptyKeccak[i])).GetColumnAndProverAction()
 
 		comp.InsertGlobal(
 			0,
-			ifaces.QueryIDf("MIMC_CODE_HASH_CPT_IF_FOR_CONSISTENCY_%d", i),
+			ifaces.QueryIDf("POSEIDON2_CODE_HASH_CPT_IF_FOR_CONSISTENCY_%d", i),
 			sym.Sub(
 				mh.IsForConsistency,
 				sym.Mul(
@@ -136,11 +139,11 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 	return mh
 }
 
-// checkConsistency adds the constraints securing the MiMCCodeHash module.
+// checkConsistency adds the constraints securing the POSEIDON2CodeHash module.
 //
 //	We have the following constraints:
 //
-//	1. NewState = MiMC(PrevState, Limb)
+//	1. NewState = POSEIDON2(PrevState, Limb)
 //	2. If IsNewHash = 0, PrevState[i] = NextState[i-1] (in the active area)
 //	3. If IsNewHash = 1, PrevState = 0 (in the active area)
 //	4. If CFI incremented, IsNewHash = 1
@@ -154,9 +157,8 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 //	11. All columns are zero in the inactive area
 func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 
-	panic("TODO: add poseidon checks")
-	// NewState = MiMC(PrevState, Limb)
-	//comp.InsertMiMC(mh.inputs.Round, mh.qname("MiMC_CODE_HASH"), mh.Limb, mh.PrevState, mh.NewState, nil)
+	// NewState = POSEIDON2(PrevState, Limb)
+	comp.InsertPoseidon2(mh.Inputs.Round, mh.qname("POSEIDON2_CODE_HASH"), mh.Limb, mh.PrevState, mh.NewState, nil)
 
 	// Local constraint IsNewHash starts with 1
 	comp.InsertLocal(mh.Inputs.Round, mh.qname("IS_NEW_HASH_LOCAL"), sym.Sub(mh.IsNewHash, mh.IsActive))
@@ -188,21 +190,26 @@ func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 		comp.InsertGlobal(mh.Inputs.Round, mh.qname("CODE_HASH_HI_SEGMENT_WISE_CONSTANT_%d", i),
 			sym.Mul(mh.IsActive,
 				sym.Sub(1, mh.IsHashEnd),
-				sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CodeHash[i], 1)), mh.CodeHash[i])))
+				sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CodeHash[i], 1)), mh.CodeHash[i]),
+			),
+		)
 
+		// All columns of CodeHash are zero in the inactive area
+		mh.colZeroAtInactive(comp, mh.CodeHash[i], fmt.Sprintf("CODE_HASH_HI_ZERO_IN_INACTIVE_%d", i))
+	}
+
+	for i := range poseidon2.BlockSize {
 		// If IsNewHash = 0, PrevState[i] = NewState[i-1] (in the active area), e.g.,
 		// IsActive[i] * (1 - IsNewHash[i]) * (PrevState[i] - NextState[i-1]) = 0
 		comp.InsertGlobal(mh.Inputs.Round, mh.qname("PREV_STATE_CONSISTENCY_2_%d", i),
 			sym.Mul(mh.IsActive,
 				sym.Sub(1, mh.IsNewHash),
-				sym.Sub(mh.PrevState[i], ifaces.ColumnAsVariable(column.Shift(mh.NewState[i], -1)))))
+				sym.Sub(mh.PrevState[i], column.Shift(mh.NewState[i], -1))))
 
 		// If IsNewHash = 1, PrevState = 0 (in the active area) e.g., IsActive[i] * IsNewHash[i] * PrevState[i] = 0
 		comp.InsertGlobal(mh.Inputs.Round, mh.qname("PREV_STATE_ZERO_AT_BEGINNING_%d", i),
 			sym.Mul(mh.IsActive, mh.IsNewHash, mh.PrevState[i]))
 
-		// All columns of CodeHash are zero in the inactive area
-		mh.colZeroAtInactive(comp, mh.CodeHash[i], fmt.Sprintf("CODE_HASH_HI_ZERO_IN_INACTIVE_%d", i))
 		mh.colZeroAtInactive(comp, mh.PrevState[i], fmt.Sprintf("PREV_STATE_ZERO_IN_INACTIVE_%d", i))
 	}
 
@@ -234,8 +241,12 @@ func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 }
 
 // Function returning a query name
-func (mh *Module) qname(name string) ifaces.QueryID {
-	return ifaces.QueryIDf("%s", mh.Inputs.Name) + "_" + ifaces.QueryID(name)
+func (mh *Module) qname(name string, n ...int) ifaces.QueryID {
+	if len(n) > 0 {
+		return ifaces.QueryIDf("%v_%v_%v", mh.Inputs.Name, name, n[0])
+	} else {
+		return ifaces.QueryIDf("%v_%v", mh.Inputs.Name, name)
+	}
 }
 
 // Function inserting a query that col is zero when IsActive is zero

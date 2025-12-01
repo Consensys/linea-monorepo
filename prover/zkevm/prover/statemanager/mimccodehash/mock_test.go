@@ -1,10 +1,11 @@
-package mimccodehash
+package lineacodehash
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"os"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -67,7 +68,7 @@ func TestMiMCCodeHash(t *testing.T) {
 		mod = NewModule(
 			build.CompiledIOP,
 			Inputs{
-				Name: "MIMC_CODE_HASH_TEST",
+				Name: "POSEIDON2_CODE_HASH_TEST",
 				Size: 1 << 13,
 			},
 		)
