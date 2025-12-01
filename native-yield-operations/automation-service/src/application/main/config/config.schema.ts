@@ -102,6 +102,15 @@ export const configSchema = z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+    /** Minimum staking vault balance (in wei) required before resuming beacon chain deposits.
+     * The balance is checked via Dashboard withdrawableValue() before calling resumeBeaconChainDeposits.
+     * Beacon chain deposits will only be resumed if the withdrawableValue is greater than or equal to this threshold.
+     * This prevents resuming deposits when the vault balance is insufficient.
+     */
+    MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     /** Web3Signer service URL for transaction signing.
      * The service signs transactions using the key specified by WEB3SIGNER_PUBLIC_KEY.
      * Must be a valid HTTPS (not HTTP) URL.

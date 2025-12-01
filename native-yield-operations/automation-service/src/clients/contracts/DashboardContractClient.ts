@@ -1,5 +1,13 @@
 import { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
-import { Address, getContract, GetContractReturnType, parseEventLogs, PublicClient, TransactionReceipt } from "viem";
+import {
+  Address,
+  encodeFunctionData,
+  getContract,
+  GetContractReturnType,
+  parseEventLogs,
+  PublicClient,
+  TransactionReceipt,
+} from "viem";
 import { IDashboard } from "../../core/clients/contracts/IDashboard.js";
 import { DashboardABI } from "../../core/abis/Dashboard.js";
 
@@ -13,6 +21,8 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
   private static logger: ILogger | undefined;
 
   private readonly contract: GetContractReturnType<typeof DashboardABI, PublicClient, Address>;
+  private readonly logger: ILogger;
+  private readonly blockchainClient: IBlockchainClient<PublicClient, TransactionReceipt>;
 
   /**
    * Initializes the static blockchain client and logger for all DashboardContractClient instances.
@@ -43,6 +53,8 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
         "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() before use",
       );
     }
+    this.logger = DashboardContractClient.logger;
+    this.blockchainClient = DashboardContractClient.blockchainClient;
     this.contract = getContract({
       abi: DashboardABI,
       address: contractAddress,
@@ -134,5 +146,47 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
    */
   async totalValue(): Promise<bigint> {
     return this.contract.read.totalValue();
+  }
+
+  /**
+   * Resumes beacon chain deposits by sending a transaction to the Dashboard contract.
+   *
+   * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
+   */
+  async resumeBeaconChainDeposits(): Promise<TransactionReceipt> {
+    this.logger.info(`resumeBeaconChainDeposits started, dashboard=${this.contractAddress}`);
+    const calldata = encodeFunctionData({
+      abi: this.contract.abi,
+      functionName: "resumeBeaconChainDeposits",
+      args: [],
+    });
+
+    const txReceipt = await this.blockchainClient.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(
+      `resumeBeaconChainDeposits succeeded, dashboard=${this.contractAddress}, txHash=${txReceipt.transactionHash}`,
+    );
+    return txReceipt;
+  }
+
+  /**
+   * Resumes beacon chain deposits only if the withdrawable value is sufficient.
+   * Checks the withdrawableValue() against the minimum balance threshold before resuming.
+   *
+   * @param {bigint} minBalanceWei - The minimum balance (in wei) required to resume beacon chain deposits.
+   * @returns {Promise<TransactionReceipt | undefined>} The transaction receipt if deposits were resumed, undefined if balance is insufficient.
+   */
+  async resumeBeaconChainDepositsIfSufficientBalance(minBalanceWei: bigint): Promise<TransactionReceipt | undefined> {
+    const withdrawableValue = await this.withdrawableValue();
+    if (withdrawableValue < minBalanceWei) {
+      this.logger.info(
+        `resumeBeaconChainDepositsIfSufficientBalance - skipping resume as withdrawableValue=${withdrawableValue} is below the minimum balance threshold of ${minBalanceWei}`,
+      );
+      return undefined;
+    }
+
+    this.logger.info(
+      `resumeBeaconChainDepositsIfSufficientBalance - withdrawableValue=${withdrawableValue} meets threshold ${minBalanceWei}, resuming beacon chain deposits`,
+    );
+    return await this.resumeBeaconChainDeposits();
   }
 }

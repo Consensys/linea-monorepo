@@ -24,6 +24,7 @@ const createValidEnv = () => ({
   MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: "16",
   MIN_WITHDRAWAL_THRESHOLD_ETH: "42",
   MAX_STAKING_REBALANCE_AMOUNT_WEI: "1000000000000000000000",
+  MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI: "500000000000000000000",
   WEB3SIGNER_URL: "https://web3signer.linea.build",
   WEB3SIGNER_PUBLIC_KEY: `0x${"a".repeat(128)}`,
   WEB3SIGNER_KEYSTORE_PATH: "/path/to/keystore",
@@ -48,6 +49,7 @@ describe("configSchema", () => {
     expect(parsed.API_PORT).toBe(3000);
     expect(parsed.MIN_WITHDRAWAL_THRESHOLD_ETH).toBe(42n);
     expect(parsed.MAX_STAKING_REBALANCE_AMOUNT_WEI).toBe(1000000000000000000000n);
+    expect(parsed.MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI).toBe(500000000000000000000n);
     expect(parsed.MIN_POSITIVE_YIELD_TO_REPORT_WEI).toBe(1000000000000000000n);
     expect(parsed.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI).toBe(500000000000000000n);
     expect(parsed.WEB3SIGNER_TLS_ENABLED).toBe(true);
@@ -262,6 +264,66 @@ describe("configSchema", () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues.some((issue) => issue.path.join(".") === "MAX_STAKING_REBALANCE_AMOUNT_WEI")).toBe(true);
+      }
+    });
+  });
+
+  describe("MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI", () => {
+    it("parses string values to bigint", () => {
+      const env = {
+        ...createValidEnv(),
+        MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI: "500000000000000000000",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI).toBe(500000000000000000000n);
+    });
+
+    it("parses number values to bigint", () => {
+      const env = {
+        ...createValidEnv(),
+        MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI: 1000000000000000000000,
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI).toBe(1000000000000000000000n);
+    });
+
+    it("parses bigint values", () => {
+      const env = {
+        ...createValidEnv(),
+        MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI: 1500000000000000000000n,
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI).toBe(1500000000000000000000n);
+    });
+
+    it("accepts zero value", () => {
+      const env = {
+        ...createValidEnv(),
+        MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI: "0",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI).toBe(0n);
+    });
+
+    it("rejects negative values", () => {
+      const env = {
+        ...createValidEnv(),
+        MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI: "-1",
+      };
+
+      const result = configSchema.safeParse(env);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.join(".") === "MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI")).toBe(true);
       }
     });
   });
