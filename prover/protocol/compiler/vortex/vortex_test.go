@@ -502,7 +502,7 @@ func TestCompiler(t *testing.T) {
 				tc.Define,
 				vortex.Compile(
 					4,
-					false,
+					false, // IsBLS
 					vortex.WithOptionalSISHashingThreshold(9),
 					vortex.WithSISParams(&ringsis.Params{
 						LogTwoBound:  16,
@@ -510,8 +510,8 @@ func TestCompiler(t *testing.T) {
 					}),
 				),
 			)
-			proof := wizard.Prove(compiled, tc.Prove, true)
-			valid := wizard.Verify(compiled, proof, true)
+			proof := wizard.Prove(compiled, tc.Prove)
+			valid := wizard.Verify(compiled, proof)
 
 			require.NoErrorf(t, valid, "the proof did not pass")
 		})

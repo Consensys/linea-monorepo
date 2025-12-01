@@ -1,11 +1,8 @@
 package wizard
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -258,14 +255,14 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 				if run.IsBLS {
 					(*run.BLSFS).UpdateSV(instance)
 
-					state := (*run.BLSFS).State()
-					fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
+					// state := (*run.BLSFS).State()
+					// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
 
 				} else {
 					(*run.KoalaFS).UpdateSV(instance)
 
-					state := (*run.KoalaFS).State()
-					fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
+					// state := (*run.KoalaFS).State()
+					// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
 
 				}
 			}

@@ -106,10 +106,10 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 		// IsOnlyPoseidon2Applied is equivalent to No SIS hashing applied
 		case IsOnlyPoseidon2Applied:
 			noSisRoots = append(noSisRoots, precompRootF)
-			flagForNoSISRounds = append(flagForNoSISRounds, false)
+			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		case IsSISApplied:
 			sisRoots = append(sisRoots, precompRootF)
-			flagForSISRounds = append(flagForSISRounds, true)
+			flagForSISRounds = append(flagForSISRounds, false)
 		default:
 			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
 		}
@@ -117,7 +117,12 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 
 	// assign the roots and the WithSis flags
 	roots := append(noSisRoots, sisRoots...)
-	WithSis := append(flagForNoSISRounds, flagForSISRounds...)
+	IsSISReplacedByPoseidon2 := append(flagForNoSISRounds, flagForSISRounds...)
+
+	WithSis := make([]bool, len(IsSISReplacedByPoseidon2))
+	for i := range IsSISReplacedByPoseidon2 {
+		WithSis[i] = !IsSISReplacedByPoseidon2[i]
+	}
 
 	proof := &vortex.OpeningProof{}
 	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
@@ -205,17 +210,21 @@ func (ctx *VortexVerifierAction) runBLS(run wizard.Runtime) error {
 		switch ctx.RoundStatus[round] {
 		case IsOnlyPoseidon2Applied:
 			gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12Root(precompRootF))
-			flagForNoSISRounds = append(flagForNoSISRounds, false)
+			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		case IsSISApplied:
-			flagForSISRounds = append(flagForSISRounds, true)
+			flagForSISRounds = append(flagForSISRounds, false)
 		default:
 			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
 		}
 	}
 
 	// assign the roots and the WithSis flags
-	WithSis := append(flagForNoSISRounds, flagForSISRounds...)
+	IsSISReplacedByPoseidon2 := append(flagForNoSISRounds, flagForSISRounds...)
 
+	WithSis := make([]bool, len(IsSISReplacedByPoseidon2))
+	for i := range IsSISReplacedByPoseidon2 {
+		WithSis[i] = !IsSISReplacedByPoseidon2[i]
+	}
 	proof := &vortex.OpeningProof{}
 	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
