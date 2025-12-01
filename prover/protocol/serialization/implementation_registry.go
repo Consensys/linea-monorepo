@@ -122,6 +122,7 @@ func init() {
 	RegisterImplementation(query.LogDerivativeSum{})
 	RegisterImplementation(query.GrandProduct{})
 	RegisterImplementation(query.Horner{})
+	RegisterImplementation(query.HornerParams{})
 	RegisterImplementation(query.LocalOpeningParams{})
 	RegisterImplementation(query.UnivariateEvalParams{})
 	RegisterImplementation(query.GrandProductParams{})
