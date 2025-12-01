@@ -106,7 +106,7 @@ func TestBuildFromScratch(t *testing.T) {
 	}
 
 	// Build the same tree by adding the leaves one by one
-	oneByoneTree := NewEmptyTree()
+	oneByoneTree := NewEmptyTree(depth)
 	for i := range leaves {
 		oneByoneTree.Update(i, leaves[i])
 	}
