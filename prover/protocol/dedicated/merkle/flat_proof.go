@@ -136,7 +136,7 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 // 				node[k] = p.Nodes[k][j].GetColAssignmentGnarkAt(run, i)
 // 			}
 // 			// TODO @thomas fixme
-// 			// newProof.Siblings[j] = vortex.Encode8WVsToFV(api, node)
+// 			newProof.Siblings[j] = encoding.Encode8WVsToFV(api, node)
 // 		}
 
 // 		proofs = append(proofs, newProof)

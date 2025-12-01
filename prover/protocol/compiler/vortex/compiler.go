@@ -34,7 +34,7 @@ const (
 	// Denotes a round with no polynomials to commit to
 	IsEmpty roundStatus = iota
 	// Denotes a round when we apply only Poseidon2 hashing
-	// on the columns of the round matrix
+	// on the columns of the round matrix, SIS hashing is not applied
 	IsNoSis
 	// Denotes a round when we apply SIS+Poseidon2 hashing
 	// on the columns of the round matrix
@@ -236,7 +236,6 @@ type Ctx struct {
 		Precomputeds struct {
 			// List of the precomputeds columns that we are compiling if the
 			// the precomputed flag is set.
-			// TODO@yao: maybe not needed
 			PrecomputedColums []ifaces.Column
 			// Merkle Root of the precomputeds columns
 			MerkleRoot [blockSize]ifaces.Column

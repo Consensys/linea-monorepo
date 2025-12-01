@@ -19,7 +19,7 @@ func GnarkDeriveEvaluationPoint(
 	api frontend.API, h ifaces.Column, upstream string,
 	cachedXs collection.Mapping[string, gnarkfext.E4Gen],
 	x gnarkfext.E4Gen,
-) (xRes []gnarkfext.E4Gen) { // Change return type to []gnarkfext.E4Gen
+) (xRes []gnarkfext.E4Gen) {
 
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {

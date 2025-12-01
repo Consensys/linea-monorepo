@@ -180,12 +180,6 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 			continue
 		}
 
-		//TODO@yao: remove below note
-		// pols := ctx.getPols(pr, round)
-		// old : pols 1, 2 , Open...()  linear combine then rs encode --> linea combinaation
-		// new : committedMatrix 1,2, 3,4,5,6,7,8 LINCOMB:  linear combine --> linea combination
-
-		// panic: take pols 1, 2 , call LINCOMB:
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
 
 		// Push pols to the right stack

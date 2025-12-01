@@ -4,17 +4,13 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
-	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // VerifierAction implements [wizard.VerifierAction]. It is tasked with
@@ -192,51 +188,6 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Ru
 	return evaluationMap
 }
 
-// cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.E4Gen {
-
-	var (
-		evaluationMap = make(map[ifaces.ColID]gnarkfext.E4Gen)
-		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
-		x             = univParams.ExtX
-		polys         = make([][]zk.WrappedVariable, 0)
-	)
-	// ext4, _ := gnarkfext.NewExt4(api)
-
-	for i := range ctx.NewQuery.Pols {
-		colID := ctx.NewQuery.Pols[i].GetColID()
-		evaluationMap[colID] = univParams.ExtYs[i]
-	}
-
-	for _, c := range ctx.ExplicitlyEvaluated {
-
-		// When encountering a verifiercol.ConstCol, the optimization is to
-		// represent the column not to its full length but as a length 1 column
-		// which will yield the same result in the end.
-		if constCol, isConstCol := c.(verifiercol.ConstCol); isConstCol {
-			x, err := constCol.GetColAssignmentGnarkAtBase(run, 0)
-			if err != nil {
-				utils.Panic("err=%v", err)
-			}
-			polys = append(polys, []zk.WrappedVariable{x})
-			continue
-		}
-
-		poly := c.GetColAssignmentGnark(run)
-		polys = append(polys, poly)
-
-	}
-
-	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, x)
-	for i := range ctx.ExplicitlyEvaluated {
-		colID := ctx.ExplicitlyEvaluated[i].GetColID()
-		evaluationMap[colID] = ys[i]
-	}
-
-	return evaluationMap
-}
-
-// TODO@yao: fix the gnarkfext version of this function
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
 func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.E4Gen {
 

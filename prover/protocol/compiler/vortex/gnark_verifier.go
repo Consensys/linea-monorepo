@@ -49,7 +49,6 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue // skip the dry rounds
 		}
-		//TODO@yao: check if this is correct, roots should be frontend.Variable, change all blockSize to vortex_bls12377.GnarkKoalabearNumElements
 		preRoots := [encoding.KoalabearChunks]zk.WrappedVariable{}
 
 		for i := 0; i < encoding.KoalabearChunks; i++ {
@@ -64,8 +63,6 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// Collect the linear combination
 	proof := crypto_vortex.GnarkProof{}
-	// proof.Rate = uint64(ctx.BlowUpFactor)
-	// proof.RsDomain = fft.NewDomain(uint64(ctx.NumEncodedCols()), fft.WithCache())
 	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName())
 
 	// Collect the random entry List and the random coin
@@ -287,8 +284,6 @@ func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [encoding.Koalabear
 				for coord := 0; coord < encoding.KoalabearChunks; coord++ {
 					v[coord] = sv[coord][curr]
 				}
-				// apiGen, _ := zk.NewGenericApi(api)
-				// apiGen.Println(v[:]...)
 				proof.Siblings[depth-k-1] = encoding.Encode9WVsToFV(api, v)
 				curr++
 			}

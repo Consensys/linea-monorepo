@@ -76,16 +76,17 @@ func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.
 	if !f.IsBase() {
 		panic("From accessors, the column is not base")
 	} else {
-		res := make([]zk.WrappedVariable, f.Size_)
-		for i := range f.Accessors {
-			res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
-		}
+		panic("call GetColAssignmentGnarkExt instead")
+		// res := make([]zk.WrappedVariable, f.Size_)
+		// for i := range f.Accessors {
+		// 	res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
+		// }
 
-		for i := len(f.Accessors); i < f.Size_; i++ {
-			// res[i] = f.Padding
-			res[i] = zk.ValueOf(f.Padding.B0.A0.String()) // @thomas fixme (should be ext) TODO@yao check
-		}
-		return res, nil
+		// for i := len(f.Accessors); i < f.Size_; i++ {
+		// 	// res[i] = f.Padding
+		// 	res[i] = zk.ValueOf(f.Padding.B0.A0.String()) // @thomas fixme (should be ext)
+		// }
+		// return res, nil
 	}
 
 }

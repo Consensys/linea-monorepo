@@ -269,7 +269,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 	wOneExt := gnarkfext.NewE4GenFromBase(1)
 	annulator = *ext4.Sub(&annulator, &wOneExt)
 
-	ext4.AssertIsEqual(&r, &params.ExtX) // check the evaluation is consistent with the other stuffs
+	ext4.AssertIsEqual(&r, &params.ExtX)
 
 	// Map all the evaluations and checks the evaluations points
 	mapYs := make(map[ifaces.ColID]gnarkfext.E4Gen)
@@ -438,11 +438,6 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		panic(err)
 	}
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-
 	// shiftedR.MulByFp(api, r, mulGenInv)
 	wrappedMulGenInv := zk.ValueOf(mulGenInv.String())
 	shiftedR = *e4Api.MulByFp(&r, wrappedMulGenInv)
@@ -459,7 +454,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		expectedX = gnarkfext.NewE4GenFromBase(invOmegaN.String())
 		expectedX = gnarkutil.ExpExt(api, expectedX, i)
 		expectedX = *e4Api.Mul(&expectedX, &shiftedR)
-		ext4.AssertIsEqual(&providedX, &expectedX)
+		e4Api.AssertIsEqual(&providedX, &expectedX)
 	}
 
 	for i, ratio := range ctx.Ratios {
@@ -494,8 +489,6 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			tmp := e4Api.MulByFp(&rPowM, wrappedTmpInit)
 			tmp = e4Api.Sub(tmp, &wOne)
 			tmp = e4Api.Div(&ys[k], tmp)
-
-			// res.MulByFp(api, res, tmp)
 			res = *e4Api.Add(&res, tmp)
 		}
 

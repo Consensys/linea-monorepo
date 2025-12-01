@@ -50,7 +50,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 
 	polSize := 1 << 4
 	nPols := 16
-	numRounds := 1
+	numRounds := 3
 	numPrecomputeds := 4
 	rows := make([][]ifaces.Column, numRounds)
 

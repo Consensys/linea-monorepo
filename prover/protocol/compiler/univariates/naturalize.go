@@ -391,7 +391,7 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 
 	ext4, e := gnarkfext.NewExt4(api)
 	if e != nil {
-		panic("boom")
+		panic(e)
 	}
 
 	for originPolID, originH := range originalQuery.Pols {
