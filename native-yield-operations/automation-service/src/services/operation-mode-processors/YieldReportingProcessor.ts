@@ -108,7 +108,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     // Fetch initial data
     this.vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
     const [initialRebalanceRequirements] = await Promise.all([
-      this.yieldManagerContractClient.getRebalanceRequirements(),
+      this.yieldManagerContractClient.getRebalanceRequirements(this.yieldProvider, this.l2YieldRecipient),
       this.shouldSubmitVaultReport
         ? this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(this.vault)
         : Promise.resolve(),
@@ -129,7 +129,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     // Do primary rebalance +/- report submission
     await this._handleRebalance(initialRebalanceRequirements);
 
-    const postReportRebalanceRequirements = await this.yieldManagerContractClient.getRebalanceRequirements();
+    const postReportRebalanceRequirements = await this.yieldManagerContractClient.getRebalanceRequirements(
+      this.yieldProvider,
+      this.l2YieldRecipient,
+    );
     this.logger.info(
       `_process - Post rebalance data fetch: postReportRebalanceRequirements=${JSON.stringify(postReportRebalanceRequirements, bigintReplacer, 2)}`,
     );
@@ -151,7 +154,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     // Beacon-chain withdrawals are last:
     // These have fulfillment latency beyond this method; queue them after local state is stable.
-    const beaconChainWithdrawalRequirements = await this.yieldManagerContractClient.getRebalanceRequirements();
+    const beaconChainWithdrawalRequirements = await this.yieldManagerContractClient.getRebalanceRequirements(
+      this.yieldProvider,
+      this.l2YieldRecipient,
+    );
     this.logger.info(
       `_process - Beacon chain withdrawal data fetch: beaconChainWithdrawalRequirements=${JSON.stringify(beaconChainWithdrawalRequirements, bigintReplacer, 2)}`,
     );

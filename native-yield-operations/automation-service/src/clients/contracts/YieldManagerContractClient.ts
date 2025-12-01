@@ -1,4 +1,4 @@
-import { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
+import { absDiff, IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
   concat,
@@ -23,6 +23,7 @@ import { ONE_ETHER } from "@consensys/linea-shared-utils";
 import { YieldReport } from "../../core/entities/YieldReport.js";
 import { StakingVaultABI } from "../../core/abis/StakingVault.js";
 import { WithdrawalEvent } from "../../core/entities/WithdrawalEvent.js";
+import { DashboardContractClient } from "./DashboardContractClient.js";
 
 /**
  * Client for interacting with YieldManager smart contracts.
@@ -137,6 +138,16 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    */
   async isOssified(yieldProvider: Address): Promise<boolean> {
     return this.contract.read.isOssified([yieldProvider]);
+  }
+
+  /**
+   * Gets the user funds for a yield provider from the YieldManager contract.
+   *
+   * @param {Address} yieldProvider - The yield provider address.
+   * @returns {Promise<bigint>} The user funds in wei.
+   */
+  async userFunds(yieldProvider: Address): Promise<bigint> {
+    return this.contract.read.userFunds([yieldProvider]);
   }
 
   /**
@@ -366,66 +377,105 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * Determines if rebalancing is needed (in deficit or in surplus) and calculates the required rebalance amount.
    * Returns NONE direction with 0 amount if rebalancing is not required.
    *
+   * @param {Address} yieldProvider - The yield provider address.
+   * @param {Address} l2YieldRecipient - The L2 yield recipient address.
    * @returns {Promise<RebalanceRequirement>} The rebalance requirement containing direction (NONE, STAKE, or UNSTAKE) and amount.
    */
-  async getRebalanceRequirements(): Promise<RebalanceRequirement> {
-    const l1MessageServiceAddress = await this.L1_MESSAGE_SERVICE();
-    const [l1MessageServiceBalance, totalSystemBalance, effectiveTargetWithdrawalReserve] = await Promise.all([
+  async getRebalanceRequirements(yieldProvider: Address, l2YieldRecipient: Address): Promise<RebalanceRequirement> {
+    const [l1MessageServiceAddress, dashboardAddress] = await Promise.all([
+      this.L1_MESSAGE_SERVICE(),
+      this.getLidoDashboardAddress(yieldProvider),
+    ]);
+    const dashboardClient = DashboardContractClient.getOrCreate(dashboardAddress);
+    const [
+      l1MessageServiceBalance,
+      totalSystemBalance,
+      effectiveTargetWithdrawalReserve,
+      dashboardTotalValue,
+      peekedYieldReport,
+      userFunds,
+    ] = await Promise.all([
       this.contractClientLibrary.getBalance(l1MessageServiceAddress),
       this.getTotalSystemBalance(),
       this.getEffectiveTargetWithdrawalReserve(),
+      dashboardClient.totalValue(),
+      this.peekYieldReport(yieldProvider, l2YieldRecipient),
+      this.userFunds(yieldProvider),
     ]);
-    const isRebalanceRequired = this._isRebalanceRequired(
+    if (peekedYieldReport === undefined) {
+      throw new Error("peekYieldReport returned undefined, cannot determine rebalance requirements");
+    }
+    return this._isRebalanceRequired(
       totalSystemBalance,
       l1MessageServiceBalance,
       effectiveTargetWithdrawalReserve,
+      userFunds,
+      dashboardTotalValue,
+      peekedYieldReport.yieldAmount,
+      peekedYieldReport.outstandingNegativeYield,
     );
-    if (!isRebalanceRequired) {
-      return {
-        rebalanceDirection: RebalanceDirection.NONE,
-        rebalanceAmount: 0n,
-      };
-    }
-    // In deficit
-    if (l1MessageServiceBalance < effectiveTargetWithdrawalReserve) {
-      return {
-        rebalanceDirection: RebalanceDirection.UNSTAKE,
-        rebalanceAmount: effectiveTargetWithdrawalReserve - l1MessageServiceBalance,
-      };
-      // In surplus
-    } else {
-      return {
-        rebalanceDirection: RebalanceDirection.STAKE,
-        rebalanceAmount: l1MessageServiceBalance - effectiveTargetWithdrawalReserve,
-      };
-    }
   }
 
   /**
    * Determines if rebalancing is required based on tolerance band calculations.
-   * Checks if the L1 Message Service balance is below tolerance band or above tolerance band
-   * compared to the effective target withdrawal reserve.
+   * Calculates system obligations (Lido fees, node operator fees, and LST liability) from the yield report,
+   * adjusts balances to exclude these obligations, and determines if the L1 Message Service balance
+   * is within the tolerance band compared to the adjusted effective target withdrawal reserve.
+   * Returns a RebalanceRequirement with direction (NONE, STAKE, or UNSTAKE) and amount.
    *
    * @param {bigint} totalSystemBalance - The total system balance.
    * @param {bigint} l1MessageServiceBalance - The L1 Message Service balance.
    * @param {bigint} effectiveTargetWithdrawalReserve - The effective target withdrawal reserve.
-   * @returns {boolean} True if rebalancing is required, false otherwise.
+   * @param {bigint} userFunds - The user funds for the yield provider.
+   * @param {bigint} dashboardTotalValue - The total value from the Dashboard contract.
+   * @param {bigint} peekedYieldReportYieldAmount - The yield amount from the peeked yield report.
+   * @param {bigint} peekedYieldReportOutstandingNegativeYield - The outstanding negative yield from the peeked yield report.
+   * @returns {RebalanceRequirement} The rebalance requirement containing direction (NONE, STAKE, or UNSTAKE) and amount.
    */
   private _isRebalanceRequired(
     totalSystemBalance: bigint,
     l1MessageServiceBalance: bigint,
     effectiveTargetWithdrawalReserve: bigint,
-  ): boolean {
-    const toleranceBand = (totalSystemBalance * BigInt(this.rebalanceToleranceBps)) / 10000n;
-    // Below tolerance band
-    if (l1MessageServiceBalance < effectiveTargetWithdrawalReserve - toleranceBand) {
-      return true;
+    userFunds: bigint,
+    dashboardTotalValue: bigint,
+    peekedYieldReportYieldAmount: bigint,
+    peekedYieldReportOutstandingNegativeYield: bigint,
+  ): RebalanceRequirement {
+    // Get Lido fees + node operator fees + LST liability
+    const systemObligations =
+      peekedYieldReportYieldAmount >= 0
+        ? dashboardTotalValue - peekedYieldReportYieldAmount - userFunds
+        : peekedYieldReportOutstandingNegativeYield + dashboardTotalValue - userFunds;
+
+    // Get balances adjusted for system obligations
+    const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
+    const effectiveTargetWithdrawalReserveExcludingObligations =
+      (effectiveTargetWithdrawalReserve * totalSystemBalanceExcludingObligations) / totalSystemBalance;
+
+    const toleranceBand = (totalSystemBalanceExcludingObligations * BigInt(this.rebalanceToleranceBps)) / 10000n;
+
+    // Rebalance requirement = Reserve rebalance requirement + system obligations
+    const absRebalanceRequirement =
+      absDiff(l1MessageServiceBalance, effectiveTargetWithdrawalReserveExcludingObligations) + systemObligations;
+
+    if (absRebalanceRequirement < toleranceBand) {
+      return {
+        rebalanceDirection: RebalanceDirection.NONE,
+        rebalanceAmount: 0n,
+      };
     }
-    // Above tolerance band
-    if (l1MessageServiceBalance > effectiveTargetWithdrawalReserve + toleranceBand) {
-      return true;
+
+    if (l1MessageServiceBalance < effectiveTargetWithdrawalReserveExcludingObligations) {
+      return {
+        rebalanceDirection: RebalanceDirection.UNSTAKE,
+        rebalanceAmount: absRebalanceRequirement,
+      };
+    } else {
+      return {
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: absRebalanceRequirement,
+      };
     }
-    return false;
   }
 
   /**

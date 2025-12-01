@@ -14,6 +14,7 @@ export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient 
   isStakingPaused(yieldProvider: Address): Promise<boolean>;
   isOssificationInitiated(yieldProvider: Address): Promise<boolean>;
   isOssified(yieldProvider: Address): Promise<boolean>;
+  userFunds(yieldProvider: Address): Promise<bigint>;
   withdrawableValue(yieldProvider: Address): Promise<bigint>;
   getYieldProviderData(yieldProvider: Address): Promise<YieldProviderData>;
   // Mutator calls
@@ -25,7 +26,7 @@ export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient 
   unpauseStaking(yieldProvider: Address): Promise<TTransactionReceipt>;
   progressPendingOssification(yieldProvider: Address): Promise<TTransactionReceipt>;
   // Utility methods
-  getRebalanceRequirements(): Promise<RebalanceRequirement>;
+  getRebalanceRequirements(yieldProvider: Address, l2YieldRecipient: Address): Promise<RebalanceRequirement>;
   getLidoStakingVaultAddress(yieldProvider: Address): Promise<Address>;
   getLidoDashboardAddress(yieldProvider: Address): Promise<Address>;
   pauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | undefined>;
