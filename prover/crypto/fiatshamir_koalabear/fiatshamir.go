@@ -14,8 +14,8 @@ type FS struct {
 	h *poseidon2_koalabear.MDHasher
 }
 
-func NewFS() FS {
-	return FS{h: poseidon2_koalabear.NewMDHasher()}
+func NewFS() *FS {
+	return &FS{h: poseidon2_koalabear.NewMDHasher()}
 }
 
 func (fs *FS) Update(vec ...field.Element) {

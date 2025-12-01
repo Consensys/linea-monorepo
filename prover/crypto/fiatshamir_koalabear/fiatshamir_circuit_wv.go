@@ -28,8 +28,9 @@ func NewGnarkFSWV(api frontend.API) *GnarkFSWV {
 
 // Update updates the Fiat-Shamir state with a vector of frontend.Variable
 // representing field element each.
-func (fs *GnarkFSWV) Update(vec ...frontend.Variable) {
-	fs.hasher.Write(vec...)
+func (fs *GnarkFSWV) Update(vec ...zk.WrappedVariable) {
+	_vec := wvTofv(vec)
+	fs.hasher.Write(_vec...)
 }
 func (fs *GnarkFSWV) UpdateExt(vec ...gnarkfext.E4Gen) {
 	for i := 0; i < len(vec); i++ {
@@ -67,8 +68,7 @@ func zkoctupletTooctuplet(v zk.Octuplet) poseidon2_koalabear.Octuplet {
 // UpdateVec updates the Fiat-Shamir state with a matrix of field element.
 func (fs *GnarkFSWV) UpdateVec(mat ...[]zk.WrappedVariable) {
 	for i := range mat {
-		buf := wvTofv(mat[i])
-		fs.Update(buf...)
+		fs.Update(mat[i]...)
 	}
 }
 

@@ -17,8 +17,8 @@ type FS struct {
 	h        *poseidon2_bls12377.MDHasher
 }
 
-func NewFS(verboseMode ...bool) FS {
-	return FS{h: poseidon2_bls12377.NewMDHasher(verboseMode...)}
+func NewFS(verboseMode ...bool) *FS {
+	return &FS{h: poseidon2_bls12377.NewMDHasher(verboseMode...)}
 }
 
 // --------------------------------------------------
