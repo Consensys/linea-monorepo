@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 import com.google.common.base.Preconditions;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
+import net.consensys.linea.testing.AddressCollisions;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction;
@@ -44,22 +45,22 @@ public class TrivialExecutionTests extends TracerTestBase {
 
   /** The 'to' address has empty byte code. The transaction does TX_SKIP */
   @ParameterizedTest
-  @MethodSource("testSource")
+  @MethodSource({"testSource", "testSourceWithAllCollisionCases"})
   void txSkipTest(
       Bytes callData,
       boolean provideAccessList,
       DominantCost dominantCostPrediction,
-      boolean imposeSenderRecipientCollision,
+      AddressCollisions collision,
       TestInfo testInfo) {
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(Bytes.EMPTY);
     AccessListEntry accessListEntry =
         new AccessListEntry(Address.fromHexString("0xABCD"), List.of());
     List<AccessListEntry> accessList = provideAccessList ? List.of(accessListEntry) : List.of();
-    if (!imposeSenderRecipientCollision) {
+    if (collision == AddressCollisions.NO_COLLISION) {
       bytecodeRunner.run(callData, accessList, chainConfig, testInfo);
     } else {
-      bytecodeRunner.runWithImposedSenderRecipientAddressCollision(
-          callData, accessList, chainConfig, testInfo);
+      bytecodeRunner.runWithAddressCollision(
+          callData, accessList, collision, chainConfig, testInfo);
     }
     // Test blocks contain 4 transactions: 2 system transactions, 1 user transaction (the one we
     // created) and 1 noop transaction.
@@ -72,12 +73,12 @@ public class TrivialExecutionTests extends TracerTestBase {
 
   /** The 'to' address has byte code equal to 0x00. The transaction does immediately stop. */
   @ParameterizedTest
-  @MethodSource("testSource")
+  @MethodSource({"testSource", "testSourceWithAllCollisionCases"})
   void trivialCalleeTest(
       Bytes callData,
       boolean provideAccessList,
       DominantCost dominantCostPrediction,
-      boolean imposeSenderRecipientCollision,
+      AddressCollisions collision,
       TestInfo testInfo) {
     BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program.op(OpCode.STOP);
@@ -85,11 +86,11 @@ public class TrivialExecutionTests extends TracerTestBase {
     AccessListEntry accessListEntry =
         new AccessListEntry(Address.fromHexString("0xABCD"), List.of());
     List<AccessListEntry> accessList = provideAccessList ? List.of(accessListEntry) : List.of();
-    if (!imposeSenderRecipientCollision) {
+    if (collision == AddressCollisions.NO_COLLISION) {
       bytecodeRunner.run(callData, accessList, chainConfig, testInfo);
     } else {
-      bytecodeRunner.runWithImposedSenderRecipientAddressCollision(
-          callData, accessList, chainConfig, testInfo);
+      bytecodeRunner.runWithAddressCollision(
+          callData, accessList, collision, chainConfig, testInfo);
     }
     // Test blocks contain 4 transactions: 2 system transactions, 1 user transaction (the one we
     // created) and 1 noop transaction.
@@ -101,8 +102,6 @@ public class TrivialExecutionTests extends TracerTestBase {
   }
 
   static Stream<Arguments> testSource() {
-    final boolean noSenderRecipientCollision = false;
-    final boolean senderRecipientCollision = true;
     /*
     Here we change the callData (specifically the length and the CallDataSetting) to make comparingEffectiveRefundsVsFloorCost.result()
     become true in UserTransaction.comparingEffectiveRefundToFloorCostComputationRow.
@@ -118,13 +117,13 @@ public class TrivialExecutionTests extends TracerTestBase {
             buildCallData(CallDataSetting.ALL_ZEROS, true, 400),
             true,
             DominantCost.EXECUTION_COST_DOMINATES,
-            noSenderRecipientCollision));
+            AddressCollisions.NO_COLLISION));
     arguments.add(
         Arguments.of(
             buildCallData(CallDataSetting.ALL_ZEROS, true, 401),
             true,
             DominantCost.FLOOR_COST_DOMINATES,
-            noSenderRecipientCollision));
+            AddressCollisions.NO_COLLISION));
 
     // Case ALL_NON_ZEROS_EXCEPT_FOR_FIRST.
     // The transaction execution cost (TX_SKIP) is 21000 + 2400 + 16*length.
@@ -135,13 +134,13 @@ public class TrivialExecutionTests extends TracerTestBase {
             buildCallData(CallDataSetting.ALL_NON_ZEROS_EXCEPT_FOR_FIRST, false, 100),
             true,
             DominantCost.EXECUTION_COST_DOMINATES,
-            noSenderRecipientCollision));
+            AddressCollisions.NO_COLLISION));
     arguments.add(
         Arguments.of(
             buildCallData(CallDataSetting.ALL_NON_ZEROS_EXCEPT_FOR_FIRST, false, 101),
             true,
             DominantCost.FLOOR_COST_DOMINATES,
-            noSenderRecipientCollision));
+            AddressCollisions.NO_COLLISION));
 
     // Case ZEROS_AND_NON_ZEROS.
     // caveat for simplicity we consider even sizes.
@@ -153,28 +152,41 @@ public class TrivialExecutionTests extends TracerTestBase {
             buildCallData(CallDataSetting.ZEROS_AND_NON_ZEROS, false, 160),
             true,
             DominantCost.EXECUTION_COST_DOMINATES,
-            noSenderRecipientCollision));
+            AddressCollisions.NO_COLLISION));
     arguments.add(
         Arguments.of(
             buildCallData(CallDataSetting.ZEROS_AND_NON_ZEROS, false, 162),
             true,
             DominantCost.FLOOR_COST_DOMINATES,
-            noSenderRecipientCollision));
+            AddressCollisions.NO_COLLISION));
 
-    // Case ALL_ZEROS with sender-recipient collision.
-    // This explores a case which blew up on mainnet, where a transaction had sender == recipient,
-    // non-empty call
-    // data, and a bug in the senderAddressCollision() case of TxSkipSection was triggered.
+    return arguments.stream();
+  }
+
+  static Stream<Arguments> testSourceWithAllCollisionCases() {
+    /*
+    Here we change the callData (specifically the length and the CallDataSetting) to make comparingEffectiveRefundsVsFloorCost.result()
+    become true in UserTransaction.comparingEffectiveRefundToFloorCostComputationRow.
+     */
+    List<Arguments> arguments = new ArrayList<>();
+
+    // Case ALL_ZEROS with potential collision.
+    // This explores, among others, a case which blew up on mainnet, where a transaction had sender
+    // == recipient,
+    // non-empty call data, and a bug in the senderAddressCollision() case of TxSkipSection was
+    // triggered.
     //
     // The transaction execution cost (TX_SKIP) is 21000 + 4.
     // The floor cost is 21000 + 10.
-    arguments.add(
-        Arguments.of(
-            buildCallData(CallDataSetting.ALL_ZEROS, true, 1),
-            false,
-            DominantCost.FLOOR_COST_DOMINATES,
-            senderRecipientCollision));
 
+    for (AddressCollisions collisionCase : AddressCollisions.values()) {
+      arguments.add(
+          Arguments.of(
+              buildCallData(CallDataSetting.ALL_ZEROS, true, 1),
+              false,
+              DominantCost.FLOOR_COST_DOMINATES,
+              collisionCase));
+    }
     return arguments.stream();
   }
 

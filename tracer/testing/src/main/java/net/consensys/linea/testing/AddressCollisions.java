@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.testing;
 
 public enum AddressCollisions {
   NO_COLLISION,

@@ -16,6 +16,7 @@
 package net.consensys.linea.testing;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.testing.AddressCollisions.senderCoinbaseCollision;
 import static net.consensys.linea.zktracer.Trace.*;
 
 import java.util.ArrayList;
@@ -134,10 +135,21 @@ public final class BytecodeRunner {
     this.run(Wei.fromEth(1), MAX_GAS_LIMIT, List.of(), payload, accessList, chainConfig, testInfo);
   }
 
-  public void runWithImposedSenderRecipientAddressCollision(
-      Bytes payload, List<AccessListEntry> accessList, ChainConfig chainConfig, TestInfo testInfo) {
-    this.runWithImposedSenderRecipientAddressCollision(
-        Wei.fromEth(1), MAX_GAS_LIMIT, List.of(), payload, accessList, chainConfig, testInfo);
+  public void runWithAddressCollision(
+      Bytes payload,
+      List<AccessListEntry> accessList,
+      AddressCollisions collision,
+      ChainConfig chainConfig,
+      TestInfo testInfo) {
+    this.runWithAddressCollision(
+        Wei.fromEth(1),
+        MAX_GAS_LIMIT,
+        List.of(),
+        payload,
+        accessList,
+        collision,
+        chainConfig,
+        testInfo);
   }
 
   public void run(
@@ -166,18 +178,19 @@ public final class BytecodeRunner {
         additionalAccounts,
         payload,
         accessList,
+        AddressCollisions.NO_COLLISION,
         chainConfig,
-        testInfo,
-        false);
+        testInfo);
     toyExecutionEnvironmentV2.run();
   }
 
-  public void runWithImposedSenderRecipientAddressCollision(
+  public void runWithAddressCollision(
       Wei senderBalance,
       Long gasLimit,
       List<ToyAccount> additionalAccounts,
       Bytes payload,
       List<AccessListEntry> accessList,
+      AddressCollisions collision,
       ChainConfig chainConfig,
       TestInfo testInfo) {
     buildToyExecutionEnvironmentV2(
@@ -186,9 +199,9 @@ public final class BytecodeRunner {
         additionalAccounts,
         payload,
         accessList,
+        collision,
         chainConfig,
-        testInfo,
-        true);
+        testInfo);
     toyExecutionEnvironmentV2.run();
   }
 
@@ -198,9 +211,9 @@ public final class BytecodeRunner {
       List<ToyAccount> additionalAccounts,
       Bytes payload,
       List<AccessListEntry> accessList,
+      AddressCollisions collision,
       ChainConfig chainConfig,
-      TestInfo testInfo,
-      boolean imposeSenderRecipientCollision) {
+      TestInfo testInfo) {
     checkArgument(byteCode != null, "byteCode cannot be empty");
     final long transactionValue = 272; // 256 + 16, easier for debugging
     final long gasPrice = 8;
@@ -208,25 +221,35 @@ public final class BytecodeRunner {
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+    final Address recipientAddress =
+        Address.fromHexString("0x1111111111111111111111111111111111111111");
+
+    final int senderNonce = 5;
 
     final ToyAccount senderAccount =
-        ToyAccount.builder().balance(senderBalance).nonce(5).address(senderAddress).build();
+        ToyAccount.builder()
+            .balance(senderBalance)
+            .nonce(senderNonce)
+            .address(senderAddress)
+            .build();
 
     final Long selectedGasLimit = Optional.of(gasLimit).orElse(MAX_GAS_LIMIT);
 
     final ToyAccount receiverAccount =
-        imposeSenderRecipientCollision
-            ? ToyAccount.builder()
-                .balance(senderBalance.subtract(transactionValue + gasPrice * selectedGasLimit))
-                .nonce(5 + 1)
-                .address(senderAddress)
-                .build()
-            : ToyAccount.builder()
-                .balance(Wei.fromEth(1))
-                .nonce(6)
-                .address(Address.fromHexString("0x1111111111111111111111111111111111111111"))
-                .code(byteCode)
-                .build();
+        switch (collision) {
+          case SENDER_IS_RECIPIENT, TRIPLE_COLLISION -> ToyAccount.builder()
+              // Accounts update are already made in the TX_SKIP section
+              // .balance(senderBalance.subtract(transactionValue + gasPrice * selectedGasLimit))
+              // .nonce(senderNonce + 1)
+              .address(senderAddress)
+              .build();
+          default -> ToyAccount.builder()
+              .balance(Wei.fromEth(1))
+              .nonce(23)
+              .address(recipientAddress)
+              .code(byteCode)
+              .build();
+        };
 
     final ToyTransaction.ToyTransactionBuilder txBuilder =
         ToyTransaction.builder()
@@ -247,19 +270,27 @@ public final class BytecodeRunner {
 
     final List<ToyAccount> accounts = new ArrayList<>();
     accounts.add(senderAccount);
-    if (!imposeSenderRecipientCollision) {
+    if (collision == AddressCollisions.NO_COLLISION
+        || collision == AddressCollisions.RECIPIENT_IS_COINBASE) {
       accounts.add(receiverAccount);
     }
     accounts.addAll(additionalAccounts);
 
-    toyExecutionEnvironmentV2 =
+    ToyExecutionEnvironmentV2.ToyExecutionEnvironmentV2Builder toyExecutionEnvironmentV2Builder =
         ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .transactionProcessingResultValidator(
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .accounts(accounts)
             .zkTracerValidator(zkTracerValidator)
-            .transaction(tx)
-            .build();
+            .transaction(tx);
+
+    if (senderCoinbaseCollision(collision)) {
+      toyExecutionEnvironmentV2Builder.coinbase(senderAddress);
+    } else if (collision == AddressCollisions.RECIPIENT_IS_COINBASE) {
+      toyExecutionEnvironmentV2Builder.coinbase(recipientAddress);
+    }
+
+    toyExecutionEnvironmentV2 = toyExecutionEnvironmentV2Builder.build();
   }
 
   public void runInitCode(ChainConfig chainConfig, TestInfo testInfo) {

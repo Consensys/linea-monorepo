@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import static net.consensys.linea.testing.AddressCollisions.*;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
-import static net.consensys.linea.zktracer.module.hub.AddressCollisions.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2RawAddress;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.reporting.TracerTestBase;
+import net.consensys.linea.testing.AddressCollisions;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
