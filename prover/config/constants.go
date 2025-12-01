@@ -14,7 +14,20 @@ const (
 	InProgressSufix = "inprogress"
 	FailSuffix      = "code"
 	SuccessSuffix   = "success"
+	TimeoutSuffix   = "timeout"
 
 	// Extension to add in order to defer the job to the large prover
 	LargeSuffix = "large"
+
+	// Limitless prover stuffs
+	BootstrapPartialSucessSuffix = "bootstrap.partial.success"
+	WitnessDir                   = "/tmp/witness"
+)
+
+var (
+	ALL_MODULES = [10]string{
+		"ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK",
+		"SHA2", "ECDSA", "MODEXP_256", "G2_CHECK",
+		"STATIC", "TINY-STUFFS", "MODEXP_4096",
+	}
 )

@@ -1,27 +1,52 @@
 environment = "devnet"
-version = "6.0.8"                              # TODO @gbotrel hunt all version definitions.
+version = "6.1.2"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
 [controller]
 retry_delays = [0, 1]
+enable_execution = false 
+enable_blob_decompression = false
+enable_aggregation = false
+spot_instance_reclaim_time_seconds = 120
+termination_grace_period_seconds = 1800
+
+[controller.limitless_jobs]
+enable_bootstrapper   = false 
+enable_conglomerator = true
+enable_gl = false  
+gl_mods =  ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
+enable_lpp = false
+lpp_mods =  ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
+transient_cleanup = true 
 
 [execution]
-prover_mode = "full"
-conflated_traces_dir = "./"
-requests_root_dir = "./"
-ignore_compatibility_check=false
-keep_traces_until_block = 0
+prover_mode = "limitless"
+conflated_traces_dir = "/home/ubuntu/test_devnet/traces/conflated"
+requests_root_dir = "/home/ubuntu/test_devnet/prover-execution"
+limitless_with_debug = false 
+ignore_compatibility_check = true
+
+[exec_limitless]
+metadata_dir = "/tmp/exec-limitless/metadata"
+witness_dir = "/tmp/exec-limitless/witness"
+subproofs_dir = "/tmp/exec-limitless/subproofs"
+shared_rnd_dir = "/tmp/exec-limitless/commit"
+shared_failure_dir = "/tmp/exec-limitless/failure"
+timeout_seconds = 5400 
+
 
 [blob_decompression]
 prover_mode = "full"
+requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/compression"
+dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/sepolia-testing-full/prover-aggregation"
+requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/aggregation"
 num_proofs = [10, 20, 50, 100, 200, 400]
-allowed_inputs = ["execution-dummy", "execution", "execution-large", "blob-decompression-dummy", "blob-decompression-v0", "blob-decompression-v1"]
-verifier_id = 0
+allowed_inputs = ["execution", "execution-large", "execution-limitless", "blob-decompression-v0", "blob-decompression-v1"]
+verifier_id = 1
 
 [public_input_interconnection]
 max_nb_decompression = 400
@@ -238,6 +263,88 @@ BLOCK_L2_L1_LOGS = 16
 BLOCK_TRANSACTIONS = 300
 BIN_REFERENCE_TABLE = 262144
 INSTRUCTION_DECODER = 512
+
+BIT_SHL256 = 524288
+BIT_SHL256_U7 = 524288
+BIT_SHL256_U6 = 524288
+BIT_SHL256_U5 = 524288
+BIT_SHL256_U4 = 524288
+BIT_SHL256_U3 = 524288
+BIT_SHL256_U2 = 524288
+BIT_SHL256_U1 = 524288
+BIT_SHR256 = 524288
+BIT_SHR256_U7 = 524288
+BIT_SHR256_U6 = 524288
+BIT_SHR256_U5 = 524288
+BIT_SHR256_U4 = 524288
+BIT_SHR256_U3 = 524288
+BIT_SHR256_U2 = 524288
+BIT_SHR256_U1 = 524288
+BIT_SAR256 = 524288
+BIT_SAR256_U7 = 524288
+BIT_SAR256_U6 = 524288
+BIT_SAR256_U5 = 524288
+BIT_SAR256_U4 = 524288
+BIT_SAR256_U3 = 524288
+BIT_SAR256_U2 = 524288
+BIT_SAR256_U1 = 524288
+CALL_GAS_EXTRA = 524288
+FILL_BYTES_BETWEEN = 524288
+GAS_OUT_OF_POCKET = 524288
+LOG2 = 524288
+LOG2_U128 = 524288
+LOG2_U64 = 524288
+LOG2_U32 = 524288
+LOG2_U16 = 524288
+LOG2_U8 = 524288
+LOG2_U4 = 524288
+LOG2_U2 = 524288
+LOG256 = 524288
+LOG256_U128 = 524288
+LOG256_U64 = 524288
+LOG256_U32 = 524288
+LOG256_U16 = 524288
+MIN256_64 = 524288
+SET_BYTE256 = 524288
+SET_BYTE128 = 524288
+SET_BYTE64 = 524288
+SET_BYTE32 = 524288
+SET_BYTE16 = 524288
+
+U128 = 524288
+U127 = 524288
+U126 = 524288
+U125 = 524288
+U124 = 524288
+U123 = 524288
+U120 = 524288
+U119 = 524288
+U112 = 524288
+U111 = 524288
+U96 = 524288
+U95 = 524288
+U64 = 524288
+U63 = 524288
+U62 = 524288
+U61 = 524288
+U60 = 524288
+U59 = 524288
+U58 = 524288
+U56 = 524288
+U55 = 524288
+U48 = 524288
+U47 = 524288
+U36 = 524288
+U32 = 524288
+U31 = 524288
+U30 = 524288
+U29 = 524288
+U28 = 524288
+U27 = 524288
+U26 = 524288
+U24 = 524288
+U23 = 524288
+U20 = 524288
 
 PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS     = 0
 PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS = 0
