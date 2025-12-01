@@ -28,14 +28,15 @@ type Job struct {
 	VersionExecutionTracer string
 	VersionStateManager    string
 	VersionCompressor      string
+	ContentHash            string // The hex string of the content hash
 
-	// The hex string of the content hash
-	ContentHash string
+	// Add-ons for limitless prover
+	SegID int
 }
 
-// OutputFileRessouce collects all the data needed to fill the output template
+// OutputFileResource collects all the data needed to fill the output template
 // file.
-type OutputFileRessouce struct {
+type OutputFileResource struct {
 	Job
 }
 
@@ -66,6 +67,9 @@ func NewJob(jdef *JobDefinition, filename string) (j *Job, err error) {
 	j.VersionStateManager = stringIfRegexpNotNil(regs.Stv, filename)
 	j.ContentHash = stringIfRegexpNotNil(regs.ContentHash, filename)
 
+	// Limitless prover add-on
+	j.SegID = intIfRegexpNotNil(regs.SegID, filename)
+
 	return j, nil
 }
 
@@ -84,7 +88,7 @@ func (j *Job) ResponseFile() (s string, err error) {
 
 	// Run the template
 	w := &strings.Builder{}
-	err = j.Def.OutputFileTmpl.Execute(w, OutputFileRessouce{
+	err = j.Def.OutputFileTmpl.Execute(w, OutputFileResource{
 		Job: *j,
 	})
 	if err != nil {
@@ -167,7 +171,7 @@ func (j *Job) DoneFile(status Status) string {
 	// Remove the suffix .failure.code_[0-9]+ from all the strings
 	origFile, err := j.Def.FailureSuffix.Replace(j.OriginalFile, "", -1, -1)
 	if err != nil {
-		// he assumption here is that the above function may return an error
+		// The assumption here is that the above function may return an error
 		// but this error can only depend on the regexp, the replacement,
 		// the startAt and the count/ Thus, if it fails, the error is
 		// unrelated to the input stream, which is the only user-provided
@@ -188,7 +192,28 @@ func (j *Job) DoneFile(status Status) string {
 // the priority of the job. The 100 value is chosen to make the score easy to
 // mentally compute.
 func (j *Job) Score() int {
-	return 100*j.End + j.Def.Priority
+	var (
+		score = 100*j.End + j.Def.Priority
+
+		// offset is used to make sure that GL jobs are always priortized and processed before LPP jobs for the same block height.
+		// NOTE: this is a hack and only works if the number of segments produced by limitless prover in lesser than the offset
+		// value - Currently this is a reasonable practical assumption.
+		offset = 500
+	)
+
+	// For GL and LPP jobs, add segPriority for finer ordering
+	if strings.Contains(j.Def.Name, "gl-") || strings.Contains(j.Def.Name, "lpp-") {
+		score += segPriority(j.OriginalFile)
+	}
+
+	// Adjust relative ordering: for the same j.End, GL wins over LPP
+	// We do this by adding a small offset *only* for LPP jobs.
+	// This offset is smaller than 100 (the per-End spacing),
+	// so it never affects ordering between different Ends.
+	if strings.Contains(j.Def.Name, "lpp-") {
+		score += offset // ensure LPP jobs come *after* GL jobs of same End
+	}
+	return score
 }
 
 // If the regexp is provided and non-nil, return the first match and returns the
@@ -211,7 +236,7 @@ func stringIfRegexpNotNil(r *regexp2.Regexp, s string) (res string) {
 func intIfRegexpNotNil(r *regexp2.Regexp, s string) int {
 	// Map the result as an integer
 	match := stringIfRegexpNotNil(r, s)
-	if len(s) == 0 {
+	if len(s) == 0 || len(match) == 0 {
 		return 0
 	}
 
@@ -222,4 +247,10 @@ func intIfRegexpNotNil(r *regexp2.Regexp, s string) int {
 		panic(err)
 	}
 	return res
+}
+
+func isExecLimitlessJob(job *Job) bool {
+	return job.Def.Name == jobNameBootstrap || job.Def.Name == jobNameConglomeration ||
+		strings.HasPrefix(job.Def.Name, jobNameGL) ||
+		strings.HasPrefix(job.Def.Name, jobNameLPP)
 }
