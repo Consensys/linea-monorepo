@@ -108,7 +108,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 		if ctx.IsSelfrecursed {
 			// We need to store the SIS and non-SIS column hashes in the prover state
 			// so that we can use them in the self-recursion compiler.
-			if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+			if ctx.RoundStatus[round] == IsNoSis {
 				run.State.InsertNew(ctx.NoSisHashName(round), colHashes)
 			}
 		}
@@ -120,7 +120,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	} else {
 		var tree *smt_koalabear.Tree
 
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+		if ctx.RoundStatus[round] == IsNoSis {
 			committedMatrix, _, tree, noSisColHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
@@ -133,7 +133,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 		if ctx.IsSelfrecursed {
 			// We need to store the SIS and non-SIS column hashes in the prover state
 			// so that we can use them in the self-recursion compiler.
-			if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+			if ctx.RoundStatus[round] == IsNoSis {
 				run.State.InsertNew(ctx.NoSisHashName(round), noSisColHashes)
 			} else if ctx.RoundStatus[round] == IsSISApplied {
 				run.State.InsertNew(ctx.SisHashName(round), sisColHashes)
@@ -189,7 +189,7 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
 
 		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+		if ctx.RoundStatus[round] == IsNoSis {
 			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
 
 		} else if ctx.RoundStatus[round] == IsSISApplied {
@@ -238,7 +238,7 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
 
 		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+		if ctx.RoundStatus[round] == IsNoSis {
 			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedSVSIS = append(committedSVSIS, committedMatrix...)
@@ -315,7 +315,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			// conditionally stack the matrix and tree
 			// to SIS or no SIS matrices and trees
 
-			if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+			if ctx.RoundStatus[round] == IsNoSis {
 				committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
 				blsTrees = append(blsTrees, tree)
 			}
@@ -324,7 +324,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			tree := run.State.MustGet(ctx.MerkleTreeName(round)).(*smt_koalabear.Tree)
 			// conditionally stack the matrix and tree
 			// to SIS or no SIS matrices and trees
-			if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+			if ctx.RoundStatus[round] == IsNoSis {
 				committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
 				treesNoSIS = append(treesNoSIS, tree)
 			} else if ctx.RoundStatus[round] == IsSISApplied {

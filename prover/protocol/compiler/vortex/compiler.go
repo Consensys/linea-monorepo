@@ -35,7 +35,7 @@ const (
 	IsEmpty roundStatus = iota
 	// Denotes a round when we apply only Poseidon2 hashing
 	// on the columns of the round matrix
-	IsOnlyPoseidon2Applied
+	IsNoSis
 	// Denotes a round when we apply SIS+Poseidon2 hashing
 	// on the columns of the round matrix
 	IsSISApplied
@@ -479,7 +479,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		Info("Compiled Vortex round")
 
 	if onlyPoseidon2Applied {
-		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyPoseidon2Applied)
+		ctx.RoundStatus = append(ctx.RoundStatus, IsNoSis)
 		ctx.CommitmentsByRoundsNonSIS.AppendToInner(round, coms...)
 		ctx.MaxCommittedRoundNonSIS = utils.Max(ctx.MaxCommittedRoundNonSIS, round)
 	} else {
@@ -925,7 +925,7 @@ func (ctx *Ctx) NumCommittedRoundsNoSis() int {
 	// the compileRound method. Careful, the stopping condition is
 	// an LE and not a strict LT condition.
 	for i := 0; i <= ctx.MaxCommittedRound; i++ {
-		if ctx.RoundStatus[i] != IsOnlyPoseidon2Applied {
+		if ctx.RoundStatus[i] != IsNoSis {
 			// We skip the SIS and the empty rounds
 			continue
 		}
@@ -1054,7 +1054,7 @@ func (ctx *Ctx) GetPrecomputedSelectedCol(index int) []field.Element {
 // non SIS round
 func (ctx *Ctx) GetNumPolsForNonSisRounds(round int) int {
 	// Sanity check
-	if ctx.RoundStatus[round] != IsOnlyPoseidon2Applied {
+	if ctx.RoundStatus[round] != IsNoSis {
 		utils.Panic("Expected a non SIS round!")
 	}
 	return ctx.CommitmentsByRounds.LenOf(round)

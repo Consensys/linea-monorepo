@@ -48,10 +48,10 @@ func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTest
 
 func TestVortexGnarkVerifier(t *testing.T) {
 
-	polSize := 1 << 2
-	nPols := 4
+	polSize := 1 << 4
+	nPols := 16
 	numRounds := 1
-	numPrecomputeds := 2
+	numPrecomputeds := 4
 	rows := make([][]ifaces.Column, numRounds)
 
 	define := func(b *wizard.Builder) {
