@@ -160,7 +160,7 @@ interface ILineaRollupBase {
   error MissingRollingHashForMessageNumber(uint256 messageNumber);
 
   /**
-   * @dev Thrown when a final being shnarf finalized does not exist.
+   * @dev Thrown when a final shnarf being finalized does not exist.
    */
   error FinalShnarfNotSubmitted(bytes32 shnarf);
 
