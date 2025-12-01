@@ -443,35 +443,61 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     peekedYieldReportYieldAmount: bigint,
     peekedYieldReportOutstandingNegativeYield: bigint,
   ): RebalanceRequirement {
+    this.logger.debug("_getRebalanceRequirements - inputs", {
+      totalSystemBalance,
+      l1MessageServiceBalance,
+      effectiveTargetWithdrawalReserve,
+      userFunds,
+      dashboardTotalValue,
+      peekedYieldReportYieldAmount,
+      peekedYieldReportOutstandingNegativeYield,
+      rebalanceToleranceBps: this.rebalanceToleranceBps,
+      maxStakingRebalanceAmountWei: this.maxStakingRebalanceAmountWei,
+    });
+
     // Get Lido fees + node operator fees + LST liability
     const systemObligations =
       peekedYieldReportYieldAmount >= 0
         ? dashboardTotalValue - peekedYieldReportYieldAmount - userFunds
         : peekedYieldReportOutstandingNegativeYield + dashboardTotalValue - userFunds;
+    this.logger.debug(`_getRebalanceRequirements - systemObligations=${systemObligations}`);
 
     // Get balances adjusted for system obligations
     const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
+    this.logger.debug(
+      `_getRebalanceRequirements - totalSystemBalanceExcludingObligations=${totalSystemBalanceExcludingObligations}`,
+    );
+
     const effectiveTargetWithdrawalReserveExcludingObligations =
       (effectiveTargetWithdrawalReserve * totalSystemBalanceExcludingObligations) / totalSystemBalance;
+    this.logger.debug(
+      `_getRebalanceRequirements - effectiveTargetWithdrawalReserveExcludingObligations=${effectiveTargetWithdrawalReserveExcludingObligations}`,
+    );
 
     const toleranceBand = (totalSystemBalanceExcludingObligations * BigInt(this.rebalanceToleranceBps)) / 10000n;
+    this.logger.debug(`_getRebalanceRequirements - toleranceBand=${toleranceBand}`);
 
     // Rebalance requirement = Reserve rebalance requirement + system obligations
     const absRebalanceRequirement =
       absDiff(l1MessageServiceBalance, effectiveTargetWithdrawalReserveExcludingObligations) + systemObligations;
+    this.logger.debug(`_getRebalanceRequirements - absRebalanceRequirement=${absRebalanceRequirement}`);
 
     if (absRebalanceRequirement < toleranceBand) {
-      return {
+      const result = {
         rebalanceDirection: RebalanceDirection.NONE,
         rebalanceAmount: 0n,
       };
+      this.logger.info("_getRebalanceRequirements - result", result);
+      return result;
     }
 
     if (l1MessageServiceBalance < effectiveTargetWithdrawalReserveExcludingObligations) {
-      return {
+      const result = {
         rebalanceDirection: RebalanceDirection.UNSTAKE,
         rebalanceAmount: absRebalanceRequirement,
       };
+      this.logger.info("_getRebalanceRequirements - result", result);
+      return result;
     } else {
       const cappedAmount =
         absRebalanceRequirement > this.maxStakingRebalanceAmountWei
@@ -482,10 +508,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
           `_getRebalanceRequirements - capping staking rebalance amount from ${absRebalanceRequirement} to ${cappedAmount} (limit: ${this.maxStakingRebalanceAmountWei})`,
         );
       }
-      return {
+      const result = {
         rebalanceDirection: RebalanceDirection.STAKE,
         rebalanceAmount: cappedAmount,
       };
+      this.logger.info("_getRebalanceRequirements - result", result);
+      return result;
     }
   }
 
