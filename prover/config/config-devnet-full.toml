@@ -15,10 +15,12 @@ keep_traces_until_block = 0
 
 [blob_decompression]
 prover_mode = "full"
+requests_root_dir = "./"
+dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/sepolia-testing-full/prover-aggregation"
+requests_root_dir = "./"
 num_proofs = [10, 20, 50, 100, 200, 400]
 allowed_inputs = ["execution-dummy", "execution", "execution-large", "blob-decompression-dummy", "blob-decompression-v0", "blob-decompression-v1"]
 verifier_id = 0
