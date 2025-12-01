@@ -41,6 +41,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @param {Address} contractAddress - The address of the YieldManager contract.
    * @param {number} rebalanceToleranceBps - Rebalance tolerance in basis points (for determining when rebalancing is required).
    * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH (for threshold-based withdrawal operations).
+   * @param {bigint} maxStakingRebalanceAmountWei - Maximum staking rebalance amount (in wei) that can be processed per loop iteration.
    */
   constructor(
     private readonly logger: ILogger,
@@ -48,6 +49,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     private readonly contractAddress: Address,
     private readonly rebalanceToleranceBps: number,
     private readonly minWithdrawalThresholdEth: bigint,
+    private readonly maxStakingRebalanceAmountWei: bigint,
   ) {
     this.contract = getContract({
       abi: YieldManagerABI,
@@ -471,9 +473,18 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
         rebalanceAmount: absRebalanceRequirement,
       };
     } else {
+      const cappedAmount =
+        absRebalanceRequirement > this.maxStakingRebalanceAmountWei
+          ? this.maxStakingRebalanceAmountWei
+          : absRebalanceRequirement;
+      if (cappedAmount < absRebalanceRequirement) {
+        this.logger.info(
+          `_getRebalanceRequirements - capping staking rebalance amount from ${absRebalanceRequirement} to ${cappedAmount} (limit: ${this.maxStakingRebalanceAmountWei})`,
+        );
+      }
       return {
         rebalanceDirection: RebalanceDirection.STAKE,
-        rebalanceAmount: absRebalanceRequirement,
+        rebalanceAmount: cappedAmount,
       };
     }
   }

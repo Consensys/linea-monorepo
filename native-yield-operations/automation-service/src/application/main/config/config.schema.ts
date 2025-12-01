@@ -93,6 +93,15 @@ export const configSchema = z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+    /** Maximum staking rebalance amount (in wei) that can be processed per loop iteration.
+     * When a staking rebalance is required, the rebalance amount will be capped to this limit.
+     * Any excess amount will be handled in subsequent loop iterations.
+     * This prevents processing very large rebalance amounts in a single transaction.
+     */
+    MAX_STAKING_REBALANCE_AMOUNT_WEI: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     /** Web3Signer service URL for transaction signing.
      * The service signs transactions using the key specified by WEB3SIGNER_PUBLIC_KEY.
      * Must be a valid HTTPS (not HTTP) URL.

@@ -148,6 +148,7 @@ export class NativeYieldAutomationServiceBootstrap {
       config.contractAddresses.yieldManagerAddress,
       config.rebalanceToleranceBps,
       config.minWithdrawalThresholdEth,
+      config.maxStakingRebalanceAmountWei,
     );
     this.lazyOracleContractClient = new LazyOracleContractClient(
       new WinstonLogger(LazyOracleContractClient.name, config.loggerOptions),

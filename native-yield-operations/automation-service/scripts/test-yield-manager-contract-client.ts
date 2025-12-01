@@ -10,6 +10,7 @@
  * Optional flags:
  * REBALANCE_TOLERANCE_BPS=100 \
  * MIN_WITHDRAWAL_THRESHOLD_ETH=0 \
+ * MAX_STAKING_REBALANCE_AMOUNT_WEI=1000000000000000000000 \
  */
 
 import {
@@ -36,6 +37,9 @@ async function main() {
   const yieldManagerAddress = process.env.YIELD_MANAGER_ADDRESS as Address;
   const rebalanceToleranceBps = Number.parseInt(process.env.REBALANCE_TOLERANCE_BPS ?? "100", 10);
   const minWithdrawalThresholdEth = BigInt(process.env.MIN_WITHDRAWAL_THRESHOLD_ETH ?? "0");
+  const maxStakingRebalanceAmountWei = BigInt(
+    process.env.MAX_STAKING_REBALANCE_AMOUNT_WEI ?? "1000000000000000000000",
+  );
 
   const signer = new ViemWalletSignerClientAdapter(
     new WinstonLogger("ViemWalletSignerClientAdapter.integration"),
@@ -56,6 +60,7 @@ async function main() {
     yieldManagerAddress,
     rebalanceToleranceBps,
     minWithdrawalThresholdEth,
+    maxStakingRebalanceAmountWei,
   );
 
   try {

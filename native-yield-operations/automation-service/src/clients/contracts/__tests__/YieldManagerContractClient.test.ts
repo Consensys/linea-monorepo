@@ -81,9 +81,11 @@ describe("YieldManagerContractClient", () => {
   const createClient = ({
     rebalanceToleranceBps = 100,
     minWithdrawalThresholdEth = 0n,
+    maxStakingRebalanceAmountWei = 1000000000000000000000n, // 1000 ETH default
   }: {
     rebalanceToleranceBps?: number;
     minWithdrawalThresholdEth?: bigint;
+    maxStakingRebalanceAmountWei?: bigint;
   } = {}) =>
     new YieldManagerContractClient(
       logger,
@@ -91,6 +93,7 @@ describe("YieldManagerContractClient", () => {
       contractAddress,
       rebalanceToleranceBps,
       minWithdrawalThresholdEth,
+      maxStakingRebalanceAmountWei,
     );
 
   beforeEach(() => {
@@ -563,6 +566,62 @@ describe("YieldManagerContractClient", () => {
       rebalanceDirection: RebalanceDirection.STAKE,
       rebalanceAmount: expectedSurplusAmount,
     });
+  });
+
+  it("caps staking rebalance amount when it exceeds maxStakingRebalanceAmountWei limit", async () => {
+    const totalSystemBalance = 1_000_000n;
+    const effectiveTarget = 500_000n;
+    const dashboardTotalValue = 600_000n;
+    const userFunds = 100_000n;
+    const peekedYieldAmount = 50_000n;
+    const peekedOutstandingNegativeYield = 0n;
+    const maxStakingRebalanceAmountWei = 200_000n; // Set a limit lower than the calculated requirement
+
+    contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
+    contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
+    contractStub.read.userFunds.mockResolvedValue(userFunds);
+    contractStub.simulate.reportYield.mockResolvedValue({
+      result: [peekedYieldAmount, peekedOutstandingNegativeYield],
+    });
+
+    const mockDashboardClient = {
+      totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
+    };
+    mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
+
+    const client = createClient({
+      rebalanceToleranceBps: 100,
+      maxStakingRebalanceAmountWei,
+    });
+
+    // Calculate system obligations: dashboardTotalValue - peekedYieldAmount - userFunds
+    // = 600_000 - 50_000 - 100_000 = 450_000
+    const systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds;
+    // totalSystemBalanceExcludingObligations = 1_000_000 - 450_000 = 550_000
+    const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
+    // effectiveTargetExcludingObligations = (500_000 * 550_000) / 1_000_000 = 275_000
+    const effectiveTargetExcludingObligations =
+      (effectiveTarget * totalSystemBalanceExcludingObligations) / totalSystemBalance;
+
+    // Case: Surplus => STAKE with amount exceeding limit
+    // l1MessageServiceBalance = 275_000 + 500_000 = 775_000 (large surplus)
+    const l1BalanceSurplus = effectiveTargetExcludingObligations + 500_000n;
+    blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceSurplus);
+    // absRebalanceRequirement = absDiff(775_000, 275_000) + 450_000 = 500_000 + 450_000 = 950_000
+    const calculatedRebalanceAmount = 500_000n + systemObligations; // 950_000
+    // This exceeds maxStakingRebalanceAmountWei (200_000), so it should be capped
+
+    const result = await client.getRebalanceRequirements(yieldProvider, l2Recipient);
+
+    expect(result).toEqual({
+      rebalanceDirection: RebalanceDirection.STAKE,
+      rebalanceAmount: maxStakingRebalanceAmountWei, // Should be capped to 200_000
+    });
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `_getRebalanceRequirements - capping staking rebalance amount from ${calculatedRebalanceAmount} to ${maxStakingRebalanceAmountWei}`,
+      ),
+    );
   });
 
   it("returns staking vault and dashboard addresses from yield provider data", async () => {
