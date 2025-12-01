@@ -50,7 +50,7 @@ const func: DeployFunction = async function () {
         pauseTypeRoles,
         unpauseTypeRoles,
         defaultAdmin: validiumSecurityCouncil,
-        shnarfProvider: ADDRESS_ZERO
+        shnarfProvider: ADDRESS_ZERO,
       },
     ],
     {

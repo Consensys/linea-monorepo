@@ -51,7 +51,7 @@ const func: DeployFunction = async function () {
         pauseTypeRoles,
         unpauseTypeRoles,
         defaultAdmin: lineaRollupSecurityCouncil,
-        shnarfProvider: ADDRESS_ZERO
+        shnarfProvider: ADDRESS_ZERO,
       },
       MultiCallAddress,
     ],
