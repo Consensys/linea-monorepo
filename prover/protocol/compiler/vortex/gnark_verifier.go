@@ -34,10 +34,10 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
-		preRoots := [encoding.GnarkKoalabearNumElements]zk.WrappedVariable{}
+		preRoots := [encoding.KoalabearChunks]zk.WrappedVariable{}
 
-		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
-			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
+		for i := 0; i < encoding.KoalabearChunks; i++ {
+			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.BLSMerkleRoot[i].GetColID())
 			preRoots[i] = precompRootSv[0]
 		}
 
@@ -50,9 +50,9 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			continue // skip the dry rounds
 		}
 		//TODO@yao: check if this is correct, roots should be frontend.Variable, change all blockSize to vortex_bls12377.GnarkKoalabearNumElements
-		preRoots := [encoding.GnarkKoalabearNumElements]zk.WrappedVariable{}
+		preRoots := [encoding.KoalabearChunks]zk.WrappedVariable{}
 
-		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
+		for i := 0; i < encoding.KoalabearChunks; i++ {
 			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
 			preRoots[i] = rootSv[0]
 		}
@@ -74,7 +74,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	// Collect the opened columns and split them "by-commitment-rounds"
 	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
-	packedMProofs := [encoding.GnarkKoalabearNumElements][]zk.WrappedVariable{}
+	packedMProofs := [encoding.KoalabearChunks][]zk.WrappedVariable{}
 	for i := range packedMProofs {
 		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
 	}
@@ -258,7 +258,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [encoding.GnarkKoalabearNumElements][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt_bls12377.GnarkProof) {
+func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [encoding.KoalabearChunks][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt_bls12377.GnarkProof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -283,8 +283,8 @@ func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [encoding.GnarkKoal
 			// are inversing the order.
 			for k := range proof.Siblings {
 
-				var v [encoding.GnarkKoalabearNumElements]zk.WrappedVariable
-				for coord := 0; coord < encoding.GnarkKoalabearNumElements; coord++ {
+				var v [encoding.KoalabearChunks]zk.WrappedVariable
+				for coord := 0; coord < encoding.KoalabearChunks; coord++ {
 					v[coord] = sv[coord][curr]
 				}
 				// apiGen, _ := zk.NewGenericApi(api)

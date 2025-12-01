@@ -510,8 +510,8 @@ func TestCompiler(t *testing.T) {
 					}),
 				),
 			)
-			proof := wizard.Prove(compiled, tc.Prove)
-			valid := wizard.Verify(compiled, proof)
+			proof := wizard.Prove(compiled, tc.Prove, true)
+			valid := wizard.Verify(compiled, proof, true)
 
 			require.NoErrorf(t, valid, "the proof did not pass")
 		})

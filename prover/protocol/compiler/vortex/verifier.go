@@ -37,13 +37,13 @@ func (a *ExplicitPolynomialEval) Run(run wizard.Runtime) error {
 func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
 	if ctx.IsBLS {
-		return ctx.runGnark(run)
+		return ctx.runBLS(run)
 	} else {
-		return ctx.runNonGnark(run)
+		return ctx.runKoala(run)
 	}
 }
 
-func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
+func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -59,7 +59,6 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 		// precomputed. Otherwise, it is the first root of the no SIS roots.
 		noSisRoots = []field.Octuplet{}
 		sisRoots   = []field.Octuplet{}
-
 		// Slice of true value of length equal to the number of no SIS round
 		// + 1 (if SIS is not applied to precomputed)
 		flagForNoSISRounds = []bool{}
@@ -70,7 +69,6 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
-
 		var precompRootF field.Octuplet
 		for i := 0; i < blockSize; i++ {
 			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
@@ -84,7 +82,6 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 			noSisRoots = append(noSisRoots, precompRootF)
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		}
-
 	}
 
 	// Collect all the roots: rounds by rounds
@@ -106,6 +103,7 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 		}
 
 		switch ctx.RoundStatus[round] {
+		// IsOnlyPoseidon2Applied is equivalent to No SIS hashing applied
 		case IsOnlyPoseidon2Applied:
 			noSisRoots = append(noSisRoots, precompRootF)
 			flagForNoSISRounds = append(flagForNoSISRounds, false)
@@ -150,7 +148,7 @@ func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
 	return vortex_koalabear.Verify(ctx.VortexKoalaParams, proof, &vi, roots, merkleProofs, WithSis)
 }
 
-func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
+func (ctx *VortexVerifierAction) runBLS(run wizard.Runtime) error {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -173,9 +171,9 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
 
-		var precompRootF [encoding.GnarkKoalabearNumElements]field.Element
-		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
-			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
+		var precompRootF [encoding.KoalabearChunks]field.Element
+		for i := 0; i < encoding.KoalabearChunks; i++ {
+			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.BLSMerkleRoot[i].GetColID())
 			precompRootF[i] = precompRootSv.IntoRegVecSaveAlloc()[0]
 		}
 
@@ -198,9 +196,9 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 			continue
 		}
 
-		var precompRootF [encoding.GnarkKoalabearNumElements]field.Element
-		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
-			rootSv := run.GetColumn(ctx.Items.GnarkMerkleRoots[round][i].GetColID())
+		var precompRootF [encoding.KoalabearChunks]field.Element
+		for i := 0; i < encoding.KoalabearChunks; i++ {
+			rootSv := run.GetColumn(ctx.Items.BLSMerkleRoots[round][i].GetColID())
 			precompRootF[i] = rootSv.IntoRegVecSaveAlloc()[0]
 		}
 
@@ -231,12 +229,12 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 	proof.Columns = ctx.RecoverSelectedColumns(run, entryList)
 	x := run.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
-	packedMProofs := [encoding.GnarkKoalabearNumElements]smartvectors.SmartVector{}
+	packedMProofs := [encoding.KoalabearChunks]smartvectors.SmartVector{}
 	for i := range packedMProofs {
 		packedMProofs[i] = run.GetColumn(ctx.MerkleProofName(i))
 	}
 
-	merkleProofs := ctx.unpackGnarkMerkleProofs(packedMProofs, entryList)
+	merkleProofs := ctx.unpackBLSMerkleProofs(packedMProofs, entryList)
 
 	var vi vortex.VerifierInput
 	vi.X = x

@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -275,12 +275,12 @@ func (h *Horner) Name() ifaces.QueryID {
 
 // UpdateFS implements the [ifaces.QueryParams] interface. It updates
 // FS with the parameters of the query.
-func (h HornerParams) UpdateFS(fs *fiatshamir_bls12377.FS) {
+func (h HornerParams) UpdateFS(fs *fiatshamir.FS) {
 
-	fs.UpdateExt(h.FinalResult)
+	(*fs).UpdateExt(h.FinalResult)
 
 	for _, part := range h.Parts {
-		fs.Update(
+		(*fs).Update(
 			field.NewElement(uint64(part.N0)),
 			field.NewElement(uint64(part.N1)),
 		)

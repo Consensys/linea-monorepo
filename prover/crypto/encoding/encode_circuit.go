@@ -67,7 +67,7 @@ func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVari
 // BLS to Koalabear encoding, 1 BLS -- > 9 Koalabear --> 1 BLS
 // The Encode9WVsToFV function is used in the gnark verifier
 // Function to encode 9 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
-func Encode9WVsToFV(api frontend.API, values [GnarkKoalabearNumElements]zk.WrappedVariable) frontend.Variable {
+func Encode9WVsToFV(api frontend.API, values [KoalabearChunks]zk.WrappedVariable) frontend.Variable {
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		panic(err)
@@ -75,9 +75,9 @@ func Encode9WVsToFV(api frontend.API, values [GnarkKoalabearNumElements]zk.Wrapp
 
 	bits := make([]frontend.Variable, 256)
 
-	for i := 0; i < GnarkKoalabearNumElements-1; i++ {
+	for i := 0; i < KoalabearChunks-1; i++ {
 		// Convert the 31 bits of the current WrappedVariable to frontend variables
-		limbBits := apiGen.ToBinary(values[GnarkKoalabearNumElements-1-i], 30)
+		limbBits := apiGen.ToBinary(values[KoalabearChunks-1-i], 30)
 		copy(bits[30*i:], limbBits)
 	}
 

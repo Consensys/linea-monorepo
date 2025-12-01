@@ -3,7 +3,7 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -30,12 +30,12 @@ type LocalOpeningParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (lop LocalOpeningParams) UpdateFS(fs *fiatshamir_bls12377.FS) {
+func (lop LocalOpeningParams) UpdateFS(fs *fiatshamir.FS) {
 	if lop.IsBase {
-		fs.Update(lop.BaseY)
+		(*fs).Update(lop.BaseY)
 	} else {
 		// Change this for the actual extension!
-		fs.UpdateExt(lop.ExtY)
+		(*fs).UpdateExt(lop.ExtY)
 	}
 }
 

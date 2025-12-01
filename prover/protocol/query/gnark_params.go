@@ -2,7 +2,7 @@ package query
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -119,42 +119,42 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
-	fs.UpdateExt(p.Ys...)
+func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+	(*fs).UpdateExt(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
-	fs.Update(p.BaseY)
+func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+	(*fs).Update(p.BaseY)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
+func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 
-	fs.UpdateExt(p.Sum)
+	(*fs).UpdateExt(p.Sum)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
-	fs.UpdateExt(p.Prod)
+func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+	(*fs).UpdateExt(p.Prod)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
+func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 
-	fs.UpdateExt(p.ExtYs...)
+	(*fs).UpdateExt(p.ExtYs...)
 }
 
 // Update the fiat-shamir state with the present field extension parameters
-func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir_bls12377.GnarkFS) {
-	fs.UpdateExt(p.ExtYs...)
+func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFS) {
+	(*fs).UpdateExt(p.ExtYs...)
 }
 
 // Update the fiat-shamir state with the present parameters
-func (p GnarkHornerParams) UpdateFS(fs *fiatshamir_bls12377.GnarkFS) {
-	fs.UpdateExt(p.FinalResult)
+func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+	(*fs).UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		fs.Update(zk.ValueOf(part.N0), zk.ValueOf(part.N1))
+		(*fs).Update(zk.ValueOf(part.N0), zk.ValueOf(part.N1))
 	}
 }

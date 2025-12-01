@@ -53,18 +53,18 @@ func EncodeFrElementToOctuplet(element fr.Element) field.Octuplet {
 // The following encoding and decoding are used in the compiler circuits
 // Perform a lossless round-trip transformation between a Merkle Root (bls12.Element) and its decomposition into columns,
 // ensuring the input Root matches the output Root.
-const GnarkKoalabearNumElements = 9
+const KoalabearChunks = 9
 
-func EncodeBLS12RootToKoalabear(encoded fr.Element) [GnarkKoalabearNumElements]field.Element {
+func EncodeBLS12RootToKoalabear(encoded fr.Element) [KoalabearChunks]field.Element {
 	// Initialize an empty array to store the results
-	var elements, res [GnarkKoalabearNumElements]field.Element
+	var elements, res [KoalabearChunks]field.Element
 
 	bytes := encoded.Bytes()
 	// Convert the bytes32 to big.Int
 	value := new(big.Int).SetBytes(bytes[:])
 
 	// Loop to extract each 30-bit chunk
-	for i := 0; i < GnarkKoalabearNumElements; i++ {
+	for i := 0; i < KoalabearChunks; i++ {
 		// Extract the corresponding 30-bit chunk by applying a mask
 		chunk := new(big.Int).And(value, big.NewInt(0x3FFFFFFF)) // Mask for 30 bits (0x3FFFFFFF = 30 ones in binary)
 
@@ -76,16 +76,16 @@ func EncodeBLS12RootToKoalabear(encoded fr.Element) [GnarkKoalabearNumElements]f
 	}
 
 	// Since field.Elements are processed in little-endian order, reverse the array
-	for i := 0; i < GnarkKoalabearNumElements; i++ {
-		res[i] = elements[GnarkKoalabearNumElements-1-i]
+	for i := 0; i < KoalabearChunks; i++ {
+		res[i] = elements[KoalabearChunks-1-i]
 	}
 	return res
 }
 
-func DecodeKoalabearToBLS12Root(elements [GnarkKoalabearNumElements]field.Element) fr.Element {
+func DecodeKoalabearToBLS12Root(elements [KoalabearChunks]field.Element) fr.Element {
 	expectedResult := big.NewInt(0)
-	for i := 0; i < GnarkKoalabearNumElements-1; i++ {
-		part := big.NewInt(int64(elements[GnarkKoalabearNumElements-1-i].Bits()[0]))
+	for i := 0; i < KoalabearChunks-1; i++ {
+		part := big.NewInt(int64(elements[KoalabearChunks-1-i].Bits()[0]))
 
 		shift := uint(30 * i)                   // Shift based on little-endian order
 		part.Lsh(part, shift)                   // Shift left by the appropriate position for little-endian
@@ -93,8 +93,8 @@ func DecodeKoalabearToBLS12Root(elements [GnarkKoalabearNumElements]field.Elemen
 	}
 	part := big.NewInt(int64(elements[0].Bits()[0]))
 
-	shift := uint(30 * (GnarkKoalabearNumElements - 1)) // Shift based on little-endian order
-	part.Lsh(part, shift)                               // Shift left by the appropriate position for little-endian
+	shift := uint(30 * (KoalabearChunks - 1)) // Shift based on little-endian order
+	part.Lsh(part, shift)                     // Shift left by the appropriate position for little-endian
 	expectedResult.Or(expectedResult, part)
 	var res types.Bytes32
 	expectedBytes := expectedResult.Bytes()

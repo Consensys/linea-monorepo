@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -103,12 +103,12 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 Sample a random coin, according to its `spec`
 */
 //TODO@thomas TODO@yao we need to run it for both BLS and Koala FS, make the fs into interface?
-func (info *Info) Sample(fs *fiatshamir_bls12377.FS, seed field.Octuplet) interface{} {
+func (info *Info) Sample(fs *fiatshamir.FS, seed field.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
-		return fs.RandomManyIntegers(info.Size, info.UpperBound)
+		return (*fs).RandomManyIntegers(info.Size, info.UpperBound)
 	case FieldExt:
-		return fs.RandomFext()
+		return (*fs).RandomFext()
 		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
 	}
 	panic("Unreachable")
@@ -116,14 +116,14 @@ func (info *Info) Sample(fs *fiatshamir_bls12377.FS, seed field.Octuplet) interf
 
 // SampleGnark samples a random coin in a gnark circuit. The seed can optionally be
 // passed by the caller is used for [FieldFromSeed] coins. The function returns
-func (info *Info) SampleGnark(fs *fiatshamir_bls12377.GnarkFS, seed zk.Octuplet) interface{} {
+func (info *Info) SampleGnark(fs *fiatshamir.GnarkFS, seed zk.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
-		return fs.RandomManyIntegers(info.Size, info.UpperBound)
+		return (*fs).RandomManyIntegers(info.Size, info.UpperBound)
 
 	case FieldExt:
 		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
-		return fs.RandomFieldExt()
+		return (*fs).RandomFieldExt()
 
 	}
 	panic("Unreachable")
