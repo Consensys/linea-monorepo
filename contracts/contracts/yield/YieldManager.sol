@@ -11,6 +11,7 @@ import { ErrorUtils } from "../lib/ErrorUtils.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { PermissionsManager } from "../lib/PermissionsManager.sol";
 import { ProgressOssificationResult, YieldProviderRegistration } from "./interfaces/YieldTypes.sol";
+import { RateLimiter } from "../messageService/lib/RateLimiter.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -22,6 +23,7 @@ contract YieldManager is
   AccessControlUpgradeable,
   YieldManagerPauseManager,
   PermissionsManager,
+  RateLimiter,
   YieldManagerStorageLayout,
   IYieldManager
 {
@@ -131,6 +133,7 @@ contract YieldManager is
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
     _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
     __Permissions_init(_initializationData.roleAddresses);
+    __RateLimiter_init(_initializationData.withdrawLSTRateLimitPeriodSeconds, _initializationData.withdrawLSTRateLimitWei);
 
     _setWithdrawalReserveParameters(
       UpdateReserveParametersConfig({
@@ -874,6 +877,8 @@ contract YieldManager is
     if (_amount + $$.lastReportedNegativeYield > $$.userFunds) {
       revert LSTWithdrawalExceedsYieldProviderFunds();
     }
+    // Rate limit check.
+    _addUsedAmount(_amount);
     _pauseStakingIfNotAlready(_yieldProvider);
     _delegatecallYieldProvider(
       _yieldProvider,

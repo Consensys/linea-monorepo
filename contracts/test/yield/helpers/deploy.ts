@@ -12,6 +12,8 @@ import {
   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
   MINIMUM_WITHDRAWAL_RESERVE_AMOUNT,
   TARGET_WITHDRAWAL_RESERVE_AMOUNT,
+  WITHDRAW_LST_RATE_LIMIT_PERIOD_SECONDS,
+  WITHDRAW_LST_RATE_LIMIT_WEI,
   GI_FIRST_VALIDATOR_PREV,
   GI_FIRST_VALIDATOR_CURR,
   PIVOT_SLOT,
@@ -127,6 +129,8 @@ export async function deployYieldManagerForUnitTest() {
     initialTargetWithdrawalReservePercentageBps: TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
     initialMinimumWithdrawalReserveAmount: MINIMUM_WITHDRAWAL_RESERVE_AMOUNT,
     initialTargetWithdrawalReserveAmount: TARGET_WITHDRAWAL_RESERVE_AMOUNT,
+    withdrawLSTRateLimitPeriodSeconds: WITHDRAW_LST_RATE_LIMIT_PERIOD_SECONDS,
+    withdrawLSTRateLimitWei: WITHDRAW_LST_RATE_LIMIT_WEI,
   };
 
   const yieldManager = (await deployUpgradableWithConstructorArgs(
@@ -342,6 +346,8 @@ export async function deployYieldManagerIntegrationTestFixture() {
     initialTargetWithdrawalReservePercentageBps: TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
     initialMinimumWithdrawalReserveAmount: MINIMUM_WITHDRAWAL_RESERVE_AMOUNT,
     initialTargetWithdrawalReserveAmount: TARGET_WITHDRAWAL_RESERVE_AMOUNT,
+    withdrawLSTRateLimitPeriodSeconds: WITHDRAW_LST_RATE_LIMIT_PERIOD_SECONDS,
+    withdrawLSTRateLimitWei: WITHDRAW_LST_RATE_LIMIT_WEI,
   };
 
   upgrades.silenceWarnings();
