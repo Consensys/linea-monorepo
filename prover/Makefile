@@ -165,7 +165,7 @@ test:
 	@echo "Running all Go tests for Linea Monorepo prover packages..."
 	@for pkg in $(PACKAGES); do \
 		echo "--> Running tests for $$pkg"; \
-		go test -tags debug -skip 'Gnark|TestSelfRecursionManyLayersWithSerde' $$pkg || exit 1; \
+		go test -tags debug -skip 'TestSelfRecursionManyLayersWithSerde' $$pkg || exit 1; \
 	done
 	@echo "All tests completed successfully."
 
