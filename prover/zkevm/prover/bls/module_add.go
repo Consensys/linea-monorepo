@@ -114,6 +114,7 @@ func (ba *BlsAdd) WithCurveMembershipCircuit(comp *wizard.CompiledIOP, options .
 		PlonkOptions:       options,
 		InputFillerKey:     membershipInputFillerKey(ba.Group, CURVE),
 	}
+
 	ba.AlignedCurveMembershipGnarkData = plonk.DefineAlignment(comp, toAlignCurveMembership)
 	return ba
 }
