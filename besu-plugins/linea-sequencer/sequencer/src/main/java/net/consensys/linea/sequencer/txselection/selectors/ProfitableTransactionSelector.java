@@ -8,6 +8,7 @@
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
+import static net.consensys.linea.bl.TransactionProfitabilityCalculator.getCompressedTxSize;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE_UPFRONT;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
@@ -16,11 +17,13 @@ import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.metrics.HistogramMetrics.LabelValue;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -38,6 +41,8 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  */
 @Slf4j
 public class ProfitableTransactionSelector implements PluginTransactionSelector {
+  private final Map<Hash, Integer> compressedSizeCache = new ConcurrentHashMap<>();
+
   public enum Phase implements LabelValue {
     PRE_PROCESSING,
     POST_PROCESSING;
@@ -123,10 +128,11 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     if (!evaluationContext.getPendingTransaction().hasPriority()) {
       final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
       final long gasLimit = transaction.getGasLimit();
+      final int compressedSize = getOrCalculateCompressedSize(transaction);
 
       final var profitablePriorityFeePerGas =
           transactionProfitabilityCalculator.profitablePriorityFeePerGas(
-              transaction, profitabilityConf.minMargin(), gasLimit, minGasPrice);
+              transaction, profitabilityConf.minMargin(), gasLimit, minGasPrice, compressedSize);
 
       updateMetric(
           Phase.PRE_PROCESSING, evaluationContext, transaction, profitablePriorityFeePerGas);
@@ -141,11 +147,17 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
           evaluationContext.getTransactionGasPrice(),
           gasLimit,
           minGasPrice)) {
+        compressedSizeCache.remove(transaction.getHash());
         return TX_UNPROFITABLE_UPFRONT;
       }
     }
 
     return SELECTED;
+  }
+
+  private int getOrCalculateCompressedSize(final Transaction transaction) {
+    return compressedSizeCache.computeIfAbsent(
+        transaction.getHash(), hash -> getCompressedTxSize(transaction));
   }
 
   /**
@@ -165,17 +177,20 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     if (!evaluationContext.getPendingTransaction().hasPriority()) {
       final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
       final long gasUsed = processingResult.getEstimateGasUsedByTransaction();
+      final int compressedSize = getOrCalculateCompressedSize(transaction);
 
       final var profitablePriorityFeePerGas =
           transactionProfitabilityCalculator.profitablePriorityFeePerGas(
               transaction,
               profitabilityConf.minMargin(),
               gasUsed,
-              evaluationContext.getMinGasPrice());
+              evaluationContext.getMinGasPrice(),
+              compressedSize);
 
       updateMetric(
           Phase.POST_PROCESSING, evaluationContext, transaction, profitablePriorityFeePerGas);
 
+      TransactionSelectionResult result = SELECTED;
       if (!transactionProfitabilityCalculator.isProfitable(
           "PostProcessing",
           profitablePriorityFeePerGas,
@@ -185,8 +200,10 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
           evaluationContext.getTransactionGasPrice(),
           gasUsed,
           evaluationContext.getMinGasPrice())) {
-        return TX_UNPROFITABLE;
+        result = TX_UNPROFITABLE;
       }
+      compressedSizeCache.remove(transaction.getHash());
+      return result;
     }
     return SELECTED;
   }
