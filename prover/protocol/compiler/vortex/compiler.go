@@ -1025,7 +1025,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 		ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
 		ctx.Items.Precomputeds.GnarkTree = tree
 
-		roots := encoding.EncodeBLS12377ToKoalabear(tree.Root)
+		roots := encoding.EncodeBLS12RootToKoalabear(tree.Root)
 
 		// And assign the 1-sized column to contain the root
 		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {

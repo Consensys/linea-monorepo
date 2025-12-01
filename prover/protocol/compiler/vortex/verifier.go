@@ -179,7 +179,7 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 			precompRootF[i] = precompRootSv.IntoRegVecSaveAlloc()[0]
 		}
 
-		gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12377(precompRootF))
+		gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12Root(precompRootF))
 		flagForNoSISRounds = append(flagForNoSISRounds, false)
 
 	} else {
@@ -206,7 +206,7 @@ func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
 
 		switch ctx.RoundStatus[round] {
 		case IsOnlyPoseidon2Applied:
-			gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12377(precompRootF))
+			gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12Root(precompRootF))
 			flagForNoSISRounds = append(flagForNoSISRounds, false)
 		case IsSISApplied:
 			flagForSISRounds = append(flagForSISRounds, true)

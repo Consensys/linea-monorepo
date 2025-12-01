@@ -41,7 +41,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			preRoots[i] = precompRootSv[0]
 		}
 
-		roots = append(roots, encoding.Encode11WVsToFV(api, preRoots))
+		roots = append(roots, encoding.Encode9WVsToFV(api, preRoots))
 	}
 
 	// Collect all the commitments : rounds by rounds
@@ -56,7 +56,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
 			preRoots[i] = rootSv[0]
 		}
-		roots = append(roots, encoding.Encode11WVsToFV(api, preRoots))
+		roots = append(roots, encoding.Encode9WVsToFV(api, preRoots))
 
 	}
 
@@ -289,7 +289,7 @@ func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [encoding.GnarkKoal
 				}
 				// apiGen, _ := zk.NewGenericApi(api)
 				// apiGen.Println(v[:]...)
-				proof.Siblings[depth-k-1] = encoding.Encode11WVsToFV(api, v)
+				proof.Siblings[depth-k-1] = encoding.Encode9WVsToFV(api, v)
 				curr++
 			}
 

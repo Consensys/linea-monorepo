@@ -1,13 +1,8 @@
 package encoding
 
 import (
-	"math/big"
-
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Function to encode 8 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
@@ -69,90 +64,10 @@ func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVari
 	return res
 }
 
-// BLS to Koalabear encoding, BLS -- > Koalabear --> BLS
-const GnarkKoalabearNumElements = 11
-
-func DecodeKoalabearToBLS12377(elements [11]field.Element) fr.Element {
-	expectedResult := big.NewInt(0)
-	for i := 0; i < 10; i++ {
-		part := big.NewInt(int64(elements[10-i].Bits()[0]))
-
-		shift := uint(24 * i)                   // Shift based on little-endian order
-		part.Lsh(part, shift)                   // Shift left by the appropriate position for little-endian
-		expectedResult.Or(expectedResult, part) // Bitwise OR to combine
-	}
-	part := big.NewInt(int64(elements[0].Bits()[0]))
-
-	shift := uint(24 * 10) // Shift based on little-endian order
-	part.Lsh(part, shift)  // Shift left by the appropriate position for little-endian
-	expectedResult.Or(expectedResult, part)
-	var res types.Bytes32
-	expectedBytes := expectedResult.Bytes()
-	copy(res[32-len(expectedBytes):], expectedBytes) // left pad with zeroes to 32 bytes
-
-	var resElem fr.Element
-	resElem.SetBytes(res[:])
-	return resElem
-}
-
-func EncodeBLS12377ToKoalabear(encoded fr.Element) [GnarkKoalabearNumElements]field.Element {
-	// Initialize an empty array to store the results
-	var elements, res [11]field.Element
-
-	bytes := encoded.Bytes()
-	// Convert the bytes32 to big.Int
-	value := new(big.Int).SetBytes(bytes[:])
-
-	// Loop to extract each 24-bit chunk
-	for i := 0; i < 11; i++ {
-		// Extract the corresponding 24-bit chunk by applying a mask
-		chunk := new(big.Int).And(value, big.NewInt(0xFFFFFF)) // Mask for 24 bits (0xFFFFFF = 24 ones in binary)
-
-		// Set the extracted chunk to the corresponding field.Element (element[i])
-		elements[i].SetBigInt(chunk)
-
-		// Right shift the `value` to move to the next chunk
-		value.Rsh(value, 24) // Move to the next 24-bit chunk
-	}
-
-	// Since field.Elements are processed in little-endian order, reverse the array
-	for i := 0; i < GnarkKoalabearNumElements; i++ {
-		res[i] = elements[GnarkKoalabearNumElements-1-i]
-	}
-	return res
-}
-
-// func EncodeBLS12377ToKoalabear(elements types.Bytes32) [GnarkKoalabearNumElements]field.Element {
-
-// 	var res [GnarkKoalabearNumElements]field.Element
-// 	for i := 0; i < GnarkKoalabearNumElements; i++ {
-// 		var bytes [4]byte
-// 		if i != GnarkKoalabearNumElements-1 {
-// 			copy(bytes[1:], elements[i*3:(i+1)*3])
-// 		} else {
-// 			copy(bytes[2:], elements[30:32])
-// 		}
-// 		res[i].SetBytes(bytes[:])
-// 	}
-// 	return res
-// }
-
-// func DecodeKoalabearToBLS12377(elements [GnarkKoalabearNumElements]field.Element) types.Bytes32 {
-// 	var res types.Bytes32
-// 	for i := 0; i < GnarkKoalabearNumElements; i++ {
-// 		if i != GnarkKoalabearNumElements-1 {
-// 			bytes := elements[i].Bytes()
-// 			copy(res[i*3:(i+1)*3], bytes[1:])
-// 		} else {
-// 			bytes := elements[i].Bytes()
-// 			copy(res[30:32], bytes[2:])
-// 		}
-// 	}
-// 	return res
-// }
-
-// Function to encode 11 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
-func Encode11WVsToFV(api frontend.API, values [GnarkKoalabearNumElements]zk.WrappedVariable) frontend.Variable {
+// BLS to Koalabear encoding, 1 BLS -- > 9 Koalabear --> 1 BLS
+// The Encode9WVsToFV function is used in the gnark verifier
+// Function to encode 9 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
+func Encode9WVsToFV(api frontend.API, values [GnarkKoalabearNumElements]zk.WrappedVariable) frontend.Variable {
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		panic(err)
@@ -162,12 +77,12 @@ func Encode11WVsToFV(api frontend.API, values [GnarkKoalabearNumElements]zk.Wrap
 
 	for i := 0; i < GnarkKoalabearNumElements-1; i++ {
 		// Convert the 31 bits of the current WrappedVariable to frontend variables
-		limbBits := apiGen.ToBinary(values[GnarkKoalabearNumElements-1-i], 24)
-		copy(bits[24*i:], limbBits) // 8 leading padding bits come first
+		limbBits := apiGen.ToBinary(values[GnarkKoalabearNumElements-1-i], 30)
+		copy(bits[30*i:], limbBits)
 	}
 
 	limbBits := apiGen.ToBinary(values[0], 16)
-	copy(bits[240:], limbBits) // 8 leading padding bits come first
+	copy(bits[240:], limbBits)
 
 	return api.FromBinary(bits...)
 

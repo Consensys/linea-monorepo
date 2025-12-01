@@ -112,7 +112,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 				run.State.InsertNew(ctx.NoSisHashName(round), colHashes)
 			}
 		}
-		roots := encoding.EncodeBLS12377ToKoalabear(tree.Root)
+		roots := encoding.EncodeBLS12RootToKoalabear(tree.Root)
 
 		for i := 0; i < encoding.GnarkKoalabearNumElements; i++ {
 			run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(roots[i], 1))
@@ -519,7 +519,7 @@ func (ctx *Ctx) packGnarkMerkleProofs(proofs [][]smt_bls12377.Proof) [encoding.G
 			for k := range p.Siblings {
 				// The proof stores the sibling bottom-up but
 				// we want to pack the proof in top-down order.
-				koalaElems := encoding.EncodeBLS12377ToKoalabear(p.Siblings[depth-1-k])
+				koalaElems := encoding.EncodeBLS12RootToKoalabear(p.Siblings[depth-1-k])
 
 				for coord := range res {
 					res[coord][numProofWritten*depth+k] = koalaElems[coord]
@@ -606,7 +606,7 @@ func (ctx *Ctx) unpackGnarkMerkleProofs(sv [encoding.GnarkKoalabearNumElements]s
 				for coord := 0; coord < len(v); coord++ {
 					v[coord] = sv[coord].Get(curr)
 				}
-				proof.Siblings[depth-k-1] = encoding.DecodeKoalabearToBLS12377(v)
+				proof.Siblings[depth-k-1] = encoding.DecodeKoalabearToBLS12Root(v)
 				curr++
 			}
 
