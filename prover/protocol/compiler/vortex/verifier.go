@@ -210,21 +210,17 @@ func (ctx *VortexVerifierAction) runBLS(run wizard.Runtime) error {
 		switch ctx.RoundStatus[round] {
 		case IsOnlyPoseidon2Applied:
 			gnarkNoSisRoots = append(gnarkNoSisRoots, encoding.DecodeKoalabearToBLS12Root(precompRootF))
-			flagForNoSISRounds = append(flagForNoSISRounds, true)
+			flagForNoSISRounds = append(flagForNoSISRounds, false)
 		case IsSISApplied:
-			flagForSISRounds = append(flagForSISRounds, false)
+			flagForSISRounds = append(flagForSISRounds, true)
 		default:
 			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
 		}
 	}
 
 	// assign the roots and the WithSis flags
-	IsSISReplacedByPoseidon2 := append(flagForNoSISRounds, flagForSISRounds...)
+	WithSis := append(flagForNoSISRounds, flagForSISRounds...)
 
-	WithSis := make([]bool, len(IsSISReplacedByPoseidon2))
-	for i := range IsSISReplacedByPoseidon2 {
-		WithSis[i] = !IsSISReplacedByPoseidon2[i]
-	}
 	proof := &vortex.OpeningProof{}
 	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
