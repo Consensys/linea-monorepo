@@ -9,6 +9,43 @@ const Address = z
 
 const Hex = z.string().refine((v) => isHex(v), { message: "Invalid Hex" });
 
+/** Custom boolean schema that properly handles string boolean values from environment variables.
+ * Supports:
+ * - String values: "true", "false", "TRUE", "FALSE", "True", "False" (case-insensitive)
+ * - Numeric strings: "1" → true, "0" → false
+ * - Actual boolean values: true, false
+ * - Throws error for invalid values
+ */
+const BooleanFromString = z.preprocess(
+  (val) => {
+    // Handle actual boolean values
+    if (typeof val === "boolean") {
+      return val;
+    }
+    // Handle numeric values
+    if (typeof val === "number") {
+      return val !== 0;
+    }
+    // Handle string values (case-insensitive)
+    if (typeof val === "string") {
+      const lowerVal = val.toLowerCase().trim();
+      if (lowerVal === "true" || lowerVal === "1") {
+        return true;
+      }
+      if (lowerVal === "false" || lowerVal === "0") {
+        return false;
+      }
+    }
+    // Return original value to trigger validation error
+    return val;
+  },
+  z.boolean({
+    errorMap: () => ({
+      message: 'Invalid boolean value. Expected "true", "false", "1", "0", or actual boolean.',
+    }),
+  }),
+);
+
 export const configSchema = z
   .object({
     /** Ethereum chain ID for the L1 network (e.g., 1 for mainnet, 560048 for hoodi).
@@ -58,7 +95,7 @@ export const configSchema = z
     // Retry delay in milliseconds between contract read attempts after failures.
     CONTRACT_READ_RETRY_TIME_MS: z.coerce.number().int().positive(),
     // Whether to submit the vault accounting report. Can set to false if we expect other actors to submit.
-    SHOULD_SUBMIT_VAULT_REPORT: z.coerce.boolean(),
+    SHOULD_SUBMIT_VAULT_REPORT: BooleanFromString,
     /** Minimum positive yield amount (in wei) required before triggering a yield report.
      * Yield reporting will proceed if either this threshold OR MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI is met.
      * This prevents gas-inefficient transactions for very small yield amounts.

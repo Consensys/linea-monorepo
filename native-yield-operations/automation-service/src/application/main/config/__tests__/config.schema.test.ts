@@ -328,6 +328,157 @@ describe("configSchema", () => {
     });
   });
 
+  describe("SHOULD_SUBMIT_VAULT_REPORT", () => {
+    it("parses string 'false' as false", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: "false",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(false);
+    });
+
+    it("parses string 'true' as true", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: "true",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(true);
+    });
+
+    it("parses case-insensitive string 'FALSE' as false", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: "FALSE",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(false);
+    });
+
+    it("parses case-insensitive string 'True' as true", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: "True",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(true);
+    });
+
+    it("parses numeric string '0' as false", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: "0",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(false);
+    });
+
+    it("parses numeric string '1' as true", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: "1",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(true);
+    });
+
+    it("parses actual boolean false as false", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: false,
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(false);
+    });
+
+    it("parses actual boolean true as true", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: true,
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(true);
+    });
+
+    it("parses numeric 0 as false", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: 0,
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(false);
+    });
+
+    it("parses numeric 1 as true", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: 1,
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(true);
+    });
+
+    it("handles strings with whitespace", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: "  false  ",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(false);
+    });
+
+    it("rejects invalid string values", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: "invalid",
+      };
+
+      const result = configSchema.safeParse(env);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.join(".") === "SHOULD_SUBMIT_VAULT_REPORT")).toBe(true);
+      }
+    });
+
+    it("rejects empty string", () => {
+      const env = {
+        ...createValidEnv(),
+        SHOULD_SUBMIT_VAULT_REPORT: "",
+      };
+
+      const result = configSchema.safeParse(env);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.join(".") === "SHOULD_SUBMIT_VAULT_REPORT")).toBe(true);
+      }
+    });
+  });
+
   describe("LOG_LEVEL", () => {
     it("accepts valid log levels", () => {
       const validLevels = ["error", "warn", "info", "verbose", "debug", "silly"];
