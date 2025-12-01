@@ -33,6 +33,7 @@ describe("DashboardContractClient", () => {
     abi: DashboardABI,
     read: {
       obligations: jest.fn(),
+      withdrawableValue: jest.fn(),
     },
   } as any;
 
@@ -154,6 +155,16 @@ describe("DashboardContractClient", () => {
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
   });
 
+  it("reads withdrawableValue via read and returns the result", async () => {
+    const withdrawable = 1000n;
+    viemContractStub.read.withdrawableValue.mockResolvedValueOnce(withdrawable);
+
+    const client = createClient();
+    const result = await client.withdrawableValue();
+
+    expect(viemContractStub.read.withdrawableValue).toHaveBeenCalledTimes(1);
+    expect(result).toBe(withdrawable);
+  });
 
   describe("initialize", () => {
     it("sets the static blockchainClient and logger", () => {

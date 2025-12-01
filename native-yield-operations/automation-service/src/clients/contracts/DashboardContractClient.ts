@@ -117,4 +117,13 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
     const fee = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.fee ?? 0n;
     return fee;
   }
+
+  /**
+   * Gets the withdrawable value from the Dashboard contract.
+   *
+   * @returns {Promise<bigint>} The withdrawable value in wei.
+   */
+  async withdrawableValue(): Promise<bigint> {
+    return this.contract.read.withdrawableValue();
+  }
 }
