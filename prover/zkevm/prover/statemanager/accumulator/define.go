@@ -321,11 +321,11 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	// Pointer check for INSERT, READ-ZERO, and DELETE operations
 	am.checkPointer()
 
-	// // Check leaf hashes
-	// am.checkLeafHashes()
+	// Check leaf hashes
+	am.checkLeafHashes()
 
-	// // Check NextFreeNode is constant through a segment unless there is an INSERT operation
-	// am.checkNextFreeNode()
+	// Check NextFreeNode is constant through a segment unless there is an INSERT operation
+	am.checkNextFreeNode()
 
 	// Check hashing of TopRoot
 	am.checkTopRootHash()
@@ -504,7 +504,8 @@ func (am *Module) checkConsistency() {
 			LimbBitSize: 16,
 			IsBigEndian: true,
 		},
-	})
+		NoBoundCancel: false,
+	}, false)
 
 	// Booleanity of IsUpdate
 	expr1 := symbolic.Sub(
@@ -757,13 +758,15 @@ func (am *Module) checkNextFreeNode() {
 			IsBigEndian: true,
 		},
 		Mask: symbolic.Mul(am.Cols.IsActiveAccumulator, symbolic.Sub(1, cols.IsFirst)),
-	})
+		NoBoundCancel: true,
+	},
+	false,)
 
 	copy(am.Cols.NextFreeNodeIncremented[:], nextFreeNodeIncremented.Limbs)
 	am.NextFreeNodeShiftProver = nextFreeNodeShiftProver
 
-	// 2. Bound expression 1 with global constraint ensuring the result is 0, 0, 0, 1 applying mask IsActive[i] * (1 - IsFirst[i]) * IsInsertRow3[i]
-	// First 3 limbs (most significant) has to be 0
+	// 2. Bound expression 1 with global constraint ensuring the result is 0, 0, 0,..., 1 applying mask IsActive[i] * (1 - IsFirst[i]) * IsInsertRow3[i]
+	// First 15 limbs (most significant) has to be 0
 	for i := 0; i < len(am.Cols.NextFreeNodeIncremented)-1; i++ {
 		am.comp.InsertGlobal(
 			am.Round,
@@ -788,7 +791,7 @@ func (am *Module) checkNextFreeNode() {
 		symbolic.Mul(am.Cols.IsActiveAccumulator,
 			symbolic.Sub(1, cols.IsFirst),
 			cols.IsInsertRow3,
-			symbolic.Sub(1, am.Cols.NextFreeNodeIncremented[3]),
+			symbolic.Sub(1, am.Cols.NextFreeNodeIncremented[15]),
 		),
 	)
 

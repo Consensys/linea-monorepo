@@ -313,7 +313,7 @@ func (am *Module) Assign(
 //	am.HkeyPlusHkeyProver.Run(run)
 
 	// Checks that on insert NextFreeNode is incremented by 1
-//	am.NextFreeNodeShiftProver.Run(run)
+	am.NextFreeNodeShiftProver.Run(run)
 }
 
 func (am *Module) assignLeaf(
