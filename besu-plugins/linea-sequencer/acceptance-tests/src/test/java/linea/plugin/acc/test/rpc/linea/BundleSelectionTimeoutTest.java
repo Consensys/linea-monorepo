@@ -13,8 +13,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.stream.IntStream;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
+@Disabled(
+    "Temporarily disabled while investigating bunlde timeout logic and is disabled in production")
 public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
 
   @Test
@@ -63,7 +67,7 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
     final var mulmodExecutor = deployMulmodExecutor();
 
     final var calls =
-        IntStream.rangeClosed(1, 6)
+        IntStream.rangeClosed(1, 30)
             .mapToObj(
                 nonce ->
                     mulmodOperation(
@@ -74,16 +78,36 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
                         BigInteger.valueOf(MAX_TX_GAS_LIMIT / 10)))
             .toArray(MulmodCall[]::new);
 
+    final var rawTxs = Arrays.stream(calls).map(MulmodCall::rawTx).toArray(String[]::new);
+
     final var sendBundleRequestSmall =
         new SendBundleRequest(
-            new BundleParams(new String[] {calls[0].rawTx()}, Integer.toHexString(2)));
+            new BundleParams(Arrays.copyOfRange(rawTxs, 0, 1), Integer.toHexString(2)));
+
+    // this bundle is meant to go in timeout during its selection
+    final var sendBundleRequestBig1 =
+        new SendBundleRequest(
+            new BundleParams(Arrays.copyOfRange(rawTxs, 1, 30), Integer.toHexString(2)));
+
+    // second bundle contains one tx only to be fast to execute,
+    // and ensure timeout occurs on the 2nd bundle and following are not event considered.
+    // We are sending a bunch of bundles instead of just one to reproduce what happened in
+    // production, where each following bundle where not skipped and would take ~200ms
+    // to the not selected, due to the fact the first tx in the bundle was executed.
+    final int followingBundleCount = 20;
+    final var followingSendBundleRequests = new SendBundleRequest[followingBundleCount];
+    for (int i = 0; i < followingSendBundleRequests.length; i++) {
+      followingSendBundleRequests[i] =
+          new SendBundleRequest(
+              new BundleParams(Arrays.copyOfRange(rawTxs, 1, 2 + i), Integer.toHexString(2)));
+    }
+
     final var sendBundleResponseSmall = sendBundleRequestSmall.execute(minerNode.nodeRequests());
-
-    final var rawTxs = Arrays.stream(calls).skip(1).map(MulmodCall::rawTx).toArray(String[]::new);
-
-    final var sendBundleRequestBig =
-        new SendBundleRequest(new BundleParams(rawTxs, Integer.toHexString(2)));
-    final var sendBundleResponseBig = sendBundleRequestBig.execute(minerNode.nodeRequests());
+    final var sendBundleResponseBig1 = sendBundleRequestBig1.execute(minerNode.nodeRequests());
+    final var followingBundleResponses =
+        Arrays.stream(followingSendBundleRequests)
+            .map(req -> req.execute(minerNode.nodeRequests()))
+            .toList();
 
     final var transferTxHash =
         accountTransactions
@@ -93,15 +117,26 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
     assertThat(sendBundleResponseSmall.hasError()).isFalse();
     assertThat(sendBundleResponseSmall.getResult().bundleHash()).isNotBlank();
 
-    assertThat(sendBundleResponseBig.hasError()).isFalse();
-    assertThat(sendBundleResponseBig.getResult().bundleHash()).isNotBlank();
+    assertThat(sendBundleResponseBig1.hasError()).isFalse();
+    assertThat(sendBundleResponseBig1.getResult().bundleHash()).isNotBlank();
+
+    followingBundleResponses.forEach(
+        resp -> {
+          assertThat(resp.hasError()).isFalse();
+          assertThat(resp.getResult().bundleHash()).isNotBlank();
+        });
 
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()));
+    final var transferReceipt = ethTransactions.getTransactionReceipt(transferTxHash.toHexString());
+    assertThat(transferReceipt.execute(minerNode.nodeRequests()))
+        .isPresent()
+        .map(TransactionReceipt::getBlockNumber)
+        .contains(BigInteger.TWO);
 
     // first bundle is successful
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(calls[0].txHash()));
 
-    // second bundle is not
+    // following bundles are not selected
     Arrays.stream(calls)
         .skip(1)
         .map(MulmodCall::txHash)

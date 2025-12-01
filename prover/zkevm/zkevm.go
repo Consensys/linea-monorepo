@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
@@ -62,6 +63,8 @@ type ZkEvm struct {
 	BlsPairingCheck *bls.BlsPair `json:"blsPairingCheck"`
 	// PointEval is responsible for EIP-4844 point evaluation precompile.
 	PointEval *bls.BlsPointEval `json:"pointEval"`
+	// P256Verify is responsible for P256 signature verification precompile.
+	P256Verify *p256verify.P256Verify `json:"p256Verify"`
 	// Contains the actual wizard-IOP compiled object. This object is called to
 	// generate the inner-proof.
 	WizardIOP *wizard.CompiledIOP `json:"wizardIOP"`
@@ -128,6 +131,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		blsG2Map        = bls.NewG2MapZkEvm(comp, &s.Bls)
 		blsPairingCheck = bls.NewPairingZkEvm(comp, &s.Bls)
 		pointEval       = bls.NewPointEvalZkEvm(comp, &s.Bls)
+		p256verify      = p256verify.NewP256VerifyZkEvm(comp, &s.P256Verify)
 		publicInput     = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
 	)
 
@@ -149,6 +153,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		BlsG2Map:        blsG2Map,
 		BlsPairingCheck: blsPairingCheck,
 		PointEval:       pointEval,
+		P256Verify:      p256verify,
 		PublicInput:     &publicInput,
 	}
 }
@@ -180,6 +185,7 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 		z.BlsG2Map.Assign(run)
 		z.BlsPairingCheck.Assign(run)
 		z.PointEval.Assign(run)
+		z.P256Verify.Assign(run)
 		z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList)
 	}
 }

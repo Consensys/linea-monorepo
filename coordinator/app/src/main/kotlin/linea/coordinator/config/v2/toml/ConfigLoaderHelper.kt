@@ -17,6 +17,7 @@ import linea.coordinator.config.v2.toml.decoders.BlockParameterNumberDecoder
 import linea.coordinator.config.v2.toml.decoders.BlockParameterTagDecoder
 import linea.coordinator.config.v2.toml.decoders.TomlByteArrayHexDecoder
 import linea.coordinator.config.v2.toml.decoders.TomlKotlinDurationDecoder
+import linea.coordinator.config.v2.toml.decoders.TomlKotlinInstantDecoder
 import linea.coordinator.config.v2.toml.decoders.TomlSignerTypeDecoder
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
@@ -30,6 +31,7 @@ fun ConfigLoaderBuilder.addCoordinatorTomlDecoders(strict: Boolean): ConfigLoade
     .addDecoder(BlockParameterDecoder())
     .addDecoder(TomlByteArrayHexDecoder())
     .addDecoder(TomlKotlinDurationDecoder())
+    .addDecoder(TomlKotlinInstantDecoder())
     .addDecoder(TomlSignerTypeDecoder())
     .apply { if (strict) this.strict() }
 }
@@ -91,7 +93,8 @@ inline fun <reified T : Any> loadConfigsAndLogErrors(
 
 fun loadConfigsOrError(
   coordinatorConfigFiles: List<Path>,
-  tracesLimitsFileV2: Path,
+  tracesLimitsFileV2: Path?,
+  tracesLimitsFileV4: Path?,
   gasPriceCapTimeOfDayMultipliersFile: Path,
   smartContractErrorsFile: Path,
   logger: Logger = LogManager.getLogger("linea.coordinator.config"),
@@ -99,8 +102,12 @@ fun loadConfigsOrError(
 ): Result<CoordinatorConfigToml, String> {
   val coordinatorBaseConfigs =
     loadConfigsAndLogErrors<CoordinatorConfigFileToml>(coordinatorConfigFiles, logger, strict)
-  val tracesLimitsV2Configs =
-    loadConfigsAndLogErrors<TracesLimitsConfigFileToml>(listOf(tracesLimitsFileV2), logger, strict)
+  val tracesLimitsV2Configs = tracesLimitsFileV2?.let {
+    loadConfigsAndLogErrors<TracesLimitsConfigFileV2Toml>(listOf(it), logger, strict)
+  }
+  val tracesLimitsV4Configs = tracesLimitsFileV4?.let {
+    loadConfigsAndLogErrors<TracesLimitsConfigFileV4Toml>(listOf(it), logger, strict)
+  }
   val gasPriceCapTimeOfDayMultipliersConfig =
     loadConfigsAndLogErrors<GasPriceCapTimeOfDayMultipliersConfigFileToml>(
       listOf(gasPriceCapTimeOfDayMultipliersFile),
@@ -115,6 +122,7 @@ fun loadConfigsOrError(
   val configError = listOf(
     coordinatorBaseConfigs,
     tracesLimitsV2Configs,
+    tracesLimitsV4Configs,
     gasPriceCapTimeOfDayMultipliersConfig,
     smartContractErrorsConfig,
   )
@@ -127,7 +135,8 @@ fun loadConfigsOrError(
 
   val finalConfig = CoordinatorConfigToml(
     configs = coordinatorBaseConfigs.get()!!,
-    tracesLimitsV2 = tracesLimitsV2Configs.get()!!,
+    tracesLimitsV2 = tracesLimitsV2Configs?.get(),
+    tracesLimitsV4 = tracesLimitsV4Configs?.get(),
     l1DynamicGasPriceCapTimeOfDayMultipliers = gasPriceCapTimeOfDayMultipliersConfig.get(),
     smartContractErrors = smartContractErrorsConfig.get(),
   )
@@ -136,7 +145,8 @@ fun loadConfigsOrError(
 
 fun loadConfigs(
   coordinatorConfigFiles: List<Path>,
-  tracesLimitsFileV2: Path,
+  tracesLimitsFileV2: Path?,
+  tracesLimitsFileV4: Path?,
   gasPriceCapTimeOfDayMultipliersFile: Path,
   smartContractErrorsFile: Path,
   logger: Logger = LogManager.getLogger("linea.coordinator.config"),
@@ -145,6 +155,7 @@ fun loadConfigs(
   return loadConfigsOrError(
     coordinatorConfigFiles,
     tracesLimitsFileV2,
+    tracesLimitsFileV4,
     gasPriceCapTimeOfDayMultipliersFile,
     smartContractErrorsFile,
     logger,
@@ -154,6 +165,7 @@ fun loadConfigs(
       loadConfigsOrError(
         coordinatorConfigFiles,
         tracesLimitsFileV2,
+        tracesLimitsFileV4,
         gasPriceCapTimeOfDayMultipliersFile,
         smartContractErrorsFile,
         logger,
