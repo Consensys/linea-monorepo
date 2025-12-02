@@ -11,6 +11,7 @@
  * REBALANCE_TOLERANCE_BPS=100 \
  * MIN_WITHDRAWAL_THRESHOLD_ETH=0 \
  * MAX_STAKING_REBALANCE_AMOUNT_WEI=1000000000000000000000 \
+ * MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI=0 \
  */
 
 import {
@@ -52,6 +53,10 @@ async function main() {
     signer,
   );
 
+  const minStakingVaultBalanceToUnpauseStakingWei = BigInt(
+    process.env.MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI ?? "0",
+  );
+
   const yieldManagerClient = new YieldManagerContractClient(
     new WinstonLogger("YieldManagerContractClient.integration"),
     contractClientLibrary,
@@ -59,6 +64,7 @@ async function main() {
     rebalanceToleranceBps,
     minWithdrawalThresholdEth,
     maxStakingRebalanceAmountWei,
+    minStakingVaultBalanceToUnpauseStakingWei,
   );
 
   try {
