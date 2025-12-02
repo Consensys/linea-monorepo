@@ -23,3 +23,51 @@ export async function getDailyAwsCosts(
     return err(error as Error);
   }
 }
+
+export function flattenResultsByTime(
+  resultsByTime: GetCostAndUsageCommandOutput["ResultsByTime"],
+  metric = "AmortizedCost",
+) {
+  if (!resultsByTime) {
+    return [];
+  }
+
+  const rows = [];
+
+  for (const item of resultsByTime) {
+    const { Start, End } = item.TimePeriod ?? {};
+
+    const hasGroups = Array.isArray(item.Groups) && item.Groups.length > 0;
+
+    if (item.Total && !hasGroups) {
+      const data = item.Total[metric];
+      rows.push({
+        Start,
+        End,
+        Metric: metric,
+        Amount: data?.Amount ?? "0",
+        Unit: data?.Unit ?? "",
+      });
+      continue;
+    }
+
+    if (hasGroups) {
+      for (const group of item.Groups!) {
+        if (!group.Metrics) continue;
+
+        const data = group.Metrics[metric];
+
+        rows.push({
+          Start,
+          End,
+          GroupKeys: group.Keys?.join(" / ") ?? "",
+          Metric: metric,
+          Amount: data?.Amount ?? "0",
+          Unit: data?.Unit ?? "",
+        });
+      }
+    }
+  }
+
+  return rows;
+}
