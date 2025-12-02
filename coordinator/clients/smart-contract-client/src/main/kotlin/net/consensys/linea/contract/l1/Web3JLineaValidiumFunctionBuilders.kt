@@ -82,21 +82,6 @@ internal object Web3JLineaValidiumFunctionBuilders {
       aggregationLastBlob.blobCompressionProof!!.expectedY,
     )
 
-//  FinalizationDataV3(
-//    byte[] parentStateRootHash,
-//    BigInteger endBlockNumber,
-//    ShnarfData shnarfData,
-//    BigInteger lastFinalizedTimestamp,
-//    BigInteger finalTimestamp,
-//    byte[] lastFinalizedL1RollingHash,
-//    byte[] l1RollingHash,
-//    BigInteger lastFinalizedL1RollingHashMessageNumber,
-//    BigInteger l1RollingHashMessageNumber,
-//    BigInteger l2MerkleTreesDepth,
-//    List<byte[]> l2MerkleRoots,
-//    byte[] l2MessagingBlocksOffsets
-//    )
-
     val finalizationData = ValidiumV1.FinalizationDataV3(
       /*parentStateRootHash*/
       aggregationProof.parentStateRootHash,

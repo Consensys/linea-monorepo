@@ -42,10 +42,6 @@ open class Web3JLineaValidiumSmartContractClientReadOnly(
       .toSafeFuture()
   }
 
-  override fun finalizedL2BlockTimestamp(blockParameter: BlockParameter): SafeFuture<ULong> {
-    TODO("Validium contract does not have currentTimestamp function")
-  }
-
   override fun getMessageRollingHash(
     blockParameter: BlockParameter,
     messageNumber: Long,

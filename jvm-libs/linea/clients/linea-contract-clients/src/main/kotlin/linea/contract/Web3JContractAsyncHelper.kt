@@ -297,15 +297,12 @@ class Web3JContractAsyncHelper(
     function: Function,
     gasPriceCaps: GasPriceCaps?,
   ): SafeFuture<String> {
-    return getGasLimit(function)
-      .thenCompose { gasLimit ->
-        createAndSendRawTransaction(
-          function = function,
-          weiValue = BigInteger.ZERO,
-          gasPriceCaps = gasPriceCaps,
-          gasLimit = gasLimit,
-        )
-      }
+    return sendTransactionAsync(
+      function = function,
+      weiValue = BigInteger.ZERO,
+      gasPriceCaps = gasPriceCaps,
+    )
+      .toSafeFuture()
       .thenApply { it.transactionHash }
   }
 

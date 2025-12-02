@@ -82,9 +82,6 @@ class FakeLineaRollupSmartContractClient(
   override fun finalizedL2BlockNumber(blockParameter: BlockParameter): SafeFuture<ULong> =
     SafeFuture.completedFuture(lastFinalizedBlock().number)
 
-  override fun finalizedL2BlockTimestamp(blockParameter: BlockParameter): SafeFuture<ULong> =
-    SafeFuture.completedFuture(lastFinalizedBlock().timestamp.epochSeconds.toULong())
-
   override fun getMessageRollingHash(
     blockParameter: BlockParameter,
     messageNumber: Long,

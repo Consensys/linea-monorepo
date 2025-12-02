@@ -101,12 +101,6 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
       .toSafeFuture()
   }
 
-  override fun finalizedL2BlockTimestamp(blockParameter: BlockParameter): SafeFuture<ULong> {
-    return contractClientAtBlock(blockParameter).currentTimestamp().sendAsync()
-      .thenApply { it.toULong() }
-      .toSafeFuture()
-  }
-
   override fun getMessageRollingHash(blockParameter: BlockParameter, messageNumber: Long): SafeFuture<ByteArray> {
     require(messageNumber >= 0) { "messageNumber must be greater than or equal to 0" }
 

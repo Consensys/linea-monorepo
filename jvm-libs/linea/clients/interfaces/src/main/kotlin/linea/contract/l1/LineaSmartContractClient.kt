@@ -20,11 +20,6 @@ interface LineaSmartContractClientReadOnly {
    */
   fun finalizedL2BlockNumber(blockParameter: BlockParameter = BlockParameter.Tag.LATEST): SafeFuture<ULong>
 
-  /**
-   * Get the current L2 block timestamp
-   */
-  fun finalizedL2BlockTimestamp(blockParameter: BlockParameter = BlockParameter.Tag.LATEST): SafeFuture<ULong>
-
   fun getMessageRollingHash(
     blockParameter: BlockParameter = BlockParameter.Tag.LATEST,
     messageNumber: Long,
