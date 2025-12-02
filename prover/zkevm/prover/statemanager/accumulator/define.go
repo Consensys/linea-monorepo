@@ -307,7 +307,7 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 		5. IsActiveAccumulator[i] = 0 IMPLIES IsActiveAccumulator[i+1] = 0
 		6. When IsActiveAccumulator is 1, sum of IsInsert, IsDelete, IsUpadate, IsReadZero, IsReadNonZero is 1
 	*/
-	// am.checkConsistency()
+	am.checkConsistency()
 
 	// check that Leaf[i+3] and Leaf[i+4] are empty leaves when there is a
 	// INSERT or a DELETE operation respectively.
@@ -472,17 +472,25 @@ func (am *Module) checkReadZero() {
 
 func (am *Module) checkConsistency() {
 	cols := am.Cols
-
-	shiftedAccumulatorCounter := make([]ifaces.Column, len(am.Cols.AccumulatorCounter))
+	// AccumulatorCounter[i+1] - AccumulatorCounter[i] = 1 when IsActiveAccumulator is 1
+	shiftedAccumulatorCounter := make([]ifaces.Column, len(cols.AccumulatorCounter))
 	for i := range shiftedAccumulatorCounter {
-		shiftedAccumulatorCounter[i] = column.Shift(am.Cols.AccumulatorCounter[i], 1)
+		shiftedAccumulatorCounter[i] = column.Shift(cols.AccumulatorCounter[i], 1)
 	}
 
+	offsetLimbs := make([]field.Element, len(am.Cols.AccumulatorCounter))
+	for i := range offsetLimbs {
+		if i == len(offsetLimbs)-1 {
+			offsetLimbs[i] = field.NewElement(1)
+		} else {
+			offsetLimbs[i] = field.Zero()
+		}
+	}
 	offsetCols := make([]ifaces.Column, len(am.Cols.AccumulatorCounter))
 	for i := range offsetCols {
 		offsetCols[i] = am.comp.InsertPrecomputed(
 			ifaces.ColIDf("%s_SHIFTED_OFFSET_%d", ACCUMULATOR_COUNTER_NAME, i),
-			smartvectors.NewConstant(field.Zero(), am.NumRows()),
+			smartvectors.NewConstant(offsetLimbs[i], am.NumRows()),
 		)
 	}
 
@@ -504,8 +512,14 @@ func (am *Module) checkConsistency() {
 			LimbBitSize: 16,
 			IsBigEndian: true,
 		},
-		NoBoundCancel: false,
-	}, false)
+	}, true)
+
+	// Local constraint that AccumulatorCounter starts at zero
+	for i := 0; i < len(cols.AccumulatorCounter); i++ {
+		am.comp.InsertLocal(am.Round,
+			am.qnamef("ACCUMULATOR_COUNTER_STARTS_AT_ZERO_%d", i),
+			symbolic.Sub(cols.AccumulatorCounter[i], 0))
+	}
 
 	// Booleanity of IsUpdate
 	expr1 := symbolic.Sub(
@@ -600,15 +614,15 @@ func (am *Module) checkSandwitch() {
 		),
 	)
 
-	am.Cols.HkeyPlusHkeyIsGreater, am.HkeyPlusHkeyProver = am.compareMultiLimbs(am.Cols.HKeyPlus[:], am.Cols.HKey[:])
-	am.comp.InsertGlobal(
-		am.Round,
-		am.qname("CMP_HKEY_PLUS_HKEY"),
-		symbolic.Mul(
-			activeRow,
-			symbolic.Sub(1, am.Cols.HkeyPlusHkeyIsGreater),
-		),
-	)
+	// am.Cols.HkeyPlusHkeyIsGreater, am.HkeyPlusHkeyProver = am.compareMultiLimbs(am.Cols.HKeyPlus[:], am.Cols.HKey[:])
+	// am.comp.InsertGlobal(
+	// 	am.Round,
+	// 	am.qname("CMP_HKEY_PLUS_HKEY"),
+	// 	symbolic.Mul(
+	// 		activeRow,
+	// 		symbolic.Sub(1, am.Cols.HkeyPlusHkeyIsGreater),
+	// 	),
+	// )
 
 	for i := 0; i < common.NbElemPerHash; i++ {
 		// INSERT: The HKeyMinus in the leaf minus openings is the same as HKeyMinus column i.e.,
@@ -757,10 +771,10 @@ func (am *Module) checkNextFreeNode() {
 			LimbBitSize: 16,
 			IsBigEndian: true,
 		},
-		Mask: symbolic.Mul(am.Cols.IsActiveAccumulator, symbolic.Sub(1, cols.IsFirst)),
+		Mask:          symbolic.Mul(am.Cols.IsActiveAccumulator, symbolic.Sub(1, cols.IsFirst)),
 		NoBoundCancel: true,
 	},
-	false,)
+		false)
 
 	copy(am.Cols.NextFreeNodeIncremented[:], nextFreeNodeIncremented.Limbs)
 	am.NextFreeNodeShiftProver = nextFreeNodeShiftProver
