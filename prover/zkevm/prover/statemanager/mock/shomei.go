@@ -55,7 +55,7 @@ const (
 func InitShomeiState(state State) *statemanager.WorldState {
 
 	var (
-		shomeiState = statemanager.NewWorldState(statemanager.MIMC_CONFIG)
+		shomeiState = statemanager.NewWorldState(statemanager.POSEIDON2_CONFIG)
 		addresses   = sortedKeysOf(state)
 	)
 
@@ -63,7 +63,7 @@ func InitShomeiState(state State) *statemanager.WorldState {
 
 		var (
 			acc         = state[address]
-			storageTrie = statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, address)
+			storageTrie = statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, address)
 			stoKeys     = sortedKeysOf(acc.Storage)
 		)
 
@@ -75,7 +75,7 @@ func InitShomeiState(state State) *statemanager.WorldState {
 			Nonce:          acc.Nonce,
 			Balance:        acc.Balance,
 			StorageRoot:    storageTrie.TopRoot(),
-			MimcCodeHash:   acc.MimcCodeHash,
+			LineaCodeHash:  acc.LineaCodeHash,
 			KeccakCodeHash: acc.KeccakCodeHash,
 			CodeSize:       acc.CodeSize,
 		}
@@ -266,7 +266,7 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 		// function `applySquashedStorageLog` because it will attempt to access
 		// the storage trie. And in this case, the storage trie does not
 		// pre-exists
-		storageTrie := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, address)
+		storageTrie := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, address)
 		shomeiState.StorageTries.InsertNew(address, storageTrie)
 
 		// The relevant storage sub-segment is always the last one. Assertedly,
@@ -488,7 +488,7 @@ func squashSubSegmentForShomei(initialAccountValue types.Account, logs []StateAc
 				vals := log.Value.([]any)
 				currAccountValue.CodeSize = vals[0].(int64)
 				currAccountValue.KeccakCodeHash = vals[1].(types.FullBytes32)
-				currAccountValue.MimcCodeHash = vals[2].(types.Bytes32)
+				currAccountValue.LineaCodeHash = vals[2].(types.Bytes32)
 				if currAccountValue.Balance == nil {
 					// we give it a non-nil value because this is used to infer
 					// the existence of the account in the `statesummary` module

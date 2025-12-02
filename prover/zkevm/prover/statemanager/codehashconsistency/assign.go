@@ -3,6 +3,7 @@ package codehashconsistency
 import (
 	"slices"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -13,18 +14,18 @@ import (
 func (mod Module) Assign(run *wizard.ProverRuntime) {
 
 	var (
-		ssInput  = mod.StateSummaryInput
-		mchInput = mod.MimcCodeHashInput
+		ssInput        = mod.StateSummaryModule
+		lineahashInput = mod.LineaCodeHashModule
 	)
 
 	externalSs := struct {
 		InitAccountExists  smartvectors.SmartVector
 		FinalAccountExists smartvectors.SmartVector
 		IsStorage          smartvectors.SmartVector
-		InitMiMC           [common.NbLimbU256]smartvectors.SmartVector
+		InitLineaHash      [poseidon2.BlockSize]smartvectors.SmartVector
 		InitKeccakLo       [common.NbLimbU128]smartvectors.SmartVector
 		InitKeccakHi       [common.NbLimbU128]smartvectors.SmartVector
-		FinalMiMC          [common.NbLimbU256]smartvectors.SmartVector
+		FinalLineaHash     [poseidon2.BlockSize]smartvectors.SmartVector
 		FinalKeccakLo      [common.NbLimbU128]smartvectors.SmartVector
 		FinalKeccakHi      [common.NbLimbU128]smartvectors.SmartVector
 	}{
@@ -33,9 +34,9 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		IsStorage:          ssInput.IsStorage.GetColAssignment(run),
 	}
 
-	for i := range common.NbLimbU256 {
-		externalSs.InitMiMC[i] = ssInput.Account.Initial.MiMCCodeHash[i].GetColAssignment(run)
-		externalSs.FinalMiMC[i] = ssInput.Account.Final.MiMCCodeHash[i].GetColAssignment(run)
+	for i := range poseidon2.BlockSize {
+		externalSs.InitLineaHash[i] = ssInput.Account.Initial.LineaCodeHash[i].GetColAssignment(run)
+		externalSs.FinalLineaHash[i] = ssInput.Account.Final.LineaCodeHash[i].GetColAssignment(run)
 	}
 
 	for i := range common.NbLimbU128 {
@@ -48,24 +49,33 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 	externalRom := struct {
 		IsActive         smartvectors.SmartVector
 		IsForConsistency smartvectors.SmartVector
-		NewState         [common.NbLimbU256]smartvectors.SmartVector
-		CodeHash         [common.NbLimbU256]smartvectors.SmartVector
+		NewState         [poseidon2.BlockSize]smartvectors.SmartVector // Poseidon2 code hash
+		CodeHash         [common.NbLimbU256]smartvectors.SmartVector   // Keccak code hash
 	}{
-		IsActive:         mchInput.IsActive.GetColAssignment(run),
-		IsForConsistency: mchInput.IsForConsistency.GetColAssignment(run),
+		IsActive:         lineahashInput.IsActive.GetColAssignment(run),
+		IsForConsistency: lineahashInput.IsForConsistency.GetColAssignment(run),
+	}
+
+	for i := range poseidon2.BlockSize {
+		externalRom.NewState[i] = lineahashInput.NewState[i].GetColAssignment(run)
 	}
 
 	for i := range common.NbLimbU256 {
-		externalRom.NewState[i] = mchInput.NewState[i].GetColAssignment(run)
-		externalRom.CodeHash[i] = mchInput.CodeHash[i].GetColAssignment(run)
+		externalRom.CodeHash[i] = lineahashInput.CodeHash[i].GetColAssignment(run)
+	}
+
+	// rowData holds a Poseidon2 hash (8 elements) and a Keccak hash (16 elements)
+	type rowData struct {
+		poseidon2Hash [poseidon2.BlockSize]field.Element
+		keccakHash    [common.NbLimbU256]field.Element
 	}
 
 	var (
-		ssData  = make([][2][common.NbLimbU256]field.Element, 0, 2*externalSs.InitMiMC[0].Len())
-		romData = make([][2][common.NbLimbU256]field.Element, 0, externalRom.IsForConsistency.Len())
+		ssData  = make([]rowData, 0, 2*externalSs.InitLineaHash[0].Len()) // state summary data, size is 2* the number of rows in the state summary because there are 2 accounts (initial and final)
+		romData = make([]rowData, 0, externalRom.IsForConsistency.Len())  // rom data
 	)
 
-	for i := 0; i < externalSs.InitMiMC[0].Len(); i++ {
+	for i := 0; i < externalSs.InitLineaHash[0].Len(); i++ {
 
 		if isStorage := externalSs.IsStorage.Get(i); isStorage.IsOne() {
 			continue
@@ -77,10 +87,10 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		)
 
 		if initAccountExists.IsOne() {
-			var initMimc [common.NbLimbU256]field.Element
+			var initLineaHash [poseidon2.BlockSize]field.Element
 			var initKeccak [common.NbLimbU256]field.Element
-			for j := range common.NbLimbU256 {
-				initMimc[j] = externalSs.InitMiMC[j].Get(i)
+			for j := range poseidon2.BlockSize {
+				initLineaHash[j] = externalSs.InitLineaHash[j].Get(i)
 			}
 
 			for j := range common.NbLimbU128 {
@@ -88,19 +98,17 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 				initKeccak[common.NbLimbU128+j] = externalSs.InitKeccakLo[j].Get(i)
 			}
 
-			ssData = append(ssData,
-				[2][common.NbLimbU256]field.Element{
-					initMimc,
-					initKeccak,
-				},
-			)
+			ssData = append(ssData, rowData{
+				poseidon2Hash: initLineaHash,
+				keccakHash:    initKeccak,
+			})
 		}
 
 		if finalAccountExists.IsOne() {
-			var finalMimc [common.NbLimbU256]field.Element
+			var finalLineaHash [poseidon2.BlockSize]field.Element
 			var finalKeccak [common.NbLimbU256]field.Element
-			for j := range common.NbLimbU256 {
-				finalMimc[j] = externalSs.FinalMiMC[j].Get(i)
+			for j := range poseidon2.BlockSize {
+				finalLineaHash[j] = externalSs.FinalLineaHash[j].Get(i)
 			}
 
 			for j := range common.NbLimbU128 {
@@ -108,12 +116,10 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 				finalKeccak[common.NbLimbU128+j] = externalSs.FinalKeccakLo[j].Get(i)
 			}
 
-			ssData = append(ssData,
-				[2][common.NbLimbU256]field.Element{
-					finalMimc,
-					finalKeccak,
-				},
-			)
+			ssData = append(ssData, rowData{
+				poseidon2Hash: finalLineaHash,
+				keccakHash:    finalKeccak,
+			})
 		}
 	}
 
@@ -131,26 +137,26 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		var newState [common.NbLimbU256]field.Element
+		var newState [poseidon2.BlockSize]field.Element
 		var codeHash [common.NbLimbU256]field.Element
-		for j := range common.NbLimbU256 {
+		for j := range poseidon2.BlockSize {
 			newState[j] = externalRom.NewState[j].Get(i)
+		}
+		for j := range common.NbLimbU256 {
 			codeHash[j] = externalRom.CodeHash[j].Get(i)
 		}
 
-		romData = append(romData,
-			[2][common.NbLimbU256]field.Element{
-				newState,
-				codeHash,
-			},
-		)
+		romData = append(romData, rowData{
+			poseidon2Hash: newState,
+			keccakHash:    codeHash,
+		})
 	}
 
-	cmp := func(a, b [2][common.NbLimbU256]field.Element) int {
-		if res := CmpLimbs(a[1][:], b[1][:]); res != 0 {
+	cmp := func(a, b rowData) int {
+		if res := CmpLimbs(a.keccakHash[:], b.keccakHash[:]); res != 0 {
 			return res
 		}
-		return CmpLimbs(a[0][:], b[0][:])
+		return CmpLimbs(a.poseidon2Hash[:], b.poseidon2Hash[:])
 	}
 
 	slices.SortFunc(ssData, cmp)
@@ -161,13 +167,13 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 	romData = slices.Clip(romData)
 
 	assignment := struct {
-		IsActive        *common.VectorBuilder
-		StateSumKeccak  common.HiLoAssignmentBuilder
-		StateSumMiMC    [common.NbLimbU256]*common.VectorBuilder
-		RomKeccak       common.HiLoAssignmentBuilder
-		RomMiMC         [common.NbLimbU256]*common.VectorBuilder
-		RomOngoing      *common.VectorBuilder
-		StateSumOngoing *common.VectorBuilder
+		IsActive          *common.VectorBuilder
+		StateSumKeccak    common.HiLoAssignmentBuilder
+		StateSumLineaHash [poseidon2.BlockSize]*common.VectorBuilder
+		RomKeccak         common.HiLoAssignmentBuilder
+		RomLineaHash      [poseidon2.BlockSize]*common.VectorBuilder
+		RomOngoing        *common.VectorBuilder
+		StateSumOngoing   *common.VectorBuilder
 	}{
 		IsActive:        common.NewVectorBuilder(mod.IsActive),
 		StateSumKeccak:  common.NewHiLoAssignmentBuilder(mod.StateSumKeccak),
@@ -176,9 +182,9 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		StateSumOngoing: common.NewVectorBuilder(mod.StateSumOngoing),
 	}
 
-	for i := range common.NbLimbU256 {
-		assignment.RomMiMC[i] = common.NewVectorBuilder(mod.RomMiMC[i])
-		assignment.StateSumMiMC[i] = common.NewVectorBuilder(mod.StateSumMiMC[i])
+	for i := range poseidon2.BlockSize {
+		assignment.RomLineaHash[i] = common.NewVectorBuilder(mod.RomLineaHash[i])
+		assignment.StateSumLineaHash[i] = common.NewVectorBuilder(mod.StateSumLineaHash[i])
 	}
 
 	var (
@@ -198,8 +204,8 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		// eoa-transactions only. Therefore, we need to check that cRom and cSS
 		// are within bounds. Otherwise, it will panic.
 		var (
-			romRow = [2][common.NbLimbU256]field.Element{}
-			ssRow  = [2][common.NbLimbU256]field.Element{}
+			romRow = rowData{}
+			ssRow  = rowData{}
 		)
 
 		if cRom < len(romData) {
@@ -214,17 +220,17 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 
 		assignment.IsActive.PushOne()
 
-		for j := range common.NbLimbU256 {
-			assignment.RomMiMC[j].PushField(romRow[0][j])
-			assignment.StateSumMiMC[j].PushField(ssRow[0][j])
+		for j := range poseidon2.BlockSize {
+			assignment.RomLineaHash[j].PushField(romRow.poseidon2Hash[j])
+			assignment.StateSumLineaHash[j].PushField(ssRow.poseidon2Hash[j])
 		}
 
 		for j := range common.NbLimbU128 {
-			assignment.RomKeccak.Hi[j].PushField(romRow[1][j])
-			assignment.RomKeccak.Lo[j].PushField(romRow[1][common.NbLimbU128+j])
+			assignment.RomKeccak.Hi[j].PushField(romRow.keccakHash[j])
+			assignment.RomKeccak.Lo[j].PushField(romRow.keccakHash[common.NbLimbU128+j])
 
-			assignment.StateSumKeccak.Hi[j].PushField(ssRow[1][j])
-			assignment.StateSumKeccak.Lo[j].PushField(ssRow[1][common.NbLimbU128+j])
+			assignment.StateSumKeccak.Hi[j].PushField(ssRow.keccakHash[j])
+			assignment.StateSumKeccak.Lo[j].PushField(ssRow.keccakHash[common.NbLimbU128+j])
 		}
 
 		assignment.RomOngoing.PushBoolean(cRom < len(romData))
@@ -251,9 +257,9 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 		cRom, cSS = newCRom, newCSS
 	}
 
-	for i := range common.NbLimbU256 {
-		assignment.RomMiMC[i].PadAndAssign(run, field.Zero())
-		assignment.StateSumMiMC[i].PadAndAssign(run, field.Zero())
+	for i := range poseidon2.BlockSize {
+		assignment.RomLineaHash[i].PadAndAssign(run, field.Zero())
+		assignment.StateSumLineaHash[i].PadAndAssign(run, field.Zero())
 	}
 
 	for i := range common.NbLimbU128 {

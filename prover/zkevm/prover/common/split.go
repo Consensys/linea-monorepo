@@ -1,6 +1,8 @@
 package common
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+)
 
 // LimbBytes is the size of one limb in bytes
 const LimbBytes = 2

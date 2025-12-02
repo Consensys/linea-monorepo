@@ -3,9 +3,9 @@ package statemanager
 import (
 	"math/big"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -13,8 +13,8 @@ import (
 
 const WS_LOCATION = "0x"
 
-var MIMC_CONFIG = &smt.Config{
-	HashFunc: smt_bls12377.MiMC,
+var POSEIDON2_CONFIG = &smt.Config{
+	HashFunc: poseidon2.Poseidon2,
 	Depth:    40,
 }
 
@@ -46,12 +46,12 @@ func EmptyCodeHash(config *smt.Config) Digest {
 // Returns an EOA account
 func NewEOA(config *smt.Config, nonce int64, balance *big.Int) Account {
 	return types.Account{
-		Nonce:             nonce,
-		Balance:           balance,
-		StorageRoot:       EmptyStorageTrieHash(config), // The eth
-		Poseidon2CodeHash: EmptyCodeHash(config),
-		KeccakCodeHash:    types.AsFullBytes32(LEGACY_KECCAK_EMPTY_CODEHASH),
-		CodeSize:          0,
+		Nonce:          nonce,
+		Balance:        balance,
+		StorageRoot:    EmptyStorageTrieHash(config), // The eth
+		LineaCodeHash:  EmptyCodeHash(config),
+		KeccakCodeHash: types.AsFullBytes32(LEGACY_KECCAK_EMPTY_CODEHASH),
+		CodeSize:       0,
 	}
 }
 
@@ -65,16 +65,16 @@ func NewContractEmptyStorage(
 	codeSize int64,
 ) types.Account {
 	return types.Account{
-		Nonce:             nonce,
-		Balance:           balance,
-		StorageRoot:       EmptyStorageTrieHash(config),
-		Poseidon2CodeHash: codeHash,
-		KeccakCodeHash:    keccakCodeHash,
-		CodeSize:          codeSize,
+		Nonce:          nonce,
+		Balance:        balance,
+		StorageRoot:    EmptyStorageTrieHash(config),
+		LineaCodeHash:  codeHash,
+		KeccakCodeHash: keccakCodeHash,
+		CodeSize:       codeSize,
 	}
 }
 
-var MIMC_EMPTY_STORAGE = EmptyStorageTrieHash(MIMC_CONFIG)
+var MIMC_EMPTY_STORAGE = EmptyStorageTrieHash(POSEIDON2_CONFIG)
 
 func NewAccountTrie(config *smt.Config) *AccountTrie {
 	return accumulator.InitializeProverState[Address, Account](config, WS_LOCATION)

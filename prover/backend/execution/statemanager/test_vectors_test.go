@@ -29,7 +29,7 @@ func DummyDigest(i int) (d eth.Digest) {
 }
 
 func Hash(t io.WriterTo) types.Bytes32 {
-	hasher := eth.MIMC_CONFIG.HashFunc()
+	hasher := eth.POSEIDON2_CONFIG.HashFunc()
 	t.WriteTo(hasher)
 	return types.AsBytes32(hasher.Sum(nil))
 }

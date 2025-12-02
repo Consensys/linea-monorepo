@@ -12,12 +12,12 @@ type Account struct {
 	// Implicitly we assume that the nonce fits into
 	// a int64 but the obtained encoding is consistent
 	// with how it would be if it was a big.Int
-	Nonce             int64
-	Balance           *big.Int
-	StorageRoot       Bytes32
-	Poseidon2CodeHash Bytes32
-	KeccakCodeHash    FullBytes32
-	CodeSize          int64
+	Nonce          int64
+	Balance        *big.Int
+	StorageRoot    Bytes32
+	LineaCodeHash  Bytes32 // Poseidon2 code hash
+	KeccakCodeHash FullBytes32
+	CodeSize       int64
 }
 
 func (a Account) WriteTo(w io.Writer) (int64, error) {
@@ -44,7 +44,7 @@ func (a Account) writeTo(w io.Writer, packed bool) (int64, error) {
 	}
 	n1, _ := WriteBigIntOn64Bytes(w, balance)
 	n2, _ := a.StorageRoot.WriteTo(w)
-	n3, _ := a.Poseidon2CodeHash.WriteTo(w)
+	n3, _ := a.LineaCodeHash.WriteTo(w)
 	var n4 int64
 	if packed {
 		n4, _ = a.KeccakCodeHash.Write1Word(w)
@@ -73,7 +73,7 @@ func (a *Account) readFrom(r io.Reader, packed bool) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading storage root : %w", err)
 	}
-	_, err = a.Poseidon2CodeHash.ReadFrom(r)
+	_, err = a.LineaCodeHash.ReadFrom(r)
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading code-hash : %w", err)
 	}

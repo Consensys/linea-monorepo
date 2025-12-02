@@ -2,12 +2,11 @@ package statesummary
 
 import (
 	"encoding/binary"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 /*
@@ -94,7 +93,7 @@ func getLimbBytes(cols []ifaces.Column, run *wizard.ProverRuntime, index int) []
 	for i := range cols {
 		colLimb := cols[i].GetColAssignmentAt(run, index)
 		colLimbBytes := colLimb.Bytes()
-		colBytes = append(colBytes, colLimbBytes[fr.Bytes-common.LimbBytes:]...)
+		colBytes = append(colBytes, colLimbBytes[:]...)
 	}
 
 	return colBytes
