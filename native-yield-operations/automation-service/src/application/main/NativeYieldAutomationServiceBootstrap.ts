@@ -50,6 +50,8 @@ import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationMode
 import { OperationModeMetricsRecorder } from "../metrics/OperationModeMetricsRecorder.js";
 import { DashboardContractClient } from "../../clients/contracts/DashboardContractClient.js";
 import { StakingVaultContractClient } from "../../clients/contracts/StakingVaultContractClient.js";
+import { GaugeMetricsPoller } from "../../services/GaugeMetricsPoller.js";
+import { IGaugeMetricsPoller } from "../../core/services/IGaugeMetricsPoller.js";
 
 /**
  * Bootstrap class for the Native Yield Automation Service.
@@ -80,6 +82,7 @@ export class NativeYieldAutomationServiceBootstrap {
   private consensysStakingGraphQLClient: IValidatorDataClient;
 
   private readonly operationModeMetricsRecorder: IOperationModeMetricsRecorder;
+  private gaugeMetricsPoller: IGaugeMetricsPoller;
   private operationModeSelector: IOperationModeSelector;
   private yieldReportingOperationModeProcessor: IOperationModeProcessor;
   private ossificationPendingOperationModeProcessor: IOperationModeProcessor;
@@ -253,11 +256,19 @@ export class NativeYieldAutomationServiceBootstrap {
       config.contractAddresses.lidoYieldProviderAddress,
     );
 
+    this.gaugeMetricsPoller = new GaugeMetricsPoller(
+      new WinstonLogger(GaugeMetricsPoller.name, config.loggerOptions),
+      this.consensysStakingGraphQLClient,
+      this.metricsUpdater,
+      this.yieldManagerContractClient,
+      config.contractAddresses.lidoYieldProviderAddress,
+    );
+
     this.operationModeSelector = new OperationModeSelector(
       new WinstonLogger(OperationModeSelector.name, config.loggerOptions),
       this.metricsUpdater,
       this.yieldManagerContractClient,
-      this.consensysStakingGraphQLClient,
+      this.gaugeMetricsPoller,
       this.yieldReportingOperationModeProcessor,
       this.ossificationPendingOperationModeProcessor,
       this.ossificationCompleteOperationModeProcessor,
