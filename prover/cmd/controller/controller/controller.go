@@ -283,12 +283,6 @@ func (st *ControllerState) handleSignals(ctrlCancel context.CancelFunc, cLog *lo
 				cLog.Info("Received SIGUSR1 after SIGTERM: marking spot reclaim detected (shutdown already in progress)")
 			}
 
-			// Write transient failures for limitless jobs - only BOOTSRAP job
-			err := st.writeTransientFailFile(cfg, cLog, CodeKilledByExtSig)
-			if err != nil {
-				utils.Panic("error while writing transient failure files:%v", err)
-			}
-
 			// Requeue active job immediately
 			st.requeueJob(cfg, cLog)
 
