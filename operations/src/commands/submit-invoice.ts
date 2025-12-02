@@ -618,9 +618,10 @@ export default class SubmitInvoice extends Command {
 
     const formattedResultsByTime = flattenResultsByTime(ResultsByTime, awsCostsApiFilters.Metrics[0]);
 
+    this.log(`AWS Historical Costs Data:`);
     for (const dailyData of formattedResultsByTime) {
       this.log(
-        `type=aws_historical_data_costs date=${dailyData.date} amount=${dailyData.amount} estimated=${dailyData.estimated}`,
+        `type=aws_historical_data_costs fetchAt=${endDateStr} date=${dailyData.date} amount=${dailyData.amount} estimated=${dailyData.estimated}`,
       );
     }
   }
