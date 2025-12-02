@@ -43,9 +43,9 @@ jobs:
         **/contracts/**
         node_modules
         **/node_modules/**
-        **/__snapshots__/
+        **/__snapshots__/**
         __snapshots_linux__
-        **/__stories__/
+        **/__stories__/**
         .storybook/
         **/*.test.ts
         **/*.test.tsx
