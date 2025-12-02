@@ -42,9 +42,9 @@ export function flattenResultsByTime(
     if (item.Total && !hasGroups) {
       const data = item.Total[metric];
       rows.push({
-        Date: Start,
-        Amount: data?.Amount ?? "0",
-        Estimated: item.Estimated ?? false,
+        date: Start,
+        amount: data?.Amount ?? "0",
+        estimated: item.Estimated ?? false,
       });
       continue;
     }
@@ -56,10 +56,10 @@ export function flattenResultsByTime(
         const data = group.Metrics[metric];
 
         rows.push({
-          Date: Start,
-          GroupKeys: group.Keys?.join(" / ") ?? "",
-          Amount: data?.Amount ?? "0",
-          Estimated: item.Estimated ?? false,
+          date: Start,
+          groupKeys: group.Keys?.join(" / ") ?? "",
+          amount: data?.Amount ?? "0",
+          estimated: item.Estimated ?? false,
         });
       }
     }
