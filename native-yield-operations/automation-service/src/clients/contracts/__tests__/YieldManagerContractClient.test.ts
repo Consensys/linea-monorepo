@@ -400,269 +400,271 @@ describe("YieldManagerContractClient", () => {
     expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
   });
 
-  it("throws error when peekYieldReport returns undefined", async () => {
-    contractStub.read.getTotalSystemBalance.mockResolvedValue(1_000_000n);
-    contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(500_000n);
-    contractStub.read.userFunds.mockResolvedValue(100_000n);
-    contractStub.simulate.reportYield.mockResolvedValue(undefined);
+  describe("getRebalanceRequirements", () => {
+    it("throws error when peekYieldReport returns undefined", async () => {
+      contractStub.read.getTotalSystemBalance.mockResolvedValue(1_000_000n);
+      contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(500_000n);
+      contractStub.read.userFunds.mockResolvedValue(100_000n);
+      contractStub.simulate.reportYield.mockResolvedValue(undefined);
 
-    const mockDashboardClient = {
-      totalValue: jest.fn().mockResolvedValue(600_000n),
-    };
-    mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
+      const mockDashboardClient = {
+        totalValue: jest.fn().mockResolvedValue(600_000n),
+      };
+      mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
 
-    const client = createClient();
+      const client = createClient();
 
-    await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).rejects.toThrow(
-      "peekYieldReport returned undefined, cannot determine rebalance requirements",
-    );
-  });
-
-  it("handles negative yield amount in rebalance requirements calculation", async () => {
-    const totalSystemBalance = 1_000_000n;
-    const effectiveTarget = 500_000n;
-    const dashboardTotalValue = 600_000n;
-    const userFunds = 100_000n;
-    const peekedYieldAmount = -10_000n; // Negative yield
-    const peekedOutstandingNegativeYield = 15_000n;
-
-    contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
-    contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
-    contractStub.read.userFunds.mockResolvedValue(userFunds);
-    contractStub.simulate.reportYield.mockResolvedValue({
-      result: [peekedYieldAmount, peekedOutstandingNegativeYield],
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).rejects.toThrow(
+        "peekYieldReport returned undefined, cannot determine rebalance requirements",
+      );
     });
 
-    const mockDashboardClient = {
-      totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
-    };
-    mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
+    it("handles negative yield amount in rebalance requirements calculation", async () => {
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 500_000n;
+      const dashboardTotalValue = 600_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = -10_000n;
+      const peekedOutstandingNegativeYield = 15_000n;
 
-    const client = createClient({ rebalanceToleranceBps: 100 });
+      contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
+      contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
+      contractStub.read.userFunds.mockResolvedValue(userFunds);
+      contractStub.simulate.reportYield.mockResolvedValue({
+        result: [peekedYieldAmount, peekedOutstandingNegativeYield],
+      });
 
-    // When yieldAmount < 0, systemObligations = outstandingNegativeYield + dashboardTotalValue - userFunds
-    // = 15_000 + 600_000 - 100_000 = 515_000
-    const systemObligations = peekedOutstandingNegativeYield + dashboardTotalValue - userFunds;
-    const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
-    const effectiveTargetExcludingObligations =
-      (effectiveTarget * totalSystemBalanceExcludingObligations) / totalSystemBalance;
+      const mockDashboardClient = {
+        totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
+      };
+      mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
 
-    // Balance at target
-    const l1BalanceAtTarget = effectiveTargetExcludingObligations;
-    blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceAtTarget);
-    // absRebalanceRequirement = 0 + 515_000 = 515_000
-    await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
-      rebalanceDirection: RebalanceDirection.STAKE,
-      rebalanceAmount: systemObligations,
-    });
-  });
+      const client = createClient({ rebalanceToleranceBps: 100 });
 
-  it("returns NONE when absRebalanceRequirement is within tolerance band", async () => {
-    // Use values where systemObligations is small enough that even with a small diff,
-    // the total absRebalanceRequirement can be within tolerance band
-    const totalSystemBalance = 10_000_000n;
-    const effectiveTarget = 5_000_000n;
-    const dashboardTotalValue = 5_100_000n; // Small dashboard value
-    const userFunds = 5_000_000n; // Large user funds
-    const peekedYieldAmount = 50_000n; // Small yield amount
-    const peekedOutstandingNegativeYield = 0n;
+      // When yieldAmount < 0, systemObligations = outstandingNegativeYield + dashboardTotalValue - userFunds
+      // = 15_000 + 600_000 - 100_000 = 515_000
+      const systemObligations = peekedOutstandingNegativeYield + dashboardTotalValue - userFunds;
+      const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
+      const effectiveTargetExcludingObligations =
+        (effectiveTarget * totalSystemBalanceExcludingObligations) / totalSystemBalance;
 
-    contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
-    contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
-    contractStub.read.userFunds.mockResolvedValue(userFunds);
-    contractStub.simulate.reportYield.mockResolvedValue({
-      result: [peekedYieldAmount, peekedOutstandingNegativeYield],
+      // Balance at target
+      const l1BalanceAtTarget = effectiveTargetExcludingObligations;
+      blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceAtTarget);
+      // absRebalanceRequirement = 0 + 515_000 = 515_000
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: systemObligations,
+      });
     });
 
-    const mockDashboardClient = {
-      totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
-    };
-    mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
+    it("returns NONE when absRebalanceRequirement is within tolerance band", async () => {
+      // Use values where systemObligations is small enough that even with a small diff,
+      // the total absRebalanceRequirement can be within tolerance band
+      const totalSystemBalance = 10_000_000n;
+      const effectiveTarget = 5_000_000n;
+      const dashboardTotalValue = 5_100_000n; // Small dashboard value
+      const userFunds = 5_000_000n; // Large user funds
+      const peekedYieldAmount = 50_000n; // Small yield amount
+      const peekedOutstandingNegativeYield = 0n;
 
-    const client = createClient({ rebalanceToleranceBps: 100 });
+      contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
+      contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
+      contractStub.read.userFunds.mockResolvedValue(userFunds);
+      contractStub.simulate.reportYield.mockResolvedValue({
+        result: [peekedYieldAmount, peekedOutstandingNegativeYield],
+      });
 
-    // systemObligations = 5_100_000 - 50_000 - 5_000_000 = 50_000 (small!)
-    const systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds;
-    // totalSystemBalanceExcludingObligations = 10_000_000 - 50_000 = 9_950_000
-    const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
-    // effectiveTargetExcludingObligations = (5_000_000 * 9_950_000) / 10_000_000 = 4_975_000
-    const effectiveTargetExcludingObligations =
-      (effectiveTarget * totalSystemBalanceExcludingObligations) / totalSystemBalance;
-    // toleranceBand = (9_950_000 * 100) / 10000 = 99_500
+      const mockDashboardClient = {
+        totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
+      };
+      mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
 
-    // Set l1Balance exactly at target, so absDiff = 0
-    // absRebalanceRequirement = 0 + 50_000 = 50_000
-    // Since 50_000 < 99_500, this should return NONE
-    const l1BalanceAtTarget = effectiveTargetExcludingObligations;
-    blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceAtTarget);
-    await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
-      rebalanceDirection: RebalanceDirection.NONE,
-      rebalanceAmount: 0n,
-    });
-  });
+      const client = createClient({ rebalanceToleranceBps: 100 });
 
-  it("evaluates rebalance requirements with tolerance band", async () => {
-    const totalSystemBalance = 1_000_000n;
-    const effectiveTarget = 500_000n;
-    const dashboardTotalValue = 600_000n;
-    const userFunds = 100_000n;
-    const peekedYieldAmount = 50_000n;
-    const peekedOutstandingNegativeYield = 0n;
+      // systemObligations = 5_100_000 - 50_000 - 5_000_000 = 50_000 (small!)
+      const systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds;
+      // totalSystemBalanceExcludingObligations = 10_000_000 - 50_000 = 9_950_000
+      const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
+      // effectiveTargetExcludingObligations = (5_000_000 * 9_950_000) / 10_000_000 = 4_975_000
+      const effectiveTargetExcludingObligations =
+        (effectiveTarget * totalSystemBalanceExcludingObligations) / totalSystemBalance;
+      // toleranceBand = (9_950_000 * 100) / 10000 = 99_500
 
-    contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
-    contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
-    contractStub.read.userFunds.mockResolvedValue(userFunds);
-    contractStub.simulate.reportYield.mockResolvedValue({
-      result: [peekedYieldAmount, peekedOutstandingNegativeYield],
-    });
-
-    const mockDashboardClient = {
-      totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
-    };
-    mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
-
-    const client = createClient({ rebalanceToleranceBps: 100 });
-
-    // Calculate system obligations: dashboardTotalValue - peekedYieldAmount - userFunds
-    // = 600_000 - 50_000 - 100_000 = 450_000
-    const systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds;
-    // totalSystemBalanceExcludingObligations = 1_000_000 - 450_000 = 550_000
-    const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
-    // effectiveTargetExcludingObligations = (500_000 * 550_000) / 1_000_000 = 275_000
-    const effectiveTargetExcludingObligations =
-      (effectiveTarget * totalSystemBalanceExcludingObligations) / totalSystemBalance;
-    // toleranceBand = (550_000 * 100) / 10000 = 5_500 (calculated internally)
-    // Note: absRebalanceRequirement = absDiff + systemObligations, so even with zero diff,
-    // we get 450_000 which is > 5_500, so we'll always rebalance with these values.
-
-    // Case 1: Balance exactly at target (minimum absRebalanceRequirement = systemObligations)
-    const l1BalanceAtTarget = effectiveTargetExcludingObligations;
-    blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceAtTarget);
-    // absRebalanceRequirement = absDiff(275_000, 275_000) + 450_000 = 0 + 450_000 = 450_000
-    // Since 450_000 > 5_500, this will return STAKE with amount = 450_000
-    await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
-      rebalanceDirection: RebalanceDirection.STAKE,
-      rebalanceAmount: systemObligations,
+      // Set l1Balance exactly at target, so absDiff = 0
+      // absRebalanceRequirement = 0 + 50_000 = 50_000
+      // Since 50_000 < 99_500, this should return NONE
+      const l1BalanceAtTarget = effectiveTargetExcludingObligations;
+      blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceAtTarget);
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.NONE,
+        rebalanceAmount: 0n,
+      });
     });
 
-    // Case 2: Deficit => UNSTAKE
-    // l1MessageServiceBalance = 275_000 - 20_000 = 255_000
-    const l1BalanceDeficit = effectiveTargetExcludingObligations - 20_000n;
-    blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceDeficit);
-    // absRebalanceRequirement = absDiff(255_000, 275_000) + 450_000 = 20_000 + 450_000 = 470_000
-    const expectedDeficitAmount = 20_000n + systemObligations;
-    await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
-      rebalanceDirection: RebalanceDirection.UNSTAKE,
-      rebalanceAmount: expectedDeficitAmount,
+    it("evaluates rebalance requirements with tolerance band", async () => {
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 500_000n;
+      const dashboardTotalValue = 600_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 50_000n;
+      const peekedOutstandingNegativeYield = 0n;
+
+      contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
+      contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
+      contractStub.read.userFunds.mockResolvedValue(userFunds);
+      contractStub.simulate.reportYield.mockResolvedValue({
+        result: [peekedYieldAmount, peekedOutstandingNegativeYield],
+      });
+
+      const mockDashboardClient = {
+        totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
+      };
+      mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
+
+      const client = createClient({ rebalanceToleranceBps: 100 });
+
+      // Calculate system obligations: dashboardTotalValue - peekedYieldAmount - userFunds
+      // = 600_000 - 50_000 - 100_000 = 450_000
+      const systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds;
+      // totalSystemBalanceExcludingObligations = 1_000_000 - 450_000 = 550_000
+      const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
+      // effectiveTargetExcludingObligations = (500_000 * 550_000) / 1_000_000 = 275_000
+      const effectiveTargetExcludingObligations =
+        (effectiveTarget * totalSystemBalanceExcludingObligations) / totalSystemBalance;
+      // toleranceBand = (550_000 * 100) / 10000 = 5_500 (calculated internally)
+      // Note: absRebalanceRequirement = absDiff + systemObligations, so even with zero diff,
+      // we get 450_000 which is > 5_500, so we'll always rebalance with these values.
+
+      // Case 1: Balance exactly at target (minimum absRebalanceRequirement = systemObligations)
+      const l1BalanceAtTarget = effectiveTargetExcludingObligations;
+      blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceAtTarget);
+      // absRebalanceRequirement = absDiff(275_000, 275_000) + 450_000 = 0 + 450_000 = 450_000
+      // Since 450_000 > 5_500, this will return STAKE with amount = 450_000
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: systemObligations,
+      });
+
+      // Case 2: Deficit => UNSTAKE
+      // l1MessageServiceBalance = 275_000 - 20_000 = 255_000
+      const l1BalanceDeficit = effectiveTargetExcludingObligations - 20_000n;
+      blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceDeficit);
+      // absRebalanceRequirement = absDiff(255_000, 275_000) + 450_000 = 20_000 + 450_000 = 470_000
+      const expectedDeficitAmount = 20_000n + systemObligations;
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.UNSTAKE,
+        rebalanceAmount: expectedDeficitAmount,
+      });
+
+      // Case 3: Surplus => STAKE
+      // l1MessageServiceBalance = 275_000 + 30_000 = 305_000
+      const l1BalanceSurplus = effectiveTargetExcludingObligations + 30_000n;
+      blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceSurplus);
+      // absRebalanceRequirement = absDiff(305_000, 275_000) + 450_000 = 30_000 + 450_000 = 480_000
+      const expectedSurplusAmount = 30_000n + systemObligations;
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: expectedSurplusAmount,
+      });
     });
 
-    // Case 3: Surplus => STAKE
-    // l1MessageServiceBalance = 275_000 + 30_000 = 305_000
-    const l1BalanceSurplus = effectiveTargetExcludingObligations + 30_000n;
-    blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceSurplus);
-    // absRebalanceRequirement = absDiff(305_000, 275_000) + 450_000 = 30_000 + 450_000 = 480_000
-    const expectedSurplusAmount = 30_000n + systemObligations;
-    await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
-      rebalanceDirection: RebalanceDirection.STAKE,
-      rebalanceAmount: expectedSurplusAmount,
-    });
-  });
+    it("caps staking rebalance amount when it exceeds maxStakingRebalanceAmountWei limit", async () => {
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 500_000n;
+      const dashboardTotalValue = 600_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 50_000n;
+      const peekedOutstandingNegativeYield = 0n;
+      const maxStakingRebalanceAmountWei = 200_000n; // Set a limit lower than the calculated requirement
 
-  it("caps staking rebalance amount when it exceeds maxStakingRebalanceAmountWei limit", async () => {
-    const totalSystemBalance = 1_000_000n;
-    const effectiveTarget = 500_000n;
-    const dashboardTotalValue = 600_000n;
-    const userFunds = 100_000n;
-    const peekedYieldAmount = 50_000n;
-    const peekedOutstandingNegativeYield = 0n;
-    const maxStakingRebalanceAmountWei = 200_000n; // Set a limit lower than the calculated requirement
+      contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
+      contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
+      contractStub.read.userFunds.mockResolvedValue(userFunds);
+      contractStub.simulate.reportYield.mockResolvedValue({
+        result: [peekedYieldAmount, peekedOutstandingNegativeYield],
+      });
 
-    contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
-    contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
-    contractStub.read.userFunds.mockResolvedValue(userFunds);
-    contractStub.simulate.reportYield.mockResolvedValue({
-      result: [peekedYieldAmount, peekedOutstandingNegativeYield],
-    });
+      const mockDashboardClient = {
+        totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
+      };
+      mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
 
-    const mockDashboardClient = {
-      totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
-    };
-    mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
+      const client = createClient({
+        rebalanceToleranceBps: 100,
+        maxStakingRebalanceAmountWei,
+      });
 
-    const client = createClient({
-      rebalanceToleranceBps: 100,
-      maxStakingRebalanceAmountWei,
-    });
+      // Calculate system obligations: dashboardTotalValue - peekedYieldAmount - userFunds
+      // = 600_000 - 50_000 - 100_000 = 450_000
+      const systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds;
+      // totalSystemBalanceExcludingObligations = 1_000_000 - 450_000 = 550_000
+      const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
+      // effectiveTargetExcludingObligations = (500_000 * 550_000) / 1_000_000 = 275_000
+      const effectiveTargetExcludingObligations =
+        (effectiveTarget * totalSystemBalanceExcludingObligations) / totalSystemBalance;
 
-    // Calculate system obligations: dashboardTotalValue - peekedYieldAmount - userFunds
-    // = 600_000 - 50_000 - 100_000 = 450_000
-    const systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds;
-    // totalSystemBalanceExcludingObligations = 1_000_000 - 450_000 = 550_000
-    const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
-    // effectiveTargetExcludingObligations = (500_000 * 550_000) / 1_000_000 = 275_000
-    const effectiveTargetExcludingObligations =
-      (effectiveTarget * totalSystemBalanceExcludingObligations) / totalSystemBalance;
+      // Case: Surplus => STAKE with amount exceeding limit
+      // l1MessageServiceBalance = 275_000 + 500_000 = 775_000 (large surplus)
+      const l1BalanceSurplus = effectiveTargetExcludingObligations + 500_000n;
+      blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceSurplus);
+      // absRebalanceRequirement = absDiff(775_000, 275_000) + 450_000 = 500_000 + 450_000 = 950_000
+      const calculatedRebalanceAmount = 500_000n + systemObligations; // 950_000
+      // This exceeds maxStakingRebalanceAmountWei (200_000), so it should be capped
 
-    // Case: Surplus => STAKE with amount exceeding limit
-    // l1MessageServiceBalance = 275_000 + 500_000 = 775_000 (large surplus)
-    const l1BalanceSurplus = effectiveTargetExcludingObligations + 500_000n;
-    blockchainClient.getBalance.mockResolvedValueOnce(l1BalanceSurplus);
-    // absRebalanceRequirement = absDiff(775_000, 275_000) + 450_000 = 500_000 + 450_000 = 950_000
-    const calculatedRebalanceAmount = 500_000n + systemObligations; // 950_000
-    // This exceeds maxStakingRebalanceAmountWei (200_000), so it should be capped
+      const result = await client.getRebalanceRequirements(yieldProvider, l2Recipient);
 
-    const result = await client.getRebalanceRequirements(yieldProvider, l2Recipient);
-
-    expect(result).toEqual({
-      rebalanceDirection: RebalanceDirection.STAKE,
-      rebalanceAmount: maxStakingRebalanceAmountWei, // Should be capped to 200_000
-    });
-    expect(logger.info).toHaveBeenCalledWith(
-      expect.stringContaining(
-        `_getRebalanceRequirements - capping staking rebalance amount from ${calculatedRebalanceAmount} to ${maxStakingRebalanceAmountWei}`,
-      ),
-    );
-  });
-
-  it("handles zero totalSystemBalance without division by zero", async () => {
-    const totalSystemBalance = 0n;
-    const effectiveTarget = 500_000n;
-    const dashboardTotalValue = 600_000n;
-    const userFunds = 100_000n;
-    const peekedYieldAmount = 50_000n;
-    const peekedOutstandingNegativeYield = 0n;
-    const l1MessageServiceBalance = 100_000n;
-
-    contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
-    contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
-    contractStub.read.userFunds.mockResolvedValue(userFunds);
-    contractStub.simulate.reportYield.mockResolvedValue({
-      result: [peekedYieldAmount, peekedOutstandingNegativeYield],
+      expect(result).toEqual({
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: maxStakingRebalanceAmountWei, // Should be capped to 200_000
+      });
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining(
+          `_getRebalanceRequirements - capping staking rebalance amount from ${calculatedRebalanceAmount} to ${maxStakingRebalanceAmountWei}`,
+        ),
+      );
     });
 
-    const mockDashboardClient = {
-      totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
-    };
-    mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
+    it("handles zero totalSystemBalance without division by zero", async () => {
+      const totalSystemBalance = 0n;
+      const effectiveTarget = 500_000n;
+      const dashboardTotalValue = 600_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 50_000n;
+      const peekedOutstandingNegativeYield = 0n;
+      const l1MessageServiceBalance = 100_000n;
 
-    blockchainClient.getBalance.mockResolvedValueOnce(l1MessageServiceBalance);
+      contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
+      contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
+      contractStub.read.userFunds.mockResolvedValue(userFunds);
+      contractStub.simulate.reportYield.mockResolvedValue({
+        result: [peekedYieldAmount, peekedOutstandingNegativeYield],
+      });
 
-    const client = createClient({ rebalanceToleranceBps: 100 });
+      const mockDashboardClient = {
+        totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
+      };
+      mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
 
-    // When totalSystemBalance === 0n:
-    // systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds = 600_000 - 50_000 - 100_000 = 450_000
-    const systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds;
-    // totalSystemBalanceExcludingObligations = 0n - 450_000 = -450_000
-    // effectiveTargetWithdrawalReserveExcludingObligations = 0n (branch result, avoids division by zero)
-    // toleranceBand = (-450_000 * 100) / 10000 = -4_500 (negative, but abs value used in comparison)
-    // absRebalanceRequirement = absDiff(100_000, 0n) + 450_000 = 100_000 + 450_000 = 550_000
-    const absRebalanceRequirement = l1MessageServiceBalance + systemObligations;
+      blockchainClient.getBalance.mockResolvedValueOnce(l1MessageServiceBalance);
 
-    // Since absRebalanceRequirement (550_000) > abs(toleranceBand) (4_500), rebalance is needed
-    // Since l1MessageServiceBalance (100_000) >= effectiveTargetWithdrawalReserveExcludingObligations (0n), direction is STAKE
-    await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
-      rebalanceDirection: RebalanceDirection.STAKE,
-      rebalanceAmount: absRebalanceRequirement,
+      const client = createClient({ rebalanceToleranceBps: 100 });
+
+      // When totalSystemBalance === 0n:
+      // systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds = 600_000 - 50_000 - 100_000 = 450_000
+      const systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds;
+      // totalSystemBalanceExcludingObligations = 0n - 450_000 = -450_000
+      // effectiveTargetWithdrawalReserveExcludingObligations = 0n (branch result, avoids division by zero)
+      // toleranceBand = (-450_000 * 100) / 10000 = -4_500 (negative, but abs value used in comparison)
+      // absRebalanceRequirement = absDiff(100_000, 0n) + 450_000 = 100_000 + 450_000 = 550_000
+      const absRebalanceRequirement = l1MessageServiceBalance + systemObligations;
+
+      // Since absRebalanceRequirement (550_000) > abs(toleranceBand) (4_500), rebalance is needed
+      // Since l1MessageServiceBalance (100_000) >= effectiveTargetWithdrawalReserveExcludingObligations (0n), direction is STAKE
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: absRebalanceRequirement,
+      });
     });
   });
 
