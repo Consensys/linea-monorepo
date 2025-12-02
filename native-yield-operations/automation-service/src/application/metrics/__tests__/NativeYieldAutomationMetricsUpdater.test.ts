@@ -81,6 +81,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       ["vault_address"],
     );
     expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.LastVaultReportTimestamp,
+      "Timestamp from the latest vault report",
+      ["vault_address"],
+    );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.YieldReportedCumulative,
       "Cumulative yield reported from the YieldManager contract",
       ["vault_address"],
@@ -350,6 +355,33 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       jest.clearAllMocks();
 
       updater.setLastSettleableLidoFees(vaultAddress, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setLastVaultReportTimestamp", () => {
+    it("sets gauge when timestamp is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      const timestamp = 1704067200; // Unix timestamp
+      updater.setLastVaultReportTimestamp(vaultAddress, timestamp);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastVaultReportTimestamp,
+        { vault_address: vaultAddress },
+        timestamp,
+      );
+    });
+
+    it("does not set gauge when timestamp is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastVaultReportTimestamp(vaultAddress, -1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });

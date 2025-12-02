@@ -2,6 +2,7 @@ import { ILogger, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
+import { IVaultHub } from "../core/clients/contracts/IVaultHub.js";
 import { Address, TransactionReceipt } from "viem";
 import { IGaugeMetricsPoller } from "../core/services/IGaugeMetricsPoller.js";
 
@@ -17,6 +18,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    * @param {IValidatorDataClient} validatorDataClient - Client for retrieving validator data.
    * @param {INativeYieldAutomationMetricsUpdater} metricsUpdater - Service for updating metrics.
    * @param {IYieldManager<TransactionReceipt>} yieldManagerContractClient - Client for reading yield provider data from YieldManager contract.
+   * @param {IVaultHub<TransactionReceipt>} vaultHubContractClient - Client for reading vault data from VaultHub contract.
    * @param {Address} yieldProvider - The yield provider address.
    */
   constructor(
@@ -24,6 +26,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     private readonly validatorDataClient: IValidatorDataClient,
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
+    private readonly vaultHubContractClient: IVaultHub<TransactionReceipt>,
     private readonly yieldProvider: Address,
   ) {}
 
@@ -37,16 +40,18 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    */
   async poll(): Promise<void> {
     // Update metrics in parallel for efficiency
-    // Use Promise.allSettled to ensure both updates are attempted even if one fails
+    // Use Promise.allSettled to ensure all updates are attempted even if one fails
     const results = await Promise.allSettled([
       this._updatePendingPartialWithdrawalsGauge(),
       this._updateYieldReportedCumulativeGauge(),
+      this._updateLastVaultReportTimestampGauge(),
     ]);
 
     // Log any failures
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        const metricName = index === 0 ? "pending partial withdrawals" : "yield reported cumulative";
+        const metricNames = ["pending partial withdrawals", "yield reported cumulative", "last vault report timestamp"];
+        const metricName = metricNames[index] || "unknown";
         this.logger.error(`Failed to update ${metricName} gauge metric`, { error: result.reason });
       }
     });
@@ -77,5 +82,16 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     const yieldProviderData = await this.yieldManagerContractClient.getYieldProviderData(this.yieldProvider);
     const vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
     this.metricsUpdater.setYieldReportedCumulative(vault, weiToGweiNumber(yieldProviderData.yieldReportedCumulative));
+  }
+
+  /**
+   * Updates the last vault report timestamp gauge metric from the VaultHub contract.
+   *
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated.
+   */
+  private async _updateLastVaultReportTimestampGauge(): Promise<void> {
+    const vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
+    const timestamp = await this.vaultHubContractClient.getLatestVaultReportTimestamp(vault);
+    this.metricsUpdater.setLastVaultReportTimestamp(vault, Number(timestamp));
   }
 }

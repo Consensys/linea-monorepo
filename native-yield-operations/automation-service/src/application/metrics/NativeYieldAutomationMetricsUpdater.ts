@@ -79,6 +79,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastVaultReportTimestamp,
+      "Timestamp from the latest vault report",
+      ["vault_address"],
+    );
+
+    this.metricsService.createGauge(
       LineaNativeYieldAutomationServiceMetrics.YieldReportedCumulative,
       "Cumulative yield reported from the YieldManager contract",
       ["vault_address"],
@@ -247,6 +253,21 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
       { vault_address: vaultAddress },
       feesAmount,
+    );
+  }
+
+  /**
+   * Sets the timestamp from the latest vault report for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} timestamp - The timestamp in seconds (Unix timestamp). Must be non-negative to be recorded.
+   */
+  public setLastVaultReportTimestamp(vaultAddress: Address, timestamp: number): void {
+    if (timestamp < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastVaultReportTimestamp,
+      { vault_address: vaultAddress },
+      timestamp,
     );
   }
 

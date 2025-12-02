@@ -3,6 +3,7 @@ import type { ILogger } from "@consensys/linea-shared-utils";
 import type { IValidatorDataClient } from "../../core/clients/IValidatorDataClient.js";
 import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
+import type { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 import type { ValidatorBalanceWithPendingWithdrawal } from "../../core/entities/ValidatorBalance.js";
 import type { TransactionReceipt, Address } from "viem";
 import { ONE_GWEI } from "@consensys/linea-shared-utils";
@@ -17,6 +18,7 @@ describe("GaugeMetricsPoller", () => {
   let validatorDataClient: MockProxy<IValidatorDataClient>;
   let metricsUpdater: MockProxy<INativeYieldAutomationMetricsUpdater>;
   let yieldManagerContractClient: MockProxy<IYieldManager<TransactionReceipt>>;
+  let vaultHubContractClient: MockProxy<IVaultHub<TransactionReceipt>>;
   let poller: GaugeMetricsPoller;
 
   beforeEach(() => {
@@ -25,12 +27,14 @@ describe("GaugeMetricsPoller", () => {
     validatorDataClient = mock<IValidatorDataClient>();
     metricsUpdater = mock<INativeYieldAutomationMetricsUpdater>();
     yieldManagerContractClient = mock<IYieldManager<TransactionReceipt>>();
+    vaultHubContractClient = mock<IVaultHub<TransactionReceipt>>();
 
     poller = new GaugeMetricsPoller(
       logger,
       validatorDataClient,
       metricsUpdater,
       yieldManagerContractClient,
+      vaultHubContractClient,
       yieldProvider,
     );
 
@@ -50,6 +54,7 @@ describe("GaugeMetricsPoller", () => {
       lstLiabilityPrincipal: 0n,
     } as YieldProviderData);
     yieldManagerContractClient.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
+    vaultHubContractClient.getLatestVaultReportTimestamp.mockResolvedValue(0n);
   });
 
   describe("poll", () => {
@@ -105,6 +110,17 @@ describe("GaugeMetricsPoller", () => {
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalledWith(vaultAddress, 1000);
     });
 
+    it("updates LastVaultReportTimestamp gauge", async () => {
+      const expectedTimestamp = 1704067200n; // Unix timestamp
+      vaultHubContractClient.getLatestVaultReportTimestamp.mockResolvedValue(expectedTimestamp);
+
+      await poller.poll();
+
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
+      expect(vaultHubContractClient.getLatestVaultReportTimestamp).toHaveBeenCalledWith(vaultAddress);
+      expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalledWith(vaultAddress, Number(expectedTimestamp));
+    });
+
     it("handles undefined validator list gracefully", async () => {
       validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValue(undefined);
 
@@ -113,8 +129,9 @@ describe("GaugeMetricsPoller", () => {
       expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending).toHaveBeenCalled();
       expect(validatorDataClient.getTotalPendingPartialWithdrawalsWei).not.toHaveBeenCalled();
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).not.toHaveBeenCalled();
-      // YieldReportedCumulative should still be updated
+      // YieldReportedCumulative and LastVaultReportTimestamp should still be updated
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalled();
+      expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalled();
     });
 
     it("handles validator data client failure gracefully for pending partial withdrawals", async () => {
@@ -147,7 +164,22 @@ describe("GaugeMetricsPoller", () => {
       );
     });
 
-    it("updates both metrics in parallel", async () => {
+    it("handles contract read failure gracefully for LastVaultReportTimestamp", async () => {
+      vaultHubContractClient.getLatestVaultReportTimestamp.mockRejectedValue(new Error("Contract read failed"));
+
+      await poller.poll();
+
+      // Should not throw, and other metrics should still be updated
+      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending).toHaveBeenCalled();
+      expect(yieldManagerContractClient.getYieldProviderData).toHaveBeenCalled();
+      expect(metricsUpdater.setLastVaultReportTimestamp).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        "Failed to update last vault report timestamp gauge metric",
+        { error: expect.any(Error) },
+      );
+    });
+
+    it("updates all three metrics in parallel", async () => {
       const validators: ValidatorBalanceWithPendingWithdrawal[] = [
         {
           balance: 32n,
@@ -176,13 +208,17 @@ describe("GaugeMetricsPoller", () => {
         lstLiabilityPrincipal: 0n,
       } as YieldProviderData);
 
+      const expectedTimestamp = 1704067200n;
+      vaultHubContractClient.getLatestVaultReportTimestamp.mockResolvedValue(expectedTimestamp);
+
       await poller.poll();
 
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(2);
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalledWith(vaultAddress, 500);
+      expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalledWith(vaultAddress, Number(expectedTimestamp));
     });
 
-    it("converts wei to gwei correctly", async () => {
+    it("converts wei to gwei correctly and timestamp to number", async () => {
       const validators: ValidatorBalanceWithPendingWithdrawal[] = [];
       validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValue(validators);
       validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(1500000000n); // 1.5 gwei in wei
@@ -201,10 +237,67 @@ describe("GaugeMetricsPoller", () => {
         lstLiabilityPrincipal: 0n,
       } as YieldProviderData);
 
+      const expectedTimestamp = 1704067200n;
+      vaultHubContractClient.getLatestVaultReportTimestamp.mockResolvedValue(expectedTimestamp);
+
       await poller.poll();
 
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(1); // Rounded down
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalledWith(vaultAddress, 2); // Rounded down
+      expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalledWith(vaultAddress, Number(expectedTimestamp));
+    });
+
+    it("handles all three metrics failing gracefully", async () => {
+      // Mock all three to fail
+      validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockRejectedValue(
+        new Error("Validator data fetch failed"),
+      );
+      yieldManagerContractClient.getYieldProviderData.mockRejectedValue(new Error("Contract read failed"));
+      vaultHubContractClient.getLatestVaultReportTimestamp.mockRejectedValue(new Error("Contract read failed"));
+
+      await poller.poll();
+
+      // Verify all three errors were logged with correct metric names
+      expect(logger.error).toHaveBeenCalledTimes(3);
+      expect(logger.error).toHaveBeenCalledWith(
+        "Failed to update pending partial withdrawals gauge metric",
+        { error: expect.any(Error) },
+      );
+      expect(logger.error).toHaveBeenCalledWith(
+        "Failed to update yield reported cumulative gauge metric",
+        { error: expect.any(Error) },
+      );
+      expect(logger.error).toHaveBeenCalledWith(
+        "Failed to update last vault report timestamp gauge metric",
+        { error: expect.any(Error) },
+      );
+    });
+
+    it("handles out of bounds index by using unknown metric name", async () => {
+      // This test covers the fallback case where index >= metricNames.length
+      // We need to simulate a scenario where we have more rejected promises than metric names
+      // Since we can't naturally create this, we'll test the logic directly by mocking Promise.allSettled
+      const originalAllSettled = Promise.allSettled;
+      const mockAllSettled = jest.fn().mockResolvedValue([
+        { status: "rejected" as const, reason: new Error("Error 1") },
+        { status: "rejected" as const, reason: new Error("Error 2") },
+        { status: "rejected" as const, reason: new Error("Error 3") },
+        { status: "rejected" as const, reason: new Error("Error 4") }, // Index 3 triggers "unknown"
+      ]);
+
+      // Temporarily replace Promise.allSettled
+      (global as any).Promise.allSettled = mockAllSettled;
+
+      await poller.poll();
+
+      // Verify that the 4th error uses "unknown" as the metric name
+      expect(logger.error).toHaveBeenCalledWith(
+        "Failed to update unknown gauge metric",
+        { error: expect.any(Error) },
+      );
+
+      // Restore original Promise.allSettled
+      (global as any).Promise.allSettled = originalAllSettled;
     });
   });
 });

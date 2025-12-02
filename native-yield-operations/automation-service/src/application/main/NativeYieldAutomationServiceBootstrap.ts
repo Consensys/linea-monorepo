@@ -261,6 +261,7 @@ export class NativeYieldAutomationServiceBootstrap {
       this.consensysStakingGraphQLClient,
       this.metricsUpdater,
       this.yieldManagerContractClient,
+      this.vaultHubContractClient,
       config.contractAddresses.lidoYieldProviderAddress,
     );
 

@@ -43,6 +43,10 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `vault_address`
   LastSettleableLidoFees = "linea_native_yield_automation_service_last_settleable_lido_fees",
 
+  // Gauge representing timestamp from the latest vault report
+  // Single label `vault_address`
+  LastVaultReportTimestamp = "linea_native_yield_automation_service_last_vault_report_timestamp",
+
   // Gauge representing total pending partial withdrawals in gwei
   LastTotalPendingPartialWithdrawalsGwei = "linea_native_yield_automation_service_last_total_pending_partial_withdrawals_gwei",
 

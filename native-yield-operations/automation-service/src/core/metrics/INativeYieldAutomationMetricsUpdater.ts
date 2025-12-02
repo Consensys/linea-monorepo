@@ -22,6 +22,8 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   setLastSettleableLidoFees(vaultAddress: Address, feesAmount: number): void;
 
+  setLastVaultReportTimestamp(vaultAddress: Address, timestamp: number): void;
+
   setYieldReportedCumulative(vaultAddress: Address, amountGwei: number): void;
 
   setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): void;
