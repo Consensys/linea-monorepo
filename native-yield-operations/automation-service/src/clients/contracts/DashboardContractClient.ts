@@ -126,8 +126,13 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
       logs: txReceipt.logs,
     });
 
-    const fee = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.fee ?? 0n;
-    return fee;
+    const event = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase());
+    if (!event) {
+      this.logger.warn("getNodeOperatorFeesPaidFromTxReceipt - FeeDisbursed event not found in receipt");
+      return 0n;
+    }
+
+    return event.args.fee ?? 0n;
   }
 
   /**

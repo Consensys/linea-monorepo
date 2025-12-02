@@ -111,6 +111,31 @@ describe("DashboardContractClient", () => {
     });
   });
 
+  it("returns zero when FeeDisbursed event is present but fee is undefined", () => {
+    const client = createClient();
+    const receipt = buildReceipt([
+      {
+        address: contractAddress,
+        data: "0xdata",
+        topics: ["0xtopic"],
+      },
+    ]);
+
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "FeeDisbursed",
+        args: { fee: undefined },
+        address: contractAddress,
+      } as any,
+    ]);
+
+    const fee = client.getNodeOperatorFeesPaidFromTxReceipt(receipt);
+
+    expect(fee).toBe(0n);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
   it("ignores logs that fail to decode and returns zero when no FeeDisbursed event", () => {
     const client = createClient();
     const receipt = buildReceipt([
@@ -127,6 +152,9 @@ describe("DashboardContractClient", () => {
 
     expect(fee).toBe(0n);
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "getNodeOperatorFeesPaidFromTxReceipt - FeeDisbursed event not found in receipt",
+    );
   });
 
   it("returns zero when logs belong to other contracts or events", () => {
@@ -156,6 +184,9 @@ describe("DashboardContractClient", () => {
 
     expect(fee).toBe(0n);
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "getNodeOperatorFeesPaidFromTxReceipt - FeeDisbursed event not found in receipt",
+    );
   });
 
   it("reads withdrawableValue via read and returns the result", async () => {

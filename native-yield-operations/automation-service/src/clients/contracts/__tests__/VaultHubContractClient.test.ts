@@ -92,6 +92,31 @@ describe("VaultHubContractClient", () => {
     });
   });
 
+  it("returns zero when VaultRebalanced event is present but etherWithdrawn is undefined", () => {
+    const client = createClient();
+    const receipt = buildReceipt([
+      {
+        address: contractAddress,
+        data: "0xdata",
+        topics: ["0xtopic"],
+      },
+    ]);
+
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "VaultRebalanced",
+        args: { etherWithdrawn: undefined },
+        address: contractAddress,
+      } as any,
+    ]);
+
+    const amount = client.getLiabilityPaymentFromTxReceipt(receipt);
+
+    expect(amount).toBe(0n);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
   it("ignores logs that fail to decode and returns zero when no VaultRebalanced event", () => {
     const client = createClient();
     const receipt = buildReceipt([
@@ -108,6 +133,9 @@ describe("VaultHubContractClient", () => {
 
     expect(amount).toBe(0n);
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "getLiabilityPaymentFromTxReceipt - VaultRebalanced event not found in receipt",
+    );
   });
 
   it("returns lido fee payment when LidoFeesSettled event is present", () => {
@@ -138,6 +166,31 @@ describe("VaultHubContractClient", () => {
     });
   });
 
+  it("returns zero when LidoFeesSettled event is present but transferred is undefined", () => {
+    const client = createClient();
+    const receipt = buildReceipt([
+      {
+        address: contractAddress,
+        data: "0xfeed",
+        topics: ["0x01"],
+      },
+    ]);
+
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "LidoFeesSettled",
+        args: { transferred: undefined },
+        address: contractAddress,
+      } as any,
+    ]);
+
+    const amount = client.getLidoFeePaymentFromTxReceipt(receipt);
+
+    expect(amount).toBe(0n);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
   it("returns zero lido fee when logs belong to other contracts or events", () => {
     const client = createClient();
     const receipt = buildReceipt([
@@ -165,6 +218,9 @@ describe("VaultHubContractClient", () => {
 
     expect(amount).toBe(0n);
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "getLidoFeePaymentFromTxReceipt - LidoFeesSettled event not found in receipt",
+    );
   });
 
   describe("settleableLidoFeesValue", () => {

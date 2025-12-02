@@ -62,9 +62,13 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
       logs: txReceipt.logs,
     });
 
-    const etherWithdrawn =
-      logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.etherWithdrawn ?? 0n;
-    return etherWithdrawn;
+    const event = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase());
+    if (!event) {
+      this.logger.warn("getLiabilityPaymentFromTxReceipt - VaultRebalanced event not found in receipt");
+      return 0n;
+    }
+
+    return event.args.etherWithdrawn ?? 0n;
   }
 
   /**
@@ -82,9 +86,13 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
       logs: txReceipt.logs,
     });
 
-    const transferred =
-      logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.transferred ?? 0n;
-    return transferred;
+    const event = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase());
+    if (!event) {
+      this.logger.warn("getLidoFeePaymentFromTxReceipt - LidoFeesSettled event not found in receipt");
+      return 0n;
+    }
+
+    return event.args.transferred ?? 0n;
   }
 
   /**
