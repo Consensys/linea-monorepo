@@ -4,9 +4,12 @@ export interface IBeaconNodeAPIClient {
   getPendingPartialWithdrawals(): Promise<PendingPartialWithdrawal[] | undefined>;
 }
 
-export interface PendingPartialWithdrawalResponse {
+export interface BeaconApiResponse {
   execution_optimistic: boolean;
   finalized: boolean;
+}
+
+export interface PendingPartialWithdrawalResponse extends BeaconApiResponse {
   data: PendingPartialWithdrawal[];
 }
 
