@@ -430,7 +430,7 @@ func (st *ControllerState) handleDeferToLarge(cLog *logrus.Entry, job *Job, stat
 	// From the controller perspective, it has completed its job by renaming and
 	// moving it to the large prover’s queue. Setting activeJob to nil prevents
 	// incorrect requeuing during shutdown, avoiding filesystem errors
-	st.activeJob = nil
+	st.clearActiveJob()
 	st.notifyJobDone()
 }
 
