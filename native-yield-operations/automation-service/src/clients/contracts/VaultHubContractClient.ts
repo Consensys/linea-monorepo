@@ -111,4 +111,21 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
       return undefined;
     }
   }
+
+  /**
+   * Gets the timestamp from the latest report for a given vault.
+   * Reads the latestReport function which returns a Report struct containing totalValue, inOutDelta, and timestamp.
+   *
+   * @param {Address} vault - The vault address to query.
+   * @returns {Promise<bigint>} The timestamp from the latest report, or 0n on error.
+   */
+  async getLatestVaultReportTimestamp(vault: Address): Promise<bigint> {
+    try {
+      const report = await this.contract.read.latestReport([vault]);
+      return BigInt(report.timestamp ?? 0n);
+    } catch (error) {
+      this.logger.error(`getLatestVaultReportTimestamp failed, error=${error}`);
+      return 0n;
+    }
+  }
 }
