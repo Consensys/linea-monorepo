@@ -1,0 +1,76 @@
+name: MetaMask Security Code Scanner
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_call:
+    secrets:
+      SECURITY_SCAN_METRICS_TOKEN:
+        required: false
+      APPSEC_BOT_SLACK_WEBHOOK:
+        required: false
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    uses: MetaMask/action-security-code-scanner/.github/workflows/security-scan.yml@v2
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    with:
+      repo: ${{ github.repository }}
+      scanner-ref: 'v2'
+      paths-ignored: |
+        **/vendor/**
+        **/*_test.go
+        **/testdata/**
+        **/build/**
+        **/target/**
+        **/*.class
+        **/gradle/**
+        **/test/**
+        **/tests/**
+        **/*Test.java
+        **/*Tests.java
+        **/*Test.kt
+        **/*Tests.kt
+        **/*.sol
+        **/contracts/**
+        node_modules
+        **/node_modules/**
+        **/__snapshots__/
+        __snapshots_linux__
+        **/__stories__/
+        .storybook/
+        **/*.test.ts
+        **/*.test.tsx
+        **/*.test.js
+        **/*.test.jsx
+        **/*.spec.ts
+        **/*.spec.tsx
+        **/*.spec.js
+        **/*.spec.jsx
+        **/test*/**
+        **/e2e/**
+      languages-config: |
+        [
+          {
+            "language": "java-kotlin",
+            "build_mode": "manual",
+            "build_command": "./gradlew :coordinator:app:build",
+            "version": "21",
+            "distribution": "temurin"
+          },
+          {
+            "language": "cpp",
+            "ignore": true
+          }
+        ]
+    secrets:
+      project-metrics-token: ${{ secrets.SECURITY_SCAN_METRICS_TOKEN }}
+      slack-webhook: ${{ secrets.APPSEC_BOT_SLACK_WEBHOOK }}
