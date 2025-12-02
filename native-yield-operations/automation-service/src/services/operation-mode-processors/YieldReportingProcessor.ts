@@ -138,18 +138,12 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     );
 
     // Mid-cycle drift check:
-    // If we *started* with EXCESS (STAKE) but external flows flipped us to DEFICIT,
-    // immediately correct with a targeted UNSTAKE amendment.
-    if (initialRebalanceRequirements.rebalanceDirection === RebalanceDirection.STAKE) {
-      if (postReportRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
-        await this._handleUnstakingRebalance(postReportRebalanceRequirements.rebalanceAmount, false);
-      } else {
-        await attempt(
-          this.logger,
-          () => this.yieldManagerContractClient.unpauseStakingIfNotAlready(this.yieldProvider),
-          "_process - unpause staking failed (tolerated)",
-        );
-      }
+    // If external flows flipped us to DEFICIT, immediately correct with a targeted UNSTAKE amendment.
+    if (
+      initialRebalanceRequirements.rebalanceDirection !== RebalanceDirection.UNSTAKE &&
+      postReportRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE
+    ) {
+      await this._handleUnstakingRebalance(postReportRebalanceRequirements.rebalanceAmount, false);
     }
 
     // Beacon-chain withdrawals are last:
@@ -164,6 +158,18 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     if (beaconChainWithdrawalRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
       await this.beaconChainStakingClient.submitWithdrawalRequestsToFulfilAmount(
         beaconChainWithdrawalRequirements.rebalanceAmount,
+      );
+    }
+
+    // If we don't need any ETH on L1MessageService, and there is ETH sitting on StakingVault, unpause staking to allow Deposit Service to stake.
+    if (
+      initialRebalanceRequirements.rebalanceDirection !== RebalanceDirection.UNSTAKE &&
+      postReportRebalanceRequirements.rebalanceDirection !== RebalanceDirection.UNSTAKE
+    ) {
+      await attempt(
+        this.logger,
+        () => this.yieldManagerContractClient.unpauseStakingIfNotAlready(this.yieldProvider),
+        "_process - unpause staking failed (tolerated)",
       );
     }
   }

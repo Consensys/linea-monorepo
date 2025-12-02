@@ -247,7 +247,7 @@ describe("YieldReportingProcessor", () => {
     performanceSpy.mockRestore();
   });
 
-  it("_process - performs an amendment unstake when stake flow flips to deficit mid-cycle", async () => {
+  it("_process - performs an amendment unstake when flow flips to deficit mid-cycle (STAKE→UNSTAKE)", async () => {
     yieldManager.getRebalanceRequirements
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.STAKE, rebalanceAmount: 4n })
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.UNSTAKE, rebalanceAmount: 6n })
@@ -263,6 +263,28 @@ describe("YieldReportingProcessor", () => {
     await processor.process();
 
     expect(amendmentSpy).toHaveBeenCalledWith(6n, false);
+    expect(yieldManager.unpauseStakingIfNotAlready).not.toHaveBeenCalled();
+
+    performanceSpy.mockRestore();
+    amendmentSpy.mockRestore();
+  });
+
+  it("_process - performs an amendment unstake when flow flips to deficit mid-cycle (NONE→UNSTAKE)", async () => {
+    yieldManager.getRebalanceRequirements
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.UNSTAKE, rebalanceAmount: 5n })
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
+
+    const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(250);
+    const processor = createProcessor();
+    const amendmentSpy = jest.spyOn(
+      processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
+      "_handleUnstakingRebalance",
+    );
+
+    await processor.process();
+
+    expect(amendmentSpy).toHaveBeenCalledWith(5n, false);
     expect(yieldManager.unpauseStakingIfNotAlready).not.toHaveBeenCalled();
 
     performanceSpy.mockRestore();
@@ -299,6 +321,38 @@ describe("YieldReportingProcessor", () => {
     await processor.process();
 
     expect(beaconClient.submitWithdrawalRequestsToFulfilAmount).not.toHaveBeenCalled();
+    expect(yieldManager.unpauseStakingIfNotAlready).toHaveBeenCalledWith(yieldProvider);
+  });
+
+  it("_process - unpauses staking when starting and ending in non-deficit state (NONE→NONE)", async () => {
+    yieldManager.getRebalanceRequirements
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
+
+    // Mock _shouldReportYield to return true
+    vaultHubClient.settleableLidoFeesValue.mockResolvedValue(600000000000000000n); // above threshold
+    yieldManager.peekYieldReport.mockResolvedValue({
+      yieldAmount: 2000000000000000000n,
+      outstandingNegativeYield: 0n,
+      yieldProvider,
+    });
+
+    const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(200);
+    const processor = createProcessor();
+    const amendmentSpy = jest.spyOn(
+      processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
+      "_handleUnstakingRebalance",
+    );
+
+    await processor.process();
+
+    expect(amendmentSpy).not.toHaveBeenCalled();
+    expect(yieldManager.unpauseStakingIfNotAlready).toHaveBeenCalledWith(yieldProvider);
+    expect(beaconClient.submitWithdrawalRequestsToFulfilAmount).not.toHaveBeenCalled();
+
+    performanceSpy.mockRestore();
+    amendmentSpy.mockRestore();
   });
 
   it("_handleRebalance submits report when no rebalance is needed", async () => {
