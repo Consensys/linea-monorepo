@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -222,8 +222,9 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 							an ArithmetizationStorageParser
 						*/
 						x := *(&field.Element{}).SetBytes(accountAddress[:])
+						addressBytes := x.Bytes()
 						keysAndBlock := KeysAndBlock{
-							address:    x.Bytes(),
+							address:    types.AsBytes32(addressBytes[:]),
 							storageKey: t.Key,
 							block:      batchNumber,
 						}
@@ -248,8 +249,9 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 							Special case, same motivation and fix as in the case of ReadZeroTraceST
 						*/
 						x := *(&field.Element{}).SetBytes(accountAddress[:])
+						addressBytes := x.Bytes()
 						keysAndBlock := KeysAndBlock{
-							address:    x.Bytes(),
+							address:    types.AsBytes32(addressBytes[:]),
 							storageKey: t.Key,
 							block:      batchNumber,
 						}
@@ -507,8 +509,8 @@ func getOldAndNewAccount(trace any) (old, new types.Account) {
 func getOldAndNewTopRoot(trace any) (old, new types.Bytes32) {
 
 	getTopRoot := func(subRoot types.Bytes32, nextFreeNode int64) types.Bytes32 {
-		hasher := mimc.NewMiMC()
-		types.WriteInt64On32Bytes(hasher, nextFreeNode)
+		hasher := poseidon2.Poseidon2()
+		types.WriteInt64On64Bytes(hasher, nextFreeNode)
 		subRoot.WriteTo(hasher)
 		b32 := hasher.Sum(nil)
 		return types.AsBytes32(b32)
@@ -569,7 +571,7 @@ func getOldAndNewTopRoot(trace any) (old, new types.Bytes32) {
 }
 
 func hash(x io.WriterTo) types.Bytes32 {
-	hasher := mimc.NewMiMC()
+	hasher := poseidon2.Poseidon2()
 	x.WriteTo(hasher)
 	return types.AsBytes32(hasher.Sum(nil))
 }

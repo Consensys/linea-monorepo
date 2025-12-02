@@ -2,6 +2,8 @@ package statesummary
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -9,7 +11,6 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	"math/big"
 )
 
 // initEmptyKeccak initialises emptyKeccak variable from emptyKeccakString.
@@ -125,7 +126,7 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 
 	// createCol is function to quickly create a column
 	createCol := func(name string) ifaces.Column {
-		return comp.InsertCommit(0, ifaces.ColIDf("STATE_SUMMARY_%v", name), size)
+		return comp.InsertCommit(0, ifaces.ColIDf("STATE_SUMMARY_%v", name), size, true)
 	}
 
 	res := Module{
@@ -567,8 +568,8 @@ func (ss *Module) csAccountNew(comp *wizard.CompiledIOP) {
 	}
 
 	for i := range common.NbLimbU256 {
-		mustBeConstantOnSubsegment(ss.Account.Final.MiMCCodeHash[i])
-		mustHaveDefaultWhenNotExists(ss.Account.Final.MiMCCodeHash[i], 0)
+		mustBeConstantOnSubsegment(ss.Account.Final.LineaCodeHash[i])
+		mustHaveDefaultWhenNotExists(ss.Account.Final.LineaCodeHash[i], 0)
 
 		comp.InsertGlobal(
 			0,
@@ -672,10 +673,10 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 	}
 
 	for i := range common.NbLimbU256 {
-		mustBeConstantOnSubsegment(ss.Account.Initial.MiMCCodeHash[i], -1)
+		mustBeConstantOnSubsegment(ss.Account.Initial.LineaCodeHash[i], -1)
 		mustBeConstantOnSubsegment(ss.Account.Initial.StorageRoot[i], i)
 
-		mustHaveDefaultWhenNotExists(ss.Account.Initial.MiMCCodeHash[i], 0, -1)
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.LineaCodeHash[i], 0, -1)
 		mustHaveDefaultWhenNotExists(ss.Account.Initial.StorageRoot[i], 0, i)
 	}
 

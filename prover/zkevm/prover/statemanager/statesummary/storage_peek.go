@@ -4,7 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
-	dedicatedmimc "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
+	dedicatedposeidon2 "github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -24,18 +24,18 @@ type StoragePeek struct {
 
 	// OldValueIsZero and NewValueIsZero are indicator columns set to 1 when the
 	// old/new value is set to zero and 0 otherwise.
-	OldValueIsZero, NewValueIsZero [common.NbLimbU256]ifaces.Column
+	OldValueIsZero, NewValueIsZero [dedicatedposeidon2.BlockSize]ifaces.Column
 
 	// ComputeOldValueIsZero and ComputeNewValueIsZero are respectively
 	// responsible for assigning OldValueIsZero and NewValueIsZero.
-	ComputeOldValueIsZero, ComputeNewValueIsZero [common.NbLimbU256]wizard.ProverAction
+	ComputeOldValueIsZero, ComputeNewValueIsZero [dedicatedposeidon2.BlockSize]wizard.ProverAction
 
 	// KeyLimbs represents the key in limb decomposition.
-	KeyLimbs [common.NbLimbU256]byte32cmp.LimbColumns
+	KeyLimbs [dedicatedposeidon2.BlockSize]byte32cmp.LimbColumns
 
 	// ComputeKeyLimbs and ComputeKeyLimbLo are responsible for computing the
 	// "hi" and the "lo" limbs of the KeyLimbs.
-	ComputeKeyLimbs [common.NbLimbU256]wizard.ProverAction
+	ComputeKeyLimbs [dedicatedposeidon2.BlockSize]wizard.ProverAction
 
 	// KeyIncreased is a column indicating whether the current storage
 	// key is strictly greater than the previous one.
@@ -47,24 +47,24 @@ type StoragePeek struct {
 	// OldValueHash and NewValueHash store the hash of the storage
 	// peek. It is not passed to the accumulator statement directly as we have
 	// special handling for the case where the storage value is zero.
-	OldValueHash, NewValueHash [common.NbLimbU256]ifaces.Column
+	OldValueHash, NewValueHash [dedicatedposeidon2.BlockSize]ifaces.Column
 
 	// ComputeOldValueHash and ComputeNewStorageValue hash compute
 	// respectively OldStorageValueHash and NewStorageValueHash
-	ComputeOldValueHash, ComputeNewValueHash *dedicatedmimc.HashingCtx
+	ComputeOldValueHash, ComputeNewValueHash *dedicatedposeidon2.HashingCtx
 
 	// KeyHash stores the hash of the storage keys
-	KeyHash [common.NbLimbU256]ifaces.Column
+	KeyHash [dedicatedposeidon2.BlockSize]ifaces.Column
 
 	// ComputeStorageKeyHash computes the KeyHash column.
-	ComputeKeyHash *dedicatedmimc.HashingCtx
+	ComputeKeyHash *dedicatedposeidon2.HashingCtx
 
 	// OldAndNewAreEqual is an indicator column telling whether the old and the
 	// new storage value are equal with a 1 and 0 else.
-	OldAndNewValuesAreEqual [common.NbLimbU256]ifaces.Column
+	OldAndNewValuesAreEqual [dedicatedposeidon2.BlockSize]ifaces.Column
 
 	// ComputeOldAndNewValuesAreEqual computes OldAndNewValuesAreEqual
-	ComputeOldAndNewValuesAreEqual [common.NbLimbU256]wizard.ProverAction
+	ComputeOldAndNewValuesAreEqual [dedicatedposeidon2.BlockSize]wizard.ProverAction
 }
 
 // newStoragePeek returns a new StoragePeek object with initialized and
@@ -76,46 +76,45 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 		NewValue: common.NewHiLoColumns(comp, size, name+"_NEW_VALUE"),
 	}
 
-	res.ComputeOldValueHash = dedicatedmimc.HashOf(
+	var oldValueCols []ifaces.Column
+	oldValueCols = append(oldValueCols, res.OldValue.Lo[:]...)
+	oldValueCols = append(oldValueCols, res.OldValue.Hi[:]...)
+	res.ComputeOldValueHash = dedicatedposeidon2.HashOf(
 		comp,
-		[][]ifaces.Column{
-			res.OldValue.Lo[:],
-			res.OldValue.Hi[:],
-		},
+		dedicatedposeidon2.SplitBy(oldValueCols),
 	)
 
 	res.OldValueHash = res.ComputeOldValueHash.Result()
 
-	panic("add Poseidon query here")
-	res.ComputeNewValueHash = dedicatedmimc.HashOf(
+	var newValueCols []ifaces.Column
+	newValueCols = append(newValueCols, res.NewValue.Lo[:]...)
+	newValueCols = append(newValueCols, res.NewValue.Hi[:]...)
+	res.ComputeNewValueHash = dedicatedposeidon2.HashOf(
 		comp,
-		[][]ifaces.Column{
-			res.NewValue.Lo[:],
-			res.NewValue.Hi[:],
-		},
+		dedicatedposeidon2.SplitBy(newValueCols),
 	)
 
 	res.NewValueHash = res.ComputeNewValueHash.Result()
 
-	for i := range common.NbLimbU256 {
+	for i := range dedicatedposeidon2.BlockSize {
 		res.OldAndNewValuesAreEqual[i], res.ComputeOldAndNewValuesAreEqual[i] = dedicated.IsZero(
 			comp,
 			sym.Sub(res.OldValueHash[i], res.NewValueHash[i]),
 		).GetColumnAndProverAction()
 	}
 
-	res.ComputeKeyHash = dedicatedmimc.HashOf(
+	var keyCols []ifaces.Column
+	keyCols = append(keyCols, res.Key.Lo[:]...)
+	keyCols = append(keyCols, res.Key.Hi[:]...)
+	res.ComputeKeyHash = dedicatedposeidon2.HashOf(
 		comp,
-		[][]ifaces.Column{
-			res.Key.Lo[:],
-			res.Key.Hi[:],
-		},
+		dedicatedposeidon2.SplitBy(keyCols),
 	)
 
 	res.KeyHash = res.ComputeKeyHash.Result()
 	zeroStorageHash := hashOfZeroStorage()
 
-	for i := range common.NbLimbU256 {
+	for i := range dedicatedposeidon2.BlockSize {
 		res.OldValueIsZero[i], res.ComputeOldValueIsZero[i] = dedicated.IsZero(
 			comp,
 			sym.Sub(res.OldValueHash[i], zeroStorageHash[i]),
@@ -129,7 +128,7 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 
 	keyLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	shiftedLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
-	for i := range common.NbLimbU256 {
+	for i := range dedicatedposeidon2.BlockSize {
 		res.KeyLimbs[i], res.ComputeKeyLimbs[i] = byte32cmp.Decompose(comp, res.KeyHash[i], 1, common.LimbBytes*8)
 
 		keyLimbColumbs.Limbs = append(keyLimbColumbs.Limbs, res.KeyLimbs[i].Limbs...)

@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -45,6 +46,7 @@ func NewStateDiff(comp *wizard.CompiledIOP, size int, moduleName, name string) S
 			0,
 			ifaces.ColIDf("%v_%v_%v", moduleName, name, subName),
 			size,
+			true,
 		)
 	}
 

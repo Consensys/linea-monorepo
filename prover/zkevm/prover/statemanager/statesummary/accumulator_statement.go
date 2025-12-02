@@ -71,6 +71,7 @@ func newAccumulatorStatement(comp *wizard.CompiledIOP, size int, name string) Ac
 			0,
 			ifaces.ColIDf("STATE_SUMMARY_%v_%v", name, subName),
 			size,
+			true,
 		)
 	}
 

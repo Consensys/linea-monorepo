@@ -4,6 +4,7 @@ import (
 	"hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -44,5 +45,13 @@ func MiMC() Hasher {
 	return Hasher{
 		Hash:     mimc.NewMiMC(),
 		maxValue: HashToBytes32(maxVal), // TODO@yao: what's the maxValue of MiMC hasher
+	}
+}
+
+// Create a new Poseidon2 hasher
+func Poseidon2() Hasher {
+	return Hasher{
+		Hash:     poseidon2.Poseidon2(),
+		maxValue: poseidon2.Poseidon2().MaxBytes32(),
 	}
 }

@@ -28,9 +28,9 @@ type linearHashCtx struct {
 
 	// Output column, which containing the result each
 	// individual hash.
-	ExpectedHash [blockSize]ifaces.Column
+	ExpectedHash [BlockSize]ifaces.Column
 	// Column describing the hashing of each chunk
-	ToHash, OldState, NewState, NewStateClean [blockSize]ifaces.Column
+	ToHash, OldState, NewState, NewStateClean [BlockSize]ifaces.Column
 
 	// Name of the optional columns
 
@@ -76,9 +76,9 @@ func CheckLinearHash(
 	comp *wizard.CompiledIOP,
 	name string,
 	colChunks int,
-	tohash [blockSize]ifaces.Column,
+	tohash [BlockSize]ifaces.Column,
 	numHash int,
-	expectedHashes [blockSize]ifaces.Column,
+	expectedHashes [BlockSize]ifaces.Column,
 ) {
 
 	// Initialize the context
@@ -98,7 +98,7 @@ func CheckLinearHash(
 	ctx.HashingCols()
 
 	if ctx.IsFullyActive {
-		for i := 0; i < blockSize; i++ {
+		for i := 0; i < BlockSize; i++ {
 			selector.CheckSubsample(
 				comp,
 				prefixWithLinearHash(comp, name, "RES_EXTRACTION_%v", i),
@@ -108,7 +108,7 @@ func CheckLinearHash(
 			)
 		}
 	} else {
-		for i := 0; i < blockSize; i++ {
+		for i := 0; i < BlockSize; i++ {
 			ctx.Comp.InsertInclusion(
 				ctx.Round,
 				ifaces.QueryID(prefixWithLinearHash(comp, name, "RESULT_CHECK_%v_%v", tohash[i].GetColID(), i)),
@@ -127,15 +127,15 @@ func prefixWithLinearHash(comp *wizard.CompiledIOP, name, msg string, args ...an
 
 type LinearHashProverAction struct {
 	Ctx             *linearHashCtx
-	OldStateID      [blockSize]ifaces.ColID
-	NewStateID      [blockSize]ifaces.ColID
-	NewStateCleanID [blockSize]ifaces.ColID
+	OldStateID      [BlockSize]ifaces.ColID
+	NewStateID      [BlockSize]ifaces.ColID
+	NewStateCleanID [BlockSize]ifaces.ColID
 }
 
 func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
-	var blocksWit [blockSize]smartvectors.SmartVector
-	var olds, news [blockSize][]field.Element
-	for i := 0; i < blockSize; i++ {
+	var blocksWit [BlockSize]smartvectors.SmartVector
+	var olds, news [BlockSize][]field.Element
+	for i := 0; i < BlockSize; i++ {
 		blocksWit[i] = a.Ctx.ToHash[i].GetColAssignment(run)
 
 		olds[i] = make([]field.Element, a.Ctx.ColChunks*a.Ctx.NumHash)
@@ -145,14 +145,14 @@ func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(a.Ctx.NumHash, func(start, stop int) {
 		for hashID := start; hashID < stop; hashID++ {
 			old := zeroBlock
-			var currentBlock [blockSize]field.Element
+			var currentBlock [BlockSize]field.Element
 			for i := 0; i < a.Ctx.ColChunks; i++ {
 				pos := hashID*a.Ctx.ColChunks + i
-				for j := 0; j < blockSize; j++ {
+				for j := 0; j < BlockSize; j++ {
 					currentBlock[j] = blocksWit[j].Get(pos)
 				}
 				new := vortex.CompressPoseidon2(old, currentBlock)
-				for j := 0; j < blockSize; j++ {
+				for j := 0; j < BlockSize; j++ {
 					olds[j][pos] = old[j]
 					news[j][pos] = new[j]
 				}
@@ -165,8 +165,8 @@ func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
 
 	padNew := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
 
-	var oldSV, newSV, newCleanSV [blockSize]smartvectors.SmartVector
-	for i := 0; i < blockSize; i++ {
+	var oldSV, newSV, newCleanSV [BlockSize]smartvectors.SmartVector
+	for i := 0; i < BlockSize; i++ {
 		oldSV[i] = smartvectors.RightZeroPadded(olds[i], a.Ctx.ToHash[i].Size())
 		newSV[i] = smartvectors.RightPadded(news[i], padNew[i], a.Ctx.ToHash[i].Size())
 		newCleanSV[i] = smartvectors.RightZeroPadded(vector.DeepCopy(news[i]), a.Ctx.ToHash[i].Size())
@@ -180,7 +180,7 @@ func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
 // Declares assign and constraints the columns OldStates and NewStates
 func (ctx *linearHashCtx) HashingCols() {
 
-	for i := 0; i < blockSize; i++ {
+	for i := 0; i < BlockSize; i++ {
 		// Registers the old states columns
 		ctx.OldState[i] = ctx.Comp.InsertCommit(
 			ctx.Round,
@@ -203,9 +203,9 @@ func (ctx *linearHashCtx) HashingCols() {
 			true,
 		)
 	}
-	var olfStateID, newStateID, newStateCleanID [blockSize]ifaces.ColID
+	var olfStateID, newStateID, newStateCleanID [BlockSize]ifaces.ColID
 
-	for i := 0; i < blockSize; i++ {
+	for i := 0; i < BlockSize; i++ {
 
 		olfStateID[i] = ctx.OldState[i].GetColID()
 		newStateID[i] = ctx.NewState[i].GetColID()
@@ -223,7 +223,7 @@ func (ctx *linearHashCtx) HashingCols() {
 	//
 	// Propagation of the state within the chunks
 	//
-	for i := 0; i < blockSize; i++ {
+	for i := 0; i < BlockSize; i++ {
 		expr := ifaces.ColumnAsVariable(ctx.NewState[i]).
 			Mul(ctx.IsActiveVar()).
 			Mul(ctx.IsNotEndOfHashVar()).
@@ -339,19 +339,19 @@ func (ctx *linearHashCtx) IsNotEndOfHashVar() *symbolic.Expression {
 
 // PrepareToHashWitness pads a segment to the full chunked size and reshapes it
 // into blockSize columns for hashing.
-func PrepareToHashWitness(th [blockSize][]field.Element, segment []field.Element, start int) [blockSize][]field.Element {
+func PrepareToHashWitness(th [BlockSize][]field.Element, segment []field.Element, start int) [BlockSize][]field.Element {
 	colSize := len(segment)
-	for j := 0; j < blockSize; j++ {
+	for j := 0; j < BlockSize; j++ {
 		// Allocate segments to TOHASH columns
-		completeChunks := colSize / blockSize
+		completeChunks := colSize / BlockSize
 		for k := 0; k < completeChunks; k++ {
-			th[j][k+start] = segment[k*blockSize+j]
+			th[j][k+start] = segment[k*BlockSize+j]
 		}
 
-		lastChunkElements := colSize % blockSize
+		lastChunkElements := colSize % BlockSize
 		lastChunkPadding := 0
 		if lastChunkElements > 0 {
-			lastChunkPadding = blockSize - lastChunkElements
+			lastChunkPadding = BlockSize - lastChunkElements
 
 			k := completeChunks
 			if j < lastChunkPadding {
@@ -359,7 +359,7 @@ func PrepareToHashWitness(th [blockSize][]field.Element, segment []field.Element
 				th[j][k+start] = field.Zero()
 			} else {
 				// Actual data
-				actualIdx := k*blockSize + (j - lastChunkPadding)
+				actualIdx := k*BlockSize + (j - lastChunkPadding)
 				th[j][k+start] = segment[actualIdx]
 			}
 		}
