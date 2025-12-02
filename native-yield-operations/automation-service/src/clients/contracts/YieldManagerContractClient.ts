@@ -455,9 +455,16 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       maxStakingRebalanceAmountWei: this.maxStakingRebalanceAmountWei,
     });
 
+    if (totalSystemBalance === 0n) {
+      return {
+        rebalanceDirection: RebalanceDirection.NONE,
+        rebalanceAmount: 0n,
+      };
+    }
+
     // Get Lido fees + node operator fees + LST liability
     const systemObligations =
-      peekedYieldReportYieldAmount >= 0
+      peekedYieldReportYieldAmount > 0n
         ? dashboardTotalValue - peekedYieldReportYieldAmount - userFunds
         : peekedYieldReportOutstandingNegativeYield + dashboardTotalValue - userFunds;
     this.logger.debug(`_getRebalanceRequirements - systemObligations=${systemObligations}`);
@@ -469,9 +476,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     );
 
     const effectiveTargetWithdrawalReserveExcludingObligations =
-      totalSystemBalance === 0n
-        ? 0n
-        : (effectiveTargetWithdrawalReserve * totalSystemBalanceExcludingObligations) / totalSystemBalance;
+      (effectiveTargetWithdrawalReserve * totalSystemBalanceExcludingObligations) / totalSystemBalance;
     this.logger.debug(
       `_getRebalanceRequirements - effectiveTargetWithdrawalReserveExcludingObligations=${effectiveTargetWithdrawalReserveExcludingObligations}`,
     );
