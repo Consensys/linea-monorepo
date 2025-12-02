@@ -42,6 +42,7 @@ services:
     environment:
       - JAVA_OPTS=-Xmx2g
       - LOG4J_CONFIGURATION_FILE=/var/lib/besu/log4j.xml
+      - NETWORK=linea-mainnet
     command:
       - --config-file=/var/lib/besu/linea-besu.config.toml
       - --Xdns-enabled=true
