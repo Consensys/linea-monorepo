@@ -468,7 +468,7 @@ func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Ent
 
 	// Upon failure for GL/LPP/Conglomeration jobs - replace the partial success bootstrap suffix
 	// with the failure suffix in the cfg.Execution.DirDone path
-	if job.Def.Name == jobNameGL || job.Def.Name == jobNameLPP || job.Def.Name == jobNameConglomeration {
+	if strings.HasPrefix(job.Def.Name, jobNameGL) || strings.HasPrefix(job.Def.Name, jobNameLPP) || job.Def.Name == jobNameConglomeration {
 		failSuffix := fmt.Sprintf("failure.%v_%v", config.FailSuffix, status.ExitCode)
 		finalizeExecLimitlessStatus(cfg, cLog, job, failSuffix)
 	}
