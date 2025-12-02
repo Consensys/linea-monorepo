@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -14,7 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-const BlockSize = poseidon2.BlockSize
+const BlockSize = poseidon2_koalabear.BlockSize
 
 // HashingCtx is the wizard context responsible for hashing a table row-wise.
 // It implements the [wizard.ProverAction] interface and is used to assign the
@@ -165,10 +165,10 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 }
 
 // SplitBy splits the input slice into subarrays of size poseidon2.BlockSize. If the input is not divisible by the size, it appends constant verifier columns to the input to make it divisible by the size.
-func SplitBy(input []ifaces.Column) [][poseidon2.BlockSize]ifaces.Column {
+func SplitBy(input []ifaces.Column) [][poseidon2_koalabear.BlockSize]ifaces.Column {
 
 	var (
-		n = len(input) % poseidon2.BlockSize
+		n = len(input) % poseidon2_koalabear.BlockSize
 	)
 
 	if n != 0 {
@@ -176,16 +176,16 @@ func SplitBy(input []ifaces.Column) [][poseidon2.BlockSize]ifaces.Column {
 		verifCol := verifiercol.NewConstantCol(field.Zero(), input[0].Size(), "CONSTANT_COLUMN")
 
 		// append constant verifier columns to the input to make it divisible by size
-		for i := 0; i < poseidon2.BlockSize-n; i++ {
+		for i := 0; i < poseidon2_koalabear.BlockSize-n; i++ {
 			input = append(input, verifCol)
 		}
 	}
-	m := len(input) / poseidon2.BlockSize
+	m := len(input) / poseidon2_koalabear.BlockSize
 
-	result := make([][poseidon2.BlockSize]ifaces.Column, m)
+	result := make([][poseidon2_koalabear.BlockSize]ifaces.Column, m)
 	for i := 0; i < n; i++ {
-		for j := 0; j < poseidon2.BlockSize; j++ {
-			result[i][j] = input[i*poseidon2.BlockSize+j]
+		for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
+			result[i][j] = input[i*poseidon2_koalabear.BlockSize+j]
 		}
 	}
 	return result
