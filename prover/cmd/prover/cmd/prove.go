@@ -185,7 +185,7 @@ func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
 		// Rename the original Bootstrap file with inprogress appended by localID so that we know
 		// which pod is going to deal with the conglomeration job
 		if err := os.Rename(oldFile, newFile); err != nil {
-			logrus.Printf("Failed to rename file: %v\n", err)
+			logrus.Warnf("Failed to rename file: %v\n", err)
 		} else {
 			logrus.Printf("Renamed file: %s -> %s\n", oldFile, newFile)
 			req.BootstrapRequestDoneFile = newFile
