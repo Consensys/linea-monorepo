@@ -205,6 +205,10 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// Reset retry counter and claim the job
 			numRetrySoFar = 0
 
+			// Reset peer-abort flag now that we are about to start this job
+			// This ensures stale abort signals from earlier jobs do not misclassify this one.
+			peerAbortDetected.Store(false)
+
 			// Run the command (potentially retrying in large mode) using jobCtx so it can be
 			// cancelled independently by SIGUSR2/peer abort.
 			status := executor.Run(jobCtx, job)
