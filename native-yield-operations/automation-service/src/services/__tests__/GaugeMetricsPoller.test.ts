@@ -106,6 +106,7 @@ describe("GaugeMetricsPoller", () => {
       await poller.poll();
 
       expect(yieldManagerContractClient.getYieldProviderData).toHaveBeenCalledWith(yieldProvider);
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledTimes(1);
       expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalledWith(vaultAddress, 1000);
     });
@@ -116,6 +117,7 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledTimes(1);
       expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
       expect(vaultHubContractClient.getLatestVaultReportTimestamp).toHaveBeenCalledWith(vaultAddress);
       expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalledWith(vaultAddress, Number(expectedTimestamp));
@@ -179,7 +181,7 @@ describe("GaugeMetricsPoller", () => {
       );
     });
 
-    it("updates all three metrics in parallel", async () => {
+    it("updates all three metrics in parallel and fetches vault address only once", async () => {
       const validators: ValidatorBalanceWithPendingWithdrawal[] = [
         {
           balance: 32n,
@@ -213,6 +215,9 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
+      // Verify vault address is only fetched once, even though it's used by two metrics
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledTimes(1);
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(2);
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalledWith(vaultAddress, 500);
       expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalledWith(vaultAddress, Number(expectedTimestamp));
@@ -271,6 +276,29 @@ describe("GaugeMetricsPoller", () => {
         "Failed to update last vault report timestamp gauge metric",
         { error: expect.any(Error) },
       );
+    });
+
+    it("handles vault address fetch failure gracefully", async () => {
+      // Mock vault address fetch to fail
+      yieldManagerContractClient.getLidoStakingVaultAddress.mockRejectedValue(new Error("Vault address fetch failed"));
+
+      await poller.poll();
+
+      // Verify vault address fetch was attempted
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledTimes(1);
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
+
+      // Verify error was logged
+      expect(logger.error).toHaveBeenCalledWith("Failed to fetch vault address, skipping vault-dependent metrics", {
+        error: expect.any(Error),
+      });
+
+      // Verify vault-dependent metrics were not called
+      expect(metricsUpdater.setYieldReportedCumulative).not.toHaveBeenCalled();
+      expect(metricsUpdater.setLastVaultReportTimestamp).not.toHaveBeenCalled();
+
+      // Verify other metrics still work
+      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending).toHaveBeenCalled();
     });
 
     it("handles out of bounds index by using unknown metric name", async () => {

@@ -39,13 +39,28 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    * @returns {Promise<void>} A promise that resolves when gauge metrics are updated.
    */
   async poll(): Promise<void> {
+    // Fetch vault address once before parallel execution
+    // If vault fetch fails, we'll skip vault-dependent metrics but still update others
+    let vault: Address | undefined;
+    try {
+      vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
+    } catch (error) {
+      this.logger.error("Failed to fetch vault address, skipping vault-dependent metrics", { error });
+    }
+
     // Update metrics in parallel for efficiency
     // Use Promise.allSettled to ensure all updates are attempted even if one fails
-    const results = await Promise.allSettled([
-      this._updatePendingPartialWithdrawalsGauge(),
-      this._updateYieldReportedCumulativeGauge(),
-      this._updateLastVaultReportTimestampGauge(),
-    ]);
+    const updatePromises: Promise<void>[] = [this._updatePendingPartialWithdrawalsGauge()];
+
+    // Only add vault-dependent metrics if we successfully fetched the vault address
+    if (vault !== undefined) {
+      updatePromises.push(
+        this._updateYieldReportedCumulativeGauge(vault),
+        this._updateLastVaultReportTimestampGauge(vault),
+      );
+    }
+
+    const results = await Promise.allSettled(updatePromises);
 
     // Log any failures
     results.forEach((result, index) => {
@@ -76,21 +91,21 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
   /**
    * Updates the cumulative yield reported gauge metric from the YieldManager contract.
    *
+   * @param {Address} vault - The vault address to use for the metric.
    * @returns {Promise<void>} A promise that resolves when the gauge is updated.
    */
-  private async _updateYieldReportedCumulativeGauge(): Promise<void> {
+  private async _updateYieldReportedCumulativeGauge(vault: Address): Promise<void> {
     const yieldProviderData = await this.yieldManagerContractClient.getYieldProviderData(this.yieldProvider);
-    const vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
     this.metricsUpdater.setYieldReportedCumulative(vault, weiToGweiNumber(yieldProviderData.yieldReportedCumulative));
   }
 
   /**
    * Updates the last vault report timestamp gauge metric from the VaultHub contract.
    *
+   * @param {Address} vault - The vault address to use for the metric.
    * @returns {Promise<void>} A promise that resolves when the gauge is updated.
    */
-  private async _updateLastVaultReportTimestampGauge(): Promise<void> {
-    const vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
+  private async _updateLastVaultReportTimestampGauge(vault: Address): Promise<void> {
     const timestamp = await this.vaultHubContractClient.getLatestVaultReportTimestamp(vault);
     this.metricsUpdater.setLastVaultReportTimestamp(vault, Number(timestamp));
   }
