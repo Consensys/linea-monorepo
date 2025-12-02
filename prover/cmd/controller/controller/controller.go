@@ -678,10 +678,9 @@ func rmTmpArtificats(cLog *logrus.Entry, job *Job) {
 	cLog.Infof("Cleanup enabled — pruning only successful transient sub-proof/witness artifacts for %d-%d", job.Start, job.End)
 
 	patternBase := fmt.Sprintf("%d-%d-*%s*", job.Start, job.End, config.SuccessSuffix)
-	cleanupDirs := []string{randomnessDoneDir}
+	cleanupDirs := []string{metadataDoneDir, randomnessDoneDir}
 	cleanupDirs = append(cleanupDirs, witnessDoneDirs...)
 	cleanupDirs = append(cleanupDirs, subproofDoneDirs...)
-	cleanupDirs = append(cleanupDirs, metadataDoneDir)
 
 	for _, dir := range cleanupDirs {
 		pattern := filepath.Join(dir, patternBase)
