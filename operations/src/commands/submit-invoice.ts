@@ -32,7 +32,7 @@ import { validateUrl } from "../utils/common/validation.js";
 import { address, hexString } from "../utils/common/custom-flags.js";
 import { awsCostsApiFilters } from "../utils/submit-invoice/custom-flags.js";
 import { fetchEthereumPrice } from "../utils/common/coingecko.js";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import fs from "fs";
 
 export default class SubmitInvoice extends Command {
   static examples = [
@@ -603,13 +603,6 @@ export default class SubmitInvoice extends Command {
     const endDateStr = formatInTimeZone(currentDate, "UTC", "yyyy-MM-dd");
     const awsEndDateStr = formatInTimeZone(addDays(currentDate, 1), "UTC", "yyyy-MM-dd");
 
-    const outputFilePath = `${awsHistoricalDataOutputPath}/${endDateStr}-costs-report.csv`;
-
-    if (existsSync(outputFilePath)) {
-      this.log(`AWS costs historical data file already exists: ${outputFilePath}. Skipping fetch.`);
-      return;
-    }
-
     this.log(`Fetching AWS costs historical data. startDate=${startDateStr} endDate=${endDateStr}`);
 
     if (!awsCostsApiFilters.Metrics || awsCostsApiFilters.Metrics.length !== 1) {
@@ -638,11 +631,30 @@ export default class SubmitInvoice extends Command {
     const parser = new Parser();
     const csv = parser.parse(formattedResultsByTime);
 
-    if (!existsSync(awsHistoricalDataOutputPath)) {
-      mkdirSync(awsHistoricalDataOutputPath, { recursive: true });
-    }
+    const outputFilePath = `${awsHistoricalDataOutputPath}/${endDateStr}-costs-report.csv`;
 
-    writeFileSync(outputFilePath, csv);
+    let fd: number | undefined = undefined;
+    try {
+      if (!fs.existsSync(awsHistoricalDataOutputPath)) {
+        fs.mkdirSync(awsHistoricalDataOutputPath, { recursive: true });
+      }
+
+      fd = fs.openSync(outputFilePath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY, 0o600);
+      fs.writeFileSync(fd, csv, "utf8");
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "EEXIST") {
+        this.warn(`AWS costs historical data file already exists: ${outputFilePath}.`);
+      } else {
+        this.warn(
+          `Failed to save AWS costs historical data to file: ${outputFilePath}. error=${(error as Error).message}`,
+        );
+      }
+      return;
+    } finally {
+      if (fd !== undefined) {
+        fs.closeSync(fd);
+      }
+    }
 
     this.log(`AWS costs historical data saved to file: ${outputFilePath}`);
   }
