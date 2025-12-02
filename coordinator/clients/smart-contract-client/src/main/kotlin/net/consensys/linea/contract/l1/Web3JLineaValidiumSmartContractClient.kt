@@ -81,11 +81,11 @@ class Web3JLineaValidiumSmartContractClient(
     return getVersion()
       .thenCompose { version ->
         val function = Web3JLineaValidiumFunctionBuilders.buildFinalizeBlocksFunction(
-          version,
-          aggregation,
-          aggregationLastBlob,
-          parentL1RollingHash,
-          parentL1RollingHashMessageNumber,
+          version = version,
+          aggregationProof = aggregation,
+          aggregationLastBlob = aggregationLastBlob,
+          parentL1RollingHash = parentL1RollingHash,
+          parentL1RollingHashMessageNumber = parentL1RollingHashMessageNumber,
         )
         web3jContractHelper
           .sendTransactionAsync(function, BigInteger.ZERO, gasPriceCaps)

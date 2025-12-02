@@ -292,6 +292,7 @@ class Web3JContractAsyncHelper(
       }
   }
 
+  @Synchronized
   fun sendShnarfDataTransactionAndGetTxHash(
     function: Function,
     gasPriceCaps: GasPriceCaps?,
