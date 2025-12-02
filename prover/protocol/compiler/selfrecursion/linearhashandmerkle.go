@@ -46,7 +46,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	sisLeavesSize := utils.NextPowerOfTwo(sisLeavesSizeUnpadded)
 	// sis hash is also the preimage of poseidon2 hash, poseidon2 hash takes every 8 elements as input at a time
 	// sisHashColChunks stores the number of poseidon2 hashes computed for one sis hash column
-	sisHashColSize := ctx.VortexCtx.SisKey.OutputSize()
+	sisHashColSize := ctx.VortexCtx.VortexKoalaParams.Key.OutputSize()
 	sisHashColChunks := (sisHashColSize + blockSize - 1) / blockSize
 	sisHashTotalChunksUnpadded := sisHashColChunks * sisLeavesSizeUnpadded
 	sisHashTotalChunks := utils.NextPowerOfTwo(sisHashTotalChunksUnpadded)
@@ -389,12 +389,12 @@ type linearHashMerkleProverActionBuilder struct {
 // linearHashMerkleProverActionBuilder
 func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *linearHashMerkleProverActionBuilder {
 	lmp := linearHashMerkleProverActionBuilder{}
-	lmp.ConcatSisHashQ = make([]field.Element, a.SisLeavesSizeUnpadded*a.Ctx.VortexCtx.SisKey.OutputSize())
+	lmp.ConcatSisHashQ = make([]field.Element, a.SisLeavesSizeUnpadded*a.Ctx.VortexCtx.VortexKoalaParams.Key.OutputSize())
 	lmp.MerklePositions = make([]field.Element, 0, a.LeavesSizeUnpadded)
 	lmp.MerkleSisPositions = make([]field.Element, 0, a.SisLeavesSizeUnpadded)
 	lmp.MerkleNonSisPositions = make([]field.Element, 0, a.NonSisRoundLeavesSizeUnpadded)
 	lmp.NonSisHashPreimages = make([][]field.Element, 0, a.NumRoundNonSis)
-	lmp.SisHashSize = a.Ctx.VortexCtx.SisKey.OutputSize()
+	lmp.SisHashSize = a.Ctx.VortexCtx.VortexKoalaParams.Key.OutputSize()
 	lmp.NumOpenedCol = a.Ctx.VortexCtx.NbColsToOpen()
 	lmp.TotalNumRounds = a.Ctx.VortexCtx.MaxCommittedRound
 	lmp.CommittedRound = 0

@@ -215,7 +215,7 @@ type Ctx struct {
 
 	// The SIS hashing parameters
 	SisParams *ringsis.Params
-	SisKey    *ringsis.Key
+
 	// Optional parameter
 	NumOpenedCol int
 
