@@ -21,5 +21,5 @@ import net.consensys.linea.plugins.LineaOptionsConfiguration;
 /** The Linea tracer configuration private to this repo. */
 @Builder(toBuilder = true)
 public record TracesEndpointConfiguration(
-    String tracesOutputPath, boolean caching, boolean traceCompression)
+    String tracesOutputPath, boolean caching, boolean traceCompression, int traceFileVersion)
     implements LineaOptionsConfiguration {}

@@ -39,8 +39,7 @@ public class TraceWriter {
   public TraceWriter(Path tracesOutputDirPath, boolean traceCompression) {
     this.tracesOutputDirPath = tracesOutputDirPath;
     // Configure trace file extensions.  These provide indication during trace generation as to
-    // whether compression
-    // should be used, or not.
+    // whether compression should be used, or not.
     if (traceCompression) {
       traceFileExtension = ".lt.gz";
       tempTraceFileExtension = ".lt.tmp.gz";

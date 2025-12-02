@@ -31,6 +31,9 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
   static final String CONFLATED_TRACE_GENERATION_TRACE_COMPRESSION =
       "--plugin-linea-conflated-trace-generation-trace-compression";
 
+  static final String CONFLATED_TRACE_GENERATION_TRACE_FILE_VERSION =
+      "--plugin-linea-conflated-trace-generation-trace-file-version";
+
   @CommandLine.Option(
       required = true,
       names = {CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH},
@@ -53,6 +56,13 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
       description = "Specify whether or not to employ trace compression")
   private boolean traceCompression = true;
 
+  @CommandLine.Option(
+      names = {CONFLATED_TRACE_GENERATION_TRACE_FILE_VERSION},
+      hidden = true,
+      paramLabel = "<INT>",
+      description = "Specify major version of trace file format to use (e.g. v1 or v2)")
+  private int traceFileVersion = 2;
+
   private TracesEndpointCliOptions() {}
 
   /**
@@ -74,6 +84,7 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
     final TracesEndpointCliOptions options = create();
     options.tracesOutputPath = config.tracesOutputPath();
     options.traceCompression = config.traceCompression();
+    options.traceFileVersion = config.traceFileVersion();
     options.caching = config.caching();
     return options;
   }
@@ -88,6 +99,7 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
     return TracesEndpointConfiguration.builder()
         .tracesOutputPath(tracesOutputPath)
         .traceCompression(traceCompression)
+        .traceFileVersion(traceFileVersion)
         .caching(caching)
         .build();
   }
@@ -97,6 +109,7 @@ public class TracesEndpointCliOptions implements LineaCliOptions {
     return MoreObjects.toStringHelper(this)
         .add(CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH, tracesOutputPath)
         .add(CONFLATED_TRACE_GENERATION_TRACE_COMPRESSION, traceCompression)
+        .add(CONFLATED_TRACE_GENERATION_TRACE_FILE_VERSION, traceFileVersion)
         .add(CACHING, caching)
         .toString();
   }

@@ -55,6 +55,7 @@ public class GenerateConflatedTracesV2 {
   private static final JsonConverter CONVERTER = JsonConverter.builder().build();
 
   private final boolean traceFileCaching;
+  private final int traceFileVersion;
   private final RequestLimiter requestLimiter;
   private final TraceWriter traceWriter;
   private final ServiceManager besuContext;
@@ -73,12 +74,14 @@ public class GenerateConflatedTracesV2 {
             Paths.get(endpointConfiguration.tracesOutputPath()),
             endpointConfiguration.traceCompression());
     this.l1L2BridgeSharedConfiguration = lineaL1L2BridgeSharedConfiguration;
+    this.traceFileVersion = endpointConfiguration.traceFileVersion();
     this.traceFileCaching = endpointConfiguration.caching();
     // log configuration
     log.info("trace file caching {}", this.traceFileCaching ? "enabled." : "disabled.");
     log.info(
         "trace file compression {}",
         endpointConfiguration.traceCompression() ? "enabled." : "disabled.");
+    log.info("trace file format is v{}.", this.traceFileVersion);
   }
 
   public String getNamespace() {
@@ -142,7 +145,9 @@ public class GenerateConflatedTracesV2 {
 
       final ZkTracer tracer =
           new ZkTracer(fork, l1L2BridgeSharedConfiguration, chainId, publicInputs);
-
+      // Configure trace file version
+      tracer.setLtFileMajorVersion(traceFileVersion);
+      // Run the tracer
       traceService.trace(
           fromBlock,
           toBlock,
