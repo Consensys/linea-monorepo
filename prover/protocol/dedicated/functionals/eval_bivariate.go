@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
@@ -192,25 +194,37 @@ func (a *XYPow1MinNAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return res
 }
 
-func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	x, errX := a.X.GetFrontendVariableBase(api, run)
 	if errX != nil {
-		return field.Zero(), errX
+		return zk.ValueOf(0), errX
 	}
 	y, errY := a.Y.GetFrontendVariableBase(api, run)
 	if errY != nil {
-		return field.Zero(), errY
+		return zk.ValueOf(0), errY
+	}
+
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		return zk.ValueOf(0), err
 	}
 	res := gnarkutil.Exp(api, x, 1-a.N)
-	res = api.Mul(res, y)
+	res = apiGen.Mul(res, y)
 	return res, nil
 }
 
-func (a *XYPow1MinNAccessor) GetFrontendVariableExt(api frontend.API, run ifaces.GnarkRuntime) gnarkfext.Element {
+func (a *XYPow1MinNAccessor) GetFrontendVariableExt(api frontend.API, run ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	x := a.X.GetFrontendVariableExt(api, run)
 	y := a.Y.GetFrontendVariableExt(api, run)
-	temp := gnarkfext.Exp(api, x, 1-a.N)
-	res := temp.Mul(api, temp, y)
+	temp := gnarkutil.ExpExt(api, x, 1-a.N)
+
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := e4Api.Mul(&temp, &y)
+	// res := temp.Mul(api, temp, y)
 	return *res
 }
 
@@ -242,11 +256,15 @@ func (a *XYPow1MinNAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements the [ifaces.Accessor] interface.
-func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.GnarkRuntime) frontend.Variable {
+func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.GnarkRuntime) zk.WrappedVariable {
 	x := a.X.GetFrontendVariable(api, run)
 	y := a.Y.GetFrontendVariable(api, run)
 	res := gnarkutil.Exp(api, x, 1-a.N)
-	res = api.Mul(res, y)
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+	res = apiGen.Mul(res, y)
 	return res
 }
 

@@ -7,7 +7,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -51,8 +50,8 @@ type LogDerivSumParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (l LogDerivSumParams) UpdateFS(fs *poseidon2.Poseidon2FieldHasherDigest) {
-	fiatshamir.UpdateGeneric(fs, l.Sum)
+func (l LogDerivSumParams) UpdateFS(fs *fiatshamir.FS) {
+	(*fs).UpdateGeneric(l.Sum)
 }
 
 // NewLogDerivativeSum creates the new context LogDerivativeSum.
@@ -201,7 +200,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 	if noNumerator && noDenominator {
 		elem := field.NewElement(uint64(size))
-		return fext.NewESHashFromBase(elem), nil
+		return fext.NewGenFieldFromBase(elem), nil
 	}
 
 	if !noNumerator {
@@ -249,7 +248,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 				return fext.GenericFieldElem{}, errors.New("denominator is zero")
 			}
 
-			elemDenominatorWindow := fext.NewESHashFromExt(denominatorWindow[i])
+			elemDenominatorWindow := fext.NewGenFieldFromExt(denominatorWindow[i])
 			res.Add(&elemDenominatorWindow)
 		}
 
@@ -268,7 +267,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 			)
 
 			nbPaddingAsField.SetInt64(int64(nbPadding))
-			genericNbPaddingAsField := fext.NewESHashFromBase(nbPaddingAsField)
+			genericNbPaddingAsField := fext.NewGenFieldFromBase(nbPaddingAsField)
 			denominatorPadding.Mul(&genericNbPaddingAsField)
 			res.Add(&denominatorPadding)
 		}
@@ -300,7 +299,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 			res.Add(&res, &numeratorPadding)
 		}
 
-		return fext.NewESHashFromExt(res), nil
+		return fext.NewGenFieldFromExt(res), nil
 	}
 
 	// This implementation should catch 99% of the remaining cases. This follows
@@ -344,7 +343,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 				res.Add(&res, &tmp)
 			}
 
-			return fext.NewESHashFromExt(res), nil
+			return fext.NewGenFieldFromExt(res), nil
 		}
 	}
 
@@ -381,7 +380,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 		res.Add(&res, &tmp)
 	}
 
-	return fext.NewESHashFromExt(res), nil
+	return fext.NewGenFieldFromExt(res), nil
 }
 
 func (q LogDerivativeSum) UUID() uuid.UUID {

@@ -5,9 +5,10 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
@@ -120,7 +121,7 @@ func (p Poseidon2) Check(run ifaces.Runtime) error {
 // Check the mimc relation in a gnark circuit
 func (p Poseidon2) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
-	var blocks, oldStates, newStates [8][]frontend.Variable
+	var blocks, oldStates, newStates [8][]zk.WrappedVariable
 	for i := 0; i < 8; i++ {
 		blocks[i] = p.Blocks[i].GetColAssignmentGnark(run)
 		oldStates[i] = p.OldState[i].GetColAssignmentGnark(run)
@@ -128,15 +129,15 @@ func (p Poseidon2) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	}
 
 	for i := 0; i < len(newStates); i++ {
-		var block [8]frontend.Variable
-		var oldState [8]frontend.Variable
-		var newState [8]frontend.Variable
+		var block [8]zk.WrappedVariable
+		var oldState [8]zk.WrappedVariable
+		var newState [8]zk.WrappedVariable
 		for j := 0; j < 8; j++ {
 			block[j] = blocks[j][i]
 			oldState[j] = oldStates[j][i]
 			newState[j] = newStates[j][i]
 		}
-		recomputed := poseidon2.GnarkBlockCompressionMekle(api, oldState, block)
+		recomputed := poseidon2_koalabear.GnarkBlockCompressionMekle(api, oldState, block)
 		api.AssertIsEqual(newState, recomputed)
 	}
 }

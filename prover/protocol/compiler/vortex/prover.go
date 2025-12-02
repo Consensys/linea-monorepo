@@ -1,9 +1,15 @@
 package vortex
 
 import (
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+
+	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -36,12 +42,22 @@ type ReassignPrecomputedRootAction struct {
 }
 
 func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
-	for i := 0; i < blockSize; i++ {
-		run.AssignColumn(
-			r.Items.Precomputeds.MerkleRoot[i].GetColID(),
-			smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue[i], 1),
-		)
+	if r.IsBLS {
+		for i := 0; i < encoding.KoalabearChunks; i++ {
+			run.AssignColumn(
+				r.Items.Precomputeds.MerkleRoot[i].GetColID(),
+				smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedBLSValue[i], 1),
+			)
+		}
+	} else {
+		for i := 0; i < blockSize; i++ {
+			run.AssignColumn(
+				r.Items.Precomputeds.MerkleRoot[i].GetColID(),
+				smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue[i], 1),
+			)
+		}
 	}
+
 }
 
 // ColumnAssignmentProverAction is a [wizard.ProverAction] that assigns the
@@ -63,8 +79,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	var (
-		committedMatrix vortex.EncodedMatrix
-		tree            *smt.Tree
+		committedMatrix vortex_bls12377.EncodedMatrix
 		sisColHashes    []field.Element // column hashes generated from SisTransversalHash
 		noSisColHashes  []field.Element // column hashes generated from noSisTransversalHash, using LeafHashFunc
 	)
@@ -79,30 +94,56 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 
 	// We commit to the polynomials with SIS hashing if the number of polynomials
 	// is greater than the [ApplyToSISThreshold].
-	if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
-		committedMatrix, tree, noSisColHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
-	} else if ctx.RoundStatus[round] == IsSISApplied {
-		committedMatrix, tree, sisColHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
-	}
 
-	run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
-	run.State.InsertNew(ctx.MerkleTreeName(round), tree)
+	if ctx.IsBLS {
+		var (
+			tree      *smt_bls12377.Tree
+			colHashes []bls12377.Element
+		)
+		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(pols)
 
-	// Only to be read by the self-recursion compiler.
-	if ctx.IsSelfrecursed {
-		// We need to store the SIS and non-SIS column hashes in the prover state
-		// so that we can use them in the self-recursion compiler.
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
-			run.State.InsertNew(ctx.NoSisHashName(round), noSisColHashes)
+		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
+		run.State.InsertNew(ctx.MerkleTreeName(round), tree)
+
+		if ctx.IsSelfrecursed {
+			// We need to store the SIS and non-SIS column hashes in the prover state
+			// so that we can use them in the self-recursion compiler.
+			if ctx.RoundStatus[round] == IsNoSis {
+				run.State.InsertNew(ctx.NoSisHashName(round), colHashes)
+			}
+		}
+		roots := encoding.EncodeBLS12RootToKoalabear(tree.Root)
+
+		for i := 0; i < encoding.KoalabearChunks; i++ {
+			run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(roots[i], 1))
+		}
+	} else {
+		var tree *smt_koalabear.Tree
+
+		if ctx.RoundStatus[round] == IsNoSis {
+			committedMatrix, _, tree, noSisColHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			run.State.InsertNew(ctx.SisHashName(round), sisColHashes)
+			committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
+		}
+
+		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
+		run.State.InsertNew(ctx.MerkleTreeName(round), tree)
+
+		// Only to be read by the self-recursion compiler.
+		if ctx.IsSelfrecursed {
+			// We need to store the SIS and non-SIS column hashes in the prover state
+			// so that we can use them in the self-recursion compiler.
+			if ctx.RoundStatus[round] == IsNoSis {
+				run.State.InsertNew(ctx.NoSisHashName(round), noSisColHashes)
+			} else if ctx.RoundStatus[round] == IsSISApplied {
+				run.State.InsertNew(ctx.SisHashName(round), sisColHashes)
+			}
+		}
+		for i := 0; i < blockSize; i++ {
+			run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(tree.Root[i], 1))
 		}
 	}
 
-	// And assign the 1-sized column to contain the root
-	for i := 0; i < blockSize; i++ {
-		run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(tree.Root[i], 1))
-	}
 }
 
 type LinearCombinationComputationProverAction struct {
@@ -121,9 +162,8 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// Add the precomputed columns
 	if ctx.IsNonEmptyPrecomputed() {
 		var precomputedSV = []smartvectors.SmartVector{}
-		for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
-			precomputedSV = append(precomputedSV, col.GetColAssignment(pr))
-		}
+		precomputedSV = append(precomputedSV, ctx.Items.Precomputeds.CommittedMatrix...)
+
 		// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
 		if ctx.IsSISAppliedToPrecomputed() {
 			committedSVSIS = append(committedSVSIS, precomputedSV...)
@@ -139,12 +179,15 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
-		pols := ctx.getPols(pr, round)
+
+		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
+
 		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
-			committedSVNoSIS = append(committedSVNoSIS, pols...)
+		if ctx.RoundStatus[round] == IsNoSis {
+			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
+
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedSVSIS = append(committedSVSIS, pols...)
+			committedSVSIS = append(committedSVSIS, committedMatrix...)
 		}
 	}
 	// Construct committedSV by stacking the No SIS round
@@ -155,8 +198,10 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
-	proof := ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
+	proof := &vortex.OpeningProof{}
+	vortex.LinearCombination(proof, committedSV, randomCoinLC)
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+
 }
 
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
@@ -184,10 +229,10 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
+		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
 
 		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
+		if ctx.RoundStatus[round] == IsNoSis {
 			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedSVSIS = append(committedSVSIS, committedMatrix...)
@@ -202,7 +247,8 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 	randomCoinLC := run.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
-	proof := ctx.VortexParams.InitOpeningFromAlreadyEncodedLC(committedSV, randomCoinLC)
+	proof := &vortex.OpeningProof{}
+	vortex.LinearCombination(proof, committedSV, randomCoinLC)
 
 	run.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
@@ -217,10 +263,11 @@ type OpenSelectedColumnsProverAction struct {
 func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 	var (
-		committedMatricesSIS   = []vortex.EncodedMatrix{}
-		committedMatricesNoSIS = []vortex.EncodedMatrix{}
-		treesSIS               = []*smt.Tree{}
-		treesNoSIS             = []*smt.Tree{}
+		committedMatricesSIS   = []vortex_bls12377.EncodedMatrix{}
+		committedMatricesNoSIS = []vortex_bls12377.EncodedMatrix{}
+		treesSIS               = []*smt_koalabear.Tree{}
+		treesNoSIS             = []*smt_koalabear.Tree{}
+		blsTrees               = []*smt_bls12377.Tree{}
 		// We need them to assign the opened sis and non sis columns
 		// to be used in the self-recursion compiler
 		sisProof    = vortex.OpeningProof{}
@@ -234,8 +281,14 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			committedMatricesSIS = append(committedMatricesSIS, ctx.Items.Precomputeds.CommittedMatrix)
 			treesSIS = append(treesSIS, ctx.Items.Precomputeds.Tree)
 		} else {
-			committedMatricesNoSIS = append(committedMatricesNoSIS, ctx.Items.Precomputeds.CommittedMatrix)
-			treesNoSIS = append(treesNoSIS, ctx.Items.Precomputeds.Tree)
+			if ctx.IsBLS {
+				committedMatricesNoSIS = append(committedMatricesNoSIS, ctx.Items.Precomputeds.CommittedMatrix)
+				blsTrees = append(blsTrees, ctx.Items.Precomputeds.BLSTree)
+			} else {
+				committedMatricesNoSIS = append(committedMatricesNoSIS, ctx.Items.Precomputeds.CommittedMatrix)
+				treesNoSIS = append(treesNoSIS, ctx.Items.Precomputeds.Tree)
+			}
+
 		}
 	}
 
@@ -246,22 +299,34 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			continue
 		}
 		// Fetch it from the state
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
+		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
 		// and delete it because it won't be needed anymore and its very heavy
 		run.State.Del(ctx.VortexProverStateName(round))
 
 		// Also fetches the trees from the prover state
-		tree := run.State.MustGet(ctx.MerkleTreeName(round)).(*smt.Tree)
+		if ctx.IsBLS {
+			tree := run.State.MustGet(ctx.MerkleTreeName(round)).(*smt_bls12377.Tree)
+			// conditionally stack the matrix and tree
+			// to SIS or no SIS matrices and trees
 
-		// conditionally stack the matrix and tree
-		// to SIS or no SIS matrices and trees
-		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
-			committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
-			treesNoSIS = append(treesNoSIS, tree)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedMatricesSIS = append(committedMatricesSIS, committedMatrix)
-			treesSIS = append(treesSIS, tree)
+			if ctx.RoundStatus[round] == IsNoSis {
+				committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
+				blsTrees = append(blsTrees, tree)
+			}
+
+		} else {
+			tree := run.State.MustGet(ctx.MerkleTreeName(round)).(*smt_koalabear.Tree)
+			// conditionally stack the matrix and tree
+			// to SIS or no SIS matrices and trees
+			if ctx.RoundStatus[round] == IsNoSis {
+				committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
+				treesNoSIS = append(treesNoSIS, tree)
+			} else if ctx.RoundStatus[round] == IsSISApplied {
+				committedMatricesSIS = append(committedMatricesSIS, committedMatrix)
+				treesSIS = append(treesSIS, tree)
+			}
 		}
+
 	}
 
 	// Stack the no SIS matrices and trees before the SIS matrices and trees
@@ -273,18 +338,31 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 	// Amend the Vortex proof with the Merkle proofs and registers
 	// the Merkle proofs in the prover runtime
-	proof.Complete(entryList, committedMatrices, trees)
 
+	if ctx.IsBLS {
+		merkleProofs := vortex_bls12377.SelectColumnsAndMerkleProofs(&proof, entryList, committedMatrices, blsTrees)
+
+		packedMProofs := ctx.packBLSMerkleProofs(merkleProofs)
+
+		for i := range ctx.Items.BLSMerkleProofs {
+			run.AssignColumn(ctx.Items.BLSMerkleProofs[i].GetColID(), packedMProofs[i])
+		}
+
+	} else {
+
+		merkleProofs := vortex_koalabear.SelectColumnsAndMerkleProofs(&proof, entryList, committedMatrices, trees)
+
+		packedMProofs := ctx.packMerkleProofs(merkleProofs)
+
+		for i := range ctx.Items.MerkleProofs {
+			run.AssignColumn(ctx.Items.MerkleProofs[i].GetColID(), packedMProofs[i])
+		}
+
+	}
 	selectedCols := proof.Columns
 
 	// Assign the opened columns
 	ctx.assignOpenedColumns(run, entryList, selectedCols, NonSelfRecursion)
-
-	packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
-
-	for i := range ctx.Items.MerkleProofs {
-		run.AssignColumn(ctx.Items.MerkleProofs[i].GetColID(), packedMProofs[i])
-	}
 
 	// Assign the SIS and non SIS selected columns.
 	// They are not used in the Vortex compilers,
@@ -294,14 +372,14 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 	// Handle SIS round
 	if len(committedMatricesSIS) > 0 {
-		sisProof.Complete(entryList, committedMatricesSIS, treesSIS)
+		vortex_koalabear.SelectColumnsAndMerkleProofs(&sisProof, entryList, committedMatricesSIS, treesSIS)
 		sisSelectedCols := sisProof.Columns
 		// Assign the opened columns
 		ctx.assignOpenedColumns(run, entryList, sisSelectedCols, SelfRecursionSIS)
 	}
 	// Handle non SIS round
 	if len(committedMatricesNoSIS) > 0 {
-		nonSisProof.Complete(entryList, committedMatricesNoSIS, treesNoSIS)
+		vortex_koalabear.SelectColumnsAndMerkleProofs(&nonSisProof, entryList, committedMatricesNoSIS, treesNoSIS)
 		nonSisSelectedCols := nonSisProof.Columns
 		ctx.assignOpenedColumns(run, entryList, nonSisSelectedCols, SelfRecursionPoseidon2Only)
 		// Store the selected columns for the non sis round
@@ -322,7 +400,7 @@ func (ctx *Ctx) getPols(run *wizard.ProverRuntime, round int) (pols []smartvecto
 }
 
 // pack a list of merkle-proofs in a vector as used in the merkle proof module
-func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) [8]smartvectors.SmartVector {
+func (ctx *Ctx) packMerkleProofs(proofs [][]smt_koalabear.Proof) [8]smartvectors.SmartVector {
 
 	depth := len(proofs[0][0].Siblings) // depth of the Merkle-tree
 	res := [8][]field.Element{}
@@ -333,6 +411,64 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) [8]smartvectors.SmartVect
 
 	// Sanity-checks
 
+	if depth != utils.Log2Ceil(ctx.NumEncodedCols()) {
+		utils.Panic(
+			"expected depth to be equal to Log2(NumEncodedCols()), got %v, %v",
+			depth, utils.Log2Ceil(ctx.NumEncodedCols()),
+		)
+	}
+
+	// When we commit to the precomputeds, len(proofs) = ctx.NumCommittedRounds + 1,
+	// otherwise len(proofs) = ctx.NumCommittedRounds
+	if len(proofs) != ctx.NumCommittedRounds() && !ctx.IsNonEmptyPrecomputed() {
+		utils.Panic(
+			"inconsitent proofs length %v, %v",
+			len(proofs), ctx.NumCommittedRounds(),
+		)
+	}
+
+	if len(proofs[0]) != ctx.NbColsToOpen() {
+		utils.Panic(
+			"expected proofs[0] and NbColsToOpen to be equal: %v, %v",
+			len(proofs[0]), ctx.NbColsToOpen(),
+		)
+	}
+
+	for i := range proofs {
+		for j := range proofs[i] {
+			p := proofs[i][j]
+			for k := range p.Siblings {
+				// The proof stores the sibling bottom-up but we want to pack
+				// the proof in top-down order.
+				hashOct := p.Siblings[depth-1-k]
+				for coord := range res {
+					res[coord][numProofWritten*depth+k] = hashOct[coord]
+				}
+			}
+			numProofWritten++
+		}
+	}
+
+	resSV := [8]smartvectors.SmartVector{}
+	for i := range res {
+		resSV[i] = smartvectors.NewRegular(res[i])
+	}
+
+	return resSV
+}
+
+// pack a list of merkle-proofs in a vector as used in the merkle proof module
+func (ctx *Ctx) packBLSMerkleProofs(proofs [][]smt_bls12377.Proof) [encoding.KoalabearChunks]smartvectors.SmartVector {
+
+	depth := len(proofs[0][0].Siblings) // depth of the Merkle-tree
+	res := [encoding.KoalabearChunks][]field.Element{}
+	for i := range res {
+		res[i] = make([]field.Element, ctx.MerkleProofSize())
+	}
+
+	numProofWritten := 0
+
+	// Sanity-checks
 	if depth != utils.Log2Ceil(ctx.NumEncodedCols()) {
 		utils.Panic(
 			"expected depth to be equal to Log2(NumEncodedCols()), got %v, %v",
@@ -367,18 +503,20 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) [8]smartvectors.SmartVect
 		for j := range proofs[i] {
 			p := proofs[i][j]
 			for k := range p.Siblings {
-				// The proof stores the sibling bottom-up but we want to pack
-				// the proof in top-down order.
-				hashOct := p.Siblings[depth-1-k]
+				// The proof stores the sibling bottom-up but
+				// we want to pack the proof in top-down order.
+				koalaElems := encoding.EncodeBLS12RootToKoalabear(p.Siblings[depth-1-k])
+
 				for coord := range res {
-					res[coord][numProofWritten*depth+k] = hashOct[coord]
+					res[coord][numProofWritten*depth+k] = koalaElems[coord]
 				}
 			}
 			numProofWritten++
 		}
 	}
 
-	resSV := [8]smartvectors.SmartVector{}
+	// return smartvectors.NewRegular(res)
+	resSV := [encoding.KoalabearChunks]smartvectors.SmartVector{}
 	for i := range res {
 		resSV[i] = smartvectors.NewRegular(res[i])
 	}
@@ -387,7 +525,7 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) [8]smartvectors.SmartVect
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []int) (proofs [][]smt.Proof) {
+func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []int) (proofs [][]smt_koalabear.Proof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -396,14 +534,14 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 	}
 	numEntries := len(entryList)
 
-	proofs = make([][]smt.Proof, numComs)
+	proofs = make([][]smt_koalabear.Proof, numComs)
 	curr := 0 // tracks the position in sv that we are parsing.
 
 	for i := range proofs {
-		proofs[i] = make([]smt.Proof, numEntries)
+		proofs[i] = make([]smt_koalabear.Proof, numEntries)
 		for j := range proofs[i] {
 			// initialize the proof that we are parsing
-			proof := smt.Proof{
+			proof := smt_koalabear.Proof{
 				Path:     entryList[j],
 				Siblings: make([]field.Octuplet, depth),
 			}
@@ -416,6 +554,45 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 					v[coord] = sv[coord].Get(curr)
 				}
 				proof.Siblings[depth-k-1] = v
+				curr++
+			}
+
+			proofs[i][j] = proof
+		}
+	}
+	return proofs
+}
+
+// unpack a list of merkle proofs from a vector as in
+func (ctx *Ctx) unpackBLSMerkleProofs(sv [encoding.KoalabearChunks]smartvectors.SmartVector, entryList []int) (proofs [][]smt_bls12377.Proof) {
+
+	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
+	numComs := ctx.NumCommittedRounds()
+	if ctx.IsNonEmptyPrecomputed() {
+		numComs = ctx.NumCommittedRounds() + 1 // Need to consider the precomputed commitments
+	}
+	numEntries := len(entryList)
+
+	proofs = make([][]smt_bls12377.Proof, numComs)
+	curr := 0 // tracks the position in sv that we are parsing.
+
+	for i := range proofs {
+		proofs[i] = make([]smt_bls12377.Proof, numEntries)
+		for j := range proofs[i] {
+			// initialize the proof that we are parsing
+			proof := smt_bls12377.Proof{
+				Path:     entryList[j],
+				Siblings: make([]bls12377.Element, depth),
+			}
+
+			// parse the siblings accounting for the fact that we
+			// are inversing the order.
+			for k := range proof.Siblings {
+				var v [encoding.KoalabearChunks]field.Element
+				for coord := 0; coord < len(v); coord++ {
+					v[coord] = sv[coord].Get(curr)
+				}
+				proof.Siblings[depth-k-1] = encoding.DecodeKoalabearToBLS12Root(v)
 				curr++
 			}
 

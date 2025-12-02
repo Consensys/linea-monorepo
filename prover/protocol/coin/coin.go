@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
 )
@@ -103,22 +102,27 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
-func (info *Info) Sample(fs *poseidon2.Poseidon2FieldHasherDigest, seed field.Octuplet) interface{} {
+func (info *Info) Sample(fs *fiatshamir.FS, seed field.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
-		return fiatshamir.RandomManyIntegers(fs, info.Size, info.UpperBound)
+		return (*fs).RandomManyIntegers(info.Size, info.UpperBound)
 	case FieldExt:
-		return fiatshamir.RandomFext(fs)
+		return (*fs).RandomFext()
 		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
 	}
 	panic("Unreachable")
 }
 
-// SampleGnark samples a random coin in a gnark circuit.
-func (info *Info) SampleGnark(fs *fiatshamir.GnarkFiatShamir, seed frontend.Variable) interface{} {
+// SampleGnark samples a random coin in a gnark circuit. The seed can optionally be
+// passed by the caller is used for [FieldFromSeed] coins. The function returns
+func (info *Info) SampleGnark(fs *fiatshamir.GnarkFS, seed zk.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
-		return fs.RandomManyIntegers(info.Size, info.UpperBound)
+		return (*fs).RandomManyIntegers(info.Size, info.UpperBound)
+
+	case FieldExt:
+		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
+		return (*fs).RandomFieldExt()
 
 	}
 	panic("Unreachable")

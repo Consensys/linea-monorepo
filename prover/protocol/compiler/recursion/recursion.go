@@ -6,10 +6,11 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -76,7 +77,7 @@ type Witness struct {
 
 	// CommittedMatrices are the list of the Reed-Solomon matrices
 	// for each committed round. They are needed by the prover of the self-recursion.
-	CommittedMatrices []vCom.EncodedMatrix
+	CommittedMatrices []vortex_koalabear.EncodedMatrix
 
 	// SisHashes is the list of the SIS hashes of the vortex columns
 	// for each committed round. They are needed by the prover of the self-recursion.
@@ -88,7 +89,7 @@ type Witness struct {
 
 	// Trees are the list of the commitment merkle trees. They are needed
 	// by the prover of the self-recursion.
-	Trees []*smt.Tree
+	Trees []*smt_koalabear.Tree
 }
 
 // GetStoppingRound returns the number of rounds to pass to [wizard.RunProverUntil]
@@ -270,13 +271,13 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 				continue
 			}
 
-			x := assign.Commitments[j].(field.Element)
+			x := assign.Commitments[j].AsNative().(field.Element)
 			run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
 		}
 
 		// Assigns the poly query.
 		params := wit[i].Proof.QueriesParams.MustGet(assign.PolyQuery.QueryID).(query.UnivariateEvalParams)
-		run.AssignUnivariate(r.PcsCtx[i].Query.QueryID, params.X, params.Ys...)
+		run.AssignUnivariateExt(r.PcsCtx[i].Query.QueryID, params.ExtX, params.ExtYs...)
 
 		// Store the self-recursion artefacts for the vortex prover and the
 		// self-recursion prover.
@@ -312,7 +313,7 @@ func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, 
 
 // GetPublicInputOfInstanceGnark returns the requested public input in a
 // gnark circuit context.
-func (rec *Recursion) GetPublicInputOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, name string, inst int) frontend.Variable {
+func (rec *Recursion) GetPublicInputOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, name string, inst int) zk.WrappedVariable {
 	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
 	return run.GetPublicInput(api, name)
 }
@@ -354,7 +355,7 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		NumCols:               srcVortexCtx.NumCols,
 		MaxCommittedRound:     srcVortexCtx.MaxCommittedRound,
 		NumOpenedCol:          srcVortexCtx.NumOpenedCol,
-		VortexParams:          srcVortexCtx.VortexParams,
+		VortexKoalaParams:     srcVortexCtx.VortexKoalaParams,
 		SisParams:             srcVortexCtx.SisParams,
 		RoundStatus:           srcVortexCtx.RoundStatus,
 

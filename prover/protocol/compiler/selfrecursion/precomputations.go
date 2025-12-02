@@ -76,7 +76,7 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 		// every round (counting the precomputations as a round) uses ring-SIS
 		// polynomials fully. Otherwise, the compilation will not be able to
 		// be successful.
-		if (numPrecomputeds*ctx.SisKey().NumLimbs())%(1<<ctx.SisKey().LogTwoDegree) > 0 {
+		if (numPrecomputeds*ctx.SisKey().NumLimbs())%(ctx.SisKey().OutputSize()) > 0 {
 			panic("the ring-SIS polynomials are not fully used")
 		}
 
@@ -111,7 +111,7 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 			// every round (counting the precomputations as a round) uses ring-SIS
 			// polynomials fully. Otherwise, the compilation will not be able to
 			// be successful.
-			if (len(comsInRoundsI)*ctx.SisKey().NumLimbs())%(1<<ctx.SisKey().LogTwoDegree) > 0 {
+			if (len(comsInRoundsI)*ctx.SisKey().NumLimbs())%(ctx.SisKey().OutputSize()) > 0 {
 				panic("the ring-SIS polynomials are not fully used")
 			}
 

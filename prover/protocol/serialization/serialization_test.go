@@ -7,7 +7,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -310,15 +309,15 @@ func TestSerdeValue(t *testing.T) {
 		},
 		{
 			Name: "frontend-variables",
-			V:    frontend.Variable(0),
+			V:    zk.WrappedVariable(0),
 		},
 		{
 			Name: "frontend-variables",
-			V:    frontend.Variable(12),
+			V:    zk.WrappedVariable(12),
 		},
 		{
 			Name: "frontend-variables",
-			V:    frontend.Variable(-10),
+			V:    zk.WrappedVariable(-10),
 		},
 		{
 			Name: "two-wiop-in-a-struct",

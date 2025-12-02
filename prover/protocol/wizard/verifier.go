@@ -2,7 +2,6 @@ package wizard
 
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -13,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Proof generically represents a proof obtained from the wizard. This object does not
@@ -53,7 +51,7 @@ type Runtime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
-	Fs() *poseidon2.Poseidon2FieldHasherDigest
+	Fs() *fiatshamir.FS
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -88,12 +86,14 @@ type VerifierRuntime struct {
 	// verifier.
 	QueriesParams collection.Mapping[ifaces.QueryID, ifaces.QueryParams]
 
-	// FS stores the Fiat-Shamir State, you probably don't want to use it
+	// KoalaFS stores the Fiat-Shamir State, you probably don't want to use it
 	// directly unless you know what you are doing. Just know that if you use
-	// it to update the FS hash, this can potentially result in the prover and
+	// it to update the KoalaFS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *poseidon2.Poseidon2FieldHasherDigest
+	KoalaFS *fiatshamir.FS
+	BLSFS   *fiatshamir.FS
+	IsBLS   bool
 
 	// State stores arbitrary data that can be used by the verifier. This
 	// can be used to communicate values between verifier states.
@@ -104,20 +104,24 @@ type VerifierRuntime struct {
 // describes the protocol to run and a proof to verify. The function returns
 // `nil` to indicate that the proof passed and an error to indicate the proof
 // was invalid.
-func Verify(c *CompiledIOP, proof Proof) error {
-	_, err := VerifyWithRuntime(c, proof)
+func Verify(c *CompiledIOP, proof Proof, IsBLS ...bool) error {
+	isBLSValue := false
+	if IsBLS != nil {
+		isBLSValue = IsBLS[0]
+	}
+	_, err := VerifyWithRuntime(c, proof, isBLSValue)
 	return err
 }
 
 // VerifyWithRuntime runs the verifier of the protocol and returns the result
 // and the runtime of the verifier.
-func VerifyWithRuntime(c *CompiledIOP, proof Proof) (*VerifierRuntime, error) {
-	return verifyWithRuntimeUntilRound(c, proof, c.NumRounds())
+func VerifyWithRuntime(c *CompiledIOP, proof Proof, IsBLS bool) (*VerifierRuntime, error) {
+	return verifyWithRuntimeUntilRound(c, proof, c.NumRounds(), IsBLS)
 }
 
 // VerifyUntilRound runs the verifier up to a specified round
-func VerifyUntilRound(c *CompiledIOP, proof Proof, stopRound int) error {
-	_, err := verifyWithRuntimeUntilRound(c, proof, stopRound)
+func VerifyUntilRound(c *CompiledIOP, proof Proof, stopRound int, IsBLS bool) error {
+	_, err := verifyWithRuntimeUntilRound(c, proof, stopRound, IsBLS)
 	return err
 }
 
@@ -125,10 +129,10 @@ func VerifyUntilRound(c *CompiledIOP, proof Proof, stopRound int) error {
 // the provided round "stopRound". By "excluding", we mean that the function
 // won't run the round "stopRound". If stopRound is higher than the number of
 // rounds in comp, the function runs the whole protocol.
-func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int) (run *VerifierRuntime, err error) {
+func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int, IsBLS bool) (run *VerifierRuntime, err error) {
 
 	var (
-		runtime = comp.createVerifier(proof)
+		runtime = comp.createVerifier(proof, IsBLS)
 		errs    = []error{}
 	)
 
@@ -158,7 +162,7 @@ func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int) 
 // with the one that are in the proof. It also populates its verifier steps from
 // the `VerifierFuncGen` in the `c`. The user also passes the list of prover
 // messages. It is internally called by the [Verify] function.
-func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
+func (c *CompiledIOP) createVerifier(proof Proof, IsBLS bool) VerifierRuntime {
 
 	/*
 		Instantiate an empty assigment for the verifier
@@ -167,12 +171,21 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		Spec:          c,
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
+		IsBLS:         IsBLS,
 		QueriesParams: proof.QueriesParams,
-		FS:            poseidon2.Poseidon2(),
 		State:         make(map[string]interface{}),
 	}
 
-	fiatshamir.Update(runtime.FS, c.FiatShamirSetup[:]...)
+	// Create a new fresh FS state and bootstrap it
+	if IsBLS {
+		fs := fiatshamir.NewFSBls12377()
+		runtime.BLSFS = &fs
+		(*runtime.BLSFS).Update(c.FiatShamirSetup[:]...)
+	} else {
+		fs := fiatshamir.NewFSKoalabear()
+		runtime.KoalaFS = &fs
+		(*runtime.KoalaFS).Update(c.FiatShamirSetup[:]...)
+	}
 
 	/*
 		Insert the verifying key into the messages
@@ -186,7 +199,7 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 }
 
 // GetPublicInput extracts the value of a public input from the proof.
-func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element {
+func (proof Proof) GetPublicInput(comp *CompiledIOP, name string, IsBLS bool) field.Element {
 
 	publicInputsAccessor := comp.GetPublicInputAccessor(name)
 
@@ -212,7 +225,7 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 	//
 	// These are not directly visible from the proof. Thus we need to
 	// run the verifier and extract them from the runtime.
-	verifierRuntime, _ := VerifyWithRuntime(comp, proof)
+	verifierRuntime, _ := VerifyWithRuntime(comp, proof, IsBLS)
 	return verifierRuntime.GetPublicInput(name)
 }
 
@@ -239,7 +252,19 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 				}
 
 				instance := run.GetColumn(msgName)
-				fiatshamir.UpdateSV(run.FS, instance)
+				if run.IsBLS {
+					(*run.BLSFS).UpdateSV(instance)
+
+					// state := (*run.BLSFS).State()
+					// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
+
+				} else {
+					(*run.KoalaFS).UpdateSV(instance)
+
+					// state := (*run.KoalaFS).State()
+					// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
+
+				}
 			}
 
 			/*
@@ -252,7 +277,12 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 				}
 
 				params := run.QueriesParams.MustGet(qName)
-				params.UpdateFS(run.FS)
+				if run.IsBLS {
+					params.UpdateFS(run.BLSFS)
+				} else {
+					params.UpdateFS(run.KoalaFS)
+
+				}
 			}
 		}
 	}
@@ -268,7 +298,12 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 	}
 
-	seed := types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State()))
+	var seed field.Octuplet
+	if run.IsBLS {
+		seed = (*run.BLSFS).State()
+	} else {
+		seed = (*run.KoalaFS).State()
+	}
 
 	/*
 		Then assigns the coins for the new round. As the round incrementation
@@ -281,7 +316,12 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		value := info.Sample(run.FS, seed)
+		var value interface{}
+		if run.IsBLS {
+			value = info.Sample(run.BLSFS, seed)
+		} else {
+			value = info.Sample(run.KoalaFS, seed)
+		}
 		run.Coins.InsertNew(myCoin, value)
 	}
 }
@@ -501,8 +541,12 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() *poseidon2.Poseidon2FieldHasherDigest {
-	return run.FS
+func (run *VerifierRuntime) Fs() *fiatshamir.FS {
+	if run.IsBLS {
+		return run.BLSFS
+	} else {
+		return run.KoalaFS
+	}
 }
 
 // GetSpec returns the compiled IOP

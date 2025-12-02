@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
@@ -39,9 +40,9 @@ import (
 )
 
 type Circuit struct {
-	AggregationPublicInput   [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
-	ExecutionPublicInput     []frontend.Variable  `gnark:",public"`
-	DecompressionPublicInput []frontend.Variable  `gnark:",public"`
+	AggregationPublicInput   [2]zk.WrappedVariable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
+	ExecutionPublicInput     []zk.WrappedVariable  `gnark:",public"`
+	DecompressionPublicInput []zk.WrappedVariable  `gnark:",public"`
 
 	DecompressionFPIQ []decompression.FunctionalPublicInputQSnark
 	ExecutionFPIQ     []execution.FunctionalPublicInputQSnark
@@ -83,7 +84,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	hshK := c.Keccak.NewHasher(api)
 
 	// equivalently, nbBatchesSums[i] is the index of the first execution circuit associated with the i+1-st decompression circuit
-	nbBatchesSums := rDecompression.PartialSumsF(func(i int) frontend.Variable { return c.DecompressionFPIQ[i].NbBatches })
+	nbBatchesSums := rDecompression.PartialSumsF(func(i int) zk.WrappedVariable { return c.DecompressionFPIQ[i].NbBatches })
 	nbExecution := nbBatchesSums[len(nbBatchesSums)-1] // implicit: CHECK_NB_EXEC
 
 	// These two checks prevents constructing a proof where no execution or no
@@ -104,7 +105,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		hshM = hFac.NewHasher()
 		if c.Keccak.Wc != nil {
 			c.Keccak.Wc.HasherFactory = hFac
-			c.Keccak.Wc.FS = fiatshamir.NewGnarkFiatShamir(api, hFac)
+			c.Keccak.Wc.BLSFS = fiatshamir.NewGnarkFiatShamir(api, hFac)
 		}
 	} else {
 		if hsh, err := mimc.NewMiMC(api); err != nil {
@@ -114,7 +115,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	batchHashes := make([]frontend.Variable, len(c.ExecutionPublicInput))
+	batchHashes := make([]zk.WrappedVariable, len(c.ExecutionPublicInput))
 	for i, pi := range c.ExecutionFPIQ {
 		batchHashes[i] = pi.DataChecksum
 	}
@@ -159,7 +160,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	for j := range l2MessagesByByte {
 		l2MessagesByByte[j] = make([]internal.VarSlice, maxNbExecution)
 		for k := range l2MessagesByByte[j] {
-			l2MessagesByByte[j][k] = internal.VarSlice{Values: make([]frontend.Variable, execMaxNbL2Msg)}
+			l2MessagesByByte[j][k] = internal.VarSlice{Values: make([]zk.WrappedVariable, execMaxNbL2Msg)}
 		}
 	}
 
@@ -215,7 +216,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	merkleLeavesConcat := internal.Var32Slice{Values: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle*merkleNbLeaves)}
+	merkleLeavesConcat := internal.Var32Slice{Values: make([][32]zk.WrappedVariable, c.L2MessageMaxNbMerkle*merkleNbLeaves)}
 	for i := 0; i < 32; i++ {
 		ithBytes := internal.Concat(api, len(merkleLeavesConcat.Values), l2MessagesByByte[i]...)
 		for j := range merkleLeavesConcat.Values {
@@ -227,11 +228,11 @@ func (c *Circuit) Define(api frontend.API) error {
 	pi := public_input.AggregationFPISnark{
 		AggregationFPIQSnark: c.AggregationFPIQSnark,
 		NbL2Messages:         merkleLeavesConcat.Length,
-		L2MsgMerkleTreeRoots: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle), // implicit CHECK_MERKLE_CAP1
+		L2MsgMerkleTreeRoots: make([][32]zk.WrappedVariable, c.L2MessageMaxNbMerkle), // implicit CHECK_MERKLE_CAP1
 		// implicit CHECK_FINAL_NUM
-		FinalBlockNumber: rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
+		FinalBlockNumber: rExecution.LastF(func(i int) zk.WrappedVariable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
 		// implicit CHECK_FINAL_TIME
-		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
+		FinalBlockTimestamp:    rExecution.LastF(func(i int) zk.WrappedVariable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
 		FinalShnarf:            rDecompression.LastArray32(shnarfs), // implicit CHECK_FINAL_SHNARF
 		FinalRollingHash:       finalRollingHash,                    // implicit CHECK_FINAL_RHASH
 		FinalRollingHashNumber: finalRollingHashMsgNum,              // implicit CHECK_FINAL_RHASH_NUM
@@ -255,7 +256,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	return hshK.Finalize()
 }
 
-func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
+func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]zk.WrappedVariable) [32]zk.WrappedVariable {
 
 	values := slices.Clone(leaves)
 	if !utils.IsPowerOfTwo(len(values)) {
@@ -325,8 +326,8 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 
 func allocateCircuit(cfg config.PublicInput) Circuit {
 	res := Circuit{
-		DecompressionPublicInput: make([]frontend.Variable, cfg.MaxNbDecompression),
-		ExecutionPublicInput:     make([]frontend.Variable, cfg.MaxNbExecution),
+		DecompressionPublicInput: make([]zk.WrappedVariable, cfg.MaxNbDecompression),
+		ExecutionPublicInput:     make([]zk.WrappedVariable, cfg.MaxNbExecution),
 		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, cfg.MaxNbDecompression),
 		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
 		L2MessageMerkleDepth:     cfg.L2MsgMerkleDepth,
@@ -338,7 +339,7 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 	}
 
 	for i := range res.ExecutionFPIQ {
-		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]frontend.Variable, cfg.ExecutionMaxNbMsg)
+		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]zk.WrappedVariable, cfg.ExecutionMaxNbMsg)
 	}
 
 	return res

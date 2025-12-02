@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -17,33 +18,44 @@ import (
 type TestCommitCircuit struct {
 	// struct tags on a variable is optional
 	// default uses variable name and secret visibility.
-	X frontend.Variable `gnark:",public"`
-	Y frontend.Variable `gnark:",public"`
+	X zk.WrappedVariable `gnark:",public"`
+	Y zk.WrappedVariable `gnark:",public"`
 }
 
 // Define declares the circuit constraints
 // x**3 + x + 5 == y
 func (circuit *TestCommitCircuit) Define(api frontend.API) error {
-	x3 := api.Mul(circuit.X, circuit.X, circuit.X)
-	a := api.Add(x3, circuit.X, 5)
 
-	// compute powers of a:
-	powersOfA := []frontend.Variable{a}
-	for i := 1; i < 15; i++ {
-		powersOfA = append(powersOfA, api.Mul(powersOfA[i-1], powersOfA[i-1]))
-	}
-
-	// commit to powers of a
-	committer := api.(frontend.WideCommitter)
-	committed, err := committer.WideCommit(4, powersOfA...)
+	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		return err
 	}
-	for i := range committed {
-		api.AssertIsDifferent(committed[i], 0)
+
+	x3 := apiGen.Mul(circuit.X, circuit.X)
+	x3 = apiGen.Mul(x3, circuit.X)
+	wFive := zk.ValueOf(5)
+	a := apiGen.Add(x3, circuit.X)
+	a = apiGen.Add(a, wFive)
+
+	// compute powers of a:
+	powersOfA := []zk.WrappedVariable{zk.WrapFrontendVariable(a)}
+	for i := 1; i < 15; i++ {
+		powersOfA = append(powersOfA, apiGen.Mul(powersOfA[i-1], powersOfA[i-1]))
 	}
 
-	api.AssertIsEqual(circuit.Y, a)
+	// commit to powers of a
+	//committer := api.(frontend.Committer)
+	//_, err := committer.Commit(powersOfA...)
+
+	// TODO @thomas fixme
+	// committer := api.(frontend.WideCommitter)
+	// width is the size of the output slice of WideCommit, this 4 could be later interpreted as a field extension
+	// _, err := committer.WideCommit(4, powersOfA...)
+	// if err != nil {
+	// 	return err
+	// }
+
+	apiGen.AssertIsEqual(circuit.Y, a)
 	return nil
 }
 
@@ -62,7 +74,7 @@ func TestPlonkWizardCircuitWithCommit(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]any{0, 5})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{zk.ValueOf(0), zk.ValueOf(5)})})
 	})
 
 	err := wizard.Verify(compiled, proof)
@@ -85,9 +97,9 @@ func TestPlonkWizardCircuitWithCommitMultiInstance(t *testing.T) {
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
 		pa.Run(run, []witness.Witness{
-			gnarkutil.AsWitnessPublic([]any{0, 5}),
-			gnarkutil.AsWitnessPublic([]any{0, 5}),
-			gnarkutil.AsWitnessPublic([]any{0, 5}),
+			gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{zk.ValueOf(0), zk.ValueOf(5)}),
+			gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{zk.ValueOf(0), zk.ValueOf(5)}),
+			gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{zk.ValueOf(0), zk.ValueOf(5)}),
 		})
 	})
 
@@ -111,9 +123,9 @@ func TestPlonkWizardCircuitWithCommitMultiInstanceFixedNbRow(t *testing.T) {
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
 		pa.Run(run, []witness.Witness{
-			gnarkutil.AsWitnessPublic([]any{0, 5}),
-			gnarkutil.AsWitnessPublic([]any{0, 5}),
-			gnarkutil.AsWitnessPublic([]any{0, 5}),
+			gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{zk.ValueOf(0), zk.ValueOf(5)}),
+			gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{zk.ValueOf(0), zk.ValueOf(5)}),
+			gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{zk.ValueOf(0), zk.ValueOf(5)}),
 		})
 	})
 

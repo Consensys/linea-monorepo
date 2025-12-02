@@ -1,8 +1,9 @@
 package smartvectors
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"

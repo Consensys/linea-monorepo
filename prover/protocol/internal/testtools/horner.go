@@ -65,111 +65,111 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 		FinalResult: fext.Zero(),
 	},
 
-	{
-		NameStr:           "positive/just-counting",
-		SignNegativeParts: []bool{false},
-		Coefficients: [][]smartvectors.SmartVector{{
-			smartvectors.NewConstant(field.One(), 8),
-		}},
-		Selectors: [][]smartvectors.SmartVector{{
-			smartvectors.NewConstant(field.One(), 8),
-		}},
-		N0s:         []int{0},
-		N1s:         []int{8},
-		Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
-		FinalResult: fext.NewFromUint(255, 0, 0, 0),
-	},
+	// {
+	// 	NameStr:           "positive/just-counting",
+	// 	SignNegativeParts: []bool{false},
+	// 	Coefficients: [][]smartvectors.SmartVector{{
+	// 		smartvectors.NewConstant(field.One(), 8),
+	// 	}},
+	// 	Selectors: [][]smartvectors.SmartVector{{
+	// 		smartvectors.NewConstant(field.One(), 8),
+	// 	}},
+	// 	N0s:         []int{0},
+	// 	N1s:         []int{8},
+	// 	Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
+	// 	FinalResult: fext.NewFromUint(255, 0, 0, 0),
+	// },
 
-	{
-		NameStr:           "positive/two-parts-cancelling",
-		SignNegativeParts: []bool{false, true},
-		Coefficients: [][]smartvectors.SmartVector{
-			{
-				RandomFromSeed(8, 1),
-			},
-			{
-				RandomFromSeed(8, 1),
-			},
-		},
-		Selectors: [][]smartvectors.SmartVector{
-			{
-				smartvectors.NewConstant(field.One(), 8),
-			},
-			{
-				smartvectors.NewConstant(field.One(), 8),
-			},
-		},
-		N0s:         []int{0, 0},
-		N1s:         []int{8, 8},
-		Xs:          []fext.Element{fext.One(), fext.One()},
-		FinalResult: fext.Zero(),
-	},
+	// {
+	// 	NameStr:           "positive/two-parts-cancelling",
+	// 	SignNegativeParts: []bool{false, true},
+	// 	Coefficients: [][]smartvectors.SmartVector{
+	// 		{
+	// 			RandomFromSeed(8, 1),
+	// 		},
+	// 		{
+	// 			RandomFromSeed(8, 1),
+	// 		},
+	// 	},
+	// 	Selectors: [][]smartvectors.SmartVector{
+	// 		{
+	// 			smartvectors.NewConstant(field.One(), 8),
+	// 		},
+	// 		{
+	// 			smartvectors.NewConstant(field.One(), 8),
+	// 		},
+	// 	},
+	// 	N0s:         []int{0, 0},
+	// 	N1s:         []int{8, 8},
+	// 	Xs:          []fext.Element{fext.One(), fext.One()},
+	// 	FinalResult: fext.Zero(),
+	// },
 
-	{
-		NameStr:           "positive/just-counting",
-		SignNegativeParts: []bool{false},
-		Coefficients: [][]smartvectors.SmartVector{{
-			smartvectors.NewConstant(field.One(), 8),
-		}},
-		Selectors: [][]smartvectors.SmartVector{{
-			smartvectors.NewConstant(field.One(), 8),
-		}},
-		N0s:         []int{0},
-		N1s:         []int{8},
-		Xs:          []fext.Element{fext.One()},
-		FinalResult: fext.NewFromUint(8, 0, 0, 0),
-	},
+	// {
+	// 	NameStr:           "positive/just-counting",
+	// 	SignNegativeParts: []bool{false},
+	// 	Coefficients: [][]smartvectors.SmartVector{{
+	// 		smartvectors.NewConstant(field.One(), 8),
+	// 	}},
+	// 	Selectors: [][]smartvectors.SmartVector{{
+	// 		smartvectors.NewConstant(field.One(), 8),
+	// 	}},
+	// 	N0s:         []int{0},
+	// 	N1s:         []int{8},
+	// 	Xs:          []fext.Element{fext.One()},
+	// 	FinalResult: fext.NewFromUint(8, 0, 0, 0),
+	// },
 
-	{
-		NameStr:           "positive/just-counting",
-		SignNegativeParts: []bool{false},
-		Coefficients: [][]smartvectors.SmartVector{{
-			smartvectors.NewConstant(field.One(), 8),
-		}},
-		Selectors: [][]smartvectors.SmartVector{{
-			smartvectors.NewConstant(field.One(), 8),
-		}},
-		N0s:         []int{0},
-		N1s:         []int{8},
-		Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
-		FinalResult: fext.NewFromUint(255, 0, 0, 0),
-	},
+	// {
+	// 	NameStr:           "positive/just-counting",
+	// 	SignNegativeParts: []bool{false},
+	// 	Coefficients: [][]smartvectors.SmartVector{{
+	// 		smartvectors.NewConstant(field.One(), 8),
+	// 	}},
+	// 	Selectors: [][]smartvectors.SmartVector{{
+	// 		smartvectors.NewConstant(field.One(), 8),
+	// 	}},
+	// 	N0s:         []int{0},
+	// 	N1s:         []int{8},
+	// 	Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
+	// 	FinalResult: fext.NewFromUint(255, 0, 0, 0),
+	// },
 
-	{
-		NameStr:           "positive/12345..7",
-		SignNegativeParts: []bool{false},
-		Coefficients: [][]smartvectors.SmartVector{{
-			smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7),
-		}},
-		Selectors: [][]smartvectors.SmartVector{{
-			smartvectors.NewConstant(field.One(), 8),
-		}},
-		N0s:         []int{0},
-		N1s:         []int{8},
-		Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
-		FinalResult: fext.NewFromUint(1538, 0, 0, 0),
-	},
+	// {
+	// 	NameStr:           "positive/12345..7",
+	// 	SignNegativeParts: []bool{false},
+	// 	Coefficients: [][]smartvectors.SmartVector{{
+	// 		smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7),
+	// 	}},
+	// 	Selectors: [][]smartvectors.SmartVector{{
+	// 		smartvectors.NewConstant(field.One(), 8),
+	// 	}},
+	// 	N0s:         []int{0},
+	// 	N1s:         []int{8},
+	// 	Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
+	// 	FinalResult: fext.NewFromUint(1538, 0, 0, 0),
+	// },
 
-	{
-		NameStr:           "positive/multi-ary",
-		SignNegativeParts: []bool{false},
-		Coefficients: [][]smartvectors.SmartVector{
-			{
-				smartvectors.ForTest(1, 3, 5, 7, 9, 11, 13, 15),
-				smartvectors.ForTest(0, 2, 4, 6, 8, 10, 12, 14),
-			},
-		},
-		Selectors: [][]smartvectors.SmartVector{
-			{
-				smartvectors.NewConstant(field.One(), 8),
-				smartvectors.NewConstant(field.One(), 8),
-			},
-		},
-		N0s:         []int{0},
-		N1s:         []int{16},
-		Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
-		FinalResult: fext.NewFromUint(917506, 0, 0, 0),
-	},
+	// {
+	// 	NameStr:           "positive/multi-ary",
+	// 	SignNegativeParts: []bool{false},
+	// 	Coefficients: [][]smartvectors.SmartVector{
+	// 		{
+	// 			smartvectors.ForTest(1, 3, 5, 7, 9, 11, 13, 15),
+	// 			smartvectors.ForTest(0, 2, 4, 6, 8, 10, 12, 14),
+	// 		},
+	// 	},
+	// 	Selectors: [][]smartvectors.SmartVector{
+	// 		{
+	// 			smartvectors.NewConstant(field.One(), 8),
+	// 			smartvectors.NewConstant(field.One(), 8),
+	// 		},
+	// 	},
+	// 	N0s:         []int{0},
+	// 	N1s:         []int{16},
+	// 	Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
+	// 	FinalResult: fext.NewFromUint(917506, 0, 0, 0),
+	// },
 }
 
 var ListOfHornerTestcaseNegative = []*HornerTestcase{

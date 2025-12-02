@@ -3,8 +3,22 @@
 package vortex_test
 
 import (
+	"math/rand/v2"
+	"testing"
+
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/test"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/stretchr/testify/require"
 )
 
 /*
@@ -31,8 +45,6 @@ func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTest
 		C: *wizard.AssignVerifierCircuit(comp, proof, 0),
 	}
 }
-
-/*TODO@yao
 
 func TestVortexGnarkVerifier(t *testing.T) {
 
@@ -69,8 +81,11 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	}
 
 	prove := func(pr *wizard.ProverRuntime) {
+
+		rng := rand.New(rand.NewPCG(0, 0))
+
 		ys := make([]fext.Element, len(rows)*len(rows[0]))
-		x := fext.RandomElement() // the evaluation point
+		x := fext.PseudoRand(rng) // the evaluation point
 
 		// assign the rows with random polynomials and collect the ys
 		for round := range rows {
@@ -84,26 +99,27 @@ func TestVortexGnarkVerifier(t *testing.T) {
 				// assigned in the define phase
 				if i < numPrecomputeds && round == 0 {
 					p := pr.Spec.Precomputed.MustGet(row.GetColID())
-					ys[round*nPols+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+					ys[round*nPols+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					continue
 				}
-				p := smartvectors.Rand(polSize)
-				ys[round*nPols+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+				p := smartvectors.PseudoRand(rng, polSize)
+				ys[round*nPols+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 				pr.AssignColumn(row.GetColID(), p)
 			}
 		}
 
-		pr.AssignUnivariate("EVAL", x, ys...)
+		pr.AssignUnivariateExt("EVAL", x, ys...)
 	}
 
 	compiled := wizard.Compile(
 		define,
 		vortex.Compile(4,
+			true,
 			vortex.WithOptionalSISHashingThreshold(1<<20))) // Set to a high value to disable SIS hashing, because gnark does not support SIS hashing
-	proof := wizard.Prove(compiled, prove)
+	proof := wizard.Prove(compiled, prove, true)
 
 	// Just as a sanity check, do not run the Plonk
-	valid := wizard.Verify(compiled, proof)
+	valid := wizard.Verify(compiled, proof, true)
 	require.NoErrorf(t, valid, "the proof did not pass")
 
 	// Run the proof verifier
@@ -116,12 +132,9 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	}
 
 	// Compile the circuit
-	scs, err := frontend.Compile(
-		ecc.BLS12_377.ScalarField(),
-		scs.NewBuilder,
+	scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder,
 		&circ,
-		frontend.IgnoreUnconstrainedInputs(),
-	)
+		frontend.IgnoreUnconstrainedInputs())
 
 	if err != nil {
 		// When the error string is too large `require.NoError` does not print
@@ -132,6 +145,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 
 	// Checks that the proof makes a satifying assignment
 	assignment := assignTestCircuit(compiled, proof)
+
 	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
@@ -140,9 +154,17 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	if err != nil {
 		// When the error string is too large `require.NoError` does not print
 		// the error.
-		t.Logf("circuit solving failed : %v\n", err)
+		t.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
+
+		errDetail := test.IsSolved(
+			assignment,
+			assignment,
+			scs.Field(),
+		)
+
+		t.Logf("while running the plonk prover: %v", errDetail)
+
 		t.FailNow()
 	}
 
 }
-*/

@@ -1,10 +1,11 @@
 package gnarkutil
 
 import (
+	"reflect"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/schema"
-	"reflect"
 )
 
 // CountVariables count the variables of a circuit without compiling it. It returns

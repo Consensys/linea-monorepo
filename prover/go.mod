@@ -1,12 +1,14 @@
 module github.com/consensys/linea-monorepo/prover
 
-go 1.24.0
+go 1.24.6
+
+toolchain go1.24.10
 
 require (
 	github.com/consensys/compress v0.2.5
 	github.com/consensys/gnark v0.14.1-0.20251106131433-7ec673b46f10
 	github.com/consensys/gnark-crypto v0.19.3-0.20251106135724-55a7cfe51c41
-	github.com/consensys/go-corset v1.0.12-0.20250729080012-3d83adbcfe23
+	github.com/consensys/go-corset v1.1.30
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
 	github.com/dnlo/struct2csv v0.0.0-20190928115744-2f584471b24e

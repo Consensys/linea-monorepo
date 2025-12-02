@@ -8,18 +8,18 @@ import (
 )
 
 type DecompressionTestCircuit struct {
-	C                []frontend.Variable
+	C                []zk.WrappedVariable
 	D                []byte
 	Dict             []byte
-	CBegin           frontend.Variable
-	CLength          frontend.Variable
+	CBegin           zk.WrappedVariable
+	CLength          zk.WrappedVariable
 	CheckCorrectness bool
 	Level            lzss.Level
 }
 
 func (c *DecompressionTestCircuit) Define(api frontend.API) error {
 	dict := utils.ToVariableSlice(lzss.AugmentDict(c.Dict))
-	dBack := make([]frontend.Variable, len(c.D)) // TODO Try smaller constants
+	dBack := make([]zk.WrappedVariable, len(c.D)) // TODO Try smaller constants
 	if cb, ok := c.CBegin.(int); !ok || cb != 0 {
 		c.C = compress.ShiftLeft(api, c.C, c.CBegin)
 	}

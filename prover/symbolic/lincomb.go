@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -125,40 +126,47 @@ func (lc LinComb) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [GnarkEval] interface
-func (lc LinComb) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (lc LinComb) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
 
-	res := frontend.Variable(0)
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
 
-	// There should be as many inputs as there are coeffs
+	res := zk.ValueOf(0)
+
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
-	/*
-		Accumulate the scalars
-	*/
 	for i, input := range inputs {
-		coeff := frontend.Variable(lc.Coeffs[i])
-		res = api.Add(res, api.Mul(coeff, input))
+		coeff := zk.ValueOf(lc.Coeffs[i])
+		tmp := apiGen.Mul(coeff, input)
+		res = apiGen.Add(res, tmp)
 	}
 
 	return res
 }
 
 // GnarkEval implements the [GnarkEvalExt] interface
-func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
 
-	res := gnarkfext.Zero()
+	res := gnarkfext.NewE4GenFromBase(0)
+
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
-	var tmp gnarkfext.Element
+	var tmp gnarkfext.E4Gen
 	for i, input := range inputs {
-		coeff := gnarkfext.NewFromBase(lc.Coeffs[i])
-		tmp.Mul(api, coeff, input)
-		res.Add(api, res, tmp)
+		coeff := gnarkfext.NewE4GenFromBase(lc.Coeffs[i])
+		tmp = *e4Api.Mul(&coeff, &input)
+		res = *e4Api.Add(&tmp, &res)
 	}
 
 	return res

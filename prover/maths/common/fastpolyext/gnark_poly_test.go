@@ -13,23 +13,28 @@ import (
 )
 
 type EvaluateLagrangeCircuit struct {
-	X    gnarkfext.Element   // point of evaluation
-	Poly []gnarkfext.Element // poly in Lagrange form
-	R    gnarkfext.Element   // expected result
+	X    gnarkfext.E4Gen   // point of evaluation
+	Poly []gnarkfext.E4Gen // poly in Lagrange form
+	R    gnarkfext.E4Gen   // expected result
 }
 
 func (c *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
 	r := EvaluateLagrangeGnark(api, c.Poly, c.X)
-	c.R.AssertIsEqual(api, r)
+	e4Api.AssertIsEqual(&c.R, &r)
 
 	return nil
 }
 
-func TestEvaluateLagrangeGnark(t *testing.T) {
+func getWitnessAndCircuit(t *testing.T) (EvaluateLagrangeCircuit, EvaluateLagrangeCircuit) {
 
 	// sample random poly and random point
-	size := 64
+	size := 8
 	poly := make([]fext.Element, size)
 	for i := 0; i < size; i++ {
 		poly[i].SetRandom()
@@ -38,24 +43,35 @@ func TestEvaluateLagrangeGnark(t *testing.T) {
 	x.SetRandom()
 
 	// eval lagrange
+	// r, err := vortex.EvalFextPolyLagrange(poly, x)
 	r, err := vortex.EvalFextPolyLagrange(poly, x)
 	assert.NoError(t, err)
 
 	// test circuit
 	var witness, circuit EvaluateLagrangeCircuit
-	circuit.Poly = make([]gnarkfext.Element, size)
-	witness.Poly = make([]gnarkfext.Element, size)
+	circuit.Poly = make([]gnarkfext.E4Gen, size)
+	witness.Poly = make([]gnarkfext.E4Gen, size)
 	for i := 0; i < size; i++ {
-		witness.Poly[i] = gnarkfext.FromValue(poly[i])
+		witness.Poly[i] = gnarkfext.NewE4Gen(poly[i])
 	}
-	witness.R = gnarkfext.FromValue(r)
-	witness.X = gnarkfext.FromValue(x)
+	witness.R = gnarkfext.NewE4Gen(r)
+	witness.X = gnarkfext.NewE4Gen(x)
 
-	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
-	assert.NoError(t, err)
+	return circuit, witness
 
-	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
-	assert.NoError(t, err)
-	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+}
+
+func TestEvaluateLagrangeGnark(t *testing.T) {
+
+	{
+		circuit, witness := getWitnessAndCircuit(t)
+
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 }

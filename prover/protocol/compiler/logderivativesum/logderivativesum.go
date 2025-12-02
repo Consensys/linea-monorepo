@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"slices"
 
 	"github.com/consensys/gnark/frontend"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -134,20 +134,21 @@ func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 
 // RunGnark implements the [wizard.VerifierAction]
 func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 
 	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried
 	// in the protocol via the
-	zSum := frontend.Variable(field.Zero())
+	zSum := gnarkfext.NewE4GenFromBase(0)
 	for k := range f.ZOpenings {
-		// not using panic so that the compiler does not ask us to comment out
-		// the remainder of the loop
-		utils.Panic("this shoud default to extension fields")
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
-		zSum = api.Add(zSum, temp)
+		zSum = *e4Api.Add(&zSum, &temp)
 	}
 
-	api.AssertIsEqual(zSum, claimedSum)
+	e4Api.AssertIsEqual(&zSum, &claimedSum)
 }
 
 func (f *FinalEvaluationCheck) Skip() {

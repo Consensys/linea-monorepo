@@ -63,10 +63,10 @@ func NewConcatTinyColumns(
 
 		if cc, isCC := col.(ConstCol); isCC {
 			if cc.IsBase() {
-				access = append(access, accessors.NewConstant(cc.Base))
+				access = append(access, accessors.NewConstant(cc.F.Base))
 				continue
 			} else {
-				access = append(access, accessors.NewConstantExt(cc.Ext))
+				access = append(access, accessors.NewConstantExt(cc.F.Ext))
 				continue
 			}
 		}

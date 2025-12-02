@@ -7,8 +7,8 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -109,14 +109,14 @@ type Column interface {
 	// circuit. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
 	// column is tagged as committed.
-	GetColAssignmentGnark(run GnarkRuntime) []frontend.Variable
-	GetColAssignmentGnarkBase(run GnarkRuntime) ([]frontend.Variable, error)
-	GetColAssignmentGnarkExt(run GnarkRuntime) []gnarkfext.Element
+	GetColAssignmentGnark(run GnarkRuntime) []zk.WrappedVariable
+	GetColAssignmentGnarkBase(run GnarkRuntime) ([]zk.WrappedVariable, error)
+	GetColAssignmentGnarkExt(run GnarkRuntime) []gnarkfext.E4Gen
 	// GetColAssignmentGnarkAt recovers the assignment of the column at a
 	// particular position. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
 	// column is tagged as committed.
-	GetColAssignmentGnarkAt(run GnarkRuntime, pos int) frontend.Variable
+	GetColAssignmentGnarkAt(run GnarkRuntime, pos int) zk.WrappedVariable
 	// IsComposite states whether a column is constructed by deriving one or
 	// more columns. For instance [github.com/consensys/linea-monorepo/protocol/column.Natural] is not a composite column as
 	// it directly refers to a set of values provided to the Wizard by the user
@@ -124,8 +124,8 @@ type Column interface {
 	// column as it is derived from an underlying column (which may or may not
 	// be a composite column itself)
 	IsComposite() bool
-	GetColAssignmentGnarkAtBase(run GnarkRuntime, pos int) (frontend.Variable, error)
-	GetColAssignmentGnarkAtExt(run GnarkRuntime, pos int) gnarkfext.Element
+	GetColAssignmentGnarkAtBase(run GnarkRuntime, pos int) (zk.WrappedVariable, error)
+	GetColAssignmentGnarkAtExt(run GnarkRuntime, pos int) gnarkfext.E4Gen
 }
 
 // ColumnAsVariable instantiates a [symbolic.Variable] from a column. The [symbolic.Variable]

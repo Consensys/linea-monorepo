@@ -7,8 +7,8 @@ import (
 
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	plonk "github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -22,7 +22,7 @@ import (
 // not use all the witness variables in gates and assumes that the missing gates
 // are added.
 type testRangeCheckingCircuitIncomplete struct {
-	A [10]frontend.Variable `gnark:",public"`
+	A [10]zk.WrappedVariable `gnark:",public"`
 }
 
 func (r *testRangeCheckingCircuitIncomplete) Define(api frontend.API) error {
@@ -38,7 +38,7 @@ func (r *testRangeCheckingCircuitIncomplete) Define(api frontend.API) error {
 // so it triggers the external range-checker of the Wizard. This circuit uses
 // all the inputs in gates so there should exist a gate for each input.
 type testRangeCheckingCircuitComplete struct {
-	A [10]frontend.Variable `gnark:",public"`
+	A [10]zk.WrappedVariable `gnark:",public"`
 }
 
 func (r *testRangeCheckingCircuitComplete) Define(api frontend.API) error {
@@ -59,7 +59,7 @@ func (r *testRangeCheckingCircuitComplete) Define(api frontend.API) error {
 // not use all the internal variables in gates and automatic gate addition
 // should error.
 type testRangeCheckingCircuitIncompleteInternal struct {
-	A [10]frontend.Variable
+	A [10]zk.WrappedVariable
 }
 
 func (r *testRangeCheckingCircuitIncompleteInternal) Define(api frontend.API) error {
@@ -69,7 +69,8 @@ func (r *testRangeCheckingCircuitIncompleteInternal) Define(api frontend.API) er
 		rangeChecker.Check(r.A[i], 16)
 	}
 	// create an internal variable which is not witness.
-	res, err := api.Compiler().NewHint(DummyHint, 1, frontend.Variable(0))
+	// TODO @thomas fixme this will fail (zk.WrappedVariable instead of frontend.Variable)
+	res, err := api.Compiler().NewHint(DummyHint, 1, zk.ValueOf(0))
 	if err != nil {
 		return err
 	}
@@ -131,7 +132,19 @@ func TestRangeCheckIncompleteSucceeds(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]any{1, 1, 1, 1, 1, 1, 1, 1, 1, 1})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublicSmallField(
+			[]zk.WrappedVariable{
+				zk.ValueOf(1),
+				zk.ValueOf(1),
+				zk.ValueOf(1),
+				zk.ValueOf(1),
+				zk.ValueOf(1),
+				zk.ValueOf(1),
+				zk.ValueOf(1),
+				zk.ValueOf(1),
+				zk.ValueOf(1),
+				zk.ValueOf(1),
+			})})
 	})
 	err := wizard.Verify(compiled, proof)
 	require.NoError(t, err)
@@ -144,20 +157,19 @@ func TestRangeCheckNegative(t *testing.T) {
 
 	circuit := &testRangeCheckingCircuitIncomplete{}
 
-	assignment := gnarkutil.AsWitnessPublic([]any{
+	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
 		// 0x10000000000000000000000000 = 2^100
-		field.NewFromString("0x10000000000000000000000000"),
-		field.NewFromString("0x10000000000000000000000000"),
-		field.NewFromString("0x10000000000000000000000000"),
-		field.NewFromString("0x10000000000000000000000000"),
-		field.NewFromString("0x10000000000000000000000000"),
-		field.NewFromString("0x10000000000000000000000000"),
-		field.NewFromString("0x10000000000000000000000000"),
-		field.NewFromString("0x10000000000000000000000000"),
-		field.NewFromString("0x10000000000000000000000000"),
-		field.NewFromString("0x10000000000000000000000000"),
+		zk.ValueOf("0x10000000000000000000000000"),
+		zk.ValueOf("0x10000000000000000000000000"),
+		zk.ValueOf("0x10000000000000000000000000"),
+		zk.ValueOf("0x10000000000000000000000000"),
+		zk.ValueOf("0x10000000000000000000000000"),
+		zk.ValueOf("0x10000000000000000000000000"),
+		zk.ValueOf("0x10000000000000000000000000"),
+		zk.ValueOf("0x10000000000000000000000000"),
+		zk.ValueOf("0x10000000000000000000000000"),
+		zk.ValueOf("0x10000000000000000000000000"),
 	})
-
 	var pa plonk.PlonkInWizardProverAction
 
 	compiled := wizard.Compile(
@@ -193,17 +205,17 @@ func TestRangeCheckCompleteSucceeds(t *testing.T) {
 
 	circuit := &testRangeCheckingCircuitComplete{}
 
-	assignment := gnarkutil.AsWitnessPublic([]any{
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
+	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
 	})
 
 	var pa plonk.PlonkInWizardProverAction
@@ -261,8 +273,8 @@ func TestRangeCheckIncompleteInternalFails(t *testing.T) {
 // inclusion of the public inputs and the range checker constraint extractor
 // needs to accomodate that.
 type rangeCheckWithPublic struct {
-	A frontend.Variable `gnark:",public"`
-	D frontend.Variable `gnark:",public"`
+	A zk.WrappedVariable `gnark:",public"`
+	D zk.WrappedVariable `gnark:",public"`
 }
 
 func (c *rangeCheckWithPublic) Define(api frontend.API) error {
@@ -278,7 +290,10 @@ func (c *rangeCheckWithPublic) Define(api frontend.API) error {
 func TestErrorCase(t *testing.T) {
 	circuit := &rangeCheckWithPublic{}
 
-	assignment := gnarkutil.AsWitnessPublic([]any{1 << 20, 2})
+	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
+		zk.ValueOf(1 << 20),
+		zk.ValueOf(2),
+	})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -303,8 +318,8 @@ func TestErrorCase(t *testing.T) {
 }
 
 type testRangeCheckLRSyncCircuit struct {
-	A frontend.Variable `gnark:",public"`
-	B frontend.Variable `gnark:",public"`
+	A zk.WrappedVariable `gnark:",public"`
+	B zk.WrappedVariable `gnark:",public"`
 }
 
 func (c *testRangeCheckLRSyncCircuit) Define(api frontend.API) error {
@@ -321,7 +336,10 @@ func (c *testRangeCheckLRSyncCircuit) Define(api frontend.API) error {
 func TestRangeCheckLRSync(t *testing.T) {
 	circuit := &testRangeCheckLRSyncCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublic([]any{1, 1})
+	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+	})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -349,8 +367,8 @@ func TestRangeCheckLRSync(t *testing.T) {
 }
 
 type testRangeCheckOCircuit struct {
-	A frontend.Variable
-	B frontend.Variable
+	A zk.WrappedVariable
+	B zk.WrappedVariable
 }
 
 func (c *testRangeCheckOCircuit) Define(api frontend.API) error {
@@ -364,7 +382,10 @@ func (c *testRangeCheckOCircuit) Define(api frontend.API) error {
 func TestRangeCheckO(t *testing.T) {
 	circuit := &testRangeCheckOCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublic([]any{1, 1})
+	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+	})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -396,7 +417,10 @@ func TestRangeCheckO(t *testing.T) {
 func TestRangeCheckWithFixedNbRows(t *testing.T) {
 	circuit := &testRangeCheckLRSyncCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublic([]any{1, 1})
+	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+	})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -468,17 +492,17 @@ func TestRangeCheckerCompleteWithCommitment(t *testing.T) {
 
 	circuit := &testRangeCheckWideCommitCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublic([]any{
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
+	assignment := gnarkutil.AsWitnessPublic([]zk.WrappedVariable{
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
 	})
 
 	var pa plonk.PlonkInWizardProverAction

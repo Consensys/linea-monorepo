@@ -182,7 +182,7 @@ func (e *Element) Conjugate(api frontend.API, e1 Element) *Element {
 // Inverse Element elmts
 func (e *Element) Inverse(api frontend.API, e1 Element) *Element {
 
-	res, err := api.NewHint(inverseE4Hint, 4, e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1)
+	res, err := api.NewHint(inverseE4HintNative, 4, e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1)
 	if err != nil {
 		// err is non-nil only for invalid number of inputs
 		panic(err)

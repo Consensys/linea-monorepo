@@ -7,12 +7,13 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // The verifier gets all the query openings and multiply them together and
@@ -46,17 +47,21 @@ func (v *VerifierCtx) Run(run wizard.Runtime) error {
 // Run implements the [wizard.VerifierAction] interface and is as
 // [VerifierCtx.Run] but in the context of a gnark circuit.
 func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	mustBeOne := zk.ValueOf(1)
 
-	mustBeOne := frontend.Variable(1)
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
 
 	for _, zCtx := range v.Ctxs {
 		for _, opening := range zCtx.ZOpenings {
 			y := run.GetLocalPointEvalParams(opening.ID).BaseY
-			mustBeOne = api.Mul(mustBeOne, y)
+			mustBeOne = apiGen.Mul(mustBeOne, y)
 		}
 	}
 
-	api.AssertIsEqual(mustBeOne, frontend.Variable(1))
+	api.AssertIsEqual(mustBeOne, zk.ValueOf(1))
 }
 
 func (v *VerifierCtx) Skip() {
@@ -121,43 +126,42 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 }
 
 func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	y := run.GetGrandProductParams(c.Query.ID).Prod
+	d := gnarkfext.NewE4GenFromBase(1)
 
-	var (
-		y = run.GetGrandProductParams(c.Query.ID).Prod
-		d = frontend.Variable(1)
-	)
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 
 	for _, e := range c.ExplicitNum {
 
-		var (
-			col = column.GnarkEvalExprColumn(api, run, e.Board())
-			tmp = frontend.Variable(1)
-		)
+		col := column.GnarkEvalExprColumn(api, run, e.Board())
+		tmp := gnarkfext.NewE4GenFromBase(1)
 
 		for i := range col {
-			tmp = api.Mul(tmp, col[i])
+			tmp = *ext4.Mul(&tmp, &col[i])
 		}
 
-		y = api.Mul(y, tmp)
+		y = *ext4.Mul(&y, &tmp)
 	}
 
 	for _, e := range c.ExplicitDen {
 
-		var (
-			col = column.GnarkEvalExprColumn(api, run, e.Board())
-			tmp = frontend.Variable(1)
-		)
+		col := column.GnarkEvalExprColumn(api, run, e.Board())
+		tmp := gnarkfext.NewE4GenFromBase(1)
 
 		for i := range col {
-			tmp = api.Mul(tmp, col[i])
+			tmp = *ext4.Mul(&tmp, &col[i])
 		}
 
-		d = api.Mul(d, tmp)
+		d = *ext4.Mul(&d, &tmp)
 	}
 
-	y = api.Div(y, d)
+	y = *ext4.Div(&y, &d)
 
-	api.AssertIsEqual(y, frontend.Variable(1))
+	e := gnarkfext.NewE4GenFromBase(1)
+	ext4.AssertIsEqual(&y, &e)
 }
 
 func (c *CheckGrandProductIsOne) Skip() {
@@ -212,18 +216,21 @@ func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 
 // RunGnark implements the [wizard.VerifierAction]
 func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
 	claimedProd := run.GetGrandProductParams(f.GrandProductID).Prod
 
-	// zProd stores the product of the ending values of the z columns
-	zProd := frontend.Variable(field.One())
-	for k := range f.ZOpenings {
-		utils.Panic("this should be expected to be extension fields")
-		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
-		zProd = api.Mul(zProd, temp)
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
 	}
 
-	api.AssertIsEqual(zProd, claimedProd)
+	// zProd stores the product of the ending values of the z columns
+	zProd := gnarkfext.NewE4GenFromBase(1)
+	for k := range f.ZOpenings {
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
+		zProd = *ext4.Mul(&zProd, &temp)
+	}
+
+	ext4.AssertIsEqual(&zProd, &claimedProd)
 }
 
 func (f *FinalProductCheck) Skip() {

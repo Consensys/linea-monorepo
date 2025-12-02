@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
@@ -18,14 +18,14 @@ import (
 // access to an existing key in the map.
 type ReadNonZeroTrace[K, V io.WriterTo] struct {
 	// Identifier for the tree this trace belongs to
-	Type         int         `json:"type"`
-	Location     string      `json:"location"`
-	NextFreeNode int         `json:"nextFreeNode"`
-	Key          K           `json:"key"`
-	Value        V           `json:"value"`
-	SubRoot      Bytes32     `json:"subRoot"`
-	LeafOpening  LeafOpening `json:"leaf"`
-	Proof        smt.Proof   `json:"proof"`
+	Type         int                 `json:"type"`
+	Location     string              `json:"location"`
+	NextFreeNode int                 `json:"nextFreeNode"`
+	Key          K                   `json:"key"`
+	Value        V                   `json:"value"`
+	SubRoot      Bytes32             `json:"subRoot"`
+	LeafOpening  LeafOpening         `json:"leaf"`
+	Proof        smt_koalabear.Proof `json:"proof"`
 }
 
 // ReadNonZeroAndProve perform a read on the accumulator and returns a trace.
@@ -40,7 +40,7 @@ func (p *ProverState[K, V]) ReadNonZeroAndProve(key K) ReadNonZeroTrace[K, V] {
 
 	tuple := p.Data.MustGet(i)
 
-	if hash(p.Config(), key) != hash(p.Config(), tuple.Key) {
+	if hash(key) != hash(tuple.Key) {
 		utils.Panic("sanity-check : the key mismatched")
 	}
 
@@ -74,12 +74,12 @@ func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) er
 		LeafOpening: trace.LeafOpening,
 	}
 
-	leaf, err := tuple.CheckAndLeaf(v.Config)
+	leaf, err := tuple.CheckAndLeaf()
 	if err != nil {
 		return errors.WithMessage(err, "read non zero verifier failed")
 	}
 
-	if !trace.Proof.Verify(v.Config, types.Bytes32ToOctuplet(leaf), types.Bytes32ToOctuplet(trace.SubRoot)) {
+	if smt_koalabear.Verify(&trace.Proof, types.Bytes32ToOctuplet(leaf), types.Bytes32ToOctuplet(trace.SubRoot)) != nil {
 		return fmt.Errorf("merkle proof verification failed")
 	}
 
@@ -93,22 +93,21 @@ func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) er
 
 // DeferMerkleChecks implements [Trace]
 func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
-	config *smt.Config,
-	appendTo []smt.ProvedClaim,
-) []smt.ProvedClaim {
+	appendTo []smt_koalabear.ProvedClaim,
+) []smt_koalabear.ProvedClaim {
 	tuple := KVOpeningTuple[K, V]{
 		Key:         trace.Key,
 		Value:       trace.Value,
 		LeafOpening: trace.LeafOpening,
 	}
 
-	leaf, _ := tuple.CheckAndLeaf(config)
-	appendTo = append(appendTo, smt.ProvedClaim{Proof: trace.Proof, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leaf)})
+	leaf, _ := tuple.CheckAndLeaf()
+	appendTo = append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.Proof, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leaf)})
 	return appendTo
 }
 
-func (trace ReadNonZeroTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
-	return hash(cfg, trace.Key)
+func (trace ReadNonZeroTrace[K, V]) HKey() Bytes32 {
+	return hash(trace.Key)
 }
 
 func (trace ReadNonZeroTrace[K, V]) RWInt() int {

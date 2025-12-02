@@ -4,9 +4,9 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -57,11 +57,12 @@ func (x X) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVecto
 }
 
 // Evaluate the variable, but not over a coset
-func (x X) GnarkEvalNoCoset(size int) []frontend.Variable {
+func (x X) GnarkEvalNoCoset(size int) []zk.WrappedVariable {
 	res_ := x.EvalCoset(size, 0, 1, false)
-	res := make([]frontend.Variable, res_.Len())
+	res := make([]zk.WrappedVariable, res_.Len())
 	for i := range res {
-		res[i] = res_.Get(i)
+		tmp := res_.Get(i)
+		res[i] = zk.ValueOf(tmp.String())
 	}
 	return res
 }

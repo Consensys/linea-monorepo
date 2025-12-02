@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -49,9 +50,11 @@ func (a *FoldVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	c := a.FoldedEvalAcc.GetFrontendVariable(api, wvc)
-	c_ := a.HEvalAcc.GetFrontendVariable(api, wvc)
-	api.AssertIsEqual(c, c_)
+	ext4, _ := gnarkfext.NewExt4(api)
+
+	c := a.FoldedEvalAcc.GetFrontendVariableExt(api, wvc)
+	c_ := a.HEvalAcc.GetFrontendVariableExt(api, wvc)
+	ext4.AssertIsEqual(&c, &c_)
 }
 
 func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDegree int) ifaces.Column {

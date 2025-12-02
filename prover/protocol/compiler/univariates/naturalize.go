@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -363,20 +364,20 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 	// Collect the subqueries and the collection in finalYs evaluations
 	subQueries := []query.UnivariateEval{}
 	subQueriesParams := []query.GnarkUnivariateEvalParams{}
-	finalYs := collection.NewMapping[string, frontend.Variable]()
+	finalYs := collection.NewMapping[string, gnarkfext.E4Gen]()
 
 	for qID, qName := range ctx.SubQueriesNames {
 		subQueries = append(subQueries, c.GetUnivariateEval(qName))
 		subQueriesParams = append(subQueriesParams, c.GetUnivariateParams(qName))
 		repr := ctx.DeduplicatedReprs[qID]
-		for j, derivedY := range subQueriesParams[qID].Ys {
+		for j, derivedY := range subQueriesParams[qID].ExtYs {
 			finalYs.InsertNew(column.DerivedYRepr(repr, subQueries[qID].Pols[j]), derivedY)
 		}
 	}
 
 	// For each subqueries verifies the values for xs
-	cachedXs := collection.NewMapping[string, frontend.Variable]()
-	cachedXs.InsertNew("", originalQueryParams.X)
+	cachedXs := collection.NewMapping[string, gnarkfext.E4Gen]()
+	cachedXs.InsertNew("", originalQueryParams.ExtX)
 	alreadyCheckedReprs := collection.NewSet[string]()
 
 	/*
@@ -388,23 +389,28 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 				what was found in the sub queries.
 	*/
 
+	ext4, e := gnarkfext.NewExt4(api)
+	if e != nil {
+		panic(e)
+	}
+
 	for originPolID, originH := range originalQuery.Pols {
 		subrepr := column.DownStreamBranch(originH)
-		recoveredX := column.GnarkDeriveEvaluationPoint(api, originH, "", cachedXs, originalQueryParams.X)
+		recoveredX := column.GnarkDeriveEvaluationPoint(api, originH, "", cachedXs, originalQueryParams.ExtX)
 
 		if alreadyCheckedReprs.Exists(subrepr) {
 			continue
 		}
 
 		qID := ctx.ReprToSubQueryID[subrepr]
-		submittedX := subQueriesParams[qID].X
+		submittedX := subQueriesParams[qID].ExtX
 		// Or it is a mismatch between the evaluation queries and the derived query
-		api.AssertIsEqual(recoveredX[0], submittedX)
+		ext4.AssertIsEqual(&recoveredX[0], &submittedX)
 
 		/*
 			Recovers the Y values
 		*/
 		recoveredY := column.GnarkVerifyYConsistency(api, originH, "", cachedXs, finalYs)
-		api.AssertIsEqual(recoveredY, originalQueryParams.Ys[originPolID])
+		ext4.AssertIsEqual(&recoveredY, &originalQueryParams.ExtYs[originPolID])
 	}
 }

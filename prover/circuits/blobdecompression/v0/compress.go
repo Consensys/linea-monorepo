@@ -20,12 +20,12 @@ import (
 func DecompressLZSS(
 	api frontend.API,
 	dictBytes []byte,
-	blobBytesPacked []frontend.Variable,
-	blobBytesLen frontend.Variable,
+	blobBytesPacked []zk.WrappedVariable,
+	blobBytesLen zk.WrappedVariable,
 	payloadMaxPackedSize int,
-	blobHeaderBytesLen frontend.Variable,
+	blobHeaderBytesLen zk.WrappedVariable,
 ) (
-	payloadPackedBytes []frontend.Variable,
+	payloadPackedBytes []zk.WrappedVariable,
 	err error,
 ) {
 
@@ -58,7 +58,7 @@ func DecompressLZSS(
 	var (
 		compressed             = internal.RotateLeft(api, blobUnpackedBytes, blobHeaderBytesLen) // TODO this should be preceded by at least partially parsing the header
 		payloadMaxUnpackedSize = utils.DivCeil(payloadMaxPackedSize, 32) * 31
-		payloadUnpacked        = make([]frontend.Variable, payloadMaxUnpackedSize)
+		payloadUnpacked        = make([]zk.WrappedVariable, payloadMaxUnpackedSize)
 	)
 
 	cLen := api.Sub(blobBytesLen, blobHeaderBytesLen)
@@ -81,8 +81,8 @@ func DecompressLZSS(
 
 // Note, this function only works if the number of bits packed in a FE is 248.
 // This is only a temporary decision.
-func snarkUnpackAlign(bs []frontend.Variable) []frontend.Variable {
-	res := make([]frontend.Variable, 0, len(bs))
+func snarkUnpackAlign(bs []zk.WrappedVariable) []zk.WrappedVariable {
+	res := make([]zk.WrappedVariable, 0, len(bs))
 	for i := range bs {
 		if i%32 == 0 {
 			continue
@@ -93,13 +93,13 @@ func snarkUnpackAlign(bs []frontend.Variable) []frontend.Variable {
 }
 
 // Note, this function only work if the number of bits packed in a FE is 248
-func snarkPackAlign(bs []frontend.Variable) []frontend.Variable {
+func snarkPackAlign(bs []zk.WrappedVariable) []zk.WrappedVariable {
 	var (
 		numUnpacked    = len(bs)
 		numZeroesToAdd = utils.DivCeil(numUnpacked, 31)
 	)
 
-	res := make([]frontend.Variable, 0, numUnpacked+numZeroesToAdd)
+	res := make([]zk.WrappedVariable, 0, numUnpacked+numZeroesToAdd)
 	for i := range bs {
 		if i%31 == 0 {
 			res = append(res, 0)

@@ -6,10 +6,11 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -17,7 +18,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/sirupsen/logrus"
 )
 
 // GnarkRuntime is the interface implemented by the struct [VerifierCircuit]
@@ -25,7 +25,7 @@ import (
 type GnarkRuntime interface {
 	ifaces.GnarkRuntime
 	GetSpec() *CompiledIOP
-	GetPublicInput(api frontend.API, name string) frontend.Variable
+	GetPublicInput(api frontend.API, name string) zk.WrappedVariable
 	GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams
 	GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams
 	GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams
@@ -33,7 +33,7 @@ type GnarkRuntime interface {
 	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
-	Fs() *fiatshamir.GnarkFiatShamir
+	Fs() *fiatshamir.GnarkFS
 	GetHasherFactory() mimc.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
@@ -76,7 +76,7 @@ type VerifierCircuit struct {
 	// Maps a query's name to a position in the arrays below. The reason we
 	// use this data-structure is because the [VerifierRuntime] offers
 	// key-value access to the internal parameters of the struct and we
-	// cannot have maps of [frontend.Variable] in a gnark circuit (because we
+	// cannot have maps of [zk.WrappedVariable] in a gnark circuit (because we
 	// need a deterministic storage so that we are sure that the wires stay at
 	// the same position). The way we solve the problem is by storing the
 	// columns and parameters in slices and keeping track of their positions
@@ -100,8 +100,8 @@ type VerifierCircuit struct {
 
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
-	Columns    [][]frontend.Variable `gnark:",secret"`
-	ColumnsExt [][]gnarkfext.Element `gnark:",secret"`
+	Columns    [][]zk.WrappedVariable `gnark:",secret"`
+	ColumnsExt [][]gnarkfext.E4Gen    `gnark:",secret"`
 	// UnivariateParams stores an assignment for each [query.UnivariateParams]
 	// from the proof. This is part of the witness of the gnark circuit.
 	UnivariateParams []query.GnarkUnivariateEvalParams `gnark:",secret"`
@@ -121,10 +121,10 @@ type VerifierCircuit struct {
 	// the proof. It is part of the witness of the gnark circuit.
 	HornerParams []query.GnarkHornerParams `gnark:",secret"`
 
-	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
+	// BLSFS is the Fiat-Shamir state, mirroring [VerifierRuntime.BLSFS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
 	// possible.
-	FS *fiatshamir.GnarkFiatShamir `gnark:"-"`
+	BLSFS fiatshamir.GnarkFS `gnark:"-"`
 
 	// Coins stores all the coins sampled by the verifier circuit. It is not
 	// part of the witness since the coins are constructed from the assigned
@@ -162,8 +162,8 @@ func NewVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 		GrandProductIDs:     collection.NewMapping[ifaces.QueryID, int](),
 		HornerIDs:           collection.NewMapping[ifaces.QueryID, int](),
 
-		Columns:            [][]frontend.Variable{},
-		ColumnsExt:         [][]gnarkfext.Element{},
+		Columns:            [][]zk.WrappedVariable{},
+		ColumnsExt:         [][]gnarkfext.E4Gen{},
 		UnivariateParams:   make([]query.GnarkUnivariateEvalParams, 0),
 		InnerProductParams: make([]query.GnarkInnerProductParams, 0),
 		LocalOpeningParams: make([]query.GnarkLocalOpeningParams, 0),
@@ -219,14 +219,12 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 			res.AllocColumnExt(colName, col.Size())
 		}
 	}
-
 	/*
 		Allocate the queries params also. Note that AllKeys does give a
 		deterministic order iteration and that's why we do not iterate
 		on the map directly.
 	*/
 	for _, qName := range comp.QueriesParams.AllKeys() {
-
 		// Note that we do not filter out the "already compiled" queries
 		// here.
 		qInfoIface := comp.QueriesParams.Data(qName)
@@ -267,7 +265,7 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 
 	// Assigns the messages. Note that the iteration order is made
 	// consistent with `AllocateWizardCircuit`
-	for i, colName := range comp.Columns.AllKeys() {
+	for _, colName := range comp.Columns.AllKeys() {
 
 		col := comp.Columns.GetHandle(colName)
 
@@ -288,33 +286,29 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 			continue
 		}
 
-		logrus.Tracef("VERIFIER CIRCUIT : registering column %v (as %v) in circuit (#%v)", colName, status.String(), i)
-		msgDataIFace := proof.Messages.MustGet(colName)
-		msgData := msgDataIFace
-
-		// Perform the conversion to frontend.Variable, element by element
-		if _, err := msgData.GetBase(0); err == nil {
-			// the assignment consists of base elements
-			assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
+		// Allocates the column in the circuit and indexes it
+		isBase := comp.Columns.GetHandle(colName).IsBase()
+		assignedSV := proof.Messages.MustGet(colName)
+		if isBase {
+			// the column is defined as a base field column so we assert that
+			// the assignment is a base field vector as well.
+			assignedMsg := smartvectors.IntoGnarkAssignment(assignedSV)
 			res.ColumnsIDs.InsertNew(colName, len(res.Columns))
 			res.Columns = append(res.Columns, assignedMsg)
 		} else {
 			// the assignment consists of extension elements
-			assignedMsg := smartvectors.IntoGnarkAssignmentExt(msgData)
+			assignedMsg := smartvectors.IntoGnarkAssignmentExt(assignedSV)
 			res.ColumnsExtIDs.InsertNew(colName, len(res.ColumnsExt))
 			res.ColumnsExt = append(res.ColumnsExt, assignedMsg)
 		}
-
 	}
 
 	// Assigns the query parameters. Note that the iteration order is
 	// made deterministic to match the iteration order of the
 	for _, qName := range comp.QueriesParams.AllKeys() {
-
 		if comp.QueriesParams.Round(qName) >= res.NumRound {
 			continue
 		}
-
 		// Note that we do not filter out the "already compiled" queries
 		// here.
 		paramsIface := proof.QueriesParams.MustGet(qName)
@@ -349,8 +343,13 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use
 	// GKR instead.
-	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
-	c.FS.Update(c.Spec.FiatShamirSetup)
+	c.BLSFS = fiatshamir.NewGnarkFSKoalaBLS12377(api)
+
+	var zkWV [8]zk.WrappedVariable
+	for i := 0; i < 8; i++ {
+		zkWV[i] = zk.ValueOf(c.Spec.FiatShamirSetup[i].String())
+	}
+	c.BLSFS.Update(zkWV[:]...)
 
 	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
 
@@ -385,7 +384,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			}
 
 			msgContent := c.GetColumn(msg)
-			c.FS.UpdateVec(msgContent)
+			c.BLSFS.UpdateVec(msgContent)
 		}
 
 		/*
@@ -398,7 +397,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			}
 
 			params := c.GetParams(qName)
-			params.UpdateFS(c.FS)
+			params.UpdateFS(&c.BLSFS)
 		}
 	}
 
@@ -409,25 +408,29 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		}
 	}
 
-	seed := c.FS.State()
+	seed := c.BLSFS.State()
 
+	zkSeed := zk.Octuplet{}
+	for i := 0; i < 8; i++ {
+		zkSeed[i] = zk.WrapFrontendVariable(seed[i])
+	}
 	// Then assigns the coins for the new round.
 	toCompute := c.Spec.Coins.AllKeysAt(currRound)
 	for _, coinName := range toCompute {
 		if c.Spec.Coins.IsSkippedFromVerifierTranscript(coinName) {
 			continue
 		}
-
 		cn := c.Spec.Coins.Data(coinName)
-		value := cn.SampleGnark(c.FS, seed[0])
+		value := cn.SampleGnark(&c.BLSFS, zkSeed)
+
 		c.Coins.InsertNew(coinName, value)
 	}
 }
 
 // GetRandomCoinField returns the preassigned value of a random coin as
-// [frontend.Variable]. The implementation implicitly checks that the field
+// [zk.WrappedVariable]. The implementation implicitly checks that the field
 // element is of the right type. It mirrors [VerifierRuntime.GetRandomCoinField]
-func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) frontend.Variable {
+func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) zk.WrappedVariable {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -437,14 +440,14 @@ func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) frontend.Variable {
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.Field)
 	}
 	// If this panics, it means we generate the coins wrongly
-	return c.Coins.MustGet(name).(frontend.Variable)
+	return c.Coins.MustGet(name).(zk.WrappedVariable)
 }
 
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin as an
-// array of [frontend.Variable]. The implementation implicitly checks that the
+// array of [zk.WrappedVariable]. The implementation implicitly checks that the
 // requested coin does indeed have the type [coin.IntegerVec] and panics if not.
 // The function mirror [VerifierRuntime.GetRandomCoinIntegerVec].
-func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable {
+func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []zk.WrappedVariable {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -454,14 +457,20 @@ func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []frontend.Var
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.IntegerVec)
 	}
 	// If this panics, it means we generates the coins wrongly
-	return c.Coins.MustGet(name).([]frontend.Variable)
+	coins := c.Coins.MustGet(name).([]frontend.Variable)
+	res := make([]zk.WrappedVariable, len(coins))
+	for i := 0; i < len(coins); i++ {
+		res[i] = zk.WrapFrontendVariable(coins[i])
+	}
+
+	return res
 }
 
 // GetRandomCoinFieldExt returns a field extension randomness. The coin should
 // be issued at the same round as it was registered. The same coin can't be
 // retrieved more than once. The coin should also have been registered as a
 // field extension randomness.
-func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element {
+func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.E4Gen {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -470,15 +479,15 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.Elemen
 
 	// intermediary use case, should be removed when all coins become field extensions
 	if infos.Type == coin.FieldExt {
-		res := c.Coins.MustGet(name).(frontend.Variable)
-		return gnarkfext.NewFromBase(res)
+		res := c.Coins.MustGet(name).(gnarkfext.E4Gen)
+		return res
 	}
 
 	if infos.Type != coin.FieldExt {
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
 	}
 	// If this panics, it means we generate the coins wrongly
-	return c.Coins.MustGet(name).(gnarkfext.Element)
+	return c.Coins.MustGet(name).(gnarkfext.E4Gen)
 }
 
 // GetUnivariateParams returns the parameters of a univariate evaluation (i.e:
@@ -490,8 +499,8 @@ func (c *VerifierCircuit) GetUnivariateParams(name ifaces.QueryID) query.GnarkUn
 
 	// Sanity-checks
 	info := c.GetUnivariateEval(name)
-	if len(info.Pols) != len(params.Ys) {
-		utils.Panic("(for %v) inconsistent lengths %v %v", name, len(info.Pols), len(params.Ys))
+	if len(info.Pols) != len(params.ExtYs) {
+		utils.Panic("(for %v) inconsistent lengths %v %v", name, len(info.Pols), len(params.ExtYs))
 	}
 	return params
 }
@@ -550,31 +559,30 @@ func (c *VerifierCircuit) GetHornerParams(name ifaces.QueryID) query.GnarkHorner
 
 // GetColumns returns the gnark assignment of a column in a gnark circuit. It
 // mirrors the function [VerifierRuntime.GetColumn]
-func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []frontend.Variable {
+func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []zk.WrappedVariable {
 
-	// case where the column is part of the verification key
-	if c.Spec.Columns.Status(name) == column.VerifyingKey {
-		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
-		res := make([]frontend.Variable, len(val))
-		// Return the column as an array of constants
-		for i := range val {
-			res[i] = val[i].String()
+	if c.Spec.Columns.GetHandle(name).IsBase() {
+		res, err := c.GetColumnBase(name)
+		if err != nil {
+			utils.Panic("requested base element from underlying field extension")
+		}
+		return res
+	} else {
+		resExt := c.GetColumnExt(name)
+		res := make([]zk.WrappedVariable, len(resExt)*4)
+
+		for i := 0; i < len(resExt); i++ {
+			res[4*i] = resExt[i].B0.A0
+			res[4*i+1] = resExt[i].B0.A1
+			res[4*i+2] = resExt[i].B1.A0
+			res[4*i+3] = resExt[i].B1.A1
 		}
 		return res
 	}
 
-	msgID := c.ColumnsIDs.MustGet(name)
-	wrappedMsg := c.Columns[msgID]
-
-	size := c.Spec.Columns.GetSize(name)
-	if len(wrappedMsg) != size {
-		utils.Panic("bad dimension %v, spec expected %v", len(wrappedMsg), size)
-	}
-
-	return wrappedMsg
 }
 
-func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]frontend.Variable, error) {
+func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable, error) {
 
 	// for when the column is part of the verifying key
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
@@ -584,10 +592,11 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]frontend.Variable,
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
 		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
-		res := gnarkutil.AllocateSlice(len(val))
+		// res := gnarkutil.AllocateSlice(len(val))
+		res := make([]zk.WrappedVariable, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = val[i]
+			res[i] = zk.ValueOf(val[i].String())
 		}
 		return res, nil
 	}
@@ -603,7 +612,7 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]frontend.Variable,
 	return wrappedMsg, nil
 }
 
-func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.Element {
+func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.E4Gen {
 
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
@@ -611,7 +620,8 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.Element {
 		res := gnarkutil.AllocateSliceExt(len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i].Assign(val[i])
+			// res[i].Assign(val[i])
+			res[i] = gnarkfext.NewE4Gen(val[i])
 		}
 		return res
 	}
@@ -630,26 +640,26 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.Element {
 
 // GetColumnAt returns the gnark assignment of a column at a requested point in
 // a gnark circuit. It mirrors the function [VerifierRuntime.GetColumnAt]
-func (c *VerifierCircuit) GetColumnAt(name ifaces.ColID, pos int) frontend.Variable {
+func (c *VerifierCircuit) GetColumnAt(name ifaces.ColID, pos int) zk.WrappedVariable {
 	return c.GetColumn(name)[pos]
 }
 
-func (c *VerifierCircuit) GetColumnAtBase(name ifaces.ColID, pos int) (frontend.Variable, error) {
+func (c *VerifierCircuit) GetColumnAtBase(name ifaces.ColID, pos int) (zk.WrappedVariable, error) {
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
-		return field.Zero(), fmt.Errorf("requested base element from underlying field extension")
+		return zk.ValueOf(0), fmt.Errorf("requested base element from underlying field extension")
 	}
 
 	retrievedCol, _ := c.GetColumnBase(name)
 	return retrievedCol[pos], nil
 }
 
-func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) gnarkfext.Element {
+func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) gnarkfext.E4Gen {
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
 		return c.GetColumnExt(name)[pos]
 	}
 
 	retrievedCol, _ := c.GetColumnBase(name)
-	return gnarkfext.NewFromBase(retrievedCol[pos])
+	return gnarkfext.FromBase(retrievedCol[pos])
 }
 
 // GetParams returns a query parameters as a generic interface
@@ -677,15 +687,15 @@ func (c *VerifierCircuit) GetParams(id ifaces.QueryID) ifaces.GnarkQueryParams {
 
 // AllocColumn inserts a column in the Wizard verifier circuit and is meant
 // to be called at allocation time.
-func (c *VerifierCircuit) AllocColumn(id ifaces.ColID, size int) []frontend.Variable {
-	column := make([]frontend.Variable, size)
+func (c *VerifierCircuit) AllocColumn(id ifaces.ColID, size int) []zk.WrappedVariable {
+	column := make([]zk.WrappedVariable, size)
 	c.ColumnsIDs.InsertNew(id, len(c.Columns))
 	c.Columns = append(c.Columns, column)
 	return column
 }
 
-func (c *VerifierCircuit) AllocColumnExt(id ifaces.ColID, size int) []gnarkfext.Element {
-	column := make([]gnarkfext.Element, size)
+func (c *VerifierCircuit) AllocColumnExt(id ifaces.ColID, size int) []gnarkfext.E4Gen {
+	column := make([]gnarkfext.E4Gen, size)
 	columnIndex := len(c.ColumnsExt)
 	c.ColumnsExtIDs.InsertNew(id, columnIndex)
 	c.ColumnsExt = append(c.ColumnsExt, column)
@@ -704,12 +714,13 @@ func (c *VerifierCircuit) AssignColumnExt(id ifaces.ColID, sv smartvectors.Smart
 	columnIndex := len(c.ColumnsExt)
 	c.ColumnsExtIDs.InsertNew(id, columnIndex)
 	c.ColumnsExt = append(c.ColumnsExt, column)
+
 }
 
 // AllocUnivariableEval inserts a slot for a univariate query opening in the
 // witness of the verifier circuit.
 func (c *VerifierCircuit) AllocUnivariateEval(qName ifaces.QueryID, qInfo query.UnivariateEval) {
-	// Note that nil is the default value for frontend.Variable
+	// Note that nil is the default value for zk.WrappedVariable
 	c.UnivariateParamsIDs.InsertNew(qName, len(c.UnivariateParams))
 	c.UnivariateParams = append(c.UnivariateParams, qInfo.GnarkAllocate())
 }
@@ -717,7 +728,7 @@ func (c *VerifierCircuit) AllocUnivariateEval(qName ifaces.QueryID, qInfo query.
 // AllocInnerProduct inserts a slot for an inner-product query opening in the
 // witness of the verifier circuit.
 func (c *VerifierCircuit) AllocInnerProduct(qName ifaces.QueryID, qInfo query.InnerProduct) {
-	// Note that nil is the default value for frontend.Variable
+	// Note that nil is the default value for zk.WrappedVariable
 	c.InnerProductIDs.InsertNew(qName, len(c.InnerProductParams))
 	c.InnerProductParams = append(c.InnerProductParams, qInfo.GnarkAllocate())
 }
@@ -725,7 +736,7 @@ func (c *VerifierCircuit) AllocInnerProduct(qName ifaces.QueryID, qInfo query.In
 // AllocLocalOpening inserts a slot for a local position opening in the witness
 // of the verifier circuit.
 func (c *VerifierCircuit) AllocLocalOpening(qName ifaces.QueryID, qInfo query.LocalOpening) {
-	// Note that nil is the default value for frontend.Variable
+	// Note that nil is the default value for zk.WrappedVariable
 	c.LocalOpeningIDs.InsertNew(qName, len(c.LocalOpeningParams))
 	c.LocalOpeningParams = append(c.LocalOpeningParams, query.GnarkLocalOpeningParams{})
 }
@@ -756,7 +767,7 @@ func (c *VerifierCircuit) AllocHorner(qName ifaces.QueryID, qInfo *query.Horner)
 // AssignUnivariableEval assigns the parameters of a [query.UnivariateEval]
 // in the witness of the verifier circuit.
 func (c *VerifierCircuit) AssignUnivariateEval(qName ifaces.QueryID, params query.UnivariateEvalParams) {
-	// Note that nil is the default value for frontend.Variable
+	// Note that nil is the default value for zk.WrappedVariable
 	c.UnivariateParamsIDs.InsertNew(qName, len(c.UnivariateParams))
 	c.UnivariateParams = append(c.UnivariateParams, params.GnarkAssign())
 }
@@ -764,7 +775,7 @@ func (c *VerifierCircuit) AssignUnivariateEval(qName ifaces.QueryID, params quer
 // AssignInnerProduct assigns the parameters of an [query.InnerProduct]
 // in the the witnesss of the verifier circuit.
 func (c *VerifierCircuit) AssignInnerProduct(qName ifaces.QueryID, params query.InnerProductParams) {
-	// Note that nil is the default value for frontend.Variable
+	// Note that nil is the default value for zk.WrappedVariable
 	c.InnerProductIDs.InsertNew(qName, len(c.InnerProductParams))
 	c.InnerProductParams = append(c.InnerProductParams, params.GnarkAssign())
 }
@@ -772,7 +783,7 @@ func (c *VerifierCircuit) AssignInnerProduct(qName ifaces.QueryID, params query.
 // AssignLocalOpening assigns the parameters of a [query.LocalOpening] into
 // the witness of the verifier circuit.
 func (c *VerifierCircuit) AssignLocalOpening(qName ifaces.QueryID, params query.LocalOpeningParams) {
-	// Note that nil is the default value for frontend.Variable
+	// Note that nil is the default value for zk.WrappedVariable
 	c.LocalOpeningIDs.InsertNew(qName, len(c.LocalOpeningParams))
 	c.LocalOpeningParams = append(c.LocalOpeningParams, params.GnarkAssign())
 }
@@ -780,7 +791,7 @@ func (c *VerifierCircuit) AssignLocalOpening(qName ifaces.QueryID, params query.
 // AssignLogDerivativeSum assigns the parameters of a [query.LogDerivativeSum]
 // into the witness of the verifier circuit.
 func (c *VerifierCircuit) AssignLogDerivativeSum(qName ifaces.QueryID, params query.LogDerivSumParams) {
-	// Note that nil is the default value for frontend.Variable
+	// Note that nil is the default value for zk.WrappedVariable
 	c.LogDerivSumIDs.InsertNew(qName, len(c.LogDerivSumParams))
 	c.LogDerivSumParams = append(c.LogDerivSumParams, query.GnarkLogDerivSumParams{Sum: params.GnarkAssign().Sum})
 }
@@ -788,15 +799,15 @@ func (c *VerifierCircuit) AssignLogDerivativeSum(qName ifaces.QueryID, params qu
 // AssignGrandProduct assigns the parameters of a [query.GrandProduct]
 // into the witness of the verifier circuit.
 func (c *VerifierCircuit) AssignGrandProduct(qName ifaces.QueryID, params query.GrandProductParams) {
-	// Note that nil is the default value for frontend.Variable
+	// Note that nil is the default value for zk.WrappedVariable
 	c.GrandProductIDs.InsertNew(qName, len(c.GrandProductParams))
-	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: params.ExtY})
+	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: gnarkfext.NewE4Gen(params.ExtY)})
 }
 
 // AssignHorner assigns the parameters of a [query.Horner] into the witness
 // of the verifier circuit.
 func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.HornerParams) {
-	// Note that nil is the default value for frontend.Variable
+	// Note that nil is the default value for zk.WrappedVariable
 	c.HornerIDs.InsertNew(qName, len(c.HornerParams))
 	parts := make([]query.HornerParamsPartGnark, len(params.Parts))
 	for i := range params.Parts {
@@ -804,13 +815,13 @@ func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.Horner
 		parts[i].N1 = params.Parts[i].N1
 	}
 	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{
-		FinalResult: params.FinalResult,
+		FinalResult: gnarkfext.NewE4Gen(params.FinalResult),
 		Parts:       parts,
 	})
 }
 
 // GetPublicInput returns a public input value from its name
-func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) frontend.Variable {
+func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) zk.WrappedVariable {
 	allPubs := c.Spec.PublicInputs
 	for i := range allPubs {
 		if allPubs[i].Name == name {
@@ -818,17 +829,17 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) frontend
 		}
 	}
 	utils.Panic("could not find public input nb %v", name)
-	return field.Element{}
+	return zk.WrappedVariable{}
 }
 
 // Fs returns the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFiatShamir {
-	return c.FS
+func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFS {
+	return &c.BLSFS
 }
 
 // SetFs sets the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) SetFs(fs *fiatshamir.GnarkFiatShamir) {
-	c.FS = fs
+func (c *VerifierCircuit) SetFs(fs *fiatshamir_bls12377.GnarkFS) {
+	c.BLSFS = fs
 }
 
 // GetHasherFactory returns the hasher factory of the verifier circuit; nil
@@ -898,7 +909,7 @@ func (c *VerifierCircuit) Analyze() *VerifierCircuitAnalytic {
 
 	for i := range c.UnivariateParams {
 		res.NumUnivariate++
-		res.WeightUnivariate += len(c.UnivariateParams[i].Ys)
+		res.WeightUnivariate += len(c.UnivariateParams[i].ExtYs)
 	}
 
 	res.NumGrandProduct += len(c.GrandProductParams)
@@ -972,7 +983,7 @@ func (a *VerifierCircuitAnalytic) WithDetails(c *VerifierCircuit) *VerifierCircu
 				continue
 			}
 			value := c.UnivariateParams[id]
-			a.addDetail(fmt.Sprintf("[UnivariateEval] size-circuit=%v name=%v", len(value.Ys), queryName))
+			a.addDetail(fmt.Sprintf("[UnivariateEval] size-circuit=%v name=%v", len(value.ExtYs), queryName))
 		}
 	}
 

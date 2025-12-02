@@ -4,14 +4,13 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // AssignVortexUAlpha assigns the UAlpha column for all the subproofs. As
@@ -41,9 +40,9 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 
 	var (
 		pcs               = run.Spec.PcsCtxs.(*vortex.Ctx)
-		committedMatrices []vCom.EncodedMatrix
+		committedMatrices []vortex_koalabear.EncodedMatrix
 		sisHashes         [][]field.Element
-		trees             []*smt.Tree
+		trees             []*smt_koalabear.Tree
 		mimcHashes        [][]field.Element
 		lastRound         = run.Spec.QueriesParams.Round(pcs.Query.QueryID)
 		pubs              = []field.Element{}
@@ -59,7 +58,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		)
 
 		if committedMatrix != nil {
-			committedMatrices = append(committedMatrices, committedMatrix.(vCom.EncodedMatrix))
+			committedMatrices = append(committedMatrices, committedMatrix.(vortex_koalabear.EncodedMatrix))
 		} else {
 			committedMatrices = append(committedMatrices, nil)
 		}
@@ -71,7 +70,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		}
 
 		if tree != nil {
-			trees = append(trees, tree.(*smt.Tree))
+			trees = append(trees, tree.(*smt_koalabear.Tree))
 		} else {
 			trees = append(trees, nil)
 		}
@@ -93,7 +92,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		SisHashes:         sisHashes,
 		MimcHashes:        mimcHashes,
 		Trees:             trees,
-		FinalFS:           types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State())),
+		FinalFS:           (*run.KoalaFS).State(),
 		Pub:               pubs,
 	}
 }
@@ -133,7 +132,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		}
 
 		if len(circYs) != 4*len(params.ExtYs) {
-			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
+			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.ExtYs))
 		}
 
 		for j := range params.ExtYs {
@@ -175,7 +174,6 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 }
 
 func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
 	pis := cc.PIs
 
 	for i := range pis {
@@ -193,8 +191,8 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		api.AssertIsEqual(circX[2], params.ExtX.B1.A0)
 		api.AssertIsEqual(circX[3], params.ExtX.B1.A1)
 
-		if len(circYs) != len(params.Ys) {
-			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
+		if len(circYs) != len(params.ExtYs) {
+			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.ExtYs))
 		}
 
 		for j := range params.ExtYs {

@@ -6,7 +6,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/google/uuid"
 )
 
@@ -87,11 +86,11 @@ type Query interface {
 // should update the Fiat-Shamir state.
 type QueryParams interface {
 	// Update fiat-shamir with the query parameters
-	UpdateFS(*poseidon2.Poseidon2FieldHasherDigest)
+	UpdateFS(*fiatshamir.FS)
 }
 
 // GnarkQueryParams mirrors exactly [QueryParams], but in a gnark circuit.
 type GnarkQueryParams interface {
 	// Update fiat-shamir with the query parameters in a circuit
-	UpdateFS(*fiatshamir.GnarkFiatShamir)
+	UpdateFS(*fiatshamir.GnarkFS)
 }
