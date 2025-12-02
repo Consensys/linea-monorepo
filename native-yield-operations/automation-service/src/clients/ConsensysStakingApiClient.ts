@@ -1,5 +1,12 @@
 import { ApolloClient } from "@apollo/client";
-import { IBeaconNodeAPIClient, ILogger, IRetryService, ONE_GWEI, safeSub } from "@consensys/linea-shared-utils";
+import {
+  IBeaconNodeAPIClient,
+  ILogger,
+  IRetryService,
+  ONE_GWEI,
+  PendingPartialWithdrawal,
+  safeSub,
+} from "@consensys/linea-shared-utils";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
 import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
@@ -69,30 +76,20 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
   }
 
   /**
-   * Retrieves active validators with pending withdrawal information.
-   * Returns sorted in ascending order of withdrawableValue (smallest withdrawableAmount first).
+   * Joins validators with pending withdrawal information.
    * Performs the following steps:
    * 1️⃣ Aggregate duplicate pending withdrawals by validator index
    * 2️⃣ Join with validators and compute total pending amount
-   * ✅ Sort ascending (smallest withdrawableAmount first)
    *
-   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of validators with pending withdrawal data, sorted ascending by withdrawableAmount, or undefined if data retrieval fails.
+   * @param {ValidatorBalance[] | undefined} allValidators - Array of active validators, or undefined.
+   * @param {PendingPartialWithdrawal[] | undefined} pendingWithdrawalsQueue - Array of pending partial withdrawals, or undefined.
+   * @returns {ValidatorBalanceWithPendingWithdrawal[] | undefined} Array of validators with pending withdrawal data, or undefined if inputs are invalid.
    */
-  async getActiveValidatorsWithPendingWithdrawalsAscending(): Promise<
-    ValidatorBalanceWithPendingWithdrawal[] | undefined
-  > {
-    const [allValidators, pendingWithdrawalsQueue] = await Promise.all([
-      this.getActiveValidators(),
-      this.beaconNodeApiClient.getPendingPartialWithdrawals(),
-    ]);
+  joinValidatorsWithPendingWithdrawals(
+    allValidators: ValidatorBalance[] | undefined,
+    pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
+  ): ValidatorBalanceWithPendingWithdrawal[] | undefined {
     if (allValidators === undefined || pendingWithdrawalsQueue === undefined) {
-      this.logger.warn(
-        "getActiveValidatorsWithPendingWithdrawalsAscending - failed to retrieve validators or pending withdrawals",
-        {
-          allValidators: allValidators === undefined,
-          pendingWithdrawalsQueue: pendingWithdrawalsQueue === undefined,
-        },
-      );
       return undefined;
     }
 
@@ -117,6 +114,39 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
         withdrawableAmount: safeSub(safeSub(v.balance, pendingAmount), ONE_GWEI * 32n),
       };
     });
+
+    return joined;
+  }
+
+  /**
+   * Retrieves active validators with pending withdrawal information.
+   * Returns sorted in ascending order of withdrawableValue (smallest withdrawableAmount first).
+   * Fetches data, delegates to joinValidatorsWithPendingWithdrawals for processing, and sorts the result.
+   *
+   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of validators with pending withdrawal data, sorted ascending by withdrawableAmount, or undefined if data retrieval fails.
+   */
+  async getActiveValidatorsWithPendingWithdrawalsAscending(): Promise<
+    ValidatorBalanceWithPendingWithdrawal[] | undefined
+  > {
+    const [allValidators, pendingWithdrawalsQueue] = await Promise.all([
+      this.getActiveValidators(),
+      this.beaconNodeApiClient.getPendingPartialWithdrawals(),
+    ]);
+    if (allValidators === undefined || pendingWithdrawalsQueue === undefined) {
+      this.logger.warn(
+        "getActiveValidatorsWithPendingWithdrawalsAscending - failed to retrieve validators or pending withdrawals",
+        {
+          allValidators: allValidators === undefined,
+          pendingWithdrawalsQueue: pendingWithdrawalsQueue === undefined,
+        },
+      );
+      return undefined;
+    }
+
+    const joined = this.joinValidatorsWithPendingWithdrawals(allValidators, pendingWithdrawalsQueue);
+    if (joined === undefined) {
+      return undefined;
+    }
 
     // ✅ Sort ascending (smallest withdrawableAmount first)
     joined.sort((a, b) =>

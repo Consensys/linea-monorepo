@@ -307,6 +307,104 @@ describe("ConsensysStakingApiClient", () => {
     });
   });
 
+  describe("joinValidatorsWithPendingWithdrawals", () => {
+    it("returns undefined when validators are undefined", () => {
+      const { client } = createClient();
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
+      ];
+
+      const result = client.joinValidatorsWithPendingWithdrawals(undefined, pendingWithdrawals);
+
+      expect(result).toBeUndefined();
+    });
+
+    it("returns undefined when pending withdrawals are undefined", () => {
+      const { client } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+      ];
+
+      const result = client.joinValidatorsWithPendingWithdrawals(validators, undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it("aggregates pending withdrawals and computes withdrawable amounts", () => {
+      const { client } = createClient();
+
+      const validatorA: ValidatorBalance = {
+        balance: 40n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-a",
+        validatorIndex: 1n,
+      };
+
+      const validatorB: ValidatorBalance = {
+        balance: 34n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-b",
+        validatorIndex: 2n,
+      };
+
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
+        { validator_index: 1, amount: 3n * ONE_GWEI, withdrawable_epoch: 1 },
+        { validator_index: 2, amount: 1n * ONE_GWEI, withdrawable_epoch: 0 },
+      ];
+
+      const result = client.joinValidatorsWithPendingWithdrawals([validatorB, validatorA], pendingWithdrawals);
+
+      const expectedValidatorA: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorA,
+        pendingWithdrawalAmount: 5n * ONE_GWEI,
+        withdrawableAmount: safeSub(safeSub(validatorA.balance, 5n * ONE_GWEI), ONE_GWEI * 32n),
+      };
+      const expectedValidatorB: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorB,
+        pendingWithdrawalAmount: 1n * ONE_GWEI,
+        withdrawableAmount: safeSub(safeSub(validatorB.balance, 1n * ONE_GWEI), ONE_GWEI * 32n),
+      };
+
+      // Result maintains input order (B, then A) - no sorting
+      expect(result).toEqual([expectedValidatorB, expectedValidatorA]);
+    });
+
+    it("handles validators with no pending withdrawals", () => {
+      const { client } = createClient();
+
+      const validator: ValidatorBalance = {
+        balance: 32n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-1",
+        validatorIndex: 1n,
+      };
+
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [];
+
+      const result = client.joinValidatorsWithPendingWithdrawals([validator], pendingWithdrawals);
+
+      const expected: ValidatorBalanceWithPendingWithdrawal = {
+        ...validator,
+        pendingWithdrawalAmount: 0n,
+        withdrawableAmount: safeSub(safeSub(validator.balance, 0n), ONE_GWEI * 32n),
+      };
+
+      expect(result).toEqual([expected]);
+    });
+
+    it("handles empty validators array", () => {
+      const { client } = createClient();
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
+      ];
+
+      const result = client.joinValidatorsWithPendingWithdrawals([], pendingWithdrawals);
+
+      expect(result).toEqual([]);
+    });
+  });
+
   describe("getTotalPendingPartialWithdrawalsWei", () => {
     it("returns the total pending withdrawals converted to wei and logs it", () => {
       const { client, logger } = createClient();

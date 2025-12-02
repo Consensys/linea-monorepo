@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 import { BeaconChainStakingClient } from "../BeaconChainStakingClient.js";
-import type { ILogger } from "@consensys/linea-shared-utils";
+import type { ILogger, PendingPartialWithdrawal } from "@consensys/linea-shared-utils";
 import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IValidatorDataClient } from "../../core/clients/IValidatorDataClient.js";
 import type { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../../core/entities/ValidatorBalance.js";
@@ -56,6 +56,12 @@ const createValidatorDataClientMock = () => {
   const getActiveValidators = jest.fn<() => Promise<ValidatorBalance[] | undefined>>();
   const getActiveValidatorsWithPendingWithdrawalsAscending =
     jest.fn<() => Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>>();
+  const joinValidatorsWithPendingWithdrawals = jest.fn<
+    (
+      allValidators: ValidatorBalance[] | undefined,
+      pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
+    ) => ValidatorBalanceWithPendingWithdrawal[] | undefined
+  >();
   const getTotalPendingPartialWithdrawalsWei = jest
     .fn<(validatorList: ValidatorBalanceWithPendingWithdrawal[]) => bigint>()
     .mockReturnValue(0n);
@@ -63,6 +69,7 @@ const createValidatorDataClientMock = () => {
   const client: IValidatorDataClient = {
     getActiveValidators,
     getActiveValidatorsWithPendingWithdrawalsAscending,
+    joinValidatorsWithPendingWithdrawals,
     getTotalPendingPartialWithdrawalsWei,
   };
 
@@ -70,6 +77,7 @@ const createValidatorDataClientMock = () => {
     client,
     getActiveValidators,
     getActiveValidatorsWithPendingWithdrawalsAscending,
+    joinValidatorsWithPendingWithdrawals,
     getTotalPendingPartialWithdrawalsWei,
   };
 };
