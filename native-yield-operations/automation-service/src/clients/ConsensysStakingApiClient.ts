@@ -90,6 +90,10 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
   ): ValidatorBalanceWithPendingWithdrawal[] | undefined {
     if (allValidators === undefined || pendingWithdrawalsQueue === undefined) {
+      this.logger.warn("joinValidatorsWithPendingWithdrawals - invalid inputs", {
+        allValidators: allValidators === undefined,
+        pendingWithdrawalsQueue: pendingWithdrawalsQueue === undefined,
+      });
       return undefined;
     }
 
@@ -145,6 +149,9 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
 
     const joined = this.joinValidatorsWithPendingWithdrawals(allValidators, pendingWithdrawalsQueue);
     if (joined === undefined) {
+      this.logger.warn(
+        "getActiveValidatorsWithPendingWithdrawalsAscending - joinValidatorsWithPendingWithdrawals returned undefined",
+      );
       return undefined;
     }
 

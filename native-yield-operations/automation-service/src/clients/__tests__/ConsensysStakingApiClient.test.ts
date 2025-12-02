@@ -155,6 +155,30 @@ describe("ConsensysStakingApiClient", () => {
       getActiveValidatorsSpy.mockRestore();
     });
 
+    it("logs warning when joinValidatorsWithPendingWithdrawals returns undefined", async () => {
+      const { client, logger, pendingWithdrawalsMock } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+      ];
+      const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(validators);
+      const joinValidatorsSpy = jest
+        .spyOn(client, "joinValidatorsWithPendingWithdrawals")
+        .mockReturnValueOnce(undefined);
+      pendingWithdrawalsMock.mockResolvedValueOnce([
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
+      ]);
+
+      const result = await client.getActiveValidatorsWithPendingWithdrawalsAscending();
+
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "getActiveValidatorsWithPendingWithdrawalsAscending - joinValidatorsWithPendingWithdrawals returned undefined",
+      );
+      expect(joinValidatorsSpy).toHaveBeenCalledWith(validators, expect.any(Array));
+      getActiveValidatorsSpy.mockRestore();
+      joinValidatorsSpy.mockRestore();
+    });
+
     it("aggregates pending withdrawals, computes withdrawable amounts, and sorts ascending", async () => {
       const { client, logger, pendingWithdrawalsMock } = createClient();
 
@@ -308,8 +332,8 @@ describe("ConsensysStakingApiClient", () => {
   });
 
   describe("joinValidatorsWithPendingWithdrawals", () => {
-    it("returns undefined when validators are undefined", () => {
-      const { client } = createClient();
+    it("returns undefined and logs warning when validators are undefined", () => {
+      const { client, logger } = createClient();
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
         { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
       ];
@@ -317,10 +341,14 @@ describe("ConsensysStakingApiClient", () => {
       const result = client.joinValidatorsWithPendingWithdrawals(undefined, pendingWithdrawals);
 
       expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - invalid inputs", {
+        allValidators: true,
+        pendingWithdrawalsQueue: false,
+      });
     });
 
-    it("returns undefined when pending withdrawals are undefined", () => {
-      const { client } = createClient();
+    it("returns undefined and logs warning when pending withdrawals are undefined", () => {
+      const { client, logger } = createClient();
       const validators: ValidatorBalance[] = [
         { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
       ];
@@ -328,6 +356,10 @@ describe("ConsensysStakingApiClient", () => {
       const result = client.joinValidatorsWithPendingWithdrawals(validators, undefined);
 
       expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - invalid inputs", {
+        allValidators: false,
+        pendingWithdrawalsQueue: true,
+      });
     });
 
     it("aggregates pending withdrawals and computes withdrawable amounts", () => {
