@@ -469,7 +469,9 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     );
 
     const effectiveTargetWithdrawalReserveExcludingObligations =
-      (effectiveTargetWithdrawalReserve * totalSystemBalanceExcludingObligations) / totalSystemBalance;
+      totalSystemBalance === 0n
+        ? 0n
+        : (effectiveTargetWithdrawalReserve * totalSystemBalanceExcludingObligations) / totalSystemBalance;
     this.logger.debug(
       `_getRebalanceRequirements - effectiveTargetWithdrawalReserveExcludingObligations=${effectiveTargetWithdrawalReserveExcludingObligations}`,
     );

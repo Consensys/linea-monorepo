@@ -624,6 +624,48 @@ describe("YieldManagerContractClient", () => {
     );
   });
 
+  it("handles zero totalSystemBalance without division by zero", async () => {
+    const totalSystemBalance = 0n;
+    const effectiveTarget = 500_000n;
+    const dashboardTotalValue = 600_000n;
+    const userFunds = 100_000n;
+    const peekedYieldAmount = 50_000n;
+    const peekedOutstandingNegativeYield = 0n;
+    const l1MessageServiceBalance = 100_000n;
+
+    contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
+    contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValue(effectiveTarget);
+    contractStub.read.userFunds.mockResolvedValue(userFunds);
+    contractStub.simulate.reportYield.mockResolvedValue({
+      result: [peekedYieldAmount, peekedOutstandingNegativeYield],
+    });
+
+    const mockDashboardClient = {
+      totalValue: jest.fn().mockResolvedValue(dashboardTotalValue),
+    };
+    mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
+
+    blockchainClient.getBalance.mockResolvedValueOnce(l1MessageServiceBalance);
+
+    const client = createClient({ rebalanceToleranceBps: 100 });
+
+    // When totalSystemBalance === 0n:
+    // systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds = 600_000 - 50_000 - 100_000 = 450_000
+    const systemObligations = dashboardTotalValue - peekedYieldAmount - userFunds;
+    // totalSystemBalanceExcludingObligations = 0n - 450_000 = -450_000
+    // effectiveTargetWithdrawalReserveExcludingObligations = 0n (branch result, avoids division by zero)
+    // toleranceBand = (-450_000 * 100) / 10000 = -4_500 (negative, but abs value used in comparison)
+    // absRebalanceRequirement = absDiff(100_000, 0n) + 450_000 = 100_000 + 450_000 = 550_000
+    const absRebalanceRequirement = l1MessageServiceBalance + systemObligations;
+
+    // Since absRebalanceRequirement (550_000) > abs(toleranceBand) (4_500), rebalance is needed
+    // Since l1MessageServiceBalance (100_000) >= effectiveTargetWithdrawalReserveExcludingObligations (0n), direction is STAKE
+    await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+      rebalanceDirection: RebalanceDirection.STAKE,
+      rebalanceAmount: absRebalanceRequirement,
+    });
+  });
+
   it("returns staking vault and dashboard addresses from yield provider data", async () => {
     contractStub.read.getYieldProviderData.mockResolvedValueOnce({
       ...defaultYieldProviderData,
