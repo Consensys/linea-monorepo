@@ -55,11 +55,12 @@ PACKAGES := \
 	go-corset \
 	testdata \
   test-compilers \
+  test-compilers-gnark \
   test \
   clean
 
 # Default target: runs all tests
-all: test-compilers test
+all: test-compilers  test-compilers-gnark test
 
 ##
 ## This rule produces the go-corset binary
@@ -165,12 +166,15 @@ test:
 	@echo "Running all Go tests for Linea Monorepo prover packages..."
 	@for pkg in $(PACKAGES); do \
 		echo "--> Running tests for $$pkg"; \
-		go test -tags debug -skip 'TestSelfRecursionManyLayersWithSerde' $$pkg || exit 1; \
+		go test -tags debug $$pkg || exit 1; \
 	done
 	@echo "All tests completed successfully."
 
 test-compilers:
 	go test -timeout 30s -run ^TestCompilers$$ github.com/consensys/linea-monorepo/prover/protocol/compiler
+
+test-compilers-gnark:
+	go test -run ^TestCompilersWithGnarkVerifier$$ github.com/consensys/linea-monorepo/prover/protocol/compiler
 
 ##
 ## Run the CI linting
