@@ -266,7 +266,7 @@ class L1DependentApp(
       config = GasPriceCapProviderForDataSubmission.Config(
         maxPriorityFeePerGasCap = configs.l1Submission.blob.gas.maxPriorityFeePerGasCap,
         maxFeePerGasCap = configs.l1Submission.blob.gas.maxFeePerGasCap,
-        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap!!,
+        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap,
       ),
       gasPriceCapProvider = gasPriceCapProvider!!,
       metricsFacade = metricsFacade,
@@ -306,7 +306,7 @@ class L1DependentApp(
         gasLimit = configs.l1Submission!!.blob.gas.gasLimit,
         maxFeePerGasCap = configs.l1Submission.blob.gas.maxFeePerGasCap,
         maxPriorityFeePerGasCap = configs.l1Submission.blob.gas.maxPriorityFeePerGasCap,
-        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap!!,
+        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap,
       ),
     )
     val l1Web3jClient = createWeb3jHttpClient(
@@ -324,9 +324,9 @@ class L1DependentApp(
       transactionManager = transactionManager,
       contractGasProvider = primaryOrFallbackGasProvider,
       web3jClient = l1Web3jClient,
+      smartContractErrors = smartContractErrors,
       // eth_estimateGas would fail because we submit multiple blob tx
       // and 2nd would fail with revert reason
-      smartContractErrors = smartContractErrors,
       useEthEstimateGas = false,
     )
   }

@@ -195,7 +195,6 @@ class L1SubmissionConfigParsingTest {
           gas = L1SubmissionConfigToml.GasConfigToml(
             gasLimit = 10_000_001u,
             maxFeePerGasCap = 100_000_000_001u,
-            maxFeePerBlobGasCap = null,
             maxPriorityFeePerGasCap = 10_000_000_001u,
             fallback = L1SubmissionConfigToml.GasConfigToml.FallbackGasConfig(
               priorityFeePerGasUpperBound = 20_000_000_001u,
@@ -342,7 +341,6 @@ class L1SubmissionConfigParsingTest {
           gas = L1SubmissionConfigToml.GasConfigToml(
             gasLimit = 10_000_001u,
             maxFeePerGasCap = 100_000_000_011u,
-            maxFeePerBlobGasCap = null,
             maxPriorityFeePerGasCap = 10_000_000_010u,
             fallback = L1SubmissionConfigToml.GasConfigToml.FallbackGasConfig(
               priorityFeePerGasUpperBound = 20_000_000_001u,

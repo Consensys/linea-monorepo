@@ -56,7 +56,7 @@ data class L1SubmissionConfig(
     val gasLimit: ULong,
     val maxFeePerGasCap: ULong,
     val maxPriorityFeePerGasCap: ULong,
-    val maxFeePerBlobGasCap: ULong? = null,
+    val maxFeePerBlobGasCap: ULong = 0UL,
     val fallback: FallbackGasConfig,
   ) {
     data class FallbackGasConfig(

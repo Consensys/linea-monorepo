@@ -97,7 +97,7 @@ data class L1SubmissionConfigToml(
   data class GasConfigToml(
     val gasLimit: ULong,
     val maxFeePerGasCap: ULong,
-    val maxFeePerBlobGasCap: ULong? = null,
+    val maxFeePerBlobGasCap: ULong = 0UL,
     val maxPriorityFeePerGasCap: ULong,
     val fallback: FallbackGasConfig,
   ) {
