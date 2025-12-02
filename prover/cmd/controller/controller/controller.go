@@ -507,14 +507,14 @@ func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logr
 	// This is because, if one of the worker was spot-reclaimed/ did not terminate within grace period
 	// there is no reason to abort other workers. We propogate peer-abort only if there is a genuine failure
 	// in processing any of the worker sub-proofs
-	if (strings.HasPrefix(st.activeJob.Def.Name, jobNameGL) || strings.HasPrefix(st.activeJob.Def.Name, jobNameLPP)) &&
+	if (strings.HasPrefix(job.Def.Name, jobNameGL) || strings.HasPrefix(job.Def.Name, jobNameLPP)) &&
 		exitCode == CodeKilledByExtSig {
 		logrus.Infof("Safely ignoring to write peer-abort failure failure for worker:%s terminated via external signal(exitcode:%d)", fLocalID, CodeKilledByExtSig)
 		return nil
 	}
 
 	var (
-		sharedFailFileName = fmt.Sprintf("%d-%d-%s-failure_code%d", st.activeJob.Start, st.activeJob.End, st.activeJob.Def.Name, exitCode)
+		sharedFailFileName = fmt.Sprintf("%d-%d-%s-failure_code%d", job.Start, job.End, job.Def.Name, exitCode)
 		sharedFailPath     = filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFailFileName)
 	)
 
@@ -557,7 +557,7 @@ func (st *ControllerState) preCleanForLimitlessJob(cfg *config.Config) error {
 
 			// Get all possible dir paths where witness files can be created
 			var (
-				witnessPattern = fmt.Sprintf("%d-%d-*", st.activeJob.Start, st.activeJob.End)
+				witnessPattern = fmt.Sprintf("%d-%d-*", job.Start, job.End)
 				cleanupDirs    = append(witnessReqDirs, witnessDoneDirs...)
 			)
 
