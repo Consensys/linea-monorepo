@@ -79,8 +79,11 @@ const (
 	ACCUMULATOR_IS_READ_NON_ZERO_NAME ifaces.ColID = "ACCUMULATOR_IS_READ_NON_ZERO"
 	// Columns for sandwich check
 	ACCUMULATOR_HKEY_NAME       ifaces.ColID = "ACCUMULATOR_HKEY"
+	ACCUMULATOR_HKEY_SANDWITCH_NAME       ifaces.ColID = "ACCUMULATOR_HKEY_SANDWITCH"
 	ACCUMULATOR_HKEY_MINUS_NAME ifaces.ColID = "ACCUMULATOR_HKEY_MINUS"
+	ACCUMULATOR_HKEY_MINUS_SANDWITCH_NAME ifaces.ColID = "ACCUMULATOR_HKEY_MINUS_SANDWITCH"
 	ACCUMULATOR_HKEY_PLUS_NAME  ifaces.ColID = "ACCUMULATOR_HKEY_PLUS"
+	ACCUMULATOR_HKEY_PLUS_SANDWITCH_NAME  ifaces.ColID = "ACCUMULATOR_HKEY_PLUS_SANDWITCH"
 	// Columns for pointer check
 	ACCUMULATOR_LEAF_MINUS_INDEX_NAME   ifaces.ColID = "ACCUMULATOR_LEAF_MINUS_INDEX"
 	ACCUMULATOR_LEAF_MINUS_NEXT_NAME    ifaces.ColID = "ACCUMULATOR_LEAF_MINUS_NEXT"
@@ -149,6 +152,12 @@ type Module struct {
 		HKeyMinus [common.NbElemPerHash]ifaces.Column
 		// Columns storing the hash of the key of the next leaf
 		HKeyPlus [common.NbElemPerHash]ifaces.Column
+		// HKeySandwitch stores the hash of the key of the trace, 2 byte per field element for sandwitch check
+		HKeySandwitch [common.NbElemForHashingByte32Sandwitch]ifaces.Column
+		// HKeyMinusSandwitch stores the hash of the key of the previous leaf, 2 byte per field element for sandwitch check
+		HKeyMinusSandwitch [common.NbElemForHashingByte32Sandwitch]ifaces.Column
+		// HKeyPlusSandwitch stores the hash of the key of the next leaf, 2 byte per field element for sandwitch check
+		HKeyPlusSandwitch [common.NbElemForHashingByte32Sandwitch]ifaces.Column
 		// HkeyHkeyMinusIsGreater contains boolean value indicating whether the HKey is greater than HKeyMinus
 		HkeyHkeyMinusIsGreater ifaces.Column
 		// HkeyPlusHkeyIsGreater contains boolean value indicating whether the HKeyPlus is greater than HKey
@@ -245,6 +254,12 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 		am.Cols.IntermOneTopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_ONE_TOP_ROOT_NAME, i), am.NumRows(), true)
 		am.Cols.TopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_TOP_ROOT_NAME, i), am.NumRows(), true)
 	}
+	 
+	for i := 0; i < common.NbElemForHashingByte32Sandwitch; i++ {
+		am.Cols.HKeySandwitch[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_sandwitch_%d", ACCUMULATOR_HKEY_SANDWITCH_NAME, i), am.NumRows(), true)
+		am.Cols.HKeyMinusSandwitch[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_sandwitch_%d", ACCUMULATOR_HKEY_MINUS_SANDWITCH_NAME, i), am.NumRows(), true)
+		am.Cols.HKeyPlusSandwitch[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_sandwitch_%d", ACCUMULATOR_HKEY_PLUS_SANDWITCH_NAME, i), am.NumRows(), true)
+	}
 
 	for i := 0; i < len(am.Cols.Positions); i++ {
 		am.Cols.Positions[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_POSITIONS_NAME, i), am.NumRows(), true)
@@ -316,7 +331,7 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	// // Sandwitch check for INSERT and READ-ZERO operations
 	// // We also check the consistency of the HKey, HKeyMinus, and HKeyPlus for INSERT and ReadZero operations.
 	// // i.e., they are consistent with the corresponding leaf opening values
-	// am.checkSandwitch()
+	am.checkSandwitch()
 
 	// Pointer check for INSERT, READ-ZERO, and DELETE operations
 	am.checkPointer()
@@ -604,7 +619,7 @@ func (am *Module) checkSandwitch() {
 	// We want sandwitch check only at row 1 of INSERT and READ-ZERO
 	activeRow := symbolic.Add(symbolic.Mul(cols.IsFirst, cols.IsInsert), symbolic.Mul(cols.IsFirst, cols.IsReadZero))
 
-	am.Cols.HkeyHkeyMinusIsGreater, am.HkeyHkeyMinusProver = am.compareMultiLimbs(am.Cols.HKey[:], am.Cols.HKeyMinus[:])
+	am.Cols.HkeyHkeyMinusIsGreater, am.HkeyHkeyMinusProver = am.compareMultiLimbs(am.Cols.HKeySandwitch[:], am.Cols.HKeyMinusSandwitch[:])
 	am.comp.InsertGlobal(
 		am.Round,
 		am.qname("CMP_HKEY_HKEY_MINUS"),
@@ -614,15 +629,15 @@ func (am *Module) checkSandwitch() {
 		),
 	)
 
-	// am.Cols.HkeyPlusHkeyIsGreater, am.HkeyPlusHkeyProver = am.compareMultiLimbs(am.Cols.HKeyPlus[:], am.Cols.HKey[:])
-	// am.comp.InsertGlobal(
-	// 	am.Round,
-	// 	am.qname("CMP_HKEY_PLUS_HKEY"),
-	// 	symbolic.Mul(
-	// 		activeRow,
-	// 		symbolic.Sub(1, am.Cols.HkeyPlusHkeyIsGreater),
-	// 	),
-	// )
+	am.Cols.HkeyPlusHkeyIsGreater, am.HkeyPlusHkeyProver = am.compareMultiLimbs(am.Cols.HKeyPlusSandwitch[:], am.Cols.HKeySandwitch[:])
+	am.comp.InsertGlobal(
+		am.Round,
+		am.qname("CMP_HKEY_PLUS_HKEY"),
+		symbolic.Mul(
+			activeRow,
+			symbolic.Sub(1, am.Cols.HkeyPlusHkeyIsGreater),
+		),
+	)
 
 	for i := 0; i < common.NbElemPerHash; i++ {
 		// INSERT: The HKeyMinus in the leaf minus openings is the same as HKeyMinus column i.e.,

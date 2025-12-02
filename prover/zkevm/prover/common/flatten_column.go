@@ -27,6 +27,8 @@ const (
 	NbElemPerHash = 8
 	// NbElemForHasingU64 represents the number of field elements per 64-bit integers.
 	NbElemForHasingU64 = 16
+	// NbElemForHashingByte32Sandwitch represents the number of field elements per byte32 (256 bits).
+	NbElemForHashingByte32Sandwitch = 16
 	// NbBytesForEncodingU64 represents the number of bytes for encoding a 64-bit integer.
 	NbBytesForEncodingU64 = 64
 	// NbBytesForEncodingFieldHash represents the number of bytes for encoding a field hash.

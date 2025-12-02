@@ -34,6 +34,8 @@ const (
 	hashU64 hashType = iota
 	// denote the hashtype for hashing field hashes
 	hashFieldElements
+	// denote the hashtype for hashing byte32 values for the sandwitch check
+	hashByte32Sandwitch
 )
 
 // assignmentBuilder is used to build the assignment of the [Module] module
@@ -87,6 +89,12 @@ type assignmentBuilder struct {
 	hKeyMinus [common.NbElemPerHash][]field.Element
 	// hKeyPlus is the hash of the key of the next leaf. This corresponds to the [Accumulator.Column.HKeyPlus]
 	hKeyPlus [common.NbElemPerHash][]field.Element
+	// hKeySandwitch is the hash of the key of the trace for the sandwitch check. This corresponds to the [Accumulator.Column.HKeySandwitch]
+	hKeySandwitch [common.NbElemForHashingByte32Sandwitch][]field.Element
+	// hKeyMinusSandwitch is the hash of the key of the previous leaf for the sandwitch check. This corresponds to the [Accumulator.Column.HKeyMinusSandwitch]
+	hKeyMinusSandwitch [common.NbElemForHashingByte32Sandwitch][]field.Element
+	// hKeyPlusSandwitch is the hash of the key of the next leaf for the sandwitch check. This corresponds to the [Accumulator.Column.HKeyPlusSandwitch]
+	hKeyPlusSandwitch [common.NbElemForHashingByte32Sandwitch][]field.Element
 	// Pointer check columns
 	// leafMinusIndex is the index of the minus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafMinusIndex]
 	leafMinusIndex [common.NbElemForHasingU64][]field.Element
@@ -137,6 +145,12 @@ func newAssignmentBuilder(s Settings) *assignmentBuilder {
 		amb.hKey[i] = make([]field.Element, 0, amb.NumRows())
 		amb.hKeyMinus[i] = make([]field.Element, 0, amb.NumRows())
 		amb.hKeyPlus[i] = make([]field.Element, 0, amb.NumRows())
+	}
+
+	for i := 0; i < common.NbElemForHashingByte32Sandwitch; i++ {
+		amb.hKeySandwitch[i] = make([]field.Element, 0, amb.NumRows())
+		amb.hKeyMinusSandwitch[i] = make([]field.Element, 0, amb.NumRows())
+		amb.hKeyPlusSandwitch[i] = make([]field.Element, 0, amb.NumRows())
 	}
 
 	for i := 0; i < len(amb.positions); i++ {
@@ -279,6 +293,13 @@ func (am *Module) Assign(
 		run.AssignColumn(cols.HKeyPlus[i].GetColID(), smartvectors.RightZeroPadded(builder.hKeyPlus[i], paddedSize))
 	}
 
+	// assignments for the sandwitch check columns
+	for i := 0; i < common.NbElemForHashingByte32Sandwitch; i++ {
+		run.AssignColumn(cols.HKeySandwitch[i].GetColID(), smartvectors.RightZeroPadded(builder.hKeySandwitch[i], paddedSize))
+		run.AssignColumn(cols.HKeyMinusSandwitch[i].GetColID(), smartvectors.RightZeroPadded(builder.hKeyMinusSandwitch[i], paddedSize))
+		run.AssignColumn(cols.HKeyPlusSandwitch[i].GetColID(), smartvectors.RightZeroPadded(builder.hKeyPlusSandwitch[i], paddedSize))
+	}
+
 	// Boolean elements assignment
 	run.AssignColumn(cols.UseNextMerkleProof.GetColID(), smartvectors.RightZeroPadded(builder.useNextMerkleProof, paddedSize))
 	run.AssignColumn(cols.IsActiveAccumulator.GetColID(), smartvectors.RightZeroPadded(builder.isActive, paddedSize))
@@ -307,10 +328,10 @@ func (am *Module) Assign(
 
 	// Sandwich check
 	// Checks that HKey > HKeyMinus
-//	am.HkeyHkeyMinusProver.Run(run)
+	am.HkeyHkeyMinusProver.Run(run)
 
 	// Checks that HKeyPlus > HKey
-	// am.HkeyPlusHkeyProver.Run(run)
+	am.HkeyPlusHkeyProver.Run(run)
 
 	// Checks that on insert NextFreeNode is incremented by 1
 	am.NextFreeNodeShiftProver.Run(run)
@@ -1053,12 +1074,20 @@ func pushReadZeroRows[K, V io.WriterTo](
 	// Sandwitch assignment for row 1
 	hKey := hash(trace.Key)
 	hKeyFrLimbs := divideFieldBytesToFieldLimbs(hKey[:], hashFieldElements)
+	hKeySandwitchFrLimbs := divideFieldBytesToFieldLimbs(hKey[:], hashByte32Sandwitch)
 	hKeyMinusFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningMinus.HKey[:], hashFieldElements)
+	hKeyMinusSandwitchFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningMinus.HKey[:], hashByte32Sandwitch)
 	hKeyPlusFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningPlus.HKey[:], hashFieldElements)
+	hKeyPlusSandwitchFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningPlus.HKey[:], hashByte32Sandwitch)
 	for i := range a.hKey {
 		a.hKey[i] = append(a.hKey[i], hKeyFrLimbs[i])
 		a.hKeyMinus[i] = append(a.hKeyMinus[i], hKeyMinusFrLimbs[i])
 		a.hKeyPlus[i] = append(a.hKeyPlus[i], hKeyPlusFrLimbs[i])
+	}
+	for i := range a.hKeySandwitch {
+		a.hKeySandwitch[i] = append(a.hKeySandwitch[i], hKeySandwitchFrLimbs[i])
+		a.hKeyMinusSandwitch[i] = append(a.hKeyMinusSandwitch[i], hKeyMinusSandwitchFrLimbs[i])
+		a.hKeyPlusSandwitch[i] = append(a.hKeyPlusSandwitch[i], hKeyPlusSandwitchFrLimbs[i])
 	}
 
 	// Pointer assignment for row1
@@ -1212,6 +1241,10 @@ func divideFieldBytesToFieldLimbs(elementBytes []byte, toHash hashType) []field.
 		if len(elementBytes) != common.NbBytesForEncodingFieldHash {
 			panic("elementBytes length for field hash is not 32")
 		}
+	case hashByte32Sandwitch:
+		if len(elementBytes) != common.NbBytesForEncodingFieldHash {
+			panic("elementBytes length for field hash is not correct")
+		}
 	default:
 		panic("unsupported hashType")
 	}
@@ -1222,18 +1255,39 @@ func divideFieldBytesToFieldLimbs(elementBytes []byte, toHash hashType) []field.
 		res = make([]field.Element, 0, common.NbElemForHasingU64)
 	case hashFieldElements:
 		res = make([]field.Element, 0, common.NbElemPerHash)
+	case hashByte32Sandwitch:
+		res = make([]field.Element, 0, common.NbElemForHashingByte32Sandwitch)
 	default:
 		panic("unsupported hashType")
 	}
-	// each field element is a chunk of 4 bytes
-	for _, limbBytes := range common.SplitBytes(elementBytes, 4) {
-		var elementFr field.Element
+	// assign res
+	switch toHash {
+	case hashU64, hashFieldElements:
+		// each field element is a chunk of 4 bytes
+		for _, limbBytes := range common.SplitBytes(elementBytes, 4) {
+			var elementFr field.Element
 
-		if err := elementFr.SetBytesCanonical(limbBytes[:]); err != nil {
-			panic(err)
+			if err := elementFr.SetBytesCanonical(limbBytes[:]); err != nil {
+				panic(err)
+			}
+
+			res = append(res, elementFr)
 		}
+	case hashByte32Sandwitch:
+		// each field element is a chunk of 2 bytes
+		for _, limbBytes := range common.SplitBytes(elementBytes) {
+			fourLimbBytes := make([]byte, 4)
+			copy(fourLimbBytes[2:], limbBytes) // left pad with 2 zero bytes
+			var elementFr field.Element
 
-		res = append(res, elementFr)
+			if err := elementFr.SetBytesCanonical(fourLimbBytes[:]); err != nil {
+				panic(err)
+			}
+
+			res = append(res, elementFr)
+		}
+	default:
+		panic("unsupported hashType")
 	}
 	// Sanity check on output length
 	switch toHash {
@@ -1244,6 +1298,10 @@ func divideFieldBytesToFieldLimbs(elementBytes []byte, toHash hashType) []field.
 	case hashFieldElements:
 		if len(res) != common.NbElemPerHash {
 			panic("res length is not equal to NbElemPerHash")
+		}
+	case hashByte32Sandwitch:
+		if len(res) != common.NbElemForHashingByte32Sandwitch {
+			panic("res length is not equal to NbElemForHashingByte32Sandwitch")
 		}
 	default:
 		panic("unsupported hashType")
