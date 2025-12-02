@@ -139,12 +139,12 @@ export const configSchema = z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
-    /** Minimum staking vault balance (in wei) required before resuming beacon chain deposits.
-     * The balance is checked via Dashboard withdrawableValue() before calling resumeBeaconChainDeposits.
-     * Beacon chain deposits will only be resumed if the withdrawableValue is greater than or equal to this threshold.
-     * This prevents resuming deposits when the vault balance is insufficient.
+    /** Minimum staking vault balance (in wei) required before unpausing staking.
+     * The balance is checked via Dashboard withdrawableValue() before calling unpauseStaking.
+     * Staking will only be unpaused if the withdrawableValue is greater than or equal to this threshold.
+     * This prevents unpausing staking when the vault balance is insufficient.
      */
-    MIN_STAKING_VAULT_BALANCE_TO_RESUME_BEACON_CHAIN_DEPOSITS_WEI: z
+    MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI: z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
