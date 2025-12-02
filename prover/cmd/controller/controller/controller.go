@@ -484,7 +484,7 @@ func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Ent
 	}
 
 	// Set active job to nil as there is nothing more to retry and notify the job is done
-	st.activeJob = nil
+	st.clearActiveJob()
 	st.notifyJobDone()
 }
 
