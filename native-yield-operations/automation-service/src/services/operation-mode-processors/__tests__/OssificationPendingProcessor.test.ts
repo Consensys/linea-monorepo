@@ -62,6 +62,7 @@ describe("OssificationPendingProcessor", () => {
       setLastPeekedNegativeYieldReport: jest.fn(),
       setLastPeekedPositiveYieldReport: jest.fn(),
       setLastSettleableLidoFees: jest.fn(),
+      setYieldReportedCumulative: jest.fn(),
       setLastTotalPendingPartialWithdrawalsGwei: jest.fn(),
     } as unknown as jest.Mocked<INativeYieldAutomationMetricsUpdater>;
 

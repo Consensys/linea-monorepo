@@ -81,6 +81,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       ["vault_address"],
     );
     expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.YieldReportedCumulative,
+      "Cumulative yield reported from the YieldManager contract",
+      ["vault_address"],
+    );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
       "Total pending partial withdrawals in gwei",
       [],
@@ -345,6 +350,32 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       jest.clearAllMocks();
 
       updater.setLastSettleableLidoFees(vaultAddress, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setYieldReportedCumulative", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setYieldReportedCumulative(vaultAddress, 1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.YieldReportedCumulative,
+        { vault_address: vaultAddress },
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setYieldReportedCumulative(vaultAddress, -1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });

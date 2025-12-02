@@ -27,6 +27,10 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `vault_address`
   ReportYieldAmountTotal = "linea_native_yield_automation_service_report_yield_amount_total",
 
+  // Gauge representing cumulative yield reported from the YieldManager contract
+  // Single label `vault_address`
+  YieldReportedCumulative = "linea_native_yield_automation_service_yield_reported_cumulative",
+
   // Gauge representing outstanding negative yield from the last peeked yield report
   // Single label `vault_address`
   LastPeekedNegativeYieldReport = "linea_native_yield_automation_service_last_peeked_negative_yield_report",

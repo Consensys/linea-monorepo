@@ -29,6 +29,7 @@ const createMetricsUpdaterMock = (): jest.Mocked<INativeYieldAutomationMetricsUp
     setLastPeekedNegativeYieldReport: jest.fn(),
     setLastPeekedPositiveYieldReport: jest.fn(),
     setLastSettleableLidoFees: jest.fn(),
+    setYieldReportedCumulative: jest.fn(),
     setLastTotalPendingPartialWithdrawalsGwei: jest.fn(),
     addNodeOperatorFeesPaid: jest.fn(),
     addLiabilitiesPaid: jest.fn(),

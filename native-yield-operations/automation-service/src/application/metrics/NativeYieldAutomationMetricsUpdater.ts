@@ -79,6 +79,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.YieldReportedCumulative,
+      "Cumulative yield reported from the YieldManager contract",
+      ["vault_address"],
+    );
+
+    this.metricsService.createGauge(
       LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
       "Total pending partial withdrawals in gwei",
       [],
@@ -241,6 +247,21 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
       { vault_address: vaultAddress },
       feesAmount,
+    );
+  }
+
+  /**
+   * Sets the cumulative yield reported from the YieldManager contract for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} amountGwei - The cumulative yield amount in gwei. Must be non-negative to be recorded.
+   */
+  public setYieldReportedCumulative(vaultAddress: Address, amountGwei: number): void {
+    if (amountGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.YieldReportedCumulative,
+      { vault_address: vaultAddress },
+      amountGwei,
     );
   }
 
