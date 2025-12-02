@@ -374,6 +374,7 @@ func (st *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Ent
 	// --- After conglomeration finishes, trim the boostrap suffix marker to indicate full success ---
 	if job.Def.Name == jobNameConglomeration {
 		finalizeExecLimitlessStatus(cfg, cLog, job, config.SuccessSuffix)
+		defer rmTmpArtificats(cLog, job)
 	}
 
 	// Limitless-specific renaming
@@ -404,7 +405,6 @@ func (st *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Ent
 			cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), jobDone, err)
 		}
 	}
-
 	// Set active job to nil once the job is successful and notify the job is done
 	st.clearActiveJob()
 	st.notifyJobDone()
@@ -668,33 +668,33 @@ func finalizeExecLimitlessStatus(cfg *config.Config, cLog *logrus.Entry, job *Jo
 	} else {
 		cLog.Infof("Successfully replaced %s suffix with status:%s for conflation %d-%d", config.InProgressSufix, newSuffix, job.Start, job.End)
 	}
+}
 
-	if cfg.Controller.LimitlessJobs.TransientCleanup {
-		cLog.Infof("Cleanup enabled — pruning only successful transient sub-proof/witness artifacts for %d-%d", job.Start, job.End)
+func rmTmpArtificats(cLog *logrus.Entry, job *Job) {
+	cLog.Infof("Cleanup enabled — pruning only successful transient sub-proof/witness artifacts for %d-%d", job.Start, job.End)
 
-		patternBase := fmt.Sprintf("%d-%d-*%s*", job.Start, job.End, config.SuccessSuffix)
-		cleanupDirs := []string{randomnessDoneDir}
-		cleanupDirs = append(cleanupDirs, witnessDoneDirs...)
-		cleanupDirs = append(cleanupDirs, subproofDoneDirs...)
-		cleanupDirs = append(cleanupDirs, metadataDoneDir)
+	patternBase := fmt.Sprintf("%d-%d-*%s*", job.Start, job.End, config.SuccessSuffix)
+	cleanupDirs := []string{randomnessDoneDir}
+	cleanupDirs = append(cleanupDirs, witnessDoneDirs...)
+	cleanupDirs = append(cleanupDirs, subproofDoneDirs...)
+	cleanupDirs = append(cleanupDirs, metadataDoneDir)
 
-		for _, dir := range cleanupDirs {
-			pattern := filepath.Join(dir, patternBase)
-			matches, err := filepath.Glob(pattern)
-			if err != nil {
-				cLog.Errorf("glob failed for pattern %v: %v", pattern, err)
-				continue
-			}
+	for _, dir := range cleanupDirs {
+		pattern := filepath.Join(dir, patternBase)
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			cLog.Errorf("glob failed for pattern %v: %v", pattern, err)
+			continue
+		}
 
-			if len(matches) == 0 {
-				continue
-			}
+		if len(matches) == 0 {
+			continue
+		}
 
-			for _, f := range matches {
-				cLog.Infof("Removing transient file: %s", f)
-				if err := os.Remove(f); err != nil {
-					cLog.Errorf("Failed to remove %s: %v", f, err)
-				}
+		for _, f := range matches {
+			cLog.Infof("Removing transient file: %s", f)
+			if err := os.Remove(f); err != nil {
+				cLog.Errorf("Failed to remove %s: %v", f, err)
 			}
 		}
 	}
