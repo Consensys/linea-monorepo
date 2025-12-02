@@ -2,6 +2,7 @@
 
 export interface IBeaconNodeAPIClient {
   getPendingPartialWithdrawals(): Promise<PendingPartialWithdrawal[] | undefined>;
+  getPendingDeposits(): Promise<PendingDeposit[] | undefined>;
 }
 
 export interface BeaconApiResponse {
@@ -17,4 +18,16 @@ export interface PendingPartialWithdrawal {
   validator_index: number;
   amount: bigint;
   withdrawable_epoch: number;
+}
+
+export interface PendingDepositResponse extends BeaconApiResponse {
+  data: PendingDeposit[];
+}
+
+export interface PendingDeposit {
+  pubkey: string;
+  withdrawal_credentials: string;
+  amount: number;
+  signature: string;
+  slot: number;
 }

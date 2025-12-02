@@ -1,5 +1,7 @@
 import {
   IBeaconNodeAPIClient,
+  PendingDeposit,
+  PendingDepositResponse,
   PendingPartialWithdrawal,
   PendingPartialWithdrawalResponse,
 } from "../core/client/IBeaconNodeApiClient";
@@ -42,6 +44,26 @@ export class BeaconNodeApiClient implements IBeaconNodeAPIClient {
     const returnVal = data.data;
     this.logger.info(`getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=${returnVal?.length ?? 0}`);
     this.logger.debug("getPendingPartialWithdrawals return value", { returnVal });
+    return returnVal;
+  }
+
+  /**
+   * Fetches pending deposits from the beacon chain state.
+   * Makes a GET request to the Beacon Node API with automatic retry on failure.
+   *
+   * @returns {Promise<PendingDeposit[] | undefined>} An array of pending deposits if successful, undefined if the request fails or returns invalid data.
+   */
+  async getPendingDeposits(): Promise<PendingDeposit[] | undefined> {
+    const url = `${this.rpcURL}/eth/v1/beacon/states/head/pending_deposits`;
+    this.logger.debug(`getPendingDeposits making GET request to url=${url}`);
+    const { data } = await this.retryService.retry(() => axios.get<PendingDepositResponse>(url));
+    if (data === undefined || data?.data === undefined) {
+      this.logger.error("Failed GET request to", url);
+      return undefined;
+    }
+    const returnVal = data.data;
+    this.logger.info(`getPendingDeposits succeeded, pendingDepositCount=${returnVal?.length ?? 0}`);
+    this.logger.debug("getPendingDeposits return value", { returnVal });
     return returnVal;
   }
 }

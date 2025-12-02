@@ -3,7 +3,7 @@ import { mock } from "jest-mock-extended";
 import { BeaconNodeApiClient } from "../BeaconNodeApiClient";
 import { ILogger } from "../../logging/ILogger";
 import { IRetryService } from "../../core/services/IRetryService";
-import { PendingPartialWithdrawal } from "../../core/client/IBeaconNodeApiClient";
+import { PendingDeposit, PendingPartialWithdrawal } from "../../core/client/IBeaconNodeApiClient";
 
 jest.mock("axios");
 
@@ -39,7 +39,9 @@ describe("BeaconNodeApiClient", () => {
       { validator_index: 42, amount: 1234n, withdrawable_epoch: 10 },
       { validator_index: 43, amount: 5678n, withdrawable_epoch: 11 },
     ];
-    mockedAxios.get.mockResolvedValue({ data: { data: responseData } });
+    mockedAxios.get.mockResolvedValue({
+      data: { execution_optimistic: false, finalized: true, data: responseData },
+    });
 
     const result = await client.getPendingPartialWithdrawals();
 
@@ -73,7 +75,9 @@ describe("BeaconNodeApiClient", () => {
   });
 
   it("returns an empty array when the API responds with no withdrawals", async () => {
-    mockedAxios.get.mockResolvedValue({ data: { data: [] } });
+    mockedAxios.get.mockResolvedValue({
+      data: { execution_optimistic: false, finalized: true, data: [] },
+    });
 
     const result = await client.getPendingPartialWithdrawals();
 
@@ -83,5 +87,100 @@ describe("BeaconNodeApiClient", () => {
     );
     expect(logger.error).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledTimes(2);
+  });
+
+  it("handles null data array in response", async () => {
+    mockedAxios.get.mockResolvedValue({
+      data: { execution_optimistic: false, finalized: true, data: null },
+    });
+
+    const result = await client.getPendingPartialWithdrawals();
+
+    expect(result).toBeNull();
+    expect(logger.info).toHaveBeenCalledWith(
+      `getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=0`,
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledTimes(2);
+  });
+
+  describe("getPendingDeposits", () => {
+    it("fetches and returns pending deposits", async () => {
+      const responseData: PendingDeposit[] = [
+        {
+          pubkey: "0x1234",
+          withdrawal_credentials: "0xabcd",
+          amount: 32000000000,
+          signature: "0x5678",
+          slot: 100,
+        },
+        {
+          pubkey: "0x5678",
+          withdrawal_credentials: "0xef01",
+          amount: 32000000000,
+          signature: "0x9abc",
+          slot: 101,
+        },
+      ];
+      mockedAxios.get.mockResolvedValue({
+        data: { execution_optimistic: false, finalized: true, data: responseData },
+      });
+
+      const result = await client.getPendingDeposits();
+
+      const expectedUrl = `${rpcURL}/eth/v1/beacon/states/head/pending_deposits`;
+      expect(result).toEqual(responseData);
+      expect(retryService.retry).toHaveBeenCalledTimes(1);
+      expect(retryService.retry.mock.calls[0][0]).toEqual(expect.any(Function));
+      expect(mockedAxios.get).toHaveBeenCalledWith(expectedUrl);
+      expect(logger.debug).toHaveBeenNthCalledWith(
+        1,
+        `getPendingDeposits making GET request to url=${expectedUrl}`,
+      );
+      expect(logger.info).toHaveBeenCalledWith(
+        `getPendingDeposits succeeded, pendingDepositCount=${responseData.length}`,
+      );
+      expect(logger.debug).toHaveBeenNthCalledWith(2, "getPendingDeposits return value", {
+        returnVal: responseData,
+      });
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("logs an error and returns undefined when response payload is empty", async () => {
+      mockedAxios.get.mockResolvedValue({ data: undefined });
+
+      const result = await client.getPendingDeposits();
+
+      const expectedUrl = `${rpcURL}/eth/v1/beacon/states/head/pending_deposits`;
+      expect(result).toBeUndefined();
+      expect(logger.error).toHaveBeenCalledWith("Failed GET request to", expectedUrl);
+      expect(logger.debug).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns an empty array when the API responds with no deposits", async () => {
+      mockedAxios.get.mockResolvedValue({
+        data: { execution_optimistic: false, finalized: true, data: [] },
+      });
+
+      const result = await client.getPendingDeposits();
+
+      expect(result).toEqual([]);
+      expect(logger.info).toHaveBeenCalledWith(`getPendingDeposits succeeded, pendingDepositCount=0`);
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalledTimes(2);
+    });
+
+    it("handles null data array in response", async () => {
+      mockedAxios.get.mockResolvedValue({
+        data: { execution_optimistic: false, finalized: true, data: null },
+      });
+
+      const result = await client.getPendingDeposits();
+
+      expect(result).toBeNull();
+      expect(logger.info).toHaveBeenCalledWith(`getPendingDeposits succeeded, pendingDepositCount=0`);
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalledTimes(2);
+    });
   });
 });
