@@ -16,7 +16,6 @@ export const DashboardABI = [
     stateMutability: "view",
     type: "function",
   },
-  { inputs: [], name: "resumeBeaconChainDeposits", outputs: [], stateMutability: "nonpayable", type: "function" },
   {
     inputs: [],
     name: "stakingVault",

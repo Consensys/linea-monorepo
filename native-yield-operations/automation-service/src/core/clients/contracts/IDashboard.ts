@@ -4,6 +4,4 @@ export interface IDashboard<TTransactionReceipt> extends IBaseContractClient {
   getNodeOperatorFeesPaidFromTxReceipt(txReceipt: TTransactionReceipt): bigint;
   withdrawableValue(): Promise<bigint>;
   totalValue(): Promise<bigint>;
-  resumeBeaconChainDeposits(): Promise<TTransactionReceipt>;
-  resumeBeaconChainDepositsIfSufficientBalance(minBalanceWei: bigint): Promise<TTransactionReceipt | undefined>;
 }

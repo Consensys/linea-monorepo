@@ -9,15 +9,13 @@ jest.mock("viem", () => {
     ...actual,
     getContract: jest.fn(),
     parseEventLogs: jest.fn(),
-    encodeFunctionData: jest.fn(),
   };
 });
 
-import { encodeFunctionData, getContract, parseEventLogs } from "viem";
+import { getContract, parseEventLogs } from "viem";
 
 const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
 const mockedParseEventLogs = parseEventLogs as jest.MockedFunction<typeof parseEventLogs>;
-const mockedEncodeFunctionData = encodeFunctionData as jest.MockedFunction<typeof encodeFunctionData>;
 
 let DashboardContractClient: typeof import("../DashboardContractClient.js").DashboardContractClient;
 
@@ -309,96 +307,6 @@ describe("DashboardContractClient", () => {
       }).toThrow(
         "DashboardContractClient: logger must be initialized via DashboardContractClient.initialize() before use",
       );
-    });
-  });
-
-  describe("resumeBeaconChainDeposits", () => {
-    it("sends transaction to resume beacon chain deposits", async () => {
-      const txReceipt = { transactionHash: "0xresume" } as unknown as TransactionReceipt;
-      const calldata = "0xcalldata" as `0x${string}`;
-      mockedEncodeFunctionData.mockReturnValue(calldata);
-      blockchainClient.sendSignedTransaction.mockResolvedValueOnce(txReceipt);
-
-      const client = createClient();
-      const result = await client.resumeBeaconChainDeposits();
-
-      expect(mockedEncodeFunctionData).toHaveBeenCalledWith({
-        abi: DashboardABI,
-        functionName: "resumeBeaconChainDeposits",
-        args: [],
-      });
-      expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
-      expect(logger.info).toHaveBeenCalledWith(`resumeBeaconChainDeposits started, dashboard=${contractAddress}`);
-      expect(logger.info).toHaveBeenCalledWith(
-        `resumeBeaconChainDeposits succeeded, dashboard=${contractAddress}, txHash=${txReceipt.transactionHash}`,
-      );
-      expect(result).toBe(txReceipt);
-    });
-  });
-
-  describe("resumeBeaconChainDepositsIfSufficientBalance", () => {
-    it("resumes deposits when withdrawableValue meets threshold", async () => {
-      const minBalanceWei = 1000n;
-      const withdrawableValue = 1500n;
-      const txReceipt = { transactionHash: "0xresume" } as unknown as TransactionReceipt;
-      const calldata = "0xcalldata" as `0x${string}`;
-
-      viemContractStub.read.withdrawableValue.mockResolvedValueOnce(withdrawableValue);
-      mockedEncodeFunctionData.mockReturnValue(calldata);
-      blockchainClient.sendSignedTransaction.mockResolvedValueOnce(txReceipt);
-
-      const client = createClient();
-      const result = await client.resumeBeaconChainDepositsIfSufficientBalance(minBalanceWei);
-
-      expect(viemContractStub.read.withdrawableValue).toHaveBeenCalledTimes(1);
-      expect(logger.info).toHaveBeenCalledWith(
-        `resumeBeaconChainDepositsIfSufficientBalance - withdrawableValue=${withdrawableValue} meets threshold ${minBalanceWei}, resuming beacon chain deposits`,
-      );
-      expect(mockedEncodeFunctionData).toHaveBeenCalledWith({
-        abi: DashboardABI,
-        functionName: "resumeBeaconChainDeposits",
-        args: [],
-      });
-      expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
-      expect(result).toBe(txReceipt);
-    });
-
-    it("resumes deposits when withdrawableValue equals threshold", async () => {
-      const minBalanceWei = 1000n;
-      const withdrawableValue = 1000n;
-      const txReceipt = { transactionHash: "0xresume" } as unknown as TransactionReceipt;
-      const calldata = "0xcalldata" as `0x${string}`;
-
-      viemContractStub.read.withdrawableValue.mockResolvedValueOnce(withdrawableValue);
-      mockedEncodeFunctionData.mockReturnValue(calldata);
-      blockchainClient.sendSignedTransaction.mockResolvedValueOnce(txReceipt);
-
-      const client = createClient();
-      const result = await client.resumeBeaconChainDepositsIfSufficientBalance(minBalanceWei);
-
-      expect(viemContractStub.read.withdrawableValue).toHaveBeenCalledTimes(1);
-      expect(logger.info).toHaveBeenCalledWith(
-        `resumeBeaconChainDepositsIfSufficientBalance - withdrawableValue=${withdrawableValue} meets threshold ${minBalanceWei}, resuming beacon chain deposits`,
-      );
-      expect(result).toBe(txReceipt);
-    });
-
-    it("returns undefined when withdrawableValue is below threshold", async () => {
-      const minBalanceWei = 1000n;
-      const withdrawableValue = 500n;
-
-      viemContractStub.read.withdrawableValue.mockResolvedValueOnce(withdrawableValue);
-
-      const client = createClient();
-      const result = await client.resumeBeaconChainDepositsIfSufficientBalance(minBalanceWei);
-
-      expect(viemContractStub.read.withdrawableValue).toHaveBeenCalledTimes(1);
-      expect(logger.info).toHaveBeenCalledWith(
-        `resumeBeaconChainDepositsIfSufficientBalance - skipping resume as withdrawableValue=${withdrawableValue} is below the minimum balance threshold of ${minBalanceWei}`,
-      );
-      expect(mockedEncodeFunctionData).not.toHaveBeenCalled();
-      expect(blockchainClient.sendSignedTransaction).not.toHaveBeenCalled();
-      expect(result).toBeUndefined();
     });
   });
 });
