@@ -9,60 +9,21 @@ catalogs:
     '@jest/globals':
       specifier: 29.7.0
       version: 29.7.0
-    '@typechain/ethers-v6':
-      specifier: 0.5.1
-      version: 0.5.1
     '@types/jest':
       specifier: 29.5.14
       version: 29.5.14
-    '@types/yargs':
-      specifier: 17.0.33
-      version: 17.0.33
-    axios:
-      specifier: 1.12.2
-      version: 1.12.2
-    dotenv:
-      specifier: 16.5.0
-      version: 16.5.0
     ethers:
       specifier: 6.13.7
       version: 6.13.7
-    express:
-      specifier: 5.1.0
-      version: 5.1.0
     jest:
       specifier: 29.7.0
       version: 29.7.0
     jest-mock-extended:
       specifier: 3.0.7
       version: 3.0.7
-    neverthrow:
-      specifier: 8.2.0
-      version: 8.2.0
-    prom-client:
-      specifier: 15.1.3
-      version: 15.1.3
-    ts-jest:
-      specifier: 29.3.4
-      version: 29.3.4
-    tsup:
-      specifier: 8.5.0
-      version: 8.5.0
-    typechain:
-      specifier: 8.3.2
-      version: 8.3.2
     viem:
       specifier: 2.31.3
       version: 2.31.3
-    winston:
-      specifier: 3.17.0
-      version: 3.17.0
-    yargs:
-      specifier: 17.7.2
-      version: 17.7.2
-    zod:
-      specifier: 3.24.2
-      version: 3.24.2
 
 overrides:
   '@metamask/sdk@>=0.16.0 <=0.33.0': '>=0.33.1'
@@ -457,9 +418,6 @@ importers:
       '@duneanalytics/client-sdk':
         specifier: 0.2.5
         version: 0.2.5
-      '@json2csv/plainjs':
-        specifier: 7.0.6
-        version: 7.0.6
       '@oclif/core':
         specifier: 4.5.5
         version: 4.5.5
@@ -471,7 +429,7 @@ importers:
         version: 5.4.50
       axios:
         specifier: 1.12.2
-        version: 1.12.2(debug@4.4.0)
+        version: 1.12.2
       date-fns:
         specifier: 4.1.0
         version: 4.1.0
@@ -505,16 +463,16 @@ importers:
         version: 1.3.14
       jest:
         specifier: 'catalog:'
-        version: 29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))
+        version: 29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))
       jest-mock-extended:
         specifier: 'catalog:'
-        version: 3.0.7(jest@29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5)))(typescript@5.4.5)
+        version: 3.0.7(jest@29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5)))(typescript@5.4.5)
       shx:
         specifier: 0.3.4
         version: 0.3.4
       ts-jest:
         specifier: 29.4.5
-        version: 29.4.5(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5)))(typescript@5.4.5)
+        version: 29.4.5(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5)))(typescript@5.4.5)
 
   postman:
     dependencies:
@@ -2883,12 +2841,6 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
-
-  '@json2csv/formatters@7.0.6':
-    resolution: {integrity: sha512-hjIk1H1TR4ydU5ntIENEPgoMGW+Q7mJ+537sDFDbsk+Y3EPl2i4NfFVjw0NJRgT+ihm8X30M67mA8AS6jPidSA==}
-
-  '@json2csv/plainjs@7.0.6':
-    resolution: {integrity: sha512-4Md7RPDCSYpmW1HWIpWBOqCd4vWfIqm53S3e/uzQ62iGi7L3r34fK/8nhOMEe+/eVfCx8+gdSCt1d74SlacQHw==}
 
   '@layerswap/wallet-evm@1.0.2':
     resolution: {integrity: sha512-SpRj7n2VvkTTXyTsi1feFPIZAnJOfkTfxnlyKRNdIhXEPpSxTWSMESZjDqq+YRTfU6Ynsd+kAfVvwOkOrX8Yrw==}
@@ -5281,9 +5233,6 @@ packages:
 
   '@sqltools/formatter@1.2.5':
     resolution: {integrity: sha512-Uy0+khmZqUrUGm5dmMqVlnvufZRSK0FbYzVgp0UMstm+F5+W2/jnEEQyc9vo1ZR/E5ZI/B1WjjoTqBqwJL6Krw==}
-
-  '@streamparser/json@0.0.20':
-    resolution: {integrity: sha512-VqAAkydywPpkw63WQhPVKCD3SdwXuihCUVZbbiY3SfSTGQyHmwRoq27y4dmJdZuJwd5JIlQoMPyGvMbUPY0RKQ==}
 
   '@svgr/babel-plugin-add-jsx-attribute@8.0.0':
     resolution: {integrity: sha512-b9MIk7yhdS1pMCZM8VeNfUlSKVRhsHZNMl5O9SfaX0l0t5wjdgu4IDzGB8bpnGBBOjGST3rRFVsaaEtI4W6f7g==}
@@ -16941,13 +16890,6 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  '@json2csv/formatters@7.0.6': {}
-
-  '@json2csv/plainjs@7.0.6':
-    dependencies:
-      '@json2csv/formatters': 7.0.6
-      '@streamparser/json': 0.0.20
-
   '@layerswap/wallet-evm@1.0.2(015817062cfe3d5c5bec2a804bb35139)':
     dependencies:
       '@layerswap/widget': 1.0.5(@types/react-dom@18.3.0)(@types/react@18.3.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zustand@4.5.4(@types/react@18.3.11)(react@18.3.1))
@@ -20513,8 +20455,6 @@ snapshots:
 
   '@sqltools/formatter@1.2.5': {}
 
-  '@streamparser/json@0.0.20': {}
-
   '@svgr/babel-plugin-add-jsx-attribute@8.0.0(@babel/core@7.25.7)':
     dependencies:
       '@babel/core': 7.25.7
@@ -23203,6 +23143,14 @@ snapshots:
 
   axe-core@4.10.0: {}
 
+  axios@1.12.2:
+    dependencies:
+      follow-redirects: 1.15.9
+      form-data: 4.0.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
   axios@1.12.2(debug@4.4.0):
     dependencies:
       follow-redirects: 1.15.9(debug@4.4.0)
@@ -25570,6 +25518,8 @@ snapshots:
 
   fn.name@1.1.0: {}
 
+  follow-redirects@1.15.9: {}
+
   follow-redirects@1.15.9(debug@4.4.0):
     optionalDependencies:
       debug: 4.4.0
@@ -27011,6 +26961,12 @@ snapshots:
       pretty-format: 29.7.0
       slash: 3.0.0
       stack-utils: 2.0.6
+
+  jest-mock-extended@3.0.7(jest@29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5)))(typescript@5.4.5):
+    dependencies:
+      jest: 29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))
+      ts-essentials: 10.0.4(typescript@5.4.5)
+      typescript: 5.4.5
 
   jest-mock-extended@3.0.7(jest@29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5)))(typescript@5.4.5):
     dependencies:
@@ -30720,12 +30676,12 @@ snapshots:
       '@jest/types': 29.6.3
       babel-jest: 29.7.0(@babel/core@7.25.7)
 
-  ts-jest@29.4.5(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5)))(typescript@5.4.5):
+  ts-jest@29.4.5(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5)))(typescript@5.4.5):
     dependencies:
       bs-logger: 0.2.6
       fast-json-stable-stringify: 2.1.0
       handlebars: 4.7.8
-      jest: 29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))
+      jest: 29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))
       json5: 2.2.3
       lodash.memoize: 4.1.2
       make-error: 1.3.6

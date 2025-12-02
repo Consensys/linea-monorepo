@@ -35,18 +35,16 @@ export function flattenResultsByTime(
   const rows = [];
 
   for (const item of resultsByTime) {
-    const { Start, End } = item.TimePeriod ?? {};
+    const { Start } = item.TimePeriod ?? {};
 
     const hasGroups = Array.isArray(item.Groups) && item.Groups.length > 0;
 
     if (item.Total && !hasGroups) {
       const data = item.Total[metric];
       rows.push({
-        Start,
-        End,
-        Metric: metric,
+        Date: Start,
         Amount: data?.Amount ?? "0",
-        Unit: data?.Unit ?? "",
+        Estimated: item.Estimated ?? false,
       });
       continue;
     }
@@ -58,12 +56,10 @@ export function flattenResultsByTime(
         const data = group.Metrics[metric];
 
         rows.push({
-          Start,
-          End,
+          Date: Start,
           GroupKeys: group.Keys?.join(" / ") ?? "",
-          Metric: metric,
           Amount: data?.Amount ?? "0",
-          Unit: data?.Unit ?? "",
+          Estimated: item.Estimated ?? false,
         });
       }
     }

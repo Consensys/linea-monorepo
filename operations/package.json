@@ -21,7 +21,6 @@
   "dependencies": {
     "@aws-sdk/client-cost-explorer": "3.908.0",
     "@duneanalytics/client-sdk": "0.2.5",
-    "@json2csv/plainjs": "7.0.6",
     "@oclif/core": "4.5.5",
     "@oclif/plugin-help": "6.2.33",
     "@oclif/plugin-plugins": "5.4.50",

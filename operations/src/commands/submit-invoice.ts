@@ -19,7 +19,6 @@ import { GetCostAndUsageCommandInput } from "@aws-sdk/client-cost-explorer";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { addDays } from "date-fns";
 import { Result } from "neverthrow";
-import { Parser } from "@json2csv/plainjs";
 import { computeInvoicePeriod, InvoicePeriod } from "../utils/submit-invoice/time.js";
 import { generateQueryParameters, getDuneClient, runDuneQuery } from "../utils/common/dune.js";
 import { estimateTransactionGas, sendRawTransaction } from "../utils/common/transactions.js";
@@ -32,7 +31,6 @@ import { validateUrl } from "../utils/common/validation.js";
 import { address, hexString } from "../utils/common/custom-flags.js";
 import { awsCostsApiFilters } from "../utils/submit-invoice/custom-flags.js";
 import { fetchEthereumPrice } from "../utils/common/coingecko.js";
-import fs from "fs";
 
 export default class SubmitInvoice extends Command {
   static examples = [
@@ -183,12 +181,6 @@ export default class SubmitInvoice extends Command {
       required: true,
       env: "SUBMIT_INVOICE_AWS_COSTS_API_FILTERS",
     }),
-    awsHistoricalDataOutputPath: Flags.string({
-      description: "Path to save AWS historical cost data CSV",
-      required: false,
-      default: "./aws-historical-data",
-      env: "SUBMIT_INVOICE_AWS_HISTORICAL_DATA_OUTPUT_PATH",
-    }),
     coingeckoApiBaseUrl: Flags.string({
       description: "CoinGecko API Base URL",
       required: true,
@@ -225,7 +217,6 @@ export default class SubmitInvoice extends Command {
       tls,
       dryRun,
       awsCostsApiFilters,
-      awsHistoricalDataOutputPath,
       duneApiKey,
       duneQueryId,
       coingeckoApiBaseUrl,
@@ -260,7 +251,7 @@ export default class SubmitInvoice extends Command {
       AWS HISTORICAL COSTS FETCHING
      ******************************/
 
-    await this.getAWSCostsHistoricalData(invoicePeriod.startDate, awsCostsApiFilters, awsHistoricalDataOutputPath);
+    await this.getAWSCostsHistoricalData(invoicePeriod.startDate, awsCostsApiFilters);
 
     /******************************
             AWS COSTS FETCHING
@@ -595,7 +586,6 @@ export default class SubmitInvoice extends Command {
   private async getAWSCostsHistoricalData(
     startDate: Date,
     awsCostsApiFilters: GetCostAndUsageCommandInput,
-    awsHistoricalDataOutputPath: string,
   ): Promise<void> {
     const currentDate = new Date();
     const awsClient = createAwsCostExplorerClient({ region: "us-east-1" });
@@ -627,36 +617,9 @@ export default class SubmitInvoice extends Command {
     }
 
     const formattedResultsByTime = flattenResultsByTime(ResultsByTime, awsCostsApiFilters.Metrics[0]);
-
-    const parser = new Parser();
-    const csv = parser.parse(formattedResultsByTime);
-
-    const outputFilePath = `${awsHistoricalDataOutputPath}/${endDateStr}-costs-report.csv`;
-
-    let fd: number | undefined = undefined;
-    try {
-      if (!fs.existsSync(awsHistoricalDataOutputPath)) {
-        fs.mkdirSync(awsHistoricalDataOutputPath, { recursive: true });
-      }
-
-      fd = fs.openSync(outputFilePath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY, 0o600);
-      fs.writeFileSync(fd, csv, "utf8");
-    } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "EEXIST") {
-        this.warn(`AWS costs historical data file already exists: ${outputFilePath}.`);
-      } else {
-        this.warn(
-          `Failed to save AWS costs historical data to file: ${outputFilePath}. error=${(error as Error).message}`,
-        );
-      }
-      return;
-    } finally {
-      if (fd !== undefined) {
-        fs.closeSync(fd);
-      }
-    }
-
-    this.log(`AWS costs historical data saved to file: ${outputFilePath}`);
+    this.log(
+      `Fetched AWS costs historical data. fetchedAt=${endDateStr} historicalData=${JSON.stringify(formattedResultsByTime)}`,
+    );
   }
 
   /**
