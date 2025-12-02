@@ -19,7 +19,7 @@ import { GetCostAndUsageCommandInput } from "@aws-sdk/client-cost-explorer";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { addDays } from "date-fns";
 import { Result } from "neverthrow";
-import { Parser } from "json2csv";
+import { Parser } from "@json2csv/plainjs";
 import { computeInvoicePeriod, InvoicePeriod } from "../utils/submit-invoice/time.js";
 import { generateQueryParameters, getDuneClient, runDuneQuery } from "../utils/common/dune.js";
 import { estimateTransactionGas, sendRawTransaction } from "../utils/common/transactions.js";
