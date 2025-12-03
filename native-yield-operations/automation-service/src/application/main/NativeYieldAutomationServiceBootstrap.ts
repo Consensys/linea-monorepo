@@ -264,6 +264,7 @@ export class NativeYieldAutomationServiceBootstrap {
       this.yieldManagerContractClient,
       this.vaultHubContractClient,
       config.contractAddresses.lidoYieldProviderAddress,
+      this.beaconNodeApiClient,
     );
 
     this.operationModeSelector = new OperationModeSelector(

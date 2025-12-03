@@ -1,10 +1,10 @@
 import { mock, MockProxy } from "jest-mock-extended";
-import type { ILogger } from "@consensys/linea-shared-utils";
+import type { ILogger, IBeaconNodeAPIClient } from "@consensys/linea-shared-utils";
 import type { IValidatorDataClient } from "../../core/clients/IValidatorDataClient.js";
 import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
-import type { ValidatorBalanceWithPendingWithdrawal } from "../../core/entities/ValidatorBalance.js";
+import type { ValidatorBalanceWithPendingWithdrawal, ValidatorBalance } from "../../core/entities/ValidatorBalance.js";
 import type { TransactionReceipt, Address } from "viem";
 import { ONE_GWEI } from "@consensys/linea-shared-utils";
 import { GaugeMetricsPoller } from "../GaugeMetricsPoller.js";
@@ -19,6 +19,7 @@ describe("GaugeMetricsPoller", () => {
   let metricsUpdater: MockProxy<INativeYieldAutomationMetricsUpdater>;
   let yieldManagerContractClient: MockProxy<IYieldManager<TransactionReceipt>>;
   let vaultHubContractClient: MockProxy<IVaultHub<TransactionReceipt>>;
+  let beaconNodeApiClient: MockProxy<IBeaconNodeAPIClient>;
   let poller: GaugeMetricsPoller;
 
   beforeEach(() => {
@@ -28,6 +29,7 @@ describe("GaugeMetricsPoller", () => {
     metricsUpdater = mock<INativeYieldAutomationMetricsUpdater>();
     yieldManagerContractClient = mock<IYieldManager<TransactionReceipt>>();
     vaultHubContractClient = mock<IVaultHub<TransactionReceipt>>();
+    beaconNodeApiClient = mock<IBeaconNodeAPIClient>();
 
     poller = new GaugeMetricsPoller(
       logger,
@@ -36,10 +38,13 @@ describe("GaugeMetricsPoller", () => {
       yieldManagerContractClient,
       vaultHubContractClient,
       yieldProvider,
+      beaconNodeApiClient,
     );
 
     // Default mocks
-    validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValue([]);
+    validatorDataClient.getActiveValidators.mockResolvedValue([]);
+    beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
+    validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue([]);
     validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(0n);
     yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
       yieldProviderVendor: 0,
@@ -59,13 +64,33 @@ describe("GaugeMetricsPoller", () => {
 
   describe("poll", () => {
     it("updates LastTotalPendingPartialWithdrawalsGwei gauge", async () => {
-      const validators: ValidatorBalanceWithPendingWithdrawal[] = [
+      const allValidators: ValidatorBalance[] = [
         {
           balance: 32n,
           effectiveBalance: 32n,
           publicKey: "validator-1",
           validatorIndex: 1n,
-          pendingWithdrawalAmount: 3n,
+        },
+        {
+          balance: 32n,
+          effectiveBalance: 32n,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+        },
+      ];
+
+      const pendingWithdrawalsQueue = [
+        { validator_index: 1, amount: 3n * ONE_GWEI, withdrawable_epoch: 0 },
+        { validator_index: 2, amount: 1n * ONE_GWEI, withdrawable_epoch: 0 },
+      ];
+
+      const joinedValidators: ValidatorBalanceWithPendingWithdrawal[] = [
+        {
+          balance: 32n,
+          effectiveBalance: 32n,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          pendingWithdrawalAmount: 3n * ONE_GWEI,
           withdrawableAmount: 0n,
         },
         {
@@ -73,18 +98,25 @@ describe("GaugeMetricsPoller", () => {
           effectiveBalance: 32n,
           publicKey: "validator-2",
           validatorIndex: 2n,
-          pendingWithdrawalAmount: 1n,
+          pendingWithdrawalAmount: 1n * ONE_GWEI,
           withdrawableAmount: 0n,
         },
       ];
 
-      validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValue(validators);
+      validatorDataClient.getActiveValidators.mockResolvedValue(allValidators);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue(pendingWithdrawalsQueue);
+      validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue(joinedValidators);
       validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(4n * ONE_GWEI);
 
       await poller.poll();
 
-      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending).toHaveBeenCalled();
-      expect(validatorDataClient.getTotalPendingPartialWithdrawalsWei).toHaveBeenCalledWith(validators);
+      expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
+      expect(beaconNodeApiClient.getPendingPartialWithdrawals).toHaveBeenCalled();
+      expect(validatorDataClient.joinValidatorsWithPendingWithdrawals).toHaveBeenCalledWith(
+        allValidators,
+        pendingWithdrawalsQueue,
+      );
+      expect(validatorDataClient.getTotalPendingPartialWithdrawalsWei).toHaveBeenCalledWith(joinedValidators);
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(4);
     });
 
@@ -124,11 +156,15 @@ describe("GaugeMetricsPoller", () => {
     });
 
     it("handles undefined validator list gracefully", async () => {
-      validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValue(undefined);
+      validatorDataClient.getActiveValidators.mockResolvedValue(undefined);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
+      validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue(undefined);
 
       await poller.poll();
 
-      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending).toHaveBeenCalled();
+      expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
+      expect(beaconNodeApiClient.getPendingPartialWithdrawals).toHaveBeenCalled();
+      expect(validatorDataClient.joinValidatorsWithPendingWithdrawals).toHaveBeenCalled();
       expect(validatorDataClient.getTotalPendingPartialWithdrawalsWei).not.toHaveBeenCalled();
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).not.toHaveBeenCalled();
       // YieldReportedCumulative and LastVaultReportTimestamp should still be updated
@@ -137,19 +173,20 @@ describe("GaugeMetricsPoller", () => {
     });
 
     it("handles validator data client failure gracefully for pending partial withdrawals", async () => {
-      validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockRejectedValue(
-        new Error("Validator data fetch failed"),
-      );
+      validatorDataClient.getActiveValidators.mockRejectedValue(new Error("Validator data fetch failed"));
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
+      // When allValidators is undefined, joinValidatorsWithPendingWithdrawals should return undefined
+      validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue(undefined);
 
       await poller.poll();
 
       // Should not throw, and other metrics should still be updated
       expect(yieldManagerContractClient.getYieldProviderData).toHaveBeenCalled();
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).not.toHaveBeenCalled();
-      expect(logger.error).toHaveBeenCalledWith(
-        "Failed to update pending partial withdrawals gauge metric",
-        { error: expect.any(Error) },
-      );
+      // Fetch failure is logged at fetch time
+      expect(logger.error).toHaveBeenCalledWith("Failed to fetch active validators", {
+        error: expect.any(Error),
+      });
     });
 
     it("handles contract read failure gracefully for YieldReportedCumulative", async () => {
@@ -158,7 +195,7 @@ describe("GaugeMetricsPoller", () => {
       await poller.poll();
 
       // Should not throw, and other metrics should still be updated
-      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending).toHaveBeenCalled();
+      expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
       expect(metricsUpdater.setYieldReportedCumulative).not.toHaveBeenCalled();
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update yield reported cumulative gauge metric",
@@ -172,7 +209,7 @@ describe("GaugeMetricsPoller", () => {
       await poller.poll();
 
       // Should not throw, and other metrics should still be updated
-      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending).toHaveBeenCalled();
+      expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
       expect(yieldManagerContractClient.getYieldProviderData).toHaveBeenCalled();
       expect(metricsUpdater.setLastVaultReportTimestamp).not.toHaveBeenCalled();
       expect(logger.error).toHaveBeenCalledWith(
@@ -182,18 +219,31 @@ describe("GaugeMetricsPoller", () => {
     });
 
     it("updates all three metrics in parallel and fetches vault address only once", async () => {
-      const validators: ValidatorBalanceWithPendingWithdrawal[] = [
+      const allValidators: ValidatorBalance[] = [
         {
           balance: 32n,
           effectiveBalance: 32n,
           publicKey: "validator-1",
           validatorIndex: 1n,
-          pendingWithdrawalAmount: 2n,
+        },
+      ];
+
+      const pendingWithdrawalsQueue = [{ validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 }];
+
+      const joinedValidators: ValidatorBalanceWithPendingWithdrawal[] = [
+        {
+          balance: 32n,
+          effectiveBalance: 32n,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          pendingWithdrawalAmount: 2n * ONE_GWEI,
           withdrawableAmount: 0n,
         },
       ];
 
-      validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValue(validators);
+      validatorDataClient.getActiveValidators.mockResolvedValue(allValidators);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue(pendingWithdrawalsQueue);
+      validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue(joinedValidators);
       validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(2n * ONE_GWEI);
 
       const yieldReportedCumulativeWei = 500n * ONE_GWEI;
@@ -224,8 +274,13 @@ describe("GaugeMetricsPoller", () => {
     });
 
     it("converts wei to gwei correctly and timestamp to number", async () => {
-      const validators: ValidatorBalanceWithPendingWithdrawal[] = [];
-      validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValue(validators);
+      const allValidators: ValidatorBalance[] = [];
+      const pendingWithdrawalsQueue: any[] = [];
+      const joinedValidators: ValidatorBalanceWithPendingWithdrawal[] = [];
+
+      validatorDataClient.getActiveValidators.mockResolvedValue(allValidators);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue(pendingWithdrawalsQueue);
+      validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue(joinedValidators);
       validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(1500000000n); // 1.5 gwei in wei
 
       const yieldReportedCumulativeWei = 2500000000n; // 2.5 gwei in wei
@@ -254,20 +309,21 @@ describe("GaugeMetricsPoller", () => {
 
     it("handles all three metrics failing gracefully", async () => {
       // Mock all three to fail
-      validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending.mockRejectedValue(
-        new Error("Validator data fetch failed"),
-      );
+      validatorDataClient.getActiveValidators.mockRejectedValue(new Error("Validator data fetch failed"));
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
       yieldManagerContractClient.getYieldProviderData.mockRejectedValue(new Error("Contract read failed"));
       vaultHubContractClient.getLatestVaultReportTimestamp.mockRejectedValue(new Error("Contract read failed"));
 
       await poller.poll();
 
-      // Verify all three errors were logged with correct metric names
+      // Verify all three errors were logged
+      // 1. Fetch failure for active validators
+      // 2. Update failure for yield reported cumulative
+      // 3. Update failure for last vault report timestamp
       expect(logger.error).toHaveBeenCalledTimes(3);
-      expect(logger.error).toHaveBeenCalledWith(
-        "Failed to update pending partial withdrawals gauge metric",
-        { error: expect.any(Error) },
-      );
+      expect(logger.error).toHaveBeenCalledWith("Failed to fetch active validators", {
+        error: expect.any(Error),
+      });
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update yield reported cumulative gauge metric",
         { error: expect.any(Error) },
@@ -298,7 +354,7 @@ describe("GaugeMetricsPoller", () => {
       expect(metricsUpdater.setLastVaultReportTimestamp).not.toHaveBeenCalled();
 
       // Verify other metrics still work
-      expect(validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending).toHaveBeenCalled();
+      expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
     });
 
     it("handles out of bounds index by using unknown metric name", async () => {
