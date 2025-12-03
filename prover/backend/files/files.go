@@ -279,7 +279,7 @@ func OutcomeSuffix(err error) string {
 		return "." + config.TimeoutSuffix
 	}
 	// requires manual investigation
-	return "." + config.FailSuffix + "_2"
+	return ".failure." + config.FailSuffix + "_2"
 }
 
 // MarkAndMoveToDone first attempts to rename each path -> path+suffix,

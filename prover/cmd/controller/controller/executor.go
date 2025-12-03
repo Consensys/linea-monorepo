@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/config/assets"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/fsnotify/fsnotify"
 	"github.com/sirupsen/logrus"
 )
 
@@ -355,88 +354,71 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	}
 }
 
+// PeerAbortWatcher polls sharedFailureDir for failure-marker files and signals
+// the process (SIGUSR2) if a matching marker is found.
+// pollInterval is the check interval (e.g. time.Second). If zero, defaults to 1s.
 func PeerAbortWatcher(ctx context.Context, job *Job, cfg *config.Config, logger *logrus.Entry) {
 
 	var (
+		pollInterval     = time.Duration(cfg.ExecutionLimitless.PollInterval) * time.Second
 		sharedFailureDir = cfg.ExecutionLimitless.SharedFailureDir
-
-		// Base-only pattern, used for matching basenames of created files
-		failPatternBase = fmt.Sprintf("%d-%d-*-failure_code*", job.Start, job.End)
+		failPatternBase  = fmt.Sprintf("%d-%d-*-failure_code*", job.Start, job.End)
+		globPattern      = filepath.Join(sharedFailureDir, failPatternBase)
 	)
 
-	// If any pre-existing failure files, abort immediately
-	globPattern := filepath.Join(sharedFailureDir, failPatternBase)
+	// Quick initial glob (matches your existing logic)
 	files, err := filepath.Glob(globPattern)
 	if err != nil {
-		logger.Errorf("PeerAbortWatcher: glob failed: %v", err)
-		// proceed; we will still watch for new events
-	}
-	if len(files) > 0 {
-		logger.Warn("PeerAbortWatcher: found abort marker(s) before job start, aborting immediately")
+		logger.Errorf("PeerAbortWatcherPoll: initial glob failed: %v", err)
+	} else if len(files) > 0 {
+		logger.Warn("PeerAbortWatcherPoll: found abort marker(s) before job start, aborting immediately")
 		if err := syscall.Kill(os.Getpid(), syscall.SIGUSR2); err != nil {
-			logger.Errorf("PeerAbortWatcher: failed to send SIGUSR2: %v", err)
+			logger.Errorf("PeerAbortWatcherPoll: failed to send SIGUSR2: %v", err)
 		}
 		return
 	}
 
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		logger.Errorf("PeerAbortWatcher: cannot create watcher: %v", err)
-		return
-	}
-	defer watcher.Close()
+	logger.Infof("PeerAbortWatcherPoll running for job %v, polling %s for marker %q (interval=%s)",
+		job.OriginalFile, sharedFailureDir, failPatternBase, pollInterval)
 
-	if err := watcher.Add(sharedFailureDir); err != nil {
-		logger.Errorf("PeerAbortWatcher: cannot watch failure dir %s: %v", sharedFailureDir, err)
-		return
-	}
-
-	logger.Infof("PeerAbortWatcher running for job %v, monitoring %s for marker %q", job.OriginalFile, sharedFailureDir, failPatternBase)
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Infof("PeerAbortWatcher: context done for job %v, exiting", job.OriginalFile)
+			logger.Infof("PeerAbortWatcherPoll: context done for job %v, exiting", job.OriginalFile)
 			return
-
-		case event, ok := <-watcher.Events:
-			if !ok {
-				return
+		case <-ticker.C:
+			// glob each tick. Using Glob keeps the same pattern semantics as your original.
+			matches, gerr := filepath.Glob(globPattern)
+			if gerr != nil {
+				// Glob only returns an error if pattern is malformed — shouldn't happen,
+				// but log and continue (like your fsnotify version).
+				logger.Errorf("PeerAbortWatcherPoll: glob failed: %v", gerr)
+				continue
 			}
-
-			// watch for Create, Write and Rename events (cover common write/atomic-rename cases)
-			if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Rename) == 0 {
+			if len(matches) == 0 {
+				// nothing new
 				continue
 			}
 
-			base := filepath.Base(event.Name)
-			matched, matchErr := filepath.Match(failPatternBase, base)
-			if matchErr != nil {
-				logger.Errorf("PeerAbortWatcher: invalid match pattern %q: %v", failPatternBase, matchErr)
-				continue
-			}
-			if !matched {
-				// not one of the failure markers we care about
-				continue
-			}
-
-			// Optional sanity: ensure the file exists and is a regular file
-			if fi, err := os.Stat(event.Name); err == nil && !fi.IsDir() {
-				logger.Warnf("PeerAbortWatcher: detected failure file %s; sending SIGUSR2", event.Name)
-				if err := syscall.Kill(os.Getpid(), syscall.SIGUSR2); err != nil {
-					logger.Errorf("PeerAbortWatcher: failed to send SIGUSR2: %v", err)
+			// For each match, sanity-check that it's present and a regular file
+			for _, p := range matches {
+				if fi, err := os.Stat(p); err == nil {
+					if fi.Mode().IsRegular() {
+						logger.Warnf("PeerAbortWatcherPoll: detected failure file %s; sending SIGUSR2", p)
+						if err := syscall.Kill(os.Getpid(), syscall.SIGUSR2); err != nil {
+							logger.Errorf("PeerAbortWatcherPoll: failed to send SIGUSR2: %v", err)
+						}
+						return
+					}
+					// matched but not a regular file (ignore)
+				} else {
+					// Could be transient — file removed between glob and stat; ignore
+					logger.Debugf("PeerAbortWatcherPoll: matched %s but stat failed: %v", p, err)
 				}
-				return
-			} else {
-				// Could be transient (e.g. removed quickly); log and continue watching
-				logger.Debugf("PeerAbortWatcher: matched %s but stat failed: %v", event.Name, err)
 			}
-
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return
-			}
-			logger.Errorf("PeerAbortWatcher error for job %v: %v", job.OriginalFile, err)
 		}
 	}
 }
