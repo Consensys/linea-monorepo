@@ -419,8 +419,11 @@ func TestConglomerationInFileRegexp(t *testing.T) {
 
 	// The requests in case of success
 	var (
-		resp           = "responses/200-201-getZkProof.json"
-		respWithFail   = "responses/200-201-getZkProof.json"
+		// #nosec G101 -- this is a test fixture filename, not credentials
+		resp = "responses/200-201-getZkProof.json"
+		// #nosec G101 -- this is a test fixture filename, not credentials
+		respWithFail = "responses/200-201-getZkProof.json"
+		// #nosec G101 -- this is a test fixture filename, not credentials
 		respWith2Fails = "responses/200-201-getZkProof.json"
 	)
 
