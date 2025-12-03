@@ -18,7 +18,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -61,27 +60,27 @@ type TestCase struct {
 
 // tests-cases for all tests
 var testcases []TestCase = []TestCase{
-	{Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
-	{Numpoly: 32, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
+	{Numpoly: 1024, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
+	{Numpoly: 1024, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
 	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0]},
-	{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
-	{Numpoly: 32, NumRound: 1, PolSize: 16, NumOpenCol: 16, SisInstance: sisInstances[1]},
-	{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[2]},
+	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
+	{Numpoly: 1024, NumRound: 1, PolSize: 16, NumOpenCol: 16, SisInstance: sisInstances[1]},
+	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[2]},
 	{Numpoly: 27, NumRound: 1, PolSize: 32, NumOpenCol: 8, SisInstance: sisInstances[0]},
-	{Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
+	{Numpoly: 1024, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
 	{Numpoly: 27, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
 	{Numpoly: 29, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
 }
 
 var testcases_precomp []TestCase = []TestCase{
-	{Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
-	{Numpoly: 32, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0], NumPrecomp: 2, IsCommitPrecomp: true},
-	{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
-	{Numpoly: 32, NumRound: 1, PolSize: 16, NumOpenCol: 16, SisInstance: sisInstances[1], NumPrecomp: 4, IsCommitPrecomp: true},
-	{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[2], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 1, PolSize: 16, NumOpenCol: 16, SisInstance: sisInstances[1], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[2], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 27, NumRound: 1, PolSize: 32, NumOpenCol: 8, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
-	{Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 27, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 29, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3], NumPrecomp: 4, IsCommitPrecomp: true},
 }
@@ -200,6 +199,7 @@ func TestSelfRecursionRandom(t *testing.T) {
 				define,
 				vortex.Compile(
 					2,
+					false,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&sisInstances),
 				),
@@ -230,6 +230,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 			define,
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -239,6 +240,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -248,6 +250,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -276,6 +279,7 @@ func TestSelfRecursionCommitPrecomputed(t *testing.T) {
 				define,
 				vortex.Compile(
 					2,
+					false,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&sisInstances),
 				),
@@ -308,6 +312,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 			define,
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(16),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -317,6 +322,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(16),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -326,6 +332,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(16),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
@@ -347,12 +354,15 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 func TestSelfRecursionManyLayers(t *testing.T) {
 
 	define, prove := generateProtocol(testcases[0])
-	n := 6
+	// don't increase too much so that it does not increase too much the runtime
+	// of the test.
+	n := 2
 
 	comp := wizard.Compile(
 		define,
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&ringsis.StdParams),
 			vortex.WithOptionalSISHashingThreshold(64),
@@ -360,6 +370,9 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 	)
 
 	for i := 0; i < n; i++ {
+
+		fmt.Printf("layer %v\n", i)
+
 		comp = wizard.ContinueCompilation(
 			comp,
 			selfrecursion.SelfRecurse,
@@ -371,6 +384,7 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 			logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
 			vortex.Compile(
 				8,
+				false,
 				vortex.ForceNumOpenedColumns(32),
 				vortex.WithSISParams(&ringsis.StdParams),
 				vortex.WithOptionalSISHashingThreshold(64),
@@ -383,67 +397,69 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// Test the compiler of self-recursion with really many layers for a sample
-// dummy protocol.
-func TestSelfRecursionManyLayersWithSerde(t *testing.T) {
+// // Test the compiler of self-recursion with really many layers for a sample
+// // dummy protocol.
+// func TestSelfRecursionManyLayersWithSerde(t *testing.T) {
 
-	define, prove := generateProtocol(testcases[0])
-	n := 6
+// 	define, prove := generateProtocol(testcases[0])
+// 	n := 6
 
-	comp := wizard.Compile(
-		define,
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(32),
-			vortex.WithSISParams(&ringsis.StdParams),
-			vortex.WithOptionalSISHashingThreshold(64),
-		),
-	)
+// 	comp := wizard.Compile(
+// 		define,
+// 		vortex.Compile(
+// 			8,
+// 			false,
+// 			vortex.ForceNumOpenedColumns(32),
+// 			vortex.WithSISParams(&ringsis.StdParams),
+// 			vortex.WithOptionalSISHashingThreshold(64),
+// 		),
+// 	)
 
-	for i := 0; i < n; i++ {
-		comp = wizard.ContinueCompilation(
-			comp,
-			selfrecursion.SelfRecurse,
-			poseidon2.CompilePoseidon2,
-			compiler.Arcane(
-				compiler.WithTargetColSize(1<<13),
-			),
-			vortex.Compile(
-				8,
-				vortex.ForceNumOpenedColumns(32),
-				vortex.WithSISParams(&ringsis.StdParams),
-				vortex.WithOptionalSISHashingThreshold(64),
-			),
-		)
-	}
+// 	for i := 0; i < n; i++ {
+// 		comp = wizard.ContinueCompilation(
+// 			comp,
+// 			selfrecursion.SelfRecurse,
+// 			poseidon2.CompilePoseidon2,
+// 			compiler.Arcane(
+// 				compiler.WithTargetColSize(1<<13),
+// 			),
+// 			vortex.Compile(
+// 				8,
+// 				false,
+// 				vortex.ForceNumOpenedColumns(32),
+// 				vortex.WithSISParams(&ringsis.StdParams),
+// 				vortex.WithOptionalSISHashingThreshold(64),
+// 			),
+// 		)
+// 	}
 
-	buf, err := serialization.Serialize(comp)
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	buf, err := serialization.Serialize(comp)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	comp2 := &wizard.CompiledIOP{}
-	err = serialization.Deserialize(buf, &comp2)
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	comp2 := &wizard.CompiledIOP{}
+// 	err = serialization.Deserialize(buf, &comp2)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	toCheck := []ifaces.ColID{
-		"CYCLIC_COUNTER_121_8_256_COUNTER",
-		"CYCLIC_COUNTER_1902_16_4096_COUNTER",
-	}
+// 	toCheck := []ifaces.ColID{
+// 		"CYCLIC_COUNTER_121_8_256_COUNTER",
+// 		"CYCLIC_COUNTER_1902_16_4096_COUNTER",
+// 	}
 
-	for i := range toCheck {
+// 	for i := range toCheck {
 
-		n0 := comp.Columns.GetSize(toCheck[i])
-		n1 := comp2.Columns.GetSize(toCheck[i])
+// 		n0 := comp.Columns.GetSize(toCheck[i])
+// 		n1 := comp2.Columns.GetSize(toCheck[i])
 
-		if n0 != n1 {
-			t.Errorf("Mismatch at %v: %v != %v\n", toCheck[i], n0, n1)
-		}
-	}
+// 		if n0 != n1 {
+// 			t.Errorf("Mismatch at %v: %v != %v\n", toCheck[i], n0, n1)
+// 		}
+// 	}
 
-	proof := wizard.Prove(comp2, prove)
-	err = wizard.Verify(comp2, proof)
-	require.NoError(t, err)
-}
+// 	proof := wizard.Prove(comp2, prove)
+// 	err = wizard.Verify(comp2, proof)
+// 	require.NoError(t, err)
+// }

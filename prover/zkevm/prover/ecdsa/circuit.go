@@ -2,26 +2,27 @@ package ecdsa
 
 import (
 	"fmt"
+
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/algebra"
 	"github.com/consensys/gnark/std/algebra/emulated/sw_emulated"
+	"github.com/consensys/gnark/std/evmprecompiles"
 	"github.com/consensys/gnark/std/math/bitslice"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/math/emulated/emparams"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/gnark/std/algebra"
-	"github.com/consensys/gnark/std/evmprecompiles"
 )
 
 type EcRecoverInstance struct {
-	PKXHi, PKXLo, PKYHi, PKYLo [common.NbLimbU128]frontend.Variable `gnark:",public"`
-	HHi, HLo                   [common.NbLimbU128]frontend.Variable `gnark:",public"`
-	VHi, VLo                   [common.NbLimbU128]frontend.Variable `gnark:",public"`
-	RHi, RLo                   [common.NbLimbU128]frontend.Variable `gnark:",public"`
-	SHi, SLo                   [common.NbLimbU128]frontend.Variable `gnark:",public"`
-	SUCCESS_BIT                frontend.Variable                    `gnark:",public"`
-	ECRECOVERBIT               frontend.Variable                    `gnark:",public"`
+	PKXHi, PKXLo, PKYHi, PKYLo zk.WrappedVariable `gnark:",public"`
+	HHi, HLo                   zk.WrappedVariable `gnark:",public"`
+	VHi, VLo                   zk.WrappedVariable `gnark:",public"`
+	RHi, RLo                   zk.WrappedVariable `gnark:",public"`
+	SHi, SLo                   zk.WrappedVariable `gnark:",public"`
+	SUCCESS_BIT                zk.WrappedVariable `gnark:",public"`
+	ECRECOVERBIT               zk.WrappedVariable `gnark:",public"`
 }
 
 type MultiEcRecoverCircuit struct {
@@ -50,7 +51,7 @@ func (c *MultiEcRecoverCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.AffinePoint[emparams.Secp256k1Fp], msg *emulated.Element[emparams.Secp256k1Fr], v frontend.Variable, r, s *emulated.Element[emparams.Secp256k1Fr], strictRange, isFailure frontend.Variable, err error) {
+func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.AffinePoint[emparams.Secp256k1Fp], msg *emulated.Element[emparams.Secp256k1Fr], v zk.WrappedVariable, r, s *emulated.Element[emparams.Secp256k1Fr], strictRange, isFailure zk.WrappedVariable, err error) {
 	fr, err2 := emulated.NewField[emparams.Secp256k1Fr](api)
 	if err2 != nil {
 		err = fmt.Errorf("field emulation: %w", err2)
@@ -64,17 +65,17 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 	// gnark circuit works with 64 bits values, we need to split the 128 bits
 	// values into high and low parts.
 	// we leave the result unconstrained as field emulation constraints automatically
-	msgLimbs := make([]frontend.Variable, 4)
+	msgLimbs := make([]zk.WrappedVariable, 4)
 	msgLimbs[2], msgLimbs[3] = bitslice.Partition(api, c.HHi, 64, bitslice.WithNbDigits(128))
 	msgLimbs[0], msgLimbs[1] = bitslice.Partition(api, c.HLo, 64, bitslice.WithNbDigits(128))
 	msg = fr.NewElement(msgLimbs)
 
-	PXlimbs := make([]frontend.Variable, 4)
+	PXlimbs := make([]zk.WrappedVariable, 4)
 	PXlimbs[2], PXlimbs[3] = bitslice.Partition(api, c.PKXHi, 64, bitslice.WithNbDigits(128))
 	PXlimbs[0], PXlimbs[1] = bitslice.Partition(api, c.PKXLo, 64, bitslice.WithNbDigits(128))
 	PX := fp.NewElement(PXlimbs)
 
-	PYlimbs := make([]frontend.Variable, 4)
+	PYlimbs := make([]zk.WrappedVariable, 4)
 	PYlimbs[2], PYlimbs[3] = bitslice.Partition(api, c.PKYHi, 64, bitslice.WithNbDigits(128))
 	PYlimbs[0], PYlimbs[1] = bitslice.Partition(api, c.PKYLo, 64, bitslice.WithNbDigits(128))
 	PY := fp.NewElement(PYlimbs)
@@ -89,12 +90,12 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 
 	// similarly, we split r and s into limbs compatible with gnark. But we work
 	// over a different field (scalar field vs base field for PK).
-	rLimbs := make([]frontend.Variable, 4)
+	rLimbs := make([]zk.WrappedVariable, 4)
 	rLimbs[2], rLimbs[3] = bitslice.Partition(api, c.RHi, 64, bitslice.WithNbDigits(128))
 	rLimbs[0], rLimbs[1] = bitslice.Partition(api, c.RLo, 64, bitslice.WithNbDigits(128))
 	r = fr.NewElement(rLimbs)
 
-	sLimbs := make([]frontend.Variable, 4)
+	sLimbs := make([]zk.WrappedVariable, 4)
 	sLimbs[2], sLimbs[3] = bitslice.Partition(api, c.SHi, 64, bitslice.WithNbDigits(128))
 	sLimbs[0], sLimbs[1] = bitslice.Partition(api, c.SLo, 64, bitslice.WithNbDigits(128))
 	s = fr.NewElement(sLimbs)

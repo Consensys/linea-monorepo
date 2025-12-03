@@ -8,8 +8,7 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	ghash "github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -20,7 +19,7 @@ import (
 // protocol as in [gkrmimc.HasherFactory] or may trigger specific behaviors
 // of Plonk in Wizard.
 type HasherFactory interface {
-	NewHasher() ghash.StateStorer
+	NewHasher() poseidon2_bls12377.GnarkMDHasher
 }
 
 // BasicHasherFactory is a simple implementation of HasherFactory that returns
@@ -64,14 +63,17 @@ type externalHashBuilderIFace interface {
 }
 
 // NewHasher returns the standard MiMC hasher as in [NewMiMC].
-func (f *BasicHasherFactory) NewHasher() ghash.StateStorer {
-	h, _ := mimc.NewMiMC(f.Api)
-	return &h
+func (f *BasicHasherFactory) NewHasher() poseidon2_bls12377.GnarkMDHasher {
+	h, _ := poseidon2_bls12377.NewGnarkMDHasher(f.Api)
+	return h
 }
 
 // NewHasher returns an external MiMC hasher.
-func (f *ExternalHasherFactory) NewHasher() ghash.StateStorer {
-	return &ExternalHasher{api: f.Api, state: frontend.Variable(0)}
+func (f *ExternalHasherFactory) NewHasher() poseidon2_bls12377.GnarkMDHasher {
+
+	h, _ := poseidon2_bls12377.NewGnarkMDHasher(f.Api)
+
+	return h
 }
 
 // Writes fields elements into the hasher; implements [hash.FieldHasher]

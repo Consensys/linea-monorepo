@@ -6,11 +6,10 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -26,11 +25,8 @@ type UnivariateEval struct {
 
 // Parameters for an univariate evaluation
 type UnivariateEvalParams struct {
-	X      field.Element
-	Ys     []field.Element
-	ExtX   fext.Element
-	ExtYs  []fext.Element
-	IsBase bool
+	ExtX  fext.Element
+	ExtYs []fext.Element
 }
 
 /*
@@ -64,31 +60,18 @@ func (r UnivariateEval) Name() ifaces.QueryID {
 	return r.QueryID
 }
 
-// Constructor for non-fixed point univariate evaluation query parameters
-func NewUnivariateEvalParams(x field.Element, ys ...field.Element) UnivariateEvalParams {
-	return UnivariateEvalParams{
-		X:      x,
-		Ys:     ys,
-		IsBase: true,
-	}
-}
 func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEvalParams {
 	return UnivariateEvalParams{
-		ExtX:   x,
-		ExtYs:  ys,
-		IsBase: false,
+		ExtX:  x,
+		ExtYs: ys,
 	}
 }
 
 // Update the fiat-shamir state with the alleged evaluations. We assume that
 // the verifer always computes the values of X upfront on his own. Therefore
 // there is no need to include them in the FS.
-func (p UnivariateEvalParams) UpdateFS(state *poseidon2.Poseidon2FieldHasherDigest) {
-	fiatshamir.Update(state, p.Ys...)
-}
-
-func (p UnivariateEvalParams) UpdateFSExt(state *poseidon2.Poseidon2FieldHasherDigest) {
-	fiatshamir.UpdateExt(state, p.ExtYs...)
+func (p UnivariateEvalParams) UpdateFS(state *fiatshamir.FS) {
+	(*state).UpdateExt(p.ExtYs...)
 }
 
 // Test that the polynomial evaluation holds
@@ -117,10 +100,11 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.QueryID).(GnarkUnivariateEvalParams)
 
+	ext4, _ := gnarkfext.NewExt4(api)
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignmentGnark(run)
-		actualY := fastpoly.EvaluateLagrangeGnark(api, wit, params.X)
-		api.AssertIsEqual(actualY, params.Ys[k])
+		actualY := fastpoly.EvaluateLagrangeGnarkMixed(api, wit, params.ExtX)
+		ext4.AssertIsEqual(&actualY, &params.ExtYs[k])
 	}
 }
 

@@ -22,7 +22,7 @@ func MustZeroWhenInactive(comp *wizard.CompiledIOP, isActive any, cs ...ifaces.C
 
 	if ccol, isc := isActive.(verifiercol.ConstCol); isc {
 
-		if ccol.Base.IsOne() || ccol.Ext.IsOne() {
+		if ccol.F.IsOne() {
 			// The constraint is meaningless in that situation
 			return
 		}

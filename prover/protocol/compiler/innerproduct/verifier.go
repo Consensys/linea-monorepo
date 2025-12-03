@@ -62,22 +62,20 @@ func (v *VerifierForSize) Run(run wizard.Runtime) error {
 
 // RunGnark implements the [wizard.VerifierAction] interface
 func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
-	var (
-		// ys stores the list of all the inner-product openings
-		ys = []gnarkfext.Element{}
-		// expected stores the random linear combinations of the ys by batching
-		// coin
-		expected frontend.Variable
-		// actual stores the opening value of the last entry of Summation. The
-		// verifier checks the equality between it and `expected`.
-		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).ExtY
-	)
+	// ys stores the list of all the inner-product openings
+	ys := []gnarkfext.E4Gen{}
+	// expected stores the random linear combinations of the ys by batching
+	// coin
+	// actual stores the opening value of the last entry of Summation. The
+	// verifier checks the equality between it and `expected`.
+	actual := run.GetLocalPointEvalParams(v.SummationOpening.ID).ExtY
 
 	for _, q := range v.Queries {
 		ipys := run.GetInnerProductParams(q.ID)
 		ys = append(ys, ipys.Ys...)
 	}
+
+	var expected gnarkfext.E4Gen
 
 	if len(ys) > 1 {
 		batchingCoin := run.GetRandomCoinFieldExt(v.BatchOpening.Name)
@@ -88,7 +86,8 @@ func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		expected = ys[0]
 	}
 
-	api.AssertIsEqual(expected, actual)
+	ext4, _ := gnarkfext.NewExt4(api)
+	ext4.AssertIsEqual(&expected, &actual)
 }
 
 func (v *VerifierForSize) Skip() {

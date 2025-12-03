@@ -1,7 +1,7 @@
 package selfrecursion
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -46,7 +46,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	sisLeavesSize := utils.NextPowerOfTwo(sisLeavesSizeUnpadded)
 	// sis hash is also the preimage of poseidon2 hash, poseidon2 hash takes every 8 elements as input at a time
 	// sisHashColChunks stores the number of poseidon2 hashes computed for one sis hash column
-	sisHashColSize := ctx.VortexCtx.SisParams.OutputSize()
+	sisHashColSize := ctx.VortexCtx.VortexKoalaParams.Key.OutputSize()
 	sisHashColChunks := (sisHashColSize + blockSize - 1) / blockSize
 	sisHashTotalChunksUnpadded := sisHashColChunks * sisLeavesSizeUnpadded
 	sisHashTotalChunks := utils.NextPowerOfTwo(sisHashTotalChunksUnpadded)
@@ -235,7 +235,7 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 
 		isPastFirstNonEmptyRound = true
 
-		if ctx.VortexCtx.RoundStatus[i] == vortex.IsOnlyPoseidon2Applied {
+		if ctx.VortexCtx.RoundStatus[i] == vortex.IsNoSis {
 			colSize := ctx.VortexCtx.GetNumPolsForNonSisRounds(i)
 			colChunks := (colSize + blockSize - 1) / blockSize
 			preimageChunksSizeUnpadded := colChunks * numLeaves
@@ -389,12 +389,12 @@ type linearHashMerkleProverActionBuilder struct {
 // linearHashMerkleProverActionBuilder
 func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *linearHashMerkleProverActionBuilder {
 	lmp := linearHashMerkleProverActionBuilder{}
-	lmp.ConcatSisHashQ = make([]field.Element, a.SisLeavesSizeUnpadded*a.Ctx.VortexCtx.SisParams.OutputSize())
+	lmp.ConcatSisHashQ = make([]field.Element, a.SisLeavesSizeUnpadded*a.Ctx.VortexCtx.VortexKoalaParams.Key.OutputSize())
 	lmp.MerklePositions = make([]field.Element, 0, a.LeavesSizeUnpadded)
 	lmp.MerkleSisPositions = make([]field.Element, 0, a.SisLeavesSizeUnpadded)
 	lmp.MerkleNonSisPositions = make([]field.Element, 0, a.NonSisRoundLeavesSizeUnpadded)
 	lmp.NonSisHashPreimages = make([][]field.Element, 0, a.NumRoundNonSis)
-	lmp.SisHashSize = a.Ctx.VortexCtx.SisParams.OutputSize()
+	lmp.SisHashSize = a.Ctx.VortexCtx.VortexKoalaParams.Key.OutputSize()
 	lmp.NumOpenedCol = a.Ctx.VortexCtx.NbColsToOpen()
 	lmp.TotalNumRounds = a.Ctx.VortexCtx.MaxCommittedRound
 	lmp.CommittedRound = 0
@@ -521,7 +521,9 @@ func processPrecomputedRound(
 			lmp.SisHashToHash = poseidon2W.PrepareToHashWitness(lmp.SisHashToHash, sisHash, preimageDestStart)
 			copy(lmp.ConcatSisHashQ[destStart:destStart+lmp.SisHashSize], sisHash)
 
-			leaf := poseidon2.Poseidon2Sponge(sisHash)
+			hasher := poseidon2_koalabear.NewMDHasher()
+			hasher.WriteElements(sisHash...)
+			leaf := hasher.SumElement()
 			for j := 0; j < blockSize; j++ {
 				lmp.MerkleSisLeaves[j] = append(lmp.MerkleSisLeaves[j], leaf[j])
 				precompSisLeaves[j] = append(precompSisLeaves[j], leaf[j])
@@ -551,7 +553,9 @@ func processPrecomputedRound(
 			nonSisPreimage := a.Ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
 			// Also compute the leaf from the column
 			// to check sanity
-			leaf_ := poseidon2.Poseidon2Sponge(nonSisPreimage)
+			hasher := poseidon2_koalabear.NewMDHasher()
+			hasher.WriteElements(nonSisPreimage...)
+			leaf_ := hasher.SumElement()
 			// Sanity check
 			// The leaf computed from the precomputed column
 			if leaf != leaf_ {
@@ -651,7 +655,9 @@ func processRound(
 				tohashDestStart := sisRoundCount*lmp.NumOpenedCol*chunks + i*chunks
 				lmp.SisHashToHash = poseidon2W.PrepareToHashWitness(lmp.SisHashToHash, sisHash, tohashDestStart)
 
-				leaf := poseidon2.Poseidon2Sponge(sisHash)
+				hasher := poseidon2_koalabear.NewMDHasher()
+				hasher.WriteElements(sisHash...)
+				leaf := hasher.SumElement()
 
 				for j := 0; j < blockSize; j++ {
 					lmp.MerkleSisLeaves[j] = append(lmp.MerkleSisLeaves[j], leaf[j])
@@ -666,7 +672,7 @@ func processRound(
 			run.State.TryDel(colSisHashName)
 			lmp.CommittedRound++
 
-		} else if a.Ctx.VortexCtx.RoundStatus[round] == vortex.IsOnlyPoseidon2Applied {
+		} else if a.Ctx.VortexCtx.RoundStatus[round] == vortex.IsNoSis {
 			// Fetch the Poseidon2 hash values
 			colNoSisHashName := a.Ctx.VortexCtx.NoSisHashName(round)
 			colNonSisLeavesSV, found := run.State.TryGet(colNoSisHashName)
@@ -698,7 +704,10 @@ func processRound(
 				poseidon2Preimage := nonSisOpenedCols[nonSisRoundCount][i]
 				// Also compute the leaf from the column
 				// to check sanity
-				leaf_ := poseidon2.Poseidon2Sponge(poseidon2Preimage)
+
+				hasher := poseidon2_koalabear.NewMDHasher()
+				hasher.WriteElements(poseidon2Preimage...)
+				leaf_ := hasher.SumElement()
 
 				if leaf != leaf_ {
 					utils.Panic("Poseidon2 hash of the non SIS column %v does not match the leaf %v", leaf_, leaf)

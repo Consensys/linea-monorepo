@@ -10,13 +10,14 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 func nbConstraints(blobSize int) int {
 	fmt.Printf("*********************\nfor blob of size %d B or %.2fKB:\n", blobSize, float32(blobSize)/1024)
 	c := v1.Circuit{
-		BlobBytes:             make([]frontend.Variable, 32*4096),
-		Dict:                  make([]frontend.Variable, 64*1024),
+		BlobBytes:             make([]zk.WrappedVariable, 32*4096),
+		Dict:                  make([]zk.WrappedVariable, 64*1024),
 		MaxBlobPayloadNbBytes: blobSize,
 		UseGkrMiMC:            true,
 	}

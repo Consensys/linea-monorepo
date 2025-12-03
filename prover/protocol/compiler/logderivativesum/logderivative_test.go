@@ -135,7 +135,7 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 		run.AssignColumn("Den_3", smartvectors.ForTest(3, 4, 3, 4))
 
 		expectedResult := field.NewElement(0)
-		run.AssignLogDerivSum("LogDerivSum_Test", fext.NewESHashFromBase(expectedResult))
+		run.AssignLogDerivSum("LogDerivSum_Test", fext.NewGenFieldFromBase(expectedResult))
 
 	}
 

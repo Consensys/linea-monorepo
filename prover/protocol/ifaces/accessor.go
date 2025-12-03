@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -24,9 +25,9 @@ type Accessor interface {
 	GetValBase(run Runtime) (field.Element, error)
 	GetValExt(run Runtime) fext.Element
 	// GetFrontendVariable is as [Accessor.GetVal] but in a gnark circuit.
-	GetFrontendVariable(api frontend.API, c GnarkRuntime) frontend.Variable
-	GetFrontendVariableBase(api frontend.API, c GnarkRuntime) (frontend.Variable, error)
-	GetFrontendVariableExt(api frontend.API, c GnarkRuntime) gnarkfext.Element
+	GetFrontendVariable(api frontend.API, c GnarkRuntime) zk.WrappedVariable
+	GetFrontendVariableBase(api frontend.API, c GnarkRuntime) (zk.WrappedVariable, error)
+	GetFrontendVariableExt(api frontend.API, c GnarkRuntime) gnarkfext.E4Gen
 	// Round returns the definition round of the accessor.
 	Round() int
 	// AsVariable converts the accessor to a variable object.

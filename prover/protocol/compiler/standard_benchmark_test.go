@@ -263,6 +263,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 				),
 				vortex.Compile(
 					2,
+					false,
 					vortex.WithOptionalSISHashingThreshold(512),
 					vortex.ForceNumOpenedColumns(256),
 					vortex.WithSISParams(&ringsis.StdParams),
@@ -305,6 +306,7 @@ func benchmarkCompilerWithoutSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 		),
 		vortex.Compile(
 			2,
+			false,
 			vortex.WithOptionalSISHashingThreshold(0),
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&ringsis.StdParams),
@@ -314,7 +316,7 @@ func benchmarkCompilerWithoutSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = wizard.Prove(comp, sbc.NewAssigner(b))
+		_ = wizard.Prove(comp, sbc.NewAssigner(b), false)
 	}
 }
 
@@ -336,6 +338,7 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 		),
 		vortex.Compile(
 			2,
+			false,
 			vortex.WithOptionalSISHashingThreshold(512),
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&ringsis.StdParams),
@@ -352,7 +355,7 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = wizard.Prove(comp, sbc.NewAssigner(b))
+		_ = wizard.Prove(comp, sbc.NewAssigner(b), false)
 	}
 }
 
@@ -432,8 +435,9 @@ func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters) {
 		comp,
 		vortex.Compile(
 			params.RsInverseRate,
+			false,
 			vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
-			vortex.WithOptionalSISHashingThreshold(ringsis.StdParams.OutputSize()),
+			vortex.WithOptionalSISHashingThreshold(1<<ringsis.StdParams.LogTwoDegree),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"strconv"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -26,7 +24,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -143,20 +140,17 @@ type ProverRuntime struct {
 	// the [Prove] function.
 	currRound int
 
-	// FS stores the Fiat-Shamir State, you probably don't want to use it
+	// KoalaFS stores the Fiat-Shamir State, you probably don't want to use it
 	// directly unless you know what you are doing. Just know that if you use
-	// it to update the FS hash, this can potentially result in the prover and
+	// it to update the KoalaFS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *poseidon2.Poseidon2FieldHasherDigest
+	KoalaFS *fiatshamir.FS
+	BLSFS   *fiatshamir.FS
+	IsBLS   bool
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
-
-	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
-	// round. The first entry is the initial state, the final entry is the final
-	// state.
-	FiatShamirHistory [][2][]field.Element
 
 	PerformanceMonitor *config.PerformanceMonitor
 
@@ -187,8 +181,12 @@ type ProverRuntime struct {
 // auto-detection adds little value and adds a lot of convolution especially
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
-func Prove(c *CompiledIOP, highLevelprover MainProverStep) Proof {
-	run := RunProver(c, highLevelprover)
+func Prove(c *CompiledIOP, highLevelprover MainProverStep, IsBLS ...bool) Proof {
+	isBLSValue := false
+	if IsBLS != nil {
+		isBLSValue = IsBLS[0]
+	}
+	run := RunProver(c, highLevelprover, isBLSValue)
 
 	// Write the performance logs to the csv file is the performance monitor is active
 	if run.PerformanceMonitor.Active {
@@ -202,14 +200,14 @@ func Prove(c *CompiledIOP, highLevelprover MainProverStep) Proof {
 
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
-func RunProver(c *CompiledIOP, highLevelprover MainProverStep) *ProverRuntime {
-	return RunProverUntilRound(c, highLevelprover, c.NumRounds())
+func RunProver(c *CompiledIOP, highLevelprover MainProverStep, IsBLS bool) *ProverRuntime {
+	return RunProverUntilRound(c, highLevelprover, c.NumRounds(), IsBLS)
 }
 
 // RunProverUntilRound runs the prover until the specified round
 // We wrap highLevelProver with a struct that implements the prover action interface
-func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round int) *ProverRuntime {
-	runtime := c.createProver()
+func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round int, IsBLS bool) *ProverRuntime {
+	runtime := c.createProver(IsBLS)
 	runtime.HighLevelProver = highLevelProver
 
 	// Execute the high-level prover as a ProverAction
@@ -270,11 +268,7 @@ func (run *ProverRuntime) NumRounds() int {
 
 // createProver is the internal function that is used by the [Prove]
 // function to instantiate and fresh and new [ProverRuntime].
-func (c *CompiledIOP) createProver() ProverRuntime {
-
-	// Create a new fresh FS state and bootstrap it
-	fs := poseidon2.Poseidon2()
-	fiatshamir.Update(fs, c.FiatShamirSetup[:]...)
+func (c *CompiledIOP) createProver(IsBLS bool) ProverRuntime {
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
@@ -283,19 +277,21 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 		QueriesParams:      collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
 		Coins:              collection.NewMapping[coin.Name, interface{}](),
 		State:              collection.NewMapping[string, interface{}](),
-		FS:                 fs,
+		IsBLS:              IsBLS,
 		currRound:          0,
 		lock:               &sync.Mutex{},
-		FiatShamirHistory:  make([][2][]field.Element, c.NumRounds()),
 		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
 
-	stateBytes := fs.State()
-	var state koalabear.Element
-	state.SetBytes(stateBytes)
-	runtime.FiatShamirHistory[0] = [2][]field.Element{
-		{state},
-		{state},
+	// Create a new fresh FS state and bootstrap it
+	if IsBLS {
+		fs := fiatshamir.NewFSBls12377()
+		fs.Update(c.FiatShamirSetup[:]...)
+		runtime.BLSFS = &fs
+	} else {
+		fs := fiatshamir.NewFSKoalabear()
+		fs.Update(c.FiatShamirSetup[:]...)
+		runtime.KoalaFS = &fs
 	}
 
 	// Pass the precomputed polynomials
@@ -549,7 +545,6 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 		}
 		witness = w_
 	}
-
 	if witness.Len() != handle.Size() {
 		utils.Panic("Bad length for %v, expected %v got %v\n", handle, handle.Size(), witness.Len())
 	}
@@ -708,10 +703,6 @@ func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coi
 // parameters. This makes all the new coins available in the prover runtime.
 func (run *ProverRuntime) goNextRound() {
 
-	initialStateBytes := run.FS.State()
-	var initialState koalabear.Element
-	initialState.SetBytes(initialStateBytes)
-
 	if !run.Spec.DummyCompiled {
 
 		/*
@@ -721,6 +712,7 @@ func (run *ProverRuntime) goNextRound() {
 			the last one to "talk" in the protocol.
 		*/
 		msgsToFS := run.Spec.Columns.AllKeysInProverTranscript(run.currRound)
+
 		for _, msgName := range msgsToFS {
 
 			if run.Spec.Columns.IsExplicitlyExcludedFromProverFS(msgName) {
@@ -730,15 +722,19 @@ func (run *ProverRuntime) goNextRound() {
 			if run.Spec.Precomputed.Exists(msgName) {
 				continue
 			}
-
 			instance := run.GetMessage(msgName)
-			fiatshamir.UpdateSV(run.FS, instance)
+			if run.IsBLS {
+				(*run.BLSFS).UpdateSV(instance)
+			} else {
+				(*run.KoalaFS).UpdateSV(instance)
+			}
 		}
 
 		/*
 			Also include the prover's allegations for all evaluations
 		*/
 		paramsToFS := run.Spec.QueriesParams.AllKeysAt(run.currRound)
+
 		for _, qName := range paramsToFS {
 			if run.Spec.QueriesParams.IsSkippedFromProverTranscript(qName) {
 				continue
@@ -747,7 +743,11 @@ func (run *ProverRuntime) goNextRound() {
 			// Implicitly, this will panic whenever we start supporting
 			// a new type of query params
 			params := run.QueriesParams.MustGet(qName)
-			params.UpdateFS(run.FS)
+			if run.IsBLS {
+				params.UpdateFS(run.BLSFS)
+			} else {
+				params.UpdateFS(run.KoalaFS)
+			}
 		}
 	}
 
@@ -764,8 +764,12 @@ func (run *ProverRuntime) goNextRound() {
 			fsHooks[i].Run(run)
 		}
 	}
-
-	seed := types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State()))
+	var seed field.Octuplet
+	if run.IsBLS {
+		seed = (*run.BLSFS).State()
+	} else {
+		seed = (*run.KoalaFS).State()
+	}
 
 	// Then assigns the coins for the new round. As the round
 	// incrementation is made lazily, we expect that there is
@@ -778,18 +782,15 @@ func (run *ProverRuntime) goNextRound() {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		value := info.Sample(run.FS, seed)
+		var value interface{}
+		if run.IsBLS {
+			value = info.Sample(run.BLSFS, seed)
+		} else {
+			value = info.Sample(run.KoalaFS, seed)
+		}
 		run.Coins.InsertNew(myCoin, value)
 	}
 
-	finalStateBytes := run.FS.State()
-	var finalState koalabear.Element
-	finalState.SetBytes(finalStateBytes)
-
-	run.FiatShamirHistory[run.currRound] = [2][]field.Element{
-		[]koalabear.Element{initialState},
-		[]koalabear.Element{finalState},
-	}
 }
 
 // runProverSteps runs all the [ProverStep] specified in the underlying
@@ -853,34 +854,6 @@ func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Ele
 	param := query.NewInnerProductParams(ys...)
 	run.QueriesParams.InsertNew(name, param)
 	return param
-}
-
-// AssignUnivariate assigns the evaluation point and the evaluation result
-// and claimed values for a univariate evaluation bearing `name` as an ID.
-//
-// The function will panic if:
-//   - the wrong number of `ys` value is provided. It should match the length
-//     of `bs` that was provided when registering the query.
-//   - no query with the name `name` are found in the [CompiledIOP] object.
-//   - parameters for this query have already been assigned
-//   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element, ys ...field.Element) {
-
-	// Global prover locks for accessing the maps
-	run.lock.Lock()
-	defer run.lock.Unlock()
-
-	// Make sure, it is done at the right round
-	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
-
-	// Check the length of ys
-	q := run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
-	if len(q.Pols) != len(ys) {
-		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
-	}
-	// Adds it to the assignments
-	params := query.NewUnivariateEvalParams(x, ys...)
-	run.QueriesParams.InsertNew(name, params)
 }
 
 func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
@@ -1090,13 +1063,11 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() *poseidon2.Poseidon2FieldHasherDigest {
-	return run.FS
-}
-
-// FsHistory returns the Fiat-Shamir state history
-func (run *ProverRuntime) FsHistory() [][2][]field.Element {
-	return run.FiatShamirHistory
+func (run *ProverRuntime) Fs() *fiatshamir.FS {
+	if run.IsBLS {
+		return run.BLSFS
+	}
+	return run.KoalaFS
 }
 
 // GetPublicInputs return the value of a public-input from its name

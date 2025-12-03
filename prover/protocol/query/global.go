@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -283,10 +284,8 @@ func MinMaxOffset(expr *symbolic.Expression) utils.Range {
 	minOffset := math.MaxInt
 	maxOffset := math.MinInt
 
-	/*
-		Flag detecting if we indeed found at least one correct metadata
-		There for sanity-checks
-	*/
+	// Flag detecting if we indeed found at least one correct metadata
+	// There for sanity-checks
 	foundAny := false
 
 	exprBoard := expr.Board()
@@ -310,17 +309,13 @@ func MinMaxOffset(expr *symbolic.Expression) utils.Range {
 	return res
 }
 
-/*
-Test a polynomial identity relation
-*/
+// Test a polynomial identity relation
 func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	boarded := cs.Board()
 	metadatas := boarded.ListVariableMetadata()
 
-	/*
-		Sanity-check : All witnesses should have a size at least
-		larger than end.
-	*/
+	// Sanity-check : All witnesses should have a size at least
+	// larger than end.
 	for _, metadataInterface := range metadatas {
 		if handle, ok := metadataInterface.(ifaces.Column); ok {
 			witness := handle.GetColAssignmentGnark(run)
@@ -333,16 +328,12 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 		}
 	}
 
-	/*
-		Collects the relevant datas into a slice for the evaluation
-	*/
-	evalInputs := make([][]frontend.Variable, len(metadatas))
+	// Collects the relevant datas into a slice for the evaluation
+	evalInputs := make([][]zk.WrappedVariable, len(metadatas))
 
-	/*
-		Omega is a root of unity which generates the domain of evaluation
-		of the constraint. Its size coincide with the size of the domain
-		of evaluation. For each value of `i`, X will evaluate to omega^i.
-	*/
+	// Omega is a root of unity which generates the domain of evaluation
+	// of the constraint. Its size coincide with the size of the domain
+	// of evaluation. For each value of `i`, X will evaluate to omega^i.
 	omega, err := fft.Generator(uint64(cs.DomainSize))
 	if err != nil {
 		panic(err)
@@ -350,15 +341,13 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	omegaI := field.One()
 
 	// precomputations of the powers of omega, can be optimized if useful
-	omegas := make([]frontend.Variable, cs.DomainSize)
+	omegas := make([]zk.WrappedVariable, cs.DomainSize)
 	for i := 0; i < cs.DomainSize; i++ {
-		omegas[i] = omegaI
+		omegas[i] = zk.ValueOf(omegaI.String())
 		omegaI.Mul(&omegaI, &omega)
 	}
 
-	/*
-		Collect the relevants inputs for evaluating the constraint
-	*/
+	// Collect the relevants inputs for evaluating the constraint
 	for k, metadataInterface := range metadatas {
 		switch meta := metadataInterface.(type) {
 		case ifaces.Column:
@@ -387,7 +376,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 
 	for i := start; i < stop; i++ {
 		// This panics if the global constraints doesn't use any commitment
-		inputs := make([]frontend.Variable, len(evalInputs))
+		inputs := make([]zk.WrappedVariable, len(evalInputs))
 		for j := range inputs {
 			inputs[j] = evalInputs[j][i]
 		}

@@ -492,6 +492,7 @@ func TestSelfRecursionOpsSisSingleLayered(t *testing.T) {
 			compiled := wizard.Compile(tc.Define,
 				vortex.Compile(
 					2,
+					false,
 					vortex.ForceNumOpenedColumns(8),
 					vortex.WithOptionalSISHashingThreshold(10),
 				),
@@ -518,6 +519,7 @@ func TestSelfRecursionOpsSisMultiLayered(t *testing.T) {
 				tc.Define,
 				vortex.Compile(
 					2,
+					false,
 					vortex.ForceNumOpenedColumns(8),
 					vortex.WithOptionalSISHashingThreshold(10),
 				),
@@ -527,6 +529,7 @@ func TestSelfRecursionOpsSisMultiLayered(t *testing.T) {
 					compiler.WithTargetColSize(1<<10)),
 				vortex.Compile(
 					2,
+					false,
 					vortex.ForceNumOpenedColumns(8),
 					vortex.WithOptionalSISHashingThreshold(10),
 				),
@@ -536,6 +539,7 @@ func TestSelfRecursionOpsSisMultiLayered(t *testing.T) {
 					compiler.WithTargetColSize(1<<13)),
 				vortex.Compile(
 					2,
+					false,
 					vortex.ForceNumOpenedColumns(8),
 					vortex.WithOptionalSISHashingThreshold(10),
 				),

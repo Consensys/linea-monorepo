@@ -3,7 +3,7 @@ package plonkinternal
 // externalMiMCFactoryTestLinear is used to test the external MiMC factory
 // and is a gnark circuit implementing a linear hash.
 // type externalMimcFactoryTestLinear struct {
-// 	Inp [16]frontend.Variable
+// 	Inp [16]zk.WrappedVariable
 // }
 
 // Define implements the gnark frontend.Circuit interface.
@@ -35,7 +35,7 @@ package plonkinternal
 // 	var (
 // 		blsField   = ecc.BLS12_377.ScalarField()
 // 		circuit    = &externalMimcFactoryTestLinear{}
-// 		assignment = &externalMimcFactoryTestLinear{Inp: [16]frontend.Variable{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+// 		assignment = &externalMimcFactoryTestLinear{Inp: [16]zk.WrappedVariable{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
 // 		wit, wErr  = frontend.NewWitness(assignment, blsField)
 // 	)
 

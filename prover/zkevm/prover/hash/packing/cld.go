@@ -113,8 +113,6 @@ func newDecomposition(comp *wizard.CompiledIOP, inp decompositionInputs) decompo
 // declare the native columns
 func (decomposed *decomposition) insertCommit(comp *wizard.CompiledIOP) {
 
-	panic("double-check with Azam; could the decomposition be used with a different number of limbs than 8 + 1?")
-
 	createCol := common.CreateColFn(comp, DECOMPOSITION+"_"+decomposed.Inputs.Name, decomposed.Size, pragmas.RightPadded)
 	for x := range nbDecomposedLen {
 		decomposed.DecomposedLimbs = append(decomposed.DecomposedLimbs, createCol("Decomposed_Limbs_%v", x))

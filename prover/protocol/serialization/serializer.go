@@ -11,11 +11,11 @@ import (
 	"sync"
 
 	cs "github.com/consensys/gnark/constraint/bls12-377"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -60,9 +60,9 @@ var (
 	TypeOfArrOfFieldElement  = reflect.TypeOf([]field.Element{})
 	TypeOfPlonkCirc          = reflect.TypeOf(&cs.SparseR1CS{})
 	TypeOfArithmetization    = reflect.TypeOf(arithmetization.Arithmetization{})
-	TypeOfFrontendVariable   = reflect.TypeOf((*frontend.Variable)(nil)).Elem()
+	TypeOfFrontendVariable   = reflect.TypeOf((*zk.WrappedVariable)(nil)).Elem()
 	TypeOfHashFuncGenerator  = reflect.TypeOf(func() hash.Hash { return nil })
-	TypeOfHashTypeHasher     = reflect.TypeOf(func() hashtypes.Hasher { return hashtypes.Hasher{} })
+	TypeOfHashTypeHasher     = reflect.TypeOf(func() smt_bls12377.Hasher { return smt_bls12377.Hasher{} })
 	TypeOfRingSisKeyPtr      = reflect.TypeOf(&ringsis.Key{})
 	TypeofRingSisKeyGenParam = reflect.TypeOf(ringsis.KeyGen{})
 	TypeOfMutexPtr           = reflect.TypeOf(&sync.Mutex{})

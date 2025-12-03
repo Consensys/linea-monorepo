@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
@@ -68,9 +69,10 @@ func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *ReedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	y := a.CoeffCheck.GetFrontendVariable(api, wvc)
-	y_ := a.EvalCheck.GetFrontendVariable(api, wvc)
-	api.AssertIsEqual(y, y_)
+	ext4, _ := gnarkfext.NewExt4(api)
+	y := a.CoeffCheck.GetFrontendVariableExt(api, wvc)
+	y_ := a.EvalCheck.GetFrontendVariableExt(api, wvc)
+	ext4.AssertIsEqual(&y, &y_)
 }
 
 // Is code-member

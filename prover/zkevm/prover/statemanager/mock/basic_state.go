@@ -17,13 +17,13 @@ type State map[types.EthAddress]*AccountState
 // it is meant to be used by the StateAccessFrame builder internally to
 // initialize the state and keep track of the state.
 type AccountState struct {
-	Nonce             int64
-	Balance           *big.Int
-	KeccakCodeHash    types.FullBytes32
-	Poseidon2CodeHash types.Bytes32
-	CodeSize          int64
-	Storage           map[types.FullBytes32]types.FullBytes32
-	DeploymentNumber  int64
+	Nonce            int64
+	Balance          *big.Int
+	KeccakCodeHash   types.FullBytes32
+	LineaCodeHash    types.Bytes32 // Poseidon2 code hash
+	CodeSize         int64
+	Storage          map[types.FullBytes32]types.FullBytes32
+	DeploymentNumber int64
 }
 
 // deepCopyState makes a hard copy of the state so that modifications of the
@@ -50,7 +50,7 @@ func (s State) InsertEOA(a types.EthAddress, nonce int64, balance *big.Int) {
 	s[a] = &AccountState{
 		Nonce:          nonce,
 		Balance:        balance,
-		Poseidon2CodeHash:   statemanager.EmptyCodeHash(statemanager.POSEIDON2_CONFIG),
+		LineaCodeHash:  statemanager.EmptyCodeHash(statemanager.POSEIDON2_CONFIG),
 		KeccakCodeHash: types.AsFullBytes32(statemanager.LEGACY_KECCAK_EMPTY_CODEHASH),
 		CodeSize:       0,
 	}
@@ -58,7 +58,7 @@ func (s State) InsertEOA(a types.EthAddress, nonce int64, balance *big.Int) {
 
 // InsertContract inserts an empty contract into the account. The contract has
 // empty storage and no balance
-func (s State) InsertContract(a types.EthAddress, mimcCodeHash types.Bytes32, keccakCodeHash types.FullBytes32, codeSize int64) {
+func (s State) InsertContract(a types.EthAddress, lineaCodeHash types.Bytes32, keccakCodeHash types.FullBytes32, codeSize int64) {
 	if _, ok := s[a]; ok {
 		panic("account already exists for the address")
 	}
@@ -66,7 +66,7 @@ func (s State) InsertContract(a types.EthAddress, mimcCodeHash types.Bytes32, ke
 	s[a] = &AccountState{
 		Nonce:          0,
 		Balance:        &big.Int{},
-		Poseidon2CodeHash:   mimcCodeHash,
+		LineaCodeHash:  lineaCodeHash,
 		KeccakCodeHash: keccakCodeHash,
 		CodeSize:       codeSize,
 		Storage:        map[types.FullBytes32]types.FullBytes32{},
@@ -98,7 +98,7 @@ func (s State) SetCodeHash(a types.EthAddress, codeHash types.FullBytes32) {
 // an empty account with the value. If the account does not already exist.
 func (s State) SetPoseidon2CodeHash(a types.EthAddress, codeHash types.Bytes32) {
 	s.initAccountIfNil(a)
-	s[a].Poseidon2CodeHash = codeHash
+	s[a].LineaCodeHash = codeHash
 }
 
 // SetCodeSize initializes the code size of an account and initializes the
@@ -140,7 +140,7 @@ func (s State) GetCodeHash(a types.EthAddress) types.FullBytes32 {
 // not exist.
 func (s State) GetPoseidon2CodeHash(a types.EthAddress) types.Bytes32 {
 	s.initAccountIfNil(a)
-	return s[a].Poseidon2CodeHash
+	return s[a].LineaCodeHash
 }
 
 // SetCodeSize returns the code size of an account and initializes the

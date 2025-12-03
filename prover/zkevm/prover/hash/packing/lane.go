@@ -38,8 +38,8 @@ type laneRepacking struct {
 	Coeff ifaces.Column
 	// it is 1 on the effective part of lane module.
 	IsLaneActive ifaces.Column
-	// It is 1 if the lane is the first lane of the new hash.
-	IsFirstLaneOfNewHash ifaces.Column
+	// It indicate where on the lane-column the new hash begins. 1 if it is the beginning of a new hash.
+	IsBeginningOfNewHash ifaces.Column
 	// the size of the columns in this submodule.
 	Size int
 	// As MAXNBYTE=2 we can't use one row for each lane. So this value
@@ -55,8 +55,8 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 		createCol             = common.CreateColFn(comp, LANE+"_"+pckInp.Name, size, pragmas.RightPadded)
 		isFirstSliceOfNewHash = spaghetti.NewHashSp
 		decomposedLenSp       = spaghetti.DecLenSp
-		pa                    = dedicated.AccumulateUpToMax(comp, MAXNBYTE, decomposedLenSp, spaghetti.FilterSpaghetti)
 		spaghettiSize         = spaghetti.SpaghettiSize
+		pa                    = dedicated.AccumulateUpToMax(comp, MAXNBYTE, decomposedLenSp, spaghetti.FilterSpaghetti)
 	)
 
 	l := laneRepacking{
@@ -66,7 +66,7 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 		},
 
 		Lanes:                createCol("Lane"),
-		IsFirstLaneOfNewHash: createCol("IsFirstLaneOfNewHash"),
+		IsBeginningOfNewHash: createCol("IsFirstLaneOfNewHash"),
 		IsLaneActive:         createCol("IsLaneActive"),
 		Coeff:                comp.InsertCommit(0, ifaces.ColID("Coefficient_"+pckInp.Name), spaghettiSize, true),
 
@@ -91,7 +91,7 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 	// Project the isFirstLaneOfNewHash from isFirstSliceOfNewHash
 	comp.InsertProjection(ifaces.QueryID("Project_IsFirstLaneOfHash_"+pckInp.Name),
 		query.ProjectionInput{ColumnA: []ifaces.Column{isFirstSliceOfNewHash},
-			ColumnB: []ifaces.Column{l.IsFirstLaneOfNewHash},
+			ColumnB: []ifaces.Column{l.IsBeginningOfNewHash},
 			FilterA: l.IsLaneComplete,
 			FilterB: l.IsLaneActive})
 	return l
@@ -203,7 +203,7 @@ func (l *laneRepacking) assignLane(run *wizard.ProverRuntime) {
 	var (
 		lane                 = common.NewVectorBuilder(l.Lanes)
 		param                = l.Inputs.PckInp.PackingParam
-		isFirstLaneofNewHash = common.NewVectorBuilder(l.IsFirstLaneOfNewHash)
+		isFirstLaneofNewHash = common.NewVectorBuilder(l.IsBeginningOfNewHash)
 		isActive             = common.NewVectorBuilder(l.IsLaneActive)
 		nbLaneBytes          = param.LaneSizeBytes()
 		blocks, flag         = l.getBlocks(run, l.Inputs.PckInp)

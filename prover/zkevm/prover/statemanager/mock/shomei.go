@@ -56,6 +56,7 @@ func InitShomeiState(state State) *statemanager.WorldState {
 
 	var (
 		shomeiState = statemanager.NewWorldState(statemanager.POSEIDON2_CONFIG)
+		shomeiState = statemanager.NewWorldState(statemanager.POSEIDON2_CONFIG)
 		addresses   = sortedKeysOf(state)
 	)
 
@@ -63,6 +64,7 @@ func InitShomeiState(state State) *statemanager.WorldState {
 
 		var (
 			acc         = state[address]
+			storageTrie = statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, address)
 			storageTrie = statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, address)
 			stoKeys     = sortedKeysOf(acc.Storage)
 		)
@@ -75,7 +77,7 @@ func InitShomeiState(state State) *statemanager.WorldState {
 			Nonce:          acc.Nonce,
 			Balance:        acc.Balance,
 			StorageRoot:    storageTrie.TopRoot(),
-			Poseidon2CodeHash:   acc.Poseidon2CodeHash,
+			LineaCodeHash:  acc.LineaCodeHash,
 			KeccakCodeHash: acc.KeccakCodeHash,
 			CodeSize:       acc.CodeSize,
 		}
@@ -488,7 +490,7 @@ func squashSubSegmentForShomei(initialAccountValue types.Account, logs []StateAc
 				vals := log.Value.([]any)
 				currAccountValue.CodeSize = vals[0].(int64)
 				currAccountValue.KeccakCodeHash = vals[1].(types.FullBytes32)
-				currAccountValue.Poseidon2CodeHash = vals[2].(types.Bytes32)
+				currAccountValue.LineaCodeHash = vals[2].(types.Bytes32)
 				if currAccountValue.Balance == nil {
 					// we give it a non-nil value because this is used to infer
 					// the existence of the account in the `statesummary` module

@@ -151,13 +151,6 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		),
 	)
 
-	//  IsPadded is correctly set before each newHash.
-	// IsInserted[i] * IsPadded[i-1] == IsNewHash
-	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_IS_PADDED_WELL_SET", inp.Name),
-		sym.Sub(res.IsNewHash, sym.Mul(res.IsInserted, column.Shift(res.IsPadded, -1))),
-	)
-
 	if inp.PaddingStrategy != generic.MiMCUsecase {
 		// before IsActive transits to 0, there should be a padding zone.
 		// IsActive[i] * (1-IsActive[i+1]) * (1-IsPadded[i]) =0
@@ -166,6 +159,13 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 				sym.Sub(1, column.Shift(res.IsActive, 1)),
 				sym.Sub(1, res.IsPadded),
 			),
+		)
+
+		//  IsPadded is correctly set before each newHash.
+		// IsInserted[i] * IsPadded[i-1] == IsNewHash
+		comp.InsertGlobal(0,
+			ifaces.QueryIDf("%v_IS_PADDED_WELL_SET", inp.Name),
+			sym.Sub(res.IsNewHash, sym.Mul(res.IsInserted, column.Shift(res.IsPadded, -1))),
 		)
 	}
 

@@ -1,7 +1,7 @@
 package merkle
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -143,7 +143,7 @@ func merkleProofCheck(
 }
 
 // pack a list of merkle-proofs into a single vector
-func PackMerkleProofs(proofs []smt.Proof) [blockSize]smartvectors.SmartVector {
+func PackMerkleProofs(proofs []smt_koalabear.Proof) [blockSize]smartvectors.SmartVector {
 
 	numProofs := len(proofs)
 	depth := len(proofs[0].Siblings)

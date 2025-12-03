@@ -47,7 +47,7 @@ func TestNoCompression(t *testing.T) {
 	decompressorLevel := lzss.BestCompression
 
 	circuit := &DecompressionTestCircuit{
-		C:                make([]frontend.Variable, len(c)+inputExtraBytes),
+		C:                make([]zk.WrappedVariable, len(c)+inputExtraBytes),
 		D:                d,
 		Dict:             dict,
 		CheckCorrectness: true,
@@ -90,7 +90,7 @@ func Test3c2943withHeader(t *testing.T) {
 	decompressorLevel := lzss.BestCompression
 
 	circuit := &DecompressionTestCircuit{
-		C:                make([]frontend.Variable, len(c)+inputExtraBytes),
+		C:                make([]zk.WrappedVariable, len(c)+inputExtraBytes),
 		D:                d,
 		Dict:             dict,
 		CheckCorrectness: true,
@@ -114,8 +114,8 @@ func TestOutBufTooShort(t *testing.T) {
 	require.NoError(t, err)
 
 	circuit := decompressionLengthTestCircuit{
-		C: make([]frontend.Variable, len(c)+inputExtraBytes),
-		D: make([]frontend.Variable, len(d)-truncationAmount), // not enough room
+		C: make([]zk.WrappedVariable, len(c)+inputExtraBytes),
+		D: make([]zk.WrappedVariable, len(d)-truncationAmount), // not enough room
 
 	}
 
@@ -208,7 +208,7 @@ func testCompressionRoundTrip(t *testing.T, d, dict []byte, options ...testCompr
 	}
 
 	circuit := &DecompressionTestCircuit{
-		C:                make([]frontend.Variable, len(s.compressed)+s.compressedPaddingLen),
+		C:                make([]zk.WrappedVariable, len(s.compressed)+s.compressedPaddingLen),
 		D:                d,
 		Dict:             dict,
 		CheckCorrectness: true,
@@ -237,9 +237,9 @@ func getDictionary() []byte {
 }
 
 type decompressionLengthTestCircuit struct {
-	C, D            []frontend.Variable
-	CLength         frontend.Variable
-	ExpectedDLength frontend.Variable
+	C, D            []zk.WrappedVariable
+	CLength         zk.WrappedVariable
+	ExpectedDLength zk.WrappedVariable
 }
 
 func (c *decompressionLengthTestCircuit) Define(api frontend.API) error {

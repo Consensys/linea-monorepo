@@ -10,9 +10,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -100,16 +101,20 @@ func (t PeriodicSample) EvalAtOutOfDomain(size int, x field.Element) field.Eleme
 
 // Evaluates the expression outside of the domain
 func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Element {
-	l := size / t.T
+	n := size
+	l := n / t.T
 	one := fext.One()
 	var lField, nField fext.Element
-	nField.B0.A0.SetUint64(uint64(size))
+	nField.B0.A0.SetUint64(uint64(n))
 	lField.B0.A0.SetUint64(uint64(l))
 
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
 		var shift field.Element
-		omegaN, _ := fft.Generator(uint64(size))
+		omegaN, err := fft.Generator(uint64(size))
+		if err != nil {
+			panic(err)
+		}
 		x.MulByElement(&x, shift.Exp(omegaN, big.NewInt(int64(-t.Offset))))
 	}
 
@@ -131,16 +136,21 @@ func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Elem
 }
 
 // Evaluate a particular position on the domain
-func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) frontend.Variable {
+func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) zk.WrappedVariable {
 	return t.GnarkEvalNoCoset(t.T)[pos%t.T]
 }
 
-func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x frontend.Variable) frontend.Variable {
+func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gnarkfext.E4Gen) gnarkfext.E4Gen {
+
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
 	n := size
 	l := n / t.T
-	one := field.One()
-	lField := field.NewElement(uint64(l))
 	nField := field.NewElement(uint64(n))
+	lField := field.NewElement(uint64(l))
 
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
@@ -148,26 +158,32 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x fro
 		if err != nil {
 			panic(err)
 		}
-		x = api.Mul(x, gnarkutil.Exp(api, omegaN, -t.Offset))
+		omegaN.Exp(omegaN, big.NewInt(int64(-t.Offset)))
+		wOmegaN := zk.ValueOf(omegaN.String())
+		x = *ext4.MulByFp(&x, wOmegaN)
 	}
 
-	denominator := gnarkutil.Exp(api, x, l)
-	denominator = api.Sub(denominator, one)
-	denominator = api.Mul(denominator, nField)
-	numerator := gnarkutil.Exp(api, x, n)
-	numerator = api.Sub(numerator, &one)
-	numerator = api.Mul(numerator, &lField)
+	denominator := ext4.Exp(&x, big.NewInt(int64(l)))
+	wnField := zk.ValueOf(nField.String())
+	wlField := zk.ValueOf(lField.String())
+	extEOne := gnarkfext.NewE4GenFromBase(1)
+	denominator = ext4.Sub(denominator, &extEOne)
+	denominator = ext4.MulByFp(denominator, wnField)
+	numerator := ext4.Exp(&x, big.NewInt(int64(n)))
+	numerator = ext4.Sub(numerator, &extEOne)
+	numerator = ext4.MulByFp(numerator, wlField)
 
-	return api.Div(numerator, denominator)
+	return *ext4.Div(numerator, denominator)
 }
 
 // Returns the result in gnark form. This returns a vector of constant
-// on the form of frontend.Variables.
-func (t PeriodicSample) GnarkEvalNoCoset(size int) []frontend.Variable {
+// on the form of zk.WrappedVariables.
+func (t PeriodicSample) GnarkEvalNoCoset(size int) []zk.WrappedVariable {
 	res_ := t.EvalCoset(size, 0, 1, false)
-	res := make([]frontend.Variable, res_.Len())
+	res := make([]zk.WrappedVariable, res_.Len())
 	for i := range res {
-		res[i] = res_.Get(i)
+		val := res_.Get(i)
+		res[i] = zk.ValueOf(val.String())
 	}
 	return res
 }

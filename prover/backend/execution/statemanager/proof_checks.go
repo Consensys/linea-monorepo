@@ -119,8 +119,8 @@ func checkProofsWorldState(traces []DecodedTrace) (oldRootHash, newRootHash Dige
 		if i < len(traces)-1 {
 
 			var (
-				currHKey = traces[i].Underlying.HKey(POSEIDON2_CONFIG)
-				nextHKey = traces[i+1].Underlying.HKey(POSEIDON2_CONFIG)
+				currHKey = traces[i].Underlying.HKey()
+				nextHKey = traces[i+1].Underlying.HKey()
 			)
 
 			if types.Bytes32Cmp(currHKey, nextHKey) > 0 {
@@ -221,7 +221,6 @@ func bootstrapVerifierStateFromST(trace DecodedTrace) (vs StorageVerifier) {
 
 	vs = StorageVerifier{
 		Location: trace.Location,
-		Config:   POSEIDON2_CONFIG,
 	}
 
 	switch t := trace.Underlying.(type) {
@@ -252,7 +251,6 @@ func bootstrapVerifierStateFromWS(trace DecodedTrace) (vs AccountVerifier) {
 
 	vs = AccountVerifier{
 		Location: trace.Location,
-		Config:   POSEIDON2_CONFIG,
 	}
 
 	switch t := trace.Underlying.(type) {

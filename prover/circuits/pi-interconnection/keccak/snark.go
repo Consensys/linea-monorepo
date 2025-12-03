@@ -19,8 +19,8 @@ import (
 )
 
 type slice struct {
-	s      []frontend.Variable
-	length frontend.Variable
+	s      []zk.WrappedVariable
+	length zk.WrappedVariable
 }
 
 type BlockHasher interface {
@@ -29,7 +29,7 @@ type BlockHasher interface {
 	// if inLen is nil, it is assumed to be len(bytess)
 	// bytes are not range-checked. Caller must ensure that bytess[i][j] < 256
 	// the output are 32 bytes
-	Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [32]frontend.Variable
+	Sum(nbIn zk.WrappedVariable, bytess ...[32]zk.WrappedVariable) [32]zk.WrappedVariable
 }
 
 // Hasher prepares the input columns for the Vortex verifier in a SNARK circuit.
@@ -38,7 +38,7 @@ type Hasher struct {
 	api         frontend.API
 	nbLanes     int
 	buffer      []slice
-	claimedOuts [][2]frontend.Variable
+	claimedOuts [][2]zk.WrappedVariable
 }
 
 func NewHasher(api frontend.API, maxNbKeccakF int) *Hasher {
@@ -53,13 +53,13 @@ func NewHasher(api frontend.API, maxNbKeccakF int) *Hasher {
 // if inLen is nil, it is assumed to be len(bytess)
 // bytes are not range-checked. Caller must ensure that bytess[i][j] < 256
 // the output are 32 bytes
-func (h *Hasher) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [32]frontend.Variable {
+func (h *Hasher) Sum(nbIn zk.WrappedVariable, bytess ...[32]zk.WrappedVariable) [32]zk.WrappedVariable {
 
-	hintIn := make([]frontend.Variable, 1+32*len(bytess))
+	hintIn := make([]zk.WrappedVariable, 1+32*len(bytess))
 	radix := big.NewInt(256)
-	unpaddedLanes := make([]frontend.Variable, 4*len(bytess))
+	unpaddedLanes := make([]zk.WrappedVariable, 4*len(bytess))
 	for i := range bytess {
-		var currLaneBytes [8]frontend.Variable
+		var currLaneBytes [8]zk.WrappedVariable
 		for j := 0; j < 4; j++ {
 			copy(currLaneBytes[:], bytess[i][8*j:8*j+8])
 			unpaddedLanes[4*i+j] = compress.ReadNum(h.api, currLaneBytes[:], radix)
@@ -90,7 +90,7 @@ func (h *Hasher) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [3
 		rc.Check(outS[i], 8)
 	}
 
-	h.claimedOuts = append(h.claimedOuts, [2]frontend.Variable{
+	h.claimedOuts = append(h.claimedOuts, [2]zk.WrappedVariable{
 		compress.ReadNum(h.api, outS[:16], radix),
 		compress.ReadNum(h.api, outS[16:], radix),
 	})
@@ -98,7 +98,7 @@ func (h *Hasher) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [3
 	if err != nil {
 		panic(err)
 	}
-	var out [32]frontend.Variable
+	var out [32]zk.WrappedVariable
 	copy(out[:], outS)
 	return out
 }
@@ -137,14 +137,14 @@ func (h *Hasher) Finalize(c *wizard.VerifierCircuit) error {
 }
 
 // createColumns prepares the columns for the Vortex prover
-func (h *Hasher) createColumns() (lanes, isLaneActive, isFirstLaneOfNewHash []frontend.Variable) {
-	lanes = make([]frontend.Variable, h.nbLanes)
-	isLaneActive = make([]frontend.Variable, h.nbLanes)
-	isFirstLaneOfNewHash = make([]frontend.Variable, h.nbLanes)
+func (h *Hasher) createColumns() (lanes, isLaneActive, isFirstLaneOfNewHash []zk.WrappedVariable) {
+	lanes = make([]zk.WrappedVariable, h.nbLanes)
+	isLaneActive = make([]zk.WrappedVariable, h.nbLanes)
+	isFirstLaneOfNewHash = make([]zk.WrappedVariable, h.nbLanes)
 
 	maxMaxLanesPerHash := 0
 	lengths := logderivlookup.New(h.api)
-	nbLanes := frontend.Variable(0)
+	nbLanes := zk.WrappedVariable(0)
 	for i := range h.buffer {
 		nbLanes = h.api.Add(nbLanes, h.buffer[i].length)
 		lengths.Insert(h.buffer[i].length)
@@ -170,8 +170,8 @@ func (h *Hasher) createColumns() (lanes, isLaneActive, isFirstLaneOfNewHash []fr
 	}
 
 	var (
-		currHashI, currHashLaneI                   frontend.Variable = 0, 0
-		isCurrLaneActive, isCurrFirstLineOfNewHash frontend.Variable = 1, 1
+		currHashI, currHashLaneI                   zk.WrappedVariable = 0, 0
+		isCurrLaneActive, isCurrFirstLineOfNewHash zk.WrappedVariable = 1, 1
 	)
 
 	for i := range lanes {
@@ -240,10 +240,10 @@ const (
 // pad takes a slice of 8-byte lanes and pads then into 17-lane blocks as per the Keccak standard
 // if length is not provided, it is assumed to be len(inputLanes)
 // the slice is not range checked. It is furthermore not checked if length ⩽ len(inputBytes)
-func pad(api frontend.API, inputLanes []frontend.Variable, length frontend.Variable) (lanes []frontend.Variable, nbLanes frontend.Variable) {
+func pad(api frontend.API, inputLanes []zk.WrappedVariable, length zk.WrappedVariable) (lanes []zk.WrappedVariable, nbLanes zk.WrappedVariable) {
 	if length == nil {
 		nbBlocks := 1 + len(inputLanes)/lanesPerBlock
-		lanes = make([]frontend.Variable, nbBlocks*lanesPerBlock) // static length
+		lanes = make([]zk.WrappedVariable, nbBlocks*lanesPerBlock) // static length
 		nbLanes = len(lanes)
 		copy(lanes, inputLanes)
 		if len(inputLanes)+1 == len(lanes) {
@@ -266,14 +266,14 @@ func pad(api frontend.API, inputLanes []frontend.Variable, length frontend.Varia
 	}
 	nbBlocks = api.Add(1, nbBlocks)
 	nbLanes = api.Mul(nbBlocks, lanesPerBlock)
-	lanes = make([]frontend.Variable, lanesPerBlock*(1+len(inputLanes)/lanesPerBlock))
+	lanes = make([]zk.WrappedVariable, lanesPerBlock*(1+len(inputLanes)/lanesPerBlock))
 	if n := copy(lanes, inputLanes); n != len(lanes) {
 		for i := n; i < len(lanes); i++ {
 			lanes[i] = 0
 		}
 	}
 
-	//inInputRange := frontend.Variable(1)
+	//inInputRange := zk.WrappedVariable(1)
 	inputRange := internal.NewRange(api, length, len(lanes))
 	for i := range lanes {
 		lanes[i] = api.Add(api.Mul(lanes[i], inputRange.InRange[i]), api.Mul(dstLane, inputRange.IsFirstBeyond[i])) // first padding byte contribution
@@ -288,7 +288,7 @@ func pad(api frontend.API, inputLanes []frontend.Variable, length frontend.Varia
 
 }
 
-func divByLanesPerBlock(api frontend.API, x frontend.Variable) (q, r frontend.Variable, err error) {
+func divByLanesPerBlock(api frontend.API, x zk.WrappedVariable) (q, r zk.WrappedVariable, err error) {
 	hintOuts, err := api.Compiler().NewHint(divByLanesPerBlockHint, 2, x)
 	if err == nil {
 		q, r = hintOuts[0], hintOuts[1]

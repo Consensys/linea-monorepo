@@ -6,8 +6,8 @@ import (
 	"github.com/consensys/gnark/std/math/bitslice"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/math/emulated/emparams"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 const (
@@ -37,10 +37,10 @@ type ModExpCircuit struct {
 //
 // The operands are represented in limbs of 16 bytes.
 type modexpCircuitInstance struct {
-	Base     [common.NbLimbU128][]frontend.Variable `gnark:",public"`
-	Exponent [common.NbLimbU128][]frontend.Variable `gnark:",public"`
-	Modulus  [common.NbLimbU128][]frontend.Variable `gnark:",public"`
-	Result   [common.NbLimbU128][]frontend.Variable `gnark:",public"`
+	Base     []zk.WrappedVariable `gnark:",public"`
+	Exponent []zk.WrappedVariable `gnark:",public"`
+	Modulus  []zk.WrappedVariable `gnark:",public"`
+	Result   []zk.WrappedVariable `gnark:",public"`
 }
 
 // allocate256Bits allocates [ModExpCircuit] for n instances assuming the 256-bit
@@ -59,12 +59,10 @@ func allocateCircuit(n int, numBits int) *ModExpCircuit {
 	)
 
 	for i := range res.Instances {
-		for j := range common.NbLimbU128 {
-			res.Instances[i].Base[j] = make([]frontend.Variable, numLimbs)
-			res.Instances[i].Exponent[j] = make([]frontend.Variable, numLimbs)
-			res.Instances[i].Modulus[j] = make([]frontend.Variable, numLimbs)
-			res.Instances[i].Result[j] = make([]frontend.Variable, numLimbs)
-		}
+		res.Instances[i].Base = make([]zk.WrappedVariable, numLimbs)
+		res.Instances[i].Exponent = make([]zk.WrappedVariable, numLimbs)
+		res.Instances[i].Modulus = make([]zk.WrappedVariable, numLimbs)
+		res.Instances[i].Result = make([]zk.WrappedVariable, numLimbs)
 	}
 
 	return res
@@ -102,10 +100,10 @@ func checkModexpInstance[P emulated.FieldParams](api frontend.API, m *modexpCirc
 	var (
 		params        P
 		emApi, errAPI = emulated.NewField[P](api)
-		baseLimbs     = make([]frontend.Variable, params.NbLimbs())
-		exponentLimbs = make([]frontend.Variable, params.NbLimbs())
-		modulusLimbs  = make([]frontend.Variable, params.NbLimbs())
-		resultLimbs   = make([]frontend.Variable, params.NbLimbs())
+		baseLimbs     = make([]zk.WrappedVariable, params.NbLimbs())
+		exponentLimbs = make([]zk.WrappedVariable, params.NbLimbs())
+		modulusLimbs  = make([]zk.WrappedVariable, params.NbLimbs())
+		resultLimbs   = make([]zk.WrappedVariable, params.NbLimbs())
 	)
 
 	if errAPI != nil {

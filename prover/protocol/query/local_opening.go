@@ -3,11 +3,12 @@ package query
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -29,12 +30,12 @@ type LocalOpeningParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (lop LocalOpeningParams) UpdateFS(fs *poseidon2.Poseidon2FieldHasherDigest) {
+func (lop LocalOpeningParams) UpdateFS(fs *fiatshamir.FS) {
 	if lop.IsBase {
-		fiatshamir.Update(fs, lop.BaseY)
+		(*fs).Update(lop.BaseY)
 	} else {
 		// Change this for the actual extension!
-		fiatshamir.UpdateExt(fs, lop.ExtY)
+		(*fs).UpdateExt(lop.ExtY)
 	}
 }
 
@@ -77,9 +78,9 @@ func NewLocalOpeningParamsExt(z fext.Element) LocalOpeningParams {
 
 func (lop LocalOpeningParams) ToGenericGroupElement() fext.GenericFieldElem {
 	if lop.IsBase {
-		return fext.NewESHashFromBase(lop.BaseY)
+		return fext.NewGenFieldFromBase(lop.BaseY)
 	} else {
-		return fext.NewESHashFromExt(lop.ExtY)
+		return fext.NewGenFieldFromExt(lop.ExtY)
 	}
 }
 
@@ -105,11 +106,19 @@ func (r LocalOpening) Check(run ifaces.Runtime) error {
 func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.ID).(GnarkLocalOpeningParams)
 	if params.IsBase {
+		apiGen, err := zk.NewGenericApi(api)
+		if err != nil {
+			panic(err)
+		}
 		actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
-		api.AssertIsEqual(params.BaseY, actualY)
+		apiGen.AssertIsEqual(params.BaseY, actualY)
 	} else {
+		e4Api, err := gnarkfext.NewExt4(api)
+		if err != nil {
+			panic(err)
+		}
 		actualY := r.Pol.GetColAssignmentGnarkAtExt(run, 0)
-		params.ExtY.AssertIsEqual(api, actualY)
+		e4Api.AssertIsEqual(&params.ExtY, &actualY)
 	}
 }
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -116,12 +116,12 @@ func (g GrandProduct) Name() ifaces.QueryID {
 }
 
 // Updates a Fiat-Shamir state
-func (gp GrandProductParams) UpdateFS(fs *poseidon2.Poseidon2FieldHasherDigest) {
-	fiatshamir.Update(fs, gp.BaseY)
+func (gp GrandProductParams) UpdateFS(fs *fiatshamir.FS) {
+	(*fs).Update(gp.BaseY)
 }
 
-func (gp GrandProductParams) UpdateFSExt(fs *poseidon2.Poseidon2FieldHasherDigest) {
-	fiatshamir.UpdateExt(fs, gp.ExtY)
+func (gp GrandProductParams) UpdateFSExt(fs *fiatshamir_koalabear.FS) {
+	fs.UpdateExt(gp.ExtY)
 }
 
 // Compute returns the result value of the [GrandProduct] query. It
@@ -156,7 +156,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 				for k := range numeratorSlice {
 					tempResult.Mul(&tempResult, &numeratorSlice[k])
 				}
-				intermediateResult = fext.NewESHashFromBase(tempResult)
+				intermediateResult = fext.NewGenFieldFromBase(tempResult)
 			} else {
 				// for field extensions
 				numeratorSlice := numerator.IntoRegVecSaveAllocExt()
@@ -164,7 +164,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 				for k := range numeratorSlice {
 					tempResult.Mul(&tempResult, &numeratorSlice[k])
 				}
-				intermediateResult = fext.NewESHashFromExt(tempResult)
+				intermediateResult = fext.NewGenFieldFromExt(tempResult)
 			}
 			result.Mul(&intermediateResult)
 		}
@@ -197,7 +197,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 
 					tmp.Mul(&tmp, &denominatorSlice[k])
 				}
-				intermediateResult = fext.NewESHashFromBase(tmp)
+				intermediateResult = fext.NewGenFieldFromBase(tmp)
 			} else {
 				// for field extensions
 				tmp := fext.One()
@@ -210,7 +210,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 
 					tmp.Mul(&tmp, &denominatorSlice[k])
 				}
-				intermediateResult = fext.NewESHashFromExt(tmp)
+				intermediateResult = fext.NewGenFieldFromExt(tmp)
 			}
 
 			result.Div(&intermediateResult)

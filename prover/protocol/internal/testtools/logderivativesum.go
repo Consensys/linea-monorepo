@@ -261,7 +261,7 @@ func (t *LogDerivativeSumTestcase) Assign(run *wizard.ProverRuntime) {
 		t.Value = &elem
 	}
 
-	genValue := fext.NewESHashFromExt(*t.Value)
+	genValue := fext.NewGenFieldFromExt(*t.Value)
 	run.AssignLogDerivSum(t.Q.ID, genValue)
 }
 

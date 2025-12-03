@@ -19,8 +19,8 @@ import (
 
 // simple hashing circuit
 type SimpleHashingCircuit struct {
-	Input  []frontend.Variable
-	Digest frontend.Variable
+	Input  []zk.WrappedVariable
+	Digest zk.WrappedVariable
 }
 
 type SimpleHashingCircuitWithAPI SimpleHashingCircuit
@@ -42,12 +42,12 @@ func TestFactory(t *testing.T) {
 	scs, err := frontend.Compile(
 		ecc.BLS12_377.ScalarField(),
 		scs.NewBuilder,
-		&SimpleHashingCircuit{Input: make([]frontend.Variable, 4)},
+		&SimpleHashingCircuit{Input: make([]zk.WrappedVariable, 4)},
 	)
 	require.NoError(t, err)
 
 	assignment := SimpleHashingCircuit{
-		Input:  []frontend.Variable{0, 1, 2, 3},
+		Input:  []zk.WrappedVariable{0, 1, 2, 3},
 		Digest: mimc.HashVec(vector.ForTest(0, 1, 2, 3)),
 	}
 
@@ -63,12 +63,12 @@ func TestFactoryWithPadding(t *testing.T) {
 	scs, err := frontend.Compile(
 		ecc.BLS12_377.ScalarField(),
 		scs.NewBuilder,
-		&SimpleHashingCircuit{Input: make([]frontend.Variable, 3)},
+		&SimpleHashingCircuit{Input: make([]zk.WrappedVariable, 3)},
 	)
 	require.NoError(t, err)
 
 	assignment := SimpleHashingCircuit{
-		Input:  []frontend.Variable{0, 1, 2},
+		Input:  []zk.WrappedVariable{0, 1, 2},
 		Digest: mimc.HashVec(vector.ForTest(0, 1, 2)),
 	}
 
@@ -88,12 +88,12 @@ func TestFactoryManySizes(t *testing.T) {
 			scs, err := frontend.Compile(
 				ecc.BLS12_377.ScalarField(),
 				scs.NewBuilder,
-				&SimpleHashingCircuit{Input: make([]frontend.Variable, size)},
+				&SimpleHashingCircuit{Input: make([]zk.WrappedVariable, size)},
 			)
 			require.NoError(t, err)
 
 			vals := make([]field.Element, size)
-			inputs := make([]frontend.Variable, size)
+			inputs := make([]zk.WrappedVariable, size)
 			for i := range inputs {
 				inputs[i] = field.NewElement(uint64(i))
 				vals[i] = field.NewElement(uint64(i))

@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -132,6 +131,8 @@ type merkleTestCaseInstance struct {
 // merkleTestBuilder is used to build the assignment of merkle proofs
 // and is implemented like a writer.
 type merkleTestBuilder struct {
+	proofs             []smt_koalabear.Proof
+	pos                []field.Element
 	proofs             []smt.Proof
 	pos                [limbPerU64][]field.Element
 	roots              [blockSize][]field.Element
@@ -139,12 +140,12 @@ type merkleTestBuilder struct {
 	useNextMerkleProof []field.Element
 	isActive           []field.Element
 	counter            []field.Element
-	tree               smt.Tree
+	tree               smt_koalabear.Tree
 }
 
 // merkleTestBuilderRow is a pure-data structure specifying a row in the test builder
 type merkleTestBuilderRow struct {
-	proof              smt.Proof
+	proof              smt_koalabear.Proof
 	pos                int
 	leaf               field.Octuplet
 	root               field.Octuplet
@@ -153,7 +154,7 @@ type merkleTestBuilderRow struct {
 
 func newMerkleTestBuilder(depth int) *merkleTestBuilder {
 	return &merkleTestBuilder{
-		tree: *smt.BuildComplete(make([]field.Octuplet, 1<<depth), poseidon2.Poseidon2),
+		tree: *smt_koalabear.BuildComplete(make([]field.Octuplet, 1<<depth)),
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -80,43 +81,41 @@ func (PolyEval) Validate(expr *Expression) error {
 	return nil
 }
 
-/*
-Evaluate the expression in a gnark circuit
-Does not support vector evaluation
-*/
-func (PolyEval) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
-	/*
-		We use the Horner method
-	*/
+// GnarkEval evaluates the expression in a gnark circuit
+// Does not support vector evaluation
+func (PolyEval) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
+
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
 
 	for i := len(inputs) - 2; i >= 1; i-- {
-		res = api.Mul(res, x)
-		c := inputs[i]
-		res = api.Add(res, c)
+		res = apiGen.Mul(res, x)
+		res = apiGen.Add(res, inputs[i])
 	}
 
 	return res
 }
 
-/*
-EvaluateExt the expression in a gnark circuit
-Does not support vector evaluation
-*/
-func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
-	/*
-		We use the Horner method
-	*/
+// EvaluateExt the expression in a gnark circuit
+// Does not support vector evaluation
+func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
 
-	// outerApi := gnarkfext.NewExtApi(api)
-
 	for i := len(inputs) - 2; i >= 1; i-- {
-		res.Mul(api, res, x)
-		c := inputs[i]
-		res.Add(api, res, c)
+		res = *e4Api.Mul(&res, &x)
+		res = *e4Api.Add(&res, &inputs[i])
 	}
 
 	return res

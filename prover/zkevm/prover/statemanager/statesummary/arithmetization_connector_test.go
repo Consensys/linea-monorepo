@@ -2,8 +2,9 @@ package statesummary
 
 import (
 	"fmt"
-	provercommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"testing"
+
+	provercommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -20,8 +21,6 @@ import (
 // TestIntegrationConnector checks the connector between the StateSummary
 // and the HUB arithmetization (account/storage consistency permutations—ACP/SCP)
 func TestIntegrationConnector(t *testing.T) {
-
-	t.Skip("skipping the test connector test as they fail currently, but we wait for the integration to fix")
 
 	initialBlockNo := 0
 	tContext := common.InitializeContext(initialBlockNo)
@@ -89,7 +88,7 @@ func defineStateManagerColumns(comp *wizard.CompiledIOP, sampleType int, size in
 	// createCol is function to quickly create a column
 	createCol := func(name string) ifaces.Column {
 		sampleTypeString := mock.SampleTypeToString(sampleType)
-		return comp.InsertCommit(0, ifaces.ColIDf("ARITHM_%s_COL_%v", sampleTypeString, name), size)
+		return comp.InsertCommit(0, ifaces.ColIDf("ARITHM_%s_COL_%v", sampleTypeString, name), size, true)
 	}
 
 	res := HubColumnSet{
@@ -204,10 +203,10 @@ func (smc *HubColumnSet) assignForTest(run *wizard.ProverRuntime, smVectors *moc
 }
 
 func transposeLimbs[T [provercommon.NbLimbEthAddress]field.Element |
-[provercommon.NbLimbU256]field.Element |
-[provercommon.NbLimbU64]field.Element |
-[provercommon.NbLimbU32]field.Element |
-[provercommon.NbLimbU128]field.Element](inputMatrix []T) [][]field.Element {
+	[provercommon.NbLimbU256]field.Element |
+	[provercommon.NbLimbU64]field.Element |
+	[provercommon.NbLimbU32]field.Element |
+	[provercommon.NbLimbU128]field.Element](inputMatrix []T) [][]field.Element {
 
 	if len(inputMatrix) == 0 || len(inputMatrix[0]) == 0 {
 		return [][]field.Element{}

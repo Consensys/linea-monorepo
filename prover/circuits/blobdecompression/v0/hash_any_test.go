@@ -13,11 +13,11 @@ import (
 )
 
 type hashAnyTestCircuit struct {
-	A   frontend.Variable `gnark:",secret"`
-	B   frontend.Variable `gnark:",secret"`
-	C   emElement         `gnark:",secret"`
-	D   emElement         `gnark:",secret"`
-	Out frontend.Variable `gnark:",secret"`
+	A   zk.WrappedVariable `gnark:",secret"`
+	B   zk.WrappedVariable `gnark:",secret"`
+	C   emElement          `gnark:",secret"`
+	D   emElement          `gnark:",secret"`
+	Out zk.WrappedVariable `gnark:",secret"`
 }
 
 func (h *hashAnyTestCircuit) Define(api frontend.API) error {

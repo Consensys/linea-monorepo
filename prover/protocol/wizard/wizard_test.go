@@ -54,9 +54,19 @@ func TestCompiler(t *testing.T) {
 		run.AssignUnivariateExt(U, u, y)
 	}
 
-	proof := wizard.Prove(compiled, prover)
-	err := wizard.Verify(compiled, proof)
-	require.NoError(t, err)
+	{
+		// Test Koala proof
+		proof := wizard.Prove(compiled, prover, false)
+		err := wizard.Verify(compiled, proof, false)
+		require.NoError(t, err)
+	}
+
+	{
+		// Test BLS proof
+		proof := wizard.Prove(compiled, prover, true)
+		err := wizard.Verify(compiled, proof, true)
+		require.NoError(t, err)
+	}
 }
 
 func TestChangingColumnStatus(t *testing.T) {

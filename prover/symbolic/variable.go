@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -50,12 +51,12 @@ func (v Variable) EvaluateMixed([]sv.SmartVector) sv.SmartVector {
 }
 
 // GnarkEval implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (v Variable) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
 	panic("we never call it for variables")
 }
 
 // GnarkEval implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+func (v Variable) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
 	panic("we never call it for variables")
 }
 

@@ -16,9 +16,9 @@ func ToConstantSmartvector(e *fext.GenericFieldElem, length int) SmartVector {
 func GetGenericElemOfSmartvector(vector SmartVector, index int) fext.GenericFieldElem {
 	if IsBase(vector) {
 		elem, _ := vector.GetBase(index)
-		return fext.NewESHashFromBase(elem)
+		return fext.NewGenFieldFromBase(elem)
 	}
 	// If the vector is not over base elements, we assume it is over extensions
 	elem := vector.GetExt(index)
-	return fext.NewESHashFromExt(elem)
+	return fext.NewGenFieldFromExt(elem)
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -25,10 +26,10 @@ import (
 // Alex: please don't change the ordering of the arguments as this
 // affects the parsing of the witness.
 type RecursionCircuit struct {
-	X                  gnarkfext.Element   `gnark:",public"`
-	Ys                 []gnarkfext.Element `gnark:",public"`
-	Commitments        []frontend.Variable `gnark:",public"`
-	Pubs               []frontend.Variable `gnark:",public"`
+	X                  gnarkfext.E4Gen      `gnark:",public"`
+	Ys                 []gnarkfext.E4Gen    `gnark:",public"`
+	Commitments        []zk.WrappedVariable `gnark:",public"`
+	Pubs               []zk.WrappedVariable `gnark:",public"`
 	WizardVerifier     *wizard.VerifierCircuit
 	withoutGkr         bool                       `gnark:"-"`
 	withExternalHasher bool                       `gnark:"-"`
@@ -63,9 +64,9 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		PolyQuery:          polyQuery,
 		MerkleRoots:        merkleRoots,
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound),
-		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)), //TODO@yao: check size
-		Commitments:        make([]frontend.Variable, 8*len(merkleRoots)),     //TODO@yao: check size
-		Ys:                 make([]gnarkfext.Element, len(polyQuery.Pols)),
+		Pubs:               make([]zk.WrappedVariable, len(comp.PublicInputs)),
+		Commitments:        make([]zk.WrappedVariable, len(merkleRoots)),
+		Ys:                 make([]gnarkfext.E4Gen, len(polyQuery.Pols)),
 	}
 }
 
@@ -77,7 +78,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	if !r.withoutGkr {
 		temp := gkrmimc.NewHasherFactory(api)
 		w.HasherFactory = temp
-		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
+		w.BLSFS = fiatshamir.NewGnarkFSKoalaBLS12377(api)
 	}
 
 	if r.withExternalHasher {
@@ -92,10 +93,10 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
-	api.AssertIsEqual(r.X, polyParams.X)
+	api.AssertIsEqual(r.X, polyParams.ExtX)
 
-	for i := range polyParams.Ys {
-		api.AssertIsEqual(r.Ys[i], polyParams.Ys[i])
+	for i := range polyParams.ExtYs {
+		api.AssertIsEqual(r.Ys[i], polyParams.ExtYs[i])
 	}
 
 	for i := range r.Commitments {
@@ -175,6 +176,7 @@ func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []
 	// Ys                         [4*numYs]frontend.Variable `gnark:",public"`
 	// Commitments/merkleRoots    [8*numMRoots]frontend.Variable `gnark:",public"`
 	// Pubs                       []frontend.Variable `gnark:",public"`
+
 	//
 	x, allPubDrain = allPubDrain[:4], allPubDrain[4:]
 	ys, allPubDrain = allPubDrain[:4*numYs], allPubDrain[4*numYs:]

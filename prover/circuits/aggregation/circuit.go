@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // shorthand for the emulated types as this can get verbose very quickly with
@@ -43,13 +44,13 @@ type Circuit struct {
 	// is treated as a constant by the circuit.
 	verifyingKeys []emVkey `gnark:"-"`
 
-	publicInputVerifyingKey        emVkey              `gnark:"-"`
-	PublicInputProof               emProof             `gnark:",secret"`
-	PublicInputWitness             emWitness           `gnark:",secret"` // ordered for the PI circuit
-	PublicInputWitnessClaimIndexes []frontend.Variable `gnark:",secret"`
+	publicInputVerifyingKey        emVkey               `gnark:"-"`
+	PublicInputProof               emProof              `gnark:",secret"`
+	PublicInputWitness             emWitness            `gnark:",secret"` // ordered for the PI circuit
+	PublicInputWitnessClaimIndexes []zk.WrappedVariable `gnark:",secret"`
 
 	// general public input
-	PublicInput frontend.Variable `gnark:",public"`
+	PublicInput zk.WrappedVariable `gnark:",public"`
 }
 
 func (c *Circuit) Define(api frontend.API) error {
@@ -149,7 +150,7 @@ func AllocateCircuit(nbProofs int, pi circuits.Setup, verifyingKeys []plonk.Veri
 		publicInputVerifyingKey:        piVkEm,
 		PublicInputProof:               emPlonk.PlaceholderProof[emFr, emG1, emG2](pi.Circuit),
 		PublicInputWitness:             emPlonk.PlaceholderWitness[emFr](pi.Circuit),
-		PublicInputWitnessClaimIndexes: make([]frontend.Variable, pi_interconnection.GetMaxNbCircuitsSum(pi.Circuit)),
+		PublicInputWitnessClaimIndexes: make([]zk.WrappedVariable, pi_interconnection.GetMaxNbCircuitsSum(pi.Circuit)),
 	}, nil
 
 }
@@ -163,7 +164,7 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 	var (
 		bvk       = vks[0].BaseVerifyingKey
 		cvks      = make([]emCircVKey, len(vks)-1)
-		switches  = make([]frontend.Variable, len(claims))
+		switches  = make([]zk.WrappedVariable, len(claims))
 		proofs    = make([]emProof, len(claims))
 		witnesses = make([]emWitness, len(claims))
 	)
@@ -203,7 +204,7 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 }
 
 // assertSlicesEqualZEXT asserts two slices are equal, extending the shorter slice by zeros so the lengths match
-func assertSlicesEqualZEXT(api frontend.API, a, b []frontend.Variable) {
+func assertSlicesEqualZEXT(api frontend.API, a, b []zk.WrappedVariable) {
 	// let a be the shorter one
 	if len(b) < len(a) {
 		a, b = b, a

@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -38,11 +38,11 @@ type AccountPeek struct {
 
 	// HashInitial, HashFinal stores the hash of the initial account and the
 	// hash of the final account
-	HashInitial, HashFinal [common.NbLimbU256]ifaces.Column
+	HashInitial, HashFinal [poseidon2.BlockSize]ifaces.Column
 
 	// ComputeHashInitial and ComputeHashFinal are [wizard.ProverAction]
 	// responsible for hashing the accounts.
-	ComputeHashInitial, ComputeHashFinal *mimc.HashingCtx
+	ComputeHashInitial, ComputeHashFinal *poseidon2.HashingCtx
 
 	// InitialAndFinalAreSame is an indicator column set to 1 when the
 	// initial and final account share the same hash and 0 otherwise.
@@ -57,10 +57,10 @@ type AccountPeek struct {
 	Address [common.NbLimbEthAddress]ifaces.Column
 
 	// AddressHash is the hash of the account address
-	AddressHash [common.NbLimbU256]ifaces.Column
+	AddressHash [poseidon2.BlockSize]ifaces.Column
 
 	// ComputeAddressHash is responsible for computing the AddressHash
-	ComputeAddressHash *mimc.HashingCtx
+	ComputeAddressHash *poseidon2.HashingCtx
 
 	// AddressHashLimbs stores the limbs of the address
 	AddressHashLimbs [common.NbLimbU256]byte32cmp.LimbColumns
@@ -93,6 +93,7 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 			0,
 			ifaces.ColIDf("STATE_SUMMARY_ACCOUNTS_%v", subName),
 			size,
+			true,
 		)
 	}
 
@@ -105,49 +106,49 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 		accPeek.Address[i] = createCol(fmt.Sprintf("ACCOUNT_%v", i))
 	}
 
-	initialHashCols := [][]ifaces.Column{accPeek.Initial.Nonce[:]}
-	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.Balance[:]}...)
-	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.StorageRoot[:]}...)
-	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.MiMCCodeHash[:]}...)
-	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.KeccakCodeHash.Lo[:]}...)
-	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.KeccakCodeHash.Hi[:]}...)
-	initialHashCols = append(initialHashCols, [][]ifaces.Column{accPeek.Initial.CodeSize[:]}...)
+	initialHashCols := accPeek.Initial.Nonce[:]
 
-	accPeek.ComputeHashInitial = mimc.HashOf(comp, initialHashCols)
+	initialHashCols = append(initialHashCols, accPeek.Initial.Balance[:]...)
+	initialHashCols = append(initialHashCols, accPeek.Initial.StorageRoot[:]...)
+	initialHashCols = append(initialHashCols, accPeek.Initial.LineaCodeHash[:]...)
+	initialHashCols = append(initialHashCols, accPeek.Initial.KeccakCodeHash.Lo[:]...)
+	initialHashCols = append(initialHashCols, accPeek.Initial.KeccakCodeHash.Hi[:]...)
+	initialHashCols = append(initialHashCols, accPeek.Initial.CodeSize[:]...)
+
+	accPeek.ComputeHashInitial = poseidon2.HashOf(comp, poseidon2.SplitBy(initialHashCols))
 	accPeek.HashInitial = accPeek.ComputeHashInitial.Result()
 
-	finalHashCols := [][]ifaces.Column{accPeek.Final.Nonce[:]}
-	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.Balance[:]}...)
-	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.StorageRoot[:]}...)
-	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.MiMCCodeHash[:]}...)
-	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.KeccakCodeHash.Lo[:]}...)
-	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.KeccakCodeHash.Hi[:]}...)
-	finalHashCols = append(finalHashCols, [][]ifaces.Column{accPeek.Final.CodeSize[:]}...)
+	finalHashCols := accPeek.Final.Nonce[:]
+	finalHashCols = append(finalHashCols, accPeek.Final.Balance[:]...)
+	finalHashCols = append(finalHashCols, accPeek.Final.StorageRoot[:]...)
+	finalHashCols = append(finalHashCols, accPeek.Final.LineaCodeHash[:]...)
+	finalHashCols = append(finalHashCols, accPeek.Final.KeccakCodeHash.Lo[:]...)
+	finalHashCols = append(finalHashCols, accPeek.Final.KeccakCodeHash.Hi[:]...)
+	finalHashCols = append(finalHashCols, accPeek.Final.CodeSize[:]...)
 
-	accPeek.ComputeHashFinal = mimc.HashOf(comp, finalHashCols)
+	accPeek.ComputeHashFinal = poseidon2.HashOf(comp, poseidon2.SplitBy(finalHashCols))
+
 	accPeek.HashFinal = accPeek.ComputeHashFinal.Result()
 
 	for i := range common.NbLimbU256 {
 		accPeek.InitialAndFinalAreSame[i], accPeek.ComputeInitialAndFinalAreSame[i] = dedicated.IsZero(
 			comp,
 			sym.Sub(accPeek.HashInitial[i], accPeek.HashFinal[i]),
-		)
+		).GetColumnAndProverAction()
 	}
 
-	accPeek.ComputeAddressHash = mimc.HashOf(
+	accPeek.ComputeAddressHash = poseidon2.HashOf(
 		comp,
-		[][]ifaces.Column{
-			accPeek.Address[:],
-		},
+		poseidon2.SplitBy(accPeek.Address[:]),
 	)
 
 	accPeek.AddressHash = accPeek.ComputeAddressHash.Result()
 
-	panic("the initial/final-are-same is not visible in the small field migration so; this needs to be resolved")
-	accPeek.InitialAndFinalAreSame, accPeek.ComputeInitialAndFinalAreSame = dedicated.IsZero(
+	//	panic("the initial/final-are-same is not visible in the small field migration so; this needs to be resolved")
+	/*accPeek.InitialAndFinalAreSame, accPeek.ComputeInitialAndFinalAreSame = dedicated.IsZero(
 		comp,
 		sym.Sub(accPeek.HashInitial, accPeek.HashFinal),
-	).GetColumnAndProverAction()
+	).GetColumnAndProverAction()*/
 
 	addrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	shiftedAddrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
@@ -170,12 +171,13 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 // Account provides the columns to store the values of an account that
 // we are peeking at.
 type Account struct {
-	// Nonce, Balance, MiMCCodeHash and CodeSize store the account field on a
+	// Nonce, Balance, Poseidon2CodeHash and CodeSize store the account field on a
 	// single column each.
-	Exists                    ifaces.Column
-	Nonce, CodeSize           [common.NbLimbU64]ifaces.Column
-	StorageRoot, MiMCCodeHash [common.NbLimbU256]ifaces.Column
-	Balance                   [common.NbLimbU128]ifaces.Column
+	Exists          ifaces.Column
+	Nonce, CodeSize [common.NbLimbU64]ifaces.Column
+	StorageRoot     [common.NbLimbU256]ifaces.Column
+	LineaCodeHash   [poseidon2.BlockSize]ifaces.Column
+	Balance         [common.NbLimbU128]ifaces.Column
 	// KeccakCodeHash stores the keccak code hash of the account.
 	KeccakCodeHash common.HiLoColumns
 	// ExpectedHubCodeHash is almost the same as the KeccakCodeHash, with the difference
@@ -197,6 +199,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 			0,
 			ifaces.ColIDf("STATE_SUMMARY_%v_%v", name, subName),
 			size,
+			true,
 		)
 	}
 
@@ -218,7 +221,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 
 	for i := range common.NbLimbU256 {
 		acc.StorageRoot[i] = createCol(fmt.Sprintf("STORAGE_ROOT_%d", i))
-		acc.MiMCCodeHash[i] = createCol(fmt.Sprintf("MICCODE_HASH_%d", i))
+		acc.LineaCodeHash[i] = createCol(fmt.Sprintf("LINEA_CODE_HASH_%d", i))
 	}
 
 	// There is no need for an IsActive mask here because the column will be
@@ -247,11 +250,11 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 	for i := range common.NbLimbU256 {
 		comp.InsertGlobal(
 			0,
-			ifaces.QueryIDf("STATE_SUMMARY_%v_MIMC_CODEHASH_FOR_EXISTING_BUT_EMPTY_CODE_%v", name, i),
+			ifaces.QueryIDf("STATE_SUMMARY_%v_LINEA_CODE_HASH_FOR_EXISTING_BUT_EMPTY_CODE_%v", name, i),
 			sym.Mul(
 				acc.Exists,
 				sym.Mul(hasEmptyCodeHashExpressions...),
-				sym.Sub(acc.MiMCCodeHash[i], *new(field.Element).SetBytes(emptyCodeHash[i][:])),
+				sym.Sub(acc.LineaCodeHash[i], *new(field.Element).SetBytes(emptyCodeHash[i][:])),
 			),
 		)
 	}
@@ -286,7 +289,7 @@ type accountAssignmentBuilder struct {
 	exists                       *common.VectorBuilder
 	nonce, codeSize              [common.NbLimbU64]*common.VectorBuilder
 	balance                      [common.NbLimbU128]*common.VectorBuilder
-	storageRoot, miMCCodeHash    [common.NbLimbU256]*common.VectorBuilder
+	storageRoot, lineaCodeHash   [common.NbLimbU256]*common.VectorBuilder
 	keccakCodeHash               common.HiLoAssignmentBuilder
 	expectedHubCodeHash          common.HiLoAssignmentBuilder
 	existsAndHasNonEmptyCodeHash *common.VectorBuilder
@@ -313,7 +316,7 @@ func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
 
 	for i := range common.NbLimbU256 {
 		res.storageRoot[i] = common.NewVectorBuilder(ap.StorageRoot[i])
-		res.miMCCodeHash[i] = common.NewVectorBuilder(ap.MiMCCodeHash[i])
+		res.lineaCodeHash[i] = common.NewVectorBuilder(ap.LineaCodeHash[i])
 	}
 
 	return res
@@ -367,10 +370,10 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
-	mimcCodeHashLimbs := common.SplitBytes(acc.MimcCodeHash[:])
+	lineaCodeHashLimbs := common.SplitBytes(acc.LineaCodeHash[:])
 	for i := range common.NbLimbU256 {
-		limbBytes := common.LeftPadToFrBytes(mimcCodeHashLimbs[i])
-		ss.miMCCodeHash[i].PushBytes(limbBytes)
+		limbBytes := common.LeftPadToFrBytes(lineaCodeHashLimbs[i])
+		ss.lineaCodeHash[i].PushBytes(limbBytes)
 	}
 
 	for i, limbBytes := range common.SplitBytes(acc.StorageRoot[:]) {
@@ -433,10 +436,10 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
-	mimcCodeHashLimbs := common.SplitBytes(acc.MimcCodeHash[:])
+	lineaCodeHashLimbs := common.SplitBytes(acc.LineaCodeHash[:])
 	for i := range common.NbLimbU256 {
-		limbBytes := common.LeftPadToFrBytes(mimcCodeHashLimbs[i])
-		ss.miMCCodeHash[i].PushBytes(limbBytes)
+		limbBytes := common.LeftPadToFrBytes(lineaCodeHashLimbs[i])
+		ss.lineaCodeHash[i].PushBytes(limbBytes)
 	}
 
 	for i := range storageRoot {
@@ -465,7 +468,7 @@ func (ss *accountAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 	ss.expectedHubCodeHash.PadAssign(run, [common.NbLimbU256][]byte{})
 
 	for i := range common.NbLimbU256 {
-		ss.miMCCodeHash[i].PadAndAssign(run)
+		ss.lineaCodeHash[i].PadAndAssign(run)
 		ss.storageRoot[i].PadAndAssign(run)
 	}
 

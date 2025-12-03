@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -18,50 +18,54 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// var StdParams = Params{LogTwoBound: 16, LogTwoDegree: 9}
 var testCasesKey = []struct {
-	Size int
-	Params
+	Size         int
+	LogTwoBound  int
+	LogTwoDegree int
 }{
 	{
-		Size:   2,
-		Params: StdParams,
+		Size:         2,
+		LogTwoBound:  16,
+		LogTwoDegree: 9,
 	},
 	{
-		Size:   100,
-		Params: StdParams,
+		Size:         100,
+		LogTwoBound:  16,
+		LogTwoDegree: 9,
 	},
 	{
-		Size:   32,
-		Params: StdParams,
+		Size:         32,
+		LogTwoBound:  16,
+		LogTwoDegree: 9,
 	},
 	{
-		Size:   5,
-		Params: StdParams,
+		Size:         5,
+		LogTwoBound:  16,
+		LogTwoDegree: 9,
 	},
 	{
-		Size:   576,
-		Params: StdParams,
+		Size:         576,
+		LogTwoBound:  16,
+		LogTwoDegree: 9,
 	},
 	{
 		Size: 43,
-		Params: Params{
-			LogTwoBound:  8,
-			LogTwoDegree: 5,
-		},
+
+		LogTwoBound:  8,
+		LogTwoDegree: 5,
 	},
 	{
 		Size: 23,
-		Params: Params{
-			LogTwoBound:  8,
-			LogTwoDegree: 6,
-		},
+
+		LogTwoBound:  8,
+		LogTwoDegree: 6,
 	},
 	{
 		Size: 256,
-		Params: Params{
-			LogTwoBound:  8,
-			LogTwoDegree: 6,
-		},
+
+		LogTwoBound:  8,
+		LogTwoDegree: 6,
 	},
 }
 
@@ -75,7 +79,7 @@ func TestHashModXnMinusOne(t *testing.T) {
 			flattenedKey   = key.FlattenedKey() // accounts for the Montgommery skip
 		)
 
-		for i := range key.GnarkInternal.A {
+		for i := range key.SisGnarkCrypto.A {
 			ai := flattenedKey[i*key.OutputSize() : (i+1)*key.OutputSize()]
 			si := make([]fext.Element, key.OutputSize())
 			copy(si, limbs[i*key.OutputSize():])
@@ -94,13 +98,14 @@ func TestHashModXnMinusOne(t *testing.T) {
 
 	for i, testCase := range testCasesKey {
 
-		key := GenerateKey(testCasesKey[i].Params, testCase.Size)
+		key := GenerateKey(testCasesKey[i].LogTwoDegree, testCasesKey[i].LogTwoBound, testCase.Size)
 
 		t.Run(fmt.Sprintf("case-%++v/all-ones", i), func(t *testing.T) {
 			runTest(t, key, vectorext.Repeat(fext.One(), key.maxNumLimbsHashable()))
 		})
 
 	}
+
 }
 
 func TestLimbSplit(t *testing.T) {
@@ -116,7 +121,7 @@ func TestLimbSplit(t *testing.T) {
 	}
 
 	coreTest := func(subT *testing.T, v []field.Element, key Key) {
-		bound := field.NewElement(1 << key.LogTwoBound)
+		bound := field.NewElement(1 << key.LogTwoBound())
 		limbs := key.LimbSplit(v)
 		for i := range v {
 			subLimbs := limbs[i*key.NumLimbs() : (i+1)*key.NumLimbs()]
@@ -127,7 +132,7 @@ func TestLimbSplit(t *testing.T) {
 
 	for arrID, arr := range arrays {
 		for keyID, tcKey := range testCasesKey {
-			key := GenerateKey(tcKey.Params, tcKey.Size)
+			key := GenerateKey(tcKey.LogTwoDegree, tcKey.LogTwoBound, tcKey.Size)
 			t.Run(
 				fmt.Sprintf("array-#%v-key-#%v", arrID, keyID),
 				func(t *testing.T) {
@@ -160,7 +165,7 @@ func TestHashFromLimbs(t *testing.T) {
 
 	for pId, tcParams := range testCasesKey {
 		for vecId, tcVec := range testCaseVecs {
-			key := GenerateKey(tcParams.Params, len(tcVec))
+			key := GenerateKey(tcParams.LogTwoDegree, tcParams.LogTwoBound, len(tcVec))
 			t.Run(fmt.Sprintf("params-#%v-vec-1%v", pId, vecId), func(t *testing.T) {
 				coreTest(t, key, tcVec)
 			})
@@ -174,12 +179,12 @@ func TestHashLimbsFromSlice(t *testing.T) {
 		t.Run(fmt.Sprintf("params-%v", i), func(t *testing.T) {
 
 			var (
-				key          = GenerateKey(tcParams.Params, tcParams.Size)
+				key          = GenerateKey(tcParams.LogTwoDegree, tcParams.LogTwoBound, tcParams.Size)
 				inputs       = vector.Rand(tcParams.Size)
 				keyVec       = key.FlattenedKey()
 				limbs        = key.LimbSplit(inputs)
 				expectedHash = key.hashFromLimbs(limbs)
-				hashToTest   = hashLimbsWithSlice(keyVec, limbs, key.GnarkInternal.Domain, key.OutputSize())
+				hashToTest   = hashLimbsWithSlice(keyVec, limbs, key.SisGnarkCrypto.Domain, key.OutputSize())
 			)
 
 			require.Equal(t, vector.Prettify(expectedHash), vector.Prettify(hashToTest))
@@ -238,8 +243,8 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 
 	nbPolyUsed := utils.DivCeil(len(limbs), key.OutputSize())
 
-	if nbPolyUsed > len(key.GnarkInternal.Ag) {
-		utils.Panic("Too many inputs max is %v but has %v", len(key.GnarkInternal.Ag)*key.OutputSize(), len(limbs))
+	if nbPolyUsed > len(key.SisGnarkCrypto.Ag) {
+		utils.Panic("Too many inputs max is %v but has %v", len(key.SisGnarkCrypto.Ag)*key.OutputSize(), len(limbs))
 	}
 
 	var (
@@ -263,10 +268,10 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 			k[i].SetZero()
 		}
 
-		key.GnarkInternal.Domain.FFT(k, fft.DIF, fft.OnCoset(), fft.WithNbTasks(1))
+		key.SisGnarkCrypto.Domain.FFT(k, fft.DIF, fft.OnCoset(), fft.WithNbTasks(1))
 		var tmp field.Element
 		for j := range res {
-			tmp.Mul(&k[j], &key.GnarkInternal.Ag[i][j])
+			tmp.Mul(&k[j], &key.SisGnarkCrypto.Ag[i][j])
 			res[j].Add(&res[j], &tmp)
 		}
 	}
@@ -278,6 +283,6 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 		res[j] = field.MulRInv(res[j])
 	}
 
-	key.GnarkInternal.Domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
+	key.SisGnarkCrypto.Domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
 	return res
 }

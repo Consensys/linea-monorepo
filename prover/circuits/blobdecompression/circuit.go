@@ -2,6 +2,7 @@ package blobdecompression
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"

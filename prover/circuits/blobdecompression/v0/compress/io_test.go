@@ -37,8 +37,8 @@ func TestShiftLeft(t *testing.T) {
 		}
 
 		circuit := shiftLeftCircuit{
-			Slice:   make([]frontend.Variable, len(b)),
-			Shifted: make([]frontend.Variable, len(shifted)),
+			Slice:   make([]zk.WrappedVariable, len(b)),
+			Shifted: make([]zk.WrappedVariable, len(shifted)),
 		}
 
 		assignment := shiftLeftCircuit{
@@ -55,8 +55,8 @@ func BenchmarkShiftLeft(b *testing.B) {
 	const n = 128 * 1024
 
 	circuit := shiftLeftCircuit{
-		Slice:   make([]frontend.Variable, n),
-		Shifted: make([]frontend.Variable, n),
+		Slice:   make([]zk.WrappedVariable, n),
+		Shifted: make([]zk.WrappedVariable, n),
 	}
 
 	p := profile.Start()
@@ -67,9 +67,9 @@ func BenchmarkShiftLeft(b *testing.B) {
 }
 
 type shiftLeftCircuit struct {
-	Slice       []frontend.Variable
-	Shifted     []frontend.Variable
-	ShiftAmount frontend.Variable
+	Slice       []zk.WrappedVariable
+	Shifted     []zk.WrappedVariable
+	ShiftAmount zk.WrappedVariable
 }
 
 func (c *shiftLeftCircuit) Define(api frontend.API) error {
@@ -96,7 +96,7 @@ func TestChecksumBytes(t *testing.T) {
 		checksum := ChecksumPaddedBytes(b, len(b), hash.MIMC_BLS12_377.New(), fr.Bits)
 
 		circuit := checksumTestCircuit{
-			Bytes: make([]frontend.Variable, len(b)),
+			Bytes: make([]zk.WrappedVariable, len(b)),
 		}
 
 		assignment := checksumTestCircuit{
@@ -110,8 +110,8 @@ func TestChecksumBytes(t *testing.T) {
 }
 
 type checksumTestCircuit struct {
-	Bytes []frontend.Variable
-	Sum   frontend.Variable
+	Bytes []zk.WrappedVariable
+	Sum   zk.WrappedVariable
 }
 
 func (c *checksumTestCircuit) Define(api frontend.API) error {
