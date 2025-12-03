@@ -5,6 +5,6 @@ import org.junit.jupiter.api.Test;
 public class CreateAccountsTest extends AbstractSendBundleTest {
   @Test
   public void createAccounts() throws Exception {
-    final var accountsPool = createAccounts(1, 1);
+    final var accountsPool = createAccounts(2, 1);
   }
 }
