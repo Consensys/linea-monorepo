@@ -37,6 +37,7 @@ const createMetricsUpdaterMock = () => {
     setLastVaultReportTimestamp: jest.fn(),
     setYieldReportedCumulative: jest.fn(),
     setLastTotalPendingPartialWithdrawalsGwei,
+    setPendingPartialWithdrawalQueueAmountGwei: jest.fn(),
     addNodeOperatorFeesPaid: jest.fn(),
     addLiabilitiesPaid: jest.fn(),
     addLidoFeesPaid: jest.fn(),

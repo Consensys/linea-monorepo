@@ -96,6 +96,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       [],
     );
 
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
+      "Pending partial withdrawal queue amount in gwei",
+      ["pubkey", "withdrawable_epoch"],
+    );
+
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
       "Node operator fees paid by automation per vault",
@@ -297,6 +303,22 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
       {},
       totalPendingPartialWithdrawalsGwei,
+    );
+  }
+
+  /**
+   * Sets the pending partial withdrawal queue amount in gwei for a specific validator and withdrawable epoch.
+   *
+   * @param {Hex} pubkey - The validator's public key in hex format.
+   * @param {number} withdrawableEpoch - The epoch when the withdrawal becomes available. Must be non-negative.
+   * @param {number} amountGwei - The withdrawal amount in gwei. Must be non-negative to be recorded.
+   */
+  public setPendingPartialWithdrawalQueueAmountGwei(pubkey: Hex, withdrawableEpoch: number, amountGwei: number): void {
+    if (amountGwei < 0 || withdrawableEpoch < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
+      { pubkey, withdrawable_epoch: withdrawableEpoch.toString() },
+      amountGwei,
     );
   }
 

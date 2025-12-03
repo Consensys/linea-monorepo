@@ -65,6 +65,7 @@ describe("OssificationPendingProcessor", () => {
       setLastVaultReportTimestamp: jest.fn(),
       setYieldReportedCumulative: jest.fn(),
       setLastTotalPendingPartialWithdrawalsGwei: jest.fn(),
+      setPendingPartialWithdrawalQueueAmountGwei: jest.fn(),
     } as unknown as jest.Mocked<INativeYieldAutomationMetricsUpdater>;
 
     metricsRecorder = {

@@ -51,7 +51,9 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   LastTotalPendingPartialWithdrawalsGwei = "linea_native_yield_automation_service_last_total_pending_partial_withdrawals_gwei",
 
   // Gauge representing pending partial withdrawal queue amount in gwei
-  // Single label `pubkey`
+  // Labels:
+  // i.) `pubkey` - Validator public key
+  // ii.) `withdrawable_epoch` - Epoch when withdrawal becomes available
   PendingPartialWithdrawalQueueAmountGwei = "linea_native_yield_automation_service_pending_partial_withdrawal_queue_amount_gwei",
 
   // Gauge representing pending partial withdrawal queue withdrawable epoch
