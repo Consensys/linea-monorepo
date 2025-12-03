@@ -363,7 +363,7 @@ describe("ConsensysStakingApiClient", () => {
     });
 
     it("aggregates pending withdrawals and computes withdrawable amounts", () => {
-      const { client } = createClient();
+      const { client, logger } = createClient();
 
       const validatorA: ValidatorBalance = {
         balance: 40n * ONE_GWEI,
@@ -400,10 +400,37 @@ describe("ConsensysStakingApiClient", () => {
 
       // Result maintains input order (B, then A) - no sorting
       expect(result).toEqual([expectedValidatorB, expectedValidatorA]);
+
+      // Verify debug logs
+      expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - aggregated pending withdrawals", {
+        uniqueValidatorIndices: 2,
+        pendingByValidator: expect.arrayContaining([
+          { validator_index: 1, totalAmount: (5n * ONE_GWEI).toString() },
+          { validator_index: 2, totalAmount: (1n * ONE_GWEI).toString() },
+        ]),
+      });
+      expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - joined results", {
+        joinedCount: 2,
+        validatorsWithPendingWithdrawals: 2,
+        allEntries: expect.arrayContaining([
+          expect.objectContaining({
+            validatorIndex: validatorB.validatorIndex.toString(),
+            publicKey: validatorB.publicKey,
+            pendingWithdrawalAmount: expectedValidatorB.pendingWithdrawalAmount.toString(),
+            withdrawableAmount: expectedValidatorB.withdrawableAmount.toString(),
+          }),
+          expect.objectContaining({
+            validatorIndex: validatorA.validatorIndex.toString(),
+            publicKey: validatorA.publicKey,
+            pendingWithdrawalAmount: expectedValidatorA.pendingWithdrawalAmount.toString(),
+            withdrawableAmount: expectedValidatorA.withdrawableAmount.toString(),
+          }),
+        ]),
+      });
     });
 
     it("handles validators with no pending withdrawals", () => {
-      const { client } = createClient();
+      const { client, logger } = createClient();
 
       const validator: ValidatorBalance = {
         balance: 32n * ONE_GWEI,
@@ -423,10 +450,28 @@ describe("ConsensysStakingApiClient", () => {
       };
 
       expect(result).toEqual([expected]);
+
+      // Verify debug logs
+      expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - aggregated pending withdrawals", {
+        uniqueValidatorIndices: 0,
+        pendingByValidator: [],
+      });
+      expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - joined results", {
+        joinedCount: 1,
+        validatorsWithPendingWithdrawals: 0,
+        allEntries: [
+          expect.objectContaining({
+            validatorIndex: validator.validatorIndex.toString(),
+            publicKey: validator.publicKey,
+            pendingWithdrawalAmount: "0",
+            withdrawableAmount: expected.withdrawableAmount.toString(),
+          }),
+        ],
+      });
     });
 
     it("handles empty validators array", () => {
-      const { client } = createClient();
+      const { client, logger } = createClient();
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
         { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
       ];
@@ -434,6 +479,17 @@ describe("ConsensysStakingApiClient", () => {
       const result = client.joinValidatorsWithPendingWithdrawals([], pendingWithdrawals);
 
       expect(result).toEqual([]);
+
+      // Verify debug logs
+      expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - aggregated pending withdrawals", {
+        uniqueValidatorIndices: 1,
+        pendingByValidator: [{ validator_index: 1, totalAmount: (2n * ONE_GWEI).toString() }],
+      });
+      expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - joined results", {
+        joinedCount: 0,
+        validatorsWithPendingWithdrawals: 0,
+        allEntries: [],
+      });
     });
   });
 

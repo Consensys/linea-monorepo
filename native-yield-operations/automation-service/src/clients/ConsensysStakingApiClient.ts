@@ -104,6 +104,14 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       pendingByValidator.set(w.validator_index, current + w.amount);
     }
 
+    this.logger.debug("joinValidatorsWithPendingWithdrawals - aggregated pending withdrawals", {
+      uniqueValidatorIndices: pendingByValidator.size,
+      pendingByValidator: Array.from(pendingByValidator.entries()).map(([index, amount]) => ({
+        validator_index: index,
+        totalAmount: amount.toString(),
+      })),
+    });
+
     // 2️⃣ Join with validators and compute total pending amount
     const joined = allValidators.map((v) => {
       const pendingAmount = pendingByValidator.get(Number(v.validatorIndex)) ?? 0n;
@@ -117,6 +125,17 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
         // N.B We expect amounts from GraphQL API and Beacon Chain RPC URL to be in gwei units, not wei.
         withdrawableAmount: safeSub(safeSub(v.balance, pendingAmount), ONE_GWEI * 32n),
       };
+    });
+
+    this.logger.debug("joinValidatorsWithPendingWithdrawals - joined results", {
+      joinedCount: joined.length,
+      validatorsWithPendingWithdrawals: joined.filter((v) => v.pendingWithdrawalAmount > 0n).length,
+      allEntries: joined.map((v) => ({
+        validatorIndex: v.validatorIndex.toString(),
+        publicKey: v.publicKey,
+        pendingWithdrawalAmount: v.pendingWithdrawalAmount.toString(),
+        withdrawableAmount: v.withdrawableAmount.toString(),
+      })),
     });
 
     return joined;
