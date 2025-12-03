@@ -58,9 +58,10 @@ func TestNaturalize(t *testing.T) {
 		y3 := smartvectors.EvaluateBasePolyLagrange(p3, x)
 		y4 := smartvectors.EvaluateBasePolyLagrange(p4, x)
 
-		p1s2 := P1S2.GetColAssignment(assi)
+		p1s2Regular := P1S2.GetColAssignment(assi).IntoRegVecSaveAlloc()
+		p1s2 := smartvectors.NewRegular(p1s2Regular)
 
-		require.Equal(t, p1s2.Pretty(), p2.Pretty())
+		require.Equal(t, p2.Pretty(), p1s2.Pretty())
 		assi.AssignUnivariateExt(EVAL, x, y1, y2, y2, y3, y4)
 	}
 
