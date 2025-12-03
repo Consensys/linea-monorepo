@@ -25,10 +25,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
+import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.api.util.DomainObjectDecodeUtils;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
+import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount;
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Blockchain;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.admin.AdminConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.bft.BftConditions;
@@ -47,6 +49,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster;
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeFactory;
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.permissioning.PermissionedNodeBuilder;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.AccountTransactions;
+import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.TransferTransactionBuilder;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.admin.AdminTransactions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.bft.BftTransactions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.clique.CliqueTransactions;
@@ -221,25 +224,27 @@ public abstract class AcceptanceTestBase {
           newAccounts.stream()
               .map(
                   account -> {
-                    // final var tx =
-                    // new TransferTransactionBuilder()
-                    //     .sender(senderAccount)
-                    //     .recipient(account)
-                    //     .amount(Amount.ether(initialBalanceEther))
-                    //     .transactionType(TransactionType.EIP1559)
-                    //     .gasPrice(Amount.wei(BigInteger.valueOf(2_000_000_000L)))
-                    //     .chainId(chainId)
-                    //     .transactionType(TransactionType.FRONTIER)
-                    //     .nonce(BigInteger.valueOf(fundingAccNonce.incrementAndGet()))
-                    //     .build();
+                    final var txA =
+                    new TransferTransactionBuilder()
+                        .chainId(chainId)
+                        .sender(senderAccount)
+                        .recipient(account)
+                        .amount(Amount.ether(initialBalanceEther))
+                        .transactionType(TransactionType.EIP1559)
+                        .gasPrice(Amount.wei(BigInteger.valueOf(2_000_000_000L)))
+                        .chainId(chainId)
+                        .transactionType(TransactionType.FRONTIER)
+                        .nonce(BigInteger.valueOf(fundingAccNonce.incrementAndGet()))
+                        .build();
 
-                    final var tx =
+                    final var txB =
                         accountTransactions.createTransfer(
                             senderAccount,
                             account,
                             initialBalanceEther,
                             /*nonce*/ BigInteger.valueOf(fundingAccNonce.incrementAndGet()));
 
+                    final var tx = txA;
                     final var decodedTx =
                         DomainObjectDecodeUtils.decodeRawTransaction(tx.signedTransactionData());
                     System.out.println(
