@@ -27,8 +27,9 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY ./native-yield-operations/automation-service ./native-yield-operations/automation-service
 COPY ts-libs/linea-shared-utils ./ts-libs/linea-shared-utils
 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build \
-    && pnpm deploy --legacy --filter=./native-yield-operations/automation-service --prod ./prod/native-yield-operations/automation-service
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm deploy --legacy --filter=./native-yield-operations/automation-service --prod ./prod/native-yield-operations/automation-service
 
 FROM node:lts-slim AS production
 

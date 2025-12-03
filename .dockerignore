@@ -3,3 +3,111 @@
 **/tsconfig.build.tsbuildinfo
 **/coverage
 **/dist
+
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files and test data
+test/
+testdata/
+e2e/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__/
+**/__mocks__/
+playwright-report/
+test-results/
+
+# Build artifacts and temporary files
+build/
+tmp/
+venv/
+*.log
+*.tsbuildinfo
+
+# Other Dockerfiles (not needed for this build)
+bridge-ui/Dockerfile
+operations/Dockerfile
+postman/Dockerfile
+coordinator/Dockerfile
+prover/Dockerfile
+
+# Java/Kotlin projects
+besu-plugins/
+coordinator/
+prover/
+jvm-libs/
+state-recovery/
+transaction-exclusion-api/
+transaction-decoder-tool/
+testing-tools/
+finalized-tag-updater/
+
+# Go projects
+go-corset/
+
+# Contract projects
+contracts/
+contracts-tge/
+
+# Other services (not needed for native-yield-automation-service)
+bridge-ui/
+operations/
+postman/
+sdk/
+traces-api-facade/
+
+# Gradle files (not needed for Node.js build)
+build.gradle
+gradlew
+gradlew.bat
+gradle/
+settings.gradle
+gradle.properties
+buildSrc/
+
+# Config files for other services
+config/
+docker/
+
+# Package manager lock files for other package managers
+package-lock.json
+yarn.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Linea Besu package
+linea-besu-package/
+
+# Native yield operations (keep only automation-service)
+native-yield-operations/automation-service/node_modules/
+native-yield-operations/automation-service/dist/
+native-yield-operations/automation-service/coverage/
+
+# TS libs (keep only linea-shared-utils)
+ts-libs/linea-native-libs/
+ts-libs/linea-shared-utils/node_modules/
+ts-libs/linea-shared-utils/dist/
+ts-libs/linea-shared-utils/coverage/
