@@ -157,9 +157,9 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 	var (
 		zeroBlock field.Octuplet
 		// Stacked data columns are organized by block location index, then by query index
-		stackedOldStates = make([][]field.Element, blockSize)
-		stackedBlocks    = make([][]field.Element, blockSize)
-		stackedNewStates = make([][]field.Element, blockSize)
+		stackedOldStates [blockSize][]field.Element
+		stackedBlocks    [blockSize][]field.Element
+		stackedNewStates [blockSize][]field.Element
 		totalSize        = ctx.StackedOldStates[0].Size()
 		poseidon2OfZero  = vortex.CompressPoseidon2(zeroBlock, zeroBlock)
 	)
@@ -255,7 +255,7 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 		for row := start; row < stop; row++ {
 
 			// If the row is the last one, we leave zeroes in the state
-			state := make([]field.Element, width)
+			var state [width]field.Element
 			if row < effectiveSize {
 				for col := 0; col < blockSize; col++ {
 					state[col] = stackedOldStates[col][row]
@@ -263,15 +263,15 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 				}
 			}
 
-			_, _, _, state = matMulExternalInPlace(state)
+			matMulExternalInPlace(&state)
 
 			// external rounds
 			for round := 1; round < 1+partialRounds; round++ {
-				state = addRoundKeyCompute(round-1, state)
+				addRoundKeyCompute(round-1, &state)
 				for col := 0; col < width; col++ {
-					state[col] = sBoxCompute(col, round, state)
+					state[col] = sBoxCompute(col, round, state[:])
 				}
-				_, _, _, state = matMulExternalInPlace(state)
+				matMulExternalInPlace(&state)
 				for col := 0; col < width; col++ {
 					intermediateStates[round][col][row] = state[col]
 				}
@@ -279,24 +279,24 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 
 			// internal rounds
 			for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
-				state = addRoundKeyCompute(round-1, state)
+				addRoundKeyCompute(round-1, &state)
 				for col := 0; col < 16; col++ {
-					state[col] = sBoxCompute(col, round, state)
+					state[col] = sBoxCompute(col, round, state[:])
 				}
 				for col := 0; col < 16; col++ {
 					intermediateStates[round][col][row] = state[col]
 				}
-				_, state = matMulInternalInPlace(state)
+				matMulInternalInPlace(&state)
 
 			}
 
 			// external rounds
 			for round := fullRounds - partialRounds; round < fullRounds; round++ {
-				state = addRoundKeyCompute(round-1, state)
+				addRoundKeyCompute(round-1, &state)
 				for col := 0; col < width; col++ {
-					state[col] = sBoxCompute(col, round, state)
+					state[col] = sBoxCompute(col, round, state[:])
 				}
-				_, _, _, state = matMulExternalInPlace(state)
+				matMulExternalInPlace(&state)
 				for col := 0; col < width; col++ {
 					intermediateStates[round][col][row] = state[col]
 				}

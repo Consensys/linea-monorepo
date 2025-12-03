@@ -20,7 +20,7 @@ const (
 // over a given state. This what is run under the hood by the Poseidon2 hash function
 func poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState [blockSize]field.Element) {
 
-	state := make([]field.Element, width)
+	var state [width]field.Element
 	copy(state[:8], oldState[:])
 	copy(state[8:], block[:])
 
@@ -32,56 +32,40 @@ func poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newSta
 	// This function implements the Poseidon2 algorithm from scratch for
 	// verification and clarity.
 
-	var (
-		matMulM4Tmp    = make([][]field.Element, fullRounds) // [fullRounds][matMulM4TmpWidth]field.Element
-		matMulM4       = make([][]field.Element, fullRounds) // [fullRounds][width]field.Element
-		t              = make([][]field.Element, fullRounds) // [fullRounds][tWidth]field.Element
-		matMulExternal = make([][]field.Element, fullRounds) // [fullRounds][width]field.Element
-		addRoundKey    = make([][]field.Element, fullRounds) // [fullRounds][width]field.Element
-		sBox           = make([][]field.Element, fullRounds) // [fullRounds][width]field.Element
-		sBoxSum        = make([]field.Element, fullRounds)
-		matMulInternal = make([][]field.Element, fullRounds) // [fullRounds][width]field.Element
-	)
+	sBoxSum := make([]field.Element, fullRounds)
 
 	// Initial round
-	matMulM4Tmp[0], matMulM4[0], t[0], matMulExternal[0] = matMulExternalInPlace(state)
-	state = matMulExternal[0]
+	matMulExternalInPlace(&state)
 
 	// Rounds 1 - 3
 	// External rounds
 	for round := 1; round < 1+partialRounds; round++ {
-		addRoundKey[round] = addRoundKeyCompute(round-1, state)
-		sBox[round] = make([]field.Element, width)
+		addRoundKeyCompute(round-1, &state)
 		for col := 0; col < width; col++ {
-			sBox[round][col] = sBoxCompute(col, round, addRoundKey[round])
+			state[col] = sBoxCompute(col, round, state[:])
 		}
-		matMulM4Tmp[round], matMulM4[round], t[round], matMulExternal[round] = matMulExternalInPlace(sBox[round])
-		state = matMulExternal[round]
+		matMulExternalInPlace(&state)
 	}
 
 	// Rounds 4 - 24
 	// Internal rounds
 	for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
-		addRoundKey[round] = addRoundKeyCompute(round-1, state)
-		sBox[round] = make([]field.Element, width)
+		addRoundKeyCompute(round-1, &state)
 		for col := 0; col < width; col++ {
-			sBox[round][col] = sBoxCompute(col, round, addRoundKey[round])
+			state[col] = sBoxCompute(col, round, state[:])
 		}
-		sBoxSum[round], matMulInternal[round] = matMulInternalInPlace(sBox[round])
-		state = matMulInternal[round]
+		sBoxSum[round] = matMulInternalInPlace(&state)
 	}
 
 	// Rounds 24 - 27
 	// External rounds
 	for round := fullRounds - partialRounds; round < fullRounds; round++ {
-		addRoundKey[round] = addRoundKeyCompute(round-1, state)
-		sBox[round] = make([]field.Element, width)
+		addRoundKeyCompute(round-1, &state)
 
 		for col := 0; col < width; col++ {
-			sBox[round][col] = sBoxCompute(col, round, addRoundKey[round])
+			state[col] = sBoxCompute(col, round, state[:])
 		}
-		matMulM4Tmp[round], matMulM4[round], t[round], matMulExternal[round] = matMulExternalInPlace(sBox[round])
-		state = matMulExternal[round]
+		matMulExternalInPlace(&state)
 	}
 
 	// Final round
@@ -94,15 +78,14 @@ func poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newSta
 
 // matMulExternalInPlace applies the external matrix multiplication.
 // see https://eprint.iacr.org/2023/323.pdf
-func matMulExternalInPlace(input []field.Element) (matMulM4Tmp []field.Element, matMulM4 []field.Element, t []field.Element, matMulExternal []field.Element) {
+func matMulExternalInPlace(input *[width]field.Element) {
 
 	if len(input) != width {
 		utils.Panic("Input slice length must be %v", width)
 	}
-	matMulM4Tmp = make([]field.Element, matMulM4TmpSize)
-	matMulM4 = make([]field.Element, width)
-	t = make([]field.Element, tSize)
-	matMulExternal = make([]field.Element, width)
+	var matMulM4Tmp [matMulM4TmpSize]field.Element
+	var matMulM4 [width]field.Element
+	var t [tSize]field.Element
 
 	for i := 0; i < 4; i++ {
 		matMulM4Tmp[5*i].Add(&input[4*i], &input[4*i+1])
@@ -124,20 +107,18 @@ func matMulExternalInPlace(input []field.Element) (matMulM4Tmp []field.Element, 
 		t[3].Add(&t[3], &matMulM4[4*i+3])
 	}
 	for i := 0; i < 4; i++ {
-		matMulExternal[4*i].Add(&matMulM4[4*i], &t[0])
-		matMulExternal[4*i+1].Add(&matMulM4[4*i+1], &t[1])
-		matMulExternal[4*i+2].Add(&matMulM4[4*i+2], &t[2])
-		matMulExternal[4*i+3].Add(&matMulM4[4*i+3], &t[3])
+		input[4*i].Add(&matMulM4[4*i], &t[0])
+		input[4*i+1].Add(&matMulM4[4*i+1], &t[1])
+		input[4*i+2].Add(&matMulM4[4*i+2], &t[2])
+		input[4*i+3].Add(&matMulM4[4*i+3], &t[3])
 	}
-	return matMulM4Tmp, matMulM4, t, matMulExternal
 }
 
 // matMulInternal applies the internal matrix multiplication.
-func matMulInternalInPlace(input []field.Element) (sBoxSum field.Element, matMulInternal []field.Element) {
+func matMulInternalInPlace(input *[width]field.Element) (sBoxSum field.Element) {
 	if len(input) != width {
 		utils.Panic("Input slice length must be %v", width)
 	}
-	matMulInternal = make([]field.Element, 16)
 
 	sBoxSum.Set(&input[0])
 	for i := 1; i < width; i++ {
@@ -153,39 +134,37 @@ func matMulInternalInPlace(input []field.Element) (sBoxSum field.Element, matMul
 	halfExp24 := field.NewElement(127) // -127
 
 	var temp field.Element
-	matMulInternal[0].Sub(&sBoxSum, temp.Double(&input[0]))
-	matMulInternal[1].Add(&sBoxSum, &input[1])
-	matMulInternal[2].Add(&sBoxSum, temp.Mul(&input[2], &two))
-	matMulInternal[3].Add(&sBoxSum, temp.Mul(&input[3], &half))
-	matMulInternal[4].Add(&sBoxSum, temp.Double(&input[4]).Add(&temp, &input[4]))
-	matMulInternal[5].Add(&sBoxSum, temp.Double(&input[5]).Double(&temp))
-	matMulInternal[6].Sub(&sBoxSum, temp.Mul(&input[6], &half))
-	matMulInternal[7].Sub(&sBoxSum, temp.Double(&input[7]).Add(&temp, &input[7]))
-	matMulInternal[8].Sub(&sBoxSum, temp.Double(&input[8]).Double(&temp))
-	matMulInternal[9].Add(&sBoxSum, temp.Mul(&input[9], &halfExp8))
-	matMulInternal[10].Add(&sBoxSum, temp.Mul(&input[10], &halfExp3))
-	matMulInternal[11].Sub(&sBoxSum, temp.Mul(&input[11], &halfExp24))
-	matMulInternal[12].Sub(&sBoxSum, temp.Mul(&input[12], &halfExp8))
-	matMulInternal[13].Sub(&sBoxSum, temp.Mul(&input[13], &halfExp3))
-	matMulInternal[14].Sub(&sBoxSum, temp.Mul(&input[14], &halfExp4))
-	matMulInternal[15].Add(&sBoxSum, temp.Mul(&input[15], &halfExp24))
+	input[0].Sub(&sBoxSum, temp.Double(&input[0]))
+	input[1].Add(&sBoxSum, &input[1])
+	input[2].Add(&sBoxSum, temp.Mul(&input[2], &two))
+	input[3].Add(&sBoxSum, temp.Mul(&input[3], &half))
+	input[4].Add(&sBoxSum, temp.Double(&input[4]).Add(&temp, &input[4]))
+	input[5].Add(&sBoxSum, temp.Double(&input[5]).Double(&temp))
+	input[6].Sub(&sBoxSum, temp.Mul(&input[6], &half))
+	input[7].Sub(&sBoxSum, temp.Double(&input[7]).Add(&temp, &input[7]))
+	input[8].Sub(&sBoxSum, temp.Double(&input[8]).Double(&temp))
+	input[9].Add(&sBoxSum, temp.Mul(&input[9], &halfExp8))
+	input[10].Add(&sBoxSum, temp.Mul(&input[10], &halfExp3))
+	input[11].Sub(&sBoxSum, temp.Mul(&input[11], &halfExp24))
+	input[12].Sub(&sBoxSum, temp.Mul(&input[12], &halfExp8))
+	input[13].Sub(&sBoxSum, temp.Mul(&input[13], &halfExp3))
+	input[14].Sub(&sBoxSum, temp.Mul(&input[14], &halfExp4))
+	input[15].Add(&sBoxSum, temp.Mul(&input[15], &halfExp24))
 
-	return sBoxSum, matMulInternal
+	return sBoxSum
 }
 
 // addRoundKey adds the round-th key to the input
-func addRoundKeyCompute(round int, input []field.Element) (addRoundKey []field.Element) {
+func addRoundKeyCompute(round int, input *[width]field.Element) {
 	if len(input) != width {
 		utils.Panic("Input slice length must be %v", width)
 	}
-	addRoundKey = make([]field.Element, width)
 	for i := 0; i < len(gnarkposeidon2.GetDefaultParameters().RoundKeys[round]); i++ {
-		addRoundKey[i].Add(&input[i], &gnarkposeidon2.GetDefaultParameters().RoundKeys[round][i])
+		input[i].Add(&input[i], &gnarkposeidon2.GetDefaultParameters().RoundKeys[round][i])
 	}
 	for i := len(gnarkposeidon2.GetDefaultParameters().RoundKeys[round]); i < width; i++ {
-		addRoundKey[i] = input[i]
+		input[i] = input[i]
 	}
-	return addRoundKey
 }
 
 // SBoxCompute applies the  s-box on input[index]
