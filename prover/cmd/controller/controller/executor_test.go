@@ -374,7 +374,7 @@ func TestExecutorRunLimitless(t *testing.T) {
 		// write script in expected directory; the file name must match the job input regexp
 		target := filepath.Join(c.dir, c.filename)
 		content := fmt.Sprintf("#!/bin/sh\nexit %d\n", c.wantCode)
-		if err := os.WriteFile(target, []byte(content), 0o644); err != nil {
+		if err := os.WriteFile(target, []byte(content), 0o600); err != nil {
 			t.Fatalf("case %d: write script %s: %v", idx, target, err)
 		}
 

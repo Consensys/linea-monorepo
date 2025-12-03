@@ -361,13 +361,13 @@ func createLimitlessInputFile(dir, jobType string, start, end, exitWith int, mod
 		dir = filepath.Join(dir, config.RequestsFromSubDir)
 	}
 
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o600); err != nil {
 		panic(err)
 	}
 
 	full := filepath.Join(dir, fname)
 	content := fmt.Sprintf("#!/bin/sh\nexit %d\n", exitWith)
-	if err := os.WriteFile(full, []byte(content), 0o755); err != nil {
+	if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
 		panic(err)
 	}
 	return fname
