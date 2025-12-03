@@ -78,11 +78,11 @@ const (
 	ACCUMULATOR_IS_READ_ZERO_NAME     ifaces.ColID = "ACCUMULATOR_IS_READ_ZERO"
 	ACCUMULATOR_IS_READ_NON_ZERO_NAME ifaces.ColID = "ACCUMULATOR_IS_READ_NON_ZERO"
 	// Columns for sandwich check
-	ACCUMULATOR_HKEY_NAME       ifaces.ColID = "ACCUMULATOR_HKEY"
+	ACCUMULATOR_HKEY_NAME                 ifaces.ColID = "ACCUMULATOR_HKEY"
 	ACCUMULATOR_HKEY_SANDWITCH_NAME       ifaces.ColID = "ACCUMULATOR_HKEY_SANDWITCH"
-	ACCUMULATOR_HKEY_MINUS_NAME ifaces.ColID = "ACCUMULATOR_HKEY_MINUS"
+	ACCUMULATOR_HKEY_MINUS_NAME           ifaces.ColID = "ACCUMULATOR_HKEY_MINUS"
 	ACCUMULATOR_HKEY_MINUS_SANDWITCH_NAME ifaces.ColID = "ACCUMULATOR_HKEY_MINUS_SANDWITCH"
-	ACCUMULATOR_HKEY_PLUS_NAME  ifaces.ColID = "ACCUMULATOR_HKEY_PLUS"
+	ACCUMULATOR_HKEY_PLUS_NAME            ifaces.ColID = "ACCUMULATOR_HKEY_PLUS"
 	ACCUMULATOR_HKEY_PLUS_SANDWITCH_NAME  ifaces.ColID = "ACCUMULATOR_HKEY_PLUS_SANDWITCH"
 	// Columns for pointer check
 	ACCUMULATOR_LEAF_MINUS_INDEX_NAME   ifaces.ColID = "ACCUMULATOR_LEAF_MINUS_INDEX"
@@ -254,7 +254,7 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 		am.Cols.IntermOneTopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_ONE_TOP_ROOT_NAME, i), am.NumRows(), true)
 		am.Cols.TopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_TOP_ROOT_NAME, i), am.NumRows(), true)
 	}
-	 
+
 	for i := 0; i < common.NbElemForHashingByte32Sandwitch; i++ {
 		am.Cols.HKeySandwitch[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_sandwitch_%d", ACCUMULATOR_HKEY_SANDWITCH_NAME, i), am.NumRows(), true)
 		am.Cols.HKeyMinusSandwitch[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_sandwitch_%d", ACCUMULATOR_HKEY_MINUS_SANDWITCH_NAME, i), am.NumRows(), true)
@@ -640,6 +640,58 @@ func (am *Module) checkSandwitch() {
 	)
 
 	for i := 0; i < common.NbElemPerHash; i++ {
+		// constraint to check that hey, hkeyMinus, hkeyPlus are consistent with hKeySandwitch,
+		// hKeyMinusSandwitch, hKeyPlusSandwitch respectively for INSERT and READ-ZERO operations
+		mulOffset := 1 << 16 // 2^16, since each limb of hkeySandwitch is 16 bits, whereas 32 bits for hkey
+		// HKey are stored in little-endian format
+		expr0_0 := symbolic.Mul(
+			activeRow,
+			symbolic.Sub(
+				cols.HKey[i],
+				symbolic.Add(
+					cols.HKeySandwitch[2*i+1],
+					symbolic.Mul(
+						cols.HKeySandwitch[2*i],
+						field.NewElement(uint64(mulOffset)),
+					),
+				),
+			),
+		)
+		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_SANDWITCH_CONSISTENCY_%d", i), expr0_0)
+		
+		// HKeyMinus are stored in big-endian format
+		expr0_1 := symbolic.Mul(
+			activeRow,
+			symbolic.Sub(
+				cols.HKeyMinus[i],
+				symbolic.Add(
+					cols.HKeyMinusSandwitch[2*i],
+					symbolic.Mul(
+						cols.HKeyMinusSandwitch[2*i+1],
+						field.NewElement(uint64(mulOffset)),
+					),
+				),
+			),
+		)
+		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_MINUS_SANDWITCH_CONSISTENCY_%d", i), expr0_1)
+
+		// HKeyPlus are stored in little-endian format
+		expr0_2 := symbolic.Mul(
+			activeRow,
+			symbolic.Sub(
+				cols.HKeyPlus[i],
+				symbolic.Add(
+					cols.HKeyPlusSandwitch[2*i+1],
+					symbolic.Mul(
+						cols.HKeyPlusSandwitch[2*i],
+						field.NewElement(uint64(mulOffset)),
+					),
+				),
+			),
+		)
+		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_PLUS_SANDWITCH_CONSISTENCY_%d", i), expr0_2)
+
+
 		// INSERT: The HKeyMinus in the leaf minus openings is the same as HKeyMinus column i.e.,
 		// IsActiveAccumulator[i] * IsInsert[i] * IsFirst[i] * (HKeyMinus[i] - LeafOpenings.Hkey[i])
 		expr1 := symbolic.Mul(cols.IsActiveAccumulator,
