@@ -293,6 +293,21 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   /**
+   * Sets the LST liability principal from the YieldManager contract for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} amountGwei - The LST liability principal amount in gwei. Must be non-negative to be recorded.
+   */
+  public setLstLiabilityPrincipalGwei(vaultAddress: Address, amountGwei: number): void {
+    if (amountGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.LstLiabilityPrincipalGwei,
+      { vault_address: vaultAddress },
+      amountGwei,
+    );
+  }
+
+  /**
    * Sets the total pending partial withdrawals in gwei from the last query.
    *
    * @param {number} totalPendingPartialWithdrawalsGwei - The total pending partial withdrawals amount in gwei. Must be non-negative to be recorded.

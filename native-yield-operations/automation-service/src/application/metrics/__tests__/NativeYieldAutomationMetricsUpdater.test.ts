@@ -418,6 +418,32 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     });
   });
 
+  describe("setLstLiabilityPrincipalGwei", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLstLiabilityPrincipalGwei(vaultAddress, 1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LstLiabilityPrincipalGwei,
+        { vault_address: vaultAddress },
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLstLiabilityPrincipalGwei(vaultAddress, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
   describe("setLastTotalPendingPartialWithdrawalsGwei", () => {
     it("sets gauge when value is non-negative", () => {
       const metricsService = createMetricsServiceMock();

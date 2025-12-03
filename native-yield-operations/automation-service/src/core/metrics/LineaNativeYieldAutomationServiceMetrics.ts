@@ -31,6 +31,10 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `vault_address`
   YieldReportedCumulative = "linea_native_yield_automation_service_yield_reported_cumulative",
 
+  // Gauge representing LST liability principal from the YieldManager contract
+  // Single label `vault_address`
+  LstLiabilityPrincipalGwei = "linea_native_yield_automation_service_lst_liability_principal_gwei",
+
   // Gauge representing outstanding negative yield from the last peeked yield report
   // Single label `vault_address`
   LastPeekedNegativeYieldReport = "linea_native_yield_automation_service_last_peeked_negative_yield_report",

@@ -26,6 +26,8 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   setYieldReportedCumulative(vaultAddress: Address, amountGwei: number): void;
 
+  setLstLiabilityPrincipalGwei(vaultAddress: Address, amountGwei: number): void;
+
   setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): void;
 
   setLastTotalValidatorBalanceGwei(totalValidatorBalanceGwei: number): void;

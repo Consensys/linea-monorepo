@@ -196,6 +196,30 @@ describe("GaugeMetricsPoller", () => {
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalledWith(vaultAddress, 1000);
     });
 
+    it("updates LstLiabilityPrincipalGwei gauge", async () => {
+      const lstLiabilityPrincipalWei = 5000n * ONE_GWEI;
+      yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
+        yieldProviderVendor: 0,
+        isStakingPaused: false,
+        isOssificationInitiated: false,
+        isOssified: false,
+        primaryEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        ossifiedEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        yieldProviderIndex: 0n,
+        userFunds: 0n,
+        yieldReportedCumulative: 0n,
+        lstLiabilityPrincipal: lstLiabilityPrincipalWei,
+        lastReportedNegativeYield: 0n,
+      } as YieldProviderData);
+
+      await poller.poll();
+
+      expect(yieldManagerContractClient.getYieldProviderData).toHaveBeenCalledWith(yieldProvider);
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledTimes(1);
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
+      expect(metricsUpdater.setLstLiabilityPrincipalGwei).toHaveBeenCalledWith(vaultAddress, 5000);
+    });
+
     it("updates LastVaultReportTimestamp gauge", async () => {
       const expectedTimestamp = 1704067200n; // Unix timestamp
       vaultHubContractClient.getLatestVaultReportTimestamp.mockResolvedValue(expectedTimestamp);
@@ -322,8 +346,9 @@ describe("GaugeMetricsPoller", () => {
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).not.toHaveBeenCalled();
       expect(metricsUpdater.setLastTotalValidatorBalanceGwei).not.toHaveBeenCalled();
       expect(metricsUpdater.setPendingPartialWithdrawalQueueAmountGwei).not.toHaveBeenCalled();
-      // YieldReportedCumulative and LastVaultReportTimestamp should still be updated
+      // YieldReportedCumulative, LstLiabilityPrincipal, and LastVaultReportTimestamp should still be updated
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalled();
+      expect(metricsUpdater.setLstLiabilityPrincipalGwei).toHaveBeenCalled();
       expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalled();
     });
 
@@ -347,7 +372,7 @@ describe("GaugeMetricsPoller", () => {
       });
     });
 
-    it("handles contract read failure gracefully for YieldReportedCumulative", async () => {
+    it("handles yield provider data fetch failure gracefully", async () => {
       yieldManagerContractClient.getYieldProviderData.mockRejectedValue(new Error("Contract read failed"));
 
       await poller.poll();
@@ -355,10 +380,10 @@ describe("GaugeMetricsPoller", () => {
       // Should not throw, and other metrics should still be updated
       expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
       expect(metricsUpdater.setYieldReportedCumulative).not.toHaveBeenCalled();
-      expect(logger.error).toHaveBeenCalledWith(
-        "Failed to update yield reported cumulative gauge metric",
-        { error: expect.any(Error) },
-      );
+      expect(metricsUpdater.setLstLiabilityPrincipalGwei).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith("Failed to fetch yield provider data", {
+        error: expect.any(Error),
+      });
     });
 
     it("handles contract read failure gracefully for LastVaultReportTimestamp", async () => {
@@ -376,7 +401,7 @@ describe("GaugeMetricsPoller", () => {
       );
     });
 
-    it("updates all five metrics in parallel and fetches vault address only once", async () => {
+    it("updates all six metrics in parallel and fetches vault address only once", async () => {
       const allValidators: ValidatorBalance[] = [
         {
           balance: 32n * ONE_GWEI,
@@ -414,6 +439,7 @@ describe("GaugeMetricsPoller", () => {
       ]);
 
       const yieldReportedCumulativeWei = 500n * ONE_GWEI;
+      const lstLiabilityPrincipalWei = 3000n * ONE_GWEI;
       yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
         yieldProviderVendor: 0,
         isStakingPaused: false,
@@ -424,7 +450,7 @@ describe("GaugeMetricsPoller", () => {
         yieldProviderIndex: 0n,
         userFunds: 0n,
         yieldReportedCumulative: yieldReportedCumulativeWei,
-        lstLiabilityPrincipal: 0n,
+        lstLiabilityPrincipal: lstLiabilityPrincipalWei,
         lastReportedNegativeYield: 0n,
       } as YieldProviderData);
 
@@ -433,13 +459,16 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
-      // Verify vault address is only fetched once, even though it's used by two metrics
+      // Verify vault address and yield provider data are only fetched once, even though they're used by multiple metrics
       expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledTimes(1);
       expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
+      expect(yieldManagerContractClient.getYieldProviderData).toHaveBeenCalledTimes(1);
+      expect(yieldManagerContractClient.getYieldProviderData).toHaveBeenCalledWith(yieldProvider);
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(2);
       expect(metricsUpdater.setPendingPartialWithdrawalQueueAmountGwei).toHaveBeenCalledWith("validator-1", 0, 2);
       expect(metricsUpdater.setLastTotalValidatorBalanceGwei).toHaveBeenCalledWith(Number(32n * ONE_GWEI));
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalledWith(vaultAddress, 500);
+      expect(metricsUpdater.setLstLiabilityPrincipalGwei).toHaveBeenCalledWith(vaultAddress, 3000);
       expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalledWith(vaultAddress, Number(expectedTimestamp));
     });
 
@@ -497,11 +526,15 @@ describe("GaugeMetricsPoller", () => {
 
       // Verify all errors were logged
       // 1. Fetch failure for active validators
-      // 2. Update failure for total pending partial withdrawals (index 0)
-      // 3. Update failure for pending partial withdrawals queue (index 1)
-      // 4. Update failure for yield reported cumulative (index 2)
+      // 2. Fetch failure for yield provider data
+      // 3. Update failure for total pending partial withdrawals (index 0)
+      // 4. Update failure for pending partial withdrawals queue (index 1)
       // 5. Update failure for last vault report timestamp (index 3)
+      // Note: yield provider data metrics are not added to updatePromises when fetch fails
       expect(logger.error).toHaveBeenCalledWith("Failed to fetch active validators", {
+        error: expect.any(Error),
+      });
+      expect(logger.error).toHaveBeenCalledWith("Failed to fetch yield provider data", {
         error: expect.any(Error),
       });
       expect(logger.error).toHaveBeenCalledWith(
@@ -510,10 +543,6 @@ describe("GaugeMetricsPoller", () => {
       );
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update pending partial withdrawals queue gauge metric",
-        { error: expect.any(Error) },
-      );
-      expect(logger.error).toHaveBeenCalledWith(
-        "Failed to update yield reported cumulative gauge metric",
         { error: expect.any(Error) },
       );
       expect(logger.error).toHaveBeenCalledWith(
@@ -539,6 +568,7 @@ describe("GaugeMetricsPoller", () => {
 
       // Verify vault-dependent metrics were not called
       expect(metricsUpdater.setYieldReportedCumulative).not.toHaveBeenCalled();
+      expect(metricsUpdater.setLstLiabilityPrincipalGwei).not.toHaveBeenCalled();
       expect(metricsUpdater.setLastVaultReportTimestamp).not.toHaveBeenCalled();
 
       // Verify other metrics still work
@@ -549,7 +579,7 @@ describe("GaugeMetricsPoller", () => {
       // This test covers the fallback case where index >= metricNames.length
       // We need to simulate a scenario where we have more rejected promises than metric names
       // Since we can't naturally create this, we'll test the logic directly by mocking Promise.allSettled
-      // We now have 5 metrics (indices 0-4), so index 5 will trigger "unknown"
+      // We now have 6 metrics (indices 0-5), so index 6 will trigger "unknown"
       const originalAllSettled = Promise.allSettled;
       const mockAllSettled = jest.fn().mockResolvedValue([
         { status: "rejected" as const, reason: new Error("Error 1") },
@@ -557,7 +587,8 @@ describe("GaugeMetricsPoller", () => {
         { status: "rejected" as const, reason: new Error("Error 3") },
         { status: "rejected" as const, reason: new Error("Error 4") },
         { status: "rejected" as const, reason: new Error("Error 5") },
-        { status: "rejected" as const, reason: new Error("Error 6") }, // Index 5 triggers "unknown"
+        { status: "rejected" as const, reason: new Error("Error 6") },
+        { status: "rejected" as const, reason: new Error("Error 7") }, // Index 6 triggers "unknown"
       ]);
 
       // Temporarily replace Promise.allSettled
@@ -565,7 +596,7 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
-      // Verify that the 6th error uses "unknown" as the metric name
+      // Verify that the 7th error uses "unknown" as the metric name
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update unknown gauge metric",
         { error: expect.any(Error) },

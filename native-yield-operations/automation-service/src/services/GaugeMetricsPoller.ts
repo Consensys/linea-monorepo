@@ -6,7 +6,7 @@ import {
 } from "@consensys/linea-shared-utils";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
-import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
+import { IYieldManager, YieldProviderData } from "../core/clients/contracts/IYieldManager.js";
 import { IVaultHub } from "../core/clients/contracts/IVaultHub.js";
 import { ValidatorBalance } from "../core/entities/ValidatorBalance.js";
 import { Address, Hex, TransactionReceipt } from "viem";
@@ -47,17 +47,19 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    * @returns {Promise<void>} A promise that resolves when gauge metrics are updated.
    */
   async poll(): Promise<void> {
-    // Fetch validator data, pending withdrawals, and vault address in parallel
+    // Fetch validator data, pending withdrawals, vault address, and yield provider data in parallel
     // Use Promise.allSettled to handle failures gracefully
     const fetchResults = await Promise.allSettled([
       this.validatorDataClient.getActiveValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
       this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider),
+      this.yieldManagerContractClient.getYieldProviderData(this.yieldProvider),
     ]);
 
     const allValidators = fetchResults[0].status === "fulfilled" ? fetchResults[0].value : undefined;
     const pendingWithdrawalsQueue = fetchResults[1].status === "fulfilled" ? fetchResults[1].value : undefined;
     const vault = fetchResults[2].status === "fulfilled" ? fetchResults[2].value : undefined;
+    const yieldProviderData = fetchResults[3].status === "fulfilled" ? fetchResults[3].value : undefined;
 
     // Log fetch failures if any
     if (fetchResults[0].status === "rejected") {
@@ -71,6 +73,9 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
         error: fetchResults[2].reason,
       });
     }
+    if (fetchResults[3].status === "rejected") {
+      this.logger.error("Failed to fetch yield provider data", { error: fetchResults[3].reason });
+    }
 
     // Update metrics in parallel for efficiency
     // Use Promise.allSettled to ensure all updates are attempted even if one fails
@@ -82,10 +87,14 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
 
     // Only add vault-dependent metrics if we successfully fetched the vault address
     if (vault !== undefined) {
-      updatePromises.push(
-        this._updateYieldReportedCumulativeGauge(vault),
-        this._updateLastVaultReportTimestampGauge(vault),
-      );
+      updatePromises.push(this._updateLastVaultReportTimestampGauge(vault));
+      // Only add yield provider data metrics if we successfully fetched the data
+      if (yieldProviderData !== undefined) {
+        updatePromises.push(
+          this._updateYieldReportedCumulativeGauge(vault, yieldProviderData),
+          this._updateLstLiabilityPrincipalGauge(vault, yieldProviderData),
+        );
+      }
     }
 
     const results = await Promise.allSettled(updatePromises);
@@ -97,8 +106,9 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
           "total pending partial withdrawals",
           "pending partial withdrawals queue",
           "total validator balance",
-          "yield reported cumulative",
           "last vault report timestamp",
+          "yield reported cumulative",
+          "lst liability principal",
         ];
         const metricName = metricNames[index] || "unknown";
         this.logger.error(`Failed to update ${metricName} gauge metric`, { error: result.reason });
@@ -178,11 +188,25 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    * Updates the cumulative yield reported gauge metric from the YieldManager contract.
    *
    * @param {Address} vault - The vault address to use for the metric.
+   * @param {YieldProviderData} yieldProviderData - The yield provider data from the YieldManager contract.
    * @returns {Promise<void>} A promise that resolves when the gauge is updated.
    */
-  private async _updateYieldReportedCumulativeGauge(vault: Address): Promise<void> {
-    const yieldProviderData = await this.yieldManagerContractClient.getYieldProviderData(this.yieldProvider);
+  private async _updateYieldReportedCumulativeGauge(
+    vault: Address,
+    yieldProviderData: YieldProviderData,
+  ): Promise<void> {
     this.metricsUpdater.setYieldReportedCumulative(vault, weiToGweiNumber(yieldProviderData.yieldReportedCumulative));
+  }
+
+  /**
+   * Updates the LST liability principal gauge metric from the YieldManager contract.
+   *
+   * @param {Address} vault - The vault address to use for the metric.
+   * @param {YieldProviderData} yieldProviderData - The yield provider data from the YieldManager contract.
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated.
+   */
+  private async _updateLstLiabilityPrincipalGauge(vault: Address, yieldProviderData: YieldProviderData): Promise<void> {
+    this.metricsUpdater.setLstLiabilityPrincipalGwei(vault, weiToGweiNumber(yieldProviderData.lstLiabilityPrincipal));
   }
 
   /**
