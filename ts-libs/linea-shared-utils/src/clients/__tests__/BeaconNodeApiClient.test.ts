@@ -35,18 +35,22 @@ describe("BeaconNodeApiClient", () => {
   });
 
   it("fetches and returns pending partial withdrawals", async () => {
-    const responseData: PendingPartialWithdrawal[] = [
+    const rawResponseData = [
+      { validator_index: "42", amount: "1234", withdrawable_epoch: "10" },
+      { validator_index: "43", amount: "5678", withdrawable_epoch: "11" },
+    ];
+    const expectedParsedData: PendingPartialWithdrawal[] = [
       { validator_index: 42, amount: 1234n, withdrawable_epoch: 10 },
       { validator_index: 43, amount: 5678n, withdrawable_epoch: 11 },
     ];
     mockedAxios.get.mockResolvedValue({
-      data: { execution_optimistic: false, finalized: true, data: responseData },
+      data: { execution_optimistic: false, finalized: true, data: rawResponseData },
     });
 
     const result = await client.getPendingPartialWithdrawals();
 
     const expectedUrl = `${rpcURL}/eth/v1/beacon/states/head/pending_partial_withdrawals`;
-    expect(result).toEqual(responseData);
+    expect(result).toEqual(expectedParsedData);
     expect(retryService.retry).toHaveBeenCalledTimes(1);
     expect(retryService.retry.mock.calls[0][0]).toEqual(expect.any(Function));
     expect(mockedAxios.get).toHaveBeenCalledWith(expectedUrl);
@@ -55,10 +59,10 @@ describe("BeaconNodeApiClient", () => {
       `getPendingPartialWithdrawals making GET request to url=${expectedUrl}`,
     );
     expect(logger.info).toHaveBeenCalledWith(
-      `getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=${responseData.length}`,
+      `getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=${expectedParsedData.length}`,
     );
     expect(logger.debug).toHaveBeenNthCalledWith(2, "getPendingPartialWithdrawals return value", {
-      returnVal: responseData,
+      returnVal: expectedParsedData,
     });
     expect(logger.error).not.toHaveBeenCalled();
   });
@@ -96,7 +100,7 @@ describe("BeaconNodeApiClient", () => {
 
     const result = await client.getPendingPartialWithdrawals();
 
-    expect(result).toBeNull();
+    expect(result).toBeUndefined();
     expect(logger.info).toHaveBeenCalledWith(
       `getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=0`,
     );
@@ -106,7 +110,23 @@ describe("BeaconNodeApiClient", () => {
 
   describe("getPendingDeposits", () => {
     it("fetches and returns pending deposits", async () => {
-      const responseData: PendingDeposit[] = [
+      const rawResponseData = [
+        {
+          pubkey: "0x1234",
+          withdrawal_credentials: "0xabcd",
+          amount: "32000000000",
+          signature: "0x5678",
+          slot: "100",
+        },
+        {
+          pubkey: "0x5678",
+          withdrawal_credentials: "0xef01",
+          amount: "32000000000",
+          signature: "0x9abc",
+          slot: "101",
+        },
+      ];
+      const expectedParsedData: PendingDeposit[] = [
         {
           pubkey: "0x1234",
           withdrawal_credentials: "0xabcd",
@@ -123,13 +143,13 @@ describe("BeaconNodeApiClient", () => {
         },
       ];
       mockedAxios.get.mockResolvedValue({
-        data: { execution_optimistic: false, finalized: true, data: responseData },
+        data: { execution_optimistic: false, finalized: true, data: rawResponseData },
       });
 
       const result = await client.getPendingDeposits();
 
       const expectedUrl = `${rpcURL}/eth/v1/beacon/states/head/pending_deposits`;
-      expect(result).toEqual(responseData);
+      expect(result).toEqual(expectedParsedData);
       expect(retryService.retry).toHaveBeenCalledTimes(1);
       expect(retryService.retry.mock.calls[0][0]).toEqual(expect.any(Function));
       expect(mockedAxios.get).toHaveBeenCalledWith(expectedUrl);
@@ -138,10 +158,10 @@ describe("BeaconNodeApiClient", () => {
         `getPendingDeposits making GET request to url=${expectedUrl}`,
       );
       expect(logger.info).toHaveBeenCalledWith(
-        `getPendingDeposits succeeded, pendingDepositCount=${responseData.length}`,
+        `getPendingDeposits succeeded, pendingDepositCount=${expectedParsedData.length}`,
       );
       expect(logger.debug).toHaveBeenNthCalledWith(2, "getPendingDeposits return value", {
-        returnVal: responseData,
+        returnVal: expectedParsedData,
       });
       expect(logger.error).not.toHaveBeenCalled();
     });
@@ -177,7 +197,7 @@ describe("BeaconNodeApiClient", () => {
 
       const result = await client.getPendingDeposits();
 
-      expect(result).toBeNull();
+      expect(result).toBeUndefined();
       expect(logger.info).toHaveBeenCalledWith(`getPendingDeposits succeeded, pendingDepositCount=0`);
       expect(logger.error).not.toHaveBeenCalled();
       expect(logger.debug).toHaveBeenCalledTimes(2);

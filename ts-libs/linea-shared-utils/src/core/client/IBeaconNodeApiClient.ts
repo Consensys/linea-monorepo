@@ -31,3 +31,17 @@ export interface PendingDeposit {
   signature: string;
   slot: number;
 }
+
+export interface RawPendingPartialWithdrawal {
+  validator_index: string;
+  amount: string;
+  withdrawable_epoch: string;
+}
+
+export interface RawPendingDeposit {
+  pubkey: string;
+  withdrawal_credentials: string;
+  amount: string;
+  signature: string;
+  slot: string;
+}
