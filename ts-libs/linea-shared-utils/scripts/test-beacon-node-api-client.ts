@@ -30,6 +30,21 @@ async function main() {
     console.error("BeaconNodeApiClient integration script failed:", err);
     process.exitCode = 1;
   }
+
+  console.log(`Fetching pending deposits from ${rpcUrl}...`);
+  try {
+    const deposits = await client.getPendingDeposits();
+    if (!deposits) {
+      throw "undefined deposits";
+    }
+    console.log(`Received ${deposits.length} deposits.`);
+    deposits.forEach((deposit, index) => {
+      console.log(`Deposit ${index + 1}:`, deposit);
+    });
+  } catch (err) {
+    console.error("BeaconNodeApiClient integration script failed:", err);
+    process.exitCode = 1;
+  }
 }
 
 main();
