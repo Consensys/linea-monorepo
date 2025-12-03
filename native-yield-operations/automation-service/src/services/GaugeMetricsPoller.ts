@@ -9,7 +9,7 @@ import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYie
 import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
 import { IVaultHub } from "../core/clients/contracts/IVaultHub.js";
 import { ValidatorBalance } from "../core/entities/ValidatorBalance.js";
-import { Address, TransactionReceipt } from "viem";
+import { Address, Hex, TransactionReceipt } from "viem";
 import { IGaugeMetricsPoller } from "../core/services/IGaugeMetricsPoller.js";
 
 /**
@@ -75,7 +75,8 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     // Update metrics in parallel for efficiency
     // Use Promise.allSettled to ensure all updates are attempted even if one fails
     const updatePromises: Promise<void>[] = [
-      this._updatePendingPartialWithdrawalsGauge(allValidators, pendingWithdrawalsQueue),
+      this._updateTotalPendingPartialWithdrawalsGauge(allValidators, pendingWithdrawalsQueue),
+      this._updatePendingPartialWithdrawalsQueueGauge(allValidators, pendingWithdrawalsQueue),
     ];
 
     // Only add vault-dependent metrics if we successfully fetched the vault address
@@ -91,7 +92,12 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     // Log any failures
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        const metricNames = ["pending partial withdrawals", "yield reported cumulative", "last vault report timestamp"];
+        const metricNames = [
+          "total pending partial withdrawals",
+          "pending partial withdrawals queue",
+          "yield reported cumulative",
+          "last vault report timestamp",
+        ];
         const metricName = metricNames[index] || "unknown";
         this.logger.error(`Failed to update ${metricName} gauge metric`, { error: result.reason });
       }
@@ -106,7 +112,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    * @param {PendingPartialWithdrawal[] | undefined} pendingWithdrawalsQueue - Array of pending partial withdrawals, or undefined.
    * @returns {Promise<void>} A promise that resolves when the gauge is updated (or silently returns if validator data is unavailable).
    */
-  private async _updatePendingPartialWithdrawalsGauge(
+  private async _updateTotalPendingPartialWithdrawalsGauge(
     allValidators: ValidatorBalance[] | undefined,
     pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
   ): Promise<void> {
@@ -120,6 +126,36 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     const totalPendingPartialWithdrawalsWei =
       this.validatorDataClient.getTotalPendingPartialWithdrawalsWei(joinedValidatorList);
     this.metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei(weiToGweiNumber(totalPendingPartialWithdrawalsWei));
+  }
+
+  /**
+   * Updates the per-validator pending partial withdrawal queue gauge metrics.
+   * Filters and aggregates pending withdrawals by validator_index and withdrawable_epoch,
+   * then updates metrics for each aggregated withdrawal.
+   *
+   * @param {ValidatorBalance[] | undefined} allValidators - Array of active validators, or undefined.
+   * @param {PendingPartialWithdrawal[] | undefined} pendingWithdrawalsQueue - Array of pending partial withdrawals, or undefined.
+   * @returns {Promise<void>} A promise that resolves when the gauges are updated (or silently returns if validator data is unavailable).
+   */
+  private async _updatePendingPartialWithdrawalsQueueGauge(
+    allValidators: ValidatorBalance[] | undefined,
+    pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
+  ): Promise<void> {
+    const aggregatedWithdrawals = this.validatorDataClient.getFilteredAndAggregatedPendingWithdrawals(
+      allValidators,
+      pendingWithdrawalsQueue,
+    );
+    if (aggregatedWithdrawals === undefined) {
+      return;
+    }
+    for (const withdrawal of aggregatedWithdrawals) {
+      const amountGwei = Number(withdrawal.amount);
+      this.metricsUpdater.setPendingPartialWithdrawalQueueAmountGwei(
+        withdrawal.pubkey as Hex,
+        withdrawal.withdrawable_epoch,
+        amountGwei,
+      );
+    }
   }
 
   /**
