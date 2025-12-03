@@ -373,6 +373,7 @@ func TestFileWatcherDist(t *testing.T) {
 		writeContent []byte
 	}
 
+	//nolint:prealloc
 	var cases []testcase
 
 	// bootstrap
