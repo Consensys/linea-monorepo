@@ -20,7 +20,7 @@ import (
 )
 
 func initEmptyCodeHash() [][]byte {
-	emptyCodeHashBytes := statemanager.EmptyCodeHash(statemanager.POSEIDON2_CONFIG)
+	emptyCodeHashBytes := statemanager.EmptyCodeHash()
 	return common.SplitBytes(emptyCodeHashBytes[:])
 }
 

@@ -132,8 +132,6 @@ type merkleTestCaseInstance struct {
 // and is implemented like a writer.
 type merkleTestBuilder struct {
 	proofs             []smt_koalabear.Proof
-	pos                []field.Element
-	proofs             []smt.Proof
 	pos                [limbPerU64][]field.Element
 	roots              [blockSize][]field.Element
 	leaves             [blockSize][]field.Element

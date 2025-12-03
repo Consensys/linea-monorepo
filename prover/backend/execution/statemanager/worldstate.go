@@ -4,20 +4,13 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 const WS_LOCATION = "0x"
-
-var POSEIDON2_CONFIG = &smt.Config{
-	HashFunc: poseidon2.Poseidon2,
-	Depth:    40,
-}
 
 // Legacy keccak code hash of an empty account
 // 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470

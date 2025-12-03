@@ -3,6 +3,7 @@ package accumulator
 import (
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
@@ -67,7 +68,7 @@ func TestAssignInsert(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	traceInsert := acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 
 	pushInsertionRows(builder, traceInsert)
@@ -111,7 +112,7 @@ func TestAssignUpdate(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 	traceUpdate := acc.UpdateAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x20"))
 	pushUpdateRows(builder, traceUpdate)
@@ -149,7 +150,7 @@ func TestAssignDelete(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 	traceDelete := acc.DeleteAndProve(types.FullBytes32FromHex("0x32"))
 	pushDeletionRows(builder, traceDelete)
@@ -191,7 +192,7 @@ func TestAssignReadZero(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	traceReadZero := acc.ReadZeroAndProve(types.FullBytes32FromHex("0x32"))
 	pushReadZeroRows(builder, traceReadZero)
 
@@ -228,7 +229,7 @@ func TestAssignReadNonZero(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 	traceReadNonZero := acc.ReadNonZeroAndProve(types.FullBytes32FromHex("0x32"))
 	pushReadNonZeroRows(builder, traceReadNonZero)
@@ -258,7 +259,7 @@ func assertCorrectMerkleProof(t *testing.T, builder *assignmentBuilder) {
 	for i, proof := range proofs {
 		leaf := field.Octuplet(getLimbsFromRow(builder.leaves[:], i))
 		root := field.Octuplet(getLimbsFromRow(builder.roots[:], i))
-		assert.Equal(t, true, proof.Verify(statemanager.POSEIDON2_CONFIG, leaf, root))
+		assert.Equal(t, true, smt_koalabear.Verify(&proof, leaf, root))
 	}
 }
 

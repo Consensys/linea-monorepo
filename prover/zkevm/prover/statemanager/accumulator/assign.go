@@ -6,11 +6,12 @@ import (
 	"io"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
+	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -57,7 +58,7 @@ type assignmentBuilder struct {
 	roots [common.NbElemPerHash][]field.Element
 	// proofs stores the path and siblings of the merkle proof. Those siblings corresponds
 	// to the [Accumulator.Cols.Proofs] column.
-	proofs []smt.Proof
+	proofs []smt_koalabear.Proof
 	// useNextMerkleProof is assigned starting from 1, then 0, followed by 0 and so on in each row of INSERT,
 	// UPDATE and DELETE. For READZERO and READNONZERO it is set to 0 for each row
 	useNextMerkleProof []field.Element
@@ -174,7 +175,7 @@ func newAssignmentBuilder(s Settings) *assignmentBuilder {
 		amb.leafOpening.next[i] = make([]field.Element, 0, amb.NumRows())
 	}
 
-	amb.proofs = make([]smt.Proof, 0, amb.NumRows())
+	amb.proofs = make([]smt_koalabear.Proof, 0, amb.NumRows())
 	amb.useNextMerkleProof = make([]field.Element, 0, amb.NumRows())
 	amb.isActive = make([]field.Element, 0, amb.NumRows())
 	amb.isFirst = make([]field.Element, 0, amb.NumRows())
@@ -389,7 +390,7 @@ func (am *Module) assignTopRootCols(
 func (a *assignmentBuilder) pushRow(
 	leafOpening accumulator.LeafOpening,
 	root types.Bytes32,
-	proof smt.Proof,
+	proof smt_koalabear.Proof,
 	nextFreeNode int,
 	isFirst bool,
 	isInsert bool,
@@ -1202,14 +1203,14 @@ func pushReadNonZeroRows[K, V io.WriterTo](
 
 // Generic hashing for object satisfying the io.WriterTo interface
 func hash[T io.WriterTo](m T) types.Bytes32 {
-	hasher := statemanager.POSEIDON2_CONFIG.HashFunc()
+	hasher := poseidon2.NewMDHasher()
 	m.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
 	return types.AsBytes32(Bytes32)
 }
 
 // Function to compute the root of a Merkle tree given proof and the leaf
-func computeRoot(leaf types.Bytes32, proof smt.Proof) types.Bytes32 {
+func computeRoot(leaf types.Bytes32, proof smt_koalabear.Proof) types.Bytes32 {
 	current := leaf
 	idx := proof.Path
 
@@ -1218,7 +1219,7 @@ func computeRoot(leaf types.Bytes32, proof smt.Proof) types.Bytes32 {
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = hashLR(statemanager.POSEIDON2_CONFIG, left, right)
+		current = hashLR(left, right)
 		idx >>= 1
 	}
 
@@ -1231,8 +1232,8 @@ func computeRoot(leaf types.Bytes32, proof smt.Proof) types.Bytes32 {
 }
 
 // Function to compute the hash given the left and the right node
-func hashLR(conf *smt.Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
-	hasher := conf.HashFunc()
+func hashLR(nodeL, nodeR types.Bytes32) types.Bytes32 {
+	hasher := poseidon2.NewMDHasher()
 	nodeL.WriteTo(hasher)
 	nodeR.WriteTo(hasher)
 	d := types.AsBytes32(hasher.Sum(nil))

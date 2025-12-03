@@ -43,7 +43,7 @@ func accumulatorTestingModule(maxNumProofs int) (
 func TestShomei(t *testing.T) {
 	// Generate trace file for insert
 	decodedTrace := make([]statemanager.DecodedTrace, 0, 10)
-	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	traceInsert := acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 	insertDecodedTrace := statemanager.DecodedTrace{
 		Location:   "this is the first trace",
