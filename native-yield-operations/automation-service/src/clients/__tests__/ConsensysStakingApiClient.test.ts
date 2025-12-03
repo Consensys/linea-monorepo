@@ -522,6 +522,119 @@ describe("ConsensysStakingApiClient", () => {
     });
   });
 
+  describe("getTotalValidatorBalanceGwei", () => {
+    it("returns undefined when input is undefined", () => {
+      const { client, logger } = createClient();
+
+      const result = client.getTotalValidatorBalanceGwei(undefined);
+
+      expect(result).toBeUndefined();
+      expect(logger.info).not.toHaveBeenCalled();
+    });
+
+    it("returns undefined when input is empty array", () => {
+      const { client, logger } = createClient();
+
+      const result = client.getTotalValidatorBalanceGwei([]);
+
+      expect(result).toBeUndefined();
+      expect(logger.info).not.toHaveBeenCalled();
+    });
+
+    it("correctly sums balances from multiple validators and logs it", () => {
+      const { client, logger } = createClient();
+      const validators: ValidatorBalance[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+        },
+        {
+          balance: 40n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+        },
+        {
+          balance: 35n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-3",
+          validatorIndex: 3n,
+        },
+      ];
+
+      const totalGwei = client.getTotalValidatorBalanceGwei(validators);
+
+      expect(totalGwei).toBe(107n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalValidatorBalanceGwei totalGwei=107000000000");
+    });
+
+    it("handles single validator case", () => {
+      const { client, logger } = createClient();
+      const validators: ValidatorBalance[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+        },
+      ];
+
+      const totalGwei = client.getTotalValidatorBalanceGwei(validators);
+
+      expect(totalGwei).toBe(32n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalValidatorBalanceGwei totalGwei=32000000000");
+    });
+
+    it("handles large bigint values correctly", () => {
+      const { client, logger } = createClient();
+      const largeBalance = 1000000n * ONE_GWEI;
+      const validators: ValidatorBalance[] = [
+        {
+          balance: largeBalance,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+        },
+        {
+          balance: largeBalance,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+        },
+      ];
+
+      const totalGwei = client.getTotalValidatorBalanceGwei(validators);
+
+      expect(totalGwei).toBe(2000000n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalValidatorBalanceGwei totalGwei=2000000000000000");
+    });
+
+    it("handles validators with zero balance", () => {
+      const { client, logger } = createClient();
+      const validators: ValidatorBalance[] = [
+        {
+          balance: 0n,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+        },
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+        },
+      ];
+
+      const totalGwei = client.getTotalValidatorBalanceGwei(validators);
+
+      expect(totalGwei).toBe(32n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalValidatorBalanceGwei totalGwei=32000000000");
+    });
+  });
+
   describe("getFilteredAndAggregatedPendingWithdrawals", () => {
     it("returns undefined and logs warning when validators are undefined", () => {
       const { client, logger } = createClient();

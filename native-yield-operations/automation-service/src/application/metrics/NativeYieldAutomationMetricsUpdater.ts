@@ -307,6 +307,20 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   /**
+   * Sets the total validator balance in gwei from the last query.
+   *
+   * @param {number} totalValidatorBalanceGwei - The total validator balance amount in gwei. Must be non-negative to be recorded.
+   */
+  public setLastTotalValidatorBalanceGwei(totalValidatorBalanceGwei: number): void {
+    if (totalValidatorBalanceGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalValidatorBalanceGwei,
+      {},
+      totalValidatorBalanceGwei,
+    );
+  }
+
+  /**
    * Sets the pending partial withdrawal queue amount in gwei for a specific validator and withdrawable epoch.
    *
    * @param {Hex} pubkey - The validator's public key in hex format.

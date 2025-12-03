@@ -47,6 +47,7 @@ describe("GaugeMetricsPoller", () => {
     validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue([]);
     validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(0n);
     validatorDataClient.getFilteredAndAggregatedPendingWithdrawals.mockReturnValue([]);
+    validatorDataClient.getTotalValidatorBalanceGwei.mockReturnValue(undefined);
     yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
       yieldProviderVendor: 0,
       isStakingPaused: false,
@@ -121,6 +122,54 @@ describe("GaugeMetricsPoller", () => {
       );
       expect(validatorDataClient.getTotalPendingPartialWithdrawalsWei).toHaveBeenCalledWith(joinedValidators);
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(4);
+    });
+
+    it("updates LastTotalValidatorBalanceGwei gauge", async () => {
+      const allValidators: ValidatorBalance[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+        },
+        {
+          balance: 40n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+        },
+      ];
+
+      validatorDataClient.getActiveValidators.mockResolvedValue(allValidators);
+      validatorDataClient.getTotalValidatorBalanceGwei.mockReturnValue(72n * ONE_GWEI);
+
+      await poller.poll();
+
+      expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
+      expect(validatorDataClient.getTotalValidatorBalanceGwei).toHaveBeenCalledWith(allValidators);
+      expect(metricsUpdater.setLastTotalValidatorBalanceGwei).toHaveBeenCalledWith(Number(72n * ONE_GWEI));
+    });
+
+    it("handles undefined validator list gracefully for total validator balance", async () => {
+      validatorDataClient.getActiveValidators.mockResolvedValue(undefined);
+      validatorDataClient.getTotalValidatorBalanceGwei.mockReturnValue(undefined);
+
+      await poller.poll();
+
+      expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
+      expect(validatorDataClient.getTotalValidatorBalanceGwei).toHaveBeenCalledWith(undefined);
+      expect(metricsUpdater.setLastTotalValidatorBalanceGwei).not.toHaveBeenCalled();
+    });
+
+    it("handles empty validator array gracefully for total validator balance", async () => {
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
+      validatorDataClient.getTotalValidatorBalanceGwei.mockReturnValue(undefined);
+
+      await poller.poll();
+
+      expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
+      expect(validatorDataClient.getTotalValidatorBalanceGwei).toHaveBeenCalledWith([]);
+      expect(metricsUpdater.setLastTotalValidatorBalanceGwei).not.toHaveBeenCalled();
     });
 
     it("updates YieldReportedCumulative gauge", async () => {
@@ -269,7 +318,9 @@ describe("GaugeMetricsPoller", () => {
       expect(validatorDataClient.joinValidatorsWithPendingWithdrawals).toHaveBeenCalled();
       expect(validatorDataClient.getFilteredAndAggregatedPendingWithdrawals).toHaveBeenCalled();
       expect(validatorDataClient.getTotalPendingPartialWithdrawalsWei).not.toHaveBeenCalled();
+      expect(validatorDataClient.getTotalValidatorBalanceGwei).toHaveBeenCalledWith(undefined);
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).not.toHaveBeenCalled();
+      expect(metricsUpdater.setLastTotalValidatorBalanceGwei).not.toHaveBeenCalled();
       expect(metricsUpdater.setPendingPartialWithdrawalQueueAmountGwei).not.toHaveBeenCalled();
       // YieldReportedCumulative and LastVaultReportTimestamp should still be updated
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalled();
@@ -288,6 +339,7 @@ describe("GaugeMetricsPoller", () => {
       // Should not throw, and other metrics should still be updated
       expect(yieldManagerContractClient.getYieldProviderData).toHaveBeenCalled();
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).not.toHaveBeenCalled();
+      expect(metricsUpdater.setLastTotalValidatorBalanceGwei).not.toHaveBeenCalled();
       expect(metricsUpdater.setPendingPartialWithdrawalQueueAmountGwei).not.toHaveBeenCalled();
       // Fetch failure is logged at fetch time
       expect(logger.error).toHaveBeenCalledWith("Failed to fetch active validators", {
@@ -324,11 +376,11 @@ describe("GaugeMetricsPoller", () => {
       );
     });
 
-    it("updates all four metrics in parallel and fetches vault address only once", async () => {
+    it("updates all five metrics in parallel and fetches vault address only once", async () => {
       const allValidators: ValidatorBalance[] = [
         {
-          balance: 32n,
-          effectiveBalance: 32n,
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-1",
           validatorIndex: 1n,
         },
@@ -338,8 +390,8 @@ describe("GaugeMetricsPoller", () => {
 
       const joinedValidators: ValidatorBalanceWithPendingWithdrawal[] = [
         {
-          balance: 32n,
-          effectiveBalance: 32n,
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-1",
           validatorIndex: 1n,
           pendingWithdrawalAmount: 2n * ONE_GWEI,
@@ -351,6 +403,7 @@ describe("GaugeMetricsPoller", () => {
       beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue(pendingWithdrawalsQueue);
       validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue(joinedValidators);
       validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(2n * ONE_GWEI);
+      validatorDataClient.getTotalValidatorBalanceGwei.mockReturnValue(32n * ONE_GWEI);
       validatorDataClient.getFilteredAndAggregatedPendingWithdrawals.mockReturnValue([
         {
           validator_index: 1,
@@ -385,6 +438,7 @@ describe("GaugeMetricsPoller", () => {
       expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalledWith(2);
       expect(metricsUpdater.setPendingPartialWithdrawalQueueAmountGwei).toHaveBeenCalledWith("validator-1", 0, 2);
+      expect(metricsUpdater.setLastTotalValidatorBalanceGwei).toHaveBeenCalledWith(Number(32n * ONE_GWEI));
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalledWith(vaultAddress, 500);
       expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalledWith(vaultAddress, Number(expectedTimestamp));
     });
@@ -495,13 +549,15 @@ describe("GaugeMetricsPoller", () => {
       // This test covers the fallback case where index >= metricNames.length
       // We need to simulate a scenario where we have more rejected promises than metric names
       // Since we can't naturally create this, we'll test the logic directly by mocking Promise.allSettled
+      // We now have 5 metrics (indices 0-4), so index 5 will trigger "unknown"
       const originalAllSettled = Promise.allSettled;
       const mockAllSettled = jest.fn().mockResolvedValue([
         { status: "rejected" as const, reason: new Error("Error 1") },
         { status: "rejected" as const, reason: new Error("Error 2") },
         { status: "rejected" as const, reason: new Error("Error 3") },
         { status: "rejected" as const, reason: new Error("Error 4") },
-        { status: "rejected" as const, reason: new Error("Error 5") }, // Index 4 triggers "unknown"
+        { status: "rejected" as const, reason: new Error("Error 5") },
+        { status: "rejected" as const, reason: new Error("Error 6") }, // Index 5 triggers "unknown"
       ]);
 
       // Temporarily replace Promise.allSettled
@@ -509,7 +565,7 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
-      // Verify that the 5th error uses "unknown" as the metric name
+      // Verify that the 6th error uses "unknown" as the metric name
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update unknown gauge metric",
         { error: expect.any(Error) },

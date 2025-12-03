@@ -77,6 +77,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     const updatePromises: Promise<void>[] = [
       this._updateTotalPendingPartialWithdrawalsGauge(allValidators, pendingWithdrawalsQueue),
       this._updatePendingPartialWithdrawalsQueueGauge(allValidators, pendingWithdrawalsQueue),
+      this._updateTotalValidatorBalanceGauge(allValidators),
     ];
 
     // Only add vault-dependent metrics if we successfully fetched the vault address
@@ -95,6 +96,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
         const metricNames = [
           "total pending partial withdrawals",
           "pending partial withdrawals queue",
+          "total validator balance",
           "yield reported cumulative",
           "last vault report timestamp",
         ];
@@ -156,6 +158,20 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
         amountGwei,
       );
     }
+  }
+
+  /**
+   * Updates the total validator balance gauge metric.
+   *
+   * @param {ValidatorBalance[] | undefined} allValidators - Array of active validators, or undefined.
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated (or silently returns if validator data is unavailable).
+   */
+  private async _updateTotalValidatorBalanceGauge(allValidators: ValidatorBalance[] | undefined): Promise<void> {
+    const totalValidatorBalanceGwei = this.validatorDataClient.getTotalValidatorBalanceGwei(allValidators);
+    if (totalValidatorBalanceGwei === undefined) {
+      return;
+    }
+    this.metricsUpdater.setLastTotalValidatorBalanceGwei(Number(totalValidatorBalanceGwei));
   }
 
   /**

@@ -444,6 +444,32 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     });
   });
 
+  describe("setLastTotalValidatorBalanceGwei", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalValidatorBalanceGwei(1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalValidatorBalanceGwei,
+        {},
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalValidatorBalanceGwei(-1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
   describe("setPendingPartialWithdrawalQueueAmountGwei", () => {
     it("sets gauge when amount and epoch are non-negative", () => {
       const metricsService = createMetricsServiceMock();

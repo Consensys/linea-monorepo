@@ -280,4 +280,20 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     this.logger.info(`getTotalPendingPartialWithdrawalsWei totalWei=${totalWei}`);
     return totalWei;
   }
+
+  /**
+   * Calculates the total balance across all validators in gwei.
+   * Aggregates the balance field from all ValidatorBalance elements.
+   *
+   * @param {ValidatorBalance[] | undefined} validators - Array of validators, or undefined.
+   * @returns {bigint | undefined} Total validator balance in gwei, or undefined if input is undefined or empty.
+   */
+  getTotalValidatorBalanceGwei(validators: ValidatorBalance[] | undefined): bigint | undefined {
+    if (validators === undefined || validators.length === 0) {
+      return undefined;
+    }
+    const totalGwei = validators.reduce((acc, v) => acc + v.balance, 0n);
+    this.logger.info(`getTotalValidatorBalanceGwei totalGwei=${totalGwei}`);
+    return totalGwei;
+  }
 }
