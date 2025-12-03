@@ -141,12 +141,20 @@ func runController(ctx context.Context, cfg *config.Config) {
 			state.setActiveJob(job)
 
 			// Rm any prev. transient failure files and other intermediate files - relevant only for Limitless jobs
-			if err := state.preCleanForLimitlessJob(cfg); err != nil {
+			if err := state.preCleanForLimitlessJob(cfg, cLog); err != nil {
+				cLog.Error(err)
 				state.clearActiveJob()
 				jobCancel()
 				state.clearCurrentJobCancel()
-				// Assumed to be unreachable path
-				utils.Panic("error during precleaning files for limitless jobs:%v", err)
+				continue
+			}
+
+			if err := state.preCheckForLimitlessJob(cfg, cLog); err != nil {
+				cLog.Error(err)
+				state.clearActiveJob()
+				jobCancel()
+				state.clearCurrentJobCancel()
+				continue
 			}
 
 			// If a shared-failure marker exists for this job, skip it and cleanup
@@ -155,7 +163,6 @@ func runController(ctx context.Context, cfg *config.Config) {
 				state.clearActiveJob()
 				jobCancel()
 				state.clearCurrentJobCancel()
-				numRetrySoFar = 0
 				continue
 			}
 
@@ -485,7 +492,7 @@ func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logr
 		sharedFailPath     = filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFailFileName)
 	)
 
-	if err := os.WriteFile(sharedFailPath, []byte{}, 0o600); err != nil {
+	if err := os.WriteFile(sharedFailPath, []byte{}, 0600); err != nil {
 		cLog.Errorf("%s could not create failure marker %s: %v", fLocalID, sharedFailPath, err)
 		return err
 	} else {
@@ -495,47 +502,73 @@ func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logr
 	return nil
 }
 
-func (st *ControllerState) preCleanForLimitlessJob(cfg *config.Config) error {
+// preCleanForLimitlessJob: clean up any transient failure files for limitless jobs
+// Only the Bootstrap job can preCleanForLimitlessJob
+func (st *ControllerState) preCleanForLimitlessJob(cfg *config.Config, cLog *logrus.Entry) error {
 
 	job := st.getActiveJob()
 	if job == nil {
 		return nil
 	}
 
-	// Relevant only for limitless jobs (excl. conglomeration - final stage does not write any transient failure file)
-	if !isExecLimitlessJob(job) || job.Def.Name == jobNameConglomeration {
+	// Relevant only for bootstrap job
+	if !(job.Def.Name == jobNameBootstrap) {
 		return nil
 	}
 
 	// Remove any transient failure files if present at the start before executing
 	// the job to remove stale failure files and prevent false-negatives
-	sharedFilePattern := fmt.Sprintf("%d-%d-*-failure_code*", job.Start, job.End)
 
-	exists, err := files.RemoveMatchingFiles(filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFilePattern), true)
+	var (
+		sharedFilePattern = fmt.Sprintf("%d-%d-*-failure_code*", job.Start, job.End)
+		exists, err       = files.RemoveMatchingFiles(filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFilePattern), true)
+	)
 
-	// If failure files indeed exist, we need to enforce limitless specific job logic to remove dangling files
+	// If failure files indeed exist, we need to enforce limitless specific job logic to
+	// clean up any  dangling tmp artifact files removed here (not inside the child process)
+	// and, before the start of the next job
+	// If not, then for example, dangling witness files could have already been picked
+	// up by other active workers.
 	if exists {
-		switch {
+		// Get all possible dir paths where all tmp artificats for the job can be created
+		var (
+			rmPattern   = fmt.Sprintf("%d-%d-*", job.Start, job.End)
+			cleanupDirs = []string{metadataReqDir, metadataDoneDir, randomnessReqDir, randomnessDoneDir}
+		)
 
-		case job.Def.Name == jobNameBootstrap:
-			// Prev. Bootstrapper dangling witness files needs to be removed here before the start of the job
-			// and not inside the child process. This is because dangling witness files could have already been picked
-			// up by other active workers.
-
-			// Get all possible dir paths where witness files can be created
-			var (
-				witnessPattern = fmt.Sprintf("%d-%d-*", job.Start, job.End)
-				cleanupDirs    = append(witnessReqDirs, witnessDoneDirs...)
-			)
-
-			for _, dir := range cleanupDirs {
-				_, err := files.RemoveMatchingFiles(filepath.Join(dir, witnessPattern), true)
-				if err != nil {
-					return fmt.Errorf("error removing dangling witness pattern in prev. interrupted bootstrap job:%v", err)
-				}
+		cleanupDirs = append(witnessReqDirs, witnessDoneDirs...)
+		cleanupDirs = append(cleanupDirs, subproofReqDirs...)
+		cleanupDirs = append(cleanupDirs, subproofDoneDirs...)
+		for _, dir := range cleanupDirs {
+			_, err := files.RemoveMatchingFiles(filepath.Join(dir, rmPattern), true)
+			if err != nil {
+				return fmt.Errorf("error removing dangling witness pattern in prev. interrupted bootstrap job:%v", err)
 			}
 		}
 	}
+
+	cLog.Infof("pre-cleaned all tmp artifacts for job:%s conflation:%v-%v", job.Def.Name, job.Start, job.End)
+	return err
+}
+
+func (st *ControllerState) preCheckForLimitlessJob(cfg *config.Config, cLog *logrus.Entry) error {
+	job := st.getActiveJob()
+	if job == nil {
+		return nil
+	}
+
+	if !isExecLimitlessJob(job) || job.Def.Name == jobNameBootstrap {
+		return nil
+	}
+
+	pattern := fmt.Sprintf("%d-%d-*", job.Start, job.End)
+	// For worker or conglomeration jobs - check if the original execution request file still exists in the request/ dir
+	exists, err := files.HasWildcardMatch(cfg.Execution.DirFrom(), pattern)
+	if !exists {
+		return fmt.Errorf("could not find original execution request file in request dir %s for conflation:%d-%d during job:%s", cfg.Execution.DirFrom(), job.Start, job.End, job.Def.Name)
+	}
+
+	cLog.Infof("Validated preCheck conditions for limitless job: %s are met before starting", job.Def.Name)
 	return err
 }
 
@@ -563,13 +596,13 @@ func (st *ControllerState) shouldSkipDueToSharedFail(cfg *config.Config, cLog *l
 	}
 
 	// Check if any marker belongs to this job’s own type (e.g. bootstrap)
-	for _, m := range matches {
-		base := filepath.Base(m)
-		if strings.Contains(base, fmt.Sprintf("-%s-failure_code", job.Def.Name)) {
-			cLog.Infof("Job %s matches its own failure marker (%s); proceeding to handle cleanup", job.OriginalFile, base)
-			return false // allow execution
-		}
-	}
+	// for _, m := range matches {
+	// 	base := filepath.Base(m)
+	// 	if strings.Contains(base, fmt.Sprintf("-%s-failure_code", job.Def.Name)) {
+	// 		cLog.Infof("Job %s matches its own failure marker (%s); proceeding to handle cleanup", job.OriginalFile, base)
+	// 		return false // allow execution
+	// 	}
+	// }
 
 	// Otherwise skip since another job already marked this range failed
 	cLog.Warnf("Skipping job %s because shared failure marker exists: %v", job.OriginalFile, matches)
