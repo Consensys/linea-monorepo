@@ -58,6 +58,7 @@ describe("GaugeMetricsPoller", () => {
       userFunds: 0n,
       yieldReportedCumulative: 0n,
       lstLiabilityPrincipal: 0n,
+      lastReportedNegativeYield: 0n,
     } as YieldProviderData);
     yieldManagerContractClient.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
     vaultHubContractClient.getLatestVaultReportTimestamp.mockResolvedValue(0n);
@@ -135,6 +136,7 @@ describe("GaugeMetricsPoller", () => {
         userFunds: 0n,
         yieldReportedCumulative: yieldReportedCumulativeWei,
         lstLiabilityPrincipal: 0n,
+        lastReportedNegativeYield: 0n,
       } as YieldProviderData);
 
       await poller.poll();
@@ -370,6 +372,7 @@ describe("GaugeMetricsPoller", () => {
         userFunds: 0n,
         yieldReportedCumulative: yieldReportedCumulativeWei,
         lstLiabilityPrincipal: 0n,
+        lastReportedNegativeYield: 0n,
       } as YieldProviderData);
 
       const expectedTimestamp = 1704067200n;
@@ -409,6 +412,7 @@ describe("GaugeMetricsPoller", () => {
         userFunds: 0n,
         yieldReportedCumulative: yieldReportedCumulativeWei,
         lstLiabilityPrincipal: 0n,
+        lastReportedNegativeYield: 0n,
       } as YieldProviderData);
 
       const expectedTimestamp = 1704067200n;

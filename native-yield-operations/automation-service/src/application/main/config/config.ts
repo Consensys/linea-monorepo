@@ -17,7 +17,7 @@ import { transports } from "winston";
  *   - rebalanceToleranceBps: Rebalance tolerance in basis points
  *   - maxValidatorWithdrawalRequestsPerTransaction: Maximum withdrawal requests per transaction
  *   - minWithdrawalThresholdEth: Minimum withdrawal threshold in ETH
- *   - reporting: Reporting configuration including shouldSubmitVaultReport, minPositiveYieldToReportWei, and minUnpaidLidoProtocolFeesToReportYieldWei
+ *   - reporting: Reporting configuration including shouldSubmitVaultReport, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei, and minNegativeYieldDiffToReportYieldWei
  *   - web3signer: Web3Signer URL, public key (address or secp pubkey compressed/uncompressed), keystore, truststore, and TLS settings
  *   - loggerOptions: Winston logger configuration with console transport and log level from LOG_LEVEL env var (defaults to "info")
  */
@@ -62,6 +62,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
     shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,
     minPositiveYieldToReportWei: env.MIN_POSITIVE_YIELD_TO_REPORT_WEI,
     minUnpaidLidoProtocolFeesToReportYieldWei: env.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI,
+    minNegativeYieldDiffToReportYieldWei: env.MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI,
   },
   web3signer: {
     url: env.WEB3SIGNER_URL,

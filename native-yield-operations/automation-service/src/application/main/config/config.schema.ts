@@ -112,6 +112,15 @@ export const configSchema = z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+    /** Minimum difference between peeked negative yield and on-state negative yield (in wei) required before triggering a yield report.
+     * Yield reporting will proceed if this threshold OR MIN_POSITIVE_YIELD_TO_REPORT_WEI OR MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI is met.
+     * The difference is calculated as: peekedNegativeYield - onStateNegativeYield.
+     * This prevents gas-inefficient transactions for very small negative yield changes.
+     */
+    MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     /** Rebalance tolerance in basis points (1 bps = 0.01%, max 10000 bps = 100%).
      * Used to calculate tolerance band for rebalancing decisions.
      * The tolerance band is calculated as: `(totalSystemBalance * REBALANCE_TOLERANCE_BPS) / 10000`.

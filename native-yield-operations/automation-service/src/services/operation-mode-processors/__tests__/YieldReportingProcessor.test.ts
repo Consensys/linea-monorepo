@@ -96,6 +96,7 @@ describe("YieldReportingProcessor", () => {
       safeAddToWithdrawalReserveIfAboveThreshold: jest.fn(),
       reportYield: jest.fn(),
       peekYieldReport: jest.fn(),
+      getYieldProviderData: jest.fn(),
     } as unknown as jest.Mocked<IYieldManager<TransactionReceipt>>;
 
     lazyOracle = {
@@ -144,6 +145,7 @@ describe("YieldReportingProcessor", () => {
     shouldSubmitVaultReport: boolean = true,
     minPositiveYieldToReportWei: bigint = 1000000000000000000n,
     minUnpaidLidoProtocolFeesToReportYieldWei: bigint = 500000000000000000n,
+    minNegativeYieldDiffToReportYieldWei: bigint = 1000000000000000000n,
   ) =>
     new YieldReportingProcessor(
       logger,
@@ -160,6 +162,7 @@ describe("YieldReportingProcessor", () => {
       shouldSubmitVaultReport,
       minPositiveYieldToReportWei,
       minUnpaidLidoProtocolFeesToReportYieldWei,
+      minNegativeYieldDiffToReportYieldWei,
     );
 
   it("_process - processes staking surplus flow and records metrics", async () => {
@@ -662,9 +665,23 @@ describe("YieldReportingProcessor", () => {
   describe("_shouldReportYield", () => {
     const minPositiveYieldToReportWei = 1000000000000000000n;
     const minUnpaidLidoProtocolFeesToReportYieldWei = 500000000000000000n;
+    const minNegativeYieldDiffToReportYieldWei = 1000000000000000000n;
 
     beforeEach(() => {
-      // No setup needed for vaultHubClient
+      // Default mock for getYieldProviderData - can be overridden in individual tests
+      yieldManager.getYieldProviderData.mockResolvedValue({
+        yieldProviderVendor: 0,
+        isStakingPaused: false,
+        isOssificationInitiated: false,
+        isOssified: false,
+        primaryEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        ossifiedEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        yieldProviderIndex: 0n,
+        userFunds: 0n,
+        yieldReportedCumulative: 0n,
+        lstLiabilityPrincipal: 0n,
+        lastReportedNegativeYield: 0n,
+      });
     });
 
     it("returns true when both thresholds are met", async () => {
@@ -679,7 +696,12 @@ describe("YieldReportingProcessor", () => {
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
       yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      const processor = createProcessor(
+        true,
+        minPositiveYieldToReportWei,
+        minUnpaidLidoProtocolFeesToReportYieldWei,
+        minNegativeYieldDiffToReportYieldWei,
+      );
       // Set vault property by calling getLidoStakingVaultAddress
       await yieldManager.getLidoStakingVaultAddress(yieldProvider);
       // Set vault directly for testing
@@ -690,6 +712,7 @@ describe("YieldReportingProcessor", () => {
       expect(vaultHubClient.settleableLidoFeesValue).toHaveBeenCalledWith(vaultAddress);
       expect(vaultHubClient.settleableLidoFeesValue).toHaveBeenCalledTimes(1);
       expect(yieldManager.peekYieldReport).toHaveBeenCalledWith(yieldProvider, l2Recipient);
+      expect(yieldManager.getYieldProviderData).toHaveBeenCalledWith(yieldProvider);
       expect(logger.info).toHaveBeenCalledWith(
         expect.stringContaining("_shouldReportYield - shouldReportYield=true, settleableLidoFees="),
       );
@@ -706,7 +729,12 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      const processor = createProcessor(
+        true,
+        minPositiveYieldToReportWei,
+        minUnpaidLidoProtocolFeesToReportYieldWei,
+        minNegativeYieldDiffToReportYieldWei,
+      );
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(true);
@@ -723,10 +751,92 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      const processor = createProcessor(
+        true,
+        minPositiveYieldToReportWei,
+        minUnpaidLidoProtocolFeesToReportYieldWei,
+        minNegativeYieldDiffToReportYieldWei,
+      );
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(true);
+    });
+
+    it("returns true when only negative yield diff threshold is met", async () => {
+      const unpaidFees = 300000000000000000n; // below threshold
+      const onStateNegativeYield = 1000000000000000000n; // 1 ETH
+      const peekedNegativeYield = 2500000000000000000n; // 2.5 ETH
+      // negativeYieldDiff = peekedNegativeYield - onStateNegativeYield = 1.5 ETH, above threshold
+      const yieldReport: YieldReport = {
+        yieldAmount: 500000000000000000n, // below threshold
+        outstandingNegativeYield: peekedNegativeYield,
+        yieldProvider,
+      };
+
+      vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
+      yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
+      yieldManager.getYieldProviderData.mockResolvedValue({
+        yieldProviderVendor: 0,
+        isStakingPaused: false,
+        isOssificationInitiated: false,
+        isOssified: false,
+        primaryEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        ossifiedEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        yieldProviderIndex: 0n,
+        userFunds: 0n,
+        yieldReportedCumulative: 0n,
+        lstLiabilityPrincipal: 0n,
+        lastReportedNegativeYield: onStateNegativeYield,
+      });
+
+      const processor = createProcessor(
+        true,
+        minPositiveYieldToReportWei,
+        minUnpaidLidoProtocolFeesToReportYieldWei,
+        minNegativeYieldDiffToReportYieldWei,
+      );
+      const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
+
+      expect(result).toBe(true);
+      expect(yieldManager.getYieldProviderData).toHaveBeenCalledWith(yieldProvider);
+    });
+
+    it("returns false when negative yield diff is below threshold", async () => {
+      const unpaidFees = 300000000000000000n; // below threshold
+      const onStateNegativeYield = 1000000000000000000n; // 1 ETH
+      const peekedNegativeYield = 1500000000000000000n; // 1.5 ETH
+      // negativeYieldDiff = peekedNegativeYield - onStateNegativeYield = 0.5 ETH, below threshold
+      const yieldReport: YieldReport = {
+        yieldAmount: 500000000000000000n, // below threshold
+        outstandingNegativeYield: peekedNegativeYield,
+        yieldProvider,
+      };
+
+      vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
+      yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
+      yieldManager.getYieldProviderData.mockResolvedValue({
+        yieldProviderVendor: 0,
+        isStakingPaused: false,
+        isOssificationInitiated: false,
+        isOssified: false,
+        primaryEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        ossifiedEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        yieldProviderIndex: 0n,
+        userFunds: 0n,
+        yieldReportedCumulative: 0n,
+        lstLiabilityPrincipal: 0n,
+        lastReportedNegativeYield: onStateNegativeYield,
+      });
+
+      const processor = createProcessor(
+        true,
+        minPositiveYieldToReportWei,
+        minUnpaidLidoProtocolFeesToReportYieldWei,
+        minNegativeYieldDiffToReportYieldWei,
+      );
+      const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
+
+      expect(result).toBe(false);
     });
 
     it("returns false when neither threshold is met", async () => {
@@ -740,7 +850,12 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      const processor = createProcessor(
+        true,
+        minPositiveYieldToReportWei,
+        minUnpaidLidoProtocolFeesToReportYieldWei,
+        minNegativeYieldDiffToReportYieldWei,
+      );
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(false);
@@ -752,7 +867,12 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(undefined);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      const processor = createProcessor(
+        true,
+        minPositiveYieldToReportWei,
+        minUnpaidLidoProtocolFeesToReportYieldWei,
+        minNegativeYieldDiffToReportYieldWei,
+      );
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(false);

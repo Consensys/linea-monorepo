@@ -71,6 +71,7 @@ describe("YieldManagerContractClient", () => {
     userFunds: 0n,
     yieldReportedCumulative: 0n,
     lstLiabilityPrincipal: 0n,
+    lastReportedNegativeYield: 0n,
   };
 
   const buildReceipt = (logs: Array<{ address: string; data: string; topics: string[] }>): TransactionReceipt =>

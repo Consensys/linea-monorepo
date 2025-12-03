@@ -233,6 +233,7 @@ export class NativeYieldAutomationServiceBootstrap {
       config.reporting.shouldSubmitVaultReport,
       config.reporting.minPositiveYieldToReportWei,
       config.reporting.minUnpaidLidoProtocolFeesToReportYieldWei,
+      config.reporting.minNegativeYieldDiffToReportYieldWei,
     );
 
     this.ossificationPendingOperationModeProcessor = new OssificationPendingProcessor(

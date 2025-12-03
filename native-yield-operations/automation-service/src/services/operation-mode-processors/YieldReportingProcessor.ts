@@ -36,6 +36,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @param {boolean} shouldSubmitVaultReport - Whether to submit the vault accounting report. Can be set to false if other actors are expected to submit.
    * @param {bigint} minPositiveYieldToReportWei - Minimum positive yield amount (in wei) required before triggering a yield report.
    * @param {bigint} minUnpaidLidoProtocolFeesToReportYieldWei - Minimum unpaid Lido protocol fees amount (in wei) required before triggering a fee settlement.
+   * @param {bigint} minNegativeYieldDiffToReportYieldWei - Minimum difference between peeked negative yield and on-state negative yield (in wei) required before triggering a yield report.
    */
   constructor(
     private readonly logger: ILogger,
@@ -52,6 +53,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly shouldSubmitVaultReport: boolean,
     private readonly minPositiveYieldToReportWei: bigint,
     private readonly minUnpaidLidoProtocolFeesToReportYieldWei: bigint,
+    private readonly minNegativeYieldDiffToReportYieldWei: bigint,
   ) {}
 
   /**
@@ -308,21 +310,23 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
   /**
    * Determines whether yield should be reported based on configurable thresholds.
-   * Checks both the yield amount and unpaid Lido protocol fees against their respective thresholds.
-   * Returns true if either threshold is met or exceeded.
+   * Checks the yield amount, unpaid Lido protocol fees, and negative yield difference against their respective thresholds.
+   * Returns true if any threshold is met or exceeded.
    * Sets gauge metrics for peeked values when reads are successful.
    *
-   * @returns {Promise<boolean>} True if yield should be reported (either threshold met), false otherwise.
+   * @returns {Promise<boolean>} True if yield should be reported (any threshold met), false otherwise.
    */
   async _shouldReportYield(): Promise<boolean> {
-    // Use Promise.all to concurrently fetch both values
-    const [settleableLidoFees, yieldReport] = await Promise.all([
+    // Use Promise.all to concurrently fetch values
+    const [settleableLidoFees, yieldReport, yieldProviderData] = await Promise.all([
       this.vaultHubContractClient.settleableLidoFeesValue(this.vault),
       this.yieldManagerContractClient.peekYieldReport(this.yieldProvider, this.l2YieldRecipient),
+      this.yieldManagerContractClient.getYieldProviderData(this.yieldProvider),
     ]);
 
     let yieldThresholdMet = false;
     let feesThresholdMet = false;
+    let negativeYieldDiffThresholdMet = false;
 
     if (yieldReport !== undefined) {
       const outstandingNegativeYield = yieldReport?.outstandingNegativeYield;
@@ -330,6 +334,13 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       this.metricsUpdater.setLastPeekedNegativeYieldReport(this.vault, weiToGweiNumber(outstandingNegativeYield));
       this.metricsUpdater.setLastPeekedPositiveYieldReport(this.vault, weiToGweiNumber(yieldAmount));
       yieldThresholdMet = yieldAmount >= this.minPositiveYieldToReportWei;
+
+      // Check negative yield difference threshold
+      if (yieldProviderData !== undefined) {
+        const onStateNegativeYield = yieldProviderData.lastReportedNegativeYield;
+        const negativeYieldDiff = outstandingNegativeYield - onStateNegativeYield;
+        negativeYieldDiffThresholdMet = negativeYieldDiff >= this.minNegativeYieldDiffToReportYieldWei;
+      }
     }
 
     if (settleableLidoFees !== undefined) {
@@ -337,14 +348,20 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       feesThresholdMet = settleableLidoFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
     }
 
-    const shouldReportYield = feesThresholdMet || yieldThresholdMet;
+    const shouldReportYield = feesThresholdMet || yieldThresholdMet || negativeYieldDiffThresholdMet;
 
-    // Log both results
+    // Log results
+    const onStateNegativeYield = yieldProviderData?.lastReportedNegativeYield;
+    const peekedNegativeYield = yieldReport?.outstandingNegativeYield;
+    const negativeYieldDiff =
+      peekedNegativeYield !== undefined && onStateNegativeYield !== undefined
+        ? peekedNegativeYield - onStateNegativeYield
+        : undefined;
     this.logger.info(
-      `_shouldReportYield - shouldReportYield=${shouldReportYield}, settleableLidoFees=${JSON.stringify(settleableLidoFees, bigintReplacer)}, yieldReport=${JSON.stringify(yieldReport, bigintReplacer)}`,
+      `_shouldReportYield - shouldReportYield=${shouldReportYield}, settleableLidoFees=${JSON.stringify(settleableLidoFees, bigintReplacer)}, yieldReport=${JSON.stringify(yieldReport, bigintReplacer)}, onStateNegativeYield=${JSON.stringify(onStateNegativeYield, bigintReplacer)}, negativeYieldDiff=${JSON.stringify(negativeYieldDiff, bigintReplacer)}`,
     );
 
-    // Return true if either threshold is met
+    // Return true if any threshold is met
     return shouldReportYield;
   }
 }

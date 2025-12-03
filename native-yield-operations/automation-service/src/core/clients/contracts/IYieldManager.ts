@@ -53,4 +53,5 @@ export interface YieldProviderData {
   userFunds: bigint; // uint256
   yieldReportedCumulative: bigint; // uint256
   lstLiabilityPrincipal: bigint; // uint256
+  lastReportedNegativeYield: bigint; // uint256
 }
