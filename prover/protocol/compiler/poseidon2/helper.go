@@ -16,6 +16,8 @@ const (
 	tSize           = 4
 )
 
+// TODO @YaoJGalteland @gbotrel why is this not using directly gnark-crypto's Poseidon2 implementation?
+
 // poseidon2BlockCompression applies the Poseidon2 block compression function to a given block
 // over a given state. This what is run under the hood by the Poseidon2 hash function
 func poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newState [blockSize]field.Element) {

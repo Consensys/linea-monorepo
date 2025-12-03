@@ -272,13 +272,14 @@ func _ldeOfExt(v []fext.Element, sizeSmall, sizeLarge int) {
 }
 
 func getPositionOfPolyInQueryYs(q query.UnivariateEval, poly ifaces.Column) int {
-
+	// TODO @gbotrel this appears on the traces quite a lot -- lot of string comparisons
+	toFind := poly.GetColID()
 	for i, p := range q.Pols {
-		if p.GetColID() == poly.GetColID() {
+		if p.GetColID() == toFind {
 			return i
 		}
 	}
 
-	utils.Panic("not found, poly=%v in query=%v", poly.GetColID(), q.Name())
+	utils.Panic("not found, poly=%v in query=%v", toFind, q.Name())
 	return 0
 }

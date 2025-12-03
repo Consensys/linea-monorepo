@@ -176,34 +176,53 @@ func (e *Expression) AssertValid() {
 func (e *Expression) Replay(translationMap collection.Mapping[string, *Expression]) (res *Expression) {
 
 	switch op := e.Operator.(type) {
-	// Constant
 	case Constant:
-		return NewConstant(op.Val)
-	// Variable
+		return e
 	case Variable:
-		res := translationMap.MustGet(op.Metadata.String())
+		res, ok := translationMap.TryGet(op.Metadata.String())
+		if !ok {
+			return e // return itself if not found
+		}
 		return res
-	// LinCombExt
 	case LinComb:
 		children := make([]*Expression, len(e.Children))
+		allSame := true
 		for i, c := range e.Children {
 			children[i] = c.Replay(translationMap)
+			if children[i] != c {
+				allSame = false
+			}
+		}
+		if allSame {
+			return e // return itself if all children are the same
 		}
 		res := NewLinComb(children, op.Coeffs)
 		return res
-	// ProductExt
 	case Product:
 		children := make([]*Expression, len(e.Children))
+		allSame := true
 		for i, c := range e.Children {
 			children[i] = c.Replay(translationMap)
+			if children[i] != c {
+				allSame = false
+			}
+		}
+		if allSame {
+			return e // return itself if all children are the same
 		}
 		res := NewProduct(children, op.Exponents)
 		return res
-	// LinearCombinationExt
 	case PolyEval:
 		children := make([]*Expression, len(e.Children))
+		allSame := true
 		for i, c := range e.Children {
 			children[i] = c.Replay(translationMap)
+			if children[i] != c {
+				allSame = false
+			}
+		}
+		if allSame {
+			return e // return itself if all children are the same
 		}
 		res := NewPolyEval(children[0], children[1:])
 		return res
