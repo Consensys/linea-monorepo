@@ -233,7 +233,7 @@ func (st *ControllerState) requeueJob(cfg *config.Config, cLog *logrus.Entry) {
 		if err := os.Rename(oldFile, newFile); err != nil {
 			cLog.Errorf("Failed to rename %v → %v: %v", oldFile, newFile, err)
 		} else {
-			cLog.Infof("Successfully replaced %s suffix with suffix:%s for conflation %d-%d", config.InProgressSufix, config.BootstrapPartialSucessSuffix, job.Start, job.End)
+			cLog.Infof("Successfully renamed %v to %v", oldFile, newFile)
 		}
 	}
 	st.clearActiveJob()
