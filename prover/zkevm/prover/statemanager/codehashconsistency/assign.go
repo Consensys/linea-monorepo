@@ -3,7 +3,7 @@ package codehashconsistency
 import (
 	"slices"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"

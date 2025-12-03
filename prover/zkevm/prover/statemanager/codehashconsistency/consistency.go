@@ -4,7 +4,7 @@
 package codehashconsistency
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
