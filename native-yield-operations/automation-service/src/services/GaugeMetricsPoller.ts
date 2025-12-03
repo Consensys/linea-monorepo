@@ -10,7 +10,7 @@ import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { IYieldManager, YieldProviderData } from "../core/clients/contracts/IYieldManager.js";
 import { IVaultHub } from "../core/clients/contracts/IVaultHub.js";
-import { ValidatorBalance } from "../core/entities/ValidatorBalance.js";
+import { ExitingValidator, ValidatorBalance } from "../core/entities/ValidatorBalance.js";
 import { Address, Hex, TransactionReceipt } from "viem";
 import { IGaugeMetricsPoller } from "../core/services/IGaugeMetricsPoller.js";
 
@@ -62,8 +62,6 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
 
     const allValidators = fetchResults[0].status === "fulfilled" ? fetchResults[0].value : undefined;
     const exitingValidators = fetchResults[1].status === "fulfilled" ? fetchResults[1].value : undefined;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    void exitingValidators; // TODO: Use exitingValidators for metrics in future update
     const pendingWithdrawalsQueue = fetchResults[2].status === "fulfilled" ? fetchResults[2].value : undefined;
     const pendingDeposits = fetchResults[3].status === "fulfilled" ? fetchResults[3].value : undefined;
     const vault = fetchResults[4].status === "fulfilled" ? fetchResults[4].value : undefined;
@@ -97,6 +95,8 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
       this._updateTotalPendingPartialWithdrawalsGauge(allValidators, pendingWithdrawalsQueue),
       this._updatePendingPartialWithdrawalsQueueGauge(allValidators, pendingWithdrawalsQueue),
       this._updateTotalValidatorBalanceGauge(allValidators),
+      this._updatePendingExitQueueAmountGwei(exitingValidators),
+      this._updateLastTotalPendingExitGwei(exitingValidators),
     ];
 
     // Only add vault-dependent metrics if we successfully fetched the vault address
@@ -122,6 +122,8 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
           "total pending partial withdrawals",
           "pending partial withdrawals queue",
           "total validator balance",
+          "pending exit queue",
+          "total pending exit",
           "last vault report timestamp",
           "pending deposits queue",
           "total pending deposits",
@@ -296,5 +298,43 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     const totalAmount = matchingDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
     // amount is already in gwei (as number)
     this.metricsUpdater.setLastTotalPendingDepositGwei(totalAmount);
+  }
+
+  /**
+   * Updates the per-validator pending exit queue gauge metrics.
+   * Iterates through exiting validators and updates metrics for each validator.
+   *
+   * @param {ExitingValidator[] | undefined} exitingValidators - Array of exiting validators, or undefined.
+   * @returns {Promise<void>} A promise that resolves when the gauges are updated (or returns early with a warning if validator data is unavailable).
+   */
+  private async _updatePendingExitQueueAmountGwei(exitingValidators: ExitingValidator[] | undefined): Promise<void> {
+    if (exitingValidators === undefined || exitingValidators.length === 0) {
+      this.logger.warn("Skipping pending exit queue gauge update: exiting validators data unavailable or empty");
+      return;
+    }
+    for (const validator of exitingValidators) {
+      const amountGwei = Number(validator.balance);
+      this.metricsUpdater.setPendingExitQueueAmountGwei(
+        validator.publicKey as Hex,
+        validator.exitEpoch,
+        amountGwei,
+        validator.slashed,
+      );
+    }
+  }
+
+  /**
+   * Updates the total pending exit amount gauge metric.
+   *
+   * @param {ExitingValidator[] | undefined} exitingValidators - Array of exiting validators, or undefined.
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated (or returns early with a warning if validator data is unavailable).
+   */
+  private async _updateLastTotalPendingExitGwei(exitingValidators: ExitingValidator[] | undefined): Promise<void> {
+    const totalPendingExitGwei = this.validatorDataClient.getTotalBalanceOfExitingValidators(exitingValidators);
+    if (totalPendingExitGwei === undefined) {
+      this.logger.warn("Skipping total pending exit gauge update: total balance unavailable");
+      return;
+    }
+    this.metricsUpdater.setLastTotalPendingExitGwei(Number(totalPendingExitGwei));
   }
 }

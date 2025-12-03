@@ -4,7 +4,7 @@ import type { IValidatorDataClient } from "../../core/clients/IValidatorDataClie
 import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
-import type { ValidatorBalanceWithPendingWithdrawal, ValidatorBalance } from "../../core/entities/ValidatorBalance.js";
+import type { ExitingValidator, ValidatorBalanceWithPendingWithdrawal, ValidatorBalance } from "../../core/entities/ValidatorBalance.js";
 import type { TransactionReceipt, Address } from "viem";
 import { ONE_GWEI } from "@consensys/linea-shared-utils";
 import { GaugeMetricsPoller } from "../GaugeMetricsPoller.js";
@@ -50,6 +50,7 @@ describe("GaugeMetricsPoller", () => {
     validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(0n);
     validatorDataClient.getFilteredAndAggregatedPendingWithdrawals.mockReturnValue([]);
     validatorDataClient.getTotalValidatorBalanceGwei.mockReturnValue(undefined);
+    validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(undefined);
     yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
       yieldProviderVendor: 0,
       isStakingPaused: false,
@@ -778,7 +779,7 @@ describe("GaugeMetricsPoller", () => {
       // This test covers the fallback case where index >= metricNames.length
       // We need to simulate a scenario where we have more rejected promises than metric names
       // Since we can't naturally create this, we'll test the logic directly by mocking Promise.allSettled
-      // We now have 8 metrics (indices 0-7), so index 8 will trigger "unknown"
+      // We now have 10 metrics (indices 0-9), so index 10 will trigger "unknown"
       const originalAllSettled = Promise.allSettled;
       
       // Mock Promise.allSettled to return different values for fetch (first call) and update (second call)
@@ -811,7 +812,7 @@ describe("GaugeMetricsPoller", () => {
             },
           ]);
         }
-        // Second call: update promises (9 promises to trigger index 8 = "unknown")
+        // Second call: update promises (11 promises to trigger index 10 = "unknown")
         return Promise.resolve([
           { status: "rejected" as const, reason: new Error("Error 1") },
           { status: "rejected" as const, reason: new Error("Error 2") },
@@ -821,7 +822,9 @@ describe("GaugeMetricsPoller", () => {
           { status: "rejected" as const, reason: new Error("Error 6") },
           { status: "rejected" as const, reason: new Error("Error 7") },
           { status: "rejected" as const, reason: new Error("Error 8") },
-          { status: "rejected" as const, reason: new Error("Error 9") }, // Index 8 triggers "unknown"
+          { status: "rejected" as const, reason: new Error("Error 9") },
+          { status: "rejected" as const, reason: new Error("Error 10") },
+          { status: "rejected" as const, reason: new Error("Error 11") }, // Index 10 triggers "unknown"
         ]);
       });
 
@@ -830,7 +833,7 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
-      // Verify that the 9th error (index 8) uses "unknown" as the metric name
+      // Verify that the 11th error (index 10) uses "unknown" as the metric name
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update unknown gauge metric",
         { error: expect.any(Error) },
@@ -838,6 +841,240 @@ describe("GaugeMetricsPoller", () => {
 
       // Restore original Promise.allSettled
       (global as any).Promise.allSettled = originalAllSettled;
+    });
+  });
+
+  describe("_updatePendingExitQueueAmountGwei", () => {
+    it("updates PendingExitQueueAmountGwei gauge for each exiting validator", async () => {
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const exitingValidators: ExitingValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+        {
+          balance: 40n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator2",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+      ];
+
+      validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setPendingExitQueueAmountGwei).toHaveBeenCalledTimes(2);
+      expect(metricsUpdater.setPendingExitQueueAmountGwei).toHaveBeenCalledWith(
+        "0xvalidator1",
+        100,
+        32000000000,
+        false,
+      );
+      expect(metricsUpdater.setPendingExitQueueAmountGwei).toHaveBeenCalledWith(
+        "0xvalidator2",
+        150,
+        40000000000,
+        true,
+      );
+    });
+
+    it("handles undefined exitingValidators with warning", async () => {
+      validatorDataClient.getExitingValidators.mockResolvedValue(undefined);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setPendingExitQueueAmountGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "Skipping pending exit queue gauge update: exiting validators data unavailable or empty",
+      );
+    });
+
+    it("handles empty exitingValidators array with warning", async () => {
+      validatorDataClient.getExitingValidators.mockResolvedValue([]);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setPendingExitQueueAmountGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "Skipping pending exit queue gauge update: exiting validators data unavailable or empty",
+      );
+    });
+
+    it("converts balance bigint to number correctly", async () => {
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const exitingValidators: ExitingValidator[] = [
+        {
+          balance: 35n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setPendingExitQueueAmountGwei).toHaveBeenCalledWith(
+        "0xvalidator1",
+        100,
+        35000000000,
+        false,
+      );
+    });
+
+    it("passes slashed boolean correctly", async () => {
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const exitingValidators: ExitingValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator-slashed",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator-normal",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setPendingExitQueueAmountGwei).toHaveBeenCalledWith(
+        "0xvalidator-slashed",
+        100,
+        32000000000,
+        true,
+      );
+      expect(metricsUpdater.setPendingExitQueueAmountGwei).toHaveBeenCalledWith(
+        "0xvalidator-normal",
+        150,
+        32000000000,
+        false,
+      );
+    });
+  });
+
+  describe("_updateLastTotalPendingExitGwei", () => {
+    it("updates LastTotalPendingExitGwei gauge with total balance", async () => {
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const exitingValidators: ExitingValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+        {
+          balance: 40n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator2",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+      ];
+
+      validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(72n * ONE_GWEI);
+
+      await poller.poll();
+
+      expect(validatorDataClient.getTotalBalanceOfExitingValidators).toHaveBeenCalledWith(exitingValidators);
+      expect(metricsUpdater.setLastTotalPendingExitGwei).toHaveBeenCalledWith(72000000000);
+    });
+
+    it("handles undefined result with warning", async () => {
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const exitingValidators: ExitingValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(undefined);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setLastTotalPendingExitGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total pending exit gauge update: total balance unavailable");
+    });
+
+    it("converts bigint to number correctly", async () => {
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const exitingValidators: ExitingValidator[] = [
+        {
+          balance: 35n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(35n * ONE_GWEI);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setLastTotalPendingExitGwei).toHaveBeenCalledWith(35000000000);
+    });
+
+    it("handles undefined exitingValidators with warning", async () => {
+      validatorDataClient.getExitingValidators.mockResolvedValue(undefined);
+      validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(undefined);
+
+      await poller.poll();
+
+      expect(validatorDataClient.getTotalBalanceOfExitingValidators).toHaveBeenCalledWith(undefined);
+      expect(metricsUpdater.setLastTotalPendingExitGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total pending exit gauge update: total balance unavailable");
+    });
+
+    it("handles empty exitingValidators array with warning", async () => {
+      validatorDataClient.getExitingValidators.mockResolvedValue([]);
+      validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(undefined);
+
+      await poller.poll();
+
+      expect(validatorDataClient.getTotalBalanceOfExitingValidators).toHaveBeenCalledWith([]);
+      expect(metricsUpdater.setLastTotalPendingExitGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total pending exit gauge update: total balance unavailable");
     });
   });
 });

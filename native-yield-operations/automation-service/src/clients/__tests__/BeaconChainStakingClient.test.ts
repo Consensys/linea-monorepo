@@ -46,6 +46,8 @@ const createMetricsUpdaterMock = () => {
     setLastTotalPendingDepositGwei: jest.fn(),
     setPendingPartialWithdrawalQueueAmountGwei: jest.fn(),
     setPendingDepositQueueAmountGwei: jest.fn(),
+    setPendingExitQueueAmountGwei: jest.fn(),
+    setLastTotalPendingExitGwei: jest.fn(),
     addNodeOperatorFeesPaid: jest.fn(),
     addLiabilitiesPaid: jest.fn(),
     addLidoFeesPaid: jest.fn(),
@@ -84,6 +86,9 @@ const createValidatorDataClientMock = () => {
   const getTotalValidatorBalanceGwei = jest
     .fn<(validators: ValidatorBalance[] | undefined) => bigint | undefined>()
     .mockReturnValue(undefined);
+  const getTotalBalanceOfExitingValidators = jest
+    .fn<(validators: ExitingValidator[] | undefined) => bigint | undefined>()
+    .mockReturnValue(undefined);
 
   const client: IValidatorDataClient = {
     getActiveValidators,
@@ -93,6 +98,7 @@ const createValidatorDataClientMock = () => {
     getFilteredAndAggregatedPendingWithdrawals,
     getTotalPendingPartialWithdrawalsWei,
     getTotalValidatorBalanceGwei,
+    getTotalBalanceOfExitingValidators,
   };
 
   return {
@@ -104,6 +110,7 @@ const createValidatorDataClientMock = () => {
     getFilteredAndAggregatedPendingWithdrawals,
     getTotalPendingPartialWithdrawalsWei,
     getTotalValidatorBalanceGwei,
+    getTotalBalanceOfExitingValidators,
   };
 };
 

@@ -20,4 +20,5 @@ export interface IValidatorDataClient {
   ): AggregatedPendingWithdrawal[] | undefined;
   getTotalPendingPartialWithdrawalsWei(validatorList: ValidatorBalanceWithPendingWithdrawal[]): bigint;
   getTotalValidatorBalanceGwei(validators: ValidatorBalance[] | undefined): bigint | undefined;
+  getTotalBalanceOfExitingValidators(validators: ExitingValidator[] | undefined): bigint | undefined;
 }
