@@ -515,12 +515,17 @@ func (a *assignmentBuilder) pushRow(
 	a.isActive = append(a.isActive, field.One())
 
 	// if Sandwitch check is disabled then we append zero values to
-	// hKey, hKeyPlus, hKeyMinus
+	// hKey, hKeyPlus, hKeyMinus, hkeySandwitch, hKeyPlusSandwitch, hKeyMinusSandwitch
 	if !isSandwitchEnabled {
 		for i := range a.hKey {
 			a.hKey[i] = append(a.hKey[i], field.Zero())
 			a.hKeyMinus[i] = append(a.hKeyMinus[i], field.Zero())
 			a.hKeyPlus[i] = append(a.hKeyPlus[i], field.Zero())
+		}
+		for i := range a.hKeySandwitch {
+			a.hKeySandwitch[i] = append(a.hKeySandwitch[i], field.Zero())
+			a.hKeyMinusSandwitch[i] = append(a.hKeyMinusSandwitch[i], field.Zero())
+			a.hKeyPlusSandwitch[i] = append(a.hKeyPlusSandwitch[i], field.Zero())
 		}
 	}
 
@@ -707,13 +712,21 @@ func pushInsertionRows[K, V io.WriterTo](
 	hKey := hash(trace.Key)
 
 	hKeyFrLimbs := divideFieldBytesToFieldLimbs(hKey[:], hashFieldElements)
+	hKeySandwitchFrLimbs := divideFieldBytesToFieldLimbs(hKey[:], hashByte32Sandwitch)
 	hKeyMinusFrLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenMinus.HKey[:], hashFieldElements)
+	hKeyMinusSandwitchLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenMinus.HKey[:], hashByte32Sandwitch)
 	hKeyPlusFrLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenPlus.HKey[:], hashFieldElements)
+	hKeyPlusSandwitchLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenPlus.HKey[:], hashByte32Sandwitch)
 
 	for i := range a.hKey {
 		a.hKey[i] = append(a.hKey[i], hKeyFrLimbs[i])
 		a.hKeyMinus[i] = append(a.hKeyMinus[i], hKeyMinusFrLimbs[i])
 		a.hKeyPlus[i] = append(a.hKeyPlus[i], hKeyPlusFrLimbs[i])
+	}
+	for i := range a.hKeySandwitch {
+		a.hKeySandwitch[i] = append(a.hKeySandwitch[i], hKeySandwitchFrLimbs[i])
+		a.hKeyMinusSandwitch[i] = append(a.hKeyMinusSandwitch[i], hKeyMinusSandwitchLimbs[i])
+		a.hKeyPlusSandwitch[i] = append(a.hKeyPlusSandwitch[i], hKeyPlusSandwitchLimbs[i])
 	}
 
 	// Pointer assignment for row 1
@@ -1265,25 +1278,13 @@ func divideFieldBytesToFieldLimbs(elementBytes []byte, toHash hashType) []field.
 	case hashU64, hashFieldElements:
 		// each field element is a chunk of 4 bytes
 		for _, limbBytes := range common.SplitBytes(elementBytes, 4) {
-			var elementFr field.Element
-
-			if err := elementFr.SetBytesCanonical(limbBytes[:]); err != nil {
-				panic(err)
-			}
-
+			elementFr, _ := byteToField(limbBytes[:])
 			res = append(res, elementFr)
 		}
 	case hashByte32Sandwitch:
 		// each field element is a chunk of 2 bytes
 		for _, limbBytes := range common.SplitBytes(elementBytes) {
-			fourLimbBytes := make([]byte, 4)
-			copy(fourLimbBytes[2:], limbBytes) // left pad with 2 zero bytes
-			var elementFr field.Element
-
-			if err := elementFr.SetBytesCanonical(fourLimbBytes[:]); err != nil {
-				panic(err)
-			}
-
+			elementFr, _ := byteToField(limbBytes[:])
 			res = append(res, elementFr)
 		}
 	default:
@@ -1308,6 +1309,20 @@ func divideFieldBytesToFieldLimbs(elementBytes []byte, toHash hashType) []field.
 	}
 
 	return res
+}
+
+// byteToField converts a byte slice into a field.Element assuming Big-Endian
+// byte order. The input byte slice can be of length less than or equal to
+// field.Bytes. If the length is less than field.Bytes, it is left-padded with
+// zeros.
+func byteToField(b []byte) (field.Element, error) {
+	buf := make([]byte, field.Bytes)
+	copy(buf[field.Bytes-len(b):], b)
+	var x field.Element
+	if err := x.SetBytesCanonical(buf); err != nil {
+		return x, fmt.Errorf("could not create field element from bytes (%x)", b)
+	}
+	return x, nil
 }
 
 // uint64To64Bytes converts a `uint64` number into an 8-byte slice assuming
