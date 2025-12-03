@@ -658,7 +658,7 @@ func (am *Module) checkSandwitch() {
 			),
 		)
 		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_SANDWITCH_CONSISTENCY_%d", i), expr0_0)
-		
+
 		// HKeyMinus are stored in big-endian format
 		expr0_1 := symbolic.Mul(
 			activeRow,
@@ -690,7 +690,6 @@ func (am *Module) checkSandwitch() {
 			),
 		)
 		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_PLUS_SANDWITCH_CONSISTENCY_%d", i), expr0_2)
-
 
 		// INSERT: The HKeyMinus in the leaf minus openings is the same as HKeyMinus column i.e.,
 		// IsActiveAccumulator[i] * IsInsert[i] * IsFirst[i] * (HKeyMinus[i] - LeafOpenings.Hkey[i])

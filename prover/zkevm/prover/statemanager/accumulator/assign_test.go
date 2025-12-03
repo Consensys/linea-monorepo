@@ -259,7 +259,7 @@ func assertCorrectMerkleProof(t *testing.T, builder *assignmentBuilder) {
 	for i, proof := range proofs {
 		leaf := field.Octuplet(getLimbsFromRow(builder.leaves[:], i))
 		root := field.Octuplet(getLimbsFromRow(builder.roots[:], i))
-		assert.Equal(t, true, smt_koalabear.Verify(&proof, leaf, root))
+		assert.Equal(t, nil, smt_koalabear.Verify(&proof, leaf, root))
 	}
 }
 

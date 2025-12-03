@@ -17,7 +17,7 @@ type BitDecomposed struct {
 	packed []ifaces.Column
 	// Bits lists the decomposed bits of the "packed" column in LSbit
 	// order.
-	Bits []ifaces.Column
+	Bits                []ifaces.Column
 	isPackedLimbNotZero []ifaces.Column
 }
 

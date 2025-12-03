@@ -71,7 +71,7 @@ type MultiLimbAdd struct {
 	// See [wizard.CompiledIOP.InsertGlobal] for more details.
 	noBoundCancel bool
 	// isAddition defines whether we need to apply an addition or subtraction.
-	isAddition    bool
+	isAddition bool
 }
 
 // NewMultiLimbAdd creates a new MultiLimbAdd module. It return the LimbColumns
