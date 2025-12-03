@@ -47,15 +47,17 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    * @returns {Promise<void>} A promise that resolves when gauge metrics are updated.
    */
   async poll(): Promise<void> {
-    // Fetch validator data and pending withdrawals in parallel at the start
+    // Fetch validator data, pending withdrawals, and vault address in parallel
     // Use Promise.allSettled to handle failures gracefully
     const fetchResults = await Promise.allSettled([
       this.validatorDataClient.getActiveValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
+      this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider),
     ]);
 
     const allValidators = fetchResults[0].status === "fulfilled" ? fetchResults[0].value : undefined;
     const pendingWithdrawalsQueue = fetchResults[1].status === "fulfilled" ? fetchResults[1].value : undefined;
+    const vault = fetchResults[2].status === "fulfilled" ? fetchResults[2].value : undefined;
 
     // Log fetch failures if any
     if (fetchResults[0].status === "rejected") {
@@ -64,14 +66,10 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     if (fetchResults[1].status === "rejected") {
       this.logger.error("Failed to fetch pending partial withdrawals", { error: fetchResults[1].reason });
     }
-
-    // Fetch vault address once before parallel execution
-    // If vault fetch fails, we'll skip vault-dependent metrics but still update others
-    let vault: Address | undefined;
-    try {
-      vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
-    } catch (error) {
-      this.logger.error("Failed to fetch vault address, skipping vault-dependent metrics", { error });
+    if (fetchResults[2].status === "rejected") {
+      this.logger.error("Failed to fetch vault address, skipping vault-dependent metrics", {
+        error: fetchResults[2].reason,
+      });
     }
 
     // Update metrics in parallel for efficiency
