@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -42,31 +44,66 @@ func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
 	}
 	omegaInv.Inverse(&omegaInv)
 
-	witi := make([]fext.Element, a.N)
-	witi[0] = aVal
+	witi := make(extensions.Vector, a.N)
 
-	aRootOfUnityFlag := false
+	// The first loop computes a geometric progression: witi[i] = aVal * (omegaInv)^i
+	// Then it subtracts 1 from each element.
+	// Since this is sequential, we keep the structure but optimize the check.
+	// witi[i] = witi[i-1] * omegaInv
+	// witi[i-1] = witi[i-1] - 1
+	//
+	// Let's unroll the logic slightly to separate generation from subtraction if possible,
+	// but the dependency makes generation strictly serial.
+	//
+	// witi[0] = aVal
+	// witi[1] = aVal * w
+	// ...
+	// witi[k] = aVal * w^k
+	//
+	// Then we subtract 1 from all.
+
+	// 1. Generate powers
+	witi[0] = aVal
 	for i := 1; i < a.N; i++ {
 		witi[i].MulByElement(&witi[i-1], &omegaInv)
-		witi[i-1].Sub(&witi[i-1], &one)
-		if witi[i-1].IsZero() {
-			aRootOfUnityFlag = true
+	}
+
+	// 2. Subtract 1 from all elements (Parallelizable)
+	// We also check for zero (root of unity) here.
+	// Note: The original code checked IsZero() on the result of (val - 1).
+	// If (val - 1) is zero, then val was 1.
+	// Since we need to panic if any is zero, we can do this check during or after subtraction.
+	parallel.Execute(a.N, func(start, end int) {
+		for i := start; i < end; i++ {
+			witi[i].Sub(&witi[i], &one)
+			if witi[i].IsZero() {
+				utils.Panic("detected that a is a root of unity")
+			}
 		}
-	}
-	witi[a.N-1].Sub(&witi[a.N-1], &one)
+	})
 
-	if witi[a.N-1].IsZero() || aRootOfUnityFlag {
-		utils.Panic("detected that a is a root of unity")
-	}
-
+	// 4. Invert
 	witi = fext.BatchInvert(witi)
 
-	for i := range witi {
-		pi := p.GetExt(i)
-		witi[i].Mul(&pi, &witi[i])
-		if i > 0 {
-			witi[i].Add(&witi[i], &witi[i-1])
-		}
+	// 5. Multiply by P[i] (Parallelizable)
+	// witi[i] = witi[i] * p[i]
+	if pReg, ok := p.(*smartvectors.RegularExt); ok {
+		witi.Mul(witi, pReg.IntoRegVecSaveAllocExt())
+	} else {
+		// We need p as a vector. p is a ColumnAssignment.
+		// p.GetExt(i) retrieves the value.
+		parallel.Execute(a.N, func(start, end int) {
+			for i := start; i < end; i++ {
+				pi := p.GetExt(i)
+				witi[i].Mul(&pi, &witi[i])
+			}
+		})
+	}
+
+	// 6. Cumulative Sum (Sequential)
+	// witi[i] = witi[i] + witi[i-1]
+	for i := 1; i < a.N; i++ {
+		witi[i].Add(&witi[i], &witi[i-1])
 	}
 
 	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, INTERPOLATION_POLY), smartvectors.NewRegularExt(witi))

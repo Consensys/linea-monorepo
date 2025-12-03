@@ -31,6 +31,7 @@ func (a *ExprHandleProverAction) DomainSize() int {
 func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 
 	boarded := a.Expr.Board()
+	domainSize := a.DomainSize()
 
 	logrus.Tracef("running the expr handle assignment for %v, (round %v)", a.HandleName, a.MaxRound)
 	metadatas := boarded.ListVariableMetadata()
@@ -38,22 +39,22 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 	for _, metadataInterface := range metadatas {
 		if handle, ok := metadataInterface.(ifaces.Column); ok {
 			witness := handle.GetColAssignment(run)
-			if witness.Len() != a.DomainSize() {
+			if witness.Len() != domainSize {
 				utils.Panic("Query %v - Witness of %v has size %v which is below %v",
-					a.HandleName, handle.String(), witness.Len(), a.DomainSize())
+					a.HandleName, handle.String(), witness.Len(), domainSize)
 			}
 		}
 	}
 
 	evalInputs := make([]sv.SmartVector, len(metadatas))
-	omega, err := fft.Generator(uint64(a.DomainSize()))
+	omega, err := fft.Generator(uint64(domainSize))
 	if err != nil {
 		// should not happen unless we have a very very large domain size
-		utils.Panic("failed to generate omega for %v, size=%v", a.HandleName, a.DomainSize())
+		utils.Panic("failed to generate omega for %v, size=%v", a.HandleName, domainSize)
 	}
 	omegaI := field.One()
-	omegas := make([]field.Element, a.DomainSize())
-	for i := 0; i < a.DomainSize(); i++ {
+	omegas := make([]field.Element, domainSize)
+	for i := 0; i < domainSize; i++ {
 		omegas[i] = omegaI
 		omegaI.Mul(&omegaI, &omega)
 	}
@@ -69,21 +70,21 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 
 			} else {
 				x := run.GetRandomCoinFieldExt(meta.Name)
-				evalInputs[k] = sv.NewConstantExt(x, a.DomainSize())
+				evalInputs[k] = sv.NewConstantExt(x, domainSize)
 			}
 		case variables.X:
-			evalInputs[k] = meta.EvalCoset(a.DomainSize(), 0, 1, false)
+			evalInputs[k] = meta.EvalCoset(domainSize, 0, 1, false)
 		case variables.PeriodicSample:
-			evalInputs[k] = meta.EvalCoset(a.DomainSize(), 0, 1, false)
+			evalInputs[k] = meta.EvalCoset(domainSize, 0, 1, false)
 		case ifaces.Accessor:
 			if metadataInterface.IsBase() {
 				elem, errFetch := meta.GetValBase(run)
 				if errFetch != nil {
 					utils.Panic("failed to fetch base accessor %v for query %v: %v", meta.String(), a.HandleName, errFetch)
 				}
-				evalInputs[k] = sv.NewConstant(elem, a.DomainSize())
+				evalInputs[k] = sv.NewConstant(elem, domainSize)
 			} else {
-				evalInputs[k] = sv.NewConstantExt(meta.GetValExt(run), a.DomainSize())
+				evalInputs[k] = sv.NewConstantExt(meta.GetValExt(run), domainSize)
 			}
 
 		default:
