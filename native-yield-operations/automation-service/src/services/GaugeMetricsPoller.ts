@@ -53,6 +53,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     // Use Promise.allSettled to handle failures gracefully
     const fetchResults = await Promise.allSettled([
       this.validatorDataClient.getActiveValidators(),
+      this.validatorDataClient.getExitingValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
       this.beaconNodeApiClient.getPendingDeposits(),
       this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider),
@@ -60,28 +61,34 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     ]);
 
     const allValidators = fetchResults[0].status === "fulfilled" ? fetchResults[0].value : undefined;
-    const pendingWithdrawalsQueue = fetchResults[1].status === "fulfilled" ? fetchResults[1].value : undefined;
-    const pendingDeposits = fetchResults[2].status === "fulfilled" ? fetchResults[2].value : undefined;
-    const vault = fetchResults[3].status === "fulfilled" ? fetchResults[3].value : undefined;
-    const yieldProviderData = fetchResults[4].status === "fulfilled" ? fetchResults[4].value : undefined;
+    const exitingValidators = fetchResults[1].status === "fulfilled" ? fetchResults[1].value : undefined;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    void exitingValidators; // TODO: Use exitingValidators for metrics in future update
+    const pendingWithdrawalsQueue = fetchResults[2].status === "fulfilled" ? fetchResults[2].value : undefined;
+    const pendingDeposits = fetchResults[3].status === "fulfilled" ? fetchResults[3].value : undefined;
+    const vault = fetchResults[4].status === "fulfilled" ? fetchResults[4].value : undefined;
+    const yieldProviderData = fetchResults[5].status === "fulfilled" ? fetchResults[5].value : undefined;
 
     // Log fetch failures if any
     if (fetchResults[0].status === "rejected") {
       this.logger.error("Failed to fetch active validators", { error: fetchResults[0].reason });
     }
     if (fetchResults[1].status === "rejected") {
-      this.logger.error("Failed to fetch pending partial withdrawals", { error: fetchResults[1].reason });
+      this.logger.error("Failed to fetch exiting validators", { error: fetchResults[1].reason });
     }
     if (fetchResults[2].status === "rejected") {
-      this.logger.error("Failed to fetch pending deposits", { error: fetchResults[2].reason });
+      this.logger.error("Failed to fetch pending partial withdrawals", { error: fetchResults[2].reason });
     }
     if (fetchResults[3].status === "rejected") {
-      this.logger.error("Failed to fetch vault address, skipping vault-dependent metrics", {
-        error: fetchResults[3].reason,
-      });
+      this.logger.error("Failed to fetch pending deposits", { error: fetchResults[3].reason });
     }
     if (fetchResults[4].status === "rejected") {
-      this.logger.error("Failed to fetch yield provider data", { error: fetchResults[4].reason });
+      this.logger.error("Failed to fetch vault address, skipping vault-dependent metrics", {
+        error: fetchResults[4].reason,
+      });
+    }
+    if (fetchResults[5].status === "rejected") {
+      this.logger.error("Failed to fetch yield provider data", { error: fetchResults[5].reason });
     }
 
     // Update metrics in parallel for efficiency

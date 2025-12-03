@@ -43,6 +43,7 @@ describe("GaugeMetricsPoller", () => {
 
     // Default mocks
     validatorDataClient.getActiveValidators.mockResolvedValue([]);
+    validatorDataClient.getExitingValidators.mockResolvedValue([]);
     beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
     beaconNodeApiClient.getPendingDeposits.mockResolvedValue([]);
     validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue([]);
@@ -381,6 +382,21 @@ describe("GaugeMetricsPoller", () => {
       // Verify warnings are logged for skipped metrics
       expect(logger.warn).toHaveBeenCalledWith("Skipping total pending partial withdrawals gauge update: validator data unavailable");
       expect(logger.warn).toHaveBeenCalledWith("Skipping pending partial withdrawals queue gauge update: aggregated withdrawals unavailable");
+    });
+
+    it("handles exiting validators fetch failure gracefully", async () => {
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
+      validatorDataClient.getExitingValidators.mockRejectedValue(new Error("Exiting validators fetch failed"));
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
+
+      await poller.poll();
+
+      // Should not throw, and other metrics should still be updated
+      expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalled();
+      // Fetch failure is logged at fetch time
+      expect(logger.error).toHaveBeenCalledWith("Failed to fetch exiting validators", {
+        error: expect.any(Error),
+      });
     });
 
     it("handles pending partial withdrawals fetch failure gracefully", async () => {
@@ -769,10 +785,11 @@ describe("GaugeMetricsPoller", () => {
       let callCount = 0;
       const mockAllSettled = jest.fn().mockImplementation((promises: Promise<any>[]) => {
         callCount++;
-        // First call: fetch promises (5 promises)
+        // First call: fetch promises (6 promises - added getExitingValidators)
         if (callCount === 1) {
           return Promise.resolve([
             { status: "fulfilled" as const, value: [] },
+            { status: "fulfilled" as const, value: [] }, // getExitingValidators
             { status: "fulfilled" as const, value: [] },
             { status: "fulfilled" as const, value: [] },
             { status: "fulfilled" as const, value: vaultAddress },
