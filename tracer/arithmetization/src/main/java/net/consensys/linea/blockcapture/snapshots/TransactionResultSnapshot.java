@@ -127,10 +127,10 @@ public record TransactionResultSnapshot(
                     + hash
                     + " balance of account "
                     + address
-                    + " ("
-                    + actBalance.toDecimalString()
-                    + ") does not match expected value ("
-                    + expBalance.toDecimalString()
+                    + " (0x"
+                    + actBalance.toHexString()
+                    + ") does not match expected value (0x"
+                    + expBalance.toHexString()
                     + ")");
           }
           // Check nonce

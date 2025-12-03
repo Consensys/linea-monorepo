@@ -91,12 +91,17 @@ public record BlockHeaderSnapshot(
 
     this.baseFee.ifPresent(baseFee -> builder.baseFee(Wei.fromHexString(baseFee)));
     // Following null check is required for older replays only.  Eventually, it can be removed (i.e.
-    // once all LONDON
-    // replays are dropped).  Also, this is necessary despite the fact that this field is already an
-    // Optional.
+    // once all LONDON replays are dropped).  Also, this is necessary despite the fact that this
+    // field
+    // is already an Optional.
     if (this.parentBeaconBlockRoot != null) {
       this.parentBeaconBlockRoot.ifPresent(
           root -> builder.parentBeaconBlockRoot(Bytes32.fromHexString(root)));
+    } else {
+      // NOTE: following is to enable older replays to work with later forks.
+      builder.parentBeaconBlockRoot(
+          Bytes32.fromHexString(
+              "0x0000000000000000000000000000000000000000000000000000000000000000"));
     }
     //
     return builder.buildBlockHeader();

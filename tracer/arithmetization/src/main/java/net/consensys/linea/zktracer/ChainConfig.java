@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer;
 
 import static net.consensys.linea.zktracer.Fork.*;
+import static net.consensys.linea.zktracer.Fork.LONDON;
 import static net.consensys.linea.zktracer.Trace.ETHEREUM_GAS_LIMIT_MAXIMUM;
 import static net.consensys.linea.zktracer.Trace.ETHEREUM_GAS_LIMIT_MINIMUM;
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
@@ -41,21 +42,29 @@ public class ChainConfig {
 
   public static final int DEVNET_CHAIN_ID = 59139;
 
-  public static ChainConfig MAINNET_TESTCONFIG(final Fork fork) {
-    return new ChainConfig(
-        fork,
-        LINEA_CHAIN_ID,
-        true,
-        BigInteger.valueOf(LINEA_GAS_LIMIT_MINIMUM),
-        BigInteger.valueOf(LINEA_GAS_LIMIT_MAXIMUM),
-        LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT);
+  public static final ChainConfig MAINNET_TESTCONFIG(final Fork fork) {
+    return MAINNET_TESTCONFIG(fork, true);
   }
 
-  public static ChainConfig SEPOLIA_TESTCONFIG(final Fork fork) {
+  public static final ChainConfig MAINNET_TESTCONFIG(
+      final Fork fork, final boolean gasLimitEnabled) {
+    return TESTCONFIG(fork, LINEA_CHAIN_ID, gasLimitEnabled);
+  }
+
+  public static final ChainConfig SEPOLIA_TESTCONFIG(final Fork fork) {
+    return SEPOLIA_TESTCONFIG(fork, true);
+  }
+
+  public static final ChainConfig SEPOLIA_TESTCONFIG(final Fork fork, boolean gasLimitEnabled) {
+    return TESTCONFIG(fork, LINEA_SEPOLIA_CHAIN_ID, gasLimitEnabled);
+  }
+
+  public static final ChainConfig TESTCONFIG(
+      final Fork fork, int chainId, final boolean gasLimitEnabled) {
     return new ChainConfig(
         fork,
-        LINEA_SEPOLIA_CHAIN_ID,
-        true,
+        chainId,
+        gasLimitEnabled,
         BigInteger.valueOf(LINEA_GAS_LIMIT_MINIMUM),
         BigInteger.valueOf(LINEA_GAS_LIMIT_MAXIMUM),
         LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT);

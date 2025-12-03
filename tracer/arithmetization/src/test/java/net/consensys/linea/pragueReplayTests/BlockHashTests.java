@@ -15,7 +15,8 @@
 package net.consensys.linea.pragueReplayTests;
 
 import static net.consensys.linea.ReplayTestTools.replay;
-import static net.consensys.linea.zktracer.ChainConfig.SEPOLIA_PRAGUE_TESTCONFIG;
+import static net.consensys.linea.zktracer.ChainConfig.SEPOLIA_TESTCONFIG;
+import static net.consensys.linea.zktracer.Fork.PRAGUE;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -31,7 +32,7 @@ public class BlockHashTests extends TracerTestBase {
 
   @Test
   void someHistoricalHashesAreChecked(TestInfo testInfo) {
-    replay(SEPOLIA_PRAGUE_TESTCONFIG, "prague/19562398.sepolia.prague.json.gz", testInfo);
+    replay(SEPOLIA_TESTCONFIG(PRAGUE), "prague/19562398.sepolia.prague.json.gz", testInfo);
   }
 
   /**
@@ -41,6 +42,6 @@ public class BlockHashTests extends TracerTestBase {
   @Disabled
   @Test
   void conflationFollowingThePreviousOneWithAgainHistoricalBlockhashesChecked(TestInfo testInfo) {
-    replay(SEPOLIA_PRAGUE_TESTCONFIG, "prague/19562399-19562417.sepolia.prague.json.gz", testInfo);
+    replay(SEPOLIA_TESTCONFIG(PRAGUE), "prague/19562399-19562417.sepolia.prague.json.gz", testInfo);
   }
 }

@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Fork;
@@ -62,6 +63,7 @@ import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem;
 import org.junit.jupiter.api.TestInfo;
 import org.slf4j.Logger;
 
+@Slf4j
 public class ExecutionEnvironment {
   public static final String CORSET_VALIDATION_RESULT = "Corset validation result: ";
 
@@ -91,6 +93,7 @@ public class ExecutionEnvironment {
       Optional<Logger> logger) {
     boolean traceValidated = false;
     try {
+      log.info("Corset checking the trace" + traceFilePath);
       CorsetValidator.Result corsetValidationResult = corsetValidator.validate(traceFilePath);
       traceValidated = corsetValidationResult.isValid();
       assertThat(traceValidated)
