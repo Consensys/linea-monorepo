@@ -96,6 +96,16 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       [],
     );
     expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalValidatorBalanceGwei,
+      "Total validator balance in gwei",
+      [],
+    );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingDepositGwei,
+      "Total pending deposits in gwei",
+      [],
+    );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
       "Pending partial withdrawal queue amount in gwei",
       ["pubkey", "withdrawable_epoch"],
@@ -491,6 +501,32 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       jest.clearAllMocks();
 
       updater.setLastTotalValidatorBalanceGwei(-1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setLastTotalPendingDepositGwei", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalPendingDepositGwei(1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingDepositGwei,
+        {},
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalPendingDepositGwei(-1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });

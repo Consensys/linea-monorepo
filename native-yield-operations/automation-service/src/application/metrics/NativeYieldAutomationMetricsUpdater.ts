@@ -109,6 +109,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingDepositGwei,
+      "Total pending deposits in gwei",
+      [],
+    );
+
+    this.metricsService.createGauge(
       LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
       "Pending partial withdrawal queue amount in gwei",
       ["pubkey", "withdrawable_epoch"],
@@ -350,6 +356,20 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.LastTotalValidatorBalanceGwei,
       {},
       totalValidatorBalanceGwei,
+    );
+  }
+
+  /**
+   * Sets the total pending deposits in gwei from the last query.
+   *
+   * @param {number} totalPendingDepositGwei - The total pending deposits amount in gwei. Must be non-negative to be recorded.
+   */
+  public setLastTotalPendingDepositGwei(totalPendingDepositGwei: number): void {
+    if (totalPendingDepositGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingDepositGwei,
+      {},
+      totalPendingDepositGwei,
     );
   }
 

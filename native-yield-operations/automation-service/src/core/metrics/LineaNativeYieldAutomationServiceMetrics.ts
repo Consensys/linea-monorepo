@@ -57,6 +57,9 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Gauge representing total validator balance in gwei
   LastTotalValidatorBalanceGwei = "linea_native_yield_automation_service_last_total_validator_balance_gwei",
 
+  // Gauge representing total pending deposits in gwei
+  LastTotalPendingDepositGwei = "linea_native_yield_automation_service_last_total_pending_deposit_gwei",
+
   // Gauge representing pending partial withdrawal queue amount in gwei
   // Labels:
   // i.) `pubkey` - Validator public key
