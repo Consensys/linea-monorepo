@@ -208,42 +208,48 @@ func WaitForFileAtPath(ctx context.Context, file string, pollInterval time.Durat
 
 	// Quick initial stat
 	if _, err := os.Stat(file); err == nil {
-		logrus.Infof("found: %s (initial stat)", file)
+		logrus.Infof("found (initial stat): %s ", file)
 		return nil
 	}
 
 	pollInterval = pollInterval * time.Second
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
-	done := make(chan struct{})
+
+	foundCh := make(chan struct{})
 	go func() {
-		defer close(done)
+		defer close(foundCh)
 		for {
 			select {
 			case <-ctx.Done():
-				return
+				return // context cancelled
 			case <-ticker.C:
 				if _, err := os.Stat(file); err == nil {
-					logrus.Infof("found: %s (poll)", file)
-					return
+					logrus.Infof("found (poll): %s ", file)
+					return // file found
 				}
 			}
 		}
 	}()
 
-	<-done
+	// Wait for goroutine to finish
+	<-foundCh
 
+	// Distinguish reason for exit
+	if _, err := os.Stat(file); err == nil {
+		return nil // file is actually there → definite success
+	}
+
+	// file not there → the only remaining reason is context cancellation
 	if ctx.Err() != nil {
 		if reportMissing {
-			if _, err := os.Stat(file); err != nil {
-				logrus.Infof("missing file: %s", file)
-			}
+			logrus.Infof("missing file: %s", file)
 		}
-
 		return ctx.Err()
 	}
 
-	return nil
+	// fallback (should never happen, but safe)
+	return fmt.Errorf("unexpected exit: file %s not found", file)
 }
 
 // ReadRequest reads and decodes a request from a file

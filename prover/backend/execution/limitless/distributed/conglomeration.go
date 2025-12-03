@@ -72,13 +72,13 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 	// -- 1. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more
 	// proofs come in. It will exit when it collects `totalProofs` or when ctx is cancelled.
 	go func() {
-		cong, loadErr := zkevm.LoadCompiledConglomeration(cfg)
-		if loadErr != nil || cong == nil {
-			panic(fmt.Errorf("could not load compiled conglomeration: %w", loadErr))
+		cong, err = zkevm.LoadCompiledConglomeration(cfg)
+		if err != nil || cong == nil {
+			panic(fmt.Errorf("could not load compiled conglomeration: %w", err))
 		}
 		logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
-		proof, runErr := runConglomerationHierarchical(ctx, cfg, cong, proofStream, totalProofs)
-		resultCh <- congResult{proof: proof, err: runErr}
+		proof, err := runConglomerationHierarchical(ctx, cfg, cong, proofStream, totalProofs)
+		resultCh <- congResult{proof: proof, err: err}
 	}()
 
 	// -- 2. Wait for all GL proofs to arrive from the GL sub-provers and
