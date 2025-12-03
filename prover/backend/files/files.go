@@ -177,30 +177,6 @@ func (z *ZipFile) Close() error {
 	return nil
 }
 
-// RemoveMatchingFiles deletes all files matching the given pattern (if exists).
-// The pattern can include wildcards like "*.tmp.*" or "filename*".
-func RemoveMatchingFiles(pattern string, isLog bool) (bool, error) {
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return false, fmt.Errorf("glob pattern failed for %q: %w", pattern, err)
-	}
-	// Nothing to delete
-	if len(matches) == 0 {
-		if isLog {
-			logrus.Infof("No file found matching pattern:%s", pattern)
-		}
-		return false, nil
-	}
-
-	logrus.Infof("Removing file(s) found matching pattern:%s", pattern)
-	for _, file := range matches {
-		if err := os.Remove(file); err != nil && !os.IsNotExist(err) {
-			return true, fmt.Errorf("failed to remove %s: %w", file, err)
-		}
-	}
-	return true, nil
-}
-
 // WaitForFileAtPath : Polls every configured time interval for the file and
 // waits until the file is found or context is done.
 func WaitForFileAtPath(ctx context.Context, file string, pollInterval time.Duration, reportMissing bool, msg string) error {
@@ -326,6 +302,57 @@ func MarkAndMoveToDone(cfg *config.Config, filePaths []string, suffix string) er
 	return nil
 }
 
+// globMatches returns the list of filepaths matching the given pattern.
+// It wraps filepath.Glob but gives consistent error formatting.
+func globMatches(pattern string) ([]string, error) {
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("glob failed for pattern %q: %w", pattern, err)
+	}
+	return matches, nil
+}
+
+// HasWildcardMatch returns true if at least one file whose name starts with
+// basePattern exists in the directory.
+func HasWildcardMatch(dir, basePattern string) (bool, error) {
+	pattern := filepath.Join(dir, basePattern)
+
+	matches, err := globMatches(pattern)
+	if err != nil {
+		return false, err
+	}
+
+	return len(matches) > 0, nil
+}
+
+// RemoveMatchingFiles deletes all files matching the given pattern.
+// Returns (true, nil) if any were deleted, (false, nil) if none matched.
+func RemoveMatchingFiles(pattern string, log bool) (bool, error) {
+	matches, err := globMatches(pattern)
+	if err != nil {
+		return false, err
+	}
+
+	if len(matches) == 0 {
+		if log {
+			logrus.Infof("No file found matching pattern: %s", pattern)
+		}
+		return false, nil
+	}
+
+	if log {
+		logrus.Infof("Removing %d file(s) matching pattern: %s", len(matches), pattern)
+	}
+
+	for _, f := range matches {
+		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
+			return true, fmt.Errorf("failed to remove %s: %w", f, err)
+		}
+	}
+
+	return true, nil
+}
+
 // LocateBaseBySuffix searches the given directory for a single file
 // belonging to a specific job whose name contains a given suffix. Filenames
 // follow the pattern:
@@ -355,20 +382,19 @@ func MarkAndMoveToDone(cfg *config.Config, filePaths []string, suffix string) er
 func LocateBaseBySuffix(start, end int, dir, suffix string) (baseFile string, oldFile string, err error) {
 
 	// Build glob pattern: "<dir>/<start>-<end>-*.suffix*"
-	pattern := filepath.Join(
-		dir,
-		fmt.Sprintf("%d-%d-*.%s*", start, end, suffix),
-	)
+	pattern := filepath.Join(dir, fmt.Sprintf("%d-%d-*.%s*", start, end, suffix))
 
-	matches, globErr := filepath.Glob(pattern)
-	if globErr != nil {
-		return "", "", fmt.Errorf("glob failed for %v: %w", pattern, globErr)
+	matches, err := globMatches(pattern)
+	if err != nil {
+		return "", "", err
 	}
-	if len(matches) == 0 {
-		return "", "", fmt.Errorf("no file found for pattern %v", pattern)
-	}
-	if len(matches) > 1 {
-		return "", "", fmt.Errorf("multiple matches for %v: %#v", pattern, matches)
+
+	switch len(matches) {
+	case 0:
+		return "", "", fmt.Errorf("no matches for pattern %s", pattern)
+	case 1:
+	default:
+		return "", "", fmt.Errorf("multiple matches for pattern %s: %#v", pattern, matches)
 	}
 
 	oldFile = matches[0]

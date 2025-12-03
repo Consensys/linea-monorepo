@@ -170,7 +170,7 @@ func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
 	// Get local id of conglomerator
 	var (
 		parts           = strings.Split(args.Input, "."+config.InProgressSufix+".")
-		localID         = parts[1] // Gauranteed by controller to have the *inprogress suffix
+		localID         = parts[1] // gauranteed by controller to have the *inprogress suffix (wont panic)
 		marker          = fmt.Sprintf("%s.", config.InProgressSufix)
 		newInprogSuffix = marker + localID
 	)
