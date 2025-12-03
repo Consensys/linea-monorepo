@@ -184,13 +184,11 @@ func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
 		// Rename the original Bootstrap file with inprogress appended by localID so that we know
 		// which pod is going to deal with the conglomeration job
 		if err := os.Rename(oldFile, newFile); err != nil {
-			logrus.Warnf("Failed to rename file: %v\n", err)
+			return fmt.Errorf("failed to rename file while handling conglomeration job: %v", err)
 		} else {
 			logrus.Printf("Renamed file: %s -> %s\n", oldFile, newFile)
 			req.BootstrapRequestDoneFile = newFile
 		}
-	} else {
-		return fmt.Errorf("could not find file with suffix %s in %s while handling conglomeration job", config.BootstrapPartialSucessSuffix, req.BootstrapRequestDoneFile)
 	}
 
 	resp, err := distributed.RunConglomerator(cfg, req)
