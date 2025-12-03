@@ -63,6 +63,12 @@ const createValidatorDataClientMock = () => {
       pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
     ) => ValidatorBalanceWithPendingWithdrawal[] | undefined
   >();
+  const getFilteredAndAggregatedPendingWithdrawals = jest.fn<
+    (
+      allValidators: ValidatorBalance[] | undefined,
+      pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
+    ) => undefined
+  >();
   const getTotalPendingPartialWithdrawalsWei = jest
     .fn<(validatorList: ValidatorBalanceWithPendingWithdrawal[]) => bigint>()
     .mockReturnValue(0n);
@@ -71,6 +77,7 @@ const createValidatorDataClientMock = () => {
     getActiveValidators,
     getActiveValidatorsWithPendingWithdrawalsAscending,
     joinValidatorsWithPendingWithdrawals,
+    getFilteredAndAggregatedPendingWithdrawals,
     getTotalPendingPartialWithdrawalsWei,
   };
 
@@ -79,6 +86,7 @@ const createValidatorDataClientMock = () => {
     getActiveValidators,
     getActiveValidatorsWithPendingWithdrawalsAscending,
     joinValidatorsWithPendingWithdrawals,
+    getFilteredAndAggregatedPendingWithdrawals,
     getTotalPendingPartialWithdrawalsWei,
   };
 };

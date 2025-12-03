@@ -521,4 +521,268 @@ describe("ConsensysStakingApiClient", () => {
       expect(logger.info).toHaveBeenCalledWith("getTotalPendingPartialWithdrawalsWei totalWei=4000000000");
     });
   });
+
+  describe("getFilteredAndAggregatedPendingWithdrawals", () => {
+    it("returns undefined and logs warning when validators are undefined", () => {
+      const { client, logger } = createClient();
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
+      ];
+
+      const result = client.getFilteredAndAggregatedPendingWithdrawals(undefined, pendingWithdrawals);
+
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - invalid inputs", {
+        allValidators: true,
+        pendingWithdrawalsQueue: false,
+      });
+    });
+
+    it("returns undefined and logs warning when pending withdrawals are undefined", () => {
+      const { client, logger } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+      ];
+
+      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, undefined);
+
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - invalid inputs", {
+        allValidators: false,
+        pendingWithdrawalsQueue: true,
+      });
+    });
+
+    it("filters out withdrawals that do not match active validators", () => {
+      const { client, logger } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+      ];
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
+        { validator_index: 999, amount: 5n * ONE_GWEI, withdrawable_epoch: 200 }, // Not in validators
+        { validator_index: 2, amount: 3n * ONE_GWEI, withdrawable_epoch: 150 }, // Not in validators
+      ];
+
+      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
+
+      expect(result).toEqual([
+        {
+          validator_index: 1,
+          withdrawable_epoch: 100,
+          amount: 2n * ONE_GWEI,
+          pubkey: "validator-1",
+        },
+      ]);
+      expect(logger.debug).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - filtered withdrawals", {
+        totalPendingWithdrawals: 3,
+        filteredCount: 1,
+        uniqueValidatorIndices: 1,
+      });
+    });
+
+    it("aggregates amounts by validator_index and withdrawable_epoch", () => {
+      const { client, logger } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-2", validatorIndex: 2n },
+      ];
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
+        { validator_index: 1, amount: 3n * ONE_GWEI, withdrawable_epoch: 100 }, // Same validator and epoch - should aggregate
+        { validator_index: 1, amount: 5n * ONE_GWEI, withdrawable_epoch: 200 }, // Same validator, different epoch
+        { validator_index: 2, amount: 1n * ONE_GWEI, withdrawable_epoch: 100 },
+      ];
+
+      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
+
+      expect(result).toEqual(
+        expect.arrayContaining([
+          {
+            validator_index: 1,
+            withdrawable_epoch: 100,
+            amount: 5n * ONE_GWEI, // 2 + 3 aggregated
+            pubkey: "validator-1",
+          },
+          {
+            validator_index: 1,
+            withdrawable_epoch: 200,
+            amount: 5n * ONE_GWEI,
+            pubkey: "validator-1",
+          },
+          {
+            validator_index: 2,
+            withdrawable_epoch: 100,
+            amount: 1n * ONE_GWEI,
+            pubkey: "validator-2",
+          },
+        ]),
+      );
+      expect(result).toHaveLength(3);
+      expect(logger.info).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals succeeded, aggregatedCount=3");
+    });
+
+    it("includes pubkey from matching validators", () => {
+      const { client } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "pubkey-abc", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "pubkey-xyz", validatorIndex: 2n },
+      ];
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
+        { validator_index: 2, amount: 3n * ONE_GWEI, withdrawable_epoch: 200 },
+      ];
+
+      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
+
+      expect(result).toEqual([
+        {
+          validator_index: 1,
+          withdrawable_epoch: 100,
+          amount: 2n * ONE_GWEI,
+          pubkey: "pubkey-abc",
+        },
+        {
+          validator_index: 2,
+          withdrawable_epoch: 200,
+          amount: 3n * ONE_GWEI,
+          pubkey: "pubkey-xyz",
+        },
+      ]);
+    });
+
+    it("handles empty validators array", () => {
+      const { client, logger } = createClient();
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
+      ];
+
+      const result = client.getFilteredAndAggregatedPendingWithdrawals([], pendingWithdrawals);
+
+      expect(result).toEqual([]);
+      expect(logger.debug).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - filtered withdrawals", {
+        totalPendingWithdrawals: 1,
+        filteredCount: 0,
+        uniqueValidatorIndices: 0,
+      });
+      expect(logger.info).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals succeeded, aggregatedCount=0");
+    });
+
+    it("handles empty pending withdrawals array", () => {
+      const { client, logger } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+      ];
+
+      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, []);
+
+      expect(result).toEqual([]);
+      expect(logger.debug).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - filtered withdrawals", {
+        totalPendingWithdrawals: 0,
+        filteredCount: 0,
+        uniqueValidatorIndices: 1,
+      });
+      expect(logger.info).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals succeeded, aggregatedCount=0");
+    });
+
+    it("handles multiple withdrawals with same validator_index and withdrawable_epoch", () => {
+      const { client } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+      ];
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 1n * ONE_GWEI, withdrawable_epoch: 100 },
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
+        { validator_index: 1, amount: 3n * ONE_GWEI, withdrawable_epoch: 100 },
+      ];
+
+      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
+
+      expect(result).toEqual([
+        {
+          validator_index: 1,
+          withdrawable_epoch: 100,
+          amount: 6n * ONE_GWEI, // 1 + 2 + 3 aggregated
+          pubkey: "validator-1",
+        },
+      ]);
+    });
+
+    it("handles withdrawals with different withdrawable_epochs for same validator", () => {
+      const { client } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+      ];
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
+        { validator_index: 1, amount: 3n * ONE_GWEI, withdrawable_epoch: 200 },
+        { validator_index: 1, amount: 1n * ONE_GWEI, withdrawable_epoch: 100 }, // Same epoch as first
+      ];
+
+      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
+
+      expect(result).toEqual(
+        expect.arrayContaining([
+          {
+            validator_index: 1,
+            withdrawable_epoch: 100,
+            amount: 3n * ONE_GWEI, // 2 + 1 aggregated
+            pubkey: "validator-1",
+          },
+          {
+            validator_index: 1,
+            withdrawable_epoch: 200,
+            amount: 3n * ONE_GWEI,
+            pubkey: "validator-1",
+          },
+        ]),
+      );
+      expect(result).toHaveLength(2);
+    });
+
+    it("logs aggregated results with debug information", () => {
+      const { client, logger } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+      ];
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
+      ];
+
+      client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
+
+      expect(logger.debug).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - aggregated results", {
+        aggregatedCount: 1,
+        allEntries: [
+          {
+            validator_index: 1,
+            withdrawable_epoch: 100,
+            amount: (2n * ONE_GWEI).toString(),
+            pubkey: "validator-1",
+          },
+        ],
+      });
+    });
+
+    it("handles validators with bigint validatorIndex correctly", () => {
+      const { client } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 12345678901234567890n },
+      ];
+      const pendingWithdrawals: PendingPartialWithdrawal[] = [
+        { validator_index: 12345678901234567890, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
+      ];
+
+      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
+
+      expect(result).toEqual([
+        {
+          validator_index: 12345678901234567890,
+          withdrawable_epoch: 100,
+          amount: 2n * ONE_GWEI,
+          pubkey: "validator-1",
+        },
+      ]);
+    });
+  });
 });

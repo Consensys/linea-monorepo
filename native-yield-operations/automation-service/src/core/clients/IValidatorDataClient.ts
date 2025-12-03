@@ -1,5 +1,9 @@
 import { PendingPartialWithdrawal } from "@consensys/linea-shared-utils";
-import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../entities/ValidatorBalance.js";
+import {
+  AggregatedPendingWithdrawal,
+  ValidatorBalance,
+  ValidatorBalanceWithPendingWithdrawal,
+} from "../entities/ValidatorBalance.js";
 
 export interface IValidatorDataClient {
   getActiveValidators(): Promise<ValidatorBalance[] | undefined>;
@@ -8,5 +12,9 @@ export interface IValidatorDataClient {
     allValidators: ValidatorBalance[] | undefined,
     pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
   ): ValidatorBalanceWithPendingWithdrawal[] | undefined;
+  getFilteredAndAggregatedPendingWithdrawals(
+    allValidators: ValidatorBalance[] | undefined,
+    pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
+  ): AggregatedPendingWithdrawal[] | undefined;
   getTotalPendingPartialWithdrawalsWei(validatorList: ValidatorBalanceWithPendingWithdrawal[]): bigint;
 }

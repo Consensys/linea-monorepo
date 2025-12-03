@@ -9,7 +9,11 @@ import {
 } from "@consensys/linea-shared-utils";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
-import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
+import {
+  AggregatedPendingWithdrawal,
+  ValidatorBalance,
+  ValidatorBalanceWithPendingWithdrawal,
+} from "../core/entities/ValidatorBalance.js";
 
 /**
  * Client for retrieving validator data from Consensys Staking API via GraphQL.
@@ -139,6 +143,85 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     });
 
     return joined;
+  }
+
+  /**
+   * Filters pending withdrawals to only include those matching active validators,
+   * then aggregates by validator_index and withdrawable_epoch.
+   * Performs the following steps:
+   * 1️⃣ Filter pending withdrawals to match active validators
+   * 2️⃣ Aggregate amounts by validator_index and withdrawable_epoch
+   * 3️⃣ Include pubkey from matching validators
+   *
+   * @param {ValidatorBalance[] | undefined} allValidators - Array of active validators, or undefined.
+   * @param {PendingPartialWithdrawal[] | undefined} pendingWithdrawalsQueue - Array of pending partial withdrawals, or undefined.
+   * @returns {AggregatedPendingWithdrawal[] | undefined} Array of aggregated pending withdrawals with pubkey, or undefined if inputs are invalid.
+   */
+  getFilteredAndAggregatedPendingWithdrawals(
+    allValidators: ValidatorBalance[] | undefined,
+    pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
+  ): AggregatedPendingWithdrawal[] | undefined {
+    if (allValidators === undefined || pendingWithdrawalsQueue === undefined) {
+      this.logger.warn("getFilteredAndAggregatedPendingWithdrawals - invalid inputs", {
+        allValidators: allValidators === undefined,
+        pendingWithdrawalsQueue: pendingWithdrawalsQueue === undefined,
+      });
+      return undefined;
+    }
+
+    // 1️⃣ Create Set of validator indices from allValidators for efficient lookup
+    const validatorIndicesSet = new Set<number>();
+    const pubkeyByValidatorIndex = new Map<number, string>();
+    for (const v of allValidators) {
+      const index = Number(v.validatorIndex);
+      validatorIndicesSet.add(index);
+      pubkeyByValidatorIndex.set(index, v.publicKey);
+    }
+
+    // 2️⃣ Filter pending withdrawals to only include those matching active validators
+    const filteredWithdrawals = pendingWithdrawalsQueue.filter((w) => validatorIndicesSet.has(w.validator_index));
+
+    this.logger.debug("getFilteredAndAggregatedPendingWithdrawals - filtered withdrawals", {
+      totalPendingWithdrawals: pendingWithdrawalsQueue.length,
+      filteredCount: filteredWithdrawals.length,
+      uniqueValidatorIndices: validatorIndicesSet.size,
+    });
+
+    // 3️⃣ Aggregate amounts by validator_index and withdrawable_epoch
+    const aggregatedMap = new Map<string, bigint>();
+    for (const w of filteredWithdrawals) {
+      const key = `${w.validator_index}-${w.withdrawable_epoch}`;
+      const current = aggregatedMap.get(key) ?? 0n;
+      aggregatedMap.set(key, current + w.amount);
+    }
+
+    // 4️⃣ Convert Map to array with pubkey included
+    const result: AggregatedPendingWithdrawal[] = Array.from(aggregatedMap.entries()).map(([key, amount]) => {
+      const [validator_index_str, withdrawable_epoch_str] = key.split("-");
+      const validator_index = parseInt(validator_index_str, 10);
+      const withdrawable_epoch = parseInt(withdrawable_epoch_str, 10);
+      const pubkey = pubkeyByValidatorIndex.get(validator_index) ?? "";
+
+      return {
+        validator_index,
+        withdrawable_epoch,
+        amount,
+        pubkey,
+      };
+    });
+
+    this.logger.info(`getFilteredAndAggregatedPendingWithdrawals succeeded, aggregatedCount=${result.length}`);
+    this.logger.debug("getFilteredAndAggregatedPendingWithdrawals - aggregated results", {
+      aggregatedCount: result.length,
+      allEntries: result.map((r) => ({
+        validator_index: r.validator_index,
+        withdrawable_epoch: r.withdrawable_epoch,
+        amount: r.amount.toString(),
+        pubkey: r.pubkey,
+      })),
+    });
+
+    return result;
   }
 
   /**

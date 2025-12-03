@@ -10,3 +10,13 @@ export interface ValidatorBalanceWithPendingWithdrawal extends ValidatorBalance 
   pendingWithdrawalAmount: bigint;
   withdrawableAmount: bigint;
 }
+
+/**
+ * Aggregated pending withdrawal result with validator public key.
+ */
+export interface AggregatedPendingWithdrawal {
+  validator_index: number;
+  withdrawable_epoch: number;
+  amount: bigint;
+  pubkey: string;
+}
