@@ -357,13 +357,11 @@ func (st *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Ent
 
 	// Limitless-specific renaming
 	if job.Def.Name == jobNameBootstrap {
-		// For bootstrap: append `-bootstrap` suffix to mark partial success.
+		// For bootstrap: append `bootstrap.partial.success` suffix to mark partial success.
 		// This is because it is technically incorrect to consider moving the entire file move to
-		// `requests-done` folder with success prefix. So we prepend`.bootstrap` suffix to indicate that
-		// at this moment only bootstrap is successful. The entire file
-		// should be moved only after conglomeration is successful.
-		// Stay in execution/requests/, only change suffix
-
+		// `requests-done` folder with success prefix. So we append `bootstrap.partial.success` suffix to indicate that
+		// at this moment only bootstrap is successful. The entire file should be moved only after
+		// conglomeration is successful.
 		var (
 			current = job.InProgressPath()
 			target  = filepath.Join(filepath.Dir(job.InProgressPath()),
@@ -532,14 +530,9 @@ func (st *ControllerState) preCleanForLimitlessJob(cfg *config.Config, cLog *log
 	if exists {
 		// Get all possible dir paths where all tmp artificats for the job can be created
 		var (
-			rmPattern   = fmt.Sprintf("%d-%d-*", job.Start, job.End)
-			cleanupDirs = []string{metadataReqDir, metadataDoneDir, randomnessReqDir, randomnessDoneDir}
+			rmPattern = fmt.Sprintf("%d-%d-*", job.Start, job.End)
 		)
-
-		cleanupDirs = append(witnessReqDirs, witnessDoneDirs...)
-		cleanupDirs = append(cleanupDirs, subproofReqDirs...)
-		cleanupDirs = append(cleanupDirs, subproofDoneDirs...)
-		for _, dir := range cleanupDirs {
+		for _, dir := range limitlessDirs {
 			_, err := files.RemoveMatchingFiles(filepath.Join(dir, rmPattern), true)
 			if err != nil {
 				return fmt.Errorf("error removing dangling witness pattern in prev. interrupted bootstrap job:%v", err)
