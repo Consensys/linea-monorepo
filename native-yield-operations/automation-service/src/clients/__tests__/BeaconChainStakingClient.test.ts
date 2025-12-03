@@ -39,6 +39,7 @@ const createMetricsUpdaterMock = () => {
     setLstLiabilityPrincipalGwei: jest.fn(),
     setLastTotalPendingPartialWithdrawalsGwei,
     setLastTotalValidatorBalanceGwei: jest.fn(),
+    setLastTotalPendingDepositGwei: jest.fn(),
     setPendingPartialWithdrawalQueueAmountGwei: jest.fn(),
     setPendingDepositQueueAmountGwei: jest.fn(),
     addNodeOperatorFeesPaid: jest.fn(),

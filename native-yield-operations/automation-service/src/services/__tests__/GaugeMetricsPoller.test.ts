@@ -536,7 +536,16 @@ describe("GaugeMetricsPoller", () => {
       validatorDataClient.getActiveValidators.mockReset();
       validatorDataClient.getActiveValidators.mockRejectedValue(new Error("Validator data fetch failed"));
       beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
-      beaconNodeApiClient.getPendingDeposits.mockResolvedValue([]);
+      // Mock pending deposits with data so the functions get called and can fail
+      beaconNodeApiClient.getPendingDeposits.mockResolvedValue([
+        {
+          pubkey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+          withdrawal_credentials: "0x0200000000000000000000002222222222222222222222222222222222222222",
+          amount: 32000000000,
+          signature: "0xabcdef",
+          slot: 100,
+        },
+      ]);
       // Ensure vault address fetch succeeds
       yieldManagerContractClient.getLidoStakingVaultAddress.mockReset();
       yieldManagerContractClient.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
@@ -551,6 +560,13 @@ describe("GaugeMetricsPoller", () => {
         throw new Error("Filter failed");
       });
       vaultHubContractClient.getLatestVaultReportTimestamp.mockRejectedValue(new Error("Contract read failed"));
+      // Mock pending deposits functions to throw errors
+      metricsUpdater.setPendingDepositQueueAmountGwei.mockImplementation(() => {
+        throw new Error("Pending deposits queue failed");
+      });
+      metricsUpdater.setLastTotalPendingDepositGwei.mockImplementation(() => {
+        throw new Error("Total pending deposits failed");
+      });
 
       await poller.poll();
 
@@ -560,6 +576,8 @@ describe("GaugeMetricsPoller", () => {
       // 3. Update failure for total pending partial withdrawals (index 0)
       // 4. Update failure for pending partial withdrawals queue (index 1)
       // 5. Update failure for last vault report timestamp (index 3)
+      // 6. Update failure for pending deposits queue (index 4)
+      // 7. Update failure for total pending deposits (index 5)
       // Note: yield provider data metrics are not added to updatePromises when fetch fails
       expect(logger.error).toHaveBeenCalledWith("Failed to fetch active validators", {
         error: expect.any(Error),
@@ -577,6 +595,14 @@ describe("GaugeMetricsPoller", () => {
       );
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update last vault report timestamp gauge metric",
+        { error: expect.any(Error) },
+      );
+      expect(logger.error).toHaveBeenCalledWith(
+        "Failed to update pending deposits queue gauge metric",
+        { error: expect.any(Error) },
+      );
+      expect(logger.error).toHaveBeenCalledWith(
+        "Failed to update total pending deposits gauge metric",
         { error: expect.any(Error) },
       );
     });
@@ -667,13 +693,76 @@ describe("GaugeMetricsPoller", () => {
 
       // Verify that setPendingDepositQueueAmountGwei was not called
       expect(metricsUpdater.setPendingDepositQueueAmountGwei).not.toHaveBeenCalled();
+      expect(metricsUpdater.setLastTotalPendingDepositGwei).not.toHaveBeenCalled();
+    });
+
+    it("updates LastTotalPendingDepositGwei gauge with sum of matching deposits", async () => {
+      // Mock pending deposits with matching withdrawal credentials
+      const vaultWithdrawalCredentials = "0x0200000000000000000000002222222222222222222222222222222222222222";
+      const matchingDeposit1 = {
+        pubkey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        withdrawal_credentials: vaultWithdrawalCredentials,
+        amount: 32000000000, // 32 ETH in gwei
+        signature: "0xabcdef",
+        slot: 100,
+      };
+      const matchingDeposit2 = {
+        pubkey: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        withdrawal_credentials: vaultWithdrawalCredentials,
+        amount: 16000000000, // 16 ETH in gwei
+        signature: "0xfedcba",
+        slot: 101,
+      };
+      const nonMatchingDeposit = {
+        pubkey: "0x9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba",
+        withdrawal_credentials: "0x0200000000000000000000003333333333333333333333333333333333333333",
+        amount: 32000000000,
+        signature: "0x123456",
+        slot: 102,
+      };
+
+      beaconNodeApiClient.getPendingDeposits.mockResolvedValue([matchingDeposit1, matchingDeposit2, nonMatchingDeposit]);
+
+      await poller.poll();
+
+      // Verify that setLastTotalPendingDepositGwei was called with the sum of matching deposits
+      expect(metricsUpdater.setLastTotalPendingDepositGwei).toHaveBeenCalledTimes(1);
+      expect(metricsUpdater.setLastTotalPendingDepositGwei).toHaveBeenCalledWith(48000000000); // 32 + 16 = 48 ETH in gwei
+    });
+
+    it("handles empty matching deposits array for total pending deposits", async () => {
+      const nonMatchingDeposit = {
+        pubkey: "0x9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba",
+        withdrawal_credentials: "0x0200000000000000000000003333333333333333333333333333333333333333",
+        amount: 32000000000,
+        signature: "0x123456",
+        slot: 102,
+      };
+
+      beaconNodeApiClient.getPendingDeposits.mockResolvedValue([nonMatchingDeposit]);
+
+      await poller.poll();
+
+      // Verify that setLastTotalPendingDepositGwei was called with 0 (no matching deposits)
+      expect(metricsUpdater.setLastTotalPendingDepositGwei).toHaveBeenCalledTimes(1);
+      expect(metricsUpdater.setLastTotalPendingDepositGwei).toHaveBeenCalledWith(0);
+    });
+
+    it("handles undefined pending deposits gracefully for total pending deposits", async () => {
+      beaconNodeApiClient.getPendingDeposits.mockResolvedValue(undefined);
+
+      await poller.poll();
+
+      // Verify that setLastTotalPendingDepositGwei was not called
+      expect(metricsUpdater.setLastTotalPendingDepositGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total pending deposits gauge update: pending deposits data unavailable");
     });
 
     it("handles out of bounds index by using unknown metric name", async () => {
       // This test covers the fallback case where index >= metricNames.length
       // We need to simulate a scenario where we have more rejected promises than metric names
       // Since we can't naturally create this, we'll test the logic directly by mocking Promise.allSettled
-      // We now have 7 metrics (indices 0-6), so index 7 will trigger "unknown"
+      // We now have 8 metrics (indices 0-7), so index 8 will trigger "unknown"
       const originalAllSettled = Promise.allSettled;
       
       // Mock Promise.allSettled to return different values for fetch (first call) and update (second call)
@@ -705,7 +794,7 @@ describe("GaugeMetricsPoller", () => {
             },
           ]);
         }
-        // Second call: update promises (8 promises to trigger index 7 = "unknown")
+        // Second call: update promises (9 promises to trigger index 8 = "unknown")
         return Promise.resolve([
           { status: "rejected" as const, reason: new Error("Error 1") },
           { status: "rejected" as const, reason: new Error("Error 2") },
@@ -714,7 +803,8 @@ describe("GaugeMetricsPoller", () => {
           { status: "rejected" as const, reason: new Error("Error 5") },
           { status: "rejected" as const, reason: new Error("Error 6") },
           { status: "rejected" as const, reason: new Error("Error 7") },
-          { status: "rejected" as const, reason: new Error("Error 8") }, // Index 7 triggers "unknown"
+          { status: "rejected" as const, reason: new Error("Error 8") },
+          { status: "rejected" as const, reason: new Error("Error 9") }, // Index 8 triggers "unknown"
         ]);
       });
 
@@ -723,7 +813,7 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
-      // Verify that the 8th error (index 7) uses "unknown" as the metric name
+      // Verify that the 9th error (index 8) uses "unknown" as the metric name
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update unknown gauge metric",
         { error: expect.any(Error) },

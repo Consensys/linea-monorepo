@@ -96,6 +96,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     if (vault !== undefined) {
       updatePromises.push(this._updateLastVaultReportTimestampGauge(vault));
       updatePromises.push(this._updatePendingDepositsQueueGauge(vault, pendingDeposits));
+      updatePromises.push(this._updateTotalPendingDepositsGauge(vault, pendingDeposits));
       // Only add yield provider data metrics if we successfully fetched the data
       if (yieldProviderData !== undefined) {
         updatePromises.push(
@@ -116,6 +117,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
           "total validator balance",
           "last vault report timestamp",
           "pending deposits queue",
+          "total pending deposits",
           "yield reported cumulative",
           "lst liability principal",
         ];
@@ -259,5 +261,33 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
       // amount is already in gwei (as number)
       this.metricsUpdater.setPendingDepositQueueAmountGwei(deposit.pubkey as Hex, deposit.slot, deposit.amount);
     }
+  }
+
+  /**
+   * Updates the total pending deposits gauge metric.
+   * Filters pending deposits by withdrawal credentials matching the vault address,
+   * then sums and updates the total metric.
+   *
+   * @param {Address} vault - The vault address to use for filtering deposits.
+   * @param {PendingDeposit[] | undefined} pendingDeposits - Array of pending deposits, or undefined.
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated (or returns early with a warning if deposit data is unavailable).
+   */
+  private async _updateTotalPendingDepositsGauge(
+    vault: Address,
+    pendingDeposits: PendingDeposit[] | undefined,
+  ): Promise<void> {
+    if (pendingDeposits === undefined) {
+      this.logger.warn("Skipping total pending deposits gauge update: pending deposits data unavailable");
+      return;
+    }
+
+    const vaultWithdrawalCredentials = get0x02WithdrawalCredentials(vault);
+    const matchingDeposits = pendingDeposits.filter(
+      (deposit) => deposit.withdrawal_credentials.toLowerCase() === vaultWithdrawalCredentials.toLowerCase(),
+    );
+
+    const totalAmount = matchingDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
+    // amount is already in gwei (as number)
+    this.metricsUpdater.setLastTotalPendingDepositGwei(totalAmount);
   }
 }

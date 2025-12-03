@@ -32,6 +32,8 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   setLastTotalValidatorBalanceGwei(totalValidatorBalanceGwei: number): void;
 
+  setLastTotalPendingDepositGwei(totalPendingDepositGwei: number): void;
+
   setPendingPartialWithdrawalQueueAmountGwei(pubkey: Hex, withdrawableEpoch: number, amountGwei: number): void;
 
   setPendingDepositQueueAmountGwei(pubkey: Hex, slot: number, amountGwei: number): void;
