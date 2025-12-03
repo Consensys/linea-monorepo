@@ -98,6 +98,11 @@ jobs:
           load: true
           push: false
           tags: ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}
+          cache-from: |
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-amd64,platform=linux/amd64
+          cache-to: |
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-amd64,mode=max,platform=linux/amd64
+            type=inline
       - name: Save Docker image as artifact
         if: ${{ env.PUSH_IMAGE == 'false' }}
         run: |
