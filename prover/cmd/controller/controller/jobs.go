@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -208,12 +210,53 @@ func (j *Job) Score() int {
 
 	// Adjust relative ordering: for the same j.End, GL wins over LPP
 	// We do this by adding a small offset *only* for LPP jobs.
-	// This offset is smaller than 100 (the per-End spacing),
-	// so it never affects ordering between different Ends.
 	if strings.Contains(j.Def.Name, "lpp-") {
 		score += offset // ensure LPP jobs come *after* GL jobs of same End
 	}
 	return score
+}
+
+func (st *ControllerState) setActiveJob(job *Job) {
+	st.activeJobMu.Lock()
+	st.activeJob = job
+	st.activeJobMu.Unlock()
+}
+
+func (st *ControllerState) clearActiveJob() {
+	st.activeJobMu.Lock()
+	st.activeJob = nil
+	st.activeJobMu.Unlock()
+}
+
+func (st *ControllerState) getActiveJob() *Job {
+	st.activeJobMu.Lock()
+	job := st.activeJob
+	st.activeJobMu.Unlock()
+	return job
+}
+
+// set the current job cancel func
+func (st *ControllerState) setCurrentJobCancel(cf context.CancelFunc) {
+	st.cancelJobMu.Lock()
+	st.currentJobCancel = cf
+	st.cancelJobMu.Unlock()
+}
+
+// clear the current job cancel func (call after job finishes)
+func (st *ControllerState) clearCurrentJobCancel() {
+	st.cancelJobMu.Lock()
+	st.currentJobCancel = nil
+	st.cancelJobMu.Unlock()
+}
+
+// cancel only the current child job
+func (st *ControllerState) cancelCurrentJob() {
+	st.cancelJobMu.Lock()
+	if st.currentJobCancel != nil {
+		st.currentJobCancel()
+		st.currentJobCancel = nil
+	}
+	st.cancelJobMu.Unlock()
 }
 
 // If the regexp is provided and non-nil, return the first match and returns the
@@ -253,4 +296,33 @@ func isExecLimitlessJob(job *Job) bool {
 	return job.Def.Name == jobNameBootstrap || job.Def.Name == jobNameConglomeration ||
 		strings.HasPrefix(job.Def.Name, jobNameGL) ||
 		strings.HasPrefix(job.Def.Name, jobNameLPP)
+}
+
+func rmTmpArtificats(cLog *logrus.Entry, job *Job) {
+	cLog.Infof("Cleanup enabled — pruning only successful transient sub-proof/witness artifacts for %d-%d", job.Start, job.End)
+
+	patternBase := fmt.Sprintf("%d-%d-*%s*", job.Start, job.End, config.SuccessSuffix)
+	cleanupDirs := []string{metadataDoneDir, randomnessDoneDir}
+	cleanupDirs = append(cleanupDirs, witnessDoneDirs...)
+	cleanupDirs = append(cleanupDirs, subproofDoneDirs...)
+
+	for _, dir := range cleanupDirs {
+		pattern := filepath.Join(dir, patternBase)
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			cLog.Errorf("glob failed for pattern %v: %v", pattern, err)
+			continue
+		}
+
+		if len(matches) == 0 {
+			continue
+		}
+
+		for _, f := range matches {
+			cLog.Infof("Removing transient file: %s", f)
+			if err := os.Remove(f); err != nil {
+				cLog.Errorf("Failed to remove %s: %v", f, err)
+			}
+		}
+	}
 }

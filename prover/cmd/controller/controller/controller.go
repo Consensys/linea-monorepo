@@ -27,52 +27,9 @@ type ControllerState struct {
 	jobDoneChan   chan struct{}
 	jobDoneChanMu sync.Mutex
 
-	// per-job cancel so SIGUSR2 can cancel only the running child
+	// per-job cancel so SIGUSR2 cancells only the running child process
 	currentJobCancel context.CancelFunc
 	cancelJobMu      sync.Mutex
-}
-
-func (st *ControllerState) setActiveJob(job *Job) {
-	st.activeJobMu.Lock()
-	st.activeJob = job
-	st.activeJobMu.Unlock()
-}
-
-func (st *ControllerState) clearActiveJob() {
-	st.activeJobMu.Lock()
-	st.activeJob = nil
-	st.activeJobMu.Unlock()
-}
-
-func (st *ControllerState) getActiveJob() *Job {
-	st.activeJobMu.Lock()
-	job := st.activeJob
-	st.activeJobMu.Unlock()
-	return job
-}
-
-// set the current job cancel func
-func (st *ControllerState) setCurrentJobCancel(cf context.CancelFunc) {
-	st.cancelJobMu.Lock()
-	st.currentJobCancel = cf
-	st.cancelJobMu.Unlock()
-}
-
-// clear the current job cancel func (call after job finishes)
-func (st *ControllerState) clearCurrentJobCancel() {
-	st.cancelJobMu.Lock()
-	st.currentJobCancel = nil
-	st.cancelJobMu.Unlock()
-}
-
-// cancel only the current child job
-func (st *ControllerState) cancelCurrentJob() {
-	st.cancelJobMu.Lock()
-	if st.currentJobCancel != nil {
-		st.currentJobCancel()
-		st.currentJobCancel = nil
-	}
-	st.cancelJobMu.Unlock()
 }
 
 var (
@@ -143,7 +100,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// the job is still active (timer already slept in signal handler) - See signal handler go routine
 			if !spotReclaimDetected.Load() && gracefulShutdownRequested.Load() {
 				if job := state.getActiveJob(); job != nil {
-					cLog.Infof("Job %v did not finish before termination grace period. Requeuing...", job.OriginalFile)
+					cLog.Infof("Job %v did not finish before termination grace period. REQUEUING..", job.OriginalFile)
 					// Write transient failures for limitless jobs
 					if err := state.writeTransientFailFile(cfg, cLog, CodeKilledByExtSig); err != nil {
 						utils.Panic("error while writing transient failure files:%v", err)
@@ -262,7 +219,23 @@ func (st *ControllerState) requeueJob(cfg *config.Config, cLog *logrus.Entry) {
 	} else {
 		cLog.Infof("REQUEUED job: %v", job.OriginalFile)
 	}
+	// Edge case during conglomeration requeueing:
+	// Any leftover file in the execution request directory must also be handled.
+	if job.Def.Name == jobNameConglomeration {
+		// Also, Rename the *inprogress file in execution request dir back to partial bootstrap suffix marker
+		// so that the next conglomerator can correctly pick it up appending its local id to it
+		baseFile, oldFile, err := files.LocateBaseBySuffix(job.Start, job.End, cfg.Execution.DirFrom(), config.InProgressSufix)
+		if err != nil {
+			cLog.Errorf("error locating base file during requeue for conglomeration job: %v", err)
+		}
 
+		newFile := baseFile + "." + config.BootstrapPartialSucessSuffix
+		if err := os.Rename(oldFile, newFile); err != nil {
+			cLog.Errorf("Failed to rename %v → %v: %v", oldFile, newFile, err)
+		} else {
+			cLog.Infof("Successfully replaced %s suffix with suffix:%s for conflation %d-%d", config.InProgressSufix, config.BootstrapPartialSucessSuffix, job.Start, job.End)
+		}
+	}
 	st.clearActiveJob()
 	st.notifyJobDone()
 }
@@ -628,72 +601,21 @@ func (st *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Ent
 // relevant only for limitless job
 func finalizeExecLimitlessStatus(cfg *config.Config, cLog *logrus.Entry, job *Job, newSuffix string) {
 
-	pattern := filepath.Join(cfg.Execution.DirFrom(), fmt.Sprintf("%d-%d-*.%s*", job.Start, job.End, config.InProgressSufix))
-	matches, err := filepath.Glob(pattern)
+	base, oldFile, err := files.LocateBaseBySuffix(job.Start, job.End, cfg.Execution.DirFrom(), config.InProgressSufix)
 	if err != nil {
-		cLog.Errorf("Glob pattern failed for %v: %v", pattern, err)
-		return
-	}
-	if len(matches) == 0 {
-		cLog.Warnf("No file found matching %v (maybe already moved?)", pattern)
-		return
-	}
-	if len(matches) > 1 {
-		cLog.Errorf("Multiple files match pattern %v instead of only one: %#v", pattern, matches)
-		return
-	}
-
-	oldFile := matches[0]
-
-	// find index of  oldSuffix (".inprogress") to remove everything from that point onward
-	marker := "." + config.InProgressSufix
-	idx := strings.Index(oldFile, marker)
-	if idx == -1 {
-		cLog.Errorf("unexpected filename format: %s (no %s found)", oldFile, marker)
+		cLog.Errorf("failed to find base file: %v", err)
 		return
 	}
 	var (
-		base        = oldFile[:idx] // everything up to but not including ".inprogress..."
 		newFileName = filepath.Base(base) + "." + newSuffix
 		dir         = filepath.Dir(base)
 		doneDir     = strings.Replace(dir, cfg.Execution.DirFrom(), cfg.Execution.DirDone(), 1) // requests -> requests-done
 		newFile     = filepath.Join(doneDir, newFileName)
 	)
-
-	cLog.Infof("Renaming file: %v → %v", oldFile, newFile)
 	if err := os.Rename(oldFile, newFile); err != nil {
 		cLog.Errorf("Failed to rename %v → %v: %v", oldFile, newFile, err)
 	} else {
 		cLog.Infof("Successfully replaced %s suffix with status:%s for conflation %d-%d", config.InProgressSufix, newSuffix, job.Start, job.End)
-	}
-}
-
-func rmTmpArtificats(cLog *logrus.Entry, job *Job) {
-	cLog.Infof("Cleanup enabled — pruning only successful transient sub-proof/witness artifacts for %d-%d", job.Start, job.End)
-
-	patternBase := fmt.Sprintf("%d-%d-*%s*", job.Start, job.End, config.SuccessSuffix)
-	cleanupDirs := []string{metadataDoneDir, randomnessDoneDir}
-	cleanupDirs = append(cleanupDirs, witnessDoneDirs...)
-	cleanupDirs = append(cleanupDirs, subproofDoneDirs...)
-
-	for _, dir := range cleanupDirs {
-		pattern := filepath.Join(dir, patternBase)
-		matches, err := filepath.Glob(pattern)
-		if err != nil {
-			cLog.Errorf("glob failed for pattern %v: %v", pattern, err)
-			continue
-		}
-
-		if len(matches) == 0 {
-			continue
-		}
-
-		for _, f := range matches {
-			cLog.Infof("Removing transient file: %s", f)
-			if err := os.Remove(f); err != nil {
-				cLog.Errorf("Failed to remove %s: %v", f, err)
-			}
-		}
 	}
 }
 

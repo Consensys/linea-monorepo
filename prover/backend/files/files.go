@@ -319,3 +319,61 @@ func MarkAndMoveToDone(cfg *config.Config, filePaths []string, suffix string) er
 
 	return nil
 }
+
+// LocateBaseBySuffix searches the given directory for a single file
+// belonging to a specific job whose name contains a given suffix. Filenames
+// follow the pattern:
+//
+//	<start>-<end>-*.suffix[...]
+//
+// Example match:
+//
+//	10889556-10889655-etv2.1.0-stv2.3.0-getZkProof.json.inprogress.conglomerator
+//
+// The function performs:
+//
+//  1. Construct a glob pattern using start/end and the given suffix.
+//  2. Ensure exactly one filename matches.
+//  3. Find the first occurrence of "." + suffix.
+//  4. Return both:
+//     - baseFile: the portion of the filename before the suffix
+//     - oldFile:  the full path of the matched file
+//
+// baseFile is what you should append a new suffix to when finalizing status.
+//
+// Returns an error if:
+//   - Glob fails
+//   - No matching file exists
+//   - More than one file matches
+//   - The suffix is not found in the filename
+func LocateBaseBySuffix(start, end int, dir, suffix string) (baseFile string, oldFile string, err error) {
+
+	// Build glob pattern: "<dir>/<start>-<end>-*.suffix*"
+	pattern := filepath.Join(
+		dir,
+		fmt.Sprintf("%d-%d-*.%s*", start, end, suffix),
+	)
+
+	matches, globErr := filepath.Glob(pattern)
+	if globErr != nil {
+		return "", "", fmt.Errorf("glob failed for %v: %w", pattern, globErr)
+	}
+	if len(matches) == 0 {
+		return "", "", fmt.Errorf("no file found for pattern %v", pattern)
+	}
+	if len(matches) > 1 {
+		return "", "", fmt.Errorf("multiple matches for %v: %#v", pattern, matches)
+	}
+
+	oldFile = matches[0]
+
+	// find index of ".suffix" inside the filename
+	marker := "." + suffix
+	idx := strings.Index(oldFile, marker)
+	if idx == -1 {
+		return "", "", fmt.Errorf("unexpected filename format: %s (missing %s)", oldFile, marker)
+	}
+
+	// baseFile = everything before ".suffix"
+	return oldFile[:idx], oldFile, nil
+}

@@ -170,13 +170,12 @@ func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
 	// Get local id of conglomerator
 	var (
 		parts           = strings.Split(args.Input, "."+config.InProgressSufix+".")
-		localID         = parts[1]
+		localID         = parts[1] // Gauranteed by controller to have the *inprogress suffix
 		marker          = fmt.Sprintf("%s.", config.InProgressSufix)
 		newInprogSuffix = marker + localID
 	)
 
 	if splits := strings.SplitN(req.BootstrapRequestDoneFile, config.BootstrapPartialSucessSuffix, 2); len(splits) == 2 {
-
 		var (
 			oldFile = req.BootstrapRequestDoneFile
 			newFile = splits[0] + newInprogSuffix
@@ -190,6 +189,8 @@ func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
 			logrus.Printf("Renamed file: %s -> %s\n", oldFile, newFile)
 			req.BootstrapRequestDoneFile = newFile
 		}
+	} else {
+		return fmt.Errorf("could not find file with suffix %s in %s while handling conglomeration job", config.BootstrapPartialSucessSuffix, req.BootstrapRequestDoneFile)
 	}
 
 	resp, err := distributed.RunConglomerator(cfg, req)
