@@ -76,6 +76,7 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Labels:
   // i.) `pubkey` - Validator public key
   // ii.) `exit_epoch` - Epoch when exit becomes available
+  // iii.) `slashed` - "true" | "false"
   PendingExitQueueAmountGwei = "linea_native_yield_automation_service_pending_exit_queue_amount_gwei",
 
   // Gauge representing total pending exit amount in gwei

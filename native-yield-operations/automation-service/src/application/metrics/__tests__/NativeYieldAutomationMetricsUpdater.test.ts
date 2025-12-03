@@ -113,7 +113,7 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     expect(metricsService.createGauge).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
       "Pending exit queue amount in gwei",
-      ["pubkey", "exit_epoch"],
+      ["pubkey", "exit_epoch", "slashed"],
     );
     expect(metricsService.createGauge).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
@@ -811,11 +811,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 32000000000);
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 32000000000, false);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-        { pubkey: validatorPubkey, exit_epoch: "60001" },
+        { pubkey: validatorPubkey, exit_epoch: "60001", slashed: "false" },
         32000000000,
       );
     });
@@ -825,11 +825,35 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 12345, 1000);
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 12345, 1000, true);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-        { pubkey: validatorPubkey, exit_epoch: "12345" },
+        { pubkey: validatorPubkey, exit_epoch: "12345", slashed: "true" },
+        1000,
+      );
+    });
+
+    it("converts slashed boolean to string for label", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 1000, true);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: validatorPubkey, exit_epoch: "60001", slashed: "true" },
+        1000,
+      );
+
+      jest.clearAllMocks();
+
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 1000, false);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: validatorPubkey, exit_epoch: "60001", slashed: "false" },
         1000,
       );
     });
@@ -839,7 +863,7 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, -1);
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, -1, false);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
@@ -849,7 +873,7 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, -1, 1000);
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, -1, 1000, true);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
@@ -859,11 +883,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 0);
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 0, false);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-        { pubkey: validatorPubkey, exit_epoch: "60001" },
+        { pubkey: validatorPubkey, exit_epoch: "60001", slashed: "false" },
         0,
       );
     });
@@ -873,11 +897,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 0, 1000);
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 0, 1000, true);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-        { pubkey: validatorPubkey, exit_epoch: "0" },
+        { pubkey: validatorPubkey, exit_epoch: "0", slashed: "true" },
         1000,
       );
     });

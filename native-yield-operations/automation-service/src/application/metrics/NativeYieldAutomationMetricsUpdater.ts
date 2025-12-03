@@ -129,7 +129,7 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     this.metricsService.createGauge(
       LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
       "Pending exit queue amount in gwei",
-      ["pubkey", "exit_epoch"],
+      ["pubkey", "exit_epoch", "slashed"],
     );
 
     this.metricsService.createGauge(
@@ -423,12 +423,13 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    * @param {Hex} pubkey - The validator's public key in hex format.
    * @param {number} exitEpoch - The epoch when the exit becomes available. Must be non-negative.
    * @param {number} amountGwei - The exit amount in gwei. Must be non-negative to be recorded.
+   * @param {boolean} slashed - Whether the validator has been slashed.
    */
-  public setPendingExitQueueAmountGwei(pubkey: Hex, exitEpoch: number, amountGwei: number): void {
+  public setPendingExitQueueAmountGwei(pubkey: Hex, exitEpoch: number, amountGwei: number, slashed: boolean): void {
     if (amountGwei < 0 || exitEpoch < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-      { pubkey, exit_epoch: exitEpoch.toString() },
+      { pubkey, exit_epoch: exitEpoch.toString(), slashed: slashed.toString() },
       amountGwei,
     );
   }
