@@ -137,6 +137,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 			jobCtx, jobCancel := context.WithCancel(ctrlCtx)
 			state.setCurrentJobCancel(jobCancel)
 
+			// Reset retry counter and claim the job
+			numRetrySoFar = 0
+
 			// Claim active job for safe requeue mechanism
 			state.setActiveJob(job)
 
@@ -165,9 +168,6 @@ func runController(ctx context.Context, cfg *config.Config) {
 				state.clearCurrentJobCancel()
 				continue
 			}
-
-			// Reset retry counter and claim the job
-			numRetrySoFar = 0
 
 			// Reset peer-abort flag now that we are about to start this job
 			// This ensures stale abort signals from earlier jobs do not misclassify this one.
@@ -596,13 +596,16 @@ func (st *ControllerState) shouldSkipDueToSharedFail(cfg *config.Config, cLog *l
 	}
 
 	// Check if any marker belongs to this job’s own type (e.g. bootstrap)
-	// for _, m := range matches {
-	// 	base := filepath.Base(m)
-	// 	if strings.Contains(base, fmt.Sprintf("-%s-failure_code", job.Def.Name)) {
-	// 		cLog.Infof("Job %s matches its own failure marker (%s); proceeding to handle cleanup", job.OriginalFile, base)
-	// 		return false // allow execution
-	// 	}
-	// }
+	// Meaning we dont want an instance to write the transient failure file (to
+	// propogate peer-abort (SIGUSR2) for other peer workers)
+	// and then log receiving SIGUSR2 on the same source instance
+	for _, m := range matches {
+		base := filepath.Base(m)
+		if strings.Contains(base, fmt.Sprintf("-%s-failure_code", job.Def.Name)) {
+			cLog.Infof("Job %s matches its own failure marker (%s); skipping", job.OriginalFile, base)
+			return true
+		}
+	}
 
 	// Otherwise skip since another job already marked this range failed
 	cLog.Warnf("Skipping job %s because shared failure marker exists: %v", job.OriginalFile, matches)
