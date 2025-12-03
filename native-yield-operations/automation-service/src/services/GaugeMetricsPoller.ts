@@ -3,6 +3,8 @@ import {
   weiToGweiNumber,
   IBeaconNodeAPIClient,
   PendingPartialWithdrawal,
+  PendingDeposit,
+  get0x02WithdrawalCredentials,
 } from "@consensys/linea-shared-utils";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
@@ -47,19 +49,21 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    * @returns {Promise<void>} A promise that resolves when gauge metrics are updated.
    */
   async poll(): Promise<void> {
-    // Fetch validator data, pending withdrawals, vault address, and yield provider data in parallel
+    // Fetch validator data, pending withdrawals, pending deposits, vault address, and yield provider data in parallel
     // Use Promise.allSettled to handle failures gracefully
     const fetchResults = await Promise.allSettled([
       this.validatorDataClient.getActiveValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
+      this.beaconNodeApiClient.getPendingDeposits(),
       this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider),
       this.yieldManagerContractClient.getYieldProviderData(this.yieldProvider),
     ]);
 
     const allValidators = fetchResults[0].status === "fulfilled" ? fetchResults[0].value : undefined;
     const pendingWithdrawalsQueue = fetchResults[1].status === "fulfilled" ? fetchResults[1].value : undefined;
-    const vault = fetchResults[2].status === "fulfilled" ? fetchResults[2].value : undefined;
-    const yieldProviderData = fetchResults[3].status === "fulfilled" ? fetchResults[3].value : undefined;
+    const pendingDeposits = fetchResults[2].status === "fulfilled" ? fetchResults[2].value : undefined;
+    const vault = fetchResults[3].status === "fulfilled" ? fetchResults[3].value : undefined;
+    const yieldProviderData = fetchResults[4].status === "fulfilled" ? fetchResults[4].value : undefined;
 
     // Log fetch failures if any
     if (fetchResults[0].status === "rejected") {
@@ -69,12 +73,15 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
       this.logger.error("Failed to fetch pending partial withdrawals", { error: fetchResults[1].reason });
     }
     if (fetchResults[2].status === "rejected") {
-      this.logger.error("Failed to fetch vault address, skipping vault-dependent metrics", {
-        error: fetchResults[2].reason,
-      });
+      this.logger.error("Failed to fetch pending deposits", { error: fetchResults[2].reason });
     }
     if (fetchResults[3].status === "rejected") {
-      this.logger.error("Failed to fetch yield provider data", { error: fetchResults[3].reason });
+      this.logger.error("Failed to fetch vault address, skipping vault-dependent metrics", {
+        error: fetchResults[3].reason,
+      });
+    }
+    if (fetchResults[4].status === "rejected") {
+      this.logger.error("Failed to fetch yield provider data", { error: fetchResults[4].reason });
     }
 
     // Update metrics in parallel for efficiency
@@ -88,6 +95,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     // Only add vault-dependent metrics if we successfully fetched the vault address
     if (vault !== undefined) {
       updatePromises.push(this._updateLastVaultReportTimestampGauge(vault));
+      updatePromises.push(this._updatePendingDepositsQueueGauge(vault, pendingDeposits));
       // Only add yield provider data metrics if we successfully fetched the data
       if (yieldProviderData !== undefined) {
         updatePromises.push(
@@ -107,6 +115,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
           "pending partial withdrawals queue",
           "total validator balance",
           "last vault report timestamp",
+          "pending deposits queue",
           "yield reported cumulative",
           "lst liability principal",
         ];
@@ -218,5 +227,33 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
   private async _updateLastVaultReportTimestampGauge(vault: Address): Promise<void> {
     const timestamp = await this.vaultHubContractClient.getLatestVaultReportTimestamp(vault);
     this.metricsUpdater.setLastVaultReportTimestamp(vault, Number(timestamp));
+  }
+
+  /**
+   * Updates the pending deposits queue gauge metrics.
+   * Filters pending deposits by withdrawal credentials matching the vault address,
+   * then updates metrics for each matching deposit.
+   *
+   * @param {Address} vault - The vault address to use for filtering deposits.
+   * @param {PendingDeposit[] | undefined} pendingDeposits - Array of pending deposits, or undefined.
+   * @returns {Promise<void>} A promise that resolves when the gauges are updated (or silently returns if deposit data is unavailable).
+   */
+  private async _updatePendingDepositsQueueGauge(
+    vault: Address,
+    pendingDeposits: PendingDeposit[] | undefined,
+  ): Promise<void> {
+    if (pendingDeposits === undefined) {
+      return;
+    }
+
+    const vaultWithdrawalCredentials = get0x02WithdrawalCredentials(vault);
+    const matchingDeposits = pendingDeposits.filter(
+      (deposit) => deposit.withdrawal_credentials.toLowerCase() === vaultWithdrawalCredentials.toLowerCase(),
+    );
+
+    for (const deposit of matchingDeposits) {
+      // amount is already in gwei (as number)
+      this.metricsUpdater.setPendingDepositQueueAmountGwei(deposit.pubkey as Hex, deposit.slot, deposit.amount);
+    }
   }
 }

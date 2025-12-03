@@ -44,6 +44,7 @@ describe("GaugeMetricsPoller", () => {
     // Default mocks
     validatorDataClient.getActiveValidators.mockResolvedValue([]);
     beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
+    beaconNodeApiClient.getPendingDeposits.mockResolvedValue([]);
     validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue([]);
     validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(0n);
     validatorDataClient.getFilteredAndAggregatedPendingWithdrawals.mockReturnValue([]);
@@ -372,6 +373,18 @@ describe("GaugeMetricsPoller", () => {
       });
     });
 
+    it("handles pending partial withdrawals fetch failure gracefully", async () => {
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockRejectedValue(new Error("Failed to fetch pending partial withdrawals"));
+
+      await poller.poll();
+
+      // Should not throw, and other metrics should still be updated
+      expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith("Failed to fetch pending partial withdrawals", {
+        error: expect.any(Error),
+      });
+    });
+
     it("handles yield provider data fetch failure gracefully", async () => {
       yieldManagerContractClient.getYieldProviderData.mockRejectedValue(new Error("Contract read failed"));
 
@@ -509,9 +522,17 @@ describe("GaugeMetricsPoller", () => {
     });
 
     it("handles all metrics failing gracefully", async () => {
-      // Mock all metrics to fail
+      // Reset and mock all metrics to fail
+      validatorDataClient.getActiveValidators.mockReset();
       validatorDataClient.getActiveValidators.mockRejectedValue(new Error("Validator data fetch failed"));
       beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
+      beaconNodeApiClient.getPendingDeposits.mockResolvedValue([]);
+      // Ensure vault address fetch succeeds
+      yieldManagerContractClient.getLidoStakingVaultAddress.mockReset();
+      yieldManagerContractClient.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
+      // Mock yield provider data to fail - this should make yieldProviderData undefined
+      yieldManagerContractClient.getYieldProviderData.mockReset();
+      yieldManagerContractClient.getYieldProviderData.mockRejectedValue(new Error("Contract read failed"));
       // Mock the update functions to throw errors
       validatorDataClient.joinValidatorsWithPendingWithdrawals.mockImplementation(() => {
         throw new Error("Join failed");
@@ -519,7 +540,6 @@ describe("GaugeMetricsPoller", () => {
       validatorDataClient.getFilteredAndAggregatedPendingWithdrawals.mockImplementation(() => {
         throw new Error("Filter failed");
       });
-      yieldManagerContractClient.getYieldProviderData.mockRejectedValue(new Error("Contract read failed"));
       vaultHubContractClient.getLatestVaultReportTimestamp.mockRejectedValue(new Error("Contract read failed"));
 
       await poller.poll();
@@ -575,28 +595,124 @@ describe("GaugeMetricsPoller", () => {
       expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
     });
 
+    it("updates PendingDepositQueueAmountGwei gauge for matching deposits", async () => {
+      // Mock pending deposits with matching withdrawal credentials
+      const vaultWithdrawalCredentials = "0x0200000000000000000000002222222222222222222222222222222222222222";
+      const matchingDeposit = {
+        pubkey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        withdrawal_credentials: vaultWithdrawalCredentials,
+        amount: 32000000000, // 32 ETH in gwei
+        signature: "0xabcdef",
+        slot: 100,
+      };
+      const nonMatchingDeposit = {
+        pubkey: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        withdrawal_credentials: "0x0200000000000000000000003333333333333333333333333333333333333333",
+        amount: 32000000000,
+        signature: "0xfedcba",
+        slot: 101,
+      };
+
+      beaconNodeApiClient.getPendingDeposits.mockResolvedValue([matchingDeposit, nonMatchingDeposit]);
+
+      await poller.poll();
+
+      // Verify that only the matching deposit was processed
+      expect(metricsUpdater.setPendingDepositQueueAmountGwei).toHaveBeenCalledTimes(1);
+      expect(metricsUpdater.setPendingDepositQueueAmountGwei).toHaveBeenCalledWith(
+        matchingDeposit.pubkey,
+        matchingDeposit.slot,
+        matchingDeposit.amount,
+      );
+    });
+
+    it("handles undefined pending deposits gracefully", async () => {
+      beaconNodeApiClient.getPendingDeposits.mockResolvedValue(undefined);
+
+      await poller.poll();
+
+      // Verify that setPendingDepositQueueAmountGwei was not called
+      expect(metricsUpdater.setPendingDepositQueueAmountGwei).not.toHaveBeenCalled();
+    });
+
+    it("handles empty pending deposits array gracefully", async () => {
+      beaconNodeApiClient.getPendingDeposits.mockResolvedValue([]);
+
+      await poller.poll();
+
+      // Verify that setPendingDepositQueueAmountGwei was not called
+      expect(metricsUpdater.setPendingDepositQueueAmountGwei).not.toHaveBeenCalled();
+    });
+
+    it("handles pending deposits fetch failure gracefully", async () => {
+      beaconNodeApiClient.getPendingDeposits.mockRejectedValue(new Error("Failed to fetch pending deposits"));
+
+      await poller.poll();
+
+      // Verify error was logged
+      expect(logger.error).toHaveBeenCalledWith("Failed to fetch pending deposits", {
+        error: expect.any(Error),
+      });
+
+      // Verify that setPendingDepositQueueAmountGwei was not called
+      expect(metricsUpdater.setPendingDepositQueueAmountGwei).not.toHaveBeenCalled();
+    });
+
     it("handles out of bounds index by using unknown metric name", async () => {
       // This test covers the fallback case where index >= metricNames.length
       // We need to simulate a scenario where we have more rejected promises than metric names
       // Since we can't naturally create this, we'll test the logic directly by mocking Promise.allSettled
-      // We now have 6 metrics (indices 0-5), so index 6 will trigger "unknown"
+      // We now have 7 metrics (indices 0-6), so index 7 will trigger "unknown"
       const originalAllSettled = Promise.allSettled;
-      const mockAllSettled = jest.fn().mockResolvedValue([
-        { status: "rejected" as const, reason: new Error("Error 1") },
-        { status: "rejected" as const, reason: new Error("Error 2") },
-        { status: "rejected" as const, reason: new Error("Error 3") },
-        { status: "rejected" as const, reason: new Error("Error 4") },
-        { status: "rejected" as const, reason: new Error("Error 5") },
-        { status: "rejected" as const, reason: new Error("Error 6") },
-        { status: "rejected" as const, reason: new Error("Error 7") }, // Index 6 triggers "unknown"
-      ]);
+      
+      // Mock Promise.allSettled to return different values for fetch (first call) and update (second call)
+      let callCount = 0;
+      const mockAllSettled = jest.fn().mockImplementation((promises: Promise<any>[]) => {
+        callCount++;
+        // First call: fetch promises (5 promises)
+        if (callCount === 1) {
+          return Promise.resolve([
+            { status: "fulfilled" as const, value: [] },
+            { status: "fulfilled" as const, value: [] },
+            { status: "fulfilled" as const, value: [] },
+            { status: "fulfilled" as const, value: vaultAddress },
+            {
+              status: "fulfilled" as const,
+              value: {
+                yieldProviderVendor: 0,
+                isStakingPaused: false,
+                isOssificationInitiated: false,
+                isOssified: false,
+                primaryEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+                ossifiedEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+                yieldProviderIndex: 0n,
+                userFunds: 0n,
+                yieldReportedCumulative: 0n,
+                lstLiabilityPrincipal: 0n,
+                lastReportedNegativeYield: 0n,
+              } as YieldProviderData,
+            },
+          ]);
+        }
+        // Second call: update promises (8 promises to trigger index 7 = "unknown")
+        return Promise.resolve([
+          { status: "rejected" as const, reason: new Error("Error 1") },
+          { status: "rejected" as const, reason: new Error("Error 2") },
+          { status: "rejected" as const, reason: new Error("Error 3") },
+          { status: "rejected" as const, reason: new Error("Error 4") },
+          { status: "rejected" as const, reason: new Error("Error 5") },
+          { status: "rejected" as const, reason: new Error("Error 6") },
+          { status: "rejected" as const, reason: new Error("Error 7") },
+          { status: "rejected" as const, reason: new Error("Error 8") }, // Index 7 triggers "unknown"
+        ]);
+      });
 
       // Temporarily replace Promise.allSettled
       (global as any).Promise.allSettled = mockAllSettled;
 
       await poller.poll();
 
-      // Verify that the 7th error uses "unknown" as the metric name
+      // Verify that the 8th error (index 7) uses "unknown" as the metric name
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update unknown gauge metric",
         { error: expect.any(Error) },
