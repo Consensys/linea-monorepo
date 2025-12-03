@@ -57,24 +57,7 @@ func (r *Regular) SubVector(start, stop int) SmartVector {
 
 // Rotates the vector into a new one
 func (r *Regular) RotateRight(offset int) SmartVector {
-	resSlice := make(Regular, r.Len())
-
-	if offset == 0 {
-		copy(resSlice, *r)
-		return &resSlice
-	}
-
-	if offset < 0 || offset > len(*r) {
-		offset = utils.PositiveMod(offset, len(*r))
-	}
-
-	// v and w may be the same vector thus we should use a
-	// separate leftover buffer for temporary memory buffers.
-	cutAt := len(*r) - offset
-	leftovers := vector.DeepCopy((*r)[cutAt:])
-	copy(resSlice[offset:], (*r)[:cutAt])
-	copy(resSlice[:offset], leftovers)
-	return &resSlice
+	return NewRotated(*r, -offset)
 }
 
 func (r *Regular) WriteInSlice(s []field.Element) {

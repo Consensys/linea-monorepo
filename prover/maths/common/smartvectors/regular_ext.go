@@ -56,32 +56,7 @@ func (r *RegularExt) SubVector(start, stop int) SmartVector {
 
 // RotateRight rotates the vector into a new one
 func (r *RegularExt) RotateRight(offset int) SmartVector {
-	resSlice := make(RegularExt, r.Len())
-
-	if offset == 0 {
-		copy(resSlice, *r)
-		return &resSlice
-	}
-
-	if offset > 0 {
-		// v and w may be the same vector thus we should use a
-		// separate leftover buffer for temporary memory buffers.
-		cutAt := len(*r) - offset
-		leftovers := vectorext.DeepCopy((*r)[cutAt:])
-		copy(resSlice[offset:], (*r)[:cutAt])
-		copy(resSlice[:offset], leftovers)
-		return &resSlice
-	}
-
-	if offset < 0 {
-		glueAt := len(*r) + offset
-		leftovers := vectorext.DeepCopy((*r)[:-offset])
-		copy(resSlice[:glueAt], (*r)[-offset:])
-		copy(resSlice[glueAt:], leftovers)
-		return &resSlice
-	}
-
-	panic("unreachable")
+	return NewRotatedExt(*r, -offset)
 }
 
 func (r *RegularExt) WriteInSlice(s []field.Element) {

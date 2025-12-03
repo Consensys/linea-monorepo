@@ -26,37 +26,43 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 
 	// Parallel processing - classification and polynomial extraction
 	parallel.Execute(len(vs), func(start, stop int) {
-		scratchBase := make(koalabear.Vector, n)
-		scratchExt := make(extensions.Vector, n)
+		var scratchBase koalabear.Vector
+		var scratchExt extensions.Vector
 
 		for i := start; i < stop; i++ {
 			// Check if it's base field or extension field
 			if IsBase(vs[i]) {
-				vsi := scratchBase
 				switch v := vs[i].(type) {
 				case *sv.Constant:
 					results[i] = v.GetExt(0)
 					continue
 				case *sv.Regular:
 					// no need to copy here.
-					vsi = koalabear.Vector(*v)
+					results[i] = vLagrangeBasis.InnerProductByElement(koalabear.Vector(*v))
 				default:
-					v.WriteInSlice(vsi)
+					if scratchBase == nil {
+						scratchBase = make(koalabear.Vector, n)
+					}
+					v.WriteInSlice(scratchBase)
+					results[i] = vLagrangeBasis.InnerProductByElement(koalabear.Vector(scratchBase))
 				}
-				results[i] = vLagrangeBasis.InnerProductByElement(vsi)
+
 			} else {
-				vsi := scratchExt
 				switch v := vs[i].(type) {
 				case *sv.ConstantExt:
 					results[i] = v.Value
 					continue
 				case *sv.RegularExt:
 					// no need to copy here.
-					vsi = extensions.Vector(*v)
+					results[i] = vLagrangeBasis.InnerProduct(extensions.Vector(*v))
 				default:
-					v.WriteInSliceExt(vsi)
+					if scratchExt == nil {
+						scratchExt = make(extensions.Vector, n)
+					}
+					v.WriteInSliceExt(scratchExt)
+					results[i] = vLagrangeBasis.InnerProduct(scratchExt)
 				}
-				results[i] = vLagrangeBasis.InnerProduct(vsi)
+
 			}
 		}
 	})

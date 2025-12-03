@@ -87,40 +87,14 @@ func (r *Rotated) GetPtr(n int) *field.Element {
 // Returns a particular element. The subvector is taken at indices
 // [start, stop). (stop being excluded from the span)
 func (r *Rotated) SubVector(start, stop int) SmartVector {
-	if stop+r.offset < len(r.v) && start+r.offset > 0 {
-		res := Regular(r.v[start+r.offset : stop+r.offset])
-		return &res
-	}
-
 	res := make([]field.Element, stop-start)
-	size := r.Len()
-	spanSize := stop - start
-
-	// compact boundary checks
-	if stop <= start || start < 0 || stop > size {
-		utils.Panic("invalid subvector range: start=%v, stop=%v, size=%v", start, stop, size)
-	}
-
-	// normalize the offset to something positive [0: size)
-	startWithOffsetClean := utils.PositiveMod(start+r.offset, size)
-
-	// NB: we may need to construct the res in several steps
-	// in case
-	copy(res, r.v[startWithOffsetClean:min(size, startWithOffsetClean+spanSize)])
-
-	// If this is negative of zero, it means the first copy already copied
-	// everything we needed to copy
-	howManyElementLeftToCopy := startWithOffsetClean + spanSize - size
-	howManyAlreadyCopied := spanSize - howManyElementLeftToCopy
-	if howManyElementLeftToCopy <= 0 {
-		ret := Regular(res)
-		return &ret
-	}
-
-	// if necessary perform a second
-	copy(res[howManyAlreadyCopied:], r.v[:howManyElementLeftToCopy])
+	copySubVector(r.v, r.offset, start, stop, res)
 	ret := Regular(res)
 	return &ret
+}
+
+func (r *Rotated) WriteSubVectorInSlice(start, stop int, s []field.Element) {
+	copySubVector(r.v, r.offset, start, stop, s)
 }
 
 func (r *Rotated) WriteSubVectorInSliceExt(start, stop int, s []fext.Element) {
@@ -128,42 +102,72 @@ func (r *Rotated) WriteSubVectorInSliceExt(start, stop int, s []fext.Element) {
 	if start < 0 || stop > r.Len() || stop <= start || len(s) != stop-start {
 		utils.Panic("invalid start/stop/len(s): start=%v, stop=%v, len(s)=%v, vector len=%v", start, stop, len(s), r.Len())
 	}
-	if stop+r.offset < len(r.v) && start+r.offset > 0 {
+
+	// Fast path: contiguous slice
+	if stop+r.offset < len(r.v) && start+r.offset >= 0 {
 		for i := 0; i < stop-start; i++ {
 			fext.SetFromBase(&s[i], &r.v[start+r.offset+i])
 		}
 		return
 	}
+
 	size := r.Len()
 	spanSize := stop - start
-
-	// compact boundary checks
-	if stop <= start || start < 0 || stop > size {
-		utils.Panic("invalid subvector range: start=%v, stop=%v, size=%v", start, stop, size)
-	}
 
 	// normalize the offset to something positive [0: size)
 	startWithOffsetClean := utils.PositiveMod(start+r.offset, size)
 
-	// NB: we may need to construct the res in several steps
-	for i := 0; i < min(size-startWithOffsetClean, spanSize); i++ {
+	// First part
+	n1 := min(size-startWithOffsetClean, spanSize)
+	for i := 0; i < n1; i++ {
 		fext.SetFromBase(&s[i], &r.v[startWithOffsetClean+i])
 	}
 
-	// If this is negative of zero, it means the first copy already copied
-	// everything we needed to copy
-	howManyElementLeftToCopy := startWithOffsetClean + spanSize - size
-	howManyAlreadyCopied := spanSize - howManyElementLeftToCopy
-	if howManyElementLeftToCopy <= 0 {
+	// Second part (wrap around)
+	howManyElementLeftToCopy := spanSize - n1
+	if howManyElementLeftToCopy > 0 {
+		for i := 0; i < howManyElementLeftToCopy; i++ {
+			fext.SetFromBase(&s[n1+i], &r.v[i])
+		}
+	}
+}
+
+// copySubVector handles the rotation logic for copying a sub-segment of a slice
+// into a destination slice, accounting for the cyclic shift defined by offset.
+func copySubVector[T any](src []T, offset, start, stop int, dst []T) {
+	size := len(src)
+	spanSize := stop - start
+
+	// sanity checks
+	if start < 0 || stop > size || stop <= start || len(dst) != spanSize {
+		utils.Panic("invalid subvector range or destination size: start=%v, stop=%v, size=%v, len(dst)=%v", start, stop, size, len(dst))
+	}
+
+	// Fast path: the requested range (shifted) falls within the physical slice bounds without wrapping.
+	// Note: start+offset could be negative if offset is negative, but NewRotated ensures offset is somewhat sane relative to len?
+	// Actually NewRotated allows negative offsets but checks bounds. However, here we usually normalize or check.
+	// Let's check if the physical range [start+offset, stop+offset) is valid in src.
+	// Since offset can be arbitrary (though usually normalized in constructor, but let's be safe or rely on logic below).
+	// The logic below normalizes startWithOffsetClean.
+	// However, if we want a fast path for non-wrapping:
+	// We need to check if the logical range [start, stop) maps to a contiguous physical range.
+	// The mapping is index -> (index + offset) % size.
+	// It is contiguous if (start + offset) % size + (stop - start) <= size (and no wrap around 0).
+	// Or simply:
+	startWithOffsetClean := utils.PositiveMod(start+offset, size)
+	if startWithOffsetClean+spanSize <= size {
+		copy(dst, src[startWithOffsetClean:startWithOffsetClean+spanSize])
 		return
 	}
 
-	// if necessary perform a second
-	// copy(res[howManyAlreadyCopied:], r.v[:howManyElementLeftToCopy])
-	for i := 0; i < howManyElementLeftToCopy; i++ {
-		fext.SetFromBase(&s[howManyAlreadyCopied+i], &r.v[i])
-	}
-	return
+	// Slow path: wrapping around the end of the slice.
+	// 1. Copy from startWithOffsetClean to end of src
+	n1 := size - startWithOffsetClean
+	copy(dst, src[startWithOffsetClean:])
+
+	// 2. Copy the remainder from the beginning of src
+	n2 := spanSize - n1
+	copy(dst[n1:], src[:n2])
 }
 
 // Rotates the vector into a new one, a positive offset means a left cyclic shift
@@ -182,8 +186,9 @@ func (r *Rotated) DeepCopy() SmartVector {
 }
 
 func (r *Rotated) WriteInSlice(s []field.Element) {
-	res := rotatedAsRegular(r)
-	res.WriteInSlice(s)
+	r.WriteSubVectorInSlice(0, r.Len(), s)
+	// res := rotatedAsRegular(r)
+	// res.Write(s)
 }
 
 func (r *Rotated) WriteInSliceExt(s []fext.Element) {
