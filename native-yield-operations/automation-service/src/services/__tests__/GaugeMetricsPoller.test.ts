@@ -160,6 +160,7 @@ describe("GaugeMetricsPoller", () => {
       expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
       expect(validatorDataClient.getTotalValidatorBalanceGwei).toHaveBeenCalledWith(undefined);
       expect(metricsUpdater.setLastTotalValidatorBalanceGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total validator balance gauge update: validator balance unavailable");
     });
 
     it("handles empty validator array gracefully for total validator balance", async () => {
@@ -171,6 +172,7 @@ describe("GaugeMetricsPoller", () => {
       expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
       expect(validatorDataClient.getTotalValidatorBalanceGwei).toHaveBeenCalledWith([]);
       expect(metricsUpdater.setLastTotalValidatorBalanceGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total validator balance gauge update: validator balance unavailable");
     });
 
     it("updates YieldReportedCumulative gauge", async () => {
@@ -317,6 +319,7 @@ describe("GaugeMetricsPoller", () => {
 
       expect(validatorDataClient.getFilteredAndAggregatedPendingWithdrawals).toHaveBeenCalled();
       expect(metricsUpdater.setPendingPartialWithdrawalQueueAmountGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Skipping pending partial withdrawals queue gauge update: aggregated withdrawals unavailable");
     });
 
     it("handles empty aggregated withdrawals array for queue gauge", async () => {
@@ -351,6 +354,10 @@ describe("GaugeMetricsPoller", () => {
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalled();
       expect(metricsUpdater.setLstLiabilityPrincipalGwei).toHaveBeenCalled();
       expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalled();
+      // Verify warnings are logged for skipped metrics
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total pending partial withdrawals gauge update: validator data unavailable");
+      expect(logger.warn).toHaveBeenCalledWith("Skipping pending partial withdrawals queue gauge update: aggregated withdrawals unavailable");
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total validator balance gauge update: validator balance unavailable");
     });
 
     it("handles validator data client failure gracefully for pending partial withdrawals", async () => {
@@ -371,6 +378,9 @@ describe("GaugeMetricsPoller", () => {
       expect(logger.error).toHaveBeenCalledWith("Failed to fetch active validators", {
         error: expect.any(Error),
       });
+      // Verify warnings are logged for skipped metrics
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total pending partial withdrawals gauge update: validator data unavailable");
+      expect(logger.warn).toHaveBeenCalledWith("Skipping pending partial withdrawals queue gauge update: aggregated withdrawals unavailable");
     });
 
     it("handles pending partial withdrawals fetch failure gracefully", async () => {
@@ -633,6 +643,7 @@ describe("GaugeMetricsPoller", () => {
 
       // Verify that setPendingDepositQueueAmountGwei was not called
       expect(metricsUpdater.setPendingDepositQueueAmountGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Skipping pending deposits queue gauge update: pending deposits data unavailable");
     });
 
     it("handles empty pending deposits array gracefully", async () => {

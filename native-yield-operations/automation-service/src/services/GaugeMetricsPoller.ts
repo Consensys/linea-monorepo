@@ -131,7 +131,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    *
    * @param {ValidatorBalance[] | undefined} allValidators - Array of active validators, or undefined.
    * @param {PendingPartialWithdrawal[] | undefined} pendingWithdrawalsQueue - Array of pending partial withdrawals, or undefined.
-   * @returns {Promise<void>} A promise that resolves when the gauge is updated (or silently returns if validator data is unavailable).
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated (or returns early with a warning if validator data is unavailable).
    */
   private async _updateTotalPendingPartialWithdrawalsGauge(
     allValidators: ValidatorBalance[] | undefined,
@@ -142,6 +142,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
       pendingWithdrawalsQueue,
     );
     if (joinedValidatorList === undefined) {
+      this.logger.warn("Skipping total pending partial withdrawals gauge update: validator data unavailable");
       return;
     }
     const totalPendingPartialWithdrawalsWei =
@@ -156,7 +157,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    *
    * @param {ValidatorBalance[] | undefined} allValidators - Array of active validators, or undefined.
    * @param {PendingPartialWithdrawal[] | undefined} pendingWithdrawalsQueue - Array of pending partial withdrawals, or undefined.
-   * @returns {Promise<void>} A promise that resolves when the gauges are updated (or silently returns if validator data is unavailable).
+   * @returns {Promise<void>} A promise that resolves when the gauges are updated (or returns early with a warning if validator data is unavailable).
    */
   private async _updatePendingPartialWithdrawalsQueueGauge(
     allValidators: ValidatorBalance[] | undefined,
@@ -167,6 +168,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
       pendingWithdrawalsQueue,
     );
     if (aggregatedWithdrawals === undefined) {
+      this.logger.warn("Skipping pending partial withdrawals queue gauge update: aggregated withdrawals unavailable");
       return;
     }
     for (const withdrawal of aggregatedWithdrawals) {
@@ -183,11 +185,12 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    * Updates the total validator balance gauge metric.
    *
    * @param {ValidatorBalance[] | undefined} allValidators - Array of active validators, or undefined.
-   * @returns {Promise<void>} A promise that resolves when the gauge is updated (or silently returns if validator data is unavailable).
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated (or returns early with a warning if validator data is unavailable).
    */
   private async _updateTotalValidatorBalanceGauge(allValidators: ValidatorBalance[] | undefined): Promise<void> {
     const totalValidatorBalanceGwei = this.validatorDataClient.getTotalValidatorBalanceGwei(allValidators);
     if (totalValidatorBalanceGwei === undefined) {
+      this.logger.warn("Skipping total validator balance gauge update: validator balance unavailable");
       return;
     }
     this.metricsUpdater.setLastTotalValidatorBalanceGwei(Number(totalValidatorBalanceGwei));
@@ -236,13 +239,14 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    *
    * @param {Address} vault - The vault address to use for filtering deposits.
    * @param {PendingDeposit[] | undefined} pendingDeposits - Array of pending deposits, or undefined.
-   * @returns {Promise<void>} A promise that resolves when the gauges are updated (or silently returns if deposit data is unavailable).
+   * @returns {Promise<void>} A promise that resolves when the gauges are updated (or returns early with a warning if deposit data is unavailable).
    */
   private async _updatePendingDepositsQueueGauge(
     vault: Address,
     pendingDeposits: PendingDeposit[] | undefined,
   ): Promise<void> {
     if (pendingDeposits === undefined) {
+      this.logger.warn("Skipping pending deposits queue gauge update: pending deposits data unavailable");
       return;
     }
 
