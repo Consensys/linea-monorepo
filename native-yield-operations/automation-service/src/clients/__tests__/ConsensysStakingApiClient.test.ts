@@ -1134,4 +1134,427 @@ describe("ConsensysStakingApiClient", () => {
       }
     });
   });
+
+  describe("getSlashedValidators", () => {
+    it("returns undefined and logs warning when input is undefined", () => {
+      const { client, logger } = createClient();
+
+      const result = client.getSlashedValidators(undefined);
+
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith("getSlashedValidators - invalid input: validators is undefined");
+    });
+
+    it("returns empty array when input is empty array", () => {
+      const { client, logger } = createClient();
+
+      const result = client.getSlashedValidators([]);
+
+      expect(result).toEqual([]);
+      expect(logger.info).toHaveBeenCalledWith("getSlashedValidators succeeded, slashedCount=0");
+    });
+
+    it("returns only slashed validators (slashed=true)", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const validators: ExitingValidator[] = [
+        {
+          balance: 40n,
+          effectiveBalance: 32n,
+          publicKey: "validator-slashed-1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+        {
+          balance: 35n,
+          effectiveBalance: 32n,
+          publicKey: "validator-slashed-2",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+      ];
+
+      const result = client.getSlashedValidators(validators);
+
+      expect(result).toEqual(validators);
+      expect(logger.info).toHaveBeenCalledWith("getSlashedValidators succeeded, slashedCount=2");
+    });
+
+    it("filters out non-slashed validators", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const validators: ExitingValidator[] = [
+        {
+          balance: 40n,
+          effectiveBalance: 32n,
+          publicKey: "validator-slashed",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+        {
+          balance: 35n,
+          effectiveBalance: 32n,
+          publicKey: "validator-normal",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      const result = client.getSlashedValidators(validators);
+
+      expect(result).toEqual([validators[0]]);
+      expect(logger.info).toHaveBeenCalledWith("getSlashedValidators succeeded, slashedCount=1");
+    });
+
+    it("handles mixed slashed/non-slashed validators correctly", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const validators: ExitingValidator[] = [
+        {
+          balance: 40n,
+          effectiveBalance: 32n,
+          publicKey: "validator-slashed-1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+        {
+          balance: 35n,
+          effectiveBalance: 32n,
+          publicKey: "validator-normal-1",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+        {
+          balance: 38n,
+          effectiveBalance: 32n,
+          publicKey: "validator-slashed-2",
+          validatorIndex: 3n,
+          exitEpoch: 200,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+        {
+          balance: 33n,
+          effectiveBalance: 32n,
+          publicKey: "validator-normal-2",
+          validatorIndex: 4n,
+          exitEpoch: 250,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      const result = client.getSlashedValidators(validators);
+
+      expect(result).toEqual([validators[0], validators[2]]);
+      expect(logger.info).toHaveBeenCalledWith("getSlashedValidators succeeded, slashedCount=2");
+    });
+  });
+
+  describe("getNonSlashedAndExitingValidators", () => {
+    it("returns undefined and logs warning when input is undefined", () => {
+      const { client, logger } = createClient();
+
+      const result = client.getNonSlashedAndExitingValidators(undefined);
+
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith("getNonSlashedAndExitingValidators - invalid input: validators is undefined");
+    });
+
+    it("returns empty array when input is empty array", () => {
+      const { client, logger } = createClient();
+
+      const result = client.getNonSlashedAndExitingValidators([]);
+
+      expect(result).toEqual([]);
+      expect(logger.info).toHaveBeenCalledWith("getNonSlashedAndExitingValidators succeeded, nonSlashedCount=0");
+    });
+
+    it("returns only non-slashed validators (slashed=false)", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const validators: ExitingValidator[] = [
+        {
+          balance: 35n,
+          effectiveBalance: 32n,
+          publicKey: "validator-normal-1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+        {
+          balance: 33n,
+          effectiveBalance: 32n,
+          publicKey: "validator-normal-2",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      const result = client.getNonSlashedAndExitingValidators(validators);
+
+      expect(result).toEqual(validators);
+      expect(logger.info).toHaveBeenCalledWith("getNonSlashedAndExitingValidators succeeded, nonSlashedCount=2");
+    });
+
+    it("filters out slashed validators", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const validators: ExitingValidator[] = [
+        {
+          balance: 40n,
+          effectiveBalance: 32n,
+          publicKey: "validator-slashed",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+        {
+          balance: 35n,
+          effectiveBalance: 32n,
+          publicKey: "validator-normal",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      const result = client.getNonSlashedAndExitingValidators(validators);
+
+      expect(result).toEqual([validators[1]]);
+      expect(logger.info).toHaveBeenCalledWith("getNonSlashedAndExitingValidators succeeded, nonSlashedCount=1");
+    });
+
+    it("handles mixed slashed/non-slashed validators correctly", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const validators: ExitingValidator[] = [
+        {
+          balance: 40n,
+          effectiveBalance: 32n,
+          publicKey: "validator-slashed-1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+        {
+          balance: 35n,
+          effectiveBalance: 32n,
+          publicKey: "validator-normal-1",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+        {
+          balance: 38n,
+          effectiveBalance: 32n,
+          publicKey: "validator-slashed-2",
+          validatorIndex: 3n,
+          exitEpoch: 200,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+        {
+          balance: 33n,
+          effectiveBalance: 32n,
+          publicKey: "validator-normal-2",
+          validatorIndex: 4n,
+          exitEpoch: 250,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      const result = client.getNonSlashedAndExitingValidators(validators);
+
+      expect(result).toEqual([validators[1], validators[3]]);
+      expect(logger.info).toHaveBeenCalledWith("getNonSlashedAndExitingValidators succeeded, nonSlashedCount=2");
+    });
+  });
+
+  describe("getTotalBalanceOfExitingValidators", () => {
+    it("returns undefined and logs warning when input is undefined", () => {
+      const { client, logger } = createClient();
+
+      const result = client.getTotalBalanceOfExitingValidators(undefined);
+
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators - invalid input: validators is undefined or empty", {
+        validators: true,
+        empty: false,
+      });
+    });
+
+    it("returns undefined and logs warning when input is empty array", () => {
+      const { client, logger } = createClient();
+
+      const result = client.getTotalBalanceOfExitingValidators([]);
+
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators - invalid input: validators is undefined or empty", {
+        validators: false,
+        empty: true,
+      });
+    });
+
+    it("correctly sums balances from multiple validators", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const validators: ExitingValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+        {
+          balance: 40n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+        {
+          balance: 35n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-3",
+          validatorIndex: 3n,
+          exitEpoch: 200,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+      ];
+
+      const totalGwei = client.getTotalBalanceOfExitingValidators(validators);
+
+      expect(totalGwei).toBe(107n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=107000000000");
+    });
+
+    it("handles single validator case", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const validators: ExitingValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      const totalGwei = client.getTotalBalanceOfExitingValidators(validators);
+
+      expect(totalGwei).toBe(32n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=32000000000");
+    });
+
+    it("handles large bigint values correctly", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const largeBalance = 1000000n * ONE_GWEI;
+      const validators: ExitingValidator[] = [
+        {
+          balance: largeBalance,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+        {
+          balance: largeBalance,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: true,
+        },
+      ];
+
+      const totalGwei = client.getTotalBalanceOfExitingValidators(validators);
+
+      expect(totalGwei).toBe(2000000n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=2000000000000000");
+    });
+
+    it("handles validators with zero balance", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const validators: ExitingValidator[] = [
+        {
+          balance: 0n,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+        {
+          balance: 32n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      const totalGwei = client.getTotalBalanceOfExitingValidators(validators);
+
+      expect(totalGwei).toBe(32n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=32000000000");
+    });
+
+    it("logs total balance on success", () => {
+      const { client, logger } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const validators: ExitingValidator[] = [
+        {
+          balance: 40n * ONE_GWEI,
+          effectiveBalance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      client.getTotalBalanceOfExitingValidators(validators);
+
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=40000000000");
+    });
+  });
 });

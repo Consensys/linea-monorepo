@@ -348,4 +348,56 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     this.logger.info(`getTotalValidatorBalanceGwei totalGwei=${totalGwei}`);
     return totalGwei;
   }
+
+  /**
+   * Filters exiting validators to only include those that have been slashed.
+   *
+   * @param {ExitingValidator[] | undefined} validators - Array of exiting validators, or undefined.
+   * @returns {ExitingValidator[] | undefined} Array of slashed validators, or undefined if input is undefined.
+   */
+  getSlashedValidators(validators: ExitingValidator[] | undefined): ExitingValidator[] | undefined {
+    if (validators === undefined) {
+      this.logger.warn("getSlashedValidators - invalid input: validators is undefined");
+      return undefined;
+    }
+    const slashedValidators = validators.filter((v) => v.slashed === true);
+    this.logger.info(`getSlashedValidators succeeded, slashedCount=${slashedValidators.length}`);
+    return slashedValidators;
+  }
+
+  /**
+   * Filters exiting validators to only include those that have not been slashed.
+   *
+   * @param {ExitingValidator[] | undefined} validators - Array of exiting validators, or undefined.
+   * @returns {ExitingValidator[] | undefined} Array of non-slashed exiting validators, or undefined if input is undefined.
+   */
+  getNonSlashedAndExitingValidators(validators: ExitingValidator[] | undefined): ExitingValidator[] | undefined {
+    if (validators === undefined) {
+      this.logger.warn("getNonSlashedAndExitingValidators - invalid input: validators is undefined");
+      return undefined;
+    }
+    const nonSlashedValidators = validators.filter((v) => v.slashed === false);
+    this.logger.info(`getNonSlashedAndExitingValidators succeeded, nonSlashedCount=${nonSlashedValidators.length}`);
+    return nonSlashedValidators;
+  }
+
+  /**
+   * Calculates the total balance across all exiting validators in gwei.
+   * Aggregates the balance field from all ExitingValidator elements.
+   *
+   * @param {ExitingValidator[] | undefined} validators - Array of exiting validators, or undefined.
+   * @returns {bigint | undefined} Total exiting validator balance in gwei, or undefined if input is undefined or empty.
+   */
+  getTotalBalanceOfExitingValidators(validators: ExitingValidator[] | undefined): bigint | undefined {
+    if (validators === undefined || validators.length === 0) {
+      this.logger.warn("getTotalBalanceOfExitingValidators - invalid input: validators is undefined or empty", {
+        validators: validators === undefined,
+        empty: validators !== undefined && validators.length === 0,
+      });
+      return undefined;
+    }
+    const totalGwei = validators.reduce((acc, v) => acc + v.balance, 0n);
+    this.logger.info(`getTotalBalanceOfExitingValidators totalGwei=${totalGwei}`);
+    return totalGwei;
+  }
 }
