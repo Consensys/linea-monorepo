@@ -81,7 +81,7 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	oldValueCols = append(oldValueCols, res.OldValue.Hi[:]...)
 	res.ComputeOldValueHash = dedicatedposeidon2.HashOf(
 		comp,
-		dedicatedposeidon2.SplitBy(oldValueCols),
+		dedicatedposeidon2.SplitColumns(oldValueCols),
 	)
 
 	res.OldValueHash = res.ComputeOldValueHash.Result()
@@ -91,7 +91,7 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	newValueCols = append(newValueCols, res.NewValue.Hi[:]...)
 	res.ComputeNewValueHash = dedicatedposeidon2.HashOf(
 		comp,
-		dedicatedposeidon2.SplitBy(newValueCols),
+		dedicatedposeidon2.SplitColumns(newValueCols),
 	)
 
 	res.NewValueHash = res.ComputeNewValueHash.Result()
@@ -108,7 +108,7 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	keyCols = append(keyCols, res.Key.Hi[:]...)
 	res.ComputeKeyHash = dedicatedposeidon2.HashOf(
 		comp,
-		dedicatedposeidon2.SplitBy(keyCols),
+		dedicatedposeidon2.SplitColumns(keyCols),
 	)
 
 	res.KeyHash = res.ComputeKeyHash.Result()

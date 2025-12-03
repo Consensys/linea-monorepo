@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -567,10 +568,12 @@ func (ss *Module) csAccountNew(comp *wizard.CompiledIOP) {
 		mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Lo[i])
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		mustBeConstantOnSubsegment(ss.Account.Final.LineaCodeHash[i])
 		mustHaveDefaultWhenNotExists(ss.Account.Final.LineaCodeHash[i], 0)
+	}
 
+	for i := range common.NbLimbU256 {
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_IS_EMPTY_%d", i),
@@ -672,11 +675,13 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 		mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Lo[i], -1)
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		mustBeConstantOnSubsegment(ss.Account.Initial.LineaCodeHash[i], -1)
-		mustBeConstantOnSubsegment(ss.Account.Initial.StorageRoot[i], i)
-
 		mustHaveDefaultWhenNotExists(ss.Account.Initial.LineaCodeHash[i], 0, -1)
+	}
+
+	for i := range common.NbLimbU256 {
+		mustBeConstantOnSubsegment(ss.Account.Initial.StorageRoot[i], i)
 		mustHaveDefaultWhenNotExists(ss.Account.Initial.StorageRoot[i], 0, i)
 	}
 
@@ -764,7 +769,7 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 	)
 
 	var oldValueLimbExpressions []any
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		oldValueLimbExpressions = append(oldValueLimbExpressions, sym.Sub(1, ss.Storage.OldValueIsZero[i]))
 	}
 
@@ -782,7 +787,7 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 	)
 
 	var zeroizationLibsExpressions []any
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		zeroizationLibsExpressions = append(zeroizationLibsExpressions, sym.Sub(1, ss.AccumulatorStatement.FinalHValIsZero[i]))
 	}
 
@@ -827,7 +832,7 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 	)
 
 	var oldNewStorageEqualLimbs []any
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		oldNewStorageEqualLimbs = append(oldNewStorageEqualLimbs, ss.AccumulatorStatement.InitialAndFinalHValAreEqual[i])
 	}
 
@@ -844,7 +849,7 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 	)
 
 	var sameBitLimbExpressions []any
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		sameBitLimbExpressions = append(sameBitLimbExpressions, sym.Sub(1, ss.Account.InitialAndFinalAreSame[i]))
 	}
 
@@ -904,7 +909,7 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 // StorageHashing or from the AccountHashing. This is done using binary
 // selectors.
 func (ss *Module) csAccumulatorStatementHValKey(comp *wizard.CompiledIOP) {
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_SUMMARY_ACC_STATEMENT_HKEY_%d", i),
