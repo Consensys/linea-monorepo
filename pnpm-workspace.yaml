@@ -1,5 +1,5 @@
 # 3 days
-minimumReleaseAge: 4320
+# minimumReleaseAge: 4320 // TODO: uncomment it after NextJS version is upgraded in bridge-ui
 
 packages:
   - 'contracts/**'
