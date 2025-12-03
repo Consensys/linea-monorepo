@@ -91,8 +91,20 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.LstLiabilityPrincipalGwei,
+      "LST liability principal from the YieldManager contract",
+      ["vault_address"],
+    );
+
+    this.metricsService.createGauge(
       LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
       "Total pending partial withdrawals in gwei",
+      [],
+    );
+
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalValidatorBalanceGwei,
+      "Total validator balance in gwei",
       [],
     );
 
