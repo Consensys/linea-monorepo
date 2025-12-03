@@ -10,8 +10,6 @@ export interface YieldManagerInitializationData {
   initialTargetWithdrawalReservePercentageBps: number; // uint16 on-chain
   initialMinimumWithdrawalReserveAmount: bigint; // uint256 on-chain
   initialTargetWithdrawalReserveAmount: bigint; // uint256 on-chain
-  withdrawLSTRateLimitPeriodSeconds: bigint; // uint256 on-chain
-  withdrawLSTRateLimitWei: bigint; // uint256 on-chain
 }
 
 export interface YieldProviderRegistration {

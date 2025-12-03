@@ -5,8 +5,6 @@ export const MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS = 2000;
 export const TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS = 2500;
 export const MINIMUM_WITHDRAWAL_RESERVE_AMOUNT = ethers.parseEther("1000");
 export const TARGET_WITHDRAWAL_RESERVE_AMOUNT = ethers.parseEther("1250");
-export const WITHDRAW_LST_RATE_LIMIT_PERIOD_SECONDS = 86400n; // 24 hours
-export const WITHDRAW_LST_RATE_LIMIT_WEI = ethers.parseEther("5000"); // 5000 ETH per period
 export const MAX_BPS = 10000n;
 
 // Values from constructor params for Lido PreDepositGuarantee.sol Hoodi deployment - https://hoodi.etherscan.io/address/0x8b289fc1af2bbc589f5990b94061d851c48683a3#code

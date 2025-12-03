@@ -16,7 +16,6 @@ import {
   NATIVE_YIELD_REPORTING_PAUSE_TYPE,
   NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
   NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
-  WITHDRAW_LST_RATE_LIMIT_WEI,
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
@@ -1343,29 +1342,6 @@ describe("YieldManager contract - ETH transfer operations", () => {
         yieldManager,
         yieldManager.connect(l1Signer).withdrawLST(mockYieldProviderAddress, withdrawAmount, ethers.ZeroAddress),
         "LSTWithdrawalExceedsYieldProviderFunds",
-      );
-
-      await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageService]);
-    });
-
-    it("Should revert if exceed rate limit", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      const l1MessageService = await mockLineaRollup.getAddress();
-      const yieldManagerAddress = await yieldManager.getAddress();
-      const withdrawAmount = WITHDRAW_LST_RATE_LIMIT_WEI + 1n;
-
-      await setBalance(l1MessageService, withdrawAmount);
-      await setBalance(yieldManagerAddress, withdrawAmount);
-      await yieldManager.connect(nativeYieldOperator).fundYieldProvider(mockYieldProviderAddress, withdrawAmount);
-
-      // Arrange
-      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
-      await mockLineaRollup.setWithdrawLSTAllowed(true);
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(l1Signer).withdrawLST(mockYieldProviderAddress, withdrawAmount, ethers.ZeroAddress),
-        "RateLimitExceeded",
       );
 
       await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageService]);

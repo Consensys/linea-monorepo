@@ -23,8 +23,6 @@ interface IYieldManager {
    * @param initialTargetWithdrawalReservePercentageBps Initial target withdrawal reserve percentage in bps.
    * @param initialMinimumWithdrawalReserveAmount Initial minimum withdrawal reserve in wei.
    * @param initialTargetWithdrawalReserveAmount Initial target withdrawal reserve in wei.
-   * @param withdrawLSTRateLimitPeriodSeconds The length of the rate limit period in seconds for LST withdrawals.
-   * @param withdrawLSTRateLimitWei The maximum amount of LST (denominated in ETH) that can be withdrawn per period in wei.
    */
   struct YieldManagerInitializationData {
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
@@ -36,8 +34,6 @@ interface IYieldManager {
     uint16 initialTargetWithdrawalReservePercentageBps;
     uint256 initialMinimumWithdrawalReserveAmount;
     uint256 initialTargetWithdrawalReserveAmount;
-    uint256 withdrawLSTRateLimitPeriodSeconds;
-    uint256 withdrawLSTRateLimitWei;
   }
 
   /**

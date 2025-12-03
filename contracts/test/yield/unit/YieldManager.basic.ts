@@ -76,8 +76,6 @@ describe("YieldManager contract - basic operations", () => {
       initialTargetWithdrawalReservePercentageBps: initializationData.initialTargetWithdrawalReservePercentageBps,
       initialMinimumWithdrawalReserveAmount: initializationData.initialMinimumWithdrawalReserveAmount,
       initialTargetWithdrawalReserveAmount: initializationData.initialTargetWithdrawalReserveAmount,
-      withdrawLSTRateLimitPeriodSeconds: initializationData.withdrawLSTRateLimitPeriodSeconds,
-      withdrawLSTRateLimitWei: initializationData.withdrawLSTRateLimitWei,
       ...overrides,
     });
 
@@ -206,14 +204,6 @@ describe("YieldManager contract - basic operations", () => {
 
     it("Should have initial yieldProviderCount = 0", async () => {
       expect(await yieldManager.yieldProviderCount()).to.equal(ZERO_VALUE);
-    });
-
-    it("Should have the initial withdrawLSTRateLimitPeriodSeconds in state", async () => {
-      expect(await yieldManager.periodInSeconds()).to.equal(initializationData.withdrawLSTRateLimitPeriodSeconds);
-    });
-
-    it("Should have the initial withdrawLSTRateLimitWei in state", async () => {
-      expect(await yieldManager.limitInWei()).to.equal(initializationData.withdrawLSTRateLimitWei);
     });
 
     it("Should assign the YIELD_PROVIDER_STAKING_ROLE to nativeYieldOperator address", async () => {
