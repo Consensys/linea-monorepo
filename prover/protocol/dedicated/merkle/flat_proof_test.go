@@ -217,7 +217,7 @@ func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 }
 
 // uint64To4BitLimbs splits v into four 16-bit limbs (big-endian order):
-// limbs[3] = low 16 bits, limbs[0] = highest 16 bits.
+// limbs[15] = lowest 16 bits, limbs[0] = highest 16 bits.
 func uint64To4BitLimbs(v uint64) [16]uint64 {
 	var limbs [16]uint64
 	limbs[15] = uint64(v & 0xF)

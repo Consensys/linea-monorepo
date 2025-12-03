@@ -55,8 +55,7 @@ const (
 func InitShomeiState(state State) *statemanager.WorldState {
 
 	var (
-		shomeiState = statemanager.NewWorldState(statemanager.POSEIDON2_CONFIG)
-		shomeiState = statemanager.NewWorldState(statemanager.POSEIDON2_CONFIG)
+		shomeiState = statemanager.NewWorldState()
 		addresses   = sortedKeysOf(state)
 	)
 
@@ -64,8 +63,7 @@ func InitShomeiState(state State) *statemanager.WorldState {
 
 		var (
 			acc         = state[address]
-			storageTrie = statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, address)
-			storageTrie = statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, address)
+			storageTrie = statemanager.NewStorageTrie(address)
 			stoKeys     = sortedKeysOf(acc.Storage)
 		)
 
@@ -268,7 +266,7 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 		// function `applySquashedStorageLog` because it will attempt to access
 		// the storage trie. And in this case, the storage trie does not
 		// pre-exists
-		storageTrie := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, address)
+		storageTrie := statemanager.NewStorageTrie(address)
 		shomeiState.StorageTries.InsertNew(address, storageTrie)
 
 		// The relevant storage sub-segment is always the last one. Assertedly,
