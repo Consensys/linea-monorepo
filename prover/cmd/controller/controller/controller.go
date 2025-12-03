@@ -485,7 +485,7 @@ func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logr
 		sharedFailPath     = filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFailFileName)
 	)
 
-	if err := os.WriteFile(sharedFailPath, []byte{}, 0644); err != nil {
+	if err := os.WriteFile(sharedFailPath, []byte{}, 0o600); err != nil {
 		cLog.Errorf("%s could not create failure marker %s: %v", fLocalID, sharedFailPath, err)
 		return err
 	} else {
