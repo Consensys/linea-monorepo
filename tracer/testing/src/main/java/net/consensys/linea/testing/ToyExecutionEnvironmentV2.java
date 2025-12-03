@@ -175,7 +175,7 @@ public class ToyExecutionEnvironmentV2 {
   }
 
   public void runForCounting() {
-    zkCounter = new ZkCounter(unitTestsChain.bridgeConfiguration, fork);
+    zkCounter = new ZkCounter(unitTestsChain.bridgeConfiguration, fork, true);
 
     final ProtocolSpec protocolSpec =
         ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);

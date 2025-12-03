@@ -20,5 +20,5 @@ import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
 /** The Linea tracer shared configuration. */
 @Builder(toBuilder = true)
-public record LineaTracerSharedConfiguration(boolean isLimitless)
-    implements LineaOptionsConfiguration {}
+public record LineaTracerSharedConfiguration(
+    boolean isLimitless, boolean countHistoricalBlockHashes) implements LineaOptionsConfiguration {}

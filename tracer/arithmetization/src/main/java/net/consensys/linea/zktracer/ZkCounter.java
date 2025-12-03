@@ -139,6 +139,7 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 public class ZkCounter implements LineCountingTracer {
 
   public final Fork fork;
+  private final boolean countHistoricalBlockHashes;
 
   private final OpCodes opCodes;
   private final Trace trace;
@@ -325,7 +326,15 @@ public class ZkCounter implements LineCountingTracer {
   }
 
   public ZkCounter(LineaL1L2BridgeSharedConfiguration bridgeConfiguration, Fork fork) {
+    this(bridgeConfiguration, fork, true);
+  }
+
+  public ZkCounter(
+      LineaL1L2BridgeSharedConfiguration bridgeConfiguration,
+      Fork fork,
+      boolean countHistoricalBlockHashes) {
     this.fork = fork;
+    this.countHistoricalBlockHashes = countHistoricalBlockHashes;
     this.opCodes = OpCodes.load(fork);
     this.trace = getTraceFromFork(fork);
     this.blakemodexp =
@@ -388,12 +397,18 @@ public class ZkCounter implements LineCountingTracer {
     moduleToCount = Stream.concat(checkedModules().stream(), uncheckedModules().stream()).toList();
 
     log.info("[ZkCounter] Created ZkCounter for fork {}", fork);
+    if (!countHistoricalBlockHashes) {
+      log.info(
+          "[ZkCounter] Historical BlockHashes not counted for BLOCKHASH, might miss 256*6 lines that are common for the whole conflation.");
+    }
   }
 
   @Override
   public void traceStartConflation(long numBlocksInConflation) {
-    blockHash.updateTally(
-        (int) ((BLOCKHASH_MAX_HISTORY + numBlocksInConflation) * NB_ROWS_BLOCKHASH));
+    if (countHistoricalBlockHashes) {
+      blockHash.updateTally(
+          (int) ((BLOCKHASH_MAX_HISTORY + numBlocksInConflation) * NB_ROWS_BLOCKHASH));
+    }
   }
 
   @Override

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.plugins.rpc.linecounts;
 
-import static net.consensys.linea.zktracer.Fork.getForkFromBesuBlockchainService;
+import static net.consensys.linea.plugins.rpc.LineCounterGenerator.createLineCountingTracer;
 
 import java.util.Map;
 import java.util.Optional;
@@ -30,13 +30,9 @@ import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.plugins.config.LineaTracerSharedConfiguration;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.Validator;
-import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.LineCountingTracer;
-import net.consensys.linea.zktracer.ZkCounter;
-import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.json.JsonConverter;
 import org.hyperledger.besu.plugin.ServiceManager;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -104,7 +100,12 @@ public class GenerateLineCountsV2 {
                     requestedBlockNumber,
                     blockNumber -> {
                       final LineCountingTracer counter =
-                          createLineCountingTracer(requestedBlockNumber);
+                          createLineCountingTracer(
+                              besuContext,
+                              tracerSharedConfiguration,
+                              l1L2BridgeSharedConfiguration,
+                              requestedBlockNumber,
+                              requestedBlockNumber);
 
                       traceService.trace(
                           blockNumber,
@@ -119,19 +120,5 @@ public class GenerateLineCountsV2 {
     log.info("Line count for {} returned in {}", requestedBlockNumber, sw);
 
     return r;
-  }
-
-  private LineCountingTracer createLineCountingTracer(long blockNumber) {
-    // Retrieve fork from Besu plugin API with block number
-    final Fork fork = getForkFromBesuBlockchainService(besuContext, blockNumber);
-
-    return tracerSharedConfiguration.isLimitless()
-        ? new ZkCounter(l1L2BridgeSharedConfiguration, fork)
-        : new ZkTracer(
-            fork,
-            l1L2BridgeSharedConfiguration,
-            BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
-                .getChainId()
-                .orElseThrow());
   }
 }

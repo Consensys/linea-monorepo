@@ -63,6 +63,16 @@ public record PublicInputs(Map<Long, Hash> historicalBlockhashes, Map<Long, Byte
   }
 
   // Some methods to retrieve public inputs information from BlockchainService
+  public static PublicInputs generatePublicInputs(
+      BlockchainService blockchain,
+      long firstBlockNumberOfConflation,
+      long lastBlockNumberOfConflation) {
+    return new PublicInputs(
+        retrieveHistoricalBlockHashes(
+            blockchain, firstBlockNumberOfConflation, lastBlockNumberOfConflation),
+        getBlobBaseFees(blockchain, firstBlockNumberOfConflation, lastBlockNumberOfConflation));
+  }
+
   public static Map<Long, Hash> retrieveHistoricalBlockHashes(
       BlockchainService blockchain,
       long firstBlockNumberOfConflation,

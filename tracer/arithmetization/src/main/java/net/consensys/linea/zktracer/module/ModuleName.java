@@ -93,7 +93,6 @@ public enum ModuleName {
   BLOCK_KECCAK,
 
   // reference tables
-  BIN_REFERENCE_TABLE,
   BLS_REFERENCE_TABLE,
   INSTRUCTION_DECODER,
   POWER_REFERENCE_TABLE

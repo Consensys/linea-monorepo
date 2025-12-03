@@ -23,7 +23,10 @@ public class LineaTracerSharedCliOptions implements LineaCliOptions {
   public static final String CONFIG_KEY = "tracer-shared-config";
 
   public static final String LIMITLESS_ENABLED = "--plugin-linea-limitless-enabled";
+  public static final String COUNT_HISTORICAL_BLOCKHASHES_ENABLED =
+      "--plugin-linea-count-historical-blockhash-enabled";
   public static final boolean DEFAULT_LIMITLESS_ENABLED = false;
+  public static final boolean DEFAULT_COUNT_HISTORICAL_BLOCKHASHES_ENABLED = true;
 
   @CommandLine.Option(
       names = {LIMITLESS_ENABLED},
@@ -32,6 +35,14 @@ public class LineaTracerSharedCliOptions implements LineaCliOptions {
       description =
           "If the sequencer needs to use or not the limitless prover (default: ${DEFAULT-VALUE})")
   private boolean limitlessEnabled = DEFAULT_LIMITLESS_ENABLED;
+
+  @CommandLine.Option(
+      names = {COUNT_HISTORICAL_BLOCKHASHES_ENABLED},
+      hidden = true,
+      paramLabel = "<BOOLEAN>",
+      description =
+          "If the sequencer/coordinator needs to count the lines from historical blockhashes (default: ${DEFAULT-VALUE})")
+  private boolean countHistoricalBlockHashes = DEFAULT_COUNT_HISTORICAL_BLOCKHASHES_ENABLED;
 
   private LineaTracerSharedCliOptions() {}
 
@@ -54,6 +65,7 @@ public class LineaTracerSharedCliOptions implements LineaCliOptions {
       final LineaTracerSharedConfiguration config) {
     final LineaTracerSharedCliOptions options = create();
     options.limitlessEnabled = config.isLimitless();
+    options.countHistoricalBlockHashes = config.countHistoricalBlockHashes();
     return options;
   }
 
@@ -64,11 +76,17 @@ public class LineaTracerSharedCliOptions implements LineaCliOptions {
    */
   @Override
   public LineaTracerSharedConfiguration toDomainObject() {
-    return LineaTracerSharedConfiguration.builder().isLimitless(limitlessEnabled).build();
+    return LineaTracerSharedConfiguration.builder()
+        .isLimitless(limitlessEnabled)
+        .countHistoricalBlockHashes(countHistoricalBlockHashes)
+        .build();
   }
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this).add(LIMITLESS_ENABLED, limitlessEnabled).toString();
+    return MoreObjects.toStringHelper(this)
+        .add(LIMITLESS_ENABLED, limitlessEnabled)
+        .add(COUNT_HISTORICAL_BLOCKHASHES_ENABLED, countHistoricalBlockHashes)
+        .toString();
   }
 }
