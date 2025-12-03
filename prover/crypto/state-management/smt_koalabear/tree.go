@@ -42,9 +42,9 @@ func EmptyLeaf() field.Octuplet {
 
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
-func hashLR(nodeL, nodeR field.Octuplet) field.Octuplet {
+func hashLR(hasher *poseidon2_koalabear.MDHasher, nodeL, nodeR field.Octuplet) field.Octuplet {
+	hasher.Reset()
 	var d field.Octuplet
-	hasher := poseidon2_koalabear.NewMDHasher()
 	hasher.WriteElements(nodeL[:]...)
 	hasher.WriteElements(nodeR[:]...)
 	d = hasher.SumElement()
@@ -61,14 +61,16 @@ func NewEmptyTree(depths ...int) *Tree {
 	emptyNodes := make([]field.Octuplet, depth-1)
 	prevNode := EmptyLeaf()
 
+	hasher := poseidon2_koalabear.NewMDHasher()
+
 	for i := range emptyNodes {
-		newNode := hashLR(prevNode, prevNode)
+		newNode := hashLR(hasher, prevNode, prevNode)
 		emptyNodes[i] = newNode
 		prevNode = newNode
 	}
 
 	// Stores the initial root separately
-	root := hashLR(prevNode, prevNode)
+	root := hashLR(hasher, prevNode, prevNode)
 
 	return &Tree{
 		Depth:          depth,
@@ -283,13 +285,15 @@ func BuildComplete(leaves []field.Octuplet) *Tree {
 		// TODO @gbotrel revisit parallelization here
 		if len(nextLevel) >= 64 {
 			parallel.Execute(len(nextLevel), func(start, end int) {
+				hasher := poseidon2_koalabear.NewMDHasher()
 				for k := start; k < end; k++ {
-					nextLevel[k] = hashLR(currLevels[2*k], currLevels[2*k+1])
+					nextLevel[k] = hashLR(hasher, currLevels[2*k], currLevels[2*k+1])
 				}
 			})
 		} else {
+			hasher := poseidon2_koalabear.NewMDHasher()
 			for k := range nextLevel {
-				nextLevel[k] = hashLR(currLevels[2*k], currLevels[2*k+1])
+				nextLevel[k] = hashLR(hasher, currLevels[2*k], currLevels[2*k+1])
 			}
 		}
 
@@ -303,6 +307,6 @@ func BuildComplete(leaves []field.Octuplet) *Tree {
 	}
 
 	// And overwrite the root
-	tree.Root = hashLR(currLevels[0], currLevels[1])
+	tree.Root = hashLR(poseidon2_koalabear.NewMDHasher(), currLevels[0], currLevels[1])
 	return tree
 }

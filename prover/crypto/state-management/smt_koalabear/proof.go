@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -70,12 +71,14 @@ func RecoverRoot(p *Proof, leaf field.Octuplet) (field.Octuplet, error) {
 	current := leaf
 	idx := p.Path
 
+	hasher := poseidon2_koalabear.NewMDHasher()
+
 	for _, sibling := range p.Siblings {
 		left, right := current, sibling
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = hashLR(left, right)
+		current = hashLR(hasher, left, right)
 		idx >>= 1
 	}
 
