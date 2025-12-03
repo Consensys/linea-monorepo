@@ -95,7 +95,7 @@ type Module struct {
 	// BatchNumber represents the index of a block as part of the conflation.
 	// It contrasts with the block-number in the sense that it always starts from
 	// 0 for the first block of the conflation and then increases.
-	BatchNumber ifaces.Column
+	BatchNumber [common.NbLimbU64]ifaces.Column
 
 	// WorldStateRoot stores the state-root hashes.
 	WorldStateRoot [common.NbLimbU256]ifaces.Column
@@ -138,10 +138,13 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 		IsFinalDeployment:           createCol("IS_FINAL_DEPLOYMENT"),
 		IsDeleteSegment:             createCol("IS_DELETE_SEGMENT"),
 		IsStorage:                   createCol("IS_STORAGE"),
-		BatchNumber:                 createCol("BATCH_NUMBER"),
 		Account:                     newAccountPeek(comp, size),
 		Storage:                     newStoragePeek(comp, size, "STORAGE_PEEK"),
 		AccumulatorStatement:        newAccumulatorStatement(comp, size, "ACCUMULATOR_STATEMENT"),
+	}
+
+	for i := range common.NbLimbU64 {
+		res.BatchNumber[i] = createCol(fmt.Sprintf("BATCH_NUMBER_%v", i))
 	}
 
 	for i := range common.NbLimbU256 {
@@ -175,23 +178,27 @@ func (ss *Module) csAccountAddress(comp *wizard.CompiledIOP) {
 		isZeroWhenInactive(comp, ss.Account.Address[i], ss.IsActive)
 	}
 
-	comp.InsertGlobal(
-		0,
-		"STATE_SUMMARY_ADDRESS_CAN_ONLY_INCREASE_IN_BLOCK_RANGE",
-		sym.Mul(
-			ss.IsActive,
-			sym.Sub(
-				ss.BatchNumber,
-				column.Shift(ss.BatchNumber, -1),
-				1,
+	// Constraint for each limb: when batch number limb[i] didn't change by exactly 1,
+	// addresses can only increase or stay same
+	for i := range common.NbLimbU64 {
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_ADDRESS_CAN_ONLY_INCREASE_IN_BLOCK_RANGE_%d", i),
+			sym.Mul(
+				ss.IsActive,
+				sym.Sub(
+					ss.BatchNumber[i],
+					column.Shift(ss.BatchNumber[i], -1),
+					1,
+				),
+				sym.Add(
+					ss.Account.HasGreaterAddressAsPrev,
+					ss.Account.HasSameAddressAsPrev,
+					-1,
+				),
 			),
-			sym.Add(
-				ss.Account.HasGreaterAddressAsPrev,
-				ss.Account.HasSameAddressAsPrev,
-				-1,
-			),
-		),
-	)
+		)
+	}
 }
 
 // csIsActive constrains the [ss.IsActive] flag.
@@ -228,26 +235,29 @@ func (ss *Module) csIsBeginningOfAccountSegment(comp *wizard.CompiledIOP) {
 
 	// IsBeginningOfAccountSegment being one implies that either the batchNumber
 	// bumped or that we jumped to another account and reciprocally.
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("STATE_SUMMARY_IBOAS_IS_ONE_IFF_EITHER_NEW_BATCH_OR_NEW_ADDR"),
-		sym.Add(
-			sym.Mul(
-				ss.IsActive,
-				ss.IsBeginningOfAccountSegment,
-				sym.Sub(ss.BatchNumber, column.Shift(ss.BatchNumber, -1), 1),
-				ss.Account.HasSameAddressAsPrev,
-			),
-			sym.Mul(
-				ss.IsActive,
-				sym.Sub(1, ss.IsBeginningOfAccountSegment),
-				sym.Add(
-					sym.Sub(ss.BatchNumber, column.Shift(ss.BatchNumber, -1)),
-					sym.Sub(1, ss.Account.HasSameAddressAsPrev),
+	// We check each limb independently for consistency with BlockNumber representation.
+	for i := range common.NbLimbU64 {
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_IBOAS_IS_ONE_IFF_EITHER_NEW_BATCH_OR_NEW_ADDR_%d", i),
+			sym.Add(
+				sym.Mul(
+					ss.IsActive,
+					ss.IsBeginningOfAccountSegment,
+					sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1), 1),
+					ss.Account.HasSameAddressAsPrev,
+				),
+				sym.Mul(
+					ss.IsActive,
+					sym.Sub(1, ss.IsBeginningOfAccountSegment),
+					sym.Add(
+						sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1)),
+						sym.Sub(1, ss.Account.HasSameAddressAsPrev),
+					),
 				),
 			),
-		),
-	)
+		)
+	}
 
 	comp.InsertLocal(
 		0,
@@ -434,35 +444,48 @@ func (ss *Module) csIsStorage(comp *wizard.CompiledIOP) {
 // increment by one. And it can only do so if the
 func (ss *Module) csBatchNumber(comp *wizard.CompiledIOP) {
 
-	comp.InsertLocal(
-		0,
-		"STATE_SUMMARY_BATCH_NUMBER_START_FROM_ONE",
-		sym.Sub(
-			ss.BatchNumber,
-			1,
-		),
-	)
-
-	isZeroWhenInactive(comp, ss.BatchNumber, ss.IsActive)
-
-	comp.InsertGlobal(
-		0,
-		"STATE_SUMMARY_BATCH_NUMBER_CAN_ONLY_INCREMENT",
-		sym.Mul(
-			ss.IsActive,
-			sym.Add(
-				sym.Mul(
-					ss.IsBeginningOfAccountSegment,
-					sym.Sub(ss.BatchNumber, column.Shift(ss.BatchNumber, -1)),
-					sym.Sub(ss.BatchNumber, column.Shift(ss.BatchNumber, -1), 1),
+	for i := range common.NbLimbU64 {
+		// The first limb starts from 1, higher limbs start from 0
+		if i == 0 {
+			comp.InsertLocal(
+				0,
+				ifaces.QueryIDf("STATE_SUMMARY_BATCH_NUMBER_START_FROM_ONE_%d", i),
+				sym.Sub(
+					ss.BatchNumber[i],
+					1,
 				),
-				sym.Mul(
-					sym.Sub(1, ss.IsBeginningOfAccountSegment),
-					sym.Sub(ss.BatchNumber, column.Shift(ss.BatchNumber, -1)),
+			)
+		} else {
+			comp.InsertLocal(
+				0,
+				ifaces.QueryIDf("STATE_SUMMARY_BATCH_NUMBER_START_FROM_ZERO_%d", i),
+				ifaces.ColumnAsVariable(ss.BatchNumber[i]),
+			)
+		}
+
+		isZeroWhenInactive(comp, ss.BatchNumber[i], ss.IsActive)
+
+		// Each limb can only stay the same (diff=0) or increment by 1 (diff=1)
+		// For higher limbs, they will always have diff=0
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_BATCH_NUMBER_CAN_ONLY_INCREMENT_%d", i),
+			sym.Mul(
+				ss.IsActive,
+				sym.Add(
+					sym.Mul(
+						ss.IsBeginningOfAccountSegment,
+						sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1)),
+						sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1), 1),
+					),
+					sym.Mul(
+						sym.Sub(1, ss.IsBeginningOfAccountSegment),
+						sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1)),
+					),
 				),
 			),
-		),
-	)
+		)
+	}
 }
 
 // csWorldStateRootSequentiality ensures that the WorldStateRoot column is
