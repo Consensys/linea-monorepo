@@ -156,7 +156,7 @@ public class MultiBlockExecutionEnvironment {
       tracer =
           new ZkTracer(
               testsChain,
-              new PublicInputs(historicalBlockhashes, conflationSnapshot.blobBaseFees()));
+              new PublicInputs(historicalBlockhashes, conflationSnapshot.blobBaseFeesOrDefault()));
       ReplayExecutionEnvironment.builder()
           .zkTracer(tracer)
           .useCoinbaseAddressFromBlockHeader(true)
