@@ -19,9 +19,10 @@ import (
 	types2 "github.com/ethereum/go-ethereum/core/types"
 )
 
-func initEmptyCodeHash() [][]byte {
+func initEmptyCodeHash() [poseidon2.BlockSize][]byte {
 	emptyCodeHashBytes := statemanager.EmptyCodeHash()
-	return common.SplitBytes(emptyCodeHashBytes[:])
+	res := poseidon2.ParsToBlocks(emptyCodeHashBytes)
+	return res
 }
 
 var (
@@ -46,11 +47,11 @@ type AccountPeek struct {
 
 	// InitialAndFinalAreSame is an indicator column set to 1 when the
 	// initial and final account share the same hash and 0 otherwise.
-	InitialAndFinalAreSame [common.NbLimbU256]ifaces.Column
+	InitialAndFinalAreSame [poseidon2.BlockSize]ifaces.Column
 
 	// ComputeInitialAndFinalAreSame is a [wizard.ProverAction] responsible for
 	// computing the column InitialAndFinalAreSame
-	ComputeInitialAndFinalAreSame [common.NbLimbU256]wizard.ProverAction
+	ComputeInitialAndFinalAreSame [poseidon2.BlockSize]wizard.ProverAction
 
 	// Address represents which account is being peeked by the module.
 	// It is assigned by providing
@@ -63,10 +64,10 @@ type AccountPeek struct {
 	ComputeAddressHash *poseidon2.HashingCtx
 
 	// AddressHashLimbs stores the limbs of the address
-	AddressHashLimbs [common.NbLimbU256]byte32cmp.LimbColumns
+	AddressHashLimbs [poseidon2.BlockSize]byte32cmp.LimbColumns
 
 	// ComputeAddressLimbs computes the [AddressLimbs] column.
-	ComputeAddressLimbs [common.NbLimbU256]wizard.ProverAction
+	ComputeAddressLimbs [poseidon2.BlockSize]wizard.ProverAction
 
 	// HasSameAddressAsPrev is an indicator column telling whether the previous
 	// row has the same AccountAddress value as the current one.
@@ -115,7 +116,7 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 	initialHashCols = append(initialHashCols, accPeek.Initial.KeccakCodeHash.Hi[:]...)
 	initialHashCols = append(initialHashCols, accPeek.Initial.CodeSize[:]...)
 
-	accPeek.ComputeHashInitial = poseidon2.HashOf(comp, poseidon2.SplitBy(initialHashCols))
+	accPeek.ComputeHashInitial = poseidon2.HashOf(comp, poseidon2.SplitColumns(initialHashCols))
 	accPeek.HashInitial = accPeek.ComputeHashInitial.Result()
 
 	finalHashCols := accPeek.Final.Nonce[:]
@@ -126,11 +127,11 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 	finalHashCols = append(finalHashCols, accPeek.Final.KeccakCodeHash.Hi[:]...)
 	finalHashCols = append(finalHashCols, accPeek.Final.CodeSize[:]...)
 
-	accPeek.ComputeHashFinal = poseidon2.HashOf(comp, poseidon2.SplitBy(finalHashCols))
+	accPeek.ComputeHashFinal = poseidon2.HashOf(comp, poseidon2.SplitColumns(finalHashCols))
 
 	accPeek.HashFinal = accPeek.ComputeHashFinal.Result()
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		accPeek.InitialAndFinalAreSame[i], accPeek.ComputeInitialAndFinalAreSame[i] = dedicated.IsZero(
 			comp,
 			sym.Sub(accPeek.HashInitial[i], accPeek.HashFinal[i]),
@@ -139,7 +140,7 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 
 	accPeek.ComputeAddressHash = poseidon2.HashOf(
 		comp,
-		poseidon2.SplitBy(accPeek.Address[:]),
+		poseidon2.SplitColumns(accPeek.Address[:]),
 	)
 
 	accPeek.AddressHash = accPeek.ComputeAddressHash.Result()
@@ -152,7 +153,7 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 
 	addrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	shiftedAddrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		accPeek.AddressHashLimbs[i], accPeek.ComputeAddressLimbs[i] = byte32cmp.Decompose(comp, accPeek.AddressHash[i], 1, common.LimbBytes*8)
 
 		addrHashLimbColumbs.Limbs = append(addrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Limbs...)
@@ -221,6 +222,9 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 
 	for i := range common.NbLimbU256 {
 		acc.StorageRoot[i] = createCol(fmt.Sprintf("STORAGE_ROOT_%d", i))
+	}
+
+	for i := range poseidon2.BlockSize {
 		acc.LineaCodeHash[i] = createCol(fmt.Sprintf("LINEA_CODE_HASH_%d", i))
 	}
 
@@ -247,7 +251,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 		),
 	)
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_SUMMARY_%v_LINEA_CODE_HASH_FOR_EXISTING_BUT_EMPTY_CODE_%v", name, i),
