@@ -6,6 +6,16 @@ export interface ValidatorBalance {
   validatorIndex: bigint;
 }
 
+export interface ExitingValidator {
+  balance: bigint;
+  effectiveBalance: bigint;
+  publicKey: string;
+  validatorIndex: bigint;
+  exitEpoch: number;
+  exitDate: Date;
+  slashed: boolean;
+}
+
 export interface ValidatorBalanceWithPendingWithdrawal extends ValidatorBalance {
   pendingWithdrawalAmount: bigint;
   withdrawableAmount: bigint;

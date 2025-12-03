@@ -10,7 +10,12 @@ import {
 } from "@consensys/linea-shared-utils";
 import type { ApolloClient } from "@apollo/client";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
-import type { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../../core/entities/ValidatorBalance.js";
+import { EXITING_VALIDATORS_QUERY } from "../../core/entities/graphql/ExitingValidators.js";
+import type {
+  ExitingValidator,
+  ValidatorBalance,
+  ValidatorBalanceWithPendingWithdrawal,
+} from "../../core/entities/ValidatorBalance.js";
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",
@@ -116,6 +121,184 @@ describe("ConsensysStakingApiClient", () => {
       expect(apolloQueryMock).toHaveBeenCalledWith({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY });
       expect(logger.info).toHaveBeenCalledWith("getActiveValidators succeeded, validatorCount=0");
       expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: undefined });
+    });
+  });
+
+  describe("getExitingValidators", () => {
+    it("logs and returns undefined when the query returns an error", async () => {
+      const { client, logger, retryMock } = createClient();
+      const queryError = new Error("graphql failure");
+
+      retryMock.mockImplementationOnce(async (_fn, _timeout) => ({
+        data: undefined,
+        error: queryError,
+      }));
+
+      const result = await client.getExitingValidators();
+
+      expect(result).toBeUndefined();
+      expect(logger.error).toHaveBeenCalledWith("getExitingValidators error:", { error: queryError });
+    });
+
+    it("logs and returns undefined when the query response lacks data", async () => {
+      const { client, logger, retryMock } = createClient();
+
+      retryMock.mockImplementationOnce(async (_fn, _timeout) => ({
+        data: undefined,
+        error: undefined,
+      }));
+
+      const result = await client.getExitingValidators();
+
+      expect(result).toBeUndefined();
+      expect(logger.error).toHaveBeenCalledWith("getExitingValidators data undefined");
+    });
+
+    it("returns the validator list and logs success when the query succeeds", async () => {
+      const { client, logger, retryMock, apolloQueryMock } = createClient();
+      // GraphQL returns string values, which need to be converted to appropriate types
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const graphqlResponse = [
+        {
+          balance: "32",
+          effectiveBalance: "32",
+          publicKey: "validator-1",
+          validatorIndex: "1",
+          exitEpoch: "100",
+          exitDate: exitDateString,
+          slashed: false,
+        },
+      ];
+      const expectedValidators: ExitingValidator[] = [
+        {
+          balance: 32n,
+          effectiveBalance: 32n,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          exitEpoch: 100,
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ];
+
+      apolloQueryMock.mockResolvedValue({
+        data: { allValidators: { nodes: graphqlResponse } },
+        error: undefined,
+      });
+
+      const result = await client.getExitingValidators();
+
+      expect(result).toEqual(expectedValidators);
+      expect(retryMock).toHaveBeenCalledTimes(1);
+      expect(apolloQueryMock).toHaveBeenCalledWith({ query: EXITING_VALIDATORS_QUERY });
+      expect(logger.info).toHaveBeenCalledWith("getExitingValidators succeeded, validatorCount=1");
+      expect(logger.debug).toHaveBeenCalledWith("getExitingValidators resp", { resp: expectedValidators });
+    });
+
+    it("handles undefined nodes and logs validatorCount=0", async () => {
+      const { client, logger, retryMock, apolloQueryMock } = createClient();
+
+      apolloQueryMock.mockResolvedValue({
+        data: { allValidators: { nodes: undefined } },
+        error: undefined,
+      });
+
+      const result = await client.getExitingValidators();
+
+      expect(result).toBeUndefined();
+      expect(retryMock).toHaveBeenCalledTimes(1);
+      expect(apolloQueryMock).toHaveBeenCalledWith({ query: EXITING_VALIDATORS_QUERY });
+      expect(logger.info).toHaveBeenCalledWith("getExitingValidators succeeded, validatorCount=0");
+      expect(logger.debug).toHaveBeenCalledWith("getExitingValidators resp", { resp: undefined });
+    });
+
+    it("correctly converts all field types including exitEpoch, exitDate, and slashed", async () => {
+      const { client, apolloQueryMock } = createClient();
+      const exitDateString1 = "2024-01-15T10:30:00Z";
+      const exitDateString2 = "2024-02-20T15:45:30Z";
+      const graphqlResponse = [
+        {
+          balance: "40",
+          effectiveBalance: "32",
+          publicKey: "validator-slashed",
+          validatorIndex: "10",
+          exitEpoch: "200",
+          exitDate: exitDateString1,
+          slashed: true,
+        },
+        {
+          balance: "35",
+          effectiveBalance: "32",
+          publicKey: "validator-normal",
+          validatorIndex: "20",
+          exitEpoch: "150",
+          exitDate: exitDateString2,
+          slashed: false,
+        },
+      ];
+
+      apolloQueryMock.mockResolvedValue({
+        data: { allValidators: { nodes: graphqlResponse } },
+        error: undefined,
+      });
+
+      const result = await client.getExitingValidators();
+
+      expect(result).toEqual([
+        {
+          balance: 40n,
+          effectiveBalance: 32n,
+          publicKey: "validator-slashed",
+          validatorIndex: 10n,
+          exitEpoch: 200,
+          exitDate: new Date(exitDateString1),
+          slashed: true,
+        },
+        {
+          balance: 35n,
+          effectiveBalance: 32n,
+          publicKey: "validator-normal",
+          validatorIndex: 20n,
+          exitEpoch: 150,
+          exitDate: new Date(exitDateString2),
+          slashed: false,
+        },
+      ]);
+    });
+
+    it("handles exitEpoch as number (not string) correctly", async () => {
+      const { client, apolloQueryMock } = createClient();
+      const exitDateString = "2024-01-15T10:30:00Z";
+      const graphqlResponse = [
+        {
+          balance: "40",
+          effectiveBalance: "32",
+          publicKey: "validator-1",
+          validatorIndex: "10",
+          exitEpoch: 200, // Already a number, not a string
+          exitDate: exitDateString,
+          slashed: false,
+        },
+      ];
+
+      apolloQueryMock.mockResolvedValue({
+        data: { allValidators: { nodes: graphqlResponse } },
+        error: undefined,
+      });
+
+      const result = await client.getExitingValidators();
+
+      expect(result).toEqual([
+        {
+          balance: 40n,
+          effectiveBalance: 32n,
+          publicKey: "validator-1",
+          validatorIndex: 10n,
+          exitEpoch: 200, // Should remain as number
+          exitDate: new Date(exitDateString),
+          slashed: false,
+        },
+      ]);
     });
   });
 

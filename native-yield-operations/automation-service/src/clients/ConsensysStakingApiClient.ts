@@ -9,8 +9,10 @@ import {
 } from "@consensys/linea-shared-utils";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
+import { EXITING_VALIDATORS_QUERY } from "../core/entities/graphql/ExitingValidators.js";
 import {
   AggregatedPendingWithdrawal,
+  ExitingValidator,
   ValidatorBalance,
   ValidatorBalanceWithPendingWithdrawal,
 } from "../core/entities/ValidatorBalance.js";
@@ -76,6 +78,56 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     }));
     this.logger.info(`getActiveValidators succeeded, validatorCount=${validators.length}`);
     this.logger.debug("getActiveValidators resp", { resp: validators });
+    return validators;
+  }
+
+  /**
+   * Retrieves all exiting validators from the Consensys Staking GraphQL API.
+   * Uses retry logic to handle transient failures.
+   *
+   * @returns {Promise<ExitingValidator[] | undefined>} Array of exiting validators, or undefined if the query fails or returns no data.
+   */
+  async getExitingValidators(): Promise<ExitingValidator[] | undefined> {
+    const { data, error } = await this.retryService.retry(() =>
+      this.apolloClient.query({ query: EXITING_VALIDATORS_QUERY }),
+    );
+    if (error) {
+      this.logger.error("getExitingValidators error:", { error });
+      return undefined;
+    }
+    if (!data) {
+      this.logger.error("getExitingValidators data undefined");
+      return undefined;
+    }
+    const resp = data?.allValidators.nodes;
+    if (!resp) {
+      this.logger.info(`getExitingValidators succeeded, validatorCount=0`);
+      this.logger.debug("getExitingValidators resp", { resp: undefined });
+      return undefined;
+    }
+    // Convert GraphQL string responses to appropriate types
+    // GraphQL returns numeric values as strings, so we need to convert them
+    // BigInt() handles strings, numbers, and bigint values, so no type check needed
+    type GraphQLExitingValidatorResponse = {
+      balance: string | bigint;
+      effectiveBalance: string | bigint;
+      publicKey: string;
+      validatorIndex: string | bigint;
+      exitEpoch: string | number;
+      exitDate: string;
+      slashed: boolean;
+    };
+    const validators: ExitingValidator[] = (resp as unknown as GraphQLExitingValidatorResponse[]).map((v) => ({
+      balance: BigInt(v.balance),
+      effectiveBalance: BigInt(v.effectiveBalance),
+      publicKey: v.publicKey,
+      validatorIndex: BigInt(v.validatorIndex),
+      exitEpoch: typeof v.exitEpoch === "string" ? parseInt(v.exitEpoch, 10) : v.exitEpoch,
+      exitDate: new Date(v.exitDate),
+      slashed: Boolean(v.slashed),
+    }));
+    this.logger.info(`getExitingValidators succeeded, validatorCount=${validators.length}`);
+    this.logger.debug("getExitingValidators resp", { resp: validators });
     return validators;
   }
 
