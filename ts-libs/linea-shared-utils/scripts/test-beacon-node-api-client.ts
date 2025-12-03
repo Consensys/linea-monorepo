@@ -23,9 +23,9 @@ async function main() {
       throw "undefined withdrawals";
     }
     console.log(`Received ${withdrawals.length} withdrawals.`);
-    if (withdrawals.length > 0) {
-      console.log("Sample entry:", withdrawals[0]);
-    }
+    withdrawals.forEach((withdrawal, index) => {
+      console.log(`Withdrawal ${index + 1}:`, withdrawal);
+    });
   } catch (err) {
     console.error("BeaconNodeApiClient integration script failed:", err);
     process.exitCode = 1;
