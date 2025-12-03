@@ -23,6 +23,10 @@ type TestContext struct {
 func InitializeContext(initialBlock int) *TestContext {
 	fieldOne := field.One()
 	oneBytes := fieldOne.Bytes()
+	oneByteOctuplet := make([]byte, 0, 32)
+	for i := 0; i < 8; i++ {
+		oneByteOctuplet = append(oneByteOctuplet, oneBytes[:]...)
+	}
 	var (
 		addresses = []types.EthAddress{
 			types.DummyAddress(32),
@@ -43,7 +47,7 @@ func InitializeContext(initialBlock int) *TestContext {
 			types.DummyFullByte(2002),
 			types.DummyFullByte(2012),
 			types.DummyFullByte(2023),
-			types.AsFullBytes32(oneBytes[:]),
+			types.AsFullBytes32(oneByteOctuplet),
 		}
 	)
 
