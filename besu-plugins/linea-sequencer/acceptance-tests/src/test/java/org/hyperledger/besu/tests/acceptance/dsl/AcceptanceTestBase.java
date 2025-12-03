@@ -237,12 +237,12 @@ public abstract class AcceptanceTestBase {
                         .nonce(BigInteger.valueOf(fundingAccNonce.incrementAndGet()))
                         .build();
 
-                    final var txB =
-                        accountTransactions.createTransfer(
-                            senderAccount,
-                            account,
-                            initialBalanceEther,
-                            /*nonce*/ BigInteger.valueOf(fundingAccNonce.incrementAndGet()));
+                    // final var txB =
+                    //     accountTransactions.createTransfer(
+                    //         senderAccount,
+                    //         account,
+                    //         initialBalanceEther,
+                    //         /*nonce*/ BigInteger.valueOf(fundingAccNonce.incrementAndGet()));
 
                     final var tx = txA;
                     final var decodedTx =
