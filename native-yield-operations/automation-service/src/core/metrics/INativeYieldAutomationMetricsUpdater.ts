@@ -34,6 +34,8 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   setPendingPartialWithdrawalQueueAmountGwei(pubkey: Hex, withdrawableEpoch: number, amountGwei: number): void;
 
+  setPendingDepositQueueAmountGwei(pubkey: Hex, slot: number, amountGwei: number): void;
+
   addNodeOperatorFeesPaid(vaultAddress: Address, amountGwei: number): void;
 
   addLiabilitiesPaid(vaultAddress: Address, amountGwei: number): void;

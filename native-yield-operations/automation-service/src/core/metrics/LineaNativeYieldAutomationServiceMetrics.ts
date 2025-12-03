@@ -63,6 +63,12 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // ii.) `withdrawable_epoch` - Epoch when withdrawal becomes available
   PendingPartialWithdrawalQueueAmountGwei = "linea_native_yield_automation_service_pending_partial_withdrawal_queue_amount_gwei",
 
+  // Gauge representing pending deposit queue amount in gwei
+  // Labels:
+  // i.) `pubkey` - Validator public key
+  // ii.) `slot` - Slot number
+  PendingDepositQueueAmountGwei = "linea_native_yield_automation_service_pending_deposit_queue_amount_gwei",
+
   // Counter that increments by the node operator fees paid
   // Single label `vault_address`
   // N.B. Only accounts for payments by the automation service, but external actors can also trigger payment

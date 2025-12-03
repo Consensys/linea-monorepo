@@ -114,6 +114,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       ["pubkey", "withdrawable_epoch"],
     );
 
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
+      "Pending deposit queue amount in gwei",
+      ["pubkey", "slot"],
+    );
+
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
       "Node operator fees paid by automation per vault",
@@ -359,6 +365,22 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
       { pubkey, withdrawable_epoch: withdrawableEpoch.toString() },
+      amountGwei,
+    );
+  }
+
+  /**
+   * Sets the pending deposit queue amount in gwei for a specific validator and slot.
+   *
+   * @param {Hex} pubkey - The validator's public key in hex format.
+   * @param {number} slot - The slot number. Must be non-negative.
+   * @param {number} amountGwei - The deposit amount in gwei. Must be non-negative to be recorded.
+   */
+  public setPendingDepositQueueAmountGwei(pubkey: Hex, slot: number, amountGwei: number): void {
+    if (amountGwei < 0 || slot < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
+      { pubkey, slot: slot.toString() },
       amountGwei,
     );
   }

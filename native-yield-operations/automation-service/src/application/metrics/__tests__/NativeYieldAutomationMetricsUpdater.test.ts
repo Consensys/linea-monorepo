@@ -574,6 +574,84 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     });
   });
 
+  describe("setPendingDepositQueueAmountGwei", () => {
+    it("sets gauge when amount and slot are non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingDepositQueueAmountGwei(validatorPubkey, 123456, 32000000000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
+        { pubkey: validatorPubkey, slot: "123456" },
+        32000000000,
+      );
+    });
+
+    it("converts slot to string for label", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingDepositQueueAmountGwei(validatorPubkey, 789012, 1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
+        { pubkey: validatorPubkey, slot: "789012" },
+        1000,
+      );
+    });
+
+    it("does not set gauge when amount is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingDepositQueueAmountGwei(validatorPubkey, 123456, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("does not set gauge when slot is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingDepositQueueAmountGwei(validatorPubkey, -1, 1000);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("sets gauge when amount is zero and slot is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingDepositQueueAmountGwei(validatorPubkey, 123456, 0);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
+        { pubkey: validatorPubkey, slot: "123456" },
+        0,
+      );
+    });
+
+    it("sets gauge when slot is zero and amount is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingDepositQueueAmountGwei(validatorPubkey, 0, 1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
+        { pubkey: validatorPubkey, slot: "0" },
+        1000,
+      );
+    });
+  });
+
   describe("vault payout counters", () => {
     const cases: Array<{
       metric: LineaNativeYieldAutomationServiceMetrics;
