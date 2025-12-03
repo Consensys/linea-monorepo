@@ -3,7 +3,6 @@ package distributed
 import (
 	"context"
 	"fmt"
-	"os"
 	"runtime/debug"
 	"time"
 
@@ -51,17 +50,8 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 		errGroup = errgroup.Group{}
 	)
 
-	// Recover wrapper for panics
-	defer func() {
-		cancel()
-		if r := recover(); r != nil {
-			logrus.Errorf("[PANIC] Conglomerator crashed for conflation request %s:%s", req.StartBlock, req.EndBlock)
-			debug.PrintStack()
-			os.Exit(2)
-		}
-	}()
-
-	// Generic defer for marking files on exit
+	// ---- 1) Generic defer for marking files on exit ----
+	// Declare marking defer first so it runs after recovery (LIFO).
 	defer func() {
 		suf := files.OutcomeSuffix(err)
 		allFiles := append([]string{}, req.GLProofFiles...)
@@ -70,16 +60,25 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 		files.MarkAndMoveToDone(cfg, allFiles, suf)
 	}()
 
+	// Recover wrapper for panics
+	defer func() {
+		cancel()
+		if r := recover(); r != nil {
+			logrus.Errorf("[PANIC] Conglomerator crashed for conflation request %s:%s", req.StartBlock, req.EndBlock)
+			debug.PrintStack()
+		}
+	}()
+
 	// -- 1. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more
 	// proofs come in. It will exit when it collects `totalProofs` or when ctx is cancelled.
 	go func() {
-		cong, err = zkevm.LoadCompiledConglomeration(cfg)
-		if err != nil || cong == nil {
-			panic(fmt.Errorf("could not load compiled conglomeration: %w", err))
+		cong, loadErr := zkevm.LoadCompiledConglomeration(cfg)
+		if loadErr != nil || cong == nil {
+			panic(fmt.Errorf("could not load compiled conglomeration: %w", loadErr))
 		}
 		logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
-		proof, err := runConglomerationHierarchical(ctx, cfg, cong, proofStream, totalProofs)
-		resultCh <- congResult{proof: proof, err: err}
+		proof, runErr := runConglomerationHierarchical(ctx, cfg, cong, proofStream, totalProofs)
+		resultCh <- congResult{proof: proof, err: runErr}
 	}()
 
 	// -- 2. Wait for all GL proofs to arrive from the GL sub-provers and
