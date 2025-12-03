@@ -320,7 +320,8 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 
 	pragmas.MarkLeftPadded(filterArith)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Address[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.BatchNumber, ss.Account.Initial.Exists)
+	stateSummaryTable = append(stateSummaryTable, ss.BatchNumber[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.Exists)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.ExpectedHubCodeHash.Hi[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.ExpectedHubCodeHash.Lo[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.CodeSize[:]...)
@@ -416,7 +417,8 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	var stateSummaryTable []ifaces.Column
 
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Address[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Exists, ss.BatchNumber)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Exists)
+	stateSummaryTable = append(stateSummaryTable, ss.BatchNumber[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.ExpectedHubCodeHash.Hi[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.ExpectedHubCodeHash.Lo[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.CodeSize[:]...)
@@ -510,7 +512,7 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 
 	var summaryTable []ifaces.Column
 	summaryTable = append(summaryTable, ss.Account.Address[:]...)
-	summaryTable = append(summaryTable, ss.BatchNumber)
+	summaryTable = append(summaryTable, ss.BatchNumber[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Hi[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Lo[:]...)
 	summaryTable = append(summaryTable, ss.Storage.OldValue.Hi[:]...)

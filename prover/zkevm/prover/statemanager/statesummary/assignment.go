@@ -24,7 +24,7 @@ type stateSummaryAssignmentBuilder struct {
 	isFinalDeployment           *common.VectorBuilder
 	IsDeleteSegment             *common.VectorBuilder
 	isStorage                   *common.VectorBuilder
-	batchNumber                 *common.VectorBuilder
+	batchNumber                 [common.NbLimbU64]*common.VectorBuilder
 	worldStateRoot              [common.NbLimbU256]*common.VectorBuilder
 	account                     accountPeekAssignmentBuilder
 	storage                     storagePeekAssignmentBuilder
@@ -83,11 +83,14 @@ func newStateSummaryAssignmentBuilder(ss *Module, run *wizard.ProverRuntime) *st
 		isFinalDeployment:           common.NewVectorBuilder(ss.IsFinalDeployment),
 		IsDeleteSegment:             common.NewVectorBuilder(ss.IsDeleteSegment),
 		isStorage:                   common.NewVectorBuilder(ss.IsStorage),
-		batchNumber:                 common.NewVectorBuilder(ss.BatchNumber),
 		storage:                     newStoragePeekAssignmentBuilder(&ss.Storage),
 		account:                     newAccountPeekAssignmentBuilder(&ss.Account),
 		accumulatorStatement:        newAccumulatorStatementAssignmentBuilder(&ss.AccumulatorStatement),
 		arithmetizationStorage:      newArithmetizationStorageParser(ss, run),
+	}
+
+	for i := range common.NbLimbU64 {
+		res.batchNumber[i] = common.NewVectorBuilder(ss.BatchNumber[i])
 	}
 
 	for i := range common.NbLimbU256 {
@@ -186,7 +189,11 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 
 			if !seg.storageTraces[i].IsSkipped {
 				// the storage trace is to be kept, and not skipped
-				ss.batchNumber.PushInt(batchNumber)
+				// Push batchNumber to all limbs: value goes to limb 0, higher limbs are 0
+				ss.batchNumber[0].PushInt(batchNumber)
+				for j := 1; j < common.NbLimbU64; j++ {
+					ss.batchNumber[j].PushZero()
+				}
 
 				for j := range common.NbLimbEthAddress {
 					ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
@@ -318,7 +325,11 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 			}
 		}
 
-		ss.batchNumber.PushInt(batchNumber)
+		// Push batchNumber to all limbs: value goes to limb 0, higher limbs are 0
+		ss.batchNumber[0].PushInt(batchNumber)
+		for j := 1; j < common.NbLimbU64; j++ {
+			ss.batchNumber[j].PushZero()
+		}
 
 		for j := range common.NbLimbEthAddress {
 			ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
@@ -400,7 +411,10 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 	ss.isFinalDeployment.PadAndAssign(run)
 	ss.IsDeleteSegment.PadAndAssign(run)
 	ss.isStorage.PadAndAssign(run)
-	ss.batchNumber.PadAndAssign(run)
+
+	for i := range common.NbLimbU64 {
+		ss.batchNumber[i].PadAndAssign(run)
+	}
 
 	for i := range common.NbLimbU256 {
 		ss.worldStateRoot[i].PadAndAssign(run)
