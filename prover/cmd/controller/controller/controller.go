@@ -141,7 +141,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 			numRetrySoFar = 0
 
 			// Claim active job for safe requeue mechanism
-			state.setActiveJob(job)
+			state.setActiveJob(job, cLog)
 
 			// Rm any prev. transient failure files and other intermediate files - relevant only for Limitless jobs
 			if err := state.preCleanForLimitlessJob(cfg, cLog); err != nil {

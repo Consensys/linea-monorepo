@@ -216,9 +216,10 @@ func (j *Job) Score() int {
 	return score
 }
 
-func (st *ControllerState) setActiveJob(job *Job) {
+func (st *ControllerState) setActiveJob(job *Job, cLog *logrus.Entry) {
 	st.activeJobMu.Lock()
 	st.activeJob = job
+	cLog.Infof("Claimed new active job: %v", job.OriginalFile)
 	st.activeJobMu.Unlock()
 }
 
