@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	width     = 16
-	blockSize = 8
+	width      = 16
+	blockSize  = 8
+	limbPerU64 = 16
 )
 
 // Wizard gadget allowing to verify a Merkle proof

@@ -1,8 +1,10 @@
 package accumulator
 
 import (
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -66,16 +68,16 @@ func TestAssignInsert(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	traceInsert := acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 
 	pushInsertionRows(builder, traceInsert)
 
-	assert.Equal(t, valuesToLimbRows(4, 0, 0, 2, 2, 1, 1), builder.positions[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 0, 2, 2, 1, 1), builder.positions[:])
 	assert.Equal(t, vector.ForTest(1, 0, 0, 0, 0, 0), builder.isFirst)
 	assert.Equal(t, vector.ForTest(1, 1, 1, 1, 1, 1), builder.isInsert)
-	assert.Equal(t, valuesToLimbRows(4, 2, 2, 3, 3, 3, 3), builder.nextFreeNode[:])
-	assert.Equal(t, valuesToLimbRows(4, 0, 0, 2, 0, 0, 0), builder.insertionPath[:])
+	assert.Equal(t, valuesToLimbRows(16, 2, 2, 3, 3, 3, 3), builder.nextFreeNode[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 0, 2, 0, 0, 0), builder.insertionPath[:])
 	assert.Equal(t, vector.ForTest(0, 0, 1, 0, 0, 0), builder.isInsertRow3)
 	assert.Equal(t, vector.ForTest(0, 0, 0, 0, 0, 0), builder.isDelete)
 	assert.Equal(t, vector.ForTest(0, 0, 0, 0, 0, 0), builder.isUpdate)
@@ -83,7 +85,7 @@ func TestAssignInsert(t *testing.T) {
 	assert.Equal(t, vector.ForTest(0, 0, 0, 0, 0, 0), builder.isReadNonZero)
 	assert.Equal(t, vector.ForTest(1, 0, 1, 0, 1, 0), builder.useNextMerkleProof)
 	assert.Equal(t, vector.ForTest(1, 1, 1, 1, 1, 1), builder.isActive)
-	assert.Equal(t, valuesToLimbRows(4, 0, 1, 2, 3, 4, 5), builder.accumulatorCounter[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 1, 2, 3, 4, 5), builder.accumulatorCounter[:])
 	for _, leavesLimbCol := range builder.leaves {
 		for i := range leavesLimbCol {
 			if i == 0 {
@@ -94,7 +96,7 @@ func TestAssignInsert(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, valueToLimbs(16, 0), getLimbsFromRow(builder.leaves[:], 2))
+	assert.Equal(t, valueToLimbs(8, 0), getLimbsFromRow(builder.leaves[:], 2))
 	assert.Equal(t, getLimbsFromRow(builder.roots[:], 1), getLimbsFromRow(builder.roots[:], 2))
 	assert.Equal(t, getLimbsFromRow(builder.roots[:], 3), getLimbsFromRow(builder.roots[:], 4))
 	assert.Equal(t, getLimbsFromRow(builder.positions[:], 0), getLimbsFromRow(builder.positions[:], 1))
@@ -110,16 +112,16 @@ func TestAssignUpdate(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 	traceUpdate := acc.UpdateAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x20"))
 	pushUpdateRows(builder, traceUpdate)
 
-	assert.Equal(t, valuesToLimbRows(4, 2, 2), builder.positions[:])
+	assert.Equal(t, valuesToLimbRows(16, 2, 2), builder.positions[:])
 	assert.Equal(t, vector.ForTest(1, 0), builder.isFirst)
 	assert.Equal(t, vector.ForTest(0, 0), builder.isInsert)
-	assert.Equal(t, valuesToLimbRows(4, 3, 3), builder.nextFreeNode[:])
-	assert.Equal(t, valuesToLimbRows(4, 0, 0), builder.insertionPath[:])
+	assert.Equal(t, valuesToLimbRows(16, 3, 3), builder.nextFreeNode[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 0), builder.insertionPath[:])
 	assert.Equal(t, vector.ForTest(0, 0), builder.isInsertRow3)
 	assert.Equal(t, vector.ForTest(0, 0), builder.isDelete)
 	assert.Equal(t, vector.ForTest(1, 1), builder.isUpdate)
@@ -127,7 +129,7 @@ func TestAssignUpdate(t *testing.T) {
 	assert.Equal(t, vector.ForTest(0, 0), builder.isReadNonZero)
 	assert.Equal(t, vector.ForTest(1, 0), builder.useNextMerkleProof)
 	assert.Equal(t, vector.ForTest(1, 1), builder.isActive)
-	assert.Equal(t, valuesToLimbRows(4, 0, 1), builder.accumulatorCounter[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 1), builder.accumulatorCounter[:])
 	for _, leavesLimbCol := range builder.leaves {
 		for i := range leavesLimbCol {
 			if i == 0 {
@@ -148,18 +150,18 @@ func TestAssignDelete(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 	traceDelete := acc.DeleteAndProve(types.FullBytes32FromHex("0x32"))
 	pushDeletionRows(builder, traceDelete)
 
-	assert.Equal(t, valueToLimbs(16, 0), getLimbsFromRow(builder.leaves[:], 3))
+	assert.Equal(t, valueToLimbs(8, 0), getLimbsFromRow(builder.leaves[:], 3))
 	assert.Equal(t, getLimbsFromRow(builder.roots[:], 1), getLimbsFromRow(builder.roots[:], 2))
 	assert.Equal(t, getLimbsFromRow(builder.roots[:], 3), getLimbsFromRow(builder.roots[:], 4))
 	assert.Equal(t, vector.ForTest(1, 0, 0, 0, 0, 0), builder.isFirst)
 	assert.Equal(t, vector.ForTest(0, 0, 0, 0, 0, 0), builder.isInsert)
-	assert.Equal(t, valuesToLimbRows(4, 3, 3, 3, 3, 3, 3), builder.nextFreeNode[:])
-	assert.Equal(t, valuesToLimbRows(4, 0, 0, 0, 0, 0, 0), builder.insertionPath[:])
+	assert.Equal(t, valuesToLimbRows(16, 3, 3, 3, 3, 3, 3), builder.nextFreeNode[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 0, 0, 0, 0, 0), builder.insertionPath[:])
 	assert.Equal(t, vector.ForTest(0, 0, 0, 0, 0, 0), builder.isInsertRow3)
 	assert.Equal(t, vector.ForTest(1, 1, 1, 1, 1, 1), builder.isDelete)
 	assert.Equal(t, vector.ForTest(0, 0, 0, 0, 0, 0), builder.isUpdate)
@@ -167,7 +169,7 @@ func TestAssignDelete(t *testing.T) {
 	assert.Equal(t, vector.ForTest(0, 0, 0, 0, 0, 0), builder.isReadNonZero)
 	assert.Equal(t, vector.ForTest(1, 0, 1, 0, 1, 0), builder.useNextMerkleProof)
 	assert.Equal(t, vector.ForTest(1, 1, 1, 1, 1, 1), builder.isActive)
-	assert.Equal(t, valuesToLimbRows(4, 0, 1, 2, 3, 4, 5), builder.accumulatorCounter[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 1, 2, 3, 4, 5), builder.accumulatorCounter[:])
 	for _, leavesLimbCol := range builder.leaves {
 		for i := range leavesLimbCol {
 			if i == 0 {
@@ -190,16 +192,16 @@ func TestAssignReadZero(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	traceReadZero := acc.ReadZeroAndProve(types.FullBytes32FromHex("0x32"))
 	pushReadZeroRows(builder, traceReadZero)
 
 	assert.Equal(t, getLimbsFromRow(builder.roots[:], 0), getLimbsFromRow(builder.roots[:], 1))
-	assert.Equal(t, valuesToLimbRows(4, 0, 1), builder.positions[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 1), builder.positions[:])
 	assert.Equal(t, vector.ForTest(1, 0), builder.isFirst)
 	assert.Equal(t, vector.ForTest(0, 0), builder.isInsert)
-	assert.Equal(t, valuesToLimbRows(4, 2, 2), builder.nextFreeNode[:])
-	assert.Equal(t, valuesToLimbRows(4, 0, 0), builder.insertionPath[:])
+	assert.Equal(t, valuesToLimbRows(16, 2, 2), builder.nextFreeNode[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 0), builder.insertionPath[:])
 	assert.Equal(t, vector.ForTest(0, 0), builder.isInsertRow3)
 	assert.Equal(t, vector.ForTest(0, 0), builder.isDelete)
 	assert.Equal(t, vector.ForTest(0, 0), builder.isUpdate)
@@ -207,7 +209,7 @@ func TestAssignReadZero(t *testing.T) {
 	assert.Equal(t, vector.ForTest(0, 0), builder.isReadNonZero)
 	assert.Equal(t, vector.ForTest(0, 0), builder.useNextMerkleProof)
 	assert.Equal(t, vector.ForTest(1, 1), builder.isActive)
-	assert.Equal(t, valuesToLimbRows(4, 0, 1), builder.accumulatorCounter[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 1), builder.accumulatorCounter[:])
 	for _, leavesLimbCol := range builder.leaves {
 		for i := range leavesLimbCol {
 			if i == 0 {
@@ -227,17 +229,17 @@ func TestAssignReadNonZero(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(types.EthAddress{})
 	acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 	traceReadNonZero := acc.ReadNonZeroAndProve(types.FullBytes32FromHex("0x32"))
 	pushReadNonZeroRows(builder, traceReadNonZero)
 
 	assert.Equal(t, getLimbsFromRow(builder.roots[:], 0), getLimbsFromRow(builder.roots[:], 1))
-	assert.Equal(t, valuesToLimbRows(4, 2, 2), builder.positions[:])
+	assert.Equal(t, valuesToLimbRows(16, 2, 2), builder.positions[:])
 	assert.Equal(t, vector.ForTest(1, 0), builder.isFirst)
 	assert.Equal(t, vector.ForTest(0, 0), builder.isInsert)
-	assert.Equal(t, valuesToLimbRows(4, 3, 3), builder.nextFreeNode[:])
-	assert.Equal(t, valuesToLimbRows(4, 0, 0), builder.insertionPath[:])
+	assert.Equal(t, valuesToLimbRows(16, 3, 3), builder.nextFreeNode[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 0), builder.insertionPath[:])
 	assert.Equal(t, vector.ForTest(0, 0), builder.isInsertRow3)
 	assert.Equal(t, vector.ForTest(0, 0), builder.isDelete)
 	assert.Equal(t, vector.ForTest(0, 0), builder.isUpdate)
@@ -245,7 +247,7 @@ func TestAssignReadNonZero(t *testing.T) {
 	assert.Equal(t, vector.ForTest(1, 1), builder.isReadNonZero)
 	assert.Equal(t, vector.ForTest(0, 0), builder.useNextMerkleProof)
 	assert.Equal(t, vector.ForTest(1, 1), builder.isActive)
-	assert.Equal(t, valuesToLimbRows(4, 0, 1), builder.accumulatorCounter[:])
+	assert.Equal(t, valuesToLimbRows(16, 0, 1), builder.accumulatorCounter[:])
 
 	assertCorrectMerkleProof(t, builder)
 	// Verify the Merkle proofs along with the reuse in the wizard
@@ -255,17 +257,9 @@ func TestAssignReadNonZero(t *testing.T) {
 func assertCorrectMerkleProof(t *testing.T, builder *assignmentBuilder) {
 	proofs := builder.proofs
 	for i, proof := range proofs {
-		var leaveBytes []byte
-		var rootBytes []byte
-		for j := range builder.leaves {
-			leavesLimbBytes := builder.leaves[j][i].Bytes()
-			leaveBytes = append(leaveBytes, leavesLimbBytes[30:]...)
-
-			rootsLimbBytes := builder.roots[j][i].Bytes()
-			rootBytes = append(rootBytes, rootsLimbBytes[30:]...)
-		}
-
-		assert.Equal(t, true, proof.Verify(statemanager.MIMC_CONFIG, types.AsBytes32(leaveBytes), types.AsBytes32(rootBytes)))
+		leaf := field.Octuplet(getLimbsFromRow(builder.leaves[:], i))
+		root := field.Octuplet(getLimbsFromRow(builder.roots[:], i))
+		assert.Equal(t, nil, smt_koalabear.Verify(&proof, leaf, root))
 	}
 }
 
@@ -275,9 +269,9 @@ func assertCorrectMerkleProofsUsingWizard(t *testing.T, builder *assignmentBuild
 		merkleVerification    *merkle.FlatMerkleProofVerification
 		size                  = utils.NextPowerOfTwo(builder.MaxNumProofs)
 		proofcol              *merkle.FlatProof
-		rootscol              [common.NbLimbU256]ifaces.Column
-		leavescol             [common.NbLimbU256]ifaces.Column
-		poscol                [common.NbLimbU64]ifaces.Column
+		rootscol              [common.NbElemPerHash]ifaces.Column
+		leavescol             [common.NbElemPerHash]ifaces.Column
+		poscol                [common.NbElemForHasingU64]ifaces.Column
 		useNextMerkleProofCol ifaces.Column
 		isActiveCol           ifaces.Column
 	)
@@ -285,12 +279,12 @@ func assertCorrectMerkleProofsUsingWizard(t *testing.T, builder *assignmentBuild
 	define := func(b *wizard.Builder) {
 		proofcol = merkle.NewProof(b.CompiledIOP, 0, "PROOF", builder.MerkleTreeDepth, size)
 
-		for i := 0; i < common.NbLimbU256; i++ {
+		for i := 0; i < common.NbElemPerHash; i++ {
 			rootscol[i] = b.RegisterCommit(ifaces.ColIDf("ROOTS_%d", i), size)
 			leavescol[i] = b.RegisterCommit(ifaces.ColIDf("LEAVES_%d", i), size)
 		}
 
-		for i := 0; i < common.NbLimbU64; i++ {
+		for i := 0; i < common.NbElemForHasingU64; i++ {
 			poscol[i] = b.RegisterCommit(ifaces.ColIDf("POS_%d", i), size)
 		}
 
@@ -316,7 +310,7 @@ func assertCorrectMerkleProofsUsingWizard(t *testing.T, builder *assignmentBuild
 
 		proofcol.Assign(run, builder.proofs)
 
-		for i := 0; i < common.NbLimbU256; i++ {
+		for i := 0; i < common.NbElemPerHash; i++ {
 			run.AssignColumn(ifaces.ColIDf("ROOTS_%d", i), smartvectors.RightZeroPadded(builder.roots[i], size))
 			run.AssignColumn(ifaces.ColIDf("LEAVES_%d", i), smartvectors.RightZeroPadded(builder.leaves[i], size))
 		}

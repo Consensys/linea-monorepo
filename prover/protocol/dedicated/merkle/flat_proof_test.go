@@ -63,19 +63,26 @@ type merkleTestRunnerFlat struct {
 // Define implements the [wizard.DefineFunc] interface
 func (ctx *merkleTestRunnerFlat) Define(b *wizard.Builder) {
 
-	var leaf, roots [blockSize]ifaces.Column
+	var (
+		leaf, roots [blockSize]ifaces.Column
+		position    [limbPerU64]ifaces.Column
+	)
+
 	proofs := *NewProof(b.CompiledIOP, 0, "test", merkleTestDepth, merkleTestNumRow)
 
 	for i := 0; i < blockSize; i++ {
 		leaf[i] = b.RegisterCommit(ifaces.ColIDf("LEAF_%v", i), merkleTestNumRow)
 		roots[i] = b.RegisterCommit(ifaces.ColIDf("ROOTS_%v", i), merkleTestNumRow)
 	}
+	for i := 0; i < limbPerU64; i++ {
+		position[i] = b.RegisterCommit(ifaces.ColIDf("POS_LIMB_%v", i), merkleTestNumRow)
+	}
 	mpvInputs := FlatProofVerificationInputs{
 		Name:     "test",
 		Proof:    proofs,
 		Leaf:     leaf,
 		Roots:    roots,
-		Position: b.RegisterCommit("POS", merkleTestNumRow),
+		Position: position,
 		IsActive: b.RegisterCommit("ACTIVE", merkleTestNumRow),
 	}
 
@@ -88,7 +95,9 @@ func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleT
 		run.AssignColumn(ifaces.ColIDf("LEAF_%v", i), smartvectors.RightZeroPadded(data.leaves[i], merkleTestNumRow))
 		run.AssignColumn(ifaces.ColIDf("ROOTS_%v", i), smartvectors.RightZeroPadded(data.roots[i], merkleTestNumRow))
 	}
-	run.AssignColumn("POS", smartvectors.RightZeroPadded(data.pos, merkleTestNumRow))
+	for i := 0; i < limbPerU64; i++ {
+		run.AssignColumn(ifaces.ColIDf("POS_LIMB_%v", i), smartvectors.RightZeroPadded(data.pos[i], merkleTestNumRow))
+	}
 	run.AssignColumn("ACTIVE", smartvectors.RightZeroPadded(data.isActive, merkleTestNumRow))
 
 	ctx.ctx.Proof.Assign(run, data.proofs)
@@ -123,7 +132,7 @@ type merkleTestCaseInstance struct {
 // and is implemented like a writer.
 type merkleTestBuilder struct {
 	proofs             []smt_koalabear.Proof
-	pos                []field.Element
+	pos                [limbPerU64][]field.Element
 	roots              [blockSize][]field.Element
 	leaves             [blockSize][]field.Element
 	useNextMerkleProof []field.Element
@@ -191,13 +200,41 @@ func (mt *merkleTestBuilder) AddWrite(pos int, newLeaf field.Octuplet) {
 func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 	mt.counter = append(mt.counter, field.NewElement(uint64(len(mt.counter))))
 	mt.proofs = append(mt.proofs, row.proof)
-	mt.pos = append(mt.pos, field.NewElement(uint64(row.pos)))
 	leafOct := row.leaf
 	rootOct := row.root
 	for i := 0; i < blockSize; i++ {
 		mt.leaves[i] = append(mt.leaves[i], leafOct[i])
 		mt.roots[i] = append(mt.roots[i], rootOct[i])
 	}
+	// compute position limbs
+	limbs := uint64To4BitLimbs(uint64(row.pos))
+	for i := 0; i < limbPerU64; i++ {
+		mt.pos[i] = append(mt.pos[i], field.NewElement(limbs[i]))
+
+	}
 	mt.useNextMerkleProof = append(mt.useNextMerkleProof, field.FromBool(row.useNextMerkleProof))
 	mt.isActive = append(mt.isActive, field.One())
+}
+
+// uint64To4BitLimbs splits v into four 16-bit limbs (big-endian order):
+// limbs[15] = lowest 16 bits, limbs[0] = highest 16 bits.
+func uint64To4BitLimbs(v uint64) [16]uint64 {
+	var limbs [16]uint64
+	limbs[15] = uint64(v & 0xF)
+	limbs[14] = uint64((v >> 4) & 0xF)
+	limbs[13] = uint64((v >> 8) & 0xF)
+	limbs[12] = uint64((v >> 12) & 0xF)
+	limbs[11] = uint64((v >> 16) & 0xF)
+	limbs[10] = uint64((v >> 20) & 0xF)
+	limbs[9] = uint64((v >> 24) & 0xF)
+	limbs[8] = uint64((v >> 28) & 0xF)
+	limbs[7] = uint64((v >> 32) & 0xF)
+	limbs[6] = uint64((v >> 36) & 0xF)
+	limbs[5] = uint64((v >> 40) & 0xF)
+	limbs[4] = uint64((v >> 44) & 0xF)
+	limbs[3] = uint64((v >> 48) & 0xF)
+	limbs[2] = uint64((v >> 52) & 0xF)
+	limbs[1] = uint64((v >> 56) & 0xF)
+	limbs[0] = uint64((v >> 60) & 0xF)
+	return limbs
 }

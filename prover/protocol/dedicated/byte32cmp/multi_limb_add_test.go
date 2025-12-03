@@ -21,6 +21,7 @@ type testCase struct {
 	maskVals    []int
 	result      [][]int
 	expectError bool
+	isAddition  bool
 }
 
 func TestAddColToLimbs(t *testing.T) {
@@ -39,7 +40,8 @@ func TestAddColToLimbs(t *testing.T) {
 				{0, 0, 0, 0},
 				{1, 1, 1, 0},
 			},
-			maskVals: []int{1, 1, 1, 0},
+			maskVals:   []int{1, 1, 1, 0},
+			isAddition: true,
 		},
 		// Edge cases (all single‐row, 4 limbs each)
 		{
@@ -50,6 +52,7 @@ func TestAddColToLimbs(t *testing.T) {
 			bVals: [][]int{
 				{0}, {0}, {0}, {0},
 			},
+			isAddition: true,
 		},
 		{
 			name: "max_lsb_plus_one",
@@ -59,6 +62,7 @@ func TestAddColToLimbs(t *testing.T) {
 			bVals: [][]int{
 				{0}, {0}, {0}, {1},
 			},
+			isAddition: true,
 		},
 		{
 			name: "cascade_carry",
@@ -68,6 +72,7 @@ func TestAddColToLimbs(t *testing.T) {
 			bVals: [][]int{
 				{0}, {0}, {0}, {1},
 			},
+			isAddition: true,
 		},
 		{
 			name: "max_16bit_addition",
@@ -77,6 +82,7 @@ func TestAddColToLimbs(t *testing.T) {
 			bVals: [][]int{
 				{0}, {0}, {0}, {0x8000},
 			},
+			isAddition: true,
 		},
 		{
 			name: "partial_carry",
@@ -86,6 +92,7 @@ func TestAddColToLimbs(t *testing.T) {
 			bVals: [][]int{
 				{0}, {0}, {0}, {0x8000},
 			},
+			isAddition: true,
 		},
 		// multiple rows
 		{
@@ -102,6 +109,7 @@ func TestAddColToLimbs(t *testing.T) {
 				{0, 0, 0, 0},
 				{0, 1, 1, max16},
 			},
+			isAddition: true,
 		},
 		{
 			name: "multi_row_2",
@@ -113,6 +121,7 @@ func TestAddColToLimbs(t *testing.T) {
 				{0, 0, 0, 0},
 				{0, 1, 1, max16},
 			},
+			isAddition: true,
 		},
 		{
 			name: "multi_row_8",
@@ -136,6 +145,7 @@ func TestAddColToLimbs(t *testing.T) {
 				{0, 0, 0, 0},
 				{0, 1, 1, max16},
 			},
+			isAddition: true,
 		},
 		// single limb
 		{
@@ -146,6 +156,7 @@ func TestAddColToLimbs(t *testing.T) {
 			bVals: [][]int{
 				{50, 1, 0, 0x7FFF},
 			},
+			isAddition: true,
 		},
 		// overflow cases
 		{
@@ -153,12 +164,14 @@ func TestAddColToLimbs(t *testing.T) {
 			aVals:       [][]int{{max16}},
 			bVals:       [][]int{{1}},
 			expectError: true,
+			isAddition:  true,
 		},
 		{
 			name:        "overflow_multilimb_not_allowed",
 			aVals:       [][]int{{max16}, {max16}, {max16}, {max16}},
 			bVals:       [][]int{{1}, {0}, {0}, {0}},
 			expectError: true,
+			isAddition:  true,
 		},
 		// with precomputed result
 		{
@@ -182,6 +195,7 @@ func TestAddColToLimbs(t *testing.T) {
 				{1, 0, 0, 0},
 				{0, 0, 0, 0},
 			},
+			isAddition: true,
 		},
 		// multi-limb b operands
 		{
@@ -192,6 +206,7 @@ func TestAddColToLimbs(t *testing.T) {
 			bVals: [][]int{
 				{0}, {0}, {0}, {0x4000},
 			},
+			isAddition: true,
 		},
 		{
 			name: "multi_limb_b_with_carry",
@@ -201,6 +216,7 @@ func TestAddColToLimbs(t *testing.T) {
 			bVals: [][]int{
 				{0}, {0}, {0x8000}, {0x8000},
 			},
+			isAddition: true,
 		},
 		{
 			name: "different_limb_values",
@@ -210,6 +226,7 @@ func TestAddColToLimbs(t *testing.T) {
 			bVals: [][]int{
 				{0x5555}, {0x6666}, {0x7777}, {0x8888},
 			},
+			isAddition: true,
 		},
 		{
 			name: "multi_row_different_b_values",
@@ -225,6 +242,74 @@ func TestAddColToLimbs(t *testing.T) {
 				{0x0700, 0x0800, 0x0900, 0x0},
 				{0x0A00, 0x0B00, 0x0C00, 0x0},
 			},
+			isAddition: true,
+		},
+		{
+			name: "sub_with_carry",
+			aVals: [][]int{
+				{0}, {0}, {1}, {1},
+			},
+			bVals: [][]int{
+				{0}, {0}, {0}, {2},
+			},
+			isAddition: false,
+		},
+		{
+			name: "sub_with_carry_cascade",
+			aVals: [][]int{
+				{1}, {0}, {0}, {0},
+			},
+			bVals: [][]int{
+				{0}, {0}, {0}, {1},
+			},
+			isAddition: false,
+		},
+		{
+			name:        "sub_overflow_not_allowed",
+			aVals:       [][]int{{0}},
+			bVals:       [][]int{{1}},
+			expectError: true,
+			isAddition:  false,
+		},
+		{
+			name:        "sub_overflow_not_allowed",
+			aVals:       [][]int{{5, 5, 5, 5}},
+			bVals:       [][]int{{9, 9, 9, 9}},
+			expectError: true,
+			isAddition:  false,
+		},
+		{
+			name: "sub_with_precomputed_result",
+			aVals: [][]int{
+				{0, 0, 1, 0},
+				{0, 1, 0, 0},
+				{1, 0, 0, 0},
+				{0, 0, 0, 0},
+			},
+			bVals: [][]int{
+				{0, 0, 0, 0},
+				{0, 0, max16, 0},
+				{0, max16, max16, 0},
+				{max16, max16, max16, 0},
+			},
+			maskVals: []int{1, 1, 1, 0},
+			result: [][]int{
+				{0, 0, 0, 0},
+				{0, 0, 0, 0},
+				{0, 0, 0, 0},
+				{1, 1, 1, 0},
+			},
+			isAddition: false,
+		},
+		{
+			name: "sub_multi_limb_b_with_carry",
+			aVals: [][]int{
+				{32769}, {32768}, {32768}, {32768},
+			},
+			bVals: [][]int{
+				{32768}, {32769}, {32769}, {32769},
+			},
+			isAddition: false,
 		},
 	}
 
@@ -286,7 +371,7 @@ func testAddColToLimbs(t *testing.T, tc testCase) {
 			BLimbs: bLimbs,
 			Mask:   symbolic.NewVariable(maskCol),
 			Result: result,
-		})
+		}, tc.isAddition)
 	}
 
 	prover := func(run *wizard.ProverRuntime) {

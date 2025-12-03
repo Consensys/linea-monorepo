@@ -94,9 +94,9 @@ func (s State) SetCodeHash(a types.EthAddress, codeHash types.FullBytes32) {
 	s[a].KeccakCodeHash = codeHash
 }
 
-// SetMimcCodeHash initializes the mimc code hash of an account and initializes
+// SetPoseidon2CodeHash initializes the Poseidon2 code hash of an account and initializes
 // an empty account with the value. If the account does not already exist.
-func (s State) SetMimcCodeHash(a types.EthAddress, codeHash types.Bytes32) {
+func (s State) SetPoseidon2CodeHash(a types.EthAddress, codeHash types.Bytes32) {
 	s.initAccountIfNil(a)
 	s[a].LineaCodeHash = codeHash
 }
@@ -138,7 +138,7 @@ func (s State) GetCodeHash(a types.EthAddress) types.FullBytes32 {
 
 // GetMimcCodeHash returns the Mimc code hash of an account and zero if the account does
 // not exist.
-func (s State) GetMimcCodeHash(a types.EthAddress) types.Bytes32 {
+func (s State) GetPoseidon2CodeHash(a types.EthAddress) types.Bytes32 {
 	s.initAccountIfNil(a)
 	return s[a].LineaCodeHash
 }

@@ -133,7 +133,7 @@ func addSkipFlags(shomeiTraces *[][]statemanager.DecodedTrace) {
 				// prepare the search key
 				searchKey := AddressAndKey{
 					address:    x.Bytes(),
-					storageKey: trace.Underlying.HKey(statemanager.MIMC_CONFIG),
+					storageKey: trace.Underlying.HKey(statemanager.POSEIDON2_CONFIG),
 				}
 				previousIndex, isFound := traceMap[searchKey]
 				if isFound {
