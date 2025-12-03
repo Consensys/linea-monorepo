@@ -426,7 +426,7 @@ func TestFileWatcherDist(t *testing.T) {
 
 	// --- Write all input files ---
 	for _, c := range cases {
-		if err := os.WriteFile(c.path, c.writeContent, 0o644); err != nil {
+		if err := os.WriteFile(c.path, c.writeContent, 0o600); err != nil {
 			t.Fatalf("write %s file: %v", c.name, err)
 		}
 	}
