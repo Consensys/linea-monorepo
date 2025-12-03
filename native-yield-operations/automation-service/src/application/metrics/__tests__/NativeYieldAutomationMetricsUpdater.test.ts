@@ -110,6 +110,16 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       "Pending partial withdrawal queue amount in gwei",
       ["pubkey", "withdrawable_epoch"],
     );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+      "Pending exit queue amount in gwei",
+      ["pubkey", "exit_epoch"],
+    );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
+      "Total pending exit amount in gwei",
+      [],
+    );
     expect(metricsService.createCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
       "Node operator fees paid by automation per vault",
@@ -792,6 +802,124 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       updater.recordOperationModeDuration(OperationMode.YIELD_REPORTING_MODE, -1);
 
       expect(metricsService.addValueToHistogram).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setPendingExitQueueAmountGwei", () => {
+    it("sets gauge when amount and exitEpoch are non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 32000000000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: validatorPubkey, exit_epoch: "60001" },
+        32000000000,
+      );
+    });
+
+    it("converts exitEpoch to string for label", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 12345, 1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: validatorPubkey, exit_epoch: "12345" },
+        1000,
+      );
+    });
+
+    it("does not set gauge when amount is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("does not set gauge when exitEpoch is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, -1, 1000);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("sets gauge when amount is zero and exitEpoch is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 0);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: validatorPubkey, exit_epoch: "60001" },
+        0,
+      );
+    });
+
+    it("sets gauge when exitEpoch is zero and amount is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingExitQueueAmountGwei(validatorPubkey, 0, 1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: validatorPubkey, exit_epoch: "0" },
+        1000,
+      );
+    });
+  });
+
+  describe("setLastTotalPendingExitGwei", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalPendingExitGwei(1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
+        {},
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalPendingExitGwei(-1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("sets gauge when value is zero", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalPendingExitGwei(0);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
+        {},
+        0,
+      );
     });
   });
 });

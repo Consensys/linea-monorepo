@@ -72,6 +72,15 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // ii.) `slot` - Slot number
   PendingDepositQueueAmountGwei = "linea_native_yield_automation_service_pending_deposit_queue_amount_gwei",
 
+  // Gauge representing pending exit queue amount in gwei
+  // Labels:
+  // i.) `pubkey` - Validator public key
+  // ii.) `exit_epoch` - Epoch when exit becomes available
+  PendingExitQueueAmountGwei = "linea_native_yield_automation_service_pending_exit_queue_amount_gwei",
+
+  // Gauge representing total pending exit amount in gwei
+  LastTotalPendingExitGwei = "linea_native_yield_automation_service_last_total_pending_exit_gwei",
+
   // Counter that increments by the node operator fees paid
   // Single label `vault_address`
   // N.B. Only accounts for payments by the automation service, but external actors can also trigger payment

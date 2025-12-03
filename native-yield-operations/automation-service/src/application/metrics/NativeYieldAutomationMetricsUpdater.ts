@@ -126,6 +126,18 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       ["pubkey", "slot"],
     );
 
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+      "Pending exit queue amount in gwei",
+      ["pubkey", "exit_epoch"],
+    );
+
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
+      "Total pending exit amount in gwei",
+      [],
+    );
+
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
       "Node operator fees paid by automation per vault",
@@ -402,6 +414,36 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
       { pubkey, slot: slot.toString() },
       amountGwei,
+    );
+  }
+
+  /**
+   * Sets the pending exit queue amount in gwei for a specific validator and exit epoch.
+   *
+   * @param {Hex} pubkey - The validator's public key in hex format.
+   * @param {number} exitEpoch - The epoch when the exit becomes available. Must be non-negative.
+   * @param {number} amountGwei - The exit amount in gwei. Must be non-negative to be recorded.
+   */
+  public setPendingExitQueueAmountGwei(pubkey: Hex, exitEpoch: number, amountGwei: number): void {
+    if (amountGwei < 0 || exitEpoch < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+      { pubkey, exit_epoch: exitEpoch.toString() },
+      amountGwei,
+    );
+  }
+
+  /**
+   * Sets the total pending exit amount in gwei from the last query.
+   *
+   * @param {number} totalPendingExitGwei - The total pending exit amount in gwei. Must be non-negative to be recorded.
+   */
+  public setLastTotalPendingExitGwei(totalPendingExitGwei: number): void {
+    if (totalPendingExitGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
+      {},
+      totalPendingExitGwei,
     );
   }
 
