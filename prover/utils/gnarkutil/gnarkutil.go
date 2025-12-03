@@ -32,7 +32,7 @@ func AsWitnessPublic(v []zk.WrappedVariable) witness.Witness {
 	)
 
 	for _, w := range v {
-		witChan <- w
+		witChan <- w.AsNative()
 	}
 
 	close(witChan)

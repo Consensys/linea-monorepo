@@ -38,7 +38,7 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 	a = apiGen.Add(a, wFive)
 
 	// compute powers of a:
-	powersOfA := []zk.WrappedVariable{zk.WrapFrontendVariable(a)}
+	powersOfA := []zk.WrappedVariable{a}
 	for i := 1; i < 15; i++ {
 		powersOfA = append(powersOfA, apiGen.Mul(powersOfA[i-1], powersOfA[i-1]))
 	}

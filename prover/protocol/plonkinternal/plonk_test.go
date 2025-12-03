@@ -25,8 +25,14 @@ type MyCircuit struct {
 // Define declares the circuit constraints
 // x**3 + x + 5 == y
 func (circuit *MyCircuit) Define(api frontend.API) error {
-	x3 := api.Mul(circuit.X, circuit.X, circuit.X)
-	api.AssertIsEqual(circuit.Y, api.Add(x3, circuit.X, 5))
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		return err
+	}
+	x2 := apiGen.Mul(circuit.X, circuit.X)
+	x3 := apiGen.Mul(x2, circuit.X)
+	x3Addx := apiGen.Add(x3, circuit.X)
+	apiGen.AssertIsEqual(circuit.Y, apiGen.Add(x3Addx, zk.ValueOf(5)))
 	return nil
 }
 
