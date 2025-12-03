@@ -83,7 +83,6 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
           "LineaTransactionValidatorPlugin");
 
   protected static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-  protected BesuNode minerNode;
 
   @BeforeEach
   public void setup() throws Exception {
@@ -165,6 +164,8 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
       final Collection<? extends RunnableNode> validators, final CliqueOptions cliqueOptions) {
     final var genesis =
         GenesisConfigurationFactory.createCliqueGenesisConfig(validators, cliqueOptions).get();
+
+    System.out.println("genesis: \n" + genesis);
 
     return maybeCustomGenesisExtraData()
         .map(ed -> setGenesisCustomExtraData(genesis, ed))
