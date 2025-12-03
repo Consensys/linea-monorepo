@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -54,12 +55,12 @@ type AccumulatorStatement struct {
 	smCommon.StateDiff
 
 	// InitialAndFinalHValAreEqual is a constrained limb columns that will contain 1s on the positions where InitialHVal = FinalHVal
-	InitialAndFinalHValAreEqual     [common.NbLimbU256]ifaces.Column
-	ComputeInitialAndFinalHValEqual [common.NbLimbU256]wizard.ProverAction
+	InitialAndFinalHValAreEqual     [poseidon2.BlockSize]ifaces.Column
+	ComputeInitialAndFinalHValEqual [poseidon2.BlockSize]wizard.ProverAction
 
 	// FinalHValIsZero is a constrained limb columns that will contain 1s on the positions where FinalHValIsZero = 0
-	FinalHValIsZero        [common.NbLimbU256]ifaces.Column
-	ComputeFinalHValIsZero [common.NbLimbU256]wizard.ProverAction
+	FinalHValIsZero        [poseidon2.BlockSize]ifaces.Column
+	ComputeFinalHValIsZero [poseidon2.BlockSize]wizard.ProverAction
 }
 
 // newAccumulatorStatement returns a new AccumulatorStatement with initialized
@@ -84,7 +85,7 @@ func newAccumulatorStatement(comp *wizard.CompiledIOP, size int, name string) Ac
 		StateDiff:     smCommon.NewStateDiff(comp, size, "STATE_SUMMARY", "ACC_STATEMENT"),
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		res.InitialAndFinalHValAreEqual[i], res.ComputeInitialAndFinalHValEqual[i] = dedicated.IsZero(
 			comp,
 			sym.Sub(res.StateDiff.InitialHVal[i], res.StateDiff.FinalHVal[i]),

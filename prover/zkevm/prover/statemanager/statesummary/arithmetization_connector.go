@@ -68,9 +68,9 @@ func (ss *Module) assignArithmetizationLink(run *wizard.ProverRuntime) {
 	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffHi[:]...)
 	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffLo[:]...)
 	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorBlockNoDiff[:]...)
+	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorMinDeplBlock[:]...)
+	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorMaxDeplBlock[:]...)
 	arithActions = append(arithActions,
-		ss.ArithmetizationLink.ScpSelector.ComputeSelectorMinDeplBlock,
-		ss.ArithmetizationLink.ScpSelector.ComputeSelectorMaxDeplBlock,
 		ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffHi[0],
 		ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffLo[0],
 		ss.ArithmetizationLink.ScpSelector.ComputeSelectorAccountAddressDiff,
@@ -128,8 +128,8 @@ ScpSelector contains two columns SelectorMinDeplBlock and SelectorMaxDeplBlock
 These columns are 1 at indices where the deployment number is equal to MinDeplBlock/MaxDeplBlock, and 0 otherwise
 */
 type ScpSelector struct {
-	SelectorMinDeplBlock, SelectorMaxDeplBlock               ifaces.Column
-	ComputeSelectorMinDeplBlock, ComputeSelectorMaxDeplBlock wizard.ProverAction
+	SelectorMinDeplBlock, SelectorMaxDeplBlock               [common.NbLimbU32]ifaces.Column
+	ComputeSelectorMinDeplBlock, ComputeSelectorMaxDeplBlock [common.NbLimbU32]wizard.ProverAction
 	// selectors for empty keys, current values
 	SelectorEmptySTValueHi, SelectorEmptySTValueLo               [common.NbLimbU128]ifaces.Column
 	ComputeSelectorEmptySTValueHi, ComputeSelectorEmptySTValueLo [common.NbLimbU128]wizard.ProverAction
@@ -154,15 +154,22 @@ these two selectors are only defined for the arithmetization columns
 */
 func newScpSelector(comp *wizard.CompiledIOP, smc HubColumnSet) ScpSelector {
 
-	SelectorMinDeplNoBlock, ComputeSelectorMinDeplNoBlock := dedicated.IsZero(
-		comp,
-		sym.Sub(smc.DeploymentNumber, smc.MinDeplBlock),
-	).GetColumnAndProverAction()
+	var SelectorMinDeplNoBlock [common.NbLimbU32]ifaces.Column
+	var ComputeSelectorMinDeplNoBlock [common.NbLimbU32]wizard.ProverAction
+	var SelectorMaxDeplNoBlock [common.NbLimbU32]ifaces.Column
+	var ComputeSelectorMaxDeplNoBlock [common.NbLimbU32]wizard.ProverAction
 
-	SelectorMaxDeplNoBlock, ComputeSelectorMaxDeplNoBlock := dedicated.IsZero(
-		comp,
-		sym.Sub(smc.DeploymentNumber, smc.MaxDeplBlock),
-	).GetColumnAndProverAction()
+	for i := range common.NbLimbU32 {
+		SelectorMinDeplNoBlock[i], ComputeSelectorMinDeplNoBlock[i] = dedicated.IsZero(
+			comp,
+			sym.Sub(smc.DeploymentNumber[i], smc.MinDeplBlock[i]),
+		).GetColumnAndProverAction()
+
+		SelectorMaxDeplNoBlock[i], ComputeSelectorMaxDeplNoBlock[i] = dedicated.IsZero(
+			comp,
+			sym.Sub(smc.DeploymentNumber[i], smc.MaxDeplBlock[i]),
+		).GetColumnAndProverAction()
+	}
 
 	// ST value selectors
 	var selectorEmptySTValueHi [common.NbLimbU128]ifaces.Column
@@ -542,7 +549,8 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 		sym.Sub(
 			filterArith,
 			sym.Mul(
-				sc.SelectorMinDeplBlock,
+				sc.SelectorMinDeplBlock[0],
+				sc.SelectorMinDeplBlock[1],
 				smc.PeekAtStorage,
 				smc.FirstKOCBlock,
 				filterAccountInsert,
@@ -670,14 +678,13 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 
 	pragmas.MarkLeftPadded(filterArith)
 	pragmas.MarkLeftPadded(filterArithReversed)
-	arithTable = append(arithTable, smc.BlockNumber[:]...)
+	arithTable = append(arithTable, smc.Address[:]...)
 	arithTable = append(arithTable, smc.KeyHI[:]...)
 	arithTable = append(arithTable, smc.KeyLO[:]...)
 	arithTable = append(arithTable, smc.ValueHINext[:]...)
 	arithTable = append(arithTable, smc.ValueLONext[:]...)
 
 	summaryTable = append(summaryTable, ss.Account.Address[:]...)
-	summaryTable = append(summaryTable, ss.BatchNumber)
 	summaryTable = append(summaryTable, ss.Storage.Key.Hi[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Lo[:]...)
 	summaryTable = append(summaryTable, ss.Storage.NewValue.Hi[:]...)
@@ -705,7 +712,8 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 		sym.Sub(
 			filterArith,
 			sym.Mul(
-				sc.SelectorMaxDeplBlock,
+				sc.SelectorMaxDeplBlock[0],
+				sc.SelectorMaxDeplBlock[1],
 				smc.PeekAtStorage,
 				smc.LastKOCBlock,
 				filterAccountInsert,
@@ -720,7 +728,8 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 		sym.Sub(
 			filterArithReversed,
 			sym.Mul(
-				sc.SelectorMaxDeplBlock,
+				sc.SelectorMaxDeplBlock[0],
+				sc.SelectorMaxDeplBlock[1],
 				smc.PeekAtStorage,
 				smc.LastKOCBlock,
 			),
