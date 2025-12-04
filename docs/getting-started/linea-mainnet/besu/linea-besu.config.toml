@@ -1,7 +1,7 @@
 # data
-genesis-file="/var/lib/besu/genesis.json"
+network="linea-mainnet"
 #logging="INFO" log is managed via log4j config file
-data-path="/opt/besu/data"
+data-path="/data"
 
 # Sync mode and data layer implementation
 sync-mode="SNAP"
@@ -55,3 +55,4 @@ metrics-port=9545
 ### Plugin Configuration ###
 # Disable external plugins
 Xplugins-external-enabled=false
+Xeth-capability-max=68

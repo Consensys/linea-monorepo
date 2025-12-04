@@ -1,11 +1,11 @@
 package linea.coordinator.config.v2
 
+import kotlinx.datetime.Instant
 import linea.coordinator.config.v2.toml.ConflationToml
 import linea.coordinator.config.v2.toml.parseConfig
 import linea.kotlin.toURL
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import java.time.Instant
 import kotlin.time.Duration.Companion.seconds
 
 class ConflationParsingTest {
@@ -21,6 +21,9 @@ class ConflationParsingTest {
       l2-endpoint = "http://l2-node-1:8545"
       l2-logs-endpoint = "http://l2-node-2:8545"
       consistent-number-of-blocks-on-l1-to-wait = 1
+      force-stop-conflation-at-block-inclusive = 5000
+      force-stop-conflation-at-block-timestamp-inclusive= 1758083130
+
 
       [conflation.blob-compression]
       blob-size-limit = 102_400 # 100KB
@@ -30,12 +33,14 @@ class ConflationParsingTest {
       batches-limit = 1
 
       [conflation.proof-aggregation]
-      proofs-limit = 3
+      proofs-limit = 4
+      blobs-limit = 2
       deadline = "PT1M"
       coordinator-polling-interval = "PT2S"
       deadline-check-interval = "PT8S"
       target-end-blocks = [10, 20, 30_000]
       timestamp-based-hard-forks = ["2024-01-15T12:00:00Z", "2024-06-01T16:00:00Z", 1758083127]
+      wait-for-no-l2-activity-to-trigger-aggregation = true,
     """.trimIndent()
     val config = ConflationToml(
       disabled = true,
@@ -47,13 +52,16 @@ class ConflationParsingTest {
       l2Endpoint = "http://l2-node-1:8545".toURL(),
       l2LogsEndpoint = "http://l2-node-2:8545".toURL(),
       consistentNumberOfBlocksOnL1ToWait = 1u,
+      forceStopConflationAtBlockInclusive = 5000u,
+      forceStopConflationAtBlockTimestampInclusive = Instant.fromEpochSeconds(1758083130),
       blobCompression = ConflationToml.BlobCompressionToml(
         blobSizeLimit = 102_400U,
         handlerPollingInterval = 1.seconds,
         batchesLimit = 1u,
       ),
       proofAggregation = ConflationToml.ProofAggregationToml(
-        proofsLimit = 3u,
+        proofsLimit = 4u,
+        blobsLimit = 2u,
         deadline = 60.seconds,
         coordinatorPollingInterval = 2.seconds,
         deadlineCheckInterval = 8.seconds,
@@ -61,8 +69,9 @@ class ConflationParsingTest {
         timestampBasedHardForks = listOf(
           Instant.parse("2024-01-15T12:00:00Z"),
           Instant.parse("2024-06-01T16:00:00Z"),
-          Instant.ofEpochMilli(1758083127L),
+          Instant.fromEpochSeconds(1758083127L),
         ),
+        waitForNoL2ActivityToTriggerAggregation = true,
       ),
     )
 

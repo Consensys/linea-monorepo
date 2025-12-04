@@ -1,11 +1,11 @@
 package linea.coordinator.config.v2.toml
 
-import kotlinx.datetime.toKotlinInstant
+import kotlinx.datetime.Instant
 import linea.blob.BlobCompressorVersion
 import linea.coordinator.config.v2.ConflationConfig
 import net.consensys.linea.traces.TracesCountersV2
+import net.consensys.linea.traces.TracesCountersV4
 import java.net.URL
-import java.time.Instant
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -13,6 +13,7 @@ data class ConflationToml(
   val disabled: Boolean = false,
   val blocksLimit: UInt? = null,
   val forceStopConflationAtBlockInclusive: ULong? = null,
+  val forceStopConflationAtBlockTimestampInclusive: Instant? = null,
   val conflationDeadline: Duration? = null,
   val conflationDeadlineCheckInterval: Duration = 30.seconds,
   val conflationDeadlineLastBlockConfirmationDelay: Duration = 30.seconds,
@@ -44,12 +45,14 @@ data class ConflationToml(
 
   data class ProofAggregationToml(
     val proofsLimit: UInt = 300u,
+    val blobsLimit: UInt? = null,
     val deadline: Duration? = null,
     val deadlineCheckInterval: Duration = 30.seconds,
     val coordinatorPollingInterval: Duration = 3.seconds,
     val targetEndBlocks: List<ULong>? = null,
     val aggregationSizeMultipleOf: UInt = 1u,
     val timestampBasedHardForks: List<Instant> = emptyList(),
+    val waitForNoL2ActivityToTriggerAggregation: Boolean = false,
   ) {
     init {
       require(timestampBasedHardForks.toSet().size == timestampBasedHardForks.size) {
@@ -60,24 +63,28 @@ data class ConflationToml(
     fun reified(): ConflationConfig.ProofAggregation {
       return ConflationConfig.ProofAggregation(
         proofsLimit = this.proofsLimit,
+        blobsLimit = this.blobsLimit,
         deadline = this.deadline ?: Duration.INFINITE,
         deadlineCheckInterval = this.deadlineCheckInterval,
         coordinatorPollingInterval = this.coordinatorPollingInterval,
         targetEndBlocks = this.targetEndBlocks,
         aggregationSizeMultipleOf = this.aggregationSizeMultipleOf,
-        timestampBasedHardForks = timestampBasedHardForks.map { it.toKotlinInstant() },
+        timestampBasedHardForks = timestampBasedHardForks,
+        waitForNoL2ActivityToTriggerAggregation = this.waitForNoL2ActivityToTriggerAggregation,
       )
     }
   }
 
   fun reified(
     defaults: DefaultsToml,
-    tracesCountersLimitsV2: TracesCountersV2,
+    tracesCountersLimitsV2: TracesCountersV2?,
+    tracesCountersLimitsV4: TracesCountersV4?,
   ): ConflationConfig {
     return ConflationConfig(
       disabled = this.disabled,
       blocksLimit = this.blocksLimit,
       forceStopConflationAtBlockInclusive = this.forceStopConflationAtBlockInclusive,
+      forceStopConflationAtBlockTimestampInclusive = this.forceStopConflationAtBlockTimestampInclusive,
       blocksPollingInterval = this.newBlocksPollingInterval,
       conflationDeadline = this.conflationDeadline,
       conflationDeadlineCheckInterval = this.conflationDeadlineCheckInterval,
@@ -95,7 +102,7 @@ data class ConflationToml(
         ?: throw AssertionError("please set l2GetLogsEndpoint or l2Endpoint config"),
       blobCompression = this.blobCompression.reified(),
       proofAggregation = this.proofAggregation.reified(),
-      tracesLimitsV2 = tracesCountersLimitsV2,
+      tracesLimits = tracesCountersLimitsV2 ?: tracesCountersLimitsV4!!,
     )
   }
 }

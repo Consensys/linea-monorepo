@@ -63,6 +63,7 @@ type AuxiliaryModules struct {
 	BlockTxnMetadata                                   fetch.BlockTxnMetadata
 	TxnDataFetcher                                     fetch.TxnDataFetcher
 	RlpTxnFetcher                                      fetch.RlpTxnFetcher
+	ChainIDFetcher                                     fetch.ChainIDFetcher
 	ExecDataCollector                                  *edc.ExecutionDataCollector
 	ExecDataCollectorPadding                           wizard.ProverAction
 	ExecDataCollectorPacking                           pack.Packing
@@ -104,24 +105,28 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				FirstBlock: getCol("blockdata.FIRST_BLOCK_NUMBER"),
 			},
 			TxnData: &arith.TxnData{
-				AbsTxNum:        getCol("txndata.ABS_TX_NUM"),
-				AbsTxNumMax:     getCol("txndata.ABS_TX_NUM_MAX"),
+				AbsTxNum:        getCol("txndata.USER_TXN_NUMBER"),
+				AbsTxNumMax:     getCol("txndata.prover___USER_TXN_NUMBER_MAX"),
 				Ct:              getCol("txndata.CT"),
-				FromHi:          getCol("txndata.FROM_HI"),
-				FromLo:          getCol("txndata.FROM_LO"),
-				IsLastTxOfBlock: getCol("txndata.IS_LAST_TX_OF_BLOCK"),
-				RelBlock:        getCol("txndata.REL_BLOCK"),
-				RelTxNum:        getCol("txndata.REL_TX_NUM"),
-				RelTxNumMax:     getCol("txndata.REL_TX_NUM_MAX"),
+				FromHi:          getCol("txndata.hubFROM_ADDRESS_HI_xor_rlpCHAIN_ID"),
+				FromLo:          getCol("txndata.computationARG_1_LO_xor_hubFROM_ADDRESS_LO_xor_rlpTO_ADDRESS_LO"),
+				IsLastTxOfBlock: getCol("txndata.prover___IS_LAST_USER_TXN_OF_BLOCK"),
+				RelBlock:        getCol("txndata.BLK_NUMBER"),
+				RelTxNum:        getCol("txndata.prover___RELATIVE_USER_TXN_NUMBER"),
+				RelTxNumMax:     getCol("txndata.prover___RELATIVE_USER_TXN_NUMBER_MAX"),
+				USER:            getCol("txndata.USER"),
+				Selector:        getCol("txndata.HUB"),
+				SYSI:            getCol("txndata.SYSI"),
+				SYSF:            getCol("txndata.SYSF"),
 			},
 			RlpTxn: &arith.RlpTxn{
-				AbsTxNum:       getCol("rlptxn.ABS_TX_NUM"),
-				AbsTxNumMax:    getCol("rlptxn.ABS_TX_NUM_INFINY"),
+				AbsTxNum:       getCol("rlptxn.USER_TXN_NUMBER"),
+				AbsTxNumMax:    getCol("rlptxn.prover___USER_TXN_NUMBER_MAX"),
 				ToHashByProver: getCol("rlptxn.TO_HASH_BY_PROVER"),
-				Limb:           getCol("rlptxn.LIMB"),
-				NBytes:         getCol("rlptxn.nBYTES"),
-				Done:           getCol("rlptxn.DONE"),
-				IsPhaseChainID: getCol("rlptxn.IS_PHASE_CHAIN_ID"),
+				Limb:           getCol("rlptxn.cmpLIMB"),
+				NBytes:         getCol("rlptxn.cmpLIMB_SIZE"),
+				TxnPerspective: getCol("rlptxn.TXN"),
+				ChainID:        getCol("rlptxn.txnCHAIN_ID"),
 			},
 			LogCols: logs.LogColumns{
 				IsLog0:       getCol("loginfo.IS_LOG_X_0"),
@@ -195,6 +200,10 @@ func newPublicInput(
 	execDataCollector := edc.NewExecutionDataCollector(comp, "EXECUTION_DATA_COLLECTOR", limbColSize)
 	edc.DefineExecutionDataCollector(comp, execDataCollector, "EXECUTION_DATA_COLLECTOR", timestampFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
 
+	// ChainIDFetcher
+	chainIDFetcher := fetch.NewChainIDFetcher(comp, "PUBLIC_INPUT_CHAIN_ID_FETCHER", inp.BlockData)
+	fetch.DefineChainIDFetcher(comp, &chainIDFetcher, "PUBLIC_INPUT_CHAIN_ID_FETCHER", inp.BlockData)
+
 	// ExecutionDataCollector: Padding
 	importInp := importpad.ImportAndPadInputs{
 		Name: settings.Name,
@@ -234,8 +243,8 @@ func newPublicInput(
 		LogHasher:          logHasherL2l1,
 		ExecMiMCHasher:     *mimcHasher,
 		DataNbBytes:        execDataCollector.FinalTotalBytesCounter,
-		ChainID:            rlpFetcher.ChainID,
-		ChainIDNBytes:      rlpFetcher.NBytesChainID,
+		ChainID:            chainIDFetcher.ChainID,
+		ChainIDNBytes:      chainIDFetcher.NBytesChainID,
 		Inputs:             *inp,
 		Aux: AuxiliaryModules{
 			FetchedL2L1:              fetchedL2L1,
@@ -245,6 +254,7 @@ func newPublicInput(
 			BlockTxnMetadata:         blockTxnMeta,
 			TxnDataFetcher:           txnDataFetcher,
 			RlpTxnFetcher:            rlpFetcher,
+			ChainIDFetcher:           chainIDFetcher,
 			ExecDataCollector:        execDataCollector,
 			ExecDataCollectorPadding: padding,
 			ExecDataCollectorPacking: *packingMod,
@@ -280,6 +290,7 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	fetch.AssignBlockTxnMetadata(run, aux.BlockTxnMetadata, inp.TxnData)
 	fetch.AssignTxnDataFetcher(run, aux.TxnDataFetcher, inp.TxnData)
 	fetch.AssignRlpTxnFetcher(run, &aux.RlpTxnFetcher, inp.RlpTxn)
+	fetch.AssignChainIDFetcher(run, &aux.ChainIDFetcher, inp.BlockData)
 	// assign the ExecutionDataCollector
 	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.TimestampFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
 	aux.ExecDataCollectorPadding.Run(run)

@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -125,8 +126,16 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 	// and laying them in rows.
 	encodedMatrix = make(EncodedMatrix, len(ps))
 	parallel.Execute(len(ps), func(start, stop int) {
+		nbAllocs := stop - start
 		for i := start; i < stop; i++ {
-			encodedMatrix[i] = params.rsEncode(ps[i])
+			// if ps[i] is constant, we can avoid an allocation
+			if _, ok := ps[i].(*smartvectors.Constant); ok {
+				nbAllocs--
+			}
+		}
+		vArena := arena.NewVectorArena[field.Element](nbAllocs * params.NumEncodedCols())
+		for i := start; i < stop; i++ {
+			encodedMatrix[i] = params.rsEncode(ps[i], vArena)
 		}
 	})
 
@@ -145,7 +154,7 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32)
 	leaves = make([]types.Bytes32, numChunks)
 
 	parallel.Execute(numChunks, func(start, stop int) {
-		hasher := mimc.NewMiMC()
+		hasher := mimc.NewFieldHasher()
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 			hasher.Reset()

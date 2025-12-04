@@ -246,6 +246,17 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
     assertThat(txMap).containsValue(maxTxs);
   }
 
+  protected LogEmitter deployLogEmitter() throws Exception {
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    TransactionManager txManager =
+        new RawTransactionManager(web3j, credentials, CHAIN_ID, createReceiptProcessor(web3j));
+
+    final RemoteCall<LogEmitter> deploy =
+        LogEmitter.deploy(web3j, txManager, new DefaultGasProvider());
+    return deploy.send();
+  }
+
   protected SimpleStorage deploySimpleStorage() throws Exception {
     final Web3j web3j = minerNode.nodeRequests().eth();
     final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
@@ -286,6 +297,17 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
         new RawTransactionManager(web3j, credentials, CHAIN_ID, createReceiptProcessor(web3j));
 
     final RemoteCall<ModExp> deploy = ModExp.deploy(web3j, txManager, new DefaultGasProvider());
+    return deploy.send();
+  }
+
+  protected BLS12_MAP_FP_TO_G1 deployBLS12_MAP_FP_TO_G1() throws Exception {
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    TransactionManager txManager =
+        new RawTransactionManager(web3j, credentials, CHAIN_ID, createReceiptProcessor(web3j));
+
+    final RemoteCall<BLS12_MAP_FP_TO_G1> deploy =
+        BLS12_MAP_FP_TO_G1.deploy(web3j, txManager, new DefaultGasProvider());
     return deploy.send();
   }
 
