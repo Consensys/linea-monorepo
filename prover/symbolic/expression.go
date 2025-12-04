@@ -95,30 +95,18 @@ func (e *Expression) anchor(b *ExpressionBoard) nodeID {
 
 	/*
 		Recurse the call in all the children to ensure all
-		subexpressions are anchored. And get their levels
+		subexpressions are anchored.
 	*/
-	maxChildrenLevel := 0
 	childrenIDs := make([]nodeID, 0, len(e.Children))
 	for _, child := range e.Children {
 		childID := child.anchor(b)
-		maxChildrenLevel = max(maxChildrenLevel, childID.level())
 		childrenIDs = append(childrenIDs, childID)
-	}
-
-	newLevel := maxChildrenLevel + 1
-	if len(e.Children) == 0 {
-		// Then it is a leaf node and the level should be 0
-		newLevel = 0
 	}
 
 	/*
 		Computes the new ID of the node by adding a new one into the list.
-		We extend the outer-list of Nodes if necessary.
 	*/
-	if len(b.Nodes) <= newLevel {
-		b.Nodes = append(b.Nodes, []Node{})
-	}
-	id := newNodeID(newLevel, len(b.Nodes[newLevel]))
+	id := nodeID(len(b.Nodes))
 	newNode := Node{
 		ESHash:   e.ESHash,
 		Children: childrenIDs,
@@ -126,7 +114,7 @@ func (e *Expression) anchor(b *ExpressionBoard) nodeID {
 	}
 
 	b.ESHashesToPos[e.ESHash] = id
-	b.Nodes[id.level()] = append(b.Nodes[id.level()], newNode)
+	b.Nodes = append(b.Nodes, newNode)
 
 	return id
 }
@@ -306,16 +294,12 @@ func (e *Expression) ReconstructBottomUpSingleThreaded(
 func (e *Expression) SameWithNewChildren(newChildren []*Expression) *Expression {
 
 	switch op := e.Operator.(type) {
-	// Constant
 	case Constant, Variable:
 		return e
-	// LinCombExt
 	case LinComb:
 		return NewLinComb(newChildren, op.Coeffs)
-	// ProductExt
 	case Product:
 		return NewProduct(newChildren, op.Exponents)
-	// LinearCombinationExt
 	case PolyEval:
 		return NewPolyEval(newChildren[0], newChildren[1:])
 	default:

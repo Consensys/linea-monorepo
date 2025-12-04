@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 
 	"github.com/consensys/gnark/frontend"
@@ -19,19 +18,10 @@ import (
 
 // evaluation is a helper to evaluate an expression board on chunks of data.
 type evaluation[T any] struct {
-	nodes       [][]evaluationNode[T]
-	scratch     []T
-	chunkSize   int
-	vectorArena *arena.VectorArena // contiguous memory to store all the vectors
-}
-
-// evaluationNode is a node in the evaluation graph.
-type evaluationNode[T any] struct {
-	value      []T      // value of the node after evaluation
-	inputs     [][]T    // inputs values (they are slices with underlying memory in the arena)
-	op         Operator // op(inputs) = value
-	hasValue   bool     // true if value is valid
-	isConstant bool     // true if the node is a constant
+	values    []T // contiguous memory to store all the vectors
+	scratch   []T
+	chunkSize int
+	board     *ExpressionBoard
 }
 
 // Evaluate evaluates the expression board on the provided inputs.
@@ -74,10 +64,11 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 				chunkStart := chunkID * chunkSize
 				chunkStop := (chunkID + 1) * chunkSize
 
-				eval.reset(inputs, chunkStart, chunkStop, b)
-				eval.evaluate()
+				eval.evaluate(inputs, chunkStart, chunkStop)
 
-				copy(res[chunkStart:chunkStop], eval.nodes[len(b.Nodes)-1][0].value[:])
+				lastNodeOffset := (len(b.Nodes) - 1) * chunkSize
+				chunkLen := chunkStop - chunkStart
+				copy(res[chunkStart:chunkStop], eval.values[lastNodeOffset:lastNodeOffset+chunkLen])
 			}
 
 		})
@@ -102,10 +93,11 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 			chunkStart := chunkID * chunkSize
 			chunkStop := (chunkID + 1) * chunkSize
 
-			eval.reset(inputs, chunkStart, chunkStop, b)
-			eval.evaluate()
+			eval.evaluate(inputs, chunkStart, chunkStop)
 
-			copy(res[chunkStart:chunkStop], eval.nodes[len(b.Nodes)-1][0].value[:])
+			lastNodeOffset := (len(b.Nodes) - 1) * chunkSize
+			chunkLen := chunkStop - chunkStart
+			copy(res[chunkStart:chunkStop], eval.values[lastNodeOffset:lastNodeOffset+chunkLen])
 		}
 
 	})
@@ -133,49 +125,19 @@ func areAllConstants(inp []sv.SmartVector) bool {
 
 func newEvaluation[T any](b *ExpressionBoard, chunkSize int) evaluation[T] {
 	eval := evaluation[T]{
-		scratch:     make([]T, chunkSize),
-		chunkSize:   chunkSize,
-		vectorArena: arena.NewVectorArena[T](b.CountNodes() * chunkSize),
-		nodes:       make([][]evaluationNode[T], len(b.Nodes)),
-	}
-	for lvl := range eval.nodes {
-		eval.nodes[lvl] = make([]evaluationNode[T], len(b.Nodes[lvl]))
+		values:    make([]T, len(b.Nodes)*chunkSize),
+		scratch:   make([]T, chunkSize),
+		chunkSize: chunkSize,
+		board:     b,
 	}
 
-	// Init the constants and inputs.
-	for i := range b.Nodes {
-		for j := range b.Nodes[i] {
-			na := &eval.nodes[i][j]
-			node := &b.Nodes[i][j]
-			na.op = node.Operator
-			na.hasValue = false
-			na.isConstant = false
-			na.inputs = make([][]T, len(node.Children))
-			na.value = arena.Get[T](eval.vectorArena, chunkSize)
-
-			switch op := node.Operator.(type) {
-			case Constant:
-				// The constants are identified to constant vectors
-				na.isConstant = true
-				na.hasValue = true
-				fill(na.value, op.Val)
-				if len(node.Children) != 0 {
-					panic("constant with children")
-				}
-			}
-
-			// set the inputs pointers
-			for k := range node.Children {
-				id := node.Children[k]
-				na.inputs[k] = eval.nodes[id.level()][id.posInLevel()].value
-			}
+	// Init the constants
+	for i, node := range b.Nodes {
+		if op, ok := node.Operator.(Constant); ok {
+			fill(eval.values[i*chunkSize:(i+1)*chunkSize], op.Val)
 		}
 	}
 
-	// we can propagate constants here, since it will be useful for all chunks and done only once.
-	// starting from level 1 since level 0 are inputs/constants,
-	// if all my inputs are constant, I can compute my value, and be a constant too.
-	// but in practice it never happens so we omit this part.
 	return eval
 }
 
@@ -196,264 +158,250 @@ func fill[T any](dst []T, v fext.GenericFieldElem) {
 	}
 }
 
-func (e *evaluation[T]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int, b *ExpressionBoard) {
-	inputCursor := 0
-	chunkLen := chunkStop - chunkStart // can be < MaxChunkSize
-
-	// Init the constants and inputs.
-	for i := range b.Nodes {
-		for j := range b.Nodes[i] {
-			na := &e.nodes[i][j]
-			if !na.isConstant {
-				na.hasValue = false
-			}
-
-			if i == 0 {
-				switch na.op.(type) {
-				case Variable:
-					input := inputs[inputCursor]
-					switch casted := any(&na.value).(type) {
-					case *[]field.Element:
-						switch rv := input.(type) {
-						case *sv.Regular:
-							copy((*casted)[:chunkLen], (*rv)[chunkStart:chunkStop])
-						default:
-							sb := input.SubVector(chunkStart, chunkStop)
-							sb.WriteInSlice((*casted)[:chunkLen])
-						}
-					case *[]fext.Element:
-
-						// if input is rotated, SubVector is expensive so we check for that
-						switch rv := input.(type) {
-						case *sv.RotatedExt:
-							rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, (*casted)[:chunkLen])
-						case *sv.Rotated:
-							rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, (*casted)[:chunkLen])
-						case *sv.Regular:
-							for i := 0; i < chunkLen; i++ {
-								// rest of e4 should be at zero since the whole vector is a regular one
-								// and we didn't mutate the input.
-								(*casted)[i].B0.A0 = (*rv)[chunkStart+i]
-							}
-						case *sv.RegularExt:
-							copy((*casted)[:chunkLen], (*rv)[chunkStart:chunkStop])
-						case *sv.ConstantExt:
-							for i := 0; i < chunkLen; i++ {
-								(*casted)[i].Set(&rv.Value)
-							}
-						default:
-							sb := input.SubVector(chunkStart, chunkStop)
-							sb.WriteInSliceExt((*casted)[:chunkLen])
-						}
-					}
-
-					inputCursor++
-					na.hasValue = true
-				}
-			}
-		}
-	}
-}
-
-func (e *evaluation[T]) evaluate() {
-	// Evaluate values level by level
+func (e *evaluation[T]) evaluate(inputs []sv.SmartVector, chunkStart, chunkStop int) {
 	switch casted := any(e).(type) {
 	case *evaluation[field.Element]:
-		evaluateBase(casted)
+		evaluateBase(casted, inputs, chunkStart, chunkStop)
 	case *evaluation[fext.Element]:
-		evaluateExt(casted)
+		evaluateExt(casted, inputs, chunkStart, chunkStop)
 	default:
 		utils.Panic("unknown type %T", casted)
 	}
 }
 
-func evaluateBase(s *evaluation[field.Element]) {
-	// level 0 are inputs/constants
-	// we start at level 1
-	for level := 1; level < len(s.nodes); level++ {
-		for pil := range s.nodes[level] {
-			evalNodeBase(s, &s.nodes[level][pil])
-		}
-	}
-}
+func evaluateBase(e *evaluation[field.Element], inputs []sv.SmartVector, chunkStart, chunkStop int) {
+	inputCursor := 0
+	chunkLen := chunkStop - chunkStart
 
-func evaluateExt(s *evaluation[fext.Element]) {
-	// level 0 are inputs/constants
-	// we start at level 1
-	for level := 1; level < len(s.nodes); level++ {
-		for pil := range s.nodes[level] {
-			evalNodeExt(s, &s.nodes[level][pil])
-		}
-	}
-}
+	for i, node := range e.board.Nodes {
+		offset := i * e.chunkSize
+		dst := e.values[offset : offset+chunkLen]
 
-// evalNodeBase and evalNodeExt are specialized and identical; could use function operator
-// to make more generic.
-
-func evalNodeExt(solver *evaluation[fext.Element], na *evaluationNode[fext.Element]) {
-	if na.hasValue {
-		return
-	}
-
-	vRes := extensions.Vector(na.value[:])
-	vTmp := extensions.Vector(solver.scratch[:])
-
-	switch op := na.op.(type) {
-	case Product:
-		vRes.Exp(na.inputs[0][:], int64(op.Exponents[0]))
-		for i := 1; i < len(na.inputs); i++ {
-			vInput := extensions.Vector(na.inputs[i][:])
-			if op.Exponents[i] == 1 {
-				// common case
-				vRes.Mul(vRes, vInput)
-				continue
+		switch op := node.Operator.(type) {
+		case Constant:
+			continue
+		case Variable:
+			input := inputs[inputCursor]
+			switch rv := input.(type) {
+			case *sv.Regular:
+				copy(dst, (*rv)[chunkStart:chunkStop])
+			default:
+				sb := input.SubVector(chunkStart, chunkStop)
+				sb.WriteInSlice(dst)
 			}
-			vTmp.Exp(vInput, int64(op.Exponents[i]))
-			vRes.Mul(vRes, vTmp)
-		}
-	case LinComb:
-		var t0 extensions.E4
-		for i := range na.inputs {
-			vInput := extensions.Vector(na.inputs[i][:])
-			coeff := op.Coeffs[i]
+			inputCursor++
+		case Product:
+			vRes := field.Vector(dst)
+			vTmp := field.Vector(e.scratch[:chunkLen])
+			for k, childID := range node.Children {
+				childOffset := int(childID) * e.chunkSize
+				vInput := field.Vector(e.values[childOffset : childOffset+chunkLen])
+				if k == 0 {
+					vRes.Exp(vInput, int64(op.Exponents[k]))
+				} else {
+					vTmp.Exp(vInput, int64(op.Exponents[k]))
+					vRes.Mul(vRes, vTmp)
+				}
+			}
+		case LinComb:
+			vRes := field.Vector(dst)
+			vTmp := field.Vector(e.scratch[:chunkLen])
+			var t0 field.Element
+			for k, childID := range node.Children {
+				childOffset := int(childID) * e.chunkSize
+				vInput := field.Vector(e.values[childOffset : childOffset+chunkLen])
+				coeff := op.Coeffs[k]
 
-			if i == 0 {
+				if k == 0 {
+					switch coeff {
+					case 0:
+						for j := range vRes {
+							vRes[j].SetZero()
+						}
+					case 1:
+						copy(vRes, vInput)
+					case 2:
+						vRes.Add(vInput, vInput)
+					case -1:
+						for j := range vRes {
+							vRes[j].SetZero()
+						}
+						vRes.Sub(vRes, vInput)
+					default:
+						t0.SetInt64(int64(coeff))
+						vRes.ScalarMul(vInput, &t0)
+					}
+					continue
+				}
+
 				switch coeff {
 				case 0:
-					for j := range vRes {
-						vRes[j].SetZero()
-					}
+					continue
 				case 1:
-					copy(vRes, vInput)
+					vRes.Add(vRes, vInput)
 				case 2:
-					vRes.Add(vInput, vInput)
+					vRes.Add(vRes, vInput)
+					vRes.Add(vRes, vInput)
 				case -1:
-					for j := range vRes {
-						vRes[j].SetZero()
-					}
 					vRes.Sub(vRes, vInput)
 				default:
-					t0.B0.A0.SetInt64(int64(coeff))
-					vRes.ScalarMul(vInput, &t0)
+					t0.SetInt64(int64(op.Coeffs[k]))
+					vTmp.ScalarMul(vInput, &t0)
+					vRes.Add(vRes, vTmp)
 				}
-				continue
 			}
+		case PolyEval:
+			// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
+			// i.e., ∑_{i=0}^{n} input[i]·x^i
+			// input[0] is x (constant)
+			// input[1] is coeff 0
+			// input[2] is coeff 1 ...
 
-			switch coeff {
-			case 0:
-				continue
-			case 1:
-				vRes.Add(vRes, vInput)
-			case 2:
-				vRes.Add(vRes, vInput)
-				vRes.Add(vRes, vInput)
-			case -1:
-				vRes.Sub(vRes, vInput)
-			default:
-				t0.B0.A0.SetInt64(int64(op.Coeffs[i]))
-				vTmp.ScalarMul(vInput, &t0)
+			xOffset := int(node.Children[0]) * e.chunkSize
+			x := e.values[xOffset] // First element of chunk is enough as it is constant
+
+			vRes := field.Vector(dst)
+
+			lastChildID := node.Children[len(node.Children)-1]
+			lastChildOffset := int(lastChildID) * e.chunkSize
+			copy(vRes, field.Vector(e.values[lastChildOffset:lastChildOffset+chunkLen]))
+
+			for k := len(node.Children) - 2; k >= 1; k-- {
+				childID := node.Children[k]
+				childOffset := int(childID) * e.chunkSize
+				vTmp := field.Vector(e.values[childOffset : childOffset+chunkLen])
+				vRes.ScalarMul(vRes, &x)
 				vRes.Add(vRes, vTmp)
 			}
+		default:
+			utils.Panic("unknown op %T", op)
 		}
-	case PolyEval:
-		// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
-		// i.e., ∑_{i=0}^{n} input[i]·x^i
-		x := na.inputs[0][0] // we assume that the first input is always a constant
-		copy(vRes, extensions.Vector(na.inputs[len(na.inputs)-1][:]))
-
-		for i := len(na.inputs) - 2; i >= 1; i-- {
-			vInput := extensions.Vector(na.inputs[i][:])
-			vRes.ScalarMul(vRes, &x)
-			vRes.Add(vRes, vInput)
-		}
-	default:
-		utils.Panic("unknown op %T", na.op)
 	}
-
-	na.hasValue = true
-
 }
 
-func evalNodeBase(solver *evaluation[field.Element], na *evaluationNode[field.Element]) {
-	if na.hasValue {
-		return
-	}
+func evaluateExt(e *evaluation[fext.Element], inputs []sv.SmartVector, chunkStart, chunkStop int) {
+	inputCursor := 0
+	chunkLen := chunkStop - chunkStart
 
-	vRes := field.Vector(na.value[:])
-	vTmp := field.Vector(solver.scratch[:])
+	for i, node := range e.board.Nodes {
+		offset := i * e.chunkSize
+		dst := e.values[offset : offset+chunkLen]
 
-	switch op := na.op.(type) {
-	case Product:
-		for i := range na.inputs {
-			vInput := field.Vector(na.inputs[i][:])
-			if i == 0 {
-				vRes.Exp(vInput, int64(op.Exponents[i]))
-			} else {
-				vTmp.Exp(vInput, int64(op.Exponents[i]))
+		switch op := node.Operator.(type) {
+		case Constant:
+			continue
+		case Variable:
+			input := inputs[inputCursor]
+			// if input is rotated, SubVector is expensive so we check for that
+			switch rv := input.(type) {
+			case *sv.RotatedExt:
+				rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, dst)
+			case *sv.Rotated:
+				rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, dst)
+			case *sv.Regular:
+				for i := 0; i < chunkLen; i++ {
+					// rest of e4 should be at zero since the whole vector is a regular one
+					// and we didn't mutate the input.
+					dst[i].B0.A0 = (*rv)[chunkStart+i]
+				}
+			case *sv.RegularExt:
+				copy(dst, (*rv)[chunkStart:chunkStop])
+			case *sv.ConstantExt:
+				for i := 0; i < chunkLen; i++ {
+					dst[i].Set(&rv.Value)
+				}
+			default:
+				sb := input.SubVector(chunkStart, chunkStop)
+				sb.WriteInSliceExt(dst)
+			}
+			inputCursor++
+		case Product:
+			vRes := extensions.Vector(dst)
+			vTmp := extensions.Vector(e.scratch[:chunkLen])
+
+			childOffset0 := int(node.Children[0]) * e.chunkSize
+			vInput0 := extensions.Vector(e.values[childOffset0 : childOffset0+chunkLen])
+			vRes.Exp(vInput0, int64(op.Exponents[0]))
+
+			for k := 1; k < len(node.Children); k++ {
+				childID := node.Children[k]
+				childOffset := int(childID) * e.chunkSize
+				vInput := extensions.Vector(e.values[childOffset : childOffset+chunkLen])
+				if op.Exponents[k] == 1 {
+					vRes.Mul(vRes, vInput)
+					continue
+				}
+				vTmp.Exp(vInput, int64(op.Exponents[k]))
 				vRes.Mul(vRes, vTmp)
 			}
-		}
-	case LinComb:
-		var t0 field.Element
-		for i := range na.inputs {
-			vInput := field.Vector(na.inputs[i][:])
-			coeff := op.Coeffs[i]
+		case LinComb:
+			vRes := extensions.Vector(dst)
+			vTmp := extensions.Vector(e.scratch[:chunkLen])
+			var t0 extensions.E4
+			for k, childID := range node.Children {
+				childOffset := int(childID) * e.chunkSize
+				vInput := extensions.Vector(e.values[childOffset : childOffset+chunkLen])
+				coeff := op.Coeffs[k]
 
-			if i == 0 {
+				if k == 0 {
+					switch coeff {
+					case 0:
+						for j := range vRes {
+							vRes[j].SetZero()
+						}
+					case 1:
+						copy(vRes, vInput)
+					case 2:
+						vRes.Add(vInput, vInput)
+					case -1:
+						for j := range vRes {
+							vRes[j].SetZero()
+						}
+						vRes.Sub(vRes, vInput)
+					default:
+						t0.B0.A0.SetInt64(int64(coeff))
+						vRes.ScalarMul(vInput, &t0)
+					}
+					continue
+				}
+
 				switch coeff {
 				case 0:
-					for j := range vRes {
-						vRes[j].SetZero()
-					}
+					continue
 				case 1:
-					copy(vRes, vInput)
+					vRes.Add(vRes, vInput)
 				case 2:
-					vRes.Add(vInput, vInput)
+					vRes.Add(vRes, vInput)
+					vRes.Add(vRes, vInput)
 				case -1:
-					for j := range vRes {
-						vRes[j].SetZero()
-					}
 					vRes.Sub(vRes, vInput)
 				default:
-					t0.SetInt64(int64(coeff))
-					vRes.ScalarMul(vInput, &t0)
+					t0.B0.A0.SetInt64(int64(op.Coeffs[k]))
+					vTmp.ScalarMul(vInput, &t0)
+					vRes.Add(vRes, vTmp)
 				}
-				continue
 			}
+		case PolyEval:
+			xOffset := int(node.Children[0]) * e.chunkSize
+			x := e.values[xOffset]
 
-			switch coeff {
-			case 0:
-				continue
-			case 1:
-				vRes.Add(vRes, vInput)
-			case 2:
-				vRes.Add(vRes, vInput)
-				vRes.Add(vRes, vInput)
-			case -1:
-				vRes.Sub(vRes, vInput)
-			default:
-				t0.SetInt64(int64(op.Coeffs[i]))
-				vTmp.ScalarMul(vInput, &t0)
+			vRes := extensions.Vector(dst)
+
+			lastChildID := node.Children[len(node.Children)-1]
+			lastChildOffset := int(lastChildID) * e.chunkSize
+			copy(vRes, extensions.Vector(e.values[lastChildOffset:lastChildOffset+chunkLen]))
+
+			for k := len(node.Children) - 2; k >= 1; k-- {
+				childID := node.Children[k]
+				childOffset := int(childID) * e.chunkSize
+				vTmp := extensions.Vector(e.values[childOffset : childOffset+chunkLen])
+				vRes.ScalarMul(vRes, &x)
 				vRes.Add(vRes, vTmp)
 			}
+		default:
+			utils.Panic("unknown op %T", op)
 		}
-	case PolyEval:
-		// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
-		// i.e., ∑_{i=0}^{n} input[i]·x^i
-		x := na.inputs[0][0] // we assume that the first input is always a constant
-		copy(vRes, field.Vector(na.inputs[len(na.inputs)-1][:]))
-
-		for i := len(na.inputs) - 2; i >= 1; i-- {
-			vTmp := field.Vector(na.inputs[i][:])
-			vRes.ScalarMul(vRes, &x)
-			vRes.Add(vRes, vTmp)
-		}
-	default:
-		utils.Panic("unknown op %T", na.op)
 	}
-
-	na.hasValue = true
-
 }
 
 type GetDegree = func(m interface{}) int
@@ -464,8 +412,8 @@ type GetDegree = func(m interface{}) int
 // provided.
 func (b *ExpressionBoard) ListVariableMetadata() []Metadata {
 	res := []Metadata{}
-	for i := range b.Nodes[0] {
-		if vari, ok := b.Nodes[0][i].Operator.(Variable); ok {
+	for i := range b.Nodes {
+		if vari, ok := b.Nodes[i].Operator.(Variable); ok {
 			res = append(res, vari.Metadata)
 		}
 	}
@@ -476,203 +424,98 @@ func (b *ExpressionBoard) ListVariableMetadata() []Metadata {
 // function `getDeg` which is used to assign a degree to the [Variable] leaves
 // of the ExpressionBoard.
 func (b *ExpressionBoard) Degree(getdeg GetDegree) int {
-
-	/*
-		First, build a buffer to store the intermediate results
-	*/
-	intermediateRes := make([][]int, len(b.Nodes))
-	for level := range b.Nodes {
-		intermediateRes[level] = make([]int, len(b.Nodes[level]))
+	if len(b.Nodes) == 0 {
+		return 0
 	}
-
-	/*
-		Then, store the initial values in the level entries of the vector
-	*/
+	degrees := make([]int, len(b.Nodes))
 	inputCursor := 0
 
-	for i, node := range b.Nodes[0] {
+	for i, node := range b.Nodes {
 		switch v := node.Operator.(type) {
 		case Constant:
-			intermediateRes[0][i] = 0
+			degrees[i] = 0
 		case Variable:
-			intermediateRes[0][i] = getdeg(v.Metadata)
+			degrees[i] = getdeg(v.Metadata)
 			inputCursor++
-		}
-	}
-
-	/*
-		Then computes the levels one by one
-	*/
-	for level := 1; level < len(b.Nodes); level++ {
-		for pos, node := range b.Nodes[level] {
-			/*
-				Collect the inputs of the current node from the intermediateRes
-			*/
+		default:
 			childrenDeg := make([]int, len(node.Children))
-			for i, childID := range node.Children {
-				childrenDeg[i] = intermediateRes[childID.level()][childID.posInLevel()]
+			for k, childID := range node.Children {
+				childrenDeg[k] = degrees[childID]
 			}
-
-			/*
-				Run the evaluation
-			*/
-			nodeDeg := node.Operator.Degree(childrenDeg)
-
-			/*
-				Registers the result in the intermediate results
-			*/
-			intermediateRes[level][pos] = nodeDeg
+			degrees[i] = node.Operator.Degree(childrenDeg)
 		}
 	}
-
-	// Deep-copy the result from the last level (which assumedly contains only one node)
-	if len(intermediateRes[len(intermediateRes)-1]) > 1 {
-		panic("multiple heads")
-	}
-	return intermediateRes[len(b.Nodes)-1][0]
+	return degrees[len(b.Nodes)-1]
 }
 
 /*
 GnarkEval evaluates the expression in a gnark circuit
 */
 func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
-
-	/*
-		First, build a buffer to store the intermediate results
-	*/
-	intermediateRes := make([][]zk.WrappedVariable, len(b.Nodes))
-	for level := range b.Nodes {
-		intermediateRes[level] = make([]zk.WrappedVariable, len(b.Nodes[level]))
+	if len(b.Nodes) == 0 {
+		panic("empty board")
 	}
-
-	/*
-		Then, store the initial values in the level entries of the vector
-	*/
+	results := make([]zk.WrappedVariable, len(b.Nodes))
 	inputCursor := 0
 
-	for i := range b.Nodes[0] {
-		switch op := b.Nodes[0][i].Operator.(type) {
+	for i, node := range b.Nodes {
+		switch op := node.Operator.(type) {
 		case Constant:
 			tmp := op.Val.GetExt()
-			intermediateRes[0][i] = zk.ValueOf(tmp.B0.A0.String()) // @thomas ext or base ?
+			results[i] = zk.ValueOf(tmp.B0.A0.String()) // @thomas ext or base ?
 		case Variable:
-			intermediateRes[0][i] = inputs[inputCursor]
+			results[i] = inputs[inputCursor]
 			inputCursor++
-		}
-	}
-
-	/*
-		Then computes the levels one by one
-	*/
-	for level := 1; level < len(b.Nodes); level++ {
-		for pos, node := range b.Nodes[level] {
-			/*
-				Collect the inputs of the current node from the intermediateRes
-			*/
+		default:
 			nodeInputs := make([]zk.WrappedVariable, len(node.Children))
-			for i, childID := range node.Children {
-				nodeInputs[i] = intermediateRes[childID.level()][childID.posInLevel()]
+			for k, childID := range node.Children {
+				nodeInputs[k] = results[childID]
 			}
-
-			/*
-				Run the evaluation
-			*/
-			res := node.Operator.GnarkEval(api, nodeInputs)
-
-			/*
-				Registers the result in the intermediate results
-			*/
-			intermediateRes[level][pos] = res
+			results[i] = node.Operator.GnarkEval(api, nodeInputs)
 		}
 	}
-
-	// Deep-copy the result from the last level (which assumedly contains only one node)
-	if len(intermediateRes[len(intermediateRes)-1]) > 1 {
-		panic("multiple heads")
-	}
-	return intermediateRes[len(b.Nodes)-1][0]
-
+	return results[len(b.Nodes)-1]
 }
 
 /*
 GnarkEvalExt evaluates the expression in a gnark circuit
 */
 func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
-
-	/*
-		First, build a buffer to store the intermediate results
-	*/
-	intermediateRes := make([][]gnarkfext.E4Gen, len(b.Nodes))
-	for level := range b.Nodes {
-		intermediateRes[level] = make([]gnarkfext.E4Gen, len(b.Nodes[level]))
+	if len(b.Nodes) == 0 {
+		panic("empty board")
 	}
-
-	/*
-		Then, store the initial values in the level entries of the vector
-	*/
+	results := make([]gnarkfext.E4Gen, len(b.Nodes))
 	inputCursor := 0
 
-	for i := range b.Nodes[0] {
-		switch op := b.Nodes[0][i].Operator.(type) {
+	for i, node := range b.Nodes {
+		switch op := node.Operator.(type) {
 		case Constant:
-			intermediateRes[0][i] = gnarkfext.NewE4Gen(op.Val.GetExt())
+			results[i] = gnarkfext.NewE4Gen(op.Val.GetExt())
 		case Variable:
-			intermediateRes[0][i] = inputs[inputCursor]
+			results[i] = inputs[inputCursor]
 			inputCursor++
-		}
-	}
-
-	/*
-		Then computes the levels one by one
-	*/
-	for level := 1; level < len(b.Nodes); level++ {
-		for pos, node := range b.Nodes[level] {
-			/*
-				Collect the inputs of the current node from the intermediateRes
-			*/
+		default:
 			nodeInputs := make([]gnarkfext.E4Gen, len(node.Children))
-			for i, childID := range node.Children {
-				nodeInputs[i] = intermediateRes[childID.level()][childID.posInLevel()]
+			for k, childID := range node.Children {
+				nodeInputs[k] = results[childID]
 			}
-
-			/*
-				Run the evaluation
-			*/
-			res := node.Operator.GnarkEvalExt(api, nodeInputs)
-
-			/*
-				Registers the result in the intermediate results
-			*/
-			intermediateRes[level][pos] = res
+			results[i] = node.Operator.GnarkEvalExt(api, nodeInputs)
 		}
 	}
-
-	// Deep-copy the result from the last level (which assumedly contains only one node)
-	if len(intermediateRes[len(intermediateRes)-1]) > 1 {
-		panic("multiple heads")
-	}
-	return intermediateRes[len(b.Nodes)-1][0]
-
+	return results[len(b.Nodes)-1]
 }
 
 // DumpToString is a debug utility which print out the expression in a readable
 // format.
 func (b *ExpressionBoard) DumpToString() string {
 	res := ""
-	for i := range b.Nodes {
-		res += fmt.Sprintf("LEVEL %v\n", i)
-		for _, node := range b.Nodes[i] {
-			res += fmt.Sprintf("\t(%T) %++v\n", node.Operator, node)
-		}
+	for i, node := range b.Nodes {
+		res += fmt.Sprintf("%d: (%T) %++v\n", i, node.Operator, node)
 	}
 	return res
 }
 
 // CountNodes returns the node count of the expression
 func (b *ExpressionBoard) CountNodes() int {
-	res := 0
-	for i := 0; i < len(b.Nodes); i++ {
-		res += len(b.Nodes[i])
-	}
-	return res
+	return len(b.Nodes)
 }

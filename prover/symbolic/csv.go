@@ -85,57 +85,48 @@ func (b *ExpressionBoard) WriteStatsToCSV(w io.Writer) {
 
 	fmt.Fprintf(w, "nodeCount, level, numInLevel, numChildren, numParent, operation, numCoeff1, numCoeff-1, numCoeff0, numCoeff2, numCoeff-2\n")
 
-	var (
-		nodeCnt = 0
-	)
+	for i, node := range b.Nodes {
 
-	for lvl := 0; lvl < len(b.Nodes); lvl++ {
-		for posInLvl := 0; posInLvl < len(b.Nodes[lvl]); posInLvl++ {
+		var (
+			cntCoeff1, cntCoeffMin1 int
+			cntCoeff0               int
+			cntCoeff2, cntCoeffMin2 int
+			operation               string
+			coeffs                  = []int{}
+		)
 
-			var (
-				node                    = b.Nodes[lvl][posInLvl]
-				cntCoeff1, cntCoeffMin1 int
-				cntCoeff0               int
-				cntCoeff2, cntCoeffMin2 int
-				operation               string
-				coeffs                  = []int{}
-			)
-
-			switch op := node.Operator.(type) {
-			case LinComb:
-				operation = "lin-comb"
-				coeffs = op.Coeffs
-			case Product:
-				operation = "product"
-				coeffs = op.Exponents
-			case PolyEval:
-				operation = "polyeval"
-			}
-
-			for _, c := range coeffs {
-				switch {
-				case c == 0:
-					cntCoeff0++
-				case c == 1:
-					cntCoeff1++
-				case c == -1:
-					cntCoeffMin1++
-				case c == 2:
-					cntCoeff2++
-				case c == -2:
-					cntCoeffMin2++
-				}
-			}
-
-			fmt.Fprintf(
-				w, "%v, %v, %v, %v, %v, %v, %v, %v, %v, %v\n",
-				nodeCnt, lvl, posInLvl, len(node.Children),
-				operation, cntCoeff1, cntCoeffMin1, cntCoeff0, cntCoeff2,
-				cntCoeffMin2,
-			)
-
-			nodeCnt++
+		switch op := node.Operator.(type) {
+		case LinComb:
+			operation = "lin-comb"
+			coeffs = op.Coeffs
+		case Product:
+			operation = "product"
+			coeffs = op.Exponents
+		case PolyEval:
+			operation = "polyeval"
 		}
+
+		for _, c := range coeffs {
+			switch {
+			case c == 0:
+				cntCoeff0++
+			case c == 1:
+				cntCoeff1++
+			case c == -1:
+				cntCoeffMin1++
+			case c == 2:
+				cntCoeff2++
+			case c == -2:
+				cntCoeffMin2++
+			}
+		}
+
+		fmt.Fprintf(
+			w, "%v, %v, %v, %v, %v, %v, %v, %v, %v, %v\n",
+			i, 0, i, len(node.Children),
+			operation, cntCoeff1, cntCoeffMin1, cntCoeff0, cntCoeff2,
+			cntCoeffMin2,
+		)
 	}
 
 }
