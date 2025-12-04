@@ -67,6 +67,26 @@ describe("StakingVaultContractClient", () => {
     expect(client.getContract()).toBe(viemContractStub);
   });
 
+  it("gets the contract balance", async () => {
+    const balance = 1_000_000_000_000_000_000n; // 1 ETH
+    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+
+    const client = createClient();
+    await expect(client.getBalance()).resolves.toBe(balance);
+
+    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
+  });
+
+  it("throws error when getBalance is called and blockchainClient is not initialized", async () => {
+    const client = createClient();
+    // Clear the static blockchainClient after client creation
+    (StakingVaultContractClient as any).blockchainClient = undefined;
+
+    await expect(client.getBalance()).rejects.toThrow(
+      "StakingVaultContractClient: blockchainClient must be initialized via StakingVaultContractClient.initialize() before use",
+    );
+  });
+
   it("reads beaconChainDepositsPaused via read and returns the result", async () => {
     const paused = true;
     viemContractStub.read.beaconChainDepositsPaused.mockResolvedValueOnce(paused);

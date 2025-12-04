@@ -76,6 +76,26 @@ describe("DashboardContractClient", () => {
     expect(client.getContract()).toBe(viemContractStub);
   });
 
+  it("gets the contract balance", async () => {
+    const balance = 1_000_000_000_000_000_000n; // 1 ETH
+    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+
+    const client = createClient();
+    await expect(client.getBalance()).resolves.toBe(balance);
+
+    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
+  });
+
+  it("throws error when getBalance is called and blockchainClient is not initialized", async () => {
+    const client = createClient();
+    // Clear the static blockchainClient after client creation
+    (DashboardContractClient as any).blockchainClient = undefined;
+
+    await expect(client.getBalance()).rejects.toThrow(
+      "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() before use",
+    );
+  });
+
   it("returns node operator fees when FeeDisbursed event is present", () => {
     const client = createClient();
     const receipt = buildReceipt([
