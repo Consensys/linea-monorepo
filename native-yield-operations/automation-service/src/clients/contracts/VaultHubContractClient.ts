@@ -137,4 +137,18 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
       return 0n;
     }
   }
+
+  /**
+   * Gets the Lido contract address from the VaultHub contract.
+   *
+   * @returns {Promise<Address | undefined>} The Lido contract address, or undefined on error.
+   */
+  async LIDO(): Promise<Address | undefined> {
+    try {
+      return await this.contract.read.LIDO();
+    } catch (error) {
+      this.logger.error(`LIDO failed, error=${error}`);
+      return undefined;
+    }
+  }
 }

@@ -45,4 +45,11 @@ export const VaultHubABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "LIDO",
+    outputs: [{ internalType: "contract ILido", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
