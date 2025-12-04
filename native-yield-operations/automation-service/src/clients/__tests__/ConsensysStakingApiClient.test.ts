@@ -93,7 +93,7 @@ describe("ConsensysStakingApiClient", () => {
       ];
 
       apolloQueryMock.mockResolvedValue({
-        data: { allValidators: { nodes: graphqlResponse } },
+        data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
 
@@ -113,7 +113,7 @@ describe("ConsensysStakingApiClient", () => {
       const { client, logger, retryMock, apolloQueryMock } = createClient();
 
       apolloQueryMock.mockResolvedValue({
-        data: { allValidators: { nodes: undefined } },
+        data: { allHeadValidators: { nodes: undefined } },
         error: undefined,
       });
 
@@ -188,7 +188,7 @@ describe("ConsensysStakingApiClient", () => {
       ];
 
       apolloQueryMock.mockResolvedValue({
-        data: { allValidators: { nodes: graphqlResponse } },
+        data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
 
@@ -208,7 +208,7 @@ describe("ConsensysStakingApiClient", () => {
       const { client, logger, retryMock, apolloQueryMock } = createClient();
 
       apolloQueryMock.mockResolvedValue({
-        data: { allValidators: { nodes: undefined } },
+        data: { allHeadValidators: { nodes: undefined } },
         error: undefined,
       });
 
@@ -250,7 +250,7 @@ describe("ConsensysStakingApiClient", () => {
       ];
 
       apolloQueryMock.mockResolvedValue({
-        data: { allValidators: { nodes: graphqlResponse } },
+        data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
 
@@ -294,7 +294,7 @@ describe("ConsensysStakingApiClient", () => {
       ];
 
       apolloQueryMock.mockResolvedValue({
-        data: { allValidators: { nodes: graphqlResponse } },
+        data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
 

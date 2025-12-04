@@ -4,7 +4,7 @@ import { ValidatorBalance } from "../ValidatorBalance.js";
 
 /** Result shape returned by the server */
 type ActiveValidatorsByLargestBalanceQuery = {
-  allValidators: {
+  allHeadValidators: {
     nodes: Array<ValidatorBalance>;
   };
 };
@@ -19,7 +19,7 @@ export const ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY: TypedDocumentNode<
   ActiveValidatorsByLargestBalanceQueryVariables
 > = gql`
   query AllValidatorsByLargestBalanceQuery($first: Int = 100) {
-    allValidators(condition: { state: ACTIVE }, orderBy: EFFECTIVE_BALANCE_DESC, first: $first) {
+    allHeadValidators(condition: { state: ACTIVE }, orderBy: EXIT_EPOCH_ASC, first: $first) {
       nodes {
         balance
         effectiveBalance

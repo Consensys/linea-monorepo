@@ -4,7 +4,7 @@ import { ExitingValidator } from "../ValidatorBalance.js";
 
 /** Result shape returned by the server */
 type ExitingValidatorsQuery = {
-  allValidators: {
+  allHeadValidators: {
     nodes: Array<ExitingValidator>;
   };
 };
@@ -16,7 +16,7 @@ type ExitingValidatorsQueryVariables = {
 
 export const EXITING_VALIDATORS_QUERY: TypedDocumentNode<ExitingValidatorsQuery, ExitingValidatorsQueryVariables> = gql`
   query ExitingValidatorsQuery($first: Int = 100) {
-    allValidators(filter: { state: { in: [SLASHED_EXITING, EXITING] } }, orderBy: EXIT_EPOCH_ASC, first: $first) {
+    allHeadValidators(filter: { state: { in: [SLASHED_EXITING, EXITING] } }, orderBy: EXIT_EPOCH_ASC, first: $first) {
       nodes {
         balance
         effectiveBalance

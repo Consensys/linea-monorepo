@@ -55,7 +55,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       this.logger.error("getActiveValidators data undefined");
       return undefined;
     }
-    const resp = data?.allValidators.nodes;
+    const resp = data?.allHeadValidators.nodes;
     if (!resp) {
       this.logger.info(`getActiveValidators succeeded, validatorCount=0`);
       this.logger.debug("getActiveValidators resp", { resp: undefined });
@@ -99,7 +99,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       this.logger.error("getExitingValidators data undefined");
       return undefined;
     }
-    const resp = data?.allValidators.nodes;
+    const resp = data?.allHeadValidators.nodes;
     if (!resp) {
       this.logger.info(`getExitingValidators succeeded, validatorCount=0`);
       this.logger.debug("getExitingValidators resp", { resp: undefined });
