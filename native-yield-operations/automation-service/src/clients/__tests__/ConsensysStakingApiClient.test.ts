@@ -101,7 +101,10 @@ describe("ConsensysStakingApiClient", () => {
 
       expect(result).toEqual(expectedValidators);
       expect(retryMock).toHaveBeenCalledTimes(1);
-      expect(apolloQueryMock).toHaveBeenCalledWith({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY });
+      expect(apolloQueryMock).toHaveBeenCalledWith({
+        query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY,
+        fetchPolicy: "network-only",
+      });
       expect(logger.info).toHaveBeenCalledWith("getActiveValidators succeeded, validatorCount=1");
       expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: expectedValidators });
     });
@@ -118,7 +121,10 @@ describe("ConsensysStakingApiClient", () => {
 
       expect(result).toBeUndefined();
       expect(retryMock).toHaveBeenCalledTimes(1);
-      expect(apolloQueryMock).toHaveBeenCalledWith({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY });
+      expect(apolloQueryMock).toHaveBeenCalledWith({
+        query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY,
+        fetchPolicy: "network-only",
+      });
       expect(logger.info).toHaveBeenCalledWith("getActiveValidators succeeded, validatorCount=0");
       expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: undefined });
     });
@@ -190,7 +196,10 @@ describe("ConsensysStakingApiClient", () => {
 
       expect(result).toEqual(expectedValidators);
       expect(retryMock).toHaveBeenCalledTimes(1);
-      expect(apolloQueryMock).toHaveBeenCalledWith({ query: EXITING_VALIDATORS_QUERY });
+      expect(apolloQueryMock).toHaveBeenCalledWith({
+        query: EXITING_VALIDATORS_QUERY,
+        fetchPolicy: "network-only",
+      });
       expect(logger.info).toHaveBeenCalledWith("getExitingValidators succeeded, validatorCount=1");
       expect(logger.debug).toHaveBeenCalledWith("getExitingValidators resp", { resp: expectedValidators });
     });
@@ -207,7 +216,10 @@ describe("ConsensysStakingApiClient", () => {
 
       expect(result).toBeUndefined();
       expect(retryMock).toHaveBeenCalledTimes(1);
-      expect(apolloQueryMock).toHaveBeenCalledWith({ query: EXITING_VALIDATORS_QUERY });
+      expect(apolloQueryMock).toHaveBeenCalledWith({
+        query: EXITING_VALIDATORS_QUERY,
+        fetchPolicy: "network-only",
+      });
       expect(logger.info).toHaveBeenCalledWith("getExitingValidators succeeded, validatorCount=0");
       expect(logger.debug).toHaveBeenCalledWith("getExitingValidators resp", { resp: undefined });
     });
