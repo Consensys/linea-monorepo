@@ -86,6 +86,8 @@ export const configSchema = z
     YIELD_MANAGER_ADDRESS: Address,
     // Address of the LidoStVaultYieldProvider contract.
     LIDO_YIELD_PROVIDER_ADDRESS: Address,
+    // Address of the STETH contract.
+    STETH_ADDRESS: Address,
     // L2 address that receives yield distributions.
     L2_YIELD_RECIPIENT: Address,
     // Polling interval in milliseconds for watching blockchain events.
