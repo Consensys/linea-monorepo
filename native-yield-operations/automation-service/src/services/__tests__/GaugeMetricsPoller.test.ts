@@ -10,6 +10,16 @@ import { ONE_GWEI } from "@consensys/linea-shared-utils";
 import { GaugeMetricsPoller } from "../GaugeMetricsPoller.js";
 import { YieldProviderData } from "../../core/clients/contracts/IYieldManager.js";
 
+jest.mock("@consensys/linea-shared-utils", () => {
+  const actual = jest.requireActual("@consensys/linea-shared-utils");
+  return {
+    ...actual,
+    wait: jest.fn(),
+  };
+});
+
+import { wait } from "@consensys/linea-shared-utils";
+
 describe("GaugeMetricsPoller", () => {
   const yieldProvider = "0x1111111111111111111111111111111111111111" as Address;
   const vaultAddress = "0x2222222222222222222222222222222222222222" as Address;
@@ -21,6 +31,8 @@ describe("GaugeMetricsPoller", () => {
   let vaultHubContractClient: MockProxy<IVaultHub<TransactionReceipt>>;
   let beaconNodeApiClient: MockProxy<IBeaconNodeAPIClient>;
   let poller: GaugeMetricsPoller;
+  let waitMock: jest.MockedFunction<typeof wait>;
+  const pollIntervalMs = 5000;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -31,6 +43,9 @@ describe("GaugeMetricsPoller", () => {
     vaultHubContractClient = mock<IVaultHub<TransactionReceipt>>();
     beaconNodeApiClient = mock<IBeaconNodeAPIClient>();
 
+    waitMock = wait as jest.MockedFunction<typeof wait>;
+    waitMock.mockResolvedValue(undefined);
+
     poller = new GaugeMetricsPoller(
       logger,
       validatorDataClient,
@@ -39,6 +54,7 @@ describe("GaugeMetricsPoller", () => {
       vaultHubContractClient,
       yieldProvider,
       beaconNodeApiClient,
+      pollIntervalMs,
     );
 
     // Default mocks
@@ -1075,6 +1091,79 @@ describe("GaugeMetricsPoller", () => {
       expect(validatorDataClient.getTotalBalanceOfExitingValidators).toHaveBeenCalledWith([]);
       expect(metricsUpdater.setLastTotalPendingExitGwei).not.toHaveBeenCalled();
       expect(logger.warn).toHaveBeenCalledWith("Skipping total pending exit gauge update: total balance unavailable");
+    });
+  });
+
+  describe("start and stop", () => {
+    beforeEach(() => {
+      // Setup default mocks for poll() to succeed
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
+      validatorDataClient.getExitingValidators.mockResolvedValue([]);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
+      beaconNodeApiClient.getPendingDeposits.mockResolvedValue([]);
+      validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue([]);
+      validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(0n);
+      validatorDataClient.getTotalValidatorBalanceGwei.mockReturnValue(0n);
+      validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(0n);
+      
+      // Mock wait to resolve after a small delay to prevent infinite loops
+      waitMock.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 1)));
+    });
+
+    it("starts the polling loop and calls poll at intervals", async () => {
+      const pollPromise = poller.start();
+
+      // Wait a bit to allow loop to run once
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      // Stop the loop
+      poller.stop();
+      await pollPromise;
+
+      // Verify poll was called
+      expect(validatorDataClient.getActiveValidators).toHaveBeenCalled();
+      // Verify wait was called (indicating loop ran)
+      expect(waitMock).toHaveBeenCalledWith(pollIntervalMs);
+    });
+
+    it("does not start multiple loops if already running", async () => {
+      const firstStart = poller.start();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      // Try to start again
+      await poller.start();
+
+      poller.stop();
+      await firstStart;
+
+      expect(logger.debug).toHaveBeenCalledWith("GaugeMetricsPoller.start() - already running, skipping");
+    });
+
+    it("stops the polling loop gracefully", async () => {
+      const pollPromise = poller.start();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      poller.stop();
+
+      await pollPromise;
+
+      expect(logger.info).toHaveBeenCalledWith("Stopped gauge metrics polling loop");
+    });
+
+    it("does not stop if not running", () => {
+      poller.stop();
+
+      expect(logger.debug).toHaveBeenCalledWith("GaugeMetricsPoller.stop() - not running, skipping");
+    });
+
+    it("logs start message when loop starts", async () => {
+      const pollPromise = poller.start();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      poller.stop();
+      await pollPromise;
+
+      expect(logger.info).toHaveBeenCalledWith("Starting gauge metrics polling loop");
     });
   });
 });

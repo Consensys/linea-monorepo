@@ -5,6 +5,7 @@ import {
   PendingPartialWithdrawal,
   PendingDeposit,
   get0x02WithdrawalCredentials,
+  wait,
 } from "@consensys/linea-shared-utils";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
@@ -13,12 +14,16 @@ import { IVaultHub } from "../core/clients/contracts/IVaultHub.js";
 import { ExitingValidator, ValidatorBalance } from "../core/entities/ValidatorBalance.js";
 import { Address, Hex, TransactionReceipt } from "viem";
 import { IGaugeMetricsPoller } from "../core/services/IGaugeMetricsPoller.js";
+import { IOperationLoop } from "./IOperationLoop.js";
 
 /**
  * Polls various data sources and updates gauge metrics.
  * Handles updating metrics like total pending partial withdrawals and cumulative yield reported.
+ * Runs in a continuous loop at a configurable interval.
  */
-export class GaugeMetricsPoller implements IGaugeMetricsPoller {
+export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
+  private isRunning = false;
+
   /**
    * Creates a new GaugeMetricsPoller instance.
    *
@@ -29,6 +34,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
    * @param {IVaultHub<TransactionReceipt>} vaultHubContractClient - Client for reading vault data from VaultHub contract.
    * @param {Address} yieldProvider - The yield provider address.
    * @param {IBeaconNodeAPIClient} beaconNodeApiClient - Client for retrieving pending partial withdrawals from beacon chain.
+   * @param {number} pollIntervalMs - Polling interval in milliseconds between gauge metrics updates.
    */
   constructor(
     private readonly logger: ILogger,
@@ -38,6 +44,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
     private readonly vaultHubContractClient: IVaultHub<TransactionReceipt>,
     private readonly yieldProvider: Address,
     private readonly beaconNodeApiClient: IBeaconNodeAPIClient,
+    private readonly pollIntervalMs: number,
   ) {}
 
   /**
@@ -134,6 +141,54 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller {
         this.logger.error(`Failed to update ${metricName} gauge metric`, { error: result.reason });
       }
     });
+  }
+
+  /**
+   * Starts the gauge metrics polling loop.
+   * Sets the running flag and begins polling at the configured interval.
+   * If already running, returns immediately without starting a new loop.
+   *
+   * @returns {Promise<void>} A promise that resolves when the loop starts (but does not resolve until the loop stops).
+   */
+  public async start(): Promise<void> {
+    if (this.isRunning) {
+      this.logger.debug("GaugeMetricsPoller.start() - already running, skipping");
+      return;
+    }
+
+    this.isRunning = true;
+    this.logger.info(`Starting gauge metrics polling loop`);
+    await this.pollLoop();
+  }
+
+  /**
+   * Stops the gauge metrics polling loop.
+   * Sets the running flag to false, which causes the loop to exit on its next iteration.
+   * If not running, returns immediately.
+   */
+  public stop(): void {
+    if (!this.isRunning) {
+      this.logger.debug("GaugeMetricsPoller.stop() - not running, skipping");
+      return;
+    }
+
+    this.isRunning = false;
+    this.logger.info(`Stopped gauge metrics polling loop`);
+  }
+
+  /**
+   * Main loop that continuously polls and updates gauge metrics at the configured interval.
+   * Errors in poll() are handled internally and do not break the loop.
+   *
+   * @returns {Promise<void>} A promise that resolves when the loop exits (when isRunning becomes false).
+   */
+  private async pollLoop(): Promise<void> {
+    while (this.isRunning) {
+      await this.poll();
+      if (this.isRunning) {
+        await wait(this.pollIntervalMs);
+      }
+    }
   }
 
   /**

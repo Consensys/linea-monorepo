@@ -4,7 +4,6 @@ import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/IN
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { TransactionReceipt, Address } from "viem";
 import type { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import type { IGaugeMetricsPoller } from "../../core/services/IGaugeMetricsPoller.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { OperationModeExecutionStatus } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
@@ -25,7 +24,6 @@ describe("OperationModeSelector", () => {
   let logger: MockProxy<ILogger>;
   let metricsUpdater: MockProxy<INativeYieldAutomationMetricsUpdater>;
   let yieldManager: MockProxy<IYieldManager<TransactionReceipt>>;
-  let gaugeMetricsPoller: MockProxy<IGaugeMetricsPoller>;
   let yieldReportingProcessor: MockProxy<IOperationModeProcessor>;
   let ossificationPendingProcessor: MockProxy<IOperationModeProcessor>;
   let ossificationCompleteProcessor: MockProxy<IOperationModeProcessor>;
@@ -38,7 +36,6 @@ describe("OperationModeSelector", () => {
       logger,
       metricsUpdater,
       yieldManager,
-      gaugeMetricsPoller,
       yieldReportingProcessor,
       ossificationPendingProcessor,
       ossificationCompleteProcessor,
@@ -51,16 +48,12 @@ describe("OperationModeSelector", () => {
     logger = mock<ILogger>();
     metricsUpdater = mock<INativeYieldAutomationMetricsUpdater>();
     yieldManager = mock<IYieldManager<TransactionReceipt>>();
-    gaugeMetricsPoller = mock<IGaugeMetricsPoller>();
     yieldReportingProcessor = mock<IOperationModeProcessor>();
     ossificationPendingProcessor = mock<IOperationModeProcessor>();
     ossificationCompleteProcessor = mock<IOperationModeProcessor>();
 
     waitMock = wait as jest.MockedFunction<typeof wait>;
     waitMock.mockResolvedValue(undefined);
-
-    // Default mock for gauge metrics poller
-    gaugeMetricsPoller.poll.mockResolvedValue(undefined);
   });
 
   it("runs yield reporting mode when neither ossification flag is set", async () => {
@@ -261,41 +254,4 @@ describe("OperationModeSelector", () => {
     );
   });
 
-  describe("gaugeMetricsPoller", () => {
-    it("calls gaugeMetricsPoller.poll on each loop iteration", async () => {
-      yieldManager.isOssificationInitiated.mockResolvedValue(false);
-      yieldManager.isOssified.mockResolvedValue(false);
-
-      const selector = createSelector();
-      yieldReportingProcessor.process.mockImplementation(async () => {
-        selector.stop();
-      });
-
-      await selector.start();
-
-      expect(gaugeMetricsPoller.poll).toHaveBeenCalled();
-    });
-
-    it("continues loop when gaugeMetricsPoller.poll completes (errors handled internally)", async () => {
-      yieldManager.isOssificationInitiated.mockResolvedValue(false);
-      yieldManager.isOssified.mockResolvedValue(false);
-
-      // poll() should handle errors internally and not throw
-      gaugeMetricsPoller.poll.mockResolvedValue(undefined);
-
-      const selector = createSelector();
-      yieldReportingProcessor.process.mockImplementation(async () => {
-        selector.stop();
-      });
-
-      await selector.start();
-
-      expect(gaugeMetricsPoller.poll).toHaveBeenCalled();
-      expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
-      expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
-        OperationMode.YIELD_REPORTING_MODE,
-        OperationModeExecutionStatus.Success,
-      );
-    });
-  });
 });

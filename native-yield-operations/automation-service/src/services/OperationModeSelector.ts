@@ -6,7 +6,6 @@ import { IOperationModeProcessor } from "../core/services/operation-mode/IOperat
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../core/enums/OperationModeEnums.js";
 import { OperationModeExecutionStatus } from "../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
-import { IGaugeMetricsPoller } from "../core/services/IGaugeMetricsPoller.js";
 
 /**
  * Selects and executes the appropriate operation mode based on the yield provider's ossification state.
@@ -22,7 +21,6 @@ export class OperationModeSelector implements IOperationLoop {
    * @param {ILogger} logger - Logger instance for logging operation mode selection and execution.
    * @param {INativeYieldAutomationMetricsUpdater} metricsUpdater - Service for updating operation mode metrics.
    * @param {IYieldManager<TransactionReceipt>} yieldManagerContractClient - Client for reading yield provider state from YieldManager contract.
-   * @param {IGaugeMetricsPoller} gaugeMetricsPoller - Service for polling and updating gauge metrics.
    * @param {IOperationModeProcessor} yieldReportingOperationModeProcessor - Processor for YIELD_REPORTING_MODE operations.
    * @param {IOperationModeProcessor} ossificationPendingOperationModeProcessor - Processor for OSSIFICATION_PENDING_MODE operations.
    * @param {IOperationModeProcessor} ossificationCompleteOperationModeProcessor - Processor for OSSIFICATION_COMPLETE_MODE operations.
@@ -33,7 +31,6 @@ export class OperationModeSelector implements IOperationLoop {
     private readonly logger: ILogger,
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
-    private readonly gaugeMetricsPoller: IGaugeMetricsPoller,
     private readonly yieldReportingOperationModeProcessor: IOperationModeProcessor,
     private readonly ossificationPendingOperationModeProcessor: IOperationModeProcessor,
     private readonly ossificationCompleteOperationModeProcessor: IOperationModeProcessor,
@@ -86,7 +83,6 @@ export class OperationModeSelector implements IOperationLoop {
    */
   private async selectOperationModeLoop(): Promise<void> {
     while (this.isRunning) {
-      await this.gaugeMetricsPoller.poll();
       let currentMode: OperationMode = OperationMode.UNKNOWN;
       try {
         const [isOssificationInitiated, isOssified] = await Promise.all([

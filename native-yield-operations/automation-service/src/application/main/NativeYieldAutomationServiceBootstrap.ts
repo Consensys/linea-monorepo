@@ -51,7 +51,6 @@ import { OperationModeMetricsRecorder } from "../metrics/OperationModeMetricsRec
 import { DashboardContractClient } from "../../clients/contracts/DashboardContractClient.js";
 import { StakingVaultContractClient } from "../../clients/contracts/StakingVaultContractClient.js";
 import { GaugeMetricsPoller } from "../../services/GaugeMetricsPoller.js";
-import { IGaugeMetricsPoller } from "../../core/services/IGaugeMetricsPoller.js";
 
 /**
  * Bootstrap class for the Native Yield Automation Service.
@@ -82,7 +81,7 @@ export class NativeYieldAutomationServiceBootstrap {
   private consensysStakingGraphQLClient: IValidatorDataClient;
 
   private readonly operationModeMetricsRecorder: IOperationModeMetricsRecorder;
-  private gaugeMetricsPoller: IGaugeMetricsPoller;
+  private gaugeMetricsPoller: IOperationLoop;
   private operationModeSelector: IOperationLoop;
   private yieldReportingOperationModeProcessor: IOperationModeProcessor;
   private ossificationPendingOperationModeProcessor: IOperationModeProcessor;
@@ -267,13 +266,13 @@ export class NativeYieldAutomationServiceBootstrap {
       this.vaultHubContractClient,
       config.contractAddresses.lidoYieldProviderAddress,
       this.beaconNodeApiClient,
+      config.timing.gaugeMetricsPollIntervalMs,
     );
 
     this.operationModeSelector = new OperationModeSelector(
       new WinstonLogger(OperationModeSelector.name, config.loggerOptions),
       this.metricsUpdater,
       this.yieldManagerContractClient,
-      this.gaugeMetricsPoller,
       this.yieldReportingOperationModeProcessor,
       this.ossificationPendingOperationModeProcessor,
       this.ossificationCompleteOperationModeProcessor,
@@ -285,22 +284,26 @@ export class NativeYieldAutomationServiceBootstrap {
   /**
    * Starts all services.
    * Purposely refrains from awaiting .start() methods so they don't become blocking calls.
-   * Starts the metrics API server and the operation mode selector.
+   * Starts the metrics API server, gauge metrics poller, and the operation mode selector.
    */
   public startAllServices(): void {
     this.api.start();
     this.logger.info("Metrics API server started");
+    this.gaugeMetricsPoller.start();
+    this.logger.info("Gauge metrics poller started");
     this.operationModeSelector.start();
     this.logger.info("Native yield automation service started");
   }
 
   /**
    * Stops all services gracefully.
-   * Stops the metrics API server and the operation mode selector.
+   * Stops the metrics API server, gauge metrics poller, and the operation mode selector.
    */
   public stopAllServices(): void {
     this.api.stop();
     this.logger.info("Metrics API server stopped");
+    this.gaugeMetricsPoller.stop();
+    this.logger.info("Gauge metrics poller stopped");
     this.operationModeSelector.stop();
     this.logger.info("Native yield automation service stopped");
   }
