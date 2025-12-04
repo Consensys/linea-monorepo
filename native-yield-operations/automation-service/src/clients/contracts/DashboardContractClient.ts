@@ -156,4 +156,13 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
   async totalValue(): Promise<bigint> {
     return this.contract.read.totalValue();
   }
+
+  /**
+   * Gets the liability shares from the Dashboard contract.
+   *
+   * @returns {Promise<bigint>} The liability shares.
+   */
+  async liabilityShares(): Promise<bigint> {
+    return this.contract.read.liabilityShares();
+  }
 }
