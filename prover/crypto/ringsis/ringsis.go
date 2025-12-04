@@ -248,12 +248,6 @@ func (s *Key) FlattenedKey() []field.Element {
 // Each smart-vector is seen as the row of a matrix. All rows must have the same
 // size or panic. The function returns the hash of the columns. The column hashes
 // are concatenated into a single array.
-//
-// The function is optimize to deal with the ring-SIS instances parametrized by
-//
-//   - modulus degree: 	64  log2(bound): 	8
-//   - modulus degree: 	64  log2(bound): 	16
-//   - modulus degree: 	32  log2(bound): 	8
 func (s *Key) TransversalHash(v []smartvectors.SmartVector, res []field.Element) []field.Element {
 	// nbRows is the number of rows in the matrix
 	nbRows := len(v)
@@ -283,36 +277,54 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector, res []field.Element)
 		// perf note; we could allocate only blocks of 256 elements here and do the SIS hash
 		// block by block, but surprisingly it is slower than the current implementation
 		// it would however save some memory allocation.
-		windowSize := 4
-		n := end - start
-		for n%windowSize != 0 {
-			windowSize /= 2
-		}
+
+		// Optimization: Use a larger window size (32) to amortize loop and switch overheads.
+		// Use padding to avoid cache set aliasing (conflict misses) during transposition.
+		const windowSize = 32
+
+		// Add padding to the stride.
+		// We want stride * sizeof(Element) to not be a multiple of cache way size (usually 4KB).
+		// 8 elements padding is usually enough to break alignment.
+		const padding = 8
+		paddedNbRows := nbRows + padding
+
 		// using arena here just favors contiguous memory allocation
-		transposedArena := arena.NewVectorArena[field.Element](nbRows * windowSize)
+		transposedArena := arena.NewVectorArena[field.Element](paddedNbRows * windowSize)
 		transposed := make([][]field.Element, windowSize)
 		for i := range transposed {
-			transposed[i] = arena.Get[field.Element](transposedArena, nbRows)
+			// Allocate padded size from arena
+			fullSlice := arena.Get[field.Element](transposedArena, paddedNbRows)
+			// Use only the required part
+			transposed[i] = fullSlice[:nbRows]
 		}
+
 		for col := start; col < end; col += windowSize {
+			currentWindowSize := windowSize
+			if col+currentWindowSize > end {
+				currentWindowSize = end - col
+			}
+
 			for i := 0; i < nbRows; i++ {
 				switch vi := v[i].(type) {
 				case *smartvectors.Constant:
 					cst := vi.Value
-					for j := range transposed {
+					for j := 0; j < currentWindowSize; j++ {
 						transposed[j][i] = cst
 					}
 				case *smartvectors.Regular:
-					for j := range transposed {
-						transposed[j][i] = (*vi)[col+j]
+					// Optimization: slice the source once to avoid repeated bounds checks/indirections
+					// (*vi) is the slice.
+					src := (*vi)[col : col+currentWindowSize]
+					for j := 0; j < currentWindowSize; j++ {
+						transposed[j][i] = src[j]
 					}
 				default:
-					for j := range transposed {
+					for j := 0; j < currentWindowSize; j++ {
 						transposed[j][i] = v[i].Get(col + j)
 					}
 				}
 			}
-			for j := range transposed {
+			for j := 0; j < currentWindowSize; j++ {
 				s.SisGnarkCrypto.Hash(transposed[j], res[(col+j)*sisKeySize:(col+j)*sisKeySize+sisKeySize])
 			}
 		}
