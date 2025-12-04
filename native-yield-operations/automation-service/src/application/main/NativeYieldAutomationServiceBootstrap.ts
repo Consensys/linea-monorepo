@@ -8,7 +8,7 @@ import {
   WinstonLogger,
 } from "@consensys/linea-shared-utils";
 import { NativeYieldAutomationServiceBootstrapConfig } from "./config/config.js";
-import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector.js";
+import { IOperationLoop } from "../../services/IOperationLoop.js";
 import { OperationModeSelector } from "../../services/OperationModeSelector.js";
 import {
   IBlockchainClient,
@@ -83,7 +83,7 @@ export class NativeYieldAutomationServiceBootstrap {
 
   private readonly operationModeMetricsRecorder: IOperationModeMetricsRecorder;
   private gaugeMetricsPoller: IGaugeMetricsPoller;
-  private operationModeSelector: IOperationModeSelector;
+  private operationModeSelector: IOperationLoop;
   private yieldReportingOperationModeProcessor: IOperationModeProcessor;
   private ossificationPendingOperationModeProcessor: IOperationModeProcessor;
   private ossificationCompleteOperationModeProcessor: IOperationModeProcessor;

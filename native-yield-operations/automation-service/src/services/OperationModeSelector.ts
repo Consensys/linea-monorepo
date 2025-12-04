@@ -1,7 +1,7 @@
 import { ILogger, wait } from "@consensys/linea-shared-utils";
 import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
 import { Address, TransactionReceipt } from "viem";
-import { IOperationModeSelector } from "../core/services/operation-mode/IOperationModeSelector.js";
+import { IOperationLoop } from "./IOperationLoop.js";
 import { IOperationModeProcessor } from "../core/services/operation-mode/IOperationModeProcessor.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../core/enums/OperationModeEnums.js";
@@ -13,7 +13,7 @@ import { IGaugeMetricsPoller } from "../core/services/IGaugeMetricsPoller.js";
  * Continuously polls the YieldManager contract to determine the current state and routes execution
  * to the corresponding operation mode processor. Handles errors with retry logic.
  */
-export class OperationModeSelector implements IOperationModeSelector {
+export class OperationModeSelector implements IOperationLoop {
   private isRunning = false;
 
   /**

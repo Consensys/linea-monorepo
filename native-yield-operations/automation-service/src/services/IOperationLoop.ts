@@ -1,4 +1,5 @@
-export interface IOperationModeSelector {
+export interface IOperationLoop {
   start(): Promise<void>;
   stop(): void;
 }
+
