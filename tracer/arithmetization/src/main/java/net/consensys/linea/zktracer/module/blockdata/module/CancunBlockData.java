@@ -25,14 +25,11 @@ import static net.consensys.linea.zktracer.opcode.OpCode.PREVRANDAO;
 import java.util.Map;
 
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockDataOperation;
-import net.consensys.linea.zktracer.module.blockdata.moduleOperation.CancunBlockDataOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.plugin.data.BlockHeader;
 
 public class CancunBlockData extends ShanghaiBlockData {
 
@@ -51,32 +48,17 @@ public class CancunBlockData extends ShanghaiBlockData {
   }
 
   @Override
-  protected int numberOfLinesPerBlock() {
-    return NB_ROWS_BLOCK_DATA;
+  public boolean shouldTraceTimestampAndNumber() {
+    return true;
   }
 
   @Override
-  protected BlockDataOperation setBlockDataOperation(
-      Hub hub,
-      BlockHeader blockHeader,
-      BlockHeader previousBlockHeader,
-      int nbOfTxsInBlock,
-      Wcp wcp,
-      Euc euc,
-      ChainConfig chain,
-      OpCode opCode,
-      long firstBlockNumber,
-      Map<Long, Bytes> blobBaseFees) {
-    return new CancunBlockDataOperation(
-        hub,
-        blockHeader,
-        previousBlockHeader,
-        txnData().numberOfUserTransactionsInCurrentBlock(),
-        wcp,
-        euc,
-        chain,
-        opCode,
-        firstBlockNumber,
-        blobBaseFees);
+  protected boolean shouldTraceRelTxNumMax() {
+    return false;
+  }
+
+  @Override
+  protected int numberOfLinesPerBlock() {
+    return NB_ROWS_BLOCK_DATA;
   }
 }

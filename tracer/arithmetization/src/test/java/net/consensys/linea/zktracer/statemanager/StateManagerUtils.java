@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.statemanager;
 
+import static com.google.common.primitives.UnsignedInts.toLong;
+
 import java.util.*;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -31,16 +33,12 @@ public class StateManagerUtils {
     return hub.state().getUserTransactionNumber();
   }
 
-  public static int getBlockOperationsLength(Hub hub) {
-    return hub.blockdata().getOpCodes().length;
-  }
-
   public static int getRelBlockNoFromBlock(Hub hub, int blockNb) {
-    return hub.blockdata().getOperations().get(blockNb * getBlockOperationsLength(hub)).relBlock();
+    return hub.blockdata().getInstructionsPerBlock().get(toLong(blockNb)).getFirst().relBlock;
   }
 
   public static int getBlockCount(Hub hub) {
-    return hub.blockdata().getOperations().size() / getBlockOperationsLength(hub);
+    return hub.blockdata().getInstructionsPerBlock().size();
   }
 
   public static List<Map<Address, FragmentFirstAndLast<AccountFragment>>>

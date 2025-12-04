@@ -21,14 +21,11 @@ import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import java.util.Map;
 
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockDataOperation;
-import net.consensys.linea.zktracer.module.blockdata.moduleOperation.LondonBlockDataOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.plugin.data.BlockHeader;
 
 public class LondonBlockData extends BlockData {
 
@@ -43,32 +40,17 @@ public class LondonBlockData extends BlockData {
   }
 
   @Override
-  protected int numberOfLinesPerBlock() {
-    return nROWS_DEPTH;
+  public boolean shouldTraceTimestampAndNumber() {
+    return false;
   }
 
   @Override
-  protected BlockDataOperation setBlockDataOperation(
-      Hub hub,
-      BlockHeader blockHeader,
-      BlockHeader previousBlockHeader,
-      int nbOfTxsInBlock,
-      Wcp wcp,
-      Euc euc,
-      ChainConfig chain,
-      OpCode opCode,
-      long firstBlockNumber,
-      Map<Long, Bytes> blobBaseFees) {
-    return new LondonBlockDataOperation(
-        hub,
-        blockHeader,
-        previousBlockHeader,
-        txnData().numberOfUserTransactionsInCurrentBlock(),
-        wcp,
-        euc,
-        chain,
-        opCode,
-        firstBlockNumber,
-        blobBaseFees);
+  protected boolean shouldTraceRelTxNumMax() {
+    return true;
+  }
+
+  @Override
+  protected int numberOfLinesPerBlock() {
+    return nROWS_DEPTH;
   }
 }

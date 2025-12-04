@@ -12,54 +12,44 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+package net.consensys.linea.zktracer.module.blockdata.moduleInstruction;
 
-package net.consensys.linea.zktracer.module.blockdata.moduleOperation;
-
-import static net.consensys.linea.zktracer.opcode.OpCode.PREVRANDAO;
-
-import java.util.Map;
+import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_ID;
 
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.blockdata.BlockDataExoCall;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import org.apache.tuweni.bytes.Bytes;
+import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
-public class ShanghaiBlockDataOperation extends ParisBlockDataOperation {
-  public ShanghaiBlockDataOperation(
+public class ChainIdInstruction extends BlockDataInstruction {
+
+  public ChainIdInstruction(
+      ChainConfig chain,
       Hub hub,
-      BlockHeader blockHeader,
-      BlockHeader prevBlockHeader,
-      int relTxMax,
       Wcp wcp,
       Euc euc,
-      ChainConfig chain,
-      OpCode opCode,
-      long firstBlockNumber,
-      Map<Long, Bytes> blobBaseFees) {
-    super(
-        hub,
-        blockHeader,
-        prevBlockHeader,
-        relTxMax,
-        wcp,
-        euc,
-        chain,
-        opCode,
-        firstBlockNumber,
-        blobBaseFees);
+      BlockHeader blockHeader,
+      BlockHeader prevBlockHeader,
+      long firstBlockNumber) {
+    super(OpCode.CHAINID, chain, hub, wcp, euc, blockHeader, prevBlockHeader, firstBlockNumber);
   }
 
-  @Override
-  protected void traceIsDifficulty(Trace.Blockdata trace, OpCode opCode) {
-    // OpCode in London fork only, not in Paris and after.
+  public void handle() {
+    data = EWord.of(chainConfig.id);
+    // row i
+    exoCalls[0] = BlockDataExoCall.callToGEQ(wcp, data, EWord.ZERO);
   }
 
-  @Override
-  protected void traceIsPrevRandao(Trace.Blockdata trace, OpCode opCode) {
-    trace.isPrevrandao(opCode == PREVRANDAO);
+  public int nbRows() {
+    return nROWS_ID;
+  }
+
+  public void traceInstruction(Trace.Blockdata trace) {
+    trace.isChainid(true);
   }
 }

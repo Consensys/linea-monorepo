@@ -12,9 +12,9 @@
     "berlinBlock":0,
     "londonBlock":0,
     "terminalTotalDifficulty": 1,
-    "shanghaiTime": 1670496245,
-    "cancunTime": 1670496246,
-    "pragueTime": 1670496247,
+    "shanghaiTime": 1670496244,
+    "cancunTime": 1670496244,
+    "pragueTime": 1670496245,
     "clique": {
       "blockperiodseconds": 1,
       "epochlength": 1,
