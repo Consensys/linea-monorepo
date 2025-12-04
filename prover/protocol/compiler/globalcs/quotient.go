@@ -68,6 +68,9 @@ type QuotientCtx struct {
 	// QuotientShares[k] stores for each k, the list of the Ratios[k] shares
 	// of the quotient for the AggregateExpression[k]
 	QuotientShares [][]ifaces.Column
+
+	// ConstraintsByRatio[r] stores the list of indices k such that Ratios[k] == r
+	ConstraintsByRatio map[int][]int
 }
 
 // createQuotientCtx constructs a [quotientCtx] from a list of ratios and aggregated
@@ -89,8 +92,13 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 			ShiftedColumnsForRatio:    make([][]ifaces.Column, len(ratios)),
 			RootsForRatio:             make([][]ifaces.Column, len(ratios)),
 			QuotientShares:            generateQuotientShares(comp, ratios, domainSize),
+			ConstraintsByRatio:        make(map[int][]int),
 		}
 	)
+
+	for k, ratio := range ratios {
+		ctx.ConstraintsByRatio[ratio] = append(ctx.ConstraintsByRatio[ratio], k)
+	}
 
 	for k, expr := range ctx.AggregateExpressions {
 
@@ -238,13 +246,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	arenaExt := arena.NewVectorArena[fext.Element](ctx.DomainSize * len(ctx.AllInvolvedRoots))
 
 	for i := 0; i < maxRatio; i++ {
-		// reset the scratch offset for this round
-		arenaExt.Reset(0)
 
-		// use sync map to store the coset evaluated polynomials
-		computedReeval := sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
-
-		for j, ratio := range ctx.Ratios {
+		for ratio, constraintsIndices := range ctx.ConstraintsByRatio {
 
 			// For instance, if deg = 2 and max deg 8, we enter only if
 			// i = 0 or 4 because this corresponds to the cosets we are
@@ -253,22 +256,35 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				continue
 			}
 
-			// With the above example, if we are in the ratio = 2 and maxRatio = 8
-			// and i = 1 (it can only be 0 <= i < ratio).
+			// reset the scratch offset for this round
+			arenaExt.Reset(0)
+
 			var (
-				share     = i * ratio / maxRatio
-				handles   = ctx.ShiftedColumnsForRatio[j]
-				roots     = ctx.RootsForRatio[j]
-				board     = ctx.AggregateExpressionsBoard[j]
-				metadatas = board.ListVariableMetadata()
+				share = i * ratio / maxRatio
+				shift = computeShift(uint64(ctx.DomainSize), ratio, share)
 			)
 
-			shift := computeShift(uint64(ctx.DomainSize), ratio, share)
+			// 1. Identify all unique roots needed for this ratio group
+			uniqueRootsMap := make(map[ifaces.ColID]int)
+			var uniqueRoots []ifaces.Column
+
+			for _, j := range constraintsIndices {
+				for _, root := range ctx.RootsForRatio[j] {
+					id := root.GetColID()
+					if _, ok := uniqueRootsMap[id]; !ok {
+						uniqueRootsMap[id] = len(uniqueRoots)
+						uniqueRoots = append(uniqueRoots, root)
+					}
+				}
+			}
+
+			rootResults := make([]sv.SmartVector, len(uniqueRoots))
+
 			domain := fft.NewDomain(uint64(ctx.DomainSize), fft.WithShift(shift), fft.WithCache())
 
-			parallel.Execute(len(roots), func(start, stop int) {
+			parallel.Execute(len(uniqueRoots), func(start, stop int) {
 				for k := start; k < stop; k++ {
-					root := roots[k]
+					root := uniqueRoots[k]
 					rootName := root.GetColID()
 
 					// load the coeff
@@ -282,8 +298,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 						copy(reevaledRoot, *vr)
 						domain.FFT(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
 
-						res := smartvectors.NewRegular(reevaledRoot)
-						computedReeval.Store(rootName, res)
+						rootResults[k] = smartvectors.NewRegular(reevaledRoot)
 						continue
 					}
 
@@ -291,97 +306,109 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					vCoeffs.WriteInSliceExt(reevaledRoot)
 					domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
 
-					res := smartvectors.NewRegularExt(reevaledRoot)
-					computedReeval.Store(rootName, res)
+					rootResults[k] = smartvectors.NewRegularExt(reevaledRoot)
 				}
 			})
 
-			for _, pol := range handles {
-				root := column.RootParents(pol)
-				rootName := root.GetColID()
+			computedReeval := make(map[ifaces.ColID]sv.SmartVector, len(uniqueRoots))
+			for k, root := range uniqueRoots {
+				computedReeval[root.GetColID()] = rootResults[k]
+			}
 
-				reevaledRoot, _ := computedReeval.Load(rootName)
+			for _, j := range constraintsIndices {
+				var (
+					handles   = ctx.ShiftedColumnsForRatio[j]
+					board     = ctx.AggregateExpressionsBoard[j]
+					metadatas = board.ListVariableMetadata()
+				)
 
-				if shifted, isShifted := pol.(column.Shifted); isShifted {
+				for _, pol := range handles {
 					polName := pol.GetColID()
-					var res sv.SmartVector
-					switch ssv := reevaledRoot.(sv.SmartVector).(type) {
-					case *sv.Regular:
-						res = sv.SoftRotate(ssv, shifted.Offset)
-					case *sv.RegularExt:
-						res = sv.SoftRotateExt(ssv, shifted.Offset)
+					if _, ok := computedReeval[polName]; ok {
+						continue
 					}
-					computedReeval.Store(polName, res)
-					continue
+
+					root := column.RootParents(pol)
+					rootName := root.GetColID()
+
+					reevaledRoot, _ := computedReeval[rootName]
+
+					if shifted, isShifted := pol.(column.Shifted); isShifted {
+						var res sv.SmartVector
+						switch ssv := reevaledRoot.(type) {
+						case *sv.Regular:
+							res = sv.SoftRotate(ssv, shifted.Offset)
+						case *sv.RegularExt:
+							res = sv.SoftRotateExt(ssv, shifted.Offset)
+						}
+						computedReeval[polName] = res
+						continue
+					}
+					panic("never called")
 				}
-				panic("never called")
-				// TODO @gbotrel confirm we only get shifted and natural columns.
-			}
 
-			// Evaluates the constraint expression on the coset
-			evalInputs := make([]sv.SmartVector, len(metadatas))
+				// Evaluates the constraint expression on the coset
+				evalInputs := make([]sv.SmartVector, len(metadatas))
 
-			for k, metadataInterface := range metadatas {
+				for k, metadataInterface := range metadatas {
 
-				switch metadata := metadataInterface.(type) {
-				case ifaces.Column:
-					value, ok := computedReeval.Load(metadata.GetColID())
-					if !ok {
-						utils.Panic("did not find the reevaluation of %v", metadata.GetColID())
+					switch metadata := metadataInterface.(type) {
+					case ifaces.Column:
+						value, ok := computedReeval[metadata.GetColID()]
+						if !ok {
+							utils.Panic("did not find the reevaluation of %v", metadata.GetColID())
+						}
+						evalInputs[k] = value
+
+					case coin.Info:
+						if metadata.IsBase() {
+							utils.Panic("unsupported, coins are always over field extensions")
+
+						} else {
+							evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), ctx.DomainSize)
+						}
+					case variables.X:
+						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
+					case variables.PeriodicSample:
+						evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
+					case ifaces.Accessor:
+						if metadata.IsBase() {
+							evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.DomainSize)
+						} else {
+							evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), ctx.DomainSize)
+						}
+					default:
+						utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
 					}
-					evalInputs[k] = value.(sv.SmartVector)
+				}
 
-				case coin.Info:
-					if metadata.IsBase() {
-						utils.Panic("unsupported, coins are always over field extensions")
+				// Note that this will panic if the expression contains "no commitment"
+				// This should be caught already by the constructor of the constraint.
+				quotientShare := board.Evaluate(evalInputs)
+				switch quotientShare := quotientShare.(type) {
+				case *sv.Regular:
+					onceAnnulatorBase.Do(func() {
+						annulatorInvVals = fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+						annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
+					})
 
-					} else {
-						evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), ctx.DomainSize)
-					}
-				case variables.X:
-					evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
-				case variables.PeriodicSample:
-					evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
-				case ifaces.Accessor:
-					if metadata.IsBase() {
-						evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.DomainSize)
-					} else {
-						evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), ctx.DomainSize)
-					}
+					vq := field.Vector(*quotientShare)
+					vq.ScalarMul(vq, &annulatorInvVals[i])
+				case *sv.RegularExt:
+					onceAnnulatorExt.Do(func() {
+						annulatorInvValsExt = fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+						annulatorInvValsExt = fext.ParBatchInvert(annulatorInvValsExt, runtime.GOMAXPROCS(0))
+					})
+					vq := extensions.Vector(*quotientShare)
+					vq.ScalarMul(vq, &annulatorInvValsExt[i])
 				default:
-					utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
+					// quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
+					utils.Panic("unexpected type %T", quotientShare)
 				}
+
+				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 			}
-
-			// Note that this will panic if the expression contains "no commitment"
-			// This should be caught already by the constructor of the constraint.
-			quotientShare := board.Evaluate(evalInputs)
-			switch quotientShare := quotientShare.(type) {
-			case *sv.Regular:
-				onceAnnulatorBase.Do(func() {
-					annulatorInvVals = fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
-					annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
-				})
-
-				vq := field.Vector(*quotientShare)
-				vq.ScalarMul(vq, &annulatorInvVals[i])
-			case *sv.RegularExt:
-				onceAnnulatorExt.Do(func() {
-					annulatorInvValsExt = fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
-					annulatorInvValsExt = fext.ParBatchInvert(annulatorInvValsExt, runtime.GOMAXPROCS(0))
-				})
-				vq := extensions.Vector(*quotientShare)
-				vq.ScalarMul(vq, &annulatorInvValsExt[i])
-			default:
-				// quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
-				utils.Panic("unexpected type %T", quotientShare)
-			}
-
-			run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 		}
-
-		// Forcefully clean the memory for the computed reevals
-		computedReeval = sync.Map{}
 	}
 
 	logrus.Infof("[global-constraint] msg=\"computed the quotient\"")
