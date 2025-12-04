@@ -86,6 +86,33 @@ func (e *Expression) Board() ExpressionBoard {
 	return board
 }
 
+// ListBoardVariableMetadata returns the list of metadata of all the variables
+// This is equivalent to calling Board() and ListVariableMetadata on the resulting
+// ExpressionBoard, but avoid allocating the full board.
+func (e *Expression) ListBoardVariableMetadata() []Metadata {
+	// no need to build the whole board here, we simply walk the graph
+	// and collect variables as they appear
+	uniqueVars := map[string]struct{}{}
+	metadatas := []Metadata{}
+	var collectVars func(expr *Expression)
+	collectVars = func(expr *Expression) {
+		switch op := expr.Operator.(type) {
+		case Variable:
+			if _, seen := uniqueVars[op.Metadata.String()]; seen {
+				return
+			}
+			uniqueVars[op.Metadata.String()] = struct{}{}
+			metadatas = append(metadatas, op.Metadata)
+		default:
+			for _, c := range expr.Children {
+				collectVars(c)
+			}
+		}
+	}
+	collectVars(e)
+	return metadatas
+}
+
 // anchor pins down the Expression onto an ExpressionBoard.
 func (e *Expression) anchor(b *ExpressionBoard) nodeID {
 	// recursion base case: the expression is already anchored

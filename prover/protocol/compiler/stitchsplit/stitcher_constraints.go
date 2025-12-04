@@ -221,28 +221,27 @@ func (ctx *StitchingContext) adjustExpression(
 	newExpr *symbolic.Expression,
 ) {
 
-	board := expr.Board()
-	metadata := board.ListVariableMetadata()
-	replaceMap := collection.NewMapping[string, *symbolic.Expression]()
+	metadata := expr.ListBoardVariableMetadata()
+	translationMap := collection.NewMapping[string, *symbolic.Expression]()
 
 	for i := range metadata {
 		switch m := metadata[i].(type) {
 		case ifaces.Column:
 			// it's always a compiled column
 			stitchingCol := getStitchingCol(*ctx, m)
-			replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
+			translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
 		case coin.Info, ifaces.Accessor:
-			replaceMap.InsertNew(m.String(), symbolic.NewVariable(m))
+			// translationMap.InsertNew(m.String(), symbolic.NewVariable(m))
 		case variables.X:
 			panic("unsupported, the value of `x` in the unsplit query and the split would be different")
 		case variables.PeriodicSample:
 			// there, we need to inflate the period and the offset
 			scaling := ctx.MaxSize / domainSize
-			replaceMap.InsertNew(m.String(), variables.NewPeriodicSample(m.T*scaling, m.Offset*scaling))
+			translationMap.InsertNew(m.String(), variables.NewPeriodicSample(m.T*scaling, m.Offset*scaling))
 		}
 	}
 
-	newExpr = expr.Replay(replaceMap)
+	newExpr = expr.Replay(translationMap)
 	if isGlobalConstraint {
 		// for the global constraints, check the constraint only over the subSampeling of the columns.
 		newExpr = symbolic.Mul(newExpr, variables.NewPeriodicSample(ctx.MaxSize/domainSize, 0))

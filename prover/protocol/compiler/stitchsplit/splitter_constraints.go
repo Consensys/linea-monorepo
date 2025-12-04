@@ -287,8 +287,7 @@ func (ctx SplitterContext) adjustExpressionForLocal(
 func (ctx SplitterContext) adjustExpressionForGlobal(
 	expr *symbolic.Expression, slot int,
 ) *symbolic.Expression {
-	board := expr.Board()
-	metadatas := board.ListVariableMetadata()
+	metadatas := expr.ListBoardVariableMetadata()
 	translationMap := collection.NewMapping[string, *symbolic.Expression]()
 
 	for _, metadata := range metadatas {
@@ -307,40 +306,44 @@ func (ctx SplitterContext) adjustExpressionForGlobal(
 					subCol.GetColID(), ctx.Size, subCol.Size(), m.GetColID(), m.Size(),
 				)
 			}
-			translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(subCol))
+			if subCol != m {
+				translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(subCol))
+			}
 		case variables.X:
 			utils.Panic("unsupported, the value of `x` in the unsplit query and the split would be different")
 		case variables.PeriodicSample:
 			// Check that the period is not larger than the domain size. If
 			// the period is smaller this is a no-op because the period does
 			// not change.
-			translated := symbolic.NewVariable(metadata)
+			if m.T <= ctx.Size {
+				continue
+			}
 
-			if m.T > ctx.Size {
+			var translated *symbolic.Expression
 
-				// Here, there are two possibilities. (1) The current slot is
-				// on a portion of the Periodic sample where everything is
-				// zero or (2) the current slot matchs a portion of the
-				// periodic sampling containing a 1. To determine which is
-				// the current situation, we need to find out where the slot
-				// is located compared to the period.
-				var (
-					slotStartAt = (slot * ctx.Size) % m.T
-					slotStopAt  = slotStartAt + ctx.Size
-				)
+			// Here, there are two possibilities. (1) The current slot is
+			// on a portion of the Periodic sample where everything is
+			// zero or (2) the current slot matchs a portion of the
+			// periodic sampling containing a 1. To determine which is
+			// the current situation, we need to find out where the slot
+			// is located compared to the period.
+			var (
+				slotStartAt = (slot * ctx.Size) % m.T
+				slotStopAt  = slotStartAt + ctx.Size
+			)
 
-				if m.Offset >= slotStartAt && m.Offset < slotStopAt {
-					translated = variables.NewPeriodicSample(ctx.Size, m.Offset%ctx.Size)
-				} else {
-					translated = symbolic.NewConstant(0)
-				}
+			if m.Offset >= slotStartAt && m.Offset < slotStopAt {
+				translated = variables.NewPeriodicSample(ctx.Size, m.Offset%ctx.Size)
+			} else {
+				translated = symbolic.NewConstant(0)
 			}
 
 			// And we can just pass it over because the period does not change
 			translationMap.InsertNew(m.String(), translated)
+
 		default:
 			// Repass the same variable (for coins or other types of single-valued variable)
-			translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
+			// translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
 		}
 
 	}
