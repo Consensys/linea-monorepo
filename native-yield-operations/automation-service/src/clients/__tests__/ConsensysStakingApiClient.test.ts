@@ -1410,22 +1410,18 @@ describe("ConsensysStakingApiClient", () => {
       const result = client.getTotalBalanceOfExitingValidators(undefined);
 
       expect(result).toBeUndefined();
-      expect(logger.warn).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators - invalid input: validators is undefined or empty", {
+      expect(logger.warn).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators - invalid input: validators is undefined", {
         validators: true,
-        empty: false,
       });
     });
 
-    it("returns undefined and logs warning when input is empty array", () => {
+    it("returns 0n and logs info when input is empty array", () => {
       const { client, logger } = createClient();
 
       const result = client.getTotalBalanceOfExitingValidators([]);
 
-      expect(result).toBeUndefined();
-      expect(logger.warn).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators - invalid input: validators is undefined or empty", {
-        validators: false,
-        empty: true,
-      });
+      expect(result).toBe(0n);
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators - empty array, returning 0");
     });
 
     it("correctly sums balances from multiple validators", () => {

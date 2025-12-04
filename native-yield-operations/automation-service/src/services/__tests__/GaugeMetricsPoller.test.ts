@@ -1240,17 +1240,17 @@ describe("GaugeMetricsPoller", () => {
       expect(logger.warn).toHaveBeenCalledWith("Skipping total pending exit gauge update: total balance unavailable");
     });
 
-    it("handles empty exitingValidators array with warning", async () => {
+    it("handles empty exitingValidators array by setting metric to 0", async () => {
       validatorDataClient.getExitingValidators.mockResolvedValue([]);
-      validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(undefined);
+      validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(0n);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
       stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
 
       await poller.poll();
 
       expect(validatorDataClient.getTotalBalanceOfExitingValidators).toHaveBeenCalledWith([]);
-      expect(metricsUpdater.setLastTotalPendingExitGwei).not.toHaveBeenCalled();
-      expect(logger.warn).toHaveBeenCalledWith("Skipping total pending exit gauge update: total balance unavailable");
+      expect(metricsUpdater.setLastTotalPendingExitGwei).toHaveBeenCalledWith(0);
+      expect(logger.warn).not.toHaveBeenCalledWith("Skipping total pending exit gauge update: total balance unavailable");
     });
   });
 
