@@ -35,6 +35,10 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `vault_address`
   LstLiabilityPrincipalGwei = "linea_native_yield_automation_service_lst_liability_principal_gwei",
 
+  // Gauge representing Lido LST liability in gwei from Lido accounting reports
+  // Single label `vault_address`
+  LidoLstLiabilityGwei = "linea_native_yield_automation_service_lido_lst_liability_gwei",
+
   // Gauge representing outstanding negative yield from the last peeked yield report
   // Single label `vault_address`
   LastPeekedNegativeYieldReport = "linea_native_yield_automation_service_last_peeked_negative_yield_report",

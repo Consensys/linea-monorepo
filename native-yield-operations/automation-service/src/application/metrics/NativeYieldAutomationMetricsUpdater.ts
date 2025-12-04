@@ -97,6 +97,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.LidoLstLiabilityGwei,
+      "Lido LST liability in gwei from Lido accounting reports",
+      ["vault_address"],
+    );
+
+    this.metricsService.createGauge(
       LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
       "Total pending partial withdrawals in gwei",
       [],
@@ -338,6 +344,21 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     if (amountGwei < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.LstLiabilityPrincipalGwei,
+      { vault_address: vaultAddress },
+      amountGwei,
+    );
+  }
+
+  /**
+   * Sets the Lido LST liability in gwei from Lido accounting reports for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} amountGwei - The Lido LST liability amount in gwei. Must be non-negative to be recorded.
+   */
+  public setLidoLstLiabilityGwei(vaultAddress: Address, amountGwei: number): void {
+    if (amountGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.LidoLstLiabilityGwei,
       { vault_address: vaultAddress },
       amountGwei,
     );

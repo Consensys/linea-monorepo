@@ -28,6 +28,8 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   setLstLiabilityPrincipalGwei(vaultAddress: Address, amountGwei: number): void;
 
+  setLidoLstLiabilityGwei(vaultAddress: Address, amountGwei: number): void;
+
   setLastTotalPendingPartialWithdrawalsGwei(totalPendingPartialWithdrawalsGwei: number): void;
 
   setLastTotalValidatorBalanceGwei(totalValidatorBalanceGwei: number): void;
