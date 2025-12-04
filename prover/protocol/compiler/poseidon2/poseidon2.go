@@ -241,65 +241,92 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 	var (
 		effectiveSize      = len(stackedOldStates[0])
 		intermediateStates = make([][][]field.Element, fullRounds)
+		// Flattened allocation for better memory locality and reduced GC pressure
+		backingStore = make([]field.Element, fullRounds*width*(effectiveSize+1))
 	)
 
 	for i := range intermediateStates {
 		intermediateStates[i] = make([][]field.Element, width)
 		for j := range intermediateStates[i] {
-			// The last iteration of the loop computes the dummy value.
-			intermediateStates[i][j] = make([]field.Element, effectiveSize+1)
+			start := (i*width + j) * (effectiveSize + 1)
+			intermediateStates[i][j] = backingStore[start : start+effectiveSize+1]
 		}
 	}
 
 	parallel.Execute(effectiveSize+1, func(start, stop int) {
-		for row := start; row < stop; row++ {
+		const tileSize = 64
+		var tileStates [tileSize][width]field.Element
 
-			// If the row is the last one, we leave zeroes in the state
-			var state [width]field.Element
-			if row < effectiveSize {
-				for col := 0; col < blockSize; col++ {
-					state[col] = stackedOldStates[col][row]
-					state[col+blockSize] = stackedBlocks[col][row]
+		for tStart := start; tStart < stop; tStart += tileSize {
+			tEnd := tStart + tileSize
+			if tEnd > stop {
+				tEnd = stop
+			}
+			currTileSize := tEnd - tStart
+
+			// Initialize tile
+			for i := 0; i < currTileSize; i++ {
+				row := tStart + i
+				if row < effectiveSize {
+					for col := 0; col < blockSize; col++ {
+						tileStates[i][col] = stackedOldStates[col][row]
+						tileStates[i][col+blockSize] = stackedBlocks[col][row]
+					}
+				} else {
+					tileStates[i] = [width]field.Element{}
 				}
 			}
 
-			matMulExternalInPlace(&state)
+			// Initial matMul
+			for i := 0; i < currTileSize; i++ {
+				matMulExternalInPlace(&tileStates[i])
+			}
+
+			saveState := func(round int) {
+				for col := 0; col < width; col++ {
+					dest := intermediateStates[round][col][tStart:tEnd]
+					for i := 0; i < currTileSize; i++ {
+						dest[i] = tileStates[i][col]
+					}
+				}
+			}
 
 			// external rounds
 			for round := 1; round < 1+partialRounds; round++ {
-				addRoundKeyCompute(round-1, &state)
-				for col := 0; col < width; col++ {
-					state[col] = sBoxCompute(col, round, state[:])
+				for i := 0; i < currTileSize; i++ {
+					addRoundKeyCompute(round-1, &tileStates[i])
+					for col := 0; col < width; col++ {
+						tileStates[i][col] = sBoxCompute(col, round, tileStates[i][:])
+					}
+					matMulExternalInPlace(&tileStates[i])
 				}
-				matMulExternalInPlace(&state)
-				for col := 0; col < width; col++ {
-					intermediateStates[round][col][row] = state[col]
-				}
+				saveState(round)
 			}
 
 			// internal rounds
 			for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
-				addRoundKeyCompute(round-1, &state)
-				for col := 0; col < 16; col++ {
-					state[col] = sBoxCompute(col, round, state[:])
+				for i := 0; i < currTileSize; i++ {
+					addRoundKeyCompute(round-1, &tileStates[i])
+					for col := 0; col < 16; col++ {
+						tileStates[i][col] = sBoxCompute(col, round, tileStates[i][:])
+					}
 				}
-				for col := 0; col < 16; col++ {
-					intermediateStates[round][col][row] = state[col]
+				saveState(round)
+				for i := 0; i < currTileSize; i++ {
+					matMulInternalInPlace(&tileStates[i])
 				}
-				matMulInternalInPlace(&state)
-
 			}
 
 			// external rounds
 			for round := fullRounds - partialRounds; round < fullRounds; round++ {
-				addRoundKeyCompute(round-1, &state)
-				for col := 0; col < width; col++ {
-					state[col] = sBoxCompute(col, round, state[:])
+				for i := 0; i < currTileSize; i++ {
+					addRoundKeyCompute(round-1, &tileStates[i])
+					for col := 0; col < width; col++ {
+						tileStates[i][col] = sBoxCompute(col, round, tileStates[i][:])
+					}
+					matMulExternalInPlace(&tileStates[i])
 				}
-				matMulExternalInPlace(&state)
-				for col := 0; col < width; col++ {
-					intermediateStates[round][col][row] = state[col]
-				}
+				saveState(round)
 			}
 		}
 	})
