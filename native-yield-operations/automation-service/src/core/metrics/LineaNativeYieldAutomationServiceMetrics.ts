@@ -23,10 +23,6 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `vault_address`
   ReportYieldTotal = "linea_native_yield_automation_service_report_yield_total",
 
-  // Counter that increments by the yield amount reported
-  // Single label `vault_address`
-  ReportYieldAmountTotal = "linea_native_yield_automation_service_report_yield_amount_total",
-
   // Gauge representing cumulative yield reported from the YieldManager contract
   // Single label `vault_address`
   YieldReportedCumulative = "linea_native_yield_automation_service_yield_reported_cumulative",

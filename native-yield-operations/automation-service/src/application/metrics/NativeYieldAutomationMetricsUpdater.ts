@@ -54,12 +54,6 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       ["vault_address"],
     );
 
-    this.metricsService.createCounter(
-      LineaNativeYieldAutomationServiceMetrics.ReportYieldAmountTotal,
-      "Total yield amount reported per vault",
-      ["vault_address"],
-    );
-
     this.metricsService.createGauge(
       LineaNativeYieldAutomationServiceMetrics.LastPeekedNegativeYieldReport,
       "Outstanding negative yield from the last peeked yield report",
@@ -242,21 +236,6 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal, {
       vault_address: vaultAddress,
     });
-  }
-
-  /**
-   * Adds to the total yield amount reported for a specific vault.
-   *
-   * @param {Address} vaultAddress - The address of the vault.
-   * @param {number} amountGwei - The yield amount in gwei. Must be greater than 0 to be recorded.
-   */
-  public addReportedYieldAmount(vaultAddress: Address, amountGwei: number): void {
-    if (amountGwei <= 0) return;
-    this.metricsService.incrementCounter(
-      LineaNativeYieldAutomationServiceMetrics.ReportYieldAmountTotal,
-      { vault_address: vaultAddress },
-      amountGwei,
-    );
   }
 
   /**

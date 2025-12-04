@@ -112,7 +112,6 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     ]);
 
     this.metricsUpdater.incrementReportYield(vault);
-    this.metricsUpdater.addReportedYieldAmount(vault, weiToGweiNumber(yieldReport.yieldAmount));
 
     const dashboardClient = DashboardContractClient.getOrCreate(dashboard);
     const nodeOperatorFeesDisbursed = dashboardClient.getNodeOperatorFeesPaidFromTxReceipt(receipt);

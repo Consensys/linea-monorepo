@@ -25,7 +25,6 @@ const createMetricsUpdaterMock = (): jest.Mocked<INativeYieldAutomationMetricsUp
     recordRebalance: jest.fn(),
     recordOperationModeDuration: jest.fn(),
     incrementReportYield: jest.fn(),
-    addReportedYieldAmount: jest.fn(),
     setLastPeekedNegativeYieldReport: jest.fn(),
     setLastPeekedPositiveYieldReport: jest.fn(),
     setLastSettleableLidoFees: jest.fn(),
@@ -240,7 +239,6 @@ describe("OperationModeMetricsRecorder", () => {
       expect(dashboardClientInstance.getNodeOperatorFeesPaidFromTxReceipt).toHaveBeenCalledWith(receipt);
       expect(yieldManagerClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(alternateYieldProvider);
       expect(metricsUpdater.incrementReportYield).toHaveBeenCalledWith(vaultAddress);
-      expect(metricsUpdater.addReportedYieldAmount).toHaveBeenCalledWith(vaultAddress, 11);
       expect(metricsUpdater.addNodeOperatorFeesPaid).toHaveBeenCalledWith(vaultAddress, 4);
       expect(metricsUpdater.addLidoFeesPaid).toHaveBeenCalledWith(vaultAddress, 6);
       expect(metricsUpdater.addLiabilitiesPaid).toHaveBeenCalledWith(vaultAddress, 8);

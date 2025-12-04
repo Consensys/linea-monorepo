@@ -14,8 +14,6 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   incrementReportYield(vaultAddress: Address): void;
 
-  addReportedYieldAmount(vaultAddress: Address, amountGwei: number): void;
-
   setLastPeekedNegativeYieldReport(vaultAddress: Address, negativeYield: number): void;
 
   setLastPeekedPositiveYieldReport(vaultAddress: Address, yieldAmount: number): void;

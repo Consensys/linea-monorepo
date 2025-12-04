@@ -34,7 +34,6 @@ const createMetricsUpdaterMock = () => {
     incrementValidatorExit,
     incrementLidoVaultAccountingReport: jest.fn(),
     incrementReportYield: jest.fn(),
-    addReportedYieldAmount: jest.fn(),
     setLastPeekedNegativeYieldReport: jest.fn(),
     setLastPeekedPositiveYieldReport: jest.fn(),
     setLastSettleableLidoFees: jest.fn(),

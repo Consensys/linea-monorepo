@@ -60,11 +60,6 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       "Yield reports submitted to YieldManager per vault",
       ["vault_address"],
     );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.ReportYieldAmountTotal,
-      "Total yield amount reported per vault",
-      ["vault_address"],
-    );
     expect(metricsService.createGauge).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.LastPeekedNegativeYieldReport,
       "Outstanding negative yield from the last peeked yield report",
@@ -279,32 +274,6 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal,
       { vault_address: vaultAddress },
     );
-  });
-
-  describe("addReportedYieldAmount", () => {
-    it("increments counter for positive amount", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.addReportedYieldAmount(vaultAddress, 500);
-
-      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.ReportYieldAmountTotal,
-        { vault_address: vaultAddress },
-        500,
-      );
-    });
-
-    it("does not increment for non-positive amount", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.addReportedYieldAmount(vaultAddress, 0);
-
-      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
-    });
   });
 
   describe("setLastPeekedNegativeYieldReport", () => {
