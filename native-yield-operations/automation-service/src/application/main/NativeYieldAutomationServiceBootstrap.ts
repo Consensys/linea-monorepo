@@ -234,6 +234,7 @@ export class NativeYieldAutomationServiceBootstrap {
       config.reporting.minPositiveYieldToReportWei,
       config.reporting.minUnpaidLidoProtocolFeesToReportYieldWei,
       config.reporting.minNegativeYieldDiffToReportYieldWei,
+      config.minWithdrawalThresholdEth,
     );
 
     this.ossificationPendingOperationModeProcessor = new OssificationPendingProcessor(

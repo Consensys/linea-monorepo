@@ -1,7 +1,14 @@
 import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import { bigintReplacer, ILogger, attempt, msToSeconds, weiToGweiNumber } from "@consensys/linea-shared-utils";
+import {
+  bigintReplacer,
+  ILogger,
+  attempt,
+  msToSeconds,
+  weiToGweiNumber,
+  ONE_ETHER,
+} from "@consensys/linea-shared-utils";
 import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
 import { RebalanceDirection, RebalanceRequirement } from "../../core/entities/RebalanceRequirement.js";
@@ -37,6 +44,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @param {bigint} minPositiveYieldToReportWei - Minimum positive yield amount (in wei) required before triggering a yield report.
    * @param {bigint} minUnpaidLidoProtocolFeesToReportYieldWei - Minimum unpaid Lido protocol fees amount (in wei) required before triggering a fee settlement.
    * @param {bigint} minNegativeYieldDiffToReportYieldWei - Minimum difference between peeked negative yield and on-state negative yield (in wei) required before triggering a yield report.
+   * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH (stored as wei) required before withdrawal operations proceed.
    */
   constructor(
     private readonly logger: ILogger,
@@ -54,6 +62,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly minPositiveYieldToReportWei: bigint,
     private readonly minUnpaidLidoProtocolFeesToReportYieldWei: bigint,
     private readonly minNegativeYieldDiffToReportYieldWei: bigint,
+    private readonly minWithdrawalThresholdEth: bigint,
   ) {}
 
   /**
@@ -188,15 +197,46 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    */
   private async _handleRebalance(rebalanceRequirements: RebalanceRequirement): Promise<void> {
     if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.NONE) {
-      // No-op
-      this.logger.info("_handleRebalance - no rebalance pathway, calling _handleSubmitLatestVaultReport");
-      await this._handleSubmitLatestVaultReport();
-      return;
+      await this._handleNoRebalance();
     } else if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.STAKE) {
       await this._handleStakingRebalance(rebalanceRequirements.rebalanceAmount);
     } else {
       await this._handleUnstakingRebalance(rebalanceRequirements.rebalanceAmount, true);
     }
+  }
+
+  /**
+   * Handles the no-rebalance pathway when rebalance direction is NONE.
+   * Processes edge cases where funds may be sitting on the YieldManager contract and submits the vault report.
+   *
+   * Flow:
+   * 1. Checks if YieldManager has a balance exceeding the minimum withdrawal threshold
+   * 2. If threshold is met, transfers all YieldManager balance to the yield provider (tolerates failures)
+   * 3. Records transfer metrics if a transfer was attempted
+   * 4. Submits the latest vault report and reports yield (if thresholds are met)
+   *
+   * Edge case handling:
+   * - Funds may accumulate on YieldManager from various sources (e.g., refunds, fees)
+   * - These funds should be transferred to the yield provider to maintain proper accounting
+   * - Only transfers if balance exceeds MIN_WITHDRAWAL_THRESHOLD_ETH to avoid gas-inefficient transactions
+   *
+   * @returns {Promise<void>} A promise that resolves when the no-rebalance pathway is handled.
+   */
+  private async _handleNoRebalance(): Promise<void> {
+    // Handle edge case where funds on the YieldManager
+    const yieldManagerBalance = await this.yieldManagerContractClient.getBalance();
+    if (yieldManagerBalance > this.minWithdrawalThresholdEth * ONE_ETHER) {
+      const transferFundsResult = await attempt(
+        this.logger,
+        () => this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, yieldManagerBalance),
+        "_handleStakingRebalance - fundYieldProvider failed (tolerated)",
+      );
+      await this.operationModeMetricsRecorder.recordTransferFundsMetrics(this.yieldProvider, transferFundsResult);
+    }
+
+    this.logger.info("_handleNoRebalance - no rebalance pathway, calling _handleSubmitLatestVaultReport");
+    await this._handleSubmitLatestVaultReport();
+    return;
   }
 
   /**
@@ -248,7 +288,6 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @param {boolean} shouldReportYield - Whether to report yield before rebalancing. If true, submits vault report before rebalancing.
    * @returns {Promise<void>} A promise that resolves when unstaking rebalance is handled.
    */
-  // Deficit
   private async _handleUnstakingRebalance(rebalanceAmount: bigint, shouldReportYield: boolean): Promise<void> {
     if (shouldReportYield) {
       // Submit report first

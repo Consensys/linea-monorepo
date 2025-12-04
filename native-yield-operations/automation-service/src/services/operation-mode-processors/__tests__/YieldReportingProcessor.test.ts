@@ -97,6 +97,7 @@ describe("YieldReportingProcessor", () => {
       reportYield: jest.fn(),
       peekYieldReport: jest.fn(),
       getYieldProviderData: jest.fn(),
+      getBalance: jest.fn(),
     } as unknown as jest.Mocked<IYieldManager<TransactionReceipt>>;
 
     lazyOracle = {
@@ -124,6 +125,7 @@ describe("YieldReportingProcessor", () => {
       result: OperationTrigger.TIMEOUT,
     });
     yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
+    yieldManager.getBalance.mockResolvedValue(0n);
     lidoReportClient.getLatestSubmitVaultReportParams.mockResolvedValue(submitParams);
     lidoReportClient.submitLatestVaultReport.mockResolvedValue(undefined);
     yieldManager.reportYield.mockResolvedValue({ transactionHash: "0xyield" } as unknown as TransactionReceipt);
@@ -146,6 +148,7 @@ describe("YieldReportingProcessor", () => {
     minPositiveYieldToReportWei: bigint = 1000000000000000000n,
     minUnpaidLidoProtocolFeesToReportYieldWei: bigint = 500000000000000000n,
     minNegativeYieldDiffToReportYieldWei: bigint = 1000000000000000000n,
+    minWithdrawalThresholdEth: bigint = 0n,
   ) =>
     new YieldReportingProcessor(
       logger,
@@ -163,6 +166,7 @@ describe("YieldReportingProcessor", () => {
       minPositiveYieldToReportWei,
       minUnpaidLidoProtocolFeesToReportYieldWei,
       minNegativeYieldDiffToReportYieldWei,
+      minWithdrawalThresholdEth,
     );
 
   it("_process - processes staking surplus flow and records metrics", async () => {
@@ -374,6 +378,59 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleRebalance({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
 
+    expect(submitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("_handleNoRebalance transfers YieldManager balance when above threshold", async () => {
+    const minWithdrawalThresholdEth = 1n; // 1 ETH threshold
+    const yieldManagerBalance = 2n * 1000000000000000000n; // 2 ETH (above threshold)
+    const processor = createProcessor(true, 1000000000000000000n, 500000000000000000n, 1000000000000000000n, minWithdrawalThresholdEth);
+    
+    yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
+    yieldManager.fundYieldProvider.mockResolvedValueOnce({ transactionHash: "0xtransfer" } as unknown as TransactionReceipt);
+    
+    const submitSpy = jest
+      .spyOn(
+        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
+        "_handleSubmitLatestVaultReport",
+      )
+      .mockResolvedValue(undefined);
+
+    await (
+      processor as unknown as {
+        _handleRebalance(req: unknown): Promise<void>;
+      }
+    )._handleRebalance({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
+
+    expect(yieldManager.getBalance).toHaveBeenCalledTimes(1);
+    expect(yieldManager.fundYieldProvider).toHaveBeenCalledWith(yieldProvider, yieldManagerBalance);
+    expect(metricsRecorder.recordTransferFundsMetrics).toHaveBeenCalledWith(yieldProvider, expect.any(Object));
+    expect(submitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("_handleNoRebalance skips transfer when YieldManager balance is below threshold", async () => {
+    const minWithdrawalThresholdEth = 1n; // 1 ETH threshold
+    const yieldManagerBalance = 500000000000000000n; // 0.5 ETH (below threshold)
+    const processor = createProcessor(true, 1000000000000000000n, 500000000000000000n, 1000000000000000000n, minWithdrawalThresholdEth);
+    
+    yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
+    
+    const submitSpy = jest
+      .spyOn(
+        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
+        "_handleSubmitLatestVaultReport",
+      )
+      .mockResolvedValue(undefined);
+
+    await (
+      processor as unknown as {
+        _handleRebalance(req: unknown): Promise<void>;
+      }
+    )._handleRebalance({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
+
+    expect(yieldManager.getBalance).toHaveBeenCalledTimes(1);
+    expect(yieldManager.fundYieldProvider).not.toHaveBeenCalled();
+    expect(metricsRecorder.recordTransferFundsMetrics).not.toHaveBeenCalled();
     expect(submitSpy).toHaveBeenCalledTimes(1);
   });
 
