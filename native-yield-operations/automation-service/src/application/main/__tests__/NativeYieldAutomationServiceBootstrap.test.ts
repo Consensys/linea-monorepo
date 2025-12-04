@@ -112,6 +112,13 @@ jest.mock(
   }),
   { virtual: true },
 );
+jest.mock(
+  "../../../clients/contracts/STETHContractClient.js",
+  () => ({
+    STETHContractClient: jest.fn().mockImplementation(() => ({})),
+  }),
+  { virtual: true },
+);
 
 jest.mock(
   "../../../clients/ConsensysStakingApiClient.js",

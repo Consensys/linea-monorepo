@@ -73,4 +73,3 @@ export class STETHContractClient implements ISTETH {
     }
   }
 }
-

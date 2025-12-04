@@ -4,11 +4,13 @@ import type { IValidatorDataClient } from "../../core/clients/IValidatorDataClie
 import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
+import type { ISTETH } from "../../core/clients/contracts/ISTETH.js";
 import type { ExitingValidator, ValidatorBalanceWithPendingWithdrawal, ValidatorBalance } from "../../core/entities/ValidatorBalance.js";
 import type { TransactionReceipt, Address } from "viem";
 import { ONE_GWEI } from "@consensys/linea-shared-utils";
 import { GaugeMetricsPoller } from "../GaugeMetricsPoller.js";
 import { YieldProviderData } from "../../core/clients/contracts/IYieldManager.js";
+import { DashboardContractClient } from "../../clients/contracts/DashboardContractClient.js";
 
 jest.mock("@consensys/linea-shared-utils", () => {
   const actual = jest.requireActual("@consensys/linea-shared-utils");
@@ -17,6 +19,13 @@ jest.mock("@consensys/linea-shared-utils", () => {
     wait: jest.fn(),
   };
 });
+
+jest.mock("../../clients/contracts/DashboardContractClient.js", () => ({
+  DashboardContractClient: {
+    getOrCreate: jest.fn(),
+    initialize: jest.fn(),
+  },
+}));
 
 import { wait } from "@consensys/linea-shared-utils";
 
@@ -30,8 +39,10 @@ describe("GaugeMetricsPoller", () => {
   let yieldManagerContractClient: MockProxy<IYieldManager<TransactionReceipt>>;
   let vaultHubContractClient: MockProxy<IVaultHub<TransactionReceipt>>;
   let beaconNodeApiClient: MockProxy<IBeaconNodeAPIClient>;
+  let stethContractClient: MockProxy<ISTETH>;
   let poller: GaugeMetricsPoller;
   let waitMock: jest.MockedFunction<typeof wait>;
+  let dashboardClientInstance: jest.Mocked<DashboardContractClient>;
   const pollIntervalMs = 5000;
 
   beforeEach(() => {
@@ -42,9 +53,19 @@ describe("GaugeMetricsPoller", () => {
     yieldManagerContractClient = mock<IYieldManager<TransactionReceipt>>();
     vaultHubContractClient = mock<IVaultHub<TransactionReceipt>>();
     beaconNodeApiClient = mock<IBeaconNodeAPIClient>();
+    stethContractClient = mock<ISTETH>();
 
     waitMock = wait as jest.MockedFunction<typeof wait>;
     waitMock.mockResolvedValue(undefined);
+
+    dashboardClientInstance = {
+      liabilityShares: jest.fn(),
+      getAddress: jest.fn(),
+      getContract: jest.fn(),
+    } as unknown as jest.Mocked<DashboardContractClient>;
+    (DashboardContractClient.getOrCreate as jest.MockedFunction<typeof DashboardContractClient.getOrCreate>).mockReturnValue(
+      dashboardClientInstance,
+    );
 
     poller = new GaugeMetricsPoller(
       logger,
@@ -55,6 +76,7 @@ describe("GaugeMetricsPoller", () => {
       yieldProvider,
       beaconNodeApiClient,
       pollIntervalMs,
+      stethContractClient,
     );
 
     // Default mocks
@@ -82,6 +104,8 @@ describe("GaugeMetricsPoller", () => {
     } as YieldProviderData);
     yieldManagerContractClient.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
     vaultHubContractClient.getLatestVaultReportTimestamp.mockResolvedValue(0n);
+    dashboardClientInstance.liabilityShares.mockResolvedValue(0n);
+    stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(0n);
   });
 
   describe("poll", () => {
@@ -239,6 +263,100 @@ describe("GaugeMetricsPoller", () => {
       expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledTimes(1);
       expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
       expect(metricsUpdater.setLstLiabilityPrincipalGwei).toHaveBeenCalledWith(vaultAddress, 5000);
+    });
+
+    it("updates LidoLstLiabilityGwei gauge", async () => {
+      const dashboardAddress = "0x3333333333333333333333333333333333333333" as Address;
+      const liabilityShares = 1000n;
+      const pooledEthWei = 2000n * ONE_GWEI; // 2000 gwei
+
+      yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
+        yieldProviderVendor: 0,
+        isStakingPaused: false,
+        isOssificationInitiated: false,
+        isOssified: false,
+        primaryEntrypoint: dashboardAddress,
+        ossifiedEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        yieldProviderIndex: 0n,
+        userFunds: 0n,
+        yieldReportedCumulative: 0n,
+        lstLiabilityPrincipal: 0n,
+        lastReportedNegativeYield: 0n,
+      } as YieldProviderData);
+
+      dashboardClientInstance.liabilityShares.mockResolvedValue(liabilityShares);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(pooledEthWei);
+
+      await poller.poll();
+
+      expect(DashboardContractClient.getOrCreate).toHaveBeenCalledWith(dashboardAddress);
+      expect(dashboardClientInstance.liabilityShares).toHaveBeenCalled();
+      expect(stethContractClient.getPooledEthBySharesRoundUp).toHaveBeenCalledWith(liabilityShares);
+      expect(metricsUpdater.setLidoLstLiabilityGwei).toHaveBeenCalledWith(vaultAddress, 2000);
+    });
+
+    it("skips LidoLstLiabilityGwei update when getPooledEthBySharesRoundUp returns undefined", async () => {
+      const dashboardAddress = "0x3333333333333333333333333333333333333333" as Address;
+      const liabilityShares = 1000n;
+
+      yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
+        yieldProviderVendor: 0,
+        isStakingPaused: false,
+        isOssificationInitiated: false,
+        isOssified: false,
+        primaryEntrypoint: dashboardAddress,
+        ossifiedEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        yieldProviderIndex: 0n,
+        userFunds: 0n,
+        yieldReportedCumulative: 0n,
+        lstLiabilityPrincipal: 0n,
+        lastReportedNegativeYield: 0n,
+      } as YieldProviderData);
+
+      dashboardClientInstance.liabilityShares.mockResolvedValue(liabilityShares);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(undefined);
+
+      await poller.poll();
+
+      expect(DashboardContractClient.getOrCreate).toHaveBeenCalledWith(dashboardAddress);
+      expect(dashboardClientInstance.liabilityShares).toHaveBeenCalled();
+      expect(stethContractClient.getPooledEthBySharesRoundUp).toHaveBeenCalledWith(liabilityShares);
+      expect(metricsUpdater.setLidoLstLiabilityGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Skipping Lido LST liability gauge update: getPooledEthBySharesRoundUp returned undefined"),
+      );
+    });
+
+    it("handles error when liabilityShares fails", async () => {
+      const dashboardAddress = "0x3333333333333333333333333333333333333333" as Address;
+      const error = new Error("Failed to fetch liability shares");
+
+      yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
+        yieldProviderVendor: 0,
+        isStakingPaused: false,
+        isOssificationInitiated: false,
+        isOssified: false,
+        primaryEntrypoint: dashboardAddress,
+        ossifiedEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        yieldProviderIndex: 0n,
+        userFunds: 0n,
+        yieldReportedCumulative: 0n,
+        lstLiabilityPrincipal: 0n,
+        lastReportedNegativeYield: 0n,
+      } as YieldProviderData);
+
+      dashboardClientInstance.liabilityShares.mockRejectedValue(error);
+
+      await poller.poll();
+
+      expect(DashboardContractClient.getOrCreate).toHaveBeenCalledWith(dashboardAddress);
+      expect(dashboardClientInstance.liabilityShares).toHaveBeenCalled();
+      expect(stethContractClient.getPooledEthBySharesRoundUp).not.toHaveBeenCalled();
+      expect(metricsUpdater.setLidoLstLiabilityGwei).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith("Failed to update Lido LST liability gauge", {
+        error,
+        vault: vaultAddress,
+      });
     });
 
     it("updates LastVaultReportTimestamp gauge", async () => {
@@ -496,12 +614,13 @@ describe("GaugeMetricsPoller", () => {
 
       const yieldReportedCumulativeWei = 500n * ONE_GWEI;
       const lstLiabilityPrincipalWei = 3000n * ONE_GWEI;
+      const dashboardAddress = "0x3333333333333333333333333333333333333333" as Address;
       yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
         yieldProviderVendor: 0,
         isStakingPaused: false,
         isOssificationInitiated: false,
         isOssified: false,
-        primaryEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        primaryEntrypoint: dashboardAddress,
         ossifiedEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
         yieldProviderIndex: 0n,
         userFunds: 0n,
@@ -509,6 +628,8 @@ describe("GaugeMetricsPoller", () => {
         lstLiabilityPrincipal: lstLiabilityPrincipalWei,
         lastReportedNegativeYield: 0n,
       } as YieldProviderData);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
 
       const expectedTimestamp = 1704067200n;
       vaultHubContractClient.getLatestVaultReportTimestamp.mockResolvedValue(expectedTimestamp);
@@ -526,6 +647,9 @@ describe("GaugeMetricsPoller", () => {
       expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalledWith(vaultAddress, 500);
       expect(metricsUpdater.setLstLiabilityPrincipalGwei).toHaveBeenCalledWith(vaultAddress, 3000);
       expect(metricsUpdater.setLastVaultReportTimestamp).toHaveBeenCalledWith(vaultAddress, Number(expectedTimestamp));
+      // Lido LST liability gauge should also be updated
+      expect(DashboardContractClient.getOrCreate).toHaveBeenCalled();
+      expect(metricsUpdater.setLidoLstLiabilityGwei).toHaveBeenCalled();
     });
 
     it("converts wei to gwei correctly and timestamp to number", async () => {
@@ -795,7 +919,7 @@ describe("GaugeMetricsPoller", () => {
       // This test covers the fallback case where index >= metricNames.length
       // We need to simulate a scenario where we have more rejected promises than metric names
       // Since we can't naturally create this, we'll test the logic directly by mocking Promise.allSettled
-      // We now have 10 metrics (indices 0-9), so index 10 will trigger "unknown"
+      // We now have 11 metrics (indices 0-10), so index 11 will trigger "unknown"
       const originalAllSettled = Promise.allSettled;
       
       // Mock Promise.allSettled to return different values for fetch (first call) and update (second call)
@@ -828,7 +952,7 @@ describe("GaugeMetricsPoller", () => {
             },
           ]);
         }
-        // Second call: update promises (11 promises to trigger index 10 = "unknown")
+        // Second call: update promises (12 promises to trigger index 11 = "unknown")
         return Promise.resolve([
           { status: "rejected" as const, reason: new Error("Error 1") },
           { status: "rejected" as const, reason: new Error("Error 2") },
@@ -840,7 +964,8 @@ describe("GaugeMetricsPoller", () => {
           { status: "rejected" as const, reason: new Error("Error 8") },
           { status: "rejected" as const, reason: new Error("Error 9") },
           { status: "rejected" as const, reason: new Error("Error 10") },
-          { status: "rejected" as const, reason: new Error("Error 11") }, // Index 10 triggers "unknown"
+          { status: "rejected" as const, reason: new Error("Error 11") },
+          { status: "rejected" as const, reason: new Error("Error 12") }, // Index 11 triggers "unknown"
         ]);
       });
 
@@ -849,7 +974,7 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
-      // Verify that the 11th error (index 10) uses "unknown" as the metric name
+      // Verify that the 12th error (index 11) uses "unknown" as the metric name
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update unknown gauge metric",
         { error: expect.any(Error) },
@@ -885,6 +1010,8 @@ describe("GaugeMetricsPoller", () => {
       ];
 
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
 
       await poller.poll();
 
@@ -940,6 +1067,8 @@ describe("GaugeMetricsPoller", () => {
       ];
 
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
 
       await poller.poll();
 
@@ -975,6 +1104,8 @@ describe("GaugeMetricsPoller", () => {
       ];
 
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
 
       await poller.poll();
 
@@ -1019,6 +1150,8 @@ describe("GaugeMetricsPoller", () => {
 
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
       validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(72n * ONE_GWEI);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
 
       await poller.poll();
 
@@ -1085,6 +1218,8 @@ describe("GaugeMetricsPoller", () => {
     it("handles empty exitingValidators array with warning", async () => {
       validatorDataClient.getExitingValidators.mockResolvedValue([]);
       validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(undefined);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
 
       await poller.poll();
 

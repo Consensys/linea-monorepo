@@ -50,6 +50,8 @@ import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationMode
 import { OperationModeMetricsRecorder } from "../metrics/OperationModeMetricsRecorder.js";
 import { DashboardContractClient } from "../../clients/contracts/DashboardContractClient.js";
 import { StakingVaultContractClient } from "../../clients/contracts/StakingVaultContractClient.js";
+import { STETHContractClient } from "../../clients/contracts/STETHContractClient.js";
+import { ISTETH } from "../../core/clients/contracts/ISTETH.js";
 import { GaugeMetricsPoller } from "../../services/GaugeMetricsPoller.js";
 
 /**
@@ -71,6 +73,7 @@ export class NativeYieldAutomationServiceBootstrap {
   private lazyOracleContractClient: ILazyOracle<TransactionReceipt>;
   private vaultHubContractClient: IVaultHub<TransactionReceipt>;
   private lineaRollupYieldExtensionContractClient: ILineaRollupYieldExtension<TransactionReceipt>;
+  private stethContractClient: ISTETH;
 
   private exponentialBackoffRetryService: IRetryService;
   private beaconNodeApiClient: IBeaconNodeAPIClient;
@@ -170,6 +173,11 @@ export class NativeYieldAutomationServiceBootstrap {
       this.viemBlockchainClientAdapter,
       config.contractAddresses.lineaRollupContractAddress,
     );
+    this.stethContractClient = new STETHContractClient(
+      this.viemBlockchainClientAdapter,
+      config.contractAddresses.stethAddress,
+      new WinstonLogger(STETHContractClient.name, config.loggerOptions),
+    );
 
     this.exponentialBackoffRetryService = new ExponentialBackoffRetryService(
       new WinstonLogger(ExponentialBackoffRetryService.name, config.loggerOptions),
@@ -267,6 +275,7 @@ export class NativeYieldAutomationServiceBootstrap {
       config.contractAddresses.lidoYieldProviderAddress,
       this.beaconNodeApiClient,
       config.timing.gaugeMetricsPollIntervalMs,
+      this.stethContractClient,
     );
 
     this.operationModeSelector = new OperationModeSelector(

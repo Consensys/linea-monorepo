@@ -11,10 +11,12 @@ import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { IYieldManager, YieldProviderData } from "../core/clients/contracts/IYieldManager.js";
 import { IVaultHub } from "../core/clients/contracts/IVaultHub.js";
+import { ISTETH } from "../core/clients/contracts/ISTETH.js";
 import { ExitingValidator, ValidatorBalance } from "../core/entities/ValidatorBalance.js";
 import { Address, Hex, TransactionReceipt } from "viem";
 import { IGaugeMetricsPoller } from "../core/services/IGaugeMetricsPoller.js";
 import { IOperationLoop } from "./IOperationLoop.js";
+import { DashboardContractClient } from "../clients/contracts/DashboardContractClient.js";
 
 /**
  * Polls various data sources and updates gauge metrics.
@@ -35,6 +37,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
    * @param {Address} yieldProvider - The yield provider address.
    * @param {IBeaconNodeAPIClient} beaconNodeApiClient - Client for retrieving pending partial withdrawals from beacon chain.
    * @param {number} pollIntervalMs - Polling interval in milliseconds between gauge metrics updates.
+   * @param {ISTETH} stethContractClient - Client for reading STETH contract data.
    */
   constructor(
     private readonly logger: ILogger,
@@ -45,6 +48,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
     private readonly yieldProvider: Address,
     private readonly beaconNodeApiClient: IBeaconNodeAPIClient,
     private readonly pollIntervalMs: number,
+    private readonly stethContractClient: ISTETH,
   ) {}
 
   /**
@@ -116,6 +120,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
         updatePromises.push(
           this._updateYieldReportedCumulativeGauge(vault, yieldProviderData),
           this._updateLstLiabilityPrincipalGauge(vault, yieldProviderData),
+          this._updateLidoLstLiabilityGauge(vault, yieldProviderData),
         );
       }
     }
@@ -136,6 +141,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
           "total pending deposits",
           "yield reported cumulative",
           "lst liability principal",
+          "lido lst liability",
         ];
         const metricName = metricNames[index] || "unknown";
         this.logger.error(`Failed to update ${metricName} gauge metric`, { error: result.reason });
@@ -285,6 +291,35 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
    */
   private async _updateLstLiabilityPrincipalGauge(vault: Address, yieldProviderData: YieldProviderData): Promise<void> {
     this.metricsUpdater.setLstLiabilityPrincipalGwei(vault, weiToGweiNumber(yieldProviderData.lstLiabilityPrincipal));
+  }
+
+  /**
+   * Updates the Lido LST liability gauge metric.
+   * Fetches liability shares from Dashboard contract, converts to ETH using STETH contract,
+   * and updates the metric in gwei.
+   *
+   * @param {Address} vault - The vault address to use for the metric.
+   * @param {YieldProviderData} yieldProviderData - The yield provider data containing dashboard address.
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated (or returns early on error).
+   */
+  private async _updateLidoLstLiabilityGauge(vault: Address, yieldProviderData: YieldProviderData): Promise<void> {
+    try {
+      const dashboardAddress = yieldProviderData.primaryEntrypoint;
+      const dashboardClient = DashboardContractClient.getOrCreate(dashboardAddress);
+
+      const liabilityShares = await dashboardClient.liabilityShares();
+      const pooledEth = await this.stethContractClient.getPooledEthBySharesRoundUp(liabilityShares);
+
+      if (pooledEth === undefined) {
+        this.logger.warn("Skipping Lido LST liability gauge update: getPooledEthBySharesRoundUp returned undefined");
+        return;
+      }
+
+      const amountGwei = weiToGweiNumber(pooledEth);
+      this.metricsUpdater.setLidoLstLiabilityGwei(vault, amountGwei);
+    } catch (error) {
+      this.logger.error("Failed to update Lido LST liability gauge", { error, vault });
+    }
   }
 
   /**
