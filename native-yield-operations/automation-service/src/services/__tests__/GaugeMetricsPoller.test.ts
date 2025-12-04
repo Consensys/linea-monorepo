@@ -265,6 +265,30 @@ describe("GaugeMetricsPoller", () => {
       expect(metricsUpdater.setLstLiabilityPrincipalGwei).toHaveBeenCalledWith(vaultAddress, 5000);
     });
 
+    it("updates LastReportedNegativeYield gauge", async () => {
+      const lastReportedNegativeYieldWei = 3000n * ONE_GWEI;
+      yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
+        yieldProviderVendor: 0,
+        isStakingPaused: false,
+        isOssificationInitiated: false,
+        isOssified: false,
+        primaryEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        ossifiedEntrypoint: "0x0000000000000000000000000000000000000000" as Address,
+        yieldProviderIndex: 0n,
+        userFunds: 0n,
+        yieldReportedCumulative: 0n,
+        lstLiabilityPrincipal: 0n,
+        lastReportedNegativeYield: lastReportedNegativeYieldWei,
+      } as YieldProviderData);
+
+      await poller.poll();
+
+      expect(yieldManagerContractClient.getYieldProviderData).toHaveBeenCalledWith(yieldProvider);
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledTimes(1);
+      expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
+      expect(metricsUpdater.setLastReportedNegativeYield).toHaveBeenCalledWith(vaultAddress, 3000);
+    });
+
     it("updates LidoLstLiabilityGwei gauge", async () => {
       const dashboardAddress = "0x3333333333333333333333333333333333333333" as Address;
       const liabilityShares = 1000n;
@@ -952,7 +976,7 @@ describe("GaugeMetricsPoller", () => {
             },
           ]);
         }
-        // Second call: update promises (12 promises to trigger index 11 = "unknown")
+        // Second call: update promises (13 promises to trigger index 12 = "unknown")
         return Promise.resolve([
           { status: "rejected" as const, reason: new Error("Error 1") },
           { status: "rejected" as const, reason: new Error("Error 2") },
@@ -965,7 +989,8 @@ describe("GaugeMetricsPoller", () => {
           { status: "rejected" as const, reason: new Error("Error 9") },
           { status: "rejected" as const, reason: new Error("Error 10") },
           { status: "rejected" as const, reason: new Error("Error 11") },
-          { status: "rejected" as const, reason: new Error("Error 12") }, // Index 11 triggers "unknown"
+          { status: "rejected" as const, reason: new Error("Error 12") },
+          { status: "rejected" as const, reason: new Error("Error 13") }, // Index 12 triggers "unknown"
         ]);
       });
 
@@ -974,7 +999,7 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
-      // Verify that the 12th error (index 11) uses "unknown" as the metric name
+      // Verify that the 13th error (index 12) uses "unknown" as the metric name
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update unknown gauge metric",
         { error: expect.any(Error) },

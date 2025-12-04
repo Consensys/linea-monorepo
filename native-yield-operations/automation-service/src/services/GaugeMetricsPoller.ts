@@ -120,6 +120,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
         updatePromises.push(
           this._updateYieldReportedCumulativeGauge(vault, yieldProviderData),
           this._updateLstLiabilityPrincipalGauge(vault, yieldProviderData),
+          this._updateLastReportedNegativeYieldGauge(vault, yieldProviderData),
           this._updateLidoLstLiabilityGauge(vault, yieldProviderData),
         );
       }
@@ -141,6 +142,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
           "total pending deposits",
           "yield reported cumulative",
           "lst liability principal",
+          "last reported negative yield",
           "lido lst liability",
         ];
         const metricName = metricNames[index] || "unknown";
@@ -291,6 +293,23 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
    */
   private async _updateLstLiabilityPrincipalGauge(vault: Address, yieldProviderData: YieldProviderData): Promise<void> {
     this.metricsUpdater.setLstLiabilityPrincipalGwei(vault, weiToGweiNumber(yieldProviderData.lstLiabilityPrincipal));
+  }
+
+  /**
+   * Updates the last reported negative yield gauge metric from the YieldManager contract.
+   *
+   * @param {Address} vault - The vault address to use for the metric.
+   * @param {YieldProviderData} yieldProviderData - The yield provider data from the YieldManager contract.
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated.
+   */
+  private async _updateLastReportedNegativeYieldGauge(
+    vault: Address,
+    yieldProviderData: YieldProviderData,
+  ): Promise<void> {
+    this.metricsUpdater.setLastReportedNegativeYield(
+      vault,
+      weiToGweiNumber(yieldProviderData.lastReportedNegativeYield),
+    );
   }
 
   /**

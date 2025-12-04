@@ -86,6 +86,21 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       ["vault_address"],
     );
     expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.LstLiabilityPrincipalGwei,
+      "LST liability principal from the YieldManager contract",
+      ["vault_address"],
+    );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.LastReportedNegativeYield,
+      "Last reported negative yield from the YieldManager contract",
+      ["vault_address"],
+    );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.LidoLstLiabilityGwei,
+      "Lido LST liability in gwei from Lido accounting reports",
+      ["vault_address"],
+    );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
       "Total pending partial withdrawals in gwei",
       [],
@@ -428,6 +443,32 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       jest.clearAllMocks();
 
       updater.setLstLiabilityPrincipalGwei(vaultAddress, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setLastReportedNegativeYield", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastReportedNegativeYield(vaultAddress, 1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastReportedNegativeYield,
+        { vault_address: vaultAddress },
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastReportedNegativeYield(vaultAddress, -1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });

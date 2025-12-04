@@ -91,6 +91,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastReportedNegativeYield,
+      "Last reported negative yield from the YieldManager contract",
+      ["vault_address"],
+    );
+
+    this.metricsService.createGauge(
       LineaNativeYieldAutomationServiceMetrics.LidoLstLiabilityGwei,
       "Lido LST liability in gwei from Lido accounting reports",
       ["vault_address"],
@@ -323,6 +329,21 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     if (amountGwei < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.LstLiabilityPrincipalGwei,
+      { vault_address: vaultAddress },
+      amountGwei,
+    );
+  }
+
+  /**
+   * Sets the last reported negative yield from the YieldManager contract for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} amountGwei - The last reported negative yield amount in gwei. Must be non-negative to be recorded.
+   */
+  public setLastReportedNegativeYield(vaultAddress: Address, amountGwei: number): void {
+    if (amountGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastReportedNegativeYield,
       { vault_address: vaultAddress },
       amountGwei,
     );
