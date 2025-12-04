@@ -55,7 +55,7 @@ public class ForkTracingAndSwitchingBesuTest extends TracerTestBase {
         BytecodeCompiler.newProgram(chainConfig).push(32, 0xbeef).push(32, 0xdead).op(OpCode.ADD);
 
     switch (fork) {
-      case CANCUN, PRAGUE -> compiler
+      case PRAGUE -> compiler
           .push(Bytes.fromHexString("0x7F")) // value
           .push(32) // offset
           .op(OpCode.MSTORE)
@@ -87,7 +87,7 @@ public class ForkTracingAndSwitchingBesuTest extends TracerTestBase {
   }
 
   @Test
-  void testForkSwitchCancunToPrague(TestInfo testInfo) {
+  void testForkSwitchPragueToOsaka(TestInfo testInfo) {
     KeyPair keyPair = new SECP256K1().generateKeyPair();
     Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
 
@@ -107,31 +107,34 @@ public class ForkTracingAndSwitchingBesuTest extends TracerTestBase {
             .push(0); // dest offset  (for MCOPY use)
 
     // MCOPY
-    Bytes codeCancun = Bytes.concatenate(compilerMain.compile(), Bytes.fromHexString("0x5E"));
+    Bytes codePrague = Bytes.concatenate(compilerMain.compile(), Bytes.fromHexString("0x5E"));
 
-    ToyAccount receiverAccountCancun = getReceiverAccount("0x111112", codeCancun);
+    // CLZ opcode
+    Bytes codeOsaka = Bytes.concatenate(compilerMain.compile(), Bytes.fromHexString("0x1E"));
 
     // Uses same code as in Cancun, as no new opcode was introduced in Prague
-    ToyAccount receiverAccountPrague = getReceiverAccount("0x111113", codeCancun);
+    ToyAccount receiverAccountPrague = getReceiverAccount("0x111113", codePrague);
 
-    ToyTransaction.ToyTransactionBuilder txBuilderCancun =
-        ToyTransaction.builder().to(receiverAccountCancun).keyPair(keyPair);
+    ToyAccount receiverAccountOsaka = getReceiverAccount("0x111115", codeOsaka);
 
     ToyTransaction.ToyTransactionBuilder txBuilderPrague =
         ToyTransaction.builder().to(receiverAccountPrague).keyPair(keyPair);
 
+    ToyTransaction.ToyTransactionBuilder txBuilderOsaka =
+        ToyTransaction.builder().to(receiverAccountOsaka).keyPair(keyPair);
+
     // create transactions with the same sender, manages nonce
     final List<Transaction> transactions =
         ToyMultiTransaction.builder()
-            .build(List.of(txBuilderCancun, txBuilderPrague), senderAccount);
+            .build(List.of(txBuilderPrague, txBuilderOsaka), senderAccount);
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-        .accounts(List.of(senderAccount, receiverAccountCancun, receiverAccountPrague))
+        .accounts(List.of(senderAccount, receiverAccountPrague, receiverAccountOsaka))
         .transactions(transactions)
         .runWithBesuNode(true)
         .oneTxPerBlockOnBesuNode(true)
         .customBesuNodeGenesis(
-            "BesuExecutionToolsGenesis_CancunToPrague.json") /* Block 0 has totalDifficulty at 1, so TTD is set to 1 in genesis to have Block 1 on Paris fork */
+            "BesuExecutionToolsGenesis_PragueToOsaka.json") /* Block 0 has totalDifficulty at 1, so TTD is set to 1 in genesis to have Block 1 on Paris fork */
         .build()
         .run();
   }

@@ -14,7 +14,8 @@
     "terminalTotalDifficulty": 1,
     "shanghaiTime": 1670496244,
     "cancunTime": 1670496244,
-    "pragueTime": 1670496245,
+    "pragueTime": 1670496244,
+    "osakaTime": 1670496245,
     "clique": {
       "blockperiodseconds": 1,
       "epochlength": 1,
