@@ -17,6 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
+  private int headBlockNumber() throws Exception {
+    return minerNode.nodeRequests().eth().ethBlockNumber().send().getBlockNumber().intValue();
+  }
 
   @Test
   public void singleBundleSelectionTimeout() throws Exception {
@@ -36,18 +39,27 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
 
     final var rawTxs = Arrays.stream(calls).map(MulmodCall::rawTx).toArray(String[]::new);
 
+    // stop automatic block production to
+    // ensure bundle and transfers are evaluated in the same block
+    super.buildBlocksInBackground = false;
+
+    final var previousHeadBlockNumber = headBlockNumber();
     final var sendBundleRequest =
-        new SendBundleRequest(new BundleParams(rawTxs, Integer.toHexString(2)));
+        new SendBundleRequest(
+            new BundleParams(
+                rawTxs, /*blockNumber*/ Integer.toHexString(previousHeadBlockNumber + 1)));
+
     final var sendBundleResponse = sendBundleRequest.execute(minerNode.nodeRequests());
+    assertThat(sendBundleResponse.hasError()).isFalse();
+    assertThat(sendBundleResponse.getResult().bundleHash()).isNotBlank();
 
     final var transferTxHash =
         accountTransactions
             .createTransfer(accounts.getSecondaryBenefactor(), accounts.getPrimaryBenefactor(), 1)
             .execute(minerNode.nodeRequests());
 
-    assertThat(sendBundleResponse.hasError()).isFalse();
-    assertThat(sendBundleResponse.getResult().bundleHash()).isNotBlank();
-
+    super.buildNewBlock();
+    assertThat(headBlockNumber()).isGreaterThan(previousHeadBlockNumber);
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()));
 
     // none of the bundle txs must be included in a block
