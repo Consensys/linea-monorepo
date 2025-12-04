@@ -31,7 +31,7 @@ describe("VaultHubContractClient", () => {
   let publicClient: PublicClient;
   const viemContractStub = {
     abi: VaultHubABI,
-    read: { settleableLidoFeesValue: jest.fn(), latestReport: jest.fn(), LIDO: jest.fn() },
+    read: { settleableLidoFeesValue: jest.fn(), latestReport: jest.fn() },
   } as any;
 
   beforeEach(() => {
@@ -332,32 +332,6 @@ describe("VaultHubContractClient", () => {
       expect(result).toBe(0n);
       expect(logger.error).toHaveBeenCalledWith(`getLatestVaultReportTimestamp failed, error=${error}`);
       expect(viemContractStub.read.latestReport).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe("LIDO", () => {
-    it("returns Lido contract address when call succeeds", async () => {
-      const client = createClient();
-      const expectedAddress = "0x3333333333333333333333333333333333333333" as Address;
-      viemContractStub.read.LIDO.mockResolvedValueOnce(expectedAddress);
-
-      const result = await client.LIDO();
-
-      expect(result).toBe(expectedAddress);
-      expect(viemContractStub.read.LIDO).toHaveBeenCalledTimes(1);
-      expect(viemContractStub.read.LIDO).toHaveBeenCalledWith();
-    });
-
-    it("returns undefined and logs error when call fails", async () => {
-      const client = createClient();
-      const error = new Error("Contract call failed");
-      viemContractStub.read.LIDO.mockRejectedValueOnce(error);
-
-      const result = await client.LIDO();
-
-      expect(result).toBeUndefined();
-      expect(logger.error).toHaveBeenCalledWith(`LIDO failed, error=${error}`);
-      expect(viemContractStub.read.LIDO).toHaveBeenCalledTimes(1);
     });
   });
 });
