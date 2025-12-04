@@ -94,6 +94,8 @@ export const configSchema = z
     TRIGGER_MAX_INACTION_MS: z.coerce.number().int().positive(),
     // Retry delay in milliseconds between contract read attempts after failures.
     CONTRACT_READ_RETRY_TIME_MS: z.coerce.number().int().positive(),
+    // Polling interval in milliseconds for updating gauge metrics from various data sources.
+    GAUGE_METRICS_POLL_INTERVAL_MS: z.coerce.number().int().positive(),
     // Whether to submit the vault accounting report. Can set to false if we expect other actors to submit.
     SHOULD_SUBMIT_VAULT_REPORT: BooleanFromString,
     /** Minimum positive yield amount (in wei) required before triggering a yield report.

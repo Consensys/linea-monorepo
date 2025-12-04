@@ -52,6 +52,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
       maxInactionMs: env.TRIGGER_MAX_INACTION_MS,
     },
     contractReadRetryTimeMs: env.CONTRACT_READ_RETRY_TIME_MS,
+    gaugeMetricsPollIntervalMs: env.GAUGE_METRICS_POLL_INTERVAL_MS,
   },
   rebalanceToleranceBps: env.REBALANCE_TOLERANCE_BPS,
   maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
