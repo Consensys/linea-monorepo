@@ -68,6 +68,15 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
   }
 
   /**
+   * Gets the balance of the LazyOracle contract.
+   *
+   * @returns {Promise<bigint>} The contract balance in wei.
+   */
+  async getBalance(): Promise<bigint> {
+    return this.contractClientLibrary.getBalance(this.contractAddress);
+  }
+
+  /**
    * Retrieves the latest report data from the LazyOracle contract.
    *
    * @returns {Promise<LazyOracleReportData>} The latest report data containing timestamp, refSlot, treeRoot, and reportCid.

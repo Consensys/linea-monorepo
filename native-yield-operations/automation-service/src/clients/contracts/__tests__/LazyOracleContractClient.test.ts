@@ -77,6 +77,16 @@ describe("LazyOracleContractClient", () => {
     expect(client.getContract()).toBe(contractStub);
   });
 
+  it("gets the contract balance", async () => {
+    const balance = 1_000_000_000_000_000_000n; // 1 ETH
+    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+
+    const client = createClient();
+    await expect(client.getBalance()).resolves.toBe(balance);
+
+    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
+  });
+
   it("returns latest report data with normalized structure", async () => {
     const client = createClient();
     const latest = [123n, 456n, "0xabc" as Hex, "cid"] as const;

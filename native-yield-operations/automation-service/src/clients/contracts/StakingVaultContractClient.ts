@@ -100,6 +100,20 @@ export class StakingVaultContractClient implements IStakingVault {
   }
 
   /**
+   * Gets the balance of the StakingVault contract.
+   *
+   * @returns {Promise<bigint>} The contract balance in wei.
+   */
+  async getBalance(): Promise<bigint> {
+    if (!StakingVaultContractClient.blockchainClient) {
+      throw new Error(
+        "StakingVaultContractClient: blockchainClient must be initialized via StakingVaultContractClient.initialize() before use",
+      );
+    }
+    return StakingVaultContractClient.blockchainClient.getBalance(this.contractAddress);
+  }
+
+  /**
    * Checks if beacon chain deposits are paused for the staking vault.
    *
    * @returns {Promise<boolean>} True if beacon chain deposits are paused, false otherwise.

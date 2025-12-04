@@ -102,6 +102,20 @@ export class DashboardContractClient implements IDashboard<TransactionReceipt> {
   }
 
   /**
+   * Gets the balance of the Dashboard contract.
+   *
+   * @returns {Promise<bigint>} The contract balance in wei.
+   */
+  async getBalance(): Promise<bigint> {
+    if (!DashboardContractClient.blockchainClient) {
+      throw new Error(
+        "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() before use",
+      );
+    }
+    return DashboardContractClient.blockchainClient.getBalance(this.contractAddress);
+  }
+
+  /**
    * Extracts the node operator fee amount from a transaction receipt by decoding FeeDisbursed events.
    * Only decodes logs emitted by this contract. Skips unrelated logs (from the same contract or different ABIs).
    * If event not found, returns 0n.

@@ -79,6 +79,15 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   }
 
   /**
+   * Gets the balance of the YieldManager contract.
+   *
+   * @returns {Promise<bigint>} The contract balance in wei.
+   */
+  async getBalance(): Promise<bigint> {
+    return this.contractClientLibrary.getBalance(this.contractAddress);
+  }
+
+  /**
    * Gets the L1 Message Service address from the YieldManager contract.
    *
    * @returns {Promise<Address>} The L1 Message Service address.

@@ -62,6 +62,16 @@ describe("VaultHubContractClient", () => {
     expect(client.getContract()).toBe(viemContractStub);
   });
 
+  it("gets the contract balance", async () => {
+    const balance = 1_000_000_000_000_000_000n; // 1 ETH
+    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+
+    const client = createClient();
+    await expect(client.getBalance()).resolves.toBe(balance);
+
+    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
+  });
+
   it("returns liability payment when VaultRebalanced event is present", () => {
     const client = createClient();
     const receipt = buildReceipt([

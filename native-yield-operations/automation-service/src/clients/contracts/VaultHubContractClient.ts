@@ -48,6 +48,15 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
   }
 
   /**
+   * Gets the balance of the VaultHub contract.
+   *
+   * @returns {Promise<bigint>} The contract balance in wei.
+   */
+  async getBalance(): Promise<bigint> {
+    return this.contractClientLibrary.getBalance(this.contractAddress);
+  }
+
+  /**
    * Extracts the liability payment amount from a transaction receipt by decoding VaultRebalanced events.
    * Only decodes logs emitted by this contract. Skips unrelated logs (from the same contract or different ABIs).
    * If event not found, returns 0n.

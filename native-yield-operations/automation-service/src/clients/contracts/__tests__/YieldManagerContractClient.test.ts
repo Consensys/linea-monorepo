@@ -158,6 +158,16 @@ describe("YieldManagerContractClient", () => {
     expect(client.getContract()).toBe(contractStub);
   });
 
+  it("gets the contract balance", async () => {
+    const balance = 1_000_000_000_000_000_000n; // 1 ETH
+    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+
+    const client = createClient();
+    await expect(client.getBalance()).resolves.toBe(balance);
+
+    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
+  });
+
   it("delegates simple reads to the viem contract", async () => {
     const stakingPaused = true;
     const ossificationInitiated = true;
