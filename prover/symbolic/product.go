@@ -3,7 +3,6 @@ package symbolic
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"reflect"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
@@ -56,36 +55,7 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 		panic("unmatching lengths")
 	}
 
-	for i := range exponents {
-		if exponents[i] < 0 {
-			panic("negative exponents are not allowed")
-		}
-	}
-
-	for i := range items {
-		if items[i].ESHash.IsZero() && exponents[i] != 0 {
-			return NewConstant(0)
-		}
-	}
-
-	exponents, items = expandTerms(&Product{}, exponents, items)
-	exponents, items, constExponents, constVal := regroupTerms(exponents, items)
-
-	// This regroups all the constants into a global constant with a coefficient
-	// of 1.
-	var t fext.GenericFieldElem
-	c := fext.GenericFieldOne()
-	for i := range constExponents {
-		t.Exp(&constVal[i], big.NewInt(int64(constExponents[i])))
-		c.Mul(&t)
-	}
-
-	if !c.IsOne() {
-		exponents = append(exponents, 1)
-		items = append(items, NewConstant(c))
-	}
-
-	exponents, items = removeZeroCoeffs(exponents, items)
+	items, exponents = simplifyProduct(items, exponents)
 
 	if len(items) == 0 {
 		return NewConstant(1)

@@ -6,7 +6,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
@@ -45,25 +44,7 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 		panic("unmatching lengths")
 	}
 
-	coeffs, items = expandTerms(&LinComb{}, coeffs, items)
-	coeffs, items, constCoeffs, constVal := regroupTerms(coeffs, items)
-
-	// This regroups all the constants into a global constant with a coefficient
-	// of 1.
-	var t fext.GenericFieldElem
-	c := fext.GenericFieldZero()
-	for i := range constCoeffs {
-		t.SetInt64(int64(constCoeffs[i]))
-		t.Mul(&constVal[i])
-		c.Add(&t)
-	}
-
-	if !c.IsZero() {
-		coeffs = append(coeffs, 1)
-		items = append(items, NewConstant(c))
-	}
-
-	coeffs, items = removeZeroCoeffs(coeffs, items)
+	items, coeffs = simplifyLinComb(items, coeffs)
 
 	if len(items) == 0 {
 		return NewConstant(0)

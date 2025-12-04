@@ -83,7 +83,7 @@ func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
 	})
 
 	// 4. Invert
-	witi = fext.BatchInvert(witi)
+	witi = fext.ParBatchInvert(witi, 0)
 
 	// 5. Multiply by P[i] (Parallelizable)
 	// witi[i] = witi[i] * p[i]
