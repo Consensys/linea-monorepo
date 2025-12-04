@@ -62,9 +62,9 @@ tasks.register('acceptanceTests', Test) {
 
   testLogging {
     events TestLogEvent.FAILED,
-      TestLogEvent.SKIPPED,
-      TestLogEvent.STANDARD_ERROR,
-      TestLogEvent.STANDARD_OUT
+        TestLogEvent.SKIPPED,
+        TestLogEvent.STANDARD_ERROR,
+        TestLogEvent.STANDARD_OUT
     exceptionFormat TestExceptionFormat.FULL
     showCauses true
     showExceptions true
