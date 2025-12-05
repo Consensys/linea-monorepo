@@ -1,4 +1,4 @@
-import { WEI_PER_GWEI } from "../core/constants/blockchain";
+import { WEI_PER_GWEI, SLOTS_PER_EPOCH } from "../core/constants/blockchain";
 import { isAddress } from "viem";
 
 /**
@@ -43,4 +43,13 @@ export function get0x02WithdrawalCredentials(address: string): string {
 
   const addressWithoutPrefix = normalizedAddress.slice(2); // Remove "0x" prefix
   return `0x020000000000000000000000${addressWithoutPrefix}`;
+}
+
+/**
+ * Converts a slot number to an epoch number (rounded down).
+ * @param slot - Slot number.
+ * @returns Epoch number.
+ */
+export function slotToEpoch(slot: number): number {
+  return Math.floor(slot / SLOTS_PER_EPOCH);
 }
