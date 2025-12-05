@@ -8,6 +8,25 @@ import { Address, Hex } from "viem";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 
+/**
+ * Maps RebalanceDirection enum to staking direction label string for metrics.
+ *
+ * @param {RebalanceDirection} direction - The rebalance direction.
+ * @returns {string} The staking direction label value ("STAKING", "UNSTAKING", or "NONE").
+ */
+function mapRebalanceDirectionToStakingDirection(direction: RebalanceDirection): string {
+  switch (direction) {
+    case RebalanceDirection.STAKE:
+      return "STAKING";
+    case RebalanceDirection.UNSTAKE:
+      return "UNSTAKING";
+    case RebalanceDirection.NONE:
+      return "NONE";
+    default:
+      return "NONE";
+  }
+}
+
 // Buckets range up to 20 minutes to account for long-running modes.
 const OPERATION_MODE_DURATION_BUCKETS = [1, 5, 10, 30, 60, 120, 180, 300, 600, 900, 1200];
 
@@ -184,13 +203,13 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     this.metricsService.createGauge(
       LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
       "Original rebalance requirement (in gwei) before applying tolerance band, circuit breaker, or rate limit",
-      ["vault_address"],
+      ["vault_address", "staking_direction"],
     );
 
     this.metricsService.createGauge(
       LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
       "Reported rebalance requirement (in gwei) after applying tolerance band, circuit breaker, and rate limit",
-      ["vault_address"],
+      ["vault_address", "staking_direction"],
     );
   }
 
@@ -577,12 +596,17 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    *
    * @param {Address} vaultAddress - The address of the vault.
    * @param {number} requirementGwei - The requirement amount in gwei. Must be non-negative to be recorded.
+   * @param {RebalanceDirection} direction - The rebalance direction.
    */
-  public setActualRebalanceRequirement(vaultAddress: Address, requirementGwei: number): void {
+  public setActualRebalanceRequirement(
+    vaultAddress: Address,
+    requirementGwei: number,
+    direction: RebalanceDirection,
+  ): void {
     if (requirementGwei < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
-      { vault_address: vaultAddress },
+      { vault_address: vaultAddress, staking_direction: mapRebalanceDirectionToStakingDirection(direction) },
       requirementGwei,
     );
   }
@@ -592,12 +616,17 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    *
    * @param {Address} vaultAddress - The address of the vault.
    * @param {number} requirementGwei - The requirement amount in gwei. Must be non-negative to be recorded.
+   * @param {RebalanceDirection} direction - The rebalance direction.
    */
-  public setReportedRebalanceRequirement(vaultAddress: Address, requirementGwei: number): void {
+  public setReportedRebalanceRequirement(
+    vaultAddress: Address,
+    requirementGwei: number,
+    direction: RebalanceDirection,
+  ): void {
     if (requirementGwei < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
-      { vault_address: vaultAddress },
+      { vault_address: vaultAddress, staking_direction: mapRebalanceDirectionToStakingDirection(direction) },
       requirementGwei,
     );
   }

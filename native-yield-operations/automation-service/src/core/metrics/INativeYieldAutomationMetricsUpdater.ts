@@ -56,7 +56,7 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   incrementStakeCircuitBreakerTrip(vaultAddress: Address): void;
 
-  setActualRebalanceRequirement(vaultAddress: Address, requirementGwei: number): void;
+  setActualRebalanceRequirement(vaultAddress: Address, requirementGwei: number, direction: RebalanceDirection): void;
 
-  setReportedRebalanceRequirement(vaultAddress: Address, requirementGwei: number): void;
+  setReportedRebalanceRequirement(vaultAddress: Address, requirementGwei: number, direction: RebalanceDirection): void;
 }

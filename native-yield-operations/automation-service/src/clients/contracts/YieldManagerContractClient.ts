@@ -435,7 +435,11 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     );
     // Track the reported rebalance requirement (after applying tolerance band, circuit breaker, and rate limit)
     if (this.metricsUpdater) {
-      this.metricsUpdater.setReportedRebalanceRequirement(yieldProvider, weiToGweiNumber(result.rebalanceAmount));
+      this.metricsUpdater.setReportedRebalanceRequirement(
+        yieldProvider,
+        weiToGweiNumber(result.rebalanceAmount),
+        result.rebalanceDirection,
+      );
     }
     return result;
   }
@@ -513,9 +517,19 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       absDiff(l1MessageServiceBalance, effectiveTargetWithdrawalReserveExcludingObligations) + systemObligations;
     this.logger.debug(`_getRebalanceRequirements - absRebalanceRequirement=${absRebalanceRequirement}`);
 
+    // Determine the direction for metrics tracking (without considering tolerance band)
+    const directionForMetrics: RebalanceDirection =
+      l1MessageServiceBalance < effectiveTargetWithdrawalReserveExcludingObligations
+        ? RebalanceDirection.UNSTAKE
+        : RebalanceDirection.STAKE;
+
     // Track the original rebalance requirement for all paths (before tolerance band, circuit breaker, or rate limit)
     if (this.metricsUpdater) {
-      this.metricsUpdater.setActualRebalanceRequirement(yieldProvider, weiToGweiNumber(absRebalanceRequirement));
+      this.metricsUpdater.setActualRebalanceRequirement(
+        yieldProvider,
+        weiToGweiNumber(absRebalanceRequirement),
+        directionForMetrics,
+      );
     }
 
     if (absRebalanceRequirement < toleranceBand) {

@@ -1004,11 +1004,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setActualRebalanceRequirement(vaultAddress, 1000);
+      updater.setActualRebalanceRequirement(vaultAddress, 1000, RebalanceDirection.STAKE);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
-        { vault_address: vaultAddress },
+        { vault_address: vaultAddress, staking_direction: "STAKING" },
         1000,
       );
     });
@@ -1018,7 +1018,7 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setActualRebalanceRequirement(vaultAddress, -1);
+      updater.setActualRebalanceRequirement(vaultAddress, -1, RebalanceDirection.STAKE);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
@@ -1028,11 +1028,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setActualRebalanceRequirement(vaultAddress, 0);
+      updater.setActualRebalanceRequirement(vaultAddress, 0, RebalanceDirection.NONE);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
-        { vault_address: vaultAddress },
+        { vault_address: vaultAddress, staking_direction: "NONE" },
         0,
       );
     });
@@ -1044,11 +1044,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setReportedRebalanceRequirement(vaultAddress, 1000);
+      updater.setReportedRebalanceRequirement(vaultAddress, 1000, RebalanceDirection.UNSTAKE);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
-        { vault_address: vaultAddress },
+        { vault_address: vaultAddress, staking_direction: "UNSTAKING" },
         1000,
       );
     });
@@ -1058,7 +1058,7 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setReportedRebalanceRequirement(vaultAddress, -1);
+      updater.setReportedRebalanceRequirement(vaultAddress, -1, RebalanceDirection.STAKE);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
@@ -1068,12 +1068,27 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setReportedRebalanceRequirement(vaultAddress, 0);
+      updater.setReportedRebalanceRequirement(vaultAddress, 0, RebalanceDirection.NONE);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
-        { vault_address: vaultAddress },
+        { vault_address: vaultAddress, staking_direction: "NONE" },
         0,
+      );
+    });
+
+    it("handles unknown direction by defaulting to NONE", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Test the default case by passing an invalid direction value using type assertion
+      updater.setActualRebalanceRequirement(vaultAddress, 1000, "INVALID" as RebalanceDirection);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
+        { vault_address: vaultAddress, staking_direction: "NONE" },
+        1000,
       );
     });
   });

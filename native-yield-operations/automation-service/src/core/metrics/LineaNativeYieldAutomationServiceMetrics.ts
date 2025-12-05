@@ -116,11 +116,11 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   StakeCircuitBreakerTripsTotal = "linea_native_yield_automation_service_stake_circuit_breaker_trips_total",
 
   // Gauge representing the original rebalance requirement (in gwei) before applying tolerance band, circuit breaker, or rate limit
-  // Single label `vault_address`
+  // Labels: `vault_address`, `staking_direction` (values: "STAKING", "UNSTAKING", "NONE")
   ActualRebalanceRequirementGwei = "linea_native_yield_automation_service_actual_rebalance_requirement_gwei",
 
   // Gauge representing the reported rebalance requirement (in gwei) after applying tolerance band, circuit breaker, and rate limit
-  // Single label `vault_address`
+  // Labels: `vault_address`, `staking_direction` (values: "STAKING", "UNSTAKING", "NONE")
   ReportedRebalanceRequirementGwei = "linea_native_yield_automation_service_reported_rebalance_requirement_gwei",
 }
 
