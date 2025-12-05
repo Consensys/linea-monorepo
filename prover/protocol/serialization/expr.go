@@ -1,12 +1,6 @@
 package serialization
 
-import (
-	"math/big"
-
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
-)
-
+/*
 // RawExprGraph mirrors symbolic.PackedExprGraph but uses serialization-friendly types.
 type RawExprGraph struct {
 	Root  int32
@@ -106,6 +100,8 @@ func (de *Deserializer) unpackExprNode(rawExprNode *RawExprNode) (*symbolic.Pack
 
 	return exprNode, nil
 }
+
+*/
 
 /*
 func (ser *Serializer) packExprNode(exprNode *symbolic.PackedExprNode) (*RawExprNode, *serdeError) {

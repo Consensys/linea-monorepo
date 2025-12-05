@@ -1160,38 +1160,49 @@ func backReferenceFromCBORInt(n any) BackReference {
 	return BackReference(n.(uint64))
 }
 
-var (
-	TypeOfRawExprGraph = reflect.TypeOf(RawExprGraph{})
-)
+// PackedExprGraphDTO is the bridge between binary topology and rich metadata types.
+type PackedExprGraphDTO struct {
+	Topology  []byte
+	Metadatas []symbolic.Metadata // Strongly typed to trigger correct serialization
+}
+
+// Register this type so UnpackStructObject knows what to do
+var TypeOfPackedExprGraphDTO = reflect.TypeOf(PackedExprGraphDTO{})
 
 func (ser *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *serdeError) {
 	if e == nil {
 		return 0, nil
 	}
-
 	if idx, ok := ser.exprMap[e]; ok {
 		return BackReference(idx), nil
 	}
 
-	// 1. Boarding
+	// 1. Convert to Graph (Metadata is deduplicated here)
 	board := e.Board()
 	pg := symbolic.ToPackedExprFromBoard(board)
 
-	// 2. Conversion to Raw DTO (handles BigInts)
-	rawExprGraph, err := ser.packExprGraph(&pg)
+	// 2. Binary Encode Topology (fast, no reflection)
+	topoBytes, err := pg.MarshalTopology()
 	if err != nil {
-		return 0, err
+		return 0, newSerdeErrorf("marshal topology: %v", err)
 	}
 
-	// 3. Serialization
-	packedRawGraph, err := ser.PackStructObject(reflect.ValueOf(rawExprGraph).Elem())
-	if err != nil {
-		return 0, err
+	// 3. Create DTO with rich metadata objects
+	// The Serializer will walk this slice and preserve type info (column.Natural, etc.)
+	dto := PackedExprGraphDTO{
+		Topology:  topoBytes,
+		Metadatas: pg.Metadatas,
+	}
+
+	// 4. Serialize the DTO
+	packedDTO, sErr := ser.PackStructObject(reflect.ValueOf(dto))
+	if sErr != nil {
+		return 0, sErr
 	}
 
 	n := len(ser.PackedObject.Expressions)
 	ser.exprMap[e] = n
-	ser.PackedObject.Expressions = append(ser.PackedObject.Expressions, packedRawGraph)
+	ser.PackedObject.Expressions = append(ser.PackedObject.Expressions, packedDTO)
 
 	return BackReference(n), nil
 }
@@ -1199,9 +1210,8 @@ func (ser *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *s
 func (de *Deserializer) UnpackExpression(v BackReference) (reflect.Value, *serdeError) {
 	idx := int(v)
 	if idx < 0 || idx >= len(de.PackedObject.Expressions) {
-		return reflect.Value{}, newSerdeErrorf("invalid expression backreference: %v", v)
+		return reflect.Value{}, newSerdeErrorf("invalid expression backref: %v", v)
 	}
-
 	if de.expressions[idx] != nil {
 		return reflect.ValueOf(de.expressions[idx]), nil
 	}
@@ -1211,22 +1221,26 @@ func (de *Deserializer) UnpackExpression(v BackReference) (reflect.Value, *serde
 		return reflect.Value{}, newSerdeErrorf("UnpackExpression: empty packed struct")
 	}
 
-	// 1. Unpack into RawExprGraph
-	rawGraphVal, err := de.UnpackStructObject(rawObj, TypeOfRawExprGraph)
-	if err != nil {
-		return reflect.Value{}, err.wrapPath("(expression-raw-graph)")
+	// 1. Unpack DTO
+	// The serializer rebuilds the Metadatas slice with the correct concrete types
+	// because we defined the field as []symbolic.Metadata.
+	valDTO, sErr := de.UnpackStructObject(rawObj, TypeOfPackedExprGraphDTO)
+	if sErr != nil {
+		return reflect.Value{}, sErr
+	}
+	dto := valDTO.Interface().(PackedExprGraphDTO)
+
+	// 2. Unpack Topology
+	var pg symbolic.PackedExprGraph
+	if err := pg.UnmarshalTopology(dto.Topology); err != nil {
+		return reflect.Value{}, newSerdeErrorf("unmarshal topology: %v", err)
 	}
 
-	rawGraph := rawGraphVal.Interface().(RawExprGraph)
+	// 3. Link Reconstructed Metadata
+	pg.Metadatas = dto.Metadatas
 
-	// 2. Convert Raw -> Packed
-	pg, err := de.unpackExprGraph(&rawGraph)
-	if err != nil {
-		return reflect.Value{}, err
-	}
-
-	// 3. Reconstruct Expression
-	expr := symbolic.FromPackedExpr(*pg)
+	// 4. Reconstruct Expression Tree
+	expr := symbolic.FromPackedExpr(pg)
 	de.expressions[idx] = expr
 	return reflect.ValueOf(expr), nil
 }
