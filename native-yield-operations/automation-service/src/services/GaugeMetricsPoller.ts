@@ -12,7 +12,7 @@ import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYie
 import { IYieldManager, YieldProviderData } from "../core/clients/contracts/IYieldManager.js";
 import { IVaultHub } from "../core/clients/contracts/IVaultHub.js";
 import { ISTETH } from "../core/clients/contracts/ISTETH.js";
-import { ExitingValidator, ValidatorBalance } from "../core/entities/ValidatorBalance.js";
+import { ExitingValidator, ValidatorBalance } from "../core/entities/Validator.js";
 import { Address, Hex, TransactionReceipt } from "viem";
 import { IGaugeMetricsPoller } from "../core/services/IGaugeMetricsPoller.js";
 import { IOperationLoop } from "./IOperationLoop.js";

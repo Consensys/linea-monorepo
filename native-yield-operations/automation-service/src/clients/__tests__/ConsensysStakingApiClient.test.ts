@@ -16,7 +16,7 @@ import type {
   ExitingValidator,
   ValidatorBalance,
   ValidatorBalanceWithPendingWithdrawal,
-} from "../../core/entities/ValidatorBalance.js";
+} from "../../core/entities/Validator.js";
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",

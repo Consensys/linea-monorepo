@@ -4,7 +4,7 @@ import {
   ExitingValidator,
   ValidatorBalance,
   ValidatorBalanceWithPendingWithdrawal,
-} from "../entities/ValidatorBalance.js";
+} from "../entities/Validator.js";
 
 export interface IValidatorDataClient {
   getActiveValidators(): Promise<ValidatorBalance[] | undefined>;

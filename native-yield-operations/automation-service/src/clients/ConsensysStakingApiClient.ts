@@ -17,7 +17,7 @@ import {
   ExitingValidator,
   ValidatorBalance,
   ValidatorBalanceWithPendingWithdrawal,
-} from "../core/entities/ValidatorBalance.js";
+} from "../core/entities/Validator.js";
 
 /**
  * Client for retrieving validator data from Consensys Staking API via GraphQL.

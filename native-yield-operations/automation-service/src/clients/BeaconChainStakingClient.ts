@@ -8,7 +8,7 @@ import {
 } from "@consensys/linea-shared-utils";
 import { IBeaconChainStakingClient } from "../core/clients/IBeaconChainStakingClient.js";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
-import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
+import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/Validator.js";
 import { WithdrawalRequests } from "../core/entities/LidoStakingVaultWithdrawalParams.js";
 import { Address, Hex, maxUint256, TransactionReceipt } from "viem";
 import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";

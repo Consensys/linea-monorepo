@@ -7,7 +7,7 @@ import type {
   ExitingValidator,
   ValidatorBalance,
   ValidatorBalanceWithPendingWithdrawal,
-} from "../../core/entities/ValidatorBalance.js";
+} from "../../core/entities/Validator.js";
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { Address, Hex, TransactionReceipt } from "viem";
 import { MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE, ONE_GWEI } from "@consensys/linea-shared-utils";

@@ -5,7 +5,7 @@ import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/IN
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 import type { ISTETH } from "../../core/clients/contracts/ISTETH.js";
-import type { ExitingValidator, ValidatorBalanceWithPendingWithdrawal, ValidatorBalance } from "../../core/entities/ValidatorBalance.js";
+import type { ExitingValidator, ValidatorBalanceWithPendingWithdrawal, ValidatorBalance } from "../../core/entities/Validator.js";
 import type { TransactionReceipt, Address } from "viem";
 import { ONE_GWEI } from "@consensys/linea-shared-utils";
 import { GaugeMetricsPoller } from "../GaugeMetricsPoller.js";
