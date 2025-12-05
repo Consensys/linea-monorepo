@@ -10,7 +10,7 @@ import type {
 } from "../../core/entities/ValidatorBalance.js";
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { Address, Hex, TransactionReceipt } from "viem";
-import { ONE_GWEI } from "@consensys/linea-shared-utils";
+import { MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE, ONE_GWEI } from "@consensys/linea-shared-utils";
 import type { WithdrawalRequests } from "../../core/entities/LidoStakingVaultWithdrawalParams.js";
 
 const YIELD_PROVIDER = "0xyieldprovider" as Address;
@@ -127,7 +127,7 @@ const createValidator = (
   overrides: Partial<ValidatorBalanceWithPendingWithdrawal> & Pick<ValidatorBalanceWithPendingWithdrawal, "publicKey">,
 ): ValidatorBalanceWithPendingWithdrawal => ({
   balance: 32n,
-  effectiveBalance: 32n,
+  effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE,
   pendingWithdrawalAmount: 0n,
   withdrawableAmount: 0n,
   validatorIndex: 0n,
@@ -332,10 +332,10 @@ describe("BeaconChainStakingClient", () => {
       const { client, unstakeMock, mocks } = setupClient(maxValidatorsPerTx);
 
       const validators = [
-        createValidator({ publicKey: "validator-1", withdrawableAmount: 2n }),
-        createValidator({ publicKey: "validator-2", withdrawableAmount: 3n }),
-        createValidator({ publicKey: "validator-3", withdrawableAmount: 0n }),
-        createValidator({ publicKey: "validator-4", withdrawableAmount: 0n }),
+        createValidator({ publicKey: "validator-1", withdrawableAmount: 2n, effectiveBalance: 33n * ONE_GWEI }),
+        createValidator({ publicKey: "validator-2", withdrawableAmount: 3n, effectiveBalance: 34n * ONE_GWEI }),
+        createValidator({ publicKey: "validator-3", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE }),
+        createValidator({ publicKey: "validator-4", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE }),
       ];
       mocks.getActiveValidatorsWithPendingWithdrawalsAscending.mockResolvedValueOnce(validators);
 
@@ -349,7 +349,7 @@ describe("BeaconChainStakingClient", () => {
 
       const [, exitRequests] = unstakeMock.mock.calls[1];
       expect(exitRequests.pubkeys).toEqual(["validator-3" as Hex]);
-      expect(exitRequests.amountsGwei).toEqual([0n]);
+      expect(exitRequests.amountsGwei).toEqual([]);
 
       expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledTimes(2);
       expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(1, "validator-1" as Hex, 2);
@@ -388,8 +388,8 @@ describe("BeaconChainStakingClient", () => {
     it("returns without unstaking when no validators qualify for exits", async () => {
       const { client, logger, unstakeMock, mocks } = setupClient();
       const validators = [
-        createValidator({ publicKey: "validator-1", withdrawableAmount: 1n }),
-        createValidator({ publicKey: "validator-2", withdrawableAmount: 2n }),
+        createValidator({ publicKey: "validator-1", effectiveBalance: 33n * ONE_GWEI }),
+        createValidator({ publicKey: "validator-2", effectiveBalance: 34n * ONE_GWEI }),
       ];
 
       await (
@@ -410,10 +410,10 @@ describe("BeaconChainStakingClient", () => {
       const maxValidatorsPerTx = 3;
       const { client, unstakeMock, mocks } = setupClient(maxValidatorsPerTx);
       const validators = [
-        createValidator({ publicKey: "validator-1", withdrawableAmount: 0n }),
-        createValidator({ publicKey: "validator-2", withdrawableAmount: 0n }),
-        createValidator({ publicKey: "validator-3", withdrawableAmount: 0n }),
-        createValidator({ publicKey: "validator-4", withdrawableAmount: 0n }),
+        createValidator({ publicKey: "validator-1", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE }),
+        createValidator({ publicKey: "validator-2", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE }),
+        createValidator({ publicKey: "validator-3", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE }),
+        createValidator({ publicKey: "validator-4", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE }),
       ];
 
       await (
@@ -432,6 +432,7 @@ describe("BeaconChainStakingClient", () => {
         "validator-2" as Hex,
         "validator-3" as Hex,
       ]);
+      expect(requests.amountsGwei).toEqual([]);
       expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(3);
       expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(1, "validator-1" as Hex);
       expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(2, "validator-2" as Hex);
@@ -441,8 +442,8 @@ describe("BeaconChainStakingClient", () => {
     it("skips validators with pending withdrawal amounts", async () => {
       const { client, logger, unstakeMock, mocks } = setupClient();
       const validators = [
-        createValidator({ publicKey: "validator-1", withdrawableAmount: 0n, pendingWithdrawalAmount: 5n }),
-        createValidator({ publicKey: "validator-2", withdrawableAmount: 0n, pendingWithdrawalAmount: 10n }),
+        createValidator({ publicKey: "validator-1", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE, pendingWithdrawalAmount: 5n }),
+        createValidator({ publicKey: "validator-2", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE, pendingWithdrawalAmount: 10n }),
       ];
 
       await (
@@ -462,10 +463,10 @@ describe("BeaconChainStakingClient", () => {
     it("processes validators without pending withdrawals and skips those with pending withdrawals", async () => {
       const { client, unstakeMock, mocks } = setupClient();
       const validators = [
-        createValidator({ publicKey: "validator-1", withdrawableAmount: 0n, pendingWithdrawalAmount: 5n }),
-        createValidator({ publicKey: "validator-2", withdrawableAmount: 0n, pendingWithdrawalAmount: 0n }),
-        createValidator({ publicKey: "validator-3", withdrawableAmount: 0n, pendingWithdrawalAmount: 10n }),
-        createValidator({ publicKey: "validator-4", withdrawableAmount: 0n, pendingWithdrawalAmount: 0n }),
+        createValidator({ publicKey: "validator-1", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE, pendingWithdrawalAmount: 5n }),
+        createValidator({ publicKey: "validator-2", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE, pendingWithdrawalAmount: 0n }),
+        createValidator({ publicKey: "validator-3", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE, pendingWithdrawalAmount: 10n }),
+        createValidator({ publicKey: "validator-4", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE, pendingWithdrawalAmount: 0n }),
       ];
 
       await (
@@ -481,10 +482,36 @@ describe("BeaconChainStakingClient", () => {
       const [, requests] = unstakeMock.mock.calls[0];
       // Only validators without pending withdrawals should be included
       expect(requests.pubkeys).toEqual(["validator-2" as Hex, "validator-4" as Hex]);
-      expect(requests.amountsGwei).toEqual([0n, 0n]);
+      expect(requests.amountsGwei).toEqual([]);
       expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(2);
       expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(1, "validator-2" as Hex);
       expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(2, "validator-4" as Hex);
+    });
+
+    it("skips validators with effectiveBalance not equal to minimum", async () => {
+      const { client, unstakeMock, mocks } = setupClient();
+      const validators = [
+        createValidator({ publicKey: "validator-1", effectiveBalance: 33n * ONE_GWEI }),
+        createValidator({ publicKey: "validator-2", effectiveBalance: 34n * ONE_GWEI }),
+        createValidator({ publicKey: "validator-3", effectiveBalance: MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE }),
+      ];
+
+      await (
+        client as unknown as {
+          _submitValidatorExits(
+            list: ValidatorBalanceWithPendingWithdrawal[],
+            remainingWithdrawals: number,
+          ): Promise<void>;
+        }
+      )._submitValidatorExits(validators, 5);
+
+      expect(unstakeMock).toHaveBeenCalledTimes(1);
+      const [, requests] = unstakeMock.mock.calls[0];
+      // Only validator with minimum effectiveBalance should be included
+      expect(requests.pubkeys).toEqual(["validator-3" as Hex]);
+      expect(requests.amountsGwei).toEqual([]);
+      expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(1);
+      expect(mocks.incrementValidatorExit).toHaveBeenCalledWith("validator-3" as Hex);
     });
   });
 });

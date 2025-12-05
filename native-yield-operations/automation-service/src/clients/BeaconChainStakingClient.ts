@@ -1,4 +1,4 @@
-import { ILogger, min, ONE_GWEI, safeSub, weiToGweiNumber } from "@consensys/linea-shared-utils";
+import { ILogger, min, MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE, ONE_GWEI, safeSub, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import { IBeaconChainStakingClient } from "../core/clients/IBeaconChainStakingClient.js";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
@@ -183,14 +183,12 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       // Exit requests are ignored for validator with pending partial withdrawal - https://github.com/ethereum/consensus-specs/blob/14e6f0c919d36ef2ae7c337fe51161952a634478/specs/electra/beacon-chain.md?plain=1#L1697
       if (v.pendingWithdrawalAmount > 0n) continue;
 
-      if (v.withdrawableAmount === 0n) {
+      if (v.effectiveBalance === MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE) {
         withdrawalRequests.pubkeys.push(v.publicKey as Hex);
-        // 0 amount -> signal for validator exit
-        withdrawalRequests.amountsGwei.push(0n);
       }
     }
 
-    if (withdrawalRequests.amountsGwei.length === 0) {
+    if (withdrawalRequests.pubkeys.length === 0) {
       this.logger.info("_submitValidatorExits - no validators to exit, skipping unstake");
       return;
     }
