@@ -125,8 +125,8 @@ func (p *RsParams) IsCodeword(v smartvectors.SmartVector) error {
 	}
 	coeffs := make([]field.Element, p.NbEncodedColumns())
 	v.WriteInSlice(coeffs)
+	p.Domains[1].FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(1))
 	utils.BitReverse(coeffs)
-	p.Domains[1].FFTInverse(coeffs, fft.DIT, fft.WithNbTasks(1))
 	for i := p.NbColumns(); i < p.NbEncodedColumns(); i++ {
 		c := coeffs[i]
 		if !c.IsZero() {
@@ -202,8 +202,8 @@ func (p *RsParams) IsCodewordExt(v smartvectors.SmartVector) error {
 	}
 	coeffs := make([]fext.Element, p.NbEncodedColumns())
 	v.WriteInSliceExt(coeffs)
+	p.Domains[1].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
 	utils.BitReverse(coeffs)
-	p.Domains[1].FFTInverseExt(coeffs, fft.DIT, fft.WithNbTasks(1))
 	for i := p.NbColumns(); i < p.NbEncodedColumns(); i++ {
 		c := coeffs[i]
 		if !c.IsZero() {
