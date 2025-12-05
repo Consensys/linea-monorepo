@@ -26,7 +26,7 @@ public class LineaTracerSharedCliOptions implements LineaCliOptions {
   public static final String COUNT_HISTORICAL_BLOCKHASHES_ENABLED =
       "--plugin-linea-count-historical-blockhash-enabled";
   public static final boolean DEFAULT_LIMITLESS_ENABLED = false;
-  public static final boolean DEFAULT_COUNT_HISTORICAL_BLOCKHASHES_ENABLED = true;
+  public static final boolean DEFAULT_COUNT_HISTORICAL_BLOCKHASHES_ENABLED = false;
 
   @CommandLine.Option(
       names = {LIMITLESS_ENABLED},
