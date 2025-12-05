@@ -189,12 +189,12 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 			_ = oldRoot // TODO golangci-lint thinks oldRoot is otherwise unused, even though it's clearly used in the switch case
 
 			if !seg.storageTraces[i].IsSkipped {
-			// the storage trace is to be kept, and not skipped
-			// Push batchNumber using big-endian format (matching mock)
-			batchNumberLimbs := common.SplitBigEndianUint64(uint64(batchNumber))
-			for j := range common.NbLimbU64 {
-				ss.batchNumber[j].PushBytes(batchNumberLimbs[j])
-			}
+				// the storage trace is to be kept, and not skipped
+				// Push batchNumber using big-endian format
+				batchNumberLimbs := common.SplitBigEndianUint64(uint64(batchNumber))
+				for j := range common.NbLimbU64 {
+					ss.batchNumber[j].PushBytes(batchNumberLimbs[j])
+				}
 
 				for j := range common.NbLimbEthAddress {
 					ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
@@ -212,16 +212,16 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 				ss.account.initial.pushAll(initialAccount)
 				ss.account.final.pushOverrideStorageRoot(finalAccount, newRoot)
 
-			initWsRootBlocks := hashToBlocks(initWsRoot)
-			for j := range poseidon2.BlockSize {
-				ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(initWsRootBlocks[j]))
-			}
-			for j := poseidon2.BlockSize; j < common.NbLimbU256; j++ {
-				ss.worldStateRoot[j].PushZero()
-			}
+				initWsRootBlocks := hashToBlocks(initWsRoot)
+				for j := range poseidon2.BlockSize {
+					ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(initWsRootBlocks[j]))
+				}
+				for j := poseidon2.BlockSize; j < common.NbLimbU256; j++ {
+					ss.worldStateRoot[j].PushZero()
+				}
 
-			oldRootLimbs := hashToBlocks(oldRoot)
-			newRootLimbs := hashToBlocks(newRoot)
+				oldRootLimbs := hashToBlocks(oldRoot)
+				newRootLimbs := hashToBlocks(newRoot)
 
 				switch t := stoTrace.(type) {
 				case statemanager.ReadZeroTraceST:
@@ -330,7 +330,7 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 			}
 		}
 
-		// Push batchNumber using big-endian format (matching mock)
+		// Push batchNumber using big-endian format
 		batchNumberLimbs := common.SplitBigEndianUint64(uint64(batchNumber))
 		for j := range common.NbLimbU64 {
 			ss.batchNumber[j].PushBytes(batchNumberLimbs[j])
