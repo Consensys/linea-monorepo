@@ -7,6 +7,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
@@ -106,28 +107,10 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 		accPeek.Address[i] = createCol(fmt.Sprintf("ACCOUNT_%v", i))
 	}
 
-	initialHashCols := accPeek.Initial.Nonce[:]
-
-	initialHashCols = append(initialHashCols, accPeek.Initial.Balance[:]...)
-	initialHashCols = append(initialHashCols, accPeek.Initial.StorageRoot[:]...)
-	initialHashCols = append(initialHashCols, accPeek.Initial.LineaCodeHash[:]...)
-	initialHashCols = append(initialHashCols, accPeek.Initial.KeccakCodeHash.Lo[:]...)
-	initialHashCols = append(initialHashCols, accPeek.Initial.KeccakCodeHash.Hi[:]...)
-	initialHashCols = append(initialHashCols, accPeek.Initial.CodeSize[:]...)
-
-	accPeek.ComputeHashInitial = poseidon2.HashOf(comp, poseidon2.SplitColumns(initialHashCols))
+	accPeek.ComputeHashInitial = accPeek.Initial.AccountHash(comp)
 	accPeek.HashInitial = accPeek.ComputeHashInitial.Result()
 
-	finalHashCols := accPeek.Final.Nonce[:]
-	finalHashCols = append(finalHashCols, accPeek.Final.Balance[:]...)
-	finalHashCols = append(finalHashCols, accPeek.Final.StorageRoot[:]...)
-	finalHashCols = append(finalHashCols, accPeek.Final.LineaCodeHash[:]...)
-	finalHashCols = append(finalHashCols, accPeek.Final.KeccakCodeHash.Lo[:]...)
-	finalHashCols = append(finalHashCols, accPeek.Final.KeccakCodeHash.Hi[:]...)
-	finalHashCols = append(finalHashCols, accPeek.Final.CodeSize[:]...)
-
-	accPeek.ComputeHashFinal = poseidon2.HashOf(comp, poseidon2.SplitColumns(finalHashCols))
-
+	accPeek.ComputeHashFinal = accPeek.Final.AccountHash(comp)
 	accPeek.HashFinal = accPeek.ComputeHashFinal.Result()
 
 	for i := range poseidon2.BlockSize {
@@ -500,5 +483,30 @@ func int64ToByteLimbs(num int64) [][]byte {
 		res[i] = append(padding, nonceLimbs[i]...)
 	}
 
+	return res
+}
+func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
+	var (
+		hashInputs []ifaces.Column
+		size       = ac.Nonce[0].Size()
+		zeroColumn = verifiercol.NewConstantCol(field.Zero(), size, "ZERO_COLUMN")
+	)
+	hashInputs = append(hashInputs, padd(ac.Nonce[:], 32, zeroColumn)...)
+	hashInputs = append(hashInputs, padd(ac.Balance[:], 32, zeroColumn)...)
+	hashInputs = append(hashInputs, ac.StorageRoot[:]...)
+	hashInputs = append(hashInputs, ac.LineaCodeHash[:]...)
+	hashInputs = append(hashInputs, padd(ac.KeccakCodeHash.Hi[:], 32, zeroColumn)...)
+	hashInputs = append(hashInputs, padd(ac.KeccakCodeHash.Lo[:], 32, zeroColumn)...)
+	hashInputs = append(hashInputs, padd(ac.CodeSize[:], 32, zeroColumn)...)
+	res := poseidon2.HashOf(comp, poseidon2.SplitColumns(hashInputs))
+	return res
+}
+
+func padd(cols []ifaces.Column, size int, padding ifaces.Column) (res []ifaces.Column) {
+
+	for _ = range size - len(cols) {
+		res = append(res, padding)
+	}
+	res = append(res, cols...)
 	return res
 }
