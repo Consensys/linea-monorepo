@@ -54,7 +54,7 @@ func (a *EmulatedProverAction) bigIntToLimbs(input *big.Int, buf []*big.Int, lim
 // The following holds
 //
 //	input = \sum_{i=0}^{len(res)} res[i] * 2^{nbBits * i}
-func decompose(input *big.Int, nbBits uint, res []*big.Int) error {
+func decompose(input *big.Int, nbBits int, res []*big.Int) error {
 	// limb modulus
 	if input.BitLen() > len(res)*int(nbBits) {
 		return errors.New("decomposed integer does not fit into res")
@@ -64,11 +64,11 @@ func decompose(input *big.Int, nbBits uint, res []*big.Int) error {
 			return errors.New("result slice element uninitialized")
 		}
 	}
-	base := new(big.Int).Lsh(big.NewInt(1), nbBits)
+	base := new(big.Int).Lsh(big.NewInt(1), uint(nbBits))
 	tmp := new(big.Int).Set(input)
 	for i := 0; i < len(res); i++ {
 		res[i].Mod(tmp, base)
-		tmp.Rsh(tmp, nbBits)
+		tmp.Rsh(tmp, uint(nbBits))
 	}
 	return nil
 }
@@ -79,13 +79,13 @@ func decompose(input *big.Int, nbBits uint, res []*big.Int) error {
 // The following holds
 //
 //	res = \sum_{i=0}^{len(inputs)} inputs[i] * 2^{nbBits * i}
-func recompose(inputs []*big.Int, nbBits uint, res *big.Int) error {
+func recompose(inputs []*big.Int, nbBits int, res *big.Int) error {
 	if res == nil {
 		return errors.New("result not initialized")
 	}
 	res.SetUint64(0)
 	for i := range inputs {
-		res.Lsh(res, nbBits)
+		res.Lsh(res, uint(nbBits))
 		res.Add(res, inputs[len(inputs)-i-1])
 	}
 	// we do not mod-reduce here as the result is mod-reduced by the caller if

@@ -1,20 +1,20 @@
 package emulated
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
-
-const round_nr = 0
 
 type Limbs struct {
 	Columns []ifaces.Column
@@ -36,10 +36,11 @@ type EmulatedProverAction struct {
 	Challenge       coin.Info
 	ChallengePowers []ifaces.Column
 
-	nbBits uint
+	nbBits int
+	round  int
 }
 
-func (a *EmulatedProverAction) Run(run *wizard.ProverRuntime) {
+func (a *EmulatedProverAction) Assign(run *wizard.ProverRuntime) {
 	a.assignEmulatedColumns(run)
 	a.assignChallengePowers(run)
 }
@@ -89,10 +90,7 @@ func (a *EmulatedProverAction) assignEmulatedColumns(run *wizard.ProverRuntime) 
 	tmpProduct := new(big.Int)
 	tmpQuotient := new(big.Int)
 	tmpRemainder := new(big.Int)
-	tmpCarries := make([]*big.Int, len(a.Carry.Columns))
-	for i := range tmpCarries {
-		tmpCarries[i] = new(big.Int)
-	}
+	carry := new(big.Int)
 	for i := range nbRows {
 		// we can reuse all the big ints here
 		if err := a.limbsToBigInt(witTermL, bufL, a.TermL, i, run); err != nil {
@@ -142,16 +140,17 @@ func (a *EmulatedProverAction) assignEmulatedColumns(run *wizard.ProverRuntime) 
 				bufRhs = append(bufRhs, new(big.Int).Set(bufRem[i]))
 			}
 		}
-		for i := range tmpCarries {
+
+		for i := range dstCarry {
 			if i < len(bufLhs) {
-				tmpCarries[i].Add(tmpCarries[i], bufLhs[i])
+				carry.Add(carry, bufLhs[i])
 			}
 			if i < len(bufRhs) {
-				tmpCarries[i].Sub(tmpCarries[i], bufRhs[i])
+				carry.Sub(carry, bufRhs[i])
 			}
-			tmpCarries[i].Rsh(tmpCarries[i], uint(a.nbBits))
+			carry.Rsh(carry, uint(a.nbBits))
 			var f field.Element
-			f.SetBigInt(tmpCarries[i])
+			f.SetBigInt(carry)
 			dstCarry[i].PushField(f)
 		}
 
@@ -162,10 +161,10 @@ func (a *EmulatedProverAction) assignEmulatedColumns(run *wizard.ProverRuntime) 
 		clearBuffer(bufRem)
 		clearBuffer(bufLhs)
 		clearBuffer(bufRhs)
-		clearBuffer(tmpCarries)
 		tmpProduct.SetUint64(0)
 		tmpQuotient.SetUint64(0)
 		tmpRemainder.SetUint64(0)
+		carry.SetUint64(0)
 	}
 	for i := range dstQuoLimbs {
 		dstQuoLimbs[i].PadAndAssign(run, field.Zero())
@@ -191,12 +190,22 @@ func (a *EmulatedProverAction) assignChallengePowers(run *wizard.ProverRuntime) 
 	}
 }
 
-func EmulatedMultiplication(comp *wizard.CompiledIOP, left, right, modulus Limbs, nbBits uint) *EmulatedProverAction {
-	// TODO: add range checks on hinted limbs
-	// TODO: use wizardutils.LastRoundToEval
+func EmulatedMultiplication(comp *wizard.CompiledIOP, left, right, modulus Limbs, nbBits int) *EmulatedProverAction {
+	round := 0
+	for i := range left.Columns {
+		round = max(round, left.Columns[i].Round())
+	}
+	for i := range right.Columns {
+		round = max(round, right.Columns[i].Round())
+	}
+	for i := range modulus.Columns {
+		round = max(round, modulus.Columns[i].Round())
+	}
 
 	nbRows := left.Columns[0].Size()
 	nbLimbs := len(modulus.Columns)
+	nbRangecheckBits := 16
+	nbRangecheckLimbs := (nbBits + nbRangecheckBits - 1) / nbRangecheckBits
 	quotient := Limbs{
 		Columns: make([]ifaces.Column, nbLimbs),
 	}
@@ -205,29 +214,39 @@ func EmulatedMultiplication(comp *wizard.CompiledIOP, left, right, modulus Limbs
 	}
 	for i := 0; i < nbLimbs; i++ {
 		quotient.Columns[i] = comp.InsertCommit(
-			round_nr,
+			round,
 			ifaces.ColIDf("EMUL_QUOTIENT_LIMB_%d", i),
 			nbRows,
 		)
 		remainder.Columns[i] = comp.InsertCommit(
-			round_nr,
+			round,
 			ifaces.ColIDf("EMUL_REMAINDER_LIMB_%d", i),
 			nbRows,
+		)
+		bigrange.BigRange(
+			comp,
+			ifaces.ColumnAsVariable(quotient.Columns[i]), int(nbRangecheckLimbs), nbRangecheckBits,
+			fmt.Sprintf("EMUL_QUOTIENT_LIMB_RANGE_%d", i),
+		)
+		bigrange.BigRange(
+			comp,
+			ifaces.ColumnAsVariable(remainder.Columns[i]), int(nbRangecheckLimbs), nbRangecheckBits,
+			fmt.Sprintf("EMUL_REMAINDER_LIMB_RANGE_%d", i),
 		)
 	}
 	carries := Limbs{Columns: make([]ifaces.Column, 2*nbLimbs-1)}
 	for i := 0; i < 2*nbLimbs-1; i++ {
 		carries.Columns[i] = comp.InsertCommit(
-			round_nr,
+			round,
 			ifaces.ColIDf("EMUL_CARRY_%d", i),
 			nbRows,
 		)
 	}
-	challenge := comp.InsertCoin(round_nr+1, coin.Namef("EMUL_CHALLENGE"), coin.Field)
+	challenge := comp.InsertCoin(round+1, coin.Namef("EMUL_CHALLENGE"), coin.Field)
 	challengePowers := make([]ifaces.Column, len(carries.Columns))
 	for i := range challengePowers {
 		challengePowers[i] = comp.InsertCommit(
-			round_nr+1,
+			round+1,
 			ifaces.ColIDf("EMUL_CHALLENGE_POWER_%d", i),
 			nbRows,
 		)
@@ -243,17 +262,17 @@ func EmulatedMultiplication(comp *wizard.CompiledIOP, left, right, modulus Limbs
 		Challenge:       challenge,
 		ChallengePowers: challengePowers,
 		nbBits:          nbBits,
+		round:           round,
 	}
 	pa.csMultiplication(comp)
 	pa.csChallengePowers(comp)
-	// comp.RegisterProverAction(round_nr, pa)
 	return pa
 }
 
 func (cs *EmulatedProverAction) csChallengePowers(comp *wizard.CompiledIOP) {
 	ch := cs.Challenge.AsVariable()
 	comp.InsertGlobal(
-		round_nr,
+		cs.round,
 		"EMUL_CHALLENGE_POWER_0",
 		symbolic.Sub(
 			cs.ChallengePowers[0],
@@ -262,7 +281,7 @@ func (cs *EmulatedProverAction) csChallengePowers(comp *wizard.CompiledIOP) {
 	)
 	for i := 1; i < len(cs.ChallengePowers); i++ {
 		comp.InsertGlobal(
-			round_nr+1,
+			cs.round+1,
 			ifaces.QueryIDf("EMUL_CHALLENGE_POWER_CONSISTENCY_%d", i),
 			symbolic.Sub(
 				ifaces.ColumnAsVariable(cs.ChallengePowers[i]),
@@ -276,19 +295,19 @@ func (cs *EmulatedProverAction) csChallengePowers(comp *wizard.CompiledIOP) {
 }
 
 func (cs *EmulatedProverAction) csMultiplication(comp *wizard.CompiledIOP) {
-	leftEval := cs.csPolyEval(comp, cs.TermL)
-	rightEval := cs.csPolyEval(comp, cs.TermR)
+	leftEval := cs.csPolyEval(cs.TermL)
+	rightEval := cs.csPolyEval(cs.TermR)
 
-	modulusEval := cs.csPolyEval(comp, cs.Modulus)
-	quotientEval := cs.csPolyEval(comp, cs.Quotient)
+	modulusEval := cs.csPolyEval(cs.Modulus)
+	quotientEval := cs.csPolyEval(cs.Quotient)
 
-	resultEval := cs.csPolyEval(comp, cs.Result)
+	resultEval := cs.csPolyEval(cs.Result)
 
-	carryEval := cs.csPolyEval(comp, cs.Carry)
+	carryEval := cs.csPolyEval(cs.Carry)
 	coef := big.NewInt(0).Lsh(big.NewInt(1), uint(cs.nbBits))
 	carryCoef := symbolic.Sub(
-		cs.Challenge.AsVariable(),
 		symbolic.NewConstant(coef),
+		cs.Challenge.AsVariable(),
 	)
 
 	mulEval := symbolic.Mul(leftEval, rightEval)
@@ -297,7 +316,7 @@ func (cs *EmulatedProverAction) csMultiplication(comp *wizard.CompiledIOP) {
 
 	// Enforce: left * right - modulus * quotient - result - (2^nbits - challenge) * carry = 0
 	comp.InsertGlobal(
-		round_nr+1,
+		cs.round+1,
 		"EMUL_MULTIPLICATION",
 		symbolic.Sub(
 			mulEval,
@@ -308,11 +327,12 @@ func (cs *EmulatedProverAction) csMultiplication(comp *wizard.CompiledIOP) {
 	)
 }
 
-func (cs *EmulatedProverAction) csPolyEval(comp *wizard.CompiledIOP, val Limbs) *symbolic.Expression {
+func (cs *EmulatedProverAction) csPolyEval(val Limbs) *symbolic.Expression {
 	// should write down?
 	res := symbolic.NewConstant(0)
 	for i := range val.Columns {
 		res = symbolic.Add(
+			res,
 			symbolic.Mul(
 				val.Columns[i],
 				cs.ChallengePowers[i],

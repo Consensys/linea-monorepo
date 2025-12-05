@@ -1,7 +1,6 @@
 package emulated
 
 import (
-	"os"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -9,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/stretchr/testify/require"
 )
 
@@ -69,19 +67,8 @@ func TestEmulatedMultiplication(t *testing.T) {
 			run.AssignColumn(ifaces.ColIDf("A_%d", i), assignmentA[i])
 			run.AssignColumn(ifaces.ColIDf("B_%d", i), assignmentB[i])
 		}
-		pa.Run(run)
-		w, err := os.Create("emulated_mult_trace.csv")
-		require.NoError(t, err)
-		defer w.Close()
-		var cols []ifaces.Column
-		cols = append(cols, pa.TermL.Columns...)
-		cols = append(cols, pa.TermR.Columns...)
-		cols = append(cols, pa.Modulus.Columns...)
-		cols = append(cols, pa.Result.Columns...)
-		cols = append(cols, pa.Quotient.Columns...)
-		cols = append(cols, pa.Carry.Columns...)
-		cols = append(cols, pa.ChallengePowers...)
-		csvtraces.FmtCsv(w, run, cols, []csvtraces.Option{csvtraces.InHex})
+		pa.Assign(run)
+
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)
