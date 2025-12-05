@@ -152,6 +152,17 @@ export const configSchema = z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+    /** Circuit breaker threshold (in wei) for STAKE direction rebalances.
+     * When the absolute rebalance requirement exceeds this threshold, the circuit breaker trips
+     * and STAKE operations are prevented. Admins can effectively reset the circuit breaker by changing
+     * this value to a higher amount and restarting the application.
+     * Must be greater than MAX_STAKING_REBALANCE_AMOUNT_WEI to allow gradual rebalancing up to
+     * the rate limit before tripping.
+     */
+    STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     /** Minimum staking vault balance (in wei) required before unpausing staking.
      * The balance is checked via Dashboard withdrawableValue() before calling unpauseStaking.
      * Staking will only be unpaused if the withdrawableValue is greater than or equal to this threshold.
@@ -208,6 +219,10 @@ export const configSchema = z
       })
       .optional(),
   })
-  .strip();
+  .strip()
+  .refine((data) => data.STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI > data.MAX_STAKING_REBALANCE_AMOUNT_WEI, {
+    message: "STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI must be greater than MAX_STAKING_REBALANCE_AMOUNT_WEI",
+    path: ["STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI"],
+  });
 
 export type FlattenedConfigSchema = z.infer<typeof configSchema>;
