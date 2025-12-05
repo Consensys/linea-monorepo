@@ -318,7 +318,7 @@ func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
 		res.balance[i] = common.NewVectorBuilder(ap.Balance[i])
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		res.storageRoot[i] = common.NewVectorBuilder(ap.StorageRoot[i])
 		res.lineaCodeHash[i] = common.NewVectorBuilder(ap.LineaCodeHash[i])
 	}
