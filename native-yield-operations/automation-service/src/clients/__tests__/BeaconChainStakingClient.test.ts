@@ -353,7 +353,7 @@ describe("BeaconChainStakingClient", () => {
 
       const [, exitRequests] = unstakeMock.mock.calls[1];
       expect(exitRequests.pubkeys).toEqual(["validator-3" as Hex]);
-      expect(exitRequests.amountsGwei).toEqual([]);
+      expect(exitRequests.amountsGwei).toEqual([]); // Empty array signals full withdrawals (validator exits)
 
       expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledTimes(2);
       expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenNthCalledWith(1, "validator-1" as Hex, 2);
@@ -436,7 +436,7 @@ describe("BeaconChainStakingClient", () => {
         "validator-2" as Hex,
         "validator-3" as Hex,
       ]);
-      expect(requests.amountsGwei).toEqual([]);
+      expect(requests.amountsGwei).toEqual([]); // Empty array signals full withdrawals (validator exits)
       expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(3);
       expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(1, "validator-1" as Hex);
       expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(2, "validator-2" as Hex);
@@ -486,7 +486,7 @@ describe("BeaconChainStakingClient", () => {
       const [, requests] = unstakeMock.mock.calls[0];
       // Only validators without pending withdrawals should be included
       expect(requests.pubkeys).toEqual(["validator-2" as Hex, "validator-4" as Hex]);
-      expect(requests.amountsGwei).toEqual([]);
+      expect(requests.amountsGwei).toEqual([]); // Empty array signals full withdrawals (validator exits)
       expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(2);
       expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(1, "validator-2" as Hex);
       expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(2, "validator-4" as Hex);
@@ -513,7 +513,7 @@ describe("BeaconChainStakingClient", () => {
       const [, requests] = unstakeMock.mock.calls[0];
       // Only validator with minimum effectiveBalance should be included
       expect(requests.pubkeys).toEqual(["validator-3" as Hex]);
-      expect(requests.amountsGwei).toEqual([]);
+      expect(requests.amountsGwei).toEqual([]); // Empty array signals full withdrawals (validator exits)
       expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(1);
       expect(mocks.incrementValidatorExit).toHaveBeenCalledWith("validator-3" as Hex);
     });

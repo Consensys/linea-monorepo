@@ -157,7 +157,10 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
 
   /**
    * Submits validator exit requests for validators with no withdrawable amount remaining.
-   * Processes validators that have 0 withdrawable amount, submitting them for exit using 0 amount as a signal for validator exit.
+   * Processes validators that have 0 withdrawable amount, submitting them for exit.
+   * Uses empty amountsGwei array to signal full withdrawals (validator exits) per contract logic:
+   * - If amountsGwei.length == 0: triggers full withdrawals via TriggerableWithdrawals.addFullWithdrawalRequests
+   * - If amountsGwei.length > 0: triggers amount-driven withdrawals via TriggerableWithdrawals.addWithdrawalRequests
    * Respects the remaining withdrawal slots available. Does unstake operation and instruments metrics after transaction success.
    *
    * @param {ValidatorBalanceWithPendingWithdrawal[]} sortedValidatorList - List of validators sorted by priority with pending withdrawals.
@@ -192,6 +195,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
 
       if (v.effectiveBalance === MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE) {
         withdrawalRequests.pubkeys.push(v.publicKey as Hex);
+        // Empty amountsGwei array signals full withdrawals (validator exits) per contract logic
       }
     }
 

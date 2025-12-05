@@ -246,6 +246,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       `unstake started, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}`,
     );
     this.logger.debug(`unstake started withdrawalParams`, { withdrawalParams });
+    // Note: Empty amountsGwei array signals full withdrawals (validator exits) per contract logic.
+    // The contract checks: if amountsGwei.length == 0, it triggers full withdrawals via addFullWithdrawalRequests.
+    // If amountsGwei.length > 0, it triggers amount-driven withdrawals via addWithdrawalRequests.
+    // Therefore, pubkeys and amountsGwei arrays may have mismatched lengths when requesting validator exits.
     const encodedWithdrawalParams = this._encodeLidoWithdrawalParams({
       ...withdrawalParams,
       refundRecipient: this.contractAddress,
@@ -271,6 +275,9 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
 
   /**
    * Encodes Lido staking vault withdrawal parameters into ABI-encoded format.
+   * Note: Empty amountsGwei array signals full withdrawals (validator exits) per contract logic.
+   * The contract checks: if amountsGwei.length == 0, it triggers full withdrawals via addFullWithdrawalRequests.
+   * If amountsGwei.length > 0, it triggers amount-driven withdrawals via addWithdrawalRequests.
    *
    * @param {LidoStakingVaultWithdrawalParams} params - The withdrawal parameters including pubkeys, amounts, and refund recipient.
    * @returns {Hex} The ABI-encoded withdrawal parameters.
