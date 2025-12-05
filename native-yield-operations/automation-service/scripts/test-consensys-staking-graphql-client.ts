@@ -89,6 +89,19 @@ async function main() {
     console.error("ConsensysStakingApiClient integration script failed:", err);
     process.exitCode = 1;
   }
+
+  try {
+    const validators = await consensysStakingClient.getExitedValidators();
+    if (validators === undefined) {
+      console.error("Failed getExitedValidators");
+      throw "Failed getExitedValidators";
+    }
+    console.log(`Fetched ${validators.length} exited validators.`);
+    console.log(validators);
+  } catch (err) {
+    console.error("ConsensysStakingApiClient integration script failed:", err);
+    process.exitCode = 1;
+  }
 }
 
 main();
