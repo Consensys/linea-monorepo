@@ -445,8 +445,9 @@ func (ss *Module) csIsStorage(comp *wizard.CompiledIOP) {
 func (ss *Module) csBatchNumber(comp *wizard.CompiledIOP) {
 
 	for i := range common.NbLimbU64 {
-		// The first limb starts from 1, higher limbs start from 0
-		if i == 0 {
+		// Big-endian format: last limb (i=3) holds the value, starts from 1
+		// Higher limbs (i=0,1,2) are the MSB padding, start from 0
+		if i == common.NbLimbU64-1 {
 			comp.InsertLocal(
 				0,
 				ifaces.QueryIDf("STATE_SUMMARY_BATCH_NUMBER_START_FROM_ONE_%d", i),

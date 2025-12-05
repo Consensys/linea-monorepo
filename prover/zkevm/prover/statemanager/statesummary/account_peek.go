@@ -491,13 +491,13 @@ func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
 		size       = ac.Nonce[0].Size()
 		zeroColumn = verifiercol.NewConstantCol(field.Zero(), size, "ZERO_COLUMN")
 	)
-	hashInputs = append(hashInputs, padd(ac.Nonce[:], 32, zeroColumn)...)
-	hashInputs = append(hashInputs, padd(ac.Balance[:], 32, zeroColumn)...)
+	hashInputs = append(hashInputs, padd(ac.Nonce[:], 16, zeroColumn)...)
+	hashInputs = append(hashInputs, padd(ac.Balance[:], 16, zeroColumn)...)
 	hashInputs = append(hashInputs, ac.StorageRoot[:]...)
 	hashInputs = append(hashInputs, ac.LineaCodeHash[:]...)
-	hashInputs = append(hashInputs, padd(ac.KeccakCodeHash.Hi[:], 32, zeroColumn)...)
-	hashInputs = append(hashInputs, padd(ac.KeccakCodeHash.Lo[:], 32, zeroColumn)...)
-	hashInputs = append(hashInputs, padd(ac.CodeSize[:], 32, zeroColumn)...)
+	hashInputs = append(hashInputs, ac.KeccakCodeHash.Hi[:]...)
+	hashInputs = append(hashInputs, ac.KeccakCodeHash.Lo[:]...)
+	hashInputs = append(hashInputs, padd(ac.CodeSize[:], 16, zeroColumn)...)
 	res := poseidon2.HashOf(comp, poseidon2.SplitColumns(hashInputs))
 	return res
 }
