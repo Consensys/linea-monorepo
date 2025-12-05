@@ -94,7 +94,7 @@ func TestBuildFromScratch(t *testing.T) {
 	}
 
 	// And generate the
-	tree := BuildComplete(leaves)
+	tree := NewTree(leaves)
 
 	// Test-Merkle tests the merkle proof point by point
 	for i := range leaves {
@@ -114,4 +114,23 @@ func TestBuildFromScratch(t *testing.T) {
 	// We should obtain the same roots
 	require.Equal(t, oneByoneTree.Root, tree.Root)
 
+}
+
+// BenchmarkNewTree benchmarks the creation of a SMT from scratch
+func BenchmarkNewTree(b *testing.B) {
+
+	const depth = 18
+	const numLeaves = 1 << depth
+	leaves := make([]field.Octuplet, numLeaves)
+	// Generate random leaves
+	for i := 0; i < numLeaves; i++ {
+		for j := 0; j < len(field.Octuplet{}); j++ {
+			leaves[i][j] = field.RandomElement()
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = NewTree(leaves)
+	}
 }
