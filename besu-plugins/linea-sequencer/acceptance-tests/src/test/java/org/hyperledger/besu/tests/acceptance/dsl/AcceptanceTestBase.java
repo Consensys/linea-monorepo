@@ -11,16 +11,26 @@ package org.hyperledger.besu.tests.acceptance.dsl;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.ProcessBuilder.Redirect;
 import java.math.BigInteger;
+import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
+import org.hyperledger.besu.datatypes.TransactionType;
+import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.api.util.DomainObjectDecodeUtils;
+import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
+import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount;
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Blockchain;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.admin.AdminConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.bft.BftConditions;
@@ -33,11 +43,14 @@ import org.hyperledger.besu.tests.acceptance.dsl.condition.process.ExitedWithCod
 import org.hyperledger.besu.tests.acceptance.dsl.condition.txpool.TxPoolConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.web3.Web3Conditions;
 import org.hyperledger.besu.tests.acceptance.dsl.contract.ContractVerifier;
+import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
 import org.hyperledger.besu.tests.acceptance.dsl.node.Node;
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster;
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeFactory;
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.permissioning.PermissionedNodeBuilder;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.AccountTransactions;
+import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.TransferTransaction;
+import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.TransferTransactionBuilder;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.admin.AdminTransactions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.bft.BftTransactions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.clique.CliqueTransactions;
@@ -51,6 +64,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.web3.Web3Transactio
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.web3j.protocol.core.DefaultBlockParameter;
 
 /** Base class for acceptance tests. */
 @ExtendWith(AcceptanceTestBaseTestWatcher.class)
@@ -84,6 +98,7 @@ public abstract class AcceptanceTestBase {
   protected final ExitedWithCode exitedSuccessfully;
 
   private final ExecutorService outputProcessorExecutor = Executors.newCachedThreadPool();
+  protected BesuNode minerNode;
 
   protected AcceptanceTestBase() {
     ethTransactions = new EthTransactions();
@@ -166,5 +181,131 @@ public abstract class AcceptanceTestBase {
         () ->
             assertThat(node.execute(ethTransactions.blockNumber()))
                 .isGreaterThanOrEqualTo(BigInteger.valueOf(blockchainHeight)));
+  }
+
+  protected List<Account> createAccounts(int numAccounts, int initialBalanceEther) {
+    return createAccountsBulk(numAccounts, initialBalanceEther);
+  }
+
+  private List<Account> createAccountsBulk(int numAccounts, int initialBalanceEther) {
+    try {
+      final var newAccounts =
+          IntStream.rangeClosed(1, numAccounts)
+              .mapToObj(i -> accounts.createAccount("Account" + i))
+              .toList();
+
+      final var chainId =
+          minerNode.nodeRequests().eth().ethChainId().send().getChainId().longValue();
+      final var senderAccount = accounts.getPrimaryBenefactor();
+      final AtomicInteger fundingAccNonce =
+          new AtomicInteger(
+              minerNode
+                  .nodeRequests()
+                  .eth()
+                  .ethGetTransactionCount(
+                      senderAccount.getAddress(), DefaultBlockParameter.valueOf("LATEST"))
+                  .send()
+                  .getTransactionCount()
+                  .intValue());
+      final var founderBalance =
+          ethTransactions.getBalance(senderAccount).execute(minerNode.nodeRequests());
+      final var transferGasPrice = Amount.wei(BigInteger.valueOf(20_000_000_000L)); // 20Gwei
+      final var requiredBalance =
+          Wei.fromEth((long) initialBalanceEther * numAccounts)
+              .getAsBigInteger()
+              .add(
+                  transferGasPrice
+                      .getValue()
+                      .toBigInteger()
+                      .multiply(BigInteger.valueOf(numAccounts)));
+      System.out.println("balance: " + Wei.of(founderBalance).getAsBigInteger());
+      System.out.println("targetBalance: " + requiredBalance);
+      assertThat(founderBalance).isGreaterThanOrEqualTo(requiredBalance);
+
+      final var transfers =
+          newAccounts.stream()
+              .map(
+                  account -> {
+                    TransferTransaction tx = null;
+                    final var useBuilder = true;
+                    var nonce = fundingAccNonce.getAndIncrement();
+                    if (useBuilder) {
+                      tx =
+                          new TransferTransactionBuilder()
+                              // .chainId(chainId)
+                              .sender(senderAccount)
+                              .recipient(account)
+                              .amount(Amount.ether(initialBalanceEther))
+                              .transactionType(TransactionType.FRONTIER)
+                              .gasPrice(transferGasPrice) // 20Gwei
+                              .nonce(BigInteger.valueOf(nonce))
+                              .build();
+                    } else {
+                      tx =
+                          accountTransactions.createTransfer(
+                              senderAccount,
+                              account,
+                              initialBalanceEther,
+                              /*nonce*/ BigInteger.valueOf(nonce));
+                    }
+
+                    final var decodedTx =
+                        DomainObjectDecodeUtils.decodeRawTransaction(tx.signedTransactionData());
+                    System.out.println("----TRANSFER_TRANSACTION " + nonce + "----");
+                    System.out.println("tx hash=" + tx.transactionHash());
+                    System.out.println("Decoded tx hash=" + decodedTx.getHash().toHexString());
+                    System.out.println("Sender: " + senderAccount.getAddress());
+                    System.out.println("Recipient: " + account.getAddress());
+                    System.out.println("Decoded Sender: " + decodedTx.getSender().toString());
+                    System.out.println("Decoded Recipient: " + decodedTx.getTo().get().toString());
+                    final var nodeTxHash = tx.execute(minerNode.nodeRequests());
+                    System.out.println("EL Node tx hash: " + nodeTxHash.toHexString());
+                    assertThat(decodedTx.getSender().toString())
+                        .isEqualTo(senderAccount.getAddress());
+                    return nodeTxHash;
+                  })
+              .toList();
+
+      // transfers.forEach((Hash tx) -> {
+      //   await()
+      //     .atMost(Duration.ofMinutes(3))
+      //     .pollInterval(Duration.ofMillis(1000))
+      //     .untilAsserted(
+      //       () -> {
+      //         minerNode.verify(eth.expectSuccessfulTransactionReceipt(tx.toString()));
+      //       });
+      // });
+
+      newAccounts.forEach(
+          account -> {
+            System.out.println("Waiting for account " + account.getAddress() + " to be funded");
+            assertThatAddressHasBalance(
+                account.getAddress(),
+                Wei.fromEth(initialBalanceEther).getAsBigInteger(),
+                Duration.ofSeconds(30));
+          });
+
+      return newAccounts;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void assertThatAddressHasBalance(
+      String address, BigInteger expectedBalanceWei, Duration timeout) {
+    await()
+        .atMost(timeout)
+        .pollInterval(Duration.ofMillis(1000))
+        .untilAsserted(
+            () -> {
+              final var balance =
+                  minerNode
+                      .nodeRequests()
+                      .eth()
+                      .ethGetBalance(address, DefaultBlockParameter.valueOf("LATEST"))
+                      .send()
+                      .getBalance();
+              assertThat(balance).isGreaterThan(expectedBalanceWei);
+            });
   }
 }
