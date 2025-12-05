@@ -129,7 +129,7 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	keyLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	shiftedLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	for i := range dedicatedposeidon2.BlockSize {
-		res.KeyLimbs[i], res.ComputeKeyLimbs[i] = byte32cmp.Decompose(comp, res.KeyHash[i], 1, common.LimbBytes*8)
+		res.KeyLimbs[i], res.ComputeKeyLimbs[i] = byte32cmp.Decompose(comp, res.KeyHash[i], 2, common.LimbBytes*8)
 
 		keyLimbColumbs.Limbs = append(keyLimbColumbs.Limbs, res.KeyLimbs[i].Limbs...)
 		shiftedLimbColumbs.Limbs = append(shiftedLimbColumbs.Limbs, res.KeyLimbs[i].Shift(-1).Limbs...)

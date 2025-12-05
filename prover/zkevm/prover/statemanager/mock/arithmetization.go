@@ -320,7 +320,7 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 				addressBalanceBytes = make([]byte, common.NbLimbU64*common.LimbBytes)
 			}
 
-			balanceBytes := common.LeftPadToFrBytes(initialState.GetBalance(address).Bytes())
+			balanceBytes := common.LeftPadToBytes(initialState.GetBalance(address).Bytes(), common.NbLimbU128*common.LimbBytes)
 			balanceLimbs := common.SplitBytes(balanceBytes)
 			codeSizeLimbs := common.SplitBigEndianUint64(uint64(initialState.GetCodeSize(address)))
 			for i := range common.NbLimbU64 {
@@ -771,7 +771,7 @@ func (accHistory *AccountHistory) AddFrame(frame StateAccessLog, initialState *S
 			accHistory.nonceNew[lastIndex][i].SetBytes(nonceLimbBytes[i])
 		}
 	case Balance:
-		addressBalanceBytes := common.LeftPadToFrBytes((frame.Value).(*big.Int).Bytes())
+		addressBalanceBytes := common.LeftPadToBytes((frame.Value).(*big.Int).Bytes(), common.NbLimbU128*common.LimbBytes)
 
 		balanceLimbs := common.SplitBytes(addressBalanceBytes)
 		for i := range common.NbLimbU64 {
