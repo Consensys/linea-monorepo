@@ -26,15 +26,15 @@ import (
 // to the state operation—and similarly with the other components in the constructed tuple.)
 type StateDiff struct {
 	// HKey stores the initial and final accumulator's key hashes.
-	HKey [common.NbLimbU256]ifaces.Column
+	HKey [common.NbElemPerHash]ifaces.Column
 
 	// InitialHVal and FinalHVal store the initial and final accumulator's
 	// hash of values.
-	InitialHVal, FinalHVal [common.NbLimbU256]ifaces.Column
+	InitialHVal, FinalHVal [common.NbElemPerHash]ifaces.Column
 
 	// InitialRoot and FinalRoot store the accumulator's initial and final
 	// root hashes.
-	InitialRoot, FinalRoot [common.NbLimbU256]ifaces.Column
+	InitialRoot, FinalRoot [common.NbElemPerHash]ifaces.Column
 }
 
 // NewStateDiff declares all the columns adding up to a [StateDiff] and returns
@@ -52,7 +52,7 @@ func NewStateDiff(comp *wizard.CompiledIOP, size int, moduleName, name string) S
 
 	res := StateDiff{}
 
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		res.HKey[i] = createCol(moduleName, fmt.Sprintf("HKEY_%d", i))
 		res.InitialHVal[i] = createCol(moduleName, fmt.Sprintf("INITIAL_HVAL_%d", i))
 		res.FinalHVal[i] = createCol(moduleName, fmt.Sprintf("FINAL_HVAL_%d", i))
@@ -66,9 +66,9 @@ func NewStateDiff(comp *wizard.CompiledIOP, size int, moduleName, name string) S
 // StateDiffAssignmentBuilder is a convenience structure storing the column
 // builders relating to an AccumulatorSummary.
 type StateDiffAssignmentBuilder struct {
-	HKey                   [common.NbLimbU256]*common.VectorBuilder
-	InitialHVal, FinalHVal [common.NbLimbU256]*common.VectorBuilder
-	InitialRoot, FinalRoot [common.NbLimbU256]*common.VectorBuilder
+	HKey                   [common.NbElemPerHash]*common.VectorBuilder
+	InitialHVal, FinalHVal [common.NbElemPerHash]*common.VectorBuilder
+	InitialRoot, FinalRoot [common.NbElemPerHash]*common.VectorBuilder
 }
 
 // NewStateDiffAssignmentBuilder initializes a fresh
@@ -76,7 +76,7 @@ type StateDiffAssignmentBuilder struct {
 func NewStateDiffAssignmentBuilder(as StateDiff) StateDiffAssignmentBuilder {
 	res := StateDiffAssignmentBuilder{}
 
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		res.HKey[i] = common.NewVectorBuilder(as.HKey[i])
 		res.InitialHVal[i] = common.NewVectorBuilder(as.InitialHVal[i])
 		res.FinalHVal[i] = common.NewVectorBuilder(as.FinalHVal[i])
@@ -90,7 +90,7 @@ func NewStateDiffAssignmentBuilder(as StateDiff) StateDiffAssignmentBuilder {
 // PushReadZero pushes the relevant row when a ReadZero occurs on the
 // accumulator side.
 func (as *StateDiffAssignmentBuilder) PushReadZero(root, hkey [][]byte) {
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		as.HKey[i].PushBytes(pagZerosAtBeginning(hkey[i]))
 		as.InitialHVal[i].PushZero()
 		as.FinalHVal[i].PushZero()
@@ -101,7 +101,7 @@ func (as *StateDiffAssignmentBuilder) PushReadZero(root, hkey [][]byte) {
 
 // PushReadNonZero pushes a row onto `as` for a read-non-zero operation.
 func (as *StateDiffAssignmentBuilder) PushReadNonZero(root, hKey, hVal [][]byte) {
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
 		as.InitialHVal[i].PushBytes(pagZerosAtBeginning(hVal[i]))
 		as.FinalHVal[i].PushBytes(pagZerosAtBeginning(hVal[i]))
@@ -112,7 +112,7 @@ func (as *StateDiffAssignmentBuilder) PushReadNonZero(root, hKey, hVal [][]byte)
 
 // PushInsert pushes a row representing an insertion onto `as`.
 func (as *StateDiffAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal [][]byte) {
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
 		as.InitialHVal[i].PushZero()
 		as.FinalHVal[i].PushBytes(pagZerosAtBeginning(newHVal[i]))
@@ -123,7 +123,7 @@ func (as *StateDiffAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal
 
 // PushUpdate pushes a row representing an update onto `as`.
 func (as *StateDiffAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal, newHVal [][]byte) {
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
 		as.InitialHVal[i].PushBytes(pagZerosAtBeginning(oldHVal[i]))
 		as.FinalHVal[i].PushBytes(pagZerosAtBeginning(newHVal[i]))
@@ -134,7 +134,7 @@ func (as *StateDiffAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal
 
 // PushDelete pushes a row representing a deletion onto `as`.
 func (as *StateDiffAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal [][]byte) {
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
 		as.InitialHVal[i].PushBytes(pagZerosAtBeginning(oldHVal[i]))
 		as.FinalHVal[i].PushZero()
@@ -145,7 +145,7 @@ func (as *StateDiffAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal
 
 // PadAndAssign pads all the column in `as` and assign them into `run`
 func (as *StateDiffAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		as.HKey[i].PadAndAssign(run)
 		as.InitialHVal[i].PadAndAssign(run)
 		as.FinalHVal[i].PadAndAssign(run)
@@ -155,9 +155,9 @@ func (as *StateDiffAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 }
 
 // addRows add rows to the builder that is used to construct an AccumulatorSummary
-func (builder *StateDiffAssignmentBuilder) AddRows(numRowsAccSegment int, hKey, initialHVal, finalHVal, initialRoot, finalRoot [common.NbLimbU256]field.Element) {
+func (builder *StateDiffAssignmentBuilder) AddRows(numRowsAccSegment int, hKey, initialHVal, finalHVal, initialRoot, finalRoot [common.NbElemPerHash]field.Element) {
 	for i := 1; i <= numRowsAccSegment; i++ {
-		for j := range common.NbLimbU256 {
+		for j := range common.NbElemPerHash {
 			builder.HKey[j].PushField(hKey[j])
 			builder.InitialHVal[j].PushField(initialHVal[j])
 			builder.FinalHVal[j].PushField(finalHVal[j])

@@ -491,7 +491,7 @@ func (ss *Module) csBatchNumber(comp *wizard.CompiledIOP) {
 // csWorldStateRootSequentiality ensures that the WorldStateRoot column is
 // properly set w.r.t. the accumulator statement.
 func (ss *Module) csWorldStateRoot(comp *wizard.CompiledIOP) {
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		isZeroWhenInactive(comp, ss.WorldStateRoot[i], ss.IsActive)
 
 		comp.InsertGlobal(
@@ -994,7 +994,7 @@ func (ss *Module) csAccumulatorStatementHValKey(comp *wizard.CompiledIOP) {
 func (ss *Module) csAccumulatorRoots(comp *wizard.CompiledIOP) {
 
 	// IsBeginningOfAccountSegment && IsStorage
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_BEGINNING_OF_SUBSEGMENT_%d", i),
