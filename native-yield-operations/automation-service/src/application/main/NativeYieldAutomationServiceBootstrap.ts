@@ -151,10 +151,10 @@ export class NativeYieldAutomationServiceBootstrap {
       new WinstonLogger(YieldManagerContractClient.name, config.loggerOptions),
       this.viemBlockchainClientAdapter,
       config.contractAddresses.yieldManagerAddress,
-      config.rebalanceToleranceBps,
-      config.minWithdrawalThresholdEth,
-      config.maxStakingRebalanceAmountWei,
-      config.minStakingVaultBalanceToUnpauseStakingWei,
+      config.rebalance.toleranceBps,
+      config.rebalance.minWithdrawalThresholdEth,
+      config.rebalance.maxStakingRebalanceAmountWei,
+      config.rebalance.minStakingVaultBalanceToUnpauseStakingWei,
     );
     this.lazyOracleContractClient = new LazyOracleContractClient(
       new WinstonLogger(LazyOracleContractClient.name, config.loggerOptions),
@@ -212,7 +212,7 @@ export class NativeYieldAutomationServiceBootstrap {
       new WinstonLogger(BeaconChainStakingClient.name, config.loggerOptions),
       this.metricsUpdater,
       this.consensysStakingGraphQLClient,
-      config.maxValidatorWithdrawalRequestsPerTransaction,
+      config.rebalance.maxValidatorWithdrawalRequestsPerTransaction,
       this.yieldManagerContractClient,
       this.config.contractAddresses.lidoYieldProviderAddress,
     );
@@ -241,7 +241,7 @@ export class NativeYieldAutomationServiceBootstrap {
       config.reporting.minPositiveYieldToReportWei,
       config.reporting.minUnpaidLidoProtocolFeesToReportYieldWei,
       config.reporting.minNegativeYieldDiffToReportYieldWei,
-      config.minWithdrawalThresholdEth,
+      config.rebalance.minWithdrawalThresholdEth,
     );
 
     this.ossificationPendingOperationModeProcessor = new OssificationPendingProcessor(

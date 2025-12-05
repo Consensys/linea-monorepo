@@ -14,9 +14,7 @@ import { transports } from "winston";
  *   - contractAddresses: All contract addresses used by the service
  *   - apiPort: Port for the metrics API server
  *   - timing: Poll intervals and retry timing configuration
- *   - rebalanceToleranceBps: Rebalance tolerance in basis points
- *   - maxValidatorWithdrawalRequestsPerTransaction: Maximum withdrawal requests per transaction
- *   - minWithdrawalThresholdEth: Minimum withdrawal threshold in ETH
+ *   - rebalance: Rebalance configuration including tolerance, thresholds, and limits
  *   - reporting: Reporting configuration including shouldSubmitVaultReport, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei, and minNegativeYieldDiffToReportYieldWei
  *   - web3signer: Web3Signer URL, public key (address or secp pubkey compressed/uncompressed), keystore, truststore, and TLS settings
  *   - loggerOptions: Winston logger configuration with console transport and log level from LOG_LEVEL env var (defaults to "info")
@@ -55,12 +53,14 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
     contractReadRetryTimeMs: env.CONTRACT_READ_RETRY_TIME_MS,
     gaugeMetricsPollIntervalMs: env.GAUGE_METRICS_POLL_INTERVAL_MS,
   },
-  rebalanceToleranceBps: env.REBALANCE_TOLERANCE_BPS,
-  maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
-  minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
-  maxStakingRebalanceAmountWei: env.MAX_STAKING_REBALANCE_AMOUNT_WEI,
-  stakeCircuitBreakerThresholdWei: env.STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI,
-  minStakingVaultBalanceToUnpauseStakingWei: env.MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI,
+  rebalance: {
+    toleranceBps: env.REBALANCE_TOLERANCE_BPS,
+    maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
+    minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
+    maxStakingRebalanceAmountWei: env.MAX_STAKING_REBALANCE_AMOUNT_WEI,
+    stakeCircuitBreakerThresholdWei: env.STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI,
+    minStakingVaultBalanceToUnpauseStakingWei: env.MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI,
+  },
   reporting: {
     shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,
     minPositiveYieldToReportWei: env.MIN_POSITIVE_YIELD_TO_REPORT_WEI,

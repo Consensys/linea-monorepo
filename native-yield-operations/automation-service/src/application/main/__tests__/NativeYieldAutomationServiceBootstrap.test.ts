@@ -215,9 +215,14 @@ const createBootstrapConfig = () => ({
     contractReadRetryTimeMs: 250,
     gaugeMetricsPollIntervalMs: 5000,
   },
-  rebalanceToleranceBps: 500,
-  maxValidatorWithdrawalRequestsPerTransaction: 16,
-  minWithdrawalThresholdEth: 42n,
+  rebalance: {
+    toleranceBps: 500,
+    maxValidatorWithdrawalRequestsPerTransaction: 16,
+    minWithdrawalThresholdEth: 42n,
+    maxStakingRebalanceAmountWei: 1000000000000000000000n,
+    stakeCircuitBreakerThresholdWei: 2000000000000000000000n,
+    minStakingVaultBalanceToUnpauseStakingWei: 500000000000000000000n,
+  },
   reporting: {
     shouldSubmitVaultReport: true,
     minPositiveYieldToReportWei: 1000000000000000000n,
