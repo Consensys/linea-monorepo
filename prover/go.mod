@@ -94,6 +94,6 @@ require (
 	github.com/pkg/profile v1.7.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.38.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
