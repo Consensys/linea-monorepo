@@ -163,6 +163,18 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       [],
     );
 
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+      "Pending full withdrawal queue amount in gwei",
+      ["pubkey", "withdrawable_epoch", "slashed"],
+    );
+
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
+      "Total pending full withdrawal amount in gwei",
+      [],
+    );
+
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
       "Node operator fees paid by automation per vault",
@@ -503,6 +515,42 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
       {},
       totalPendingExitGwei,
+    );
+  }
+
+  /**
+   * Sets the pending full withdrawal queue amount in gwei for a specific validator and withdrawable epoch.
+   *
+   * @param {Hex} pubkey - The validator's public key in hex format.
+   * @param {number} withdrawableEpoch - The epoch when the withdrawal becomes available. Must be non-negative.
+   * @param {number} amountGwei - The withdrawal amount in gwei. Must be non-negative to be recorded.
+   * @param {boolean} slashed - Whether the validator has been slashed.
+   */
+  public setPendingFullWithdrawalQueueAmountGwei(
+    pubkey: Hex,
+    withdrawableEpoch: number,
+    amountGwei: number,
+    slashed: boolean,
+  ): void {
+    if (amountGwei < 0 || withdrawableEpoch < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+      { pubkey, withdrawable_epoch: withdrawableEpoch.toString(), slashed: slashed.toString() },
+      amountGwei,
+    );
+  }
+
+  /**
+   * Sets the total pending full withdrawal amount in gwei from the last query.
+   *
+   * @param {number} totalPendingFullWithdrawalGwei - The total pending full withdrawal amount in gwei. Must be non-negative to be recorded.
+   */
+  public setLastTotalPendingFullWithdrawalGwei(totalPendingFullWithdrawalGwei: number): void {
+    if (totalPendingFullWithdrawalGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
+      {},
+      totalPendingFullWithdrawalGwei,
     );
   }
 

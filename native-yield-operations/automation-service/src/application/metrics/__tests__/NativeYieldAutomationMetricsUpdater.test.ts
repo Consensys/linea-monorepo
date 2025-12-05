@@ -130,6 +130,16 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       "Total pending exit amount in gwei",
       [],
     );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+      "Pending full withdrawal queue amount in gwei",
+      ["pubkey", "withdrawable_epoch", "slashed"],
+    );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
+      "Total pending full withdrawal amount in gwei",
+      [],
+    );
     expect(metricsService.createCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
       "Node operator fees paid by automation per vault",
@@ -977,6 +987,148 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
+        {},
+        0,
+      );
+    });
+  });
+
+  describe("setPendingFullWithdrawalQueueAmountGwei", () => {
+    it("sets gauge when amount and withdrawableEpoch are non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 60001, 32000000000, false);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: validatorPubkey, withdrawable_epoch: "60001", slashed: "false" },
+        32000000000,
+      );
+    });
+
+    it("converts withdrawableEpoch to string for label", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 12345, 1000, true);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: validatorPubkey, withdrawable_epoch: "12345", slashed: "true" },
+        1000,
+      );
+    });
+
+    it("converts slashed boolean to string for label", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 60001, 1000, true);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: validatorPubkey, withdrawable_epoch: "60001", slashed: "true" },
+        1000,
+      );
+
+      jest.clearAllMocks();
+
+      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 60001, 1000, false);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: validatorPubkey, withdrawable_epoch: "60001", slashed: "false" },
+        1000,
+      );
+    });
+
+    it("does not set gauge when amount is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 60001, -1, false);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("does not set gauge when withdrawableEpoch is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, -1, 1000, true);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("sets gauge when amount is zero and withdrawableEpoch is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 60001, 0, false);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: validatorPubkey, withdrawable_epoch: "60001", slashed: "false" },
+        0,
+      );
+    });
+
+    it("sets gauge when withdrawableEpoch is zero and amount is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 0, 1000, true);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: validatorPubkey, withdrawable_epoch: "0", slashed: "true" },
+        1000,
+      );
+    });
+  });
+
+  describe("setLastTotalPendingFullWithdrawalGwei", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalPendingFullWithdrawalGwei(1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
+        {},
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalPendingFullWithdrawalGwei(-1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("sets gauge when value is zero", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setLastTotalPendingFullWithdrawalGwei(0);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
         {},
         0,
       );
