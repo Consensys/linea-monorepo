@@ -138,8 +138,12 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 	for i := range poseidon2.BlockSize {
 		accPeek.AddressHashLimbs[i], accPeek.ComputeAddressLimbs[i] = byte32cmp.Decompose(comp, accPeek.AddressHash[i], 2, common.LimbBytes*8)
 
-		addrHashLimbColumbs.Limbs = append(addrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Limbs...)
-		shiftedAddrHashLimbColumbs.Limbs = append(shiftedAddrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Shift(-1).Limbs...)
+		// Decompose returns limbs in little-endian order (LSB at index 0).
+		// For big-endian comparison (matching hex string comparison), reverse the limbs.
+		// Limbs[1] is MSB, Limbs[0] is LSB - append MSB first
+		addrHashLimbColumbs.Limbs = append(addrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Limbs[1], accPeek.AddressHashLimbs[i].Limbs[0])
+		shifted := accPeek.AddressHashLimbs[i].Shift(-1)
+		shiftedAddrHashLimbColumbs.Limbs = append(shiftedAddrHashLimbColumbs.Limbs, shifted.Limbs[1], shifted.Limbs[0])
 	}
 
 	accPeek.HasGreaterAddressAsPrev, accPeek.HasSameAddressAsPrev, _, accPeek.ComputeAddressComparison = byte32cmp.CmpMultiLimbs(
