@@ -888,6 +888,7 @@ contract YieldManager is
 
   /**
    * @notice Initiate the ossification sequence for a provider.
+   * @dev OSSIFICATION_INITIATOR_ROLE is required to execute.
    * @dev Will pause beacon chain staking and LST withdrawals.
    * @dev WARNING: This operation irreversibly pauses beacon chain deposits.
    * @param _yieldProvider The yield provider address.
@@ -910,6 +911,7 @@ contract YieldManager is
 
   /**
    * @notice Progress an initiated ossification process.
+   * @dev OSSIFICATION_PROCESSOR_ROLE is required to execute.
    * @param _yieldProvider The yield provider address.
    * @return progressOssificationResult The operation result.
    */
@@ -947,6 +949,7 @@ contract YieldManager is
 
   /**
    * @notice Register a new YieldProvider adaptor instance.
+   * @dev SET_YIELD_PROVIDER_ROLE is required to execute.
    * @param _yieldProvider The yield provider address.
    * @param _vendorInitializationData Vendor-specific initialization data.
    */
@@ -993,6 +996,7 @@ contract YieldManager is
 
   /**
    * @notice Remove a YieldProvider instance from the YieldManager.
+   * @dev SET_YIELD_PROVIDER_ROLE is required to execute.
    * @dev Has safety checks to ensure that there is no remaining user funds or negative yield on the YieldProvider.
    * @param _yieldProvider The yield provider address.
    * @param _vendorExitData Vendor-specific exit data.
@@ -1010,6 +1014,7 @@ contract YieldManager is
 
   /**
    * @notice Emergency remove a YieldProvider instance from the YieldManager, skipping the regular safety checks.
+   * @dev SET_YIELD_PROVIDER_ROLE is required to execute.
    * @dev Without this function, newly reported yield can prevent deregistration of the YieldProvider.
    * @param _yieldProvider The yield provider address.
    * @param _vendorExitData Vendor-specific exit data.
