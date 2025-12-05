@@ -83,11 +83,13 @@ describe("YieldManagerContractClient", () => {
     rebalanceToleranceBps = 100,
     minWithdrawalThresholdEth = 0n,
     maxStakingRebalanceAmountWei = 1000000000000000000000n, // 1000 ETH default
+    stakeCircuitBreakerThresholdWei = 2000000000000000000000n, // 2000 ETH default
     minStakingVaultBalanceToUnpauseStakingWei = 0n,
   }: {
     rebalanceToleranceBps?: number;
     minWithdrawalThresholdEth?: bigint;
     maxStakingRebalanceAmountWei?: bigint;
+    stakeCircuitBreakerThresholdWei?: bigint;
     minStakingVaultBalanceToUnpauseStakingWei?: bigint;
   } = {}) =>
     new YieldManagerContractClient(
@@ -97,6 +99,7 @@ describe("YieldManagerContractClient", () => {
       rebalanceToleranceBps,
       minWithdrawalThresholdEth,
       maxStakingRebalanceAmountWei,
+      stakeCircuitBreakerThresholdWei,
       minStakingVaultBalanceToUnpauseStakingWei,
     );
 
@@ -442,6 +445,7 @@ describe("YieldManagerContractClient", () => {
       peekedOutstandingNegativeYield: bigint,
       rebalanceToleranceBps: number = 100,
       maxStakingRebalanceAmountWei: bigint = 1000000000000000000000n,
+      stakeCircuitBreakerThresholdWei: bigint = 2000000000000000000000n,
     ) {
       // --- Contract stubs ---
       contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
@@ -462,7 +466,11 @@ describe("YieldManagerContractClient", () => {
       blockchainClient.getBalance.mockResolvedValueOnce(l1MessageServiceBalance);
 
       // --- Instantiate client ---
-      const client = createClient({ rebalanceToleranceBps, maxStakingRebalanceAmountWei });
+      const client = createClient({
+        rebalanceToleranceBps,
+        maxStakingRebalanceAmountWei,
+        stakeCircuitBreakerThresholdWei,
+      });
 
       return {
         client,
@@ -694,6 +702,41 @@ describe("YieldManagerContractClient", () => {
       expect(logger.info).toHaveBeenCalledWith(
         expect.stringContaining(
           `_getRebalanceRequirements - capping staking rebalance amount from ${l1MessageServiceBalance - effectiveTarget} to ${maxStakingRebalanceAmountWei}`,
+        ),
+      );
+    });
+
+    it("correctly applies circuit breaker when rebalance requirement exceeds stakeCircuitBreakerThresholdWei limit", async () => {
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 400_000n;
+      const dashboardTotalValue = 100_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 0n;
+      const peekedOutstandingNegativeYield = 0n;
+      const rebalanceToleranceBps = 100;
+      const l1MessageServiceBalance = 900_000n;
+      const maxStakingRebalanceAmountWei = 100_000n;
+      const stakeCircuitBreakerThresholdWei = 200_000n;
+      const { client } = setupRebalanceTest(
+        l1MessageServiceBalance,
+        totalSystemBalance,
+        effectiveTarget,
+        dashboardTotalValue,
+        userFunds,
+        peekedYieldAmount,
+        peekedOutstandingNegativeYield,
+        rebalanceToleranceBps,
+        maxStakingRebalanceAmountWei,
+        stakeCircuitBreakerThresholdWei,
+      );
+      // Expectations
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.NONE,
+        rebalanceAmount: 0n,
+      });
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          `_getRebalanceRequirements - staking circuit breaker tripped, skipping staking rebalance as absRebalanceRequirement=${l1MessageServiceBalance - effectiveTarget} exceeds the circuit breaker threshold of ${stakeCircuitBreakerThresholdWei}`,
         ),
       );
     });

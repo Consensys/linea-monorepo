@@ -42,6 +42,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @param {number} rebalanceToleranceBps - Rebalance tolerance in basis points (for determining when rebalancing is required).
    * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH (for threshold-based withdrawal operations).
    * @param {bigint} maxStakingRebalanceAmountWei - Maximum staking rebalance amount (in wei) that can be processed per loop iteration.
+   * @param {bigint} stakeCircuitBreakerThresholdWei - Circuit breaker threshold (in wei) for STAKE direction rebalances.
    * @param {bigint} minStakingVaultBalanceToUnpauseStakingWei - Minimum staking vault balance (in wei) required before unpausing staking.
    */
   constructor(
@@ -51,6 +52,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     private readonly rebalanceToleranceBps: number,
     private readonly minWithdrawalThresholdEth: bigint,
     private readonly maxStakingRebalanceAmountWei: bigint,
+    private readonly stakeCircuitBreakerThresholdWei: bigint,
     private readonly minStakingVaultBalanceToUnpauseStakingWei: bigint,
   ) {
     this.contract = getContract({
@@ -517,6 +519,17 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       this.logger.info("_getRebalanceRequirements - result", result);
       return result;
     } else {
+      // Apply circuit breaker
+      if (absRebalanceRequirement > this.stakeCircuitBreakerThresholdWei) {
+        this.logger.warn(
+          `_getRebalanceRequirements - staking circuit breaker tripped, skipping staking rebalance as absRebalanceRequirement=${absRebalanceRequirement} exceeds the circuit breaker threshold of ${this.stakeCircuitBreakerThresholdWei}`,
+        );
+        return {
+          rebalanceDirection: RebalanceDirection.NONE,
+          rebalanceAmount: 0n,
+        };
+      }
+      // Apply rate limit
       const cappedAmount =
         absRebalanceRequirement > this.maxStakingRebalanceAmountWei
           ? this.maxStakingRebalanceAmountWei
