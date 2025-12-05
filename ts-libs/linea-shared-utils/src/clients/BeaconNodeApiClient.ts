@@ -4,10 +4,12 @@ import {
   PendingPartialWithdrawal,
   RawPendingDeposit,
   RawPendingPartialWithdrawal,
+  BeaconHeadResponse,
 } from "../core/client/IBeaconNodeApiClient";
 import axios from "axios";
 import { ILogger } from "../logging/ILogger";
 import { IRetryService } from "../core/services/IRetryService";
+import { slotToEpoch } from "../utils/blockchain";
 
 /**
  * Client for interacting with a Beacon Node API.
@@ -109,5 +111,31 @@ export class BeaconNodeApiClient implements IBeaconNodeAPIClient {
     this.logger.info(`getPendingDeposits succeeded, pendingDepositCount=${returnVal.length}`);
     this.logger.debug("getPendingDeposits return value", { returnVal });
     return returnVal;
+  }
+
+  /**
+   * Fetches the current epoch from the beacon chain head.
+   * Makes a GET request to the Beacon Node API with automatic retry on failure.
+   *
+   * @returns {Promise<number | undefined>} The current epoch number if successful, undefined if the request fails or returns invalid data.
+   */
+  async getCurrentEpoch(): Promise<number | undefined> {
+    const url = `${this.rpcURL}/eth/v1/beacon/headers/head`;
+    this.logger.debug(`getCurrentEpoch making GET request to url=${url}`);
+    const { data } = await this.retryService.retry(() => axios.get<BeaconHeadResponse>(url));
+    const slotString = data?.data?.header?.message?.slot;
+    if (slotString === undefined || slotString === null) {
+      this.logger.error("Failed to get slot from response", { url });
+      return undefined;
+    }
+    const slot = parseInt(slotString, 10);
+    if (isNaN(slot)) {
+      this.logger.error(`Invalid slot value: ${slotString} from`, url);
+      return undefined;
+    }
+    const epoch = slotToEpoch(slot);
+    this.logger.info(`getCurrentEpoch succeeded, epoch=${epoch}, slot=${slot}`);
+    this.logger.debug("getCurrentEpoch return value", { epoch, slot });
+    return epoch;
   }
 }

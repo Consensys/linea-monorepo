@@ -45,3 +45,26 @@ export interface RawPendingDeposit {
   signature: string;
   slot: string;
 }
+
+export interface BeaconHeadMessage {
+  slot: string;
+  proposer_index: string;
+  parent_root: string;
+  state_root: string;
+  body_root: string;
+}
+
+export interface BeaconHeadHeader {
+  message: BeaconHeadMessage;
+  signature: string;
+}
+
+export interface BeaconHeadData {
+  root: string;
+  canonical: boolean;
+  header: BeaconHeadHeader;
+}
+
+export interface BeaconHeadResponse extends BeaconApiResponse {
+  data: BeaconHeadData;
+}
