@@ -7,6 +7,7 @@ import {
   ONE_GWEI,
   PendingPartialWithdrawal,
   safeSub,
+  SHARD_COMMITTEE_PERIOD,
 } from "@consensys/linea-shared-utils";
 import type { ApolloClient } from "@apollo/client";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
@@ -36,8 +37,10 @@ const createClient = () => {
   const apolloClient = { query: apolloQueryMock } as unknown as ApolloClient;
 
   const pendingWithdrawalsMock = jest.fn() as jest.MockedFunction<IBeaconNodeAPIClient["getPendingPartialWithdrawals"]>;
+  const getCurrentEpochMock = jest.fn() as jest.MockedFunction<IBeaconNodeAPIClient["getCurrentEpoch"]>;
   const beaconNodeApiClient = {
     getPendingPartialWithdrawals: pendingWithdrawalsMock,
+    getCurrentEpoch: getCurrentEpochMock,
   } as unknown as jest.Mocked<IBeaconNodeAPIClient>;
 
   const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
@@ -48,6 +51,7 @@ const createClient = () => {
     retryMock,
     apolloQueryMock,
     pendingWithdrawalsMock,
+    getCurrentEpochMock,
   };
 };
 
@@ -375,7 +379,7 @@ describe("ConsensysStakingApiClient", () => {
     });
 
     it("aggregates pending withdrawals, computes withdrawable amounts, and sorts ascending", async () => {
-      const { client, logger, pendingWithdrawalsMock } = createClient();
+      const { client, logger, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
 
       const validatorA: ValidatorBalance = {
         balance: 40n * ONE_GWEI,
@@ -403,6 +407,8 @@ describe("ConsensysStakingApiClient", () => {
         { validator_index: 2, amount: 1n * ONE_GWEI, withdrawable_epoch: 0 },
       ];
       pendingWithdrawalsMock.mockResolvedValueOnce(pendingWithdrawals);
+      // Mock current epoch to be high enough that both validators are eligible (activationEpoch 0 + 256 <= currentEpoch)
+      getCurrentEpochMock.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
 
       const result = await client.getValidatorsForWithdrawalRequestsAscending();
 
@@ -428,7 +434,7 @@ describe("ConsensysStakingApiClient", () => {
     });
 
     it("sorts validators ascending by withdrawable amount", async () => {
-      const { client, pendingWithdrawalsMock } = createClient();
+      const { client, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
 
       const validatorHigh: ValidatorBalance = {
         balance: 45n * ONE_GWEI,
@@ -462,6 +468,7 @@ describe("ConsensysStakingApiClient", () => {
           withdrawable_epoch: 0,
         },
       ]);
+      getCurrentEpochMock.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
 
       const result = await client.getValidatorsForWithdrawalRequestsAscending();
 
@@ -483,7 +490,7 @@ describe("ConsensysStakingApiClient", () => {
     });
 
     it("handles validators with equal withdrawable amounts", async () => {
-      const { client, pendingWithdrawalsMock } = createClient();
+      const { client, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
 
       const validatorEqualA: ValidatorBalance = {
         balance: 36n * ONE_GWEI,
@@ -511,6 +518,7 @@ describe("ConsensysStakingApiClient", () => {
           withdrawable_epoch: 0,
         },
       ]);
+      getCurrentEpochMock.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
 
       const result = await client.getValidatorsForWithdrawalRequestsAscending();
 
@@ -528,6 +536,152 @@ describe("ConsensysStakingApiClient", () => {
 
       expect(result).toEqual(expect.arrayContaining([expectedEqualA, expectedEqualB]));
 
+      getActiveValidatorsSpy.mockRestore();
+    });
+
+    it("skips filter and logs warning when getCurrentEpoch returns undefined", async () => {
+      const { client, logger, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
+      const validators: ValidatorBalance[] = [
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
+      ];
+      const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(validators);
+      pendingWithdrawalsMock.mockResolvedValueOnce([]);
+      getCurrentEpochMock.mockResolvedValueOnce(undefined);
+
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
+
+      const expectedValidator: ValidatorBalanceWithPendingWithdrawal = {
+        ...validators[0],
+        pendingWithdrawalAmount: 0n,
+        withdrawableAmount: safeSub(safeSub(validators[0].balance, 0n), ONE_GWEI * 32n),
+      };
+
+      expect(result).toEqual([expectedValidator]);
+      expect(logger.warn).toHaveBeenCalledWith(
+        "getValidatorsForWithdrawalRequestsAscending - failed to retrieve current epoch, skipping filter",
+      );
+      getActiveValidatorsSpy.mockRestore();
+    });
+
+    it("filters out validators that haven't been active long enough", async () => {
+      const { client, logger, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
+
+      const eligibleValidator: ValidatorBalance = {
+        balance: 40n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-eligible",
+        validatorIndex: 1n,
+        activationEpoch: 0, // Activated at epoch 0
+      };
+
+      const ineligibleValidator: ValidatorBalance = {
+        balance: 40n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-ineligible",
+        validatorIndex: 2n,
+        activationEpoch: 100, // Activated at epoch 100
+      };
+
+      const getActiveValidatorsSpy = jest
+        .spyOn(client, "getActiveValidators")
+        .mockResolvedValueOnce([eligibleValidator, ineligibleValidator]);
+
+      pendingWithdrawalsMock.mockResolvedValueOnce([]);
+      // Current epoch is 256, so:
+      // - Eligible: 0 + 256 = 256 <= 256 ✓
+      // - Ineligible: 100 + 256 = 356 > 256 ✗
+      getCurrentEpochMock.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
+
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
+
+      const expectedEligible: ValidatorBalanceWithPendingWithdrawal = {
+        ...eligibleValidator,
+        pendingWithdrawalAmount: 0n,
+        withdrawableAmount: safeSub(safeSub(eligibleValidator.balance, 0n), ONE_GWEI * 32n),
+      };
+
+      expect(result).toEqual([expectedEligible]);
+      expect(logger.info).toHaveBeenCalledWith("getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=1");
+      getActiveValidatorsSpy.mockRestore();
+    });
+
+    it("keeps validators that have been active long enough", async () => {
+      const { client, logger, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
+
+      const validatorOld: ValidatorBalance = {
+        balance: 40n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-old",
+        validatorIndex: 1n,
+        activationEpoch: 0, // Activated at epoch 0
+      };
+
+      const validatorRecent: ValidatorBalance = {
+        balance: 40n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-recent",
+        validatorIndex: 2n,
+        activationEpoch: 100, // Activated at epoch 100
+      };
+
+      const getActiveValidatorsSpy = jest
+        .spyOn(client, "getActiveValidators")
+        .mockResolvedValueOnce([validatorOld, validatorRecent]);
+
+      pendingWithdrawalsMock.mockResolvedValueOnce([]);
+      // Current epoch is 400, so:
+      // - Old: 0 + 256 = 256 <= 400 ✓
+      // - Recent: 100 + 256 = 356 <= 400 ✓
+      getCurrentEpochMock.mockResolvedValueOnce(400);
+
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
+
+      const expectedOld: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorOld,
+        pendingWithdrawalAmount: 0n,
+        withdrawableAmount: safeSub(safeSub(validatorOld.balance, 0n), ONE_GWEI * 32n),
+      };
+
+      const expectedRecent: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorRecent,
+        pendingWithdrawalAmount: 0n,
+        withdrawableAmount: safeSub(safeSub(validatorRecent.balance, 0n), ONE_GWEI * 32n),
+      };
+
+      expect(result).toEqual([expectedOld, expectedRecent]);
+      expect(logger.info).toHaveBeenCalledWith("getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=2");
+      getActiveValidatorsSpy.mockRestore();
+    });
+
+    it("handles boundary case where activationEpoch + SHARD_COMMITTEE_PERIOD equals currentEpoch", async () => {
+      const { client, logger, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
+
+      const validatorBoundary: ValidatorBalance = {
+        balance: 40n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-boundary",
+        validatorIndex: 1n,
+        activationEpoch: 0, // Activated at epoch 0
+      };
+
+      const getActiveValidatorsSpy = jest
+        .spyOn(client, "getActiveValidators")
+        .mockResolvedValueOnce([validatorBoundary]);
+
+      pendingWithdrawalsMock.mockResolvedValueOnce([]);
+      // Current epoch equals activationEpoch + SHARD_COMMITTEE_PERIOD (0 + 256 = 256)
+      getCurrentEpochMock.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
+
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
+
+      const expectedBoundary: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorBoundary,
+        pendingWithdrawalAmount: 0n,
+        withdrawableAmount: safeSub(safeSub(validatorBoundary.balance, 0n), ONE_GWEI * 32n),
+      };
+
+      expect(result).toEqual([expectedBoundary]);
+      expect(logger.info).toHaveBeenCalledWith("getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=1");
       getActiveValidatorsSpy.mockRestore();
     });
   });

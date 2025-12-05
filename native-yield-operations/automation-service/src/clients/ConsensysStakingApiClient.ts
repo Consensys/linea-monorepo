@@ -7,6 +7,7 @@ import {
   ONE_GWEI,
   PendingPartialWithdrawal,
   safeSub,
+  SHARD_COMMITTEE_PERIOD,
 } from "@consensys/linea-shared-utils";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
@@ -283,9 +284,10 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
   /**
    * Retrieves validators sorted by withdrawable amount for withdrawal requests.
    * Returns sorted in ascending order of withdrawableAmount (smallest first).
-   * Fetches data, delegates to joinValidatorsWithPendingWithdrawals for processing, and sorts the result.
+   * Fetches data, delegates to joinValidatorsWithPendingWithdrawals for processing, filters by shard committee period eligibility, and sorts the result.
+   * Only includes validators that have been active for at least SHARD_COMMITTEE_PERIOD epochs.
    *
-   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of validators sorted ascending by withdrawableAmount for withdrawal requests, or undefined if data retrieval fails.
+   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of eligible validators sorted ascending by withdrawableAmount for withdrawal requests, or undefined if data retrieval fails.
    */
   async getValidatorsForWithdrawalRequestsAscending(): Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined> {
     const [allValidators, pendingWithdrawalsQueue] = await Promise.all([
@@ -311,14 +313,28 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       return undefined;
     }
 
+    // Get current epoch to filter validators by shard committee period
+    const currentEpoch = await this.beaconNodeApiClient.getCurrentEpoch();
+    let eligibleValidators = joined;
+    if (currentEpoch === undefined) {
+      this.logger.warn(
+        "getValidatorsForWithdrawalRequestsAscending - failed to retrieve current epoch, skipping filter",
+      );
+    } else {
+      // Filter out validators that haven't been active for at least SHARD_COMMITTEE_PERIOD epochs
+      eligibleValidators = joined.filter((v) => v.activationEpoch + SHARD_COMMITTEE_PERIOD <= currentEpoch);
+    }
+
     // ✅ Sort ascending (smallest withdrawableAmount first)
-    joined.sort((a, b) =>
+    eligibleValidators.sort((a, b) =>
       a.withdrawableAmount < b.withdrawableAmount ? -1 : a.withdrawableAmount > b.withdrawableAmount ? 1 : 0,
     );
 
-    this.logger.info(`getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=${joined.length}`);
-    this.logger.debug("getValidatorsForWithdrawalRequestsAscending joined", { joined });
-    return joined;
+    this.logger.info(
+      `getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=${eligibleValidators.length}`,
+    );
+    this.logger.debug("getValidatorsForWithdrawalRequestsAscending joined", { joined: eligibleValidators });
+    return eligibleValidators;
   }
 
   /**
