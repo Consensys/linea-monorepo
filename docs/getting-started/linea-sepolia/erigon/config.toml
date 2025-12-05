@@ -1,0 +1,18 @@
+datadir = "/home/erigon/.local/share/erigon/"
+externalcl = true
+networkid = 59141
+port = 30301
+ethstats = ""
+netrestrict = "11.11.11.0/24"
+verbosity = 3
+
+"http.addr" = "0.0.0.0"
+"http.port" = 8545
+"http.corsdomain" = "*"
+"http.api" = ["admin","engine","eth","net","web3","txpool","debug"]
+"http.vhosts" ="*"
+
+"authrpc.port" = 8550
+"authrpc.vhosts" = "*"
+"authrpc.addr" = "0.0.0.0"
+"authrpc.jwtsecret" = "/jwt"
