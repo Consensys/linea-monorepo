@@ -1,7 +1,6 @@
 package emulated
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -78,10 +77,10 @@ func TestEmulatedMultiplication(t *testing.T) {
 		cols = append(cols, pa.TermL.Columns...)
 		cols = append(cols, pa.TermR.Columns...)
 		cols = append(cols, pa.Modulus.Columns...)
-		fmt.Println(run.Columns.ListAllKeys())
 		cols = append(cols, pa.Result.Columns...)
 		cols = append(cols, pa.Quotient.Columns...)
 		cols = append(cols, pa.Carry.Columns...)
+		cols = append(cols, pa.ChallengePowers...)
 		csvtraces.FmtCsv(w, run, cols, []csvtraces.Option{csvtraces.InHex})
 	}
 

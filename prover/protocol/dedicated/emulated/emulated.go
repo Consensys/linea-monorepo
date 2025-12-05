@@ -1,16 +1,20 @@
 package emulated
 
 import (
-	"errors"
-	"fmt"
 	"math/big"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
+
+const round_nr = 0
 
 type Limbs struct {
 	Columns []ifaces.Column
@@ -29,51 +33,18 @@ type EmulatedProverAction struct {
 	Quotient Limbs
 	Carry    Limbs
 
-	Challenge       ifaces.Column
+	Challenge       coin.Info
 	ChallengePowers []ifaces.Column
 
 	nbBits uint
 }
 
-func (a *EmulatedProverAction) limbsToBigInt(res *big.Int, buf []*big.Int, limbs Limbs, loc int, run *wizard.ProverRuntime) error {
-	if res == nil {
-		return fmt.Errorf("result not initialized")
-	}
-	nbLimbs := len(limbs.Columns)
-	if len(buf) < nbLimbs {
-		buf = append(buf, make([]*big.Int, nbLimbs-len(buf))...)
-	}
-	for i := range buf {
-		if buf[i] == nil {
-			buf[i] = new(big.Int)
-		}
-	}
-	for j := range nbLimbs {
-		limb := limbs.Columns[j].GetColAssignmentAt(run, loc)
-		limb.BigInt(buf[j])
-	}
-	if err := recompose(buf, a.nbBits, res); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (a *EmulatedProverAction) bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, vb []*common.VectorBuilder) error {
-	if len(buf) != len(limbs.Columns) {
-		return fmt.Errorf("mismatched size between limbs and buffer")
-	}
-	if err := decompose(input, a.nbBits, buf); err != nil {
-		return fmt.Errorf("failed to decompose big.Int into limbs: %v", err)
-	}
-	for i := range limbs.Columns {
-		var f field.Element
-		f.SetBigInt(buf[i])
-		vb[i].PushField(f)
-	}
-	return nil
-}
-
 func (a *EmulatedProverAction) Run(run *wizard.ProverRuntime) {
+	a.assignEmulatedColumns(run)
+	a.assignChallengePowers(run)
+}
+
+func (a *EmulatedProverAction) assignEmulatedColumns(run *wizard.ProverRuntime) {
 	nbRows := a.TermL.Columns[0].Size()
 	nbLimbs := len(a.TermL.Columns)
 	bufL := make([]*big.Int, nbLimbs)
@@ -182,7 +153,6 @@ func (a *EmulatedProverAction) Run(run *wizard.ProverRuntime) {
 			var f field.Element
 			f.SetBigInt(tmpCarries[i])
 			dstCarry[i].PushField(f)
-			fmt.Println("carry limb ", i, ": ", tmpCarries[i].String())
 		}
 
 		clearBuffer(bufL)
@@ -208,84 +178,23 @@ func (a *EmulatedProverAction) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-// Recompose takes the limbs in inputs and combines them into res. It errors if
-// inputs is uninitialized or zero-length and if the result is uninitialized.
-//
-// The following holds
-//
-//	res = \sum_{i=0}^{len(inputs)} inputs[i] * 2^{nbBits * i}
-func recompose(inputs []*big.Int, nbBits uint, res *big.Int) error {
-	if res == nil {
-		return errors.New("result not initialized")
-	}
-	res.SetUint64(0)
-	for i := range inputs {
-		res.Lsh(res, nbBits)
-		res.Add(res, inputs[len(inputs)-i-1])
-	}
-	// we do not mod-reduce here as the result is mod-reduced by the caller if
-	// needed. In some places we need non-reduced results.
-	return nil
-}
-
-// Decompose decomposes the input into res as integers of width nbBits. It
-// errors if the decomposition does not fit into res or if res is uninitialized.
-//
-// The following holds
-//
-//	input = \sum_{i=0}^{len(res)} res[i] * 2^{nbBits * i}
-func decompose(input *big.Int, nbBits uint, res []*big.Int) error {
-	// limb modulus
-	if input.BitLen() > len(res)*int(nbBits) {
-		return errors.New("decomposed integer does not fit into res")
-	}
-	for _, r := range res {
-		if r == nil {
-			return errors.New("result slice element uninitialized")
-		}
-	}
-	base := new(big.Int).Lsh(big.NewInt(1), nbBits)
-	tmp := new(big.Int).Set(input)
-	for i := 0; i < len(res); i++ {
-		res[i].Mod(tmp, base)
-		tmp.Rsh(tmp, nbBits)
-	}
-	return nil
-}
-
-func limbMul(res, lhs, rhs []*big.Int) error {
-	tmp := new(big.Int)
-	if len(res) != nbMultiplicationResLimbs(len(lhs), len(rhs)) {
-		return errors.New("result slice length mismatch")
-	}
-	for i := 0; i < len(lhs); i++ {
-		for j := 0; j < len(rhs); j++ {
-			res[i+j].Add(res[i+j], tmp.Mul(lhs[i], rhs[j]))
-		}
-	}
-	return nil
-}
-
-// nbMultiplicationResLimbs returns the number of limbs which fit the
-// multiplication result.
-func nbMultiplicationResLimbs(lenLeft, lenRight int) int {
-	res := lenLeft + lenRight - 1
-	if res < 0 {
-		res = 0
-	}
-	return res
-}
-
-func clearBuffer(buf []*big.Int) {
-	for i := range buf {
-		buf[i].SetUint64(0)
+func (a *EmulatedProverAction) assignChallengePowers(run *wizard.ProverRuntime) {
+	chal := run.GetRandomCoinField(a.Challenge.Name)
+	nbRows := a.ChallengePowers[0].Size()
+	var power field.Element
+	power.SetOne()
+	for i := range a.ChallengePowers {
+		col := vector.Repeat(power, nbRows)
+		sv := smartvectors.NewRegular(col)
+		run.AssignColumn(a.ChallengePowers[i].GetColID(), sv)
+		power.Mul(&power, &chal)
 	}
 }
 
 func EmulatedMultiplication(comp *wizard.CompiledIOP, left, right, modulus Limbs, nbBits uint) *EmulatedProverAction {
 	// TODO: add range checks on hinted limbs
 	// TODO: use wizardutils.LastRoundToEval
-	const round_nr = 0
+
 	nbRows := left.Columns[0].Size()
 	nbLimbs := len(modulus.Columns)
 	quotient := Limbs{
@@ -314,21 +223,101 @@ func EmulatedMultiplication(comp *wizard.CompiledIOP, left, right, modulus Limbs
 			nbRows,
 		)
 	}
+	challenge := comp.InsertCoin(round_nr+1, coin.Namef("EMUL_CHALLENGE"), coin.Field)
+	challengePowers := make([]ifaces.Column, len(carries.Columns))
+	for i := range challengePowers {
+		challengePowers[i] = comp.InsertCommit(
+			round_nr+1,
+			ifaces.ColIDf("EMUL_CHALLENGE_POWER_%d", i),
+			nbRows,
+		)
+	}
 
 	pa := &EmulatedProverAction{
-		TermL:    left,
-		TermR:    right,
-		Modulus:  modulus,
-		Result:   remainder,
-		Quotient: quotient,
-		Carry:    carries,
-		nbBits:   nbBits,
+		TermL:           left,
+		TermR:           right,
+		Modulus:         modulus,
+		Result:          remainder,
+		Quotient:        quotient,
+		Carry:           carries,
+		Challenge:       challenge,
+		ChallengePowers: challengePowers,
+		nbBits:          nbBits,
 	}
 	pa.csMultiplication(comp)
+	pa.csChallengePowers(comp)
 	// comp.RegisterProverAction(round_nr, pa)
 	return pa
 }
 
-func (cs *EmulatedProverAction) csMultiplication(comp *wizard.CompiledIOP) {
+func (cs *EmulatedProverAction) csChallengePowers(comp *wizard.CompiledIOP) {
+	ch := cs.Challenge.AsVariable()
+	comp.InsertGlobal(
+		round_nr,
+		"EMUL_CHALLENGE_POWER_0",
+		symbolic.Sub(
+			cs.ChallengePowers[0],
+			1,
+		),
+	)
+	for i := 1; i < len(cs.ChallengePowers); i++ {
+		comp.InsertGlobal(
+			round_nr+1,
+			ifaces.QueryIDf("EMUL_CHALLENGE_POWER_CONSISTENCY_%d", i),
+			symbolic.Sub(
+				ifaces.ColumnAsVariable(cs.ChallengePowers[i]),
+				symbolic.Mul(
+					ifaces.ColumnAsVariable(cs.ChallengePowers[i-1]),
+					ch,
+				),
+			),
+		)
+	}
+}
 
+func (cs *EmulatedProverAction) csMultiplication(comp *wizard.CompiledIOP) {
+	leftEval := cs.csPolyEval(comp, cs.TermL)
+	rightEval := cs.csPolyEval(comp, cs.TermR)
+
+	modulusEval := cs.csPolyEval(comp, cs.Modulus)
+	quotientEval := cs.csPolyEval(comp, cs.Quotient)
+
+	resultEval := cs.csPolyEval(comp, cs.Result)
+
+	carryEval := cs.csPolyEval(comp, cs.Carry)
+	coef := big.NewInt(0).Lsh(big.NewInt(1), uint(cs.nbBits))
+	carryCoef := symbolic.Sub(
+		cs.Challenge.AsVariable(),
+		symbolic.NewConstant(coef),
+	)
+
+	mulEval := symbolic.Mul(leftEval, rightEval)
+	carryCoefEval := symbolic.Mul(carryEval, carryCoef)
+	qmEval := symbolic.Mul(modulusEval, quotientEval)
+
+	// Enforce: left * right - modulus * quotient - result - (2^nbits - challenge) * carry = 0
+	comp.InsertGlobal(
+		round_nr+1,
+		"EMUL_MULTIPLICATION",
+		symbolic.Sub(
+			mulEval,
+			qmEval,
+			resultEval,
+			carryCoefEval,
+		),
+	)
+}
+
+func (cs *EmulatedProverAction) csPolyEval(comp *wizard.CompiledIOP, val Limbs) *symbolic.Expression {
+	// should write down?
+	res := symbolic.NewConstant(0)
+	for i := range val.Columns {
+		res = symbolic.Add(
+			symbolic.Mul(
+				val.Columns[i],
+				cs.ChallengePowers[i],
+			),
+		)
+	}
+	return res
 }
