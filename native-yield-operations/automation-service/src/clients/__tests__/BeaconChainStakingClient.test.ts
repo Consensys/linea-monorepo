@@ -4,6 +4,7 @@ import type { ILogger, PendingPartialWithdrawal } from "@consensys/linea-shared-
 import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IValidatorDataClient } from "../../core/clients/IValidatorDataClient.js";
 import type {
+  ExitedValidator,
   ExitingValidator,
   ValidatorBalance,
   ValidatorBalanceWithPendingWithdrawal,
@@ -95,28 +96,36 @@ const createValidatorDataClientMock = () => {
   const getTotalBalanceOfExitingValidators = jest
     .fn<(validators: ExitingValidator[] | undefined) => bigint | undefined>()
     .mockReturnValue(undefined);
+  const getExitedValidators = jest.fn<() => Promise<ExitedValidator[] | undefined>>();
+  const getTotalBalanceOfExitedValidators = jest
+    .fn<(validators: ExitedValidator[] | undefined) => bigint | undefined>()
+    .mockReturnValue(undefined);
 
   const client: IValidatorDataClient = {
     getActiveValidators,
     getExitingValidators,
+    getExitedValidators,
     getValidatorsForWithdrawalRequestsAscending,
     joinValidatorsWithPendingWithdrawals,
     getFilteredAndAggregatedPendingWithdrawals,
     getTotalPendingPartialWithdrawalsWei,
     getTotalValidatorBalanceGwei,
     getTotalBalanceOfExitingValidators,
+    getTotalBalanceOfExitedValidators,
   };
 
   return {
     client,
     getActiveValidators,
     getExitingValidators,
+    getExitedValidators,
     getValidatorsForWithdrawalRequestsAscending,
     joinValidatorsWithPendingWithdrawals,
     getFilteredAndAggregatedPendingWithdrawals,
     getTotalPendingPartialWithdrawalsWei,
     getTotalValidatorBalanceGwei,
     getTotalBalanceOfExitingValidators,
+    getTotalBalanceOfExitedValidators,
   };
 };
 

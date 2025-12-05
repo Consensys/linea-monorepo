@@ -481,4 +481,27 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     this.logger.info(`getTotalBalanceOfExitingValidators totalGwei=${totalGwei}`);
     return totalGwei;
   }
+
+  /**
+   * Calculates the total balance across all exited validators in gwei.
+   * Aggregates the balance field from all ExitedValidator elements.
+   *
+   * @param {ExitedValidator[] | undefined} validators - Array of exited validators, or undefined.
+   * @returns {bigint | undefined} Total exited validator balance in gwei. Returns undefined if input is undefined (data unavailable), returns 0n if input is empty array (no validators exist).
+   */
+  getTotalBalanceOfExitedValidators(validators: ExitedValidator[] | undefined): bigint | undefined {
+    if (validators === undefined) {
+      this.logger.warn("getTotalBalanceOfExitedValidators - invalid input: validators is undefined", {
+        validators: true,
+      });
+      return undefined;
+    }
+    if (validators.length === 0) {
+      this.logger.info("getTotalBalanceOfExitedValidators - empty array, returning 0");
+      return 0n;
+    }
+    const totalGwei = validators.reduce((acc, v) => acc + v.balance, 0n);
+    this.logger.info(`getTotalBalanceOfExitedValidators totalGwei=${totalGwei}`);
+    return totalGwei;
+  }
 }

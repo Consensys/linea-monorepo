@@ -5,7 +5,7 @@ import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/IN
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 import type { ISTETH } from "../../core/clients/contracts/ISTETH.js";
-import type { ExitingValidator, ValidatorBalanceWithPendingWithdrawal, ValidatorBalance } from "../../core/entities/Validator.js";
+import type { ExitedValidator, ExitingValidator, ValidatorBalanceWithPendingWithdrawal, ValidatorBalance } from "../../core/entities/Validator.js";
 import type { TransactionReceipt, Address } from "viem";
 import { ONE_GWEI } from "@consensys/linea-shared-utils";
 import { GaugeMetricsPoller } from "../GaugeMetricsPoller.js";
@@ -82,6 +82,7 @@ describe("GaugeMetricsPoller", () => {
     // Default mocks
     validatorDataClient.getActiveValidators.mockResolvedValue([]);
     validatorDataClient.getExitingValidators.mockResolvedValue([]);
+    validatorDataClient.getExitedValidators.mockResolvedValue([]);
     beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
     beaconNodeApiClient.getPendingDeposits.mockResolvedValue([]);
     validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue([]);
@@ -89,6 +90,7 @@ describe("GaugeMetricsPoller", () => {
     validatorDataClient.getFilteredAndAggregatedPendingWithdrawals.mockReturnValue([]);
     validatorDataClient.getTotalValidatorBalanceGwei.mockReturnValue(undefined);
     validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(undefined);
+    validatorDataClient.getTotalBalanceOfExitedValidators.mockReturnValue(undefined);
     yieldManagerContractClient.getYieldProviderData.mockResolvedValue({
       yieldProviderVendor: 0,
       isStakingPaused: false,
@@ -554,6 +556,7 @@ describe("GaugeMetricsPoller", () => {
     it("handles exiting validators fetch failure gracefully", async () => {
       validatorDataClient.getActiveValidators.mockResolvedValue([]);
       validatorDataClient.getExitingValidators.mockRejectedValue(new Error("Exiting validators fetch failed"));
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
       beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
 
       await poller.poll();
@@ -562,6 +565,22 @@ describe("GaugeMetricsPoller", () => {
       expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalled();
       // Fetch failure is logged at fetch time
       expect(logger.error).toHaveBeenCalledWith("Failed to fetch exiting validators", {
+        error: expect.any(Error),
+      });
+    });
+
+    it("handles exited validators fetch failure gracefully", async () => {
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
+      validatorDataClient.getExitingValidators.mockResolvedValue([]);
+      validatorDataClient.getExitedValidators.mockRejectedValue(new Error("Exited validators fetch failed"));
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
+
+      await poller.poll();
+
+      // Should not throw, and other metrics should still be updated
+      expect(metricsUpdater.setLastTotalPendingPartialWithdrawalsGwei).toHaveBeenCalled();
+      // Fetch failure is logged at fetch time
+      expect(logger.error).toHaveBeenCalledWith("Failed to fetch exited validators", {
         error: expect.any(Error),
       });
     });
@@ -953,18 +972,19 @@ describe("GaugeMetricsPoller", () => {
       // This test covers the fallback case where index >= metricNames.length
       // We need to simulate a scenario where we have more rejected promises than metric names
       // Since we can't naturally create this, we'll test the logic directly by mocking Promise.allSettled
-      // We now have 11 metrics (indices 0-10), so index 11 will trigger "unknown"
+      // We now have 13 metrics (indices 0-12), so index 13 will trigger "unknown"
       const originalAllSettled = Promise.allSettled;
       
       // Mock Promise.allSettled to return different values for fetch (first call) and update (second call)
       let callCount = 0;
       const mockAllSettled = jest.fn().mockImplementation((promises: Promise<any>[]) => {
         callCount++;
-        // First call: fetch promises (6 promises - added getExitingValidators)
+        // First call: fetch promises (7 promises - added getExitingValidators and getExitedValidators)
         if (callCount === 1) {
           return Promise.resolve([
             { status: "fulfilled" as const, value: [] },
             { status: "fulfilled" as const, value: [] }, // getExitingValidators
+            { status: "fulfilled" as const, value: [] }, // getExitedValidators
             { status: "fulfilled" as const, value: [] },
             { status: "fulfilled" as const, value: [] },
             { status: "fulfilled" as const, value: vaultAddress },
@@ -986,7 +1006,7 @@ describe("GaugeMetricsPoller", () => {
             },
           ]);
         }
-        // Second call: update promises (13 promises to trigger index 12 = "unknown")
+        // Second call: update promises (15 promises to trigger index 14 = "unknown")
         return Promise.resolve([
           { status: "rejected" as const, reason: new Error("Error 1") },
           { status: "rejected" as const, reason: new Error("Error 2") },
@@ -1000,7 +1020,9 @@ describe("GaugeMetricsPoller", () => {
           { status: "rejected" as const, reason: new Error("Error 10") },
           { status: "rejected" as const, reason: new Error("Error 11") },
           { status: "rejected" as const, reason: new Error("Error 12") },
-          { status: "rejected" as const, reason: new Error("Error 13") }, // Index 12 triggers "unknown"
+          { status: "rejected" as const, reason: new Error("Error 13") },
+          { status: "rejected" as const, reason: new Error("Error 14") },
+          { status: "rejected" as const, reason: new Error("Error 15") }, // Index 14 triggers "unknown"
         ]);
       });
 
@@ -1009,7 +1031,7 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
-      // Verify that the 13th error (index 12) uses "unknown" as the metric name
+      // Verify that the 15th error (index 14) uses "unknown" as the metric name
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update unknown gauge metric",
         { error: expect.any(Error) },
@@ -1045,6 +1067,7 @@ describe("GaugeMetricsPoller", () => {
       ];
 
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
       stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
 
@@ -1067,6 +1090,7 @@ describe("GaugeMetricsPoller", () => {
 
     it("handles undefined exitingValidators with warning", async () => {
       validatorDataClient.getExitingValidators.mockResolvedValue(undefined);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
 
       await poller.poll();
 
@@ -1078,6 +1102,7 @@ describe("GaugeMetricsPoller", () => {
 
     it("handles empty exitingValidators array with warning", async () => {
       validatorDataClient.getExitingValidators.mockResolvedValue([]);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
 
       await poller.poll();
 
@@ -1102,6 +1127,7 @@ describe("GaugeMetricsPoller", () => {
       ];
 
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
       stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
 
@@ -1139,6 +1165,7 @@ describe("GaugeMetricsPoller", () => {
       ];
 
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
       stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
 
@@ -1184,6 +1211,7 @@ describe("GaugeMetricsPoller", () => {
       ];
 
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
       validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(72n * ONE_GWEI);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
       stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
@@ -1209,6 +1237,7 @@ describe("GaugeMetricsPoller", () => {
       ];
 
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
       validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(undefined);
 
       await poller.poll();
@@ -1232,6 +1261,7 @@ describe("GaugeMetricsPoller", () => {
       ];
 
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
       validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(35n * ONE_GWEI);
 
       await poller.poll();
@@ -1241,6 +1271,7 @@ describe("GaugeMetricsPoller", () => {
 
     it("handles undefined exitingValidators with warning", async () => {
       validatorDataClient.getExitingValidators.mockResolvedValue(undefined);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
       validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(undefined);
 
       await poller.poll();
@@ -1252,6 +1283,7 @@ describe("GaugeMetricsPoller", () => {
 
     it("handles empty exitingValidators array by setting metric to 0", async () => {
       validatorDataClient.getExitingValidators.mockResolvedValue([]);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
       validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(0n);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
       stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
@@ -1264,11 +1296,220 @@ describe("GaugeMetricsPoller", () => {
     });
   });
 
+  describe("_updatePendingFullWithdrawalQueueAmountGwei", () => {
+    it("updates PendingFullWithdrawalQueueAmountGwei gauge for each exited validator", async () => {
+      const exitedValidators: ExitedValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+        {
+          balance: 40n * ONE_GWEI,
+          publicKey: "0xvalidator2",
+          validatorIndex: 2n,
+          slashed: true,
+          withdrawableEpoch: 150,
+        },
+      ];
+
+      validatorDataClient.getExitedValidators.mockResolvedValue(exitedValidators);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setPendingFullWithdrawalQueueAmountGwei).toHaveBeenCalledTimes(2);
+      expect(metricsUpdater.setPendingFullWithdrawalQueueAmountGwei).toHaveBeenCalledWith(
+        "0xvalidator1",
+        100,
+        32000000000,
+        false,
+      );
+      expect(metricsUpdater.setPendingFullWithdrawalQueueAmountGwei).toHaveBeenCalledWith(
+        "0xvalidator2",
+        150,
+        40000000000,
+        true,
+      );
+    });
+
+    it("handles undefined exitedValidators with warning", async () => {
+      validatorDataClient.getExitedValidators.mockResolvedValue(undefined);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setPendingFullWithdrawalQueueAmountGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "Skipping pending full withdrawal queue gauge update: exited validators data unavailable or empty",
+      );
+    });
+
+    it("handles empty exitedValidators array with warning", async () => {
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setPendingFullWithdrawalQueueAmountGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "Skipping pending full withdrawal queue gauge update: exited validators data unavailable or empty",
+      );
+    });
+
+    it("converts balance bigint to number correctly", async () => {
+      const exitedValidators: ExitedValidator[] = [
+        {
+          balance: 35n * ONE_GWEI,
+          publicKey: "0xvalidator1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+      ];
+
+      validatorDataClient.getExitedValidators.mockResolvedValue(exitedValidators);
+      validatorDataClient.getTotalBalanceOfExitedValidators.mockReturnValue(35n * ONE_GWEI);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setPendingFullWithdrawalQueueAmountGwei).toHaveBeenCalledWith(
+        "0xvalidator1",
+        100,
+        35000000000,
+        false,
+      );
+    });
+
+    it("passes slashed boolean correctly", async () => {
+      const exitedValidators: ExitedValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator-slashed",
+          validatorIndex: 1n,
+          slashed: true,
+          withdrawableEpoch: 100,
+        },
+      ];
+
+      validatorDataClient.getExitedValidators.mockResolvedValue(exitedValidators);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setPendingFullWithdrawalQueueAmountGwei).toHaveBeenCalledWith(
+        "0xvalidator-slashed",
+        100,
+        32000000000,
+        true,
+      );
+    });
+  });
+
+  describe("_updateLastTotalPendingFullWithdrawalGwei", () => {
+    it("updates LastTotalPendingFullWithdrawalGwei gauge with total balance", async () => {
+      const exitedValidators: ExitedValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          publicKey: "0xvalidator1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+        {
+          balance: 40n * ONE_GWEI,
+          publicKey: "0xvalidator2",
+          validatorIndex: 2n,
+          slashed: true,
+          withdrawableEpoch: 150,
+        },
+      ];
+
+      validatorDataClient.getExitedValidators.mockResolvedValue(exitedValidators);
+      validatorDataClient.getTotalBalanceOfExitedValidators.mockReturnValue(72n * ONE_GWEI);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
+
+      await poller.poll();
+
+      expect(validatorDataClient.getTotalBalanceOfExitedValidators).toHaveBeenCalledWith(exitedValidators);
+      expect(metricsUpdater.setLastTotalPendingFullWithdrawalGwei).toHaveBeenCalledWith(72000000000);
+    });
+
+    it("handles undefined result with warning", async () => {
+      const exitedValidators: ExitedValidator[] = [
+        {
+          balance: 35n * ONE_GWEI,
+          publicKey: "0xvalidator1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+      ];
+
+      validatorDataClient.getExitedValidators.mockResolvedValue(exitedValidators);
+      validatorDataClient.getTotalBalanceOfExitedValidators.mockReturnValue(undefined);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setLastTotalPendingFullWithdrawalGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total pending full withdrawal gauge update: total balance unavailable");
+    });
+
+    it("converts bigint to number correctly", async () => {
+      const exitedValidators: ExitedValidator[] = [
+        {
+          balance: 35n * ONE_GWEI,
+          publicKey: "0xvalidator1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+      ];
+
+      validatorDataClient.getExitedValidators.mockResolvedValue(exitedValidators);
+      validatorDataClient.getTotalBalanceOfExitedValidators.mockReturnValue(35n * ONE_GWEI);
+
+      await poller.poll();
+
+      expect(metricsUpdater.setLastTotalPendingFullWithdrawalGwei).toHaveBeenCalledWith(35000000000);
+    });
+
+    it("handles undefined exitedValidators with warning", async () => {
+      validatorDataClient.getExitedValidators.mockResolvedValue(undefined);
+      validatorDataClient.getTotalBalanceOfExitedValidators.mockReturnValue(undefined);
+
+      await poller.poll();
+
+      expect(validatorDataClient.getTotalBalanceOfExitedValidators).toHaveBeenCalledWith(undefined);
+      expect(metricsUpdater.setLastTotalPendingFullWithdrawalGwei).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith("Skipping total pending full withdrawal gauge update: total balance unavailable");
+    });
+
+    it("handles empty exitedValidators array by setting metric to 0", async () => {
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
+      validatorDataClient.getTotalBalanceOfExitedValidators.mockReturnValue(0n);
+      dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
+      stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
+
+      await poller.poll();
+
+      expect(validatorDataClient.getTotalBalanceOfExitedValidators).toHaveBeenCalledWith([]);
+      expect(metricsUpdater.setLastTotalPendingFullWithdrawalGwei).toHaveBeenCalledWith(0);
+      expect(logger.warn).not.toHaveBeenCalledWith("Skipping total pending full withdrawal gauge update: total balance unavailable");
+    });
+  });
+
   describe("start and stop", () => {
     beforeEach(() => {
       // Setup default mocks for poll() to succeed
       validatorDataClient.getActiveValidators.mockResolvedValue([]);
       validatorDataClient.getExitingValidators.mockResolvedValue([]);
+      validatorDataClient.getExitedValidators.mockResolvedValue([]);
       beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue([]);
       beaconNodeApiClient.getPendingDeposits.mockResolvedValue([]);
       validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue([]);

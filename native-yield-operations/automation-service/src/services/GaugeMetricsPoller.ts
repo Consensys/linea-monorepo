@@ -12,7 +12,7 @@ import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYie
 import { IYieldManager, YieldProviderData } from "../core/clients/contracts/IYieldManager.js";
 import { IVaultHub } from "../core/clients/contracts/IVaultHub.js";
 import { ISTETH } from "../core/clients/contracts/ISTETH.js";
-import { ExitingValidator, ValidatorBalance } from "../core/entities/Validator.js";
+import { ExitedValidator, ExitingValidator, ValidatorBalance } from "../core/entities/Validator.js";
 import { Address, Hex, TransactionReceipt } from "viem";
 import { IGaugeMetricsPoller } from "../core/services/IGaugeMetricsPoller.js";
 import { IOperationLoop } from "./IOperationLoop.js";
@@ -65,6 +65,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
     const fetchResults = await Promise.allSettled([
       this.validatorDataClient.getActiveValidators(),
       this.validatorDataClient.getExitingValidators(),
+      this.validatorDataClient.getExitedValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
       this.beaconNodeApiClient.getPendingDeposits(),
       this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider),
@@ -73,10 +74,11 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
 
     const allValidators = fetchResults[0].status === "fulfilled" ? fetchResults[0].value : undefined;
     const exitingValidators = fetchResults[1].status === "fulfilled" ? fetchResults[1].value : undefined;
-    const pendingWithdrawalsQueue = fetchResults[2].status === "fulfilled" ? fetchResults[2].value : undefined;
-    const pendingDeposits = fetchResults[3].status === "fulfilled" ? fetchResults[3].value : undefined;
-    const vault = fetchResults[4].status === "fulfilled" ? fetchResults[4].value : undefined;
-    const yieldProviderData = fetchResults[5].status === "fulfilled" ? fetchResults[5].value : undefined;
+    const exitedValidators = fetchResults[2].status === "fulfilled" ? fetchResults[2].value : undefined;
+    const pendingWithdrawalsQueue = fetchResults[3].status === "fulfilled" ? fetchResults[3].value : undefined;
+    const pendingDeposits = fetchResults[4].status === "fulfilled" ? fetchResults[4].value : undefined;
+    const vault = fetchResults[5].status === "fulfilled" ? fetchResults[5].value : undefined;
+    const yieldProviderData = fetchResults[6].status === "fulfilled" ? fetchResults[6].value : undefined;
 
     // Log fetch failures if any
     if (fetchResults[0].status === "rejected") {
@@ -86,18 +88,21 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
       this.logger.error("Failed to fetch exiting validators", { error: fetchResults[1].reason });
     }
     if (fetchResults[2].status === "rejected") {
-      this.logger.error("Failed to fetch pending partial withdrawals", { error: fetchResults[2].reason });
+      this.logger.error("Failed to fetch exited validators", { error: fetchResults[2].reason });
     }
     if (fetchResults[3].status === "rejected") {
-      this.logger.error("Failed to fetch pending deposits", { error: fetchResults[3].reason });
+      this.logger.error("Failed to fetch pending partial withdrawals", { error: fetchResults[3].reason });
     }
     if (fetchResults[4].status === "rejected") {
-      this.logger.error("Failed to fetch vault address, skipping vault-dependent metrics", {
-        error: fetchResults[4].reason,
-      });
+      this.logger.error("Failed to fetch pending deposits", { error: fetchResults[4].reason });
     }
     if (fetchResults[5].status === "rejected") {
-      this.logger.error("Failed to fetch yield provider data", { error: fetchResults[5].reason });
+      this.logger.error("Failed to fetch vault address, skipping vault-dependent metrics", {
+        error: fetchResults[5].reason,
+      });
+    }
+    if (fetchResults[6].status === "rejected") {
+      this.logger.error("Failed to fetch yield provider data", { error: fetchResults[6].reason });
     }
 
     // Update metrics in parallel for efficiency
@@ -108,6 +113,8 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
       this._updateTotalValidatorBalanceGauge(allValidators),
       this._updatePendingExitQueueAmountGwei(exitingValidators),
       this._updateLastTotalPendingExitGwei(exitingValidators),
+      this._updatePendingFullWithdrawalQueueAmountGwei(exitedValidators),
+      this._updateLastTotalPendingFullWithdrawalGwei(exitedValidators),
     ];
 
     // Only add vault-dependent metrics if we successfully fetched the vault address
@@ -137,6 +144,8 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
           "total validator balance",
           "pending exit queue",
           "total pending exit",
+          "pending full withdrawal queue",
+          "total pending full withdrawal",
           "last vault report timestamp",
           "pending deposits queue",
           "total pending deposits",
@@ -445,5 +454,49 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
       return;
     }
     this.metricsUpdater.setLastTotalPendingExitGwei(Number(totalPendingExitGwei));
+  }
+
+  /**
+   * Updates the per-validator pending full withdrawal queue gauge metrics.
+   * Iterates through exited validators and updates metrics for each validator.
+   *
+   * @param {ExitedValidator[] | undefined} exitedValidators - Array of exited validators, or undefined.
+   * @returns {Promise<void>} A promise that resolves when the gauges are updated (or returns early with a warning if validator data is unavailable).
+   */
+  private async _updatePendingFullWithdrawalQueueAmountGwei(
+    exitedValidators: ExitedValidator[] | undefined,
+  ): Promise<void> {
+    if (exitedValidators === undefined || exitedValidators.length === 0) {
+      this.logger.warn(
+        "Skipping pending full withdrawal queue gauge update: exited validators data unavailable or empty",
+      );
+      return;
+    }
+    for (const validator of exitedValidators) {
+      const amountGwei = Number(validator.balance);
+      this.metricsUpdater.setPendingFullWithdrawalQueueAmountGwei(
+        validator.publicKey as Hex,
+        validator.withdrawableEpoch,
+        amountGwei,
+        validator.slashed,
+      );
+    }
+  }
+
+  /**
+   * Updates the total pending full withdrawal amount gauge metric.
+   *
+   * @param {ExitedValidator[] | undefined} exitedValidators - Array of exited validators, or undefined.
+   * @returns {Promise<void>} A promise that resolves when the gauge is updated (or returns early with a warning if validator data is unavailable).
+   */
+  private async _updateLastTotalPendingFullWithdrawalGwei(
+    exitedValidators: ExitedValidator[] | undefined,
+  ): Promise<void> {
+    const totalPendingFullWithdrawalGwei = this.validatorDataClient.getTotalBalanceOfExitedValidators(exitedValidators);
+    if (totalPendingFullWithdrawalGwei === undefined) {
+      this.logger.warn("Skipping total pending full withdrawal gauge update: total balance unavailable");
+      return;
+    }
+    this.metricsUpdater.setLastTotalPendingFullWithdrawalGwei(Number(totalPendingFullWithdrawalGwei));
   }
 }

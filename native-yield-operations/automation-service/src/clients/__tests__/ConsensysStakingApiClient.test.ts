@@ -2061,4 +2061,144 @@ describe("ConsensysStakingApiClient", () => {
       expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=40000000000");
     });
   });
+
+  describe("getTotalBalanceOfExitedValidators", () => {
+    it("returns undefined and logs warning when input is undefined", () => {
+      const { client, logger } = createClient();
+
+      const result = client.getTotalBalanceOfExitedValidators(undefined);
+
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators - invalid input: validators is undefined", {
+        validators: true,
+      });
+    });
+
+    it("returns 0n and logs info when input is empty array", () => {
+      const { client, logger } = createClient();
+
+      const result = client.getTotalBalanceOfExitedValidators([]);
+
+      expect(result).toBe(0n);
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators - empty array, returning 0");
+    });
+
+    it("correctly sums balances from multiple validators", () => {
+      const { client, logger } = createClient();
+      const validators: ExitedValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+        {
+          balance: 40n * ONE_GWEI,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+          slashed: true,
+          withdrawableEpoch: 150,
+        },
+        {
+          balance: 35n * ONE_GWEI,
+          publicKey: "validator-3",
+          validatorIndex: 3n,
+          slashed: false,
+          withdrawableEpoch: 200,
+        },
+      ];
+
+      const totalGwei = client.getTotalBalanceOfExitedValidators(validators);
+
+      expect(totalGwei).toBe(107n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators totalGwei=107000000000");
+    });
+
+    it("handles single validator case", () => {
+      const { client, logger } = createClient();
+      const validators: ExitedValidator[] = [
+        {
+          balance: 32n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+      ];
+
+      const totalGwei = client.getTotalBalanceOfExitedValidators(validators);
+
+      expect(totalGwei).toBe(32n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators totalGwei=32000000000");
+    });
+
+    it("handles large bigint values correctly", () => {
+      const { client, logger } = createClient();
+      const largeBalance = 1000000n * ONE_GWEI;
+      const validators: ExitedValidator[] = [
+        {
+          balance: largeBalance,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+        {
+          balance: largeBalance,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+          slashed: true,
+          withdrawableEpoch: 150,
+        },
+      ];
+
+      const totalGwei = client.getTotalBalanceOfExitedValidators(validators);
+
+      expect(totalGwei).toBe(2000000n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators totalGwei=2000000000000000");
+    });
+
+    it("handles validators with zero balance", () => {
+      const { client, logger } = createClient();
+      const validators: ExitedValidator[] = [
+        {
+          balance: 0n,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+        {
+          balance: 32n * ONE_GWEI,
+          publicKey: "validator-2",
+          validatorIndex: 2n,
+          slashed: false,
+          withdrawableEpoch: 150,
+        },
+      ];
+
+      const totalGwei = client.getTotalBalanceOfExitedValidators(validators);
+
+      expect(totalGwei).toBe(32n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators totalGwei=32000000000");
+    });
+
+    it("logs total balance on success", () => {
+      const { client, logger } = createClient();
+      const validators: ExitedValidator[] = [
+        {
+          balance: 40n * ONE_GWEI,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+      ];
+
+      client.getTotalBalanceOfExitedValidators(validators);
+
+      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators totalGwei=40000000000");
+    });
+  });
 });
