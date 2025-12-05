@@ -45,6 +45,18 @@ async function main() {
     console.error("BeaconNodeApiClient integration script failed:", err);
     process.exitCode = 1;
   }
+
+  console.log(`Fetching current epoch from ${rpcUrl}...`);
+  try {
+    const epoch = await client.getCurrentEpoch();
+    if (epoch === undefined) {
+      throw "undefined epoch";
+    }
+    console.log(`Current epoch: ${epoch}`);
+  } catch (err) {
+    console.error("BeaconNodeApiClient integration script failed:", err);
+    process.exitCode = 1;
+  }
 }
 
 main();
