@@ -168,9 +168,7 @@ public abstract class LineaPluginPoSTestBase extends LineaPluginTestBase {
 
   // No-arg override for simple test cases, we take sensible defaults from the genesis config
   protected void buildNewBlock() throws IOException, InterruptedException {
-    var latestTimestamp = this.minerNode.execute(ethTransactions.block()).getTimestamp();
-    this.engineApiService.buildNewBlock(
-        latestTimestamp.longValue() + blockTimeSeconds, blockTimeSeconds * 1000);
+    buildNewBlock(Instant.now().getEpochSecond(), blockTimeSeconds * 1000 - 200);
   }
 
   private long getDefaultSlotTimeSeconds() {
