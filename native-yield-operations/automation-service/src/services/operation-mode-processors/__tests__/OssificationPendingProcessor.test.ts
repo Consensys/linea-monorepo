@@ -48,7 +48,6 @@ describe("OssificationPendingProcessor", () => {
     } as unknown as jest.Mocked<ILogger>;
 
     metricsUpdater = {
-      incrementOperationModeTrigger: jest.fn(),
       recordOperationModeDuration: jest.fn(),
       incrementLidoVaultAccountingReport: jest.fn(),
       recordRebalance: jest.fn(),
@@ -59,10 +58,16 @@ describe("OssificationPendingProcessor", () => {
       addValidatorPartialUnstakeAmount: jest.fn(),
       incrementValidatorExit: jest.fn(),
       incrementReportYield: jest.fn(),
-      addReportedYieldAmount: jest.fn(),
       setLastPeekedNegativeYieldReport: jest.fn(),
       setLastPeekedPositiveYieldReport: jest.fn(),
-      setLastPeekUnpaidLidoProtocolFees: jest.fn(),
+      setLastSettleableLidoFees: jest.fn(),
+      setLastVaultReportTimestamp: jest.fn(),
+      setYieldReportedCumulative: jest.fn(),
+      setLstLiabilityPrincipalGwei: jest.fn(),
+      setLastReportedNegativeYield: jest.fn(),
+      setLidoLstLiabilityGwei: jest.fn(),
+      setLastTotalPendingPartialWithdrawalsGwei: jest.fn(),
+      setPendingPartialWithdrawalQueueAmountGwei: jest.fn(),
     } as unknown as jest.Mocked<INativeYieldAutomationMetricsUpdater>;
 
     metricsRecorder = {
@@ -147,10 +152,6 @@ describe("OssificationPendingProcessor", () => {
     await processor.process();
 
     expect(lazyOracle.waitForVaultsReportDataUpdatedEvent).toHaveBeenCalledTimes(1);
-    expect(metricsUpdater.incrementOperationModeTrigger).toHaveBeenCalledWith(
-      OperationMode.OSSIFICATION_PENDING_MODE,
-      OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT,
-    );
     expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
     expect(yieldManager.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
     expect(lidoReportClient.getLatestSubmitVaultReportParams).toHaveBeenCalledWith(vaultAddress);
@@ -180,11 +181,15 @@ describe("OssificationPendingProcessor", () => {
   });
 
   it("returns early when progressPendingOssification fails", async () => {
-    yieldManager.progressPendingOssification.mockRejectedValue(new Error("progress failed"));
+    const error = new Error("progress failed");
+    yieldManager.progressPendingOssification.mockRejectedValue(error);
 
     const processor = createProcessor();
     await processor.process();
 
+    expect(logger.error).toHaveBeenCalledWith("_process - progressPendingOssification failed, stopping processing", {
+      error: expect.any(Error),
+    });
     expect(metricsRecorder.recordProgressOssificationMetrics).not.toHaveBeenCalled();
     expect(yieldManager.safeMaxAddToWithdrawalReserve).not.toHaveBeenCalled();
   });

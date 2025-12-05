@@ -77,6 +77,16 @@ describe("LazyOracleContractClient", () => {
     expect(client.getContract()).toBe(contractStub);
   });
 
+  it("gets the contract balance", async () => {
+    const balance = 1_000_000_000_000_000_000n; // 1 ETH
+    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+
+    const client = createClient();
+    await expect(client.getBalance()).resolves.toBe(balance);
+
+    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
+  });
+
   it("returns latest report data with normalized structure", async () => {
     const client = createClient();
     const latest = [123n, 456n, "0xabc" as Hex, "cid"] as const;
@@ -339,6 +349,12 @@ describe("LazyOracleContractClient", () => {
 
     watchArgs.onLogs?.([incompleteLog as any]);
 
+    expect(logger.debug).toHaveBeenCalledWith("waitForVaultsReportDataUpdatedEvent: Event args incomplete, skipping", {
+      hasTimestamp: true,
+      hasRefSlot: false,
+      hasRoot: true,
+      hasCid: true,
+    });
     expect(stopWatching).not.toHaveBeenCalled();
     expect(logger.info).not.toHaveBeenCalledWith("waitForVaultsReportDataUpdatedEvent detected", expect.anything());
     expect(clearTimeoutSpy).not.toHaveBeenCalled();

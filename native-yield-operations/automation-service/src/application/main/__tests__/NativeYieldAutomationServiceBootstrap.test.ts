@@ -8,6 +8,11 @@ const mockOperationModeSelector = jest.fn().mockImplementation(() => ({
   start: jest.fn(),
   stop: jest.fn(),
 }));
+const mockGaugeMetricsPoller = jest.fn().mockImplementation(() => ({
+  start: jest.fn().mockImplementation(() => Promise.resolve()),
+  stop: jest.fn(),
+  poll: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
 const mockWinstonLogger = jest.fn().mockImplementation(() => ({
   info: jest.fn(),
 }));
@@ -28,6 +33,13 @@ jest.mock(
   "../../../services/OperationModeSelector.js",
   () => ({
     OperationModeSelector: mockOperationModeSelector,
+  }),
+  { virtual: true },
+);
+jest.mock(
+  "../../../services/GaugeMetricsPoller.js",
+  () => ({
+    GaugeMetricsPoller: mockGaugeMetricsPoller,
   }),
   { virtual: true },
 );
@@ -76,9 +88,34 @@ jest.mock(
   { virtual: true },
 );
 jest.mock(
+  "../../../clients/contracts/DashboardContractClient.js",
+  () => ({
+    DashboardContractClient: {
+      initialize: jest.fn(),
+    },
+  }),
+  { virtual: true },
+);
+jest.mock(
+  "../../../clients/contracts/StakingVaultContractClient.js",
+  () => ({
+    StakingVaultContractClient: {
+      initialize: jest.fn(),
+    },
+  }),
+  { virtual: true },
+);
+jest.mock(
   "../../../clients/contracts/LineaRollupYieldExtensionContractClient.js",
   () => ({
     LineaRollupYieldExtensionContractClient: jest.fn().mockImplementation(() => ({})),
+  }),
+  { virtual: true },
+);
+jest.mock(
+  "../../../clients/contracts/STETHContractClient.js",
+  () => ({
+    STETHContractClient: jest.fn().mockImplementation(() => ({})),
   }),
   { virtual: true },
 );
@@ -166,6 +203,7 @@ const createBootstrapConfig = () => ({
     vaultHubAddress: "0x3333333333333333333333333333333333333333",
     yieldManagerAddress: "0x4444444444444444444444444444444444444444",
     lidoYieldProviderAddress: "0x5555555555555555555555555555555555555555",
+    stethAddress: "0x6666666666666666666666666666666666666666",
     l2YieldRecipientAddress: "0x7777777777777777777777777777777777777777",
   },
   apiPort: 3000,
@@ -175,10 +213,16 @@ const createBootstrapConfig = () => ({
       maxInactionMs: 5000,
     },
     contractReadRetryTimeMs: 250,
+    gaugeMetricsPollIntervalMs: 5000,
   },
-  rebalanceToleranceBps: 500,
-  maxValidatorWithdrawalRequestsPerTransaction: 16,
-  minWithdrawalThresholdEth: 42n,
+  rebalance: {
+    toleranceBps: 500,
+    maxValidatorWithdrawalRequestsPerTransaction: 16,
+    minWithdrawalThresholdEth: 42n,
+    maxStakingRebalanceAmountWei: 1000000000000000000000n,
+    stakeCircuitBreakerThresholdWei: 2000000000000000000000n,
+    minStakingVaultBalanceToUnpauseStakingWei: 500000000000000000000n,
+  },
   reporting: {
     shouldSubmitVaultReport: true,
     minPositiveYieldToReportWei: 1000000000000000000n,
@@ -223,13 +267,19 @@ describe("NativeYieldAutomationServiceBootstrap", () => {
       start: jest.Mock;
       stop: jest.Mock;
     };
+    const gaugeMetricsPollerInstance = mockGaugeMetricsPoller.mock.results[0]?.value as {
+      start: jest.Mock;
+      stop: jest.Mock;
+    };
     const loggerInstance = mockWinstonLogger.mock.results[0]?.value as {
       info: jest.Mock;
     };
 
     expect(apiInstance.start).toHaveBeenCalledTimes(1);
+    expect(gaugeMetricsPollerInstance.start).toHaveBeenCalledTimes(1);
     expect(operationModeSelectorInstance.start).toHaveBeenCalledTimes(1);
     expect(loggerInstance.info).toHaveBeenCalledWith("Metrics API server started");
+    expect(loggerInstance.info).toHaveBeenCalledWith("Gauge metrics poller started");
     expect(loggerInstance.info).toHaveBeenCalledWith("Native yield automation service started");
   });
 
@@ -237,6 +287,10 @@ describe("NativeYieldAutomationServiceBootstrap", () => {
     const config = createBootstrapConfig();
 
     const bootstrap = new NativeYieldAutomationServiceBootstrap(config);
+    const gaugeMetricsPollerInstance = mockGaugeMetricsPoller.mock.results[0]?.value as {
+      start: jest.Mock;
+      stop: jest.Mock;
+    };
     bootstrap.stopAllServices();
 
     const apiInstance = mockExpressApiApplication.mock.results[0]?.value as {
@@ -252,8 +306,10 @@ describe("NativeYieldAutomationServiceBootstrap", () => {
     };
 
     expect(apiInstance.stop).toHaveBeenCalledTimes(1);
+    expect(gaugeMetricsPollerInstance.stop).toHaveBeenCalledTimes(1);
     expect(operationModeSelectorInstance.stop).toHaveBeenCalledTimes(1);
     expect(loggerInstance.info).toHaveBeenCalledWith("Metrics API server stopped");
+    expect(loggerInstance.info).toHaveBeenCalledWith("Gauge metrics poller stopped");
     expect(loggerInstance.info).toHaveBeenCalledWith("Native yield automation service stopped");
   });
 
