@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
@@ -154,7 +153,7 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 	addrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	shiftedAddrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	for i := range poseidon2.BlockSize {
-		accPeek.AddressHashLimbs[i], accPeek.ComputeAddressLimbs[i] = byte32cmp.Decompose(comp, accPeek.AddressHash[i], 1, common.LimbBytes*8)
+		accPeek.AddressHashLimbs[i], accPeek.ComputeAddressLimbs[i] = byte32cmp.Decompose(comp, accPeek.AddressHash[i], 2, common.LimbBytes*8)
 
 		addrHashLimbColumbs.Limbs = append(addrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Limbs...)
 		shiftedAddrHashLimbColumbs.Limbs = append(shiftedAddrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Shift(-1).Limbs...)
@@ -497,7 +496,7 @@ func int64ToByteLimbs(num int64) [][]byte {
 	res := make([][]byte, common.NbLimbU64)
 	nonceLimbs := common.SplitBytes(nonceBuffer.Bytes())
 	for i := range common.NbLimbU64 {
-		padding := make([]byte, fr.Bytes-len(nonceLimbs[i]))
+		padding := make([]byte, field.Bytes-len(nonceLimbs[i]))
 		res[i] = append(padding, nonceLimbs[i]...)
 	}
 

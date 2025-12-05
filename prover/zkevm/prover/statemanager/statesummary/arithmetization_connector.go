@@ -853,6 +853,17 @@ func defineInsertionFilterForFinalStorage(comp *wizard.CompiledIOP, smc HubColum
 			),
 		),
 	)
+
+	selectorEmptySTValue := sym.Mul(
+		sc.SelectorEmptySTValueHi[0], sc.SelectorEmptySTValueHi[1],
+		sc.SelectorEmptySTValueHi[2], sc.SelectorEmptySTValueHi[3],
+		sc.SelectorEmptySTValueHi[4], sc.SelectorEmptySTValueHi[5],
+		sc.SelectorEmptySTValueHi[6], sc.SelectorEmptySTValueHi[7],
+		sc.SelectorEmptySTValueLo[0], sc.SelectorEmptySTValueLo[1],
+		sc.SelectorEmptySTValueLo[2], sc.SelectorEmptySTValueLo[3],
+		sc.SelectorEmptySTValueLo[4], sc.SelectorEmptySTValueLo[5],
+		sc.SelectorEmptySTValueLo[6], sc.SelectorEmptySTValueLo[7],
+	)
 	// if the filter is set to 0, then all the emoty value selectors must be 1.
 	// but this only must be true for the last values seen in the relevant segment.
 	// afterwards the keys are allowed to fluctuate
@@ -866,25 +877,35 @@ func defineInsertionFilterForFinalStorage(comp *wizard.CompiledIOP, smc HubColum
 				1,
 				filterAccountInsert,
 			),
-			sym.Sub(
-				1,
-				sym.Mul(
-					sc.SelectorEmptySTValueNextHi,
-					sc.SelectorEmptySTValueNextLo,
-				),
-			),
+			sym.Sub(1, selectorEmptySTValue),
 		),
 	)
+
+	stKeyIsSame := sym.Mul(
+		sc.SelectorSTKeyDiffHi[0], sc.SelectorSTKeyDiffHi[1],
+		sc.SelectorSTKeyDiffHi[2], sc.SelectorSTKeyDiffHi[3],
+		sc.SelectorSTKeyDiffHi[4], sc.SelectorSTKeyDiffHi[5],
+		sc.SelectorSTKeyDiffHi[6], sc.SelectorSTKeyDiffHi[7],
+		sc.SelectorSTKeyDiffLo[0], sc.SelectorSTKeyDiffLo[1],
+		sc.SelectorSTKeyDiffLo[2], sc.SelectorSTKeyDiffLo[3],
+		sc.SelectorSTKeyDiffLo[4], sc.SelectorSTKeyDiffLo[5],
+		sc.SelectorSTKeyDiffLo[6], sc.SelectorSTKeyDiffLo[7],
+	)
+
+	blockNumIsSame := sym.Mul(
+		sc.SelectorBlockNoDiff[0], sc.SelectorBlockNoDiff[1],
+		sc.SelectorBlockNoDiff[2], sc.SelectorBlockNoDiff[3],
+	)
+
 	// filter must be constant as long as the storage key does not change
 	// and the address and block number also does not change
 	comp.InsertGlobal(
 		0,
 		ifaces.QueryIDf("GLOBAL_CONSTRAINT_HUB_STATE_SUMMARY__ACCOUNT_INSERT_FILTER_CONSTANCY"),
 		sym.Mul(
-			sc.SelectorSTKeyDiffHi,        // 1 if ST key HI is the same as in the previous index
-			sc.SelectorSTKeyDiffLo,        // 1 if ST key LO is the same as in the previous index
+			stKeyIsSame,                   // 1 if ST key LO is the same as in the previous index
 			sc.SelectorAccountAddressDiff, // 1 if the account address is the same, meaning that our storage segment is within the same account segment
-			sc.SelectorBlockNoDiff,        // 1 if the block number is the same, meaning that we are in the same storage key segment
+			blockNumIsSame,                // 1 if the block number is the same, meaning that we are in the same storage key segment
 			sym.Sub(
 				filterAccountInsert,
 				column.Shift(filterAccountInsert, -1), // the filter remains constant if the ST key is the same, account address, and block is the same
@@ -1013,16 +1034,29 @@ func defineEphemeralAccountFilterStorage(comp *wizard.CompiledIOP, smc HubColumn
 		),
 	)
 
+	stKeyIsSame := sym.Mul(
+		sc.SelectorSTKeyDiffHi[0], sc.SelectorSTKeyDiffHi[1],
+		sc.SelectorSTKeyDiffHi[2], sc.SelectorSTKeyDiffHi[3],
+		sc.SelectorSTKeyDiffHi[4], sc.SelectorSTKeyDiffHi[5],
+		sc.SelectorSTKeyDiffHi[6], sc.SelectorSTKeyDiffHi[7],
+		sc.SelectorSTKeyDiffLo[0], sc.SelectorSTKeyDiffLo[1],
+		sc.SelectorSTKeyDiffLo[2], sc.SelectorSTKeyDiffLo[3],
+		sc.SelectorSTKeyDiffLo[4], sc.SelectorSTKeyDiffLo[5],
+		sc.SelectorSTKeyDiffLo[6], sc.SelectorSTKeyDiffLo[7],
+	)
+	blockNumIsSame := sym.Mul(
+		sc.SelectorBlockNoDiff[0], sc.SelectorBlockNoDiff[1],
+		sc.SelectorBlockNoDiff[2], sc.SelectorBlockNoDiff[3],
+	)
 	// filter must be constant as long as the storage key does not change
 	// and the address and block number also does not change
 	comp.InsertGlobal(
 		0,
 		ifaces.QueryIDf("GLOBAL_CONSTRAINT_HUB_STATE_SUMMARY__ACCOUNT_EPHEMERAL_FILTER_CONSTANCY"),
 		sym.Mul(
-			sc.SelectorSTKeyDiffHi,        // 1 if ST key HI is the same as in the previous index
-			sc.SelectorSTKeyDiffLo,        // 1 if ST key LO is the same as in the previous index
+			stKeyIsSame,                   // 1 if ST key LO is the same as in the previous index
 			sc.SelectorAccountAddressDiff, // 1 if the account address is the same, meaning that our storage segment is within the same account segment
-			sc.SelectorBlockNoDiff,        // 1 if the block number is the same, meaning that we are in the same storage key segment
+			blockNumIsSame,                // 1 if the block number is the same, meaning that we are in the same storage key segment
 			sym.Sub(
 				filterEphemeralAccounts,
 				column.Shift(filterEphemeralAccounts, -1), // the filter remains constant if the ST key is the same, account address, and block is the same
