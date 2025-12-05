@@ -1,4 +1,11 @@
-import { ILogger, min, MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE, ONE_GWEI, safeSub, weiToGweiNumber } from "@consensys/linea-shared-utils";
+import {
+  ILogger,
+  min,
+  MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE,
+  ONE_GWEI,
+  safeSub,
+  weiToGweiNumber,
+} from "@consensys/linea-shared-utils";
 import { IBeaconChainStakingClient } from "../core/clients/IBeaconChainStakingClient.js";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
@@ -43,7 +50,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     this.logger.info(
       `submitWithdrawalRequestsToFulfilAmount started: amountWei=${amountWei.toString()}; validatorLimit=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
     );
-    const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending();
+    const sortedValidatorList = await this.validatorDataClient.getValidatorsForWithdrawalRequestsAscending();
     if (sortedValidatorList === undefined) {
       this.logger.error(
         "submitWithdrawalRequestsToFulfilAmount failed to get sortedValidatorList with pending withdrawals",
@@ -72,7 +79,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
    */
   async submitMaxAvailableWithdrawalRequests(): Promise<void> {
     this.logger.info(`submitMaxAvailableWithdrawalRequests started`);
-    const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawalsAscending();
+    const sortedValidatorList = await this.validatorDataClient.getValidatorsForWithdrawalRequestsAscending();
     if (sortedValidatorList === undefined) {
       this.logger.error(
         "submitMaxAvailableWithdrawalRequests failed to get sortedValidatorList with pending withdrawals",

@@ -63,10 +63,10 @@ async function main() {
   );
 
   try {
-    const validators = await consensysStakingClient.getActiveValidatorsWithPendingWithdrawalsAscending();
+    const validators = await consensysStakingClient.getValidatorsForWithdrawalRequestsAscending();
     if (validators === undefined) {
-      console.error("Failed getActiveValidatorsWithPendingWithdrawalsAscending");
-      throw "Failed getActiveValidatorsWithPendingWithdrawalsAscending";
+      console.error("Failed getValidatorsForWithdrawalRequestsAscending");
+      throw "Failed getValidatorsForWithdrawalRequestsAscending";
     }
     console.log(`Fetched ${validators.length} validators with pending withdrawals.`);
     console.log(validators);

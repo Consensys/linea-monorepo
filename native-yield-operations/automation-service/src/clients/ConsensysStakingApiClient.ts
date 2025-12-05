@@ -281,22 +281,20 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
   }
 
   /**
-   * Retrieves active validators with pending withdrawal information.
-   * Returns sorted in ascending order of withdrawableValue (smallest withdrawableAmount first).
+   * Retrieves validators sorted by withdrawable amount for withdrawal requests.
+   * Returns sorted in ascending order of withdrawableAmount (smallest first).
    * Fetches data, delegates to joinValidatorsWithPendingWithdrawals for processing, and sorts the result.
    *
-   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of validators with pending withdrawal data, sorted ascending by withdrawableAmount, or undefined if data retrieval fails.
+   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of validators sorted ascending by withdrawableAmount for withdrawal requests, or undefined if data retrieval fails.
    */
-  async getActiveValidatorsWithPendingWithdrawalsAscending(): Promise<
-    ValidatorBalanceWithPendingWithdrawal[] | undefined
-  > {
+  async getValidatorsForWithdrawalRequestsAscending(): Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined> {
     const [allValidators, pendingWithdrawalsQueue] = await Promise.all([
       this.getActiveValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
     ]);
     if (allValidators === undefined || pendingWithdrawalsQueue === undefined) {
       this.logger.warn(
-        "getActiveValidatorsWithPendingWithdrawalsAscending - failed to retrieve validators or pending withdrawals",
+        "getValidatorsForWithdrawalRequestsAscending - failed to retrieve validators or pending withdrawals",
         {
           allValidators: allValidators === undefined,
           pendingWithdrawalsQueue: pendingWithdrawalsQueue === undefined,
@@ -308,7 +306,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     const joined = this.joinValidatorsWithPendingWithdrawals(allValidators, pendingWithdrawalsQueue);
     if (joined === undefined) {
       this.logger.warn(
-        "getActiveValidatorsWithPendingWithdrawalsAscending - joinValidatorsWithPendingWithdrawals returned undefined",
+        "getValidatorsForWithdrawalRequestsAscending - joinValidatorsWithPendingWithdrawals returned undefined",
       );
       return undefined;
     }
@@ -318,8 +316,8 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       a.withdrawableAmount < b.withdrawableAmount ? -1 : a.withdrawableAmount > b.withdrawableAmount ? 1 : 0,
     );
 
-    this.logger.info(`getActiveValidatorsWithPendingWithdrawalsAscending succeeded, validatorCount=${joined.length}`);
-    this.logger.debug("getActiveValidatorsWithPendingWithdrawalsAscending joined", { joined });
+    this.logger.info(`getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=${joined.length}`);
+    this.logger.debug("getValidatorsForWithdrawalRequestsAscending joined", { joined });
     return joined;
   }
 

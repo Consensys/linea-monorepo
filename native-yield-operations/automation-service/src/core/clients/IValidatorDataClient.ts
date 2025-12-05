@@ -9,7 +9,7 @@ import {
 export interface IValidatorDataClient {
   getActiveValidators(): Promise<ValidatorBalance[] | undefined>;
   getExitingValidators(): Promise<ExitingValidator[] | undefined>;
-  getActiveValidatorsWithPendingWithdrawalsAscending(): Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>;
+  getValidatorsForWithdrawalRequestsAscending(): Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>;
   joinValidatorsWithPendingWithdrawals(
     allValidators: ValidatorBalance[] | undefined,
     pendingWithdrawalsQueue: PendingPartialWithdrawal[] | undefined,
