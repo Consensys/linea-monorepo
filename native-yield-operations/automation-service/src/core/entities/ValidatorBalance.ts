@@ -4,6 +4,7 @@ export interface ValidatorBalance {
   effectiveBalance: bigint;
   publicKey: string;
   validatorIndex: bigint;
+  activationEpoch: number;
 }
 
 export interface ExitingValidator {

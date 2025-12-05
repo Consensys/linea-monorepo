@@ -70,12 +70,14 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       effectiveBalance: string | bigint;
       publicKey: string;
       validatorIndex: string | bigint;
+      activationEpoch: string | number;
     };
     const validators: ValidatorBalance[] = resp.map((v: GraphQLValidatorResponse) => ({
       balance: BigInt(v.balance),
       effectiveBalance: BigInt(v.effectiveBalance),
       publicKey: v.publicKey,
       validatorIndex: BigInt(v.validatorIndex),
+      activationEpoch: Number(v.activationEpoch),
     }));
     this.logger.info(`getActiveValidators succeeded, validatorCount=${validators.length}`);
     this.logger.debug("getActiveValidators resp", { resp: validators });
@@ -178,6 +180,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
         effectiveBalance: v.effectiveBalance,
         publicKey: v.publicKey,
         validatorIndex: v.validatorIndex,
+        activationEpoch: v.activationEpoch,
         pendingWithdrawalAmount: pendingAmount,
         // N.B We expect amounts from GraphQL API and Beacon Chain RPC URL to be in gwei units, not wei.
         withdrawableAmount: safeSub(safeSub(v.balance, pendingAmount), MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE),

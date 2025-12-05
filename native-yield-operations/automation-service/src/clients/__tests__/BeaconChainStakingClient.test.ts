@@ -131,6 +131,7 @@ const createValidator = (
   pendingWithdrawalAmount: 0n,
   withdrawableAmount: 0n,
   validatorIndex: 0n,
+  activationEpoch: 0,
   ...overrides,
 });
 

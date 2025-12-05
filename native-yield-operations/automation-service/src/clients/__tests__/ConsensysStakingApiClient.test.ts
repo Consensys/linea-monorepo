@@ -86,10 +86,10 @@ describe("ConsensysStakingApiClient", () => {
       const { client, logger, retryMock, apolloQueryMock } = createClient();
       // GraphQL returns string values, which need to be converted to bigint
       const graphqlResponse = [
-        { balance: "32", effectiveBalance: "32", publicKey: "validator-1", validatorIndex: "1" },
+        { balance: "32", effectiveBalance: "32", publicKey: "validator-1", validatorIndex: "1", activationEpoch: "0" },
       ];
       const expectedValidators: ValidatorBalance[] = [
-        { balance: 32n, effectiveBalance: 32n, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n, effectiveBalance: 32n, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
 
       apolloQueryMock.mockResolvedValue({
@@ -334,7 +334,7 @@ describe("ConsensysStakingApiClient", () => {
     it("returns undefined when pending withdrawals cannot be fetched", async () => {
       const { client, logger, pendingWithdrawalsMock } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n, effectiveBalance: 32n, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n, effectiveBalance: 32n, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
       const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(validators);
       pendingWithdrawalsMock.mockResolvedValueOnce(undefined);
@@ -353,7 +353,7 @@ describe("ConsensysStakingApiClient", () => {
     it("logs warning when joinValidatorsWithPendingWithdrawals returns undefined", async () => {
       const { client, logger, pendingWithdrawalsMock } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
       const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(validators);
       const joinValidatorsSpy = jest
@@ -382,6 +382,7 @@ describe("ConsensysStakingApiClient", () => {
         effectiveBalance: 32n * ONE_GWEI,
         publicKey: "validator-a",
         validatorIndex: 1n,
+        activationEpoch: 0,
       };
 
       const validatorB: ValidatorBalance = {
@@ -389,6 +390,7 @@ describe("ConsensysStakingApiClient", () => {
         effectiveBalance: 32n * ONE_GWEI,
         publicKey: "validator-b",
         validatorIndex: 2n,
+        activationEpoch: 0,
       };
 
       const getActiveValidatorsSpy = jest
@@ -433,6 +435,7 @@ describe("ConsensysStakingApiClient", () => {
         effectiveBalance: 32n * ONE_GWEI,
         publicKey: "validator-high",
         validatorIndex: 10n,
+        activationEpoch: 0,
       };
 
       const validatorLow: ValidatorBalance = {
@@ -440,6 +443,7 @@ describe("ConsensysStakingApiClient", () => {
         effectiveBalance: 32n * ONE_GWEI,
         publicKey: "validator-low",
         validatorIndex: 11n,
+        activationEpoch: 0,
       };
 
       const getActiveValidatorsSpy = jest
@@ -486,12 +490,14 @@ describe("ConsensysStakingApiClient", () => {
         effectiveBalance: 32n * ONE_GWEI,
         publicKey: "validator-equal-a",
         validatorIndex: 20n,
+        activationEpoch: 0,
       };
       const validatorEqualB: ValidatorBalance = {
         balance: 32n * ONE_GWEI,
         effectiveBalance: 32n * ONE_GWEI,
         publicKey: "validator-equal-b",
         validatorIndex: 21n,
+        activationEpoch: 0,
       };
 
       const getActiveValidatorsSpy = jest
@@ -545,7 +551,7 @@ describe("ConsensysStakingApiClient", () => {
     it("returns undefined and logs warning when pending withdrawals are undefined", () => {
       const { client, logger } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
 
       const result = client.joinValidatorsWithPendingWithdrawals(validators, undefined);
@@ -565,6 +571,7 @@ describe("ConsensysStakingApiClient", () => {
         effectiveBalance: 32n * ONE_GWEI,
         publicKey: "validator-a",
         validatorIndex: 1n,
+        activationEpoch: 0,
       };
 
       const validatorB: ValidatorBalance = {
@@ -572,6 +579,7 @@ describe("ConsensysStakingApiClient", () => {
         effectiveBalance: 32n * ONE_GWEI,
         publicKey: "validator-b",
         validatorIndex: 2n,
+        activationEpoch: 0,
       };
 
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
@@ -632,6 +640,7 @@ describe("ConsensysStakingApiClient", () => {
         effectiveBalance: 32n * ONE_GWEI,
         publicKey: "validator-1",
         validatorIndex: 1n,
+        activationEpoch: 0,
       };
 
       const pendingWithdrawals: PendingPartialWithdrawal[] = [];
@@ -697,6 +706,7 @@ describe("ConsensysStakingApiClient", () => {
           effectiveBalance: 32n,
           publicKey: "validator-1",
           validatorIndex: 1n,
+          activationEpoch: 0,
           pendingWithdrawalAmount: 3n,
           withdrawableAmount: 0n,
         },
@@ -705,6 +715,7 @@ describe("ConsensysStakingApiClient", () => {
           effectiveBalance: 32n,
           publicKey: "validator-2",
           validatorIndex: 2n,
+          activationEpoch: 0,
           pendingWithdrawalAmount: 1n,
           withdrawableAmount: 0n,
         },
@@ -744,18 +755,21 @@ describe("ConsensysStakingApiClient", () => {
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-1",
           validatorIndex: 1n,
+          activationEpoch: 0,
         },
         {
           balance: 40n * ONE_GWEI,
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-2",
           validatorIndex: 2n,
+          activationEpoch: 0,
         },
         {
           balance: 35n * ONE_GWEI,
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-3",
           validatorIndex: 3n,
+          activationEpoch: 0,
         },
       ];
 
@@ -773,6 +787,7 @@ describe("ConsensysStakingApiClient", () => {
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-1",
           validatorIndex: 1n,
+          activationEpoch: 0,
         },
       ];
 
@@ -791,12 +806,14 @@ describe("ConsensysStakingApiClient", () => {
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-1",
           validatorIndex: 1n,
+          activationEpoch: 0,
         },
         {
           balance: largeBalance,
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-2",
           validatorIndex: 2n,
+          activationEpoch: 0,
         },
       ];
 
@@ -814,12 +831,14 @@ describe("ConsensysStakingApiClient", () => {
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-1",
           validatorIndex: 1n,
+          activationEpoch: 0,
         },
         {
           balance: 32n * ONE_GWEI,
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-2",
           validatorIndex: 2n,
+          activationEpoch: 0,
         },
       ];
 
@@ -849,7 +868,7 @@ describe("ConsensysStakingApiClient", () => {
     it("returns undefined and logs warning when pending withdrawals are undefined", () => {
       const { client, logger } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
 
       const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, undefined);
@@ -864,7 +883,7 @@ describe("ConsensysStakingApiClient", () => {
     it("filters out withdrawals that do not match active validators", () => {
       const { client, logger } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
         { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
@@ -892,8 +911,8 @@ describe("ConsensysStakingApiClient", () => {
     it("aggregates amounts by validator_index and withdrawable_epoch", () => {
       const { client, logger } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-2", validatorIndex: 2n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-2", validatorIndex: 2n, activationEpoch: 0 },
       ];
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
         { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
@@ -933,8 +952,8 @@ describe("ConsensysStakingApiClient", () => {
     it("includes pubkey from matching validators", () => {
       const { client } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "pubkey-abc", validatorIndex: 1n },
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "pubkey-xyz", validatorIndex: 2n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "pubkey-abc", validatorIndex: 1n, activationEpoch: 0 },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "pubkey-xyz", validatorIndex: 2n, activationEpoch: 0 },
       ];
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
         { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
@@ -979,7 +998,7 @@ describe("ConsensysStakingApiClient", () => {
     it("handles empty pending withdrawals array", () => {
       const { client, logger } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
 
       const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, []);
@@ -996,7 +1015,7 @@ describe("ConsensysStakingApiClient", () => {
     it("handles multiple withdrawals with same validator_index and withdrawable_epoch", () => {
       const { client } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
         { validator_index: 1, amount: 1n * ONE_GWEI, withdrawable_epoch: 100 },
@@ -1019,7 +1038,7 @@ describe("ConsensysStakingApiClient", () => {
     it("handles withdrawals with different withdrawable_epochs for same validator", () => {
       const { client } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
         { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
@@ -1051,7 +1070,7 @@ describe("ConsensysStakingApiClient", () => {
     it("logs aggregated results with debug information", () => {
       const { client, logger } = createClient();
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
         { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
@@ -1082,6 +1101,7 @@ describe("ConsensysStakingApiClient", () => {
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-1",
           validatorIndex: validatorIndex,
+          activationEpoch: 0,
         },
       ];
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
@@ -1106,7 +1126,7 @@ describe("ConsensysStakingApiClient", () => {
       // This tests the ?? "" fallback on line 203
       // We need to simulate a scenario where the map lookup returns undefined
       const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n },
+        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
       ];
       const pendingWithdrawals: PendingPartialWithdrawal[] = [
         { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },

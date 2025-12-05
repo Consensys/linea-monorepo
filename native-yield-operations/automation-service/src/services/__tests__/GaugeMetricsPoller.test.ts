@@ -117,12 +117,14 @@ describe("GaugeMetricsPoller", () => {
           effectiveBalance: 32n,
           publicKey: "validator-1",
           validatorIndex: 1n,
+          activationEpoch: 0,
         },
         {
           balance: 32n,
           effectiveBalance: 32n,
           publicKey: "validator-2",
           validatorIndex: 2n,
+          activationEpoch: 0,
         },
       ];
 
@@ -137,6 +139,7 @@ describe("GaugeMetricsPoller", () => {
           effectiveBalance: 32n,
           publicKey: "validator-1",
           validatorIndex: 1n,
+          activationEpoch: 0,
           pendingWithdrawalAmount: 3n * ONE_GWEI,
           withdrawableAmount: 0n,
         },
@@ -145,6 +148,7 @@ describe("GaugeMetricsPoller", () => {
           effectiveBalance: 32n,
           publicKey: "validator-2",
           validatorIndex: 2n,
+          activationEpoch: 0,
           pendingWithdrawalAmount: 1n * ONE_GWEI,
           withdrawableAmount: 0n,
         },
@@ -174,12 +178,14 @@ describe("GaugeMetricsPoller", () => {
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-1",
           validatorIndex: 1n,
+          activationEpoch: 0,
         },
         {
           balance: 40n * ONE_GWEI,
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-2",
           validatorIndex: 2n,
+          activationEpoch: 0,
         },
       ];
 
@@ -402,12 +408,14 @@ describe("GaugeMetricsPoller", () => {
           effectiveBalance: 32n,
           publicKey: "validator-1-pubkey",
           validatorIndex: 1n,
+          activationEpoch: 0,
         },
         {
           balance: 32n,
           effectiveBalance: 32n,
           publicKey: "validator-2-pubkey",
           validatorIndex: 2n,
+          activationEpoch: 0,
         },
       ];
 
@@ -606,6 +614,7 @@ describe("GaugeMetricsPoller", () => {
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-1",
           validatorIndex: 1n,
+          activationEpoch: 0,
         },
       ];
 
@@ -617,6 +626,7 @@ describe("GaugeMetricsPoller", () => {
           effectiveBalance: 32n * ONE_GWEI,
           publicKey: "validator-1",
           validatorIndex: 1n,
+          activationEpoch: 0,
           pendingWithdrawalAmount: 2n * ONE_GWEI,
           withdrawableAmount: 0n,
         },

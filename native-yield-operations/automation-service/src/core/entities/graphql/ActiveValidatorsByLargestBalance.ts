@@ -25,6 +25,7 @@ export const ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY: TypedDocumentNode<
         effectiveBalance
         publicKey
         validatorIndex
+        activationEpoch
       }
     }
   }
