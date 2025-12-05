@@ -180,6 +180,8 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     for (const v of sortedValidatorList) {
       if (withdrawalRequests.pubkeys.length >= remainingWithdrawals) break;
       if (withdrawalRequests.pubkeys.length >= this.maxValidatorWithdrawalRequestsPerTransaction) break;
+      // Exit requests are ignored for validator with pending partial withdrawal - https://github.com/ethereum/consensus-specs/blob/14e6f0c919d36ef2ae7c337fe51161952a634478/specs/electra/beacon-chain.md?plain=1#L1697
+      if (v.pendingWithdrawalAmount > 0n) continue;
 
       if (v.withdrawableAmount === 0n) {
         withdrawalRequests.pubkeys.push(v.publicKey as Hex);

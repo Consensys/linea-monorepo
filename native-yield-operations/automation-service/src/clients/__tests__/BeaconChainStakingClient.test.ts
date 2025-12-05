@@ -437,5 +437,54 @@ describe("BeaconChainStakingClient", () => {
       expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(2, "validator-2" as Hex);
       expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(3, "validator-3" as Hex);
     });
+
+    it("skips validators with pending withdrawal amounts", async () => {
+      const { client, logger, unstakeMock, mocks } = setupClient();
+      const validators = [
+        createValidator({ publicKey: "validator-1", withdrawableAmount: 0n, pendingWithdrawalAmount: 5n }),
+        createValidator({ publicKey: "validator-2", withdrawableAmount: 0n, pendingWithdrawalAmount: 10n }),
+      ];
+
+      await (
+        client as unknown as {
+          _submitValidatorExits(
+            list: ValidatorBalanceWithPendingWithdrawal[],
+            remainingWithdrawals: number,
+          ): Promise<void>;
+        }
+      )._submitValidatorExits(validators, 2);
+
+      expect(logger.info).toHaveBeenCalledWith("_submitValidatorExits - no validators to exit, skipping unstake");
+      expect(unstakeMock).not.toHaveBeenCalled();
+      expect(mocks.incrementValidatorExit).not.toHaveBeenCalled();
+    });
+
+    it("processes validators without pending withdrawals and skips those with pending withdrawals", async () => {
+      const { client, unstakeMock, mocks } = setupClient();
+      const validators = [
+        createValidator({ publicKey: "validator-1", withdrawableAmount: 0n, pendingWithdrawalAmount: 5n }),
+        createValidator({ publicKey: "validator-2", withdrawableAmount: 0n, pendingWithdrawalAmount: 0n }),
+        createValidator({ publicKey: "validator-3", withdrawableAmount: 0n, pendingWithdrawalAmount: 10n }),
+        createValidator({ publicKey: "validator-4", withdrawableAmount: 0n, pendingWithdrawalAmount: 0n }),
+      ];
+
+      await (
+        client as unknown as {
+          _submitValidatorExits(
+            list: ValidatorBalanceWithPendingWithdrawal[],
+            remainingWithdrawals: number,
+          ): Promise<void>;
+        }
+      )._submitValidatorExits(validators, 5);
+
+      expect(unstakeMock).toHaveBeenCalledTimes(1);
+      const [, requests] = unstakeMock.mock.calls[0];
+      // Only validators without pending withdrawals should be included
+      expect(requests.pubkeys).toEqual(["validator-2" as Hex, "validator-4" as Hex]);
+      expect(requests.amountsGwei).toEqual([0n, 0n]);
+      expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(2);
+      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(1, "validator-2" as Hex);
+      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(2, "validator-4" as Hex);
+    });
   });
 });
