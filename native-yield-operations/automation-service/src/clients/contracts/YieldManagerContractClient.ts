@@ -1,4 +1,4 @@
-import { absDiff, IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
+import { absDiff, IBlockchainClient, ILogger, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import {
   Address,
   concat,
@@ -24,6 +24,7 @@ import { YieldReport } from "../../core/entities/YieldReport.js";
 import { StakingVaultABI } from "../../core/abis/StakingVault.js";
 import { WithdrawalEvent } from "../../core/entities/WithdrawalEvent.js";
 import { DashboardContractClient } from "./DashboardContractClient.js";
+import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 
 /**
  * Client for interacting with YieldManager smart contracts.
@@ -44,6 +45,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @param {bigint} maxStakingRebalanceAmountWei - Maximum staking rebalance amount (in wei) that can be processed per loop iteration.
    * @param {bigint} stakeCircuitBreakerThresholdWei - Circuit breaker threshold (in wei) for STAKE direction rebalances.
    * @param {bigint} minStakingVaultBalanceToUnpauseStakingWei - Minimum staking vault balance (in wei) required before unpausing staking.
+   * @param {INativeYieldAutomationMetricsUpdater} [metricsUpdater] - Optional metrics updater for tracking circuit breaker trips and rebalance requirements.
    */
   constructor(
     private readonly logger: ILogger,
@@ -54,6 +56,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     private readonly maxStakingRebalanceAmountWei: bigint,
     private readonly stakeCircuitBreakerThresholdWei: bigint,
     private readonly minStakingVaultBalanceToUnpauseStakingWei: bigint,
+    private readonly metricsUpdater?: INativeYieldAutomationMetricsUpdater,
   ) {
     this.contract = getContract({
       abi: YieldManagerABI,
@@ -421,6 +424,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       throw new Error("peekYieldReport returned undefined, cannot determine rebalance requirements");
     }
     return this._getRebalanceRequirements(
+      yieldProvider,
       totalSystemBalance,
       l1MessageServiceBalance,
       effectiveTargetWithdrawalReserve,
@@ -438,6 +442,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * is within the tolerance band compared to the adjusted effective target withdrawal reserve.
    * Returns a RebalanceRequirement with direction (NONE, STAKE, or UNSTAKE) and amount.
    *
+   * @param {Address} yieldProvider - The yield provider (vault) address for metrics tracking.
    * @param {bigint} totalSystemBalance - The total system balance.
    * @param {bigint} l1MessageServiceBalance - The L1 Message Service balance.
    * @param {bigint} effectiveTargetWithdrawalReserve - The effective target withdrawal reserve.
@@ -448,6 +453,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {RebalanceRequirement} The rebalance requirement containing direction (NONE, STAKE, or UNSTAKE) and amount.
    */
   private _getRebalanceRequirements(
+    yieldProvider: Address,
     totalSystemBalance: bigint,
     l1MessageServiceBalance: bigint,
     effectiveTargetWithdrawalReserve: bigint,
@@ -502,6 +508,11 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       absDiff(l1MessageServiceBalance, effectiveTargetWithdrawalReserveExcludingObligations) + systemObligations;
     this.logger.debug(`_getRebalanceRequirements - absRebalanceRequirement=${absRebalanceRequirement}`);
 
+    // Track the original rebalance requirement for all paths (before tolerance band, circuit breaker, or rate limit)
+    if (this.metricsUpdater) {
+      this.metricsUpdater.setRebalanceRequirement(yieldProvider, weiToGweiNumber(absRebalanceRequirement));
+    }
+
     if (absRebalanceRequirement < toleranceBand) {
       const result = {
         rebalanceDirection: RebalanceDirection.NONE,
@@ -524,6 +535,9 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
         this.logger.warn(
           `_getRebalanceRequirements - staking circuit breaker tripped, skipping staking rebalance as absRebalanceRequirement=${absRebalanceRequirement} exceeds the circuit breaker threshold of ${this.stakeCircuitBreakerThresholdWei}`,
         );
+        if (this.metricsUpdater) {
+          this.metricsUpdater.incrementStakeCircuitBreakerTrip(yieldProvider);
+        }
         return {
           rebalanceDirection: RebalanceDirection.NONE,
           rebalanceAmount: 0n,

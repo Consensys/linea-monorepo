@@ -1,11 +1,12 @@
 import { mock, MockProxy } from "jest-mock-extended";
 import type { ILogger, IBlockchainClient } from "@consensys/linea-shared-utils";
+import { absDiff, ONE_ETHER, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import type { Address, Hex, PublicClient, TransactionReceipt } from "viem";
 import { YieldManagerABI } from "../../../core/abis/YieldManager.js";
 import { StakingVaultABI } from "../../../core/abis/StakingVault.js";
 import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
 import type { WithdrawalRequests } from "../../../core/entities/LidoStakingVaultWithdrawalParams.js";
-import { ONE_ETHER } from "@consensys/linea-shared-utils";
+import type { INativeYieldAutomationMetricsUpdater } from "../../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 
 jest.mock("viem", () => {
   const actual = jest.requireActual("viem");
@@ -85,12 +86,14 @@ describe("YieldManagerContractClient", () => {
     maxStakingRebalanceAmountWei = 1000000000000000000000n, // 1000 ETH default
     stakeCircuitBreakerThresholdWei = 2000000000000000000000n, // 2000 ETH default
     minStakingVaultBalanceToUnpauseStakingWei = 0n,
+    metricsUpdater,
   }: {
     rebalanceToleranceBps?: number;
     minWithdrawalThresholdEth?: bigint;
     maxStakingRebalanceAmountWei?: bigint;
     stakeCircuitBreakerThresholdWei?: bigint;
     minStakingVaultBalanceToUnpauseStakingWei?: bigint;
+    metricsUpdater?: Partial<INativeYieldAutomationMetricsUpdater>;
   } = {}) =>
     new YieldManagerContractClient(
       logger,
@@ -101,6 +104,7 @@ describe("YieldManagerContractClient", () => {
       maxStakingRebalanceAmountWei,
       stakeCircuitBreakerThresholdWei,
       minStakingVaultBalanceToUnpauseStakingWei,
+      metricsUpdater as INativeYieldAutomationMetricsUpdater | undefined,
     );
 
   beforeEach(() => {
@@ -446,6 +450,7 @@ describe("YieldManagerContractClient", () => {
       rebalanceToleranceBps: number = 100,
       maxStakingRebalanceAmountWei: bigint = 1000000000000000000000n,
       stakeCircuitBreakerThresholdWei: bigint = 2000000000000000000000n,
+      metricsUpdater?: Partial<INativeYieldAutomationMetricsUpdater>,
     ) {
       // --- Contract stubs ---
       contractStub.read.getTotalSystemBalance.mockResolvedValue(totalSystemBalance);
@@ -470,6 +475,7 @@ describe("YieldManagerContractClient", () => {
         rebalanceToleranceBps,
         maxStakingRebalanceAmountWei,
         stakeCircuitBreakerThresholdWei,
+        metricsUpdater: metricsUpdater as INativeYieldAutomationMetricsUpdater | undefined,
       });
 
       return {
@@ -739,6 +745,88 @@ describe("YieldManagerContractClient", () => {
           `_getRebalanceRequirements - staking circuit breaker tripped, skipping staking rebalance as absRebalanceRequirement=${l1MessageServiceBalance - effectiveTarget} exceeds the circuit breaker threshold of ${stakeCircuitBreakerThresholdWei}`,
         ),
       );
+    });
+
+    it("tracks metrics when metricsUpdater is provided", async () => {
+      const metricsUpdater = {
+        incrementStakeCircuitBreakerTrip: jest.fn(),
+        setRebalanceRequirement: jest.fn(),
+      };
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 400_000n;
+      const dashboardTotalValue = 100_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 0n;
+      const peekedOutstandingNegativeYield = 0n;
+      const rebalanceToleranceBps = 100;
+      const l1MessageServiceBalance = 900_000n;
+      const maxStakingRebalanceAmountWei = 100_000n;
+      const stakeCircuitBreakerThresholdWei = 200_000n;
+      const absRebalanceRequirement = l1MessageServiceBalance - effectiveTarget; // 500_000n
+      const { client } = setupRebalanceTest(
+        l1MessageServiceBalance,
+        totalSystemBalance,
+        effectiveTarget,
+        dashboardTotalValue,
+        userFunds,
+        peekedYieldAmount,
+        peekedOutstandingNegativeYield,
+        rebalanceToleranceBps,
+        maxStakingRebalanceAmountWei,
+        stakeCircuitBreakerThresholdWei,
+        metricsUpdater,
+      );
+
+      await client.getRebalanceRequirements(yieldProvider, l2Recipient);
+
+      // Gauge should be set with original requirement for all paths (converted to gwei)
+      expect(metricsUpdater.setRebalanceRequirement).toHaveBeenCalledWith(
+        yieldProvider,
+        weiToGweiNumber(absRebalanceRequirement),
+      );
+      // Counter should be incremented when circuit breaker trips
+      expect(metricsUpdater.incrementStakeCircuitBreakerTrip).toHaveBeenCalledWith(yieldProvider);
+    });
+
+    it("tracks gauge metric for all rebalance paths when metricsUpdater is provided", async () => {
+      const metricsUpdater = {
+        incrementStakeCircuitBreakerTrip: jest.fn(),
+        setRebalanceRequirement: jest.fn(),
+      };
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 400_000n;
+      const dashboardTotalValue = 100_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 0n;
+      const peekedOutstandingNegativeYield = 0n;
+      const rebalanceToleranceBps = 100;
+      const l1MessageServiceBalance = 450_000n; // Within tolerance, should return NONE
+      const maxStakingRebalanceAmountWei = 100_000n;
+      const stakeCircuitBreakerThresholdWei = 200_000n;
+      const absRebalanceRequirement = absDiff(l1MessageServiceBalance, effectiveTarget); // 50_000n
+      const { client } = setupRebalanceTest(
+        l1MessageServiceBalance,
+        totalSystemBalance,
+        effectiveTarget,
+        dashboardTotalValue,
+        userFunds,
+        peekedYieldAmount,
+        peekedOutstandingNegativeYield,
+        rebalanceToleranceBps,
+        maxStakingRebalanceAmountWei,
+        stakeCircuitBreakerThresholdWei,
+        metricsUpdater,
+      );
+
+      await client.getRebalanceRequirements(yieldProvider, l2Recipient);
+
+      // Gauge should be set even when within tolerance band (NONE path, converted to gwei)
+      expect(metricsUpdater.setRebalanceRequirement).toHaveBeenCalledWith(
+        yieldProvider,
+        weiToGweiNumber(absRebalanceRequirement),
+      );
+      // Counter should not be incremented when circuit breaker doesn't trip
+      expect(metricsUpdater.incrementStakeCircuitBreakerTrip).not.toHaveBeenCalled();
     });
 
     it("handles zero totalSystemBalance without division by zero", async () => {

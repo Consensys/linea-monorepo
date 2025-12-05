@@ -110,6 +110,14 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Histogram that tracks time for each operation mode run.
   // Single label `mode`
   OperationModeExecutionDurationSeconds = "linea_native_yield_automation_service_operation_mode_execution_duration_seconds",
+
+  // Counter that increments each time the STAKE circuit breaker trips
+  // Single label `vault_address`
+  StakeCircuitBreakerTripsTotal = "linea_native_yield_automation_service_stake_circuit_breaker_trips_total",
+
+  // Gauge representing the original rebalance requirement (in gwei) before applying tolerance band, circuit breaker, or rate limit
+  // Single label `vault_address`
+  RebalanceRequirementGwei = "linea_native_yield_automation_service_rebalance_requirement_gwei",
 }
 
 export enum OperationTrigger {

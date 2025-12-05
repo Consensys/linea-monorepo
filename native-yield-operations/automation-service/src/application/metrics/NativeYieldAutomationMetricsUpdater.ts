@@ -174,6 +174,18 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       "Operation mode execution duration in seconds",
       ["mode"],
     );
+
+    this.metricsService.createCounter(
+      LineaNativeYieldAutomationServiceMetrics.StakeCircuitBreakerTripsTotal,
+      "Total number of times the STAKE circuit breaker has tripped",
+      ["vault_address"],
+    );
+
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.RebalanceRequirementGwei,
+      "Original rebalance requirement (in gwei) before applying tolerance band, circuit breaker, or rate limit",
+      ["vault_address"],
+    );
   }
 
   /**
@@ -540,6 +552,32 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionDurationSeconds,
       durationSeconds,
       { mode },
+    );
+  }
+
+  /**
+   * Increments the counter for STAKE circuit breaker trips for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   */
+  public incrementStakeCircuitBreakerTrip(vaultAddress: Address): void {
+    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.StakeCircuitBreakerTripsTotal, {
+      vault_address: vaultAddress,
+    });
+  }
+
+  /**
+   * Sets the original rebalance requirement (in gwei) before applying tolerance band, circuit breaker, or rate limit.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} requirementGwei - The requirement amount in gwei. Must be non-negative to be recorded.
+   */
+  public setRebalanceRequirement(vaultAddress: Address, requirementGwei: number): void {
+    if (requirementGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.RebalanceRequirementGwei,
+      { vault_address: vaultAddress },
+      requirementGwei,
     );
   }
 

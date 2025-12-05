@@ -982,4 +982,59 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
   });
+
+  describe("incrementStakeCircuitBreakerTrip", () => {
+    it("increments counter with vault address", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.incrementStakeCircuitBreakerTrip(vaultAddress);
+
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.StakeCircuitBreakerTripsTotal,
+        { vault_address: vaultAddress },
+      );
+    });
+  });
+
+  describe("setRebalanceRequirement", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setRebalanceRequirement(vaultAddress, 1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.RebalanceRequirementGwei,
+        { vault_address: vaultAddress },
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setRebalanceRequirement(vaultAddress, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("sets gauge when value is zero", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setRebalanceRequirement(vaultAddress, 0);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.RebalanceRequirementGwei,
+        { vault_address: vaultAddress },
+        0,
+      );
+    });
+  });
 });

@@ -156,6 +156,7 @@ export class NativeYieldAutomationServiceBootstrap {
       config.rebalance.maxStakingRebalanceAmountWei,
       config.rebalance.stakeCircuitBreakerThresholdWei,
       config.rebalance.minStakingVaultBalanceToUnpauseStakingWei,
+      this.metricsUpdater,
     );
     this.lazyOracleContractClient = new LazyOracleContractClient(
       new WinstonLogger(LazyOracleContractClient.name, config.loggerOptions),

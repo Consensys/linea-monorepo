@@ -53,4 +53,8 @@ export interface INativeYieldAutomationMetricsUpdater {
   incrementOperationModeExecution(mode: OperationMode, status?: OperationModeExecutionStatus): void;
 
   recordOperationModeDuration(mode: OperationMode, durationSeconds: number): void;
+
+  incrementStakeCircuitBreakerTrip(vaultAddress: Address): void;
+
+  setRebalanceRequirement(vaultAddress: Address, requirementGwei: number): void;
 }
