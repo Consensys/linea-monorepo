@@ -71,10 +71,7 @@ func (ss *Module) assignArithmetizationLink(run *wizard.ProverRuntime) {
 	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorMinDeplBlock[:]...)
 	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorMaxDeplBlock[:]...)
 	arithActions = append(arithActions,
-		ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffHi[0],
-		ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffLo[0],
 		ss.ArithmetizationLink.ScpSelector.ComputeSelectorAccountAddressDiff,
-		ss.ArithmetizationLink.ScpSelector.ComputeSelectorBlockNoDiff[0],
 	)
 
 	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueHi[:]...)
@@ -319,14 +316,15 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 	)
 
 	pragmas.MarkLeftPadded(filterArith)
+	// Order must match arithTable: Address, Balance, Nonce, CodeSize, CodeHashHI, CodeHashLO, BlockNumber, Exists
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Address[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.BatchNumber[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.Exists)
-	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.ExpectedHubCodeHash.Hi[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.ExpectedHubCodeHash.Lo[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.CodeSize[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.Balance[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.Nonce[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.CodeSize[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.ExpectedHubCodeHash.Hi[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.ExpectedHubCodeHash.Lo[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.BatchNumber[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Initial.Exists)
 
 	comp.InsertInclusionDoubleConditional(0,
 		"LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_INIT_ACCOUNT",
@@ -415,15 +413,15 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	pragmas.MarkLeftPadded(filterArith)
 
 	var stateSummaryTable []ifaces.Column
-
+	// Order must match arithTable: Address, Balance, Nonce, CodeSize, CodeHashHI, CodeHashLO, BlockNumber, Exists
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Address[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Exists)
-	stateSummaryTable = append(stateSummaryTable, ss.BatchNumber[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.ExpectedHubCodeHash.Hi[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.ExpectedHubCodeHash.Lo[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.CodeSize[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Balance[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Nonce[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.CodeSize[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.ExpectedHubCodeHash.Hi[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.ExpectedHubCodeHash.Lo[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.BatchNumber[:]...)
+	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Exists)
 
 	var arithTable []ifaces.Column
 	arithTable = append(arithTable, smc.Address[:]...)
@@ -433,9 +431,7 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	arithTable = append(arithTable, smc.CodeHashHINew[:]...)
 	arithTable = append(arithTable, smc.CodeHashLONew[:]...)
 	arithTable = append(arithTable, smc.BlockNumber[:]...)
-	arithTable = append(arithTable,
-		smc.ExistsNew,
-	)
+	arithTable = append(arithTable, smc.ExistsNew)
 
 	comp.InsertInclusionDoubleConditional(0, "LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_FINAL_ACCOUNT", stateSummaryTable, arithTable, filterSummary, filterArith)
 	comp.InsertInclusionDoubleConditional(0, "LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_FINAL_ACCOUNT_REVERSED", arithTable, stateSummaryTable, filterArith, filterSummary)
@@ -511,13 +507,13 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 	pragmas.MarkLeftPadded(filterArithReversed)
 
 	var summaryTable []ifaces.Column
+	// Order must match arithTable: Address, KeyHI, KeyLO, ValueHICurr, ValueLOCurr, BlockNumber
 	summaryTable = append(summaryTable, ss.Account.Address[:]...)
-	summaryTable = append(summaryTable, ss.BatchNumber[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Hi[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Lo[:]...)
 	summaryTable = append(summaryTable, ss.Storage.OldValue.Hi[:]...)
 	summaryTable = append(summaryTable, ss.Storage.OldValue.Lo[:]...)
-	summaryTable = append(summaryTable, smc.BlockNumber[:]...)
+	summaryTable = append(summaryTable, ss.BatchNumber[:]...)
 
 	var arithTable []ifaces.Column
 	arithTable = append(arithTable, smc.Address[:]...)
@@ -525,6 +521,7 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 	arithTable = append(arithTable, smc.KeyLO[:]...)
 	arithTable = append(arithTable, smc.ValueHICurr[:]...)
 	arithTable = append(arithTable, smc.ValueLOCurr[:]...)
+	arithTable = append(arithTable, smc.BlockNumber[:]...)
 	comp.InsertInclusionDoubleConditional(
 		0,
 		"LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_INIT_STORAGE",
@@ -680,7 +677,6 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 
 	pragmas.MarkLeftPadded(filterArith)
 	pragmas.MarkLeftPadded(filterArithReversed)
-	arithTable = append(arithTable, smc.Address[:]...)
 	arithTable = append(arithTable, smc.KeyHI[:]...)
 	arithTable = append(arithTable, smc.KeyLO[:]...)
 	arithTable = append(arithTable, smc.ValueHINext[:]...)

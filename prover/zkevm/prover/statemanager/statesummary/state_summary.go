@@ -596,7 +596,7 @@ func (ss *Module) csAccountNew(comp *wizard.CompiledIOP) {
 		mustHaveDefaultWhenNotExists(ss.Account.Final.LineaCodeHash[i], 0)
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_IS_EMPTY_%d", i),
@@ -703,7 +703,7 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 		mustHaveDefaultWhenNotExists(ss.Account.Initial.LineaCodeHash[i], 0, -1)
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		mustBeConstantOnSubsegment(ss.Account.Initial.StorageRoot[i], i)
 		mustHaveDefaultWhenNotExists(ss.Account.Initial.StorageRoot[i], 0, i)
 	}
