@@ -937,7 +937,8 @@ func (stoHistory *StorageHistory) AddFrame(frame StateAccessLog, currentDeployme
 	}
 
 	stoHistory.deploymentNumber = append(stoHistory.deploymentNumber, deploymentNumber)
-	blockNumber := common.SplitBigEndianUint64(uint64(frame.Block))
+	// +1 to harmonize with HUB block numbering, which starts from 1
+	blockNumber := common.SplitBigEndianUint64(uint64(frame.Block + 1))
 	var blockNumberLimbs [common.NbLimbU64]field.Element
 	for i := range common.NbLimbU64 {
 		blockNumberLimbs[i].SetBytes(blockNumber[i])

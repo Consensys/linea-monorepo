@@ -4,7 +4,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
@@ -233,8 +232,9 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 							we fetch and use the last corresponding storage value/block from the arithmetization columns using
 							an ArithmetizationStorageParser
 						*/
-						x := *(&field.Element{}).SetBytes(accountAddress[:])
-						addressBytes := x.Bytes()
+
+						addressBytes := make([]byte, 32)
+						copy(addressBytes[32-len(accountAddress):], accountAddress[:])
 						keysAndBlock := KeysAndBlock{
 							address:    types.AsBytes32(addressBytes[:]),
 							storageKey: t.Key,
@@ -260,8 +260,10 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 						/*
 							Special case, same motivation and fix as in the case of ReadZeroTraceST
 						*/
-						x := *(&field.Element{}).SetBytes(accountAddress[:])
-						addressBytes := x.Bytes()
+
+						addressBytes := make([]byte, 32)
+						copy(addressBytes[32-len(accountAddress):], accountAddress[:])
+
 						keysAndBlock := KeysAndBlock{
 							address:    types.AsBytes32(addressBytes[:]),
 							storageKey: t.Key,
