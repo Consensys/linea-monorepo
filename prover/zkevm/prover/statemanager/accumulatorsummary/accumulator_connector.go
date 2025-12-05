@@ -62,8 +62,8 @@ func (accSummary *Module) Assign(run *wizard.ProverRuntime) {
 	var (
 		// the total number of rows in the corresponding accumulator segment
 		numRowsAccSegment            int
-		initialRoot, finalRoot, hKey [common.NbLimbU256]field.Element
-		initialHVal, finalHVal       [common.NbLimbU256]field.Element
+		initialRoot, finalRoot, hKey [common.NbElemPerHash]field.Element
+		initialHVal, finalHVal       [common.NbElemPerHash]field.Element
 		builder                      = statemanager_common.NewStateDiffAssignmentBuilder(accSummary.StateDiff)
 		index                        = 0
 		acc                          = accSummary.Inputs.Accumulator
@@ -76,7 +76,7 @@ func (accSummary *Module) Assign(run *wizard.ProverRuntime) {
 		case READ_NON_ZERO:
 			numRowsAccSegment = rowsReadNonZero
 
-			for i := range common.NbLimbU256 {
+			for i := range common.NbElemPerHash {
 				hKey[i] = acc.Cols.LeafOpenings.HKey[i].GetColAssignmentAt(run, index)
 				initialHVal[i] = acc.Cols.LeafOpenings.HVal[i].GetColAssignmentAt(run, index)
 			}
@@ -87,7 +87,7 @@ func (accSummary *Module) Assign(run *wizard.ProverRuntime) {
 			numRowsAccSegment = rowsReadZero
 			// the sandwich check is enabled for READ_ZERO
 			// therefore we can get the HKey from acc.Cols.HKey
-			for i := range common.NbLimbU256 {
+			for i := range common.NbElemPerHash {
 				hKey[i] = acc.Cols.HKey[i].GetColAssignmentAt(run, index)
 				initialHVal[i] = field.Zero()
 			}
@@ -97,7 +97,7 @@ func (accSummary *Module) Assign(run *wizard.ProverRuntime) {
 		case INSERT:
 			numRowsAccSegment = rowsInsert
 			// we check the 4th row of an accumulator INSERT segment
-			for i := range common.NbLimbU256 {
+			for i := range common.NbElemPerHash {
 				hKey[i] = acc.Cols.LeafOpenings.HKey[i].GetColAssignmentAt(run, index+3)
 				initialHVal[i] = field.Zero()
 				finalHVal[i] = acc.Cols.LeafOpenings.HVal[i].GetColAssignmentAt(run, index+3)
@@ -105,7 +105,7 @@ func (accSummary *Module) Assign(run *wizard.ProverRuntime) {
 
 		case UPDATE:
 			numRowsAccSegment = rowsUpdate
-			for i := range common.NbLimbU256 {
+			for i := range common.NbElemPerHash {
 				hKey[i] = acc.Cols.LeafOpenings.HKey[i].GetColAssignmentAt(run, index)
 				initialHVal[i] = acc.Cols.LeafOpenings.HVal[i].GetColAssignmentAt(run, index)
 				finalHVal[i] = acc.Cols.LeafOpenings.HVal[i].GetColAssignmentAt(run, index+1)
@@ -113,7 +113,7 @@ func (accSummary *Module) Assign(run *wizard.ProverRuntime) {
 
 		case DELETE:
 			numRowsAccSegment = rowsDelete // 6 rows for DELETE in the accumulator, we need to check the third and the fourth
-			for i := range common.NbLimbU256 {
+			for i := range common.NbElemPerHash {
 				hKey[i] = acc.Cols.LeafOpenings.HKey[i].GetColAssignmentAt(run, index+2)
 				initialHVal[i] = acc.Cols.LeafOpenings.HVal[i].GetColAssignmentAt(run, index+2)
 				finalHVal[i] = acc.Cols.LeafOpenings.HVal[i].GetColAssignmentAt(run, index+3) // empty leaf
@@ -125,7 +125,7 @@ func (accSummary *Module) Assign(run *wizard.ProverRuntime) {
 		}
 
 		// set the roots
-		for i := range common.NbLimbU256 {
+		for i := range common.NbElemPerHash {
 			initialRoot[i] = acc.Cols.TopRoot[i].GetColAssignmentAt(run, index)
 			finalRoot[i] = acc.Cols.TopRoot[i].GetColAssignmentAt(run, index+numRowsAccSegment-1)
 		}
@@ -155,7 +155,7 @@ func defineSegmentConstraints(comp *wizard.CompiledIOP, mod *accumulator.Module,
 		)
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		// apply the constraints on each field
 		mustBeConstantOnSubsegment(accSummary.HKey[i], i)
 		mustBeConstantOnSubsegment(accSummary.InitialHVal[i], i)
@@ -168,7 +168,7 @@ func defineSegmentConstraints(comp *wizard.CompiledIOP, mod *accumulator.Module,
 // accumulatorDefineHKeyConstraint defines a global constraint that ensures that the HKey is fetched correctly
 // from the Accumulator when it is assigned to the AccumulatorSummary
 func accumulatorDefineHKeyConstraint(comp *wizard.CompiledIOP, mod *accumulator.Module, accSummary Module) {
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		// the following constraint relies on the fact that
 		// IsReadZero, IsReadNonZero, IsUpdate, IsInsert, and IsDelete are mutually-exclusive flags
 		comp.InsertGlobal(
@@ -205,7 +205,7 @@ func accumulatorDefineHKeyConstraint(comp *wizard.CompiledIOP, mod *accumulator.
 
 // accumulatorDefineHValConstraints defines global constraints tbat ensures that the Initial and Final HVal is fetched correctly from the accumulator.Accumulator when it is assigned to the AccumulatorSummary
 func accumulatorDefineHValConstraints(comp *wizard.CompiledIOP, mod *accumulator.Module, accSummary Module) {
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		// only need to check InitialHVal for ReadNonZero, Update and Delete
 		comp.InsertGlobal(
 			0,
@@ -228,7 +228,7 @@ func accumulatorDefineHValConstraints(comp *wizard.CompiledIOP, mod *accumulator
 		)
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		// only need to check FinalHVal for ReadNonZero, Insert, and Update
 		comp.InsertGlobal(
 			0,
@@ -255,7 +255,7 @@ func accumulatorDefineHValConstraints(comp *wizard.CompiledIOP, mod *accumulator
 // accumulatorDefineRootConstraints defines global constraints tbat ensures that the Initial and Final Roots are fetched correctly
 // from the accumulator.Accumulator when it is assigned to the AccumulatorSummary
 func accumulatorDefineRootConstraints(comp *wizard.CompiledIOP, mod *accumulator.Module, accSummary Module) {
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		// Initial Root Selector
 		comp.InsertGlobal(
 			0,

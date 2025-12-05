@@ -92,18 +92,20 @@ func defineStateManagerColumns(comp *wizard.CompiledIOP, sampleType int, size in
 	}
 
 	res := HubColumnSet{
-		Exists:        createCol("Exists"),
-		ExistsNew:     createCol("ExistsNew"),
-		PeekAtAccount: createCol("PeekAtAccount"),
-		PeekAtStorage: createCol("PeekAtStorage"),
-		FirstAOC:      createCol("FirstAOC"),
-		LastAOC:       createCol("LastAOC"),
-		FirstKOC:      createCol("FirstKOC"),
-		LastKOC:       createCol("LastKOC"),
-		FirstAOCBlock: createCol("FirstAOCBlock"),
-		LastAOCBlock:  createCol("LastAOCBlock"),
-		FirstKOCBlock: createCol("FirstKOCBlock"),
-		LastKOCBlock:  createCol("LastKOCBlock"),
+		Exists:             createCol("Exists"),
+		ExistsNew:          createCol("ExistsNew"),
+		PeekAtAccount:      createCol("PeekAtAccount"),
+		PeekAtStorage:      createCol("PeekAtStorage"),
+		FirstAOC:           createCol("FirstAOC"),
+		LastAOC:            createCol("LastAOC"),
+		FirstKOC:           createCol("FirstKOC"),
+		LastKOC:            createCol("LastKOC"),
+		FirstAOCBlock:      createCol("FirstAOCBlock"),
+		LastAOCBlock:       createCol("LastAOCBlock"),
+		FirstKOCBlock:      createCol("FirstKOCBlock"),
+		LastKOCBlock:       createCol("LastKOCBlock"),
+		ExistsFirstInBlock: createCol("ExistsFirstInBlock"),
+		ExistsFinalInBlock: createCol("ExistsFinalInBlock"),
 	}
 
 	for i := range provercommon.NbLimbEthAddress {
@@ -133,9 +135,12 @@ func defineStateManagerColumns(comp *wizard.CompiledIOP, sampleType int, size in
 		res.CodeSizeOld[i] = createCol(fmt.Sprintf("CodeSizeOld_%d", i))
 	}
 
+	for i := range provercommon.NbLimbU64 {
+		res.CodeSizeNew[i] = createCol(fmt.Sprintf("CodeSizeNew_%d", i))
+	}
+
 	for i := range provercommon.NbLimbU32 {
 		res.AddressHI[i] = createCol(fmt.Sprintf("ADDRESS_HI_%d", i))
-		res.CodeSizeNew[i] = createCol(fmt.Sprintf("CodeSizeNew_%d", i))
 		res.DeploymentNumber[i] = createCol(fmt.Sprintf("DeploymentNumber_%d", i))
 		res.DeploymentNumberInf[i] = createCol(fmt.Sprintf("DeploymentNumberInf_%d", i))
 		res.MinDeplBlock[i] = createCol(fmt.Sprintf("MinDeplBlock_%d", i))
@@ -200,6 +205,17 @@ func (smc *HubColumnSet) assignForTest(run *wizard.ProverRuntime, smVectors *moc
 	assign([]ifaces.Column{smc.LastKOCBlock}, [][]field.Element{smVectors.LastKOCBlock})
 	assign(smc.MinDeplBlock[:], transposeLimbs(smVectors.MinDeploymentBlock))
 	assign(smc.MaxDeplBlock[:], transposeLimbs(smVectors.MaxDeploymentBlock))
+
+	// ExistsFirstInBlock and ExistsFinalInBlock - derived from Exists/ExistsNew
+	// These indicate whether account existed at block start/end
+	existsFirstInBlock := make([]field.Element, len(smVectors.Exists))
+	existsFinalInBlock := make([]field.Element, len(smVectors.ExistsNew))
+	for i := range existsFirstInBlock {
+		existsFirstInBlock[i] = smVectors.Exists[i]
+		existsFinalInBlock[i] = smVectors.ExistsNew[i]
+	}
+	assign([]ifaces.Column{smc.ExistsFirstInBlock}, [][]field.Element{existsFirstInBlock})
+	assign([]ifaces.Column{smc.ExistsFinalInBlock}, [][]field.Element{existsFinalInBlock})
 }
 
 func transposeLimbs[T [provercommon.NbLimbEthAddress]field.Element |

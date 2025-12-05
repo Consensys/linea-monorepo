@@ -5,9 +5,9 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
@@ -19,9 +19,10 @@ import (
 	types2 "github.com/ethereum/go-ethereum/core/types"
 )
 
-func initEmptyCodeHash() [][]byte {
+func initEmptyCodeHash() [poseidon2.BlockSize][]byte {
 	emptyCodeHashBytes := statemanager.EmptyCodeHash()
-	return common.SplitBytes(emptyCodeHashBytes[:])
+	res := poseidon2.ParsToBlocks(emptyCodeHashBytes)
+	return res
 }
 
 var (
@@ -46,11 +47,11 @@ type AccountPeek struct {
 
 	// InitialAndFinalAreSame is an indicator column set to 1 when the
 	// initial and final account share the same hash and 0 otherwise.
-	InitialAndFinalAreSame [common.NbLimbU256]ifaces.Column
+	InitialAndFinalAreSame [poseidon2.BlockSize]ifaces.Column
 
 	// ComputeInitialAndFinalAreSame is a [wizard.ProverAction] responsible for
 	// computing the column InitialAndFinalAreSame
-	ComputeInitialAndFinalAreSame [common.NbLimbU256]wizard.ProverAction
+	ComputeInitialAndFinalAreSame [poseidon2.BlockSize]wizard.ProverAction
 
 	// Address represents which account is being peeked by the module.
 	// It is assigned by providing
@@ -63,10 +64,10 @@ type AccountPeek struct {
 	ComputeAddressHash *poseidon2.HashingCtx
 
 	// AddressHashLimbs stores the limbs of the address
-	AddressHashLimbs [common.NbLimbU256]byte32cmp.LimbColumns
+	AddressHashLimbs [poseidon2.BlockSize]byte32cmp.LimbColumns
 
 	// ComputeAddressLimbs computes the [AddressLimbs] column.
-	ComputeAddressLimbs [common.NbLimbU256]wizard.ProverAction
+	ComputeAddressLimbs [poseidon2.BlockSize]wizard.ProverAction
 
 	// HasSameAddressAsPrev is an indicator column telling whether the previous
 	// row has the same AccountAddress value as the current one.
@@ -106,31 +107,13 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 		accPeek.Address[i] = createCol(fmt.Sprintf("ACCOUNT_%v", i))
 	}
 
-	initialHashCols := accPeek.Initial.Nonce[:]
-
-	initialHashCols = append(initialHashCols, accPeek.Initial.Balance[:]...)
-	initialHashCols = append(initialHashCols, accPeek.Initial.StorageRoot[:]...)
-	initialHashCols = append(initialHashCols, accPeek.Initial.LineaCodeHash[:]...)
-	initialHashCols = append(initialHashCols, accPeek.Initial.KeccakCodeHash.Lo[:]...)
-	initialHashCols = append(initialHashCols, accPeek.Initial.KeccakCodeHash.Hi[:]...)
-	initialHashCols = append(initialHashCols, accPeek.Initial.CodeSize[:]...)
-
-	accPeek.ComputeHashInitial = poseidon2.HashOf(comp, poseidon2.SplitBy(initialHashCols))
+	accPeek.ComputeHashInitial = accPeek.Initial.AccountHash(comp)
 	accPeek.HashInitial = accPeek.ComputeHashInitial.Result()
 
-	finalHashCols := accPeek.Final.Nonce[:]
-	finalHashCols = append(finalHashCols, accPeek.Final.Balance[:]...)
-	finalHashCols = append(finalHashCols, accPeek.Final.StorageRoot[:]...)
-	finalHashCols = append(finalHashCols, accPeek.Final.LineaCodeHash[:]...)
-	finalHashCols = append(finalHashCols, accPeek.Final.KeccakCodeHash.Lo[:]...)
-	finalHashCols = append(finalHashCols, accPeek.Final.KeccakCodeHash.Hi[:]...)
-	finalHashCols = append(finalHashCols, accPeek.Final.CodeSize[:]...)
-
-	accPeek.ComputeHashFinal = poseidon2.HashOf(comp, poseidon2.SplitBy(finalHashCols))
-
+	accPeek.ComputeHashFinal = accPeek.Final.AccountHash(comp)
 	accPeek.HashFinal = accPeek.ComputeHashFinal.Result()
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		accPeek.InitialAndFinalAreSame[i], accPeek.ComputeInitialAndFinalAreSame[i] = dedicated.IsZero(
 			comp,
 			sym.Sub(accPeek.HashInitial[i], accPeek.HashFinal[i]),
@@ -139,7 +122,7 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 
 	accPeek.ComputeAddressHash = poseidon2.HashOf(
 		comp,
-		poseidon2.SplitBy(accPeek.Address[:]),
+		poseidon2.SplitColumns(accPeek.Address[:]),
 	)
 
 	accPeek.AddressHash = accPeek.ComputeAddressHash.Result()
@@ -152,11 +135,15 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 
 	addrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	shiftedAddrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
-	for i := range common.NbLimbU256 {
-		accPeek.AddressHashLimbs[i], accPeek.ComputeAddressLimbs[i] = byte32cmp.Decompose(comp, accPeek.AddressHash[i], 1, common.LimbBytes*8)
+	for i := range poseidon2.BlockSize {
+		accPeek.AddressHashLimbs[i], accPeek.ComputeAddressLimbs[i] = byte32cmp.Decompose(comp, accPeek.AddressHash[i], 2, common.LimbBytes*8)
 
-		addrHashLimbColumbs.Limbs = append(addrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Limbs...)
-		shiftedAddrHashLimbColumbs.Limbs = append(shiftedAddrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Shift(-1).Limbs...)
+		// Decompose returns limbs in little-endian order (LSB at index 0).
+		// For big-endian comparison (matching hex string comparison), reverse the limbs.
+		// Limbs[1] is MSB, Limbs[0] is LSB - append MSB first
+		addrHashLimbColumbs.Limbs = append(addrHashLimbColumbs.Limbs, accPeek.AddressHashLimbs[i].Limbs[1], accPeek.AddressHashLimbs[i].Limbs[0])
+		shifted := accPeek.AddressHashLimbs[i].Shift(-1)
+		shiftedAddrHashLimbColumbs.Limbs = append(shiftedAddrHashLimbColumbs.Limbs, shifted.Limbs[1], shifted.Limbs[0])
 	}
 
 	accPeek.HasGreaterAddressAsPrev, accPeek.HasSameAddressAsPrev, _, accPeek.ComputeAddressComparison = byte32cmp.CmpMultiLimbs(
@@ -175,7 +162,7 @@ type Account struct {
 	// single column each.
 	Exists          ifaces.Column
 	Nonce, CodeSize [common.NbLimbU64]ifaces.Column
-	StorageRoot     [common.NbLimbU256]ifaces.Column
+	StorageRoot     [poseidon2.BlockSize]ifaces.Column
 	LineaCodeHash   [poseidon2.BlockSize]ifaces.Column
 	Balance         [common.NbLimbU128]ifaces.Column
 	// KeccakCodeHash stores the keccak code hash of the account.
@@ -219,8 +206,11 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 		acc.Balance[i] = createCol(fmt.Sprintf("BALANCE_%v", i))
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		acc.StorageRoot[i] = createCol(fmt.Sprintf("STORAGE_ROOT_%d", i))
+	}
+
+	for i := range poseidon2.BlockSize {
 		acc.LineaCodeHash[i] = createCol(fmt.Sprintf("LINEA_CODE_HASH_%d", i))
 	}
 
@@ -247,7 +237,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 		),
 	)
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_SUMMARY_%v_LINEA_CODE_HASH_FOR_EXISTING_BUT_EMPTY_CODE_%v", name, i),
@@ -289,7 +279,7 @@ type accountAssignmentBuilder struct {
 	exists                       *common.VectorBuilder
 	nonce, codeSize              [common.NbLimbU64]*common.VectorBuilder
 	balance                      [common.NbLimbU128]*common.VectorBuilder
-	storageRoot, lineaCodeHash   [common.NbLimbU256]*common.VectorBuilder
+	storageRoot, lineaCodeHash   [poseidon2.BlockSize]*common.VectorBuilder
 	keccakCodeHash               common.HiLoAssignmentBuilder
 	expectedHubCodeHash          common.HiLoAssignmentBuilder
 	existsAndHasNonEmptyCodeHash *common.VectorBuilder
@@ -314,7 +304,7 @@ func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
 		res.balance[i] = common.NewVectorBuilder(ap.Balance[i])
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		res.storageRoot[i] = common.NewVectorBuilder(ap.StorageRoot[i])
 		res.lineaCodeHash[i] = common.NewVectorBuilder(ap.LineaCodeHash[i])
 	}
@@ -370,15 +360,18 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
-	lineaCodeHashLimbs := common.SplitBytes(acc.LineaCodeHash[:])
-	for i := range common.NbLimbU256 {
-		limbBytes := common.LeftPadToFrBytes(lineaCodeHashLimbs[i])
-		ss.lineaCodeHash[i].PushBytes(limbBytes)
+	lineaCodeHashLimbs := poseidon2.ParsToBlocks(acc.LineaCodeHash)
+	for i := range poseidon2.BlockSize {
+		var f field.Element
+		f.SetBytes(lineaCodeHashLimbs[i])
+		ss.lineaCodeHash[i].PushField(f)
 	}
 
-	for i, limbBytes := range common.SplitBytes(acc.StorageRoot[:]) {
-		limbBytesPadded := common.LeftPadToFrBytes(limbBytes)
-		ss.storageRoot[i].PushBytes(limbBytesPadded)
+	storageRootLimbs := poseidon2.ParsToBlocks(acc.StorageRoot)
+	for i := range poseidon2.BlockSize {
+		var f field.Element
+		f.SetBytes(storageRootLimbs[i])
+		ss.storageRoot[i].PushField(f)
 	}
 
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
@@ -388,7 +381,7 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 // the caller to override the StorageRoot field with the provided one.
 func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	acc types.Account,
-	storageRoot [][]byte,
+	storageRoot types.Bytes32,
 ) {
 	// accountExists is telling whether the intent is to push an empty account
 	accountExists := acc.Balance != nil
@@ -436,14 +429,18 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
-	lineaCodeHashLimbs := common.SplitBytes(acc.LineaCodeHash[:])
-	for i := range common.NbLimbU256 {
-		limbBytes := common.LeftPadToFrBytes(lineaCodeHashLimbs[i])
-		ss.lineaCodeHash[i].PushBytes(limbBytes)
+	lineaCodeHashLimbs := poseidon2.ParsToBlocks(acc.LineaCodeHash)
+	for i := range poseidon2.BlockSize {
+		var f field.Element
+		f.SetBytes(lineaCodeHashLimbs[i])
+		ss.lineaCodeHash[i].PushField(f)
 	}
 
-	for i := range storageRoot {
-		ss.storageRoot[i].PushBytes(common.LeftPadToFrBytes(storageRoot[i]))
+	storageRootLimbs := poseidon2.ParsToBlocks(storageRoot)
+	for i := range poseidon2.BlockSize {
+		var f field.Element
+		f.SetBytes(storageRootLimbs[i])
+		ss.storageRoot[i].PushField(f)
 	}
 
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
@@ -467,7 +464,7 @@ func (ss *accountAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 	ss.keccakCodeHash.PadAssign(run, [common.NbLimbU256][]byte{})
 	ss.expectedHubCodeHash.PadAssign(run, [common.NbLimbU256][]byte{})
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		ss.lineaCodeHash[i].PadAndAssign(run)
 		ss.storageRoot[i].PadAndAssign(run)
 	}
@@ -486,9 +483,34 @@ func int64ToByteLimbs(num int64) [][]byte {
 	res := make([][]byte, common.NbLimbU64)
 	nonceLimbs := common.SplitBytes(nonceBuffer.Bytes())
 	for i := range common.NbLimbU64 {
-		padding := make([]byte, fr.Bytes-len(nonceLimbs[i]))
+		padding := make([]byte, field.Bytes-len(nonceLimbs[i]))
 		res[i] = append(padding, nonceLimbs[i]...)
 	}
 
+	return res
+}
+func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
+	var (
+		hashInputs []ifaces.Column
+		size       = ac.Nonce[0].Size()
+		zeroColumn = verifiercol.NewConstantCol(field.Zero(), size, "ZERO_COLUMN")
+	)
+	hashInputs = append(hashInputs, padd(ac.Nonce[:], 16, zeroColumn)...)
+	hashInputs = append(hashInputs, padd(ac.Balance[:], 16, zeroColumn)...)
+	hashInputs = append(hashInputs, ac.StorageRoot[:]...)
+	hashInputs = append(hashInputs, ac.LineaCodeHash[:]...)
+	hashInputs = append(hashInputs, ac.KeccakCodeHash.Hi[:]...)
+	hashInputs = append(hashInputs, ac.KeccakCodeHash.Lo[:]...)
+	hashInputs = append(hashInputs, padd(ac.CodeSize[:], 16, zeroColumn)...)
+	res := poseidon2.HashOf(comp, poseidon2.SplitColumns(hashInputs))
+	return res
+}
+
+func padd(cols []ifaces.Column, size int, padding ifaces.Column) (res []ifaces.Column) {
+
+	for _ = range size - len(cols) {
+		res = append(res, padding)
+	}
+	res = append(res, cols...)
 	return res
 }

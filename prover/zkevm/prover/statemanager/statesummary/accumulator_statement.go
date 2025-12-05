@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -33,8 +34,10 @@ func initEmptyStorageRoot() (res [common.NbLimbU256]field.Element) {
 }
 
 var (
-	// emptyStorageRootString is the root of the empty tree.
-	emptyStorageRootString = "3433815185717552096229990069654548485149817391158829673291533636212160492517"
+	// emptyStorageRootString is the TopRoot of an empty accumulator (Poseidon2 hash).
+	// This corresponds to the hex value 0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7
+	// from TestEmptyAccumulatorPoseidon2 test.
+	emptyStorageRootString = "21500893316117426858977816631949538145396987654377879259568548397656779611639"
 	// emptyStorageRoot is the root of the empty tree represented in limbs with size common.LimbBytes each.
 	emptyStorageRoot = initEmptyStorageRoot()
 )
@@ -54,12 +57,12 @@ type AccumulatorStatement struct {
 	smCommon.StateDiff
 
 	// InitialAndFinalHValAreEqual is a constrained limb columns that will contain 1s on the positions where InitialHVal = FinalHVal
-	InitialAndFinalHValAreEqual     [common.NbLimbU256]ifaces.Column
-	ComputeInitialAndFinalHValEqual [common.NbLimbU256]wizard.ProverAction
+	InitialAndFinalHValAreEqual     [poseidon2.BlockSize]ifaces.Column
+	ComputeInitialAndFinalHValEqual [poseidon2.BlockSize]wizard.ProverAction
 
 	// FinalHValIsZero is a constrained limb columns that will contain 1s on the positions where FinalHValIsZero = 0
-	FinalHValIsZero        [common.NbLimbU256]ifaces.Column
-	ComputeFinalHValIsZero [common.NbLimbU256]wizard.ProverAction
+	FinalHValIsZero        [poseidon2.BlockSize]ifaces.Column
+	ComputeFinalHValIsZero [poseidon2.BlockSize]wizard.ProverAction
 }
 
 // newAccumulatorStatement returns a new AccumulatorStatement with initialized
@@ -84,7 +87,7 @@ func newAccumulatorStatement(comp *wizard.CompiledIOP, size int, name string) Ac
 		StateDiff:     smCommon.NewStateDiff(comp, size, "STATE_SUMMARY", "ACC_STATEMENT"),
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		res.InitialAndFinalHValAreEqual[i], res.ComputeInitialAndFinalHValEqual[i] = dedicated.IsZero(
 			comp,
 			sym.Sub(res.StateDiff.InitialHVal[i], res.StateDiff.FinalHVal[i]),

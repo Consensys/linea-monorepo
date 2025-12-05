@@ -1326,7 +1326,7 @@ func byteToField(b []byte) (field.Element, error) {
 	return x, nil
 }
 
-// uint64To64Bytes converts a `uint64` number into an 8-byte slice assuming
+// uint64To64Bytes converts a `uint64` number into an 64-byte slice assuming
 // Big-Endian byte order.
 func uint64To64Bytes(num uint64) []byte {
 	bytes := make([]byte, 8)

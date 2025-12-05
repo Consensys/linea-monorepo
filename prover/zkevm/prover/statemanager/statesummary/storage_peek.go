@@ -1,6 +1,7 @@
 package statesummary
 
 import (
+	poseidon2kb "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
@@ -76,24 +77,11 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 		NewValue: common.NewHiLoColumns(comp, size, name+"_NEW_VALUE"),
 	}
 
-	var oldValueCols []ifaces.Column
-	oldValueCols = append(oldValueCols, res.OldValue.Lo[:]...)
-	oldValueCols = append(oldValueCols, res.OldValue.Hi[:]...)
-	res.ComputeOldValueHash = dedicatedposeidon2.HashOf(
-		comp,
-		dedicatedposeidon2.SplitBy(oldValueCols),
-	)
-
+	// Use StorageHash helper which matches FullBytes32.WriteTo format (Hi first, then Lo)
+	res.ComputeOldValueHash = StorageHash(comp, res.OldValue)
 	res.OldValueHash = res.ComputeOldValueHash.Result()
 
-	var newValueCols []ifaces.Column
-	newValueCols = append(newValueCols, res.NewValue.Lo[:]...)
-	newValueCols = append(newValueCols, res.NewValue.Hi[:]...)
-	res.ComputeNewValueHash = dedicatedposeidon2.HashOf(
-		comp,
-		dedicatedposeidon2.SplitBy(newValueCols),
-	)
-
+	res.ComputeNewValueHash = StorageHash(comp, res.NewValue)
 	res.NewValueHash = res.ComputeNewValueHash.Result()
 
 	for i := range dedicatedposeidon2.BlockSize {
@@ -103,13 +91,8 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 		).GetColumnAndProverAction()
 	}
 
-	var keyCols []ifaces.Column
-	keyCols = append(keyCols, res.Key.Lo[:]...)
-	keyCols = append(keyCols, res.Key.Hi[:]...)
-	res.ComputeKeyHash = dedicatedposeidon2.HashOf(
-		comp,
-		dedicatedposeidon2.SplitBy(keyCols),
-	)
+	// Use StorageHash helper which matches FullBytes32.WriteTo format (Hi first, then Lo)
+	res.ComputeKeyHash = StorageHash(comp, res.Key)
 
 	res.KeyHash = res.ComputeKeyHash.Result()
 	zeroStorageHash := hashOfZeroStorage()
@@ -129,10 +112,16 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	keyLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	shiftedLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	for i := range dedicatedposeidon2.BlockSize {
-		res.KeyLimbs[i], res.ComputeKeyLimbs[i] = byte32cmp.Decompose(comp, res.KeyHash[i], 1, common.LimbBytes*8)
+		res.KeyLimbs[i], res.ComputeKeyLimbs[i] = byte32cmp.Decompose(comp, res.KeyHash[i], 2, common.LimbBytes*8)
 
-		keyLimbColumbs.Limbs = append(keyLimbColumbs.Limbs, res.KeyLimbs[i].Limbs...)
-		shiftedLimbColumbs.Limbs = append(shiftedLimbColumbs.Limbs, res.KeyLimbs[i].Shift(-1).Limbs...)
+		// Decompose returns limbs in little-endian order (LSB at index 0).
+		// For big-endian comparison (matching hex string comparison), we need to:
+		// 1. Process KeyHash[0] first (most significant part of hash)
+		// 2. Reverse each KeyHash's limbs so MSB comes first
+		// Limbs[1] is MSB, Limbs[0] is LSB - append MSB first
+		keyLimbColumbs.Limbs = append(keyLimbColumbs.Limbs, res.KeyLimbs[i].Limbs[1], res.KeyLimbs[i].Limbs[0])
+		shifted := res.KeyLimbs[i].Shift(-1)
+		shiftedLimbColumbs.Limbs = append(shiftedLimbColumbs.Limbs, shifted.Limbs[1], shifted.Limbs[0])
 	}
 
 	res.KeyIncreased, _, _, res.ComputeKeyIncreased = byte32cmp.CmpMultiLimbs(
@@ -230,9 +219,28 @@ func (sh *storagePeekAssignmentBuilder) padAssign(run *wizard.ProverRuntime) {
 }
 
 // hashOfZeroStorage returns the hash of (0, 0) which is what we use for empty
-// storage slots.
+// storage slots. This matches FullBytes32.WriteTo format for a zero value:
+// 32 zero bytes -> LeftPadded -> 64 zero bytes -> 16 zero field elements
 func hashOfZeroStorage() []field.Element {
-	res := []field.Element{field.Zero()}
-	res = common.BlockCompression(res, []field.Element{field.Zero()})
-	return common.BlockCompression(res, []field.Element{field.Zero()})
+	hasher := poseidon2kb.NewMDHasher()
+	// FullBytes32.WriteTo for zero: LeftPadded([0;32]) = [0;64] = 16 zero field elements
+	zeroBytes := make([]byte, 64) // 16 field elements * 4 bytes
+	hasher.Write(zeroBytes)
+	hashBytes := hasher.Sum(nil)
+	// Convert hash output to field elements
+	res := make([]field.Element, dedicatedposeidon2.BlockSize)
+	for i := range dedicatedposeidon2.BlockSize {
+		res[i].SetBytes(hashBytes[i*4 : (i+1)*4])
+	}
+	return res
+}
+
+// StorageHash computes the hash of a HiLoColumns in a format consistent with
+// FullBytes32.WriteTo serialization (Hi bytes first, then Lo bytes).
+func StorageHash(comp *wizard.CompiledIOP, hilo common.HiLoColumns) *dedicatedposeidon2.HashingCtx {
+	var hashInputs []ifaces.Column
+	// WriteTo serializes Hi bytes (0-15) first, then Lo bytes (16-31)
+	hashInputs = append(hashInputs, hilo.Hi[:]...)
+	hashInputs = append(hashInputs, hilo.Lo[:]...)
+	return dedicatedposeidon2.HashOf(comp, dedicatedposeidon2.SplitColumns(hashInputs))
 }

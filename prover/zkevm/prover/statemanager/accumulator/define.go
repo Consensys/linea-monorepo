@@ -643,7 +643,6 @@ func (am *Module) checkSandwitch() {
 		// constraint to check that hey, hkeyMinus, hkeyPlus are consistent with hKeySandwitch,
 		// hKeyMinusSandwitch, hKeyPlusSandwitch respectively for INSERT and READ-ZERO operations
 		mulOffset := 1 << 16 // 2^16, since each limb of hkeySandwitch is 16 bits, whereas 32 bits for hkey
-		// HKey are stored in little-endian format
 		expr0_0 := symbolic.Mul(
 			activeRow,
 			symbolic.Sub(
@@ -659,15 +658,14 @@ func (am *Module) checkSandwitch() {
 		)
 		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_SANDWITCH_CONSISTENCY_%d", i), expr0_0)
 
-		// HKeyMinus are stored in big-endian format
 		expr0_1 := symbolic.Mul(
 			activeRow,
 			symbolic.Sub(
 				cols.HKeyMinus[i],
 				symbolic.Add(
-					cols.HKeyMinusSandwitch[2*i],
+					cols.HKeyMinusSandwitch[2*i+1],
 					symbolic.Mul(
-						cols.HKeyMinusSandwitch[2*i+1],
+						cols.HKeyMinusSandwitch[2*i],
 						field.NewElement(uint64(mulOffset)),
 					),
 				),
@@ -675,7 +673,6 @@ func (am *Module) checkSandwitch() {
 		)
 		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_MINUS_SANDWITCH_CONSISTENCY_%d", i), expr0_1)
 
-		// HKeyPlus are stored in little-endian format
 		expr0_2 := symbolic.Mul(
 			activeRow,
 			symbolic.Sub(

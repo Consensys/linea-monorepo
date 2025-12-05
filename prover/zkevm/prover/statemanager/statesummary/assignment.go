@@ -4,11 +4,11 @@ import (
 	"io"
 	"sync"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	poseidon2kb "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -24,7 +24,7 @@ type stateSummaryAssignmentBuilder struct {
 	isFinalDeployment           *common.VectorBuilder
 	IsDeleteSegment             *common.VectorBuilder
 	isStorage                   *common.VectorBuilder
-	batchNumber                 *common.VectorBuilder
+	batchNumber                 [common.NbLimbU64]*common.VectorBuilder
 	worldStateRoot              [common.NbLimbU256]*common.VectorBuilder
 	account                     accountPeekAssignmentBuilder
 	storage                     storagePeekAssignmentBuilder
@@ -83,11 +83,14 @@ func newStateSummaryAssignmentBuilder(ss *Module, run *wizard.ProverRuntime) *st
 		isFinalDeployment:           common.NewVectorBuilder(ss.IsFinalDeployment),
 		IsDeleteSegment:             common.NewVectorBuilder(ss.IsDeleteSegment),
 		isStorage:                   common.NewVectorBuilder(ss.IsStorage),
-		batchNumber:                 common.NewVectorBuilder(ss.BatchNumber),
 		storage:                     newStoragePeekAssignmentBuilder(&ss.Storage),
 		account:                     newAccountPeekAssignmentBuilder(&ss.Account),
 		accumulatorStatement:        newAccumulatorStatementAssignmentBuilder(&ss.AccumulatorStatement),
 		arithmetizationStorage:      newArithmetizationStorageParser(ss, run),
+	}
+
+	for i := range common.NbLimbU64 {
+		res.batchNumber[i] = common.NewVectorBuilder(ss.BatchNumber[i])
 	}
 
 	for i := range common.NbLimbU256 {
@@ -186,7 +189,11 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 
 			if !seg.storageTraces[i].IsSkipped {
 				// the storage trace is to be kept, and not skipped
-				ss.batchNumber.PushInt(batchNumber)
+				// Push batchNumber using big-endian format
+				batchNumberLimbs := common.SplitBigEndianUint64(uint64(batchNumber))
+				for j := range common.NbLimbU64 {
+					ss.batchNumber[j].PushBytes(batchNumberLimbs[j])
+				}
 
 				for j := range common.NbLimbEthAddress {
 					ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
@@ -202,14 +209,18 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 					segID == 0 && i == firstUnskippedIndex(seg.storageTraces),
 				)
 				ss.account.initial.pushAll(initialAccount)
-				ss.account.final.pushOverrideStorageRoot(finalAccount, common.SplitBytes(newRoot[:]))
+				ss.account.final.pushOverrideStorageRoot(finalAccount, newRoot)
 
-				for j, initWsRootLimbs := range common.SplitBytes(initWsRoot[:]) {
-					ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(initWsRootLimbs))
+				initWsRootBlocks := hashToBlocks(initWsRoot)
+				for j := range poseidon2.BlockSize {
+					ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(initWsRootBlocks[j]))
+				}
+				for j := poseidon2.BlockSize; j < common.NbLimbU256; j++ {
+					ss.worldStateRoot[j].PushZero()
 				}
 
-				oldRootLimbs := common.SplitBytes(oldRoot[:])
-				newRootLimbs := common.SplitBytes(newRoot[:])
+				oldRootLimbs := hashToBlocks(oldRoot)
+				newRootLimbs := hashToBlocks(newRoot)
 
 				switch t := stoTrace.(type) {
 				case statemanager.ReadZeroTraceST:
@@ -221,8 +232,9 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 							we fetch and use the last corresponding storage value/block from the arithmetization columns using
 							an ArithmetizationStorageParser
 						*/
-						x := *(&field.Element{}).SetBytes(accountAddress[:])
-						addressBytes := x.Bytes()
+
+						addressBytes := make([]byte, 32)
+						copy(addressBytes[32-len(accountAddress):], accountAddress[:])
 						keysAndBlock := KeysAndBlock{
 							address:    types.AsBytes32(addressBytes[:]),
 							storageKey: t.Key,
@@ -233,12 +245,12 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 						ss.storage.push(t.Key, types.FullBytes32{}, arithStorage)
 
 						keyH := hash(t.Key)
-						keyHashBytesLimbs := common.SplitBytes(keyH[:])
+						keyHashBytesLimbs := hashToBlocks(keyH)
 
 						ss.accumulatorStatement.PushReadZero(oldRootLimbs, keyHashBytesLimbs)
 					} else {
 						keyH := hash(t.Key)
-						keyHashBytesLimbs := common.SplitBytes(keyH[:])
+						keyHashBytesLimbs := hashToBlocks(keyH)
 
 						ss.storage.pushOnlyKey(t.Key)
 						ss.accumulatorStatement.PushReadZero(oldRootLimbs, keyHashBytesLimbs)
@@ -248,8 +260,10 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 						/*
 							Special case, same motivation and fix as in the case of ReadZeroTraceST
 						*/
-						x := *(&field.Element{}).SetBytes(accountAddress[:])
-						addressBytes := x.Bytes()
+
+						addressBytes := make([]byte, 32)
+						copy(addressBytes[32-len(accountAddress):], accountAddress[:])
+
 						keysAndBlock := KeysAndBlock{
 							address:    types.AsBytes32(addressBytes[:]),
 							storageKey: t.Key,
@@ -258,20 +272,20 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 						arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
 
 						keyH := hash(t.Key)
-						keyHashBytesLimbs := common.SplitBytes(keyH[:])
+						keyHashBytesLimbs := hashToBlocks(keyH)
 
 						valueH := hash(t.Value)
-						valueHashBytesLimbs := common.SplitBytes(valueH[:])
+						valueHashBytesLimbs := hashToBlocks(valueH)
 
 						ss.storage.push(t.Key, t.Value, arithStorage)
 						ss.accumulatorStatement.PushReadNonZero(oldRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 
 					} else {
 						keyH := hash(t.Key)
-						keyHashBytesLimbs := common.SplitBytes(keyH[:])
+						keyHashBytesLimbs := hashToBlocks(keyH)
 
 						valueH := hash(t.Value)
-						valueHashBytesLimbs := common.SplitBytes(valueH[:])
+						valueHashBytesLimbs := hashToBlocks(valueH)
 
 						ss.storage.push(t.Key, t.Value, t.Value)
 						ss.accumulatorStatement.PushReadNonZero(oldRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
@@ -279,33 +293,33 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 
 				case statemanager.InsertionTraceST:
 					keyH := hash(t.Key)
-					keyHashBytesLimbs := common.SplitBytes(keyH[:])
+					keyHashBytesLimbs := hashToBlocks(keyH)
 
 					valueH := hash(t.Val)
-					valueHashBytesLimbs := common.SplitBytes(valueH[:])
+					valueHashBytesLimbs := hashToBlocks(valueH)
 
 					ss.storage.pushOnlyNew(t.Key, t.Val)
 					ss.accumulatorStatement.PushInsert(oldRootLimbs, newRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 
 				case statemanager.UpdateTraceST:
 					keyH := hash(t.Key)
-					keyHashBytesLimbs := common.SplitBytes(keyH[:])
+					keyHashBytesLimbs := hashToBlocks(keyH)
 
 					oldValueH := hash(t.OldValue)
-					oldValueHashBytesLimbs := common.SplitBytes(oldValueH[:])
+					oldValueHashBytesLimbs := hashToBlocks(oldValueH)
 
 					newValueH := hash(t.NewValue)
-					newValueHashBytesLimbs := common.SplitBytes(newValueH[:])
+					newValueHashBytesLimbs := hashToBlocks(newValueH)
 
 					ss.storage.push(t.Key, t.OldValue, t.NewValue)
 					ss.accumulatorStatement.PushUpdate(oldRootLimbs, newRootLimbs, keyHashBytesLimbs, oldValueHashBytesLimbs, newValueHashBytesLimbs)
 
 				case statemanager.DeletionTraceST:
 					keyH := hash(t.Key)
-					keyHashBytesLimbs := common.SplitBytes(keyH[:])
+					keyHashBytesLimbs := hashToBlocks(keyH)
 
 					delValueH := hash(t.DeletedValue)
-					delValueHashBytesLimbs := common.SplitBytes(delValueH[:])
+					delValueHashBytesLimbs := hashToBlocks(delValueH)
 
 					ss.storage.pushOnlyOld(t.Key, t.DeletedValue)
 					ss.accumulatorStatement.PushDelete(oldRootLimbs, newRootLimbs, keyHashBytesLimbs, delValueHashBytesLimbs)
@@ -318,7 +332,11 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 			}
 		}
 
-		ss.batchNumber.PushInt(batchNumber)
+		// Push batchNumber using big-endian format
+		batchNumberLimbs := common.SplitBigEndianUint64(uint64(batchNumber))
+		for j := range common.NbLimbU64 {
+			ss.batchNumber[j].PushBytes(batchNumberLimbs[j])
+		}
 
 		for j := range common.NbLimbEthAddress {
 			ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
@@ -334,54 +352,58 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 		ss.account.initial.pushAll(initialAccount)
 		ss.account.final.pushAll(finalAccount)
 
-		for j, finalWsRootLimbs := range common.SplitBytes(finalWsRoot[:]) {
-			ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(finalWsRootLimbs))
+		finalWsRootBlocks := hashToBlocks(finalWsRoot)
+		for j := range poseidon2.BlockSize {
+			ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(finalWsRootBlocks[j]))
+		}
+		for j := poseidon2.BlockSize; j < common.NbLimbU256; j++ {
+			ss.worldStateRoot[j].PushZero()
 		}
 
 		ss.storage.pushAllZeroes()
 
-		initWsRootLimbs := common.SplitBytes(initWsRoot[:])
-		finalWsRootLimbs := common.SplitBytes(finalWsRoot[:])
+		initWsRootLimbs := hashToBlocks(initWsRoot)
+		finalWsRootLimbs := hashToBlocks(finalWsRoot)
 
 		switch t := seg.worldStateTrace.Underlying.(type) {
 		case statemanager.ReadZeroTraceWS:
 			keyH := hash(t.Key)
-			keyHashBytesLimbs := common.SplitBytes(keyH[:])
+			keyHashBytesLimbs := hashToBlocks(keyH)
 
 			ss.accumulatorStatement.PushReadZero(initWsRootLimbs, keyHashBytesLimbs)
 		case statemanager.ReadNonZeroTraceWS:
 			keyH := hash(t.Key)
-			keyHashBytesLimbs := common.SplitBytes(keyH[:])
+			keyHashBytesLimbs := hashToBlocks(keyH)
 
 			valueH := hash(t.Value)
-			valueHashBytesLimbs := common.SplitBytes(valueH[:])
+			valueHashBytesLimbs := hashToBlocks(valueH)
 
 			ss.accumulatorStatement.PushReadNonZero(initWsRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 		case statemanager.InsertionTraceWS:
 			keyH := hash(t.Key)
-			keyHashBytesLimbs := common.SplitBytes(keyH[:])
+			keyHashBytesLimbs := hashToBlocks(keyH)
 
 			valueH := hash(t.Val)
-			valueHashBytesLimbs := common.SplitBytes(valueH[:])
+			valueHashBytesLimbs := hashToBlocks(valueH)
 
 			ss.accumulatorStatement.PushInsert(initWsRootLimbs, finalWsRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 		case statemanager.UpdateTraceWS:
 			keyH := hash(t.Key)
-			keyHashBytesLimbs := common.SplitBytes(keyH[:])
+			keyHashBytesLimbs := hashToBlocks(keyH)
 
 			oldValueH := hash(t.OldValue)
-			oldValueHashBytesLimbs := common.SplitBytes(oldValueH[:])
+			oldValueHashBytesLimbs := hashToBlocks(oldValueH)
 
 			newValueH := hash(t.NewValue)
-			newValueHashBytesLimbs := common.SplitBytes(newValueH[:])
+			newValueHashBytesLimbs := hashToBlocks(newValueH)
 
 			ss.accumulatorStatement.PushUpdate(initWsRootLimbs, finalWsRootLimbs, keyHashBytesLimbs, oldValueHashBytesLimbs, newValueHashBytesLimbs)
 		case statemanager.DeletionTraceWS:
 			keyH := hash(t.Key)
-			keyHashBytesLimbs := common.SplitBytes(keyH[:])
+			keyHashBytesLimbs := hashToBlocks(keyH)
 
 			deletedValueH := hash(t.DeletedValue)
-			deletedValueHashBytesLimbs := common.SplitBytes(deletedValueH[:])
+			deletedValueHashBytesLimbs := hashToBlocks(deletedValueH)
 
 			ss.accumulatorStatement.PushDelete(initWsRootLimbs, finalWsRootLimbs, keyHashBytesLimbs, deletedValueHashBytesLimbs)
 		default:
@@ -400,7 +422,10 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 	ss.isFinalDeployment.PadAndAssign(run)
 	ss.IsDeleteSegment.PadAndAssign(run)
 	ss.isStorage.PadAndAssign(run)
-	ss.batchNumber.PadAndAssign(run)
+
+	for i := range common.NbLimbU64 {
+		ss.batchNumber[i].PadAndAssign(run)
+	}
 
 	for i := range common.NbLimbU256 {
 		ss.worldStateRoot[i].PadAndAssign(run)
@@ -509,7 +534,7 @@ func getOldAndNewAccount(trace any) (old, new types.Account) {
 func getOldAndNewTopRoot(trace any) (old, new types.Bytes32) {
 
 	getTopRoot := func(subRoot types.Bytes32, nextFreeNode int64) types.Bytes32 {
-		hasher := poseidon2.NewMDHasher()
+		hasher := poseidon2kb.NewMDHasher()
 		types.WriteInt64On64Bytes(hasher, nextFreeNode)
 		subRoot.WriteTo(hasher)
 		b32 := hasher.Sum(nil)
@@ -571,9 +596,19 @@ func getOldAndNewTopRoot(trace any) (old, new types.Bytes32) {
 }
 
 func hash(x io.WriterTo) types.Bytes32 {
-	hasher := poseidon2.NewMDHasher()
+	hasher := poseidon2kb.NewMDHasher()
 	x.WriteTo(hasher)
 	return types.AsBytes32(hasher.Sum(nil))
+}
+
+// hashToBlocks converts a Bytes32 hash to [poseidon2.BlockSize][]byte using ParsToBlocks
+func hashToBlocks(h types.Bytes32) [][]byte {
+	blocks := poseidon2.ParsToBlocks(h)
+	result := make([][]byte, poseidon2.BlockSize)
+	for i := range poseidon2.BlockSize {
+		result[i] = blocks[i]
+	}
+	return result
 }
 
 // actualUnskippedLength computes the actual number of traces that form the segments
