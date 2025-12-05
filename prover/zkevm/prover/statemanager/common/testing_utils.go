@@ -80,13 +80,15 @@ func InitializeContext(initialBlock int) *TestContext {
 		{
 			Explainer: "Reading two contracts",
 			StateLogsGens: func(initState mock.State) [][]mock.StateAccessLog {
+				// Note: addresses are ordered by their Poseidon2 hash (not raw value)
+				// addresses[3] hash < addresses[2] hash in Poseidon2
 				return mock.NewStateLogBuilder(initialBlock, initState).
-					WithAddress(addresses[2]).
+					WithAddress(addresses[3]).
 					ReadStorage(storageKeys[0]).
 					ReadStorage(storageKeys[1]).
 					ReadStorage(storageKeys[2]).
 					ReadStorage(storageKeys[3]).
-					WithAddress(addresses[3]).
+					WithAddress(addresses[2]).
 					ReadStorage(storageKeys[0]).
 					ReadStorage(storageKeys[1]).
 					ReadStorage(storageKeys[2]).

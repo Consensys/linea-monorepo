@@ -34,8 +34,10 @@ func initEmptyStorageRoot() (res [common.NbLimbU256]field.Element) {
 }
 
 var (
-	// emptyStorageRootString is the root of the empty tree.
-	emptyStorageRootString = "3433815185717552096229990069654548485149817391158829673291533636212160492517"
+	// emptyStorageRootString is the TopRoot of an empty accumulator (Poseidon2 hash).
+	// This corresponds to the hex value 0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7
+	// from TestEmptyAccumulatorPoseidon2 test.
+	emptyStorageRootString = "21500893316117426858977816631949538145396987654377879259568548397656779611639"
 	// emptyStorageRoot is the root of the empty tree represented in limbs with size common.LimbBytes each.
 	emptyStorageRoot = initEmptyStorageRoot()
 )
