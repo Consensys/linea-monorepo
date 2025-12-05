@@ -423,7 +423,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     if (peekedYieldReport === undefined) {
       throw new Error("peekYieldReport returned undefined, cannot determine rebalance requirements");
     }
-    return this._getRebalanceRequirements(
+    const result = this._getRebalanceRequirements(
       yieldProvider,
       totalSystemBalance,
       l1MessageServiceBalance,
@@ -433,6 +433,11 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       peekedYieldReport.yieldAmount,
       peekedYieldReport.outstandingNegativeYield,
     );
+    // Track the reported rebalance requirement (after applying tolerance band, circuit breaker, and rate limit)
+    if (this.metricsUpdater) {
+      this.metricsUpdater.setReportedRebalanceRequirement(yieldProvider, weiToGweiNumber(result.rebalanceAmount));
+    }
+    return result;
   }
 
   /**
@@ -510,7 +515,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
 
     // Track the original rebalance requirement for all paths (before tolerance band, circuit breaker, or rate limit)
     if (this.metricsUpdater) {
-      this.metricsUpdater.setRebalanceRequirement(yieldProvider, weiToGweiNumber(absRebalanceRequirement));
+      this.metricsUpdater.setActualRebalanceRequirement(yieldProvider, weiToGweiNumber(absRebalanceRequirement));
     }
 
     if (absRebalanceRequirement < toleranceBand) {

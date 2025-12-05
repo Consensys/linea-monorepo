@@ -182,8 +182,14 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createGauge(
-      LineaNativeYieldAutomationServiceMetrics.RebalanceRequirementGwei,
+      LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
       "Original rebalance requirement (in gwei) before applying tolerance band, circuit breaker, or rate limit",
+      ["vault_address"],
+    );
+
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
+      "Reported rebalance requirement (in gwei) after applying tolerance band, circuit breaker, and rate limit",
       ["vault_address"],
     );
   }
@@ -572,10 +578,25 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    * @param {Address} vaultAddress - The address of the vault.
    * @param {number} requirementGwei - The requirement amount in gwei. Must be non-negative to be recorded.
    */
-  public setRebalanceRequirement(vaultAddress: Address, requirementGwei: number): void {
+  public setActualRebalanceRequirement(vaultAddress: Address, requirementGwei: number): void {
     if (requirementGwei < 0) return;
     this.metricsService.setGauge(
-      LineaNativeYieldAutomationServiceMetrics.RebalanceRequirementGwei,
+      LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
+      { vault_address: vaultAddress },
+      requirementGwei,
+    );
+  }
+
+  /**
+   * Sets the reported rebalance requirement (in gwei) after applying tolerance band, circuit breaker, and rate limit.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} requirementGwei - The requirement amount in gwei. Must be non-negative to be recorded.
+   */
+  public setReportedRebalanceRequirement(vaultAddress: Address, requirementGwei: number): void {
+    if (requirementGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
       { vault_address: vaultAddress },
       requirementGwei,
     );

@@ -750,7 +750,8 @@ describe("YieldManagerContractClient", () => {
     it("tracks metrics when metricsUpdater is provided", async () => {
       const metricsUpdater = {
         incrementStakeCircuitBreakerTrip: jest.fn(),
-        setRebalanceRequirement: jest.fn(),
+        setActualRebalanceRequirement: jest.fn(),
+        setReportedRebalanceRequirement: jest.fn(),
       };
       const totalSystemBalance = 1_000_000n;
       const effectiveTarget = 400_000n;
@@ -779,11 +780,13 @@ describe("YieldManagerContractClient", () => {
 
       await client.getRebalanceRequirements(yieldProvider, l2Recipient);
 
-      // Gauge should be set with original requirement for all paths (converted to gwei)
-      expect(metricsUpdater.setRebalanceRequirement).toHaveBeenCalledWith(
+      // Actual requirement should be set with original requirement (converted to gwei)
+      expect(metricsUpdater.setActualRebalanceRequirement).toHaveBeenCalledWith(
         yieldProvider,
         weiToGweiNumber(absRebalanceRequirement),
       );
+      // Reported requirement should be 0 when circuit breaker trips
+      expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(yieldProvider, 0);
       // Counter should be incremented when circuit breaker trips
       expect(metricsUpdater.incrementStakeCircuitBreakerTrip).toHaveBeenCalledWith(yieldProvider);
     });
@@ -791,7 +794,8 @@ describe("YieldManagerContractClient", () => {
     it("tracks gauge metric for all rebalance paths when metricsUpdater is provided", async () => {
       const metricsUpdater = {
         incrementStakeCircuitBreakerTrip: jest.fn(),
-        setRebalanceRequirement: jest.fn(),
+        setActualRebalanceRequirement: jest.fn(),
+        setReportedRebalanceRequirement: jest.fn(),
       };
       const totalSystemBalance = 1_000_000n;
       const effectiveTarget = 400_000n;
@@ -820,13 +824,105 @@ describe("YieldManagerContractClient", () => {
 
       await client.getRebalanceRequirements(yieldProvider, l2Recipient);
 
-      // Gauge should be set even when within tolerance band (NONE path, converted to gwei)
-      expect(metricsUpdater.setRebalanceRequirement).toHaveBeenCalledWith(
+      // Actual requirement should be set even when within tolerance band (NONE path, converted to gwei)
+      expect(metricsUpdater.setActualRebalanceRequirement).toHaveBeenCalledWith(
         yieldProvider,
         weiToGweiNumber(absRebalanceRequirement),
       );
+      // Reported requirement should be 0 when within tolerance band
+      expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(yieldProvider, 0);
       // Counter should not be incremented when circuit breaker doesn't trip
       expect(metricsUpdater.incrementStakeCircuitBreakerTrip).not.toHaveBeenCalled();
+    });
+
+    it("tracks reported requirement for STAKE path when metricsUpdater is provided", async () => {
+      const metricsUpdater = {
+        incrementStakeCircuitBreakerTrip: jest.fn(),
+        setActualRebalanceRequirement: jest.fn(),
+        setReportedRebalanceRequirement: jest.fn(),
+      };
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 400_000n;
+      const dashboardTotalValue = 100_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 0n;
+      const peekedOutstandingNegativeYield = 0n;
+      const rebalanceToleranceBps = 100;
+      const l1MessageServiceBalance = 300_000n; // Below target, needs STAKE
+      const maxStakingRebalanceAmountWei = 50_000n;
+      const stakeCircuitBreakerThresholdWei = 200_000n;
+      const absRebalanceRequirement = effectiveTarget - l1MessageServiceBalance; // 100_000n
+      const { client } = setupRebalanceTest(
+        l1MessageServiceBalance,
+        totalSystemBalance,
+        effectiveTarget,
+        dashboardTotalValue,
+        userFunds,
+        peekedYieldAmount,
+        peekedOutstandingNegativeYield,
+        rebalanceToleranceBps,
+        maxStakingRebalanceAmountWei,
+        stakeCircuitBreakerThresholdWei,
+        metricsUpdater,
+      );
+
+      await client.getRebalanceRequirements(yieldProvider, l2Recipient);
+
+      // Actual requirement should be set with original requirement
+      expect(metricsUpdater.setActualRebalanceRequirement).toHaveBeenCalledWith(
+        yieldProvider,
+        weiToGweiNumber(absRebalanceRequirement),
+      );
+      // Reported requirement should be capped to maxStakingRebalanceAmountWei
+      expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(
+        yieldProvider,
+        weiToGweiNumber(maxStakingRebalanceAmountWei),
+      );
+    });
+
+    it("tracks reported requirement for UNSTAKE path when metricsUpdater is provided", async () => {
+      const metricsUpdater = {
+        incrementStakeCircuitBreakerTrip: jest.fn(),
+        setActualRebalanceRequirement: jest.fn(),
+        setReportedRebalanceRequirement: jest.fn(),
+      };
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 400_000n;
+      const dashboardTotalValue = 100_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 0n;
+      const peekedOutstandingNegativeYield = 0n;
+      const rebalanceToleranceBps = 100;
+      const l1MessageServiceBalance = 500_000n; // Above target, needs UNSTAKE
+      const maxStakingRebalanceAmountWei = 100_000n;
+      const stakeCircuitBreakerThresholdWei = 200_000n;
+      const absRebalanceRequirement = l1MessageServiceBalance - effectiveTarget; // 100_000n
+      const { client } = setupRebalanceTest(
+        l1MessageServiceBalance,
+        totalSystemBalance,
+        effectiveTarget,
+        dashboardTotalValue,
+        userFunds,
+        peekedYieldAmount,
+        peekedOutstandingNegativeYield,
+        rebalanceToleranceBps,
+        maxStakingRebalanceAmountWei,
+        stakeCircuitBreakerThresholdWei,
+        metricsUpdater,
+      );
+
+      await client.getRebalanceRequirements(yieldProvider, l2Recipient);
+
+      // Actual requirement should be set with original requirement
+      expect(metricsUpdater.setActualRebalanceRequirement).toHaveBeenCalledWith(
+        yieldProvider,
+        weiToGweiNumber(absRebalanceRequirement),
+      );
+      // Reported requirement should match actual for UNSTAKE (no rate limiting)
+      expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(
+        yieldProvider,
+        weiToGweiNumber(absRebalanceRequirement),
+      );
     });
 
     it("handles zero totalSystemBalance without division by zero", async () => {

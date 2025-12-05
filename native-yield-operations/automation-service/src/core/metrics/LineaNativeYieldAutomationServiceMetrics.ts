@@ -117,7 +117,11 @@ export enum LineaNativeYieldAutomationServiceMetrics {
 
   // Gauge representing the original rebalance requirement (in gwei) before applying tolerance band, circuit breaker, or rate limit
   // Single label `vault_address`
-  RebalanceRequirementGwei = "linea_native_yield_automation_service_rebalance_requirement_gwei",
+  ActualRebalanceRequirementGwei = "linea_native_yield_automation_service_actual_rebalance_requirement_gwei",
+
+  // Gauge representing the reported rebalance requirement (in gwei) after applying tolerance band, circuit breaker, and rate limit
+  // Single label `vault_address`
+  ReportedRebalanceRequirementGwei = "linea_native_yield_automation_service_reported_rebalance_requirement_gwei",
 }
 
 export enum OperationTrigger {

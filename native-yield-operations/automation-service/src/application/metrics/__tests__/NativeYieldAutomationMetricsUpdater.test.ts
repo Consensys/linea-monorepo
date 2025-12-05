@@ -998,16 +998,16 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     });
   });
 
-  describe("setRebalanceRequirement", () => {
+  describe("setActualRebalanceRequirement", () => {
     it("sets gauge when value is non-negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setRebalanceRequirement(vaultAddress, 1000);
+      updater.setActualRebalanceRequirement(vaultAddress, 1000);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.RebalanceRequirementGwei,
+        LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
         { vault_address: vaultAddress },
         1000,
       );
@@ -1018,7 +1018,7 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setRebalanceRequirement(vaultAddress, -1);
+      updater.setActualRebalanceRequirement(vaultAddress, -1);
 
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
@@ -1028,10 +1028,50 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setRebalanceRequirement(vaultAddress, 0);
+      updater.setActualRebalanceRequirement(vaultAddress, 0);
 
       expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.RebalanceRequirementGwei,
+        LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
+        { vault_address: vaultAddress },
+        0,
+      );
+    });
+  });
+
+  describe("setReportedRebalanceRequirement", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setReportedRebalanceRequirement(vaultAddress, 1000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
+        { vault_address: vaultAddress },
+        1000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setReportedRebalanceRequirement(vaultAddress, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("sets gauge when value is zero", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setReportedRebalanceRequirement(vaultAddress, 0);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
         { vault_address: vaultAddress },
         0,
       );
