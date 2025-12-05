@@ -62,6 +62,8 @@ func Execute(nbIterations int, work func(int, int), maxCpus ...int) {
 		}
 
 		go func() {
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
 			// In case the subtask panics, we recover so that we can repanic in
 			// the main goroutine. Simplifying the process of tracing back the
 			// error and allowing to test the panics.
