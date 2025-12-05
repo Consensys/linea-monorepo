@@ -17,6 +17,14 @@ export interface ExitingValidator {
   slashed: boolean;
 }
 
+export interface ExitedValidator {
+  balance: bigint; // in gwei
+  publicKey: string;
+  validatorIndex: bigint;
+  slashed: boolean;
+  withdrawableEpoch: number;
+}
+
 export interface ValidatorBalanceWithPendingWithdrawal extends ValidatorBalance {
   pendingWithdrawalAmount: bigint;
   withdrawableAmount: bigint;

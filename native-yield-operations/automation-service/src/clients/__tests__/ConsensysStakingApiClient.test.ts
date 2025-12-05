@@ -11,8 +11,10 @@ import {
 } from "@consensys/linea-shared-utils";
 import type { ApolloClient } from "@apollo/client";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
+import { EXITED_VALIDATORS_QUERY } from "../../core/entities/graphql/ExitedValidator.js";
 import { EXITING_VALIDATORS_QUERY } from "../../core/entities/graphql/ExitingValidators.js";
 import type {
+  ExitedValidator,
   ExitingValidator,
   ValidatorBalance,
   ValidatorBalanceWithPendingWithdrawal,
@@ -313,6 +315,170 @@ describe("ConsensysStakingApiClient", () => {
           exitEpoch: 200, // Should remain as number
           exitDate: new Date(exitDateString),
           slashed: false,
+        },
+      ]);
+    });
+  });
+
+  describe("getExitedValidators", () => {
+    it("logs and returns undefined when the query returns an error", async () => {
+      const { client, logger, retryMock } = createClient();
+      const queryError = new Error("graphql failure");
+
+      retryMock.mockImplementationOnce(async (_fn, _timeout) => ({
+        data: undefined,
+        error: queryError,
+      }));
+
+      const result = await client.getExitedValidators();
+
+      expect(result).toBeUndefined();
+      expect(logger.error).toHaveBeenCalledWith("getExitedValidators error:", { error: queryError });
+    });
+
+    it("logs and returns undefined when the query response lacks data", async () => {
+      const { client, logger, retryMock } = createClient();
+
+      retryMock.mockImplementationOnce(async (_fn, _timeout) => ({
+        data: undefined,
+        error: undefined,
+      }));
+
+      const result = await client.getExitedValidators();
+
+      expect(result).toBeUndefined();
+      expect(logger.error).toHaveBeenCalledWith("getExitedValidators data undefined");
+    });
+
+    it("returns the validator list and logs success when the query succeeds", async () => {
+      const { client, logger, retryMock, apolloQueryMock } = createClient();
+      // GraphQL returns string values, which need to be converted to appropriate types
+      const graphqlResponse = [
+        {
+          balance: "32",
+          publicKey: "validator-1",
+          validatorIndex: "1",
+          slashed: false,
+          withdrawableEpoch: "100",
+        },
+      ];
+      const expectedValidators: ExitedValidator[] = [
+        {
+          balance: 32n,
+          publicKey: "validator-1",
+          validatorIndex: 1n,
+          slashed: false,
+          withdrawableEpoch: 100,
+        },
+      ];
+
+      apolloQueryMock.mockResolvedValue({
+        data: { allHeadValidators: { nodes: graphqlResponse } },
+        error: undefined,
+      });
+
+      const result = await client.getExitedValidators();
+
+      expect(result).toEqual(expectedValidators);
+      expect(retryMock).toHaveBeenCalledTimes(1);
+      expect(apolloQueryMock).toHaveBeenCalledWith({
+        query: EXITED_VALIDATORS_QUERY,
+        fetchPolicy: "network-only",
+      });
+      expect(logger.info).toHaveBeenCalledWith("getExitedValidators succeeded, validatorCount=1");
+      expect(logger.debug).toHaveBeenCalledWith("getExitedValidators resp", { resp: expectedValidators });
+    });
+
+    it("handles undefined nodes and logs validatorCount=0", async () => {
+      const { client, logger, retryMock, apolloQueryMock } = createClient();
+
+      apolloQueryMock.mockResolvedValue({
+        data: { allHeadValidators: { nodes: undefined } },
+        error: undefined,
+      });
+
+      const result = await client.getExitedValidators();
+
+      expect(result).toBeUndefined();
+      expect(retryMock).toHaveBeenCalledTimes(1);
+      expect(apolloQueryMock).toHaveBeenCalledWith({
+        query: EXITED_VALIDATORS_QUERY,
+        fetchPolicy: "network-only",
+      });
+      expect(logger.info).toHaveBeenCalledWith("getExitedValidators succeeded, validatorCount=0");
+      expect(logger.debug).toHaveBeenCalledWith("getExitedValidators resp", { resp: undefined });
+    });
+
+    it("correctly converts all field types including withdrawableEpoch and slashed", async () => {
+      const { client, apolloQueryMock } = createClient();
+      const graphqlResponse = [
+        {
+          balance: "40",
+          publicKey: "validator-slashed",
+          validatorIndex: "10",
+          slashed: true,
+          withdrawableEpoch: "200",
+        },
+        {
+          balance: "35",
+          publicKey: "validator-normal",
+          validatorIndex: "20",
+          slashed: false,
+          withdrawableEpoch: "150",
+        },
+      ];
+
+      apolloQueryMock.mockResolvedValue({
+        data: { allHeadValidators: { nodes: graphqlResponse } },
+        error: undefined,
+      });
+
+      const result = await client.getExitedValidators();
+
+      expect(result).toEqual([
+        {
+          balance: 40n,
+          publicKey: "validator-slashed",
+          validatorIndex: 10n,
+          slashed: true,
+          withdrawableEpoch: 200,
+        },
+        {
+          balance: 35n,
+          publicKey: "validator-normal",
+          validatorIndex: 20n,
+          slashed: false,
+          withdrawableEpoch: 150,
+        },
+      ]);
+    });
+
+    it("handles withdrawableEpoch as number (not string) correctly", async () => {
+      const { client, apolloQueryMock } = createClient();
+      const graphqlResponse = [
+        {
+          balance: "40",
+          publicKey: "validator-1",
+          validatorIndex: "10",
+          slashed: false,
+          withdrawableEpoch: 200, // Already a number, not a string
+        },
+      ];
+
+      apolloQueryMock.mockResolvedValue({
+        data: { allHeadValidators: { nodes: graphqlResponse } },
+        error: undefined,
+      });
+
+      const result = await client.getExitedValidators();
+
+      expect(result).toEqual([
+        {
+          balance: 40n,
+          publicKey: "validator-1",
+          validatorIndex: 10n,
+          slashed: false,
+          withdrawableEpoch: 200, // Should remain as number
         },
       ]);
     });
