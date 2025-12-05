@@ -3,6 +3,7 @@
 export interface IBeaconNodeAPIClient {
   getPendingPartialWithdrawals(): Promise<PendingPartialWithdrawal[] | undefined>;
   getPendingDeposits(): Promise<PendingDeposit[] | undefined>;
+  getCurrentEpoch(): Promise<number | undefined>;
 }
 
 export interface BeaconApiResponse {
