@@ -114,8 +114,14 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	for i := range dedicatedposeidon2.BlockSize {
 		res.KeyLimbs[i], res.ComputeKeyLimbs[i] = byte32cmp.Decompose(comp, res.KeyHash[i], 2, common.LimbBytes*8)
 
-		keyLimbColumbs.Limbs = append(keyLimbColumbs.Limbs, res.KeyLimbs[i].Limbs...)
-		shiftedLimbColumbs.Limbs = append(shiftedLimbColumbs.Limbs, res.KeyLimbs[i].Shift(-1).Limbs...)
+		// Decompose returns limbs in little-endian order (LSB at index 0).
+		// For big-endian comparison (matching hex string comparison), we need to:
+		// 1. Process KeyHash[0] first (most significant part of hash)
+		// 2. Reverse each KeyHash's limbs so MSB comes first
+		// Limbs[1] is MSB, Limbs[0] is LSB - append MSB first
+		keyLimbColumbs.Limbs = append(keyLimbColumbs.Limbs, res.KeyLimbs[i].Limbs[1], res.KeyLimbs[i].Limbs[0])
+		shifted := res.KeyLimbs[i].Shift(-1)
+		shiftedLimbColumbs.Limbs = append(shiftedLimbColumbs.Limbs, shifted.Limbs[1], shifted.Limbs[0])
 	}
 
 	res.KeyIncreased, _, _, res.ComputeKeyIncreased = byte32cmp.CmpMultiLimbs(
