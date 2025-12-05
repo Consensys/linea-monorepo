@@ -5,6 +5,7 @@ import { LineaRollupBase } from "./LineaRollupBase.sol";
 import { ILineaRollupYieldExtension } from "./yield/interfaces/ILineaRollupYieldExtension.sol";
 import { IYieldManager } from "./yield/interfaces/IYieldManager.sol";
 import { MessageHashing } from "./messageService/lib/MessageHashing.sol";
+import { ErrorUtils } from "./lib/ErrorUtils.sol";
 
 /**
  * @title Native yield extension module for the Linea L1MessageService.
@@ -46,8 +47,7 @@ abstract contract LineaRollupYieldExtension is LineaRollupBase, ILineaRollupYiel
    * @param _yieldManager YieldManager address.
    */
   function __LineaRollupYieldExtension_init(address _yieldManager) internal onlyInitializing {
-    emit YieldManagerChanged(_storage()._yieldManager, _yieldManager);
-    _storage()._yieldManager = _yieldManager;
+    _setYieldManager(_yieldManager);
   }
 
   function isWithdrawLSTAllowed() external view virtual returns (bool) {
@@ -81,12 +81,21 @@ abstract contract LineaRollupYieldExtension is LineaRollupBase, ILineaRollupYiel
    * @dev If funds still exist on old YieldManager, it can still be withdrawn.
    * @param _newYieldManager YieldManager address.
    */
-  function setYieldManager(address _newYieldManager) public onlyRole(SET_YIELD_MANAGER_ROLE) {
-    require(_newYieldManager != address(0), ZeroAddressNotAllowed());
-    LineaRollupYieldExtensionStorage storage $ = _storage();
-    emit YieldManagerChanged($._yieldManager, _newYieldManager);
-    $._yieldManager = _newYieldManager;
+  function setYieldManager(address _newYieldManager) external onlyRole(SET_YIELD_MANAGER_ROLE) {
+    _setYieldManager(_newYieldManager);
   }
+
+  /**
+   * @notice Set YieldManager address.
+   * @dev If funds still exist on old YieldManager, it can still be withdrawn.
+   * @param _newYieldManager YieldManager address.
+   */
+  function _setYieldManager(address _newYieldManager) internal {
+    ErrorUtils.revertIfZeroAddress(_newYieldManager);
+    emit YieldManagerChanged(_storage()._yieldManager, _newYieldManager);
+    _storage()._yieldManager = _newYieldManager;
+  }
+
 
   /**
    * @notice Report native yield earned for L2 distribution by emitting a synthetic `MessageSent` event.
