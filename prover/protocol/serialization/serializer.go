@@ -54,6 +54,7 @@ var (
 	TypeOfArrayOfExpr        = reflect.TypeOf([]*symbolic.Expression{})
 	TypeOfExpressionPtr      = reflect.TypeOf(&symbolic.Expression{})
 	TypeOfExpression         = reflect.TypeOf(symbolic.Expression{})
+	TypeOfPackedGraph        = reflect.TypeOf(symbolic.PackedExprGraph{})
 	TypeOfArrayOfInt         = reflect.TypeOf([]int{})
 	TypeOfFieldElement       = reflect.TypeOf(field.Element{})
 	TypeOfBigInt             = reflect.TypeOf(&big.Int{})
@@ -679,6 +680,7 @@ func (de *Deserializer) UnpackPlonkCircuit(v BackReference) (reflect.Value, *ser
 	return reflect.ValueOf(de.circuits[v]), nil
 }
 
+/*
 // PackExpression packs a symbolic expression by caching the packed expression
 // in the table [PackedObject.Expressions] table and returning a BackReference
 // to it. The expression is cached using its ESHash.
@@ -720,6 +722,7 @@ func (de *Deserializer) UnpackExpression(v BackReference) (reflect.Value, *serde
 
 	return reflect.ValueOf(de.expressions[v]), nil
 }
+*/
 
 // PackArrayOrSlice serializes arrays or slices by recursively serializing each element.
 // It collects errors for all elements and returns a combined error if any fail.
@@ -1155,4 +1158,75 @@ func (de *Deserializer) warnf(warning string) {
 // It assumes the input is a valid index.
 func backReferenceFromCBORInt(n any) BackReference {
 	return BackReference(n.(uint64))
+}
+
+var (
+	TypeOfRawExprGraph = reflect.TypeOf(RawExprGraph{})
+)
+
+func (ser *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *serdeError) {
+	if e == nil {
+		return 0, nil
+	}
+
+	if idx, ok := ser.exprMap[e]; ok {
+		return BackReference(idx), nil
+	}
+
+	// 1. Boarding
+	board := e.Board()
+	pg := symbolic.ToPackedExprFromBoard(board)
+
+	// 2. Conversion to Raw DTO (handles BigInts)
+	rawExprGraph, err := ser.packExprGraph(&pg)
+	if err != nil {
+		return 0, err
+	}
+
+	// 3. Serialization
+	packedRawGraph, err := ser.PackStructObject(reflect.ValueOf(rawExprGraph).Elem())
+	if err != nil {
+		return 0, err
+	}
+
+	n := len(ser.PackedObject.Expressions)
+	ser.exprMap[e] = n
+	ser.PackedObject.Expressions = append(ser.PackedObject.Expressions, packedRawGraph)
+
+	return BackReference(n), nil
+}
+
+func (de *Deserializer) UnpackExpression(v BackReference) (reflect.Value, *serdeError) {
+	idx := int(v)
+	if idx < 0 || idx >= len(de.PackedObject.Expressions) {
+		return reflect.Value{}, newSerdeErrorf("invalid expression backreference: %v", v)
+	}
+
+	if de.expressions[idx] != nil {
+		return reflect.ValueOf(de.expressions[idx]), nil
+	}
+
+	rawObj := de.PackedObject.Expressions[idx]
+	if len(rawObj) == 0 {
+		return reflect.Value{}, newSerdeErrorf("UnpackExpression: empty packed struct")
+	}
+
+	// 1. Unpack into RawExprGraph
+	rawGraphVal, err := de.UnpackStructObject(rawObj, TypeOfRawExprGraph)
+	if err != nil {
+		return reflect.Value{}, err.wrapPath("(expression-raw-graph)")
+	}
+
+	rawGraph := rawGraphVal.Interface().(RawExprGraph)
+
+	// 2. Convert Raw -> Packed
+	pg, err := de.unpackExprGraph(&rawGraph)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+
+	// 3. Reconstruct Expression
+	expr := symbolic.FromPackedExpr(*pg)
+	de.expressions[idx] = expr
+	return reflect.ValueOf(expr), nil
 }
