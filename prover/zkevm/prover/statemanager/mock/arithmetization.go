@@ -354,8 +354,8 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 	// deployment number
 	accHistory.deploymentNumber = append(accHistory.deploymentNumber, prevDeploymentNumber)
 
-	// block number
-	currentBlockLimbs := common.SplitBigEndianUint64(uint64(currentBlock))
+	// block number (+1 to harmonize with HUB block numbering, which starts from 1)
+	currentBlockLimbs := common.SplitBigEndianUint64(uint64(currentBlock + 1))
 	var prevBlockNumber [common.NbLimbU64]field.Element
 	for i := range common.NbLimbU64 {
 		prevBlockNumber[i].SetBytes(currentBlockLimbs[i])

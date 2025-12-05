@@ -176,7 +176,7 @@ type Account struct {
 	// single column each.
 	Exists          ifaces.Column
 	Nonce, CodeSize [common.NbLimbU64]ifaces.Column
-	StorageRoot     [common.NbLimbU256]ifaces.Column
+	StorageRoot     [poseidon2.BlockSize]ifaces.Column
 	LineaCodeHash   [poseidon2.BlockSize]ifaces.Column
 	Balance         [common.NbLimbU128]ifaces.Column
 	// KeccakCodeHash stores the keccak code hash of the account.
@@ -220,7 +220,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 		acc.Balance[i] = createCol(fmt.Sprintf("BALANCE_%v", i))
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		acc.StorageRoot[i] = createCol(fmt.Sprintf("STORAGE_ROOT_%d", i))
 	}
 
@@ -293,7 +293,7 @@ type accountAssignmentBuilder struct {
 	exists                       *common.VectorBuilder
 	nonce, codeSize              [common.NbLimbU64]*common.VectorBuilder
 	balance                      [common.NbLimbU128]*common.VectorBuilder
-	storageRoot, lineaCodeHash   [common.NbLimbU256]*common.VectorBuilder
+	storageRoot, lineaCodeHash   [poseidon2.BlockSize]*common.VectorBuilder
 	keccakCodeHash               common.HiLoAssignmentBuilder
 	expectedHubCodeHash          common.HiLoAssignmentBuilder
 	existsAndHasNonEmptyCodeHash *common.VectorBuilder
@@ -318,7 +318,7 @@ func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
 		res.balance[i] = common.NewVectorBuilder(ap.Balance[i])
 	}
 
-	for i := range common.NbElemPerHash {
+	for i := range poseidon2.BlockSize {
 		res.storageRoot[i] = common.NewVectorBuilder(ap.StorageRoot[i])
 		res.lineaCodeHash[i] = common.NewVectorBuilder(ap.LineaCodeHash[i])
 	}
@@ -374,15 +374,18 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
-	lineaCodeHashLimbs := common.SplitBytes(acc.LineaCodeHash[:])
-	for i := range common.NbLimbU256 {
-		limbBytes := common.LeftPadToFrBytes(lineaCodeHashLimbs[i])
-		ss.lineaCodeHash[i].PushBytes(limbBytes)
+	lineaCodeHashLimbs := poseidon2.ParsToBlocks(acc.LineaCodeHash)
+	for i := range poseidon2.BlockSize {
+		var f field.Element
+		f.SetBytes(lineaCodeHashLimbs[i])
+		ss.lineaCodeHash[i].PushField(f)
 	}
 
-	for i, limbBytes := range common.SplitBytes(acc.StorageRoot[:]) {
-		limbBytesPadded := common.LeftPadToFrBytes(limbBytes)
-		ss.storageRoot[i].PushBytes(limbBytesPadded)
+	storageRootLimbs := poseidon2.ParsToBlocks(acc.StorageRoot)
+	for i := range poseidon2.BlockSize {
+		var f field.Element
+		f.SetBytes(storageRootLimbs[i])
+		ss.storageRoot[i].PushField(f)
 	}
 
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
@@ -392,7 +395,7 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 // the caller to override the StorageRoot field with the provided one.
 func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	acc types.Account,
-	storageRoot [][]byte,
+	storageRoot types.Bytes32,
 ) {
 	// accountExists is telling whether the intent is to push an empty account
 	accountExists := acc.Balance != nil
@@ -440,14 +443,18 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
-	lineaCodeHashLimbs := common.SplitBytes(acc.LineaCodeHash[:])
-	for i := range common.NbLimbU256 {
-		limbBytes := common.LeftPadToFrBytes(lineaCodeHashLimbs[i])
-		ss.lineaCodeHash[i].PushBytes(limbBytes)
+	lineaCodeHashLimbs := poseidon2.ParsToBlocks(acc.LineaCodeHash)
+	for i := range poseidon2.BlockSize {
+		var f field.Element
+		f.SetBytes(lineaCodeHashLimbs[i])
+		ss.lineaCodeHash[i].PushField(f)
 	}
 
-	for i := range storageRoot {
-		ss.storageRoot[i].PushBytes(common.LeftPadToFrBytes(storageRoot[i]))
+	storageRootLimbs := poseidon2.ParsToBlocks(storageRoot)
+	for i := range poseidon2.BlockSize {
+		var f field.Element
+		f.SetBytes(storageRootLimbs[i])
+		ss.storageRoot[i].PushField(f)
 	}
 
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
@@ -471,7 +478,7 @@ func (ss *accountAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 	ss.keccakCodeHash.PadAssign(run, [common.NbLimbU256][]byte{})
 	ss.expectedHubCodeHash.PadAssign(run, [common.NbLimbU256][]byte{})
 
-	for i := range common.NbLimbU256 {
+	for i := range poseidon2.BlockSize {
 		ss.lineaCodeHash[i].PadAndAssign(run)
 		ss.storageRoot[i].PadAndAssign(run)
 	}

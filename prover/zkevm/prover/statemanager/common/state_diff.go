@@ -3,7 +3,6 @@ package common
 import (
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -167,12 +166,12 @@ func (builder *StateDiffAssignmentBuilder) AddRows(numRowsAccSegment int, hKey, 
 	}
 }
 
-// pagZerosAtBeginning pads provided array to [fr.Bytes] len with zeros at the beginning.
+// pagZerosAtBeginning pads provided array to [field.Bytes] len with zeros at the beginning.
 func pagZerosAtBeginning(arr []byte) []byte {
-	if len(arr) >= fr.Bytes {
+	if len(arr) >= field.Bytes {
 		return arr
 	}
 
-	padding := make([]byte, fr.Bytes-len(arr))
+	padding := make([]byte, field.Bytes-len(arr))
 	return append(padding, arr...)
 }
