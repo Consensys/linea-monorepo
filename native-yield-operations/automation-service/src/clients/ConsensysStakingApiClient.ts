@@ -180,15 +180,9 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
         typeof v.withdrawableEpoch === "string" ? parseInt(v.withdrawableEpoch, 10) : v.withdrawableEpoch,
     }));
 
-    // Get current epoch to filter validators by withdrawable epoch
-    const currentEpoch = await this.beaconNodeApiClient.getCurrentEpoch();
     let filteredValidators = validators;
-    if (currentEpoch === undefined) {
-      this.logger.warn("getExitedValidators - failed to retrieve current epoch, skipping filter");
-    } else {
-      // Filter out validators with withdrawableEpoch < currentEpoch
-      filteredValidators = validators.filter((v) => v.withdrawableEpoch >= currentEpoch);
-    }
+    // Filter out validators with balance === 0
+    filteredValidators = validators.filter((v) => v.balance > 0n);
 
     this.logger.info(`getExitedValidators succeeded, validatorCount=${filteredValidators.length}`);
     this.logger.debug("getExitedValidators resp", { resp: filteredValidators });

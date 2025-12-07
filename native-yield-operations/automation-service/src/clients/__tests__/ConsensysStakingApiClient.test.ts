@@ -351,7 +351,7 @@ describe("ConsensysStakingApiClient", () => {
     });
 
     it("returns the validator list and logs success when the query succeeds", async () => {
-      const { client, logger, retryMock, apolloQueryMock, getCurrentEpochMock } = createClient();
+      const { client, logger, retryMock, apolloQueryMock } = createClient();
       // GraphQL returns string values, which need to be converted to appropriate types
       const graphqlResponse = [
         {
@@ -376,8 +376,6 @@ describe("ConsensysStakingApiClient", () => {
         data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
-      // Mock currentEpoch to allow validator with withdrawableEpoch 100 to pass filter
-      getCurrentEpochMock.mockResolvedValueOnce(100);
 
       const result = await client.getExitedValidators();
 
@@ -412,7 +410,7 @@ describe("ConsensysStakingApiClient", () => {
     });
 
     it("correctly converts all field types including withdrawableEpoch and slashed", async () => {
-      const { client, apolloQueryMock, getCurrentEpochMock } = createClient();
+      const { client, apolloQueryMock } = createClient();
       const graphqlResponse = [
         {
           balance: "40",
@@ -434,8 +432,6 @@ describe("ConsensysStakingApiClient", () => {
         data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
-      // Mock currentEpoch to allow both validators to pass filter (withdrawableEpoch >= 150)
-      getCurrentEpochMock.mockResolvedValueOnce(150);
 
       const result = await client.getExitedValidators();
 
@@ -458,7 +454,7 @@ describe("ConsensysStakingApiClient", () => {
     });
 
     it("handles withdrawableEpoch as number (not string) correctly", async () => {
-      const { client, apolloQueryMock, getCurrentEpochMock } = createClient();
+      const { client, apolloQueryMock } = createClient();
       const graphqlResponse = [
         {
           balance: "40",
@@ -473,8 +469,6 @@ describe("ConsensysStakingApiClient", () => {
         data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
-      // Mock currentEpoch to allow validator with withdrawableEpoch 200 to pass filter
-      getCurrentEpochMock.mockResolvedValueOnce(200);
 
       const result = await client.getExitedValidators();
 
@@ -489,29 +483,29 @@ describe("ConsensysStakingApiClient", () => {
       ]);
     });
 
-    it("filters out validators with withdrawableEpoch < currentEpoch", async () => {
-      const { client, logger, apolloQueryMock, getCurrentEpochMock } = createClient();
+    it("filters out validators with balance === 0", async () => {
+      const { client, logger, apolloQueryMock } = createClient();
       const graphqlResponse = [
         {
-          balance: "40",
-          publicKey: "validator-past",
+          balance: "0",
+          publicKey: "validator-zero-balance",
           validatorIndex: "10",
           slashed: false,
-          withdrawableEpoch: "100", // Past epoch
+          withdrawableEpoch: "100",
         },
         {
           balance: "35",
-          publicKey: "validator-current",
+          publicKey: "validator-with-balance",
           validatorIndex: "20",
           slashed: false,
-          withdrawableEpoch: "200", // Current/future epoch
+          withdrawableEpoch: "200",
         },
         {
           balance: "30",
-          publicKey: "validator-future",
+          publicKey: "validator-another-balance",
           validatorIndex: "30",
           slashed: false,
-          withdrawableEpoch: "300", // Future epoch
+          withdrawableEpoch: "300",
         },
       ];
 
@@ -519,22 +513,21 @@ describe("ConsensysStakingApiClient", () => {
         data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
-      // Mock currentEpoch to filter out validator with withdrawableEpoch 100
-      getCurrentEpochMock.mockResolvedValueOnce(200);
 
       const result = await client.getExitedValidators();
 
+      // Validators with balance === 0 should be filtered out
       expect(result).toEqual([
         {
           balance: 35n,
-          publicKey: "validator-current",
+          publicKey: "validator-with-balance",
           validatorIndex: 20n,
           slashed: false,
           withdrawableEpoch: 200,
         },
         {
           balance: 30n,
-          publicKey: "validator-future",
+          publicKey: "validator-another-balance",
           validatorIndex: 30n,
           slashed: false,
           withdrawableEpoch: 300,
@@ -543,66 +536,19 @@ describe("ConsensysStakingApiClient", () => {
       expect(logger.info).toHaveBeenCalledWith("getExitedValidators succeeded, validatorCount=2");
     });
 
-    it("keeps validators with withdrawableEpoch >= currentEpoch", async () => {
-      const { client, logger, apolloQueryMock, getCurrentEpochMock } = createClient();
+    it("keeps all validators with balance >= 0", async () => {
+      const { client, logger, apolloQueryMock } = createClient();
       const graphqlResponse = [
         {
           balance: "40",
-          publicKey: "validator-boundary",
+          publicKey: "validator-positive-balance",
           validatorIndex: "10",
           slashed: false,
-          withdrawableEpoch: "150", // Equal to currentEpoch
+          withdrawableEpoch: "150",
         },
         {
           balance: "35",
-          publicKey: "validator-future",
-          validatorIndex: "20",
-          slashed: false,
-          withdrawableEpoch: "200", // Greater than currentEpoch
-        },
-      ];
-
-      apolloQueryMock.mockResolvedValue({
-        data: { allHeadValidators: { nodes: graphqlResponse } },
-        error: undefined,
-      });
-      // Mock currentEpoch to test boundary case (withdrawableEpoch === currentEpoch)
-      getCurrentEpochMock.mockResolvedValueOnce(150);
-
-      const result = await client.getExitedValidators();
-
-      expect(result).toEqual([
-        {
-          balance: 40n,
-          publicKey: "validator-boundary",
-          validatorIndex: 10n,
-          slashed: false,
-          withdrawableEpoch: 150,
-        },
-        {
-          balance: 35n,
-          publicKey: "validator-future",
-          validatorIndex: 20n,
-          slashed: false,
-          withdrawableEpoch: 200,
-        },
-      ]);
-      expect(logger.info).toHaveBeenCalledWith("getExitedValidators succeeded, validatorCount=2");
-    });
-
-    it("skips filtering and logs warning when getCurrentEpoch returns undefined", async () => {
-      const { client, logger, apolloQueryMock, getCurrentEpochMock } = createClient();
-      const graphqlResponse = [
-        {
-          balance: "40",
-          publicKey: "validator-1",
-          validatorIndex: "10",
-          slashed: false,
-          withdrawableEpoch: "100",
-        },
-        {
-          balance: "35",
-          publicKey: "validator-2",
+          publicKey: "validator-another-positive",
           validatorIndex: "20",
           slashed: false,
           withdrawableEpoch: "200",
@@ -613,31 +559,28 @@ describe("ConsensysStakingApiClient", () => {
         data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
-      // Mock currentEpoch to return undefined
-      getCurrentEpochMock.mockResolvedValueOnce(undefined);
 
       const result = await client.getExitedValidators();
 
-      // Should return all validators when currentEpoch is undefined
       expect(result).toEqual([
         {
           balance: 40n,
-          publicKey: "validator-1",
+          publicKey: "validator-positive-balance",
           validatorIndex: 10n,
           slashed: false,
-          withdrawableEpoch: 100,
+          withdrawableEpoch: 150,
         },
         {
           balance: 35n,
-          publicKey: "validator-2",
+          publicKey: "validator-another-positive",
           validatorIndex: 20n,
           slashed: false,
           withdrawableEpoch: 200,
         },
       ]);
-      expect(logger.warn).toHaveBeenCalledWith("getExitedValidators - failed to retrieve current epoch, skipping filter");
       expect(logger.info).toHaveBeenCalledWith("getExitedValidators succeeded, validatorCount=2");
     });
+
   });
 
   describe("getValidatorsForWithdrawalRequestsAscending", () => {
