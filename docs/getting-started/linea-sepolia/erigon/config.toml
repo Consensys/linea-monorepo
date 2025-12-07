@@ -1,9 +1,8 @@
 datadir = "/home/erigon/.local/share/erigon/"
 externalcl = true
 networkid = 59141
-port = 30301
+#port = 30303
 ethstats = ""
-netrestrict = "11.11.11.0/24"
 verbosity = 3
 
 "http.addr" = "0.0.0.0"
