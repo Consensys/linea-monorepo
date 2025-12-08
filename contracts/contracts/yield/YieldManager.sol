@@ -614,6 +614,7 @@ contract YieldManager is
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
+    _delegatecallBeforeWithdrawFromYieldProvider(_yieldProvider, false);
     _withdrawFromYieldProvider(_yieldProvider, Math256.min(withdrawableValue(_yieldProvider), _amount));
   }
 
@@ -664,6 +665,18 @@ contract YieldManager is
   }
 
   /**
+   * @notice Hook called before withdrawing ETH from the YieldProvider.
+   * @param _yieldProvider The yield provider address.
+   * @param _isPermissionlessReserveDeficitWithdrawal Whether this is a permissionless reserve deficit withdrawal.
+   */
+  function _delegatecallBeforeWithdrawFromYieldProvider(address _yieldProvider, bool _isPermissionlessReserveDeficitWithdrawal) internal {
+    _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.beforeWithdrawFromYieldProvider, (_yieldProvider, _isPermissionlessReserveDeficitWithdrawal))
+    );
+  }
+
+  /**
    * @notice Helper function to decrement the pending permissionless unstake amount.
    * @param _amount Amount to decrement from pending permissionless unstake.
    */
@@ -692,6 +705,7 @@ contract YieldManager is
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
+    _delegatecallBeforeWithdrawFromYieldProvider(_yieldProvider, false);
     _addToWithdrawalReserve(
       _yieldProvider,
       Math256.min(withdrawableValue(_yieldProvider) + address(this).balance, _amount)
@@ -757,6 +771,7 @@ contract YieldManager is
     uint256 yieldProviderBalance = withdrawableValue(_yieldProvider);
     if (yieldProviderBalance == 0 && yieldManagerBalance == 0) revert NoAvailableFundsToReplenishWithdrawalReserve();
     uint256 withdrawAmount = Math256.min(yieldProviderBalance, targetDeficit - yieldManagerBalance);
+    _delegatecallBeforeWithdrawFromYieldProvider(_yieldProvider, true);
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, withdrawAmount);
     _fundReserve(yieldManagerBalance + withdrawAmount);
 
