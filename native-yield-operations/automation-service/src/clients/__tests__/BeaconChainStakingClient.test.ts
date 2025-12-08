@@ -283,7 +283,7 @@ describe("BeaconChainStakingClient", () => {
 
     it("returns max validator slots when no validator has withdrawable balance", async () => {
       const maxValidatorsPerTx = 3;
-      const { client, unstakeMock, mocks } = setupClient(maxValidatorsPerTx);
+      const { client, logger, unstakeMock, mocks } = setupClient(maxValidatorsPerTx);
       const validators = [
         createValidator({ publicKey: "validator-1", withdrawableAmount: 0n }),
         createValidator({ publicKey: "validator-2", withdrawableAmount: 0n }),
@@ -299,6 +299,9 @@ describe("BeaconChainStakingClient", () => {
       )._submitPartialWithdrawalRequests(validators, 5n * ONE_GWEI);
 
       expect(remaining).toBe(maxValidatorsPerTx);
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining("_submitPartialWithdrawalRequests - no withdrawal requests to submit"),
+      );
       expect(unstakeMock).not.toHaveBeenCalled();
       expect(mocks.addValidatorPartialUnstakeAmount).not.toHaveBeenCalled();
     });

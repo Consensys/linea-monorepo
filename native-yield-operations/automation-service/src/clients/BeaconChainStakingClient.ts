@@ -141,6 +141,9 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
 
     // Do unstake
     if (totalWithdrawalRequestAmountWei === 0n || withdrawalRequests.amountsGwei.length === 0) {
+      this.logger.info(
+        `_submitPartialWithdrawalRequests - no withdrawal requests to submit, totalWithdrawalRequestAmountWei=${totalWithdrawalRequestAmountWei.toString()}, amountsGwei.length=${withdrawalRequests.amountsGwei.length}, returning max withdrawal requests`,
+      );
       return this.maxValidatorWithdrawalRequestsPerTransaction;
     }
     await this.yieldManagerContractClient.unstake(this.yieldProvider, withdrawalRequests);
