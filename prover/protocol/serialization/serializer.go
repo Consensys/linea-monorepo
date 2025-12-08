@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -46,12 +47,10 @@ var (
 	TypeOfQuery              = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
 	TypeOfQueryID            = reflect.TypeOf(ifaces.QueryID(""))
 	TypeOfCompiledIOPPointer = reflect.TypeOf(&wizard.CompiledIOP{})
-	TypeOfCompiledIOP        = reflect.TypeOf(wizard.CompiledIOP{})
 	TypeOfStorePtr           = reflect.TypeOf(&column.Store{})
 	TypeOfPackedColumn       = reflect.TypeOf(column.PackedNatural{})
 	TypeOfPackedStore        = reflect.TypeOf(column.PackedStore{})
 	TypeOfVariableMetadata   = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
-	TypeOfArrayOfExpr        = reflect.TypeOf([]*symbolic.Expression{})
 	TypeOfExpressionPtr      = reflect.TypeOf(&symbolic.Expression{})
 	TypeOfExpression         = reflect.TypeOf(symbolic.Expression{})
 	TypeOfArrayOfInt         = reflect.TypeOf([]int{})
@@ -67,6 +66,10 @@ var (
 	TypeOfGnarkFFTDomainPtr  = reflect.TypeOf(&fft.Domain{})
 	TypeOfRingSisKeyGenParam = reflect.TypeOf(ringsis.KeyGen{})
 	TypeOfMutexPtr           = reflect.TypeOf(&sync.Mutex{})
+
+	TypeOfModuleWitnessGLPtr  = reflect.TypeOf(&distributed.ModuleWitnessGL{})
+	TypeOfModuleWitnessLPPPtr = reflect.TypeOf(&distributed.ModuleWitnessLPP{})
+	TypeOfSegmentProofPtr     = reflect.TypeOf(&distributed.SegmentProof{})
 )
 
 // BackReference represents an integer index into PackedObject arrays (e.g., Columns, Coins).

@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/fxamacker/cbor/v2"
 )
@@ -32,9 +33,15 @@ type CustomCodex struct {
 	Des  func(des *Deserializer, val any, t reflect.Type) (reflect.Value, *serdeError)
 }
 
-var CustomCodexes = map[reflect.Type]CustomCodex{}
+var (
+	CustomCodexes = map[reflect.Type]CustomCodex{}
+	CustomSerde   = map[reflect.Type]struct{}{}
+)
 
 func init() {
+
+	CustomSerde[TypeOfModuleWitnessGLPtr] = struct{}{}
+	CustomSerde[TypeOfModuleWitnessLPPPtr] = struct{}{}
 
 	CustomCodexes[TypeOfBigInt] = CustomCodex{
 		Type: TypeOfBigInt,
@@ -107,7 +114,39 @@ func init() {
 		Ser:  marshalAsEmptyStruct,
 		Des:  makeNewObject,
 	}
+}
 
+type PackModuleWitnessGL struct {
+	ModuleName           string
+	ModuleIndex          int
+	SegmentModuleIndex   int
+	TotalSegmentCount    []int
+	Columns              [][]byte
+	ReceivedValuesGlobal cbor.Tag
+	VkMerkleRoot         *big.Int
+}
+
+func marshalModuleWitnessGL(ser *Serializer, mod *distributed.ModuleWitnessGL) ([]byte, *serdeError) {
+	packedModule := &PackModuleWitnessGL{
+		ModuleName:         string(mod.ModuleName),
+		ModuleIndex:        mod.ModuleIndex,
+		SegmentModuleIndex: mod.SegmentModuleIndex,
+		TotalSegmentCount:  mod.TotalSegmentCount,
+		VkMerkleRoot:       fieldToSmallBigInt(mod.VkMerkleRoot),
+	}
+
+	var buf = &bytes.Buffer{}
+	if err := unsafe.WriteSlice(buf, mod.ReceivedValuesGlobal); err != nil {
+		return nil, newSerdeErrorf("could not marshal array of field element: %w", err)
+	}
+	packedModule.ReceivedValuesGlobal = cbor.Tag{
+		Number:  cborTagFieldElementsPacked,
+		Content: buf.Bytes(),
+	}
+
+}
+
+func unmarshalModuleWitnessGL(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 }
 
 func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
