@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
+	"github.com/sirupsen/logrus"
 )
 
 func initEmptyCodeHash() [poseidon2.BlockSize][]byte {
@@ -127,12 +128,6 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 
 	accPeek.AddressHash = accPeek.ComputeAddressHash.Result()
 
-	//	panic("the initial/final-are-same is not visible in the small field migration so; this needs to be resolved")
-	/*accPeek.InitialAndFinalAreSame, accPeek.ComputeInitialAndFinalAreSame = dedicated.IsZero(
-		comp,
-		sym.Sub(accPeek.HashInitial, accPeek.HashFinal),
-	).GetColumnAndProverAction()*/
-
 	addrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	shiftedAddrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	for i := range poseidon2.BlockSize {
@@ -161,10 +156,10 @@ type Account struct {
 	// Nonce, Balance, Poseidon2CodeHash and CodeSize store the account field on a
 	// single column each.
 	Exists          ifaces.Column
-	Nonce, CodeSize [common.NbLimbU64]ifaces.Column
+	Nonce, CodeSize [common.NbElemForHasingU64]ifaces.Column
 	StorageRoot     [poseidon2.BlockSize]ifaces.Column
 	LineaCodeHash   [poseidon2.BlockSize]ifaces.Column
-	Balance         [common.NbLimbU128]ifaces.Column
+	Balance         [common.NbElemForHasingU64]ifaces.Column
 	// KeccakCodeHash stores the keccak code hash of the account.
 	KeccakCodeHash common.HiLoColumns
 	// ExpectedHubCodeHash is almost the same as the KeccakCodeHash, with the difference
@@ -172,8 +167,8 @@ type Account struct {
 	ExpectedHubCodeHash common.HiLoColumns
 	// HasEmptyCodeHash is an indicator column indicating whether the current
 	// account has an empty codehash
-	HasEmptyCodeHash             [common.NbLimbU64]ifaces.Column
-	CptHasEmptyCodeHash          [common.NbLimbU64]wizard.ProverAction
+	HasEmptyCodeHash             [common.NbElemForHasingU64]ifaces.Column
+	CptHasEmptyCodeHash          [common.NbElemForHasingU64]wizard.ProverAction
 	ExistsAndHasNonEmptyCodeHash ifaces.Column
 }
 
@@ -197,14 +192,12 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 		ExistsAndHasNonEmptyCodeHash: createCol("EXISTS_AND_NON_EMPTY_CODEHASH"),
 	}
 
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		acc.Nonce[i] = createCol(fmt.Sprintf("NONCE_%v", i))
 		acc.CodeSize[i] = createCol(fmt.Sprintf("CODESIZE_%v", i))
-	}
-
-	for i := range common.NbLimbU128 {
 		acc.Balance[i] = createCol(fmt.Sprintf("BALANCE_%v", i))
 	}
+
 
 	for i := range poseidon2.BlockSize {
 		acc.StorageRoot[i] = createCol(fmt.Sprintf("STORAGE_ROOT_%d", i))
@@ -216,12 +209,12 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 
 	// There is no need for an IsActive mask here because the column will be
 	// multiplied by Exists which is already zero when inactive.
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		acc.HasEmptyCodeHash[i], acc.CptHasEmptyCodeHash[i] = dedicated.IsZero(comp, acc.CodeSize[i]).GetColumnAndProverAction()
 	}
 
 	var hasEmptyCodeHashExpressions []any
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		hasEmptyCodeHashExpressions = append(hasEmptyCodeHashExpressions, acc.HasEmptyCodeHash[i])
 	}
 
@@ -277,8 +270,8 @@ func newAccountPeekAssignmentBuilder(ap *AccountPeek) accountPeekAssignmentBuild
 // builders relating to the an Account.
 type accountAssignmentBuilder struct {
 	exists                       *common.VectorBuilder
-	nonce, codeSize              [common.NbLimbU64]*common.VectorBuilder
-	balance                      [common.NbLimbU128]*common.VectorBuilder
+	nonce, codeSize              [common.NbElemForHasingU64]*common.VectorBuilder
+	balance                      [common.NbElemForHasingU64]*common.VectorBuilder
 	storageRoot, lineaCodeHash   [poseidon2.BlockSize]*common.VectorBuilder
 	keccakCodeHash               common.HiLoAssignmentBuilder
 	expectedHubCodeHash          common.HiLoAssignmentBuilder
@@ -295,12 +288,9 @@ func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
 		expectedHubCodeHash:          common.NewHiLoAssignmentBuilder(ap.ExpectedHubCodeHash),
 	}
 
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		res.codeSize[i] = common.NewVectorBuilder(ap.CodeSize[i])
 		res.nonce[i] = common.NewVectorBuilder(ap.Nonce[i])
-	}
-
-	for i := range common.NbLimbU128 {
 		res.balance[i] = common.NewVectorBuilder(ap.Balance[i])
 	}
 
@@ -318,18 +308,19 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 	accountExists := acc.Balance != nil
 
 	nonceBytes := int64ToByteLimbs(acc.Nonce)
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		ss.nonce[i].PushBytes(nonceBytes[i])
 	}
 
 	// This is telling us whether the intent is to push an empty account
 	if accountExists {
 		balanceBytes := acc.Balance.Bytes()
-		balancePadBytes := make([]byte, common.NbLimbU128*common.LimbBytes-len(balanceBytes))
+		logrus.Printf("padding length: %v", common.NbElemForHasingU64*common.LimbBytes-len(balanceBytes))
+		balancePadBytes := make([]byte, common.NbElemForHasingU64*common.LimbBytes-len(balanceBytes))
 		balancePaddedBytes := append(balancePadBytes, balanceBytes...)
 
 		balanceLimbs := common.SplitBytes(balancePaddedBytes)
-		for i := range common.NbLimbU128 {
+		for i := range common.NbElemForHasingU64 {
 			limbBytes := common.LeftPadToFrBytes(balanceLimbs[i])
 			ss.balance[i].PushBytes(limbBytes)
 		}
@@ -356,7 +347,7 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 	}
 
 	codesizeBytes := int64ToByteLimbs(acc.CodeSize)
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
@@ -387,7 +378,7 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	accountExists := acc.Balance != nil
 
 	nonceBytes := int64ToByteLimbs(acc.Nonce)
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		ss.nonce[i].PushBytes(nonceBytes[i])
 	}
 
@@ -425,7 +416,7 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	}
 
 	codesizeBytes := int64ToByteLimbs(acc.CodeSize)
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
@@ -452,12 +443,9 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 func (ss *accountAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 	ss.exists.PadAndAssign(run)
 
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		ss.codeSize[i].PadAndAssign(run)
 		ss.nonce[i].PadAndAssign(run)
-	}
-
-	for i := range common.NbLimbU128 {
 		ss.balance[i].PadAndAssign(run)
 	}
 
@@ -480,9 +468,9 @@ func int64ToByteLimbs(num int64) [][]byte {
 		panic(err)
 	}
 
-	res := make([][]byte, common.NbLimbU64)
+	res := make([][]byte, common.NbElemForHasingU64)
 	nonceLimbs := common.SplitBytes(nonceBuffer.Bytes())
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		padding := make([]byte, field.Bytes-len(nonceLimbs[i]))
 		res[i] = append(padding, nonceLimbs[i]...)
 	}
@@ -507,6 +495,19 @@ func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
 }
 
 func padd(cols []ifaces.Column, size int, padding ifaces.Column) (res []ifaces.Column) {
+
+	if len(cols) == size {
+		logrus.Printf("no need for padding")
+		return cols
+	}
+
+	if len(cols) > size {
+		logrus.Fatalf("cannot pad column slice of size %v to size %v", len(cols), size)
+	}
+
+	if len(cols) == 0 {
+		logrus.Printf("padding empty column slice to size %v", size)
+	}
 
 	for _ = range size - len(cols) {
 		res = append(res, padding)
