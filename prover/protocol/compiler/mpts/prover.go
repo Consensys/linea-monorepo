@@ -11,10 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
@@ -130,54 +127,50 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 	// \rho^k \lambda^i y_i / (X - xi). All results are added to the last
 	// entry of the quotient. This part is done separately from the first
 	// because it is optimized differently.
+
+	// We first compute the scalars \sum_k \rho^k y_{i,k} for each query i.
+	scalars := make(extensions.Vector, len(qa.Queries))
 	parallel.Execute(len(qa.Queries), func(start, stop int) {
-
-		localResult := make(extensions.Vector, qa.getNumRow())
-
 		for i := start; i < stop; i++ {
-
-			// The first step is to compute the \sum_k \rho^k y_{i,k}. This is
-			// pure scalar operation.
-			var (
-				sumRhoKYik = fext.Zero()
-				zetaI      = zetas[i]
-			)
-
-			for _, k := range qa.PolysOfEvalPoint[i] {
+			var sumRhoKYik fext.Element
+			for kIdx, polyID := range qa.PolysOfEvalPoint[i] {
 
 				// Constant polys do not contribute to the quotient as their
 				// respective quotient cancels out.
-				polySV := qa.Polys[k].GetColAssignment(run)
+				polySV := qa.Polys[polyID].GetColAssignment(run)
 				if _, ok := polySV.(*smartvectors.Constant); ok {
 					continue
 				}
 
 				var (
 					paramsI  = run.GetUnivariateParams(qa.Queries[i].Name())
-					posOfYik = getPositionOfPolyInQueryYs(qa.Queries[i], qa.Polys[k])
+					posOfYik = qa.PolyPositionInQuery[i][kIdx]
 					yik      = paramsI.ExtYs[posOfYik]
 				)
 
 				// This reuses the memory slot of yik to compute the temporary
 				// rho^k y_ik
-				yik.Mul(&yik, &powersOfRho[k])
+				yik.Mul(&yik, &powersOfRho[polyID])
 				sumRhoKYik.Add(&sumRhoKYik, &yik)
 			}
-
-			// The second step is to multiply and accumulate the result by zetaI
-			// and sumRhoKYik. This part "comsumes" the value of zetaI.
-			zetaI.ScalarMul(zetaI, &sumRhoKYik)
-
-			if len(localResult) != len(zetaI) {
-				utils.Panic("len(localResult) = %v len(zetaI) = %v", len(localResult), len(zetaI))
-			}
-
-			localResult.Add(localResult, zetaI)
+			scalars[i] = sumRhoKYik
 		}
+	})
 
-		quotientLock.Lock()
-		quotient.Sub(quotient, localResult)
-		quotientLock.Unlock()
+	// Then we accumulate the result into the quotient.
+	// quotient -= \sum_i scalars[i] * zetas[i]
+	// We parallelize over the rows of the quotient.
+	parallel.Execute(qa.getNumRow(), func(start, stop int) {
+		scratch := make(extensions.Vector, len(qa.Queries))
+
+		for row := start; row < stop; row++ {
+			// transpose zetas to have easy access per row
+			for i := 0; i < len(qa.Queries); i++ {
+				scratch[i] = zetas[i][row]
+			}
+			sum := scalars.InnerProduct(scratch)
+			quotient[row].Sub(&quotient[row], &sum)
+		}
 	})
 
 	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegularExt(quotient))
@@ -269,17 +262,4 @@ func _ldeOfExt(v []fext.Element, sizeSmall, sizeLarge int) {
 	gutils.BitReverse(v[:sizeSmall])
 	domainLarge.FFTExt(v, fft.DIF, fft.WithNbTasks(1))
 	gutils.BitReverse(v)
-}
-
-func getPositionOfPolyInQueryYs(q query.UnivariateEval, poly ifaces.Column) int {
-	// TODO @gbotrel this appears on the traces quite a lot -- lot of string comparisons
-	toFind := poly.GetColID()
-	for i, p := range q.Pols {
-		if p.GetColID() == toFind {
-			return i
-		}
-	}
-
-	utils.Panic("not found, poly=%v in query=%v", toFind, q.Name())
-	return 0
 }
