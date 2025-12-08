@@ -757,7 +757,9 @@ contract YieldManager is
     uint256 yieldProviderBalance = withdrawableValue(_yieldProvider);
     if (yieldProviderBalance == 0 && yieldManagerBalance == 0) revert NoAvailableFundsToReplenishWithdrawalReserve();
     uint256 withdrawAmount = Math256.min(yieldProviderBalance, targetDeficit - yieldManagerBalance);
-    _delegatecallWithdrawFromYieldProvider(_yieldProvider, withdrawAmount);
+    if (withdrawAmount > 0) {
+      _delegatecallWithdrawFromYieldProvider(_yieldProvider, withdrawAmount);
+    }
     _fundReserve(yieldManagerBalance + withdrawAmount);
 
     // Pause staking if remaining target deficit
