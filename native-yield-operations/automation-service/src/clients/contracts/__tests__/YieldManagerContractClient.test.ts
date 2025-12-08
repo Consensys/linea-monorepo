@@ -783,14 +783,14 @@ describe("YieldManagerContractClient", () => {
       // Actual requirement should be set with original requirement (converted to gwei)
       // Direction is based on l1MessageServiceBalance vs effectiveTarget (not tolerance band)
       expect(metricsUpdater.setActualRebalanceRequirement).toHaveBeenCalledWith(
-        yieldProvider,
+        stakingVaultAddress,
         weiToGweiNumber(absRebalanceRequirement),
         RebalanceDirection.STAKE,
       );
       // Reported requirement should be 0 when circuit breaker trips
-      expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(yieldProvider, 0, RebalanceDirection.NONE);
+      expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(stakingVaultAddress, 0, RebalanceDirection.NONE);
       // Counter should be incremented when circuit breaker trips
-      expect(metricsUpdater.incrementStakeCircuitBreakerTrip).toHaveBeenCalledWith(yieldProvider);
+      expect(metricsUpdater.incrementStakeCircuitBreakerTrip).toHaveBeenCalledWith(stakingVaultAddress);
     });
 
     it("tracks gauge metric for all rebalance paths when metricsUpdater is provided", async () => {
@@ -829,12 +829,12 @@ describe("YieldManagerContractClient", () => {
       // Actual requirement should be set even when within tolerance band (NONE path, converted to gwei)
       // Direction is based on l1MessageServiceBalance vs effectiveTarget (not tolerance band)
       expect(metricsUpdater.setActualRebalanceRequirement).toHaveBeenCalledWith(
-        yieldProvider,
+        stakingVaultAddress,
         weiToGweiNumber(absRebalanceRequirement),
         RebalanceDirection.STAKE,
       );
       // Reported requirement: absRebalanceRequirement (50_000) is not < toleranceBand (10_000), so result is STAKING, not NONE
-      expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(yieldProvider, 0, RebalanceDirection.STAKE);
+      expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(stakingVaultAddress, 0, RebalanceDirection.STAKE);
       // Counter should not be incremented when circuit breaker doesn't trip
       expect(metricsUpdater.incrementStakeCircuitBreakerTrip).not.toHaveBeenCalled();
     });
@@ -875,13 +875,13 @@ describe("YieldManagerContractClient", () => {
       // Actual requirement should be set with original requirement
       // Note: When l1MessageServiceBalance < effectiveTarget, direction is UNSTAKE
       expect(metricsUpdater.setActualRebalanceRequirement).toHaveBeenCalledWith(
-        yieldProvider,
+        stakingVaultAddress,
         weiToGweiNumber(absRebalanceRequirement),
         RebalanceDirection.UNSTAKE,
       );
       // Reported requirement should be capped to maxStakingRebalanceAmountWei (result direction is UNSTAKE, not STAKE)
       expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(
-        yieldProvider,
+        stakingVaultAddress,
         weiToGweiNumber(maxStakingRebalanceAmountWei),
         RebalanceDirection.UNSTAKE,
       );
@@ -923,13 +923,13 @@ describe("YieldManagerContractClient", () => {
       // Actual requirement should be set with original requirement
       // Note: When l1MessageServiceBalance > effectiveTargetWithdrawalReserveExcludingObligations, direction is STAKE
       expect(metricsUpdater.setActualRebalanceRequirement).toHaveBeenCalledWith(
-        yieldProvider,
+        stakingVaultAddress,
         weiToGweiNumber(absRebalanceRequirement),
         RebalanceDirection.STAKE,
       );
       // Reported requirement: result direction is STAKE (l1MessageServiceBalance > effectiveTargetWithdrawalReserveExcludingObligations)
       expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(
-        yieldProvider,
+        stakingVaultAddress,
         weiToGweiNumber(absRebalanceRequirement),
         RebalanceDirection.STAKE,
       );

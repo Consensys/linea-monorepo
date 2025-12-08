@@ -407,9 +407,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {Promise<RebalanceRequirement>} The rebalance requirement containing direction (NONE, STAKE, or UNSTAKE) and amount.
    */
   async getRebalanceRequirements(yieldProvider: Address, l2YieldRecipient: Address): Promise<RebalanceRequirement> {
-    const [l1MessageServiceAddress, dashboardAddress] = await Promise.all([
+    const [l1MessageServiceAddress, dashboardAddress, vaultAddress] = await Promise.all([
       this.L1_MESSAGE_SERVICE(),
       this.getLidoDashboardAddress(yieldProvider),
+      this.getLidoStakingVaultAddress(yieldProvider),
     ]);
     const dashboardClient = DashboardContractClient.getOrCreate(dashboardAddress);
     const [
@@ -431,7 +432,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       throw new Error("peekYieldReport returned undefined, cannot determine rebalance requirements");
     }
     const result = this._getRebalanceRequirements(
-      yieldProvider,
+      vaultAddress,
       totalSystemBalance,
       l1MessageServiceBalance,
       effectiveTargetWithdrawalReserve,
@@ -443,7 +444,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     // Track the reported rebalance requirement (after applying tolerance band, circuit breaker, and rate limit)
     if (this.metricsUpdater) {
       this.metricsUpdater.setReportedRebalanceRequirement(
-        yieldProvider,
+        vaultAddress,
         weiToGweiNumber(result.rebalanceAmount),
         result.rebalanceDirection,
       );
@@ -469,7 +470,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {RebalanceRequirement} The rebalance requirement containing direction (NONE, STAKE, or UNSTAKE) and amount.
    */
   private _getRebalanceRequirements(
-    yieldProvider: Address,
+    vaultAddress: Address,
     totalSystemBalance: bigint,
     l1MessageServiceBalance: bigint,
     effectiveTargetWithdrawalReserve: bigint,
@@ -533,7 +534,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     // Track the original rebalance requirement for all paths (before tolerance band, circuit breaker, or rate limit)
     if (this.metricsUpdater) {
       this.metricsUpdater.setActualRebalanceRequirement(
-        yieldProvider,
+        vaultAddress,
         weiToGweiNumber(absRebalanceRequirement),
         directionForMetrics,
       );
@@ -562,7 +563,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
           `_getRebalanceRequirements - staking circuit breaker tripped, skipping staking rebalance as absRebalanceRequirement=${absRebalanceRequirement} exceeds the circuit breaker threshold of ${this.stakeCircuitBreakerThresholdWei}`,
         );
         if (this.metricsUpdater) {
-          this.metricsUpdater.incrementStakeCircuitBreakerTrip(yieldProvider);
+          this.metricsUpdater.incrementStakeCircuitBreakerTrip(vaultAddress);
         }
         return {
           rebalanceDirection: RebalanceDirection.NONE,
