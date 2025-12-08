@@ -18,7 +18,6 @@ import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { ILogger } from "../logging/ILogger";
 import { MAX_BPS } from "../core/constants/maths";
-import { extractViemErrorInfo } from "../utils/viemErrorExtractor";
 
 /**
  * Adapter that wraps viem's PublicClient to provide blockchain interaction functionality.
@@ -156,8 +155,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     try {
       return await this.blockchainClient.getTransactionReceipt({ hash: txHash });
     } catch (error) {
-      const extractedError = extractViemErrorInfo(error);
-      this.logger.warn("getTxReceipt - failed to get transaction receipt", { txHash, error: extractedError });
+      this.logger.warn("getTxReceipt - failed to get transaction receipt", { txHash, error });
       return undefined;
     }
   }
@@ -235,26 +233,22 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         this.logger.debug(`sendSignedTransaction succeeded`, { receipt });
         return receipt;
       } catch (error) {
-        const extractedError = extractViemErrorInfo(error);
         if (error instanceof BaseError && !this._shouldRetryViemSendRawTranasctionError(error)) {
           const decodedError = error.walk();
-          const extractedDecodedError = extractViemErrorInfo(decodedError);
-          this.logger.error("sendSignedTransaction failed and will not be retried", {
-            decodedError: extractedDecodedError,
-          });
+          this.logger.error("sendSignedTransaction failed and will not be retried", { decodedError });
           throw decodedError;
         }
         if (attempt >= this.sendTransactionsMaxRetries) {
           this.logger.error(
             `sendSignedTransaction retry attempts exhausted sendTransactionsMaxRetries=${this.sendTransactionsMaxRetries}`,
-            { error: extractedError },
+            { error },
           );
           throw error;
         }
 
         this.logger.warn(
           `sendSignedTransaction retry attempt failed attempt=${attempt} sendTransactionsMaxRetries=${this.sendTransactionsMaxRetries}`,
-          { error: extractedError },
+          { error },
         );
         lastError = error;
         // Compound gas for next retry

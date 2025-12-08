@@ -24,4 +24,3 @@ export * from "./utils/errors";
 export * from "./utils/maths";
 export * from "./utils/time";
 export * from "./utils/string";
-export * from "./utils/viemErrorExtractor";

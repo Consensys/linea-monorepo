@@ -17,7 +17,6 @@ import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { ViemBlockchainClientAdapter } from "../ViemBlockchainClientAdapter";
 import { ILogger } from "../../logging/ILogger";
 import { IContractSignerClient } from "../../core/client/IContractSignerClient";
-import { extractViemErrorInfo } from "../../utils/viemErrorExtractor";
 
 jest.mock("viem", () => {
   const actual = jest.requireActual("viem");
@@ -227,7 +226,7 @@ describe("ViemBlockchainClientAdapter", () => {
       expect(publicClientMock.getTransactionReceipt).toHaveBeenCalledWith({ hash: txHash });
       expect(logger.warn).toHaveBeenCalledWith("getTxReceipt - failed to get transaction receipt", {
         txHash,
-        error: extractViemErrorInfo(notFoundError),
+        error: notFoundError,
       });
     });
 
@@ -241,7 +240,7 @@ describe("ViemBlockchainClientAdapter", () => {
       expect(publicClientMock.getTransactionReceipt).toHaveBeenCalledWith({ hash: txHash });
       expect(logger.warn).toHaveBeenCalledWith("getTxReceipt - failed to get transaction receipt", {
         txHash,
-        error: extractViemErrorInfo(networkError),
+        error: networkError,
       });
     });
 
@@ -286,7 +285,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=3",
-      { error: extractViemErrorInfo(retryableError) },
+      { error: retryableError },
     );
     expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -388,7 +387,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(2);
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=3",
-      { error: extractViemErrorInfo(retryableError) },
+      { error: retryableError },
     );
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenNthCalledWith(1, {
@@ -439,10 +438,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(timeoutError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -480,10 +476,7 @@ describe("ViemBlockchainClientAdapter", () => {
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toThrow();
 
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
   });
@@ -515,10 +508,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toThrow();
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
   });
@@ -548,7 +538,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(logger.warn).toHaveBeenCalledTimes(1);
     expect(logger.error).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempts exhausted sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(retryableError) },
+      { error: retryableError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -582,7 +572,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(2);
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(httpError) },
+      { error: httpError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -611,10 +601,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(httpError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -649,7 +636,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(2);
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(wsError) },
+      { error: wsError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -683,7 +670,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(2);
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(unknownRpcError) },
+      { error: unknownRpcError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -717,7 +704,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(2);
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(defaultError) },
+      { error: defaultError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -752,7 +739,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(2);
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(unknownRpcError) },
+      { error: unknownRpcError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -780,10 +767,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(capabilityError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -811,10 +795,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(capabilityError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -846,7 +827,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(error) },
+      { error },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -878,7 +859,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(error) },
+      { error },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -910,7 +891,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(httpError) },
+      { error: httpError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -942,7 +923,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(httpError) },
+      { error: httpError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -974,7 +955,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(httpError) },
+      { error: httpError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -1006,7 +987,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(httpError) },
+      { error: httpError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -1038,7 +1019,7 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
     expect(logger.warn).toHaveBeenCalledWith(
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
-      { error: extractViemErrorInfo(httpError) },
+      { error: httpError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
@@ -1066,10 +1047,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(parseError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1097,10 +1075,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(invalidRequestError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1128,10 +1103,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(methodNotFoundError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1159,10 +1131,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(invalidParamsError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1190,10 +1159,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(invalidInputError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1221,10 +1187,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(resourceNotFoundError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1252,10 +1215,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(transactionRejectedError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1283,10 +1243,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(methodNotSupportedError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1314,10 +1271,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(jsonRpcVersionError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1345,10 +1299,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(userRejectedError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1376,10 +1327,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(userRejectedError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1407,10 +1355,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(unauthorizedError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1438,10 +1383,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(unsupportedMethodError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
@@ -1469,10 +1411,7 @@ describe("ViemBlockchainClientAdapter", () => {
 
     await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(switchChainError);
     expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
-      decodedError: expect.objectContaining({
-        name: expect.any(String),
-        message: expect.any(String),
-      }),
+      decodedError: expect.any(Error),
     });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
