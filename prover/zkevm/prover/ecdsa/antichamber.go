@@ -43,7 +43,7 @@ const (
 
 func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name string) ifaces.Column {
 	return func(name string) ifaces.Column {
-		return comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", rootName, name), size)
+		return comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", rootName, name), size, true)
 	}
 }
 

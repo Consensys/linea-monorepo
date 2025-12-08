@@ -97,7 +97,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		AddressUntrimmed:     addressUntrimmed,
 		IsAddress:            createCol("IS_ADDRESS"),
 		Col16:                verifiercol.NewConstantCol(field.NewElement(16), size, "ecdsa-col16"),
-		IsAddressHiEcRec:     comp.InsertCommit(0, ifaces.ColIDf("ISADRESS_HI_ECREC"), ecRecSize),
+		IsAddressHiEcRec:     comp.InsertCommit(0, ifaces.ColIDf("ISADRESS_HI_ECREC"), ecRecSize, true),
 		IsAddressFromEcRec:   createCol("ISADRESS_FROM_ECREC"),
 		IsAddressFromTxnData: createCol("ISADRESS_FROM_TXNDATA"),
 		HashNum:              createCol("HASH_NUM"),
@@ -221,8 +221,10 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 	}
 
 	pkModule.Info = generic.GenInfoModule{
-		Hash:   addr.Address[:],
-		IsHash: addr.IsAddress,
+		HashHi:   addr.AddressUntrimmed[:common.NbLimbU128],
+		HashLo:   addr.AddressUntrimmed[common.NbLimbU128:],
+		IsHashHi: addr.IsAddress,
+		IsHashLo: addr.IsAddress,
 	}
 	return pkModule
 }
