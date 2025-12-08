@@ -133,9 +133,9 @@ services:
 
   # Erigon initialization
   erigon-init:
-    image: erigon:v3.3.0-linea-patched #patched version
+    image: morislineats/erigon:v3.3.0-linea-patched
     # image: erigontech/erigon:v3.4.0 should be used when released
-    pull_policy: never
+    pull_policy: always
     command:
       - init
       - /genesis.json
@@ -148,9 +148,9 @@ services:
   erigon-node:
     hostname: el-client
     container_name: linea-erigon
-    image: erigon:v3.3.0-linea-patched #patched version
+    image: morislineats/erigon:v3.3.0-linea-patched
     # image: erigontech/erigon:v3.4.0 should be used when released
-    pull_policy: never
+    pull_policy: always
     restart: unless-stopped
     stop_grace_period: 30s
     depends_on:
