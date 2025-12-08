@@ -3,7 +3,6 @@ package common
 import (
 	"math/big"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mock"
 )
@@ -21,8 +20,8 @@ type TestContext struct {
 }
 
 func InitializeContext(initialBlock int) *TestContext {
-	fieldOne := field.One()
-	oneBytes := fieldOne.Bytes()
+	// fieldOne := field.One()
+	// oneBytes := fieldOne.Bytes()
 	var (
 		addresses = []types.EthAddress{
 			types.DummyAddress(32),
@@ -43,7 +42,7 @@ func InitializeContext(initialBlock int) *TestContext {
 			types.DummyFullByte(2002),
 			types.DummyFullByte(2012),
 			types.DummyFullByte(2023),
-			types.AsFullBytes32(oneBytes[:]),
+			types.DummyFullByte(1),
 		}
 	)
 
@@ -81,13 +80,15 @@ func InitializeContext(initialBlock int) *TestContext {
 		{
 			Explainer: "Reading two contracts",
 			StateLogsGens: func(initState mock.State) [][]mock.StateAccessLog {
+				// Note: addresses are ordered by their Poseidon2 hash (not raw value)
+				// addresses[3] hash < addresses[2] hash in Poseidon2
 				return mock.NewStateLogBuilder(initialBlock, initState).
-					WithAddress(addresses[2]).
+					WithAddress(addresses[3]).
 					ReadStorage(storageKeys[0]).
 					ReadStorage(storageKeys[1]).
 					ReadStorage(storageKeys[2]).
 					ReadStorage(storageKeys[3]).
-					WithAddress(addresses[3]).
+					WithAddress(addresses[2]).
 					ReadStorage(storageKeys[0]).
 					ReadStorage(storageKeys[1]).
 					ReadStorage(storageKeys[2]).

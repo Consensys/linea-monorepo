@@ -31,14 +31,14 @@ type TxnDataFetcher struct {
 func NewTxnDataFetcher(comp *wizard.CompiledIOP, name string, td *arith.TxnData) TxnDataFetcher {
 	size := td.Ct.Size()
 	res := TxnDataFetcher{
-		RelBlock:      util.CreateCol(name, "REL_BLOCK", size, comp),
-		AbsTxNum:      util.CreateCol(name, "ABS_TX_NUM", size, comp),
-		FilterFetched: util.CreateCol(name, "FILTER_FETCHED", size, comp),
-		FilterArith:   util.CreateCol(name, "FILTER_ARITH", size, comp),
+		RelBlock:      util.CreateColBase(name, "REL_BLOCK", size, comp),
+		AbsTxNum:      util.CreateColBase(name, "ABS_TX_NUM", size, comp),
+		FilterFetched: util.CreateColBase(name, "FILTER_FETCHED", size, comp),
+		FilterArith:   util.CreateColBase(name, "FILTER_ARITH", size, comp),
 	}
 
 	for i := range td.From {
-		res.From[i] = util.CreateCol(name, fmt.Sprintf("FROM_%d", i), size, comp)
+		res.From[i] = util.CreateColBase(name, fmt.Sprintf("FROM_%d", i), size, comp)
 	}
 
 	return res

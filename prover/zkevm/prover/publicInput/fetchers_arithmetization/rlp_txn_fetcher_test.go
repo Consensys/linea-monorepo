@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
-	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -46,9 +45,6 @@ func TestRlpTxnFetcher(t *testing.T) {
 		arith.AssignTestingArithModules(run, nil, nil, ctRlpTxn)
 		AssignRlpTxnFetcher(run, &fetcher, rt)
 
-		for i := range fetcher.Limbs {
-			assert.Equal(t, testChainIDLimbs[i], fetcher.ChainID[i].GetColAssignmentAt(run, 0), "ChainID value is incorrect.")
-		}
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)
