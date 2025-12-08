@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // DeepCopy deep-copies the input vector
@@ -185,11 +186,12 @@ func PowerVec(x fext.Element, n int) Vector {
 	}
 
 	res := make(Vector, n)
-	res[0].SetOne()
-
-	for i := 1; i < n; i++ {
-		res[i].Mul(&res[i-1], &x)
-	}
+	parallel.Execute(n, func(start, stop int) {
+		res[start].ExpInt64(x, int64(start))
+		for i := start + 1; i < stop; i++ {
+			res[i].Mul(&res[i-1], &x)
+		}
+	})
 
 	return res
 }

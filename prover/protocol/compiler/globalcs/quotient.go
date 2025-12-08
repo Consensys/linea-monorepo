@@ -185,46 +185,7 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 // compute the quotient shares.
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
-	// Initial step is to compute the FFTs for all committed vectors
-	coeffs := sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
-
-	// Compute once the FFT of the natural columns
-
 	domain0 := fft.NewDomain(uint64(ctx.DomainSize), fft.WithCache())
-
-	arenaBase := arena.NewVectorArena[field.Element](ctx.DomainSize * len(ctx.AllInvolvedRoots))
-
-	parallel.Execute(len(ctx.AllInvolvedRoots), func(start, stop int) {
-
-		for k := start; k < stop; k++ {
-			pol := ctx.AllInvolvedRoots[k]
-			name := pol.GetColID()
-
-			// gets directly a shallow copy in the map of the runtime
-			var witness sv.SmartVector
-			witness, isAssigned := run.Columns.TryGet(name)
-
-			// can happen if the column is verifier defined. In that case, no
-			// need to protect with a lock. This will not touch run.Columns.
-			if !isAssigned {
-				witness = pol.GetColAssignment(run)
-			}
-
-			if smartvectors.IsBase(witness) {
-				res := arena.Get[field.Element](arenaBase, ctx.DomainSize)
-				witness.WriteInSlice(res)
-				domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(1))
-				coeffs.Store(name, smartvectors.NewRegular(res))
-				continue
-			}
-
-			res := make([]fext.Element, witness.Len())
-			witness.WriteInSliceExt(res)
-			domain0.FFTInverseExt(res, fft.DIF, fft.WithNbTasks(1))
-			coeffs.Store(name, smartvectors.NewRegularExt(res))
-		}
-
-	})
 
 	// Take the max quotient degree
 	maxRatio := utils.Max(ctx.Ratios...)
@@ -287,26 +248,30 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					root := uniqueRoots[k]
 					rootName := root.GetColID()
 
-					// load the coeff
-					_v, _ := coeffs.Load(rootName)
-					vCoeffs := _v.(sv.SmartVector)
+					var witness sv.SmartVector
+					witness, isAssigned := run.Columns.TryGet(rootName)
 
-					// most of the coeffs are regular, so we optimize for that case
-					// and do a fft on the base field.
-					if vr, ok := vCoeffs.(*sv.Regular); ok {
-						reevaledRoot := arena.Get[field.Element](arenaExt, ctx.DomainSize)
-						copy(reevaledRoot, *vr)
-						domain.FFT(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
-
-						rootResults[k] = smartvectors.NewRegular(reevaledRoot)
-						continue
+					// can happen if the column is verifier defined. In that case, no
+					// need to protect with a lock. This will not touch run.Columns.
+					if !isAssigned {
+						witness = root.GetColAssignment(run)
 					}
 
-					reevaledRoot := arena.Get[fext.Element](arenaExt, ctx.DomainSize)
-					vCoeffs.WriteInSliceExt(reevaledRoot)
-					domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+					// TODO @gbotrel handle the case where the witness is a constant and skip the ffts
+					if smartvectors.IsBase(witness) {
+						res := arena.Get[field.Element](arenaExt, ctx.DomainSize)
+						witness.WriteInSlice(res)
+						domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(1))
+						domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+						rootResults[k] = smartvectors.NewRegular(res)
+					} else {
+						res := arena.Get[fext.Element](arenaExt, ctx.DomainSize)
+						witness.WriteInSliceExt(res)
+						domain0.FFTInverseExt(res, fft.DIF, fft.WithNbTasks(2))
+						domain.FFTExt(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
+						rootResults[k] = smartvectors.NewRegularExt(res)
+					}
 
-					rootResults[k] = smartvectors.NewRegularExt(reevaledRoot)
 				}
 			})
 
@@ -331,7 +296,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					root := column.RootParents(pol)
 					rootName := root.GetColID()
 
-					reevaledRoot, _ := computedReeval[rootName]
+					reevaledRoot := computedReeval[rootName]
 
 					if shifted, isShifted := pol.(column.Shifted); isShifted {
 						var res sv.SmartVector

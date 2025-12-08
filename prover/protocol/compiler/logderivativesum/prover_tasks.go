@@ -400,7 +400,7 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 			numerator := se0
 			// denominator := se1
 			denominator := svDenominator.IntoRegVecSaveAllocExt()
-			packedZ := fext.BatchInvert(denominator)
+			packedZ := fext.ParBatchInvert(denominator, 2)
 
 			if len(numeratorMetadata) == 0 {
 				for i := range numerator {
@@ -408,7 +408,12 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 				}
 			} else {
 				evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
-				evalResult.WriteInSliceExt(numerator)
+				if vr, ok := evalResult.(*sv.RegularExt); ok {
+					// no need to copy here.
+					numerator = extensions.Vector(*vr)
+				} else {
+					evalResult.WriteInSliceExt(numerator)
+				}
 			}
 
 			vp := extensions.Vector(packedZ)

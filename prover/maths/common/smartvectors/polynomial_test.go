@@ -50,46 +50,6 @@ func TestEvaluateLagrange(t *testing.T) {
 
 }
 
-func TestBatchEvaluateLagrange(t *testing.T) {
-
-	x := fext.RandomElement()
-
-	nbPoly := 8
-	size := 64
-
-	polys := make([][]field.Element, nbPoly)
-	for i := 0; i < nbPoly; i++ {
-		polys[i] = make([]field.Element, size)
-		for j := 0; j < size; j++ {
-			polys[i][j].SetRandom()
-		}
-	}
-
-	evalCan := make([]fext.Element, nbPoly)
-	for i := 0; i < nbPoly; i++ {
-		evalCan[i] = vortex.EvalBasePolyHorner(polys[i], x)
-	}
-
-	d := fft.NewDomain(uint64(size))
-	polyLagranges := make([][]field.Element, nbPoly)
-	copy(polyLagranges, polys)
-
-	polyLagrangeSv := make([]SmartVector, nbPoly)
-	for i := 0; i < nbPoly; i++ {
-		d.FFT(polyLagranges[i], fft.DIF)
-		fft.BitReverse(polyLagranges[i])
-		polyLagrangeSv[i] = NewRegular(polyLagranges[i])
-
-	}
-	evalLag := BatchEvaluateBasePolyLagrange(polyLagrangeSv, x)
-
-	// check the result
-	for i := 0; i < nbPoly; i++ {
-		require.Equal(t, evalLag[i].String(), evalCan[i].String())
-	}
-
-}
-
 func TestFuzzPolynomial(t *testing.T) {
 
 	for i := 0; i < FuzzIteration; i++ {

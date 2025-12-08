@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
@@ -205,33 +206,31 @@ func (qa QuotientAccumulation) computeZetasExt(run *wizard.ProverRuntime) []vect
 		powersOfLambda = vectorext.PowerVec(lambda, len(qa.Queries))
 	)
 
+	arenaExt := arena.NewVectorArena[fext.Element](len(powersOfOmega) * len(qa.Queries))
+
 	parallel.Execute(len(qa.Queries), func(start, stop int) {
 		for i := start; i < stop; i++ {
 
-			var (
-				q      = qa.Queries[i]
-				params = run.GetUnivariateParams(q.Name())
-				xi     = params.ExtX
+			q := qa.Queries[i]
+			params := run.GetUnivariateParams(q.Name())
+			xi := params.ExtX
 
-				// l is the value of lambda^i / (X - xi). It is computed by:
-				// 	1 - Deep copying the powers of omega
-				//  2 - Substracting xi to each entry
-				//  3 - Batch inverting the result
-				//  4 - Multiplying the result by lambdaPowi
-				l = append([]fext.Element{}, powersOfOmega...)
-			)
+			// l is the value of lambda^i / (X - xi). It is computed by:
+			// 	1 - Deep copying the powers of omega
+			//  2 - Substracting xi to each entry
+			//  3 - Batch inverting the result
+			//  4 - Multiplying the result by lambdaPowi
+			l := arena.Get[fext.Element](arenaExt, len(powersOfOmega))
+			vl := extensions.Vector(l)
+			copy(vl, powersOfOmega)
 
-			for j := range l {
-				l[j].Sub(&l[j], &xi)
+			for j := range vl {
+				vl[j].Sub(&vl[j], &xi)
 			}
+			vl = fext.ParBatchInvert(vl, 2)
+			vl.ScalarMul(vl, &powersOfLambda[i])
 
-			l = fext.BatchInvert(l)
-
-			for j := range l {
-				l[j].Mul(&l[j], &powersOfLambda[i])
-			}
-
-			zetaI[i] = l
+			zetaI[i] = vl
 		}
 	})
 

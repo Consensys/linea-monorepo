@@ -1,28 +1,26 @@
 package smartvectors_mixed
 
 import (
+	"math/big"
+
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
-	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // BatchEvaluateLagrange - Extended version supporting both base and extension fields
-func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
+func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element) []fext.Element {
 	results := make([]fext.Element, len(vs))
 	if len(vs) == 0 {
 		return results
 	}
 
 	n := vs[0].Len()
-	lagrangeBasis, err := vortex.ComputeLagrangeBasisAtX(n, x, oncoset...)
-	if err != nil {
-		panic(err)
-	}
-	vLagrangeBasis := extensions.Vector(lagrangeBasis)
+	vLagrangeBasis := computeLagrangeBasisAtX(n, x)
 
 	// Parallel processing - classification and polynomial extraction
 	parallel.Execute(len(vs), func(start, stop int) {
@@ -68,4 +66,49 @@ func BatchEvaluateLagrange(vs []sv.SmartVector, x fext.Element, oncoset ...bool)
 	})
 
 	return results
+}
+
+// TODO taken from gnark-crypto, tuned and adapted for our use case
+// computeLagrangeBasisAtX computes (Lᵢ(x))_{i<n} and numerator for Lagrange basis evaluation
+func computeLagrangeBasisAtX(n int, x fext.Element) extensions.Vector {
+
+	generator, _ := fft.Generator(uint64(n))
+	generatorInv := new(koalabear.Element).Inverse(&generator)
+	one := koalabear.One()
+
+	// (xⁿ - 1) / n
+	var numerator fext.Element
+	numerator.Exp(x, big.NewInt(int64(n)))
+	numerator.B0.A0.Sub(&numerator.B0.A0, &one)
+
+	cardInv := koalabear.NewElement(uint64(n))
+	cardInv.Inverse(&cardInv)
+	numerator.MulByElement(&numerator, &cardInv)
+	numerator.Inverse(&numerator)
+
+	// compute x-1, x/ω-1, x/ω²-1, ...
+	res := make(extensions.Vector, n)
+	res[0] = x
+	for i := 1; i < n; i++ {
+		res[i].MulByElement(&res[i-1], generatorInv)
+	}
+	isRootOfUnity := -1
+	for i := range res {
+		res[i].B0.A0.Sub(&res[i].B0.A0, &one)
+		if res[i].IsZero() { // it means that x is a root of unity
+			isRootOfUnity = i
+			break
+		}
+	}
+	if isRootOfUnity != -1 {
+		res = make(extensions.Vector, n)
+		res[isRootOfUnity].SetOne()
+		return res
+	}
+	res.ScalarMul(res, &numerator)
+
+	// 1/(x-1), 1/(x/ω-1), 1/(x/ω²-1), ...
+	res = fext.ParBatchInvert(res, 0)
+
+	return res
 }
