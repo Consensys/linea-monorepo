@@ -131,14 +131,14 @@ func defineStateManagerColumns(comp *wizard.CompiledIOP, sampleType int, size in
 		res.ValueLONext[i] = createCol(fmt.Sprintf("ValueLONext_%d", i))
 	}
 
-	for i := range provercommon.NbLimbU64 {
+	for i := range provercommon.NbElemForHasingU64 {
 		res.Nonce[i] = createCol(fmt.Sprintf("NONCE_%d", i))
 		res.NonceNew[i] = createCol(fmt.Sprintf("NONCE_NEW_%d", i))
 		res.BlockNumber[i] = createCol(fmt.Sprintf("BlockNumber_%d", i))
 		res.CodeSizeOld[i] = createCol(fmt.Sprintf("CodeSizeOld_%d", i))
 	}
 
-	for i := range provercommon.NbLimbU64 {
+	for i := range provercommon.NbElemForHasingU64 {
 		res.CodeSizeNew[i] = createCol(fmt.Sprintf("CodeSizeNew_%d", i))
 	}
 
@@ -223,7 +223,6 @@ func (smc *HubColumnSet) assignForTest(run *wizard.ProverRuntime, smVectors *moc
 
 func transposeLimbs[T [provercommon.NbLimbEthAddress]field.Element |
 	[provercommon.NbLimbU256]field.Element |
-	[provercommon.NbLimbU64]field.Element |
 	[provercommon.NbLimbU32]field.Element |
 	[provercommon.NbLimbU128]field.Element](inputMatrix []T) [][]field.Element {
 

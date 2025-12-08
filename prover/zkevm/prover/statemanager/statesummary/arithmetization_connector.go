@@ -93,16 +93,16 @@ type HubColumnSet struct {
 	// account data
 	AddressHI                                            [common.NbLimbU32]ifaces.Column
 	AddressLO                                            [common.NbLimbU128]ifaces.Column
-	Nonce, NonceNew                                      [common.NbLimbU64]ifaces.Column
+	Nonce, NonceNew                                      [common.NbElemForHasingU64]ifaces.Column
 	CodeHashHI, CodeHashLO, CodeHashHINew, CodeHashLONew [common.NbLimbU128]ifaces.Column
-	CodeSizeOld, CodeSizeNew                             [common.NbLimbU64]ifaces.Column
+	CodeSizeOld, CodeSizeNew                             [common.NbElemForHasingU64]ifaces.Column
 	BalanceOld, BalanceNew                               [common.NbLimbU128]ifaces.Column
 	// storage data
 	KeyHI, KeyLO                                       [common.NbLimbU128]ifaces.Column
 	ValueHICurr, ValueLOCurr, ValueHINext, ValueLONext [common.NbLimbU128]ifaces.Column
 	// helper numbers
 	DeploymentNumber, DeploymentNumberInf [common.NbLimbU32]ifaces.Column
-	BlockNumber                           [common.NbLimbU64]ifaces.Column
+	BlockNumber                           [common.NbElemForHasingU64]ifaces.Column
 	// helper columns
 	Exists, ExistsNew ifaces.Column
 	PeekAtAccount     ifaces.Column
@@ -141,8 +141,8 @@ type ScpSelector struct {
 	SelectorAccountAddressDiff        ifaces.Column
 	ComputeSelectorAccountAddressDiff wizard.ProverAction
 	// block number key difference selectors
-	SelectorBlockNoDiff        [common.NbLimbU64]ifaces.Column
-	ComputeSelectorBlockNoDiff [common.NbLimbU64]wizard.ProverAction
+	SelectorBlockNoDiff        [common.NbElemForHasingU64]ifaces.Column
+	ComputeSelectorBlockNoDiff [common.NbElemForHasingU64]wizard.ProverAction
 }
 
 /*
@@ -233,10 +233,10 @@ func newScpSelector(comp *wizard.CompiledIOP, smc HubColumnSet) ScpSelector {
 	).GetColumnAndProverAction()
 
 	// compute selectors for the block number difference
-	var selectorBlockNoDiff [common.NbLimbU64]ifaces.Column
-	var computeSelectorBlockNoDiff [common.NbLimbU64]wizard.ProverAction
+	var selectorBlockNoDiff [common.NbElemForHasingU64]ifaces.Column
+	var computeSelectorBlockNoDiff [common.NbElemForHasingU64]wizard.ProverAction
 
-	for i := range common.NbLimbU64 {
+	for i := range common.NbElemForHasingU64 {
 		selectorBlockNoDiff[i], computeSelectorBlockNoDiff[i] = dedicated.IsZero(
 			comp,
 			sym.Sub(

@@ -2,6 +2,8 @@ package common
 
 import (
 	"encoding/binary"
+
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // LimbBytes is the size of one limb in bytes
@@ -32,7 +34,11 @@ func SplitBytes(input []byte, limbBytes ...int) [][]byte {
 func SplitBigEndianUint64(input uint64) [][]byte {
 	inputBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(inputBytes, input)
-	return SplitBytes(inputBytes)
+	// we left padd with zero bytes to
+	// make it a 64 byte array.
+	// Also accumulate 4 bytes per limb
+	res := types.LeftPadded48Zeros(types.LeftPadded(inputBytes[:]))
+	return SplitBytes(res, 4)
 }
 
 // SplitLittleEndianUint64 splits the uint64 input into little endian subarrays of the provided size.
