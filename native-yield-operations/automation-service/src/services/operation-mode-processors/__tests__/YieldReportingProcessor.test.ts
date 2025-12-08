@@ -254,6 +254,7 @@ describe("YieldReportingProcessor", () => {
       "_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
     );
     expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
+    expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledTimes(1);
 
     performanceSpy.mockRestore();
   });
@@ -366,12 +367,12 @@ describe("YieldReportingProcessor", () => {
     amendmentSpy.mockRestore();
   });
 
-  it("_handleRebalance submits report when no rebalance is needed", async () => {
+  it("_handleRebalance reports yield when no rebalance is needed", async () => {
     const processor = createProcessor();
-    const submitSpy = jest
+    const reportYieldSpy = jest
       .spyOn(
-        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-        "_handleSubmitLatestVaultReport",
+        processor as unknown as { _handleReportYield(): Promise<unknown> },
+        "_handleReportYield",
       )
       .mockResolvedValue(undefined);
 
@@ -381,7 +382,7 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleRebalance({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
 
-    expect(submitSpy).toHaveBeenCalledTimes(1);
+    expect(reportYieldSpy).toHaveBeenCalledTimes(1);
   });
 
   it("_handleNoRebalance transfers YieldManager balance when above threshold", async () => {
@@ -392,10 +393,10 @@ describe("YieldReportingProcessor", () => {
     yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
     yieldManager.fundYieldProvider.mockResolvedValueOnce({ transactionHash: "0xtransfer" } as unknown as TransactionReceipt);
     
-    const submitSpy = jest
+    const reportYieldSpy = jest
       .spyOn(
-        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-        "_handleSubmitLatestVaultReport",
+        processor as unknown as { _handleReportYield(): Promise<unknown> },
+        "_handleReportYield",
       )
       .mockResolvedValue(undefined);
 
@@ -408,7 +409,7 @@ describe("YieldReportingProcessor", () => {
     expect(yieldManager.getBalance).toHaveBeenCalledTimes(1);
     expect(yieldManager.fundYieldProvider).toHaveBeenCalledWith(yieldProvider, yieldManagerBalance);
     expect(metricsRecorder.recordTransferFundsMetrics).toHaveBeenCalledWith(yieldProvider, expect.any(Object));
-    expect(submitSpy).toHaveBeenCalledTimes(1);
+    expect(reportYieldSpy).toHaveBeenCalledTimes(1);
   });
 
   it("_handleNoRebalance skips transfer when YieldManager balance is below threshold", async () => {
@@ -418,10 +419,10 @@ describe("YieldReportingProcessor", () => {
     
     yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
     
-    const submitSpy = jest
+    const reportYieldSpy = jest
       .spyOn(
-        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-        "_handleSubmitLatestVaultReport",
+        processor as unknown as { _handleReportYield(): Promise<unknown> },
+        "_handleReportYield",
       )
       .mockResolvedValue(undefined);
 
@@ -434,7 +435,7 @@ describe("YieldReportingProcessor", () => {
     expect(yieldManager.getBalance).toHaveBeenCalledTimes(1);
     expect(yieldManager.fundYieldProvider).not.toHaveBeenCalled();
     expect(metricsRecorder.recordTransferFundsMetrics).not.toHaveBeenCalled();
-    expect(submitSpy).toHaveBeenCalledTimes(1);
+    expect(reportYieldSpy).toHaveBeenCalledTimes(1);
   });
 
   it("_handleRebalance routes excess directions to _handleStakingRebalance", async () => {
@@ -475,10 +476,10 @@ describe("YieldReportingProcessor", () => {
 
   it("_handleStakingRebalance successfully calls rebalance functions and reports yield", async () => {
     const processor = createProcessor();
-    const submitSpy = jest
+    const reportYieldSpy = jest
       .spyOn(
-        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-        "_handleSubmitLatestVaultReport",
+        processor as unknown as { _handleReportYield(): Promise<unknown> },
+        "_handleReportYield",
       )
       .mockResolvedValue(undefined);
 
@@ -494,18 +495,18 @@ describe("YieldReportingProcessor", () => {
     expect(metricsRecorder.recordTransferFundsMetrics).toHaveBeenCalledTimes(1);
     const transferResult = metricsRecorder.recordTransferFundsMetrics.mock.calls[0][1];
     expect(transferResult.isOk()).toBe(true);
-    expect(submitSpy).toHaveBeenCalledTimes(1);
-    submitSpy.mockRestore();
+    expect(reportYieldSpy).toHaveBeenCalledTimes(1);
+    reportYieldSpy.mockRestore();
   });
 
   it("_handleStakingRebalance tolerates failure of fundYieldProvider", async () => {
     yieldManager.fundYieldProvider.mockRejectedValueOnce(new Error("fund fail"));
 
     const processor = createProcessor();
-    const submitSpy = jest
+    const reportYieldSpy = jest
       .spyOn(
-        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-        "_handleSubmitLatestVaultReport",
+        processor as unknown as { _handleReportYield(): Promise<unknown> },
+        "_handleReportYield",
       )
       .mockResolvedValue(undefined);
 
@@ -520,18 +521,18 @@ describe("YieldReportingProcessor", () => {
     expect(metricsRecorder.recordTransferFundsMetrics).toHaveBeenCalledTimes(1);
     const result = metricsRecorder.recordTransferFundsMetrics.mock.calls[0][1];
     expect(result.isErr()).toBe(true);
-    expect(submitSpy).toHaveBeenCalledTimes(1);
-    submitSpy.mockRestore();
+    expect(reportYieldSpy).toHaveBeenCalledTimes(1);
+    reportYieldSpy.mockRestore();
   });
 
   it("_handleStakingRebalance tolerates failure of transferFundsForNativeYieldResult, but will skip fundYieldProvider and metrics update", async () => {
     yieldExtension.transferFundsForNativeYield.mockRejectedValueOnce(new Error("transfer fail"));
 
     const processor = createProcessor();
-    const submitSpy = jest
+    const reportYieldSpy = jest
       .spyOn(
-        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-        "_handleSubmitLatestVaultReport",
+        processor as unknown as { _handleReportYield(): Promise<unknown> },
+        "_handleReportYield",
       )
       .mockResolvedValue(undefined);
 
@@ -544,16 +545,16 @@ describe("YieldReportingProcessor", () => {
     expect(metricsUpdater.recordRebalance).not.toHaveBeenCalled();
     expect(yieldManager.fundYieldProvider).not.toHaveBeenCalled();
     expect(metricsRecorder.recordTransferFundsMetrics).not.toHaveBeenCalled();
-    expect(submitSpy).toHaveBeenCalledTimes(1);
-    submitSpy.mockRestore();
+    expect(reportYieldSpy).toHaveBeenCalledTimes(1);
+    reportYieldSpy.mockRestore();
   });
 
-  it("_handleUnstakingRebalance submits report before withdrawing when shouldReportYield is true", async () => {
+  it("_handleUnstakingRebalance reports yield before withdrawing when shouldReportYield is true", async () => {
     const processor = createProcessor();
-    const submitSpy = jest
+    const reportYieldSpy = jest
       .spyOn(
-        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-        "_handleSubmitLatestVaultReport",
+        processor as unknown as { _handleReportYield(): Promise<unknown> },
+        "_handleReportYield",
       )
       .mockResolvedValue(undefined);
 
@@ -563,15 +564,15 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleUnstakingRebalance(15n, true);
 
-    expect(submitSpy).toHaveBeenCalledTimes(1);
+    expect(reportYieldSpy).toHaveBeenCalledTimes(1);
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledTimes(1);
   });
 
-  it("_handleUnstakingRebalance skips report submission when shouldReportYield is false", async () => {
+  it("_handleUnstakingRebalance skips yield reporting when shouldReportYield is false", async () => {
     const processor = createProcessor();
-    const submitSpy = jest.spyOn(
-      processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-      "_handleSubmitLatestVaultReport",
+    const reportYieldSpy = jest.spyOn(
+      processor as unknown as { _handleReportYield(): Promise<unknown> },
+      "_handleReportYield",
     );
 
     await (
@@ -580,7 +581,7 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleUnstakingRebalance(7n, false);
 
-    expect(submitSpy).not.toHaveBeenCalled();
+    expect(reportYieldSpy).not.toHaveBeenCalled();
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledTimes(1);
   });
 
@@ -600,14 +601,76 @@ describe("YieldReportingProcessor", () => {
     expect(result.isErr()).toBe(true);
   });
 
-  it("_handleSubmitLatestVaultReport continues to report yield when vault submission fails", async () => {
+  describe("_handleReportYield", () => {
+    it("reports yield when _shouldReportYield returns true", async () => {
+      const processor = createProcessor();
+      (processor as unknown as { vault: Address }).vault = vaultAddress;
+      const shouldReportYieldSpy = jest
+        .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
+        .mockResolvedValue(true);
+
+      await (
+        processor as unknown as {
+          _handleReportYield(): Promise<void>;
+        }
+      )._handleReportYield();
+
+      expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
+      expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
+      expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
+        yieldProvider,
+        expect.objectContaining({ isOk: expect.any(Function) }),
+      );
+      expect(logger.info).toHaveBeenCalledWith("_handleReportYield: yield report succeeded");
+      shouldReportYieldSpy.mockRestore();
+    });
+
+    it("skips yield reporting when _shouldReportYield returns false", async () => {
+      const processor = createProcessor();
+      (processor as unknown as { vault: Address }).vault = vaultAddress;
+      const shouldReportYieldSpy = jest
+        .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
+        .mockResolvedValue(false);
+
+      await (
+        processor as unknown as {
+          _handleReportYield(): Promise<void>;
+        }
+      )._handleReportYield();
+
+      expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
+      expect(yieldManager.reportYield).not.toHaveBeenCalled();
+      expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
+      shouldReportYieldSpy.mockRestore();
+    });
+
+    it("tolerates failure of reportYield", async () => {
+      yieldManager.reportYield.mockRejectedValueOnce(new Error("yield fail"));
+
+      const processor = createProcessor();
+      (processor as unknown as { vault: Address }).vault = vaultAddress;
+      const shouldReportYieldSpy = jest
+        .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
+        .mockResolvedValue(true);
+
+      await (
+        processor as unknown as {
+          _handleReportYield(): Promise<void>;
+        }
+      )._handleReportYield();
+
+      expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
+      expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
+      expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
+      shouldReportYieldSpy.mockRestore();
+    });
+  });
+
+  it("_handleSubmitLatestVaultReport handles vault submission failure gracefully", async () => {
     lidoReportClient.submitLatestVaultReport.mockRejectedValueOnce(new Error("vault fail"));
 
     const processor = createProcessor();
     (processor as unknown as { vault: Address }).vault = vaultAddress;
-    const shouldReportYieldSpy = jest
-      .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
-      .mockResolvedValue(true);
 
     await (
       processor as unknown as {
@@ -615,45 +678,14 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleSubmitLatestVaultReport();
 
-    expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
-    expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
-    expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
-      yieldProvider,
-      expect.objectContaining({ isOk: expect.any(Function) }),
-    );
-    shouldReportYieldSpy.mockRestore();
-  });
-
-  it("_handleSubmitLatestVaultReport continues execution when yield reporting fails", async () => {
-    yieldManager.reportYield.mockRejectedValueOnce(new Error("yield fail"));
-
-    const processor = createProcessor();
-    (processor as unknown as { vault: Address }).vault = vaultAddress;
-    const shouldReportYieldSpy = jest
-      .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
-      .mockResolvedValue(true);
-
-    await (
-      processor as unknown as {
-        _handleSubmitLatestVaultReport(): Promise<void>;
-      }
-    )._handleSubmitLatestVaultReport();
-
-    expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
-    expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
-    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report succeeded");
-    expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
+    expect(yieldManager.reportYield).not.toHaveBeenCalled();
     expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
-    shouldReportYieldSpy.mockRestore();
   });
 
-  it("_handleSubmitLatestVaultReport logs success when both steps succeed", async () => {
+  it("_handleSubmitLatestVaultReport logs success when vault report succeeds", async () => {
     const processor = createProcessor();
     (processor as unknown as { vault: Address }).vault = vaultAddress;
-    const shouldReportYieldSpy = jest
-      .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
-      .mockResolvedValue(true);
 
     await (
       processor as unknown as {
@@ -661,24 +693,16 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleSubmitLatestVaultReport();
 
-    expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
     expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
     expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report succeeded");
-    expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
-    expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
-      yieldProvider,
-      expect.objectContaining({ isOk: expect.any(Function) }),
-    );
-    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: yield report succeeded");
-    shouldReportYieldSpy.mockRestore();
+    expect(yieldManager.reportYield).not.toHaveBeenCalled();
+    expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
   });
+
 
   it("_handleSubmitLatestVaultReport skips vault report submission when shouldSubmitVaultReport is false", async () => {
     const processor = createProcessor(false);
     (processor as unknown as { vault: Address }).vault = vaultAddress;
-    const shouldReportYieldSpy = jest
-      .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
-      .mockResolvedValue(true);
 
     await (
       processor as unknown as {
@@ -686,41 +710,15 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleSubmitLatestVaultReport();
 
-    expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
     expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith(
       "_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
     );
-    expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
-    expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
-      yieldProvider,
-      expect.objectContaining({ isOk: expect.any(Function) }),
-    );
-    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: yield report succeeded");
-    shouldReportYieldSpy.mockRestore();
-  });
-
-  it("_handleSubmitLatestVaultReport skips yield reporting when _shouldReportYield returns false", async () => {
-    const processor = createProcessor();
-    (processor as unknown as { vault: Address }).vault = vaultAddress;
-    const shouldReportYieldSpy = jest
-      .spyOn(processor as unknown as { _shouldReportYield(): Promise<boolean> }, "_shouldReportYield")
-      .mockResolvedValue(false);
-
-    await (
-      processor as unknown as {
-        _handleSubmitLatestVaultReport(): Promise<void>;
-      }
-    )._handleSubmitLatestVaultReport();
-
-    expect(shouldReportYieldSpy).toHaveBeenCalledTimes(1);
-    expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
-    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report succeeded");
     expect(yieldManager.reportYield).not.toHaveBeenCalled();
     expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
-    shouldReportYieldSpy.mockRestore();
   });
+
 
   describe("_shouldReportYield", () => {
     const minPositiveYieldToReportWei = 1000000000000000000n;

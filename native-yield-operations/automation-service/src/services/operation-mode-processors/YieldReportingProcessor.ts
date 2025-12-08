@@ -118,12 +118,12 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   private async _process(): Promise<void> {
     // Fetch initial data
     this.vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
-    const [initialRebalanceRequirements] = await Promise.all([
-      this.yieldManagerContractClient.getRebalanceRequirements(this.yieldProvider, this.l2YieldRecipient),
-      this.shouldSubmitVaultReport
-        ? this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(this.vault)
-        : Promise.resolve(),
-    ]);
+    // Fresh vault report is a dependency for getRebalanceRequirements
+    await this._handleSubmitLatestVaultReport();
+    const initialRebalanceRequirements = await this.yieldManagerContractClient.getRebalanceRequirements(
+      this.yieldProvider,
+      this.l2YieldRecipient,
+    );
     this.logger.info(
       `_process - Initial data fetch: initialRebalanceRequirements=${JSON.stringify(initialRebalanceRequirements, bigintReplacer, 2)}`,
     );
@@ -234,8 +234,8 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       await this.operationModeMetricsRecorder.recordTransferFundsMetrics(this.yieldProvider, transferFundsResult);
     }
 
-    this.logger.info("_handleNoRebalance - no rebalance pathway, calling _handleSubmitLatestVaultReport");
-    await this._handleSubmitLatestVaultReport();
+    this.logger.info("_handleNoRebalance - no rebalance pathway, calling _handleReportYield");
+    await this._handleReportYield();
     return;
   }
 
@@ -276,8 +276,8 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     }
 
     // Submit report last
-    this.logger.info("_handleStakingRebalance calling _handleSubmitLatestVaultReport");
-    await this._handleSubmitLatestVaultReport();
+    this.logger.info("_handleStakingRebalance calling _handleReportYield");
+    await this._handleReportYield();
   }
 
   /**
@@ -291,8 +291,8 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   private async _handleUnstakingRebalance(rebalanceAmount: bigint, shouldReportYield: boolean): Promise<void> {
     if (shouldReportYield) {
       // Submit report first
-      this.logger.info("_handleUnstakingRebalance calling _handleSubmitLatestVaultReport");
-      await this._handleSubmitLatestVaultReport();
+      this.logger.info("_handleUnstakingRebalance calling _handleReportYield");
+      await this._handleReportYield();
     }
 
     this.logger.info(`_handleUnstakingRebalance - reserve deficit, rebalanceAmount=${rebalanceAmount}`);
@@ -316,8 +316,9 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @returns {Promise<void>} A promise that resolves when both operations are attempted (regardless of success/failure).
    */
   private async _handleSubmitLatestVaultReport() {
-    // First call: submit vault report (if enabled)
     if (this.shouldSubmitVaultReport) {
+      await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(this.vault);
+
       const vaultResult = await attempt(
         this.logger,
         () => this.lidoAccountingReportClient.submitLatestVaultReport(this.vault),
@@ -332,16 +333,17 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
         "_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
       );
     }
+  }
 
-    // Second call: report yield
+  async _handleReportYield(): Promise<void> {
     if (await this._shouldReportYield()) {
       const yieldResult = await attempt(
         this.logger,
         () => this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient),
-        "_handleSubmitLatestVaultReport - reportYield failed",
+        "_handleReportYield - reportYield failed",
       );
       if (yieldResult.isOk()) {
-        this.logger.info("_handleSubmitLatestVaultReport: yield report succeeded");
+        this.logger.info("_handleReportYield: yield report succeeded");
         await this.operationModeMetricsRecorder.recordReportYieldMetrics(this.yieldProvider, yieldResult);
       }
     }
