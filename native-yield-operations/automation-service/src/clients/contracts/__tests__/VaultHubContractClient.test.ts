@@ -31,7 +31,7 @@ describe("VaultHubContractClient", () => {
   let publicClient: PublicClient;
   const viemContractStub = {
     abi: VaultHubABI,
-    read: { settleableLidoFeesValue: jest.fn(), latestReport: jest.fn() },
+    read: { settleableLidoFeesValue: jest.fn(), latestReport: jest.fn(), isReportFresh: jest.fn() },
   } as any;
 
   beforeEach(() => {
@@ -332,6 +332,62 @@ describe("VaultHubContractClient", () => {
       expect(result).toBe(0n);
       expect(logger.error).toHaveBeenCalledWith(`getLatestVaultReportTimestamp failed, error=${error}`);
       expect(viemContractStub.read.latestReport).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("isReportFresh", () => {
+    const vaultAddress = "0x2222222222222222222222222222222222222222" as Address;
+
+    it("returns true when report is fresh", async () => {
+      const client = createClient();
+      viemContractStub.read.isReportFresh.mockResolvedValueOnce(true);
+
+      const result = await client.isReportFresh(vaultAddress);
+
+      expect(result).toBe(true);
+      expect(viemContractStub.read.isReportFresh).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns false when report is not fresh", async () => {
+      const client = createClient();
+      viemContractStub.read.isReportFresh.mockResolvedValueOnce(false);
+
+      const result = await client.isReportFresh(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isReportFresh).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns false when value is null", async () => {
+      const client = createClient();
+      viemContractStub.read.isReportFresh.mockResolvedValueOnce(null);
+
+      const result = await client.isReportFresh(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isReportFresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns false when value is undefined", async () => {
+      const client = createClient();
+      viemContractStub.read.isReportFresh.mockResolvedValueOnce(undefined);
+
+      const result = await client.isReportFresh(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isReportFresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns false and logs error when call fails", async () => {
+      const client = createClient();
+      const error = new Error("Contract call failed");
+      viemContractStub.read.isReportFresh.mockRejectedValueOnce(error);
+
+      const result = await client.isReportFresh(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(logger.error).toHaveBeenCalledWith(`isReportFresh failed, error=${error}`);
+      expect(viemContractStub.read.isReportFresh).toHaveBeenCalledTimes(1);
     });
   });
 });

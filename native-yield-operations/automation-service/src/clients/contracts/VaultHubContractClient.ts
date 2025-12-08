@@ -137,4 +137,21 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
       return 0n;
     }
   }
+
+  /**
+   * Checks if the report for a given vault is fresh.
+   * Reads the isReportFresh function which returns whether the latest report is considered fresh.
+   *
+   * @param {Address} vault - The vault address to query.
+   * @returns {Promise<boolean>} True if the report is fresh, false otherwise or on error.
+   */
+  async isReportFresh(vault: Address): Promise<boolean> {
+    try {
+      const result = await this.contract.read.isReportFresh([vault]);
+      return result ?? false;
+    } catch (error) {
+      this.logger.error(`isReportFresh failed, error=${error}`);
+      return false;
+    }
+  }
 }

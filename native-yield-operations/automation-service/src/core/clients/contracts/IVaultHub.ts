@@ -6,4 +6,5 @@ export interface IVaultHub<TTransactionReceipt> extends IBaseContractClient {
   getLidoFeePaymentFromTxReceipt(txReceipt: TTransactionReceipt): bigint;
   settleableLidoFeesValue(vault: Address): Promise<bigint | undefined>;
   getLatestVaultReportTimestamp(vault: Address): Promise<bigint>;
+  isReportFresh(vault: Address): Promise<boolean>;
 }
