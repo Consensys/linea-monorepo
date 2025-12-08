@@ -180,9 +180,8 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
         typeof v.withdrawableEpoch === "string" ? parseInt(v.withdrawableEpoch, 10) : v.withdrawableEpoch,
     }));
 
-    let filteredValidators = validators;
     // Filter out validators with balance === 0
-    filteredValidators = validators.filter((v) => v.balance > 0n);
+    const filteredValidators = validators.filter((v) => v.balance > 0n);
 
     this.logger.info(`getExitedValidators succeeded, validatorCount=${filteredValidators.length}`);
     this.logger.debug("getExitedValidators resp", { resp: filteredValidators });
