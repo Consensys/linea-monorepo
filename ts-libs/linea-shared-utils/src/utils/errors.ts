@@ -1,5 +1,6 @@
 import { ResultAsync } from "neverthrow";
 import { ILogger } from "../logging/ILogger";
+import { extractViemErrorInfo } from "./viemErrorExtractor";
 
 /**
  * @notice Wraps a potentially-throwing function (sync or async) into a `ResultAsync`.
@@ -37,6 +38,7 @@ export const tryResult = <T>(fn: () => Promise<T> | T): ResultAsync<T, Error> =>
  */
 export const attempt = <T>(logger: ILogger, fn: () => Promise<T> | T, msg: string): ResultAsync<T, Error> =>
   tryResult(fn).mapErr((error) => {
-    logger.warn(msg, { error });
+    const extractedError = extractViemErrorInfo(error);
+    logger.warn(msg, { error: extractedError });
     return error;
   });

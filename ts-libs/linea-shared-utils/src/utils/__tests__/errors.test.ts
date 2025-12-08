@@ -1,4 +1,5 @@
 import { ILogger } from "../../logging/ILogger";
+import { BaseError } from "viem";
 import { attempt, tryResult } from "../errors";
 
 const buildLogger = () => {
@@ -117,5 +118,38 @@ describe("attempt", () => {
     expect(warnMock.mock.calls[0][1]).toHaveProperty("error");
     expect(warnMock.mock.calls[0][1].error).toBeInstanceOf(Error);
     expect(warnMock.mock.calls[0][1].error.message).toBe("coerce me");
+  });
+
+  it("extracts viem error info when logging BaseError", async () => {
+    const { logger, warnMock } = buildLogger();
+    const viemError = Object.assign(new BaseError("Viem error"), {
+      code: -32015,
+      shortMessage: "Short message",
+      metaMessages: ["Meta message 1"],
+    });
+
+    await attempt(
+      logger,
+      () => {
+        throw viemError;
+      },
+      "viem error occurred",
+    ).match(
+      () => {
+        throw new Error("expected error branch");
+      },
+      (error) => {
+        // The function still returns the original error
+        expect(error).toBe(viemError);
+      },
+    );
+
+    expect(warnMock).toHaveBeenCalledTimes(1);
+    const loggedError = warnMock.mock.calls[0][1].error;
+    // Should be extracted viem error info (plain object), not the original BaseError instance
+    expect(loggedError).not.toBe(viemError);
+    expect(loggedError.code).toBe(-32015);
+    expect(loggedError.shortMessage).toBe("Short message");
+    expect(loggedError.metaMessages).toEqual(["Meta message 1"]);
   });
 });
