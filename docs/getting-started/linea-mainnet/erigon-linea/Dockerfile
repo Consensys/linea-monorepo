@@ -22,8 +22,8 @@ RUN sed -i 's/return nil, fmt.Errorf("\[EIP-7002\] Syscall failure: Empty Code a
 # Patch 3: Return nil instead of error on empty code for EIP-7251 (Linea has empty consolidation contract)
 RUN sed -i 's/return nil, fmt.Errorf("\[EIP-7251\] Syscall failure: Empty Code at ConsolidationRequestAddress=%x", params.ConsolidationRequestAddress)/return nil, nil/' execution/protocol/rules/misc/eip7251.go
 
-# Build Erigon
-RUN make erigon
+# Build Erigon without silkworm (simpler, no external library needed)
+RUN make erigon SILKWORM=false
 
 # Final image
 FROM debian:bookworm-slim
@@ -32,12 +32,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy erigon binary and silkworm library
 COPY --from=builder /build/build/bin/erigon /usr/local/bin/
-COPY --from=builder /build/build/bin/libsilkworm_capi.so /usr/local/lib/
-
-# Update library cache
-RUN ldconfig
 
 EXPOSE 8545 8550 30303 30303/udp
 
