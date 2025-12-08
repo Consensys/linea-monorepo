@@ -32,7 +32,12 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy erigon binary and silkworm library
 COPY --from=builder /build/build/bin/erigon /usr/local/bin/
+COPY --from=builder /build/build/bin/libsilkworm_capi.so /usr/local/lib/
+
+# Update library cache
+RUN ldconfig
 
 EXPOSE 8545 8550 30303 30303/udp
 
