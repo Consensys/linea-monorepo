@@ -614,6 +614,7 @@ contract YieldManager is
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
+    // @dev Call hook before querying withdrawableValue
     _delegatecallBeforeWithdrawFromYieldProvider(_yieldProvider, false);
     _withdrawFromYieldProvider(_yieldProvider, Math256.min(withdrawableValue(_yieldProvider), _amount));
   }
@@ -705,6 +706,7 @@ contract YieldManager is
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
+    // @dev Call hook before querying withdrawableValue
     _delegatecallBeforeWithdrawFromYieldProvider(_yieldProvider, false);
     _addToWithdrawalReserve(
       _yieldProvider,
@@ -767,11 +769,13 @@ contract YieldManager is
       return;
     }
 
+    // @dev Call hook before querying withdrawableValue
+    _delegatecallBeforeWithdrawFromYieldProvider(_yieldProvider, true);
+
     // Insufficient balance on YieldManager, must withdraw from YieldProvider
     uint256 yieldProviderBalance = withdrawableValue(_yieldProvider);
     if (yieldProviderBalance == 0 && yieldManagerBalance == 0) revert NoAvailableFundsToReplenishWithdrawalReserve();
     uint256 withdrawAmount = Math256.min(yieldProviderBalance, targetDeficit - yieldManagerBalance);
-    _delegatecallBeforeWithdrawFromYieldProvider(_yieldProvider, true);
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, withdrawAmount);
     _fundReserve(yieldManagerBalance + withdrawAmount);
 
