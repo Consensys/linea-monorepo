@@ -217,6 +217,7 @@ export class NativeYieldAutomationServiceBootstrap {
       config.rebalance.maxValidatorWithdrawalRequestsPerTransaction,
       this.yieldManagerContractClient,
       this.config.contractAddresses.lidoYieldProviderAddress,
+      config.rebalance.minWithdrawalThresholdEth,
     );
 
     // Processor Services

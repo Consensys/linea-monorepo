@@ -28,6 +28,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
    * @param {number} maxValidatorWithdrawalRequestsPerTransaction - Maximum number of withdrawal requests allowed per transaction.
    * @param {IYieldManager<TransactionReceipt>} yieldManagerContractClient - Client for interacting with YieldManager contracts.
    * @param {Address} yieldProvider - The yield provider address.
+   * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH. Withdrawal requests below this threshold will be filtered out.
    */
   constructor(
     private readonly logger: ILogger,
@@ -36,6 +37,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     private readonly maxValidatorWithdrawalRequestsPerTransaction: number,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
     private readonly yieldProvider: Address,
+    private readonly minWithdrawalThresholdEth: bigint,
   ) {}
 
   /**
@@ -128,8 +130,9 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       const withdrawableWei = v.withdrawableAmount * ONE_GWEI;
       const amountToWithdrawWei = min(withdrawableWei, remainingWei);
       const amountToWithdrawGwei = amountToWithdrawWei / ONE_GWEI;
+      const minWithdrawalThresholdGwei = this.minWithdrawalThresholdEth * ONE_GWEI;
 
-      if (amountToWithdrawGwei > 0n) {
+      if (amountToWithdrawGwei > minWithdrawalThresholdGwei) {
         withdrawalRequests.pubkeys.push(v.publicKey as Hex);
         withdrawalRequests.amountsGwei.push(amountToWithdrawGwei);
         totalWithdrawalRequestAmountWei += amountToWithdrawWei;

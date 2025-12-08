@@ -150,7 +150,7 @@ const createValidator = (
 });
 
 describe("BeaconChainStakingClient", () => {
-  const setupClient = (maxValidatorsPerTx = 3) => {
+  const setupClient = (maxValidatorsPerTx = 3, minWithdrawalThresholdEth = 0n) => {
     const logger = createLoggerMock();
     const {
       metricsUpdater,
@@ -172,6 +172,7 @@ describe("BeaconChainStakingClient", () => {
       maxValidatorsPerTx,
       yieldManagerContractClient,
       YIELD_PROVIDER,
+      minWithdrawalThresholdEth,
     );
 
     return {
@@ -326,6 +327,41 @@ describe("BeaconChainStakingClient", () => {
       expect(requests.amountsGwei).toEqual([1n]);
       expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledTimes(1);
       expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledWith("validator-1" as Hex, 1);
+    });
+
+    it("filters out withdrawal requests below the minimum threshold", async () => {
+      const maxValidatorsPerTx = 3;
+      // Set threshold to 1 ETH = 1 * ONE_GWEI Gwei = 1e9 Gwei
+      // Using 1 ETH threshold means we need withdrawableAmount > 1e9 Gwei to pass
+      const minWithdrawalThresholdEth = 1n;
+      const { client, unstakeMock, mocks } = setupClient(maxValidatorsPerTx, minWithdrawalThresholdEth);
+      const minWithdrawalThresholdGwei = minWithdrawalThresholdEth * ONE_GWEI; // 1e9 Gwei
+      const validators = [
+        createValidator({ publicKey: "validator-1", withdrawableAmount: minWithdrawalThresholdGwei - 1n }), // Below threshold (1e9 - 1 Gwei)
+        createValidator({ publicKey: "validator-2", withdrawableAmount: minWithdrawalThresholdGwei }), // Equal to threshold (1e9 Gwei) - should be filtered
+        createValidator({ publicKey: "validator-3", withdrawableAmount: minWithdrawalThresholdGwei + 1n }), // Above threshold (1e9 + 1 Gwei) - should be included
+      ];
+
+      const remaining = await (
+        client as unknown as {
+          _submitPartialWithdrawalRequests(
+            list: ValidatorBalanceWithPendingWithdrawal[],
+            amountWei: bigint,
+          ): Promise<number>;
+        }
+      )._submitPartialWithdrawalRequests(validators, 10n * ONE_GWEI * ONE_GWEI);
+
+      expect(remaining).toBe(maxValidatorsPerTx - 1);
+      expect(unstakeMock).toHaveBeenCalledTimes(1);
+      const [, requests] = unstakeMock.mock.calls[0];
+      // Only validator-3 should be included (above threshold)
+      expect(requests.pubkeys).toEqual(["validator-3" as Hex]);
+      expect(requests.amountsGwei).toEqual([minWithdrawalThresholdGwei + 1n]);
+      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledTimes(1);
+      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledWith(
+        "validator-3" as Hex,
+        Number(minWithdrawalThresholdGwei + 1n),
+      );
     });
   });
 
