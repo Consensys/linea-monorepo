@@ -255,6 +255,7 @@ export class NativeYieldAutomationServiceBootstrap {
       this.lazyOracleContractClient,
       this.lidoAccountingReportClient,
       this.beaconChainStakingClient,
+      this.vaultHubContractClient,
       config.contractAddresses.lidoYieldProviderAddress,
       config.reporting.shouldSubmitVaultReport,
     );

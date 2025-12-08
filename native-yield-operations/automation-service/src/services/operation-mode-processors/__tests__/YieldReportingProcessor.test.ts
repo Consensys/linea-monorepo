@@ -122,6 +122,7 @@ describe("YieldReportingProcessor", () => {
 
     vaultHubClient = {
       settleableLidoFeesValue: jest.fn(),
+      isReportFresh: jest.fn(),
     } as unknown as jest.Mocked<IVaultHub<TransactionReceipt>>;
 
     lazyOracle.waitForVaultsReportDataUpdatedEvent.mockResolvedValue({
@@ -251,7 +252,7 @@ describe("YieldReportingProcessor", () => {
     expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith(
-      "_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
+      "_handleSubmitLatestVaultReport - Skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
     );
     expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
     expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledTimes(1);
@@ -667,6 +668,7 @@ describe("YieldReportingProcessor", () => {
   });
 
   it("_handleSubmitLatestVaultReport handles vault submission failure gracefully", async () => {
+    vaultHubClient.isReportFresh.mockResolvedValueOnce(false);
     lidoReportClient.submitLatestVaultReport.mockRejectedValueOnce(new Error("vault fail"));
 
     const processor = createProcessor();
@@ -678,12 +680,15 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleSubmitLatestVaultReport();
 
+    expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
     expect(yieldManager.reportYield).not.toHaveBeenCalled();
     expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
   });
 
   it("_handleSubmitLatestVaultReport logs success when vault report succeeds", async () => {
+    vaultHubClient.isReportFresh.mockResolvedValueOnce(false);
+
     const processor = createProcessor();
     (processor as unknown as { vault: Address }).vault = vaultAddress;
 
@@ -693,10 +698,50 @@ describe("YieldReportingProcessor", () => {
       }
     )._handleSubmitLatestVaultReport();
 
+    expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
     expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
-    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report succeeded");
+    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport - Vault report submission succeeded");
     expect(yieldManager.reportYield).not.toHaveBeenCalled();
     expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
+  });
+
+  it("_handleSubmitLatestVaultReport skips submission when report is fresh", async () => {
+    vaultHubClient.isReportFresh.mockResolvedValueOnce(true);
+
+    const processor = createProcessor();
+    (processor as unknown as { vault: Address }).vault = vaultAddress;
+
+    await (
+      processor as unknown as {
+        _handleSubmitLatestVaultReport(): Promise<void>;
+      }
+    )._handleSubmitLatestVaultReport();
+
+    expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
+    expect(lidoReportClient.getLatestSubmitVaultReportParams).not.toHaveBeenCalled();
+    expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
+    expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport - Skipping vault report submission (report is fresh)");
+  });
+
+  it("_handleSubmitLatestVaultReport proceeds with submission when isReportFresh check fails", async () => {
+    vaultHubClient.isReportFresh.mockRejectedValueOnce(new Error("check failed"));
+
+    const processor = createProcessor();
+    (processor as unknown as { vault: Address }).vault = vaultAddress;
+
+    await (
+      processor as unknown as {
+        _handleSubmitLatestVaultReport(): Promise<void>;
+      }
+    )._handleSubmitLatestVaultReport();
+
+    expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to check if report is fresh, proceeding with submission attempt"),
+    );
+    expect(lidoReportClient.getLatestSubmitVaultReportParams).toHaveBeenCalledWith(vaultAddress);
+    expect(lidoReportClient.submitLatestVaultReport).toHaveBeenCalled();
   });
 
 
@@ -713,7 +758,7 @@ describe("YieldReportingProcessor", () => {
     expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith(
-      "_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
+      "_handleSubmitLatestVaultReport - Skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
     );
     expect(yieldManager.reportYield).not.toHaveBeenCalled();
     expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();

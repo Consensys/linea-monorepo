@@ -6,6 +6,7 @@ import type { IYieldManager } from "../../../core/clients/contracts/IYieldManage
 import type { ILazyOracle } from "../../../core/clients/contracts/ILazyOracle.js";
 import type { ILidoAccountingReportClient } from "../../../core/clients/ILidoAccountingReportClient.js";
 import type { IBeaconChainStakingClient } from "../../../core/clients/IBeaconChainStakingClient.js";
+import type { IVaultHub } from "../../../core/clients/contracts/IVaultHub.js";
 import type { TransactionReceipt, Address } from "viem";
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
 import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
@@ -34,6 +35,7 @@ describe("OssificationPendingProcessor", () => {
   let lazyOracle: jest.Mocked<ILazyOracle<TransactionReceipt>>;
   let lidoReportClient: jest.Mocked<ILidoAccountingReportClient>;
   let beaconClient: jest.Mocked<IBeaconChainStakingClient>;
+  let vaultHubClient: jest.Mocked<IVaultHub<TransactionReceipt>>;
   const attemptMock = attempt as jest.MockedFunction<typeof attempt>;
   const msToSecondsMock = msToSeconds as jest.MockedFunction<typeof msToSeconds>;
 
@@ -97,6 +99,10 @@ describe("OssificationPendingProcessor", () => {
       submitMaxAvailableWithdrawalRequests: jest.fn(),
     } as unknown as jest.Mocked<IBeaconChainStakingClient>;
 
+    vaultHubClient = {
+      isReportFresh: jest.fn(),
+    } as unknown as jest.Mocked<IVaultHub<TransactionReceipt>>;
+
     lazyOracle.waitForVaultsReportDataUpdatedEvent.mockResolvedValue({
       result: OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT,
       report: {
@@ -108,6 +114,7 @@ describe("OssificationPendingProcessor", () => {
       txHash: "0xhash" as `0x${string}`,
     });
     yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
+    vaultHubClient.isReportFresh.mockResolvedValue(false);
     lidoReportClient.getLatestSubmitVaultReportParams.mockResolvedValue({
       vault: vaultAddress,
       totalValue: 0n,
@@ -140,6 +147,7 @@ describe("OssificationPendingProcessor", () => {
       lazyOracle,
       lidoReportClient,
       beaconClient,
+      vaultHubClient,
       yieldProvider,
       shouldSubmitVaultReport,
     );
@@ -154,6 +162,7 @@ describe("OssificationPendingProcessor", () => {
     expect(lazyOracle.waitForVaultsReportDataUpdatedEvent).toHaveBeenCalledTimes(1);
     expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
     expect(yieldManager.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
+    expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
     expect(lidoReportClient.getLatestSubmitVaultReportParams).toHaveBeenCalledWith(vaultAddress);
     expect(lidoReportClient.submitLatestVaultReport).toHaveBeenCalledWith(vaultAddress);
     expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
@@ -212,6 +221,7 @@ describe("OssificationPendingProcessor", () => {
     await processor.process();
 
     expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
+    expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
     expect(lidoReportClient.getLatestSubmitVaultReportParams).toHaveBeenCalledWith(vaultAddress);
     expect(metricsRecorder.recordProgressOssificationMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
@@ -223,12 +233,48 @@ describe("OssificationPendingProcessor", () => {
     const processor = createProcessor(false);
     await processor.process();
 
+    expect(vaultHubClient.isReportFresh).not.toHaveBeenCalled();
     expect(lidoReportClient.getLatestSubmitVaultReportParams).not.toHaveBeenCalled();
     expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith("_process - Skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)");
     expect(yieldManager.progressPendingOssification).toHaveBeenCalledWith(yieldProvider);
     expect(metricsRecorder.recordProgressOssificationMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
+
+    performanceSpy.mockRestore();
+  });
+
+  it("skips vault report submission when report is fresh", async () => {
+    vaultHubClient.isReportFresh.mockResolvedValueOnce(true);
+    const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(1000).mockReturnValueOnce(1600);
+
+    const processor = createProcessor();
+    await processor.process();
+
+    expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
+    expect(lidoReportClient.getLatestSubmitVaultReportParams).not.toHaveBeenCalled();
+    expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
+    expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith("_process - Skipping vault report submission (report is fresh)");
+    expect(yieldManager.progressPendingOssification).toHaveBeenCalledWith(yieldProvider);
+
+    performanceSpy.mockRestore();
+  });
+
+  it("proceeds with submission when isReportFresh check fails", async () => {
+    vaultHubClient.isReportFresh.mockRejectedValueOnce(new Error("check failed"));
+    const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(1000).mockReturnValueOnce(1600);
+
+    const processor = createProcessor();
+    await processor.process();
+
+    expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to check if report is fresh, proceeding with submission attempt"),
+    );
+    expect(lidoReportClient.getLatestSubmitVaultReportParams).toHaveBeenCalledWith(vaultAddress);
+    expect(lidoReportClient.submitLatestVaultReport).toHaveBeenCalledWith(vaultAddress);
+    expect(yieldManager.progressPendingOssification).toHaveBeenCalledWith(yieldProvider);
 
     performanceSpy.mockRestore();
   });

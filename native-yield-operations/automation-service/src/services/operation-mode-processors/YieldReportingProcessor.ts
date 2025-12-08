@@ -18,6 +18,7 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
 import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
+import { submitVaultReportIfNotFresh } from "./vaultReportSubmission.js";
 
 /**
  * Processor for YIELD_REPORTING_MODE operations.
@@ -313,26 +314,19 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    *        A key assumption is that it is safe to submit multiple yield reports for the same vault report.
    * @dev We tolerate report submission errors because they should not block rebalances
    * @dev If shouldSubmitVaultReport is false, skips vault report submission but still reports yield.
+   * @dev Checks if report is fresh before submitting to avoid unnecessary transactions.
    * @returns {Promise<void>} A promise that resolves when both operations are attempted (regardless of success/failure).
    */
   private async _handleSubmitLatestVaultReport() {
-    if (this.shouldSubmitVaultReport) {
-      await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(this.vault);
-
-      const vaultResult = await attempt(
-        this.logger,
-        () => this.lidoAccountingReportClient.submitLatestVaultReport(this.vault),
-        "_handleSubmitLatestVaultReport: submitLatestVaultReport failed",
-      );
-      if (vaultResult.isOk()) {
-        this.logger.info("_handleSubmitLatestVaultReport: vault report succeeded");
-        this.metricsUpdater.incrementLidoVaultAccountingReport(this.vault);
-      }
-    } else {
-      this.logger.info(
-        "_handleSubmitLatestVaultReport: skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)",
-      );
-    }
+    await submitVaultReportIfNotFresh(
+      this.logger,
+      this.vaultHubContractClient,
+      this.lidoAccountingReportClient,
+      this.metricsUpdater,
+      this.vault,
+      this.shouldSubmitVaultReport,
+      "_handleSubmitLatestVaultReport",
+    );
   }
 
   async _handleReportYield(): Promise<void> {
