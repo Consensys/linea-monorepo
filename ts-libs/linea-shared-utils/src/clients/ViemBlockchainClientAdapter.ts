@@ -13,6 +13,10 @@ import {
   withTimeout,
   TimeoutError,
   BaseError,
+  EstimateGasExecutionError,
+  RawContractError,
+  ContractFunctionRevertedError,
+  RpcRequestError,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
@@ -187,12 +191,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     // Use a single nonce for all retries.
     const [nonce, gasLimit, chainId] = await Promise.all([
       this.blockchainClient.getTransactionCount({ address: this.contractSignerClient.getAddress() }),
-      this.blockchainClient.estimateGas({
-        account: this.contractSignerClient.getAddress(),
-        to: contractAddress,
-        data: calldata,
-        value,
-      }),
+      this._estimateGasWithErrorHandling(contractAddress, calldata, value),
       this.getChainId(),
     ]);
 
@@ -308,6 +307,129 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     const txHash = await sendRawTransaction(this.blockchainClient, { serializedTransaction });
     const receipt = await waitForTransactionReceipt(this.blockchainClient, { hash: txHash });
     return receipt;
+  }
+
+  /**
+   * Wrapper for estimateGas that handles error parsing and logging.
+   * Extracts enhanced error details from EstimateGasExecutionError and logs them before re-throwing.
+   *
+   * @param {Address} contractAddress - The address of the contract to interact with.
+   * @param {Hex} calldata - The encoded function call data.
+   * @param {bigint} value - The amount of ether to send with the transaction.
+   * @returns {Promise<bigint>} The estimated gas limit.
+   * @throws {Error} Re-throws the original error after logging enhanced details.
+   */
+  private async _estimateGasWithErrorHandling(contractAddress: Address, calldata: Hex, value: bigint): Promise<bigint> {
+    try {
+      return await this.blockchainClient.estimateGas({
+        account: this.contractSignerClient.getAddress(),
+        to: contractAddress,
+        data: calldata,
+        value,
+      });
+    } catch (error) {
+      const parsedError = this._parseEstimateGasError(error);
+      if (parsedError) {
+        this.logger.error("estimateGas failed with enhanced error details", {
+          errorType: parsedError.errorType,
+          rawRevertData: parsedError.rawRevertData,
+          decodedError: parsedError.decodedError,
+          rpcErrorData: parsedError.rpcErrorData,
+          originalMessage: parsedError.originalMessage,
+          contractAddress,
+          calldata,
+          value: value.toString(),
+        });
+      } else {
+        this.logger.error("estimateGas failed", {
+          error,
+          contractAddress,
+          calldata,
+          value: value.toString(),
+        });
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Parses an estimateGas error to extract revert data, decoded error information, and RPC error data.
+   * Uses error.walk() to traverse the error chain and extract information from various error types.
+   *
+   * @param {unknown} error - The error to parse.
+   * @returns {object | undefined} An object containing parsed error information, or undefined if the error is not an EstimateGasExecutionError.
+   */
+  private _parseEstimateGasError(error: unknown):
+    | {
+        errorType: string;
+        rawRevertData?: Hex;
+        decodedError?: {
+          raw: Hex;
+          errorName?: string;
+          args?: unknown;
+          reason?: string;
+        };
+        rpcErrorData?: Hex | unknown;
+        originalMessage: string;
+      }
+    | undefined {
+    if (!(error instanceof EstimateGasExecutionError)) {
+      return undefined;
+    }
+
+    const errorType = error.name || "EstimateGasExecutionError";
+    const originalMessage = error.message;
+
+    // Extract raw revert data from RawContractError
+    const rawError = error.walk() as RawContractError | null;
+    let rawRevertData: Hex | undefined;
+    if (rawError) {
+      rawRevertData =
+        typeof rawError.data === "object" && rawError.data !== null && "data" in rawError.data
+          ? (rawError.data as { data: Hex }).data
+          : typeof rawError.data === "string"
+            ? (rawError.data as Hex)
+            : undefined;
+    }
+
+    // Extract decoded error information from ContractFunctionRevertedError
+    const contractError = error.walk(
+      (e) => e instanceof ContractFunctionRevertedError,
+    ) as ContractFunctionRevertedError | null;
+    let decodedError:
+      | {
+          raw: Hex;
+          errorName?: string;
+          args?: unknown;
+          reason?: string;
+        }
+      | undefined;
+    if (contractError && contractError.raw) {
+      decodedError = {
+        raw: contractError.raw,
+        errorName: contractError.data?.errorName,
+        args: contractError.data?.args,
+        reason: contractError.reason,
+      };
+    }
+
+    // Extract RPC error data from RpcRequestError
+    const rpcError = error.walk((e) => e instanceof RpcRequestError) as RpcRequestError | null;
+    let rpcErrorData: Hex | unknown | undefined;
+    if (rpcError) {
+      rpcErrorData =
+        typeof rpcError.data === "object" && rpcError.data !== null && "data" in rpcError.data
+          ? (rpcError.data as { data: Hex }).data
+          : rpcError.data;
+    }
+
+    return {
+      errorType,
+      rawRevertData,
+      decodedError,
+      rpcErrorData,
+      originalMessage,
+    };
   }
 
   /**

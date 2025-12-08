@@ -12,6 +12,8 @@ import {
   parseSignature,
   serializeTransaction,
   withTimeout,
+  EstimateGasExecutionError,
+  RawContractError,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { ViemBlockchainClientAdapter } from "../ViemBlockchainClientAdapter";
@@ -195,6 +197,177 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(publicClientMock.getChainId).toHaveBeenCalledTimes(1);
     expect(publicClientMock.getBalance).toHaveBeenCalledWith({ address: "0xabc" });
     expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(1);
+  });
+
+  describe("estimateGas error handling", () => {
+    it("logs enhanced error details when EstimateGasExecutionError is thrown with RawContractError", async () => {
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+
+      // Create a proper instance that will pass instanceof check
+      class MockEstimateGasExecutionError extends BaseError {
+        constructor(message: string, cause?: BaseError) {
+          super(message);
+          this.name = "EstimateGasExecutionError";
+          if (cause) {
+            (this as any).cause = cause;
+          }
+        }
+      }
+      // Set prototype to match EstimateGasExecutionError for instanceof checks
+      Object.setPrototypeOf(MockEstimateGasExecutionError.prototype, EstimateGasExecutionError.prototype);
+
+      const rawContractError = Object.assign(new BaseError("execution reverted"), {
+        data: "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000a496e73756666696369656e74000000000000000000000000000000000000000000",
+      }) as RawContractError;
+
+      const estimateGasError = new MockEstimateGasExecutionError("execution reverted", rawContractError);
+
+      // Mock walk() to return rawContractError
+      estimateGasError.walk = jest.fn().mockReturnValue(rawContractError);
+
+      publicClientMock.estimateGas.mockRejectedValue(estimateGasError);
+
+      await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toThrow();
+
+      expect(logger.error).toHaveBeenCalledWith("estimateGas failed with enhanced error details", {
+        errorType: "EstimateGasExecutionError",
+        rawRevertData: "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000a496e73756666696369656e74000000000000000000000000000000000000000000",
+        decodedError: undefined,
+        rpcErrorData: expect.any(String),
+        originalMessage: expect.stringContaining("execution reverted"),
+        contractAddress,
+        calldata,
+        value: "0",
+      });
+    });
+
+    it("logs enhanced error details when EstimateGasExecutionError is thrown with ContractFunctionRevertedError", async () => {
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+
+      // Create a proper instance that will pass instanceof check
+      class MockEstimateGasExecutionError extends BaseError {
+        constructor(message: string, cause?: BaseError) {
+          super(message);
+          this.name = "EstimateGasExecutionError";
+          if (cause) {
+            (this as any).cause = cause;
+          }
+        }
+      }
+      // Set prototype to match EstimateGasExecutionError for instanceof checks
+      Object.setPrototypeOf(MockEstimateGasExecutionError.prototype, EstimateGasExecutionError.prototype);
+
+      const contractError = new ContractFunctionRevertedError({
+        abi: [] as any,
+        functionName: "test",
+        message: "execution reverted",
+      });
+      (contractError as any).raw = "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000a496e73756666696369656e74000000000000000000000000000000000000000000";
+      (contractError as any).data = { errorName: "InsufficientFunds", args: [] };
+      (contractError as any).reason = "Insufficient funds";
+
+      const estimateGasError = new MockEstimateGasExecutionError("execution reverted", contractError);
+
+      // Mock walk() to return contractError when searching for ContractFunctionRevertedError
+      estimateGasError.walk = jest.fn((predicate?: (e: any) => boolean) => {
+        if (predicate && predicate(contractError)) {
+          return contractError;
+        }
+        return contractError;
+      });
+
+      publicClientMock.estimateGas.mockRejectedValue(estimateGasError);
+
+      await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toThrow();
+
+      expect(logger.error).toHaveBeenCalledWith("estimateGas failed with enhanced error details", {
+        errorType: "EstimateGasExecutionError",
+        rawRevertData: undefined,
+        decodedError: {
+          raw: "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000a496e73756666696369656e74000000000000000000000000000000000000000000",
+          errorName: "InsufficientFunds",
+          args: [],
+          reason: "Insufficient funds",
+        },
+        rpcErrorData: expect.anything(),
+        originalMessage: expect.stringContaining("execution reverted"),
+        contractAddress,
+        calldata,
+        value: "0",
+      });
+    });
+
+    it("logs basic error details when non-EstimateGasExecutionError is thrown", async () => {
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+
+      const genericError = new Error("Generic error");
+      publicClientMock.estimateGas.mockRejectedValue(genericError);
+
+      await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toThrow();
+
+      expect(logger.error).toHaveBeenCalledWith("estimateGas failed", {
+        error: genericError,
+        contractAddress,
+        calldata,
+        value: "0",
+      });
+    });
+
+    it("logs enhanced error details when EstimateGasExecutionError is thrown with RpcRequestError", async () => {
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+
+      // Create a proper instance that will pass instanceof check
+      class MockEstimateGasExecutionError extends BaseError {
+        constructor(message: string, cause?: BaseError) {
+          super(message);
+          this.name = "EstimateGasExecutionError";
+          if (cause) {
+            (this as any).cause = cause;
+          }
+        }
+      }
+      // Set prototype to match EstimateGasExecutionError for instanceof checks
+      Object.setPrototypeOf(MockEstimateGasExecutionError.prototype, EstimateGasExecutionError.prototype);
+
+      class MockRpcRequestError extends BaseError {
+        data: { data: string };
+        constructor(message: string, data: { data: string }) {
+          super(message);
+          this.data = data;
+        }
+      }
+
+      const rpcError = new MockRpcRequestError("RPC error", { data: "0x1234" });
+
+      const estimateGasError = new MockEstimateGasExecutionError("execution reverted", rpcError);
+
+      // Mock walk() to return rpcError when searching for RpcRequestError
+      estimateGasError.walk = jest.fn((predicate?: (e: any) => boolean) => {
+        if (predicate && predicate(rpcError)) {
+          return rpcError;
+        }
+        return rpcError;
+      });
+
+      publicClientMock.estimateGas.mockRejectedValue(estimateGasError);
+
+      await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toThrow();
+
+      expect(logger.error).toHaveBeenCalledWith("estimateGas failed with enhanced error details", {
+        errorType: "EstimateGasExecutionError",
+        rawRevertData: expect.any(String),
+        decodedError: undefined,
+        rpcErrorData: "0x1234",
+        originalMessage: expect.stringContaining("execution reverted"),
+        contractAddress,
+        calldata,
+        value: "0",
+      });
+    });
   });
 
   describe("getTxReceipt", () => {
