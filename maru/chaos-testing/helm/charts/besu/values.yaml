@@ -66,7 +66,7 @@ configFiles:
     data-storage-format="BONSAI"
     bonsai-limit-trie-logs-enabled=false
     bonsai-historical-block-limit=1024
-    Xsnapsync-server-enabled=true
+    snapsync-server-enabled=true
 
     # mining
     Xpos-block-creation-repetition-min-duration=100
