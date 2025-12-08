@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
@@ -30,74 +29,23 @@ type RlpTxnFetcher struct {
 	// used to compute EndOfRlpSegment, lights up on active rows i for which AbsTxNum[i]!=AbsTxNum[i+1]
 	SelectorDiffAbsTxId        ifaces.Column
 	ComputeSelectorDiffAbsTxId wizard.ProverAction
-	// chainID a size 1 column used to fetch the ChainID. The implementation is currently unaligned with respect to the
-	// number of limbs.
-	ChainID [common.NbLimbU128]ifaces.Column
-	// a size 1 column used to fetch the number of bytes of the ChainID limb data
-	NBytesChainID ifaces.Column
-	// SelectorChainID is a selector that only lights up when the ChainID column is non-zero
-	SelectorZeroChainID        ifaces.Column
-	ComputeSelectorZeroChainID wizard.ProverAction
 }
 
 func NewRlpTxnFetcher(comp *wizard.CompiledIOP, name string, rt *arith.RlpTxn) RlpTxnFetcher {
 	size := rt.Limbs[0].Size()
 	res := RlpTxnFetcher{
-		AbsTxNum:        util.CreateCol(name, "ABS_TX_NUM", size, comp),
-		AbsTxNumMax:     util.CreateCol(name, "ABS_TX_NUM_MAX", size, comp),
-		NBytes:          util.CreateCol(name, "NBYTES", size, comp),
-		FilterFetched:   util.CreateCol(name, "FILTER_FETCHED", size, comp),
-		EndOfRlpSegment: util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
-		NBytesChainID:   util.CreateCol(name, "N_BYTES_CHAIN_ID", size, comp),
+		AbsTxNum:        util.CreateColBase(name, "ABS_TX_NUM", size, comp),
+		AbsTxNumMax:     util.CreateColBase(name, "ABS_TX_NUM_MAX", size, comp),
+		NBytes:          util.CreateColBase(name, "NBYTES", size, comp),
+		FilterFetched:   util.CreateColBase(name, "FILTER_FETCHED", size, comp),
+		EndOfRlpSegment: util.CreateColBase(name, "END_OF_RLP_SEGMENT", size, comp),
 	}
 
 	for i := range res.Limbs {
-		res.Limbs[i] = util.CreateCol(name, fmt.Sprintf("LIMB_%d", i), size, comp)
-		res.ChainID[i] = util.CreateCol(name, fmt.Sprintf("CHAIN_ID_%d", i), size, comp)
+		res.Limbs[i] = util.CreateColBase(name, fmt.Sprintf("LIMB_%d", i), size, comp)
 	}
 
 	return res
-}
-
-// ConstrainChainID defines constraints for both ChainID and NBytesChainID columns.
-func ConstrainChainID(comp *wizard.CompiledIOP, fetcher *RlpTxnFetcher, name string, rlpTxnArith *arith.RlpTxn) {
-	fetcher.SelectorZeroChainID, fetcher.ComputeSelectorZeroChainID = dedicated.IsZero(
-		comp,
-		ifaces.ColumnAsVariable(rlpTxnArith.ChainID),
-	).GetColumnAndProverAction()
-
-	for i := range fetcher.ChainID {
-		commonconstraints.MustBeConstant(comp, fetcher.ChainID[i])
-	}
-	commonconstraints.MustBeConstant(comp, fetcher.NBytesChainID)
-
-	// constraint for the ChainID column
-	for i := range rlpTxnArith.Limbs {
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("%s_CHAIN_ID_GLOBAL_CONSTRAINT", name, i),
-			sym.Mul(
-				rlpTxnArith.TxnPerspective, // must be 1 to fetch ChainID
-				sym.Sub(
-					1,
-					fetcher.SelectorZeroChainID, // must be non-zero to only select non-zero ChainIDs
-					// there are legacy transactions that have a ChainID field of 0
-				),
-				sym.Sub(
-					rlpTxnArith.ChainID[i],
-					fetcher.ChainID[i],
-			),
-		)
-	}
-	// Constraint for the NBytesChainID column
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("%s_N_BYTES_CHAIN_ID_GLOBAL_CONSTRAINT", name),
-		sym.Sub(
-			2, // ChainID is always 2 bytes
-			fetcher.NBytesChainID,
-		),
-	)
 }
 
 func DefineRlpTxnFetcher(comp *wizard.CompiledIOP, fetcher *RlpTxnFetcher, name string, rlpTxnArith *arith.RlpTxn) {
@@ -108,8 +56,6 @@ func DefineRlpTxnFetcher(comp *wizard.CompiledIOP, fetcher *RlpTxnFetcher, name 
 			column.Shift(fetcher.AbsTxNum, 1),
 		),
 	).GetColumnAndProverAction()
-	// constrain the ChainID
-	ConstrainChainID(comp, fetcher, name, rlpTxnArith)
 
 	// require that the filter on fetched data is a binary column
 	comp.InsertGlobal(
@@ -189,9 +135,6 @@ func AssignRlpTxnFetcher(run *wizard.ProverRuntime, fetcher *RlpTxnFetcher, rlpT
 		limbs[i] = make([]field.Element, size)
 	}
 
-	chainID := make([]field.Element, len(rlpTxnArith.Limbs))
-	var nBytesChainID field.Element
-
 	// counter is used to populate filter.Data and will increment every time we find a new timestamp
 	counter := 0
 
@@ -216,20 +159,7 @@ func AssignRlpTxnFetcher(run *wizard.ProverRuntime, fetcher *RlpTxnFetcher, rlpT
 
 			counter++
 		}
-		// check if we have the ChainID
-		txnPerspective := rlpTxnArith.TxnPerspective.GetColAssignmentAt(run, i)
-		// fetch the ChainID from the limb column
-		fetchedValue := rlpTxnArith.ChainID.GetColAssignmentAt(run, i)
-		if txnPerspective.IsOne() && !fetchedValue.IsZero() {
-			// fetch the ChainID from the limb column
-			for j := range rlpTxnArith.Limbs {
-				fetchedValue := rlpTxnArith.Limbs[j].GetColAssignmentAt(run, i)
-				chainID[j].Set(&fetchedValue)
-			}
-			// fetch the number of bytes for the ChainID
-			fetchedNBytes := field.NewElement(2)
-			nBytesChainID.Set(&fetchedNBytes)
-		}
+
 	}
 
 	for i := 0; i < size-1; i++ {
@@ -247,13 +177,10 @@ func AssignRlpTxnFetcher(run *wizard.ProverRuntime, fetcher *RlpTxnFetcher, rlpT
 	run.AssignColumn(fetcher.NBytes.GetColID(), smartvectors.RightZeroPadded(nBytes[:counter], size))
 	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.RightZeroPadded(filterFetched[:counter], size))
 	run.AssignColumn(fetcher.EndOfRlpSegment.GetColID(), smartvectors.NewRegular(endOfRlpSegment), wizard.DisableAssignmentSizeReduction)
-	run.AssignColumn(fetcher.NBytesChainID.GetColID(), smartvectors.NewConstant(nBytesChainID, size))
 
 	for i := range rlpTxnArith.Limbs {
 		run.AssignColumn(fetcher.Limbs[i].GetColID(), smartvectors.RightZeroPadded(limbs[i][:counter], size))
-		run.AssignColumn(fetcher.ChainID[i].GetColID(), smartvectors.NewConstant(chainID[i], size))
 	}
 
 	fetcher.ComputeSelectorDiffAbsTxId.Run(run)
-	fetcher.ComputeSelectorZeroChainID.Run(run)
 }
