@@ -181,11 +181,16 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		// single column (e.g. isMultiColumn=false) or their collapsed version
 		// otherwise.
 		sCollapsed = make([]sv.SmartVector, len(a.S))
+
+		// fragmentUnionSize contains the total number of rows contained in all
+		// the fragments of T combined.
+		fragmentUnionSize int
 	)
 
 	if !isMultiColumn {
 		for frag := range a.T {
 			tCollapsed[frag] = a.T[frag][0].GetColAssignment(run)
+			fragmentUnionSize += a.T[frag][0].Size()
 		}
 
 		for i := range a.S {
@@ -202,6 +207,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 		for frag := range a.T {
 			tCollapsed[frag] = wizardutils.RandLinCombColAssignment(run, collapsingRandomness, a.T[frag])
+			fragmentUnionSize += tCollapsed[frag].Len()
 		}
 
 		for i := range a.S {
@@ -227,55 +233,157 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 	}
 	mask := uint32(numBuckets - 1)
 
-	// Partition T
-	tBuckets := partitionT(run, a, tCollapsed, numBuckets, mask)
-
-	// Partition S
-	sBuckets := partitionS(run, a, sCollapsed, numBuckets, mask)
-
-	// Process Buckets
-	mapPool := sync.Pool{
-		New: func() any {
-			return make(map[fext.Element][2]uint32, 1024)
-		},
+	type tEntry struct {
+		val  fext.Element
+		frag uint32
+		row  uint32
 	}
 
-	parallel.Execute(numBuckets, func(start, end int) {
-		mapM := mapPool.Get().(map[fext.Element][2]uint32)
-		defer mapPool.Put(mapM)
+	type sEntry struct {
+		val fext.Element
+		mk  field.Element
+	}
 
-		for b := start; b < end; b++ {
-			// Clear map
-			for k := range mapM {
-				delete(mapM, k)
-			}
+	tBuckets := make([][][]tEntry, numBuckets)
+	sBuckets := make([][][]sEntry, numBuckets)
+	tBucketLocks := make([]sync.Mutex, numBuckets)
+	sBucketLocks := make([]sync.Mutex, numBuckets)
 
-			tChunk := tBuckets[b]
-			sChunk := sBuckets[b]
+	hash := func(v *fext.Element) uint32 {
+		h := v.B0.A0.Uint64()
+		h = (h * 31) ^ v.B0.A1.Uint64()
+		h = (h * 31) ^ v.B1.A0.Uint64()
+		h = (h * 31) ^ v.B1.A1.Uint64()
+		return uint32(h)
+	}
 
-			if len(tChunk) == 0 {
-				continue
-			}
+	// Partition T
+	parallel.Execute(len(a.T), func(start, end int) {
+		localTBuckets := make([][]tEntry, numBuckets)
 
-			for _, entry := range tChunk {
-				existing, ok := mapM[entry.val]
+		for frag := start; frag < end; frag++ {
+			size := tCollapsed[frag].Len()
+			rangeStart, rangeEnd := 0, size
+			if a.Segmenter != nil {
+				root, ok := column.RootsOf(a.T[frag], true)[0].(column.Natural)
 				if !ok {
-					mapM[entry.val] = [2]uint32{entry.frag, entry.row}
-				} else {
-					if entry.frag < existing[0] || (entry.frag == existing[0] && entry.row < existing[1]) {
+					utils.Panic("col %v should be a column.Natural %++v", root.ID, root)
+				}
+				rangeStart, rangeEnd = a.Segmenter.SegmentBoundaryOf(run, root)
+			}
+			rangeStart = max(0, rangeStart)
+			rangeEnd = min(size, rangeEnd)
+
+			for k := rangeStart; k < rangeEnd; k++ {
+				v := tCollapsed[frag].GetExt(k)
+				h := hash(&v)
+				b := h & mask
+				localTBuckets[b] = append(localTBuckets[b], tEntry{val: v, frag: uint32(frag), row: uint32(k)})
+			}
+		}
+
+		for b := 0; b < numBuckets; b++ {
+			if len(localTBuckets[b]) > 0 {
+				tBucketLocks[b].Lock()
+				tBuckets[b] = append(tBuckets[b], localTBuckets[b])
+				tBucketLocks[b].Unlock()
+			}
+		}
+	})
+
+	// Partition S
+	parallel.Execute(len(sCollapsed), func(startIdx, endIdx int) {
+		localSBuckets := make([][]sEntry, numBuckets)
+
+		for i := startIdx; i < endIdx; i++ {
+			size := sCollapsed[i].Len()
+			start, stop := 0, size
+			hasFilter := a.SFilter[i] != nil
+			var filter []field.Element
+
+			if a.Segmenter != nil {
+				sCol := column.RootsOf(a.S[i], true)[0].(column.Natural)
+				start, stop = a.Segmenter.SegmentBoundaryOf(run, sCol)
+			}
+
+			if hasFilter {
+				filter = a.SFilter[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+			}
+
+			for k := max(0, start); k < min(stop, size); k++ {
+				if hasFilter {
+					if filter[k].IsZero() {
+						continue
+					}
+					if !filter[k].IsOne() {
+						err := fmt.Errorf(
+							"the filter column `%v` has a non-binary value at position `%v`: (%v)",
+							a.SFilter[i].GetColID(),
+							k,
+							filter[k].String(),
+						)
+						exit.OnUnsatisfiedConstraints(err)
+					}
+				}
+
+				v := sCollapsed[i].GetExt(k)
+
+				mk := field.One()
+				switch {
+				case k == 0 && start < 0 && !hasFilter:
+					mk = field.NewElement(uint64(-start + 1))
+				case k == size-1 && stop > size && !hasFilter:
+					mk = field.NewElement(uint64(stop - size + 1))
+				}
+
+				h := hash(&v)
+				b := h & mask
+				localSBuckets[b] = append(localSBuckets[b], sEntry{val: v, mk: mk})
+			}
+		}
+
+		for b := 0; b < numBuckets; b++ {
+			if len(localSBuckets[b]) > 0 {
+				sBucketLocks[b].Lock()
+				sBuckets[b] = append(sBuckets[b], localSBuckets[b])
+				sBucketLocks[b].Unlock()
+			}
+		}
+	})
+
+	// Process Buckets
+	parallel.Execute(numBuckets, func(start, end int) {
+		for b := start; b < end; b++ {
+			count := 0
+			for _, chunk := range tBuckets[b] {
+				count += len(chunk)
+			}
+
+			mapM := make(map[fext.Element][2]uint32, count)
+
+			for _, chunk := range tBuckets[b] {
+				for _, entry := range chunk {
+					existing, ok := mapM[entry.val]
+					if !ok {
 						mapM[entry.val] = [2]uint32{entry.frag, entry.row}
+					} else {
+						if entry.frag < existing[0] || (entry.frag == existing[0] && entry.row < existing[1]) {
+							mapM[entry.val] = [2]uint32{entry.frag, entry.row}
+						}
 					}
 				}
 			}
 
-			for _, entry := range sChunk {
-				pos, ok := mapM[entry.val]
-				if !ok {
-					utils.Panic("entry %v is not included in the table.", entry.val)
-				}
+			for _, chunk := range sBuckets[b] {
+				for _, entry := range chunk {
+					pos, ok := mapM[entry.val]
+					if !ok {
+						utils.Panic("entry %v is not included in the table.", entry.val)
+					}
 
-				mFrag, posInFragM := pos[0], pos[1]
-				m[mFrag][posInFragM].Add(&m[mFrag][posInFragM], &entry.mk)
+					mFrag, posInFragM := pos[0], pos[1]
+					m[mFrag][posInFragM].Add(&m[mFrag][posInFragM], &entry.mk)
+				}
 			}
 		}
 	})
@@ -284,289 +392,6 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		run.AssignColumn(a.M[frag].GetColID(), sv.NewRegular(m[frag]), wizard.DisableAssignmentSizeReduction)
 	}
 
-}
-
-type tEntry struct {
-	val  fext.Element
-	frag uint32
-	row  uint32
-}
-
-type sEntry struct {
-	val fext.Element
-	mk  field.Element
-}
-
-func hash(v *fext.Element) uint32 {
-	h := v.B0.A0.Uint64()
-	h = (h * 31) ^ v.B0.A1.Uint64()
-	h = (h * 31) ^ v.B1.A0.Uint64()
-	h = (h * 31) ^ v.B1.A1.Uint64()
-	return uint32(h)
-}
-
-// partitionT implements a two-pass parallel partitioning algorithm to avoid
-// excessive allocations and synchronization overhead.
-//
-// Pass 1: Count the number of items for each bucket in parallel.
-//
-//	Each processor maintains local counts.
-//	After the pass, we calculate global offsets for each processor/bucket combination.
-//	This allows us to pre-allocate the exact size for each bucket.
-//
-// Pass 2: Fill the buckets in parallel.
-//
-//	Each processor writes to the pre-allocated buckets using the computed offsets.
-//	Since the offsets are unique per processor, no locks are required during filling.
-func partitionT(run *wizard.ProverRuntime, a MAssignmentTask, tCollapsed []sv.SmartVector, numBuckets int, mask uint32) [][]tEntry {
-	numProcs := runtime.NumCPU()
-	if len(tCollapsed) < numProcs {
-		numProcs = max(1, len(tCollapsed))
-	}
-
-	counts := make([][]int, numProcs)
-	chunkSize := (len(tCollapsed) + numProcs - 1) / numProcs
-
-	var wg sync.WaitGroup
-	wg.Add(numProcs)
-
-	for i := 0; i < numProcs; i++ {
-		go func(procID int) {
-			defer wg.Done()
-			start := procID * chunkSize
-			end := min(start+chunkSize, len(tCollapsed))
-			if start >= end {
-				return
-			}
-
-			localCounts := make([]int, numBuckets)
-			for frag := start; frag < end; frag++ {
-				size := tCollapsed[frag].Len()
-				rangeStart, rangeEnd := 0, size
-				if a.Segmenter != nil {
-					root, ok := column.RootsOf(a.T[frag], true)[0].(column.Natural)
-					if !ok {
-						utils.Panic("col %v should be a column.Natural %++v", root.ID, root)
-					}
-					rangeStart, rangeEnd = a.Segmenter.SegmentBoundaryOf(run, root)
-				}
-				rangeStart = max(0, rangeStart)
-				rangeEnd = min(size, rangeEnd)
-
-				for k := rangeStart; k < rangeEnd; k++ {
-					v := tCollapsed[frag].GetExt(k)
-					h := hash(&v)
-					localCounts[h&mask]++
-				}
-			}
-			counts[procID] = localCounts
-		}(i)
-	}
-	wg.Wait()
-
-	writeOffsets := make([][]int, numProcs)
-	for i := range writeOffsets {
-		writeOffsets[i] = make([]int, numBuckets)
-	}
-	bucketSizes := make([]int, numBuckets)
-
-	for b := 0; b < numBuckets; b++ {
-		sum := 0
-		for p := 0; p < numProcs; p++ {
-			if counts[p] == nil {
-				continue
-			}
-			writeOffsets[p][b] = sum
-			sum += counts[p][b]
-		}
-		bucketSizes[b] = sum
-	}
-
-	buckets := make([][]tEntry, numBuckets)
-	for b := 0; b < numBuckets; b++ {
-		if bucketSizes[b] > 0 {
-			buckets[b] = make([]tEntry, bucketSizes[b])
-		}
-	}
-
-	wg.Add(numProcs)
-	for i := 0; i < numProcs; i++ {
-		go func(procID int) {
-			defer wg.Done()
-			start := procID * chunkSize
-			end := min(start+chunkSize, len(tCollapsed))
-			if start >= end {
-				return
-			}
-
-			for frag := start; frag < end; frag++ {
-				size := tCollapsed[frag].Len()
-				rangeStart, rangeEnd := 0, size
-				if a.Segmenter != nil {
-					root, _ := column.RootsOf(a.T[frag], true)[0].(column.Natural)
-					rangeStart, rangeEnd = a.Segmenter.SegmentBoundaryOf(run, root)
-				}
-				rangeStart = max(0, rangeStart)
-				rangeEnd = min(size, rangeEnd)
-
-				for k := rangeStart; k < rangeEnd; k++ {
-					v := tCollapsed[frag].GetExt(k)
-					h := hash(&v)
-					b := h & mask
-					offset := writeOffsets[procID][b]
-					buckets[b][offset] = tEntry{val: v, frag: uint32(frag), row: uint32(k)}
-					writeOffsets[procID][b]++
-				}
-			}
-		}(i)
-	}
-	wg.Wait()
-
-	return buckets
-}
-
-// partitionS follows the same two-pass parallel partitioning strategy as partitionT.
-func partitionS(run *wizard.ProverRuntime, a MAssignmentTask, sCollapsed []sv.SmartVector, numBuckets int, mask uint32) [][]sEntry {
-	numProcs := runtime.NumCPU()
-	if len(sCollapsed) < numProcs {
-		numProcs = max(1, len(sCollapsed))
-	}
-
-	counts := make([][]int, numProcs)
-	chunkSize := (len(sCollapsed) + numProcs - 1) / numProcs
-
-	var wg sync.WaitGroup
-	wg.Add(numProcs)
-
-	for i := 0; i < numProcs; i++ {
-		go func(procID int) {
-			defer wg.Done()
-			start := procID * chunkSize
-			end := min(start+chunkSize, len(sCollapsed))
-			if start >= end {
-				return
-			}
-
-			localCounts := make([]int, numBuckets)
-			for i := start; i < end; i++ {
-				size := sCollapsed[i].Len()
-				start, stop := 0, size
-				hasFilter := a.SFilter[i] != nil
-				var filter []field.Element
-
-				if a.Segmenter != nil {
-					sCol := column.RootsOf(a.S[i], true)[0].(column.Natural)
-					start, stop = a.Segmenter.SegmentBoundaryOf(run, sCol)
-				}
-
-				if hasFilter {
-					filter = a.SFilter[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-				}
-
-				for k := max(0, start); k < min(stop, size); k++ {
-					if hasFilter {
-						if filter[k].IsZero() {
-							continue
-						}
-					}
-					v := sCollapsed[i].GetExt(k)
-					h := hash(&v)
-					localCounts[h&mask]++
-				}
-			}
-			counts[procID] = localCounts
-		}(i)
-	}
-	wg.Wait()
-
-	writeOffsets := make([][]int, numProcs)
-	for i := range writeOffsets {
-		writeOffsets[i] = make([]int, numBuckets)
-	}
-	bucketSizes := make([]int, numBuckets)
-
-	for b := 0; b < numBuckets; b++ {
-		sum := 0
-		for p := 0; p < numProcs; p++ {
-			if counts[p] == nil {
-				continue
-			}
-			writeOffsets[p][b] = sum
-			sum += counts[p][b]
-		}
-		bucketSizes[b] = sum
-	}
-
-	buckets := make([][]sEntry, numBuckets)
-	for b := 0; b < numBuckets; b++ {
-		if bucketSizes[b] > 0 {
-			buckets[b] = make([]sEntry, bucketSizes[b])
-		}
-	}
-
-	wg.Add(numProcs)
-	for i := 0; i < numProcs; i++ {
-		go func(procID int) {
-			defer wg.Done()
-			start := procID * chunkSize
-			end := min(start+chunkSize, len(sCollapsed))
-			if start >= end {
-				return
-			}
-
-			for i := start; i < end; i++ {
-				size := sCollapsed[i].Len()
-				start, stop := 0, size
-				hasFilter := a.SFilter[i] != nil
-				var filter []field.Element
-
-				if a.Segmenter != nil {
-					sCol := column.RootsOf(a.S[i], true)[0].(column.Natural)
-					start, stop = a.Segmenter.SegmentBoundaryOf(run, sCol)
-				}
-
-				if hasFilter {
-					filter = a.SFilter[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-				}
-
-				for k := max(0, start); k < min(stop, size); k++ {
-					if hasFilter {
-						if filter[k].IsZero() {
-							continue
-						}
-						if !filter[k].IsOne() {
-							err := fmt.Errorf(
-								"the filter column `%v` has a non-binary value at position `%v`: (%v)",
-								a.SFilter[i].GetColID(),
-								k,
-								filter[k].String(),
-							)
-							exit.OnUnsatisfiedConstraints(err)
-						}
-					}
-
-					v := sCollapsed[i].GetExt(k)
-
-					mk := field.One()
-					switch {
-					case k == 0 && start < 0 && !hasFilter:
-						mk = field.NewElement(uint64(-start + 1))
-					case k == size-1 && stop > size && !hasFilter:
-						mk = field.NewElement(uint64(stop - size + 1))
-					}
-
-					h := hash(&v)
-					b := h & mask
-					offset := writeOffsets[procID][b]
-					buckets[b][offset] = sEntry{val: v, mk: mk}
-					writeOffsets[procID][b]++
-				}
-			}
-		}(i)
-	}
-	wg.Wait()
-
-	return buckets
 }
 
 // ZAssignmentTask represents a prover task of assignming the columns
