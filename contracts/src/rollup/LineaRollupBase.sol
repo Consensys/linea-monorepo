@@ -361,12 +361,12 @@ abstract contract LineaRollupBase is
         ) != lastFinalizedState
       ) {
         revert FinalizationStateIncorrect(
+          lastFinalizedState,
           FinalizedStateHashing._computeLastFinalizedState(
             _finalizationData.lastFinalizedL1RollingHashMessageNumber,
             _finalizationData.lastFinalizedL1RollingHash,
             _finalizationData.lastFinalizedTimestamp
-          ),
-          lastFinalizedState
+          )
         );
       }
     }

@@ -183,8 +183,8 @@ describe("Linea Rollup contract: Finalization", () => {
           .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, "FinalizationStateIncorrect", [
-          expectedHashValue,
           actualHashValue,
+          expectedHashValue,
         ]);
       });
 

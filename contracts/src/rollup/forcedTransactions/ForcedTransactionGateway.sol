@@ -139,12 +139,12 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
             _lastFinalizedState.timestamp
           ),
         FinalizationStateIncorrect(
+          currentFinalizedState,
           FinalizedStateHashing._computeLastFinalizedState(
             _lastFinalizedState.messageNumber,
             _lastFinalizedState.messageRollingHash,
             _lastFinalizedState.timestamp
-          ),
-          currentFinalizedState
+          )
         )
       );
     }

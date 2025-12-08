@@ -380,7 +380,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         forcedTransactionGateway,
         forcedTransactionGateway.submitForcedTransaction(forcedTransaction, corruptedFinalizedStateStruct),
         "FinalizationStateIncorrect",
-        [corruptedFinalizationStateHash, defaultFinalizedStateHash],
+        [defaultFinalizedStateHash, corruptedFinalizationStateHash],
       );
     });
 
