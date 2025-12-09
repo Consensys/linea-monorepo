@@ -250,7 +250,7 @@ func CompileCircuitWithRangeCheck(circ frontend.Circuit, addGates bool) (*cs.Spa
 func CompileCircuitWithExternalHasher(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func() [][3][2]int, error) {
 
 	gnarkBuilder, hshGetter := hash_factory.NewExternalHasherBuilder(addGates)
-
+	fmt.Printf("Created external hasher builder=\n%v \n", gnarkBuilder)
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkBuilder, circ)
 	if err != nil {
 		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
