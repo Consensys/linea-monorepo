@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -36,16 +37,14 @@ type EcAdd struct {
 	*Limits
 }
 
-func NewEcAddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcAdd {
-	src := &EcDataAddSource{
-		CsEcAdd: comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECADD"),
-		Index:   comp.Columns.GetHandle("ecdata.INDEX"),
-		IsData:  comp.Columns.GetHandle("ecdata.IS_ECADD_DATA"),
-		IsRes:   comp.Columns.GetHandle("ecdata.IS_ECADD_RESULT"),
-	}
+func NewEcAddZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetization.Arithmetization) *EcAdd {
 
-	for i := 0; i < common.NbLimbU128; i++ {
-		src.Limbs[i] = comp.Columns.GetHandle(ifaces.ColIDf("ecdata.LIMB_%d", i))
+	src := &EcDataAddSource{
+		CsEcAdd: arith.ColumnOf(comp, "ecdata", "CIRCUIT_SELECTOR_ECADD"),
+		Index:   arith.ColumnOf(comp, "ecdata", "INDEX"),
+		IsData:  arith.ColumnOf(comp, "ecdata", "IS_ECADD_DATA"),
+		IsRes:   arith.ColumnOf(comp, "ecdata", "IS_ECADD_RESULT"),
+		Limbs:   arith.LimbColumnsOfArr8(comp, "ecdata", "LIMB"),
 	}
 
 	return newEcAdd(

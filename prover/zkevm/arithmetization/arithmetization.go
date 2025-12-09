@@ -165,6 +165,28 @@ func (a *Arithmetization) LimbColumnsOf(comp *wizard.CompiledIOP, mod string, re
 	return cols
 }
 
+// LimbColumnsOfArr2 is sugar for
+//
+//	```
+//	 	c := a.LimbColumnsOf(comp, mod, regName, 2)
+//		return [2]ifaces.Column(c)
+//	 ```
+func (a *Arithmetization) LimbColumnsOfArr2(comp *wizard.CompiledIOP, mod string, regName string) [2]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, regName, 2)
+	return [2]ifaces.Column(c)
+}
+
+// LimbColumnsOfArr3 is sugar for
+//
+//	```
+//	 	c := a.LimbColumnsOf(comp, mod, regName, 3)
+//		return [3]ifaces.Column(c)
+//	 ```
+func (a *Arithmetization) LimbColumnsOfArr3(comp *wizard.CompiledIOP, mod string, regName string) [3]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, regName, 3)
+	return [3]ifaces.Column(c)
+}
+
 // LimbColumnsOfArr4 is sugar for
 //
 //	```
