@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import { YieldProviderBase } from "./YieldProviderBase.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
