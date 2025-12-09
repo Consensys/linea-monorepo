@@ -117,6 +117,7 @@ func init() {
 	RegisterImplementation(query.Range{})
 	RegisterImplementation(query.UnivariateEval{})
 	RegisterImplementation(query.Projection{})
+	RegisterImplementation(&query.PlonkInWizard{})
 	RegisterImplementation(query.PlonkInWizard{})
 	RegisterImplementation(query.LocalOpening{})
 	RegisterImplementation(query.LogDerivativeSum{})
