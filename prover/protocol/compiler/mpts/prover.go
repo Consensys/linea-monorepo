@@ -60,8 +60,20 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 	// \sum_{k, i \in claims} \rho^k \lambda^i P(X) / (X - xi)
 	parallel.Execute(len(qa.Polys), func(start, stop int) {
 
-		localPartialQuotient := make(extensions.Vector, qa.getNumRow())
 		localRes := make(extensions.Vector, qa.getNumRow())
+
+		// Buffers for reuse
+		combinedPoly := make(extensions.Vector, qa.getNumRow())
+		tmpPoly := make(extensions.Vector, qa.getNumRow())
+
+		// Group polynomials by evaluation points
+		type group struct {
+			points  []int
+			polyIDs []int
+		}
+		var groups []group
+
+		hasWork := false
 
 		for polyID := start; polyID < stop; polyID++ {
 
@@ -79,33 +91,106 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 				continue
 			}
 
-			foundNonConstantPoly = true
+			hasWork = true
 			pointsOfPoly := qa.EvalPointOfPolys[polyID]
 
-			copy(localPartialQuotient, zetas[pointsOfPoly[0]])
-			for j := 1; j < len(pointsOfPoly); j++ {
-				zeta := zetas[pointsOfPoly[j]]
-				localPartialQuotient.Add(localPartialQuotient, zeta)
+			// Find group
+			found := false
+			for i := range groups {
+				// Check equality of points
+				if len(groups[i].points) != len(pointsOfPoly) {
+					continue
+				}
+				match := true
+				for k, p := range pointsOfPoly {
+					if groups[i].points[k] != p {
+						match = false
+						break
+					}
+				}
+				if match {
+					groups[i].polyIDs = append(groups[i].polyIDs, polyID)
+					found = true
+					break
+				}
+			}
+			if !found {
+				groups = append(groups, group{points: pointsOfPoly, polyIDs: []int{polyID}})
+			}
+		}
+
+		if hasWork {
+			quotientLock.Lock()
+			foundNonConstantPoly = true
+			quotientLock.Unlock()
+		}
+
+		for _, g := range groups {
+			polyIDs := g.polyIDs
+			if len(polyIDs) == 0 {
+				continue
 			}
 
-			if polySV.Len() < qa.getNumRow() {
-				// TODO @gbotrel this does not seem to be tested.
-				poly := polySV.IntoRegVecSaveAllocExt()
-				_ldeOfExt(poly, polySV.Len(), qa.getNumRow())
-				localPartialQuotient.Mul(localPartialQuotient, poly)
-			} else {
-				switch v := polySV.(type) {
-				case *smartvectors.Regular:
-					poly := field.Vector(*v)
-					localPartialQuotient.MulByElement(localPartialQuotient, poly)
-				default:
-					poly := polySV.IntoRegVecSaveAllocExt()
-					localPartialQuotient.Mul(localPartialQuotient, poly)
+			// Compute combinedPoly = sum(rho^k * P_k)
+			first := true
+			for _, polyID := range polyIDs {
+				polySV := qa.Polys[polyID].GetColAssignment(run)
+
+				// Optimization for full-size regular vectors (base field)
+				if reg, ok := polySV.(*smartvectors.Regular); ok && polySV.Len() == qa.getNumRow() {
+					poly := field.Vector(*reg)
+					rho := powersOfRho[polyID]
+
+					if first {
+						for i := 0; i < len(poly); i++ {
+							combinedPoly[i] = rho
+						}
+						combinedPoly.MulByElement(combinedPoly, poly)
+						// for i := 0; i < len(poly); i++ {
+						// 	// combinedPoly[i] = rho * poly[i]
+						// 	combinedPoly[i].B0.A0.Mul(&rho.B0.A0, &poly[i])
+						// 	combinedPoly[i].B0.A1.Mul(&rho.B0.A1, &poly[i])
+						// 	combinedPoly[i].B1.A0.Mul(&rho.B1.A0, &poly[i])
+						// 	combinedPoly[i].B1.A1.Mul(&rho.B1.A1, &poly[i])
+						// }
+						first = false
+					} else {
+						combinedPoly.MulAccByElement(poly, &rho)
+					}
+					continue
+				}
+
+				if polySV.Len() < qa.getNumRow() {
+					polySV.WriteInSliceExt(tmpPoly[:polySV.Len()])
+					_ldeOfExt(tmpPoly, polySV.Len(), qa.getNumRow())
+				} else {
+					polySV.WriteInSliceExt(tmpPoly)
+				}
+
+				tmpPoly.ScalarMul(tmpPoly, &powersOfRho[polyID])
+
+				if first {
+					copy(combinedPoly, tmpPoly)
+					first = false
+				} else {
+					combinedPoly.Add(combinedPoly, tmpPoly)
 				}
 			}
 
-			localPartialQuotient.ScalarMul(localPartialQuotient, &powersOfRho[polyID])
-			localRes.Add(localRes, localPartialQuotient)
+			// Reconstruct points from key or just take from first poly
+			pointsOfPoly := g.points
+
+			// Compute sumZeta using tmpPoly as buffer
+			copy(tmpPoly, zetas[pointsOfPoly[0]])
+			for j := 1; j < len(pointsOfPoly); j++ {
+				tmpPoly.Add(tmpPoly, zetas[pointsOfPoly[j]])
+			}
+
+			// Multiply combinedPoly by sumZeta
+			combinedPoly.Mul(combinedPoly, tmpPoly)
+
+			// Add to localRes
+			localRes.Add(localRes, combinedPoly)
 		}
 
 		quotientLock.Lock()
@@ -162,14 +247,13 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 	// quotient -= \sum_i scalars[i] * zetas[i]
 	// We parallelize over the rows of the quotient.
 	parallel.Execute(qa.getNumRow(), func(start, stop int) {
-		scratch := make(extensions.Vector, len(qa.Queries))
-
+		transposed := make(extensions.Vector, len(qa.Queries))
 		for row := start; row < stop; row++ {
-			// transpose zetas to have easy access per row
+			// transpose zetas to access by row
 			for i := 0; i < len(qa.Queries); i++ {
-				scratch[i] = zetas[i][row]
+				transposed[i] = zetas[i][row]
 			}
-			sum := scalars.InnerProduct(scratch)
+			sum := transposed.InnerProduct(scalars)
 			quotient[row].Sub(&quotient[row], &sum)
 		}
 	})
