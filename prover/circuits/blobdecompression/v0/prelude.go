@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -13,7 +14,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress/lzss"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -147,7 +147,7 @@ func boolToVar(b bool) zk.WrappedVariable {
 func computeSnarkHash(stream []byte) ([]byte, error) {
 	const blobBytes = 32 * 4096
 
-	h := mimc.NewMiMC()
+	h := hasher_factory.NewMiMC()
 
 	if len(stream) > blobBytes {
 		return nil, fmt.Errorf("the compressed blob is too large : %v bytes, the limit is %v bytes", len(stream), blobBytes)

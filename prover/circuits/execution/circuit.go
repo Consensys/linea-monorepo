@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 

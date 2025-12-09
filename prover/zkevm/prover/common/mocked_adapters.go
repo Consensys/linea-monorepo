@@ -1,9 +1,10 @@
 package common
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"math/big"
+
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // BlockCompression mocked version of mimc.BlockCompression that operates on
@@ -14,7 +15,7 @@ func BlockCompression(oldState, block []field.Element) []field.Element {
 	recomposeField(oldState, 16, &oldStateField)
 	recomposeField(block, 16, &blockField)
 
-	newStateField := mimc.BlockCompression(oldStateField, blockField)
+	newStateField := hasher_factory.BlockCompression(oldStateField, blockField)
 
 	newStateLimbs := make([]field.Element, 16)
 	decomposeField(newStateField, 16, newStateLimbs)

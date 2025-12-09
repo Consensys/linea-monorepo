@@ -3,7 +3,7 @@ package common
 import (
 	"strconv"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -105,6 +105,6 @@ func mimcVecCompression(oldState, block, newState []field.Element) {
 	}
 
 	for i := range oldState {
-		newState[i] = mimc.BlockCompression(oldState[i], block[i])
+		newState[i] = hasher_factory.BlockCompression(oldState[i], block[i])
 	}
 }

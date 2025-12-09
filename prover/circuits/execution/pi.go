@@ -7,7 +7,7 @@ import (
 	gnarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -91,8 +91,8 @@ func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) zk.WrappedVariable {
 			)
 		)
 
-		tmpRes := mimc.GnarkBlockCompression(api, res, hi)
-		tmpRes = mimc.GnarkBlockCompression(api, tmpRes, lo)
+		tmpRes := hasher_factory.GnarkBlockCompression(api, res, hi)
+		tmpRes = hasher_factory.GnarkBlockCompression(api, tmpRes, lo)
 
 		res = api.Select(isUsed, tmpRes, res)
 		sumIsUsed = api.Add(sumIsUsed, isUsed)

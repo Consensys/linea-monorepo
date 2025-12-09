@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -126,7 +126,7 @@ func buildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompil
 	appendLeaf := func(comp *wizard.CompiledIOP) {
 		var (
 			vk0, vk1 = getVerifyingKeyPair(comp)
-			leafF    = mimc.HashVec([]field.Element{vk0, vk1})
+			leafF    = hasher_factory.HashVec([]field.Element{vk0, vk1})
 			leaf     types.Bytes32
 		)
 
@@ -231,7 +231,7 @@ func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.
 			Siblings: make([]types.Bytes32, merkleDepth),
 		}
 		smtCfg = &smt.Config{HashFunc: hashtypes.MiMC, Depth: merkleDepth}
-		leafF  = mimc.HashVec(vk[:])
+		leafF  = hasher_factory.HashVec(vk[:])
 		leaf   = types.Bytes32{}
 	)
 
@@ -275,7 +275,7 @@ func checkVkMembershipGnark(
 			Path:     leafPosition,
 			Siblings: proofF,
 		}
-		leaf = mimc.GnarkHashVec(api, vk[:])
+		leaf = hasher_factory.GnarkHashVec(api, vk[:])
 	)
 
 	if merkleDepth != len(proofF) {
@@ -332,8 +332,8 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 	c.PublicInputs.TargetNbSegments = declareListOfPiColumns(c.Wiop, 0, TargetNbSegmentPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountGL = declareListOfPiColumns(c.Wiop, 0, SegmentCountGLPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountLPP = declareListOfPiColumns(c.Wiop, 0, SegmentCountLPPPublicInputBase, c.ModuleNumber)
-	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, 0, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
-	c.PublicInputs.SharedRandomnessMultiSetHash = declareListOfPiColumns(c.Wiop, 0, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
+	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, 0, GeneralMultiSetPublicInputBase, hasher_factory.MSetHashSize)
+	c.PublicInputs.SharedRandomnessMultiSetHash = declareListOfPiColumns(c.Wiop, 0, SharedRandomnessMultiSetPublicInputBase, hasher_factory.MSetHashSize)
 	c.PublicInputs.LogDerivativeSum = declarePiColumn(c.Wiop, LogDerivativeSumPublicInput)
 	c.PublicInputs.HornerSum = declarePiColumn(c.Wiop, HornerPublicInput)
 	c.PublicInputs.GrandProduct = declarePiColumn(c.Wiop, GrandProductPublicInput)
@@ -392,8 +392,8 @@ func (c *ModuleConglo) Assign(
 		collectedPIs                = [aggregationArity]LimitlessPublicInput[field.Element]{}
 		sumCountGLs                 = []field.Element{}
 		sumCountLPPs                = []field.Element{}
-		mSetSharedRand              = mimc.MSetHash{}
-		mSetGeneral                 = mimc.MSetHash{}
+		mSetSharedRand              = hasher_factory.MSetHash{}
+		mSetGeneral                 = hasher_factory.MSetHash{}
 		sumLogDerivative, sumHorner field.Element
 		prodGrandProduct            = field.One()
 	)
@@ -408,8 +408,8 @@ func (c *ModuleConglo) Assign(
 		prodGrandProduct.Mul(&prodGrandProduct, &collectedPIs[instance].GrandProduct)
 
 		// This combines the multiset hashes
-		subMSetGeneral := mimc.MSetHash(collectedPIs[instance].GeneralMultiSetHash)
-		subMSetSharedRand := mimc.MSetHash(collectedPIs[instance].SharedRandomnessMultiSetHash)
+		subMSetGeneral := hasher_factory.MSetHash(collectedPIs[instance].GeneralMultiSetHash)
+		subMSetSharedRand := hasher_factory.MSetHash(collectedPIs[instance].SharedRandomnessMultiSetHash)
 		mSetGeneral.Add(subMSetGeneral)
 		mSetSharedRand.Add(subMSetSharedRand)
 	}
@@ -524,7 +524,7 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 	}
 
 	// This agglomerates the multiset hashes
-	for k := 0; k < mimc.MSetHashSize; k++ {
+	for k := 0; k < hasher_factory.MSetHashSize; k++ {
 
 		var (
 			generalSum = field.Element{}
@@ -676,8 +676,8 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 
 	// This agglomerates the multiset hashes
 	var (
-		generalSum = mimc.EmptyMSetHashGnark(hasher)
-		sharedSum  = mimc.EmptyMSetHashGnark(hasher)
+		generalSum = hasher_factory.EmptyMSetHashGnark(hasher)
+		sharedSum  = hasher_factory.EmptyMSetHashGnark(hasher)
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
@@ -860,8 +860,8 @@ func (c ModuleConglo) collectAllPublicInputsOfInstance(run wizard.Runtime, insta
 		TargetNbSegments:             getPublicInputListOfInstance(c.Recursion, run, TargetNbSegmentPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountGL:               getPublicInputListOfInstance(c.Recursion, run, SegmentCountGLPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountLPP:              getPublicInputListOfInstance(c.Recursion, run, SegmentCountLPPPublicInputBase, instance, c.ModuleNumber),
-		GeneralMultiSetHash:          getPublicInputListOfInstance(c.Recursion, run, GeneralMultiSetPublicInputBase, instance, mimc.MSetHashSize),
-		SharedRandomnessMultiSetHash: getPublicInputListOfInstance(c.Recursion, run, SharedRandomnessMultiSetPublicInputBase, instance, mimc.MSetHashSize),
+		GeneralMultiSetHash:          getPublicInputListOfInstance(c.Recursion, run, GeneralMultiSetPublicInputBase, instance, hasher_factory.MSetHashSize),
+		SharedRandomnessMultiSetHash: getPublicInputListOfInstance(c.Recursion, run, SharedRandomnessMultiSetPublicInputBase, instance, hasher_factory.MSetHashSize),
 		LogDerivativeSum:             c.Recursion.GetPublicInputOfInstance(run, LogDerivativeSumPublicInput, instance),
 		HornerSum:                    c.Recursion.GetPublicInputOfInstance(run, HornerPublicInput, instance),
 		GrandProduct:                 c.Recursion.GetPublicInputOfInstance(run, GrandProductPublicInput, instance),
@@ -902,8 +902,8 @@ func collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Eleme
 		TargetNbSegments:             GetPublicInputList(run, TargetNbSegmentPublicInputBase, moduleNumber),
 		SegmentCountGL:               GetPublicInputList(run, SegmentCountGLPublicInputBase, moduleNumber),
 		SegmentCountLPP:              GetPublicInputList(run, SegmentCountLPPPublicInputBase, moduleNumber),
-		GeneralMultiSetHash:          GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
-		SharedRandomnessMultiSetHash: GetPublicInputList(run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
+		GeneralMultiSetHash:          GetPublicInputList(run, GeneralMultiSetPublicInputBase, hasher_factory.MSetHashSize),
+		SharedRandomnessMultiSetHash: GetPublicInputList(run, SharedRandomnessMultiSetPublicInputBase, hasher_factory.MSetHashSize),
 		LogDerivativeSum:             run.GetPublicInput(LogDerivativeSumPublicInput),
 		HornerSum:                    run.GetPublicInput(HornerPublicInput),
 		GrandProduct:                 run.GetPublicInput(GrandProductPublicInput),
@@ -926,8 +926,8 @@ func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, ru
 		TargetNbSegments:             getPublicInputListOfInstanceGnark(c.Recursion, api, run, TargetNbSegmentPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountGL:               getPublicInputListOfInstanceGnark(c.Recursion, api, run, SegmentCountGLPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountLPP:              getPublicInputListOfInstanceGnark(c.Recursion, api, run, SegmentCountLPPPublicInputBase, instance, c.ModuleNumber),
-		GeneralMultiSetHash:          getPublicInputListOfInstanceGnark(c.Recursion, api, run, GeneralMultiSetPublicInputBase, instance, mimc.MSetHashSize),
-		SharedRandomnessMultiSetHash: getPublicInputListOfInstanceGnark(c.Recursion, api, run, SharedRandomnessMultiSetPublicInputBase, instance, mimc.MSetHashSize),
+		GeneralMultiSetHash:          getPublicInputListOfInstanceGnark(c.Recursion, api, run, GeneralMultiSetPublicInputBase, instance, hasher_factory.MSetHashSize),
+		SharedRandomnessMultiSetHash: getPublicInputListOfInstanceGnark(c.Recursion, api, run, SharedRandomnessMultiSetPublicInputBase, instance, hasher_factory.MSetHashSize),
 		LogDerivativeSum:             c.Recursion.GetPublicInputOfInstanceGnark(api, run, LogDerivativeSumPublicInput, instance),
 		HornerSum:                    c.Recursion.GetPublicInputOfInstanceGnark(api, run, HornerPublicInput, instance),
 		GrandProduct:                 c.Recursion.GetPublicInputOfInstanceGnark(api, run, GrandProductPublicInput, instance),
@@ -956,8 +956,8 @@ func (c ModuleConglo) collectAllPublicInputsGnark(api frontend.API, run wizard.G
 		TargetNbSegments:             GetPublicInputListGnark(api, run, TargetNbSegmentPublicInputBase, c.ModuleNumber),
 		SegmentCountGL:               GetPublicInputListGnark(api, run, SegmentCountGLPublicInputBase, c.ModuleNumber),
 		SegmentCountLPP:              GetPublicInputListGnark(api, run, SegmentCountLPPPublicInputBase, c.ModuleNumber),
-		GeneralMultiSetHash:          GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
-		SharedRandomnessMultiSetHash: GetPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
+		GeneralMultiSetHash:          GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, hasher_factory.MSetHashSize),
+		SharedRandomnessMultiSetHash: GetPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, hasher_factory.MSetHashSize),
 		LogDerivativeSum:             run.GetPublicInput(api, LogDerivativeSumPublicInput),
 		HornerSum:                    run.GetPublicInput(api, HornerPublicInput),
 		GrandProduct:                 run.GetPublicInput(api, GrandProductPublicInput),
@@ -1187,7 +1187,7 @@ func SanityCheckPublicInputsForConglo(wiop *wizard.CompiledIOP, proofs SegmentPr
 		}
 	}
 
-	sharedRandSum := mimc.HashVec(pi.SharedRandomnessMultiSetHash)
+	sharedRandSum := hasher_factory.HashVec(pi.SharedRandomnessMultiSetHash)
 	if sharedRandSum != pi.SharedRandomness {
 		mainErr = errors.Join(mainErr, errors.New("shared randomness sum is not equal to shared randomness multi set hash"))
 	}

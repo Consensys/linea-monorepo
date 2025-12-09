@@ -9,7 +9,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 type hashAnyTestCircuit struct {

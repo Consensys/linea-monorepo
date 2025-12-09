@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -98,7 +98,7 @@ func ComputeMiMCHashFixedTestData() field.Element {
 		vectFieldElem[i].Set(&elem)
 	}
 	// compute and return the MiMC hash of the packed field elements
-	finalHash := mimc.HashVec(vectFieldElem)
+	finalHash := hasher_factory.HashVec(vectFieldElem)
 	return finalHash
 }
 

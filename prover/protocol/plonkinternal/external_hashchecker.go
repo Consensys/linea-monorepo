@@ -14,7 +14,7 @@ import (
 
 // addHashConstraint adds the constraints the hashes of the tagged witness.
 // It checks that the assignment of the hash column is consistent with the
-// LRO columns using a lookup and then it uses a MiMC query to enforce the
+// LRO columns using a lookup and then it uses a Poseidon2 query to enforce the
 // hash.
 func (ctx *CompilationCtx) addHashConstraint() {
 
