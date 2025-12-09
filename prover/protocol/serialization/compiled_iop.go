@@ -40,7 +40,7 @@ type PackedExtradata struct {
 
 type PackedQuery struct {
 	BackReference                   BackReference `cbor:"b"`
-	ConcreteType                    int           `cbor:"t"`
+	ConcreteType                    uint16        `cbor:"t"` // Updated to uint16 to match TypeID
 	Round                           int           `cbor:"r"`
 	IsIgnored                       bool          `cbor:"i"`
 	IsSkippedFromProverTranscript   bool          `cbor:"s"`
@@ -50,7 +50,7 @@ type PackedQuery struct {
 type PackedRawData struct {
 	//_             struct{}           `cbor:",toarray" serde:"omit"`
 	WasPointer    bool               `cbor:"p"`
-	ConcreteType  int                `cbor:"t"`
+	ConcreteType  uint16             `cbor:"t"` // Updated to uint16 to match TypeID
 	ConcreteValue PackedStructObject `cbor:"v"`
 }
 
@@ -527,29 +527,15 @@ func (de *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *
 
 // -------------------- Helper functions --------------------
 
-func (ser *Serializer) packTypeIndex(concreteTypeStr string) int {
-	if idx, ok := ser.typeMap[concreteTypeStr]; ok {
-		return idx
-	}
-	ser.PackedObject.Types = append(ser.PackedObject.Types, concreteTypeStr)
-	idx := len(ser.PackedObject.Types) - 1
-	ser.typeMap[concreteTypeStr] = idx
-	return idx
-}
-
 func checkRegisteredOrWarn(concreteTypeStr string, t reflect.Type) (*serdeError, bool) {
-	if _, err := findRegisteredImplementation(concreteTypeStr); err != nil {
-
+	// Updated: Check against the TypeToID map instead of the old registry
+	if _, ok := TypeToID[t]; !ok {
 		if DEBUG {
-
 			// UNCOMMENT this line for DEBUG mode
-			// if !TypeTracker[concreteTypeStr] {
-			// 	logrus.Warnf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, t.String(), err)
-			// 	TypeTracker[concreteTypeStr] = true
-			// }
+			// logrus.Warnf("attempted to serialize unregistered type repr=%q type=%v", concreteTypeStr, t.String())
 		}
-
-		return newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", concreteTypeStr, t.String(), err), true
+		// We still use concreteTypeStr for the error message to help debugging
+		return newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v", concreteTypeStr, t.String()), true
 	}
 	return nil, false
 }
@@ -576,11 +562,17 @@ func (ser *Serializer) packAllActions(val any, pathFmt string, idx int) (PackedR
 	// v is the non-pointer concrete value we actually pack
 	v := orig
 
-	concreteTypeStr := getPkgPathAndTypeNameIndirect(v.Interface())
+	// Check registration using reflect.Type
+	concreteTypeStr := getPkgPathAndTypeNameIndirect(v.Interface()) // kept for error msg
 	if serr, skipped := checkRegisteredOrWarn(concreteTypeStr, v.Type()); serr != nil || skipped {
 		return PackedRawData{}, serr, true
 	}
-	typeIdx := ser.packTypeIndex(concreteTypeStr)
+
+	// Lookup Type ID
+	typeIdx, ok := TypeToID[v.Type()]
+	if !ok {
+		return PackedRawData{}, newSerdeErrorf("unregistered type: %v", v.Type()), false
+	}
 
 	switch v.Kind() {
 	case reflect.Struct:
@@ -595,7 +587,6 @@ func (ser *Serializer) packAllActions(val any, pathFmt string, idx int) (PackedR
 		}, nil, false
 
 	case reflect.Slice, reflect.Array:
-		// logrus.Printf("Concrete type while packing action: %v", concreteTypeStr)
 		obj, err := ser.PackArrayOrSlice(v)
 		if err != nil {
 			return PackedRawData{}, err.wrapPath(fmt.Sprintf(pathFmt, idx)), false
@@ -634,11 +625,16 @@ func (ser *Serializer) packAllQueries(reg *wizard.ByRoundRegister[ifaces.QueryID
 			return nil, err.wrapPath("(ser-compiled-IOP-queries-" + contextLabel + ")")
 		}
 		v := reflect.ValueOf(q)
-		ct := getPkgPathAndTypeNameIndirect(v.Interface())
+		ct := getPkgPathAndTypeNameIndirect(v.Interface()) // kept for error msg
 		if serr, _ := checkRegisteredOrWarn(ct, v.Type()); serr != nil {
 			return nil, serr
 		}
-		typeIdx := ser.packTypeIndex(ct)
+
+		typeIdx, ok := TypeToID[v.Type()]
+		if !ok {
+			return nil, newSerdeErrorf("unregistered type %v", v.Type())
+		}
+
 		out[i] = PackedQuery{
 			BackReference:                   backRef,
 			ConcreteType:                    typeIdx,
@@ -658,11 +654,11 @@ func (de *Deserializer) unpackAllQueries(reg *wizard.ByRoundRegister[ifaces.Quer
 	raws []PackedQuery, contextLabel string) *serdeError {
 
 	for _, rq := range raws {
-		ctStr := de.PackedObject.Types[rq.ConcreteType]
-		ct, err := findRegisteredImplementation(ctStr)
-		if err != nil {
-			return newSerdeErrorf("could not find registered implementation for concrete type: %w", err)
+		// New: O(1) Lookup
+		if int(rq.ConcreteType) >= len(IDToType) {
+			return newSerdeErrorf("invalid type ID %d in queries", rq.ConcreteType)
 		}
+		ct := IDToType[rq.ConcreteType]
 
 		val, se := de.UnpackQuery(rq.BackReference, ct)
 		if se != nil {
@@ -708,19 +704,15 @@ func unpackAllActions[T any](d *Deserializer, context string,
 			go func(idx int, action PackedRawData) {
 				defer wg.Done()
 
-				// These must be local to avoid races
-				ctStr := d.PackedObject.Types[action.ConcreteType]
-				ct, err := findRegisteredImplementation(ctStr)
-				if err != nil {
+				// New: O(1) Lookup
+				if int(action.ConcreteType) >= len(IDToType) {
 					select {
-					case errCh <- newSerdeErrorf(
-						"could not find registered implementation for %s action: %w",
-						context, err,
-					):
+					case errCh <- newSerdeErrorf("invalid type ID %d in actions", action.ConcreteType):
 					default:
 					}
 					return
 				}
+				ct := IDToType[action.ConcreteType]
 
 				var (
 					res          reflect.Value
@@ -773,8 +765,8 @@ func unpackAllActions[T any](d *Deserializer, context string,
 				if !ok {
 					select {
 					case errCh <- newSerdeErrorf(
-						"illegal cast of type %v with string rep %s to %s action",
-						ct, ctStr, context,
+						"illegal cast of type %v to %s action",
+						ct, context,
 					):
 					default:
 					}
@@ -859,59 +851,3 @@ func logCompiledIOPMetadata(comp *wizard.CompiledIOP, contextLabel string) {
 
 	logrus.Printf("%s comp metadata: %+v", contextLabel, printdata1)
 }
-
-/*
-// PackCompiledIOP serializes a wizard.CompiledIOP, returning a BackReference to its index in PackedObject.CompiledIOP.
-func (ser *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) (any, *serdeError) {
-	if _, ok := ser.compiledIOPsFast[comp]; !ok {
-		// We can have recursive references to compiled IOPs, so we need to
-		// reserve the back-reference before attempting at unpacking it. That
-		// way, the recursive attempts at packing will cache-hit without
-		// creating an infinite loop.
-		n := len(ser.PackedObject.CompiledIOPFast)
-		ser.compiledIOPsFast[comp] = n
-		ser.PackedObject.CompiledIOPFast = append(ser.PackedObject.CompiledIOPFast, nil)
-
-		obj, err := ser.PackStructObject(reflect.ValueOf(*comp))
-		if err != nil {
-			return nil, err.wrapPath("(compiled-IOP)")
-		}
-
-		ser.PackedObject.CompiledIOPFast[n] = obj
-	}
-
-	return BackReference(ser.compiledIOPsFast[comp]), nil
-}
-
-// UnpackCompiledIOP deserializes a wizard.CompiledIOP from a BackReference, caching the result.
-func (de *Deserializer) UnpackCompiledIOP(v BackReference) (reflect.Value, *serdeError) {
-	if v < 0 || int(v) >= len(de.PackedObject.CompiledIOPFast) {
-		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
-	}
-
-	if de.CompiledIOPsFast[v] == nil {
-
-		// Something to be aware of is that CompiledIOPs usually contains
-		// reference to themselves internally. Thus, if we don't cache a pointer
-		// to the compiledIOP, the deserialization will go into an infinite loop.
-		// To prevent that, we set a pointer to a zero value and it will be
-		// cached when the compiled IOP is unpacked. The pointed value is then
-		// assigned after the unpacking. With this approach, the ptr to the
-		// compiledIOP can immediately be returned for the recursive calls.
-		ptr := &wizard.CompiledIOP{}
-		de.CompiledIOPsFast[v] = ptr
-
-		packedCompiledIOP := de.PackedObject.CompiledIOPFast[v]
-		compiledIOP, err := de.UnpackStructObject(packedCompiledIOP, TypeOfCompiledIOP)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(compiled-IOP)")
-		}
-
-		c := compiledIOP.Interface().(wizard.CompiledIOP)
-		*ptr = c
-	}
-
-	return reflect.ValueOf(de.CompiledIOPsFast[v]), nil
-}
-
-*/

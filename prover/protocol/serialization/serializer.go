@@ -77,7 +77,6 @@ type BackReference int
 // It tracks references to objects (e.g., columns, coins) and collects warnings for non-fatal issues.
 type Serializer struct {
 	PackedObject     *PackedObject                // The output structure containing serialized data.
-	typeMap          map[string]int               // Maps type names to indices in PackedObject.Types.
 	pointerMap       map[uintptr]int              // Maps pointer values to indices in PackedObject.Pointers.
 	coinMap          map[uuid.UUID]int            // Maps coin UUIDs to indices in PackedObject.Coins.
 	coinIdMap        map[string]int               // Maps coin IDs to indices in PackedObject.CoinIDs.
@@ -116,7 +115,7 @@ type Deserializer struct {
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
-	Types           []string             `cbor:"a"` // Type names for interfaces.
+	// Types was removed. We now use static generated tables.
 	PointedValues   []any                `cbor:"c"` // Serialized pointers (as PackedIFace).
 	ColumnIDs       []string             `cbor:"d"` // String IDs for columns.
 	Columns         []PackedStructObject `cbor:"e"` // Serialized columns (as PackedStructObject).
@@ -129,14 +128,13 @@ type PackedObject struct {
 	Circuits        [][]byte             `cbor:"l"` // Serialized circuits.
 	Expressions     []PackedStructObject `cbor:"m"` // Serialized expressions
 	Payload         any                  `cbor:"n"` // CBOR-encoded root value.
-
-	// CompiledIOP   []PackedStructObject `cbor:"k"` // Serialized CompiledIOPs.
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.
 type PackedIFace struct {
-	Type     int `cbor:"t"` // Index into PackedObject.Types.
-	Concrete any `cbor:"c"` // Serialized concrete value.
+	Type        uint16 `cbor:"t"` // Index into IDToType (from generated_registry.go)
+	Indirection uint8  `cbor:"p"` // Number of pointer indirections
+	Concrete    any    `cbor:"c"` // Serialized concrete value
 }
 
 // PackedCoin is a compact representation of coin.Info, optimized for CBOR encoding.
@@ -154,7 +152,6 @@ type PackedStructObject []any
 func NewSerializer() *Serializer {
 	return &Serializer{
 		PackedObject:     &PackedObject{},
-		typeMap:          map[string]int{},
 		pointerMap:       map[uintptr]int{},
 		coinMap:          map[uuid.UUID]int{},
 		coinIdMap:        map[string]int{},
@@ -782,17 +779,21 @@ func (de *Deserializer) UnpackArrayOrSlice(v []any, t reflect.Type) (reflect.Val
 // It ensures the concrete type is registered and returns an error if not.
 func (ser *Serializer) PackInterface(v reflect.Value) (any, *serdeError) {
 	var (
-		concrete          = v.Elem()
-		cleanConcreteType = getPkgPathAndTypeNameIndirect(concrete.Interface())
+		concrete = v.Elem()
+		baseType = concrete.Type()
 	)
 
-	if _, err := findRegisteredImplementation(cleanConcreteType); err != nil {
-		return nil, newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", cleanConcreteType, concrete.Type().String(), err)
+	// Determine pointer indirection level and find the base type
+	indirection := 0
+	for baseType.Kind() == reflect.Ptr {
+		baseType = baseType.Elem()
+		indirection++
 	}
 
-	if _, ok := ser.typeMap[cleanConcreteType]; !ok {
-		ser.PackedObject.Types = append(ser.PackedObject.Types, cleanConcreteType)
-		ser.typeMap[cleanConcreteType] = len(ser.PackedObject.Types) - 1
+	// Direct Map Lookup using the generated TypeToID table
+	typeID, ok := TypeToID[baseType]
+	if !ok {
+		return nil, newSerdeErrorf("attempted to serialize unregistered type type=%v", baseType.String())
 	}
 
 	packedConcrete, err := ser.PackValue(concrete)
@@ -801,35 +802,50 @@ func (ser *Serializer) PackInterface(v reflect.Value) (any, *serdeError) {
 	}
 
 	return PackedIFace{
-		Type:     ser.typeMap[cleanConcreteType],
-		Concrete: packedConcrete,
+		Type:        typeID,
+		Indirection: uint8(indirection),
+		Concrete:    packedConcrete,
 	}, nil
 }
 
 // UnpackInterface deserializes an interface value from a map, resolving the concrete type and value.
 func (de *Deserializer) UnpackInterface(pi map[interface{}]interface{}, t reflect.Type) (reflect.Value, *serdeError) {
 	var (
-		ctype, ok = pi["t"].(uint64)
-		concrete  = pi["c"]
+		rawID, okID   = pi["t"].(uint64)
+		rawPtr, okPtr = pi["p"].(uint64)
+		concrete      = pi["c"]
 	)
 
-	if !ok || int(ctype) >= len(de.PackedObject.Types) {
-		return reflect.Value{}, newSerdeErrorf("invalid packed interface, it does not have a valid type integer: %v", ctype)
+	// In CBOR integers can be packed in various ways, but map decoding usually normalizes them.
+	// We handle cases where indirection might be missing (0) if field is optional in future
+	if !okPtr {
+		rawPtr = 0
 	}
 
-	cleanConcreteType := de.PackedObject.Types[ctype]
-	refType, err := findRegisteredImplementation(cleanConcreteType)
-	if err != nil {
-		return reflect.Value{}, newSerdeErrorf("unregistered type %q for interface: %w", cleanConcreteType, err)
+	if !okID {
+		return reflect.Value{}, newSerdeErrorf("invalid packed interface, missing type ID")
 	}
 
-	if !refType.Implements(t) {
-		return reflect.Value{}, newSerdeErrorf("the resolved type does not implement the target interface, %v ~ %v", refType.String(), t.String())
+	// Validate bounds against the generated table
+	if rawID >= uint64(len(IDToType)) {
+		return reflect.Value{}, newSerdeErrorf("invalid type ID: %d", rawID)
 	}
 
-	cres, errV := de.UnpackValue(concrete, refType)
+	// Direct Array Lookup using the generated IDToType table
+	concreteType := IDToType[rawID]
+
+	// Re-apply pointer indirection
+	for i := 0; i < int(rawPtr); i++ {
+		concreteType = reflect.PointerTo(concreteType)
+	}
+
+	if !concreteType.Implements(t) {
+		return reflect.Value{}, newSerdeErrorf("the resolved type does not implement the target interface, %v ~ %v", concreteType.String(), t.String())
+	}
+
+	cres, errV := de.UnpackValue(concrete, concreteType)
 	if errV != nil {
-		return reflect.Value{}, errV.wrapPath("(" + refType.String() + ")")
+		return reflect.Value{}, errV.wrapPath("(" + concreteType.String() + ")")
 	}
 
 	// Create a new reflect.Value for the interface type

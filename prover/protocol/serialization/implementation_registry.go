@@ -1,7 +1,6 @@
 package serialization
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -398,6 +397,7 @@ func RegisterImplementation(instance any) {
 	implementationRegistry.InsertNew(registeredTypeName, reflect.TypeOf(instance))
 }
 
+/*
 // returns a reflect.Type registered in the registry for the provided type-string
 // the function will modify the provided string in case the string represents a
 // pointer type and will add the levels of indirections to the returned
@@ -443,7 +443,7 @@ func findRegisteredImplementation(pkgTypeName string) (reflect.Type, error) {
 	}
 
 	return foundType, nil
-}
+} */
 
 // Returns the full `<Type.PkgPath>#<Type.Name>#<nbIndirection>` of a type.
 // Caller can either provide an instance of the desired type or a reflect.Type
