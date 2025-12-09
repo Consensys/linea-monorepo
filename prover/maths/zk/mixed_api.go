@@ -52,6 +52,12 @@ func (w *WrappedVariable) AsEmulated() *emulated.Element[emulated.KoalaBear] {
 }
 
 func WrapFrontendVariable(v frontend.Variable) WrappedVariable {
+
+	switch v.(type) {
+	case WrappedVariable, *WrappedVariable:
+		panic("attempted to wrap a zk.WrappedVariable into a zk.WrappedVariable")
+	}
+
 	var res WrappedVariable
 	res.V = v
 	res.EV = emulated.Element[emulated.KoalaBear]{Limbs: []frontend.Variable{v}}
