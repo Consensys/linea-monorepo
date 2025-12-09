@@ -12,7 +12,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	hash_factory "github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
@@ -114,10 +115,10 @@ type CompilationCtx struct {
 		// PosL, PosR and PosO are precomputing column storing the
 		// positions of the L, R and O columns that are tagged for
 		// each external hash constraints.
-		PosOldState, PosBlock, PosNewState ifaces.Column
+		PosOldState, PosBlock, PosNewState [poseidon2_koalabear.BlockSize]ifaces.Column
 		// OldStates, Blocks, NewStates are the column affected by the
-		// MiMC query.
-		OldStates, Blocks, NewStates []ifaces.Column
+		// Poseidon2 query.
+		OldStates, Blocks, NewStates [][poseidon2_koalabear.BlockSize]ifaces.Column
 		// Fixed nb of row allows fixing the number of rows allocated
 		// for the hash checking.
 		FixedNbRows int
@@ -248,7 +249,7 @@ func CompileCircuitWithRangeCheck(circ frontend.Circuit, addGates bool) (*cs.Spa
 // constraints system.
 func CompileCircuitWithExternalHasher(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func() [][3][2]int, error) {
 
-	gnarkBuilder, hshGetter := mimc.NewExternalHasherBuilder(addGates)
+	gnarkBuilder, hshGetter := hash_factory.NewExternalHasherBuilder(addGates)
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkBuilder, circ)
 	if err != nil {
@@ -433,12 +434,12 @@ func (ctx CompilationCtx) GenericPlonkProverAction() GenericPlonkProverAction {
 		},
 		ExternalHasherOption: struct {
 			Enabled     bool
-			PosOldState ifaces.Column
-			PosBlock    ifaces.Column
-			PosNewState ifaces.Column
-			OldStates   []ifaces.Column
-			Blocks      []ifaces.Column
-			NewStates   []ifaces.Column
+			PosOldState [poseidon2_koalabear.BlockSize]ifaces.Column
+			PosBlock    [poseidon2_koalabear.BlockSize]ifaces.Column
+			PosNewState [poseidon2_koalabear.BlockSize]ifaces.Column
+			OldStates   [][poseidon2_koalabear.BlockSize]ifaces.Column
+			Blocks      [][poseidon2_koalabear.BlockSize]ifaces.Column
+			NewStates   [][poseidon2_koalabear.BlockSize]ifaces.Column
 		}{
 			Enabled:     ctx.ExternalHasherOption.Enabled,
 			PosOldState: ctx.ExternalHasherOption.PosOldState,
@@ -484,8 +485,8 @@ type GenericPlonkProverAction struct {
 	}
 	ExternalHasherOption struct {
 		Enabled                            bool
-		PosOldState, PosBlock, PosNewState ifaces.Column
-		OldStates, Blocks, NewStates       []ifaces.Column
+		PosOldState, PosBlock, PosNewState [poseidon2_koalabear.BlockSize]ifaces.Column
+		OldStates, Blocks, NewStates       [][poseidon2_koalabear.BlockSize]ifaces.Column
 	}
 	FixedNbRows int
 }

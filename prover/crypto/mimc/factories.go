@@ -167,9 +167,12 @@ func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilderU32,
 				return nil, fmt.Errorf("could not create new native builder: %w", err)
 			}
 			scb, ok := b.(plonkbuilder.Builder)
+
 			if !ok {
 				return nil, fmt.Errorf("native builder doesn't implement committer or kvstore")
 			}
+			fmt.Printf("Creating new external hasher builder=\n")
+
 			return &ExternalHasherBuilder{
 				Builder:             scb,
 				rcCols:              rcCols,
