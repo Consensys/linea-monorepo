@@ -1,21 +1,22 @@
 package mimc
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // HasherFactory is an interface implemented by structures that can construct a
-// MiMC hasher in a gnark circuit. Some implementation may leverage the GKR
+// Poseidon2 hasher in a gnark circuit. Some implementation may leverage the GKR
 // protocol as in [gkrmimc.HasherFactory] or may trigger specific behaviors
 // of Plonk in Wizard.
 type HasherFactory interface {
@@ -23,23 +24,15 @@ type HasherFactory interface {
 }
 
 // BasicHasherFactory is a simple implementation of HasherFactory that returns
-// the standard MiMC hasher as in [NewMiMC].
+// the standard Poseidon2 hasher.
 type BasicHasherFactory struct {
 	Api frontend.API
 }
 
 // ExternalHasherFactory is an implementation of the HasherFactory interface
-// that tags the variables happening in a MiMC hasher claim.
+// that tags the variables happening in a Poseidon2 hasher claim.
 type ExternalHasherFactory struct {
 	Api frontend.API
-}
-
-// ExternalHasher is an implementation of the [ghash.StateStorer] interface
-// that tags the variables happening in a MiMC hasher claim.
-type ExternalHasher struct {
-	api   frontend.API
-	data  []frontend.Variable
-	state frontend.Variable
 }
 
 // externalHasherBuilder is an implementation of the [frontend.Builder]
@@ -47,7 +40,7 @@ type ExternalHasher struct {
 type ExternalHasherBuilder struct {
 	plonkbuilder.Builder
 	// claimTriplets stores the tripled [oldState, block, newState]
-	claimTriplets [][3]frontend.Variable
+	claimTriplets [][3][poseidon2_koalabear.BlockSize]frontend.Variable
 	// rcCols is a channel used to pass back the position of the wires
 	// corresponding to the claims.
 	rcCols chan [][3][2]int
@@ -59,101 +52,21 @@ type ExternalHasherBuilder struct {
 // externalHashBuilderIFace is an interface implemented by [externalHasherBuilder]
 // and potential struct wrappers.
 type externalHashBuilderIFace interface {
-	CheckHashExternally(oldState, block, newState frontend.Variable)
+	CheckHashExternally(oldState, block, newState [poseidon2_koalabear.BlockSize]frontend.Variable)
 }
 
-// NewHasher returns the standard MiMC hasher as in [NewMiMC].
+// NewHasher returns the standard Poseidon2 hasher.
 func (f *BasicHasherFactory) NewHasher() poseidon2_bls12377.GnarkMDHasher {
 	h, _ := poseidon2_bls12377.NewGnarkMDHasher(f.Api)
 	return h
 }
 
-// NewHasher returns an external MiMC hasher.
+// NewHasher returns an external Poseidon2 hasher.
 func (f *ExternalHasherFactory) NewHasher() poseidon2_bls12377.GnarkMDHasher {
 
 	h, _ := poseidon2_bls12377.NewGnarkMDHasher(f.Api)
 
 	return h
-}
-
-// Writes fields elements into the hasher; implements [hash.FieldHasher]
-func (h *ExternalHasher) Write(data ...frontend.Variable) {
-	// sanity-check : it is a common bug that we may be []frontend.Variable
-	// as a frontend.Variable
-	for i := range data {
-		if _, ok := data[i].([]frontend.Variable); ok {
-			utils.Panic("bug in define, got a []frontend.Variable")
-		}
-	}
-	h.data = append(h.data, data...)
-}
-
-// Reinitialize the state of the hasher; implements [hash.FieldHasher]
-func (h *ExternalHasher) Reset() {
-	h.data = nil
-	h.state = 0
-}
-
-// Sum returns the hash of what was appended to the hasher so far. Calling it
-// multiple time without updating returns the same result. This function
-// implements [hash.FieldHasher] interface.
-func (h *ExternalHasher) Sum() frontend.Variable {
-	// 1 - Call the compression function in a loop
-	curr := h.state
-	for _, stream := range h.data {
-		curr = h.compress(curr, stream)
-	}
-	// flush the data already hashed
-	h.data = nil
-	h.state = curr
-	return curr
-}
-
-// SetState manually sets the state of the hasher to the provided value. In the
-// case of MiMC only a single frontend variable is expected to represent the
-// state.
-func (h *ExternalHasher) SetState(newState []frontend.Variable) error {
-
-	if len(h.data) > 0 {
-		return errors.New("the hasher is not in an initial state")
-	}
-
-	if len(newState) != 1 {
-		return errors.New("the MiMC hasher expects a single field element to represent the state")
-	}
-
-	h.state = newState[0]
-	return nil
-}
-
-// State returns the inner-state of the hasher. In the context of MiMC only a
-// single field element is returned.
-func (h *ExternalHasher) State() []frontend.Variable {
-	_ = h.Sum() // to flush the hasher
-	return []frontend.Variable{h.state}
-}
-
-// compress calls returns a frontend.Variable holding the result of applying
-// the compression function of MiMC over state and block. The alleged returned
-// result is pushed on the stack of all the claims to verify.
-func (h *ExternalHasher) compress(state, block frontend.Variable) frontend.Variable {
-
-	newState, err := h.api.Compiler().NewHint(MimcHintfunc, 1, state, block)
-	if err != nil {
-		panic(err)
-	}
-
-	// This asserts that the builder should be compatible with the external hasher,
-	// doing it by comparing the types would be too strict as it should be
-	// acceptable to wrap the externalHashBuilder into another builder without
-	// making this check fail.
-	builder, ok := h.api.(externalHashBuilderIFace)
-	if !ok {
-		utils.Panic("the builder doesn't implement externalHashBuilderIFace: %T", h.api)
-	}
-
-	builder.CheckHashExternally(state, block, newState[0])
-	return newState[0]
 }
 
 // NewExternalHasherBuilder constructs and returns a new external hasher builder
@@ -183,9 +96,9 @@ func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilderU32,
 		}
 }
 
-// CheckHashExternally tags a MiMC hasher claim in the circuit
-func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState frontend.Variable) {
-	f.claimTriplets = append(f.claimTriplets, [3]frontend.Variable{oldState, block, newState})
+// CheckHashExternally tags a Poseidon2 hasher claim in the circuit
+func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState [poseidon2_koalabear.BlockSize]frontend.Variable) {
+	f.claimTriplets = append(f.claimTriplets, [3][poseidon2_koalabear.BlockSize]frontend.Variable{oldState, block, newState})
 }
 
 // Compile processes range checked variables and then calls Compile method of
@@ -232,27 +145,31 @@ func (builder *ExternalHasherBuilder) Compiler() frontend.Compiler {
 	return builder.Builder.Compiler()
 }
 
-// MimcHintfunc is a gnark hint that computes the MiMC compression function, it
-// is used to return the pending claims of the evaluation of the MiMC compression
+// Poseidon2Hintfunc is a gnark hint that computes the Poseidon2 compression function, it
+// is used to return the pending claims of the evaluation of the Poseidon2 compression
 // function.
-func MimcHintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error {
+func Poseidon2Hintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error {
 
 	if f.String() != field.Modulus().String() {
-		utils.Panic("Not the BLS field %d != %d", f, field.Modulus())
+		utils.Panic("Not the Koalabear field %d != %d", f, field.Modulus())
 	}
 
-	if len(inputs) != 2 {
-		utils.Panic("expected 2 inputs, [init, block], got %v", len(inputs))
+	if len(inputs) != 16 {
+		utils.Panic("expected 16 inputs, [init, block], got %v", len(inputs))
 	}
 
-	if len(outputs) != 1 {
-		utils.Panic("expected 1 output [newState] got %v", len(inputs))
+	if len(outputs) != 8 {
+		utils.Panic("expected 8 outputs [newState] got %v", len(outputs))
 	}
 
+	var old, block [poseidon2_koalabear.BlockSize]field.Element
 	inpF := fromBigInts(inputs)
-	outF := BlockCompression(inpF[0], inpF[1])
+	copy(old[0:8], inpF[0:8])
+	copy(block[0:8], inpF[8:16])
 
-	intoBigInts(outputs, outF)
+	outF := vortex.CompressPoseidon2(old, block)
+
+	intoBigInts(outputs, outF[:])
 	return nil
 }
 
@@ -266,7 +183,7 @@ func fromBigInts(arr []*big.Int) []field.Element {
 }
 
 // intoBigInts converts an array of field.Element's into an array of big.Integer's
-func intoBigInts(res []*big.Int, arr ...field.Element) []*big.Int {
+func intoBigInts(res []*big.Int, arr []field.Element) []*big.Int {
 
 	if len(res) != len(arr) {
 		utils.Panic("got %v bigints but %v field elments", len(res), len(arr))

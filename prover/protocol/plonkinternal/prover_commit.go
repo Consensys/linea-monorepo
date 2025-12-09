@@ -54,7 +54,7 @@ type (
 func (pa InitialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
 
 	if pa.ExternalHasherOption.Enabled {
-		solver.RegisterHint(mimc.MimcHintfunc)
+		solver.RegisterHint(mimc.Poseidon2Hintfunc)
 	}
 
 	var (

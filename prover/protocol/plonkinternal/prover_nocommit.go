@@ -49,7 +49,7 @@ func (pa PlonkNoCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses
 	)
 
 	if ctx.ExternalHasherOption.Enabled {
-		solver.RegisterHint(mimc.MimcHintfunc)
+		solver.RegisterHint(mimc.Poseidon2Hintfunc)
 	}
 
 	parallel.Execute(maxNbInstance, func(start, stop int) {

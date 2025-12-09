@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// // externalMiMCFactoryTestLinear is used to test the external MiMC factory
-// // and is a gnark circuit implementing a linear hash.
+// externalMiMCFactoryTestLinear is used to test the external MiMC factory
+// and is a gnark circuit implementing a linear hash.
 type externalMimcFactoryTestLinear struct {
 	Inp [16]frontend.Variable
 }
@@ -43,7 +43,7 @@ func (circuit *externalMimcFactoryTestLinear) Define(api frontend.API) error {
 
 func TestPoseidon2Factories(t *testing.T) {
 
-	solver.RegisterHint(mimc.MimcHintfunc)
+	solver.RegisterHint(mimc.Poseidon2Hintfunc)
 
 	var (
 		koalaField = koalabear.Modulus()
