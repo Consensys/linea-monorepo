@@ -187,7 +187,7 @@ contract YieldManager is
   {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     cachedL1MessageServiceBalance = L1_MESSAGE_SERVICE.balance;
-    totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $.userFundsInYieldProvidersTotal;
+    totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $.userFundsInYieldProvidersTotal - msg.value;
   }
 
   /**
