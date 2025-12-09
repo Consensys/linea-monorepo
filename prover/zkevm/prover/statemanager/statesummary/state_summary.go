@@ -152,21 +152,21 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 	}
 
 	res.csAccountAddress(comp)
-	res.csAccountOld(comp)
-	res.csAccountNew(comp)
-	res.csAccumulatorRoots(comp)
-	res.csAccumulatorStatementFlags(comp)
-	res.csAccumulatorStatementHValKey(comp)
-	res.csBatchNumber(comp)
-	res.csInitialFinalDeployment(comp)
-	res.csIsActive(comp)
-	res.csIsBeginningOfAccountSegment(comp)
-	res.csIsEndOfAccountSegment(comp)
-	res.csIsStorage(comp)
-	res.csStoragePeek(comp)
-	res.csWorldStateRoot(comp)
-	res.csIsDeletionSegment(comp)
-	res.constrainExpectedHubCodeHash(comp)
+	// res.csAccountOld(comp)
+	// res.csAccountNew(comp)
+	// res.csAccumulatorRoots(comp)
+	// res.csAccumulatorStatementFlags(comp)
+	// res.csAccumulatorStatementHValKey(comp)
+	// res.csBatchNumber(comp)
+	// res.csInitialFinalDeployment(comp)
+	// res.csIsActive(comp)
+	// res.csIsBeginningOfAccountSegment(comp)
+	// res.csIsEndOfAccountSegment(comp)
+	// res.csIsStorage(comp)
+	// res.csStoragePeek(comp)
+	// res.csWorldStateRoot(comp)
+	// res.csIsDeletionSegment(comp)
+	// res.constrainExpectedHubCodeHash(comp)
 	return res
 
 }
@@ -180,15 +180,26 @@ func (ss *Module) csAccountAddress(comp *wizard.CompiledIOP) {
 
 	// Constraint for each limb: when batch number limb[i] didn't change by exactly 1,
 	// addresses can only increase or stay same
-	for i := range common.NbLimbU64 {
+	// Big-endian format: last limb (i=3) holds the value
+	// For the other limbs, batch number should match with its shifted version
+	for i := range common.NbLimbU64-1 {
 		comp.InsertGlobal(
 			0,
-			ifaces.QueryIDf("STATE_SUMMARY_ADDRESS_CAN_ONLY_INCREASE_IN_BLOCK_RANGE_%d", i),
+			ifaces.QueryIDf("STATE_SUMMARY_BATCH_NUMBER_HIGHER_LIMBS_ARE_ZERO_%d", i),
+			sym.Mul(
+				ss.IsActive,
+				sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1))),
+		)
+
+	}
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_SUMMARY_ADDRESS_CAN_ONLY_INCREASE_IN_BLOCK_RANGE"),
 			sym.Mul(
 				ss.IsActive,
 				sym.Sub(
-					ss.BatchNumber[i],
-					column.Shift(ss.BatchNumber[i], -1),
+					ss.BatchNumber[common.NbLimbU64-1],
+					column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1),
 					1,
 				),
 				sym.Add(
@@ -199,7 +210,6 @@ func (ss *Module) csAccountAddress(comp *wizard.CompiledIOP) {
 			),
 		)
 	}
-}
 
 // csIsActive constrains the [ss.IsActive] flag.
 func (ss *Module) csIsActive(comp *wizard.CompiledIOP) {
