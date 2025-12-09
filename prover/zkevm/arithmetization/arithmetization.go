@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 )
@@ -150,6 +151,59 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	}
 	// Passed
 	AssignFromLtTraces(run, a.AirSchema, expandedTrace, a.Settings.Limits)
+}
+
+// LimbColumnsOf returns the wizard columns corresponding to the limbs for the
+// tuple (moduleName, regName). The function furthermore ensures that the
+// function has the requested number of limbs.
+func (a *Arithmetization) LimbColumnsOf(comp *wizard.CompiledIOP, mod string, regName string, nLimbs int) []ifaces.Column {
+	names := a.LimbsOf(mod, regName, nLimbs)
+	cols := make([]ifaces.Column, len(names))
+	for i, name := range names {
+		cols[i] = comp.Columns.GetHandle(ifaces.ColID(name))
+	}
+	return cols
+}
+
+// LimbColumnsOfArr4 is sugar for
+//
+//	```
+//	 	c := a.LimbColumnsOf(comp, mod, regName, 4)
+//		return [4]ifaces.Column(c)
+//	 ```
+func (a *Arithmetization) LimbColumnsOfArr4(comp *wizard.CompiledIOP, mod string, regName string) [4]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, regName, 4)
+	return [4]ifaces.Column(c)
+}
+
+// LimbColumnsOfArr8 is sugar for
+//
+//	```
+//	 	c := a.LimbColumnsOf(comp, mod, regName, 8)
+//		return [8]ifaces.Column(c)
+//	 ```
+func (a *Arithmetization) LimbColumnsOfArr8(comp *wizard.CompiledIOP, mod string, regName string) [8]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, regName, 8)
+	return [8]ifaces.Column(c)
+}
+
+// LimbColumnsOfArr16 is sugar for
+//
+//	```
+//	 	c := a.LimbColumnsOf(comp, mod, regName, 16)
+//		return [16]ifaces.Column(c)
+//	 ```
+func (a *Arithmetization) LimbColumnsOfArr16(comp *wizard.CompiledIOP, mod string, regName string) [16]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, regName, 16)
+	return [16]ifaces.Column(c)
+}
+
+// ColumnOf returns the wizard column associated with the given name and
+// register. The function will fail with panic if the column is not found or the
+// column has more than 1 register.
+func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, regName string) ifaces.Column {
+	cols := a.LimbColumnsOf(comp, name, regName, 1)
+	return cols[0]
 }
 
 // LimbsOf returns the fully qualified names of the limbs for the given abstract
