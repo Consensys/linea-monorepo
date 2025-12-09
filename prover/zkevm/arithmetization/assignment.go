@@ -35,8 +35,8 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema[bls12_377.
 	for _, module := range modules {
 
 		var (
-			name   = module.Name()
-			limit  = moduleLimits[module.Name()]
+			name   = module.Name().String()
+			limit  = moduleLimits[name]
 			height = module.Height()
 			ratio  = float64(height) / float64(limit)
 			level  = logrus.InfoLevel
@@ -69,15 +69,14 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema[bls12_377.
 	for modId := range expTraces.Width() {
 		var trMod = expTraces.Module(modId)
 		// Iterate each column in module
-
 		parallel.Execute(int(trMod.Width()), func(start, stop int) {
 			for id := start; id < stop; id++ {
 
 				var (
 					col     = trMod.Column(uint(id))
-					name    = ifaces.ColID(wizardName(trMod.Name(), col.Name()))
+					name    = ifaces.ColID(wizardName(trMod.Name().String(), col.Name()))
 					wCol    = run.Spec.Columns.GetHandle(name)
-					padding = col.Padding()
+					padding field.Element
 					data    = col.Data()
 				)
 
@@ -87,10 +86,13 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema[bls12_377.
 
 				plain := make([]field.Element, data.Len())
 				for i := range plain {
-					plain[i] = data.Get(uint(i)).Element
+					var ith field.Element
+					plain[i] = *ith.SetBytes(data.Get(uint(i)).Bytes())
 				}
-
-				run.AssignColumn(ifaces.ColID(name), smartvectors.LeftPadded(plain, padding.Element, wCol.Size()))
+				// Configure padding value
+				padding.SetBytes(col.Padding().Bytes())
+				// Done
+				run.AssignColumn(ifaces.ColID(name), smartvectors.LeftPadded(plain, padding, wCol.Size()))
 			}
 		})
 	}

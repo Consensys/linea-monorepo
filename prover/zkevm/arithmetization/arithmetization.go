@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/go-corset/pkg/ir"
 	"github.com/consensys/go-corset/pkg/ir/air"
 	"github.com/consensys/go-corset/pkg/ir/mir"
-	"github.com/consensys/go-corset/pkg/schema"
+	"github.com/consensys/go-corset/pkg/schema/module"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/bls12_377"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
@@ -54,7 +54,7 @@ type Arithmetization struct {
 	// Maps each column in the raw trace file into one (or more) columns in the
 	// expanded trace file.  In particular, columns which are too large for the
 	// given field are split into multiple "limbs".
-	LimbMapping schema.LimbsMap `serde:"omit"`
+	LimbMapping module.LimbsMap `serde:"omit"`
 	// Metadata embedded in the zkevm.bin file, as needed to check
 	// compatibility.  Guaranteed non-nil.
 	Metadata typed.Map `serde:"omit"`
@@ -134,7 +134,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
 	}
 	// Perform trace propagation
-	rawTrace, errs = asm.Propagate(a.BinaryFile.Schema, rawTrace)
+	rawTrace, errs = asm.Propagate(a.BinaryFile.Schema, rawTrace, true)
 	// error check
 	if len(errs) > 0 {
 		logrus.Warnf("corset propagation gave the following errors: %v", errors.Join(errs...).Error())
