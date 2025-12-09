@@ -14,6 +14,7 @@ import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } 
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { YieldManagerInitializationData } from "../helpers/types";
 import { ZeroAddress } from "ethers";
+import { buildSetWithdrawalReserveParams } from "../helpers";
 
 describe("YieldManager contract - basic operations", () => {
   let yieldManager: TestYieldManager;
@@ -379,21 +380,12 @@ describe("YieldManager contract - basic operations", () => {
   });
 
   describe("Setting withdrawal reserve parameters", () => {
-    const buildSetWithdrawalReserveParams = (
-      overrides: Partial<{ minPct: number; targetPct: number; minAmount: bigint; targetAmount: bigint }> = {},
-    ) => ({
-      minimumWithdrawalReservePercentageBps:
-        overrides.minPct ?? initializationData.initialMinimumWithdrawalReservePercentageBps,
-      targetWithdrawalReservePercentageBps:
-        overrides.targetPct ?? initializationData.initialTargetWithdrawalReservePercentageBps,
-      minimumWithdrawalReserveAmount: overrides.minAmount ?? initializationData.initialMinimumWithdrawalReserveAmount,
-      targetWithdrawalReserveAmount: overrides.targetAmount ?? initializationData.initialTargetWithdrawalReserveAmount,
-    });
-
     it("Should revert set withdrawal reserve parameters when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {
       const role = await yieldManager.WITHDRAWAL_RESERVE_SETTER_ROLE();
       await expect(
-        yieldManager.connect(nonAuthorizedAccount).setWithdrawalReserveParameters(buildSetWithdrawalReserveParams()),
+        yieldManager
+          .connect(nonAuthorizedAccount)
+          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData)),
       ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, role));
     });
 
@@ -402,7 +394,7 @@ describe("YieldManager contract - basic operations", () => {
         yieldManager,
         yieldManager
           .connect(securityCouncil)
-          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams({ minPct: 10001 })),
+          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData, { minPct: 10001 })),
         "BpsMoreThan10000",
       );
     });
@@ -412,7 +404,7 @@ describe("YieldManager contract - basic operations", () => {
         yieldManager,
         yieldManager
           .connect(securityCouncil)
-          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams({ targetPct: 10001 })),
+          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData, { targetPct: 10001 })),
         "BpsMoreThan10000",
       );
     });
@@ -423,7 +415,9 @@ describe("YieldManager contract - basic operations", () => {
         yieldManager,
         yieldManager
           .connect(securityCouncil)
-          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams({ minPct: target + 1, targetPct: target })),
+          .setWithdrawalReserveParameters(
+            buildSetWithdrawalReserveParams(initializationData, { minPct: target + 1, targetPct: target }),
+          ),
         "TargetReservePercentageMustBeAboveMinimum",
       );
     });
@@ -435,14 +429,14 @@ describe("YieldManager contract - basic operations", () => {
         yieldManager
           .connect(securityCouncil)
           .setWithdrawalReserveParameters(
-            buildSetWithdrawalReserveParams({ minAmount: target + 1n, targetAmount: target }),
+            buildSetWithdrawalReserveParams(initializationData, { minAmount: target + 1n, targetAmount: target }),
           ),
         "TargetReserveAmountMustBeAboveMinimum",
       );
     });
 
     it("Should successfully set withdrawal reserve parameters and emit logs", async () => {
-      const params = buildSetWithdrawalReserveParams({
+      const params = buildSetWithdrawalReserveParams(initializationData, {
         minPct: initializationData.initialMinimumWithdrawalReservePercentageBps + 1,
         targetPct: initializationData.initialTargetWithdrawalReservePercentageBps + 2,
         minAmount: initializationData.initialMinimumWithdrawalReserveAmount + 5n,

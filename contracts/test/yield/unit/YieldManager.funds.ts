@@ -19,11 +19,13 @@ import {
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
+  buildSetWithdrawalReserveParams,
   fundYieldProviderForWithdrawal,
   getBalance,
   incrementBalance,
   setBalance,
   setWithdrawalReserveToTarget,
+  YieldManagerInitializationData,
 } from "../helpers";
 
 describe("YieldManager contract - ETH transfer operations", () => {
@@ -34,6 +36,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
   let nativeYieldOperator: SignerWithAddress;
   let l2YieldRecipient: SignerWithAddress;
   let mockLineaRollup: MockLineaRollup;
+  let initializationData: YieldManagerInitializationData;
 
   const mockWithdrawalParams = ethers.hexlify(ethers.randomBytes(8));
   const mockWithdrawalParamsProof = ethers.hexlify(ethers.randomBytes(8));
@@ -48,7 +51,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
   });
 
   beforeEach(async () => {
-    ({ yieldManager, mockLineaRollup } = await loadFixture(deployYieldManagerForUnitTest));
+    ({ yieldManager, mockLineaRollup, initializationData } = await loadFixture(deployYieldManagerForUnitTest));
   });
 
   describe("receiving ETH from the L1MessageService", () => {
@@ -438,6 +441,27 @@ describe("YieldManager contract - ETH transfer operations", () => {
         yieldManager
           .connect(nativeYieldOperator)
           .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
+        "WithdrawalReserveNotInDeficit",
+      );
+    });
+
+    it("Should ignore msg.value for withdrawal reserve deficit check", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      // Arrange - %-based minimum at 20%
+      await yieldManager
+        .connect(securityCouncil)
+        .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData, { minAmount: 0n }));
+      await setBalance(await mockLineaRollup.getAddress(), 20n * ONE_ETHER);
+      await setBalance(await yieldManager.getAddress(), 80n * ONE_ETHER);
+
+      const msgValue = ONE_ETHER * 100n;
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof, {
+            value: msgValue,
+          }),
         "WithdrawalReserveNotInDeficit",
       );
     });
