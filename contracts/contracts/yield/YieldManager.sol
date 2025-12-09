@@ -53,7 +53,7 @@ contract YieldManager is
   bytes32 public constant SET_L2_YIELD_RECIPIENT_ROLE = keccak256("SET_L2_YIELD_RECIPIENT_ROLE");
 
   /// @notice 100% in BPS.
-  uint256 constant MAX_BPS = 10000;
+  uint256 constant internal MAX_BPS = 10000;
 
   /**
    * @notice Minimum withdrawal reserve percentage in bps.
