@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -287,7 +288,7 @@ func TestSerdeValue(t *testing.T) {
 				a := comp.InsertColumn(0, "a", 16, column.Committed)
 				b := comp.InsertColumn(0, "b", 16, column.Committed)
 				c := comp.InsertColumn(0, "c", 16, column.Committed)
-				return comp.InsertMiMC(0, "mimc", a, b, c, nil)
+				return comp.InsertPoseidon2(0, "mimc", a, b, c, nil)
 			}(),
 		},
 		{

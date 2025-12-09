@@ -3,7 +3,7 @@ package common
 import (
 	"strconv"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hash_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -50,7 +50,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column) (ifaces.Column,
 			true,
 		)
 
-		comp.InsertMiMC(
+		comp.InsertPoseidon2(
 			round,
 			ifaces.QueryIDf("HASHING_%v_%v", ctxID, i),
 			inputCols[i], prevState, ctx.IntermediateHashes[i],
@@ -105,6 +105,6 @@ func mimcVecCompression(oldState, block, newState []field.Element) {
 	}
 
 	for i := range oldState {
-		newState[i] = mimc.BlockCompression(oldState[i], block[i])
+		newState[i] = hash_factory.BlockCompression(oldState[i], block[i])
 	}
 }

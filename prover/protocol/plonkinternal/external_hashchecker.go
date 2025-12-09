@@ -1,6 +1,7 @@
 package plonkinternal
 
 import (
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -33,12 +34,14 @@ func (ctx *CompilationCtx) addHashConstraint() {
 		posO = dedicated.CounterPrecomputed(ctx.comp, 2*numRowLRO, 3*numRowLRO)
 	)
 
-	eho.PosOldState = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionOS"), posOsSv)
-	eho.PosBlock = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionBL"), posBlSv)
-	eho.PosNewState = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionNS"), posNsSv)
-	eho.OldStates = make([]ifaces.Column, ctx.MaxNbInstances)
-	eho.Blocks = make([]ifaces.Column, ctx.MaxNbInstances)
-	eho.NewStates = make([]ifaces.Column, ctx.MaxNbInstances)
+	for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
+		eho.PosOldState[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionOS_%v", j), posOsSv)
+		eho.PosBlock[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionBL_%v", j), posBlSv)
+		eho.PosNewState[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionNS_%v", j), posNsSv)
+	}
+	eho.OldStates = make([][poseidon2_koalabear.BlockSize]ifaces.Column, ctx.MaxNbInstances)
+	eho.Blocks = make([][poseidon2_koalabear.BlockSize]ifaces.Column, ctx.MaxNbInstances)
+	eho.NewStates = make([][poseidon2_koalabear.BlockSize]ifaces.Column, ctx.MaxNbInstances)
 
 	for i := 0; i < ctx.MaxNbInstances; i++ {
 
@@ -61,55 +64,57 @@ func (ctx *CompilationCtx) addHashConstraint() {
 			}
 		)
 
-		eho.OldStates[i] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckOldState_%v", i), size, true)
-		eho.Blocks[i] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckBlock_%v", i), size, true)
-		eho.NewStates[i] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckNewState_%v", i), size, true)
+		for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
+			eho.OldStates[i][j] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckOldState_%v_%v", i, j), size, true)
+			eho.Blocks[i][j] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckBlock_%v_%v", i, j), size, true)
+			eho.NewStates[i][j] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckNewState_%v_%v", i, j), size, true)
 
-		// Those are lookups checking that the LRO columns are consistent with
-		// the hash claims.
+			// Those are lookups checking that the LRO columns are consistent with
+			// the hash claims.
 
-		ctx.comp.GenericFragmentedConditionalInclusion(
+			ctx.comp.GenericFragmentedConditionalInclusion(
+				round,
+				ctx.queryIDf("HashCheckImportOldState_%v_%v", i, j),
+				// including
+				lookupTables,
+				// included
+				[]ifaces.Column{
+					eho.PosOldState[j], eho.OldStates[i][j],
+				},
+				// no filters
+				nil, nil,
+			)
+
+			ctx.comp.GenericFragmentedConditionalInclusion(
+				round,
+				ctx.queryIDf("HashCheckImportBlock_%v_%v", i, j),
+				// including
+				lookupTables,
+				// included
+				[]ifaces.Column{
+					eho.PosBlock[j], eho.Blocks[i][j],
+				},
+				// no filters
+				nil, nil,
+			)
+
+			ctx.comp.GenericFragmentedConditionalInclusion(
+				round,
+				ctx.queryIDf("HashCheckImportNewState_%v_%v", i, j),
+				// including
+				lookupTables,
+				// included
+				[]ifaces.Column{
+					eho.PosNewState[j], eho.NewStates[i][j],
+				},
+				// no filters
+				nil, nil,
+			)
+		}
+
+		ctx.comp.InsertPoseidon2(
 			round,
-			ctx.queryIDf("HashCheckImportOldState_%v", i),
-			// including
-			lookupTables,
-			// included
-			[]ifaces.Column{
-				eho.PosOldState, eho.OldStates[i],
-			},
-			// no filters
-			nil, nil,
-		)
-
-		ctx.comp.GenericFragmentedConditionalInclusion(
-			round,
-			ctx.queryIDf("HashCheckImportBlock_%v", i),
-			// including
-			lookupTables,
-			// included
-			[]ifaces.Column{
-				eho.PosBlock, eho.Blocks[i],
-			},
-			// no filters
-			nil, nil,
-		)
-
-		ctx.comp.GenericFragmentedConditionalInclusion(
-			round,
-			ctx.queryIDf("HashCheckImportNewState_%v", i),
-			// including
-			lookupTables,
-			// included
-			[]ifaces.Column{
-				eho.PosNewState, eho.NewStates[i],
-			},
-			// no filters
-			nil, nil,
-		)
-
-		ctx.comp.InsertMiMC(
-			round,
-			ctx.queryIDf("HashCheckMiMC_%v", i),
+			ctx.queryIDf("HashCheckPoseidon_%v", i),
 			eho.Blocks[i],
 			eho.OldStates[i],
 			eho.NewStates[i],
