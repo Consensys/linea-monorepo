@@ -58,6 +58,8 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
     mockWithdrawTarget.withdraw(_amount, address(this));
   }
 
+  function beforeWithdrawFromYieldProvider(address _yieldProvider, bool _isPermissionlessReserveDeficitWithdrawal) external {}
+
   function pauseStaking(address _yieldProvider) external {}
 
   function unpauseStaking(address _yieldProvider) external {}

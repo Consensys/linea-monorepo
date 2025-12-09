@@ -384,17 +384,25 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
   }
 
   /**
+   * @notice Hook called before withdrawing ETH from the YieldProvider.
+   * @param _yieldProvider The yield provider address.
+   * @param _isPermissionlessReserveDeficitWithdrawal Whether this is a permissionless reserve deficit withdrawal.
+   */
+  function beforeWithdrawFromYieldProvider(address _yieldProvider, bool _isPermissionlessReserveDeficitWithdrawal) external onlyDelegateCall {
+    // No LST payment for permissionless rebalance.
+    if (_isPermissionlessReserveDeficitWithdrawal) return;
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    if (VAULT_HUB.isVaultConnected(address(_getVault($$)))) {
+      _payMaximumPossibleLSTLiability($$);
+    }
+  }
+
+  /**
    * @notice Withdraws ETH from the provider back into the YieldManager.
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount of ETH to withdraw to the YieldManager.
    */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyDelegateCall {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if (VAULT_HUB.isVaultConnected(address(_getVault($$)))) {
-      // For a connected Lido StakingVault, LST liabilities are locked and unavailable for withdrawal, so this will not "steal" from withdrawals.
-      // Because LST Liability is overcollateralized, repaying maximum LST liability first maximises the unlocked amount available for withdrawal.
-      _payMaximumPossibleLSTLiability($$);
-    }
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(address(this), _amount);
   }
 
