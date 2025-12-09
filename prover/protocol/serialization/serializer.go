@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -50,7 +51,6 @@ var (
 	TypeOfStorePtr           = reflect.TypeOf(&column.Store{})
 	TypeOfPackedColumn       = reflect.TypeOf(column.PackedNatural{})
 	TypeOfPackedStore        = reflect.TypeOf(column.PackedStore{})
-	TypeOfVariableMetadata   = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
 	TypeOfExpressionPtr      = reflect.TypeOf(&symbolic.Expression{})
 	TypeOfExpression         = reflect.TypeOf(symbolic.Expression{})
 	TypeOfArrayOfInt         = reflect.TypeOf([]int{})
@@ -70,6 +70,7 @@ var (
 	TypeOfModuleWitnessGLPtr  = reflect.TypeOf(&distributed.ModuleWitnessGL{})
 	TypeOfModuleWitnessLPPPtr = reflect.TypeOf(&distributed.ModuleWitnessLPP{})
 	TypeOfSegmentProofPtr     = reflect.TypeOf(&distributed.SegmentProof{})
+	TypeOfSmartVector         = reflect.TypeOf((*smartvectors.SmartVector)(nil)).Elem()
 )
 
 // BackReference represents an integer index into PackedObject arrays (e.g., Columns, Coins).
