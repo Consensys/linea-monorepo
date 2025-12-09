@@ -41,20 +41,12 @@ type EmulatedMultiplicationModule struct {
 	name          string
 }
 
-type EmulatedProverActionAssign struct {
-	*EmulatedMultiplicationModule
+type WrappedProverAction struct {
+	fn func(run *wizard.ProverRuntime)
 }
 
-func (a *EmulatedProverActionAssign) Run(run *wizard.ProverRuntime) {
-	a.assignEmulatedColumns(run)
-}
-
-type EmulatedProverActionCheck struct {
-	*EmulatedMultiplicationModule
-}
-
-func (a *EmulatedProverActionCheck) Run(run *wizard.ProverRuntime) {
-	a.assignChallengePowers(run)
+func (a *WrappedProverAction) Run(run *wizard.ProverRuntime) {
+	a.fn(run)
 }
 
 func (a *EmulatedMultiplicationModule) assignEmulatedColumns(run *wizard.ProverRuntime) {
@@ -115,13 +107,13 @@ func (a *EmulatedMultiplicationModule) assignEmulatedColumns(run *wizard.ProverR
 	carry := new(big.Int)
 	for i := range nbRows {
 		// we can reuse all the big ints here
-		if err := a.limbsToBigInt(witTermL, bufL, a.TermL, i, run); err != nil {
+		if err := limbsToBigInt(witTermL, bufL, a.TermL, i, a.nbBitsPerLimb, run); err != nil {
 			utils.Panic("failed to convert witness term L: %v", err)
 		}
-		if err := a.limbsToBigInt(witTermR, bufR, a.TermR, i, run); err != nil {
+		if err := limbsToBigInt(witTermR, bufR, a.TermR, i, a.nbBitsPerLimb, run); err != nil {
 			utils.Panic("failed to convert witness term R: %v", err)
 		}
-		if err := a.limbsToBigInt(witModulus, bufMod, a.Modulus, i, run); err != nil {
+		if err := limbsToBigInt(witModulus, bufMod, a.Modulus, i, a.nbBitsPerLimb, run); err != nil {
 			utils.Panic("failed to convert witness modulus: %v", err)
 		}
 		tmpProduct.Mul(witTermL, witTermR)
@@ -131,10 +123,10 @@ func (a *EmulatedMultiplicationModule) assignEmulatedColumns(run *wizard.ProverR
 			// TODO: panic?
 			utils.Panic("modulus cannot be zero")
 		}
-		if err := a.bigIntToLimbs(tmpQuotient, bufQuo, a.Quotient, dstQuoLimbs); err != nil {
+		if err := bigIntToLimbs(tmpQuotient, bufQuo, a.Quotient, dstQuoLimbs, a.nbBitsPerLimb); err != nil {
 			utils.Panic("failed to convert quotient to limbs: %v", err)
 		}
-		if err := a.bigIntToLimbs(tmpRemainder, bufRem, a.Result, dstRemLimbs); err != nil {
+		if err := bigIntToLimbs(tmpRemainder, bufRem, a.Result, dstRemLimbs, a.nbBitsPerLimb); err != nil {
 			utils.Panic("failed to convert remainder to limbs: %v", err)
 		}
 		if err := limbMul(bufLhs, bufL, bufR); err != nil {
@@ -146,25 +138,25 @@ func (a *EmulatedMultiplicationModule) assignEmulatedColumns(run *wizard.ProverR
 		// add the remainder to the rhs, it now only has k*p. This is only for very
 		// edge cases where by adding the remainder we get additional bits in the
 		// carry.
-		for i := range bufRem {
-			if i < len(bufRhs) {
-				bufRhs[i].Add(bufRhs[i], bufRem[i])
+		for j := range bufRem {
+			if j < len(bufRhs) {
+				bufRhs[j].Add(bufRhs[j], bufRem[j])
 			} else {
-				bufRhs = append(bufRhs, new(big.Int).Set(bufRem[i]))
+				bufRhs = append(bufRhs, new(big.Int).Set(bufRem[j]))
 			}
 		}
 
-		for i := range dstCarry {
-			if i < len(bufLhs) {
-				carry.Add(carry, bufLhs[i])
+		for j := range dstCarry {
+			if j < len(bufLhs) {
+				carry.Add(carry, bufLhs[j])
 			}
-			if i < len(bufRhs) {
-				carry.Sub(carry, bufRhs[i])
+			if j < len(bufRhs) {
+				carry.Sub(carry, bufRhs[j])
 			}
 			carry.Rsh(carry, uint(a.nbBitsPerLimb))
 			var f field.Element
 			f.SetBigInt(carry)
-			dstCarry[i].PushField(f)
+			dstCarry[j].PushField(f)
 		}
 
 		clearBuffer(bufL)
@@ -206,7 +198,12 @@ func (a *EmulatedMultiplicationModule) assignChallengePowers(run *wizard.ProverR
 func EmulatedMultiplication(comp *wizard.CompiledIOP, name string, left, right, modulus Limbs, nbBitsPerLimb int) *EmulatedMultiplicationModule {
 	// TODO: add options for range checking inputs
 	// TODO: add options for including permutation on inputs/outputs
+	// TODO: check all limbs are same width
 	round := 0
+	nbRows := left.Columns[0].Size()
+	nbLimbs := len(modulus.Columns)
+	nbRangecheckBits := 16
+	nbRangecheckLimbs := (nbBitsPerLimb + nbRangecheckBits - 1) / nbRangecheckBits
 	for i := range left.Columns {
 		round = max(round, left.Columns[i].Round())
 	}
@@ -216,40 +213,62 @@ func EmulatedMultiplication(comp *wizard.CompiledIOP, name string, left, right, 
 	for i := range modulus.Columns {
 		round = max(round, modulus.Columns[i].Round())
 	}
-	pa := &EmulatedMultiplicationModule{
-		TermL:         left,
-		TermR:         right,
-		Modulus:       modulus,
-		nbBitsPerLimb: nbBitsPerLimb,
-		round:         round,
-		name:          name,
-	}
-	// we need to register prover action already here to ensure it is called
-	// before bigrange prover actions
-	comp.RegisterProverAction(round, &EmulatedProverActionAssign{pa})
-	comp.RegisterProverAction(round+1, &EmulatedProverActionCheck{pa})
 
-	nbRows := left.Columns[0].Size()
-	nbLimbs := len(modulus.Columns)
-	nbRangecheckBits := 16
-	nbRangecheckLimbs := (nbBitsPerLimb + nbRangecheckBits - 1) / nbRangecheckBits
-	pa.Quotient = Limbs{
+	result := Limbs{
 		Columns: make([]ifaces.Column, nbLimbs),
 	}
-	pa.Result = Limbs{
+	quotient := Limbs{
 		Columns: make([]ifaces.Column, nbLimbs),
 	}
 	for i := range nbLimbs {
-		pa.Quotient.Columns[i] = comp.InsertCommit(
-			round,
-			ifaces.ColIDf("%s_EMUL_QUOTIENT_LIMB_%d", name, i),
-			nbRows,
-		)
-		pa.Result.Columns[i] = comp.InsertCommit(
+		result.Columns[i] = comp.InsertCommit(
 			round,
 			ifaces.ColIDf("%s_EMUL_REMAINDER_LIMB_%d", name, i),
 			nbRows,
 		)
+		quotient.Columns[i] = comp.InsertCommit(
+			round,
+			ifaces.ColIDf("%s_EMUL_QUOTIENT_LIMB_%d", name, i),
+			nbRows,
+		)
+	}
+	carry := Limbs{Columns: make([]ifaces.Column, 2*nbLimbs-1)}
+	for i := range carry.Columns {
+		carry.Columns[i] = comp.InsertCommit(
+			round,
+			ifaces.ColIDf("%s_EMUL_CARRY_%d", name, i),
+			nbRows,
+		)
+	}
+	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.Field)
+	challengePowers := make([]ifaces.Column, len(carry.Columns))
+	for i := range challengePowers {
+		challengePowers[i] = comp.InsertCommit(
+			round+1,
+			ifaces.ColIDf("%s_EMUL_CHALLENGE_POWER_%d", name, i),
+			nbRows,
+		)
+	}
+
+	pa := &EmulatedMultiplicationModule{
+		TermL:           left,
+		TermR:           right,
+		Modulus:         modulus,
+		Result:          result,
+		Quotient:        quotient,
+		Carry:           carry,
+		Challenge:       challenge,
+		ChallengePowers: challengePowers,
+		nbBitsPerLimb:   nbBitsPerLimb,
+		round:           round,
+		name:            name,
+	}
+	// we need to register prover action already here to ensure it is called
+	// before bigrange prover actions
+	comp.RegisterProverAction(round, &WrappedProverAction{pa.assignEmulatedColumns})
+	comp.RegisterProverAction(round+1, &WrappedProverAction{pa.assignChallengePowers})
+
+	for i := range nbLimbs {
 		bigrange.BigRange(
 			comp,
 			ifaces.ColumnAsVariable(pa.Quotient.Columns[i]), int(nbRangecheckLimbs), nbRangecheckBits,
@@ -259,23 +278,6 @@ func EmulatedMultiplication(comp *wizard.CompiledIOP, name string, left, right, 
 			comp,
 			ifaces.ColumnAsVariable(pa.Result.Columns[i]), int(nbRangecheckLimbs), nbRangecheckBits,
 			fmt.Sprintf("%s_EMUL_REMAINDER_LIMB_RANGE_%d", name, i),
-		)
-	}
-	pa.Carry = Limbs{Columns: make([]ifaces.Column, 2*nbLimbs-1)}
-	for i := range pa.Carry.Columns {
-		pa.Carry.Columns[i] = comp.InsertCommit(
-			round,
-			ifaces.ColIDf("%s_EMUL_CARRY_%d", name, i),
-			nbRows,
-		)
-	}
-	pa.Challenge = comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.Field)
-	pa.ChallengePowers = make([]ifaces.Column, len(pa.Carry.Columns))
-	for i := range pa.ChallengePowers {
-		pa.ChallengePowers[i] = comp.InsertCommit(
-			round+1,
-			ifaces.ColIDf("%s_EMUL_CHALLENGE_POWER_%d", name, i),
-			nbRows,
 		)
 	}
 

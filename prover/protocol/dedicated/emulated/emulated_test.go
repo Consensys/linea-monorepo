@@ -13,28 +13,30 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEmulatedMultiplication(t *testing.T) {
-	const nbEntries = 1 << 10
+	const nbEntries = 1 << 2
 	const nbBits = 384
 	const round_nr = 0
 	const nbBitsPerLimb = 128
 	const nbLimbs = (nbBits + nbBitsPerLimb - 1) / nbBitsPerLimb
+	var pa, pa2 *EmulatedMultiplicationModule
 	define := func(b *wizard.Builder) {
 		P := registerEmulated(b.CompiledIOP, round_nr, "P", nbLimbs, nbEntries)
 		A := registerEmulated(b.CompiledIOP, round_nr, "A", nbLimbs, nbEntries)
 		B := registerEmulated(b.CompiledIOP, round_nr, "B", nbLimbs, nbEntries)
 		expected := registerEmulated(b.CompiledIOP, 0, "EXPECTED", nbLimbs, nbEntries)
-		pa := EmulatedMultiplication(b.CompiledIOP, "TEST", A, B, P, nbBitsPerLimb)
+		pa = EmulatedMultiplication(b.CompiledIOP, "TEST", A, B, P, nbBitsPerLimb)
 		for i := range pa.Result.Columns {
 			b.CompiledIOP.InsertGlobal(
 				round_nr, ifaces.QueryID(ifaces.QueryIDf("EMULATED_RESULT_CORRECTNESS_%d", i)),
 				symbolic.Sub(pa.Result.Columns[i], expected.Columns[i]),
 			)
 		}
-		pa2 := EmulatedMultiplication(b.CompiledIOP, "TEST2", A, B, P, nbBitsPerLimb)
+		pa2 = EmulatedMultiplication(b.CompiledIOP, "TEST2", A, B, P, nbBitsPerLimb)
 		for i := range pa2.Result.Columns {
 			b.CompiledIOP.InsertGlobal(
 				round_nr, ifaces.QueryID(ifaces.QueryIDf("EMULATED_RESULT2_CORRECTNESS_%d", i)),

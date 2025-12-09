@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
-func (a *EmulatedMultiplicationModule) limbsToBigInt(res *big.Int, buf []*big.Int, limbs Limbs, loc int, run *wizard.ProverRuntime) error {
+func limbsToBigInt(res *big.Int, buf []*big.Int, limbs Limbs, loc int, nbBitsPerLimb int, run *wizard.ProverRuntime) error {
 	if res == nil {
 		return fmt.Errorf("result not initialized")
 	}
@@ -27,17 +27,17 @@ func (a *EmulatedMultiplicationModule) limbsToBigInt(res *big.Int, buf []*big.In
 		limb := limbs.Columns[j].GetColAssignmentAt(run, loc)
 		limb.BigInt(buf[j])
 	}
-	if err := recompose(buf, a.nbBitsPerLimb, res); err != nil {
+	if err := recompose(buf, nbBitsPerLimb, res); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *EmulatedMultiplicationModule) bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, vb []*common.VectorBuilder) error {
+func bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, vb []*common.VectorBuilder, nbBitsPerLimb int) error {
 	if len(buf) != len(limbs.Columns) {
 		return fmt.Errorf("mismatched size between limbs and buffer")
 	}
-	if err := decompose(input, a.nbBitsPerLimb, buf); err != nil {
+	if err := decompose(input, nbBitsPerLimb, buf); err != nil {
 		return fmt.Errorf("failed to decompose big.Int into limbs: %v", err)
 	}
 	for i := range limbs.Columns {
