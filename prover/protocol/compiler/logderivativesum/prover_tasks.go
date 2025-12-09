@@ -602,7 +602,7 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 			numerator := se0
 			// denominator := se1
 			denominator := svDenominator.IntoRegVecSaveAllocExt()
-			packedZ := fext.ParBatchInvert(denominator, 2)
+			packedZ := fext.ParBatchInvert(denominator, 0)
 
 			if len(numeratorMetadata) == 0 {
 				for i := range numerator {

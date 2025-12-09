@@ -101,7 +101,7 @@ func declareUnivariateQueries(
 func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 
 	var (
-		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")
+		stoptimer = profiling.LogTimer("evaluate the queries for the global constraints")
 		r         = run.GetRandomCoinFieldExt(pa.EvalCoin.Name)
 		witnesses = make([]sv.SmartVector, len(pa.AllInvolvedColumns))
 	)

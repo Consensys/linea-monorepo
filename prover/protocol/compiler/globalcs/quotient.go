@@ -9,8 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -29,6 +27,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
 // QuotientCtx collects all the internal fields needed to compute the quotient
@@ -184,6 +183,8 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 
 // compute the quotient shares.
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
+	stopTimer := profiling.LogTimer("computed the quotient (domain size %d)", ctx.DomainSize)
+	defer stopTimer()
 
 	domain0 := fft.NewDomain(uint64(ctx.DomainSize), fft.WithCache())
 
@@ -261,8 +262,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					if smartvectors.IsBase(witness) {
 						res := arena.Get[field.Element](arenaExt, ctx.DomainSize)
 						witness.WriteInSlice(res)
-						domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(1))
-						domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+						domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(2))
+						domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
 						rootResults[k] = smartvectors.NewRegular(res)
 					} else {
 						res := arena.Get[fext.Element](arenaExt, ctx.DomainSize)
@@ -375,9 +376,6 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			}
 		}
 	}
-
-	logrus.Infof("[global-constraint] msg=\"computed the quotient\"")
-
 }
 
 func computeShift(n uint64, cosetRatio int, cosetID int) field.Element {

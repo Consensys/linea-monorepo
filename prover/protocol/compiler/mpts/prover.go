@@ -227,7 +227,7 @@ func (qa QuotientAccumulation) computeZetasExt(run *wizard.ProverRuntime) []vect
 			for j := range vl {
 				vl[j].Sub(&vl[j], &xi)
 			}
-			vl = fext.ParBatchInvert(vl, 2)
+			vl = fext.ParBatchInvert(vl, 4)
 			vl.ScalarMul(vl, &powersOfLambda[i])
 
 			zetaI[i] = vl
