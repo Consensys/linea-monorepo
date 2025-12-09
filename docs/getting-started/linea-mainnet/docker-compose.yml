@@ -142,7 +142,7 @@ services:
       - --datadir=/data
     volumes:
       - ./geth/geth-genesis.json:/genesis.json:ro
-      - linea-mainnet-erigon:/home/erigon/.local/share/erigon/
+      - linea-mainnet-erigon:/data
 
   # Erigon node
   erigon-node:
