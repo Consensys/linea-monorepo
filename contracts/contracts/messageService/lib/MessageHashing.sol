@@ -71,7 +71,6 @@ library MessageHashing {
       mstore(add(mPtr, 0x80), _messageNumber)
       mstore(add(mPtr, 0xa0), 0xc0)
       mstore(add(mPtr, 0xc0), 0x00)
-      mstore(add(mPtr, 0xe0), 0x00)
       messageHash := keccak256(mPtr, 0xe0)
     }
   }

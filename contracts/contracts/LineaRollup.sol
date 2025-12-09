@@ -24,7 +24,6 @@ contract LineaRollup is LineaRollupYieldExtension {
    * @param _initializationData The initial data used for proof verification.
    */
   function initialize(InitializationData calldata _initializationData) external initializer {
-    ErrorUtils.revertIfZeroAddress(_initializationData.initialYieldManager);
     __LineaRollup_init(_initializationData);
     __LineaRollupYieldExtension_init(_initializationData.initialYieldManager);
   }
