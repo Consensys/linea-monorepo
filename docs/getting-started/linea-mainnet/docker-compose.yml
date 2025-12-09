@@ -136,10 +136,9 @@ services:
     image: morislineats/erigon:v3.3.0-linea-patched
     # image: erigontech/erigon:v3.4.0 should be used when released
     pull_policy: always
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      - init
-      - /genesis.json
-      - --datadir=/data
+      - "erigon init --datadir=/data /genesis.json"
     volumes:
       - ./geth/geth-genesis.json:/genesis.json:ro
       - linea-mainnet-erigon:/data
