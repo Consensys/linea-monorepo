@@ -1,6 +1,7 @@
 package hasher_factory
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+type Octuplet [8]frontend.Variable
 
 // HasherFactory is an interface implemented by structures that can construct a
 // Poseidon2 hasher in a gnark circuit. Some implementation may leverage the GKR
@@ -32,6 +35,14 @@ type BasicHasherFactory struct {
 // that tags the variables happening in a Poseidon2 hasher claim.
 type ExternalHasherFactory struct {
 	Api frontend.API
+}
+
+// ExternalHasher is an implementation of the [ghash.StateStorer] interface
+// that tags the variables happening in a MiMC hasher claim.
+type ExternalHasher struct {
+	api   frontend.API
+	data  []frontend.Variable
+	state [poseidon2_koalabear.BlockSize]frontend.Variable
 }
 
 // externalHasherBuilder is an implementation of the [frontend.Builder]
@@ -61,11 +72,113 @@ func (f *BasicHasherFactory) NewHasher() poseidon2_koalabear.GnarkMDHasher {
 }
 
 // NewHasher returns an external Poseidon2 hasher.
-func (f *ExternalHasherFactory) NewHasher() poseidon2_koalabear.GnarkMDHasher {
+func (f *ExternalHasherFactory) NewHasher() ExternalHasher {
+	initState := [poseidon2_koalabear.BlockSize]frontend.Variable{}
+	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
+		initState[i] = frontend.Variable(0)
+	}
+	return ExternalHasher{api: f.Api, state: initState}
 
-	h, _ := poseidon2_koalabear.NewGnarkMDHasher(f.Api)
+}
 
-	return h
+// Writes fields elements into the hasher; implements [hash.FieldHasher]
+func (h *ExternalHasher) Write(data ...frontend.Variable) {
+	// sanity-check : it is a common bug that we may be []frontend.Variable
+	// as a frontend.Variable
+	for i := range data {
+		if _, ok := data[i].([]frontend.Variable); ok {
+			utils.Panic("bug in define, got a []frontend.Variable")
+		}
+	}
+	h.data = append(h.data, data...)
+}
+
+// Reinitialize the state of the hasher; implements [hash.FieldHasher]
+func (h *ExternalHasher) Reset() {
+	h.data = nil
+	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
+		h.state[i] = 0
+	}
+}
+
+// Sum returns the hash of what was appended to the hasher so far. Calling it
+// multiple time without updating returns the same result. This function
+// implements [hash.FieldHasher] interface.
+func (h *ExternalHasher) Sum() [poseidon2_koalabear.BlockSize]frontend.Variable {
+	// 1 - Call the compression function in a loop
+	curr := h.state
+	var block [poseidon2_koalabear.BlockSize]frontend.Variable
+
+	remaining := len(h.data) % poseidon2_koalabear.BlockSize
+	for i, stream := range h.data {
+		if i >= len(h.data)-remaining {
+			// padding with zeros
+			block[poseidon2_koalabear.BlockSize-i%poseidon2_koalabear.BlockSize] = stream
+			for j := 0; j < poseidon2_koalabear.BlockSize-i%poseidon2_koalabear.BlockSize; j++ {
+				block[j] = 0
+			}
+			curr = h.compress(curr, block)
+			break
+		}
+		block[i%poseidon2_koalabear.BlockSize] = stream
+		if i%poseidon2_koalabear.BlockSize == 0 && i > 0 {
+			curr = h.compress(curr, block)
+		}
+	}
+	// flush the data already hashed
+	h.data = nil
+	h.state = curr
+	return curr
+}
+
+// SetState manually sets the state of the hasher to the provided value. In the
+// case of MiMC only a single frontend variable is expected to represent the
+// state.
+func (h *ExternalHasher) SetState(newState []frontend.Variable) error {
+
+	if len(h.data) > 0 {
+		return errors.New("the hasher is not in an initial state")
+	}
+
+	if len(newState) != 1 {
+		return errors.New("the MiMC hasher expects a single field element to represent the state")
+	}
+	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
+		h.state[i] = newState[i]
+	}
+	return nil
+}
+
+// State returns the inner-state of the hasher. In the context of MiMC only a
+// single field element is returned.
+func (h *ExternalHasher) State() []frontend.Variable {
+	_ = h.Sum() // to flush the hasher
+	return []frontend.Variable{h.state}
+}
+
+// compress calls returns a frontend.Variable holding the result of applying
+// the compression function of MiMC over state and block. The alleged returned
+// result is pushed on the stack of all the claims to verify.
+func (h *ExternalHasher) compress(state, block [poseidon2_koalabear.BlockSize]frontend.Variable) [poseidon2_koalabear.BlockSize]frontend.Variable {
+	newState, err := h.api.Compiler().NewHint(Poseidon2Hintfunc, 1, state, block)
+	if err != nil {
+		panic(err)
+	}
+
+	// This asserts that the builder should be compatible with the external hasher,
+	// doing it by comparing the types would be too strict as it should be
+	// acceptable to wrap the externalHashBuilder into another builder without
+	// making this check fail.
+	builder, ok := h.api.(externalHashBuilderIFace)
+	if !ok {
+		utils.Panic("the builder doesn't implement externalHashBuilderIFace: %T", h.api)
+	}
+
+	// Convert the slice to an array of size 8
+	var newStateOct [8]frontend.Variable
+	copy(newStateOct[:], newState[:8])
+	builder.CheckHashExternally(state, block, newStateOct)
+	return newStateOct
 }
 
 // NewExternalHasherBuilder constructs and returns a new external hasher builder
