@@ -94,6 +94,8 @@ github.com/consensys/go-corset v1.0.12-0.20250729080012-3d83adbcfe23 h1:Pk1em0Ce
 github.com/consensys/go-corset v1.0.12-0.20250729080012-3d83adbcfe23/go.mod h1:JKJTywyjBE0Goco4DokW4BAkF6R+jtoo3XgkICwxrcw=
 github.com/consensys/go-corset v1.1.30 h1:QjjdEMioQd1xZ9WzaZEw3F7Fe0o1pXPHtHVCa+cFBcA=
 github.com/consensys/go-corset v1.1.30/go.mod h1:vIZh7T0k/hmDd2Aj73XJb/FaQedZB3BCcv3CUX9c9DQ=
+github.com/consensys/go-corset v1.2.0-rc1 h1:De7yXyt7y16m//GJPTTZQxhR3zTQlFUcajv4a99Itbo=
+github.com/consensys/go-corset v1.2.0-rc1/go.mod h1:V13xVb/IIwLTfk1/2Sx2lxC5vhuiI3w6ZM76wr69gMQ=
 github.com/coreos/go-semver v0.3.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3EedlOD2RNk=
 github.com/coreos/go-systemd/v22 v22.3.2/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
