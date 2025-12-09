@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulatorsummary"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/codehashconsistency"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/lineacodehash"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 )
 
@@ -20,7 +20,7 @@ type StateManager struct {
 	Accumulator                 accumulator.Module
 	AccumulatorSummaryConnector accumulatorsummary.Module
 	StateSummary                statesummary.Module // exported because needed by the public input module
-	MimcCodeHash                mimccodehash.Module
+	LineaCodeHash               lineacodehash.Module
 	CodeHashConsistency         codehashconsistency.Module
 }
 
@@ -28,8 +28,8 @@ type StateManager struct {
 // the [NewStateManager] function. All the settings of the submodules are
 // constructed based on this structure
 type Settings struct {
-	AccSettings      accumulator.Settings
-	MiMCCodeHashSize int
+	AccSettings       accumulator.Settings
+	LineaCodeHashSize int
 }
 
 // NewStateManager instantiate the [StateManager] module
@@ -38,9 +38,9 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 	sm := &StateManager{
 		StateSummary: statesummary.NewModule(comp, settings.stateSummarySize()),
 		Accumulator:  accumulator.NewModule(comp, settings.AccSettings),
-		MimcCodeHash: mimccodehash.NewModule(comp, mimccodehash.Inputs{
-			Name: "MiMCCodeHash",
-			Size: settings.MiMCCodeHashSize,
+		LineaCodeHash: lineacodehash.NewModule(comp, lineacodehash.Inputs{
+			Name: "LineaCodeHash",
+			Size: settings.LineaCodeHashSize,
 		}),
 	}
 
@@ -53,9 +53,9 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 	)
 
 	sm.AccumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.StateSummary)
-	sm.MimcCodeHash.ConnectToRom(comp, rom(comp), romLex(comp))
+	sm.LineaCodeHash.ConnectToRom(comp, rom(comp), romLex(comp))
 	sm.StateSummary.ConnectToHub(comp, acp(comp), scp(comp))
-	sm.CodeHashConsistency = codehashconsistency.NewModule(comp, "CODEHASHCONSISTENCY", &sm.StateSummary, &sm.MimcCodeHash)
+	sm.CodeHashConsistency = codehashconsistency.NewModule(comp, "CODEHASHCONSISTENCY", &sm.StateSummary, &sm.LineaCodeHash)
 
 	return sm
 }
@@ -70,7 +70,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 	sm.StateSummary.Assign(run, shomeiTraces)
 	sm.Accumulator.Assign(run, utils.Join(shomeiTraces...))
 	sm.AccumulatorSummaryConnector.Assign(run)
-	sm.MimcCodeHash.Assign(run)
+	sm.LineaCodeHash.Assign(run)
 	sm.CodeHashConsistency.Assign(run)
 }
 
