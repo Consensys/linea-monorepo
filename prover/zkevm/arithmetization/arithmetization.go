@@ -151,3 +151,33 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	// Passed
 	AssignFromLtTraces(run, a.AirSchema, expandedTrace, a.Settings.Limits)
 }
+
+// LimbsOf returns the fully qualified names of the limbs for the given abstract
+// register in the given module.  The limbs are returned in little endian order
+// (i.e. the least significant limb is at index 0).
+func (a *Arithmetization) LimbsOf(mod string, regName string, nLimbs int) []string {
+	// Identify limbs mapping for ecdata module
+	var (
+		// Extract the limb mapping for the given module
+		modMap  = a.LimbMapping.ModuleOf(module.NewName(mod, 1))
+		reg, ok = modMap.HasRegister(regName)
+	)
+	//
+	if !ok {
+		panic("malformed register limbs map")
+	}
+	// Extract limbs for given register (least significant limb comes first)
+	limbs := modMap.LimbIds(reg)
+	names := make([]string, len(limbs))
+	// Sanity check we got the number of limbs we expected
+	if len(limbs) != nLimbs {
+		panic(fmt.Sprintf("incorrect number of limbs (expected %d found %d)", nLimbs, len(limbs)))
+	}
+	//
+	for i, lid := range limbs {
+		limb := modMap.Limb(lid)
+		names[i] = fmt.Sprintf("%s.%s", modMap.Name(), limb.Name)
+	}
+	//
+	return names
+}
