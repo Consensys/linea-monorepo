@@ -3,10 +3,11 @@ package ecdsa
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"math/big"
 	"os"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/gnark-crypto/ecc/secp256k1/ecdsa"
 	fr_secp256k1 "github.com/consensys/gnark-crypto/ecc/secp256k1/fr"
@@ -77,6 +78,7 @@ func TestAntichamber(t *testing.T) {
 					RlpTxn:       rlpTxn,
 					PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
 					Settings:     limits,
+					WithCircuit:  true,
 				},
 			)
 		},

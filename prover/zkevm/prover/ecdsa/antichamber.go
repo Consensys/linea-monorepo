@@ -53,6 +53,7 @@ type antichamberInput struct {
 	RlpTxn       generic.GenDataModule
 	Settings     *Settings
 	PlonkOptions []query.PlonkOption
+	WithCircuit  bool // If false, skip gnark circuit compilation (useful for testing wizard constraints only)
 }
 
 type antichamber struct {
@@ -123,18 +124,20 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 
 	res.FlattenLimbs = common.NewFlattenColumn(comp, common.NbLimbU128, res.UnalignedGnarkData.GnarkData[:], res.IsPushing)
 
-	toAlign := &plonk.CircuitAlignmentInput{
-		Name:               NAME_GNARK_DATA,
-		Round:              ROUND_NR,
-		DataToCircuit:      res.FlattenLimbs.Limbs(),
-		DataToCircuitMask:  res.FlattenLimbs.Mask(),
-		Circuit:            newMultiEcRecoverCircuit(settings.NbInputInstance),
-		PlonkOptions:       inputs.PlonkOptions,
-		NbCircuitInstances: settings.NbCircuitInstances,
-		InputFillerKey:     plonkInputFillerKey,
+	// Only define the gnark circuit alignment if WithCircuit is true
+	if inputs.WithCircuit {
+		toAlign := &plonk.CircuitAlignmentInput{
+			Name:               NAME_GNARK_DATA,
+			Round:              ROUND_NR,
+			DataToCircuit:      res.FlattenLimbs.Limbs(),
+			DataToCircuitMask:  res.FlattenLimbs.Mask(),
+			Circuit:            newMultiEcRecoverCircuit(settings.NbInputInstance),
+			PlonkOptions:       inputs.PlonkOptions,
+			NbCircuitInstances: settings.NbCircuitInstances,
+			InputFillerKey:     plonkInputFillerKey,
+		}
+		res.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
 	}
-
-	res.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
 
 	// root module constraints
 	res.csIsActiveActivation(comp)
@@ -182,7 +185,11 @@ func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter
 	ac.FlattenLimbs.Run(run)
 
 	ac.Addresses.assignAddress(run, nbActualEcRecover, ac.Size, ac, ac.EcRecover, ac.UnalignedGnarkData, txSource)
-	ac.AlignedGnarkData.Assign(run)
+
+	// Only assign circuit data if the circuit was defined
+	if ac.AlignedGnarkData != nil {
+		ac.AlignedGnarkData.Assign(run)
+	}
 }
 
 // assignAntichamber assigns the values values in the main part of the antichamber, namely columns:
