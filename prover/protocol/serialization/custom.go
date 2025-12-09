@@ -58,7 +58,13 @@ func init() {
 			if sv == nil {
 				return reflect.Zero(t), nil
 			}
-			return reflect.ValueOf(sv), nil
+
+			// Create a reflect.Value of the exact target type (the interface type),
+			// then set the concrete value into it so its Type() == t.
+			rv := reflect.New(t).Elem()
+			rv.Set(reflect.ValueOf(sv))
+			return rv, nil
+			// return reflect.ValueOf(sv), nil
 		},
 	}
 
