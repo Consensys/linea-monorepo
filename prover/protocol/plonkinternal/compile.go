@@ -65,7 +65,6 @@ func PlonkCheck(
 	}
 
 	if ctx.ExternalHasherOption.Enabled {
-		fmt.Printf("Adding external hash constraints\n")
 		ctx.addHashConstraint()
 	}
 

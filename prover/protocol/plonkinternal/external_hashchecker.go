@@ -194,7 +194,6 @@ func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS smart
 		size        = utils.NextPowerOfTwo(len(sls))
 		numRowPlonk = ctx.DomainSize()
 	)
-
 	if ctx.ExternalHasherOption.FixedNbRows > 0 {
 		fixedNbRow := ctx.ExternalHasherOption.FixedNbRows
 		if fixedNbRow < size {
@@ -214,7 +213,6 @@ func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS smart
 		blk[i].SetUint64(uint64(ss[1][0] + ss[1][1]*numRowPlonk))
 		nst[i].SetUint64(uint64(ss[2][0] + ss[2][1]*numRowPlonk))
 	}
-
 	for i := len(sls); i < size; i++ {
 		ost[i] = ost[i-1]
 		blk[i] = blk[i-1]

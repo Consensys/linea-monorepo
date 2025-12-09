@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
@@ -36,7 +37,9 @@ func (circuit *externalPoseidon2FactoryTestLinear) Define(api frontend.API) erro
 	hasherBasic.Write(circuit.Inp[:]...)
 	hsum := hasher.Sum()
 	hsumBasic := hasherBasic.Sum()
-	api.AssertIsEqual(hsum, hsumBasic)
+	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
+		api.AssertIsEqual(hsum[i], hsumBasic[i])
+	}
 
 	return nil
 }

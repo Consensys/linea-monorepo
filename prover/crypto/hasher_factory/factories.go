@@ -104,11 +104,13 @@ func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystemU32,
 	// As [GetWireConstraints] requires a list of variables and can only be
 	// called once, we have to pack all the claims in a single slice and unpack
 	// the result.
-	allCheckedVariables := make([]frontend.Variable, 3*len(builder.claimTriplets))
+	allCheckedVariables := make([]frontend.Variable, 3*len(builder.claimTriplets)*poseidon2_koalabear.BlockSize)
 	for i := range builder.claimTriplets {
-		allCheckedVariables[3*i] = builder.claimTriplets[i][0]
-		allCheckedVariables[3*i+1] = builder.claimTriplets[i][1]
-		allCheckedVariables[3*i+2] = builder.claimTriplets[i][2]
+		for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
+			allCheckedVariables[(3*i)*poseidon2_koalabear.BlockSize+j] = builder.claimTriplets[i][0][j]
+			allCheckedVariables[(3*i+1)*poseidon2_koalabear.BlockSize+j] = builder.claimTriplets[i][1][j]
+			allCheckedVariables[(3*i+2)*poseidon2_koalabear.BlockSize+j] = builder.claimTriplets[i][2][j]
+		}
 	}
 
 	// GetWireGates may add gates if [addGateForRangeCheck] is true. Call it
