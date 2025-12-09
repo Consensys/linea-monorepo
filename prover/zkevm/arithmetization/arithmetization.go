@@ -12,7 +12,7 @@ import (
 	"github.com/consensys/go-corset/pkg/ir/mir"
 	"github.com/consensys/go-corset/pkg/schema/module"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
-	"github.com/consensys/go-corset/pkg/util/field/bls12_377"
+	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -50,7 +50,7 @@ type Arithmetization struct {
 	// Air schema defines the low-level columns, constraints and computations
 	// used to expand a given trace, and to subsequently to check
 	// satisfiability.
-	AirSchema *air.Schema[bls12_377.Element] `serde:"omit"`
+	AirSchema *air.Schema[koalabear.Element] `serde:"omit"`
 	// Maps each column in the raw trace file into one (or more) columns in the
 	// expanded trace file.  In particular, columns which are too large for the
 	// given field are split into multiple "limbs".
@@ -140,7 +140,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		logrus.Warnf("corset propagation gave the following errors: %v", errors.Join(errs...).Error())
 	}
 	// Perform trace expansion
-	expandedTrace, errs := ir.NewTraceBuilder[bls12_377.Element]().
+	expandedTrace, errs := ir.NewTraceBuilder[koalabear.Element]().
 		WithBatchSize(1024).
 		WithRegisterMapping(a.LimbMapping).
 		Build(a.AirSchema, rawTrace)

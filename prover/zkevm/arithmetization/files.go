@@ -16,7 +16,7 @@ import (
 	"github.com/consensys/go-corset/pkg/trace/lt"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field"
-	"github.com/consensys/go-corset/pkg/util/field/bls12_377"
+	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 )
 
 // Embed the whole constraint system at compile time, so no
@@ -74,14 +74,14 @@ func UnmarshalZkEVMBin(buf []byte) (*binfile.BinaryFile, typed.Map, error) {
 // DEFAULT_OPTIMISATION_LEVEL is the recommended level to use in general, whilst
 // others are intended for testing purposes (i.e. to try out new optimisations
 // to see whether they help or hinder, etc).
-func CompileZkevmBin(binf *binfile.BinaryFile, optConfig *mir.OptimisationConfig) (*air.Schema[bls12_377.Element], module.LimbsMap) {
+func CompileZkevmBin(binf *binfile.BinaryFile, optConfig *mir.OptimisationConfig) (*air.Schema[koalabear.Element], module.LimbsMap) {
 	// There are no useful choices for the assembly config. We must always
 	// vectorize, and there is only one choice of field (within the prover).
-	asmConfig := asm.LoweringConfig{Field: field.BLS12_377, Vectorize: true}
+	asmConfig := asm.LoweringConfig{Field: field.KOALABEAR_16, Vectorize: true}
 	// Lower to mixed micro schema
 	uasmSchema := asm.LowerMixedMacroProgram(asmConfig.Vectorize, binf.Schema)
 	// Apply register splitting for field agnosticity
-	nasmSchema, mapping := asm.Concretize[bls12_377.Element](asmConfig.Field, uasmSchema)
+	nasmSchema, mapping := asm.Concretize[koalabear.Element](asmConfig.Field, uasmSchema)
 	// Compile
 	mirSchema := asm.Compile(nasmSchema)
 	// Lower to AIR
