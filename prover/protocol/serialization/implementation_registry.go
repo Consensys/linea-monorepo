@@ -1,3 +1,4 @@
+//go:generate go run ../../cmd/codegen/main.go
 package serialization
 
 import (
