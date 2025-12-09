@@ -259,7 +259,6 @@ class ConflationApp(
       description = "Highest consecutive proven aggregation block number",
       measurementSupplier = highestConsecutiveAggregationTracker,
     )
-
     ProofAggregationCoordinatorService.Companion
       .create(
         vertx = vertx,
@@ -267,7 +266,7 @@ class ConflationApp(
         deadlineCheckInterval = configs.conflation.proofAggregation.deadlineCheckInterval,
         aggregationDeadline = configs.conflation.proofAggregation.deadline,
         latestBlockProvider = GethCliqueSafeBlockProvider(
-          web3j = l2Web3jClient,
+          ethApiBlockClient = l2EthClient,
           config = GethCliqueSafeBlockProvider.Config(0),
         ),
         maxProofsPerAggregation = configs.conflation.proofAggregation.proofsLimit,
@@ -286,6 +285,7 @@ class ConflationApp(
         ),
         l2MessageService = Web3JL2MessageServiceSmartContractClient.createReadOnly(
           web3jClient = l2Web3jClient,
+          ethApiClient = createEthApiClient(web3jClient = l2Web3jClient, requestRetryConfig = null, vertx = vertx),
           contractAddress = configs.protocol.l2.contractAddress,
           smartContractErrors = configs.smartContractErrors,
           smartContractDeploymentBlockNumber = configs.protocol.l2.contractDeploymentBlockNumber?.getNumber(),
@@ -484,8 +484,8 @@ class ConflationApp(
         lastBlockNumber = lastProcessedBlockNumber,
         clock = Clock.System,
         latestBlockProvider = GethCliqueSafeBlockProvider(
-          l2Web3jClient,
-          GethCliqueSafeBlockProvider.Config(blocksToFinalization = 0),
+          ethApiBlockClient = l2EthClient,
+          config = GethCliqueSafeBlockProvider.Config(blocksToFinalization = 0),
         ),
       ),
     )
