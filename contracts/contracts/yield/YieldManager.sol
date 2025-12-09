@@ -55,22 +55,34 @@ contract YieldManager is
   /// @notice 100% in BPS.
   uint256 constant MAX_BPS = 10000;
 
-  /// @notice Minimum withdrawal reserve percentage in bps.
+  /**
+   * @notice Minimum withdrawal reserve percentage in bps.
+   * @return The withdrawal reserve percentage threshold in basis points (where 10000 = 100%).
+   */
   function minimumWithdrawalReservePercentageBps() public view returns (uint256) {
     return _getYieldManagerStorage().minimumWithdrawalReservePercentageBps;
   }
 
-  /// @notice Minimum withdrawal reserve by absolute amount.
+  /**
+   * @notice Minimum withdrawal reserve by absolute amount.
+   * @return The withdrawal reserve amount threshold in wei.
+   */
   function minimumWithdrawalReserveAmount() public view returns (uint256) {
     return _getYieldManagerStorage().minimumWithdrawalReserveAmount;
   }
 
-  /// @notice Target withdrawal reserve percentage in bps.
+  /**
+   * @notice Target withdrawal reserve percentage in bps.
+   * @return The withdrawal reserve percentage threshold in basis points (where 10000 = 100%).
+   */
   function targetWithdrawalReservePercentageBps() public view returns (uint256) {
     return _getYieldManagerStorage().targetWithdrawalReservePercentageBps;
   }
 
-  /// @notice Target withdrawal reserve by absolute amount.
+  /**
+   * @notice Target withdrawal reserve by absolute amount.
+   * @return The withdrawal reserve amount threshold in wei.
+   */
   function targetWithdrawalReserveAmount() public view returns (uint256) {
     return _getYieldManagerStorage().targetWithdrawalReserveAmount;
   }
