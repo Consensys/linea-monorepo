@@ -532,6 +532,38 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(mockedWaitForTransactionReceipt).toHaveBeenCalledWith(publicClientMock, { hash: "0xHASH" });
   });
 
+  it("passes ABI to estimateGas when provided", async () => {
+    const mockABI = [
+      {
+        inputs: [],
+        name: "TestError",
+        type: "error",
+      },
+    ] as const;
+
+    publicClientMock.getTransactionCount.mockResolvedValue(7);
+    publicClientMock.estimateGas.mockResolvedValue(21_000n);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 100n,
+      maxPriorityFeePerGas: 2n,
+    });
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    const receipt = await adapter.sendSignedTransaction(contractAddress, calldata, 0n, mockABI);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(publicClientMock.estimateGas).toHaveBeenCalledWith(
+      expect.objectContaining({
+        abi: mockABI,
+        account: "0xSIGNER",
+        to: contractAddress,
+        data: calldata,
+        value: 0n,
+      }),
+    );
+  });
+
   it("retries on retryable errors and applies gas bump multipliers", async () => {
     adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 3, 1_000n, 300_000);
 
