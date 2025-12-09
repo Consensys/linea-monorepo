@@ -17,6 +17,7 @@ import {
   RawContractError,
   ContractFunctionRevertedError,
   RpcRequestError,
+  Abi,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
@@ -173,6 +174,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
    * @param {Address} contractAddress - The address of the contract to interact with.
    * @param {Hex} calldata - The encoded function call data.
    * @param {bigint} [value=0n] - The amount of ether to send with the transaction (default: 0).
+   * @param {Abi} [abi] - Optional ABI for error decoding in estimateGas failures.
    * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
    * @throws {ContractFunctionRevertedError} If the contract call reverts (not retried).
    * @throws {Error} If retry attempts are exhausted or a non-timeout error occurs.
@@ -181,6 +183,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     contractAddress: Address,
     calldata: Hex,
     value: bigint = 0n,
+    abi?: Abi,
   ): Promise<TransactionReceipt> {
     this.logger.debug("sendSignedTransaction started");
     let gasMultiplierBps = MAX_BPS; // Start at 100%
@@ -191,7 +194,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     // Use a single nonce for all retries.
     const [nonce, gasLimit, chainId] = await Promise.all([
       this.blockchainClient.getTransactionCount({ address: this.contractSignerClient.getAddress() }),
-      this._estimateGasWithErrorHandling(contractAddress, calldata, value),
+      this._estimateGasWithErrorHandling(contractAddress, calldata, value, abi),
       this.getChainId(),
     ]);
 
@@ -316,17 +319,33 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
    * @param {Address} contractAddress - The address of the contract to interact with.
    * @param {Hex} calldata - The encoded function call data.
    * @param {bigint} value - The amount of ether to send with the transaction.
+   * @param {Abi} [abi] - Optional ABI for error decoding.
    * @returns {Promise<bigint>} The estimated gas limit.
    * @throws {Error} Re-throws the original error after logging enhanced details.
    */
-  private async _estimateGasWithErrorHandling(contractAddress: Address, calldata: Hex, value: bigint): Promise<bigint> {
+  private async _estimateGasWithErrorHandling(
+    contractAddress: Address,
+    calldata: Hex,
+    value: bigint,
+    abi?: Abi,
+  ): Promise<bigint> {
     try {
-      return await this.blockchainClient.estimateGas({
+      const estimateGasParams: {
+        account: Address;
+        to: Address;
+        data: Hex;
+        value: bigint;
+        abi?: Abi;
+      } = {
         account: this.contractSignerClient.getAddress(),
         to: contractAddress,
         data: calldata,
         value,
-      });
+      };
+      if (abi) {
+        estimateGasParams.abi = abi;
+      }
+      return await this.blockchainClient.estimateGas(estimateGasParams);
     } catch (error) {
       const parsedError = this._parseEstimateGasError(error);
       if (parsedError) {

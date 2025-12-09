@@ -282,7 +282,12 @@ describe("YieldManagerContractClient", () => {
       functionName: "fundYieldProvider",
       args: [yieldProvider, amount],
     });
-    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
+    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(
+      contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
     expect(logger.info).toHaveBeenCalledWith(
       `fundYieldProvider succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
     );
@@ -306,7 +311,12 @@ describe("YieldManagerContractClient", () => {
       functionName: "reportYield",
       args: [yieldProvider, l2Recipient],
     });
-    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
+    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(
+      contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
     expect(logger.info).toHaveBeenCalledWith(
       `reportYield succeeded, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2Recipient}, txHash=${txReceipt.transactionHash}`,
     );
@@ -356,7 +366,12 @@ describe("YieldManagerContractClient", () => {
       functionName: "unstake",
       args: [yieldProvider, encodedWithdrawalParams],
     });
-    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata, fee);
+    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(
+      contractAddress,
+      calldata,
+      fee,
+      YieldManagerCombinedABI,
+    );
     expect(logger.info).toHaveBeenCalledWith(
       `unstake succeeded, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}, txHash=${txReceipt.transactionHash}`,
     );
@@ -381,7 +396,12 @@ describe("YieldManagerContractClient", () => {
       functionName: "safeAddToWithdrawalReserve",
       args: [yieldProvider, amount],
     });
-    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
+    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(
+      contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
     expect(logger.info).toHaveBeenCalledWith(
       `safeAddToWithdrawalReserve succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
     );
@@ -431,7 +451,12 @@ describe("YieldManagerContractClient", () => {
       functionName: "progressPendingOssification",
       args: [yieldProvider],
     });
-    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
+    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(
+      contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
   });
 
   // ⚠️ N.B. — WARNING: Below describe block tests were intentionally handwritten because

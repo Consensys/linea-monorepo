@@ -87,7 +87,12 @@ describe("LineaRollupYieldExtensionContractClient", () => {
       functionName: "transferFundsForNativeYield",
       args: [amount],
     });
-    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
+    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(
+      contractAddress,
+      calldata,
+      undefined,
+      LineaRollupYieldExtensionABI,
+    );
     expect(logger.info).toHaveBeenCalledWith("transferFundsForNativeYield succeeded, amount=123, txHash=0xhash");
   });
 });

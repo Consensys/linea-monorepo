@@ -78,7 +78,12 @@ export class LineaRollupYieldExtensionContractClient implements ILineaRollupYiel
       args: [amount],
     });
 
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(
+      this.contractAddress,
+      calldata,
+      undefined,
+      LineaRollupYieldExtensionABI,
+    );
     this.logger.info(
       `transferFundsForNativeYield succeeded, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
     );

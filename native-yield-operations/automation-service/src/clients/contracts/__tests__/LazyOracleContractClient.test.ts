@@ -142,7 +142,12 @@ describe("LazyOracleContractClient", () => {
         params.proof,
       ],
     });
-    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
+    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(
+      contractAddress,
+      calldata,
+      undefined,
+      LazyOracleCombinedABI,
+    );
     expect(logger.info).toHaveBeenCalledWith("updateVaultData succeeded, txHash=0xhash", { params });
   });
 

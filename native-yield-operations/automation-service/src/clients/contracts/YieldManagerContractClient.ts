@@ -216,7 +216,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       args: [yieldProvider, amount],
     });
 
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(
+      this.contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
     this.logger.info(
       `fundYieldProvider succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
     );
@@ -238,7 +243,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       args: [yieldProvider, l2YieldRecipient],
     });
 
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(
+      this.contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
     this.logger.info(
       `reportYield succeeded, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}, txHash=${txReceipt.transactionHash}`,
     );
@@ -277,6 +287,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       this.contractAddress,
       calldata,
       validatorWithdrawalFee,
+      YieldManagerCombinedABI,
     );
     this.logger.info(
       `unstake succeeded, yieldProvider=${yieldProvider}, validatorCount=${withdrawalParams.pubkeys.length}, txHash=${txReceipt.transactionHash}`,
@@ -343,7 +354,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       args: [yieldProvider, amount],
     });
 
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(
+      this.contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
     this.logger.info(
       `safeAddToWithdrawalReserve succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
     );
@@ -364,7 +380,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       args: [yieldProvider],
     });
 
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(
+      this.contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
     this.logger.info(`pauseStaking succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`);
     return txReceipt;
   }
@@ -383,7 +404,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       args: [yieldProvider],
     });
 
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(
+      this.contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
     this.logger.info(`unpauseStaking succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`);
     return txReceipt;
   }
@@ -402,7 +428,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       args: [yieldProvider],
     });
 
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(
+      this.contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
     this.logger.info(
       `progressPendingOssification succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`,
     );
