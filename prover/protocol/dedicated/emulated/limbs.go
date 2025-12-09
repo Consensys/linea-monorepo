@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
-func (a *EmulatedProverAction) limbsToBigInt(res *big.Int, buf []*big.Int, limbs Limbs, loc int, run *wizard.ProverRuntime) error {
+func (a *EmulatedMultiplicationModule) limbsToBigInt(res *big.Int, buf []*big.Int, limbs Limbs, loc int, run *wizard.ProverRuntime) error {
 	if res == nil {
 		return fmt.Errorf("result not initialized")
 	}
@@ -27,17 +27,17 @@ func (a *EmulatedProverAction) limbsToBigInt(res *big.Int, buf []*big.Int, limbs
 		limb := limbs.Columns[j].GetColAssignmentAt(run, loc)
 		limb.BigInt(buf[j])
 	}
-	if err := recompose(buf, a.nbBits, res); err != nil {
+	if err := recompose(buf, a.nbBitsPerLimb, res); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *EmulatedProverAction) bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, vb []*common.VectorBuilder) error {
+func (a *EmulatedMultiplicationModule) bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, vb []*common.VectorBuilder) error {
 	if len(buf) != len(limbs.Columns) {
 		return fmt.Errorf("mismatched size between limbs and buffer")
 	}
-	if err := decompose(input, a.nbBits, buf); err != nil {
+	if err := decompose(input, a.nbBitsPerLimb, buf); err != nil {
 		return fmt.Errorf("failed to decompose big.Int into limbs: %v", err)
 	}
 	for i := range limbs.Columns {
@@ -66,7 +66,7 @@ func decompose(input *big.Int, nbBits int, res []*big.Int) error {
 	}
 	base := new(big.Int).Lsh(big.NewInt(1), uint(nbBits))
 	tmp := new(big.Int).Set(input)
-	for i := 0; i < len(res); i++ {
+	for i := range res {
 		res[i].Mod(tmp, base)
 		tmp.Rsh(tmp, uint(nbBits))
 	}
@@ -98,8 +98,8 @@ func limbMul(res, lhs, rhs []*big.Int) error {
 	if len(res) != nbMultiplicationResLimbs(len(lhs), len(rhs)) {
 		return errors.New("result slice length mismatch")
 	}
-	for i := 0; i < len(lhs); i++ {
-		for j := 0; j < len(rhs); j++ {
+	for i := range lhs {
+		for j := range rhs {
 			res[i+j].Add(res[i+j], tmp.Mul(lhs[i], rhs[j]))
 		}
 	}
@@ -109,10 +109,7 @@ func limbMul(res, lhs, rhs []*big.Int) error {
 // nbMultiplicationResLimbs returns the number of limbs which fit the
 // multiplication result.
 func nbMultiplicationResLimbs(lenLeft, lenRight int) int {
-	res := lenLeft + lenRight - 1
-	if res < 0 {
-		res = 0
-	}
+	res := max(lenLeft+lenRight-1, 0)
 	return res
 }
 

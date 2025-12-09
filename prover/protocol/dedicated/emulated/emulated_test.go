@@ -22,7 +22,7 @@ func TestEmulatedMultiplication(t *testing.T) {
 	const round_nr = 0
 	const nbBitsPerLimb = 128
 	const nbLimbs = (nbBits + nbBitsPerLimb - 1) / nbBitsPerLimb
-	var pa, pa2 *EmulatedProverAction
+	var pa, pa2 *EmulatedMultiplicationModule
 	define := func(b *wizard.Builder) {
 		P := registerEmulated(b.CompiledIOP, round_nr, "P", nbLimbs, nbEntries)
 		A := registerEmulated(b.CompiledIOP, round_nr, "A", nbLimbs, nbEntries)
