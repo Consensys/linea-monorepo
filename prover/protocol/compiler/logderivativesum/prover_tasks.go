@@ -560,16 +560,11 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 type ZAssignmentTask ZCtx
 
 func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
-	// We use sync.Pool to reuse vectors and reduce GC pressure.
-	sb0Pool := sync.Pool{New: func() any { return make(field.Vector, z.Size) }}
-	se0Pool := sync.Pool{New: func() any { return make(extensions.Vector, z.Size) }}
 
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
 
-		sb0 := sb0Pool.Get().(field.Vector)
-		se0 := se0Pool.Get().(extensions.Vector)
-		defer sb0Pool.Put(sb0)
-		defer se0Pool.Put(se0)
+		sb0 := make(field.Vector, z.Size)
+		se0 := make(extensions.Vector, z.Size)
 
 		for frag := start; frag < stop; frag++ {
 
