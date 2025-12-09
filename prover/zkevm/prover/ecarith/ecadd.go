@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
@@ -108,18 +109,20 @@ type MultiECAddCircuit struct {
 }
 
 type ECAddInstance struct {
-	// First input to addition
-	P_X [common.NbLimbU256]frontend.Variable `gnark:",public"`
-	P_Y [common.NbLimbU256]frontend.Variable `gnark:",public"`
+	// First input to addition. Both are in little-endian format but the hi-end
+	// is sent before the lo part. So they can't be merged as a single larger
+	// input
+	P_X_HI, P_X_LO [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	P_Y_HI, P_Y_LO [common.NbLimbU128]frontend.Variable `gnark:",public"`
 
 	// Second input to addition
-	Q_X [common.NbLimbU256]frontend.Variable `gnark:",public"`
-	Q_Y [common.NbLimbU256]frontend.Variable `gnark:",public"`
+	Q_X_HI, Q_X_LO [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	Q_Y_HI, Q_Y_LO [common.NbLimbU128]frontend.Variable `gnark:",public"`
 
 	// The result of the addition. Is provided non-deterministically by the
 	// caller, we have to ensure that the result is correct.
-	R_X [common.NbLimbU256]frontend.Variable `gnark:",public"`
-	R_Y [common.NbLimbU256]frontend.Variable `gnark:",public"`
+	R_X_HI, R_X_LO [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	R_Y_HI, R_Y_LO [common.NbLimbU128]frontend.Variable `gnark:",public"`
 }
 
 // NewECAddCircuit creates a new circuit for verifying the EC_MUL precompile
@@ -146,15 +149,23 @@ func (c *MultiECAddCircuit) Define(api frontend.API) error {
 	for i := range c.Instances {
 
 		var (
-			PX = f.NewElement(c.Instances[i].P_X[:])
-			PY = f.NewElement(c.Instances[i].P_Y[:])
-			QX = f.NewElement(c.Instances[i].Q_X[:])
-			QY = f.NewElement(c.Instances[i].Q_Y[:])
-			RX = f.NewElement(c.Instances[i].R_X[:])
-			RY = f.NewElement(c.Instances[i].R_Y[:])
-			P  = sw_bn254.G1Affine{X: *PX, Y: *PY}
-			Q  = sw_bn254.G1Affine{X: *QX, Y: *QY}
-			R  = sw_bn254.G1Affine{X: *RX, Y: *RY}
+			PX16 = append(c.Instances[i].P_X_LO[:], c.Instances[i].P_X_HI[:]...)
+			PY16 = append(c.Instances[i].P_Y_LO[:], c.Instances[i].P_Y_HI[:]...)
+			QX16 = append(c.Instances[i].Q_X_LO[:], c.Instances[i].Q_X_HI[:]...)
+			QY16 = append(c.Instances[i].Q_Y_LO[:], c.Instances[i].Q_Y_HI[:]...)
+			RX16 = append(c.Instances[i].R_X_LO[:], c.Instances[i].R_X_HI[:]...)
+			RY16 = append(c.Instances[i].R_Y_LO[:], c.Instances[i].R_Y_HI[:]...)
+
+			PX = gnarkutil.EmulatedFromLimbSlice(api, f, PX16, 16)
+			PY = gnarkutil.EmulatedFromLimbSlice(api, f, PY16, 16)
+			QX = gnarkutil.EmulatedFromLimbSlice(api, f, QX16, 16)
+			QY = gnarkutil.EmulatedFromLimbSlice(api, f, QY16, 16)
+			RX = gnarkutil.EmulatedFromLimbSlice(api, f, RX16, 16)
+			RY = gnarkutil.EmulatedFromLimbSlice(api, f, RY16, 16)
+
+			P = sw_bn254.G1Affine{X: *PX, Y: *PY}
+			Q = sw_bn254.G1Affine{X: *QX, Y: *QY}
+			R = sw_bn254.G1Affine{X: *RX, Y: *RY}
 		)
 
 		Ps[i] = P

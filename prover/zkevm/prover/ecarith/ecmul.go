@@ -112,17 +112,18 @@ type ECMulInstance struct {
 	// where the values are split into 128 bits with high and low parts. The
 	// high part is the most significant bits and the low part is the least
 	// significant bits. The values are already range checked to be in 128 bit
-	// range.
+	// range. Both parts are provided in little-endian form but the high-part is
+	// always passed before the low part. So the parts can't effectively joined
+	// into a single 256 bit value.
 
-	P_X [common.NbLimbU256]frontend.Variable `gnark:",public"`
-	P_Y [common.NbLimbU256]frontend.Variable `gnark:",public"`
-
-	N [common.NbLimbU256]frontend.Variable `gnark:",public"`
+	P_X_HI, P_X_LO [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	P_Y_HI, P_Y_LO [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	N_HI, N_LO     [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	R_X_HI, R_X_LO [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	R_Y_HI, R_Y_LO [common.NbLimbU128]frontend.Variable `gnark:",public"`
 
 	// The result of the multiplication. Is provided by the caller, we have to
 	// ensure that the result is correct.
-	R_X [common.NbLimbU256]frontend.Variable `gnark:",public"`
-	R_Y [common.NbLimbU256]frontend.Variable `gnark:",public"`
 }
 
 // NewECMulCircuit creates a new circuit for verifying the EC_MUL precompile
@@ -155,11 +156,17 @@ func (c *MultiECMulCircuit) Define(api frontend.API) error {
 	for i := range c.Instances {
 
 		var (
-			PX = gnarkutil.EmulatedFromLimbSlice(api, f, c.Instances[i].P_X[:], 16)
-			PY = gnarkutil.EmulatedFromLimbSlice(api, f, c.Instances[i].P_Y[:], 16)
-			RX = gnarkutil.EmulatedFromLimbSlice(api, f, c.Instances[i].R_X[:], 16)
-			RY = gnarkutil.EmulatedFromLimbSlice(api, f, c.Instances[i].R_Y[:], 16)
-			N  = gnarkutil.EmulatedFromLimbSlice(api, s, c.Instances[i].N[:], 16)
+			PX16 = append(c.Instances[i].P_X_LO[:], c.Instances[i].P_X_HI[:]...)
+			PY16 = append(c.Instances[i].P_Y_LO[:], c.Instances[i].P_Y_HI[:]...)
+			RX16 = append(c.Instances[i].R_X_LO[:], c.Instances[i].R_X_HI[:]...)
+			RY16 = append(c.Instances[i].R_Y_LO[:], c.Instances[i].R_Y_HI[:]...)
+			N16  = append(c.Instances[i].N_LO[:], c.Instances[i].N_HI[:]...)
+
+			PX = gnarkutil.EmulatedFromLimbSlice(api, f, PX16, 16)
+			PY = gnarkutil.EmulatedFromLimbSlice(api, f, PY16, 16)
+			RX = gnarkutil.EmulatedFromLimbSlice(api, f, RX16, 16)
+			RY = gnarkutil.EmulatedFromLimbSlice(api, f, RY16, 16)
+			N  = gnarkutil.EmulatedFromLimbSlice(api, s, N16, 16)
 			P  = sw_bn254.G1Affine{X: *PX, Y: *PY}
 			R  = sw_bn254.G1Affine{X: *RX, Y: *RY}
 		)

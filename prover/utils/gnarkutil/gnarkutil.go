@@ -1,8 +1,6 @@
 package gnarkutil
 
 import (
-	"slices"
-
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/backend/witness"
@@ -98,16 +96,13 @@ func WitnessFromNativeKoala(v ...koalabear.Element) witness.Witness {
 
 // EmulatedFromLimbSlice converts slice of frontend.Variable representing inputs
 // lower than 2**bitWidth to slice of emulated.Element for the target field. The
-// input is expected to be in BIG-ENDIAN form.
+// input is expected to be in LITTLE-ENDIAN form.
 func EmulatedFromLimbSlice[T emulated.FieldParams](
 	api frontend.API,
 	f *emulated.Field[T],
 	input []frontend.Variable,
 	bitWidth int,
 ) *emulated.Element[T] {
-
-	input = slices.Clone(input)
-	slices.Reverse(input)
 
 	targetNbLimbs, targetBitWidth := emulated.GetEffectiveFieldParams[T](
 		api.Compiler().Field(),
