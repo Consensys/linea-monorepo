@@ -153,7 +153,7 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 
 	res.csAccountAddress(comp)
 	res.csAccountOld(comp)
-	// res.csAccountNew(comp)
+	res.csAccountNew(comp)
 	// res.csAccumulatorRoots(comp)
 	// res.csAccumulatorStatementFlags(comp)
 	// res.csAccumulatorStatementHValKey(comp)
@@ -593,13 +593,16 @@ func (ss *Module) csAccountNew(comp *wizard.CompiledIOP) {
 	}
 
 	for i := range common.NbLimbU128 {
-		mustHaveDefaultWhenNotExists(ss.Account.Final.Balance[i], 0)
 		mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Hi[i], 0)
 		mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Lo[i], 0)
 
-		mustBeConstantOnSubsegment(ss.Account.Final.Balance[i])
 		mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Hi[i])
 		mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Lo[i])
+	}
+
+	for i := range common.NbLimbU256 {
+		mustHaveDefaultWhenNotExists(ss.Account.Final.Balance[i], 0)
+		mustBeConstantOnSubsegment(ss.Account.Final.Balance[i])
 	}
 
 	for i := range poseidon2.BlockSize {
