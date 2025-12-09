@@ -7,18 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
-
-	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 )
-
-// Evaluate evaluates the expression board on the provided inputs.
-func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
-	if b.program == nil || b.programNodesCount != len(b.Nodes) {
-		b.program = b.Compile()
-		b.programNodesCount = len(b.Nodes)
-	}
-	return b.program.Evaluate(inputs)
-}
 
 type GetDegree = func(m interface{}) int
 
