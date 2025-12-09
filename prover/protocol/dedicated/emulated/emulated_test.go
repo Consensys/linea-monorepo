@@ -1,6 +1,10 @@
 package emulated
 
 import (
+	"crypto/rand"
+	"crypto/sha3"
+	"errors"
+	"math/big"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -8,71 +12,123 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEmulatedMultiplication(t *testing.T) {
-	nbEntries := 1
-	var pa *EmulatedProverAction
+	const nbEntries = 1 << 10
+	const nbBits = 384
+	const round_nr = 0
+	const nbBitsPerLimb = 128
+	const nbLimbs = (nbBits + nbBitsPerLimb - 1) / nbBitsPerLimb
+	var pa, pa2 *EmulatedProverAction
 	define := func(b *wizard.Builder) {
-		P := Limbs{
-			Columns: []ifaces.Column{
-				b.RegisterCommit("P_0", nbEntries),
-				b.RegisterCommit("P_1", nbEntries),
-				b.RegisterCommit("P_2", nbEntries),
-				b.RegisterCommit("P_3", nbEntries),
-				b.RegisterCommit("P_4", nbEntries),
-				b.RegisterCommit("P_5", nbEntries),
-			},
+		P := registerEmulated(b.CompiledIOP, round_nr, "P", nbLimbs, nbEntries)
+		A := registerEmulated(b.CompiledIOP, round_nr, "A", nbLimbs, nbEntries)
+		B := registerEmulated(b.CompiledIOP, round_nr, "B", nbLimbs, nbEntries)
+		expected := registerEmulated(b.CompiledIOP, 0, "EXPECTED", nbLimbs, nbEntries)
+		pa = EmulatedMultiplication(b.CompiledIOP, "TEST", A, B, P, nbBitsPerLimb)
+		for i := range pa.Result.Columns {
+			b.CompiledIOP.InsertGlobal(
+				round_nr, ifaces.QueryID(ifaces.QueryIDf("EMULATED_RESULT_CORRECTNESS_%d", i)),
+				symbolic.Sub(pa.Result.Columns[i], expected.Columns[i]),
+			)
 		}
-		A := Limbs{
-			Columns: []ifaces.Column{
-				b.RegisterCommit("A_0", nbEntries),
-				b.RegisterCommit("A_1", nbEntries),
-				b.RegisterCommit("A_2", nbEntries),
-				b.RegisterCommit("A_3", nbEntries),
-				b.RegisterCommit("A_4", nbEntries),
-				b.RegisterCommit("A_5", nbEntries),
-			},
+		pa2 = EmulatedMultiplication(b.CompiledIOP, "TEST2", A, B, P, nbBitsPerLimb)
+		for i := range pa2.Result.Columns {
+			b.CompiledIOP.InsertGlobal(
+				round_nr, ifaces.QueryID(ifaces.QueryIDf("EMULATED_RESULT2_CORRECTNESS_%d", i)),
+				symbolic.Sub(pa2.Result.Columns[i], expected.Columns[i]),
+			)
 		}
-		B := Limbs{
-			Columns: []ifaces.Column{
-				b.RegisterCommit("B_0", nbEntries),
-				b.RegisterCommit("B_1", nbEntries),
-				b.RegisterCommit("B_2", nbEntries),
-				b.RegisterCommit("B_3", nbEntries),
-				b.RegisterCommit("B_4", nbEntries),
-				b.RegisterCommit("B_5", nbEntries),
-			},
-		}
-		pa = EmulatedMultiplication(b.CompiledIOP, A, B, P, 64)
 	}
 
-	P := []uint64{13402431016077863595, 2210141511517208575, 7435674573564081700, 7239337960414712511, 5412103778470702295, 1873798617647539866}
-	A := []uint64{4511170697608804288, 10450013966173050091, 15052883910335077615, 7458991181107567583, 14001554864696251020, 62079380433102230}
-	B := []uint64{17807246233085667035, 4885506624874997090, 7320308865577758342, 3348888139601105932, 627243233652392778, 530851350610086122}
-
-	assignmentP := make([]smartvectors.SmartVector, len(P))
-	assignmentA := make([]smartvectors.SmartVector, len(A))
-	assignmentB := make([]smartvectors.SmartVector, len(B))
-	for i := range P {
-		assignmentP[i] = smartvectors.NewRegular([]field.Element{field.NewElement(P[i])})
-		assignmentA[i] = smartvectors.NewRegular([]field.Element{field.NewElement(A[i])})
-		assignmentB[i] = smartvectors.NewRegular([]field.Element{field.NewElement(B[i])})
+	assignmentA := make([]*big.Int, nbEntries)
+	assignmentB := make([]*big.Int, nbEntries)
+	assignmentP := make([]*big.Int, nbEntries)
+	assignmentExpected := make([]*big.Int, nbEntries)
+	bound := new(big.Int).Lsh(big.NewInt(1), nbBits)
+	var err error
+	reader := sha3.NewSHAKE256()
+	for i := range nbEntries {
+		assignmentP[i], err = rand.Int(reader, bound)
+		require.NoError(t, err)
+		assignmentA[i], err = rand.Int(reader, assignmentP[i])
+		require.NoError(t, err)
+		assignmentB[i], err = rand.Int(reader, assignmentP[i])
+		require.NoError(t, err)
+		assignmentExpected[i] = new(big.Int).Mul(assignmentA[i], assignmentB[i])
+		assignmentExpected[i].Mod(assignmentExpected[i], assignmentP[i])
 	}
 
 	prover := func(run *wizard.ProverRuntime) {
-		for i := range P {
-			run.AssignColumn(ifaces.ColIDf("P_%d", i), assignmentP[i])
-			run.AssignColumn(ifaces.ColIDf("A_%d", i), assignmentA[i])
-			run.AssignColumn(ifaces.ColIDf("B_%d", i), assignmentB[i])
-		}
-		pa.Assign(run)
-
+		assignEmulated(run, "A", assignmentA, nbBitsPerLimb, nbLimbs)
+		assignEmulated(run, "B", assignmentB, nbBitsPerLimb, nbLimbs)
+		assignEmulated(run, "P", assignmentP, nbBitsPerLimb, nbLimbs)
+		assignEmulated(run, "EXPECTED", assignmentExpected, nbBitsPerLimb, nbLimbs)
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
-	err := wizard.Verify(comp, proof)
+	err = wizard.Verify(comp, proof)
 	require.NoError(t, err)
+}
+
+func registerEmulated(comp *wizard.CompiledIOP, round int, name string, nbLimbs int, nbEntries int) Limbs {
+	limbs := Limbs{
+		Columns: make([]ifaces.Column, nbLimbs),
+	}
+	for i := range nbLimbs {
+		limbs.Columns[i] = comp.InsertCommit(
+			round,
+			ifaces.ColIDf("%s_LIMB_%d", name, i),
+			nbEntries,
+		)
+	}
+	return limbs
+}
+
+type assignable interface {
+	field.Element | *big.Int | uint64 | uint32 | string
+}
+
+func assignEmulated[E assignable, S []E](run *wizard.ProverRuntime, name string, limbs S, nbBitsPerLimb int, nbLimbs int) error {
+	vlimbs := make([][]field.Element, nbLimbs)
+	for i := range nbLimbs {
+		vlimbs[i] = make([]field.Element, len(limbs))
+	}
+	vBi := new(big.Int)
+	mask := new(big.Int).Lsh(big.NewInt(1), uint(nbBitsPerLimb))
+	mask.Sub(mask, big.NewInt(1))
+	tmp := new(big.Int)
+	for i := range limbs {
+		switch val := any(limbs[i]).(type) {
+		case field.Element:
+			val.BigInt(vBi)
+		case *big.Int:
+			vBi.Set(val)
+		case uint64:
+			vBi.SetUint64(val)
+		case uint32:
+			vBi.SetUint64(uint64(val))
+		case string:
+			_, ok := vBi.SetString(val, 0)
+			if !ok {
+				return errors.New("failed to parse string input")
+			}
+		default:
+			panic("unsupported type")
+		}
+		for j := range nbLimbs {
+			tmp.And(vBi, mask)
+			vlimbs[j][i].SetBigInt(tmp)
+			vBi.Rsh(vBi, uint(nbBitsPerLimb))
+		}
+	}
+	for j := range nbLimbs {
+		sv := smartvectors.NewRegular(vlimbs[j])
+		run.AssignColumn(ifaces.ColIDf("%s_LIMB_%d", name, j), sv)
+	}
+	return nil
 }
