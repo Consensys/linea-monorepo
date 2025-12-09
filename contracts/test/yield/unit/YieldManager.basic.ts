@@ -162,8 +162,13 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.isL2YieldRecipientKnown(existingRecipient)).to.be.true;
     });
 
-    it("Should return zero address for index 0 yield provider", async () => {
-      expect(await yieldManager.yieldProviderByIndex(0)).to.equal(ZeroAddress);
+    it("Should revert for index 0 yield provider", async () => {
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.yieldProviderByIndex(0),
+        "YieldProviderIndexOutOfBounds",
+        [0n, 0n],
+      );
     });
 
     it("Should not register the zero address as a known yield provider", async () => {
@@ -930,7 +935,12 @@ describe("YieldManager contract - basic operations", () => {
 
       expect(await yieldManager.isYieldProviderKnown(mockYieldProviderAddress)).to.be.false;
       expect(await yieldManager.yieldProviderCount()).to.equal(0n);
-      expect(await yieldManager.yieldProviderByIndex(0)).to.equal(ZeroAddress);
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.yieldProviderByIndex(0),
+        "YieldProviderIndexOutOfBounds",
+        [0n, 0n],
+      );
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager.getYieldProviderData(mockYieldProviderAddress),
@@ -1000,6 +1010,12 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.isYieldProviderKnown(providerThree)).to.equal(true);
 
       expect(await yieldManager.yieldProviderCount()).equal(2n);
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.yieldProviderByIndex(3),
+        "YieldProviderIndexOutOfBounds",
+        [3n, 2n],
+      );
     });
   });
 
@@ -1047,7 +1063,12 @@ describe("YieldManager contract - basic operations", () => {
 
       expect(await yieldManager.isYieldProviderKnown(mockYieldProviderAddress)).to.be.false;
       expect(await yieldManager.yieldProviderCount()).to.equal(0n);
-      expect(await yieldManager.yieldProviderByIndex(0)).to.equal(ZeroAddress);
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.yieldProviderByIndex(0),
+        "YieldProviderIndexOutOfBounds",
+        [0n, 0n],
+      );
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager.getYieldProviderData(mockYieldProviderAddress),
