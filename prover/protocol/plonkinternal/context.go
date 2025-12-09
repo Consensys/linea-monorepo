@@ -233,7 +233,7 @@ func CompileCircuitDefault(circ frontend.Circuit) (*cs.SparseR1CS, error) {
 // constraints system.
 func CompileCircuitWithRangeCheck(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func() [][2]int, error) {
 
-	gnarkBuilder, rcGetter := newExternalRangeChecker(addGates)
+	gnarkBuilder, rcGetter := NewExternalRangeCheckerBuilder(addGates)
 
 	// ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkBuilder, circ)
