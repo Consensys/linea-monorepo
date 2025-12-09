@@ -27,9 +27,9 @@ func AllocateSliceExt(n int) []gnarkfext.E4Gen {
 	return make([]gnarkfext.E4Gen, n)
 }
 
-// AsWitnessBls converts a slice of field elements to a slice of witness variables
+// WitnessFromWrappedBls converts a slice of field elements to a slice of witness variables
 // of the same length with only public inputs.
-func AsWitnessBls(v []zk.WrappedVariable) witness.Witness {
+func WitnessFromWrappedBls(v ...zk.WrappedVariable) witness.Witness {
 
 	var (
 		wit, _  = witness.New(ecc.BLS12_377.ScalarField())
@@ -49,10 +49,10 @@ func AsWitnessBls(v []zk.WrappedVariable) witness.Witness {
 	return wit
 }
 
-// AsWitnessKoala converts a slice of base field elements to a slice
+// WitnessFromWrappedKoala converts a slice of base field elements to a slice
 // of witness variables of the same length with only public inputs. The function
 // assumes the WrappedVariable are not emulated element.
-func AsWitnessKoala(v []zk.WrappedVariable) witness.Witness {
+func WitnessFromWrappedKoala(v ...zk.WrappedVariable) witness.Witness {
 
 	var (
 		wit, _  = witness.New(koalabear.Modulus())
@@ -62,6 +62,29 @@ func AsWitnessKoala(v []zk.WrappedVariable) witness.Witness {
 	go func() {
 		for _, w := range v {
 			witChan <- w.AsNative()
+		}
+		close(witChan)
+	}()
+
+	if err := wit.Fill(len(v), 0, witChan); err != nil {
+		panic(err)
+	}
+
+	return wit
+}
+
+// WitnessFromNativeKoala converts a slice of base field elements to a
+// [witness.Witness].
+func WitnessFromNativeKoala(v ...koalabear.Element) witness.Witness {
+
+	var (
+		wit, _  = witness.New(koalabear.Modulus())
+		witChan = make(chan any)
+	)
+
+	go func() {
+		for _, w := range v {
+			witChan <- w
 		}
 		close(witChan)
 	}()
