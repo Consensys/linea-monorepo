@@ -3,7 +3,10 @@ import type { ILogger, IBlockchainClient } from "@consensys/linea-shared-utils";
 import type { Address, Hex, PublicClient, TransactionReceipt } from "viem";
 import { InvalidInputRpcError } from "viem";
 import { LazyOracleABI } from "../../../core/abis/LazyOracle.js";
+import { LazyOracleErrorsABI } from "../../../core/abis/errors/LazyOracleErrors.js";
 import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+
+const LazyOracleCombinedABI = [...LazyOracleABI, ...LazyOracleErrorsABI] as const;
 
 jest.mock("viem", () => {
   const actual = jest.requireActual("viem");
@@ -50,7 +53,7 @@ describe("LazyOracleContractClient", () => {
     publicClient = { watchContractEvent } as unknown as PublicClient;
     blockchainClient.getBlockchainClient.mockReturnValue(publicClient);
     contractStub = {
-      abi: LazyOracleABI,
+      abi: LazyOracleCombinedABI,
       read: {
         latestReportData: jest.fn(),
       },
@@ -69,7 +72,7 @@ describe("LazyOracleContractClient", () => {
     const client = createClient();
 
     expect(mockedGetContract).toHaveBeenCalledWith({
-      abi: LazyOracleABI,
+      abi: LazyOracleCombinedABI,
       address: contractAddress,
       client: publicClient,
     });

@@ -25,6 +25,18 @@ import { StakingVaultABI } from "../../core/abis/StakingVault.js";
 import { WithdrawalEvent } from "../../core/entities/WithdrawalEvent.js";
 import { DashboardContractClient } from "./DashboardContractClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import { DashboardErrorsABI } from "../../core/abis/errors/DashboardErrors.js";
+import { LidoStVaultYieldProviderErrorsABI } from "../../core/abis/errors/LidoStVaultYieldProviderErrors.js";
+import { StakingVaultErrorsABI } from "../../core/abis/errors/StakingVaultErrors.js";
+import { VaultHubErrorsABI } from "../../core/abis/errors/VaultHubErrors.js";
+
+const YieldManagerCombinedABI = [
+  ...YieldManagerABI,
+  ...DashboardErrorsABI,
+  ...LidoStVaultYieldProviderErrorsABI,
+  ...StakingVaultErrorsABI,
+  ...VaultHubErrorsABI,
+] as const;
 
 /**
  * Client for interacting with YieldManager smart contracts.
@@ -32,7 +44,7 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
  * rebalancing, ossification, and extracting event data from transaction receipts.
  */
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt> {
-  private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;
+  private readonly contract: GetContractReturnType<typeof YieldManagerCombinedABI, PublicClient, Address>;
 
   /**
    * Creates a new YieldManagerContractClient instance.
@@ -59,7 +71,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     private readonly metricsUpdater?: INativeYieldAutomationMetricsUpdater,
   ) {
     this.contract = getContract({
-      abi: YieldManagerABI,
+      abi: YieldManagerCombinedABI,
       address: contractAddress,
       client: this.contractClientLibrary.getBlockchainClient(),
     });

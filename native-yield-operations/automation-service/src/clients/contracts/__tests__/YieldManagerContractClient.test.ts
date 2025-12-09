@@ -4,9 +4,21 @@ import { absDiff, ONE_ETHER, weiToGweiNumber } from "@consensys/linea-shared-uti
 import type { Address, Hex, PublicClient, TransactionReceipt } from "viem";
 import { YieldManagerABI } from "../../../core/abis/YieldManager.js";
 import { StakingVaultABI } from "../../../core/abis/StakingVault.js";
+import { DashboardErrorsABI } from "../../../core/abis/errors/DashboardErrors.js";
+import { LidoStVaultYieldProviderErrorsABI } from "../../../core/abis/errors/LidoStVaultYieldProviderErrors.js";
+import { StakingVaultErrorsABI } from "../../../core/abis/errors/StakingVaultErrors.js";
+import { VaultHubErrorsABI } from "../../../core/abis/errors/VaultHubErrors.js";
 import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
 import type { WithdrawalRequests } from "../../../core/entities/LidoStakingVaultWithdrawalParams.js";
 import type { INativeYieldAutomationMetricsUpdater } from "../../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+
+const YieldManagerCombinedABI = [
+  ...YieldManagerABI,
+  ...DashboardErrorsABI,
+  ...LidoStVaultYieldProviderErrorsABI,
+  ...StakingVaultErrorsABI,
+  ...VaultHubErrorsABI,
+] as const;
 
 jest.mock("viem", () => {
   const actual = jest.requireActual("viem");
@@ -157,7 +169,7 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
 
     expect(mockedGetContract).toHaveBeenCalledWith({
-      abi: YieldManagerABI,
+      abi: YieldManagerCombinedABI,
       address: contractAddress,
       client: publicClient,
     });

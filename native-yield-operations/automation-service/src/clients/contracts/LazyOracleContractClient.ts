@@ -10,6 +10,8 @@ import {
   WatchContractEventReturnType,
 } from "viem";
 import { LazyOracleABI } from "../../core/abis/LazyOracle.js";
+import { LazyOracleErrorsABI } from "../../core/abis/errors/LazyOracleErrors.js";
+
 import {
   ILazyOracle,
   UpdateVaultDataParams,
@@ -19,13 +21,15 @@ import {
 } from "../../core/clients/contracts/ILazyOracle.js";
 import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
+const LazyOracleCombinedABI = [...LazyOracleABI, ...LazyOracleErrorsABI] as const;
+
 /**
  * Client for interacting with LazyOracle smart contracts.
  * Provides methods for reading report data, updating vault data, simulating transactions,
  * and waiting for VaultsReportDataUpdated events with timeout handling.
  */
 export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt> {
-  private readonly contract: GetContractReturnType<typeof LazyOracleABI, PublicClient, Address>;
+  private readonly contract: GetContractReturnType<typeof LazyOracleCombinedABI, PublicClient, Address>;
   /**
    * Creates a new LazyOracleContractClient instance.
    *
@@ -43,7 +47,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     private readonly eventWatchTimeoutMs: number,
   ) {
     this.contract = getContract({
-      abi: LazyOracleABI,
+      abi: LazyOracleCombinedABI,
       address: contractAddress,
       client: contractClientLibrary.getBlockchainClient(),
     });
