@@ -24,7 +24,7 @@ type EmulatedMultiplicationModule struct {
 	// TODO: use expression board instead, but for now keep it simple
 
 	// TODO: later on we want to do multiple emulated operations in one query, but for now we test with multiplication only
-	// Terms [][]Limbs // \sum_i prod_j limbs_{i,j}
+	// Terms [][]Limbs // \sum_i prod_j limbs_{i,j} == 0
 	TermL Limbs
 	TermR Limbs
 
