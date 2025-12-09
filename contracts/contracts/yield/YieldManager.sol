@@ -664,6 +664,7 @@ contract YieldManager is
    * @param _amount Amount to withdraw.
    */
   function _delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) internal {
+    if (_amount == 0) return;
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     _delegatecallYieldProvider(
       _yieldProvider,
