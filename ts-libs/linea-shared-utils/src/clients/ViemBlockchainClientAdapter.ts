@@ -18,6 +18,7 @@ import {
   ContractFunctionRevertedError,
   RpcRequestError,
   Abi,
+  decodeErrorResult,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
@@ -347,7 +348,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       }
       return await this.blockchainClient.estimateGas(estimateGasParams);
     } catch (error) {
-      const parsedError = this._parseEstimateGasError(error);
+      const parsedError = this._parseEstimateGasError(error, abi);
       if (parsedError) {
         this.logger.error("estimateGas failed with enhanced error details", {
           errorType: parsedError.errorType,
@@ -374,11 +375,16 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
   /**
    * Parses an estimateGas error to extract revert data, decoded error information, and RPC error data.
    * Uses error.walk() to traverse the error chain and extract information from various error types.
+   * If automatic decoding fails but raw revert data and ABI are available, attempts manual decoding.
    *
    * @param {unknown} error - The error to parse.
+   * @param {Abi} [abi] - Optional ABI for manual error decoding when automatic decoding fails.
    * @returns {object | undefined} An object containing parsed error information, or undefined if the error is not an EstimateGasExecutionError.
    */
-  private _parseEstimateGasError(error: unknown):
+  private _parseEstimateGasError(
+    error: unknown,
+    abi?: Abi,
+  ):
     | {
         errorType: string;
         rawRevertData?: Hex;
@@ -430,6 +436,24 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         args: contractError.data?.args,
         reason: contractError.reason,
       };
+    }
+
+    // If error wasn't decoded but we have ABI and raw data, try manual decoding
+    if (!decodedError?.errorName && rawRevertData && abi) {
+      try {
+        const decoded = decodeErrorResult({
+          abi,
+          data: rawRevertData,
+        });
+        decodedError = {
+          raw: rawRevertData,
+          errorName: decoded.errorName,
+          args: decoded.args,
+          reason: undefined,
+        };
+      } catch (decodeErr) {
+        // Manual decoding failed, keep decodedError as undefined or existing value
+      }
     }
 
     // Extract RPC error data from RpcRequestError

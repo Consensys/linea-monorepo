@@ -14,6 +14,7 @@ import {
   withTimeout,
   EstimateGasExecutionError,
   RawContractError,
+  decodeErrorResult,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { ViemBlockchainClientAdapter } from "../ViemBlockchainClientAdapter";
@@ -29,6 +30,7 @@ jest.mock("viem", () => {
     withTimeout: jest.fn((fn: any) => fn({ signal: null })),
     serializeTransaction: jest.fn(),
     parseSignature: jest.fn(),
+    decodeErrorResult: jest.fn(),
   };
 });
 
@@ -46,6 +48,7 @@ const mockedSendRawTransaction = sendRawTransaction as jest.MockedFunction<typeo
 const mockedWaitForTransactionReceipt = waitForTransactionReceipt as jest.MockedFunction<
   typeof waitForTransactionReceipt
 >;
+const mockedDecodeErrorResult = decodeErrorResult as jest.MockedFunction<typeof decodeErrorResult>;
 
 const createLogger = (): jest.Mocked<ILogger> =>
   ({
@@ -362,6 +365,85 @@ describe("ViemBlockchainClientAdapter", () => {
         rawRevertData: expect.any(String),
         decodedError: undefined,
         rpcErrorData: "0x1234",
+        originalMessage: expect.stringContaining("execution reverted"),
+        contractAddress,
+        calldata,
+        value: "0",
+      });
+    });
+
+    it("manually decodes error when automatic decoding fails but ABI is provided", async () => {
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+
+      const mockABI = [
+        {
+          inputs: [
+            { internalType: "uint256", name: "amount", type: "uint256" },
+            { internalType: "uint256", name: "withdrawableValue", type: "uint256" },
+          ],
+          name: "ExceedsWithdrawable",
+          type: "error",
+        },
+      ] as const;
+
+      // Raw revert data for ExceedsWithdrawable(amount, withdrawableValue)
+      // Error selector: 0xf2ed496c (first 4 bytes)
+      const rawRevertData =
+        "0xf2ed496c000000000000000000000000000000000000000000000025dffc6dedca6c668800000000000000000000000000000000000000000000000ac3b0cfe3a6daf2d1" as Hex;
+
+      // Create a proper instance that will pass instanceof check
+      class MockEstimateGasExecutionError extends BaseError {
+        constructor(message: string, cause?: BaseError) {
+          super(message);
+          this.name = "EstimateGasExecutionError";
+          if (cause) {
+            (this as any).cause = cause;
+          }
+        }
+      }
+      Object.setPrototypeOf(MockEstimateGasExecutionError.prototype, EstimateGasExecutionError.prototype);
+
+      // Create RawContractError with raw revert data but no decoded error
+      const rawContractError = Object.assign(new BaseError("execution reverted"), {
+        data: rawRevertData,
+      }) as RawContractError;
+
+      const estimateGasError = new MockEstimateGasExecutionError("execution reverted", rawContractError);
+
+      // Mock walk() to return rawContractError (no ContractFunctionRevertedError found)
+      estimateGasError.walk = jest.fn().mockReturnValue(rawContractError);
+
+      // Mock decodeErrorResult to return decoded error
+      mockedDecodeErrorResult.mockReturnValue({
+        errorName: "ExceedsWithdrawable",
+        args: [
+          175921860444160000000000n, // amount
+          310000000000000000000000n, // withdrawableValue
+        ],
+      } as any);
+
+      publicClientMock.estimateGas.mockRejectedValue(estimateGasError);
+
+      await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n, mockABI)).rejects.toThrow();
+
+      // Verify decodeErrorResult was called with the correct parameters
+      expect(mockedDecodeErrorResult).toHaveBeenCalledWith({
+        abi: mockABI,
+        data: rawRevertData,
+      });
+
+      // Verify the error was logged with decoded error information
+      expect(logger.error).toHaveBeenCalledWith("estimateGas failed with enhanced error details", {
+        errorType: "EstimateGasExecutionError",
+        rawRevertData,
+        decodedError: {
+          raw: rawRevertData,
+          errorName: "ExceedsWithdrawable",
+          args: [175921860444160000000000n, 310000000000000000000000n],
+          reason: undefined,
+        },
+        rpcErrorData: expect.anything(),
         originalMessage: expect.stringContaining("execution reverted"),
         contractAddress,
         calldata,
