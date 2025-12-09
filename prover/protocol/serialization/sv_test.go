@@ -21,6 +21,16 @@ func makeFieldSlice(start, n int) []field.Element {
 	return s
 }
 
+// helper to create a small regular slice of n fext.Elements filled with start..start+n-1
+func makeExtSlice(start, n int) []fext.Element {
+	s := make([]fext.Element, n)
+	for i := 0; i < n; i++ {
+		// create a simple element; the precise constructor may differ in your codebase
+		s[i] = fext.NewElement(uint64(start+i), uint64(start+i))
+	}
+	return s
+}
+
 func TestMarshalUnmarshalSmartVector_Roundtrip(t *testing.T) {
 	// Regular (pointer)
 	origR := smartvectors.Regular(makeFieldSlice(1, 4))
@@ -129,27 +139,6 @@ func TestMarshalUnmarshalSmartVector_Roundtrip(t *testing.T) {
 	}
 }
 
-// quick sanity test to ensure cbor.Tag roundtrip works as expected (optional)
-func TestCBORTag_Roundtrip(t *testing.T) {
-	tag := cbor.Tag{Number: cborTagFieldElementsPacked, Content: []byte{1, 2, 3}}
-	bs, err := encodeWithCBOR(tag)
-	require.NoError(t, err)
-	var out any
-	require.NoError(t, decodeWithCBOR(bs, &out))
-	// out should be decoded back as cbor.Tag or a map depending on decoder; we just assert no error
-	_ = out
-}
-
-// helper to create a small regular slice of n fext.Elements filled with start..start+n-1
-func makeExtSlice(start, n int) []fext.Element {
-	s := make([]fext.Element, n)
-	for i := 0; i < n; i++ {
-		// create a simple element; the precise constructor may differ in your codebase
-		s[i] = fext.NewElement(uint64(start+i), uint64(start+i))
-	}
-	return s
-}
-
 func TestMarshalUnmarshalSmartVector_ExtRoundtrip(t *testing.T) {
 	// Build extension testcases (use constructors existing in your smartvectors package)
 	testCases := []struct {
@@ -182,27 +171,27 @@ func TestMarshalUnmarshalSmartVector_ExtRoundtrip(t *testing.T) {
 			},
 		},
 
-		// {
-		// 	"RegularExt",
-		// 	(&smartvectorsext.RegularExt{}).FromSlice(makeExtSlice(1, 5)), // or: smartvectors.RegularExt(makeExtSlice(...)) depending on API
-		// 	func(t *testing.T, got smartvectors.SmartVector) {
-		// 		r, ok := got.(*smartvectorsext.RegularExt)
-		// 		require.True(t, ok, "expected *RegularExt, got %T", got)
-		// 		require.Equal(t, 5, len(*r))
-		// 		for i := range *r {
-		// 			require.Equal(t, makeExtSlice(1, 5)[i].String(), (*r)[i].String())
-		// 		}
+		// 	{
+		// 		"RegularExt",
+		// 		(&smartvectorsext.RegularExt{}).FromSlice(makeExtSlice(1, 5)), // or: smartvectors.RegularExt(makeExtSlice(...)) depending on API
+		// 		func(t *testing.T, got smartvectors.SmartVector) {
+		// 			r, ok := got.(*smartvectorsext.RegularExt)
+		// 			require.True(t, ok, "expected *RegularExt, got %T", got)
+		// 			require.Equal(t, 5, len(*r))
+		// 			for i := range *r {
+		// 				require.Equal(t, makeExtSlice(1, 5)[i].String(), (*r)[i].String())
+		// 			}
+		// 		},
 		// 	},
-		// },
 
-		// {
-		// 	"RotatedExt",
-		// 	smartvectorsext.NewRotatedExt(&smartvectorsext.PooledExt{RegularExt: smartvectorsext.RegularExt(makeExtSlice(4, 4))}, 1),
-		// 	func(t *testing.T, got smartvectors.SmartVector) {
-		// 		_, ok := got.(*smartvectorsext.RotatedExt)
-		// 		require.True(t, ok, "expected *RotatedExt, got %T", got)
+		// 	{
+		// 		"RotatedExt",
+		// 		smartvectorsext.NewRotatedExt(&smartvectorsext.PooledExt{RegularExt: smartvectorsext.RegularExt(makeExtSlice(4, 4))}, 1),
+		// 		func(t *testing.T, got smartvectors.SmartVector) {
+		// 			_, ok := got.(*smartvectorsext.RotatedExt)
+		// 			require.True(t, ok, "expected *RotatedExt, got %T", got)
+		// 		},
 		// 	},
-		// },
 	}
 
 	for _, tc := range testCases {
@@ -211,7 +200,9 @@ func TestMarshalUnmarshalSmartVector_ExtRoundtrip(t *testing.T) {
 
 			// 1) Marshal into a CBOR-serializable Go value
 			packed, mErr := marshalSmartVector(ser, tc.in)
-			require.True(t, mErr == nil, "marshal serde error: %#v", mErr)
+			if mErr != nil {
+				t.Fatalf("marshal error: %s", mErr.Error())
+			}
 
 			// 2) Full CBOR encode/decode cycle to emulate real wire path
 			enc, encErr := encodeWithCBOR(packed)
@@ -223,11 +214,24 @@ func TestMarshalUnmarshalSmartVector_ExtRoundtrip(t *testing.T) {
 			// 3) Unmarshal from the decoded CBOR value using a fresh Deserializer.
 			des := NewDeserializer(&PackedObject{})
 			got, uErr := unmarshalSmartVector(des, decoded)
-			require.True(t, uErr == nil, "unmarshal serde error: %#v", uErr)
+			if uErr != nil {
+				t.Fatalf("unmarshal error: %s", uErr.Error())
+			}
 			require.NotNil(t, got)
 
 			// 4) semantic check
 			tc.check(t, got)
 		})
 	}
+}
+
+// quick sanity test to ensure cbor.Tag roundtrip works as expected (optional)
+func TestCBORTag_Roundtrip(t *testing.T) {
+	tag := cbor.Tag{Number: cborTagFieldElementsPacked, Content: []byte{1, 2, 3}}
+	bs, err := encodeWithCBOR(tag)
+	require.NoError(t, err)
+	var out any
+	require.NoError(t, decodeWithCBOR(bs, &out))
+	// out should be decoded back as cbor.Tag or a map depending on decoder; we just assert no error
+	_ = out
 }

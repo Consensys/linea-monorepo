@@ -193,7 +193,7 @@ func (c *RegularExt) GetPtr(n int) *field.Element {
 
 type PooledExt struct {
 	RegularExt
-	poolPtr *[]fext.Element
+	poolPtr *[]fext.Element `serde:"omit"`
 }
 
 func AllocFromPoolExt(pool mempoolext.MemPool) *PooledExt {
