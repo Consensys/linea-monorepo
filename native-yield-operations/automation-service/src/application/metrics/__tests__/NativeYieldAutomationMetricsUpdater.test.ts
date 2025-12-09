@@ -1150,6 +1150,49 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     });
   });
 
+  describe("incrementContractEstimateGasError", () => {
+    it("increments counter with contract address, raw revert data, and error name", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      const contractAddress = "0x1234567890123456789012345678901234567890" as Address;
+      const rawRevertData = "0xf2ed496c000000000000000000000000000000000000000000000025dffc6dedca6c668800000000000000000000000000000000000000000000000ac3b0cfe3a6daf2d1";
+      const errorName = "ExceedsWithdrawable";
+
+      updater.incrementContractEstimateGasError(contractAddress, rawRevertData, errorName);
+
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ContractEstimateGasError,
+        {
+          contract_address: contractAddress,
+          rawRevertData: rawRevertData,
+          errorName: errorName,
+        },
+      );
+    });
+
+    it("increments counter with 'unknown' error name when errorName is undefined", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      const contractAddress = "0x1234567890123456789012345678901234567890" as Address;
+      const rawRevertData = "0xf2ed496c000000000000000000000000000000000000000000000025dffc6dedca6c668800000000000000000000000000000000000000000000000ac3b0cfe3a6daf2d1";
+
+      updater.incrementContractEstimateGasError(contractAddress, rawRevertData);
+
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ContractEstimateGasError,
+        {
+          contract_address: contractAddress,
+          rawRevertData: rawRevertData,
+          errorName: "unknown",
+        },
+      );
+    });
+  });
+
   describe("setActualRebalanceRequirement", () => {
     it("sets gauge when value is non-negative", () => {
       const metricsService = createMetricsServiceMock();

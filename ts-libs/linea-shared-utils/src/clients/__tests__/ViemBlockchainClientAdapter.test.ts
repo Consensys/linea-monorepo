@@ -20,6 +20,7 @@ import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { ViemBlockchainClientAdapter } from "../ViemBlockchainClientAdapter";
 import { ILogger } from "../../logging/ILogger";
 import { IContractSignerClient } from "../../core/client/IContractSignerClient";
+import { IEstimateGasErrorReporter } from "../../core/services/IEstimateGasErrorReporter";
 
 jest.mock("viem", () => {
   const actual = jest.requireActual("viem");
@@ -449,6 +450,134 @@ describe("ViemBlockchainClientAdapter", () => {
         calldata,
         value: "0",
       });
+    });
+
+    it("calls errorReporter.recordContractError when estimateGas fails and errorReporter is provided", async () => {
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+
+      const mockABI = [
+        {
+          inputs: [
+            { internalType: "uint256", name: "amount", type: "uint256" },
+            { internalType: "uint256", name: "withdrawableValue", type: "uint256" },
+          ],
+          name: "ExceedsWithdrawable",
+          type: "error",
+        },
+      ] as const;
+
+      const rawRevertData =
+        "0xf2ed496c000000000000000000000000000000000000000000000025dffc6dedca6c668800000000000000000000000000000000000000000000000ac3b0cfe3a6daf2d1" as Hex;
+
+      // Create a proper instance that will pass instanceof check
+      class MockEstimateGasExecutionError extends BaseError {
+        constructor(message: string, cause?: BaseError) {
+          super(message);
+          this.name = "EstimateGasExecutionError";
+          if (cause) {
+            (this as any).cause = cause;
+          }
+        }
+      }
+      Object.setPrototypeOf(MockEstimateGasExecutionError.prototype, EstimateGasExecutionError.prototype);
+
+      const rawContractError = Object.assign(new BaseError("execution reverted"), {
+        data: rawRevertData,
+      }) as RawContractError;
+
+      const estimateGasError = new MockEstimateGasExecutionError("execution reverted", rawContractError);
+      estimateGasError.walk = jest.fn().mockReturnValue(rawContractError);
+
+      // Mock decodeErrorResult to return decoded error
+      mockedDecodeErrorResult.mockReturnValue({
+        errorName: "ExceedsWithdrawable",
+        args: [175921860444160000000000n, 310000000000000000000000n],
+      } as any);
+
+      // Create mock error reporter
+      const errorReporter: IEstimateGasErrorReporter = {
+        recordContractError: jest.fn(),
+      };
+
+      // Create adapter with error reporter
+      const adapterWithReporter = new ViemBlockchainClientAdapter(
+        logger,
+        rpcUrl,
+        chain,
+        contractSignerClient,
+        3,
+        1000n,
+        300_000,
+        errorReporter,
+      );
+
+      publicClientMock.estimateGas.mockRejectedValue(estimateGasError);
+
+      await expect(adapterWithReporter.sendSignedTransaction(contractAddress, calldata, 0n, mockABI)).rejects.toThrow();
+
+      // Verify errorReporter.recordContractError was called with correct parameters
+      expect(errorReporter.recordContractError).toHaveBeenCalledWith(
+        contractAddress,
+        rawRevertData,
+        "ExceedsWithdrawable",
+      );
+    });
+
+    it("calls errorReporter.recordContractError with undefined errorName when error is not decoded", async () => {
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+
+      const rawRevertData =
+        "0xf2ed496c000000000000000000000000000000000000000000000025dffc6dedca6c668800000000000000000000000000000000000000000000000ac3b0cfe3a6daf2d1" as Hex;
+
+      // Create a proper instance that will pass instanceof check
+      class MockEstimateGasExecutionError extends BaseError {
+        constructor(message: string, cause?: BaseError) {
+          super(message);
+          this.name = "EstimateGasExecutionError";
+          if (cause) {
+            (this as any).cause = cause;
+          }
+        }
+      }
+      Object.setPrototypeOf(MockEstimateGasExecutionError.prototype, EstimateGasExecutionError.prototype);
+
+      const rawContractError = Object.assign(new BaseError("execution reverted"), {
+        data: rawRevertData,
+      }) as RawContractError;
+
+      const estimateGasError = new MockEstimateGasExecutionError("execution reverted", rawContractError);
+      estimateGasError.walk = jest.fn().mockReturnValue(rawContractError);
+
+      // Mock decodeErrorResult to throw (simulating failed decoding)
+      mockedDecodeErrorResult.mockImplementation(() => {
+        throw new Error("Failed to decode");
+      });
+
+      // Create mock error reporter
+      const errorReporter: IEstimateGasErrorReporter = {
+        recordContractError: jest.fn(),
+      };
+
+      // Create adapter with error reporter
+      const adapterWithReporter = new ViemBlockchainClientAdapter(
+        logger,
+        rpcUrl,
+        chain,
+        contractSignerClient,
+        3,
+        1000n,
+        300_000,
+        errorReporter,
+      );
+
+      publicClientMock.estimateGas.mockRejectedValue(estimateGasError);
+
+      await expect(adapterWithReporter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toThrow();
+
+      // Verify errorReporter.recordContractError was called with undefined errorName
+      expect(errorReporter.recordContractError).toHaveBeenCalledWith(contractAddress, rawRevertData, undefined);
     });
   });
 

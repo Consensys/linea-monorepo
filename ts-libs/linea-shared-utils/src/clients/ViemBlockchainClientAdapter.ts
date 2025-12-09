@@ -24,6 +24,7 @@ import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { ILogger } from "../logging/ILogger";
 import { MAX_BPS } from "../core/constants/maths";
+import { IEstimateGasErrorReporter } from "../core/services/IEstimateGasErrorReporter";
 
 /**
  * Adapter that wraps viem's PublicClient to provide blockchain interaction functionality.
@@ -43,6 +44,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
    * @param {number} [sendTransactionsMaxRetries=3] - Maximum number of retry attempts for sending transactions (must be at least 1).
    * @param {bigint} [gasRetryBumpBps=1000n] - Gas price bump in basis points per retry (e.g., 1000n = +10% per retry).
    * @param {number} [sendTransactionAttemptTimeoutMs=300000] - Timeout in milliseconds for each transaction attempt (default: 5 minutes).
+   * @param {IEstimateGasErrorReporter} [errorReporter] - Optional error reporter for tracking estimateGas errors via metrics.
    * @throws {Error} If sendTransactionsMaxRetries is less than 1.
    */
   constructor(
@@ -53,6 +55,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     private readonly sendTransactionsMaxRetries = 3,
     private readonly gasRetryBumpBps: bigint = 1000n, // +10% per retry
     private readonly sendTransactionAttemptTimeoutMs = 300_000, // 5m
+    private readonly errorReporter?: IEstimateGasErrorReporter,
   ) {
     if (sendTransactionsMaxRetries < 1) {
       throw new Error("sendTransactionsMaxRetries must be at least 1");
@@ -360,6 +363,12 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
           calldata,
           value: value.toString(),
         });
+
+        // Report error for metrics tracking if reporter is available
+        if (this.errorReporter && parsedError.rawRevertData) {
+          const errorName = parsedError.decodedError?.errorName;
+          this.errorReporter.recordContractError(contractAddress, parsedError.rawRevertData, errorName);
+        }
       } else {
         this.logger.error("estimateGas failed", {
           error,

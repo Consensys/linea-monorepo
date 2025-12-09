@@ -789,6 +789,7 @@ describe("YieldManagerContractClient", () => {
         incrementStakeCircuitBreakerTrip: jest.fn(),
         setActualRebalanceRequirement: jest.fn(),
         setReportedRebalanceRequirement: jest.fn(),
+        incrementContractEstimateGasError: jest.fn(),
       };
       const totalSystemBalance = 1_000_000n;
       const effectiveTarget = 400_000n;
@@ -835,6 +836,7 @@ describe("YieldManagerContractClient", () => {
         incrementStakeCircuitBreakerTrip: jest.fn(),
         setActualRebalanceRequirement: jest.fn(),
         setReportedRebalanceRequirement: jest.fn(),
+        incrementContractEstimateGasError: jest.fn(),
       };
       const totalSystemBalance = 1_000_000n;
       const effectiveTarget = 400_000n;
@@ -881,6 +883,7 @@ describe("YieldManagerContractClient", () => {
         incrementStakeCircuitBreakerTrip: jest.fn(),
         setActualRebalanceRequirement: jest.fn(),
         setReportedRebalanceRequirement: jest.fn(),
+        incrementContractEstimateGasError: jest.fn(),
       };
       const totalSystemBalance = 1_000_000n;
       const effectiveTarget = 400_000n;
@@ -929,6 +932,7 @@ describe("YieldManagerContractClient", () => {
         incrementStakeCircuitBreakerTrip: jest.fn(),
         setActualRebalanceRequirement: jest.fn(),
         setReportedRebalanceRequirement: jest.fn(),
+        incrementContractEstimateGasError: jest.fn(),
       };
       const totalSystemBalance = 1_000_000n;
       const effectiveTarget = 400_000n;

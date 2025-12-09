@@ -53,6 +53,7 @@ import { StakingVaultContractClient } from "../../clients/contracts/StakingVault
 import { STETHContractClient } from "../../clients/contracts/STETHContractClient.js";
 import { ISTETH } from "../../core/clients/contracts/ISTETH.js";
 import { GaugeMetricsPoller } from "../../services/GaugeMetricsPoller.js";
+import { EstimateGasErrorReporter } from "../../core/services/EstimateGasErrorReporter.js";
 
 /**
  * Bootstrap class for the Native Yield Automation Service.
@@ -133,11 +134,16 @@ export class NativeYieldAutomationServiceBootstrap {
           throw new Error(`Unsupported chain ID: ${chainId}`);
       }
     };
+    const estimateGasErrorReporter = new EstimateGasErrorReporter(this.metricsUpdater);
     this.viemBlockchainClientAdapter = new ViemBlockchainClientAdapter(
       new WinstonLogger(ViemBlockchainClientAdapter.name, config.loggerOptions),
       config.dataSources.l1RpcUrl,
       getChain(config.dataSources.chainId),
       this.web3SignerClient,
+      3,
+      1000n,
+      300_000,
+      estimateGasErrorReporter,
     );
     DashboardContractClient.initialize(
       this.viemBlockchainClientAdapter,

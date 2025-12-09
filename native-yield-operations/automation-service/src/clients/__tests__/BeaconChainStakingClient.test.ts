@@ -60,6 +60,7 @@ const createMetricsUpdaterMock = () => {
     incrementStakeCircuitBreakerTrip: jest.fn(),
     setActualRebalanceRequirement: jest.fn(),
     setReportedRebalanceRequirement: jest.fn(),
+    incrementContractEstimateGasError: jest.fn(),
   };
 
   return {

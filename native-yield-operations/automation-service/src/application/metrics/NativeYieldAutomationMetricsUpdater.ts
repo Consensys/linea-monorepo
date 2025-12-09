@@ -223,6 +223,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       "Reported rebalance requirement (in gwei) after applying tolerance band, circuit breaker, and rate limit",
       ["vault_address", "staking_direction"],
     );
+
+    this.metricsService.createCounter(
+      LineaNativeYieldAutomationServiceMetrics.ContractEstimateGasError,
+      "Total number of contract estimateGas errors",
+      ["contract_address", "rawRevertData", "errorName"],
+    );
   }
 
   /**
@@ -676,6 +682,28 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
       { vault_address: vaultAddress, staking_direction: mapRebalanceDirectionToStakingDirection(direction) },
       requirementGwei,
+    );
+  }
+
+  /**
+   * Increments the counter for contract estimateGas errors.
+   *
+   * @param {Address} contractAddress - The contract address where the error occurred.
+   * @param {string} rawRevertData - The raw revert data (hex string).
+   * @param {string} [errorName] - The decoded error name (if available, otherwise "unknown").
+   */
+  public incrementContractEstimateGasError(
+    contractAddress: Address,
+    rawRevertData: string,
+    errorName?: string,
+  ): void {
+    this.metricsService.incrementCounter(
+      LineaNativeYieldAutomationServiceMetrics.ContractEstimateGasError,
+      {
+        contract_address: contractAddress,
+        rawRevertData: rawRevertData,
+        errorName: errorName ?? "unknown",
+      },
     );
   }
 

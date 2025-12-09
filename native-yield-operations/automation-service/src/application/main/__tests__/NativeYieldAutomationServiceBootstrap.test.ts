@@ -157,6 +157,13 @@ jest.mock(
   { virtual: true },
 );
 jest.mock(
+  "../../../core/services/EstimateGasErrorReporter.js",
+  () => ({
+    EstimateGasErrorReporter: jest.fn().mockImplementation(() => ({})),
+  }),
+  { virtual: true },
+);
+jest.mock(
   "../../metrics/OperationModeMetricsRecorder.js",
   () => ({
     OperationModeMetricsRecorder: jest.fn().mockImplementation(() => ({})),
@@ -333,6 +340,10 @@ describe("NativeYieldAutomationServiceBootstrap", () => {
       expect.anything(),
       config.dataSources.l1RpcUrl,
       hoodi,
+      expect.anything(),
+      3,
+      1000n,
+      300_000,
       expect.anything(),
     );
   });

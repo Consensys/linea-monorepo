@@ -68,4 +68,6 @@ export interface INativeYieldAutomationMetricsUpdater {
   setActualRebalanceRequirement(vaultAddress: Address, requirementGwei: number, direction: RebalanceDirection): void;
 
   setReportedRebalanceRequirement(vaultAddress: Address, requirementGwei: number, direction: RebalanceDirection): void;
+
+  incrementContractEstimateGasError(contractAddress: Address, rawRevertData: string, errorName?: string): void;
 }

@@ -132,6 +132,13 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Gauge representing the reported rebalance requirement (in gwei) after applying tolerance band, circuit breaker, and rate limit
   // Labels: `vault_address`, `staking_direction` (values: "STAKING", "UNSTAKING", "NONE")
   ReportedRebalanceRequirementGwei = "linea_native_yield_automation_service_reported_rebalance_requirement_gwei",
+
+  // Counter that increments each time a contract estimateGas error occurs
+  // Labels:
+  // i.) `contract_address` - The contract address where the error occurred
+  // ii.) `rawRevertData` - The raw revert data (hex string)
+  // iii.) `errorName` - The decoded error name (if available, otherwise "unknown")
+  ContractEstimateGasError = "linea_native_yield_automation_service_contract_estimate_gas_error",
 }
 
 export enum OperationTrigger {
