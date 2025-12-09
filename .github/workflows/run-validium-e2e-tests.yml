@@ -1,4 +1,4 @@
-name: run-e2e-tests
+name: run-validium-e2e-tests
 
 permissions:
   contents: read
