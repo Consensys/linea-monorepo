@@ -37,6 +37,7 @@ import (
 	dmimc "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -345,6 +346,19 @@ func init() {
 	RegisterImplementation(fr.Element{})
 
 	RegisterImplementation(dedicated.StackedColumn{})
+
+	// Distributed modules
+	RegisterImplementation(distributed.AssignLPPQueries{})
+	RegisterImplementation(distributed.SetInitialFSHash{})
+	RegisterImplementation(distributed.CheckNxHash{})
+	RegisterImplementation(distributed.StandardModuleDiscoverer{})
+	RegisterImplementation(distributed.LppWitnessAssignment{})
+	RegisterImplementation(distributed.ModuleGLAssignGL{})
+	RegisterImplementation(distributed.ModuleGLAssignSendReceiveGlobal{})
+	RegisterImplementation(distributed.ModuleGLCheckSendReceiveGlobal{})
+	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
+	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
+
 }
 
 // In order to save some space, we trim the prefix of the package path as this

@@ -1,3 +1,6 @@
+// go run cmd/codegen/main.go
+// Successfully generated protocol/serialization/registry.go with %d types.
+
 package main
 
 import (
