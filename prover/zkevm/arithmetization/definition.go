@@ -84,7 +84,7 @@ func (s *schemaScanner) scanColumns() {
 			// Construct corresponding register name
 			var name = wizardName(modDecl.Name().String(), colDecl.Name)
 			//
-			col := s.Comp.InsertCommit(0, ifaces.ColID(name), size) // isBase?
+			col := s.Comp.InsertCommit(0, ifaces.ColID(name), size, true)
 			pragmas.MarkLeftPadded(col)
 		}
 	}
@@ -209,7 +209,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 		var (
 			vc    = cs.Unwrap()
 			wExpr = s.castExpression(vc.Context, vc.Constraint.Term)
-			wMeta = wExpr.BoardListVariableMetadata() // ??
+			wMeta = wExpr.ListBoardVariableMetadata()
 		)
 
 		if len(wMeta) == 0 {
