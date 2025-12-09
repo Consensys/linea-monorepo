@@ -81,6 +81,15 @@ func (a *EmulatedMultiplicationModule) assignEmulatedColumns(run *wizard.ProverR
 	for i := range bufRem {
 		bufRem[i] = new(big.Int)
 	}
+	// to compute the carries, we need to perform multiplication on limbs
+	bufLhs := make([]*big.Int, nbMultiplicationResLimbs(len(bufL), len(bufR)))
+	for i := range bufLhs {
+		bufLhs[i] = new(big.Int)
+	}
+	bufRhs := make([]*big.Int, nbMultiplicationResLimbs(len(bufQuo), len(bufMod)))
+	for i := range bufRhs {
+		bufRhs[i] = new(big.Int)
+	}
 
 	witTermL := new(big.Int)
 	witTermR := new(big.Int)
@@ -127,15 +136,6 @@ func (a *EmulatedMultiplicationModule) assignEmulatedColumns(run *wizard.ProverR
 		}
 		if err := a.bigIntToLimbs(tmpRemainder, bufRem, a.Result, dstRemLimbs); err != nil {
 			utils.Panic("failed to convert remainder to limbs: %v", err)
-		}
-		// to compute the carries, we need to perform multiplication on limbs
-		bufLhs := make([]*big.Int, nbMultiplicationResLimbs(len(bufL), len(bufR)))
-		for i := range bufLhs {
-			bufLhs[i] = new(big.Int)
-		}
-		bufRhs := make([]*big.Int, nbMultiplicationResLimbs(len(bufQuo), len(bufMod)))
-		for i := range bufRhs {
-			bufRhs[i] = new(big.Int)
 		}
 		if err := limbMul(bufLhs, bufL, bufR); err != nil {
 			utils.Panic("failed to multiply lhs limbs: %v", err)
