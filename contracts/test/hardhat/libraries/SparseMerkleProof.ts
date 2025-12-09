@@ -1,10 +1,11 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { network } from "hardhat";
 import { Mimc, SparseMerkleProof } from "../../../typechain-types";
 import merkleProofTestData from "../_testData/merkle-proof-data.json";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";
+
+const { ethers, networkHelpers } = await network.connect();
 
 describe("SparseMerkleProof", () => {
   let sparseMerkleProof: SparseMerkleProof;
@@ -20,7 +21,7 @@ describe("SparseMerkleProof", () => {
   }
 
   beforeEach(async () => {
-    sparseMerkleProof = await loadFixture(deploySparseMerkleProofFixture);
+    sparseMerkleProof = await networkHelpers.loadFixture(deploySparseMerkleProofFixture);
   });
 
   describe("verifyProof", () => {

@@ -1,8 +1,10 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
+import { network } from "hardhat";
 import { TestEfficientLeftRightKeccak } from "../../../typechain-types";
 import { deployFromFactory } from "../common/deployment";
 import { generateKeccak256, generateRandomBytes } from "../common/helpers";
+
+const { networkHelpers } = await network.connect();
 
 describe("EfficientLeftRightKeccak Library", () => {
   let contract: TestEfficientLeftRightKeccak;
@@ -11,7 +13,9 @@ describe("EfficientLeftRightKeccak Library", () => {
     return deployFromFactory("TestEfficientLeftRightKeccak");
   }
   beforeEach(async () => {
-    contract = (await loadFixture(deployTestEfficientLeftRightKeccakFixture)) as TestEfficientLeftRightKeccak;
+    contract = (await networkHelpers.loadFixture(
+      deployTestEfficientLeftRightKeccakFixture,
+    )) as TestEfficientLeftRightKeccak;
   });
 
   describe("efficientKeccak", () => {

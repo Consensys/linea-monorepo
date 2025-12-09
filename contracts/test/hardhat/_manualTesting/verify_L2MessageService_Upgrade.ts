@@ -1,4 +1,6 @@
-import { ethers, upgrades } from "hardhat";
+import { network } from "hardhat";
+
+const { ethers, networkHelpers } = await network.connect();
 
 // npx hardhat test --network linea_mainnet
 // THIS IS A MANUAL TEST TO VERIFY LINEA MAINNET DOES NOT BREAK
@@ -9,7 +11,6 @@ describe.skip("L2MessageService Upgrade from L2MessageService Linea Mainnet", ()
   describe("Collision", () => {
     it("Does not collide", async () => {
       const contract = await ethers.getContractFactory("L2MessageServiceLineaMainnet");
-
       console.log("Importing contract");
       await upgrades.forceImport(mainnetProxyAddress, contract, {
         kind: "transparent",

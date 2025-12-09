@@ -3,16 +3,18 @@ pragma solidity 0.8.30;
 
 import "forge-std/Test.sol";
 
-import { EfficientLeftRightKeccak } from "src/libraries/EfficientLeftRightKeccak.sol";
-import { LineaRollup } from "src/rollup/LineaRollup.sol";
-import { ILineaRollup } from "src/rollup/interfaces/ILineaRollup.sol";
+import { EfficientLeftRightKeccak } from "../../src/libraries/EfficientLeftRightKeccak.sol";
+import { LineaRollup } from "../../src/rollup/LineaRollup.sol";
+import { ILineaRollup } from "../../src/rollup/interfaces/ILineaRollup.sol";
+import { IAcceptCalldataBlobs } from "../../src/rollup/dataAvailability/interfaces/IAcceptCalldataBlobs.sol";
 
-import { IPauseManager } from "src/security/pausing/interfaces/IPauseManager.sol";
-import { IPermissionsManager } from "src/security/access/interfaces/IPermissionsManager.sol";
+import { IPauseManager } from "../../src/security/pausing/interfaces/IPauseManager.sol";
+import { IPermissionsManager } from "../../src/security/access/interfaces/IPermissionsManager.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { CalldataBlobAcceptor } from "../../src/rollup/dataAvailability/CalldataBlobAcceptor.sol";
 
-contract LineaRollupTestHelper is LineaRollup {
+contract LineaRollupTestHelper is LineaRollup, CalldataBlobAcceptor {
   function calculateY(bytes calldata data, bytes32 dataEvaluationPoint) external pure returns (bytes32) {
     return _calculateY(data, dataEvaluationPoint);
   }
@@ -88,7 +90,7 @@ contract LineaRollupTest is Test {
   }
 
   function testSubmitDataAsCalldata() public {
-    ILineaRollup.CompressedCalldataSubmission memory submission;
+    IAcceptCalldataBlobs.CompressedCalldataSubmission memory submission;
     submission.finalStateRootHash = keccak256(abi.encodePacked("finalStateRootHash"));
     submission.snarkHash = keccak256(abi.encodePacked("snarkHash"));
 
