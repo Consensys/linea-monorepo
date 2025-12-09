@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -38,17 +39,14 @@ type Settings struct {
 	NbInstancesPerCircuitModexp4096     int
 }
 
-func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) Input {
+func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings, arith *arithmetization.Arithmetization) Input {
 	input := Input{
 		Settings:         settings,
-		IsModExpBase:     comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_BASE"),
-		IsModExpExponent: comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_EXPONENT"),
-		IsModExpModulus:  comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_MODULUS"),
-		IsModExpResult:   comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_RESULT"),
-	}
-
-	for i := range common.NbLimbU128 {
-		input.Limbs[i] = comp.Columns.GetHandle(ifaces.ColIDf("blake2fmodexpdata.LIMB_%d", i))
+		IsModExpBase:     arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_BASE"),
+		IsModExpExponent: arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_EXPONENT"),
+		IsModExpModulus:  arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_MODULUS"),
+		IsModExpResult:   arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_RESULT"),
+		Limbs:            arith.LimbColumnsOfArr8(comp, "blake2fmodexpdata", "LIMB"),
 	}
 
 	return input
@@ -57,7 +55,7 @@ func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) Input {
 // setIsModexp constructs, constraints and set the [isModexpColumn]
 func (i *Input) setIsModexp(comp *wizard.CompiledIOP) {
 
-	i.IsModExp = comp.InsertCommit(0, "MODEXP_INPUT_IS_MODEXP", i.IsModExpBase.Size())
+	i.IsModExp = comp.InsertCommit(0, "MODEXP_INPUT_IS_MODEXP", i.IsModExpBase.Size(), true)
 
 	comp.InsertGlobal(
 		0,

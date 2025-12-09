@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -18,8 +18,8 @@ import (
 type MyCircuit struct {
 	// struct tags on a variable is optional
 	// default uses variable name and secret visibility.
-	X zk.WrappedVariable `gnark:"x,public"`
-	Y zk.WrappedVariable `gnark:",public"`
+	X frontend.Variable `gnark:"x,public"`
+	Y frontend.Variable `gnark:",public"`
 }
 
 // Define declares the circuit constraints
@@ -45,9 +45,12 @@ func TestPlonkWizard(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]zk.WrappedVariable{
-			zk.ValueOf(0),
-			zk.ValueOf(5)})})
+		pa.Run(run, []witness.Witness{
+			gnarkutil.WitnessFromNativeKoala(
+				field.NewElement(0),
+				field.NewElement(5),
+			),
+		})
 	})
 
 	err := wizard.Verify(compiled, proof)
@@ -69,9 +72,10 @@ func TestPlonkWizardWithFixedNbRow(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]zk.WrappedVariable{
-			zk.ValueOf(0),
-			zk.ValueOf(5)})})
+		pa.Run(run, []witness.Witness{gnarkutil.WitnessFromNativeKoala(
+			field.NewElement(0),
+			field.NewElement(5),
+		)})
 	})
 
 	err := wizard.Verify(compiled, proof)

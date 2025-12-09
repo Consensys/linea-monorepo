@@ -2,11 +2,13 @@ package ecpair
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -67,21 +69,18 @@ type ECPair struct {
 	flattenLimbsG2Membership *common.FlattenColumn
 }
 
-func NewECPairZkEvm(comp *wizard.CompiledIOP, limits *Limits) *ECPair {
+func NewECPairZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetization.Arithmetization) *ECPair {
 	source := &ECPairSource{
-		CsEcpairing:       comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECPAIRING"),
-		ID:                comp.Columns.GetHandle("ecdata.ID"),
-		SuccessBit:        comp.Columns.GetHandle("ecdata.SUCCESS_BIT"),
-		Index:             comp.Columns.GetHandle("ecdata.INDEX"),
-		IsEcPairingData:   comp.Columns.GetHandle("ecdata.IS_ECPAIRING_DATA"),
-		IsEcPairingResult: comp.Columns.GetHandle("ecdata.IS_ECPAIRING_RESULT"),
-		AccPairings:       comp.Columns.GetHandle("ecdata.ACC_PAIRINGS"),
-		TotalPairings:     comp.Columns.GetHandle("ecdata.TOTAL_PAIRINGS"),
-		CsG2Membership:    comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_G2_MEMBERSHIP"),
-	}
-
-	for i := 0; i < common.NbLimbU128; i++ {
-		source.Limbs[i] = comp.Columns.GetHandle(ifaces.ColIDf("ecdata.LIMB_%d", i))
+		CsEcpairing:       arith.ColumnOf(comp, "ecdata", "CIRCUIT_SELECTOR_ECPAIRING"),
+		ID:                arith.ColumnOf(comp, "ecdata", "ID"),
+		SuccessBit:        arith.ColumnOf(comp, "ecdata", "SUCCESS_BIT"),
+		Index:             arith.ColumnOf(comp, "ecdata", "INDEX"),
+		IsEcPairingData:   arith.ColumnOf(comp, "ecdata", "IS_ECPAIRING_DATA"),
+		IsEcPairingResult: arith.ColumnOf(comp, "ecdata", "IS_ECPAIRING_RESULT"),
+		AccPairings:       arith.ColumnOf(comp, "ecdata", "ACC_PAIRINGS"),
+		TotalPairings:     arith.ColumnOf(comp, "ecdata", "TOTAL_PAIRINGS"),
+		CsG2Membership:    arith.ColumnOf(comp, "ecdata", "CIRCUIT_SELECTOR_G2_MEMBERSHIP"),
+		Limbs:             arith.LimbColumnsOfArr8(comp, "ecdata", "LIMB"),
 	}
 
 	return newECPair(comp, limits, source).

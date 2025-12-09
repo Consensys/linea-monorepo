@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/acc_module"
@@ -40,9 +41,9 @@ type KeccakZkEVM struct {
 	Pa_keccak  wizard.ProverAction
 }
 
-func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEcdsa []generic.GenericByteModule) *KeccakZkEVM {
+func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEcdsa []generic.GenericByteModule, arith *arithmetization.Arithmetization) *KeccakZkEVM {
 
-	shakira, isHashLoManualShf := getShakiraArithmetization(comp)
+	shakira, isHashLoManualShf := getShakiraArithmetization(comp, arith)
 
 	res := newKeccakZkEvm(
 		comp,
@@ -119,27 +120,31 @@ func (k *KeccakZkEVM) Run(run *wizard.ProverRuntime) {
 // the data to hash using SHA3 in the SHAKIRA module of the arithmetization. The
 // returned module contains an [Info.IsHashLo] that is a column to assign: e.g
 // it does not come from the arithmetization directly but is derived from.
-func getShakiraArithmetization(comp *wizard.CompiledIOP) (generic.GenericByteModule, *dedicated.ManuallyShifted) {
+func getShakiraArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) (generic.GenericByteModule, *dedicated.ManuallyShifted) {
 
 	res := generic.GenericByteModule{
 		Data: generic.GenDataModule{
-			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
-			Index:   comp.Columns.GetHandle("shakiradata.INDEX"),
-			Limbs:   common.GetMultiHandle(comp, "shakiradata.LIMB", nbChunks),
-			NBytes:  comp.Columns.GetHandle("shakiradata.nBYTES"),
-			ToHash:  comp.Columns.GetHandle("shakiradata.IS_KECCAK_DATA"),
+			HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
+			Index:   arith.ColumnOf(comp, "shakiradata", "INDEX"),
+			Limbs:   arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
+			NBytes:  arith.ColumnOf(comp, "shakiradata", "nBYTES"),
+			ToHash:  arith.ColumnOf(comp, "shakiradata", "IS_KECCAK_DATA"),
 		},
 		Info: generic.GenInfoModule{
-			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
-			HashLo:  common.GetMultiHandle(comp, "shakiradata.LIMB", nbChunks),
-			HashHi:  common.GetMultiHandle(comp, "shakiradata.LIMB", nbChunks),
+			HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
+			HashLo:  arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
+			HashHi:  arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
 			// Before, we usse to pass column.Shift(IsHashHi, -1) but this does
 			// not work with the prover distribution as the column is used as
 			// a filter for a projection query.
-			IsHashHi: comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_HI"),
+			IsHashHi: arith.ColumnOf(comp, "shakiradata", "SELECTOR_KECCAK_RES_HI"),
 		},
 	}
 
+	// The name of the column is only an imitation of a corset naming but that
+	// does not have to be nor is it guaranteed to stay true if corset updates
+	// its column naming policy or if the arithmetization team changes the
+	// name of the module or columns
 	supp := dedicated.ManuallyShift(comp, res.Info.IsHashHi, -1, "shakiradata.SELECTOR_KECCAK_RES_LO")
 	pragmas.MarkLeftPadded(supp.Natural)
 	res.Info.IsHashLo = supp.Natural

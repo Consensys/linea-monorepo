@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
@@ -41,26 +42,26 @@ type Sha2SingleProvider struct {
 }
 
 // NewSha2ZkEvm constructs the Sha2 module as used in Linea's zkEVM.
-func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings) *Sha2SingleProvider {
+func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings, arith *arithmetization.Arithmetization) *Sha2SingleProvider {
 
 	sha2ProviderInput := Sha2SingleProviderInput{
 		Settings: s,
 		Provider: generic.GenericByteModule{
 			Data: generic.GenDataModule{
-				HashNum: comp.Columns.GetHandle("shakiradata.ID"),
-				Index:   comp.Columns.GetHandle("shakiradata.INDEX"),
-				Limbs:   []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
-				NBytes:  comp.Columns.GetHandle("shakiradata.nBYTES"),
-				ToHash:  comp.Columns.GetHandle("shakiradata.IS_SHA2_DATA"),
+				HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
+				Index:   arith.ColumnOf(comp, "shakiradata", "INDEX"),
+				Limbs:   arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
+				NBytes:  arith.ColumnOf(comp, "shakiradata", "nBYTES"),
+				ToHash:  arith.ColumnOf(comp, "shakiradata", "IS_SHA2_DATA"),
 			},
 			Info: generic.GenInfoModule{
-				HashNum: comp.Columns.GetHandle("shakiradata.ID"),
-				HashHi:  common.GetMultiHandle(comp, "shakiradata.LIMB", numLimbsPerState/2),
-				HashLo:  common.GetMultiHandle(comp, "shakiradata.LIMB_LO", numLimbsPerState/2),
+				HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
+				HashHi:  arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
+				HashLo:  arith.LimbColumnsOf(comp, "shakiradata", "LIMB_LO", common.NbLimbU128),
 				// Before, we usse to pass column.Shift(IsHash, -1) but this does
 				// not work with the prover distribution as the column is used as
 				// a filter for a projection query.
-				IsHashHi: comp.Columns.GetHandle("shakiradata.SELECTOR_SHA2_RES"),
+				IsHashHi: arith.ColumnOf(comp, "shakiradata", "SELECTOR_SHA2_RES"),
 			},
 		},
 	}

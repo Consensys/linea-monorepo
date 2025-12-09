@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -59,8 +60,8 @@ type Module struct {
 //
 // To define the circuit, call [Module.WithCircuit] as the present function
 // does not define them.
-func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings) *Module {
-	return newModule(comp, newZkEVMInput(comp, settings)).
+func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings, arith *arithmetization.Arithmetization) *Module {
+	return newModule(comp, newZkEVMInput(comp, settings, arith)).
 		WithCircuit(comp, query.PlonkRangeCheckOption(16, 6, false))
 }
 
@@ -72,10 +73,10 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 		size          = utils.NextPowerOfTwo(maxNbInstance * modexpNumRowsPerInstance)
 		mod           = &Module{
 			Input:       input,
-			IsActive:    comp.InsertCommit(0, "MODEXP_IS_ACTIVE", size),
-			IsSmall:     comp.InsertCommit(0, "MODEXP_IS_SMALL", size),
-			IsLarge:     comp.InsertCommit(0, "MODEXP_IS_LARGE", size),
-			ToSmallCirc: comp.InsertCommit(0, "MODEXP_TO_SMALL_CIRC", size),
+			IsActive:    comp.InsertCommit(0, "MODEXP_IS_ACTIVE", size, true),
+			IsSmall:     comp.InsertCommit(0, "MODEXP_IS_SMALL", size, true),
+			IsLarge:     comp.InsertCommit(0, "MODEXP_IS_LARGE", size, true),
+			ToSmallCirc: comp.InsertCommit(0, "MODEXP_TO_SMALL_CIRC", size, true),
 		}
 	)
 
@@ -84,7 +85,7 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 	pragmas.MarkRightPadded(mod.IsActive)
 
 	for i := 0; i < common.NbLimbU128; i++ {
-		mod.Limbs[i] = comp.InsertCommit(0, ifaces.ColIDf("MODEXP_LIMBS_%d", i), size)
+		mod.Limbs[i] = comp.InsertCommit(0, ifaces.ColIDf("MODEXP_LIMBS_%d", i), size, true)
 	}
 
 	mod.Input.setIsModexp(comp)

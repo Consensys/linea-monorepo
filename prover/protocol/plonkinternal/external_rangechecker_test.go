@@ -7,6 +7,7 @@ import (
 
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -70,7 +71,7 @@ func (r *testRangeCheckingCircuitIncompleteInternal) Define(api frontend.API) er
 	}
 	// create an internal variable which is not witness.
 	// TODO @thomas fixme this will fail (zk.WrappedVariable instead of frontend.Variable)
-	res, err := api.Compiler().NewHint(DummyHint, 1, zk.ValueOf(0))
+	res, err := api.Compiler().NewHint(DummyHint, 1, field.NewElement(0))
 	if err != nil {
 		return err
 	}
@@ -132,19 +133,18 @@ func TestRangeCheckIncompleteSucceeds(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublicSmallField(
-			[]zk.WrappedVariable{
-				zk.ValueOf(1),
-				zk.ValueOf(1),
-				zk.ValueOf(1),
-				zk.ValueOf(1),
-				zk.ValueOf(1),
-				zk.ValueOf(1),
-				zk.ValueOf(1),
-				zk.ValueOf(1),
-				zk.ValueOf(1),
-				zk.ValueOf(1),
-			})})
+		pa.Run(run, []witness.Witness{gnarkutil.WitnessFromNativeKoala(
+			field.NewElement(1),
+			field.NewElement(1),
+			field.NewElement(1),
+			field.NewElement(1),
+			field.NewElement(1),
+			field.NewElement(1),
+			field.NewElement(1),
+			field.NewElement(1),
+			field.NewElement(1),
+			field.NewElement(1),
+		)})
 	})
 	err := wizard.Verify(compiled, proof)
 	require.NoError(t, err)
@@ -157,19 +157,19 @@ func TestRangeCheckNegative(t *testing.T) {
 
 	circuit := &testRangeCheckingCircuitIncomplete{}
 
-	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
-		// 0x10000000000000000000000000 = 2^100
-		zk.ValueOf("0x10000000000000000000000000"),
-		zk.ValueOf("0x10000000000000000000000000"),
-		zk.ValueOf("0x10000000000000000000000000"),
-		zk.ValueOf("0x10000000000000000000000000"),
-		zk.ValueOf("0x10000000000000000000000000"),
-		zk.ValueOf("0x10000000000000000000000000"),
-		zk.ValueOf("0x10000000000000000000000000"),
-		zk.ValueOf("0x10000000000000000000000000"),
-		zk.ValueOf("0x10000000000000000000000000"),
-		zk.ValueOf("0x10000000000000000000000000"),
-	})
+	assignment := gnarkutil.WitnessFromNativeKoala(
+		// 0x100000 = 2^5
+		field.NewFromString("0x100000"),
+		field.NewFromString("0x100000"),
+		field.NewFromString("0x100000"),
+		field.NewFromString("0x100000"),
+		field.NewFromString("0x100000"),
+		field.NewFromString("0x100000"),
+		field.NewFromString("0x100000"),
+		field.NewFromString("0x100000"),
+		field.NewFromString("0x100000"),
+		field.NewFromString("0x100000"),
+	)
 	var pa plonk.PlonkInWizardProverAction
 
 	compiled := wizard.Compile(
@@ -205,18 +205,18 @@ func TestRangeCheckCompleteSucceeds(t *testing.T) {
 
 	circuit := &testRangeCheckingCircuitComplete{}
 
-	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-	})
+	assignment := gnarkutil.WitnessFromNativeKoala(
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+	)
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -290,10 +290,10 @@ func (c *rangeCheckWithPublic) Define(api frontend.API) error {
 func TestErrorCase(t *testing.T) {
 	circuit := &rangeCheckWithPublic{}
 
-	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
-		zk.ValueOf(1 << 20),
-		zk.ValueOf(2),
-	})
+	assignment := gnarkutil.WitnessFromNativeKoala(
+		field.NewElement(1<<20),
+		field.NewElement(2),
+	)
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -336,10 +336,10 @@ func (c *testRangeCheckLRSyncCircuit) Define(api frontend.API) error {
 func TestRangeCheckLRSync(t *testing.T) {
 	circuit := &testRangeCheckLRSyncCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-	})
+	assignment := gnarkutil.WitnessFromNativeKoala(
+		field.NewElement(1),
+		field.NewElement(1),
+	)
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -382,10 +382,10 @@ func (c *testRangeCheckOCircuit) Define(api frontend.API) error {
 func TestRangeCheckO(t *testing.T) {
 	circuit := &testRangeCheckOCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-	})
+	assignment := gnarkutil.WitnessFromNativeKoala(
+		field.NewElement(1),
+		field.NewElement(1),
+	)
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -417,10 +417,10 @@ func TestRangeCheckO(t *testing.T) {
 func TestRangeCheckWithFixedNbRows(t *testing.T) {
 	circuit := &testRangeCheckLRSyncCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-	})
+	assignment := gnarkutil.WitnessFromNativeKoala(
+		field.NewElement(1),
+		field.NewElement(1),
+	)
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -492,18 +492,18 @@ func TestRangeCheckerCompleteWithCommitment(t *testing.T) {
 
 	circuit := &testRangeCheckWideCommitCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublic([]zk.WrappedVariable{
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-		zk.ValueOf(1),
-	})
+	assignment := gnarkutil.WitnessFromNativeKoala(
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+	)
 
 	var pa plonk.PlonkInWizardProverAction
 

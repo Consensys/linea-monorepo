@@ -3,6 +3,7 @@ package statemanager
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -11,7 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/lineacodehash"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 )
 
@@ -23,35 +24,22 @@ const (
 
 // romLex returns the columns of the arithmetization.RomLex module of interest
 // to justify the consistency between them and the MiMCCodeHash module
-func romLex(comp *wizard.CompiledIOP) *mimccodehash.RomLexInput {
-	res := &mimccodehash.RomLexInput{}
-
-	for i := range common.NbLimbU32 {
-		res.CFIRomLex[i] = comp.Columns.GetHandle(ifaces.ColIDf("romlex.CODE_FRAGMENT_INDEX_%d", i))
+func romLex(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *lineacodehash.RomLexInput {
+	return &lineacodehash.RomLexInput{
+		CFIRomLex: arith.LimbColumnsOfArr2(comp, "romlex", "CODE_FRAGMENT_INDEX"),
+		CodeHash:  arith.LimbColumnsOfArr16(comp, "romlex", "CODE_HASH"),
 	}
-
-	for i := range common.NbLimbU256 {
-		res.CodeHash[i] = comp.Columns.GetHandle(ifaces.ColIDf("romlex.CODE_HASH_%d", i))
-	}
-
-	return res
 }
 
 // rom returns the columns of the arithmetization corresponding to the Rom module
 // that are of interest to justify consistency with the MiMCCodeHash module
-func rom(comp *wizard.CompiledIOP) *mimccodehash.RomInput {
-	res := &mimccodehash.RomInput{
-		NBytes:  comp.Columns.GetHandle("rom.nBYTES"),
-		Counter: comp.Columns.GetHandle("rom.COUNTER"),
-	}
-
-	for i := range common.NbLimbU128 {
-		res.Acc[i] = comp.Columns.GetHandle(ifaces.ColIDf("rom.ACC_%d", i))
-	}
-
-	for i := range common.NbLimbU32 {
-		res.CFI[i] = comp.Columns.GetHandle(ifaces.ColIDf("rom.CODE_FRAGMENT_INDEX_%d", i))
-		res.CodeSize[i] = comp.Columns.GetHandle(ifaces.ColIDf("rom.CODE_SIZE_%d", i))
+func rom(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *lineacodehash.RomInput {
+	res := &lineacodehash.RomInput{
+		NBytes:   comp.Columns.GetHandle("rom.nBYTES"),
+		Counter:  comp.Columns.GetHandle("rom.COUNTER"),
+		Acc:      arith.LimbColumnsOfArr8(comp, "rom", "ACC"),
+		CFI:      arith.LimbColumnsOfArr2(comp, "rom", "CODE_FRAGMENT_INDEX"),
+		CodeSize: arith.LimbColumnsOfArr2(comp, "rom", "CODE_SIZE"),
 	}
 
 	return res
@@ -60,7 +48,7 @@ func rom(comp *wizard.CompiledIOP) *mimccodehash.RomInput {
 // acp returns the columns of the arithmetization corresponding to the ACP
 // perspective of the Hub that are of interest for checking consistency with
 // the stateSummary
-func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
+func acp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) statesummary.HubColumnSet {
 	size := comp.Columns.GetHandle("hub.acp_ADDRESS_HI").Size()
 
 	// the prover-side state manager uses a single field element for 20-bytes addresses
@@ -72,8 +60,8 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		)
 
 		// constrain the processed HUB addresses
-		addrHI := comp.Columns.GetHandle("hub.acp_ADDRESS_HI")
-		addrLO := comp.Columns.GetHandle("hub.acp_ADDRESS_LO")
+		addrHI := arith.LimbColumnsOfArr2(comp, "hub", "acp_ADDRESS_HI")
+		addrLO := arith.LimbColumnsOfArr8(comp, "hub", "acp_ADDRESS_LO")
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_MANAGER_ACP_HUB_PROCESSED_ADDRESSES_GLOBAL_CONSTRAINT"),
@@ -89,82 +77,47 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 	}
 
 	constantZero := verifiercol.NewConstantCol(field.Zero(), size, "hub.acp_connection")
+	constantZero8 := [8]ifaces.Column{constantZero, constantZero, constantZero, constantZero, constantZero, constantZero, constantZero, constantZero}
 
 	res := statesummary.HubColumnSet{
-		Address:             comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		AddressHI:           comp.Columns.GetHandle("hub.acp_ADDRESS_HI"),
-		AddressLO:           comp.Columns.GetHandle("hub.acp_ADDRESS_LO"),
-		Nonce:               comp.Columns.GetHandle("hub.acp_NONCE"),
-		NonceNew:            comp.Columns.GetHandle("hub.acp_NONCE_NEW"),
-		CodeHashHI:          comp.Columns.GetHandle("hub.acp_CODE_HASH_HI"),
-		CodeHashLO:          comp.Columns.GetHandle("hub.acp_CODE_HASH_LO"),
-		CodeHashHINew:       comp.Columns.GetHandle("hub.acp_CODE_HASH_HI_NEW"),
-		CodeHashLONew:       comp.Columns.GetHandle("hub.acp_CODE_HASH_LO_NEW"),
-		CodeSizeOld:         comp.Columns.GetHandle("hub.acp_CODE_SIZE"),
-		CodeSizeNew:         comp.Columns.GetHandle("hub.acp_CODE_SIZE_NEW"),
-		BalanceOld:          comp.Columns.GetHandle("hub.acp_BALANCE"),
-		BalanceNew:          comp.Columns.GetHandle("hub.acp_BALANCE_NEW"),
-		KeyHI:               constantZero,
-		KeyLO:               constantZero,
-		ValueHICurr:         constantZero,
-		ValueLOCurr:         constantZero,
-		ValueHINext:         constantZero,
-		ValueLONext:         constantZero,
-		DeploymentNumber:    comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER"),
-		DeploymentNumberInf: comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER"),
-		BlockNumber:         comp.Columns.GetHandle("hub.acp_BLK_NUMBER"),
-		Exists:              comp.Columns.GetHandle("hub.acp_EXISTS"),
-		ExistsNew:           comp.Columns.GetHandle("hub.acp_EXISTS_NEW"),
-		PeekAtAccount:       comp.Columns.GetHandle("hub.acp_PEEK_AT_ACCOUNT"),
+		Address:             common.GetMultiHandleEthAddress(comp, "HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
+		AddressHI:           arith.LimbColumnsOfArr2(comp, "hub", "acp_ADDRESS_HI"),
+		AddressLO:           arith.LimbColumnsOfArr8(comp, "hub", "acp_ADDRESS_LO"),
+		Nonce:               arith.LimbColumnsOfArr4(comp, "hub", "acp_NONCE"),
+		NonceNew:            arith.LimbColumnsOfArr4(comp, "hub", "acp_NONCE_NEW"),
+		CodeHashHI:          arith.LimbColumnsOfArr8(comp, "hub", "acp_CODE_HASH_HI"),
+		CodeHashLO:          arith.LimbColumnsOfArr8(comp, "hub", "acp_CODE_HASH_LO"),
+		CodeHashHINew:       arith.LimbColumnsOfArr8(comp, "hub", "acp_CODE_HASH_HI_NEW"),
+		CodeHashLONew:       arith.LimbColumnsOfArr8(comp, "hub", "acp_CODE_HASH_LO_NEW"),
+		CodeSizeOld:         arith.LimbColumnsOfArr4(comp, "hub", "acp_CODE_SIZE"),
+		CodeSizeNew:         arith.LimbColumnsOfArr4(comp, "hub", "acp_CODE_SIZE_NEW"),
+		BalanceOld:          arith.LimbColumnsOfArr8(comp, "hub", "acp_BALANCE"),
+		BalanceNew:          arith.LimbColumnsOfArr8(comp, "hub", "acp_BALANCE_NEW"),
+		KeyHI:               constantZero8,
+		KeyLO:               constantZero8,
+		ValueHICurr:         constantZero8,
+		ValueLOCurr:         constantZero8,
+		ValueHINext:         constantZero8,
+		ValueLONext:         constantZero8,
+		DeploymentNumber:    arith.LimbColumnsOfArr2(comp, "hub", "acp_DEPLOYMENT_NUMBER"),
+		DeploymentNumberInf: arith.LimbColumnsOfArr2(comp, "hub", "acp_DEPLOYMENT_NUMBER"),
+		BlockNumber:         arith.LimbColumnsOfArr4(comp, "hub", "acp_BLK_NUMBER"),
+		Exists:              arith.ColumnOf(comp, "hub", "acp_EXISTS"),
+		ExistsNew:           arith.ColumnOf(comp, "hub", "acp_EXISTS_NEW"),
+		PeekAtAccount:       arith.ColumnOf(comp, "hub", "acp_PEEK_AT_ACCOUNT"),
 		PeekAtStorage:       constantZero,
-		FirstAOC:            comp.Columns.GetHandle("hub.acp_FIRST_IN_CNF"),
-		LastAOC:             comp.Columns.GetHandle("hub.acp_FINAL_IN_CNF"),
+		FirstAOC:            arith.ColumnOf(comp, "hub", "acp_FIRST_IN_CNF"),
+		LastAOC:             arith.ColumnOf(comp, "hub", "acp_FINAL_IN_CNF"),
 		FirstKOC:            constantZero,
 		LastKOC:             constantZero,
-		FirstAOCBlock:       comp.Columns.GetHandle("hub.acp_FIRST_IN_BLK"),
-		LastAOCBlock:        comp.Columns.GetHandle("hub.acp_FINAL_IN_BLK"),
+		FirstAOCBlock:       arith.ColumnOf(comp, "hub", "acp_FIRST_IN_BLK"),
+		LastAOCBlock:        arith.ColumnOf(comp, "hub", "acp_FINAL_IN_BLK"),
 		FirstKOCBlock:       constantZero,
 		LastKOCBlock:        constantZero,
-		MinDeplBlock:        comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
-		MaxDeplBlock:        comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
+		MinDeplBlock:        arith.LimbColumnsOfArr2(comp, "hub", "acp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
+		MaxDeplBlock:        arith.LimbColumnsOfArr2(comp, "hub", "acp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
 		ExistsFirstInBlock:  constantZero,
 		ExistsFinalInBlock:  constantZero,
-	}
-
-	for i := range common.NbLimbEthAddress {
-		res.Address[i] = comp.Columns.GetHandle(ifaces.ColIDf("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER_%v", i))
-	}
-
-	for i := range common.NbLimbU32 {
-		res.AddressHI[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_ADDRESS_HI_%v", i))
-		res.DeploymentNumber[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_%v", i))
-		res.DeploymentNumberInf[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_%v", i)) // Assuming same as DeploymentNumber
-		res.MinDeplBlock[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK_%v", i))
-		res.MaxDeplBlock[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK_%v", i))
-	}
-
-	for i := range common.NbLimbU128 {
-		res.AddressLO[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_ADDRESS_LO_%v", i))
-		res.CodeHashHI[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_HI_%v", i))
-		res.CodeHashLO[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_LO_%v", i))
-		res.CodeHashHINew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_HI_NEW_%v", i))
-		res.CodeHashLONew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_LO_NEW_%v", i))
-		res.BalanceOld[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_BALANCE_%v", i))
-		res.BalanceNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_BALANCE_NEW_%v", i))
-		res.KeyHI[i] = constantZero
-		res.KeyLO[i] = constantZero
-		res.ValueHICurr[i] = constantZero
-		res.ValueLOCurr[i] = constantZero
-		res.ValueHINext[i] = constantZero
-		res.ValueLONext[i] = constantZero
-	}
-
-	for i := range common.NbLimbU64 {
-		res.Nonce[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_NONCE_%v", i))
-		res.NonceNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_NONCE_NEW_%v", i))
-		res.CodeSizeOld[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_SIZE_%v", i))
-		res.CodeSizeNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_SIZE_NEW_%v", i))
-		res.BlockNumber[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_REL_BLK_NUM_%v", i))
 	}
 
 	return res
@@ -173,7 +126,7 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 // scp returns the columns of the arithmetization correspoanding to the SCP
 // perspective of the Hub that are of interest for checking consistency with
 // the stateSummary
-func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
+func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) statesummary.HubColumnSet {
 	size := comp.Columns.GetHandle("hub.scp_ADDRESS_HI").Size()
 
 	// the prover-side state manager uses a single field element for 20-bytes addresses
@@ -185,8 +138,8 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		)
 
 		// constrain the processed HUB addresses
-		addrHI := comp.Columns.GetHandle("hub.scp_ADDRESS_HI")
-		addrLO := comp.Columns.GetHandle("hub.scp_ADDRESS_LO")
+		addrHI := arith.LimbColumnsOfArr2(comp, "hub", "scp_ADDRESS_HI")
+		addrLO := arith.LimbColumnsOfArr8(comp, "hub", "scp_ADDRESS_LO")
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_MANAGER_SCP_HUB_PROCESSED_ADDRESSES_GLOBAL_CONSTRAINT"),
@@ -203,81 +156,57 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 
 	constantZero := verifiercol.NewConstantCol(field.Zero(), size, "hub.scp_connection")
 
+	constantZero4 := [4]ifaces.Column{
+		constantZero, constantZero,
+		constantZero, constantZero,
+	}
+
+	constantZero8 := [8]ifaces.Column{
+		constantZero, constantZero,
+		constantZero, constantZero,
+		constantZero, constantZero,
+		constantZero, constantZero,
+	}
+
 	res := statesummary.HubColumnSet{
-		Address:             comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		AddressHI:           comp.Columns.GetHandle("hub.scp_ADDRESS_HI"),
-		AddressLO:           comp.Columns.GetHandle("hub.scp_ADDRESS_LO"),
-		Nonce:               constantZero,
-		NonceNew:            constantZero,
-		CodeHashHI:          constantZero,
-		CodeHashLO:          constantZero,
-		CodeHashHINew:       constantZero,
-		CodeHashLONew:       constantZero,
-		CodeSizeOld:         constantZero,
-		CodeSizeNew:         constantZero,
-		BalanceOld:          constantZero,
-		BalanceNew:          constantZero,
-		KeyHI:               comp.Columns.GetHandle("hub.scp_STORAGE_KEY_HI"),
-		KeyLO:               comp.Columns.GetHandle("hub.scp_STORAGE_KEY_LO"),
-		ValueHICurr:         comp.Columns.GetHandle("hub.scp_VALUE_CURR_HI"),
-		ValueLOCurr:         comp.Columns.GetHandle("hub.scp_VALUE_CURR_LO"),
-		ValueHINext:         comp.Columns.GetHandle("hub.scp_VALUE_NEXT_HI"),
-		ValueLONext:         comp.Columns.GetHandle("hub.scp_VALUE_NEXT_LO"),
-		DeploymentNumber:    comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
-		DeploymentNumberInf: comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
-		BlockNumber:         comp.Columns.GetHandle("hub.scp_BLK_NUMBER"),
+		Address:             common.GetMultiHandleEthAddress(comp, "HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
+		AddressHI:           arith.LimbColumnsOfArr2(comp, "hub", "scp_ADDRESS_HI"),
+		AddressLO:           arith.LimbColumnsOfArr8(comp, "hub", "scp_ADDRESS_LO"),
+		Nonce:               constantZero4,
+		NonceNew:            constantZero4,
+		CodeHashHI:          constantZero8,
+		CodeHashLO:          constantZero8,
+		CodeHashHINew:       constantZero8,
+		CodeHashLONew:       constantZero8,
+		CodeSizeOld:         constantZero4,
+		CodeSizeNew:         constantZero4,
+		BalanceOld:          constantZero8,
+		BalanceNew:          constantZero8,
+		KeyHI:               arith.LimbColumnsOfArr8(comp, "hub", "scp_STORAGE_KEY_HI"),
+		KeyLO:               arith.LimbColumnsOfArr8(comp, "hub", "scp_STORAGE_KEY_LO"),
+		ValueHICurr:         arith.LimbColumnsOfArr8(comp, "hub", "scp_VALUE_CURR_HI"),
+		ValueLOCurr:         arith.LimbColumnsOfArr8(comp, "hub", "scp_VALUE_CURR_LO"),
+		ValueHINext:         arith.LimbColumnsOfArr8(comp, "hub", "scp_VALUE_NEXT_HI"),
+		ValueLONext:         arith.LimbColumnsOfArr8(comp, "hub", "scp_VALUE_NEXT_LO"),
+		DeploymentNumber:    arith.LimbColumnsOfArr2(comp, "hub", "scp_DEPLOYMENT_NUMBER"),
+		DeploymentNumberInf: arith.LimbColumnsOfArr2(comp, "hub", "scp_DEPLOYMENT_NUMBER"),
+		BlockNumber:         arith.LimbColumnsOfArr4(comp, "hub", "scp_BLK_NUMBER"),
 		Exists:              constantZero,
 		ExistsNew:           constantZero,
 		PeekAtAccount:       constantZero,
-		PeekAtStorage:       comp.Columns.GetHandle("hub.scp_PEEK_AT_STORAGE"),
+		PeekAtStorage:       arith.ColumnOf(comp, "hub", "scp_PEEK_AT_STORAGE"),
 		FirstAOC:            constantZero,
 		LastAOC:             constantZero,
-		FirstKOC:            comp.Columns.GetHandle("hub.scp_FIRST_IN_CNF"),
-		LastKOC:             comp.Columns.GetHandle("hub.scp_FINAL_IN_CNF"),
+		FirstKOC:            arith.ColumnOf(comp, "hub", "scp_FIRST_IN_CNF"),
+		LastKOC:             arith.ColumnOf(comp, "hub", "scp_FINAL_IN_CNF"),
 		FirstAOCBlock:       constantZero,
 		LastAOCBlock:        constantZero,
-		FirstKOCBlock:       comp.Columns.GetHandle("hub.scp_FIRST_IN_BLK"),
-		LastKOCBlock:        comp.Columns.GetHandle("hub.scp_FINAL_IN_BLK"),
-		MinDeplBlock:        comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
-		MaxDeplBlock:        comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
-		ExistsFirstInBlock:  comp.Columns.GetHandle("hub.scp_EXISTS_FIRST_IN_BLOCK"),
-		ExistsFinalInBlock:  comp.Columns.GetHandle("hub.scp_EXISTS_FINAL_IN_BLOCK"),
-	}
-
-	for i := range common.NbLimbEthAddress {
-		res.Address[i] = comp.Columns.GetHandle(ifaces.ColIDf("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER_%v", i))
-	}
-
-	for i := range common.NbLimbU32 {
-		res.AddressHI[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_ADDRESS_HI_%v", i))
-		res.DeploymentNumber[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_%v", i))
-		res.DeploymentNumberInf[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_%v", i)) // Assuming same as DeploymentNumber
-		res.MinDeplBlock[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK_%v", i))
-		res.MaxDeplBlock[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK_%v", i))
-	}
-
-	for i := range common.NbLimbU128 {
-		res.AddressLO[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_ADDRESS_LO_%v", i))
-		res.CodeHashHI[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_HI_%v", i))
-		res.CodeHashLO[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_LO_%v", i))
-		res.CodeHashHINew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_HI_NEW_%v", i))
-		res.CodeHashLONew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_HASH_LO_NEW_%v", i))
-		res.BalanceOld[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_BALANCE_%v", i))
-		res.BalanceNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_BALANCE_NEW_%v", i))
-		res.KeyHI[i] = constantZero
-		res.KeyLO[i] = constantZero
-		res.ValueHICurr[i] = constantZero
-		res.ValueLOCurr[i] = constantZero
-		res.ValueHINext[i] = constantZero
-		res.ValueLONext[i] = constantZero
-	}
-
-	for i := range common.NbLimbU64 {
-		res.Nonce[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_NONCE_%v", i))
-		res.NonceNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_NONCE_NEW_%v", i))
-		res.CodeSizeOld[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_SIZE_%v", i))
-		res.CodeSizeNew[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_CODE_SIZE_NEW_%v", i))
-		res.BlockNumber[i] = comp.Columns.GetHandle(ifaces.ColIDf("hub.acp_REL_BLK_NUM_%v", i))
+		FirstKOCBlock:       arith.ColumnOf(comp, "hub", "scp_FIRST_IN_BLK"),
+		LastKOCBlock:        arith.ColumnOf(comp, "hub", "scp_FINAL_IN_BLK"),
+		MinDeplBlock:        arith.LimbColumnsOfArr2(comp, "hub", "scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
+		MaxDeplBlock:        arith.LimbColumnsOfArr2(comp, "hub", "scp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
+		ExistsFirstInBlock:  arith.ColumnOf(comp, "hub", "scp_EXISTS_FIRST_IN_BLOCK"),
+		ExistsFinalInBlock:  arith.ColumnOf(comp, "hub", "scp_EXISTS_FINAL_IN_BLOCK"),
 	}
 
 	return res
