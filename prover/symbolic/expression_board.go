@@ -13,6 +13,10 @@ type ExpressionBoard struct {
 	Nodes []Node
 	// Maps nodes to their index in the Nodes slice.
 	ESHashesToPos map[esHash]nodeID
+
+	// program is the compiled version of the board
+	program           Program
+	programNodesCount int
 }
 
 // emptyBoard initializes a board with no Node in it.
