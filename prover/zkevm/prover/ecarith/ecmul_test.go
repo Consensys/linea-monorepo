@@ -114,7 +114,7 @@ func TestMultiEcMulCircuit(t *testing.T) {
 
 	_ = rcGetter() // to not leak the channel
 
-	wit, err := frontend.NewWitness(circuit, koalabear.Modulus())
+	wit, err := frontend.NewWitness(assignment, koalabear.Modulus())
 	if err != nil {
 		t.Fatalf("assigning witness: %v", err)
 	}
