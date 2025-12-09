@@ -152,7 +152,7 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 	}
 
 	res.csAccountAddress(comp)
-	// res.csAccountOld(comp)
+	res.csAccountOld(comp)
 	// res.csAccountNew(comp)
 	// res.csAccumulatorRoots(comp)
 	// res.csAccumulatorStatementFlags(comp)
@@ -182,7 +182,7 @@ func (ss *Module) csAccountAddress(comp *wizard.CompiledIOP) {
 	// addresses can only increase or stay same
 	// Big-endian format: last limb (i=3) holds the value
 	// For the other limbs, batch number should match with its shifted version
-	for i := range common.NbLimbU64-1 {
+	for i := range common.NbLimbU64 - 1 {
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_SUMMARY_BATCH_NUMBER_HIGHER_LIMBS_ARE_ZERO_%d", i),
@@ -192,24 +192,24 @@ func (ss *Module) csAccountAddress(comp *wizard.CompiledIOP) {
 		)
 
 	}
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("STATE_SUMMARY_ADDRESS_CAN_ONLY_INCREASE_IN_BLOCK_RANGE"),
-			sym.Mul(
-				ss.IsActive,
-				sym.Sub(
-					ss.BatchNumber[common.NbLimbU64-1],
-					column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1),
-					1,
-				),
-				sym.Add(
-					ss.Account.HasGreaterAddressAsPrev,
-					ss.Account.HasSameAddressAsPrev,
-					-1,
-				),
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("STATE_SUMMARY_ADDRESS_CAN_ONLY_INCREASE_IN_BLOCK_RANGE"),
+		sym.Mul(
+			ss.IsActive,
+			sym.Sub(
+				ss.BatchNumber[common.NbLimbU64-1],
+				column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1),
+				1,
 			),
-		)
-	}
+			sym.Add(
+				ss.Account.HasGreaterAddressAsPrev,
+				ss.Account.HasSameAddressAsPrev,
+				-1,
+			),
+		),
+	)
+}
 
 // csIsActive constrains the [ss.IsActive] flag.
 func (ss *Module) csIsActive(comp *wizard.CompiledIOP) {
@@ -700,13 +700,17 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 	}
 
 	for i := range common.NbLimbU128 {
-		mustHaveDefaultWhenNotExists(ss.Account.Initial.Balance[i], 0, -1)
 		mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Hi[i], 0, -1)
 		mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Lo[i], 0, -1)
 
-		mustBeConstantOnSubsegment(ss.Account.Initial.Balance[i], -1)
 		mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Hi[i], -1)
 		mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Lo[i], -1)
+	}
+
+	for i := range common.NbLimbU256 {
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.Balance[i], 0, -1)
+		mustBeConstantOnSubsegment(ss.Account.Initial.Balance[i], -1)
+
 	}
 
 	for i := range poseidon2.BlockSize {
