@@ -61,12 +61,14 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
   );
 
   /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
+  /// @param yieldProvider The yield provider address.
   /// @param stakingVault The staking vault address.
   /// @param refundRecipient Address designated to receive surplus withdrawal-fee refunds.
   /// @param maxUnstakeAmount Maximum ETH expected to be withdrawn for the request.
   /// @param pubkeys Concatenated validator pubkeys.
   /// @param amounts Withdrawal request amount array (currently length 1).
   event LidoVaultUnstakePermissionlessRequest(
+    address indexed yieldProvider,
     address indexed stakingVault,
     address indexed refundRecipient,
     uint256 maxUnstakeAmount,
@@ -323,6 +325,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
 
     emit LidoVaultUnstakePermissionlessRequest(
+      _yieldProvider,
       _getYieldProviderStorage(_yieldProvider).ossifiedEntrypoint,
       refundRecipient,
       maxUnstakeAmount,

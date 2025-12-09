@@ -708,7 +708,14 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       }
       await expect(call)
         .to.emit(yieldManager, "LidoVaultUnstakePermissionlessRequest")
-        .withArgs(mockStakingVaultAddress, refundAddress, maxUnstakeAmountGwei * ONE_GWEI, pubkey, unstakeAmount);
+        .withArgs(
+          yieldProviderAddress,
+          mockStakingVaultAddress,
+          refundAddress,
+          maxUnstakeAmountGwei * ONE_GWEI,
+          pubkey,
+          unstakeAmount,
+        );
     });
   });
 

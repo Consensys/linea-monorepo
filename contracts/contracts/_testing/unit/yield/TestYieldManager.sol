@@ -279,15 +279,17 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
+  /// @param yieldProvider The yield provider address.
   /// @param stakingVault The staking vault address.
   /// @param refundRecipient Address designated to receive surplus withdrawal-fee refunds.
-  /// @param maxUnstakeAmountGwei Maximum ETH (in gwei) expected to be withdrawn for the request.
+  /// @param maxUnstakeAmount Maximum ETH expected to be withdrawn for the request.
   /// @param pubkeys Concatenated validator pubkeys.
   /// @param amounts Withdrawal request amount array (currently length 1).
   event LidoVaultUnstakePermissionlessRequest(
+    address indexed yieldProvider,
     address indexed stakingVault,
     address indexed refundRecipient,
-    uint256 maxUnstakeAmountGwei,
+    uint256 maxUnstakeAmount,
     bytes pubkeys,
     uint64[] amounts
   );
