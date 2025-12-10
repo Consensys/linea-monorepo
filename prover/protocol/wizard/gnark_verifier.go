@@ -412,7 +412,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 
 	zkSeed := zk.Octuplet{}
 	for i := 0; i < 8; i++ {
-		zkSeed[i] = zk.WrapFrontendVariable(seed[i])
+		zkSeed[i] = seed[i]
 	}
 	// Then assigns the coins for the new round.
 	toCompute := c.Spec.Coins.AllKeysAt(currRound)

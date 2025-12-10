@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -123,10 +124,10 @@ func testModule(t *testing.T, tc pairingDataTestCase, withPairingCircuit, withG2
 
 			mod = newECPair(build.CompiledIOP, limits, inp)
 			if withPairingCircuit {
-				mod.WithPairingCircuit(build.CompiledIOP, query.PlonkRangeCheckOption(16, 6, false))
+				mod.WithPairingCircuit(build.CompiledIOP, query.PlonkRangeCheckOption(16, 1, false))
 			}
 			if withG2MembershipCircuit {
-				mod.WithG2MembershipCircuit(build.CompiledIOP, query.PlonkRangeCheckOption(16, 6, false))
+				mod.WithG2MembershipCircuit(build.CompiledIOP, query.PlonkRangeCheckOption(16, 1, false))
 			}
 		}, dummy.Compile)
 

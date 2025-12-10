@@ -3,6 +3,7 @@ package ecpair
 import (
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fp"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -19,6 +20,11 @@ type G2Limbs = [nbG2Limbs]field.Element
 type ResultLimbs = [2]field.Element
 
 func convG1WizardToGnark(limbs [common.NbLimbU128]G1Limbs) bn254.G1Affine {
+
+	if len(limbs[0][0].Bytes()) != koalabear.Bytes {
+		panic("failed sanity-check, did you change the field to not koalabear? If so you need to update this function")
+	}
+
 	var res bn254.G1Affine
 	var buf [fp.Bytes]byte
 
@@ -26,10 +32,10 @@ func convG1WizardToGnark(limbs [common.NbLimbU128]G1Limbs) bn254.G1Affine {
 		offset := 0
 		for j := range common.NbLimbU128 {
 			l0 := limbs[j][i].Bytes()
-			copy(buf[offset:offset+bytesPerLimb], l0[30:32])
+			copy(buf[offset:offset+bytesPerLimb], l0[2:4])
 
 			l1 := limbs[j][i+1].Bytes()
-			copy(buf[offset+limbSize:offset+limbSize+bytesPerLimb], l1[30:32])
+			copy(buf[offset+limbSize:offset+limbSize+bytesPerLimb], l1[2:4])
 
 			offset += bytesPerLimb
 		}
@@ -51,10 +57,10 @@ func convG2WizardToGnark(limbs [common.NbLimbU128]G2Limbs) bn254.G2Affine {
 		offset := 0
 		for j := range common.NbLimbU128 {
 			l0 := limbs[j][i].Bytes()
-			copy(buf[offset:offset+bytesPerLimb], l0[30:32])
+			copy(buf[offset:offset+bytesPerLimb], l0[2:4])
 
 			l1 := limbs[j][i+1].Bytes()
-			copy(buf[offset+limbSize:offset+limbSize+bytesPerLimb], l1[30:32])
+			copy(buf[offset+limbSize:offset+limbSize+bytesPerLimb], l1[2:4])
 
 			offset += bytesPerLimb
 		}
