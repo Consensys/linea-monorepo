@@ -18,14 +18,16 @@ import (
 //
 // Returns a representation of empty keccak value in limbs with size defined
 // by common.LimbBytes.
-func initEmptyKeccak(emptyKeccakString string) (res [common.NbLimbU256]field.Element) {
+func initEmptyKeccak(emptyKeccakString string) (res [common.NbLimbU128]field.Element) {
 	var emptyKeccakBig big.Int
 	_, isErr := emptyKeccakBig.SetString(emptyKeccakString, 16)
 	if !isErr {
 		panic("empty keccak string is not correct")
 	}
-
 	emptyKeccakByteLimbs := common.SplitBytes(emptyKeccakBig.Bytes())
+	if len(emptyKeccakByteLimbs) != common.NbLimbU128 {
+		panic("empty keccak byte limbs length is not correct")
+	}
 	for i, limbByte := range emptyKeccakByteLimbs {
 		res[i] = *new(field.Element).SetBytes(limbByte)
 	}
@@ -248,26 +250,26 @@ func (ss *Module) csIsBeginningOfAccountSegment(comp *wizard.CompiledIOP) {
 	// bumped or that we jumped to another account and reciprocally.
 	// We check each limb independently for consistency with BlockNumber representation.
 	// We need to consider only the last limb (lsb as big endian) for the batch number bumping
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("STATE_SUMMARY_IBOAS_IS_ONE_IFF_EITHER_NEW_BATCH_OR_NEW_ADDR"),
-			sym.Add(
-				sym.Mul(
-					ss.IsActive,
-					ss.IsBeginningOfAccountSegment,
-					sym.Sub(ss.BatchNumber[common.NbLimbU64-1], column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1), 1),
-					ss.Account.HasSameAddressAsPrev,
-				),
-				sym.Mul(
-					ss.IsActive,
-					sym.Sub(1, ss.IsBeginningOfAccountSegment),
-					sym.Add(
-						sym.Sub(ss.BatchNumber[common.NbLimbU64-1], column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1)),
-						sym.Sub(1, ss.Account.HasSameAddressAsPrev),
-					),
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("STATE_SUMMARY_IBOAS_IS_ONE_IFF_EITHER_NEW_BATCH_OR_NEW_ADDR"),
+		sym.Add(
+			sym.Mul(
+				ss.IsActive,
+				ss.IsBeginningOfAccountSegment,
+				sym.Sub(ss.BatchNumber[common.NbLimbU64-1], column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1), 1),
+				ss.Account.HasSameAddressAsPrev,
+			),
+			sym.Mul(
+				ss.IsActive,
+				sym.Sub(1, ss.IsBeginningOfAccountSegment),
+				sym.Add(
+					sym.Sub(ss.BatchNumber[common.NbLimbU64-1], column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1)),
+					sym.Sub(1, ss.Account.HasSameAddressAsPrev),
 				),
 			),
-		)
+		),
+	)
 
 	comp.InsertLocal(
 		0,
