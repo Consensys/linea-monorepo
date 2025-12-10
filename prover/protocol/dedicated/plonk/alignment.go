@@ -391,10 +391,8 @@ func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
 		maxNbInstances    = a.PlonkQuery.GetMaxNbCircuitInstances()
 		maxNbData         = maxNbInstances * nbInput
 		circDataSize      = maxNbInstances * nbInputsPadded
-		// The 32 factor is to not have to panic immediately when we find the
-		//
-		res      = make([]field.Element, nbInputsPadded*maxNbInstances)
-		dataFifo = collection.NewFifo[field.Element]()
+		res               = make([]field.Element, nbInputsPadded*maxNbInstances)
+		dataFifo          = collection.NewFifo[field.Element]()
 	)
 
 	for i := range unalignedInputs {
