@@ -1,4 +1,4 @@
-# Linea architecture alpha v3
+# Linea architecture beta v4
 
 <!--
 ToC can be automatically updated with:
@@ -84,15 +84,22 @@ The file system is used to store files for:
 
 A script automatically removes all files that are more than one week old.
 
+## Full node
+Full nodes are comprised of a consensus layer (CL) and an execution layer (EL). Full nodes connected to Linea must use Maru as a
+consensus layer and can choose any Execution layer that is working for the ethereum mainnet.
+Besu, Geth, Nethermind are tested as part of our release process.
+The CL and EL interactions are done via the engine API as per Ethereum specifications.
+
 
 ## Sequencer
+<a id = "Sequencer"></a>
 
-There is a unique instance of Sequencer. It’s a special instance of a consensus client based on Besu. The consensus protocol used is Clique.
+There is a unique instance of Sequencer. It’s a special instance of a full node using Besu as the Execution Layer.
+The consensus protocol used is QBFT with a single node, being functionally equivalent
+to Clique.
 
-The sequencer receives the transactions pre-validated by the Ethereum nodes in order to execute them. It arranges and combines the transactions into blocks.
-
+The EL of the sequencer selects and combines the transactions into blocks.
 Blocks produced by the sequencer, in addition to common verifications, must fulfill the below requirements:
-
 
 
 1. trace counts are small enough to ensure the prover can prove the block
@@ -105,11 +112,15 @@ Blocks produced by the sequencer, in addition to common verifications, must fulf
    e. gas limit is below the configured limit.
 4. compressed block data can fit into a blob of size 128kB.
 
-Transactions exceeding trace limits are added to an unexecutableTxList in-memory to avoid reconsidering them. Similarly transactions that take too long to be processed by the sequencer are added to the unexecutable list. Transactions from the unexecutable lists are removed from the pool.
+Transactions exceeding trace limits are added to an unexecutableTxList in-memory to avoid reconsidering them. Similarly,
+transactions that take too long to be processed by the sequencer are added to the unexecutable list.
+Transactions from the unexecutable lists are removed from the pool.
 
-Priority transactions are prioritized over normal ones. Priority transactions are those sent by a user whose address is in a predefined list. It typically corresponds to transactions triggered by the Linea system.
+Priority transactions are prioritized over normal ones. Priority transactions are those sent by a user whose address is
+in a predefined list. It typically corresponds to transactions triggered by the Linea system.
 
-Note that if no transactions are received within the block window, no block is generated. This behavior differs from Ethereum mainnet, where empty blocks are still produced to maintain chain continuity and prevent certain attacks.
+Note that if no transactions are received within the block window, no block is generated.
+This behavior differs from Ethereum mainnet, where empty blocks are still produced to maintain chain continuity and prevent certain attacks.
 
 If a transaction could not be included in the current block, it will remain as a candidate for inclusion in the next block.
 
@@ -126,6 +137,22 @@ eth_getBlockByNumber(
   Transaction_detail_flag boolean
 )
 ```
+
+### Finalized Block Tag on L2
+
+[Maru](https://github.com/Consensys/maru) will be responsible on updating the execution clients for `finalized` block tag on L1. It will connect to Ethereum mainnet and track Linea finalization events.
+When a block containing a Linea finalization is finalized on Ethereum Mainnet, Maru set the corresponding Linea block as being finalized as per Linea block. ?TODO Where is this exactly stored?
+
+
+## Invalid Tx reporting tool
+Tx that overflow the line counts can't be included in a block. A service reporting such Tx is available. The method exposed is:
+
+```
+???():
+  ???             ???
+```
+
+
 
 ## State manager
 <a id = "StateManagerL1"></a>
@@ -192,12 +219,15 @@ rollup_getZkEVMStateMerkleProofV0(
 
 [^1]: Cf Shomei [documentation](#https://documenter.getpostman.com/view/27370530/2s93ebTr7h)
 
+## State reconstruction
+A service rebuilding Linea's state from the data posted on L1 is available.
+This service is connected to Ethereum mainnet. Every time a finalization of Linea happens, the service imports the transactions in the finalized blobs and reconstruct Linea state from it.
+The state is validated against shomei state.
+
 
 ## Coordinator
 
 The coordinator is responsible for
-
-
 
 * deciding how many blocks can be conflated into a batch,
 * deciding when to create a blob,
@@ -471,7 +501,7 @@ Corset is hosted inside the same process as the short-running component of the p
   * Reduce the probability of incompatibility between Corset/Prover versions and their input/output formats;
 * Reduce latency of the overall system (rather a beneficial side effect than a driving motivation);
 
-The paragraphs highlight the roles of the different proofs that are generated. Please refer to the prover backend codebase [here](https://github.com/Consensys/linea-monorepo/tree/main/prover/backend) for details on the objects and attributes for various types of proof requests and responses 
+The paragraphs highlight the roles of the different proofs that are generated. Please refer to the prover backend codebase [here](https://github.com/Consensys/linea-monorepo/tree/main/prover/backend) for details on the objects and attributes for various types of proof requests and responses
 
 ### Execution proofs
 
@@ -513,7 +543,7 @@ RlpBridgeLogsData
   blockNumber             string
   transactionHash         string
   transactionIndex        string
-  blockHash               string 
+  blockHash               string
   logIndex                string
   removed                 boolean
 ```
@@ -533,11 +563,11 @@ ProofResponse
   firstBlockNumber                    int
   execDataChecksum                    bytes32
   chainID                             uint
-  l2BridgeAddress                     [20]byte 
+  l2BridgeAddress                     [20]byte
   maxNbL2MessageHashes                int
   allRollingHashEvent                 List[RollingHashUpdatedEvent]
   allL2L1MessageHashes                List[string] // hex encoded
-  publicInput                         bytes32 
+  publicInput                         bytes32
 ```
 
 ```
@@ -582,7 +612,7 @@ Compression proof request file format:
 BlobCompressionProofJsonRequest
   eip4844Enabled       boolean
   compressedData       string // base64 encoded
-  dataParentHash       string 
+  dataParentHash       string
   conflationOrder      ConflationOrder
   parentStateRootHash  string // hex encoded
   finalStateRootHash   string // hex encoded
@@ -654,14 +684,14 @@ ProofToFinalizeJsonResponse
   dataHashes                                 List[string]
   dataParentHash                             string
   parentStateRootHash                        string
-  parentAggregationLastBlockTimestamp        uint 
+  parentAggregationLastBlockTimestamp        uint
   lastFinalizedBlockNumber                   uint
   finalTimestamp                             uint
   finalBlockNumber                           uint
   l1RollingHash                               string
   l1RollingHashMessageNumber                  uint
   l2MerkleRoots                               List[string]
-  l2MerkleTreesDepth                          uint 
+  l2MerkleTreesDepth                          uint
   l2MessagingBlocksOffsets                    string
 ```
 
@@ -967,6 +997,10 @@ Any party (e.g. via an npm package we provide for the bridge/partners etc) does 
 7. Pick the group for the required message hash and construct a Merkle proof to claim against using the group's message hashes.
 
 
-# Finalized Block Tag on L2
-
-[Maru](https://github.com/Consensys/maru), a consensus client developed by Linea team, will be responsible on updating the execution clients for `finalized` block tag on L1
+## Forced transactions
+A Smart contract on L1 allows any user to post transactions on Linea with the guarantee that it will be included if valid.
+For this, the usr has to send the different fields of the transaction as call data of the transaction he is sending on
+Ethereum mainnet.
+The smart contract filters out invalid transactions because wrongly signed for instance.
+RLP encoding of the tx is then computed. A hash of it is stored on L1 chain to ensure censor ship resistance.
+Then an event is 
