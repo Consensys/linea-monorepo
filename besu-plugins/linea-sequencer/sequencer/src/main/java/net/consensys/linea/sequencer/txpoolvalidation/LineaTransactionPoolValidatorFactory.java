@@ -17,6 +17,7 @@ import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
+import net.consensys.linea.config.ReloadableSet;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.CalldataValidator;
@@ -50,7 +51,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
   private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
 
-  private final AtomicReference<Set<Address>> deniedAddresses;
+  private final ReloadableSet<Address> deniedAddresses;
 
   public LineaTransactionPoolValidatorFactory(
       final BesuConfiguration besuConfiguration,
@@ -63,7 +64,8 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
-      final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
+      final TransactionProfitabilityCalculator transactionProfitabilityCalculator,
+      final ReloadableSet<Address> deniedAddresses) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
     this.worldStateService = worldStateService;
@@ -75,8 +77,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
     this.transactionProfitabilityCalculator = transactionProfitabilityCalculator;
-
-    this.deniedAddresses = new AtomicReference<>(txPoolValidatorConf.deniedAddresses());
+    this.deniedAddresses = deniedAddresses;
   }
 
   /**
@@ -90,7 +91,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
     final var validators =
         new PluginTransactionPoolValidator[] {
           new TraceLineLimitValidator(invalidTransactionByLineCountCache),
-          new DeniedAddressValidator(deniedAddresses),
+          new DeniedAddressValidator(deniedAddresses.getReference()),
           new PrecompileAddressValidator(),
           new GasLimitValidator(txPoolValidatorConf.maxTxGasLimit()),
           new CalldataValidator(txPoolValidatorConf.maxTxCalldataSize()),
@@ -115,9 +116,5 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
             .filter(Optional::isPresent)
             .findFirst()
             .map(Optional::get);
-  }
-
-  public void setDeniedAddresses(final Set<Address> deniedAddresses) {
-    this.deniedAddresses.set(deniedAddresses);
   }
 }
