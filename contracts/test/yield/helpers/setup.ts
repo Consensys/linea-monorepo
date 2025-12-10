@@ -22,7 +22,7 @@ import {
   ONE_GWEI,
   VALIDATOR_WITNESS_TYPE,
 } from "../../common/constants";
-import { ClaimMessageWithProofParams } from "./types";
+import { ClaimMessageWithProofParams, YieldManagerInitializationData } from "./types";
 import { generateLidoUnstakePermissionlessWitness, randomBytes32 } from "./proof";
 import { encodeSendMessage } from "../../common/helpers";
 import { BaseContract } from "ethers";
@@ -388,3 +388,15 @@ export const setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability = async
     (await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)) - amount,
   );
 };
+
+export const buildSetWithdrawalReserveParams = (
+  initializationData: YieldManagerInitializationData,
+  overrides: Partial<{ minPct: number; targetPct: number; minAmount: bigint; targetAmount: bigint }> = {},
+) => ({
+  minimumWithdrawalReservePercentageBps:
+    overrides.minPct ?? initializationData.initialMinimumWithdrawalReservePercentageBps,
+  targetWithdrawalReservePercentageBps:
+    overrides.targetPct ?? initializationData.initialTargetWithdrawalReservePercentageBps,
+  minimumWithdrawalReserveAmount: overrides.minAmount ?? initializationData.initialMinimumWithdrawalReserveAmount,
+  targetWithdrawalReserveAmount: overrides.targetAmount ?? initializationData.initialTargetWithdrawalReserveAmount,
+});

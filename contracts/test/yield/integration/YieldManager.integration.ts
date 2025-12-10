@@ -19,6 +19,8 @@ import {
   setupMaxLSTLiabilityPaymentForWithdrawal,
   setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability,
   buildVendorExitData,
+  buildSetWithdrawalReserveParams,
+  YieldManagerInitializationData,
 } from "../helpers";
 import {
   TestYieldManager,
@@ -63,6 +65,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
   let lidoStVaultYieldProviderFactory: TestLidoStVaultYieldProviderFactory;
   let sszMerkleTree: SSZMerkleTree;
   let testVerifier: TestValidatorContainerProofVerifier;
+  let initializationData: YieldManagerInitializationData;
 
   let l1MessageServiceAddress: string;
   let yieldManagerAddress: string;
@@ -88,6 +91,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       lidoStVaultYieldProviderFactory,
       sszMerkleTree,
       testVerifier,
+      initializationData,
     } = await loadFixture(deployYieldManagerIntegrationTestFixture));
     l1MessageServiceAddress = await lineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
@@ -109,10 +113,18 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       expect(rollupBalanceAfter).eq(rollupBalanceBefore - fundAmount);
       expect(yieldManagerBalanceAfter).eq(yieldManagerBalanceBefore + fundAmount);
     });
-    it("Should revert when withdrawal reserve at minimum", async () => {
-      await setWithdrawalReserveToMinimum(yieldManager);
+    it("Should revert when withdrawal reserve at minimum (including msg.value in the reserve computation)", async () => {
+      // Arrange - %-based minimum at 20%
+      await yieldManager
+        .connect(securityCouncil)
+        .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData, { minAmount: 0n }));
+      await setBalance(await lineaRollup.getAddress(), 21n * ONE_ETHER);
+      await setBalance(await yieldManager.getAddress(), 79n * ONE_ETHER);
+
       // Act
-      const call = lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(1);
+      const withdrawAmount = ONE_ETHER + 1n;
+      const call = lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(withdrawAmount);
+
       // Assert
       await expectRevertWithCustomError(yieldManager, call, "InsufficientWithdrawalReserve");
     });
