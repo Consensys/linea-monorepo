@@ -194,10 +194,25 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     };
 
     for (const v of sortedValidatorList) {
-      if (withdrawalRequests.pubkeys.length >= remainingWithdrawals) break;
-      if (withdrawalRequests.pubkeys.length >= this.maxValidatorWithdrawalRequestsPerTransaction) break;
+      if (withdrawalRequests.pubkeys.length >= remainingWithdrawals) {
+        this.logger.info(
+          `_submitValidatorExits - reached remainingWithdrawals limit, breaking loop. withdrawalRequests.pubkeys.length=${withdrawalRequests.pubkeys.length}, remainingWithdrawals=${remainingWithdrawals}`,
+        );
+        break;
+      }
+      if (withdrawalRequests.pubkeys.length >= this.maxValidatorWithdrawalRequestsPerTransaction) {
+        this.logger.info(
+          `_submitValidatorExits - reached maxValidatorWithdrawalRequestsPerTransaction limit, breaking loop. withdrawalRequests.pubkeys.length=${withdrawalRequests.pubkeys.length}, maxValidatorWithdrawalRequestsPerTransaction=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
+        );
+        break;
+      }
       // Exit requests are ignored for validator with pending partial withdrawal - https://github.com/ethereum/consensus-specs/blob/14e6f0c919d36ef2ae7c337fe51161952a634478/specs/electra/beacon-chain.md?plain=1#L1697
-      if (v.pendingWithdrawalAmount > 0n) continue;
+      if (v.pendingWithdrawalAmount > 0n) {
+        this.logger.info(
+          `_submitValidatorExits - skipping validator with pending withdrawal, continuing loop. pubkey=${v.publicKey}, pendingWithdrawalAmount=${v.pendingWithdrawalAmount.toString()}`,
+        );
+        continue;
+      }
 
       if (v.effectiveBalance === MINIMUM_0X02_VALIDATOR_EFFECTIVE_BALANCE) {
         withdrawalRequests.pubkeys.push(v.publicKey as Hex);
