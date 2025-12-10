@@ -41,6 +41,7 @@ func init() {
 	outputPath = filepath.Join(proverDir, "protocol", "serialization", "serialization_gen.go")
 }
 
+// Special Handlers (Protocol specific)
 type SpecialHandler struct {
 	PackMethod   string
 	UnpackMethod string
@@ -58,6 +59,17 @@ var specialHandlers = map[string]SpecialHandler{
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces.QueryID":     {PackMethod: "PackQueryID", UnpackMethod: "UnpackQueryID"},
 	"github.com/consensys/gnark/constraint/bls12-377.SparseR1CS":             {PackMethod: "PackPlonkCircuit", UnpackMethod: "UnpackPlonkCircuit"},
 	"github.com/consensys/linea-monorepo/prover/symbolic.Expression":         {PackMethod: "PackExpression", UnpackMethod: "UnpackExpression"},
+}
+
+// Known Custom Codecs (Manual optimizations)
+// Maps TypeString -> (MarshalFunc, UnmarshalFunc)
+var knownCodexHandlers = map[string]struct{ Ser, Des string }{
+	"github.com/consensys/linea-monorepo/prover/maths/field.Element": {
+		Ser: "marshalFieldElement", Des: "unmarshalFieldElement",
+	},
+	"math/big.Int": {
+		Ser: "marshalBigInt", Des: "unmarshalBigInt",
+	},
 }
 
 // ---------------------
@@ -110,6 +122,12 @@ func marshal{{.FuncName}}(ser *Serializer, v {{.QualifiedName}}) (any, *serdeErr
 	}
 	{{else if $f.IsPrimitive}}
 	out[{{$i}}] = v.{{$f.Name}}
+    {{else if $f.IsIntSlice}}
+    // Direct []int assignment
+    out[{{$i}}] = v.{{$f.Name}}
+    {{else if $f.IsBytes}}
+    // Direct []byte assignment
+    out[{{$i}}] = v.{{$f.Name}}
 	{{else if $f.DirectCall}}
 	{
 		{{if $f.IsPointer}}
@@ -130,8 +148,36 @@ func marshal{{.FuncName}}(ser *Serializer, v {{.QualifiedName}}) (any, *serdeErr
 		out[{{$i}}] = packed
 		{{end}}
 	}
+    {{else if $f.KnownCodex}}
+    {
+        // Optimization: Direct call to known codec
+        packed, err := {{$f.KnownCodex.Ser}}(ser, reflect.ValueOf(v.{{$f.Name}}))
+        if err != nil {
+            return nil, err.wrapPath(".{{$f.Name}}")
+        }
+        out[{{$i}}] = packed
+    }
+    {{else if $f.IsSlice}}
+    {
+        // Optimization: Direct slice packing
+        packed, err := ser.PackArrayOrSlice(reflect.ValueOf(v.{{$f.Name}}))
+        if err != nil {
+            return nil, err.wrapPath(".{{$f.Name}}")
+        }
+        out[{{$i}}] = packed
+    }
+    {{else if $f.IsMap}}
+    {
+        // Optimization: Direct map packing
+        packed, err := ser.PackMap(reflect.ValueOf(v.{{$f.Name}}))
+        if err != nil {
+            return nil, err.wrapPath(".{{$f.Name}}")
+        }
+        out[{{$i}}] = packed
+    }
 	{{else}}
 	{
+        // Fallback
 		packed, err := ser.PackValue(reflect.ValueOf(v.{{$f.Name}}))
 		if err != nil {
 			return nil, err.wrapPath(".{{$f.Name}}")
@@ -218,7 +264,6 @@ func unmarshal{{.FuncName}}(de *Deserializer, raw any) ({{.QualifiedName}}, *ser
 				return v, newSerdeErrorf("type mismatch for field {{.Name}}, expected uint64: %v", err)
 			}
 			{{else}}
-			// Standard assertion for non-numeric primitives (string, bool, etc)
 			if val, ok := rawSlice[{{$i}}].({{$f.UnderlyingTypeStr}}); ok {
 				v.{{$f.Name}} = {{$f.TypeStr}}(val)
 			} else {
@@ -227,6 +272,32 @@ func unmarshal{{.FuncName}}(de *Deserializer, raw any) ({{.QualifiedName}}, *ser
 			{{end}}
 			{{end}}
 		}
+        {{else if $f.IsIntSlice}}
+        if rawSlice[{{$i}}] != nil {
+            if sliceAny, ok := rawSlice[{{$i}}].([]any); ok {
+				tmp := make([]int, len(sliceAny))
+				for idx, item := range sliceAny {
+					if n, err := toInt(item); err == nil {
+						tmp[idx] = n
+					} else {
+						return v, newSerdeErrorf("element type mismatch in {{.Name}}[%d]: %v", idx, err)
+					}
+				}
+				v.{{$f.Name}} = tmp
+            } else if sliceInt, ok := rawSlice[{{$i}}].([]int); ok {
+                v.{{$f.Name}} = sliceInt
+			} else {
+				return v, newSerdeErrorf("type mismatch for field {{.Name}}, expected []int or []any")
+			}
+        }
+        {{else if $f.IsBytes}}
+        if rawSlice[{{$i}}] != nil {
+            if val, ok := rawSlice[{{$i}}].([]byte); ok {
+                v.{{$f.Name}} = val
+            } else {
+                return v, newSerdeErrorf("type mismatch for field {{.Name}}, expected []byte")
+            }
+        }
 		{{else if $f.DirectCall}}
 		{{if $f.IsPointer}}
 		if rawSlice[{{$i}}] != nil {
@@ -243,6 +314,39 @@ func unmarshal{{.FuncName}}(de *Deserializer, raw any) ({{.QualifiedName}}, *ser
 		}
 		v.{{$f.Name}} = val
 		{{end}}
+        {{else if $f.KnownCodex}}
+        {
+            // Direct call to known codec (returns reflect.Value)
+            val, err := {{$f.KnownCodex.Des}}(de, rawSlice[{{$i}}], reflect.TypeOf(v.{{$f.Name}}))
+            if err != nil {
+                return v, err.wrapPath(".{{$f.Name}}")
+            }
+            if val.IsValid() {
+                v.{{$f.Name}} = val.Interface().({{$f.TypeStr}})
+            }
+        }
+        {{else if $f.IsSlice}}
+        {
+            // Direct unpack array/slice
+            val, err := de.UnpackArrayOrSlice(rawSlice[{{$i}}].([]any), reflect.TypeOf(v.{{$f.Name}}))
+            if err != nil {
+                return v, err.wrapPath(".{{$f.Name}}")
+            }
+            if val.IsValid() {
+                v.{{$f.Name}} = val.Interface().({{$f.TypeStr}})
+            }
+        }
+        {{else if $f.IsMap}}
+        {
+            // Direct unpack map
+            val, err := de.UnpackMap(rawSlice[{{$i}}].(map[any]any), reflect.TypeOf(v.{{$f.Name}}))
+            if err != nil {
+                return v, err.wrapPath(".{{$f.Name}}")
+            }
+            if val.IsValid() {
+                v.{{$f.Name}} = val.Interface().({{$f.TypeStr}})
+            }
+        }
 		{{else}}
 		val, err := de.UnpackValue(rawSlice[{{$i}}], reflect.TypeOf(v.{{$f.Name}}))
 		if err != nil {
@@ -313,9 +417,14 @@ type FieldInfo struct {
 	IsPrimitive       bool
 	IsArray           bool
 	IsPointer         bool
+	IsIntSlice        bool // []int
+	IsBytes           bool // []byte
+	IsSlice           bool // []T (other)
+	IsMap             bool // map[K]V
 	UnderlyingTypeStr string
 	SliceTypeStr      string
 	Special           *SpecialHandler
+	KnownCodex        *struct{ Ser, Des string }
 	DirectCall        string
 	Accessor          string
 }
@@ -369,7 +478,7 @@ func main() {
 		queue = append(queue, obj.Type())
 	}
 
-	// --- PASS 1: Discovery ---
+	// --- PASS 1: Discovery & Naming ---
 	discoveryQueue := make([]types.Type, len(queue))
 	copy(discoveryQueue, queue)
 
@@ -480,15 +589,69 @@ func main() {
 			typeStr := types.TypeString(f.Type(), typeQualifier)
 			special := checkSpecial(f.Type())
 			accessor := "v." + f.Name()
-			isPrim, isArr := isPrimitiveOrArray(f.Type())
+			isPrim, isArr, isSlice := isPrimitiveOrArray(f.Type())
 
 			var underlyingStr, sliceStr string
 			if isPrim {
-				// Resolve underlying type string (e.g. "int" or "string")
 				underlyingStr = types.TypeString(getUnderlying(f.Type()), nil)
 				if isArr {
 					if arr, ok := getUnderlying(f.Type()).(*types.Array); ok {
 						sliceStr = "[]" + types.TypeString(arr.Elem(), nil)
+					}
+				}
+			}
+
+			// Refine IsPrimitiveSlice (e.g. []int or []byte)
+			isPrimitiveSlice := false
+			if isSlice {
+				isPrimitiveSlice = true
+			}
+
+			// New: Detect specific slice types
+			isIntSlice := false
+			isBytes := false
+			if isSlice {
+				// Check if underlying basic element is int or byte
+				if slice, ok := getUnderlying(f.Type()).(*types.Slice); ok {
+					if basic, ok := slice.Elem().(*types.Basic); ok {
+						if basic.Kind() == types.Int {
+							isIntSlice = true
+						}
+						if basic.Kind() == types.Byte {
+							isBytes = true
+						}
+					}
+				}
+			}
+
+			// Detect Generic Slices/Maps
+			isGenericSlice := false
+			isGenericMap := false
+			if !isPrimitiveSlice {
+				if _, ok := f.Type().(*types.Slice); ok {
+					isGenericSlice = true
+				}
+			}
+			if _, ok := f.Type().(*types.Map); ok {
+				isGenericMap = true
+			}
+
+			// Detect Known Codecs
+			var knownCodex *struct{ Ser, Des string }
+			baseT := f.Type()
+			if ptr, ok := baseT.(*types.Pointer); ok {
+				baseT = ptr.Elem()
+			}
+			if named, ok := baseT.(*types.Named); ok {
+				key := types.TypeString(named, nil)
+				if k, ok := knownCodexHandlers[key]; ok {
+					knownCodex = &k
+				}
+			} else if slice, ok := baseT.(*types.Slice); ok {
+				if namedElem, ok := slice.Elem().(*types.Named); ok {
+					key := "[]" + types.TypeString(namedElem, nil)
+					if k, ok := knownCodexHandlers[key]; ok {
+						knownCodex = &k
 					}
 				}
 			}
@@ -515,11 +678,16 @@ func main() {
 				IsPrimitive:       isPrim,
 				IsArray:           isArr,
 				IsPointer:         isPointer,
+				IsIntSlice:        isIntSlice,
+				IsBytes:           isBytes,
+				IsSlice:           isGenericSlice,
+				IsMap:             isGenericMap,
 				UnderlyingTypeStr: underlyingStr,
 				SliceTypeStr:      sliceStr,
 				Special:           special,
 				Accessor:          accessor,
 				DirectCall:        directCall,
+				KnownCodex:        knownCodex,
 			})
 		}
 
@@ -627,21 +795,22 @@ func inspectAndQueue(t types.Type, queue *[]types.Type) {
 	}
 }
 
-func isPrimitiveOrArray(t types.Type) (bool, bool) {
+// Updated to separate Slice from Array
+func isPrimitiveOrArray(t types.Type) (isPrimitive bool, isArray bool, isSlice bool) {
 	underlying := getUnderlying(t)
 	switch u := underlying.(type) {
 	case *types.Basic:
-		return u.Kind() != types.UntypedNil && u.Kind() != types.UnsafePointer, false
+		return u.Kind() != types.UntypedNil && u.Kind() != types.UnsafePointer, false, false
 	case *types.Slice:
 		if elem, ok := u.Elem().(*types.Basic); ok {
-			return elem.Kind() == types.Byte, false
+			return elem.Kind() == types.Byte, false, true
 		}
 	case *types.Array:
 		if elem, ok := u.Elem().(*types.Basic); ok {
-			return elem.Kind() == types.Byte, true
+			return elem.Kind() == types.Byte, true, false
 		}
 	}
-	return false, false
+	return false, false, false
 }
 
 func getUnderlying(t types.Type) types.Type {

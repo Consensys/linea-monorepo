@@ -134,6 +134,7 @@ func marshalDistributedSegmentProof(ser *Serializer, v distributed.SegmentProof)
 	// Field: LppCommitment
 
 	{
+		// Fallback
 		packed, err := ser.PackValue(reflect.ValueOf(v.LppCommitment))
 		if err != nil {
 			return nil, err.wrapPath(".LppCommitment")
@@ -273,18 +274,14 @@ func marshalDistributedModuleWitnessGL(ser *Serializer, v distributed.ModuleWitn
 
 	// Field: TotalSegmentCount
 
-	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.TotalSegmentCount))
-		if err != nil {
-			return nil, err.wrapPath(".TotalSegmentCount")
-		}
-		out[3] = packed
-	}
+	// Direct []int assignment
+	out[3] = v.TotalSegmentCount
 
 	// Field: Columns
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.Columns))
+		// Optimization: Direct map packing
+		packed, err := ser.PackMap(reflect.ValueOf(v.Columns))
 		if err != nil {
 			return nil, err.wrapPath(".Columns")
 		}
@@ -294,7 +291,8 @@ func marshalDistributedModuleWitnessGL(ser *Serializer, v distributed.ModuleWitn
 	// Field: ReceivedValuesGlobal
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.ReceivedValuesGlobal))
+		// Optimization: Direct slice packing
+		packed, err := ser.PackArrayOrSlice(reflect.ValueOf(v.ReceivedValuesGlobal))
 		if err != nil {
 			return nil, err.wrapPath(".ReceivedValuesGlobal")
 		}
@@ -304,6 +302,7 @@ func marshalDistributedModuleWitnessGL(ser *Serializer, v distributed.ModuleWitn
 	// Field: VkMerkleRoot
 
 	{
+		// Fallback
 		packed, err := ser.PackValue(reflect.ValueOf(v.VkMerkleRoot))
 		if err != nil {
 			return nil, err.wrapPath(".VkMerkleRoot")
@@ -345,7 +344,6 @@ func unmarshalDistributedModuleWitnessGL(de *Deserializer, raw any) (distributed
 
 			// Numeric handling
 
-			// Standard assertion for non-numeric primitives (string, bool, etc)
 			if val, ok := rawSlice[0].(string); ok {
 				v.ModuleName = distributed.ModuleName(val)
 			} else {
@@ -393,12 +391,22 @@ func unmarshalDistributedModuleWitnessGL(de *Deserializer, raw any) (distributed
 	// Field: TotalSegmentCount
 	{
 
-		val, err := de.UnpackValue(rawSlice[3], reflect.TypeOf(v.TotalSegmentCount))
-		if err != nil {
-			return v, err.wrapPath(".TotalSegmentCount")
-		}
-		if val.IsValid() {
-			v.TotalSegmentCount = val.Interface().([]int)
+		if rawSlice[3] != nil {
+			if sliceAny, ok := rawSlice[3].([]any); ok {
+				tmp := make([]int, len(sliceAny))
+				for idx, item := range sliceAny {
+					if n, err := toInt(item); err == nil {
+						tmp[idx] = n
+					} else {
+						return v, newSerdeErrorf("element type mismatch in TotalSegmentCount[%d]: %v", idx, err)
+					}
+				}
+				v.TotalSegmentCount = tmp
+			} else if sliceInt, ok := rawSlice[3].([]int); ok {
+				v.TotalSegmentCount = sliceInt
+			} else {
+				return v, newSerdeErrorf("type mismatch for field TotalSegmentCount, expected []int or []any")
+			}
 		}
 
 	}
@@ -406,12 +414,15 @@ func unmarshalDistributedModuleWitnessGL(de *Deserializer, raw any) (distributed
 	// Field: Columns
 	{
 
-		val, err := de.UnpackValue(rawSlice[4], reflect.TypeOf(v.Columns))
-		if err != nil {
-			return v, err.wrapPath(".Columns")
-		}
-		if val.IsValid() {
-			v.Columns = val.Interface().(map[ifaces.ColID]smartvectors.SmartVector)
+		{
+			// Direct unpack map
+			val, err := de.UnpackMap(rawSlice[4].(map[any]any), reflect.TypeOf(v.Columns))
+			if err != nil {
+				return v, err.wrapPath(".Columns")
+			}
+			if val.IsValid() {
+				v.Columns = val.Interface().(map[ifaces.ColID]smartvectors.SmartVector)
+			}
 		}
 
 	}
@@ -419,12 +430,15 @@ func unmarshalDistributedModuleWitnessGL(de *Deserializer, raw any) (distributed
 	// Field: ReceivedValuesGlobal
 	{
 
-		val, err := de.UnpackValue(rawSlice[5], reflect.TypeOf(v.ReceivedValuesGlobal))
-		if err != nil {
-			return v, err.wrapPath(".ReceivedValuesGlobal")
-		}
-		if val.IsValid() {
-			v.ReceivedValuesGlobal = val.Interface().([]field.Element)
+		{
+			// Direct unpack array/slice
+			val, err := de.UnpackArrayOrSlice(rawSlice[5].([]any), reflect.TypeOf(v.ReceivedValuesGlobal))
+			if err != nil {
+				return v, err.wrapPath(".ReceivedValuesGlobal")
+			}
+			if val.IsValid() {
+				v.ReceivedValuesGlobal = val.Interface().([]field.Element)
+			}
 		}
 
 	}
@@ -468,13 +482,8 @@ func marshalDistributedModuleWitnessLPP(ser *Serializer, v distributed.ModuleWit
 
 	// Field: TotalSegmentCount
 
-	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.TotalSegmentCount))
-		if err != nil {
-			return nil, err.wrapPath(".TotalSegmentCount")
-		}
-		out[2] = packed
-	}
+	// Direct []int assignment
+	out[2] = v.TotalSegmentCount
 
 	// Field: SegmentModuleIndex
 
@@ -483,6 +492,7 @@ func marshalDistributedModuleWitnessLPP(ser *Serializer, v distributed.ModuleWit
 	// Field: InitialFiatShamirState
 
 	{
+		// Fallback
 		packed, err := ser.PackValue(reflect.ValueOf(v.InitialFiatShamirState))
 		if err != nil {
 			return nil, err.wrapPath(".InitialFiatShamirState")
@@ -492,18 +502,14 @@ func marshalDistributedModuleWitnessLPP(ser *Serializer, v distributed.ModuleWit
 
 	// Field: N0Values
 
-	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.N0Values))
-		if err != nil {
-			return nil, err.wrapPath(".N0Values")
-		}
-		out[5] = packed
-	}
+	// Direct []int assignment
+	out[5] = v.N0Values
 
 	// Field: Columns
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.Columns))
+		// Optimization: Direct map packing
+		packed, err := ser.PackMap(reflect.ValueOf(v.Columns))
 		if err != nil {
 			return nil, err.wrapPath(".Columns")
 		}
@@ -513,6 +519,7 @@ func marshalDistributedModuleWitnessLPP(ser *Serializer, v distributed.ModuleWit
 	// Field: VkMerkleRoot
 
 	{
+		// Fallback
 		packed, err := ser.PackValue(reflect.ValueOf(v.VkMerkleRoot))
 		if err != nil {
 			return nil, err.wrapPath(".VkMerkleRoot")
@@ -554,7 +561,6 @@ func unmarshalDistributedModuleWitnessLPP(de *Deserializer, raw any) (distribute
 
 			// Numeric handling
 
-			// Standard assertion for non-numeric primitives (string, bool, etc)
 			if val, ok := rawSlice[0].(string); ok {
 				v.ModuleName = distributed.ModuleName(val)
 			} else {
@@ -585,12 +591,22 @@ func unmarshalDistributedModuleWitnessLPP(de *Deserializer, raw any) (distribute
 	// Field: TotalSegmentCount
 	{
 
-		val, err := de.UnpackValue(rawSlice[2], reflect.TypeOf(v.TotalSegmentCount))
-		if err != nil {
-			return v, err.wrapPath(".TotalSegmentCount")
-		}
-		if val.IsValid() {
-			v.TotalSegmentCount = val.Interface().([]int)
+		if rawSlice[2] != nil {
+			if sliceAny, ok := rawSlice[2].([]any); ok {
+				tmp := make([]int, len(sliceAny))
+				for idx, item := range sliceAny {
+					if n, err := toInt(item); err == nil {
+						tmp[idx] = n
+					} else {
+						return v, newSerdeErrorf("element type mismatch in TotalSegmentCount[%d]: %v", idx, err)
+					}
+				}
+				v.TotalSegmentCount = tmp
+			} else if sliceInt, ok := rawSlice[2].([]int); ok {
+				v.TotalSegmentCount = sliceInt
+			} else {
+				return v, newSerdeErrorf("type mismatch for field TotalSegmentCount, expected []int or []any")
+			}
 		}
 
 	}
@@ -628,12 +644,22 @@ func unmarshalDistributedModuleWitnessLPP(de *Deserializer, raw any) (distribute
 	// Field: N0Values
 	{
 
-		val, err := de.UnpackValue(rawSlice[5], reflect.TypeOf(v.N0Values))
-		if err != nil {
-			return v, err.wrapPath(".N0Values")
-		}
-		if val.IsValid() {
-			v.N0Values = val.Interface().([]int)
+		if rawSlice[5] != nil {
+			if sliceAny, ok := rawSlice[5].([]any); ok {
+				tmp := make([]int, len(sliceAny))
+				for idx, item := range sliceAny {
+					if n, err := toInt(item); err == nil {
+						tmp[idx] = n
+					} else {
+						return v, newSerdeErrorf("element type mismatch in N0Values[%d]: %v", idx, err)
+					}
+				}
+				v.N0Values = tmp
+			} else if sliceInt, ok := rawSlice[5].([]int); ok {
+				v.N0Values = sliceInt
+			} else {
+				return v, newSerdeErrorf("type mismatch for field N0Values, expected []int or []any")
+			}
 		}
 
 	}
@@ -641,12 +667,15 @@ func unmarshalDistributedModuleWitnessLPP(de *Deserializer, raw any) (distribute
 	// Field: Columns
 	{
 
-		val, err := de.UnpackValue(rawSlice[6], reflect.TypeOf(v.Columns))
-		if err != nil {
-			return v, err.wrapPath(".Columns")
-		}
-		if val.IsValid() {
-			v.Columns = val.Interface().(map[ifaces.ColID]smartvectors.SmartVector)
+		{
+			// Direct unpack map
+			val, err := de.UnpackMap(rawSlice[6].(map[any]any), reflect.TypeOf(v.Columns))
+			if err != nil {
+				return v, err.wrapPath(".Columns")
+			}
+			if val.IsValid() {
+				v.Columns = val.Interface().(map[ifaces.ColID]smartvectors.SmartVector)
+			}
 		}
 
 	}
@@ -695,7 +724,8 @@ func marshalRecursionWitness(ser *Serializer, v recursion.Witness) (any, *serdeE
 	// Field: Pub
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.Pub))
+		// Optimization: Direct slice packing
+		packed, err := ser.PackArrayOrSlice(reflect.ValueOf(v.Pub))
 		if err != nil {
 			return nil, err.wrapPath(".Pub")
 		}
@@ -705,6 +735,7 @@ func marshalRecursionWitness(ser *Serializer, v recursion.Witness) (any, *serdeE
 	// Field: FinalFS
 
 	{
+		// Fallback
 		packed, err := ser.PackValue(reflect.ValueOf(v.FinalFS))
 		if err != nil {
 			return nil, err.wrapPath(".FinalFS")
@@ -715,7 +746,8 @@ func marshalRecursionWitness(ser *Serializer, v recursion.Witness) (any, *serdeE
 	// Field: CommittedMatrices
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.CommittedMatrices))
+		// Optimization: Direct slice packing
+		packed, err := ser.PackArrayOrSlice(reflect.ValueOf(v.CommittedMatrices))
 		if err != nil {
 			return nil, err.wrapPath(".CommittedMatrices")
 		}
@@ -725,7 +757,8 @@ func marshalRecursionWitness(ser *Serializer, v recursion.Witness) (any, *serdeE
 	// Field: SisHashes
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.SisHashes))
+		// Optimization: Direct slice packing
+		packed, err := ser.PackArrayOrSlice(reflect.ValueOf(v.SisHashes))
 		if err != nil {
 			return nil, err.wrapPath(".SisHashes")
 		}
@@ -735,7 +768,8 @@ func marshalRecursionWitness(ser *Serializer, v recursion.Witness) (any, *serdeE
 	// Field: MimcHashes
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.MimcHashes))
+		// Optimization: Direct slice packing
+		packed, err := ser.PackArrayOrSlice(reflect.ValueOf(v.MimcHashes))
 		if err != nil {
 			return nil, err.wrapPath(".MimcHashes")
 		}
@@ -745,7 +779,8 @@ func marshalRecursionWitness(ser *Serializer, v recursion.Witness) (any, *serdeE
 	// Field: Trees
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.Trees))
+		// Optimization: Direct slice packing
+		packed, err := ser.PackArrayOrSlice(reflect.ValueOf(v.Trees))
 		if err != nil {
 			return nil, err.wrapPath(".Trees")
 		}
@@ -793,12 +828,15 @@ func unmarshalRecursionWitness(de *Deserializer, raw any) (recursion.Witness, *s
 	// Field: Pub
 	{
 
-		val, err := de.UnpackValue(rawSlice[1], reflect.TypeOf(v.Pub))
-		if err != nil {
-			return v, err.wrapPath(".Pub")
-		}
-		if val.IsValid() {
-			v.Pub = val.Interface().([]field.Element)
+		{
+			// Direct unpack array/slice
+			val, err := de.UnpackArrayOrSlice(rawSlice[1].([]any), reflect.TypeOf(v.Pub))
+			if err != nil {
+				return v, err.wrapPath(".Pub")
+			}
+			if val.IsValid() {
+				v.Pub = val.Interface().([]field.Element)
+			}
 		}
 
 	}
@@ -819,12 +857,15 @@ func unmarshalRecursionWitness(de *Deserializer, raw any) (recursion.Witness, *s
 	// Field: CommittedMatrices
 	{
 
-		val, err := de.UnpackValue(rawSlice[3], reflect.TypeOf(v.CommittedMatrices))
-		if err != nil {
-			return v, err.wrapPath(".CommittedMatrices")
-		}
-		if val.IsValid() {
-			v.CommittedMatrices = val.Interface().([]vortex.EncodedMatrix)
+		{
+			// Direct unpack array/slice
+			val, err := de.UnpackArrayOrSlice(rawSlice[3].([]any), reflect.TypeOf(v.CommittedMatrices))
+			if err != nil {
+				return v, err.wrapPath(".CommittedMatrices")
+			}
+			if val.IsValid() {
+				v.CommittedMatrices = val.Interface().([]vortex.EncodedMatrix)
+			}
 		}
 
 	}
@@ -832,12 +873,15 @@ func unmarshalRecursionWitness(de *Deserializer, raw any) (recursion.Witness, *s
 	// Field: SisHashes
 	{
 
-		val, err := de.UnpackValue(rawSlice[4], reflect.TypeOf(v.SisHashes))
-		if err != nil {
-			return v, err.wrapPath(".SisHashes")
-		}
-		if val.IsValid() {
-			v.SisHashes = val.Interface().([][]field.Element)
+		{
+			// Direct unpack array/slice
+			val, err := de.UnpackArrayOrSlice(rawSlice[4].([]any), reflect.TypeOf(v.SisHashes))
+			if err != nil {
+				return v, err.wrapPath(".SisHashes")
+			}
+			if val.IsValid() {
+				v.SisHashes = val.Interface().([][]field.Element)
+			}
 		}
 
 	}
@@ -845,12 +889,15 @@ func unmarshalRecursionWitness(de *Deserializer, raw any) (recursion.Witness, *s
 	// Field: MimcHashes
 	{
 
-		val, err := de.UnpackValue(rawSlice[5], reflect.TypeOf(v.MimcHashes))
-		if err != nil {
-			return v, err.wrapPath(".MimcHashes")
-		}
-		if val.IsValid() {
-			v.MimcHashes = val.Interface().([][]field.Element)
+		{
+			// Direct unpack array/slice
+			val, err := de.UnpackArrayOrSlice(rawSlice[5].([]any), reflect.TypeOf(v.MimcHashes))
+			if err != nil {
+				return v, err.wrapPath(".MimcHashes")
+			}
+			if val.IsValid() {
+				v.MimcHashes = val.Interface().([][]field.Element)
+			}
 		}
 
 	}
@@ -858,12 +905,15 @@ func unmarshalRecursionWitness(de *Deserializer, raw any) (recursion.Witness, *s
 	// Field: Trees
 	{
 
-		val, err := de.UnpackValue(rawSlice[6], reflect.TypeOf(v.Trees))
-		if err != nil {
-			return v, err.wrapPath(".Trees")
-		}
-		if val.IsValid() {
-			v.Trees = val.Interface().([]*smt.Tree)
+		{
+			// Direct unpack array/slice
+			val, err := de.UnpackArrayOrSlice(rawSlice[6].([]any), reflect.TypeOf(v.Trees))
+			if err != nil {
+				return v, err.wrapPath(".Trees")
+			}
+			if val.IsValid() {
+				v.Trees = val.Interface().([]*smt.Tree)
+			}
 		}
 
 	}
@@ -996,7 +1046,8 @@ func marshalSmtTree(ser *Serializer, v smt.Tree) (any, *serdeError) {
 	// Field: OccupiedLeaves
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.OccupiedLeaves))
+		// Optimization: Direct slice packing
+		packed, err := ser.PackArrayOrSlice(reflect.ValueOf(v.OccupiedLeaves))
 		if err != nil {
 			return nil, err.wrapPath(".OccupiedLeaves")
 		}
@@ -1006,7 +1057,8 @@ func marshalSmtTree(ser *Serializer, v smt.Tree) (any, *serdeError) {
 	// Field: OccupiedNodes
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.OccupiedNodes))
+		// Optimization: Direct slice packing
+		packed, err := ser.PackArrayOrSlice(reflect.ValueOf(v.OccupiedNodes))
 		if err != nil {
 			return nil, err.wrapPath(".OccupiedNodes")
 		}
@@ -1016,7 +1068,8 @@ func marshalSmtTree(ser *Serializer, v smt.Tree) (any, *serdeError) {
 	// Field: EmptyNodes
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.EmptyNodes))
+		// Optimization: Direct slice packing
+		packed, err := ser.PackArrayOrSlice(reflect.ValueOf(v.EmptyNodes))
 		if err != nil {
 			return nil, err.wrapPath(".EmptyNodes")
 		}
@@ -1084,12 +1137,15 @@ func unmarshalSmtTree(de *Deserializer, raw any) (smt.Tree, *serdeError) {
 	// Field: OccupiedLeaves
 	{
 
-		val, err := de.UnpackValue(rawSlice[2], reflect.TypeOf(v.OccupiedLeaves))
-		if err != nil {
-			return v, err.wrapPath(".OccupiedLeaves")
-		}
-		if val.IsValid() {
-			v.OccupiedLeaves = val.Interface().([]types.Bytes32)
+		{
+			// Direct unpack array/slice
+			val, err := de.UnpackArrayOrSlice(rawSlice[2].([]any), reflect.TypeOf(v.OccupiedLeaves))
+			if err != nil {
+				return v, err.wrapPath(".OccupiedLeaves")
+			}
+			if val.IsValid() {
+				v.OccupiedLeaves = val.Interface().([]types.Bytes32)
+			}
 		}
 
 	}
@@ -1097,12 +1153,15 @@ func unmarshalSmtTree(de *Deserializer, raw any) (smt.Tree, *serdeError) {
 	// Field: OccupiedNodes
 	{
 
-		val, err := de.UnpackValue(rawSlice[3], reflect.TypeOf(v.OccupiedNodes))
-		if err != nil {
-			return v, err.wrapPath(".OccupiedNodes")
-		}
-		if val.IsValid() {
-			v.OccupiedNodes = val.Interface().([][]types.Bytes32)
+		{
+			// Direct unpack array/slice
+			val, err := de.UnpackArrayOrSlice(rawSlice[3].([]any), reflect.TypeOf(v.OccupiedNodes))
+			if err != nil {
+				return v, err.wrapPath(".OccupiedNodes")
+			}
+			if val.IsValid() {
+				v.OccupiedNodes = val.Interface().([][]types.Bytes32)
+			}
 		}
 
 	}
@@ -1110,12 +1169,15 @@ func unmarshalSmtTree(de *Deserializer, raw any) (smt.Tree, *serdeError) {
 	// Field: EmptyNodes
 	{
 
-		val, err := de.UnpackValue(rawSlice[4], reflect.TypeOf(v.EmptyNodes))
-		if err != nil {
-			return v, err.wrapPath(".EmptyNodes")
-		}
-		if val.IsValid() {
-			v.EmptyNodes = val.Interface().([]types.Bytes32)
+		{
+			// Direct unpack array/slice
+			val, err := de.UnpackArrayOrSlice(rawSlice[4].([]any), reflect.TypeOf(v.EmptyNodes))
+			if err != nil {
+				return v, err.wrapPath(".EmptyNodes")
+			}
+			if val.IsValid() {
+				v.EmptyNodes = val.Interface().([]types.Bytes32)
+			}
 		}
 
 	}
@@ -1139,7 +1201,8 @@ func marshalCollectionMappingOfColIDAndUnknown(ser *Serializer, v collection.Map
 	// Field: InnerMap
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.InnerMap))
+		// Optimization: Direct map packing
+		packed, err := ser.PackMap(reflect.ValueOf(v.InnerMap))
 		if err != nil {
 			return nil, err.wrapPath(".InnerMap")
 		}
@@ -1176,12 +1239,15 @@ func unmarshalCollectionMappingOfColIDAndUnknown(de *Deserializer, raw any) (col
 	// Field: InnerMap
 	{
 
-		val, err := de.UnpackValue(rawSlice[0], reflect.TypeOf(v.InnerMap))
-		if err != nil {
-			return v, err.wrapPath(".InnerMap")
-		}
-		if val.IsValid() {
-			v.InnerMap = val.Interface().(map[ifaces.ColID]ifaces.ColAssignment)
+		{
+			// Direct unpack map
+			val, err := de.UnpackMap(rawSlice[0].(map[any]any), reflect.TypeOf(v.InnerMap))
+			if err != nil {
+				return v, err.wrapPath(".InnerMap")
+			}
+			if val.IsValid() {
+				v.InnerMap = val.Interface().(map[ifaces.ColID]ifaces.ColAssignment)
+			}
 		}
 
 	}
@@ -1205,7 +1271,8 @@ func marshalCollectionMappingOfQueryIDAndQueryParams(ser *Serializer, v collecti
 	// Field: InnerMap
 
 	{
-		packed, err := ser.PackValue(reflect.ValueOf(v.InnerMap))
+		// Optimization: Direct map packing
+		packed, err := ser.PackMap(reflect.ValueOf(v.InnerMap))
 		if err != nil {
 			return nil, err.wrapPath(".InnerMap")
 		}
@@ -1242,12 +1309,15 @@ func unmarshalCollectionMappingOfQueryIDAndQueryParams(de *Deserializer, raw any
 	// Field: InnerMap
 	{
 
-		val, err := de.UnpackValue(rawSlice[0], reflect.TypeOf(v.InnerMap))
-		if err != nil {
-			return v, err.wrapPath(".InnerMap")
-		}
-		if val.IsValid() {
-			v.InnerMap = val.Interface().(map[ifaces.QueryID]ifaces.QueryParams)
+		{
+			// Direct unpack map
+			val, err := de.UnpackMap(rawSlice[0].(map[any]any), reflect.TypeOf(v.InnerMap))
+			if err != nil {
+				return v, err.wrapPath(".InnerMap")
+			}
+			if val.IsValid() {
+				v.InnerMap = val.Interface().(map[ifaces.QueryID]ifaces.QueryParams)
+			}
 		}
 
 	}
@@ -1271,6 +1341,7 @@ func marshalSmtConfig(ser *Serializer, v smt.Config) (any, *serdeError) {
 	// Field: HashFunc
 
 	{
+		// Fallback
 		packed, err := ser.PackValue(reflect.ValueOf(v.HashFunc))
 		if err != nil {
 			return nil, err.wrapPath(".HashFunc")
