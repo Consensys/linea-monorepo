@@ -50,7 +50,7 @@ type ExternalHasher struct {
 type ExternalHasherBuilder struct {
 	plonkbuilder.Builder
 	// claimTriplets stores the tripled [oldState, block, newState]
-	claimTriplets [][3][poseidon2_koalabear.BlockSize]frontend.Variable
+	claimTriplets [][3]frontend.Variable
 	// rcCols is a channel used to pass back the position of the wires
 	// corresponding to the claims.
 	rcCols chan [][3][2]int
@@ -62,7 +62,7 @@ type ExternalHasherBuilder struct {
 // externalHashBuilderIFace is an interface implemented by [externalHasherBuilder]
 // and potential struct wrappers.
 type externalHashBuilderIFace interface {
-	CheckHashExternally(oldState, block, newState [poseidon2_koalabear.BlockSize]frontend.Variable)
+	CheckHashExternally(oldState, block, newState frontend.Variable)
 }
 
 // NewHasher returns the standard Poseidon2 hasher.
@@ -180,7 +180,9 @@ func (h *ExternalHasher) compress(state, block [poseidon2_koalabear.BlockSize]fr
 	// Convert the slice to an array of size 8
 	var newStateOct [8]frontend.Variable
 	copy(newStateOct[:], newState[:8])
-	builder.CheckHashExternally(state, block, newStateOct)
+	for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
+		builder.CheckHashExternally(state[j], block[j], newStateOct[j])
+	}
 	return newStateOct
 }
 
@@ -209,8 +211,8 @@ func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilderU32,
 }
 
 // CheckHashExternally tags a Poseidon2 hasher claim in the circuit
-func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState [poseidon2_koalabear.BlockSize]frontend.Variable) {
-	f.claimTriplets = append(f.claimTriplets, [3][poseidon2_koalabear.BlockSize]frontend.Variable{oldState, block, newState})
+func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState frontend.Variable) {
+	f.claimTriplets = append(f.claimTriplets, [3]frontend.Variable{oldState, block, newState})
 }
 
 // Compile processes range checked variables and then calls Compile method of
@@ -220,18 +222,19 @@ func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystemU32,
 	// As [GetWireConstraints] requires a list of variables and can only be
 	// called once, we have to pack all the claims in a single slice and unpack
 	// the result.
-	allCheckedVariables := make([]frontend.Variable, 3*len(builder.claimTriplets)*poseidon2_koalabear.BlockSize)
+	allCheckedVariables := make([]frontend.Variable, 3*len(builder.claimTriplets))
 	for i := range builder.claimTriplets {
-		for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
-			allCheckedVariables[(3*i)*poseidon2_koalabear.BlockSize+j] = builder.claimTriplets[i][0][j]
-			allCheckedVariables[(3*i+1)*poseidon2_koalabear.BlockSize+j] = builder.claimTriplets[i][1][j]
-			allCheckedVariables[(3*i+2)*poseidon2_koalabear.BlockSize+j] = builder.claimTriplets[i][2][j]
-		}
+		allCheckedVariables[3*i] = builder.claimTriplets[i][0]
+		allCheckedVariables[3*i+1] = builder.claimTriplets[i][1]
+		allCheckedVariables[3*i+2] = builder.claimTriplets[i][2]
 	}
 
 	// GetWireGates may add gates if [addGateForRangeCheck] is true. Call it
 	// synchronously before calling compile on the circuit.
+	fmt.Printf("Getting wire constraints for %v hash claims\n", len(allCheckedVariables))
 	cols, err := builder.Builder.GetWiresConstraintExact(allCheckedVariables, builder.addGateForHashCheck)
+	fmt.Printf("Getting wire constraints cols %v \n", cols)
+
 	if err != nil {
 		return nil, fmt.Errorf("get wire gates: %w", err)
 	}
@@ -281,7 +284,9 @@ func Poseidon2Hintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error 
 	copy(block[0:8], inpF[8:16])
 
 	outF := vortex.CompressPoseidon2(old, block)
-
+	fmt.Printf("Poseidon2Hintfunc old: %v\n", old)
+	fmt.Printf("Poseidon2Hintfunc block: %v\n", block)
+	fmt.Printf("Poseidon2Hintfunc output: %v\n", outF)
 	intoBigInts(outputs, outF[:])
 	return nil
 }

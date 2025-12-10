@@ -1,29 +1,29 @@
 package hasher_factory
 
 import (
-	"fmt"
 	"testing"
 
 	cs "github.com/consensys/gnark/constraint/koalabear"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-// externalMiMCFactoryTestLinear is used to test the external MiMC factory
+// externalPoseidon2FactoryTestLinear is used to test the external Poseidon2 factory
 // and is a gnark circuit implementing a linear hash.
-type externalMimcFactoryTestLinear struct {
-	Inp [32]frontend.Variable
+type externalPoseidon2FactoryTestLinear struct {
+	Inp [16]frontend.Variable
 }
 
 // Define implements the gnark frontend.Circuit interface.
 // It is a test circuit to compare the ExternalHasherFactory with the BasicHasherFactory.
-// It takes 16 inputs and compute the MiMC hash of the inputs using both factories.
+// It takes 16 inputs and compute the poseidon2 hash of the inputs using both factories.
 // The two results are then compared to ensure they are equal.
-func (circuit *externalMimcFactoryTestLinear) Define(api frontend.API) error {
+func (circuit *externalPoseidon2FactoryTestLinear) Define(api frontend.API) error {
 
 	var (
 		factory      = &ExternalHasherFactory{Api: api}
@@ -43,13 +43,13 @@ func (circuit *externalMimcFactoryTestLinear) Define(api frontend.API) error {
 	return nil
 }
 
-func TestMiMCFactories(t *testing.T) {
+func TestPoseidon2Factories(t *testing.T) {
 
 	var (
-		circuit            = &externalMimcFactoryTestLinear{}
+		circuit            = &externalPoseidon2FactoryTestLinear{}
 		builder, hshGetter = NewExternalHasherBuilder(true)
 		koalaField         = koalabear.Modulus()
-		assignment         = &externalMimcFactoryTestLinear{Inp: [32]frontend.Variable{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+		assignment         = &externalPoseidon2FactoryTestLinear{Inp: [16]frontend.Variable{10, 20, 30, 40, 50, 60, 70, 80, 90, 0, 0, 0, 0, 0, 0, 0}}
 	)
 
 	solver.RegisterHint(Poseidon2Hintfunc)
@@ -75,9 +75,10 @@ func TestMiMCFactories(t *testing.T) {
 	}
 
 	var (
-		sol      = sol_.(*cs.SparseR1CSSolution)
-		hshWires = hshGetter()
-		_        = func(csID, colID int) field.Element {
+		sol        = sol_.(*cs.SparseR1CSSolution)
+		hshWires   = hshGetter()
+		getFromLRO = func(csID, colID int) field.Element {
+
 			if colID == 0 {
 				return sol.L[csID]
 			}
@@ -90,18 +91,23 @@ func TestMiMCFactories(t *testing.T) {
 		}
 	)
 
-	for _, triplet := range hshWires {
+	var (
+		oldState [poseidon2_koalabear.BlockSize]field.Element
+		block    [poseidon2_koalabear.BlockSize]field.Element
+		newState [poseidon2_koalabear.BlockSize]field.Element
+	)
+	for i, triplet := range hshWires {
 
-		fmt.Printf("Triplet: %v\n", triplet)
-		var (
-		// oldState  = getFromLRO(triplet[0][0], triplet[0][1])
-		// block     = getFromLRO(triplet[1][0], triplet[1][1])
-		// newState  = getFromLRO(triplet[2][0], triplet[2][1])
-		// newState_ = vortex.CompressPoseidon2(oldState, block)
-		)
+		oldState[i%poseidon2_koalabear.BlockSize] = getFromLRO(triplet[0][0], triplet[0][1])
+		block[i%poseidon2_koalabear.BlockSize] = getFromLRO(triplet[1][0], triplet[1][1])
+		newState[i%poseidon2_koalabear.BlockSize] = getFromLRO(triplet[2][0], triplet[2][1])
 
-		// if newState != newState_ {
-		// 	t.Errorf("expected %v, got %v", newState, newState_)
-		// }
+		if i%poseidon2_koalabear.BlockSize == poseidon2_koalabear.BlockSize-1 {
+			newState_ := vortex.CompressPoseidon2(oldState, block)
+			if newState != newState_ {
+				t.Errorf("expected %v, got %v", newState, newState_)
+			}
+		}
+
 	}
 }

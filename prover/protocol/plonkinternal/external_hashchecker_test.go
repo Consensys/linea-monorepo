@@ -71,7 +71,7 @@ func TestPoseidon2Factories(t *testing.T) {
 				"PLONK",
 				0,
 				circuit, 1,
-				WithExternalHasher(8), //TODO@yao : check 32 or 8 or ???
+				WithExternalHasher(16), //TODO@yao : check 32 or 8 or ???
 			)
 
 			pa = ctx.GetPlonkProverAction()
