@@ -658,8 +658,6 @@ contract YieldManager is
 
   /**
    * @notice Helper function to withdraw from a yield provider and update state accordingly.
-   * @dev Any withdrawals from the YieldProvider will greedily decrement `pendingPermissionlessUnstake` on the assumption
-   *      that the requested withdrawl has arrived at a YieldProvider.
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount to withdraw.
    */
@@ -671,8 +669,6 @@ contract YieldManager is
     );
     $$.userFunds -= _amount;
     _getYieldManagerStorage().userFundsInYieldProvidersTotal -= _amount;
-    // Greedily reduce pendingPermissionlessUnstake with every withdrawal made from the yield provider.
-    _decrementPendingPermissionlessUnstake(_amount);
   }
 
   /**
@@ -955,7 +951,12 @@ contract YieldManager is
   }
 
   /// @notice Function to receive a basic ETH transfer.
-  receive() external payable {}
+  /// @dev Any withdrawals from the YieldProvider will greedily decrement `pendingPermissionlessUnstake` on the assumption
+  ///      that the requested withdrawal has arrived at a YieldProvider.
+  receive() external payable {
+    // Greedily reduce pendingPermissionlessUnstake with every donation or YieldProvider withdrawal.
+    _decrementPendingPermissionlessUnstake(msg.value);
+  }
 
   /**
    * @notice Register a new YieldProvider adaptor instance.
