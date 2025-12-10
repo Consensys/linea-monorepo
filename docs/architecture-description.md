@@ -953,7 +953,6 @@ sendMessage(
 )
 ```
 
-
 Optional eth can be set, this value is then mapped to the value field of the MessageSent event.
 
 Fee must have a minimum value of 0.0001 ETH to prevent DDOS attacks.
@@ -1005,7 +1004,20 @@ Any party (e.g. via an npm package we provide for the bridge/partners etc) does 
 ## Forced transactions
 A Smart contract on L1 allows any user to post transactions on Linea with the guarantee that it will be included if valid.
 For this, the user has to send the different fields of the transaction as call data of the transaction he is sending on
-Ethereum mainnet.
+Ethereum mainnet. The smart contract method is as follows:
+
+```
+forcedTransaction(
+  from String
+  to String
+  fee uint256
+  value uint256
+  nonce uint256
+  calldata bytes
+  signature bytes32
+)
+```
+
 The smart contract filters out invalid transactions. Transactions can be invalid if, for instance, the signature is invalid.
 RLP encoding of the tx is computed on the smart contract. A hash of it is stored on L1 chain to ensure censorship resistance.
 Then an event is emitted.
