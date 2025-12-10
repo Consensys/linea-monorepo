@@ -502,7 +502,7 @@ func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
 
 func padd(cols []ifaces.Column, size int, padding ifaces.Column) (res []ifaces.Column) {
 
-	for _ = range size - len(cols) {
+	for range size - len(cols) {
 		res = append(res, padding)
 	}
 	res = append(res, cols...)

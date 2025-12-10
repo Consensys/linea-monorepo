@@ -154,7 +154,7 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 	res.csAccountAddress(comp)
 	res.csAccountOld(comp)
 	res.csAccountNew(comp)
-	// res.csAccumulatorRoots(comp)
+	res.csAccumulatorRoots(comp)
 	// res.csAccumulatorStatementFlags(comp)
 	// res.csAccumulatorStatementHValKey(comp)
 	// res.csBatchNumber(comp)
@@ -1032,48 +1032,48 @@ func (ss *Module) csAccumulatorRoots(comp *wizard.CompiledIOP) {
 			),
 		)
 
-		comp.InsertLocal(
-			0,
-			ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_FIRST_ROW_%d", i),
-			sym.Mul(
-				ss.IsStorage,
-				sym.Add(
-					sym.Mul(
-						ss.Account.Initial.Exists,
-						sym.Sub(ss.Account.Initial.StorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
-					),
-					sym.Mul(
-						sym.Sub(1, ss.Account.Initial.Exists),
-						sym.Sub(emptyStorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
-					),
-				),
-			),
-		)
+		// comp.InsertLocal(
+		// 	0,
+		// 	ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_FIRST_ROW_%d", i),
+		// 	sym.Mul(
+		// 		ss.IsStorage,
+		// 		sym.Add(
+		// 			sym.Mul(
+		// 				ss.Account.Initial.Exists,
+		// 				sym.Sub(ss.Account.Initial.StorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
+		// 			),
+		// 			sym.Mul(
+		// 				sym.Sub(1, ss.Account.Initial.Exists),
+		// 				sym.Sub(emptyStorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
+		// 			),
+		// 		),
+		// 	),
+		// )
 
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("STATE_SUMMARY_ACCOUNT_ROOT_HASH_SEQUENTIALITY_MIDDLE_OF_SUBSEGMENT_%d", i),
-			sym.Mul(
-				ss.IsStorage,
-				column.Shift(ss.IsStorage, -1),
-				sym.Sub(
-					column.Shift(ss.Account.Final.StorageRoot[i], -1),
-					ss.AccumulatorStatement.StateDiff.InitialRoot[i],
-				),
-			),
-		)
+		// comp.InsertGlobal(
+		// 	0,
+		// 	ifaces.QueryIDf("STATE_SUMMARY_ACCOUNT_ROOT_HASH_SEQUENTIALITY_MIDDLE_OF_SUBSEGMENT_%d", i),
+		// 	sym.Mul(
+		// 		ss.IsStorage,
+		// 		column.Shift(ss.IsStorage, -1),
+		// 		sym.Sub(
+		// 			column.Shift(ss.Account.Final.StorageRoot[i], -1),
+		// 			ss.AccumulatorStatement.StateDiff.InitialRoot[i],
+		// 		),
+		// 	),
+		// )
 
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_MIDDLE_OF_SEGMENT_%d", i),
-			sym.Mul(
-				ss.IsStorage,
-				sym.Sub(
-					ss.Account.Final.StorageRoot[i],
-					ss.AccumulatorStatement.StateDiff.FinalRoot[i],
-				),
-			),
-		)
+		// comp.InsertGlobal(
+		// 	0,
+		// 	ifaces.QueryIDf("STATE_SUMMARY_STORAGE_ROOT_HASH_SEQUENTIALITY_MIDDLE_OF_SEGMENT_%d", i),
+		// 	sym.Mul(
+		// 		ss.IsStorage,
+		// 		sym.Sub(
+		// 			ss.Account.Final.StorageRoot[i],
+		// 			ss.AccumulatorStatement.StateDiff.FinalRoot[i],
+		// 		),
+		// 	),
+		// )
 	}
 }
 

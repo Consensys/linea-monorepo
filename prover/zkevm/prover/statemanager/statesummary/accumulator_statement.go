@@ -18,14 +18,17 @@ import (
 //
 // Returns a representation of storage root value in limbs with size defined
 // by common.LimbBytes.
-func initEmptyStorageRoot() (res [common.NbLimbU256]field.Element) {
+func initEmptyStorageRoot() (res [common.NbElemPerHash]field.Element) {
 	var emptyStorageRootBig big.Int
 	_, isErr := emptyStorageRootBig.SetString(emptyStorageRootString, 10)
 	if !isErr {
 		panic("empty storage root string is not correct")
 	}
 
-	emptyStorageRootByteLimbs := common.SplitBytes(emptyStorageRootBig.Bytes())
+	emptyStorageRootByteLimbs := common.SplitBytes(emptyStorageRootBig.Bytes(), field.Bytes)
+	if len(emptyStorageRootByteLimbs) != common.NbElemPerHash {
+		panic("empty storage root byte limbs length is not correct")
+	}
 	for i, limbByte := range emptyStorageRootByteLimbs {
 		res[i] = *new(field.Element).SetBytes(limbByte)
 	}
