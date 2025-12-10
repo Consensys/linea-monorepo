@@ -162,12 +162,12 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 	res.csInitialFinalDeployment(comp)
 	res.csIsActive(comp)
 	res.csIsBeginningOfAccountSegment(comp)
-	// res.csIsEndOfAccountSegment(comp)
-	// res.csIsStorage(comp)
-	// res.csStoragePeek(comp)
-	// res.csWorldStateRoot(comp)
-	// res.csIsDeletionSegment(comp)
-	// res.constrainExpectedHubCodeHash(comp)
+	res.csIsEndOfAccountSegment(comp)
+	res.csIsStorage(comp)
+	res.csStoragePeek(comp)
+	res.csWorldStateRoot(comp)
+	res.csIsDeletionSegment(comp)
+	res.constrainExpectedHubCodeHash(comp)
 	return res
 
 }
