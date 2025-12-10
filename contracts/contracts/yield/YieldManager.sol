@@ -88,8 +88,9 @@ contract YieldManager is
   }
 
   /// @dev Reverts if the withdrawal reserve is not in deficit.
-  modifier onlyWhenWithdrawalReserveInDeficit() {
-    if (!isWithdrawalReserveBelowMinimum()) revert WithdrawalReserveNotInDeficit();
+  /// @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
+  modifier onlyWhenWithdrawalReserveInDeficit(uint256 _amountToSubtract) {
+    if (!_isWithdrawalReserveBelowMinimum(_amountToSubtract)) revert WithdrawalReserveNotInDeficit();
     _;
   }
 
@@ -270,7 +271,16 @@ contract YieldManager is
    * @return bool True if the withdrawal reserve balance is below the effective minimum threshold.
    */
   function isWithdrawalReserveBelowMinimum() public view returns (bool) {
-    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve(0);
+    return _isWithdrawalReserveBelowMinimum(0);
+  }
+
+  /**
+   * @notice Internal function to check if the withdrawal reserve balance is below the effective minimum threshold.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
+   * @return bool True if the withdrawal reserve balance is below the effective minimum threshold.
+   */
+  function _isWithdrawalReserveBelowMinimum(uint256 _amountToSubtract) internal view returns (bool) {
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve(_amountToSubtract);
     return cachedL1MessageServiceBalance < minimumWithdrawalReserve;
   }
 
@@ -567,6 +577,7 @@ contract YieldManager is
    *         - PENDING_PERMISSIONLESS_UNSTAKE
    *
    * @dev PENDING_PERMISSIONLESS_UNSTAKE will be greedily reduced with i.) donations or ii.) future withdrawals from the YieldProvider
+   * @dev msg.value will not remain in the native yield system, so it must be subtracted from total system balance.
    * @param _yieldProvider          Yield provider address.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
    * @param _withdrawalParamsProof  Data containing merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
@@ -583,11 +594,9 @@ contract YieldManager is
     payable
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
+    onlyWhenWithdrawalReserveInDeficit(msg.value)
     returns (uint256 maxUnstakeAmount)
   {
-    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve(msg.value);
-    if (cachedL1MessageServiceBalance >= minimumWithdrawalReserve) revert WithdrawalReserveNotInDeficit();
-
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
@@ -755,7 +764,7 @@ contract YieldManager is
     external
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
-    onlyWhenWithdrawalReserveInDeficit
+    onlyWhenWithdrawalReserveInDeficit(0)
   {
     uint256 targetDeficit = _getTargetReserveDeficit(0);
 
