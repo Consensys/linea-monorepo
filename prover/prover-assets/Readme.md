@@ -149,5 +149,26 @@ make setup-sepolia
 make setup-mainnet
 ```
 
+## Reviewing the generated assets
+
+You may review the generated assets, by checking out, the verifier solidity contract.
+
+```
+# assumming you did not change the config files
+less ./prover-assets/6.1.3/mainnet/emulation/Verifier.sol
+```
+
+It will differ from the contract, we actually deploy because, we apply on top of it:
+
+* linting rules
+* renaming of the contract
+* change in the header solidity pragma
+
+But otherwise, you have the same as us. In the past, we have had non-determinism 
+issues with the setup: e.g. the generator may randomly order constraints in some
+places but without breaking the proving flow. It usually get resolved fast, but 
+if you fail regenerating the same setup it may be a good idea to retry to see
+if the verification key change. This can be tracked by looking into the 
+`Manifest.json` file of each asset.
 
 
