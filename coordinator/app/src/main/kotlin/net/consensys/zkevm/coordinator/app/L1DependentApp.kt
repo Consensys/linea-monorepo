@@ -155,9 +155,10 @@ class L1DependentApp(
       log = LogManager.getLogger("clients.l1.eth.fees-fetcher"),
     )
     val l1Web3jClient = createWeb3jHttpClient(httpService)
+    val l1EthApiClient = createEthApiClient(l1Web3jClient)
+
     FeeHistoryFetcherImpl(
-      web3jClient = l1Web3jClient,
-      web3jService = Web3jBlobExtended(httpService),
+      ethApiClient = l1EthApiClient,
       config = FeeHistoryFetcherImpl.Config(
         feeHistoryBlockCount = configs.l1Submission.fallbackGasPrice.feeHistoryBlockCount,
         feeHistoryRewardPercentile = configs.l1Submission.fallbackGasPrice.feeHistoryRewardPercentile.toDouble(),
@@ -576,17 +577,12 @@ class L1DependentApp(
         rpcUrl = configs.l2NetworkGasPricing.l2Endpoint.toString(),
         log = LogManager.getLogger("clients.l2.eth.l2pricing"),
       )
+      val l1EthApiClient = createEthApiClient(l1Web3jClient)
       L2NetworkGasPricingService(
         vertx = vertx,
         metricsFacade = metricsFacade,
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
-        l1Web3jClient = l1Web3jClient,
-        l1Web3jService = Web3jBlobExtended(
-          createWeb3jHttpService(
-            rpcUrl = configs.l2NetworkGasPricing.l1Endpoint.toString(),
-            log = LogManager.getLogger("clients.l1.eth.l2pricing"),
-          ),
-        ),
+        l1EthApiClient = l1EthApiClient,
         l2Web3jClient = ExtendedWeb3JImpl(l2Web3jClient),
         config = config,
       )
