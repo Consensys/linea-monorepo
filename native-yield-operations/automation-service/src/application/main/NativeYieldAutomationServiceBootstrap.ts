@@ -140,9 +140,6 @@ export class NativeYieldAutomationServiceBootstrap {
       config.dataSources.l1RpcUrl,
       getChain(config.dataSources.chainId),
       this.web3SignerClient,
-      3,
-      1000n,
-      300_000,
       estimateGasErrorReporter,
     );
     DashboardContractClient.initialize(

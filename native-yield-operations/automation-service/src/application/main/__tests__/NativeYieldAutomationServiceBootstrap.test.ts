@@ -337,14 +337,12 @@ describe("NativeYieldAutomationServiceBootstrap", () => {
 
     const { hoodi } = jest.requireMock("viem/chains") as { hoodi: { id: number } };
     expect(mockViemBlockchainClientAdapter).toHaveBeenCalledWith(
-      expect.anything(),
+      expect.anything(), // logger
       config.dataSources.l1RpcUrl,
       hoodi,
-      expect.anything(),
-      3,
-      1000n,
-      300_000,
-      expect.anything(),
+      expect.anything(), // contractSignerClient
+      expect.anything(), // errorReporter
+      // Remaining parameters use defaults, so they're not passed explicitly
     );
   });
 

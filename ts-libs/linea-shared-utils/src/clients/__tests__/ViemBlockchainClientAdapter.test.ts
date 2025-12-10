@@ -100,7 +100,7 @@ describe("ViemBlockchainClientAdapter", () => {
     mockedSendRawTransaction.mockResolvedValue("0xHASH");
     mockedWaitForTransactionReceipt.mockResolvedValue({ transactionHash: "0xHASH", status: "success" } as any);
 
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 3, 1000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 3, 1000n, 300_000);
   });
 
   it("logs request and response bodies in viem transport hooks", async () => {
@@ -169,7 +169,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("throws if sendTransactionsMaxRetries is less than 1", () => {
-    expect(() => new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 0, 1000n, 1_000)).toThrow(
+    expect(() => new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 0, 1000n, 1_000)).toThrow(
       "sendTransactionsMaxRetries must be at least 1",
     );
   });
@@ -506,11 +506,11 @@ describe("ViemBlockchainClientAdapter", () => {
         rpcUrl,
         chain,
         contractSignerClient,
+        errorReporter,
         3,
         1000n,
         300_000,
         1500n, // gasLimitBufferBps (default)
-        errorReporter,
       );
 
       publicClientMock.estimateGas.mockRejectedValue(estimateGasError);
@@ -567,11 +567,11 @@ describe("ViemBlockchainClientAdapter", () => {
         rpcUrl,
         chain,
         contractSignerClient,
+        errorReporter,
         3,
         1000n,
         300_000,
         1500n, // gasLimitBufferBps (default)
-        errorReporter,
       );
 
       publicClientMock.estimateGas.mockRejectedValue(estimateGasError);
@@ -616,6 +616,7 @@ describe("ViemBlockchainClientAdapter", () => {
         rpcUrl,
         chain,
         contractSignerClient,
+        undefined,
         3,
         1000n,
         300_000,
@@ -680,6 +681,7 @@ describe("ViemBlockchainClientAdapter", () => {
         rpcUrl,
         chain,
         contractSignerClient,
+        undefined,
         3,
         1000n,
         300_000,
@@ -901,7 +903,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on retryable errors and applies gas bump multipliers", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 3, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 3, 1_000n, 300_000);
 
     // Use a retryable RPC error (ResourceUnavailableRpcError -32002) instead of TimeoutError
     const retryableError = Object.assign(new BaseError("Resource unavailable"), { code: -32002 });
@@ -956,7 +958,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry when TimeoutError is thrown", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const timeoutError = new TimeoutError({
       body: { message: "timeout" },
@@ -1055,7 +1057,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("throws after exhausting retryable error retries", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 1_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 1_000);
 
     // Use a retryable RPC error (LimitExceededRpcError -32005)
     const retryableError = Object.assign(new BaseError("Limit exceeded"), { code: -32005 });
@@ -1086,7 +1088,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on retryable HTTP status codes", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     // Use a retryable HTTP status code (500 Internal Server Error)
     const httpError = Object.assign(new BaseError("HTTP error"), { status: 500 });
@@ -1120,7 +1122,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on non-retryable HTTP status codes", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     // Use a non-retryable HTTP status code (400 Bad Request)
     const httpError = Object.assign(new BaseError("HTTP error"), { status: 400 });
@@ -1150,7 +1152,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on WebSocketRequestError", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     // Use WebSocketRequestError name
     const wsError = Object.assign(new BaseError("WebSocket error"), { name: "WebSocketRequestError" });
@@ -1184,7 +1186,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on UnknownRpcError", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     // Use UnknownRpcError name
     const unknownRpcError = Object.assign(new BaseError("Unknown RPC error"), { name: "UnknownRpcError" });
@@ -1218,7 +1220,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on default case (error with no code/status/name)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     // Use a BaseError without code, status, or matching name properties
     const defaultError = new BaseError("Unknown error");
@@ -1252,7 +1254,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on unknown RPC error code (default case - line 346)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     // Use an RPC error code that's NOT in the explicit retry or non-retry lists
     // This should hit line 346 (default retry behavior)
@@ -1287,7 +1289,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on capability error code 5700 (lower boundary)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const capabilityError = Object.assign(new BaseError("Capability error"), { code: 5700 });
 
@@ -1315,7 +1317,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on capability error code 5760 (upper boundary)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const capabilityError = Object.assign(new BaseError("Capability error"), { code: 5760 });
 
@@ -1343,7 +1345,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on RPC error code 5699 (just below capability range)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const error = Object.assign(new BaseError("RPC error"), { code: 5699 });
 
@@ -1375,7 +1377,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on RPC error code 5761 (just above capability range)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const error = Object.assign(new BaseError("RPC error"), { code: 5761 });
 
@@ -1407,7 +1409,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on HTTP status code 408 (Request Timeout)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const httpError = Object.assign(new BaseError("HTTP error"), { status: 408 });
 
@@ -1439,7 +1441,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on HTTP status code 429 (Too Many Requests)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const httpError = Object.assign(new BaseError("HTTP error"), { status: 429 });
 
@@ -1471,7 +1473,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on HTTP status code 502 (Bad Gateway)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const httpError = Object.assign(new BaseError("HTTP error"), { status: 502 });
 
@@ -1503,7 +1505,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on HTTP status code 503 (Service Unavailable)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const httpError = Object.assign(new BaseError("HTTP error"), { status: 503 });
 
@@ -1535,7 +1537,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("retries on HTTP status code 504 (Gateway Timeout)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const httpError = Object.assign(new BaseError("HTTP error"), { status: 504 });
 
@@ -1567,7 +1569,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on ParseRpcError (-32700)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const parseError = Object.assign(new BaseError("Parse error"), { code: -32700 });
 
@@ -1595,7 +1597,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on InvalidRequestRpcError (-32600)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const invalidRequestError = Object.assign(new BaseError("Invalid request"), { code: -32600 });
 
@@ -1623,7 +1625,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on MethodNotFoundRpcError (-32601)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const methodNotFoundError = Object.assign(new BaseError("Method not found"), { code: -32601 });
 
@@ -1651,7 +1653,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on InvalidParamsRpcError (-32602)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const invalidParamsError = Object.assign(new BaseError("Invalid params"), { code: -32602 });
 
@@ -1679,7 +1681,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on InvalidInputRpcError (-32000)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const invalidInputError = Object.assign(new BaseError("Invalid input"), { code: -32000 });
 
@@ -1707,7 +1709,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on ResourceNotFoundRpcError (-32001)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const resourceNotFoundError = Object.assign(new BaseError("Resource not found"), { code: -32001 });
 
@@ -1735,7 +1737,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on TransactionRejectedRpcError (-32003)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const transactionRejectedError = Object.assign(new BaseError("Transaction rejected"), { code: -32003 });
 
@@ -1763,7 +1765,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on MethodNotSupportedRpcError (-32004)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const methodNotSupportedError = Object.assign(new BaseError("Method not supported"), { code: -32004 });
 
@@ -1791,7 +1793,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on JsonRpcVersionUnsupportedError (-32006)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const jsonRpcVersionError = Object.assign(new BaseError("JSON-RPC version unsupported"), { code: -32006 });
 
@@ -1819,7 +1821,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on UserRejectedRequestError (4001)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const userRejectedError = Object.assign(new BaseError("User rejected request"), { code: 4001 });
 
@@ -1847,7 +1849,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on UserRejectedRequestError CAIP-25 (5000)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const userRejectedError = Object.assign(new BaseError("User rejected request"), { code: 5000 });
 
@@ -1875,7 +1877,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on UnauthorizedProviderError (4100)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const unauthorizedError = Object.assign(new BaseError("Unauthorized provider"), { code: 4100 });
 
@@ -1903,7 +1905,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on UnsupportedProviderMethodError (4200)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const unsupportedMethodError = Object.assign(new BaseError("Unsupported provider method"), { code: 4200 });
 
@@ -1931,7 +1933,7 @@ describe("ViemBlockchainClientAdapter", () => {
   });
 
   it("does not retry on SwitchChainError (4902)", async () => {
-    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, undefined, 2, 1_000n, 300_000);
 
     const switchChainError = Object.assign(new BaseError("Switch chain error"), { code: 4902 });
 
