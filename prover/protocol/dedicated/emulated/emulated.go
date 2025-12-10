@@ -45,7 +45,7 @@ type EmulatedMultiplicationModule struct {
 	Quotient Limbs
 	Carry    Limbs
 
-	Challenge       coin.Info
+	Challenge       *coin.Info
 	ChallengePowers []ifaces.Column
 
 	nbBitsPerLimb int
@@ -269,7 +269,7 @@ func EmulatedMultiplication(comp *wizard.CompiledIOP, name string, left, right, 
 		Result:          result,
 		Quotient:        quotient,
 		Carry:           carry,
-		Challenge:       challenge,
+		Challenge:       &challenge,
 		ChallengePowers: challengePowers,
 		nbBitsPerLimb:   nbBitsPerLimb,
 		round:           round,
@@ -295,29 +295,29 @@ func EmulatedMultiplication(comp *wizard.CompiledIOP, name string, left, right, 
 
 	// define the global constraints
 	pa.csMultiplication(comp)
-	pa.csChallengePowers(comp)
+	csChallengePowers(comp, pa.Challenge, pa.ChallengePowers, pa.round, pa.name)
 
 	return pa
 }
 
-func (cs *EmulatedMultiplicationModule) csChallengePowers(comp *wizard.CompiledIOP) {
-	ch := cs.Challenge.AsVariable()
+func csChallengePowers(comp *wizard.CompiledIOP, chinfo *coin.Info, challengePowers []ifaces.Column, round int, name string) {
+	ch := chinfo.AsVariable()
 	comp.InsertGlobal(
-		cs.round,
-		ifaces.QueryIDf("%s_EMUL_CHALLENGE_POWER_0", cs.name),
+		round,
+		ifaces.QueryIDf("%s_EMUL_CHALLENGE_POWER_0", name),
 		symbolic.Sub(
-			cs.ChallengePowers[0],
+			challengePowers[0],
 			1,
 		),
 	)
-	for i := 1; i < len(cs.ChallengePowers); i++ {
+	for i := 1; i < len(challengePowers); i++ {
 		comp.InsertGlobal(
-			cs.round+1,
-			ifaces.QueryIDf("%s_EMUL_CHALLENGE_POWER_CONSISTENCY_%d", cs.name, i),
+			round+1,
+			ifaces.QueryIDf("%s_EMUL_CHALLENGE_POWER_CONSISTENCY_%d", name, i),
 			symbolic.Sub(
-				ifaces.ColumnAsVariable(cs.ChallengePowers[i]),
+				ifaces.ColumnAsVariable(challengePowers[i]),
 				symbolic.Mul(
-					ifaces.ColumnAsVariable(cs.ChallengePowers[i-1]),
+					ifaces.ColumnAsVariable(challengePowers[i-1]),
 					ch,
 				),
 			),
@@ -326,15 +326,15 @@ func (cs *EmulatedMultiplicationModule) csChallengePowers(comp *wizard.CompiledI
 }
 
 func (cs *EmulatedMultiplicationModule) csMultiplication(comp *wizard.CompiledIOP) {
-	leftEval := cs.csPolyEval(cs.TermL)
-	rightEval := cs.csPolyEval(cs.TermR)
+	leftEval := csPolyEval(cs.TermL, cs.ChallengePowers)
+	rightEval := csPolyEval(cs.TermR, cs.ChallengePowers)
 
-	modulusEval := cs.csPolyEval(cs.Modulus)
-	quotientEval := cs.csPolyEval(cs.Quotient)
+	modulusEval := csPolyEval(cs.Modulus, cs.ChallengePowers)
+	quotientEval := csPolyEval(cs.Quotient, cs.ChallengePowers)
 
-	resultEval := cs.csPolyEval(cs.Result)
+	resultEval := csPolyEval(cs.Result, cs.ChallengePowers)
 
-	carryEval := cs.csPolyEval(cs.Carry)
+	carryEval := csPolyEval(cs.Carry, cs.ChallengePowers)
 	coef := big.NewInt(0).Lsh(big.NewInt(1), uint(cs.nbBitsPerLimb))
 	carryCoef := symbolic.Sub(
 		symbolic.NewConstant(coef),
@@ -358,7 +358,7 @@ func (cs *EmulatedMultiplicationModule) csMultiplication(comp *wizard.CompiledIO
 	)
 }
 
-func (cs *EmulatedMultiplicationModule) csPolyEval(val Limbs) *symbolic.Expression {
+func csPolyEval(val Limbs, challengePowers []ifaces.Column) *symbolic.Expression {
 	// TODO: should store in column?
 	res := symbolic.NewConstant(0)
 	for i := range val.Columns {
@@ -366,7 +366,7 @@ func (cs *EmulatedMultiplicationModule) csPolyEval(val Limbs) *symbolic.Expressi
 			res,
 			symbolic.Mul(
 				val.Columns[i],
-				cs.ChallengePowers[i],
+				challengePowers[i],
 			),
 		)
 	}
