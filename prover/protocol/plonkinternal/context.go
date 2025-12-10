@@ -115,7 +115,7 @@ type CompilationCtx struct {
 		// PosL, PosR and PosO are precomputing column storing the
 		// positions of the L, R and O columns that are tagged for
 		// each external hash constraints.
-		PosOldState, PosBlock, PosNewState [poseidon2_koalabear.BlockSize]ifaces.Column
+		PosOldState, PosBlock, PosNewState ifaces.Column
 		// OldStates, Blocks, NewStates are the column affected by the
 		// Poseidon2 query.
 		OldStates, Blocks, NewStates [][poseidon2_koalabear.BlockSize]ifaces.Column
@@ -433,9 +433,9 @@ func (ctx CompilationCtx) GenericPlonkProverAction() GenericPlonkProverAction {
 		},
 		ExternalHasherOption: struct {
 			Enabled     bool
-			PosOldState [poseidon2_koalabear.BlockSize]ifaces.Column
-			PosBlock    [poseidon2_koalabear.BlockSize]ifaces.Column
-			PosNewState [poseidon2_koalabear.BlockSize]ifaces.Column
+			PosOldState ifaces.Column
+			PosBlock    ifaces.Column
+			PosNewState ifaces.Column
 			OldStates   [][poseidon2_koalabear.BlockSize]ifaces.Column
 			Blocks      [][poseidon2_koalabear.BlockSize]ifaces.Column
 			NewStates   [][poseidon2_koalabear.BlockSize]ifaces.Column
@@ -484,7 +484,7 @@ type GenericPlonkProverAction struct {
 	}
 	ExternalHasherOption struct {
 		Enabled                            bool
-		PosOldState, PosBlock, PosNewState [poseidon2_koalabear.BlockSize]ifaces.Column
+		PosOldState, PosBlock, PosNewState ifaces.Column
 		OldStates, Blocks, NewStates       [][poseidon2_koalabear.BlockSize]ifaces.Column
 	}
 	FixedNbRows int

@@ -1,6 +1,7 @@
 package hasher_factory
 
 import (
+	"fmt"
 	"testing"
 
 	cs "github.com/consensys/gnark/constraint/koalabear"
@@ -86,11 +87,9 @@ func TestPoseidon2Factories(t *testing.T) {
 			if colID == 1 {
 				return sol.R[csID]
 			}
-
 			return sol.O[csID]
 		}
 	)
-
 	var (
 		oldState [poseidon2_koalabear.BlockSize]field.Element
 		block    [poseidon2_koalabear.BlockSize]field.Element
@@ -101,6 +100,9 @@ func TestPoseidon2Factories(t *testing.T) {
 		oldState[i%poseidon2_koalabear.BlockSize] = getFromLRO(triplet[0][0], triplet[0][1])
 		block[i%poseidon2_koalabear.BlockSize] = getFromLRO(triplet[1][0], triplet[1][1])
 		newState[i%poseidon2_koalabear.BlockSize] = getFromLRO(triplet[2][0], triplet[2][1])
+
+		fmt.Printf("csID=%v colID=%v\n", triplet[2][0], triplet[2][1])
+		fmt.Printf("sol.O[csID]=%v\n", newState[i%poseidon2_koalabear.BlockSize])
 
 		if i%poseidon2_koalabear.BlockSize == poseidon2_koalabear.BlockSize-1 {
 			newState_ := vortex.CompressPoseidon2(oldState, block)

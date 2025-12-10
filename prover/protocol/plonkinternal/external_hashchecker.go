@@ -37,11 +37,9 @@ func (ctx *CompilationCtx) addHashConstraint() {
 		posO = dedicated.CounterPrecomputed(ctx.comp, 2*numRowLRO, 3*numRowLRO)
 	)
 
-	for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
-		eho.PosOldState[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionOS_%v", j), posOsSv)
-		eho.PosBlock[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionBL_%v", j), posBlSv)
-		eho.PosNewState[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionNS_%v", j), posNsSv)
-	}
+	eho.PosOldState = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionOS"), posOsSv)
+	eho.PosBlock = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionBL"), posBlSv)
+	eho.PosNewState = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionNS"), posNsSv)
 	eho.OldStates = make([][poseidon2_koalabear.BlockSize]ifaces.Column, ctx.MaxNbInstances)
 	eho.Blocks = make([][poseidon2_koalabear.BlockSize]ifaces.Column, ctx.MaxNbInstances)
 	eho.NewStates = make([][poseidon2_koalabear.BlockSize]ifaces.Column, ctx.MaxNbInstances)
@@ -68,9 +66,9 @@ func (ctx *CompilationCtx) addHashConstraint() {
 		)
 
 		for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
-			eho.OldStates[i][j] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckOldState_%v_%v", i, j), size, true)
-			eho.Blocks[i][j] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckBlock_%v_%v", i, j), size, true)
-			eho.NewStates[i][j] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckNewState_%v_%v", i, j), size, true)
+			eho.OldStates[i][j] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckOldState_%v_%v", i, j), size/poseidon2_koalabear.BlockSize, true)
+			eho.Blocks[i][j] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckBlock_%v_%v", i, j), size/poseidon2_koalabear.BlockSize, true)
+			eho.NewStates[i][j] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckNewState_%v_%v", i, j), size/poseidon2_koalabear.BlockSize, true)
 
 			// Those are lookups checking that the LRO columns are consistent with
 			// the hash claims.
@@ -82,7 +80,7 @@ func (ctx *CompilationCtx) addHashConstraint() {
 				lookupTables,
 				// included
 				[]ifaces.Column{
-					eho.PosOldState[j], eho.OldStates[i][j],
+					eho.PosOldState, eho.OldStates[i][j],
 				},
 				// no filters
 				nil, nil,
@@ -95,7 +93,7 @@ func (ctx *CompilationCtx) addHashConstraint() {
 				lookupTables,
 				// included
 				[]ifaces.Column{
-					eho.PosBlock[j], eho.Blocks[i][j],
+					eho.PosBlock, eho.Blocks[i][j],
 				},
 				// no filters
 				nil, nil,
@@ -108,7 +106,7 @@ func (ctx *CompilationCtx) addHashConstraint() {
 				lookupTables,
 				// included
 				[]ifaces.Column{
-					eho.PosNewState[j], eho.NewStates[i][j],
+					eho.PosNewState, eho.NewStates[i][j],
 				},
 				// no filters
 				nil, nil,
@@ -131,18 +129,13 @@ func (ctx *GenericPlonkProverAction) assignHashColumns(run *wizard.ProverRuntime
 
 	var (
 		eho         = &ctx.ExternalHasherOption
-		posOs       = [poseidon2_koalabear.BlockSize][]field.Element{}
-		posBl       = [poseidon2_koalabear.BlockSize][]field.Element{}
-		posNs       = [poseidon2_koalabear.BlockSize][]field.Element{}
+		posOs       = eho.PosOldState.GetColAssignment(run).IntoRegVecSaveAlloc()
+		posBl       = eho.PosBlock.GetColAssignment(run).IntoRegVecSaveAlloc()
+		posNs       = eho.PosNewState.GetColAssignment(run).IntoRegVecSaveAlloc()
 		sizeHashing = len(posOs)
 	)
 
-	for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
-		posOs[j] = eho.PosOldState[j].GetColAssignment(run).IntoRegVecSaveAlloc()
-		posBl[j] = eho.PosBlock[j].GetColAssignment(run).IntoRegVecSaveAlloc()
-		posNs[j] = eho.PosNewState[j].GetColAssignment(run).IntoRegVecSaveAlloc()
-	}
-
+	fmt.Printf("Assigning hash checked columns, sizeHashing=%v\n", sizeHashing)
 	for i := 0; i < ctx.MaxNbInstances; i++ {
 
 		var (
@@ -152,44 +145,47 @@ func (ctx *GenericPlonkProverAction) assignHashColumns(run *wizard.ProverRuntime
 				ctx.Columns.O[i].GetColAssignment(run),
 			}
 			sizeLRO  = ctx.Columns.L[i].Size()
-			oldState = [poseidon2_koalabear.BlockSize][]field.Element{}
-			block    = [poseidon2_koalabear.BlockSize][]field.Element{}
-			newState = [poseidon2_koalabear.BlockSize][]field.Element{}
+			oldState = make([]field.Element, sizeHashing)
+			block    = make([]field.Element, sizeHashing)
+			newState = make([]field.Element, sizeHashing)
 		)
 
+		for j := range oldState {
+
+			var (
+				osID = int(posOs[j].Uint64())
+				blID = int(posBl[j].Uint64())
+				nsID = int(posNs[j].Uint64())
+				os   = src[osID/sizeLRO].Get(osID % sizeLRO)
+				bl   = src[blID/sizeLRO].Get(blID % sizeLRO)
+				ns   = src[nsID/sizeLRO].Get(nsID % sizeLRO)
+			)
+			oldState[j] = os
+			block[j] = bl
+			newState[j] = ns
+		}
+
+		var vecOldState, vecBlock, vecNewState [poseidon2_koalabear.BlockSize][]field.Element
+
 		for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
-			oldState[j] = make([]field.Element, sizeHashing)
-			block[j] = make([]field.Element, sizeHashing)
-			newState[j] = make([]field.Element, sizeHashing)
+			vecOldState[j] = make([]field.Element, sizeHashing/poseidon2_koalabear.BlockSize)
+			vecBlock[j] = make([]field.Element, sizeHashing/poseidon2_koalabear.BlockSize)
+			vecNewState[j] = make([]field.Element, sizeHashing/poseidon2_koalabear.BlockSize)
 		}
-		// fmt.Printf("src[%v]=%v\n", 0, src[0])
-		for k := 0; k < poseidon2_koalabear.BlockSize; k++ {
-			for j := range oldState {
-
-				var (
-					osID = int(posOs[k][j].Uint64())
-					blID = int(posBl[k][j].Uint64())
-					nsID = int(posNs[k][j].Uint64())
-					os   = src[osID/sizeLRO].Get(osID%sizeLRO + k*poseidon2_koalabear.BlockSize)
-					bl   = src[blID/sizeLRO].Get(blID%sizeLRO + k*poseidon2_koalabear.BlockSize)
-					ns   = src[nsID/sizeLRO].Get(nsID%sizeLRO + k*poseidon2_koalabear.BlockSize)
-				)
-
-				fmt.Printf("sizeLRO=%v, osID=%v os=%v blID=%v bl=%v nsID=%v ns=%v\n", sizeLRO, osID, os.String(), blID, bl.String(), nsID, ns.String())
-				oldState[k][j] = os
-				block[k][j] = bl
-				newState[k][j] = ns
-			}
+		for k := range oldState {
+			vecOldState[k%poseidon2_koalabear.BlockSize][k/poseidon2_koalabear.BlockSize] = oldState[k]
+			vecBlock[k%poseidon2_koalabear.BlockSize][k/poseidon2_koalabear.BlockSize] = block[k]
+			vecNewState[k%poseidon2_koalabear.BlockSize][k/poseidon2_koalabear.BlockSize] = newState[k]
 		}
+
 		for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
-			fmt.Printf("oldState[%v]=%v\n", j, vector.Prettify(oldState[j]))
-			fmt.Printf("block[%v]=%v\n", j, vector.Prettify(block[j]))
-			fmt.Printf("newState[%v]=%v\n", j, vector.Prettify(newState[j]))
 
-			run.AssignColumn(eho.OldStates[i][j].GetColID(), smartvectors.NewRegular(oldState[j]))
-			run.AssignColumn(eho.Blocks[i][j].GetColID(), smartvectors.NewRegular(block[j]))
-			run.AssignColumn(eho.NewStates[i][j].GetColID(), smartvectors.NewRegular(newState[j]))
+			fmt.Printf("Assigned Hash Old State part %v: %v\n", j, vecOldState[j])
+			run.AssignColumn(eho.OldStates[i][j].GetColID(), smartvectors.NewRegular(vecOldState[j]))
+			run.AssignColumn(eho.Blocks[i][j].GetColID(), smartvectors.NewRegular(vecBlock[j]))
+			run.AssignColumn(eho.NewStates[i][j].GetColID(), smartvectors.NewRegular(vecNewState[j]))
 		}
+
 	}
 }
 
