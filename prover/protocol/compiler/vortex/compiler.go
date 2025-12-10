@@ -391,7 +391,6 @@ func (ctx *Ctx) compileRound(round int) {
 // The function assumes that fillUpTo is "correctly", i.e. the function will
 // brainlessly add the asked number of shadow rows.
 func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
-
 	// Sanity-check for double insertions
 	if ctx.CommitmentsByRounds.LenOf(round) > 0 {
 		panic("inserted twice")

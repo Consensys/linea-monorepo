@@ -78,6 +78,7 @@ func TestAntichamber(t *testing.T) {
 					RlpTxn:       rlpTxn,
 					PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)},
 					Settings:     limits,
+					WithCircuit:  true,
 				},
 			)
 		},

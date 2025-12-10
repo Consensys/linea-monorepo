@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // VerifierAction implements [wizard.VerifierAction]. It is tasked with
@@ -216,4 +217,17 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 	}
 
 	return evaluationMap
+}
+
+func getPositionOfPolyInQueryYs(q query.UnivariateEval, poly ifaces.Column) int {
+	// TODO @gbotrel this appears on the traces quite a lot -- lot of string comparisons
+	toFind := poly.GetColID()
+	for i, p := range q.Pols {
+		if p.GetColID() == toFind {
+			return i
+		}
+	}
+
+	utils.Panic("not found, poly=%v in query=%v", toFind, q.Name())
+	return 0
 }

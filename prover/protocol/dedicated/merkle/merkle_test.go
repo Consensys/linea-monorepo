@@ -57,7 +57,7 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 		}
 		leaves[i] = x
 	}
-	tree := smt_koalabear.BuildComplete(leaves)
+	tree := smt_koalabear.NewTree(leaves)
 	root := tree.Root
 	if !isReuse {
 

@@ -3,8 +3,8 @@ package generic
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 )
 
 var (

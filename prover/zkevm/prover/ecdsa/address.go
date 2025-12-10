@@ -88,7 +88,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	// Create columns for every 16 bit limb of addressUntrimmed
 	addressUntrimmed := [common.NbLimbU256]ifaces.Column{}
 	for i := 0; i < common.NbLimbU256; i++ {
-		addressUntrimmed[i] = createCol(fmt.Sprintf("ADRESS_UNTRIMMED_%d", i))
+		addressUntrimmed[i] = createCol(fmt.Sprintf("ADDRESS_UNTRIMMED_%d", i))
 	}
 
 	// declare the native columns
@@ -97,18 +97,18 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		AddressUntrimmed:     addressUntrimmed,
 		IsAddress:            createCol("IS_ADDRESS"),
 		Col16:                verifiercol.NewConstantCol(field.NewElement(16), size, "ecdsa-col16"),
-		IsAddressHiEcRec:     comp.InsertCommit(0, ifaces.ColIDf("ISADRESS_HI_ECREC"), ecRecSize),
-		IsAddressFromEcRec:   createCol("ISADRESS_FROM_ECREC"),
-		IsAddressFromTxnData: createCol("ISADRESS_FROM_TXNDATA"),
+		IsAddressHiEcRec:     comp.InsertCommit(0, ifaces.ColIDf("ISADDRESS_HI_ECREC"), ecRecSize, true),
+		IsAddressFromEcRec:   createCol("ISADDRESS_FROM_ECREC"),
+		IsAddressFromTxnData: createCol("ISADDRESS_FROM_TXNDATA"),
 		HashNum:              createCol("HASH_NUM"),
 	}
 
-	addr.IsAddressLoEcRec = dedicated.ManuallyShift(comp, addr.IsAddressHiEcRec, -1, "ISADRESS_LO_ECREC")
+	addr.IsAddressLoEcRec = dedicated.ManuallyShift(comp, addr.IsAddressHiEcRec, -1, "ISADDRESS_LO_ECREC")
 
 	td.csTxnData(comp)
 
 	// addresses are fetched from two arithmetization modules (ecRecover and txn-data)
-	// IsAddress = IsAdressFromEcRec + IsAdressFromTxnData
+	// IsAddress = IsAddressFromEcRec + IsAddressFromTxnData
 	comp.InsertGlobal(0, ifaces.QueryIDf("Format_IsAddress"),
 		sym.Sub(addr.IsAddress, sym.Add(addr.IsAddressFromEcRec, addr.IsAddressFromTxnData)))
 
@@ -221,8 +221,10 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 	}
 
 	pkModule.Info = generic.GenInfoModule{
-		Hash:   addr.Address[:],
-		IsHash: addr.IsAddress,
+		HashHi:   addr.AddressUntrimmed[:common.NbLimbU128],
+		HashLo:   addr.AddressUntrimmed[common.NbLimbU128:],
+		IsHashHi: addr.IsAddress,
+		IsHashLo: addr.IsAddress,
 	}
 	return pkModule
 }
