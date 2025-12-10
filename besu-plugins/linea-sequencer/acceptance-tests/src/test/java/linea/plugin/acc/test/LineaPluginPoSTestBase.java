@@ -204,14 +204,11 @@ public abstract class LineaPluginPoSTestBase extends LineaPluginTestBase {
 
   protected void buildNewBlockAndWait() throws Exception {
     long initialBlockNumber = getLatestBlockNumber();
+    buildNewBlock();
     await()
         .atMost(3 * blockTimeSeconds, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
-        .untilAsserted(
-            () -> {
-              buildNewBlock();
-              assertThat(getLatestBlockNumber()).isGreaterThan(initialBlockNumber);
-            });
+        .untilAsserted(() -> assertThat(getLatestBlockNumber()).isGreaterThan(initialBlockNumber));
   }
 
   /**
