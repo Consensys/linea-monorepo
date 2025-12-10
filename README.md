@@ -35,7 +35,7 @@ For developers looking to build services locally (such as, the coordinator), see
 
 Linea's stack is made up of multiple repositories, these include:
 
-- [linea-monorepo](https://github.com/Consensys/linea-monorepo): The main repository for the Linea stack & network. 
+- [linea-monorepo](https://github.com/Consensys/linea-monorepo): The main repository for the Linea stack & network
 > Also maintains a set of Linea-Besu plugins for the sequencer and RPC nodes.
 - [linea-besu](https://github.com/hyperledger/besu/): Besu execution client
 - [linea-tracer](https://github.com/Consensys/linea-tracer): Linea-Besu plugin which produces the traces that the constraint system applies and that serve as inputs to the prover
