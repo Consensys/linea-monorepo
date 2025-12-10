@@ -141,7 +141,7 @@ func main() {
 		log.Fatalf("Failed to format generated code: %v", err)
 	}
 
-	if err := os.WriteFile(outputPath, formatted, 0644); err != nil {
+	if err := os.WriteFile(outputPath, formatted, 0600); err != nil {
 		log.Fatal(err)
 	}
 
