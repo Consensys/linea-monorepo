@@ -31,30 +31,44 @@ func RandLinCombColSymbolic(x coin.Info, hs []ifaces.Column) *symbolic.Expressio
 // coin value. The function returns the resulting linear combination as a
 // [smartvectors.SmartVector].
 func RandLinCombColAssignment(run *wizard.ProverRuntime, coinVal fext.Element, hs []ifaces.Column) smartvectors.SmartVector {
-	if len(hs) == 0 {
+	n := len(hs)
+	if n == 0 {
 		panic("cannot compute random linear combination of zero columns")
 	}
 
-	x := fext.One()
+	size := hs[0].Size()
+	vWitness := make(vectorext.Vector, size)
 
-	vColumn := make(vectorext.Vector, hs[0].Size())
-	vWitness := make(vectorext.Vector, hs[0].Size())
+	// Use Horner's method to compute the linear combination:
+	// result = (...((col[n-1]*x + col[n-2])*x + ...)*x + col[0]
+	// This avoids computing powers of x explicitly and reduces memory writes
+	// by accumulating in-place.
 
-	for tableCol := range hs {
-		sv := hs[tableCol].GetColAssignment(run)
-		_vColumn := vColumn
-		// if sv is already a regular vector, we can avoid the copy
+	// Initialize accumulator with the highest power term (hs[n-1])
+	lastCol := hs[n-1].GetColAssignment(run)
+	if r, ok := lastCol.(*smartvectors.RegularExt); ok {
+		copy(vWitness, *r)
+	} else {
+		lastCol.WriteInSliceExt(vWitness)
+	}
+
+	var vColumn vectorext.Vector // Lazy allocation for scratch buffer
+
+	for i := n - 2; i >= 0; i-- {
+		vWitness.ScalarMul(vWitness, &coinVal)
+
+		sv := hs[i].GetColAssignment(run)
+		var src vectorext.Vector
 		if r, ok := sv.(*smartvectors.RegularExt); ok {
-			_vColumn = vectorext.Vector(*r)
+			src = vectorext.Vector(*r)
 		} else {
-			sv.WriteInSliceExt(_vColumn)
+			if vColumn == nil {
+				vColumn = make(vectorext.Vector, size)
+			}
+			sv.WriteInSliceExt(vColumn)
+			src = vColumn
 		}
-		// vColumn = sv * x
-		// vWitness += vColumn
-		// x *= coinVal
-		vColumn.ScalarMul(_vColumn, &x)
-		vWitness.Add(vWitness, _vColumn)
-		x.Mul(&x, &coinVal)
+		vWitness.Add(vWitness, src)
 	}
 	return smartvectors.NewRegularExt(vWitness)
 }

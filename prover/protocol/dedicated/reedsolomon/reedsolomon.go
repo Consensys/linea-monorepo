@@ -37,7 +37,7 @@ func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 	if a.H.IsBase() {
 		coeffs := make([]field.Element, witness.Len())
 		witness.WriteInSlice(coeffs)
-		domain.FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(1))
+		domain.FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(2))
 		utils.BitReverse(coeffs)
 		// Take only the first `CodeDim` coefficients
 		assi.AssignColumn(a.Coeff.GetColID(), smartvectors.NewRegular(coeffs[:a.CodeDim]))
@@ -46,7 +46,7 @@ func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 
 	coeffs := make([]fext.Element, witness.Len())
 	witness.WriteInSliceExt(coeffs)
-	domain.FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
+	domain.FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(2))
 	utils.BitReverse(coeffs)
 	// Take only the first `CodeDim` coefficients
 	assi.AssignColumn(a.Coeff.GetColID(), smartvectors.NewRegularExt(coeffs[:a.CodeDim]))

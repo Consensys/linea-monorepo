@@ -167,9 +167,8 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 	for i := range ctx.CompiledQueries {
 
 		var (
-			q         = ctx.CompiledQueries[i]
-			os, b, ns [blockSize]smartvectors.SmartVector
-			sel       smartvectors.SmartVector
+			q   = ctx.CompiledQueries[i]
+			sel smartvectors.SmartVector
 		)
 
 		if q.Selector != nil {
@@ -177,40 +176,40 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 		}
 
 		for block := 0; block < blockSize; block++ {
-			os[block] = q.OldState[block].GetColAssignment(run)
-			b[block] = q.Blocks[block].GetColAssignment(run)
-			ns[block] = q.NewState[block].GetColAssignment(run)
+			os := q.OldState[block].GetColAssignment(run)
+			b := q.Blocks[block].GetColAssignment(run)
+			ns := q.NewState[block].GetColAssignment(run)
 
-			start, stop := smartvectors.CoWindowRange(os[block], b[block], ns[block], sel)
+			start, stop := smartvectors.CoWindowRange(os, b, ns, sel)
 
-			// tryPushToStacked looks at the selector at position "j" and appends
+			// pushToStacked looks at the selector at position "j" and appends
 			// the corresponding triplet (old state, block, new state) to the "stacked"
 			// columns if the selector is not nil and is not zero at this position.
-			tryPushToStacked := func(j int) {
+			pushToStacked := func(j int) {
 				if sel != nil && sel.GetPtr(j).IsZero() {
 					return
 				}
 
-				stackedOldStates[block] = append(stackedOldStates[block], os[block].Get(j))
-				stackedBlocks[block] = append(stackedBlocks[block], b[block].Get(j))
-				stackedNewStates[block] = append(stackedNewStates[block], ns[block].Get(j))
+				stackedOldStates[block] = append(stackedOldStates[block], os.Get(j))
+				stackedBlocks[block] = append(stackedBlocks[block], b.Get(j))
+				stackedNewStates[block] = append(stackedNewStates[block], ns.Get(j))
 			}
 
 			for j := start; j < stop; j++ {
-				tryPushToStacked(j)
+				pushToStacked(j)
 			}
 
 			// The padding is done in the left, the first value is understood
 			// by the query as a padding row.
 			if start > 0 {
-				tryPushToStacked(0)
+				pushToStacked(0)
 				continue
 			}
 
 			// The padding is done on the right, the last value is understood
 			// by the query as a padding row.
-			if stop < os[block].Len() {
-				tryPushToStacked(os[block].Len() - 1)
+			if stop < os.Len() {
+				pushToStacked(os.Len() - 1)
 				continue
 			}
 		}

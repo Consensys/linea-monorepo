@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -288,4 +289,172 @@ func ExpressionContainingAllCases() *Expression {
 	expr = expr.Add(c.Neg())
 
 	return expr
+}
+
+func TestEvaluatePanics(t *testing.T) {
+	x := NewDummyVar("x")
+	expr := x.Add(x)
+	b := expr.Board()
+
+	t.Run("no input", func(t *testing.T) {
+		require.Panics(t, func() {
+			b.Evaluate([]sv.SmartVector{})
+		})
+	})
+
+	t.Run("mismatch size", func(t *testing.T) {
+		require.Panics(t, func() {
+			b.Evaluate([]sv.SmartVector{
+				sv.NewConstantExt(fext.NewFromUintBase(2), 10),
+				sv.NewConstantExt(fext.NewFromUintBase(3), 11),
+			})
+		})
+	})
+
+	t.Run("zero size", func(t *testing.T) {
+		require.Panics(t, func() {
+			b.Evaluate([]sv.SmartVector{
+				sv.NewConstantExt(fext.NewFromUintBase(2), 0),
+			})
+		})
+	})
+
+	t.Run("chunk size mismatch", func(t *testing.T) {
+		// totalSize > 32 and not multiple of 32
+		require.Panics(t, func() {
+			b.Evaluate([]sv.SmartVector{
+				sv.NewConstantExt(fext.NewFromUintBase(2), 33),
+			})
+		})
+	})
+}
+
+func TestPolyEval(t *testing.T) {
+	x := NewDummyVar("x")
+	c0 := NewDummyVar("c0")
+	c1 := NewDummyVar("c1")
+
+	// P(x) = c0 + c1*x
+	expr := NewPolyEval(x, []*Expression{c0, c1})
+	b := expr.Board()
+
+	// Evaluate with constants
+	// x=2, c0=3, c1=4 -> 3 + 4*2 = 11
+	res := b.Evaluate([]sv.SmartVector{
+		sv.NewConstantExt(fext.NewFromUintBase(2), 1),
+		sv.NewConstantExt(fext.NewFromUintBase(3), 1),
+		sv.NewConstantExt(fext.NewFromUintBase(4), 1),
+	}).(*sv.ConstantExt).Val()
+
+	require.Equal(t, res.String(), "11+0*u+(0+0*u)*v")
+}
+
+func TestLinCombEdgeCases(t *testing.T) {
+	x := NewDummyVar("x")
+	y := NewDummyVar("y")
+
+	// 2x + 2y
+	expr2 := x.Add(x).Add(y.Add(y))
+	b2 := expr2.Board()
+	res2 := b2.Evaluate([]sv.SmartVector{
+		sv.NewConstantExt(fext.NewFromUintBase(2), 1),
+		sv.NewConstantExt(fext.NewFromUintBase(3), 1),
+	}).(*sv.ConstantExt).Val()
+	// 2*2 + 2*3 = 4 + 6 = 10
+	require.Equal(t, res2.String(), "10+0*u+(0+0*u)*v")
+
+	// -x - y
+	exprNeg := x.Neg().Sub(y)
+	bNeg := exprNeg.Board()
+	resNeg := bNeg.Evaluate([]sv.SmartVector{
+		sv.NewConstantExt(fext.NewFromUintBase(2), 1),
+		sv.NewConstantExt(fext.NewFromUintBase(3), 1),
+	}).(*sv.ConstantExt).Val()
+	// -2 - 3 = -5
+	// In field arithmetic, -5 is P-5.
+	expectedNeg := fext.NewFromUintBase(2)
+	expectedNeg.Neg(&expectedNeg)
+	val3 := fext.NewFromUintBase(3)
+	expectedNeg.Sub(&expectedNeg, &val3)
+	require.Equal(t, resNeg.String(), expectedNeg.String())
+}
+
+func TestRotatedInputs(t *testing.T) {
+	x := NewDummyVar("x")
+	expr := x.Add(x)
+	b := expr.Board()
+
+	// Create a rotated vector
+	// [1, 2, 3, 4] rotated by 1 -> [2, 3, 4, 1]
+	vec := []field.Element{
+		field.NewElement(1),
+		field.NewElement(2),
+		field.NewElement(3),
+		field.NewElement(4),
+	}
+	rot := sv.NewRotated(vec, 1)
+
+	// Evaluate x + x with rotated input
+	// [2, 3, 4, 1] + [2, 3, 4, 1] = [4, 6, 8, 2]
+	res := b.Evaluate([]sv.SmartVector{rot}).(*sv.Regular)
+
+	require.Equal(t, 4, res.Len())
+	require.Equal(t, (*res)[0].String(), "4")
+	require.Equal(t, (*res)[1].String(), "6")
+	require.Equal(t, (*res)[2].String(), "8")
+	require.Equal(t, (*res)[3].String(), "2")
+}
+
+func TestRotatedExtInputs(t *testing.T) {
+	x := NewDummyVar("x")
+	expr := x.Add(x)
+	b := expr.Board()
+
+	// Create a rotated ext vector
+	vec := []fext.Element{
+		fext.NewFromUintBase(1),
+		fext.NewFromUintBase(2),
+		fext.NewFromUintBase(3),
+		fext.NewFromUintBase(4),
+	}
+	rot := sv.NewRotatedExt(vec, 1)
+
+	// Evaluate x + x with rotated input
+	res := b.Evaluate([]sv.SmartVector{rot}).(*sv.RegularExt)
+
+	require.Equal(t, 4, res.Len())
+	require.Equal(t, (*res)[0].String(), "4+0*u+(0+0*u)*v")
+	require.Equal(t, (*res)[1].String(), "6+0*u+(0+0*u)*v")
+	require.Equal(t, (*res)[2].String(), "8+0*u+(0+0*u)*v")
+	require.Equal(t, (*res)[3].String(), "2+0*u+(0+0*u)*v")
+}
+
+func TestProductExponents(t *testing.T) {
+	x := NewDummyVar("x")
+	// x^3
+	expr := x.Mul(x).Mul(x)
+	b := expr.Board()
+
+	// x=2 -> 2^3 = 8
+	res := b.Evaluate([]sv.SmartVector{
+		sv.NewConstantExt(fext.NewFromUintBase(2), 1),
+	}).(*sv.ConstantExt).Val()
+
+	require.Equal(t, res.String(), "8+0*u+(0+0*u)*v")
+}
+
+func TestProductMixedExponents(t *testing.T) {
+	x := NewDummyVar("x")
+	y := NewDummyVar("y")
+	// x^2 * y
+	expr := x.Square().Mul(y)
+	b := expr.Board()
+
+	// x=2, y=3 -> 4 * 3 = 12
+	res := b.Evaluate([]sv.SmartVector{
+		sv.NewConstantExt(fext.NewFromUintBase(2), 1),
+		sv.NewConstantExt(fext.NewFromUintBase(3), 1),
+	}).(*sv.ConstantExt).Val()
+
+	require.Equal(t, res.String(), "12+0*u+(0+0*u)*v")
 }
