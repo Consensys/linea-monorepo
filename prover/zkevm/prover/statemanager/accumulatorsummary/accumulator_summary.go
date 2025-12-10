@@ -42,8 +42,8 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) *Module {
 func (as *Module) ConnectToStateSummary(comp *wizard.CompiledIOP, ss *statesummary.Module) *Module {
 
 	var accSummaryTable []ifaces.Column
-	accSummaryTable = append(accSummaryTable, as.InitialRoot[:]...)
-	accSummaryTable = append(accSummaryTable, as.FinalRoot[:]...)
+	// accSummaryTable = append(accSummaryTable, as.InitialRoot[:]...)
+	// accSummaryTable = append(accSummaryTable, as.FinalRoot[:]...)
 	accSummaryTable = append(accSummaryTable, as.HKey[:]...)
 	accSummaryTable = append(accSummaryTable, as.InitialHVal[:]...)
 	accSummaryTable = append(accSummaryTable, as.FinalHVal[:]...)
@@ -57,12 +57,12 @@ func (as *Module) ConnectToStateSummary(comp *wizard.CompiledIOP, ss *statesumma
 	)
 
 	var stateSummaryTable []ifaces.Column
-	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.InitialRoot[:]...)
-	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.FinalRoot[:]...)
+	// stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.InitialRoot[:]...)
+	// stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.FinalRoot[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.HKey[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.InitialHVal[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.FinalHVal[:]...)
-	stateSummaryTable = append(
+	 stateSummaryTable = append(
 		stateSummaryTable,
 		ss.AccumulatorStatement.IsReadNonZero,
 		ss.AccumulatorStatement.IsReadZero,
@@ -71,9 +71,9 @@ func (as *Module) ConnectToStateSummary(comp *wizard.CompiledIOP, ss *statesumma
 		ss.AccumulatorStatement.IsDelete,
 	)
 
-	// comp.InsertInclusion(0, "LOOKUP_STATE_MGR_ACCUMULATOR_SUMMARY_TO_STATE_SUMMARY", stateSummaryTable, accSummaryTable)
+	comp.InsertInclusion(0, "LOOKUP_STATE_MGR_ACCUMULATOR_SUMMARY_TO_STATE_SUMMARY", stateSummaryTable, accSummaryTable)
 	// Perform the reverse check as well to make sure that some traces are not excluded
-	//comp.InsertInclusion(0, "LOOKUP_STATE_MGR_ACCUMULATOR_SUMMARY_TO_STATE_SUMMARY_REVERSED", accSummaryTable, stateSummaryTable)
+	comp.InsertInclusion(0, "LOOKUP_STATE_MGR_ACCUMULATOR_SUMMARY_TO_STATE_SUMMARY_REVERSED", accSummaryTable, stateSummaryTable)
 
 	return as
 }
