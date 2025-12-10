@@ -123,7 +123,6 @@ func init() {
 	RegisterImplementation(query.Range{})
 	RegisterImplementation(query.UnivariateEval{})
 	RegisterImplementation(query.Projection{})
-	RegisterImplementation(&query.PlonkInWizard{})
 	RegisterImplementation(query.PlonkInWizard{})
 	RegisterImplementation(query.LocalOpening{})
 	RegisterImplementation(query.LogDerivativeSum{})
@@ -363,7 +362,6 @@ func init() {
 	RegisterImplementation(distributed.ModuleGLCheckSendReceiveGlobal{})
 	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
 	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
-
 }
 
 // In order to save some space, we trim the prefix of the package path as this

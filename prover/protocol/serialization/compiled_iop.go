@@ -549,18 +549,15 @@ func (ser *Serializer) packAllActions(val any, pathFmt string, idx int) (PackedR
 		return PackedRawData{}, newSerdeErrorf("invalid value passed to packActionCommon").wrapPath(fmt.Sprintf(pathFmt, idx)), false
 	}
 
-	// If the interface holds a pointer, remember that and work with the Elem()
-	if orig.Kind() == reflect.Ptr {
+	// FIX: Use a loop to strip ALL pointer levels (e.g. *T or **T) to find the base Struct T
+	v := orig
+	for v.Kind() == reflect.Ptr {
 		wasPtr = true
-		if orig.IsNil() {
-			// original was a nil pointer: we consider this "skipped" (same behaviour as before)
+		if v.IsNil() {
 			return PackedRawData{}, nil, true
 		}
-		orig = orig.Elem()
+		v = v.Elem()
 	}
-
-	// v is the non-pointer concrete value we actually pack
-	v := orig
 
 	// Check registration using reflect.Type
 	concreteTypeStr := getPkgPathAndTypeNameIndirect(v.Interface()) // kept for error msg
@@ -624,7 +621,14 @@ func (ser *Serializer) packAllQueries(reg *wizard.ByRoundRegister[ifaces.QueryID
 		if err != nil {
 			return nil, err.wrapPath("(ser-compiled-IOP-queries-" + contextLabel + ")")
 		}
+		// FIX: Strip pointers to find registration
 		v := reflect.ValueOf(q)
+		for v.Kind() == reflect.Ptr {
+			if v.IsNil() {
+				continue
+			}
+			v = v.Elem()
+		}
 		ct := getPkgPathAndTypeNameIndirect(v.Interface()) // kept for error msg
 		if serr, _ := checkRegisteredOrWarn(ct, v.Type()); serr != nil {
 			return nil, serr
@@ -659,6 +663,14 @@ func (de *Deserializer) unpackAllQueries(reg *wizard.ByRoundRegister[ifaces.Quer
 			return newSerdeErrorf("invalid type ID %d in queries", rq.ConcreteType)
 		}
 		ct := IDToType[rq.ConcreteType]
+		// NEW FIX: If the base struct doesn't implement Query, try using a pointer to it.
+		// This handles the case where we only registered 'T' but the interface requires '*T'.
+		if !ct.Implements(TypeOfQuery) {
+			pt := reflect.PointerTo(ct)
+			if pt.Implements(TypeOfQuery) {
+				ct = pt
+			}
+		}
 
 		val, se := de.UnpackQuery(rq.BackReference, ct)
 		if se != nil {
