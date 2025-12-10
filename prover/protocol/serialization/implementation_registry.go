@@ -1,4 +1,9 @@
 //go:generate go run ../../cmd/codegen/main.go
+
+// IMPORTANT NOTE: Everytime, this file is changed - for example: registering a new types through RegisterImplementation,
+// you need to run the codegen command to update the serialization registry file.
+// Run 'go generate ./...' from the root (prover/) directory or `go generate` from the current dir.
+
 package serialization
 
 import (
