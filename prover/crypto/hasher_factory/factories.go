@@ -231,9 +231,7 @@ func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystemU32,
 
 	// GetWireGates may add gates if [addGateForRangeCheck] is true. Call it
 	// synchronously before calling compile on the circuit.
-	fmt.Printf("Getting wire constraints for %v hash claims\n", len(allCheckedVariables))
 	cols, err := builder.Builder.GetWiresConstraintExact(allCheckedVariables, builder.addGateForHashCheck)
-	fmt.Printf("Getting wire constraints cols %v \n", cols)
 
 	if err != nil {
 		return nil, fmt.Errorf("get wire gates: %w", err)
@@ -284,9 +282,6 @@ func Poseidon2Hintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error 
 	copy(block[0:8], inpF[8:16])
 
 	outF := vortex.CompressPoseidon2(old, block)
-	fmt.Printf("Poseidon2Hintfunc old: %v\n", old)
-	fmt.Printf("Poseidon2Hintfunc block: %v\n", block)
-	fmt.Printf("Poseidon2Hintfunc output: %v\n", outF)
 	intoBigInts(outputs, outF[:])
 	return nil
 }
