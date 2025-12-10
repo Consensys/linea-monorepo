@@ -4,6 +4,11 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@next/third-parties'
   - 'next'
+  - '@next/env'
+  - 'react'
+  - 'react-dom'
+  - '@types/react'
+  - '@types/react-dom'
 
 packages:
   - 'contracts/**'
