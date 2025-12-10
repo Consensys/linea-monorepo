@@ -669,6 +669,8 @@ func (de *Deserializer) unpackAllQueries(reg *wizard.ByRoundRegister[ifaces.Quer
 			pt := reflect.PointerTo(ct)
 			if pt.Implements(TypeOfQuery) {
 				ct = pt
+			} else {
+				return newSerdeErrorf("type %v doesn't implement ifaces.Query", pt)
 			}
 		}
 
