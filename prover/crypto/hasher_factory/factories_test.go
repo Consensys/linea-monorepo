@@ -1,7 +1,6 @@
 package hasher_factory
 
 import (
-	"fmt"
 	"testing"
 
 	cs "github.com/consensys/gnark/constraint/koalabear"
@@ -50,7 +49,7 @@ func TestPoseidon2Factories(t *testing.T) {
 		circuit            = &externalPoseidon2FactoryTestLinear{}
 		builder, hshGetter = NewExternalHasherBuilder(true)
 		koalaField         = koalabear.Modulus()
-		assignment         = &externalPoseidon2FactoryTestLinear{Inp: [16]frontend.Variable{10, 20, 30, 40, 50, 60, 70, 80, 90, 0, 0, 0, 0, 0, 0, 0}}
+		assignment         = &externalPoseidon2FactoryTestLinear{Inp: [16]frontend.Variable{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}}
 	)
 
 	solver.RegisterHint(Poseidon2Hintfunc)
@@ -100,9 +99,6 @@ func TestPoseidon2Factories(t *testing.T) {
 		oldState[i%poseidon2_koalabear.BlockSize] = getFromLRO(triplet[0][0], triplet[0][1])
 		block[i%poseidon2_koalabear.BlockSize] = getFromLRO(triplet[1][0], triplet[1][1])
 		newState[i%poseidon2_koalabear.BlockSize] = getFromLRO(triplet[2][0], triplet[2][1])
-
-		fmt.Printf("csID=%v colID=%v\n", triplet[2][0], triplet[2][1])
-		fmt.Printf("sol.O[csID]=%v\n", newState[i%poseidon2_koalabear.BlockSize])
 
 		if i%poseidon2_koalabear.BlockSize == poseidon2_koalabear.BlockSize-1 {
 			newState_ := vortex.CompressPoseidon2(oldState, block)

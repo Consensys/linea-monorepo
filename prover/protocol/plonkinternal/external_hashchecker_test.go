@@ -54,7 +54,7 @@ func TestPoseidon2Factories(t *testing.T) {
 	var (
 		koalaField = koalabear.Modulus()
 		circuit    = &externalPoseidon2FactoryTestLinear{}
-		assignment = &externalPoseidon2FactoryTestLinear{Inp: [16]frontend.Variable{10, 20, 30, 40, 50, 60, 70, 80, 90, 0, 0, 0, 0, 0, 0, 0}}
+		assignment = &externalPoseidon2FactoryTestLinear{Inp: [16]frontend.Variable{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}}
 		wit, wErr  = frontend.NewWitness(assignment, koalaField)
 	)
 
