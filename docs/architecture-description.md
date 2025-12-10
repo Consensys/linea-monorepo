@@ -92,8 +92,6 @@ The CL and EL interactions are done via the engine API as per Ethereum specifica
 
 
 ## Sequencer
-<a id = "Sequencer"></a>
-
 There is a unique instance of Sequencer. It’s a special instance of a full node using Besu as the Execution Layer.
 The consensus protocol used is QBFT with a single node, being functionally equivalent
 to Clique.
@@ -139,23 +137,30 @@ eth_getBlockByNumber(
 ```
 
 ### Finalized Block Tag on L2
+[Maru](https://github.com/Consensys/maru) will be responsible on updating the execution clients for `finalized` block tag on L1.
+It will connect to Ethereum mainnet and track Linea finalization events.
+When a block containing a Linea finalization event is finalized on Ethereum Mainnet, Maru set the corresponding Linea block
+as being finalized as per Linea block. ?TODO Where is this exactly stored?
 
-[Maru](https://github.com/Consensys/maru) will be responsible on updating the execution clients for `finalized` block tag on L1. It will connect to Ethereum mainnet and track Linea finalization events.
-When a block containing a Linea finalization is finalized on Ethereum Mainnet, Maru set the corresponding Linea block as being finalized as per Linea block. ?TODO Where is this exactly stored?
-
+### Credible layer
+When the sequencer evaluates transactions for inclusion in a block, it also sends it for validation to the credible layer service.
+The credible layer is a set of third party service that is responsible for validating assertion attached to the smart contract with which the transactions interact.
+In case some assertions are not respected, the sequencer will not include the tx in the block being built.
+The architecture of the credible layer is out of scope of this document.
 
 ## Invalid Tx reporting tool
-Tx that overflow the line counts can't be included in a block. A service reporting such Tx is available. The method exposed is:
+This is a service reporting transactions that are not selected by the sequencer for reasons related to the proof system. Such reasons are typically
+because the transaction overflows the line counts, or because it is a forced transaction but is invalid.
 
+The API exposed by this service is:
 ```
 ???():
   ???             ???
 ```
 
 
-
 ## State manager
-<a id = "StateManagerL1"></a>
+
 
 ### For L1 finalized states
 
@@ -999,8 +1004,14 @@ Any party (e.g. via an npm package we provide for the bridge/partners etc) does 
 
 ## Forced transactions
 A Smart contract on L1 allows any user to post transactions on Linea with the guarantee that it will be included if valid.
-For this, the usr has to send the different fields of the transaction as call data of the transaction he is sending on
+For this, the user has to send the different fields of the transaction as call data of the transaction he is sending on
 Ethereum mainnet.
-The smart contract filters out invalid transactions because wrongly signed for instance.
-RLP encoding of the tx is then computed. A hash of it is stored on L1 chain to ensure censor ship resistance.
-Then an event is 
+The smart contract filters out invalid transactions. Transactions can be invalid if, for instance, the signature is invalid.
+RLP encoding of the tx is computed on the smart contract. A hash of it is stored on L1 chain to ensure censorship resistance.
+Then an event is emitted.
+
+Linea operator monitors the events and includes the transactions if they are valid. All forced transactions are taken into account
+by the prover. The prover includes a proof that each of them has been processed and computes an aggregated hash of the RLP encoded transactions.
+The aggregated hash is compared at finalization time to the one stored on L1. This guarantees that no forced transaction has been censored.
+
+Invalid forced transactions not included are reported via the [reporting tool](#invalid-tx-reporting-tool).
