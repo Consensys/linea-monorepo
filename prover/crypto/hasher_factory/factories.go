@@ -160,7 +160,10 @@ func (h *ExternalHasher) State() []frontend.Variable {
 // the compression function of MiMC over state and block. The alleged returned
 // result is pushed on the stack of all the claims to verify.
 func (h *ExternalHasher) compress(state, block [poseidon2_koalabear.BlockSize]frontend.Variable) [poseidon2_koalabear.BlockSize]frontend.Variable {
-	newState, err := h.api.Compiler().NewHint(Poseidon2Hintfunc, 1, state, block)
+	var input [poseidon2_koalabear.BlockSize * 2]frontend.Variable
+	copy(input[0:poseidon2_koalabear.BlockSize], state[:])
+	copy(input[poseidon2_koalabear.BlockSize:poseidon2_koalabear.BlockSize*2], block[:])
+	newState, err := h.api.Compiler().NewHint(Poseidon2Hintfunc, 8, input[:]...)
 	if err != nil {
 		panic(err)
 	}
@@ -260,7 +263,6 @@ func (builder *ExternalHasherBuilder) Compiler() frontend.Compiler {
 // is used to return the pending claims of the evaluation of the Poseidon2 compression
 // function.
 func Poseidon2Hintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error {
-
 	if f.String() != field.Modulus().String() {
 		utils.Panic("Not the Koalabear field %d != %d", f, field.Modulus())
 	}
