@@ -71,7 +71,7 @@ func (as *Module) ConnectToStateSummary(comp *wizard.CompiledIOP, ss *statesumma
 		ss.AccumulatorStatement.IsDelete,
 	)
 
-	//comp.InsertInclusion(0, "LOOKUP_STATE_MGR_ACCUMULATOR_SUMMARY_TO_STATE_SUMMARY", stateSummaryTable, accSummaryTable)
+	// comp.InsertInclusion(0, "LOOKUP_STATE_MGR_ACCUMULATOR_SUMMARY_TO_STATE_SUMMARY", stateSummaryTable, accSummaryTable)
 	// Perform the reverse check as well to make sure that some traces are not excluded
 	//comp.InsertInclusion(0, "LOOKUP_STATE_MGR_ACCUMULATOR_SUMMARY_TO_STATE_SUMMARY_REVERSED", accSummaryTable, stateSummaryTable)
 
