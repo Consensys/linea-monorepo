@@ -79,8 +79,8 @@ func (ec *ECPair) csMembershipComputedResult(comp *wizard.CompiledIOP) {
 	// membership check. In the source it is in separate column and we have to
 	// show that it corresponds to the column (but in previous row).
 
-	// as the limbs divide into 8 columns, first 7 of them are 0.
-	for i := range bcommon.NbLimbU128 - 1 {
+	// as the limbs divide into 8 columns, last 7 of them are 0.
+	for i := 1; i < bcommon.NbLimbU128; i++ {
 		comp.InsertGlobal(
 			roundNr,
 			ifaces.QueryIDf("%v_MEMBERSHIP_CHECK_RESULT_EMPTY_LIMB_%d", nameECPair, i),
@@ -97,7 +97,7 @@ func (ec *ECPair) csMembershipComputedResult(comp *wizard.CompiledIOP) {
 		sym.Mul(
 			ec.UnalignedG2MembershipData.IsComputed,
 			sym.Sub(
-				ec.UnalignedG2MembershipData.Limbs[bcommon.NbLimbU128-1],
+				ec.UnalignedG2MembershipData.Limbs[0],
 				column.Shift(ec.UnalignedG2MembershipData.SuccessBit, -1),
 			),
 		),
@@ -169,13 +169,13 @@ func (ec *ECPair) csAccumulatorInit(comp *wizard.CompiledIOP) {
 		)
 	}
 
-	lastLimbCol := ec.UnalignedPairingData.Limbs[bcommon.NbLimbU128-1]
+	lsbLimbCol := ec.UnalignedPairingData.Limbs[0]
 
 	// first HI=0, LO=1
-	accLimbSum := sym.Add(lastLimbCol, sym.Sub(column.Shift(lastLimbCol, 1), 1))
+	accLimbSum := sym.Add(lsbLimbCol, sym.Sub(column.Shift(lsbLimbCol, 1), 1))
 	for i := 2; i < nbGtLimbs; i++ {
 		// rest HI=0, LO=0
-		accLimbSum = sym.Add(accLimbSum, column.Shift(lastLimbCol, i))
+		accLimbSum = sym.Add(accLimbSum, column.Shift(lsbLimbCol, i))
 	}
 
 	comp.InsertGlobal(

@@ -78,6 +78,20 @@ func Prettify(a []field.Element) string {
 	return res
 }
 
+// PrettifyHex returns a string representing `a` in hex form
+func PrettifyHex(a []field.Element) string {
+	res := "["
+	for i := range a {
+		// Discards the case first element when adding a comma
+		if i > 0 {
+			res += ", "
+		}
+		res += fmt.Sprintf("%v", a[i].Text(16))
+	}
+	res += "]"
+	return res
+}
+
 // Reverse the elements of a vector inplace
 func Reverse(v []field.Element) {
 	n := len(v) - 1

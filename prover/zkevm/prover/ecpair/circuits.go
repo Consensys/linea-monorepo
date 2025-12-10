@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/gnark/std/evmprecompiles"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/math/emulated/emparams"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
@@ -127,14 +126,19 @@ func (c *MultiG2GroupcheckCircuit) Define(api frontend.API) error {
 
 // G2GroupCheckInstance is a single instance of G2 group check.
 type G2GroupCheckInstance struct {
-	Q         G2ElementWizard
-	IsSuccess zk.WrappedVariable
+	Q G2ElementWizard
+	// IsSuccess is true if the point is on G2. It is formatted either as
+	// [1, 0, 0, 0, 0, 0, 0, 0] or [0, 0, 0, 0, 0, 0, 0, 0] as it is in LE
+	// limb format.
+	IsSuccess [common.NbLimbU128]frontend.Variable
 }
 
 func (c *G2GroupCheckInstance) Check(api frontend.API, fp *emulated.Field[sw_bn254.BaseField], pairing *sw_bn254.Pairing) error {
 	Q := c.Q.ToG2Element(api, fp)
-
-	evmprecompiles.ECPairIsOnG2(api, &Q, c.IsSuccess)
+	evmprecompiles.ECPairIsOnG2(api, &Q, c.IsSuccess[0])
+	for i := 1; i < common.NbLimbU128; i++ {
+		api.AssertIsEqual(c.IsSuccess[i], 0)
+	}
 	return nil
 }
 
@@ -218,19 +222,29 @@ func (c *MultiMillerLoopFinalExpCircuit) Define(api frontend.API) error {
 // MillerLoopFinalExpInstance is a single instance of Miller loop and final
 // exponentiation check.
 type MillerLoopFinalExpInstance struct {
-	Prev     GtElementWizard
-	P        G1ElementWizard
-	Q        G2ElementWizard
-	Expected [2]zk.WrappedVariable
+	Prev GtElementWizard
+	P    G1ElementWizard
+	Q    G2ElementWizard
+	// Expected is the expected result of the final exponentiation. The result
+	// is over two limbs of 128 bits but it stores only a binary value.
+	ExpectedHi, ExpectedLo [common.NbLimbU128]frontend.Variable
 }
 
 func (c *MillerLoopFinalExpInstance) Check(api frontend.API, fp *emulated.Field[sw_bn254.BaseField], pairing *sw_bn254.Pairing) error {
 	P := c.P.ToG1Element(api, fp)
 	Q := c.Q.ToG2Element(api, fp)
 	prev := c.Prev.ToGtElement(api, fp)
-	api.AssertIsEqual(c.Expected[0], 0)
 
-	return evmprecompiles.ECPairMillerLoopAndFinalExpCheck(api, &prev, &P, &Q, c.Expected[1])
+	for _, l := range c.ExpectedHi[:] {
+		api.AssertIsEqual(l, 0)
+	}
+
+	// Only the first limb corresponds to the success bit
+	for _, l := range c.ExpectedLo[1:] {
+		api.AssertIsEqual(l, 0)
+	}
+
+	return evmprecompiles.ECPairMillerLoopAndFinalExpCheck(api, &prev, &P, &Q, c.ExpectedLo[0])
 }
 
 // intoGtNoTower converts an E12 element as in the outputs of the pairing
