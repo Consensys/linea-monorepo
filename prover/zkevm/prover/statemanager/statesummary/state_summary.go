@@ -247,28 +247,27 @@ func (ss *Module) csIsBeginningOfAccountSegment(comp *wizard.CompiledIOP) {
 	// IsBeginningOfAccountSegment being one implies that either the batchNumber
 	// bumped or that we jumped to another account and reciprocally.
 	// We check each limb independently for consistency with BlockNumber representation.
-	for i := range common.NbLimbU64 {
+	// We need to consider only the last limb (lsb as big endian) for the batch number bumping
 		comp.InsertGlobal(
 			0,
-			ifaces.QueryIDf("STATE_SUMMARY_IBOAS_IS_ONE_IFF_EITHER_NEW_BATCH_OR_NEW_ADDR_%d", i),
+			ifaces.QueryIDf("STATE_SUMMARY_IBOAS_IS_ONE_IFF_EITHER_NEW_BATCH_OR_NEW_ADDR"),
 			sym.Add(
 				sym.Mul(
 					ss.IsActive,
 					ss.IsBeginningOfAccountSegment,
-					sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1), 1),
+					sym.Sub(ss.BatchNumber[common.NbLimbU64-1], column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1), 1),
 					ss.Account.HasSameAddressAsPrev,
 				),
 				sym.Mul(
 					ss.IsActive,
 					sym.Sub(1, ss.IsBeginningOfAccountSegment),
 					sym.Add(
-						sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1)),
+						sym.Sub(ss.BatchNumber[common.NbLimbU64-1], column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1)),
 						sym.Sub(1, ss.Account.HasSameAddressAsPrev),
 					),
 				),
 			),
 		)
-	}
 
 	comp.InsertLocal(
 		0,
