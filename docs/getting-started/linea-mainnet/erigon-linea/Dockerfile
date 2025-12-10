@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /build
 RUN git clone --depth 1 --branch v3.3.0 https://github.com/erigontech/erigon.git .
 
-# Patch 1: Disable block downloader v2 (fixes nil pointer panic on fresh sync)
+# Patch 1: Disable block downloader v2 (fixes corruption on EC2/slower machines)
 RUN sed -i 's/const sentryMcDisableBlockDownload = true/const sentryMcDisableBlockDownload = false/' node/eth/backend.go
 
 # Patch 2: Return nil instead of error on empty code for EIP-7002 (Linea has empty withdrawal contract)
@@ -23,7 +23,7 @@ RUN sed -i 's/return nil, fmt.Errorf("\[EIP-7002\] Syscall failure: Empty Code a
 RUN sed -i 's/return nil, fmt.Errorf("\[EIP-7251\] Syscall failure: Empty Code at ConsolidationRequestAddress=%x", params.ConsolidationRequestAddress)/return nil, nil/' execution/protocol/rules/misc/eip7251.go
 
 # Build Erigon without silkworm (simpler, no external library needed)
-RUN make erigon SILKWORM=false
+RUN make erigon BUILD_TAGS=nosilkworm
 
 # Final image
 FROM debian:bookworm-slim
@@ -37,4 +37,3 @@ COPY --from=builder /build/build/bin/erigon /usr/local/bin/
 EXPOSE 8545 8550 30303 30303/udp
 
 ENTRYPOINT ["erigon"]
-
