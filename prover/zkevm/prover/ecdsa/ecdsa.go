@@ -24,7 +24,7 @@ func NewEcdsaZkEvm(
 				EcSource:     getEcdataArithmetization(comp, arith),
 				TxSource:     getTxnDataArithmetization(comp, arith),
 				RlpTxn:       getRlpTxnArithmetization(comp, arith),
-				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
+				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)},
 			},
 		),
 	}
@@ -69,7 +69,7 @@ func getRlpTxnArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.A
 		Index:   arith.ColumnOf(comp, "rlptxn", "INDEX_LX"),
 		NBytes:  arith.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
 		ToHash:  arith.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
-		Limbs:   arith.LimbColumnsOfArr8(comp, "rlptxn", "cmpLIMB"),
+		Limbs:   arith.LimbColumnsOf(comp, "rlptxn", "cmpLIMB", 8),
 	}
 
 	return res
