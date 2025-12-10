@@ -10,7 +10,7 @@ The setup will also takes 100s of GiB of disk. So make sure you have enough spac
 
 For instance,
 
-Linea beta-v5.1 Fusaka:  `e1e35d2`
+Linea beta-v4.4 Fusaka:  `e1e35d2`
 
 ```
 git checkout e1e35d2
