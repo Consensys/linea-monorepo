@@ -158,7 +158,10 @@ func (h *ExternalHasher) SetState(newState []frontend.Variable) error {
 // State returns the inner-state of the hasher. In the context of Poseidon2, 8 field elements will be returned.
 func (h *ExternalHasher) State() []frontend.Variable {
 	_ = h.Sum() // to flush the hasher
-	return []frontend.Variable{h.state}
+
+	res := make([]frontend.Variable, len(h.state))
+	copy(res, h.state[:])
+	return res
 }
 
 // compress calls returns 8 frontend.Variable holding the result of applying

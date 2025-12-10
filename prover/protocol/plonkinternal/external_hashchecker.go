@@ -202,6 +202,9 @@ func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS [pose
 		size        = utils.NextPowerOfTwo(len(sls))
 		numRowPlonk = ctx.DomainSize()
 	)
+	if len(sls) == 0 {
+		panic("no hash claims found")
+	}
 
 	if ctx.ExternalHasherOption.FixedNbRows > 0 {
 		fixedNbRow := ctx.ExternalHasherOption.FixedNbRows
