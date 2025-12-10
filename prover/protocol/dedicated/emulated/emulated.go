@@ -3,6 +3,7 @@ package emulated
 import (
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -18,6 +19,17 @@ import (
 
 type Limbs struct {
 	Columns []ifaces.Column
+}
+
+func (l Limbs) String() string {
+	if len(l.Columns) == 0 {
+		return "[]"
+	}
+	names := make([]string, len(l.Columns))
+	for i := range l.Columns {
+		names[i] = string(l.Columns[i].GetColID())
+	}
+	return fmt.Sprintf("[%s]", strings.Join(names, ":"))
 }
 
 type EmulatedMultiplicationModule struct {
