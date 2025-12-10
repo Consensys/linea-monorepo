@@ -98,6 +98,7 @@ func limbMul(res, lhs, rhs []*big.Int) error {
 	if len(res) != nbMultiplicationResLimbs(len(lhs), len(rhs)) {
 		return errors.New("result slice length mismatch")
 	}
+	clearBuffer(res)
 	for i := range lhs {
 		for j := range rhs {
 			res[i+j].Add(res[i+j], tmp.Mul(lhs[i], rhs[j]))
