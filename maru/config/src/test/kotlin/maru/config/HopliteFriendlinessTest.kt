@@ -775,7 +775,7 @@ class HopliteFriendlinessTest {
   fun `p2p config with valid dns instead of IP format should fail`() {
     val p2pConfigToml =
       """
-      ip-address = "test.com"
+      ip-address = "localhost"
       """.trimIndent()
 
     assertThatThrownBy {
@@ -783,7 +783,7 @@ class HopliteFriendlinessTest {
     }.isInstanceOf(ConfigException::class.java)
       .hasMessageContaining("IllegalArgumentException")
       .hasMessageContaining("Invalid IP address format")
-      .hasMessageContaining("test.com")
+      .hasMessageContaining("localhost")
   }
 
   @Test
