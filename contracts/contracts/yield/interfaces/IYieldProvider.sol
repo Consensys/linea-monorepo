@@ -111,6 +111,13 @@ interface IYieldProvider {
   ) external payable returns (uint256 maxUnstakeAmount);
 
   /**
+   * @notice Hook called before withdrawing ETH from the YieldProvider.
+   * @param _yieldProvider The yield provider address.
+   * @param _isPermissionlessReserveDeficitWithdrawal Whether this is a permissionless reserve deficit withdrawal.
+   */
+  function beforeWithdrawFromYieldProvider(address _yieldProvider, bool _isPermissionlessReserveDeficitWithdrawal) external;
+
+  /**
    * @notice Withdraws ETH from the provider back into the YieldManager.
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount of ETH to withdraw to the YieldManager.
