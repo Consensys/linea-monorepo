@@ -7,10 +7,12 @@ import (
 
 	"github.com/consensys/go-corset/pkg/asm"
 	"github.com/consensys/go-corset/pkg/binfile"
+	"github.com/consensys/go-corset/pkg/corset"
 	"github.com/consensys/go-corset/pkg/ir"
 	"github.com/consensys/go-corset/pkg/ir/air"
 	"github.com/consensys/go-corset/pkg/ir/mir"
 	"github.com/consensys/go-corset/pkg/schema/module"
+	"github.com/consensys/go-corset/pkg/schema/register"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
@@ -156,8 +158,8 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 // LimbColumnsOf returns the wizard columns corresponding to the limbs for the
 // tuple (moduleName, regName). The function furthermore ensures that the
 // function has the requested number of limbs.
-func (a *Arithmetization) LimbColumnsOf(comp *wizard.CompiledIOP, mod string, regName string, nLimbs int) []ifaces.Column {
-	names := a.LimbsOf(mod, regName, nLimbs)
+func (a *Arithmetization) LimbColumnsOf(comp *wizard.CompiledIOP, mod string, column string, nLimbs int) []ifaces.Column {
+	names := a.LimbsOf(mod, column, nLimbs)
 	cols := make([]ifaces.Column, len(names))
 	for i, name := range names {
 		cols[i] = comp.Columns.GetHandle(ifaces.ColID(name))
@@ -171,8 +173,8 @@ func (a *Arithmetization) LimbColumnsOf(comp *wizard.CompiledIOP, mod string, re
 //	 	c := a.LimbColumnsOf(comp, mod, regName, 2)
 //		return [2]ifaces.Column(c)
 //	 ```
-func (a *Arithmetization) LimbColumnsOfArr2(comp *wizard.CompiledIOP, mod string, regName string) [2]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, regName, 2)
+func (a *Arithmetization) LimbColumnsOfArr2(comp *wizard.CompiledIOP, mod string, column string) [2]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, column, 2)
 	return [2]ifaces.Column(c)
 }
 
@@ -182,8 +184,8 @@ func (a *Arithmetization) LimbColumnsOfArr2(comp *wizard.CompiledIOP, mod string
 //	 	c := a.LimbColumnsOf(comp, mod, regName, 3)
 //		return [3]ifaces.Column(c)
 //	 ```
-func (a *Arithmetization) LimbColumnsOfArr3(comp *wizard.CompiledIOP, mod string, regName string) [3]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, regName, 3)
+func (a *Arithmetization) LimbColumnsOfArr3(comp *wizard.CompiledIOP, mod string, column string) [3]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, column, 3)
 	return [3]ifaces.Column(c)
 }
 
@@ -193,8 +195,8 @@ func (a *Arithmetization) LimbColumnsOfArr3(comp *wizard.CompiledIOP, mod string
 //	 	c := a.LimbColumnsOf(comp, mod, regName, 4)
 //		return [4]ifaces.Column(c)
 //	 ```
-func (a *Arithmetization) LimbColumnsOfArr4(comp *wizard.CompiledIOP, mod string, regName string) [4]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, regName, 4)
+func (a *Arithmetization) LimbColumnsOfArr4(comp *wizard.CompiledIOP, mod string, column string) [4]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, column, 4)
 	return [4]ifaces.Column(c)
 }
 
@@ -204,8 +206,8 @@ func (a *Arithmetization) LimbColumnsOfArr4(comp *wizard.CompiledIOP, mod string
 //	 	c := a.LimbColumnsOf(comp, mod, regName, 8)
 //		return [8]ifaces.Column(c)
 //	 ```
-func (a *Arithmetization) LimbColumnsOfArr8(comp *wizard.CompiledIOP, mod string, regName string) [8]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, regName, 8)
+func (a *Arithmetization) LimbColumnsOfArr8(comp *wizard.CompiledIOP, mod string, column string) [8]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, column, 8)
 	return [8]ifaces.Column(c)
 }
 
@@ -215,33 +217,38 @@ func (a *Arithmetization) LimbColumnsOfArr8(comp *wizard.CompiledIOP, mod string
 //	 	c := a.LimbColumnsOf(comp, mod, regName, 16)
 //		return [16]ifaces.Column(c)
 //	 ```
-func (a *Arithmetization) LimbColumnsOfArr16(comp *wizard.CompiledIOP, mod string, regName string) [16]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, regName, 16)
+func (a *Arithmetization) LimbColumnsOfArr16(comp *wizard.CompiledIOP, mod string, column string) [16]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, column, 16)
 	return [16]ifaces.Column(c)
 }
 
 // ColumnOf returns the wizard column associated with the given name and
 // register. The function will fail with panic if the column is not found or the
 // column has more than 1 register.
-func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, regName string) ifaces.Column {
-	cols := a.LimbColumnsOf(comp, name, regName, 1)
+func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, column string) ifaces.Column {
+	cols := a.LimbColumnsOf(comp, name, column, 1)
 	return cols[0]
 }
 
-// LimbsOf returns the fully qualified names of the limbs for the given abstract
-// register in the given module.  The limbs are returned in little endian order
-// (i.e. the least significant limb is at index 0).
-func (a *Arithmetization) LimbsOf(mod string, regName string, nLimbs int) []string {
+// LimbsOf returns the fully qualified names of the limbs for a given Corset
+// column based on its name.  The limbs are returned in little endian order
+// (i.e. the least significant limb is at index 0).  This will attempt to match
+// the column name with the appropriate raw (underlying) register name.  For
+// example, we might have a column written in the Corset lisp file called "DATA"
+// that we want to access.  For whatever reason, this column might be mapped to
+// a raw register called e.g. "DATA_xor_HASH". Whilst we could use the raw
+// register name directly, it is subject to change as the constraints change.
+// Instead, we want to be able to use just "DATA" and for this function to
+// figure out the raw name of "DATA_xor_HASH" for us, and then determine the
+// appropriate limbs.
+func (a *Arithmetization) LimbsOf(mod string, column string, nLimbs int) []string {
 	// Identify limbs mapping for ecdata module
 	var (
 		// Extract the limb mapping for the given module
-		modMap  = a.LimbMapping.ModuleOf(module.NewName(mod, 1))
-		reg, ok = modMap.HasRegister(regName)
+		modMap = a.LimbMapping.ModuleOf(module.NewName(mod, 1))
+		// Determine corresponding register id
+		reg = a.determineRegisterId(mod, column)
 	)
-	//
-	if !ok {
-		panic("malformed register limbs map")
-	}
 	// Extract limbs for given register (least significant limb comes first)
 	limbs := modMap.LimbIds(reg)
 	names := make([]string, len(limbs))
@@ -256,4 +263,56 @@ func (a *Arithmetization) LimbsOf(mod string, regName string, nLimbs int) []stri
 	}
 	//
 	return names
+}
+
+// Attempt to identify the register identifier for the given register.  This
+// will first attempt to find a corresponding source-level register of the same
+// name and, if that fails, fall back on the raw register name.  To understand
+// this, consider a register DATA written in the Corset source-file which is
+// declared within a given perspective.  Suppose that the DATA register is
+// coalesced with another register from a different perspective (say HASH).
+// Then, the source-level name for the DATA register is just DATA, whilst the
+// raw (i.e. underlying name) is DATA_xor_HASH.  Thus, this function attempts to
+// first resolve the name DATA to the register id corresponding with the raw
+// register DATA_xor_HASH.
+func (a *Arithmetization) determineRegisterId(mod string, name string) register.Id {
+	var rid register.Id
+	// Check whether source-level debug information is available.
+	if srcmap, srcmap_ok := binfile.GetAttribute[*corset.SourceMap](a.BinaryFile); srcmap_ok {
+		// Yes, therefore attempt to find a source-level regsiter with the given name.
+		module := determineSourceModule(srcmap, mod)
+		// Check columns within the module
+		for _, col := range module.Columns {
+			if col.Name == name {
+				// Success
+				return col.Register.Register()
+			}
+		}
+	}
+	// Failed to find a source-level register of the given name, therefore fall
+	// back to just looking up the register based on its raw name.
+	modMap := a.LimbMapping.ModuleOf(module.NewName(mod, 1))
+	rid, ok := modMap.HasRegister(name)
+	// Sanity check we found it
+	if !ok {
+		panic(fmt.Sprintf("unknown register %s.%s", mod, name))
+	}
+	// Done
+	return rid
+}
+
+func determineSourceModule(srcmap *corset.SourceMap, mod string) corset.SourceModule {
+	// Lookup the source module with the corresponding name; if there are
+	// multiple matching entries, then fail.
+	modules := srcmap.Flattern(func(s *corset.SourceModule) bool {
+		return s.Public && s.Name == mod
+	})
+	// Sanity check
+	if len(modules) == 0 {
+		panic(fmt.Sprintf("unknown module %s", mod))
+	} else if len(modules) > 1 {
+		panic(fmt.Sprintf("ambiguous module %s", mod))
+	}
+	//
+	return modules[0]
 }

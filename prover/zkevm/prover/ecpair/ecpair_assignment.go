@@ -457,10 +457,10 @@ func (ec *ECPair) assignMembershipData(run *wizard.ProverRuntime) {
 		}
 		// push the expected success bit to the last limb column,
 		// while the rest of the columns are zero.
-		for k := range common.NbLimbU128 - 1 {
+		dstLimb[0].PushField(srcSuccessBit[currPos])
+		for k := 1; k < common.NbLimbU128; k++ {
 			dstLimb[k].PushZero()
 		}
-		dstLimb[common.NbLimbU128-1].PushField(srcSuccessBit[currPos])
 
 		dstSuccessBit.PushField(srcSuccessBit[currPos])
 		dstMask.PushOne()

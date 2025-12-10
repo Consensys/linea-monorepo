@@ -50,7 +50,7 @@ func NewEcAddZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetizat
 		comp,
 		limits,
 		src,
-		[]query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
+		[]query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)},
 	)
 }
 

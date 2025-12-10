@@ -24,7 +24,8 @@ func NewEcdsaZkEvm(
 				EcSource:     getEcdataArithmetization(comp, arith),
 				TxSource:     getTxnDataArithmetization(comp, arith),
 				RlpTxn:       getRlpTxnArithmetization(comp, arith),
-				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
+				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)},
+				WithCircuit:  true,
 			},
 		),
 	}
@@ -64,12 +65,13 @@ func getTxnDataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.
 }
 
 func getRlpTxnArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) generic.GenDataModule {
+	limbs := arith.LimbColumnsOfArr8(comp, "rlptxn", "cmpLIMB")
 	res := generic.GenDataModule{
 		HashNum: arith.ColumnOf(comp, "rlptxn", "USER_TXN_NUMBER"),
 		Index:   arith.ColumnOf(comp, "rlptxn", "INDEX_LX"),
 		NBytes:  arith.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
 		ToHash:  arith.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
-		Limbs:   arith.LimbColumnsOfArr8(comp, "rlptxn", "cmpLIMB"),
+		Limbs:   limbs[:],
 	}
 
 	return res

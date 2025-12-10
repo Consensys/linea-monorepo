@@ -1,8 +1,6 @@
 package smartvectors
 
 import (
-	"sync/atomic"
-
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 
@@ -10,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // Add two vectors representing polynomials in coefficient form.
@@ -70,89 +67,6 @@ func EvaluateBasePolyLagrange(v SmartVector, x fext.Element, oncoset ...bool) fe
 	}
 
 	return res
-}
-
-// BatchEvaluateBasePolyLagrange polynomials in Lagrange basis at an E4 point
-func BatchEvaluateBasePolyLagrange(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
-	results := make([]fext.Element, len(vs))
-
-	if len(vs) == 0 {
-		return results
-	}
-
-	// Separate constants from polynomials
-	type workItem struct {
-		index      int
-		poly       []field.Element
-		isConstant bool
-		value      fext.Element
-	}
-
-	workItems := make([]workItem, len(vs))
-	var totalConstant uint64
-
-	// Process in parallel to identify constants and extract polynomials
-	parallel.Execute(len(vs), func(start, stop int) {
-		for i := start; i < stop; i++ {
-			if !IsBase(vs[i]) {
-				utils.Panic("expected a base-field smart-vector, got %T", vs[i])
-			}
-
-			if con, ok := vs[i].(*Constant); ok {
-				var result fext.Element
-				fext.SetFromBase(&result, &con.Value)
-				workItems[i] = workItem{
-					index:      i,
-					isConstant: true,
-					value:      result,
-				}
-				atomic.AddUint64(&totalConstant, 1)
-			} else {
-				poly, _ := vs[i].IntoRegVecSaveAllocBase()
-				workItems[i] = workItem{
-					index:      i,
-					poly:       poly,
-					isConstant: false,
-				}
-			}
-		}
-	})
-
-	// Early return if all constants
-	if int(totalConstant) == len(vs) {
-		for _, item := range workItems {
-			results[item.index] = item.value
-		}
-		return results
-	}
-
-	// Collect only non-constant polynomials
-	nonConstantPolys := make([][]field.Element, 0, len(vs)-int(totalConstant))
-	nonConstantIndices := make([]int, 0, len(vs)-int(totalConstant))
-
-	for _, item := range workItems {
-		if item.isConstant {
-			results[item.index] = item.value
-		} else {
-			nonConstantPolys = append(nonConstantPolys, item.poly)
-			nonConstantIndices = append(nonConstantIndices, item.index)
-		}
-	}
-
-	// Batch evaluate only non-constant polynomials
-	if len(nonConstantPolys) > 0 {
-		polyResults, err := vortex.BatchEvalBasePolyLagrange(nonConstantPolys, x, oncoset...)
-		if err != nil {
-			panic(err)
-		}
-
-		// Map results back to original positions
-		for i, result := range polyResults {
-			results[nonConstantIndices[i]] = result
-		}
-	}
-
-	return results
 }
 
 // Evaluate a polynomial in coefficient basis at an E4 point

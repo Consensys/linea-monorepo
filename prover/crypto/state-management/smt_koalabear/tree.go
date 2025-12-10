@@ -2,6 +2,7 @@ package smt_koalabear
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 
@@ -35,22 +36,6 @@ type Tree struct {
 	EmptyNodes []field.Octuplet
 }
 
-// EmptyLeaf returns an empty leaf (e.g. the zero value).
-func EmptyLeaf() field.Octuplet {
-	return field.Octuplet{}
-}
-
-// hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
-// taking H as the HashFunc of the config.
-func hashLR(hasher *poseidon2_koalabear.MDHasher, nodeL, nodeR field.Octuplet) field.Octuplet {
-	hasher.Reset()
-	var d field.Octuplet
-	hasher.WriteElements(nodeL[:]...)
-	hasher.WriteElements(nodeR[:]...)
-	d = hasher.SumElement()
-	return d
-}
-
 // NewEmptyTree creates and returns an empty tree with the provided config.
 func NewEmptyTree(depths ...int) *Tree {
 	// Default depth is 40 if no input is provided
@@ -79,6 +64,160 @@ func NewEmptyTree(depths ...int) *Tree {
 		OccupiedNodes:  make([][]field.Octuplet, depth-1),
 		EmptyNodes:     emptyNodes,
 	}
+}
+
+// NewTree builds from scratch a complete Merkle-tree. Requires that the
+// input leaves are powers of 2. The depth of the tree is deduced from the list.
+//
+// It panics if the number of leaves is a non-power of 2.
+// The hash function is by default poseidon2 over koalabear.
+func NewTree(leaves []field.Octuplet) *Tree {
+	numLeaves := len(leaves)
+
+	if !utils.IsPowerOfTwo(numLeaves) || numLeaves == 0 {
+		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
+	}
+
+	depth := utils.Log2Ceil(numLeaves)
+
+	// Pre-allocate all intermediate nodes in a single slice to improve memory locality
+	// and reduce allocation overhead.
+	// Total intermediate nodes = numLeaves - 2 (excluding root and leaves)
+	var allNodes []field.Octuplet
+	if depth > 1 {
+		allNodes = make([]field.Octuplet, numLeaves-2)
+	}
+
+	tree := &Tree{
+		Depth:          depth,
+		OccupiedLeaves: leaves,
+		OccupiedNodes:  make([][]field.Octuplet, depth-1),
+		EmptyNodes:     make([]field.Octuplet, depth-1),
+	}
+
+	// Initialize EmptyNodes
+	{
+		prevNode := EmptyLeaf()
+		hasher := poseidon2_koalabear.NewMDHasher()
+		for i := range tree.EmptyNodes {
+			newNode := hashLR(hasher, prevNode, prevNode)
+			tree.EmptyNodes[i] = newNode
+			prevNode = newNode
+		}
+	}
+
+	// Slice allNodes into OccupiedNodes
+	if depth > 1 {
+		offset := 0
+		currentLevelSize := numLeaves / 2
+		for i := 0; i < depth-1; i++ {
+			tree.OccupiedNodes[i] = allNodes[offset : offset+currentLevelSize]
+			offset += currentLevelSize
+			currentLevelSize /= 2
+		}
+	}
+
+	// Parallelization Strategy:
+	// 1. Process the bottom of the tree in small, fixed-size subtrees.
+	//    This creates many tasks (much more than numCPU), ensuring better load balancing
+	//    via the scheduler, preventing the "tail latency" problem where some cores finish early.
+	// 2. Process the upper levels level-by-level, parallelizing each level if it's large enough.
+
+	// 1. Bottom-up subtrees
+	// We choose a subtree height that fits comfortably in L1/L2 cache (e.g., height 10 => 1024 leaves).
+	// This ensures that a single task stays hot in cache while computing its subtree.
+	const targetSubtreeHeight = 10
+	subtreeHeight := targetSubtreeHeight
+	// We can only compute up to depth-1 in OccupiedNodes.
+	if subtreeHeight > depth-1 {
+		subtreeHeight = depth - 1
+	}
+	if subtreeHeight < 0 {
+		subtreeHeight = 0
+	}
+
+	chunkSize := 1 << subtreeHeight
+	numTasks := numLeaves / chunkSize
+
+	// Execute parallel tasks. Each task computes a complete subtree of height `subtreeHeight`.
+	parallel.Execute(numTasks, func(startTask, endTask int) {
+		hasher := poseidon2_koalabear.NewMDHasher()
+
+		for t := startTask; t < endTask; t++ {
+			leafStart := t * chunkSize
+
+			// Process Level 0 (Leaves -> OccupiedNodes[0])
+			if subtreeHeight > 0 {
+				outStart := t * (chunkSize / 2)
+				count := chunkSize / 2
+
+				leaves := tree.OccupiedLeaves
+				outLevel := tree.OccupiedNodes[0]
+
+				for k := 0; k < count; k++ {
+					outLevel[outStart+k] = hashLR(hasher, leaves[leafStart+2*k], leaves[leafStart+2*k+1])
+				}
+			}
+
+			// Process Levels 1 to subtreeHeight-1
+			// Level l input is OccupiedNodes[l-1], output is OccupiedNodes[l]
+			for l := 1; l < subtreeHeight; l++ {
+				inputStart := t * (chunkSize / (1 << l))
+				outputStart := t * (chunkSize / (1 << (l + 1)))
+				count := chunkSize / (1 << (l + 1))
+
+				inLevel := tree.OccupiedNodes[l-1]
+				outLevel := tree.OccupiedNodes[l]
+
+				for k := 0; k < count; k++ {
+					outLevel[outputStart+k] = hashLR(hasher, inLevel[inputStart+2*k], inLevel[inputStart+2*k+1])
+				}
+			}
+		}
+	})
+
+	// 2. Upper levels
+	// Continue from where the subtrees left off.
+	for i := subtreeHeight; i < depth-1; i++ {
+		var prevLevel []field.Octuplet
+		if i == 0 {
+			prevLevel = tree.OccupiedLeaves
+		} else {
+			prevLevel = tree.OccupiedNodes[i-1]
+		}
+		currLevel := tree.OccupiedNodes[i]
+
+		n := len(currLevel)
+		// Threshold to justify parallel overhead.
+		const parallelThreshold = 32
+
+		if n >= parallelThreshold && runtime.GOMAXPROCS(0) > 1 {
+			parallel.Execute(n, func(start, end int) {
+				hasher := poseidon2_koalabear.NewMDHasher()
+				for k := start; k < end; k++ {
+					currLevel[k] = hashLR(hasher, prevLevel[2*k], prevLevel[2*k+1])
+				}
+			})
+		} else {
+			hasher := poseidon2_koalabear.NewMDHasher()
+			for k := 0; k < n; k++ {
+				currLevel[k] = hashLR(hasher, prevLevel[2*k], prevLevel[2*k+1])
+			}
+		}
+	}
+
+	// Root calculation
+	if depth == 1 {
+		tree.Root = hashLR(poseidon2_koalabear.NewMDHasher(), leaves[0], leaves[1])
+	} else {
+		lastLevel := tree.OccupiedNodes[depth-2]
+		if len(lastLevel) != 2 {
+			utils.Panic("broken invariant : len(lastLevel) != 2, =%v", len(lastLevel))
+		}
+		tree.Root = hashLR(poseidon2_koalabear.NewMDHasher(), lastLevel[0], lastLevel[1])
+	}
+
+	return tree
 }
 
 func (t *Tree) GetRoot() field.Octuplet {
@@ -262,51 +401,18 @@ func (t *Tree) reserveLevel(level, newSize int) {
 	t.OccupiedNodes[level-1] = append(t.OccupiedNodes[level-1], padding...)
 }
 
-// BuildComplete builds from scratch a complete Merkle-tree. Requires that the
-// input leaves are powers of 2. The depth of the tree is deduced from the list.
-//
-// It panics if the number of leaves is a non-power of 2.
-// The hash function is by default poseidon2 over koalabear.
-func BuildComplete(leaves []field.Octuplet) *Tree {
+// EmptyLeaf returns an empty leaf (e.g. the zero value).
+func EmptyLeaf() field.Octuplet {
+	return field.Octuplet{}
+}
 
-	numLeaves := len(leaves)
-
-	if !utils.IsPowerOfTwo(numLeaves) || numLeaves == 0 {
-		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
-	}
-
-	depth := utils.Log2Ceil(numLeaves)
-	tree := NewEmptyTree(depth)
-	tree.OccupiedLeaves = leaves
-	currLevels := leaves
-
-	for i := 0; i < depth-1; i++ {
-		nextLevel := make([]field.Octuplet, len(currLevels)/2)
-		// TODO @gbotrel revisit parallelization here
-		if len(nextLevel) >= 64 {
-			parallel.Execute(len(nextLevel), func(start, end int) {
-				hasher := poseidon2_koalabear.NewMDHasher()
-				for k := start; k < end; k++ {
-					nextLevel[k] = hashLR(hasher, currLevels[2*k], currLevels[2*k+1])
-				}
-			})
-		} else {
-			hasher := poseidon2_koalabear.NewMDHasher()
-			for k := range nextLevel {
-				nextLevel[k] = hashLR(hasher, currLevels[2*k], currLevels[2*k+1])
-			}
-		}
-
-		tree.OccupiedNodes[i] = nextLevel
-		currLevels = nextLevel
-	}
-
-	// sanity-check : len(currLevels) == 2 is an invariant
-	if len(currLevels) != 2 {
-		utils.Panic("broken invariant : len(currLevels) != 2, =%v", len(currLevels))
-	}
-
-	// And overwrite the root
-	tree.Root = hashLR(poseidon2_koalabear.NewMDHasher(), currLevels[0], currLevels[1])
-	return tree
+// hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
+// taking H as the HashFunc of the config.
+func hashLR(hasher *poseidon2_koalabear.MDHasher, nodeL, nodeR field.Octuplet) field.Octuplet {
+	hasher.Reset()
+	var d field.Octuplet
+	hasher.WriteElements(nodeL[:]...)
+	hasher.WriteElements(nodeR[:]...)
+	d = hasher.SumElement()
+	return d
 }

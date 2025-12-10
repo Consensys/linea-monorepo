@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -32,7 +33,7 @@ func TestEcAddIntegration(t *testing.T) {
 				ecAddSource.Limbs[i] = ct.GetCommit(b, fmt.Sprintf("LIMB_%d", i))
 			}
 
-			ecAdd = newEcAdd(b.CompiledIOP, limits, ecAddSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)})
+			ecAdd = newEcAdd(b.CompiledIOP, limits, ecAddSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)})
 		},
 		dummy.Compile,
 	)

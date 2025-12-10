@@ -65,7 +65,7 @@ func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (En
 
 	leaf, colHashes := p.sisTransversalHash(encodedMatrix)
 
-	tree := smt_koalabear.BuildComplete(
+	tree := smt_koalabear.NewTree(
 		leaf,
 	)
 
@@ -130,7 +130,7 @@ func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) 
 		colHashes = append(colHashes, colHashesOcts[i][:]...)
 	}
 
-	tree := smt_koalabear.BuildComplete(
+	tree := smt_koalabear.NewTree(
 		colHashesOcts,
 	)
 

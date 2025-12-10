@@ -14,7 +14,7 @@ import (
 
 func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name string) ifaces.Column {
 	return func(name string) ifaces.Column {
-		res := comp.InsertCommit(roundNr, ifaces.ColIDf("%s_%s", rootName, name), size)
+		res := comp.InsertCommit(roundNr, ifaces.ColIDf("%s_%s", rootName, name), size, true)
 		pragmas.MarkRightPadded(res)
 		return res
 	}
@@ -85,7 +85,7 @@ func NewECPairZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetiza
 
 	return newECPair(comp, limits, source).
 		WithG2MembershipCircuit(comp).
-		WithPairingCircuit(comp, query.PlonkRangeCheckOption(16, 6, true))
+		WithPairingCircuit(comp, query.PlonkRangeCheckOption(16, 1, true))
 }
 
 func newECPair(comp *wizard.CompiledIOP, limits *Limits, ecSource *ECPairSource) *ECPair {

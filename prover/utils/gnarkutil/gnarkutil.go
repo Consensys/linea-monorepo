@@ -94,6 +94,18 @@ func WitnessFromNativeKoala(v ...koalabear.Element) witness.Witness {
 	return wit
 }
 
+// EmulatedFromHiLo converts slices of frontend.Variable representing inputs
+// lower than 2**bitWidth to slice of emulated.Element for the target field.
+// The hi/lo inputs are expected to be in LITTLE-ENDIAN form.
+func EmulatedFromHiLo[T emulated.FieldParams](
+	api frontend.API,
+	f *emulated.Field[T],
+	hi, lo []frontend.Variable,
+	bitWidth int,
+) *emulated.Element[T] {
+	return EmulatedFromLimbSlice(api, f, append(lo, hi...), bitWidth)
+}
+
 // EmulatedFromLimbSlice converts slice of frontend.Variable representing inputs
 // lower than 2**bitWidth to slice of emulated.Element for the target field. The
 // input is expected to be in LITTLE-ENDIAN form.

@@ -51,6 +51,42 @@ func BatchInvert(a []Element) []Element {
 	return extensions.BatchInvertE4(a)
 }
 
+// BatchInvertInto computes the inverses of all elements in a and writes the result into res.
+// use with caution, avoid copies and allocation in parallel contexts.
+// TODO @gbotrel move in gnark-crypto
+func BatchInvertInto(a, res []Element) {
+	if len(a) != len(res) {
+		// TODO @gbotrel add check that a != res
+		panic("input and output slices must have the same length")
+	}
+	if len(a) == 0 {
+		return
+	}
+
+	zeroes := make([]bool, len(a))
+	var accumulator Element
+	accumulator.SetOne()
+
+	for i := 0; i < len(a); i++ {
+		if a[i].IsZero() {
+			zeroes[i] = true
+			continue
+		}
+		res[i].Set(&accumulator)
+		accumulator.Mul(&accumulator, &a[i])
+	}
+
+	accumulator.Inverse(&accumulator)
+
+	for i := len(a) - 1; i >= 0; i-- {
+		if zeroes[i] {
+			continue
+		}
+		res[i].Mul(&res[i], &accumulator)
+		accumulator.Mul(&accumulator, &a[i])
+	}
+}
+
 func PseudoRand(rng *rand.Rand) Element {
 
 	result := new(Element).SetZero()
@@ -178,14 +214,13 @@ func Text(z *Element, base int) string {
 func ParBatchInvert(a []Element, numCPU int) []Element {
 
 	if numCPU == 0 {
-		numCPU = runtime.NumCPU()
+		numCPU = runtime.GOMAXPROCS(0)
 	}
 
 	res := make([]Element, len(a))
 
 	parallel.Execute(len(a), func(start, stop int) {
-		subRes := BatchInvert(a[start:stop])
-		copy(res[start:stop], subRes)
+		BatchInvertInto(a[start:stop], res[start:stop])
 	}, numCPU)
 
 	return res
