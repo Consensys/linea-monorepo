@@ -58,7 +58,7 @@ contract TestLineaRollup is LineaRollup {
     blobShnarfExists[_shnarf] = _finalBlockNumber;
   }
 
-  function addL2MerkleRoots(bytes32[] calldata _newRoot, uint256 _treeDepth) external {
+  function addL2MerkleRoots(bytes32[] calldata _newRoot, uint256 _treeDepth) external onlyRole(DEFAULT_ADMIN_ROLE) {
     _addL2MerkleRoots(_newRoot, _treeDepth);
   }
 

@@ -40,4 +40,6 @@ interface IDashboard is ICommonVaultOperations {
   function reconnectToVaultHub() external;
 
   function transferVaultOwnership(address _newOwner) external;
+
+  function obligations() external view returns (uint256 sharesToBurn, uint256 feesToSettle);
 }

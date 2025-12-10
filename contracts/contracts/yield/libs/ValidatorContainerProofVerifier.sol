@@ -118,7 +118,7 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   address public constant BEACON_ROOTS = 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02;
 
   // Sentinel value that a validator has no current exit scheduled
-  uint64 public constant FAR_FUTURE_EXIT_EPOCH = 18446744073709551615;
+  uint64 public constant FAR_FUTURE_EXIT_EPOCH = type(uint64).max;
 
   // Validator must be active for this many epochs before it is eligible for withdrawals
   uint256 private constant SHARD_COMMITTEE_PERIOD = 256;
