@@ -17,7 +17,7 @@ func (ac *antichamber) cols(withActive bool) []ifaces.Column {
 
 func (ec *EcRecover) cols() []ifaces.Column {
 	return append(
-		[]ifaces.Column{ec.EcRecoverID},
+		[]ifaces.Column{ec.EcRecoverID, ec.AuxProjectionMask},
 		append(
 			ec.Limb[:],
 			ec.SuccessBit, ec.EcRecoverIndex, ec.EcRecoverIsData, ec.EcRecoverIsRes,
@@ -35,7 +35,13 @@ func (ts *TxSignature) cols() []ifaces.Column {
 
 func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
 	return append(
-		[]ifaces.Column{ugd.IsPublicKey, ugd.GnarkIndex},
+		[]ifaces.Column{
+			ugd.IsPublicKey,
+			ugd.GnarkIndex,
+			ugd.GnarkPublicKeyIndex,
+			ugd.IsEcrecoverAndFetching,
+			ugd.IsNotPublicKeyAndPushing,
+		},
 		ugd.GnarkData[:]...,
 	)
 }
