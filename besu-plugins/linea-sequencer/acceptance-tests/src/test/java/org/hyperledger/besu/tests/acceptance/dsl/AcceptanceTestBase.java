@@ -202,7 +202,7 @@ public abstract class AcceptanceTestBase {
       final var requiredBalance =
           Wei.fromEth((long) initialBalanceEther * numAccounts)
               .getAsBigInteger()
-              .add(Wei.of(21000).getAsBigInteger().multiply(BigInteger.valueOf(numAccounts)) // transfer tx gas limit
+              .add(Wei.of(21000).getAsBigInteger().multiply(BigInteger.valueOf(numAccounts))) // transfer tx gas limit
               .add(
                   transferGasPrice
                       .getValue()
