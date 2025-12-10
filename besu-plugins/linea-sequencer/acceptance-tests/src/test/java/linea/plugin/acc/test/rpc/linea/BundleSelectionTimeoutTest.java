@@ -78,7 +78,7 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
     final var sendBundleRequest =
         createSendBundleRequest(callsBigBundle, previousHeadBlockNumber + 1L);
     final var sendSmallBundleRequest =
-        createSendBundleRequest(callsSmallBundle, previousHeadBlockNumber + 1L);
+        createSendBundleRequest(callsSmallBundle, previousHeadBlockNumber + 2L);
 
     final var sendBundleResponse = sendBundleRequest.execute(minerNode.nodeRequests());
     assertThat(sendBundleResponse.hasError()).isFalse();
