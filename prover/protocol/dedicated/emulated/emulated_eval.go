@@ -46,15 +46,9 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 		dstCarry[i] = common.NewVectorBuilder(a.Carry.Columns[i])
 	}
 
-	bufTerm := make([][][]*big.Int, len(a.Terms))
-	for i := range bufTerm {
-		bufTerm[i] = make([][]*big.Int, a.maxTermDegree)
-		for j := range bufTerm[i] {
-			bufTerm[i][j] = make([]*big.Int, a.nbLimbs)
-			for k := range bufTerm[i][j] {
-				bufTerm[i][j][k] = new(big.Int)
-			}
-		}
+	bufWit := make([]*big.Int, a.nbLimbs)
+	for i := range bufWit {
+		bufWit[i] = new(big.Int)
 	}
 	nbLhsLimbs := a.nbLimbs
 	for range a.maxTermDegree - 1 {
@@ -87,10 +81,7 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 		bufRhs[i] = new(big.Int)
 	}
 
-	witTerms := make([]*big.Int, a.maxTermDegree)
-	for i := range witTerms {
-		witTerms[i] = new(big.Int)
-	}
+	wit := new(big.Int)
 	witModulus := new(big.Int)
 
 	tmpEval := new(big.Int)
@@ -104,11 +95,7 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 		clearBuffer(bufQuo)
 		clearBuffer(bufRhs)
 		clearBuffer(bufLhs)
-		for i := range bufTerm {
-			for j := range bufTerm[i] {
-				clearBuffer(bufTerm[i][j])
-			}
-		}
+		clearBuffer(bufWit)
 		tmpEval.SetInt64(0)
 		// recompose all terms
 		for j := range a.Terms {
@@ -118,11 +105,11 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 			tmpTermProduct.SetInt64(1)
 			termNbLimbs := 1
 			for k := range a.Terms[j] {
-				if err := limbsToBigInt(witTerms[j], bufTerm[j][k], a.Terms[j][k], i, a.nbBitsPerLimb, run); err != nil {
+				if err := limbsToBigInt(wit, bufWit, a.Terms[j][k], i, a.nbBitsPerLimb, run); err != nil {
 					utils.Panic("failed to convert witness term [%d][%d]: %v", j, k, err)
 				}
-				tmpTermProduct.Mul(tmpTermProduct, witTerms[j])
-				if err := limbMul(bufTermProd2[:nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)], bufTermProd1[:termNbLimbs], bufTerm[j][k]); err != nil {
+				tmpTermProduct.Mul(tmpTermProduct, wit)
+				if err := limbMul(bufTermProd2[:nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)], bufTermProd1[:termNbLimbs], bufWit); err != nil {
 					utils.Panic("failed to multiply LHS2 and LHS1: %v", err)
 				}
 				termNbLimbs = nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)
