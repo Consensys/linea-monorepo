@@ -509,6 +509,7 @@ describe("ViemBlockchainClientAdapter", () => {
         3,
         1000n,
         300_000,
+        1500n, // gasLimitBufferBps (default)
         errorReporter,
       );
 
@@ -569,6 +570,7 @@ describe("ViemBlockchainClientAdapter", () => {
         3,
         1000n,
         300_000,
+        1500n, // gasLimitBufferBps (default)
         errorReporter,
       );
 
@@ -578,6 +580,129 @@ describe("ViemBlockchainClientAdapter", () => {
 
       // Verify errorReporter.recordContractError was called with undefined errorName
       expect(errorReporter.recordContractError).toHaveBeenCalledWith(contractAddress, rawRevertData, undefined);
+    });
+  });
+
+  describe("gas limit buffer", () => {
+    it("applies default 15% buffer to estimated gas", async () => {
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.estimateGas.mockResolvedValue(100_000n);
+      publicClientMock.estimateFeesPerGas.mockResolvedValue({
+        maxFeePerGas: 100n,
+        maxPriorityFeePerGas: 2n,
+      });
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+      contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+      await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+      // Verify buffer was applied: 100_000n * 1.15 = 115_000n
+      expect(contractSignerClient.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          gas: 115_000n,
+        }),
+      );
+      expect(logger.debug).toHaveBeenCalledWith("Gas estimation with buffer applied", {
+        originalEstimatedGas: "100000",
+        bufferedGas: "115000",
+        gasLimitBufferBps: "1500",
+        contractAddress,
+      });
+    });
+
+    it("applies custom buffer to estimated gas when provided", async () => {
+      const customBufferAdapter = new ViemBlockchainClientAdapter(
+        logger,
+        rpcUrl,
+        chain,
+        contractSignerClient,
+        3,
+        1000n,
+        300_000,
+        2000n, // 20% buffer
+      );
+
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.estimateGas.mockResolvedValue(100_000n);
+      publicClientMock.estimateFeesPerGas.mockResolvedValue({
+        maxFeePerGas: 100n,
+        maxPriorityFeePerGas: 2n,
+      });
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+      contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+      await customBufferAdapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+      // Verify custom buffer was applied: 100_000n * 1.2 = 120_000n
+      expect(contractSignerClient.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          gas: 120_000n,
+        }),
+      );
+      expect(logger.debug).toHaveBeenCalledWith("Gas estimation with buffer applied", {
+        originalEstimatedGas: "100000",
+        bufferedGas: "120000",
+        gasLimitBufferBps: "2000",
+        contractAddress,
+      });
+    });
+
+    it("applies buffer and then retry multiplier on retries", async () => {
+      const retryableError = Object.assign(new BaseError("Resource unavailable"), { code: -32002 });
+
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.estimateGas.mockResolvedValue(100_000n);
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+      publicClientMock.estimateFeesPerGas
+        .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 3n })
+        .mockResolvedValueOnce({ maxFeePerGas: 8n, maxPriorityFeePerGas: 2n });
+      contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+      mockedWithTimeout
+        .mockImplementationOnce(async (fn: any, _opts?: any) => {
+          await fn({ signal: null });
+          throw retryableError;
+        })
+        .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+      await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+      // First attempt: 100_000n * 1.15 (buffer) * 1.0 (no retry multiplier) = 115_000n
+      expect(contractSignerClient.sign).toHaveBeenNthCalledWith(1, expect.objectContaining({ gas: 115_000n }));
+
+      // Second attempt: 100_000n * 1.15 (buffer) * 1.1 (10% retry multiplier) = 126_500n
+      expect(contractSignerClient.sign).toHaveBeenNthCalledWith(2, expect.objectContaining({ gas: 126_500n }));
+    });
+
+    it("handles zero buffer correctly", async () => {
+      const zeroBufferAdapter = new ViemBlockchainClientAdapter(
+        logger,
+        rpcUrl,
+        chain,
+        contractSignerClient,
+        3,
+        1000n,
+        300_000,
+        0n, // 0% buffer
+      );
+
+      publicClientMock.getTransactionCount.mockResolvedValue(1);
+      publicClientMock.estimateGas.mockResolvedValue(100_000n);
+      publicClientMock.estimateFeesPerGas.mockResolvedValue({
+        maxFeePerGas: 100n,
+        maxPriorityFeePerGas: 2n,
+      });
+      publicClientMock.getChainId.mockResolvedValue(chain.id);
+      contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+      await zeroBufferAdapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+      // Verify no buffer was applied: 100_000n * 1.0 = 100_000n
+      expect(contractSignerClient.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          gas: 100_000n,
+        }),
+      );
     });
   });
 
@@ -678,7 +803,7 @@ describe("ViemBlockchainClientAdapter", () => {
       type: "eip1559",
       data: calldata,
       chainId: chain.id,
-      gas: 200n,
+      gas: 230n, // 200n * 1.15 (15% buffer)
       maxFeePerGas: 10n,
       maxPriorityFeePerGas: 3n,
       nonce: 4,
@@ -689,7 +814,7 @@ describe("ViemBlockchainClientAdapter", () => {
       type: "eip1559",
       data: calldata,
       chainId: chain.id,
-      gas: 220n,
+      gas: 253n, // 230n * 1.1 (15% buffer + 10% retry multiplier)
       maxFeePerGas: 11n,
       maxPriorityFeePerGas: 3n,
       nonce: 4,
@@ -716,7 +841,7 @@ describe("ViemBlockchainClientAdapter", () => {
       type: "eip1559",
       data: calldata,
       chainId: chain.id,
-      gas: 21_000n,
+      gas: 24_150n, // 21_000n * 1.15 (15% buffer)
       maxFeePerGas: 100n,
       maxPriorityFeePerGas: 2n,
       nonce: 7,
@@ -729,7 +854,7 @@ describe("ViemBlockchainClientAdapter", () => {
         type: "eip1559",
         data: calldata,
         chainId: chain.id,
-        gas: 21_000n,
+        gas: 24_150n, // 21_000n * 1.15 (15% buffer)
         maxFeePerGas: 100n,
         maxPriorityFeePerGas: 2n,
         nonce: 7,
@@ -811,7 +936,7 @@ describe("ViemBlockchainClientAdapter", () => {
       type: "eip1559",
       data: calldata,
       chainId: chain.id,
-      gas: 200n,
+      gas: 230n, // 200n * 1.15 (15% buffer)
       maxFeePerGas: 10n,
       maxPriorityFeePerGas: 3n,
       nonce: 5,
@@ -822,7 +947,7 @@ describe("ViemBlockchainClientAdapter", () => {
       type: "eip1559",
       data: calldata,
       chainId: chain.id,
-      gas: 220n,
+      gas: 253n, // 230n * 1.1 (15% buffer + 10% retry multiplier)
       maxFeePerGas: 11n,
       maxPriorityFeePerGas: 3n,
       nonce: 5,

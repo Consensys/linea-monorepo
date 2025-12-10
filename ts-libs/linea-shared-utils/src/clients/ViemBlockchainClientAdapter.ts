@@ -44,6 +44,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
    * @param {number} [sendTransactionsMaxRetries=3] - Maximum number of retry attempts for sending transactions (must be at least 1).
    * @param {bigint} [gasRetryBumpBps=1000n] - Gas price bump in basis points per retry (e.g., 1000n = +10% per retry).
    * @param {number} [sendTransactionAttemptTimeoutMs=300000] - Timeout in milliseconds for each transaction attempt (default: 5 minutes).
+   * @param {bigint} [gasLimitBufferBps=1500n] - Gas limit buffer in basis points applied to estimated gas (e.g., 1500n = +15% buffer). This prevents transactions from being included in blocks but failing to complete execution due to running out of gas, which can leave contract state partially updated.
    * @param {IEstimateGasErrorReporter} [errorReporter] - Optional error reporter for tracking estimateGas errors via metrics.
    * @throws {Error} If sendTransactionsMaxRetries is less than 1.
    */
@@ -55,6 +56,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     private readonly sendTransactionsMaxRetries = 3,
     private readonly gasRetryBumpBps: bigint = 1000n, // +10% per retry
     private readonly sendTransactionAttemptTimeoutMs = 300_000, // 5m
+    private readonly gasLimitBufferBps: bigint = 1500n, // +15% buffer to prevent partial execution
     private readonly errorReporter?: IEstimateGasErrorReporter,
   ) {
     if (sendTransactionsMaxRetries < 1) {
@@ -319,12 +321,13 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
   /**
    * Wrapper for estimateGas that handles error parsing and logging.
    * Extracts enhanced error details from EstimateGasExecutionError and logs them before re-throwing.
+   * Applies a configurable gas limit buffer to prevent partial execution due to running out of gas.
    *
    * @param {Address} contractAddress - The address of the contract to interact with.
    * @param {Hex} calldata - The encoded function call data.
    * @param {bigint} value - The amount of ether to send with the transaction.
    * @param {Abi} [abi] - Optional ABI for error decoding.
-   * @returns {Promise<bigint>} The estimated gas limit.
+   * @returns {Promise<bigint>} The estimated gas limit with buffer applied.
    * @throws {Error} Re-throws the original error after logging enhanced details.
    */
   private async _estimateGasWithErrorHandling(
@@ -349,7 +352,15 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       if (abi) {
         estimateGasParams.abi = abi;
       }
-      return await this.blockchainClient.estimateGas(estimateGasParams);
+      const estimatedGas = await this.blockchainClient.estimateGas(estimateGasParams);
+      const bufferedGas = (estimatedGas * (MAX_BPS + this.gasLimitBufferBps)) / MAX_BPS;
+      this.logger.debug("Gas estimation with buffer applied", {
+        originalEstimatedGas: estimatedGas.toString(),
+        bufferedGas: bufferedGas.toString(),
+        gasLimitBufferBps: this.gasLimitBufferBps.toString(),
+        contractAddress,
+      });
+      return bufferedGas;
     } catch (error) {
       const parsedError = this._parseEstimateGasError(error, abi);
       if (parsedError) {
