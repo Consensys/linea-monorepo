@@ -308,6 +308,10 @@ contract YieldManager is
    */
   function yieldProviderByIndex(uint256 _index) external view override returns (address yieldProvider) {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
+    uint256 length = $.yieldProviders.length;
+    if (_index == 0 || _index >= length) {
+      revert YieldProviderIndexOutOfBounds(_index, Math256.safeSub(length, 1));
+    }
     yieldProvider = $.yieldProviders[_index];
   }
 
