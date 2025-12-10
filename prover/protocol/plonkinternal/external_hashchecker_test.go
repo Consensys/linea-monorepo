@@ -37,6 +37,9 @@ func (circuit *externalPoseidon2FactoryTestLinear) Define(api frontend.API) erro
 	hasherBasic.Write(circuit.Inp[:]...)
 	hsum := hasher.Sum()
 	hsumBasic := hasherBasic.Sum()
+	api.Println("Input:", circuit.Inp)
+	api.Println("External Hasher Poseidon2 output:", hsum)
+	api.Println("Basic Hasher Poseidon2 output:", hsumBasic)
 	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 		api.AssertIsEqual(hsum[i], hsumBasic[i])
 	}
@@ -68,7 +71,7 @@ func TestPoseidon2Factories(t *testing.T) {
 				"PLONK",
 				0,
 				circuit, 1,
-				WithExternalHasher(32),
+				WithExternalHasher(8), //TODO@yao : check 32 or 8 or ???
 			)
 
 			pa = ctx.GetPlonkProverAction()

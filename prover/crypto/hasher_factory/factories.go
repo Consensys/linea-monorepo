@@ -121,7 +121,7 @@ func (h *ExternalHasher) Sum() [poseidon2_koalabear.BlockSize]frontend.Variable 
 			break
 		}
 		block[i%poseidon2_koalabear.BlockSize] = stream
-		if i%poseidon2_koalabear.BlockSize == 0 && i > 0 {
+		if i%poseidon2_koalabear.BlockSize == poseidon2_koalabear.BlockSize-1 {
 			curr = h.compress(curr, block)
 		}
 	}

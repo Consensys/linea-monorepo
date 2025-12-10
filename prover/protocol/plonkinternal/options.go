@@ -40,7 +40,7 @@ func WithFixedNbRows(nbRow int) Option {
 }
 
 // WithExternalHasher allows using an external hasher for the witness
-// commitment. The hash function is MiMC.
+// commitment. The hash function is Poseidon2.
 func WithExternalHasher(fixedNbRow int) Option {
 	return func(c *CompilationCtx) {
 

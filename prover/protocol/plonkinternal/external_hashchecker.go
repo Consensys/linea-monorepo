@@ -1,8 +1,11 @@
 package plonkinternal
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -159,7 +162,7 @@ func (ctx *GenericPlonkProverAction) assignHashColumns(run *wizard.ProverRuntime
 			block[j] = make([]field.Element, sizeHashing)
 			newState[j] = make([]field.Element, sizeHashing)
 		}
-
+		// fmt.Printf("src[%v]=%v\n", 0, src[0])
 		for k := 0; k < poseidon2_koalabear.BlockSize; k++ {
 			for j := range oldState {
 
@@ -167,17 +170,22 @@ func (ctx *GenericPlonkProverAction) assignHashColumns(run *wizard.ProverRuntime
 					osID = int(posOs[k][j].Uint64())
 					blID = int(posBl[k][j].Uint64())
 					nsID = int(posNs[k][j].Uint64())
-					os   = src[osID/sizeLRO].Get(osID % sizeLRO)
-					bl   = src[blID/sizeLRO].Get(blID % sizeLRO)
-					ns   = src[nsID/sizeLRO].Get(nsID % sizeLRO)
+					os   = src[osID/sizeLRO].Get(osID%sizeLRO + k*poseidon2_koalabear.BlockSize)
+					bl   = src[blID/sizeLRO].Get(blID%sizeLRO + k*poseidon2_koalabear.BlockSize)
+					ns   = src[nsID/sizeLRO].Get(nsID%sizeLRO + k*poseidon2_koalabear.BlockSize)
 				)
 
+				fmt.Printf("sizeLRO=%v, osID=%v os=%v blID=%v bl=%v nsID=%v ns=%v\n", sizeLRO, osID, os.String(), blID, bl.String(), nsID, ns.String())
 				oldState[k][j] = os
 				block[k][j] = bl
 				newState[k][j] = ns
 			}
 		}
 		for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
+			fmt.Printf("oldState[%v]=%v\n", j, vector.Prettify(oldState[j]))
+			fmt.Printf("block[%v]=%v\n", j, vector.Prettify(block[j]))
+			fmt.Printf("newState[%v]=%v\n", j, vector.Prettify(newState[j]))
+
 			run.AssignColumn(eho.OldStates[i][j].GetColID(), smartvectors.NewRegular(oldState[j]))
 			run.AssignColumn(eho.Blocks[i][j].GetColID(), smartvectors.NewRegular(block[j]))
 			run.AssignColumn(eho.NewStates[i][j].GetColID(), smartvectors.NewRegular(newState[j]))
@@ -194,6 +202,8 @@ func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS smart
 		size        = utils.NextPowerOfTwo(len(sls))
 		numRowPlonk = ctx.DomainSize()
 	)
+	fmt.Printf("Hash claims: %v\n", sls)
+
 	if ctx.ExternalHasherOption.FixedNbRows > 0 {
 		fixedNbRow := ctx.ExternalHasherOption.FixedNbRows
 		if fixedNbRow < size {
@@ -219,5 +229,6 @@ func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS smart
 		nst[i] = nst[i-1]
 	}
 
+	fmt.Printf("Hash check positions OS: %v\n", vector.Prettify(ost))
 	return smartvectors.NewRegular(ost), smartvectors.NewRegular(blk), smartvectors.NewRegular(nst)
 }
