@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
@@ -21,7 +22,7 @@ type EmulatedEvaluationModule struct {
 	Quotient Limbs
 	Carry    Limbs
 
-	Challenge       coin.Info
+	Challenge       *coin.Info
 	ChallengePowers []ifaces.Column
 
 	nbBitsPerLimb int
@@ -102,6 +103,7 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 		clearBuffer(bufMod)
 		clearBuffer(bufQuo)
 		clearBuffer(bufRhs)
+		clearBuffer(bufLhs)
 		for i := range bufTerm {
 			for j := range bufTerm[i] {
 				clearBuffer(bufTerm[i][j])
@@ -113,7 +115,6 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 			clearBuffer(bufTermProd1)
 			bufTermProd1[0].SetInt64(1) // multiplication identity
 			clearBuffer(bufTermProd2)
-			// bufTermProd2[0].SetInt64(1) // multiplication identity
 			tmpTermProduct.SetInt64(1)
 			termNbLimbs := 1
 			for k := range a.Terms[j] {
@@ -237,20 +238,17 @@ func EmulatedEvaluation(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int
 	}
 
 	pa := &EmulatedEvaluationModule{
-		Terms:   terms,
-		Modulus: modulus,
-
-		Quotient: quotient,
-		Carry:    carry,
-
-		Challenge:       challenge,
+		Terms:           terms,
+		Modulus:         modulus,
+		Quotient:        quotient,
+		Carry:           carry,
+		Challenge:       &challenge,
 		ChallengePowers: challengePowers,
-
-		nbBitsPerLimb: nbBitsPerLimb,
-		round:         round,
-		name:          name,
-		maxTermDegree: maxTermDegree,
-		nbLimbs:       nbLimbs,
+		nbBitsPerLimb:   nbBitsPerLimb,
+		round:           round,
+		name:            name,
+		maxTermDegree:   maxTermDegree,
+		nbLimbs:         nbLimbs,
 	}
 
 	comp.RegisterProverAction(round, &WrappedProverAction{pa.assignEmulatedColumns})
@@ -264,6 +262,48 @@ func EmulatedEvaluation(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int
 		)
 	}
 
-	// TODO: constraints
+	pa.csEval(comp)
+	csChallengePowers(comp, pa.Challenge, pa.ChallengePowers, round, name)
 	return pa
+}
+
+func (cs *EmulatedEvaluationModule) csEval(comp *wizard.CompiledIOP) {
+	uniqueLimbs := make(map[string]*symbolic.Expression)
+	for i := range cs.Terms {
+		for j := range cs.Terms[i] {
+			name := cs.Terms[i][j].String()
+			if _, ok := uniqueLimbs[name]; !ok {
+				uniqueLimbs[name] = csPolyEval(cs.Terms[i][j], cs.ChallengePowers)
+			}
+		}
+	}
+	evalSum := symbolic.NewConstant(0)
+	for i := range cs.Terms {
+		termProd := symbolic.NewConstant(1)
+		for j := range cs.Terms[i] {
+			name := cs.Terms[i][j].String()
+			termProd = symbolic.Mul(termProd, uniqueLimbs[name])
+		}
+		evalSum = symbolic.Add(evalSum, termProd)
+	}
+	modulusEval := csPolyEval(cs.Modulus, cs.ChallengePowers)
+	quotientEval := csPolyEval(cs.Quotient, cs.ChallengePowers)
+	carryEval := csPolyEval(cs.Carry, cs.ChallengePowers)
+	coef := big.NewInt(0).Lsh(big.NewInt(1), uint(cs.nbBitsPerLimb))
+	carryCoef := symbolic.Sub(
+		symbolic.NewConstant(coef),
+		cs.Challenge.AsVariable(),
+	)
+
+	carryCoefEval := symbolic.Mul(carryEval, carryCoef)
+	qmEval := symbolic.Mul(quotientEval, modulusEval)
+	comp.InsertGlobal(
+		cs.round+1,
+		ifaces.QueryIDf("%s_EMUL_EVAL", cs.name),
+		symbolic.Sub(
+			evalSum,
+			qmEval,
+			carryCoefEval,
+		),
+	)
 }
