@@ -109,7 +109,7 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
             .execute(minerNode.nodeRequests());
 
     super.buildNewBlockAndWait();
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transfer2TxHash.toShortLogString()));
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transfer2TxHash.toHexString()));
     // all tx in small bundle where included in a block
     Arrays.stream(callsSmallBundle)
         .map(MulmodCall::txHash)

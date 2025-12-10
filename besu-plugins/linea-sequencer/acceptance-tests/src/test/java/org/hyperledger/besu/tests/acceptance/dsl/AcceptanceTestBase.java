@@ -185,8 +185,6 @@ public abstract class AcceptanceTestBase {
               .mapToObj(i -> accounts.createAccount("Account" + i))
               .toList();
 
-      final var chainId =
-          minerNode.nodeRequests().eth().ethChainId().send().getChainId().longValue();
       final var senderAccount = accounts.getPrimaryBenefactor();
       final AtomicInteger fundingAccNonce =
           new AtomicInteger(
@@ -209,8 +207,6 @@ public abstract class AcceptanceTestBase {
                       .getValue()
                       .toBigInteger()
                       .multiply(BigInteger.valueOf(numAccounts)));
-      System.out.println("balance: " + Wei.of(founderBalance).getAsBigInteger());
-      System.out.println("targetBalance: " + requiredBalance);
       assertThat(founderBalance).isGreaterThanOrEqualTo(requiredBalance);
 
       final var transfers =
