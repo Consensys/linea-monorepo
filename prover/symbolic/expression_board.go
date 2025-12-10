@@ -1,5 +1,7 @@
 package symbolic
 
+import "github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
 /*
 ExpressionBoard is a shared space for defining expressions. Several expressions
 can use the same board. Ideally, all expressions uses the same common board.
@@ -13,6 +15,13 @@ type ExpressionBoard struct {
 	Nodes []Node
 	// Maps nodes to their index in the Nodes slice.
 	ESHashesToPos map[esHash]nodeID
+
+	// Compiled program
+	bytecode          []int
+	constants         []fext.Element
+	numSlots          int
+	resultSlot        int
+	programNodesCount int
 }
 
 // emptyBoard initializes a board with no Node in it.

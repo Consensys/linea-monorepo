@@ -14,12 +14,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 )
 
-// CreateCol is a utility function to quickly register columns
-func CreateCol(name, subName string, size int, comp *wizard.CompiledIOP) ifaces.Column {
+// CreateColBase is a utility function to quickly register columns
+func CreateColBase(name, subName string, size int, comp *wizard.CompiledIOP) ifaces.Column {
 	return comp.InsertCommit(
 		0,
 		ifaces.ColIDf("%s_%s", name, subName),
 		size,
+		true,
 	)
 }
 

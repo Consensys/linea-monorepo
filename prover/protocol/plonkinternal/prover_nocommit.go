@@ -1,6 +1,8 @@
 package plonkinternal
 
 import (
+	"reflect"
+
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/backend/witness"
 	cs "github.com/consensys/gnark/constraint/koalabear"
@@ -72,7 +74,8 @@ func (pa PlonkNoCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses
 
 				v, ok := pubWitness.Vector().(koalabear.Vector)
 				if !ok {
-					utils.Panic("Public witness is not a vector")
+					t := reflect.TypeOf(pubWitness.Vector())
+					utils.Panic("Public witness is not a vector, %v.%v", t.PkgPath(), t.Name())
 				}
 
 				// Converts it as a smart-vector

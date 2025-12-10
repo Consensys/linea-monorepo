@@ -60,7 +60,7 @@ func runTestSha2(t *testing.T, tc testCaseFile) {
 		mod = newSha2BlockModule(build.CompiledIOP, &inp)
 
 		if tc.WithCircuit {
-			mod.WithCircuit(build.CompiledIOP, query.PlonkRangeCheckOption(16, 6, false))
+			mod.WithCircuit(build.CompiledIOP, query.PlonkRangeCheckOption(16, 1, false))
 		}
 
 	}, dummy.Compile)

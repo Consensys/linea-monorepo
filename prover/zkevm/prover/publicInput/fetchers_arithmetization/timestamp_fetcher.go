@@ -72,24 +72,24 @@ func NewTimestampFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.Block
 	size := bdc.Ct.Size()
 
 	res := &TimestampFetcher{
-		RelBlock:      util.CreateCol(name, "REL_BLOCK", size, comp),
-		FilterFetched: util.CreateCol(name, "FILTER_FETCHED", size, comp),
-		FilterArith:   util.CreateCol(name, "FILTER_ARITHMETIZATION", size, comp),
+		RelBlock:      util.CreateColBase(name, "REL_BLOCK", size, comp),
+		FilterFetched: util.CreateColBase(name, "FILTER_FETCHED", size, comp),
+		FilterArith:   util.CreateColBase(name, "FILTER_ARITHMETIZATION", size, comp),
 	}
 
 	for i := range res.Data {
-		res.Data[i] = util.CreateCol(name, fmt.Sprintf("DATA_%d", i), size, comp)
-		res.First[i] = util.CreateCol(name, fmt.Sprintf("FIRST_%d", i), size, comp)
-		res.Last[i] = util.CreateCol(name, fmt.Sprintf("LAST_%d", i), size, comp)
-		res.FirstArith[i] = util.CreateCol(name, fmt.Sprintf("FIRST_ARITHMETIZATION_%d", i), size, comp)
-		res.LastArith[i] = util.CreateCol(name, fmt.Sprintf("LAST_ARITHMETIZATION_%d", i), size, comp)
+		res.Data[i] = util.CreateColBase(name, fmt.Sprintf("DATA_%d", i), size, comp)
+		res.First[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_%d", i), size, comp)
+		res.Last[i] = util.CreateColBase(name, fmt.Sprintf("LAST_%d", i), size, comp)
+		res.FirstArith[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_ARITHMETIZATION_%d", i), size, comp)
+		res.LastArith[i] = util.CreateColBase(name, fmt.Sprintf("LAST_ARITHMETIZATION_%d", i), size, comp)
 	}
 
 	for i := range res.FirstBlockID {
-		res.FirstBlockID[i] = util.CreateCol(name, fmt.Sprintf("FIRST_BLOCK_ID_%d", i), size, comp)
-		res.LastBlockID[i] = util.CreateCol(name, fmt.Sprintf("LAST_BLOCK_ID_%d", i), size, comp)
-		res.FirstBlockIDArith[i] = util.CreateCol(name, fmt.Sprintf("FIRST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
-		res.LastBlockIDArith[i] = util.CreateCol(name, fmt.Sprintf("LAST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
+		res.FirstBlockID[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_BLOCK_ID_%d", i), size, comp)
+		res.LastBlockID[i] = util.CreateColBase(name, fmt.Sprintf("LAST_BLOCK_ID_%d", i), size, comp)
+		res.FirstBlockIDArith[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
+		res.LastBlockIDArith[i] = util.CreateColBase(name, fmt.Sprintf("LAST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
 	}
 
 	return res
@@ -112,7 +112,7 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *TimestampFe
 			},
 			Mask: sym.NewVariable(fetcher.FilterFetched),
 		},
-		false,
+		false, // we want a substraction
 	)
 
 	for i := range fetcher.FirstBlockID {
@@ -160,7 +160,7 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *TimestampFe
 		sym.Mul(
 			column.Shift(fetcher.FilterFetched, -1),
 			sym.Sub(
-				column.Shift(fetcher.LastMinusFirstBlock.Limbs[common.NbLimbU48-1], -1),
+				fetcher.LastMinusFirstBlock.Limbs[common.NbLimbU48-1],
 				sym.Add(
 					column.Shift(fetcher.RelBlock, -1),
 					-1,

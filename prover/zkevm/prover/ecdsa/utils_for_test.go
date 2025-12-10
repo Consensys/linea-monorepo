@@ -17,24 +17,24 @@ import (
 
 func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *antichamber) (td *txnData, ecRec *EcRecover) {
 	td = &txnData{
-		Ct:       comp.InsertCommit(0, ifaces.ColIDf("txn_data.CT"), size1),
-		User:     comp.InsertCommit(0, ifaces.ColIDf("txn_data.USER"), size1),
-		Selector: comp.InsertCommit(0, ifaces.ColIDf("txn_data.SELECTOR"), size1),
+		Ct:       comp.InsertCommit(0, ifaces.ColIDf("txn_data.CT"), size1, true),
+		User:     comp.InsertCommit(0, ifaces.ColIDf("txn_data.USER"), size1, true),
+		Selector: comp.InsertCommit(0, ifaces.ColIDf("txn_data.SELECTOR"), size1, true),
 	}
 
 	for i := 0; i < common.NbLimbU256; i++ {
-		td.From[i] = comp.InsertCommit(0, ifaces.ColID(fmt.Sprintf("txndata.From_%d", i)), size1)
+		td.From[i] = comp.InsertCommit(0, ifaces.ColID(fmt.Sprintf("txndata.From_%d", i)), size1, true)
 	}
 
 	ecRec = &EcRecover{
-		EcRecoverIsRes: comp.InsertCommit(0, ifaces.ColIDf("ECRECOVER_ISRES"), size),
+		EcRecoverIsRes: comp.InsertCommit(0, ifaces.ColIDf("ECRECOVER_ISRES"), size, true),
 	}
 
 	for i := 0; i < common.NbLimbU128; i++ {
-		ecRec.Limb[i] = comp.InsertCommit(0, ifaces.ColIDf("ECRECOVER_LIMB_%d", i), size)
+		ecRec.Limb[i] = comp.InsertCommit(0, ifaces.ColIDf("ECRECOVER_LIMB_%d", i), size, true)
 	}
 
-	ac.IsActive = comp.InsertCommit(0, "AntiChamber_IsActive", size)
+	ac.IsActive = comp.InsertCommit(0, "AntiChamber_IsActive", size, true)
 	return td, ecRec
 }
 
@@ -223,13 +223,13 @@ func commitTxnData(comp *wizard.CompiledIOP, limits *Settings, nbRowsPerTxInTxnD
 	size := limits.sizeTxnData(nbRowsPerTxInTxnData)
 
 	td = &txnData{
-		Ct:       comp.InsertCommit(0, ifaces.ColIDf("txn_data.CT"), size),
-		User:     comp.InsertCommit(0, ifaces.ColIDf("txn_data.USER"), size),
-		Selector: comp.InsertCommit(0, ifaces.ColIDf("txn_data.SELECTOR"), size),
+		Ct:       comp.InsertCommit(0, ifaces.ColIDf("txn_data.CT"), size, true),
+		User:     comp.InsertCommit(0, ifaces.ColIDf("txn_data.USER"), size, true),
+		Selector: comp.InsertCommit(0, ifaces.ColIDf("txn_data.SELECTOR"), size, true),
 	}
 
 	for i := 0; i < common.NbLimbU256; i++ {
-		td.From[i] = comp.InsertCommit(0, ifaces.ColIDf("txn_data.From_%d", i), size)
+		td.From[i] = comp.InsertCommit(0, ifaces.ColIDf("txn_data.From_%d", i), size, true)
 	}
 
 	return td

@@ -164,8 +164,8 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-// SplitBy splits the input slice into subarrays of size poseidon2.BlockSize. If the input is not divisible by the size, it appends constant verifier columns to the input to make it divisible by the size.
-func SplitBy(input []ifaces.Column) [][poseidon2_koalabear.BlockSize]ifaces.Column {
+// SplitColumns splits the input slice into subarrays of size poseidon2.BlockSize. If the input is not divisible by the size, it appends constant verifier columns to the input to make it divisible by the size.
+func SplitColumns(input []ifaces.Column) [][poseidon2_koalabear.BlockSize]ifaces.Column {
 
 	var (
 		n = len(input) % poseidon2_koalabear.BlockSize
@@ -183,10 +183,21 @@ func SplitBy(input []ifaces.Column) [][poseidon2_koalabear.BlockSize]ifaces.Colu
 	m := len(input) / poseidon2_koalabear.BlockSize
 
 	result := make([][poseidon2_koalabear.BlockSize]ifaces.Column, m)
-	for i := 0; i < n; i++ {
+	for i := 0; i < m; i++ {
 		for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
 			result[i][j] = input[i*poseidon2_koalabear.BlockSize+j]
 		}
 	}
 	return result
+}
+
+// ParsToBlocks parses the input bytes into subarrays of size BlockSize.
+func ParsToBlocks(data [32]byte) (res [BlockSize][]byte) {
+
+	n := len(data) / BlockSize
+
+	for i := range res {
+		res[i] = data[i*n : (i+1)*n]
+	}
+	return res
 }

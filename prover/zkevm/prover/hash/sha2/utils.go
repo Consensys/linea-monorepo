@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/rangecheck"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // Decompose x in 'nBytes' bytes in big endian order

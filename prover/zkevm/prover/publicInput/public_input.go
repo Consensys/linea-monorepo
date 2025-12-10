@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	pcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
@@ -84,11 +85,7 @@ type InputModules struct {
 
 // NewPublicInputZkEVM constructs and returns a [PublicInput] module using the
 // right columns from the arithmetization by their names.
-func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *statesummary.Module) PublicInput {
-
-	getCol := func(s string) ifaces.Column {
-		return comp.Columns.GetHandle(ifaces.ColID(s))
-	}
+func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *statesummary.Module, a *arithmetization.Arithmetization) PublicInput {
 
 	settings.Name = "PUBLIC_INPUT"
 
@@ -96,99 +93,88 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 		comp,
 		&InputModules{
 			BlockData: &arith.BlockDataCols{
-				RelBlock:   getCol("blockdata.REL_BLOCK"),
-				Inst:       getCol("blockdata.INST"),
-				Ct:         getCol("blockdata.CT"),
-				DataHi:     getCol("blockdata.DATA_HI"),
-				DataLo:     getCol("blockdata.DATA_LO"),
-				FirstBlock: getCol("blockdata.FIRST_BLOCK_NUMBER"),
+				RelBlock:   a.ColumnOf(comp, "blockdata", "REL_BLOCK"),
+				Inst:       a.ColumnOf(comp, "blockdata", "INST"),
+				Ct:         a.ColumnOf(comp, "blockdata", "CT"),
+				DataHi:     a.LimbColumnsOfArr8(comp, "blockdata", "DATA_HI"),
+				DataLo:     a.LimbColumnsOfArr8(comp, "blockdata", "DATA_LO"),
+				FirstBlock: a.LimbColumnsOfArr3(comp, "blockdata", "FIRST_BLOCK_NUMBER"),
 			},
 			TxnData: &arith.TxnData{
-				AbsTxNum:        getCol("txndata.USER_TXN_NUMBER"),
-				AbsTxNumMax:     getCol("txndata.prover___USER_TXN_NUMBER_MAX"),
-				Ct:              getCol("txndata.CT"),
-				FromHi:          getCol("txndata.hubFROM_ADDRESS_HI_xor_rlpCHAIN_ID"),
-				FromLo:          getCol("txndata.computationARG_1_LO_xor_hubFROM_ADDRESS_LO_xor_rlpTO_ADDRESS_LO"),
-				IsLastTxOfBlock: getCol("txndata.prover___IS_LAST_USER_TXN_OF_BLOCK"),
-				RelBlock:        getCol("txndata.BLK_NUMBER"),
-				RelTxNum:        getCol("txndata.prover___RELATIVE_USER_TXN_NUMBER"),
-				RelTxNumMax:     getCol("txndata.prover___RELATIVE_USER_TXN_NUMBER_MAX"),
-				USER:            getCol("txndata.USER"),
-				Selector:        getCol("txndata.HUB"),
-				SYSI:            getCol("txndata.SYSI"),
-				SYSF:            getCol("txndata.SYSF"),
+				AbsTxNum:        a.ColumnOf(comp, "txndata", "USER_TXN_NUMBER"),
+				AbsTxNumMax:     a.ColumnOf(comp, "txndata", "prover___USER_TXN_NUMBER_MAX"),
+				Ct:              a.ColumnOf(comp, "txndata", "CT"),
+				FromHi:          a.LimbColumnsOfArr2(comp, "txndata", "FROM_ADDRESS_HI"),
+				FromLo:          a.LimbColumnsOfArr8(comp, "txndata", "FROM_ADDRESS_LO"),
+				IsLastTxOfBlock: a.ColumnOf(comp, "txndata", "prover___IS_LAST_USER_TXN_OF_BLOCK"),
+				RelBlock:        a.ColumnOf(comp, "txndata", "BLK_NUMBER"),
+				RelTxNum:        a.ColumnOf(comp, "txndata", "prover___RELATIVE_USER_TXN_NUMBER"),
+				RelTxNumMax:     a.ColumnOf(comp, "txndata", "prover___RELATIVE_USER_TXN_NUMBER_MAX"),
+				USER:            a.ColumnOf(comp, "txndata", "USER"),
+				Selector:        a.ColumnOf(comp, "txndata", "HUB"),
+				SYSI:            a.ColumnOf(comp, "txndata", "SYSI"),
+				SYSF:            a.ColumnOf(comp, "txndata", "SYSF"),
 			},
 			RlpTxn: &arith.RlpTxn{
-				AbsTxNum:       getCol("rlptxn.USER_TXN_NUMBER"),
-				AbsTxNumMax:    getCol("rlptxn.prover___USER_TXN_NUMBER_MAX"),
-				ToHashByProver: getCol("rlptxn.TO_HASH_BY_PROVER"),
-				Limb:           getCol("rlptxn.cmpLIMB"),
-				NBytes:         getCol("rlptxn.cmpLIMB_SIZE"),
-				TxnPerspective: getCol("rlptxn.TXN"),
-				ChainID:        getCol("rlptxn.txnCHAIN_ID"),
+				AbsTxNum:       a.ColumnOf(comp, "rlptxn", "USER_TXN_NUMBER"),
+				AbsTxNumMax:    a.ColumnOf(comp, "rlptxn", "prover___USER_TXN_NUMBER_MAX"),
+				ToHashByProver: a.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
+				Limbs:          a.LimbColumnsOfArr8(comp, "rlptxn", "cmpLIMB"),
+				NBytes:         a.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
+				TxnPerspective: a.ColumnOf(comp, "rlptxn", "TXN"),
+				ChainID:        a.ColumnOf(comp, "rlptxn", "txnCHAIN_ID"),
 			},
 			LogCols: logs.LogColumns{
-				IsLog0:       getCol("loginfo.IS_LOG_X_0"),
-				IsLog1:       getCol("loginfo.IS_LOG_X_1"),
-				IsLog2:       getCol("loginfo.IS_LOG_X_2"),
-				IsLog3:       getCol("loginfo.IS_LOG_X_3"),
-				IsLog4:       getCol("loginfo.IS_LOG_X_4"),
-				AbsLogNum:    getCol("loginfo.ABS_LOG_NUM"),
-				AbsLogNumMax: getCol("loginfo.ABS_LOG_NUM_MAX"),
-				Ct:           getCol("loginfo.CT"),
-				DataHi:       getCol("loginfo.DATA_HI"),
-				DataLo:       getCol("loginfo.DATA_LO"),
-				TxEmitsLogs:  getCol("loginfo.TXN_EMITS_LOGS"),
+				IsLog0:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_0"),
+				IsLog1:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_1"),
+				IsLog2:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_2"),
+				IsLog3:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_3"),
+				IsLog4:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_4"),
+				AbsLogNum:    a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM"),
+				AbsLogNumMax: a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM_MAX"),
+				Ct:           a.ColumnOf(comp, "loginfo", "CT"),
+				DataHi:       a.LimbColumnsOfArr8(comp, "loginfo", "DATA_HI"),
+				DataLo:       a.LimbColumnsOfArr8(comp, "loginfo", "DATA_LO"),
+				TxEmitsLogs:  a.ColumnOf(comp, "loginfo", "TXN_EMITS_LOGS"),
 			},
 			StateSummary: ss,
-			TxnData: &arith.TxnData{
-				AbsTxNum:        getCol("txndata.ABS_TX_NUM"),
-				AbsTxNumMax:     getCol("txndata.ABS_TX_NUM_MAX"),
-				Ct:              getCol("txndata.CT"),
-				IsLastTxOfBlock: getCol("txndata.IS_LAST_TX_OF_BLOCK"),
-				RelBlock:        getCol("txndata.REL_BLOCK"),
-				RelTxNum:        getCol("txndata.REL_TX_NUM"),
-				RelTxNumMax:     getCol("txndata.REL_TX_NUM_MAX"),
-			},
-			RlpTxn: &arith.RlpTxn{
-				AbsTxNum:       getCol("rlptxn.ABS_TX_NUM"),
-				AbsTxNumMax:    getCol("rlptxn.ABS_TX_NUM_INFINY"),
-				ToHashByProver: getCol("rlptxn.TO_HASH_BY_PROVER"),
-				NBytes:         getCol("rlptxn.nBYTES"),
-				Done:           getCol("rlptxn.DONE"),
-				IsPhaseChainID: getCol("rlptxn.IS_PHASE_CHAIN_ID"),
-			},
-			LogCols: logs.LogColumns{
-				IsLog0:       getCol("loginfo.IS_LOG_X_0"),
-				IsLog1:       getCol("loginfo.IS_LOG_X_1"),
-				IsLog2:       getCol("loginfo.IS_LOG_X_2"),
-				IsLog3:       getCol("loginfo.IS_LOG_X_3"),
-				IsLog4:       getCol("loginfo.IS_LOG_X_4"),
-				AbsLogNum:    getCol("loginfo.ABS_LOG_NUM"),
-				AbsLogNumMax: getCol("loginfo.ABS_LOG_NUM_MAX"),
-				Ct:           getCol("loginfo.CT"),
-				TxEmitsLogs:  getCol("loginfo.TXN_EMITS_LOGS"),
-			},
-			StateSummary: ss,
+			// The merge yielded duplicated fields, but the above seems closer
+			// what we actually want as it does not assume changes in the
+			// arithmetization. The above looks a lot more like main, so likely
+			// a better starting point.
+			//
+			// TxnData: &arith.TxnData{
+			// 	AbsTxNum:        a.ColumnOf(comp, "txndata", "ABS_TX_NUM"),
+			// 	AbsTxNumMax:     a.ColumnOf(comp, "txndata", "ABS_TX_NUM_MAX"),
+			// 	Ct:              a.ColumnOf(comp, "txndata", "CT"),
+			// 	IsLastTxOfBlock: a.ColumnOf(comp, "txndata", "IS_LAST_TX_OF_BLOCK"),
+			// 	RelBlock:        a.ColumnOf(comp, "txndata", "REL_BLOCK"),
+			// 	RelTxNum:        a.ColumnOf(comp, "txndata", "REL_TX_NUM"),
+			// 	RelTxNumMax:     a.ColumnOf(comp, "txndata", "REL_TX_NUM_MAX"),
+			// },
+			// RlpTxn: &arith.RlpTxn{
+			// 	AbsTxNum:       a.ColumnOf(comp, "rlptxn", "ABS_TX_NUM"),
+			// 	AbsTxNumMax:    a.ColumnOf(comp, "rlptxn", "ABS_TX_NUM_INFINY"),
+			// 	ToHashByProver: a.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
+			// 	NBytes:         a.ColumnOf(comp, "rlptxn", "nBYTES"),
+			// 	Done:           a.ColumnOf(comp, "rlptxn", "DONE"),
+			// 	IsPhaseChainID: a.ColumnOf(comp, "rlptxn", "IS_PHASE_CHAIN_ID"),
+			// },
+			// LogCols: logs.LogColumns{
+			// 	IsLog0:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_0"),
+			// 	IsLog1:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_1"),
+			// 	IsLog2:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_2"),
+			// 	IsLog3:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_3"),
+			// 	IsLog4:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_4"),
+			// 	AbsLogNum:    a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM"),
+			// 	AbsLogNumMax: a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM_MAX"),
+			// 	Ct:           a.ColumnOf(comp, "loginfo", "CT"),
+			// 	TxEmitsLogs:  a.ColumnOf(comp, "loginfo", "TXN_EMITS_LOGS"),
+			// },
+			// StateSummary: ss,
 		},
+		*settings,
 	)
-
-	for i := range inputModules.RlpTxn.Limbs {
-		inputModules.RlpTxn.Limbs[i] = getCol(fmt.Sprintf("rlptxn.LIMB_%d", i))
-	}
-
-	for i := range inputModules.BlockData.FirstBlock {
-		inputModules.BlockData.FirstBlock[i] = getCol(fmt.Sprintf("blockdata.FIRST_BLOCK_NUMBER_%d", i))
-	}
-
-	for i := range pcommon.NbLimbU256 {
-		inputModules.BlockData.Data[i] = getCol(fmt.Sprintf("blockdata.DATA_%d", i))
-		inputModules.LogCols.Data[i] = getCol(fmt.Sprintf("loginfo.DATA_%d", i))
-	}
-
-	for i := range inputModules.TxnData.From {
-		inputModules.TxnData.From[i] = getCol(fmt.Sprintf("txndata.FROM_%d", i))
-	}
 
 	return newPublicInput(comp, inputModules, *settings)
 }

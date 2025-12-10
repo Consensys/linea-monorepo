@@ -101,7 +101,7 @@ func declareUnivariateQueries(
 func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 
 	var (
-		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")
+		stoptimer = profiling.LogTimer("evaluate the queries for the global constraints")
 		r         = run.GetRandomCoinFieldExt(pa.EvalCoin.Name)
 		witnesses = make([]sv.SmartVector, len(pa.AllInvolvedColumns))
 	)
@@ -119,8 +119,13 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	ys := smartvectors_mixed.BatchEvaluateLagrange(witnesses, r)
-	run.AssignUnivariateExt(pa.WitnessEval.QueryID, r, ys...)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		ys := smartvectors_mixed.BatchEvaluateLagrange(witnesses, r)
+		run.AssignUnivariateExt(pa.WitnessEval.QueryID, r, ys...)
+		wg.Done()
+	}()
 
 	/*
 		For the quotient evaluate it on `x = r / g`, where g is the coset
@@ -132,7 +137,6 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 		mulGenInv         = fft.NewDomain(uint64(maxRatio*pa.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
 		rootInv, _        = fft.Generator(uint64(maxRatio * pa.DomainSize))
 		quotientEvalPoint fext.Element
-		wg                = &sync.WaitGroup{}
 	)
 	rootInv.Inverse(&rootInv)
 	quotientEvalPoint.MulByElement(&r, &mulGenInv)

@@ -1,6 +1,8 @@
 package fiatshamir_koalabear
 
 import (
+	"unsafe"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -23,15 +25,13 @@ func (fs *FS) Update(vec ...field.Element) {
 }
 
 func (fs *FS) UpdateExt(vec ...fext.Element) {
-	pad := make([]field.Element, 4*len(vec))
-	for i := 0; i < len(vec); i++ {
-		pad[4*i].Set(&vec[i].B0.A0)
-		pad[4*i+1].Set(&vec[i].B0.A1)
-		pad[4*i+2].Set(&vec[i].B1.A0)
-		pad[4*i+3].Set(&vec[i].B1.A1)
+	if len(vec) == 0 {
+		return
 	}
-	fs.h.WriteElements(pad...)
+	vElems := unsafe.Slice((*field.Element)(unsafe.Pointer(&vec[0])), 4*len(vec))
+	fs.h.WriteElements(vElems...)
 }
+
 func (fs *FS) UpdateGeneric(vec ...fext.GenericFieldElem) {
 	if len(vec) == 0 {
 		return

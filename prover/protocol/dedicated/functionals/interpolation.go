@@ -63,10 +63,11 @@ func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
 	// Then we subtract 1 from all.
 
 	// 1. Generate powers
-	witi[0] = aVal
-	for i := 1; i < a.N; i++ {
-		witi[i].MulByElement(&witi[i-1], &omegaInv)
-	}
+	// note: merged in the loop below.
+	// witi[0] = aVal
+	// for i := 1; i < a.N; i++ {
+	// 	witi[i].MulByElement(&witi[i-1], &omegaInv)
+	// }
 
 	// 2. Subtract 1 from all elements (Parallelizable)
 	// We also check for zero (root of unity) here.
@@ -74,7 +75,18 @@ func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
 	// If (val - 1) is zero, then val was 1.
 	// Since we need to panic if any is zero, we can do this check during or after subtraction.
 	parallel.Execute(a.N, func(start, end int) {
+
+		var wInvStart field.Element
+		wInvStart.ExpInt64(omegaInv, int64(start))
+
+		currentWInv := wInvStart
+
 		for i := start; i < end; i++ {
+			// witi[i] = aVal * (omegaInv)^i - 1
+			witi[i].MulByElement(&aVal, &currentWInv)
+			currentWInv.Mul(&currentWInv, &omegaInv)
+
+			// Subtract 1
 			witi[i].Sub(&witi[i], &one)
 			if witi[i].IsZero() {
 				utils.Panic("detected that a is a root of unity")

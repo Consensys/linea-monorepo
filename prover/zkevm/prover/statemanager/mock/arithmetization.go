@@ -1,9 +1,10 @@
 package mock
 
 import (
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"math/big"
 	"sort"
+
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	eth "github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
@@ -320,11 +321,13 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 				addressBalanceBytes = make([]byte, common.NbLimbU64*common.LimbBytes)
 			}
 
-			balanceBytes := common.LeftPadToFrBytes(initialState.GetBalance(address).Bytes())
+			balanceBytes := common.LeftPadToBytes(initialState.GetBalance(address).Bytes(), common.NbLimbU128*common.LimbBytes)
 			balanceLimbs := common.SplitBytes(balanceBytes)
 			codeSizeLimbs := common.SplitBigEndianUint64(uint64(initialState.GetCodeSize(address)))
-			for i := range common.NbLimbU64 {
+			for i := range common.NbLimbU128 {
 				prevBalance[i].SetBytes(balanceLimbs[i])
+			}
+			for i := range common.NbLimbU64 {
 				prevCodeSize[i].SetBytes(codeSizeLimbs[i])
 			}
 
@@ -354,8 +357,8 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 	// deployment number
 	accHistory.deploymentNumber = append(accHistory.deploymentNumber, prevDeploymentNumber)
 
-	// block number
-	currentBlockLimbs := common.SplitBigEndianUint64(uint64(currentBlock))
+	// block number (+1 to harmonize with HUB block numbering, which starts from 1)
+	currentBlockLimbs := common.SplitBigEndianUint64(uint64(currentBlock + 1))
 	var prevBlockNumber [common.NbLimbU64]field.Element
 	for i := range common.NbLimbU64 {
 		prevBlockNumber[i].SetBytes(currentBlockLimbs[i])
@@ -771,10 +774,10 @@ func (accHistory *AccountHistory) AddFrame(frame StateAccessLog, initialState *S
 			accHistory.nonceNew[lastIndex][i].SetBytes(nonceLimbBytes[i])
 		}
 	case Balance:
-		addressBalanceBytes := common.LeftPadToFrBytes((frame.Value).(*big.Int).Bytes())
+		addressBalanceBytes := common.LeftPadToBytes((frame.Value).(*big.Int).Bytes(), common.NbLimbU128*common.LimbBytes)
 
 		balanceLimbs := common.SplitBytes(addressBalanceBytes)
-		for i := range common.NbLimbU64 {
+		for i := range common.NbLimbU128 {
 			accHistory.balanceNew[lastIndex][i].SetBytes(balanceLimbs[i])
 		}
 	case Codesize: // only for reads
@@ -934,7 +937,8 @@ func (stoHistory *StorageHistory) AddFrame(frame StateAccessLog, currentDeployme
 	}
 
 	stoHistory.deploymentNumber = append(stoHistory.deploymentNumber, deploymentNumber)
-	blockNumber := common.SplitBigEndianUint64(uint64(frame.Block))
+	// +1 to harmonize with HUB block numbering, which starts from 1
+	blockNumber := common.SplitBigEndianUint64(uint64(frame.Block + 1))
 	var blockNumberLimbs [common.NbLimbU64]field.Element
 	for i := range common.NbLimbU64 {
 		blockNumberLimbs[i].SetBytes(blockNumber[i])

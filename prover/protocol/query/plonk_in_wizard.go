@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 
 	"github.com/consensys/gnark/backend/witness"
+	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -135,7 +136,8 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 		return fmt.Errorf("Error while getting the selector %v", errSel)
 	}
 	var (
-		ccs, compErr        = frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, piw.Circuit)
+		builder             = gnarkutil.NewMockBuilder(scs.NewBuilder[constraint.U32])
+		ccs, compErr        = frontend.CompileU32(koalabear.Modulus(), builder, piw.Circuit)
 		numEffInstances int = 0
 	)
 

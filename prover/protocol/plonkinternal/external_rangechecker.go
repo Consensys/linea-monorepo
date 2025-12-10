@@ -46,7 +46,7 @@ type externalRangeChecker struct {
 	addGateForRangeCheck bool
 }
 
-// newExternalRangeChecker takes compiled IOP and returns [frontend.NewBuilder].
+// NewExternalRangeCheckerBuilder takes compiled IOP and returns [frontend.NewBuilder].
 // The returned constructor can be passed to [frontend.Compile] to instantiate a
 // new builder of constraint system.
 //
@@ -57,7 +57,7 @@ type externalRangeChecker struct {
 // Example usage:
 //
 //	```
-//	builder, rcGetter := newExternalRangeChecker(comp)
+//	builder, rcGetter := NewExternalRangeCheckerBuilder(comp)
 //	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField, circuit, builder)
 //	if err != nil {
 //		return fmt.Errorf("could not compile because: %w", err)
@@ -66,7 +66,7 @@ type externalRangeChecker struct {
 //	// This returns the position of the wires to range-check.
 //	checkedWires := rcGetter()
 //	```
-func newExternalRangeChecker(addGateForRangeCheck bool) (frontend.NewBuilderU32, func() [][2]int) {
+func NewExternalRangeCheckerBuilder(addGateForRangeCheck bool) (frontend.NewBuilderU32, func() [][2]int) {
 	rcCols := make(chan [][2]int)
 	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder[constraint.U32], error) {
 			b, err := plonkbuilder.From(scs.NewBuilder[constraint.U32])(field, config)

@@ -1,11 +1,9 @@
 package ecdsa
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
@@ -16,16 +14,17 @@ type EcdsaZkEvm struct {
 func NewEcdsaZkEvm(
 	comp *wizard.CompiledIOP,
 	settings *Settings,
+	arith *arithmetization.Arithmetization,
 ) *EcdsaZkEvm {
 	return &EcdsaZkEvm{
 		Ant: newAntichamber(
 			comp,
 			&antichamberInput{
 				Settings:     settings,
-				EcSource:     getEcdataArithmetization(comp),
-				TxSource:     getTxnDataArithmetization(comp),
-				RlpTxn:       getRlpTxnArithmetization(comp),
-				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
+				EcSource:     getEcdataArithmetization(comp, arith),
+				TxSource:     getTxnDataArithmetization(comp, arith),
+				RlpTxn:       getRlpTxnArithmetization(comp, arith),
+				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)},
 			},
 		),
 	}
@@ -39,52 +38,38 @@ func (e *EcdsaZkEvm) GetProviders() []generic.GenericByteModule {
 	return e.Ant.Providers
 }
 
-func getEcdataArithmetization(comp *wizard.CompiledIOP) *ecDataSource {
+func getEcdataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *ecDataSource {
 	src := &ecDataSource{
-		CsEcrecover: comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECRECOVER"),
-		ID:          comp.Columns.GetHandle("ecdata.ID"),
-		SuccessBit:  comp.Columns.GetHandle("ecdata.SUCCESS_BIT"),
-		Index:       comp.Columns.GetHandle("ecdata.INDEX"),
-		IsData:      comp.Columns.GetHandle("ecdata.IS_ECRECOVER_DATA"),
-		IsRes:       comp.Columns.GetHandle("ecdata.IS_ECRECOVER_RESULT"),
-	}
-
-	for i := 0; i < common.NbLimbU128; i++ {
-		src.Limb[i] = comp.Columns.GetHandle(ifaces.ColIDf("ecdata.LIMB_%d", i))
+		CsEcrecover: arith.ColumnOf(comp, "ecdata", "CIRCUIT_SELECTOR_ECRECOVER"),
+		ID:          arith.ColumnOf(comp, "ecdata", "ID"),
+		SuccessBit:  arith.ColumnOf(comp, "ecdata", "SUCCESS_BIT"),
+		Index:       arith.ColumnOf(comp, "ecdata", "INDEX"),
+		IsData:      arith.ColumnOf(comp, "ecdata", "IS_ECRECOVER_DATA"),
+		IsRes:       arith.ColumnOf(comp, "ecdata", "IS_ECRECOVER_RESULT"),
+		Limb:        arith.LimbColumnsOfArr8(comp, "ecdata", "LIMB"),
 	}
 
 	return src
 }
 
-func getTxnDataArithmetization(comp *wizard.CompiledIOP) *txnData {
+func getTxnDataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *txnData {
 	td := &txnData{
-		Ct:       comp.Columns.GetHandle("txndata.CT"),
-		User:     comp.Columns.GetHandle("txndata.USER"),
-		Selector: comp.Columns.GetHandle("txndata.HUB"),
-	}
-
-	for i := 0; i < common.NbLimbU256; i++ {
-		utils.Panic("")
-		td.From[i] = comp.Columns.GetHandle(ifaces.ColIDf("txndata.FROM_%d", i))
+		Ct:       arith.ColumnOf(comp, "txndata", "CT"),
+		User:     arith.ColumnOf(comp, "txndata", "USER"),
+		Selector: arith.ColumnOf(comp, "txndata", "HUB"),
+		From:     arith.LimbColumnsOfArr16(comp, "txndata", "FROM"),
 	}
 
 	return td
 }
 
-func getRlpTxnArithmetization(comp *wizard.CompiledIOP) generic.GenDataModule {
+func getRlpTxnArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) generic.GenDataModule {
 	res := generic.GenDataModule{
-		HashNum: comp.Columns.GetHandle("rlptxn.USER_TXN_NUMBER"),
-		Index:   comp.Columns.GetHandle("rlptxn.INDEX_LX"),
-		NBytes:  comp.Columns.GetHandle("rlptxn.cmpLIMB_SIZE"),
-		ToHash:  comp.Columns.GetHandle("rlptxn.TO_HASH_BY_PROVER"),
-	}
-
-	for i := 0; i < common.NbLimbU128; i++ {
-		// We need to check how corset will name that column because
-		// pre-small-field, the column is mixed and may contain chain-ID or
-		// other stuffs and that makes the name hard to predict.
-		utils.Panic("Clarify the name of the column once for rlptxn.cmpLIMB")
-		res.Limbs = append(res.Limbs, comp.Columns.GetHandle(ifaces.ColIDf("rlptxn.cmpLIMB_%d", i)))
+		HashNum: arith.ColumnOf(comp, "rlptxn", "USER_TXN_NUMBER"),
+		Index:   arith.ColumnOf(comp, "rlptxn", "INDEX_LX"),
+		NBytes:  arith.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
+		ToHash:  arith.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
+		Limbs:   arith.LimbColumnsOf(comp, "rlptxn", "cmpLIMB", 8),
 	}
 
 	return res

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -146,8 +146,8 @@ func splitInAccountSegment(logs []StateAccessLog) [][]StateAccessLog {
 	// 3. Reorder the account segment by hkey
 	slices.SortFunc(accountSegments, func(a, b []StateAccessLog) int {
 		return types.Bytes32Cmp(
-			mimcHash(a[0].Address),
-			mimcHash(b[0].Address),
+			poseidon2Hash(a[0].Address),
+			poseidon2Hash(b[0].Address),
 		)
 	})
 
@@ -670,8 +670,8 @@ func AssertShomeiAgree(t *testing.T, state State, traces [][]StateAccessLog) {
 	}
 }
 
-func mimcHash(m io.WriterTo) types.Bytes32 {
-	h := mimc.NewMiMC()
+func poseidon2Hash(m io.WriterTo) types.Bytes32 {
+	h := poseidon2.NewMDHasher()
 	m.WriteTo(h)
 	d := h.Sum(nil)
 	return types.AsBytes32(d)
@@ -682,9 +682,9 @@ func sortByHKeyStable(subSegment []StateAccessLog) {
 		subSegment[:len(subSegment)-1], // The last entry will be the account-level log which we don't want to sort
 		func(a, b StateAccessLog) int {
 			switch {
-			case mimcHash(a.Key).Hex() < mimcHash(b.Key).Hex():
+			case poseidon2Hash(a.Key).Hex() < poseidon2Hash(b.Key).Hex():
 				return -1
-			case mimcHash(a.Key).Hex() > mimcHash(b.Key).Hex():
+			case poseidon2Hash(a.Key).Hex() > poseidon2Hash(b.Key).Hex():
 				return 1
 			default:
 				return 0

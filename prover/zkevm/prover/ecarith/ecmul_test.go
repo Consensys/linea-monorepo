@@ -7,38 +7,70 @@ import (
 	"testing"
 
 	"fmt"
-	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/backend"
+
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/test"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 var (
 
-	// 8812078025088706800239420563438698135256154119486538953196282662928678739599
-	dummyPxLo = [8]frontend.Variable{54522, 64063, 19107, 64140, 47249, 36866, 4929, 24207}
-	dummyPxHi = [8]frontend.Variable{4987, 30108, 7206, 43510, 4530, 21165, 28317, 38023}
+	// Px = 0x137b759c1c26a9f611b252ad6e9d9487d4fafa3f4aa3fa8cb891900213415e8f
+	dummyPxHi = [8]frontend.Variable{
+		0x137b, 0x759c, 0x1c26, 0xa9f6,
+		0x11b2, 0x52ad, 0x6e9d, 0x9487,
+	}
+	dummyPxLo = [8]frontend.Variable{
+		0xd4fa, 0xfa3f, 0x4aa3, 0xfa8c,
+		0xb891, 0x9002, 0x1341, 0x5e8f,
+	}
 
-	// 19384817048585926091202754628019327561583315513931387211365745455438290666381
-	dummyPyLo = [8]frontend.Variable{21413, 8925, 46471, 63591, 44678, 62564, 1446, 50061}
-	dummyPyHi = [8]frontend.Variable{10971, 27370, 17409, 54880, 14499, 22162, 18782, 17869}
+	// Py = 0x2adb6aea4401d66038a35692495e45cd53a522ddb587f867ae86f46405a6c38d
+	dummyPyHi = [8]frontend.Variable{
+		0x2adb, 0x6aea, 0x4401, 0xd660,
+		0x38a3, 0x5692, 0x495e, 0x45cd,
+	}
+	dummyPyLo = [8]frontend.Variable{
+		0x53a5, 0x22dd, 0xb587, 0xf867,
+		0xae86, 0xf464, 0x05a6, 0xc38d,
+	}
 
-	// 6392244365320561037829193157981140850021222049710818941199853670416625377985
-	dummyScalarLo = [8]frontend.Variable{47334, 19682, 59651, 5498, 64385, 42173, 9491, 8897}
-	dummyScalarHi = [8]frontend.Variable{3617, 57809, 10842, 19675, 18737, 65290, 60383, 57066}
+	// 0xe21e1d12a5a4cdb4931ff0aebdfdeeab8e64ce2e903157afb81a4bd251322c1
+	dummyNHi = [8]frontend.Variable{
+		0x0e21, 0xe1d1, 0x2a5a, 0x4cdb,
+		0x4931, 0xff0a, 0xebdf, 0xdeea,
+	}
+	dummyNLo = [8]frontend.Variable{
+		0xb8e6, 0x4ce2, 0xe903, 0x157a,
+		0xfb81, 0xa4bd, 0x2513, 0x22c1,
+	}
 
-	// 18286867191893102909980352899825705524248643499324573950097278735467138404960
-	dummyRxLo = [8]frontend.Variable{22472, 439, 2429, 45020, 55129, 27384, 35002, 21088}
-	dummyRxHi = [8]frontend.Variable{10350, 2, 42581, 19814, 12263, 19537, 62766, 34029}
+	// 0x286e0002a6554d662fe74c51f52e84ed57c801b7097dafdcd7596af888ba5260
+	dummyRxHi = [8]frontend.Variable{
+		0x286e, 0x0002, 0xa655, 0x4d66,
+		0x2fe7, 0x4c51, 0xf52e, 0x84ed,
+	}
+	dummyRxLo = [8]frontend.Variable{
+		0x57c8, 0x01b7, 0x097d, 0xafdc,
+		0xd759, 0x6af8, 0x88ba, 0x5260,
+	}
 
-	// 9901600500795379168368190931083365122151061434285910708538887599132533626517
-	dummyRyLo = [8]frontend.Variable{8524, 41907, 60473, 20665, 11836, 12273, 58948, 38549}
-	dummyRyHi = [8]frontend.Variable{5604, 7030, 51904, 28067, 12228, 33396, 63525, 54713}
+	// 0x15e41b76cac06da32fc48274f825d5b9214ca3b3ec3950b92e3c2ff1e6449695
+	dummyRyHi = [8]frontend.Variable{
+		0x15e4, 0x1b76, 0xcac0, 0x6da3,
+		0x2fc4, 0x8274, 0xf825, 0xd5b9,
+	}
+	dummyRyLo = [8]frontend.Variable{
+		0x214c, 0xa3b3, 0xec39, 0x50b9,
+		0x2e3c, 0x2ff1, 0xe644, 0x9695,
+	}
 )
 
 func TestMultiEcMulCircuit(t *testing.T) {
@@ -46,35 +78,50 @@ func TestMultiEcMulCircuit(t *testing.T) {
 		NbInputInstances:   2,
 		NbCircuitInstances: 0, // not used in this test
 	}
+
+	// This function is here to convert the test data in little-endian form to
+	// match corset behaviour.
+	rev := func(s [8]frontend.Variable) [8]frontend.Variable {
+		var r [8]frontend.Variable
+		for i := 0; i < 8; i++ {
+			r[i] = s[7-i]
+		}
+		return r
+	}
+
 	circuit := NewECMulCircuit(limits)
 	assignment := NewECMulCircuit(limits)
 	instanceAssignment := ECMulInstance{
-		P_X_hi: dummyPxHi,
-		P_X_lo: dummyPxLo,
-		P_Y_hi: dummyPyHi,
-		P_Y_lo: dummyPyLo,
-
-		R_X_hi: dummyRxHi,
-		R_X_lo: dummyRxLo,
-		R_Y_hi: dummyRyHi,
-		R_Y_lo: dummyRyLo,
-
-		N_hi: dummyScalarHi,
-		N_lo: dummyScalarLo,
+		P_X_HI: rev(dummyPxHi),
+		P_X_LO: rev(dummyPxLo),
+		P_Y_HI: rev(dummyPyHi),
+		P_Y_LO: rev(dummyPyLo),
+		R_X_HI: rev(dummyRxHi),
+		R_X_LO: rev(dummyRxLo),
+		R_Y_HI: rev(dummyRyHi),
+		R_Y_LO: rev(dummyRyLo),
+		N_HI:   rev(dummyNHi),
+		N_LO:   rev(dummyNLo),
 	}
 	for i := 0; i < limits.NbInputInstances; i++ {
 		assignment.Instances[i] = instanceAssignment
 	}
 
 	// 403569 constraints
-	assert := test.NewAssert(t)
-	assert.SolvingSucceeded(
-		circuit,
-		assignment,
-		test.NoFuzzing(),
-		test.NoSerializationChecks(),
-		test.WithBackends(backend.PLONK),
-		test.WithCurves(ecc.BLS12_377))
+	builder := gnarkutil.NewMockBuilder(scs.NewBuilder[constraint.U32])
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), builder, circuit)
+	if err != nil {
+		t.Fatalf("compiling circuit: %v", err)
+	}
+
+	wit, err := frontend.NewWitness(assignment, koalabear.Modulus())
+	if err != nil {
+		t.Fatalf("assigning witness: %v", err)
+	}
+
+	if err := ccs.IsSolved(wit); err != nil {
+		t.Fatalf("solving circuit: %v", err)
+	}
 
 }
 
@@ -107,7 +154,7 @@ func TestEcMulIntegration(t *testing.T) {
 				ecMulSource.Limbs[i] = ct.GetCommit(b, fmt.Sprintf("LIMB_%d", i))
 			}
 
-			ecMul = newEcMul(b.CompiledIOP, limits, ecMulSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)})
+			ecMul = newEcMul(b.CompiledIOP, limits, ecMulSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)})
 		},
 		dummy.Compile,
 	)

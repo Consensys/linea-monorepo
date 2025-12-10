@@ -152,7 +152,7 @@ type merkleTestBuilderRow struct {
 
 func newMerkleTestBuilder(depth int) *merkleTestBuilder {
 	return &merkleTestBuilder{
-		tree: *smt_koalabear.BuildComplete(make([]field.Octuplet, 1<<depth)),
+		tree: *smt_koalabear.NewTree(make([]field.Octuplet, 1<<depth)),
 	}
 }
 

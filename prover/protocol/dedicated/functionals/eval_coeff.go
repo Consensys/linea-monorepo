@@ -34,7 +34,8 @@ func (a *CoeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
 
 	for i := a.Length - 2; i >= 0; i-- {
 		pi := p.GetExt(i)
-		h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
+		h[i].Mul(&h[i+1], &x)
+		h[i].Add(&h[i], &pi)
 	}
 
 	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_COEFF_POLY), smartvectors.NewRegularExt(h))
