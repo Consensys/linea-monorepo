@@ -91,8 +91,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     address _steth,
     address _validatorContainerProofVerifier
   ) YieldProviderBase(_l1MessageService, _yieldManager) {
-    ErrorUtils.revertIfZeroAddress(_l1MessageService);
-    ErrorUtils.revertIfZeroAddress(_yieldManager);
     ErrorUtils.revertIfZeroAddress(_vaultHub);
     ErrorUtils.revertIfZeroAddress(_vaultFactory);
     ErrorUtils.revertIfZeroAddress(_steth);
