@@ -98,7 +98,7 @@ type Module struct {
 	BatchNumber [common.NbLimbU64]ifaces.Column
 
 	// WorldStateRoot stores the state-root hashes.
-	WorldStateRoot [common.NbLimbU256]ifaces.Column
+	WorldStateRoot [common.NbElemPerHash]ifaces.Column
 
 	// Account.Initial and Account.Final represents the values stored in the
 	// account at the beginning and the end of the trace segment.
@@ -147,7 +147,7 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 		res.BatchNumber[i] = createCol(fmt.Sprintf("BATCH_NUMBER_%v", i))
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		res.WorldStateRoot[i] = createCol(fmt.Sprintf("WORLD_STATE_ROOT_%v", i))
 	}
 

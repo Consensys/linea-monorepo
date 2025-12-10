@@ -25,7 +25,7 @@ type stateSummaryAssignmentBuilder struct {
 	IsDeleteSegment             *common.VectorBuilder
 	isStorage                   *common.VectorBuilder
 	batchNumber                 [common.NbLimbU64]*common.VectorBuilder
-	worldStateRoot              [common.NbLimbU256]*common.VectorBuilder
+	worldStateRoot              [common.NbElemPerHash]*common.VectorBuilder
 	account                     accountPeekAssignmentBuilder
 	storage                     storagePeekAssignmentBuilder
 	accumulatorStatement        AccumulatorStatementAssignmentBuilder
@@ -93,7 +93,7 @@ func newStateSummaryAssignmentBuilder(ss *Module, run *wizard.ProverRuntime) *st
 		res.batchNumber[i] = common.NewVectorBuilder(ss.BatchNumber[i])
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		res.worldStateRoot[i] = common.NewVectorBuilder(ss.WorldStateRoot[i])
 	}
 
@@ -214,9 +214,6 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 				initWsRootBlocks := hashToBlocks(initWsRoot)
 				for j := range poseidon2.BlockSize {
 					ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(initWsRootBlocks[j]))
-				}
-				for j := poseidon2.BlockSize; j < common.NbLimbU256; j++ {
-					ss.worldStateRoot[j].PushZero()
 				}
 
 				oldRootLimbs := hashToBlocks(oldRoot)
@@ -356,9 +353,6 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 		for j := range poseidon2.BlockSize {
 			ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(finalWsRootBlocks[j]))
 		}
-		for j := poseidon2.BlockSize; j < common.NbLimbU256; j++ {
-			ss.worldStateRoot[j].PushZero()
-		}
 
 		ss.storage.pushAllZeroes()
 
@@ -427,7 +421,7 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 		ss.batchNumber[i].PadAndAssign(run)
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		ss.worldStateRoot[i].PadAndAssign(run)
 	}
 
