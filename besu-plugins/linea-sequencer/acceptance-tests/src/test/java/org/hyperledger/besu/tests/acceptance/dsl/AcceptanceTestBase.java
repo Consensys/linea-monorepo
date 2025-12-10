@@ -203,13 +203,10 @@ public abstract class AcceptanceTestBase {
           Wei.fromEth((long) initialBalanceEther * numAccounts)
               .getAsBigInteger()
               .add(
-                  Wei.of(21000)
-                      .getAsBigInteger()
-                      .multiply(BigInteger.valueOf(numAccounts))) // transfer tx gas limit
-              .add(
                   transferGasPrice
                       .getValue()
                       .toBigInteger()
+                      .add(Wei.of(21000).getAsBigInteger())
                       .multiply(BigInteger.valueOf(numAccounts)));
       assertThat(founderBalance).isGreaterThanOrEqualTo(requiredBalance);
 
