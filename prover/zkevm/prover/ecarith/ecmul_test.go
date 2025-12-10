@@ -9,12 +9,14 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -106,13 +108,11 @@ func TestMultiEcMulCircuit(t *testing.T) {
 	}
 
 	// 403569 constraints
-	builder, rcGetter := plonkinternal.NewExternalRangeCheckerBuilder(true)
+	builder := gnarkutil.NewMockBuilder(scs.NewBuilder[constraint.U32])
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), builder, circuit)
 	if err != nil {
 		t.Fatalf("compiling circuit: %v", err)
 	}
-
-	_ = rcGetter() // to not leak the channel
 
 	wit, err := frontend.NewWitness(assignment, koalabear.Modulus())
 	if err != nil {
@@ -154,7 +154,7 @@ func TestEcMulIntegration(t *testing.T) {
 				ecMulSource.Limbs[i] = ct.GetCommit(b, fmt.Sprintf("LIMB_%d", i))
 			}
 
-			ecMul = newEcMul(b.CompiledIOP, limits, ecMulSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)})
+			ecMul = newEcMul(b.CompiledIOP, limits, ecMulSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)})
 		},
 		dummy.Compile,
 	)

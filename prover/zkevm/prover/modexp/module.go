@@ -62,7 +62,7 @@ type Module struct {
 // does not define them.
 func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings, arith *arithmetization.Arithmetization) *Module {
 	return newModule(comp, newZkEVMInput(comp, settings, arith)).
-		WithCircuit(comp, query.PlonkRangeCheckOption(16, 6, false))
+		WithCircuit(comp, query.PlonkRangeCheckOption(16, 1, false))
 }
 
 func newModule(comp *wizard.CompiledIOP, input Input) *Module {
