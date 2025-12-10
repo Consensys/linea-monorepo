@@ -1,4 +1,4 @@
-//go:generate go run ../../cmd/codegen/main.go
+//go:generate go run ../../cmd/dev-tools/codegen/main.go
 
 // IMPORTANT NOTE: Everytime, this file is changed - for example: registering a new types through RegisterImplementation,
 // you need to run the codegen command to update the serialization registry file.
