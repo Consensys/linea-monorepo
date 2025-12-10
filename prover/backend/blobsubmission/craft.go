@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"hash"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -109,7 +109,7 @@ func CraftResponseCalldata(req *Request) (*Response, error) {
 // Computes the SNARK hash of a stream of byte. Returns the hex string. The hash
 // can fail if the input stream does not have the right format.
 func snarkHashV0(stream []byte) ([]byte, error) {
-	h := mimc.NewMiMC()
+	h := hasher_factory.NewMiMC()
 
 	const blobBytes = 4096 * 32
 

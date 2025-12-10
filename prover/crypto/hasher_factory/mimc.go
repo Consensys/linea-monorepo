@@ -1,4 +1,4 @@
-package mimc
+package hasher_factory
 
 import (
 	"hash"

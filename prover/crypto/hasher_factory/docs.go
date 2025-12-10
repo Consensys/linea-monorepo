@@ -3,4 +3,4 @@
 // directly. This is used in several occasions in the wizard package to
 // implement and test the arithmetization of the MiMC block compression function
 // and to have interfaces that are friendly to field elements.
-package mimc
+package hasher_factory

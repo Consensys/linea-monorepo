@@ -3,8 +3,8 @@ package recursion
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -82,7 +82,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	if r.withExternalHasher {
-		w.HasherFactory = &mimc.ExternalHasherFactory{Api: api} // TODO: fix in crypto/mimc/factories.go
+		w.HasherFactory = &hasher_factory.ExternalHasherFactory{Api: api} // TODO: fix in crypto/mimc/factories.go
 	}
 
 	w.Verify(api)

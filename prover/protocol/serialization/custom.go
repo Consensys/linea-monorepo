@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark-crypto/utils/unsafe"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -304,7 +304,7 @@ func unmarshalFrontendVariable(des *Deserializer, val any, _ reflect.Type) (refl
 
 func unmarshalHashGenerator(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 	f := func() hash.Hash {
-		return mimc.NewMiMC()
+		return hasher_factory.NewMiMC()
 	}
 	return reflect.ValueOf(f), nil
 }

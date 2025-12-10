@@ -21,7 +21,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -53,7 +53,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
 	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs))
 
-	hshM := mimc.NewMiMC()
+	hshM := hasher_factory.NewMiMC()
 
 	for i, execReqFPath := range req.ExecutionProofs {
 
