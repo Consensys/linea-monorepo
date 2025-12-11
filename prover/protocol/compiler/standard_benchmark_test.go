@@ -5,7 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -368,46 +370,41 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		} else {
 			fmt.Printf("proof verified successfully\n")
 		}
-		fmt.Printf("comp.NumRounds(): %v \n", comp.NumRounds())
-		// circuit := &verifierCircuit{
-		// 	C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
-		// }
+		circuit := verifierCircuit{}
+		{
+			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
+			circuit.C = *c
+		}
 
-		// scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+		if err != nil {
+			fmt.Printf("error Compile : %v \n", err)
+		} else {
+			fmt.Printf("Compile  successfully\n")
+		}
+		assignment := &verifierCircuit{
+			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+		}
 
-		// assignment := &verifierCircuit{
-		// 	C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
-		// }
-		// fmt.Printf("assignment:  %v \n", assignment != nil)
+		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+		if err != nil {
+			fmt.Printf("error generating witness: %v \n", err)
+		} else {
+			fmt.Printf("witness generated successfully\n")
+		}
 
-		// witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
-		// fmt.Printf("witness:  %v \n", witness != nil)
-
-		// require.NoError(b, err)
-
-		// // Check if solved using the pre-compiled SCS
-		// err = scs.IsSolved(witness)
-
-		// if err != nil {
-		// 	// When the error string is too large `require.NoError` does not print
-		// 	// the error.
-		// 	b.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
-
-		// 	errDetail := test.IsSolved(
-		// 		assignment,
-		// 		assignment,
-		// 		scs.Field(),
-		// 	)
-
-		// 	b.Logf("while running the plonk prover: %v", errDetail)
-
-		// 	b.FailNow()
-		// }
+		// Check if solved using the pre-compiled SCS
+		err = csc.IsSolved(witness)
+		if err != nil {
+			fmt.Printf("circuit solving failed :  %v \n", err)
+		} else {
+			fmt.Printf("circuit solved successfully\n")
+		}
 	}
 }
 
 type verifierCircuit struct {
-	C *wizard.VerifierCircuit
+	C wizard.VerifierCircuit
 }
 
 func (c *verifierCircuit) Define(api frontend.API) error {
@@ -487,16 +484,28 @@ func applySelfRecursionThenArcane(comp *wizard.CompiledIOP, params selfRecursion
 // applyVortex applies the vortex step using the provided parameters.
 func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters, IsBLS bool) {
 
-	_ = wizard.ContinueCompilation(
-		comp,
-		vortex.Compile(
-			params.RsInverseRate,
-			IsBLS,
-			vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
-			vortex.WithOptionalSISHashingThreshold(1<<ringsis.StdParams.LogTwoDegree),
-			vortex.WithSISParams(&ringsis.StdParams),
-		),
-	)
+	if IsBLS {
+		_ = wizard.ContinueCompilation(
+			comp,
+			vortex.Compile(
+				params.RsInverseRate,
+				true,
+				vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
+				vortex.WithOptionalSISHashingThreshold(1<<20),
+			),
+		)
+	} else {
+
+		_ = wizard.ContinueCompilation(
+			comp,
+			vortex.Compile(
+				params.RsInverseRate,
+				false,
+				vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
+				vortex.WithSISParams(&ringsis.StdParams),
+			),
+		)
+	}
 }
 
 // defineLookupModule adds a lookup module to the benchmark case

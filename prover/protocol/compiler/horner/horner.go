@@ -354,18 +354,18 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	hornerQuery := c.Q
 	hornerParams := run.GetHornerParams(hornerQuery.ID)
-	res := gnarkfext.NewE4GenFromBase(0)
 
 	e4Api, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
+	res := *e4Api.Zero()
 
 	for i := range c.Q.Parts {
 
 		ipQuery := c.CountingInnerProducts[i]
 		ipParams := run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-		ipCount := gnarkfext.NewE4GenFromBase(0)
+		ipCount := *e4Api.Zero()
 
 		for k := range ipQuery.Bs {
 			ipCount = *e4Api.Add(&ipCount, &ipParams.Ys[k])

@@ -479,7 +479,6 @@ func (ctx *Ctx) packBLSMerkleProofs(proofs [][]smt_bls12377.Proof) [encoding.Koa
 			depth, utils.Log2Ceil(ctx.NumEncodedCols()),
 		)
 	}
-	fmt.Printf("packBLSMerkleProofs proof len: %v\n", len(proofs))
 
 	// When we commit to the precomputeds, len(proofs) = ctx.NumCommittedRounds + 1,
 	// otherwise len(proofs) = ctx.NumCommittedRounds
