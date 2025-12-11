@@ -440,6 +440,7 @@ export async function deployYieldManagerIntegrationTestFixture() {
     verifier,
     verifierAddress,
     testVerifier,
+    initializationData,
   };
 }
 

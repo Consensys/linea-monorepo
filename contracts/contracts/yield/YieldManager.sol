@@ -100,8 +100,9 @@ contract YieldManager is
   }
 
   /// @dev Reverts if the withdrawal reserve is not in deficit.
-  modifier onlyWhenWithdrawalReserveInDeficit() {
-    if (!isWithdrawalReserveBelowMinimum()) revert WithdrawalReserveNotInDeficit();
+  /// @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
+  modifier onlyWhenWithdrawalReserveInDeficit(uint256 _amountToSubtract) {
+    if (!_isWithdrawalReserveBelowMinimum(_amountToSubtract)) revert WithdrawalReserveNotInDeficit();
     _;
   }
 
@@ -171,23 +172,24 @@ contract YieldManager is
    * @return totalSystemBalance Total system balance in wei.
    */
   function getTotalSystemBalance() external view returns (uint256 totalSystemBalance) {
-    (totalSystemBalance, ) = _getTotalSystemBalance();
+    (totalSystemBalance, ) = _getTotalSystemBalance(0);
   }
 
   /**
    * @notice Returns the total ETH in the native yield system.
    * @dev Sums the withdrawal reserve, YieldManager balance, and capital deployed into yield providers.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance (e.g., msg.value for payable functions that withdraw funds).
    * @return totalSystemBalance Total system balance in wei.
    * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
    */
-  function _getTotalSystemBalance()
+  function _getTotalSystemBalance(uint256 _amountToSubtract)
     internal
     view
     returns (uint256 totalSystemBalance, uint256 cachedL1MessageServiceBalance)
   {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     cachedL1MessageServiceBalance = L1_MESSAGE_SERVICE.balance;
-    totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $.userFundsInYieldProvidersTotal - msg.value;
+    totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $.userFundsInYieldProvidersTotal - _amountToSubtract;
   }
 
   /**
@@ -195,21 +197,22 @@ contract YieldManager is
    * @return minimumWithdrawalReserve Effective minimum reserve in wei.
    */
   function getEffectiveMinimumWithdrawalReserve() external view returns (uint256 minimumWithdrawalReserve) {
-    (minimumWithdrawalReserve, ) = _getEffectiveMinimumWithdrawalReserve();
+    (minimumWithdrawalReserve, ) = _getEffectiveMinimumWithdrawalReserve(0);
   }
 
   /**
    * @notice Returns the effective minimum withdrawal reserve considering both percentage and absolute amount configurations.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
    * @return minimumWithdrawalReserve Effective minimum reserve in wei.
    * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
    */
-  function _getEffectiveMinimumWithdrawalReserve()
+  function _getEffectiveMinimumWithdrawalReserve(uint256 _amountToSubtract)
     internal
     view
     returns (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance)
   {
     uint256 totalSystemBalance;
-    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
+    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance(_amountToSubtract);
     // Get minimumWithdrawalReserveByPercentage
     uint256 minimumWithdrawalReserveByPercentage = (totalSystemBalance *
       _getYieldManagerStorage().minimumWithdrawalReservePercentageBps) / MAX_BPS;
@@ -225,21 +228,22 @@ contract YieldManager is
    * @return targetWithdrawalReserve Effective target reserve in wei.
    */
   function getEffectiveTargetWithdrawalReserve() external view returns (uint256 targetWithdrawalReserve) {
-    (targetWithdrawalReserve, ) = _getEffectiveTargetWithdrawalReserve();
+    (targetWithdrawalReserve, ) = _getEffectiveTargetWithdrawalReserve(0);
   }
 
   /**
    * @notice Returns the effective target withdrawal reserve considering both percentage and absolute amount configurations.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
    * @return targetWithdrawalReserve Effective target reserve in wei.
    * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
    */
-  function _getEffectiveTargetWithdrawalReserve()
+  function _getEffectiveTargetWithdrawalReserve(uint256 _amountToSubtract)
     internal
     view
     returns (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance)
   {
     uint256 totalSystemBalance;
-    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
+    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance(_amountToSubtract);
     uint256 targetWithdrawalReserveByPercentage = (totalSystemBalance *
       _getYieldManagerStorage().targetWithdrawalReservePercentageBps) / MAX_BPS;
     targetWithdrawalReserve = Math256.max(
@@ -253,7 +257,7 @@ contract YieldManager is
    * @return minimumReserveDeficit Amount of ETH required to meet the minimum reserve, or zero if already satisfied.
    */
   function getMinimumReserveDeficit() public view returns (uint256 minimumReserveDeficit) {
-    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve();
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve(0);
     minimumReserveDeficit = Math256.safeSub(minimumWithdrawalReserve, cachedL1MessageServiceBalance);
   }
 
@@ -261,8 +265,17 @@ contract YieldManager is
    * @notice Returns the shortfall between the target reserve threshold and the current reserve balance.
    * @return targetReserveDeficit Amount of ETH required to meet the target reserve, or zero if already satisfied.
    */
-  function getTargetReserveDeficit() public view returns (uint256 targetReserveDeficit) {
-    (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveTargetWithdrawalReserve();
+  function getTargetReserveDeficit() external view returns (uint256 targetReserveDeficit) {
+    return _getTargetReserveDeficit(0);
+  }
+
+  /**
+   * @notice Returns the shortfall between the target reserve threshold and the current reserve balance.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
+   * @return targetReserveDeficit Amount of ETH required to meet the target reserve, or zero if already satisfied.
+   */
+  function _getTargetReserveDeficit(uint256 _amountToSubtract) internal view returns (uint256 targetReserveDeficit) {
+    (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveTargetWithdrawalReserve(_amountToSubtract);
     targetReserveDeficit = Math256.safeSub(targetWithdrawalReserve, cachedL1MessageServiceBalance);
   }
 
@@ -270,7 +283,16 @@ contract YieldManager is
    * @return bool True if the withdrawal reserve balance is below the effective minimum threshold.
    */
   function isWithdrawalReserveBelowMinimum() public view returns (bool) {
-    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve();
+    return _isWithdrawalReserveBelowMinimum(0);
+  }
+
+  /**
+   * @notice Internal function to check if the withdrawal reserve balance is below the effective minimum threshold.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
+   * @return bool True if the withdrawal reserve balance is below the effective minimum threshold.
+   */
+  function _isWithdrawalReserveBelowMinimum(uint256 _amountToSubtract) internal view returns (bool) {
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve(_amountToSubtract);
     return cachedL1MessageServiceBalance < minimumWithdrawalReserve;
   }
 
@@ -571,6 +593,7 @@ contract YieldManager is
    *         - PENDING_PERMISSIONLESS_UNSTAKE
    *
    * @dev PENDING_PERMISSIONLESS_UNSTAKE will be greedily reduced with i.) donations or ii.) future withdrawals from the YieldProvider
+   * @dev msg.value will not remain in the native yield system, so it must be subtracted from total system balance.
    * @param _yieldProvider          Yield provider address.
    * @param _validatorIndex         Validator index for validator to withdraw from.
    * @param _slot                   Slot of the beacon block for which the proof is generated.
@@ -591,7 +614,7 @@ contract YieldManager is
     payable
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
-    onlyWhenWithdrawalReserveInDeficit
+    onlyWhenWithdrawalReserveInDeficit(msg.value)
     returns (uint256 maxUnstakeAmount)
   {
     uint256 lastProvenSlot = _getYieldManagerStorage().lastProvenSlot[_validatorIndex];
@@ -609,7 +632,7 @@ contract YieldManager is
       revert YieldProviderReturnedZeroUnstakeAmount();
     }
     // Validiate maxUnstakeAmount
-    uint256 targetDeficit = getTargetReserveDeficit();
+    uint256 targetDeficit = _getTargetReserveDeficit(msg.value);
     uint256 availableFundsToSettleTargetDeficit = address(this).balance +
       withdrawableValue(_yieldProvider) +
       _getYieldManagerStorage().pendingPermissionlessUnstake;
@@ -661,7 +684,7 @@ contract YieldManager is
   )
     internal
   {
-    uint256 targetDeficit = getTargetReserveDeficit();
+    uint256 targetDeficit = _getTargetReserveDeficit(0);
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
     uint256 toReserve = Math256.min(_amount, targetDeficit);
     // Send funds to L1MessageService if targetDeficit
@@ -747,7 +770,7 @@ contract YieldManager is
    * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
    */
   function _addToWithdrawalReserve(address _yieldProvider, uint256 _amount) internal {
-    if (getTargetReserveDeficit() > _amount) _pauseStakingIfNotAlready(_yieldProvider);
+    if (_getTargetReserveDeficit(0) > _amount) _pauseStakingIfNotAlready(_yieldProvider);
     // First see if we can fully settle from YieldManager
     // @dev When using YieldManager balance directly, LST liability payment is skipped for operational efficiency
     uint256 yieldManagerBalance = address(this).balance;
@@ -785,9 +808,9 @@ contract YieldManager is
     external
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
-    onlyWhenWithdrawalReserveInDeficit
+    onlyWhenWithdrawalReserveInDeficit(0)
   {
-    uint256 targetDeficit = getTargetReserveDeficit();
+    uint256 targetDeficit = _getTargetReserveDeficit(0);
 
     // First see if we can fully settle from YieldManager
     // @dev When using YieldManager balance directly, LST liability payment is skipped for operational efficiency
