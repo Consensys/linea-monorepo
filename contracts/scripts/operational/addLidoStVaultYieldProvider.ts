@@ -3,6 +3,7 @@ import { getTaskCliOrEnvValue } from "../../common/helpers/environmentHelper";
 import { generateRoleAssignments } from "../../common/helpers/roles";
 import { buildVendorInitializationData } from "../../common/helpers/buildVendorInitializationData";
 import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "../../common/constants";
+import { ONE_ETHER } from "../../common/constants/general";
 
 /*
   *******************************************************************************************
@@ -21,6 +22,7 @@ import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "../../common/constants";
   npx hardhat addLidoStVaultYieldProvider \
     --yield-provider-factory <address> \
     --yield-manager <address> \
+    --linea-rollup <address> \
     --node-operator <address> \
     --security-council <address> \
     --automation-service-address <address> \
@@ -37,6 +39,7 @@ import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "../../common/constants";
     AUTOMATION_SERVICE_ADDRESS
     NODE_OPERATOR_FEE
     CONFIRM_EXPIRY
+    LINEA_ROLLUP_ADDRESS
   *******************************************************************************************
 */
 task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYieldProvider")
@@ -47,6 +50,7 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
   .addOptionalParam("automationServiceAddress")
   .addOptionalParam("nodeOperatorFee")
   .addOptionalParam("confirmExpiry")
+  .addOptionalParam("lineaRollup")
   .setAction(async (taskArgs, hre) => {
     const { ethers, deployments, getNamedAccounts } = hre;
     const { get } = deployments;
@@ -60,6 +64,7 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     const securityCouncil = getTaskCliOrEnvValue(taskArgs, "securityCouncil", "SECURITY_COUNCIL");
     const nodeOperatorFeeRaw = getTaskCliOrEnvValue(taskArgs, "nodeOperatorFee", "NODE_OPERATOR_FEE");
     const confirmExpiryRaw = getTaskCliOrEnvValue(taskArgs, "confirmExpiry", "CONFIRM_EXPIRY");
+    const lineaRollup = getTaskCliOrEnvValue(taskArgs, "lineaRollup", "LINEA_ROLLUP_ADDRESS");
 
     // --- Use address from artifacts ---
     if (yieldProviderFactory === undefined) {
@@ -73,6 +78,7 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     const missing: string[] = [];
     if (!nodeOperator) missing.push("nodeOperator / NODE_OPERATOR");
     if (!securityCouncil) missing.push("securityCouncil / SECURITY_COUNCIL");
+    if (!lineaRollup) missing.push("lineaRollup / LINEA_ROLLUP_ADDRESS");
     if (missing.length) {
       throw new Error(`Missing required params/envs: ${missing.join(", ")}`);
     }
@@ -90,6 +96,7 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     console.log("  securityCouncil:", securityCouncil);
     console.log("  nodeOperatorFee:", nodeOperatorFee.toString());
     console.log("  confirmExpiry:", confirmExpiry.toString());
+    console.log("  lineaRollup:", lineaRollup);
 
     // --- Create LidoStVaultYieldProvider factory (permissionless) ---
     const factory = await ethers.getContractAt("LidoStVaultYieldProviderFactory", yieldProviderFactory, signer);
@@ -103,7 +110,8 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
      ********************************************************************/
     // TODO - Get calldata for Safe tx
 
-    //  LineaRollup.transferFundsForNativeYield(1_ether)
+    const lineaRollupContract = await ethers.getContractAt("LineaRollup", lineaRollup!, signer);
+    await lineaRollupContract.transferFundsForNativeYield(ONE_ETHER);
 
     // --- Add YieldProvider ---
     const yieldManagerContract = await ethers.getContractAt("YieldManager", yieldManager, signer);
