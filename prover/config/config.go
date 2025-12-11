@@ -83,6 +83,13 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	}
 	cfg.Layer2.MsgSvcContract = addr.Address()
 
+	// Extract the coinbase address from the string
+	// addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.CoinbaseStr)
+	// if withValidation && err != nil {
+	// 	return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
+	// }
+	// cfg.Layer2.MsgSvcContract = addr.Address()
+
 	// ensure that asset dir / kzgsrs exists using os.Stat
 	srsDir := cfg.PathForSRS()
 	if _, err := os.Stat(srsDir); withValidation && os.IsNotExist(err) {
@@ -90,7 +97,11 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	}
 
 	// duplicate L2 hardcoded values for PI
+	// check if ChainID and BaseFee are within the max value (8 byetes)
+	// TODO: Later, we should receive this as a string, check max value, and convert to uint64.
+
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
+	cfg.PublicInputInterconnection.BaseFee = uint64(cfg.Layer2.BaseFee)
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
 
 	return &cfg, nil
@@ -133,12 +144,15 @@ type Config struct {
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
 		ChainID uint `mapstructure:"chain_id" validate:"required"`
+		BaseFee uint `mapstructure:"base_fee" validate:"required"`
 
 		// MsgSvcContractStr stores the unique ID of the Service Contract (SC), that is, it's
 		// address, as a string. The Service Contract (SC) is a smart contract that the L2
 		// network uses to send messages (i.e., transactions) to the L1 (mainnet).
 		// Use this field when you need the ETH address as a string.
 		MsgSvcContractStr string `mapstructure:"message_service_contract" validate:"required,eth_addr"`
+
+		// CoinbaseStr string `mapstructure:"coinbase" validate:"required,eth_addr"`
 
 		// MsgSvcContract stores the unique ID of the Service Contract (SC), as a common.Address.
 		MsgSvcContract common.Address `mapstructure:"-"`
@@ -308,7 +322,9 @@ type PublicInput struct {
 
 	MockKeccakWizard bool           // for testing purposes only
 	ChainID          uint64         // duplicate from Config
+	BaseFee          uint64         // duplicate from Config
 	L2MsgServiceAddr common.Address // duplicate from Config
+	// Coinbase         common.Address // duplicate from Config
 }
 
 type Debug struct {

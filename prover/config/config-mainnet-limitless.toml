@@ -16,7 +16,7 @@ ignore_compatibility_check = true
 
 [blob_decompression]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/compression"
+requests_root_dir = "./shared/v3/prover-compression"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
@@ -36,6 +36,7 @@ l2_msg_max_nb_merkle = 200
 
 [layer2]
 chain_id = 59144
+base_fee = 7
 message_service_contract = "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec"
 
 [traces_limits]
