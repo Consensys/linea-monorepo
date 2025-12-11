@@ -14,7 +14,7 @@ pragma solidity ^0.8.25;
 
 import { BeaconBlockHeader, Validator, PendingPartialWithdrawal } from "./BeaconTypes.sol";
 import { GIndex } from "./GIndex.sol";
-
+import { Math256 } from "../../../../lib/Math256.sol";
 library SSZ {
   error BranchHasMissingItem();
   error BranchHasExtraItem();
@@ -239,6 +239,73 @@ library SSZ {
             }
     }
   }
+
+  function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) internal view returns (bytes32 root) {
+    uint256 nodesLength = Math256.nextPow2(pendingPartialWithdrawal.length);
+    bytes32[] memory nodes = new bytes32[](nodesLength);
+    // nodes pointer → [length][data0][data1][data2]...[dataN]
+
+    // Fill nodes with SSZ root of the PendingPartialWithdrawals
+    for (uint256 i = 0; i < pendingPartialWithdrawal.length; i++) {
+      nodes[i] = hashTreeRoot(pendingPartialWithdrawal[i]);
+    }
+
+    /// @solidity memory-safe-assembly
+    assembly {
+      // Count of nodes to hash
+      let count := nodesLength
+
+      // Loop over levels
+      // prettier-ignore
+      for { } 1 { } {
+                // Loop over nodes at the given depth
+
+                // Initialize `offset` to the offset of `proof` elements in memory.
+                let target := nodes
+                let source := nodes
+                let end := add(source, shl(5, count))
+
+                // prettier-ignore
+                for { } 1 { } {
+                    // Read next two hashes to hash
+                    mcopy(0x00, source, 0x40)
+
+                    // Call sha256 precompile
+                    let result := staticcall(
+                        gas(),
+                        0x02,
+                        0x00,
+                        0x40,
+                        0x00,
+                        0x20
+                    )
+
+                    if iszero(result) {
+                        // Precompiles returns no data on OutOfGas error.
+                        revert(0, 0)
+                    }
+
+                    // Store the resulting hash at the target location
+                    mstore(target, mload(0x00))
+
+                    // Advance the pointers
+                    target := add(target, 0x20)
+                    source := add(source, 0x40)
+
+                    if iszero(lt(source, end)) {
+                        break
+                    }
+                }
+
+                count := shr(1, count)
+                if eq(count, 1) {
+                    root := mload(0x00)
+                    break
+                }
+            }
+    }
+  }
+
 
   /// @notice Modified version of `verify` from Solady `MerkleProofLib` to support generalized indices and sha256 precompile.
   /// @dev Reverts if `leaf` doesn't exist in the Merkle tree with `root`, given `proof`.
