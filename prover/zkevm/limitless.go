@@ -1021,12 +1021,12 @@ var publicInputNames = []string{
 	publicInput.LastRollingHashUpdate_1,
 	publicInput.FirstRollingHashUpdateNumber,
 	publicInput.LastRollingHashNumberUpdate,
-	publicInput.ChainID,
 	publicInput.NBytesChainID,
-	publicInput.L2MessageServiceAddrHi,
-	publicInput.L2MessageServiceAddrLo,
+	publicInput.ChainID,
 	publicInput.BaseFee,
 	publicInput.CoinBase,
+	publicInput.L2MessageServiceAddrHi,
+	publicInput.L2MessageServiceAddrLo,
 }
 
 // LogPublicInputs logs the list of the public inputs for the module

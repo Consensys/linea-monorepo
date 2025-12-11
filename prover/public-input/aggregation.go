@@ -32,8 +32,12 @@ type Aggregation struct {
 	L1RollingHashMessageNumber              uint
 	L2MsgRootHashes                         []string
 	L2MsgMerkleTreeDepth                    int
-	ChainID                                 uint64
-	L2MessageServiceAddr                    types.EthAddress
+
+	// dynamic chain configuration
+	ChainID              uint64
+	BaseFee              uint64
+	CoinBase             types.EthAddress
+	L2MessageServiceAddr types.EthAddress
 }
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
@@ -105,8 +109,6 @@ type AggregationFPI struct {
 	LastFinalizedBlockTimestamp       uint64
 	LastFinalizedRollingHash          [32]byte
 	LastFinalizedRollingHashMsgNumber uint64
-	ChainID                           uint64 // for now we're forcing all executions to have the same chain ID
-	L2MessageServiceAddr              types.EthAddress
 	L2MsgMerkleTreeRoots              [][32]byte
 	FinalBlockNumber                  uint64
 	FinalBlockTimestamp               uint64
@@ -114,6 +116,12 @@ type AggregationFPI struct {
 	FinalRollingHashNumber            uint64
 	FinalShnarf                       [32]byte
 	L2MsgMerkleTreeDepth              int
+
+	// dynamic chain configuration
+	ChainID              uint64
+	BaseFee              uint64
+	CoinBase             types.EthAddress
+	L2MessageServiceAddr types.EthAddress
 }
 
 func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
@@ -125,9 +133,11 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			LastFinalizedRollingHashNumber: zk.ValueOf(pi.LastFinalizedRollingHashMsgNumber),
 			InitialStateRootHash:           zk.ValueOf(pi.InitialStateRootHash[:]),
 			NbDecompression:                zk.ValueOf(pi.NbDecompression),
+			// dynamic chain configuration
 			ChainConfigurationFPISnark: ChainConfigurationFPISnark{
 				ChainID:                 zk.ValueOf(pi.ChainID),
-				BaseFee:                 7,
+				BaseFee:                 zk.ValueOf(pi.BaseFee),
+				CoinBase:                new(big.Int).SetBytes(zk.ValueOf(pi.CoinBase[:])),
 				L2MessageServiceAddress: new(big.Int).SetBytes(zk.ValueOf(pi.L2MessageServiceAddr[:])),
 			},
 		},
@@ -161,6 +171,7 @@ type AggregationFPIQSnark struct {
 type ChainConfigurationFPISnark struct {
 	ChainID                 zk.WrappedVariable // WARNING: Currently not bound in Sum
 	BaseFee                 zk.WrappedVariable
+	CoinBase                zk.WrappedVariable
 	L2MessageServiceAddress zk.WrappedVariable // WARNING: Currently not bound in Sum
 }
 
@@ -317,6 +328,7 @@ func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) frontend.Variable {
 	// Process all three configuration values in order
 	processValue(pi.ChainID, "ChainID")
 	processValue(pi.BaseFee, "BaseFee")
+	processValue(pi.CoinBase, "CoinBase")
 	processValue(pi.L2MessageServiceAddress, "L2MessageServiceAddress")
 	api.Println("Final MiMC state:", state)
 

@@ -158,9 +158,9 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.Field
 		initialRollingHash[1],
 		spi.FirstRollingHashUpdateNumber,
 		spi.ChainID,
-		spi.L2MessageServiceAddr,
 		spi.BaseFee,
 		spi.CoinBase,
+		spi.L2MessageServiceAddr,
 	)
 
 	return hsh.Sum()
@@ -172,8 +172,8 @@ func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error 
 	spi.InitialBlockNumber = zk.ValueOf(pi.InitialBlockNumber)
 	spi.ChainID = zk.ValueOf(pi.ChainID)
 	spi.BaseFee = zk.ValueOf(pi.BaseFee)
-	spi.L2MessageServiceAddr = zk.ValueOf(pi.L2MessageServiceAddr[:])
 	spi.CoinBase = zk.ValueOf(pi.CoinBase[:])
+	spi.L2MessageServiceAddr = zk.ValueOf(pi.L2MessageServiceAddr[:])
 
 	return spi.FunctionalPublicInputQSnark.Assign(pi)
 }

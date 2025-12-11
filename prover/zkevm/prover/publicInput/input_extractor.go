@@ -52,6 +52,8 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 	assignLO(fie.DataNbBytes)
 	assignLO(fie.NBytesChainID)
 
+	// to do @gusiri: check if this is correct
+	// refactor existing L2MessageServiceAddr, ChainID, etc.
 	assignLO(fie.L2MessageServiceAddrHi)
 	assignLO(fie.L2MessageServiceAddrLo)
 	assignLO(fie.CoinBase)
@@ -67,6 +69,7 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 	}
 
 	for i := range common.NbLimbEthAddress {
+		// to do @gusiri: use address hi and lo?
 		assignLO(fie.L2MessageServiceAddr[i])
 	}
 

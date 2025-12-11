@@ -88,7 +88,7 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	if withValidation && err != nil {
 		return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
 	}
-	cfg.Layer2.MsgSvcContract = coinBaseAddr.Address()
+	cfg.Layer2.CoinBase = coinBaseAddr.Address()
 
 	// ensure that asset dir / kzgsrs exists using os.Stat
 	srsDir := cfg.PathForSRS()
@@ -98,12 +98,12 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 
 	// duplicate L2 hardcoded values for PI
 	// check if ChainID and BaseFee are within the max value (8 byetes)
-	// TODO: Later, we should receive this as a string, check max value, and convert to uint64.
+	// TODO@gusiri: Later, we should receive this as a string, check max value, and convert to uint64.
 
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
 	cfg.PublicInputInterconnection.BaseFee = uint64(cfg.Layer2.BaseFee)
-	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
 	cfg.PublicInputInterconnection.CoinBase = cfg.Layer2.CoinBase
+	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
 
 	return &cfg, nil
 }
@@ -153,12 +153,12 @@ type Config struct {
 		// Use this field when you need the ETH address as a string.
 		MsgSvcContractStr string `mapstructure:"message_service_contract" validate:"required,eth_addr"`
 
-		// CoinBaseStr stores the coinbase address of Linea as a string.
-		CoinBaseStr string `mapstructure:"coin_base" validate:"required,eth_addr"`
-
 		// MsgSvcContract stores the unique ID of the Service Contract (SC), as a common.Address.
 		MsgSvcContract common.Address `mapstructure:"-"`
-		CoinBase       common.Address `mapstructure:"-"`
+
+		// CoinBaseStr stores the coinbase address of Linea as a string.
+		CoinBaseStr string         `mapstructure:"coin_base" validate:"required,eth_addr"`
+		CoinBase    common.Address `mapstructure:"-"`
 	}
 
 	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`

@@ -3,6 +3,7 @@ package execution
 import (
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/stretchr/testify/require"
 
