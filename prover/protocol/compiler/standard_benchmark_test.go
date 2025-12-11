@@ -5,6 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -22,6 +26,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
 // StdBenchmarkCase represents a benchmark case for the Arcane and Vortex compilers
@@ -58,59 +63,59 @@ type SubModuleParameters struct {
 
 var (
 	benchCases = []StdBenchmarkCase{
-		// {
-		// 	Name: "minimal",
-		// 	Permutations: SubModuleParameters{
-		// 		Count:  1,
-		// 		NumCol: 1,
-		// 		NumRow: 1 << 10,
-		// 	},
-		// 	Lookup: SubModuleParameters{
-		// 		Count:     1,
-		// 		NumCol:    1,
-		// 		NumRow:    1 << 10,
-		// 		NumRowAux: 1 << 10,
-		// 	},
-		// 	Projection: SubModuleParameters{
-		// 		Count:     1,
-		// 		NumCol:    1,
-		// 		NumRow:    1 << 10,
-		// 		NumRowAux: 1 << 10,
-		// 	},
-		// 	Fibo: SubModuleParameters{
-		// 		Count:  1,
-		// 		NumRow: 1 << 10,
-		// 	},
-		// },
 		{
-			// run with GOGC=200 and
-			// ensure THP is enabled:
-			// cat /sys/kernel/mm/transparent_hugepage/enabled
-			// if not:
-			// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
-			Name: "realistic-segment",
+			Name: "minimal",
 			Permutations: SubModuleParameters{
-				Count:  5,
-				NumCol: 3,
-				NumRow: 1 << 20,
+				Count:  1,
+				NumCol: 1,
+				NumRow: 1 << 5,
 			},
 			Lookup: SubModuleParameters{
-				Count:     50,
-				NumCol:    3,
-				NumRow:    1 << 20,
-				NumRowAux: 1 << 20,
+				Count:     1,
+				NumCol:    1,
+				NumRow:    1 << 5,
+				NumRowAux: 1 << 5,
 			},
 			Projection: SubModuleParameters{
-				Count:     5,
-				NumCol:    3,
-				NumRow:    1 << 20,
-				NumRowAux: 1 << 20,
+				Count:     1,
+				NumCol:    1,
+				NumRow:    1 << 5,
+				NumRowAux: 1 << 5,
 			},
 			Fibo: SubModuleParameters{
-				Count:  200,
-				NumRow: 1 << 20,
+				Count:  1,
+				NumRow: 1 << 5,
 			},
 		},
+		// {
+		// 	// run with GOGC=200 and
+		// 	// ensure THP is enabled:
+		// 	// cat /sys/kernel/mm/transparent_hugepage/enabled
+		// 	// if not:
+		// 	// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+		// 	Name: "realistic-segment",
+		// 	Permutations: SubModuleParameters{
+		// 		Count:  5,
+		// 		NumCol: 3,
+		// 		NumRow: 1 << 20,
+		// 	},
+		// 	Lookup: SubModuleParameters{
+		// 		Count:     50,
+		// 		NumCol:    3,
+		// 		NumRow:    1 << 20,
+		// 		NumRowAux: 1 << 20,
+		// 	},
+		// 	Projection: SubModuleParameters{
+		// 		Count:     5,
+		// 		NumCol:    3,
+		// 		NumRow:    1 << 20,
+		// 		NumRowAux: 1 << 20,
+		// 	},
+		// 	Fibo: SubModuleParameters{
+		// 		Count:  200,
+		// 		NumRow: 1 << 20,
+		// 	},
+		// },
 		// {
 		// 	Name: "smaller-segment",
 		// 	Permutations: SubModuleParameters{
@@ -355,8 +360,54 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = wizard.Prove(comp, sbc.NewAssigner(b), false)
+		proof := wizard.Prove(comp, sbc.NewAssigner(b), true)
+		err := wizard.Verify(comp, proof, true)
+
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		circuit := &verifierCircuit{
+			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
+		}
+
+		scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+
+		assignment := &verifierCircuit{
+			C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+		}
+
+		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+		require.NoError(b, err)
+
+		// Check if solved using the pre-compiled CCS
+		err = scs.IsSolved(witness)
+
+		if err != nil {
+			// When the error string is too large `require.NoError` does not print
+			// the error.
+			b.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
+
+			errDetail := test.IsSolved(
+				assignment,
+				assignment,
+				scs.Field(),
+			)
+
+			b.Logf("while running the plonk prover: %v", errDetail)
+
+			b.FailNow()
+		}
 	}
+}
+
+type verifierCircuit struct {
+	C *wizard.VerifierCircuit
+}
+
+func (c *verifierCircuit) Define(api frontend.API) error {
+	c.C.Verify(api)
+	return nil
 }
 
 // Define defines the benchmark case

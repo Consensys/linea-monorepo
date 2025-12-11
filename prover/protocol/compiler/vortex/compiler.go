@@ -469,7 +469,8 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	logrus.
 		WithField("where", "compileRoundWithVortex").
-		WithField("using-only-Poseidon2", onlyPoseidon2Applied).
+		WithField("IsBLS", ctx.IsBLS).
+		WithField("withoutSIS", onlyPoseidon2Applied).
 		WithField("numComs", numComsActual).
 		WithField("numShadowRows", numShadowRows).
 		WithField("numUnconstrained", len(comUnconstrained)).
