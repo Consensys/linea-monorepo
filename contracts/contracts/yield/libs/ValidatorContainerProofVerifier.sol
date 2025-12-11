@@ -198,7 +198,17 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   ) external view {
     _verifySlot(_witness.slot, _witness.proposerIndex, _witness.proof);
     bytes32 pendingPartialWithdrawalsRoot = SSZ.hashTreeRoot(_witness.pendingPartialWithdrawals);
+    GIndex gIndex = concat(
+      GI_STATE_ROOT,
+      GI_PENDING_PARTIAL_WITHDRAWALS_ROOT
+    );
 
+    SSZ.verifyProof({
+      proof: _witness.proof,
+      root: _getParentBlockRoot(_witness.childBlockTimestamp),
+      leaf: pendingPartialWithdrawalsRoot,
+      gI: gIndex
+    });
   }
 
   /**
