@@ -155,6 +155,6 @@ func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	(*fs).UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		(*fs).Update(zk.ValueOf(part.N0), zk.ValueOf(part.N1))
+		(*fs).Update(zk.WrapFrontendVariable(part.N0), zk.WrapFrontendVariable(part.N1))
 	}
 }
