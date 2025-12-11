@@ -1002,8 +1002,9 @@ Any party (e.g. via an npm package we provide for the bridge/partners etc) does 
 
 
 ## Forced transactions
-A Smart contract on L1 allows any user to post transactions on Linea with the guarantee that it will be included if valid.
-For this, the user has to send the different fields of the transaction as call data of the transaction he is sending on
+A Smart contract on L1 allows any user to post Linea-based transactions to it, with the guarantee that it will be processed on Linea if valid.
+
+For this, the user has to send the different fields of the Linea transaction  (including signature fields) in the calldata of the transaction being sent on
 Ethereum mainnet. The smart contract method is as follows:
 
 ```
