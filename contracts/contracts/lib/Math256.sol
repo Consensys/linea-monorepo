@@ -29,4 +29,31 @@ library Math256 {
   function safeSub(uint256 a, uint256 b) internal pure returns (uint256) {
     return a > b ? a - b : 0;
   }
+
+  /// @dev Returns the smallest power of 2 that is greater than or equal to x.
+  /// @param x The input value.
+  /// @return r The smallest power of 2 >= x. Returns 1 if x is 0.
+  /// @notice If x is already a power of 2, returns x. For MaxUint256, the result wraps to 0 due to overflow.
+  function nextPow2(uint256 x) internal pure returns (uint256 r) {
+      assembly {
+          // If x is 0 → next pow2 is 1
+          r := x
+          if iszero(r) {
+              r := 1
+          }
+          // Decrement first (standard trick)
+          r := sub(r, 1)
+          // Spread highest bit rightwards
+          r := or(r, shr(1, r))
+          r := or(r, shr(2, r))
+          r := or(r, shr(4, r))
+          r := or(r, shr(8, r))
+          r := or(r, shr(16, r))
+          r := or(r, shr(32, r))
+          r := or(r, shr(64, r))
+          r := or(r, shr(128, r))
+          // Add 1 → next power of 2
+          r := add(r, 1)
+      }
+  }
 }
