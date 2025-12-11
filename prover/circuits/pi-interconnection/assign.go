@@ -206,6 +206,8 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 			FinalStateRootHash:    lastFinalizedStateRootHash,
 			L2MessageServiceAddr:  r.Aggregation.L2MessageServiceAddr,
 			ChainID:               r.Aggregation.ChainID,
+			BaseFee:               r.Aggregation.BaseFee,
+			CoinBase:              r.Aggregation.CoinBase,
 		}
 		executionFPI.FinalBlockNumber = executionFPI.InitialBlockNumber
 		executionFPI.FinalBlockTimestamp = executionFPI.InitialBlockTimestamp
