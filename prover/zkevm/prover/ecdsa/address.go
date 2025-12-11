@@ -140,7 +140,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	// ecdata is already projected over our ecRecover. Thus, we only project from our ecrecover.
 
 	// Check that first 6 elements (trimmed 12 bytes) of address higher part are all 0
-	for i := 0; i < addressTrimmedColumns; i++ {
+	for i := common.NbLimbU32; i < common.NbLimbU128; i++ {
 		comp.InsertGlobal(0, ifaces.QueryIDf("Trimmed_Bytes_Zeros_%d", i),
 			sym.Mul(addr.IsAddressHiEcRec, addr.IsAddressFromEcRec, ecRec.Limb[i]),
 		)
@@ -221,8 +221,8 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 	}
 
 	pkModule.Info = generic.GenInfoModule{
-		HashHi:   addr.AddressHiUntrimmed[:common.NbLimbU128],
-		HashLo:   addr.AddressLo[common.NbLimbU128:],
+		HashHi:   reversed(addr.AddressHiUntrimmed[:]),
+		HashLo:   reversed(addr.AddressLo[:]),
 		IsHashHi: addr.IsAddress,
 		IsHashLo: addr.IsAddress,
 	}

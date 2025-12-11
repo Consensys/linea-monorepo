@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/gnark/std/math/emulated/emparams"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -22,63 +23,6 @@ type EcRecoverInstance struct {
 	SHi, SLo                   [common.NbLimbU128]frontend.Variable `gnark:",public"`
 	SUCCESS_BIT                [common.NbLimbU128]frontend.Variable `gnark:",public"`
 	ECRECOVERBIT               [common.NbLimbU128]frontend.Variable `gnark:",public"`
-}
-
-// convertBE16x16ToLE26x10 converts big-endian 16×16-bit limbs (Hi, Lo arrays)
-// to little-endian 26×10-bit limbs for gnark's emulated field over small fields.
-// Hi and Lo are each 8 limbs of 16 bits in big-endian order (index 0 = most significant).
-//
-// Input layout:
-//   - lo[7] contains bits [0-15] of full 256-bit value (LSB chunk)
-//   - lo[0] contains bits [112-127]
-//   - hi[7] contains bits [128-143]
-//   - hi[0] contains bits [240-255] (MSB chunk)
-//
-// Output: 26 limbs of 10 bits in little-endian order (limbs[0] = LSB).
-func convertBE16x16ToLE26x10(api frontend.API, hi, lo [common.NbLimbU128]frontend.Variable) []frontend.Variable {
-	// Collect all 256 bits in little-endian order (bit 0 first).
-	// Process limbs from LSB to MSB: lo[7], lo[6], ..., lo[0], hi[7], ..., hi[0]
-	// ToBinary returns bits in little-endian order (bits[0] = LSB of limb),
-	// which is exactly what we need.
-	allBits := make([]frontend.Variable, 256)
-	bitPos := 0
-
-	// Lo part: lo[7] is LSB chunk (bits 0-15), lo[0] is MSB chunk of Lo (bits 112-127)
-	for i := common.NbLimbU128 - 1; i >= 0; i-- {
-		bits := api.ToBinary(lo[i], 16)
-		for j := 0; j < 16; j++ {
-			allBits[bitPos] = bits[j]
-			bitPos++
-		}
-	}
-
-	// Hi part: hi[7] is LSB chunk of Hi (bits 128-143), hi[0] is MSB chunk (bits 240-255)
-	for i := common.NbLimbU128 - 1; i >= 0; i-- {
-		bits := api.ToBinary(hi[i], 16)
-		for j := 0; j < 16; j++ {
-			allBits[bitPos] = bits[j]
-			bitPos++
-		}
-	}
-
-	// Now allBits is in little-endian order: allBits[0] = bit 0 (LSB), allBits[255] = bit 255 (MSB)
-	// Build 26 limbs of 10 bits each, also in little-endian order
-	result := make([]frontend.Variable, 26)
-	for i := 0; i < 26; i++ {
-		limbBits := make([]frontend.Variable, 10)
-		for j := 0; j < 10; j++ {
-			bitIdx := i*10 + j
-			if bitIdx < 256 {
-				limbBits[j] = allBits[bitIdx]
-			} else {
-				// Padding for bits beyond 256 (most significant limbs)
-				limbBits[j] = frontend.Variable(0)
-			}
-		}
-		result[i] = api.FromBinary(limbBits...)
-	}
-
-	return result
 }
 
 type MultiEcRecoverCircuit struct {
@@ -120,39 +64,11 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 	}
 	// Convert big-endian 16×16-bit limbs to little-endian 26×10-bit limbs
 	// for gnark's emulated field over KoalaBear
-	msg = fr.NewElement(convertBE16x16ToLE26x10(api, c.HHi, c.HLo))
+	msg = gnarkutil.EmulatedFromHiLo(api, fr, c.HHi[:], c.HLo[:], 16)
 	PK = &sw_emulated.AffinePoint[emparams.Secp256k1Fp]{
-		X: *fp.NewElement(convertBE16x16ToLE26x10(api, c.PKXHi, c.PKXLo)),
-		Y: *fp.NewElement(convertBE16x16ToLE26x10(api, c.PKYHi, c.PKYLo)),
+		X: *gnarkutil.EmulatedFromHiLo(api, fp, c.PKXHi[:], c.PKXLo[:], 16),
+		Y: *gnarkutil.EmulatedFromHiLo(api, fp, c.PKYHi[:], c.PKYLo[:], 16),
 	}
-
-	api.Println("PK X/Y")
-	api.Println(c.PKXHi[:])
-	api.Println(c.PKXLo[:])
-	api.Println(c.PKYHi[:])
-	api.Println(c.PKYLo[:])
-
-	api.Println("H HI/LO")
-	api.Println(c.HHi[:])
-	api.Println(c.HLo[:])
-
-	api.Println("V HI/LO")
-	api.Println(c.VHi[:])
-	api.Println(c.VLo[:])
-
-	api.Println("R HI/LO")
-	api.Println(c.RHi[:])
-	api.Println(c.RLo[:])
-
-	api.Println("S HI/LO")
-	api.Println(c.SHi[:])
-	api.Println(c.SLo[:])
-
-	api.Println("SUCCESS BIT")
-	api.Println(c.SUCCESS_BIT[:])
-
-	api.Println("ECRECOVER_BIT")
-	api.Println(c.ECRECOVERBIT[:])
 
 	// v is 27 or 28 in EVM, but arithmetization gives on two limbs. Ensure that all high limbs are zero.
 	for i := 0; i < common.NbLimbU128; i++ {
@@ -165,8 +81,8 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 	v = c.VLo[0] // last limb since v is small (27 or 28).
 
 	// Convert r and s similarly
-	r = fr.NewElement(convertBE16x16ToLE26x10(api, c.RHi, c.RLo))
-	s = fr.NewElement(convertBE16x16ToLE26x10(api, c.SHi, c.SLo))
+	r = gnarkutil.EmulatedFromHiLo(api, fr, c.RHi[:], c.RLo[:], 16)
+	s = gnarkutil.EmulatedFromHiLo(api, fr, c.SHi[:], c.SLo[:], 16)
 
 	for i := 1; i < common.NbLimbU128; i++ {
 		api.AssertIsEqual(c.SUCCESS_BIT[i], 0)
