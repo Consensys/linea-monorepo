@@ -190,6 +190,7 @@ describe("SSZ", () => {
     });
   });
 
+  // Test cases - https://github.com/ethereum/consensus-spec-tests/tree/master/tests/mainnet/electra/ssz_static/PendingPartialWithdrawal/ssz_random
   describe("hashTreeRoot(PendingPartialWithdrawal)", () => {
     it("example", async () => {
       const pendingPartialWithdrawal: PendingPartialWithdrawal = {
@@ -227,17 +228,17 @@ describe("SSZ", () => {
       expect(actual).to.equal(expected);
     });
 
-    // it("all ones", async () => {
-    //   const pendingPartialWithdrawal: PendingPartialWithdrawal = {
-    //     validatorIndex: UINT64_MAX,
-    //     amount: UINT64_MAX,
-    //     withdrawableEpoch: UINT64_MAX,
-    //   };
+    it("example 3", async () => {
+      const pendingPartialWithdrawal: PendingPartialWithdrawal = {
+        validatorIndex: 9556824998668043785n,
+        amount: 18095667167504007302n,
+        withdrawableEpoch: 12065041970590563750n,
+      };
 
-    //   const expected = "0x0000000000000000000000000000000000000000000000000000000000000000";
-    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawal(pendingPartialWithdrawal);
-    //   expect(actual).to.equal(expected);
-    // });
+      const expected = "0xfee5527172fd2af098adcdfa5d4108ffc52d19b4cb03fcdb186685a11147fe7b";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawal(pendingPartialWithdrawal);
+      expect(actual).to.equal(expected);
+    });
   });
 
   describe("verifyProof", () => {
