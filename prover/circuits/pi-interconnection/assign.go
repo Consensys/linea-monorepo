@@ -8,7 +8,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
@@ -63,7 +63,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	}
 	utils.Copy(a.ParentShnarf[:], prevShnarf)
 
-	hshM := mimc.NewMiMC()
+	hshM := hasher_factory.NewMiMC()
 	// execDataChecksums is a list that we progressively fill to store the mimc
 	// hash of the executionData for every execution (conflation) batch. The
 	// is filled as we process the decompression proofs which store a list of

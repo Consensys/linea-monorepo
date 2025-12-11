@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
@@ -13,8 +14,7 @@ import (
 	snarkMiMC "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/math/emulated"
 	public_input "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/public-input"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrmimc"
 
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 )
@@ -210,7 +210,7 @@ func mimcHashAnyGnark(
 }
 
 func mimcHashAny(fs ...any) fr377.Element {
-	h := mimc.NewMiMC()
+	h := hasher_factory.NewMiMC()
 	for i := range fs {
 		switch f := fs[i].(type) {
 		case fr377.Element:
@@ -242,7 +242,7 @@ func mimcHashAny(fs ...any) fr377.Element {
 }
 
 func mimcHash(fs ...fr377.Element) fr377.Element {
-	h := mimc.NewMiMC()
+	h := hasher_factory.NewMiMC()
 	for i := range fs {
 		buf := fs[i].Bytes()
 		h.Write(buf[:])

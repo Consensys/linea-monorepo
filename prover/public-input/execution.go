@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"hash"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -29,7 +29,7 @@ type Execution struct {
 
 func (pi *Execution) Sum(hsh hash.Hash) []byte {
 	if hsh == nil {
-		hsh = mimc.NewMiMC()
+		hsh = hasher_factory.NewMiMC()
 	}
 
 	hsh.Reset()

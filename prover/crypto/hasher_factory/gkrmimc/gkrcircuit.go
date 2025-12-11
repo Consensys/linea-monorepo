@@ -12,13 +12,13 @@ import (
 
 	apiGkr "github.com/consensys/gnark/std/gkrapi/gkr"
 	"github.com/consensys/gnark/std/multicommit"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 var (
 	prefetchSize     = 4 // all layers before the "actual" MiMc round layers
-	numGates     int = prefetchSize + len(mimc.Constants)
+	numGates     int = prefetchSize + len(hasher_factory.Constants)
 	gateNames    []string
 )
 
@@ -68,7 +68,7 @@ func registerGates() {
 
 		var (
 			//name  = gateNames[i]
-			gateG = NewRoundGateGnark(mimc.Constants[i-prefetchSize])
+			gateG = NewRoundGateGnark(hasher_factory.Constants[i-prefetchSize])
 			//gateC = NewRoundGateCrypto(mimc.Constants[i-prefetchSize])
 		)
 
@@ -85,7 +85,7 @@ func registerGates() {
 
 	var (
 		//name  = gateNames[numGates-1]
-		gateG = NewFinalRoundGateGnark(mimc.Constants[len(mimc.Constants)-1])
+		gateG = NewFinalRoundGateGnark(hasher_factory.Constants[len(hasher_factory.Constants)-1])
 		//gateC = NewFinalRoundGateCrypto(mimc.Constants[len(mimc.Constants)-1])
 	)
 	if e := gateGkr.Register(gateG.Evaluate, 3, gDegree17); e != nil {

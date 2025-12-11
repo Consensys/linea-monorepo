@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -58,7 +58,7 @@ func TestDistributedWizardBasic(t *testing.T) {
 		allGrandProduct     = field.NewElement(1)
 		allLogDerivativeSum = field.Element{}
 		allHornerSum        = field.Element{}
-		generalMSet         = mimc.MSetHash{}
+		generalMSet         = hasher_factory.MSetHash{}
 	)
 
 	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
@@ -97,8 +97,8 @@ func TestDistributedWizardBasic(t *testing.T) {
 			proverRunGL         = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
 			proofGL             = proverRunGL.ExtractProof()
 			verRun, verGLErr    = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL)
-			generalMSetFromGLFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
-			generalMSetFromGL   = mimc.MSetHash(generalMSetFromGLFr)
+			generalMSetFromGLFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, hasher_factory.MSetHashSize)
+			generalMSetFromGL   = hasher_factory.MSetHash(generalMSetFromGLFr)
 		)
 
 		if verGLErr != nil {
@@ -124,8 +124,8 @@ func TestDistributedWizardBasic(t *testing.T) {
 			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP))
 			proofLPP             = proverRunLPP.ExtractProof()
 			verRun, verLPPErr    = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP)
-			generalMSetFromLPPFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
-			generalMSetFromLPP   = mimc.MSetHash(generalMSetFromLPPFr)
+			generalMSetFromLPPFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, hasher_factory.MSetHashSize)
+			generalMSetFromLPP   = hasher_factory.MSetHash(generalMSetFromLPPFr)
 		)
 
 		if verLPPErr != nil {

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	cmimc "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"

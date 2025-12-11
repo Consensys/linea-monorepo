@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -167,7 +167,7 @@ func mimcHintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error {
 	}
 
 	inpF := fromBigInts(inputs)
-	outF := mimc.BlockCompression(inpF[0], inpF[1])
+	outF := hasher_factory.BlockCompression(inpF[0], inpF[1])
 
 	intoBigInts(outputs, outF)
 	return nil
@@ -211,7 +211,7 @@ func (f *HasherFactory) finalize(_ frontend.API) error {
 
 	// Edge-case, when the number of hashes is small use mimc directly
 	if len(f.blocks) == 1 {
-		new := mimc.GnarkBlockCompression(f.api, f.initStates[0], f.blocks[0])
+		new := hasher_factory.GnarkBlockCompression(f.api, f.initStates[0], f.blocks[0])
 		f.api.AssertIsEqual(new, f.newStates[0])
 		return nil
 	}
@@ -232,7 +232,7 @@ func (f *HasherFactory) padToPow2() int {
 	targetSize := utils.NextPowerOfTwo(size)
 
 	zero := field.Element{}
-	hashOfZero := mimc.BlockCompression(zero, zero)
+	hashOfZero := hasher_factory.BlockCompression(zero, zero)
 
 	for i := size; i < targetSize; i++ {
 		f.pushTriplets(0, 0, hashOfZero.String())
