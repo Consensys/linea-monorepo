@@ -241,12 +241,14 @@ library SSZ {
   }
 
   function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) internal view returns (bytes32 root) {
-    uint256 nodesLength = Math256.nextPow2(pendingPartialWithdrawal.length);
+    uint256 inputLength = pendingPartialWithdrawal.length;
+    if (inputLength == 0) return bytes32(0);
+    uint256 nodesLength = Math256.nextPow2(inputLength);
     bytes32[] memory nodes = new bytes32[](nodesLength);
     // nodes pointer → [length][data0][data1][data2]...[dataN]
 
     // Fill nodes with SSZ root of the PendingPartialWithdrawals
-    for (uint256 i = 0; i < pendingPartialWithdrawal.length; i++) {
+    for (uint256 i = 0; i < inputLength; i++) {
       nodes[i] = hashTreeRoot(pendingPartialWithdrawal[i]);
     }
 

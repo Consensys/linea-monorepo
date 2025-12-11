@@ -22,6 +22,10 @@ contract TestSSZ {
     return SSZ.hashTreeRoot(pendingPartialWithdrawal);
   }
 
+  function hashTreeRoot_PendingPartialWithdrawalArray(PendingPartialWithdrawal[] calldata pendingPartialWithdrawals) external view returns (bytes32) {
+    return SSZ.hashTreeRoot(pendingPartialWithdrawals);
+  }
+
   function verifyProof(bytes32[] calldata proof, bytes32 root, bytes32 leaf, GIndex gI) external view {
     SSZ.verifyProof(proof, root, leaf, gI);
   }

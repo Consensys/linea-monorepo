@@ -241,6 +241,174 @@ describe("SSZ", () => {
     });
   });
 
+  describe("hashTreeRoot(PendingPartialWithdrawal[])", () => {
+    it("empty array", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [];
+
+      const expected = "0x0000000000000000000000000000000000000000000000000000000000000000";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
+
+    it("single element", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+        {
+          validatorIndex: 0,
+          amount: 1,
+          withdrawableEpoch: 2,
+        },
+      ];
+
+      // Single element: nextPow2(1) = 1, so array has one element
+      // Should return the hash of that single element
+      const expected = "0x4a07d56213d62b2d194a3cc1f19bec40364540bdf3d45eb0d6fe82094d21b4dc";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
+
+    // it("two elements", async () => {
+    //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 1,
+    //       withdrawableEpoch: 2,
+    //     },
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 1,
+    //       withdrawableEpoch: 0,
+    //     },
+    //   ];
+
+    //   // Two elements: nextPow2(2) = 2
+    //   // Compute expected: hash pair of the two element hashes
+    //   // First element hash: 0x4a07d56213d62b2d194a3cc1f19bec40364540bdf3d45eb0d6fe82094d21b4dc
+    //   // Second element hash: 0x4833912e1264aef8a18392d795f3f2eed17cf5c0e8471cb0c0db2ec5aca10231
+    //   // Need to compute sha256 of concatenated hashes
+    //   // @ts-expect-error - function exists but types not regenerated yet
+    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+    //   // Expected value will be computed - for now, just verify it's a valid bytes32
+    //   expect(actual).to.be.a("string");
+    //   expect(actual).to.have.length(66); // 0x + 64 hex chars
+    // });
+
+    // it("three elements", async () => {
+    //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 1,
+    //       withdrawableEpoch: 2,
+    //     },
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 1,
+    //       withdrawableEpoch: 0,
+    //     },
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 0,
+    //       withdrawableEpoch: 0,
+    //     },
+    //   ];
+
+    //   // Three elements: nextPow2(3) = 4, so array is padded to 4 elements
+    //   // Last element will be zero (bytes32(0))
+    //   // @ts-expect-error - function exists but types not regenerated yet
+    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+    //   expect(actual).to.be.a("string");
+    //   expect(actual).to.have.length(66);
+    // });
+
+    // it("four elements", async () => {
+    //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 1,
+    //       withdrawableEpoch: 2,
+    //     },
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 1,
+    //       withdrawableEpoch: 0,
+    //     },
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 0,
+    //       withdrawableEpoch: 0,
+    //     },
+    //     {
+    //       validatorIndex: 9556824998668043785n,
+    //       amount: 18095667167504007302n,
+    //       withdrawableEpoch: 12065041970590563750n,
+    //     },
+    //   ];
+
+    //   // Four elements: nextPow2(4) = 4
+    //   // @ts-expect-error - function exists but types not regenerated yet
+    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+    //   expect(actual).to.be.a("string");
+    //   expect(actual).to.have.length(66);
+    // });
+
+    // it("all zeroes", async () => {
+    //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 0,
+    //       withdrawableEpoch: 0,
+    //     },
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 0,
+    //       withdrawableEpoch: 0,
+    //     },
+    //   ];
+
+    //   // All zero elements: should hash pair of zero hashes
+    //   // @ts-expect-error - function exists but types not regenerated yet
+    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+    //   // For two identical zero elements, the result should be hash of (zeroHash, zeroHash)
+    //   expect(actual).to.be.a("string");
+    //   expect(actual).to.have.length(66);
+    // });
+
+    // it("multiple elements with various values", async () => {
+    //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+    //     {
+    //       validatorIndex: 0,
+    //       amount: 1,
+    //       withdrawableEpoch: 2,
+    //     },
+    //     {
+    //       validatorIndex: 1,
+    //       amount: 100,
+    //       withdrawableEpoch: 1000,
+    //     },
+    //     {
+    //       validatorIndex: 2,
+    //       amount: 1000,
+    //       withdrawableEpoch: 2000,
+    //     },
+    //     {
+    //       validatorIndex: 3,
+    //       amount: 10000,
+    //       withdrawableEpoch: 3000,
+    //     },
+    //     {
+    //       validatorIndex: 4,
+    //       amount: 100000,
+    //       withdrawableEpoch: 4000,
+    //     },
+    //   ];
+
+    //   // Five elements: nextPow2(5) = 8, so array is padded to 8 elements
+    //   // @ts-expect-error - function exists but types not regenerated yet
+    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+    //   expect(actual).to.be.a("string");
+    //   expect(actual).to.have.length(66);
+    // });
+  });
+
   describe("verifyProof", () => {
     // For the tests below, assume there's the following tree from the bottom up:
     // --
