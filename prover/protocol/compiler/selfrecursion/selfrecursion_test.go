@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -395,6 +398,91 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 	proof := wizard.Prove(comp, prove)
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
+}
+
+func TestGnarkSelfRecursionMultiLayered(t *testing.T) {
+
+	logrus.SetLevel(logrus.FatalLevel)
+
+	tc := TestCase{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]}
+	t.Run(fmt.Sprintf("testcase-%++v", tc), func(subT *testing.T) {
+		define, prove := generateProtocol(tc)
+
+		comp := wizard.Compile(
+			define,
+			vortex.Compile(
+				2,
+				false,
+				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
+				vortex.WithSISParams(&tc.SisInstance),
+			),
+			selfrecursion.SelfRecurse,
+			poseidon2.CompilePoseidon2,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<10)),
+			vortex.Compile(
+				2,
+				false,
+				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
+				vortex.WithSISParams(&tc.SisInstance),
+			),
+			selfrecursion.SelfRecurse,
+			poseidon2.CompilePoseidon2,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<13)),
+			vortex.Compile(
+				2,
+				true,
+				vortex.WithOptionalSISHashingThreshold(1<<20),
+			),
+		)
+
+		proof := wizard.Prove(
+			comp,
+			prove,
+			true,
+		)
+
+		err := wizard.Verify(comp, proof, true)
+		require.NoError(subT, err)
+
+		circuit := verifierCircuit{}
+		{
+			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
+			circuit.C = *c
+		}
+
+		csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assignment := &verifierCircuit{
+			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+		}
+
+		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Check if solved using the pre-compiled SCS
+		err = csc.IsSolved(witness)
+		if err != nil {
+			fmt.Printf("circuit solving failed :  %v \n", err)
+		} else {
+			fmt.Printf("circuit solved successfully\n")
+		}
+	})
+}
+
+type verifierCircuit struct {
+	C wizard.VerifierCircuit
+}
+
+func (c *verifierCircuit) Define(api frontend.API) error {
+	c.C.Verify(api)
+	return nil
 }
 
 // // Test the compiler of self-recursion with really many layers for a sample

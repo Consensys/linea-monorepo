@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -311,6 +312,10 @@ func MinMaxOffset(expr *symbolic.Expression) utils.Range {
 
 // Test a polynomial identity relation
 func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 	boarded := cs.Board()
 	metadatas := boarded.ListVariableMetadata()
 
@@ -318,7 +323,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	// larger than end.
 	for _, metadataInterface := range metadatas {
 		if handle, ok := metadataInterface.(ifaces.Column); ok {
-			witness := handle.GetColAssignmentGnark(run)
+			witness := handle.GetColAssignmentGnarkExt(run)
 			if len(witness) != cs.DomainSize {
 				utils.Panic(
 					"Query %v - Witness of %v has size %v which is below %v",
@@ -329,7 +334,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	}
 
 	// Collects the relevant datas into a slice for the evaluation
-	evalInputs := make([][]zk.WrappedVariable, len(metadatas))
+	evalInputs := make([][]gnarkfext.E4Gen, len(metadatas))
 
 	// Omega is a root of unity which generates the domain of evaluation
 	// of the constraint. Its size coincide with the size of the domain
@@ -351,16 +356,36 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	for k, metadataInterface := range metadatas {
 		switch meta := metadataInterface.(type) {
 		case ifaces.Column:
-			w := meta.GetColAssignmentGnark(run)
+			w := meta.GetColAssignmentGnarkExt(run)
 			evalInputs[k] = w
 		case coin.Info:
-			utils.Panic("unsupported, coins are always over field extensions")
+			if meta.IsBase() {
+				utils.Panic("unsupported, coins are always over field extensions")
+
+			} else {
+				evalInputs[k] = gnarkutil.RepeatedVariableExt(run.GetRandomCoinFieldExt(meta.Name), cs.DomainSize)
+			}
 		case variables.X:
-			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
+			base := meta.GnarkEvalNoCoset(cs.DomainSize)
+			for i := range base {
+				evalInputs[k][i] = gnarkfext.FromBase(base[i])
+			}
 		case variables.PeriodicSample:
-			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
+			base := meta.GnarkEvalNoCoset(cs.DomainSize)
+			for i := range base {
+				evalInputs[k][i] = gnarkfext.FromBase(base[i])
+			}
 		case ifaces.Accessor:
-			evalInputs[k] = gnarkutil.RepeatedVariable(meta.GetFrontendVariable(api, run), cs.DomainSize)
+			var x gnarkfext.E4Gen
+			if meta.IsBase() {
+				base := meta.GetFrontendVariable(api, run)
+				x = gnarkfext.FromBase(base)
+			} else {
+				x = meta.GetFrontendVariableExt(api, run)
+			}
+
+			evalInputs[k] = gnarkutil.RepeatedVariableExt(x, cs.DomainSize)
+
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), cs.ID)
 		}
@@ -376,12 +401,13 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 
 	for i := start; i < stop; i++ {
 		// This panics if the global constraints doesn't use any commitment
-		inputs := make([]zk.WrappedVariable, len(evalInputs))
+		inputs := make([]gnarkfext.E4Gen, len(evalInputs))
 		for j := range inputs {
 			inputs[j] = evalInputs[j][i]
 		}
-		res := boarded.GnarkEval(api, inputs)
-		api.AssertIsEqual(res, 0)
+		res := boarded.GnarkEvalExt(api, inputs)
+		zero := ext4.Zero()
+		ext4.AssertIsEqual(&res, zero)
 	}
 
 	// Update the value of omega^i
