@@ -206,6 +206,8 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 			FinalStateRootHash:    lastFinalizedStateRootHash,
 			L2MessageServiceAddr:  r.Aggregation.L2MessageServiceAddr,
 			ChainID:               r.Aggregation.ChainID,
+			BaseFee:               r.Aggregation.BaseFee,
+			CoinBase:              r.Aggregation.CoinBase,
 		}
 		executionFPI.FinalBlockNumber = executionFPI.InitialBlockNumber
 		executionFPI.FinalBlockTimestamp = executionFPI.InitialBlockTimestamp
@@ -237,14 +239,27 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 		// This is asserted against a constant in the circuit. Thus we have
 		// different circuit for differents values of the msgSvcAddress and
 		// chainID.
-		if got, want := &executionFPI.L2MessageServiceAddr, &r.Aggregation.L2MessageServiceAddr; *got != *want {
-			err = fmt.Errorf("execution #%d fails CHECK_SVC_ADDR:\n\texpected L2 service address %x, encountered %x", i, *want, *got)
-			return
-		}
+
 		if got, want := executionFPI.ChainID, r.Aggregation.ChainID; got != want {
 			err = fmt.Errorf("execution #%d fails CHECK_CHAIN_ID:\n\texpected %x, encountered %x", i, want, got)
 			return
 		}
+
+		if got, want := executionFPI.BaseFee, r.Aggregation.BaseFee; got != want {
+			err = fmt.Errorf("execution #%d fails CHECK_BASE_FEE:\n\texpected %x, encountered %x", i, want, got)
+			return
+		}
+
+		if got, want := &executionFPI.CoinBase, &r.Aggregation.CoinBase; *got != *want {
+			err = fmt.Errorf("execution #%d fails CHECK_COIN_BASE:\n\texpected CoinBase address %x, encountered %x", i, *want, *got)
+			return
+		}
+
+		if got, want := &executionFPI.L2MessageServiceAddr, &r.Aggregation.L2MessageServiceAddr; *got != *want {
+			err = fmt.Errorf("execution #%d fails CHECK_SVC_ADDR:\n\texpected L2 service address %x, encountered %x", i, *want, *got)
+			return
+		}
+
 		if initial := executionFPI.InitialBlockTimestamp; initial <= lastFinBlockTs {
 			err = fmt.Errorf("execution #%d fails CHECK_TIME_INCREASE:\n\tinitial block timestamp is not after the final block timestamp from previous execution %d≤%d", i, initial, lastFinBlockTs)
 			return

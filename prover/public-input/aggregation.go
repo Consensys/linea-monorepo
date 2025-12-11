@@ -75,7 +75,7 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 	l2Msgs := hsh.Sum(nil)
 
 	// Compute chain configuration hash using MiMC first
-	chainConfigHash := computeChainConfigurationHash(p.ChainID, 7, p.L2MessageServiceAddr)
+	chainConfigHash := computeChainConfigurationHash(p.ChainID, p.BaseFee, p.CoinBase, p.L2MessageServiceAddr)
 
 	hsh.Reset()
 	writeHex(p.ParentAggregationFinalShnarf)

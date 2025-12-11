@@ -14,7 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
@@ -53,13 +52,6 @@ type Circuit struct {
 	// config
 	L2MessageMerkleDepth int
 	L2MessageMaxNbMerkle int
-
-	// @gusiri
-	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
-	ChainID              uint64
-	BaseFee              uint64
-	CoinBase             types.EthAddress
-	L2MessageServiceAddr types.EthAddress
 
 	// IsAllowedCircuitID is a public input parroting up the value of
 	// [AggregationFPIQSnark.IsAllowedCircuitID]. It is needed so that the
