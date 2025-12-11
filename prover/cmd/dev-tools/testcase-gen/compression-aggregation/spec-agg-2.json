@@ -1,10 +1,16 @@
 {
+    "dynamicChainConfigurationSpec": {
+        "chainID": 82,
+        "baseFee": 5,
+        "coinBase": "0x0000000000000000000000000000000000000000",
+        "l2MessageServiceAddr": "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec"
+    },
     "aggregationSpec": {
         "dataParentHash": "0x82694a9670032c50548d42dbf6f0d9d09febc4f2454796997ec9a4edc7f87106",
         "lastFinalizedTimestamp": 1683335137,
         "finalTimestamp": 1683355137,
         "lastFinalizedl1RollingHash": "0xdc8e70637c1048e1e0406c4ed6fab51a7489ccb52f37ddd2c135cb1aa18ec697",
-        "lastFinalizedl1RollingHashMessageNumber": 1,        
+        "lastFinalizedl1RollingHashMessageNumber": 1,
         "l1RollingHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "l1RollingHashMessageNumber": 14,
         "howManyL2Msgs": 30,
