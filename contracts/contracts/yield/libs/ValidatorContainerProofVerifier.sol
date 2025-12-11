@@ -145,17 +145,25 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
    * @param _witness object containing user input passed as calldata
    * @param _pubkey of validator to verify proof for.
    * @param _withdrawalCredentials to verify proof with
+   * @param _validatorIndex Validator index for validator to withdraw from.
+   * @param _slot Slot of the beacon block for which the proof is generated.
+   * @param _childBlockTimestamp of EL block that has parent block beacon root in BEACON_ROOTS contract
+   * @param _proposerIndex of the beacon block for which the proof is generated
    * @dev reverts with `InvalidProof` when provided input cannot be proven to Beacon block root
    */
   function verifyActiveValidatorContainer(
     IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness,
     bytes calldata _pubkey,
-    bytes32 _withdrawalCredentials
+    bytes32 _withdrawalCredentials,
+    uint64 _validatorIndex,
+    uint64 _slot,
+    uint64 _childBlockTimestamp,
+    uint64 _proposerIndex
   ) external view {
     // verifies user provided slot against user provided proof
     // proof verification is done in `SSZ.verifyProof` and is not affected by slot
-    _verifySlot(_witness.slot, _witness.proposerIndex, _witness.proof);
-    _validateActivationEpoch(_witness);
+    _verifySlot(_slot, _proposerIndex, _witness.proof);
+    _validateActivationEpoch(_slot, _witness.activationEpoch);
 
     Validator memory validator = Validator({
       pubkey: _pubkey,
@@ -177,12 +185,12 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
     // parent(pubkey + wc) ->  Validator Index in state tree -> stateView Index in Beacon block Tree
     GIndex gIndex = concat(
       GI_STATE_ROOT,
-      concat(_getValidatorGI(_witness.validatorIndex, _witness.slot), GI_VALIDATOR_CONTAINER_ROOT)
+      concat(_getValidatorGI(_validatorIndex, _slot), GI_VALIDATOR_CONTAINER_ROOT)
     );
 
     SSZ.verifyProof({
       proof: _witness.proof,
-      root: _getParentBlockRoot(_witness.childBlockTimestamp),
+      root: _getParentBlockRoot(_childBlockTimestamp),
       leaf: validatorContainerRootLeaf,
       gI: gIndex
     });
@@ -191,12 +199,18 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   /**
    * @notice validates proof of pending partial withdrawals in CL against Beacon block root
    * @param _witness object containing user input passed as calldata
+   * @param _slot Slot of the beacon block for which the proof is generated.
+   * @param _childBlockTimestamp of EL block that has parent block beacon root in BEACON_ROOTS contract
+   * @param _proposerIndex of the beacon block for which the proof is generated
    * @dev reverts with `InvalidProof` when provided input cannot be proven to Beacon block root
    */
   function verifyPendingPartialWithdrawals(
-    PendingPartialWithdrawalsWitness calldata _witness
+    PendingPartialWithdrawalsWitness calldata _witness,
+    uint64 _slot,
+    uint64 _childBlockTimestamp,
+    uint64 _proposerIndex
   ) external view {
-    _verifySlot(_witness.slot, _witness.proposerIndex, _witness.proof);
+    _verifySlot(_slot, _proposerIndex, _witness.proof);
     bytes32 pendingPartialWithdrawalsRoot = SSZ.hashTreeRoot(_witness.pendingPartialWithdrawals);
     GIndex gIndex = concat(
       GI_STATE_ROOT,
@@ -205,7 +219,7 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
 
     SSZ.verifyProof({
       proof: _witness.proof,
-      root: _getParentBlockRoot(_witness.childBlockTimestamp),
+      root: _getParentBlockRoot(_childBlockTimestamp),
       leaf: pendingPartialWithdrawalsRoot,
       gI: gIndex
     });
@@ -232,15 +246,17 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
 
   /**
    * @notice Ensures the tracked validator has satisfied the post-activation waiting period.
-   * @param _witness Witness data containing the validator's activation epoch and the proven slot.
+   * @param _slot slot of the beacon block for which the proof is generated
+   * @param _activationEpoch Activation epoch for the validator
    * @dev Reverts with `ValidatorNotActiveForLongEnough` when the validator has not remained active
    *      for at least `SHARD_COMMITTEE_PERIOD` epochs since `activationEpoch`.
    */
   function _validateActivationEpoch(
-    IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness
+    uint64 _slot,
+    uint64 _activationEpoch
   ) internal pure {
-    uint256 epoch = _witness.slot / SLOTS_PER_EPOCH;
-    if (epoch < _witness.activationEpoch + SHARD_COMMITTEE_PERIOD) {
+    uint256 epoch = _slot / SLOTS_PER_EPOCH;
+    if (epoch < _activationEpoch + SHARD_COMMITTEE_PERIOD) {
       revert ValidatorNotActiveForLongEnough();
     }
   }

@@ -308,12 +308,16 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    *      and enforce any provider-specific safety checks. The returned amount is used by the
    *      YieldManager to cap pending withdrawals tracked on L1.
    * @param _yieldProvider The yield provider address.
+   * @param _validatorIndex Validator index for validator to withdraw from.
+   * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams ABI encoded provider parameters.
    * @param _withdrawalParamsProof Proof data (typically a beacon chain Merkle proof).
    * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
    */
   function unstakePermissionless(
     address _yieldProvider,
+    uint256 _validatorIndex,
+    uint256 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external payable onlyDelegateCall returns (uint256 maxUnstakeAmount) {
@@ -321,7 +325,8 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       _withdrawalParams,
       (bytes, uint64[], address)
     );
-    maxUnstakeAmount = _validateUnstakePermissionlessRequest(_yieldProvider, pubkeys, amounts, _withdrawalParamsProof);
+    maxUnstakeAmount = _validateUnstakePermissionlessRequest(_yieldProvider, pubkeys, amounts, _validatorIndex, _slot, _withdrawalParamsProof);
+    amounts[0] = uint64(maxUnstakeAmount);
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
 
     emit LidoVaultUnstakePermissionlessRequest(
@@ -343,6 +348,8 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _amounts Withdrawal amounts in gwei for each validator key and must match _pubkeys length.
    *         Set amount to 0 for a full validator exit.
    *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation.
+   * @param _validatorIndex Validator index for validator to withdraw from.
+   * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
    * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
    */
@@ -350,21 +357,21 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     address _yieldProvider,
     bytes memory _pubkeys,
     uint64[] memory _amounts,
+    uint256 _validatorIndex,
+    uint256 _slot,
     bytes calldata _withdrawalParamsProof
   ) internal view returns (uint256 maxUnstakeAmount) {
-    // Length validator
     if (_pubkeys.length != PUBLIC_KEY_LENGTH || _amounts.length != 1) {
       revert SingleValidatorOnlyForUnstakePermissionless();
     }
-
     uint256 amount = _amounts[0];
     if (amount == 0) {
       revert NoValidatorExitForUnstakePermissionless();
     }
 
-    IValidatorContainerProofVerifier.ValidatorContainerWitness memory witness = abi.decode(
+    IValidatorContainerProofVerifier.BeaconProofWitness memory witness = abi.decode(
       _withdrawalParamsProof,
-      (IValidatorContainerProofVerifier.ValidatorContainerWitness)
+      (IValidatorContainerProofVerifier.BeaconProofWitness)
     );
 
     // 0x02 withdrawal credential scheme
@@ -374,12 +381,13 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       withdrawalCredentials := or(shl(248, 0x2), vault)
     }
 
-    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyActiveValidatorContainer(witness, _pubkeys, withdrawalCredentials);
+    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyActiveValidatorContainer(witness.validatorContainerWitness, _pubkeys, withdrawalCredentials, uint64(_validatorIndex), uint64(_slot), witness.childBlockTimestamp, witness.proposerIndex);
+    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyPendingPartialWithdrawals(witness.pendingPartialWithdrawalsWitness, uint64(_slot), witness.childBlockTimestamp, witness.proposerIndex);
 
     // https://github.com/ethereum/consensus-specs/blob/master/specs/electra/beacon-chain.md#modified-get_expected_withdrawals
     uint256 maxUnstakeAmountGwei = Math256.min(
       amount,
-      Math256.safeSub(witness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI)
+      Math256.safeSub(witness.validatorContainerWitness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI)
     );
     // Convert from Beacon Chain units of 'gwei' to execution layer units of 'wei'
     maxUnstakeAmount = maxUnstakeAmountGwei * 1 gwei;

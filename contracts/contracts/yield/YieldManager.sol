@@ -598,7 +598,7 @@ contract YieldManager is
 
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
-      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
+      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
     );
     maxUnstakeAmount = abi.decode(data, (uint256));
     if (maxUnstakeAmount == 0) {
