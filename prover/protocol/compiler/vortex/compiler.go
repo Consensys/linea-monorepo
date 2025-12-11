@@ -414,11 +414,11 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		// Also, the order in which the precomputed columns are taken must be the one
 		// matching the query. Otherwise, we would not be able to obtain standard
 		// proofs for the limitless prover.
-		_, comUnconstrained  = utils.FilterInSliceWithMap(coms_, ctx.PolynomialsTouchedByTheQuery)
-		coms                 = ctx.commitmentsAtRoundFromQuery(round)
-		numComsActual        = len(coms) // actual == not shadow and not unconstrained
-		fillUpTo             = len(coms)
-		onlyPoseidon2Applied = len(coms) < ctx.ApplySISHashThreshold
+		_, comUnconstrained = utils.FilterInSliceWithMap(coms_, ctx.PolynomialsTouchedByTheQuery)
+		coms                = ctx.commitmentsAtRoundFromQuery(round)
+		numComsActual       = len(coms) // actual == not shadow and not unconstrained
+		fillUpTo            = len(coms)
+		withoutSis          = len(coms) < ctx.ApplySISHashThreshold
 	)
 
 	// This part corresponds to an edge-case that is not supposed to happen
@@ -454,7 +454,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	// correctly. In practice they do not cost anything to the prover. When
 	// using Poseidon2, the number of limbs is equal to 1. This skips the
 	// aforementioned behaviour.
-	if !onlyPoseidon2Applied && ctx.SisParams.NumFieldPerPoly() > 1 {
+	if !withoutSis && ctx.SisParams.NumFieldPerPoly() > 1 {
 		fillUpTo = utils.NextMultipleOf(fillUpTo, ctx.SisParams.NumFieldPerPoly())
 	}
 
@@ -470,14 +470,14 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	logrus.
 		WithField("where", "compileRoundWithVortex").
 		WithField("IsBLS", ctx.IsBLS).
-		WithField("withoutSIS", onlyPoseidon2Applied).
+		WithField("withoutSIS", withoutSis).
 		WithField("numComs", numComsActual).
 		WithField("numShadowRows", numShadowRows).
 		WithField("numUnconstrained", len(comUnconstrained)).
 		WithField("round", round).
 		Info("Compiled Vortex round")
 
-	if onlyPoseidon2Applied {
+	if withoutSis {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsNoSis)
 		ctx.CommitmentsByRoundsNonSIS.AppendToInner(round, coms...)
 		ctx.MaxCommittedRoundNonSIS = utils.Max(ctx.MaxCommittedRoundNonSIS, round)

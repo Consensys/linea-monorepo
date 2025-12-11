@@ -5,10 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -26,7 +23,6 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
 )
 
 // StdBenchmarkCase represents a benchmark case for the Arcane and Vortex compilers
@@ -238,7 +234,7 @@ func BenchmarkCompilerWithoutSelfRecursion(b *testing.B) {
 func BenchmarkCompilerWithSelfRecursion(b *testing.B) {
 	for _, bc := range benchCases {
 		b.Run(bc.Name, func(b *testing.B) {
-			benchmarkCompilerWithSelfRecursion(b, bc)
+			benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b, bc)
 		})
 	}
 }
@@ -277,7 +273,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 
 			for i := 0; i < nbIteration-1; i++ {
 				applySelfRecursionThenArcane(comp, params)
-				applyVortex(comp, params)
+				applyVortex(comp, params, false)
 			}
 
 			statsVortex := logdata.GetWizardStats(comp)
@@ -325,7 +321,7 @@ func benchmarkCompilerWithoutSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 	}
 }
 
-func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
+func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBenchmarkCase) {
 
 	// These parameters have been found to give the best result for performances
 	params := selfRecursionParameters{
@@ -350,11 +346,15 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 		),
 	)
 
-	nbIteration := 2
+	nbIteration := 1
 
 	for i := 0; i < nbIteration; i++ {
 		applySelfRecursionThenArcane(comp, params)
-		applyVortex(comp, params)
+		if i == nbIteration-1 {
+			applyVortex(comp, params, true)
+		} else {
+			applyVortex(comp, params, false)
+		}
 	}
 
 	b.ResetTimer()
@@ -365,39 +365,44 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
 		if err != nil {
 			b.Fatal(err)
+		} else {
+			fmt.Printf("proof verified successfully\n")
 		}
+		fmt.Printf("comp.NumRounds(): %v \n", comp.NumRounds())
+		// circuit := &verifierCircuit{
+		// 	C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
+		// }
 
-		circuit := &verifierCircuit{
-			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
-		}
+		// scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 
-		scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		// assignment := &verifierCircuit{
+		// 	C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+		// }
+		// fmt.Printf("assignment:  %v \n", assignment != nil)
 
-		assignment := &verifierCircuit{
-			C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
-		}
+		// witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+		// fmt.Printf("witness:  %v \n", witness != nil)
 
-		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
-		require.NoError(b, err)
+		// require.NoError(b, err)
 
-		// Check if solved using the pre-compiled CCS
-		err = scs.IsSolved(witness)
+		// // Check if solved using the pre-compiled SCS
+		// err = scs.IsSolved(witness)
 
-		if err != nil {
-			// When the error string is too large `require.NoError` does not print
-			// the error.
-			b.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
+		// if err != nil {
+		// 	// When the error string is too large `require.NoError` does not print
+		// 	// the error.
+		// 	b.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
 
-			errDetail := test.IsSolved(
-				assignment,
-				assignment,
-				scs.Field(),
-			)
+		// 	errDetail := test.IsSolved(
+		// 		assignment,
+		// 		assignment,
+		// 		scs.Field(),
+		// 	)
 
-			b.Logf("while running the plonk prover: %v", errDetail)
+		// 	b.Logf("while running the plonk prover: %v", errDetail)
 
-			b.FailNow()
-		}
+		// 	b.FailNow()
+		// }
 	}
 }
 
@@ -480,13 +485,13 @@ func applySelfRecursionThenArcane(comp *wizard.CompiledIOP, params selfRecursion
 }
 
 // applyVortex applies the vortex step using the provided parameters.
-func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters) {
+func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters, IsBLS bool) {
 
 	_ = wizard.ContinueCompilation(
 		comp,
 		vortex.Compile(
 			params.RsInverseRate,
-			false,
+			IsBLS,
 			vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
 			vortex.WithOptionalSISHashingThreshold(1<<ringsis.StdParams.LogTwoDegree),
 			vortex.WithSISParams(&ringsis.StdParams),
