@@ -326,6 +326,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       (bytes, uint64[], address)
     );
     maxUnstakeAmount = _validateUnstakePermissionlessRequest(_yieldProvider, pubkeys, amounts, _validatorIndex, _slot, _withdrawalParamsProof);
+    // Clamp single unstake amount to accurately update pendingPermissionlessUnstake.
     amounts[0] = uint64(maxUnstakeAmount);
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
 
@@ -384,10 +385,18 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyActiveValidatorContainer(witness.validatorContainerWitness, _pubkeys, withdrawalCredentials, uint64(_validatorIndex), uint64(_slot), witness.childBlockTimestamp, witness.proposerIndex);
     VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyPendingPartialWithdrawals(witness.pendingPartialWithdrawalsWitness, uint64(_slot), witness.childBlockTimestamp, witness.proposerIndex);
 
+    uint256 totalPendingWithdrawalsGwei;
+    for (uint256 i = 0; i < witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals.length; i++) {
+      if (witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals[i].validatorIndex == uint64(_validatorIndex)) {
+        totalPendingWithdrawalsGwei += witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals[i].amount;
+      }
+    }
+
     // https://github.com/ethereum/consensus-specs/blob/master/specs/electra/beacon-chain.md#modified-get_expected_withdrawals
+    // Clamp unstaked amount to effectiveBalance - MIN_ACTIVATION_BALANCE - pendingPartialWithdrawals
     uint256 maxUnstakeAmountGwei = Math256.min(
       amount,
-      Math256.safeSub(witness.validatorContainerWitness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI)
+      Math256.safeSub(witness.validatorContainerWitness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI + totalPendingWithdrawalsGwei)
     );
     // Convert from Beacon Chain units of 'gwei' to execution layer units of 'wei'
     maxUnstakeAmount = maxUnstakeAmountGwei * 1 gwei;
