@@ -255,14 +255,24 @@ library SSZ {
       // Count of nodes to hash
       let count := nodesLength
 
+      // Handle edge case: if count is 1, return the single element directly
+      if eq(count, 1) {
+        // nodes points to length slot, first element is at offset 0x20
+        root := mload(add(nodes, 0x20))
+      }
+
       // Loop over levels
       // prettier-ignore
       for { } 1 { } {
-                // Loop over nodes at the given depth
+                // Skip if count is 1 (already handled above or will be handled after this iteration)
+                if eq(count, 1) {
+                  break
+                }
 
-                // Initialize `offset` to the offset of `proof` elements in memory.
-                let target := nodes
-                let source := nodes
+                // Initialize pointers to data elements (skip length slot at offset 0)
+                // nodes points to length slot, data starts at offset 0x20
+                let target := add(nodes, 0x20)
+                let source := add(nodes, 0x20)
                 let end := add(source, shl(5, count))
 
                 // prettier-ignore
@@ -299,13 +309,13 @@ library SSZ {
 
                 count := shr(1, count)
                 if eq(count, 1) {
+                    // Root is the last hash result in scratch space from sha256 precompile
                     root := mload(0x00)
                     break
                 }
             }
     }
   }
-
 
   /// @notice Modified version of `verify` from Solady `MerkleProofLib` to support generalized indices and sha256 precompile.
   /// @dev Reverts if `leaf` doesn't exist in the Merkle tree with `root`, given `proof`.
