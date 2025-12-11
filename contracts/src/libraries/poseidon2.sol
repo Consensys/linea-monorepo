@@ -65,45 +65,23 @@ contract Poseidon2 {
   // function Hash(bytes calldata _msg) external returns (bytes32 poseidon2Hash)  {
   function Hash(bytes calldata _msg) external pure returns (bytes32 poseidon2Hash) {
 
-    // uint256 aa = 431359146781120966242552843855944128473473360879759082526070001369111;
-    // uint256 bb = 431359146781120966242552843855944128473473360879759082526070001369111;
-
-    // uint256 check;
-
     // params vortex t=16, rf=6, rp=21
     assembly {
-      
-      // format _msg, prepending each pack of 2 bytes by 0x0000, 
-      // and interpreting the result as a koalabear element
-      let mPtr := mload(0x40)
-      let pPtr := add(mPtr, 0x1)
-      let pMsg := _msg.offset
-      let q := div(_msg.length, 3)
-      let r := mod(_msg.length, 3)
-      let size := mul(4, q)
-      for {let i:=0} lt(i, q) {i:=add(i,3)}
-      {
-        calldatacopy(pPtr, pMsg, 3)
-        pPtr := add(pPtr, 0x04)
-        pMsg := add(pMsg, 3)
-      }
-      if gt(r, 0) {
-        pPtr := add(pPtr, sub(3, r))
-        calldatacopy(pPtr, pMsg, r)
-        size := add(size, 4)
+
+      if gt(mod(_msg.length, 0x20), 0) {
+        error_size_data()
       }
 
-      // parse the formatted msg in chunks of 64 bytes
-      q := div(size, 0x20)
-      r := mod(size, 0x20)
-      for {let i:=0} lt(i, q) {i:=add(i, 0x20)} 
+      let q := div(_msg.length, 0x20)
+      let ptrMsg := _msg.offset
+      let curBlock
+      for {let i:=0} lt(i, q) {i:=add(i,1)}
       {
-        poseidon2Hash := Compress(poseidon2Hash, mload(mPtr))
-        mPtr:=add(mPtr, 0x20)
+        curBlock := calldataload(ptrMsg)
+        poseidon2Hash := Compress(poseidon2Hash, curBlock)
+        ptrMsg := add(ptrMsg, 0x20)
       }
-      if gt(r, 0) {
-        poseidon2Hash := Compress(poseidon2Hash, mload(mPtr))
-      }
+
 
       /// Compress(a, b): 
       ///   _, rb := permutation(a, b)
@@ -496,9 +474,16 @@ contract Poseidon2 {
         rx := add(rx, shl(224, t0))
       }
 
-    }
+      function error_size_data() {
+        let ptError := mload(0x40)
+        mstore(ptError, ERROR_STRING_ID) // selector for function Error(string)
+        mstore(add(ptError, 0x4), 0x20)
+        mstore(add(ptError, 0x24), 0x1b)
+        mstore(add(ptError, 0x44), "error _msg.length%0x20 != 0")
+        revert(ptError, 0x64)
+      }
 
-    // emit PrintUint256(check);
+    }
 
   }
 }
