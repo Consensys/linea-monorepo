@@ -344,6 +344,45 @@ describe("SSZ", () => {
       const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
       expect(actual).to.equal(expected);
     });
+
+    it("five elements", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+        // 0xfee5527172fd2af098adcdfa5d4108ffc52d19b4cb03fcdb186685a11147fe7b
+        {
+          validatorIndex: 9556824998668043785n,
+          amount: 18095667167504007302n,
+          withdrawableEpoch: 12065041970590563750n,
+        },
+        // 0xd4c8a4e38ed4d4d09d3b74df1d825d244243218fa2ce1878eeb3d0356ec7fcab
+        {
+          validatorIndex: 18198258603828382500n,
+          amount: 4349232369502288358n,
+          withdrawableEpoch: 3598560756448475534n,
+        },
+        // 0x3548a86db6940952e5ab87b50e46cfbdb2324603ccfac73836834a87f160181a
+        {
+          validatorIndex: 12778732824589014348n,
+          amount: 4849311627484200036n,
+          withdrawableEpoch: 457195784761064180n,
+        },
+        // 0x8ceb740b26a61041ea7dc2d6b1372686cf3381150bd9d9a19cfafeb9e0335c04
+        {
+          validatorIndex: 350840880130630803n,
+          amount: 8902480238376794760n,
+          withdrawableEpoch: 3145816884024322139n,
+        },
+        // 0xde460e5b596f11e6791d4b658544351a44e8bfc86b0952b8ac655354b399adad
+        {
+          validatorIndex: 17694784621958833581n,
+          amount: 4314273187093803793n,
+          withdrawableEpoch: 8404893953447176506n,
+        },
+      ];
+
+      const expected = "0xd778ff337001969d18faec463bc68983c95043d5f02a7239a8fd2b0002613103";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
   });
 
   describe("verifyProof", () => {
