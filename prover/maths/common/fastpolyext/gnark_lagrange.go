@@ -40,13 +40,13 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.E4Gen, x gnarkfext
 		dens[i] = *e4Api.Mul(&dens[i-1], &wInvOmega)
 	}
 
-	wOne := gnarkfext.NewE4GenFromBase(1)
+	wOne := *e4Api.One()
 	for i := 0; i < size; i++ {
 		dens[i] = *e4Api.Sub(&dens[i], &wOne)
 		dens[i] = *e4Api.Inverse(&dens[i])
 	}
 
-	res := gnarkfext.NewE4GenFromBase(0)
+	res := *e4Api.Zero()
 	for i := 0; i < size; i++ {
 		tmp := *e4Api.Mul(&dens[i], &poly[i])
 		res = *e4Api.Add(&res, &tmp)
@@ -84,7 +84,7 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.E4Gen, x g
 	maxSize := sizes[len(sizes)-1]
 	xNs := raiseToPowersOfTwosExt(api, x, sizes)
 	powersOfOmegaInv := powerVectorOfOmegaInv(maxSize)
-	one := gnarkfext.NewE4GenFromBase(1)
+	one := *e4Api.One()
 
 	innerProductTerms := make([]gnarkfext.E4Gen, maxSize)
 	scalingTerms := make([]gnarkfext.E4Gen, len(sizes))
@@ -123,7 +123,7 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.E4Gen, x g
 			utils.Panic("could not find scaling factor for poly of size %v", n)
 		}
 
-		yUnscaled := gnarkfext.NewE4GenFromBase(0)
+		yUnscaled := *e4Api.Zero()
 		for k := 0; k < n; k++ {
 			// TOOD @thomas restore this optim
 			// if isConstantZeroGnarkVariable(api, poly[k]) {

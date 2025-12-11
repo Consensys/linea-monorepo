@@ -28,7 +28,7 @@ func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
 	}
 
 	acc := x
-	res := gnarkfext.NewE4GenFromBase(1)
+	res := *e4Api.One()
 
 	// right-to-left
 	for n != 0 {

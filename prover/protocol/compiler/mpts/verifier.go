@@ -120,12 +120,12 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	e4Api.AssertIsEqual(&r, &rCoin)
 
-	lambdaPowI := gnarkfext.NewE4GenFromBase(1)
-	rhoK := gnarkfext.NewE4GenFromBase(1)
+	lambdaPowI := *e4Api.One()
+	rhoK := *e4Api.One()
 
 	// res stores the right-hand of the equality check. Namely,
 	// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-	res := gnarkfext.NewE4GenFromBase(0)
+	res := *e4Api.Zero()
 
 	for i, q := range va.Queries {
 

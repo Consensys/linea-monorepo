@@ -142,7 +142,7 @@ func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntim
 	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried
 	// in the protocol via the
-	zSum := gnarkfext.NewE4GenFromBase(0)
+	zSum := *e4Api.Zero()
 	for k := range f.ZOpenings {
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
 		zSum = *e4Api.Add(&zSum, &temp)

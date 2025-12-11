@@ -127,17 +127,16 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 
 func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	y := run.GetGrandProductParams(c.Query.ID).Prod
-	d := gnarkfext.NewE4GenFromBase(1)
 
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
-
+	d := *ext4.One()
 	for _, e := range c.ExplicitNum {
 
 		col := column.GnarkEvalExprColumn(api, run, e.Board())
-		tmp := gnarkfext.NewE4GenFromBase(1)
+		tmp := *ext4.One()
 
 		for i := range col {
 			tmp = *ext4.Mul(&tmp, &col[i])
@@ -149,7 +148,7 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 	for _, e := range c.ExplicitDen {
 
 		col := column.GnarkEvalExprColumn(api, run, e.Board())
-		tmp := gnarkfext.NewE4GenFromBase(1)
+		tmp := *ext4.One()
 
 		for i := range col {
 			tmp = *ext4.Mul(&tmp, &col[i])
@@ -160,7 +159,7 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 
 	y = *ext4.Div(&y, &d)
 
-	e := gnarkfext.NewE4GenFromBase(1)
+	e := *ext4.One()
 	ext4.AssertIsEqual(&y, &e)
 }
 
@@ -224,7 +223,7 @@ func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	}
 
 	// zProd stores the product of the ending values of the z columns
-	zProd := gnarkfext.NewE4GenFromBase(1)
+	zProd := *ext4.One()
 	for k := range f.ZOpenings {
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
 		zProd = *ext4.Mul(&zProd, &temp)

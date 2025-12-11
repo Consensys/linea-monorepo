@@ -373,9 +373,9 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 		// api.AssertIsEqual(api.Add(hornerParams.Parts[i].N0, ipCount), hornerParams.Parts[i].N1)
 		// TODO @thomas fixme (ext vs base)
-		extN0 := gnarkfext.NewE4GenFromBase(hornerParams.Parts[i].N0)
+		extN0 := gnarkfext.NewE4GenFromFrontedBase(hornerParams.Parts[i].N0)
 		extN0 = *e4Api.Add(&extN0, &ipCount)
-		extN1 := gnarkfext.NewE4GenFromBase(hornerParams.Parts[i].N1)
+		extN1 := gnarkfext.NewE4GenFromFrontedBase(hornerParams.Parts[i].N1)
 		e4Api.AssertIsEqual(&extN0, &extN1)
 	}
 
