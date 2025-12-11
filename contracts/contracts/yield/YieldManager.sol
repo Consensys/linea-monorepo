@@ -1087,6 +1087,7 @@ contract YieldManager is
     );
 
     YieldManagerStorage storage $ = _getYieldManagerStorage();
+    $.userFundsInYieldProvidersTotal -= _getYieldProviderStorage(_yieldProvider).userFunds;
     uint96 yieldProviderIndex = _getYieldProviderStorage(_yieldProvider).yieldProviderIndex;
     address lastYieldProvider = $.yieldProviders[$.yieldProviders.length - 1];
     $.yieldProviderStorage[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;

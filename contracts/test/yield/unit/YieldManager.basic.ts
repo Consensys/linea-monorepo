@@ -1048,6 +1048,7 @@ describe("YieldManager contract - basic operations", () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
       await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, 1n);
+      await yieldManager.setUserFundsInYieldProvidersTotal(1n);
 
       await expect(
         yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
@@ -1055,6 +1056,7 @@ describe("YieldManager contract - basic operations", () => {
         .to.emit(yieldManager, "YieldProviderRemoved")
         .withArgs(mockYieldProviderAddress, true);
 
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
       expect(await yieldManager.isYieldProviderKnown(mockYieldProviderAddress)).to.be.false;
       expect(await yieldManager.yieldProviderCount()).to.equal(0n);
       await expectRevertWithCustomError(
