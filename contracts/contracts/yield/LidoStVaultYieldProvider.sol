@@ -498,8 +498,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       // Ossify
       vault.ossify();
       // Unstage all ETH
-      vault.setDepositor(address(this));
-      vault.unstage(vault.stagedBalance());
+      uint256 stagedBalance = vault.stagedBalance();
+      if (stagedBalance > 0) {
+        vault.setDepositor(address(this));
+        vault.unstage(stagedBalance);
+      }
       progressOssificationResult = ProgressOssificationResult.COMPLETE;
     } else if (VAULT_HUB.isPendingDisconnect(address(vault))) {
       // No-op, needs accounting report to progress.

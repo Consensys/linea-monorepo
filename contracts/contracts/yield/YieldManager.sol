@@ -739,6 +739,7 @@ contract YieldManager is
   function _addToWithdrawalReserve(address _yieldProvider, uint256 _amount) internal {
     if (getTargetReserveDeficit() > _amount) _pauseStakingIfNotAlready(_yieldProvider);
     // First see if we can fully settle from YieldManager
+    // @dev When using YieldManager balance directly, LST liability payment is skipped for operational efficiency
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance >= _amount) {
       _fundReserve(_amount);
@@ -779,6 +780,7 @@ contract YieldManager is
     uint256 targetDeficit = getTargetReserveDeficit();
 
     // First see if we can fully settle from YieldManager
+    // @dev When using YieldManager balance directly, LST liability payment is skipped for operational efficiency
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance >= targetDeficit) {
       _fundReserve(targetDeficit);
