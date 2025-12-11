@@ -42,6 +42,12 @@ export interface BeaconBlockHeader {
   bodyRoot: string;
 }
 
+export interface PendingPartialWithdrawal {
+  validatorIndex: number | bigint;
+  amount: number | bigint;
+  withdrawableEpoch: number | bigint;
+}
+
 export interface ValidatorWitness {
   proof: string[];
   validatorIndex: bigint;

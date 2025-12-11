@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { TestGIndex, TestSSZ } from "contracts/typechain-types";
 import { deployFromFactory } from "contracts/test/common/deployment";
 import { hexlify, randomBytes, ZeroHash, zeroPadBytes } from "ethers";
-import { BeaconBlockHeader, ValidatorContainer } from "contracts/test/yield/helpers/types";
+import { BeaconBlockHeader, PendingPartialWithdrawal, ValidatorContainer } from "contracts/test/yield/helpers/types";
 import { expectRevertWithCustomError } from "contracts/test/common/helpers";
 import { UINT64_MAX } from "contracts/test/common/constants";
 
@@ -188,6 +188,56 @@ describe("SSZ", () => {
       const actual = await ssz.hashTreeRoot_BeaconBlockHeader(header);
       expect(actual).to.equal(expected);
     });
+  });
+
+  describe("hashTreeRoot(PendingPartialWithdrawal)", () => {
+    it("example", async () => {
+      const pendingPartialWithdrawal: PendingPartialWithdrawal = {
+        validatorIndex: 0,
+        amount: 1,
+        withdrawableEpoch: 2,
+      };
+
+      const expected = "0x4a07d56213d62b2d194a3cc1f19bec40364540bdf3d45eb0d6fe82094d21b4dc";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawal(pendingPartialWithdrawal);
+      expect(actual).to.equal(expected);
+    });
+
+    it("example 2", async () => {
+      const pendingPartialWithdrawal: PendingPartialWithdrawal = {
+        validatorIndex: 0,
+        amount: 1,
+        withdrawableEpoch: 0,
+      };
+
+      const expected = "0x4833912e1264aef8a18392d795f3f2eed17cf5c0e8471cb0c0db2ec5aca10231";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawal(pendingPartialWithdrawal);
+      expect(actual).to.equal(expected);
+    });
+
+    it("all zeroes", async () => {
+      const pendingPartialWithdrawal: PendingPartialWithdrawal = {
+        validatorIndex: 0,
+        amount: 0,
+        withdrawableEpoch: 0,
+      };
+
+      const expected = "0xdb56114e00fdd4c1f85c892bf35ac9a89289aaecb1ebd0a96cde606a748b5d71";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawal(pendingPartialWithdrawal);
+      expect(actual).to.equal(expected);
+    });
+
+    // it("all ones", async () => {
+    //   const pendingPartialWithdrawal: PendingPartialWithdrawal = {
+    //     validatorIndex: UINT64_MAX,
+    //     amount: UINT64_MAX,
+    //     withdrawableEpoch: UINT64_MAX,
+    //   };
+
+    //   const expected = "0x0000000000000000000000000000000000000000000000000000000000000000";
+    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawal(pendingPartialWithdrawal);
+    //   expect(actual).to.equal(expected);
+    // });
   });
 
   describe("verifyProof", () => {
