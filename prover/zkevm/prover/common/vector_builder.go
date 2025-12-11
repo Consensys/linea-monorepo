@@ -57,6 +57,11 @@ func (vb *VectorBuilder) PushZero() {
 	vb.slice = append(vb.slice, field.Zero())
 }
 
+// PushManyZero pushes `n` zeros onto `vb`
+func (vb *VectorBuilder) PushSeqOfZeroes(n int) {
+	vb.slice = append(vb.slice, make([]field.Element, n)...)
+}
+
 // PushOne pushes 1 onto `vb`
 func (vb *VectorBuilder) PushOne() {
 	vb.slice = append(vb.slice, field.One())

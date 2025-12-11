@@ -2,9 +2,10 @@ package ecdsa
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc/secp256k1/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -114,14 +115,55 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 		sourceSource     = run.GetColumn(src.Source.GetColID())
 		sourceIsActive   = run.GetColumn(src.IsActive.GetColID())
 		sourceSuccessBit = run.GetColumn(src.SuccessBit.GetColID())
+		sourceLimb       [common.NbLimbU128]ifaces.ColAssignment
+		sourceTxHash     [common.NbLimbU256]ifaces.ColAssignment
 
-		sourceLimb   [common.NbLimbU128]ifaces.ColAssignment
-		sourceTxHash [common.NbLimbU256]ifaces.ColAssignment
+		// prependZeroCount counts the number of zero bytes that are used by
+		// the current frame to fetch the data from its source. Its value
+		// depends on whether the current frame is for ecrecover or for txn
+		// signature.
+		prependZeroCount uint
+
+		// txCounter counts the number of transactions that have been found so far
+		// it is used to determine the transaction index for which to fetch
+		// a signature
+		txCounter = 0
+
+		resIsPublicKey  = common.NewVectorBuilder(d.IsPublicKey)
+		resGnarkIndex   = common.NewVectorBuilder(d.GnarkIndex)
+		resGnarkPkIndex = common.NewVectorBuilder(d.GnarkPublicKeyIndex)
+		resGnarkData    = common.NewMultiVectorBuilder(d.GnarkData[:])
 	)
+
+	printRows := func(rows [][common.NbLimbU128]field.Element) {
+		for i := range rows {
+			fmt.Printf("%04d: ", i)
+			for j := range rows[i] {
+				fmt.Printf("%04v ", rows[i][7-j].Text(16))
+			}
+			fmt.Printf("\n")
+		}
+	}
+
+	recoverPk := func(h [32]byte, r, s, v *big.Int) (pkX, pkY *big.Int) {
+		// compute the expected public key
+		var pk ecdsa.PublicKey
+		if !v.IsUint64() {
+			utils.Panic("v is not a uint64, v %v", v.String())
+		}
+		err := pk.RecoverFrom(h[:], uint(v.Uint64()-27), r, s)
+		if err != nil {
+			utils.Panic("error recovering public: err=%v v=%v r=%v s=%v", err.Error(), v.Uint64()-27, r.String(), s.String())
+		}
+
+		pkX, pkY = &big.Int{}, &big.Int{}
+		pk.A.X.SetBigInt(pkX)
+		pk.A.Y.SetBigInt(pkY)
+		return pkX, pkY
+	}
 
 	for i := 0; i < common.NbLimbU128; i++ {
 		sourceLimb[i] = run.GetColumn(src.Limb[i].GetColID())
-
 		if sourceLimb[i].Len() != d.Size {
 			panic("unexpected source limb length")
 		}
@@ -129,7 +171,6 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 
 	for i := 0; i < common.NbLimbU256; i++ {
 		sourceTxHash[i] = run.GetColumn(src.TxHash[i].GetColID())
-
 		if sourceTxHash[i].Len() != d.Size {
 			panic("unexpected source hash length")
 		}
@@ -139,210 +180,154 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 		panic("unexpected source length")
 	}
 
-	var resIsPublicKey, resGnarkIndex, resGnarkPkIndex []field.Element
-	var resGnarkData [common.NbLimbU128][]field.Element
-	var txCount = 0
-
+	// one iteration per ecdsa check. i is always the start of a frame in the
+	// traces.
+ecdsaLoop:
 	for i := 0; i < d.Size; {
 
 		var (
 			isActive         = sourceIsActive.Get(i)
 			source           = sourceSource.Get(i)
-			rows             = make([]field.Element, nbRowsPerGnarkPushing*common.NbLimbU128)
-			buf              [32]byte
-			prehashedMsg     [32]byte
-			r, s, v          = new(big.Int), new(big.Int), new(big.Int)
-			err              error
-			prependZeroCount uint
+			dataForCurrEcdsa = make([][common.NbLimbU128]field.Element, nbRowsPerGnarkPushing)
+			r, s, v          *big.Int
+			h                [32]byte
+			buff             [32]byte
 		)
 
-		if isActive.IsOne() && source.Cmp(&SOURCE_ECRECOVER) == 0 {
-			// we copy the data from ecrecover
+		switch {
+		case isActive.IsOne() && source.Cmp(&SOURCE_ECRECOVER) == 0:
+
 			prependZeroCount = nbRowsPerEcRecFetching
-			// we copy the data from ecrecover
-			var successBitLimbs [common.NbLimbU128]field.Element
-			successBitLimbs[common.NbLimbU128-1] = sourceSuccessBit.Get(i)
 
-			for j, limb := range successBitLimbs {
-				rows[12*common.NbLimbU128+j] = limb
+			// copy h, r, s, v
+			//		4		5		6		7		8		9		10		11
+			// 		h0, 	h1, 	r0, 	r1, 	s0, 	s1, 	v0, 	v1
+			for k := 4; k < 12; k++ {
+				copy(dataForCurrEcdsa[k][:], common.GetTableRow(i+k-4, sourceLimb[:]))
 			}
 
-			var oneLimbs [common.NbLimbU128]field.Element
-			oneLimbs[common.NbLimbU128-1] = field.NewElement(1)
+			copy(h[:], common.HiLoLimbsLeToBytesBe(dataForCurrEcdsa[4][:], dataForCurrEcdsa[5][:]))
+			v = common.LimbsLeToBigInt(dataForCurrEcdsa[6][:], dataForCurrEcdsa[7][:])
+			r = common.LimbsLeToBigInt(dataForCurrEcdsa[8][:], dataForCurrEcdsa[9][:])
+			s = common.LimbsLeToBigInt(dataForCurrEcdsa[10][:], dataForCurrEcdsa[11][:])
 
-			for j, limb := range oneLimbs {
-				rows[13*common.NbLimbU128+j] = limb
+			if !v.IsUint64() {
+				printRows(dataForCurrEcdsa)
+				utils.Panic("v is not a uint64, v %v; r=%v s=%v", v.String(), r.String(), s.String())
 			}
 
-			// copy h0, h1, r0, r1, s0, s1, v0, v1
-			for j := 0; j < 8; j++ {
-				for k := 0; k < common.NbLimbU128; k++ {
-					colOffset := j * common.NbLimbU128
-					rows[4*common.NbLimbU128+colOffset+k] = sourceLimb[k].Get(i + j)
-				}
+			// The success bit
+			dataForCurrEcdsa[12] = [common.NbLimbU128]field.Element{
+				sourceSuccessBit.Get(i), // implictly followed by 7 zeroes
 			}
 
-			var txBts []byte
-			for _, txHighBtsRow := range rows[4*common.NbLimbU128 : 6*common.NbLimbU128] {
-				bytes := txHighBtsRow.Bytes()
-				txBts = append(txBts, bytes[field.Bytes-common.LimbBytes:]...)
+			// The ecrecover bit
+			dataForCurrEcdsa[13] = [common.NbLimbU128]field.Element{
+				field.One(), // implictly followed by 7 zeroes
 			}
-
-			copy(prehashedMsg[:], txBts[:])
-
-			var vBts []byte
-			for _, vBtsRow := range rows[6*common.NbLimbU128 : 8*common.NbLimbU128] {
-				bytes := vBtsRow.Bytes()
-				vBts = append(vBts, bytes[field.Bytes-common.LimbBytes:]...)
-			}
-
-			v.SetBytes(vBts)
-
-			var rBts []byte
-			for _, rBtsRow := range rows[8*common.NbLimbU128 : 10*common.NbLimbU128] {
-				bytes := rBtsRow.Bytes()
-				rBts = append(rBts, bytes[field.Bytes-common.LimbBytes:]...)
-			}
-
-			r.SetBytes(rBts)
-
-			var sBts []byte
-			for _, sBtsRow := range rows[10*common.NbLimbU128 : 12*common.NbLimbU128] {
-				bytes := sBtsRow.Bytes()
-				sBts = append(sBts, bytes[field.Bytes-common.LimbBytes:]...)
-			}
-
-			s.SetBytes(sBts)
 
 			i += NB_ECRECOVER_INPUTS
-		} else if isActive.IsOne() && source.Cmp(&SOURCE_TX) == 0 {
+
+		case isActive.IsOne() && source.Cmp(&SOURCE_TX) == 0:
+
 			prependZeroCount = nbRowsPerTxSignFetching
-			// we copy the data from the transcation
-			var successBitLimbs [common.NbLimbU128]field.Element
-			successBitLimbs[common.NbLimbU128-1] = field.NewElement(1) // always succeeds, we only include valid transactions
 
-			for j, limb := range successBitLimbs {
-				rows[12*common.NbLimbU128+j] = limb
+			var (
+				txHashHi = common.GetTableRow(i, sourceTxHash[:8])
+				txHashLo = common.GetTableRow(i, sourceTxHash[8:])
+				txHash   = common.HiLoLimbsLeToBytesBe(txHashHi, txHashLo)
+				sigErr   error
+			)
+
+			r, s, v, sigErr = txSigs(txCounter, txHash)
+
+			if sigErr != nil {
+				utils.Panic("error getting tx-signature err=%v, txNum=%v", sigErr, txCounter)
+			}
+			if !v.IsUint64() {
+				utils.Panic("v is not a uint64, v=%v", v.String())
 			}
 
-			var zeroLimbs [common.NbLimbU128]field.Element
-			for j, limb := range zeroLimbs {
-				rows[13*common.NbLimbU128+j] = limb
-			}
+			copy(h[:], txHash)
 
-			// copy txHashHi, txHashLo
-			for j := 0; j < common.NbLimbU256; j++ {
-				rows[4*common.NbLimbU128+j] = sourceTxHash[j].Get(i)
-			}
+			// Add the tx-hash in the rows
+			copy(dataForCurrEcdsa[4][:], txHashHi)
+			copy(dataForCurrEcdsa[5][:], txHashLo)
 
-			var txBts []byte
-			for _, txHighBtsRow := range rows[4*common.NbLimbU128 : 6*common.NbLimbU128] {
-				bytes := txHighBtsRow.Bytes()
-				txBts = append(txBts, bytes[field.Bytes-common.LimbBytes:]...)
-			}
+			v.FillBytes(buff[:])
+			dataForCurrEcdsa[6] = common.Bytes16ToLimbsLe(buff[:16])
+			dataForCurrEcdsa[7] = common.Bytes16ToLimbsLe(buff[16:])
 
-			copy(prehashedMsg[:], txBts[:])
+			r.FillBytes(buff[:])
+			dataForCurrEcdsa[8] = common.Bytes16ToLimbsLe(buff[:16])
+			dataForCurrEcdsa[9] = common.Bytes16ToLimbsLe(buff[16:])
 
-			r, s, v, err = txSigs(txCount, prehashedMsg[:])
-			if err != nil {
-				utils.Panic("error getting tx-signature err=%v, txNum=%v", err, txCount)
-			}
-			v.FillBytes(buf[:])
+			s.FillBytes(buff[:])
+			dataForCurrEcdsa[10] = common.Bytes16ToLimbsLe(buff[:16])
+			dataForCurrEcdsa[11] = common.Bytes16ToLimbsLe(buff[16:])
 
-			vLimbs := common.SplitBytes(buf[:])
-			for j, vLimb := range vLimbs {
-				rows[6*common.NbLimbU128+j].SetBytes(vLimb)
-			}
+			// The success bit // implictly followed by 7 zeroes
+			dataForCurrEcdsa[12] = [common.NbLimbU128]field.Element{field.One()}
 
-			r.FillBytes(buf[:])
+			// The ecrecover bit (zero)
+			dataForCurrEcdsa[13] = [common.NbLimbU128]field.Element{}
 
-			rLimbs := common.SplitBytes(buf[:])
-			for j, rLimb := range rLimbs {
-				rows[8*common.NbLimbU128+j].SetBytes(rLimb)
-			}
-
-			s.FillBytes(buf[:])
-
-			sLimbs := common.SplitBytes(buf[:])
-			for j, sLimb := range sLimbs {
-				rows[10*common.NbLimbU128+j].SetBytes(sLimb)
-			}
-
+			txCounter++
 			i += NB_TX_INPUTS
-			txCount++
-		} else {
+
+		default:
+
 			// we have run out of inputs.
-			break
-		}
-		// compute the expected public key
-		var pk ecdsa.PublicKey
-		if !v.IsUint64() {
-			utils.Panic("v is not a uint64")
-		}
-		err = pk.RecoverFrom(prehashedMsg[:], uint(v.Uint64()-27), r, s)
-		if err != nil {
-			utils.Panic("error recovering public: err=%v v=%v r=%v s=%v", err.Error(), v.Uint64()-27, r.String(), s.String())
-		}
-		pkx := pk.A.X.Bytes()
-		pkxLimbs := common.SplitBytes(pkx[:])
-		for j, xLimb := range pkxLimbs {
-			rows[j].SetBytes(xLimb)
+			break ecdsaLoop
 		}
 
-		pky := pk.A.Y.Bytes()
-		pkyLimbs := common.SplitBytes(pky[:])
-		for j, yLimb := range pkyLimbs {
-			rows[2*common.NbLimbU128+j].SetBytes(yLimb)
-		}
+		fmt.Printf("=========\n")
+		printRows(dataForCurrEcdsa)
+		fmt.Printf("=========\n")
 
-		resIsPublicKey = append(resIsPublicKey, make([]field.Element, prependZeroCount)...)
-		for i := 0; i < 4; i++ {
-			resIsPublicKey = append(resIsPublicKey, field.NewElement(1))
-		}
-		resIsPublicKey = append(resIsPublicKey, make([]field.Element, nbRowsPerGnarkPushing-4)...)
+		// Retro-insert the public key in the lower positions from the h, r, s,
+		// v that we just parsed.
+		pkX, pkY := recoverPk(h, r, s, v)
+		pkX.FillBytes(buff[:])
+		dataForCurrEcdsa[0] = common.Bytes16ToLimbsLe(buff[:16])
+		dataForCurrEcdsa[1] = common.Bytes16ToLimbsLe(buff[16:])
 
-		resGnarkIndex = append(resGnarkIndex, make([]field.Element, prependZeroCount)...)
-		resGnarkPkIndex = append(resGnarkPkIndex, make([]field.Element, prependZeroCount)...)
+		pkY.FillBytes(buff[:])
+		dataForCurrEcdsa[2] = common.Bytes16ToLimbsLe(buff[:16])
+		dataForCurrEcdsa[3] = common.Bytes16ToLimbsLe(buff[16:])
+
+		//
+		// Properly assigning the data
+		//
+
+		// Prepending with zeroes every frame to "skip" the fetching phase
+		resIsPublicKey.PushSeqOfZeroes(int(prependZeroCount))
+		resGnarkIndex.PushSeqOfZeroes(int(prependZeroCount))
+		resGnarkPkIndex.PushSeqOfZeroes(int(prependZeroCount))
+		resGnarkData.PushSeqOfZeroes(int(prependZeroCount))
+
+		// Public Key phase
 		for i := 0; i < nbRowsPerPublicKey; i++ {
-			resGnarkPkIndex = append(resGnarkPkIndex, field.NewElement(uint64(i)))
-			resGnarkIndex = append(resGnarkIndex, field.NewElement(uint64(i)))
+			resIsPublicKey.PushOne()
+			resGnarkPkIndex.PushInt(i)
+			resGnarkIndex.PushInt(i)
+			resGnarkData.PushRow(dataForCurrEcdsa[i][:])
 		}
+
+		// Other phase
 		for i := nbRowsPerPublicKey; i < nbRowsPerGnarkPushing; i++ {
-			resGnarkPkIndex = append(resGnarkPkIndex, field.NewElement(0))
-			resGnarkIndex = append(resGnarkIndex, field.NewElement(uint64(i)))
-		}
-
-		for j := 0; j < common.NbLimbU128; j++ {
-			resGnarkData[j] = append(resGnarkData[j], make([]field.Element, prependZeroCount)...)
-		}
-
-		// Assign limb elements column by column
-		for j := 0; j < nbRowsPerGnarkPushing*common.NbLimbU128; j++ {
-			rowBytes := rows[j].Bytes()
-			bytes := [16]byte{}
-			copy(bytes[:], rowBytes[field.Bytes-common.LimbBytes:])
-
-			var elementLA field.Element
-			elementLA.SetBytes(bytes[:])
-
-			resGnarkData[j%common.NbLimbU128] = append(resGnarkData[j%common.NbLimbU128], rows[j])
+			resIsPublicKey.PushZero()
+			resGnarkPkIndex.PushZero()
+			resGnarkIndex.PushInt(i)
+			resGnarkData.PushRow(dataForCurrEcdsa[i][:])
 		}
 	}
-	// pad the vectors to the full size. It is expected in the hashing module
-	// that the underlying vectors have same length.
-	resIsPublicKey = append(resIsPublicKey, make([]field.Element, d.Size-len(resIsPublicKey))...)
-	resGnarkIndex = append(resGnarkIndex, make([]field.Element, d.Size-len(resGnarkIndex))...)
-	resGnarkPkIndex = append(resGnarkPkIndex, make([]field.Element, d.Size-len(resGnarkPkIndex))...)
 
-	run.AssignColumn(d.IsPublicKey.GetColID(), smartvectors.RightZeroPadded(resIsPublicKey, d.Size))
-	run.AssignColumn(d.GnarkIndex.GetColID(), smartvectors.RightZeroPadded(resGnarkIndex, d.Size))
-	run.AssignColumn(d.GnarkPublicKeyIndex.GetColID(), smartvectors.RightZeroPadded(resGnarkPkIndex, d.Size))
+	resIsPublicKey.PadAndAssign(run)
+	resGnarkIndex.PadAndAssign(run)
+	resGnarkPkIndex.PadAndAssign(run)
+	resGnarkData.PadAssignZero(run)
 
-	for j := 0; j < common.NbLimbU128; j++ {
-		resGnarkData[j] = append(resGnarkData[j], make([]field.Element, d.Size-len(resGnarkData[j]))...)
-
-		run.AssignColumn(d.GnarkData[j].GetColID(), smartvectors.RightZeroPadded(resGnarkData[j], d.Size))
-	}
 }
 
 func (d *UnalignedGnarkData) assignHelperColumns(run *wizard.ProverRuntime, src *unalignedGnarkDataSource) {

@@ -2,6 +2,11 @@ package common
 
 import (
 	"encoding/binary"
+	"math/big"
+	"slices"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 )
 
 // LimbBytes is the size of one limb in bytes
@@ -40,4 +45,47 @@ func SplitLittleEndianUint64(input uint64) [][]byte {
 	inputBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(inputBytes, input)
 	return SplitBytes(inputBytes)
+}
+
+func GetTableRow(j int, tab []ifaces.ColAssignment) []field.Element {
+	res := make([]field.Element, len(tab))
+	for i := 0; i < len(tab); i++ {
+		res[i] = tab[i].Get(j)
+	}
+	return res
+}
+
+func HiLoLimbsLeToBytesBe(hi, lo []field.Element) []byte {
+	hi, lo = slices.Clone(hi), slices.Clone(lo)
+	slices.Reverse(hi)
+	slices.Reverse(lo)
+	limbs := append(hi[:], lo[:]...)
+	nbBytesPerLimbs := field.Bytes / 2
+	res := make([]byte, 0, nbBytesPerLimbs*(len(hi)+len(lo)/2))
+	for _, limb := range limbs {
+		l := limb.Bytes()
+		res = append(res, l[field.Bytes-nbBytesPerLimbs:]...)
+	}
+	return res
+}
+
+func Bytes16ToLimbsLe(b []byte) [NbLimbU128]field.Element {
+	if len(b) != 16 {
+		panic(len(b))
+	}
+	res := [NbLimbU128]field.Element{}
+	for i := 0; i < NbLimbU128; i++ {
+		i2 := NbLimbU128 - 1 - i
+		b2 := [field.Bytes]byte{}
+		copy(b2[2:], b[2*i2:2*i2+2])
+		if e := res[i].SetBytesCanonical(b2[:]); e != nil {
+			panic(e)
+		}
+	}
+	return res
+}
+
+func LimbsLeToBigInt(hi, lo []field.Element) *big.Int {
+	bs := HiLoLimbsLeToBytesBe(hi, lo)
+	return new(big.Int).SetBytes(bs)
 }

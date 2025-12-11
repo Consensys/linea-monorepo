@@ -86,7 +86,6 @@ func PrettifyHex(a []field.Element) string {
 		if i > 0 {
 			res += ", "
 		}
-		res += fmt.Sprintf("%v", a[i].Text(16))
 	}
 	res += "]"
 	return res
