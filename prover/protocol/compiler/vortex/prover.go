@@ -1,8 +1,6 @@
 package vortex
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 
 	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
@@ -419,8 +417,6 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt_koalabear.Proof) [8]smartvectors
 			depth, utils.Log2Ceil(ctx.NumEncodedCols()),
 		)
 	}
-
-	fmt.Printf("packMekrle proof len: %v\n", len(proofs))
 
 	// When we commit to the precomputeds, len(proofs) = ctx.NumCommittedRounds + 1,
 	// otherwise len(proofs) = ctx.NumCommittedRounds
