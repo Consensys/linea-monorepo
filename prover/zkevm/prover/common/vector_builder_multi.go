@@ -56,3 +56,15 @@ func (v *MultiVectorBuilder) PadAssignZero(run *wizard.ProverRuntime, padding ..
 		v.T[i].PadAndAssign(run, pds...)
 	}
 }
+
+// Height returns the number of rows
+func (v *MultiVectorBuilder) Height() int {
+	return v.T[0].Height()
+}
+
+// PushRepeat repeatedly push the provided row
+func (v *MultiVectorBuilder) PushRepeat(row []field.Element, count int) {
+	for i := 0; i < count; i++ {
+		v.PushRow(row)
+	}
+}
