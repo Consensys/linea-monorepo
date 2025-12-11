@@ -395,7 +395,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
 
     // https://github.com/ethereum/consensus-specs/blob/master/specs/electra/beacon-chain.md#modified-get_expected_withdrawals
     // Clamp unstaked amount to effectiveBalance - MIN_ACTIVATION_BALANCE - pendingPartialWithdrawals
-    uint256 maxUnstakeAmountGwei = Math256.min(
+    maxUnstakeAmountGwei = Math256.min(
       amount,
       Math256.safeSub(witness.validatorContainerWitness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI + totalPendingWithdrawalsGwei)
     );
