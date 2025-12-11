@@ -287,32 +287,30 @@ describe("SSZ", () => {
       expect(actual).to.equal(expected);
     });
 
-    // it("three elements", async () => {
-    //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 1,
-    //       withdrawableEpoch: 2,
-    //     },
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 1,
-    //       withdrawableEpoch: 0,
-    //     },
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 0,
-    //       withdrawableEpoch: 0,
-    //     },
-    //   ];
+    it("three elements", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+        // 0xdb56114e00fdd4c1f85c892bf35ac9a89289aaecb1ebd0a96cde606a748b5d71
+        {
+          validatorIndex: 0,
+          amount: 0,
+          withdrawableEpoch: 0,
+        },
+        {
+          validatorIndex: 0,
+          amount: 0,
+          withdrawableEpoch: 0,
+        },
+        {
+          validatorIndex: 0,
+          amount: 0,
+          withdrawableEpoch: 0,
+        },
+      ];
 
-    //   // Three elements: nextPow2(3) = 4, so array is padded to 4 elements
-    //   // Last element will be zero (bytes32(0))
-    //   // @ts-expect-error - function exists but types not regenerated yet
-    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
-    //   expect(actual).to.be.a("string");
-    //   expect(actual).to.have.length(66);
-    // });
+      const expected = "0xa86d2712ea358503bf22d3c7ef161faa7c3f2c1756725158913cd86f26e397c3";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
 
     // it("four elements", async () => {
     //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
