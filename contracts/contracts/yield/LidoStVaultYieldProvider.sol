@@ -316,8 +316,8 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    */
   function unstakePermissionless(
     address _yieldProvider,
-    uint256 _validatorIndex,
-    uint256 _slot,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external payable onlyDelegateCall returns (uint256 maxUnstakeAmount) {
@@ -358,8 +358,8 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     address _yieldProvider,
     bytes memory _pubkeys,
     uint64[] memory _amounts,
-    uint256 _validatorIndex,
-    uint256 _slot,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParamsProof
   ) internal view returns (uint256 maxUnstakeAmount) {
     if (_pubkeys.length != PUBLIC_KEY_LENGTH || _amounts.length != 1) {
@@ -382,12 +382,12 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       withdrawalCredentials := or(shl(248, 0x2), vault)
     }
 
-    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyActiveValidatorContainer(witness.validatorContainerWitness, _pubkeys, withdrawalCredentials, uint64(_validatorIndex), uint64(_slot), witness.childBlockTimestamp, witness.proposerIndex);
-    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyPendingPartialWithdrawals(witness.pendingPartialWithdrawalsWitness, uint64(_slot), witness.childBlockTimestamp, witness.proposerIndex);
+    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyActiveValidatorContainer(witness.validatorContainerWitness, _pubkeys, withdrawalCredentials, _validatorIndex, _slot, witness.childBlockTimestamp, witness.proposerIndex);
+    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyPendingPartialWithdrawals(witness.pendingPartialWithdrawalsWitness, _slot, witness.childBlockTimestamp, witness.proposerIndex);
 
     uint256 totalPendingWithdrawalsGwei;
     for (uint256 i = 0; i < witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals.length; i++) {
-      if (witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals[i].validatorIndex == uint64(_validatorIndex)) {
+      if (witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals[i].validatorIndex == _validatorIndex) {
         totalPendingWithdrawalsGwei += witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals[i].amount;
       }
     }

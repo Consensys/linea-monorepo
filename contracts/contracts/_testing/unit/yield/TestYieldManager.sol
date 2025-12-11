@@ -245,7 +245,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
       _yieldProvider,
       abi.encodeCall(
         TestLidoStVaultYieldProvider.validateUnstakePermissionlessRequestHarness,
-        (_yieldProvider, _pubkeys, _amounts, _validatorIndex, _slot, _withdrawalParamsProof)
+        (_yieldProvider, _pubkeys, _amounts, uint64(_validatorIndex), uint64(_slot), _withdrawalParamsProof)
       )
     );
     return abi.decode(data, (uint256));

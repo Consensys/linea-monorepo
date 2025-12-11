@@ -42,7 +42,7 @@ abstract contract YieldManagerStorageLayout {
     address[] yieldProviders;
     mapping(address l2YieldRecipient => bool) isL2YieldRecipientKnown;
     mapping(address yieldProvider => YieldProviderStorage) yieldProviderStorage;
-    mapping(uint256 validatorIndex => uint256 lastProvenSlot) lastProvenSlot;
+    mapping(uint64 validatorIndex => uint64 lastProvenSlot) lastProvenSlot;
   }
 
   /**

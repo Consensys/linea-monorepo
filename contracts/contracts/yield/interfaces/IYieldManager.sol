@@ -570,8 +570,8 @@ interface IYieldManager {
    */
   function unstakePermissionless(
     address _yieldProvider,
-    uint256 _validatorIndex,
-    uint256 _slot,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external payable returns (uint256 maxUnstakeAmount);
