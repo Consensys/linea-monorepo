@@ -123,8 +123,8 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   uint64 public constant FAR_FUTURE_EXIT_EPOCH = type(uint64).max;
 
   // Validator must be active for this many epochs before it is eligible for withdrawals
-  uint256 private constant SHARD_COMMITTEE_PERIOD = 256;
-  uint256 private constant SLOTS_PER_EPOCH = 32;
+  uint64 private constant SHARD_COMMITTEE_PERIOD = 256;
+  uint64 private constant SLOTS_PER_EPOCH = 32;
 
   /**
    * @param _gIFirstValidatorPrev packed(general index | depth in Merkle tree, see GIndex.sol) GIndex of first validator in CL state tree
@@ -255,7 +255,7 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
     uint64 _slot,
     uint64 _activationEpoch
   ) internal pure {
-    uint256 epoch = _slot / SLOTS_PER_EPOCH;
+    uint64 epoch = _slot / SLOTS_PER_EPOCH;
     if (epoch < _activationEpoch + SHARD_COMMITTEE_PERIOD) {
       revert ValidatorNotActiveForLongEnough();
     }
