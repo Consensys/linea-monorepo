@@ -162,6 +162,7 @@ describe("OssificationPendingProcessor", () => {
     await processor.process();
 
     expect(lazyOracle.waitForVaultsReportDataUpdatedEvent).toHaveBeenCalledTimes(1);
+    expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
     expect(yieldManager.getLidoStakingVaultAddress).toHaveBeenCalledWith(yieldProvider);
     expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
     expect(lidoReportClient.getLatestSubmitVaultReportParams).toHaveBeenCalledWith(vaultAddress);
@@ -171,7 +172,6 @@ describe("OssificationPendingProcessor", () => {
     expect(metricsRecorder.recordProgressOssificationMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
     expect(yieldManager.isOssified).toHaveBeenCalledWith(yieldProvider);
     expect(metricsRecorder.recordSafeWithdrawalMetrics).not.toHaveBeenCalled();
-    expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
     expect(msToSeconds).toHaveBeenCalledWith(600);
     expect(metricsUpdater.recordOperationModeDuration).toHaveBeenCalledWith(
       OperationMode.OSSIFICATION_PENDING_MODE,
@@ -189,7 +189,6 @@ describe("OssificationPendingProcessor", () => {
     expect(lidoReportClient.submitLatestVaultReport).toHaveBeenCalledWith(vaultAddress);
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
     expect(yieldManager.progressPendingOssification).toHaveBeenCalled();
-    expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
   });
 
   it("returns early when progressPendingOssification fails", async () => {
@@ -204,7 +203,6 @@ describe("OssificationPendingProcessor", () => {
     });
     expect(metricsRecorder.recordProgressOssificationMetrics).not.toHaveBeenCalled();
     expect(yieldManager.safeMaxAddToWithdrawalReserve).not.toHaveBeenCalled();
-    expect(beaconClient.submitMaxAvailableWithdrawalRequests).not.toHaveBeenCalled();
   });
 
   it("performs safe withdrawal when ossification completes", async () => {
@@ -214,7 +212,6 @@ describe("OssificationPendingProcessor", () => {
     await processor.process();
 
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
-    expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
   });
 
   it("tolerates failure of submitMaxAvailableWithdrawalRequests", async () => {
@@ -225,11 +222,11 @@ describe("OssificationPendingProcessor", () => {
     const processor = createProcessor();
     await processor.process();
 
+    expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
     expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
     expect(lidoReportClient.getLatestSubmitVaultReportParams).toHaveBeenCalledWith(vaultAddress);
     expect(metricsRecorder.recordProgressOssificationMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
-    expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
   });
 
   it("skips vault report submission when shouldSubmitVaultReport is false", async () => {

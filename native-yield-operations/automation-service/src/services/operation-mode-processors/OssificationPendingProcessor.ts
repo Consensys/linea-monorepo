@@ -63,14 +63,22 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
 
   /**
    * Main processing loop:
-   * 1. Submit vault report - Fetch and submit latest vault report
-   * 2. Process Pending Ossification - Progress pending ossification (stops if failed)
-   * 3. Max withdraw if ossified - Perform max safe withdrawal if ossification completed
-   * 4. Max unstake - Submit maximum available withdrawal requests from beacon chain
+   * 1. Max unstake - Submit maximum available withdrawal requests from beacon chain
+   * 2. Submit vault report - Fetch and submit latest vault report
+   * 3. Process Pending Ossification - Progress pending ossification (stops if failed)
+   * 4. Max withdraw if ossified - Perform max safe withdrawal if ossification completed
    *
    * @returns {Promise<void>} A promise that resolves when processing completes (or early returns if ossification fails).
    */
   private async _process(): Promise<void> {
+    // Max unstake
+    this.logger.info("_process - performing max unstake from beacon chain");
+    await attempt(
+      this.logger,
+      () => this.beaconChainStakingClient.submitMaxAvailableWithdrawalRequests(),
+      "submitMaxAvailableWithdrawalRequests failed (tolerated)",
+    );
+
     // Submit vault report if available and enabled
     const vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
     await submitVaultReportIfNotFresh(
@@ -84,6 +92,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
     );
 
     // Process Pending Ossification
+
     const ossificationResult = await attempt(
       this.logger,
       () => this.yieldManagerContractClient.progressPendingOssification(this.yieldProvider),
@@ -109,13 +118,5 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
       );
       await this.operationModeMetricsRecorder.recordSafeWithdrawalMetrics(this.yieldProvider, withdrawalResult);
     }
-
-    // Max unstake
-    this.logger.info("_process - performing max unstake from beacon chain");
-    await attempt(
-      this.logger,
-      () => this.beaconChainStakingClient.submitMaxAvailableWithdrawalRequests(),
-      "submitMaxAvailableWithdrawalRequests failed (tolerated)",
-    );
   }
 }
