@@ -537,7 +537,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
     });
   });
 
-  describe("Multiple yield providers", () => {
+  describe("unstakePermissionless", () => {
     it("Unstake permissionless cap should be shared globally across all yield providers", async () => {
       // Arrange - add additional yield provider
       const { yieldProviderAddress: yieldProvider2Address, mockStakingVaultAddress: mockStakingVault2Address } =
@@ -597,6 +597,40 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         call,
         "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
       );
+    });
+    it("Should decrement pendingPermissionlessUnstake on withdrawal from YieldProvider", async () => {
+      // Arrange - Prepare first unstakePermissionless
+      const targetDeficit = await yieldManager.getTargetReserveDeficit();
+      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
+        sszMerkleTree,
+        testVerifier,
+        mockStakingVaultAddress,
+        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
+      );
+      const refundAddress = nativeYieldOperator.address;
+      const unstakeAmount = [targetDeficit / ONE_GWEI];
+      const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["bytes", "uint64[]", "address"],
+        [pubkey, unstakeAmount, refundAddress],
+      );
+      const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
+        [VALIDATOR_WITNESS_TYPE],
+        [validatorWitness],
+      );
+      // Arrange - first unstake
+      await yieldManager.unstakePermissionless(yieldProviderAddress, withdrawalParams, withdrawalParamsProof);
+      expect(await yieldManager.pendingPermissionlessUnstake()).eq(targetDeficit);
+
+      // Arrange - setup user funds
+      const initialFundAmount = ONE_ETHER * 10n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+
+      // Act
+      await mockDashboard.setWithdrawableValueReturn(ONE_ETHER);
+      await yieldManager.connect(nativeYieldOperator).safeWithdrawFromYieldProvider(yieldProviderAddress, ONE_ETHER);
+
+      // Assert
+      expect(await yieldManager.pendingPermissionlessUnstake()).eq(targetDeficit - ONE_ETHER);
     });
   });
 

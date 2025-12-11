@@ -49,6 +49,12 @@ describe("YieldManager contract - basic operations", () => {
     it("Should successfully accept ETH via receive() fn", async () => {
       await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.reverted;
     });
+
+    it("Should decrement pendingPermissionlessUnstake when ETH is received", async () => {
+      await yieldManager.setPendingPermissionlessUnstake(MINIMUM_FEE);
+      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.reverted;
+      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(ZERO_VALUE);
+    });
   });
 
   describe("Constructor", () => {
