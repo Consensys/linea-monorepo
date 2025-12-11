@@ -1266,7 +1266,7 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			totalCt++
 
 			// row 1, load the timestamp
-			fetchedTimestamp := timestamps.Data.GetColAssignmentAt(run, blockCt)
+			fetchedTimestamp := timestamps.DataLo.GetColAssignmentAt(run, blockCt)
 			vect.IsTimestamp[totalCt].SetOne()
 			vect.NoBytes[totalCt].SetInt64(noBytesTimestamp)
 			genericLoadFunction(loadTimestamp, fetchedTimestamp)

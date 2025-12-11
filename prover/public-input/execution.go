@@ -11,8 +11,6 @@ import (
 )
 
 type Execution struct {
-	L2MessageServiceAddr         types.EthAddress
-	ChainID                      uint64
 	InitialBlockTimestamp        uint64
 	FinalStateRootHash           [32]byte
 	FinalBlockNumber             uint64
@@ -25,6 +23,12 @@ type Execution struct {
 	L2MessageHashes              [][32]byte
 	InitialStateRootHash         [32]byte
 	InitialBlockNumber           uint64
+
+	// Dynamic chain config parameters
+	L2MessageServiceAddr types.EthAddress
+	ChainID              uint64
+	BaseFee              uint64
+	CoinBase             types.EthAddress
 }
 
 func (pi *Execution) Sum(hsh hash.Hash) []byte {
@@ -58,6 +62,8 @@ func (pi *Execution) Sum(hsh hash.Hash) []byte {
 	writeNum(hsh, pi.FirstRollingHashUpdateNumber)
 	writeNum(hsh, pi.ChainID)
 	hsh.Write(pi.L2MessageServiceAddr[:])
+	writeNum(hsh, pi.BaseFee)
+	hsh.Write(pi.CoinBase[:])
 
 	return hsh.Sum(nil)
 

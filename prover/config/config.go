@@ -77,18 +77,18 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	logrus.SetLevel(logrus.Level(cfg.LogLevel)) // #nosec G115 -- overflow not possible (uint8 -> uint32)
 
 	// Extract the Layer2.MsgSvcContract address from the string
-	addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
+	lsMsgSvcAddress, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
 	if withValidation && err != nil {
 		return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
 	}
-	cfg.Layer2.MsgSvcContract = addr.Address()
+	cfg.Layer2.MsgSvcContract = lsMsgSvcAddress.Address()
 
 	// Extract the coinbase address from the string
-	// addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.CoinbaseStr)
-	// if withValidation && err != nil {
-	// 	return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
-	// }
-	// cfg.Layer2.MsgSvcContract = addr.Address()
+	coinBaseAddr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.CoinBaseStr)
+	if withValidation && err != nil {
+		return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
+	}
+	cfg.Layer2.MsgSvcContract = coinBaseAddr.Address()
 
 	// ensure that asset dir / kzgsrs exists using os.Stat
 	srsDir := cfg.PathForSRS()
@@ -103,6 +103,7 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
 	cfg.PublicInputInterconnection.BaseFee = uint64(cfg.Layer2.BaseFee)
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
+	cfg.PublicInputInterconnection.CoinBase = cfg.Layer2.CoinBase
 
 	return &cfg, nil
 }
@@ -152,10 +153,12 @@ type Config struct {
 		// Use this field when you need the ETH address as a string.
 		MsgSvcContractStr string `mapstructure:"message_service_contract" validate:"required,eth_addr"`
 
-		// CoinbaseStr string `mapstructure:"coinbase" validate:"required,eth_addr"`
+		// CoinBaseStr stores the coinbase address of Linea as a string.
+		CoinBaseStr string `mapstructure:"coin_base" validate:"required,eth_addr"`
 
 		// MsgSvcContract stores the unique ID of the Service Contract (SC), as a common.Address.
 		MsgSvcContract common.Address `mapstructure:"-"`
+		CoinBase       common.Address `mapstructure:"-"`
 	}
 
 	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
@@ -324,7 +327,7 @@ type PublicInput struct {
 	ChainID          uint64         // duplicate from Config
 	BaseFee          uint64         // duplicate from Config
 	L2MsgServiceAddr common.Address // duplicate from Config
-	// Coinbase         common.Address // duplicate from Config
+	CoinBase         common.Address // duplicate from Config
 }
 
 type Debug struct {

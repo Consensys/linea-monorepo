@@ -1025,6 +1025,8 @@ var publicInputNames = []string{
 	publicInput.NBytesChainID,
 	publicInput.L2MessageServiceAddrHi,
 	publicInput.L2MessageServiceAddrLo,
+	publicInput.BaseFee,
+	publicInput.CoinBase,
 }
 
 // LogPublicInputs logs the list of the public inputs for the module
