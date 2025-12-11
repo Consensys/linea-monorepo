@@ -296,7 +296,7 @@ library SSZ {
     }
 
     // Do mix_in_length(content_root, actual_length)
-    root = sha256Pair(tmp[depth], toLittleEndian(count));
+    root = sha256Pair(tmp[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH], toLittleEndian(count));
   }
 
   // Mutate `tmp` in-place
