@@ -31,7 +31,7 @@ describe("VaultHubContractClient", () => {
   let publicClient: PublicClient;
   const viemContractStub = {
     abi: VaultHubABI,
-    read: { settleableLidoFeesValue: jest.fn(), latestReport: jest.fn(), isReportFresh: jest.fn() },
+    read: { settleableLidoFeesValue: jest.fn(), latestReport: jest.fn(), isReportFresh: jest.fn(), isVaultConnected: jest.fn() },
   } as any;
 
   beforeEach(() => {
@@ -388,6 +388,62 @@ describe("VaultHubContractClient", () => {
       expect(result).toBe(false);
       expect(logger.error).toHaveBeenCalledWith(`isReportFresh failed, error=${error}`);
       expect(viemContractStub.read.isReportFresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("isVaultConnected", () => {
+    const vaultAddress = "0x2222222222222222222222222222222222222222" as Address;
+
+    it("returns true when vault is connected", async () => {
+      const client = createClient();
+      viemContractStub.read.isVaultConnected.mockResolvedValueOnce(true);
+
+      const result = await client.isVaultConnected(vaultAddress);
+
+      expect(result).toBe(true);
+      expect(viemContractStub.read.isVaultConnected).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns false when vault is not connected", async () => {
+      const client = createClient();
+      viemContractStub.read.isVaultConnected.mockResolvedValueOnce(false);
+
+      const result = await client.isVaultConnected(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isVaultConnected).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns false when value is null", async () => {
+      const client = createClient();
+      viemContractStub.read.isVaultConnected.mockResolvedValueOnce(null);
+
+      const result = await client.isVaultConnected(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isVaultConnected).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns false when value is undefined", async () => {
+      const client = createClient();
+      viemContractStub.read.isVaultConnected.mockResolvedValueOnce(undefined);
+
+      const result = await client.isVaultConnected(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isVaultConnected).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns false and logs error when call fails", async () => {
+      const client = createClient();
+      const error = new Error("Contract call failed");
+      viemContractStub.read.isVaultConnected.mockRejectedValueOnce(error);
+
+      const result = await client.isVaultConnected(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(logger.error).toHaveBeenCalledWith(`isVaultConnected failed, error=${error}`);
+      expect(viemContractStub.read.isVaultConnected).toHaveBeenCalledTimes(1);
     });
   });
 });

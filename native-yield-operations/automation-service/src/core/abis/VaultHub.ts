@@ -52,4 +52,11 @@ export const VaultHubABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [{ internalType: "address", name: "_vault", type: "address" }],
+    name: "isVaultConnected",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;

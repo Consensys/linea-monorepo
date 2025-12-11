@@ -101,6 +101,7 @@ describe("OssificationPendingProcessor", () => {
 
     vaultHubClient = {
       isReportFresh: jest.fn(),
+      isVaultConnected: jest.fn(),
     } as unknown as jest.Mocked<IVaultHub<TransactionReceipt>>;
 
     lazyOracle.waitForVaultsReportDataUpdatedEvent.mockResolvedValue({
@@ -114,6 +115,7 @@ describe("OssificationPendingProcessor", () => {
       txHash: "0xhash" as `0x${string}`,
     });
     yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
+    vaultHubClient.isVaultConnected.mockResolvedValue(true);
     vaultHubClient.isReportFresh.mockResolvedValue(false);
     lidoReportClient.getLatestSubmitVaultReportParams.mockResolvedValue({
       vault: vaultAddress,
@@ -244,6 +246,24 @@ describe("OssificationPendingProcessor", () => {
     performanceSpy.mockRestore();
   });
 
+  it("skips vault report submission when vault is not connected", async () => {
+    vaultHubClient.isVaultConnected.mockResolvedValueOnce(false);
+    const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(1000).mockReturnValueOnce(1600);
+
+    const processor = createProcessor();
+    await processor.process();
+
+    expect(vaultHubClient.isVaultConnected).toHaveBeenCalledWith(vaultAddress);
+    expect(vaultHubClient.isReportFresh).not.toHaveBeenCalled();
+    expect(lidoReportClient.getLatestSubmitVaultReportParams).not.toHaveBeenCalled();
+    expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
+    expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith("_process - Skipping vault report submission (vault is not connected)");
+    expect(yieldManager.progressPendingOssification).toHaveBeenCalledWith(yieldProvider);
+
+    performanceSpy.mockRestore();
+  });
+
   it("skips vault report submission when report is fresh", async () => {
     vaultHubClient.isReportFresh.mockResolvedValueOnce(true);
     const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(1000).mockReturnValueOnce(1600);
@@ -251,6 +271,7 @@ describe("OssificationPendingProcessor", () => {
     const processor = createProcessor();
     await processor.process();
 
+    expect(vaultHubClient.isVaultConnected).toHaveBeenCalledWith(vaultAddress);
     expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
     expect(lidoReportClient.getLatestSubmitVaultReportParams).not.toHaveBeenCalled();
     expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
@@ -268,6 +289,7 @@ describe("OssificationPendingProcessor", () => {
     const processor = createProcessor();
     await processor.process();
 
+    expect(vaultHubClient.isVaultConnected).toHaveBeenCalledWith(vaultAddress);
     expect(vaultHubClient.isReportFresh).toHaveBeenCalledWith(vaultAddress);
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining("Failed to check if report is fresh, proceeding with submission attempt"),

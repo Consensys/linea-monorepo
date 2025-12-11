@@ -154,4 +154,21 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
       return false;
     }
   }
+
+  /**
+   * Checks if a vault is connected to the VaultHub contract.
+   * Reads the isVaultConnected function which returns whether the vault is connected.
+   *
+   * @param {Address} vault - The vault address to query.
+   * @returns {Promise<boolean>} True if the vault is connected, false otherwise or on error.
+   */
+  async isVaultConnected(vault: Address): Promise<boolean> {
+    try {
+      const result = await this.contract.read.isVaultConnected([vault]);
+      return result ?? false;
+    } catch (error) {
+      this.logger.error(`isVaultConnected failed, error=${error}`);
+      return false;
+    }
+  }
 }

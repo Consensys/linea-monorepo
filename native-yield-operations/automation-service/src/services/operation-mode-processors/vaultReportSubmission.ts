@@ -6,7 +6,8 @@ import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 
 /**
  * Submits the latest vault report if enabled and the report is not fresh.
- * Checks if the report is fresh first - if it is, skips submission to avoid unnecessary transactions.
+ * Checks if the vault is connected first - if it is not, skips submission.
+ * Then checks if the report is fresh - if it is, skips submission to avoid unnecessary transactions.
  * If the freshness check fails, proceeds with submission as a fail-safe measure.
  *
  * @param {ILogger} logger - Logger instance for logging operations.
@@ -30,6 +31,18 @@ export async function submitVaultReportIfNotFresh(
   if (!shouldSubmitVaultReport) {
     logger.info(`${logPrefix} - Skipping vault report submission (SHOULD_SUBMIT_VAULT_REPORT=false)`);
     return;
+  }
+
+  // Check if vault is connected before attempting submission
+  try {
+    const isConnected = await vaultHubContractClient.isVaultConnected(vault);
+    if (!isConnected) {
+      logger.info(`${logPrefix} - Skipping vault report submission (vault is not connected)`);
+      return;
+    }
+  } catch (error) {
+    // Fail-safe: if connection check fails, log error but continue with submission attempt
+    logger.warn(`${logPrefix} - Failed to check if vault is connected, proceeding with submission attempt: ${error}`);
   }
 
   // Check if report is fresh before attempting submission
@@ -60,4 +73,3 @@ export async function submitVaultReportIfNotFresh(
     metricsUpdater.incrementLidoVaultAccountingReport(vault);
   }
 }
-
