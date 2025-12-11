@@ -898,11 +898,12 @@ func (am *Module) checkNextFreeNode() {
 func (am *Module) checkTopRootHash() {
 	cols := am.Cols
 	// we assume the length of NextFreeNode is 2 * common.NbElemPerHash
+	// TopRoot = Hash (nextFreeNode, SubRoot)
 	nextFreeNodeFirst := cols.NextFreeNode[0:common.NbElemPerHash]
 	nextFreeNodeSecond := cols.NextFreeNode[common.NbElemPerHash : 2*common.NbElemPerHash]
-	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_INTERM_ZERO_TOP_ROOT"), cols.Roots, cols.Zero, cols.IntermZeroTopRoot, cols.IsActiveAccumulator)
-	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_INTERM_ONE_TOP_ROOT"), [8]ifaces.Column(nextFreeNodeFirst), cols.IntermZeroTopRoot, cols.IntermOneTopRoot, cols.IsActiveAccumulator)
-	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_TOP_ROOT"), [8]ifaces.Column(nextFreeNodeSecond), cols.IntermOneTopRoot, cols.TopRoot, cols.IsActiveAccumulator)
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_INTERM_ZERO_TOP_ROOT"), [8]ifaces.Column(nextFreeNodeFirst), cols.Zero, cols.IntermZeroTopRoot, cols.IsActiveAccumulator)
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_INTERM_ONE_TOP_ROOT"), [8]ifaces.Column(nextFreeNodeSecond), cols.IntermZeroTopRoot, cols.IntermOneTopRoot, cols.IsActiveAccumulator)
+	am.comp.InsertPoseidon2(am.Round, am.qname("POSEIDON2_TOP_ROOT"), cols.Roots, cols.IntermOneTopRoot, cols.TopRoot, cols.IsActiveAccumulator)
 }
 
 func (am *Module) checkZeroInInactive() {

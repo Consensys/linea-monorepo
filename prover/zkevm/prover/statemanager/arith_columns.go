@@ -57,6 +57,7 @@ func acp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		combinedAddr := comp.InsertCommit(0,
 			"HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER",
 			size,
+			true,
 		)
 
 		// constrain the processed HUB addresses
@@ -91,8 +92,8 @@ func acp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		CodeHashLONew:       arith.LimbColumnsOfArr8(comp, "hub", "acp_CODE_HASH_LO_NEW"),
 		CodeSizeOld:         arith.LimbColumnsOfArr4(comp, "hub", "acp_CODE_SIZE"),
 		CodeSizeNew:         arith.LimbColumnsOfArr4(comp, "hub", "acp_CODE_SIZE_NEW"),
-		BalanceOld:          arith.LimbColumnsOfArr8(comp, "hub", "acp_BALANCE"),
-		BalanceNew:          arith.LimbColumnsOfArr8(comp, "hub", "acp_BALANCE_NEW"),
+		BalanceOld:          arith.LimbColumnsOfArr16(comp, "hub", "acp_BALANCE"),
+		BalanceNew:          arith.LimbColumnsOfArr16(comp, "hub", "acp_BALANCE_NEW"),
 		KeyHI:               constantZero8,
 		KeyLO:               constantZero8,
 		ValueHICurr:         constantZero8,
@@ -135,6 +136,7 @@ func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		combinedAddr := comp.InsertCommit(0,
 			"HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER",
 			size,
+			true,
 		)
 
 		// constrain the processed HUB addresses
@@ -168,6 +170,17 @@ func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		constantZero, constantZero,
 	}
 
+	constantZero16 := [16]ifaces.Column{
+		constantZero, constantZero,
+		constantZero, constantZero,
+		constantZero, constantZero,
+		constantZero, constantZero,
+		constantZero, constantZero,
+		constantZero, constantZero,
+		constantZero, constantZero,
+		constantZero, constantZero,
+	}
+
 	res := statesummary.HubColumnSet{
 		Address:             common.GetMultiHandleEthAddress(comp, "HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
 		AddressHI:           arith.LimbColumnsOfArr2(comp, "hub", "scp_ADDRESS_HI"),
@@ -180,8 +193,8 @@ func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		CodeHashLONew:       constantZero8,
 		CodeSizeOld:         constantZero4,
 		CodeSizeNew:         constantZero4,
-		BalanceOld:          constantZero8,
-		BalanceNew:          constantZero8,
+		BalanceOld:          constantZero16,
+		BalanceNew:          constantZero16,
 		KeyHI:               arith.LimbColumnsOfArr8(comp, "hub", "scp_STORAGE_KEY_HI"),
 		KeyLO:               arith.LimbColumnsOfArr8(comp, "hub", "scp_STORAGE_KEY_LO"),
 		ValueHICurr:         arith.LimbColumnsOfArr8(comp, "hub", "scp_VALUE_CURR_HI"),

@@ -18,14 +18,17 @@ import (
 //
 // Returns a representation of storage root value in limbs with size defined
 // by common.LimbBytes.
-func initEmptyStorageRoot() (res [common.NbLimbU256]field.Element) {
+func initEmptyStorageRoot() (res [common.NbElemPerHash]field.Element) {
 	var emptyStorageRootBig big.Int
 	_, isErr := emptyStorageRootBig.SetString(emptyStorageRootString, 10)
 	if !isErr {
 		panic("empty storage root string is not correct")
 	}
 
-	emptyStorageRootByteLimbs := common.SplitBytes(emptyStorageRootBig.Bytes())
+	emptyStorageRootByteLimbs := common.SplitBytes(emptyStorageRootBig.Bytes(), field.Bytes)
+	if len(emptyStorageRootByteLimbs) != common.NbElemPerHash {
+		panic("empty storage root byte limbs length is not correct")
+	}
 	for i, limbByte := range emptyStorageRootByteLimbs {
 		res[i] = *new(field.Element).SetBytes(limbByte)
 	}
@@ -37,7 +40,7 @@ var (
 	// emptyStorageRootString is the TopRoot of an empty accumulator (Poseidon2 hash).
 	// This corresponds to the hex value 0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7
 	// from TestEmptyAccumulatorPoseidon2 test.
-	emptyStorageRootString = "21500893316117426858977816631949538145396987654377879259568548397656779611639"
+	emptyStorageRootString = "21541760304644240659228284866961727357508514476423129995327043182333673184759"
 	// emptyStorageRoot is the root of the empty tree represented in limbs with size common.LimbBytes each.
 	emptyStorageRoot = initEmptyStorageRoot()
 )

@@ -25,7 +25,7 @@ type StateManagerVectors struct {
 	MimcCodeHash, MimcCodeHashNew                        [][common.NbLimbU256]field.Element
 	CodeHashHI, CodeHashLO, CodeHashHINew, CodeHashLONew [][common.NbLimbU128]field.Element
 	CodeSizeOld, CodeSizeNew                             [][common.NbLimbU64]field.Element
-	BalanceOld, BalanceNew                               [][common.NbLimbU128]field.Element
+	BalanceOld, BalanceNew                               [][common.NbLimbU256]field.Element
 	// storage data
 	KeyHI, KeyLO                                       [][common.NbLimbU128]field.Element
 	ValueHICurr, ValueLOCurr, ValueHINext, ValueLONext [][common.NbLimbU128]field.Element
@@ -66,8 +66,8 @@ func NewStateManagerVectors() *StateManagerVectors {
 		CodeHashLONew:   [][common.NbLimbU128]field.Element{},
 		CodeSizeOld:     [][common.NbLimbU64]field.Element{},
 		CodeSizeNew:     [][common.NbLimbU64]field.Element{},
-		BalanceOld:      [][common.NbLimbU128]field.Element{},
-		BalanceNew:      [][common.NbLimbU128]field.Element{},
+		BalanceOld:      [][common.NbLimbU256]field.Element{},
+		BalanceNew:      [][common.NbLimbU256]field.Element{},
 		// storage data
 		KeyHI:       [][common.NbLimbU128]field.Element{},
 		KeyLO:       [][common.NbLimbU128]field.Element{},
@@ -110,7 +110,7 @@ type AccountHistory struct {
 	mimcCodeHash, mimcCodeHashNew                        [][common.NbLimbU256]field.Element
 	codeHashHI, codeHashLO, codeHashHINew, codeHashLONew [][common.NbLimbU128]field.Element
 	codeSizeOld, codeSizeNew                             [][common.NbLimbU64]field.Element
-	balanceOld, balanceNew                               [][common.NbLimbU128]field.Element
+	balanceOld, balanceNew                               [][common.NbLimbU256]field.Element
 	deploymentNumber, deploymentNumberInf                [][common.NbLimbU32]field.Element
 	blockNumber                                          [][common.NbLimbU64]field.Element
 	currentDeploymentNo                                  int
@@ -177,8 +177,8 @@ func NewAccountHistory() *AccountHistory {
 		codeHashLONew:       [][common.NbLimbU128]field.Element{},
 		codeSizeOld:         [][common.NbLimbU64]field.Element{},
 		codeSizeNew:         [][common.NbLimbU64]field.Element{},
-		balanceOld:          [][common.NbLimbU128]field.Element{},
-		balanceNew:          [][common.NbLimbU128]field.Element{},
+		balanceOld:          [][common.NbLimbU256]field.Element{},
+		balanceNew:          [][common.NbLimbU256]field.Element{},
 		deploymentNumber:    [][common.NbLimbU32]field.Element{},
 		deploymentNumberInf: [][common.NbLimbU32]field.Element{},
 		blockNumber:         [][common.NbLimbU64]field.Element{},
@@ -224,7 +224,7 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 	var prevMimcCodeHash [common.NbLimbU256]field.Element
 	var prevCodeHashHI, prevCodeHashLO [common.NbLimbU128]field.Element
 	var prevCodeSize [common.NbLimbU64]field.Element
-	var prevBalance [common.NbLimbU128]field.Element
+	var prevBalance [common.NbLimbU256]field.Element
 	var prevDeploymentNumber [common.NbLimbU32]field.Element
 
 	if len(accHistory.addressLO) > 0 {
@@ -262,10 +262,10 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 			for i := range common.NbLimbU64 {
 				prevNonce[i].SetZero()
 				prevCodeSize[i].SetZero()
-				prevBalance[i].SetZero()
 			}
-
+			
 			for i := range common.NbLimbU256 {
+				prevBalance[i].SetZero()
 				prevMimcCodeHash[i].SetZero()
 			}
 
@@ -315,16 +315,16 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 				prevCodeHashLO[i].SetBytes(stateCodeHashLimbs[common.NbLimbU128+i])
 			}
 
-			addressBalanceBytes := initialState.GetBalance(address).Bytes()
-			// We make a length check here because Bytes() method on big.Int(0) returns empty slice.
-			if len(addressBalanceBytes) == 0 {
-				addressBalanceBytes = make([]byte, common.NbLimbU64*common.LimbBytes)
-			}
+			// addressBalanceBytes := initialState.GetBalance(address).Bytes()
+			// // We make a length check here because Bytes() method on big.Int(0) returns empty slice.
+			// if len(addressBalanceBytes) == 0 {
+			// 	addressBalanceBytes = make([]byte, common.NbLimbU64*common.LimbBytes)
+			// }
 
-			balanceBytes := common.LeftPadToBytes(initialState.GetBalance(address).Bytes(), common.NbLimbU128*common.LimbBytes)
+			balanceBytes := common.LeftPadToBytes(initialState.GetBalance(address).Bytes(), common.NbLimbU256*common.LimbBytes)
 			balanceLimbs := common.SplitBytes(balanceBytes)
 			codeSizeLimbs := common.SplitBigEndianUint64(uint64(initialState.GetCodeSize(address)))
-			for i := range common.NbLimbU128 {
+			for i := range common.NbLimbU256 {
 				prevBalance[i].SetBytes(balanceLimbs[i])
 			}
 			for i := range common.NbLimbU64 {
@@ -626,7 +626,7 @@ func (stitcher *Stitcher) Finalize(sampleType int) *StateManagerVectors {
 					stateManagerVectors.CodeSizeOld = append(stateManagerVectors.CodeSizeOld, dummyCodeSizeVector...)
 					stateManagerVectors.CodeSizeNew = append(stateManagerVectors.CodeSizeNew, dummyCodeSizeVector...)
 
-					stateManagerDummyVectors := make([][common.NbLimbU128]field.Element, len(stoHist.addressHI))
+					stateManagerDummyVectors := make([][common.NbLimbU256]field.Element, len(stoHist.addressHI))
 					stateManagerVectors.BalanceOld = append(stateManagerVectors.BalanceOld, stateManagerDummyVectors...)
 					stateManagerVectors.BalanceNew = append(stateManagerVectors.BalanceNew, stateManagerDummyVectors...)
 
@@ -774,10 +774,10 @@ func (accHistory *AccountHistory) AddFrame(frame StateAccessLog, initialState *S
 			accHistory.nonceNew[lastIndex][i].SetBytes(nonceLimbBytes[i])
 		}
 	case Balance:
-		addressBalanceBytes := common.LeftPadToBytes((frame.Value).(*big.Int).Bytes(), common.NbLimbU128*common.LimbBytes)
+		addressBalanceBytes := common.LeftPadToBytes((frame.Value).(*big.Int).Bytes(), common.NbLimbU256*common.LimbBytes)
 
 		balanceLimbs := common.SplitBytes(addressBalanceBytes)
-		for i := range common.NbLimbU128 {
+		for i := range common.NbLimbU256 {
 			accHistory.balanceNew[lastIndex][i].SetBytes(balanceLimbs[i])
 		}
 	case Codesize: // only for reads
@@ -807,7 +807,7 @@ func (accHistory *AccountHistory) AddFrame(frame StateAccessLog, initialState *S
 			accHistory.codeSizeNew[lastIndex][i].SetZero()
 		}
 
-		for i := range common.NbLimbU128 {
+		for i := range common.NbLimbU256 {
 			accHistory.balanceNew[lastIndex][i].SetZero()
 		}
 
@@ -852,6 +852,9 @@ func (accHistory *AccountHistory) AddFrame(frame StateAccessLog, initialState *S
 		for i := range common.NbLimbU128 {
 			accHistory.codeHashHINew[lastIndex][i].SetBytes(codeHashBytesLimbs[i])
 			accHistory.codeHashLONew[lastIndex][i].SetBytes(codeHashBytesLimbs[common.NbLimbU128+i])
+		}
+
+		for i := range common.NbLimbU256 {
 			accHistory.balanceNew[lastIndex][i].SetZero()
 		}
 

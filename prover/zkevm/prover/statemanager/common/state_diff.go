@@ -90,55 +90,55 @@ func NewStateDiffAssignmentBuilder(as StateDiff) StateDiffAssignmentBuilder {
 // accumulator side.
 func (as *StateDiffAssignmentBuilder) PushReadZero(root, hkey [][]byte) {
 	for i := range common.NbElemPerHash {
-		as.HKey[i].PushBytes(pagZerosAtBeginning(hkey[i]))
+		as.HKey[i].PushBytes(padZerosAtBeginning(hkey[i]))
 		as.InitialHVal[i].PushZero()
 		as.FinalHVal[i].PushZero()
-		as.InitialRoot[i].PushBytes(pagZerosAtBeginning(root[i]))
-		as.FinalRoot[i].PushBytes(pagZerosAtBeginning(root[i]))
+		as.InitialRoot[i].PushBytes(padZerosAtBeginning(root[i]))
+		as.FinalRoot[i].PushBytes(padZerosAtBeginning(root[i]))
 	}
 }
 
 // PushReadNonZero pushes a row onto `as` for a read-non-zero operation.
 func (as *StateDiffAssignmentBuilder) PushReadNonZero(root, hKey, hVal [][]byte) {
 	for i := range common.NbElemPerHash {
-		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
-		as.InitialHVal[i].PushBytes(pagZerosAtBeginning(hVal[i]))
-		as.FinalHVal[i].PushBytes(pagZerosAtBeginning(hVal[i]))
-		as.InitialRoot[i].PushBytes(pagZerosAtBeginning(root[i]))
-		as.FinalRoot[i].PushBytes(pagZerosAtBeginning(root[i]))
+		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
+		as.InitialHVal[i].PushBytes(padZerosAtBeginning(hVal[i]))
+		as.FinalHVal[i].PushBytes(padZerosAtBeginning(hVal[i]))
+		as.InitialRoot[i].PushBytes(padZerosAtBeginning(root[i]))
+		as.FinalRoot[i].PushBytes(padZerosAtBeginning(root[i]))
 	}
 }
 
 // PushInsert pushes a row representing an insertion onto `as`.
 func (as *StateDiffAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal [][]byte) {
 	for i := range common.NbElemPerHash {
-		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
+		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
 		as.InitialHVal[i].PushZero()
-		as.FinalHVal[i].PushBytes(pagZerosAtBeginning(newHVal[i]))
-		as.InitialRoot[i].PushBytes(pagZerosAtBeginning(oldRoot[i]))
-		as.FinalRoot[i].PushBytes(pagZerosAtBeginning(newRoot[i]))
+		as.FinalHVal[i].PushBytes(padZerosAtBeginning(newHVal[i]))
+		as.InitialRoot[i].PushBytes(padZerosAtBeginning(oldRoot[i]))
+		as.FinalRoot[i].PushBytes(padZerosAtBeginning(newRoot[i]))
 	}
 }
 
 // PushUpdate pushes a row representing an update onto `as`.
 func (as *StateDiffAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal, newHVal [][]byte) {
 	for i := range common.NbElemPerHash {
-		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
-		as.InitialHVal[i].PushBytes(pagZerosAtBeginning(oldHVal[i]))
-		as.FinalHVal[i].PushBytes(pagZerosAtBeginning(newHVal[i]))
-		as.InitialRoot[i].PushBytes(pagZerosAtBeginning(oldRoot[i]))
-		as.FinalRoot[i].PushBytes(pagZerosAtBeginning(newRoot[i]))
+		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
+		as.InitialHVal[i].PushBytes(padZerosAtBeginning(oldHVal[i]))
+		as.FinalHVal[i].PushBytes(padZerosAtBeginning(newHVal[i]))
+		as.InitialRoot[i].PushBytes(padZerosAtBeginning(oldRoot[i]))
+		as.FinalRoot[i].PushBytes(padZerosAtBeginning(newRoot[i]))
 	}
 }
 
 // PushDelete pushes a row representing a deletion onto `as`.
 func (as *StateDiffAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal [][]byte) {
 	for i := range common.NbElemPerHash {
-		as.HKey[i].PushBytes(pagZerosAtBeginning(hKey[i]))
-		as.InitialHVal[i].PushBytes(pagZerosAtBeginning(oldHVal[i]))
+		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
+		as.InitialHVal[i].PushBytes(padZerosAtBeginning(oldHVal[i]))
 		as.FinalHVal[i].PushZero()
-		as.InitialRoot[i].PushBytes(pagZerosAtBeginning(oldRoot[i]))
-		as.FinalRoot[i].PushBytes(pagZerosAtBeginning(newRoot[i]))
+		as.InitialRoot[i].PushBytes(padZerosAtBeginning(oldRoot[i]))
+		as.FinalRoot[i].PushBytes(padZerosAtBeginning(newRoot[i]))
 	}
 }
 
@@ -166,8 +166,8 @@ func (builder *StateDiffAssignmentBuilder) AddRows(numRowsAccSegment int, hKey, 
 	}
 }
 
-// pagZerosAtBeginning pads provided array to [field.Bytes] len with zeros at the beginning.
-func pagZerosAtBeginning(arr []byte) []byte {
+// padZerosAtBeginning pads provided array to [field.Bytes] len with zeros at the beginning.
+func padZerosAtBeginning(arr []byte) []byte {
 	if len(arr) >= field.Bytes {
 		return arr
 	}

@@ -173,7 +173,7 @@ func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *co
 				Name:            "SM_ACCUMULATOR",
 				MerkleTreeDepth: 40,
 			},
-			MiMCCodeHashSize: tl.Rom,
+			LineaCodeHashSize: tl.Rom,
 		},
 		Metadata: wizard.VersionMetadata{
 			Title:   "linea/evm-execution/full",

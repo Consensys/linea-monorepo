@@ -121,14 +121,17 @@ func defineStateManagerColumns(comp *wizard.CompiledIOP, sampleType int, size in
 		res.CodeHashLO[i] = createCol(fmt.Sprintf("CodeHashLO_%d", i))
 		res.CodeHashHINew[i] = createCol(fmt.Sprintf("CodeHashHINew_%d", i))
 		res.CodeHashLONew[i] = createCol(fmt.Sprintf("CodeHashLoNew_%d", i))
-		res.BalanceOld[i] = createCol(fmt.Sprintf("BalanceOld_%d", i))
-		res.BalanceNew[i] = createCol(fmt.Sprintf("BalanceNew_%d", i))
 		res.KeyHI[i] = createCol(fmt.Sprintf("KeyHI_%d", i))
 		res.KeyLO[i] = createCol(fmt.Sprintf("KeyLO_%d", i))
 		res.ValueHICurr[i] = createCol(fmt.Sprintf("ValueHICurr_%d", i))
 		res.ValueLOCurr[i] = createCol(fmt.Sprintf("ValueLOCurr_%d", i))
 		res.ValueHINext[i] = createCol(fmt.Sprintf("ValueHINext_%d", i))
 		res.ValueLONext[i] = createCol(fmt.Sprintf("ValueLONext_%d", i))
+	}
+
+	for i := range provercommon.NbLimbU256 {
+		res.BalanceOld[i] = createCol(fmt.Sprintf("BalanceOld_%d", i))
+		res.BalanceNew[i] = createCol(fmt.Sprintf("BalanceNew_%d", i))
 	}
 
 	for i := range provercommon.NbLimbU64 {

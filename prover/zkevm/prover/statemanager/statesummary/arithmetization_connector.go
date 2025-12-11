@@ -96,7 +96,7 @@ type HubColumnSet struct {
 	Nonce, NonceNew                                      [common.NbLimbU64]ifaces.Column
 	CodeHashHI, CodeHashLO, CodeHashHINew, CodeHashLONew [common.NbLimbU128]ifaces.Column
 	CodeSizeOld, CodeSizeNew                             [common.NbLimbU64]ifaces.Column
-	BalanceOld, BalanceNew                               [common.NbLimbU128]ifaces.Column
+	BalanceOld, BalanceNew                               [common.NbLimbU256]ifaces.Column
 	// storage data
 	KeyHI, KeyLO                                       [common.NbLimbU128]ifaces.Column
 	ValueHICurr, ValueLOCurr, ValueHINext, ValueLONext [common.NbLimbU128]ifaces.Column

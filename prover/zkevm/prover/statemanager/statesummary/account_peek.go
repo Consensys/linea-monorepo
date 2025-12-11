@@ -127,12 +127,6 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 
 	accPeek.AddressHash = accPeek.ComputeAddressHash.Result()
 
-	//	panic("the initial/final-are-same is not visible in the small field migration so; this needs to be resolved")
-	/*accPeek.InitialAndFinalAreSame, accPeek.ComputeInitialAndFinalAreSame = dedicated.IsZero(
-		comp,
-		sym.Sub(accPeek.HashInitial, accPeek.HashFinal),
-	).GetColumnAndProverAction()*/
-
 	addrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	shiftedAddrHashLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
 	for i := range poseidon2.BlockSize {
@@ -164,7 +158,7 @@ type Account struct {
 	Nonce, CodeSize [common.NbLimbU64]ifaces.Column
 	StorageRoot     [poseidon2.BlockSize]ifaces.Column
 	LineaCodeHash   [poseidon2.BlockSize]ifaces.Column
-	Balance         [common.NbLimbU128]ifaces.Column
+	Balance         [common.NbLimbU256]ifaces.Column
 	// KeccakCodeHash stores the keccak code hash of the account.
 	KeccakCodeHash common.HiLoColumns
 	// ExpectedHubCodeHash is almost the same as the KeccakCodeHash, with the difference
@@ -202,7 +196,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 		acc.CodeSize[i] = createCol(fmt.Sprintf("CODESIZE_%v", i))
 	}
 
-	for i := range common.NbLimbU128 {
+	for i := range common.NbLimbU256 {
 		acc.Balance[i] = createCol(fmt.Sprintf("BALANCE_%v", i))
 	}
 
@@ -278,7 +272,7 @@ func newAccountPeekAssignmentBuilder(ap *AccountPeek) accountPeekAssignmentBuild
 type accountAssignmentBuilder struct {
 	exists                       *common.VectorBuilder
 	nonce, codeSize              [common.NbLimbU64]*common.VectorBuilder
-	balance                      [common.NbLimbU128]*common.VectorBuilder
+	balance                      [common.NbLimbU256]*common.VectorBuilder
 	storageRoot, lineaCodeHash   [poseidon2.BlockSize]*common.VectorBuilder
 	keccakCodeHash               common.HiLoAssignmentBuilder
 	expectedHubCodeHash          common.HiLoAssignmentBuilder
@@ -300,7 +294,7 @@ func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
 		res.nonce[i] = common.NewVectorBuilder(ap.Nonce[i])
 	}
 
-	for i := range common.NbLimbU128 {
+	for i := range common.NbLimbU256 {
 		res.balance[i] = common.NewVectorBuilder(ap.Balance[i])
 	}
 
@@ -325,11 +319,11 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 	// This is telling us whether the intent is to push an empty account
 	if accountExists {
 		balanceBytes := acc.Balance.Bytes()
-		balancePadBytes := make([]byte, common.NbLimbU128*common.LimbBytes-len(balanceBytes))
+		balancePadBytes := make([]byte, common.NbLimbU256*common.LimbBytes-len(balanceBytes))
 		balancePaddedBytes := append(balancePadBytes, balanceBytes...)
 
 		balanceLimbs := common.SplitBytes(balancePaddedBytes)
-		for i := range common.NbLimbU128 {
+		for i := range common.NbLimbU256 {
 			limbBytes := common.LeftPadToFrBytes(balanceLimbs[i])
 			ss.balance[i].PushBytes(limbBytes)
 		}
@@ -343,7 +337,7 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 		// if account exists push the same Keccak code hash
 		ss.expectedHubCodeHash.Push(keccakCodeHashLimbs)
 	} else {
-		for i := range common.NbLimbU128 {
+		for i := range common.NbLimbU256 {
 			ss.balance[i].PushZero()
 		}
 
@@ -394,11 +388,11 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	// This is telling us whether the intent is to push an empty account
 	if accountExists {
 		balanceBytes := acc.Balance.Bytes()
-		balancePadBytes := make([]byte, common.NbLimbU128*common.LimbBytes-len(balanceBytes))
+		balancePadBytes := make([]byte, common.NbLimbU256*common.LimbBytes-len(balanceBytes))
 		balancePaddedBytes := append(balancePadBytes, balanceBytes...)
 
 		balanceLimbs := common.SplitBytes(balancePaddedBytes)
-		for i := range common.NbLimbU128 {
+		for i := range common.NbLimbU256 {
 			limbBytes := common.LeftPadToFrBytes(balanceLimbs[i])
 			ss.balance[i].PushBytes(limbBytes)
 		}
@@ -412,7 +406,7 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 		// if account exists push the same codehash
 		ss.expectedHubCodeHash.Push(keccakCodeHashLimbs)
 	} else {
-		for i := range common.NbLimbU128 {
+		for i := range common.NbLimbU256 {
 			ss.balance[i].PushZero()
 		}
 
@@ -457,7 +451,7 @@ func (ss *accountAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 		ss.nonce[i].PadAndAssign(run)
 	}
 
-	for i := range common.NbLimbU128 {
+	for i := range common.NbLimbU256 {
 		ss.balance[i].PadAndAssign(run)
 	}
 
@@ -508,7 +502,7 @@ func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
 
 func padd(cols []ifaces.Column, size int, padding ifaces.Column) (res []ifaces.Column) {
 
-	for _ = range size - len(cols) {
+	for range size - len(cols) {
 		res = append(res, padding)
 	}
 	res = append(res, cols...)

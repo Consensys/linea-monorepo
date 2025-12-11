@@ -18,14 +18,16 @@ import (
 //
 // Returns a representation of empty keccak value in limbs with size defined
 // by common.LimbBytes.
-func initEmptyKeccak(emptyKeccakString string) (res [common.NbLimbU256]field.Element) {
+func initEmptyKeccak(emptyKeccakString string) (res [common.NbLimbU128]field.Element) {
 	var emptyKeccakBig big.Int
 	_, isErr := emptyKeccakBig.SetString(emptyKeccakString, 16)
 	if !isErr {
 		panic("empty keccak string is not correct")
 	}
-
 	emptyKeccakByteLimbs := common.SplitBytes(emptyKeccakBig.Bytes())
+	if len(emptyKeccakByteLimbs) != common.NbLimbU128 {
+		panic("empty keccak byte limbs length is not correct")
+	}
 	for i, limbByte := range emptyKeccakByteLimbs {
 		res[i] = *new(field.Element).SetBytes(limbByte)
 	}
@@ -98,7 +100,7 @@ type Module struct {
 	BatchNumber [common.NbLimbU64]ifaces.Column
 
 	// WorldStateRoot stores the state-root hashes.
-	WorldStateRoot [common.NbLimbU256]ifaces.Column
+	WorldStateRoot [common.NbElemPerHash]ifaces.Column
 
 	// Account.Initial and Account.Final represents the values stored in the
 	// account at the beginning and the end of the trace segment.
@@ -147,7 +149,7 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 		res.BatchNumber[i] = createCol(fmt.Sprintf("BATCH_NUMBER_%v", i))
 	}
 
-	for i := range common.NbLimbU256 {
+	for i := range common.NbElemPerHash {
 		res.WorldStateRoot[i] = createCol(fmt.Sprintf("WORLD_STATE_ROOT_%v", i))
 	}
 
@@ -180,25 +182,35 @@ func (ss *Module) csAccountAddress(comp *wizard.CompiledIOP) {
 
 	// Constraint for each limb: when batch number limb[i] didn't change by exactly 1,
 	// addresses can only increase or stay same
-	for i := range common.NbLimbU64 {
+	// Big-endian format: last limb (i=3) holds the value
+	// For the other limbs, batch number should match with its shifted version
+	for i := range common.NbLimbU64 - 1 {
 		comp.InsertGlobal(
 			0,
-			ifaces.QueryIDf("STATE_SUMMARY_ADDRESS_CAN_ONLY_INCREASE_IN_BLOCK_RANGE_%d", i),
+			ifaces.QueryIDf("STATE_SUMMARY_BATCH_NUMBER_HIGHER_LIMBS_ARE_ZERO_%d", i),
 			sym.Mul(
 				ss.IsActive,
-				sym.Sub(
-					ss.BatchNumber[i],
-					column.Shift(ss.BatchNumber[i], -1),
-					1,
-				),
-				sym.Add(
-					ss.Account.HasGreaterAddressAsPrev,
-					ss.Account.HasSameAddressAsPrev,
-					-1,
-				),
-			),
+				sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1))),
 		)
+
 	}
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("STATE_SUMMARY_ADDRESS_CAN_ONLY_INCREASE_IN_BLOCK_RANGE"),
+		sym.Mul(
+			ss.IsActive,
+			sym.Sub(
+				ss.BatchNumber[common.NbLimbU64-1],
+				column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1),
+				1,
+			),
+			sym.Add(
+				ss.Account.HasGreaterAddressAsPrev,
+				ss.Account.HasSameAddressAsPrev,
+				-1,
+			),
+		),
+	)
 }
 
 // csIsActive constrains the [ss.IsActive] flag.
@@ -236,28 +248,27 @@ func (ss *Module) csIsBeginningOfAccountSegment(comp *wizard.CompiledIOP) {
 	// IsBeginningOfAccountSegment being one implies that either the batchNumber
 	// bumped or that we jumped to another account and reciprocally.
 	// We check each limb independently for consistency with BlockNumber representation.
-	for i := range common.NbLimbU64 {
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("STATE_SUMMARY_IBOAS_IS_ONE_IFF_EITHER_NEW_BATCH_OR_NEW_ADDR_%d", i),
-			sym.Add(
-				sym.Mul(
-					ss.IsActive,
-					ss.IsBeginningOfAccountSegment,
-					sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1), 1),
-					ss.Account.HasSameAddressAsPrev,
-				),
-				sym.Mul(
-					ss.IsActive,
-					sym.Sub(1, ss.IsBeginningOfAccountSegment),
-					sym.Add(
-						sym.Sub(ss.BatchNumber[i], column.Shift(ss.BatchNumber[i], -1)),
-						sym.Sub(1, ss.Account.HasSameAddressAsPrev),
-					),
+	// We need to consider only the last limb (lsb as big endian) for the batch number bumping
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("STATE_SUMMARY_IBOAS_IS_ONE_IFF_EITHER_NEW_BATCH_OR_NEW_ADDR"),
+		sym.Add(
+			sym.Mul(
+				ss.IsActive,
+				ss.IsBeginningOfAccountSegment,
+				sym.Sub(ss.BatchNumber[common.NbLimbU64-1], column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1), 1),
+				ss.Account.HasSameAddressAsPrev,
+			),
+			sym.Mul(
+				ss.IsActive,
+				sym.Sub(1, ss.IsBeginningOfAccountSegment),
+				sym.Add(
+					sym.Sub(ss.BatchNumber[common.NbLimbU64-1], column.Shift(ss.BatchNumber[common.NbLimbU64-1], -1)),
+					sym.Sub(1, ss.Account.HasSameAddressAsPrev),
 				),
 			),
-		)
-	}
+		),
+	)
 
 	comp.InsertLocal(
 		0,
@@ -583,13 +594,16 @@ func (ss *Module) csAccountNew(comp *wizard.CompiledIOP) {
 	}
 
 	for i := range common.NbLimbU128 {
-		mustHaveDefaultWhenNotExists(ss.Account.Final.Balance[i], 0)
 		mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Hi[i], 0)
 		mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Lo[i], 0)
 
-		mustBeConstantOnSubsegment(ss.Account.Final.Balance[i])
 		mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Hi[i])
 		mustBeConstantOnSubsegment(ss.Account.Final.KeccakCodeHash.Lo[i])
+	}
+
+	for i := range common.NbLimbU256 {
+		mustHaveDefaultWhenNotExists(ss.Account.Final.Balance[i], 0)
+		mustBeConstantOnSubsegment(ss.Account.Final.Balance[i])
 	}
 
 	for i := range poseidon2.BlockSize {
@@ -690,13 +704,17 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 	}
 
 	for i := range common.NbLimbU128 {
-		mustHaveDefaultWhenNotExists(ss.Account.Initial.Balance[i], 0, -1)
 		mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Hi[i], 0, -1)
 		mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Lo[i], 0, -1)
 
-		mustBeConstantOnSubsegment(ss.Account.Initial.Balance[i], -1)
 		mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Hi[i], -1)
 		mustBeConstantOnSubsegment(ss.Account.Initial.KeccakCodeHash.Lo[i], -1)
+	}
+
+	for i := range common.NbLimbU256 {
+		mustHaveDefaultWhenNotExists(ss.Account.Initial.Balance[i], 0, -1)
+		mustBeConstantOnSubsegment(ss.Account.Initial.Balance[i], -1)
+
 	}
 
 	for i := range poseidon2.BlockSize {
