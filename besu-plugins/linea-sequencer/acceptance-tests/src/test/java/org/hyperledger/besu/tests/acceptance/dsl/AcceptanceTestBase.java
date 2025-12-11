@@ -206,7 +206,7 @@ public abstract class AcceptanceTestBase {
                   transferGasPrice
                       .getValue()
                       .toBigInteger()
-                      .add(Wei.of(21000).getAsBigInteger())
+                      .multiply(BigInteger.valueOf(21000))
                       .multiply(BigInteger.valueOf(numAccounts)));
       assertThat(founderBalance).isGreaterThanOrEqualTo(requiredBalance);
 
