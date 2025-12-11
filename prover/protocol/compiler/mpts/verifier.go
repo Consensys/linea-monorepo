@@ -205,8 +205,13 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 	}
 
 	for _, c := range ctx.ExplicitlyEvaluated {
-		poly := c.GetColAssignmentGnarkExt(run)
-		polys = append(polys, poly)
+		poly := c.GetColAssignmentGnark(run)
+
+		extPoly := make([]gnarkfext.E4Gen, len(poly))
+		for i := range poly {
+			extPoly[i] = gnarkfext.FromBase(poly[i])
+		}
+		polys = append(polys, extPoly)
 	}
 
 	ys := fastpolyext.BatchEvaluateLagrangeGnark(api, polys, x)
