@@ -278,85 +278,43 @@ library SSZ {
 
   // https://github.com/ethereum/consensus-specs/blob/5390b77256a9fd6c1ebe0c7e3f8a3da033476ddf/tests/core/pyspec/eth2spec/utils/merkle_minimal.py#L47-L91
   function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) internal view returns (bytes32 root) {
-    uint256 inputLength = pendingPartialWithdrawal.length;
+    uint256 count = pendingPartialWithdrawal.length;
 
-    uint256 depth = inputLength == 0 ? 0 : Math256.bitLength(inputLength - 1);
+    uint256 depth = count == 0 ? 0 : Math256.bitLength(count - 1);
     bytes32[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH + 1] memory tmp;
 
-    uint256 nodesLength = Math256.nextPow2(inputLength);
-    bytes32[] memory nodes = new bytes32[](nodesLength);
-    // nodes pointer → [length][data0][data1][data2]...[dataN]
-
-    // Fill nodes with SSZ root of the PendingPartialWithdrawals
-    for (uint256 i = 0; i < inputLength; i++) {
-      nodes[i] = hashTreeRoot(pendingPartialWithdrawal[i]);
+    for (uint256 i = 0; i < count; i++) {
+      mergeSSZChunk(tmp, depth, count, hashTreeRoot(pendingPartialWithdrawal[i]), i);
     }
 
-    /// @solidity memory-safe-assembly
-    assembly {
-      // Count of nodes to hash
-      let count := nodesLength
+    if (1 << depth != count) {
+      mergeSSZChunk(tmp, depth, count, bytes32(0), count);
+    }
 
-      // Handle edge case: if count is 1, return the single element directly
-      if eq(count, 1) {
-        // nodes points to length slot, first element is at offset 0x20
-        root := mload(add(nodes, 0x20))
+    for (uint256 j = depth; j < MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH; j++) {
+      tmp[j + 1] = sha256Pair(tmp[j], zeroHash(j));
+    }
+
+    root = tmp[depth];
+  }
+
+  // Mutate `tmp` in-place
+  function mergeSSZChunk(bytes32[28] memory tmp, uint256 depth, uint256 chunkCount, bytes32 chunk, uint256 chunkIndex) internal view {
+      uint256 j = 0;
+      bytes32 h = chunk;
+      while (true) {
+        if (chunkIndex & (1 << j) == 0) {
+          if (chunkIndex == chunkCount && j < depth) {
+            h = sha256Pair(h, zeroHash(j));
+          } else {
+            break;
+          }
+        } else {
+          h = sha256Pair(tmp[j], h);
+        }
+        j++;
       }
-
-      // Loop over levels
-      // prettier-ignore
-      for { } 1 { } {
-                // Skip if count is 1 (already handled above or will be handled after this iteration)
-                if eq(count, 1) {
-                  break
-                }
-
-                // Initialize pointers to data elements (skip length slot at offset 0)
-                // nodes points to length slot, data starts at offset 0x20
-                let target := add(nodes, 0x20)
-                let source := add(nodes, 0x20)
-                let end := add(source, shl(5, count))
-
-                // prettier-ignore
-                for { } 1 { } {
-                    // Read next two hashes to hash
-                    mcopy(0x00, source, 0x40)
-
-                    // Call sha256 precompile
-                    let result := staticcall(
-                        gas(),
-                        0x02,
-                        0x00,
-                        0x40,
-                        0x00,
-                        0x20
-                    )
-
-                    if iszero(result) {
-                        // Precompiles returns no data on OutOfGas error.
-                        revert(0, 0)
-                    }
-
-                    // Store the resulting hash at the target location
-                    mstore(target, mload(0x00))
-
-                    // Advance the pointers
-                    target := add(target, 0x20)
-                    source := add(source, 0x40)
-
-                    if iszero(lt(source, end)) {
-                        break
-                    }
-                }
-
-                count := shr(1, count)
-                if eq(count, 1) {
-                    // Root is the last hash result in scratch space from sha256 precompile
-                    root := mload(0x00)
-                    break
-                }
-            }
-    }
+      tmp[j] = h;
   }
 
   /// @notice Modified version of `verify` from Solady `MerkleProofLib` to support generalized indices and sha256 precompile.
