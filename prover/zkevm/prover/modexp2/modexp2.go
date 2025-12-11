@@ -1,202 +1,24 @@
 package modexp2
 
 import (
+	"fmt"
 	"math/big"
+	"time"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/emulated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
-
-// base exponent modulus result from arithmetization
-
-const (
-	smallModExpSize = 256
-	largeModExpSize = 8192
-
-	limbSizeBits             = 128
-	nbLargeModexpLimbs       = largeModExpSize / limbSizeBits
-	nbSmallModexpLimbs       = smallModExpSize / limbSizeBits
-	modexpNumRowsPerInstance = nbLargeModexpLimbs * 4 // 4 operands: base, exponent, modulus, result
-
-	roundNr = 0
-)
-
-// input collects references to the columns of the arithmetization containing
-// the Modexp statements. These columns are constrained via a projection query
-// to describe the same statement as what is being stated in the antichamber
-// module. They are also used as a data source to assign the columns of the
-// antichamber module.
-//
-// The columns provided here are columns from the BLK_MDXP module.
-type Input struct {
-	Settings Settings
-	// Binary column indicating if we have base limbs
-	IsModExpBase ifaces.Column
-	// Binary column indicating if we have exponent limbs
-	IsModExpExponent ifaces.Column
-	// Binary column indicating if we have modulus limbs
-	IsModExpModulus ifaces.Column
-	// Binary column indicating if we have result limbs
-	IsModExpResult ifaces.Column
-	// IsModexp is a constructed column constrained to be equal to the sum of the
-	// 4 above columns.
-	IsModExp ifaces.Column
-	// Multiplexed column containing limbs for base, exponent, modulus, and result
-	Limbs ifaces.Column
-}
-
-type Settings struct {
-	MaxNbInstance256, MaxNbInstanceLarge int
-	NbInstancesPerCircuitModexp256       int
-	NbInstancesPerCircuitModexpLarge     int
-}
-
-func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) *Input {
-	return &Input{
-		Settings:         settings,
-		IsModExpBase:     comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_BASE"),
-		IsModExpExponent: comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_EXPONENT"),
-		IsModExpModulus:  comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_MODULUS"),
-		IsModExpResult:   comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_RESULT"),
-		Limbs:            comp.Columns.GetHandle("blake2fmodexpdata.LIMB"),
-	}
-}
-
-type Module struct {
-	*Input
-
-	IsSmall ifaces.Column
-	IsLarge ifaces.Column
-	Small   *Modexp
-	Large   *Modexp
-}
-
-func newModule(comp *wizard.CompiledIOP, input *Input) *Module {
-	var (
-		settings = input.Settings
-		mod      = &Module{
-			IsSmall: comp.InsertCommit(0, "MODEXP_IS_SMALL", input.Limbs.Size()),
-			IsLarge: comp.InsertCommit(0, "MODEXP_IS_LARGE", input.Limbs.Size()),
-			Input:   input,
-		}
-	)
-	input.IsModExp = comp.InsertCommit(0, "MODEXP_INPUT_IS_MODEXP", input.Limbs.Size())
-	comp.RegisterProverAction(roundNr, mod)
-	// run later to ensure we have the assignments already done
-	mod.Small = newModexp(comp, "MODEXP_SMALL", input, mod.IsSmall, smallModExpSize, settings.MaxNbInstance256)
-	mod.Large = newModexp(comp, "MODEXP_LARGE", input, mod.IsLarge, largeModExpSize, settings.MaxNbInstanceLarge)
-
-	// pragmas.MarkRightPadded(mod.IsActive)
-
-	mod.csIsModExp(comp)
-	// mod.csIsSmallAndLarge(comp)
-	// mod.csToCirc(comp)
-	// TODO: modexp constraints for projection
-
-	// comp.InsertProjection(
-	// 	"MODEXP_BLKMDXP_PROJECTION",
-	// 	query.ProjectionInput{ColumnA: []ifaces.Column{mod.Input.Limbs},
-	// 		ColumnB: []ifaces.Column{mod.Limbs},
-	// 		FilterA: mod..IsModExp,
-	// 		FilterB: mod.IsActive})
-	return mod
-}
-
-func (m *Module) Run(run *wizard.ProverRuntime) {
-	m.assignIsActive(run)
-	m.assignIsSmallOrLarge(run)
-}
-
-// csIsModExp constructs, constraints and set the [isModexpColumn]
-func (m *Module) csIsModExp(comp *wizard.CompiledIOP) {
-
-	comp.InsertGlobal(
-		0,
-		"MODEXP_IS_MODEXP_WELL_CONSTRUCTED",
-		sym.Sub(
-			m.IsModExp,
-			m.IsModExpBase,
-			m.IsModExpExponent,
-			m.IsModExpModulus,
-			m.IsModExpResult,
-		),
-	)
-}
-
-// assignIsActive evaluates and assigns the IsActive column
-func (m *Module) assignIsActive(run *wizard.ProverRuntime) {
-
-	var (
-		isBase     = m.IsModExpBase.GetColAssignment(run)
-		isExponent = m.IsModExpExponent.GetColAssignment(run)
-		isModulus  = m.IsModExpModulus.GetColAssignment(run)
-		isResult   = m.IsModExpResult.GetColAssignment(run)
-		isActive   = smartvectors.Add(isBase, isExponent, isModulus, isResult)
-	)
-
-	run.AssignColumn(m.IsModExp.GetColID(), isActive)
-}
-
-func (m *Module) assignIsSmallOrLarge(run *wizard.ProverRuntime) {
-	var (
-		srcIsModExp = m.IsModExp.GetColAssignment(run).IntoRegVecSaveAlloc()
-		srcLimbs    = m.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
-	)
-	var (
-		dstIsSmall = common.NewVectorBuilder(m.IsSmall)
-		dstIsLarge = common.NewVectorBuilder(m.IsLarge)
-	)
-	checkSmall := func(ptr int) bool {
-		for k := 0; k < nbLargeModexpLimbs-nbSmallModexpLimbs; k++ {
-			for j := 0; j < 4; j++ {
-				if !srcLimbs[ptr+k+j*nbLargeModexpLimbs].IsZero() {
-					return false
-				}
-			}
-		}
-		return true
-	}
-
-	for ptr := 0; ptr < len(srcLimbs); {
-		if srcIsModExp[ptr].IsZero() {
-			dstIsSmall.PushZero()
-			dstIsLarge.PushZero()
-			ptr++
-			continue
-		}
-		// found a modexp instance. We read the modexp inputs from here.
-		isSmall := checkSmall(ptr)
-		for range modexpNumRowsPerInstance {
-			if isSmall {
-				dstIsSmall.PushOne()
-				dstIsLarge.PushZero()
-			} else {
-				dstIsSmall.PushZero()
-				dstIsLarge.PushOne()
-			}
-		}
-		ptr += modexpNumRowsPerInstance
-	}
-	dstIsLarge.PadAndAssign(run)
-	dstIsSmall.PadAndAssign(run)
-}
-
-func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings) *Module {
-	return newModule(comp, newZkEVMInput(comp, settings))
-}
 
 type Modexp struct {
 	instanceSize int // smallModExpSize or largeModExpSize
 	nbLimbs      int // 256/limbsize for small case, 8096/limbsize for large case
 
 	IsActive ifaces.Column // the active flag for this module
-	*Input
+	*Module
 
 	PrevAccumulator emulated.Limbs
 	CurrAccumulator emulated.Limbs
@@ -206,7 +28,7 @@ type Modexp struct {
 	Mone            emulated.Limbs // mod - 1
 }
 
-func newModexp(comp *wizard.CompiledIOP, name string, input *Input, isActive ifaces.Column, instanceSize int, nbInstances int) *Modexp {
+func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActive ifaces.Column, instanceSize int, nbInstances int) *Modexp {
 	// we omit the Modexp module when there is no instance to process
 	if nbInstances == 0 {
 		return nil
@@ -240,7 +62,7 @@ func newModexp(comp *wizard.CompiledIOP, name string, input *Input, isActive ifa
 		Base:            base,
 		Mone:            mone,
 		IsActive:        isActive,
-		Input:           input,
+		Module:          module,
 	}
 	// register prover action before emulated evaluation so that the limb assignements are available
 	comp.RegisterProverAction(roundNr, me)
@@ -253,6 +75,7 @@ func newModexp(comp *wizard.CompiledIOP, name string, input *Input, isActive ifa
 	// TODO: add constraint that the base is correctly assigned
 	// TODO: add constraint that the modulus is correctly assigned over all rows
 	// TODO: add constraint for exponent bits assignment
+	// TODO: modexp constraints for projection
 
 	return me
 }
