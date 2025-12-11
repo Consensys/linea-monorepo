@@ -84,6 +84,8 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   GIndex public immutable GI_FIRST_VALIDATOR_CURR;
   /// @notice slot when GIndex change will occur due to the hardfork
   uint64 public immutable PIVOT_SLOT;
+  /// @notice GIndex of pending partial withdrawals root in CL state tree
+  GIndex public immutable GI_PENDING_PARTIAL_WITHDRAWALS_ROOT;
 
   /**
      *   GIndex of stateRoot in Beacon Block state is
@@ -128,12 +130,14 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
    * @param _gIFirstValidatorPrev packed(general index | depth in Merkle tree, see GIndex.sol) GIndex of first validator in CL state tree
    * @param _gIFirstValidatorCurr packed GIndex of first validator after fork changes tree structure
    * @param _pivotSlot slot of the fork that alters first validator GIndex
+   * @param _gIPendingPartialWithdrawalsRoot packed GIndex of pending partial withdrawals root in CL state tree
    * @dev if no fork changes are known,  _gIFirstValidatorPrev = _gIFirstValidatorCurr and _changeSlot = 0
    */
-  constructor(GIndex _gIFirstValidatorPrev, GIndex _gIFirstValidatorCurr, uint64 _pivotSlot) {
+  constructor(GIndex _gIFirstValidatorPrev, GIndex _gIFirstValidatorCurr, uint64 _pivotSlot, GIndex _gIPendingPartialWithdrawalsRoot) {
     GI_FIRST_VALIDATOR_PREV = _gIFirstValidatorPrev;
     GI_FIRST_VALIDATOR_CURR = _gIFirstValidatorCurr;
     PIVOT_SLOT = _pivotSlot;
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = _gIPendingPartialWithdrawalsRoot;
   }
 
   /**
@@ -150,7 +154,7 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   ) external view {
     // verifies user provided slot against user provided proof
     // proof verification is done in `SSZ.verifyProof` and is not affected by slot
-    _verifySlot(_witness);
+    _verifySlot(_witness.slot, _witness.proposerIndex, _witness.proof);
     _validateActivationEpoch(_witness);
 
     Validator memory validator = Validator({
@@ -185,17 +189,33 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   }
 
   /**
-   * @notice returns parent CL block root for given child block timestamp
-   * @param _witness object containing proof, slot and proposerIndex
-   * @dev checks slot and proposerIndex against proof[:-2] which latter is verified against Beacon block root
-   * This is a trivial case of multi Merkle proofs where a short proof branch proves slot
+   * @notice validates proof of pending partial withdrawals in CL against Beacon block root
+   * @param _witness object containing user input passed as calldata
+   * @dev reverts with `InvalidProof` when provided input cannot be proven to Beacon block root
    */
-  function _verifySlot(IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness) internal view {
+  function verifyPendingPartialWithdrawals(
+    PendingPartialWithdrawalsWitness calldata _witness
+  ) external view {
+    _verifySlot(_witness.slot, _witness.proposerIndex, _witness.proof);
+    bytes32 pendingPartialWithdrawalsRoot = SSZ.hashTreeRoot(_witness.pendingPartialWithdrawals);
+
+  }
+
+  /**
+   * @notice Verifies that the provided slot and proposerIndex match the Merkle proof
+   * @param _slot slot of the beacon block for which the proof is generated
+   * @param _proposerIndex proposer index of the beacon block for which the proof is generated
+   * @param _proof array of merkle proofs from Validator container root to Beacon block root
+   * @dev Checks that the hash of (slot, proposerIndex) matches the parent node at proof[proof.length - 2]
+   * This verifies that the slot and proposerIndex are part of the beacon block header in the proof
+   * @dev Reverts with `InvalidSlot` if the slot/proposerIndex don't match the proof
+   */
+  function _verifySlot(uint64 _slot, uint64 _proposerIndex, bytes32[] calldata _proof) internal view {
     bytes32 parentSlotProposer = BLS12_381.sha256Pair(
-      SSZ.toLittleEndian(_witness.slot),
-      SSZ.toLittleEndian(_witness.proposerIndex)
+      SSZ.toLittleEndian(_slot),
+      SSZ.toLittleEndian(_proposerIndex)
     );
-    if (_witness.proof[_witness.proof.length - SLOT_PROPOSER_PARENT_PROOF_OFFSET] != parentSlotProposer) {
+    if (_proof[_proof.length - SLOT_PROPOSER_PARENT_PROOF_OFFSET] != parentSlotProposer) {
       revert InvalidSlot();
     }
   }

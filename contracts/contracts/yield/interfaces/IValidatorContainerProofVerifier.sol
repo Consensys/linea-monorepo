@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
+import { PendingPartialWithdrawal } from "../libs/vendor/lido/BeaconTypes.sol";
+
 /**
  * @title Interface for ValidatorContainerProofVerifier.
  * @author Consensys Software Inc.
@@ -29,6 +31,22 @@ interface IValidatorContainerProofVerifier {
     uint64 activationEligibilityEpoch;
   }
 
+  /**
+   * @notice Input for validator container proof verification
+   * @custom:proof array of merkle proofs from pending_partial_withdrawals root to Beacon block root
+   * @custom:pendingPartialWithdrawals Entire array of pending_partials_withdrawals
+   * @custom:childBlockTimestamp of EL block that has parent block beacon root in BEACON_ROOTS contract
+   * @custom:slot of the beacon block for which the proof is generated
+   * @custom:proposerIndex of the beacon block for which the proof is generated
+   */
+  struct PendingPartialWithdrawalsWitness {
+    bytes32[] proof;
+    PendingPartialWithdrawal[] pendingPartialWithdrawals;
+    uint64 childBlockTimestamp;
+    uint64 slot;
+    uint64 proposerIndex;
+  }
+
   /// @notice Thrown when the slot and proposer index branch does not align with the supplied Merkle proof.
   error InvalidSlot();
 
@@ -49,5 +67,14 @@ interface IValidatorContainerProofVerifier {
     ValidatorContainerWitness calldata _witness,
     bytes memory _pubkey,
     bytes32 _withdrawalCredentials
+  ) external view;
+
+  /**
+   * @notice validates proof of pending partial withdrawals in CL against Beacon block root
+   * @param _witness object containing user input passed as calldata
+   * @dev reverts with `InvalidProof` when provided input cannot be proven to Beacon block root
+   */
+  function verifyPendingPartialWithdrawals(
+    PendingPartialWithdrawalsWitness calldata _witness
   ) external view;
 }
