@@ -2,6 +2,7 @@ package fetchers_arithmetization
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -26,8 +27,8 @@ const (
 	limbBitSize = 16
 )
 
-// TimestampFetcher is a struct used to fetch the timestamps from the arithmetization's BlockDataCols
-type TimestampFetcher struct {
+// BlockDataFetcher is a struct used to fetch the timestamps from the arithmetization's BlockDataCols
+type BlockDataFetcher struct {
 	// RelBlock is the relative block number, ranging from 1 to the total number of blocks
 	RelBlock ifaces.Column
 	// timestamp data for the first and last blocks in the conflation, columns of size 1
@@ -37,8 +38,8 @@ type TimestampFetcher struct {
 	// projection query between the fetcher and the
 	FirstArith, LastArith [common.NbLimbU128]ifaces.Column
 	// Data contains all the timestamps in the conflation, ordered by block
-	Data [common.NbLimbU128]ifaces.Column
-	// filter on the TimestampFetcher.Data column
+	Data ifaces.Column
+	// filter on the BlockDataFetcher.Data column
 	FilterFetched ifaces.Column
 	// filter on the Arithmetization's columns
 	FilterArith ifaces.Column
@@ -66,12 +67,12 @@ type TimestampFetcher struct {
 	minusOne ifaces.Column
 }
 
-// NewTimestampFetcher returns a new TimestampFetcher with initialized columns that are not constrained.
-func NewTimestampFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.BlockDataCols) *TimestampFetcher {
+// NewBlockDataFetcher returns a new BlockDataFetcher with initialized columns that are not constrained.
+func NewBlockDataFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.BlockDataCols) *BlockDataFetcher {
 
 	size := bdc.Ct.Size()
 
-	res := &TimestampFetcher{
+	res := &BlockDataFetcher{
 		RelBlock:      util.CreateColBase(name, "REL_BLOCK", size, comp),
 		FilterFetched: util.CreateColBase(name, "FILTER_FETCHED", size, comp),
 		FilterArith:   util.CreateColBase(name, "FILTER_ARITHMETIZATION", size, comp),
@@ -90,13 +91,14 @@ func NewTimestampFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.Block
 		res.LastBlockID[i] = util.CreateColBase(name, fmt.Sprintf("LAST_BLOCK_ID_%d", i), size, comp)
 		res.FirstBlockIDArith[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
 		res.LastBlockIDArith[i] = util.CreateColBase(name, fmt.Sprintf("LAST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
+
 	}
 
 	return res
 }
 
 // ConstrainFirstAndLastBlockID constraing the values of FirstBlockID and LastBlockID
-func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *TimestampFetcher, name string, bdc *arith.BlockDataCols) {
+func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher, name string, bdc *arith.BlockDataCols) {
 	fetcher.LastMinusFirstBlock, fetcher.LastMinusFirstBlockAction = byte32cmp.NewMultiLimbAdd(comp,
 		&byte32cmp.MultiLimbAddIn{
 			Name: fmt.Sprintf("%s_LAST_BLOCK_ID_GLOBAL_INTERM_%s", name, fetcher.LastBlockID[0].GetColID()),
@@ -170,8 +172,8 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *TimestampFe
 	)
 }
 
-// DefineTimestampFetcher specifies the constraints of the TimestampFetcher with respect to the BlockDataCols
-func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher, name string, bdc *arith.BlockDataCols) {
+// DefineBlockDataFetcher specifies the constraints of the BlockDataFetcher with respect to the BlockDataCols
+func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher, name string, bdc *arith.BlockDataCols) {
 	timestampField := util.GetTimestampField()
 	// constrain the fetcher.SelectorTimestamp column, which will be used to compute the filter for the arithmetization's BlockDataCols
 	fetcher.SelectorTimestamp, fetcher.ComputeSelectorTimestamp = dedicated.IsZero(
@@ -280,8 +282,8 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 
 }
 
-// AssignTimestampFetcher assigns the data in the TimestampFetcher using data fetched from the BlockDataCols
-func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher, bdc *arith.BlockDataCols) {
+// AssignBlockDataFetcher assigns the data in the BlockDataFetcher using data fetched from the BlockDataCols
+func AssignBlockDataFetcher(run *wizard.ProverRuntime, fetcher *BlockDataFetcher, bdc *arith.BlockDataCols) {
 
 	var (
 		firstBlockID [common.NbLimbU48]field.Element

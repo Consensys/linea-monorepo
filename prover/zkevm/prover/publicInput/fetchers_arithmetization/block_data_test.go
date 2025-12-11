@@ -11,29 +11,29 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestTimestampFetcher tests the fetching of the timestamp data
-func TestTimestampFetcher(t *testing.T) {
+// TestBlockDataFetcher tests the fetching of the timestamp data
+func TestBlockDataFetcher(t *testing.T) {
 
 	// initialize sample block data from a mock test data CSV file
 	ctBlockData := util.InitializeCsv("../testdata/blockdata_mock.csv", t)
 	var (
 		bdc     *arith.BlockDataCols
-		fetcher *TimestampFetcher
+		fetcher *BlockDataFetcher
 	)
 
 	cmp := wizard.Compile(func(b *wizard.Builder) {
 		// register sample arithmetization columns
 		bdc, _, _ = arith.DefineTestingArithModules(b, ctBlockData, nil, nil)
 		// create a new timestamp fetcher
-		fetcher = NewTimestampFetcher(b.CompiledIOP, "TIMESTAMP_FETCHER_FROM_ARITH", bdc)
+		fetcher = NewBlockDataFetcher(b.CompiledIOP, "TIMESTAMP_FETCHER_FROM_ARITH", bdc)
 		// constrain the timestamp fetcher
-		DefineTimestampFetcher(b.CompiledIOP, fetcher, "TIMESTAMP_FETCHER_FROM_ARITH", bdc)
+		DefineBlockDataFetcher(b.CompiledIOP, fetcher, "TIMESTAMP_FETCHER_FROM_ARITH", bdc)
 	}, dummy.Compile)
 	proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
 		// assign the CSV columns
 		arith.AssignTestingArithModules(run, ctBlockData, nil, nil)
 		// assign the timestamp fetcher
-		AssignTimestampFetcher(run, fetcher, bdc)
+		AssignBlockDataFetcher(run, fetcher, bdc)
 		// two simple sanity checks based on the mock test data
 		nbLimbs := len(fetcher.First)
 		assert.Equal(t, fetcher.First[nbLimbs-1].GetColAssignmentAt(run, 0), field.NewElement(0xa))
