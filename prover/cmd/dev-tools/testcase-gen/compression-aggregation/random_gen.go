@@ -22,6 +22,16 @@ type RandGenSpec struct {
 	BlobSubmissionSpec BlobSubmissionSpec `json:"blobSubmissionSpec"`
 	// Optional, if set indicates that this should generate a proof aggregation
 	AggregationSpec AggregationSpec `json:"aggregationSpec"`
+	// Optional, if set specifies the dynamic chain configuration to use
+	DynamicChainConfigurationSpec DynamicChainConfigurationSpec `json:"dynamicChainConfigurationSpec"`
+}
+
+// DynamicChainConfiguration spec, specifies the chain configuration parameters
+type DynamicChainConfigurationSpec struct {
+	ChainID              uint64 `json:"chainID"`
+	BaseFee              uint64 `json:"baseFee"`
+	CoinBase             string `json:"coinBase"`
+	L2MessageServiceAddr string `json:"l2MessageServiceAddr"`
 }
 
 // BlobSubmission spec, specifies how to generate a random blob submission
