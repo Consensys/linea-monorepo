@@ -38,9 +38,14 @@ type Aggregation struct {
 	BaseFee              uint64
 	CoinBase             types.EthAddress
 	L2MessageServiceAddr types.EthAddress
+	IsAllowedCircuitID   uint64
 }
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
+
+	// @gusiri
+	// TODO: Make sure the dynamic chain configuration is hashed correctly
+
 	if hsh == nil {
 		hsh = sha3.NewLegacyKeccak256()
 	}
@@ -122,6 +127,7 @@ type AggregationFPI struct {
 	BaseFee              uint64
 	CoinBase             types.EthAddress
 	L2MessageServiceAddr types.EthAddress
+	IsAllowedCircuitID   uint64
 }
 
 func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
@@ -139,6 +145,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 				BaseFee:                 zk.ValueOf(pi.BaseFee),
 				CoinBase:                new(big.Int).SetBytes(zk.ValueOf(pi.CoinBase[:])),
 				L2MessageServiceAddress: new(big.Int).SetBytes(zk.ValueOf(pi.L2MessageServiceAddr[:])),
+				IsAllowedCircuitID:      zk.ValueOf(pi.IsAllowedCircuitID),
 			},
 		},
 		L2MsgMerkleTreeRoots:   make([][32]zk.WrappedVariable, len(pi.L2MsgMerkleTreeRoots)),
@@ -173,6 +180,23 @@ type ChainConfigurationFPISnark struct {
 	BaseFee                 zk.WrappedVariable
 	CoinBase                zk.WrappedVariable
 	L2MessageServiceAddress zk.WrappedVariable // WARNING: Currently not bound in Sum
+
+	// IsAllowedCircuitID encode which circuits are allowed in the dynamic
+	// chain configuration.
+	//
+	// Its bits encodes which circuit is being allowed in the dynamic chain
+	// configuration. For instance, the bits of weight "3" indicates whether the
+	// circuit ID "3" is allowed and so on.  The packing order of the bits is
+	// LSb to MSb. For instance if
+	//
+	// Circuit ID 0 -> Disallowed
+	// Circuit ID 1 -> Allowed
+	// Circuit ID 2 -> Allowed
+	// Circuit ID 3 -> Disallowed
+	// Circuit ID 4 -> Allowed
+	//
+	// Then the IsAllowedCircuitID public input must be encoded as 0b10110
+	IsAllowedCircuitID frontend.Variable
 }
 
 type AggregationFPISnark struct {
@@ -191,6 +215,9 @@ type AggregationFPISnark struct {
 
 // NewAggregationFPI does NOT set all fields, only the ones covered in public_input.Aggregation
 func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
+
+	// @gusiri
+	// TODO: make sure the construction is still correct
 	s = &AggregationFPI{
 		LastFinalizedBlockNumber:          uint64(fpi.LastFinalizedBlockNumber),
 		LastFinalizedBlockTimestamp:       uint64(fpi.ParentAggregationLastBlockTimestamp),
@@ -201,7 +228,10 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 		FinalRollingHashNumber:            uint64(fpi.L1RollingHashMessageNumber),
 		L2MsgMerkleTreeDepth:              fpi.L2MsgMerkleTreeDepth,
 		ChainID:                           fpi.ChainID,
+		BaseFee:                           fpi.BaseFee,
+		CoinBase:                          fpi.CoinBase,
 		L2MessageServiceAddr:              fpi.L2MessageServiceAddr,
+		IsAllowedCircuitID:                fpi.IsAllowedCircuitID,
 	}
 	if err = copyFromHex(s.InitialStateRootHash[:], fpi.ParentStateRootHash); err != nil {
 		return
@@ -338,7 +368,7 @@ func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) frontend.Variable {
 }
 
 // computeChainConfigurationHash computes the MiMC hash of chain configuration
-func computeChainConfigurationHash(chainID uint64, baseFee uint64, l2MessageServiceAddr types.EthAddress) [32]byte {
+func computeChainConfigurationHash(chainID uint64, baseFee uint64, coinBase types.EthAddress, l2MessageServiceAddr types.EthAddress) [32]byte {
 	h := mimc.NewMiMC()
 	h.Reset()
 
@@ -354,6 +384,11 @@ func computeChainConfigurationHash(chainID uint64, baseFee uint64, l2MessageServ
 
 	// Process base fee
 	writeValue(new(big.Int).SetUint64(baseFee))
+
+	// Process coin base address
+	var coinBaseBytes [32]byte
+	copy(coinBaseBytes[12:], coinBase[:])
+	h.Write(coinBaseBytes[:])
 
 	// Process L2 message service address
 	var addrBytes [32]byte

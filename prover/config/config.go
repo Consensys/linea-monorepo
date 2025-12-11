@@ -97,13 +97,16 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	}
 
 	// duplicate L2 hardcoded values for PI
-	// check if ChainID and BaseFee are within the max value (8 byetes)
-	// TODO@gusiri: Later, we should receive this as a string, check max value, and convert to uint64.
+	// check if ChainID and BaseFee are within the max value (8 bytes)
+	// TODO @gusiri: Later, we should receive this as a string, check max value, and convert to uint64.
 
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
 	cfg.PublicInputInterconnection.BaseFee = uint64(cfg.Layer2.BaseFee)
 	cfg.PublicInputInterconnection.CoinBase = cfg.Layer2.CoinBase
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
+
+	// Pass IsAllowedCircuitID from aggregation config to PI circuit
+	cfg.PublicInputInterconnection.IsAllowedCircuitID = cfg.Aggregation.IsAllowedCircuitID
 
 	return &cfg, nil
 }
@@ -285,9 +288,11 @@ type Aggregation struct {
 	// Number of proofs that are supported by the aggregation circuit.
 	NumProofs []int `mapstructure:"num_proofs" validate:"required,dive,gt=0,number"`
 
-	// AllowedInputs determines the "inner" plonk circuits the "outer" aggregation circuit can aggregate.
-	// Order matters.
-	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large execution-limitless blob-decompression-dummy blob-decompression-v0 blob-decompression-v1 emulation-dummy aggregation emulation public-input-interconnection"`
+	// IsAllowedCircuitID is a bitmask encoding which circuit IDs are allowed.
+	// Bit i (LSb to MSb) indicates whether circuit ID i is allowed.
+	// This should be computed based on the environment (testnet vs mainnet).
+	// Use GlobalCircuitIDMapping to set the appropriate bits.
+	IsAllowedCircuitID uint64 `mapstructure:"is_allowed_circuit_id" validate:"required"`
 
 	// note @gbotrel keeping that around in case we need to support two emulation contract
 	// during a migration.
@@ -323,11 +328,12 @@ type PublicInput struct {
 
 	// not serialized
 
-	MockKeccakWizard bool           // for testing purposes only
-	ChainID          uint64         // duplicate from Config
-	BaseFee          uint64         // duplicate from Config
-	L2MsgServiceAddr common.Address // duplicate from Config
-	CoinBase         common.Address // duplicate from Config
+	MockKeccakWizard   bool           // for testing purposes only
+	ChainID            uint64         // duplicate from Config.Layer2
+	BaseFee            uint64         // duplicate from Config.Layer2
+	L2MsgServiceAddr   common.Address // duplicate from Config.Layer2
+	CoinBase           common.Address // duplicate from Config.Layer2
+	IsAllowedCircuitID uint64         // duplicate from Config.Aggregation, bitmask of allowed circuit IDs
 }
 
 type Debug struct {
@@ -363,4 +369,45 @@ func (cfg *Config) BlobDecompressionDictStore(circuitID string) dictionary.Store
 	}
 
 	return dictionary.NewStore(paths...)
+}
+
+// GlobalCircuitIDMapping defines the fixed mapping of circuit names to circuit IDs.
+// This order is canonical and must remain stable. Dummy circuits are at the LSBs.
+var GlobalCircuitIDMapping = map[string]uint{
+	// Dummy circuits (LSBs, bits 0-2)
+	"execution-dummy":          0,
+	"blob-decompression-dummy": 1,
+	"emulation-dummy":          2,
+
+	// Production circuits (bits 3+)
+	"execution":                    3,
+	"execution-large":              4,
+	"execution-limitless":          5,
+	"blob-decompression-v0":        6,
+	"blob-decompression-v1":        7,
+	"emulation":                    8,
+	"aggregation":                  9,
+	"public-input-interconnection": 10,
+}
+
+// GetAllCircuitNames returns all circuit names in the global mapping, sorted by circuit ID.
+func GetAllCircuitNames() []string {
+	// Create reverse mapping
+	idToName := make(map[uint]string)
+	maxID := uint(0)
+	for name, id := range GlobalCircuitIDMapping {
+		idToName[id] = name
+		if id > maxID {
+			maxID = id
+		}
+	}
+
+	// Build sorted list
+	result := make([]string, 0, len(GlobalCircuitIDMapping))
+	for i := uint(0); i <= maxID; i++ {
+		if name, exists := idToName[i]; exists {
+			result = append(result, name)
+		}
+	}
+	return result
 }

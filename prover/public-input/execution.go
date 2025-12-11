@@ -10,6 +10,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
+// @gusiri
+// TODO: make sure we bubble up everything for the dynamic chain configuration
 type Execution struct {
 	InitialBlockTimestamp        uint64
 	FinalStateRootHash           [32]byte
