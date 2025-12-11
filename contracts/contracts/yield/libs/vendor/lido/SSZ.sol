@@ -15,10 +15,13 @@ pragma solidity ^0.8.25;
 import { BeaconBlockHeader, Validator, PendingPartialWithdrawal } from "./BeaconTypes.sol";
 import { GIndex } from "./GIndex.sol";
 import { Math256 } from "../../../../lib/Math256.sol";
+
 library SSZ {
   error BranchHasMissingItem();
   error BranchHasExtraItem();
   error InvalidProof();
+
+  uint256 constant MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH = 27;
 
   function hashTreeRoot(BeaconBlockHeader memory header) internal view returns (bytes32 root) {
     bytes32[8] memory nodes = [
@@ -240,9 +243,11 @@ library SSZ {
     }
   }
 
+  // https://github.com/ethereum/consensus-specs/blob/5390b77256a9fd6c1ebe0c7e3f8a3da033476ddf/tests/core/pyspec/eth2spec/utils/merkle_minimal.py#L47-L91
   function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) internal view returns (bytes32 root) {
     uint256 inputLength = pendingPartialWithdrawal.length;
     if (inputLength == 0) return bytes32(0);
+
     uint256 nodesLength = Math256.nextPow2(inputLength);
     bytes32[] memory nodes = new bytes32[](nodesLength);
     // nodes pointer → [length][data0][data1][data2]...[dataN]
