@@ -27,7 +27,7 @@ func limbsToBigInt(res *big.Int, buf []*big.Int, limbs Limbs, loc int, nbBitsPer
 		limb := limbs.Columns[j].GetColAssignmentAt(run, loc)
 		limb.BigInt(buf[j])
 	}
-	if err := recompose(buf, nbBitsPerLimb, res); err != nil {
+	if err := IntLimbRecompose(buf, nbBitsPerLimb, res); err != nil {
 		return err
 	}
 	return nil
@@ -37,7 +37,7 @@ func bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, vb []*common.Vec
 	if len(buf) != len(limbs.Columns) {
 		return fmt.Errorf("mismatched size between limbs and buffer")
 	}
-	if err := decompose(input, nbBitsPerLimb, buf); err != nil {
+	if err := IntLimbDecompose(input, nbBitsPerLimb, buf); err != nil {
 		return fmt.Errorf("failed to decompose big.Int into limbs: %v", err)
 	}
 	for i := range limbs.Columns {
@@ -54,7 +54,7 @@ func bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, vb []*common.Vec
 // The following holds
 //
 //	input = \sum_{i=0}^{len(res)} res[i] * 2^{nbBits * i}
-func decompose(input *big.Int, nbBits int, res []*big.Int) error {
+func IntLimbDecompose(input *big.Int, nbBits int, res []*big.Int) error {
 	// limb modulus
 	if input.BitLen() > len(res)*int(nbBits) {
 		return errors.New("decomposed integer does not fit into res")
@@ -79,7 +79,7 @@ func decompose(input *big.Int, nbBits int, res []*big.Int) error {
 // The following holds
 //
 //	res = \sum_{i=0}^{len(inputs)} inputs[i] * 2^{nbBits * i}
-func recompose(inputs []*big.Int, nbBits int, res *big.Int) error {
+func IntLimbRecompose(inputs []*big.Int, nbBits int, res *big.Int) error {
 	if res == nil {
 		return errors.New("result not initialized")
 	}

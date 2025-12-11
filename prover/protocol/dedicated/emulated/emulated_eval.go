@@ -174,6 +174,7 @@ func (a *EmulatedEvaluationModule) assignChallengePowers(run *wizard.ProverRunti
 }
 
 func EmulatedEvaluation(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus Limbs, terms [][]Limbs) *EmulatedEvaluationModule {
+	// TODO: make it work when we have non-full limbs (i.e. for selectors)
 	round := 0
 	nbRows := modulus.Columns[0].Size()
 	maxTermDegree := 0

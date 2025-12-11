@@ -32,6 +32,20 @@ func (l Limbs) String() string {
 	return fmt.Sprintf("[%s]", strings.Join(names, ":"))
 }
 
+func NewLimbs(comp *wizard.CompiledIOP, round int, name string, nbLimbs int, nbRows int) Limbs {
+	limbs := Limbs{
+		Columns: make([]ifaces.Column, nbLimbs),
+	}
+	for i := range nbLimbs {
+		limbs.Columns[i] = comp.InsertCommit(
+			round,
+			ifaces.ColIDf("%s_LIMB_%d", name, i),
+			nbRows,
+		)
+	}
+	return limbs
+}
+
 type EmulatedMultiplicationModule struct {
 	// TODO: use expression board instead, but for now keep it simple
 

@@ -24,10 +24,10 @@ func TestEmulatedMultiplication(t *testing.T) {
 	const nbLimbs = (nbBits + nbBitsPerLimb - 1) / nbBitsPerLimb
 	var pa, pa2 *EmulatedMultiplicationModule
 	define := func(b *wizard.Builder) {
-		P := registerEmulated(b.CompiledIOP, round_nr, "P", nbLimbs, nbEntries)
-		A := registerEmulated(b.CompiledIOP, round_nr, "A", nbLimbs, nbEntries)
-		B := registerEmulated(b.CompiledIOP, round_nr, "B", nbLimbs, nbEntries)
-		expected := registerEmulated(b.CompiledIOP, 0, "EXPECTED", nbLimbs, nbEntries)
+		P := NewLimbs(b.CompiledIOP, round_nr, "P", nbLimbs, nbEntries)
+		A := NewLimbs(b.CompiledIOP, round_nr, "A", nbLimbs, nbEntries)
+		B := NewLimbs(b.CompiledIOP, round_nr, "B", nbLimbs, nbEntries)
+		expected := NewLimbs(b.CompiledIOP, 0, "EXPECTED", nbLimbs, nbEntries)
 		pa = EmulatedMultiplication(b.CompiledIOP, "TEST", A, B, P, nbBitsPerLimb)
 		for i := range pa.Result.Columns {
 			b.CompiledIOP.InsertGlobal(
@@ -83,11 +83,11 @@ func TestEmulatedEvaluation(t *testing.T) {
 	const nbLimbs = (nbBits + nbBitsPerLimb - 1) / nbBitsPerLimb
 	var pa *EmulatedEvaluationModule
 	define := func(b *wizard.Builder) {
-		P := registerEmulated(b.CompiledIOP, round_nr, "P", nbLimbs, nbEntries)
-		T0 := registerEmulated(b.CompiledIOP, round_nr, "T0", nbLimbs, nbEntries)
-		T1 := registerEmulated(b.CompiledIOP, round_nr, "T1", nbLimbs, nbEntries)
-		T2 := registerEmulated(b.CompiledIOP, round_nr, "T2", nbLimbs, nbEntries)
-		T3 := registerEmulated(b.CompiledIOP, round_nr, "T3", nbLimbs, nbEntries)
+		P := NewLimbs(b.CompiledIOP, round_nr, "P", nbLimbs, nbEntries)
+		T0 := NewLimbs(b.CompiledIOP, round_nr, "T0", nbLimbs, nbEntries)
+		T1 := NewLimbs(b.CompiledIOP, round_nr, "T1", nbLimbs, nbEntries)
+		T2 := NewLimbs(b.CompiledIOP, round_nr, "T2", nbLimbs, nbEntries)
+		T3 := NewLimbs(b.CompiledIOP, round_nr, "T3", nbLimbs, nbEntries)
 		pa = EmulatedEvaluation(b.CompiledIOP, "TEST", nbBitsPerLimb, P, [][]Limbs{
 			{T0, T1}, {T0, T1, T2}, {T3}, // T0*T1 + T0*T1*T2 + T3 == 0
 		})
@@ -138,20 +138,6 @@ func TestEmulatedEvaluation(t *testing.T) {
 	proof := wizard.Prove(comp, prover)
 	err = wizard.Verify(comp, proof)
 	require.NoError(t, err)
-}
-
-func registerEmulated(comp *wizard.CompiledIOP, round int, name string, nbLimbs int, nbEntries int) Limbs {
-	limbs := Limbs{
-		Columns: make([]ifaces.Column, nbLimbs),
-	}
-	for i := range nbLimbs {
-		limbs.Columns[i] = comp.InsertCommit(
-			round,
-			ifaces.ColIDf("%s_LIMB_%d", name, i),
-			nbEntries,
-		)
-	}
-	return limbs
 }
 
 type assignable interface {
