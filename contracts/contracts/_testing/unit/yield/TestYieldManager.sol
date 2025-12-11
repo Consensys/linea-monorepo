@@ -237,15 +237,13 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     address _yieldProvider,
     bytes memory _pubkeys,
     uint64[] memory _amounts,
-    uint256 _validatorIndex,
-    uint256 _slot,
     bytes memory _withdrawalParamsProof
   ) external returns (uint256) {
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(
         TestLidoStVaultYieldProvider.validateUnstakePermissionlessRequestHarness,
-        (_yieldProvider, _pubkeys, _amounts, _validatorIndex, _slot, _withdrawalParamsProof)
+        (_yieldProvider, _pubkeys, _amounts, _withdrawalParamsProof)
       )
     );
     return abi.decode(data, (uint256));

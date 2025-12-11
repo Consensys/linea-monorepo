@@ -12,9 +12,9 @@
 // solhint-disable-next-line lido/fixed-compiler-version
 pragma solidity ^0.8.25;
 
-import { BeaconBlockHeader, Validator, PendingPartialWithdrawal } from "./BeaconTypes.sol";
+import { BeaconBlockHeader, Validator } from "./BeaconTypes.sol";
 import { GIndex } from "./GIndex.sol";
-import { Math256 } from "../../../../lib/Math256.sol";
+
 library SSZ {
   error BranchHasMissingItem();
   error BranchHasExtraItem();
@@ -169,149 +169,6 @@ library SSZ {
 
                 count := shr(1, count)
                 if eq(count, 1) {
-                    root := mload(0x00)
-                    break
-                }
-            }
-    }
-  }
-
-  function hashTreeRoot(PendingPartialWithdrawal memory pendingPartialWithdrawal) internal view returns (bytes32 root) {
-    bytes32[4] memory nodes = [
-      toLittleEndian(pendingPartialWithdrawal.validatorIndex),
-      toLittleEndian(pendingPartialWithdrawal.amount),
-      toLittleEndian(pendingPartialWithdrawal.withdrawableEpoch),
-      bytes32(0)
-    ];
-
-    /// @solidity memory-safe-assembly
-    assembly {
-      // Count of nodes to hash
-      let count := 4
-
-      // Loop over levels
-      // prettier-ignore
-      for { } 1 { } {
-                // Loop over nodes at the given depth
-
-                // Initialize `offset` to the offset of `proof` elements in memory.
-                let target := nodes
-                let source := nodes
-                let end := add(source, shl(5, count))
-
-                // prettier-ignore
-                for { } 1 { } {
-                    // Read next two hashes to hash
-                    mcopy(0x00, source, 0x40)
-
-                    // Call sha256 precompile
-                    let result := staticcall(
-                        gas(),
-                        0x02,
-                        0x00,
-                        0x40,
-                        0x00,
-                        0x20
-                    )
-
-                    if iszero(result) {
-                        // Precompiles returns no data on OutOfGas error.
-                        revert(0, 0)
-                    }
-
-                    // Store the resulting hash at the target location
-                    mstore(target, mload(0x00))
-
-                    // Advance the pointers
-                    target := add(target, 0x20)
-                    source := add(source, 0x40)
-
-                    if iszero(lt(source, end)) {
-                        break
-                    }
-                }
-
-                count := shr(1, count)
-                if eq(count, 1) {
-                    root := mload(0x00)
-                    break
-                }
-            }
-    }
-  }
-
-  function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) internal view returns (bytes32 root) {
-    uint256 inputLength = pendingPartialWithdrawal.length;
-    if (inputLength == 0) return bytes32(0);
-    uint256 nodesLength = Math256.nextPow2(inputLength);
-    bytes32[] memory nodes = new bytes32[](nodesLength);
-    // nodes pointer → [length][data0][data1][data2]...[dataN]
-
-    // Fill nodes with SSZ root of the PendingPartialWithdrawals
-    for (uint256 i = 0; i < inputLength; i++) {
-      nodes[i] = hashTreeRoot(pendingPartialWithdrawal[i]);
-    }
-
-    /// @solidity memory-safe-assembly
-    assembly {
-      // Count of nodes to hash
-      let count := nodesLength
-
-      // Handle edge case: if count is 1, return the single element directly
-      if eq(count, 1) {
-        // nodes points to length slot, first element is at offset 0x20
-        root := mload(add(nodes, 0x20))
-      }
-
-      // Loop over levels
-      // prettier-ignore
-      for { } 1 { } {
-                // Skip if count is 1 (already handled above or will be handled after this iteration)
-                if eq(count, 1) {
-                  break
-                }
-
-                // Initialize pointers to data elements (skip length slot at offset 0)
-                // nodes points to length slot, data starts at offset 0x20
-                let target := add(nodes, 0x20)
-                let source := add(nodes, 0x20)
-                let end := add(source, shl(5, count))
-
-                // prettier-ignore
-                for { } 1 { } {
-                    // Read next two hashes to hash
-                    mcopy(0x00, source, 0x40)
-
-                    // Call sha256 precompile
-                    let result := staticcall(
-                        gas(),
-                        0x02,
-                        0x00,
-                        0x40,
-                        0x00,
-                        0x20
-                    )
-
-                    if iszero(result) {
-                        // Precompiles returns no data on OutOfGas error.
-                        revert(0, 0)
-                    }
-
-                    // Store the resulting hash at the target location
-                    mstore(target, mload(0x00))
-
-                    // Advance the pointers
-                    target := add(target, 0x20)
-                    source := add(source, 0x40)
-
-                    if iszero(lt(source, end)) {
-                        break
-                    }
-                }
-
-                count := shr(1, count)
-                if eq(count, 1) {
-                    // Root is the last hash result in scratch space from sha256 precompile
                     root := mload(0x00)
                     break
                 }
