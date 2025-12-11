@@ -353,9 +353,9 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	for i := 0; i < nbIteration; i++ {
 		applySelfRecursionThenArcane(comp, params)
 		if i == nbIteration-1 {
-			applyVortex(comp, params, true)
+			applyVortex(comp, params, true) // last iteration over BLS
 		} else {
-			applyVortex(comp, params, false)
+			applyVortex(comp, params, false) // other iteration over koalabear
 		}
 	}
 
@@ -364,12 +364,10 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	for i := 0; i < b.N; i++ {
 		proof := wizard.Prove(comp, sbc.NewAssigner(b), true)
 		err := wizard.Verify(comp, proof, true)
-
 		if err != nil {
 			b.Fatal(err)
-		} else {
-			fmt.Printf("proof verified successfully\n")
 		}
+
 		circuit := verifierCircuit{}
 		{
 			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
@@ -378,19 +376,16 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 
 		csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 		if err != nil {
-			fmt.Printf("error Compile : %v \n", err)
-		} else {
-			fmt.Printf("Compile  successfully\n")
+			b.Fatal(err)
 		}
+
 		assignment := &verifierCircuit{
 			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
 		}
 
 		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 		if err != nil {
-			fmt.Printf("error generating witness: %v \n", err)
-		} else {
-			fmt.Printf("witness generated successfully\n")
+			b.Fatal(err)
 		}
 
 		// Check if solved using the pre-compiled SCS

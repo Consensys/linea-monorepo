@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -226,13 +226,16 @@ func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
-	apiGen.AssertIsEqual(
-		a.UAlphaQEval.GetFrontendVariable(api, run),
-		a.PreImageEval.GetFrontendVariable(api, run),
+
+	ualphaQEval := a.UAlphaQEval.GetFrontendVariableExt(api, run)
+	prEimageEval := a.PreImageEval.GetFrontendVariableExt(api, run)
+	ext4.AssertIsEqual(
+		&ualphaQEval,
+		&prEimageEval,
 	)
 }
 
