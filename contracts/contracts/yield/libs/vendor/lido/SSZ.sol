@@ -295,7 +295,8 @@ library SSZ {
       tmp[j + 1] = sha256Pair(tmp[j], zeroHash(j));
     }
 
-    root = tmp[depth];
+    // Do mix_in_length(content_root, actual_length)
+    root = sha256Pair(tmp[depth], toLittleEndian(count));
   }
 
   // Mutate `tmp` in-place
