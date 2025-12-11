@@ -112,11 +112,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   await LogContractDeployment("ValidatorContainerProofVerifier", verifier);
   const verifierAddress = await verifier.getAddress();
-  await tryVerifyContractWithConstructorArgs(verifierAddress, "ValidatorContainerProofVerifier", [
-    gIFirstValidatorPrev,
-    gIFirstValidatorCurr,
-    pivotSlot,
-  ]);
+  await tryVerifyContractWithConstructorArgs(
+    verifierAddress,
+    "contracts/yield/libs/ValidatorContainerProofVerifier.sol:ValidatorContainerProofVerifier",
+    [gIFirstValidatorPrev, gIFirstValidatorCurr, pivotSlot],
+  );
 
   /********************************************************************
    *                LidoStVaultYieldProviderFactory                   *
@@ -133,14 +133,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   await LogContractDeployment("LidoStVaultYieldProviderFactory", factory);
   const factoryAddress = await factory.getAddress();
-  await tryVerifyContractWithConstructorArgs(factoryAddress, "LidoStVaultYieldProviderFactory", [
-    lineaRollupAddress,
-    yieldManagerAddress,
-    vaultHub,
-    vaultFactory,
-    steth,
-    verifier,
-  ]);
+  await tryVerifyContractWithConstructorArgs(
+    factoryAddress,
+    "contracts/yield/LidoStVaultYieldProviderFactory.sol:LidoStVaultYieldProviderFactory",
+    [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifier],
+  );
 };
 
 export default func;

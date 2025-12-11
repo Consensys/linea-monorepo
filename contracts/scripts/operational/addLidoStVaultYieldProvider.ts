@@ -98,10 +98,13 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     await createYieldProviderTx.wait();
     console.log("Created LidoStVaultYieldProvider at ", yieldProvider);
 
-    // TODO - Refactor below to get calldata for Safe
-    // TODO - LineaRollup.transferFundsForNativeYield(1_ether)
+    /********************************************************************
+     *                Below here requires Security Council              *
+     ********************************************************************/
+    // TODO - Get calldata for Safe tx
 
-    // TODO - Refactor below to get calldata for Safe
+    //  LineaRollup.transferFundsForNativeYield(1_ether)
+
     // --- Add YieldProvider ---
     const yieldManagerContract = await ethers.getContractAt("YieldManager", yieldManager, signer);
     const yieldProviderInitData = buildVendorInitializationData({
