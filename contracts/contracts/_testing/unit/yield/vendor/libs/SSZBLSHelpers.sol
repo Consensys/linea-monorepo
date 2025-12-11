@@ -5,7 +5,6 @@ pragma solidity 0.8.30;
 
 import { GIndex, pack, concat, fls } from "../../../../../yield/libs/vendor/lido/GIndex.sol";
 import { SSZ } from "../../../../../yield/libs/vendor/lido/SSZ.sol";
-import { BLS12_381 } from "../../../../../yield/libs/vendor/lido/BLS.sol";
 
 // As defined in phase0/beacon-chain.md:159
 type Slot is uint64;
@@ -194,20 +193,20 @@ contract SSZBLSHelpers {
     ];
 
     bytes32[4] memory ValidatorL2 = [
-      BLS12_381.sha256Pair(ValidatorL1[0], ValidatorL1[1]),
-      BLS12_381.sha256Pair(ValidatorL1[2], ValidatorL1[3]),
-      BLS12_381.sha256Pair(ValidatorL1[4], ValidatorL1[5]),
-      BLS12_381.sha256Pair(ValidatorL1[6], ValidatorL1[7])
+      SSZ.sha256Pair(ValidatorL1[0], ValidatorL1[1]),
+      SSZ.sha256Pair(ValidatorL1[2], ValidatorL1[3]),
+      SSZ.sha256Pair(ValidatorL1[4], ValidatorL1[5]),
+      SSZ.sha256Pair(ValidatorL1[6], ValidatorL1[7])
     ];
 
     parentNode = ValidatorL2[0];
 
     bytes32[2] memory ValidatorL3 = [
-      BLS12_381.sha256Pair(ValidatorL2[0], ValidatorL2[1]),
-      BLS12_381.sha256Pair(ValidatorL2[2], ValidatorL2[3])
+      SSZ.sha256Pair(ValidatorL2[0], ValidatorL2[1]),
+      SSZ.sha256Pair(ValidatorL2[2], ValidatorL2[3])
     ];
 
-    root = BLS12_381.sha256Pair(ValidatorL3[0], ValidatorL3[1]);
+    root = SSZ.sha256Pair(ValidatorL3[0], ValidatorL3[1]);
     // validates this hardcode against canonical implementation
     require(root == validatorHashTreeRootCalldata(validator), "root mismatch");
 
@@ -311,18 +310,18 @@ contract SSZBLSHelpers {
     ];
 
     bytes32[4] memory BlockHeaderL2 = [
-      BLS12_381.sha256Pair(BlockHeaderL1[0], BlockHeaderL1[1]),
-      BLS12_381.sha256Pair(BlockHeaderL1[2], BlockHeaderL1[3]),
-      BLS12_381.sha256Pair(BlockHeaderL1[4], BlockHeaderL1[5]),
-      BLS12_381.sha256Pair(BlockHeaderL1[6], BlockHeaderL1[7])
+      SSZ.sha256Pair(BlockHeaderL1[0], BlockHeaderL1[1]),
+      SSZ.sha256Pair(BlockHeaderL1[2], BlockHeaderL1[3]),
+      SSZ.sha256Pair(BlockHeaderL1[4], BlockHeaderL1[5]),
+      SSZ.sha256Pair(BlockHeaderL1[6], BlockHeaderL1[7])
     ];
 
     bytes32[2] memory BlockHeaderL3 = [
-      BLS12_381.sha256Pair(BlockHeaderL2[0], BlockHeaderL2[1]),
-      BLS12_381.sha256Pair(BlockHeaderL2[2], BlockHeaderL2[3])
+      SSZ.sha256Pair(BlockHeaderL2[0], BlockHeaderL2[1]),
+      SSZ.sha256Pair(BlockHeaderL2[2], BlockHeaderL2[3])
     ];
 
-    root = BLS12_381.sha256Pair(BlockHeaderL3[0], BlockHeaderL3[1]);
+    root = SSZ.sha256Pair(BlockHeaderL3[0], BlockHeaderL3[1]);
     leaf = header.stateRoot;
 
     // validates this hardcode against canonical implementation

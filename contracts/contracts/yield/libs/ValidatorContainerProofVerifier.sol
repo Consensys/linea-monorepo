@@ -4,7 +4,6 @@
 pragma solidity 0.8.30;
 import { GIndex, pack, concat } from "./vendor/lido/GIndex.sol";
 import { SSZ } from "./vendor/lido/SSZ.sol";
-import { BLS12_381 } from "./vendor/lido/BLS.sol";
 import { Validator } from "./vendor/lido/BeaconTypes.sol";
 import { IValidatorContainerProofVerifier } from "../interfaces/IValidatorContainerProofVerifier.sol";
 
@@ -235,7 +234,7 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
    * @dev Reverts with `InvalidSlot` if the slot/proposerIndex don't match the proof
    */
   function _verifySlot(uint64 _slot, uint64 _proposerIndex, bytes32[] calldata _proof) internal view {
-    bytes32 parentSlotProposer = BLS12_381.sha256Pair(
+    bytes32 parentSlotProposer = SSZ.sha256Pair(
       SSZ.toLittleEndian(_slot),
       SSZ.toLittleEndian(_proposerIndex)
     );
