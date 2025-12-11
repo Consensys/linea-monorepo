@@ -9,6 +9,7 @@ import {
   tryVerifyContract,
   getDeployedContractAddress,
   LogContractDeployment,
+  tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
 import {
   DEAD_ADDRESS,
@@ -111,7 +112,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   await LogContractDeployment("ValidatorContainerProofVerifier", verifier);
   const verifierAddress = await verifier.getAddress();
-  await tryVerifyContract(verifierAddress);
+  await tryVerifyContractWithConstructorArgs(verifierAddress, "ValidatorContainerProofVerifier", [
+    gIFirstValidatorPrev,
+    gIFirstValidatorCurr,
+    pivotSlot,
+  ]);
 
   /********************************************************************
    *                LidoStVaultYieldProviderFactory                   *
@@ -128,7 +133,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   await LogContractDeployment("LidoStVaultYieldProviderFactory", factory);
   const factoryAddress = await factory.getAddress();
-  await tryVerifyContract(factoryAddress);
+  await tryVerifyContractWithConstructorArgs(factoryAddress, "LidoStVaultYieldProviderFactory", [
+    lineaRollupAddress,
+    yieldManagerAddress,
+    vaultHub,
+    vaultFactory,
+    steth,
+    verifier,
+  ]);
 };
 
 export default func;
