@@ -84,6 +84,8 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   GIndex public immutable GI_FIRST_VALIDATOR_CURR;
   /// @notice slot when GIndex change will occur due to the hardfork
   uint64 public immutable PIVOT_SLOT;
+  /// @notice GIndex of pending partial withdrawals root in CL state tree
+  GIndex public immutable GI_PENDING_PARTIAL_WITHDRAWALS_ROOT;
 
   /**
      *   GIndex of stateRoot in Beacon Block state is
@@ -121,19 +123,21 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   uint64 public constant FAR_FUTURE_EXIT_EPOCH = type(uint64).max;
 
   // Validator must be active for this many epochs before it is eligible for withdrawals
-  uint256 private constant SHARD_COMMITTEE_PERIOD = 256;
-  uint256 private constant SLOTS_PER_EPOCH = 32;
+  uint64 private constant SHARD_COMMITTEE_PERIOD = 256;
+  uint64 private constant SLOTS_PER_EPOCH = 32;
 
   /**
    * @param _gIFirstValidatorPrev packed(general index | depth in Merkle tree, see GIndex.sol) GIndex of first validator in CL state tree
    * @param _gIFirstValidatorCurr packed GIndex of first validator after fork changes tree structure
    * @param _pivotSlot slot of the fork that alters first validator GIndex
+   * @param _gIPendingPartialWithdrawalsRoot packed GIndex of pending partial withdrawals root in CL state tree
    * @dev if no fork changes are known,  _gIFirstValidatorPrev = _gIFirstValidatorCurr and _changeSlot = 0
    */
-  constructor(GIndex _gIFirstValidatorPrev, GIndex _gIFirstValidatorCurr, uint64 _pivotSlot) {
+  constructor(GIndex _gIFirstValidatorPrev, GIndex _gIFirstValidatorCurr, uint64 _pivotSlot, GIndex _gIPendingPartialWithdrawalsRoot) {
     GI_FIRST_VALIDATOR_PREV = _gIFirstValidatorPrev;
     GI_FIRST_VALIDATOR_CURR = _gIFirstValidatorCurr;
     PIVOT_SLOT = _pivotSlot;
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = _gIPendingPartialWithdrawalsRoot;
   }
 
   /**
@@ -141,17 +145,25 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
    * @param _witness object containing user input passed as calldata
    * @param _pubkey of validator to verify proof for.
    * @param _withdrawalCredentials to verify proof with
+   * @param _validatorIndex Validator index for validator to withdraw from.
+   * @param _slot Slot of the beacon block for which the proof is generated.
+   * @param _childBlockTimestamp of EL block that has parent block beacon root in BEACON_ROOTS contract
+   * @param _proposerIndex of the beacon block for which the proof is generated
    * @dev reverts with `InvalidProof` when provided input cannot be proven to Beacon block root
    */
   function verifyActiveValidatorContainer(
     IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness,
     bytes calldata _pubkey,
-    bytes32 _withdrawalCredentials
+    bytes32 _withdrawalCredentials,
+    uint64 _validatorIndex,
+    uint64 _slot,
+    uint64 _childBlockTimestamp,
+    uint64 _proposerIndex
   ) external view {
     // verifies user provided slot against user provided proof
     // proof verification is done in `SSZ.verifyProof` and is not affected by slot
-    _verifySlot(_witness);
-    _validateActivationEpoch(_witness);
+    _verifySlot(_slot, _proposerIndex, _witness.proof);
+    _validateActivationEpoch(_slot, _witness.activationEpoch);
 
     Validator memory validator = Validator({
       pubkey: _pubkey,
@@ -173,44 +185,78 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
     // parent(pubkey + wc) ->  Validator Index in state tree -> stateView Index in Beacon block Tree
     GIndex gIndex = concat(
       GI_STATE_ROOT,
-      concat(_getValidatorGI(_witness.validatorIndex, _witness.slot), GI_VALIDATOR_CONTAINER_ROOT)
+      concat(_getValidatorGI(_validatorIndex, _slot), GI_VALIDATOR_CONTAINER_ROOT)
     );
 
     SSZ.verifyProof({
       proof: _witness.proof,
-      root: _getParentBlockRoot(_witness.childBlockTimestamp),
+      root: _getParentBlockRoot(_childBlockTimestamp),
       leaf: validatorContainerRootLeaf,
       gI: gIndex
     });
   }
 
   /**
-   * @notice returns parent CL block root for given child block timestamp
-   * @param _witness object containing proof, slot and proposerIndex
-   * @dev checks slot and proposerIndex against proof[:-2] which latter is verified against Beacon block root
-   * This is a trivial case of multi Merkle proofs where a short proof branch proves slot
+   * @notice validates proof of pending partial withdrawals in CL against Beacon block root
+   * @param _witness object containing user input passed as calldata
+   * @param _slot Slot of the beacon block for which the proof is generated.
+   * @param _childBlockTimestamp of EL block that has parent block beacon root in BEACON_ROOTS contract
+   * @param _proposerIndex of the beacon block for which the proof is generated
+   * @dev reverts with `InvalidProof` when provided input cannot be proven to Beacon block root
    */
-  function _verifySlot(IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness) internal view {
-    bytes32 parentSlotProposer = BLS12_381.sha256Pair(
-      SSZ.toLittleEndian(_witness.slot),
-      SSZ.toLittleEndian(_witness.proposerIndex)
+  function verifyPendingPartialWithdrawals(
+    PendingPartialWithdrawalsWitness calldata _witness,
+    uint64 _slot,
+    uint64 _childBlockTimestamp,
+    uint64 _proposerIndex
+  ) external view {
+    _verifySlot(_slot, _proposerIndex, _witness.proof);
+    bytes32 pendingPartialWithdrawalsRoot = SSZ.hashTreeRoot(_witness.pendingPartialWithdrawals);
+    GIndex gIndex = concat(
+      GI_STATE_ROOT,
+      GI_PENDING_PARTIAL_WITHDRAWALS_ROOT
     );
-    if (_witness.proof[_witness.proof.length - SLOT_PROPOSER_PARENT_PROOF_OFFSET] != parentSlotProposer) {
+
+    SSZ.verifyProof({
+      proof: _witness.proof,
+      root: _getParentBlockRoot(_childBlockTimestamp),
+      leaf: pendingPartialWithdrawalsRoot,
+      gI: gIndex
+    });
+  }
+
+  /**
+   * @notice Verifies that the provided slot and proposerIndex match the Merkle proof
+   * @param _slot slot of the beacon block for which the proof is generated
+   * @param _proposerIndex proposer index of the beacon block for which the proof is generated
+   * @param _proof array of merkle proofs from Validator container root to Beacon block root
+   * @dev Checks that the hash of (slot, proposerIndex) matches the parent node at proof[proof.length - 2]
+   * This verifies that the slot and proposerIndex are part of the beacon block header in the proof
+   * @dev Reverts with `InvalidSlot` if the slot/proposerIndex don't match the proof
+   */
+  function _verifySlot(uint64 _slot, uint64 _proposerIndex, bytes32[] calldata _proof) internal view {
+    bytes32 parentSlotProposer = BLS12_381.sha256Pair(
+      SSZ.toLittleEndian(_slot),
+      SSZ.toLittleEndian(_proposerIndex)
+    );
+    if (_proof[_proof.length - SLOT_PROPOSER_PARENT_PROOF_OFFSET] != parentSlotProposer) {
       revert InvalidSlot();
     }
   }
 
   /**
    * @notice Ensures the tracked validator has satisfied the post-activation waiting period.
-   * @param _witness Witness data containing the validator's activation epoch and the proven slot.
+   * @param _slot slot of the beacon block for which the proof is generated
+   * @param _activationEpoch Activation epoch for the validator
    * @dev Reverts with `ValidatorNotActiveForLongEnough` when the validator has not remained active
    *      for at least `SHARD_COMMITTEE_PERIOD` epochs since `activationEpoch`.
    */
   function _validateActivationEpoch(
-    IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness
+    uint64 _slot,
+    uint64 _activationEpoch
   ) internal pure {
-    uint256 epoch = _witness.slot / SLOTS_PER_EPOCH;
-    if (epoch < _witness.activationEpoch + SHARD_COMMITTEE_PERIOD) {
+    uint64 epoch = _slot / SLOTS_PER_EPOCH;
+    if (epoch < _activationEpoch + SHARD_COMMITTEE_PERIOD) {
       revert ValidatorNotActiveForLongEnough();
     }
   }

@@ -572,6 +572,8 @@ contract YieldManager is
    *
    * @dev PENDING_PERMISSIONLESS_UNSTAKE will be greedily reduced with i.) donations or ii.) future withdrawals from the YieldProvider
    * @param _yieldProvider          Yield provider address.
+   * @param _validatorIndex         Validator index for validator to withdraw from.
+   * @param _slot                   Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
    * @param _withdrawalParamsProof  Data containing merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
    * @return maxUnstakeAmount       Maximum amount expected to be withdrawn from the beacon chain.
@@ -580,6 +582,8 @@ contract YieldManager is
    */
   function unstakePermissionless(
     address _yieldProvider,
+    uint256 _validatorIndex,
+    uint256 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   )
@@ -590,9 +594,15 @@ contract YieldManager is
     onlyWhenWithdrawalReserveInDeficit
     returns (uint256 maxUnstakeAmount)
   {
+    uint256 lastProvenSlot = _getYieldManagerStorage().lastProvenSlot[_validatorIndex];
+    if (lastProvenSlot >= _slot) {
+      revert SlotNotNewerThanLastProvenSlot(_validatorIndex, lastProvenSlot, _slot);
+    }
+    _getYieldManagerStorage().lastProvenSlot[_validatorIndex] = _slot;
+
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
-      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
+      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
     );
     maxUnstakeAmount = abi.decode(data, (uint256));
     if (maxUnstakeAmount == 0) {

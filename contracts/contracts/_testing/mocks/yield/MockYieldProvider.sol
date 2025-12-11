@@ -47,6 +47,8 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
 
   function unstakePermissionless(
     address _yieldProvider,
+    uint256 _validatorIndex,
+    uint256 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external payable returns (uint256 maxUnstakeAmount) {

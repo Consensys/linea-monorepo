@@ -30,6 +30,7 @@ abstract contract YieldManagerStorageLayout {
    * @param yieldProviders Array of registered YieldProvider adaptor contracts.
    * @param isL2YieldRecipientKnown Mapping of added L2YieldRecipient addresses.
    * @param yieldProviderStorage YieldProvider-scoped storage scoped by the YieldProvider adaptor contract address.
+   * @param lastProvenSlot Beacon chain validator pubkey -> last proven slot.
    */
   struct YieldManagerStorage {
     uint16 minimumWithdrawalReservePercentageBps;
@@ -41,6 +42,7 @@ abstract contract YieldManagerStorageLayout {
     address[] yieldProviders;
     mapping(address l2YieldRecipient => bool) isL2YieldRecipientKnown;
     mapping(address yieldProvider => YieldProviderStorage) yieldProviderStorage;
+    mapping(uint256 validatorIndex => uint256 lastProvenSlot) lastProvenSlot;
   }
 
   /**

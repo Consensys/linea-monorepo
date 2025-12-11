@@ -9,17 +9,23 @@ contract TestValidatorContainerProofVerifier is ValidatorContainerProofVerifier 
   constructor(
     GIndex _gIFirstValidatorPrev,
     GIndex _gIFirstValidatorCurr,
-    uint64 _pivotSlot
-  ) ValidatorContainerProofVerifier(_gIFirstValidatorPrev, _gIFirstValidatorCurr, _pivotSlot) {}
+    uint64 _pivotSlot,
+    GIndex _gIPendingPartialWithdrawalsRoot
+  ) ValidatorContainerProofVerifier(_gIFirstValidatorPrev, _gIFirstValidatorCurr, _pivotSlot, _gIPendingPartialWithdrawalsRoot) {}
 
-  function verifySlot(IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness) external view {
-    _verifySlot(_witness);
+  function verifySlot(
+    uint64 _slot,
+    uint64 _proposerIndex,
+    bytes32[] calldata _proof
+  ) external view {
+    _verifySlot(_slot, _proposerIndex, _proof);
   }
 
   function validateActivationEpoch(
-    IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness
+    uint64 _slot,
+    uint64 _activationEpoch
   ) external view {
-    _validateActivationEpoch(_witness);
+    _validateActivationEpoch(_slot, _activationEpoch);
   }
 
   function getValidatorGI(uint256 _offset, uint64 _provenSlot) external view returns (GIndex) {

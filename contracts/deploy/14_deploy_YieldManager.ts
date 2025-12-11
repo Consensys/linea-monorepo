@@ -20,7 +20,12 @@ import {
 } from "../common/constants";
 import { YieldManagerInitializationData } from "contracts/test/yield/helpers";
 import { YieldManager } from "contracts/typechain-types";
-import { GI_FIRST_VALIDATOR_CURR, GI_FIRST_VALIDATOR_PREV, PIVOT_SLOT } from "contracts/test/common/constants";
+import {
+  GI_FIRST_VALIDATOR_CURR,
+  GI_FIRST_VALIDATOR_PREV,
+  PIVOT_SLOT,
+  GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+} from "contracts/test/common/constants";
 
 // Deploys YieldManager, ValidatorContainerProofVerifier and LidoStVaultYieldProviderFactory
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -47,6 +52,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const gIFirstValidatorPrev = getEnvVarOrDefault("GI_FIRST_VALIDATOR_PREV", GI_FIRST_VALIDATOR_PREV);
   const gIFirstValidatorCurr = getEnvVarOrDefault("GI_FIRST_VALIDATOR_CURR", GI_FIRST_VALIDATOR_CURR);
   const pivotSlot = getEnvVarOrDefault("PIVOT_SLOT", PIVOT_SLOT);
+  const gIPendingPartialWithdrawalsRoot = getEnvVarOrDefault(
+    "GI_PENDING_PARTIAL_WITHDRAWALS_ROOT",
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+  );
 
   const securityCouncilRoles = generateRoleAssignments(
     YIELD_MANAGER_SECURITY_COUNCIL_ROLES,
@@ -108,6 +117,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     gIFirstValidatorPrev,
     gIFirstValidatorCurr,
     pivotSlot,
+    gIPendingPartialWithdrawalsRoot,
   );
   await LogContractDeployment("ValidatorContainerProofVerifier", verifier);
   const verifierAddress = await verifier.getAddress();
