@@ -66,23 +66,23 @@ var (
 			Permutations: SubModuleParameters{
 				Count:  1,
 				NumCol: 1,
-				NumRow: 1 << 5,
+				NumRow: 1 << 10,
 			},
 			Lookup: SubModuleParameters{
 				Count:     1,
 				NumCol:    1,
-				NumRow:    1 << 5,
-				NumRowAux: 1 << 5,
+				NumRow:    1 << 10,
+				NumRowAux: 1 << 10,
 			},
 			Projection: SubModuleParameters{
 				Count:     1,
 				NumCol:    1,
-				NumRow:    1 << 5,
-				NumRowAux: 1 << 5,
+				NumRow:    1 << 10,
+				NumRowAux: 1 << 10,
 			},
 			Fibo: SubModuleParameters{
 				Count:  1,
-				NumRow: 1 << 5,
+				NumRow: 1 << 10,
 			},
 		},
 		// {
@@ -348,7 +348,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		),
 	)
 
-	nbIteration := 1
+	nbIteration := 2
 
 	for i := 0; i < nbIteration; i++ {
 		applySelfRecursionThenArcane(comp, params)
