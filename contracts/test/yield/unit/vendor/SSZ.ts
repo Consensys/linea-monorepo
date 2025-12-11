@@ -266,31 +266,26 @@ describe("SSZ", () => {
       expect(actual).to.equal(expected);
     });
 
-    // it("two elements", async () => {
-    //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 1,
-    //       withdrawableEpoch: 2,
-    //     },
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 1,
-    //       withdrawableEpoch: 0,
-    //     },
-    //   ];
+    it("two elements", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+        // 0x4a07d56213d62b2d194a3cc1f19bec40364540bdf3d45eb0d6fe82094d21b4dc
+        {
+          validatorIndex: 0,
+          amount: 1,
+          withdrawableEpoch: 2,
+        },
+        // 0x4833912e1264aef8a18392d795f3f2eed17cf5c0e8471cb0c0db2ec5aca10231
+        {
+          validatorIndex: 0,
+          amount: 1,
+          withdrawableEpoch: 0,
+        },
+      ];
 
-    //   // Two elements: nextPow2(2) = 2
-    //   // Compute expected: hash pair of the two element hashes
-    //   // First element hash: 0x4a07d56213d62b2d194a3cc1f19bec40364540bdf3d45eb0d6fe82094d21b4dc
-    //   // Second element hash: 0x4833912e1264aef8a18392d795f3f2eed17cf5c0e8471cb0c0db2ec5aca10231
-    //   // Need to compute sha256 of concatenated hashes
-    //   // @ts-expect-error - function exists but types not regenerated yet
-    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
-    //   // Expected value will be computed - for now, just verify it's a valid bytes32
-    //   expect(actual).to.be.a("string");
-    //   expect(actual).to.have.length(66); // 0x + 64 hex chars
-    // });
+      const expected = "0xe7fb845b1ade1831374815580786086f46ab064eb0230ba737d285a15e7592ff";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
 
     // it("three elements", async () => {
     //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
