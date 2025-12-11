@@ -325,9 +325,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       _withdrawalParams,
       (bytes, uint64[], address)
     );
-    maxUnstakeAmount = _validateUnstakePermissionlessRequest(_yieldProvider, pubkeys, amounts, _validatorIndex, _slot, _withdrawalParamsProof);
+    uint256 maxUnstakeAmountGwei = _validateUnstakePermissionlessRequest(_yieldProvider, pubkeys, amounts, _validatorIndex, _slot, _withdrawalParamsProof);
     // Clamp single unstake amount to accurately update pendingPermissionlessUnstake.
-    amounts[0] = uint64(maxUnstakeAmount);
+    amounts[0] = uint64(maxUnstakeAmountGwei);
+    maxUnstakeAmount = maxUnstakeAmountGwei * 1 gwei;
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
 
     emit LidoVaultUnstakePermissionlessRequest(
@@ -352,7 +353,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _validatorIndex Validator index for validator to withdraw from.
    * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
-   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
+   * @return maxUnstakeAmountGwei Maximum ETH amount expected to be withdrawn as a result of this request.
    */
   function _validateUnstakePermissionlessRequest(
     address _yieldProvider,
@@ -361,7 +362,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     uint64 _validatorIndex,
     uint64 _slot,
     bytes calldata _withdrawalParamsProof
-  ) internal view returns (uint256 maxUnstakeAmount) {
+  ) internal view returns (uint256 maxUnstakeAmountGwei) {
     if (_pubkeys.length != PUBLIC_KEY_LENGTH || _amounts.length != 1) {
       revert SingleValidatorOnlyForUnstakePermissionless();
     }
@@ -398,8 +399,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       amount,
       Math256.safeSub(witness.validatorContainerWitness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI + totalPendingWithdrawalsGwei)
     );
-    // Convert from Beacon Chain units of 'gwei' to execution layer units of 'wei'
-    maxUnstakeAmount = maxUnstakeAmountGwei * 1 gwei;
   }
 
   /**
