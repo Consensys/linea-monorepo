@@ -156,7 +156,6 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 	res.csAccountAddress(comp)
 	res.csAccountOld(comp)
 	res.csAccountNew(comp)
-	// @arijit: fixed partially
 	res.csAccumulatorRoots(comp)
 	res.csAccumulatorStatementFlags(comp)
 	res.csAccumulatorStatementHValKey(comp)
@@ -1026,11 +1025,10 @@ func (ss *Module) csAccumulatorRoots(comp *wizard.CompiledIOP) {
 						ss.Account.Initial.Exists,
 						sym.Sub(ss.Account.Initial.StorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
 					),
-					// TODO (@arijit) : fix this
-					// sym.Mul(
-					// 	sym.Sub(1, ss.Account.Initial.Exists),
-					// 	sym.Sub(emptyStorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
-					// ),
+					sym.Mul(
+						sym.Sub(1, ss.Account.Initial.Exists),
+						sym.Sub(emptyStorageRoot[i], ss.AccumulatorStatement.StateDiff.InitialRoot[i]),
+					),
 				),
 			),
 		)
