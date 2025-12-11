@@ -312,94 +312,38 @@ describe("SSZ", () => {
       expect(actual).to.equal(expected);
     });
 
-    // it("four elements", async () => {
-    //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 1,
-    //       withdrawableEpoch: 2,
-    //     },
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 1,
-    //       withdrawableEpoch: 0,
-    //     },
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 0,
-    //       withdrawableEpoch: 0,
-    //     },
-    //     {
-    //       validatorIndex: 9556824998668043785n,
-    //       amount: 18095667167504007302n,
-    //       withdrawableEpoch: 12065041970590563750n,
-    //     },
-    //   ];
+    it("four elements", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+        // 0xfee5527172fd2af098adcdfa5d4108ffc52d19b4cb03fcdb186685a11147fe7b
+        {
+          validatorIndex: 9556824998668043785n,
+          amount: 18095667167504007302n,
+          withdrawableEpoch: 12065041970590563750n,
+        },
+        // 0xd4c8a4e38ed4d4d09d3b74df1d825d244243218fa2ce1878eeb3d0356ec7fcab
+        {
+          validatorIndex: 18198258603828382500n,
+          amount: 4349232369502288358n,
+          withdrawableEpoch: 3598560756448475534n,
+        },
+        // 0x3548a86db6940952e5ab87b50e46cfbdb2324603ccfac73836834a87f160181a
+        {
+          validatorIndex: 12778732824589014348n,
+          amount: 4849311627484200036n,
+          withdrawableEpoch: 457195784761064180n,
+        },
+        // 0x8ceb740b26a61041ea7dc2d6b1372686cf3381150bd9d9a19cfafeb9e0335c04
+        {
+          validatorIndex: 350840880130630803n,
+          amount: 8902480238376794760n,
+          withdrawableEpoch: 3145816884024322139n,
+        },
+      ];
 
-    //   // Four elements: nextPow2(4) = 4
-    //   // @ts-expect-error - function exists but types not regenerated yet
-    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
-    //   expect(actual).to.be.a("string");
-    //   expect(actual).to.have.length(66);
-    // });
-
-    // it("all zeroes", async () => {
-    //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 0,
-    //       withdrawableEpoch: 0,
-    //     },
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 0,
-    //       withdrawableEpoch: 0,
-    //     },
-    //   ];
-
-    //   // All zero elements: should hash pair of zero hashes
-    //   // @ts-expect-error - function exists but types not regenerated yet
-    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
-    //   // For two identical zero elements, the result should be hash of (zeroHash, zeroHash)
-    //   expect(actual).to.be.a("string");
-    //   expect(actual).to.have.length(66);
-    // });
-
-    // it("multiple elements with various values", async () => {
-    //   const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
-    //     {
-    //       validatorIndex: 0,
-    //       amount: 1,
-    //       withdrawableEpoch: 2,
-    //     },
-    //     {
-    //       validatorIndex: 1,
-    //       amount: 100,
-    //       withdrawableEpoch: 1000,
-    //     },
-    //     {
-    //       validatorIndex: 2,
-    //       amount: 1000,
-    //       withdrawableEpoch: 2000,
-    //     },
-    //     {
-    //       validatorIndex: 3,
-    //       amount: 10000,
-    //       withdrawableEpoch: 3000,
-    //     },
-    //     {
-    //       validatorIndex: 4,
-    //       amount: 100000,
-    //       withdrawableEpoch: 4000,
-    //     },
-    //   ];
-
-    //   // Five elements: nextPow2(5) = 8, so array is padded to 8 elements
-    //   // @ts-expect-error - function exists but types not regenerated yet
-    //   const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
-    //   expect(actual).to.be.a("string");
-    //   expect(actual).to.have.length(66);
-    // });
+      const expected = "0x8e6fd236a2f9db51060db098ba9e48df1c93013a72c5f9d5022af9f65e1c0f6a";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
   });
 
   describe("verifyProof", () => {
