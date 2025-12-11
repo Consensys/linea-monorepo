@@ -2,10 +2,10 @@ package statemanager
 
 import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulatorsummary"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/codehashconsistency"
@@ -44,6 +44,8 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 		}),
 	}
 
+	arith := arithmetization.Arithmetization{}
+
 	sm.AccumulatorSummaryConnector = *accumulatorsummary.NewModule(
 		comp,
 		accumulatorsummary.Inputs{
@@ -53,8 +55,8 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 	)
 
 	sm.AccumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.StateSummary)
-	sm.LineaCodeHash.ConnectToRom(comp, rom(comp), romLex(comp))
-	sm.StateSummary.ConnectToHub(comp, acp(comp), scp(comp))
+	sm.LineaCodeHash.ConnectToRom(comp, rom(comp, &arith), romLex(comp, &arith))
+	sm.StateSummary.ConnectToHub(comp, acp(comp, &arith), scp(comp, &arith))
 	sm.CodeHashConsistency = codehashconsistency.NewModule(comp, "CODEHASHCONSISTENCY", &sm.StateSummary, &sm.LineaCodeHash)
 
 	return sm
@@ -126,14 +128,14 @@ func addSkipFlags(shomeiTraces *[][]statemanager.DecodedTrace) {
 			if err != nil {
 				panic(err)
 			}
-			x := *(&field.Element{}).SetBytes(curAddress[:])
+			b32 := types.LeftPadToBytes32(curAddress[:])
 
 			if trace.Location != statemanager.WS_LOCATION {
 				// we have a STORAGE trace
 				// prepare the search key
 				searchKey := AddressAndKey{
-					address:    x.Bytes(),
-					storageKey: trace.Underlying.HKey(statemanager.POSEIDON2_CONFIG),
+					address:    b32,
+					storageKey: trace.Underlying.HKey(),
 				}
 				previousIndex, isFound := traceMap[searchKey]
 				if isFound {
