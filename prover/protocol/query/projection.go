@@ -232,7 +232,7 @@ func (p Projection) Check(run ifaces.Runtime) error {
 
 		for i := range a {
 			if !a[i].Equal(&b[i]) {
-				return fmt.Errorf("a and b must yield the same values, a=%v b=%v", vector.Prettify(a), vector.Prettify(b))
+				return fmt.Errorf("a and b must yield the same values, a=%v b=%v", vector.PrettifyHex(a), vector.PrettifyHex(b))
 			}
 		}
 	}

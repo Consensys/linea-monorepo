@@ -2,6 +2,7 @@ package ecdsa
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -33,6 +34,10 @@ func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *antic
 	for i := 0; i < common.NbLimbU128; i++ {
 		ecRec.Limb[i] = comp.InsertCommit(0, ifaces.ColIDf("ECRECOVER_LIMB_%d", i), size, true)
 	}
+
+	// Patch: the assignment of the ecRecLimbs assumes a big endian form but the
+	// correct form expected by the module is little endian.
+	slices.Reverse(ecRec.Limb[:])
 
 	ac.IsActive = comp.InsertCommit(0, "AntiChamber_IsActive", size, true)
 	return td, ecRec
@@ -118,6 +123,9 @@ func AssignEcRecTxnData(
 
 	run.AssignColumn(ecRec.EcRecoverIsRes.GetColID(), smartvectors.RightZeroPadded(isEcRecRes, size))
 
+	// Patch: the assignment of the ecRecLimbs assumes a big endian form but the
+	// correct form expected by the module is little endian.
+	slices.Reverse(ecRecLimb)
 	for i := 0; i < common.NbLimbU128; i++ {
 		run.AssignColumn(ecRec.Limb[i].GetColID(), smartvectors.RightZeroPadded(ecRecLimb[i], size))
 	}

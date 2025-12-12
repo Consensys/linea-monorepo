@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
 	keccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf"
@@ -81,6 +82,10 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 		cKeccak = NewKeccakOverBlocks(comp, cKeccakInp)
 	)
 
+	if len(inp.Provider.Info.HashHi) != common.NbLimbU128 {
+		panic("len(inp.Provider.Info.HashHi) != common.NbLimbU128")
+	}
+
 	comp.InsertProjection("KECCAK_RES_HI",
 		query.ProjectionInput{
 			ColumnA: cKeccak.Outputs.Hash[:8],
@@ -90,9 +95,13 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 		},
 	)
 
+	if len(inp.Provider.Info.HashLo) != common.NbLimbU128 {
+		panic("len(inp.Provider.Info.HashLo) != common.NbLimbU128")
+	}
+
 	comp.InsertProjection("KECCAK_RES_LO",
 		query.ProjectionInput{
-			ColumnA: cKeccak.Outputs.Hash[8:],
+			ColumnA: cKeccak.Outputs.Hash[common.NbLimbU128:],
 			ColumnB: inp.Provider.Info.HashLo,
 			FilterA: cKeccak.Outputs.IsHash,
 			FilterB: inp.Provider.Info.IsHashLo,
