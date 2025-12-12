@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -20,10 +21,22 @@ const (
 	limbByteWidth = limbBitWidth / 8
 )
 
+// Limbed is an interface for groups of columns collectively representing
+// limbs.
+type Limbed interface {
+	symbolic.Metadata
+	NumRow() int
+	NumLimbs() int
+	ToBigEndian() Limbed
+	ToLittleEndian() Limbed
+	Limbs() []ifaces.Column
+}
+
 // limbs represents a register represented by a list of columns.
 type limbs[E Endianness] struct {
-	C []ifaces.Column
-	_ E // this field is needed to tag the struct with E
+	C    []ifaces.Column
+	name ifaces.ColID
+	_    E // this field is needed to tag the struct with E
 }
 
 // createLimb creates a set of columns in the wizard. The columns are always of
@@ -43,7 +56,7 @@ func createLimb[E Endianness](
 			c.SetPragma(pragma.Pragma, pragma.Value)
 		}
 	}
-	return limbs[E]{C: c}
+	return limbs[E]{C: c, name: name}
 }
 
 // Size returns the number of rows in the provided columns
@@ -157,26 +170,26 @@ func (l limbs[E]) AssignBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
 
 // ToBigEndian returns the limbs in big endian form
 func (l limbs[E]) ToBigEndian() limbs[BigEndian] {
-
-	new := limbs[BigEndian]{C: make([]ifaces.Column, len(l.C))}
+	new := limbs[BigEndian]{name: l.name, C: make([]ifaces.Column, len(l.C))}
 	copy(new.C, l.C)
-
 	if isLittleEndian[E]() {
 		slices.Reverse(new.C)
 	}
-
 	return new
 }
 
 // ToLittleEndian returns the limbs in little endian form
 func (l limbs[E]) ToLittleEndian() limbs[LittleEndian] {
-
-	new := limbs[LittleEndian]{C: make([]ifaces.Column, len(l.C))}
+	new := limbs[LittleEndian]{name: l.name, C: make([]ifaces.Column, len(l.C))}
 	copy(new.C, l.C)
-
 	if isBigEndian[E]() {
 		slices.Reverse(new.C)
 	}
-
 	return new
+}
+
+// String implements the [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
+// interface.
+func (l limbs[E]) String() string {
+	return string(l.name)
 }

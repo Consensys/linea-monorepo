@@ -1,0 +1,83 @@
+package limbs
+
+import (
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+)
+
+// NewGlobal generates a new global constraint that spans over the coordinates
+// of limb split object. The constraint is only repeated over the coordinate,
+// e.g. it does emulate big-integer arithmetic.
+func NewGlobal(comp *wizard.CompiledIOP, name ifaces.QueryID, expr *symbolic.Expression) []query.GlobalConstraint {
+	splittedExpressions := splitExpressions(expr)
+	res := make([]query.GlobalConstraint, len(splittedExpressions))
+	for i := range splittedExpressions {
+		res[i] = comp.InsertGlobal(0, name, splittedExpressions[i])
+	}
+	return res
+}
+
+// NewLocal generates a new local constraint that spans over the coordinates
+// of a limb split object.
+func NewLocal(comp *wizard.CompiledIOP, name ifaces.QueryID, expr *symbolic.Expression) []query.LocalConstraint {
+	splittedExpressions := splitExpressions(expr)
+	res := make([]query.LocalConstraint, len(splittedExpressions))
+	for i := range splittedExpressions {
+		res[i] = comp.InsertLocal(0, name, splittedExpressions[i])
+	}
+	return res
+}
+
+func splitExpressions(expr *symbolic.Expression) []*symbolic.Expression {
+
+	// First we iterate over the inputs of the expressions to flip all inputs
+	// in big-endian order and check that the number of limbs match
+	var (
+		metadata = expr.ListBoardVariableMetadata()
+		flipped  = map[string][]ifaces.Column{}
+		numLimbs = -1
+	)
+
+	for i := range metadata {
+		if l, ok := metadata[i].(Limbed); ok {
+			if numLimbs < 0 {
+				numLimbs = l.NumLimbs()
+			}
+			name := l.String()
+			flipped[name] = l.ToBigEndian().Limbs()
+			if numLimbs != l.NumLimbs() {
+				utils.Panic("all limbs must have the same number of limbs, got %v and %v", numLimbs, l.NumLimbs())
+			}
+		}
+	}
+
+	// Then we generate the new global constraints and return them
+	res := make([]*symbolic.Expression, numLimbs)
+	for i := 0; i < numLimbs; i++ {
+
+		constructor := func(e *symbolic.Expression, children []*symbolic.Expression) (new *symbolic.Expression) {
+
+			vari, ok := e.Operator.(symbolic.Variable)
+			if !ok {
+				// Nothing to change here
+				return e.SameWithNewChildren(children)
+			}
+
+			name := vari.Metadata.String()
+			if e, ok := flipped[name]; !ok {
+				// The expression is a limb object variable
+				return symbolic.NewVariable(e[i])
+			}
+
+			// The expression is a variable but not a limbed object
+			return e
+		}
+
+		res[i] = expr.ReconstructBottomUpSingleThreaded(constructor)
+	}
+
+	return res
+}
