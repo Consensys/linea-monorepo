@@ -593,25 +593,21 @@ contract YieldManager is
     onlyWhenWithdrawalReserveInDeficit
     returns (uint256 maxUnstakeAmount)
   {
-    uint256 lastProvenSlot = _getYieldManagerStorage().lastProvenSlot[_validatorIndex];
+    uint64 lastProvenSlot = _getYieldManagerStorage().lastProvenSlot[_validatorIndex];
     if (_slot <= lastProvenSlot + SLOTS_PER_HISTORICAL_ROOT) {
-      revert SlotNotNewerThanLastProvenSlot(_validatorIndex, lastProvenSlot, _slot);
+      revert SlotTooCloseToLastProvenSlot(_validatorIndex, lastProvenSlot, _slot);
     }
     _getYieldManagerStorage().lastProvenSlot[_validatorIndex] = _slot;
 
     uint256 requiredUnstakeAmount = Math256.safeSub(getTargetReserveDeficit(), address(this).balance + withdrawableValue(_yieldProvider) + _getYieldManagerStorage().pendingPermissionlessUnstake);
-    if (requiredUnstakeAmount == 0) {
-      revert NoRequirementToUnstakePermissionless();
-    }
+    if (requiredUnstakeAmount == 0) revert NoRequirementToUnstakePermissionless();
 
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, requiredUnstakeAmount, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
     );
     uint256 unstakedAmount = abi.decode(data, (uint256));
-    if (unstakedAmount == 0) {
-      revert YieldProviderReturnedZeroUnstakeAmount();
-    }
+    if (unstakedAmount == 0) revert YieldProviderReturnedZeroUnstakeAmount();
 
     _getYieldManagerStorage().pendingPermissionlessUnstake += unstakedAmount;
     // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams

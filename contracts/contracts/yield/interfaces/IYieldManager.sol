@@ -278,12 +278,13 @@ interface IYieldManager {
   error WithdrawalReserveNotInDeficit();
 
   /**
-   * @dev Thrown when a slot is not newer than the last proven slot for a validator.
+   * @dev Thrown when a slot is too close to the last proven slot for a validator.
+   *      The slot must be more than SLOTS_PER_HISTORICAL_ROOT (8192) slots ahead of the last proven slot.
    * @param _validatorIndex The validator index.
    * @param _lastProvenSlot The last proven slot.
    * @param _slot The slot for the current proof.
    */
-  error SlotNotNewerThanLastProvenSlot(uint256 _validatorIndex, uint256 _lastProvenSlot, uint256 _slot);
+  error SlotTooCloseToLastProvenSlot(uint256 _validatorIndex, uint256 _lastProvenSlot, uint256 _slot);
 
   /**
    * @dev Returned when there is 0 required unstake amount for unstakePermissionless.

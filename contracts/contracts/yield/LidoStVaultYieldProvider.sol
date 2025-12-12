@@ -308,7 +308,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    *      and enforce any provider-specific safety checks. The returned amount is used by the
    *      YieldManager to cap pending withdrawals tracked on L1.
    * @param _yieldProvider The yield provider address.
-   * @param _requiredUnstakeAmount Required unstake amount in wei.
+   * @param _requiredUnstakeAmountWei Required unstake amount in wei.
    * @param _validatorIndex Validator index for validator to withdraw from.
    * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams ABI encoded provider parameters.
