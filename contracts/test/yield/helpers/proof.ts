@@ -273,7 +273,6 @@ export const generateEIP4478Witness = async (
   // ============================================================================
   const allPendingPartialWithdrawals = generatePendingPartialWithdrawals(...pendingPartialWithdrawals);
   const pendingPartialWithdrawalsRoot = await sszMerkleTree.hashTreeRoot(allPendingPartialWithdrawals);
-  void pendingPartialWithdrawalsRoot; // Computed for potential future use
 
   // We have two fixed nodes in the BeaconState Merkle tree:
   // - validators subtree at generalized index 75
@@ -315,12 +314,20 @@ export const generateEIP4478Witness = async (
   // gI99 -> gI35 in the right subtree 23
   const GI_PENDING_PARTIAL_WITHDRAWALS_ROOT_IN_RIGHT_SUBTREE =
     "0x000000000000000000000000000000000000000000000000000000000000231b";
-  void GI_PENDING_PARTIAL_WITHDRAWALS_ROOT_IN_RIGHT_SUBTREE;
+
+  // each subtree has depth 5 -> create proof of 5 elements
+  const proofForGI3 = Array.from({ length: 5 }, () => randomBytes32());
+  const gi3Root = await sszMerkleTree.getRoot(
+    proofForGI3,
+    pendingPartialWithdrawalsRoot,
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT_IN_RIGHT_SUBTREE,
+  );
+  void gi3Root; // Computed for potential future use
+
   // ============================================================================
   // Generate state root
   // ============================================================================
-  // const validatorMerkleSubtree = await sszMerkleTree.getValidatorPubkeyWCParentProof(validatorContainer);
-  // const validatorGIndex = await verifier.getValidatorGI(validatorIndex);
+
   // const stateRoot = await sszMerkleTree.getRoot(
   //   originalValidatorContainerProof,
   //   validatorMerkleSubtree.root,
