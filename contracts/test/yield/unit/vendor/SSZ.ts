@@ -241,6 +241,8 @@ describe("SSZ", () => {
     });
   });
 
+  // Obtained expected hashes from https://github.com/kyzooghost/consensus-specs/blob/7a27a0ecb17255b04618f96220bcda3de88bed28/tests/core/pyspec/eth2spec/utils/test_merkle_minimal.py#L127-L186
+  // Run `make test k=test_merkleize_chunks_with_mix_in_length` from the project root
   describe("hashTreeRoot(PendingPartialWithdrawal[])", () => {
     it("empty array", async () => {
       const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [];
