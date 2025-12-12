@@ -67,7 +67,7 @@ func splitExpressions(expr *symbolic.Expression) []*symbolic.Expression {
 			}
 
 			name := vari.Metadata.String()
-			if e, ok := flipped[name]; !ok {
+			if e, ok := flipped[name]; ok {
 				// The expression is a limb object variable
 				return symbolic.NewVariable(e[i])
 			}

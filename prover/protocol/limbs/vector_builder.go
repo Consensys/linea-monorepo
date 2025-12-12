@@ -17,7 +17,7 @@ type VectorBuilder[E Endianness] struct {
 
 // Height returns the total number of rows that have been pushed
 func (b *VectorBuilder[E]) Height() int {
-	return len(b.slices)
+	return len(b.slices[0])
 }
 
 // Push adds a new row to the builder. This does not check for the endianness.
@@ -64,7 +64,7 @@ func (b *VectorBuilder[E]) PushInt(x int) {
 
 // PeekAt returns the last pushed row in native form.
 func (b *VectorBuilder[E]) PeekAt(r int) row[E] {
-	row := make([]field.Element, r)
+	row := make([]field.Element, len(b.slices))
 	for i := range row {
 		row[i] = b.slices[i][r]
 	}
