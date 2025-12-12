@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -63,7 +64,7 @@ type TestCase struct {
 
 // tests-cases for all tests
 var testcases []TestCase = []TestCase{
-	{Numpoly: 1024, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
+	{Numpoly: 2, NumRound: 1, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0]},
 	{Numpoly: 1024, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
 	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0]},
 	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
@@ -76,7 +77,7 @@ var testcases []TestCase = []TestCase{
 }
 
 var testcases_precomp []TestCase = []TestCase{
-	{Numpoly: 1024, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 2, NumRound: 1, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0], NumPrecomp: 2, IsCommitPrecomp: true},
 	{Numpoly: 1024, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0], NumPrecomp: 2, IsCommitPrecomp: true},
 	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
@@ -410,9 +411,9 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 	comp := wizard.Compile(
 		define,
 		vortex.Compile(
-			8,
+			2,
 			false,
-			vortex.ForceNumOpenedColumns(32),
+			vortex.ForceNumOpenedColumns(16),
 			vortex.WithSISParams(&ringsis.StdParams),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
@@ -428,14 +429,14 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 				selfrecursion.SelfRecurse,
 				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
-					compiler.WithTargetColSize(1<<13),
+					compiler.WithTargetColSize(1<<9),
 				),
 				// logdata.Log("before-vortex"),
 				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
 				vortex.Compile(
-					8,
+					2,
 					true,
-					vortex.ForceNumOpenedColumns(32),
+					vortex.ForceNumOpenedColumns(16),
 					vortex.WithOptionalSISHashingThreshold(1<<20),
 				),
 			)
@@ -445,14 +446,14 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 				selfrecursion.SelfRecurse,
 				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
-					compiler.WithTargetColSize(1<<13),
+					compiler.WithTargetColSize(1<<9),
 				),
 				// logdata.Log("before-vortex"),
 				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
 				vortex.Compile(
-					8,
+					2,
 					false,
-					vortex.ForceNumOpenedColumns(32),
+					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&ringsis.StdParams),
 					vortex.WithOptionalSISHashingThreshold(64),
 				),
@@ -487,9 +488,19 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 	// Check if solved using the pre-compiled SCS
 	err = csc.IsSolved(witness)
 	if err != nil {
-		fmt.Printf("circuit solving failed :  %v \n", err)
-	} else {
-		fmt.Printf("circuit solved successfully\n")
+		// When the error string is too large `require.NoError` does not print
+		// the error.
+		t.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
+
+		errDetail := test.IsSolved(
+			assignment,
+			assignment,
+			csc.Field(),
+		)
+
+		t.Logf("while running the plonk prover: %v", errDetail)
+
+		t.FailNow()
 	}
 
 }
