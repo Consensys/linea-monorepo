@@ -110,9 +110,7 @@ contract YieldManager is
 
   /// @dev Reverts if the YieldProvider address is not known.
   modifier onlyKnownYieldProvider(address _yieldProvider) {
-    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex == 0) {
-      revert UnknownYieldProvider();
-    }
+    if (!isYieldProviderKnown(_yieldProvider)) revert UnknownYieldProvider();
     _;
   }
 
@@ -310,7 +308,7 @@ contract YieldManager is
    * @param _yieldProvider The YieldProvider address.
    * @return bool True if the YieldProvider is registered.
    */
-  function isYieldProviderKnown(address _yieldProvider) external view returns (bool) {
+  function isYieldProviderKnown(address _yieldProvider) public view returns (bool) {
     return _getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0;
   }
 
@@ -723,7 +721,6 @@ contract YieldManager is
   function _decrementPendingPermissionlessUnstake(uint256 _amount) internal {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     uint256 pendingPermissionlessUnstakeAmount = $.pendingPermissionlessUnstake;
-    if (pendingPermissionlessUnstakeAmount == 0) return;
     $.pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstakeAmount, _amount);
   }
 
@@ -1024,9 +1021,7 @@ contract YieldManager is
     bytes memory _vendorInitializationData
   ) external onlyRole(SET_YIELD_PROVIDER_ROLE) {
     ErrorUtils.revertIfZeroAddress(_yieldProvider);
-    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
-      revert YieldProviderAlreadyAdded();
-    }
+    if (isYieldProviderKnown(_yieldProvider)) revert YieldProviderAlreadyAdded();
 
     YieldProviderRegistration memory registrationData = abi.decode(
       _delegatecallYieldProvider(
