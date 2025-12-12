@@ -680,7 +680,6 @@ contract YieldManager is
   function _decrementPendingPermissionlessUnstake(uint256 _amount) internal {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     uint256 pendingPermissionlessUnstakeAmount = $.pendingPermissionlessUnstake;
-    if (pendingPermissionlessUnstakeAmount == 0) return;
     $.pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstakeAmount, _amount);
   }
 
