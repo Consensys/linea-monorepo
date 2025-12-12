@@ -595,18 +595,18 @@ contract YieldManager is
     }
     _getYieldManagerStorage().lastProvenSlot[_validatorIndex] = _slot;
 
-    uint256 requiredUnstakeAmount = Math256.safeSub(getTargetReserveDeficit(), address(this).balance + withdrawableValue(_yieldProvider) + _getYieldManagerStorage().pendingPermissionlessUnstake);
-    if (requiredUnstakeAmount == 0) revert NoRequirementToUnstakePermissionless();
+    uint256 requiredUnstakeAmountWei = Math256.safeSub(getTargetReserveDeficit(), address(this).balance + withdrawableValue(_yieldProvider) + _getYieldManagerStorage().pendingPermissionlessUnstake);
+    if (requiredUnstakeAmountWei == 0) revert NoRequirementToUnstakePermissionless();
 
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
-      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, requiredUnstakeAmount, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
+      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, requiredUnstakeAmountWei, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
     );
-    uint256 unstakedAmount = abi.decode(data, (uint256));
-    if (unstakedAmount == 0) revert YieldProviderReturnedZeroUnstakeAmount();
+    uint256 unstakedAmountWei = abi.decode(data, (uint256));
+    if (unstakedAmountWei == 0) revert YieldProviderReturnedZeroUnstakeAmount();
 
-    _getYieldManagerStorage().pendingPermissionlessUnstake += unstakedAmount;
-    emit UnstakePermissionlessRequest(_yieldProvider, _validatorIndex, _slot, requiredUnstakeAmount, unstakedAmount, _withdrawalParams);
+    _getYieldManagerStorage().pendingPermissionlessUnstake += unstakedAmountWei;
+    emit UnstakePermissionlessRequest(_yieldProvider, _validatorIndex, _slot, requiredUnstakeAmountWei, unstakedAmountWei, _withdrawalParams);
   }
 
   /**
