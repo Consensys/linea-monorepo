@@ -117,7 +117,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
   ): SafeFuture<String> {
     return getVersion()
       .thenCompose { version ->
-        val function = buildSubmitBlobsFunction(version, blobs)
+        val function = Web3JLineaRollupFunctionBuilders.buildSubmitBlobsFunction(version, blobs)
         web3jContractHelper.sendBlobCarryingTransactionAndGetTxHash(
           function = function,
           blobs = blobs.map { it.blobCompressionProof!!.compressedData },
@@ -132,7 +132,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
   ): SafeFuture<String?> {
     return getVersion()
       .thenCompose { version ->
-        val function = buildSubmitBlobsFunction(version, blobs)
+        val function = Web3JLineaRollupFunctionBuilders.buildSubmitBlobsFunction(version, blobs)
         web3jContractHelper.executeBlobEthCall(
           function = function,
           blobs = blobs.map { it.blobCompressionProof!!.compressedData },
@@ -150,7 +150,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
   ): SafeFuture<String> {
     return getVersion()
       .thenCompose { version ->
-        val function = buildFinalizeBlocksFunction(
+        val function = Web3JLineaRollupFunctionBuilders.buildFinalizeBlocksFunction(
           version,
           aggregation,
           aggregationLastBlob,
@@ -171,7 +171,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
   ): SafeFuture<String?> {
     return getVersion()
       .thenCompose { version ->
-        val function = buildFinalizeBlocksFunction(
+        val function = Web3JLineaRollupFunctionBuilders.buildFinalizeBlocksFunction(
           version,
           aggregation,
           aggregationLastBlob,
@@ -191,7 +191,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
   ): SafeFuture<String> {
     return getVersion()
       .thenCompose { version ->
-        val function = buildFinalizeBlocksFunction(
+        val function = Web3JLineaRollupFunctionBuilders.buildFinalizeBlocksFunction(
           version,
           aggregation,
           aggregationLastBlob,

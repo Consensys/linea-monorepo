@@ -1,5 +1,5 @@
 # Chain
-genesis-file="genesis/genesis.mainnet.json" # Path to the custom genesis file
+network="linea-mainnet"
 
 # data
 data-path="/data"

@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.Optional;
+import java.util.function.Supplier;
 import okhttp3.Call;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -73,8 +74,13 @@ public class EngineAPIService {
    * @param blockTimestampSeconds    The Unix timestamp (in seconds) to assign to the new block.
    * @param blockBuildingTimeMs      The duration (in milliseconds) allocated for the Besu node to build the block.
    */
-  public void buildNewBlock(long blockTimestampSeconds, long blockBuildingTimeMs)
-      throws IOException, InterruptedException {
+  public void buildNewBlock(long blockTimestampSeconds, long blockBuildingTimeMs) throws Exception {
+    buildNewBlock(blockTimestampSeconds, blockBuildingTimeMs, () -> false);
+  }
+
+  public void buildNewBlock(
+      long blockTimestampSeconds, long blockBuildingTimeMs, Supplier<Boolean> stopBlockBuilding)
+      throws Exception {
     final EthBlock.Block latestBlock = node.execute(ethTransactions.block());
 
     final Call buildBlockRequest =
@@ -130,7 +136,7 @@ public class EngineAPIService {
     }
 
     final Call newPayloadRequest =
-        createNewPayloadRequest(
+        createNewPayloadRequestV4(
             executionPayload,
             expectedBlobVersionedHashes,
             parentBeaconBlockRoot,
@@ -144,7 +150,10 @@ public class EngineAPIService {
     }
 
     final Call moveChainAheadRequest = createForkChoiceRequest(newBlockHash);
-
+    if (stopBlockBuilding.get()) {
+      // if stopBlockBuilding is true, we exit before moving the chain ahead
+      return;
+    }
     try (final Response moveChainAheadResponse = moveChainAheadRequest.execute()) {
       assertThat(moveChainAheadResponse.code()).isEqualTo(200);
     }
@@ -157,7 +166,7 @@ public class EngineAPIService {
       final ArrayNode executionRequests)
       throws IOException, InterruptedException {
     final Call newPayloadRequest =
-        createNewPayloadRequest(
+        createNewPayloadRequestV4(
             executionPayload,
             expectedBlobVersionedHashes,
             parentBeaconBlockRoot,
@@ -197,10 +206,10 @@ public class EngineAPIService {
   private Call createGetPayloadRequest(final String payloadId) {
     ArrayNode params = mapper.createArrayNode();
     params.add(payloadId);
-    return createEngineCall("engine_getPayloadV4", params);
+    return createEngineCall("engine_getPayloadV5", params);
   }
 
-  private Call createNewPayloadRequest(
+  private Call createNewPayloadRequestV4(
       final ObjectNode executionPayload,
       final ArrayNode expectedBlobVersionedHashes,
       final String parentBeaconBlockRoot,
@@ -213,6 +222,25 @@ public class EngineAPIService {
 
     return createEngineCall("engine_newPayloadV4", params);
   }
+
+  //   private Call createNewPayloadRequestV5(
+  //     final ObjectNode executionPayload,
+  //     final ArrayNode expectedBlobVersionedHashes,
+  //     final String parentBeaconBlockRoot,
+  //     final ArrayNode executionRequests) {
+
+  //   // Add blockAccessList to executionPayload (required for V5)
+  //   // Use "0xc0" for empty BlockAccessList
+  //   executionPayload.put("blockAccessList", "0xc0");
+
+  //   ArrayNode params = mapper.createArrayNode();
+  //   params.add(executionPayload);
+  //   params.add(expectedBlobVersionedHashes);
+  //   params.add(parentBeaconBlockRoot);
+  //   params.add(executionRequests);
+
+  //   return createEngineCall("engine_newPayloadV5", params);
+  // }
 
   private Call createEngineCall(final String rpcMethod, ArrayNode params) {
     ObjectNode request = mapper.createObjectNode();

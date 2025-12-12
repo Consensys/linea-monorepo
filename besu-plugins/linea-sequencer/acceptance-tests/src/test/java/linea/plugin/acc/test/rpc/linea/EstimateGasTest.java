@@ -9,6 +9,7 @@
 package linea.plugin.acc.test.rpc.linea;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static net.consensys.linea.bl.TransactionProfitabilityCalculator.getCompressedTxSize;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -22,7 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import linea.plugin.acc.test.LineaPluginTestBase;
+import linea.plugin.acc.test.LineaPluginPoSTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
@@ -44,7 +45,7 @@ import org.junit.jupiter.api.Test;
 import org.web3j.protocol.core.Request;
 import org.web3j.protocol.http.HttpService;
 
-public class EstimateGasTest extends LineaPluginTestBase {
+public class EstimateGasTest extends LineaPluginPoSTestBase {
   protected static final int FIXED_GAS_COST_WEI = 0;
   protected static final int VARIABLE_GAS_COST_WEI = 1_000_000_000;
   protected static final double MIN_MARGIN = 1.0;
@@ -234,9 +235,11 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
     assertThat(respLinea.hasError()).isTrue();
     assertThat(respLinea.getError().getCode()).isEqualTo(-32004);
+    // 0x1234000001 ~= 0x1234 * 16_777_216 (tx gas limit as of Osaka -
+    // https://eips.ethereum.org/EIPS/eip-7825)
     assertThat(respLinea.getError().getMessage())
         .isEqualTo(
-            "Upfront cost exceeds account balance (transaction up-front cost 0x208cbab601 exceeds transaction sender account balance 0x0)");
+            "Upfront cost exceeds account balance (transaction up-front cost 0x1234000001 exceeds transaction sender account balance 0x0)");
   }
 
   @Test
@@ -344,6 +347,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
 
     final var profitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
 
+    final int compressedSize = getCompressedTxSize(tx);
     assertThat(
             profitabilityCalculator.isProfitable(
                 "Test",
@@ -352,7 +356,8 @@ public class EstimateGasTest extends LineaPluginTestBase {
                 baseFee,
                 estimatedMaxGasPrice,
                 estimatedGasLimit,
-                minGasPrice))
+                minGasPrice,
+                compressedSize))
         .isTrue();
   }
 
