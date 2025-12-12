@@ -286,6 +286,11 @@ interface IYieldManager {
   error SlotNotNewerThanLastProvenSlot(uint256 _validatorIndex, uint256 _lastProvenSlot, uint256 _slot);
 
   /**
+   * @dev Returned when there is 0 required unstake amount for unstakePermissionless.
+   */
+  error NoRequirementToUnstakePermissionless();
+
+  /**
    * @dev Returned when YieldProvider returns that 0 amount was unstaked.
    */
   error YieldProviderReturnedZeroUnstakeAmount();

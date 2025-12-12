@@ -599,7 +599,11 @@ contract YieldManager is
     }
     _getYieldManagerStorage().lastProvenSlot[_validatorIndex] = _slot;
 
-    uint256 requiredUnstakeAmount = getTargetReserveDeficit() - address(this).balance - withdrawableValue(_yieldProvider) - _getYieldManagerStorage().pendingPermissionlessUnstake;
+    uint256 requiredUnstakeAmount = Math256.safeSub(getTargetReserveDeficit(), address(this).balance + withdrawableValue(_yieldProvider) + _getYieldManagerStorage().pendingPermissionlessUnstake);
+    if (requiredUnstakeAmount == 0) {
+      revert NoRequirementToUnstakePermissionless();
+    }
+
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, requiredUnstakeAmount, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
