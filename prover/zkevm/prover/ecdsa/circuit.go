@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/gnark/std/math/emulated/emparams"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -20,70 +21,8 @@ type EcRecoverInstance struct {
 	VHi, VLo                   [common.NbLimbU128]frontend.Variable `gnark:",public"`
 	RHi, RLo                   [common.NbLimbU128]frontend.Variable `gnark:",public"`
 	SHi, SLo                   [common.NbLimbU128]frontend.Variable `gnark:",public"`
-	// SuccessBitUnused absorbs the 7 zero limbs before the actual SUCCESS_BIT value.
-	// The data stores SUCCESS_BIT as 8 limbs (limbs 0-6 are zero, limb 7 has the value). This is to match the data layout, but are not used in the circuit.
-	SuccessBitUnused [common.NbLimbU128 - 1]frontend.Variable `gnark:",public"`
-	SUCCESS_BIT      frontend.Variable                        `gnark:",public"`
-	// EcrecoverBitUnused absorbs the 7 zero limbs before the actual ECRECOVERBIT value. This is to match the data layout, but are not used in the circuit.
-	EcrecoverBitUnused [common.NbLimbU128 - 1]frontend.Variable `gnark:",public"`
-	ECRECOVERBIT       frontend.Variable                        `gnark:",public"`
-}
-
-// convertBE16x16ToLE26x10 converts big-endian 16×16-bit limbs (Hi, Lo arrays)
-// to little-endian 26×10-bit limbs for gnark's emulated field over small fields.
-// Hi and Lo are each 8 limbs of 16 bits in big-endian order (index 0 = most significant).
-//
-// Input layout:
-//   - lo[7] contains bits [0-15] of full 256-bit value (LSB chunk)
-//   - lo[0] contains bits [112-127]
-//   - hi[7] contains bits [128-143]
-//   - hi[0] contains bits [240-255] (MSB chunk)
-//
-// Output: 26 limbs of 10 bits in little-endian order (limbs[0] = LSB).
-func convertBE16x16ToLE26x10(api frontend.API, hi, lo [common.NbLimbU128]frontend.Variable) []frontend.Variable {
-	// Collect all 256 bits in little-endian order (bit 0 first).
-	// Process limbs from LSB to MSB: lo[7], lo[6], ..., lo[0], hi[7], ..., hi[0]
-	// ToBinary returns bits in little-endian order (bits[0] = LSB of limb),
-	// which is exactly what we need.
-	allBits := make([]frontend.Variable, 256)
-	bitPos := 0
-
-	// Lo part: lo[7] is LSB chunk (bits 0-15), lo[0] is MSB chunk of Lo (bits 112-127)
-	for i := common.NbLimbU128 - 1; i >= 0; i-- {
-		bits := api.ToBinary(lo[i], 16)
-		for j := 0; j < 16; j++ {
-			allBits[bitPos] = bits[j]
-			bitPos++
-		}
-	}
-
-	// Hi part: hi[7] is LSB chunk of Hi (bits 128-143), hi[0] is MSB chunk (bits 240-255)
-	for i := common.NbLimbU128 - 1; i >= 0; i-- {
-		bits := api.ToBinary(hi[i], 16)
-		for j := 0; j < 16; j++ {
-			allBits[bitPos] = bits[j]
-			bitPos++
-		}
-	}
-
-	// Now allBits is in little-endian order: allBits[0] = bit 0 (LSB), allBits[255] = bit 255 (MSB)
-	// Build 26 limbs of 10 bits each, also in little-endian order
-	result := make([]frontend.Variable, 26)
-	for i := 0; i < 26; i++ {
-		limbBits := make([]frontend.Variable, 10)
-		for j := 0; j < 10; j++ {
-			bitIdx := i*10 + j
-			if bitIdx < 256 {
-				limbBits[j] = allBits[bitIdx]
-			} else {
-				// Padding for bits beyond 256 (most significant limbs)
-				limbBits[j] = frontend.Variable(0)
-			}
-		}
-		result[i] = api.FromBinary(limbBits...)
-	}
-
-	return result
+	SUCCESS_BIT                [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	ECRECOVERBIT               [common.NbLimbU128]frontend.Variable `gnark:",public"`
 }
 
 type MultiEcRecoverCircuit struct {
@@ -125,31 +64,38 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 	}
 	// Convert big-endian 16×16-bit limbs to little-endian 26×10-bit limbs
 	// for gnark's emulated field over KoalaBear
-	msg = fr.NewElement(convertBE16x16ToLE26x10(api, c.HHi, c.HLo))
+	msg = gnarkutil.EmulatedFromHiLo(api, fr, c.HHi[:], c.HLo[:], 16)
 	PK = &sw_emulated.AffinePoint[emparams.Secp256k1Fp]{
-		X: *fp.NewElement(convertBE16x16ToLE26x10(api, c.PKXHi, c.PKXLo)),
-		Y: *fp.NewElement(convertBE16x16ToLE26x10(api, c.PKYHi, c.PKYLo)),
+		X: *gnarkutil.EmulatedFromHiLo(api, fp, c.PKXHi[:], c.PKXLo[:], 16),
+		Y: *gnarkutil.EmulatedFromHiLo(api, fp, c.PKYHi[:], c.PKYLo[:], 16),
 	}
+
 	// v is 27 or 28 in EVM, but arithmetization gives on two limbs. Ensure that all high limbs are zero.
 	for i := 0; i < common.NbLimbU128; i++ {
 		api.AssertIsEqual(c.VHi[i], 0)
 	}
 	// Also assert all but the last low limb are zero (v fits in ~5 bits)
-	for i := 0; i < common.NbLimbU128-1; i++ {
+	for i := 1; i < common.NbLimbU128; i++ {
 		api.AssertIsEqual(c.VLo[i], 0)
 	}
-	v = c.VLo[common.NbLimbU128-1] // last limb since v is small (27 or 28).
+	v = c.VLo[0] // last limb since v is small (27 or 28).
 
 	// Convert r and s similarly
-	r = fr.NewElement(convertBE16x16ToLE26x10(api, c.RHi, c.RLo))
-	s = fr.NewElement(convertBE16x16ToLE26x10(api, c.SHi, c.SLo))
+	r = gnarkutil.EmulatedFromHiLo(api, fr, c.RHi[:], c.RLo[:], 16)
+	s = gnarkutil.EmulatedFromHiLo(api, fr, c.SHi[:], c.SLo[:], 16)
+
+	for i := 1; i < common.NbLimbU128; i++ {
+		api.AssertIsEqual(c.SUCCESS_BIT[i], 0)
+		api.AssertIsEqual(c.ECRECOVERBIT[i], 0)
+	}
+
 	// SUCCESS_BIT indicates if the input is a valid signature (1 for valid, 0
 	// for invalid). Recall that we also allow to verify invalid signatures (for
 	// the ECRECOVER precompile call).
-	isFailure = api.Sub(1, c.SUCCESS_BIT)
+	isFailure = api.Sub(1, c.SUCCESS_BIT[0])
 	// ECRECOVERBIT indicates if the input comes from the ECRECOVER precompile
 	// or not (1 for ECRECOVER, 0 for TX).
-	strictRange = api.Sub(1, c.ECRECOVERBIT)
+	strictRange = api.Sub(1, c.ECRECOVERBIT[0])
 
 	return
 }
@@ -175,82 +121,39 @@ const nbInputsPerInstance = 14 * common.NbLimbU128
 // [plonk.RegisterInputFiller] via the [init] function. But this has to be done
 // manually if the package is not imported.
 func PlonkInputFiller(circuitInstance, inputIndex int) field.Element {
-	// Each instance has 112 inputs (14 arrays of 8 limbs).
-	// Each limb is 16 bits (2 bytes), stored in big-endian order within each Hi/Lo array.
 
-	// public key 1*G (64 bytes: 32 for X, 32 for Y)
-	placeholderPubkey := [64]byte{
-		0x79, 0xbe, 0x66, 0x7e, 0xf9, 0xdc, 0xbb, 0xac, 0x55, 0xa0, 0x62, 0x95, 0xce, 0x87, 0x0b, 0x07,
-		0x02, 0x9b, 0xfc, 0xdb, 0x2d, 0xce, 0x28, 0xd9, 0x59, 0xf2, 0x81, 0x5b, 0x16, 0xf8, 0x17, 0x98,
-		0x48, 0x3a, 0xda, 0x77, 0x26, 0xa3, 0xc4, 0x65, 0x5d, 0xa4, 0xfb, 0xfc, 0x0e, 0x11, 0x08, 0xa8,
-		0xfd, 0x17, 0xb4, 0x48, 0xa6, 0x85, 0x54, 0x19, 0x9c, 0x47, 0xd0, 0x8f, 0xfb, 0x10, 0xd4, 0xb8,
-	}
-	// tx hash: 0x01000...000
-	placeholderTxHash := [32]byte{
-		0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	}
-	// valid signature for secret key 1 and tx hash 0x01000...000
-	placeholderSignature := [64]byte{
-		// r part (32 bytes)
-		0xc6, 0x04, 0x7f, 0x94, 0x41, 0xed, 0x7d, 0x6d, 0x30, 0x45, 0x40, 0x6e, 0x95, 0xc0, 0x7c, 0xd8,
-		0x5c, 0x77, 0x8e, 0x4b, 0x8c, 0xef, 0x3c, 0xa7, 0xab, 0xac, 0x09, 0xb9, 0x5c, 0x70, 0x9e, 0xe5,
-		// s part (32 bytes)
-		0xe3, 0x82, 0x3f, 0xca, 0x20, 0xf6, 0xbe, 0xb6, 0x98, 0x22, 0xa0, 0x37, 0x4a, 0xe0, 0x3e, 0x6b,
-		0x8b, 0x93, 0x35, 0x99, 0x1e, 0x1b, 0xee, 0x71, 0xb5, 0xbf, 0x34, 0x23, 0x16, 0x53, 0x70, 0x13,
-	}
-	// v = 27 (0x1b) in EVM format
-	placeholderV := uint64(0x1b)
+	fillingData := []uint32{
+		// public key: 1*G
+		0x0b07, 0xce87, 0x6295, 0x55a0, 0xbbac, 0xf9dc, 0x667e, 0x79be,
+		0x1798, 0x16f8, 0x815b, 0x59f2, 0x28d9, 0x2dce, 0xfcdb, 0x029b,
+		0x08a8, 0x0e11, 0xfbfc, 0x5da4, 0xc465, 0x26a3, 0xda77, 0x483a,
+		0xd4b8, 0xfb10, 0xd08f, 0x9c47, 0x5419, 0xa685, 0xb448, 0xfd17,
 
-	var ret field.Element
-	idx := inputIndex % nbInputsPerInstance
+		// tx hash: 1000000...0000
+		0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0100,
+		0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
 
-	// Helper to get a 16-bit limb from a byte slice (big-endian order)
-	getLimb := func(data []byte, limbIdx int) uint64 {
-		offset := limbIdx * 2
-		if offset+2 > len(data) {
-			return 0
-		}
-		return uint64(data[offset])<<8 | uint64(data[offset+1])
+		// VHI / VLO - valid signature for secret key 1 and tx hash 1 with nonce 2
+		0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+		0x001b, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+		// RHI / RLO - 	valid signature for secret key 1 and tx hash 1 with nonce 2
+		0x7cd8, 0x95c0, 0x406e, 0x3045, 0x7d6d, 0x41ed, 0x7f94, 0xc604,
+		0x9ee5, 0x5c70, 0x09b9, 0xabac, 0x3ca7, 0x8cef, 0x8e4b, 0x5c77,
+
+		// SHI / SLO - valid signature for secret key 1 and tx hash 1 with nonce 2
+		0x3e6b, 0x4ae0, 0xa037, 0x9822, 0xbeb6, 0x20f6, 0x3fca, 0xe382,
+		0x7013, 0x1653, 0x3423, 0xb5bf, 0xee71, 0x1e1b, 0x3599, 0x8b93,
+
+		// SuccessBit / EcRecoverBit - valid signature for secret key 1 and tx hash 1 with nonce 2
+		0x0001, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+		0x0001, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
 	}
 
-	switch {
-	case idx < 8: // PKXHi[0..7] - first 16 bytes of pubkey
-		ret.SetUint64(getLimb(placeholderPubkey[0:16], idx))
-	case idx < 16: // PKXLo[0..7] - bytes 16-31 of pubkey
-		ret.SetUint64(getLimb(placeholderPubkey[16:32], idx-8))
-	case idx < 24: // PKYHi[0..7] - bytes 32-47 of pubkey
-		ret.SetUint64(getLimb(placeholderPubkey[32:48], idx-16))
-	case idx < 32: // PKYLo[0..7] - bytes 48-63 of pubkey
-		ret.SetUint64(getLimb(placeholderPubkey[48:64], idx-24))
-	case idx < 40: // HHi[0..7] - first 16 bytes of tx hash
-		ret.SetUint64(getLimb(placeholderTxHash[0:16], idx-32))
-	case idx < 48: // HLo[0..7] - bytes 16-31 of tx hash
-		ret.SetUint64(getLimb(placeholderTxHash[16:32], idx-40))
-	case idx < 56: // VHi[0..7] - all zeros (v is small, fits in VLo)
-		ret.SetUint64(0)
-	case idx < 64: // VLo[0..7] - only last limb (idx=63) has value
-		if idx == 63 {
-			ret.SetUint64(placeholderV)
-		} else {
-			ret.SetUint64(0)
-		}
-	case idx < 72: // RHi[0..7] - first 16 bytes of r
-		ret.SetUint64(getLimb(placeholderSignature[0:16], idx-64))
-	case idx < 80: // RLo[0..7] - bytes 16-31 of r
-		ret.SetUint64(getLimb(placeholderSignature[16:32], idx-72))
-	case idx < 88: // SHi[0..7] - first 16 bytes of s (bytes 32-47 of signature)
-		ret.SetUint64(getLimb(placeholderSignature[32:48], idx-80))
-	case idx < 96: // SLo[0..7] - bytes 16-31 of s (bytes 48-63 of signature)
-		ret.SetUint64(getLimb(placeholderSignature[48:64], idx-88))
-	case idx < 103: // SuccessBitPadding[0..6] - all zeros
-		ret.SetUint64(0)
-	case idx == 103: // SUCCESS_BIT
-		ret.SetUint64(1)
-	case idx < 111: // EcrecoverBitPadding[0..6] - all zeros
-		ret.SetUint64(0)
-	case idx == 111: // ECRECOVERBIT
-		ret.SetUint64(1)
-	}
-	return ret
+	var (
+		k = inputIndex % len(fillingData)
+		x = uint64(fillingData[k])
+	)
+
+	return field.NewElement(x)
 }
