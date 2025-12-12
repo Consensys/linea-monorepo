@@ -25,6 +25,7 @@ library SSZ {
   uint256 constant MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH = 27;
 
   /// @notice Returns the precomputed zero hash for a given merkle tree layer.
+  /// @dev Values should match reference Python implementation - https://github.com/ethereum/consensus-specs/blob/5390b77256a9fd6c1ebe0c7e3f8a3da033476ddf/tests/core/pyspec/eth2spec/utils/merkle_minimal.py#L5-L9
   /// @dev Zero hashes are used as placeholders in merkle trees when padding to powers of 2.
   ///      Layer 0 is all zeros, and each subsequent layer is the hash of the previous layer concatenated with itself.
   /// @param i The layer index (0-27).
@@ -329,6 +330,7 @@ library SSZ {
   /// @dev Internal helper function that merges a chunk into the progressive merkle tree.
   /// @dev Mutates the `tmp` array in-place, building up the merkle tree layer by layer.
   ///      Implements the merge logic from the Python reference implementation.
+  /// @dev Reference - https://github.com/ethereum/consensus-specs/blob/5390b77256a9fd6c1ebe0c7e3f8a3da033476ddf/tests/core/pyspec/eth2spec/utils/merkle_minimal.py#L64-L77
   /// @param tmp The temporary array storing intermediate merkle tree nodes (mutated in-place).
   /// @param depth The bit length of (count - 1), representing the depth needed for the actual count.
   /// @param count The total number of chunks being merkleized.
