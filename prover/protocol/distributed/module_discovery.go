@@ -47,7 +47,7 @@ const (
 //   - If the expression contains variables that are from different modules,
 //     (excluding [AnyModule]), the function returns [NoModuleFound].
 func ModuleOfExpr(disc *StandardModuleDiscoverer, expr *symbolic.Expression) ModuleName {
-	metadata := expr.ListBoardVariableMetadata()
+	metadata := expr.BoardListVariableMetadata()
 	return ModuleOfList(disc, metadata...)
 }
 
@@ -55,7 +55,7 @@ func ModuleOfExpr(disc *StandardModuleDiscoverer, expr *symbolic.Expression) Mod
 // size of the columns in the expression. The function returns 0 if the expression
 // does not have any size-resolvable item.
 func NewSizeOfExpr(disc *StandardModuleDiscoverer, expr *symbolic.Expression) int {
-	metadata := expr.ListBoardVariableMetadata()
+	metadata := expr.BoardListVariableMetadata()
 	newSize := 0
 
 	for _, m := range metadata {

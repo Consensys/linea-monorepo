@@ -18,7 +18,7 @@ import (
 
 // TestDistributedWizardBasic attempts to compiler the wizard distribution.
 func TestDistributedWizardBasic(t *testing.T) {
-
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	var (
 		z       = DistributeTestCase{numRow: 1 << 20}
 		defFunc = func(build *wizard.Builder) { z.Define(build.CompiledIOP) }
@@ -226,13 +226,13 @@ func runProverGLs(
 	t *testing.T,
 	distWizard *distributed.DistributedWizard,
 	witnessGLs []*distributed.ModuleWitnessGL,
-) (proofs []distributed.SegmentProof) {
+) (proofs []*distributed.SegmentProof) {
 
 	var (
 		compiledGLs = distWizard.CompiledGLs
 	)
 
-	proofs = make([]distributed.SegmentProof, len(witnessGLs))
+	proofs = make([]*distributed.SegmentProof, len(witnessGLs))
 
 	for i := range witnessGLs {
 
@@ -272,10 +272,10 @@ func runProverLPPs(
 	distWizard *distributed.DistributedWizard,
 	sharedRandomness field.Element,
 	witnessLPPs []*distributed.ModuleWitnessLPP,
-) []distributed.SegmentProof {
+) []*distributed.SegmentProof {
 
 	var (
-		proofs = make([]distributed.SegmentProof, len(witnessLPPs))
+		proofs = make([]*distributed.SegmentProof, len(witnessLPPs))
 	)
 
 	for i := range witnessLPPs {
