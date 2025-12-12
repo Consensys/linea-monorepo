@@ -599,24 +599,17 @@ contract YieldManager is
     }
     _getYieldManagerStorage().lastProvenSlot[_validatorIndex] = _slot;
 
+    uint256 requiredUnstakeAmount = getTargetReserveDeficit() - address(this).balance - withdrawableValue(_yieldProvider) - _getYieldManagerStorage().pendingPermissionlessUnstake;
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
-      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
+      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, requiredUnstakeAmount, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
     );
-    maxUnstakeAmount = abi.decode(data, (uint256));
-    if (maxUnstakeAmount == 0) {
+    uint256 unstakedAmount = abi.decode(data, (uint256));
+    if (unstakedAmount == 0) {
       revert YieldProviderReturnedZeroUnstakeAmount();
     }
-    // Validiate maxUnstakeAmount
-    uint256 targetDeficit = getTargetReserveDeficit();
-    uint256 availableFundsToSettleTargetDeficit = address(this).balance +
-      withdrawableValue(_yieldProvider) +
-      _getYieldManagerStorage().pendingPermissionlessUnstake;
-    if (availableFundsToSettleTargetDeficit + maxUnstakeAmount > targetDeficit) {
-      revert PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
-    }
 
-    _getYieldManagerStorage().pendingPermissionlessUnstake += maxUnstakeAmount;
+    _getYieldManagerStorage().pendingPermissionlessUnstake += unstakedAmount;
     // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
   }
 

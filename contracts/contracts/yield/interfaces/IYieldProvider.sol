@@ -108,6 +108,7 @@ interface IYieldProvider {
    */
   function unstakePermissionless(
     address _yieldProvider,
+    uint256 _requiredUnstakeAmount,
     uint64 _validatorIndex,
     uint64 _slot,
     bytes calldata _withdrawalParams,
