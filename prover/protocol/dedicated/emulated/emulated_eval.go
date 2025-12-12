@@ -129,7 +129,9 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 				utils.Panic("emulated evaluation at row %d: evaluation not divisible by modulus", i)
 			}
 		} else {
-			utils.Panic("modulus cannot be zero")
+			// TODO: when all values are zero, then we can have modulus zero, it
+			// is empty check. Then we don't have to assign masks
+			// utils.Panic("modulus cannot be zero")
 		}
 		if err := bigIntToLimbs(tmpQuotient, bufQuo, a.Quotient, dstQuoLimbs, a.nbBitsPerLimb); err != nil {
 			utils.Panic("failed to convert quotient to limbs: %v", err)
@@ -256,6 +258,7 @@ func EmulatedEvaluation(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int
 }
 
 func (cs *EmulatedEvaluationModule) csEval(comp *wizard.CompiledIOP) {
+	// TODO: should we write the evaluation results in a limb. Then we get smaller-degree polynomials
 	uniqueLimbs := make(map[string]*symbolic.Expression)
 	for i := range cs.Terms {
 		for j := range cs.Terms[i] {

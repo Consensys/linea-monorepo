@@ -224,6 +224,7 @@ func (a *EmulatedMultiplicationModule) assignChallengePowers(run *wizard.ProverR
 func EmulatedMultiplication(comp *wizard.CompiledIOP, name string, left, right, modulus Limbs, nbBitsPerLimb int) *EmulatedMultiplicationModule {
 	// TODO: add options for range checking inputs
 	// TODO: add options for including permutation on inputs/outputs
+	// TODO: add option to have activator column. When it is given then we can avoid assigning zeros when the multiplication is not active
 	// TODO: check all limbs are same width
 	round := 0
 	nbRows := left.Columns[0].Size()

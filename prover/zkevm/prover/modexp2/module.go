@@ -105,8 +105,8 @@ func newModule(comp *wizard.CompiledIOP, input *Input) *Module {
 	)
 	comp.RegisterProverAction(roundNr, mod)
 	// run later to ensure we have the assignments already done
-	mod.Small = newModexp(comp, "MODEXP_SMALL", mod, mod.IsSmall, smallModExpSize, settings.MaxNbInstance256)
-	mod.Large = newModexp(comp, "MODEXP_LARGE", mod, mod.IsLarge, largeModExpSize, settings.MaxNbInstanceLarge)
+	mod.Small = newModexp(comp, "MODEXP_SMALL", mod, mod.IsSmall, mod.ToSmall, smallModExpSize, settings.MaxNbInstance256)
+	mod.Large = newModexp(comp, "MODEXP_LARGE", mod, mod.IsLarge, mod.IsLarge, largeModExpSize, settings.MaxNbInstanceLarge)
 
 	// check that isModexp is well constructed
 	mod.csIsModExp(comp)

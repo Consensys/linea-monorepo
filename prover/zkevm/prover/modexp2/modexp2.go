@@ -5,30 +5,74 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/emulated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 type Modexp struct {
 	instanceSize int // smallModExpSize or largeModExpSize
 	nbLimbs      int // 256/limbsize for small case, 8096/limbsize for large case
+	name         string
 
-	IsActive ifaces.Column // the active flag for this module
+	// ToEval indicates the limbs which go to the circuit when IsActive is set.
+	// For small instance this corresponds to the nbSmallModexpLimbs limbs, for
+	// large instance this corresponds to all nbLargeModexpLimbs limbs (the same as IsActive).
+	ToEval ifaces.Column
+	// IsActiveFromInput indicates from input which rows are part of this modexp instance
+	IsActiveFromInput ifaces.Column // the active flag for this module
+	// IsBase is IsModExpBase masked by IsActive
+	IsBase ifaces.Column
+	// IsExponent is IsModExpExponent masked by IsActive
+	IsExponent ifaces.Column
+	// IsModulus is IsModExpModulus masked by IsActive
+	IsModulus ifaces.Column
+	// IsResult is IsModExpResult masked by IsActive
+	IsResult ifaces.Column
+
+	// IsFirstLineOfInstance indicates the first line of every modexp instance in this module
+	IsFirstLineOfInstance ifaces.Column
+	// IsLastLineOfInstance indicates the last line of every modexp instance in this module
+	IsLastLineOfInstance ifaces.Column
+	// IsActive indicates that any of the modexp operands are present in this row
+	IsActive ifaces.Column
 	*Module
 
+	// PrevAccumulator is the previous accumulator limbs. First row corresponds
+	// to initial value 1. It is copied from the current accumulator from
+	// previous row.
 	PrevAccumulator emulated.Limbs
+	// CurrAccumulator is the current accumulator limbs. Defines the result of
+	// exponentiation step.
 	CurrAccumulator emulated.Limbs
-	Modulus         emulated.Limbs
-	ExponentBits    emulated.Limbs
-	Base            emulated.Limbs
-	Mone            emulated.Limbs // mod - 1
+	// Modulus is the modulus limbs
+	Modulus emulated.Limbs
+	// Exponent is the exponent limbs. Not used in modexp directly (only its
+	// bits are used), but we use it to check correctness of exponent bits
+	// decomposition.
+	Exponent emulated.Limbs
+	// ExponentBits is the exponent bits limbs. Used to check correctness of
+	// exponent bits decomposition. We use [emulated.Limbs] as it is input
+	// to the emulated field operations.
+	ExponentBits emulated.Limbs
+	// Base is the modexp base. It is fixed over all rows of the instance.
+	Base emulated.Limbs
+	// Mone is the modulus minus one. Used in the emulated evaluation for
+	// subtraction of the rest of the term.
+	Mone emulated.Limbs
 }
 
-func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActive ifaces.Column, instanceSize int, nbInstances int) *Modexp {
+func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFromInput ifaces.Column, toEval ifaces.Column, instanceSize int, nbInstances int) *Modexp {
 	// we omit the Modexp module when there is no instance to process
 	if nbInstances == 0 {
 		return nil
@@ -37,10 +81,10 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActive i
 	switch instanceSize {
 	case smallModExpSize:
 		nbLimbs = nbSmallModexpLimbs
-		nbRows = nbInstances * smallModExpSize
+		nbRows = utils.NextPowerOfTwo(nbInstances * smallModExpSize)
 	case largeModExpSize:
 		nbLimbs = nbLargeModexpLimbs
-		nbRows = nbInstances * largeModExpSize
+		nbRows = utils.NextPowerOfTwo(nbInstances * largeModExpSize)
 	default:
 		utils.Panic("unsupported modexp instance size: %d", instanceSize)
 	}
@@ -48,21 +92,32 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActive i
 	prevAcc := emulated.NewLimbs(comp, roundNr, name+"_PREV_ACC", nbLimbs, nbRows)
 	currAcc := emulated.NewLimbs(comp, roundNr, name+"_CURR_ACC", nbLimbs, nbRows)
 	modulus := emulated.NewLimbs(comp, roundNr, name+"_MODULUS", nbLimbs, nbRows)
+	exponent := emulated.NewLimbs(comp, roundNr, name+"_EXPONENT", nbLimbs, nbRows)
 	exponentBits := emulated.NewLimbs(comp, roundNr, name+"_EXPONENT_BITS", nbLimbs, nbRows)
 	base := emulated.NewLimbs(comp, roundNr, name+"_BASE", nbLimbs, nbRows)
 	mone := emulated.NewLimbs(comp, roundNr, name+"_MONE", nbLimbs, nbRows)
 
 	me := &Modexp{
-		instanceSize:    instanceSize,
-		nbLimbs:         nbLimbs,
-		PrevAccumulator: prevAcc,
-		CurrAccumulator: currAcc,
-		Modulus:         modulus,
-		ExponentBits:    exponentBits,
-		Base:            base,
-		Mone:            mone,
-		IsActive:        isActive,
-		Module:          module,
+		instanceSize:          instanceSize,
+		nbLimbs:               nbLimbs,
+		name:                  name,
+		PrevAccumulator:       prevAcc,
+		CurrAccumulator:       currAcc,
+		Modulus:               modulus,
+		Exponent:              exponent,
+		ExponentBits:          exponentBits,
+		Base:                  base,
+		Mone:                  mone,
+		IsActiveFromInput:     isActiveFromInput,
+		ToEval:                toEval,
+		Module:                module,
+		IsBase:                comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_BASE", name), module.Input.IsModExpBase.Size()),
+		IsExponent:            comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_EXPONENT", name), module.Input.IsModExpExponent.Size()),
+		IsModulus:             comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_MODULUS", name), module.Input.IsModExpModulus.Size()),
+		IsResult:              comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_RESULT", name), module.Input.IsModExpResult.Size()),
+		IsFirstLineOfInstance: comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_FIRST_LINE_OF_INSTANCE", name), nbRows),
+		IsLastLineOfInstance:  comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_LAST_LINE_OF_INSTANCE", name), nbRows),
+		IsActive:              comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_ACTIVE", name), nbRows),
 	}
 	// register prover action before emulated evaluation so that the limb assignements are available
 	comp.RegisterProverAction(roundNr, me)
@@ -71,32 +126,274 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActive i
 		{prevAcc, prevAcc}, {prevAcc, prevAcc, exponentBits, base}, {mone, prevAcc, prevAcc, exponentBits}, {mone, currAcc},
 	})
 
-	// TODO: add constraints that accumulator is copied correctly
-	// TODO: add constraint that the base is correctly assigned
-	// TODO: add constraint that the modulus is correctly assigned over all rows
-	// TODO: add constraint for exponent bits assignment
-	// TODO: modexp constraints for projection
+	// the values are only set when IsActive is set
+	me.csIsActive(comp)
+	// first line of instance in this module has flag 1 set. We use it for
+	// defining projection correctness of base and modulus
+	me.csFirstAndLastRowOfInstance(comp)
+	// projection that the base, modulus and result are correctly projected
+	me.csModexpDataProjection(comp)
+	// projection that the MSB decomposition of exponent is correct
+	me.csModexpExponentProjection(comp)
+	// query that the base and modulus are constant over all rows of the
+	// instance
+	me.csConstantBaseAndModulus(comp)
+	// query that the accumulator transitions are correct (prev_i ==
+	// current_{i-1}) and that accumulator is set to 1 in the first row
+	me.csAccumulatorTransition(comp)
 
 	return me
 }
 
+func (m *Modexp) csIsActive(comp *wizard.CompiledIOP) {
+	var cols []ifaces.Column
+	cols = append(cols, m.Base.Columns...)
+	cols = append(cols, m.Modulus.Columns...)
+	cols = append(cols, m.ExponentBits.Columns...)
+	cols = append(cols, m.CurrAccumulator.Columns...)
+	cols = append(cols, m.PrevAccumulator.Columns...)
+	commonconstraints.MustZeroWhenInactive(comp, m.IsActive, cols...)
+}
+
+func (m *Modexp) csFirstAndLastRowOfInstance(comp *wizard.CompiledIOP) {
+	// we need to ensure that the first and last lines are exactly nbRows apart.
+	// We don't need to do more trickery (with active rows) as we already use projection
+	// from the trace, which ensures that the number of first lines matches the number of last lines.
+	// and if everything in between is well formed, then also the whole segment is well formed.
+	comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_FIRST_LAST_ROW_WELL_FORMED", m.name),
+		sym.Sub(
+			m.IsFirstLineOfInstance,
+			column.Shift(m.IsLastLineOfInstance, m.instanceSize-1),
+		),
+	)
+}
+
+func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
+	// * projection query that the following values are correctly projected to the first row of each instance:
+	// - base limbs
+	// - modulus limbs
+	// - result limbs (i.e. final accumulator)
+	// - exponent limbs
+
+	// base
+	columnsB := make([][]ifaces.Column, len(m.Base.Columns))
+	for i := range columnsB {
+		columnsB[len(columnsB)-1-i] = []ifaces.Column{m.Base.Columns[i]}
+	}
+	filtersB := make([]ifaces.Column, len(m.Base.Columns))
+	for i := range filtersB {
+		filtersB[i] = m.IsFirstLineOfInstance
+	}
+
+	q := query.ProjectionMultiAryInput{
+		ColumnsA: [][]ifaces.Column{{m.Input.Limbs}},
+		FiltersA: []ifaces.Column{m.IsBase},
+		ColumnsB: columnsB,
+		FiltersB: filtersB,
+	}
+	comp.InsertProjection(ifaces.QueryIDf("%s_PROJ_BASE", m.name), q)
+
+	// modulus
+	columnsB = make([][]ifaces.Column, len(m.Modulus.Columns))
+	for i := range columnsB {
+		columnsB[len(columnsB)-1-i] = []ifaces.Column{m.Modulus.Columns[i]}
+	}
+	filtersB = make([]ifaces.Column, len(m.Modulus.Columns))
+	for i := range filtersB {
+		filtersB[i] = m.IsFirstLineOfInstance
+	}
+
+	q = query.ProjectionMultiAryInput{
+		ColumnsA: [][]ifaces.Column{{m.Input.Limbs}},
+		FiltersA: []ifaces.Column{m.IsModulus},
+		ColumnsB: columnsB,
+		FiltersB: filtersB,
+	}
+	comp.InsertProjection(ifaces.QueryIDf("%s_PROJ_MODULUS", m.name), q)
+
+	// result
+	columnsB = make([][]ifaces.Column, len(m.CurrAccumulator.Columns))
+	for i := range columnsB {
+		columnsB[len(columnsB)-1-i] = []ifaces.Column{m.CurrAccumulator.Columns[i]}
+	}
+	filtersB = make([]ifaces.Column, len(m.CurrAccumulator.Columns))
+	for i := range filtersB {
+		filtersB[i] = m.IsLastLineOfInstance
+	}
+
+	q = query.ProjectionMultiAryInput{
+		ColumnsA: [][]ifaces.Column{{m.Input.Limbs}},
+		FiltersA: []ifaces.Column{m.IsResult},
+		ColumnsB: columnsB,
+		FiltersB: filtersB,
+	}
+	comp.InsertProjection(ifaces.QueryIDf("%s_PROJ_RESULT", m.name), q)
+
+	// exponent
+	columnsB = make([][]ifaces.Column, len(m.Exponent.Columns))
+	for i := range columnsB {
+		columnsB[len(columnsB)-1-i] = []ifaces.Column{m.Exponent.Columns[i]}
+	}
+	filtersB = make([]ifaces.Column, len(m.Exponent.Columns))
+	for i := range filtersB {
+		filtersB[i] = m.IsLastLineOfInstance
+	}
+
+	q = query.ProjectionMultiAryInput{
+		ColumnsA: [][]ifaces.Column{{m.Input.Limbs}},
+		FiltersA: []ifaces.Column{m.IsExponent},
+		ColumnsB: columnsB,
+		FiltersB: filtersB,
+	}
+	comp.InsertProjection(ifaces.QueryIDf("%s_PROJ_EXPONENT", m.name), q)
+}
+
+func (m *Modexp) csModexpExponentProjection(comp *wizard.CompiledIOP) {
+	// * query that the bits are binary
+	for i := range m.ExponentBits.Columns {
+		dedicated.MustBeBinary(comp, m.ExponentBits.Columns[i], roundNr)
+	}
+	// at every `limbSize` row the exponent accumulator corresponds to MSB bit. This corresponds
+	// to the case where we RSH the exponent limbs by `limbSize` bits.
+	comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_EXPONENT_MSB_DECOMP_LIMB_0", m.name),
+		sym.Mul(
+			m.IsActive,
+			variables.NewPeriodicSample(limbSizeBits, 0),
+			sym.Sub(
+				m.Exponent.Columns[0],
+				m.ExponentBits.Columns[0],
+			),
+		),
+	)
+	// also, we want to ensure that limb shifts are correctly done at every `limbSize` row
+	for limbIdx := 1; limbIdx < len(m.Exponent.Columns); limbIdx++ {
+		comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_EXPONENT_MSB_DECOMP_LIMB_%d", m.name, limbIdx),
+			sym.Mul(
+				m.IsActive,
+				sym.Sub(1, m.IsFirstLineOfInstance),
+				variables.NewPeriodicSample(limbSizeBits, 0),
+				sym.Sub(
+					m.Exponent.Columns[limbIdx],
+					column.Shift(m.Exponent.Columns[limbIdx-1], -1),
+				),
+			),
+		)
+	}
+	// finally, we ensure that the smallest limb correctly accumulates the exponent bit
+	comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_EXPONENT_MSB_DECOMP_ACCUM", m.name),
+		sym.Mul(
+			m.IsActive,
+			sym.Sub(1, m.IsFirstLineOfInstance),
+			sym.Sub(1, variables.NewPeriodicSample(limbSizeBits, 0)),
+			sym.Sub(
+				m.Exponent.Columns[0],
+				sym.Add(
+					sym.Mul(2, column.Shift(m.Exponent.Columns[0], -1)),
+					m.ExponentBits.Columns[0],
+				),
+			),
+		),
+	)
+}
+
+func (m *Modexp) csConstantBaseAndModulus(comp *wizard.CompiledIOP) {
+	// * the base is fixed over all rows of the instance
+	for i := range m.Base.Columns {
+		comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_BASE_FIXED_LIMB_%d", m.name, i),
+			sym.Mul(
+				m.IsActive,
+				sym.Sub(1, m.IsFirstLineOfInstance),
+				sym.Sub(m.Base.Columns[i], column.Shift(m.Base.Columns[i], -1)),
+			),
+		)
+	}
+	// * the modulus is fixed over all rows of the instance
+	for i := range m.Modulus.Columns {
+		comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_MODULUS_FIXED_LIMB_%d", m.name, i),
+			sym.Mul(
+				m.IsActive,
+				sym.Sub(1, m.IsFirstLineOfInstance),
+				sym.Sub(m.Modulus.Columns[i], column.Shift(m.Modulus.Columns[i], -1)),
+			),
+		)
+	}
+}
+
+func (m *Modexp) csAccumulatorTransition(comp *wizard.CompiledIOP) {
+	// * query that the accumulator is copied correctly from previous to current row
+	for i := range m.PrevAccumulator.Columns {
+		comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_ACC_TRANSITION_LIMB_%d", m.name, i),
+			sym.Mul(
+				m.IsActive,
+				sym.Sub(1, m.IsFirstLineOfInstance),
+				sym.Sub(m.PrevAccumulator.Columns[i], column.Shift(m.CurrAccumulator.Columns[i], -1)),
+			),
+		)
+	}
+	// * query that the accumulator is initialised to 1 at the first row of the instance
+	// LSB limb is 1
+	comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_ACC_INIT_LIMB_0", m.name),
+		sym.Mul(
+			m.IsActive,
+			m.IsFirstLineOfInstance,
+			sym.Sub(m.PrevAccumulator.Columns[0], 1),
+		),
+	)
+	// other limbs are 0
+	for i := 1; i < len(m.PrevAccumulator.Columns); i++ {
+		comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_ACC_INIT_LIMB_%d", m.name, i),
+			sym.Mul(
+				m.IsActive,
+				m.IsFirstLineOfInstance,
+				m.PrevAccumulator.Columns[i],
+			),
+		)
+	}
+}
+
 func (m *Modexp) Run(run *wizard.ProverRuntime) {
+	m.assignMasks(run)
 	m.assignLimbs(run)
+}
+
+func (m *Modexp) assignMasks(run *wizard.ProverRuntime) {
+	var (
+		srcIsBase     = m.Module.Input.IsModExpBase.GetColAssignment(run)
+		srcIsExponent = m.Module.Input.IsModExpExponent.GetColAssignment(run)
+		srcIsModulus  = m.Module.Input.IsModExpModulus.GetColAssignment(run)
+		srcIsResult   = m.Module.Input.IsModExpResult.GetColAssignment(run)
+		srcToEval     = m.ToEval.GetColAssignment(run)
+	)
+
+	var (
+		dstIsBase     = smartvectors.Mul(srcToEval, srcIsBase)
+		dstIsExponent = smartvectors.Mul(srcToEval, srcIsExponent)
+		dstIsModulus  = smartvectors.Mul(srcToEval, srcIsModulus)
+		dstIsResult   = smartvectors.Mul(srcToEval, srcIsResult)
+	)
+	run.AssignColumn(m.IsBase.GetColID(), dstIsBase)
+	run.AssignColumn(m.IsExponent.GetColID(), dstIsExponent)
+	run.AssignColumn(m.IsModulus.GetColID(), dstIsModulus)
+	run.AssignColumn(m.IsResult.GetColID(), dstIsResult)
 }
 
 func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 	var (
-		srcLimbs    = m.Input.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
-		srcIsModExp = m.IsModExp.GetColAssignment(run).IntoRegVecSaveAlloc()
-		nbRows      = m.IsModExp.Size()
+		srcLimbs         = m.Input.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcIsActiveInput = m.IsActiveFromInput.GetColAssignment(run).IntoRegVecSaveAlloc()
+		nbRows           = m.IsActiveFromInput.Size()
 	)
 	var (
-		dstPrevAccLimbs  = make([]*common.VectorBuilder, len(m.PrevAccumulator.Columns))
-		dstCurrAccLimbs  = make([]*common.VectorBuilder, len(m.CurrAccumulator.Columns))
-		dstModulusLimbs  = make([]*common.VectorBuilder, len(m.Modulus.Columns))
-		dstExponentLimbs = make([]*common.VectorBuilder, len(m.ExponentBits.Columns))
-		dstBaseLimbs     = make([]*common.VectorBuilder, len(m.Base.Columns))
-		dstMoneLimbs     = make([]*common.VectorBuilder, len(m.Mone.Columns))
+		dstIsFirstLine      = common.NewVectorBuilder(m.IsFirstLineOfInstance)
+		dstIsLastLine       = common.NewVectorBuilder(m.IsLastLineOfInstance)
+		dstIsActive         = common.NewVectorBuilder(m.IsActive)
+		dstPrevAccLimbs     = make([]*common.VectorBuilder, len(m.PrevAccumulator.Columns))
+		dstCurrAccLimbs     = make([]*common.VectorBuilder, len(m.CurrAccumulator.Columns))
+		dstModulusLimbs     = make([]*common.VectorBuilder, len(m.Modulus.Columns))
+		dstExponentBitLimbs = make([]*common.VectorBuilder, len(m.ExponentBits.Columns))
+		dstExponentLimbs    = make([]*common.VectorBuilder, len(m.Exponent.Columns))
+		dstBaseLimbs        = make([]*common.VectorBuilder, len(m.Base.Columns))
+		dstMoneLimbs        = make([]*common.VectorBuilder, len(m.Mone.Columns))
 	)
 	for i := range dstPrevAccLimbs {
 		dstPrevAccLimbs[i] = common.NewVectorBuilder(m.PrevAccumulator.Columns[i])
@@ -107,8 +404,11 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 	for i := range dstModulusLimbs {
 		dstModulusLimbs[i] = common.NewVectorBuilder(m.Modulus.Columns[i])
 	}
+	for i := range dstExponentBitLimbs {
+		dstExponentBitLimbs[i] = common.NewVectorBuilder(m.ExponentBits.Columns[i])
+	}
 	for i := range dstExponentLimbs {
-		dstExponentLimbs[i] = common.NewVectorBuilder(m.ExponentBits.Columns[i])
+		dstExponentLimbs[i] = common.NewVectorBuilder(m.Exponent.Columns[i])
 	}
 	for i := range dstBaseLimbs {
 		dstBaseLimbs[i] = common.NewVectorBuilder(m.Base.Columns[i])
@@ -125,7 +425,12 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 	modulusBi := new(big.Int)
 	moneBi := new(big.Int)
 	expectedBi := new(big.Int)
-	exponentBits := make([]uint, m.instanceSize) // in reversed order MSB first
+	exponentBits := make([]*big.Int, m.instanceSize) // in reversed order MSB first
+	for i := range exponentBits {
+		exponentBits[i] = new(big.Int)
+	}
+	currExponentBi := new(big.Int)
+	currExponentBiHigh := new(big.Int)
 
 	prevAccumulatorBi := new(big.Int)
 	currAccumulatorBi := new(big.Int)
@@ -136,10 +441,11 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 
 	expectedZeroPadding := nbLargeModexpLimbs - m.nbLimbs
 
+	start := time.Now()
 	// scan through all the rows to find the modexp instances
 	for ptr := 0; ptr < nbRows; {
 		// we didn't find anything, move on
-		if srcIsModExp[ptr].IsZero() {
+		if srcIsActiveInput[ptr].IsZero() {
 			ptr++
 			continue
 		}
@@ -150,7 +456,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 		}
 		// we also sanity check that the inputs are consequtively marked as modexp
 		for k := range modexpNumRowsPerInstance {
-			if srcIsModExp[ptr+k].IsZero() {
+			if srcIsActiveInput[ptr+k].IsZero() {
 				utils.Panic("A modexp instance is missing the modexp selector at row %v", ptr+k)
 			}
 		}
@@ -164,27 +470,27 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 
 		// assign the big-int values for intermediate computation
 		for i := range base {
-			base[i].BigInt(buf[i])
+			base[len(base)-1-i].BigInt(buf[i])
 			instBase[i].SetBigInt(buf[i])
 		}
 		if err := emulated.IntLimbRecompose(buf, limbSizeBits, baseBi); err != nil {
 			utils.Panic("could not convert base limbs to big.Int: %v", err)
 		}
 		for i := range exponent {
-			exponent[i].BigInt(buf[i])
+			exponent[len(exponent)-1-i].BigInt(buf[i])
 		}
 		if err := emulated.IntLimbRecompose(buf, limbSizeBits, exponentBi); err != nil {
 			utils.Panic("could not convert exponent limbs to big.Int: %v", err)
 		}
 		for i := range modulus {
-			modulus[i].BigInt(buf[i])
+			modulus[len(modulus)-1-i].BigInt(buf[i])
 			instMod[i].SetBigInt(buf[i])
 		}
 		if err := emulated.IntLimbRecompose(buf, limbSizeBits, modulusBi); err != nil {
 			utils.Panic("could not convert modulus limbs to big.Int: %v", err)
 		}
 		for i := range expected {
-			expected[i].BigInt(buf[i])
+			expected[len(expected)-1-i].BigInt(buf[i])
 		}
 		if err := emulated.IntLimbRecompose(buf, limbSizeBits, expectedBi); err != nil {
 			utils.Panic("could not convert result limbs to big.Int: %v", err)
@@ -199,13 +505,29 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 		}
 		// extract exponent bits
 		for i := 0; i < m.instanceSize; i++ {
-			exponentBits[m.instanceSize-1-i] = uint(exponentBi.Bit(i))
+			exponentBits[m.instanceSize-1-i].SetUint64(uint64(exponentBi.Bit(i)))
 		}
 		// initialize all intermediate values and assign them
 		prevAccumulatorBi.SetInt64(1)
+		currExponentBi.SetInt64(0)
+		currExponentBiHigh.SetInt64(0)
 		for i := range exponentBits {
+			switch i {
+			case 0:
+				// first line of the instance
+				dstIsFirstLine.PushOne()
+				dstIsLastLine.PushZero()
+			case m.instanceSize - 1:
+				// last line of the instance
+				dstIsLastLine.PushOne()
+				dstIsFirstLine.PushZero()
+			default:
+				dstIsFirstLine.PushZero()
+				dstIsLastLine.PushZero()
+			}
+			dstIsActive.PushOne()
 			currAccumulatorBi.Mul(prevAccumulatorBi, prevAccumulatorBi)
-			if exponentBits[i] == 1 {
+			if exponentBits[i].Sign() == 1 {
 				currAccumulatorBi.Mul(currAccumulatorBi, baseBi)
 			}
 			currAccumulatorBi.Mod(currAccumulatorBi, modulusBi)
@@ -229,10 +551,37 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			prevAccumulatorBi.Set(currAccumulatorBi)
 
 			// set the exponent bit
-			dstExponentLimbs[0].PushInt(int(exponentBits[i]))
+			dstExponentBitLimbs[0].PushField(field.NewElement(exponentBits[i].Uint64()))
 			for j := range m.nbLimbs - 1 {
-				dstExponentLimbs[j+1].PushInt(0)
+				dstExponentBitLimbs[j+1].PushInt(0)
 			}
+
+			// compute the exponent accumulator
+			currExponentBi.Lsh(currExponentBi, 1)
+			currExponentBi.Add(currExponentBi, exponentBits[i])
+			// we need to do the decomposition in two parts:
+			//  - lower part for the smallest limb. This we use to show that the bits
+			//    are correctly forming the exponent
+			//  - upper part for the remaining limbs. This we just use to show that
+			//    we copy the exponent limbs correctly
+			if err := emulated.IntLimbDecompose(currExponentBi, limbSizeBits, buf[:1]); err != nil {
+				utils.Panic("could not decompose currExponentBi into limbs: %v", err)
+			}
+			if err := emulated.IntLimbDecompose(currExponentBiHigh, limbSizeBits, buf[1:]); err != nil {
+				utils.Panic("could not decompose currExponentBiHigh into limbs: %v", err)
+			}
+			for j := range m.Exponent.Columns {
+				var f field.Element
+				f.SetBigInt(buf[j])
+				dstExponentLimbs[j].PushField(f)
+			}
+			// update the high part of the exponent if needed
+			if (i+1)%limbSizeBits == 0 {
+				currExponentBiHigh.Lsh(currExponentBiHigh, limbSizeBits)
+				currExponentBiHigh.Add(currExponentBiHigh, currExponentBi)
+				currExponentBi.SetInt64(0)
+			}
+
 			// and also set the constant per MODEXP-instance values
 			for j := range instBase {
 				dstBaseLimbs[j].PushField(instBase[j])
@@ -247,6 +596,9 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 		ptr += modexpNumRowsPerInstance
 	}
 	// commit all built vectors
+	dstIsFirstLine.PadAndAssign(run)
+	dstIsLastLine.PadAndAssign(run)
+	dstIsActive.PadAndAssign(run)
 	for i := range dstPrevAccLimbs {
 		dstPrevAccLimbs[i].PadAndAssign(run)
 	}
@@ -255,6 +607,9 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 	}
 	for i := range dstModulusLimbs {
 		dstModulusLimbs[i].PadAndAssign(run)
+	}
+	for i := range dstExponentBitLimbs {
+		dstExponentBitLimbs[i].PadAndAssign(run)
 	}
 	for i := range dstExponentLimbs {
 		dstExponentLimbs[i].PadAndAssign(run)
