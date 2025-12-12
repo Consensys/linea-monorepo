@@ -15,6 +15,8 @@ RUN apt-get update \
 
 FROM base AS builder
 
+ENV PNPM_STORE_DIR=/pnpm/store
+
 WORKDIR /usr/src/app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
@@ -27,8 +29,9 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY ./native-yield-operations/automation-service ./native-yield-operations/automation-service
 COPY ts-libs/linea-shared-utils ./ts-libs/linea-shared-utils
 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build \
-    && pnpm deploy --legacy --filter=./native-yield-operations/automation-service --prod ./prod/native-yield-operations/automation-service
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm deploy --legacy --prefer-offline --filter=./native-yield-operations/automation-service --prod ./prod/native-yield-operations/automation-service
 
 FROM node:lts-slim AS production
 

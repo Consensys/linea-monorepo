@@ -14,12 +14,10 @@ import { transports } from "winston";
  *   - contractAddresses: All contract addresses used by the service
  *   - apiPort: Port for the metrics API server
  *   - timing: Poll intervals and retry timing configuration
- *   - rebalanceToleranceBps: Rebalance tolerance in basis points
- *   - maxValidatorWithdrawalRequestsPerTransaction: Maximum withdrawal requests per transaction
- *   - minWithdrawalThresholdEth: Minimum withdrawal threshold in ETH
- *   - reporting: Reporting configuration including shouldSubmitVaultReport, minPositiveYieldToReportWei, and minUnpaidLidoProtocolFeesToReportYieldWei
+ *   - rebalance: Rebalance configuration including tolerance, thresholds, and limits
+ *   - reporting: Reporting configuration including shouldSubmitVaultReport, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei, and minNegativeYieldDiffToReportYieldWei
  *   - web3signer: Web3Signer URL, public key (address or secp pubkey compressed/uncompressed), keystore, truststore, and TLS settings
- *   - loggerOptions: Winston logger configuration with console transport
+ *   - loggerOptions: Winston logger configuration with console transport and log level from LOG_LEVEL env var (defaults to "info")
  */
 export const toClientConfig = (env: FlattenedConfigSchema) => ({
   dataSources: {
@@ -41,6 +39,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
     vaultHubAddress: env.VAULT_HUB_ADDRESS,
     yieldManagerAddress: env.YIELD_MANAGER_ADDRESS,
     lidoYieldProviderAddress: env.LIDO_YIELD_PROVIDER_ADDRESS,
+    stethAddress: env.STETH_ADDRESS,
     l2YieldRecipientAddress: env.L2_YIELD_RECIPIENT,
   },
   apiPort: env.API_PORT,
@@ -52,14 +51,21 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
       maxInactionMs: env.TRIGGER_MAX_INACTION_MS,
     },
     contractReadRetryTimeMs: env.CONTRACT_READ_RETRY_TIME_MS,
+    gaugeMetricsPollIntervalMs: env.GAUGE_METRICS_POLL_INTERVAL_MS,
   },
-  rebalanceToleranceBps: env.REBALANCE_TOLERANCE_BPS,
-  maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
-  minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
+  rebalance: {
+    toleranceBps: env.REBALANCE_TOLERANCE_BPS,
+    maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
+    minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
+    maxStakingRebalanceAmountWei: env.MAX_STAKING_REBALANCE_AMOUNT_WEI,
+    stakeCircuitBreakerThresholdWei: env.STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI,
+    minStakingVaultBalanceToUnpauseStakingWei: env.MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI,
+  },
   reporting: {
     shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,
     minPositiveYieldToReportWei: env.MIN_POSITIVE_YIELD_TO_REPORT_WEI,
     minUnpaidLidoProtocolFeesToReportYieldWei: env.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI,
+    minNegativeYieldDiffToReportYieldWei: env.MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI,
   },
   web3signer: {
     url: env.WEB3SIGNER_URL,
@@ -75,7 +81,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
     tlsEnabled: env.WEB3SIGNER_TLS_ENABLED,
   },
   loggerOptions: {
-    level: "info",
+    level: env.LOG_LEVEL ?? "info",
     transports: [new transports.Console()],
   },
 });

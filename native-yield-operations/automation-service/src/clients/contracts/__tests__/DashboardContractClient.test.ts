@@ -33,6 +33,9 @@ describe("DashboardContractClient", () => {
     abi: DashboardABI,
     read: {
       obligations: jest.fn(),
+      withdrawableValue: jest.fn(),
+      totalValue: jest.fn(),
+      liabilityShares: jest.fn(),
     },
   } as any;
 
@@ -74,6 +77,26 @@ describe("DashboardContractClient", () => {
     expect(client.getContract()).toBe(viemContractStub);
   });
 
+  it("gets the contract balance", async () => {
+    const balance = 1_000_000_000_000_000_000n; // 1 ETH
+    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+
+    const client = createClient();
+    await expect(client.getBalance()).resolves.toBe(balance);
+
+    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
+  });
+
+  it("throws error when getBalance is called and blockchainClient is not initialized", async () => {
+    const client = createClient();
+    // Clear the static blockchainClient after client creation
+    (DashboardContractClient as any).blockchainClient = undefined;
+
+    await expect(client.getBalance()).rejects.toThrow(
+      "DashboardContractClient: blockchainClient must be initialized via DashboardContractClient.initialize() before use",
+    );
+  });
+
   it("returns node operator fees when FeeDisbursed event is present", () => {
     const client = createClient();
     const receipt = buildReceipt([
@@ -107,6 +130,31 @@ describe("DashboardContractClient", () => {
     });
   });
 
+  it("returns zero when FeeDisbursed event is present but fee is undefined", () => {
+    const client = createClient();
+    const receipt = buildReceipt([
+      {
+        address: contractAddress,
+        data: "0xdata",
+        topics: ["0xtopic"],
+      },
+    ]);
+
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "FeeDisbursed",
+        args: { fee: undefined },
+        address: contractAddress,
+      } as any,
+    ]);
+
+    const fee = client.getNodeOperatorFeesPaidFromTxReceipt(receipt);
+
+    expect(fee).toBe(0n);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
   it("ignores logs that fail to decode and returns zero when no FeeDisbursed event", () => {
     const client = createClient();
     const receipt = buildReceipt([
@@ -123,6 +171,9 @@ describe("DashboardContractClient", () => {
 
     expect(fee).toBe(0n);
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "getNodeOperatorFeesPaidFromTxReceipt - FeeDisbursed event not found in receipt",
+    );
   });
 
   it("returns zero when logs belong to other contracts or events", () => {
@@ -152,56 +203,42 @@ describe("DashboardContractClient", () => {
 
     expect(fee).toBe(0n);
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "getNodeOperatorFeesPaidFromTxReceipt - FeeDisbursed event not found in receipt",
+    );
   });
 
-  it("returns unpaid Lido protocol fees from obligations", async () => {
+  it("reads withdrawableValue via read and returns the result", async () => {
+    const withdrawable = 1000n;
+    viemContractStub.read.withdrawableValue.mockResolvedValueOnce(withdrawable);
+
     const client = createClient();
-    const sharesToBurn = 1000n;
-    const feesToSettle = 500n;
-    viemContractStub.read.obligations.mockResolvedValueOnce([sharesToBurn, feesToSettle]);
+    const result = await client.withdrawableValue();
 
-    const result = await client.peekUnpaidLidoProtocolFees();
-
-    expect(result).toBe(feesToSettle);
-    expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
-    expect(viemContractStub.read.obligations).toHaveBeenCalledWith();
+    expect(viemContractStub.read.withdrawableValue).toHaveBeenCalledTimes(1);
+    expect(result).toBe(withdrawable);
   });
 
-  it("returns zero when there are no unpaid fees", async () => {
+  it("reads totalValue via read and returns the result", async () => {
+    const total = 5000n;
+    viemContractStub.read.totalValue.mockResolvedValueOnce(total);
+
     const client = createClient();
-    const sharesToBurn = 0n;
-    const feesToSettle = 0n;
-    viemContractStub.read.obligations.mockResolvedValueOnce([sharesToBurn, feesToSettle]);
+    const result = await client.totalValue();
 
-    const result = await client.peekUnpaidLidoProtocolFees();
-
-    expect(result).toBe(0n);
-    expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
+    expect(viemContractStub.read.totalValue).toHaveBeenCalledTimes(1);
+    expect(result).toBe(total);
   });
 
-  it("returns zero when feesToSettle is null", async () => {
+  it("reads liabilityShares via read and returns the result", async () => {
+    const liabilityShares = 3000n;
+    viemContractStub.read.liabilityShares.mockResolvedValueOnce(liabilityShares);
+
     const client = createClient();
-    const sharesToBurn = 1000n;
-    const feesToSettle = null;
-    viemContractStub.read.obligations.mockResolvedValueOnce([sharesToBurn, feesToSettle]);
+    const result = await client.liabilityShares();
 
-    const result = await client.peekUnpaidLidoProtocolFees();
-
-    expect(result).toBe(0n);
-    expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns undefined and logs error when obligations call fails", async () => {
-    DashboardContractClient.initialize(blockchainClient, logger);
-    const client = createClient();
-    const error = new Error("Contract call failed");
-    viemContractStub.read.obligations.mockRejectedValueOnce(error);
-
-    const result = await client.peekUnpaidLidoProtocolFees();
-
-    expect(result).toBeUndefined();
-    expect(logger.error).toHaveBeenCalledWith(`peekUnpaidLidoProtocolFees failed, error=${error}`);
-    expect(viemContractStub.read.obligations).toHaveBeenCalledTimes(1);
+    expect(viemContractStub.read.liabilityShares).toHaveBeenCalledTimes(1);
+    expect(result).toBe(liabilityShares);
   });
 
   describe("initialize", () => {
