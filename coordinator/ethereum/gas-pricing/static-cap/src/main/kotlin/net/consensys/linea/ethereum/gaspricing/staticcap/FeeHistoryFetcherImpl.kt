@@ -1,19 +1,18 @@
 package net.consensys.linea.ethereum.gaspricing.staticcap
 
+import linea.domain.BlockParameter
 import linea.domain.FeeHistory
+import linea.ethapi.EthApiClient
+import linea.kotlin.toBigInteger
 import linea.kotlin.toIntervalString
-import linea.web3j.Web3jBlobExtended
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.web3j.protocol.Web3j
-import org.web3j.protocol.core.DefaultBlockParameterName
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
 
 class FeeHistoryFetcherImpl(
-  private val web3jClient: Web3j,
-  private val web3jService: Web3jBlobExtended,
+  private val ethApiClient: EthApiClient,
   private val config: Config,
 ) : FeesFetcher {
   private val log: Logger = LogManager.getLogger(this::class.java)
@@ -37,20 +36,18 @@ class FeeHistoryFetcherImpl(
   private lateinit var feesCache: FeeHistory
 
   private fun getRecentFees(): SafeFuture<FeeHistory> {
-    val blockNumberFuture = web3jClient.ethBlockNumber().sendAsync()
-    return SafeFuture.of(blockNumberFuture)
+    return ethApiClient.ethBlockNumber()
       .thenCompose { blockNumberResponse ->
-        val currentBlockNumber = blockNumberResponse.blockNumber
+        val currentBlockNumber = blockNumberResponse.toBigInteger()
         if (currentBlockNumber > cacheIsValidForBlockNumber) {
-          web3jService
-            .ethFeeHistoryWithBlob(
-              config.feeHistoryBlockCount.toInt(),
-              DefaultBlockParameterName.LATEST,
-              listOf(config.feeHistoryRewardPercentile),
+          ethApiClient
+            .ethFeeHistory(
+              blockCount = config.feeHistoryBlockCount.toInt(),
+              newestBlock = BlockParameter.Tag.LATEST,
+              rewardPercentiles = listOf(config.feeHistoryRewardPercentile),
             )
-            .sendAsync()
-            .thenApply {
-              val feeHistory = it.feeHistory.toLineaDomain()
+            .thenApply { feeHistory ->
+
               cacheIsValidForBlockNumber = currentBlockNumber
               if (feeHistory.baseFeePerBlobGas.isNotEmpty()) {
                 log.trace(
