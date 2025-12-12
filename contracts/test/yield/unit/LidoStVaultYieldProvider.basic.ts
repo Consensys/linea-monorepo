@@ -724,35 +724,25 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const invalidPubkeys = "0x" + "22".repeat(32);
       const call = yieldManager
         .connect(securityCouncil)
-        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, invalidPubkeys, [1n], EMPTY_CALLDATA);
+        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, 1n, invalidPubkeys, 0n, 0n, EMPTY_CALLDATA);
 
       await expectRevertWithCustomError(yieldProvider, call, "SingleValidatorOnlyForUnstakePermissionless");
     });
 
     it("Should revert if more than a single amounts element is provided", async () => {
       const pubkeys = "0x" + "11".repeat(48);
-      const amounts = [1n, 1n];
       const call = yieldManager
         .connect(securityCouncil)
-        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, pubkeys, amounts, EMPTY_CALLDATA);
+        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, 1n, pubkeys, 0n, 0n, EMPTY_CALLDATA);
 
       await expectRevertWithCustomError(yieldProvider, call, "SingleValidatorOnlyForUnstakePermissionless");
-    });
-
-    it("Should revert if 0 amount is provided", async () => {
-      const pubkeys = "0x" + "11".repeat(48);
-      const call = yieldManager
-        .connect(securityCouncil)
-        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, pubkeys, [0n], EMPTY_CALLDATA);
-
-      await expectRevertWithCustomError(yieldProvider, call, "NoValidatorExitForUnstakePermissionless");
     });
 
     it("Should revert if incorrect type is provided for proof", async () => {
       const pubkeys = "0x" + "11".repeat(48);
       const call = yieldManager
         .connect(securityCouncil)
-        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, pubkeys, [1n], EMPTY_CALLDATA);
+        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, 1n, pubkeys, 0n, 0n, EMPTY_CALLDATA);
 
       await expect(call).to.be.reverted;
     });
@@ -774,8 +764,10 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         .connect(securityCouncil)
         .validateUnstakePermissionlessRequestHarness.staticCall(
           yieldProviderAddress,
+          EXCESSIVE_WITHDRAWAL_AMOUNT,
           pubkey,
-          [EXCESSIVE_WITHDRAWAL_AMOUNT],
+          validatorWitness.validatorIndex,
+          validatorWitness.slot,
           withdrawalParamsProof,
         );
 
@@ -806,8 +798,10 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         .connect(securityCouncil)
         .validateUnstakePermissionlessRequestHarness.staticCall(
           yieldProviderAddress,
+          WITHDRAWAL_AMOUNT_GWEI,
           pubkey,
-          [WITHDRAWAL_AMOUNT_GWEI],
+          validatorWitness.validatorIndex,
+          validatorWitness.slot,
           withdrawalParamsProof,
         );
 
@@ -833,8 +827,10 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         .connect(securityCouncil)
         .validateUnstakePermissionlessRequestHarness.staticCall(
           yieldProviderAddress,
+          WITHDRAWAL_AMOUNT,
           pubkey,
-          [WITHDRAWAL_AMOUNT],
+          validatorWitness.validatorIndex,
+          validatorWitness.slot,
           withdrawalParamsProof,
         );
 

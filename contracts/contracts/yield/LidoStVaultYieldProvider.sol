@@ -308,11 +308,12 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    *      and enforce any provider-specific safety checks. The returned amount is used by the
    *      YieldManager to cap pending withdrawals tracked on L1.
    * @param _yieldProvider The yield provider address.
+   * @param _requiredUnstakeAmount Required unstake amount in wei.
    * @param _validatorIndex Validator index for validator to withdraw from.
    * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams ABI encoded provider parameters.
    * @param _withdrawalParamsProof Proof data (typically a beacon chain Merkle proof).
-   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
+   * @return unstakedAmount Maximum ETH amount expected to be withdrawn as a result of this request.
    */
   function unstakePermissionless(
     address _yieldProvider,
@@ -339,14 +340,12 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @dev Validates that the request is for a partial withdrawal from a single validator.
    * @dev Checks guided by consensus specs https://github.com/ethereum/consensus-specs/blob/834e40604ae4411e565bd6540da50b008b2496dc/specs/electra/beacon-chain.md#new-process_withdrawal_request
    * @param _yieldProvider The yield provider address.
+   * @param _requiredUnstakeAmount Required unstake amount in wei.
    * @param _pubkeys Concatenated validator public keys (48 bytes each).
-   * @param _amounts Withdrawal amounts in gwei for each validator key and must match _pubkeys length.
-   *         Set amount to 0 for a full validator exit.
-   *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation.
    * @param _validatorIndex Validator index for validator to withdraw from.
    * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
-   * @return unstakedAmount Maximum ETH amount expected to be withdrawn as a result of this request.
+   * @return unstakedAmount Maximum ETH amount expected to be withdrawn as a result of this request (in gwei).
    */
   function _validateUnstakePermissionlessRequest(
     address _yieldProvider,
