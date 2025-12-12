@@ -55,6 +55,9 @@ contract YieldManager is
   /// @notice 100% in BPS.
   uint256 constant internal MAX_BPS = 10000;
 
+  /// @notice The number of slots per historical beacon chain root.
+  uint256 constant internal SLOTS_PER_HISTORICAL_ROOT = 8192;
+
   /**
    * @notice Minimum withdrawal reserve percentage in bps.
    * @return The withdrawal reserve percentage threshold in basis points (where 10000 = 100%).
@@ -591,7 +594,7 @@ contract YieldManager is
     returns (uint256 maxUnstakeAmount)
   {
     uint256 lastProvenSlot = _getYieldManagerStorage().lastProvenSlot[_validatorIndex];
-    if (lastProvenSlot >= _slot) {
+    if (_slot <= lastProvenSlot + SLOTS_PER_HISTORICAL_ROOT) {
       revert SlotNotNewerThanLastProvenSlot(_validatorIndex, lastProvenSlot, _slot);
     }
     _getYieldManagerStorage().lastProvenSlot[_validatorIndex] = _slot;
