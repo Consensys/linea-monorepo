@@ -589,9 +589,6 @@ interface IYieldManager {
    * @param _slot                   Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
    * @param _withdrawalParamsProof  Data containing merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
-   * @return maxUnstakeAmount       Maximum amount expected to be withdrawn from the beacon chain.
-   *                                - Cannot efficiently get exact amount as relevant state and computation is located in the consensus client,
-   *                                and not the execution layer.
    */
   function unstakePermissionless(
     address _yieldProvider,
@@ -599,7 +596,7 @@ interface IYieldManager {
     uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable returns (uint256 maxUnstakeAmount);
+  ) external payable;
 
   /**
    * @notice Safely withdraws ETH from a YieldProvider, capped by the available withdrawable amount.

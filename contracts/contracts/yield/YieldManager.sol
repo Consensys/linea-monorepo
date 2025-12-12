@@ -575,9 +575,6 @@ contract YieldManager is
    * @param _slot                   Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
    * @param _withdrawalParamsProof  Data containing merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
-   * @return maxUnstakeAmount       Maximum amount expected to be withdrawn from the beacon chain.
-   *                                - Cannot efficiently get exact amount as relevant state and computation is located in the consensus client,
-   *                                and not the execution layer.
    */
   function unstakePermissionless(
     address _yieldProvider,
@@ -591,7 +588,6 @@ contract YieldManager is
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
     onlyWhenWithdrawalReserveInDeficit
-    returns (uint256 maxUnstakeAmount)
   {
     uint64 lastProvenSlot = _getYieldManagerStorage().lastProvenSlot[_validatorIndex];
     if (_slot <= lastProvenSlot + SLOTS_PER_HISTORICAL_ROOT) {
