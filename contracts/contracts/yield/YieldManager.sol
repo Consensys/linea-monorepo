@@ -594,7 +594,7 @@ contract YieldManager is
     if (maxUnstakeAmount == 0) {
       revert YieldProviderReturnedZeroUnstakeAmount();
     }
-    // Validiate maxUnstakeAmount
+    // Validate maxUnstakeAmount
     uint256 targetDeficit = getTargetReserveDeficit();
     uint256 availableFundsToSettleTargetDeficit = address(this).balance +
       withdrawableValue(_yieldProvider) +
@@ -688,7 +688,7 @@ contract YieldManager is
 
   /**
    * @notice Safely rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev Caps the rebalance amount to the provider's current withdrawable value.
+   * @dev Caps the rebalance amount to the provider's current withdrawable value plus the YieldManager's balance.
    *      This is to mitigate frontrunning that depletes the withdrawable value,
    *      which would result in revert of the regular `addToWithdrawalReserve` function.
    * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
@@ -1108,10 +1108,10 @@ contract YieldManager is
     ) {
       revert BpsMoreThan10000();
     }
-    if (_params.minimumWithdrawalReservePercentageBps > _params.targetWithdrawalReservePercentageBps) {
+    if (_params.targetWithdrawalReservePercentageBps <= _params.minimumWithdrawalReservePercentageBps) {
       revert TargetReservePercentageMustBeAboveMinimum();
     }
-    if (_params.minimumWithdrawalReserveAmount > _params.targetWithdrawalReserveAmount) {
+    if (_params.targetWithdrawalReserveAmount <= _params.minimumWithdrawalReserveAmount) {
       revert TargetReserveAmountMustBeAboveMinimum();
     }
     YieldManagerStorage storage $ = _getYieldManagerStorage();
