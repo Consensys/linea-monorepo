@@ -82,7 +82,7 @@ func (b *VectorBuilder[E]) PeekBytesAt(r int) []byte {
 }
 
 // PeekLast returns the last pushed row in native form.
-func (b *VectorBuilder[E]) PeekLast() []field.Element {
+func (b *VectorBuilder[E]) PeekLast() row[E] {
 	return b.PeekAt(len(b.slices[0]) - 1)
 }
 

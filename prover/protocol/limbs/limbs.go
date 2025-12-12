@@ -2,10 +2,8 @@ package limbs
 
 import (
 	"math/big"
-	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -67,21 +65,33 @@ func (l limbs[E]) LimbBitWidth() int {
 	return limbBitWidth
 }
 
+// GetRow returns the typed row for the provided field element.
+func (l limbs[E]) GetRow(run ifaces.Runtime, r int) row[E] {
+
+	if r < 0 || r >= l.C[0].Size() {
+		utils.Panic("row out of bound: %v, max %v", r, l.C[0].Size())
+	}
+
+	rowF := make(row[E], len(l.C))
+	for i := range l.C {
+		rowF[i] = l.C[i].GetColAssignmentAt(run, r)
+	}
+
+	return rowF
+}
+
 // GetRowAsBytes returns the represented bytes for the provided field element. The
 // function panics if the requested row is out of bound or if one of the columns
 // has been called.
 func (l limbs[E]) GetRowAsBytes(run ifaces.Runtime, row int) []byte {
-
-	if row < 0 || row >= l.C[0].Size() {
-		utils.Panic("row out of bound: %v, max %v", row, l.C[0].Size())
-	}
-
-	rowF := make([]field.Element, len(l.C))
-	for i := range l.C {
-		rowF[i] = l.C[i].GetColAssignmentAt(run, row)
-	}
-
+	rowF := l.GetRow(run, row)
 	return limbsToBytes[E](rowF)
+}
+
+// GetRowAsBigInt returns the represented big.Int for the provided field element.
+func (l limbs[E]) GetRowAsBigInt(run ifaces.Runtime, row int) *big.Int {
+	rowF := l.GetRow(run, row)
+	return limbToBigInt[E](rowF)
 }
 
 // GetAssignmentAsBytes returns the represented bytes for the provided field
@@ -91,6 +101,17 @@ func (l limbs[E]) GetAssignmentAsBytes(run ifaces.Runtime) [][]byte {
 	for i := 0; i < l.Size(); i++ {
 		res = append(res, l.GetRowAsBytes(run, i))
 	}
+	return res
+}
+
+// GetAssignmentAsBigInt returns the represented big.Int for the provided field
+// elements.
+func (l limbs[E]) GetAssignmentAsBigInt(run ifaces.Runtime) []*big.Int {
+	res := make([]*big.Int, 0, l.Size())
+	for i := 0; i < l.Size(); i++ {
+		res = append(res, l.GetRowAsBigInt(run, i))
+	}
+
 	return res
 }
 
@@ -117,32 +138,6 @@ func (l limbs[E]) AssignBytes(run *wizard.ProverRuntime, bytes [][]byte) {
 	}
 }
 
-// GetRowAsBigInt returns the represented big.Int for the provided field element.
-func (l limbs[E]) GetRowAsBigInt(run ifaces.Runtime, row int) *big.Int {
-
-	if row < 0 || row >= l.C[0].Size() {
-		utils.Panic("row out of bound: %v, max %v", row, l.C[0].Size())
-	}
-
-	rowF := make([]field.Element, len(l.C))
-	for i := range l.C {
-		rowF[i] = l.C[i].GetColAssignmentAt(run, row)
-	}
-
-	return limbToBigInt[E](rowF)
-}
-
-// GetAssignmentAsBigInt returns the represented big.Int for the provided field
-// elements.
-func (l limbs[E]) GetAssignmentAsBigInt(run ifaces.Runtime) []*big.Int {
-	res := make([]*big.Int, 0, l.Size())
-	for i := 0; i < l.Size(); i++ {
-		res = append(res, l.GetRowAsBigInt(run, i))
-	}
-
-	return res
-}
-
 // AssignBigInts assigns the provided big.Ints to the provided field elements.
 func (l limbs[E]) AssignBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
 
@@ -161,105 +156,4 @@ func (l limbs[E]) AssignBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
 	for c := range l.C {
 		run.AssignColumn(l.C[c].GetColID(), smartvectors.NewRegular(res[c]))
 	}
-}
-
-// bytesToLimbsVec convert a vector of byteslices into a vector of limbs of form
-// [E].
-func bytesToLimbsVec[E Endianness](bytes [][]byte, numLimbs int) [][]field.Element {
-
-	var (
-		numRow = len(bytes)
-		res    = make([][]field.Element, numLimbs)
-	)
-
-	for c := range res {
-		res[c] = make([]field.Element, 0, numRow)
-	}
-
-	for r := range bytes {
-		lbs := bytesToLimbs[E](bytes[r])
-		for c := range res {
-			res[c] = append(res[c], lbs[c])
-		}
-	}
-
-	return res
-
-}
-
-// bigIntToLimbsVec converts a vector of big.Int into limbs of form [E]
-func bigIntToLimbsVec[E Endianness](bigints []*big.Int, numLimbs, bitSize int) [][]field.Element {
-
-	var (
-		numRow = len(bigints)
-		res    = make([][]field.Element, numLimbs)
-	)
-
-	for c := range res {
-		res[c] = make([]field.Element, 0, numRow)
-	}
-
-	for r := range bigints {
-		lbs := bigIntToLimbs[E](bigints[r], bitSize)
-		for c := range res {
-			res[c] = append(res[c], lbs[c])
-		}
-	}
-
-	return res
-}
-
-// limbsBeToBytes converts a vector of limbs in form [E] into bytes
-func limbsToBytes[E Endianness](limbs []field.Element) []byte {
-
-	if isLittleEndian[E]() {
-		limbs = slices.Clone(limbs)
-		slices.Reverse(limbs)
-	}
-
-	res := make([]byte, 0, len(limbs)*limbByteWidth)
-	for _, c := range limbs {
-		cbytes := c.Bytes()
-		res = append(res, cbytes[field.Bytes-limbByteWidth:]...)
-	}
-	return res
-}
-
-// bytesToLimbs converts a vector of bytes into limbs of form [E]
-func bytesToLimbs[E Endianness](bytes []byte) []field.Element {
-
-	var (
-		numLimbs = len(bytes) / limbByteWidth
-		limbs    = make([]field.Element, numLimbs)
-		buf      = [field.Bytes]byte{}
-	)
-
-	for i := 0; i < numLimbs; i++ {
-		copy(buf[field.Bytes-limbByteWidth:], bytes[i*limbByteWidth:(i+1)*limbByteWidth])
-		if err := limbs[i].SetBytesCanonical(buf[:]); err != nil {
-			utils.Panic("bytesToLimbs failed: %v", err)
-		}
-	}
-
-	if isLittleEndian[E]() {
-		slices.Reverse(limbs)
-	}
-
-	return limbs
-}
-
-// bigIntToLimbs converts a big.Int into limbs of form [E] using bitSize to
-// determine the number of required limbs and corresponds to the maximal number
-// or bits that can be used by bi.
-func bigIntToLimbs[E Endianness](bi *big.Int, bitSize int) []field.Element {
-	numLimbs := utils.DivCeil(bitSize, limbBitWidth)
-	buf := make([]byte, limbByteWidth*numLimbs)
-	bi.FillBytes(buf)
-	return bytesToLimbs[E](buf)
-}
-
-// limbToBigInt converts a limb of form [E] into a big.Int
-func limbToBigInt[E Endianness](limb []field.Element) *big.Int {
-	x := limbsToBytes[E](limb)
-	return new(big.Int).SetBytes(x)
 }
