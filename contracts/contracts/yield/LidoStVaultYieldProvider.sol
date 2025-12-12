@@ -317,7 +317,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    */
   function unstakePermissionless(
     address _yieldProvider,
-    uint256 _requiredUnstakeAmount,
+    uint256 _requiredUnstakeAmountWei,
     uint64 _validatorIndex,
     uint64 _slot,
     bytes calldata _withdrawalParams,
@@ -327,7 +327,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       _withdrawalParams,
       (bytes, address)
     );
-    uint256 unstakedAmountGwei = _validateUnstakePermissionlessRequest(_yieldProvider, _requiredUnstakeAmount, pubkeys, _validatorIndex, _slot, _withdrawalParamsProof);
+    uint256 unstakedAmountGwei = _validateUnstakePermissionlessRequest(_yieldProvider, _requiredUnstakeAmountWei, pubkeys, _validatorIndex, _slot, _withdrawalParamsProof);
     // Clamp single unstake amount to accurately update pendingPermissionlessUnstake.
     uint64[] memory amounts = new uint64[](1);
     amounts[0] = uint64(unstakedAmountGwei);
@@ -340,21 +340,21 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @dev Validates that the request is for a partial withdrawal from a single validator.
    * @dev Checks guided by consensus specs https://github.com/ethereum/consensus-specs/blob/834e40604ae4411e565bd6540da50b008b2496dc/specs/electra/beacon-chain.md#new-process_withdrawal_request
    * @param _yieldProvider The yield provider address.
-   * @param _requiredUnstakeAmount Required unstake amount in wei.
+   * @param _requiredUnstakeAmountWei Required unstake amount in wei.
    * @param _pubkeys Concatenated validator public keys (48 bytes each).
    * @param _validatorIndex Validator index for validator to withdraw from.
    * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
-   * @return unstakedAmount Maximum ETH amount expected to be withdrawn as a result of this request (in gwei).
+   * @return unstakedAmountGwei Maximum ETH amount expected to be withdrawn as a result of this request (in gwei).
    */
   function _validateUnstakePermissionlessRequest(
     address _yieldProvider,
-    uint256 _requiredUnstakeAmount,
+    uint256 _requiredUnstakeAmountWei,
     bytes memory _pubkeys,
     uint64 _validatorIndex,
     uint64 _slot,
     bytes calldata _withdrawalParamsProof
-  ) internal view returns (uint256 unstakedAmount) {
+  ) internal view returns (uint256 unstakedAmountGwei) {
     if (_pubkeys.length != PUBLIC_KEY_LENGTH) {
       revert SingleValidatorOnlyForUnstakePermissionless();
     }
@@ -382,8 +382,9 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
 
     // https://github.com/ethereum/consensus-specs/blob/master/specs/electra/beacon-chain.md#modified-get_expected_withdrawals
     // Clamp unstaked amount to effectiveBalance - MIN_ACTIVATION_BALANCE - pendingPartialWithdrawals
-    unstakedAmount = Math256.min(
-      _requiredUnstakeAmount,
+    unstakedAmountGwei = Math256.min(
+      // Round down is safer
+      _requiredUnstakeAmountWei / 1 gwei,
       Math256.safeSub(witness.validatorContainerWitness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI + totalPendingWithdrawalsGwei)
     );
   }
