@@ -292,23 +292,40 @@ export const generateEIP4478Witness = async (
   // 3. Hash GI=2 and GI=3 nodes together -> get BeaconState root at GI=1
 
   // ============================================================================
-  // Generate state root
+  // Generate GI=2 from Validator Container
   // ============================================================================
+
   const validatorMerkleSubtree = await sszMerkleTree.getValidatorPubkeyWCParentProof(validatorContainer);
-  const validatorGIndex = await verifier.getValidatorGI(validatorIndex);
-  const stateRoot = await sszMerkleTree.getRoot(
-    originalValidatorContainerProof,
-    validatorMerkleSubtree.root,
-    validatorGIndex,
-  );
+  const validatorGIndexInLeftSubtree = await verifier.getValidatorGIInLeftSubtree(validatorIndex);
+  const proofForGI2 = originalValidatorContainerProof.slice(0, -1);
+  const gi2Root = await sszMerkleTree.getRoot(proofForGI2, validatorMerkleSubtree.root, validatorGIndexInLeftSubtree);
 
   // Verify (ValidatorContainer) leaf against (StateRoot) Merkle root
   await sszMerkleTree.verifyProof(
     originalValidatorContainerProof,
-    stateRoot,
+    gi2Root,
     validatorMerkleSubtree.root,
-    validatorGIndex,
+    validatorGIndexInLeftSubtree,
   );
+
+  // ============================================================================
+  // Generate GI=3 from Pending Partial Withdrawals
+  // ============================================================================
+
+  // gI99 -> gI35 in the right subtree 23
+  const GI_PENDING_PARTIAL_WITHDRAWALS_ROOT_IN_RIGHT_SUBTREE =
+    "0x000000000000000000000000000000000000000000000000000000000000231b";
+  void GI_PENDING_PARTIAL_WITHDRAWALS_ROOT_IN_RIGHT_SUBTREE;
+  // ============================================================================
+  // Generate state root
+  // ============================================================================
+  // const validatorMerkleSubtree = await sszMerkleTree.getValidatorPubkeyWCParentProof(validatorContainer);
+  // const validatorGIndex = await verifier.getValidatorGI(validatorIndex);
+  // const stateRoot = await sszMerkleTree.getRoot(
+  //   originalValidatorContainerProof,
+  //   validatorMerkleSubtree.root,
+  //   validatorGIndex,
+  // );
 
   // ============================================================================
   // Generate beacon chain header and beacon root

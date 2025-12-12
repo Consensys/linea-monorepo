@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import { ValidatorContainerProofVerifier } from "../../../yield/libs/ValidatorContainerProofVerifier.sol";
-import { GIndex } from "../../../yield/libs/vendor/lido/GIndex.sol";
+import { GIndex, pack } from "../../../yield/libs/vendor/lido/GIndex.sol";
 import { IValidatorContainerProofVerifier } from "../../../yield/interfaces/IValidatorContainerProofVerifier.sol";
 
 contract TestValidatorContainerProofVerifier is ValidatorContainerProofVerifier {
@@ -29,6 +29,15 @@ contract TestValidatorContainerProofVerifier is ValidatorContainerProofVerifier 
 
   function getValidatorGI(uint256 _offset) external view returns (GIndex) {
     return _getValidatorGI(_offset);
+  }
+
+  function getValidatorGIInLeftSubtree(uint256 _offset) external view returns (GIndex) {
+    uint256 gIFirstValidatorIndex = GI_FIRST_VALIDATOR.index();
+    uint8 pow = GI_FIRST_VALIDATOR.pow();
+    // Halve GI_FIRST_VALIDATOR
+    uint256 gIFirstValidatorIndexInLeftSubtree = gIFirstValidatorIndex / 2;
+    GIndex gIFirstValidatorInLeftSubtree = pack(gIFirstValidatorIndexInLeftSubtree, pow - 1);
+    return gIFirstValidatorInLeftSubtree.shr(_offset);
   }
 
   function getParentBlockRoot(uint64 _childBlockTimestamp) external view returns (bytes32) {
