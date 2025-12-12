@@ -99,8 +99,8 @@ func newModule(comp *wizard.CompiledIOP, input *Input) *Module {
 			IsModExp: comp.InsertCommit(0, "MODEXP_INPUT_IS_MODEXP", input.Limbs.Size()),
 			IsSmall:  comp.InsertCommit(0, "MODEXP_IS_SMALL", input.Limbs.Size()),
 			IsLarge:  comp.InsertCommit(0, "MODEXP_IS_LARGE", input.Limbs.Size()),
-			// ToSmall:  comp.InsertCommit(0, "MODEXP_TO_SMALL", input.Limbs.Size()),
-			Input: input,
+			ToSmall:  comp.InsertCommit(0, "MODEXP_TO_SMALL", input.Limbs.Size()),
+			Input:    input,
 		}
 	)
 	comp.RegisterProverAction(roundNr, mod)
@@ -113,7 +113,7 @@ func newModule(comp *wizard.CompiledIOP, input *Input) *Module {
 	// check that IsSmall and IsLarge are well constructed
 	mod.csIsSmallAndLarge(comp)
 	// check that the concrete mask for IS_SMALL is well constructed
-	// mod.csToCirc(comp)
+	mod.csToCirc(comp)
 
 	return mod
 }
@@ -168,18 +168,43 @@ func (mod *Module) csIsSmallAndLarge(comp *wizard.CompiledIOP) {
 	// not be wrong to supply
 	//
 
+	masks := make([]any, nbSmallModexpLimbs)
+	for i := range nbSmallModexpLimbs {
+		masks[i] = variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-i-1)
+	}
 	comp.InsertGlobal(
 		0,
 		"MODEXP_IS_SMALL_IMPLIES_SMALL_OPERANDS",
 		sym.Mul(
 			mod.Limbs,
 			mod.IsSmall,
-			sym.Sub(1,
-				variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-2),
-				variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-1),
+			sym.Sub(1, masks...),
+		),
+	)
+}
+
+// csToCirc ensures the well-construction of ant.ToSmallCirc
+func (mod *Module) csToCirc(comp *wizard.CompiledIOP) {
+	masks := make([]any, nbSmallModexpLimbs)
+	for i := range nbSmallModexpLimbs {
+		masks[i] = variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-i-1)
+	}
+	comp.InsertGlobal(
+		0,
+		"MODEXP_TO_SMALL_CIRC_VAL",
+		sym.Sub(
+			mod.ToSmall,
+			sym.Mul(
+				mod.IsSmall,
+				sym.Add(masks...),
 			),
 		),
 	)
+
+	//
+	// NB: We set ToLargeCirc = IsLarge as these to indicator coincidates
+	// so there is no need to add extra constraints.
+	//
 }
 
 func (m *Module) Run(run *wizard.ProverRuntime) {
@@ -209,6 +234,7 @@ func (m *Module) assignIsSmallOrLarge(run *wizard.ProverRuntime) {
 	var (
 		dstIsSmall = common.NewVectorBuilder(m.IsSmall)
 		dstIsLarge = common.NewVectorBuilder(m.IsLarge)
+		dstToSmall = common.NewVectorBuilder(m.ToSmall)
 	)
 	checkSmall := func(ptr int) bool {
 		for k := range nbLargeModexpLimbs - nbSmallModexpLimbs {
@@ -230,17 +256,24 @@ func (m *Module) assignIsSmallOrLarge(run *wizard.ProverRuntime) {
 		}
 		// found a modexp instance. We read the modexp inputs from here.
 		isSmall := checkSmall(ptr)
-		for range modexpNumRowsPerInstance {
+		for r := range modexpNumRowsPerInstance {
 			if isSmall {
 				dstIsSmall.PushOne()
 				dstIsLarge.PushZero()
+				if (r % nbLargeModexpLimbs) > (nbLargeModexpLimbs-nbSmallModexpLimbs)-1 {
+					dstToSmall.PushOne()
+				} else {
+					dstToSmall.PushZero()
+				}
 			} else {
 				dstIsSmall.PushZero()
 				dstIsLarge.PushOne()
+				dstToSmall.PushZero()
 			}
 		}
 		ptr += modexpNumRowsPerInstance
 	}
 	dstIsLarge.PadAndAssign(run)
 	dstIsSmall.PadAndAssign(run)
+	dstToSmall.PadAndAssign(run)
 }
