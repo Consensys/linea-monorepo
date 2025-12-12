@@ -275,6 +275,22 @@ export const generateEIP4478Witness = async (
   const pendingPartialWithdrawalsRoot = await sszMerkleTree.hashTreeRoot(allPendingPartialWithdrawals);
   void pendingPartialWithdrawalsRoot; // Computed for potential future use
 
+  // We have two fixed nodes in the BeaconState Merkle tree:
+  // - validators subtree at generalized index 75
+  // - pending_partial_withdrawals subtree at generalized index 99
+  //
+  // Goal: construct a BeaconState root that is consistent with BOTH nodes.
+  //
+  // Observation:
+  // - GI 75 and GI 99 lie in different halves of the tree
+  // - Their lowest common ancestor (LCA) is GI = 1 (the state root)
+  //
+  // Construction approach:
+  // 1. Starting from GI 75, hash upward toward the root, but STOP at GI=2 - the direct child of GI=1,
+  //    choosing arbitrary sibling node values along the path.
+  // 2. Do the same independently for GI 99, but STOP at GI=3
+  // 3. Hash GI=2 and GI=3 nodes together -> get BeaconState root at GI=1
+
   // ============================================================================
   // Generate state root
   // ============================================================================
