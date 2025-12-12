@@ -3,6 +3,7 @@ package execution
 import (
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/stretchr/testify/require"
 
@@ -22,6 +23,7 @@ func TestPIConsistency(t *testing.T) {
 		InitialBlockTimestamp:        2,
 		FirstRollingHashUpdateNumber: 3,
 		ChainID:                      7,
+		BaseFee:                      3,
 	}
 
 	utils.FillRange(pi.DataChecksum[:], 10)
@@ -32,6 +34,7 @@ func TestPIConsistency(t *testing.T) {
 	utils.FillRange(pi.FinalStateRootHash[:], 210)
 	utils.FillRange(pi.LastRollingHashUpdate[:], 250)
 	utils.FillRange(pi.L2MessageServiceAddr[:], 40)
+	utils.FillRange(pi.CoinBase[:], 22)
 
 	// state root hashes are field elements
 	pi.InitialStateRootHash[0] &= 0x0f

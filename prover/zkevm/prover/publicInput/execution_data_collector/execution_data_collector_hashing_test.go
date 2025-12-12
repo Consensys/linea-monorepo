@@ -114,7 +114,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 	var (
 		execDataCollector *ExecutionDataCollector
 		blockTxnMeta      fetch.BlockTxnMetadata
-		timestampFetcher  *fetch.TimestampFetcher
+		blockDataFetcher  *fetch.BlockDataFetcher
 		txnDataFetcher    fetch.TxnDataFetcher
 		rlpTxnFetcher     fetch.RlpTxnFetcher
 		txnDataCols       *arith.TxnData
@@ -136,9 +136,9 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		blockTxnMeta = fetch.NewBlockTxnMetadata(b.CompiledIOP, "BLOCK_TX_METADATA", txnDataCols)
 		fetch.DefineBlockTxnMetaData(b.CompiledIOP, &blockTxnMeta, "BLOCK_TX_METADATA", txnDataCols)
 		// create a new timestamp fetcher
-		timestampFetcher = fetch.NewTimestampFetcher(b.CompiledIOP, "TIMESTAMP_FETCHER_FROM_ARITH", blockDataCols)
+		blockDataFetcher = fetch.NewBlockDataFetcher(b.CompiledIOP, "TIMESTAMP_FETCHER_FROM_ARITH", blockDataCols)
 		// constrain the timestamp fetcher
-		fetch.DefineTimestampFetcher(b.CompiledIOP, timestampFetcher, "TIMESTAMP_FETCHER_FROM_ARITH", blockDataCols)
+		fetch.DefineBlockDataFetcher(b.CompiledIOP, blockDataFetcher, "TIMESTAMP_FETCHER_FROM_ARITH", blockDataCols)
 		txnDataFetcher = fetch.NewTxnDataFetcher(b.CompiledIOP, "TXN_DATA_FETCHER_FROM_ARITH", txnDataCols)
 		fetch.DefineTxnDataFetcher(b.CompiledIOP, &txnDataFetcher, "TXN_DATA_FETCHER_FROM_ARITH", txnDataCols)
 
@@ -152,7 +152,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// create a new ExecutionDataCollector
 		execDataCollector = NewExecutionDataCollector(b.CompiledIOP, "EXECUTION_DATA_COLLECTOR", limbColSize)
 		// define the ExecutionDataCollector
-		DefineExecutionDataCollector(b.CompiledIOP, execDataCollector, "EXECUTION_DATA_COLLECTOR", timestampFetcher, blockTxnMeta, txnDataFetcher, rlpTxnFetcher)
+		DefineExecutionDataCollector(b.CompiledIOP, execDataCollector, "EXECUTION_DATA_COLLECTOR", blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpTxnFetcher)
 
 		// create a padding module for the ExecutionDataCollector
 		importInp = importpad.ImportAndPadInputs{
@@ -197,12 +197,12 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// assign the CSV data for the mock BlockData, TxnData and RlpTxn arithmetization modules
 		arith.AssignTestingArithModules(run, ctBlockData, ctTxnData, ctRlpTxn)
 		// assign the fetchers
-		fetch.AssignTimestampFetcher(run, timestampFetcher, blockDataCols)
+		fetch.AssignBlockDataFetcher(run, blockDataFetcher, blockDataCols)
 		fetch.AssignBlockTxnMetadata(run, blockTxnMeta, txnDataCols)
 		fetch.AssignTxnDataFetcher(run, txnDataFetcher, txnDataCols)
 		fetch.AssignRlpTxnFetcher(run, &rlpTxnFetcher, rlpTxn)
 		// assign the ExecutionDataCollector
-		AssignExecutionDataCollector(run, execDataCollector, timestampFetcher, blockTxnMeta, txnDataFetcher, rlpTxnFetcher, blockHashList[:])
+		AssignExecutionDataCollector(run, execDataCollector, blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpTxnFetcher, blockHashList[:])
 
 		// assign the padding module
 		paddingMod.Run(run)

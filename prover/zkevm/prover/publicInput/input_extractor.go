@@ -34,9 +34,12 @@ type FunctionalInputExtractor struct {
 	FirstRollingHashUpdate, LastRollingHashUpdate             [common.NbLimbU256]query.LocalOpening
 	FirstRollingHashUpdateNumber, LastRollingHashUpdateNumber [common.NbLimbU128]query.LocalOpening
 
-	ChainID              [common.NbLimbU128]query.LocalOpening
-	NBytesChainID        query.LocalOpening
-	L2MessageServiceAddr [common.NbLimbEthAddress]query.LocalOpening
+	ChainID                query.LocalOpening
+	NBytesChainID          query.LocalOpening
+	L2MessageServiceAddrHi query.LocalOpening
+	L2MessageServiceAddrLo query.LocalOpening
+	CoinBase               query.LocalOpening
+	BaseFee                query.LocalOpening
 }
 
 // Run assigns all the local opening queries
@@ -49,6 +52,13 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 	assignLO(fie.DataNbBytes)
 	assignLO(fie.NBytesChainID)
 
+	// to do @gusiri: check if this is correct
+	// refactor existing L2MessageServiceAddr, ChainID, etc.
+	assignLO(fie.L2MessageServiceAddrHi)
+	assignLO(fie.L2MessageServiceAddrLo)
+	assignLO(fie.CoinBase)
+	assignLO(fie.BaseFee)
+
 	for i := range common.NbLimbU256 {
 		assignLO(fie.L2MessageHash[i])
 		assignLO(fie.DataChecksum[i])
@@ -59,6 +69,7 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 	}
 
 	for i := range common.NbLimbEthAddress {
+		// to do @gusiri: use address hi and lo?
 		assignLO(fie.L2MessageServiceAddr[i])
 	}
 
@@ -74,4 +85,5 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 		assignLO(fie.FirstRollingHashUpdateNumber[i])
 		assignLO(fie.LastRollingHashUpdateNumber[i])
 	}
+
 }

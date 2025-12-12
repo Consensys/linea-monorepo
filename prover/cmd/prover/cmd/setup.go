@@ -131,14 +131,15 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		return fmt.Errorf("%s failed to load public input interconnection setup: %w", cmdName, err)
 	}
 
-	// Collect verifying keys for aggregation
-	allowedVkForAggregation, err := collectVerifyingKeys(ctx, cfg, srsProvider, cfg.Aggregation.AllowedInputs)
+	// Collect verifying keys for ALL circuits (using global circuit ID mapping)
+	// The IsAllowedCircuitID bitmask in the config determines which ones are actually allowed at runtime
+	allVks, err := collectAllVerifyingKeys(ctx, cfg, srsProvider)
 	if err != nil {
 		return err
 	}
 
 	// Setup aggregation circuits
-	allowedVkForEmulation, err := setupAggregationCircuits(ctx, cfg, args.Force, srsProvider, inCircuits, &piSetup, allowedVkForAggregation)
+	allowedVkForEmulation, err := setupAggregationCircuits(ctx, cfg, args.Force, srsProvider, inCircuits, &piSetup, allVks)
 	if err != nil {
 		return err
 	}
@@ -286,33 +287,37 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 	}
 }
 
-// collectVerifyingKeys: Gathers verifying keys for the allowed inputs of aggregation circuits.
-func collectVerifyingKeys(ctx context.Context, cfg *config.Config, srsProvider circuits.SRSProvider, allowedInputs []string) ([]plonk.VerifyingKey, error) {
-	allowedVk := make([]plonk.VerifyingKey, 0, len(allowedInputs))
-	for _, input := range allowedInputs {
-		if isDummyCircuit(input) {
-			curveID, mockID, err := getDummyCircuitParams(input)
+// collectAllVerifyingKeys: Gathers verifying keys for ALL circuits in GlobalCircuitIDMapping.
+// The aggregation circuit always has access to all VKs. The IsAllowedCircuitID bitmask
+// in the config controls which circuits are actually allowed at runtime.
+func collectAllVerifyingKeys(ctx context.Context, cfg *config.Config, srsProvider circuits.SRSProvider) ([]plonk.VerifyingKey, error) {
+	allCircuitNames := config.GetAllCircuitNames()
+	allVks := make([]plonk.VerifyingKey, len(allCircuitNames))
+
+	for i, circuitName := range allCircuitNames {
+		if isDummyCircuit(circuitName) {
+			curveID, mockID, err := getDummyCircuitParams(circuitName)
 			if err != nil {
 				return nil, err
 			}
-			vk, err := getDummyCircuitVK(ctx, srsProvider, circuits.CircuitID(input), dummy.NewBuilder(mockID, curveID.ScalarField()))
+			vk, err := getDummyCircuitVK(ctx, srsProvider, circuits.CircuitID(circuitName), dummy.NewBuilder(mockID, curveID.ScalarField()))
 			if err != nil {
 				return nil, err
 			}
-			allowedVk = append(allowedVk, vk)
+			allVks[i] = vk
 			continue
 		}
 
 		// derive the asset paths
-		setupPath := cfg.PathForSetup(input)
+		setupPath := cfg.PathForSetup(circuitName)
 		vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
 		vk := plonk.NewVerifyingKey(ecc.BLS12_377)
 		if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
-			return nil, fmt.Errorf("failed to read verifying key for circuit %s: %w", input, err)
+			return nil, fmt.Errorf("failed to read verifying key for circuit %s: %w", circuitName, err)
 		}
-		allowedVk = append(allowedVk, vk)
+		allVks[i] = vk
 	}
-	return allowedVk, nil
+	return allVks, nil
 }
 
 // getDummyCircuitParams returns the curve and mock ID for a dummy circuit.
@@ -349,7 +354,8 @@ func setupAggregationCircuits(ctx context.Context, cfg *config.Config, force boo
 		c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), numProofs))
 		logrus.Infof("setting up %s (numProofs=%d)", c, numProofs)
 
-		builder := aggregation.NewBuilder(numProofs, cfg.Aggregation.AllowedInputs, *piSetup, allowedVkForAggregation)
+		// Always pass ALL verifying keys - the IsAllowedCircuitID bitmask controls which are actually allowed
+		builder := aggregation.NewBuilder(numProofs, *piSetup, allowedVkForAggregation)
 		if err := updateSetup(ctx, cfg, force, srsProvider, c, builder, extraFlags); err != nil {
 			return nil, err
 		}

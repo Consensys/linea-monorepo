@@ -59,8 +59,8 @@ func TestPublicInput(t *testing.T) {
 		// TODO incorporate into public input hash or decide not to
 		sfpi.NbDecompression = -1
 		sfpi.InitialStateRootHash = -2
-		sfpi.ChainID = -3
-		sfpi.L2MessageServiceAddr = -4
+		sfpi.ChainConfigurationFPISnark.ChainID = -3
+		sfpi.ChainConfigurationFPISnark.L2MessageServiceAddress = -4
 		sfpi.NbL2Messages = -5
 
 		var res [32]zk.WrappedVariable

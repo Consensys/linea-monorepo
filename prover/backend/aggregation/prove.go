@@ -84,7 +84,10 @@ func (cf CollectedFields) AggregationPublicInput(cfg *config.Config) public_inpu
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    utils.ToInt(cf.L2MsgTreeDepth),
 		ChainID:                                 uint64(cfg.Layer2.ChainID),
+		BaseFee:                                 uint64(cfg.Layer2.BaseFee),
+		CoinBase:                                types.EthAddress(cfg.Layer2.CoinBase),
 		L2MessageServiceAddr:                    types.EthAddress(cfg.Layer2.MsgSvcContract),
+		IsAllowedCircuitID:                      uint64(cfg.Aggregation.IsAllowedCircuitID),
 	}
 }
 
