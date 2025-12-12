@@ -92,7 +92,7 @@ type SegmentProof struct {
 	SegmentIndex     int
 	// LppCommitment is the commitment of the LPP witness. It is only populated
 	// for a GL segment proof.
-	LppCommitment field.Element
+	LppCommitment field.Octuplet
 
 	// recursionRuntime is the runtime of the recursion proof. The reason for
 	// this field is that we need to generate the input proof of the outer-proof,
