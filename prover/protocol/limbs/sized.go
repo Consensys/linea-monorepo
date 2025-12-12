@@ -1,7 +1,7 @@
 package limbs
 
-// Size is a pseudo const-generics that specifies the size of a limb
-type Size interface {
+// BitSize is a pseudo const-generics that specifies the size of a limb
+type BitSize interface {
 	S16 | S32 | S64 | S128 | S160 | S256
 }
 
@@ -21,7 +21,7 @@ type (
 )
 
 // uintSize returns the bit size of a Uint[S]
-func uintSize[S Size]() int {
+func uintSize[S BitSize]() int {
 	switch any(S{}).(type) {
 	case S16:
 		return 16
@@ -41,6 +41,6 @@ func uintSize[S Size]() int {
 }
 
 // bytesSize returns the size of a Bytes[S]
-func bytesSize[S Size]() int {
+func bytesSize[S BitSize]() int {
 	return uintSize[S]() / 8
 }

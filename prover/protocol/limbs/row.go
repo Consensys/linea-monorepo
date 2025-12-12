@@ -31,8 +31,8 @@ func RowFromBytes[E Endianness](x []byte) row[E] {
 	return bytesToLimbs[E](x)
 }
 
-// ToBigEndian returns the row in big endian form
-func (r row[E]) ToBigEndian() row[BigEndian] {
+// ToBigEndianLimbs returns the row in big endian form
+func (r row[E]) ToBigEndianLimbs() row[BigEndian] {
 	r = slices.Clone(r)
 	if isLittleEndian[E]() {
 		slices.Reverse(r)
@@ -40,8 +40,8 @@ func (r row[E]) ToBigEndian() row[BigEndian] {
 	return row[BigEndian](r)
 }
 
-// ToLittleEndian returns the row in little endian form
-func (r row[E]) ToLittleEndian() row[LittleEndian] {
+// ToLittleEndianLimbs returns the row in little endian form
+func (r row[E]) ToLittleEndianLimbs() row[LittleEndian] {
 	r = slices.Clone(r)
 	if isBigEndian[E]() {
 		slices.Reverse(r)

@@ -11,7 +11,7 @@ import (
 // VectorBuilder is a helper to iteratively construct the assignment of a column
 // by iteratively pushing values and then pad.
 type VectorBuilder[E Endianness] struct {
-	limbs  limbs[E]
+	limbs  Limbs[E]
 	slices [][]field.Element
 }
 
