@@ -365,14 +365,14 @@ export const generateEIP4478Witness = async (
   // ============================================================================
 
   const validatorContainerWitness: ValidatorContainerWitness = {
-    proof: [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof, ...beaconHeaderMerkleSubtree.proof],
+    proof: [...proofForGI2, gi2Root, ...beaconHeaderMerkleSubtree.proof],
     effectiveBalance: validatorContainer.effectiveBalance,
     activationEpoch: validatorContainer.activationEpoch,
     activationEligibilityEpoch: validatorContainer.activationEligibilityEpoch,
   };
 
   const pendingPartialWithdrawalsWitness: PendingPartialWithdrawalsWitness = {
-    proof: [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof, ...beaconHeaderMerkleSubtree.proof],
+    proof: [...proofForGI3, gi3Root, ...beaconHeaderMerkleSubtree.proof],
     pendingPartialWithdrawals: allPendingPartialWithdrawals,
   };
 
