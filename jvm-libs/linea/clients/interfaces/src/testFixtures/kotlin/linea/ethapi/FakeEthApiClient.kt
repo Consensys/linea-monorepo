@@ -161,6 +161,14 @@ class FakeEthApiClient(
     TODO("Not yet implemented")
   }
 
+  override fun ethFeeHistoryBlobExtended(
+    blockCount: Int,
+    newestBlock: BlockParameter,
+    rewardPercentiles: List<Double>,
+  ): SafeFuture<FeeHistory> {
+    TODO("Not yet implemented")
+  }
+
   override fun ethGetBalance(
     address: ByteArray,
     blockParameter: BlockParameter,
