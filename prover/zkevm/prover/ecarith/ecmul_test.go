@@ -6,18 +6,16 @@ import (
 	"os"
 	"testing"
 
-	"fmt"
-
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 var (
@@ -148,10 +146,7 @@ func TestEcMulIntegration(t *testing.T) {
 				Index:   ct.GetCommit(b, "INDEX"),
 				IsData:  ct.GetCommit(b, "IS_DATA"),
 				IsRes:   ct.GetCommit(b, "IS_RES"),
-			}
-
-			for i := 0; i < common.NbLimbU128; i++ {
-				ecMulSource.Limbs[i] = ct.GetCommit(b, fmt.Sprintf("LIMB_%d", i))
+				Limbs:   ct.GetLimbsLe(b, "LIMB", limbs.NbLimbU128).AssertUint128(),
 			}
 
 			ecMul = newEcMul(b.CompiledIOP, limits, ecMulSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)})

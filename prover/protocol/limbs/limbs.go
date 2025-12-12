@@ -37,6 +37,8 @@ type Limbed interface {
 	ColumnNames() []string
 }
 
+type limbs[E Endianness] = Limbs[E]
+
 // Limbs represents a register represented by a list of columns.
 type Limbs[E Endianness] struct {
 	c    []ifaces.Column
@@ -44,14 +46,23 @@ type Limbs[E Endianness] struct {
 	_    E // this field is needed to tag the struct with E
 }
 
+const (
+	NbLimbU32        = 2
+	NbLimbU64        = 4
+	NbLimbU128       = 8
+	NbLimbEthAddress = 10
+	NbLimbU256       = 16
+)
+
+// NumLimbsOf returns the number of limbs for the provided size
+func NumLimbsOf[S BitSize]() int {
+	return utils.DivExact(uintSize[S](), limbBitWidth)
+}
+
 // NewLimbs creates a set of columns in the wizard. The columns are always of
 // type [column.Commitment] and are for the round zero.
-func NewLimbs[E Endianness](
-	comp *wizard.CompiledIOP,
-	name ifaces.ColID,
-	numLimbs, size int,
-	prags ...pragmas.PragmaPair,
-) Limbs[E] {
+func NewLimbs[E Endianness](comp *wizard.CompiledIOP, name ifaces.ColID,
+	numLimbs, size int, prags ...pragmas.PragmaPair) Limbs[E] {
 	c := make([]ifaces.Column, numLimbs)
 	for i := range c {
 		cname := ifaces.ColIDf("%v_%v", name, i)

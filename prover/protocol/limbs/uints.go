@@ -32,32 +32,32 @@ var (
 
 // Uint[S, E] represents a register represented by a list of columns.
 type Uint[S BitSize, E Endianness] struct {
-	Limbs[E]
+	limbs[E]
 }
 
 // NewUint[S, E] creates a new [Uints] registering all its components.
 func NewUint[S BitSize, E Endianness](comp *wizard.CompiledIOP, name ifaces.ColID, size int, prags ...pragmas.PragmaPair) Uint[S, E] {
 	numLimbs := utils.DivExact(uintSize[S](), limbBitWidth)
 	limbs := NewLimbs[E](comp, name, numLimbs, size, prags...)
-	return Uint[S, E]{Limbs: limbs}
+	return Uint[S, E]{limbs: limbs}
 }
 
 // AsDynSize returns the underlying limbs.
 func (u Uint[S, E]) AsDynSize() Limbs[E] {
-	return u.Limbs
+	return u.limbs
 }
 
 // ToBigEndianUint converts (if needed) to a big-endian uint register.
 func (u Uint[S, E]) ToBigEndianUint() Uint[S, BigEndian] {
 	return Uint[S, BigEndian]{
-		Limbs: u.Limbs.ToBigEndianLimbs().(Limbs[BigEndian]),
+		limbs: u.ToBigEndianLimbs().(Limbs[BigEndian]),
 	}
 }
 
 // ToLittleEndianUint converts (if needed) to a little-endian uint register.
 func (u Uint[S, E]) ToLittleEndianUint() Uint[S, LittleEndian] {
 	return Uint[S, LittleEndian]{
-		Limbs: u.Limbs.ToLittleEndianLimbs().(Limbs[LittleEndian]),
+		limbs: u.ToLittleEndianLimbs().(Limbs[LittleEndian]),
 	}
 }
 
@@ -68,5 +68,14 @@ func FromSliceUnsafe[S BitSize, E Endianness](name ifaces.ColID, cols []ifaces.C
 	if len(cols) != numLimbs {
 		utils.Panic("number of columns must be equal to the number of limbs, got %v and %v", len(cols), numLimbs)
 	}
-	return Uint[S, E]{Limbs: Limbs[E]{c: cols, name: name}}
+	return Uint[S, E]{limbs: Limbs[E]{c: cols, name: name}}
+}
+
+// AssertUint128 converts the slice into a [Uint] object and panicks if the size
+// is not the expected one.
+func (limbs Limbs[E]) AssertUint128() Uint[S128, E] {
+	if limbs.NumLimbs() != NumLimbsOf[S128]() {
+		utils.Panic("number of columns must be equal to the number of limbs, got %v and %v", limbs.NumLimbs(), NumLimbsOf[S128]())
+	}
+	return Uint[S128, E]{limbs: limbs}
 }
