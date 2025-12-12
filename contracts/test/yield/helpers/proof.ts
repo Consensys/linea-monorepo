@@ -5,12 +5,25 @@ import { SecretKey } from "@chainsafe/blst";
 import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
 import { FAR_FUTURE_EXIT_EPOCH, SHARD_COMMITTEE_PERIOD, SLOTS_PER_EPOCH } from "../../common/constants";
 
+export interface LocalMerkleTree {
+  sszMerkleTree: SSZMerkleTree;
+  gIFirstValidator: string;
+  firstValidatorLeafIndex: bigint;
+  readonly totalValidators: number;
+  addValidator: (validator: ValidatorContainer) => Promise<{ validatorIndex: number }>;
+  validatorAtIndex: (index: number) => ValidatorContainer;
+  commitChangesToBeaconRoot: (
+    slot?: number,
+  ) => Promise<{ childBlockTimestamp: number; beaconBlockHeader: BeaconBlockHeader }>;
+  buildProof: (validatorIndex: number, beaconBlockHeader: BeaconBlockHeader) => Promise<string[]>;
+}
+
 // min = 0 will cause flaky test with NoValidatorExitForUnstakePermissionless() error
 export const randomInt = (max: number, min = 1): number => Math.floor(Math.random() * (max - min)) + min;
 
 export const randomBytes32 = (): string => hexlify(randomBytes(32));
 
-export const generateBeaconHeader = (stateRoot: string, slot?: number) => {
+export const generateBeaconHeader = (stateRoot: string, slot?: number): BeaconBlockHeader => {
   return {
     slot: slot ?? randomInt(1743359),
     proposerIndex: randomInt(1337),
@@ -43,7 +56,7 @@ export const generateValidator = (customWC?: string): Validator => {
   };
 };
 
-export const setBeaconBlockRoot = async (root: string) => {
+export const setBeaconBlockRoot = async (root: string): Promise<number> => {
   const systemAddress = "0xfffffffffffffffffffffffffffffffffffffffe";
   const initialBalance = 999999999999999999999999999n;
   await ethers.provider.send("hardhat_impersonateAccount", [systemAddress]);
@@ -64,7 +77,7 @@ export const setBeaconBlockRoot = async (root: string) => {
 // Default mainnet values for validator state tree
 export const prepareLocalMerkleTree = async (
   gIndex = "0x0000000000000000000000000000000000000000000000000096000000000028",
-) => {
+): Promise<LocalMerkleTree> => {
   const sszMerkleTree: SSZMerkleTree = await ethers.deployContract("SSZMerkleTree", [gIndex], {});
   const firstValidator = generateValidator();
 
@@ -208,7 +221,7 @@ export const generateEIP4478Witness = async (
   verifier: TestValidatorContainerProofVerifier,
   address: string,
   effectiveBalance?: bigint,
-) => {
+): Promise<{ eip4788Witness: EIP4788Witness; beaconHeaderMerkleSubtreeProof: string[] }> => {
   const lowercaseAddress = address.toLowerCase().replace(/^0x/, "");
   if (lowercaseAddress.length !== 40 || !/^[0-9a-f]+$/.test(lowercaseAddress)) {
     throw new Error("Invalid address format");
@@ -267,7 +280,7 @@ export const generateLidoUnstakePermissionlessWitness = async (
   verifier: TestValidatorContainerProofVerifier,
   address: string,
   effectiveBalance?: bigint,
-) => {
+): Promise<{ validatorWitness: ValidatorWitness; eip4788Witness: EIP4788Witness; pubkey: string }> => {
   const { eip4788Witness, beaconHeaderMerkleSubtreeProof } = await generateEIP4478Witness(
     sszMerkleTree,
     verifier,
