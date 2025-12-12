@@ -28,6 +28,12 @@ const (
 	PadWithZeroes Pragma = "pad-with-zeroes-pragma"
 )
 
+// PragmaPair is a pair of pragma and its value.
+type PragmaPair struct {
+	Pragma Pragma
+	Value  bool
+}
+
 // MarkFullColumn marks a column as full-column.
 func MarkFullColumn(col ifaces.Column) {
 	nat := col.(column.Natural)
