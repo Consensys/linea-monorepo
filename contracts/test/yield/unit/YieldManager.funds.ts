@@ -513,28 +513,30 @@ describe("YieldManager contract - ETH transfer operations", () => {
       );
     });
 
-    // it("Should revert when there is sufficient withdrawable YieldProvider value to cover target deficit", async () => {
-    //   // Arrange - Put targetDeficit on YieldProvider
-    //   const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-    //   const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //   await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, targetReserveAmount);
-    //   // Arrange - Ensure 0 balance on L1MessageService
-    //   await ethers.provider.send("hardhat_setBalance", [await mockLineaRollup.getAddress(), ethers.toBeHex(0)]);
+    it("Should revert when requiredUnstakeAmountWei is 0", async () => {
+      // Arrange - Put targetDeficit on YieldProvider
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
+      await setBalance(await mockLineaRollup.getAddress(), 0n);
+      await setBalance(await yieldManager.getAddress(), 10n + targetReserveAmount / 3n);
+      await yieldManager.setWithdrawableValueReturnVal(mockYieldProviderAddress, targetReserveAmount / 3n);
+      await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, targetReserveAmount / 3n);
+      await yieldManager.setPendingPermissionlessUnstake(targetReserveAmount / 3n);
 
-    //   // Act
-    //   const unstakeAmount = 1n;
-    //   await yieldManager
-    //     .connect(nativeYieldOperator)
-    //     .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
-
-    //   await expectRevertWithCustomError(
-    //     yieldManager,
-    //     yieldManager
-    //       .connect(nativeYieldOperator)
-    //       .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
-    //     "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
-    //   );
-    // });
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
+        "NoRequirementToUnstakePermissionless",
+      );
+    });
 
     // it("Should revert when there is sufficient YieldManager balance to cover target deficit", async () => {
     //   const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
