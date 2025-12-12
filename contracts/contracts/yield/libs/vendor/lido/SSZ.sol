@@ -1,5 +1,3 @@
-// Copied verbatim from Lido audited contracts - https://github.com/lidofinance/core/blob/7cae7a14192ff094fb0eb089433ac9f6fd70e3c6/contracts/common/lib/SSZ.sol
-
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
@@ -7,6 +5,13 @@
  SSZ library from CSM
  original: https://github.com/lidofinance/community-staking-module/blob/7071c2096983a7780a5f147963aaa5405c0badb1/src/lib/SSZ.sol
 */
+
+/*
+ * Extended by Consensys Software Inc. to support validation of the Pending Partial Withdrawals
+ * Array in the Beacon State. This extension adds functionality for computing SSZ hash tree roots
+ * of PendingPartialWithdrawal arrays using progressive merkleization (merkleize_chunks) with
+ * mix_in_length as per the SSZ specification.
+ */
 
 // See contracts/COMPILERS.md
 // solhint-disable-next-line lido/fixed-compiler-version
