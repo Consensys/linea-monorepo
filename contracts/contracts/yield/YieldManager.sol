@@ -1108,10 +1108,10 @@ contract YieldManager is
     ) {
       revert BpsMoreThan10000();
     }
-    if (_params.minimumWithdrawalReservePercentageBps > _params.targetWithdrawalReservePercentageBps) {
+    if (_params.targetWithdrawalReservePercentageBps < _params.minimumWithdrawalReservePercentageBps) {
       revert TargetReservePercentageMustBeAboveMinimum();
     }
-    if (_params.minimumWithdrawalReserveAmount > _params.targetWithdrawalReserveAmount) {
+    if (_params.targetWithdrawalReserveAmount < _params.minimumWithdrawalReserveAmount) {
       revert TargetReserveAmountMustBeAboveMinimum();
     }
     YieldManagerStorage storage $ = _getYieldManagerStorage();
