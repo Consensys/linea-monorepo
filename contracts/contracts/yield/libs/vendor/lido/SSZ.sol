@@ -24,6 +24,12 @@ library SSZ {
 
   uint256 constant MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH = 27;
 
+  /// @notice Returns the precomputed zero hash for a given merkle tree layer.
+  /// @dev Zero hashes are used as placeholders in merkle trees when padding to powers of 2.
+  ///      Layer 0 is all zeros, and each subsequent layer is the hash of the previous layer concatenated with itself.
+  /// @param i The layer index (0-27).
+  /// @return The zero hash for the specified layer.
+  /// @custom:error OutOfRange Reverts if i > 27.
   function zeroHash(uint256 i) internal pure returns (bytes32) {
       if (i == 0) return 0x0000000000000000000000000000000000000000000000000000000000000000;
       if (i == 1) return 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b;
@@ -56,6 +62,11 @@ library SSZ {
       revert OutOfRange();
   }
 
+  /// @notice Computes the SSZ hash tree root of a beacon block header.
+  /// @dev Implements SSZ merkleization for BeaconBlockHeader, which has 8 fields.
+  ///      Uses SHA-256 precompile for hashing and builds a binary merkle tree.
+  /// @param header The beacon block header to compute the hash tree root for.
+  /// @return root The SSZ hash tree root of the beacon block header.
   function hashTreeRoot(BeaconBlockHeader memory header) internal view returns (bytes32 root) {
     bytes32[8] memory nodes = [
       toLittleEndian(header.slot),
@@ -124,6 +135,12 @@ library SSZ {
     }
   }
 
+  /// @notice Computes the SSZ hash tree root of a validator object.
+  /// @dev Implements SSZ merkleization for Validator, which has 8 fields including a 48-byte pubkey.
+  ///      The pubkey is first hashed to a 32-byte root, then combined with other fields.
+  ///      Uses SHA-256 precompile for hashing and builds a binary merkle tree.
+  /// @param validator The validator object to compute the hash tree root for.
+  /// @return root The SSZ hash tree root of the validator.
   function hashTreeRoot(Validator memory validator) internal view returns (bytes32 root) {
     bytes32 pubkeyRoot;
 
@@ -212,6 +229,11 @@ library SSZ {
     }
   }
 
+  /// @notice Computes the SSZ hash tree root of a single pending partial withdrawal.
+  /// @dev Implements SSZ merkleization for PendingPartialWithdrawal, which has 4 fields.
+  ///      Uses SHA-256 precompile for hashing and builds a binary merkle tree.
+  /// @param pendingPartialWithdrawal The pending partial withdrawal to compute the hash tree root for.
+  /// @return root The SSZ hash tree root of the pending partial withdrawal.
   function hashTreeRoot(PendingPartialWithdrawal memory pendingPartialWithdrawal) internal view returns (bytes32 root) {
     bytes32[4] memory nodes = [
       toLittleEndian(pendingPartialWithdrawal.validatorIndex),
@@ -276,8 +298,13 @@ library SSZ {
     }
   }
 
-  // Solidity implementation of the merkleize_chunks spec in https://github.com/ethereum/consensus-specs/blob/5390b77256a9fd6c1ebe0c7e3f8a3da033476ddf/tests/core/pyspec/eth2spec/utils/merkle_minimal.py#L47-L91
-  // Algorithm has space complexity of "MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH+1", despite input array being up to 2**27 items.
+  /// @notice Computes the SSZ hash tree root of an array of pending partial withdrawals.
+  /// @dev Implements progressive merkleization (merkleize_chunks) with mix_in_length as per SSZ spec.
+  ///      Uses space-efficient algorithm with O(MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH+1) space complexity,
+  ///      despite supporting arrays up to 2**27 items.
+  ///      Reference: https://github.com/ethereum/consensus-specs/blob/5390b77256a9fd6c1ebe0c7e3f8a3da033476ddf/tests/core/pyspec/eth2spec/utils/merkle_minimal.py#L47-L91
+  /// @param pendingPartialWithdrawal The array of pending partial withdrawals to compute the hash tree root for.
+  /// @return root The SSZ hash tree root with length mixed in: mix_in_length(merkleize_progressive(...), len(value)).
   function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) internal view returns (bytes32 root) {
     uint256 count = pendingPartialWithdrawal.length;
     uint256 depth = count == 0 ? 0 : Math256.bitLength(count - 1);
@@ -299,7 +326,14 @@ library SSZ {
     root = sha256Pair(tmp[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH], toLittleEndian(count));
   }
 
-  // Mutate `tmp` in-place
+  /// @dev Internal helper function that merges a chunk into the progressive merkle tree.
+  /// @dev Mutates the `tmp` array in-place, building up the merkle tree layer by layer.
+  ///      Implements the merge logic from the Python reference implementation.
+  /// @param tmp The temporary array storing intermediate merkle tree nodes (mutated in-place).
+  /// @param depth The bit length of (count - 1), representing the depth needed for the actual count.
+  /// @param count The total number of chunks being merkleized.
+  /// @param chunk The chunk hash to merge into the tree.
+  /// @param chunkIndex The index of the chunk in the original array (0-indexed).
   function mergeSSZChunk(bytes32[28] memory tmp, uint256 depth, uint256 count, bytes32 chunk, uint256 chunkIndex) internal view {
       uint256 j = 0;
       bytes32 h = chunk;
@@ -318,8 +352,16 @@ library SSZ {
       tmp[j] = h;
   }
 
-  /// @notice Modified version of `verify` from Solady `MerkleProofLib` to support generalized indices and sha256 precompile.
-  /// @dev Reverts if `leaf` doesn't exist in the Merkle tree with `root`, given `proof`.
+  /// @notice Verifies a merkle proof using generalized indices and SHA-256 hashing.
+  /// @dev Modified version of `verify` from Solady `MerkleProofLib` to support generalized indices and SHA-256 precompile.
+  ///      Reverts if the proof is invalid or the leaf doesn't exist in the merkle tree.
+  /// @param proof Array of merkle proof hashes from the leaf to the root.
+  /// @param root The expected merkle root hash.
+  /// @param leaf The leaf hash to verify.
+  /// @param gI The generalized index (GIndex) specifying the position of the leaf in the tree.
+  /// @custom:error InvalidProof Reverts if the proof array is empty or the computed root doesn't match.
+  /// @custom:error BranchHasExtraItem Reverts if the proof has more items than expected.
+  /// @custom:error BranchHasMissingItem Reverts if the proof has fewer items than expected.
   function verifyProof(bytes32[] calldata proof, bytes32 root, bytes32 leaf, GIndex gI) internal view {
     uint256 index = gI.index();
 
@@ -391,7 +433,11 @@ library SSZ {
     }
   }
 
-  // See https://github.com/succinctlabs/telepathy-contracts/blob/5aa4bb7/src/libraries/SimpleSerialize.sol#L17-L28
+  /// @notice Converts a uint256 value to little-endian bytes32 format.
+  /// @dev Implements byte-level swapping to convert from big-endian to little-endian representation.
+  ///      Reference: https://github.com/succinctlabs/telepathy-contracts/blob/5aa4bb7/src/libraries/SimpleSerialize.sol#L17-L28
+  /// @param v The uint256 value to convert.
+  /// @return The little-endian bytes32 representation of the value.
   function toLittleEndian(uint256 v) internal pure returns (bytes32) {
     v =
       ((v & 0xFF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00) >> 8) |
@@ -409,10 +455,20 @@ library SSZ {
     return bytes32(v);
   }
 
+  /// @notice Converts a boolean value to little-endian bytes32 format.
+  /// @dev Encodes true as 1 << 248 (bit 248 set) and false as 0, following SSZ boolean encoding.
+  /// @param v The boolean value to convert.
+  /// @return The little-endian bytes32 representation of the boolean (1 << 248 for true, 0 for false).
   function toLittleEndian(bool v) internal pure returns (bytes32) {
     return bytes32(v ? 1 << 248 : 0);
   }
 
+  /// @notice Computes the SHA-256 hash of two concatenated bytes32 values.
+  /// @dev Concatenates left and right bytes32 values (left || right) and computes their SHA-256 hash.
+  ///      Uses the SHA-256 precompile (0x02) for efficient hashing.
+  /// @param left The left bytes32 value to hash.
+  /// @param right The right bytes32 value to hash.
+  /// @return result The SHA-256 hash of the concatenated values (left || right).
   function sha256Pair(bytes32 left, bytes32 right) internal view returns (bytes32 result) {
     /// @solidity memory-safe-assembly
     assembly {
