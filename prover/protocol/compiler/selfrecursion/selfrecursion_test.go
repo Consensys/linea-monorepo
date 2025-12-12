@@ -400,80 +400,98 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestGnarkSelfRecursionMultiLayered(t *testing.T) {
+func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 
-	logrus.SetLevel(logrus.FatalLevel)
+	define, prove := generateProtocol(testcases[0])
+	// don't increase too much so that it does not increase too much the runtime
+	// of the test.
+	n := 2
 
-	tc := TestCase{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]}
-	t.Run(fmt.Sprintf("testcase-%++v", tc), func(subT *testing.T) {
-		define, prove := generateProtocol(tc)
+	comp := wizard.Compile(
+		define,
+		vortex.Compile(
+			8,
+			false,
+			vortex.ForceNumOpenedColumns(32),
+			vortex.WithSISParams(&ringsis.StdParams),
+			vortex.WithOptionalSISHashingThreshold(64),
+		),
+	)
 
-		comp := wizard.Compile(
-			define,
-			vortex.Compile(
-				2,
-				false,
-				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
-				vortex.WithSISParams(&tc.SisInstance),
-			),
-			selfrecursion.SelfRecurse,
-			poseidon2.CompilePoseidon2,
-			compiler.Arcane(
-				compiler.WithTargetColSize(1<<10)),
-			vortex.Compile(
-				2,
-				false,
-				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
-				vortex.WithSISParams(&tc.SisInstance),
-			),
-			selfrecursion.SelfRecurse,
-			poseidon2.CompilePoseidon2,
-			compiler.Arcane(
-				compiler.WithTargetColSize(1<<13)),
-			vortex.Compile(
-				2,
-				true,
-				vortex.WithOptionalSISHashingThreshold(1<<20),
-			),
-		)
+	for i := 0; i < n; i++ {
 
-		proof := wizard.Prove(
-			comp,
-			prove,
-			true,
-		)
+		fmt.Printf("layer %v\n", i)
 
-		err := wizard.Verify(comp, proof, true)
-		require.NoError(subT, err)
-
-		circuit := verifierCircuit{}
-		{
-			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
-			circuit.C = *c
-		}
-
-		csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		assignment := &verifierCircuit{
-			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
-		}
-
-		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// Check if solved using the pre-compiled SCS
-		err = csc.IsSolved(witness)
-		if err != nil {
-			fmt.Printf("circuit solving failed :  %v \n", err)
+		if i == n-1 {
+			comp = wizard.ContinueCompilation(
+				comp,
+				selfrecursion.SelfRecurse,
+				poseidon2.CompilePoseidon2,
+				compiler.Arcane(
+					compiler.WithTargetColSize(1<<13),
+				),
+				// logdata.Log("before-vortex"),
+				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
+				vortex.Compile(
+					8,
+					false,
+					vortex.ForceNumOpenedColumns(32),
+					vortex.WithOptionalSISHashingThreshold(1<<20),
+				),
+			)
 		} else {
-			fmt.Printf("circuit solved successfully\n")
+			comp = wizard.ContinueCompilation(
+				comp,
+				selfrecursion.SelfRecurse,
+				poseidon2.CompilePoseidon2,
+				compiler.Arcane(
+					compiler.WithTargetColSize(1<<13),
+				),
+				// logdata.Log("before-vortex"),
+				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
+				vortex.Compile(
+					8,
+					false,
+					vortex.ForceNumOpenedColumns(32),
+					vortex.WithSISParams(&ringsis.StdParams),
+					vortex.WithOptionalSISHashingThreshold(64),
+				),
+			)
 		}
-	})
+	}
+
+	proof := wizard.Prove(comp, prove, true)
+	err := wizard.Verify(comp, proof, true)
+	require.NoError(t, err)
+
+	circuit := verifierCircuit{}
+	{
+		c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
+		circuit.C = *c
+	}
+
+	csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assignment := &verifierCircuit{
+		C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+	}
+
+	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check if solved using the pre-compiled SCS
+	err = csc.IsSolved(witness)
+	if err != nil {
+		fmt.Printf("circuit solving failed :  %v \n", err)
+	} else {
+		fmt.Printf("circuit solved successfully\n")
+	}
+
 }
 
 type verifierCircuit struct {

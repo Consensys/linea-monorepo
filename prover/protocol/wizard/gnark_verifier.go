@@ -614,6 +614,22 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable
 
 func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.E4Gen {
 
+	if c.Spec.Columns.GetHandle(name).IsBase() {
+		res, err := c.GetColumnBase(name)
+		if err != nil {
+			utils.Panic("requested base element from underlying field extension")
+		}
+
+		resExt := make([]gnarkfext.E4Gen, len(res))
+
+		for i := 0; i < len(resExt); i++ {
+			resExt[i].B0.A0 = res[i]
+			resExt[i].B0.A1 = zk.ValueOf(0)
+			resExt[i].B1.A0 = zk.ValueOf(0)
+			resExt[i].B1.A1 = zk.ValueOf(0)
+		}
+		return resExt
+	}
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
 		val := smartvectors.IntoRegVecExt(c.Spec.Precomputed.MustGet(name))
