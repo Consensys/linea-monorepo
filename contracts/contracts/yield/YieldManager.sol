@@ -594,7 +594,7 @@ contract YieldManager is
     if (maxUnstakeAmount == 0) {
       revert YieldProviderReturnedZeroUnstakeAmount();
     }
-    // Validiate maxUnstakeAmount
+    // Validate maxUnstakeAmount
     uint256 targetDeficit = getTargetReserveDeficit();
     uint256 availableFundsToSettleTargetDeficit = address(this).balance +
       withdrawableValue(_yieldProvider) +
