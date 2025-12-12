@@ -34,7 +34,7 @@ interface ICommonVaultOperations {
    * @param _amounts Withdrawal amounts in wei for each validator key and must match _pubkeys length.
    *         Set amount to 0 for a full validator exit.
    *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation
-   * @param _refundRecipient Address to receive any fee refunds, if zero, refunds go to msg.sender.
+   * @param _refundRecipient Address to receive any fee refunds. Must be non-zero as StakingVault will revert otherwise.
    * @dev    A withdrawal fee must be paid via msg.value.
    *         Use `StakingVault.calculateValidatorWithdrawalFee()` to determine the required fee for the current block.
    */
