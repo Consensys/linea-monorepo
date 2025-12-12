@@ -10,14 +10,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
+	mimc "github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	IsBLS = false
 )
 
 // DistributedWizard represents a wizard protocol that has undergone a
@@ -254,7 +258,7 @@ func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc *StandardModuleDisco
 
 	return wizard.ContinueCompilation(
 		comp,
-		mimc.CompileMiMC,
+		mimc.CompilePoseidon2,
 		logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(
 			&LPPSegmentBoundaryCalculator{
 				Disc: disc,
