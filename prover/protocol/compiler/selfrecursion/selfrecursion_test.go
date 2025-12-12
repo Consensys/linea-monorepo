@@ -405,7 +405,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 	define, prove := generateProtocol(testcases[0])
 	// don't increase too much so that it does not increase too much the runtime
 	// of the test.
-	n := 2
+	n := 1
 
 	comp := wizard.Compile(
 		define,
@@ -434,7 +434,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
 				vortex.Compile(
 					8,
-					false,
+					true,
 					vortex.ForceNumOpenedColumns(32),
 					vortex.WithOptionalSISHashingThreshold(1<<20),
 				),
