@@ -3,7 +3,6 @@ package serialization
 import "strings"
 
 // PackedHierarchy represents the flattened Trie.
-// It is 10-50x faster to load because it's just 3 simple arrays.
 type PackedHierarchy struct {
 	// 1. Dictionary of unique segments (e.g. "BIGRANGE", "ACCUMULATOR", "10")
 	Segments []string `cbor:"s"`
