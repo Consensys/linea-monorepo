@@ -311,7 +311,8 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       _withdrawalParams,
       (bytes, address)
     );
-    uint256 unstakedAmountGwei = _validateUnstakePermissionlessRequest(_yieldProvider, _requiredUnstakeAmountWei, pubkeys, _validatorIndex, _slot, _withdrawalParamsProof);
+    uint256 unstakedAmountGwei = _validateUnstakePermissionlessRequest(_yieldProvider, _requiredUnstakeAmountWei, _validatorIndex, _slot, pubkeys, _withdrawalParamsProof);
+    // We handle revert on unstakedAmountGwei=0 later when execution returns to YieldManager.
     // Clamp single unstake amount to accurately update pendingPermissionlessUnstake.
     uint64[] memory amounts = new uint64[](1);
     amounts[0] = uint64(unstakedAmountGwei);
@@ -325,18 +326,18 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @dev Checks guided by consensus specs https://github.com/ethereum/consensus-specs/blob/834e40604ae4411e565bd6540da50b008b2496dc/specs/electra/beacon-chain.md#new-process_withdrawal_request
    * @param _yieldProvider The yield provider address.
    * @param _requiredUnstakeAmountWei Required unstake amount in wei.
-   * @param _pubkeys Concatenated validator public keys (48 bytes each).
    * @param _validatorIndex Validator index for validator to withdraw from.
    * @param _slot Slot of the beacon block for which the proof is generated.
+   * @param _pubkeys Concatenated validator public keys (48 bytes each).
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
    * @return unstakedAmountGwei Maximum ETH amount expected to be withdrawn as a result of this request (in gwei).
    */
   function _validateUnstakePermissionlessRequest(
     address _yieldProvider,
     uint256 _requiredUnstakeAmountWei,
-    bytes memory _pubkeys,
     uint64 _validatorIndex,
     uint64 _slot,
+    bytes memory _pubkeys,
     bytes calldata _withdrawalParamsProof
   ) internal view returns (uint256 unstakedAmountGwei) {
     if (_pubkeys.length != PUBLIC_KEY_LENGTH) {
