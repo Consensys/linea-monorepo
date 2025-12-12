@@ -100,11 +100,12 @@ interface IYieldProvider {
    *      and enforce any provider-specific safety checks. The returned amount is used by the
    *      YieldManager to cap pending withdrawals tracked on L1.
    * @param _yieldProvider The yield provider address.
+   * @param _requiredUnstakeAmount Required unstake amount in wei.
    * @param _validatorIndex Validator index for validator to withdraw from.
    * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams ABI encoded provider parameters.
    * @param _withdrawalParamsProof Proof data (typically a beacon chain Merkle proof).
-   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
+   * @return unstakedAmountWei Maximum ETH amount expected to be withdrawn as a result of this request (in wei).
    */
   function unstakePermissionless(
     address _yieldProvider,
@@ -113,7 +114,7 @@ interface IYieldProvider {
     uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable returns (uint256 maxUnstakeAmount);
+  ) external payable returns (uint256 unstakedAmountWei);
 
   /**
    * @notice Withdraws ETH from the provider back into the YieldManager.

@@ -297,7 +297,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams ABI encoded provider parameters.
    * @param _withdrawalParamsProof Proof data (typically a beacon chain Merkle proof).
-   * @return unstakedAmount Maximum ETH amount expected to be withdrawn as a result of this request.
+   * @return unstakedAmountWei Maximum ETH amount expected to be withdrawn as a result of this request (in wei).
    */
   function unstakePermissionless(
     address _yieldProvider,
@@ -306,7 +306,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable onlyDelegateCall returns (uint256 unstakedAmount) {
+  ) external payable onlyDelegateCall returns (uint256 unstakedAmountWei) {
     (bytes memory pubkeys, address refundRecipient) = abi.decode(
       _withdrawalParams,
       (bytes, address)
@@ -316,7 +316,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     uint64[] memory amounts = new uint64[](1);
     amounts[0] = uint64(unstakedAmountGwei);
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
-    unstakedAmount = unstakedAmountGwei * 1 gwei;
+    unstakedAmountWei = unstakedAmountGwei * 1 gwei;
   }
 
   /**
