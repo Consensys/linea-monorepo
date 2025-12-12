@@ -245,7 +245,7 @@ describe("SSZ", () => {
     it("empty array", async () => {
       const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [];
 
-      const expected = "0x0000000000000000000000000000000000000000000000000000000000000000";
+      const expected = "0xfcada1ce97f6629a9b31bd46dc9824a4ee18e91bb76243e16387616176e1d899";
       const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
       expect(actual).to.equal(expected);
     });
@@ -259,9 +259,7 @@ describe("SSZ", () => {
         },
       ];
 
-      // Single element: nextPow2(1) = 1, so array has one element
-      // Should return the hash of that single element
-      const expected = "0x4a07d56213d62b2d194a3cc1f19bec40364540bdf3d45eb0d6fe82094d21b4dc";
+      const expected = "0x4cf2a5b8d91e782f8f2b060a7cbf904d2ae73e063cd032a433b396aeb69be647";
       const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
       expect(actual).to.equal(expected);
     });
@@ -282,7 +280,7 @@ describe("SSZ", () => {
         },
       ];
 
-      const expected = "0xe7fb845b1ade1831374815580786086f46ab064eb0230ba737d285a15e7592ff";
+      const expected = "0xef5ec7811106d9b2f4323d7e730d3c2dbd1ac3a94082e55cf407dad718b7cf18";
       const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
       expect(actual).to.equal(expected);
     });
@@ -307,7 +305,7 @@ describe("SSZ", () => {
         },
       ];
 
-      const expected = "0xa86d2712ea358503bf22d3c7ef161faa7c3f2c1756725158913cd86f26e397c3";
+      const expected = "0x46c3a97159201f02892f56dd655dea88e234bdb63b5e3ae33641b1fd767c806e";
       const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
       expect(actual).to.equal(expected);
     });
@@ -340,7 +338,7 @@ describe("SSZ", () => {
         },
       ];
 
-      const expected = "0x8e6fd236a2f9db51060db098ba9e48df1c93013a72c5f9d5022af9f65e1c0f6a";
+      const expected = "0xd47528eb7a0c6e3edf7d69c824d90a7e583455667e05f7e9c905864b5a332c06";
       const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
       expect(actual).to.equal(expected);
     });
@@ -379,7 +377,7 @@ describe("SSZ", () => {
         },
       ];
 
-      const expected = "0xd778ff337001969d18faec463bc68983c95043d5f02a7239a8fd2b0002613103";
+      const expected = "0xb503de61a6faaee49ba30ce6fc2216c7306aa0e46611aeacb5f29f2eacd53d0f";
       const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
       expect(actual).to.equal(expected);
     });
