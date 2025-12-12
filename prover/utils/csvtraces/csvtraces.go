@@ -10,6 +10,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -90,11 +91,13 @@ func MustOpenCsvFile(fName string) *CsvTrace {
 func FmtCsv(w io.Writer, run *wizard.ProverRuntime, cols []ifaces.Column, options []Option) error {
 
 	var (
-		header       = []string{}
-		assignment   = [][]field.Element{}
-		cfg          = cfg{}
-		foundNonZero = false
-		filterCol    []field.Element
+		header          = []string{}
+		assignment      = [][]field.Element{}
+		assignmentFext  = [][]fext.Element{}
+		isElementOrFext = []bool{}
+		cfg             = cfg{}
+		foundNonZero    = false
+		filterCol       []field.Element
 	)
 
 	for _, op := range options {
@@ -111,7 +114,15 @@ func FmtCsv(w io.Writer, run *wizard.ProverRuntime, cols []ifaces.Column, option
 		} else {
 			header = append(header, string(cols[i].GetColID()))
 		}
-		assignment = append(assignment, cols[i].GetColAssignment(run).IntoRegVecSaveAlloc())
+		if cols[i].IsBase() {
+			assignment = append(assignment, cols[i].GetColAssignment(run).IntoRegVecSaveAlloc())
+			assignmentFext = append(assignmentFext, nil)
+			isElementOrFext = append(isElementOrFext, true)
+		} else {
+			assignmentFext = append(assignmentFext, cols[i].GetColAssignment(run).IntoRegVecSaveAllocExt())
+			assignment = append(assignment, nil)
+			isElementOrFext = append(isElementOrFext, false)
+		}
 	}
 
 	fmt.Fprintf(w, "%v\n", strings.Join(header, ","))
@@ -129,11 +140,15 @@ func FmtCsv(w io.Writer, run *wizard.ProverRuntime, cols []ifaces.Column, option
 
 		for c := range assignment {
 
-			if !assignment[c][r].IsZero() {
+			if (isElementOrFext[c] && !assignment[c][r].IsZero()) || (!isElementOrFext[c] && !assignmentFext[c][r].IsZero()) {
 				allZeroes = false
 			}
 
-			fmtVals = append(fmtVals, fmtFieldElement(cfg.inHex, assignment[c][r]))
+			if isElementOrFext[c] {
+				fmtVals = append(fmtVals, fmtFieldElement(cfg.inHex, assignment[c][r]))
+			} else {
+				fmtVals = append(fmtVals, fmtFieldElement(cfg.inHex, assignmentFext[c][r]))
+			}
 		}
 
 		if !allZeroes {
@@ -289,11 +304,24 @@ func WriteExplicit(w io.Writer, names []string, cols [][]field.Element, inHex bo
 
 }
 
-func fmtFieldElement(inHex bool, x field.Element) string {
+type fieldOrFext interface {
+	field.Element | fext.Element
+}
 
-	if inHex || x.Uint64() < 1<<10 {
-		return x.String()
+func fmtFieldElement[E fieldOrFext](inHex bool, x E) string {
+	switch v := any(x).(type) {
+	case fext.Element:
+		if inHex {
+			return fext.Text(&v, 16)
+		}
+		return v.String()
+	case field.Element:
+		if inHex || v.Uint64() < 1<<10 {
+			return v.String()
+		}
+
+		return "0x" + v.Text(16)
+	default:
+		panic("unreachable")
 	}
-
-	return "0x" + x.Text(16)
 }
