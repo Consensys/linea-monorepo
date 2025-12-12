@@ -79,7 +79,6 @@ type Serializer struct {
 	PackedObject     *PackedObject   // The output structure containing serialized data.
 	pointerMap       map[uintptr]int // Maps pointer values to indices in PackedObject.Pointers.
 	IdsMap           map[string]int
-	nextLeafID       int
 	coinMap          map[uuid.UUID]int            // Maps coin UUIDs to indices in PackedObject.Coins.
 	columnMap        map[uuid.UUID]int            // Maps column UUIDs to indices in PackedObject.Columns.
 	queryMap         map[uuid.UUID]int            // Maps query UUIDs to indices in PackedObject.Queries.
@@ -89,6 +88,8 @@ type Serializer struct {
 	exprMap          map[*symbolic.Expression]int // Maps expression pointers to indices in PackedObject.Expressions
 	warnings         []string                     // Collects warnings (e.g., unexported fields) for debugging.
 
+	// Hierarchy Helper to build the flattened trie
+	HierarchySer *HierarchySerializer
 	// compiledIOPs map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 }
 
@@ -108,8 +109,8 @@ type Deserializer struct {
 
 	muPtr sync.RWMutex
 
-	// precomputed mapping leafID -> full string (reconstructed)
-	idByLeaf map[int]string
+	// Hierarchy Helper to reconstruct strings efficiently
+	HierarchyDes *HierarchyDeserializer
 
 	// CompiledIOPs  []*wizard.CompiledIOP  // Cache of deserialized CompiledIOPs.
 }
@@ -118,7 +119,7 @@ type Deserializer struct {
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
 	PointedValues   []any                `cbor:"c"`
-	IDTrie          *TrieNode            `cbor:"d,omitempty"` // root
+	Hierarchy       *PackedHierarchy     `cbor:"h,omitempty"`
 	Columns         []PackedStructObject `cbor:"e"`
 	Coins           []PackedCoin         `cbor:"g"`
 	Queries         []PackedStructObject `cbor:"i"`
@@ -149,9 +150,9 @@ type PackedCoin struct {
 type PackedStructObject []any
 
 func NewSerializer() *Serializer {
-	root := NewTrieNode()
+	hs := NewHierarchySerializer()
 	return &Serializer{
-		PackedObject:     &PackedObject{IDTrie: root},
+		PackedObject:     &PackedObject{Hierarchy: hs.Packed},
 		IdsMap:           map[string]int{},
 		pointerMap:       map[uintptr]int{},
 		coinMap:          map[uuid.UUID]int{},
@@ -161,6 +162,7 @@ func NewSerializer() *Serializer {
 		stores:           map[*column.Store]int{},
 		circuitMap:       map[*cs.SparseR1CS]int{},
 		exprMap:          map[*symbolic.Expression]int{},
+		HierarchySer:     hs,
 	}
 }
 
@@ -205,13 +207,14 @@ func NewDeserializer(packedObject *PackedObject) *Deserializer {
 		stores:           make([]*column.Store, len(packedObject.Store)),
 		circuits:         make([]*cs.SparseR1CS, len(packedObject.Circuits)),
 		expressions:      make([]*symbolic.Expression, len(packedObject.Expressions)),
-		idByLeaf:         make(map[int]string),
 		PackedObject:     packedObject,
 	}
 
-	// build idByLeaf if trie present
-	if packedObject.IDTrie != nil {
-		de.idByLeaf = buildLeafMap(packedObject.IDTrie)
+	if packedObject.Hierarchy != nil {
+		de.HierarchyDes = NewHierarchyDeserializer(packedObject.Hierarchy)
+	} else {
+		// Fallback/Empty init if missing (backward compat or empty)
+		de.HierarchyDes = NewHierarchyDeserializer(&PackedHierarchy{})
 	}
 
 	return de
@@ -391,59 +394,50 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e *
 	}
 }
 
+// PackID utilizes the flattened hierarchy serializer
 func (ser *Serializer) PackID(id string) (BackReference, *serdeError) {
-
-	if br, ok := ser.PackedObject.IDTrie.Lookup(id); ok {
-		return BackReference(br), nil
+	// Look up in a simple map first to avoid reprocessing
+	if ref, ok := ser.IdsMap[id]; ok {
+		return BackReference(ref), nil
 	}
 
-	// not found: assign nextLeafID and insert
-	br := ser.nextLeafID
-	ser.PackedObject.IDTrie.Insert(id, br)
-	ser.nextLeafID++
+	// Use the new serializer
+	ref := ser.HierarchySer.AddID(id)
 
-	// optional: keep a map for serializer quick-lookup
-	ser.IdsMap[id] = br
-
-	return BackReference(br), nil
+	ser.IdsMap[id] = ref
+	return BackReference(ref), nil
 }
 
-// helper: reconstruct string for a given leaf id from precomputed map
 func (de *Deserializer) reconstructStringFromLeaf(leaf int) (string, *serdeError) {
-	if de.PackedObject == nil || de.PackedObject.IDTrie == nil {
-		return "", newSerdeErrorf("no ID trie present to reconstruct id=%d", leaf)
+	if de.HierarchyDes == nil {
+		return "", newSerdeErrorf("hierarchy deserializer not initialized")
 	}
-	if s, ok := de.idByLeaf[leaf]; ok {
-		return s, nil
+	s := de.HierarchyDes.GetString(leaf)
+	if s == "" && leaf != 0 {
+		// Depending on your logic, leaf 0 might be valid empty or root.
+		// If GetString returns empty for non-zero leaf, likely an index error or invalid data
 	}
-	return "", newSerdeErrorf("unknown id leaf=%d", leaf)
+	return s, nil
 }
 
-// UnpackColumnID returns a reflect.Value of type ifaces.ColID
 func (de *Deserializer) UnpackColumnID(v BackReference) (reflect.Value, *serdeError) {
-	leaf := int(v)
-	s, err := de.reconstructStringFromLeaf(leaf)
+	s, err := de.reconstructStringFromLeaf(int(v))
 	if err != nil {
 		return reflect.Value{}, err
 	}
 	return reflect.ValueOf(ifaces.ColID(s)), nil
 }
 
-// UnpackCoinID returns a reflect.Value of type coin.Name (or whatever your coin id type is)
 func (de *Deserializer) UnpackCoinID(v BackReference) (reflect.Value, *serdeError) {
-	leaf := int(v)
-	s, err := de.reconstructStringFromLeaf(leaf)
+	s, err := de.reconstructStringFromLeaf(int(v))
 	if err != nil {
 		return reflect.Value{}, err
 	}
-	// use coin.Name type (your code used coin.Name earlier)
 	return reflect.ValueOf(coin.Name(s)), nil
 }
 
-// UnpackQueryID returns a reflect.Value of type ifaces.QueryID
 func (de *Deserializer) UnpackQueryID(v BackReference) (reflect.Value, *serdeError) {
-	leaf := int(v)
-	s, err := de.reconstructStringFromLeaf(leaf)
+	s, err := de.reconstructStringFromLeaf(int(v))
 	if err != nil {
 		return reflect.Value{}, err
 	}
