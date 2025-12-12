@@ -2,6 +2,7 @@ package limbs
 
 import (
 	"math/big"
+	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -67,16 +68,13 @@ func (l limbs[E]) LimbBitWidth() int {
 
 // GetRow returns the typed row for the provided field element.
 func (l limbs[E]) GetRow(run ifaces.Runtime, r int) row[E] {
-
 	if r < 0 || r >= l.C[0].Size() {
 		utils.Panic("row out of bound: %v, max %v", r, l.C[0].Size())
 	}
-
 	rowF := make(row[E], len(l.C))
 	for i := range l.C {
 		rowF[i] = l.C[i].GetColAssignmentAt(run, r)
 	}
-
 	return rowF
 }
 
@@ -111,7 +109,6 @@ func (l limbs[E]) GetAssignmentAsBigInt(run ifaces.Runtime) []*big.Int {
 	for i := 0; i < l.Size(); i++ {
 		res = append(res, l.GetRowAsBigInt(run, i))
 	}
-
 	return res
 }
 
@@ -156,4 +153,30 @@ func (l limbs[E]) AssignBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
 	for c := range l.C {
 		run.AssignColumn(l.C[c].GetColID(), smartvectors.NewRegular(res[c]))
 	}
+}
+
+// ToBigEndian returns the limbs in big endian form
+func (l limbs[E]) ToBigEndian() limbs[BigEndian] {
+
+	new := limbs[BigEndian]{C: make([]ifaces.Column, len(l.C))}
+	copy(new.C, l.C)
+
+	if isLittleEndian[E]() {
+		slices.Reverse(new.C)
+	}
+
+	return new
+}
+
+// ToLittleEndian returns the limbs in little endian form
+func (l limbs[E]) ToLittleEndian() limbs[LittleEndian] {
+
+	new := limbs[LittleEndian]{C: make([]ifaces.Column, len(l.C))}
+	copy(new.C, l.C)
+
+	if isBigEndian[E]() {
+		slices.Reverse(new.C)
+	}
+
+	return new
 }
