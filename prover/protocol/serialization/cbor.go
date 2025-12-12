@@ -27,7 +27,7 @@ func initCBORDecMode() {
 	cborDecMode, err = cbor.DecOptions{
 		MaxArrayElements: 134217728,
 		MaxMapPairs:      134217728,
-		MaxNestedLevels:  256,
+		MaxNestedLevels:  65535,
 	}.DecMode()
 	if err != nil {
 		panic(fmt.Errorf("failed to create CBOR DecMode: %w", err))

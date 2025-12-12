@@ -76,14 +76,13 @@ type BackReference int
 // Serializer manages the serialization process, packing objects into a PackedObject.
 // It tracks references to objects (e.g., columns, coins) and collects warnings for non-fatal issues.
 type Serializer struct {
-	PackedObject     *PackedObject                // The output structure containing serialized data.
-	pointerMap       map[uintptr]int              // Maps pointer values to indices in PackedObject.Pointers.
+	PackedObject     *PackedObject   // The output structure containing serialized data.
+	pointerMap       map[uintptr]int // Maps pointer values to indices in PackedObject.Pointers.
+	IdsMap           map[string]int
+	nextLeafID       int
 	coinMap          map[uuid.UUID]int            // Maps coin UUIDs to indices in PackedObject.Coins.
-	coinIdMap        map[string]int               // Maps coin IDs to indices in PackedObject.CoinIDs.
 	columnMap        map[uuid.UUID]int            // Maps column UUIDs to indices in PackedObject.Columns.
-	columnIdMap      map[string]int               // Maps column IDs to indices in PackedObject.ColumnIDs.
 	queryMap         map[uuid.UUID]int            // Maps query UUIDs to indices in PackedObject.Queries.
-	queryIDMap       map[string]int               // Maps query IDs to indices in PackedObject.QueryIDs.
 	compiledIOPsFast map[*wizard.CompiledIOP]int  // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 	stores           map[*column.Store]int        // Maps Store pointers to indices in PackedObject.Store.
 	circuitMap       map[*cs.SparseR1CS]int       // Maps circuit pointers to indices in PackedObject.Circuits.
@@ -109,25 +108,25 @@ type Deserializer struct {
 
 	muPtr sync.RWMutex
 
+	// precomputed mapping leafID -> full string (reconstructed)
+	idByLeaf map[int]string
+
 	// CompiledIOPs  []*wizard.CompiledIOP  // Cache of deserialized CompiledIOPs.
 }
 
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
-	// Types was removed. We now use static generated tables.
-	PointedValues   []any                `cbor:"c"` // Serialized pointers (as PackedIFace).
-	ColumnIDs       []string             `cbor:"d"` // String IDs for columns.
-	Columns         []PackedStructObject `cbor:"e"` // Serialized columns (as PackedStructObject).
-	CoinIDs         []string             `cbor:"f"` // String IDs for coins.
-	Coins           []PackedCoin         `cbor:"g"` // Serialized coins.
-	QueryIDs        []string             `cbor:"h"` // String IDs for queries.
-	Queries         []PackedStructObject `cbor:"i"` // Serialized queries.
-	Store           [][]any              `cbor:"j"` // Serialized stores (as arrays).
-	CompiledIOPFast []PackedCompiledIOP  `cbor:"k"` // Serialized CompiledIOPs.
-	Circuits        [][]byte             `cbor:"l"` // Serialized circuits.
-	Expressions     []PackedStructObject `cbor:"m"` // Serialized expressions
-	Payload         any                  `cbor:"n"` // CBOR-encoded root value.
+	PointedValues   []any                `cbor:"c"`
+	IDTrie          *TrieNode            `cbor:"d,omitempty"` // root
+	Columns         []PackedStructObject `cbor:"e"`
+	Coins           []PackedCoin         `cbor:"g"`
+	Queries         []PackedStructObject `cbor:"i"`
+	Store           [][]any              `cbor:"j"`
+	CompiledIOPFast []PackedCompiledIOP  `cbor:"k"`
+	Circuits        [][]byte             `cbor:"l"`
+	Expressions     []PackedStructObject `cbor:"m"`
+	Payload         any                  `cbor:"n"` // cbor-encoded root value
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.
@@ -150,15 +149,14 @@ type PackedCoin struct {
 type PackedStructObject []any
 
 func NewSerializer() *Serializer {
+	root := NewTrieNode()
 	return &Serializer{
-		PackedObject:     &PackedObject{},
+		PackedObject:     &PackedObject{IDTrie: root},
+		IdsMap:           map[string]int{},
 		pointerMap:       map[uintptr]int{},
 		coinMap:          map[uuid.UUID]int{},
-		coinIdMap:        map[string]int{},
 		columnMap:        map[uuid.UUID]int{},
-		columnIdMap:      map[string]int{},
 		queryMap:         map[uuid.UUID]int{},
-		queryIDMap:       map[string]int{},
 		compiledIOPsFast: map[*wizard.CompiledIOP]int{},
 		stores:           map[*column.Store]int{},
 		circuitMap:       map[*cs.SparseR1CS]int{},
@@ -198,7 +196,7 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 }
 
 func NewDeserializer(packedObject *PackedObject) *Deserializer {
-	return &Deserializer{
+	de := &Deserializer{
 		pointedValues:    make([]reflect.Value, len(packedObject.PointedValues)),
 		columns:          make([]*column.Natural, len(packedObject.Columns)),
 		coins:            make([]*coin.Info, len(packedObject.Coins)),
@@ -207,8 +205,16 @@ func NewDeserializer(packedObject *PackedObject) *Deserializer {
 		stores:           make([]*column.Store, len(packedObject.Store)),
 		circuits:         make([]*cs.SparseR1CS, len(packedObject.Circuits)),
 		expressions:      make([]*symbolic.Expression, len(packedObject.Expressions)),
+		idByLeaf:         make(map[int]string),
 		PackedObject:     packedObject,
 	}
+
+	// build idByLeaf if trie present
+	if packedObject.IDTrie != nil {
+		de.idByLeaf = buildLeafMap(packedObject.IDTrie)
+	}
+
+	return de
 }
 
 // Deserialize is the entry point for deserializing CBOR-encoded bytes into a pointer.
@@ -261,15 +267,15 @@ func (ser *Serializer) PackValue(v reflect.Value) (any, *serdeError) {
 	case typeOfV == TypeOfColumnNatural:
 		return ser.PackColumn(v.Interface().(column.Natural))
 	case typeOfV == TypeOfColumnID:
-		return ser.PackColumnID(v.Interface().(ifaces.ColID))
+		return ser.PackID(string(v.Interface().(ifaces.ColID)))
 	case typeOfV == TypeOfCoin:
 		return ser.PackCoin(v.Interface().(coin.Info))
 	case typeOfV == TypeOfCoinID:
-		return ser.PackCoinID(v.Interface().(coin.Name))
+		return ser.PackID(string(v.Interface().(coin.Name)))
 	case typeOfV.Implements(TypeOfQuery) && typeOfV.Kind() != reflect.Interface && !(typeOfV.Kind() == reflect.Ptr && typeOfV.Elem().Implements(TypeOfQuery)):
 		return ser.PackQuery(v.Interface().(ifaces.Query))
 	case typeOfV == TypeOfQueryID:
-		return ser.PackQueryID(v.Interface().(ifaces.QueryID))
+		return ser.PackID(string(v.Interface().(ifaces.QueryID)))
 	case typeOfV == TypeOfCompiledIOPPointer:
 		unpacked := v.Interface().(*wizard.CompiledIOP)
 		if unpacked == nil {
@@ -385,6 +391,65 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e *
 	}
 }
 
+func (ser *Serializer) PackID(id string) (BackReference, *serdeError) {
+
+	if br, ok := ser.PackedObject.IDTrie.Lookup(id); ok {
+		return BackReference(br), nil
+	}
+
+	// not found: assign nextLeafID and insert
+	br := ser.nextLeafID
+	ser.PackedObject.IDTrie.Insert(id, br)
+	ser.nextLeafID++
+
+	// optional: keep a map for serializer quick-lookup
+	ser.IdsMap[id] = br
+
+	return BackReference(br), nil
+}
+
+// helper: reconstruct string for a given leaf id from precomputed map
+func (de *Deserializer) reconstructStringFromLeaf(leaf int) (string, *serdeError) {
+	if de.PackedObject == nil || de.PackedObject.IDTrie == nil {
+		return "", newSerdeErrorf("no ID trie present to reconstruct id=%d", leaf)
+	}
+	if s, ok := de.idByLeaf[leaf]; ok {
+		return s, nil
+	}
+	return "", newSerdeErrorf("unknown id leaf=%d", leaf)
+}
+
+// UnpackColumnID returns a reflect.Value of type ifaces.ColID
+func (de *Deserializer) UnpackColumnID(v BackReference) (reflect.Value, *serdeError) {
+	leaf := int(v)
+	s, err := de.reconstructStringFromLeaf(leaf)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+	return reflect.ValueOf(ifaces.ColID(s)), nil
+}
+
+// UnpackCoinID returns a reflect.Value of type coin.Name (or whatever your coin id type is)
+func (de *Deserializer) UnpackCoinID(v BackReference) (reflect.Value, *serdeError) {
+	leaf := int(v)
+	s, err := de.reconstructStringFromLeaf(leaf)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+	// use coin.Name type (your code used coin.Name earlier)
+	return reflect.ValueOf(coin.Name(s)), nil
+}
+
+// UnpackQueryID returns a reflect.Value of type ifaces.QueryID
+func (de *Deserializer) UnpackQueryID(v BackReference) (reflect.Value, *serdeError) {
+	leaf := int(v)
+	s, err := de.reconstructStringFromLeaf(leaf)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+	return reflect.ValueOf(ifaces.QueryID(s)), nil
+}
+
 // PackColumn serializes a column.Natural, returning a BackReference to its index in PackedObject.Columns.
 // It ensures columns are serialized once, using UUIDs for deduplication.
 func (ser *Serializer) PackColumn(c column.Natural) (BackReference, *serdeError) {
@@ -432,26 +497,6 @@ func (de *Deserializer) UnpackColumn(v BackReference) (reflect.Value, *serdeErro
 	}
 
 	return reflect.ValueOf(*de.columns[v]), nil
-}
-
-// PackColumnID serializes an ifaces.ColID (string), returning a BackReference to its index in PackedObject.ColumnIDs.
-func (ser *Serializer) PackColumnID(c ifaces.ColID) (BackReference, *serdeError) {
-	if _, ok := ser.columnIdMap[string(c)]; !ok {
-		ser.PackedObject.ColumnIDs = append(ser.PackedObject.ColumnIDs, string(c))
-		ser.columnIdMap[string(c)] = len(ser.PackedObject.ColumnIDs) - 1
-	}
-
-	return BackReference(ser.columnIdMap[string(c)]), nil
-}
-
-// UnpackColumnID deserializes an ifaces.ColID from a BackReference.
-func (de *Deserializer) UnpackColumnID(v BackReference) (reflect.Value, *serdeError) {
-	if v < 0 || int(v) >= len(de.PackedObject.ColumnIDs) {
-		return reflect.Value{}, newSerdeErrorf("invalid column-ID backreference: %v", v)
-	}
-
-	res := ifaces.ColID(de.PackedObject.ColumnIDs[v])
-	return reflect.ValueOf(res), nil
 }
 
 // PackCoin serializes a coin.Info, returning a BackReference to its index in PackedObject.Coins.
@@ -503,26 +548,6 @@ func (ser *Serializer) AsPackedCoin(c coin.Info) PackedCoin {
 		Name:       string(c.Name),
 		Round:      c.Round,
 	}
-}
-
-// PackCoinID serializes a coin.Name (string), returning a BackReference to its index in PackedObject.CoinIDs.
-func (ser *Serializer) PackCoinID(c coin.Name) (BackReference, *serdeError) {
-	if _, ok := ser.coinIdMap[string(c)]; !ok {
-		ser.PackedObject.CoinIDs = append(ser.PackedObject.CoinIDs, string(c))
-		ser.coinIdMap[string(c)] = len(ser.PackedObject.CoinIDs) - 1
-	}
-
-	return BackReference(ser.coinIdMap[string(c)]), nil
-}
-
-// UnpackCoinID deserializes a coin.Name from a BackReference.
-func (de *Deserializer) UnpackCoinID(v BackReference) (reflect.Value, *serdeError) {
-	if v < 0 || int(v) >= len(de.PackedObject.CoinIDs) {
-		return reflect.Value{}, newSerdeErrorf("invalid coin ID back reference: %v", v)
-	}
-
-	res := coin.Name(de.PackedObject.CoinIDs[v])
-	return reflect.ValueOf(res), nil
 }
 
 // PackQuery serializes an ifaces.Query, returning a BackReference to its index in PackedObject.Queries.
@@ -584,26 +609,6 @@ func (de *Deserializer) UnpackQuery(v BackReference, t reflect.Type) (reflect.Va
 	}
 
 	return qValue, nil
-}
-
-// PackQueryID serializes an ifaces.QueryID (string), returning a BackReference to its index in PackedObject.QueryIDs.
-func (ser *Serializer) PackQueryID(q ifaces.QueryID) (BackReference, *serdeError) {
-	if _, ok := ser.queryIDMap[string(q)]; !ok {
-		ser.PackedObject.QueryIDs = append(ser.PackedObject.QueryIDs, string(q))
-		ser.queryIDMap[string(q)] = len(ser.PackedObject.QueryIDs) - 1
-	}
-
-	return BackReference(ser.queryIDMap[string(q)]), nil
-}
-
-// UnpackQueryID deserializes an ifaces.QueryID from a BackReference.
-func (de *Deserializer) UnpackQueryID(v BackReference) (reflect.Value, *serdeError) {
-	if v < 0 || int(v) >= len(de.PackedObject.QueryIDs) {
-		return reflect.Value{}, newSerdeErrorf("invalid query-ID backreference: %v", v)
-	}
-
-	res := ifaces.QueryID(de.PackedObject.QueryIDs[v])
-	return reflect.ValueOf(res), nil
 }
 
 // PackStore serializes a column.Store, returning a BackReference to its index in PackedObject.Store.
