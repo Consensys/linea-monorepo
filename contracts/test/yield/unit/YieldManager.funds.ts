@@ -538,47 +538,24 @@ describe("YieldManager contract - ETH transfer operations", () => {
       );
     });
 
-    // it("Should revert when there is sufficient YieldManager balance to cover target deficit", async () => {
-    //   const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-    //   const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //   await ethers.provider.send("hardhat_setBalance", [
-    //     await yieldManager.getAddress(),
-    //     ethers.toBeHex(targetReserveAmount),
-    //   ]);
-    //   const unstakeAmount = 1n;
-    //   await yieldManager
-    //     .connect(nativeYieldOperator)
-    //     .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
+    it("Should revert when the YieldProvider returns 0 unstake amount", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      await yieldManager.connect(nativeYieldOperator).setUnstakePermissionlessReturnVal(mockYieldProviderAddress, 0n);
 
-    //   await expectRevertWithCustomError(
-    //     yieldManager,
-    //     yieldManager
-    //       .connect(nativeYieldOperator)
-    //       .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
-    //     "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
-    //   );
-    // });
-
-    // it("Should revert when the YieldProvider returns 0 unstake amount", async () => {
-    //   const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-    //   const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //   await ethers.provider.send("hardhat_setBalance", [
-    //     await yieldManager.getAddress(),
-    //     ethers.toBeHex(targetReserveAmount),
-    //   ]);
-    //   const unstakeAmount = 0n;
-    //   await yieldManager
-    //     .connect(nativeYieldOperator)
-    //     .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
-
-    //   await expectRevertWithCustomError(
-    //     yieldManager,
-    //     yieldManager
-    //       .connect(nativeYieldOperator)
-    //       .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
-    //     "YieldProviderReturnedZeroUnstakeAmount",
-    //   );
-    // });
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
+        "YieldProviderReturnedZeroUnstakeAmount",
+      );
+    });
 
     // it("Should successfully submit the unstake request, change state and emit the expected event", async () => {
     //   const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
@@ -594,23 +571,6 @@ describe("YieldManager contract - ETH transfer operations", () => {
     //     .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof);
 
     //   expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(unstakeAmount);
-    // });
-
-    // it("Should revert if unstake amount is larger than target deficit", async () => {
-    //   const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-    //   const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //   const unstakeAmount = targetReserveAmount + 1n;
-    //   await yieldManager
-    //     .connect(nativeYieldOperator)
-    //     .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
-
-    //   await expectRevertWithCustomError(
-    //     yieldManager,
-    //     yieldManager
-    //       .connect(nativeYieldOperator)
-    //       .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
-    //     "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
-    //   );
     // });
 
     // it("After submitting one unstake request that restores the reserve deficit, the next permissionless request reverts", async () => {
