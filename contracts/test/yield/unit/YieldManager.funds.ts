@@ -557,21 +557,54 @@ describe("YieldManager contract - ETH transfer operations", () => {
       );
     });
 
-    // it("Should successfully submit the unstake request, change state and emit the expected event", async () => {
-    //   const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-    //   const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //   const unstakeAmount = targetReserveAmount;
+    it("Should successfully submit the unstake request, change state and emit the expected event", async () => {
+      // Arrange - Set up withdrawal reserve in deficit
+      await setBalance(await mockLineaRollup.getAddress(), 0n);
 
-    //   await yieldManager
-    //     .connect(nativeYieldOperator)
-    //     .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
 
-    //   await yieldManager
-    //     .connect(nativeYieldOperator)
-    //     .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof);
+      // Set up balances so requiredUnstakeAmountWei is non-zero
+      // requiredUnstakeAmountWei = targetDeficit - (YieldManager.balance + withdrawableValue + pendingPermissionlessUnstake)
+      // We want requiredUnstakeAmountWei > 0, so we set balances to be less than targetDeficit
+      const yieldManagerBalance = targetReserveAmount / 3n;
+      await setBalance(await yieldManager.getAddress(), yieldManagerBalance);
+      await yieldManager.setWithdrawableValueReturnVal(mockYieldProviderAddress, 0n);
+      await yieldManager.setPendingPermissionlessUnstake(0n);
 
-    //   expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(unstakeAmount);
-    // });
+      // Calculate expected requiredUnstakeAmountWei
+      const targetDeficit = await yieldManager.getTargetReserveDeficit();
+      const expectedRequiredUnstakeAmountWei = targetDeficit - yieldManagerBalance;
+
+      // Set unstakedAmount to be non-zero and less than or equal to requiredUnstakeAmountWei
+      const unstakedAmount = expectedRequiredUnstakeAmountWei;
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakedAmount);
+
+      await expect(
+        yieldManager
+          .connect(nativeYieldOperator)
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
+      )
+        .to.emit(yieldManager, "UnstakePermissionlessRequest")
+        .withArgs(
+          mockYieldProviderAddress,
+          mockValidatorIndex,
+          mockSlot,
+          expectedRequiredUnstakeAmountWei,
+          unstakedAmount,
+          mockWithdrawalParams,
+        );
+
+      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(unstakedAmount);
+    });
 
     it("After submitting one unstake request that restores the reserve deficit, the next permissionless request reverts", async () => {
       // Arrange - Set up withdrawal reserve in deficit
