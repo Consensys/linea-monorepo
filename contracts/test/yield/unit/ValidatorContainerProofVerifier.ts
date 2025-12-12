@@ -2,6 +2,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
 import { deployTestValidatorContainerProofVerifier, ValidatorWitness } from "../helpers";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   ACTIVE_0X01_VALIDATOR_PROOF,
   generateBeaconHeader,
@@ -15,12 +16,11 @@ import {
 import { ethers } from "hardhat";
 import {
   GI_FIRST_VALIDATOR_PREV,
-  GI_FIRST_VALIDATOR_CURR,
-  PIVOT_SLOT,
+  GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
   SHARD_COMMITTEE_PERIOD,
   SLOTS_PER_EPOCH,
 } from "../../common/constants";
-import { expectRevertWithCustomError } from "../../common/helpers";
+import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 
 // TODO Constructor params
 
@@ -29,7 +29,9 @@ describe("ValidatorContainerProofVerifier", () => {
   let sszMerkleTree: SSZMerkleTree;
   let firstValidatorLeafIndex: bigint;
   let lastValidatorIndex: bigint;
-  let localTreeGiFirstValidator: GIndex;
+  let localTreeGiFirstValidator: string;
+  let admin: SignerWithAddress;
+  let nonAdmin: SignerWithAddress;
 
   before(async () => {
     const localTree = await prepareLocalMerkleTree();
@@ -46,6 +48,9 @@ describe("ValidatorContainerProofVerifier", () => {
 
   beforeEach(async () => {
     verifier = await loadFixture(deployTestValidatorContainerProofVerifier);
+    const accounts = await getAccountsFixture();
+    admin = accounts.admin;
+    nonAdmin = accounts.nonAuthorizedAccount;
     // test mocker
     const mockRoot = randomBytes32();
     const timestamp = await setBeaconBlockRoot(mockRoot);
@@ -53,14 +58,15 @@ describe("ValidatorContainerProofVerifier", () => {
   });
 
   describe("constructor", () => {
-    it("It should have the correct GI_FIRST_VALIDATOR_PREV_PREV", async () => {
-      expect(await verifier.GI_FIRST_VALIDATOR_PREV()).eq(GI_FIRST_VALIDATOR_PREV);
+    it("It should have the correct GI_FIRST_VALIDATOR", async () => {
+      expect(await verifier.GI_FIRST_VALIDATOR()).eq(GI_FIRST_VALIDATOR_PREV);
     });
-    it("It should have the correct GI_FIRST_VALIDATOR_PREV_CURR", async () => {
-      expect(await verifier.GI_FIRST_VALIDATOR_CURR()).eq(GI_FIRST_VALIDATOR_CURR);
+    it("It should have the correct GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
+      expect(await verifier.GI_PENDING_PARTIAL_WITHDRAWALS_ROOT()).eq(GI_PENDING_PARTIAL_WITHDRAWALS_ROOT);
     });
-    it("It should have the correct PIVOT_SLOT", async () => {
-      expect(await verifier.PIVOT_SLOT()).eq(PIVOT_SLOT);
+    it("It should grant DEFAULT_ADMIN_ROLE to admin", async () => {
+      const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
+      expect(await verifier.hasRole(DEFAULT_ADMIN_ROLE, await admin.getAddress())).to.be.true;
     });
   });
 
@@ -71,7 +77,7 @@ describe("ValidatorContainerProofVerifier", () => {
     const beaconHeaderMerkle = await sszMerkleTree.getBeaconBlockHeaderProof(
       ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader,
     );
-    const validatorGIndex = await verifier.getValidatorGI(ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex, 0);
+    const validatorGIndex = await verifier.getValidatorGI(ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex);
 
     // Verify (ValidatorContainer) leaf against (StateRoot) Merkle root
     await sszMerkleTree.verifyProof(
@@ -120,7 +126,7 @@ describe("ValidatorContainerProofVerifier", () => {
     const beaconHeaderMerkle = await sszMerkleTree.getBeaconBlockHeaderProof(
       ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader,
     );
-    const validatorGIndex = await verifier.getValidatorGI(ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex, 0);
+    const validatorGIndex = await verifier.getValidatorGI(ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex);
 
     // Verify (ValidatorContainer) leaf against (StateRoot) Merkle root
     await sszMerkleTree.verifyProof(
@@ -175,8 +181,13 @@ describe("ValidatorContainerProofVerifier", () => {
     );
 
     // deploy new verifier with new gIFirstValidator
+    const [deployer] = await ethers.getSigners();
     const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
-    const newVerifier = await factory.deploy(localTreeGiFirstValidator, localTreeGiFirstValidator, 0);
+    const newVerifier = await factory.deploy(
+      await deployer.getAddress(),
+      localTreeGiFirstValidator,
+      GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+    );
     await newVerifier.waitForDeployment();
 
     // add validator to CL state merkle tree
@@ -188,7 +199,7 @@ describe("ValidatorContainerProofVerifier", () => {
     const stateProof = await sszMerkleTree.getMerkleProof(validatorLeafIndex);
     const validatorGIndex = await sszMerkleTree.getGeneralizedIndex(validatorLeafIndex);
 
-    expect(await newVerifier.getValidatorGI(validatorIndex, 0)).to.equal(validatorGIndex);
+    expect(await newVerifier.getValidatorGI(validatorIndex)).to.equal(validatorGIndex);
 
     // Verify (ValidatorContainer) leaf against (StateRoot) Merkle root
     await sszMerkleTree.verifyProof([...stateProof], stateRoot, validatorMerkle.root, validatorGIndex);
@@ -222,26 +233,42 @@ describe("ValidatorContainerProofVerifier", () => {
     );
   });
 
-  it("should change gIndex on pivot slot", async () => {
-    const pivotSlot = 1000;
-    const giPrev = randomBytes32();
-    const giCurr = randomBytes32();
+  describe("setters", () => {
+    it("should allow admin to set GI_FIRST_VALIDATOR", async () => {
+      const newGIndex = randomBytes32();
+      await verifier.connect(admin).setGIFirstValidator(newGIndex);
+      expect(await verifier.GI_FIRST_VALIDATOR()).to.equal(newGIndex);
+    });
 
-    const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
-    const newVerifier = await factory.deploy(giPrev, giCurr, pivotSlot);
-    await newVerifier.waitForDeployment();
+    it("should allow admin to set GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
+      const newGIndex = randomBytes32();
+      await verifier.connect(admin).setGIPendingPartialWithdrawalsRoot(newGIndex);
+      expect(await verifier.GI_PENDING_PARTIAL_WITHDRAWALS_ROOT()).to.equal(newGIndex);
+    });
 
-    expect(await newVerifier.getValidatorGI(0n, pivotSlot - 1)).to.equal(giPrev);
-    expect(await newVerifier.getValidatorGI(0n, pivotSlot)).to.equal(giCurr);
-    expect(await newVerifier.getValidatorGI(0n, pivotSlot + 1)).to.equal(giCurr);
+    it("should revert when non-admin tries to set GI_FIRST_VALIDATOR", async () => {
+      const newGIndex = randomBytes32();
+      const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
+      await expect(verifier.connect(nonAdmin).setGIFirstValidator(newGIndex)).to.be.revertedWith(
+        buildAccessErrorMessage(nonAdmin, DEFAULT_ADMIN_ROLE),
+      );
+    });
+
+    it("should revert when non-admin tries to set GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
+      const newGIndex = randomBytes32();
+      const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
+      await expect(verifier.connect(nonAdmin).setGIPendingPartialWithdrawalsRoot(newGIndex)).to.be.revertedWith(
+        buildAccessErrorMessage(nonAdmin, DEFAULT_ADMIN_ROLE),
+      );
+    });
   });
 
-  it("should validate proof with different gIndex", async () => {
+  it("should validate proof with different gIndex after update", async () => {
     const provenValidator = generateValidator();
-    const pivotSlot = 100000;
-    provenValidator.container.activationEpoch = BigInt(Math.floor(pivotSlot / 32) - 257);
+    const slot = 100000;
+    provenValidator.container.activationEpoch = BigInt(Math.floor(slot / 32) - 257);
 
-    const prepareCLState = async (gIndex: string, slot: number) => {
+    const prepareCLState = async (gIndex: string, slotNum: number) => {
       const {
         sszMerkleTree: localTree,
         gIFirstValidator,
@@ -251,7 +278,7 @@ describe("ValidatorContainerProofVerifier", () => {
 
       const gIndexProven = await localTree.getGeneralizedIndex(localFirstValidatorLeafIndex + 1n);
       const stateProof = await localTree.getMerkleProof(localFirstValidatorLeafIndex + 1n);
-      const beaconHeader = generateBeaconHeader(await localTree.getMerkleRoot(), slot);
+      const beaconHeader = generateBeaconHeader(await localTree.getMerkleRoot(), slotNum);
       const beaconMerkle = await localTree.getBeaconBlockHeaderProof(beaconHeader);
       const proof = [...stateProof, ...beaconMerkle.proof];
 
@@ -265,40 +292,21 @@ describe("ValidatorContainerProofVerifier", () => {
       };
     };
 
-    const [prev, curr] = await Promise.all([
-      prepareCLState("0x0000000000000000000000000000000000000000000000000056000000000028", pivotSlot - 1),
-      prepareCLState("0x0000000000000000000000000000000000000000000000000096000000000028", pivotSlot + 1),
-    ]);
+    const curr = await prepareCLState("0x0000000000000000000000000000000000000000000000000096000000000028", slot);
 
-    // current CL state
+    // deploy verifier with initial GIndex
+    const [deployer] = await ethers.getSigners();
     const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
-    const newVerifier = await factory.deploy(prev.gIFirstValidator, curr.gIFirstValidator, pivotSlot);
+    const newVerifier = await factory.deploy(
+      await deployer.getAddress(),
+      curr.gIFirstValidator,
+      GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+    );
     await newVerifier.waitForDeployment();
 
-    expect(await newVerifier.getValidatorGI(1n, pivotSlot - 1)).to.equal(prev.gIndexProven);
-    expect(await newVerifier.getValidatorGI(1n, pivotSlot)).to.equal(curr.gIndexProven);
-    expect(await newVerifier.getValidatorGI(1n, pivotSlot + 1)).to.equal(curr.gIndexProven);
+    expect(await newVerifier.getValidatorGI(1n)).to.equal(curr.gIndexProven);
 
-    // // prev works
-    const timestampPrev = await setBeaconBlockRoot(prev.beaconRoot);
-    await newVerifier.verifyActiveValidatorContainer(
-      {
-        proof: prev.proof,
-        validatorIndex: 1n,
-        childBlockTimestamp: timestampPrev,
-        slot: prev.beaconHeader.slot,
-        proposerIndex: prev.beaconHeader.proposerIndex,
-        effectiveBalance: provenValidator.container.effectiveBalance,
-        activationEpoch: provenValidator.container.activationEpoch,
-        activationEligibilityEpoch: provenValidator.container.activationEligibilityEpoch,
-      },
-      provenValidator.container.pubkey,
-      provenValidator.container.withdrawalCredentials,
-    );
-
-    await ethers.provider.send("hardhat_mine", [ethers.toBeHex(1), ethers.toBeHex(1)]);
-
-    // curr works
+    // verify proof works with initial GIndex
     const timestampCurr = await setBeaconBlockRoot(curr.beaconRoot);
     await newVerifier.verifyActiveValidatorContainer(
       {
@@ -314,25 +322,6 @@ describe("ValidatorContainerProofVerifier", () => {
       provenValidator.container.pubkey,
       provenValidator.container.withdrawalCredentials,
     );
-
-    // prev fails on curr slot
-    await expect(
-      newVerifier.verifyActiveValidatorContainer(
-        {
-          proof: [...prev.proof],
-          validatorIndex: 1n,
-          childBlockTimestamp: timestampCurr,
-          // invalid slot to get wrong GIndex
-          slot: curr.beaconHeader.slot,
-          proposerIndex: curr.beaconHeader.proposerIndex,
-          effectiveBalance: provenValidator.container.effectiveBalance,
-          activationEpoch: provenValidator.container.activationEpoch,
-          activationEligibilityEpoch: provenValidator.container.activationEligibilityEpoch,
-        },
-        provenValidator.container.pubkey,
-        provenValidator.container.withdrawalCredentials,
-      ),
-    ).to.be.revertedWithCustomError(newVerifier, "InvalidSlot");
   });
 
   it("should verify fabricated 0x02 validator object in merkle tree", async () => {

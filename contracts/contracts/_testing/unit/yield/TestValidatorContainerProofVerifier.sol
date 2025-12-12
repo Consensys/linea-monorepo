@@ -7,11 +7,10 @@ import { IValidatorContainerProofVerifier } from "../../../yield/interfaces/IVal
 
 contract TestValidatorContainerProofVerifier is ValidatorContainerProofVerifier {
   constructor(
-    GIndex _gIFirstValidatorPrev,
-    GIndex _gIFirstValidatorCurr,
-    uint64 _pivotSlot,
+    address _admin,
+    GIndex _gIFirstValidator,
     GIndex _gIPendingPartialWithdrawalsRoot
-  ) ValidatorContainerProofVerifier(_gIFirstValidatorPrev, _gIFirstValidatorCurr, _pivotSlot, _gIPendingPartialWithdrawalsRoot) {}
+  ) ValidatorContainerProofVerifier(_admin, _gIFirstValidator, _gIPendingPartialWithdrawalsRoot) {}
 
   function verifySlot(
     uint64 _slot,
@@ -28,8 +27,8 @@ contract TestValidatorContainerProofVerifier is ValidatorContainerProofVerifier 
     _validateActivationEpoch(_slot, _activationEpoch);
   }
 
-  function getValidatorGI(uint256 _offset, uint64 _provenSlot) external view returns (GIndex) {
-    return _getValidatorGI(_offset, _provenSlot);
+  function getValidatorGI(uint256 _offset) external view returns (GIndex) {
+    return _getValidatorGI(_offset);
   }
 
   function getParentBlockRoot(uint64 _childBlockTimestamp) external view returns (bytes32) {

@@ -6,6 +6,7 @@ import { GIndex, pack, concat } from "./vendor/lido/GIndex.sol";
 import { SSZ } from "./vendor/lido/SSZ.sol";
 import { Validator } from "./vendor/lido/BeaconTypes.sol";
 import { IValidatorContainerProofVerifier } from "../interfaces/IValidatorContainerProofVerifier.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @title ValidatorContainerProofVerifier
@@ -16,7 +17,7 @@ import { IValidatorContainerProofVerifier } from "../interfaces/IValidatorContai
  * Modified version of CLProofVerifier (original implementation by Lido) to verify the entire Validator Container in the CL.
  * It uses concatenated proofs against the beacon block root exposed in the EIP-4788 system contract.
  */
-contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
+contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerProofVerifier {
   /**
    * @notice ValidatorContainerProofVerifier accepts concatenated Merkle proofs to verify existence of correct (pubkey, WC, EB, slashed) validator on CL
    * Proof consists of:
@@ -58,9 +59,6 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   /**  GIndex of validator in state tree is calculated dynamically
      *   offsetting from GIndex of first validator by proving validator numerical index
      *
-     * NB! Position of validators in CL state tree can change between ethereum hardforks
-     *     so two values must be stored and used depending on the slot of beacon block in proof.
-     *
      *   Scheme of CL State Tree:
      *
                                 CL State Tree                           **DEPTH = 0
@@ -73,18 +71,14 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
           │           │   ............... │           │
     [Validator 0]                        ....     [Validator to prove]  **DEPTH = N
             ↑                                               ↑
-    GI_FIRST_VALIDATOR_PREV                   GI_FIRST_VALIDATOR_PREV + validator_index
+    GI_FIRST_VALIDATOR                   GI_FIRST_VALIDATOR + validator_index
     */
 
   /// @notice GIndex of first validator in CL state tree
   /// @dev This index is relative to a state like: `BeaconState.validators[0]`.
-  GIndex public immutable GI_FIRST_VALIDATOR_PREV;
-  /// @notice GIndex of first validator in CL state tree after PIVOT_SLOT
-  GIndex public immutable GI_FIRST_VALIDATOR_CURR;
-  /// @notice slot when GIndex change will occur due to the hardfork
-  uint64 public immutable PIVOT_SLOT;
+  GIndex public GI_FIRST_VALIDATOR;
   /// @notice GIndex of pending partial withdrawals root in CL state tree
-  GIndex public immutable GI_PENDING_PARTIAL_WITHDRAWALS_ROOT;
+  GIndex public GI_PENDING_PARTIAL_WITHDRAWALS_ROOT;
 
   /**
      *   GIndex of stateRoot in Beacon Block state is
@@ -126,16 +120,13 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   uint64 private constant SLOTS_PER_EPOCH = 32;
 
   /**
-   * @param _gIFirstValidatorPrev packed(general index | depth in Merkle tree, see GIndex.sol) GIndex of first validator in CL state tree
-   * @param _gIFirstValidatorCurr packed GIndex of first validator after fork changes tree structure
-   * @param _pivotSlot slot of the fork that alters first validator GIndex
+   * @param _admin Address to be granted DEFAULT_ADMIN_ROLE
+   * @param _gIFirstValidator packed(general index | depth in Merkle tree, see GIndex.sol) GIndex of first validator in CL state tree
    * @param _gIPendingPartialWithdrawalsRoot packed GIndex of pending partial withdrawals root in CL state tree
-   * @dev if no fork changes are known,  _gIFirstValidatorPrev = _gIFirstValidatorCurr and _changeSlot = 0
    */
-  constructor(GIndex _gIFirstValidatorPrev, GIndex _gIFirstValidatorCurr, uint64 _pivotSlot, GIndex _gIPendingPartialWithdrawalsRoot) {
-    GI_FIRST_VALIDATOR_PREV = _gIFirstValidatorPrev;
-    GI_FIRST_VALIDATOR_CURR = _gIFirstValidatorCurr;
-    PIVOT_SLOT = _pivotSlot;
+  constructor(address _admin, GIndex _gIFirstValidator, GIndex _gIPendingPartialWithdrawalsRoot) {
+    _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+    GI_FIRST_VALIDATOR = _gIFirstValidator;
     GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = _gIPendingPartialWithdrawalsRoot;
   }
 
@@ -187,7 +178,7 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
     // parent(pubkey + wc) ->  Validator Index in state tree -> stateView Index in Beacon block Tree
     GIndex gIndex = concat(
       GI_STATE_ROOT,
-      concat(_getValidatorGI(_validatorIndex, _slot), GI_VALIDATOR_CONTAINER_ROOT)
+      concat(_getValidatorGI(_validatorIndex), GI_VALIDATOR_CONTAINER_ROOT)
     );
 
     SSZ.verifyProof({
@@ -268,12 +259,10 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   /**
    * @notice calculates general validator index in CL state tree by provided offset
    * @param _offset from first validator (Validator Index)
-   * @param _provenSlot slot of the Beacon block for which proof is collected
    * @return gIndex of container in CL state tree
    */
-  function _getValidatorGI(uint256 _offset, uint64 _provenSlot) internal view returns (GIndex) {
-    GIndex gI = _provenSlot < PIVOT_SLOT ? GI_FIRST_VALIDATOR_PREV : GI_FIRST_VALIDATOR_CURR;
-    return gI.shr(_offset);
+  function _getValidatorGI(uint256 _offset) internal view returns (GIndex) {
+    return GI_FIRST_VALIDATOR.shr(_offset);
   }
 
   /**
@@ -290,5 +279,23 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
     }
 
     return abi.decode(data, (bytes32));
+  }
+
+  /**
+   * @notice Sets the GIndex of first validator in CL state tree
+   * @param _gIFirstValidator packed GIndex of first validator in CL state tree
+   * @dev Only callable by accounts with DEFAULT_ADMIN_ROLE
+   */
+  function setGIFirstValidator(GIndex _gIFirstValidator) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    GI_FIRST_VALIDATOR = _gIFirstValidator;
+  }
+
+  /**
+   * @notice Sets the GIndex of pending partial withdrawals root in CL state tree
+   * @param _gIPendingPartialWithdrawalsRoot packed GIndex of pending partial withdrawals root in CL state tree
+   * @dev Only callable by accounts with DEFAULT_ADMIN_ROLE
+   */
+  function setGIPendingPartialWithdrawalsRoot(GIndex _gIPendingPartialWithdrawalsRoot) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = _gIPendingPartialWithdrawalsRoot;
   }
 }

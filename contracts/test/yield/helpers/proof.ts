@@ -240,7 +240,7 @@ export const generateEIP4478Witness = async (
 
   // Compute state root
   const validatorMerkleSubtree = await sszMerkleTree.getValidatorPubkeyWCParentProof(container);
-  const validatorGIndex = await verifier.getValidatorGI(validatorWitness.validatorIndex, 0);
+  const validatorGIndex = await verifier.getValidatorGI(validatorWitness.validatorIndex);
   const stateRoot = await sszMerkleTree.getRoot(validatorWitness.proof, validatorMerkleSubtree.root, validatorGIndex);
 
   // Verify (ValidatorContainer) leaf against (StateRoot) Merkle root
