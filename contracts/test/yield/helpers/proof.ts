@@ -322,17 +322,23 @@ export const generateEIP4478Witness = async (
     pendingPartialWithdrawalsRoot,
     GI_PENDING_PARTIAL_WITHDRAWALS_ROOT_IN_RIGHT_SUBTREE,
   );
-  void gi3Root; // Computed for potential future use
+
+  await sszMerkleTree.verifyProof(
+    proofForGI3,
+    gi3Root,
+    pendingPartialWithdrawalsRoot,
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT_IN_RIGHT_SUBTREE,
+  );
 
   // ============================================================================
   // Generate state root
   // ============================================================================
 
-  // const stateRoot = await sszMerkleTree.getRoot(
-  //   originalValidatorContainerProof,
-  //   validatorMerkleSubtree.root,
-  //   validatorGIndex,
-  // );
+  const stateRoot = await sszMerkleTree.getRoot(
+    [gi3Root],
+    gi2Root,
+    "0x0000000000000000000000000000000000000000000000000000000000000200",
+  );
 
   // ============================================================================
   // Generate beacon chain header and beacon root
