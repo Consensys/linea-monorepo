@@ -60,22 +60,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     address validatorContainerProofVerifier
   );
 
-  /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
-  /// @param yieldProvider The yield provider address.
-  /// @param stakingVault The staking vault address.
-  /// @param refundRecipient Address designated to receive surplus withdrawal-fee refunds.
-  /// @param maxUnstakeAmount Maximum ETH expected to be withdrawn for the request.
-  /// @param pubkeys Concatenated validator pubkeys.
-  /// @param amounts Withdrawal request amount array (currently length 1).
-  event LidoVaultUnstakePermissionlessRequest(
-    address indexed yieldProvider,
-    address indexed stakingVault,
-    address indexed refundRecipient,
-    uint256 maxUnstakeAmount,
-    bytes pubkeys,
-    uint64[] amounts
-  );
-
   /// @notice Used to set immutable variables, but not storage.
   /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve holding contract.
   /// @param _yieldManager The Linea YieldManager.

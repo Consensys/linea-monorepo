@@ -135,6 +135,25 @@ interface IYieldManager {
   );
 
   /**
+   * @notice Emitted when a permissionless unstake request is made.
+   * @param yieldProvider The yield provider address.
+   * @param validatorIndex The validator index for the withdrawal.
+   * @param slot The slot of the beacon block for which the proof is generated.
+   * @param requiredUnstakeAmount The unstake amount required to restore the reserve to target threshold,
+   *                               considering YieldProvider balance, YieldManager balance, and pending permissionless unstake amounts.
+   * @param unstakedAmount The maximum amount expected to be withdrawn from the beacon chain.
+   * @param withdrawalParams Provider-specific withdrawal parameters.
+   */
+  event UnstakePermissionlessRequest(
+    address indexed yieldProvider,
+    uint64 indexed validatorIndex,
+    uint64 indexed slot,
+    uint256 requiredUnstakeAmount,
+    uint256 unstakedAmount,
+    bytes withdrawalParams
+  );
+
+  /**
    * @notice Emitted when staking is paused for a YieldProvider.
    * @param yieldProvider The yield provider address.
    */

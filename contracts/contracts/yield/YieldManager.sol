@@ -610,7 +610,7 @@ contract YieldManager is
     if (unstakedAmount == 0) revert YieldProviderReturnedZeroUnstakeAmount();
 
     _getYieldManagerStorage().pendingPermissionlessUnstake += unstakedAmount;
-    // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
+    emit UnstakePermissionlessRequest(_yieldProvider, _validatorIndex, _slot, requiredUnstakeAmount, unstakedAmount, _withdrawalParams);
   }
 
   /**
