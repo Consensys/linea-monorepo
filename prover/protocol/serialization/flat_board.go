@@ -2,12 +2,16 @@ package serialization
 
 import "strings"
 
-// PackedHierarchy represents the flattened Trie.
-type PackedHierarchy struct {
-	// 1. Dictionary of unique segments (e.g. "BIGRANGE", "ACCUMULATOR", "10")
+var (
+	delimiter = '_'
+)
+
+// PackedFlatBoard represents the flattened Trie.
+type PackedFlatBoard struct {
+	// 1. Dictionary of unique segments (e.g. "BIGRANGE", "ACCUMULATOR", "HI")
 	Segments []string `cbor:"s"`
 
-	// 2. The Trie Structure.
+	// 2. Flattened Trie Structure.
 	// Index i represents a Node.
 	// Parents[i] is the index of the parent Node (or -1 if root).
 	Parents []int32 `cbor:"p"`
@@ -20,9 +24,9 @@ type PackedHierarchy struct {
 	LeafToNode []int32 `cbor:"l"`
 }
 
-type HierarchySerializer struct {
+type BoardSerializer struct {
 	// Output structure
-	Packed *PackedHierarchy
+	Packed *PackedFlatBoard
 
 	// Deduplication Maps (Only used during serialization, not serialized!)
 	segmentMap map[string]int32  // "BIGRANGE" -> 0
@@ -34,9 +38,9 @@ type nodeKey struct {
 	segIdx    int32
 }
 
-func NewHierarchySerializer() *HierarchySerializer {
-	return &HierarchySerializer{
-		Packed: &PackedHierarchy{
+func newFlatBoardSerializer() *BoardSerializer {
+	return &BoardSerializer{
+		Packed: &PackedFlatBoard{
 			Segments:    make([]string, 0, 1024),
 			Parents:     make([]int32, 0, 1024),
 			SegmentRefs: make([]int32, 0, 1024),
@@ -47,16 +51,16 @@ func NewHierarchySerializer() *HierarchySerializer {
 	}
 }
 
-// AddID adds a full ID string (e.g. "A_B_C") and returns the leaf index (BackReference).
+// addID adds a full ID string (e.g. "A_B_C") and returns the leaf index (BackReference).
 // It performs 0 allocations for substrings using index math.
-func (h *HierarchySerializer) AddID(fullID string) int {
+func (h *BoardSerializer) addID(fullID string) int {
 	parentIdx := int32(-1) // Root
 
 	// Efficient Tokenization Loop
 	start := 0
 	for i := 0; i <= len(fullID); i++ {
 		// Detect delimiter or end of string
-		if i == len(fullID) || fullID[i] == '_' { // Assuming '_' is delimiter
+		if i == len(fullID) || fullID[i] == byte(delimiter) {
 			segment := fullID[start:i]
 
 			// 1. Deduplicate Segment
@@ -89,20 +93,33 @@ func (h *HierarchySerializer) AddID(fullID string) int {
 	return leafID
 }
 
-type HierarchyDeserializer struct {
-	Packed *PackedHierarchy
+type BoardDeserializer struct {
+	Packed *PackedFlatBoard
 	// Cache for fully reconstructed strings to avoid rebuilding them
 	cache []string
 }
 
-func NewHierarchyDeserializer(p *PackedHierarchy) *HierarchyDeserializer {
-	return &HierarchyDeserializer{
+func newBoardDeserializer(p *PackedFlatBoard) *BoardDeserializer {
+	return &BoardDeserializer{
 		Packed: p,
 		cache:  make([]string, len(p.LeafToNode)),
 	}
 }
 
-func (hd *HierarchyDeserializer) GetString(leafID int) string {
+func (de *Deserializer) reconstructStringFromLeaf(leaf int) (string, *serdeError) {
+	if de.HierarchyDes == nil {
+		return "", newSerdeErrorf("hierarchy deserializer not initialized")
+	}
+	s := de.HierarchyDes.getString(leaf)
+	if s == "" && leaf != 0 {
+		// Depending on your logic, leaf 0 might be valid empty or root.
+		// If GetString returns empty for non-zero leaf, likely an index error or invalid data
+		return "", newSerdeErrorf("invalid leaf index (back reference): %v", leaf)
+	}
+	return s, nil
+}
+
+func (hd *BoardDeserializer) getString(leafID int) string {
 	if leafID < 0 || leafID >= len(hd.cache) {
 		return ""
 	}
@@ -115,7 +132,6 @@ func (hd *HierarchyDeserializer) GetString(leafID int) string {
 	nodeIdx := hd.Packed.LeafToNode[leafID]
 
 	// We build the string backwards then reverse, or build a list of parts.
-	// Since depth is usually small (10-20), a small slice is fine.
 	var parts []string
 
 	for nodeIdx != -1 {

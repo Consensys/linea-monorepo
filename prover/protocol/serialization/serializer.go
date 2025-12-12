@@ -89,7 +89,7 @@ type Serializer struct {
 	warnings         []string                     // Collects warnings (e.g., unexported fields) for debugging.
 
 	// Hierarchy Helper to build the flattened trie
-	HierarchySer *HierarchySerializer
+	HierarchySer *BoardSerializer
 	// compiledIOPs map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 }
 
@@ -110,7 +110,7 @@ type Deserializer struct {
 	muPtr sync.RWMutex
 
 	// Hierarchy Helper to reconstruct strings efficiently
-	HierarchyDes *HierarchyDeserializer
+	HierarchyDes *BoardDeserializer
 
 	// CompiledIOPs  []*wizard.CompiledIOP  // Cache of deserialized CompiledIOPs.
 }
@@ -119,7 +119,7 @@ type Deserializer struct {
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
 	PointedValues   []any                `cbor:"c"`
-	Hierarchy       *PackedHierarchy     `cbor:"h,omitempty"`
+	Hierarchy       *PackedFlatBoard     `cbor:"h,omitempty"`
 	Columns         []PackedStructObject `cbor:"e"`
 	Coins           []PackedCoin         `cbor:"g"`
 	Queries         []PackedStructObject `cbor:"i"`
@@ -150,7 +150,7 @@ type PackedCoin struct {
 type PackedStructObject []any
 
 func NewSerializer() *Serializer {
-	hs := NewHierarchySerializer()
+	hs := newFlatBoardSerializer()
 	return &Serializer{
 		PackedObject:     &PackedObject{Hierarchy: hs.Packed},
 		IdsMap:           map[string]int{},
@@ -211,10 +211,10 @@ func NewDeserializer(packedObject *PackedObject) *Deserializer {
 	}
 
 	if packedObject.Hierarchy != nil {
-		de.HierarchyDes = NewHierarchyDeserializer(packedObject.Hierarchy)
+		de.HierarchyDes = newBoardDeserializer(packedObject.Hierarchy)
 	} else {
 		// Fallback/Empty init if missing (backward compat or empty)
-		de.HierarchyDes = NewHierarchyDeserializer(&PackedHierarchy{})
+		de.HierarchyDes = newBoardDeserializer(&PackedFlatBoard{})
 	}
 
 	return de
@@ -402,22 +402,10 @@ func (ser *Serializer) PackID(id string) (BackReference, *serdeError) {
 	}
 
 	// Use the new serializer
-	ref := ser.HierarchySer.AddID(id)
+	ref := ser.HierarchySer.addID(id)
 
 	ser.IdsMap[id] = ref
 	return BackReference(ref), nil
-}
-
-func (de *Deserializer) reconstructStringFromLeaf(leaf int) (string, *serdeError) {
-	if de.HierarchyDes == nil {
-		return "", newSerdeErrorf("hierarchy deserializer not initialized")
-	}
-	s := de.HierarchyDes.GetString(leaf)
-	if s == "" && leaf != 0 {
-		// Depending on your logic, leaf 0 might be valid empty or root.
-		// If GetString returns empty for non-zero leaf, likely an index error or invalid data
-	}
-	return s, nil
 }
 
 func (de *Deserializer) UnpackColumnID(v BackReference) (reflect.Value, *serdeError) {
