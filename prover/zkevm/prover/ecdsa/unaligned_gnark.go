@@ -135,19 +135,7 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 		resGnarkData    = common.NewMultiVectorBuilder(d.GnarkData[:])
 	)
 
-	printRows := func(head int, rows [][common.NbLimbU128]field.Element) {
-		for i := range rows {
-			fmt.Printf("%04d: row=%04d ", i, head+i)
-			for j := range rows[i] {
-				fmt.Printf("%04v ", rows[i][7-j].Text(16))
-			}
-			fmt.Printf("\n")
-		}
-	}
-
 	recoverPk := func(h [32]byte, r, s, v *big.Int) (pkX, pkY *big.Int) {
-
-		fmt.Printf("recovering pubk for h=%x r=%v s=%v v=%v\n", h, r, s, v)
 
 		// compute the expected public key
 		var pk ecdsa.PublicKey
@@ -158,8 +146,6 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 		if err != nil {
 			utils.Panic("error recovering public: err=%v v=%v r=%v s=%v", err.Error(), v.Uint64()-27, r.String(), s.String())
 		}
-
-		fmt.Printf("gnark pk = %v %v\n", pk.A.X.Text(16), pk.A.Y.Text(16))
 
 		pkX, pkY = new(big.Int), new(big.Int)
 		pk.A.X.BigInt(pkX)
@@ -197,7 +183,6 @@ ecdsaLoop:
 			r, s, v          *big.Int
 			h                [32]byte
 			buff             [32]byte
-			head             = i
 		)
 
 		switch {
@@ -218,7 +203,6 @@ ecdsaLoop:
 			s = common.LimbsLeToBigInt(dataForCurrEcdsa[10][:], dataForCurrEcdsa[11][:])
 
 			if !v.IsUint64() {
-				printRows(i, dataForCurrEcdsa)
 				utils.Panic("v is not a uint64, v %v; r=%v s=%v", v.String(), r.String(), s.String())
 			}
 
@@ -307,12 +291,6 @@ ecdsaLoop:
 		resGnarkIndex.PushSeqOfZeroes(int(prependZeroCount))
 		resGnarkPkIndex.PushSeqOfZeroes(int(prependZeroCount))
 		resGnarkData.PushSeqOfZeroes(int(prependZeroCount))
-
-		fmt.Printf("pubX, pubY = %v, %v\n", pkX, pkY)
-
-		fmt.Printf("=========\n")
-		printRows(head, dataForCurrEcdsa)
-		fmt.Printf("=========\n")
 
 		// Public Key phase
 		for i := 0; i < nbRowsPerPublicKey; i++ {
