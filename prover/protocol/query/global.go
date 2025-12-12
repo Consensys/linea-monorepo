@@ -367,11 +367,13 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 			}
 		case variables.X:
 			base := meta.GnarkEvalNoCoset(cs.DomainSize)
+			evalInputs[k] = make([]gnarkfext.E4Gen, cs.DomainSize)
 			for i := range base {
 				evalInputs[k][i] = gnarkfext.FromBase(base[i])
 			}
 		case variables.PeriodicSample:
 			base := meta.GnarkEvalNoCoset(cs.DomainSize)
+			evalInputs[k] = make([]gnarkfext.E4Gen, cs.DomainSize)
 			for i := range base {
 				evalInputs[k][i] = gnarkfext.FromBase(base[i])
 			}
