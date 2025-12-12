@@ -11,6 +11,7 @@ import { ErrorUtils } from "../lib/ErrorUtils.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { PermissionsManager } from "../lib/PermissionsManager.sol";
 import { ProgressOssificationResult, YieldProviderRegistration } from "./interfaces/YieldTypes.sol";
+import { TransientStorageReentrancyGuardUpgradeable } from "../messageService/l1/TransientStorageReentrancyGuardUpgradeable.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -23,6 +24,7 @@ contract YieldManager is
   YieldManagerPauseManager,
   PermissionsManager,
   YieldManagerStorageLayout,
+  TransientStorageReentrancyGuardUpgradeable,
   IYieldManager
 {
   /// @notice The role required to send ETH to a yield provider.
@@ -611,6 +613,7 @@ contract YieldManager is
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
     onlyWhenWithdrawalReserveInDeficit(msg.value)
+    nonReentrant
     returns (uint256 maxUnstakeAmount)
   {
     bytes memory data = _delegatecallYieldProvider(
@@ -795,6 +798,7 @@ contract YieldManager is
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
     onlyWhenWithdrawalReserveInDeficit(0)
+    nonReentrant
   {
     uint256 targetDeficit = _getTargetReserveDeficit(0);
 
