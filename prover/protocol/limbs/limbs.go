@@ -34,7 +34,7 @@ type Limbed interface {
 
 // limbs represents a register represented by a list of columns.
 type limbs[E Endianness] struct {
-	C    []ifaces.Column
+	c    []ifaces.Column
 	name ifaces.ColID
 	_    E // this field is needed to tag the struct with E
 }
@@ -56,22 +56,22 @@ func createLimb[E Endianness](
 			c.SetPragma(pragma.Pragma, pragma.Value)
 		}
 	}
-	return limbs[E]{C: c, name: name}
+	return limbs[E]{c: c, name: name}
 }
 
 // Size returns the number of rows in the provided columns
 func (l limbs[E]) Size() int {
-	return l.C[0].Size()
+	return l.c[0].Size()
 }
 
 // BitSize returns the total number of bits represented by the provided columns
 func (l limbs[E]) BitSize() int {
-	return len(l.C) * limbBitWidth
+	return len(l.c) * limbBitWidth
 }
 
 // NumLimbs returns the number of limbs in the provided columns
 func (l limbs[E]) NumLimbs() int {
-	return len(l.C)
+	return len(l.c)
 }
 
 // LimbBitWidth returns the number of bits in a limb, which is a constant?
@@ -81,12 +81,12 @@ func (l limbs[E]) LimbBitWidth() int {
 
 // GetRow returns the typed row for the provided field element.
 func (l limbs[E]) GetRow(run ifaces.Runtime, r int) row[E] {
-	if r < 0 || r >= l.C[0].Size() {
-		utils.Panic("row out of bound: %v, max %v", r, l.C[0].Size())
+	if r < 0 || r >= l.c[0].Size() {
+		utils.Panic("row out of bound: %v, max %v", r, l.c[0].Size())
 	}
-	rowF := make(row[E], len(l.C))
-	for i := range l.C {
-		rowF[i] = l.C[i].GetColAssignmentAt(run, r)
+	rowF := make(row[E], len(l.c))
+	for i := range l.c {
+		rowF[i] = l.c[i].GetColAssignmentAt(run, r)
 	}
 	return rowF
 }
@@ -133,18 +133,18 @@ func (l limbs[E]) AssignBytes(run *wizard.ProverRuntime, bytes [][]byte) {
 		numRow   = len(bytes)
 	)
 
-	if numLimbs != len(l.C) {
-		utils.Panic("provided number of limbs must be equal to the number of bytes, got %v and %v", numLimbs, len(l.C))
+	if numLimbs != len(l.c) {
+		utils.Panic("provided number of limbs must be equal to the number of bytes, got %v and %v", numLimbs, len(l.c))
 	}
 
-	if l.C[0].Size() != numRow {
-		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", len(bytes), len(l.C))
+	if l.c[0].Size() != numRow {
+		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", len(bytes), len(l.c))
 	}
 
 	limbs := bytesToLimbsVec[E](bytes, numLimbs)
 
-	for c := range l.C {
-		run.AssignColumn(l.C[c].GetColID(), smartvectors.NewRegular(limbs[c]))
+	for c := range l.c {
+		run.AssignColumn(l.c[c].GetColID(), smartvectors.NewRegular(limbs[c]))
 	}
 }
 
@@ -153,37 +153,37 @@ func (l limbs[E]) AssignBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
 
 	var (
 		numRow      = len(bigints)
-		numLimbs    = len(l.C)
+		numLimbs    = len(l.c)
 		uintBitSize = numLimbs * limbBitWidth
 	)
 
-	if l.C[0].Size() != numRow {
-		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", numRow, len(l.C))
+	if l.c[0].Size() != numRow {
+		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", numRow, len(l.c))
 	}
 
-	res := bigIntToLimbsVec[E](bigints, len(l.C), uintBitSize)
+	res := bigIntToLimbsVec[E](bigints, len(l.c), uintBitSize)
 
-	for c := range l.C {
-		run.AssignColumn(l.C[c].GetColID(), smartvectors.NewRegular(res[c]))
+	for c := range l.c {
+		run.AssignColumn(l.c[c].GetColID(), smartvectors.NewRegular(res[c]))
 	}
 }
 
 // ToBigEndian returns the limbs in big endian form
 func (l limbs[E]) ToBigEndian() limbs[BigEndian] {
-	new := limbs[BigEndian]{name: l.name, C: make([]ifaces.Column, len(l.C))}
-	copy(new.C, l.C)
+	new := limbs[BigEndian]{name: l.name, c: make([]ifaces.Column, len(l.c))}
+	copy(new.c, l.c)
 	if isLittleEndian[E]() {
-		slices.Reverse(new.C)
+		slices.Reverse(new.c)
 	}
 	return new
 }
 
 // ToLittleEndian returns the limbs in little endian form
 func (l limbs[E]) ToLittleEndian() limbs[LittleEndian] {
-	new := limbs[LittleEndian]{name: l.name, C: make([]ifaces.Column, len(l.C))}
-	copy(new.C, l.C)
+	new := limbs[LittleEndian]{name: l.name, c: make([]ifaces.Column, len(l.c))}
+	copy(new.c, l.c)
 	if isBigEndian[E]() {
-		slices.Reverse(new.C)
+		slices.Reverse(new.c)
 	}
 	return new
 }

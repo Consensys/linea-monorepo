@@ -106,8 +106,8 @@ func (b *VectorBuilder[E]) PushInc() {
 func (b *VectorBuilder[E]) PadAndAssignZero(run *wizard.ProverRuntime) {
 	for i := range b.slices {
 		run.AssignColumn(
-			b.limbs.C[i].GetColID(),
-			smartvectors.RightZeroPadded(b.slices[i], b.limbs.C[i].Size()),
+			b.limbs.c[i].GetColID(),
+			smartvectors.RightZeroPadded(b.slices[i], b.limbs.c[i].Size()),
 		)
 	}
 }
