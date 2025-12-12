@@ -119,7 +119,7 @@ type Deserializer struct {
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
 	PointedValues   []any                `cbor:"c"`
-	Hierarchy       *PackedFlatBoard     `cbor:"h,omitempty"`
+	FlatIDBoard     *PackedFlatBoard     `cbor:"h,omitempty"`
 	Columns         []PackedStructObject `cbor:"e"`
 	Coins           []PackedCoin         `cbor:"g"`
 	Queries         []PackedStructObject `cbor:"i"`
@@ -152,7 +152,7 @@ type PackedStructObject []any
 func NewSerializer() *Serializer {
 	hs := newFlatBoardSerializer()
 	return &Serializer{
-		PackedObject:     &PackedObject{Hierarchy: hs.Packed},
+		PackedObject:     &PackedObject{FlatIDBoard: hs.Packed},
 		IdsMap:           map[string]int{},
 		pointerMap:       map[uintptr]int{},
 		coinMap:          map[uuid.UUID]int{},
@@ -184,8 +184,12 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 		fmt.Println(ser.warnings[i])
 	}
 
-	// Store the packed (already serialized) payload directly
+	// Compact the FlatIDBoard after finished packing all objects in one-pass
+	// before final cbor encoding
+	ser.PackedObject.FlatIDBoard.compactFlatBoard()
 	packedObject := ser.PackedObject
+
+	// Store the packed (already serialized) payload directly
 	packedObject.Payload = payload
 
 	// Single CBOR encode of the whole PackedObject
@@ -210,8 +214,8 @@ func NewDeserializer(packedObject *PackedObject) *Deserializer {
 		PackedObject:     packedObject,
 	}
 
-	if packedObject.Hierarchy != nil {
-		de.HierarchyDes = newBoardDeserializer(packedObject.Hierarchy)
+	if packedObject.FlatIDBoard != nil {
+		de.HierarchyDes = newBoardDeserializer(packedObject.FlatIDBoard)
 	} else {
 		// Fallback/Empty init if missing (backward compat or empty)
 		de.HierarchyDes = newBoardDeserializer(&PackedFlatBoard{})

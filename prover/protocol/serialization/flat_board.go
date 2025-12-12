@@ -151,3 +151,117 @@ func (hd *BoardDeserializer) getString(leafID int) string {
 	hd.cache[leafID] = fullID
 	return fullID
 }
+
+// compactFlatBoard performs a path-compression pass on a PackedFlatBoard.
+// It merges linear chains of single-child nodes into single "joined" segments.
+// Input: original packed board (Segments, Parents, SegmentRefs, LeafToNode).
+// Output: a new PackedFlatBoard with fewer nodes and deduped/merged segments.
+func (p *PackedFlatBoard) compactFlatBoard() *PackedFlatBoard {
+	if p == nil || len(p.Parents) == 0 {
+		return p
+	}
+
+	n := len(p.Parents)
+	// build children list for each node
+	children := make([][]int, n)
+	for i := 0; i < n; i++ {
+		parent := int(p.Parents[i])
+		if parent >= 0 && parent < n {
+			children[parent] = append(children[parent], i)
+		}
+	}
+
+	// old->new node index mapping
+	oldToNew := make([]int32, n)
+	for i := range oldToNew {
+		oldToNew[i] = -1
+	}
+
+	newSegments := make([]string, 0, len(p.Segments))
+	newParents := make([]int32, 0, n)
+	newSegRefs := make([]int32, 0, n)
+
+	// Deduplicate combined segments in newSegments
+	segMapNew := make(map[string]int32, len(p.Segments))
+
+	var addNewSegment = func(seg string) int32 {
+		if idx, ok := segMapNew[seg]; ok {
+			return idx
+		}
+		idx := int32(len(newSegments))
+		newSegments = append(newSegments, seg)
+		segMapNew[seg] = idx
+		return idx
+	}
+
+	// recursive DFS that compacts linear chains starting at old node "start"
+	var process func(start int, parentNew int32)
+	process = func(start int, parentNew int32) {
+		// follow chain while there is exactly one child
+		cur := start
+		// collect parts for the chain
+		var parts []string
+
+		// note: we loop at least once and include the start node's segment
+		for {
+			parts = append(parts, p.Segments[p.SegmentRefs[cur]])
+			ch := children[cur]
+			if len(ch) != 1 {
+				// stop: either leaf or branching
+				break
+			}
+			// single child → continue the chain
+			cur = ch[0]
+		}
+
+		// combined segment
+		combined := strings.Join(parts, "_")
+		segIdx := addNewSegment(combined)
+
+		newNodeIdx := int32(len(newParents))
+		newParents = append(newParents, parentNew)
+		newSegRefs = append(newSegRefs, segIdx)
+
+		// map all old nodes belonging to this chain (from start up to cur) to newNodeIdx
+		// we need to walk again from start until we hit cur
+		w := start
+		for {
+			oldToNew[w] = newNodeIdx
+			if w == cur {
+				break
+			}
+			// since earlier we determined chain children length==1, safe to index
+			w = children[w][0]
+		}
+
+		// now process children of cur (these are branching children or terminals)
+		for _, child := range children[cur] {
+			process(child, newNodeIdx)
+		}
+	}
+
+	// identify root nodes (parent == -1); process each root
+	for oldNode := 0; oldNode < n; oldNode++ {
+		if p.Parents[oldNode] == -1 {
+			process(oldNode, -1)
+		}
+	}
+
+	// Build new LeafToNode mapping by mapping old leaf->new node
+	newLeaf := make([]int32, len(p.LeafToNode))
+	for i, oldNode := range p.LeafToNode {
+		if oldNode >= 0 && int(oldNode) < len(oldToNew) {
+			newLeaf[i] = oldToNew[oldNode]
+		} else {
+			// invalid or missing mapping: keep -1 (or choose to error)
+			newLeaf[i] = -1
+		}
+	}
+
+	return &PackedFlatBoard{
+		Segments:    newSegments,
+		Parents:     newParents,
+		SegmentRefs: newSegRefs,
+		LeafToNode:  newLeaf,
+	}
+}
