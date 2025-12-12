@@ -16,10 +16,6 @@ contract TestMath256 {
     return Math256.safeSub(_a, _b);
   }
 
-  function nextPow2(uint256 _x) external pure returns (uint256 value) {
-    return Math256.nextPow2(_x);
-  }
-
   function bitLength(uint256 _x) external pure returns (uint256 value) {
     return Math256.bitLength(_x);
   }

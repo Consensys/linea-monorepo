@@ -44,43 +44,6 @@ describe("Math256 Library", () => {
     });
   });
 
-  describe("nextPow2", () => {
-    it("returns 1 for input 0", async () => {
-      expect(await contract.nextPow2(0n)).to.equal(1n);
-    });
-
-    it("returns the same value for powers of 2", async () => {
-      expect(await contract.nextPow2(1n)).to.equal(1n);
-      expect(await contract.nextPow2(2n)).to.equal(2n);
-      expect(await contract.nextPow2(4n)).to.equal(4n);
-      expect(await contract.nextPow2(8n)).to.equal(8n);
-      expect(await contract.nextPow2(16n)).to.equal(16n);
-      expect(await contract.nextPow2(256n)).to.equal(256n);
-      expect(await contract.nextPow2(2n ** 128n)).to.equal(2n ** 128n);
-      expect(await contract.nextPow2(2n ** 255n)).to.equal(2n ** 255n);
-    });
-
-    it("returns the next power of 2 for values between powers", async () => {
-      expect(await contract.nextPow2(3n)).to.equal(4n);
-      expect(await contract.nextPow2(5n)).to.equal(8n);
-      expect(await contract.nextPow2(7n)).to.equal(8n);
-      expect(await contract.nextPow2(9n)).to.equal(16n);
-      expect(await contract.nextPow2(15n)).to.equal(16n);
-      expect(await contract.nextPow2(17n)).to.equal(32n);
-      expect(await contract.nextPow2(100n)).to.equal(128n);
-      expect(await contract.nextPow2(255n)).to.equal(256n);
-      expect(await contract.nextPow2(2n ** 128n + 1n)).to.equal(2n ** 129n);
-    });
-
-    it("handles large values correctly", async () => {
-      expect(await contract.nextPow2(2n ** 255n - 1n)).to.equal(2n ** 255n);
-      expect(await contract.nextPow2(2n ** 254n + 1n)).to.equal(2n ** 255n);
-      // MaxUint256 will overflow, but the function should still execute
-      // The result will be 0 due to overflow (2^256 wraps to 0)
-      expect(await contract.nextPow2(MaxUint256)).to.equal(0n);
-    });
-  });
-
   describe("bitLength", () => {
     it("returns 0 for input 0", async () => {
       expect(await contract.bitLength(0n)).to.equal(0n);
