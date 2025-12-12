@@ -5,6 +5,7 @@ pragma solidity 0.8.30;
 
 import { GIndex, pack, concat, fls } from "../../../../../yield/libs/vendor/lido/GIndex.sol";
 import { SSZ } from "../../../../../yield/libs/vendor/lido/SSZ.sol";
+import { PendingPartialWithdrawal } from "../../../../../yield/libs/vendor/lido/BeaconTypes.sol";
 
 // As defined in phase0/beacon-chain.md:159
 type Slot is uint64;
@@ -28,6 +29,7 @@ using { unwrap, lt as <, gt as > } for Slot global;
  original:  https://github.com/lidofinance/community-staking-module/blob/7071c2096983a7780a5f147963aaa5405c0badb1/src/lib/SSZ.sol
 */
 contract SSZBLSHelpers {
+
   // As defined in phase0/beacon-chain.md:356
   struct Validator {
     bytes pubkey;
@@ -362,5 +364,12 @@ contract SSZBLSHelpers {
 
   function toLittleEndian(bool v) public pure returns (bytes32) {
     return bytes32(v ? 1 << 248 : 0);
+  }
+
+  /// @notice Computes the SSZ hash tree root of an array of pending partial withdrawals.
+  /// @param pendingPartialWithdrawal The array of pending partial withdrawals to compute the hash tree root for.
+  /// @return root The SSZ hash tree root with length mixed in: mix_in_length(merkleize_progressive(...), len(value)).
+  function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) public view returns (bytes32 root) {
+    return SSZ.hashTreeRoot(pendingPartialWithdrawal);
   }
 }

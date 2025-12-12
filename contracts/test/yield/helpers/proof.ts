@@ -272,6 +272,8 @@ export const generateEIP4478Witness = async (
   // Generate pending partial withdrawals
   // ============================================================================
   const allPendingPartialWithdrawals = generatePendingPartialWithdrawals(...pendingPartialWithdrawals);
+  const pendingPartialWithdrawalsRoot = await sszMerkleTree.hashTreeRoot(allPendingPartialWithdrawals);
+  void pendingPartialWithdrawalsRoot; // Computed for potential future use
 
   // ============================================================================
   // Generate state root
