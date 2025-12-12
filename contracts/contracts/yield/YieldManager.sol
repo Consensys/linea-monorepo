@@ -688,7 +688,7 @@ contract YieldManager is
 
   /**
    * @notice Safely rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev Caps the rebalance amount to the provider's current withdrawable value.
+   * @dev Caps the rebalance amount to the provider's current withdrawable value plus the YieldManager's balance.
    *      This is to mitigate frontrunning that depletes the withdrawable value,
    *      which would result in revert of the regular `addToWithdrawalReserve` function.
    * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
