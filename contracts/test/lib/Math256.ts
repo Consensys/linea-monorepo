@@ -80,7 +80,7 @@ describe("Math256 Library", () => {
       expect(await contract.bitLength(256n)).to.equal(9n);
       expect(await contract.bitLength(257n)).to.equal(9n);
       expect(await contract.bitLength(2n ** 128n + 1n)).to.equal(129n);
-      expect(await contract.bitLength(2n ** 255n - 1n)).to.equal(256n);
+      expect(await contract.bitLength(2n ** 255n - 1n)).to.equal(255n);
     });
 
     it("handles edge cases correctly", async () => {
@@ -121,13 +121,40 @@ describe("Math256 Library", () => {
       // For non-zero x, bitLength(x) = ceil(log2(x + 1))
       // This is equivalent to: position of highest set bit + 1
       const testCases = [
-        1n, 2n, 3n, 4n, 5n, 7n, 8n, 15n, 16n, 31n, 32n, 63n, 64n, 127n, 128n, 255n, 256n,
-        1000n, 10000n, 100000n,
-        2n ** 16n - 1n, 2n ** 16n, 2n ** 16n + 1n,
-        2n ** 32n - 1n, 2n ** 32n, 2n ** 32n + 1n,
-        2n ** 64n - 1n, 2n ** 64n, 2n ** 64n + 1n,
-        2n ** 128n - 1n, 2n ** 128n, 2n ** 128n + 1n,
-        2n ** 255n - 1n, 2n ** 255n,
+        1n,
+        2n,
+        3n,
+        4n,
+        5n,
+        7n,
+        8n,
+        15n,
+        16n,
+        31n,
+        32n,
+        63n,
+        64n,
+        127n,
+        128n,
+        255n,
+        256n,
+        1000n,
+        10000n,
+        100000n,
+        2n ** 16n - 1n,
+        2n ** 16n,
+        2n ** 16n + 1n,
+        2n ** 32n - 1n,
+        2n ** 32n,
+        2n ** 32n + 1n,
+        2n ** 64n - 1n,
+        2n ** 64n,
+        2n ** 64n + 1n,
+        2n ** 128n - 1n,
+        2n ** 128n,
+        2n ** 128n + 1n,
+        2n ** 255n - 1n,
+        2n ** 255n,
         MaxUint256,
       ];
 
@@ -139,7 +166,7 @@ describe("Math256 Library", () => {
           // Verify result is positive and reasonable
           expect(result).to.be.greaterThan(0n);
           expect(result).to.be.lessThanOrEqual(256n);
-          
+
           // Verify: 2^(result-1) <= x < 2^result
           const lowerBound = 2n ** (result - 1n);
           const upperBound = 2n ** result;
