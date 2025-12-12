@@ -276,10 +276,10 @@ library SSZ {
     }
   }
 
-  // https://github.com/ethereum/consensus-specs/blob/5390b77256a9fd6c1ebe0c7e3f8a3da033476ddf/tests/core/pyspec/eth2spec/utils/merkle_minimal.py#L47-L91
+  // Solidity implementation of the merkleize_chunks spec in https://github.com/ethereum/consensus-specs/blob/5390b77256a9fd6c1ebe0c7e3f8a3da033476ddf/tests/core/pyspec/eth2spec/utils/merkle_minimal.py#L47-L91
+  // Algorithm has space complexity of "MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH+1", despite input array being up to 2**27 items.
   function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) internal view returns (bytes32 root) {
     uint256 count = pendingPartialWithdrawal.length;
-
     uint256 depth = count == 0 ? 0 : Math256.bitLength(count - 1);
     bytes32[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH + 1] memory tmp;
 
@@ -300,12 +300,12 @@ library SSZ {
   }
 
   // Mutate `tmp` in-place
-  function mergeSSZChunk(bytes32[28] memory tmp, uint256 depth, uint256 chunkCount, bytes32 chunk, uint256 chunkIndex) internal view {
+  function mergeSSZChunk(bytes32[28] memory tmp, uint256 depth, uint256 count, bytes32 chunk, uint256 chunkIndex) internal view {
       uint256 j = 0;
       bytes32 h = chunk;
       while (true) {
         if (chunkIndex & (1 << j) == 0) {
-          if (chunkIndex == chunkCount && j < depth) {
+          if (chunkIndex == count && j < depth) {
             h = sha256Pair(h, zeroHash(j));
           } else {
             break;
