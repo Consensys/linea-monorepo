@@ -73,6 +73,17 @@ export const generatePendingPartialWithdrawal = (
   };
 };
 
+export const generatePendingPartialWithdrawals = (
+  ...withdrawals: PendingPartialWithdrawal[]
+): PendingPartialWithdrawal[] => {
+  const randomCount = randomInt(1000, 0); // Generate 0-5 random withdrawals
+  const randomWithdrawals: PendingPartialWithdrawal[] = [];
+  for (let i = 0; i < randomCount; i++) {
+    randomWithdrawals.push(generatePendingPartialWithdrawal());
+  }
+  return [...withdrawals, ...randomWithdrawals];
+};
+
 export const setBeaconBlockRoot = async (root: string): Promise<number> => {
   const systemAddress = "0xfffffffffffffffffffffffffffffffffffffffe";
   const initialBalance = 999999999999999999999999999n;
@@ -238,6 +249,7 @@ export const generateEIP4478Witness = async (
   verifier: TestValidatorContainerProofVerifier,
   address: string,
   effectiveBalance?: bigint,
+  pendingPartialWithdrawals: PendingPartialWithdrawal[] = [],
 ): Promise<EIP4788Witness> => {
   // ============================================================================
   // Create ValidatorContainer
@@ -256,12 +268,10 @@ export const generateEIP4478Witness = async (
   const validatorIndex = ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex;
   const originalValidatorContainerProof = [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof];
 
-  // Generate ValidatorWitness
-  // const validatorWitness = {
-  //   validatorIndex: ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
-  //   validator: validatorContainer,
-  //   proof: [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof],
-  // };
+  // ============================================================================
+  // Generate pending partial withdrawals
+  // ============================================================================
+  const allPendingPartialWithdrawals = generatePendingPartialWithdrawals(...pendingPartialWithdrawals);
 
   // ============================================================================
   // Generate state root
@@ -315,7 +325,7 @@ export const generateEIP4478Witness = async (
 
   const pendingPartialWithdrawalsWitness: PendingPartialWithdrawalsWitness = {
     proof: [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof, ...beaconHeaderMerkleSubtree.proof],
-    pendingPartialWithdrawals: [],
+    pendingPartialWithdrawals: allPendingPartialWithdrawals,
   };
 
   const timestamp = await setBeaconBlockRoot(beaconRoot);
