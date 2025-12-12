@@ -28,6 +28,12 @@ var (
 	NewUint64Be   = NewUint[S64, BigEndian]
 	NewUint32Be   = NewUint[S32, BigEndian]
 	NewUint16Be   = NewUint[S16, BigEndian]
+	NewUint256Le  = NewUint[S256, LittleEndian]
+	NewEthAddreLe = NewUint[S160, LittleEndian]
+	NewUint128Le  = NewUint[S128, LittleEndian]
+	NewUint64Le   = NewUint[S64, LittleEndian]
+	NewUint32Le   = NewUint[S32, LittleEndian]
+	NewUint16Le   = NewUint[S16, LittleEndian]
 )
 
 // Uint[S, E] represents a register represented by a list of columns.

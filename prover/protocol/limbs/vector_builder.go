@@ -15,6 +15,14 @@ type VectorBuilder[E Endianness] struct {
 	slices [][]field.Element
 }
 
+// NewVectorBuilder creates a new vector builder for the provided limbs.
+func NewVectorBuilder[E Endianness](l Limbs[E]) *VectorBuilder[E] {
+	return &VectorBuilder[E]{
+		limbs:  l,
+		slices: make([][]field.Element, l.NumLimbs()),
+	}
+}
+
 // Height returns the total number of rows that have been pushed
 func (b *VectorBuilder[E]) Height() int {
 	return len(b.slices[0])
