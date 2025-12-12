@@ -13,4 +13,9 @@ interface EthApiFeeClient {
     newestBlock: BlockParameter,
     rewardPercentiles: List<Double>,
   ): SafeFuture<FeeHistory>
+  fun ethFeeHistoryBlobExtended(
+    blockCount: Int,
+    newestBlock: BlockParameter,
+    rewardPercentiles: List<Double>,
+  ): SafeFuture<FeeHistory>
 }
