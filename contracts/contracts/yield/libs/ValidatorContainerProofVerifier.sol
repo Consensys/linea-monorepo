@@ -142,13 +142,16 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   /**
    * @notice validates proof of validator container in CL against Beacon block root
    * @param _witness object containing user input passed as calldata
-   * @param _pubkey of validator to verify proof for.
-   * @param _withdrawalCredentials to verify proof with
+   * @param _pubkey The pubkey of validator to verify proof for.
+   * @param _withdrawalCredentials The withdrawal credentials to verify proof with.
    * @param _validatorIndex Validator index for validator to withdraw from.
    * @param _slot Slot of the beacon block for which the proof is generated.
-   * @param _childBlockTimestamp of EL block that has parent block beacon root in BEACON_ROOTS contract
-   * @param _proposerIndex of the beacon block for which the proof is generated
-   * @dev reverts with `InvalidProof` when provided input cannot be proven to Beacon block root
+   * @param _childBlockTimestamp Timestamp of EL block that has parent block beacon root in BEACON_ROOTS contract.
+   * @param _proposerIndex The proposer index of the beacon block for which the proof is generated.
+   * @dev Reverts with `InvalidSlot` if slot/proposerIndex don't match the proof.
+   * @dev Reverts with `ValidatorNotActiveForLongEnough` if validator hasn't been active for SHARD_COMMITTEE_PERIOD epochs.
+   * @dev Reverts with `RootNotFound` if timestamp is not found in BEACON_ROOTS contract.
+   * @dev Reverts with `InvalidProof`, `BranchHasExtraItem`, or `BranchHasMissingItem` if proof verification fails.
    */
   function verifyActiveValidatorContainer(
     IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness,
@@ -199,9 +202,11 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
    * @notice validates proof of pending partial withdrawals in CL against Beacon block root
    * @param _witness object containing user input passed as calldata
    * @param _slot Slot of the beacon block for which the proof is generated.
-   * @param _childBlockTimestamp of EL block that has parent block beacon root in BEACON_ROOTS contract
-   * @param _proposerIndex of the beacon block for which the proof is generated
-   * @dev reverts with `InvalidProof` when provided input cannot be proven to Beacon block root
+   * @param _childBlockTimestamp Timestamp of EL block that has parent block beacon root in BEACON_ROOTS contract.
+   * @param _proposerIndex The proposer index of the beacon block for which the proof is generated.
+   * @dev Reverts with `InvalidSlot` if slot/proposerIndex don't match the proof.
+   * @dev Reverts with `RootNotFound` if timestamp is not found in BEACON_ROOTS contract.
+   * @dev Reverts with `InvalidProof`, `BranchHasExtraItem`, or `BranchHasMissingItem` if proof verification fails.
    */
   function verifyPendingPartialWithdrawals(
     PendingPartialWithdrawalsWitness calldata _witness,
