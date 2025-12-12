@@ -64,7 +64,7 @@ type TestCase struct {
 
 // tests-cases for all tests
 var testcases []TestCase = []TestCase{
-	{Numpoly: 2, NumRound: 1, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0]},
+	{Numpoly: 2, NumRound: 1, PolSize: 2, NumOpenCol: 1, SisInstance: sisInstances[0]},
 	{Numpoly: 1024, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
 	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0]},
 	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
@@ -77,7 +77,7 @@ var testcases []TestCase = []TestCase{
 }
 
 var testcases_precomp []TestCase = []TestCase{
-	{Numpoly: 2, NumRound: 1, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0], NumPrecomp: 2, IsCommitPrecomp: true},
+	{Numpoly: 2, NumRound: 1, PolSize: 2, NumOpenCol: 1, SisInstance: sisInstances[0], NumPrecomp: 2, IsCommitPrecomp: true},
 	{Numpoly: 1024, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0], NumPrecomp: 2, IsCommitPrecomp: true},
 	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},

@@ -143,6 +143,7 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 			}
 		}
 	}
+	fs.api.Println("selected entries: ", res)
 	return res
 }
 

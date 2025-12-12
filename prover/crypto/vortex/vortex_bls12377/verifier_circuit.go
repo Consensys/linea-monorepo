@@ -25,12 +25,12 @@ func GnarkCheckColumnInclusionNoSis(api frontend.API, columns [][][]zk.WrappedVa
 			h.WriteWVs(columns[i][j]...)
 			leaf := h.Sum()
 			h.Reset()
-			_ = leaf
-			// check merkle proof
-			// err = smt_bls12377.GnarkVerifyMerkleProof(api, merkleProofs[i][j], leaf, roots[i])
-			// if err != nil {
-			// 	return err
-			// }
+			// api.Println("Path: i,j", i, j, merkleProofs[i][j].Path)
+
+			err = smt_bls12377.GnarkVerifyMerkleProof(api, merkleProofs[i][j], leaf, roots[i])
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
