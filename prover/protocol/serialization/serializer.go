@@ -88,9 +88,9 @@ type Serializer struct {
 	exprMap          map[*symbolic.Expression]int // Maps expression pointers to indices in PackedObject.Expressions
 	warnings         []string                     // Collects warnings (e.g., unexported fields) for debugging.
 
-	// Hierarchy Helper to build the flattened trie
-	FlatBoardSer *boardSer
-
+	columnIDs []string
+	coinIDs   []string
+	queryIDs  []string
 	// compiledIOPs map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 }
 
@@ -108,6 +108,11 @@ type Deserializer struct {
 	expressions      []*symbolic.Expression // Cache of deserialized expressions
 	warnings         []string               // Collects warnings for debugging.
 
+	// Cache for inflated IDs
+	colIDsCache   []string
+	coinIDsCache  []string
+	queryIDsCache []string
+
 	muPtr sync.RWMutex
 
 	// Hierarchy Helper to reconstruct strings efficiently
@@ -119,16 +124,19 @@ type Deserializer struct {
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
-	PointedValues   []any                `cbor:"c"`
-	FlatIDBoard     *PackedBoard         `cbor:"h,omitempty"`
-	Columns         []PackedStructObject `cbor:"e"`
-	Coins           []PackedCoin         `cbor:"g"`
-	Queries         []PackedStructObject `cbor:"i"`
-	Store           [][]any              `cbor:"j"`
-	CompiledIOPFast []PackedCompiledIOP  `cbor:"k"`
-	Circuits        [][]byte             `cbor:"l"`
-	Expressions     []PackedStructObject `cbor:"m"`
-	Payload         any                  `cbor:"n"` // cbor-encoded root value
+	// Types was removed. We now use static generated tables.
+	PointedValues   []any                `cbor:"c"` // Serialized pointers (as PackedIFace).
+	ColumnIDs       FrontCodedIDs        `cbor:"d"` // String IDs for columns.
+	Columns         []PackedStructObject `cbor:"e"` // Serialized columns (as PackedStructObject).
+	CoinIDs         FrontCodedIDs        `cbor:"f"` // String IDs for coins.
+	Coins           []PackedCoin         `cbor:"g"` // Serialized coins.
+	QueryIDs        FrontCodedIDs        `cbor:"h"` // String IDs for queries.
+	Queries         []PackedStructObject `cbor:"i"` // Serialized queries.
+	Store           [][]any              `cbor:"j"` // Serialized stores (as arrays).
+	CompiledIOPFast []PackedCompiledIOP  `cbor:"k"` // Serialized CompiledIOPs.
+	Circuits        [][]byte             `cbor:"l"` // Serialized circuits.
+	Expressions     []PackedStructObject `cbor:"m"` // Serialized expressions
+	Payload         any                  `cbor:"n"` // CBOR-encoded root value.
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.
@@ -163,7 +171,10 @@ func NewSerializer() *Serializer {
 		stores:           map[*column.Store]int{},
 		circuitMap:       map[*cs.SparseR1CS]int{},
 		exprMap:          map[*symbolic.Expression]int{},
-		FlatBoardSer:     hs,
+
+		columnIDs: make([]string, 0),
+		coinIDs:   make([]string, 0),
+		queryIDs:  make([]string, 0),
 	}
 }
 
@@ -185,9 +196,11 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 		fmt.Println(ser.warnings[i])
 	}
 
-	// Finalize the Radix Tree construction.
-	// This converts the buffered unique strings into the flattened arrays (Segments, Parents, etc.)
-	ser.FlatBoardSer.finalize()
+	// Store the packed (already serialized) payload directly
+	ser.PackedObject.ColumnIDs = buildFrontCoded(ser.columnIDs)
+	ser.PackedObject.CoinIDs = buildFrontCoded(ser.coinIDs)
+	ser.PackedObject.QueryIDs = buildFrontCoded(ser.queryIDs)
+
 	packedObject := ser.PackedObject
 
 	// Store the packed (already serialized) payload directly
@@ -215,12 +228,11 @@ func NewDeserializer(packedObject *PackedObject) *Deserializer {
 		PackedObject:     packedObject,
 	}
 
-	if packedObject.FlatIDBoard != nil {
-		de.FlatBoardDes = newBoardDeserializer(packedObject.FlatIDBoard)
-	} else {
-		// Fallback/Empty init if missing (backward compat or empty)
-		de.FlatBoardDes = newBoardDeserializer(&PackedBoard{})
-	}
+	// Inflate IDs immediately (Handles errors implicitly by leaving slice empty/nil,
+	// or you can panic/log if strictness is required)
+	de.colIDsCache, _ = inflateFrontCoded(packedObject.ColumnIDs)
+	de.coinIDsCache, _ = inflateFrontCoded(packedObject.CoinIDs)
+	de.queryIDsCache, _ = inflateFrontCoded(packedObject.QueryIDs)
 
 	return de
 }
@@ -399,42 +411,58 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e *
 	}
 }
 
-// PackID utilizes the flattened hierarchy serializer
-func (ser *Serializer) PackID(id string) (BackReference, *serdeError) {
-	// Look up in a simple map first to avoid reprocessing
-	if ref, ok := ser.IdsMap[id]; ok {
-		return BackReference(ref), nil
+// PackColumnID serializes an ifaces.ColID (string), returning a BackReference to its index in PackedObject.ColumnIDs.
+func (ser *Serializer) PackColumnID(c ifaces.ColID) (BackReference, *serdeError) {
+	key := string(c)
+	if _, ok := ser.columnIdMap[key]; !ok {
+		ser.columnIdMap[key] = len(ser.columnIDs)
+		ser.columnIDs = append(ser.columnIDs, key)
 	}
-
-	// Use the new serializer
-	ref := ser.FlatBoardSer.addID(id)
-
-	ser.IdsMap[id] = ref
-	return BackReference(ref), nil
+	return BackReference(ser.columnIdMap[key]), nil
 }
 
+// UnpackColumnID deserializes an ifaces.ColID from a BackReference.
 func (de *Deserializer) UnpackColumnID(v BackReference) (reflect.Value, *serdeError) {
-	s, err := de.reconstructStringFromLeaf(int(v))
-	if err != nil {
-		return reflect.Value{}, err
+	if v < 0 || int(v) >= len(de.colIDsCache) {
+		return reflect.Value{}, newSerdeErrorf("invalid column ID backreference: %v", v)
 	}
-	return reflect.ValueOf(ifaces.ColID(s)), nil
+	return reflect.ValueOf(ifaces.ColID(de.colIDsCache[v])), nil
 }
 
+// UnpackCoinID deserializes a coin.Name from a BackReference.
 func (de *Deserializer) UnpackCoinID(v BackReference) (reflect.Value, *serdeError) {
-	s, err := de.reconstructStringFromLeaf(int(v))
-	if err != nil {
-		return reflect.Value{}, err
+	if v < 0 || int(v) >= len(de.coinIDsCache) {
+		return reflect.Value{}, newSerdeErrorf("invalid coin ID backreference: %v", v)
 	}
-	return reflect.ValueOf(coin.Name(s)), nil
+	return reflect.ValueOf(coin.Name(de.coinIDsCache[v])), nil
 }
 
+// UnpackQueryID deserializes an ifaces.QueryID from a BackReference.
 func (de *Deserializer) UnpackQueryID(v BackReference) (reflect.Value, *serdeError) {
-	s, err := de.reconstructStringFromLeaf(int(v))
-	if err != nil {
-		return reflect.Value{}, err
+	if v < 0 || int(v) >= len(de.queryIDsCache) {
+		return reflect.Value{}, newSerdeErrorf("invalid query ID backreference: %v", v)
 	}
-	return reflect.ValueOf(ifaces.QueryID(s)), nil
+	return reflect.ValueOf(ifaces.QueryID(de.queryIDsCache[v])), nil
+}
+
+// PackCoinID serializes a coin.Name (string), returning a BackReference to its index in PackedObject.CoinIDs.
+func (ser *Serializer) PackCoinID(c coin.Name) (BackReference, *serdeError) {
+	key := string(c)
+	if _, ok := ser.coinIdMap[key]; !ok {
+		ser.coinIdMap[key] = len(ser.coinIDs)
+		ser.coinIDs = append(ser.coinIDs, key)
+	}
+	return BackReference(ser.coinIdMap[key]), nil
+}
+
+// PackQueryID serializes an ifaces.QueryID (string), returning a BackReference to its index in PackedObject.QueryIDs.
+func (ser *Serializer) PackQueryID(q ifaces.QueryID) (BackReference, *serdeError) {
+	key := string(q)
+	if _, ok := ser.queryIDMap[key]; !ok {
+		ser.queryIDMap[key] = len(ser.queryIDs)
+		ser.queryIDs = append(ser.queryIDs, key)
+	}
+	return BackReference(ser.queryIDMap[key]), nil
 }
 
 // PackColumn serializes a column.Natural, returning a BackReference to its index in PackedObject.Columns.
