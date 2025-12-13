@@ -254,7 +254,8 @@ export const generateEIP4478Witness = async (
   verifier: TestValidatorContainerProofVerifier,
   address: string,
   effectiveBalance?: bigint,
-  pendingPartialWithdrawals: PendingPartialWithdrawal[] = [],
+  pendingPartialWithdrawalsGwei: bigint[] = [],
+  randomPendingPartialWithdrawalsCount: number = 0,
 ): Promise<EIP4788Witness> => {
   // ============================================================================
   // Create ValidatorContainer
@@ -271,12 +272,33 @@ export const generateEIP4478Witness = async (
   }
 
   const validatorIndex = ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex;
+
   // ValidatorContainer -> StateRoot
   const originalValidatorContainerProof = [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof];
 
   // ============================================================================
   // Generate pending partial withdrawals
   // ============================================================================
+  const mappedPendingPartialWithdrawals: PendingPartialWithdrawal[] = pendingPartialWithdrawalsGwei.map(
+    (amountGwei) => ({
+      validatorIndex: validatorIndex,
+      amount: amountGwei,
+      withdrawableEpoch: BigInt(randomInt(343000)),
+    }),
+  );
+
+  // Generate random pending partial withdrawals if requested
+  const randomPendingPartialWithdrawals: PendingPartialWithdrawal[] = [];
+  for (let i = 0; i < randomPendingPartialWithdrawalsCount; i++) {
+    randomPendingPartialWithdrawals.push(generatePendingPartialWithdrawal(validatorIndex));
+  }
+
+  // Combine mapped and randomly generated pending partial withdrawals
+  const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+    ...mappedPendingPartialWithdrawals,
+    ...randomPendingPartialWithdrawals,
+  ];
+
   const pendingPartialWithdrawalsRoot = await sszMerkleTree.hashTreeRoot(pendingPartialWithdrawals);
 
   // We have two fixed nodes in the BeaconState Merkle tree:
@@ -419,31 +441,25 @@ export const generateLidoUnstakePermissionlessWitness = async (
   verifier: TestValidatorContainerProofVerifier,
   withdrawalAddress: string,
   effectiveBalance: bigint = parseUnits("100", "gwei"),
-  pendingPartialWithdrawals: PendingPartialWithdrawal[] = [],
+  pendingPartialWithdrawalsGwei: bigint[] = [],
   randomPendingPartialWithdrawalsCount: number = 0,
 ): Promise<{
   eip4788Witness: EIP4788Witness;
   pubkey: string;
   validatorIndex: bigint;
   slot: bigint;
-  allPendingPartialWithdrawals: PendingPartialWithdrawal[];
+  pendingPartialWithdrawals: PendingPartialWithdrawal[];
 }> => {
-  // Generate random pending partial withdrawals if requested
-  const randomPendingPartialWithdrawals: PendingPartialWithdrawal[] = [];
-  for (let i = 0; i < randomPendingPartialWithdrawalsCount; i++) {
-    randomPendingPartialWithdrawals.push(generatePendingPartialWithdrawal());
-  }
-
-  // Combine provided and randomly generated pending partial withdrawals
-  const allPendingPartialWithdrawals = [...pendingPartialWithdrawals, ...randomPendingPartialWithdrawals];
-
   const eip4788Witness = await generateEIP4478Witness(
     sszMerkleTree,
     verifier,
     withdrawalAddress,
     effectiveBalance,
-    allPendingPartialWithdrawals,
+    pendingPartialWithdrawalsGwei,
+    randomPendingPartialWithdrawalsCount,
   );
+
+  // Get all pending partial withdrawals from the witness
   const { validatorIndex } = eip4788Witness;
   const { slot } = eip4788Witness.beaconBlockHeader;
   return {
@@ -451,7 +467,8 @@ export const generateLidoUnstakePermissionlessWitness = async (
     validatorIndex,
     slot: BigInt(slot),
     pubkey: eip4788Witness.pubkey,
-    allPendingPartialWithdrawals,
+    pendingPartialWithdrawals:
+      eip4788Witness.beaconProofWitness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals,
   };
 };
 
