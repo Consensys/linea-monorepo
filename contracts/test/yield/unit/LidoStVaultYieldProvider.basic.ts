@@ -730,6 +730,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     it("Should succeed with 1000 pending partial withdrawals", async () => {
       // Arrange - Set up withdrawal reserve in deficit
       await setBalance(l1MessageServiceAddress, 0n);
+      const numPendingPartialWithdrawals = 1000;
 
       const { eip4788Witness, pubkey, validatorIndex, slot } = await generateLidoUnstakePermissionlessWitness(
         sszMerkleTree,
@@ -737,7 +738,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         mockStakingVaultAddress,
         ONE_GWEI * 100n,
         [],
-        1000,
+        numPendingPartialWithdrawals,
       );
 
       const refundAddress = nativeYieldOperator.address;
@@ -756,9 +757,15 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       // The yield provider's unstakePermissionless returns: min(requiredUnstakeAmountWei, effectiveBalance - MIN_ACTIVATION_BALANCE - pendingWithdrawals)
       // Since effectiveBalance = 100 gwei, MIN_ACTIVATION_BALANCE = 32 gwei, and no pending withdrawals:
       // maxUnstakeable = 100 - 32 - 0 = 68 gwei
-      await yieldManager
+      const txResponse = await yieldManager
         .connect(securityCouncil)
         .unstakePermissionless(yieldProviderAddress, validatorIndex, slot, withdrawalParams, withdrawalParamsProof);
+
+      const receipt = await txResponse.wait();
+      console.log(
+        `Gas used for unstakePermissionless with ${numPendingPartialWithdrawals} pending partial withdrawals:`,
+        receipt?.gasUsed.toString(),
+      );
 
       // Assert - Verify the actual unstaked amount matches expected return value
       // The yield provider returns unstakedAmountWei (68 gwei), which YieldManager uses to update pendingPermissionlessUnstake
