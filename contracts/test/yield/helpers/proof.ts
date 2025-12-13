@@ -312,7 +312,13 @@ export const generateEIP4478Witness = async (
   // Generate GI=3 from Pending Partial Withdrawals
   // ============================================================================
 
-  // gI99 -> gI35 in the right subtree 23
+  // Algorithm to find GI in the right subtree:
+  // 1. Find # of leafs in original tree = 64
+  // 2. Find the GI of the leftmost node = 96
+  // 3. Find offset from this GI: 99 - 96 = 3
+  // 4. The leftmost node will become GI 32 in the right subtree
+  // 5. So this node becomes GI 32 + 3 = 35
+  // gI99 -> gI35 in the right subtree
   const GI_PENDING_PARTIAL_WITHDRAWALS_ROOT_IN_RIGHT_SUBTREE =
     "0x000000000000000000000000000000000000000000000000000000000000231b";
 
@@ -370,9 +376,6 @@ export const generateEIP4478Witness = async (
     stateRoot,
     beaconHeaderMerkleSubtree.index,
   );
-
-  console.log("stateRoot", stateRoot);
-  console.log("beaconHeaderMerkleSubtree.proof", beaconHeaderMerkleSubtree.proof);
 
   // ============================================================================
   // Generate BeaconProofWitness
