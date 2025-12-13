@@ -41,6 +41,7 @@ import {
   ProgressOssificationResult,
   YieldProviderVendor,
   OperationType,
+  BEACON_PROOF_WITNESS_TYPE,
 } from "../../common/constants";
 import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
 
@@ -698,21 +699,18 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       // Arrange - Set up withdrawal reserve in deficit
       await setBalance(l1MessageServiceAddress, 0n);
 
-      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
+      const { eip4788Witness, pubkey, validatorIndex, slot } = await generateLidoUnstakePermissionlessWitness(
         sszMerkleTree,
         testVerifier,
         mockStakingVaultAddress,
+        THIRTY_TWO_ETH_IN_GWEI,
       );
       const refundAddress = nativeYieldOperator.address;
-      const unstakeAmountGwei = 32000000000n;
-      const validatorIndex = validatorWitness.validatorIndex;
-      const slot = validatorWitness.slot;
 
-      // Update withdrawalParams to new format: (bytes, address) instead of (bytes, uint64[], address)
       const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(["bytes", "address"], [pubkey, refundAddress]);
       const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness],
+        [BEACON_PROOF_WITNESS_TYPE],
+        [eip4788Witness.beaconProofWitness],
       );
 
       // Calculate expected unstaked amount (clamped by validator effective balance)

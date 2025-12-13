@@ -402,9 +402,11 @@ export const generateLidoUnstakePermissionlessWitness = async (
   verifier: TestValidatorContainerProofVerifier,
   address: string,
   effectiveBalance?: bigint,
-): Promise<{ eip4788Witness: EIP4788Witness; pubkey: string }> => {
+): Promise<{ eip4788Witness: EIP4788Witness; pubkey: string; validatorIndex: bigint; slot: bigint }> => {
   const eip4788Witness = await generateEIP4478Witness(sszMerkleTree, verifier, address, effectiveBalance);
-  return { eip4788Witness, pubkey: eip4788Witness.pubkey };
+  const { validatorIndex } = eip4788Witness;
+  const { slot } = eip4788Witness.beaconBlockHeader;
+  return { eip4788Witness, validatorIndex, slot: BigInt(slot), pubkey: eip4788Witness.pubkey };
 };
 
 // Got from this tx - https://hoodi.etherscan.io/tx/0x765837701107347325179c5510959482686456b513776346977617062c294522

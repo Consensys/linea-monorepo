@@ -58,5 +58,5 @@ export const SLOTS_PER_EPOCH = 32n;
 export const THIRTY_TWO_ETH_IN_GWEI = 32000000000n;
 export const MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI = parseUnits("2048", "gwei");
 
-export const VALIDATOR_WITNESS_TYPE =
-  "tuple(bytes32[] proof, uint256 validatorIndex, uint64 effectiveBalance, uint64 childBlockTimestamp, uint64 slot, uint64 proposerIndex, uint64 activationEpoch, uint64 activationEligibilityEpoch)";
+export const BEACON_PROOF_WITNESS_TYPE =
+  "tuple(uint64 childBlockTimestamp, uint64 proposerIndex, tuple(bytes32[] proof, uint64 effectiveBalance, uint64 activationEpoch, uint64 activationEligibilityEpoch) validatorContainerWitness, tuple(bytes32[] proof, tuple(uint64 validatorIndex, uint64 amount, uint64 withdrawableEpoch)[] pendingPartialWithdrawals) pendingPartialWithdrawalsWitness)";
