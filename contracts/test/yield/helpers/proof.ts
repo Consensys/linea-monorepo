@@ -13,7 +13,6 @@ import { SecretKey } from "@chainsafe/blst";
 import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
 import {
   FAR_FUTURE_EXIT_EPOCH,
-  GI_FIRST_VALIDATOR_CURR,
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
   SHARD_COMMITTEE_PERIOD,
   SLOTS_PER_EPOCH,
@@ -349,12 +348,8 @@ export const generateEIP4478Witness = async (
     GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
   );
 
-  await sszMerkleTree.verifyProof(
-    [...proofForGI2, gi3Root],
-    stateRoot,
-    validatorMerkleSubtree.root,
-    GI_FIRST_VALIDATOR_CURR,
-  );
+  const validatorGIndex = await verifier.getValidatorGI(validatorIndex);
+  await sszMerkleTree.verifyProof([...proofForGI2, gi3Root], stateRoot, validatorMerkleSubtree.root, validatorGIndex);
 
   // ============================================================================
   // Generate beacon chain header and beacon root
