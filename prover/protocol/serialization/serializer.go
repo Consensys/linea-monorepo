@@ -89,7 +89,8 @@ type Serializer struct {
 	warnings         []string                     // Collects warnings (e.g., unexported fields) for debugging.
 
 	// Hierarchy Helper to build the flattened trie
-	HierarchySer *BoardSerializer
+	FlatBoardSer *boardSer
+
 	// compiledIOPs map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 }
 
@@ -110,7 +111,7 @@ type Deserializer struct {
 	muPtr sync.RWMutex
 
 	// Hierarchy Helper to reconstruct strings efficiently
-	HierarchyDes *BoardDeserializer
+	FlatBoardDes *boardDeser
 
 	// CompiledIOPs  []*wizard.CompiledIOP  // Cache of deserialized CompiledIOPs.
 }
@@ -119,7 +120,7 @@ type Deserializer struct {
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
 	PointedValues   []any                `cbor:"c"`
-	FlatIDBoard     *PackedFlatBoard     `cbor:"h,omitempty"`
+	FlatIDBoard     *packedBoard         `cbor:"h,omitempty"`
 	Columns         []PackedStructObject `cbor:"e"`
 	Coins           []PackedCoin         `cbor:"g"`
 	Queries         []PackedStructObject `cbor:"i"`
@@ -162,7 +163,7 @@ func NewSerializer() *Serializer {
 		stores:           map[*column.Store]int{},
 		circuitMap:       map[*cs.SparseR1CS]int{},
 		exprMap:          map[*symbolic.Expression]int{},
-		HierarchySer:     hs,
+		FlatBoardSer:     hs,
 	}
 }
 
@@ -184,9 +185,10 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 		fmt.Println(ser.warnings[i])
 	}
 
-	// Compact the FlatIDBoard after finished packing all objects in one-pass
-	// before final cbor encoding
-	ser.PackedObject.FlatIDBoard.compactFlatBoard()
+	// Finalize the Radix Tree construction.
+	// This converts the buffered unique strings into the flattened arrays (Segments, Parents, etc.)
+
+	ser.FlatBoardSer.finalize()
 	packedObject := ser.PackedObject
 
 	// Store the packed (already serialized) payload directly
@@ -215,10 +217,10 @@ func NewDeserializer(packedObject *PackedObject) *Deserializer {
 	}
 
 	if packedObject.FlatIDBoard != nil {
-		de.HierarchyDes = newBoardDeserializer(packedObject.FlatIDBoard)
+		de.FlatBoardDes = newBoardDeserializer(packedObject.FlatIDBoard)
 	} else {
 		// Fallback/Empty init if missing (backward compat or empty)
-		de.HierarchyDes = newBoardDeserializer(&PackedFlatBoard{})
+		de.FlatBoardDes = newBoardDeserializer(&packedBoard{})
 	}
 
 	return de
@@ -406,7 +408,7 @@ func (ser *Serializer) PackID(id string) (BackReference, *serdeError) {
 	}
 
 	// Use the new serializer
-	ref := ser.HierarchySer.addID(id)
+	ref := ser.FlatBoardSer.addID(id)
 
 	ser.IdsMap[id] = ref
 	return BackReference(ref), nil

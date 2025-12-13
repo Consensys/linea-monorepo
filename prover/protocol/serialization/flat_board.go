@@ -1,14 +1,13 @@
 package serialization
 
-import "strings"
-
-var (
-	delimiter = '_'
+import (
+	"sort"
+	"strings"
 )
 
-// PackedFlatBoard represents the flattened Trie.
-type PackedFlatBoard struct {
-	// 1. Dictionary of unique segments (e.g. "BIGRANGE", "ACCUMULATOR", "HI")
+// packedBoard represents the flattened Radix Tree.
+type packedBoard struct {
+	// 1. Dictionary of unique longest prefix segments
 	Segments []string `cbor:"s"`
 
 	// 2. Flattened Trie Structure.
@@ -24,114 +23,236 @@ type PackedFlatBoard struct {
 	LeafToNode []int32 `cbor:"l"`
 }
 
-type BoardSerializer struct {
-	// Output structure
-	Packed *PackedFlatBoard
+// boardSer buffers strings and builds a highly compressed Radix tree at the end.
+type boardSer struct {
+	Packed *packedBoard
 
-	// Deduplication Maps (Only used during serialization, not serialized!)
-	segmentMap map[string]int32  // "BIGRANGE" -> 0
-	nodeMap    map[nodeKey]int32 // {Parent: 0, Seg: 5} -> NodeIndex
+	// Buffers for the "Two-Pass" strategy
+	// We map "FullString" -> "LeafID" (index in LeafToNode)
+	uniqueStrings map[string]int
+	sortedStrings []string
 }
 
-type nodeKey struct {
-	parentIdx int32
-	segIdx    int32
-}
-
-func newFlatBoardSerializer() *BoardSerializer {
-	return &BoardSerializer{
-		Packed: &PackedFlatBoard{
-			Segments:    make([]string, 0, 1024),
-			Parents:     make([]int32, 0, 1024),
-			SegmentRefs: make([]int32, 0, 1024),
-			LeafToNode:  make([]int32, 0, 1024),
+func newFlatBoardSerializer() *boardSer {
+	return &boardSer{
+		Packed: &packedBoard{
+			Segments:    make([]string, 0),
+			Parents:     make([]int32, 0),
+			SegmentRefs: make([]int32, 0),
+			LeafToNode:  make([]int32, 0),
 		},
-		segmentMap: make(map[string]int32),
-		nodeMap:    make(map[nodeKey]int32),
+		uniqueStrings: make(map[string]int),
+		sortedStrings: make([]string, 0),
 	}
 }
 
-// addID adds a full ID string (e.g. "A_B_C") and returns the leaf index (BackReference).
-// It performs 0 allocations for substrings using index math.
-func (h *BoardSerializer) addID(fullID string) int {
-	parentIdx := int32(-1) // Root
-
-	// Efficient Tokenization Loop
-	start := 0
-	for i := 0; i <= len(fullID); i++ {
-		// Detect delimiter or end of string
-		if i == len(fullID) || fullID[i] == byte(delimiter) {
-			segment := fullID[start:i]
-
-			// 1. Deduplicate Segment
-			segIdx, ok := h.segmentMap[segment]
-			if !ok {
-				segIdx = int32(len(h.Packed.Segments))
-				h.Packed.Segments = append(h.Packed.Segments, segment)
-				h.segmentMap[segment] = segIdx
-			}
-
-			// 2. Deduplicate Node (Parent + Segment pair)
-			key := nodeKey{parentIdx, segIdx}
-			nodeIdx, ok := h.nodeMap[key]
-			if !ok {
-				nodeIdx = int32(len(h.Packed.Parents))
-				h.Packed.Parents = append(h.Packed.Parents, parentIdx)
-				h.Packed.SegmentRefs = append(h.Packed.SegmentRefs, segIdx)
-				h.nodeMap[key] = nodeIdx
-			}
-
-			parentIdx = nodeIdx
-			start = i + 1
-		}
+// addID simply buffers the string. The heavy lifting happens in Finalize().
+// This returns a temporary LeafID (index into LeafToNode) that we will fill later.
+func (h *boardSer) addID(fullID string) int {
+	if idx, ok := h.uniqueStrings[fullID]; ok {
+		return idx
 	}
 
-	// The final parentIdx represents the Leaf Node for this ID
-	leafID := len(h.Packed.LeafToNode)
-	h.Packed.LeafToNode = append(h.Packed.LeafToNode, parentIdx)
+	// Assign a new ID
+	leafID := len(h.uniqueStrings)
+	h.uniqueStrings[fullID] = leafID
+	h.sortedStrings = append(h.sortedStrings, fullID)
+
+	// We expand LeafToNode to reserve space, but we fill it with -1 for now.
+	// It will be populated in Finalize().
+	h.Packed.LeafToNode = append(h.Packed.LeafToNode, -1)
 
 	return leafID
 }
 
-type BoardDeserializer struct {
-	Packed *PackedFlatBoard
-	// Cache for fully reconstructed strings to avoid rebuilding them
-	cache []string
+// reconstructStringFromLeaf bridges the Deserializer to the specialized BoardDeserializer.
+func (de *Deserializer) reconstructStringFromLeaf(leaf int) (string, *serdeError) {
+	if de.FlatBoardDes == nil {
+		return "", newSerdeErrorf("hierarchy deserializer not initialized")
+	}
+
+	// getString is defined in flat_board.go
+	s := de.FlatBoardDes.getString(leaf)
+
+	// Optional: You can add checks here if 's' is empty and leaf != 0,
+	// but the BoardDeserializer handles out-of-bounds gracefully.
+	return s, nil
 }
 
-func newBoardDeserializer(p *PackedFlatBoard) *BoardDeserializer {
-	return &BoardDeserializer{
+// finalize builds the Radix Tree.
+func (h *boardSer) finalize() {
+	if len(h.sortedStrings) == 0 {
+		return
+	}
+
+	// 1. Build the pointer-based Radix Tree in memory
+	root := &radixNode{children: make(map[byte]*radixNode)}
+
+	for _, str := range h.sortedStrings {
+		leafID := h.uniqueStrings[str]
+		insertRadix(root, str, leafID)
+	}
+
+	// 2. Flatten the tree into the Packed arrays
+	// Root is always conceptually index -1, so we start BFS/DFS from its children.
+
+	// We perform a BFS to keep children near parents in the arrays (optional, but good for locality)
+	type queueItem struct {
+		node      *radixNode
+		parentIdx int32
+	}
+
+	queue := []queueItem{}
+
+	// Initialize queue with root's children
+	// We sort keys to ensure deterministic serialization
+	for _, child := range sortedChildren(root) {
+		queue = append(queue, queueItem{child, -1})
+	}
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		// Add current node to Packed Arrays
+		myIdx := int32(len(h.Packed.Parents))
+
+		h.Packed.Parents = append(h.Packed.Parents, current.parentIdx)
+
+		// Deduplicate Segments (optional, but good if "0" appears in many sub-branches)
+		// For simplicity/speed here we just append, but you could use a segmentMap here too.
+		segIdx := int32(len(h.Packed.Segments))
+		h.Packed.Segments = append(h.Packed.Segments, current.node.segment)
+		h.Packed.SegmentRefs = append(h.Packed.SegmentRefs, segIdx)
+
+		// If this node corresponds to a Leaf ID, update the mapping
+		if current.node.leafID != -1 {
+			h.Packed.LeafToNode[current.node.leafID] = myIdx
+		}
+
+		// Enqueue children
+		for _, child := range sortedChildren(current.node) {
+			queue = append(queue, queueItem{child, myIdx})
+		}
+	}
+}
+
+// --- Radix Tree Helper Logic ---
+
+type radixNode struct {
+	segment  string
+	children map[byte]*radixNode
+	leafID   int // -1 if internal node, >=0 if it matches a requested ID
+}
+
+func insertRadix(node *radixNode, remaining string, leafID int) {
+	// Find the edge that matches the first char
+	if len(remaining) == 0 {
+		node.leafID = leafID
+		return
+	}
+
+	firstChar := remaining[0]
+	child, exists := node.children[firstChar]
+
+	if !exists {
+		// Case 1: No edge starts with this char. Create new edge.
+		node.children[firstChar] = &radixNode{
+			segment:  remaining,
+			children: make(map[byte]*radixNode),
+			leafID:   leafID,
+		}
+		return
+	}
+
+	// Case 2: Edge exists. Determine Longest Common Prefix (LCP).
+	commonLen := 0
+	maxLen := min(len(remaining), len(child.segment))
+	for i := 0; i < maxLen; i++ {
+		if remaining[i] != child.segment[i] {
+			break
+		}
+		commonLen++
+	}
+
+	// Case 2a: Perfect match with existing segment (consume and recurse)
+	if commonLen == len(child.segment) {
+		insertRadix(child, remaining[commonLen:], leafID)
+		return
+	}
+
+	// Case 2b: Partial match. We must SPLIT the existing edge.
+	// Current: Node -> [ "BIGRANGE" ] -> ChildChildren...
+	// Insert: "BIG"
+	// New: Node -> [ "BIG" ] -> [ "RANGE" ] -> ChildChildren...
+
+	// 1. Create the split child (suffixed part)
+	suffix := child.segment[commonLen:]
+	splitChild := &radixNode{
+		segment:  suffix,
+		children: child.children,
+		leafID:   child.leafID, // Inherits the ID if the original was a leaf
+	}
+
+	// 2. Update the existing child to become the "Prefix Node"
+	child.segment = child.segment[:commonLen] // "BIG"
+	child.children = make(map[byte]*radixNode)
+	child.children[suffix[0]] = splitChild
+	child.leafID = -1 // It wasn't a leaf before (unless exactly at this split point, handled below)
+
+	// 3. Insert the new part
+	remainingSuffix := remaining[commonLen:]
+	if len(remainingSuffix) == 0 {
+		// The new string *is* the prefix.
+		child.leafID = leafID
+	} else {
+		// Branch off for the new string
+		child.children[remainingSuffix[0]] = &radixNode{
+			segment:  remainingSuffix,
+			children: make(map[byte]*radixNode),
+			leafID:   leafID,
+		}
+	}
+}
+
+func sortedChildren(n *radixNode) []*radixNode {
+	keys := make([]byte, 0, len(n.children))
+	for k := range n.children {
+		keys = append(keys, k)
+	}
+	// Sort by byte value for deterministic output
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
+	out := make([]*radixNode, len(keys))
+	for i, k := range keys {
+		out[i] = n.children[k]
+	}
+	return out
+}
+
+// --- Deserializer Updates ---
+
+type boardDeser struct {
+	Packed *packedBoard
+	cache  []string
+}
+
+func newBoardDeserializer(p *packedBoard) *boardDeser {
+	return &boardDeser{
 		Packed: p,
 		cache:  make([]string, len(p.LeafToNode)),
 	}
 }
 
-func (de *Deserializer) reconstructStringFromLeaf(leaf int) (string, *serdeError) {
-	if de.HierarchyDes == nil {
-		return "", newSerdeErrorf("hierarchy deserializer not initialized")
-	}
-	s := de.HierarchyDes.getString(leaf)
-	if s == "" && leaf != 0 {
-		// Depending on your logic, leaf 0 might be valid empty or root.
-		// If GetString returns empty for non-zero leaf, likely an index error or invalid data
-		return "", newSerdeErrorf("invalid leaf index (back reference): %v", leaf)
-	}
-	return s, nil
-}
-
-func (hd *BoardDeserializer) getString(leafID int) string {
+func (hd *boardDeser) getString(leafID int) string {
 	if leafID < 0 || leafID >= len(hd.cache) {
 		return ""
 	}
-	// Return cached if available
 	if hd.cache[leafID] != "" {
 		return hd.cache[leafID]
 	}
 
-	// Reconstruct
 	nodeIdx := hd.Packed.LeafToNode[leafID]
-
-	// We build the string backwards then reverse, or build a list of parts.
 	var parts []string
 
 	for nodeIdx != -1 {
@@ -140,128 +261,14 @@ func (hd *BoardDeserializer) getString(leafID int) string {
 		nodeIdx = hd.Packed.Parents[nodeIdx]
 	}
 
-	// Reverse parts to get correct order
-	// (Opt: Use a pre-allocated buffer on the struct to avoid allocs here)
+	// Reverse
 	for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
 		parts[i], parts[j] = parts[j], parts[i]
 	}
 
-	// Join and Cache
-	fullID := strings.Join(parts, "_")
+	// CHANGE: Join with empty string, not "_".
+	// The Radix Serializer preserves delimiters inside the segments.
+	fullID := strings.Join(parts, "")
 	hd.cache[leafID] = fullID
 	return fullID
-}
-
-// compactFlatBoard performs a path-compression pass on a PackedFlatBoard.
-// It merges linear chains of single-child nodes into single "joined" segments.
-// Input: original packed board (Segments, Parents, SegmentRefs, LeafToNode).
-// Output: a new PackedFlatBoard with fewer nodes and deduped/merged segments.
-func (p *PackedFlatBoard) compactFlatBoard() *PackedFlatBoard {
-	if p == nil || len(p.Parents) == 0 {
-		return p
-	}
-
-	n := len(p.Parents)
-	// build children list for each node
-	children := make([][]int, n)
-	for i := 0; i < n; i++ {
-		parent := int(p.Parents[i])
-		if parent >= 0 && parent < n {
-			children[parent] = append(children[parent], i)
-		}
-	}
-
-	// old->new node index mapping
-	oldToNew := make([]int32, n)
-	for i := range oldToNew {
-		oldToNew[i] = -1
-	}
-
-	newSegments := make([]string, 0, len(p.Segments))
-	newParents := make([]int32, 0, n)
-	newSegRefs := make([]int32, 0, n)
-
-	// Deduplicate combined segments in newSegments
-	segMapNew := make(map[string]int32, len(p.Segments))
-
-	var addNewSegment = func(seg string) int32 {
-		if idx, ok := segMapNew[seg]; ok {
-			return idx
-		}
-		idx := int32(len(newSegments))
-		newSegments = append(newSegments, seg)
-		segMapNew[seg] = idx
-		return idx
-	}
-
-	// recursive DFS that compacts linear chains starting at old node "start"
-	var process func(start int, parentNew int32)
-	process = func(start int, parentNew int32) {
-		// follow chain while there is exactly one child
-		cur := start
-		// collect parts for the chain
-		var parts []string
-
-		// note: we loop at least once and include the start node's segment
-		for {
-			parts = append(parts, p.Segments[p.SegmentRefs[cur]])
-			ch := children[cur]
-			if len(ch) != 1 {
-				// stop: either leaf or branching
-				break
-			}
-			// single child → continue the chain
-			cur = ch[0]
-		}
-
-		// combined segment
-		combined := strings.Join(parts, "_")
-		segIdx := addNewSegment(combined)
-
-		newNodeIdx := int32(len(newParents))
-		newParents = append(newParents, parentNew)
-		newSegRefs = append(newSegRefs, segIdx)
-
-		// map all old nodes belonging to this chain (from start up to cur) to newNodeIdx
-		// we need to walk again from start until we hit cur
-		w := start
-		for {
-			oldToNew[w] = newNodeIdx
-			if w == cur {
-				break
-			}
-			// since earlier we determined chain children length==1, safe to index
-			w = children[w][0]
-		}
-
-		// now process children of cur (these are branching children or terminals)
-		for _, child := range children[cur] {
-			process(child, newNodeIdx)
-		}
-	}
-
-	// identify root nodes (parent == -1); process each root
-	for oldNode := 0; oldNode < n; oldNode++ {
-		if p.Parents[oldNode] == -1 {
-			process(oldNode, -1)
-		}
-	}
-
-	// Build new LeafToNode mapping by mapping old leaf->new node
-	newLeaf := make([]int32, len(p.LeafToNode))
-	for i, oldNode := range p.LeafToNode {
-		if oldNode >= 0 && int(oldNode) < len(oldToNew) {
-			newLeaf[i] = oldToNew[oldNode]
-		} else {
-			// invalid or missing mapping: keep -1 (or choose to error)
-			newLeaf[i] = -1
-		}
-	}
-
-	return &PackedFlatBoard{
-		Segments:    newSegments,
-		Parents:     newParents,
-		SegmentRefs: newSegRefs,
-		LeafToNode:  newLeaf,
-	}
 }
