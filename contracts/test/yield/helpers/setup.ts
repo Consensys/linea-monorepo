@@ -16,11 +16,10 @@ import {
 import { ethers } from "hardhat";
 import {
   ADDRESS_ZERO,
+  BEACON_PROOF_WITNESS_TYPE,
   EMPTY_CALLDATA,
   MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
   ONE_ETHER,
-  ONE_GWEI,
-  VALIDATOR_WITNESS_TYPE,
 } from "../../common/constants";
 import { ClaimMessageWithProofParams } from "./types";
 import { generateLidoUnstakePermissionlessWitness, randomBytes32 } from "./proof";
@@ -348,21 +347,27 @@ export const executeUnstakePermissionless = async (
   yieldProviderAddress: string,
   mockStakingVaultAddress: string,
   refundAddress: string,
-  unstakeAmount: bigint,
 ) => {
-  const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
+  const { eip4788Witness, pubkey, validatorIndex, slot } = await generateLidoUnstakePermissionlessWitness(
     sszMerkleTree,
     verifier,
     mockStakingVaultAddress,
     MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
   );
-  const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
-    ["bytes", "uint64[]", "address"],
-    [pubkey, [unstakeAmount / ONE_GWEI], refundAddress],
+
+  const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(["bytes", "address"], [pubkey, refundAddress]);
+  const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
+    [BEACON_PROOF_WITNESS_TYPE],
+    [eip4788Witness.beaconProofWitness],
   );
-  const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode([VALIDATOR_WITNESS_TYPE], [validatorWitness]);
   // Arrange - first unstake
-  await yieldManager.unstakePermissionless(yieldProviderAddress, withdrawalParams, withdrawalParamsProof);
+  await yieldManager.unstakePermissionless(
+    yieldProviderAddress,
+    validatorIndex,
+    slot,
+    withdrawalParams,
+    withdrawalParamsProof,
+  );
 };
 
 export const incrementMockDashboardTotalValue = async (mockDashboard: MockDashboard, amount: bigint) => {

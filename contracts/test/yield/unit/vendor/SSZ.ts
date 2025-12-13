@@ -2,7 +2,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { TestGIndex, TestSSZ } from "contracts/typechain-types";
 import { deployFromFactory } from "contracts/test/common/deployment";
-import { hexlify, randomBytes, ZeroHash, zeroPadBytes } from "ethers";
+import { hexlify, randomBytes, zeroPadBytes, ZeroHash, sha256, concat, getBytes } from "ethers";
 import { BeaconBlockHeader, PendingPartialWithdrawal, ValidatorContainer } from "contracts/test/yield/helpers/types";
 import { expectRevertWithCustomError } from "contracts/test/common/helpers";
 import { UINT64_MAX } from "contracts/test/common/constants";
@@ -502,6 +502,26 @@ describe("SSZ", () => {
           await gIndexLib.pack(8, 0),
         ),
       ).to.be.revertedWithCustomError(ssz, "BranchHasMissingItem");
+    });
+  });
+
+  describe("sha256Pair", () => {
+    it("zeros + zeros", async () => {
+      const left = ZeroHash;
+      const right = ZeroHash;
+
+      const expected = sha256(concat([getBytes(left), getBytes(right)]));
+      const actual = await ssz.sha256Pair(left, right);
+      expect(actual).to.equal(expected);
+    });
+
+    it("distinct inputs", async () => {
+      const left = "0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5";
+      const right = "0xf4551dd23f47858f0e66957db62a0bced8cfd5e9cbd63f2fd73672ed0db7c124";
+
+      const expected = sha256(concat([getBytes(left), getBytes(right)]));
+      const actual = await ssz.sha256Pair(left, right);
+      expect(actual).to.equal(expected);
     });
   });
 });

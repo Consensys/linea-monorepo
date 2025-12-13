@@ -36,15 +36,7 @@ import {
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import {
-  EMPTY_CALLDATA,
-  MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-  ONE_ETHER,
-  ONE_GWEI,
-  VALIDATOR_WITNESS_TYPE,
-  ZERO_VALUE,
-} from "../../common/constants";
-import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
+import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE } from "../../common/constants";
 
 describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldProvider", () => {
   let nativeYieldOperator: SignerWithAddress;
@@ -525,65 +517,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
     });
   });
 
-  describe("Multiple yield providers", () => {
-    it("Unstake permissionless cap should be shared globally across all yield providers", async () => {
-      // Arrange - add additional yield provider
-      const { yieldProviderAddress: yieldProvider2Address, mockStakingVaultAddress: mockStakingVault2Address } =
-        await deployAndAddAdditionalLidoStVaultYieldProvider(
-          lidoStVaultYieldProviderFactory,
-          yieldManager,
-          securityCouncil,
-          mockVaultFactory,
-        );
-      // Arrange - Prepare first unstakePermissionless
-      const targetDeficit = await yieldManager.getTargetReserveDeficit();
-      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
-        sszMerkleTree,
-        testVerifier,
-        mockStakingVaultAddress,
-        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-      );
-      const refundAddress = nativeYieldOperator.address;
-      const unstakeAmount = [targetDeficit / ONE_GWEI];
-      const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
-        ["bytes", "uint64[]", "address"],
-        [pubkey, unstakeAmount, refundAddress],
-      );
-      const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness],
-      );
-      // Arrange - first unstake
-      await yieldManager.unstakePermissionless(yieldProviderAddress, withdrawalParams, withdrawalParamsProof);
-      expect(await yieldManager.pendingPermissionlessUnstake()).eq(targetDeficit);
-
-      // Arrange - Prepare second unstakePermissionless
-      const { validatorWitness: validatorWitness2, pubkey: pubkey2 } = await generateLidoUnstakePermissionlessWitness(
-        sszMerkleTree,
-        testVerifier,
-        mockStakingVault2Address,
-        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-      );
-
-      const secondWithdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
-        ["bytes", "uint64[]", "address"],
-        [pubkey2, [1n], refundAddress],
-      );
-      const secondWithdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness2],
-      );
-
-      // Act
-      const call = yieldManager.unstakePermissionless(
-        yieldProvider2Address,
-        secondWithdrawalParams,
-        secondWithdrawalParamsProof,
-      );
-      await expectRevertWithCustomError(yieldManager, call, "NoRequirementToUnstakePermissionless");
-    });
-  });
-
   describe("Native yield resilience scenarios", () => {
     it("Should not reduce user funds after repeated negative yield reports", async () => {
       // Arrange - setup user funds
@@ -915,7 +848,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + withdrawableValue);
 
       // Call unstakePermissionless
-      const unstakeAmount = ONE_ETHER * 5n;
       await executeUnstakePermissionless(
         sszMerkleTree,
         testVerifier,
@@ -923,7 +855,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         yieldProviderAddress,
         mockStakingVaultAddress,
         await nativeYieldOperator.getAddress(),
-        unstakeAmount,
       );
 
       // Some more positive yield

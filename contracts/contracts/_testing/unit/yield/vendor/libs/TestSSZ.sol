@@ -37,4 +37,8 @@ contract TestSSZ {
   function toLittleEndianBool(bool v) external pure returns (bytes32) {
     return SSZ.toLittleEndian(v);
   }
+
+  function sha256Pair(bytes32 left, bytes32 right) external view returns (bytes32) {
+    return SSZ.sha256Pair(left, right);
+  }
 }
