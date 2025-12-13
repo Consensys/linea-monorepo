@@ -695,7 +695,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         );
       await expect(call).to.be.reverted;
     });
-    it("Should succeed and update pendingPermissionlessUnstake", async () => {
+    it("Should succeed", async () => {
       // Arrange - Set up withdrawal reserve in deficit
       await setBalance(l1MessageServiceAddress, 0n);
 
@@ -713,15 +713,22 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         [eip4788Witness.beaconProofWitness],
       );
 
-      // Act
-      await expect(
-        await yieldManager
-          .connect(securityCouncil)
-          .unstakePermissionless(yieldProviderAddress, validatorIndex, slot, withdrawalParams, withdrawalParamsProof),
-      ).to.not.be.reverted;
+      // Assert - Check return value using staticcall
+      // Calculate expected unstake amount: effectiveBalance (100 gwei) - MIN_ACTIVATION_BALANCE (32 gwei) = 68 gwei
+      const expectedUnstakeAmountWei = 68n * ONE_ETHER; // 100 - 32 = 68 gwei
 
-      // Assert - Verify pendingPermissionlessUnstake was updated with expected amount
-      // expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(expectedUnstakeAmountWei);
+      // Use staticcall to simulate the call (won't modify state)
+      // Note: YieldManager's unstakePermissionless doesn't return a value, but the yield provider's function does
+      // The yield provider's unstakePermissionless returns: min(requiredUnstakeAmountWei, effectiveBalance - MIN_ACTIVATION_BALANCE - pendingWithdrawals)
+      // Since effectiveBalance = 100 gwei, MIN_ACTIVATION_BALANCE = 32 gwei, and no pending withdrawals:
+      // maxUnstakeable = 100 - 32 - 0 = 68 gwei
+      await yieldManager
+        .connect(securityCouncil)
+        .unstakePermissionless(yieldProviderAddress, validatorIndex, slot, withdrawalParams, withdrawalParamsProof);
+
+      // Assert - Verify the actual unstaked amount matches expected return value
+      // The yield provider returns unstakedAmountWei (68 gwei), which YieldManager uses to update pendingPermissionlessUnstake
+      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(expectedUnstakeAmountWei);
     });
   });
 
