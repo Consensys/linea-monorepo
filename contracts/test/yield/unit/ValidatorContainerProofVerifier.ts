@@ -17,6 +17,7 @@ import { ethers } from "hardhat";
 import {
   GI_FIRST_VALIDATOR_PREV,
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+  ONE_GWEI,
   SHARD_COMMITTEE_PERIOD,
   SLOTS_PER_EPOCH,
 } from "../../common/constants";
@@ -379,6 +380,26 @@ describe("ValidatorContainerProofVerifier", () => {
       verifier,
       verifier.validateActivationEpoch(slot, activationEpoch),
       "ValidatorNotActiveForLongEnough",
+    );
+  });
+
+  it("should verify random pending partial withdrawals with synthetic Merkle proofs", async () => {
+    const randomAddress = ethers.Wallet.createRandom().address;
+    const eip4788Witness = await generateEIP4478Witness(
+      sszMerkleTree,
+      verifier,
+      randomAddress,
+      ONE_GWEI * 32n,
+      [],
+      1000,
+    );
+    const timestamp = await setBeaconBlockRoot(eip4788Witness.blockRoot);
+    // PG style proof verification from PK+WC to BeaconBlockRoot
+    await verifier.verifyPendingPartialWithdrawals(
+      eip4788Witness.beaconProofWitness.pendingPartialWithdrawalsWitness,
+      eip4788Witness.beaconBlockHeader.slot,
+      timestamp,
+      eip4788Witness.beaconProofWitness.proposerIndex,
     );
   });
 });
