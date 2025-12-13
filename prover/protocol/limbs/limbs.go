@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -110,11 +111,11 @@ func (l Limbs[E]) GetRow(run ifaces.Runtime, r int) row[E] {
 	if r < 0 || r >= l.c[0].Size() {
 		utils.Panic("row out of bound: %v, max %v", r, l.c[0].Size())
 	}
-	rowF := make(row[E], len(l.c))
+	rowF := make([]field.Element, len(l.c))
 	for i := range l.c {
 		rowF[i] = l.c[i].GetColAssignmentAt(run, r)
 	}
-	return rowF
+	return row[E]{T: rowF}
 }
 
 // GetRowAsBytes returns the represented bytes for the provided field element. The
@@ -122,13 +123,22 @@ func (l Limbs[E]) GetRow(run ifaces.Runtime, r int) row[E] {
 // has been called.
 func (l Limbs[E]) GetRowAsBytes(run ifaces.Runtime, row int) []byte {
 	rowF := l.GetRow(run, row)
-	return limbsToBytes[E](rowF)
+	return limbsToBytes[E](rowF.T)
 }
 
 // GetRowAsBigInt returns the represented big.Int for the provided field element.
 func (l Limbs[E]) GetRowAsBigInt(run ifaces.Runtime, row int) *big.Int {
 	rowF := l.GetRow(run, row)
-	return limbToBigInt[E](rowF)
+	return limbToBigInt[E](rowF.T)
+}
+
+// GetAssignment returns the assignment in the form of endianness-tagged rows
+func (l Limbs[E]) GetAssignment(run ifaces.Runtime) []row[E] {
+	res := make([]row[E], 0, l.Size())
+	for i := 0; i < l.Size(); i++ {
+		res = append(res, l.GetRow(run, i))
+	}
+	return res
 }
 
 // GetAssignmentAsBytes returns the represented bytes for the provided field
@@ -137,6 +147,21 @@ func (l Limbs[E]) GetAssignmentAsBytes(run ifaces.Runtime) [][]byte {
 	res := make([][]byte, 0, l.Size())
 	for i := 0; i < l.Size(); i++ {
 		res = append(res, l.GetRowAsBytes(run, i))
+	}
+	return res
+}
+
+// GetAssignmentAsByte16Exact returns the represented bytes for the provided field
+// elements. It will panic if the number of bytes stored in each row is not
+// exactly 16.
+func (l Limbs[E]) GetAssignmentAsByte16Exact(run ifaces.Runtime) [][16]byte {
+	res := make([][16]byte, 0, l.Size())
+	if l.NumLimbs() != NbLimbU128 {
+		utils.Panic("only 128-bit are supported")
+	}
+	for i := 0; i < l.Size(); i++ {
+		r := l.GetRowAsBytes(run, i)
+		res = append(res, [16]byte(r))
 	}
 	return res
 }
@@ -211,6 +236,57 @@ func (l Limbs[E]) ToLittleEndianLimbs() Limbed {
 	if isBigEndian[E]() {
 		slices.Reverse(new.c)
 	}
+	return new
+}
+
+// FuseLimbs fuses two limbs into a single limbs. The returned limbs are in the
+// named with the name of hi.
+func FuseLimbs[E Endianness](hi, lo Limbs[E]) Limbs[E] {
+	res := make([]ifaces.Column, len(hi.c)+len(lo.c))
+
+	if isLittleEndian[E]() {
+		copy(res[:len(lo.c)], lo.c)
+		copy(res[len(lo.c):], hi.c)
+		return Limbs[E]{name: hi.name, c: res}
+	}
+
+	copy(res[:len(hi.c)], hi.c)
+	copy(res[len(hi.c):], lo.c)
+	return Limbs[E]{name: hi.name, c: res}
+}
+
+// SplitOnByte splits the limbs into two limbs. The returned limbs are in the named
+// with the name of hi. The returned limbs represent the bytes b[:at] and b[at:]
+// where b are the bytes represented by l. The name of the returned limbs are
+// the one of the original one appended with hi and lo
+func (l Limbs[E]) SplitOnBit(at int) (hi, lo Limbs[E]) {
+
+	splitOnLimbs := utils.DivExact(at, limbBitWidth)
+	if isLittleEndian[E]() {
+		splitOnLimbs = len(l.c) - splitOnLimbs
+	}
+
+	s0 := Limbs[E]{name: l.name, c: l.c[:splitOnLimbs]}
+	s1 := Limbs[E]{name: l.name, c: l.c[splitOnLimbs:]}
+
+	if isLittleEndian[E]() {
+		return s1, s0
+	}
+
+	return s0, s1
+}
+
+// SliceOnBit returns the slice representing lbits[s0:s1]
+func (l Limbs[E]) SliceOnBit(s0, s1 int) Limbs[E] {
+	la, _ := l.SplitOnBit(s1)  // l[:s1]
+	_, lb := la.SplitOnBit(s0) // l[s0:s1]
+	return lb
+}
+
+// Rename renames the limbs. But not the underlying columns.
+func (l Limbs[E]) Rename(name ifaces.ColID) Limbs[E] {
+	new := l
+	new.name = name
 	return new
 }
 

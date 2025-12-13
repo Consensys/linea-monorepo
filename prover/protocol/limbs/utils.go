@@ -8,6 +8,21 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+// FuseRows fuses two rows into a single row
+func FuseRows[E Endianness](hi, lo row[E]) row[E] {
+
+	res := make([]field.Element, 0, hi.NumLimbs()+lo.NumLimbs())
+	res = append(res, hi.T...)
+	res = append(res, lo.T...)
+
+	if isLittleEndian[E]() {
+		slices.Reverse(res[hi.NumLimbs():])
+		slices.Reverse(res[:hi.NumLimbs()])
+	}
+
+	return row[E]{T: res}
+}
+
 // bytesToLimbsVec convert a vector of byteslices into a vector of limbs of form
 // [E].
 func bytesToLimbsVec[E Endianness](bytes [][]byte, numLimbs int) [][]field.Element {

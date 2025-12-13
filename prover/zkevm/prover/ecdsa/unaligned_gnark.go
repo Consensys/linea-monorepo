@@ -1,7 +1,6 @@
 package ecdsa
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -13,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -30,7 +30,7 @@ type UnalignedGnarkData struct {
 	IsPublicKey         ifaces.Column
 	GnarkIndex          ifaces.Column
 	GnarkPublicKeyIndex ifaces.Column
-	GnarkData           [common.NbLimbU128]ifaces.Column
+	GnarkData           limbs.Uint128Le
 
 	// auxiliary columns
 	IsIndex0     ifaces.Column
@@ -55,9 +55,9 @@ type unalignedGnarkDataSource struct {
 	IsFetching ifaces.Column
 	IsData     ifaces.Column
 	IsRes      ifaces.Column
-	Limb       [common.NbLimbU128]ifaces.Column
+	Limb       limbs.Uint128Le
 	SuccessBit ifaces.Column
-	TxHash     [common.NbLimbU256]ifaces.Column
+	TxHash     limbs.Uint128Le
 }
 
 // TxSignatureGetter is a function that is expected a signature for a transaction
@@ -74,12 +74,9 @@ func newUnalignedGnarkData(comp *wizard.CompiledIOP, size int, src *unalignedGna
 
 		IsEcrecoverAndFetching:   createCol("IS_ECRECOVER_AND_FETCHING"),
 		IsNotPublicKeyAndPushing: createCol("IS_NOT_PUBLIC_KEY_AND_PUSHING"),
+		GnarkData:                limbs.NewUint128Le(comp, NAME_UNALIGNED_GNARKDATA+"_GNARK_DATA", size),
 
 		Size: size,
-	}
-
-	for i := 0; i < common.NbLimbU128; i++ {
-		res.GnarkData[i] = createCol(fmt.Sprintf("GNARK_DATA_%d", i))
 	}
 
 	res.csDataIds(comp)
@@ -115,8 +112,8 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 		sourceSource     = run.GetColumn(src.Source.GetColID())
 		sourceIsActive   = run.GetColumn(src.IsActive.GetColID())
 		sourceSuccessBit = run.GetColumn(src.SuccessBit.GetColID())
-		sourceLimb       [common.NbLimbU128]ifaces.ColAssignment
-		sourceTxHash     [common.NbLimbU256]ifaces.ColAssignment
+		sourceLimb       = src.Limb.GetAssignment(run)
+		sourceTxHash     = src.TxHash.GetAssignment(run)
 
 		// prependZeroCount counts the number of zero bytes that are used by
 		// the current frame to fetch the data from its source. Its value
@@ -132,7 +129,7 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 		resIsPublicKey  = common.NewVectorBuilder(d.IsPublicKey)
 		resGnarkIndex   = common.NewVectorBuilder(d.GnarkIndex)
 		resGnarkPkIndex = common.NewVectorBuilder(d.GnarkPublicKeyIndex)
-		resGnarkData    = common.NewMultiVectorBuilder(d.GnarkData[:])
+		resGnarkData    = limbs.NewVectorBuilder(d.GnarkData.AsDynSize())
 	)
 
 	recoverPk := func(h [32]byte, r, s, v *big.Int) (pkX, pkY *big.Int) {
@@ -153,20 +150,6 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 		return pkX, pkY
 	}
 
-	for i := 0; i < common.NbLimbU128; i++ {
-		sourceLimb[i] = run.GetColumn(src.Limb[i].GetColID())
-		if sourceLimb[i].Len() != d.Size {
-			panic("unexpected source limb length")
-		}
-	}
-
-	for i := 0; i < common.NbLimbU256; i++ {
-		sourceTxHash[i] = run.GetColumn(src.TxHash[i].GetColID())
-		if sourceTxHash[i].Len() != d.Size {
-			panic("unexpected source hash length")
-		}
-	}
-
 	if sourceSource.Len() != d.Size || sourceIsActive.Len() != d.Size || sourceSuccessBit.Len() != d.Size {
 		panic("unexpected source length")
 	}
@@ -179,7 +162,7 @@ ecdsaLoop:
 		var (
 			isActive         = sourceIsActive.Get(i)
 			source           = sourceSource.Get(i)
-			dataForCurrEcdsa = make([][common.NbLimbU128]field.Element, nbRowsPerGnarkPushing)
+			dataForCurrEcdsa = make(limbs.VecRow[limbs.LittleEndian], nbRowsPerGnarkPushing)
 			r, s, v          *big.Int
 			h                [32]byte
 			buff             [32]byte
@@ -194,27 +177,23 @@ ecdsaLoop:
 			//		4		5		6		7		8		9		10		11
 			// 		h0, 	h1, 	r0, 	r1, 	s0, 	s1, 	v0, 	v1
 			for k := 4; k < 12; k++ {
-				copy(dataForCurrEcdsa[k][:], common.GetTableRow(i+k-4, sourceLimb[:]))
+				dataForCurrEcdsa[k] = sourceLimb[i+k-4]
 			}
 
-			copy(h[:], common.HiLoLimbsLeToBytesBe(dataForCurrEcdsa[4][:], dataForCurrEcdsa[5][:]))
-			v = common.LimbsLeToBigInt(dataForCurrEcdsa[6][:], dataForCurrEcdsa[7][:])
-			r = common.LimbsLeToBigInt(dataForCurrEcdsa[8][:], dataForCurrEcdsa[9][:])
-			s = common.LimbsLeToBigInt(dataForCurrEcdsa[10][:], dataForCurrEcdsa[11][:])
+			h = limbs.FuseRows(dataForCurrEcdsa[4], dataForCurrEcdsa[5]).ToBytes32()
+			v = limbs.FuseRows(dataForCurrEcdsa[6], dataForCurrEcdsa[7]).ToBigInt()
+			r = limbs.FuseRows(dataForCurrEcdsa[8], dataForCurrEcdsa[9]).ToBigInt()
+			s = limbs.FuseRows(dataForCurrEcdsa[10], dataForCurrEcdsa[11]).ToBigInt()
 
 			if !v.IsUint64() {
 				utils.Panic("v is not a uint64, v %v; r=%v s=%v", v.String(), r.String(), s.String())
 			}
 
 			// The success bit
-			dataForCurrEcdsa[12] = [common.NbLimbU128]field.Element{
-				sourceSuccessBit.Get(i), // implictly followed by 7 zeroes
-			}
+			dataForCurrEcdsa[12] = limbs.RowFromKoala[limbs.LittleEndian](sourceSuccessBit.Get(i), common.NbLimbU128)
 
 			// The ecrecover bit
-			dataForCurrEcdsa[13] = [common.NbLimbU128]field.Element{
-				field.One(), // implictly followed by 7 zeroes
-			}
+			dataForCurrEcdsa[13] = limbs.RowFromInt[limbs.LittleEndian](1, common.NbLimbU128)
 
 			i += NB_ECRECOVER_INPUTS
 
@@ -223,13 +202,11 @@ ecdsaLoop:
 			prependZeroCount = nbRowsPerTxSignFetching
 
 			var (
-				txHashHi = common.GetTableRow(i, sourceTxHash[:8])
-				txHashLo = common.GetTableRow(i, sourceTxHash[8:])
-				txHash   = common.HiLoLimbsLeToBytesBe(txHashHi, txHashLo)
-				sigErr   error
+				txHash = sourceTxHash[i].ToBytes32()
+				sigErr error
 			)
 
-			r, s, v, sigErr = txSigs(txCounter, txHash)
+			r, s, v, sigErr = txSigs(txCounter, txHash[:])
 
 			if sigErr != nil {
 				utils.Panic("error getting tx-signature err=%v, txNum=%v", sigErr, txCounter)
@@ -238,29 +215,28 @@ ecdsaLoop:
 				utils.Panic("v is not a uint64, v=%v", v.String())
 			}
 
-			copy(h[:], txHash)
+			copy(h[:], txHash[:])
 
 			// Add the tx-hash in the rows
-			copy(dataForCurrEcdsa[4][:], txHashHi)
-			copy(dataForCurrEcdsa[5][:], txHashLo)
+			dataForCurrEcdsa[4] = limbs.RowFromBytes[limbs.LittleEndian](txHash[:16])
+			dataForCurrEcdsa[5] = limbs.RowFromBytes[limbs.LittleEndian](txHash[16:])
 
 			v.FillBytes(buff[:])
-			dataForCurrEcdsa[6] = common.Bytes16ToLimbsLe(buff[:16])
-			dataForCurrEcdsa[7] = common.Bytes16ToLimbsLe(buff[16:])
+			dataForCurrEcdsa[6] = limbs.RowFromBytes[limbs.LittleEndian](buff[:16])
+			dataForCurrEcdsa[7] = limbs.RowFromBytes[limbs.LittleEndian](buff[16:])
 
 			r.FillBytes(buff[:])
-			dataForCurrEcdsa[8] = common.Bytes16ToLimbsLe(buff[:16])
-			dataForCurrEcdsa[9] = common.Bytes16ToLimbsLe(buff[16:])
+			dataForCurrEcdsa[8] = limbs.RowFromBytes[limbs.LittleEndian](buff[:16])
+			dataForCurrEcdsa[9] = limbs.RowFromBytes[limbs.LittleEndian](buff[16:])
 
 			s.FillBytes(buff[:])
-			dataForCurrEcdsa[10] = common.Bytes16ToLimbsLe(buff[:16])
-			dataForCurrEcdsa[11] = common.Bytes16ToLimbsLe(buff[16:])
+			dataForCurrEcdsa[10] = limbs.RowFromBytes[limbs.LittleEndian](buff[:16])
+			dataForCurrEcdsa[11] = limbs.RowFromBytes[limbs.LittleEndian](buff[16:])
 
 			// The success bit // implictly followed by 7 zeroes
-			dataForCurrEcdsa[12] = [common.NbLimbU128]field.Element{field.One()}
-
+			dataForCurrEcdsa[12] = limbs.RowFromInt[limbs.LittleEndian](1, common.NbLimbU128)
 			// The ecrecover bit (zero)
-			dataForCurrEcdsa[13] = [common.NbLimbU128]field.Element{}
+			dataForCurrEcdsa[13] = limbs.RowFromInt[limbs.LittleEndian](0, common.NbLimbU128)
 
 			txCounter++
 			i += NB_TX_INPUTS
@@ -275,12 +251,12 @@ ecdsaLoop:
 		// v that we just parsed.
 		pkX, pkY := recoverPk(h, r, s, v)
 		pkX.FillBytes(buff[:])
-		dataForCurrEcdsa[0] = common.Bytes16ToLimbsLe(buff[:16])
-		dataForCurrEcdsa[1] = common.Bytes16ToLimbsLe(buff[16:])
+		dataForCurrEcdsa[0] = limbs.RowFromBytes[limbs.LittleEndian](buff[:16])
+		dataForCurrEcdsa[1] = limbs.RowFromBytes[limbs.LittleEndian](buff[16:])
 
 		pkY.FillBytes(buff[:])
-		dataForCurrEcdsa[2] = common.Bytes16ToLimbsLe(buff[:16])
-		dataForCurrEcdsa[3] = common.Bytes16ToLimbsLe(buff[16:])
+		dataForCurrEcdsa[2] = limbs.RowFromBytes[limbs.LittleEndian](buff[:16])
+		dataForCurrEcdsa[3] = limbs.RowFromBytes[limbs.LittleEndian](buff[16:])
 
 		//
 		// Properly assigning the data
@@ -297,7 +273,7 @@ ecdsaLoop:
 			resIsPublicKey.PushOne()
 			resGnarkPkIndex.PushInt(i)
 			resGnarkIndex.PushInt(i)
-			resGnarkData.PushRow(dataForCurrEcdsa[i][:])
+			resGnarkData.Push(dataForCurrEcdsa[i])
 		}
 
 		// Other phase
@@ -305,14 +281,14 @@ ecdsaLoop:
 			resIsPublicKey.PushZero()
 			resGnarkPkIndex.PushZero()
 			resGnarkIndex.PushInt(i)
-			resGnarkData.PushRow(dataForCurrEcdsa[i][:])
+			resGnarkData.Push(dataForCurrEcdsa[i])
 		}
 	}
 
 	resIsPublicKey.PadAndAssign(run)
 	resGnarkIndex.PadAndAssign(run)
 	resGnarkPkIndex.PadAndAssign(run)
-	resGnarkData.PadAssignZero(run)
+	resGnarkData.PadAndAssignZero(run)
 
 }
 
@@ -421,8 +397,8 @@ func (d *UnalignedGnarkData) csProjectionEcRecover(comp *wizard.CompiledIOP, src
 	comp.InsertProjection(
 		ifaces.QueryIDf("%v_PROJECT_ECRECOVER", NAME_UNALIGNED_GNARKDATA),
 		query.ProjectionInput{
-			ColumnA: src.Limb[:],
-			ColumnB: d.GnarkData[:],
+			ColumnA: src.Limb.ToLittleEndianLimbs().Limbs(),
+			ColumnB: d.GnarkData.ToLittleEndianLimbs().Limbs(),
 			FilterA: d.IsEcrecoverAndFetching,
 			FilterB: d.IsNotPublicKeyAndPushing,
 		},

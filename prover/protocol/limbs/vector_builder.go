@@ -30,6 +30,11 @@ func (b *VectorBuilder[E]) Height() int {
 
 // Push adds a new row to the builder. This does not check for the endianness.
 func (b *VectorBuilder[E]) Push(row row[E]) {
+	b.pushRaw(row.T)
+}
+
+// pushRaw pushes without checking the endianness
+func (b *VectorBuilder[E]) pushRaw(row []field.Element) {
 	if len(row) != b.limbs.NumLimbs() {
 		panic("wrong number of columns")
 	}
@@ -38,55 +43,74 @@ func (b *VectorBuilder[E]) Push(row row[E]) {
 	}
 }
 
+// PushRepeatBytes repeatedly push bytes to the builder
+func (b *VectorBuilder[E]) PushRepeatBytes(x []byte, n int) {
+	for i := 0; i < n; i++ {
+		b.PushBytes(x)
+	}
+}
+
 // PushBigInt pushes a new big.Int to the builder
 func (b *VectorBuilder[E]) PushBigInt(x *big.Int) {
 	row := bigIntToLimbs[E](x, b.limbs.BitSize())
-	b.Push(row)
+	b.pushRaw(row)
 }
 
 // PushBytes pushes a new bytes to the builder
 func (b *VectorBuilder[E]) PushBytes(x []byte) {
 	row := bytesToLimbs[E](x)
-	b.Push(row)
+	b.pushRaw(row)
+}
+
+// PushBytes16 pushes a new bytes to the builder
+func (b *VectorBuilder[E]) PushBytes16(x [16]byte) {
+	b.PushBytes(x[:])
 }
 
 // PushZero pushes a new zero to the builder
 func (b *VectorBuilder[E]) PushZero() {
 	row := make([]field.Element, b.limbs.NumLimbs())
-	b.Push(row)
+	b.pushRaw(row)
+}
+
+// PushSeqOfZeroes pushes a sequence of zeroes to the builder
+func (b *VectorBuilder[E]) PushSeqOfZeroes(n int) {
+	for i := 0; i < n; i++ {
+		b.PushZero()
+	}
 }
 
 // PushOne pushes a row storing the big integer one, respecting the endianness
 // of the limbs.
 func (b *VectorBuilder[E]) PushOne() {
 	row := bigIntToLimbs[E](big.NewInt(1), b.limbs.BitSize())
-	b.Push(row)
+	b.pushRaw(row)
 }
 
 // PushInt pushes a small integer to the builder. It will spread it into limbs
 // if needed.
 func (b *VectorBuilder[E]) PushInt(x int) {
 	row := bigIntToLimbs[E](big.NewInt(int64(x)), b.limbs.BitSize())
-	b.Push(row)
+	b.pushRaw(row)
 }
 
 // PeekAt returns the last pushed row in native form.
 func (b *VectorBuilder[E]) PeekAt(r int) row[E] {
-	row := make([]field.Element, len(b.slices))
-	for i := range row {
-		row[i] = b.slices[i][r]
+	rowF := make([]field.Element, len(b.slices))
+	for i := range rowF {
+		rowF[i] = b.slices[i][r]
 	}
-	return row
+	return row[E]{T: rowF}
 }
 
 // PeekBigIntAt returns the last pushed row in big.Int form.
 func (b *VectorBuilder[E]) PeekBigIntAt(r int) *big.Int {
-	return limbToBigInt[E](b.PeekAt(r))
+	return limbToBigInt[E](b.PeekAt(r).T)
 }
 
 // PeekBytesAt returns the last pushed row in bytes form.
 func (b *VectorBuilder[E]) PeekBytesAt(r int) []byte {
-	return limbsToBytes[E](b.PeekAt(r))
+	return limbsToBytes[E](b.PeekAt(r).T)
 }
 
 // PeekLast returns the last pushed row in native form.

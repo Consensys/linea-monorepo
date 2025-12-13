@@ -42,7 +42,7 @@ func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
 			ugd.IsEcrecoverAndFetching,
 			ugd.IsNotPublicKeyAndPushing,
 		},
-		ugd.GnarkData[:]...,
+		ugd.GnarkData.Limbs()...,
 	)
 }
 

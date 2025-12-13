@@ -15,6 +15,7 @@ type (
 	Uint32Be   = Uint[S32, BigEndian]
 	Uint16Be   = Uint[S16, BigEndian]
 	Uint256Le  = Uint[S256, LittleEndian]
+	Uint160Le  = Uint[S160, LittleEndian]
 	Uint128Le  = Uint[S128, LittleEndian]
 	Uint64Le   = Uint[S64, LittleEndian]
 	Uint32Le   = Uint[S32, LittleEndian]
@@ -84,4 +85,13 @@ func (limbs Limbs[E]) AssertUint128() Uint[S128, E] {
 		utils.Panic("number of columns must be equal to the number of limbs, got %v and %v", limbs.NumLimbs(), NumLimbsOf[S128]())
 	}
 	return Uint[S128, E]{limbs: limbs}
+}
+
+// AssertUint160 converts the slice into a Uint16 object and panicks if the size
+// is not the expected one.
+func (limbs Limbs[E]) AssertUint160() Uint[S160, E] {
+	if limbs.NumLimbs() != NumLimbsOf[S160]() {
+		utils.Panic("number of columns must be equal to the number of limbs, got %v and %v", limbs.NumLimbs(), NumLimbsOf[S160]())
+	}
+	return Uint[S160, E]{limbs: limbs}
 }
