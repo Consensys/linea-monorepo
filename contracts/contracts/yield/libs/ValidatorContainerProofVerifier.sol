@@ -7,6 +7,7 @@ import { SSZ } from "./vendor/lido/SSZ.sol";
 import { Validator } from "./vendor/lido/BeaconTypes.sol";
 import { IValidatorContainerProofVerifier } from "../interfaces/IValidatorContainerProofVerifier.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ErrorUtils } from "../../lib/ErrorUtils.sol";
 
 /**
  * @title ValidatorContainerProofVerifier
@@ -19,7 +20,7 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
  */
 contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerProofVerifier {
   /**
-   * @notice ValidatorContainerProofVerifier accepts concatenated Merkle proofs to verify existence of correct (pubkey, WC, EB, slashed) validator on CL
+   * @notice ValidatorContainerProofVerifier accepts concatenated Merkle proofs to verify existence of entire validator container on CL
    * Proof consists of:
    *  I:   Validator Container Root
    *  II:  Merkle proof of CL state - from Validator Container Root to State Root
@@ -119,12 +120,23 @@ contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerPr
   uint64 private constant SHARD_COMMITTEE_PERIOD = 256;
   uint64 private constant SLOTS_PER_EPOCH = 32;
 
+  /// @notice Emitted when GI_FIRST_VALIDATOR is updated
+  /// @param oldValue The previous GIndex value
+  /// @param newValue The new GIndex value
+  event GIFirstValidatorUpdated(GIndex oldValue, GIndex newValue);
+
+  /// @notice Emitted when GI_PENDING_PARTIAL_WITHDRAWALS_ROOT is updated
+  /// @param oldValue The previous GIndex value
+  /// @param newValue The new GIndex value
+  event GIPendingPartialWithdrawalsRootUpdated(GIndex oldValue, GIndex newValue);
+
   /**
    * @param _admin Address to be granted DEFAULT_ADMIN_ROLE
    * @param _gIFirstValidator packed(general index | depth in Merkle tree, see GIndex.sol) GIndex of first validator in CL state tree
    * @param _gIPendingPartialWithdrawalsRoot packed GIndex of pending partial withdrawals root in CL state tree
    */
   constructor(address _admin, GIndex _gIFirstValidator, GIndex _gIPendingPartialWithdrawalsRoot) {
+    ErrorUtils.revertIfZeroAddress(_admin);
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     GI_FIRST_VALIDATOR = _gIFirstValidator;
     GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = _gIPendingPartialWithdrawalsRoot;
@@ -175,7 +187,7 @@ contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerPr
     bytes32 validatorContainerRootLeaf = SSZ.hashTreeRoot(validator);
 
     // concatenated GIndex for
-    // parent(pubkey + wc) ->  Validator Index in state tree -> stateView Index in Beacon block Tree
+    // Validator Container Root -> Validator Index in state tree -> stateView Index in Beacon block Tree
     GIndex gIndex = concat(
       GI_STATE_ROOT,
       concat(_getValidatorGI(_validatorIndex), GI_VALIDATOR_CONTAINER_ROOT)
@@ -287,7 +299,9 @@ contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerPr
    * @dev Only callable by accounts with DEFAULT_ADMIN_ROLE
    */
   function setGIFirstValidator(GIndex _gIFirstValidator) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    GIndex oldValue = GI_FIRST_VALIDATOR;
     GI_FIRST_VALIDATOR = _gIFirstValidator;
+    emit GIFirstValidatorUpdated(oldValue, _gIFirstValidator);
   }
 
   /**
@@ -296,6 +310,8 @@ contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerPr
    * @dev Only callable by accounts with DEFAULT_ADMIN_ROLE
    */
   function setGIPendingPartialWithdrawalsRoot(GIndex _gIPendingPartialWithdrawalsRoot) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    GIndex oldValue = GI_PENDING_PARTIAL_WITHDRAWALS_ROOT;
     GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = _gIPendingPartialWithdrawalsRoot;
+    emit GIPendingPartialWithdrawalsRootUpdated(oldValue, _gIPendingPartialWithdrawalsRoot);
   }
 }

@@ -21,6 +21,7 @@ import {
   SLOTS_PER_EPOCH,
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import { expectEvent } from "../../common/helpers/expectations";
 
 // TODO Constructor params
 
@@ -67,6 +68,15 @@ describe("ValidatorContainerProofVerifier", () => {
     it("It should grant DEFAULT_ADMIN_ROLE to admin", async () => {
       const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
       expect(await verifier.hasRole(DEFAULT_ADMIN_ROLE, await admin.getAddress())).to.be.true;
+    });
+    it("should revert when admin address is zero", async () => {
+      const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
+      const deployCall = factory.deploy(
+        ethers.ZeroAddress,
+        GI_FIRST_VALIDATOR_PREV,
+        GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+      );
+      await expectRevertWithCustomError(factory, deployCall, "ZeroAddressNotAllowed");
     });
   });
 
@@ -240,10 +250,30 @@ describe("ValidatorContainerProofVerifier", () => {
       expect(await verifier.GI_FIRST_VALIDATOR()).to.equal(newGIndex);
     });
 
+    it("should emit GIFirstValidatorUpdated event when setting GI_FIRST_VALIDATOR", async () => {
+      const oldGIndex = await verifier.GI_FIRST_VALIDATOR();
+      const newGIndex = randomBytes32();
+      await expectEvent(verifier, verifier.connect(admin).setGIFirstValidator(newGIndex), "GIFirstValidatorUpdated", [
+        oldGIndex,
+        newGIndex,
+      ]);
+    });
+
     it("should allow admin to set GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
       const newGIndex = randomBytes32();
       await verifier.connect(admin).setGIPendingPartialWithdrawalsRoot(newGIndex);
       expect(await verifier.GI_PENDING_PARTIAL_WITHDRAWALS_ROOT()).to.equal(newGIndex);
+    });
+
+    it("should emit GIPendingPartialWithdrawalsRootUpdated event when setting GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
+      const oldGIndex = await verifier.GI_PENDING_PARTIAL_WITHDRAWALS_ROOT();
+      const newGIndex = randomBytes32();
+      await expectEvent(
+        verifier,
+        verifier.connect(admin).setGIPendingPartialWithdrawalsRoot(newGIndex),
+        "GIPendingPartialWithdrawalsRootUpdated",
+        [oldGIndex, newGIndex],
+      );
     });
 
     it("should revert when non-admin tries to set GI_FIRST_VALIDATOR", async () => {
