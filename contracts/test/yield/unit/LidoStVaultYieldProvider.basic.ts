@@ -715,7 +715,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
 
       // Act
       await expect(
-        yieldManager
+        await yieldManager
           .connect(securityCouncil)
           .unstakePermissionless(yieldProviderAddress, validatorIndex, slot, withdrawalParams, withdrawalParamsProof),
       ).to.not.be.reverted;

@@ -299,12 +299,7 @@ export const generateEIP4478Witness = async (
   const gi2Root = await sszMerkleTree.getRoot(proofForGI2, validatorMerkleSubtree.root, validatorGIndexInLeftSubtree);
 
   // Verify (ValidatorContainer) leaf against (StateRoot) Merkle root
-  await sszMerkleTree.verifyProof(
-    originalValidatorContainerProof,
-    gi2Root,
-    validatorMerkleSubtree.root,
-    validatorGIndexInLeftSubtree,
-  );
+  await sszMerkleTree.verifyProof(proofForGI2, gi2Root, validatorMerkleSubtree.root, validatorGIndexInLeftSubtree);
 
   // ============================================================================
   // Generate GI=3 from Pending Partial Withdrawals
