@@ -1,13 +1,13 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
-import { deployTestValidatorContainerProofVerifier, ValidatorWitness } from "../helpers";
+import { deployTestValidatorContainerProofVerifier, ValidatorContainerWitness } from "../helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   ACTIVE_0X01_VALIDATOR_PROOF,
   generateBeaconHeader,
   generateEIP4478Witness,
-  generateValidator,
+  generateValidatorContainer,
   prepareLocalMerkleTree,
   randomBytes32,
   randomInt,
@@ -41,7 +41,7 @@ describe("ValidatorContainerProofVerifier", () => {
     firstValidatorLeafIndex = localTree.firstValidatorLeafIndex;
     // populate merkle tree with validators
     for (let i = 1; i < 100; i++) {
-      await sszMerkleTree.addValidatorLeaf(generateValidator().container);
+      await sszMerkleTree.addValidatorLeaf(generateValidatorContainer());
     }
     // after adding validators, all newly added validator indexes will +n from this
     lastValidatorIndex = (await sszMerkleTree.leafCount()) - 1n - firstValidatorLeafIndex;
@@ -80,6 +80,56 @@ describe("ValidatorContainerProofVerifier", () => {
     });
   });
 
+  describe.only("setters", () => {
+    it("should allow admin to set GI_FIRST_VALIDATOR", async () => {
+      const newGIndex = randomBytes32();
+      await verifier.connect(admin).setGIFirstValidator(newGIndex);
+      expect(await verifier.GI_FIRST_VALIDATOR()).to.equal(newGIndex);
+    });
+
+    it("should emit GIFirstValidatorUpdated event when setting GI_FIRST_VALIDATOR", async () => {
+      const oldGIndex = await verifier.GI_FIRST_VALIDATOR();
+      const newGIndex = randomBytes32();
+      await expectEvent(verifier, verifier.connect(admin).setGIFirstValidator(newGIndex), "GIFirstValidatorUpdated", [
+        oldGIndex,
+        newGIndex,
+      ]);
+    });
+
+    it("should allow admin to set GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
+      const newGIndex = randomBytes32();
+      await verifier.connect(admin).setGIPendingPartialWithdrawalsRoot(newGIndex);
+      expect(await verifier.GI_PENDING_PARTIAL_WITHDRAWALS_ROOT()).to.equal(newGIndex);
+    });
+
+    it("should emit GIPendingPartialWithdrawalsRootUpdated event when setting GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
+      const oldGIndex = await verifier.GI_PENDING_PARTIAL_WITHDRAWALS_ROOT();
+      const newGIndex = randomBytes32();
+      await expectEvent(
+        verifier,
+        verifier.connect(admin).setGIPendingPartialWithdrawalsRoot(newGIndex),
+        "GIPendingPartialWithdrawalsRootUpdated",
+        [oldGIndex, newGIndex],
+      );
+    });
+
+    it("should revert when non-admin tries to set GI_FIRST_VALIDATOR", async () => {
+      const newGIndex = randomBytes32();
+      const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
+      await expect(verifier.connect(nonAdmin).setGIFirstValidator(newGIndex)).to.be.revertedWith(
+        buildAccessErrorMessage(nonAdmin, DEFAULT_ADMIN_ROLE),
+      );
+    });
+
+    it("should revert when non-admin tries to set GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
+      const newGIndex = randomBytes32();
+      const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
+      await expect(verifier.connect(nonAdmin).setGIPendingPartialWithdrawalsRoot(newGIndex)).to.be.revertedWith(
+        buildAccessErrorMessage(nonAdmin, DEFAULT_ADMIN_ROLE),
+      );
+    });
+  });
+
   it("should verify precalculated 0x01 validator object in merkle tree", async () => {
     const validatorMerkle = await sszMerkleTree.getValidatorPubkeyWCParentProof(
       ACTIVE_0X01_VALIDATOR_PROOF.witness.validator,
@@ -110,7 +160,7 @@ describe("ValidatorContainerProofVerifier", () => {
 
     const timestamp = await setBeaconBlockRoot(ACTIVE_0X01_VALIDATOR_PROOF.blockRoot);
 
-    const validatorWitness: ValidatorWitness = {
+    const ValidatorContainerWitness: ValidatorContainerWitness = {
       proof: concatenatedProof,
       validatorIndex: ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
       childBlockTimestamp: BigInt(timestamp),
@@ -123,7 +173,7 @@ describe("ValidatorContainerProofVerifier", () => {
 
     // PG style proof verification from PK+WC to BeaconBlockRoot
     await verifier.verifyActiveValidatorContainer(
-      validatorWitness,
+      ValidatorContainerWitness,
       ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.pubkey,
       ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.withdrawalCredentials,
     );
@@ -157,7 +207,7 @@ describe("ValidatorContainerProofVerifier", () => {
     // concatentate all proofs to match PG style
     const concatenatedProof = [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof, ...beaconHeaderMerkle.proof];
 
-    const validatorWitness: ValidatorWitness = {
+    const ValidatorContainerWitness: ValidatorContainerWitness = {
       proof: concatenatedProof,
       validatorIndex: ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
       childBlockTimestamp: 0n,
@@ -170,7 +220,7 @@ describe("ValidatorContainerProofVerifier", () => {
 
     // PG style proof verification from PK+WC to BeaconBlockRoot
     const call = verifier.verifyActiveValidatorContainer(
-      validatorWitness,
+      ValidatorContainerWitness,
       ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.pubkey,
       ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.withdrawalCredentials,
     );
@@ -178,7 +228,7 @@ describe("ValidatorContainerProofVerifier", () => {
   });
 
   it("can verify against dynamic merkle tree", async () => {
-    const validator = generateValidator();
+    const validator = generateValidatorContainer();
 
     const validatorMerkle = await sszMerkleTree.getValidatorPubkeyWCParentProof(validator.container);
 
@@ -243,58 +293,8 @@ describe("ValidatorContainerProofVerifier", () => {
     );
   });
 
-  describe("setters", () => {
-    it("should allow admin to set GI_FIRST_VALIDATOR", async () => {
-      const newGIndex = randomBytes32();
-      await verifier.connect(admin).setGIFirstValidator(newGIndex);
-      expect(await verifier.GI_FIRST_VALIDATOR()).to.equal(newGIndex);
-    });
-
-    it("should emit GIFirstValidatorUpdated event when setting GI_FIRST_VALIDATOR", async () => {
-      const oldGIndex = await verifier.GI_FIRST_VALIDATOR();
-      const newGIndex = randomBytes32();
-      await expectEvent(verifier, verifier.connect(admin).setGIFirstValidator(newGIndex), "GIFirstValidatorUpdated", [
-        oldGIndex,
-        newGIndex,
-      ]);
-    });
-
-    it("should allow admin to set GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
-      const newGIndex = randomBytes32();
-      await verifier.connect(admin).setGIPendingPartialWithdrawalsRoot(newGIndex);
-      expect(await verifier.GI_PENDING_PARTIAL_WITHDRAWALS_ROOT()).to.equal(newGIndex);
-    });
-
-    it("should emit GIPendingPartialWithdrawalsRootUpdated event when setting GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
-      const oldGIndex = await verifier.GI_PENDING_PARTIAL_WITHDRAWALS_ROOT();
-      const newGIndex = randomBytes32();
-      await expectEvent(
-        verifier,
-        verifier.connect(admin).setGIPendingPartialWithdrawalsRoot(newGIndex),
-        "GIPendingPartialWithdrawalsRootUpdated",
-        [oldGIndex, newGIndex],
-      );
-    });
-
-    it("should revert when non-admin tries to set GI_FIRST_VALIDATOR", async () => {
-      const newGIndex = randomBytes32();
-      const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
-      await expect(verifier.connect(nonAdmin).setGIFirstValidator(newGIndex)).to.be.revertedWith(
-        buildAccessErrorMessage(nonAdmin, DEFAULT_ADMIN_ROLE),
-      );
-    });
-
-    it("should revert when non-admin tries to set GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
-      const newGIndex = randomBytes32();
-      const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
-      await expect(verifier.connect(nonAdmin).setGIPendingPartialWithdrawalsRoot(newGIndex)).to.be.revertedWith(
-        buildAccessErrorMessage(nonAdmin, DEFAULT_ADMIN_ROLE),
-      );
-    });
-  });
-
   it("should validate proof with different gIndex after update", async () => {
-    const provenValidator = generateValidator();
+    const provenValidator = generateValidatorContainer();
     const slot = 100000;
     provenValidator.container.activationEpoch = BigInt(Math.floor(slot / 32) - 257);
 
@@ -364,7 +364,7 @@ describe("ValidatorContainerProofVerifier", () => {
     const concatenatedProof = [...eip4788Witness.witness.proof, ...beaconHeaderMerkleSubtreeProof];
     const timestamp = await setBeaconBlockRoot(eip4788Witness.blockRoot);
 
-    const validatorWitness: ValidatorWitness = {
+    const ValidatorContainerWitness: ValidatorContainerWitness = {
       proof: concatenatedProof,
       validatorIndex: eip4788Witness.witness.validatorIndex,
       childBlockTimestamp: BigInt(timestamp),
@@ -377,7 +377,7 @@ describe("ValidatorContainerProofVerifier", () => {
 
     // PG style proof verification from PK+WC to BeaconBlockRoot
     await verifier.verifyActiveValidatorContainer(
-      validatorWitness,
+      ValidatorContainerWitness,
       eip4788Witness.witness.validator.pubkey,
       eip4788Witness.witness.validator.withdrawalCredentials,
     );
@@ -388,8 +388,8 @@ describe("ValidatorContainerProofVerifier", () => {
     const epoch = BigInt(slot) / SLOTS_PER_EPOCH;
     const activationEpoch = epoch - SHARD_COMMITTEE_PERIOD + 1n;
 
-    const { container } = generateValidator();
-    const validatorWitness: ValidatorWitness = {
+    const { container } = generateValidatorContainer();
+    const ValidatorContainerWitness: ValidatorContainerWitness = {
       proof: [],
       validatorIndex: BigInt(randomInt(1743359)),
       effectiveBalance: container.effectiveBalance,
@@ -402,7 +402,7 @@ describe("ValidatorContainerProofVerifier", () => {
 
     await expectRevertWithCustomError(
       verifier,
-      verifier.validateActivationEpoch(validatorWitness),
+      verifier.validateActivationEpoch(ValidatorContainerWitness),
       "ValidatorNotActiveForLongEnough",
     );
   });
