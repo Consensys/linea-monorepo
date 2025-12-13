@@ -271,8 +271,7 @@ export const generateEIP4478Witness = async (
   // ============================================================================
   // Generate pending partial withdrawals
   // ============================================================================
-  const allPendingPartialWithdrawals = generatePendingPartialWithdrawals(...pendingPartialWithdrawals);
-  const pendingPartialWithdrawalsRoot = await sszMerkleTree.hashTreeRoot(allPendingPartialWithdrawals);
+  const pendingPartialWithdrawalsRoot = await sszMerkleTree.hashTreeRoot(pendingPartialWithdrawals);
 
   // We have two fixed nodes in the BeaconState Merkle tree:
   // - validators subtree at generalized index 75
@@ -373,7 +372,7 @@ export const generateEIP4478Witness = async (
 
   const pendingPartialWithdrawalsWitness: PendingPartialWithdrawalsWitness = {
     proof: [...proofForGI3, gi3Root, ...beaconHeaderMerkleSubtree.proof],
-    pendingPartialWithdrawals: allPendingPartialWithdrawals,
+    pendingPartialWithdrawals: pendingPartialWithdrawals,
   };
 
   const timestamp = await setBeaconBlockRoot(beaconRoot);
@@ -400,13 +399,42 @@ export const generateEIP4478Witness = async (
 export const generateLidoUnstakePermissionlessWitness = async (
   sszMerkleTree: SSZMerkleTree,
   verifier: TestValidatorContainerProofVerifier,
-  address: string,
-  effectiveBalance?: bigint,
-): Promise<{ eip4788Witness: EIP4788Witness; pubkey: string; validatorIndex: bigint; slot: bigint }> => {
-  const eip4788Witness = await generateEIP4478Witness(sszMerkleTree, verifier, address, effectiveBalance);
+  withdrawalAddress: string,
+  effectiveBalance: bigint = parseUnits("100", "gwei"),
+  pendingPartialWithdrawals: PendingPartialWithdrawal[] = [],
+  randomPendingPartialWithdrawalsCount: number = 0,
+): Promise<{
+  eip4788Witness: EIP4788Witness;
+  pubkey: string;
+  validatorIndex: bigint;
+  slot: bigint;
+  allPendingPartialWithdrawals: PendingPartialWithdrawal[];
+}> => {
+  // Generate random pending partial withdrawals if requested
+  const randomPendingPartialWithdrawals: PendingPartialWithdrawal[] = [];
+  for (let i = 0; i < randomPendingPartialWithdrawalsCount; i++) {
+    randomPendingPartialWithdrawals.push(generatePendingPartialWithdrawal());
+  }
+
+  // Combine provided and randomly generated pending partial withdrawals
+  const allPendingPartialWithdrawals = [...pendingPartialWithdrawals, ...randomPendingPartialWithdrawals];
+
+  const eip4788Witness = await generateEIP4478Witness(
+    sszMerkleTree,
+    verifier,
+    withdrawalAddress,
+    effectiveBalance,
+    allPendingPartialWithdrawals,
+  );
   const { validatorIndex } = eip4788Witness;
   const { slot } = eip4788Witness.beaconBlockHeader;
-  return { eip4788Witness, validatorIndex, slot: BigInt(slot), pubkey: eip4788Witness.pubkey };
+  return {
+    eip4788Witness,
+    validatorIndex,
+    slot: BigInt(slot),
+    pubkey: eip4788Witness.pubkey,
+    allPendingPartialWithdrawals,
+  };
 };
 
 // Got from this tx - https://hoodi.etherscan.io/tx/0x765837701107347325179c5510959482686456b513776346977617062c294522
