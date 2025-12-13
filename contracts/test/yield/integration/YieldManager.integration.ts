@@ -580,11 +580,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         secondWithdrawalParams,
         secondWithdrawalParamsProof,
       );
-      await expectRevertWithCustomError(
-        yieldManager,
-        call,
-        "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
-      );
+      await expectRevertWithCustomError(yieldManager, call, "NoRequirementToUnstakePermissionless");
     });
   });
 

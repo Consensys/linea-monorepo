@@ -190,13 +190,6 @@ interface IYieldManager {
   );
 
   /**
-   * @notice Emitted when a donation is received.
-   * @param yieldProvider YieldProvider instance whose negative yield was offset.
-   * @param amount Amount of ETH donated.
-   */
-  event DonationProcessed(address indexed yieldProvider, uint256 amount);
-
-  /**
    * @notice Emitted when a yield provider is added.
    * @param yieldProvider YieldProvider instance that was added to the registry.
    * @param yieldProviderVendor Specific type of YieldProvider adaptor.
@@ -263,13 +256,6 @@ interface IYieldManager {
   error UnknownYieldProvider();
 
   /**
-   * @dev Thrown when querying the yield provider registry with an out-of-bounds index.
-   * @param index Supplied registry index.
-   * @param count Current number of registered yield providers.
-   */
-  error YieldProviderIndexOutOfBounds(uint256 index, uint256 count);
-
-  /**
    * @dev Thrown when an unknown L2YieldRecipient address is used.
    */
   error UnknownL2YieldRecipient();
@@ -283,13 +269,6 @@ interface IYieldManager {
    * @dev Thrown when an operation will leave the withdrawal reserve below the minimum threshold.
    */
   error InsufficientWithdrawalReserve();
-
-  /**
-   * @dev Thrown when caller is missing a required role.
-   * @param role1 First accepted role.
-   * @param role2 Second acceptable role.
-   */
-  error CallerMissingRole(bytes32 role1, bytes32 role2);
 
   /**
    * @dev Thrown when a permissionless rebalance operation is attempted when the withdrawal reserve is not in deficit.
@@ -314,12 +293,6 @@ interface IYieldManager {
    * @dev Returned when YieldProvider returns that 0 amount was unstaked.
    */
   error YieldProviderReturnedZeroUnstakeAmount();
-
-  /**
-   * @dev Thrown when a permissionless unstake request exceeds the minimum required amount to restore the reserve to the target threshold,
-   *      taking into consideration available funds in the system that can be routed to the reserve.
-   */
-  error PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
 
   /**
    * @dev Thrown when there are no funds available to replenish the withdrawal reserve.
@@ -381,11 +354,6 @@ interface IYieldManager {
    * @param remainingUserFunds Remaining user funds.
    */
   error YieldProviderHasRemainingFunds(uint256 remainingUserFunds);
-
-  /**
-   * @dev Thrown when removing a YieldProvider with remaining negative yield.
-   */
-  error YieldProviderHasRemainingNegativeYield();
 
   /**
    * @dev Thrown when adding an L2YieldRecipient that has previously been added to the allowlist.
