@@ -3,13 +3,11 @@ package ecarith
 import (
 	"testing"
 
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 func TestEcAddIntegration(t *testing.T) {
@@ -27,10 +25,7 @@ func TestEcAddIntegration(t *testing.T) {
 				Index:   ct.GetCommit(b, "INDEX"),
 				IsData:  ct.GetCommit(b, "IS_DATA"),
 				IsRes:   ct.GetCommit(b, "IS_RES"),
-			}
-
-			for i := 0; i < common.NbLimbU128; i++ {
-				ecAddSource.Limbs[i] = ct.GetCommit(b, fmt.Sprintf("LIMB_%d", i))
+				Limbs:   ct.GetLimbsLe(b, "LIMB", limbs.NbLimbU128).AssertUint128(),
 			}
 
 			ecAdd = newEcAdd(b.CompiledIOP, limits, ecAddSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)})

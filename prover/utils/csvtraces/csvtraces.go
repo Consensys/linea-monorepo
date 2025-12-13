@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -207,6 +208,30 @@ func (c *CsvTrace) GetCommit(b *wizard.Builder, name string) ifaces.Column {
 	return col
 }
 
+func (c *CsvTrace) GetLimbsBe(b *wizard.Builder, name string, numLimbs int) limbs.Limbs[limbs.BigEndian] {
+	length := utils.NextPowerOfTwo(c.nbRows)
+	res := limbs.NewLimbs[limbs.BigEndian](b.CompiledIOP, ifaces.ColID(name), numLimbs, length)
+	colNames := res.ColumnNames()
+	for _, name := range colNames {
+		if _, ok := c.mapped[name]; !ok {
+			utils.Panic("column not found %s", name)
+		}
+	}
+	return res
+}
+
+func (c *CsvTrace) GetLimbsLe(b *wizard.Builder, name string, numLimbs int) limbs.Limbs[limbs.LittleEndian] {
+	length := utils.NextPowerOfTwo(c.nbRows)
+	res := limbs.NewLimbs[limbs.LittleEndian](b.CompiledIOP, ifaces.ColID(name), numLimbs, length)
+	colNames := res.ColumnNames()
+	for _, name := range colNames {
+		if _, ok := c.mapped[name]; !ok {
+			utils.Panic("column not found %s", name)
+		}
+	}
+	return res
+}
+
 func (c *CsvTrace) Assign(run *wizard.ProverRuntime, names ...string) {
 	length := utils.NextPowerOfTwo(c.nbRows)
 	for _, k := range names {
@@ -217,6 +242,11 @@ func (c *CsvTrace) Assign(run *wizard.ProverRuntime, names ...string) {
 			utils.Panic("column not found %s", k)
 		}
 	}
+}
+
+func (c *CsvTrace) AssignLimbs(run *wizard.ProverRuntime, lbs limbs.Limbed) {
+	names := lbs.ColumnNames()
+	c.Assign(run, names...)
 }
 
 func (c *CsvTrace) CheckAssignment(run *wizard.ProverRuntime, names ...string) {

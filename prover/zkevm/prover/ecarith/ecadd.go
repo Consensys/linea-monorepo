@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -43,7 +44,7 @@ func NewEcAddZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetizat
 		Index:   arith.ColumnOf(comp, "ecdata", "INDEX"),
 		IsData:  arith.ColumnOf(comp, "ecdata", "IS_ECADD_DATA"),
 		IsRes:   arith.ColumnOf(comp, "ecdata", "IS_ECADD_RESULT"),
-		Limbs:   arith.LimbColumnsOfArr8(comp, "ecdata", "LIMB"),
+		Limbs:   arithmetization.GetLimbsOfU128[limbs.LittleEndian](arith, comp, "ecdata", "LIMB"),
 	}
 
 	return newEcAdd(
@@ -58,7 +59,7 @@ func NewEcAddZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetizat
 func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, plonkOptions []query.PlonkOption) *EcAdd {
 	size := limits.sizeEcAddIntegration()
 
-	flattenLimbs := common.NewFlattenColumn(comp, common.NbLimbU128, src.Limbs[:], src.CsEcAdd)
+	flattenLimbs := common.NewFlattenColumn(comp, src.Limbs.AsDynSize(), src.CsEcAdd)
 
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_ECADD + "_ALIGNMENT",
@@ -95,7 +96,7 @@ func (em *EcAdd) Assign(run *wizard.ProverRuntime) {
 // fetch data from the EC_DATA module from the arithmetization.
 type EcDataAddSource struct {
 	CsEcAdd ifaces.Column
-	Limbs   [common.NbLimbU128]ifaces.Column
+	Limbs   limbs.Uint128Le
 	Index   ifaces.Column
 	IsData  ifaces.Column
 	IsRes   ifaces.Column

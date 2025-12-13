@@ -1,13 +1,10 @@
 package ecdsa
 
 import (
-	"fmt"
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -23,7 +20,7 @@ import (
 // columns for rlp-txn lives on the arithmetization side.
 type TxSignature struct {
 	Inputs   *txSignatureInputs
-	TxHash   [common.NbLimbU256]ifaces.Column
+	TxHash   limbs.Uint256Le
 	IsTxHash ifaces.Column
 
 	// Provider for keccak, Provider contains the inputs and outputs of keccak hash.
@@ -41,10 +38,7 @@ func newTxSignatures(comp *wizard.CompiledIOP, inp txSignatureInputs) *TxSignatu
 	var res = &TxSignature{
 		IsTxHash: createCol("TX_IS_HASH_HI"),
 		Inputs:   &inp,
-	}
-
-	for i := 0; i < common.NbLimbU256; i++ {
-		res.TxHash[i] = createCol(fmt.Sprintf("TX_HASH_%d", i))
+		TxHash:   limbs.NewUint256Le(comp, NAME_TXSIGNATURE+"_TX_HASH", inp.Ac.Size),
 	}
 
 	commonconstraints.MustBeBinary(comp, res.IsTxHash)
@@ -86,9 +80,10 @@ func (txn *TxSignature) GetProvider(comp *wizard.CompiledIOP, rlpTxn generic.Gen
 
 // it builds an infoModule from native columns
 func (txn *TxSignature) buildInfoModule() generic.GenInfoModule {
+	txHashHi, txHashLo := txn.TxHash.SplitOnBit(128)
 	info := generic.GenInfoModule{
-		HashHi:   txn.TxHash[:common.NbLimbU128],
-		HashLo:   txn.TxHash[common.NbLimbU128:],
+		HashHi:   txHashHi.Limbs(),
+		HashLo:   txHashLo.Limbs(),
 		IsHashHi: txn.IsTxHash,
 		IsHashLo: txn.IsTxHash,
 	}
@@ -100,43 +95,25 @@ func (txn *TxSignature) assignTxSignature(run *wizard.ProverRuntime, nbActualEcR
 
 	var (
 		nbEcRecover = nbActualEcRecover
-		n           = startAt(nbEcRecover)
-		isTxHash    = vector.Repeat(field.Zero(), n)
-		size        = txn.Inputs.Ac.Size
+		n           = startingRowOfTxnSignature(nbEcRecover)
 		permTrace   = keccak.GenerateTrace(txn.Inputs.RlpTxn.ScanStreams(run))
-
-		hashColumns [common.NbLimbU256][]field.Element
+		isTxHash    = common.NewVectorBuilder(txn.IsTxHash)
+		hashColumns = limbs.NewVectorBuilder(txn.TxHash.AsDynSize())
 	)
 
-	for i := 0; i < common.NbLimbU256; i++ {
-		hashColumns[i] = vector.Repeat(field.Zero(), n)
-	}
+	hashColumns.PushSeqOfZeroes(n)
+	isTxHash.PushSeqOfZeroes(n)
 
 	for _, digest := range permTrace.HashOutPut {
-		hashLimbs := common.SplitBytes(digest[:])
-
-		// Initialize limb values for each column of txHash
-		for j, limb := range hashLimbs {
-			var element field.Element
-			element.SetBytes(limb[:])
-
-			repeat := vector.Repeat(element, nbRowsPerTxSign)
-			hashColumns[j] = append(hashColumns[j], repeat...)
-		}
-
-		repeatIsTxHash := vector.Repeat(field.Zero(), nbRowsPerTxSign-1)
-
-		isTxHash = append(isTxHash, field.One())
-		isTxHash = append(isTxHash, repeatIsTxHash...)
+		hashColumns.PushRepeatBytes(digest[:], nbRowsPerTxSign)
+		isTxHash.PushOne()
+		isTxHash.PushSeqOfZeroes(nbRowsPerTxSign - 1)
 	}
 
-	for i := 0; i < common.NbLimbU256; i++ {
-		run.AssignColumn(txn.TxHash[i].GetColID(), smartvectors.RightZeroPadded(hashColumns[i], size))
-	}
-
-	run.AssignColumn(txn.IsTxHash.GetColID(), smartvectors.RightZeroPadded(isTxHash, size))
+	isTxHash.PadAndAssign(run)
+	hashColumns.PadAndAssignZero(run)
 }
 
-func startAt(nbEcRecover int) int {
+func startingRowOfTxnSignature(nbEcRecover int) int {
 	return nbEcRecover * nbRowsPerEcRec
 }

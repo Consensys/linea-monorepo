@@ -4,7 +4,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -68,25 +70,32 @@ type FlattenColumn struct {
 //   - mask: original mask column for original limbs
 //
 // It commits placeholders for flattened limbs and mask, and precomputes the projection mask.
-func NewFlattenColumn(comp *wizard.CompiledIOP, nbLimbsCols int, limbs []ifaces.Column, mask ifaces.Column) *FlattenColumn {
-	onesColumnID := ifaces.ColIDf("%s_FLATTEN_ORIG_LIMBS_MASK", limbs[0].GetColID())
+func NewFlattenColumn[E limbs.Endianness](
+	comp *wizard.CompiledIOP,
+	limbs limbs.Limbs[E],
+	mask ifaces.Column,
+) *FlattenColumn {
 
-	initialSize := mask.Size()
+	var (
+		onesColumnID = ifaces.ColIDf("%s_FLATTEN_ORIG_LIMBS_MASK", limbs.String())
+		initialSize  = mask.Size()
+		nbLimbsCols  = limbs.NumLimbs()
+		// If the column already exists, we assume it is already registered by another circuit.
+		isDuplicated bool
+		onesColumn   ifaces.Column
+	)
 
-	// If the column already exists, we assume it is already registered by another circuit.
-	var isDuplicated bool
-	var onesColumn ifaces.Column
 	if comp.Columns.Exists(onesColumnID) {
 		onesColumn = comp.Columns.GetHandle(onesColumnID)
 	} else {
-		onesColumn = comp.InsertPrecomputed(onesColumnID, smartvectors.NewConstant(field.One(), initialSize))
+		onesColumn = verifiercol.NewConstantCol(field.One(), initialSize, string(onesColumnID))
 	}
 
 	flattenSize := utils.NextPowerOfTwo(initialSize * nbLimbsCols)
 	res := &FlattenColumn{
 		size:          flattenSize,
 		originalMask:  mask,
-		originalLimbs: limbs,
+		originalLimbs: limbs.Limbs(),
 		nbLimbsCols:   nbLimbsCols,
 		onesColumn:    onesColumn,
 		isDuplicated:  isDuplicated,
