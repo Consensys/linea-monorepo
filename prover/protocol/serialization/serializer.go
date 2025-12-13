@@ -120,7 +120,7 @@ type Deserializer struct {
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
 	PointedValues   []any                `cbor:"c"`
-	FlatIDBoard     *packedBoard         `cbor:"h,omitempty"`
+	FlatIDBoard     *PackedBoard         `cbor:"h,omitempty"`
 	Columns         []PackedStructObject `cbor:"e"`
 	Coins           []PackedCoin         `cbor:"g"`
 	Queries         []PackedStructObject `cbor:"i"`
@@ -187,7 +187,6 @@ func Serialize(v any) (bytesOfV []byte, err error) {
 
 	// Finalize the Radix Tree construction.
 	// This converts the buffered unique strings into the flattened arrays (Segments, Parents, etc.)
-
 	ser.FlatBoardSer.finalize()
 	packedObject := ser.PackedObject
 
@@ -220,7 +219,7 @@ func NewDeserializer(packedObject *PackedObject) *Deserializer {
 		de.FlatBoardDes = newBoardDeserializer(packedObject.FlatIDBoard)
 	} else {
 		// Fallback/Empty init if missing (backward compat or empty)
-		de.FlatBoardDes = newBoardDeserializer(&packedBoard{})
+		de.FlatBoardDes = newBoardDeserializer(&PackedBoard{})
 	}
 
 	return de

@@ -1,12 +1,11 @@
 package serialization
 
 import (
-	"sort"
 	"strings"
 )
 
-// packedBoard represents the flattened Radix Tree.
-type packedBoard struct {
+// PackedBoard represents the flattened Radix Tree.
+type PackedBoard struct {
 	// 1. Dictionary of unique longest prefix segments
 	Segments []string `cbor:"s"`
 
@@ -25,7 +24,7 @@ type packedBoard struct {
 
 // boardSer buffers strings and builds a highly compressed Radix tree at the end.
 type boardSer struct {
-	Packed *packedBoard
+	Packed *PackedBoard
 
 	// Buffers for the "Two-Pass" strategy
 	// We map "FullString" -> "LeafID" (index in LeafToNode)
@@ -35,7 +34,7 @@ type boardSer struct {
 
 func newFlatBoardSerializer() *boardSer {
 	return &boardSer{
-		Packed: &packedBoard{
+		Packed: &PackedBoard{
 			Segments:    make([]string, 0),
 			Parents:     make([]int32, 0),
 			SegmentRefs: make([]int32, 0),
@@ -96,7 +95,7 @@ func (h *boardSer) finalize() {
 	// 2. Flatten the tree into the Packed arrays
 	// Root is always conceptually index -1, so we start BFS/DFS from its children.
 
-	// We perform a BFS to keep children near parents in the arrays (optional, but good for locality)
+	// We perform a BFS to keep children near parents in the arrays (good for locality)
 	type queueItem struct {
 		node      *radixNode
 		parentIdx int32
@@ -105,8 +104,9 @@ func (h *boardSer) finalize() {
 	queue := []queueItem{}
 
 	// Initialize queue with root's children
-	// We sort keys to ensure deterministic serialization
-	for _, child := range sortedChildren(root) {
+	// Sorting ensures deterministic radix shape and stable serialized output.
+	// Safe to remove if insertion order is already deterministic.
+	for _, child := range root.children {
 		queue = append(queue, queueItem{child, -1})
 	}
 
@@ -131,7 +131,7 @@ func (h *boardSer) finalize() {
 		}
 
 		// Enqueue children
-		for _, child := range sortedChildren(current.node) {
+		for _, child := range current.node.children {
 			queue = append(queue, queueItem{child, myIdx})
 		}
 	}
@@ -215,29 +215,14 @@ func insertRadix(node *radixNode, remaining string, leafID int) {
 	}
 }
 
-func sortedChildren(n *radixNode) []*radixNode {
-	keys := make([]byte, 0, len(n.children))
-	for k := range n.children {
-		keys = append(keys, k)
-	}
-	// Sort by byte value for deterministic output
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-
-	out := make([]*radixNode, len(keys))
-	for i, k := range keys {
-		out[i] = n.children[k]
-	}
-	return out
-}
-
-// --- Deserializer Updates ---
+// --- Deserializer ---
 
 type boardDeser struct {
-	Packed *packedBoard
+	Packed *PackedBoard
 	cache  []string
 }
 
-func newBoardDeserializer(p *packedBoard) *boardDeser {
+func newBoardDeserializer(p *PackedBoard) *boardDeser {
 	return &boardDeser{
 		Packed: p,
 		cache:  make([]string, len(p.LeafToNode)),
