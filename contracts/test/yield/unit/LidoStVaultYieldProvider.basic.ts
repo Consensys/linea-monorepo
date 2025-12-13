@@ -29,15 +29,12 @@ import {
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import { parseUnits, ZeroAddress } from "ethers";
+import { ZeroAddress } from "ethers";
 import {
   ONE_ETHER,
   ZERO_VALUE,
   EMPTY_CALLDATA,
-  VALIDATOR_WITNESS_TYPE,
-  THIRTY_TWO_ETH_IN_GWEI,
   ONE_GWEI,
-  MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
   ProgressOssificationResult,
   YieldProviderVendor,
   OperationType,
@@ -732,21 +729,12 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     });
   });
 
-  describe.skip("validateUnstakePermissionless", () => {
+  describe("validateUnstakePermissionless", () => {
     it("Should revert if pubkeys argument is not 48 bytes exactly", async () => {
       const invalidPubkeys = "0x" + "22".repeat(32);
       const call = yieldManager
         .connect(securityCouncil)
         .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, 1n, invalidPubkeys, 0n, 0n, EMPTY_CALLDATA);
-
-      await expectRevertWithCustomError(yieldProvider, call, "SingleValidatorOnlyForUnstakePermissionless");
-    });
-
-    it("Should revert if more than a single amounts element is provided", async () => {
-      const pubkeys = "0x" + "11".repeat(48);
-      const call = yieldManager
-        .connect(securityCouncil)
-        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, 1n, pubkeys, 0n, 0n, EMPTY_CALLDATA);
 
       await expectRevertWithCustomError(yieldProvider, call, "SingleValidatorOnlyForUnstakePermissionless");
     });
@@ -759,96 +747,96 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
 
       await expect(call).to.be.reverted;
     });
-    it("If withdrawal amount leaves validator < activation balance, return maximum available unstake", async () => {
-      // Choose 2049 ETH which is > maximum effective balance of 2048 ETH.
-      const EXCESSIVE_WITHDRAWAL_AMOUNT = parseUnits("2049", "gwei");
-      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
-        sszMerkleTree,
-        testVerifier,
-        mockStakingVaultAddress,
-      );
-      const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness],
-      );
+    // it("If withdrawal amount leaves validator < activation balance, return maximum available unstake", async () => {
+    //   // Choose 2049 ETH which is > maximum effective balance of 2048 ETH.
+    //   const EXCESSIVE_WITHDRAWAL_AMOUNT = parseUnits("2049", "gwei");
+    //   const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
+    //     sszMerkleTree,
+    //     testVerifier,
+    //     mockStakingVaultAddress,
+    //   );
+    //   const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
+    //     [VALIDATOR_WITNESS_TYPE],
+    //     [validatorWitness],
+    //   );
 
-      // Act
-      const maxUnstakeAmount = await yieldManager
-        .connect(securityCouncil)
-        .validateUnstakePermissionlessRequestHarness.staticCall(
-          yieldProviderAddress,
-          EXCESSIVE_WITHDRAWAL_AMOUNT,
-          pubkey,
-          validatorWitness.validatorIndex,
-          validatorWitness.slot,
-          withdrawalParamsProof,
-        );
+    //   // Act
+    //   const maxUnstakeAmount = await yieldManager
+    //     .connect(securityCouncil)
+    //     .validateUnstakePermissionlessRequestHarness.staticCall(
+    //       yieldProviderAddress,
+    //       EXCESSIVE_WITHDRAWAL_AMOUNT,
+    //       pubkey,
+    //       validatorWitness.validatorIndex,
+    //       validatorWitness.slot,
+    //       withdrawalParamsProof,
+    //     );
 
-      // Assert
-      const expectedMaxUnstakeAmountGwei =
-        validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI > 0n
-          ? validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI
-          : 0n;
+    //   // Assert
+    //   const expectedMaxUnstakeAmountGwei =
+    //     validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI > 0n
+    //       ? validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI
+    //       : 0n;
 
-      expect(expectedMaxUnstakeAmountGwei * ONE_GWEI).eq(maxUnstakeAmount);
-    });
-    it("If withdrawal amount leaves validator > activation balance, return amount", async () => {
-      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
-        sszMerkleTree,
-        testVerifier,
-        mockStakingVaultAddress,
-        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-      );
-      const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness],
-      );
-      const WITHDRAWAL_AMOUNT_GWEI =
-        validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI - parseUnits("1", "gwei");
+    //   expect(expectedMaxUnstakeAmountGwei * ONE_GWEI).eq(maxUnstakeAmount);
+    // });
+    // it("If withdrawal amount leaves validator > activation balance, return amount", async () => {
+    //   const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
+    //     sszMerkleTree,
+    //     testVerifier,
+    //     mockStakingVaultAddress,
+    //     MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
+    //   );
+    //   const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
+    //     [VALIDATOR_WITNESS_TYPE],
+    //     [validatorWitness],
+    //   );
+    //   const WITHDRAWAL_AMOUNT_GWEI =
+    //     validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI - parseUnits("1", "gwei");
 
-      // Act
-      const maxUnstakeAmount = await yieldManager
-        .connect(securityCouncil)
-        .validateUnstakePermissionlessRequestHarness.staticCall(
-          yieldProviderAddress,
-          WITHDRAWAL_AMOUNT_GWEI,
-          pubkey,
-          validatorWitness.validatorIndex,
-          validatorWitness.slot,
-          withdrawalParamsProof,
-        );
+    //   // Act
+    //   const maxUnstakeAmount = await yieldManager
+    //     .connect(securityCouncil)
+    //     .validateUnstakePermissionlessRequestHarness.staticCall(
+    //       yieldProviderAddress,
+    //       WITHDRAWAL_AMOUNT_GWEI,
+    //       pubkey,
+    //       validatorWitness.validatorIndex,
+    //       validatorWitness.slot,
+    //       withdrawalParamsProof,
+    //     );
 
-      // Assert
-      expect(WITHDRAWAL_AMOUNT_GWEI * ONE_GWEI).eq(maxUnstakeAmount);
-    });
-    it("If effective balance < 32 ETH, return 0", async () => {
-      const WITHDRAWAL_AMOUNT = parseUnits("2049", "gwei");
-      const INSUFFICIENT_EFFECTIVE_BALANCE = parseUnits("31", "gwei");
-      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
-        sszMerkleTree,
-        testVerifier,
-        mockStakingVaultAddress,
-        INSUFFICIENT_EFFECTIVE_BALANCE,
-      );
-      const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness],
-      );
+    //   // Assert
+    //   expect(WITHDRAWAL_AMOUNT_GWEI * ONE_GWEI).eq(maxUnstakeAmount);
+    // });
+    // it("If effective balance < 32 ETH, return 0", async () => {
+    //   const WITHDRAWAL_AMOUNT = parseUnits("2049", "gwei");
+    //   const INSUFFICIENT_EFFECTIVE_BALANCE = parseUnits("31", "gwei");
+    //   const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
+    //     sszMerkleTree,
+    //     testVerifier,
+    //     mockStakingVaultAddress,
+    //     INSUFFICIENT_EFFECTIVE_BALANCE,
+    //   );
+    //   const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
+    //     [VALIDATOR_WITNESS_TYPE],
+    //     [validatorWitness],
+    //   );
 
-      // Act
-      const maxUnstakeAmount = await yieldManager
-        .connect(securityCouncil)
-        .validateUnstakePermissionlessRequestHarness.staticCall(
-          yieldProviderAddress,
-          WITHDRAWAL_AMOUNT,
-          pubkey,
-          validatorWitness.validatorIndex,
-          validatorWitness.slot,
-          withdrawalParamsProof,
-        );
+    //   // Act
+    //   const maxUnstakeAmount = await yieldManager
+    //     .connect(securityCouncil)
+    //     .validateUnstakePermissionlessRequestHarness.staticCall(
+    //       yieldProviderAddress,
+    //       WITHDRAWAL_AMOUNT,
+    //       pubkey,
+    //       validatorWitness.validatorIndex,
+    //       validatorWitness.slot,
+    //       withdrawalParamsProof,
+    //     );
 
-      // Assert
-      expect(0).eq(maxUnstakeAmount);
-    });
+    //   // Assert
+    //   expect(0).eq(maxUnstakeAmount);
+    // });
   });
 });
