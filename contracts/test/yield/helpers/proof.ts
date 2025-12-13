@@ -290,7 +290,7 @@ export const generateEIP4478Witness = async (
   // Generate random pending partial withdrawals if requested
   const randomPendingPartialWithdrawals: PendingPartialWithdrawal[] = [];
   for (let i = 0; i < randomPendingPartialWithdrawalsCount; i++) {
-    randomPendingPartialWithdrawals.push(generatePendingPartialWithdrawal(validatorIndex));
+    randomPendingPartialWithdrawals.push(generatePendingPartialWithdrawal());
   }
 
   // Combine mapped and randomly generated pending partial withdrawals

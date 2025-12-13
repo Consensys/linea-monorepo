@@ -881,13 +881,17 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       expect(unstakedAmountGwei).eq(0n);
     });
     it("Should clamp unstaked amount by pending partial withdrawals", async () => {
-      const unstakeAmountWei = ONE_ETHER * 100n;
+      const unstakeAmountWei = ONE_ETHER * 1000n;
+      const effectiveBalance = ONE_GWEI * 1000n;
+      const pendingPartialWithdrawalsGwei = [ONE_GWEI * 10n, ONE_GWEI * 20n];
 
       const { eip4788Witness, pubkey, validatorIndex, slot } = await generateLidoUnstakePermissionlessWitness(
         sszMerkleTree,
         testVerifier,
         mockStakingVaultAddress,
-        ONE_GWEI * 31n,
+        effectiveBalance,
+        pendingPartialWithdrawalsGwei,
+        1,
       );
 
       const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
@@ -917,7 +921,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
           withdrawalParamsProof,
         );
 
-      expect(unstakedAmountGwei).eq(0n);
+      expect(unstakedAmountGwei).eq(
+        effectiveBalance - 32n * ONE_GWEI - pendingPartialWithdrawalsGwei[0] - pendingPartialWithdrawalsGwei[1],
+      );
     });
   });
 });
