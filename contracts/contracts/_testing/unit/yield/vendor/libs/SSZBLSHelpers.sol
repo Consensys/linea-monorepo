@@ -55,6 +55,10 @@ contract SSZBLSHelpers {
     return fls(gIndex.index());
   }
 
+  function sha256Pair(bytes32 left, bytes32 right) public view returns (bytes32 result) {
+    return SSZ.sha256Pair(left, right);
+  }
+
   // canonical implementation from original SSZ
   function validatorHashTreeRootCalldata(Validator calldata validator) public view returns (bytes32 root) {
     bytes32 pubkeyRoot;

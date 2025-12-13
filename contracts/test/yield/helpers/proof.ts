@@ -11,7 +11,13 @@ import {
 } from "./types";
 import { SecretKey } from "@chainsafe/blst";
 import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
-import { FAR_FUTURE_EXIT_EPOCH, SHARD_COMMITTEE_PERIOD, SLOTS_PER_EPOCH } from "../../common/constants";
+import {
+  FAR_FUTURE_EXIT_EPOCH,
+  GI_FIRST_VALIDATOR_CURR,
+  GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+  SHARD_COMMITTEE_PERIOD,
+  SLOTS_PER_EPOCH,
+} from "../../common/constants";
 
 export interface LocalMerkleTree {
   sszMerkleTree: SSZMerkleTree;
@@ -266,6 +272,7 @@ export const generateEIP4478Witness = async (
   }
 
   const validatorIndex = ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex;
+  // ValidatorContainer -> StateRoot
   const originalValidatorContainerProof = [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof];
 
   // ============================================================================
@@ -295,6 +302,7 @@ export const generateEIP4478Witness = async (
 
   const validatorMerkleSubtree = await sszMerkleTree.getValidatorPubkeyWCParentProof(validatorContainer);
   const validatorGIndexInLeftSubtree = await verifier.getValidatorGIInLeftSubtree(validatorIndex);
+  // Remove last element gI3
   const proofForGI2 = originalValidatorContainerProof.slice(0, -1);
   const gi2Root = await sszMerkleTree.getRoot(proofForGI2, validatorMerkleSubtree.root, validatorGIndexInLeftSubtree);
 
@@ -334,6 +342,20 @@ export const generateEIP4478Witness = async (
     "0x0000000000000000000000000000000000000000000000000000000000000200",
   );
 
+  await sszMerkleTree.verifyProof(
+    [...proofForGI3, gi2Root],
+    stateRoot,
+    pendingPartialWithdrawalsRoot,
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+  );
+
+  await sszMerkleTree.verifyProof(
+    [...proofForGI2, gi3Root],
+    stateRoot,
+    validatorMerkleSubtree.root,
+    GI_FIRST_VALIDATOR_CURR,
+  );
+
   // ============================================================================
   // Generate beacon chain header and beacon root
   // ============================================================================
@@ -353,6 +375,9 @@ export const generateEIP4478Witness = async (
     stateRoot,
     beaconHeaderMerkleSubtree.index,
   );
+
+  console.log("stateRoot", stateRoot);
+  console.log("beaconHeaderMerkleSubtree.proof", beaconHeaderMerkleSubtree.proof);
 
   // ============================================================================
   // Generate BeaconProofWitness
