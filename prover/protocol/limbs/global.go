@@ -1,6 +1,7 @@
 package limbs
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -29,6 +30,21 @@ func NewLocal(comp *wizard.CompiledIOP, name ifaces.QueryID, expr *symbolic.Expr
 		res[i] = comp.InsertLocal(0, name, splittedExpressions[i])
 	}
 	return res
+}
+
+// Shift converts the Limbed object into one whose columns are shifted by the
+// provided offset.
+func Shift[E Endianness](l Limbs[E], offset int) Limbs[E] {
+	var (
+		newName = ifaces.ColIDf("%v_SHIFTED_%v", l.name, offset)
+		new     = Limbs[E]{name: ifaces.ColID(newName), c: make([]ifaces.Column, len(l.c))}
+	)
+
+	for i := range l.c {
+		new.c[i] = column.Shift(l.c[i], offset)
+	}
+
+	return new
 }
 
 func splitExpressions(expr *symbolic.Expression) []*symbolic.Expression {
