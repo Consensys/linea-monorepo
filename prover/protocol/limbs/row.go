@@ -1,10 +1,12 @@
 package limbs
 
 import (
+	"fmt"
 	"math/big"
 	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Since row is not constructible. We still expose an alias for vectors of
@@ -98,7 +100,15 @@ func (r row[E]) ToBytes32() [32]byte {
 // SplitOnBit splits the row into two rows. The first row contains the first
 // half of the limbs and the second row contains the second half of the limbs.
 func (r row[E]) SplitOnBit(at int) (row[E], row[E]) {
+	if at < 0 || at >= r.NumLimbs()*limbBitWidth {
+		utils.Panic("at out of bound: %v, max %v", at, r.NumLimbs()*limbBitWidth)
+	}
+	if at%limbBitWidth != 0 {
+		utils.Panic("at (%v) must be a multiple of %v", at, limbBitWidth)
+	}
+	atByte := utils.DivExact(at, 8) // The divisibility by limbBitWidth is already checked
 	buf := r.ToBytes()
-	hi, lo := buf[:at/8], buf[at/8:]
+	hi, lo := buf[:atByte], buf[atByte:]
+	fmt.Printf("hi: %x\nlo: %x\n", hi, lo)
 	return RowFromBytes[E](hi), RowFromBytes[E](lo)
 }
