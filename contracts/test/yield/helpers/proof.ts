@@ -430,6 +430,7 @@ export const generateEIP4478Witness = async (
     beaconBlockHeader: beaconHeader,
     validatorIndex: ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
     pubkey: validatorContainer.pubkey,
+    withdrawalCredentials,
     beaconProofWitness: beaconProofWitness,
   };
 

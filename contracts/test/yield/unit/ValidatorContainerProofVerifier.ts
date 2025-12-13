@@ -80,7 +80,7 @@ describe("ValidatorContainerProofVerifier", () => {
     });
   });
 
-  describe.only("setters", () => {
+  describe("setters", () => {
     it("should allow admin to set GI_FIRST_VALIDATOR", async () => {
       const newGIndex = randomBytes32();
       await verifier.connect(admin).setGIFirstValidator(newGIndex);
@@ -141,7 +141,7 @@ describe("ValidatorContainerProofVerifier", () => {
 
     // Verify (ValidatorContainer) leaf against (StateRoot) Merkle root
     await sszMerkleTree.verifyProof(
-      ACTIVE_0X01_VALIDATOR_PROOF.witness.proof,
+      [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof],
       ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.stateRoot,
       validatorMerkle.root,
       validatorGIndex,
@@ -162,10 +162,6 @@ describe("ValidatorContainerProofVerifier", () => {
 
     const ValidatorContainerWitness: ValidatorContainerWitness = {
       proof: concatenatedProof,
-      validatorIndex: ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
-      childBlockTimestamp: BigInt(timestamp),
-      slot: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.slot),
-      proposerIndex: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.proposerIndex),
       effectiveBalance: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.effectiveBalance),
       activationEpoch: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.activationEpoch),
       activationEligibilityEpoch: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.activationEligibilityEpoch),
@@ -176,6 +172,10 @@ describe("ValidatorContainerProofVerifier", () => {
       ValidatorContainerWitness,
       ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.pubkey,
       ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.withdrawalCredentials,
+      ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
+      ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.slot,
+      timestamp,
+      ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.proposerIndex,
     );
   });
 
@@ -190,7 +190,7 @@ describe("ValidatorContainerProofVerifier", () => {
 
     // Verify (ValidatorContainer) leaf against (StateRoot) Merkle root
     await sszMerkleTree.verifyProof(
-      ACTIVE_0X01_VALIDATOR_PROOF.witness.proof,
+      [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof],
       ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.stateRoot,
       validatorMerkle.root,
       validatorGIndex,
@@ -209,10 +209,6 @@ describe("ValidatorContainerProofVerifier", () => {
 
     const ValidatorContainerWitness: ValidatorContainerWitness = {
       proof: concatenatedProof,
-      validatorIndex: ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
-      childBlockTimestamp: 0n,
-      slot: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.slot),
-      proposerIndex: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.proposerIndex),
       effectiveBalance: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.effectiveBalance),
       activationEpoch: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.activationEpoch),
       activationEligibilityEpoch: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.activationEligibilityEpoch),
@@ -223,6 +219,10 @@ describe("ValidatorContainerProofVerifier", () => {
       ValidatorContainerWitness,
       ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.pubkey,
       ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.withdrawalCredentials,
+      ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
+      ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.slot,
+      0,
+      ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.proposerIndex,
     );
     expectRevertWithCustomError(verifier, call, "RootNotFound");
   });
@@ -230,7 +230,7 @@ describe("ValidatorContainerProofVerifier", () => {
   it("can verify against dynamic merkle tree", async () => {
     const validator = generateValidatorContainer();
 
-    const validatorMerkle = await sszMerkleTree.getValidatorPubkeyWCParentProof(validator.container);
+    const validatorMerkle = await sszMerkleTree.getValidatorPubkeyWCParentProof(validator);
 
     // Verify (PK+WC) leaf against (ValidatorRoot) Merkle root
     await sszMerkleTree.verifyProof(
@@ -251,7 +251,7 @@ describe("ValidatorContainerProofVerifier", () => {
     await newVerifier.waitForDeployment();
 
     // add validator to CL state merkle tree
-    await sszMerkleTree.addValidatorLeaf(validator.container);
+    await sszMerkleTree.addValidatorLeaf(validator);
     const validatorIndex = lastValidatorIndex + 1n;
     const stateRoot = await sszMerkleTree.getMerkleRoot();
 
@@ -265,7 +265,7 @@ describe("ValidatorContainerProofVerifier", () => {
     await sszMerkleTree.verifyProof([...stateProof], stateRoot, validatorMerkle.root, validatorGIndex);
 
     // Pass ValidatorNotActiveForLongEnough() error
-    const activationEpoch = validator.container.activationEpoch;
+    const activationEpoch = validator.activationEpoch;
     const minimumSlot = 32n * (activationEpoch + 256n) + 1n;
 
     const beaconHeader = generateBeaconHeader(stateRoot, Number(minimumSlot));
@@ -279,24 +279,24 @@ describe("ValidatorContainerProofVerifier", () => {
 
     await newVerifier.verifyActiveValidatorContainer(
       {
-        validatorIndex,
         proof: [...proof],
-        childBlockTimestamp: timestamp,
-        slot: beaconHeader.slot,
-        proposerIndex: beaconHeader.proposerIndex,
-        effectiveBalance: validator.container.effectiveBalance,
-        activationEpoch: validator.container.activationEpoch,
-        activationEligibilityEpoch: validator.container.activationEligibilityEpoch,
+        effectiveBalance: validator.effectiveBalance,
+        activationEpoch: validator.activationEpoch,
+        activationEligibilityEpoch: validator.activationEligibilityEpoch,
       },
-      validator.container.pubkey,
-      validator.container.withdrawalCredentials,
+      validator.pubkey,
+      validator.withdrawalCredentials,
+      validatorIndex,
+      beaconHeader.slot,
+      timestamp,
+      beaconHeader.proposerIndex,
     );
   });
 
   it("should validate proof with different gIndex after update", async () => {
     const provenValidator = generateValidatorContainer();
     const slot = 100000;
-    provenValidator.container.activationEpoch = BigInt(Math.floor(slot / 32) - 257);
+    provenValidator.activationEpoch = BigInt(Math.floor(slot / 32) - 257);
 
     const prepareCLState = async (gIndex: string, slotNum: number) => {
       const {
@@ -304,7 +304,7 @@ describe("ValidatorContainerProofVerifier", () => {
         gIFirstValidator,
         firstValidatorLeafIndex: localFirstValidatorLeafIndex,
       } = await prepareLocalMerkleTree(gIndex);
-      await localTree.addValidatorLeaf(provenValidator.container);
+      await localTree.addValidatorLeaf(provenValidator);
 
       const gIndexProven = await localTree.getGeneralizedIndex(localFirstValidatorLeafIndex + 1n);
       const stateProof = await localTree.getMerkleProof(localFirstValidatorLeafIndex + 1n);
@@ -341,45 +341,32 @@ describe("ValidatorContainerProofVerifier", () => {
     await newVerifier.verifyActiveValidatorContainer(
       {
         proof: curr.proof,
-        validatorIndex: 1n,
-        childBlockTimestamp: timestampCurr,
-        slot: curr.beaconHeader.slot,
-        proposerIndex: curr.beaconHeader.proposerIndex,
-        effectiveBalance: provenValidator.container.effectiveBalance,
-        activationEpoch: provenValidator.container.activationEpoch,
-        activationEligibilityEpoch: provenValidator.container.activationEligibilityEpoch,
+        effectiveBalance: provenValidator.effectiveBalance,
+        activationEpoch: provenValidator.activationEpoch,
+        activationEligibilityEpoch: provenValidator.activationEligibilityEpoch,
       },
-      provenValidator.container.pubkey,
-      provenValidator.container.withdrawalCredentials,
+      provenValidator.pubkey,
+      provenValidator.withdrawalCredentials,
+      1n,
+      curr.beaconHeader.slot,
+      timestampCurr,
+      curr.beaconHeader.proposerIndex,
     );
   });
 
   it("should verify fabricated 0x02 validator object in merkle tree", async () => {
     const randomAddress = ethers.Wallet.createRandom().address;
-    const { eip4788Witness, beaconHeaderMerkleSubtreeProof } = await generateEIP4478Witness(
-      sszMerkleTree,
-      verifier,
-      randomAddress,
-    );
-    const concatenatedProof = [...eip4788Witness.witness.proof, ...beaconHeaderMerkleSubtreeProof];
+    const eip4788Witness = await generateEIP4478Witness(sszMerkleTree, verifier, randomAddress);
     const timestamp = await setBeaconBlockRoot(eip4788Witness.blockRoot);
-
-    const ValidatorContainerWitness: ValidatorContainerWitness = {
-      proof: concatenatedProof,
-      validatorIndex: eip4788Witness.witness.validatorIndex,
-      childBlockTimestamp: BigInt(timestamp),
-      slot: BigInt(eip4788Witness.beaconBlockHeader.slot),
-      proposerIndex: BigInt(eip4788Witness.beaconBlockHeader.proposerIndex),
-      effectiveBalance: BigInt(eip4788Witness.witness.validator.effectiveBalance),
-      activationEpoch: BigInt(eip4788Witness.witness.validator.activationEpoch),
-      activationEligibilityEpoch: BigInt(eip4788Witness.witness.validator.activationEligibilityEpoch),
-    };
-
     // PG style proof verification from PK+WC to BeaconBlockRoot
     await verifier.verifyActiveValidatorContainer(
-      ValidatorContainerWitness,
-      eip4788Witness.witness.validator.pubkey,
-      eip4788Witness.witness.validator.withdrawalCredentials,
+      eip4788Witness.beaconProofWitness.validatorContainerWitness,
+      eip4788Witness.pubkey,
+      eip4788Witness.withdrawalCredentials,
+      eip4788Witness.validatorIndex,
+      eip4788Witness.beaconBlockHeader.slot,
+      timestamp,
+      eip4788Witness.beaconProofWitness.proposerIndex,
     );
   });
 
@@ -388,21 +375,9 @@ describe("ValidatorContainerProofVerifier", () => {
     const epoch = BigInt(slot) / SLOTS_PER_EPOCH;
     const activationEpoch = epoch - SHARD_COMMITTEE_PERIOD + 1n;
 
-    const { container } = generateValidatorContainer();
-    const ValidatorContainerWitness: ValidatorContainerWitness = {
-      proof: [],
-      validatorIndex: BigInt(randomInt(1743359)),
-      effectiveBalance: container.effectiveBalance,
-      childBlockTimestamp: BigInt(randomInt(1743359)),
-      slot: BigInt(slot),
-      activationEpoch,
-      activationEligibilityEpoch: activationEpoch - 10n,
-      proposerIndex: BigInt(randomInt(1743359)),
-    };
-
     await expectRevertWithCustomError(
       verifier,
-      verifier.validateActivationEpoch(ValidatorContainerWitness),
+      verifier.validateActivationEpoch(slot, activationEpoch),
       "ValidatorNotActiveForLongEnough",
     );
   });
