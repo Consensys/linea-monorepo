@@ -140,11 +140,10 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	// ecdata is already projected over our ecRecover. Thus, we only project from our ecrecover.
 
 	// Check that first 6 elements (trimmed 12 bytes) of address higher part are all 0
-	for i := common.NbLimbU32; i < common.NbLimbU128; i++ {
-		comp.InsertGlobal(0, ifaces.QueryIDf("Trimmed_Bytes_Zeros_%d", i),
-			sym.Mul(addr.IsAddressHiEcRec, addr.IsAddressFromEcRec, ecRec.Limb[i]),
-		)
-	}
+	limbs.NewGlobal(
+		comp,
+		"Trimmed_Bytes_Zeros",
+		sym.Mul(addr.IsAddressHiEcRec, addr.IsAddressFromEcRec, ecRec.Limb.SliceOnBit(0, 96)))
 
 	comp.InsertProjection(ifaces.QueryIDf("Project_AddressHi_EcRec"),
 		query.ProjectionInput{

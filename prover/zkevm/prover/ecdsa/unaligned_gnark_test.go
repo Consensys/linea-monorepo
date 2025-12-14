@@ -2,9 +2,10 @@ package ecdsa
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"os"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -32,14 +33,8 @@ func TestUnalignedGnarkDataAssign(t *testing.T) {
 			SuccessBit: ct.GetCommit(build, "SUCCESS_BIT"),
 			IsData:     ct.GetCommit(build, "IS_DATA"),
 			IsRes:      ct.GetCommit(build, "IS_RES"),
-		}
-
-		for i := 0; i < common.NbLimbU128; i++ {
-			uagSrc.Limb[i] = ct.GetCommit(build, fmt.Sprintf("LIMB_%d", i))
-		}
-
-		for i := 0; i < common.NbLimbU256; i++ {
-			uagSrc.TxHash[i] = ct.GetCommit(build, fmt.Sprintf("TX_HASH_%d", i))
+			Limb:       ct.GetLimbsLe(build, "LIMB", common.NbLimbU128).AssertUint128(),
+			TxHash:     ct.GetLimbsLe(build, "TX_HASH", common.NbLimbU256).AssertUint256(),
 		}
 
 		uag = newUnalignedGnarkData(build.CompiledIOP, ct.LenPadded(), uagSrc)
@@ -59,11 +54,7 @@ func TestUnalignedGnarkDataAssign(t *testing.T) {
 		uag.Assign(run, uagSrc, dummyTxSignatureGetter)
 
 		assignementNames := []string{string(uag.IsPublicKey.GetColID()), string(uag.GnarkIndex.GetColID())}
-
-		for i := 0; i < common.NbLimbU128; i++ {
-			assignementNames = append(assignementNames, string(uag.GnarkData[i].GetColID()))
-		}
-
+		assignementNames = append(assignementNames, uag.GnarkData.ColumnNames()...)
 		ct.CheckAssignment(run, assignementNames...)
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {

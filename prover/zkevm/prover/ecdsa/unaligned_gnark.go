@@ -57,7 +57,7 @@ type unalignedGnarkDataSource struct {
 	IsRes      ifaces.Column
 	Limb       limbs.Uint128Le
 	SuccessBit ifaces.Column
-	TxHash     limbs.Uint128Le
+	TxHash     limbs.Uint256Le
 }
 
 // TxSignatureGetter is a function that is expected a signature for a transaction
@@ -406,20 +406,16 @@ func (d *UnalignedGnarkData) csProjectionEcRecover(comp *wizard.CompiledIOP, src
 }
 
 func (d *UnalignedGnarkData) csTxHash(comp *wizard.CompiledIOP, src *unalignedGnarkDataSource) {
-	// that we have projected correctly txHashHi and txHashLo
-	for i := 0; i < common.NbLimbU128; i++ {
-		comp.InsertGlobal(
-			ROUND_NR,
-			ifaces.QueryIDf("%v_%v_%d", NAME_UNALIGNED_GNARKDATA, "TXHASH_HI", i),
-			sym.Mul(d.IsIndex4, src.Source, sym.Sub(d.GnarkData[i], src.TxHash[i])),
-		)
 
-		comp.InsertGlobal(
-			ROUND_NR,
-			ifaces.QueryIDf("%v_%v_%d", NAME_UNALIGNED_GNARKDATA, "TXHASH_LO", i),
-			sym.Mul(d.IsIndex5, src.Source, sym.Sub(d.GnarkData[i], src.TxHash[i+common.NbLimbU128])),
-		)
-	}
+	limbs.NewGlobal(comp,
+		ifaces.QueryIDf("%v_%v", NAME_UNALIGNED_GNARKDATA, "TXHASH_HI"),
+		sym.Mul(d.IsIndex4, src.Source, sym.Sub(d.GnarkData, src.TxHash.SliceOnBit(0, 128))),
+	)
+
+	limbs.NewGlobal(comp,
+		ifaces.QueryIDf("%v_%v", NAME_UNALIGNED_GNARKDATA, "TXHASH_LO"),
+		sym.Mul(d.IsIndex5, src.Source, sym.Sub(d.GnarkData, src.TxHash.SliceOnBit(128, 256))),
+	)
 }
 
 func (d *UnalignedGnarkData) csTxEcRecoverBit(comp *wizard.CompiledIOP, src *unalignedGnarkDataSource) {
@@ -431,10 +427,9 @@ func (d *UnalignedGnarkData) csTxEcRecoverBit(comp *wizard.CompiledIOP, src *una
 	// enforced inside gnark circuit
 
 	for i := 0; i < common.NbLimbU128; i++ {
-		comp.InsertGlobal(
-			ROUND_NR,
-			ifaces.QueryIDf("%v_%v_%d", NAME_UNALIGNED_GNARKDATA, "ECRECOVERBIT", i),
-			sym.Mul(d.IsIndex13, src.Source, d.GnarkData[i]),
+		limbs.NewGlobal(comp,
+			ifaces.QueryIDf("%v_%v", NAME_UNALIGNED_GNARKDATA, "ECRECOVERBIT"),
+			sym.Mul(d.IsIndex13, src.Source, d.GnarkData),
 		)
 	}
 }

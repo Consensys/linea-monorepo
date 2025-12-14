@@ -78,7 +78,7 @@ func FromSliceUnsafe[S BitSize, E Endianness](name ifaces.ColID, cols []ifaces.C
 	return Uint[S, E]{limbs: Limbs[E]{c: cols, name: name}}
 }
 
-// AssertUint128 converts the slice into a [Uint] object and panicks if the size
+// AssertUint128 converts the slice into a [Uint128] object and panicks if the size
 // is not the expected one.
 func (limbs Limbs[E]) AssertUint128() Uint[S128, E] {
 	if limbs.NumLimbs() != NumLimbsOf[S128]() {
@@ -87,11 +87,20 @@ func (limbs Limbs[E]) AssertUint128() Uint[S128, E] {
 	return Uint[S128, E]{limbs: limbs}
 }
 
-// AssertUint160 converts the slice into a Uint16 object and panicks if the size
+// AssertUint160 converts the slice into a Uint160 object and panicks if the size
 // is not the expected one.
 func (limbs Limbs[E]) AssertUint160() Uint[S160, E] {
 	if limbs.NumLimbs() != NumLimbsOf[S160]() {
 		utils.Panic("number of columns must be equal to the number of limbs, got %v and %v", limbs.NumLimbs(), NumLimbsOf[S160]())
 	}
 	return Uint[S160, E]{limbs: limbs}
+}
+
+// AssertUint256 converts the slice into a Uint256 object and panicks if the size
+// is not the expected one.
+func (limbs Limbs[E]) AssertUint256() Uint[S256, E] {
+	if limbs.NumLimbs() != NumLimbsOf[S256]() {
+		utils.Panic("number of columns must be equal to the number of limbs, got %v and %v", limbs.NumLimbs(), NumLimbsOf[S256]())
+	}
+	return Uint[S256, E]{limbs: limbs}
 }

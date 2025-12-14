@@ -143,3 +143,14 @@ func (b *VectorBuilder[E]) PadAndAssignZero(run *wizard.ProverRuntime) {
 		)
 	}
 }
+
+// PadLeftAndAssign zeroe-pads the vector to the left with zeroes and assigns it
+// to the column.
+func (b *VectorBuilder[E]) PadLeftAndAssignZero(run *wizard.ProverRuntime) {
+	for i := range b.slices {
+		run.AssignColumn(
+			b.limbs.c[i].GetColID(),
+			smartvectors.LeftZeroPadded(b.slices[i], b.limbs.c[i].Size()),
+		)
+	}
+}

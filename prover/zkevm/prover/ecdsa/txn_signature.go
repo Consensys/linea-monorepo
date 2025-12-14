@@ -2,7 +2,6 @@ package ecdsa
 
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -51,13 +50,10 @@ func newTxSignatures(comp *wizard.CompiledIOP, inp txSignatureInputs) *TxSignatu
 	)
 
 	// txHashHi remains the same between two fetchings.
-	for i := 0; i < common.NbLimbU256; i++ {
-		comp.InsertGlobal(0, ifaces.QueryIDf("txHash_REMAIN_SAME_%d", i),
-			sym.Mul(inp.Ac.IsActive,
-				sym.Sub(1, inp.Ac.IsFetching),
-				sym.Sub(res.TxHash[i], column.Shift(res.TxHash[i], -1))),
-		)
-	}
+	limbs.NewGlobal(comp, ifaces.QueryID("txHash_REMAIN_SAME"),
+		sym.Mul(inp.Ac.IsActive,
+			sym.Sub(1, inp.Ac.IsFetching),
+			sym.Sub(res.TxHash, limbs.Shift(res.TxHash.AsDynSize(), -1))))
 
 	res.Provider = res.GetProvider(comp, inp.RlpTxn)
 
