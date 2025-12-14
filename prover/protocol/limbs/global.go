@@ -1,6 +1,7 @@
 package limbs
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -53,19 +54,43 @@ func splitExpressions(expr *symbolic.Expression) []*symbolic.Expression {
 	// in big-endian order and check that the number of limbs match
 	var (
 		metadata = expr.ListBoardVariableMetadata()
-		flipped  = map[string][]ifaces.Column{}
+		limbs    = map[string][]ifaces.Column{}
+		rows     = map[string][]field.Element{}
 		numLimbs = -1
 	)
 
-	for i := range metadata {
-		if l, ok := metadata[i].(Limbed); ok {
+	for _, m := range metadata {
+
+		switch m := m.(type) {
+
+		case Limbed:
 			if numLimbs < 0 {
-				numLimbs = l.NumLimbs()
+				numLimbs = m.NumLimbs()
 			}
-			name := l.String()
-			flipped[name] = l.ToBigEndianLimbs().Limbs()
-			if numLimbs != l.NumLimbs() {
-				utils.Panic("all limbs must have the same number of limbs, got %v and %v", numLimbs, l.NumLimbs())
+			name := m.String()
+			limbs[name] = m.ToBigEndianLimbs().Limbs()
+			if numLimbs != m.NumLimbs() {
+				utils.Panic("all limbs must have the same number of limbs, got %v and %v", numLimbs, m.NumLimbs())
+			}
+
+		case row[LittleEndian]:
+			if numLimbs < 0 {
+				numLimbs = m.NumLimbs()
+			}
+			name := m.String()
+			rows[name] = m.ToBigEndianLimbs().T
+			if numLimbs != m.NumLimbs() {
+				utils.Panic("all limbs must have the same number of limbs, got %v and %v", numLimbs, m.NumLimbs())
+			}
+
+		case row[BigEndian]:
+			if numLimbs < 0 {
+				numLimbs = m.NumLimbs()
+			}
+			name := m.String()
+			rows[name] = m.ToBigEndianLimbs().T
+			if numLimbs != m.NumLimbs() {
+				utils.Panic("all limbs must have the same number of limbs, got %v and %v", numLimbs, m.NumLimbs())
 			}
 		}
 	}
@@ -83,9 +108,15 @@ func splitExpressions(expr *symbolic.Expression) []*symbolic.Expression {
 			}
 
 			name := vari.Metadata.String()
-			if e, ok := flipped[name]; ok {
+
+			if e, ok := limbs[name]; ok {
 				// The expression is a limb object variable
 				return symbolic.NewVariable(e[i])
+			}
+
+			if e, ok := rows[name]; ok {
+				// The expression is a row object variable
+				return symbolic.NewConstant(e[i])
 			}
 
 			// The expression is a variable but not a limbed object

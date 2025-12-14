@@ -112,3 +112,15 @@ func (r row[E]) SplitOnBit(at int) (row[E], row[E]) {
 	fmt.Printf("hi: %x\nlo: %x\n", hi, lo)
 	return RowFromBytes[E](hi), RowFromBytes[E](lo)
 }
+
+// String implements the [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
+// interface.
+func (r row[E]) String() string {
+	return fmt.Sprintf("%v", r.T)
+}
+
+// IsBase implements the [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
+// interface.
+func (r row[E]) IsBase() bool {
+	return false
+}

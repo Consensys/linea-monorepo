@@ -62,14 +62,14 @@ func TestFlattenColumn(t *testing.T) {
 			}, dummy.Compile)
 
 			proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
-				inpCt.Assign(run, string(inp.CsTest.GetColID()))
-				inpCt.AssignLimbs(run, inp.Limbs)
+				inpCt.Assign(run, inp.CsTest)
+				inpCt.Assign(run, inp.Limbs)
 
 				flattenColumn.Run(run)
 
 				modCt.CheckAssignment(run,
-					string(flattenColumn.LimbsColID()),
-					string(flattenColumn.MaskColID()),
+					flattenColumn.limbs,
+					flattenColumn.mask,
 				)
 			})
 
@@ -124,7 +124,7 @@ func TestFlattenSharedColColumn(t *testing.T) {
 
 				inpCt.Assign(run, string(inpA.CsTest.GetColID()))
 				inpCt.Assign(run, string(inpB.CsTest.GetColID()))
-				inpCt.AssignLimbs(run, inpA.Limbs)
+				inpCt.Assign(run, inpA.Limbs)
 
 				flattenColumnA.Run(run)
 				flattenColumnB.Run(run)

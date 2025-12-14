@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // VectorBuilder is a helper to iteratively construct the assignment of a column
@@ -36,7 +37,7 @@ func (b *VectorBuilder[E]) Push(row row[E]) {
 // pushRaw pushes without checking the endianness
 func (b *VectorBuilder[E]) pushRaw(row []field.Element) {
 	if len(row) != b.limbs.NumLimbs() {
-		panic("wrong number of columns")
+		utils.Panic("wrong number of columns %v != %v", len(row), b.limbs.NumLimbs())
 	}
 	for i := range row {
 		b.slices[i] = append(b.slices[i], row[i])

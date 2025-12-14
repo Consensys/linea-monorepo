@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -74,6 +75,27 @@ func NewLimbs[E Endianness](comp *wizard.CompiledIOP, name ifaces.ColID,
 		}
 	}
 	return Limbs[E]{c: c, name: name}
+}
+
+// KoalaAsLimb creates a limb object representing a large bigint equal to the
+// provided small column. Namely, it zero-extends the input following the
+// provided endianness.
+func KoalaAsLimb[E Endianness](col ifaces.Column, bitSize int) Limbs[E] {
+
+	numLimbs := utils.DivExact(bitSize, limbBitWidth)
+	res := make([]ifaces.Column, numLimbs)
+	for i := range numLimbs {
+		res[i] = verifiercol.NewConstantCol(field.Zero(), col.Size(), "0")
+	}
+
+	switch any(E{}).(type) {
+	case LittleEndian:
+		res[0] = col
+	case BigEndian:
+		res[numLimbs-1] = col
+	}
+
+	return Limbs[E]{c: res, name: col.GetColID()}
 }
 
 // Size returns the number of rows in the provided columns
@@ -176,6 +198,18 @@ func (l Limbs[E]) GetAssignmentAsBigInt(run ifaces.Runtime) []*big.Int {
 	return res
 }
 
+// AssignAndPadRows assign the provided vector of rows to the limbs
+func (l Limbs[E]) AssignAndPadRows(run *wizard.ProverRuntime, rows []row[E]) {
+	res := make([][]field.Element, l.NumLimbs())
+	for i := range res {
+		res[i] = make([]field.Element, len(rows))
+		for k := range rows {
+			res[i][k] = rows[k].T[i]
+		}
+		run.AssignColumn(l.c[i].GetColID(), smartvectors.RightZeroPadded(res[i], l.NumRow()))
+	}
+}
+
 // AssignBytes assigns the provided bytes to the provided field elements.
 func (l Limbs[E]) AssignBytes(run *wizard.ProverRuntime, bytes [][]byte) {
 
@@ -216,6 +250,26 @@ func (l Limbs[E]) AssignBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
 
 	for c := range l.c {
 		run.AssignColumn(l.c[c].GetColID(), smartvectors.NewRegular(res[c]))
+	}
+}
+
+// AssignAndZeroPadsBigInts assigns the provided big.Ints to the provided field
+// elements and zero pads the rest of the limbs.
+func (l Limbs[E]) AssignAndZeroPadsBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
+	var (
+		numRow      = len(bigints)
+		numLimbs    = len(l.c)
+		uintBitSize = numLimbs * limbBitWidth
+	)
+
+	if l.c[0].Size() < numRow {
+		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", numRow, len(l.c))
+	}
+
+	res := bigIntToLimbsVec[E](bigints, len(l.c), uintBitSize)
+
+	for c := range l.c {
+		run.AssignColumn(l.c[c].GetColID(), smartvectors.RightZeroPadded(res[c], l.NumRow()))
 	}
 }
 

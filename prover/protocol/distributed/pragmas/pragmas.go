@@ -38,6 +38,12 @@ type PragmaPair struct {
 	Value  bool
 }
 
+// RightPaddedPair is a pair of pragma and its value.
+var RightPaddedPair = PragmaPair{
+	Pragma: RightPadded,
+	Value:  true,
+}
+
 // MarkFullColumn marks a column as full-column.
 func MarkFullColumn(col ifaces.Column) {
 	nat := col.(column.Natural)
