@@ -1,13 +1,13 @@
 package ecdsa
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
@@ -33,30 +33,35 @@ func TestUnalignedGnarkDataAssign(t *testing.T) {
 			SuccessBit: ct.GetCommit(build, "SUCCESS_BIT"),
 			IsData:     ct.GetCommit(build, "IS_DATA"),
 			IsRes:      ct.GetCommit(build, "IS_RES"),
-			Limb:       ct.GetLimbsLe(build, "LIMB", common.NbLimbU128).AssertUint128(),
-			TxHash:     ct.GetLimbsLe(build, "TX_HASH", common.NbLimbU256).AssertUint256(),
+			Limb:       ct.GetLimbLe(, build, "LIMB", common.NbLimbU128).AssertUint128(),
+			TxHash:     ct.GetLimbLe(, build, "TX_HASH", common.NbLimbU256).AssertUint256(),
 		}
 
 		uag = newUnalignedGnarkData(build.CompiledIOP, ct.LenPadded(), uagSrc)
 	}, dummy.Compile)
+
 	proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
-		var names = []string{"SOURCE", "IS_ACTIVE", "IS_PUSHING", "IS_FETCHING"}
-		for i := 0; i < common.NbLimbU128; i++ {
-			names = append(names, fmt.Sprintf("LIMB_%d", i))
-		}
 
-		names = append(names, "SUCCESS_BIT", "IS_DATA", "IS_RES")
-		for i := 0; i < common.NbLimbU256; i++ {
-			names = append(names, fmt.Sprintf("TX_HASH_%d", i))
-		}
+		ct.Assign(run,
+			uagSrc.Source,
+			uagSrc.IsActive,
+			uagSrc.IsFetching,
+			uagSrc.Limb,
+			uagSrc.SuccessBit,
+			uagSrc.IsData,
+			uagSrc.IsRes,
+			uagSrc.TxHash,
+		)
 
-		ct.Assign(run, names...)
 		uag.Assign(run, uagSrc, dummyTxSignatureGetter)
 
-		assignementNames := []string{string(uag.IsPublicKey.GetColID()), string(uag.GnarkIndex.GetColID())}
-		assignementNames = append(assignementNames, uag.GnarkData.ColumnNames()...)
-		ct.CheckAssignment(run, assignementNames...)
+		ct.CheckAssignment(run,
+			uag.IsPublicKey,
+			uag.GnarkIndex,
+			uag.GnarkData,
+		)
 	})
+
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)
 	}

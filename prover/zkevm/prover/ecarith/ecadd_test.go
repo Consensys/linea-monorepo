@@ -35,7 +35,13 @@ func TestEcAddIntegration(t *testing.T) {
 
 	proof := wizard.Prove(cmp,
 		func(run *wizard.ProverRuntime) {
-			ct.Assign(run, "CS_ADD", "LIMB_0", "LIMB_1", "LIMB_2", "LIMB_3", "LIMB_4", "LIMB_5", "LIMB_6", "LIMB_7", "INDEX", "IS_DATA", "IS_RES")
+			ct.Assign(run,
+				ecAddSource.CsEcAdd,
+				ecAddSource.Limbs,
+				ecAddSource.Index,
+				ecAddSource.IsData,
+				ecAddSource.IsRes,
+			)
 			ecAdd.Assign(run)
 		})
 

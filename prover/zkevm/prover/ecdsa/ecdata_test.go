@@ -1,13 +1,13 @@
 package ecdsa
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
@@ -36,7 +36,7 @@ func TestEcDataAssignData(t *testing.T) {
 				Index:       ct.GetCommit(b, "EC_DATA_INDEX"),
 				IsData:      ct.GetCommit(b, "EC_DATA_IS_DATA"),
 				IsRes:       ct.GetCommit(b, "EC_DATA_IS_RES"),
-				Limb:        ct.GetLimbsLe(b, "EC_DATA_LIMB", common.NbLimbU128).AssertUint128(),
+				Limb:        ct.GetLimbLe(, b, "EC_DATA_LIMB", common.NbLimbU128).AssertUint128(),
 			}
 
 			ecRec = newEcRecover(b.CompiledIOP, limits, ecSrc)
@@ -46,15 +46,17 @@ func TestEcDataAssignData(t *testing.T) {
 
 	proof := wizard.Prove(cmp,
 		func(run *wizard.ProverRuntime) {
-			var columns = []string{"EC_DATA_CS_ECRECOVER", "EC_DATA_ID"}
 
-			for i := 0; i < common.NbLimbU128; i++ {
-				columns = append(columns, fmt.Sprintf("EC_DATA_LIMB_%d", i))
-			}
+			ct.Assign(run,
+				ecSrc.CsEcrecover,
+				ecSrc.ID,
+				ecSrc.Limb,
+				ecSrc.SuccessBit,
+				ecSrc.Index,
+				ecSrc.IsData,
+				ecSrc.IsRes,
+			)
 
-			columns = append(columns, "EC_DATA_SUCCESS_BIT", "EC_DATA_INDEX", "EC_DATA_IS_DATA", "EC_DATA_IS_RES")
-
-			ct.Assign(run, columns...)
 			ecRec.Assign(run, ecSrc)
 		})
 

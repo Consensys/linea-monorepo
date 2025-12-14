@@ -156,7 +156,13 @@ func TestEcMulIntegration(t *testing.T) {
 
 	proof := wizard.Prove(cmp,
 		func(run *wizard.ProverRuntime) {
-			ct.Assign(run, "CS_MUL", "LIMB_0", "LIMB_1", "LIMB_2", "LIMB_3", "LIMB_4", "LIMB_5", "LIMB_6", "LIMB_7", "INDEX", "IS_DATA", "IS_RES")
+			ct.Assign(run,
+				ecMulSource.CsEcMul,
+				ecMulSource.Index,
+				ecMulSource.IsData,
+				ecMulSource.IsRes,
+				ecMulSource.Limbs,
+			)
 			ecMul.Assign(run)
 		})
 
