@@ -82,27 +82,27 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 		cKeccak = NewKeccakOverBlocks(comp, cKeccakInp)
 	)
 
-	if len(inp.Provider.Info.HashHi) != common.NbLimbU128 {
+	if inp.Provider.Info.HashHi.NumLimbs() != common.NbLimbU128 {
 		panic("len(inp.Provider.Info.HashHi) != common.NbLimbU128")
 	}
 
 	comp.InsertProjection("KECCAK_RES_HI",
 		query.ProjectionInput{
 			ColumnA: cKeccak.Outputs.Hash[:8],
-			ColumnB: inp.Provider.Info.HashHi,
+			ColumnB: inp.Provider.Info.HashHi.ToBigEndianLimbs().Limbs(),
 			FilterA: cKeccak.Outputs.IsHash,
 			FilterB: inp.Provider.Info.IsHashHi,
 		},
 	)
 
-	if len(inp.Provider.Info.HashLo) != common.NbLimbU128 {
+	if inp.Provider.Info.HashLo.NumLimbs() != common.NbLimbU128 {
 		panic("len(inp.Provider.Info.HashLo) != common.NbLimbU128")
 	}
 
 	comp.InsertProjection("KECCAK_RES_LO",
 		query.ProjectionInput{
 			ColumnA: cKeccak.Outputs.Hash[common.NbLimbU128:],
-			ColumnB: inp.Provider.Info.HashLo,
+			ColumnB: inp.Provider.Info.HashLo.ToBigEndianLimbs().Limbs(),
 			FilterA: cKeccak.Outputs.IsHash,
 			FilterB: inp.Provider.Info.IsHashLo,
 		},

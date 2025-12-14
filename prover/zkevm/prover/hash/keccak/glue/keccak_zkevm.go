@@ -8,9 +8,9 @@ package keccak
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/acc_module"
 )
@@ -50,7 +50,7 @@ func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEc
 		settings, append(
 			providersFromEcdsa,
 			shakira,
-			getRlpAddArithmetization(comp),
+			getRlpAddArithmetization(comp, arith),
 		),
 	)
 
@@ -126,14 +126,14 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.
 		Data: generic.GenDataModule{
 			HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
 			Index:   arith.ColumnOf(comp, "shakiradata", "INDEX"),
-			Limbs:   arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
+			Limbs:   arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "shakiradata", "LIMB"),
 			NBytes:  arith.ColumnOf(comp, "shakiradata", "nBYTES"),
 			ToHash:  arith.ColumnOf(comp, "shakiradata", "IS_KECCAK_DATA"),
 		},
 		Info: generic.GenInfoModule{
 			HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
-			HashLo:  arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
-			HashHi:  arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
+			HashLo:  arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "shakiradata", "LIMB"),
+			HashHi:  arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "shakiradata", "LIMB"),
 			// Before, we usse to pass column.Shift(IsHashHi, -1) but this does
 			// not work with the prover distribution as the column is used as
 			// a filter for a projection query.
@@ -151,21 +151,21 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.
 	return res, supp
 }
 
-func getRlpAddArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {
+func getRlpAddArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) generic.GenericByteModule {
 	return generic.GenericByteModule{
 		Data: generic.GenDataModule{
-			HashNum: comp.Columns.GetHandle("rlpaddr.STAMP"),
-			Index:   comp.Columns.GetHandle("rlpaddr.INDEX"),
-			Limbs:   common.GetMultiHandle(comp, "rlpaddr.LIMB", nbChunks),
-			NBytes:  comp.Columns.GetHandle("rlpaddr.nBYTES"),
-			ToHash:  comp.Columns.GetHandle("rlpaddr.LC"),
+			HashNum: arith.ColumnOf(comp, "rlpaddr", "STAMP"),
+			Index:   arith.ColumnOf(comp, "rlpaddr", "INDEX"),
+			Limbs:   arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "rlpaddr", "LIMB"),
+			NBytes:  arith.ColumnOf(comp, "rlpaddr", "nBYTES"),
+			ToHash:  arith.ColumnOf(comp, "rlpaddr", "LC"),
 		},
 		Info: generic.GenInfoModule{
-			HashNum:  comp.Columns.GetHandle("rlpaddr.STAMP"),
-			HashLo:   common.GetMultiHandle(comp, "rlpaddr.DEP_ADDR_LO", nbChunks),
-			HashHi:   common.GetMultiHandle(comp, "rlpaddr.RAW_ADDR_HI", nbChunks),
-			IsHashLo: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),
-			IsHashHi: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),
+			HashNum:  arith.ColumnOf(comp, "rlpaddr", "STAMP"),
+			HashLo:   arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "rlpaddr", "DEP_ADDR_LO"),
+			HashHi:   arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "rlpaddr", "RAW_ADDR_HI"),
+			IsHashLo: arith.ColumnOf(comp, "rlpaddr", "SELECTOR_KECCAK_RES"),
+			IsHashHi: arith.ColumnOf(comp, "rlpaddr", "SELECTOR_KECCAK_RES"),
 		},
 	}
 }

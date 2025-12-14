@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -62,8 +63,8 @@ func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 
 		comp.InsertProjection(ifaces.QueryIDf("Stitch_Modules_Hi_%v", i),
 			query.ProjectionInput{
-				ColumnA: gbm.HashHi,
-				ColumnB: info.Provider.HashHi,
+				ColumnA: gbm.HashHi.ToBigEndianLimbs().Limbs(),
+				ColumnB: info.Provider.HashHi.ToBigEndianLimbs().Limbs(),
 				FilterA: gbm.IsHashHi,
 				FilterB: info.SFilters[i],
 			},
@@ -71,8 +72,8 @@ func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 
 		comp.InsertProjection(ifaces.QueryIDf("Stitch_Modules_Lo_%v", i),
 			query.ProjectionInput{
-				ColumnA: gbm.HashLo,
-				ColumnB: info.Provider.HashLo,
+				ColumnA: gbm.HashLo.ToBigEndianLimbs().Limbs(),
+				ColumnB: info.Provider.HashLo.ToBigEndianLimbs().Limbs(),
 				FilterA: gbm.IsHashLo,
 				FilterB: info.SFilters[i],
 			},
@@ -84,13 +85,15 @@ func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 // declare columns
 func (info *GenericInfoAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProviders int) {
 	var (
-		nbChunks  = len(info.Inputs.ProvidersInfo[0].HashHi)
+		nbChunks  = info.Inputs.ProvidersInfo[0].HashHi.NumLimbs()
 		createCol = common.CreateColFn(comp, GENERIC_ACCUMULATOR, info.Size, pragmas.RightPadded)
 	)
 
 	// sanity check, all providers should have the same number of chunks
 	for i := 1; i < nbProviders; i++ {
-		if len(info.Inputs.ProvidersInfo[i].HashHi) != nbChunks || len(info.Inputs.ProvidersInfo[i].HashLo) != len(info.Inputs.ProvidersInfo[0].HashLo) {
+		if info.Inputs.ProvidersInfo[i].HashHi.NumLimbs() != nbChunks ||
+			info.Inputs.ProvidersInfo[i].HashLo.NumLimbs() != nbChunks ||
+			info.Inputs.ProvidersInfo[0].HashLo.NumLimbs() != nbChunks {
 			utils.Panic("all providers should have the same number of chunks")
 		}
 	}
@@ -102,8 +105,8 @@ func (info *GenericInfoAccumulator) declareColumns(comp *wizard.CompiledIOP, nbP
 		info.SFilters[i] = createCol("sFilterOut_%v", i)
 	}
 
-	info.Provider.HashHi = common.CreateMultiColumn(comp, GENERIC_ACCUMULATOR+"_sHash_Hi", info.Size, nbChunks, pragmas.RightPadded)
-	info.Provider.HashLo = common.CreateMultiColumn(comp, GENERIC_ACCUMULATOR+"_sHash_Lo", info.Size, nbChunks, pragmas.RightPadded)
+	info.Provider.HashHi = limbs.NewUint128Be(comp, GENERIC_ACCUMULATOR+"_sHash_Hi", info.Size, pragmas.RightPaddedPair)
+	info.Provider.HashLo = limbs.NewUint128Be(comp, GENERIC_ACCUMULATOR+"_sHash_Lo", info.Size, pragmas.RightPaddedPair)
 
 	info.Provider.IsHashHi = info.IsActive
 	info.Provider.IsHashLo = info.IsActive
@@ -117,8 +120,8 @@ func (info *GenericInfoAccumulator) Run(run *wizard.ProverRuntime) {
 	for i := range providers {
 		asb[i].isHashHi = providers[i].IsHashHi.GetColAssignment(run).IntoRegVecSaveAlloc()
 		asb[i].isHashLo = providers[i].IsHashLo.GetColAssignment(run).IntoRegVecSaveAlloc()
-		asb[i].hashHi = common.GetMultiColumnAssignment(run, providers[i].HashHi)
-		asb[i].hashLo = common.GetMultiColumnAssignment(run, providers[i].HashLo)
+		asb[i].hashHi = providers[i].HashHi.GetAssignment(run)
+		asb[i].hashLo = providers[i].HashLo.GetAssignment(run)
 	}
 
 	sFilters := make([][]field.Element, len(providers))
@@ -152,8 +155,8 @@ func (info *GenericInfoAccumulator) Run(run *wizard.ProverRuntime) {
 
 	// populate Provider
 	var (
-		sHashHi = make([][]field.Element, len(providers[0].HashHi))
-		sHashLo = make([][]field.Element, len(providers[0].HashLo))
+		sHashHi = make(limbs.VecRow[limbs.BigEndian], providers[0].HashHi.NumRow())
+		sHashLo = make(limbs.VecRow[limbs.BigEndian], providers[0].HashLo.NumRow())
 	)
 
 	for i := range providers {
@@ -163,24 +166,20 @@ func (info *GenericInfoAccumulator) Run(run *wizard.ProverRuntime) {
 		hashLo := asb[i].hashLo
 		for j := range filterHi {
 			if filterHi[j].IsOne() {
-				for k := range sHashHi {
-					sHashHi[k] = append(sHashHi[k], hashHi[k][j])
-				}
+				sHashHi = append(sHashHi, hashHi[j])
 			}
 			if filterLo[j].IsOne() {
-				for k := range sHashLo {
-					sHashLo[k] = append(sHashLo[k], hashLo[k][j])
-				}
+				sHashLo = append(sHashLo, hashLo[j])
 			}
 		}
 	}
 
-	common.AssignMultiColumn(run, info.Provider.HashHi, sHashHi, info.Size)
-	common.AssignMultiColumn(run, info.Provider.HashLo, sHashLo, info.Size)
+	info.Provider.HashHi.AssignAndPadRows(run, sHashHi)
+	info.Provider.HashLo.AssignAndPadRows(run, sHashLo)
 
 }
 
 type infoAssignmentBuilder struct {
-	hashHi, hashLo     [][]field.Element
+	hashHi, hashLo     limbs.VecRow[limbs.BigEndian]
 	isHashHi, isHashLo []field.Element
 }

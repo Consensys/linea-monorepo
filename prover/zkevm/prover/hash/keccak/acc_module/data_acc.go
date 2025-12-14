@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -73,8 +74,18 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 
 		comp.InsertProjection(ifaces.QueryIDf("Stitch_Modules_%v", i),
 			query.ProjectionInput{
-				ColumnA: append(gbm.Limbs, gbm.HashNum, gbm.NBytes, gbm.Index),
-				ColumnB: append(d.Provider.Limbs, d.Provider.HashNum, d.Provider.NBytes, d.Provider.Index),
+				ColumnA: append(
+					gbm.Limbs.ToBigEndianLimbs().Limbs(),
+					gbm.HashNum,
+					gbm.NBytes,
+					gbm.Index,
+				),
+				ColumnB: append(
+					d.Provider.Limbs.ToBigEndianLimbs().Limbs(),
+					d.Provider.HashNum,
+					d.Provider.NBytes,
+					d.Provider.Index,
+				),
 				FilterA: gbm.ToHash,
 				FilterB: d.SFilters[i],
 			},
@@ -88,12 +99,12 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 func (d *GenericDataAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProviders int) {
 	var (
 		createCol = common.CreateColFn(comp, GENERIC_ACCUMULATOR, d.Size, pragmas.RightPadded)
-		nbChunks  = len(d.Inputs.ProvidersData[0].Limbs)
+		numLimbs  = d.Inputs.ProvidersData[0].Limbs.NumLimbs()
 	)
 
 	// sanity check; all providers must have the same number of chunks
 	for i := 1; i < len(d.Inputs.ProvidersData); i++ {
-		if len(d.Inputs.ProvidersData[i].Limbs) != nbChunks {
+		if d.Inputs.ProvidersData[i].Limbs.NumLimbs() != numLimbs {
 			panic("all providers must have the same number of chunks")
 		}
 	}
@@ -104,11 +115,13 @@ func (d *GenericDataAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProv
 	}
 
 	d.IsActive = createCol("IsActive")
-	d.Provider.HashNum = createCol("sHashNum")
-	d.Provider.Limbs = common.CreateMultiColumn(comp, GENERIC_ACCUMULATOR+"_sLimb", d.Size, nbChunks, pragmas.RightPadded)
-	d.Provider.NBytes = createCol("sNBytes")
-	d.Provider.Index = createCol("sIndex")
-	d.Provider.ToHash = d.IsActive
+	d.Provider = generic.GenDataModule{
+		HashNum: createCol("sHashNum"),
+		Limbs:   limbs.NewUint128Be(comp, GENERIC_ACCUMULATOR+"_sLimb", d.Size, pragmas.RightPaddedPair),
+		NBytes:  createCol("sNBytes"),
+		Index:   createCol("sIndex"),
+		ToHash:  d.IsActive,
+	}
 }
 
 // It assigns the columns specific to the submodule.
@@ -118,7 +131,7 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 	asb := make([]assignmentBuilder, len(providers))
 	for i := range providers {
 		asb[i].HashNum = providers[i].HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
-		asb[i].Limbs = common.GetMultiColumnAssignment(run, providers[i].Limbs)
+		asb[i].Limbs = providers[i].Limbs.GetAssignment(run)
 		asb[i].NBytes = providers[i].NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
 		asb[i].Index = providers[i].Index.GetColAssignment(run).IntoRegVecSaveAlloc()
 		asb[i].TO_HASH = providers[i].ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -156,7 +169,7 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 	// populate Provider
 	var (
 		sHashNum, sNBytes, sIndex []field.Element
-		sLimb                     = make([][]field.Element, len(providers[0].Limbs))
+		sLimb                     = make([][]field.Element, providers[0].Limbs.NumLimbs())
 	)
 	for i := range providers {
 		filter := asb[i].TO_HASH
@@ -170,7 +183,7 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 				sNBytes = append(sNBytes, nBytes[j])
 				sIndex = append(sIndex, index[j])
 				for k := range sLimb {
-					sLimb[k] = append(sLimb[k], limb[k][j])
+					sLimb[k] = append(sLimb[k], limb[k].ToRawUnsafe()[j])
 				}
 
 			}
@@ -180,7 +193,7 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(d.Provider.HashNum.GetColID(), smartvectors.RightZeroPadded(sHashNum, d.Size))
 	run.AssignColumn(d.Provider.NBytes.GetColID(), smartvectors.RightZeroPadded(sNBytes, d.Size))
 	run.AssignColumn(d.Provider.Index.GetColID(), smartvectors.RightZeroPadded(sIndex, d.Size))
-	common.AssignMultiColumn(run, d.Provider.Limbs, sLimb, d.Size)
+	common.AssignMultiColumn(run, d.Provider.Limbs.Limbs(), sLimb, d.Size)
 
 }
 
@@ -189,5 +202,5 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 type assignmentBuilder struct {
 	HashNum, Index  []field.Element
 	NBytes, TO_HASH []field.Element
-	Limbs           [][]field.Element
+	Limbs           limbs.VecRow[limbs.BigEndian]
 }
