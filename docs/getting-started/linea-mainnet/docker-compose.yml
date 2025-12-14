@@ -144,6 +144,8 @@ services:
       - linea-mainnet-erigon:/data
 
   # Erigon node
+  # NOTE: If using a snapshot, run erigon-node directly WITHOUT erigon-init
+  # erigon-init will overwrite existing chaindata!
   erigon-node:
     hostname: el-client
     container_name: linea-erigon
@@ -152,9 +154,10 @@ services:
     pull_policy: always
     restart: unless-stopped
     stop_grace_period: 30s
-    depends_on:
-      erigon-init:
-        condition: service_completed_successfully
+    # REMOVED: depends_on erigon-init - don't use with snapshots!
+    # depends_on:
+    #   erigon-init:
+    #     condition: service_completed_successfully
     command:
       - --datadir=/data
       - --networkid=59144
