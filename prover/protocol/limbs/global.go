@@ -16,7 +16,7 @@ func NewGlobal(comp *wizard.CompiledIOP, name ifaces.QueryID, expr *symbolic.Exp
 	splittedExpressions := splitExpressions(expr)
 	res := make([]query.GlobalConstraint, len(splittedExpressions))
 	for i := range splittedExpressions {
-		res[i] = comp.InsertGlobal(0, name, splittedExpressions[i])
+		res[i] = comp.InsertGlobal(0, ifaces.QueryIDf("%v_%v", name, i), splittedExpressions[i])
 	}
 	return res
 }
