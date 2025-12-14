@@ -32,8 +32,8 @@ type Limbed interface {
 	symbolic.Metadata
 	NumRow() int
 	NumLimbs() int
-	ToBigEndianLimbs() Limbed
-	ToLittleEndianLimbs() Limbed
+	ToBigEndianLimbs() Limbs[BigEndian]
+	ToLittleEndianLimbs() Limbs[LittleEndian]
 	Limbs() []ifaces.Column
 	ColumnNames() []string
 }
@@ -220,7 +220,7 @@ func (l Limbs[E]) AssignBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
 }
 
 // ToBigEndianLimbs returns the limbs in big endian form
-func (l Limbs[E]) ToBigEndianLimbs() Limbed {
+func (l Limbs[E]) ToBigEndianLimbs() Limbs[BigEndian] {
 	new := Limbs[BigEndian]{name: l.name, c: make([]ifaces.Column, len(l.c))}
 	copy(new.c, l.c)
 	if isLittleEndian[E]() {
@@ -230,7 +230,7 @@ func (l Limbs[E]) ToBigEndianLimbs() Limbed {
 }
 
 // ToLittleEndianLimbs returns the limbs in little endian form
-func (l Limbs[E]) ToLittleEndianLimbs() Limbed {
+func (l Limbs[E]) ToLittleEndianLimbs() Limbs[LittleEndian] {
 	new := Limbs[LittleEndian]{name: l.name, c: make([]ifaces.Column, len(l.c))}
 	copy(new.c, l.c)
 	if isBigEndian[E]() {

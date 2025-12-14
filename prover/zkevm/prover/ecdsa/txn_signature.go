@@ -78,8 +78,8 @@ func (txn *TxSignature) GetProvider(comp *wizard.CompiledIOP, rlpTxn generic.Gen
 func (txn *TxSignature) buildInfoModule() generic.GenInfoModule {
 	txHashHi, txHashLo := txn.TxHash.SplitOnBit(128)
 	info := generic.GenInfoModule{
-		HashHi:   txHashHi.Limbs(),
-		HashLo:   txHashLo.Limbs(),
+		HashHi:   txHashHi.ToBigEndianLimbs().AssertUint128(),
+		HashLo:   txHashLo.ToBigEndianLimbs().AssertUint128(),
 		IsHashHi: txn.IsTxHash,
 		IsHashLo: txn.IsTxHash,
 	}

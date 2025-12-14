@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -50,7 +49,7 @@ func TestAddress(t *testing.T) {
 			IsPublicKey:         gbmGnark.ToHash,
 		}
 
-		uaGnark.GnarkData = limbs.NewLimbsFromRawUnsafe[limbs.LittleEndian]("GBM_LIMBS", gbmGnark.Limbs).AssertUint128()
+		uaGnark.GnarkData = gbmGnark.Limbs.ToLittleEndianUint()
 
 		ac.UnalignedGnarkData = uaGnark
 

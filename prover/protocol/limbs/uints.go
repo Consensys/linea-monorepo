@@ -57,14 +57,14 @@ func (u Uint[S, E]) AsDynSize() Limbs[E] {
 // ToBigEndianUint converts (if needed) to a big-endian uint register.
 func (u Uint[S, E]) ToBigEndianUint() Uint[S, BigEndian] {
 	return Uint[S, BigEndian]{
-		limbs: u.ToBigEndianLimbs().(Limbs[BigEndian]),
+		limbs: u.ToBigEndianLimbs(),
 	}
 }
 
 // ToLittleEndianUint converts (if needed) to a little-endian uint register.
 func (u Uint[S, E]) ToLittleEndianUint() Uint[S, LittleEndian] {
 	return Uint[S, LittleEndian]{
-		limbs: u.ToLittleEndianLimbs().(Limbs[LittleEndian]),
+		limbs: u.ToLittleEndianLimbs(),
 	}
 }
 

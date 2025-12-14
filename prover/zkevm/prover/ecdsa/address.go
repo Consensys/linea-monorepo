@@ -205,7 +205,7 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 
 	pkModule.Data = generic.GenDataModule{
 		HashNum: id,
-		Limbs:   uaGnark.GnarkData.ToBigEndianLimbs().Limbs(),
+		Limbs:   uaGnark.GnarkData.ToBigEndianUint(),
 
 		// a column of all 16, since all the bytes of public key are used in hashing
 		NBytes: addr.Col16,
@@ -214,8 +214,8 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 	}
 
 	pkModule.Info = generic.GenInfoModule{
-		HashHi:   addr.AddressHiUntrimmed.ToBigEndianLimbs().Limbs(),
-		HashLo:   addr.AddressLo.ToBigEndianLimbs().Limbs(),
+		HashHi:   addr.AddressHiUntrimmed.ToBigEndianUint(),
+		HashLo:   addr.AddressLo.ToBigEndianUint(),
 		IsHashHi: addr.IsAddress,
 		IsHashLo: addr.IsAddress,
 	}

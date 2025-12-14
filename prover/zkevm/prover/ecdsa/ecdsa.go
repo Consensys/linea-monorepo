@@ -72,7 +72,7 @@ func getRlpTxnArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.A
 		Index:   arith.ColumnOf(comp, "rlptxn", "INDEX_LX"),
 		NBytes:  arith.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
 		ToHash:  arith.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
-		Limbs:   limbs.AsDynSize().Limbs(),
+		Limbs:   limbs.ToBigEndianUint(),
 	}
 
 	return res
