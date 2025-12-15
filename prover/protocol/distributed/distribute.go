@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
-	mimc "github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
@@ -261,7 +261,7 @@ func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc *StandardModuleDisco
 
 	return wizard.ContinueCompilation(
 		comp,
-		mimc.CompilePoseidon2,
+		poseidon2.CompilePoseidon2,
 		logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(
 			&LPPSegmentBoundaryCalculator{
 				Disc: disc,
