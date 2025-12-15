@@ -40,11 +40,21 @@ const (
 )
 
 type Settings struct {
-	MaxNbInstance256, MaxNbInstanceLarge int
+	// MaxNbInstance256 is the maximum number of small (256 bits) modexp
+	// instances to be handled by the module.
+	//
+	// NB: This number must be > 0.
+	MaxNbInstance256 int
+	// MaxNbInstanceLarge is the maximum number of large (8192 bits) modexp
+	// instances to be handled by the module. All large instances (over 256 bits)
+	// are handled by the same large modexp circuit.
+	//
+	// NB: This number must be > 0.
+	MaxNbInstanceLarge int
 }
 
 type Input struct {
-	Settings Settings
+	*Settings
 	// Binary column indicating if we have base limbs
 	IsModExpBase ifaces.Column
 	// Binary column indicating if we have exponent limbs
@@ -59,7 +69,7 @@ type Input struct {
 
 func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) *Input {
 	return &Input{
-		Settings:         settings,
+		Settings:         &settings,
 		IsModExpBase:     comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_BASE"),
 		IsModExpExponent: comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_EXPONENT"),
 		IsModExpModulus:  comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_MODULUS"),
@@ -68,10 +78,16 @@ func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) *Input {
 	}
 }
 
+// NewModuleZkEvm constructs an instance of the modexp module. It should be called
+// only once during zkEVM prover lifecycle.
 func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings) *Module {
 	return newModule(comp, newZkEVMInput(comp, settings))
 }
 
+// Module implements the wizard part responsible for checking the MODEXP
+// claims coming from the BLKMDXP module of the arithmetization.
+//
+// It handles both small (256 bits) and large (8192 bits) modexp instances.
 type Module struct {
 	// Input stores the columns used as a source for the antichamber.
 	*Input

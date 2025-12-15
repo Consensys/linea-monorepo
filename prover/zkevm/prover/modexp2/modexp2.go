@@ -18,10 +18,19 @@ import (
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
+// Modexp is the concrete instance of the modexp module for zkEVM prover.
 type Modexp struct {
-	instanceSize int // smallModExpSize or largeModExpSize
-	nbLimbs      int // 256/limbsize for small case, 8096/limbsize for large case
-	name         string
+	// Module references to the main modexp module.
+	*Module
+	// instanceSize indicates the size of the modexp instances handled by this module.
+	// It can be either [smallModExpSize] or [largeModExpSize], and panics if set
+	// to anything else.
+	instanceSize int
+	// nbLimbs indicates the number of limbs used to represent the modexp operands.
+	// It is computed as instanceSize/limbSizeBits.
+	nbLimbs int
+	// name of the module for creating column and query names
+	name string
 
 	// ToEval indicates the limbs which go to the circuit when IsActive is set.
 	// For small instance this corresponds to the nbSmallModexpLimbs limbs, for
@@ -44,7 +53,6 @@ type Modexp struct {
 	IsLastLineOfInstance ifaces.Column
 	// IsActive indicates that any of the modexp operands are present in this row
 	IsActive ifaces.Column
-	*Module
 
 	// PrevAccumulator is the previous accumulator limbs. First row corresponds
 	// to initial value 1. It is copied from the current accumulator from
@@ -70,6 +78,9 @@ type Modexp struct {
 	Mone emulated.Limbs
 }
 
+// newModexp constructs a modexp instance for either small or large modexp. The
+// returned value can be used to reference the columns. All the assignments are
+// automatically done, thus there is no `Assign` method.
 func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFromInput ifaces.Column, toEval ifaces.Column, instanceSize int, nbInstances int) *Modexp {
 	// we omit the Modexp module when there is no instance to process
 	if nbInstances == 0 {
@@ -376,7 +387,8 @@ func (m *Modexp) assignMasks(run *wizard.ProverRuntime) {
 }
 
 func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
-	// TODO: can parallelize over instances. But seems fast enough not worth it now.
+	// XXX(ivokub): can parallelize assignments over instances. But seems fast
+	// enough not worth it now as adds complexity and synchronization.
 	var (
 		srcLimbs         = m.Input.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcIsActiveInput = m.IsActiveFromInput.GetColAssignment(run).IntoRegVecSaveAlloc()

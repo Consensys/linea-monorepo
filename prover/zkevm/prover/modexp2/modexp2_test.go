@@ -49,7 +49,7 @@ func TestModExpAntichamber(t *testing.T) {
 					IsModExpModulus:  inpCt.GetCommit(build, "IS_MODEXP_MODULUS"),
 					IsModExpResult:   inpCt.GetCommit(build, "IS_MODEXP_RESULT"),
 					Limbs:            inpCt.GetCommit(build, "LIMBS"),
-					Settings:         Settings{MaxNbInstance256: tc.NbSmallInstances, MaxNbInstanceLarge: tc.NbLargeInstances},
+					Settings:         &Settings{MaxNbInstance256: tc.NbSmallInstances, MaxNbInstanceLarge: tc.NbLargeInstances},
 				}
 
 				newModule(build.CompiledIOP, inp)
