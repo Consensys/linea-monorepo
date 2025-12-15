@@ -7,12 +7,11 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	hf "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 type MsetOfSingletonGnarkTestCircuit struct {
-	X [3][8]frontend.Variable
+	X [24]frontend.Variable
 	R [hf.MSetHashSize]frontend.Variable
 }
 
@@ -27,21 +26,20 @@ func TestMSetHash(t *testing.T) {
 	var (
 		circuit  = &MsetOfSingletonGnarkTestCircuit{}
 		assigned = &MsetOfSingletonGnarkTestCircuit{}
-		msg      = [3][8]int{
-			[8]int{1, 2, 3, 4, 5, 6, 7, 8},
-			[8]int{9, 10, 11, 12, 13, 14, 15, 16},
-			[8]int{17, 18, 19, 20, 21, 22, 23, 24},
+		msg      = [24]int{
+			1, 2, 3, 4, 5, 6, 7, 8,
+			9, 10, 11, 12, 13, 14, 15, 16,
+			17, 18, 19, 20, 21, 22, 23, 24,
 		}
-		msgField = [][8]field.Element{}
+		msgField = []field.Element{}
 		mset     = hf.MSetHash{}
 	)
 
 	for i := range msg {
-		v := vector.ForTest(msg[i][:]...)
-		msgField = append(msgField, [8]field.Element(v))
-		for j := range msg[i] {
-			assigned.X[i][j] = msg[i][j]
-		}
+
+		msgField = append(msgField, field.NewElement(uint64(msg[i])))
+
+		assigned.X[i] = msg[i]
 
 	}
 
