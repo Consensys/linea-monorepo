@@ -429,7 +429,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 				selfrecursion.SelfRecurse,
 				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
-					compiler.WithTargetColSize(1<<9),
+					compiler.WithTargetColSize(1<<6),
 				),
 				// logdata.Log("before-vortex"),
 				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
@@ -446,7 +446,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 				selfrecursion.SelfRecurse,
 				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
-					compiler.WithTargetColSize(1<<9),
+					compiler.WithTargetColSize(1<<6),
 				),
 				// logdata.Log("before-vortex"),
 				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
