@@ -382,7 +382,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	params := selfRecursionParameters{
 		NbOpenedColumns: 16,
 		RsInverseRate:   2,
-		TargetRowSize:   1 << 6,
+		TargetRowSize:   1 << 9,
 	}
 
 	comp := wizard.Compile(
