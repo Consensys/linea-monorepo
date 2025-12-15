@@ -230,15 +230,15 @@ func GetSharedRandomnessFromSegmentProofs(gLWitnesses []*SegmentProof) field.Oct
 	for i := range gLWitnesses {
 
 		var (
-			moduleIndex   = field.Octuplet{field.NewElement(uint64(gLWitnesses[i].ModuleIndex))}
-			segmentIndex  = field.Octuplet{field.NewElement(uint64(gLWitnesses[i].SegmentIndex))}
+			moduleIndex   = field.NewElement(uint64(gLWitnesses[i].ModuleIndex))
+			segmentIndex  = field.NewElement(uint64(gLWitnesses[i].SegmentIndex))
 			lppCommitment = gLWitnesses[i].LppCommitment
 		)
 
-		mset.Insert(moduleIndex, segmentIndex, lppCommitment)
+		mset.Insert(append([]field.Element{moduleIndex, segmentIndex}, lppCommitment[:]...)...)
 	}
 
-	return poseidon2_koalabear.HashVec(mset[:])
+	return poseidon2_koalabear.HashVec(mset[:]...)
 }
 
 // getLppCommitmentFromRuntime returns the LPP commitment from the runtime
