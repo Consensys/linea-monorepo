@@ -270,7 +270,7 @@ func runProverGLs(
 func runProverLPPs(
 	t *testing.T,
 	distWizard *distributed.DistributedWizard,
-	sharedRandomness field.Element,
+	sharedRandomness field.Octuplet,
 	witnessLPPs []*distributed.ModuleWitnessLPP,
 ) []*distributed.SegmentProof {
 

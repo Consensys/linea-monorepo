@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	hf "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -18,10 +19,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
-)
-
-const (
-	IsBLS = false
 )
 
 // DistributedWizard represents a wizard protocol that has undergone a
@@ -226,7 +223,7 @@ func (dist *DistributedWizard) CompileSegments(params CompilationParams) *Distri
 //
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.
-func GetSharedRandomnessFromSegmentProofs(gLWitnesses []*SegmentProof) field.Element {
+func GetSharedRandomnessFromSegmentProofs(gLWitnesses []*SegmentProof) field.Octuplet {
 
 	mset := hf.MSetHash{}
 
@@ -241,7 +238,7 @@ func GetSharedRandomnessFromSegmentProofs(gLWitnesses []*SegmentProof) field.Ele
 		mset.Insert(moduleIndex, segmentIndex, lppCommitment)
 	}
 
-	return hf.HashVec(mset[:])
+	return poseidon2_koalabear.HashVec(mset[:])
 }
 
 // getLppCommitmentFromRuntime returns the LPP commitment from the runtime

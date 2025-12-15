@@ -106,7 +106,7 @@ type LimitlessPublicInput[T any] struct {
 	SegmentCountLPP              []T
 	GeneralMultiSetHash          []T
 	SharedRandomnessMultiSetHash []T
-	VKeyMerkleRoot               T
+	VKeyMerkleRoot               [8]T
 	VerifyingKey                 [2]T
 	LogDerivativeSum             T
 	HornerSum                    T
