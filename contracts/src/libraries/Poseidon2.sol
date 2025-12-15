@@ -490,28 +490,29 @@ library Poseidon2 {
   }
 
   /**
-   * @notice Formats a bytes32 input into a bytes array by splitting it into two 32-byte segments.
-   * @param input The bytes32 input to be formatted.
+   * @notice Pads a bytes32 input into a bytes array by splitting it into two 32-byte segments.
+   * @dev Every two bytes are prepended with 2 zero bytes. E.g. 0xAAAABBBB -> 0x0000AAAA0000BBBB.
+   * @param input The bytes32 input to be padded.
    * @return out A bytes array containing the two 32-byte segments.
    */
-  function formatBytes32(bytes32 input) external pure returns (bytes memory out) {
+  function padBytes32(bytes32 input) external pure returns (bytes memory out) {
     assembly {
       out := mload(0x40)
-      mstore(out, 0x40) // Set length to 64 bytes
+      mstore(out, 0x40)
 
       let data := add(out, 0x20)
 
       let w := 0
       for { let i := 0 } lt(i, 0x8) { i := add(i, 0x1) } {
-          let v := and(shr(mul(sub(0xF, i), 0x10), input), 0xFFFF)
-          w := or(w, shl(mul(sub(0x7, i), 0x20), v))
+        let v := and(shr(mul(sub(0xF, i), 0x10), input), 0xFFFF)
+        w := or(w, shl(mul(sub(0x7, i), 0x20), v))
       }
       mstore(data, w)
 
       w := 0
       for { let i := 0x8 } lt(i, 0x10) { i := add(i, 0x1) } {
-          let v := and(shr(mul(sub(0xF, i), 0x10), input), 0xFFFF)
-          w := or(w, shl(mul(sub(0xF, i), 0x20), v))
+        let v := and(shr(mul(sub(0xF, i), 0x10), input), 0xFFFF)
+        w := or(w, shl(mul(sub(0xF, i), 0x20), v))
       }
       mstore(add(data, 0x20), w)
 

@@ -40,8 +40,8 @@ describe("Poseidon2", () => {
     });
   });
 
-  describe("formatBytes32", () => {
-    it("Should format bytes32 to 64 bytes", async () => {
+  describe("padBytes32", () => {
+    it("Should pad bytes32 to 64 bytes", async () => {
       const data = [
         {
           input: "0xaaaabbbbaaaabbbbaaaabbbbaaaabbbbaaaabbbbaaaabbbbaaaabbbbaaaabbbb",
@@ -56,7 +56,7 @@ describe("Poseidon2", () => {
       ];
 
       for (const { input, output } of data) {
-        expect(await poseidon2.formatBytes32(input)).to.deep.equal(output);
+        expect(await poseidon2.padBytes32(input)).to.deep.equal(output);
       }
     });
   });
