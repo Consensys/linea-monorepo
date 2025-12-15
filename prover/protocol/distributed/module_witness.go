@@ -524,7 +524,7 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 					utils.Panic("the selector column has non-binary values: %v", constCol.F.String())
 				}
 
-				res.NextN0SelectorConsts[i][k] = constCol.F
+				res.NextN0SelectorConsts[i][k] = constCol.F.Base
 				res.NextN0SelectorIsConsts[i][k] = true
 				res.NextN0SelectorConstSizes[i][k] = constCol.Size()
 
