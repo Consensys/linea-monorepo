@@ -52,7 +52,6 @@ func Deserialize(b []byte, v any) error {
 }
 
 func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error {
-
 	// 1. Custom Registry
 	if handler, ok := CustomRegistry[target.Type()]; ok {
 		return handler.Deserialize(ctx, target, offset)
@@ -61,8 +60,11 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 	// 2. Pointers
 	if target.Kind() == reflect.Ptr {
 		if val, ok := ctx.ptrMap[offset]; ok {
-			target.Set(val)
-			return nil
+			// FIX: Check assignability to prevent panics if different empty objects alias to same offset
+			if val.Type().AssignableTo(target.Type()) {
+				target.Set(val)
+				return nil
+			}
 		}
 
 		if target.Type() == reflect.TypeOf(&big.Int{}) {
@@ -252,7 +254,6 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 	return nil
 }
 
-// reconstructStruct is extracted to allow Custom handlers to fallback to standard struct decoding
 func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) error {
 	currentOff := offset
 	for i := 0; i < target.NumField(); i++ {
@@ -281,8 +282,11 @@ func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) 
 			continue
 		}
 
+		// FIX: Check Custom Registry. Treat registered structs as References (8 bytes).
+		_, hasCustom := CustomRegistry[f.Type()]
+
 		isBigInt := f.Type() == reflect.TypeOf(big.Int{}) || f.Type() == reflect.TypeOf(&big.Int{})
-		if f.Kind() == reflect.Ptr ||
+		if hasCustom || f.Kind() == reflect.Ptr ||
 			f.Kind() == reflect.Slice || f.Kind() == reflect.String || f.Kind() == reflect.Interface || f.Kind() == reflect.Map ||
 			f.Kind() == reflect.Func ||
 			isBigInt {
@@ -311,12 +315,14 @@ func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) 
 	return nil
 }
 
-// ... [readMapElement, reconstructBigInt, getBinarySize remain same] ...
 func (ctx *ReaderContext) readMapElement(target reflect.Value, offset int64) (int64, error) {
 	t := target.Type()
-	isRef := t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice || t.Kind() == reflect.String ||
+	// FIX: Check Custom Registry
+	_, hasCustom := CustomRegistry[t]
+
+	isRef := hasCustom || t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice || t.Kind() == reflect.String ||
 		t.Kind() == reflect.Interface || t.Kind() == reflect.Map ||
-		t.Kind() == reflect.Func || // Handled
+		t.Kind() == reflect.Func ||
 		t == reflect.TypeOf(big.Int{}) || t == reflect.TypeOf(&big.Int{}) ||
 		t == reflect.TypeOf((*frontend.Variable)(nil)).Elem()
 
@@ -326,7 +332,6 @@ func (ctx *ReaderContext) readMapElement(target reflect.Value, offset int64) (in
 		}
 		ref := *(*Ref)(unsafe.Pointer(&ctx.data[offset]))
 		if !ref.IsNull() {
-			// Leverage ctx.reconstruct for recursion/dedup
 			if err := ctx.reconstruct(target, int64(ref)); err != nil {
 				return 0, err
 			}
@@ -344,6 +349,7 @@ func (ctx *ReaderContext) readMapElement(target reflect.Value, offset int64) (in
 	return offset + binSize, nil
 }
 
+// [reconstructBigInt, getBinarySize remain as is]
 func reconstructBigInt(data []byte, target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(data) {
 		return fmt.Errorf("bigint header out of bounds")
@@ -366,50 +372,50 @@ func reconstructBigInt(data []byte, target reflect.Value, offset int64) error {
 	return nil
 }
 
-// func getBinarySize(t reflect.Type) int64 {
-// 	if t == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
-// 		return 8
-// 	}
-// 	if t == reflect.TypeOf(big.Int{}) || t == reflect.TypeOf(&big.Int{}) {
-// 		return 8
-// 	}
+func getBinarySize(t reflect.Type) int64 {
+	if t == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
+		return 8
+	}
+	if t == reflect.TypeOf(big.Int{}) || t == reflect.TypeOf(&big.Int{}) {
+		return 8
+	}
 
-// 	k := t.Kind()
-// 	if k == reflect.Ptr || k == reflect.Slice ||
-// 		k == reflect.String || k == reflect.Interface || k == reflect.Map {
-// 		return 8
-// 	}
+	k := t.Kind()
+	if k == reflect.Ptr || k == reflect.Slice ||
+		k == reflect.String || k == reflect.Interface || k == reflect.Map {
+		return 8
+	}
 
-// 	if k == reflect.Struct {
-// 		if t == reflect.TypeOf(field.Element{}) {
-// 			return int64(t.Size())
-// 		}
-// 		var sum int64
-// 		for i := 0; i < t.NumField(); i++ {
-// 			f := t.Field(i)
-// 			if !f.IsExported() {
-// 				continue
-// 			}
-// 			if strings.Contains(f.Tag.Get("serde"), "omit") {
-// 				continue
-// 			}
-// 			sum += getBinarySize(f.Type)
-// 		}
-// 		return sum
-// 	}
+	if k == reflect.Struct {
+		if t == reflect.TypeOf(field.Element{}) {
+			return int64(t.Size())
+		}
+		var sum int64
+		for i := 0; i < t.NumField(); i++ {
+			f := t.Field(i)
+			if !f.IsExported() {
+				continue
+			}
+			if strings.Contains(f.Tag.Get("serde"), "omit") {
+				continue
+			}
+			sum += getBinarySize(f.Type)
+		}
+		return sum
+	}
 
-// 	// Array handling (recurse for elements)
-// 	if k == reflect.Array {
-// 		if t == reflect.TypeOf(field.Element{}) {
-// 			return int64(t.Size())
-// 		}
-// 		elemSize := getBinarySize(t.Elem())
-// 		return elemSize * int64(t.Len())
-// 	}
+	// Array handling (recurse for elements)
+	if k == reflect.Array {
+		if t == reflect.TypeOf(field.Element{}) {
+			return int64(t.Size())
+		}
+		elemSize := getBinarySize(t.Elem())
+		return elemSize * int64(t.Len())
+	}
 
-// 	if k == reflect.Int || k == reflect.Uint {
-// 		return 8
-// 	}
+	if k == reflect.Int || k == reflect.Uint {
+		return 8
+	}
 
-// 	return int64(t.Size())
-// }
+	return int64(t.Size())
+}
