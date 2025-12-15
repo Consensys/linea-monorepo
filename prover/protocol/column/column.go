@@ -369,3 +369,28 @@ func ColumnsOfExpression(expr *symbolic.Expression) []ifaces.Column {
 
 	return res
 }
+
+// GetColAssignmentOctuplet returns the assignment of the column as an octuplet.
+func GetColAssignmentOctuplet(col ifaces.Column, run ifaces.Runtime) field.Octuplet {
+	assignment := col.GetColAssignment(run)
+	if assignment.Len() < 8 {
+		panic("column size must be at least 8 for Octuplet")
+	}
+	var result field.Octuplet
+	for i := 0; i < 8; i++ {
+		result[i] = assignment.Get(i)
+	}
+	return result
+}
+
+func GetColAssignmentGnarkOctuplet(col ifaces.Column, run ifaces.GnarkRuntime) zk.Octuplet {
+	assignment := col.GetColAssignmentGnark(run)
+	if len(assignment) < 8 {
+		panic("column size must be at least 8 for Octuplet")
+	}
+	var result zk.Octuplet
+	for i := 0; i < 8; i++ {
+		result[i] = assignment[i]
+	}
+	return result
+}

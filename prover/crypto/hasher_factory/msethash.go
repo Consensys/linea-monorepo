@@ -1,7 +1,6 @@
 package hasher_factory
 
 import (
-	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -61,14 +60,14 @@ type MSetHashGnark struct {
 // Insert adds the given messages to the multisets hash. The message can be an
 // array of field elements of any size. The function panics if given an empty
 // msg.
-func (m *MSetHash) Insert(msgs ...[BlockSize]field.Element) {
+func (m *MSetHash) Insert(msgs ...field.Element) {
 	m.update(false, msgs...)
 }
 
 // Remove removes the given messages from the multisets hash. The message can be
 // an array of field elements of any size. The function panics if given an empty
 // msg.
-func (m *MSetHash) Remove(msgs ...[BlockSize]field.Element) {
+func (m *MSetHash) Remove(msgs ...field.Element) {
 	m.update(true, msgs...)
 }
 
@@ -97,23 +96,22 @@ func (m *MSetHash) IsEmpty() bool {
 }
 
 // update adds or removes an element from the multisets hash.
-func (m *MSetHash) update(rem bool, msgs ...[BlockSize]field.Element) {
+func (m *MSetHash) update(rem bool, msgs ...field.Element) {
 
-	var state [BlockSize]field.Element
-
+	var (
+		hsh          = poseidon2_koalabear.NewMDHasher()
+		zeroOctuplet = field.Octuplet{}
+		state        = field.Octuplet{}
+	)
 	if len(msgs) == 0 {
 		panic("got provided an empty message")
 	}
 
-	for _, msg := range msgs {
-		state = vortex.CompressPoseidon2(state, msg)
-	}
+	hsh.WriteElements(msgs...)
 
 	for i := 0; i < ChunkSize; i++ {
-		if i > 0 {
-			state = vortex.CompressPoseidon2(state, field.Octuplet{})
-		}
 
+		state = hsh.SumElement()
 		if rem {
 			for j := 0; j < BlockSize; j++ {
 				m[i*BlockSize+j].Sub(&m[i*BlockSize+j], &state[j])
@@ -122,6 +120,10 @@ func (m *MSetHash) update(rem bool, msgs ...[BlockSize]field.Element) {
 			for j := 0; j < BlockSize; j++ {
 				m[i*BlockSize+j].Add(&m[i*BlockSize+j], &state[j])
 			}
+		}
+		if i < ChunkSize-1 {
+			hsh.WriteElements(zeroOctuplet[:]...)
+
 		}
 	}
 }
@@ -139,7 +141,7 @@ func EmptyMSetHashGnark(hasher *poseidon2_koalabear.GnarkMDHasher) MSetHashGnark
 }
 
 // updateGnark updates the multisets hash using the gnark library.
-func (m *MSetHashGnark) update(api frontend.API, rem bool, msgs [][BlockSize]frontend.Variable) {
+func (m *MSetHashGnark) update(api frontend.API, rem bool, msgs []frontend.Variable) {
 
 	var hasher *poseidon2_koalabear.GnarkMDHasher
 
@@ -159,9 +161,8 @@ func (m *MSetHashGnark) update(api frontend.API, rem bool, msgs [][BlockSize]fro
 
 	// This populates the hasher's state with the message.
 	// Flatten the octuplets into individual variables for Write
-	for _, msg := range msgs {
-		hasher.Write(msg[:]...)
-	}
+
+	hasher.Write(msgs...)
 
 	// This squeezes the mset row of the element
 	for i := 0; i < ChunkSize; i++ {
@@ -188,14 +189,14 @@ func (m *MSetHashGnark) update(api frontend.API, rem bool, msgs [][BlockSize]fro
 // Insert adds the given messages to the multisets hash. The message can be an
 // array of field elements of any size. The function panics if given an empty
 // msg.
-func (m *MSetHashGnark) Insert(api frontend.API, msgs ...[BlockSize]frontend.Variable) {
+func (m *MSetHashGnark) Insert(api frontend.API, msgs ...frontend.Variable) {
 	m.update(api, false, msgs)
 }
 
 // Remove removes the given messages from the multisets hash. The message can be
 // an array of field elements of any size. The function panics if given an empty
 // msg.
-func (m *MSetHashGnark) Remove(api frontend.API, msgs ...[BlockSize]frontend.Variable) {
+func (m *MSetHashGnark) Remove(api frontend.API, msgs ...frontend.Variable) {
 	m.update(api, true, msgs)
 }
 
@@ -248,7 +249,7 @@ func (m *MSetHashGnark) AssertEqualRaw(api frontend.API, other []frontend.Variab
 // MsetOfSingletonGnark returns the multiset vector of an entry. nil can be
 // passed to the hasher to tell the function to explicitly compute the hash
 // in circuit.
-func MsetOfSingletonGnark(api frontend.API, hasher *poseidon2_koalabear.GnarkMDHasher, msg ...[BlockSize]frontend.Variable) MSetHashGnark {
+func MsetOfSingletonGnark(api frontend.API, hasher *poseidon2_koalabear.GnarkMDHasher, msg ...frontend.Variable) MSetHashGnark {
 	m := EmptyMSetHashGnark(hasher)
 	m.update(api, false, msg)
 	return m
