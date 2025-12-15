@@ -155,8 +155,8 @@ func (info *GenericInfoAccumulator) Run(run *wizard.ProverRuntime) {
 
 	// populate Provider
 	var (
-		sHashHi = make(limbs.VecRow[limbs.BigEndian], providers[0].HashHi.NumRow())
-		sHashLo = make(limbs.VecRow[limbs.BigEndian], providers[0].HashLo.NumRow())
+		sHashHi = make(limbs.VecRow[limbs.BigEndian], 0, providers[0].HashHi.NumRow())
+		sHashLo = make(limbs.VecRow[limbs.BigEndian], 0, providers[0].HashLo.NumRow())
 	)
 
 	for i := range providers {

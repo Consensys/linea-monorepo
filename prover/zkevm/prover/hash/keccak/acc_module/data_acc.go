@@ -183,7 +183,7 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 				sNBytes = append(sNBytes, nBytes[j])
 				sIndex = append(sIndex, index[j])
 				for k := range sLimb {
-					sLimb[k] = append(sLimb[k], limb[k].ToRawUnsafe()[j])
+					sLimb[k] = append(sLimb[k], limb[j].ToRawUnsafe()[k])
 				}
 
 			}
