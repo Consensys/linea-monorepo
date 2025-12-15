@@ -172,7 +172,7 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 		z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
 		z.StateManager.Assign(run, input.SMTraces)
 		z.Keccak.Run(run)
-		z.Modexp.Assign(run)
+		// z.Modexp.Assign(run) // not needed with direct implementation as uses ProverAction
 		z.Ecadd.Assign(run)
 		z.Ecmul.Assign(run)
 		z.Ecpair.Assign(run)

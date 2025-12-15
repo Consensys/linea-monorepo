@@ -208,10 +208,8 @@ func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *co
 			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcrecoverEffectiveCalls+tl.BlockTransactions, NbInputPerInstanceEcdsa),
 		},
 		Modexp: modexp.Settings{
-			MaxNbInstance256:                 tl.PrecompileModexpEffectiveCalls,
-			MaxNbInstanceLarge:               tl.PrecompileModexpEffectiveCalls4096,
-			NbInstancesPerCircuitModexp256:   NbInputPerInstanceModexp256,
-			NbInstancesPerCircuitModexpLarge: NbInputPerInstanceModexpLarge,
+			MaxNbInstance256:   tl.PrecompileModexpEffectiveCalls,
+			MaxNbInstanceLarge: tl.PrecompileModexpEffectiveCalls4096,
 		},
 		Ecadd: ecarith.Limits{
 			// 14 was found the right number to have just under 2^19 constraints

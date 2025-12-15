@@ -55,7 +55,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/base_conversion"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 
 	ded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
@@ -154,7 +153,6 @@ func init() {
 
 	// Circuit implementations
 	RegisterImplementation(ecdsa.MultiEcRecoverCircuit{})
-	RegisterImplementation(modexp.ModExpCircuit{})
 	RegisterImplementation(ecarith.MultiECAddCircuit{})
 	RegisterImplementation(ecarith.MultiECMulCircuit{})
 	RegisterImplementation(ecpair.MultiG2GroupcheckCircuit{})
