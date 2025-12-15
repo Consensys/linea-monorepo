@@ -574,7 +574,7 @@ func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *M
 	)
 
 	// This assigns the VKeyMerkleRoot
-	assignPiColumn(run, modLPP.PublicInputs.VKeyMerkleRoot.Name, witness.VkMerkleRoot)
+	assignPiColumn(run, modLPP.PublicInputs.VKeyMerkleRoot.Name, witness.VkMerkleRoot[:]...)
 
 	// This assigns the columns corresponding to the public input indicating
 	// the number of segments

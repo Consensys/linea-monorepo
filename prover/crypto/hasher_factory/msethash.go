@@ -178,8 +178,9 @@ func (m *MSetHashGnark) update(api frontend.API, rem bool, msgs [][BlockSize]fro
 		}
 
 		// This updates the state so that we get a different value post-update.
+		// Write 8 zeros to match native version's CompressPoseidon2(state, field.Octuplet{})
 		if i < ChunkSize-1 {
-			hasher.Write(0)
+			hasher.Write(0, 0, 0, 0, 0, 0, 0, 0)
 		}
 	}
 }

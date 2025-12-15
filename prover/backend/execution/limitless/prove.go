@@ -322,6 +322,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		assets.DistWizard.Disc,
 		assets.DistWizard.BlueprintGLs,
 		assets.DistWizard.BlueprintLPPs,
+		assets.DistWizard.VerificationKeyMerkleTree.GetRoot(),
 	)
 
 	logrus.Info("Saving the witnesses")

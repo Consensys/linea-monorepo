@@ -74,7 +74,7 @@ type ModuleWitnessGL struct {
 	ReceivedValuesGlobal []field.Element
 	// VkMerkleRoot is the merkle root of a merkle tree storing the verification
 	// key.
-	VkMerkleRoot field.Element
+	VkMerkleRoot field.Octuplet
 }
 
 // ModuleWitnessLPP is a structure collecting the witness of a module. The
@@ -100,7 +100,7 @@ type ModuleWitnessLPP struct {
 	Columns map[ifaces.ColID]smartvectors.SmartVector
 	// VkMerkleRoot is the merkle root of a merkle tree storing the verification
 	// key.
-	VkMerkleRoot field.Element
+	VkMerkleRoot field.Octuplet
 }
 
 // SegmentRuntime scans a [wizard.ProverRuntime] and returns a list of
@@ -110,7 +110,7 @@ func SegmentRuntime(
 	runtime *wizard.ProverRuntime,
 	disc *StandardModuleDiscoverer,
 	blueprintGLs, blueprintLPPs []ModuleSegmentationBlueprint,
-	vkMerkleRoot field.Element,
+	vkMerkleRoot field.Octuplet,
 ) (
 	witnessesGL []*ModuleWitnessGL,
 	witnessesLPP []*ModuleWitnessLPP,
@@ -171,7 +171,7 @@ func segmentModuleGL(
 	disc *StandardModuleDiscoverer,
 	blueprintGL *ModuleSegmentationBlueprint,
 	totalNbSegment []int,
-	vkMerkleRoot field.Element,
+	vkMerkleRoot field.Octuplet,
 ) (witnessesGL []*ModuleWitnessGL) {
 
 	var (
@@ -220,7 +220,7 @@ func segmentModuleLPP(
 	disc *StandardModuleDiscoverer,
 	moduleLPP *ModuleSegmentationBlueprint,
 	totalNbSegment []int,
-	vkMerkleProof field.Element,
+	vkMerkleProof field.Octuplet,
 ) (witnessesLPP []*ModuleWitnessLPP) {
 
 	var (
