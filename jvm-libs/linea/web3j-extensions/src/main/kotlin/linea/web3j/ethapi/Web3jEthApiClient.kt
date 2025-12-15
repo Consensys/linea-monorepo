@@ -87,14 +87,6 @@ class Web3jEthApiClient(
     blockCount: Int,
     newestBlock: BlockParameter,
     rewardPercentiles: List<Double>,
-  ): SafeFuture<FeeHistory> = web3jClient
-    .ethFeeHistory(blockCount, newestBlock.toWeb3j(), rewardPercentiles)
-    .requestAsync { it.feeHistory.toLineaDomain() }
-
-  override fun ethFeeHistoryBlobExtended(
-    blockCount: Int,
-    newestBlock: BlockParameter,
-    rewardPercentiles: List<Double>,
   ): SafeFuture<FeeHistory> {
     return SafeFuture.of(
       Request(

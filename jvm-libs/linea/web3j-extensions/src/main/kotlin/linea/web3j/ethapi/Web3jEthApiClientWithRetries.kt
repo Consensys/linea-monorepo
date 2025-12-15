@@ -102,16 +102,6 @@ class Web3jEthApiClientWithRetries(
     }
   }
 
-  override fun ethFeeHistoryBlobExtended(
-    blockCount: Int,
-    newestBlock: BlockParameter,
-    rewardPercentiles: List<Double>,
-  ): SafeFuture<FeeHistory> {
-    return retry(stopRetriesPredicateForTag(newestBlock)) {
-      ethApiClient.ethFeeHistoryBlobExtended(blockCount, newestBlock, rewardPercentiles)
-    }
-  }
-
   override fun ethBlockNumber(): SafeFuture<ULong> {
     return retry { ethApiClient.ethBlockNumber() }
   }
