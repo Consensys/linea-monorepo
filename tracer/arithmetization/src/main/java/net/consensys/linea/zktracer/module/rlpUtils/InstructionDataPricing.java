@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.rlpUtils;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.RLP_UTILS_INST_DATA_PRICING;
-import static net.consensys.linea.zktracer.module.rlpUtils.WcpExoCall.callToLeq;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,11 +34,10 @@ import org.apache.tuweni.bytes.Bytes32;
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class InstructionDataPricing extends RlpUtilsCall {
-  private static final Bytes32 TWO_FIFTY_FIVE = Bytes32.leftPad(Bytes.fromHexString("0xff"));
   @EqualsAndHashCode.Include @Getter private final Bytes16 limb;
   @EqualsAndHashCode.Include @Getter private final short nBytes;
-  private Short zeros;
-  private Short nonZeros;
+  public Short zeros;
+  public Short nonZeros;
 
   public InstructionDataPricing(Bytes16 limb, short nBytes) {
     super();
@@ -94,7 +92,7 @@ public class InstructionDataPricing extends RlpUtilsCall {
   @Override
   protected void traceMacro(Trace.Rlputils trace) {
     trace
-        .inst(RLP_UTILS_INST_DATA_PRICING)
+      .inst(RLP_UTILS_INST_DATA_PRICING)
         .data1(limb)
         .data2(Bytes.ofUnsignedShort(nBytes))
         .data6(Bytes.ofUnsignedShort(zeros))

@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.rlpUtils;
 
 import static net.consensys.linea.zktracer.Trace.*;
-import static net.consensys.linea.zktracer.Trace.Rlputils.CT_MAX_INST_BYTE_STRING_PREFIX;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.*;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToLong;
 

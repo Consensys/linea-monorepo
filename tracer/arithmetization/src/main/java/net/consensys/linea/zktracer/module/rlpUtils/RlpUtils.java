@@ -42,7 +42,7 @@ public class RlpUtils implements OperationSetModule<RlpUtilsCall> {
   public static final Bytes BYTES_PREFIX_SHORT_INT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
   public static final Bytes BYTES_PREFIX_SHORT_LIST = Bytes.minimalBytes(RLP_PREFIX_LIST_SHORT);
   public static final Bytes32 BYTES32_PREFIX_SHORT_INT = Bytes32.leftPad(BYTES_PREFIX_SHORT_INT);
-  public static final BigInteger BI_PREFIX_SHORT_INT = BigInteger.valueOf(PREFIX_SHORT_INT);
+  public static final BigInteger BI_PREFIX_SHORT_INT = BigInteger.valueOf(RLP_PREFIX_INT_SHORT);
   public static final Bytes16 BYTES16_PREFIX_ADDRESS =
       Bytes16.rightPad(Bytes.minimalBytes(RLP_PREFIX_INT_SHORT + Address.SIZE));
   public static final Bytes16 BYTES16_PREFIX_BYTES32 =

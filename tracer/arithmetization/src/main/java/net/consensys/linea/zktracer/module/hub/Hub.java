@@ -1173,8 +1173,6 @@ public abstract class Hub implements Module {
 
   protected abstract InstructionDecoder setInstructionDecoder();
 
-  protected abstract PowerRt setPower();
-
   protected abstract void setSkipSection(
       Hub hub,
       WorldView world,
