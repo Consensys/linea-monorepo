@@ -194,7 +194,7 @@ func reconstruct(data []byte, target reflect.Value, offset int64) error {
 			if !t.IsExported() {
 				continue
 			}
-			if strings.Contains(t.Tag.Get("serde"), "omit") {
+			if strings.Contains(t.Tag.Get(SerdeStructTag), SerdeStructTagOmit) {
 				continue
 			}
 

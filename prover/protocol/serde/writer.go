@@ -324,7 +324,7 @@ func linearizeStructBody(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
 		if !t.IsExported() {
 			continue
 		}
-		if strings.Contains(t.Tag.Get("serde"), "omit") {
+		if strings.Contains(t.Tag.Get(SerdeStructTag), SerdeStructTagOmit) {
 			continue
 		}
 

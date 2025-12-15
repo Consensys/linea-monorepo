@@ -51,7 +51,7 @@ func StoreToDisk(filePath string, asset any) error {
 
 	// 2. Write to disk
 	// os.WriteFile creates the file if it doesn't exist, or truncates it if it does.
-	if err := os.WriteFile(filePath, b, 0644); err != nil {
+	if err := os.WriteFile(filePath, b, 0600); err != nil {
 		return fmt.Errorf("failed to write to %s: %w", filePath, err)
 	}
 
