@@ -1,4 +1,4 @@
-package modexp2
+package modexp
 
 import (
 	"math/big"

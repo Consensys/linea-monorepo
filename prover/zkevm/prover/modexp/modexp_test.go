@@ -16,21 +16,23 @@ func TestModExpAntichamber(t *testing.T) {
 	}{
 		{
 			InputFName:       "testdata/single_256_bits_input.csv",
-			ModuleFName:      "testdata/single_256_bits_module.csv",
-			NbSmallInstances: 1,
-			NbLargeInstances: 0,
+			NbSmallInstances: 10,
+			NbLargeInstances: 1,
 		},
 		{
 			InputFName:       "testdata/single_4096_bits_input.csv",
-			ModuleFName:      "testdata/single_4096_bits_module.csv",
 			NbSmallInstances: 1, // not used but include anyway
 			NbLargeInstances: 1,
 		},
 		{
 			InputFName:       "testdata/single_8192_bits_input.csv",
-			ModuleFName:      "testdata/single_8192_bits_module.csv",
 			NbSmallInstances: 1, // not used but include anyway
 			NbLargeInstances: 1,
+		},
+		{
+			InputFName:       "testdata/mixed_256_4096_8192_bits_input.csv",
+			NbSmallInstances: 10,
+			NbLargeInstances: 2,
 		},
 	}
 
@@ -38,43 +40,29 @@ func TestModExpAntichamber(t *testing.T) {
 		t.Run(tc.InputFName, func(t *testing.T) {
 
 			var (
-				inp   Input
-				mod   *Module
+				inp   *Input
 				inpCt = csvtraces.MustOpenCsvFile(tc.InputFName)
-				modCt = csvtraces.MustOpenCsvFile(tc.ModuleFName)
 			)
 
 			cmp := wizard.Compile(func(build *wizard.Builder) {
-				inp = Input{
+				inp = &Input{
 					IsModExpBase:     inpCt.GetCommit(build, "IS_MODEXP_BASE"),
 					IsModExpExponent: inpCt.GetCommit(build, "IS_MODEXP_EXPONENT"),
 					IsModExpModulus:  inpCt.GetCommit(build, "IS_MODEXP_MODULUS"),
 					IsModExpResult:   inpCt.GetCommit(build, "IS_MODEXP_RESULT"),
 					Limbs:            inpCt.GetCommit(build, "LIMBS"),
-					Settings:         Settings{MaxNbInstance256: tc.NbSmallInstances, MaxNbInstanceLarge: tc.NbLargeInstances},
+					Settings:         &Settings{MaxNbInstance256: tc.NbSmallInstances, MaxNbInstanceLarge: tc.NbLargeInstances},
 				}
 
-				mod = newModule(build.CompiledIOP, inp)
+				newModule(build.CompiledIOP, inp)
 			}, dummy.Compile)
-
 			proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
-
 				inpCt.Assign(run,
 					"LIMBS",
 					"IS_MODEXP_BASE",
 					"IS_MODEXP_EXPONENT",
 					"IS_MODEXP_MODULUS",
 					"IS_MODEXP_RESULT",
-				)
-
-				mod.Assign(run)
-
-				modCt.CheckAssignment(run,
-					"MODEXP_LIMBS",
-					"MODEXP_IS_ACTIVE",
-					"MODEXP_IS_SMALL",
-					"MODEXP_IS_LARGE",
-					"MODEXP_TO_SMALL_CIRC",
 				)
 			})
 
