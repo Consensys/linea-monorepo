@@ -357,7 +357,7 @@ library SSZ {
         } else {
           h = sha256Pair(tmp[j], h);
         }
-        j++;
+        ++j;
       }
       tmp[j] = h;
   }
