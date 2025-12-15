@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_LONG;
 import static net.consensys.linea.zktracer.module.ModuleName.RLP_UTILS;
 
+import java.math.BigInteger;
 import java.util.List;
 
 import lombok.Getter;
@@ -39,17 +40,13 @@ import org.hyperledger.besu.datatypes.Address;
 @Accessors(fluent = true)
 public class RlpUtils implements OperationSetModule<RlpUtilsCall> {
   public static final Bytes BYTES_PREFIX_SHORT_INT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
-  public static final Bytes BYTES_PREFIX_LONG_INT = Bytes.minimalBytes(RLP_PREFIX_INT_LONG);
   public static final Bytes BYTES_PREFIX_SHORT_LIST = Bytes.minimalBytes(RLP_PREFIX_LIST_SHORT);
-  public static final Bytes BYTES_PREFIX_LONG_LIST =
-      Bytes.minimalBytes(RLP_PREFIX_LIST_LONG).trimLeadingZeros();
   public static final Bytes32 BYTES32_PREFIX_SHORT_INT = Bytes32.leftPad(BYTES_PREFIX_SHORT_INT);
+  public static final BigInteger BI_PREFIX_SHORT_INT = BigInteger.valueOf(PREFIX_SHORT_INT);
   public static final Bytes16 BYTES16_PREFIX_ADDRESS =
       Bytes16.rightPad(Bytes.minimalBytes(RLP_PREFIX_INT_SHORT + Address.SIZE));
   public static final Bytes16 BYTES16_PREFIX_BYTES32 =
       Bytes16.rightPad(Bytes.minimalBytes(RLP_PREFIX_INT_SHORT + WORD_SIZE));
-
-  private final Wcp wcp;
 
   @Getter
   private final ModuleOperationStackedSet<RlpUtilsCall> operations =
@@ -64,7 +61,7 @@ public class RlpUtils implements OperationSetModule<RlpUtilsCall> {
     final ModuleOperationAdder addedOp = operations.addAndGet(call);
     final RlpUtilsCall addedCall = (RlpUtilsCall) addedOp.op();
     if (addedOp.isNew()) {
-      addedCall.compute(wcp);
+      addedCall.compute();
     }
     return addedCall;
   }

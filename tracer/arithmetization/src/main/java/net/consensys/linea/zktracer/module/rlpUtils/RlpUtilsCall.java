@@ -30,13 +30,12 @@ import org.apache.tuweni.bytes.Bytes;
 
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public abstract class RlpUtilsCall extends ModuleOperation {
-  protected final List<WcpExoCall> wcpCalls;
+  public final static short NB_ROWS_RLP_UTILS = 1;
 
-  protected RlpUtilsCall(int ctMax) {
-    this.wcpCalls = new ArrayList<>(ctMax + 1);
+  protected RlpUtilsCall() {
   }
 
-  protected abstract void compute(Wcp wcp);
+  protected abstract void compute();
 
   public abstract void traceRlpTxn(
       Trace.Rlptxn trace,
@@ -48,20 +47,16 @@ public abstract class RlpUtilsCall extends ModuleOperation {
 
   protected void trace(Trace.Rlputils trace) {
     traceMacro(trace);
-    for (short ct = 0; ct < this.lineCount() - 1; ct++) {
-      traceCompt(trace, ct);
-    }
   }
 
   protected abstract void traceMacro(Trace.Rlputils trace);
 
-  protected abstract void traceCompt(Trace.Rlputils trace, short ct);
-
-  protected Bytes power(int exponentComplementary) {
-    return Bytes16.leftPad(Bytes.minimalBytes(1)).shiftLeft(8 * (LLARGE - exponentComplementary));
-  }
-
   protected abstract short instruction();
 
   protected abstract short compareTo(RlpUtilsCall other);
+
+  @Override
+  protected int computeLineCount() {
+    return NB_ROWS_RLP_UTILS;
+  }
 }
