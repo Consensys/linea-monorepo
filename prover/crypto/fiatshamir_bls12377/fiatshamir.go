@@ -1,8 +1,6 @@
 package fiatshamir_bls12377
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
@@ -117,7 +115,6 @@ func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
 			}
 		}
 	}
-	fmt.Printf("selected entries: %v\n", res)
 	return res
 }
 

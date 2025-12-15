@@ -117,7 +117,7 @@ func (g GrandProduct) Name() ifaces.QueryID {
 
 // Updates a Fiat-Shamir state
 func (gp GrandProductParams) UpdateFS(fs *fiatshamir.FS) {
-	(*fs).Update(gp.BaseY)
+	(*fs).UpdateExt(gp.ExtY)
 }
 
 func (gp GrandProductParams) UpdateFSExt(fs *fiatshamir_koalabear.FS) {

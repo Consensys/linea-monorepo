@@ -52,8 +52,6 @@ func GnarkVerifyMerkleProof(
 		return err
 	}
 
-	// api.Println("Computed root: ", r)
-	// api.Println("Expected root: ", root)
 	api.AssertIsEqual(root, r)
 	return nil
 }

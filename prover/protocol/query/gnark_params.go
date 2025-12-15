@@ -125,7 +125,11 @@ func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	(*fs).Update(p.BaseY)
+	if p.IsBase {
+		(*fs).Update(p.BaseY)
+	} else {
+		(*fs).UpdateExt(p.ExtY)
+	}
 }
 
 // Update the fiat-shamir state with the the present parameters
