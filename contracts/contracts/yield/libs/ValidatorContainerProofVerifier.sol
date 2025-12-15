@@ -301,6 +301,7 @@ contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerPr
    * @dev Only callable by accounts with DEFAULT_ADMIN_ROLE
    */
   function setGIFirstValidator(GIndex _gIFirstValidator) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ErrorUtils.revertIfZeroHash(GIndex.unwrap(_gIFirstValidator));
     GIndex oldValue = GI_FIRST_VALIDATOR;
     GI_FIRST_VALIDATOR = _gIFirstValidator;
     emit GIFirstValidatorUpdated(oldValue, _gIFirstValidator);
@@ -312,6 +313,7 @@ contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerPr
    * @dev Only callable by accounts with DEFAULT_ADMIN_ROLE
    */
   function setGIPendingPartialWithdrawalsRoot(GIndex _gIPendingPartialWithdrawalsRoot) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ErrorUtils.revertIfZeroHash(GIndex.unwrap(_gIPendingPartialWithdrawalsRoot));
     GIndex oldValue = GI_PENDING_PARTIAL_WITHDRAWALS_ROOT;
     GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = _gIPendingPartialWithdrawalsRoot;
     emit GIPendingPartialWithdrawalsRootUpdated(oldValue, _gIPendingPartialWithdrawalsRoot);

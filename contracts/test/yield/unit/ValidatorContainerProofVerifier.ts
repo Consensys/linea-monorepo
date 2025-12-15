@@ -145,6 +145,22 @@ describe("ValidatorContainerProofVerifier", () => {
         buildAccessErrorMessage(nonAdmin, DEFAULT_ADMIN_ROLE),
       );
     });
+
+    it("should revert when admin tries to set GI_FIRST_VALIDATOR to zero hash", async () => {
+      await expectRevertWithCustomError(
+        verifier,
+        verifier.connect(admin).setGIFirstValidator(ethers.ZeroHash),
+        "ZeroHashNotAllowed",
+      );
+    });
+
+    it("should revert when admin tries to set GI_PENDING_PARTIAL_WITHDRAWALS_ROOT to zero hash", async () => {
+      await expectRevertWithCustomError(
+        verifier,
+        verifier.connect(admin).setGIPendingPartialWithdrawalsRoot(ethers.ZeroHash),
+        "ZeroHashNotAllowed",
+      );
+    });
   });
 
   it("should verify precalculated 0x01 validator object in merkle tree", async () => {
