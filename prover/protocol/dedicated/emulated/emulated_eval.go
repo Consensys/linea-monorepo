@@ -25,11 +25,16 @@ type EmulatedEvaluationModule struct {
 	Challenge       *coin.Info
 	ChallengePowers []ifaces.Column
 
+	// nbBitsPerLimb is the number of bits per limb
 	nbBitsPerLimb int
-	round         int
-	name          string
+	// round is the maximum round number of the input columns
+	round int
+	// name of the module
+	name string
+	// maxTermDegree is the maximum degree of all terms
 	maxTermDegree int
-	nbLimbs       int
+	// nbLimbs is the maximum number of limbs seen over terms and modulus
+	nbLimbs int
 }
 
 func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRuntime) {
@@ -45,32 +50,27 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 	for i := range a.Carry.Columns {
 		dstCarry[i] = make([]field.Element, nbRows)
 	}
-	nbLhsLimbs := a.nbLimbs
-	for range a.maxTermDegree - 1 {
-		nbLhsLimbs = nbMultiplicationResLimbs(nbLhsLimbs, a.nbLimbs)
-	}
 
-	startT := time.Now()
 	parallel.Execute(nbRows, func(start, end int) {
 		bufWit := make([]*big.Int, a.nbLimbs)
 		for i := range bufWit {
 			bufWit[i] = new(big.Int)
 		}
 		// we allocate LHS twice as we set the result value and we modify the buffer
-		bufTermProd1 := make([]*big.Int, nbLhsLimbs)
+		bufTermProd1 := make([]*big.Int, len(a.Carry.Columns))
 		for i := range bufTermProd1 {
 			bufTermProd1[i] = new(big.Int)
 		}
-		bufTermProd2 := make([]*big.Int, nbLhsLimbs)
+		bufTermProd2 := make([]*big.Int, len(a.Carry.Columns))
 		for i := range bufTermProd2 {
 			bufTermProd2[i] = new(big.Int)
 		}
-		bufLhs := make([]*big.Int, nbLhsLimbs)
+		bufLhs := make([]*big.Int, len(a.Carry.Columns))
 		for i := range bufLhs {
 			bufLhs[i] = new(big.Int)
 		}
 
-		bufMod := make([]*big.Int, a.nbLimbs)
+		bufMod := make([]*big.Int, len(a.Modulus.Columns))
 		for i := range bufMod {
 			bufMod[i] = new(big.Int)
 		}
@@ -107,12 +107,13 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 				tmpTermProduct.SetInt64(1)
 				termNbLimbs := 1
 				for k := range a.Terms[j] {
-					if err := limbsToBigInt(wit, bufWit, a.Terms[j][k], i, a.nbBitsPerLimb, run); err != nil {
+					nbLimbs := len(a.Terms[j][k].Columns)
+					if err := limbsToBigInt(wit, bufWit[:nbLimbs], a.Terms[j][k], i, a.nbBitsPerLimb, run); err != nil {
 						utils.Panic("failed to convert witness term [%d][%d]: %v", j, k, err)
 					}
 					if wit.Sign() != 0 {
 						tmpTermProduct.Mul(tmpTermProduct, wit)
-						if err := limbMul(bufTermProd2[:nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)], bufTermProd1[:termNbLimbs], bufWit); err != nil {
+						if err := limbMul(bufTermProd2[:nbMultiplicationResLimbs(termNbLimbs, nbLimbs)], bufTermProd1[:termNbLimbs], bufWit[:nbLimbs]); err != nil {
 							utils.Panic("failed to multiply LHS2 and LHS1: %v", err)
 						}
 					} else {
@@ -120,7 +121,7 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 						tmpTermProduct.SetInt64(0)
 						clearBuffer(bufTermProd2)
 					}
-					termNbLimbs = nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)
+					termNbLimbs = nbMultiplicationResLimbs(termNbLimbs, nbLimbs)
 					bufTermProd2, bufTermProd1 = bufTermProd1, bufTermProd2
 				}
 				tmpEval.Add(tmpEval, tmpTermProduct)
@@ -166,7 +167,6 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 			}
 		}
 	})
-	fmt.Println("Emulated evaluation assignment took:", time.Since(startT))
 
 	for i := range dstQuoLimbs {
 		run.AssignColumn(a.Quotient.Columns[i].GetColID(), smartvectors.NewRegular(dstQuoLimbs[i]))
@@ -190,7 +190,6 @@ func (a *EmulatedEvaluationModule) assignChallengePowers(run *wizard.ProverRunti
 }
 
 func EmulatedEvaluation(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus Limbs, terms [][]Limbs) *EmulatedEvaluationModule {
-	// TODO: make it work when we have non-full limbs (i.e. for selectors)
 	round := 0
 	nbRows := modulus.Columns[0].Size()
 	maxTermDegree := 0
@@ -205,7 +204,19 @@ func EmulatedEvaluation(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int
 			}
 		}
 	}
-	nbQuoLimbs := (maxTermDegree - 1) * nbLimbs
+	nbQuoBits := 0
+	for i := range terms {
+		nbTermQuoLimbsBits := len(terms[i][0].Columns) * nbBitsPerLimb
+		for j := 1; j < len(terms[i]); j++ {
+			nbTermQuoLimbsBits = nbMultiplicationResLimbs(nbTermQuoLimbsBits, len(terms[i][j].Columns)*nbBitsPerLimb)
+			nbLimbs = max(nbLimbs, len(terms[i][j].Columns))
+		}
+		nbQuoBits = max(nbQuoBits, nbTermQuoLimbsBits)
+	}
+	nbQuoBits += utils.DivCeil(utils.Log2Ceil(len(terms)), nbBitsPerLimb) // add some slack for the addition of terms
+	nbCarryBits := nbQuoBits
+	nbQuoBits = max(0, nbQuoBits-len(modulus.Columns)*nbBitsPerLimb+1) // we divide by modulus of nbLimbs size
+	nbQuoLimbs := utils.DivCeil(nbQuoBits, nbBitsPerLimb)
 	for i := range modulus.Columns {
 		round = max(round, modulus.Columns[i].Round())
 	}
@@ -220,7 +231,7 @@ func EmulatedEvaluation(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int
 			nbRows,
 		)
 	}
-	nbCarryLimbs := nbMultiplicationResLimbs(nbQuoLimbs, nbLimbs)
+	nbCarryLimbs := utils.DivCeil(nbCarryBits, nbBitsPerLimb)
 	carry := Limbs{
 		Columns: make([]ifaces.Column, nbCarryLimbs),
 	}

@@ -93,7 +93,7 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 	currAcc := emulated.NewLimbs(comp, roundNr, name+"_CURR_ACC", nbLimbs, nbRows)
 	modulus := emulated.NewLimbs(comp, roundNr, name+"_MODULUS", nbLimbs, nbRows)
 	exponent := emulated.NewLimbs(comp, roundNr, name+"_EXPONENT", nbLimbs, nbRows)
-	exponentBits := emulated.NewLimbs(comp, roundNr, name+"_EXPONENT_BITS", nbLimbs, nbRows)
+	exponentBits := emulated.NewLimbs(comp, roundNr, name+"_EXPONENT_BITS", 1, nbRows)
 	base := emulated.NewLimbs(comp, roundNr, name+"_BASE", nbLimbs, nbRows)
 	mone := emulated.NewLimbs(comp, roundNr, name+"_MONE", nbLimbs, nbRows)
 
@@ -378,6 +378,7 @@ func (m *Modexp) assignMasks(run *wizard.ProverRuntime) {
 }
 
 func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
+	// TODO: can parallelize over instances. But seems fast enough not worth it now.
 	var (
 		srcLimbs         = m.Input.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcIsActiveInput = m.IsActiveFromInput.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -552,7 +553,8 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 
 			// set the exponent bit
 			dstExponentBitLimbs[0].PushField(field.NewElement(exponentBits[i].Uint64()))
-			for j := range m.nbLimbs - 1 {
+			// we should only have one limb anyway, but leave for completeness
+			for j := range dstExponentBitLimbs[1:] {
 				dstExponentBitLimbs[j+1].PushInt(0)
 			}
 

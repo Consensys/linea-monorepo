@@ -33,6 +33,7 @@ func (l Limbs) String() string {
 }
 
 func NewLimbs(comp *wizard.CompiledIOP, round int, name string, nbLimbs int, nbRows int) Limbs {
+	// TODO: add options for range checking inputs
 	limbs := Limbs{
 		Columns: make([]ifaces.Column, nbLimbs),
 	}
@@ -76,9 +77,7 @@ func (a *WrappedProverAction) Run(run *wizard.ProverRuntime) {
 }
 
 func (a *EmulatedMultiplicationModule) assignEmulatedColumns(run *wizard.ProverRuntime) {
-	// TODO: parallelize
 	nbRows := a.TermL.Columns[0].Size()
-	nbLimbs := len(a.TermL.Columns)
 	var (
 		dstQuoLimbs = make([][]field.Element, len(a.Quotient.Columns))
 		dstRemLimbs = make([][]field.Element, len(a.Result.Columns))
@@ -95,12 +94,11 @@ func (a *EmulatedMultiplicationModule) assignEmulatedColumns(run *wizard.ProverR
 	}
 
 	parallel.Execute(nbRows, func(start, end int) {
-
-		bufL := make([]*big.Int, nbLimbs)
+		bufL := make([]*big.Int, len(a.TermL.Columns))
 		for i := range bufL {
 			bufL[i] = new(big.Int)
 		}
-		bufR := make([]*big.Int, nbLimbs)
+		bufR := make([]*big.Int, len(a.TermR.Columns))
 		for i := range bufR {
 			bufR[i] = new(big.Int)
 		}
@@ -169,15 +167,8 @@ func (a *EmulatedMultiplicationModule) assignEmulatedColumns(run *wizard.ProverR
 			if err := limbMul(bufRhs, bufQuo, bufMod); err != nil {
 				utils.Panic("failed to multiply rhs limbs: %v", err)
 			}
-			// add the remainder to the rhs, it now only has k*p. This is only for very
-			// edge cases where by adding the remainder we get additional bits in the
-			// carry.
 			for j := range bufRem {
-				if j < len(bufRhs) {
-					bufRhs[j].Add(bufRhs[j], bufRem[j])
-				} else {
-					bufRhs = append(bufRhs, new(big.Int).Set(bufRem[j]))
-				}
+				bufRhs[j].Add(bufRhs[j], bufRem[j])
 			}
 
 			for j := range dstCarry {
@@ -229,13 +220,10 @@ func (a *EmulatedMultiplicationModule) assignChallengePowers(run *wizard.ProverR
 }
 
 func EmulatedMultiplication(comp *wizard.CompiledIOP, name string, left, right, modulus Limbs, nbBitsPerLimb int) *EmulatedMultiplicationModule {
-	// TODO: add options for range checking inputs
-	// TODO: add options for including permutation on inputs/outputs
-	// TODO: add option to have activator column. When it is given then we can avoid assigning zeros when the multiplication is not active
-	// TODO: check all limbs are same width
+	// TODO: add option to have activator column. When it is given then we can
+	// avoid assigning zeros when the multiplication is not active
 	round := 0
 	nbRows := left.Columns[0].Size()
-	nbLimbs := len(modulus.Columns)
 	nbRangecheckBits := 16
 	nbRangecheckLimbs := (nbBitsPerLimb + nbRangecheckBits - 1) / nbRangecheckBits
 	for i := range left.Columns {
@@ -248,25 +236,32 @@ func EmulatedMultiplication(comp *wizard.CompiledIOP, name string, left, right, 
 		round = max(round, modulus.Columns[i].Round())
 	}
 
+	nbQuoBits := nbMultiplicationResLimbs(len(left.Columns)*nbBitsPerLimb, len(right.Columns)*nbBitsPerLimb)
+	nbQuoBits += 1 // for possible carry
+	nbCarryBits := nbQuoBits
+	nbQuoLimbs := max(0, utils.DivCeil(nbQuoBits, nbBitsPerLimb*len(modulus.Columns))+1) // we divide by modulus of nbLimbs size
 	result := Limbs{
-		Columns: make([]ifaces.Column, nbLimbs),
+		Columns: make([]ifaces.Column, len(modulus.Columns)),
 	}
-	quotient := Limbs{
-		Columns: make([]ifaces.Column, nbLimbs),
-	}
-	for i := range nbLimbs {
+	for i := range len(modulus.Columns) {
 		result.Columns[i] = comp.InsertCommit(
 			round,
 			ifaces.ColIDf("%s_EMUL_REMAINDER_LIMB_%d", name, i),
 			nbRows,
 		)
+	}
+	quotient := Limbs{
+		Columns: make([]ifaces.Column, nbQuoLimbs),
+	}
+	for i := range quotient.Columns {
 		quotient.Columns[i] = comp.InsertCommit(
 			round,
 			ifaces.ColIDf("%s_EMUL_QUOTIENT_LIMB_%d", name, i),
 			nbRows,
 		)
 	}
-	carry := Limbs{Columns: make([]ifaces.Column, 2*nbLimbs-1)}
+	nbCarryLimbs := utils.DivCeil(nbCarryBits, nbBitsPerLimb)
+	carry := Limbs{Columns: make([]ifaces.Column, nbCarryLimbs)}
 	for i := range carry.Columns {
 		carry.Columns[i] = comp.InsertCommit(
 			round,
@@ -302,12 +297,14 @@ func EmulatedMultiplication(comp *wizard.CompiledIOP, name string, left, right, 
 	comp.RegisterProverAction(round, &WrappedProverAction{pa.assignEmulatedColumns})
 	comp.RegisterProverAction(round+1, &WrappedProverAction{pa.assignChallengePowers})
 
-	for i := range nbLimbs {
+	for i := range pa.Quotient.Columns {
 		bigrange.BigRange(
 			comp,
 			ifaces.ColumnAsVariable(pa.Quotient.Columns[i]), int(nbRangecheckLimbs), nbRangecheckBits,
 			fmt.Sprintf("%s_EMUL_QUOTIENT_LIMB_RANGE_%d", name, i),
 		)
+	}
+	for i := range pa.Result.Columns {
 		bigrange.BigRange(
 			comp,
 			ifaces.ColumnAsVariable(pa.Result.Columns[i]), int(nbRangecheckLimbs), nbRangecheckBits,

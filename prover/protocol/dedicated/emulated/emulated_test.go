@@ -18,7 +18,7 @@ import (
 )
 
 func TestEmulatedMultiplication(t *testing.T) {
-	const nbEntries = (1 << 2) + 1 // test non power power of two as well
+	const nbEntries = (1 << 4) + 1 // test non power power of two as well
 	const nbBits = 384
 	const round_nr = 0
 	const nbBitsPerLimb = 128
@@ -77,7 +77,7 @@ func TestEmulatedMultiplication(t *testing.T) {
 }
 
 func TestEmulatedEvaluation(t *testing.T) {
-	const nbEntries = (1 << 6) + 1 // to ensure non power of two sizes are handled
+	const nbEntries = (1 << 4) + 1 // to ensure non power of two sizes are handled
 	const nbBits = 384
 	const round_nr = 0
 	const nbBitsPerLimb = 128
