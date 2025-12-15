@@ -309,12 +309,16 @@ library SSZ {
   /// @notice Computes the SSZ hash tree root of an array of pending partial withdrawals.
   /// @dev Implements progressive merkleization (merkleize_chunks) with mix_in_length as per SSZ spec.
   ///      Uses space-efficient algorithm with O(MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH+1) space complexity,
-  ///      despite supporting arrays up to 2**27 items.
+  ///      supporting arrays up to 2**27 items (maximum array size).
   ///      Reference: https://github.com/ethereum/consensus-specs/blob/5390b77256a9fd6c1ebe0c7e3f8a3da033476ddf/tests/core/pyspec/eth2spec/utils/merkle_minimal.py#L47-L91
   /// @param pendingPartialWithdrawal The array of pending partial withdrawals to compute the hash tree root for.
   /// @return root The SSZ hash tree root with length mixed in: mix_in_length(merkleize_progressive(...), len(value)).
+  /// @custom:error OutOfRange Reverts if array length > 2**27.
   function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) internal view returns (bytes32 root) {
     uint256 count = pendingPartialWithdrawal.length;
+    if (count > (1 << MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH)) {
+      revert OutOfRange();
+    }
     uint256 depth = count == 0 ? 0 : Math256.bitLength(count - 1);
     bytes32[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH + 1] memory tmp;
 
