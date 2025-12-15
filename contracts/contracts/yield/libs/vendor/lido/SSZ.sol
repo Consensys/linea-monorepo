@@ -317,7 +317,7 @@ library SSZ {
     bytes32[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH + 1] memory tmp;
 
     // Process all chunks
-    for (uint256 i = 0; i < count; i++) {
+    for (uint256 i = 0; i < count; ++i) {
       mergeSSZChunk(tmp, depth, count, hashTreeRoot(pendingPartialWithdrawal[i]), i);
     }
 
@@ -327,7 +327,7 @@ library SSZ {
     }
 
     // Extend tree to MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH
-    for (uint256 j = depth; j < MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH; j++) {
+    for (uint256 j = depth; j < MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH; ++j) {
       tmp[j + 1] = sha256Pair(tmp[j], zeroHash(j));
     }
 
