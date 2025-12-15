@@ -23,24 +23,31 @@ func TestEmulatedMultiplication(t *testing.T) {
 	const round_nr = 0
 	const nbBitsPerLimb = 128
 	const nbLimbs = (nbBits + nbBitsPerLimb - 1) / nbBitsPerLimb
-	var pa, pa2 *EmulatedMultiplicationModule
+	var pa, pa2 *Multiplication
 	define := func(b *wizard.Builder) {
 		P := NewLimbs(b.CompiledIOP, round_nr, "P", nbLimbs, nbEntries)
 		A := NewLimbs(b.CompiledIOP, round_nr, "A", nbLimbs, nbEntries)
 		B := NewLimbs(b.CompiledIOP, round_nr, "B", nbLimbs, nbEntries)
 		expected := NewLimbs(b.CompiledIOP, 0, "EXPECTED", nbLimbs, nbEntries)
-		pa = EmulatedMultiplication(b.CompiledIOP, "TEST", A, B, P, nbBitsPerLimb)
+		pa = NewMul(b.CompiledIOP, "TEST", A, B, P, nbBitsPerLimb)
+		// check that the result matches expected
 		for i := range pa.Result.Columns {
 			b.CompiledIOP.InsertGlobal(
 				round_nr, ifaces.QueryID(ifaces.QueryIDf("EMULATED_RESULT_CORRECTNESS_%d", i)),
 				symbolic.Sub(pa.Result.Columns[i], expected.Columns[i]),
 			)
 		}
-		pa2 = EmulatedMultiplication(b.CompiledIOP, "TEST2", A, B, P, nbBitsPerLimb)
+		P2 := NewLimbs(b.CompiledIOP, round_nr, "P2", nbLimbs, nbEntries)
+		A2 := NewLimbs(b.CompiledIOP, round_nr, "A2", nbLimbs, nbEntries)
+		B2 := NewLimbs(b.CompiledIOP, round_nr, "B2", nbLimbs, nbEntries)
+		expected2 := NewLimbs(b.CompiledIOP, 0, "EXPECTED2", nbLimbs, nbEntries)
+		// second case to ensure that all columns and queries are properly separated
+		pa2 = NewMul(b.CompiledIOP, "TEST2", A2, B2, P2, nbBitsPerLimb)
+		// check that the result matches expected
 		for i := range pa2.Result.Columns {
 			b.CompiledIOP.InsertGlobal(
 				round_nr, ifaces.QueryID(ifaces.QueryIDf("EMULATED_RESULT2_CORRECTNESS_%d", i)),
-				symbolic.Sub(pa2.Result.Columns[i], expected.Columns[i]),
+				symbolic.Sub(pa2.Result.Columns[i], expected2.Columns[i]),
 			)
 		}
 	}
@@ -49,6 +56,10 @@ func TestEmulatedMultiplication(t *testing.T) {
 	assignmentB := make([]*big.Int, nbEntries)
 	assignmentP := make([]*big.Int, nbEntries)
 	assignmentExpected := make([]*big.Int, nbEntries)
+	assignmentA2 := make([]*big.Int, nbEntries)
+	assignmentB2 := make([]*big.Int, nbEntries)
+	assignmentP2 := make([]*big.Int, nbEntries)
+	assignmentExpected2 := make([]*big.Int, nbEntries)
 	bound := new(big.Int).Lsh(big.NewInt(1), nbBits)
 	var err error
 	reader := sha3.NewSHAKE256()
@@ -61,6 +72,15 @@ func TestEmulatedMultiplication(t *testing.T) {
 		require.NoError(t, err)
 		assignmentExpected[i] = new(big.Int).Mul(assignmentA[i], assignmentB[i])
 		assignmentExpected[i].Mod(assignmentExpected[i], assignmentP[i])
+		// second case
+		assignmentP2[i], err = rand.Int(reader, bound)
+		require.NoError(t, err)
+		assignmentA2[i], err = rand.Int(reader, assignmentP2[i])
+		require.NoError(t, err)
+		assignmentB2[i], err = rand.Int(reader, assignmentP2[i])
+		require.NoError(t, err)
+		assignmentExpected2[i] = new(big.Int).Mul(assignmentA2[i], assignmentB2[i])
+		assignmentExpected2[i].Mod(assignmentExpected2[i], assignmentP2[i])
 	}
 
 	prover := func(run *wizard.ProverRuntime) {
@@ -68,6 +88,11 @@ func TestEmulatedMultiplication(t *testing.T) {
 		assignEmulated(run, "B", assignmentB, nbBitsPerLimb, nbLimbs)
 		assignEmulated(run, "P", assignmentP, nbBitsPerLimb, nbLimbs)
 		assignEmulated(run, "EXPECTED", assignmentExpected, nbBitsPerLimb, nbLimbs)
+
+		assignEmulated(run, "A2", assignmentA2, nbBitsPerLimb, nbLimbs)
+		assignEmulated(run, "B2", assignmentB2, nbBitsPerLimb, nbLimbs)
+		assignEmulated(run, "P2", assignmentP2, nbBitsPerLimb, nbLimbs)
+		assignEmulated(run, "EXPECTED2", assignmentExpected2, nbBitsPerLimb, nbLimbs)
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)
@@ -82,18 +107,17 @@ func TestEmulatedEvaluation(t *testing.T) {
 	const round_nr = 0
 	const nbBitsPerLimb = 128
 	const nbLimbs = (nbBits + nbBitsPerLimb - 1) / nbBitsPerLimb
-	var pa *EmulatedEvaluationModule
 	define := func(b *wizard.Builder) {
 		P := NewLimbs(b.CompiledIOP, round_nr, "P", nbLimbs, nbEntries)
 		T0 := NewLimbs(b.CompiledIOP, round_nr, "T0", nbLimbs, nbEntries)
 		T1 := NewLimbs(b.CompiledIOP, round_nr, "T1", nbLimbs, nbEntries)
 		T2 := NewLimbs(b.CompiledIOP, round_nr, "T2", nbLimbs, nbEntries)
 		T3 := NewLimbs(b.CompiledIOP, round_nr, "T3", nbLimbs, nbEntries)
-		pa = EmulatedEvaluation(b.CompiledIOP, "TEST", nbBitsPerLimb, P, [][]Limbs{
+		// define the emulated evaluation. We can omit the returned value if not needed
+		NewEval(b.CompiledIOP, "TEST", nbBitsPerLimb, P, [][]Limbs{
 			{T0, T1}, {T0, T1, T2}, {T3}, // T0*T1 + T0*T1*T2 + T3 == 0
 		})
 	}
-	_ = pa
 
 	assignmentT0 := make([]*big.Int, nbEntries)
 	assignmentT1 := make([]*big.Int, nbEntries)

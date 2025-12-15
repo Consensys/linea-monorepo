@@ -4,10 +4,68 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+// Limbs represents a set of columns used to store the limbs of an emulated
+// integer in little-endian order (smallest limb first).
+type Limbs struct {
+	Columns []ifaces.Column
+}
+
+// String returns a string representation of the limbs. Useful for mapping the
+// grouped limbs in maps.
+func (l Limbs) String() string {
+	if len(l.Columns) == 0 {
+		return "[]"
+	}
+	names := make([]string, len(l.Columns))
+	for i := range l.Columns {
+		names[i] = string(l.Columns[i].GetColID())
+	}
+	return fmt.Sprintf("[%s]", strings.Join(names, ":"))
+}
+
+// NewLimbs creates a new Limbs structure with nbLimbs columns at the given
+// round and with the given name as prefix for the column IDs.
+func NewLimbs(comp *wizard.CompiledIOP, round int, name string, nbLimbs int, nbRows int) Limbs {
+	// TODO: add options for range checking inputs. Right now we expect
+	// everything comes range checking
+	limbs := Limbs{
+		Columns: make([]ifaces.Column, nbLimbs),
+	}
+	for i := range nbLimbs {
+		limbs.Columns[i] = comp.InsertCommit(
+			round,
+			ifaces.ColIDf("%s_LIMB_%d", name, i),
+			utils.NextPowerOfTwo(nbRows),
+		)
+	}
+	return limbs
+}
+
+// csPolyEval constructs a symbolic expression that evaluates the polynomial
+// defined by the limbs and the challenge powers.
+func csPolyEval(val Limbs, challengePowers []ifaces.Column) *symbolic.Expression {
+	// TODO: should store the value in column?
+	res := symbolic.NewConstant(0)
+	for i := range val.Columns {
+		res = symbolic.Add(
+			res,
+			symbolic.Mul(
+				val.Columns[i],
+				challengePowers[i],
+			),
+		)
+	}
+	return res
+}
 
 // limbsToBigInt recomposes the limbs at loc into res using buf as a temporary
 // buffer.

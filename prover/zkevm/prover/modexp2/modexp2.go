@@ -130,7 +130,7 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 	}
 	// register prover action before emulated evaluation so that the limb assignements are available
 	comp.RegisterProverAction(roundNr, me)
-	emulated.EmulatedEvaluation(comp, name+"_EVAL", limbSizeBits, modulus, [][]emulated.Limbs{
+	emulated.NewEval(comp, name+"_EVAL", limbSizeBits, modulus, [][]emulated.Limbs{
 		// R_i = R_{i-1}^2 + R_{i-1}^2*e_i*base - R_{i-1}^2 * e_i
 		{prevAcc, prevAcc}, {prevAcc, prevAcc, exponentBits, base}, {mone, prevAcc, prevAcc, exponentBits}, {mone, currAcc},
 	})
