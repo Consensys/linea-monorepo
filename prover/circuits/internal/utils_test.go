@@ -10,7 +10,6 @@ import (
 	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	gchash "github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/math/emulated"
 	poseidon2permutation "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
@@ -20,23 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestChecksumSlice(t *testing.T) {
-	sum := internal.ChecksumSlice([][]byte{{0}, {1}, {2}})
-	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
-		s := internal.VarSlice{
-			Values: []frontend.Variable{0, 1, 2, 3},
-			Length: 3,
-		}
-
-		if hsh, err := mimc.NewMiMC(api); err != nil {
-			panic(err)
-		} else {
-			return []frontend.Variable{s.Checksum(api, &hsh)}
-		}
-
-	}, sum)(t)
-}
 
 func TestChecksumSubSlices(t *testing.T) {
 	testChecksumSubSlices(t, 2, 1, 1)

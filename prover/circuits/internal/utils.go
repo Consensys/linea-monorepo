@@ -325,56 +325,6 @@ func concatHint(_ *big.Int, ins, outs []*big.Int) error {
 	return nil
 }
 
-// SubSlice DOES NOT range check start and length, but it does end := start + length
-func SubSlice(api frontend.API, slice Slice[frontend.Variable], start, length frontend.Variable, maxLength int) Slice[frontend.Variable] {
-	if maxLength < 0 || maxLength > len(slice.Values) {
-		panic("invalid maxLength")
-	}
-	res := make([]frontend.Variable, maxLength)
-	t := SliceToTable(api, slice.Values)
-	/*for i := 0; i < maxLength; i++ {	TODO make sure padding is unnecessary
-		t.Insert(0)
-	}*/
-
-	end := api.Add(start, length)
-	api.AssertIsLessOrEqual(end, slice.Length)
-
-	r := NewRange(api, length, maxLength)
-	for i := range res {
-		res[i] = api.Mul(r.InRange[i], t.Lookup(api.Add(start, i))[0])
-	}
-
-	return Slice[frontend.Variable]{res, length}
-}
-
-// ChecksumSlice returns C(len(slice), partial) where partial is slice[0] if length is 1, and C(...C(slice[0], slice[1])hsh(slice[0], slice[1], ..., slice[len(slice)-1]) otherwise
-// Proof of collision resistance: By the collision resistance of H, we may assume that f(a_1, ..., a_n) = f(b_1, ..., b_m) implies
-// m=1 and f(a_1,...,a_n) = f(b) = b. If n = 1, then f(a) = a and thus a = b.
-// Otherwise, n ≠ 1 implies H(n, f(a_1,...,a_n)) ≠ H(1, b).
-func ChecksumSlice(slice [][]byte) []byte {
-	if len(slice) == 0 {
-		panic("empty slice not supported")
-	}
-
-	partial := slice[0]
-	hsh := hash.MIMC_BLS12_377.New()
-	for i := 1; i < len(slice); i++ {
-		hsh.Reset()
-		hsh.Write(partial)
-		hsh.Write(slice[i])
-		partial = hsh.Sum(nil)
-	}
-
-	hsh.Reset()
-	n := Uint64To32Bytes(uint64(len(slice)))
-	hsh.Write(n[:])
-	hsh.Write(partial)
-
-	return hsh.Sum(nil)
-}
-
-// TODO test that ChecksumSliceSnark matches ChecksumSubSlices
-
 type VarSlice Slice[frontend.Variable]
 type Var32Slice Slice[[32]frontend.Variable]
 
@@ -677,12 +627,6 @@ func RotateLeft(api frontend.API, v []frontend.Variable, n frontend.Variable) (r
 		res[i] = t.Lookup(api.Add(i, n))[0]
 	}
 	return
-}
-
-func CloneSlice[T any](s []T, cap ...int) []T {
-	res := make([]T, len(s), max(len(s), Sum(cap...)))
-	copy(res, s)
-	return res
 }
 
 // PartitionSlice populates sub-slices subs[0], ... where subs[i] contains the elements s[j] with selectors[j] = i

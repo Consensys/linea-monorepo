@@ -111,8 +111,8 @@ func (c *Circuit) Define(api frontend.API) error {
 		piq.RangeCheck(api)
 
 		shnarfParams[i] = ShnarfIteration{ // prepare shnarf verification data
-			BlobDataSnarkHash:    utils.ToBytes(api, piq.SnarkHash),
-			NewStateRootHash:     utils.ToBytes(api, finalStateRootHashes.Lookup(nbBatchesSums[i])[0]),
+			BlobDataSnarkHash:    utils.ToBytes32(api, piq.SnarkHash),
+			NewStateRootHash:     utils.ToBytes32(api, finalStateRootHashes.Lookup(nbBatchesSums[i])[0]),
 			EvaluationPointBytes: piq.X,
 			EvaluationClaimBytes: fr377EncodedFr381ToBytes(api, piq.Y),
 		}

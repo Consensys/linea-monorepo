@@ -9,8 +9,8 @@ import (
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	gkrposeidon2compressor "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
-	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/compress/lzss"
@@ -145,7 +145,7 @@ func packBatches(api frontend.API, nbBatches frontend.Variable, blobPayload, bat
 	}
 
 	// side effect: batchEnds are range checked to be within a reasonable factor of the maximum blob payload length; useless because we will have to perform a stronger check in the end
-	endQsV, endRsV, err := DivBy31(api, batchEnds, bits.Len(uint(len(blobPayload))+31))
+	endQsV, endRsV, err := utils.DivBy31(api, batchEnds, bits.Len(uint(len(blobPayload))+31))
 	if err != nil {
 		return nil, err
 	}
@@ -317,46 +317,7 @@ func CheckBatchesPartialSums(api frontend.API, nbBatches frontend.Variable, blob
 
 func init() {
 	lzss.RegisterHints()
-	solver.RegisterHint(divBy31Hint)
 	internal.RegisterHints()
-}
-
-// side effect: ensures 0 ≤ v[i] < 2ᵇⁱᵗˢ⁺² for all i
-func DivBy31(api frontend.API, v []frontend.Variable, bits int) (q, r []frontend.Variable, err error) {
-	qNbBits := bits - 4
-
-	if hintOut, err := api.Compiler().NewHint(divBy31Hint, 2*len(v), v...); err != nil {
-		return nil, nil, err
-	} else {
-		q, r = hintOut[:len(v)], hintOut[len(v):]
-	}
-
-	rChecker := rangecheck.New(api)
-
-	for i := range v { // TODO See if lookups or api.AssertIsLte would be more efficient
-		rChecker.Check(r[i], 5)
-		api.AssertIsDifferent(r[i], 31)
-		rChecker.Check(q[i], qNbBits)
-		api.AssertIsEqual(v[i], api.Add(api.Mul(q[i], 31), r[i])) // 31 × q < 2ᵇⁱᵗˢ⁻⁴ 2⁵ ⇒ v < 2ᵇⁱᵗˢ⁺¹ + 31 < 2ᵇⁱᵗˢ⁺²
-	}
-	return q, r, nil
-}
-
-// outs: [quotients], [remainders]
-func divBy31Hint(_ *big.Int, ins []*big.Int, outs []*big.Int) error {
-	if len(outs) != 2*len(ins) {
-		return errors.New("expected output layout: [quotients][remainders]")
-	}
-
-	q := outs[:len(ins)]
-	r := outs[len(ins):]
-	for i := range ins {
-		v := ins[i].Uint64()
-		q[i].SetUint64(v / 31)
-		r[i].SetUint64(v % 31)
-	}
-
-	return nil
 }
 
 // iterateInRange runs f(i, inRange) for 0 ≤ i < staticRange where inRange is 1 if i < dynamicRange and 0 otherwise

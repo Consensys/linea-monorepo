@@ -1,11 +1,12 @@
 package public_input
 
 import (
-	"math/rand"
 	"testing"
 
-	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/polynomial"
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/frontend"
+	poseidon2permutation "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
+	"github.com/consensys/gnark/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,27 +41,59 @@ func TestAggregation(t *testing.T) {
 	}
 }
 
-func TestPolyEvalBls12377(t *testing.T) {
-	for _, length := range []int{2} {
+type testExecDataHashCircuit struct {
+	NbBytes     frontend.Variable
+	Words16Bit  []frontend.Variable
+	ExpectedSum frontend.Variable
+}
 
-		data := make([]byte, 0, length*fr377.Bytes)
-		c := make(polynomial.Polynomial, length+1)
+func (c *testExecDataHashCircuit) Define(api frontend.API) error {
+	compressor, err := poseidon2permutation.NewCompressor(api)
+	if err != nil {
+		return err
+	}
+	res, err := ChecksumExecDataSnark(api, c.Words16Bit, 16, c.NbBytes, compressor)
+	if err != nil {
+		return err
+	}
+	api.AssertIsEqual(c.ExpectedSum, res)
+	return nil
+}
 
-		var evaluationPoint fr377.Element
-		evaluationPoint.MustSetRandom()
+func TestExecDataHash(t *testing.T) {
+	var (
+		dataBytes    [64]byte
+		dataWordsAll [32]uint16
+		dataWords    [32]frontend.Variable
+	)
 
-		c0 := int64(rand.Intn(100))
+	for i := range dataBytes {
+		dataBytes[i] = byte(i)
+	}
 
-		c[0].SetInt64(c0)
-		for i := len(c) - 1; i > 0; i-- {
-			c[i].MustSetRandom()
-			data = append(data, c[i].Marshal()...)
+	for i := range dataWordsAll {
+		dataWordsAll[i] = uint16(i*514) + 1 // (256 * 2i) + (2i+1)
+		dataWords[i] = 0
+	}
+
+	circuit := testExecDataHashCircuit{Words16Bit: make([]frontend.Variable, len(dataWords))}
+	assignment := testExecDataHashCircuit{
+		Words16Bit: dataWords[:],
+	}
+
+	for n := 1; n <= len(dataBytes); n++ {
+		if n%2 == 0 {
+			dataWords[(n-1)/2] = dataWordsAll[(n-1)/2]
+		} else {
+			dataWords[(n-1)/2] = dataWordsAll[(n-1)/2] & 0xff00
 		}
-		want := c.Eval(&evaluationPoint)
 
-		got, err := polyEvalBls12377(data, c0, evaluationPoint.Marshal())
+		sum, err := NewExecDataChecksum(dataBytes[:n])
 		require.NoError(t, err)
 
-		require.Equal(t, want.Marshal(), got[:])
+		assignment.NbBytes = n
+		assignment.ExpectedSum = sum.Hash[:]
+
+		require.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()), "subslice of length %d", n)
 	}
 }

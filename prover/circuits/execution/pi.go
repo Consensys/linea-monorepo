@@ -196,8 +196,8 @@ func (ds *DataChecksumSnark) Assign(pi *public_input.ExecDataChecksum) {
 	ds.Evaluation = pi.Evaluation[:]
 	ds.PartialEvaluation = pi.PartialEvaluation[:]
 	ds.KoalaBearHash = pi.KoalaBearHash[:]
-	ds.Bls12377Hash = pi.Bls12377Hash[:]
-	ds.Bls12377PartialHash = pi.Bls12377PartialHash[:]
+	ds.Bls12377Hash = pi.Hash[:]
+	ds.Bls12377PartialHash = pi.PartialHash[:]
 	ds.Length = pi.Length
 	ds.TotalChecksum = pi.TotalChecksum[:]
 }
