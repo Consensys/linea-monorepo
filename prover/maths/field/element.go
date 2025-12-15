@@ -150,6 +150,18 @@ func ParseOctuplet(data [32]byte) [8]Element {
 	return res
 }
 
+// NewOctupletFromStrings constructs an octuplet from 8 string representations.
+// Each string is parsed according to [Element.SetString] rules.
+func NewOctupletFromStrings(s [8]string) (res Octuplet) {
+	for i := range res {
+		_, err := res[i].SetString(s[i])
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse element %d: %v", i, err))
+		}
+	}
+	return res
+}
+
 // OctupletToBytes converts an octuplet of field elements to a [32]byte
 func OctupletToBytes(octuplet [8]Element) [32]byte {
 	var res [32]byte
