@@ -136,7 +136,7 @@ __pycache__/
 !operations/bin/
 # Authorize the kzg srs folder
 !prover/prover-assets/kzgsrs/**
-!prover/symbolic/testdata/**/*.csv
+!prover/**/testdata/**/*.csv
 !prover/symbolic/testdata/**/*.tar.gz
 # except for single-round bin
 !prover/**/single_round/bin/
