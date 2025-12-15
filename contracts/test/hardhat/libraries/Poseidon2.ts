@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { Poseidon2 } from "../../../typechain-types";
 import poseidon2TestData from "../_testData/poseidon2-test-data.json";
 import { deployFromFactory } from "../common/deployment";
-import { expectRevertWithReason } from "../common/helpers";
+import { expectRevertWithCustomError } from "../common/helpers";
 
 describe("Poseidon2", () => {
   let poseidon2: Poseidon2;
@@ -28,13 +28,14 @@ describe("Poseidon2", () => {
     });
 
     it("Should revert if the data is less than 32 and not mod32", async () => {
-      await expectRevertWithReason(poseidon2.hash("0x12"), "error _msg.length%0x20 != 0");
+      await expectRevertWithCustomError(poseidon2, poseidon2.hash("0x12"), "DataIsNotMod32");
     });
 
     it("Should revert if the data is greater than 32 and not mod32", async () => {
-      await expectRevertWithReason(
+      await expectRevertWithCustomError(
+        poseidon2,
         poseidon2.hash("0x103adbc490c2067eac112873462707eb2072813005a4ac3ab182135be336742423456789"),
-        "error _msg.length%0x20 != 0",
+        "DataIsNotMod32",
       );
     });
   });

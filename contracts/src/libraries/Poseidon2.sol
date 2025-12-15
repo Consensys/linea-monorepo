@@ -22,13 +22,18 @@ pragma solidity ^0.8.30;
  * @custom:security-contact security-report@linea.build
  */
 library Poseidon2 {
+  /**
+   * Thrown when the data is not purely in 32 byte chunks
+   */
+  error DataIsNotMod32();
+
   uint32 private constant R_MOD = 2130706433;
   uint256 private constant WORD_MOD = 4294967296; // 2**32
 
   // precompile
   uint8 private constant MOD_EXP = 0x5;
 
-  uint256 private constant ERROR_STRING_ID = 0x08c379a000000000000000000000000000000000000000000000000000000000; // selector for function Error(string)
+  uint256 private constant DATA_IS_NOT_MOD32_SELECTOR = 0xc2cab26c00000000000000000000000000000000000000000000000000000000; // bytes4(keccak256("DataIsNotMod32()"))
 
   // round keys
   uint256 private constant RK_0_0 = 52691802021506155758914962750280372212207119203515444126415105344946620971042;
@@ -477,20 +482,15 @@ library Poseidon2 {
       }
 
       function error_size_data() {
-        let ptError := mload(0x40)
-        mstore(ptError, ERROR_STRING_ID) // selector for function Error(string)
-        mstore(add(ptError, 0x4), 0x20)
-        mstore(add(ptError, 0x24), 0x1b)
-        mstore(add(ptError, 0x44), "error _msg.length%0x20 != 0")
-        revert(ptError, 0x64)
+        let ptr := mload(0x40)
+        mstore(ptr, DATA_IS_NOT_MOD32_SELECTOR)
+        revert(ptr, 4)
       }
-
     }
-
   }
 
   /**
-   * @dev Formats a bytes32 input into a bytes array by splitting it into two 32-byte segments.
+   * @notice Formats a bytes32 input into a bytes array by splitting it into two 32-byte segments.
    * @param input The bytes32 input to be formatted.
    * @return out A bytes array containing the two 32-byte segments.
    */
