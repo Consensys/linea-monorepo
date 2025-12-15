@@ -16,21 +16,23 @@ func TestModExpAntichamber(t *testing.T) {
 	}{
 		{
 			InputFName:       "testdata/single_256_bits_input.csv",
-			ModuleFName:      "testdata/single_256_bits_module.csv",
 			NbSmallInstances: 10,
 			NbLargeInstances: 1,
 		},
 		{
 			InputFName:       "testdata/single_4096_bits_input.csv",
-			ModuleFName:      "testdata/single_4096_bits_module.csv",
 			NbSmallInstances: 1, // not used but include anyway
 			NbLargeInstances: 1,
 		},
 		{
 			InputFName:       "testdata/single_8192_bits_input.csv",
-			ModuleFName:      "testdata/single_8192_bits_module.csv",
 			NbSmallInstances: 1, // not used but include anyway
 			NbLargeInstances: 1,
+		},
+		{
+			InputFName:       "testdata/mixed_256_4096_8192_bits_input.csv",
+			NbSmallInstances: 10,
+			NbLargeInstances: 2,
 		},
 	}
 
