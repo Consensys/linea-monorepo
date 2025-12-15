@@ -92,7 +92,7 @@ type ModuleWitnessLPP struct {
 	SegmentModuleIndex int
 	// InitialFiatShamirState is the initial FiatShamir state to set at
 	// round 1.
-	InitialFiatShamirState field.Element
+	InitialFiatShamirState field.Octuplet
 	// N0 values are the parameters to the Horner queries in the same order
 	// as in the [FilteredModuleInputs.HornerArgs]
 	N0Values []int

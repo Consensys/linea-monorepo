@@ -115,7 +115,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 			Disc: moduleInput.Disc,
 		},
 		DefinitionInput:        moduleInput,
-		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
+		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 8, true),
 	}
 
 	for _, col := range moduleInput.Columns {
@@ -208,7 +208,7 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP)
 
 	run.AssignColumn(
 		m.InitialFiatShamirState.GetColID(),
-		smartvectors.NewConstant(witness.InitialFiatShamirState, 1),
+		smartvectors.NewRegular(witness.InitialFiatShamirState[:]),
 	)
 
 	a := LppWitnessAssignment{ModuleLPP: *m, Round: 0}
