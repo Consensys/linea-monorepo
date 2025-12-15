@@ -3,6 +3,7 @@ package distributed
 import (
 	"errors"
 	"fmt"
+	"io"
 	"slices"
 	"strconv"
 	"strings"
@@ -10,6 +11,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	smt_koalabear "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -69,7 +72,7 @@ type ModuleConglo struct {
 	// the membership of the verifying keys of the instances inside the
 	// VerificationKeyMerkleTree. Each merkle proof is structured as a list of
 	// D columns if size 1 where D is the depth of the merkle tree.
-	VerificationKeyMerkleProofs [][]ifaces.Column
+	VerificationKeyMerkleProofs [][][8]ifaces.Column
 }
 
 // ModuleWitnessConglo collects the witness elements of the conglomeration
@@ -83,7 +86,7 @@ type ModuleWitnessConglo struct {
 // and it is meant to store the verification keys of all the moduleGL/LPP and
 // and of the ConglomerationHierarchical circuit.
 type VerificationKeyMerkleTree struct {
-	Tree             *smt.Tree
+	Tree             *smt_koalabear.Tree
 	VerificationKeys [][2]field.Element
 }
 
@@ -116,6 +119,7 @@ func buildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompil
 
 	var (
 		leaves           = make([]types.Bytes32, 0, len(moduleGL)+len(moduleLPP)+1)
+		leaves_octuplets = make([]field.Octuplet, 0, len(moduleGL)+len(moduleLPP)+1)
 		verificationKeys = make([][2]field.Element, 0, len(moduleGL)+len(moduleLPP)+1)
 		vkList           = ""
 	)
@@ -123,11 +127,9 @@ func buildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompil
 	appendLeaf := func(comp *wizard.CompiledIOP) {
 		var (
 			vk0, vk1 = getVerifyingKeyPair(comp)
-			leafF    = hasher_factory.HashVec([]field.Element{vk0, vk1})
-			leaf     types.Bytes32
+			leaf = hashLR(vk0, vk1)
 		)
-
-		leaf.SetField(leafF)
+		
 		leaves = append(leaves, leaf)
 		verificationKeys = append(verificationKeys, [2]field.Element{vk0, vk1})
 
@@ -150,14 +152,20 @@ func buildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompil
 		leaves = append(leaves, types.Bytes32{})
 	}
 
+	// convert leaves to octuplets
+	for _, leaf := range leaves {
+		leafF := leaf.ToOctuplet()
+		leaves_octuplets = append(leaves_octuplets, leafF)
+	}
+
 	return VerificationKeyMerkleTree{
-		Tree:             smt.BuildComplete(leaves, hashtypes.MiMC),
+		Tree:             smt_koalabear.NewTree(leaves_octuplets),
 		VerificationKeys: verificationKeys,
 	}
 }
 
 // GetVkMerkleProof return the merkle proof of a verification key
-func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []field.Element {
+func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []field.Octuplet {
 
 	var (
 		leafPosition = -1
@@ -178,26 +186,20 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 	}
 
 	proof := vmt.Tree.MustProve(leafPosition)
-	res := make([]field.Element, len(proof.Siblings))
-	for i, sibling := range proof.Siblings {
-		res[i].SetBytes(sibling[:])
-	}
 
 	fmt.Printf(
 		"[getMerkleProof] leaf position: %v, root: %v, leaf: %v, vk: %v\n",
-		leafPosition, vmt.Tree.Root.Hex(), vmt.Tree.OccupiedLeaves[leafPosition].Hex(),
+		leafPosition, vmt.Tree.Root, vmt.Tree.OccupiedLeaves[leafPosition],
 		vector.Prettify(vmt.VerificationKeys[leafPosition][:]))
 
-	return res
+	return proof.Siblings
 }
 
 // GetRoot returns the root of the verification key merkle tree encoded as a
 // field element.
-func (vmt VerificationKeyMerkleTree) GetRoot() field.Element {
+func (vmt VerificationKeyMerkleTree) GetRoot() field.Octuplet {
 	root := vmt.Tree.Root
-	var rootF field.Element
-	rootF.SetBytes(root[:])
-	return rootF
+	return root
 }
 
 // CheckMembership checks if a verification key is in the merkle tree.
@@ -223,13 +225,12 @@ func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.
 	var (
 		merkleDepth = utils.Log2Ceil(2*numModule + 1)
 		root        types.Bytes32
-		mProof      = smt.Proof{
+		mProof      = smt_koalabear.Proof{
 			Path:     leafPosition,
-			Siblings: make([]types.Bytes32, merkleDepth),
+			Siblings: make([]field.Octuplet, merkleDepth),
 		}
-		smtCfg = &smt.Config{HashFunc: hashtypes.MiMC, Depth: merkleDepth}
-		leafF  = hasher_factory.HashVec(vk[:])
-		leaf   = types.Bytes32{}
+		leafF = hasher_factory.HashVec(vk[:])
+		leaf  = types.Bytes32{}
 	)
 
 	if merkleDepth != len(proofF) {
@@ -1142,4 +1143,12 @@ func cmpWizardIOP(c1, c2 *wizard.CompiledIOP) (diff1, diff2 []string) {
 // dumpWizardIOP dumps a compiled IOP to a file.
 func dumpWizardIOP(c *wizard.CompiledIOP, name string) {
 	logdata.GenCSV(files.MustOverwrite(name), logdata.IncludeAllFilter)(c)
+}
+
+// Function to compute the hash given the left and the right node
+func hashLR(nodeL, nodeR field.Element) types.Bytes32 {
+	hasher := poseidon2.NewMDHasher()
+	hasher.WriteElements(nodeL, nodeR)
+	d := types.AsBytes32(hasher.Sum(nil))
+	return d
 }
