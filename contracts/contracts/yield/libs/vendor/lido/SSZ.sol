@@ -467,6 +467,14 @@ library SSZ {
     return bytes32(v);
   }
 
+  /// @notice Converts a uint64 value to little-endian bytes32 format optimized for SSZ encoding.
+  /// @dev Implements byte-level swapping within the 64-bit value to convert from big-endian to little-endian.
+  ///      Performs three swap stages (8-bit, 16-bit, 32-bit) within the 64-bit range, then positions
+  ///      the result in the low 8 bytes (bytes 0-7) of the bytes32 output, consistent with SSZ encoding
+  ///      for uint64 values. This is more gas-efficient than the uint256 version for 64-bit values.
+  ///      Reference: SSZ specification for uint64 encoding.
+  /// @param v The uint64 value to convert.
+  /// @return The little-endian bytes32 representation with the value in bytes 0-7 (low bytes).
   function toLittleEndian64(uint64 v) internal pure returns (bytes32) {
     v =
       ((v & 0xFF00FF00FF00FF00) >> 8) |
