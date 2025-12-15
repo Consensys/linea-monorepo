@@ -107,6 +107,7 @@ func (fs *GnarkFS) UpdateVec(vec ...[]zk.WrappedVariable) {
 }
 
 func (fs *GnarkFS) RandomField() zk.Octuplet {
+	fs.api.Println("Generating random field element from FS", fs.koalaBuf)
 	r := fs.RandomFrElmt() // the safeguard update is called
 	res := encoding.EncodeFVTo8WVs(fs.api, r)
 	return res
