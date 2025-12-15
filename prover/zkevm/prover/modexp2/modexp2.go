@@ -1,9 +1,7 @@
 package modexp2
 
 import (
-	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -442,7 +440,6 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 
 	expectedZeroPadding := nbLargeModexpLimbs - m.nbLimbs
 
-	start := time.Now()
 	// scan through all the rows to find the modexp instances
 	for ptr := 0; ptr < nbRows; {
 		// we didn't find anything, move on
