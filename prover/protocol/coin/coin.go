@@ -75,6 +75,7 @@ const (
 	Field Type = iota
 	IntegerVec
 	FieldExt
+	FieldFromSeed
 )
 
 // MarshalJSON implements [json.Marshaler] directly returning the Itoa of the
