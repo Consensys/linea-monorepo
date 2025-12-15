@@ -11,6 +11,8 @@
  * Array in the Beacon State. This extension adds functionality for computing SSZ hash tree roots
  * of PendingPartialWithdrawal arrays using progressive merkleization (merkleize_chunks) with
  * mix_in_length as per the SSZ specification.
+ * Additionally, an optimized toLittleEndian64 function was added for gas-efficient conversion
+ * of uint64 values to little-endian bytes32 format, avoiding redundant 256-bit operations.
  */
 
 // See contracts/COMPILERS.md
