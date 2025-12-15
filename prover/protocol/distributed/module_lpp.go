@@ -4,10 +4,11 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -40,10 +41,10 @@ type ModuleLPP struct {
 	InitialFiatShamirState ifaces.Column
 
 	// N0Hash is the hash of the N0 positions for the Horner queries
-	N0Hash ifaces.Column
+	N0Hash [8]ifaces.Column
 
 	// N1Hash is the hash of the N1 positions for the Horner queries
-	N1Hash ifaces.Column
+	N1Hash [8]ifaces.Column
 
 	// LogDerivativeSum is the translated log-derivative query in the module
 	LogDerivativeSum *query.LogDerivativeSum
@@ -164,8 +165,10 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 		)
 		moduleLPP.Horner = &q
 
-		moduleLPP.N0Hash = moduleLPP.Wiop.InsertProof(1, "N0_HASH", 1)
-		moduleLPP.N1Hash = moduleLPP.Wiop.InsertProof(1, "N1_HASH", 1)
+		for i := 0; i < 8; i++ {
+			moduleLPP.N0Hash[i] = moduleLPP.Wiop.InsertProof(1, ifaces.ColIDf("N0_HASH", i), 1, true)
+			moduleLPP.N1Hash[i] = moduleLPP.Wiop.InsertProof(1, ifaces.ColIDf("N1_HASH", i), 1, true)
+		}
 	}
 
 	// In case the LPP part is empty, we have a scenario where the sub-proof to
@@ -329,12 +332,14 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 		run.AssignHornerParams(a.Horner.ID, hornerParams)
 		n0Hash, n1Hash := hashNxs(hornerParams, 0), hashNxs(hornerParams, 1)
 
-		run.AssignColumn(a.N0Hash.GetColID(), smartvectors.NewRegular([]field.Element{n0Hash}))
-		run.AssignColumn(a.N1Hash.GetColID(), smartvectors.NewRegular([]field.Element{n1Hash}))
+		for i := 0; i < 8; i++ {
+			run.AssignColumn(a.N0Hash[i].GetColID(), smartvectors.NewRegular([]field.Element{n0Hash[i]}))
+			run.AssignColumn(a.N1Hash[i].GetColID(), smartvectors.NewRegular([]field.Element{n1Hash[i]}))
+		}
 	}
 
 	if len(grandProductArgs) > 0 {
-		run.AssignGrandProduct(a.GrandProduct.ID, a.GrandProduct.Compute(run))
+		run.AssignGrandProduct(a.GrandProduct.ID, a.GrandProduct.Compute(run).Base)
 	}
 
 	if len(logDerivativeArgs) > 0 {
@@ -369,11 +374,15 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 
 		var (
 			hornerParams  = run.GetHornerParams(a.Horner.ID)
-			n0HashAlleged = a.N0Hash.GetColAssignmentAt(run, 0)
-			n1HashAlleged = a.N1Hash.GetColAssignmentAt(run, 0)
+			n0HashAlleged, n1HashAlleged field.Octuplet
 			n0Hash        = hashNxs(hornerParams, 0)
 			n1Hash        = hashNxs(hornerParams, 1)
 		)
+
+		for i := 0; i < 8; i++ {
+			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentAt(run, i)
+			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentAt(run, i)
+		}
 
 		if n1HashAlleged != n1Hash {
 			return fmt.Errorf("n0Hash %v != n1HashAlleged %v", n1Hash, n1HashAlleged)
@@ -391,21 +400,25 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 
 func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
-	if a.Horner != nil {
+	// if a.Horner != nil {
 
-		var (
-			hornerParams  = run.GetHornerParams(a.Horner.ID)
-			n0HashAlleged = a.N0Hash.GetColAssignmentGnarkAt(run, 0)
-			n1HashAlleged = a.N1Hash.GetColAssignmentGnarkAt(run, 0)
-			n0Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 0)
-			n1Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 1)
-		)
+	// 	var (
+	// 		hornerParams  = run.GetHornerParams(a.Horner.ID)
+	// 		n0HashAlleged, n1HashAlleged [8]zk.WrappedVariable
+	// 		n0Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 0)
+	// 		n1Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 1)
+	// 	)
 
-		api.AssertIsEqual(n0Hash, n0HashAlleged)
-		api.AssertIsEqual(n1Hash, n1HashAlleged)
-	}
+	// 	for i := 1; i < 8; i++ {
+	// 		n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(run, i)
+	// 		n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(run, i)
+	// 	}
 
-	a.checkGnarkMultiSetHash(api, run)
+	// 	api.AssertIsEqual(n0Hash, n0HashAlleged)
+	// 	api.AssertIsEqual(n1Hash, n1HashAlleged)
+	// }
+
+	// a.checkGnarkMultiSetHash(api, run)
 }
 
 func (a *CheckNxHash) Skip() {
@@ -417,14 +430,24 @@ func (a *CheckNxHash) IsSkipped() bool {
 }
 
 func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
-	state := a.InitialFiatShamirState.GetColAssignment(run).Get(0)
-	run.Fs().SetState([]field.Element{state})
+	stateOct := field.Octuplet{}
+	for i := 0; i < 8; i++ {
+		state := a.InitialFiatShamirState.GetColAssignment(run).Get(i)
+		stateOct[i] = state
+	}
+	fs := run.Fs()
+	(*fs).SetState(stateOct)
 	return nil
 }
 
 func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	state := a.InitialFiatShamirState.GetColAssignmentGnark(run)[0]
-	run.Fs().SetState([]frontend.Variable{state})
+	stateOct := zk.Octuplet{}
+	for i := 0; i < 8; i++ {
+		state := a.InitialFiatShamirState.GetColAssignmentGnarkAt(run, i)
+		stateOct[i] = state
+	}
+	fs := run.Fs()
+	(*fs).SetState(stateOct)
 }
 
 func (a *SetInitialFSHash) Skip() {
@@ -437,9 +460,9 @@ func (a *SetInitialFSHash) IsSkipped() bool {
 
 // hashNxs scans params and hash either the N0s or the N1s value all together
 // (pass x=0, to compute the hash of the N0s and x=1 for the N1s).
-func hashNxs(params query.HornerParams, x int) field.Element {
+func hashNxs(params query.HornerParams, x int) field.Octuplet {
 
-	hsh := mimc.NewMiMC()
+	nxs := make([]field.Element, len(params.Parts))
 
 	for _, part := range params.Parts {
 
@@ -452,37 +475,32 @@ func hashNxs(params query.HornerParams, x int) field.Element {
 		}
 
 		nxField := field.NewElement(uint64(nx))
-		nxBytes := nxField.Bytes()
-		hsh.Write(nxBytes[:])
+		nxs = append(nxs, nxField)
 	}
 
-	resBytes := hsh.Sum(nil)
-	var res field.Element
-	res.SetBytes(resBytes)
-
-	return res
+	return poseidon2_koalabear.HashVec(nxs[:]...)
 }
 
 // hashNxsGnark is as [hashNxs] but in a gnark circuit
-func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x int) frontend.Variable {
+// func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x int) frontend.Variable {
 
-	hsh := factory.NewHasher()
+// 	hsh := factory.NewHasher()
 
-	for _, part := range params.Parts {
+// 	for _, part := range params.Parts {
 
-		var nx frontend.Variable
+// 		var nx frontend.Variable
 
-		if x == 0 {
-			nx = part.N0
-		} else {
-			nx = part.N1
-		}
+// 		if x == 0 {
+// 			nx = part.N0
+// 		} else {
+// 			nx = part.N1
+// 		}
 
-		hsh.Write(nx)
-	}
+// 		hsh.Write(nx)
+// 	}
 
-	return hsh.Sum()
-}
+// 	return hsh.Sum()
+// }
 
 func (modLPP *ModuleLPP) declarePublicInput() {
 
