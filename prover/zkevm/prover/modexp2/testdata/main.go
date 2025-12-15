@@ -16,6 +16,7 @@ const (
 	nbSmallModexpCases = 10
 	nbLargeModexpCases = 1
 	limbSize           = 128 // in bits
+	nbLimbs            = modexpLargeBits / limbSize
 )
 
 //go:generate go run main.go
@@ -94,11 +95,15 @@ var testCases = []struct {
 				pushModexpToInput(inst, tab)
 			}
 			for i := 0; i < nbLargeModexpCases; i++ {
-				inst := createRandomModexp(rng, modexpLargeBits)
+				inst := createRandomModexp(rng, 4096)
 				pushModexpToInput(inst, tab)
 			}
 			for i := 0; i < nbSmallModexpCases/2; i++ {
 				inst := createRandomModexp(rng, modexpSmallBits)
+				pushModexpToInput(inst, tab)
+			}
+			for i := 0; i < nbLargeModexpCases; i++ {
+				inst := createRandomModexp(rng, modexpLargeBits)
 				pushModexpToInput(inst, tab)
 			}
 
@@ -145,7 +150,7 @@ func dumpAsCsv(w io.Writer, tab [][]*big.Int) {
 func pushModexpToInput(inst [4]*big.Int, tab [][]*big.Int) {
 
 	var (
-		limbs = splitIn32LimbsOf128Bits(inst[0])
+		limbs = splitIntoLimbs(inst[0])
 		zero  = &big.Int{}
 		one   = big.NewInt(1)
 	)
@@ -158,7 +163,7 @@ func pushModexpToInput(inst [4]*big.Int, tab [][]*big.Int) {
 		tab[4] = append(tab[4], zero)
 	}
 
-	limbs = splitIn32LimbsOf128Bits(inst[1])
+	limbs = splitIntoLimbs(inst[1])
 
 	for i := range limbs {
 		tab[0] = append(tab[0], limbs[i])
@@ -168,7 +173,7 @@ func pushModexpToInput(inst [4]*big.Int, tab [][]*big.Int) {
 		tab[4] = append(tab[4], zero)
 	}
 
-	limbs = splitIn32LimbsOf128Bits(inst[2])
+	limbs = splitIntoLimbs(inst[2])
 
 	for i := range limbs {
 		tab[0] = append(tab[0], limbs[i])
@@ -178,7 +183,7 @@ func pushModexpToInput(inst [4]*big.Int, tab [][]*big.Int) {
 		tab[4] = append(tab[4], zero)
 	}
 
-	limbs = splitIn32LimbsOf128Bits(inst[3])
+	limbs = splitIntoLimbs(inst[3])
 
 	for i := range limbs {
 		tab[0] = append(tab[0], limbs[i])
@@ -189,18 +194,19 @@ func pushModexpToInput(inst [4]*big.Int, tab [][]*big.Int) {
 	}
 }
 
-func splitIn32LimbsOf128Bits(x *big.Int) [64]*big.Int {
+func splitIntoLimbs(x *big.Int) [nbLimbs]*big.Int {
 
 	var (
-		res      = [64]*big.Int{}
-		extended = make([]byte, 1024)
+		res      = [nbLimbs]*big.Int{}
+		extended = make([]byte, modexpLargeBits/8)
 		xBytes   = x.Bytes()
 	)
 
 	copy(extended[len(extended)-len(xBytes):], xBytes)
+	const nbBytes = limbSize / 8
 
 	for i := range res {
-		res[i] = new(big.Int).SetBytes(extended[16*i : 16*i+16])
+		res[i] = new(big.Int).SetBytes(extended[nbBytes*i : nbBytes*i+nbBytes])
 	}
 
 	return res
