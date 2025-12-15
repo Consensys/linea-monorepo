@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub.defer;
 
 import java.util.*;
 
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
@@ -24,7 +25,6 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
-
 /**
  * Stores different categories of actions whose execution must be deferred later in the normal
  * transaction execution process.
@@ -262,5 +262,17 @@ public class DeferRegistry
 
   public void unscheduleForPostTransaction(EndTransactionDefer defer) {
     endTransactionDefers.remove(defer);
+  }
+
+  public void clearAll(){
+    postOpcodeDefers.clear();
+    contextEntryDefers.clear();
+    contextExitDefers.clear();
+    contextReEntryDefers.clear();
+    endTransactionDefers.clear();
+    afterTransactionFinalizationDefers.clear();
+    rollbackDefers.clear();
+    postBlockDefers.clear();
+    postConflationDefers.clear();
   }
 }
