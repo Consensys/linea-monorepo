@@ -14,10 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.30;
 
-contract Poseidon2 {
-
+library Poseidon2 {
   uint32 private constant R_MOD = 2130706433;
   uint256 private constant WORD_MOD = 4294967296; // 2**32
 
@@ -61,10 +60,8 @@ contract Poseidon2 {
   uint256 private constant RK_26_0 = 37373517675827041221658956101645979913006475784844873469590649853964048342988;
   uint256 private constant RK_26_1 = 46010512812451809471058691124553676654818408969360806522307687423952321374687;
 
-  /// Hash
-  // function Hash(bytes calldata _msg) external returns (bytes32 poseidon2Hash)  {
-  function Hash(bytes calldata _msg) external pure returns (bytes32 poseidon2Hash) {
-
+  /// @notice Computes the Poseidon2 hash of the input message.
+  function hash(bytes calldata _msg) external pure returns (bytes32 poseidon2Hash) {
     // params vortex t=16, rf=6, rp=21
     assembly {
 
@@ -485,5 +482,35 @@ contract Poseidon2 {
 
     }
 
+  }
+
+  /**
+   * @dev Formats a bytes32 input into a bytes array by splitting it into two 32-byte segments.
+   * @param input The bytes32 input to be formatted.
+   * @return out A bytes array containing the two 32-byte segments.
+   */
+  function formatBytes32(bytes32 input) external pure returns (bytes memory out) {
+    assembly {
+      out := mload(0x40)
+      mstore(out, 0x40) // Set length to 64 bytes
+
+      let data := add(out, 0x20)
+
+      let w := 0
+      for { let i := 0 } lt(i, 0x8) { i := add(i, 0x1) } {
+          let v := and(shr(mul(sub(0xF, i), 0x10), input), 0xFFFF)
+          w := or(w, shl(mul(sub(0x7, i), 0x20), v))
+      }
+      mstore(data, w)
+
+      w := 0
+      for { let i := 0x8 } lt(i, 0x10) { i := add(i, 0x1) } {
+          let v := and(shr(mul(sub(0xF, i), 0x10), input), 0xFFFF)
+          w := or(w, shl(mul(sub(0xF, i), 0x20), v))
+      }
+      mstore(add(data, 0x20), w)
+
+      mstore(0x40, add(data, 0x40))
+    }
   }
 }
