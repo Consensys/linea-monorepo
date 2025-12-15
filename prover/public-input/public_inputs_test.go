@@ -1,12 +1,15 @@
 package public_input
 
 import (
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	poseidon2permutation "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/consensys/gnark/test"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,9 +80,6 @@ func TestExecDataHash(t *testing.T) {
 	}
 
 	circuit := testExecDataHashCircuit{Words16Bit: make([]frontend.Variable, len(dataWords))}
-	assignment := testExecDataHashCircuit{
-		Words16Bit: dataWords[:],
-	}
 
 	for n := 1; n <= len(dataBytes); n++ {
 		if n%2 == 0 {
@@ -91,9 +91,14 @@ func TestExecDataHash(t *testing.T) {
 		sum, err := NewExecDataChecksum(dataBytes[:n])
 		require.NoError(t, err)
 
-		assignment.NbBytes = n
-		assignment.ExpectedSum = sum.Hash[:]
+		assignment := testExecDataHashCircuit{
+			NbBytes:     n,
+			Words16Bit:  slices.Clone(dataWords[:]),
+			ExpectedSum: sum.Hash[:],
+		}
 
-		require.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()), "subslice of length %d", n)
+		t.Run(fmt.Sprintf("subslice length %d", n), func(t *testing.T) {
+			assert.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()), "subslice of length %d", n)
+		})
 	}
 }
