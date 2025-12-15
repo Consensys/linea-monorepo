@@ -359,10 +359,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyPendingPartialWithdrawals(witness.pendingPartialWithdrawalsWitness, _slot, witness.childBlockTimestamp, witness.proposerIndex);
 
     uint256 totalPendingWithdrawalsGwei;
-    for (uint256 i = 0; i < witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals.length; ++i) {
+    for (uint256 i = 0; i < witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals.length;) {
       if (witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals[i].validatorIndex == _validatorIndex) {
         totalPendingWithdrawalsGwei += witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals[i].amount;
       }
+      unchecked { ++i; }
     }
 
     // https://github.com/ethereum/consensus-specs/blob/master/specs/electra/beacon-chain.md#modified-get_expected_withdrawals
