@@ -7,9 +7,10 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
+// limbsToBigInt recomposes the limbs at loc into res using buf as a temporary
+// buffer.
 func limbsToBigInt(res *big.Int, buf []*big.Int, limbs Limbs, loc int, nbBitsPerLimb int, run *wizard.ProverRuntime) error {
 	if res == nil {
 		return fmt.Errorf("result not initialized")
@@ -33,7 +34,9 @@ func limbsToBigInt(res *big.Int, buf []*big.Int, limbs Limbs, loc int, nbBitsPer
 	return nil
 }
 
-func bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, vb []*common.VectorBuilder, nbBitsPerLimb int) error {
+// bigIntToLimbs decomposes input into limbs and sets the outputCols at loc
+// accordingly.
+func bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, outputCols [][]field.Element, loc int, nbBitsPerLimb int) error {
 	if len(buf) != len(limbs.Columns) {
 		return fmt.Errorf("mismatched size between limbs and buffer")
 	}
@@ -41,15 +44,14 @@ func bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, vb []*common.Vec
 		return fmt.Errorf("failed to decompose big.Int into limbs: %v", err)
 	}
 	for i := range limbs.Columns {
-		var f field.Element
-		f.SetBigInt(buf[i])
-		vb[i].PushField(f)
+		outputCols[i][loc].SetBigInt(buf[i])
 	}
 	return nil
 }
 
-// Decompose decomposes the input into res as integers of width nbBits. It
-// errors if the decomposition does not fit into res or if res is uninitialized.
+// IntLimbDecompose decomposes the input into buffer as integers of width
+// nbBits. The decomposition is stored in res in little-endian order. It errors
+// if the decomposition does not fit into res or if res is uninitialized.
 //
 // The following holds
 //
@@ -73,8 +75,9 @@ func IntLimbDecompose(input *big.Int, nbBits int, res []*big.Int) error {
 	return nil
 }
 
-// Recompose takes the limbs in inputs and combines them into res. It errors if
-// inputs is uninitialized or zero-length and if the result is uninitialized.
+// Recompose takes the little-endian limbs in inputs and combines them into res.
+// It errors if inputs is uninitialized or zero-length and if the result is
+// uninitialized.
 //
 // The following holds
 //
@@ -93,6 +96,8 @@ func IntLimbRecompose(inputs []*big.Int, nbBits int, res *big.Int) error {
 	return nil
 }
 
+// limbMul performs limb multiplication between lhs and rhs storing the result
+// in res.
 func limbMul(res, lhs, rhs []*big.Int) error {
 	tmp := new(big.Int)
 	if len(res) != nbMultiplicationResLimbs(len(lhs), len(rhs)) {
@@ -114,6 +119,7 @@ func nbMultiplicationResLimbs(lenLeft, lenRight int) int {
 	return res
 }
 
+// clearBuffer buffers the big.Int slice by setting all elements to zero.
 func clearBuffer(buf []*big.Int) {
 	for i := range buf {
 		buf[i].SetUint64(0)

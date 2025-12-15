@@ -13,7 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 type EmulatedEvaluationModule struct {
@@ -36,137 +36,143 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 	nbRows := a.Terms[0][0].Columns[0].Size()
 
 	var (
-		dstQuoLimbs = make([]*common.VectorBuilder, len(a.Quotient.Columns))
-		dstCarry    = make([]*common.VectorBuilder, len(a.Carry.Columns))
+		dstQuoLimbs = make([][]field.Element, len(a.Quotient.Columns))
+		dstCarry    = make([][]field.Element, len(a.Carry.Columns))
 	)
 	for i := range a.Quotient.Columns {
-		dstQuoLimbs[i] = common.NewVectorBuilder(a.Quotient.Columns[i])
+		dstQuoLimbs[i] = make([]field.Element, nbRows)
 	}
 	for i := range a.Carry.Columns {
-		dstCarry[i] = common.NewVectorBuilder(a.Carry.Columns[i])
-	}
-
-	bufWit := make([]*big.Int, a.nbLimbs)
-	for i := range bufWit {
-		bufWit[i] = new(big.Int)
+		dstCarry[i] = make([]field.Element, nbRows)
 	}
 	nbLhsLimbs := a.nbLimbs
 	for range a.maxTermDegree - 1 {
 		nbLhsLimbs = nbMultiplicationResLimbs(nbLhsLimbs, a.nbLimbs)
 	}
-	// we allocate LHS twice as we set the result value and we modify the buffer
-	bufTermProd1 := make([]*big.Int, nbLhsLimbs)
-	for i := range bufTermProd1 {
-		bufTermProd1[i] = new(big.Int)
-	}
-	bufTermProd2 := make([]*big.Int, nbLhsLimbs)
-	for i := range bufTermProd2 {
-		bufTermProd2[i] = new(big.Int)
-	}
-	bufLhs := make([]*big.Int, nbLhsLimbs)
-	for i := range bufLhs {
-		bufLhs[i] = new(big.Int)
-	}
 
-	bufMod := make([]*big.Int, a.nbLimbs)
-	for i := range bufMod {
-		bufMod[i] = new(big.Int)
-	}
-	bufQuo := make([]*big.Int, len(a.Quotient.Columns))
-	for i := range bufQuo {
-		bufQuo[i] = new(big.Int)
-	}
-	bufRhs := make([]*big.Int, nbMultiplicationResLimbs(len(bufQuo), len(bufMod)))
-	for i := range bufRhs {
-		bufRhs[i] = new(big.Int)
-	}
+	startT := time.Now()
+	parallel.Execute(nbRows, func(start, end int) {
+		bufWit := make([]*big.Int, a.nbLimbs)
+		for i := range bufWit {
+			bufWit[i] = new(big.Int)
+		}
+		// we allocate LHS twice as we set the result value and we modify the buffer
+		bufTermProd1 := make([]*big.Int, nbLhsLimbs)
+		for i := range bufTermProd1 {
+			bufTermProd1[i] = new(big.Int)
+		}
+		bufTermProd2 := make([]*big.Int, nbLhsLimbs)
+		for i := range bufTermProd2 {
+			bufTermProd2[i] = new(big.Int)
+		}
+		bufLhs := make([]*big.Int, nbLhsLimbs)
+		for i := range bufLhs {
+			bufLhs[i] = new(big.Int)
+		}
 
-	wit := new(big.Int)
-	witModulus := new(big.Int)
+		bufMod := make([]*big.Int, a.nbLimbs)
+		for i := range bufMod {
+			bufMod[i] = new(big.Int)
+		}
+		bufQuo := make([]*big.Int, len(a.Quotient.Columns))
+		for i := range bufQuo {
+			bufQuo[i] = new(big.Int)
+		}
+		bufRhs := make([]*big.Int, nbMultiplicationResLimbs(len(bufQuo), len(bufMod)))
+		for i := range bufRhs {
+			bufRhs[i] = new(big.Int)
+		}
 
-	tmpEval := new(big.Int)
-	tmpQuotient := new(big.Int)
-	carry := new(big.Int)
-	tmpTermProduct := new(big.Int)
-	tmpRemainder := new(big.Int) // only for assigning and checking that the eval result is 0
+		wit := new(big.Int)
+		witModulus := new(big.Int)
 
-	for i := range nbRows {
-		clearBuffer(bufMod)
-		clearBuffer(bufQuo)
-		clearBuffer(bufRhs)
-		clearBuffer(bufLhs)
-		clearBuffer(bufWit)
-		tmpEval.SetInt64(0)
-		// recompose all terms
-		for j := range a.Terms {
-			clearBuffer(bufTermProd1)
-			bufTermProd1[0].SetInt64(1) // multiplication identity
-			clearBuffer(bufTermProd2)
-			tmpTermProduct.SetInt64(1)
-			termNbLimbs := 1
-			for k := range a.Terms[j] {
-				if err := limbsToBigInt(wit, bufWit, a.Terms[j][k], i, a.nbBitsPerLimb, run); err != nil {
-					utils.Panic("failed to convert witness term [%d][%d]: %v", j, k, err)
-				}
-				if wit.Sign() != 0 {
-					tmpTermProduct.Mul(tmpTermProduct, wit)
-					if err := limbMul(bufTermProd2[:nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)], bufTermProd1[:termNbLimbs], bufWit); err != nil {
-						utils.Panic("failed to multiply LHS2 and LHS1: %v", err)
+		tmpEval := new(big.Int)
+		tmpQuotient := new(big.Int)
+		carry := new(big.Int)
+		tmpTermProduct := new(big.Int)
+		tmpRemainder := new(big.Int) // only for assigning and checking that the eval result is 0
+
+		for i := start; i < end; i++ {
+			clearBuffer(bufMod)
+			clearBuffer(bufQuo)
+			clearBuffer(bufRhs)
+			clearBuffer(bufLhs)
+			clearBuffer(bufWit)
+			tmpEval.SetInt64(0)
+			// recompose all terms
+			for j := range a.Terms {
+				clearBuffer(bufTermProd1)
+				bufTermProd1[0].SetInt64(1) // multiplication identity
+				clearBuffer(bufTermProd2)
+				tmpTermProduct.SetInt64(1)
+				termNbLimbs := 1
+				for k := range a.Terms[j] {
+					if err := limbsToBigInt(wit, bufWit, a.Terms[j][k], i, a.nbBitsPerLimb, run); err != nil {
+						utils.Panic("failed to convert witness term [%d][%d]: %v", j, k, err)
 					}
-				} else {
-					// when one term is zero, then the whole term is zero
-					tmpTermProduct.SetInt64(0)
-					clearBuffer(bufTermProd2)
+					if wit.Sign() != 0 {
+						tmpTermProduct.Mul(tmpTermProduct, wit)
+						if err := limbMul(bufTermProd2[:nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)], bufTermProd1[:termNbLimbs], bufWit); err != nil {
+							utils.Panic("failed to multiply LHS2 and LHS1: %v", err)
+						}
+					} else {
+						// when one term is zero, then the whole term is zero
+						tmpTermProduct.SetInt64(0)
+						clearBuffer(bufTermProd2)
+					}
+					termNbLimbs = nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)
+					bufTermProd2, bufTermProd1 = bufTermProd1, bufTermProd2
 				}
-				termNbLimbs = nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)
-				bufTermProd2, bufTermProd1 = bufTermProd1, bufTermProd2
+				tmpEval.Add(tmpEval, tmpTermProduct)
+				for i := range bufLhs {
+					bufLhs[i].Add(bufLhs[i], bufTermProd1[i])
+				}
 			}
-			tmpEval.Add(tmpEval, tmpTermProduct)
-			for i := range bufLhs {
-				bufLhs[i].Add(bufLhs[i], bufTermProd1[i])
+			if err := limbsToBigInt(witModulus, bufMod, a.Modulus, i, a.nbBitsPerLimb, run); err != nil {
+				utils.Panic("failed to convert witness modulus: %v", err)
+			}
+			switch {
+			case witModulus.Sign() != 0 && tmpEval.Sign() != 0:
+				// we have both nonzero modulus and eval.
+				tmpQuotient.QuoRem(tmpEval, witModulus, tmpRemainder)
+				if tmpRemainder.Sign() != 0 {
+					utils.Panic("emulated evaluation at row %d: evaluation not divisible by modulus", i)
+				}
+			case witModulus.Sign() == 0 && tmpEval.Sign() != 0:
+				// modulus is zero, eval non zero => invalid
+				utils.Panic("modulus cannot be zero when evaluation is non zero")
+			default:
+				// eval is zero, quotient and remainder are zero. We don't
+				// need to reset as the values are zeroed already
+			}
+			if err := bigIntToLimbs(tmpQuotient, bufQuo, a.Quotient, dstQuoLimbs, i, a.nbBitsPerLimb); err != nil {
+				utils.Panic("failed to convert quotient to limbs: %v", err)
+			}
+			if tmpQuotient.Sign() != 0 && witModulus.Sign() != 0 {
+				if err := limbMul(bufRhs, bufQuo, bufMod); err != nil {
+					utils.Panic("failed to compute quotient * modulus: %v", err)
+				}
+			}
+			carry.SetInt64(0)
+			for j := range dstCarry {
+				if j < len(bufLhs) {
+					carry.Add(carry, bufLhs[j])
+				}
+				if j < len(bufRhs) {
+					carry.Sub(carry, bufRhs[j])
+				}
+				carry.Rsh(carry, uint(a.nbBitsPerLimb))
+				dstCarry[j][i].SetBigInt(carry)
 			}
 		}
-		if err := limbsToBigInt(witModulus, bufMod, a.Modulus, i, a.nbBitsPerLimb, run); err != nil {
-			utils.Panic("failed to convert witness modulus: %v", err)
-		}
-		if witModulus.Sign() != 0 && tmpEval.Sign() != 0 {
-			tmpQuotient.QuoRem(tmpEval, witModulus, tmpRemainder)
-			if tmpRemainder.Sign() != 0 {
-				utils.Panic("emulated evaluation at row %d: evaluation not divisible by modulus", i)
-			}
-		} else {
-			// TODO: when all values are zero, then we can have modulus zero, it
-			// is empty check. Then we don't have to assign masks
-			// utils.Panic("modulus cannot be zero")
-		}
-		if err := bigIntToLimbs(tmpQuotient, bufQuo, a.Quotient, dstQuoLimbs, a.nbBitsPerLimb); err != nil {
-			utils.Panic("failed to convert quotient to limbs: %v", err)
-		}
-		if tmpQuotient.Sign() != 0 && witModulus.Sign() != 0 {
-			if err := limbMul(bufRhs, bufQuo, bufMod); err != nil {
-				utils.Panic("failed to compute quotient * modulus: %v", err)
-			}
-		}
-		carry.SetInt64(0)
-		for j := range dstCarry {
-			if j < len(bufLhs) {
-				carry.Add(carry, bufLhs[j])
-			}
-			if j < len(bufRhs) {
-				carry.Sub(carry, bufRhs[j])
-			}
-			carry.Rsh(carry, uint(a.nbBitsPerLimb))
-			var f field.Element
-			f.SetBigInt(carry)
-			dstCarry[j].PushField(f)
-		}
-	}
+	})
+	fmt.Println("Emulated evaluation assignment took:", time.Since(startT))
 
 	for i := range dstQuoLimbs {
-		dstQuoLimbs[i].PadAndAssign(run, field.Zero())
+		run.AssignColumn(a.Quotient.Columns[i].GetColID(), smartvectors.NewRegular(dstQuoLimbs[i]))
 	}
 	for i := range dstCarry {
-		dstCarry[i].PadAndAssign(run, field.Zero())
+		run.AssignColumn(a.Carry.Columns[i].GetColID(), smartvectors.NewRegular(dstCarry[i]))
 	}
 }
 

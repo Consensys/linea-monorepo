@@ -13,11 +13,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEmulatedMultiplication(t *testing.T) {
-	const nbEntries = 1 << 2
+	const nbEntries = (1 << 2) + 1 // test non power power of two as well
 	const nbBits = 384
 	const round_nr = 0
 	const nbBitsPerLimb = 128
@@ -76,7 +77,7 @@ func TestEmulatedMultiplication(t *testing.T) {
 }
 
 func TestEmulatedEvaluation(t *testing.T) {
-	const nbEntries = 1 << 6
+	const nbEntries = (1 << 6) + 1 // to ensure non power of two sizes are handled
 	const nbBits = 384
 	const round_nr = 0
 	const nbBitsPerLimb = 128
@@ -178,7 +179,7 @@ func assignEmulated[E assignable, S []E](run *wizard.ProverRuntime, name string,
 		}
 	}
 	for j := range nbLimbs {
-		sv := smartvectors.NewRegular(vlimbs[j])
+		sv := smartvectors.RightPadded(vlimbs[j], field.NewElement(0), utils.NextPowerOfTwo(len(vlimbs[j])))
 		run.AssignColumn(ifaces.ColIDf("%s_LIMB_%d", name, j), sv)
 	}
 	return nil
