@@ -1,3 +1,4 @@
+// File: serde/writer.go
 package serde
 
 import (
@@ -12,6 +13,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
+
+// ... [Writer struct and NewWriter remain unchanged] ...
 
 type Writer struct {
 	buf    *bytes.Buffer
@@ -166,8 +169,37 @@ func linearize(w *Writer, v reflect.Value) (Ref, error) {
 		if v.IsNil() {
 			return 0, nil
 		}
-		// Stub: write null Ref to avoid crash
-		return 0, nil
+
+		var bodyBuf bytes.Buffer
+		iter := v.MapRange()
+		count := 0
+
+		for iter.Next() {
+			k := iter.Key()
+			val := iter.Value()
+
+			// Write Key
+			if err := writeMapElement(w, k, &bodyBuf); err != nil {
+				return 0, fmt.Errorf("failed to write map key: %w", err)
+			}
+			// Write Value
+			if err := writeMapElement(w, val, &bodyBuf); err != nil {
+				return 0, fmt.Errorf("failed to write map value: %w", err)
+			}
+			count++
+		}
+
+		// Write data blob
+		dataOff := w.WriteBytes(bodyBuf.Bytes())
+
+		// Write Header
+		fs := FileSlice{
+			Offset: Ref(dataOff),
+			Len:    int64(count),
+			Cap:    int64(count),
+		}
+		off := w.Write(fs)
+		return Ref(off), nil
 	}
 
 	// 8. Structs
@@ -183,6 +215,66 @@ func linearize(w *Writer, v reflect.Value) (Ref, error) {
 	// 9. Primitives
 	off := w.Write(v.Interface())
 	return Ref(off), nil
+}
+
+func writeMapElement(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
+	t := v.Type()
+	if t == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
+		bi := toBigInt(v)
+		if bi == nil {
+			binary.Write(buf, binary.LittleEndian, Ref(0))
+		} else {
+			ref, err := writeBigInt(w, bi)
+			if err != nil {
+				return err
+			}
+			binary.Write(buf, binary.LittleEndian, ref)
+		}
+		return nil
+	}
+
+	isRef := v.Kind() == reflect.Ptr || v.Kind() == reflect.Slice ||
+		v.Kind() == reflect.String || v.Kind() == reflect.Interface || v.Kind() == reflect.Map ||
+		t == reflect.TypeOf(big.Int{}) || t == reflect.TypeOf(&big.Int{})
+
+	if isRef {
+		ref, err := linearize(w, v)
+		if err != nil {
+			return err
+		}
+		return binary.Write(buf, binary.LittleEndian, ref)
+	}
+
+	if v.Kind() == reflect.Struct {
+		if t == reflect.TypeOf(field.Element{}) {
+			return binary.Write(buf, binary.LittleEndian, v.Interface())
+		}
+		return linearizeStructBody(w, v, buf)
+	}
+
+	// Handle Array of POD or fallback
+	if v.Kind() == reflect.Array {
+		if t == reflect.TypeOf(field.Element{}) {
+			return binary.Write(buf, binary.LittleEndian, v.Interface())
+		}
+		// Treat arrays like structs for inline writing
+		for j := 0; j < v.Len(); j++ {
+			if err := binary.Write(buf, binary.LittleEndian, v.Index(j).Interface()); err != nil {
+				return fmt.Errorf("array element write failed: %w", err)
+			}
+		}
+		return nil
+	}
+
+	// Primitives
+	val := v.Interface()
+	switch v := val.(type) {
+	case int:
+		val = int64(v)
+	case uint:
+		val = uint64(v)
+	}
+	return binary.Write(buf, binary.LittleEndian, val)
 }
 
 func writeBigInt(w *Writer, b *big.Int) (Ref, error) {
@@ -236,79 +328,8 @@ func linearizeStructBody(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
 			continue
 		}
 
-		if t.Type == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
-			bi := toBigInt(f)
-			if bi == nil {
-				binary.Write(buf, binary.LittleEndian, Ref(0))
-			} else {
-				ref, err := writeBigInt(w, bi)
-				if err != nil {
-					return err
-				}
-				binary.Write(buf, binary.LittleEndian, ref)
-			}
-			continue
-		}
-
-		isBigInt := f.Type() == reflect.TypeOf(big.Int{}) || f.Type() == reflect.TypeOf(&big.Int{})
-
-		// FIX: Added reflect.Map and reflect.Array to prevent fallthrough
-		if f.Kind() == reflect.Ptr || f.Kind() == reflect.Slice || f.Kind() == reflect.String || f.Kind() == reflect.Interface || f.Kind() == reflect.Map || isBigInt {
-			ref, err := linearize(w, f)
-			if err != nil {
-				return err
-			}
-			binary.Write(buf, binary.LittleEndian, ref)
-			continue
-		}
-
-		if f.Kind() == reflect.Struct {
-			if f.Type() == reflect.TypeOf(field.Element{}) {
-				binary.Write(buf, binary.LittleEndian, f.Interface())
-			} else {
-				if err := linearizeStructBody(w, f, buf); err != nil {
-					return err
-				}
-			}
-			continue
-		}
-
-		// FIX: Explicit Array handling (e.g. [4]uint64, or [2]Struct)
-		if f.Kind() == reflect.Array {
-			if f.Type() == reflect.TypeOf(field.Element{}) {
-				binary.Write(buf, binary.LittleEndian, f.Interface())
-			} else {
-				// We must recurse for arrays of non-POD types (e.g. [2]*BigInt)
-				// But binary.Write handles arrays of fixed-size primitives.
-				// If array contains pointers, binary.Write will fail.
-				// For now, assume POD arrays or handle element-wise?
-				// To be safe, let's treat Arrays like Structs: inline serialization.
-				// For POD arrays, this is slow but correct.
-				for j := 0; j < f.Len(); j++ {
-					// We can reuse linearizeStructBody logic by wrapping in a fake struct? No.
-					// We just need to handle the element.
-					// Simple recursive write for now.
-					// NOTE: This assumes array elements are POD.
-					// If array elements are pointers, we need logic similar to above.
-					// Given constraints, we fall back to binary.Write which works for POD.
-					if err := binary.Write(buf, binary.LittleEndian, f.Interface()); err != nil {
-						return fmt.Errorf("array write failed: %w", err)
-					}
-				}
-			}
-			continue
-		}
-
-		// Primitives
-		val := f.Interface()
-		switch v := val.(type) {
-		case int:
-			val = int64(v)
-		case uint:
-			val = uint64(v)
-		}
-		if err := binary.Write(buf, binary.LittleEndian, val); err != nil {
-			return fmt.Errorf("failed to write field %s: %w", t.Name, err)
+		if err := writeMapElement(w, f, buf); err != nil {
+			return fmt.Errorf("field %s: %w", t.Name, err)
 		}
 	}
 	return nil

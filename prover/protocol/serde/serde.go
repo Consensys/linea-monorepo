@@ -1,3 +1,4 @@
+// File: serde/serde.go
 package serde
 
 import (
@@ -10,6 +11,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
+
+// ... [Serialize/Deserialize functions remain unchanged] ...
 
 func Serialize(v any) ([]byte, error) {
 	w := NewWriter()
@@ -51,6 +54,8 @@ func Deserialize(b []byte, v any) error {
 	return reconstruct(b, val.Elem(), int64(header.PayloadOff))
 }
 
+// ... [getBinarySize remains unchanged] ...
+
 func getBinarySize(t reflect.Type) int64 {
 	if t == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
 		return 8
@@ -60,7 +65,8 @@ func getBinarySize(t reflect.Type) int64 {
 	}
 
 	k := t.Kind()
-	if k == reflect.Ptr || k == reflect.Slice || k == reflect.String || k == reflect.Interface || k == reflect.Map {
+	if k == reflect.Ptr || k == reflect.Slice ||
+		k == reflect.String || k == reflect.Interface || k == reflect.Map {
 		return 8
 	}
 
@@ -199,6 +205,43 @@ func reconstruct(data []byte, target reflect.Value, offset int64) error {
 
 	// 7. Maps
 	if target.Kind() == reflect.Map {
+		if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(data) {
+			return fmt.Errorf("map header out of bounds")
+		}
+		fs := (*FileSlice)(unsafe.Pointer(&data[offset]))
+		if fs.Offset.IsNull() {
+			target.Set(reflect.Zero(target.Type()))
+			return nil
+		}
+		if fs.Offset < 0 || int64(fs.Offset) >= int64(len(data)) {
+			return fmt.Errorf("map data start out of bounds")
+		}
+
+		target.Set(reflect.MakeMapWithSize(target.Type(), int(fs.Len)))
+
+		currentOff := int64(fs.Offset)
+		keyType := target.Type().Key()
+		elemType := target.Type().Elem()
+
+		for i := 0; i < int(fs.Len); i++ {
+			// Read Key
+			newKey := reflect.New(keyType).Elem()
+			nextOff, err := readMapElement(data, newKey, currentOff)
+			if err != nil {
+				return fmt.Errorf("map key read error: %w", err)
+			}
+			currentOff = nextOff
+
+			// Read Value
+			newVal := reflect.New(elemType).Elem()
+			nextOff, err = readMapElement(data, newVal, currentOff)
+			if err != nil {
+				return fmt.Errorf("map val read error: %w", err)
+			}
+			currentOff = nextOff
+
+			target.SetMapIndex(newKey, newVal)
+		}
 		return nil
 	}
 
@@ -232,7 +275,9 @@ func reconstruct(data []byte, target reflect.Value, offset int64) error {
 			}
 
 			isBigInt := f.Type() == reflect.TypeOf(big.Int{}) || f.Type() == reflect.TypeOf(&big.Int{})
-			if f.Kind() == reflect.Ptr || f.Kind() == reflect.Slice || f.Kind() == reflect.String || f.Kind() == reflect.Interface || f.Kind() == reflect.Map || isBigInt {
+			if f.Kind() == reflect.Ptr ||
+				f.Kind() == reflect.Slice || f.Kind() == reflect.String || f.Kind() == reflect.Interface || f.Kind() == reflect.Map ||
+				isBigInt {
 				if currentOff+8 > int64(len(data)) {
 					return fmt.Errorf("struct ref field out of bounds")
 				}
@@ -267,7 +312,6 @@ func reconstruct(data []byte, target reflect.Value, offset int64) error {
 	}
 
 	// 9. Arrays
-	// FIX: Explicit Array handling with correct unsafe.Pointer casting
 	if target.Kind() == reflect.Array {
 		binSize := getBinarySize(target.Type())
 		if offset < 0 || int64(offset)+binSize > int64(len(data)) {
@@ -275,8 +319,6 @@ func reconstruct(data []byte, target reflect.Value, offset int64) error {
 		}
 		srcPtr := unsafe.Pointer(&data[offset])
 		dstPtr := target.UnsafeAddr()
-
-		// FIX: dstPtr (uintptr) -> unsafe.Pointer -> *byte
 		copy(unsafe.Slice((*byte)(unsafe.Pointer(dstPtr)), int(binSize)), unsafe.Slice((*byte)(srcPtr), int(binSize)))
 		return nil
 	}
@@ -308,6 +350,48 @@ func reconstruct(data []byte, target reflect.Value, offset int64) error {
 	dstPtr := target.UnsafeAddr()
 	copy(unsafe.Slice((*byte)(unsafe.Pointer(dstPtr)), size), unsafe.Slice((*byte)(srcPtr), size))
 	return nil
+}
+
+func readMapElement(data []byte, target reflect.Value, offset int64) (int64, error) {
+	t := target.Type()
+	isRef := t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice || t.Kind() == reflect.String ||
+		t.Kind() == reflect.Interface || t.Kind() == reflect.Map ||
+		t == reflect.TypeOf(big.Int{}) || t == reflect.TypeOf(&big.Int{}) ||
+		t == reflect.TypeOf((*frontend.Variable)(nil)).Elem()
+
+	if isRef {
+		// Read 8-byte Ref
+		if offset+8 > int64(len(data)) {
+			return 0, fmt.Errorf("map element ref out of bounds")
+		}
+		ref := *(*Ref)(unsafe.Pointer(&data[offset]))
+		if !ref.IsNull() {
+			if t.Kind() == reflect.Ptr && t != reflect.TypeOf(&big.Int{}) {
+				// Pointer needs allocation
+				newObj := reflect.New(t.Elem())
+				if err := reconstruct(data, newObj.Elem(), int64(ref)); err != nil {
+					return 0, err
+				}
+				target.Set(newObj)
+			} else {
+				// Non-pointer ref type (slice, map, bigInt) or pointer-to-bigInt
+				if err := reconstruct(data, target, int64(ref)); err != nil {
+					return 0, err
+				}
+			}
+		}
+		return offset + 8, nil
+	}
+
+	// Inline type
+	binSize := getBinarySize(t)
+	if offset+binSize > int64(len(data)) {
+		return 0, fmt.Errorf("map element inline out of bounds")
+	}
+	if err := reconstruct(data, target, offset); err != nil {
+		return 0, err
+	}
+	return offset + binSize, nil
 }
 
 func reconstructBigInt(data []byte, target reflect.Value, offset int64) error {
