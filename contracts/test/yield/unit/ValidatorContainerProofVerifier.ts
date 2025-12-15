@@ -79,6 +79,22 @@ describe("ValidatorContainerProofVerifier", () => {
       );
       await expectRevertWithCustomError(factory, deployCall, "ZeroAddressNotAllowed");
     });
+    it("should revert when GI_FIRST_VALIDATOR is zero hash", async () => {
+      const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
+      const [deployer] = await ethers.getSigners();
+      const deployCall = factory.deploy(
+        await deployer.getAddress(),
+        ethers.ZeroHash,
+        GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+      );
+      await expectRevertWithCustomError(factory, deployCall, "ZeroHashNotAllowed");
+    });
+    it("should revert when GI_PENDING_PARTIAL_WITHDRAWALS_ROOT is zero hash", async () => {
+      const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
+      const [deployer] = await ethers.getSigners();
+      const deployCall = factory.deploy(await deployer.getAddress(), GI_FIRST_VALIDATOR_PREV, ethers.ZeroHash);
+      await expectRevertWithCustomError(factory, deployCall, "ZeroHashNotAllowed");
+    });
   });
 
   describe("setters", () => {

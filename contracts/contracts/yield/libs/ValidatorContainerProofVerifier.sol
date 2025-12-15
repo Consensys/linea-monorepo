@@ -137,6 +137,8 @@ contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerPr
    */
   constructor(address _admin, GIndex _gIFirstValidator, GIndex _gIPendingPartialWithdrawalsRoot) {
     ErrorUtils.revertIfZeroAddress(_admin);
+    ErrorUtils.revertIfZeroHash(GIndex.unwrap(_gIFirstValidator));
+    ErrorUtils.revertIfZeroHash(GIndex.unwrap(_gIPendingPartialWithdrawalsRoot));
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     GI_FIRST_VALIDATOR = _gIFirstValidator;
     GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = _gIPendingPartialWithdrawalsRoot;
