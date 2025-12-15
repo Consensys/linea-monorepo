@@ -14,6 +14,7 @@ import { ErrorUtils } from "../lib/ErrorUtils.sol";
 import { IPermissionsManager } from "../interfaces/IPermissionsManager.sol";
 import { ProgressOssificationResult, YieldProviderRegistration, YieldProviderVendor } from "./interfaces/YieldTypes.sol";
 import { IValidatorContainerProofVerifier } from "./interfaces/IValidatorContainerProofVerifier.sol";
+import { PendingPartialWithdrawal } from "./libs/vendor/lido/BeaconTypes.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
@@ -359,9 +360,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyPendingPartialWithdrawals(witness.pendingPartialWithdrawalsWitness, _slot, witness.childBlockTimestamp, witness.proposerIndex);
 
     uint256 totalPendingWithdrawalsGwei;
-    for (uint256 i = 0; i < witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals.length;) {
-      if (witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals[i].validatorIndex == _validatorIndex) {
-        totalPendingWithdrawalsGwei += witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals[i].amount;
+    PendingPartialWithdrawal[] memory pendingWithdrawals = witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals;
+    uint256 length = pendingWithdrawals.length;
+    for (uint256 i = 0; i < length;) {
+      if (pendingWithdrawals[i].validatorIndex == _validatorIndex) {
+        totalPendingWithdrawalsGwei += pendingWithdrawals[i].amount;
       }
       unchecked { ++i; }
     }
