@@ -52,7 +52,7 @@ func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(api frontend.API, c 
 func (l *FromLocalOpeningYAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	p := c.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
 	if p.IsBase {
-		return gnarkfext.NewE4GenFromBase(p.BaseY)
+		return gnarkfext.FromBase(p.BaseY)
 	}
 	return p.ExtY
 }

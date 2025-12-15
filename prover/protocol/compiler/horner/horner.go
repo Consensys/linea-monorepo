@@ -354,18 +354,18 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	hornerQuery := c.Q
 	hornerParams := run.GetHornerParams(hornerQuery.ID)
-	res := gnarkfext.NewE4GenFromBase(0)
 
 	e4Api, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
+	res := *e4Api.Zero()
 
 	for i := range c.Q.Parts {
 
 		ipQuery := c.CountingInnerProducts[i]
 		ipParams := run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-		ipCount := gnarkfext.NewE4GenFromBase(0)
+		ipCount := *e4Api.Zero()
 
 		for k := range ipQuery.Bs {
 			ipCount = *e4Api.Add(&ipCount, &ipParams.Ys[k])
@@ -373,9 +373,9 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 		// api.AssertIsEqual(api.Add(hornerParams.Parts[i].N0, ipCount), hornerParams.Parts[i].N1)
 		// TODO @thomas fixme (ext vs base)
-		extN0 := gnarkfext.NewE4GenFromBase(hornerParams.Parts[i].N0)
+		extN0 := gnarkfext.NewE4GenFromFrontedBase(hornerParams.Parts[i].N0)
 		extN0 = *e4Api.Add(&extN0, &ipCount)
-		extN1 := gnarkfext.NewE4GenFromBase(hornerParams.Parts[i].N1)
+		extN1 := gnarkfext.NewE4GenFromFrontedBase(hornerParams.Parts[i].N1)
 		e4Api.AssertIsEqual(&extN0, &extN1)
 	}
 

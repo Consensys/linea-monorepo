@@ -13,6 +13,13 @@ func RepeatedVariable(x zk.WrappedVariable, n int) []zk.WrappedVariable {
 	}
 	return res
 }
+func RepeatedVariableExt(x gnarkfext.E4Gen, n int) []gnarkfext.E4Gen {
+	res := make([]gnarkfext.E4Gen, n)
+	for i := range res {
+		res[i] = x
+	}
+	return res
+}
 
 // Exp in gnark circuit, using the fast exponentiation
 func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
@@ -28,7 +35,7 @@ func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
 	}
 
 	acc := x
-	res := gnarkfext.NewE4GenFromBase(1)
+	res := *e4Api.One()
 
 	// right-to-left
 	for n != 0 {

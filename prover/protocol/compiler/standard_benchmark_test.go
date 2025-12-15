@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -58,59 +61,59 @@ type SubModuleParameters struct {
 
 var (
 	benchCases = []StdBenchmarkCase{
-		// {
-		// 	Name: "minimal",
-		// 	Permutations: SubModuleParameters{
-		// 		Count:  1,
-		// 		NumCol: 1,
-		// 		NumRow: 1 << 10,
-		// 	},
-		// 	Lookup: SubModuleParameters{
-		// 		Count:     1,
-		// 		NumCol:    1,
-		// 		NumRow:    1 << 10,
-		// 		NumRowAux: 1 << 10,
-		// 	},
-		// 	Projection: SubModuleParameters{
-		// 		Count:     1,
-		// 		NumCol:    1,
-		// 		NumRow:    1 << 10,
-		// 		NumRowAux: 1 << 10,
-		// 	},
-		// 	Fibo: SubModuleParameters{
-		// 		Count:  1,
-		// 		NumRow: 1 << 10,
-		// 	},
-		// },
 		{
-			// run with GOGC=200 and
-			// ensure THP is enabled:
-			// cat /sys/kernel/mm/transparent_hugepage/enabled
-			// if not:
-			// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
-			Name: "realistic-segment",
+			Name: "minimal",
 			Permutations: SubModuleParameters{
-				Count:  5,
-				NumCol: 3,
-				NumRow: 1 << 20,
+				Count:  1,
+				NumCol: 1,
+				NumRow: 1 << 10,
 			},
 			Lookup: SubModuleParameters{
-				Count:     50,
-				NumCol:    3,
-				NumRow:    1 << 20,
-				NumRowAux: 1 << 20,
+				Count:     1,
+				NumCol:    1,
+				NumRow:    1 << 10,
+				NumRowAux: 1 << 10,
 			},
 			Projection: SubModuleParameters{
-				Count:     5,
-				NumCol:    3,
-				NumRow:    1 << 20,
-				NumRowAux: 1 << 20,
+				Count:     1,
+				NumCol:    1,
+				NumRow:    1 << 10,
+				NumRowAux: 1 << 10,
 			},
 			Fibo: SubModuleParameters{
-				Count:  200,
-				NumRow: 1 << 20,
+				Count:  1,
+				NumRow: 1 << 10,
 			},
 		},
+		// {
+		// 	// run with GOGC=200 and
+		// 	// ensure THP is enabled:
+		// 	// cat /sys/kernel/mm/transparent_hugepage/enabled
+		// 	// if not:
+		// 	// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+		// 	Name: "realistic-segment",
+		// 	Permutations: SubModuleParameters{
+		// 		Count:  5,
+		// 		NumCol: 3,
+		// 		NumRow: 1 << 20,
+		// 	},
+		// 	Lookup: SubModuleParameters{
+		// 		Count:     50,
+		// 		NumCol:    3,
+		// 		NumRow:    1 << 20,
+		// 		NumRowAux: 1 << 20,
+		// 	},
+		// 	Projection: SubModuleParameters{
+		// 		Count:     5,
+		// 		NumCol:    3,
+		// 		NumRow:    1 << 20,
+		// 		NumRowAux: 1 << 20,
+		// 	},
+		// 	Fibo: SubModuleParameters{
+		// 		Count:  200,
+		// 		NumRow: 1 << 20,
+		// 	},
+		// },
 		// {
 		// 	Name: "smaller-segment",
 		// 	Permutations: SubModuleParameters{
@@ -238,6 +241,13 @@ func BenchmarkCompilerWithSelfRecursion(b *testing.B) {
 	}
 }
 
+func BenchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B) {
+	for _, bc := range benchCases {
+		b.Run(bc.Name, func(b *testing.B) {
+			benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b, bc)
+		})
+	}
+}
 func BenchmarkProfileSelfRecursion(b *testing.B) {
 	for _, bc := range benchCases {
 		b.Run(bc.Name, func(b *testing.B) {
@@ -272,7 +282,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 
 			for i := 0; i < nbIteration-1; i++ {
 				applySelfRecursionThenArcane(comp, params)
-				applyVortex(comp, params)
+				applyVortex(comp, params, false)
 			}
 
 			statsVortex := logdata.GetWizardStats(comp)
@@ -349,7 +359,7 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
 	for i := 0; i < nbIteration; i++ {
 		applySelfRecursionThenArcane(comp, params)
-		applyVortex(comp, params)
+		applyVortex(comp, params, false)
 	}
 
 	b.ResetTimer()
@@ -357,6 +367,95 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 	for i := 0; i < b.N; i++ {
 		_ = wizard.Prove(comp, sbc.NewAssigner(b), false)
 	}
+}
+
+func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBenchmarkCase) {
+
+	// These parameters have been found to give the best result for performances
+	// params := selfRecursionParameters{
+	// 	NbOpenedColumns: 64,
+	// 	RsInverseRate:   16,
+	// 	TargetRowSize:   1 << 9,
+	// }
+
+	// minimalparams
+	params := selfRecursionParameters{
+		NbOpenedColumns: 16,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 6,
+	}
+
+	comp := wizard.Compile(
+		// Round of recursion 0
+		sbc.Define,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<9), // 1<<20 --> 1<<9 for minimal
+			compiler.WithStitcherMinSize(1<<1),
+		),
+		vortex.Compile(
+			2,
+			false,
+			vortex.WithOptionalSISHashingThreshold(64),
+			vortex.ForceNumOpenedColumns(16),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+	)
+
+	nbIteration := 1 //TODO@yao: update back to 2
+
+	for i := 0; i < nbIteration; i++ {
+		applySelfRecursionThenArcane(comp, params)
+		if i == nbIteration-1 {
+			applyVortex(comp, params, true) // last iteration over BLS
+		} else {
+			applyVortex(comp, params, false) // other iteration over koalabear
+		}
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		proof := wizard.Prove(comp, sbc.NewAssigner(b), true)
+		err := wizard.Verify(comp, proof, true)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		circuit := verifierCircuit{}
+		{
+			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
+			circuit.C = *c
+		}
+
+		csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		assignment := &verifierCircuit{
+			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+		}
+
+		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		// Check if solved using the pre-compiled SCS
+		err = csc.IsSolved(witness)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+type verifierCircuit struct {
+	C wizard.VerifierCircuit
+}
+
+func (c *verifierCircuit) Define(api frontend.API) error {
+	c.C.Verify(api)
+	return nil
 }
 
 // Define defines the benchmark case
@@ -429,18 +528,30 @@ func applySelfRecursionThenArcane(comp *wizard.CompiledIOP, params selfRecursion
 }
 
 // applyVortex applies the vortex step using the provided parameters.
-func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters) {
+func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters, IsBLS bool) {
 
-	_ = wizard.ContinueCompilation(
-		comp,
-		vortex.Compile(
-			params.RsInverseRate,
-			false,
-			vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
-			vortex.WithOptionalSISHashingThreshold(1<<ringsis.StdParams.LogTwoDegree),
-			vortex.WithSISParams(&ringsis.StdParams),
-		),
-	)
+	if IsBLS {
+		_ = wizard.ContinueCompilation(
+			comp,
+			vortex.Compile(
+				params.RsInverseRate,
+				true,
+				vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
+				vortex.WithOptionalSISHashingThreshold(1<<20),
+			),
+		)
+	} else {
+
+		_ = wizard.ContinueCompilation(
+			comp,
+			vortex.Compile(
+				params.RsInverseRate,
+				false,
+				vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
+				vortex.WithSISParams(&ringsis.StdParams),
+			),
+		)
+	}
 }
 
 // defineLookupModule adds a lookup module to the benchmark case

@@ -15,7 +15,7 @@ func EvaluateUnivariateGnarkMixed(api frontend.API, pol []zk.WrappedVariable, x 
 		panic(err)
 	}
 
-	res := gnarkfext.NewE4GenFromBase(0)
+	res := *e4Api.Zero()
 	for i := len(pol) - 1; i >= 0; i-- {
 		res = *e4Api.Mul(&res, &x)
 		res = *e4Api.AddByBase(&res, pol[i])
@@ -32,7 +32,7 @@ func EvaluateUnivariateGnarkExt(api frontend.API, pol []gnarkfext.E4Gen, x gnark
 		panic(err)
 	}
 
-	res := gnarkfext.NewE4GenFromBase(0)
+	res := *e4Api.Zero()
 	for i := len(pol) - 1; i >= 0; i-- {
 		res = *e4Api.Mul(&res, &x)
 		res = *e4Api.Add(&res, &pol[i])

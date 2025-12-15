@@ -58,22 +58,6 @@ func (fs *FS) UpdateExt(vec ...fext.Element) {
 	}
 }
 
-func (fs *FS) UpdateVec(vec ...[]field.Element) {
-	v := make([]field.Element, len(vec))
-	for _, _v := range vec {
-		v = append(v, _v...)
-	}
-	fs.Update(v...)
-}
-
-// UpdateVec updates the Fiat-Shamir state by passing one of more slices of
-// field elements.
-func (fs *FS) UpdateVecExt(vecs ...[]fext.Element) {
-	for i := range vecs {
-		fs.UpdateExt(vecs[i]...)
-	}
-}
-
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
 func (fs *FS) UpdateSV(sv smartvectors.SmartVector) {

@@ -125,7 +125,11 @@ func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	(*fs).Update(p.BaseY)
+	if p.IsBase {
+		(*fs).Update(p.BaseY)
+	} else {
+		(*fs).UpdateExt(p.ExtY)
+	}
 }
 
 // Update the fiat-shamir state with the the present parameters
@@ -145,16 +149,11 @@ func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	(*fs).UpdateExt(p.ExtYs...)
 }
 
-// Update the fiat-shamir state with the present field extension parameters
-func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFS) {
-	(*fs).UpdateExt(p.ExtYs...)
-}
-
 // Update the fiat-shamir state with the present parameters
 func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	(*fs).UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		(*fs).Update(zk.ValueOf(part.N0), zk.ValueOf(part.N1))
+		(*fs).Update(zk.WrapFrontendVariable(part.N0), zk.WrapFrontendVariable(part.N1))
 	}
 }
