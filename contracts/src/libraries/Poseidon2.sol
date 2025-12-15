@@ -16,6 +16,11 @@
 
 pragma solidity ^0.8.30;
 
+/**
+ * @title Library to perform Poseidon2 hashing
+ * @author ConsenSys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
 library Poseidon2 {
   uint32 private constant R_MOD = 2130706433;
   uint256 private constant WORD_MOD = 4294967296; // 2**32
