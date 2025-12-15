@@ -317,8 +317,9 @@ library SSZ {
     bytes32[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH + 1] memory tmp;
 
     // Process all chunks
-    for (uint256 i = 0; i < count; ++i) {
+    for (uint256 i = 0; i < count;) {
       mergeSSZChunk(tmp, depth, count, hashTreeRoot(pendingPartialWithdrawal[i]), i);
+      unchecked { ++i; }
     }
 
     // Add padding chunk if count is not a power of 2
@@ -327,8 +328,9 @@ library SSZ {
     }
 
     // Extend tree to MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH
-    for (uint256 j = depth; j < MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH; ++j) {
+    for (uint256 j = depth; j < MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH;) {
       tmp[j + 1] = sha256Pair(tmp[j], zeroHash(j));
+      unchecked { ++j; }
     }
 
     // Mix in length: mix_in_length(content_root, actual_length)
@@ -357,7 +359,7 @@ library SSZ {
         } else {
           h = sha256Pair(tmp[j], h);
         }
-        ++j;
+        unchecked { ++j; }
       }
       tmp[j] = h;
   }
