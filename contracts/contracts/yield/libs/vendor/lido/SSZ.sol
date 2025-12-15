@@ -75,8 +75,8 @@ library SSZ {
   /// @return root The SSZ hash tree root of the beacon block header.
   function hashTreeRoot(BeaconBlockHeader memory header) internal view returns (bytes32 root) {
     bytes32[8] memory nodes = [
-      toLittleEndian(header.slot),
-      toLittleEndian(header.proposerIndex),
+      toLittleEndian64(header.slot),
+      toLittleEndian64(header.proposerIndex),
       header.parentRoot,
       header.stateRoot,
       header.bodyRoot,
@@ -171,12 +171,12 @@ library SSZ {
     bytes32[8] memory nodes = [
       pubkeyRoot,
       validator.withdrawalCredentials,
-      toLittleEndian(validator.effectiveBalance),
+      toLittleEndian64(validator.effectiveBalance),
       toLittleEndian(validator.slashed),
-      toLittleEndian(validator.activationEligibilityEpoch),
-      toLittleEndian(validator.activationEpoch),
-      toLittleEndian(validator.exitEpoch),
-      toLittleEndian(validator.withdrawableEpoch)
+      toLittleEndian64(validator.activationEligibilityEpoch),
+      toLittleEndian64(validator.activationEpoch),
+      toLittleEndian64(validator.exitEpoch),
+      toLittleEndian64(validator.withdrawableEpoch)
     ];
 
     /// @solidity memory-safe-assembly
@@ -242,9 +242,9 @@ library SSZ {
   /// @return root The SSZ hash tree root of the pending partial withdrawal.
   function hashTreeRoot(PendingPartialWithdrawal memory pendingPartialWithdrawal) internal view returns (bytes32 root) {
     bytes32[4] memory nodes = [
-      toLittleEndian(pendingPartialWithdrawal.validatorIndex),
-      toLittleEndian(pendingPartialWithdrawal.amount),
-      toLittleEndian(pendingPartialWithdrawal.withdrawableEpoch),
+      toLittleEndian64(pendingPartialWithdrawal.validatorIndex),
+      toLittleEndian64(pendingPartialWithdrawal.amount),
+      toLittleEndian64(pendingPartialWithdrawal.withdrawableEpoch),
       bytes32(0)
     ];
 
@@ -465,6 +465,21 @@ library SSZ {
       ((v & 0x0000000000000000FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF) << 64);
     v = (v >> 128) | (v << 128);
     return bytes32(v);
+  }
+
+  function toLittleEndian64(uint64 v) internal pure returns (bytes32) {
+    v =
+      ((v & 0xFF00FF00FF00FF00) >> 8) |
+      ((v & 0x00FF00FF00FF00FF) << 8);
+    v =
+      ((v & 0xFFFF0000FFFF0000) >> 16) |
+      ((v & 0x0000FFFF0000FFFF) << 16);
+    v =
+      ((v & 0xFFFFFFFF00000000) >> 32) |
+      ((v & 0x00000000FFFFFFFF) << 32);
+    // uint256 v256 = uint256(v);
+    // v = (v >> 128) | (v << 128);
+    return bytes32(uint256(v) << 192);
   }
 
   /// @notice Converts a boolean value to little-endian bytes32 format.
