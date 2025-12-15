@@ -83,11 +83,6 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	Vi.X = x
 	Vi.EntryList = make([]frontend.Variable, len(entryList))
 
-	api.Println("random coin: ")
-
-	ext4, _ := gnarkfext.NewExt4(api)
-	ext4.Println(randomCoin)
-
 	for i := 0; i < len(entryList); i++ {
 		Vi.EntryList[i] = entryList[i].AsNative()
 	}

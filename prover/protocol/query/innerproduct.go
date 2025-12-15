@@ -31,7 +31,7 @@ type InnerProductParams struct {
 
 // Update the fiat-shamir state with inner-product params
 func (ipp InnerProductParams) UpdateFS(state *fiatshamir.FS) {
-	(*state).UpdateVecExt(ipp.Ys)
+	(*state).UpdateExt(ipp.Ys...)
 }
 
 // Constructor for inner-product.
