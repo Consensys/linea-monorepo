@@ -16,7 +16,6 @@ const (
 	// smallModexpSize is the bit-size bound for small modexp instances
 	smallModExpSize = 256
 	// largeModexpSize is the bit-size bound for large modexp instances
-
 	largeModExpSize = 8192
 
 	// limbSize is the size (in bits) of a limb as in the public inputs of the
