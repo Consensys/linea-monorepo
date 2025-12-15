@@ -6,11 +6,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
@@ -50,14 +50,14 @@ func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings, arith *arithmetization.A
 			Data: generic.GenDataModule{
 				HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
 				Index:   arith.ColumnOf(comp, "shakiradata", "INDEX"),
-				Limbs:   arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
+				Limbs:   arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "shakiradata", "LIMB"),
 				NBytes:  arith.ColumnOf(comp, "shakiradata", "nBYTES"),
 				ToHash:  arith.ColumnOf(comp, "shakiradata", "IS_SHA2_DATA"),
 			},
 			Info: generic.GenInfoModule{
 				HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
-				HashHi:  arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
-				HashLo:  arith.LimbColumnsOf(comp, "shakiradata", "LIMB_LO", common.NbLimbU128),
+				HashHi:  arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "shakiradata", "LIMB"),
+				HashLo:  arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "shakiradata", "LIMB_LO"),
 				// Before, we usse to pass column.Shift(IsHash, -1) but this does
 				// not work with the prover distribution as the column is used as
 				// a filter for a projection query.
@@ -126,7 +126,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 	comp.InsertProjection("SHA2_RES_HI",
 		query.ProjectionInput{
 			ColumnA: cSha2.Hash[:numLimbsPerState/2],
-			ColumnB: inp.Provider.Info.HashHi,
+			ColumnB: inp.Provider.Info.HashHi.Limbs(),
 			FilterA: cSha2.IsEffFirstLaneOfNewHash,
 			FilterB: inp.Provider.Info.IsHashHi,
 		},
@@ -135,7 +135,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 	comp.InsertProjection("SHA2_RES_LO",
 		query.ProjectionInput{
 			ColumnA: cSha2.Hash[numLimbsPerState/2:],
-			ColumnB: inp.Provider.Info.HashLo,
+			ColumnB: inp.Provider.Info.HashLo.Limbs(),
 			FilterA: cSha2.IsEffFirstLaneOfNewHash,
 			FilterB: inp.Provider.Info.IsHashLo,
 		},

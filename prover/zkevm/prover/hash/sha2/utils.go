@@ -6,7 +6,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // Decompose x in 'nBytes' bytes in big endian order
@@ -14,11 +13,11 @@ import (
 // Deprecated: These are utility functions that have been copy-pasted from circuits/internal
 // waiting for them or equivalent function to be merged in gnark/std. We will
 // be able to substitute them at this point.
-func toNBytes(api frontend.API, x zk.WrappedVariable, nBytes int) []zk.WrappedVariable {
+func toNBytes(api frontend.API, x frontend.Variable, nBytes int) []frontend.Variable {
 	return decomposeIntoBytes(api, x, nBytes)
 }
 
-func decomposeIntoBytes(api frontend.API, data zk.WrappedVariable, nbBytes int) []zk.WrappedVariable {
+func decomposeIntoBytes(api frontend.API, data frontend.Variable, nbBytes int) []frontend.Variable {
 
 	bytes, err := api.Compiler().NewHint(decomposeIntoBytesHint, nbBytes, data)
 	if err != nil {
@@ -27,7 +26,7 @@ func decomposeIntoBytes(api frontend.API, data zk.WrappedVariable, nbBytes int) 
 
 	var (
 		rc     = rangecheck.New(api)
-		recmpt = zk.WrappedVariable(0)
+		recmpt = frontend.Variable(0)
 	)
 
 	for i := 0; i < nbBytes; i++ {
