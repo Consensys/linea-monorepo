@@ -764,18 +764,14 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 // declarePi declares a column with the requested name as proof column and length
 // one and also declare a public input from that column with the same provided
 // name.
-func declarePiColumn(comp *wizard.CompiledIOP, name string, size ...int) wizard.PublicInput {
-	if len(size) == 0 {
-		return declarePiColumnAtRound(comp, 0, name, 1)
-	} else {
-		return declarePiColumnAtRound(comp, 0, name, size[0])
-	}
+func declarePiColumn(comp *wizard.CompiledIOP, name string) wizard.PublicInput {
+	return declarePiColumnAtRound(comp, 0, name)
 }
 
 // declarePiColumn at round declares a column at the requested round to generate
 // a public input with the requested name.
-func declarePiColumnAtRound(comp *wizard.CompiledIOP, round int, name string, size int) wizard.PublicInput {
-	col := comp.InsertProof(round, ifaces.ColID(name+"_PI_COLUMN"), size, true)
+func declarePiColumnAtRound(comp *wizard.CompiledIOP, round int, name string) wizard.PublicInput {
+	col := comp.InsertProof(round, ifaces.ColID(name+"_PI_COLUMN"), 1, true)
 	return comp.InsertPublicInput(name, accessors.NewFromPublicColumn(col, 0))
 }
 
