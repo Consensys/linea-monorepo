@@ -116,7 +116,17 @@ func TestDistributedWizardBasic(t *testing.T) {
 			moduleLPP   = distWizard.LPPs[moduleIndex]
 		)
 
-		witnessLPP.InitialFiatShamirState = field.NewFromString("6861409415040334196327676756394403519979367936044773323994693747743991500772")
+		witnessLPP.InitialFiatShamirState = field.NewOctupletFromStrings(
+			[8]string{
+				"123456789",
+				"987654321",
+				"111111111",
+				"222222222",
+				"333333333",
+				"444444444",
+				"555555555",
+				"666666666",
+			})
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 

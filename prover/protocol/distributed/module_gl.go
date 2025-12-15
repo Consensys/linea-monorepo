@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/frontend"
+	hf "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -531,13 +533,14 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 
 	// The columns are inserted at round 1 because we want it to store informations
 	// about potentially either GL or LPP columns.
-	m.SentValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("SENT_VALUES_GLOBAL_HASH"), 1)
-	m.ReceivedValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("RECEIVED_VALUES_GLOBAL_HASH"), 1)
+	m.SentValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("SENT_VALUES_GLOBAL_HASH"), 1, true)
+	m.ReceivedValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("RECEIVED_VALUES_GLOBAL_HASH"), 1, true)
 
 	m.ReceivedValuesGlobal = m.Wiop.InsertProof(
 		1,
 		ifaces.ColID("RECEIVED_VALUES_GLOBAL"),
 		utils.NextPowerOfTwo(len(m.ReceivedValuesGlobalMap)),
+		true,
 	)
 
 	m.Wiop.Columns.ExcludeFromProverFS(m.ReceivedValuesGlobal.GetColID())
@@ -577,7 +580,7 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 			lo := a.SentValuesGlobal[i]
 			v := lo.Pol.GetColAssignmentAt(run, 0)
 			run.AssignLocalPoint(lo.ID, v)
-			hashSend = mimc.BlockCompression(hashSend, v)
+			hashSend = vortex.CompressPoseidon2(hashSend, v)
 		}
 
 		run.AssignColumn(
@@ -906,8 +909,8 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
-		targetMSetGeneral          = GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
-		targetMSetSharedRandomness = GetPublicInputList(run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetGeneral          = GetPublicInputList(run, GeneralMultiSetPublicInputBase, hf.MSetHashSize)
+		targetMSetSharedRandomness = GetPublicInputList(run, SharedRandomnessMultiSetPublicInputBase, hf.MSetHashSize)
 		lppCommitments             = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))

@@ -279,8 +279,8 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 func (m *ModuleLPP) addCoinFromExpression(exprs ...*symbolic.Expression) {
 
 	for _, expr := range exprs {
-
-		metadata := expr.BoardListVariableMetadata()
+		board := expr.Board()
+		metadata := board.ListVariableMetadata()
 
 		for i := range metadata {
 
