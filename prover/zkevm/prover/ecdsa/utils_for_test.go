@@ -78,7 +78,7 @@ func AssignEcRecTxnData(
 
 		// Pushing the hi part
 		isEcRecRes.PushOne()
-		ecRecLimb.PushBytes(hashRes[12:16])
+		ecRecLimb.PushLeftPaddedBytes(hashRes[12:16])
 
 		// Pushing the lo part
 		isEcRecRes.PushOne()

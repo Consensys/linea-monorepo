@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
@@ -33,8 +32,9 @@ func TestUnalignedGnarkDataAssign(t *testing.T) {
 			SuccessBit: ct.GetCommit(build, "SUCCESS_BIT"),
 			IsData:     ct.GetCommit(build, "IS_DATA"),
 			IsRes:      ct.GetCommit(build, "IS_RES"),
-			Limb:       ct.GetLimbLe(, build, "LIMB", common.NbLimbU128).AssertUint128(),
-			TxHash:     ct.GetLimbLe(, build, "TX_HASH", common.NbLimbU256).AssertUint256(),
+			Limb:       ct.GetLimbsLe(build, "LIMB", common.NbLimbU128).AssertUint128(),
+			TxHashHi:   ct.GetLimbsLe(build, "TX_HASH_HI", common.NbLimbU128).AssertUint128(),
+			TxHashLo:   ct.GetLimbsLe(build, "TX_HASH_LO", common.NbLimbU128).AssertUint128(),
 		}
 
 		uag = newUnalignedGnarkData(build.CompiledIOP, ct.LenPadded(), uagSrc)
@@ -46,11 +46,13 @@ func TestUnalignedGnarkDataAssign(t *testing.T) {
 			uagSrc.Source,
 			uagSrc.IsActive,
 			uagSrc.IsFetching,
+			uagSrc.IsPushing,
 			uagSrc.Limb,
 			uagSrc.SuccessBit,
 			uagSrc.IsData,
 			uagSrc.IsRes,
-			uagSrc.TxHash,
+			uagSrc.TxHashHi,
+			uagSrc.TxHashLo,
 		)
 
 		uag.Assign(run, uagSrc, dummyTxSignatureGetter)

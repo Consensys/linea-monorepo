@@ -47,6 +47,7 @@ func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
 }
 
 func (ac *antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
+	txHashHi, txHashLo := ac.TxHash.SplitOnBit(128)
 	return &unalignedGnarkDataSource{
 		IsActive:   ac.IsActive,
 		IsPushing:  ac.IsPushing,
@@ -56,6 +57,7 @@ func (ac *antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
 		SuccessBit: ac.EcRecover.SuccessBit,
 		IsData:     ac.EcRecover.EcRecoverIsData,
 		IsRes:      ac.EcRecover.EcRecoverIsRes,
-		TxHash:     ac.TxHash,
+		TxHashHi:   txHashHi.AssertUint128(),
+		TxHashLo:   txHashLo.AssertUint128(),
 	}
 }

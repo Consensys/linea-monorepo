@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commoncs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
@@ -144,12 +143,6 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 			resLimb.PushZero()
 		}
 
-		// This sanity-check that the vector builders are at the expected
-		// height.
-		if currRow != resEcRecoverID.Height() {
-			utils.Panic("The vector builder and the assignment are not in sync, currRow=%v vs resEcRecoverID.Height=%v", currRow, resEcRecoverID.Height())
-		}
-
 		for j := 0; j < nbRowsPerEcRecFetching; j++ {
 			sourceIdx := currRow + j
 			resEcRecoverID.PushField(sourceID.Get(sourceIdx))
@@ -159,6 +152,17 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 			resEcRecoverIsData.PushField(sourceIsData.Get(sourceIdx))
 			resEcRecoverIsRes.PushField(sourceIsRes.Get(sourceIdx))
 			resAuxProjectionMask.PushField(sourceCsEcRecover.Get(sourceIdx))
+		}
+
+		// Assign everything with zeroes outside of the fetching phase
+		for j := nbRowsPerEcRecFetching; j < nbRowsPerEcRec; j++ {
+			resEcRecoverID.PushZero()
+			resLimb.PushZero()
+			resSuccessBit.PushZero()
+			resEcRecoverIndex.PushZero()
+			resEcRecoverIsData.PushZero()
+			resEcRecoverIsRes.PushZero()
+			resAuxProjectionMask.PushZero()
 		}
 
 		// This ensures that the next iteration starts from the first position

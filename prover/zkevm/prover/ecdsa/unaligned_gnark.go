@@ -57,7 +57,8 @@ type unalignedGnarkDataSource struct {
 	IsRes      ifaces.Column
 	Limb       limbs.Uint128Le
 	SuccessBit ifaces.Column
-	TxHash     limbs.Uint256Le
+	TxHashHi   limbs.Uint128Le
+	TxHashLo   limbs.Uint128Le
 }
 
 // TxSignatureGetter is a function that is expected a signature for a transaction
@@ -104,6 +105,11 @@ func (d *UnalignedGnarkData) Assign(run *wizard.ProverRuntime, src *unalignedGna
 	d.IsIndex13Act.Run(run)
 }
 
+// TxHash returns the fusing of txHashHi and txHashLo
+func (d *unalignedGnarkDataSource) TxHash() limbs.Uint256Le {
+	return limbs.FuseLimbs(d.TxHashHi.AsDynSize(), d.TxHashLo.AsDynSize()).AssertUint256()
+}
+
 func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime, src *unalignedGnarkDataSource, txSigs TxSignatureGetter) {
 
 	// copies data from the ecrecover part and txn part. Then it also computes
@@ -113,7 +119,7 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 		sourceIsActive   = run.GetColumn(src.IsActive.GetColID())
 		sourceSuccessBit = run.GetColumn(src.SuccessBit.GetColID())
 		sourceLimb       = src.Limb.GetAssignment(run)
-		sourceTxHash     = src.TxHash.GetAssignment(run)
+		sourceTxHash     = src.TxHash().GetAssignment(run)
 
 		// prependZeroCount counts the number of zero bytes that are used by
 		// the current frame to fetch the data from its source. Its value
@@ -176,8 +182,8 @@ ecdsaLoop:
 			// copy h, r, s, v
 			//		4		5		6		7		8		9		10		11
 			// 		h0, 	h1, 	r0, 	r1, 	s0, 	s1, 	v0, 	v1
-			for k := 4; k < 12; k++ {
-				dataForCurrEcdsa[k] = sourceLimb[i+k-4]
+			for k := 0; k < 8; k++ {
+				dataForCurrEcdsa[k+4] = sourceLimb[i+k]
 			}
 
 			h = limbs.FuseRows(dataForCurrEcdsa[4], dataForCurrEcdsa[5]).ToBytes32()
@@ -186,14 +192,14 @@ ecdsaLoop:
 			s = limbs.FuseRows(dataForCurrEcdsa[10], dataForCurrEcdsa[11]).ToBigInt()
 
 			if !v.IsUint64() {
-				utils.Panic("v is not a uint64, v %v; r=%v s=%v", v.String(), r.String(), s.String())
+				utils.Panic("v is not a uint64, v %x; r=%x s=%x", v.Bytes(), r.Bytes(), s.Bytes())
 			}
 
 			// The success bit
-			dataForCurrEcdsa[12] = limbs.RowFromKoala[limbs.LittleEndian](sourceSuccessBit.Get(i), common.NbLimbU128)
+			dataForCurrEcdsa[12] = limbs.RowFromKoala[limbs.LittleEndian](sourceSuccessBit.Get(i), 128)
 
 			// The ecrecover bit
-			dataForCurrEcdsa[13] = limbs.RowFromInt[limbs.LittleEndian](1, common.NbLimbU128)
+			dataForCurrEcdsa[13] = limbs.RowFromInt[limbs.LittleEndian](1, 128)
 
 			i += NB_ECRECOVER_INPUTS
 
@@ -234,9 +240,9 @@ ecdsaLoop:
 			dataForCurrEcdsa[11] = limbs.RowFromBytes[limbs.LittleEndian](buff[16:])
 
 			// The success bit // implictly followed by 7 zeroes
-			dataForCurrEcdsa[12] = limbs.RowFromInt[limbs.LittleEndian](1, common.NbLimbU128)
+			dataForCurrEcdsa[12] = limbs.RowFromInt[limbs.LittleEndian](1, 128)
 			// The ecrecover bit (zero)
-			dataForCurrEcdsa[13] = limbs.RowFromInt[limbs.LittleEndian](0, common.NbLimbU128)
+			dataForCurrEcdsa[13] = limbs.RowFromInt[limbs.LittleEndian](0, 128)
 
 			txCounter++
 			i += NB_TX_INPUTS
@@ -409,12 +415,12 @@ func (d *UnalignedGnarkData) csTxHash(comp *wizard.CompiledIOP, src *unalignedGn
 
 	limbs.NewGlobal(comp,
 		ifaces.QueryIDf("%v_%v", NAME_UNALIGNED_GNARKDATA, "TXHASH_HI"),
-		sym.Mul(d.IsIndex4, src.Source, sym.Sub(d.GnarkData, src.TxHash.SliceOnBit(0, 128))),
+		sym.Mul(d.IsIndex4, src.Source, sym.Sub(d.GnarkData, src.TxHash().SliceOnBit(0, 128))),
 	)
 
 	limbs.NewGlobal(comp,
 		ifaces.QueryIDf("%v_%v", NAME_UNALIGNED_GNARKDATA, "TXHASH_LO"),
-		sym.Mul(d.IsIndex5, src.Source, sym.Sub(d.GnarkData, src.TxHash.SliceOnBit(128, 256))),
+		sym.Mul(d.IsIndex5, src.Source, sym.Sub(d.GnarkData, src.TxHash().SliceOnBit(128, 256))),
 	)
 }
 
@@ -426,10 +432,8 @@ func (d *UnalignedGnarkData) csTxEcRecoverBit(comp *wizard.CompiledIOP, src *una
 	// additionally, we do not have to binary constrain as it is already
 	// enforced inside gnark circuit
 
-	for i := 0; i < common.NbLimbU128; i++ {
-		limbs.NewGlobal(comp,
-			ifaces.QueryIDf("%v_%v", NAME_UNALIGNED_GNARKDATA, "ECRECOVERBIT"),
-			sym.Mul(d.IsIndex13, src.Source, d.GnarkData),
-		)
-	}
+	limbs.NewGlobal(comp,
+		ifaces.QueryIDf("%v_%v", NAME_UNALIGNED_GNARKDATA, "ECRECOVERBIT"),
+		sym.Mul(d.IsIndex13, src.Source, d.GnarkData),
+	)
 }
