@@ -316,19 +316,22 @@ library SSZ {
     uint256 depth = count == 0 ? 0 : Math256.bitLength(count - 1);
     bytes32[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH + 1] memory tmp;
 
+    // Process all chunks
     for (uint256 i = 0; i < count; i++) {
       mergeSSZChunk(tmp, depth, count, hashTreeRoot(pendingPartialWithdrawal[i]), i);
     }
 
+    // Add padding chunk if count is not a power of 2
     if (1 << depth != count) {
       mergeSSZChunk(tmp, depth, count, bytes32(0), count);
     }
 
+    // Extend tree to MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH
     for (uint256 j = depth; j < MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH; j++) {
       tmp[j + 1] = sha256Pair(tmp[j], zeroHash(j));
     }
 
-    // Do mix_in_length(content_root, actual_length)
+    // Mix in length: mix_in_length(content_root, actual_length)
     root = sha256Pair(tmp[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH], toLittleEndian(count));
   }
 
