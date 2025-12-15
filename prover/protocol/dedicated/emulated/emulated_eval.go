@@ -108,9 +108,15 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 				if err := limbsToBigInt(wit, bufWit, a.Terms[j][k], i, a.nbBitsPerLimb, run); err != nil {
 					utils.Panic("failed to convert witness term [%d][%d]: %v", j, k, err)
 				}
-				tmpTermProduct.Mul(tmpTermProduct, wit)
-				if err := limbMul(bufTermProd2[:nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)], bufTermProd1[:termNbLimbs], bufWit); err != nil {
-					utils.Panic("failed to multiply LHS2 and LHS1: %v", err)
+				if wit.Sign() != 0 {
+					tmpTermProduct.Mul(tmpTermProduct, wit)
+					if err := limbMul(bufTermProd2[:nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)], bufTermProd1[:termNbLimbs], bufWit); err != nil {
+						utils.Panic("failed to multiply LHS2 and LHS1: %v", err)
+					}
+				} else {
+					// when one term is zero, then the whole term is zero
+					tmpTermProduct.SetInt64(0)
+					clearBuffer(bufTermProd2)
 				}
 				termNbLimbs = nbMultiplicationResLimbs(termNbLimbs, a.nbLimbs)
 				bufTermProd2, bufTermProd1 = bufTermProd1, bufTermProd2
@@ -123,7 +129,7 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 		if err := limbsToBigInt(witModulus, bufMod, a.Modulus, i, a.nbBitsPerLimb, run); err != nil {
 			utils.Panic("failed to convert witness modulus: %v", err)
 		}
-		if witModulus.Sign() != 0 {
+		if witModulus.Sign() != 0 && tmpEval.Sign() != 0 {
 			tmpQuotient.QuoRem(tmpEval, witModulus, tmpRemainder)
 			if tmpRemainder.Sign() != 0 {
 				utils.Panic("emulated evaluation at row %d: evaluation not divisible by modulus", i)
@@ -136,8 +142,10 @@ func (a *EmulatedEvaluationModule) assignEmulatedColumns(run *wizard.ProverRunti
 		if err := bigIntToLimbs(tmpQuotient, bufQuo, a.Quotient, dstQuoLimbs, a.nbBitsPerLimb); err != nil {
 			utils.Panic("failed to convert quotient to limbs: %v", err)
 		}
-		if err := limbMul(bufRhs, bufQuo, bufMod); err != nil {
-			utils.Panic("failed to compute quotient * modulus: %v", err)
+		if tmpQuotient.Sign() != 0 && witModulus.Sign() != 0 {
+			if err := limbMul(bufRhs, bufQuo, bufMod); err != nil {
+				utils.Panic("failed to compute quotient * modulus: %v", err)
+			}
 		}
 		carry.SetInt64(0)
 		for j := range dstCarry {
