@@ -790,13 +790,16 @@ func (modGl *ModuleGL) declarePublicInput() {
 	segmentCountGl[modGl.Disc.IndexOf(modGl.DefinitionInput.ModuleName)] = field.One()
 
 	modGl.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
-		VKeyMerkleRoot:               declarePiColumn(modGl.Wiop, VerifyingKeyMerkleRootPublicInput),
 		TargetNbSegments:             declareListOfPiColumns(modGl.Wiop, 0, TargetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:               declareListOfConstantPi(modGl.Wiop, SegmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:              declareListOfConstantPi(modGl.Wiop, SegmentCountLPPPublicInputBase, segmentCountLpp),
 		GeneralMultiSetHash:          declareListOfPiColumns(modGl.Wiop, 1, GeneralMultiSetPublicInputBase, hf.MSetHashSize),
 		SharedRandomnessMultiSetHash: declareListOfPiColumns(modGl.Wiop, 1, SharedRandomnessMultiSetPublicInputBase, hf.MSetHashSize),
 		SharedRandomness:             modGl.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewConstant(field.Zero())),
+	}
+
+	for i := range modGl.PublicInputs.VKeyMerkleRoot {
+		modGl.PublicInputs.VKeyMerkleRoot[i] = declarePiColumn(modGl.Wiop, fmt.Sprintf("%s_%d", VerifyingKeyMerkleRootPublicInput, i))
 	}
 
 	// This adds the functional inputs by multiplying them with the value of
@@ -848,7 +851,9 @@ func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *Mod
 	)
 
 	// This assigns the VKeyMerkleRoot
-	assignPiColumn(run, modGL.PublicInputs.VKeyMerkleRoot.Name, witness.VkMerkleRoot[:]...)
+	for i := range modGL.PublicInputs.VKeyMerkleRoot {
+		assignPiColumn(run, modGL.PublicInputs.VKeyMerkleRoot[i].Name, witness.VkMerkleRoot[i])
+	}
 
 	// This assigns the columns corresponding to the public input indicating
 	// the number of segments
