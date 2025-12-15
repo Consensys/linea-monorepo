@@ -437,9 +437,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		// Check if solved using the pre-compiled SCS
 		err = csc.IsSolved(witness)
 		if err != nil {
-			fmt.Printf("circuit solving failed :  %v \n", err)
-		} else {
-			fmt.Printf("circuit solved successfully\n")
+			b.Fatal(err)
 		}
 	}
 }
