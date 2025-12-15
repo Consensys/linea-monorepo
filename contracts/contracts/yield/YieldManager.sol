@@ -56,7 +56,7 @@ contract YieldManager is
   uint256 constant internal MAX_BPS = 10000;
 
   /// @notice The number of slots per historical beacon chain root.
-  uint256 constant internal SLOTS_PER_HISTORICAL_ROOT = 8192;
+  uint64 constant internal SLOTS_PER_HISTORICAL_ROOT = 8192;
 
   /**
    * @notice Minimum withdrawal reserve percentage in bps.
@@ -603,6 +603,9 @@ contract YieldManager is
     );
     uint256 unstakedAmountWei = abi.decode(data, (uint256));
     if (unstakedAmountWei == 0) revert YieldProviderReturnedZeroUnstakeAmount();
+    if (unstakedAmountWei > requiredUnstakeAmountWei) {
+      revert UnstakedAmountExceedsRequired(unstakedAmountWei, requiredUnstakeAmountWei);
+    }
 
     _getYieldManagerStorage().lastProvenSlot[_validatorIndex] = _slot;
     _getYieldManagerStorage().pendingPermissionlessUnstake += unstakedAmountWei;

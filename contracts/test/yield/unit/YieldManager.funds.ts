@@ -557,6 +557,29 @@ describe("YieldManager contract - ETH transfer operations", () => {
       );
     });
 
+    it("Should revert when unstake amount > required unstake amount", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const targetDeficit = await yieldManager.getTargetReserveDeficit();
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, targetDeficit * 2n);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
+        "UnstakedAmountExceedsRequired",
+        [targetDeficit * 2n, targetDeficit],
+      );
+    });
+
     it("Should successfully submit the unstake request, change state and emit the expected event", async () => {
       // Arrange - Set up withdrawal reserve in deficit
       await setBalance(await mockLineaRollup.getAddress(), 0n);

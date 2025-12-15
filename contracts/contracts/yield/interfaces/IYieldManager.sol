@@ -295,6 +295,13 @@ interface IYieldManager {
   error YieldProviderReturnedZeroUnstakeAmount();
 
   /**
+   * @dev Returned when the unstaked amount exceeds the required unstake amount.
+   * @param _unstakedAmountWei The amount that was unstaked.
+   * @param _requiredUnstakeAmountWei The maximum amount that should have been unstaked.
+   */
+  error UnstakedAmountExceedsRequired(uint256 _unstakedAmountWei, uint256 _requiredUnstakeAmountWei);
+
+  /**
    * @dev Thrown when there are no funds available to replenish the withdrawal reserve.
    */
   error NoAvailableFundsToReplenishWithdrawalReserve();
