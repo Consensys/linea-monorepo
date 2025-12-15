@@ -485,8 +485,6 @@ library SSZ {
     v =
       ((v & 0xFFFFFFFF00000000) >> 32) |
       ((v & 0x00000000FFFFFFFF) << 32);
-    // uint256 v256 = uint256(v);
-    // v = (v >> 128) | (v << 128);
     return bytes32(uint256(v) << 192);
   }
 
