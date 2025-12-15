@@ -789,7 +789,7 @@ func assignPiColumn(run *wizard.ProverRuntime, name string, val ...field.Element
 func declareListOfPiColumns(comp *wizard.CompiledIOP, round int, name string, length int) []wizard.PublicInput {
 	var cols []wizard.PublicInput
 	for i := 0; i < length; i++ {
-		cols = append(cols, declarePiColumnAtRound(comp, round, name+"_"+strconv.Itoa(i), 1))
+		cols = append(cols, declarePiColumnAtRound(comp, round, name+"_"+strconv.Itoa(i)))
 	}
 	return cols
 }
