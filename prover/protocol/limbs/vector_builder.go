@@ -63,6 +63,19 @@ func (b *VectorBuilder[E]) PushBytes(x []byte) {
 	b.pushRaw(row)
 }
 
+// PushLeftPaddedBytes pushes a new left-zero-padded slice of byte to the
+// builder. The function will panic if the number of bytes is greater than the
+// limbs capacity.
+func (b *VectorBuilder[E]) PushLeftPaddedBytes(x []byte) {
+	capa := b.limbs.NumLimbs() * limbByteWidth
+	if len(x) > capa {
+		utils.Panic("wrong number of bytes %v > %v", len(x), b.limbs.NumLimbs())
+	}
+	nbZeroToAdd := capa - len(x)
+	x = append(make([]byte, nbZeroToAdd), x...)
+	b.PushBytes(x)
+}
+
 // PushBytes16 pushes a new bytes to the builder
 func (b *VectorBuilder[E]) PushBytes16(x [16]byte) {
 	b.PushBytes(x[:])

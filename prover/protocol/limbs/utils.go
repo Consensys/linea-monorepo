@@ -10,17 +10,10 @@ import (
 
 // FuseRows fuses two rows into a single row
 func FuseRows[E Endianness](hi, lo row[E]) row[E] {
-
-	res := make([]field.Element, 0, hi.NumLimbs()+lo.NumLimbs())
-	res = append(res, hi.T...)
-	res = append(res, lo.T...)
-
-	if isLittleEndian[E]() {
-		slices.Reverse(res[hi.NumLimbs():])
-		slices.Reverse(res[:hi.NumLimbs()])
-	}
-
-	return row[E]{T: res}
+	res := make([]byte, 0, hi.NumLimbs()+lo.NumLimbs())
+	res = append(res, hi.ToBytes()...)
+	res = append(res, lo.ToBytes()...)
+	return RowFromBytes[E](res)
 }
 
 // bytesToLimbsVec convert a vector of byteslices into a vector of limbs of form
