@@ -526,7 +526,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		lz.DistWizard.BlueprintLPPs,
 		// The verification key merkle tree does not exists in debug mode. So
 		// we can get the value here. It is not needed anyway.
-		field.Element{},
+		field.Octuplet{},
 	)
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))

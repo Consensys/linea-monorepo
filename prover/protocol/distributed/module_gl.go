@@ -843,7 +843,7 @@ func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *Mod
 	)
 
 	// This assigns the VKeyMerkleRoot
-	assignPiColumn(run, modGL.PublicInputs.VKeyMerkleRoot.Name, witness.VkMerkleRoot)
+	assignPiColumn(run, modGL.PublicInputs.VKeyMerkleRoot.Name, witness.VkMerkleRoot[:]...)
 
 	// This assigns the columns corresponding to the public input indicating
 	// the number of segments

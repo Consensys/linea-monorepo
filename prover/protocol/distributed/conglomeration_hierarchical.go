@@ -3,7 +3,6 @@ package distributed
 import (
 	"errors"
 	"fmt"
-	"io"
 	"slices"
 	"strconv"
 	"strings"
@@ -106,7 +105,7 @@ type LimitlessPublicInput[T any] struct {
 	SegmentCountLPP              []T
 	GeneralMultiSetHash          []T
 	SharedRandomnessMultiSetHash []T
-	VKeyMerkleRoot               [8]T
+	VKeyMerkleRoot               T
 	VerifyingKey                 [2]T
 	LogDerivativeSum             T
 	HornerSum                    T
@@ -127,9 +126,9 @@ func buildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompil
 	appendLeaf := func(comp *wizard.CompiledIOP) {
 		var (
 			vk0, vk1 = getVerifyingKeyPair(comp)
-			leaf = hashLR(vk0, vk1)
+			leaf     = hashLR(vk0, vk1)
 		)
-		
+
 		leaves = append(leaves, leaf)
 		verificationKeys = append(verificationKeys, [2]field.Element{vk0, vk1})
 
@@ -752,23 +751,27 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 // declarePi declares a column with the requested name as proof column and length
 // one and also declare a public input from that column with the same provided
 // name.
-func declarePiColumn(comp *wizard.CompiledIOP, name string) wizard.PublicInput {
-	return declarePiColumnAtRound(comp, 0, name)
+func declarePiColumn(comp *wizard.CompiledIOP, name string, size ...int) wizard.PublicInput {
+	if len(size) == 0 {
+		return declarePiColumnAtRound(comp, 0, name, 1)
+	} else {
+		return declarePiColumnAtRound(comp, 0, name, size[0])
+	}
 }
 
 // declarePiColumn at round declares a column at the requested round to generate
 // a public input with the requested name.
-func declarePiColumnAtRound(comp *wizard.CompiledIOP, round int, name string) wizard.PublicInput {
-	col := comp.InsertProof(round, ifaces.ColID(name+"_PI_COLUMN"), 1)
+func declarePiColumnAtRound(comp *wizard.CompiledIOP, round int, name string, size int) wizard.PublicInput {
+	col := comp.InsertProof(round, ifaces.ColID(name+"_PI_COLUMN"), size, true)
 	return comp.InsertPublicInput(name, accessors.NewFromPublicColumn(col, 0))
 }
 
 // assignPiColumn assigns the column of a public input with the requested name
 // to the provided column.
-func assignPiColumn(run *wizard.ProverRuntime, name string, val field.Element) {
+func assignPiColumn(run *wizard.ProverRuntime, name string, val ...field.Element) {
 	run.AssignColumn(
 		ifaces.ColID(name+"_PI_COLUMN"),
-		smartvectors.NewConstant(val, 1),
+		smartvectors.NewRegular(val[:]),
 	)
 }
 
