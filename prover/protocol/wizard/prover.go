@@ -198,6 +198,17 @@ func Prove(c *CompiledIOP, highLevelprover MainProverStep, IsBLS ...bool) Proof 
 	return run.ExtractProof()
 }
 
+// Resume resumes a [ProverRuntime] from a checkpoint till the end (the last
+// round) and returns a pointer to self.
+func (runtime *ProverRuntime) Resume() *ProverRuntime {
+	round := runtime.Spec.NumRounds()
+	for runtime.currRound+1 < round {
+		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
+		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
+	}
+	return runtime
+}
+
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
 func RunProver(c *CompiledIOP, highLevelprover MainProverStep, IsBLS bool) *ProverRuntime {

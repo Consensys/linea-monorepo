@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
@@ -140,9 +139,6 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	wizard.ContinueCompilation(modIOP,
-		// @alex: unsure if/why we need to compile with MiMC since it should be
-		// done pre-bootstrapping.
-		mimc.CompileMiMC,
 		// The reason why 1 works is because it will work for all the GL modules
 		// and because the LPP module do not have Plonk-in-wizards query.
 		plonkinwizard.CompileWithMinimalRound(1),
@@ -183,6 +179,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		wizard.ContinueCompilation(modIOP,
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
 				vortex.WithOptionalSISHashingThreshold(64),
@@ -193,6 +190,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		wizard.ContinueCompilation(modIOP,
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
 				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
@@ -204,46 +202,45 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	wizard.ContinueCompilation(modIOP,
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
-		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_0")),
+			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_0")),
 		),
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(40),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
-		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
+			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
 		),
 		// This extra step is to ensure the tightness of the final wizard by
 		// adding an optional second layer of compilation when we have very
 		// large inputs.
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(40),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
-		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			compiler.WithoutMpts(),
 			// Uncomment to enable the debugging mode
-			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
+			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
 		),
 		// This final step expectedly always generate always the same profile.
 		// Most of the time, it is ineffective and could be skipped so there is
@@ -252,6 +249,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		mpts.Compile(mpts.WithNumColumnProfileOpt(params.ColumnProfileMPTS, params.ColumnProfileMPTSPrecomputed)),
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(40),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
@@ -305,7 +303,6 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	}
 
 	recursedComp := wizard.Compile(defineRecursion,
-		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
@@ -316,6 +313,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(40),
 			vortex.WithSISParams(&sisInstance),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
@@ -323,7 +321,6 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
-		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
@@ -332,6 +329,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		),
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(40),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
@@ -410,10 +408,10 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 		stoppingRound = recursion.VortexQueryRound(comp) + 1
 		proverRun     *wizard.ProverRuntime
 		initialTime   = profiling.TimeIt(func() {
-			proverRun = wizard.RunProverUntilRound(comp, proverStep, stoppingRound)
+			proverRun = wizard.RunProverUntilRound(comp, proverStep, stoppingRound, false)
 		})
 		initialProof    = proverRun.ExtractProof()
-		initialProofErr = wizard.VerifyUntilRound(comp, initialProof, stoppingRound)
+		initialProofErr = wizard.VerifyUntilRound(comp, initialProof, stoppingRound, false)
 	)
 
 	if initialProofErr != nil {
@@ -429,10 +427,11 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 				r.RecursionComp,
 				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}, nil),
 				recStoppingRound,
+				false,
 			)
 		})
 		finalProof    = run.ExtractProof()
-		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound)
+		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound, false)
 	)
 
 	if finalProofErr != nil {
