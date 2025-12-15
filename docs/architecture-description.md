@@ -750,15 +750,15 @@ l1RollingHashes(
 
 Gas pricing on Linea is designed to ensure the following three properties:
 * Sequencer's inclusion logic is aligned to the L1 fee market. This is to avoid exploiting Linea to execute
-transactions for unsustainably low fees
+  transactions for unsustainably low fees
 * The fees charged to Linea's user represent their fair usage of the network. Unlike the vanilla Ethereum
-protocol, the gas price on Linea and other rollups is not 2-dimensional (base fee, priority fee). There are at least L1 fees
-(execution fees and blob fees), infrastructural costs (mostly proving, but not only), and a potential priority fee
-(only when there is high congestion and competition for L2 block space). This is an issue for interoperability,
-because vanilla Ethreum API isn't tailored for this. That's why there is a Besu plugin addressing this issue and
-providing gas price depending on input transaction
+  protocol, the gas price on Linea and other rollups is not 2-dimensional (base fee, priority fee). There are at least L1 fees
+  (execution fees and blob fees), infrastructural costs (mostly proving, but not only), and a potential priority fee
+  (only when there is high congestion and competition for L2 block space). This is an issue for interoperability,
+  because vanilla Ethreum API isn't tailored for this. That's why there is a Besu plugin addressing this issue and
+  providing gas price depending on input transaction
 * Linea remains compatible with users running vanilla nodes. Namely, `eth_gasPrice` returns fees guaranteeing that
-99.9% of transactions are includable on Linea.
+  99.9% of transactions are includable on Linea.
 
 This is how these challenges were solved technically:
 
@@ -766,9 +766,9 @@ This is how these challenges were solved technically:
 
 The Coordinator fetches L1 fees data, based on which it will compute gas pricing components. There are 3 of them:
 * Fixed cost. Represents infrastructural cost per unit of L2 gas. Doesn't really depend on the L1, and it's just a
-configuration in the Coordinator
+  configuration in the Coordinator
 * Variable cost. Cost of 1 byte of compressed data on L2, which is finalized on L1 contract. Depends on the fees Linea
-pays for finalization, which in turn depends on the L1 blob and execution fee market
+  pays for finalization, which in turn depends on the L1 blob and execution fee market
 * Legacy cost. Recommended gas price for the vanilla Ethereum API (`eth_gasPrice`)
 
 ## Gas pricing propagation
@@ -805,7 +805,7 @@ A summary of each of them is given below.
 ### Blobs
 
 The coordinator submits up to six blobs it generates at once to L1 using eip4844 standard to `v3.1 LineaRollup.submitBlobs` alongside
- the KZG proof. The LineaRollup smart contract verifies the validity of the proofs for the given blob data.
+the KZG proof. The LineaRollup smart contract verifies the validity of the proofs for the given blob data.
 
 Blob submission can support sending up to six blobs at once. This allows for saving cost by amortizing the processing overhead over multiple blobs.
 
@@ -1008,16 +1008,46 @@ For this, the user has to send the different fields of the Linea transaction  (i
 Ethereum mainnet. The smart contract method is as follows:
 
 ```
-forcedTransaction(
-  from String
-  to String
-  fee uint256
-  value uint256
-  nonce uint256
-  calldata bytes
-  signature bytes32
-)
+  function submitForcedTransaction(
+    Eip1559Transaction memory _forcedTransaction,
+    LastFinalizedState memory _lastFinalizedState
+  )
 ```
+
+where:
+```
+  struct LastFinalizedState {
+    uint256 timestamp;
+    uint256 messageNumber;
+    bytes32 messageRollingHash;
+    uint256 forcedTransactionNumber;
+    bytes32 forcedTransactionRollingHash;
+  }
+```
+
+```
+  struct Eip1559Transaction {
+    uint256 nonce;
+    uint256 maxPriorityFeePerGas;
+    uint256 maxFeePerGas;
+    uint256 gasLimit;
+    address to;
+    uint256 value;
+    bytes input;
+    RlpEncoder.AccessList[] accessList;
+    uint8 yParity;
+    uint256 r;
+    uint256 s;
+  }
+```
+
+```
+  struct AccessList {
+    address contractAddress;
+    bytes32[] storageKeys;
+  }
+```
+
 
 The smart contract filters out invalid transactions. Transactions can be invalid if, for instance, the signature is invalid.
 RLP encoding of the tx is computed on the smart contract. A hash of it is stored on L1 chain to ensure censorship resistance.
