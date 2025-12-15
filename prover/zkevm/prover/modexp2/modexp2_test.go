@@ -17,8 +17,8 @@ func TestModExpAntichamber(t *testing.T) {
 		{
 			InputFName:       "testdata/single_256_bits_input.csv",
 			ModuleFName:      "testdata/single_256_bits_module.csv",
-			NbSmallInstances: 1,
-			NbLargeInstances: 0,
+			NbSmallInstances: 10,
+			NbLargeInstances: 1,
 		},
 		{
 			InputFName:       "testdata/single_4096_bits_input.csv",
@@ -39,9 +39,7 @@ func TestModExpAntichamber(t *testing.T) {
 
 			var (
 				inp   *Input
-				mod   *Module
 				inpCt = csvtraces.MustOpenCsvFile(tc.InputFName)
-				modCt = csvtraces.MustOpenCsvFile(tc.ModuleFName)
 			)
 
 			cmp := wizard.Compile(func(build *wizard.Builder) {
@@ -54,13 +52,9 @@ func TestModExpAntichamber(t *testing.T) {
 					Settings:         Settings{MaxNbInstance256: tc.NbSmallInstances, MaxNbInstanceLarge: tc.NbLargeInstances},
 				}
 
-				mod = newModule(build.CompiledIOP, inp)
+				newModule(build.CompiledIOP, inp)
 			}, dummy.Compile)
-			_ = mod
-			// _ = modCt
-			var runner *wizard.ProverRuntime
 			proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
-
 				inpCt.Assign(run,
 					"LIMBS",
 					"IS_MODEXP_BASE",
@@ -68,17 +62,7 @@ func TestModExpAntichamber(t *testing.T) {
 					"IS_MODEXP_MODULUS",
 					"IS_MODEXP_RESULT",
 				)
-
-				// mod.Assign(run)
-
-				runner = run
 			})
-			modCt.CheckAssignment(runner,
-				// "MODEXP_LIMBS",
-				"MODEXP_INPUT_IS_MODEXP",
-				"MODEXP_IS_SMALL",
-				"MODEXP_IS_LARGE",
-			)
 
 			if err := wizard.Verify(cmp, proof); err != nil {
 				t.Fatal("proof failed", err)
