@@ -375,13 +375,9 @@ library Poseidon2 {
       /// @param ptr pointer to 2 uint256 elements, interpreted as 4 blocks of 4 uint32 elements
       /// that we multiply by M4. The resut is 4 blocks of 4 uint32 elements, aligned in ptr
       function mathMulM4InPlace(ptr) {
-        let a := mload(ptr)
-        a := matMulM4uint256(a)
-        mstore(ptr, a)
-
-        a := mload(add(ptr, 0x20))
-        a := matMulM4uint256(a)
-        mstore(add(ptr, 0x20), a)
+        let ptrNext := add(ptr, 0x20)
+        mstore(ptr, matMulM4uint256(mload(ptr)))
+        mstore(ptrNext, matMulM4uint256(mload(ptrNext)))
       }
 
       /// matMulM4uint256 splits a:= (c1<<128) || c2 in two chunks c1 c2 of 4 32bits elmts
@@ -441,11 +437,7 @@ library Poseidon2 {
       // addroundkey on the first entry
       function addRoundKeyFirstEntry(x, k) -> rx {
         let tmp := ithChunk(x, 0)
-        let t0 := tmp
-        t0 := addmod(k, t0, R_MOD)
-        tmp := shl(224, tmp)
-        rx := sub(x, tmp)
-        rx := add(rx, shl(224, t0))
+        rx := add(sub(x, shl(224, tmp)), shl(224, addmod(k, tmp, R_MOD)))
       }
 
       function addRoundKeyUint256(x, k) -> rx {
@@ -477,11 +469,7 @@ library Poseidon2 {
 
       function sboxFirstEntry(x) -> rx {
         let tmp := ithChunk(x, 0)
-        let t0 := tmp
-        tmp := shl(224, tmp)
-        rx := sub(x, tmp)
-        t0 := sboxSingleEntry(t0)
-        rx := add(rx, shl(224, t0))
+        rx := add(sub(x, shl(224, tmp)), shl(224, sboxSingleEntry(tmp)))
       }
 
       function error_size_data() {
