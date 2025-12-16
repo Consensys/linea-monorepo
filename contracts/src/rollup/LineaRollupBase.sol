@@ -391,7 +391,8 @@ abstract contract LineaRollupBase is
    *     _finalizationData.l2MerkleTreesDepth,
    *     keccak256(
    *         abi.encodePacked(_finalizationData.l2MerkleRoots)
-   *     )
+   *     ),
+   *     _verifierChainConfiguration
    *   )
    * )
    * Data is found at the following offsets:

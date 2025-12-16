@@ -9,7 +9,7 @@ import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
 } from "contracts/common/constants";
-import { CallForwardingProxy, TestLineaRollup, TestValidium } from "contracts/typechain-types";
+import { CallForwardingProxy, Mimc, TestLineaRollup, TestValidium } from "contracts/typechain-types";
 import { getAccountsFixture, getRoleAddressesFixture, getValidiumRoleAddressesFixture } from "./";
 import {
   ADDRESS_ZERO,
@@ -136,6 +136,10 @@ async function deployTestPlonkVerifierForDataAggregation(): Promise<string> {
     {
       value: toBeHex(7n, 32),
       name: "baseFee",
+    },
+    {
+      value: toBeHex("0x8f81e2e3f8b46467523463835f965ffe476e1c9e", 32),
+      name: "coinbase",
     },
     {
       value: toBeHex("0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec", 32),
