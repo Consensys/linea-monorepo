@@ -31,8 +31,8 @@ import org.apache.tuweni.bytes.Bytes;
 public class InstructionDataPricing extends RlpUtilsCall {
   @EqualsAndHashCode.Include @Getter private final Bytes16 limb;
   @EqualsAndHashCode.Include @Getter private final short nBytes;
-  public Short zeros;
-  public Short nonZeros;
+  @Getter private Short zeros;
+  @Getter private Short nonZeros;
 
   public InstructionDataPricing(Bytes16 limb, short nBytes) {
     super();
