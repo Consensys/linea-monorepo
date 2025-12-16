@@ -1,42 +1,41 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
-import static net.consensys.linea.zktracer.Fork.LONDON;
+import static net.consensys.linea.zktracer.Fork.fromMainnetHardforkIdToTracerFork;
+import static org.hyperledger.besu.plugin.services.TransactionSimulationService.SimulationParameters.ALLOW_FUTURE_NONCE;
 
-import java.math.BigInteger;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
+import net.consensys.linea.zktracer.Fork;
+import net.consensys.linea.zktracer.LineCountingTracer;
+import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
+import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionSimulationResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
+import org.hyperledger.besu.plugin.services.WorldStateService;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
 /**
@@ -46,24 +45,27 @@ import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolVal
 @Slf4j
 public class SimulationValidator implements PluginTransactionPoolValidator {
   private final BlockchainService blockchainService;
+  private final WorldStateService worldStateService;
   private final TransactionSimulationService transactionSimulationService;
   private final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf;
-  private final Map<String, Integer> moduleLineLimitsMap;
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
+  private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
 
   public SimulationValidator(
       final BlockchainService blockchainService,
+      final WorldStateService worldStateService,
       final TransactionSimulationService transactionSimulationService,
       final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf,
-      final Map<String, Integer> moduleLineLimitsMap,
+      final LineaTracerConfiguration tracerConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager) {
     this.blockchainService = blockchainService;
+    this.worldStateService = worldStateService;
     this.transactionSimulationService = transactionSimulationService;
     this.txPoolValidatorConf = txPoolValidatorConf;
-    this.moduleLineLimitsMap = moduleLineLimitsMap;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
+    this.tracerConfiguration = tracerConfiguration;
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
   }
 
@@ -85,16 +87,21 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
           .log();
 
       final ModuleLineCountValidator moduleLineCountValidator =
-          new ModuleLineCountValidator(moduleLineLimitsMap);
+          new ModuleLineCountValidator(tracerConfiguration.moduleLimitsMap());
       final var pendingBlockHeader = transactionSimulationService.simulatePendingBlockHeader();
 
-      final var zkTracer = createZkTracer(pendingBlockHeader, blockchainService.getChainId().get());
+      final var lineCountingTracer =
+          createLineCountingTracer(pendingBlockHeader, blockchainService);
       final var maybeSimulationResults =
           transactionSimulationService.simulate(
-              transaction, Optional.empty(), pendingBlockHeader, zkTracer, false, true);
+              transaction,
+              Optional.empty(),
+              pendingBlockHeader,
+              lineCountingTracer,
+              EnumSet.of(ALLOW_FUTURE_NONCE));
 
       ModuleLimitsValidationResult moduleLimitResult =
-          moduleLineCountValidator.validate(zkTracer.getModulesLineCount());
+          moduleLineCountValidator.validate(lineCountingTracer.getModulesLineCount());
 
       logSimulationResult(
           transaction, isLocal, hasPriority, maybeSimulationResults, moduleLimitResult);
@@ -160,12 +167,22 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
         .log();
   }
 
-  private ZkTracer createZkTracer(
-      final ProcessableBlockHeader pendingBlockHeader, BigInteger chainId) {
-    var zkTracer = new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
-    zkTracer.traceStartConflation(1L);
-    zkTracer.traceStartBlock(pendingBlockHeader, pendingBlockHeader.getCoinbase());
-    return zkTracer;
+  private LineCountingTracer createLineCountingTracer(
+      final ProcessableBlockHeader pendingBlockHeader, BlockchainService blockchainService) {
+    final Fork forkId =
+        fromMainnetHardforkIdToTracerFork(
+            (HardforkId.MainnetHardforkId)
+                blockchainService.getNextBlockHardforkId(
+                    blockchainService.getChainHeadHeader(), Instant.now().getEpochSecond()));
+
+    final LineCountingTracer lineCountingTracer =
+        tracerConfiguration.isLimitless()
+            ? new ZkCounter(l1L2BridgeConfiguration, forkId)
+            : new ZkTracer(forkId, l1L2BridgeConfiguration, blockchainService.getChainId().get());
+    lineCountingTracer.traceStartConflation(1L);
+    lineCountingTracer.traceStartBlock(
+        worldStateService.getWorldView(), pendingBlockHeader, pendingBlockHeader.getCoinbase());
+    return lineCountingTracer;
   }
 
   private String handleModuleOverLimit(

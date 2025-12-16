@@ -2,6 +2,7 @@ package linea.anchoring
 
 import io.vertx.core.Vertx
 import linea.EthLogsSearcher
+import linea.LongRunningService
 import linea.anchoring.clients.L1MessageSentEventsPoller
 import linea.contract.events.MessageSentEvent
 import linea.contract.l2.L2MessageServiceSmartContractClient
@@ -9,7 +10,7 @@ import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.ethapi.EthApiClient
 import linea.ethapi.EthLogsSearcherImpl
-import net.consensys.zkevm.LongRunningService
+import org.apache.logging.log4j.LogManager
 import java.util.Deque
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.LinkedBlockingDeque
@@ -36,6 +37,7 @@ class MessageAnchoringApp(
     val messageQueueCapacity: UInt = 10_000u,
     val maxMessagesToAnchorPerL2Transaction: UInt = 100u,
   )
+  private val log = LogManager.getLogger(MessageAnchoringApp::class.java)
 
   private val l1EthLogsSearcher: EthLogsSearcher =
     EthLogsSearcherImpl(
@@ -77,6 +79,7 @@ class MessageAnchoringApp(
     )
 
   override fun start(): CompletableFuture<Unit> {
+    log.info("starting MessageAnchoringApp with config={}", config)
     return l1EventsPoller.start()
       .thenCompose { messageAnchoringService.start() }
   }

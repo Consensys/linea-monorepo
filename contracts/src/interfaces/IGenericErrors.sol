@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.30;
+pragma solidity ^0.8.30;
 
 /**
  * @title Interface declaring generic errors.
@@ -16,4 +16,9 @@ interface IGenericErrors {
    * @dev Thrown when a parameter is the zero hash.
    */
   error ZeroHashNotAllowed();
+
+  /**
+   * @dev Thrown when the caller is not the ProxyAdmin.
+   */
+  error CallerNotProxyAdmin();
 }

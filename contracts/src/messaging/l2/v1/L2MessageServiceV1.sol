@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity ^0.8.30;
 
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { TransientStorageReentrancyGuardUpgradeable } from "../../../security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol";
 import { IMessageService } from "../../interfaces/IMessageService.sol";
 import { IL2MessageServiceV1 } from "./interfaces/IL2MessageServiceV1.sol";
 import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
@@ -17,7 +17,7 @@ import { MessageHashing } from "../../libraries/MessageHashing.sol";
 abstract contract L2MessageServiceV1 is
   RateLimiter,
   L2MessageManagerV1,
-  ReentrancyGuardUpgradeable,
+  TransientStorageReentrancyGuardUpgradeable,
   IMessageService,
   IL2MessageServiceV1,
   IGenericErrors
@@ -29,13 +29,18 @@ abstract contract L2MessageServiceV1 is
    * NB: Take note that this is at the beginning of the file where other storage gaps,
    * are at the end of files. Be careful with how storage is adjusted on upgrades.
    */
-  uint256[50] private __gap_L2MessageService;
+  uint256[50] private __gap_L2MessageServiceV1;
+
+  address transient TRANSIENT_MESSAGE_SENDER;
 
   /// @notice The role required to set the minimum DDOS fee.
   bytes32 public constant MINIMUM_FEE_SETTER_ROLE = keccak256("MINIMUM_FEE_SETTER_ROLE");
 
-  /// @dev The temporary message sender set when claiming a message.
-  address internal _messageSender;
+  /// @notice The default value for the message sender reset to post claiming using the MESSAGE_SENDER_TRANSIENT_KEY.
+  address internal constant DEFAULT_MESSAGE_SENDER_TRANSIENT_VALUE = address(0);
+
+  /// @dev DEPRECATED in favor of new transient storage with `MESSAGE_SENDER_TRANSIENT_KEY` key.
+  address private _messageSender_DEPRECATED;
 
   // @notice initialize to save user cost with existing slot.
   uint256 public nextMessageNumber;
@@ -45,9 +50,6 @@ abstract contract L2MessageServiceV1 is
 
   // @dev adding these should not affect storage as they are constants and are stored in bytecode.
   uint256 internal constant REFUND_OVERHEAD_IN_GAS = 44596;
-
-  /// @dev The default message sender address reset after claiming a message.
-  address internal constant DEFAULT_SENDER_ADDRESS = address(123456789);
 
   /// @dev Total contract storage is 53 slots including the gap above. NB: Above!
 
@@ -63,9 +65,21 @@ abstract contract L2MessageServiceV1 is
    * @param _fee The fee being paid for the message delivery.
    * @param _calldata The calldata to pass to the recipient.
    */
-  function sendMessage(address _to, uint256 _fee, bytes calldata _calldata) external payable {
-    _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
+  function sendMessage(
+    address _to,
+    uint256 _fee,
+    bytes calldata _calldata
+  ) external payable virtual whenTypeAndGeneralNotPaused(PauseType.L2_L1) {
+    _sendMessage(_to, _fee, _calldata);
+  }
 
+  /**
+   * @notice Adds a message for sending cross-chain and emits a relevant event.
+   * @param _to The address the message is intended for.
+   * @param _fee The fee being paid for the message delivery.
+   * @param _calldata The calldata to pass to the recipient.
+   */
+  function _sendMessage(address _to, uint256 _fee, bytes calldata _calldata) internal virtual {
     if (_to == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -121,15 +135,39 @@ abstract contract L2MessageServiceV1 is
     address payable _feeRecipient,
     bytes calldata _calldata,
     uint256 _nonce
-  ) external nonReentrant distributeFees(_fee, _to, _calldata, _feeRecipient) {
-    _requireTypeAndGeneralNotPaused(PauseType.L1_L2);
+  )
+    external
+    virtual
+    nonReentrant
+    distributeFees(_fee, _to, _calldata, _feeRecipient)
+    whenTypeAndGeneralNotPaused(PauseType.L1_L2)
+  {
+    _claimMessage(_from, _to, _fee, _value, _calldata, _nonce);
+  }
 
+  /**
+   * @notice Claims and delivers a cross-chain message.
+   * @param _from The address of the original sender.
+   * @param _to The address the message is intended for.
+   * @param _fee The fee being paid for the message delivery.
+   * @param _value The value to be transferred to the destination address.
+   * @param _calldata The calldata to pass to the recipient.
+   * @param _nonce The unique auto generated message number used when sending the message.
+   */
+  function _claimMessage(
+    address _from,
+    address _to,
+    uint256 _fee,
+    uint256 _value,
+    bytes calldata _calldata,
+    uint256 _nonce
+  ) internal virtual {
     bytes32 messageHash = MessageHashing._hashMessage(_from, _to, _fee, _value, _nonce, _calldata);
 
     /// @dev Status check and revert is in the message manager.
     _updateL1L2MessageStatusToClaimed(messageHash);
 
-    _messageSender = _from;
+    TRANSIENT_MESSAGE_SENDER = _from;
 
     (bool callSuccess, bytes memory returnData) = _to.call{ value: _value }(_calldata);
     if (!callSuccess) {
@@ -143,7 +181,7 @@ abstract contract L2MessageServiceV1 is
       }
     }
 
-    _messageSender = DEFAULT_SENDER_ADDRESS;
+    TRANSIENT_MESSAGE_SENDER = DEFAULT_MESSAGE_SENDER_TRANSIENT_VALUE;
     emit MessageClaimed(messageHash);
   }
 
@@ -160,11 +198,11 @@ abstract contract L2MessageServiceV1 is
   }
 
   /**
-   * @dev The _messageSender address is set temporarily when claiming.
-   * @return originalSender The original sender stored temporarily at the _messageSender address in storage.
+   * @dev The message sender address is set temporarily in the transient storage when claiming.
+   * @return originalSender The message sender address that is stored temporarily in the transient storage when claiming.
    */
   function sender() external view returns (address originalSender) {
-    originalSender = _messageSender;
+    originalSender = TRANSIENT_MESSAGE_SENDER;
   }
 
   /**

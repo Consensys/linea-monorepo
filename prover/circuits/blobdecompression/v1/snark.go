@@ -9,6 +9,7 @@ import (
 	"math/bits"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark/constraint/solver"
@@ -18,7 +19,6 @@ import (
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/rangecheck"
 	public_input "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/public-input"
-	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
@@ -180,7 +180,7 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 	}
 
 	var (
-		partialSumsT *logderivlookup.Table
+		partialSumsT logderivlookup.Table
 		partialSums  []frontend.Variable
 	)
 	// create a table of claimed sums and prove their correctness as we go through the payload

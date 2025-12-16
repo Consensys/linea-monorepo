@@ -6,6 +6,7 @@ import com.github.michaelbull.result.Result
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpClientOptions
 import io.vertx.core.http.HttpVersion
+import net.consensys.linea.jsonrpc.JsonRpcRequest
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
@@ -27,6 +28,7 @@ interface JsonRpcClientFactory {
     httpVersion: HttpVersion? = null,
     requestObjectMapper: ObjectMapper = objectMapper,
     responseObjectMapper: ObjectMapper = objectMapper,
+    requestTimeout: Long? = null,
     shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>> = Predicate { it is Err },
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = Level.TRACE,
@@ -47,6 +49,7 @@ class VertxHttpJsonRpcClientFactory(
     httpVersion: HttpVersion? = null,
     requestObjectMapper: ObjectMapper = objectMapper,
     responseObjectMapper: ObjectMapper = objectMapper,
+    requestTimeout: Long? = null,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
     failuresLogLevel: Level = this.failuresLogLevel,
@@ -66,6 +69,7 @@ class VertxHttpJsonRpcClientFactory(
       log = log,
       requestParamsObjectMapper = requestObjectMapper,
       responseObjectMapper = responseObjectMapper,
+      requestTimeout = requestTimeout,
       requestResponseLogLevel = requestResponseLogLevel,
       failuresLogLevel = failuresLogLevel,
     )
@@ -77,24 +81,30 @@ class VertxHttpJsonRpcClientFactory(
     httpVersion: HttpVersion? = null,
     requestObjectMapper: ObjectMapper = objectMapper,
     responseObjectMapper: ObjectMapper = objectMapper,
+    requestTimeout: Long? = null,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
     failuresLogLevel: Level = this.failuresLogLevel,
+    requestPriorityComparator: Comparator<JsonRpcRequest>? = null,
   ): JsonRpcClient {
+    val rpcClients = endpoints.map { endpoint ->
+      create(
+        endpoint = endpoint,
+        maxPoolSize = maxInflightRequestsPerClient.toInt(),
+        httpVersion = httpVersion,
+        requestObjectMapper = requestObjectMapper,
+        responseObjectMapper = responseObjectMapper,
+        requestTimeout = requestTimeout,
+        log = log,
+        requestResponseLogLevel = requestResponseLogLevel,
+        failuresLogLevel = failuresLogLevel,
+      )
+    }
+
     return LoadBalancingJsonRpcClient.create(
-      endpoints.map { endpoint ->
-        create(
-          endpoint = endpoint,
-          maxPoolSize = maxInflightRequestsPerClient.toInt(),
-          httpVersion = httpVersion,
-          requestObjectMapper = requestObjectMapper,
-          responseObjectMapper = responseObjectMapper,
-          log = log,
-          requestResponseLogLevel = requestResponseLogLevel,
-          failuresLogLevel = failuresLogLevel,
-        )
-      },
-      maxInflightRequestsPerClient,
+      rpcClients = rpcClients,
+      requestLimitPerEndpoint = maxInflightRequestsPerClient,
+      requestPriorityComparator = requestPriorityComparator,
     )
   }
 
@@ -106,6 +116,7 @@ class VertxHttpJsonRpcClientFactory(
     httpVersion: HttpVersion? = null,
     requestObjectMapper: ObjectMapper = objectMapper,
     responseObjectMapper: ObjectMapper = objectMapper,
+    requestTimeout: Long? = null,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
     failuresLogLevel: Level = this.failuresLogLevel,
@@ -116,6 +127,7 @@ class VertxHttpJsonRpcClientFactory(
       httpVersion = httpVersion,
       requestObjectMapper = requestObjectMapper,
       responseObjectMapper = responseObjectMapper,
+      requestTimeout = requestTimeout,
       log = log,
       requestResponseLogLevel = requestResponseLogLevel,
       failuresLogLevel = failuresLogLevel,
@@ -141,6 +153,7 @@ class VertxHttpJsonRpcClientFactory(
     httpVersion: HttpVersion? = null,
     requestObjectMapper: ObjectMapper = objectMapper,
     responseObjectMapper: ObjectMapper = objectMapper,
+    requestTimeout: Long? = null,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
     failuresLogLevel: Level = this.failuresLogLevel,
@@ -151,6 +164,7 @@ class VertxHttpJsonRpcClientFactory(
       httpVersion = httpVersion,
       requestObjectMapper = requestObjectMapper,
       responseObjectMapper = responseObjectMapper,
+      requestTimeout = requestTimeout,
       log = log,
       requestResponseLogLevel = requestResponseLogLevel,
       failuresLogLevel = failuresLogLevel,
@@ -176,6 +190,7 @@ class VertxHttpJsonRpcClientFactory(
     httpVersion: HttpVersion?,
     requestObjectMapper: ObjectMapper,
     responseObjectMapper: ObjectMapper,
+    requestTimeout: Long?,
     shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>>,
     log: Logger,
     requestResponseLogLevel: Level,
@@ -194,6 +209,7 @@ class VertxHttpJsonRpcClientFactory(
         httpVersion = httpVersion,
         requestObjectMapper = requestObjectMapper,
         responseObjectMapper = responseObjectMapper,
+        requestTimeout = requestTimeout,
         log = log,
         requestResponseLogLevel = requestResponseLogLevel,
         failuresLogLevel = failuresLogLevel,
@@ -204,6 +220,7 @@ class VertxHttpJsonRpcClientFactory(
         httpVersion = httpVersion,
         requestObjectMapper = requestObjectMapper,
         responseObjectMapper = responseObjectMapper,
+        requestTimeout = requestTimeout,
         log = log,
         requestResponseLogLevel = requestResponseLogLevel,
         failuresLogLevel = failuresLogLevel,

@@ -3,6 +3,7 @@ package linea.web3j
 import linea.domain.Block
 import linea.domain.BlockParameter
 import linea.web3j.domain.toWeb3j
+import linea.web3j.mappers.toDomain
 import net.consensys.linea.async.toSafeFuture
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -19,6 +20,7 @@ interface ExtendedWeb3J {
   fun ethBlockNumber(): SafeFuture<BigInteger>
   fun ethGetBlock(blockParameter: BlockParameter): SafeFuture<Block?>
   fun ethGetBlockTimestampByNumber(blockNumber: Long): SafeFuture<BigInteger>
+  fun ethGetBlockSizeByNumber(blockNumber: Long): SafeFuture<BigInteger>
 }
 
 class ExtendedWeb3JImpl(override val web3jClient: Web3j) : ExtendedWeb3J {
@@ -72,6 +74,28 @@ class ExtendedWeb3JImpl(override val web3jClient: Web3j) : ExtendedWeb3J {
         } else {
           response.block?.let {
             SafeFuture.completedFuture(response.block.timestamp)
+          } ?: SafeFuture.failedFuture(Exception("Block $blockNumber not found!"))
+        }
+      }
+  }
+
+  override fun ethGetBlockSizeByNumber(
+    blockNumber: Long,
+  ): SafeFuture<BigInteger> {
+    return SafeFuture.of(
+      web3jClient
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf(BigInteger.valueOf(blockNumber)),
+          false,
+        )
+        .sendAsync(),
+    )
+      .thenCompose { response ->
+        if (response.hasError()) {
+          SafeFuture.failedFuture(buildException(response.error))
+        } else {
+          response.block?.let {
+            SafeFuture.completedFuture(response.block.size)
           } ?: SafeFuture.failedFuture(Exception("Block $blockNumber not found!"))
         }
       }

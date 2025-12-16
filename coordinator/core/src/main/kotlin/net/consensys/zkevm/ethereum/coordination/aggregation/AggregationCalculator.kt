@@ -12,12 +12,19 @@ fun interface AggregationHandler {
 enum class AggregationTriggerType {
   TIME_LIMIT,
   PROOF_LIMIT,
+  BLOB_LIMIT,
 
   /**
    * Aggregation trigger by target block numbers specified in the configuration.
    * This is meant for either Development,  Testing or Match specific blobs sent to L1.
    */
   TARGET_BLOCK_NUMBER,
+
+  /**
+   * Aggregation trigger by hard fork events (timestamp-based or TTD-based).
+   * When a hard fork is detected, any pending aggregation should be finalized.
+   */
+  HARD_FORK,
 }
 
 data class AggregationTrigger(

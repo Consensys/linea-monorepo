@@ -1,38 +1,35 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 
 package org.hyperledger.besu.tests.acceptance.dsl;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.io.IOException;
-import java.util.Optional;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.util.Optional;
+import java.util.function.Supplier;
 import okhttp3.Call;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions;
+import org.web3j.crypto.BlobUtils;
 import org.web3j.protocol.core.methods.response.EthBlock;
 
 /*
@@ -47,8 +44,6 @@ public class EngineAPIService {
 
   private static final String JSONRPC_VERSION = "2.0";
   private static final long JSONRPC_REQUEST_ID = 67;
-  private static final String SUGGESTED_BLOCK_FEE_RECIPIENT =
-      "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b";
 
   public EngineAPIService(BesuNode node, EthTransactions ethTransactions, ObjectMapper mapper) {
     httpClient = new OkHttpClient();
@@ -79,8 +74,13 @@ public class EngineAPIService {
    * @param blockTimestampSeconds    The Unix timestamp (in seconds) to assign to the new block.
    * @param blockBuildingTimeMs      The duration (in milliseconds) allocated for the Besu node to build the block.
    */
-  public void buildNewBlock(long blockTimestampSeconds, long blockBuildingTimeMs)
-      throws IOException, InterruptedException {
+  public void buildNewBlock(long blockTimestampSeconds, long blockBuildingTimeMs) throws Exception {
+    buildNewBlock(blockTimestampSeconds, blockBuildingTimeMs, () -> false);
+  }
+
+  public void buildNewBlock(
+      long blockTimestampSeconds, long blockBuildingTimeMs, Supplier<Boolean> stopBlockBuilding)
+      throws Exception {
     final EthBlock.Block latestBlock = node.execute(ethTransactions.block());
 
     final Call buildBlockRequest =
@@ -115,21 +115,32 @@ public class EngineAPIService {
     final Call getPayloadRequest = createGetPayloadRequest(payloadId);
 
     final ObjectNode executionPayload;
+    final ObjectNode blobsBundle;
     final ArrayNode executionRequests;
     final String newBlockHash;
-    final String parentBeaconBlockRoot;
+    final String parentBeaconBlockRoot = Hash.ZERO.toHexString();
+    ArrayNode expectedBlobVersionedHashes = mapper.createArrayNode();
     try (final Response getPayloadResponse = getPayloadRequest.execute()) {
       assertThat(getPayloadResponse.code()).isEqualTo(200);
       JsonNode result = mapper.readTree(getPayloadResponse.body().string()).get("result");
       executionPayload = (ObjectNode) result.get("executionPayload");
+      blobsBundle = (ObjectNode) result.get("blobsBundle");
       executionRequests = (ArrayNode) result.get("executionRequests");
       newBlockHash = executionPayload.get("blockHash").asText();
-      parentBeaconBlockRoot = executionPayload.remove("parentBeaconBlockRoot").asText();
+      // Transform KZG commitments to versioned hashes
+      for (JsonNode kzgCommitment : blobsBundle.get("commitments")) {
+        Bytes kzgBytes = Bytes.fromHexString(kzgCommitment.asText());
+        expectedBlobVersionedHashes.add(BlobUtils.kzgToVersionedHash(kzgBytes).toString());
+      }
       assertThat(newBlockHash).isNotEmpty();
     }
 
     final Call newPayloadRequest =
-        createNewPayloadRequest(executionPayload, parentBeaconBlockRoot, executionRequests);
+        createNewPayloadRequestV4(
+            executionPayload,
+            expectedBlobVersionedHashes,
+            parentBeaconBlockRoot,
+            executionRequests);
 
     try (final Response newPayloadResponse = newPayloadRequest.execute()) {
       assertThat(newPayloadResponse.code()).isEqualTo(200);
@@ -139,10 +150,29 @@ public class EngineAPIService {
     }
 
     final Call moveChainAheadRequest = createForkChoiceRequest(newBlockHash);
-
+    if (stopBlockBuilding.get()) {
+      // if stopBlockBuilding is true, we exit before moving the chain ahead
+      return;
+    }
     try (final Response moveChainAheadResponse = moveChainAheadRequest.execute()) {
       assertThat(moveChainAheadResponse.code()).isEqualTo(200);
     }
+  }
+
+  public Response importPremadeBlock(
+      final ObjectNode executionPayload,
+      final ArrayNode expectedBlobVersionedHashes,
+      final String parentBeaconBlockRoot,
+      final ArrayNode executionRequests)
+      throws IOException, InterruptedException {
+    final Call newPayloadRequest =
+        createNewPayloadRequestV4(
+            executionPayload,
+            expectedBlobVersionedHashes,
+            parentBeaconBlockRoot,
+            executionRequests);
+
+    return newPayloadRequest.execute();
   }
 
   private Call createForkChoiceRequest(final String blockHash) {
@@ -165,7 +195,7 @@ public class EngineAPIService {
       ObjectNode payloadAttributes = mapper.createObjectNode();
       payloadAttributes.put("timestamp", blockTimestamp);
       payloadAttributes.put("prevRandao", Hash.ZERO.toString());
-      payloadAttributes.put("suggestedFeeRecipient", SUGGESTED_BLOCK_FEE_RECIPIENT);
+      payloadAttributes.put("suggestedFeeRecipient", Address.ZERO.toString());
       payloadAttributes.set("withdrawals", mapper.createArrayNode());
       payloadAttributes.put("parentBeaconBlockRoot", Hash.ZERO.toString());
       params.add(payloadAttributes);
@@ -176,21 +206,41 @@ public class EngineAPIService {
   private Call createGetPayloadRequest(final String payloadId) {
     ArrayNode params = mapper.createArrayNode();
     params.add(payloadId);
-    return createEngineCall("engine_getPayloadV4", params);
+    return createEngineCall("engine_getPayloadV5", params);
   }
 
-  private Call createNewPayloadRequest(
+  private Call createNewPayloadRequestV4(
       final ObjectNode executionPayload,
+      final ArrayNode expectedBlobVersionedHashes,
       final String parentBeaconBlockRoot,
       final ArrayNode executionRequests) {
     ArrayNode params = mapper.createArrayNode();
     params.add(executionPayload);
-    params.add(mapper.createArrayNode()); // empty withdrawals
+    params.add(expectedBlobVersionedHashes);
     params.add(parentBeaconBlockRoot);
     params.add(executionRequests);
 
     return createEngineCall("engine_newPayloadV4", params);
   }
+
+  //   private Call createNewPayloadRequestV5(
+  //     final ObjectNode executionPayload,
+  //     final ArrayNode expectedBlobVersionedHashes,
+  //     final String parentBeaconBlockRoot,
+  //     final ArrayNode executionRequests) {
+
+  //   // Add blockAccessList to executionPayload (required for V5)
+  //   // Use "0xc0" for empty BlockAccessList
+  //   executionPayload.put("blockAccessList", "0xc0");
+
+  //   ArrayNode params = mapper.createArrayNode();
+  //   params.add(executionPayload);
+  //   params.add(expectedBlobVersionedHashes);
+  //   params.add(parentBeaconBlockRoot);
+  //   params.add(executionRequests);
+
+  //   return createEngineCall("engine_newPayloadV5", params);
+  // }
 
   private Call createEngineCall(final String rpcMethod, ArrayNode params) {
     ObjectNode request = mapper.createObjectNode();

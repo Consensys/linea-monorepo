@@ -1,6 +1,6 @@
-import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
-import { Chain, Token, TransactionStatus } from "@/types";
 import { Address } from "viem";
+import { MessageProof } from "@consensys/linea-sdk-viem";
+import { Chain, Token, TransactionStatus, CCTPMode } from "@/types";
 
 export type NativeBridgeMessage = {
   from: Address;
@@ -10,7 +10,7 @@ export type NativeBridgeMessage = {
   nonce: bigint;
   calldata: string;
   messageHash: string;
-  proof?: Proof;
+  proof?: MessageProof;
   amountSent: bigint;
 };
 
@@ -48,4 +48,5 @@ export interface BridgeTransaction {
   message: NativeBridgeMessage | CctpV2BridgeMessage;
   bridgingTx: string;
   claimingTx?: string;
+  cctpMode?: CCTPMode;
 }

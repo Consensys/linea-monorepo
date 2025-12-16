@@ -323,6 +323,14 @@ describe("TokenBridge", function () {
       const encodedValidData = ethers.AbiCoder.defaultAbiCoder().encode(["string"], [validString]);
       expect(await l1TestTokenBridge.testReturnDataToString(encodedValidData)).to.equal(validString);
     });
+
+    it("Should have the correct contract version", async () => {
+      const { l1TokenBridge, l2TokenBridge } = await loadFixture(deployContractsFixture);
+
+      expect(await l1TokenBridge.CONTRACT_VERSION()).to.equal("1.1");
+
+      expect(await l2TokenBridge.CONTRACT_VERSION()).to.equal("1.1");
+    });
   });
 
   describe("Permissions", function () {
@@ -967,9 +975,10 @@ describe("TokenBridge", function () {
 
       await reentrancyContract.setToken(maliciousERC777.getAddress());
 
-      await expectRevertWithReason(
+      await expectRevertWithCustomError(
+        l1TokenBridge,
         l1TokenBridge.bridgeToken(await maliciousERC777.getAddress(), 1, owner.address),
-        "ReentrancyGuard: reentrant call",
+        "ReentrantCall",
       );
     });
   });

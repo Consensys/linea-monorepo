@@ -3,18 +3,15 @@ import com.github.jk1.license.filter.LicenseBundleNormalizer
 buildscript {
   ext {
     distributionIdentifier = "linea-sequencer"
-    releaseVersion = "v2.1-rc16.2.4"
-    distributionBaseUrl = "https://github.com/Consensys/linea-besu-upstream/releases/download/"
-    besuIdentifier = "besu-${libs.versions.besu.get()}"
-    besuFilename = "${besuIdentifier}.tar.gz"
-    besuUrl = "${distributionBaseUrl}${libs.versions.besu.get()}/${besuFilename}"
-    besuPluginsIdentifier = "${distributionIdentifier}-${version}"
-    besuPluginDir = File.createTempDir("plugins")
+    releaseVersion = "${libs.versions.arithmetization.get()}-SNAPSHOT"
+    besuVersion = "${libs.versions.besu.get()}"
+    besuRepo = "https://artifacts.consensys.net/public/linea-besu/maven/"
   }
 }
 
 plugins {
-  id 'java-library'
+  alias(libs.plugins.besuPluginLibrary)
+  alias(libs.plugins.besuPluginDistribution)
   alias(libs.plugins.dependencyLicenseReport)
 }
 
@@ -38,6 +35,11 @@ afterEvaluate {
   if (tasks.findByName('spotlessCheck')) {
     spotlessCheck.dependsOn subprojects.collect { subproject ->
       subproject.tasks.matching { task -> task.name == 'spotlessCheck' }
+    }
+  }
+  if (tasks.findByName('spotlessApply')) {
+    spotlessApply.dependsOn subprojects.collect { subproject ->
+      subproject.tasks.matching { task -> task.name == 'spotlessApply' }
     }
   }
 }

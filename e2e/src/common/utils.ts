@@ -1,6 +1,15 @@
 import * as fs from "fs";
 import assert from "assert";
-import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
+import {
+  AbstractSigner,
+  BaseContract,
+  BlockTag,
+  TransactionReceipt,
+  TransactionRequest,
+  Wallet,
+  ethers,
+  toBeHex,
+} from "ethers";
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageServiceV1 as L2MessageService, TokenBridgeV1_1 as TokenBridge, LineaRollupV6 } from "../typechain";
@@ -8,16 +17,12 @@ import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEv
 import { MessageEvent, SendMessageArgs } from "./types";
 import { createTestLogger } from "../config/logger";
 import { randomUUID, randomInt } from "crypto";
+import { config } from "../config/tests-config";
 
 const logger = createTestLogger();
 
 export function etherToWei(amount: string): bigint {
   return ethers.parseEther(amount.toString());
-}
-
-export function readJsonFile(filePath: string): unknown {
-  const data = fs.readFileSync(filePath, "utf8");
-  return JSON.parse(data);
 }
 
 export const wait = (timeout: number) => new Promise((resolve) => setTimeout(resolve, timeout));
@@ -133,8 +138,45 @@ export class RollupGetZkEVMBlockNumberClient {
   }
 }
 
+export class GetEthLogsClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async getLogs(
+    address: string,
+    topics: Array<null | string | Array<string>>,
+    fromBlock: BlockTag,
+    toBlock: BlockTag,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): Promise<any> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "eth_getLogs",
+        params: [
+          {
+            topics: [...topics],
+            fromBlock,
+            toBlock,
+            address,
+          },
+        ],
+        id: generateRandomInt(),
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    return await response.json();
+  }
+}
+
 export class LineaEstimateGasClient {
   private endpoint: URL;
+  private BASE_FEE_MULTIPLIER = 1.35;
+  private PRIORITY_FEE_MULTIPLIER = 1.05;
 
   public constructor(endpoint: URL) {
     this.endpoint = endpoint;
@@ -142,7 +184,7 @@ export class LineaEstimateGasClient {
 
   public async lineaEstimateGas(
     from: string,
-    to: string,
+    to?: string,
     data: string = "0x",
     value: string = "0x0",
   ): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint; gasLimit: bigint }> {
@@ -165,11 +207,25 @@ export class LineaEstimateGasClient {
     const response = await fetch(this.endpoint, request);
     const responseJson = await response.json();
     assert("result" in responseJson);
+
+    const baseFeePerGas = this.getValueFromMultiplier(
+      BigInt(responseJson.result.baseFeePerGas),
+      this.BASE_FEE_MULTIPLIER,
+    );
+    const maxPriorityFeePerGas = this.getValueFromMultiplier(
+      BigInt(responseJson.result.priorityFeePerGas),
+      this.PRIORITY_FEE_MULTIPLIER,
+    );
+
     return {
-      maxFeePerGas: BigInt(responseJson.result.baseFeePerGas) + BigInt(responseJson.result.priorityFeePerGas),
-      maxPriorityFeePerGas: BigInt(responseJson.result.priorityFeePerGas),
+      maxFeePerGas: baseFeePerGas + maxPriorityFeePerGas,
+      maxPriorityFeePerGas,
       gasLimit: BigInt(responseJson.result.gasLimit),
     };
+  }
+
+  private getValueFromMultiplier(value: bigint, multiplier: number): bigint {
+    return (value * BigInt(multiplier * 100)) / 100n;
   }
 }
 
@@ -362,10 +418,14 @@ export async function getTransactionHash(txRequest: TransactionRequest, signer: 
   return ethers.keccak256(signature);
 }
 
-export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag): Promise<ethers.Block | null> {
+export async function getBlockByNumberOrBlockTag(
+  rpcUrl: URL,
+  blockTag: BlockTag,
+  prefetchTxs: boolean = false,
+): Promise<ethers.Block | null> {
   const provider = new ethers.JsonRpcProvider(rpcUrl.href);
   try {
-    const blockNumber = await provider.getBlock(blockTag);
+    const blockNumber = await provider.getBlock(blockTag, prefetchTxs);
     return blockNumber;
   } catch (error) {
     return null;
@@ -425,12 +485,11 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
   signer: AbstractSigner,
   pollingInterval: number = 1_000,
 ) {
-  const { maxPriorityFeePerGas, maxFeePerGas } = await signer.provider!.getFeeData();
-  const transactionRequest = {
+  const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
+
+  const transaction: TransactionRequest = {
     to: await signer.getAddress(),
     value: etherToWei("0.000001"),
-    maxPriorityFeePerGas: maxPriorityFeePerGas,
-    maxFeePerGas: maxFeePerGas,
   };
 
   let timeoutId: NodeJS.Timeout | null = null;
@@ -440,8 +499,17 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
     if (!isRunning) return;
 
     try {
-      const tx = await signer.sendTransaction(transactionRequest);
+      const { maxPriorityFeePerGas, maxFeePerGas } = await lineaEstimateGasClient.lineaEstimateGas(
+        await signer.getAddress(),
+        await signer.getAddress(),
+        undefined,
+        toBeHex(transaction.value!),
+      );
+      const tx = await signer.sendTransaction({ ...transaction, maxPriorityFeePerGas, maxFeePerGas });
       await tx.wait();
+      logger.debug(
+        `Transaction sent successfully. hash=${tx.hash} maxPriorityFeePerGas=${tx.maxPriorityFeePerGas} maxFeePerGas=${tx.maxFeePerGas}`,
+      );
     } catch (error) {
       logger.error(`Error sending transaction. error=${JSON.stringify(error)}`);
     } finally {
@@ -457,7 +525,7 @@ export async function sendTransactionsToGenerateTrafficWithInterval(
       clearTimeout(timeoutId);
       timeoutId = null;
     }
-    logger.info("Stopped generating traffic on L2");
+    logger.debug("Stopped generating traffic on L2");
   };
 
   sendTransaction();
@@ -514,14 +582,14 @@ export const sendMessage = async <T extends LineaRollupV6 | L2MessageService>(
 
 export async function execDockerCommand(command: string, containerName: string): Promise<string> {
   const dockerCommand = `docker ${command} ${containerName}`;
-  logger.info(`Executing ${dockerCommand}...`);
+  logger.debug(`Executing ${dockerCommand}...`);
   return new Promise((resolve, reject) => {
     exec(dockerCommand, (error, stdout, stderr) => {
       if (error) {
         logger.error(`Error executing (${dockerCommand}). error=${stderr}`);
         reject(error);
       }
-      logger.info(`Execution success (${dockerCommand}). output=${stdout}`);
+      logger.debug(`Execution success (${dockerCommand}). output=${stdout}`);
       resolve(stdout);
     });
   });

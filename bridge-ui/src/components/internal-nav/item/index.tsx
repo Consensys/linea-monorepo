@@ -10,6 +10,7 @@ export type NavItemProps = {
   icon: React.ReactNode;
   label?: string;
   description: string;
+  labelId?: string;
 };
 
 type Props = NavItemProps & {
@@ -19,7 +20,18 @@ type Props = NavItemProps & {
   isOpen?: boolean;
 };
 
-export default function NavItem({ title, description, href, icon, label, as, dropdown, showCaret, isOpen }: Props) {
+export default function NavItem({
+  title,
+  description,
+  href,
+  icon,
+  label,
+  labelId,
+  as,
+  dropdown,
+  showCaret,
+  isOpen,
+}: Props) {
   const Wrapper = as || "li";
 
   const content = (
@@ -29,7 +41,11 @@ export default function NavItem({ title, description, href, icon, label, as, dro
         <div className={styles["card-content"]}>
           <div className={styles["card-title-wrapper"]}>
             <h2 className={styles["card-title"]}>{title}</h2>
-            {label && <span className={styles["card-label"]}>{label}</span>}
+            {label && (
+              <span id={labelId} className={styles["card-label"]}>
+                {label}
+              </span>
+            )}
           </div>
           <p className={styles["card-description"]}>{description}</p>
         </div>
@@ -48,7 +64,9 @@ export default function NavItem({ title, description, href, icon, label, as, dro
   return (
     <Wrapper className={clsx(styles["card-item"], dropdown && styles["dropdown"], isOpen && styles["open"])}>
       {showCaret ? (
-        <div className={styles["card-link"]}>{content}</div>
+        <div data-testid={`nav-item-${title.split(" ").join("-")}`} className={styles["card-link"]}>
+          {content}
+        </div>
       ) : (
         <Link href={href} className={styles["card-link"]} data-testid={`nav-item-${title.split(" ").join("-")}`}>
           {content}

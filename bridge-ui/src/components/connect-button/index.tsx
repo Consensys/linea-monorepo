@@ -1,9 +1,9 @@
 "use client";
 
-import styles from "./connect-button.module.scss";
 import clsx from "clsx";
+import { useWeb3Auth, useWeb3AuthConnect } from "@web3auth/modal/react";
+import styles from "./connect-button.module.scss";
 import Button from "@/components/ui/button";
-import { useDynamicContext } from "@/lib/dynamic";
 
 type ConnectButtonProps = {
   text: string;
@@ -11,14 +11,16 @@ type ConnectButtonProps = {
 };
 
 export default function ConnectButton({ text, fullWidth }: ConnectButtonProps) {
-  const { setShowAuthFlow } = useDynamicContext();
+  const { connect, loading: isConnecting } = useWeb3AuthConnect();
+  const { isInitializing } = useWeb3Auth();
 
   return (
     <Button
+      disabled={isConnecting || isInitializing}
       className={clsx(styles["connect-btn"], {
         [styles["full-width"]]: fullWidth,
       })}
-      onClick={() => setShowAuthFlow(true)}
+      onClick={connect}
     >
       {text}
     </Button>

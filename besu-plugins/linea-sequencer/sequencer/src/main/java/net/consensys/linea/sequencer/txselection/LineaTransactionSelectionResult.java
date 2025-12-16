@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.sequencer.txselection;
 
@@ -27,9 +21,9 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
     TX_MODULE_LINE_INVALID_COUNT(false, true, true),
     TX_UNPROFITABLE(false, false, true),
     TX_UNPROFITABLE_UPFRONT(false, false, true),
-    TX_UNPROFITABLE_RETRY_LIMIT(false, false, false),
     BUNDLE_GAS_EXCEEDS_MAX_BUNDLE_BLOCK_GAS(false, true, true),
-    BUNDLE_TOO_LARGE_FOR_REMAINING_BUNDLE_BLOCK_GAS(false, false, false);
+    BUNDLE_TOO_LARGE_FOR_REMAINING_BUNDLE_BLOCK_GAS(false, false, false),
+    DENIED_LOG_TOPIC(false, true, true);
 
     private final boolean stop;
     private final boolean discard;
@@ -79,11 +73,11 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
       new LineaTransactionSelectionResult(LineaStatus.TX_UNPROFITABLE);
   public static final TransactionSelectionResult TX_UNPROFITABLE_UPFRONT =
       new LineaTransactionSelectionResult(LineaStatus.TX_UNPROFITABLE_UPFRONT);
-  public static final TransactionSelectionResult TX_UNPROFITABLE_RETRY_LIMIT =
-      new LineaTransactionSelectionResult(LineaStatus.TX_UNPROFITABLE_RETRY_LIMIT);
   public static final TransactionSelectionResult BUNDLE_GAS_EXCEEDS_MAX_BUNDLE_BLOCK_GAS =
       new LineaTransactionSelectionResult(LineaStatus.BUNDLE_GAS_EXCEEDS_MAX_BUNDLE_BLOCK_GAS);
   public static final TransactionSelectionResult BUNDLE_TOO_LARGE_FOR_REMAINING_BUNDLE_BLOCK_GAS =
       new LineaTransactionSelectionResult(
           LineaStatus.BUNDLE_TOO_LARGE_FOR_REMAINING_BUNDLE_BLOCK_GAS);
+  public static final TransactionSelectionResult DENIED_LOG_TOPIC =
+      new LineaTransactionSelectionResult(LineaStatus.DENIED_LOG_TOPIC);
 }

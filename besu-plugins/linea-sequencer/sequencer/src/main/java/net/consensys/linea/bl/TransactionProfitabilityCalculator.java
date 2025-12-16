@@ -1,21 +1,14 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.bl;
 
 import java.math.BigDecimal;
-
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.utils.Compressor;
@@ -53,14 +46,15 @@ public class TransactionProfitabilityCalculator {
    *     processed/simulated, otherwise the gasLimit of the tx
    * @param minGasPriceWei the current minGasPrice, only used in place of the variable cost from the
    *     config, in case the extra data pricing is disabled
+   * @param compressedTxSize the compressed size of the transaction
    * @return the estimation of priorityFeePerGas that is considered profitable for the given tx
    */
   public Wei profitablePriorityFeePerGas(
       final Transaction transaction,
       final double minMargin,
       final long gas,
-      final Wei minGasPriceWei) {
-    final int compressedTxSize = getCompressedTxSize(transaction);
+      final Wei minGasPriceWei,
+      final int compressedTxSize) {
 
     final long variableCostWei =
         profitabilityConf.extraDataPricingEnabled()
@@ -81,7 +75,7 @@ public class TransactionProfitabilityCalculator {
         .addArgument(profitabilityConf.fixedCostWei())
         .addArgument(variableCostWei)
         .addArgument(gas)
-        .addArgument(transaction::getSize)
+        .addArgument(transaction::getSizeForBlockInclusion)
         .addArgument(compressedTxSize)
         .log();
 
@@ -100,6 +94,7 @@ public class TransactionProfitabilityCalculator {
    *     processed/simulated, otherwise the gasLimit of the tx
    * @param minGasPriceWei the current minGasPrice, only used in place of the variable cost from the
    *     config, in case the extra data pricing is disabled
+   * @param compressedTxSize the compressed size of the transaction
    * @return true if the tx is priced enough to be profitable, false otherwise
    */
   public boolean isProfitable(
@@ -109,10 +104,11 @@ public class TransactionProfitabilityCalculator {
       final Wei baseFee,
       final Wei payingGasPrice,
       final long gas,
-      final Wei minGasPriceWei) {
+      final Wei minGasPriceWei,
+      final int compressedTxSize) {
 
     final Wei profitablePriorityFee =
-        profitablePriorityFeePerGas(transaction, minMargin, gas, minGasPriceWei);
+        profitablePriorityFeePerGas(transaction, minMargin, gas, minGasPriceWei, compressedTxSize);
 
     return isProfitable(
         context,
@@ -172,7 +168,7 @@ public class TransactionProfitabilityCalculator {
    * @param transaction the tx
    * @return the compressed size
    */
-  private int getCompressedTxSize(final Transaction transaction) {
+  public static int getCompressedTxSize(final Transaction transaction) {
     final byte[] bytes = transaction.encoded().toArrayUnsafe();
     return Compressor.instance.compressedSize(bytes);
   }

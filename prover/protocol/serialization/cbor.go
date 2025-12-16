@@ -1,87 +1,47 @@
 package serialization
 
 import (
-	"encoding/json"
 	"fmt"
-	"reflect"
+	"sync"
 
 	"github.com/fxamacker/cbor/v2"
 )
 
-// serializeAnyWithCborPkg serializes an interface{} object into JSON using the
-// standard reflection-based [json] package. It will panic on failure
-// and is meant to be used on data and types that controlled by the current
-// package.
-func serializeAnyWithCborPkg(x any) json.RawMessage {
+var (
+	cborEncMode cbor.EncMode
+	cborDecMode cbor.DecMode
+	encInitOnce sync.Once
+	decInitOnce sync.Once
+)
 
-	var (
-		opts  = cbor.CoreDetEncOptions() // use preset options as a starting point
-		em, _ = opts.EncMode()           // create an immutable encoding mode
-	)
-
-	res, err := em.Marshal(x)
+func initCBOREncMode() {
+	var err error
+	cborEncMode, err = cbor.CoreDetEncOptions().EncMode()
 	if err != nil {
-		// that would be unexpected for primitive types
-		panic(err)
+		panic(fmt.Errorf("failed to create CBOR EncMode: %w", err))
 	}
-	return res
 }
 
-// deserializeAnyWithCborPkg calls [json.Unmarshal] and wraps the error if any.
-func deserializeAnyWithCborPkg(data json.RawMessage, x any) error {
-	opts := cbor.DecOptions{
-		MaxArrayElements: 134217728, // MaxArrayElements specifies the max number of elements for CBOR arrays.
-		MaxMapPairs:      134217728, // MaxMapPairs specifies the max number of key-value pairs for CBOR maps.
-	}
-	decMode, err := opts.DecMode()
+func initCBORDecMode() {
+	var err error
+	cborDecMode, err = cbor.DecOptions{
+		MaxArrayElements: 134217728,
+		MaxMapPairs:      134217728,
+		MaxNestedLevels:  256,
+	}.DecMode()
 	if err != nil {
-		return fmt.Errorf("failed to create CBOR decoder mode: %w", err)
+		panic(fmt.Errorf("failed to create CBOR DecMode: %w", err))
 	}
-
-	if err := decMode.Unmarshal(data, x); err != nil {
-		return fmt.Errorf("cbor.Unmarshal failed: %w", err)
-	}
-	return nil
 }
 
-// deserializeValueWithJSON packages attemps to deserialize `data` into the
-// [reflect.Value] `v`. It will return an error if the value cannot be accessed
-// through the [reflect] package or if it cannot be set.
-func deserializeValueWithJSONPkg(data json.RawMessage, v reflect.Value) error {
-
-	if !v.CanAddr() {
-		return fmt.Errorf("deserializeValueWithJSONPkg cannot be used for type %v", v.Type())
-	}
-
-	if !v.CanInterface() {
-		return fmt.Errorf("could not deserialize value of type `%s` because it's an unexported field", v.Type().String())
-	}
-
-	// just to ensure that the JSON package will get a pointer. Otherwise, it
-	// will not accept to deserialize.
-	if v.Kind() != reflect.Pointer && v.CanAddr() {
-		v = v.Addr()
-	}
-
-	return deserializeAnyWithCborPkg(data, v.Interface())
+// encodeWithCBOR: single-step Marshal, avoids buffer growth + extra copy
+func encodeWithCBOR(x any) (cbor.RawMessage, error) {
+	encInitOnce.Do(initCBOREncMode)
+	return cborEncMode.Marshal(x)
 }
 
-// serializeValueWithJSONPkg serializes a [reflect.Value] using the [json]
-// package. It will return an error if the provided value is an unexported
-// field.
-func serializeValueWithJSONPkg(v reflect.Value) (json.RawMessage, error) {
-	if !v.CanInterface() {
-		return nil, fmt.Errorf("could not serialize value of type `%s` because it's an unexported field", v.Type().String())
-	}
-	return serializeAnyWithCborPkg(v.Interface()), nil
-}
-
-// castAsString returns the string value of a [reflect.String] kind
-// [reflect.Value]. It will return an error if the value does not have the right
-// kind.
-func castAsString(v reflect.Value) (string, error) {
-	if v.Kind() != reflect.String {
-		return "", fmt.Errorf("expected a string kind value: got %q", v.String())
-	}
-	return v.String(), nil
+// decodeWithCBOR: single-step Unmarshal (no reader pool)
+func decodeWithCBOR(data []byte, x any) error {
+	decInitOnce.Do(initCBORDecMode)
+	return cborDecMode.Unmarshal(data, x)
 }

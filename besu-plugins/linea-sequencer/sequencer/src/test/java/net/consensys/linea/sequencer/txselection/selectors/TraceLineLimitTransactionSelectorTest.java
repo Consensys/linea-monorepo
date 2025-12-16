@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
@@ -18,6 +12,8 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -26,15 +22,15 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.Map;
-
+import java.util.Optional;
 import net.consensys.linea.config.LineaTracerConfiguration;
-import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
+import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -42,6 +38,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.junit.jupiter.api.BeforeAll;
@@ -52,9 +49,10 @@ import org.junit.jupiter.api.io.TempDir;
 public class TraceLineLimitTransactionSelectorTest {
   private static final int OVER_LINE_COUNT_LIMIT_CACHE_SIZE = 2;
   private static final String MODULE_LINE_LIMITS_RESOURCE_NAME = "/sequencer/line-limits.toml";
-  private Map<String, Integer> lineCountLimits;
-  private LineaTracerConfiguration lineaTracerConfiguration;
+  private LineaTracerConfiguration tracerConfiguration;
   private SelectorsStateManager selectorsStateManager;
+  private InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
+  private BlockchainService blockchainService;
 
   @TempDir static Path tempDir;
   static Path lineLimitsConfPath;
@@ -70,30 +68,36 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @BeforeEach
   public void initialize() {
-    lineaTracerConfiguration =
+    blockchainService = mock(BlockchainService.class);
+    when(blockchainService.getChainId()).thenReturn(Optional.of(BigInteger.ONE));
+    when(blockchainService.getNextBlockHardforkId(any(), anyLong()))
+        .thenReturn(HardforkId.MainnetHardforkId.LONDON);
+    tracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
+            .moduleLimitsMap(
+                new HashMap<>(
+                    ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
             .build();
-    lineCountLimits =
-        new HashMap<>(ModuleLineCountValidator.createLimitModules(lineaTracerConfiguration));
+    invalidTransactionByLineCountCache =
+        new InvalidTransactionByLineCountCache(OVER_LINE_COUNT_LIMIT_CACHE_SIZE);
   }
 
-  private TestableTraceLineLimitTransactionSelector newSelectorForNewBlock(
-      final Map<String, Integer> lineCountLimits) {
+  private TestableTraceLineLimitTransactionSelector newSelectorForNewBlock() {
     selectorsStateManager = new SelectorsStateManager();
     final var selector =
         new TestableTraceLineLimitTransactionSelector(
             selectorsStateManager,
-            lineaTracerConfiguration,
-            lineCountLimits,
-            OVER_LINE_COUNT_LIMIT_CACHE_SIZE);
+            blockchainService,
+            tracerConfiguration,
+            invalidTransactionByLineCountCache);
     selectorsStateManager.blockSelectionStarted();
     return selector;
   }
 
   @Test
   public void shouldSelectWhenBelowLimits() {
-    final var transactionSelector = newSelectorForNewBlock(lineCountLimits);
+    final var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
     final var evaluationContext =
@@ -112,8 +116,8 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldNotSelectWhenOverLimits() {
-    lineCountLimits.put("EXT", 5);
-    final var transactionSelector = newSelectorForNewBlock(lineCountLimits);
+    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    final var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
     final var evaluationContext =
@@ -132,8 +136,8 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldNotReprocessedWhenOverLimits() {
-    lineCountLimits.put("EXT", 5);
-    var transactionSelector = newSelectorForNewBlock(lineCountLimits);
+    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
     var evaluationContext =
@@ -149,7 +153,8 @@ public class TraceLineLimitTransactionSelectorTest {
             transactionSelector.isOverLineCountLimitTxCached(
                 evaluationContext.getPendingTransaction().getTransaction().getHash()))
         .isTrue();
-    transactionSelector = newSelectorForNewBlock(lineCountLimits);
+    // Create a new selector with the same cache instance (simulating shared cache)
+    transactionSelector = newSelectorForNewBlock();
     assertThat(
             transactionSelector.isOverLineCountLimitTxCached(
                 evaluationContext.getPendingTransaction().getTransaction().getHash()))
@@ -169,8 +174,8 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldEvictWhenCacheIsFull() {
-    lineCountLimits.put("EXT", 5);
-    final var transactionSelector = newSelectorForNewBlock(lineCountLimits);
+    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    final var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
     final TestTransactionEvaluationContext[] evaluationContexts =
@@ -246,7 +251,7 @@ public class TraceLineLimitTransactionSelectorTest {
     PendingTransaction pendingTransaction = mock(PendingTransaction.class);
     Transaction transaction = mock(Transaction.class);
     when(transaction.getHash()).thenReturn(Hash.wrap(Bytes32.random()));
-    when(transaction.getSize()).thenReturn(size);
+    when(transaction.getSizeForBlockInclusion()).thenReturn(size);
     when(transaction.getGasLimit()).thenReturn(gasLimit);
     when(transaction.getPayload()).thenReturn(Bytes.repeat((byte) 1, payloadSize));
     when(pendingTransaction.getTransaction()).thenReturn(transaction);
@@ -257,31 +262,31 @@ public class TraceLineLimitTransactionSelectorTest {
 
   private class TestableTraceLineLimitTransactionSelector
       extends TraceLineLimitTransactionSelector {
+    private final InvalidTransactionByLineCountCache testCache;
+
     TestableTraceLineLimitTransactionSelector(
         final SelectorsStateManager selectorsStateManager,
+        final BlockchainService blockchainService,
         final LineaTracerConfiguration lineaTracerConfiguration,
-        final Map<String, Integer> moduleLimits,
-        final int overLimitCacheSize) {
+        final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache) {
       super(
           selectorsStateManager,
-          BigInteger.ONE,
-          moduleLimits,
-          LineaTransactionSelectorConfiguration.builder()
-              .overLinesLimitCacheSize(overLimitCacheSize)
-              .build(),
+          blockchainService,
           LineaL1L2BridgeSharedConfiguration.builder()
               .contract(Address.fromHexString("0xDEADBEEF"))
-              .topic(Bytes.fromHexString("0x012345"))
+              .topic(Bytes32.fromHexString("0x012345"))
               .build(),
-          lineaTracerConfiguration);
+          lineaTracerConfiguration,
+          invalidTransactionByLineCountCache);
+      this.testCache = invalidTransactionByLineCountCache;
     }
 
     void resetCache() {
-      overLineCountLimitCache.clear();
+      testCache.clear();
     }
 
     boolean isOverLineCountLimitTxCached(final Hash txHash) {
-      return overLineCountLimitCache.contains(txHash);
+      return testCache.contains(txHash);
     }
   }
 }

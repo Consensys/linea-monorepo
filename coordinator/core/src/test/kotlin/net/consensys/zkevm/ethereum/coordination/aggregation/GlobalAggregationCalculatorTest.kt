@@ -41,6 +41,7 @@ class GlobalAggregationCalculatorTest {
   private lateinit var fixedClock: FakeFixedClock
   private lateinit var safeBlockProvider: SafeBlockProvider
   private lateinit var aggregationTriggerCalculatorByDeadline: AggregationTriggerCalculatorByDeadline
+  private lateinit var aggregationTriggerCalculatorByTimestampHardFork: AggregationTriggerCalculatorByTimestampHardFork
 
   @BeforeEach
   fun setup() {
@@ -51,9 +52,12 @@ class GlobalAggregationCalculatorTest {
   private fun aggregationCalculator(
     lastBlockNumber: ULong = 0u,
     proofLimit: UInt? = null,
+    blobLimit: UInt? = null,
     aggregationDeadline: Duration? = null,
     aggregationDeadlineDelay: Duration? = aggregationDeadline?.div(2),
     targetBlockNumbers: List<Int>? = null,
+    hardForkTimestamps: List<Instant>? = null,
+    initialTimestamp: Instant = fixedClock.now(),
     aggregationSizeMultipleOf: Int = 1,
     metricsFacade: MetricsFacade = mock<MetricsFacade>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS),
     aggregationHandler: AggregationHandler = AggregationHandler.NOOP_HANDLER,
@@ -61,8 +65,16 @@ class GlobalAggregationCalculatorTest {
     val syncAggregationTriggers = mutableListOf<SyncAggregationTriggerCalculator>()
       .apply {
         proofLimit?.also { add(AggregationTriggerCalculatorByProofLimit(maxProofsPerAggregation = it)) }
+        blobLimit?.also { add(AggregationTriggerCalculatorByBlobLimit(maxBlobsPerAggregation = it)) }
         targetBlockNumbers?.also {
           add(AggregationTriggerCalculatorByTargetBlockNumbers(targetBlockNumbers.map { it.toULong() }))
+        }
+        hardForkTimestamps?.also {
+          aggregationTriggerCalculatorByTimestampHardFork = AggregationTriggerCalculatorByTimestampHardFork(
+            hardForkTimestamps = it,
+            initialTimestamp = initialTimestamp,
+          )
+          add(aggregationTriggerCalculatorByTimestampHardFork)
         }
       }
 
@@ -71,7 +83,8 @@ class GlobalAggregationCalculatorTest {
         aggregationTriggerCalculatorByDeadline = AggregationTriggerCalculatorByDeadline(
           AggregationTriggerCalculatorByDeadline.Config(
             aggregationDeadline = aggregationDeadline,
-            aggregationDeadlineDelay = aggregationDeadlineDelay!!,
+            noL2ActivityTimeout = aggregationDeadlineDelay!!,
+            waitForNoL2ActivityToTriggerAggregation = true,
           ),
           fixedClock,
           safeBlockProvider,
@@ -88,6 +101,7 @@ class GlobalAggregationCalculatorTest {
       aggregationSizeMultipleOf = aggregationSizeMultipleOf.toUInt(),
     ).apply { onAggregation(aggregationHandler) }
   }
+
   private fun blobCounters(
     startBlockNumber: ULong,
     endBlockNumber: ULong,
@@ -103,19 +117,6 @@ class GlobalAggregationCalculatorTest {
       endBlockTimestamp = endBlockTimestamp,
       expectedShnarf = Random.nextBytes(32),
     )
-  }
-
-  private fun setLatestSafeBlockHeader(blockNumber: ULong, timestamp: Instant) {
-    whenever(safeBlockProvider.getLatestSafeBlockHeader())
-      .thenReturn(
-        SafeFuture.completedFuture(
-          BlockHeaderSummary(
-            number = blockNumber,
-            timestamp = timestamp,
-            hash = ByteArrayExt.random32(),
-          ),
-        ),
-      )
   }
 
   @Test
@@ -280,6 +281,231 @@ class GlobalAggregationCalculatorTest {
     )
     expectedAggregations.add(BlobsToAggregate(31u, 61u))
     assertThat(actualAggregations).containsExactlyElementsOf(expectedAggregations)
+  }
+
+  @Test
+  fun when_blob_limit_reached_verify_aggregation() {
+    val blobLimit = 3u
+    val actualAggregations = mutableListOf<BlobsToAggregate>()
+    val globalAggregationCalculator = aggregationCalculator(blobLimit = blobLimit) { blobsToAggregate ->
+      actualAggregations.add(blobsToAggregate)
+      SafeFuture.completedFuture(Unit)
+    }
+
+    // Add first blob - should not trigger aggregation
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 2u,
+        startBlockNumber = 1u,
+        endBlockNumber = 5u,
+      ),
+    )
+    assertThat(actualAggregations).isEmpty()
+
+    // Add second blob - should not trigger aggregation
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 3u,
+        startBlockNumber = 6u,
+        endBlockNumber = 10u,
+      ),
+    )
+    assertThat(actualAggregations).isEmpty()
+
+    // Add third blob - should trigger aggregation of all 3 blobs
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 1u,
+        startBlockNumber = 11u,
+        endBlockNumber = 15u,
+      ),
+    )
+
+    assertThat(actualAggregations).hasSize(1)
+    assertThat(actualAggregations[0]).isEqualTo(BlobsToAggregate(1u, 15u))
+  }
+
+  @Test
+  fun when_blob_limit_exceeded_verify_multiple_aggregations() {
+    val blobLimit = 2u
+    val actualAggregations = mutableListOf<BlobsToAggregate>()
+    val globalAggregationCalculator = aggregationCalculator(blobLimit = blobLimit) { blobsToAggregate ->
+      actualAggregations.add(blobsToAggregate)
+      SafeFuture.completedFuture(Unit)
+    }
+
+    // Add first blob
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 1u,
+        startBlockNumber = 1u,
+        endBlockNumber = 5u,
+      ),
+    )
+
+    // Add second blob - should trigger aggregation of first 2 blobs
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 2u,
+        startBlockNumber = 6u,
+        endBlockNumber = 10u,
+      ),
+    )
+
+    assertThat(actualAggregations).hasSize(1)
+    assertThat(actualAggregations[0]).isEqualTo(BlobsToAggregate(1u, 10u))
+
+    // Add third blob
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 1u,
+        startBlockNumber = 11u,
+        endBlockNumber = 15u,
+      ),
+    )
+
+    // Add fourth blob - should trigger aggregation of blobs 3 and 4
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 2u,
+        startBlockNumber = 16u,
+        endBlockNumber = 20u,
+      ),
+    )
+
+    assertThat(actualAggregations).hasSize(2)
+    assertThat(actualAggregations[1]).isEqualTo(BlobsToAggregate(11u, 20u))
+  }
+
+  @Test
+  fun when_blob_limit_with_single_blob_aggregation() {
+    val blobLimit = 1u
+    val actualAggregations = mutableListOf<BlobsToAggregate>()
+    val globalAggregationCalculator = aggregationCalculator(blobLimit = blobLimit) { blobsToAggregate ->
+      actualAggregations.add(blobsToAggregate)
+      SafeFuture.completedFuture(Unit)
+    }
+
+    // Each blob should trigger immediate aggregation
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 2u,
+        startBlockNumber = 1u,
+        endBlockNumber = 5u,
+      ),
+    )
+
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 3u,
+        startBlockNumber = 6u,
+        endBlockNumber = 10u,
+      ),
+    )
+
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 1u,
+        startBlockNumber = 11u,
+        endBlockNumber = 15u,
+      ),
+    )
+
+    assertThat(actualAggregations).hasSize(3)
+    assertThat(actualAggregations[0]).isEqualTo(BlobsToAggregate(1u, 5u))
+    assertThat(actualAggregations[1]).isEqualTo(BlobsToAggregate(6u, 10u))
+    assertThat(actualAggregations[2]).isEqualTo(BlobsToAggregate(11u, 15u))
+  }
+
+  @Test
+  fun when_blob_limit_combined_with_proof_limit_verify_aggregation() {
+    val blobLimit = 3u
+    val proofLimit = 50u
+    val actualAggregations = mutableListOf<BlobsToAggregate>()
+    val globalAggregationCalculator = aggregationCalculator(
+      blobLimit = blobLimit,
+      proofLimit = proofLimit,
+    ) { blobsToAggregate ->
+      actualAggregations.add(blobsToAggregate)
+      SafeFuture.completedFuture(Unit)
+    }
+
+    // Add first blob with 41 proofs - should not trigger aggregation
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 40u,
+        startBlockNumber = 1u,
+        endBlockNumber = 5u,
+      ),
+    )
+    assertThat(actualAggregations).isEmpty()
+
+    // Add second blob with 30 proofs (total 72) - should trigger aggregation by proof limit
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 30u,
+        startBlockNumber = 6u,
+        endBlockNumber = 10u,
+      ),
+    )
+
+    assertThat(actualAggregations).hasSize(1)
+    assertThat(actualAggregations[0]).isEqualTo(BlobsToAggregate(1u, 5u)) // Only first blob aggregated
+
+    // Continue with third blob - should not trigger aggregation yet
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 1u,
+        startBlockNumber = 11u,
+        endBlockNumber = 15u,
+      ),
+    )
+
+    // Fourth blob should trigger aggregation by blob limit (3 blobs accumulated)
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 1u,
+        startBlockNumber = 16u,
+        endBlockNumber = 20u,
+      ),
+    )
+
+    assertThat(actualAggregations).hasSize(2)
+    assertThat(actualAggregations[1]).isEqualTo(BlobsToAggregate(6u, 20u))
+  }
+
+  @Test
+  fun `metrics are exported correctly when aggregation is triggered by blob limit`() {
+    val testMeterRegistry = SimpleMeterRegistry()
+    val globalAggregationCalculator = aggregationCalculator(
+      blobLimit = 2u,
+      metricsFacade = MicrometerMetricsFacade(testMeterRegistry, "test"),
+    )
+    val pendingProofsGauge = testMeterRegistry.get("test.aggregation.proofs.ready").gauge()
+    assertThat(pendingProofsGauge.value()).isEqualTo(0.0)
+
+    globalAggregationCalculator.onAggregation {
+      SafeFuture.completedFuture(Unit)
+    }
+
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 3u,
+        startBlockNumber = 1u,
+        endBlockNumber = 10u,
+      ),
+    )
+    assertThat(pendingProofsGauge.value()).isEqualTo(4.0)
+
+    // This blob should cause aggregation by blob limit
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 2u,
+        startBlockNumber = 11u,
+        endBlockNumber = 20u,
+      ),
+    )
+    assertThat(pendingProofsGauge.value()).isEqualTo(0.0)
   }
 
   @Test
@@ -720,6 +946,224 @@ class GlobalAggregationCalculatorTest {
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(11u, 9u)).isEqualTo(9u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(12u, 9u)).isEqualTo(9u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(18u, 9u)).isEqualTo(18u)
+  }
+
+  @Test
+  fun `when blob timestamp crosses hard fork boundary then trigger aggregation`() {
+    val initialTimestamp = Instant.fromEpochMilliseconds(1000)
+    val hardForkTimestamp = Instant.fromEpochMilliseconds(2000)
+    val beforeHardFork = Instant.fromEpochMilliseconds(1900)
+    val afterHardFork = Instant.fromEpochMilliseconds(2100)
+
+    val actualAggregations = mutableListOf<BlobsToAggregate>()
+    val globalAggregationCalculator = aggregationCalculator(
+      proofLimit = 1500u,
+      hardForkTimestamps = listOf(hardForkTimestamp),
+      initialTimestamp = initialTimestamp,
+    ) { blobsToAggregate ->
+      actualAggregations.add(blobsToAggregate)
+      SafeFuture.completedFuture(Unit)
+    }
+
+    // First blob before hard fork - should not trigger aggregation
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 5u,
+        startBlockNumber = 1u,
+        endBlockNumber = 10u,
+        startBlockTimestamp = beforeHardFork.minus(100.milliseconds),
+        endBlockTimestamp = beforeHardFork.minus(50.milliseconds), // Ends before hard fork
+      ),
+    )
+    assertThat(actualAggregations).isEmpty()
+
+    // Second blob that starts after hard fork - should trigger aggregation of previous blob
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 3u,
+        startBlockNumber = 11u,
+        endBlockNumber = 20u,
+        startBlockTimestamp = afterHardFork.plus(50.milliseconds), // Starts after hard fork
+        endBlockTimestamp = afterHardFork.plus(100.milliseconds), // Ends after hard fork
+      ),
+    )
+
+    assertThat(actualAggregations).hasSize(1)
+    assertThat(actualAggregations[0]).isEqualTo(BlobsToAggregate(1u, 10u))
+  }
+
+  @Test
+  fun `when blob timestamp equals hard fork timestamp then trigger aggregation`() {
+    val initialTimestamp = Instant.fromEpochMilliseconds(1000)
+    val hardForkTimestamp = Instant.fromEpochMilliseconds(2000)
+    val beforeHardFork = Instant.fromEpochMilliseconds(1900)
+    val afterHardFork = Instant.fromEpochMilliseconds(2100)
+
+    val actualAggregations = mutableListOf<BlobsToAggregate>()
+    val globalAggregationCalculator = aggregationCalculator(
+      proofLimit = 1500u,
+      hardForkTimestamps = listOf(hardForkTimestamp),
+      initialTimestamp = initialTimestamp,
+    ) { blobsToAggregate ->
+      actualAggregations.add(blobsToAggregate)
+      SafeFuture.completedFuture(Unit)
+    }
+
+    // First blob before hard fork - ends before hard fork
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 5u,
+        startBlockNumber = 1u,
+        endBlockNumber = 10u,
+        startBlockTimestamp = beforeHardFork.minus(100.milliseconds),
+        endBlockTimestamp = beforeHardFork.minus(50.milliseconds), // Ends before hard fork
+      ),
+    )
+
+    // Second blob that starts exactly at hard fork timestamp - this is valid
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 3u,
+        startBlockNumber = 11u,
+        endBlockNumber = 20u,
+        startBlockTimestamp = hardForkTimestamp, // Starts exactly at hard fork (first block of new fork)
+        endBlockTimestamp = afterHardFork, // Ends after hard fork
+      ),
+    )
+
+    // Should trigger aggregation of the first blob (which ended before hard fork)
+    assertThat(actualAggregations).hasSize(1)
+    assertThat(actualAggregations[0]).isEqualTo(BlobsToAggregate(1u, 10u))
+  }
+
+  @Test
+  fun `when multiple hard fork timestamps then handle multiple triggers correctly`() {
+    val initialTimestamp = Instant.fromEpochMilliseconds(1000)
+    val firstHardFork = Instant.fromEpochMilliseconds(2000)
+    val secondHardFork = Instant.fromEpochMilliseconds(3000)
+
+    val actualAggregations = mutableListOf<BlobsToAggregate>()
+    val globalAggregationCalculator = aggregationCalculator(
+      proofLimit = 1500u,
+      hardForkTimestamps = listOf(firstHardFork, secondHardFork),
+      initialTimestamp = initialTimestamp,
+    ) { blobsToAggregate ->
+      actualAggregations.add(blobsToAggregate)
+      SafeFuture.completedFuture(Unit)
+    }
+
+    // First blob before first hard fork
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 5u,
+        startBlockNumber = 1u,
+        endBlockNumber = 10u,
+        startBlockTimestamp = Instant.fromEpochMilliseconds(1500),
+        endBlockTimestamp = Instant.fromEpochMilliseconds(1900), // Ends before first hard fork
+      ),
+    )
+
+    // Second blob after first hard fork - should trigger aggregation of first blob
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 3u,
+        startBlockNumber = 11u,
+        endBlockNumber = 20u,
+        startBlockTimestamp = Instant.fromEpochMilliseconds(2100), // Starts after first hard fork
+        endBlockTimestamp = Instant.fromEpochMilliseconds(2200),
+      ),
+    )
+
+    // Should trigger first aggregation
+    assertThat(actualAggregations).hasSize(1)
+    assertThat(actualAggregations[0]).isEqualTo(BlobsToAggregate(1u, 10u))
+
+    // Third blob between hard forks
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 4u,
+        startBlockNumber = 21u,
+        endBlockNumber = 30u,
+        startBlockTimestamp = Instant.fromEpochMilliseconds(2300),
+        endBlockTimestamp = Instant.fromEpochMilliseconds(2800), // Ends before second hard fork
+      ),
+    )
+    // Still doesn't trigger the aggregation
+    assertThat(actualAggregations).hasSize(1)
+
+    // Fourth blob after second hard fork - should trigger aggregation
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 2u,
+        startBlockNumber = 31u,
+        endBlockNumber = 40u,
+        startBlockTimestamp = Instant.fromEpochMilliseconds(3100), // Starts after second hard fork
+        endBlockTimestamp = Instant.fromEpochMilliseconds(3200),
+      ),
+    )
+
+    // Should trigger second aggregation
+    assertThat(actualAggregations).hasSize(2)
+    assertThat(actualAggregations[1]).isEqualTo(BlobsToAggregate(11u, 30u))
+  }
+
+  @Test
+  fun `when hard fork trigger combines with proof limit trigger then handle correctly`() {
+    val initialTimestamp = Instant.fromEpochMilliseconds(1000)
+    val hardForkTimestamp = Instant.fromEpochMilliseconds(2000)
+    val beforeHardFork = Instant.fromEpochMilliseconds(1900)
+    val afterHardFork = Instant.fromEpochMilliseconds(2100)
+
+    val actualAggregations = mutableListOf<BlobsToAggregate>()
+    val globalAggregationCalculator = aggregationCalculator(
+      proofLimit = 10u, // Low proof limit to trigger aggregation
+      hardForkTimestamps = listOf(hardForkTimestamp),
+      initialTimestamp = initialTimestamp,
+    ) { blobsToAggregate ->
+      actualAggregations.add(blobsToAggregate)
+      SafeFuture.completedFuture(Unit)
+    }
+
+    // First blob with high proof count - should trigger proof limit aggregation
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 9u, // 10 proofs total
+        startBlockNumber = 1u,
+        endBlockNumber = 10u,
+        startBlockTimestamp = beforeHardFork.minus(200.milliseconds),
+        endBlockTimestamp = beforeHardFork.minus(100.milliseconds),
+      ),
+    )
+
+    // Should trigger aggregation due to proof limit
+    assertThat(actualAggregations).hasSize(1)
+    assertThat(actualAggregations[0]).isEqualTo(BlobsToAggregate(1u, 10u))
+
+    // Second blob before hard fork
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 3u,
+        startBlockNumber = 11u,
+        endBlockNumber = 20u,
+        startBlockTimestamp = beforeHardFork.minus(50.milliseconds),
+        endBlockTimestamp = beforeHardFork.minus(10.milliseconds), // Ends before hard fork
+      ),
+    )
+
+    // Third blob that starts after hard fork - should trigger aggregation due to hard fork
+    globalAggregationCalculator.newBlob(
+      blobCounters(
+        numberOfBatches = 2u,
+        startBlockNumber = 21u,
+        endBlockNumber = 30u,
+        startBlockTimestamp = afterHardFork.plus(50.milliseconds), // Starts after hard fork
+        endBlockTimestamp = afterHardFork.plus(100.milliseconds),
+      ),
+    )
+
+    // Should trigger second aggregation due to hard fork
+    assertThat(actualAggregations).hasSize(2)
+    assertThat(actualAggregations[1]).isEqualTo(BlobsToAggregate(11u, 20u))
   }
 
   companion object {

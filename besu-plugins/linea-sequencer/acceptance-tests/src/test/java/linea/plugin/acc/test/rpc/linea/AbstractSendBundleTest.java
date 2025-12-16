@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package linea.plugin.acc.test.rpc.linea;
 
@@ -19,8 +13,7 @@ import static org.web3j.crypto.Hash.sha3;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Arrays;
-
-import linea.plugin.acc.test.LineaPluginTestBase;
+import linea.plugin.acc.test.LineaPluginPoSTestBase;
 import linea.plugin.acc.test.tests.web3j.generated.AcceptanceTestToken;
 import linea.plugin.acc.test.tests.web3j.generated.MulmodExecutor;
 import lombok.RequiredArgsConstructor;
@@ -32,9 +25,9 @@ import org.web3j.crypto.TransactionEncoder;
 import org.web3j.protocol.core.Request;
 import org.web3j.utils.Numeric;
 
-public class AbstractSendBundleTest extends LineaPluginTestBase {
+public class AbstractSendBundleTest extends LineaPluginPoSTestBase {
   protected static final BigInteger TRANSFER_GAS_LIMIT = BigInteger.valueOf(100_000L);
-  protected static final BigInteger MULMOD_GAS_LIMIT = BigInteger.valueOf(10_000_000L);
+  protected static final BigInteger MULMOD_GAS_LIMIT = BigInteger.valueOf(9_000_000L);
   protected static final BigInteger GAS_PRICE = BigInteger.TEN.pow(9);
 
   protected TokenTransfer transferTokens(
@@ -68,6 +61,15 @@ public class AbstractSendBundleTest extends LineaPluginTestBase {
 
   protected MulmodCall mulmodOperation(
       final MulmodExecutor executor, final Account sender, final int nonce, final int iterations) {
+    return mulmodOperation(executor, sender, nonce, iterations, MULMOD_GAS_LIMIT);
+  }
+
+  protected MulmodCall mulmodOperation(
+      final MulmodExecutor executor,
+      final Account sender,
+      final int nonce,
+      final int iterations,
+      final BigInteger gasLimit) {
     final var operationCalldata =
         executor.executeMulmod(BigInteger.valueOf(iterations)).encodeFunctionCall();
 
@@ -75,7 +77,7 @@ public class AbstractSendBundleTest extends LineaPluginTestBase {
         RawTransaction.createTransaction(
             CHAIN_ID,
             BigInteger.valueOf(nonce),
-            MULMOD_GAS_LIMIT,
+            gasLimit,
             executor.getContractAddress(),
             BigInteger.ZERO,
             operationCalldata,

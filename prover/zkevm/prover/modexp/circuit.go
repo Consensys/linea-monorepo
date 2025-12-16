@@ -1,6 +1,8 @@
 package modexp
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/evmprecompiles"
 	"github.com/consensys/gnark/std/math/bitslice"
@@ -9,24 +11,30 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-const (
-	// bit-size bound for the operands in the small
-	smallModexpSize = 256
-	largeModexpSize = 4096
-	// limbSize is the size (in bits) of a limb as in the public inputs of the
-	// circuit. This is a parameter linked to how the arithmetization encodes
-	// 256 bits integers.
-	limbSizeBits = 128
-)
+// modLarge implements the emulated.FieldParams interface for the
+// large modexp circuit
+type modLarge struct{}
 
-// modexpCircuit implements the [frontend.Circuit] interface and is responsible
+var _ emulated.FieldParams = modLarge{}
+
+func (modLarge) NbLimbs() uint     { return 2 * nbLargeModexpLimbs }
+func (modLarge) BitsPerLimb() uint { return 64 }
+func (modLarge) IsPrime() bool     { return false }
+func (modLarge) Modulus() *big.Int {
+	one := new(big.Int).SetInt64(1)
+	m := new(big.Int).Lsh(one, largeModexpSize)
+	m.Sub(m, one)
+	return m
+}
+
+// ModExpCircuit implements the [frontend.Circuit] interface and is responsible
 // for ensuring all the modexp claims brought to the antichamber module.
 //
 // The circuit is meant to be used in two variants:
 //   - 256 bits, where all the operands and the claimed result have a size
 //     smaller than 256 bits.
-//   - 4096, where the operands are bound to 4096 bits
-type modexpCircuit struct {
+//   - large, where the operands are bound to [largeModexpSize] bits (currently 8192 bits).
+type ModExpCircuit struct {
 	Instances []modexpCircuitInstance `gnark:",public"`
 }
 
@@ -42,9 +50,9 @@ type modexpCircuitInstance struct {
 	Result   []frontend.Variable `gnark:",public"`
 }
 
-// allocate256Bits allocates [modexpCircuit] for n instances assuming the 256-bit
+// allocate256Bits allocates [ModExpCircuit] for n instances assuming the 256-bit
 // variant.
-func allocateCircuit(n int, numBits int) *modexpCircuit {
+func allocateCircuit(n int, numBits int) *ModExpCircuit {
 
 	if numBits != smallModexpSize && numBits != largeModexpSize {
 		utils.Panic("expected `numBits = {%v, %v}`", smallModexpSize, largeModexpSize)
@@ -52,7 +60,7 @@ func allocateCircuit(n int, numBits int) *modexpCircuit {
 
 	var (
 		numLimbs = numBits / limbSizeBits
-		res      = &modexpCircuit{
+		res      = &ModExpCircuit{
 			Instances: make([]modexpCircuitInstance, n),
 		}
 	)
@@ -68,7 +76,7 @@ func allocateCircuit(n int, numBits int) *modexpCircuit {
 }
 
 // Define implements the [frontend.Circuit] interface
-func (m *modexpCircuit) Define(api frontend.API) error {
+func (m *ModExpCircuit) Define(api frontend.API) error {
 
 	for i := range m.Instances {
 
@@ -81,7 +89,7 @@ func (m *modexpCircuit) Define(api frontend.API) error {
 		case smallModexpSize:
 			checkModexpInstance[emparams.Mod1e256](api, &instance)
 		case largeModexpSize:
-			checkModexpInstance[emparams.Mod1e4096](api, &instance)
+			checkModexpInstance[modLarge](api, &instance)
 		default:
 			utils.Panic(
 				"Unexpected field size = %v, should be either %v or %v",
@@ -93,7 +101,7 @@ func (m *modexpCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-// defined4096 implements the circuit logic for the case where
+// checkModexpInstance checks a single modexp instance within the circuit.
 func checkModexpInstance[P emulated.FieldParams](api frontend.API, m *modexpCircuitInstance) {
 
 	var (

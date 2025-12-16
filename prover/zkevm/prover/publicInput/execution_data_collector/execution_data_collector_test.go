@@ -20,11 +20,12 @@ func TestDefineAndAssignmentExecutionDataCollector(t *testing.T) {
 	blockHashList := [1 << 10]types.FullBytes32{}
 
 	var (
-		edc              ExecutionDataCollector
+		edc              *ExecutionDataCollector
 		btm              fetch.BlockTxnMetadata
-		timestampFetcher fetch.TimestampFetcher
+		timestampFetcher *fetch.TimestampFetcher
 		txnDataFetcher   fetch.TxnDataFetcher
 		rlpTxnFetcher    fetch.RlpTxnFetcher
+		chainIDFetcher   fetch.ChainIDFetcher
 		txd              *arith.TxnData
 		bdc              *arith.BlockDataCols
 		rt               *arith.RlpTxn
@@ -39,7 +40,7 @@ func TestDefineAndAssignmentExecutionDataCollector(t *testing.T) {
 		// create a new timestamp fetcher
 		timestampFetcher = fetch.NewTimestampFetcher(b.CompiledIOP, "TIMESTAMP_FETCHER_FROM_ARITH", bdc)
 		// constrain the timestamp fetcher
-		fetch.DefineTimestampFetcher(b.CompiledIOP, &timestampFetcher, "TIMESTAMP_FETCHER_FROM_ARITH", bdc)
+		fetch.DefineTimestampFetcher(b.CompiledIOP, timestampFetcher, "TIMESTAMP_FETCHER_FROM_ARITH", bdc)
 		txnDataFetcher = fetch.NewTxnDataFetcher(b.CompiledIOP, "TXN_DATA_FETCHER_FROM_ARITH", txd)
 		fetch.DefineTxnDataFetcher(b.CompiledIOP, &txnDataFetcher, "TXN_DATA_FETCHER_FROM_ARITH", txd)
 
@@ -47,9 +48,13 @@ func TestDefineAndAssignmentExecutionDataCollector(t *testing.T) {
 		// constrain the fetcher
 		fetch.DefineRlpTxnFetcher(b.CompiledIOP, &rlpTxnFetcher, "RLP_TXN_FETCHER_FROM_ARITH", rt)
 
+		// ChainIDFetcher
+		chainIDFetcher = fetch.NewChainIDFetcher(b.CompiledIOP, "PUBLIC_INPUT_CHAIN_ID_FETCHER", bdc)
+		fetch.DefineChainIDFetcher(b.CompiledIOP, &chainIDFetcher, "PUBLIC_INPUT_CHAIN_ID_FETCHER", bdc)
+
 		limbColSize := GetSummarySize(txd, rt)
 		edc = NewExecutionDataCollector(b.CompiledIOP, "EXECUTION_DATA_COLLECTOR", limbColSize)
-		DefineExecutionDataCollector(b.CompiledIOP, &edc, "EXECUTION_DATA_COLLECTOR", timestampFetcher, btm, txnDataFetcher, rlpTxnFetcher)
+		DefineExecutionDataCollector(b.CompiledIOP, edc, "EXECUTION_DATA_COLLECTOR", timestampFetcher, btm, txnDataFetcher, rlpTxnFetcher)
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
@@ -58,6 +63,7 @@ func TestDefineAndAssignmentExecutionDataCollector(t *testing.T) {
 		fetch.AssignBlockTxnMetadata(run, btm, txd)
 		fetch.AssignTxnDataFetcher(run, txnDataFetcher, txd)
 		fetch.AssignRlpTxnFetcher(run, &rlpTxnFetcher, rt)
+		fetch.AssignChainIDFetcher(run, &chainIDFetcher, bdc)
 		AssignExecutionDataCollector(run, edc, timestampFetcher, btm, txnDataFetcher, rlpTxnFetcher, blockHashList[:])
 	}
 

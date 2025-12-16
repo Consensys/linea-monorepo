@@ -1,23 +1,31 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 
 package net.consensys.linea.config;
 
 import com.google.common.base.MoreObjects;
 import jakarta.validation.constraints.Positive;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 import net.consensys.linea.plugins.LineaCliOptions;
+import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
+import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.evm.log.LogTopic;
 import picocli.CommandLine;
 
 /** The Linea Transaction Selector CLI options. */
@@ -38,11 +46,9 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
   public static final String MAX_BUNDLE_GAS_PER_BLOCK = "--plugin-linea-max-bundle-block-gas";
   public static final long DEFAULT_MAX_BUNDLE_GAS_PER_BLOCK = 15_000_000L;
 
-  public static final String UNPROFITABLE_CACHE_SIZE = "--plugin-linea-unprofitable-cache-size";
-  public static final int DEFAULT_UNPROFITABLE_CACHE_SIZE = 100_000;
-
-  public static final String UNPROFITABLE_RETRY_LIMIT = "--plugin-linea-unprofitable-retry-limit";
-  public static final int DEFAULT_UNPROFITABLE_RETRY_LIMIT = 10;
+  public static final String EVENTS_DENY_LIST_PATH = "--plugin-linea-events-deny-list-path";
+  public static final String EVENTS_BUNDLE_DENY_LIST_PATH =
+      "--plugin-linea-events-bundle-deny-list-path";
 
   @Positive
   @CommandLine.Option(
@@ -87,23 +93,19 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
           "Sets max amount of block gas bundle transactions can use (default: ${DEFAULT-VALUE})")
   public Long maxBundleGasPerBlock = DEFAULT_MAX_BUNDLE_GAS_PER_BLOCK;
 
-  @Positive
   @CommandLine.Option(
-      names = {UNPROFITABLE_CACHE_SIZE},
+      names = {EVENTS_DENY_LIST_PATH},
       hidden = true,
-      paramLabel = "<INTEGER>",
-      description =
-          "Max number of unprofitable transactions we keep track of (default: ${DEFAULT-VALUE})")
-  private int unprofitableCacheSize = DEFAULT_UNPROFITABLE_CACHE_SIZE;
+      paramLabel = "<STRING>",
+      description = "Path to the file containing the events deny list")
+  private String eventsDenyListPath;
 
-  @Positive
   @CommandLine.Option(
-      names = {UNPROFITABLE_RETRY_LIMIT},
+      names = {EVENTS_BUNDLE_DENY_LIST_PATH},
       hidden = true,
-      paramLabel = "<INTEGER>",
-      description =
-          "Max number of unprofitable transactions we retry on each block creation (default: ${DEFAULT-VALUE})")
-  private int unprofitableRetryLimit = DEFAULT_UNPROFITABLE_RETRY_LIMIT;
+      paramLabel = "<STRING>",
+      description = "Path to the file containing the events deny list for bundles")
+  private String eventsBundleDenyListPath;
 
   private LineaTransactionSelectorCliOptions() {}
 
@@ -128,8 +130,8 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
     options.maxBlockCallDataSize = config.maxBlockCallDataSize();
     options.overLineCountLimitCacheSize = config.overLinesLimitCacheSize();
     options.maxGasPerBlock = config.maxGasPerBlock();
-    options.unprofitableCacheSize = config.unprofitableCacheSize();
-    options.unprofitableRetryLimit = config.unprofitableRetryLimit();
+    options.eventsDenyListPath = config.eventsDenyListPath();
+    options.eventsBundleDenyListPath = config.eventsBundleDenyListPath();
     return options;
   }
 
@@ -144,10 +146,12 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         .maxBlockCallDataSize(maxBlockCallDataSize)
         .overLinesLimitCacheSize(overLineCountLimitCacheSize)
         .maxGasPerBlock(maxGasPerBlock)
-        .unprofitableCacheSize(unprofitableCacheSize)
-        .unprofitableRetryLimit(unprofitableRetryLimit)
         .maxBundleGasPerBlock(maxBundleGasPerBlock)
         .maxBundlePoolSizeBytes(maxBundlePoolSizeBytes)
+        .eventsDenyListPath(eventsDenyListPath)
+        .eventsDenyList(parseTransactionEventDenyList(eventsDenyListPath))
+        .eventsBundleDenyListPath(eventsBundleDenyListPath)
+        .eventsBundleDenyList(parseTransactionEventDenyList(eventsBundleDenyListPath))
         .build();
   }
 
@@ -157,10 +161,45 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         .add(MAX_BLOCK_CALLDATA_SIZE, maxBlockCallDataSize)
         .add(OVER_LINE_COUNT_LIMIT_CACHE_SIZE, overLineCountLimitCacheSize)
         .add(MAX_GAS_PER_BLOCK, maxGasPerBlock)
-        .add(UNPROFITABLE_CACHE_SIZE, unprofitableCacheSize)
-        .add(UNPROFITABLE_RETRY_LIMIT, unprofitableRetryLimit)
         .add(MAX_BUNDLE_GAS_PER_BLOCK, maxBundleGasPerBlock)
         .add(MAX_BUNDLE_POOL_SIZE_BYTES, maxBundlePoolSizeBytes)
+        .add(EVENTS_DENY_LIST_PATH, eventsDenyListPath)
+        .add(EVENTS_BUNDLE_DENY_LIST_PATH, eventsBundleDenyListPath)
         .toString();
+  }
+
+  public Map<Address, Set<TransactionEventFilter>> parseTransactionEventDenyList(
+      final String filename) {
+    if (filename == null || filename.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    Map<Address, Set<TransactionEventFilter>> eventFilters = new ConcurrentHashMap<>();
+    try (Stream<String> lines = Files.lines(Path.of(new File(filename).toURI()))) {
+      for (String line : (Iterable<String>) lines::iterator) {
+        if (line.isEmpty()) {
+          continue;
+        }
+        String[] parts = line.split(",", -1);
+        if (parts.length != 5) {
+          throw new IllegalArgumentException(
+              "Invalid transaction event filter line: "
+                  + line
+                  + ". Expected format: address,topic0,topic1,topic2,topic3");
+        }
+        var address = Address.fromHexString(parts[0]);
+        var eventFilter =
+            new TransactionEventFilter(
+                address,
+                parts[1].isEmpty() ? null : LogTopic.wrap(Bytes32.fromHexString(parts[1])),
+                parts[2].isEmpty() ? null : LogTopic.wrap(Bytes32.fromHexString(parts[2])),
+                parts[3].isEmpty() ? null : LogTopic.wrap(Bytes32.fromHexString(parts[3])),
+                parts[4].isEmpty() ? null : LogTopic.wrap(Bytes32.fromHexString(parts[4])));
+        eventFilters.computeIfAbsent(address, (a) -> new HashSet<>()).add(eventFilter);
+      }
+      return eventFilters;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

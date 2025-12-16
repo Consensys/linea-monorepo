@@ -1,29 +1,21 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.sequencer.modulelimit;
 
+import com.google.common.io.Resources;
 import java.io.File;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import com.google.common.io.Resources;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.config.LineaTracerConfiguration;
 import org.apache.tuweni.toml.Toml;
 import org.apache.tuweni.toml.TomlParseResult;
 import org.apache.tuweni.toml.TomlTable;
@@ -125,10 +117,9 @@ public class ModuleLineCountValidator {
     INVALID_LINE_COUNT
   }
 
-  public static Map<String, Integer> createLimitModules(
-      LineaTracerConfiguration lineaTracerConfiguration) {
+  public static Map<String, Integer> createLimitModules(String moduleLimitsFilePath) {
     try {
-      URL url = new File(lineaTracerConfiguration.moduleLimitsFilePath()).toURI().toURL();
+      URL url = new File(moduleLimitsFilePath).toURI().toURL();
       final String tomlString = Resources.toString(url, StandardCharsets.UTF_8);
       TomlParseResult result = Toml.parse(tomlString);
       final TomlTable table = result.getTable("traces-limits");
@@ -142,7 +133,7 @@ public class ModuleLineCountValidator {
     } catch (final Exception e) {
       final String errorMsg =
           "Problem reading the toml file containing the limits for the modules: "
-              + lineaTracerConfiguration.moduleLimitsFilePath();
+              + moduleLimitsFilePath;
       log.error(errorMsg);
       throw new RuntimeException(errorMsg, e);
     }

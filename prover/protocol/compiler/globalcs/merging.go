@@ -7,11 +7,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -78,7 +78,7 @@ func accumulateConstraints(comp *wizard.CompiledIOP) (mergingCtx, bool) {
 		// This enforces the precondition that all the global constraint must
 		// share the same domain.
 		if cs.DomainSize != ctx.DomainSize {
-			utils.Panic("At this point in the compilation process, we expect all constraints to have the same domain")
+			utils.Panic("At this point in the compilation process, we expect all constraints to have the same domain, cs.DomainSize=%d, ctx.DomainSize=%d, cs.Name=%v", cs.DomainSize, ctx.DomainSize, cs.Name())
 		}
 
 		// Mark the constraint as ignored, so that it does not get compiled a
@@ -141,7 +141,7 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 	}
 
 	var (
-		cancelRange = cs.MinMaxOffset()
+		cancelRange = query.MinMaxOffset(cs.Expression)
 		res         = cs.Expression
 		domainSize  = cs.DomainSize
 		x           = variables.NewXVar()
@@ -194,12 +194,18 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 func getExprRatio(expr *symbolic.Expression) int {
 	var (
 		board        = expr.Board()
-		domainSize   = wizardutils.ExprIsOnSameLengthHandles(&board)
+		domainSize   = column.ExprIsOnSameLengthHandles(&board)
 		exprDegree   = board.Degree(GetDegree(domainSize))
 		quotientSize = exprDegree - domainSize + 1
 		ratio        = utils.DivCeil(quotientSize, domainSize)
 	)
 	return utils.NextPowerOfTwo(max(1, ratio))
+}
+
+func getDegreeSimple() func(any) int {
+	return func(any) int {
+		return 1
+	}
 }
 
 // GetDegree is a generator returning a DegreeGetter that can be passed to

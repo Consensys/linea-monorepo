@@ -1,8 +1,10 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "rootDir": "src"
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "target": "es2022",
   },
   "include": ["./src/**/*"],
-  "exclude": ["node_modules", "dist"]
 }

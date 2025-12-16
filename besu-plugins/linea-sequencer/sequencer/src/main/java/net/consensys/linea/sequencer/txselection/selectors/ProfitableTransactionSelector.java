@@ -1,36 +1,29 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
+import static net.consensys.linea.bl.TransactionProfitabilityCalculator.getCompressedTxSize;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE;
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE_RETRY_LIMIT;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE_UPFRONT;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import java.util.EnumMap;
-import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-
-import com.google.common.annotations.VisibleForTesting;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
-import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.metrics.HistogramMetrics.LabelValue;
 import org.hyperledger.besu.datatypes.Hash;
@@ -47,12 +40,13 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  * if the transaction is profitable, according to the current config and the min margin defined for
  * this context. Profitability check is done upfront using the gas limit, to avoid processing the
  * transaction at all, and if it passes it is done after the processing this time using the actual
- * gas used by the transaction. This selector keeps a cache of the unprofitable transactions to
- * avoid reprocessing all of them everytime, and only allows for a configurable limited number of
- * unprofitable transaction to be retried on every new block creation.
+ * gas used by the transaction.
  */
 @Slf4j
 public class ProfitableTransactionSelector implements PluginTransactionSelector {
+  private static final Cache<Hash, Integer> compressedSizeCache =
+      CacheBuilder.newBuilder().maximumSize(10000).expireAfterWrite(30, TimeUnit.MINUTES).build();
+
   public enum Phase implements LabelValue {
     PRE_PROCESSING,
     POST_PROCESSING;
@@ -69,7 +63,6 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     }
   }
 
-  @VisibleForTesting protected static Set<Hash> unprofitableCache = new LinkedHashSet<>();
   protected static Map<Phase, Double> lastBlockMinRatios = new EnumMap<>(Phase.class);
   protected static Map<Phase, Double> lastBlockMaxRatios = new EnumMap<>(Phase.class);
 
@@ -77,20 +70,15 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     resetMinMaxRatios();
   }
 
-  private final LineaTransactionSelectorConfiguration txSelectorConf;
   private final LineaProfitabilityConfiguration profitabilityConf;
   private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
   private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final Wei baseFee;
 
-  private int unprofitableRetries;
-
   public ProfitableTransactionSelector(
       final BlockchainService blockchainService,
-      final LineaTransactionSelectorConfiguration txSelectorConf,
       final LineaProfitabilityConfiguration profitabilityConf,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
-    this.txSelectorConf = txSelectorConf;
     this.profitabilityConf = profitabilityConf;
     this.transactionProfitabilityCalculator =
         new TransactionProfitabilityCalculator(profitabilityConf);
@@ -144,10 +132,11 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     if (!evaluationContext.getPendingTransaction().hasPriority()) {
       final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
       final long gasLimit = transaction.getGasLimit();
+      final int compressedSize = getOrCalculateCompressedSize(transaction);
 
       final var profitablePriorityFeePerGas =
           transactionProfitabilityCalculator.profitablePriorityFeePerGas(
-              transaction, profitabilityConf.minMargin(), gasLimit, minGasPrice);
+              transaction, profitabilityConf.minMargin(), gasLimit, minGasPrice, compressedSize);
 
       updateMetric(
           Phase.PRE_PROCESSING, evaluationContext, transaction, profitablePriorityFeePerGas);
@@ -164,32 +153,36 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
           minGasPrice)) {
         return TX_UNPROFITABLE_UPFRONT;
       }
-
-      if (unprofitableCache.contains(transaction.getHash())) {
-        if (unprofitableRetries >= txSelectorConf.unprofitableRetryLimit()) {
-          log.atTrace()
-              .setMessage("Limit of unprofitable tx retries reached: {}/{}")
-              .addArgument(unprofitableRetries)
-              .addArgument(txSelectorConf.unprofitableRetryLimit());
-          return TX_UNPROFITABLE_RETRY_LIMIT;
-        }
-
-        log.atTrace()
-            .setMessage("Retrying unprofitable tx. Retry: {}/{}")
-            .addArgument(unprofitableRetries)
-            .addArgument(txSelectorConf.unprofitableRetryLimit());
-        unprofitableCache.remove(transaction.getHash());
-        unprofitableRetries++;
-      }
     }
 
     return SELECTED;
   }
 
   /**
+   * Get from the cache the compressed size of the transaction from the cache if available otherwise
+   * calculate it
+   *
+   * @param transaction the transaction for which we want to get the compressed size
+   * @return the compressed size
+   */
+  private int getOrCalculateCompressedSize(final Transaction transaction) {
+    try {
+      return compressedSizeCache.get(transaction.getHash(), () -> getCompressedTxSize(transaction));
+    } catch (ExecutionException e) {
+      log.atWarn()
+          .setMessage(
+              "Failed to calculate compressed size for transaction {}, calculating directly")
+          .addArgument(transaction::getHash)
+          .setCause(e)
+          .log();
+      return getCompressedTxSize(transaction);
+    }
+  }
+
+  /**
    * Evaluates a transaction post-processing. Checks if it is profitable according to its gas used.
-   * If unprofitable, the transaction is added to the unprofitable cache, to be retried in the
-   * future, since gas price market fluctuations can make it profitable again.
+   * If unprofitable, the transaction is penalized, but can still be retried in the future, since
+   * gas price market fluctuations can make it profitable again.
    *
    * @param evaluationContext The current selection context.
    * @return TX_UNPROFITABLE if the transaction is not profitable after execution, otherwise
@@ -203,17 +196,20 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     if (!evaluationContext.getPendingTransaction().hasPriority()) {
       final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
       final long gasUsed = processingResult.getEstimateGasUsedByTransaction();
+      final int compressedSize = getOrCalculateCompressedSize(transaction);
 
       final var profitablePriorityFeePerGas =
           transactionProfitabilityCalculator.profitablePriorityFeePerGas(
               transaction,
               profitabilityConf.minMargin(),
               gasUsed,
-              evaluationContext.getMinGasPrice());
+              evaluationContext.getMinGasPrice(),
+              compressedSize);
 
       updateMetric(
           Phase.POST_PROCESSING, evaluationContext, transaction, profitablePriorityFeePerGas);
 
+      TransactionSelectionResult result = SELECTED;
       if (!transactionProfitabilityCalculator.isProfitable(
           "PostProcessing",
           profitablePriorityFeePerGas,
@@ -223,54 +219,11 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
           evaluationContext.getTransactionGasPrice(),
           gasUsed,
           evaluationContext.getMinGasPrice())) {
-        rememberUnprofitable(transaction);
-        return TX_UNPROFITABLE;
+        result = TX_UNPROFITABLE;
       }
+      return result;
     }
     return SELECTED;
-  }
-
-  /**
-   * If the transaction has been selected for block inclusion, then we remove it from the
-   * unprofitable cache.
-   *
-   * @param evaluationContext The current selection context
-   * @param processingResult The result of processing the selected transaction.
-   */
-  @Override
-  public void onTransactionSelected(
-      final TransactionEvaluationContext evaluationContext,
-      final TransactionProcessingResult processingResult) {
-    unprofitableCache.remove(evaluationContext.getPendingTransaction().getTransaction().getHash());
-  }
-
-  /**
-   * If the transaction has not been selected and has been discarded from the transaction pool, then
-   * we remove it from the unprofitable cache.
-   *
-   * @param evaluationContext The current selection context
-   * @param transactionSelectionResult The transaction selection result
-   */
-  @Override
-  public void onTransactionNotSelected(
-      final TransactionEvaluationContext evaluationContext,
-      final TransactionSelectionResult transactionSelectionResult) {
-    final var txHash = evaluationContext.getPendingTransaction().getTransaction().getHash();
-    if (transactionSelectionResult.discard()) {
-      unprofitableCache.remove(txHash);
-    }
-  }
-
-  private void rememberUnprofitable(final Transaction transaction) {
-    while (unprofitableCache.size() >= txSelectorConf.unprofitableCacheSize()) {
-      final var it = unprofitableCache.iterator();
-      if (it.hasNext()) {
-        it.next();
-        it.remove();
-      }
-    }
-    unprofitableCache.add(transaction.getHash());
-    log.atTrace().setMessage("unprofitableCache={}").addArgument(unprofitableCache::size).log();
   }
 
   private void updateMetric(
@@ -281,8 +234,8 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
 
     final var effectivePriorityFee = evaluationContext.getTransactionGasPrice().subtract(baseFee);
     final var ratio =
-        effectivePriorityFee.getValue().doubleValue()
-            / profitablePriorityFeePerGas.getValue().doubleValue();
+        effectivePriorityFee.getAsBigInteger().doubleValue()
+            / profitablePriorityFeePerGas.getAsBigInteger().doubleValue();
 
     maybeProfitabilityMetrics.ifPresent(
         histogramMetrics -> {

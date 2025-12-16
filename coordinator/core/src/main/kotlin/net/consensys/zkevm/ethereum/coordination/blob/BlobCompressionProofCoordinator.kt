@@ -3,12 +3,13 @@ package net.consensys.zkevm.ethereum.coordination.blob
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
+import linea.LongRunningService
 import linea.domain.BlockInterval
 import linea.domain.BlockIntervals
+import linea.domain.toBlockIntervals
 import linea.domain.toBlockIntervalsString
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.domain.Blob
@@ -143,6 +144,12 @@ class BlobCompressionProofCoordinator(
       kzgProofSideCar = kzgProofSideCar,
     )
     return blobCompressionProverClient.requestProof(proofRequest)
+      .thenPeek {
+        log.info(
+          "blob compression proof generated: blob={}",
+          conflations.toBlockIntervals().toBlockInterval().intervalString(),
+        )
+      }
       .thenCompose { blobCompressionProof ->
         val blobRecord = BlobRecord(
           startBlockNumber = conflations.first().startBlockNumber,

@@ -119,6 +119,10 @@ describe("L2MessageService", () => {
       expect(await l2MessageService.limitInWei()).to.be.equal(INITIAL_WITHDRAW_LIMIT);
     });
 
+    it("Should have the correct contract version", async () => {
+      expect(await l2MessageService.CONTRACT_VERSION()).to.equal("1.0");
+    });
+
     it("Should fail to deploy if default admin is address zero", async () => {
       const deployCall = deployUpgradableFromFactory("TestL2MessageService", [
         ONE_DAY_IN_SECONDS,
@@ -1160,7 +1164,7 @@ describe("L2MessageService", () => {
             1,
           );
 
-        await expectRevertWithReason(claimMessageCall, "ReentrancyGuard: reentrant call");
+        await expectRevertWithCustomError(l2MessageService, claimMessageCall, "ReentrantCall");
       });
 
       it("Should fail when the destination errors through receive", async () => {

@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package linea.plugin.acc.test.rpc.linea;
 
@@ -18,14 +12,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.web3j.crypto.Hash.sha3;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-
+import java.util.List;
+import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import linea.plugin.acc.test.tests.web3j.generated.AcceptanceTestToken;
+import linea.plugin.acc.test.tests.web3j.generated.ExcludedPrecompiles;
 import linea.plugin.acc.test.tests.web3j.generated.RevertExample;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount;
+import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.TransferTransaction;
 import org.junit.jupiter.api.Test;
 import org.web3j.crypto.Credentials;
@@ -34,6 +33,34 @@ import org.web3j.crypto.TransactionEncoder;
 import org.web3j.utils.Numeric;
 
 public class SendBundleTest extends AbstractSendBundleTest {
+  private static final Address DENY_TO_ADDRESS =
+      Address.fromHexString("0xf17f52151EbEF6C7334FAD080c5704D77216b732");
+  // Address 0x44b30d738d2dec1952b92c091724e8aedd52b9b2
+  private static final String DENY_FROM_PRIVATE_KEY =
+      "0xf326e86ba27e2286725a154922094f02573f4921a25a27046b74ec90e653438e";
+
+  @Override
+  public List<String> getTestCliOptions() {
+    return new TestCommandLineOptionsBuilder()
+        .set(
+            "--plugin-linea-bundle-overriding-deny-list-path=",
+            getResourcePath("/bundleDenyList.txt"))
+        // set the module limits file
+        .set(
+            "--plugin-linea-module-limit-file-path=",
+            getResourcePath("/moduleLimitsLimitless.toml"))
+        // enabled the ZkCounter
+        .set("--plugin-linea-limitless-enabled=", "true")
+        .build();
+  }
+
+  @Override
+  protected GenesisConfigurationFactory.CliqueOptions getCliqueOptions() {
+    return new GenesisConfigurationFactory.CliqueOptions(
+        BLOCK_PERIOD_SECONDS,
+        GenesisConfigurationFactory.CliqueOptions.DEFAULT.epochLength(),
+        false);
+  }
 
   @Test
   public void singleTxBundleIsAcceptedAndMined() {
@@ -74,6 +101,74 @@ public class SendBundleTest extends AbstractSendBundleTest {
 
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(tx1.transactionHash()));
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(tx2.transactionHash()));
+  }
+
+  @Test
+  public void bundleWithInvalidTxIsNotAccepted() throws Exception {
+    final var mulmodExecutor = deployMulmodExecutor();
+    final Account sender = accounts.getSecondaryBenefactor();
+    final Account recipient = accounts.getPrimaryBenefactor();
+
+    final TransferTransaction tx1 = accountTransactions.createTransfer(sender, recipient, 1);
+    final var mulmodOk =
+        mulmodOperation(
+            mulmodExecutor,
+            accounts.getPrimaryBenefactor(),
+            1,
+            1_000,
+            BigInteger.valueOf(MAX_TX_GAS_LIMIT + 1));
+
+    final String[] bundleRawTxs = new String[] {tx1.signedTransactionData(), mulmodOk.rawTx()};
+
+    final var sendBundleRequest =
+        new SendBundleRequest(new BundleParams(bundleRawTxs, Integer.toHexString(2)));
+    final var sendBundleResponse = sendBundleRequest.execute(minerNode.nodeRequests());
+
+    assertThat(sendBundleResponse.hasError()).isTrue();
+    assertThat(sendBundleResponse.getError().getMessage())
+        .isEqualTo(
+            "Invalid transaction in bundle: hash 0x3f6ff4384305623a7c5cbf05afd9b97c8409be23c4b39c7b16d60001aee4340b,"
+                + " reason: Gas limit of transaction is greater than the allowed max of 9000000");
+  }
+
+  @Test
+  public void bundleTxRecipientOnDenyListIsNotAccepted() {
+    final Account sender = accounts.getSecondaryBenefactor();
+    final Account recipient = accounts.createAccount(DENY_TO_ADDRESS);
+
+    final TransferTransaction tx1 = accountTransactions.createTransfer(sender, recipient, 1);
+
+    final String[] bundleRawTxs = new String[] {tx1.signedTransactionData()};
+
+    final var sendBundleRequest =
+        new SendBundleRequest(new BundleParams(bundleRawTxs, Integer.toHexString(1)));
+    final var sendBundleResponse = sendBundleRequest.execute(minerNode.nodeRequests());
+
+    assertThat(sendBundleResponse.hasError()).isTrue();
+    assertThat(sendBundleResponse.getError().getMessage())
+        .isEqualTo(
+            "Invalid transaction in bundle: hash 0xfb47ad29ecf898031bae210263198385f35818d4d154dc752d942a42acabc0cc, "
+                + "reason: recipient 0xf17f52151ebef6c7334fad080c5704d77216b732 is blocked as appearing on the SDN or other legally prohibited list");
+  }
+
+  @Test
+  public void bundleTxFromOnDenyListIsNotAccepted() {
+    final Account sender = Account.fromPrivateKey(ethTransactions, "denied", DENY_FROM_PRIVATE_KEY);
+    final Account recipient = accounts.getPrimaryBenefactor();
+
+    final TransferTransaction tx1 = accountTransactions.createTransfer(sender, recipient, 1);
+
+    final String[] bundleRawTxs = new String[] {tx1.signedTransactionData()};
+
+    final var sendBundleRequest =
+        new SendBundleRequest(new BundleParams(bundleRawTxs, Integer.toHexString(1)));
+    final var sendBundleResponse = sendBundleRequest.execute(minerNode.nodeRequests());
+
+    assertThat(sendBundleResponse.hasError()).isTrue();
+    assertThat(sendBundleResponse.getError().getMessage())
+        .isEqualTo(
+            "Invalid transaction in bundle: hash 0xd631d31a09e865fcd0d86a7f7763747ece057f9f3a63350bb56a206051020a71,"
+                + " reason: sender 0x44b30d738d2dec1952b92c091724e8aedd52b9b2 is blocked as appearing on the SDN or other legally prohibited list");
   }
 
   @Test
@@ -163,14 +258,15 @@ public class SendBundleTest extends AbstractSendBundleTest {
 
   @Test
   public void singleNotSelectedTxBundleIsNotMined() throws Exception {
-    final var mulmodExecutor = deployMulmodExecutor();
+    final var excludedPrecompiles = deployExcludedPrecompiles();
 
-    final var mulmodOverflow =
-        mulmodOperation(mulmodExecutor, accounts.getPrimaryBenefactor(), 1, 5_000);
+    final byte[] signedTxInvalid = createInvalidTransaction(excludedPrecompiles);
+    final var invalidTxHash = Numeric.toHexString(sha3(signedTxInvalid));
 
     final var sendBundleRequest =
         new SendBundleRequest(
-            new BundleParams(new String[] {mulmodOverflow.rawTx()}, Integer.toHexString(2)));
+            new BundleParams(
+                new String[] {Numeric.toHexString(signedTxInvalid)}, Integer.toHexString(2)));
     final var sendBundleResponse = sendBundleRequest.execute(minerNode.nodeRequests());
 
     assertThat(sendBundleResponse.hasError()).isFalse();
@@ -183,22 +279,33 @@ public class SendBundleTest extends AbstractSendBundleTest {
             .execute(minerNode.nodeRequests());
 
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()));
-    minerNode.verify(eth.expectNoTransactionReceipt(mulmodOverflow.txHash()));
+    minerNode.verify(eth.expectNoTransactionReceipt(invalidTxHash));
+
+    // make sure the bundle is not select for the right reason
+    final var log = getLog();
+    assertThat(log)
+        .contains(
+            "Failed bundle %s, reason TX_MODULE_LINE_COUNT_OVERFLOW"
+                .formatted(sendBundleResponse.getResult().bundleHash()));
   }
 
   @Test
-  public void bundleWithNotSelectedTxIsNotMined() throws Exception {
-    final var mulmodExecutor = deployMulmodExecutor();
+  public void bundleWithFirstNotSelectedTxIsNotMined() throws Exception {
+    final var excludedPrecompiles = deployExcludedPrecompiles();
+
     final var recipient = accounts.createAccount("recipient");
 
-    final var mulmodOverflow =
-        mulmodOperation(mulmodExecutor, accounts.getPrimaryBenefactor(), 1, 5_000);
+    final byte[] signedTxInvalid = createInvalidTransaction(excludedPrecompiles);
+    final var invalidTxHash = Numeric.toHexString(sha3(signedTxInvalid));
+
     final var inBundleTransferTx =
         accountTransactions.createTransfer(recipient, accounts.getPrimaryBenefactor(), 1);
 
     // first is not selected because exceeds line count limit
     final var bundleRawTxs =
-        new String[] {mulmodOverflow.rawTx(), inBundleTransferTx.signedTransactionData()};
+        new String[] {
+          Numeric.toHexString(signedTxInvalid), inBundleTransferTx.signedTransactionData()
+        };
 
     final var sendBundleRequest =
         new SendBundleRequest(new BundleParams(bundleRawTxs, Integer.toHexString(2)));
@@ -208,66 +315,94 @@ public class SendBundleTest extends AbstractSendBundleTest {
     assertThat(sendBundleResponse.getResult().bundleHash()).isNotBlank();
 
     // transfer used as sentry to ensure a new block is mined without the bundles
-    final var transferTxHash1 =
+    final var transferTxHash =
         accountTransactions
             .createTransfer(accounts.getSecondaryBenefactor(), recipient, 10)
             .execute(minerNode.nodeRequests());
 
     // first sentry is mined and no tx of the bundle is mined
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash1.toHexString()));
-    minerNode.verify(eth.expectNoTransactionReceipt(mulmodOverflow.txHash()));
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()));
+    minerNode.verify(eth.expectNoTransactionReceipt(invalidTxHash));
     minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx.transactionHash()));
 
-    // try with a bundle where first is selected but second no
-    final var reverseBundleRawTxs =
-        new String[] {inBundleTransferTx.signedTransactionData(), mulmodOverflow.rawTx()};
-    final var sendReverseBundleRequest =
-        new SendBundleRequest(new BundleParams(reverseBundleRawTxs, Integer.toHexString(3)));
-    final var sendReverseBundleResponse =
-        sendReverseBundleRequest.execute(minerNode.nodeRequests());
+    // make sure the bundle is not select for the right reason
+    final var log = getLog();
+    assertThat(log)
+        .contains(
+            "Failed bundle %s, reason TX_MODULE_LINE_COUNT_OVERFLOW"
+                .formatted(sendBundleResponse.getResult().bundleHash()));
+  }
 
-    assertThat(sendReverseBundleResponse.hasError()).isFalse();
-    assertThat(sendReverseBundleResponse.getResult().bundleHash()).isNotBlank();
+  @Test
+  public void bundleWithLastNotSelectedTxIsNotMined() throws Exception {
+    final var excludedPrecompiles = deployExcludedPrecompiles();
+
+    final var recipient = accounts.createAccount("recipient");
+
+    final byte[] signedTxInvalid = createInvalidTransaction(excludedPrecompiles);
+    final var invalidTxHash = Numeric.toHexString(sha3(signedTxInvalid));
+
+    final var inBundleTransferTx =
+        accountTransactions.createTransfer(accounts.getSecondaryBenefactor(), recipient, 10);
+
+    // try with a bundle where first is selected but second no due to the nonce not increased
+    final var reverseBundleRawTxs =
+        new String[] {
+          inBundleTransferTx.signedTransactionData(), Numeric.toHexString(signedTxInvalid)
+        };
+    final var sendReverseBundleRequest =
+        new SendBundleRequest(new BundleParams(reverseBundleRawTxs, Integer.toHexString(2)));
+    final var sendBundleResponse = sendReverseBundleRequest.execute(minerNode.nodeRequests());
+
+    assertThat(sendBundleResponse.hasError()).isFalse();
+    assertThat(sendBundleResponse.getResult().bundleHash()).isNotBlank();
 
     // transfer used as sentry to ensure a new block is mined without the bundles
-    final var transferTxHash2 =
+    final var transferTxHash =
         accountTransactions
-            .createTransfer(
-                accounts.getSecondaryBenefactor(),
-                accounts.getPrimaryBenefactor(),
-                1,
-                BigInteger.valueOf(1))
+            .createTransfer(accounts.getSecondaryBenefactor(), recipient, 1, BigInteger.ZERO)
             .execute(minerNode.nodeRequests());
 
     // second sentry is mined and no tx of the bundle is mined
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash2.toHexString()));
-    minerNode.verify(eth.expectNoTransactionReceipt(mulmodOverflow.txHash()));
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()));
+    minerNode.verify(eth.expectNoTransactionReceipt(invalidTxHash));
     minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx.transactionHash()));
+
+    // make sure the bundle is not select for the right reason
+    final var log = getLog();
+    assertThat(log)
+        .contains(
+            "Failed bundle %s, reason INVALID(NONCE_TOO_LOW)"
+                .formatted(sendBundleResponse.getResult().bundleHash()));
   }
 
   @Test
   public void mixOfSelectedNotSelectedBundles() throws Exception {
+    final var excludedPrecompiles = deployExcludedPrecompiles();
     final var mulmodExecutor = deployMulmodExecutor();
 
-    final var mulmodOverflow =
-        mulmodOperation(mulmodExecutor, accounts.getPrimaryBenefactor(), 1, 5_000);
+    final byte[] signedTxInvalid = createInvalidTransaction(excludedPrecompiles);
+    final var invalidTxHash = Numeric.toHexString(sha3(signedTxInvalid));
+
     final var inBundleTransferTx1 =
         accountTransactions.createTransfer(
-            accounts.getSecondaryBenefactor(), accounts.getPrimaryBenefactor(), 1, BigInteger.ZERO);
+            accounts.getSecondaryBenefactor(), accounts.getPrimaryBenefactor(), 1, BigInteger.ONE);
 
     // first is not selected because exceeds line count limit
     final var notSelectedBundleRawTxs =
-        new String[] {mulmodOverflow.rawTx(), inBundleTransferTx1.signedTransactionData()};
+        new String[] {
+          Numeric.toHexString(signedTxInvalid), inBundleTransferTx1.signedTransactionData()
+        };
 
     final var sendNotSelectedBundleRequest =
-        new SendBundleRequest(new BundleParams(notSelectedBundleRawTxs, Integer.toHexString(2)));
+        new SendBundleRequest(new BundleParams(notSelectedBundleRawTxs, Integer.toHexString(3)));
     final var sendNotSelectedBundleResponse =
         sendNotSelectedBundleRequest.execute(minerNode.nodeRequests());
 
     assertThat(sendNotSelectedBundleResponse.hasError()).isFalse();
     assertThat(sendNotSelectedBundleResponse.getResult().bundleHash()).isNotBlank();
 
-    final var mulmodOk = mulmodOperation(mulmodExecutor, accounts.getPrimaryBenefactor(), 1, 1_000);
+    final var mulmodOk = mulmodOperation(mulmodExecutor, accounts.getPrimaryBenefactor(), 2, 1_000);
     final var inBundleTransferTx2 =
         accountTransactions.createTransfer(
             accounts.getSecondaryBenefactor(), accounts.getPrimaryBenefactor(), 2, BigInteger.ZERO);
@@ -277,7 +412,7 @@ public class SendBundleTest extends AbstractSendBundleTest {
         new String[] {mulmodOk.rawTx(), inBundleTransferTx2.signedTransactionData()};
 
     final var sendSelectedBundleRequest =
-        new SendBundleRequest(new BundleParams(selectedBundleRawTxs, Integer.toHexString(2)));
+        new SendBundleRequest(new BundleParams(selectedBundleRawTxs, Integer.toHexString(3)));
     final var sendSelectedBundleResponse =
         sendSelectedBundleRequest.execute(minerNode.nodeRequests());
 
@@ -289,8 +424,14 @@ public class SendBundleTest extends AbstractSendBundleTest {
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(inBundleTransferTx2.transactionHash()));
 
     // while first bundle is not selected
-    minerNode.verify(eth.expectNoTransactionReceipt(mulmodOverflow.txHash()));
+    minerNode.verify(eth.expectNoTransactionReceipt(invalidTxHash));
     minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx1.transactionHash()));
+    // make sure the first bundle is not select for the right reason
+    final var log = getLog();
+    assertThat(log)
+        .contains(
+            "Failed bundle %s, reason TX_MODULE_LINE_COUNT_OVERFLOW"
+                .formatted(sendNotSelectedBundleResponse.getResult().bundleHash()));
   }
 
   @Test
@@ -375,5 +516,26 @@ public class SendBundleTest extends AbstractSendBundleTest {
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash2.toHexString()));
     minerNode.verify(eth.expectNoTransactionReceipt(txThatRevertsHash));
     minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx.transactionHash()));
+  }
+
+  private static byte[] createInvalidTransaction(final ExcludedPrecompiles excludedPrecompiles) {
+    // this tx must not be accepted
+    final RawTransaction txInvalid =
+        RawTransaction.createTransaction(
+            CHAIN_ID,
+            BigInteger.ZERO,
+            MULMOD_GAS_LIMIT,
+            excludedPrecompiles.getContractAddress(),
+            BigInteger.ZERO,
+            excludedPrecompiles
+                .callRIPEMD160("I am not allowed here".getBytes(StandardCharsets.UTF_8))
+                .encodeFunctionCall(),
+            GAS_PRICE,
+            GAS_PRICE.multiply(BigInteger.TEN).add(BigInteger.ONE));
+
+    final byte[] signedTxInvalid =
+        TransactionEncoder.signMessage(
+            txInvalid, Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY));
+    return signedTxInvalid;
   }
 }

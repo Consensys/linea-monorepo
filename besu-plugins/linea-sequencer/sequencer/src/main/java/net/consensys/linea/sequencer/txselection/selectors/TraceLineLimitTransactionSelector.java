@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
@@ -18,31 +12,44 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_INVALID_COUNT;
-import static net.consensys.linea.zktracer.Fork.LONDON;
+import static net.consensys.linea.zktracer.Fork.fromMainnetHardforkIdToTracerFork;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
+import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTION_CANCELLED;
 
-import java.math.BigInteger;
-import java.util.LinkedHashSet;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaTracerConfiguration;
-import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
+import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
+import net.consensys.linea.zktracer.Fork;
+import net.consensys.linea.zktracer.LineCountingTracer;
+import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.container.module.Module;
-import org.hyperledger.besu.datatypes.Hash;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.evm.frame.ExceptionalHaltReason;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.evm.operation.Operation;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.txselection.AbstractStatefulPluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
@@ -58,40 +65,38 @@ import org.slf4j.MarkerFactory;
 public class TraceLineLimitTransactionSelector
     extends AbstractStatefulPluginTransactionSelector<Map<String, Integer>> {
   private static final Marker BLOCK_LINE_COUNT_MARKER = MarkerFactory.getMarker("BLOCK_LINE_COUNT");
-  @VisibleForTesting protected static Set<Hash> overLineCountLimitCache = new LinkedHashSet<>();
-  private final ZkTracer zkTracer;
-  private final BigInteger chainId;
-  private final String limitFilePath;
-  private final Map<String, Integer> moduleLimits;
-  private final int overLimitCacheSize;
+  private final LineaTracerConfiguration tracerConfiguration;
+  private final LineCountingTracer lineCountingTracer;
   private final ModuleLineCountValidator moduleLineCountValidator;
+  private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
 
   public TraceLineLimitTransactionSelector(
       final SelectorsStateManager stateManager,
-      final BigInteger chainId,
-      final Map<String, Integer> moduleLimits,
-      final LineaTransactionSelectorConfiguration txSelectorConfiguration,
+      final BlockchainService blockchainService,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
-      final LineaTracerConfiguration tracerConfiguration) {
+      final LineaTracerConfiguration tracerConfiguration,
+      final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache) {
     super(
         stateManager,
-        moduleLimits.keySet().stream().collect(Collectors.toMap(Function.identity(), unused -> 0)),
+        tracerConfiguration.moduleLimitsMap().keySet().stream()
+            .collect(Collectors.toMap(Function.identity(), unused -> 0)),
         Map::copyOf);
 
-    this.chainId = chainId;
-    this.moduleLimits = moduleLimits;
-    this.limitFilePath = tracerConfiguration.moduleLimitsFilePath();
-    this.overLimitCacheSize = txSelectorConfiguration.overLinesLimitCacheSize();
+    this.tracerConfiguration = tracerConfiguration;
+    this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
 
-    zkTracer = new ZkTracerWithLog(l1L2BridgeConfiguration);
-    for (Module m : zkTracer.getHub().getModulesToCount()) {
-      if (!moduleLimits.containsKey(m.moduleKey())) {
+    lineCountingTracer =
+        new LineCountingTracerWithLog(
+            tracerConfiguration, l1L2BridgeConfiguration, blockchainService);
+    for (Module m : lineCountingTracer.getModulesToCount()) {
+      if (!tracerConfiguration.moduleLimitsMap().containsKey(m.moduleKey().name())) {
         throw new IllegalStateException(
-            "Limit for module %s not defined in %s".formatted(m.moduleKey(), this.limitFilePath));
+            "Limit for module %s not defined in %s"
+                .formatted(m.moduleKey(), tracerConfiguration.moduleLimitsFilePath()));
       }
     }
-    zkTracer.traceStartConflation(1L);
-    moduleLineCountValidator = new ModuleLineCountValidator(moduleLimits);
+    lineCountingTracer.traceStartConflation(1L);
+    moduleLineCountValidator = new ModuleLineCountValidator(tracerConfiguration.moduleLimitsMap());
   }
 
   /**
@@ -103,7 +108,7 @@ public class TraceLineLimitTransactionSelector
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
       final TransactionEvaluationContext evaluationContext) {
-    if (overLineCountLimitCache.contains(
+    if (invalidTransactionByLineCountCache.contains(
         evaluationContext.getPendingTransaction().getTransaction().getHash())) {
       log.atTrace()
           .setMessage(
@@ -132,7 +137,25 @@ public class TraceLineLimitTransactionSelector
     final var prevCumulatedLineCountMap = getWorkingState();
 
     // check that we are not exceeding line number for any module
-    final var newCumulatedLineCountMap = zkTracer.getModulesLineCount();
+    final Map<String, Integer> newCumulatedLineCountMap;
+    try {
+      newCumulatedLineCountMap = lineCountingTracer.getModulesLineCount();
+    } catch (Exception e) {
+      if (evaluationContext.isCancelled()) {
+        // the tracer is not thread safe, so during selection cancellation it could
+        // fail due to concurrency issues, so in that case do not consider exception
+        // as an internal error
+        log.atTrace()
+            .setMessage(
+                "Ignoring tracer exception due to cancelled selection during evaluation of {}")
+            .addArgument(evaluationContext.getPendingTransaction()::toTraceLog)
+            .setCause(e)
+            .log();
+        return SELECTION_CANCELLED;
+      }
+      throw e;
+    }
+
     final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
     log.atTrace()
         .setMessage("Tx {} line count per module: {}")
@@ -183,22 +206,15 @@ public class TraceLineLimitTransactionSelector
   }
 
   @Override
-  public ZkTracer getOperationTracer() {
-    return zkTracer;
+  public LineCountingTracer getOperationTracer() {
+    return lineCountingTracer;
   }
 
   private void rememberOverLineCountLimitTransaction(final Transaction transaction) {
-    while (overLineCountLimitCache.size() >= overLimitCacheSize) {
-      final var it = overLineCountLimitCache.iterator();
-      if (it.hasNext()) {
-        it.next();
-        it.remove();
-      }
-    }
-    overLineCountLimitCache.add(transaction.getHash());
+    invalidTransactionByLineCountCache.remember(transaction.getHash());
     log.atTrace()
-        .setMessage("overLineCountLimitCache={}")
-        .addArgument(overLineCountLimitCache::size)
+        .setMessage("invalidTransactionByLineCountCache={}")
+        .addArgument(invalidTransactionByLineCountCache::size)
         .log();
   }
 
@@ -215,18 +231,36 @@ public class TraceLineLimitTransactionSelector
                     + "/"
                     + e.getValue()
                     + "/"
-                    + moduleLimits.get(e.getKey()))
+                    + tracerConfiguration.moduleLimitsMap().get(e.getKey()))
         .collect(Collectors.joining(",", "[", "]"));
   }
 
-  private class ZkTracerWithLog extends ZkTracer {
-    public ZkTracerWithLog(final LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
-      super(LONDON, bridgeConfiguration, chainId);
+  private class LineCountingTracerWithLog implements LineCountingTracer {
+    private final LineCountingTracer delegate;
+
+    public LineCountingTracerWithLog(
+        final LineaTracerConfiguration tracerConfiguration,
+        final LineaL1L2BridgeSharedConfiguration bridgeConfiguration,
+        final BlockchainService blockchainService) {
+
+      final Fork forkId =
+          fromMainnetHardforkIdToTracerFork(
+              (HardforkId.MainnetHardforkId)
+                  blockchainService.getNextBlockHardforkId(
+                      blockchainService.getChainHeadHeader(), Instant.now().getEpochSecond()));
+
+      this.delegate =
+          tracerConfiguration.isLimitless()
+              ? new ZkCounter(bridgeConfiguration, forkId)
+              : new ZkTracer(forkId, bridgeConfiguration, blockchainService.getChainId().get());
     }
 
     @Override
     public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
-      super.traceEndBlock(blockHeader, blockBody);
+      // do not call the delegated since there is no need when building block
+      // this also avoid concurrency related exceptions, since ZkTracer is not thread safe,
+      // and during a block creation timeout there is the possibility of one thread still
+      // processing a tx while another is packing a block and call this method
       log.atDebug()
           .addMarker(BLOCK_LINE_COUNT_MARKER)
           .addKeyValue("blockNumber", blockHeader::getNumber)
@@ -239,6 +273,126 @@ public class TraceLineLimitTransactionSelector
                       .map(e -> '"' + e.getKey() + "\":" + e.getValue())
                       .collect(Collectors.joining(",")))
           .log();
+    }
+
+    @Override
+    public void popTransactionBundle() {
+      delegate.popTransactionBundle();
+    }
+
+    @Override
+    public void commitTransactionBundle() {
+      delegate.commitTransactionBundle();
+    }
+
+    @Override
+    public Map<String, Integer> getModulesLineCount() {
+      return delegate.getModulesLineCount();
+    }
+
+    @Override
+    public List<Module> getModulesToCount() {
+      return delegate.getModulesToCount();
+    }
+
+    @Override
+    public void traceStartConflation(final long l) {
+      delegate.traceStartConflation(l);
+    }
+
+    @Override
+    public void traceEndConflation(final WorldView worldView) {
+      // do not call the delegated since there is no need when building block
+    }
+
+    @Override
+    public void traceStartBlock(
+        final WorldView worldView,
+        final BlockHeader blockHeader,
+        final BlockBody blockBody,
+        final Address miningBeneficiary) {
+      delegate.traceStartBlock(worldView, blockHeader, blockBody, miningBeneficiary);
+    }
+
+    @Override
+    public void traceStartBlock(
+        final WorldView worldView,
+        final ProcessableBlockHeader processableBlockHeader,
+        final Address miningBeneficiary) {
+      delegate.traceStartBlock(worldView, processableBlockHeader, miningBeneficiary);
+    }
+
+    @Override
+    public boolean isExtendedTracing() {
+      return delegate.isExtendedTracing();
+    }
+
+    @Override
+    public void tracePreExecution(final MessageFrame frame) {
+      delegate.tracePreExecution(frame);
+    }
+
+    @Override
+    public void tracePostExecution(
+        final MessageFrame frame, final Operation.OperationResult operationResult) {
+      delegate.tracePostExecution(frame, operationResult);
+    }
+
+    @Override
+    public void tracePrecompileCall(
+        final MessageFrame frame, final long gasRequirement, final Bytes output) {
+      delegate.tracePrecompileCall(frame, gasRequirement, output);
+    }
+
+    @Override
+    public void traceAccountCreationResult(
+        final MessageFrame frame, final Optional<ExceptionalHaltReason> haltReason) {
+      delegate.traceAccountCreationResult(frame, haltReason);
+    }
+
+    @Override
+    public void tracePrepareTransaction(final WorldView worldView, final Transaction transaction) {
+      delegate.tracePrepareTransaction(worldView, transaction);
+    }
+
+    @Override
+    public void traceStartTransaction(final WorldView worldView, final Transaction transaction) {
+      delegate.traceStartTransaction(worldView, transaction);
+    }
+
+    @Override
+    public void traceBeforeRewardTransaction(
+        final WorldView worldView, final Transaction tx, final Wei miningReward) {
+      delegate.traceBeforeRewardTransaction(worldView, tx, miningReward);
+    }
+
+    @Override
+    public void traceEndTransaction(
+        final WorldView worldView,
+        final Transaction tx,
+        final boolean status,
+        final Bytes output,
+        final List<Log> logs,
+        final long gasUsed,
+        final Set<Address> selfDestructs,
+        final long timeNs) {
+      delegate.traceEndTransaction(
+          worldView, tx, status, output, logs, gasUsed, selfDestructs, timeNs);
+    }
+
+    @Override
+    public void traceContextEnter(final MessageFrame frame) {
+      delegate.traceContextEnter(frame);
+    }
+
+    @Override
+    public void traceContextReEnter(final MessageFrame frame) {
+      delegate.traceContextReEnter(frame);
+    }
+
+    @Override
+    public void traceContextExit(final MessageFrame frame) {
+      delegate.traceContextExit(frame);
     }
   }
 }

@@ -2,6 +2,7 @@ package statemanager
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -72,7 +73,7 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		)
 	}
 
-	constantZero := verifiercol.NewConstantCol(field.Zero(), size)
+	constantZero := verifiercol.NewConstantCol(field.Zero(), size, "hub.acp_connection")
 
 	res := statesummary.HubColumnSet{
 		Address:             comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
@@ -96,7 +97,7 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		ValueLONext:         constantZero,
 		DeploymentNumber:    comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER"),
 		DeploymentNumberInf: comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER"),
-		BlockNumber:         comp.Columns.GetHandle("hub.acp_REL_BLK_NUM"),
+		BlockNumber:         comp.Columns.GetHandle("hub.acp_BLK_NUMBER"),
 		Exists:              comp.Columns.GetHandle("hub.acp_EXISTS"),
 		ExistsNew:           comp.Columns.GetHandle("hub.acp_EXISTS_NEW"),
 		PeekAtAccount:       comp.Columns.GetHandle("hub.acp_PEEK_AT_ACCOUNT"),
@@ -148,7 +149,7 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		)
 	}
 
-	constantZero := verifiercol.NewConstantCol(field.Zero(), size)
+	constantZero := verifiercol.NewConstantCol(field.Zero(), size, "hub.scp_connection")
 
 	res := statesummary.HubColumnSet{
 		Address:             comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
@@ -172,7 +173,7 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		ValueLONext:         comp.Columns.GetHandle("hub.scp_VALUE_NEXT_LO"),
 		DeploymentNumber:    comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
 		DeploymentNumberInf: comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
-		BlockNumber:         comp.Columns.GetHandle("hub.scp_REL_BLK_NUM"),
+		BlockNumber:         comp.Columns.GetHandle("hub.scp_BLK_NUMBER"),
 		Exists:              constantZero,
 		ExistsNew:           constantZero,
 		PeekAtAccount:       constantZero,
@@ -224,6 +225,7 @@ func assignHubAddresses(run *wizard.ProverRuntime) {
 		run.AssignColumn(
 			ifaces.ColID(fmt.Sprintf("HUB_%s_PROVER_SIDE_ADDRESS_IDENTIFIER", domainName)),
 			smartvectors.NewRegular(newVect),
+			wizard.DisableAssignmentSizeReduction,
 		)
 	}
 	// assign the addresses column in each of the submodules

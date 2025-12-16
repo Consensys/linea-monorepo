@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package linea.plugin.acc.test.rpc.linea;
 
@@ -21,7 +15,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.getAllServeEvents;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.request;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
@@ -29,11 +22,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static net.consensys.linea.bundles.BundleForwarder.RETRY_COUNT_HEADER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +33,10 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.matching.MatchResult;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.TransferTransaction;
@@ -68,6 +60,20 @@ public class ForwardBundleTest extends AbstractSendBundleTest {
         .set(
             "--plugin-linea-bundles-forward-timeout=",
             String.valueOf(Duration.ofSeconds(1).toMillis()))
+        /**
+         * If we use default retry delay of 1000ms, we get forwardIsRetriedAfterTimeout flakiness
+         * because of the following race condition: t = 0s -> bundle sent; t = 1s -> bundle
+         * forwarder timeout; t = 2s -> bundle retry + verifyRequestForwarded timeout
+         *
+         * <p>The race condition is between bundle retry and verifyRequestForwarded timeout. If
+         * verifyRequestForwarded times out before the bundle retry is completed, the test will fail
+         *
+         * <p>We set retry delay to 900ms to avoid this race condition such that t = 1.9s -> bundle
+         * retry; t = 2.0s -> verifyRequestForwarded timeout
+         */
+        .set(
+            "--plugin-linea-bundles-forward-retry-delay=",
+            String.valueOf(Duration.ofMillis(900).toMillis()))
         .build();
   }
 

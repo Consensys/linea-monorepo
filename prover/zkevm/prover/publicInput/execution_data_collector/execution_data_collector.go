@@ -3,14 +3,14 @@ package execution_data_collector
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
@@ -205,11 +205,16 @@ type ExecutionDataCollector struct {
 	// SelectorAbsTxIDDiff[i]=1 if (edc.AbsTxID[i]=edc.AbsTxID[i+1]), used to enforce constant constraints inside a transaction segment.
 	SelectorAbsTxIDDiff        ifaces.Column
 	ComputeSelectorAbsTxIDDiff wizard.ProverAction
+
+	// the following two columns are used to detect blocks that have zero user transactions
+	// which is a special edge case that needs to be handled separately.
+	SelectorBlockHasZeroUserTx        ifaces.Column
+	ComputeSelectorBlockHasZeroUserTx wizard.ProverAction
 }
 
 // NewExecutionDataCollector instantiates an ExecutionDataCollector with unconstrained columns.
-func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) ExecutionDataCollector {
-	res := ExecutionDataCollector{
+func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) *ExecutionDataCollector {
+	return &ExecutionDataCollector{
 		BlockID:                util.CreateCol(name, "BLOCK_ID", size, comp),
 		AbsTxID:                util.CreateCol(name, "ABS_TX_ID", size, comp),
 		AbsTxIDMax:             util.CreateCol(name, "ABS_TX_ID_MAX", size, comp),
@@ -232,9 +237,8 @@ func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) 
 		HashNum:                util.CreateCol(name, "HASH_NUM", size, comp),
 		EndOfRlpSegment:        util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
 		TotalBytesCounter:      util.CreateCol(name, "TOTAL_BYTES_COUNTER", size, comp),
-		FinalTotalBytesCounter: util.CreateCol(name, "FINAL_TOTAL_BYTES_COUNTER", 1, comp),
+		FinalTotalBytesCounter: util.CreateCol(name, "FINAL_TOTAL_BYTES_COUNTER", size, comp),
 	}
-	return res
 }
 
 // GetSummarySize estimates a necessary upper bound on the ExecutionDataCollector columns
@@ -358,6 +362,10 @@ func DefineAbsTxIdCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDat
 				edc.SelectorEndOfAllTx,
 			), // not at the end of all blocks
 			sym.Sub(
+				1,
+				edc.SelectorBlockHasZeroUserTx, // we do not have RLP segments when the block has no transactions
+			),
+			sym.Sub(
 				column.Shift(edc.AbsTxID, 1),
 				edc.AbsTxID,
 			),
@@ -443,6 +451,7 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	// From IsBlockHashLo[i]=1, we can only transition to IsAddrHi[i+1]=1 on the next row.
 	// The converse direction does not necessarily hold,
 	// we do NOT have that IsAddrHi[i+1]=1 implies that IsBlockHashLo[i]=1.
+	// special case: if the block has zero user transactions, we transition directly from IsBlockHashLo to IsNoTx
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_BLOCKHASH_LO_TO_IS_ADDR_HI", name),
 		sym.Mul(
@@ -450,6 +459,13 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 			sym.Sub(
 				column.Shift(edc.IsBlockHashLo, -1),
 				edc.IsAddrHi,
+			),
+			// add the special case indicator
+			// the constraints above should only be active when the current block has user transactions
+			// and is not empty
+			sym.Sub(
+				1,
+				column.Shift(edc.SelectorBlockHasZeroUserTx, -4), // if this selector is 0, the enclosing term becomes 1
 			),
 		),
 	)
@@ -542,10 +558,31 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_IS_TX_RLP_DIRECTLY_TO_IS_INACTIVE_GLOBAL_CONSTRAINT", name),
 		sym.Mul(
-			edc.SelectorEndOfAllTx,        // 1 at the very last transaction, in the last block
-			edc.EndOfRlpSegment,           // 1 at the end of RLP segment for the current transaction
-			edc.IsTxRLP,                   // 1 inside the RLP segment
+			edc.SelectorEndOfAllTx, // 1 at the very last transaction, in the last block
+			edc.EndOfRlpSegment,    // 1 at the end of RLP segment for the current transaction
+			edc.IsTxRLP,            // 1 inside the RLP segment
+			// either of the ones below must be 0
 			column.Shift(edc.IsActive, 1), // all the above forces isActive to be 0 on the next position
+			// or we have that
+			column.Shift(edc.TotalNoTxBlock, 1), // the next block is empty
+		),
+	)
+
+	// special case: if the block has zero user transactions, we transition directly from IsBlockHashLo to IsNoTx
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%s_BLOCKHASH_LO_TO_IS_NO_TX_FOR_EMPTY_BLOCKS", name),
+		sym.Mul(
+			edc.IsActive,                        // constraint below only valid if we are still in the active part of the collector
+			column.Shift(edc.IsBlockHashLo, -1), // this constraint says if IsBlockHashLo[i-1] = 1 then ....
+			sym.Sub(
+				// this term enforces that IsBlockHashLo[i-1] = 1 must be equal to IsNoTx = 1 (when the other outside conditions are true)
+				column.Shift(edc.IsBlockHashLo, -1),
+				edc.IsNoTx,
+			),
+			// add the special case indicator
+			// the constraints above should only be active when the current block has NO user transactions
+			// and is empty
+			column.Shift(edc.SelectorBlockHasZeroUserTx, -4), // if this selector is 1, then there are no user transactions in the block
 		),
 	)
 }
@@ -562,6 +599,13 @@ func DefineIndicatorConverseOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCo
 			sym.Sub(
 				edc.IsTxRLP,
 				column.Shift(edc.IsNoTx, 1),
+			), // either this term is 0, or we are in the next edge case
+			sym.Mul(
+				column.Shift(edc.SelectorBlockHasZeroUserTx, -3), // if this selector is 1, then there are no user transactions in the block
+				sym.Sub( // IsBlockHashLo is equal to isNoTx[i+1] because we had an empty block
+					edc.IsBlockHashLo,
+					column.Shift(edc.IsNoTx, 1),
+				),
 			),
 		),
 	)
@@ -593,7 +637,7 @@ func DefineIndicatorConverseOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCo
 			),
 		),
 	)
-	// isActive[i+1]=0 and isActive[i]=1 ->IsTxRLP[i]=1
+	// isActive[i+1]=0 and isActive[i]=1 -> (either IsTxRLP[i]=1 or isBlockHashLo[i]=1)
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_CONVERSE_IS_ACTIVE_TO_IS_TX_RLP", name),
 		sym.Mul(
@@ -602,6 +646,10 @@ func DefineIndicatorConverseOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCo
 			sym.Sub(
 				1,
 				column.Shift(edc.IsTxRLP, -1),
+			),
+			sym.Sub( // or we were in an ampty block and transitioned directly from IsBlockHashLo
+				1,
+				column.Shift(edc.IsBlockHashLo, -1),
 			),
 		),
 	)
@@ -788,7 +836,7 @@ func DefineNumberOfBytesConstraints(comp *wizard.CompiledIOP, edc *ExecutionData
 func ProjectionQueries(comp *wizard.CompiledIOP,
 	edc *ExecutionDataCollector,
 	name string,
-	timestamps fetch.TimestampFetcher,
+	timestamps *fetch.TimestampFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher) {
@@ -809,14 +857,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.LastAbsTxIDBlock,
 	}
 
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_BLOCK_METADATA_PROJECTION", name),
-		edcMetadataTable,
-		metadataTable,
-		edc.IsNoTx, // We filter on rows where the blockdata is loaded.
-		metadata.FilterFetched,
-	)
-
+		query.ProjectionInput{ColumnA: edcMetadataTable,
+			ColumnB: metadataTable,
+			FilterA: edc.IsNoTx, // We filter on rows where the blockdata is loaded.
+			FilterB: metadata.FilterFetched})
 	// Because we filtered on edc.IsNoTx=1, we also ensure that FirstAbsTxIDBlock and LastAbsTxIDBlock
 	// remain constant in the DefineConstantConstraints function.
 	// we do not need to also check the constancy of TotalNoTxBlock, as it is only used when IsNoTx=1
@@ -834,13 +880,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.UnalignedLimb,
 	}
 
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_TIMESTAMP_PROJECTION", name),
-		edcTimestamps,
-		timestampTable,
-		edc.IsTimestamp, // filter on IsTimestamp=1
-		timestamps.FilterFetched,
-	)
+		query.ProjectionInput{ColumnA: edcTimestamps,
+			ColumnB: timestampTable,
+			FilterA: edc.IsTimestamp, // filter on IsTimestamp=1
+			FilterB: timestamps.FilterFetched})
 
 	// Prepare a projection query to the TxnData fetcher, to check the Hi part of the sender address.
 	// compute the fetcher table, directly tied to the arithmetization.
@@ -856,13 +901,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.UnalignedLimb,
 	}
 
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_SENDER_ADDRESS_HI_PROJECTION", name),
-		edcTxnSenderAddressTableHi,
-		txnDataTableHi,
-		edc.IsAddrHi, // filter on IsAddrHi=1
-		txnData.FilterFetched,
-	)
+		query.ProjectionInput{ColumnA: edcTxnSenderAddressTableHi,
+			ColumnB: txnDataTableHi,
+			FilterA: edc.IsAddrHi, // filter on IsAddrHi=1
+			FilterB: txnData.FilterFetched})
 
 	// Prepare the projection query to the TxnData fetcher, to check the Lo part of the sender address.
 	// compute the fetcher table, directly tied to the arithmetization.
@@ -878,13 +922,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		edc.UnalignedLimb,
 	}
 
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_SENDER_ADDRESS_LO_PROJECTION", name),
-		edcTxnSenderAddressTableLo,
-		txnDataTableLo,
-		edc.IsAddrLo, // filter on IsAddrLo=1
-		txnData.FilterFetched,
-	)
+		query.ProjectionInput{ColumnA: edcTxnSenderAddressTableLo,
+			ColumnB: txnDataTableLo,
+			FilterA: edc.IsAddrLo, // filter on IsAddrLo=1
+			FilterB: txnData.FilterFetched})
 
 	// Prepare the projection query to the RlpTxn fetcher, to check:
 	// AbsTxNum, AbsTxNumMax, Limb, NBytes and EndOfRlpSegment.
@@ -907,13 +950,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		// EndOfRlpSegment is also constrained in DefineZeroizationConstraints, with respect to IsActive.
 	}
 
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_RLP_LIMB_DATA_PROJECTION", name),
-		edcRlpDataTable,
-		rlpDataTable,
-		edc.IsTxRLP, // filter on IsTxRLP=1
-		rlp.FilterFetched,
-	)
+		query.ProjectionInput{ColumnA: edcRlpDataTable,
+			ColumnB: rlpDataTable,
+			FilterA: edc.IsTxRLP, // filter on IsTxRLP=1
+			FilterB: rlp.FilterFetched})
 }
 
 // LookupQueries computes lookup queries to the BlockTxnMetadata arithmetization fetcher:
@@ -938,7 +980,7 @@ func LookupQueries(comp *wizard.CompiledIOP,
 	}
 
 	comp.InsertInclusionDoubleConditional(0,
-		ifaces.QueryIDf("%s_BLOCK_METADATA_PROJECTION", name),
+		ifaces.QueryIDf("%s_BLOCK_METADATA_DOUBLE_CONDITIONAL_LOOKUP", name),
 		metadataTable,    // including table
 		edcMetadataTable, // included table
 		metadata.FilterFetched,
@@ -970,7 +1012,7 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 			edc.AbsTxID,
 			edc.LastAbsTxIDBlock,
 		),
-	)
+	).GetColumnAndProverAction()
 
 	edc.SelectorEndOfAllTx, edc.ComputeSelectorEndOfAllTx = dedicated.IsZero(
 		comp,
@@ -978,7 +1020,7 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 			edc.AbsTxID,
 			edc.AbsTxIDMax,
 		),
-	)
+	).GetColumnAndProverAction()
 
 	edc.SelectorBlockDiff, edc.ComputeSelectorBlockDiff = dedicated.IsZero(
 		comp,
@@ -986,7 +1028,7 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 			edc.BlockID,
 			column.Shift(edc.BlockID, 1),
 		),
-	)
+	).GetColumnAndProverAction()
 
 	edc.SelectorAbsTxIDDiff, edc.ComputeSelectorAbsTxIDDiff = dedicated.IsZero(
 		comp,
@@ -994,7 +1036,12 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 			edc.AbsTxID,
 			column.Shift(edc.AbsTxID, 1),
 		),
-	)
+	).GetColumnAndProverAction()
+
+	edc.SelectorBlockHasZeroUserTx, edc.ComputeSelectorBlockHasZeroUserTx = dedicated.IsZero(
+		comp,
+		ifaces.ColumnAsVariable(edc.TotalNoTxBlock),
+	).GetColumnAndProverAction()
 
 	// edc.EndOfRlpSegment is partially constrained in the projection queries, on areas where edc.IsTxRLP = 1
 	// it is also constrained in DefineZeroizationConstraints.
@@ -1048,12 +1095,9 @@ func DefineTotalBytesCounterConstraints(comp *wizard.CompiledIOP, edc *Execution
 		),
 	)
 
-	// set the FinalTotalBytesCounter as public for accessors
-	comp.Columns.SetStatus(edc.FinalTotalBytesCounter.GetColID(), column.Proof)
-	// get accessors
-	accessor := accessors.NewFromPublicColumn(edc.FinalTotalBytesCounter, 0)
 	// enforce that FinalTotalBytesCounter contains the last value of TotalBytesCounter on the active part.
-	util.CheckLastELemConsistency(comp, edc.IsActive, edc.TotalBytesCounter, accessor, name)
+	util.CheckLastELemConsistency(comp, edc.IsActive, edc.TotalBytesCounter, edc.FinalTotalBytesCounter, name)
+	commonconstraints.MustBeConstant(comp, edc.FinalTotalBytesCounter)
 }
 
 // DefineCounterConstraints enforces counter constraints for BlockId, AbsTxId and Ct.
@@ -1201,7 +1245,7 @@ func DefineIsActiveConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 	edc *ExecutionDataCollector,
 	name string,
-	timestamps fetch.TimestampFetcher,
+	timestamps *fetch.TimestampFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher) {
@@ -1249,8 +1293,8 @@ func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 // the arithmetizationfetchers fetch.TimestampFetcher, fetch.BlockTxnMetadata,
 // fetch.TxnDataFetcher, and fetch.RlpTxnFetcher.
 func AssignExecutionDataCollector(run *wizard.ProverRuntime,
-	edc ExecutionDataCollector,
-	timestamps fetch.TimestampFetcher,
+	edc *ExecutionDataCollector,
+	timestamps *fetch.TimestampFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher,
@@ -1318,42 +1362,48 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			genericLoadFunction(loadBlockHashLo, fetchedBlockhashLo)
 			totalCt++
 
-			// iterate through transactions
-			for txIdInBlock := uint64(1); txIdInBlock <= totalTxBlock; txIdInBlock++ {
+			if fetchNoTx.IsZero() {
+				// there are no user transactions in this block
+				// we skip to the next block
+				continue
+			} else {
+				// iterate through transactions
+				for txIdInBlock := uint64(1); txIdInBlock <= totalTxBlock; txIdInBlock++ {
 
-				// load the sender address Hi
-				fetchedAddrHi := txnData.FromHi.GetColAssignmentAt(run, absTxCt-1)
-				vect.IsAddrHi[totalCt].SetOne()
-				vect.NoBytes[totalCt].SetInt64(noBytesSenderAddrHi)
-				genericLoadFunction(loadSenderAddrHi, fetchedAddrHi)
-				totalCt++
-
-				// load the sender address Lo
-				fetchedAddrLo := txnData.FromLo.GetColAssignmentAt(run, absTxCt-1)
-				vect.IsAddrLo[totalCt].SetOne()
-				vect.NoBytes[totalCt].SetInt64(noBytesSenderAddrLo)
-				genericLoadFunction(loadSenderAddrLo, fetchedAddrLo)
-				totalCt++
-
-				// load the RLP limbs
-				currentAbsTxId := field.NewElement(uint64(absTxCt))
-				rlpPointerAbsTxId := rlp.AbsTxNum.GetColAssignmentAt(run, rlpCt)
-				// add RLP limbs (multiple limbs)
-				for currentAbsTxId.Equal(&rlpPointerAbsTxId) {
-					// while currentAbsTxId is equal to rlpPointerAbsTxId, namely we are parsing the limbs for the same AbsTxID
-					rlpLimb := rlp.Limb.GetColAssignmentAt(run, rlpCt)
-					rlpNBytes := rlp.NBytes.GetColAssignmentAt(run, rlpCt)
-					vect.IsTxRLP[totalCt].SetOne()
-					vect.NoBytes[totalCt].Set(&rlpNBytes)
-					genericLoadFunction(loadRlp, rlpLimb)
+					// load the sender address Hi
+					fetchedAddrHi := txnData.FromHi.GetColAssignmentAt(run, absTxCt-1)
+					vect.IsAddrHi[totalCt].SetOne()
+					vect.NoBytes[totalCt].SetInt64(noBytesSenderAddrHi)
+					genericLoadFunction(loadSenderAddrHi, fetchedAddrHi)
 					totalCt++
 
-					rlpCt++
-					rlpPointerAbsTxId = rlp.AbsTxNum.GetColAssignmentAt(run, rlpCt)
+					// load the sender address Lo
+					fetchedAddrLo := txnData.FromLo.GetColAssignmentAt(run, absTxCt-1)
+					vect.IsAddrLo[totalCt].SetOne()
+					vect.NoBytes[totalCt].SetInt64(noBytesSenderAddrLo)
+					genericLoadFunction(loadSenderAddrLo, fetchedAddrLo)
+					totalCt++
+
+					// load the RLP limbs
+					currentAbsTxId := field.NewElement(uint64(absTxCt))
+					rlpPointerAbsTxId := rlp.AbsTxNum.GetColAssignmentAt(run, rlpCt)
+					// add RLP limbs (multiple limbs)
+					for currentAbsTxId.Equal(&rlpPointerAbsTxId) {
+						// while currentAbsTxId is equal to rlpPointerAbsTxId, namely we are parsing the limbs for the same AbsTxID
+						rlpLimb := rlp.Limb.GetColAssignmentAt(run, rlpCt)
+						rlpNBytes := rlp.NBytes.GetColAssignmentAt(run, rlpCt)
+						vect.IsTxRLP[totalCt].SetOne()
+						vect.NoBytes[totalCt].Set(&rlpNBytes)
+						genericLoadFunction(loadRlp, rlpLimb)
+						totalCt++
+
+						rlpCt++
+						rlpPointerAbsTxId = rlp.AbsTxNum.GetColAssignmentAt(run, rlpCt)
+					}
+					vect.EndOfRlpSegment[totalCt-1].SetOne()
+					// increase transaction counter
+					absTxCt++
 				}
-				vect.EndOfRlpSegment[totalCt-1].SetOne()
-				// increase transaction counter
-				absTxCt++
 			}
 
 		} else {
@@ -1373,11 +1423,12 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 	edc.ComputeSelectorLastTxBlock.Run(run)
 	edc.ComputeSelectorEndOfAllTx.Run(run)
 	edc.ComputeSelectorAbsTxIDDiff.Run(run)
+	edc.ComputeSelectorBlockHasZeroUserTx.Run(run)
 }
 
 // AssignExecutionDataColumns uses the helper struct ExecutionDataCollectorVectors to assign the columns of
 // the ExecutionDataCollector
-func AssignExecutionDataColumns(run *wizard.ProverRuntime, edc ExecutionDataCollector, vect *ExecutionDataCollectorVectors) {
+func AssignExecutionDataColumns(run *wizard.ProverRuntime, edc *ExecutionDataCollector, vect *ExecutionDataCollectorVectors) {
 	run.AssignColumn(edc.BlockID.GetColID(), smartvectors.NewRegular(vect.BlockID))
 	run.AssignColumn(edc.AbsTxID.GetColID(), smartvectors.NewRegular(vect.AbsTxID))
 	run.AssignColumn(edc.Limb.GetColID(), smartvectors.NewRegular(vect.Limb))
@@ -1400,5 +1451,5 @@ func AssignExecutionDataColumns(run *wizard.ProverRuntime, edc ExecutionDataColl
 	run.AssignColumn(edc.FirstAbsTxIDBlock.GetColID(), smartvectors.NewRegular(vect.FirstAbsTxIDBlock))
 	run.AssignColumn(edc.LastAbsTxIDBlock.GetColID(), smartvectors.NewRegular(vect.LastAbsTxIDBlock))
 	run.AssignColumn(edc.TotalBytesCounter.GetColID(), smartvectors.NewRegular(vect.TotalBytesCounter))
-	run.AssignColumn(edc.FinalTotalBytesCounter.GetColID(), smartvectors.NewRegular([]field.Element{vect.FinalTotalBytesCounter}))
+	run.AssignColumn(edc.FinalTotalBytesCounter.GetColID(), smartvectors.NewConstant(vect.FinalTotalBytesCounter, len(vect.BlockID)))
 }

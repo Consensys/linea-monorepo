@@ -1,20 +1,15 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.sequencer.txselection;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -26,13 +21,12 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
-
-import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
@@ -41,9 +35,9 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -67,19 +61,18 @@ class LineaTransactionSelectorFactoryTest {
 
   private static final Address BRIDGE_CONTRACT =
       Address.fromHexString("0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec");
-  private static final Bytes BRIDGE_LOG_TOPIC =
-      Bytes.fromHexString("e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c");
+  private static final Bytes32 BRIDGE_LOG_TOPIC =
+      Bytes32.fromHexString("e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c");
 
   private BlockchainService mockBlockchainService;
   private LineaTransactionSelectorConfiguration mockTxSelectorConfiguration;
   private LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
   private LineaProfitabilityConfiguration mockProfitabilityConfiguration;
-  private Map<String, Integer> lineCountLimits;
   private BesuEvents mockEvents;
   private LineaLimitedBundlePool bundlePool;
-  private BundlePoolService mockBundlePool;
   private LineaTracerConfiguration lineaTracerConfiguration;
   private LineaTransactionSelectorFactory factory;
+  private InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
 
   @TempDir static Path tempDir;
   @TempDir Path dataDir;
@@ -99,19 +92,26 @@ class LineaTransactionSelectorFactoryTest {
     lineaTracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
+            .moduleLimitsMap(
+                new HashMap<>(
+                    ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
+            .isLimitless(false)
             .build();
-    lineCountLimits =
-        new HashMap<>(ModuleLineCountValidator.createLimitModules(lineaTracerConfiguration));
 
-    mockBlockchainService = mock(BlockchainService.class);
+    mockBlockchainService = mock(BlockchainService.class, RETURNS_DEEP_STUBS);
     when(mockBlockchainService.getChainId()).thenReturn(Optional.of(BigInteger.ONE));
     when(mockBlockchainService.getNextBlockBaseFee()).thenReturn(Optional.of(Wei.of(7)));
+    when(mockBlockchainService.getChainHeadHeader().getTimestamp()).thenReturn(1753867173L);
+    when(mockBlockchainService.getNextBlockHardforkId(any(), anyLong()))
+        .thenReturn(HardforkId.MainnetHardforkId.LONDON);
+
     mockTxSelectorConfiguration = mock(LineaTransactionSelectorConfiguration.class);
     l1L2BridgeConfiguration =
         new LineaL1L2BridgeSharedConfiguration(BRIDGE_CONTRACT, BRIDGE_LOG_TOPIC);
     mockProfitabilityConfiguration = mock(LineaProfitabilityConfiguration.class);
     mockEvents = mock(BesuEvents.class);
     bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096, mockEvents, mockBlockchainService));
+    invalidTransactionByLineCountCache = new InvalidTransactionByLineCountCache(10);
 
     factory =
         new LineaTransactionSelectorFactory(
@@ -120,10 +120,13 @@ class LineaTransactionSelectorFactoryTest {
             l1L2BridgeConfiguration,
             mockProfitabilityConfiguration,
             lineaTracerConfiguration,
-            lineCountLimits,
             Optional.empty(),
             Optional.empty(),
-            bundlePool);
+            Optional.empty(),
+            bundlePool,
+            invalidTransactionByLineCountCache,
+            new AtomicReference<>(Collections.emptyMap()),
+            new AtomicReference<>(Collections.emptyMap()));
     factory.create(new SelectorsStateManager());
   }
 
@@ -185,7 +188,8 @@ class LineaTransactionSelectorFactoryTest {
         Optional.empty(),
         Optional.empty(),
         Optional.empty(),
-        Optional.empty());
+        Optional.empty(),
+        false);
   }
 
   static class FailedTransactionSelectionResultProvider implements ArgumentsProvider {

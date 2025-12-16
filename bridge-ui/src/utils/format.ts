@@ -1,4 +1,5 @@
-import { formatDate, fromUnixTime } from "date-fns";
+import { fromUnixTime } from "date-fns/fromUnixTime";
+import { formatDate } from "date-fns/format";
 import { Address, getAddress } from "viem";
 import { isUndefinedOrEmptyString } from "@/utils";
 
@@ -56,4 +57,19 @@ export const safeGetAddress = (address: Address | null): string | null => {
  */
 export const formatTimestamp = (timestamp: number, formatStr: string) => {
   return formatDate(fromUnixTime(timestamp), formatStr);
+};
+
+/**
+ * Shorten address
+ * @param string
+ * @param startLength
+ * @param endLength
+ * @returns
+ */
+export const shortenAddress = (string: string | undefined, startLength = 6, endLength = 4) => {
+  if (string === null || string === undefined) return undefined;
+
+  if (string.length <= startLength + endLength) return string;
+
+  return string.slice(0, startLength) + "..." + string.slice(-endLength);
 };

@@ -9,6 +9,10 @@ import {
   L2MessageServiceV1__factory as L2MessageService__factory,
   LineaRollupV6,
   LineaRollupV6__factory,
+  LineaSequencerUptimeFeed,
+  LineaSequencerUptimeFeed__factory,
+  OpcodeTester,
+  OpcodeTester__factory,
   ProxyAdmin,
   ProxyAdmin__factory,
   SparseMerkleProof,
@@ -81,6 +85,13 @@ export default class TestSetup {
       return undefined;
     }
     return this.config.L2.besuNodeRpcUrl;
+  }
+
+  public getL2BesuFollowerNodeEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
+    return this.config.L2.besuFollowerNodeRpcUrl;
   }
 
   public getTransactionExclusionEndpoint(): URL | undefined {
@@ -233,6 +244,19 @@ export default class TestSetup {
     return SparseMerkleProof__factory.connect(this.config.L2.l2SparseMerkleProofAddress, this.getL2Provider());
   }
 
+  public getL2LineaSequencerUptimeFeedContract(signer?: Wallet): LineaSequencerUptimeFeed {
+    const livenessContract = LineaSequencerUptimeFeed__factory.connect(
+      this.config.L2.l2LineaSequencerUptimeFeedAddress,
+      this.getL2Provider(),
+    );
+
+    if (signer) {
+      return livenessContract.connect(signer);
+    }
+
+    return livenessContract;
+  }
+
   public getL1AccountManager(): AccountManager {
     return this.config.L1.accountManager;
   }
@@ -245,13 +269,27 @@ export default class TestSetup {
     return this.config.L1.dummyContractAddress;
   }
 
+  public getL2OpcodeTesterContract(signer?: Wallet): OpcodeTester {
+    const opcodeTester: OpcodeTester = OpcodeTester__factory.connect(
+      this.config.L2.opcodeTesterAddress,
+      this.getL2Provider(),
+    );
+
+    if (signer) {
+      return opcodeTester.connect(signer);
+    }
+
+    return opcodeTester;
+  }
+
   private isLocalL2Config(config: L2Config): config is LocalL2Config {
     return (
       (config as LocalL2Config).besuNodeRpcUrl !== undefined &&
       (config as LocalL2Config).sequencerEndpoint !== undefined &&
       (config as LocalL2Config).shomeiEndpoint !== undefined &&
       (config as LocalL2Config).shomeiFrontendEndpoint !== undefined &&
-      (config as LocalL2Config).transactionExclusionEndpoint !== undefined
+      (config as LocalL2Config).transactionExclusionEndpoint !== undefined &&
+      (config as LocalL2Config).opcodeTesterAddress !== undefined
     );
   }
 }

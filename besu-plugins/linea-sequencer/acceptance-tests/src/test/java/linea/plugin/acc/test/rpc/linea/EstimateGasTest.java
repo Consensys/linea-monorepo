@@ -1,22 +1,18 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package linea.plugin.acc.test.rpc.linea;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static net.consensys.linea.bl.TransactionProfitabilityCalculator.getCompressedTxSize;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URI;
@@ -27,9 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
-import linea.plugin.acc.test.LineaPluginTestBase;
+import linea.plugin.acc.test.LineaPluginPoSTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
@@ -51,7 +45,7 @@ import org.junit.jupiter.api.Test;
 import org.web3j.protocol.core.Request;
 import org.web3j.protocol.http.HttpService;
 
-public class EstimateGasTest extends LineaPluginTestBase {
+public class EstimateGasTest extends LineaPluginPoSTestBase {
   protected static final int FIXED_GAS_COST_WEI = 0;
   protected static final int VARIABLE_GAS_COST_WEI = 1_000_000_000;
   protected static final double MIN_MARGIN = 1.0;
@@ -241,9 +235,11 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
     assertThat(respLinea.hasError()).isTrue();
     assertThat(respLinea.getError().getCode()).isEqualTo(-32004);
+    // 0x1234000001 ~= 0x1234 * 16_777_216 (tx gas limit as of Osaka -
+    // https://eips.ethereum.org/EIPS/eip-7825)
     assertThat(respLinea.getError().getMessage())
         .isEqualTo(
-            "Upfront cost exceeds account balance (transaction up-front cost 0x208cbab601 exceeds transaction sender account balance 0x0)");
+            "Upfront cost exceeds account balance (transaction up-front cost 0x1234000001 exceeds transaction sender account balance 0x0)");
   }
 
   @Test
@@ -351,6 +347,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
 
     final var profitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
 
+    final int compressedSize = getCompressedTxSize(tx);
     assertThat(
             profitabilityCalculator.isProfitable(
                 "Test",
@@ -359,7 +356,8 @@ public class EstimateGasTest extends LineaPluginTestBase {
                 baseFee,
                 estimatedMaxGasPrice,
                 estimatedGasLimit,
-                minGasPrice))
+                minGasPrice,
+                compressedSize))
         .isTrue();
   }
 
@@ -402,7 +400,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
                 null,
                 null));
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
-    assertThat(respLinea.getCode()).isEqualTo(-32000);
+    assertThat(respLinea.getCode()).isEqualTo(3);
     assertThat(respLinea.getMessage()).isEqualTo("Execution reverted");
     assertThat(respLinea.getData()).isEqualTo("\"0x\"");
   }

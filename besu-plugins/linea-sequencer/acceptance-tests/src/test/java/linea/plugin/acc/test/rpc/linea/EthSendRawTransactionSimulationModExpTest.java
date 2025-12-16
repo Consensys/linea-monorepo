@@ -1,25 +1,17 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package linea.plugin.acc.test.rpc.linea;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.web3j.crypto.Hash.sha3;
 
 import java.util.List;
-
-import linea.plugin.acc.test.LineaPluginTestBase;
+import linea.plugin.acc.test.LineaPluginPoSTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
@@ -27,7 +19,7 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.utils.Numeric;
 
-public class EthSendRawTransactionSimulationModExpTest extends LineaPluginTestBase {
+public class EthSendRawTransactionSimulationModExpTest extends LineaPluginPoSTestBase {
 
   @Override
   public List<String> getTestCliOptions() {
@@ -60,37 +52,6 @@ public class EthSendRawTransactionSimulationModExpTest extends LineaPluginTestBa
       assertThat(resp.hasError()).isFalse();
 
       minerNode.verify(eth.expectSuccessfulTransactionReceipt(resp.getTransactionHash()));
-    }
-  }
-
-  @Test
-  public void invalidModExpCallsAreRejected() throws Exception {
-    final var modExp = deployModExp();
-
-    final Bytes[] invalidInputs = {
-      Bytes.fromHexString("0000000000000000000000000000000000000000000000000000000000000201"),
-      Bytes.fromHexString("00000000000000000000000000000000000000000000000000000000000003"),
-      Bytes.fromHexString("ff"),
-      Bytes.fromHexString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
-    };
-
-    for (int i = 0; i < invalidInputs.length; i++) {
-
-      final var mulmodOverflow =
-          encodedCallModExp(modExp, accounts.getSecondaryBenefactor(), i, invalidInputs[i]);
-
-      final Web3j web3j = minerNode.nodeRequests().eth();
-      final EthSendTransaction resp =
-          web3j.ethSendRawTransaction(Numeric.toHexString(mulmodOverflow)).send();
-
-      assertThat(resp.hasError()).isTrue();
-      assertThat(resp.getError().getMessage())
-          .isEqualTo(
-              "Transaction "
-                  + Numeric.toHexString(sha3(mulmodOverflow))
-                  + " line count for module PRECOMPILE_MODEXP_EFFECTIVE_CALLS=2147483647 is above the limit 10000");
-
-      assertThat(getTxPoolContent()).isEmpty();
     }
   }
 }

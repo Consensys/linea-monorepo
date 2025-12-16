@@ -36,6 +36,16 @@ services:
       file: compose-spec-l1-services.yml
       service: l1-node-genesis-generator
 
+  l2-genesis-initialization:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: l2-genesis-initialization
+
+  maru:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: maru
+
   sequencer:
     extends:
       file: compose-spec-l2-services.yml
@@ -60,11 +70,6 @@ services:
     extends:
       file: compose-spec-l2-services.yml
       service: coordinator
-
-  web3signer:
-    extends:
-      file: compose-spec-l2-services.yml
-      service: web3signer
 
   postgres:
     extends:
