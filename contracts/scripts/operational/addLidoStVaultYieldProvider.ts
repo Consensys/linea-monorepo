@@ -22,6 +22,7 @@ import { ONE_ETHER } from "../../common/constants/general";
   npx hardhat addLidoStVaultYieldProvider \
     --yield-provider-factory <address> \
     --yield-manager <address> \
+    --yield-provider <address> \
     --linea-rollup <address> \
     --node-operator <address> \
     --security-council <address> \
@@ -34,6 +35,7 @@ import { ONE_ETHER } from "../../common/constants/general";
   Env var alternatives (used if CLI params omitted):
     YIELD_PROVIDER_FACTORY
     YIELD_MANAGER
+    YIELD_PROVIDER
     NODE_OPERATOR
     SECURITY_COUNCIL
     AUTOMATION_SERVICE_ADDRESS
@@ -45,6 +47,7 @@ import { ONE_ETHER } from "../../common/constants/general";
 task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYieldProvider")
   .addOptionalParam("yieldProviderFactory")
   .addOptionalParam("yieldManager")
+  .addOptionalParam("yieldProvider")
   .addOptionalParam("nodeOperator")
   .addOptionalParam("securityCouncil")
   .addOptionalParam("automationServiceAddress")
@@ -60,6 +63,7 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     // --- Resolve inputs from CLI or ENV (with sensible fallbacks to deployments) ---
     let yieldProviderFactory = getTaskCliOrEnvValue(taskArgs, "yieldProviderFactory", "YIELD_PROVIDER_FACTORY");
     let yieldManager = getTaskCliOrEnvValue(taskArgs, "yieldManager", "YIELD_MANAGER");
+    const yieldProvider = getTaskCliOrEnvValue(taskArgs, "yieldProvider", "YIELD_PROVIDER");
     const nodeOperator = getTaskCliOrEnvValue(taskArgs, "nodeOperator", "NODE_OPERATOR");
     const securityCouncil = getTaskCliOrEnvValue(taskArgs, "securityCouncil", "SECURITY_COUNCIL");
     const nodeOperatorFeeRaw = getTaskCliOrEnvValue(taskArgs, "nodeOperatorFee", "NODE_OPERATOR_FEE");
@@ -76,6 +80,7 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
 
     // --- Basic required fields check (adjust as needed) ---
     const missing: string[] = [];
+    if (!yieldProvider) missing.push("yieldProvider / YIELD_PROVIDER");
     if (!nodeOperator) missing.push("nodeOperator / NODE_OPERATOR");
     if (!securityCouncil) missing.push("securityCouncil / SECURITY_COUNCIL");
     if (!lineaRollup) missing.push("lineaRollup / LINEA_ROLLUP_ADDRESS");
@@ -92,18 +97,12 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     console.log("Params:");
     console.log("  lidoStVaultYieldProviderFactory:", yieldProviderFactory);
     console.log("  yieldManager:", yieldManager);
+    console.log("  yieldProvider:", yieldProvider);
     console.log("  nodeOperator:", nodeOperator);
     console.log("  securityCouncil:", securityCouncil);
     console.log("  nodeOperatorFee:", nodeOperatorFee.toString());
     console.log("  confirmExpiry:", confirmExpiry.toString());
     console.log("  lineaRollup:", lineaRollup);
-
-    // --- Create LidoStVaultYieldProvider factory (permissionless) ---
-    const factory = await ethers.getContractAt("LidoStVaultYieldProviderFactory", yieldProviderFactory, signer);
-    const yieldProvider = await factory.createLidoStVaultYieldProvider.staticCall();
-    const createYieldProviderTx = await factory.createLidoStVaultYieldProvider();
-    await createYieldProviderTx.wait();
-    console.log("Created LidoStVaultYieldProvider at ", yieldProvider);
 
     /********************************************************************
      *                Below here requires Security Council              *
@@ -123,7 +122,7 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
       confirmExpiry,
       roleAssignments: generateRoleAssignments(LIDO_DASHBOARD_OPERATIONAL_ROLES, yieldManager, []),
     });
-    const addYieldProviderTx = await yieldManagerContract.addYieldProvider(yieldProvider, yieldProviderInitData);
+    const addYieldProviderTx = await yieldManagerContract.addYieldProvider(yieldProvider!, yieldProviderInitData);
     await addYieldProviderTx.wait();
     console.log(`LidoStVaultYieldProvider address=${yieldProvider} added to YieldManager address=${yieldManager}`);
   });

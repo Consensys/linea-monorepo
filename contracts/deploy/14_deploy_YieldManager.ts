@@ -1,5 +1,4 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { ethers } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployFromFactory, deployUpgradableFromFactoryWithConstructorArgs } from "../scripts/hardhat/utils";
 import {
@@ -25,7 +24,7 @@ import { GI_FIRST_VALIDATOR_CURR, GI_FIRST_VALIDATOR_PREV, PIVOT_SLOT } from "co
 
 // Deploys YieldManager, ValidatorContainerProofVerifier and LidoStVaultYieldProviderFactory
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments } = hre;
+  const { deployments, ethers, getNamedAccounts } = hre;
 
   const contractName = "YieldManager";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
@@ -138,6 +137,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "contracts/yield/LidoStVaultYieldProviderFactory.sol:LidoStVaultYieldProviderFactory",
     [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifier],
   );
+
+  /********************************************************************
+   *                    LidoStVaultYieldProvider                      *
+   ********************************************************************/
+  const { deployer } = await getNamedAccounts();
+  const signer = await ethers.getSigner(deployer);
+  const factoryContract = await ethers.getContractAt("LidoStVaultYieldProviderFactory", factoryAddress, signer);
+  const yieldProvider = await factoryContract.createLidoStVaultYieldProvider.staticCall();
+  const createYieldProviderTx = await factoryContract.createLidoStVaultYieldProvider();
+  await createYieldProviderTx.wait();
+  console.log("Created LidoStVaultYieldProvider at ", yieldProvider);
 };
 
 export default func;
