@@ -171,7 +171,7 @@ tasks.register("fastReplayTests", Test) {
     includeTags("replay")
     excludeTags("nightly | weekly")
   }
-  finalizedBy(jacocoFastReplayTestsReport)
+  finalizedBy("jacocoFastReplayTestsReport")
 }
 
 tasks.register("nightlyReplayTests", Test) {
@@ -185,7 +185,7 @@ tasks.register("nightlyTests", Test) {
     includeTags("nightly")
     excludeTags("replay")
   }
-  finalizedBy(jacocoNightlyTestsReport)
+  finalizedBy("jacocoNightlyTestsReport")
 }
 
 tasks.register("weeklyTests", Test) {
@@ -193,21 +193,21 @@ tasks.register("weeklyTests", Test) {
         includeTags("weekly")
         excludeTags("replay")
   }
-  finalizedBy(jacocoWeeklyTestsReport)
+  finalizedBy("jacocoWeeklyTestsReport")
 }
 
 tasks.register("weeklyReplayTests", Test) {
   useJUnitPlatform {
         includeTags("weekly & replay")
   }
-  finalizedBy(jacocoWeeklyTestsReport)
+  finalizedBy("jacocoWeeklyTestsReport")
 }
 
 tasks.register("prcCallTests", Test) {
   useJUnitPlatform {
     includeTags("prc-calltests")
   }
-  finalizedBy(jacocoPrcCallTestsReport)
+  finalizedBy("jacocoPrcCallTestsReport")
 }
 
 // =============================================================================
