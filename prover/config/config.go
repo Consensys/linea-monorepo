@@ -102,6 +102,7 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
 	cfg.PublicInputInterconnection.BaseFee = uint64(cfg.Layer2.BaseFee)
+	cfg.PublicInputInterconnection.CoinBase = cfg.Layer2.CoinBase
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
 
 	return &cfg, nil
@@ -327,8 +328,8 @@ type PublicInput struct {
 	MockKeccakWizard bool           // for testing purposes only
 	ChainID          uint64         // duplicate from Config
 	BaseFee          uint64         // duplicate from Config
+	CoinBase         common.Address // duplicate from Config
 	L2MsgServiceAddr common.Address // duplicate from Config
-	// Coinbase         common.Address // duplicate from Config
 }
 
 type Debug struct {
