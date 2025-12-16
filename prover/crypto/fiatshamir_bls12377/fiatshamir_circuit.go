@@ -113,9 +113,7 @@ func (fs *GnarkFS) RandomField() zk.Octuplet {
 }
 
 func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
-
-	r := fs.RandomField()
-
+	r := fs.RandomField() // the safeguard update is called
 	res := gnarkfext.E4Gen{}
 	res.B0.A0 = r[0]
 	res.B0.A1 = r[1]
@@ -133,8 +131,8 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 	i := 0
 	res := make([]frontend.Variable, num)
 	for i < num {
+		// thake the remainder mod n of each limb
 		c := fs.RandomField()
-
 		for j := 0; j < 8; j++ {
 			b := apiGen.ToBinary(c[j])
 			res[i] = fs.api.FromBinary(b[:nbBits]...)

@@ -76,9 +76,7 @@ func (fs *FS) UpdateSV(sv smartvectors.SmartVector) {
 }
 
 func (fs *FS) RandomField() field.Octuplet {
-
-	r := fs.RandomFieldFrElmt()
-	// the safeguard update is called
+	r := fs.RandomFieldFrElmt() // the safeguard update is called
 	res := encoding.EncodeFrElementToOctuplet(r)
 	return res
 }
@@ -91,7 +89,6 @@ func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
 	for i < num {
 		// thake the remainder mod n of each limb
 		c := fs.RandomField()
-
 		for j := 0; j < 8; j++ {
 			b := c[j].Bits()
 			res[i] = int(b[0]) & mask

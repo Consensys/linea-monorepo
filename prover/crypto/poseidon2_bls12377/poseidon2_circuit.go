@@ -49,7 +49,7 @@ func (h *GnarkMDHasher) Reset() {
 }
 
 func (h *GnarkMDHasher) Write(data ...frontend.Variable) {
-	h.buffer = append(h.buffer, data[:]...)
+	h.buffer = append(h.buffer, data...)
 }
 
 func (h *GnarkMDHasher) WriteWVs(data ...zk.WrappedVariable) {

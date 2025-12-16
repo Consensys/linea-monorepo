@@ -44,9 +44,6 @@ func CheckStatement(linComb smartvectors.SmartVector, ys [][]fext.Element, x, al
 	alphaY := smartvectors.EvaluateFextPolyLagrange(linComb, x)
 	alphaYPrime := vortex.EvalFextPolyHorner(yJoined, alpha)
 
-	res := make([]fext.Element, linComb.Len())
-	linComb.WriteInSliceExt(res)
-
 	if alphaY != alphaYPrime {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
 	}
