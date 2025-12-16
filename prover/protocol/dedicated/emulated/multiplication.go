@@ -80,7 +80,8 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus Limbs, n
 	nbQuoBits += 1 // for possible carry
 	// compute the number of carry bits needed
 	nbCarryBits := nbQuoBits
-	nbQuoLimbs := max(0, utils.DivCeil(nbQuoBits, nbBitsPerLimb*len(modulus.Columns))+1) // we divide by modulus of nbLimbs size
+	nbQuoBits = max(0, nbQuoBits-len(modulus.Columns)*nbBitsPerLimb+1) // we divide by modulus of nbLimbs size
+	nbQuoLimbs := utils.DivCeil(nbQuoBits, nbBitsPerLimb)
 	result := Limbs{
 		Columns: make([]ifaces.Column, len(modulus.Columns)),
 	}
