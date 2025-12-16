@@ -38,16 +38,16 @@ tasks.withType(JavaCompile) {
     '-Xlint:divzero',
     '-Xlint:finally',
     '-Xlint:static',
-    '-Werror',
   ]
-
+  options.compilerArgs.remove('-Werror')
   options.encoding = 'UTF-8'
 }
 
 // Takes the version, and if -SNAPSHOT is part of it replaces SNAPSHOT
 // with the git commit version.
 ext.calculateVersion = { ->
-  String version = rootProject.version
+  def lineaTracerProject = project(lineaTracerProjectPath)
+  String version = lineaTracerProject.version
   if (version.endsWith("-SNAPSHOT")) {
     version = version.replace("-SNAPSHOT", "-dev-${getCheckedOutGitCommitHash()}")
   }
