@@ -18,6 +18,9 @@ package net.consensys.linea.zktracer.bytestheta;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+
 /**
  * Represents a BaseTheta data structure, which is an extension of BytesArray, with support for high
  * and low bytes' manipulation. It is organized as an array of 4 Bytes instances, each containing 8
@@ -67,8 +70,10 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
    *     sections of the `bytes32` instance variable.
    */
   @Override
-  public Bytes16 getHigh() {
-    return Bytes16.wrap(Bytes.concatenate(bytesArray[3], bytesArray[2]));
+  public Bytes getHigh() {
+    final Bytes output = Bytes.concatenate(bytesArray[3], bytesArray[2]);
+    checkArgument(output.size() == LLARGE, "output should be of size 16");
+    return output;
   }
 
   /**
@@ -79,8 +84,10 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
    *     sections of the `bytes32` instance variable.
    */
   @Override
-  public Bytes16 getLow() {
-    return Bytes16.wrap(Bytes.concatenate(bytesArray[1], bytesArray[0]));
+  public Bytes getLow() {
+    final Bytes output = Bytes.concatenate(bytesArray[1], bytesArray[0]);
+    checkArgument(output.size() == LLARGE, "output should be of size 16");
+    return output;
   }
 
   /**

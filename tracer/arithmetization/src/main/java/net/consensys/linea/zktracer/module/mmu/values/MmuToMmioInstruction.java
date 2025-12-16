@@ -19,6 +19,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import org.apache.tuweni.bytes.Bytes;
+
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.types.Utils.rightPadToBytes16;
 
 @Builder
 @Getter
@@ -31,6 +35,6 @@ public class MmuToMmioInstruction {
   private short sourceByteOffset;
   private long targetLimbOffset;
   private short targetByteOffset;
-  @Builder.Default private Bytes16 limb = Bytes16.ZERO;
+  @Builder.Default private Bytes limb = Bytes.repeat((byte) 0, LLARGE);
   private boolean targetLimbIsTouchedTwice;
 }

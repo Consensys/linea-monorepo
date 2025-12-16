@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.types;
 
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Utils.leftPadToBytes16;
 
 import java.math.BigInteger;
 
@@ -125,8 +126,8 @@ public final class EWord extends BaseUInt256Value<EWord> implements Quantity {
   public static EWord of(final BigInteger hiBigInt, final BigInteger loBigInt) {
     return EWord.of(
         Bytes.concatenate(
-            Bytes16.leftPad(bigIntegerToBytes(hiBigInt)),
-            Bytes16.leftPad(bigIntegerToBytes(loBigInt))));
+            leftPadToBytes16(bigIntegerToBytes(hiBigInt)),
+            leftPadToBytes16(bigIntegerToBytes(loBigInt))));
   }
 
   /**
@@ -137,7 +138,7 @@ public final class EWord extends BaseUInt256Value<EWord> implements Quantity {
    * @return the EVM word
    */
   public static EWord of(final Bytes hi, final Bytes lo) {
-    return EWord.of(Bytes.concatenate(Bytes16.leftPad(hi), Bytes16.leftPad(lo)));
+    return EWord.of(Bytes.concatenate(leftPadToBytes16(hi), leftPadToBytes16(lo)));
   }
 
   @Override

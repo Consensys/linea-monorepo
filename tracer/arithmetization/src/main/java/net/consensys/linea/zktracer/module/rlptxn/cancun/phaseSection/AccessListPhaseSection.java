@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.module.rlputilsOld.Pattern.outerRlpSi
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToInt;
+import static net.consensys.linea.zktracer.types.Utils.rightPadToBytes16;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -190,7 +191,7 @@ public class AccessListPhaseSection extends PhaseSection {
           .limbConstructed(true)
           .lt(true)
           .lx(true)
-          .pCmpLimb(Bytes16.rightPad(address.slice(0, 4)))
+          .pCmpLimb(rightPadToBytes16(address.slice(0, 4)))
           .pCmpLimbSize(4);
       phaseSize -= 4;
       tupleSize -= 4;

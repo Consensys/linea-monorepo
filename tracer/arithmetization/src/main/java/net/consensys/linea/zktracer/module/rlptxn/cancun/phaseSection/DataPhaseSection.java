@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.LLARGEMO;
+import static net.consensys.linea.zktracer.types.Utils.rightPadToBytes16;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,8 +51,8 @@ public class DataPhaseSection extends PhaseSection {
 
     for (int i = 0; i < numberOfLimbs; i++) {
       final boolean lastLimb = i == numberOfLimbs - 1;
-      final Bytes16 limbData =
-          Bytes16.rightPad(data.slice(i * LLARGE, lastLimb ? nBytesLastLimb : LLARGE));
+      final Bytes limbData =
+          rightPadToBytes16(data.slice(i * LLARGE, lastLimb ? nBytesLastLimb : LLARGE));
       final InstructionDataPricing limbCall =
           new InstructionDataPricing(limbData, lastLimb ? (short) nBytesLastLimb : LLARGE);
       limbs.add((InstructionDataPricing) rlpUtils.call(limbCall));

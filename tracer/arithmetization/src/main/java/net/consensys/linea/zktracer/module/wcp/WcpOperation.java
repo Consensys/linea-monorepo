@@ -75,13 +75,7 @@ public class WcpOperation extends ModuleOperation {
     };
   }
 
-  private Bytes16 calculateAdj(boolean cmp, BigInteger arg1, BigInteger arg2) {
-    return cmp
-        ? Bytes16.leftPad(bigIntegerToBytes(arg1.subtract(arg2).subtract(BigInteger.ONE)))
-        : Bytes16.leftPad(bigIntegerToBytes(arg2.subtract(arg1)));
-  }
-
-  void trace(Trace.Wcp trace, int stamp) {
+  void trace(Trace.Wcp trace) {
     // Calculate result
     final boolean res = calculateResult(wcpInst, arg1, arg2);
     final UnsignedByte inst = UnsignedByte.of(wcpInst);
