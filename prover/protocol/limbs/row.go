@@ -109,7 +109,6 @@ func (r row[E]) SplitOnBit(at int) (row[E], row[E]) {
 	atByte := utils.DivExact(at, 8) // The divisibility by limbBitWidth is already checked
 	buf := r.ToBytes()
 	hi, lo := buf[:atByte], buf[atByte:]
-	fmt.Printf("hi: %x\nlo: %x\n", hi, lo)
 	return RowFromBytes[E](hi), RowFromBytes[E](lo)
 }
 

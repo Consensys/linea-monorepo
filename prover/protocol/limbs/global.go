@@ -28,7 +28,7 @@ func NewLocal(comp *wizard.CompiledIOP, name ifaces.QueryID, expr *symbolic.Expr
 	splittedExpressions := splitExpressions(expr)
 	res := make([]query.LocalConstraint, len(splittedExpressions))
 	for i := range splittedExpressions {
-		res[i] = comp.InsertLocal(0, name, splittedExpressions[i])
+		res[i] = comp.InsertLocal(0, ifaces.QueryIDf("%v_%v", name, i), splittedExpressions[i])
 	}
 	return res
 }

@@ -44,6 +44,12 @@ var RightPaddedPair = PragmaPair{
 	Value:  true,
 }
 
+// LeftPaddedPair is a pair of pragma and its value.
+var LeftPaddedPair = PragmaPair{
+	Pragma: LeftPadded,
+	Value:  true,
+}
+
 // MarkFullColumn marks a column as full-column.
 func MarkFullColumn(col ifaces.Column) {
 	nat := col.(column.Natural)

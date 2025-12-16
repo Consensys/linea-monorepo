@@ -101,7 +101,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		comp,
 		"ADDRESS_HI_UNTRIMMED",
 		size,
-		pragmas.PragmaPair{Pragma: pragmas.LeftPadded, Value: true},
+		pragmas.LeftPaddedPair,
 	)
 
 	// declare the native columns

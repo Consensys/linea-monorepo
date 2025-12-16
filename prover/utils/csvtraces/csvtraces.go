@@ -367,7 +367,7 @@ func (c *CsvTrace) checkAssignment(run *wizard.ProverRuntime, obj any) {
 	}
 
 	for i := c.nbRows; i < len(wizBi); i++ {
-		if !wizBi[i].IsInt64() && wizBi[i].Int64() != 0 {
+		if isZeroBigInt(wizBi[i]) {
 			utils.Panic("assignment for %s has not been zero-padded correctly: row %d, got Wizard=%s", name, i, wizBi[i].String())
 		}
 	}

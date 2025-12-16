@@ -1,8 +1,6 @@
 package ecpair
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
@@ -427,8 +425,6 @@ func (ec *ECPair) assignMembershipData(run *wizard.ProverRuntime) {
 			dstIsPulling.PushOne()
 			dstIsComputed.PushZero()
 		}
-
-		fmt.Printf("srcSuccessBit[currPos]: %v\n", srcSuccessBit[currPos].String())
 
 		dstLimb.PushInt(int(srcSuccessBit[currPos].Uint64()))
 		dstSuccessBit.PushField(srcSuccessBit[currPos])

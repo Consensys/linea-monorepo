@@ -337,17 +337,15 @@ func (l Limbs[E]) SplitOnBit(at int) (hi, lo Limbs[E]) {
 
 	splitOnLimbs := utils.DivExact(at, limbBitWidth)
 	if isLittleEndian[E]() {
-		splitOnLimbs = len(l.c) - splitOnLimbs
+		n := l.NumLimbs() - splitOnLimbs
+		hi = Limbs[E]{name: l.name, c: l.c[n:]}
+		lo = Limbs[E]{name: l.name, c: l.c[:n]}
+		return hi, lo
 	}
 
-	s0 := Limbs[E]{name: l.name, c: l.c[:splitOnLimbs]}
-	s1 := Limbs[E]{name: l.name, c: l.c[splitOnLimbs:]}
-
-	if isLittleEndian[E]() {
-		return s1, s0
-	}
-
-	return s0, s1
+	hi = Limbs[E]{name: l.name, c: l.c[:splitOnLimbs]}
+	lo = Limbs[E]{name: l.name, c: l.c[splitOnLimbs:]}
+	return hi, lo
 }
 
 // SliceOnBit returns the slice representing lbits[s0:s1]
