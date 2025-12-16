@@ -45,6 +45,7 @@ func NewLimbs(comp *wizard.CompiledIOP, round int, name string, nbLimbs int, nbR
 			round,
 			ifaces.ColIDf("%s_LIMB_%d", name, i),
 			utils.NextPowerOfTwo(nbRows),
+			true,
 		)
 	}
 	return limbs

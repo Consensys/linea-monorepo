@@ -3,7 +3,6 @@ package modexp
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -111,10 +110,10 @@ func newModule(comp *wizard.CompiledIOP, input *Input) *Module {
 	var (
 		settings = input.Settings
 		mod      = &Module{
-			IsModExp: comp.InsertCommit(0, "MODEXP_INPUT_IS_MODEXP", input.Limbs.Size()),
-			IsSmall:  comp.InsertCommit(0, "MODEXP_IS_SMALL", input.Limbs.Size()),
-			IsLarge:  comp.InsertCommit(0, "MODEXP_IS_LARGE", input.Limbs.Size()),
-			ToSmall:  comp.InsertCommit(0, "MODEXP_TO_SMALL", input.Limbs.Size()),
+			IsModExp: comp.InsertCommit(0, "MODEXP_INPUT_IS_MODEXP", input.Limbs.Size(), true),
+			IsSmall:  comp.InsertCommit(0, "MODEXP_IS_SMALL", input.Limbs.Size(), true),
+			IsLarge:  comp.InsertCommit(0, "MODEXP_IS_LARGE", input.Limbs.Size(), true),
+			ToSmall:  comp.InsertCommit(0, "MODEXP_TO_SMALL", input.Limbs.Size(), true),
 			Input:    input,
 		}
 	)
@@ -150,8 +149,6 @@ func (m *Module) csIsModExp(comp *wizard.CompiledIOP) {
 
 // csIsSmallAndLarge constrains IsSmall and IsLarge
 func (mod *Module) csIsSmallAndLarge(comp *wizard.CompiledIOP) {
-	dedicated.MustBeBinary(comp, mod.IsSmall, roundNr)
-	dedicated.MustBeBinary(comp, mod.IsLarge, roundNr)
 	commoncs.MustBeMutuallyExclusiveBinaryFlags(comp, mod.IsModExp, []ifaces.Column{mod.IsSmall, mod.IsLarge})
 
 	//

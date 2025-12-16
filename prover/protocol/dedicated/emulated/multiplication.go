@@ -89,6 +89,7 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus Limbs, n
 			round,
 			ifaces.ColIDf("%s_EMUL_REMAINDER_LIMB_%d", name, i),
 			nbRows,
+			true,
 		)
 	}
 	quotient := Limbs{
@@ -99,6 +100,7 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus Limbs, n
 			round,
 			ifaces.ColIDf("%s_EMUL_QUOTIENT_LIMB_%d", name, i),
 			nbRows,
+			true,
 		)
 	}
 	nbCarryLimbs := utils.DivCeil(nbCarryBits, nbBitsPerLimb)
@@ -108,10 +110,11 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus Limbs, n
 			round,
 			ifaces.ColIDf("%s_EMUL_CARRY_%d", name, i),
 			nbRows,
+			true,
 		)
 	}
 	// create the challenge which will be used in the next round for random poly eval.
-	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.Field)
+	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.FieldExt)
 	// we also create challenge powers columns for more efficient polynomial evaluation
 	challengePowers := make([]ifaces.Column, len(carry.Columns))
 	for i := range challengePowers {
@@ -119,6 +122,7 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus Limbs, n
 			round+1,
 			ifaces.ColIDf("%s_EMUL_CHALLENGE_POWER_%d", name, i),
 			nbRows,
+			false,
 		)
 	}
 

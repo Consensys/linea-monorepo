@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/emulated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -120,13 +119,13 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 		IsActiveFromInput:     isActiveFromInput,
 		ToEval:                toEval,
 		Module:                module,
-		IsBase:                comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_BASE", name), module.Input.IsModExpBase.Size()),
-		IsExponent:            comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_EXPONENT", name), module.Input.IsModExpExponent.Size()),
-		IsModulus:             comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_MODULUS", name), module.Input.IsModExpModulus.Size()),
-		IsResult:              comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_RESULT", name), module.Input.IsModExpResult.Size()),
-		IsFirstLineOfInstance: comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_FIRST_LINE_OF_INSTANCE", name), nbRows),
-		IsLastLineOfInstance:  comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_LAST_LINE_OF_INSTANCE", name), nbRows),
-		IsActive:              comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_ACTIVE", name), nbRows),
+		IsBase:                comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_BASE", name), module.Input.IsModExpBase.Size(), true),
+		IsExponent:            comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_EXPONENT", name), module.Input.IsModExpExponent.Size(), true),
+		IsModulus:             comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_MODULUS", name), module.Input.IsModExpModulus.Size(), true),
+		IsResult:              comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_RESULT", name), module.Input.IsModExpResult.Size(), true),
+		IsFirstLineOfInstance: comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_FIRST_LINE_OF_INSTANCE", name), nbRows, true),
+		IsLastLineOfInstance:  comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_LAST_LINE_OF_INSTANCE", name), nbRows, true),
+		IsActive:              comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_ACTIVE", name), nbRows, true),
 	}
 	// register prover action before emulated evaluation so that the limb assignements are available
 	comp.RegisterProverAction(roundNr, me)
@@ -260,7 +259,7 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 func (m *Modexp) csModexpExponentProjection(comp *wizard.CompiledIOP) {
 	// * query that the bits are binary
 	for i := range m.ExponentBits.Columns {
-		dedicated.MustBeBinary(comp, m.ExponentBits.Columns[i], roundNr)
+		commonconstraints.MustBeBinary(comp, m.ExponentBits.Columns[i])
 	}
 	// at every `limbSize` row the exponent accumulator corresponds to MSB bit. This corresponds
 	// to the case where we RSH the exponent limbs by `limbSize` bits.

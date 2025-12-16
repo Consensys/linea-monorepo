@@ -15,7 +15,7 @@ const (
 	modexpLargeBits    = 8192
 	nbSmallModexpCases = 10
 	nbLargeModexpCases = 1
-	limbSize           = 128 // in bits
+	limbSize           = 16 // in bits
 	nbLimbs            = modexpLargeBits / limbSize
 )
 

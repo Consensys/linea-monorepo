@@ -21,7 +21,7 @@ func TestEmulatedMultiplication(t *testing.T) {
 	const nbEntries = (1 << 4) + 1 // test non power power of two as well
 	const nbBits = 384
 	const round_nr = 0
-	const nbBitsPerLimb = 128
+	const nbBitsPerLimb = 16
 	const nbLimbs = (nbBits + nbBitsPerLimb - 1) / nbBitsPerLimb
 	var pa, pa2 *Multiplication
 	define := func(b *wizard.Builder) {
@@ -105,7 +105,7 @@ func TestEmulatedEvaluation(t *testing.T) {
 	const nbEntries = (1 << 4) + 1 // to ensure non power of two sizes are handled
 	const nbBits = 384
 	const round_nr = 0
-	const nbBitsPerLimb = 128
+	const nbBitsPerLimb = 16
 	const nbLimbs = (nbBits + nbBitsPerLimb - 1) / nbBitsPerLimb
 	define := func(b *wizard.Builder) {
 		P := NewLimbs(b.CompiledIOP, round_nr, "P", nbLimbs, nbEntries)

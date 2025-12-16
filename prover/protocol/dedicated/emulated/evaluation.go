@@ -106,6 +106,7 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus L
 			round,
 			ifaces.ColIDf("%s_EMUL_EVAL_QUO_LIMB_%d", name, i),
 			nbRows,
+			true,
 		)
 	}
 	nbCarryLimbs := utils.DivCeil(nbCarryBits, nbBitsPerLimb)
@@ -117,16 +118,18 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus L
 			round,
 			ifaces.ColIDf("%s_EMUL_EVAL_CARRY_LIMB_%d", name, i),
 			nbRows,
+			true,
 		)
 	}
 	// define the challenge and challenge powers for polynomial evaluation at random point
-	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.Field)
+	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.FieldExt)
 	challengePowers := make([]ifaces.Column, len(carry.Columns))
 	for i := range challengePowers {
 		challengePowers[i] = comp.InsertCommit(
 			round+1,
 			ifaces.ColIDf("%s_EMUL_CHALLENGE_POWER_%d", name, i),
 			nbRows,
+			false,
 		)
 	}
 
