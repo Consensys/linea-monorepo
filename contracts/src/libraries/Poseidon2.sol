@@ -281,7 +281,10 @@ library Poseidon2 {
       /// [[a0,a1,a2,a3],..,[a12,a13,a14,a15]]:=[v0,v1,v2,v3]
       /// and we multiply [v0,v1,v2,v3] by circ(2M4,M4,..,M4)
       function matMulExternalInPlace(a, b) -> ra, rb {
-        let t0, t1, t2, t3 := sumColumns(matMulM4uint256(a), matMulM4uint256(b))
+        a := matMulM4uint256(a)
+        b := matMulM4uint256(b)
+
+        let t0, t1, t2, t3 := sumColumns(a, b)
         ra := matMulExternalInPlaceFirstHalf(a, t0, t1, t2, t3)
         rb := matMulExternalInPlaceFirstHalf(b, t0, t1, t2, t3)
       }
@@ -405,17 +408,10 @@ library Poseidon2 {
         t01123 := addmod(t0123, b, R_MOD)
         t01233 := addmod(t0123, d, R_MOD)
 
-        d := addmod(a, a, R_MOD)
-        d := addmod(d, t01233, R_MOD)
-        b := addmod(c, c, R_MOD)
-        b := addmod(b, t01123, R_MOD)
-        a := addmod(t01, t01123, R_MOD)
-        c := addmod(t23, t01233, R_MOD)
-
-        u := a
-        v := b
-        w := c
-        x := d
+        x := addmod(addmod(a, a, R_MOD), t01233, R_MOD)
+        v := addmod(addmod(c, c, R_MOD), t01123, R_MOD)
+        u := addmod(t01, t01123, R_MOD)
+        w := addmod(t23, t01233, R_MOD)
       }
 
       /// @return u = a << 224 || b << 192 || .. || h
