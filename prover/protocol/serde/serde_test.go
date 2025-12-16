@@ -33,7 +33,7 @@ func TestSerdeValue(t *testing.T) {
 		Name string
 	}{
 		{
-			Name: "random-string",
+			Name: "random",
 			V:    "someRandomString",
 		},
 		{

@@ -59,8 +59,8 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 
 	// 2. Pointers
 	if target.Kind() == reflect.Ptr {
+		// Deduplication: Check if we've already deserialized this offset
 		if val, ok := ctx.ptrMap[offset]; ok {
-			// FIX: Check assignability to prevent panics if different empty objects alias to same offset
 			if val.Type().AssignableTo(target.Type()) {
 				target.Set(val)
 				return nil
@@ -77,12 +77,22 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 			return nil
 		}
 
-		if target.IsNil() {
-			target.Set(reflect.New(target.Type().Elem()))
+		// Create a new pointer
+		newPtr := reflect.New(target.Type().Elem())
+
+		// Cache BEFORE recursion to handle cycles
+		ctx.ptrMap[offset] = newPtr
+
+		// Recursively reconstruct the element the pointer points to
+		// Note: We use the *same* offset because the Writer writes the object data at that offset.
+		// The "Reference" was just the jump to this offset.
+		if err := ctx.reconstruct(newPtr.Elem(), offset); err != nil {
+			return err
 		}
 
-		ctx.ptrMap[offset] = target
-		return ctx.reconstruct(target.Elem(), offset)
+		// Finally set the target field to point to our new object
+		target.Set(newPtr)
+		return nil
 	}
 
 	// 3. Big Ints
@@ -147,19 +157,51 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 		if int(ih.TypeID) >= len(IDToType) {
 			return fmt.Errorf("invalid type ID: %d", ih.TypeID)
 		}
+
 		concreteType := IDToType[ih.TypeID]
 		for i := 0; i < int(ih.Indirection); i++ {
 			concreteType = reflect.PointerTo(concreteType)
 		}
+
+		// FIX: Handle Pointer vs Value concrete types separately to avoid Set() panic on unaddressable values
 		var concreteVal reflect.Value
+
 		if concreteType.Kind() == reflect.Ptr {
+			// Case: Interface holds a Pointer (*T)
+			// We cannot use standard 'reconstruct' here because it expects a settable slot.
+			// Instead, we manually allocate, cache, and recurse.
+
+			// 1. Allocate *T
 			concreteVal = reflect.New(concreteType.Elem())
+
+			// 2. Check Deduplication (Interface points to existing object?)
+			// The Interface header has an Offset.
+			// The object at Offset is the *T data (or T data).
+			// Writer writes: InterfaceHeader{Offset: Ref(ptr)}
+
+			offset = int64(ih.Offset)
+
+			if val, ok := ctx.ptrMap[offset]; ok {
+				if val.Type().AssignableTo(concreteType) {
+					target.Set(val)
+					return nil
+				}
+			}
+
+			// 3. Cache & Recurse
+			ctx.ptrMap[offset] = concreteVal
+			if err := ctx.reconstruct(concreteVal.Elem(), offset); err != nil {
+				return err
+			}
+
 		} else {
+			// Case: Interface holds a Value (T)
 			concreteVal = reflect.New(concreteType).Elem()
+			if err := ctx.reconstruct(concreteVal, int64(ih.Offset)); err != nil {
+				return err
+			}
 		}
-		if err := ctx.reconstruct(concreteVal, int64(ih.Offset)); err != nil {
-			return err
-		}
+
 		target.Set(concreteVal)
 		return nil
 	}
@@ -282,7 +324,6 @@ func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) 
 			continue
 		}
 
-		// FIX: Check Custom Registry. Treat registered structs as References (8 bytes).
 		_, hasCustom := CustomRegistry[f.Type()]
 
 		isBigInt := f.Type() == reflect.TypeOf(big.Int{}) || f.Type() == reflect.TypeOf(&big.Int{})
@@ -296,6 +337,7 @@ func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) 
 			ref := *(*Ref)(unsafe.Pointer(&ctx.data[currentOff]))
 			currentOff += 8
 			if !ref.IsNull() {
+				// Calls reconstruct, which handles deduplication and recursion
 				if err := ctx.reconstruct(f, int64(ref)); err != nil {
 					return err
 				}
@@ -317,7 +359,6 @@ func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) 
 
 func (ctx *ReaderContext) readMapElement(target reflect.Value, offset int64) (int64, error) {
 	t := target.Type()
-	// FIX: Check Custom Registry
 	_, hasCustom := CustomRegistry[t]
 
 	isRef := hasCustom || t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice || t.Kind() == reflect.String ||
