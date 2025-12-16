@@ -4,3 +4,9 @@
 [submodule "reference-tests/src/test/resources/ethereum-tests"]
 	path = reference-tests/src/test/resources/ethereum-tests
 	url = https://github.com/ethereum/tests.git
+[submodule "constraints"]
+	path = constraints
+	url = git@github.com:ConsenSys/zkevm-constraints.git
+[submodule "go-corset"]
+	path = go-corset
+	url = git@github.com:Consensys/go-corset.git
