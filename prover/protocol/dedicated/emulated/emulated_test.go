@@ -3,18 +3,13 @@ package emulated
 import (
 	"crypto/rand"
 	"crypto/sha3"
-	"errors"
 	"math/big"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -156,48 +151,4 @@ func TestEmulatedEvaluation(t *testing.T) {
 	proof := wizard.Prove(comp, prover)
 	err = wizard.Verify(comp, proof)
 	require.NoError(t, err)
-}
-
-type assignable interface {
-	field.Element | *big.Int | uint64 | uint32 | string
-}
-
-func assignEmulated[E assignable, S []E](run *wizard.ProverRuntime, name string, limbs S, nbBitsPerLimb int, nbLimbs int) error {
-	vlimbs := make([][]field.Element, nbLimbs)
-	for i := range nbLimbs {
-		vlimbs[i] = make([]field.Element, len(limbs))
-	}
-	vBi := new(big.Int)
-	mask := new(big.Int).Lsh(big.NewInt(1), uint(nbBitsPerLimb))
-	mask.Sub(mask, big.NewInt(1))
-	tmp := new(big.Int)
-	for i := range limbs {
-		switch val := any(limbs[i]).(type) {
-		case field.Element:
-			val.BigInt(vBi)
-		case *big.Int:
-			vBi.Set(val)
-		case uint64:
-			vBi.SetUint64(val)
-		case uint32:
-			vBi.SetUint64(uint64(val))
-		case string:
-			_, ok := vBi.SetString(val, 0)
-			if !ok {
-				return errors.New("failed to parse string input")
-			}
-		default:
-			panic("unsupported type")
-		}
-		for j := range nbLimbs {
-			tmp.And(vBi, mask)
-			vlimbs[j][i].SetBigInt(tmp)
-			vBi.Rsh(vBi, uint(nbBitsPerLimb))
-		}
-	}
-	for j := range nbLimbs {
-		sv := smartvectors.RightPadded(vlimbs[j], field.NewElement(0), utils.NextPowerOfTwo(len(vlimbs[j])))
-		run.AssignColumn(ifaces.ColIDf("%s_LIMB_%d", name, j), sv)
-	}
-	return nil
 }
