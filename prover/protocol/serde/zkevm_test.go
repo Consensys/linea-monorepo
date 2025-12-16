@@ -1,4 +1,4 @@
-package serde
+package serde_test
 
 import (
 	"path"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
@@ -41,7 +42,7 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 	// Measure serialization time
 	serTime := profiling.TimeIt(func() {
 		logrus.Printf("Starting to serialize:%s \n", name)
-		b, err = Serialize(input)
+		b, err = serde.Serialize(input)
 		if err != nil {
 			t.Fatalf("Error during serialization of %s: %v", name, err)
 		}
@@ -50,7 +51,7 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 	// Measure deserialization time
 	desTime := profiling.TimeIt(func() {
 		logrus.Printf("Starting to deserialize:%s\n", name)
-		err = Deserialize(b, output)
+		err = serde.Deserialize(b, output)
 		if err != nil {
 			t.Fatalf("Error during deserialization of %s: %v", name, err)
 		}
@@ -63,7 +64,7 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 		// Sanity check: Compare exported fields
 		t.Logf("Running sanity checks on deserialized object: Comparing if the values matched before and after serialization")
 		outputDeref := reflect.ValueOf(output).Elem().Interface()
-		if !DeepCmp(input, outputDeref, failFast) {
+		if !serde.DeepCmp(input, outputDeref, failFast) {
 			t.Errorf("Mismatch in exported fields of %s during serde", name)
 		} else {
 			t.Logf("Sanity checks passed for %s", name)
@@ -116,7 +117,7 @@ func runSerdeTestPerf(t *testing.T, input any, name string) *profiling.Performan
 
 	func() {
 		logrus.Printf("Starting to serialize:%s \n", name)
-		b, err = Serialize(input)
+		b, err = serde.Serialize(input)
 		if err != nil {
 			t.Fatalf("Error during serialization of %s: %v", name, err)
 		}
@@ -124,7 +125,7 @@ func runSerdeTestPerf(t *testing.T, input any, name string) *profiling.Performan
 
 	func() {
 		logrus.Printf("Starting to deserialize:%s\n", name)
-		err = Deserialize(b, output)
+		err = serde.Deserialize(b, output)
 		if err != nil {
 			t.Fatalf("Error during deserialization of %s: %v", name, err)
 		}
@@ -157,12 +158,12 @@ func justserde(t *testing.B, input any, name string) {
 	var b []byte
 	var err error
 
-	b, err = Serialize(input)
+	b, err = serde.Serialize(input)
 	if err != nil {
 		t.Fatalf("Error during serialization of %s: %v", name, err)
 	}
 
-	err = Deserialize(b, output)
+	err = serde.Deserialize(b, output)
 	if err != nil {
 		t.Fatalf("Error during deserialization of %s: %v", name, err)
 	}

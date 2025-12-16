@@ -2,7 +2,7 @@ package zkevm
 
 import (
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
@@ -76,6 +76,7 @@ type ZkEvm struct {
 //
 // The function can take a bit of time to complete. It will populate the zkEVM
 // struct and needs to be called before running the prover of the inner-proof.
+// NewZkEVM instantiates a new ZkEvm instance.
 func NewZkEVM(
 	settings Settings, // Settings for the zkEVM
 ) *ZkEvm {
@@ -85,9 +86,14 @@ func NewZkEVM(
 		define = func(b *wizard.Builder) {
 			res = newZkEVM(b, &settings)
 		}
+
+		// --- FIX IS HERE ---
+		// We must use the NEW 'serde' library here, not 'serialization'.
 		ser = func(wizardIOP *wizard.CompiledIOP) ([]byte, error) {
-			return serialization.Serialize(wizardIOP)
+			return serde.Serialize(wizardIOP)
 		}
+		// -------------------
+
 		wizardIOP = wizard.Compile(define, settings.CompilationSuite...).BootstrapFiatShamir(settings.Metadata, ser)
 	)
 

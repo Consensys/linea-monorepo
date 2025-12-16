@@ -52,23 +52,27 @@ func Deserialize(b []byte, v any) error {
 }
 
 func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error {
+	t := target.Type()
+	k := target.Kind()
+
 	// 1. Custom Registry
-	if handler, ok := CustomRegistry[target.Type()]; ok {
-		return handler.Deserialize(ctx, target, offset)
+	if k == reflect.Struct || k == reflect.Ptr || k == reflect.Interface {
+		if handler, ok := CustomRegistry[t]; ok {
+			return handler.Deserialize(ctx, target, offset)
+		}
 	}
 
 	// 2. Pointers
-	if target.Kind() == reflect.Ptr {
-		// Deduplication: Check if we've already deserialized this offset
+	if k == reflect.Ptr {
 		if val, ok := ctx.ptrMap[offset]; ok {
-			if val.Type().AssignableTo(target.Type()) {
+			if val.Type().AssignableTo(t) {
 				target.Set(val)
 				return nil
 			}
 		}
 
-		if target.Type() == reflect.TypeOf(&big.Int{}) {
-			newItem := reflect.New(target.Type().Elem())
+		if t == reflect.TypeOf(&big.Int{}) {
+			newItem := reflect.New(t.Elem())
 			ctx.ptrMap[offset] = newItem
 			if err := reconstructBigInt(ctx.data, newItem.Elem(), offset); err != nil {
 				return err
@@ -77,32 +81,20 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 			return nil
 		}
 
-		// Create a new pointer
-		newPtr := reflect.New(target.Type().Elem())
-
-		// Cache BEFORE recursion to handle cycles
+		newPtr := reflect.New(t.Elem())
 		ctx.ptrMap[offset] = newPtr
-
-		// Recursively reconstruct the element the pointer points to
-		// Note: We use the *same* offset because the Writer writes the object data at that offset.
-		// The "Reference" was just the jump to this offset.
-		if err := ctx.reconstruct(newPtr.Elem(), offset); err != nil {
-			return err
-		}
-
-		// Finally set the target field to point to our new object
 		target.Set(newPtr)
-		return nil
+		return ctx.reconstruct(newPtr.Elem(), offset)
 	}
 
 	// 3. Big Ints
-	if target.Type() == reflect.TypeOf(big.Int{}) {
+	if t == reflect.TypeOf(big.Int{}) {
 		return reconstructBigInt(ctx.data, target, offset)
 	}
 
 	// 4. Field Elements
-	if target.Type() == reflect.TypeOf(field.Element{}) {
-		size := int(target.Type().Size())
+	if t == reflect.TypeOf(field.Element{}) {
+		size := int(t.Size())
 		if offset < 0 || int(offset)+size > len(ctx.data) {
 			return fmt.Errorf("field element out of bounds")
 		}
@@ -114,13 +106,13 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 	}
 
 	// 5. Slices
-	if target.Kind() == reflect.Slice {
+	if k == reflect.Slice {
 		if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(ctx.data) {
 			return fmt.Errorf("slice header out of bounds")
 		}
 		fs := (*FileSlice)(unsafe.Pointer(&ctx.data[offset]))
 		if fs.Offset.IsNull() {
-			target.Set(reflect.Zero(target.Type()))
+			target.Set(reflect.Zero(t))
 			return nil
 		}
 		sh := (*reflect.SliceHeader)(unsafe.Pointer(target.UnsafeAddr()))
@@ -131,7 +123,7 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 	}
 
 	// 6. Strings
-	if target.Kind() == reflect.String {
+	if k == reflect.String {
 		if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(ctx.data) {
 			return fmt.Errorf("string header out of bounds")
 		}
@@ -145,81 +137,61 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 	}
 
 	// 7. Interfaces
-	if target.Kind() == reflect.Interface {
+	if k == reflect.Interface {
 		if offset < 0 || int(offset)+int(SizeOf[InterfaceHeader]()) > len(ctx.data) {
 			return fmt.Errorf("interface header out of bounds")
 		}
 		ih := (*InterfaceHeader)(unsafe.Pointer(&ctx.data[offset]))
 		if ih.Offset.IsNull() {
-			target.Set(reflect.Zero(target.Type()))
+			target.Set(reflect.Zero(t))
 			return nil
 		}
 		if int(ih.TypeID) >= len(IDToType) {
 			return fmt.Errorf("invalid type ID: %d", ih.TypeID)
 		}
-
 		concreteType := IDToType[ih.TypeID]
 		for i := 0; i < int(ih.Indirection); i++ {
 			concreteType = reflect.PointerTo(concreteType)
 		}
 
-		// FIX: Handle Pointer vs Value concrete types separately to avoid Set() panic on unaddressable values
 		var concreteVal reflect.Value
-
 		if concreteType.Kind() == reflect.Ptr {
-			// Case: Interface holds a Pointer (*T)
-			// We cannot use standard 'reconstruct' here because it expects a settable slot.
-			// Instead, we manually allocate, cache, and recurse.
-
-			// 1. Allocate *T
 			concreteVal = reflect.New(concreteType.Elem())
-
-			// 2. Check Deduplication (Interface points to existing object?)
-			// The Interface header has an Offset.
-			// The object at Offset is the *T data (or T data).
-			// Writer writes: InterfaceHeader{Offset: Ref(ptr)}
-
-			offset = int64(ih.Offset)
-
-			if val, ok := ctx.ptrMap[offset]; ok {
+			ptrOffset := int64(ih.Offset)
+			if val, ok := ctx.ptrMap[ptrOffset]; ok {
 				if val.Type().AssignableTo(concreteType) {
 					target.Set(val)
 					return nil
 				}
 			}
-
-			// 3. Cache & Recurse
-			ctx.ptrMap[offset] = concreteVal
-			if err := ctx.reconstruct(concreteVal.Elem(), offset); err != nil {
+			ctx.ptrMap[ptrOffset] = concreteVal
+			if err := ctx.reconstruct(concreteVal.Elem(), ptrOffset); err != nil {
 				return err
 			}
-
 		} else {
-			// Case: Interface holds a Value (T)
 			concreteVal = reflect.New(concreteType).Elem()
 			if err := ctx.reconstruct(concreteVal, int64(ih.Offset)); err != nil {
 				return err
 			}
 		}
-
 		target.Set(concreteVal)
 		return nil
 	}
 
 	// 8. Maps
-	if target.Kind() == reflect.Map {
+	if k == reflect.Map {
 		if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(ctx.data) {
 			return fmt.Errorf("map header out of bounds")
 		}
 		fs := (*FileSlice)(unsafe.Pointer(&ctx.data[offset]))
 		if fs.Offset.IsNull() {
-			target.Set(reflect.Zero(target.Type()))
+			target.Set(reflect.Zero(t))
 			return nil
 		}
-		target.Set(reflect.MakeMapWithSize(target.Type(), int(fs.Len)))
+		target.Set(reflect.MakeMapWithSize(t, int(fs.Len)))
 		currentOff := int64(fs.Offset)
-		keyType := target.Type().Key()
-		elemType := target.Type().Elem()
+		keyType := t.Key()
+		elemType := t.Elem()
 		for i := 0; i < int(fs.Len); i++ {
 			newKey := reflect.New(keyType).Elem()
 			nextOff, err := ctx.readMapElement(newKey, currentOff)
@@ -239,15 +211,14 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 	}
 
 	// 9. Structs
-	if target.Kind() == reflect.Struct {
+	if k == reflect.Struct {
 		return ctx.reconstructStruct(target, offset)
 	}
 
 	// 10. Arrays
-	if target.Kind() == reflect.Array {
-		t := target.Type()
+	if k == reflect.Array {
 		elemSize := getBinarySize(t.Elem())
-		totalSize := elemSize * int64(t.Len())
+		totalSize := elemSize * int64(target.Len())
 		if offset < 0 || offset+totalSize > int64(len(ctx.data)) {
 			return fmt.Errorf("array out of bounds")
 		}
@@ -269,26 +240,17 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 	}
 
 	// 11. Primitives
-	if target.Kind() == reflect.Int {
-		if offset < 0 || int(offset)+8 > len(ctx.data) {
-			return fmt.Errorf("int out of bounds")
-		}
+	if k == reflect.Int {
 		val64 := *(*int64)(unsafe.Pointer(&ctx.data[offset]))
 		target.SetInt(val64)
 		return nil
 	}
-	if target.Kind() == reflect.Uint {
-		if offset < 0 || int(offset)+8 > len(ctx.data) {
-			return fmt.Errorf("uint out of bounds")
-		}
+	if k == reflect.Uint {
 		val64 := *(*uint64)(unsafe.Pointer(&ctx.data[offset]))
 		target.SetUint(val64)
 		return nil
 	}
-	size := int(target.Type().Size())
-	if offset < 0 || int(offset)+size > len(ctx.data) {
-		return fmt.Errorf("primitive out of bounds")
-	}
+	size := int(t.Size())
 	basePtr := unsafe.Pointer(&ctx.data[0])
 	srcPtr := unsafe.Pointer(uintptr(basePtr) + uintptr(offset))
 	dstPtr := target.UnsafeAddr()
@@ -309,9 +271,6 @@ func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) 
 		}
 
 		if t.Type == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
-			if currentOff+8 > int64(len(ctx.data)) {
-				return fmt.Errorf("variable ref out of bounds")
-			}
 			ref := *(*Ref)(unsafe.Pointer(&ctx.data[currentOff]))
 			currentOff += 8
 			if !ref.IsNull() {
@@ -324,20 +283,17 @@ func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) 
 			continue
 		}
 
+		// FIX: Check Custom Registry
 		_, hasCustom := CustomRegistry[f.Type()]
 
 		isBigInt := f.Type() == reflect.TypeOf(big.Int{}) || f.Type() == reflect.TypeOf(&big.Int{})
 		if hasCustom || f.Kind() == reflect.Ptr ||
 			f.Kind() == reflect.Slice || f.Kind() == reflect.String || f.Kind() == reflect.Interface || f.Kind() == reflect.Map ||
-			f.Kind() == reflect.Func ||
-			isBigInt {
-			if currentOff+8 > int64(len(ctx.data)) {
-				return fmt.Errorf("struct ref field out of bounds")
-			}
+			f.Kind() == reflect.Func || isBigInt {
+
 			ref := *(*Ref)(unsafe.Pointer(&ctx.data[currentOff]))
 			currentOff += 8
 			if !ref.IsNull() {
-				// Calls reconstruct, which handles deduplication and recursion
 				if err := ctx.reconstruct(f, int64(ref)); err != nil {
 					return err
 				}
@@ -346,9 +302,6 @@ func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) 
 		}
 
 		binSize := getBinarySize(f.Type())
-		if currentOff+binSize > int64(len(ctx.data)) {
-			return fmt.Errorf("struct inline field out of bounds")
-		}
 		if err := ctx.reconstruct(f, currentOff); err != nil {
 			return err
 		}
@@ -360,7 +313,6 @@ func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) 
 func (ctx *ReaderContext) readMapElement(target reflect.Value, offset int64) (int64, error) {
 	t := target.Type()
 	_, hasCustom := CustomRegistry[t]
-
 	isRef := hasCustom || t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice || t.Kind() == reflect.String ||
 		t.Kind() == reflect.Interface || t.Kind() == reflect.Map ||
 		t.Kind() == reflect.Func ||
@@ -368,9 +320,6 @@ func (ctx *ReaderContext) readMapElement(target reflect.Value, offset int64) (in
 		t == reflect.TypeOf((*frontend.Variable)(nil)).Elem()
 
 	if isRef {
-		if offset+8 > int64(len(ctx.data)) {
-			return 0, fmt.Errorf("map element ref out of bounds")
-		}
 		ref := *(*Ref)(unsafe.Pointer(&ctx.data[offset]))
 		if !ref.IsNull() {
 			if err := ctx.reconstruct(target, int64(ref)); err != nil {
@@ -381,16 +330,12 @@ func (ctx *ReaderContext) readMapElement(target reflect.Value, offset int64) (in
 	}
 
 	binSize := getBinarySize(t)
-	if offset+binSize > int64(len(ctx.data)) {
-		return 0, fmt.Errorf("map element inline out of bounds")
-	}
 	if err := ctx.reconstruct(target, offset); err != nil {
 		return 0, err
 	}
 	return offset + binSize, nil
 }
 
-// [reconstructBigInt, getBinarySize remain as is]
 func reconstructBigInt(data []byte, target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(data) {
 		return fmt.Errorf("bigint header out of bounds")
@@ -411,52 +356,4 @@ func reconstructBigInt(data []byte, target reflect.Value, offset int64) error {
 	}
 	target.Set(reflect.ValueOf(*bi))
 	return nil
-}
-
-func getBinarySize(t reflect.Type) int64 {
-	if t == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
-		return 8
-	}
-	if t == reflect.TypeOf(big.Int{}) || t == reflect.TypeOf(&big.Int{}) {
-		return 8
-	}
-
-	k := t.Kind()
-	if k == reflect.Ptr || k == reflect.Slice ||
-		k == reflect.String || k == reflect.Interface || k == reflect.Map {
-		return 8
-	}
-
-	if k == reflect.Struct {
-		if t == reflect.TypeOf(field.Element{}) {
-			return int64(t.Size())
-		}
-		var sum int64
-		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
-			if !f.IsExported() {
-				continue
-			}
-			if strings.Contains(f.Tag.Get("serde"), "omit") {
-				continue
-			}
-			sum += getBinarySize(f.Type)
-		}
-		return sum
-	}
-
-	// Array handling (recurse for elements)
-	if k == reflect.Array {
-		if t == reflect.TypeOf(field.Element{}) {
-			return int64(t.Size())
-		}
-		elemSize := getBinarySize(t.Elem())
-		return elemSize * int64(t.Len())
-	}
-
-	if k == reflect.Int || k == reflect.Uint {
-		return 8
-	}
-
-	return int64(t.Size())
 }
