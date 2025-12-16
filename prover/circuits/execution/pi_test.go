@@ -41,7 +41,7 @@ func TestPIConsistency(t *testing.T) {
 
 	snarkPi := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-			L2MessageHashes: L2MessageHashes{Values: make([][32]frontend.Variable, 3)},
+			L2MessageHashes: L2MessageHashes{Values: make([][32]zk.WrappedVariable, 3)},
 		},
 	}
 	require.NoError(t, snarkPi.Assign(&pi))

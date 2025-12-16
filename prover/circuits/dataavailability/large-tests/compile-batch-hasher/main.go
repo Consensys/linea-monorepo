@@ -5,9 +5,9 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
-	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 const maxNbBatches = 100
@@ -22,8 +22,8 @@ func main() {
 }
 
 type circuit struct {
-	NbBatches    frontend.Variable
-	BlobPayload  [blob.MaxUncompressedBytes]frontend.Variable
+	NbBatches    zk.WrappedVariable
+	BlobPayload  [blob.MaxUncompressedBytes]zk.WrappedVariable
 	ExpectedSums [maxNbBatches]execution.DataChecksumSnark
 }
 

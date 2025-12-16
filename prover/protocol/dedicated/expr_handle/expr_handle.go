@@ -1,11 +1,10 @@
 package expr_handle
 
 import (
-	"fmt"
 	"reflect"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -32,6 +31,7 @@ func (a *ExprHandleProverAction) DomainSize() int {
 func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 
 	boarded := a.Expr.Board()
+	domainSize := a.DomainSize()
 
 	logrus.Tracef("running the expr handle assignment for %v, (round %v)", a.HandleName, a.MaxRound)
 	metadatas := boarded.ListVariableMetadata()
@@ -39,18 +39,22 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 	for _, metadataInterface := range metadatas {
 		if handle, ok := metadataInterface.(ifaces.Column); ok {
 			witness := handle.GetColAssignment(run)
-			if witness.Len() != a.DomainSize() {
+			if witness.Len() != domainSize {
 				utils.Panic("Query %v - Witness of %v has size %v which is below %v",
-					a.HandleName, handle.String(), witness.Len(), a.DomainSize())
+					a.HandleName, handle.String(), witness.Len(), domainSize)
 			}
 		}
 	}
 
 	evalInputs := make([]sv.SmartVector, len(metadatas))
-	omega := fft.GetOmega(a.DomainSize())
+	omega, err := fft.Generator(uint64(domainSize))
+	if err != nil {
+		// should not happen unless we have a very very large domain size
+		utils.Panic("failed to generate omega for %v, size=%v", a.HandleName, domainSize)
+	}
 	omegaI := field.One()
-	omegas := make([]field.Element, a.DomainSize())
-	for i := 0; i < a.DomainSize(); i++ {
+	omegas := make([]field.Element, domainSize)
+	for i := 0; i < domainSize; i++ {
 		omegas[i] = omegaI
 		omegaI.Mul(&omegaI, &omega)
 	}
@@ -61,14 +65,28 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 			w := meta.GetColAssignment(run)
 			evalInputs[k] = w
 		case coin.Info:
-			x := run.GetRandomCoinField(meta.Name)
-			evalInputs[k] = sv.NewConstant(x, a.DomainSize())
+			if meta.IsBase() {
+				utils.Panic("unsupported, coins are always over field extensions")
+
+			} else {
+				x := run.GetRandomCoinFieldExt(meta.Name)
+				evalInputs[k] = sv.NewConstantExt(x, domainSize)
+			}
 		case variables.X:
-			evalInputs[k] = meta.EvalCoset(a.DomainSize(), 0, 1, false)
+			evalInputs[k] = meta.EvalCoset(domainSize, 0, 1, false)
 		case variables.PeriodicSample:
-			evalInputs[k] = meta.EvalCoset(a.DomainSize(), 0, 1, false)
+			evalInputs[k] = meta.EvalCoset(domainSize, 0, 1, false)
 		case ifaces.Accessor:
-			evalInputs[k] = sv.NewConstant(meta.GetVal(run), a.DomainSize())
+			if metadataInterface.IsBase() {
+				elem, errFetch := meta.GetValBase(run)
+				if errFetch != nil {
+					utils.Panic("failed to fetch base accessor %v for query %v: %v", meta.String(), a.HandleName, errFetch)
+				}
+				evalInputs[k] = sv.NewConstant(elem, domainSize)
+			} else {
+				evalInputs[k] = sv.NewConstantExt(meta.GetValExt(run), domainSize)
+			}
+
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), a.HandleName)
 		}
@@ -78,96 +96,17 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.HandleName, resWitness)
 }
 
-// Create a handle from an expression. The name is
-// optional, if not set a generic name will be derived
-// from the ESH of the expression.
-func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...string) ifaces.Column {
+// Create a handle from an expression.
+func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, handleName string) ifaces.Column {
 
 	var (
-		boarded    = expr.Board()
-		maxRound   = wizardutils.LastRoundToEval(expr)
-		length     = column.ExprIsOnSameLengthHandles(&boarded)
-		handleName = fmt.Sprintf("SYMBOLIC_%v", expr.ESHash.String())
+		boarded  = expr.Board()
+		maxRound = wizardutils.LastRoundToEval(expr)
+		length   = column.ExprIsOnSameLengthHandles(&boarded)
 	)
 
-	if len(name) > 0 {
-		handleName = name[0]
-	}
-
-	res := comp.InsertCommit(maxRound, ifaces.ColID(handleName), length)
+	res := comp.InsertCommit(maxRound, ifaces.ColID(handleName), length, expr.IsBase)
 	comp.InsertGlobal(maxRound, ifaces.QueryID(handleName), expr.Sub(ifaces.ColumnAsVariable(res)))
-
-	// prover := func(run *wizard.ProverRuntime) {
-
-	// 	logrus.Tracef("running the expr handle assignment for %v, (round %v)", handleName, maxRound)
-
-	// 	metadatas := boarded.ListVariableMetadata()
-
-	// 	/*
-	// 		Sanity-check : All witnesses should have the same size as the expression
-	// 	*/
-	// 	for _, metadataInterface := range metadatas {
-	// 		if handle, ok := metadataInterface.(ifaces.Column); ok {
-	// 			witness := handle.GetColAssignment(run)
-	// 			if witness.Len() != cs.DomainSize {
-	// 				utils.Panic(
-	// 					"Query %v - Witness of %v has size %v  which is below %v",
-	// 					cs.ID, handle.String(), witness.Len(), cs.DomainSize,
-	// 				)
-	// 			}
-	// 		}
-	// 	}
-
-	// 	/*
-	// 		Collects the relevant datas into a slice for the evaluation
-	// 	*/
-	// 	evalInputs := make([]sv.SmartVector, len(metadatas))
-
-	// 	/*
-	// 		Omega is a root of unity which generates the domain of evaluation
-	// 		of the constraint. Its size coincide with the size of the domain
-	// 		of evaluation. For each value of `i`, X will evaluate to omega^i.
-	// 	*/
-	// 	omega := fft.GetOmega(cs.DomainSize)
-	// 	omegaI := field.One()
-
-	// 	// precomputations of the powers of omega, can be optimized if useful
-	// 	omegas := make([]field.Element, cs.DomainSize)
-	// 	for i := 0; i < cs.DomainSize; i++ {
-	// 		omegas[i] = omegaI
-	// 		omegaI.Mul(&omegaI, &omega)
-	// 	}
-
-	// 	/*
-	// 		Collect the relevants inputs for evaluating the constraint
-	// 	*/
-	// 	for k, metadataInterface := range metadatas {
-	// 		switch meta := metadataInterface.(type) {
-	// 		case ifaces.Column:
-	// 			w := meta.GetColAssignment(run)
-	// 			evalInputs[k] = w
-	// 		case coin.Info:
-	// 			// Implicitly, the coin has to be a field element in the expression
-	// 			// It will panic if not
-	// 			x := run.GetRandomCoinField(meta.Name)
-	// 			evalInputs[k] = sv.NewConstant(x, length)
-	// 		case variables.X:
-	// 			evalInputs[k] = meta.EvalCoset(length, 0, 1, false)
-	// 		case variables.PeriodicSample:
-	// 			evalInputs[k] = meta.EvalCoset(length, 0, 1, false)
-	// 		case ifaces.Accessor:
-	// 			evalInputs[k] = sv.NewConstant(meta.GetVal(run), length)
-	// 		default:
-	// 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), cs.ID)
-	// 		}
-	// 	}
-
-	// 	// This panics if the global constraints doesn't use any commitment
-	// 	resWitness := boarded.Evaluate(evalInputs)
-
-	// 	run.AssignColumn(ifaces.ColID(handleName), resWitness)
-	// }
-	//comp.SubProvers.AppendToInner(maxRound, prover)
 
 	comp.RegisterProverAction(maxRound, &ExprHandleProverAction{
 		Expr:       expr,

@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // VerifierAction implements [wizard.VerifierAction]. It is tasked with
@@ -30,17 +31,17 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 		//
 		// However, the other values cannot be directly used by the verifier
 		// and should instead use the ysMap.
-		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
-		polysAtR = va.cptEvaluationMap(run)
-		r        = queryParams.X
-		rCoin    = run.GetRandomCoinField(va.EvaluationPoint.Name)
+		qr       = queryParams.ExtYs[len(va.NewQuery.Pols)-1]
+		polysAtR = va.cptEvaluationMapExt(run)
+		r        = queryParams.ExtX
+		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
 
 		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
 		// These values are precomputed for efficiency.
-		zetasOfR = make([]field.Element, len(va.Queries))
+		zetasOfR = make([]fext.Element, len(va.Queries))
 
-		lambda = run.GetRandomCoinField(va.LinCombCoeffLambda.Name)
-		rho    = run.GetRandomCoinField(va.LinCombCoeffRho.Name)
+		lambda = run.GetRandomCoinFieldExt(va.LinCombCoeffLambda.Name)
+		rho    = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
 	)
 
 	if r != rCoin {
@@ -49,16 +50,16 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 	}
 
 	var (
-		lambdaPowI = field.One()
-		rhoK       = field.One()
+		lambdaPowI = fext.One()
+		rhoK       = fext.One()
 		// res stores the right-hand of the equality check. Namely,
 		// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-		res = field.Zero()
+		res = fext.Zero()
 	)
 
 	for i, q := range va.Queries {
 
-		xi := run.GetUnivariateParams(q.Name()).X
+		xi := run.GetUnivariateParams(q.Name()).ExtX
 		zetasOfR[i].Sub(&r, &xi)
 		// NB: this is very sub-optimal. We should use a batch-inverse instead
 		// but the native verifier time is not very important in this context.
@@ -71,15 +72,15 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 	for k, p := range va.Polys {
 
 		pr := polysAtR[p.GetColID()]
-
 		for _, i := range va.EvalPointOfPolys[k] {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
-			tmp := run.GetUnivariateParams(va.Queries[i].Name()).Ys[posOfYik]
+			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
 			tmp.Sub(&pr, &tmp) // Pk(r) - y_{ik}
 			tmp.Mul(&tmp, &zetasOfR[i])
 			tmp.Mul(&tmp, &rhoK)
 			res.Add(&res, &tmp)
+
 		}
 
 		rhoK.Mul(&rhoK, &rho)
@@ -94,44 +95,52 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
 		// polyOfRs stores the values of P_k(r) as returned in the query.
 		// The last value of the slice is the value of Q(r) where q
 		// is the quotient polynomial.
-		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
-		polysAtR = va.cptEvaluationMapGnark(api, run)
-		r        = queryParams.X
-		rCoin    = run.GetRandomCoinField(va.EvaluationPoint.Name)
+		qr       = queryParams.ExtYs[len(va.NewQuery.Pols)-1]
+		polysAtR = va.cptEvaluationMapGnarkExt(api, run)
+		r        = queryParams.ExtX
+		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
 
 		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
 		// These values are precomputed for efficiency.
-		zetasOfR = make([]frontend.Variable, len(va.Queries))
+		zetasOfR = make([]gnarkfext.E4Gen, len(va.Queries))
 
-		lambda = run.GetRandomCoinField(va.LinCombCoeffLambda.Name)
-		rho    = run.GetRandomCoinField(va.LinCombCoeffRho.Name)
+		lambda = run.GetRandomCoinFieldExt(va.LinCombCoeffLambda.Name)
+		rho    = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
 	)
 
-	api.AssertIsEqual(r, rCoin)
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 
-	var (
-		lambdaPowI = frontend.Variable(1)
-		rhoK       = frontend.Variable(1)
-		// res stores the right-hand of the equality check. Namely,
-		// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-		res = frontend.Variable(0)
-	)
+	e4Api.AssertIsEqual(&r, &rCoin)
+
+	lambdaPowI := *e4Api.One()
+	rhoK := *e4Api.One()
+
+	// res stores the right-hand of the equality check. Namely,
+	// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
+	res := *e4Api.Zero()
 
 	for i, q := range va.Queries {
 
-		xi := run.GetUnivariateParams(q.Name()).X
-		zetasOfR[i] = api.Sub(r, xi)
+		xi := run.GetUnivariateParams(q.Name()).ExtX
+		// zetasOfR[i].Sub(api, r, xi)
+		zetasOfR[i] = *e4Api.Sub(&r, &xi)
+
 		// NB: this is very sub-optimal. We should use a batch-inverse instead
 		// but the native verifier time is not very important in this context.
-		zetasOfR[i] = api.Inverse(zetasOfR[i])
-		zetasOfR[i] = api.Mul(zetasOfR[i], lambdaPowI)
-		lambdaPowI = api.Mul(lambdaPowI, lambda)
+		// zetasOfR[i].Inverse(api, zetasOfR[i])
+		// zetasOfR[i].Mul(api, zetasOfR[i], lambdaPowI)
+		// lambdaPowI.Mul(api, lambdaPowI, lambda)
+		zetasOfR[i] = *e4Api.Inverse(&zetasOfR[i])
+		zetasOfR[i] = *e4Api.Mul(&zetasOfR[i], &lambdaPowI)
+		lambdaPowI = *e4Api.Mul(&lambdaPowI, &lambda)
 	}
 
 	// This loop computes the value of [res]
@@ -140,74 +149,72 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		for _, i := range va.EvalPointOfPolys[k] {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
-			tmp := run.GetUnivariateParams(va.Queries[i].Name()).Ys[posOfYik]
-			tmp = api.Sub(pr, tmp) // Pk(r) - y_{ik}
-			tmp = api.Mul(tmp, zetasOfR[i])
-			tmp = api.Mul(tmp, rhoK)
-			res = api.Add(res, tmp)
+			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
+			tmp = *e4Api.Sub(&pr, &tmp)
+			tmp = *e4Api.Mul(&tmp, &zetasOfR[i])
+			tmp = *e4Api.Mul(&tmp, &rhoK)
+			res = *e4Api.Add(&res, &tmp)
+
 		}
 
-		rhoK = api.Mul(rhoK, rho)
+		// rhoK.Mul(api, rhoK, rho)
+		rhoK = *e4Api.Mul(&rhoK, &rho)
 	}
 
-	api.AssertIsEqual(res, qr)
+	e4Api.AssertIsEqual(&res, &qr)
 }
 
 // cptEvaluationMap returns an evaluation map [Column] -> [Y] for all the
 // polynomials handled by [ctx]. This includes the columns of the new query
 // but also the explictly evaluated columns.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runtime) map[ifaces.ColID]field.Element {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Runtime) map[ifaces.ColID]fext.Element {
 
 	var (
-		evaluationMap = make(map[ifaces.ColID]field.Element)
+		evaluationMap = make(map[ifaces.ColID]fext.Element)
 		univParams    = run.GetParams(ctx.NewQuery.QueryID).(query.UnivariateEvalParams)
-		x             = univParams.X
+		x             = univParams.ExtX
 	)
 
 	for i := range ctx.NewQuery.Pols {
 		colID := ctx.NewQuery.Pols[i].GetColID()
-		evaluationMap[colID] = univParams.Ys[i]
+		evaluationMap[colID] = univParams.ExtYs[i]
 	}
-
 	for i, c := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
 		poly := c.GetColAssignment(run)
-		evaluationMap[colID] = smartvectors.Interpolate(poly, x)
+
+		evaluationMap[colID] = smartvectors.EvaluateFextPolyLagrange(poly, x)
 	}
 
 	return evaluationMap
 }
 
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]frontend.Variable {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.E4Gen {
 
 	var (
-		evaluationMap = make(map[ifaces.ColID]frontend.Variable)
+		evaluationMap = make(map[ifaces.ColID]gnarkfext.E4Gen)
 		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
-		x             = univParams.X
-		polys         = make([][]frontend.Variable, 0)
+		x             = univParams.ExtX
+		polys         = make([][]gnarkfext.E4Gen, 0)
 	)
 
 	for i := range ctx.NewQuery.Pols {
 		colID := ctx.NewQuery.Pols[i].GetColID()
-		evaluationMap[colID] = univParams.Ys[i]
+		evaluationMap[colID] = univParams.ExtYs[i]
 	}
 
 	for _, c := range ctx.ExplicitlyEvaluated {
-
-		// When encountering a verifiercol.ConstCol, the optimization is to
-		// represent the column not to its full length but as a length 1 column
-		// which will yield the same result in the end.
-		if constCol, isConstCol := c.(verifiercol.ConstCol); isConstCol {
-			polys = append(polys, []frontend.Variable{constCol.F})
-			continue
-		}
-
 		poly := c.GetColAssignmentGnark(run)
-		polys = append(polys, poly)
+
+		extPoly := make([]gnarkfext.E4Gen, len(poly))
+		for i := range poly {
+			extPoly[i] = gnarkfext.FromBase(poly[i])
+		}
+		polys = append(polys, extPoly)
 	}
 
-	ys := fastpoly.BatchInterpolateGnark(api, polys, x)
+	ys := fastpolyext.BatchEvaluateLagrangeGnark(api, polys, x)
 
 	for i := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
@@ -215,4 +222,17 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 	}
 
 	return evaluationMap
+}
+
+func getPositionOfPolyInQueryYs(q query.UnivariateEval, poly ifaces.Column) int {
+	// TODO @gbotrel this appears on the traces quite a lot -- lot of string comparisons
+	toFind := poly.GetColID()
+	for i, p := range q.Pols {
+		if p.GetColID() == toFind {
+			return i
+		}
+	}
+
+	utils.Panic("not found, poly=%v in query=%v", toFind, q.Name())
+	return 0
 }

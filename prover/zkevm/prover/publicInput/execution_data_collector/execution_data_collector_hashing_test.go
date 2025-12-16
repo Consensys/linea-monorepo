@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -98,7 +98,7 @@ func ComputeMiMCHashFixedTestData() field.Element {
 		vectFieldElem[i].Set(&elem)
 	}
 	// compute and return the MiMC hash of the packed field elements
-	finalHash := mimc.HashVec(vectFieldElem)
+	finalHash := hasher_factory.HashVec(vectFieldElem)
 	return finalHash
 }
 
@@ -162,7 +162,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 				Index:   execDataCollector.Ct,
 				ToHash:  execDataCollector.IsActive,
 				NBytes:  execDataCollector.NoBytes,
-				Limb:    execDataCollector.Limb,
+				Limbs:   execDataCollector.Limbs[:],
 			}},
 			PaddingStrategy: generic.MiMCUsecase,
 		}
@@ -213,7 +213,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// compute the MiMC hash of the fixed TestData
 		//fixedHash := ComputeMiMCHashFixedTestData()
 		// assert that we are computing the hash correctly
-		//assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final Hash Value is Incorrect")
+		//assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final HashFirst Value is Incorrect")
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)

@@ -9,6 +9,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
 )
@@ -37,16 +39,16 @@ type KeccakZkEVM struct {
 	Pa_keccak  wizard.ProverAction
 }
 
-func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEcdsa []generic.GenericByteModule) *KeccakZkEVM {
+func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEcdsa []generic.GenericByteModule, arith *arithmetization.Arithmetization) *KeccakZkEVM {
 
-	shakira, isHashLoManualShf := getShakiraArithmetization(comp)
+	shakira, isHashLoManualShf := getShakiraArithmetization(comp, arith)
 
 	res := newKeccakZkEvm(
 		comp,
 		settings, append(
 			providersFromEcdsa,
 			shakira,
-			getRlpAddArithmetization(comp),
+			getRlpAddArithmetization(comp, arith),
 		),
 	)
 
@@ -116,48 +118,50 @@ func (k *KeccakZkEVM) Run(run *wizard.ProverRuntime) {
 // the data to hash using SHA3 in the SHAKIRA module of the arithmetization. The
 // returned module contains an [Info.IsHashLo] that is a column to assign: e.g
 // it does not come from the arithmetization directly but is derived from.
-func getShakiraArithmetization(comp *wizard.CompiledIOP) (generic.GenericByteModule, *dedicated.ManuallyShifted) {
+func getShakiraArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) (generic.GenericByteModule, *dedicated.ManuallyShifted) {
 
 	res := generic.GenericByteModule{
 		Data: generic.GenDataModule{
-			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
-			Index:   comp.Columns.GetHandle("shakiradata.INDEX"),
-			Limb:    comp.Columns.GetHandle("shakiradata.LIMB"),
-			NBytes:  comp.Columns.GetHandle("shakiradata.nBYTES"),
-			ToHash:  comp.Columns.GetHandle("shakiradata.IS_KECCAK_DATA"),
+			HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
+			Index:   arith.ColumnOf(comp, "shakiradata", "INDEX"),
+			Limbs:   arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
+			NBytes:  arith.ColumnOf(comp, "shakiradata", "nBYTES"),
+			ToHash:  arith.ColumnOf(comp, "shakiradata", "IS_KECCAK_DATA"),
 		},
 		Info: generic.GenInfoModule{
-			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
-			HashLo:  comp.Columns.GetHandle("shakiradata.LIMB"),
-			HashHi:  comp.Columns.GetHandle("shakiradata.LIMB"),
+			HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
+			HashLo:  arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
+			HashHi:  arith.LimbColumnsOf(comp, "shakiradata", "LIMB", common.NbLimbU128),
 			// Before, we usse to pass column.Shift(IsHashHi, -1) but this does
 			// not work with the prover distribution as the column is used as
 			// a filter for a projection query.
-			IsHashHi: comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_HI"),
+			IsHashHi: arith.ColumnOf(comp, "shakiradata", "SELECTOR_KECCAK_RES_HI"),
 		},
 	}
 
+	// Note: that name is an imitation of how the corset columns are named but
+	// it does not have to be.
 	supp := dedicated.ManuallyShift(comp, res.Info.IsHashHi, -1, "shakiradata.SELECTOR_KECCAK_RES_LO")
 	pragmas.MarkLeftPadded(supp.Natural)
 	res.Info.IsHashLo = supp.Natural
 	return res, supp
 }
 
-func getRlpAddArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {
+func getRlpAddArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) generic.GenericByteModule {
 	return generic.GenericByteModule{
 		Data: generic.GenDataModule{
-			HashNum: comp.Columns.GetHandle("rlpaddr.STAMP"),
-			Index:   comp.Columns.GetHandle("rlpaddr.INDEX"),
-			Limb:    comp.Columns.GetHandle("rlpaddr.LIMB"),
-			NBytes:  comp.Columns.GetHandle("rlpaddr.nBYTES"),
-			ToHash:  comp.Columns.GetHandle("rlpaddr.LC"),
+			HashNum: arith.ColumnOf(comp, "rlpaddr", "STAMP"),
+			Index:   arith.ColumnOf(comp, "rlpaddr", "INDEX"),
+			Limbs:   arith.LimbColumnsOf(comp, "rlpaddr", "LIMB", common.NbLimbU128),
+			NBytes:  arith.ColumnOf(comp, "rlpaddr", "nBYTES"),
+			ToHash:  arith.ColumnOf(comp, "rlpaddr", "LC"),
 		},
 		Info: generic.GenInfoModule{
-			HashNum:  comp.Columns.GetHandle("rlpaddr.STAMP"),
-			HashLo:   comp.Columns.GetHandle("rlpaddr.DEP_ADDR_LO"),
-			HashHi:   comp.Columns.GetHandle("rlpaddr.RAW_ADDR_HI"),
-			IsHashLo: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),
-			IsHashHi: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),
+			HashNum:  arith.ColumnOf(comp, "rlpaddr", "STAMP"),
+			HashLo:   arith.LimbColumnsOf(comp, "rlpaddr", "DEP_ADDR_LO", common.NbLimbU128),
+			HashHi:   arith.LimbColumnsOf(comp, "rlpaddr", "RAW_ADDR_HI", common.NbLimbU128),
+			IsHashLo: arith.ColumnOf(comp, "rlpaddr", "SELECTOR_KECCAK_RES"),
+			IsHashHi: arith.ColumnOf(comp, "rlpaddr", "SELECTOR_KECCAK_RES"),
 		},
 	}
 }

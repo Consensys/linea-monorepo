@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	eth "github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,7 +30,7 @@ func DummyDigest(i int) (d eth.Digest) {
 }
 
 func Hash(t io.WriterTo) types.Bytes32 {
-	hasher := eth.MIMC_CONFIG.HashFunc()
+	hasher := poseidon2_koalabear.NewMDHasher()
 	t.WriteTo(hasher)
 	return types.AsBytes32(hasher.Sum(nil))
 }
@@ -60,7 +61,7 @@ func TestEmptyStorageTrieHash(t *testing.T) {
 - Root hash of the empty world state
 */
 func TestEmptyWorldStateMiMC(t *testing.T) {
-	worldstate := eth.NewWorldState(eth.MIMC_CONFIG)
+	worldstate := eth.NewWorldState()
 	// should be the top root of an empty accumulator
 	assert.Equal(t, "0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5", worldstate.AccountTrie.TopRoot().Hex())
 }
@@ -71,11 +72,11 @@ func TestEmptyWorldStateMiMC(t *testing.T) {
 */
 func TestWorldStateWithAnAccountMiMC(t *testing.T) {
 
-	account := eth.NewEOA(eth.MIMC_CONFIG, 65, big.NewInt(835))
+	account := eth.NewEOA(65, big.NewInt(835))
 	// This gives a non-zero dummy address to the account
 	address := DummyAddress(36)
 
-	worldstate := eth.NewWorldState(eth.MIMC_CONFIG)
+	worldstate := eth.NewWorldState()
 	worldstate.AccountTrie.InsertAndProve(address, account)
 
 	// check that the hash of the inserted account matches
@@ -94,14 +95,14 @@ func TestWorldStateWithAnAccountMiMC(t *testing.T) {
 */
 func TestWorldStateWithTwoAccountMiMC(t *testing.T) {
 
-	accountA := eth.NewEOA(eth.MIMC_CONFIG, 65, big.NewInt(835))
+	accountA := eth.NewEOA(65, big.NewInt(835))
 	// This gives a non-zero dummy address to the account
 	addressA := DummyAddress(36)
 
-	accountB := eth.NewEOA(eth.MIMC_CONFIG, 42, big.NewInt(354))
+	accountB := eth.NewEOA(42, big.NewInt(354))
 	addressB := DummyAddress(41) // must be a different address or the insert will panic
 
-	worldstate := eth.NewWorldState(eth.MIMC_CONFIG)
+	worldstate := eth.NewWorldState()
 	worldstate.AccountTrie.InsertAndProve(addressA, accountA)
 	worldstate.AccountTrie.InsertAndProve(addressB, accountB)
 
@@ -120,19 +121,19 @@ func TestWorldStateWithTwoAccountMiMC(t *testing.T) {
 func TestWorldStateEoaAndContractMiMC(t *testing.T) {
 
 	// dummy EOA
-	accountA := eth.NewEOA(eth.MIMC_CONFIG, 65, big.NewInt(835))
+	accountA := eth.NewEOA(65, big.NewInt(835))
 	addressA := DummyAddress(36)
 
 	// dummy Account
-	accountB := eth.NewContractEmptyStorage(eth.MIMC_CONFIG, 41, big.NewInt(15353), DummyDigest(75), DummyFullByte(15), 7)
+	accountB := eth.NewContractEmptyStorage(41, big.NewInt(15353), DummyDigest(75), DummyFullByte(15), 7)
 	addressB := DummyAddress(47)
 
-	worldstate := eth.NewWorldState(eth.MIMC_CONFIG)
+	worldstate := eth.NewWorldState()
 	worldstate.AccountTrie.InsertAndProve(addressA, accountA)
 	worldstate.AccountTrie.InsertAndProve(addressB, accountB)
 
 	// Give a storage trie to B
-	worldstate.StorageTries.InsertNew(addressB, eth.NewStorageTrie(eth.MIMC_CONFIG, addressB))
+	worldstate.StorageTries.InsertNew(addressB, eth.NewStorageTrie(addressB))
 
 	// The storage tries map stores pointers to the storage tries so we don't need to
 	// update the map after modifying the storage however, we still need to manually
@@ -190,18 +191,18 @@ insert C
 func TestAddAaddBdelAaddCMiMC(t *testing.T) {
 
 	// dummy EOA
-	accountA := eth.NewEOA(eth.MIMC_CONFIG, 65, big.NewInt(835))
+	accountA := eth.NewEOA(65, big.NewInt(835))
 	addressA := DummyAddress(36)
 
 	// dummy Account
-	accountB := eth.NewContractEmptyStorage(eth.MIMC_CONFIG, 41, big.NewInt(15353), DummyDigest(75), DummyFullByte(15), 7)
+	accountB := eth.NewContractEmptyStorage(41, big.NewInt(15353), DummyDigest(75), DummyFullByte(15), 7)
 	addressB := DummyAddress(47)
 
 	// dummy Contract
-	accountC := eth.NewContractEmptyStorage(eth.MIMC_CONFIG, 48, big.NewInt(9835), DummyDigest(54), DummyFullByte(85), 19)
+	accountC := eth.NewContractEmptyStorage(48, big.NewInt(9835), DummyDigest(54), DummyFullByte(85), 19)
 	addressC := DummyAddress(120)
 
-	worldstate := eth.NewWorldState(eth.MIMC_CONFIG)
+	worldstate := eth.NewWorldState()
 	worldstate.AccountTrie.InsertAndProve(addressA, accountA)
 	worldstate.AccountTrie.InsertAndProve(addressB, accountB)
 	worldstate.AccountTrie.DeleteAndProve(addressA)

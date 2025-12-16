@@ -13,8 +13,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -52,6 +52,7 @@ func TestLookup(t *testing.T) {
 			mpts.Compile(),
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(4),
 				vortex.WithSISParams(&ringsis.StdParams),
 				vortex.PremarkAsSelfRecursed(),
@@ -60,24 +61,26 @@ func TestLookup(t *testing.T) {
 		},
 		{
 			cleanup.CleanUp,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1 << 13),
 			),
 			vortex.Compile(
 				8,
+				false,
 				vortex.ForceNumOpenedColumns(32),
 				vortex.WithSISParams(&ringsis.StdParams),
 				vortex.WithOptionalSISHashingThreshold(64),
 			),
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1 << 13),
 			),
 			vortex.Compile(
 				8,
+				false,
 				vortex.ForceNumOpenedColumns(32),
 				vortex.WithSISParams(&ringsis.StdParams),
 				vortex.WithOptionalSISHashingThreshold(64),
@@ -103,7 +106,7 @@ func TestLookup(t *testing.T) {
 
 			comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
 
-			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1)
+			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, true)
 			witness1 := ExtractWitness(proverRuntime)
 
 			prove2 := func(run *wizard.ProverRuntime) {

@@ -1,10 +1,11 @@
 package common
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -24,15 +25,15 @@ import (
 // to the state operation—and similarly with the other components in the constructed tuple.)
 type StateDiff struct {
 	// HKey stores the initial and final accumulator's key hashes.
-	HKey ifaces.Column
+	HKey [common.NbElemPerHash]ifaces.Column
 
 	// InitialHVal and FinalHVal store the initial and final accumulator's
 	// hash of values.
-	InitialHVal, FinalHVal ifaces.Column
+	InitialHVal, FinalHVal [common.NbElemPerHash]ifaces.Column
 
 	// InitialRoot and FinalRoot store the accumulator's initial and final
 	// root hashes.
-	InitialRoot, FinalRoot ifaces.Column
+	InitialRoot, FinalRoot [common.NbElemPerHash]ifaces.Column
 }
 
 // NewStateDiff declares all the columns adding up to a [StateDiff] and returns
@@ -44,100 +45,133 @@ func NewStateDiff(comp *wizard.CompiledIOP, size int, moduleName, name string) S
 			0,
 			ifaces.ColIDf("%v_%v_%v", moduleName, name, subName),
 			size,
+			true,
 		)
 	}
 
-	return StateDiff{
-		HKey:        createCol(moduleName, "HKEY"),
-		InitialHVal: createCol(moduleName, "INITIAL_HVAL"),
-		FinalHVal:   createCol(moduleName, "FINAL_HVAL"),
-		InitialRoot: createCol(moduleName, "INITIAL_ROOT"),
-		FinalRoot:   createCol(moduleName, "FINAL_ROOT"),
+	res := StateDiff{}
+
+	for i := range common.NbElemPerHash {
+		res.HKey[i] = createCol(moduleName, fmt.Sprintf("HKEY_%d", i))
+		res.InitialHVal[i] = createCol(moduleName, fmt.Sprintf("INITIAL_HVAL_%d", i))
+		res.FinalHVal[i] = createCol(moduleName, fmt.Sprintf("FINAL_HVAL_%d", i))
+		res.InitialRoot[i] = createCol(moduleName, fmt.Sprintf("INITIAL_ROOT_%d", i))
+		res.FinalRoot[i] = createCol(moduleName, fmt.Sprintf("FINAL_ROOT_%d", i))
 	}
+
+	return res
 }
 
 // StateDiffAssignmentBuilder is a convenience structure storing the column
 // builders relating to an AccumulatorSummary.
 type StateDiffAssignmentBuilder struct {
-	HKey                   *common.VectorBuilder
-	InitialHVal, FinalHVal *common.VectorBuilder
-	InitialRoot, FinalRoot *common.VectorBuilder
+	HKey                   [common.NbElemPerHash]*common.VectorBuilder
+	InitialHVal, FinalHVal [common.NbElemPerHash]*common.VectorBuilder
+	InitialRoot, FinalRoot [common.NbElemPerHash]*common.VectorBuilder
 }
 
 // NewStateDiffAssignmentBuilder initializes a fresh
 // [StateDiffAssignmentBuilder]
 func NewStateDiffAssignmentBuilder(as StateDiff) StateDiffAssignmentBuilder {
-	return StateDiffAssignmentBuilder{
-		HKey:        common.NewVectorBuilder(as.HKey),
-		InitialHVal: common.NewVectorBuilder(as.InitialHVal),
-		FinalHVal:   common.NewVectorBuilder(as.FinalHVal),
-		InitialRoot: common.NewVectorBuilder(as.InitialRoot),
-		FinalRoot:   common.NewVectorBuilder(as.FinalRoot),
+	res := StateDiffAssignmentBuilder{}
+
+	for i := range common.NbElemPerHash {
+		res.HKey[i] = common.NewVectorBuilder(as.HKey[i])
+		res.InitialHVal[i] = common.NewVectorBuilder(as.InitialHVal[i])
+		res.FinalHVal[i] = common.NewVectorBuilder(as.FinalHVal[i])
+		res.InitialRoot[i] = common.NewVectorBuilder(as.InitialRoot[i])
+		res.FinalRoot[i] = common.NewVectorBuilder(as.FinalRoot[i])
 	}
+
+	return res
 }
 
 // PushReadZero pushes the relevant row when a ReadZero occurs on the
 // accumulator side.
-func (as *StateDiffAssignmentBuilder) PushReadZero(root, hkey types.Bytes32) {
-	as.HKey.PushBytes32(hkey)
-	as.InitialHVal.PushZero()
-	as.FinalHVal.PushZero()
-	as.InitialRoot.PushBytes32(root)
-	as.FinalRoot.PushBytes32(root)
+func (as *StateDiffAssignmentBuilder) PushReadZero(root, hkey [][]byte) {
+	for i := range common.NbElemPerHash {
+		as.HKey[i].PushBytes(padZerosAtBeginning(hkey[i]))
+		as.InitialHVal[i].PushZero()
+		as.FinalHVal[i].PushZero()
+		as.InitialRoot[i].PushBytes(padZerosAtBeginning(root[i]))
+		as.FinalRoot[i].PushBytes(padZerosAtBeginning(root[i]))
+	}
 }
 
 // PushReadNonZero pushes a row onto `as` for a read-non-zero operation.
-func (as *StateDiffAssignmentBuilder) PushReadNonZero(root, hKey, hVal types.Bytes32) {
-	as.HKey.PushBytes32(hKey)
-	as.InitialHVal.PushBytes32(hVal)
-	as.FinalHVal.PushBytes32(hVal)
-	as.InitialRoot.PushBytes32(root)
-	as.FinalRoot.PushBytes32(root)
+func (as *StateDiffAssignmentBuilder) PushReadNonZero(root, hKey, hVal [][]byte) {
+	for i := range common.NbElemPerHash {
+		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
+		as.InitialHVal[i].PushBytes(padZerosAtBeginning(hVal[i]))
+		as.FinalHVal[i].PushBytes(padZerosAtBeginning(hVal[i]))
+		as.InitialRoot[i].PushBytes(padZerosAtBeginning(root[i]))
+		as.FinalRoot[i].PushBytes(padZerosAtBeginning(root[i]))
+	}
 }
 
 // PushInsert pushes a row representing an insertion onto `as`.
-func (as *StateDiffAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal types.Bytes32) {
-	as.HKey.PushBytes32(hKey)
-	as.InitialHVal.PushZero()
-	as.FinalHVal.PushBytes32(newHVal)
-	as.InitialRoot.PushBytes32(oldRoot)
-	as.FinalRoot.PushBytes32(newRoot)
+func (as *StateDiffAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal [][]byte) {
+	for i := range common.NbElemPerHash {
+		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
+		as.InitialHVal[i].PushZero()
+		as.FinalHVal[i].PushBytes(padZerosAtBeginning(newHVal[i]))
+		as.InitialRoot[i].PushBytes(padZerosAtBeginning(oldRoot[i]))
+		as.FinalRoot[i].PushBytes(padZerosAtBeginning(newRoot[i]))
+	}
 }
 
 // PushUpdate pushes a row representing an update onto `as`.
-func (as *StateDiffAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal, newHVal types.Bytes32) {
-	as.HKey.PushBytes32(hKey)
-	as.InitialHVal.PushBytes32(oldHVal)
-	as.FinalHVal.PushBytes32(newHVal)
-	as.InitialRoot.PushBytes32(oldRoot)
-	as.FinalRoot.PushBytes32(newRoot)
+func (as *StateDiffAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal, newHVal [][]byte) {
+	for i := range common.NbElemPerHash {
+		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
+		as.InitialHVal[i].PushBytes(padZerosAtBeginning(oldHVal[i]))
+		as.FinalHVal[i].PushBytes(padZerosAtBeginning(newHVal[i]))
+		as.InitialRoot[i].PushBytes(padZerosAtBeginning(oldRoot[i]))
+		as.FinalRoot[i].PushBytes(padZerosAtBeginning(newRoot[i]))
+	}
 }
 
 // PushDelete pushes a row representing a deletion onto `as`.
-func (as *StateDiffAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal types.Bytes32) {
-	as.HKey.PushBytes32(hKey)
-	as.InitialHVal.PushBytes32(oldHVal)
-	as.FinalHVal.PushZero()
-	as.InitialRoot.PushBytes32(oldRoot)
-	as.FinalRoot.PushBytes32(newRoot)
+func (as *StateDiffAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal [][]byte) {
+	for i := range common.NbElemPerHash {
+		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
+		as.InitialHVal[i].PushBytes(padZerosAtBeginning(oldHVal[i]))
+		as.FinalHVal[i].PushZero()
+		as.InitialRoot[i].PushBytes(padZerosAtBeginning(oldRoot[i]))
+		as.FinalRoot[i].PushBytes(padZerosAtBeginning(newRoot[i]))
+	}
 }
 
 // PadAndAssign pads all the column in `as` and assign them into `run`
 func (as *StateDiffAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
-	as.HKey.PadAndAssign(run)
-	as.InitialHVal.PadAndAssign(run)
-	as.FinalHVal.PadAndAssign(run)
-	as.InitialRoot.PadAndAssign(run)
-	as.FinalRoot.PadAndAssign(run)
+	for i := range common.NbElemPerHash {
+		as.HKey[i].PadAndAssign(run)
+		as.InitialHVal[i].PadAndAssign(run)
+		as.FinalHVal[i].PadAndAssign(run)
+		as.InitialRoot[i].PadAndAssign(run)
+		as.FinalRoot[i].PadAndAssign(run)
+	}
 }
 
 // addRows add rows to the builder that is used to construct an AccumulatorSummary
-func (builder *StateDiffAssignmentBuilder) AddRows(numRowsAccSegment int, hKey, initialHVal, finalHVal, initialRoot, finalRoot field.Element) {
+func (builder *StateDiffAssignmentBuilder) AddRows(numRowsAccSegment int, hKey, initialHVal, finalHVal, initialRoot, finalRoot [common.NbElemPerHash]field.Element) {
 	for i := 1; i <= numRowsAccSegment; i++ {
-		builder.HKey.PushField(hKey)
-		builder.InitialHVal.PushField(initialHVal)
-		builder.FinalHVal.PushField(finalHVal)
-		builder.InitialRoot.PushField(initialRoot)
-		builder.FinalRoot.PushField(finalRoot)
+		for j := range common.NbElemPerHash {
+			builder.HKey[j].PushField(hKey[j])
+			builder.InitialHVal[j].PushField(initialHVal[j])
+			builder.FinalHVal[j].PushField(finalHVal[j])
+			builder.InitialRoot[j].PushField(initialRoot[j])
+			builder.FinalRoot[j].PushField(finalRoot[j])
+		}
 	}
+}
+
+// padZerosAtBeginning pads provided array to [field.Bytes] len with zeros at the beginning.
+func padZerosAtBeginning(arr []byte) []byte {
+	if len(arr) >= field.Bytes {
+		return arr
+	}
+
+	padding := make([]byte, field.Bytes-len(arr))
+	return append(padding, arr...)
 }

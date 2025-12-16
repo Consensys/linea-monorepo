@@ -47,8 +47,8 @@ type CompiledStrictHasher struct {
 // StrictHasherCircuit is to be embedded in a gnark circuit
 type StrictHasherCircuit struct {
 	Wc           *wizard.VerifierCircuit
-	Ins          [][][2]frontend.Variable // every 32-byte block is prepacked into 2 16-byte blocks
-	InLengths    []frontend.Variable      // actual lengths of the inputs
+	Ins          [][][2]zk.WrappedVariable // every 32-byte block is prepacked into 2 16-byte blocks
+	InLengths    []zk.WrappedVariable      // actual lengths of the inputs
 	maxNbKeccakF int
 }
 
@@ -64,10 +64,10 @@ type StrictHasher struct {
 }
 
 type StrictHasherSnark struct {
-	ins       [][][2]frontend.Variable
+	ins       [][][2]zk.WrappedVariable
 	h         Hasher
 	c         *StrictHasherCircuit
-	inLenghts []frontend.Variable
+	inLenghts []zk.WrappedVariable
 }
 
 // NewStrictHasherCompiler creates a new strict hasher compiler with capacity for a number of hashes equal to the sum of the arguments
@@ -120,17 +120,17 @@ func (h *StrictHasherCompiler) Compile(wizardCompilationOpts ...func(iop *wizard
 	}
 }
 
-func allocateIns(lengths []int) [][][2]frontend.Variable {
-	ins := make([][][2]frontend.Variable, len(lengths))
+func allocateIns(lengths []int) [][][2]zk.WrappedVariable {
+	ins := make([][][2]zk.WrappedVariable, len(lengths))
 	for i := range ins {
-		ins[i] = make([][2]frontend.Variable, utils.Abs(lengths[i])/32)
+		ins[i] = make([][2]zk.WrappedVariable, utils.Abs(lengths[i])/32)
 	}
 	return ins
 }
 
 func (h *CompiledStrictHasher) GetCircuit() (c StrictHasherCircuit, err error) {
 	c.Ins = allocateIns(h.lengths)
-	c.InLengths = make([]frontend.Variable, len(h.lengths))
+	c.InLengths = make([]zk.WrappedVariable, len(h.lengths))
 	c.maxNbKeccakF = h.maxNbKeccakF
 	if h.wc == nil {
 		logrus.Warn("WIZARD SUB-PROVER NOT COMPILED. KECCAK HASH RESULTS WILL NOT BE VERIFIED. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
@@ -165,16 +165,16 @@ func (h *StrictHasher) Assign() (c StrictHasherCircuit, err error) {
 	} else {
 		c.Wc = h.wc.Assign(h.ins)
 	}
-	c.Ins = make([][][2]frontend.Variable, len(h.ins))
-	c.InLengths = make([]frontend.Variable, len(h.ins))
+	c.Ins = make([][][2]zk.WrappedVariable, len(h.ins))
+	c.InLengths = make([]zk.WrappedVariable, len(h.ins))
 	for i, in := range h.ins {
-		c.Ins[i] = make([][2]frontend.Variable, utils.Abs(h.expectedLengths[i])/32) // already checked that the lengths are multiples of 32
+		c.Ins[i] = make([][2]zk.WrappedVariable, utils.Abs(h.expectedLengths[i])/32) // already checked that the lengths are multiples of 32
 		for j := range c.Ins[i] {
 			if j < len(in)/32 {
 				c.Ins[i][j][0] = in[j*32 : j*32+16]
 				c.Ins[i][j][1] = in[j*32+16 : j*32+32]
 			} else {
-				c.Ins[i][j] = [2]frontend.Variable{0, 0}
+				c.Ins[i][j] = [2]zk.WrappedVariable{0, 0}
 			}
 		}
 		c.InLengths[i] = len(in) / 32
@@ -273,7 +273,7 @@ func (h *StrictHasher) SkipN(n int) {
 	h.nbSumsYet += n
 }
 
-func (s *StrictHasherSnark) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [32]frontend.Variable {
+func (s *StrictHasherSnark) Sum(nbIn zk.WrappedVariable, bytess ...[32]zk.WrappedVariable) [32]zk.WrappedVariable {
 	api := s.h.api
 
 	if len(s.ins) == 0 {

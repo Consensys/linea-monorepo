@@ -13,9 +13,9 @@ linters:
         - G115
     staticcheck:
       checks:
-        - all
         - -SA1006
         - -SA1019
+        - all
   exclusions:
     generated: lax
     presets:
@@ -33,13 +33,9 @@ linters:
       - builtin$
       - examples$
 formatters:
-  enable:
-    - gofmt
   exclusions:
     generated: lax
     paths:
-      - compressor
-      - zkevm/arithmetization
       - third_party$
       - builtin$
       - examples$

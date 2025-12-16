@@ -3,7 +3,7 @@ package zkevm
 import (
 	"sync"
 
-	"github.com/consensys/go-corset/pkg/mir"
+	"github.com/consensys/go-corset/pkg/ir/mir"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
@@ -56,7 +56,7 @@ var (
 	// level target.
 	sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
-	dummyCompilationSuite = CompilationSuite{dummy.CompileAtProverLvl()}
+	dummyCompilationSuite = CompilationSuite{dummy.Compile}
 
 	// This is the compilation suite in use for the full prover
 	fullCompilationSuite = CompilationSuite{
@@ -173,7 +173,7 @@ func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *co
 				Name:            "SM_ACCUMULATOR",
 				MerkleTreeDepth: 40,
 			},
-			MiMCCodeHashSize: tl.Rom,
+			LineaCodeHashSize: tl.Rom,
 		},
 		Metadata: wizard.VersionMetadata{
 			Title:   "linea/evm-execution/full",

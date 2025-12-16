@@ -12,7 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -152,6 +152,12 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 
 	// This gathers the advices in a map indexed by the column ID
 	for _, adv := range disc.Advices {
+
+		if _, ok := adviceOfColumn[adv.Column]; ok {
+			logrus.Errorf("duplicate advice for column=%v has been given more than one advice. Perhaps a typo.", adv.Column)
+			continue
+		}
+
 		adviceOfColumn[adv.Column] = adv
 		if moduleSets[adv.Cluster] == nil {
 			moduleSets[adv.Cluster] = &StandardModule{
@@ -162,11 +168,43 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 
 	// This maps each query-based module to its advice and adds it to the module
 	// set based on the advice indication.
-	oneNotFound := false
+	adviceMappingErrs := []error{}
+	usedAdvices := map[ifaces.ColID]struct{}{}
+
 	for _, qbm := range subDiscover.Modules {
 		found := false
+		muteMissingAdviceErr := false
+
 		for c := range qbm.Ds.Rank {
-			if advice, exists := adviceOfColumn[c]; exists {
+
+			advice, foundAdvice := adviceOfColumn[c]
+
+			col := comp.Columns.GetHandle(c)
+			if modRef, hasModRef := pragmas.TryGetModuleRef(col); hasModRef {
+				adviceForRef, foundAdviceForRef := adviceOfColumn[ifaces.ColID(modRef)]
+				if !foundAdviceForRef {
+					e := fmt.Errorf("column=%v size=%v has been given ref=`%v`, but no advice for it was found. Perhaps a typo.", c, col.Size(), modRef)
+					adviceMappingErrs = append(adviceMappingErrs, e)
+					muteMissingAdviceErr = true
+					break
+				}
+
+				advice = adviceForRef
+				foundAdvice = true
+			}
+
+			// If the advice was already used, then it is a duplicate
+			if _, ok := usedAdvices[advice.Column]; ok {
+				e := fmt.Errorf("reused advice, perhaps you gave the same reference name to 2 distincts columns, advice=%v, currCol=%v", advice, c)
+				adviceMappingErrs = append(adviceMappingErrs, e)
+				muteMissingAdviceErr = true
+				break
+			}
+
+			if foundAdvice {
+				// The advice is reported as used so that another column cannot use
+				// it again.
+				usedAdvices[advice.Column] = struct{}{}
 				moduleSets[advice.Cluster].SubModules = append(moduleSets[advice.Cluster].SubModules, qbm)
 				moduleSets[advice.Cluster].NewSizes = append(moduleSets[advice.Cluster].NewSizes, advice.BaseSize)
 				found = true
@@ -174,14 +212,28 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			}
 		}
 
-		if !found {
+		if !found && !muteMissingAdviceErr {
 			columnList := utils.SortedKeysOf(qbm.Ds.Rank, func(a, b ifaces.ColID) bool { return a < b })
-			logrus.Errorf("Could not find advice for %v, columns=[%v]", qbm.ModuleName, columnList)
-			oneNotFound = true
+			e := fmt.Errorf(
+				"Could not find advice for %v, columns=[%v], raw-qbm=%++v. You may want to attach an advice to one of these columns: try doing `[pragmas.AddModuleRef(col, \"<module-name>\")]` and adding an advice passing `Column:\"<module-name>\"` in limtless.go",
+				qbm.ModuleName, columnList, qbm)
+			adviceMappingErrs = append(adviceMappingErrs, e)
 		}
 	}
 
-	if oneNotFound {
+	// This routine detects the advices that are not used and emit warning for each
+	adviceList := utils.SortedKeysOf(adviceOfColumn, func(a, b ifaces.ColID) bool { return a < b })
+	for _, adv := range adviceList {
+		if _, ok := usedAdvices[adv]; !ok {
+			e := fmt.Errorf("unused advice, you should check if it can be deleted or if it contains a typo advice=%++v", adv)
+			adviceMappingErrs = append(adviceMappingErrs, e)
+		}
+	}
+
+	if len(adviceMappingErrs) > 0 {
+		for _, e := range adviceMappingErrs {
+			logrus.Error(e)
+		}
 		panic("Could not find advice for one of the query-based modules")
 	}
 
@@ -194,6 +246,12 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	// This resizes the modules so that their weights are close to the target
 	// weight.
 	for i := range disc.Modules {
+
+		// Store the original BaseSize from advice for each submodule as the minimum allowed size.
+		// For submodules with Plonk circuits, BaseSize represents the required number of public
+		// inputs and must not be reduced.
+		baseSizes := make([]int, len(disc.Modules[i].NewSizes))
+		copy(baseSizes, disc.Modules[i].NewSizes)
 
 		// weightTotalInitial is the weight of the module using the initial
 		// number of rows.
@@ -229,6 +287,11 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				numRow := disc.Modules[i].NewSizes[j]
 				if !disc.Modules[i].SubModules[j].HasPrecomputed {
 					numRow /= reduction
+					// Only enforce BaseSize floor for submodules with Plonk circuits, as they have
+					// strict requirements for the number of public inputs matching the circuit size
+					if disc.Modules[i].SubModules[j].NbConstraintsOfPlonkCirc > 0 && numRow < baseSizes[j] {
+						numRow = baseSizes[j]
+					}
 				}
 
 				if numRow < 1 {
@@ -249,6 +312,10 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		for j := range disc.Modules[i].SubModules {
 			if !disc.Modules[i].SubModules[j].HasPrecomputed {
 				disc.Modules[i].NewSizes[j] /= bestReduction
+				// Only enforce BaseSize floor for submodules with Plonk circuits
+				if disc.Modules[i].SubModules[j].NbConstraintsOfPlonkCirc > 0 && disc.Modules[i].NewSizes[j] < baseSizes[j] {
+					disc.Modules[i].NewSizes[j] = baseSizes[j]
+				}
 			}
 		}
 	}
@@ -302,7 +369,7 @@ func (disc *StandardModuleDiscoverer) analyzeBasic(comp *wizard.CompiledIOP) {
 			continue
 		}
 
-		if distNext > distPrev {
+		if distNext > distPrev && currWeightSum > 0 {
 			groups = append(groups, []*QueryBasedModule{})
 			currWeightSum = 0
 		}
@@ -358,6 +425,10 @@ func (disc *StandardModuleDiscoverer) analyzeBasic(comp *wizard.CompiledIOP) {
 					panic("the 'reduction' is bounded by the min number of rows so it should not be smaller than 1")
 				}
 				currWeight += groups[i][j].Weight(comp, numRow)
+			}
+
+			if currWeight == 0 {
+				utils.Panic("currWeight == 0, for module %v, index %d", disc.Modules[i].ModuleName, i)
 			}
 
 			currDist := utils.Abs(currWeight - disc.TargetWeight)
@@ -878,7 +949,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 
 	// In theory, the condition with the pragma is redundant based on the sanity
 	// check we are doing.
-	if stats.NbPragmaRightPadded > 0 || stats.NbAssignedRightPadded > 0 {
+	if stats.NbPragmaRightPadded > 0 || (stats.NbAssignedRightPadded > 0 && stats.NbPragmaLeftPadded == 0) {
 		start, stop := 0, totalSegmentedArea
 		mod.NbSegmentCacheMutex.Lock()
 		defer mod.NbSegmentCacheMutex.Unlock()
@@ -888,7 +959,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 
 	// In theory, the condition with the pragma is redundant based on the sanity
 	// check we are doing.
-	if stats.NbPragmaLeftPadded > 0 || stats.NbAssignedLeftPadded > 0 {
+	if stats.NbPragmaLeftPadded > 0 || (stats.NbAssignedLeftPadded > 0 && stats.NbPragmaRightPadded == 0) {
 		start, stop := stats.OriginalSize-totalSegmentedArea, stats.OriginalSize
 		mod.NbSegmentCacheMutex.Lock()
 		defer mod.NbSegmentCacheMutex.Unlock()
@@ -1196,7 +1267,10 @@ func countConstraintsOfPlonkCirc(piw *query.PlonkInWizard) int {
 		hasAddGates = piw.PlonkOptions[0].RangeCheckAddGateForRangeCheck
 	}
 
-	ccs, _, _ := plonkinternal.CompileCircuitWithRangeCheck(piw.Circuit, hasAddGates)
+	ccs, _, err := plonkinternal.CompileCircuitWithRangeCheck(piw.Circuit, hasAddGates)
+	if err != nil {
+		utils.Panic("unable to compile plonk-in-wizard circuit %s: %v", piw.ID, err)
+	}
 	nbConstraints := ccs.GetNbConstraints()
 	return nbConstraints
 }
@@ -1310,9 +1384,8 @@ func weightOfGroupOfQBModules(comp *wizard.CompiledIOP, group []*QueryBasedModul
 // inclusion compiler understanding which parts of the S columns to use
 // to compute the M columns.
 type LPPSegmentBoundaryCalculator struct {
-	Disc     *StandardModuleDiscoverer
-	LPPArity int
-	Cached   map[*wizard.ProverRuntime]map[ifaces.ColID][2]int
+	Disc   *StandardModuleDiscoverer
+	Cached map[*wizard.ProverRuntime]map[ifaces.ColID][2]int
 }
 
 func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int) {
@@ -1331,13 +1404,7 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 			continue
 		}
 
-		var (
-			lppModuleID = i / ls.LPPArity
-			s0          = lppModuleID * ls.LPPArity
-			s1          = min(len(moduleNames), s0+ls.LPPArity)
-		)
-
-		nbSegment = NbSegmentOfModule(run, ls.Disc, moduleNames[s0:s1])
+		nbSegment = NbSegmentOfModule(run, ls.Disc, moduleNames[i])
 	}
 
 	// NewLen correspond to the sum of the size of all the segments that will be
@@ -1394,4 +1461,14 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 
 	utils.Panic("start=%v, stop=%v, nbSegment=%v, newSize=%v, newLen=%v, col=%v", start, stop, nbSegment, sizeOfSegment, newLen, col.ID)
 	return -1, -1 // Unreachable
+}
+
+// IndexOf returns the module index for a given module name
+func (disc *StandardModuleDiscoverer) IndexOf(moduleName ModuleName) int {
+	for i := range disc.Modules {
+		if disc.Modules[i].ModuleName == moduleName {
+			return i
+		}
+	}
+	panic("module not found")
 }

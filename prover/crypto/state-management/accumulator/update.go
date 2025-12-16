@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 )
@@ -23,11 +24,11 @@ type UpdateTrace[K, V io.WriterTo] struct {
 	NewValue V      `json:"newValue"`
 	// We call it new next free node, but the value is not updated
 	// during the update.
-	NewNextFreeNode int         `json:"newNextFreeNode"`
-	OldSubRoot      Bytes32     `json:"oldSubRoot"`
-	NewSubRoot      Bytes32     `json:"newSubRoot"`
-	OldOpening      LeafOpening `json:"priorUpdatedLeaf"`
-	Proof           smt.Proof   `json:"proof"`
+	NewNextFreeNode int                 `json:"newNextFreeNode"`
+	OldSubRoot      Bytes32             `json:"oldSubRoot"`
+	NewSubRoot      Bytes32             `json:"newSubRoot"`
+	OldOpening      LeafOpening         `json:"priorUpdatedLeaf"`
+	Proof           smt_koalabear.Proof `json:"proof"`
 }
 
 // UpdateAndProve performs a read on the accumulator. Panics if the associated
@@ -42,7 +43,7 @@ func (p *ProverState[K, V]) UpdateAndProve(key K, newVal V) UpdateTrace[K, V] {
 
 	tuple := p.Data.MustGet(i)
 
-	if hash(p.Config(), key) != hash(p.Config(), tuple.Key) {
+	if hash(key) != hash(tuple.Key) {
 		utils.Panic("sanity-check : the key mismatched")
 	}
 
@@ -52,11 +53,11 @@ func (p *ProverState[K, V]) UpdateAndProve(key K, newVal V) UpdateTrace[K, V] {
 
 	// Compute the new value and update the tree
 	tuple.Value = newVal
-	tuple.LeafOpening.HVal = hash(p.Config(), tuple.Value)
+	tuple.LeafOpening.HVal = hash(tuple.Value)
 	p.Data.Update(i, tuple)
 
-	newLeaf := tuple.LeafOpening.Hash(p.Config())
-	p.Tree.Update(int(i), newLeaf)
+	newLeaf := tuple.LeafOpening.Hash()
+	p.Tree.Update(int(i), types.Bytes32ToOctuplet(newLeaf))
 
 	return UpdateTrace[K, V]{
 		Location:        p.Location,
@@ -91,23 +92,23 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 		LeafOpening: trace.OldOpening,
 	}
 
-	leaf, err := tuple.CheckAndLeaf(v.Config)
+	leaf, err := tuple.CheckAndLeaf()
 	if err != nil {
 		return errors.WithMessage(err, "read update verifier failed")
 	}
 
-	if !trace.Proof.Verify(v.Config, leaf, trace.OldSubRoot) {
+	if smt_koalabear.Verify(&trace.Proof, types.Bytes32ToOctuplet(leaf), types.Bytes32ToOctuplet(trace.OldSubRoot)) != nil {
 		return fmt.Errorf("merkle proof verification failed")
 	}
 
 	newTuple := tuple
 	newTuple.Value = trace.NewValue
-	newTuple.LeafOpening.HVal = hash(v.Config, trace.NewValue)
+	newTuple.LeafOpening.HVal = hash(trace.NewValue)
 
 	// We panic because if the consistency check passed
-	newLeaf := hash(v.Config, &newTuple.LeafOpening)
+	newLeaf := hash(&newTuple.LeafOpening)
 
-	newRoot, err := updateCheckRoot(v.Config, trace.Proof, trace.OldSubRoot, leaf, newLeaf)
+	newRoot, err := updateCheckRoot(trace.Proof, trace.OldSubRoot, leaf, newLeaf)
 	if err != nil {
 		return errors.Wrap(err, "update check failed : invalid proof")
 	}
@@ -128,9 +129,8 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 
 // DeferMerkleChecks implements the [Trace] interface.
 func (trace UpdateTrace[K, V]) DeferMerkleChecks(
-	config *smt.Config,
-	appendTo []smt.ProvedClaim,
-) []smt.ProvedClaim {
+	appendTo []smt_koalabear.ProvedClaim,
+) []smt_koalabear.ProvedClaim {
 
 	tuple := KVOpeningTuple[K, V]{
 		Key:         trace.Key,
@@ -138,20 +138,20 @@ func (trace UpdateTrace[K, V]) DeferMerkleChecks(
 		LeafOpening: trace.OldOpening,
 	}
 
-	leaf, _ := tuple.CheckAndLeaf(config)
+	leaf, _ := tuple.CheckAndLeaf()
 
 	newTuple := tuple
 	newTuple.Value = trace.NewValue
-	newTuple.LeafOpening.HVal = hash(config, trace.NewValue)
+	newTuple.LeafOpening.HVal = hash(trace.NewValue)
 
 	// We panic because if the consistency check passed
-	newLeaf := hash(config, &newTuple.LeafOpening)
-	appendTo, _ = deferCheckUpdateRoot(config, trace.Proof, trace.OldSubRoot, leaf, newLeaf, appendTo)
+	newLeaf := hash(&newTuple.LeafOpening)
+	appendTo, _ = deferCheckUpdateRoot(trace.Proof, trace.OldSubRoot, leaf, newLeaf, appendTo)
 	return appendTo
 }
 
-func (trace UpdateTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
-	return hash(cfg, trace.Key)
+func (trace UpdateTrace[K, V]) HKey() Bytes32 {
+	return hash(trace.Key)
 }
 
 func (trace UpdateTrace[K, V]) RWInt() int {

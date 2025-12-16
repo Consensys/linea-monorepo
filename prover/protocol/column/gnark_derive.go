@@ -3,8 +3,10 @@ package column
 import (
 	"reflect"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -15,9 +17,14 @@ import (
 // circuit
 func GnarkDeriveEvaluationPoint(
 	api frontend.API, h ifaces.Column, upstream string,
-	cachedXs collection.Mapping[string, frontend.Variable],
-	x frontend.Variable,
-) (xRes []frontend.Variable) {
+	cachedXs collection.Mapping[string, gnarkfext.E4Gen],
+	x gnarkfext.E4Gen,
+) (xRes []gnarkfext.E4Gen) {
+
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 
 	if !h.IsComposite() {
 		// Just return x and cache it if necessary
@@ -27,22 +34,26 @@ func GnarkDeriveEvaluationPoint(
 			// Else register the result in the cache
 			cachedXs.InsertNew(newUpstream, x)
 		}
-		return []frontend.Variable{x}
+		return []gnarkfext.E4Gen{x}
 	}
 
 	switch inner := h.(type) {
 	case Shifted:
 		newUpstream := appendNodeToUpstream(upstream, inner)
-		var derivedX frontend.Variable
+		var derivedX gnarkfext.E4Gen
 		// Early return if the result is cached
 		if cachedXs.Exists(newUpstream) {
 			derivedX = cachedXs.MustGet(newUpstream)
 		} else {
 			// If not, compute the shift on x and cache the result
 			n := h.Size()
-			omegaN := frontend.Variable(fft.GetOmega(n))
+			generator, err := fft.Generator(uint64(n))
+			if err != nil {
+				panic(err)
+			}
+			omegaN := zk.ValueOf(generator.String())
 			omegaN = gnarkutil.Exp(api, omegaN, inner.Offset)
-			derivedX = api.Mul(x, omegaN)
+			derivedX = *ext4.MulByFp(&x, omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)
 		}
 		return GnarkDeriveEvaluationPoint(api, inner.Parent, newUpstream, cachedXs, derivedX)
@@ -57,9 +68,9 @@ func GnarkDeriveEvaluationPoint(
 // circuit.
 func GnarkVerifyYConsistency(
 	api frontend.API, h ifaces.Column, upstream string,
-	cachedXs collection.Mapping[string, frontend.Variable],
-	finalYs collection.Mapping[string, frontend.Variable],
-) (y frontend.Variable) {
+	cachedXs collection.Mapping[string, gnarkfext.E4Gen],
+	finalYs collection.Mapping[string, gnarkfext.E4Gen],
+) (y gnarkfext.E4Gen) {
 
 	if !h.IsComposite() {
 		// Get the Y from the map. An absence from this map is unexpected at

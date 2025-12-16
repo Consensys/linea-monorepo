@@ -20,6 +20,7 @@ import (
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 
 	"github.com/stretchr/testify/require"
@@ -230,11 +231,11 @@ func NewReaderHashSnarkFromFile(api frontend.API, h snarkHash.FieldHasher, path 
 	}
 }
 
-func (r *ReaderHashSnark) Sum() frontend.Variable {
+func (r *ReaderHashSnark) Sum() zk.WrappedVariable {
 	return r.h.Sum()
 }
 
-func (r *ReaderHashSnark) Write(data ...frontend.Variable) {
+func (r *ReaderHashSnark) Write(data ...zk.WrappedVariable) {
 	r.h.Write(data...)
 
 	for i := 0; i < len(data); {

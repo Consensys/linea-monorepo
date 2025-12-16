@@ -135,6 +135,8 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 			tcase.svecs[i] = gen.genRegular(val)
 		case rotatedT:
 			tcase.svecs[i] = gen.genRotated(val)
+		default:
+			utils.Panic("unexpected type %T", chosenType)
 		}
 	}
 
@@ -161,6 +163,8 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 		)
 	case maxType == regularT || maxType == rotatedT:
 		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
+	default:
+		panic("unexpected case")
 	}
 
 	return tcase
@@ -212,6 +216,8 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 			tcase.svecs[i] = gen.genRegular(val)
 		case rotatedT:
 			tcase.svecs[i] = gen.genRotated(val)
+		default:
+			utils.Panic("unexpected type %T", chosenType)
 		}
 	}
 
@@ -233,12 +239,14 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 		)
 	case maxType == regularT || maxType == rotatedT:
 		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
+	default:
+		panic("unexpected case")
 	}
 
 	return tcase
 }
 
-func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
+func (gen *testCaseGen) NewTestCaseForLinearCombination() (tcase testCase) {
 
 	tcase.name = fmt.Sprintf("fuzzy-with-seed-%v-poly-eval", gen.seed)
 	tcase.svecs = make([]SmartVector, gen.numVec)
@@ -280,6 +288,8 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 			tcase.svecs[i] = gen.genRegular(val)
 		case rotatedT:
 			tcase.svecs[i] = gen.genRotated(val)
+		default:
+			utils.Panic("unexpected type %T", chosenType)
 		}
 	}
 
@@ -289,13 +299,15 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 		utils.Panic("inconsistent window dimension %v %v with gen %++v", winMinStart, winMaxStop, gen)
 	}
 
-	resVal := poly.EvalUnivariate(vals, x)
+	resVal := poly.Eval(vals, x)
 
 	switch {
 	case maxType == constantT:
 		tcase.expectedValue = NewConstant(resVal, gen.fullLen)
 	case maxType == regularT || maxType == windowT || maxType == rotatedT:
 		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
+	default:
+		panic("unexpected case")
 	}
 
 	return tcase

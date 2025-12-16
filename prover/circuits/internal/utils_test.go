@@ -36,7 +36,7 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 	assert.LessOrEqual(t, len(lengths), lengthsSliceLength)
 
 	hsh := gchash.POSEIDON2_BLS12_377.New()
-	sums := make([]frontend.Variable, lengthsSliceLength)
+	sums := make([]zk.WrappedVariable, lengthsSliceLength)
 	start := 0
 	for i := range lengths {
 		hsh.Reset()
@@ -47,7 +47,7 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 		start = endPoints[i]
 	}
 
-	endPointsSnark := make([]frontend.Variable, lengthsSliceLength)
+	endPointsSnark := make([]zk.WrappedVariable, lengthsSliceLength)
 	for n := utils.Copy(endPointsSnark, endPoints); n < lengthsSliceLength; n++ {
 		endPointsSnark[n] = n - len(lengths) + 1
 		sums[n] = n
@@ -68,8 +68,8 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 }
 
 func TestConcat(t *testing.T) {
-	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
-		res := internal.Concat(api, 3, internal.VarSlice{[]frontend.Variable{2}, 1}, internal.VarSlice{[]frontend.Variable{3}, 0})
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []zk.WrappedVariable {
+		res := internal.Concat(api, 3, internal.VarSlice{[]zk.WrappedVariable{2}, 1}, internal.VarSlice{[]zk.WrappedVariable{3}, 0})
 		return append(res.Values, res.Length)
 	}, 2, 0, 0, 1)(t)
 }
@@ -96,7 +96,7 @@ func TestReduceBytes(t *testing.T) {
 		reduced[i] = reducedI[:]
 	}
 
-	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []zk.WrappedVariable {
 		for i := range cases {
 			got := utils.ReduceBytes[emulated.BN254Fr](api, utils.ToVariableSlice(cases[i]))
 			internal.AssertSliceEquals(api,
@@ -127,7 +127,7 @@ func TestPartitionSliceEmulated(t *testing.T) {
 		subs[selectors[i]] = append(subs[selectors[i]], s[i])
 	}
 
-	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []zk.WrappedVariable {
 
 		field, err := emulated.NewField[emulated.BLS12381Fr](api)
 		assert.NoError(t, err)
@@ -155,7 +155,7 @@ func TestPartitionSliceEmulated(t *testing.T) {
 
 func elementsToEmulated(field *emulated.Field[emulated.BLS12381Fr], s []fr381.Element) []emulated.Element[emulated.BLS12381Fr] {
 	return internal.MapSlice(func(element fr381.Element) emulated.Element[emulated.BLS12381Fr] {
-		return *field.NewElement(internal.MapSlice(func(x uint64) frontend.Variable { return x }, element[:]...))
+		return *field.NewElement(internal.MapSlice(func(x uint64) zk.WrappedVariable { return x }, element[:]...))
 	}, s...)
 }
 
@@ -165,13 +165,13 @@ func TestPartitionSlice(t *testing.T) {
 		sliceLen = 10
 	)
 
-	test := func(slice []frontend.Variable, selectors []int, subsSlack []int) func(*testing.T) {
+	test := func(slice []zk.WrappedVariable, selectors []int, subsSlack []int) func(*testing.T) {
 		assert.Equal(t, len(selectors), len(slice))
 		assert.Equal(t, len(subsSlack), nbSubs)
 
-		subs := make([][]frontend.Variable, nbSubs)
+		subs := make([][]zk.WrappedVariable, nbSubs)
 		for j := range subs {
-			subs[j] = make([]frontend.Variable, 0, sliceLen)
+			subs[j] = make([]zk.WrappedVariable, 0, sliceLen)
 		}
 
 		for j := range slice {
@@ -182,11 +182,11 @@ func TestPartitionSlice(t *testing.T) {
 			subs[j] = append(subs[j], utils.ToVariableSlice(make([]int, subsSlack[j]))...) // add some padding
 		}
 
-		return snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+		return snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []zk.WrappedVariable {
 
 			slice := utils.ToVariableSlice(slice)
 
-			subsEncountered := internal.MapSlice(func(s []frontend.Variable) []frontend.Variable { return make([]frontend.Variable, len(s)) }, subs...)
+			subsEncountered := internal.MapSlice(func(s []zk.WrappedVariable) []zk.WrappedVariable { return make([]zk.WrappedVariable, len(s)) }, subs...)
 			internal.PartitionSlice(api, slice, utils.ToVariableSlice(selectors), subsEncountered...)
 
 			assert.Equal(t, len(subs), len(subsEncountered))
@@ -198,13 +198,13 @@ func TestPartitionSlice(t *testing.T) {
 		})
 	}
 
-	test([]frontend.Variable{5}, []int{2}, []int{1, 0, 0})(t)
-	test([]frontend.Variable{1, 2, 3}, []int{0, 1, 2}, []int{0, 0, 0})
+	test([]zk.WrappedVariable{5}, []int{2}, []int{1, 0, 0})(t)
+	test([]zk.WrappedVariable{1, 2, 3}, []int{0, 1, 2}, []int{0, 0, 0})
 	test(utils.ToVariableSlice(utils.RangeSlice[int](10)), []int{0, 1, 2, 0, 0, 0, 1, 1, 1, 2}, []int{0, 0, 0})
 
 	for i := 0; i < 200; i++ {
 
-		slice := make([]frontend.Variable, sliceLen)
+		slice := make([]zk.WrappedVariable, sliceLen)
 		for j := range slice {
 			var x fr377.Element
 			_, err := x.SetRandom()

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -101,7 +101,7 @@ func (m MiMC) Check(run ifaces.Runtime) error {
 		oldState := oldStates.Get(i)
 		newState := newStates.Get(i)
 
-		recomputed := mimc.BlockCompression(oldState, block)
+		recomputed := hasher_factory.BlockCompression(oldState, block)
 		if recomputed != newState {
 			return fmt.Errorf(
 				"MiMC compression check failed for row #%v : block %v, oldState %v, newState %v",
@@ -124,7 +124,7 @@ func (m MiMC) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 		block := blocks[i]
 		oldState := oldStates[i]
 		newState := newStates[i]
-		recomputed := mimc.GnarkBlockCompression(api, oldState, block)
+		recomputed := hasher_factory.GnarkBlockCompression(api, oldState, block)
 		api.AssertIsEqual(newState, recomputed)
 	}
 }

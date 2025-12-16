@@ -7,9 +7,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -96,7 +96,7 @@ func TestSerdeValue(t *testing.T) {
 				col := verifiercol.NewConcatTinyColumns(
 					comp,
 					8,
-					field.Element{},
+					fext.Element{},
 					comp.InsertColumn(0, "a", 1, column.Proof),
 					comp.InsertColumn(0, "b", 1, column.Proof),
 					comp.InsertColumn(0, "c", 1, column.Proof),
@@ -167,7 +167,7 @@ func TestSerdeValue(t *testing.T) {
 						accessors.NewFromPublicColumn(a, 2),
 						accessors.NewFromPublicColumn(b, 2),
 					},
-					field.Element{}, 16)
+					fext.Element{}, 16)
 			}(),
 		},
 		{
@@ -309,15 +309,15 @@ func TestSerdeValue(t *testing.T) {
 		},
 		{
 			Name: "frontend-variables",
-			V:    frontend.Variable(0),
+			V:    zk.WrappedVariable(0),
 		},
 		{
 			Name: "frontend-variables",
-			V:    frontend.Variable(12),
+			V:    zk.WrappedVariable(12),
 		},
 		{
 			Name: "frontend-variables",
-			V:    frontend.Variable(-10),
+			V:    zk.WrappedVariable(-10),
 		},
 		{
 			Name: "two-wiop-in-a-struct",

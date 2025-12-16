@@ -81,7 +81,7 @@ var testCases = []struct {
 		UseCase: generic.Sha2Usecase,
 	},
 	{
-		Name:    "MiMC",
-		UseCase: generic.MiMCUsecase,
+		Name:    "Poseidon2",
+		UseCase: generic.Poseidon2UseCase,
 	},
 }

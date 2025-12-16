@@ -21,8 +21,8 @@ func MakeTestCaseKeccak(t *testing.T, c makeTestCaseGBM) (
 
 	define = func(builder *wizard.Builder) {
 		comp := builder.CompiledIOP
-		gdm = testdata.CreateGenDataModule(comp, c.Name, c.SizeData)
-		gim = testdata.CreateGenInfoModule(comp, c.Name, c.SizeInfo)
+		gdm = testdata.CreateGenDataModule(comp, c.Name, c.SizeData, 1)
+		gim = testdata.CreateGenInfoModule(comp, c.Name, c.SizeInfo, 1)
 
 		inp := KeccakSingleProviderInput{
 			MaxNumKeccakF: maxNumKeccakF,

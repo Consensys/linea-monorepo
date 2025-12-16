@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -65,10 +66,10 @@ func TestLocalEvalWithStatus(t *testing.T) {
 	define := func(builder *wizard.Builder) {
 		logrus.Info("Defining columns and local opening queries")
 		// Declare columns of different sizes
-		a = builder.RegisterCommit("A", 2)
-		b = builder.RegisterCommit("B", 4)
-		c = builder.RegisterCommit("C", 8)
-		d = builder.RegisterCommit("D", 16)
+		a = builder.RegisterCommitExt("A", 2)
+		b = builder.RegisterCommitExt("B", 4)
+		c = builder.RegisterCommitExt("C", 8)
+		d = builder.RegisterCommitExt("D", 16)
 
 		// Local opening at zero
 		q1 = builder.LocalOpening("Q00", a)
@@ -154,30 +155,30 @@ func TestLocalEvalWithStatus(t *testing.T) {
 
 		logrus.Info("Assigning local points")
 		// Assign the alleged results
-		assi.AssignLocalPoint("Q00", field.NewElement(0))
-		logrus.WithField("Q00", field.NewElement(0)).Debug("Assigned local point Q00")
-		assi.AssignLocalPoint("Q01", field.NewElement(2))
-		logrus.WithField("Q01", field.NewElement(2)).Debug("Assigned local point Q01")
-		assi.AssignLocalPoint("Q02", field.NewElement(6))
-		logrus.WithField("Q02", field.NewElement(6)).Debug("Assigned local point Q02")
-		assi.AssignLocalPoint("Q03", field.NewElement(15))
-		logrus.WithField("Q03", field.NewElement(15)).Debug("Assigned local point Q03")
-		assi.AssignLocalPoint("Q10", field.NewElement(1))
-		logrus.WithField("Q10", field.NewElement(1)).Debug("Assigned local point Q10")
-		assi.AssignLocalPoint("Q11", field.NewElement(3))
-		logrus.WithField("Q11", field.NewElement(3)).Debug("Assigned local point Q11")
-		assi.AssignLocalPoint("Q12", field.NewElement(7))
-		logrus.WithField("Q12", field.NewElement(7)).Debug("Assigned local point Q12")
-		assi.AssignLocalPoint("Q13", field.NewElement(16))
-		logrus.WithField("Q13", field.NewElement(16)).Debug("Assigned local point Q13")
-		assi.AssignLocalPoint("Q20", field.NewElement(1))
-		logrus.WithField("Q20", field.NewElement(1)).Debug("Assigned local point Q20")
-		assi.AssignLocalPoint("Q21", field.NewElement(5))
-		logrus.WithField("Q21", field.NewElement(5)).Debug("Assigned local point Q21")
-		assi.AssignLocalPoint("Q22", field.NewElement(13))
-		logrus.WithField("Q22", field.NewElement(13)).Debug("Assigned local point Q22")
-		assi.AssignLocalPoint("Q23", field.NewElement(30))
-		logrus.WithField("Q23", field.NewElement(30)).Debug("Assigned local point Q23")
+		assi.AssignLocalPointExt("Q00", fext.NewFromInt(0, 0, 0, 0))
+		logrus.WithField("Q00", fext.NewFromInt(0, 0, 0, 0)).Debug("Assigned local point Q00")
+		assi.AssignLocalPointExt("Q01", fext.NewFromInt(2, 0, 0, 0))
+		logrus.WithField("Q01", fext.NewFromInt(2, 0, 0, 0)).Debug("Assigned local point Q01")
+		assi.AssignLocalPointExt("Q02", fext.NewFromInt(6, 0, 0, 0))
+		logrus.WithField("Q02", fext.NewFromInt(6, 0, 0, 0)).Debug("Assigned local point Q02")
+		assi.AssignLocalPointExt("Q03", fext.NewFromInt(15, 0, 0, 0))
+		logrus.WithField("Q03", fext.NewFromInt(15, 0, 0, 0)).Debug("Assigned local point Q03")
+		assi.AssignLocalPointExt("Q10", fext.NewFromInt(1, 0, 0, 0))
+		logrus.WithField("Q10", fext.NewFromInt(1, 0, 0, 0)).Debug("Assigned local point Q10")
+		assi.AssignLocalPointExt("Q11", fext.NewFromInt(3, 0, 0, 0))
+		logrus.WithField("Q11", fext.NewFromInt(3, 0, 0, 0)).Debug("Assigned local point Q11")
+		assi.AssignLocalPointExt("Q12", fext.NewFromInt(7, 0, 0, 0))
+		logrus.WithField("Q12", fext.NewFromInt(7, 0, 0, 0)).Debug("Assigned local point Q12")
+		assi.AssignLocalPointExt("Q13", fext.NewFromInt(16, 0, 0, 0))
+		logrus.WithField("Q13", fext.NewFromInt(16, 0, 0, 0)).Debug("Assigned local point Q13")
+		assi.AssignLocalPointExt("Q20", fext.NewFromInt(1, 0, 0, 0))
+		logrus.WithField("Q20", fext.NewFromInt(1, 0, 0, 0)).Debug("Assigned local point Q20")
+		assi.AssignLocalPointExt("Q21", fext.NewFromInt(5, 0, 0, 0))
+		logrus.WithField("Q21", fext.NewFromInt(5, 0, 0, 0)).Debug("Assigned local point Q21")
+		assi.AssignLocalPointExt("Q22", fext.NewFromInt(13, 0, 0, 0))
+		logrus.WithField("Q22", fext.NewFromInt(13, 0, 0, 0)).Debug("Assigned local point Q22")
+		assi.AssignLocalPointExt("Q23", fext.NewFromInt(30, 0, 0, 0))
+		logrus.WithField("Q23", fext.NewFromInt(30, 0, 0, 0)).Debug("Assigned local point Q23")
 	})
 	logrus.Info("Proof generation completed")
 
@@ -339,8 +340,8 @@ func globalWithVerifColAndPeriodic(size, period, offset int) func() (wizard.Defi
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size)
-			verifcol1 := verifiercol.NewFromAccessors(genAccessors(0, size), field.Zero(), size)
-			verifcol2 := verifiercol.NewFromAccessors(genAccessors(2, size), field.Zero(), size)
+			verifcol1 := verifiercol.NewFromAccessors(genAccessors(0, size), fext.Zero(), size)
+			verifcol2 := verifiercol.NewFromAccessors(genAccessors(2, size), fext.Zero(), size)
 			_ = build.GlobalConstraint(LOCAL1,
 				sym.Sub(
 

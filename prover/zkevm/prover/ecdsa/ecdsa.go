@@ -3,6 +3,7 @@ package ecdsa
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
@@ -13,16 +14,18 @@ type EcdsaZkEvm struct {
 func NewEcdsaZkEvm(
 	comp *wizard.CompiledIOP,
 	settings *Settings,
+	arith *arithmetization.Arithmetization,
 ) *EcdsaZkEvm {
 	return &EcdsaZkEvm{
 		Ant: newAntichamber(
 			comp,
 			&antichamberInput{
 				Settings:     settings,
-				EcSource:     getEcdataArithmetization(comp),
-				TxSource:     getTxnDataArithmetization(comp),
-				RlpTxn:       getRlpTxnArithmetization(comp),
-				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
+				EcSource:     getEcdataArithmetization(comp, arith),
+				TxSource:     getTxnDataArithmetization(comp, arith),
+				RlpTxn:       getRlpTxnArithmetization(comp, arith),
+				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)},
+				WithCircuit:  true,
 			},
 		),
 	}
@@ -36,33 +39,40 @@ func (e *EcdsaZkEvm) GetProviders() []generic.GenericByteModule {
 	return e.Ant.Providers
 }
 
-func getEcdataArithmetization(comp *wizard.CompiledIOP) *ecDataSource {
-	return &ecDataSource{
-		CsEcrecover: comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECRECOVER"),
-		ID:          comp.Columns.GetHandle("ecdata.ID"),
-		Limb:        comp.Columns.GetHandle("ecdata.LIMB"),
-		SuccessBit:  comp.Columns.GetHandle("ecdata.SUCCESS_BIT"),
-		Index:       comp.Columns.GetHandle("ecdata.INDEX"),
-		IsData:      comp.Columns.GetHandle("ecdata.IS_ECRECOVER_DATA"),
-		IsRes:       comp.Columns.GetHandle("ecdata.IS_ECRECOVER_RESULT"),
+func getEcdataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *ecDataSource {
+	src := &ecDataSource{
+		CsEcrecover: arith.ColumnOf(comp, "ecdata", "CIRCUIT_SELECTOR_ECRECOVER"),
+		ID:          arith.ColumnOf(comp, "ecdata", "ID"),
+		SuccessBit:  arith.ColumnOf(comp, "ecdata", "SUCCESS_BIT"),
+		Index:       arith.ColumnOf(comp, "ecdata", "INDEX"),
+		IsData:      arith.ColumnOf(comp, "ecdata", "IS_ECRECOVER_DATA"),
+		IsRes:       arith.ColumnOf(comp, "ecdata", "IS_ECRECOVER_RESULT"),
+		Limb:        arith.LimbColumnsOfArr8(comp, "ecdata", "LIMB"),
 	}
+
+	return src
 }
 
-func getTxnDataArithmetization(comp *wizard.CompiledIOP) *txnData {
+func getTxnDataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *txnData {
 	td := &txnData{
-		FromHi: comp.Columns.GetHandle("txndata.FROM_HI"),
-		FromLo: comp.Columns.GetHandle("txndata.FROM_LO"),
-		Ct:     comp.Columns.GetHandle("txndata.CT"),
+		Ct:       arith.ColumnOf(comp, "txndata", "CT"),
+		User:     arith.ColumnOf(comp, "txndata", "USER"),
+		Selector: arith.ColumnOf(comp, "txndata", "HUB"),
+		From:     arith.LimbColumnsOfArr16(comp, "txndata", "FROM"),
 	}
+
 	return td
 }
 
-func getRlpTxnArithmetization(comp *wizard.CompiledIOP) generic.GenDataModule {
-	return generic.GenDataModule{
-		HashNum: comp.Columns.GetHandle("rlptxn.ABS_TX_NUM"),
-		Index:   comp.Columns.GetHandle("rlptxn.INDEX_LX"),
-		Limb:    comp.Columns.GetHandle("rlptxn.LIMB"),
-		NBytes:  comp.Columns.GetHandle("rlptxn.nBYTES"),
-		ToHash:  comp.Columns.GetHandle("rlptxn.TO_HASH_BY_PROVER"),
+func getRlpTxnArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) generic.GenDataModule {
+	limbs := arith.LimbColumnsOfArr8(comp, "rlptxn", "cmpLIMB")
+	res := generic.GenDataModule{
+		HashNum: arith.ColumnOf(comp, "rlptxn", "USER_TXN_NUMBER"),
+		Index:   arith.ColumnOf(comp, "rlptxn", "INDEX_LX"),
+		NBytes:  arith.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
+		ToHash:  arith.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
+		Limbs:   limbs[:],
 	}
+
+	return res
 }

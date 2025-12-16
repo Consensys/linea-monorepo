@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
@@ -29,9 +30,9 @@ import (
 )
 
 type Circuit struct {
-	AggregationPublicInput      [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
-	ExecutionPublicInput        []frontend.Variable  `gnark:",public"`
-	DataAvailabilityPublicInput []frontend.Variable  `gnark:",public"`
+	AggregationPublicInput      [2]zk.WrappedVariable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
+	ExecutionPublicInput        []zk.WrappedVariable  `gnark:",public"`
+	DataAvailabilityPublicInput []zk.WrappedVariable  `gnark:",public"`
 
 	DataAvailabilityFPIQ []dataavailability.FunctionalPublicInputQSnark
 	ExecutionFPIQ        []execution.FunctionalPublicInputQSnark
@@ -69,7 +70,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	// nbBatchesSums[i] is the index of the first execution circuit associated with the i+1-st data availability circuit.
 	// Past the last DA circuit, this value remains constant.
-	nbBatchesSums := rDA.PartialSumsF(func(i int) frontend.Variable { return api.Mul(rDA.InRange[i], c.DataAvailabilityFPIQ[i].NbBatches) })
+	nbBatchesSums := rDA.PartialSumsF(func(i int) zk.WrappedVariable { return api.Mul(rDA.InRange[i], c.DataAvailabilityFPIQ[i].NbBatches) })
 	nbExecution := nbBatchesSums[len(nbBatchesSums)-1] // implicit: CHECK_NB_EXEC
 
 	// These two checks prevents constructing a proof where no execution or no
@@ -82,7 +83,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDataAvailability), c.MaxNbCircuits)
 	}
 
-	batchHashes := make([]frontend.Variable, len(c.ExecutionPublicInput))
+	batchHashes := make([]zk.WrappedVariable, len(c.ExecutionPublicInput))
 	for i, pi := range c.ExecutionFPIQ {
 		batchHashes[i] = pi.DataChecksum.Hash
 	}
@@ -98,7 +99,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		return err
 	}
 
-	blobBatchHashes := make([]frontend.Variable, maxNbDA)
+	blobBatchHashes := make([]zk.WrappedVariable, maxNbDA)
 	for i := range blobBatchHashes {
 		blobBatchHashes[i] = c.DataAvailabilityFPIQ[i].AllBatchesSum
 	}
@@ -138,7 +139,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	for j := range l2MessagesByByte {
 		l2MessagesByByte[j] = make([]internal.VarSlice, maxNbExecution)
 		for k := range l2MessagesByByte[j] {
-			l2MessagesByByte[j][k] = internal.VarSlice{Values: make([]frontend.Variable, execMaxNbL2Msg)}
+			l2MessagesByByte[j][k] = internal.VarSlice{Values: make([]zk.WrappedVariable, execMaxNbL2Msg)}
 		}
 	}
 
@@ -194,7 +195,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	merkleLeavesConcat := internal.Var32Slice{Values: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle*merkleNbLeaves)}
+	merkleLeavesConcat := internal.Var32Slice{Values: make([][32]zk.WrappedVariable, c.L2MessageMaxNbMerkle*merkleNbLeaves)}
 	for i := 0; i < 32; i++ {
 		ithBytes := internal.Concat(api, len(merkleLeavesConcat.Values), l2MessagesByByte[i]...)
 		for j := range merkleLeavesConcat.Values {
@@ -206,11 +207,11 @@ func (c *Circuit) Define(api frontend.API) error {
 	pi := public_input.AggregationFPISnark{
 		AggregationFPIQSnark: c.AggregationFPIQSnark,
 		NbL2Messages:         merkleLeavesConcat.Length,
-		L2MsgMerkleTreeRoots: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle), // implicit CHECK_MERKLE_CAP1
+		L2MsgMerkleTreeRoots: make([][32]zk.WrappedVariable, c.L2MessageMaxNbMerkle), // implicit CHECK_MERKLE_CAP1
 		// implicit CHECK_FINAL_NUM
-		FinalBlockNumber: rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
+		FinalBlockNumber: rExecution.LastF(func(i int) zk.WrappedVariable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
 		// implicit CHECK_FINAL_TIME
-		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
+		FinalBlockTimestamp:    rExecution.LastF(func(i int) zk.WrappedVariable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
 		FinalShnarf:            rDA.LastArray32(shnarfs), // implicit CHECK_FINAL_SHNARF
 		FinalRollingHash:       finalRollingHash,         // implicit CHECK_FINAL_RHASH
 		FinalRollingHashNumber: finalRollingHashMsgNum,   // implicit CHECK_FINAL_RHASH_NUM
@@ -234,7 +235,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	return hshK.Finalize()
 }
 
-func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
+func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]zk.WrappedVariable) [32]zk.WrappedVariable {
 
 	values := slices.Clone(leaves)
 	if !utils.IsPowerOfTwo(len(values)) {
@@ -304,8 +305,8 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 
 func allocateCircuit(cfg config.PublicInput) Circuit {
 	res := Circuit{
-		DataAvailabilityPublicInput: make([]frontend.Variable, cfg.MaxNbDataAvailability),
-		ExecutionPublicInput:        make([]frontend.Variable, cfg.MaxNbExecution),
+		DataAvailabilityPublicInput: make([]zk.WrappedVariable, cfg.MaxNbDataAvailability),
+		ExecutionPublicInput:        make([]zk.WrappedVariable, cfg.MaxNbExecution),
 		DataAvailabilityFPIQ:        make([]dataavailability.FunctionalPublicInputQSnark, cfg.MaxNbDataAvailability),
 		ExecutionFPIQ:               make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
 		L2MessageMerkleDepth:        cfg.L2MsgMerkleDepth,
@@ -316,7 +317,7 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 	}
 
 	for i := range res.ExecutionFPIQ {
-		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]frontend.Variable, cfg.ExecutionMaxNbMsg)
+		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]zk.WrappedVariable, cfg.ExecutionMaxNbMsg)
 	}
 
 	return res

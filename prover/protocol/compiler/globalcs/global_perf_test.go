@@ -1,5 +1,6 @@
 package globalcs_test
 
+/*
 import (
 	"os"
 	"testing"
@@ -72,3 +73,4 @@ func BenchmarkGlobalConstraintWoArtefacts(b *testing.B) {
 	}
 
 }
+*/

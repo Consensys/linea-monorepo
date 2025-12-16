@@ -3,13 +3,15 @@ package symbolic
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"reflect"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
+
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
@@ -53,36 +55,7 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 		panic("unmatching lengths")
 	}
 
-	for i := range exponents {
-		if exponents[i] < 0 {
-			panic("negative exponents are not allowed")
-		}
-	}
-
-	for i := range items {
-		if items[i].ESHash.IsZero() && exponents[i] != 0 {
-			return NewConstant(0)
-		}
-	}
-
-	exponents, items = expandTerms(&Product{}, exponents, items)
-	exponents, items, constExponents, constVal := regroupTerms(exponents, items)
-
-	// This regroups all the constants into a global constant with a coefficient
-	// of 1.
-	var c, t field.Element
-	c.SetOne()
-	for i := range constExponents {
-		t.Exp(constVal[i], big.NewInt(int64(constExponents[i])))
-		c.Mul(&c, &t)
-	}
-
-	if !c.IsOne() {
-		exponents = append(exponents, 1)
-		items = append(items, NewConstant(c))
-	}
-
-	exponents, items = removeZeroCoeffs(exponents, items)
+	items, exponents = simplifyProduct(items, exponents)
 
 	if len(items) == 0 {
 		return NewConstant(1)
@@ -95,30 +68,14 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	e := &Expression{
 		Operator: Product{Exponents: exponents},
 		Children: items,
-		ESHash:   field.One(),
+		ESHash:   fext.One(),
+		IsBase:   computeIsBaseFromChildren(items),
 	}
 
+	var tmp fext.Element
 	for i := range e.Children {
-		var tmp field.Element
-		switch {
-		case exponents[i] == 1:
-			e.ESHash.Mul(&e.ESHash, &e.Children[i].ESHash)
-		case exponents[i] == 2:
-			tmp.Square(&e.Children[i].ESHash)
-			e.ESHash.Mul(&e.ESHash, &tmp)
-		case exponents[i] == 3:
-			tmp.Square(&e.Children[i].ESHash)
-			tmp.Mul(&tmp, &e.Children[i].ESHash)
-			e.ESHash.Mul(&e.ESHash, &tmp)
-		case exponents[i] == 4:
-			tmp.Square(&e.Children[i].ESHash)
-			tmp.Square(&tmp)
-			e.ESHash.Mul(&e.ESHash, &tmp)
-		default:
-			exponent := big.NewInt(int64(exponents[i]))
-			tmp.Exp(e.Children[i].ESHash, exponent)
-			e.ESHash.Mul(&e.ESHash, &tmp)
-		}
+		tmp.ExpInt64(e.Children[i].ESHash, int64(exponents[i]))
+		e.ESHash.Mul(&e.ESHash, &tmp)
 	}
 
 	return e
@@ -136,8 +93,8 @@ func (prod Product) Degree(inputDegrees []int) int {
 }
 
 // Evaluate implements the [Operator] interface.
-func (prod Product) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-	return sv.Product(prod.Exponents, inputs, p...)
+func (prod Product) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+	return sv.Product(prod.Exponents, inputs)
 }
 
 // Validate implements the [Operator] interface.
@@ -160,22 +117,53 @@ func (prod Product) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [Operator] interface.
-func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
 
-	res := frontend.Variable(1)
+	res := zk.ValueOf(1)
 
-	// There should be as many inputs as there are coeffs
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+
 	if len(inputs) != len(prod.Exponents) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
 	}
 
-	/*
-		Accumulate the scalars
-	*/
 	for i, input := range inputs {
 		term := gnarkutil.Exp(api, input, prod.Exponents[i])
-		res = api.Mul(res, term)
+		res = apiGen.Mul(res, term)
 	}
 
 	return res
+}
+
+// GnarkEval implements the [Operator] interface.
+func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := *e4Api.One()
+
+	if len(inputs) != len(prod.Exponents) {
+		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
+	}
+
+	for i, input := range inputs {
+		term := gnarkutil.ExpExt(api, input, prod.Exponents[i])
+		res = *e4Api.Mul(&res, &term)
+	}
+
+	return res
+}
+
+func (prod Product) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
+	return sv.ProductExt(prod.Exponents, inputs)
+}
+
+func (prod Product) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
+	return smartvectors_mixed.ProductMixed(prod.Exponents, inputs)
 }

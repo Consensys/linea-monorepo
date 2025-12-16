@@ -3,7 +3,10 @@ package verifiercol
 import (
 	"strings"
 
-	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -24,6 +27,59 @@ type FromYs struct {
 	Query query.UnivariateEval
 	// Remember the round in which the query was made
 	Round_ int
+}
+
+func (fys FromYs) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
+	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
+
+	// Map the alleged evaluations to their respective commitment names
+	yMap := map[ifaces.ColID]gnarkfext.E4Gen{}
+	for i, polName := range fys.Query.Pols {
+		yMap[polName.GetColID()] = queryParams.ExtYs[i]
+	}
+
+	// This will leave some of the columns to nil
+	res := make([]gnarkfext.E4Gen, len(fys.Ranges))
+	for i, name := range fys.Ranges {
+		if y, found := yMap[name]; found {
+			res[i] = y
+		} else {
+			// Set it to zero explicitly
+			res[i] = gnarkfext.E4Gen{}
+		}
+	}
+
+	return res
+}
+
+func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
+	//TODO implement me
+	panic("implement me")
 }
 
 // Construct a new column from a univariate query and a list of of ifaces.ColID
@@ -83,43 +139,24 @@ func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
 
 	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]field.Element{}
+	yMap := map[ifaces.ColID]fext.Element{}
 	for i, polName := range fys.Query.Pols {
-		yMap[polName.GetColID()] = queryParams.Ys[i]
+		yMap[polName.GetColID()] = queryParams.ExtYs[i]
 	}
 
 	// This will leaves the columns missing from the query to zero.
-	res := make([]field.Element, len(fys.Ranges))
+	res := make([]fext.Element, len(fys.Ranges))
 	for i, name := range fys.Ranges {
 		res[i] = yMap[name]
 	}
 
-	return smartvectors.NewRegular(res)
+	return smartvectors.NewRegularExt(res)
 }
 
 // Returns the coin's value as a column assignment
-func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
-
-	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
-
-	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]frontend.Variable{}
-	for i, polName := range fys.Query.Pols {
-		yMap[polName.GetColID()] = queryParams.Ys[i]
-	}
-
-	// This will leave some of the columns to nil
-	res := make([]frontend.Variable, len(fys.Ranges))
-	for i, name := range fys.Ranges {
-		if y, found := yMap[name]; found {
-			res[i] = y
-		} else {
-			// Set it to zero explicitly
-			res[i] = frontend.Variable(0)
-		}
-	}
-
-	return res
+func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
+	// TODO implement me
+	panic("implement me")
 }
 
 // Returns a particular position of the coin value
@@ -128,8 +165,11 @@ func (fys FromYs) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element 
 }
 
 // Returns a particular position of the coin value
-func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
-	return fys.GetColAssignmentGnark(run)[pos]
+func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
+
+	//TODO implement me
+	panic("implement me")
+	// return fys.GetColAssignmentGnark(run)[pos]
 }
 
 func (fys FromYs) IsComposite() bool {

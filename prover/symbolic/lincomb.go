@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
+
+	"github.com/consensys/gnark/frontend"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -41,30 +44,13 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 		panic("unmatching lengths")
 	}
 
-	coeffs, items = expandTerms(&LinComb{}, coeffs, items)
-	coeffs, items, constCoeffs, constVal := regroupTerms(coeffs, items)
-
-	// This regroups all the constants into a global constant with a coefficient
-	// of 1.
-	var c, t field.Element
-	for i := range constCoeffs {
-		t.SetInt64(int64(constCoeffs[i]))
-		t.Mul(&constVal[i], &t)
-		c.Add(&c, &t)
-	}
-
-	if !c.IsZero() {
-		coeffs = append(coeffs, 1)
-		items = append(items, NewConstant(c))
-	}
-
-	coeffs, items = removeZeroCoeffs(coeffs, items)
+	items, coeffs = simplifyLinComb(items, coeffs)
 
 	if len(items) == 0 {
 		return NewConstant(0)
 	}
 
-	// The LinComb is just a single-term: more efficient to unwrap it
+	// The LinCombExt is just a single-term: more efficient to unwrap it
 	if len(items) == 1 && coeffs[0] == 1 {
 		return items[0]
 	}
@@ -72,18 +58,17 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 	e := &Expression{
 		Operator: LinComb{Coeffs: coeffs},
 		Children: items,
+		IsBase:   computeIsBaseFromChildren(items),
 	}
 
 	// Now we need to assign the ESH
-	eshashes := make([]sv.SmartVector, len(e.Children))
-	for i := range e.Children {
-		eshashes[i] = sv.NewConstant(e.Children[i].ESHash, 1)
-	}
+	var esh esHash
+	var coeff field.Element
 
-	if len(items) > 0 {
-		// The cast back to sv.Constant is not functionally important but is an easy
-		// sanity check.
-		e.ESHash = e.Operator.Evaluate(eshashes).(*sv.Constant).Get(0)
+	for i := range e.Children {
+		coeff.SetInt64(int64(coeffs[i]))
+		esh.MulByElement(&e.Children[i].ESHash, &coeff)
+		e.ESHash.Add(&e.ESHash, &esh)
 	}
 
 	return e
@@ -96,8 +81,16 @@ func (LinComb) Degree(inputDegrees []int) int {
 }
 
 // Evaluate implements the [Operator] interface.
-func (lc LinComb) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-	return sv.LinComb(lc.Coeffs, inputs, p...)
+func (lc LinComb) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+	return sv.LinComb(lc.Coeffs, inputs)
+}
+
+func (lc LinComb) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
+	return sv.LinCombExt(lc.Coeffs, inputs)
+}
+
+func (lc LinComb) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
+	return smartvectors_mixed.LinCombMixed(lc.Coeffs, inputs)
 }
 
 // Validate implements the [Operator] interface
@@ -114,21 +107,46 @@ func (lc LinComb) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [GnarkEval] interface
-func (lc LinComb) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (lc LinComb) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
 
-	res := frontend.Variable(0)
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
 
-	// There should be as many inputs as there are coeffs
+	res := zk.ValueOf(0)
+
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
-	/*
-		Accumulate the scalars
-	*/
 	for i, input := range inputs {
-		coeff := frontend.Variable(lc.Coeffs[i])
-		res = api.Add(res, api.Mul(coeff, input))
+		coeff := zk.ValueOf(lc.Coeffs[i])
+		tmp := apiGen.Mul(coeff, input)
+		res = apiGen.Add(res, tmp)
+	}
+
+	return res
+}
+
+// GnarkEval implements the [GnarkEvalExt] interface
+func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+	res := *e4Api.Zero()
+
+	if len(inputs) != len(lc.Coeffs) {
+		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
+	}
+
+	var tmp gnarkfext.E4Gen
+	for i, input := range inputs {
+		coeff := gnarkfext.NewE4GenFromBase(lc.Coeffs[i])
+		tmp = *e4Api.Mul(&coeff, &input)
+		res = *e4Api.Add(&tmp, &res)
 	}
 
 	return res

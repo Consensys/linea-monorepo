@@ -5,12 +5,19 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/consensys/go-corset/pkg/air"
-	"github.com/consensys/go-corset/pkg/mir"
-	"github.com/consensys/go-corset/pkg/schema"
+	"github.com/consensys/go-corset/pkg/asm"
+	"github.com/consensys/go-corset/pkg/binfile"
+	"github.com/consensys/go-corset/pkg/corset"
+	"github.com/consensys/go-corset/pkg/ir"
+	"github.com/consensys/go-corset/pkg/ir/air"
+	"github.com/consensys/go-corset/pkg/ir/mir"
+	"github.com/consensys/go-corset/pkg/schema/module"
+	"github.com/consensys/go-corset/pkg/schema/register"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
+	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 )
@@ -38,9 +45,19 @@ type Arithmetization struct {
 	// ZkEVMBin contains the zkevm.bin file as a byte array. It is kept in the
 	// struct as it is used for serialization.
 	ZkEVMBin []byte
-	// Schema defines the columns, constraints and computations used to expand a
-	// given trace, and to subsequently to check satisfiability.
-	Schema *air.Schema `serde:"omit"`
+	// Binary encoding of the zkevm.bin file, which captures the high-level
+	// structure of constraints.  This is primarily useful for assembly
+	// functions (as these have big differences between their assembly
+	// representation and their constraints representation).
+	BinaryFile *binfile.BinaryFile `serde:"omit"`
+	// Air schema defines the low-level columns, constraints and computations
+	// used to expand a given trace, and to subsequently to check
+	// satisfiability.
+	AirSchema *air.Schema[koalabear.Element] `serde:"omit"`
+	// Maps each column in the raw trace file into one (or more) columns in the
+	// expanded trace file.  In particular, columns which are too large for the
+	// given field are split into multiple "limbs".
+	LimbMapping module.LimbsMap `serde:"omit"`
 	// Metadata embedded in the zkevm.bin file, as needed to check
 	// compatibility.  Guaranteed non-nil.
 	Metadata typed.Map `serde:"omit"`
@@ -49,18 +66,23 @@ type Arithmetization struct {
 // NewArithmetization is the function that declares all the columns and the constraints of
 // the zkEVM in the input builder object.
 func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetization {
-	schema, metadata, errS := ReadZkevmBin(settings.OptimisationLevel)
+	// Read and parse the binary file
+	binf, metadata, errS := ReadZkevmBin()
 	if errS != nil {
 		panic(errS)
 	}
-
+	// Compile binary file into an air.Schema
+	schema, mapping := CompileZkevmBin(binf, settings.OptimisationLevel)
+	// Translate air.Schema into prover's internal representation
 	Define(builder.CompiledIOP, schema, settings.Limits)
-
+	// Done
 	return &Arithmetization{
-		Schema:   schema,
-		Settings: &settings,
-		Metadata: metadata,
-		ZkEVMBin: []byte(zkevmStr),
+		BinaryFile:  binf,
+		AirSchema:   schema,
+		Settings:    &settings,
+		LimbMapping: mapping,
+		Metadata:    metadata,
+		ZkEVMBin:    []byte(zkevmStr),
 	}
 }
 
@@ -71,9 +93,13 @@ func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetiza
 // computed columns with concrete values, such for determining multiplicative
 // inverses, etc.
 func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
-	traceF := files.MustRead(traceFile)
-	// Parse trace file and extract raw column data.
-	rawColumns, metadata, errT := ReadLtTraces(traceF, a.Schema)
+	var (
+		errs []error
+		//
+		traceF = files.MustRead(traceFile)
+		// Parse trace file and extract raw column data.
+		rawTrace, metadata, errT = ReadLtTraces(traceF)
+	)
 
 	// Performs a compatibility check by comparing the constraints
 	// commit of zkevm.bin with the constraints commit of the trace file.
@@ -110,11 +136,183 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	if errT != nil {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
 	}
+	// Perform trace propagation
+	rawTrace, errs = asm.Propagate(a.BinaryFile.Schema, rawTrace, true)
+	// error check
+	if len(errs) > 0 {
+		logrus.Warnf("corset propagation gave the following errors: %v", errors.Join(errs...).Error())
+	}
 	// Perform trace expansion
-	expandedTrace, errs := schema.NewTraceBuilder(a.Schema).Build(rawColumns)
+	expandedTrace, errs := ir.NewTraceBuilder[koalabear.Element]().
+		WithBatchSize(1024).
+		WithRegisterMapping(a.LimbMapping).
+		Build(a.AirSchema, rawTrace)
+	//
 	if len(errs) > 0 {
 		logrus.Warnf("corset expansion gave the following errors: %v", errors.Join(errs...).Error())
 	}
 	// Passed
-	AssignFromLtTraces(run, a.Schema, expandedTrace, a.Settings.Limits)
+	AssignFromLtTraces(run, a.AirSchema, expandedTrace, a.Settings.Limits)
+}
+
+// LimbColumnsOf returns the wizard columns corresponding to the limbs for the
+// tuple (moduleName, regName). The function furthermore ensures that the
+// function has the requested number of limbs.
+func (a *Arithmetization) LimbColumnsOf(comp *wizard.CompiledIOP, mod string, column string, nLimbs int) []ifaces.Column {
+	names := a.LimbsOf(mod, column, nLimbs)
+	cols := make([]ifaces.Column, len(names))
+	for i, name := range names {
+		cols[i] = comp.Columns.GetHandle(ifaces.ColID(name))
+	}
+	return cols
+}
+
+// LimbColumnsOfArr2 is sugar for
+//
+//	```
+//	 	c := a.LimbColumnsOf(comp, mod, regName, 2)
+//		return [2]ifaces.Column(c)
+//	 ```
+func (a *Arithmetization) LimbColumnsOfArr2(comp *wizard.CompiledIOP, mod string, column string) [2]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, column, 2)
+	return [2]ifaces.Column(c)
+}
+
+// LimbColumnsOfArr3 is sugar for
+//
+//	```
+//	 	c := a.LimbColumnsOf(comp, mod, regName, 3)
+//		return [3]ifaces.Column(c)
+//	 ```
+func (a *Arithmetization) LimbColumnsOfArr3(comp *wizard.CompiledIOP, mod string, column string) [3]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, column, 3)
+	return [3]ifaces.Column(c)
+}
+
+// LimbColumnsOfArr4 is sugar for
+//
+//	```
+//	 	c := a.LimbColumnsOf(comp, mod, regName, 4)
+//		return [4]ifaces.Column(c)
+//	 ```
+func (a *Arithmetization) LimbColumnsOfArr4(comp *wizard.CompiledIOP, mod string, column string) [4]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, column, 4)
+	return [4]ifaces.Column(c)
+}
+
+// LimbColumnsOfArr8 is sugar for
+//
+//	```
+//	 	c := a.LimbColumnsOf(comp, mod, regName, 8)
+//		return [8]ifaces.Column(c)
+//	 ```
+func (a *Arithmetization) LimbColumnsOfArr8(comp *wizard.CompiledIOP, mod string, column string) [8]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, column, 8)
+	return [8]ifaces.Column(c)
+}
+
+// LimbColumnsOfArr16 is sugar for
+//
+//	```
+//	 	c := a.LimbColumnsOf(comp, mod, regName, 16)
+//		return [16]ifaces.Column(c)
+//	 ```
+func (a *Arithmetization) LimbColumnsOfArr16(comp *wizard.CompiledIOP, mod string, column string) [16]ifaces.Column {
+	c := a.LimbColumnsOf(comp, mod, column, 16)
+	return [16]ifaces.Column(c)
+}
+
+// ColumnOf returns the wizard column associated with the given name and
+// register. The function will fail with panic if the column is not found or the
+// column has more than 1 register.
+func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, column string) ifaces.Column {
+	cols := a.LimbColumnsOf(comp, name, column, 1)
+	return cols[0]
+}
+
+// LimbsOf returns the fully qualified names of the limbs for a given Corset
+// column based on its name.  The limbs are returned in little endian order
+// (i.e. the least significant limb is at index 0).  This will attempt to match
+// the column name with the appropriate raw (underlying) register name.  For
+// example, we might have a column written in the Corset lisp file called "DATA"
+// that we want to access.  For whatever reason, this column might be mapped to
+// a raw register called e.g. "DATA_xor_HASH". Whilst we could use the raw
+// register name directly, it is subject to change as the constraints change.
+// Instead, we want to be able to use just "DATA" and for this function to
+// figure out the raw name of "DATA_xor_HASH" for us, and then determine the
+// appropriate limbs.
+func (a *Arithmetization) LimbsOf(mod string, column string, nLimbs int) []string {
+	// Identify limbs mapping for ecdata module
+	var (
+		// Extract the limb mapping for the given module
+		modMap = a.LimbMapping.ModuleOf(module.NewName(mod, 1))
+		// Determine corresponding register id
+		reg = a.determineRegisterId(mod, column)
+	)
+	// Extract limbs for given register (least significant limb comes first)
+	limbs := modMap.LimbIds(reg)
+	names := make([]string, len(limbs))
+	// Sanity check we got the number of limbs we expected
+	if len(limbs) != nLimbs {
+		panic(fmt.Sprintf("incorrect number of limbs (expected %d found %d)", nLimbs, len(limbs)))
+	}
+	//
+	for i, lid := range limbs {
+		limb := modMap.Limb(lid)
+		names[i] = fmt.Sprintf("%s.%s", modMap.Name(), limb.Name)
+	}
+	//
+	return names
+}
+
+// Attempt to identify the register identifier for the given register.  This
+// will first attempt to find a corresponding source-level register of the same
+// name and, if that fails, fall back on the raw register name.  To understand
+// this, consider a register DATA written in the Corset source-file which is
+// declared within a given perspective.  Suppose that the DATA register is
+// coalesced with another register from a different perspective (say HASH).
+// Then, the source-level name for the DATA register is just DATA, whilst the
+// raw (i.e. underlying name) is DATA_xor_HASH.  Thus, this function attempts to
+// first resolve the name DATA to the register id corresponding with the raw
+// register DATA_xor_HASH.
+func (a *Arithmetization) determineRegisterId(mod string, name string) register.Id {
+	var rid register.Id
+	// Check whether source-level debug information is available.
+	if srcmap, srcmap_ok := binfile.GetAttribute[*corset.SourceMap](a.BinaryFile); srcmap_ok {
+		// Yes, therefore attempt to find a source-level regsiter with the given name.
+		module := determineSourceModule(srcmap, mod)
+		// Check columns within the module
+		for _, col := range module.Columns {
+			if col.Name == name {
+				// Success
+				return col.Register.Register()
+			}
+		}
+	}
+	// Failed to find a source-level register of the given name, therefore fall
+	// back to just looking up the register based on its raw name.
+	modMap := a.LimbMapping.ModuleOf(module.NewName(mod, 1))
+	rid, ok := modMap.HasRegister(name)
+	// Sanity check we found it
+	if !ok {
+		panic(fmt.Sprintf("unknown register %s.%s", mod, name))
+	}
+	// Done
+	return rid
+}
+
+func determineSourceModule(srcmap *corset.SourceMap, mod string) corset.SourceModule {
+	// Lookup the source module with the corresponding name; if there are
+	// multiple matching entries, then fail.
+	modules := srcmap.Flattern(func(s *corset.SourceModule) bool {
+		return s.Public && s.Name == mod
+	})
+	// Sanity check
+	if len(modules) == 0 {
+		panic(fmt.Sprintf("unknown module %s", mod))
+	} else if len(modules) > 1 {
+		panic(fmt.Sprintf("ambiguous module %s", mod))
+	}
+	//
+	return modules[0]
 }

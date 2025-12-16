@@ -72,8 +72,16 @@ func RunTestShouldPassWithGnark(t *testing.T, tc Testcase, suite []func(comp *wi
 			tc.Define(b.CompiledIOP)
 		}
 
-		comp    = wizard.Compile(define, suite...)
-		proof   = wizard.Prove(comp, tc.Assign)
+		comp  = wizard.Compile(define, suite...)
+		proof = wizard.Prove(comp, tc.Assign, true)
+		err   = wizard.Verify(comp, proof, true)
+	)
+
+	if err != nil {
+		t.Logf("native verifier failed: %v", err)
+	}
+
+	var (
 		circuit = &verifierCircuit{
 			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
 		}
@@ -91,8 +99,8 @@ func RunTestShouldPassWithGnark(t *testing.T, tc Testcase, suite []func(comp *wi
 func runTestShouldPass(t *testing.T, comp *wizard.CompiledIOP, prover wizard.MainProverStep) {
 
 	var (
-		proof = wizard.Prove(comp, prover)
-		err   = wizard.Verify(comp, proof)
+		proof = wizard.Prove(comp, prover, false)
+		err   = wizard.Verify(comp, proof, false)
 	)
 
 	if err != nil {
@@ -108,7 +116,7 @@ func runTestShouldFail(t *testing.T, comp *wizard.CompiledIOP, prover wizard.Mai
 	)
 
 	panicErr = utils.RecoverPanic(func() {
-		proof = wizard.Prove(comp, prover)
+		proof = wizard.Prove(comp, prover, false)
 	})
 
 	if panicErr != nil {
@@ -116,7 +124,7 @@ func runTestShouldFail(t *testing.T, comp *wizard.CompiledIOP, prover wizard.Mai
 	}
 
 	panicErr = utils.RecoverPanic(func() {
-		verErr = wizard.Verify(comp, proof)
+		verErr = wizard.Verify(comp, proof, false)
 	})
 
 	if panicErr == nil && verErr == nil {

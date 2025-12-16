@@ -21,8 +21,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
@@ -332,7 +332,7 @@ func PackInMiniTrees(l2MsgHashes []string) []string {
 			}
 		}
 
-		tree := smt.BuildComplete(digests, hashtypes.Keccak)
+		tree := smt.BuildComplete(digests, smt_bls12377.Keccak)
 		res = append(res, tree.Root.Hex())
 	}
 

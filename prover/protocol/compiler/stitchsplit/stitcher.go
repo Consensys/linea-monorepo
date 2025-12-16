@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -101,35 +103,50 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		// get the assignment of the subColumns and interleave them
+		// Get the assignment of the subColumns and interleave them
 		witnesses := make([]smartvectors.SmartVector, len(subColumns))
 		for i := range witnesses {
 			witnesses[i] = subColumns[i].GetColAssignment(run)
 		}
-		assignement := smartvectors.
-			AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
+
+		if smartvectors.AreAllBase(witnesses) {
+
+			newSize := maxSizeGroup * witnesses[0].Len()
+			assignementSlice := make([]field.Element, newSize)
+
+			for i := range subColumns {
+				for j := 0; j < witnesses[0].Len(); j++ {
+					assignementSlice[i+j*maxSizeGroup] = witnesses[i].Get(j)
+				}
+			}
+
+			run.AssignColumn(idBigCol, smartvectors.NewRegular(assignementSlice))
+			continue
+		}
+
+		newSize := maxSizeGroup * witnesses[0].Len()
+		assignementSlice := make([]fext.Element, newSize)
+
 		for i := range subColumns {
 			for j := 0; j < witnesses[0].Len(); j++ {
-				(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
+				assignementSlice[i+j*maxSizeGroup] = witnesses[i].GetExt(j)
 			}
 		}
-		run.AssignColumn(idBigCol, assignement)
+
+		run.AssignColumn(idBigCol, smartvectors.NewRegularExt(assignementSlice))
 	}
 }
 
-// ScanStitchCommit scans compiler trace and classifies the sub columns eligible
-// to the stitching. It then stitches the sub columns, commits to them and
-// update stitchingContext. It also forces the compiler to set the status of the
-// sub columns to 'ignored'. since the sub columns are technically replaced with
-// their stitching.
+// ScanStitchCommit scans compiler trace and classifies the sub columns eligible to the stitching.
+// It then stitches the sub columns, commits to them and update stitchingContext.
+// It also forces the compiler to set the status of the sub columns to 'ignored'.
+// since the sub columns are technically replaced with their stitching.
 func (ctx *StitchingContext) ScanStitchCommit() {
-
 	for round := 0; round < ctx.Comp.NumRounds(); round++ {
 
-		// scan the compiler trace to find the eligible columns for stitching.
-		// The sorting is critical to ensure that the stitching happens in
-		// deterministic order and that the columns are created in the same
-		// order.
+		// scan the compiler trace to find the eligible columns for stitching. The
+		// sorting is critical to ensure that the stitching happens in deterministic
+		// order and that the columns are created in the same order.
 		columnsBySize := scanAndClassifyEligibleColumns(*ctx, round)
 		sizes := utils.SortedKeysOf(columnsBySize, func(a, b int) bool {
 			return a < b
@@ -278,6 +295,16 @@ func groupedName(group []ifaces.Column) ifaces.ColID {
 	return ifaces.ColIDf("STITCHER_%v", strings.Join(fmtted, "_"))
 }
 
+// areAllBase returns true if all the columns are base
+func areAllBase(cols []ifaces.Column) bool {
+	for _, col := range cols {
+		if !col.IsBase() {
+			return false
+		}
+	}
+	return true
+}
+
 // for a group of sub columns it creates their stitching.
 func (ctx *StitchingContext) stitchGroup(s Alliance) {
 	var (
@@ -322,6 +349,7 @@ func (ctx *StitchingContext) stitchGroup(s Alliance) {
 			s.Round,
 			groupedName(s.SubCols),
 			ctx.MaxSize,
+			areAllBase(s.SubCols),
 		)
 
 	default:

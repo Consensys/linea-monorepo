@@ -3,15 +3,16 @@ package mpts
 import (
 	"sync"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	gutils "github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
@@ -30,25 +31,21 @@ type RandomPointEvaluation struct {
 func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 	var (
-		rho = run.GetRandomCoinField(qa.LinCombCoeffRho.Name)
+		rho = run.GetRandomCoinFieldExt(qa.LinCombCoeffRho.Name)
 
 		// zetas stores the values zetas[i] = lambda^i / (X - xi)
 		// where xi is the i-th evaluation point. Having these values precomputed
 		// allows to greatly speed-up the computation. This comes with a trade-off
 		// in space as these can be big if the number of queries is big.
-		zetas = qa.computeZetas(run)
+		zetas = qa.computeZetasExt(run)
 
 		// quotient stores the assignment of the quotient polynomial as it is
 		// being computed.
-		quotient = make([]field.Element, qa.getNumRow())
+		quotient = make(extensions.Vector, qa.getNumRow())
 
 		// powersOfRho lists all the powers of rho and are precomputed to help
 		// parallelization.
-		powersOfRho = vector.PowerVec(rho, len(qa.Polys))
-
-		// mempool is a memory pool that is used to allocate and reuse memory
-		// for the partial results.
-		memPool = mempool.CreateFromSyncPool(qa.getNumRow())
+		powersOfRho = vectorext.PowerVec(rho, len(qa.Polys))
 
 		// quotientLock protects [quotientOfSizes]
 		quotientLock = &sync.Mutex{}
@@ -61,11 +58,22 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 	// The first part of the algorithm is to compute the terms of the form:
 	// \sum_{k, i \in claims} \rho^k \lambda^i P(X) / (X - xi)
-	parallel.ExecuteChunky(len(qa.Polys), func(start, stop int) {
+	parallel.Execute(len(qa.Polys), func(start, stop int) {
 
-		// This creates a thread-local memory pool that does not rely on sync
-		// and is a little faster.
-		memPool := mempool.WrapsWithMemCache(memPool)
+		localRes := make(extensions.Vector, qa.getNumRow())
+
+		// Buffers for reuse
+		combinedPoly := make(extensions.Vector, qa.getNumRow())
+		tmpPoly := make(extensions.Vector, qa.getNumRow())
+
+		// Group polynomials by evaluation points
+		type group struct {
+			points  []int
+			polyIDs []int
+		}
+		var groups []group
+
+		hasWork := false
 
 		for polyID := start; polyID < stop; polyID++ {
 
@@ -83,59 +91,111 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 				continue
 			}
 
+			hasWork = true
+			pointsOfPoly := qa.EvalPointOfPolys[polyID]
+
+			// Find group
+			found := false
+			for i := range groups {
+				// Check equality of points
+				if len(groups[i].points) != len(pointsOfPoly) {
+					continue
+				}
+				match := true
+				for k, p := range pointsOfPoly {
+					if groups[i].points[k] != p {
+						match = false
+						break
+					}
+				}
+				if match {
+					groups[i].polyIDs = append(groups[i].polyIDs, polyID)
+					found = true
+					break
+				}
+			}
+			if !found {
+				groups = append(groups, group{points: pointsOfPoly, polyIDs: []int{polyID}})
+			}
+		}
+
+		if hasWork {
+			quotientLock.Lock()
 			foundNonConstantPoly = true
+			quotientLock.Unlock()
+		}
 
-			var (
-				poly                    = polySV.IntoRegVecSaveAlloc()
-				polyPtr                 *[]field.Element
-				pointsOfPoly            = qa.EvalPointOfPolys[polyID]
-				localPartialQuotientPtr = memPool.Alloc()
-				localPartialQuotient    = *localPartialQuotientPtr
-			)
-
-			if len(poly) < qa.getNumRow() {
-				polyPtr = ldeOf(poly, memPool)
-				poly = *polyPtr
+		for _, g := range groups {
+			polyIDs := g.polyIDs
+			if len(polyIDs) == 0 {
+				continue
 			}
 
-			for j, queryID := range pointsOfPoly {
-				zeta := zetas[queryID]
+			// Compute combinedPoly = sum(rho^k * P_k)
+			first := true
+			for _, polyID := range polyIDs {
+				polySV := qa.Polys[polyID].GetColAssignment(run)
 
-				// For the first term, we do not need to add anything to accumulate
-				// but this is not just an optimization: since partialQuotient is
-				// allocated from the pool, we cannot assume it was already zeroed.
-				if j == 0 {
-					copy(localPartialQuotient, zeta)
+				// Optimization for full-size regular vectors (base field)
+				if reg, ok := polySV.(*smartvectors.Regular); ok && polySV.Len() == qa.getNumRow() {
+					poly := field.Vector(*reg)
+					rho := powersOfRho[polyID]
+
+					if first {
+						for i := 0; i < len(poly); i++ {
+							combinedPoly[i] = rho
+						}
+						combinedPoly.MulByElement(combinedPoly, poly)
+						// for i := 0; i < len(poly); i++ {
+						// 	// combinedPoly[i] = rho * poly[i]
+						// 	combinedPoly[i].B0.A0.Mul(&rho.B0.A0, &poly[i])
+						// 	combinedPoly[i].B0.A1.Mul(&rho.B0.A1, &poly[i])
+						// 	combinedPoly[i].B1.A0.Mul(&rho.B1.A0, &poly[i])
+						// 	combinedPoly[i].B1.A1.Mul(&rho.B1.A1, &poly[i])
+						// }
+						first = false
+					} else {
+						combinedPoly.MulAccByElement(poly, &rho)
+					}
 					continue
 				}
 
-				for k := 0; k < len(poly); k++ {
-					localPartialQuotient[k].Add(&localPartialQuotient[k], &zeta[k])
+				if polySV.Len() < qa.getNumRow() {
+					polySV.WriteInSliceExt(tmpPoly[:polySV.Len()])
+					_ldeOfExt(tmpPoly, polySV.Len(), qa.getNumRow())
+				} else {
+					polySV.WriteInSliceExt(tmpPoly)
+				}
+
+				tmpPoly.ScalarMul(tmpPoly, &powersOfRho[polyID])
+
+				if first {
+					copy(combinedPoly, tmpPoly)
+					first = false
+				} else {
+					combinedPoly.Add(combinedPoly, tmpPoly)
 				}
 			}
 
-			for k := range localPartialQuotient {
-				localPartialQuotient[k].Mul(&localPartialQuotient[k], &poly[k])
-				localPartialQuotient[k].Mul(&localPartialQuotient[k], &powersOfRho[polyID])
+			// Reconstruct points from key or just take from first poly
+			pointsOfPoly := g.points
+
+			// Compute sumZeta using tmpPoly as buffer
+			copy(tmpPoly, zetas[pointsOfPoly[0]])
+			for j := 1; j < len(pointsOfPoly); j++ {
+				tmpPoly.Add(tmpPoly, zetas[pointsOfPoly[j]])
 			}
 
-			// This part of the algorithm cannot be parallelized or there
-			// would be race condition. Expectedly, this amounts to a very
-			// small part of the computation.
-			{
-				quotientLock.Lock()
-				vector.Add(quotient, quotient, localPartialQuotient)
-				quotientLock.Unlock()
-			}
+			// Multiply combinedPoly by sumZeta
+			combinedPoly.Mul(combinedPoly, tmpPoly)
 
-			// Since the pool is "manual", we need to free the memory allocated
-			// manually.
-			memPool.Free(localPartialQuotientPtr)
-
-			if polyPtr != nil {
-				memPool.Free(polyPtr)
-			}
+			// Add to localRes
+			localRes.Add(localRes, combinedPoly)
 		}
+
+		quotientLock.Lock()
+		quotient.Add(quotient, localRes)
+		quotientLock.Unlock()
 	})
 
 	// This clause addresses the edge-case where all the [Polys] are
@@ -153,182 +213,136 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 	// \rho^k \lambda^i y_i / (X - xi). All results are added to the last
 	// entry of the quotient. This part is done separately from the first
 	// because it is optimized differently.
+
+	// We first compute the scalars \sum_k \rho^k y_{i,k} for each query i.
+	scalars := make(extensions.Vector, len(qa.Queries))
 	parallel.Execute(len(qa.Queries), func(start, stop int) {
-
-		var (
-			localResultPtr = memPool.Alloc()
-			localResult    = *localResultPtr
-		)
-
 		for i := start; i < stop; i++ {
-
-			// The first step is to compute the \sum_k \rho^k y_{i,k}. This is
-			// pure scalar operation.
-			var (
-				sumRhoKYik = field.Zero()
-				zetaI      = zetas[i]
-			)
-
-			for _, k := range qa.PolysOfEvalPoint[i] {
+			var sumRhoKYik fext.Element
+			for kIdx, polyID := range qa.PolysOfEvalPoint[i] {
 
 				// Constant polys do not contribute to the quotient as their
 				// respective quotient cancels out.
-				polySV := qa.Polys[k].GetColAssignment(run)
+				polySV := qa.Polys[polyID].GetColAssignment(run)
 				if _, ok := polySV.(*smartvectors.Constant); ok {
 					continue
 				}
 
 				var (
 					paramsI  = run.GetUnivariateParams(qa.Queries[i].Name())
-					posOfYik = getPositionOfPolyInQueryYs(qa.Queries[i], qa.Polys[k])
-					yik      = paramsI.Ys[posOfYik]
+					posOfYik = qa.PolyPositionInQuery[i][kIdx]
+					yik      = paramsI.ExtYs[posOfYik]
 				)
 
 				// This reuses the memory slot of yik to compute the temporary
 				// rho^k y_ik
-				yik.Mul(&yik, &powersOfRho[k])
+				yik.Mul(&yik, &powersOfRho[polyID])
 				sumRhoKYik.Add(&sumRhoKYik, &yik)
 			}
-
-			// The second step is to multiply and accumulate the result by zetaI
-			// and sumRhoKYik. This part "comsumes" the value of zetaI.
-			vector.ScalarMul(zetaI, zetaI, sumRhoKYik)
-
-			if len(localResult) != len(zetaI) {
-				utils.Panic("len(localResult) = %v len(zetaI) = %v", len(localResult), len(zetaI))
-			}
-
-			vector.Add(localResult, localResult, zetaI)
+			scalars[i] = sumRhoKYik
 		}
-
-		quotientLock.Lock()
-		vector.Sub(quotient, quotient, localResult)
-		quotientLock.Unlock()
 	})
 
-	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegular(quotient))
+	// Then we accumulate the result into the quotient.
+	// quotient -= \sum_i scalars[i] * zetas[i]
+	// We parallelize over the rows of the quotient.
+	parallel.Execute(qa.getNumRow(), func(start, stop int) {
+		transposed := make(extensions.Vector, len(qa.Queries))
+		for row := start; row < stop; row++ {
+			// transpose zetas to access by row
+			for i := 0; i < len(qa.Queries); i++ {
+				transposed[i] = zetas[i][row]
+			}
+			sum := transposed.InnerProduct(scalars)
+			quotient[row].Sub(&quotient[row], &sum)
+		}
+	})
+
+	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegularExt(quotient))
 }
 
 func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
 
 	var (
-		r        = run.GetRandomCoinField(re.EvaluationPoint.Name)
+		r        = run.GetRandomCoinFieldExt(re.EvaluationPoint.Name)
 		polys    = re.NewQuery.Pols
 		polyVals = make([]smartvectors.SmartVector, len(polys))
 	)
-
 	for i := range polyVals {
 		polyVals[i] = polys[i].GetColAssignment(run)
+
 	}
 
-	ys := make([]field.Element, len(polyVals))
-	for i := range ys {
-		ys[i] = smartvectors.Interpolate(polyVals[i], r)
-	}
+	ys := smartvectors_mixed.BatchEvaluateLagrange(polyVals, r)
 
-	run.AssignUnivariate(re.NewQuery.QueryID, r, ys...)
+	run.AssignUnivariateExt(re.NewQuery.QueryID, r, ys...)
 }
 
-// computeZetas returns the values of zeta_i = lambda^i / (X - xi)
-// for each query. And returns an evaluation vector for each query for all powers
-// of omega.
-func (qa QuotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]field.Element {
+func (qa QuotientAccumulation) computeZetasExt(run *wizard.ProverRuntime) []vectorext.Vector {
 
 	var (
 		// powersOfOmega is the list of the powers of omega starting from 0.
-		powersOfOmega = getPowersOfOmega(qa.getNumRow())
-		zetaI         = make([][]field.Element, len(qa.Queries))
-		lambda        = run.GetRandomCoinField(qa.LinCombCoeffLambda.Name)
+		powersOfOmega = getPowersOfOmegaExt(qa.getNumRow())
+		zetaI         = make([]vectorext.Vector, len(qa.Queries))
+		lambda        = run.GetRandomCoinFieldExt(qa.LinCombCoeffLambda.Name)
 		// powersOfLambda are precomputed outside of the loop to allow for
 		// parallization.
-		powersOfLambda = vector.PowerVec(lambda, len(qa.Queries))
+		powersOfLambda = vectorext.PowerVec(lambda, len(qa.Queries))
 	)
+
+	arenaExt := arena.NewVectorArena[fext.Element](len(powersOfOmega) * len(qa.Queries))
 
 	parallel.Execute(len(qa.Queries), func(start, stop int) {
 		for i := start; i < stop; i++ {
 
-			var (
-				q      = qa.Queries[i]
-				params = run.GetUnivariateParams(q.Name())
-				xi     = params.X
+			q := qa.Queries[i]
+			params := run.GetUnivariateParams(q.Name())
+			xi := params.ExtX
 
-				// l is the value of lambda^i / (X - xi). It is computed by:
-				// 	1 - Deep copying the powers of omega
-				//  2 - Substracting xi to each entry
-				//  3 - Batch inverting the result
-				//  4 - Multiplying the result by lambdaPowi
-				l = append([]field.Element{}, powersOfOmega...)
-			)
+			// l is the value of lambda^i / (X - xi). It is computed by:
+			// 	1 - Deep copying the powers of omega
+			//  2 - Substracting xi to each entry
+			//  3 - Batch inverting the result
+			//  4 - Multiplying the result by lambdaPowi
+			l := arena.Get[fext.Element](arenaExt, len(powersOfOmega))
+			vl := extensions.Vector(l)
+			copy(vl, powersOfOmega)
 
-			for j := range l {
-				l[j].Sub(&l[j], &xi)
+			for j := range vl {
+				vl[j].Sub(&vl[j], &xi)
 			}
+			vl = fext.ParBatchInvert(vl, 4)
+			vl.ScalarMul(vl, &powersOfLambda[i])
 
-			l = field.BatchInvert(l)
-
-			for j := range l {
-				l[j].Mul(&l[j], &powersOfLambda[i])
-			}
-
-			zetaI[i] = l
+			zetaI[i] = vl
 		}
 	})
 
 	return zetaI
 }
 
-// getPowersOfOmega returns the list of the powers of omega, where omega is a root
-// of unity of order n.
-func getPowersOfOmega(n int) []field.Element {
+func getPowersOfOmegaExt(n int) []fext.Element {
 
 	var (
-		omega = fft.GetOmega(n)
-		res   = make([]field.Element, n)
+		omega, _ = fft.Generator(uint64(n))
+		res      = make([]fext.Element, n)
 	)
 
-	res[0] = field.One()
+	res[0] = fext.One()
 
 	for i := 1; i < n; i++ {
-		res[i].Mul(&res[i-1], &omega)
+		res[i].MulByElement(&res[i-1], &omega)
 	}
 
 	return res
 }
 
-// ldeOf computes the low-degree extension of a vector and allocates the result
-// in the pool. The size of the result is the same as the size of the pool.
-func ldeOf(v []field.Element, pool mempool.MemPool) *[]field.Element {
+func _ldeOfExt(v []fext.Element, sizeSmall, sizeLarge int) {
+	domainSmall := fft.NewDomain(uint64(sizeSmall), fft.WithCache())
+	domainLarge := fft.NewDomain(uint64(sizeLarge), fft.WithCache())
 
-	var (
-		sizeLarge   = pool.Size()
-		domainSmall = fft.NewDomain(len(v))
-		domainLarge = fft.NewDomain(sizeLarge)
-		resPtr      = pool.Alloc()
-		res         = *resPtr
-	)
-
-	vector.Fill(res, field.Zero())
-	copy(res[:len(v)], v)
-
-	// Note: this implementation is very suboptimal as it should be possible
-	// reduce the overheads of bit-reversal with a smarter implementation.
-	// To be digged in the future, if this comes up as a bottleneck.
-	domainSmall.FFTInverse(res[:len(v)], fft.DIF)
-	fft.BitReverse(res[:len(v)])
-	domainLarge.FFT(res, fft.DIF)
-	fft.BitReverse(res)
-
-	return resPtr
-}
-
-func getPositionOfPolyInQueryYs(q query.UnivariateEval, poly ifaces.Column) int {
-
-	for i, p := range q.Pols {
-		if p.GetColID() == poly.GetColID() {
-			return i
-		}
-	}
-
-	utils.Panic("not found, poly=%v in query=%v", poly.GetColID(), q.Name())
-	return 0
+	domainSmall.FFTInverseExt(v[:sizeSmall], fft.DIF, fft.WithNbTasks(1))
+	gutils.BitReverse(v[:sizeSmall])
+	domainLarge.FFTExt(v, fft.DIF, fft.WithNbTasks(1))
+	gutils.BitReverse(v)
 }

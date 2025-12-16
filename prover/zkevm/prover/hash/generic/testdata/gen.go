@@ -3,10 +3,10 @@ package testdata
 import (
 	"fmt"
 	"math/rand/v2"
+	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -14,21 +14,31 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
-// it receives columns hashNum and toHash and generates GenDataModule.
+// SplitBytes splits the input slice into subarrays of the provided size.
+func SplitBytes(input []byte, limbByteSize int) [][]byte {
+	if len(input) == 0 {
+		return [][]byte{}
+	}
+
+	var result [][]byte
+	for i := 0; i < len(input); i += limbByteSize {
+		end := i + limbByteSize
+		if end > len(input) {
+			end = len(input)
+		}
+		result = append(result, input[i:end])
+	}
+	return result
+}
+
+// it receives columns hashNum and toHash and generates GenDataModule.If flag is true it generate random nBytes between 1 and 16. Otherwise it sets nBytes to 16.
 func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenDataModule,
 	hashNumInt, toHashInt []int, flag bool, path ...string) {
 
 	var (
-		size    = gdm.Limb.Size()
-		limbs   = make([]field.Element, size)
-		nBytes  = make([]field.Element, size)
-		toHash  = make([]field.Element, size)
-		index   = make([]field.Element, size)
-		hashNum = make([]field.Element, size)
-		rng     = rand.New(rand.NewChaCha8([32]byte{}))
-
+		rng        = rand.New(rand.NewChaCha8([32]byte{}))
+		limbCols   = common.NewMultiVectorBuilder(gdm.Limbs)
 		nByteCol   = common.NewVectorBuilder(gdm.NBytes)
-		limbCol    = common.NewVectorBuilder(gdm.Limb)
 		hashNumCol = common.NewVectorBuilder(gdm.HashNum)
 		toHashCol  = common.NewVectorBuilder(gdm.ToHash)
 		indexCol   = common.NewVectorBuilder(gdm.Index)
@@ -37,41 +47,38 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 	for i := range hashNumInt {
 
 		if i == 0 {
-			index[i] = field.Zero()
+			indexCol.PushInt(0)
 		} else if hashNumInt[i] != hashNumInt[i-1] {
-			index[i] = field.Zero()
+			indexCol.PushInt(0)
 		} else if toHashInt[i] == 0 {
-			index[i] = index[i-1]
+			indexCol.PushIncBy(0)
 		} else {
-			index[i].Add(&index[i-1], new(field.Element).SetOne())
+			indexCol.PushIncBy(1)
 		}
 
-		toHash[i] = field.NewElement(uint64(toHashInt[i]))
-		hashNum[i] = field.NewElement(uint64(hashNumInt[i]))
+		toHashCol.PushInt(toHashInt[i])
+		hashNumCol.PushInt(hashNumInt[i])
 		var numBytesInt int
-		var numBytesF field.Element
 		if flag {
-			numBytesInt, numBytesF = randNBytes(rng)
-			nBytes[i] = numBytesF
+			numBytesInt = int(rng.Int32N(16) + 1)
+			nByteCol.PushInt(numBytesInt)
 		} else {
-			nBytes[i] = field.NewElement(16)
 			numBytesInt = 16
+			nByteCol.PushInt(16)
 		}
 
-		limbs[i] = randLimbs(rng, numBytesInt)
+		resBytes := make([]byte, 16)
+		_, _ = utils.ReadPseudoRand(rng, resBytes[:numBytesInt])
+		limbs := common.Bytes16ToLimbsLe(resBytes)
+		limbCols.PushRow(limbs[:])
+
 	}
 
-	limbCol.PushSliceF(limbs)
-	nByteCol.PushSliceF(nBytes)
-	hashNumCol.PushSliceF(hashNum)
-	indexCol.PushSliceF(index)
-	toHashCol.PushSliceF(toHash)
-
-	limbCol.PadAndAssign(run)
 	nByteCol.PadAndAssign(run)
 	hashNumCol.PadAndAssign(run)
 	indexCol.PadAndAssign(run)
 	toHashCol.PadAndAssign(run)
+	limbCols.PadAssignZero(run)
 
 	if len(path) > 0 {
 
@@ -79,12 +86,17 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 		fmt.Fprint(oF, "TO_HASH,HASH_NUM,INDEX,NBYTES,LIMBS\n")
 
 		for i := range hashNumInt {
+			var limbsStr []string
+			for _, l := range limbCols.T {
+				limbsStr = append(limbsStr, fmt.Sprintf("0x%s", l.Slice()[i].Text(16)))
+			}
+
 			fmt.Fprintf(oF, "%v,%v,%v,%v,0x%v\n",
-				toHash[i].String(),
-				hashNum[i].String(),
-				index[i].String(),
-				nBytes[i].String(),
-				limbs[i].Text(16),
+				toHashCol.Slice()[i].String(),
+				hashNumCol.Slice()[i].String(),
+				indexCol.Slice()[i].String(),
+				nByteCol.Slice()[i].String(),
+				strings.Join(limbsStr, ","),
 			)
 		}
 
@@ -93,52 +105,30 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 
 }
 
-func randNBytes(rng *rand.Rand) (int, field.Element) {
-
-	// nBytesInt must be in 1..=16
-	var (
-		nBytesInt = rng.Int32N(16) + 1
-		nBytesF   = field.NewElement(uint64(nBytesInt))
-	)
-
-	return int(nBytesInt), nBytesF
-}
-
-func randLimbs(rng *rand.Rand, nBytes int) field.Element {
-
-	var (
-		resBytes = make([]byte, 16)
-		_, _     = utils.ReadPseudoRand(rng, resBytes[:nBytes])
-		res      = new(field.Element).SetBytes(resBytes)
-	)
-
-	return *res
-}
-
 // CreateGenDataModule is used for testing, it commits to the [generic.GenDataModule] columns,
-func CreateGenDataModule(
-	comp *wizard.CompiledIOP,
-	name string,
-	size int,
-) (gbm generic.GenDataModule) {
+func CreateGenDataModule(comp *wizard.CompiledIOP, name string, size int, nbLimbs int) (gbm generic.GenDataModule) {
 	createCol := common.CreateColFn(comp, name, size, pragmas.RightPadded)
 	gbm.HashNum = createCol("HASH_NUM")
 	gbm.Index = createCol("INDEX")
-	gbm.Limb = createCol("LIMBS")
+
+	for i := 0; i < nbLimbs; i++ {
+		gbm.Limbs = append(gbm.Limbs, createCol("LIMBS_%d", i))
+	}
+
 	gbm.NBytes = createCol("NBYTES")
 	gbm.ToHash = createCol("TO_HASH")
 	return gbm
 }
 
 // CreateGenInfoModule is used for testing, it commits to the [generic.GenInfoModule] columns,
-func CreateGenInfoModule(
-	comp *wizard.CompiledIOP,
-	name string,
-	size int,
-) (gim generic.GenInfoModule) {
+func CreateGenInfoModule(comp *wizard.CompiledIOP, name string, size int, nbLimbs int) (gim generic.GenInfoModule) {
 	createCol := common.CreateColFn(comp, name, size, pragmas.RightPadded)
-	gim.HashHi = createCol("HASH_HI")
-	gim.HashLo = createCol("HASH_LO")
+
+	for i := 0; i < nbLimbs; i++ {
+		gim.HashHi = append(gim.HashHi, createCol("HASH_HI_%d", i))
+		gim.HashLo = append(gim.HashLo, createCol("HASH_LO_%d", i))
+	}
+
 	gim.IsHashHi = createCol("IS_HASH_HI")
 	gim.IsHashLo = createCol("IS_HASH_LO")
 	return gim
@@ -153,11 +143,17 @@ func GenerateAndAssignGenInfoModule(
 ) {
 
 	var (
-		hashHi      = common.NewVectorBuilder(gim.HashHi)
-		hashLo      = common.NewVectorBuilder(gim.HashLo)
+		hashHi      = make([]*common.VectorBuilder, len(gim.HashHi))
+		hashLo      = make([]*common.VectorBuilder, len(gim.HashHi))
 		isHashHiCol = common.NewVectorBuilder(gim.IsHashHi)
 		isHashLoCol = common.NewVectorBuilder(gim.IsHashLo)
 	)
+
+	for i := 0; i < len(gim.HashHi); i++ {
+		hashHi[i] = common.NewVectorBuilder(gim.HashHi[i])
+		hashLo[i] = common.NewVectorBuilder(gim.HashLo[i])
+	}
+
 	streams := gdm.ScanStreams(run)
 	var res [][32]byte
 	for _, stream := range streams {
@@ -168,26 +164,38 @@ func GenerateAndAssignGenInfoModule(
 	ctrLo := 0
 	for i := range isHashHi {
 		if isHashHi[i] == 1 {
-			hashHi.PushHi(res[ctrHi])
+			bytes := SplitBytes(res[ctrHi][:16], 2)
+			for j := 0; j < len(gim.HashHi); j++ {
+				hashHi[j].PushBytes(bytes[j])
+			}
 			isHashHiCol.PushInt(1)
 			ctrHi++
 		} else {
-			hashHi.PushInt(0)
+			for j := 0; j < len(gim.HashHi); j++ {
+				hashHi[j].PushInt(0)
+			}
 			isHashHiCol.PushInt(0)
 		}
 
 		if isHashLo[i] == 1 {
-			hashLo.PushLo(res[ctrLo])
+			bytes := SplitBytes(res[ctrLo][16:], 2)
+			for j := 0; j < len(gim.HashLo); j++ {
+				hashLo[j].PushBytes(bytes[j])
+			}
 			isHashLoCol.PushInt(1)
 			ctrLo++
 		} else {
-			hashLo.PushInt(0)
+			for j := 0; j < len(gim.HashLo); j++ {
+				hashLo[j].PushInt(0)
+			}
 			isHashLoCol.PushInt(0)
 		}
 	}
 
-	hashHi.PadAndAssign(run)
-	hashLo.PadAndAssign(run)
+	for i := 0; i < len(gim.HashHi); i++ {
+		hashHi[i].PadAndAssign(run)
+		hashLo[i].PadAndAssign(run)
+	}
 	isHashHiCol.PadAndAssign(run)
 	isHashLoCol.PadAndAssign(run)
 }

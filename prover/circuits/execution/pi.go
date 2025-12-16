@@ -17,14 +17,14 @@ import (
 type FunctionalPublicInputQSnark struct {
 	DataChecksum                 DataChecksumSnark
 	L2MessageHashes              L2MessageHashes
-	InitialBlockTimestamp        frontend.Variable
-	FinalStateRootHash           frontend.Variable
-	FinalBlockNumber             frontend.Variable
-	FinalBlockTimestamp          frontend.Variable
-	InitialRollingHashUpdate     [32]frontend.Variable
-	FirstRollingHashUpdateNumber frontend.Variable
-	FinalRollingHashUpdate       [32]frontend.Variable
-	LastRollingHashUpdateNumber  frontend.Variable
+	InitialBlockTimestamp        zk.WrappedVariable
+	FinalStateRootHash           zk.WrappedVariable
+	FinalBlockNumber             zk.WrappedVariable
+	FinalBlockTimestamp          zk.WrappedVariable
+	InitialRollingHashUpdate     [32]zk.WrappedVariable
+	FirstRollingHashUpdateNumber zk.WrappedVariable
+	FinalRollingHashUpdate       [32]zk.WrappedVariable
+	LastRollingHashUpdateNumber  zk.WrappedVariable
 }
 
 // L2MessageHashes is a wrapper for [Var32Slice] it is used to instantiate the
@@ -69,8 +69,8 @@ func (s *L2MessageHashes) CheckSumPoseidon2(api frontend.API) frontend.Variable 
 	var (
 		// sumIsUsed is used to count the number of non-zero hashes that we
 		// found in s. It is to be tested against s.Length.
-		sumIsUsed = frontend.Variable(0)
-		res       = frontend.Variable(0)
+		sumIsUsed = zk.WrappedVariable(0)
+		res       = zk.WrappedVariable(0)
 	)
 
 	compressor, err := poseidon2permutation.NewCompressor(api)
@@ -104,10 +104,10 @@ func (s *L2MessageHashes) CheckSumPoseidon2(api frontend.API) frontend.Variable 
 
 type FunctionalPublicInputSnark struct {
 	FunctionalPublicInputQSnark
-	InitialStateRootHash frontend.Variable
-	InitialBlockNumber   frontend.Variable
-	ChainID              frontend.Variable
-	L2MessageServiceAddr frontend.Variable
+	InitialStateRootHash zk.WrappedVariable
+	InitialBlockNumber   zk.WrappedVariable
+	ChainID              zk.WrappedVariable
+	L2MessageServiceAddr zk.WrappedVariable
 }
 
 // RangeCheck checks that values are within range.
@@ -154,10 +154,10 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API) frontend.Variable {
 
 func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error {
 
-	spi.InitialStateRootHash = pi.InitialStateRootHash[:]
-	spi.InitialBlockNumber = pi.InitialBlockNumber
-	spi.ChainID = pi.ChainID
-	spi.L2MessageServiceAddr = pi.L2MessageServiceAddr[:]
+	spi.InitialStateRootHash = zk.ValueOf(pi.InitialStateRootHash[:])
+	spi.InitialBlockNumber = zk.ValueOf(pi.InitialBlockNumber)
+	spi.ChainID = zk.ValueOf(pi.ChainID)
+	spi.L2MessageServiceAddr = zk.ValueOf(pi.L2MessageServiceAddr[:])
 
 	return spi.FunctionalPublicInputQSnark.Assign(pi)
 }
@@ -165,12 +165,12 @@ func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error 
 func (spiq *FunctionalPublicInputQSnark) Assign(pi *public_input.Execution) error {
 
 	spiq.DataChecksum.Assign(&pi.DataChecksum)
-	spiq.InitialBlockTimestamp = pi.InitialBlockTimestamp
-	spiq.FinalStateRootHash = pi.FinalStateRootHash[:]
-	spiq.FinalBlockNumber = pi.FinalBlockNumber
-	spiq.FinalBlockTimestamp = pi.FinalBlockTimestamp
-	spiq.FirstRollingHashUpdateNumber = pi.FirstRollingHashUpdateNumber
-	spiq.LastRollingHashUpdateNumber = pi.LastRollingHashUpdateNumber
+	spiq.InitialBlockTimestamp = zk.ValueOf(pi.InitialBlockTimestamp)
+	spiq.FinalStateRootHash = zk.ValueOf(pi.FinalStateRootHash[:])
+	spiq.FinalBlockNumber = zk.ValueOf(pi.FinalBlockNumber)
+	spiq.FinalBlockTimestamp = zk.ValueOf(pi.FinalBlockTimestamp)
+	spiq.FirstRollingHashUpdateNumber = zk.ValueOf(pi.FirstRollingHashUpdateNumber)
+	spiq.LastRollingHashUpdateNumber = zk.ValueOf(pi.LastRollingHashUpdateNumber)
 
 	utils.Copy(spiq.FinalRollingHashUpdate[:], pi.LastRollingHashUpdate[:])
 	utils.Copy(spiq.InitialRollingHashUpdate[:], pi.InitialRollingHashUpdate[:])

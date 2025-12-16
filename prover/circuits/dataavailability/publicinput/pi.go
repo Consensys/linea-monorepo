@@ -75,7 +75,7 @@ func genInterpolateLagrangeParams(n int) (x []fr381.Element, nInv fr381.Element)
 
 // VerifyBlobConsistency opens the "commitment" to the blob at evaluationChallenge; if bypassEip4844 is set, it does so in a KZG-like manner using a Lagrange basis on the unit circle. if not, a Reed-Solomon type method is used.
 // TODO consider using the batch hashes as "snarkHash" instead of hashing the data here to save on constraints
-func VerifyBlobConsistency(api frontend.API, blobCrumbs []frontend.Variable, evaluationChallenge [32]frontend.Variable, eip4844Enabled frontend.Variable) (evaluation [2]frontend.Variable, err error) {
+func VerifyBlobConsistency(api frontend.API, blobCrumbs []zk.WrappedVariable, evaluationChallenge [32]zk.WrappedVariable, eip4844Enabled zk.WrappedVariable) (evaluation [2]zk.WrappedVariable, err error) {
 	snarkFieldLen := api.Compiler().Field().BitLen()
 	if snarkFieldLen >= fr381.Bits {
 		err = fmt.Errorf("large field moduli ( %d≥%d ) not yet supported", snarkFieldLen, fr381.Bits)
@@ -151,7 +151,7 @@ func bitReverseSlice[K interface{}](list []K) {
 	}
 }
 
-func packCrumbsEmulated(api frontend.API, words []frontend.Variable) []*emulated.Element[emulated.BLS12381Fr] {
+func packCrumbsEmulated(api frontend.API, words []zk.WrappedVariable) []*emulated.Element[emulated.BLS12381Fr] {
 	var fieldParams emulated.BLS12381Fr
 	field, err := emulated.NewField[emulated.BLS12381Fr](api)
 	if err != nil {
@@ -164,7 +164,7 @@ func packCrumbsEmulated(api frontend.API, words []frontend.Variable) []*emulated
 	res := make([]*emulated.Element[emulated.BLS12381Fr], (len(words)+wordsPerElem-1)/wordsPerElem)
 	if len(words) != len(res)*wordsPerElem {
 		tmp := words
-		words = make([]frontend.Variable, len(res)*wordsPerElem)
+		words = make([]zk.WrappedVariable, len(res)*wordsPerElem)
 		copy(words, tmp)
 		for i := len(tmp); i < len(words); i++ {
 			words[i] = 0
@@ -182,7 +182,7 @@ func packCrumbsEmulated(api frontend.API, words []frontend.Variable) []*emulated
 	}
 
 	radix := new(big.Int).Lsh(big.NewInt(1), uint(bitsPerWord))
-	limbs := make([]frontend.Variable, nbLimbs*len(res))
+	limbs := make([]zk.WrappedVariable, nbLimbs*len(res))
 
 	for i := range res {
 		currLimbs := limbs[i*nbLimbs : (i+1)*nbLimbs]

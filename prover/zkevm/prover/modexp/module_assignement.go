@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
+
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -16,7 +17,7 @@ type antichamberAssignment struct {
 	isActive    *common.VectorBuilder
 	isSmall     *common.VectorBuilder
 	isLarge     *common.VectorBuilder
-	limbs       *common.VectorBuilder
+	limbs       [common.NbLimbU128]*common.VectorBuilder
 	toSmallCirc *common.VectorBuilder
 }
 
@@ -29,18 +30,24 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 		modexpCountSmall int = 0
 		modexpCountLarge int = 0
 		isModexp             = mod.Input.IsModExp.GetColAssignment(run).IntoRegVecSaveAlloc()
-		limbs                = mod.Input.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
 		settings             = mod.Input.Settings
 		builder              = antichamberAssignment{
 			isActive:    common.NewVectorBuilder(mod.IsActive),
 			isSmall:     common.NewVectorBuilder(mod.IsSmall),
 			isLarge:     common.NewVectorBuilder(mod.IsLarge),
-			limbs:       common.NewVectorBuilder(mod.Limbs),
 			toSmallCirc: common.NewVectorBuilder(mod.ToSmallCirc),
 		}
 	)
 
-	for currPosition := 0; currPosition < len(limbs); {
+	// Retrieve the limbs assignment and initialize the limb builders
+	var limbs [common.NbLimbU128][]field.Element
+	for i := range common.NbLimbU128 {
+		limbs[i] = mod.Input.Limbs[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		builder.limbs[i] = common.NewVectorBuilder(mod.Limbs[i])
+	}
+
+	limbSize := len(limbs[0])
+	for currPosition := 0; currPosition < limbSize; {
 
 		if isModexp[currPosition].IsZero() {
 			currPosition++
@@ -49,16 +56,23 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 
 		// This sanity-check is purely defensive and will indicate that we
 		// missed the start of a Modexp instance
-		if len(limbs)-currPosition < modexpNumRowsPerInstance {
-			utils.Panic("A new modexp is starting but there is not enough rows (currPosition=%v len(ecdata.Limb)=%v)", currPosition, len(limbs))
+		for i := range common.NbLimbU128 {
+			if len(limbs[i])-currPosition < modexpNumRowsPerInstance {
+				utils.Panic("A new modexp is starting but there is not enough rows (currPosition=%v len(ecdata.Limb)=%v)", currPosition, len(limbs))
+			}
 		}
 
 		isLarge := false
 
 		// An instance is considered large if any of the operand has more than
-		// 2 16-bytes limbs.
+		// 2 16-bytes limbs (or 16 2-bytes limbs).
 		for k := 0; k < modexpNumRowsPerInstance; k++ {
-			if k%32 < 30 && !limbs[currPosition+k].IsZero() {
+			isZeroLimbs := true
+			for i := range common.NbLimbU128 {
+				isZeroLimbs = isZeroLimbs && limbs[i][currPosition+k].IsZero()
+			}
+
+			if k%32 < 30 && !isZeroLimbs {
 				isLarge = true
 				break
 			}
@@ -75,7 +89,10 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 			builder.isActive.PushOne()
 			builder.isSmall.PushBoolean(!isLarge)
 			builder.isLarge.PushBoolean(isLarge)
-			builder.limbs.PushField(limbs[currPosition+k])
+
+			for i := range common.NbLimbU128 {
+				builder.limbs[i].PushField(limbs[i][currPosition+k])
+			}
 
 			if !isLarge && k%32 >= 30 {
 				builder.toSmallCirc.PushOne()
@@ -106,12 +123,17 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 	builder.isActive.PadAndAssign(run, field.Zero())
 	builder.isSmall.PadAndAssign(run, field.Zero())
 	builder.isLarge.PadAndAssign(run, field.Zero())
-	builder.limbs.PadAndAssign(run, field.Zero())
 	builder.toSmallCirc.PadAndAssign(run, field.Zero())
+	for i := range common.NbLimbU128 {
+		builder.limbs[i].PadAndAssign(run, field.Zero())
+	}
 
 	// It is possible to not declare the circuit (for testing purpose) in that
 	// case we skip the corresponding assignment part.
 	if mod.HasCircuit {
+		mod.FlattenLimbsSmall.Run(run)
+		mod.FlattenLimbsLarge.Run(run)
+
 		mod.GnarkCircuitConnector256Bits.Assign(run)
 		mod.GnarkCircuitConnector4096Bits.Assign(run)
 	}

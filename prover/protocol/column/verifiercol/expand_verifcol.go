@@ -1,10 +1,12 @@
 package verifiercol
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -15,6 +17,40 @@ var _ VerifierCol = ExpandedVerifCol{}
 type ExpandedVerifCol struct {
 	Verifiercol VerifierCol
 	Expansion   int
+}
+
+func (ex ExpandedVerifCol) IsBase() bool {
+	return ex.Verifiercol.IsBase()
+}
+
+func (ex ExpandedVerifCol) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ex ExpandedVerifCol) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ex ExpandedVerifCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ex ExpandedVerifCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ex ExpandedVerifCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ex ExpandedVerifCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
+	//TODO implement me
+	panic("implement me")
 }
 
 // Round returns the round ID of the column and implements the [ifaces.Column]
@@ -42,18 +78,18 @@ func (ex ExpandedVerifCol) Size() int {
 // GetColAssignment returns the assignment of the current column
 func (ex ExpandedVerifCol) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	assi := ex.Verifiercol.GetColAssignment(run)
-	values := make([][]field.Element, ex.Expansion)
+	values := make([]vectorext.Vector, ex.Expansion)
 	for j := range values {
-		values[j] = smartvectors.IntoRegVec(assi)
+		values[j] = smartvectors.IntoRegVecExt(assi)
 	}
-	res := vector.Interleave(values...)
-	return smartvectors.NewRegular(res)
+	res := vectorext.Interleave(values...)
+	return smartvectors.NewRegularExt(res)
 }
 
 // GetColAssignment returns a gnark assignment of the current column
-func (ex ExpandedVerifCol) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+func (ex ExpandedVerifCol) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
 	assi := ex.Verifiercol.GetColAssignmentGnark(run)
-	res := make([]frontend.Variable, ex.Size())
+	res := make([]zk.WrappedVariable, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		for j := 0; j < ex.Expansion; j++ {
 			res[j+i*ex.Expansion] = assi[i]
@@ -68,7 +104,7 @@ func (ex ExpandedVerifCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (ex ExpandedVerifCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (ex ExpandedVerifCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
 	return ex.Verifiercol.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
 }
 

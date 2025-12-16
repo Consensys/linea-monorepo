@@ -33,7 +33,7 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 		s = make([]smartvectors.SmartVector, 0, len(srcs))
 		// count is the total number of elements in the stacked column
 		count = 0
-		name  = fmt.Sprintf("STACKED_COLUMN_%v_%v", len(comp.Columns.AllKeys()), comp.SelfRecursionCount)
+		name  = fmt.Sprintf("STACKED_COLUMN_%v_%v", comp.Columns.NumEntriesTotal(), comp.SelfRecursionCount)
 		round = 0
 		// Variables needed if the number of rows of the
 		// stacked column is not a power of two.
@@ -86,7 +86,7 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 		s_padded = s
 	}
 
-	col := comp.InsertCommit(round, ifaces.ColID(name), count_padded)
+	col := comp.InsertCommit(round, ifaces.ColID(name), count_padded, true)
 
 	comp.InsertFixedPermutation(
 		round,

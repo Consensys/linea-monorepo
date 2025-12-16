@@ -1,12 +1,11 @@
 package internal
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // CopyHexEncodedBytes panics if the string won't fit. If the string is too small, is will be 0-padded on the left.
-func CopyHexEncodedBytes(dst []frontend.Variable, hex string) error {
+func CopyHexEncodedBytes(dst []zk.WrappedVariable, hex string) error {
 	b, err := utils.HexDecodeString(hex)
 	if err != nil {
 		return err

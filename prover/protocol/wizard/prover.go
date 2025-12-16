@@ -6,6 +6,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
 	"strconv"
 	"sync"
 	"time"
@@ -138,20 +140,17 @@ type ProverRuntime struct {
 	// the [Prove] function.
 	currRound int
 
-	// FS stores the Fiat-Shamir State, you probably don't want to use it
+	// KoalaFS stores the Fiat-Shamir State, you probably don't want to use it
 	// directly unless you know what you are doing. Just know that if you use
-	// it to update the FS hash, this can potentially result in the prover and
+	// it to update the KoalaFS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *fiatshamir.State
+	KoalaFS *fiatshamir.FS
+	BLSFS   *fiatshamir.FS
+	IsBLS   bool
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
-
-	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
-	// round. The first entry is the initial state, the final entry is the final
-	// state.
-	FiatShamirHistory [][2][]field.Element
 
 	PerformanceMonitor *config.PerformanceMonitor
 
@@ -182,8 +181,12 @@ type ProverRuntime struct {
 // auto-detection adds little value and adds a lot of convolution especially
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
-func Prove(c *CompiledIOP, highLevelprover MainProverStep) Proof {
-	run := RunProver(c, highLevelprover)
+func Prove(c *CompiledIOP, highLevelprover MainProverStep, IsBLS ...bool) Proof {
+	isBLSValue := false
+	if IsBLS != nil {
+		isBLSValue = IsBLS[0]
+	}
+	run := RunProver(c, highLevelprover, isBLSValue)
 
 	// Write the performance logs to the csv file is the performance monitor is active
 	if run.PerformanceMonitor.Active {
@@ -197,19 +200,19 @@ func Prove(c *CompiledIOP, highLevelprover MainProverStep) Proof {
 
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
-func RunProver(c *CompiledIOP, highLevelprover MainProverStep) *ProverRuntime {
-	return RunProverUntilRound(c, highLevelprover, c.NumRounds())
+func RunProver(c *CompiledIOP, highLevelprover MainProverStep, IsBLS bool) *ProverRuntime {
+	return RunProverUntilRound(c, highLevelprover, c.NumRounds(), IsBLS)
 }
 
 // RunProverUntilRound runs the prover until the specified round
 // We wrap highLevelProver with a struct that implements the prover action interface
-func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round int) *ProverRuntime {
-	runtime := c.createProver()
+func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round int, IsBLS bool) *ProverRuntime {
+	runtime := c.createProver(IsBLS)
 	runtime.HighLevelProver = highLevelProver
 
 	// Execute the high-level prover as a ProverAction
 	if runtime.HighLevelProver != nil {
-		runtime.exec("high-level-prover", proverStepWrapper{step: highLevelProver})
+		runtime.exec("high-level-prover", mainProverStepWrapper{step: highLevelProver})
 	}
 
 	// Run sub-prover steps for the initial round
@@ -222,19 +225,6 @@ func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round i
 
 	return &runtime
 }
-
-// func RunProverUntilRound(c *CompiledIOP, highLevelprover MainProverStep, round int) *ProverRuntime {
-// 	runtime := c.createProver()
-// 	runtime.exec("high-level-prover", highLevelprover)
-// 	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
-
-// 	for runtime.currRound+1 < round {
-// 		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
-// 		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
-// 	}
-
-// 	return &runtime
-// }
 
 // ExtractProof extracts the proof from a [ProverRuntime]. If the runtime has
 // been obtained via a [RunProverUntilRound], then it may be the case that
@@ -278,11 +268,7 @@ func (run *ProverRuntime) NumRounds() int {
 
 // createProver is the internal function that is used by the [Prove]
 // function to instantiate and fresh and new [ProverRuntime].
-func (c *CompiledIOP) createProver() ProverRuntime {
-
-	// Create a new fresh FS state and bootstrap it
-	fs := fiatshamir.NewMiMCFiatShamir()
-	fs.Update(c.FiatShamirSetup)
+func (c *CompiledIOP) createProver(IsBLS bool) ProverRuntime {
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
@@ -291,16 +277,21 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 		QueriesParams:      collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
 		Coins:              collection.NewMapping[coin.Name, interface{}](),
 		State:              collection.NewMapping[string, interface{}](),
-		FS:                 fs,
+		IsBLS:              IsBLS,
 		currRound:          0,
 		lock:               &sync.Mutex{},
-		FiatShamirHistory:  make([][2][]field.Element, c.NumRounds()),
 		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
 
-	runtime.FiatShamirHistory[0] = [2][]field.Element{
-		fs.State(),
-		fs.State(),
+	// Create a new fresh FS state and bootstrap it
+	if IsBLS {
+		fs := fiatshamir.NewFSBls12377()
+		fs.Update(c.FiatShamirSetup[:]...)
+		runtime.BLSFS = &fs
+	} else {
+		fs := fiatshamir.NewFSKoalabear()
+		fs.Update(c.FiatShamirSetup[:]...)
+		runtime.KoalaFS = &fs
 	}
 
 	// Pass the precomputed polynomials
@@ -416,18 +407,74 @@ func (run ProverRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element {
 	return wit.Get(pos)
 }
 
+func (run ProverRuntime) GetColumnAtBase(name ifaces.ColID, pos int) (field.Element, error) {
+	// global prover's lock before accessing the witnesses
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	/*
+		Make sure the column is registered. If the name is the one specified
+		does not correcpond to a natural column, this will panic. And this is
+		expected behaviour.
+	*/
+	run.Spec.Columns.MustHaveName(name)
+	wit := run.Columns.MustGet(name)
+
+	if _, err := wit.GetBase(0); err == nil {
+		if pos >= wit.Len() || pos < 0 {
+			utils.Panic("asked pos %v for vector of size %v", pos, wit)
+		}
+		result, _ := wit.GetBase(pos)
+		return result, nil
+	} else {
+		return field.Zero(), err
+	}
+
+}
+
+func (run ProverRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element {
+	// global prover's lock before accessing the witnesses
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	/*
+		Make sure the column is registered. If the name is the one specified
+		does not correcpond to a natural column, this will panic. And this is
+		expected behaviour.
+	*/
+	run.Spec.Columns.MustHaveName(name)
+	wit := run.Columns.MustGet(name)
+	return wit.GetExt(pos)
+}
+
 // GetRandomCoinField returns a field element random. The coin should be issued
 // at the same round as it was registered. The same coin can't be retrieved more
 // than once. The coin should also have been registered as a field element
 // before doing this call. Will also trigger the "goNextRound" logic if
 // appropriate.
+//
+// The coin must also be of type [coin.Field].
 func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	mycoin := run.Spec.Coins.Data(name)
-
-	if mycoin.Type == 0 {
-		return run.getRandomCoinGeneric(name, coin.Field).(field.Element)
+	if mycoin.Type != coin.Field {
+		utils.Panic("coin %v is not a field randomness", name)
 	}
-	return run.getRandomCoinGeneric(name, coin.FieldFromSeed).(field.Element)
+	return run.getRandomCoinGeneric(name, mycoin.Type).(field.Element)
+}
+
+// GetRandomCoinFieldExt returns a field extension randomness. The coin should
+// be isseued at the same round as it was registered. The same coin can't be
+// retrieved more than once. The coin should also have been registered as a
+// field extension randomness before doing this call. Will also trigger the
+// "goNextRound" logic if appropriate.
+//
+// The type must also be of type [coin.FieldExt].
+func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
+	mycoin := run.Spec.Coins.Data(name)
+	if mycoin.Type != coin.FieldExt {
+		utils.Panic("coin %v is not a field extension randomness", name)
+	}
+	return run.getRandomCoinGeneric(name, mycoin.Type).(fext.Element)
 }
 
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin. The
@@ -481,11 +528,23 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 
 	// Sanity-check: Make sure, it is done at the right round
 	handle := run.Spec.Columns.GetHandle(name).(column.Natural)
+
 	// if round is empty, we expect it to assign the column at the current round,
 	// otherwise it assigns it in the round the column was declared.
 	// This is useful when we have for loop over rounds.
 	ifaces.MustBeInRound(handle, run.currRound)
 
+	// This sanity-check here is to ensure that if we declare a column as "IsBase"
+	// , then it's assignment should be done on the base field. If the provides
+	// a field extension witness, then the function will try to cast it into
+	// a [smartvectors.Regular] and will panic if that is not possible.
+	if handle.IsBase() && !smartvectors.IsBase(witness) {
+		w_, err := smartvectors.IntoBase(witness)
+		if err != nil {
+			utils.Panic("could not convert witness into base smartvector: %v", err)
+		}
+		witness = w_
+	}
 	if witness.Len() != handle.Size() {
 		utils.Panic("Bad length for %v, expected %v got %v\n", handle, handle.Size(), witness.Len())
 	}
@@ -498,7 +557,8 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	}
 
 	// If the column is generated after the first round, there is no need
-	// optimizing the assignment.
+	// optimizing the assignment because it is likely created by wizard
+	// compilation and its representation is already optimized.
 	if run.currRound > 0 {
 		// Adds it to the assignments
 		run.Columns.InsertNew(handle.GetColID(), witness)
@@ -643,8 +703,6 @@ func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coi
 // parameters. This makes all the new coins available in the prover runtime.
 func (run *ProverRuntime) goNextRound() {
 
-	initialState := run.FS.State()
-
 	if !run.Spec.DummyCompiled {
 
 		/*
@@ -654,6 +712,7 @@ func (run *ProverRuntime) goNextRound() {
 			the last one to "talk" in the protocol.
 		*/
 		msgsToFS := run.Spec.Columns.AllKeysInProverTranscript(run.currRound)
+
 		for _, msgName := range msgsToFS {
 
 			if run.Spec.Columns.IsExplicitlyExcludedFromProverFS(msgName) {
@@ -663,15 +722,19 @@ func (run *ProverRuntime) goNextRound() {
 			if run.Spec.Precomputed.Exists(msgName) {
 				continue
 			}
-
 			instance := run.GetMessage(msgName)
-			run.FS.UpdateSV(instance)
+			if run.IsBLS {
+				(*run.BLSFS).UpdateSV(instance)
+			} else {
+				(*run.KoalaFS).UpdateSV(instance)
+			}
 		}
 
 		/*
 			Also include the prover's allegations for all evaluations
 		*/
 		paramsToFS := run.Spec.QueriesParams.AllKeysAt(run.currRound)
+
 		for _, qName := range paramsToFS {
 			if run.Spec.QueriesParams.IsSkippedFromProverTranscript(qName) {
 				continue
@@ -680,7 +743,11 @@ func (run *ProverRuntime) goNextRound() {
 			// Implicitly, this will panic whenever we start supporting
 			// a new type of query params
 			params := run.QueriesParams.MustGet(qName)
-			params.UpdateFS(run.FS)
+			if run.IsBLS {
+				params.UpdateFS(run.BLSFS)
+			} else {
+				params.UpdateFS(run.KoalaFS)
+			}
 		}
 	}
 
@@ -697,8 +764,12 @@ func (run *ProverRuntime) goNextRound() {
 			fsHooks[i].Run(run)
 		}
 	}
-
-	seed := run.FS.State()[0]
+	var seed field.Octuplet
+	if run.IsBLS {
+		seed = (*run.BLSFS).State()
+	} else {
+		seed = (*run.KoalaFS).State()
+	}
 
 	// Then assigns the coins for the new round. As the round
 	// incrementation is made lazily, we expect that there is
@@ -711,16 +782,15 @@ func (run *ProverRuntime) goNextRound() {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		value := info.Sample(run.FS, seed)
+		var value interface{}
+		if run.IsBLS {
+			value = info.Sample(run.BLSFS, seed)
+		} else {
+			value = info.Sample(run.KoalaFS, seed)
+		}
 		run.Coins.InsertNew(myCoin, value)
 	}
 
-	finalState := run.FS.State()
-
-	run.FiatShamirHistory[run.currRound] = [2][]field.Element{
-		initialState,
-		finalState,
-	}
 }
 
 // runProverSteps runs all the [ProverStep] specified in the underlying
@@ -772,7 +842,7 @@ func (run *ProverRuntime) GetInnerProductParams(name ifaces.QueryID) query.Inner
 //   - no query with the name `name` are found in the [CompiledIOP] object.
 //   - parameters for this query have already been assigned
 //   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...field.Element) query.InnerProductParams {
+func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Element) query.InnerProductParams {
 	q := run.GetInnerProduct(name)
 	if len(q.Bs) != len(ys) {
 		utils.Panic("Inner-product query %v has %v bs but assigned for %v", name, len(q.Bs), len(ys))
@@ -786,16 +856,7 @@ func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...field.El
 	return param
 }
 
-// AssignUnivariate assigns the evaluation point and the evaluation result
-// and claimed values for a univariate evaluation bearing `name` as an ID.
-//
-// The function will panic if:
-//   - the wrong number of `ys` value is provided. It should match the length
-//     of `bs` that was provided when registering the query.
-//   - no query with the name `name` are found in the [CompiledIOP] object.
-//   - parameters for this query have already been assigned
-//   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element, ys ...field.Element) {
+func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -810,7 +871,7 @@ func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element,
 		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
 	}
 	// Adds it to the assignments
-	params := query.NewUnivariateEvalParams(x, ys...)
+	params := query.NewUnivariateEvalParamsExt(x, ys...)
 	run.QueriesParams.InsertNew(name, params)
 }
 
@@ -849,8 +910,32 @@ func (run *ProverRuntime) AssignLocalPoint(name ifaces.QueryID, y field.Element)
 	// Make sure, it is done at the right round
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
+	q := run.Spec.QueriesParams.Data(name).(query.LocalOpening)
+	if !q.IsBase() {
+		utils.Panic("Query %v is not a base query, you should call AssignLocalPointExt", name)
+	}
+
 	// Adds it to the assignments
 	params := query.NewLocalOpeningParams(y)
+	run.QueriesParams.InsertNew(name, params)
+}
+
+func (run *ProverRuntime) AssignLocalPointExt(name ifaces.QueryID, y fext.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	q := run.Spec.QueriesParams.Data(name).(query.LocalOpening)
+	if q.IsBase() {
+		utils.Panic("Query %v is a base query, you should call AssignLocalPoint", name)
+	}
+
+	// Adds it to the assignments
+	params := query.NewLocalOpeningParamsExt(y)
 	run.QueriesParams.InsertNew(name, params)
 }
 
@@ -880,7 +965,7 @@ func (run *ProverRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.Loc
 //   - the parameters were already assigned
 //   - the specified query is not registered
 //   - the assignment round is incorrect
-func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y field.Element) {
+func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y fext.GenericFieldElem) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -910,6 +995,20 @@ func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Elemen
 
 	// Adds it to the assignments
 	params := query.NewGrandProductParams(y)
+	run.QueriesParams.InsertNew(name, params)
+}
+
+func (run *ProverRuntime) AssignGrandProductExt(name ifaces.QueryID, y fext.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewGrandProductParamsExt(y)
 	run.QueriesParams.InsertNew(name, params)
 }
 
@@ -964,13 +1063,11 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() *fiatshamir.State {
-	return run.FS
-}
-
-// FsHistory returns the Fiat-Shamir state history
-func (run *ProverRuntime) FsHistory() [][2][]field.Element {
-	return run.FiatShamirHistory
+func (run *ProverRuntime) Fs() *fiatshamir.FS {
+	if run.IsBLS {
+		return run.BLSFS
+	}
+	return run.KoalaFS
 }
 
 // GetPublicInputs return the value of a public-input from its name
