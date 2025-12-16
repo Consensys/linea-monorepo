@@ -1,5 +1,23 @@
 package public_input
 
+// This file contains comprehensive tests for chain configuration hashing across three implementations:
+//
+// 1. ChainConfigurationFPISnark.Sum()
+//    Tested by: TestChainConfigurationFPISnark_Sum
+//    Computes chain config hash inside gnark ZK circuits using frontend.API
+//
+// 2. computeChainConfigurationHash()
+//    Tested by: TestComputeChainConfigurationHash
+//    Used by Aggregation.Sum() for computing public inputs outside of circuits
+//
+// 3. computeChainConfigurationReference() (test helper in this file)
+//    Tested by: TestComputeChainConfigurationReference
+//    Source of truth that mimics the Solidity verifier's computeChainConfigurationHash.
+//    Used to validate that both #1 and #2 match expected values.
+//
+// The chain configuration hash uses MiMC and processes parameters in order:
+// chainID -> baseFee -> coinBase -> l2MessageServiceAddr
+
 import (
 	"encoding/hex"
 	"math/big"
@@ -15,11 +33,11 @@ import (
 )
 
 func init() {
-	// Register the missing hint
 	utils.RegisterHints()
 }
 
-// ChainConfigurationTestCircuit is a circuit for testing ChainConfigurationFPISnark.Sum
+// ChainConfigurationTestCircuit is a test circuit that wraps ChainConfigurationFPISnark.Sum
+// to validate the circuit implementation against expected hash values computed by the Go reference.
 type ChainConfigurationTestCircuit struct {
 	// Inputs
 	ChainID                 frontend.Variable
@@ -31,9 +49,9 @@ type ChainConfigurationTestCircuit struct {
 	ExpectedHash [32]frontend.Variable `gnark:",public"`
 }
 
-// Define defines the circuit's constraints
+// Define implements the gnark circuit constraints by calling ChainConfigurationFPISnark.Sum
+// and asserting that the computed hash matches the expected value.
 func (c *ChainConfigurationTestCircuit) Define(api frontend.API) error {
-	// Create a ChainConfigurationFPISnark instance
 	chainConfig := ChainConfigurationFPISnark{
 		ChainID:                 c.ChainID,
 		BaseFee:                 c.BaseFee,
@@ -41,11 +59,11 @@ func (c *ChainConfigurationTestCircuit) Define(api frontend.API) error {
 		L2MessageServiceAddress: c.L2MessageServiceAddress,
 	}
 
-	// Compute the hash using our circuit implementation
+	// This is where ChainConfigurationFPISnark.Sum() is actually tested
 	computedHash := chainConfig.Sum(api)
 	computedHashBytes := utils.ToBytes(api, computedHash)
 
-	// Enforce that the computed hash matches the expected hash
+	// Constrain that the circuit output matches the expected hash from the reference implementation
 	for i := 0; i < 32; i++ {
 		api.AssertIsEqual(computedHashBytes[i], c.ExpectedHash[i])
 	}
@@ -53,8 +71,8 @@ func (c *ChainConfigurationTestCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-// TestChainConfigurationFPISnark_Sum tests the circuit implementation of ChainConfigurationFPISnark.Sum
-// against the Go reference implementation for devnet, sepolia, and mainnet configurations.
+// TestChainConfigurationFPISnark_Sum validates that the circuit implementation of
+// ChainConfigurationFPISnark.Sum() produces the same hash as the Go reference implementation.
 func TestChainConfigurationFPISnark_Sum(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -98,8 +116,8 @@ func TestChainConfigurationFPISnark_Sum(t *testing.T) {
 			coinBase := hexToBigInt(tt.coinBase)
 			l2MessageService := hexToBigInt(tt.l2MessageService)
 
-			// Compute expected hash using Go implementation
-			_, expectedHashBytes := computeChainConfigurationGo(chainID, baseFee, coinBase, l2MessageService)
+			// Compute expected hash using reference implementation
+			_, expectedHashBytes := computeChainConfigurationReference(chainID, baseFee, coinBase, l2MessageService)
 
 			t.Logf("Input chainID: %s", tt.chainID)
 			t.Logf("Input baseFee: %s", tt.baseFee)
@@ -145,14 +163,14 @@ func TestChainConfigurationFPISnark_Sum(t *testing.T) {
 					}
 				}
 			} else {
-				t.Logf(" Circuit matches Go implementation!")
+				t.Logf("Circuit matches Go implementation!")
 			}
 		})
 	}
 }
 
-// TestComputeChainConfigurationHash tests the production computeChainConfigurationHash function
-// used in aggregation.go against the reference implementation for devnet, sepolia, and mainnet.
+// TestComputeChainConfigurationHash tests the computeChainConfigurationHash function
+// used in aggregation.go against the reference implementation.
 func TestComputeChainConfigurationHash(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -216,7 +234,7 @@ func TestComputeChainConfigurationHash(t *testing.T) {
 			}
 
 			if hashMatch {
-				t.Logf("✓ computeChainConfigurationHash matches reference implementation")
+				t.Logf("computeChainConfigurationHash matches reference implementation")
 			}
 
 			// Also verify against the Go reference for extra confidence
@@ -225,7 +243,7 @@ func TestComputeChainConfigurationHash(t *testing.T) {
 			coinBaseBig := new(big.Int).SetBytes(coinBase[:])
 			l2MessageServiceBig := new(big.Int).SetBytes(l2MessageService[:])
 
-			_, referenceHash := computeChainConfigurationGo(chainIDBig, baseFeeBig, coinBaseBig, l2MessageServiceBig)
+			_, referenceHash := computeChainConfigurationReference(chainIDBig, baseFeeBig, coinBaseBig, l2MessageServiceBig)
 
 			for i := 0; i < len(referenceHash); i++ {
 				if referenceHash[i] != computedHash[i] {
@@ -236,9 +254,9 @@ func TestComputeChainConfigurationHash(t *testing.T) {
 	}
 }
 
-// TestComputeChainConfigurationGo tests the Go reference implementation of chain configuration hashing
-// including payload construction and hash computation for devnet, sepolia, and mainnet configurations.
-func TestComputeChainConfigurationGo(t *testing.T) {
+// TestComputeChainConfigurationReference tests the reference implementation of chain configuration hashing
+// including payload construction and hash computation.
+func TestComputeChainConfigurationReference(t *testing.T) {
 	tests := []struct {
 		name             string
 		chainID          string
@@ -284,7 +302,7 @@ func TestComputeChainConfigurationGo(t *testing.T) {
 			coinBase := hexToBigInt(tt.coinBase)
 			l2MessageService := hexToBigInt(tt.l2MessageService)
 			// Compute hash and payload
-			computedPayload, computedHash := computeChainConfigurationGo(chainID, baseFee, coinBase, l2MessageService)
+			computedPayload, computedHash := computeChainConfigurationReference(chainID, baseFee, coinBase, l2MessageService)
 			expectedPayloadBytes := hexToBytes(tt.expectedPayload)
 			expectedHashBytes := hexToBytes(tt.expectedHash)
 			// Debug output
@@ -326,12 +344,21 @@ func TestComputeChainConfigurationGo(t *testing.T) {
 	}
 }
 
-// computeChainConfigurationGo is the Go reference implementation that mimics the verifier's Solidity
-// implementation for computing the chain configuration hash. This serves as the source of truth for testing
-// the circuit version, since circuits are harder to test and debug directly. When adding new chain configuration
-// parameters, update this function first and run it to generate expected hash values, then use those values as test
-// cases throughout this file to ensure consistency between Go, circuit, and Solidity implementations.
-func computeChainConfigurationGo(chainID, baseFee, coinBase, l2MessageServiceAddr *big.Int) ([]byte, []byte) {
+// computeChainConfigurationReference is the test reference for computing chain configuration hashes.
+// It serves as the source of truth for validating ChainConfigurationFPISnark.Sum() and
+// computeChainConfigurationHash() in aggregation.go.
+//
+// This function mimics the Solidity verifier's computeChainConfigurationHash and uses MiMC to hash
+// the chain configuration parameters in order: chainID, baseFee, coinBase, l2MessageServiceAddr.
+//
+// When adding new chain configuration parameters:
+//  1. Update this reference implementation first
+//  2. Update ChainConfigurationFPISnark.Sum() in aggregation.go
+//  3. Update computeChainConfigurationHash() in aggregation.go
+//  4. Run tests to ensure all implementations produce identical hashes
+//
+// Returns: (mimcPayload []byte, hash []byte) - the full payload and resulting 32-byte hash
+func computeChainConfigurationReference(chainID, baseFee, coinBase, l2MessageServiceAddr *big.Int) ([]byte, []byte) {
 	hasher := mimc.NewMiMC()
 	var mimcPayload []byte
 
