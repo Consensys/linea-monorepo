@@ -58,11 +58,11 @@ func TestModExpAntichamber(t *testing.T) {
 			}, dummy.Compile)
 			proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
 				inpCt.Assign(run,
-					"LIMBS",
-					"IS_MODEXP_BASE",
-					"IS_MODEXP_EXPONENT",
-					"IS_MODEXP_MODULUS",
-					"IS_MODEXP_RESULT",
+					inp.Limbs,
+					inp.IsModExpBase,
+					inp.IsModExpExponent,
+					inp.IsModExpModulus,
+					inp.IsModExpResult,
 				)
 			})
 
