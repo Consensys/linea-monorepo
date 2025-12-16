@@ -150,12 +150,10 @@ class L1DependentApp(
   )
 
   private val feesFetcher: FeesFetcher = run {
-    val httpService = createWeb3jHttpService(
-      configs.l1Submission!!.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
+    val l1EthApiClient = createEthApiClient(
+      rpcUrl = configs.l1Submission!!.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
       log = LogManager.getLogger("clients.l1.eth.fees-fetcher"),
     )
-    val l1Web3jClient = createWeb3jHttpClient(httpService)
-    val l1EthApiClient = createEthApiClient(l1Web3jClient)
 
     FeeHistoryFetcherImpl(
       ethApiClient = l1EthApiClient,
@@ -569,15 +567,14 @@ class L1DependentApp(
           }
         },
       )
-      val l1Web3jClient = createWeb3jHttpClient(
-        rpcUrl = configs.l2NetworkGasPricing.l1Endpoint.toString(),
-        log = LogManager.getLogger("clients.l1.eth.l2pricing"),
-      )
       val l2Web3jClient = createWeb3jHttpClient(
         rpcUrl = configs.l2NetworkGasPricing.l2Endpoint.toString(),
         log = LogManager.getLogger("clients.l2.eth.l2pricing"),
       )
-      val l1EthApiClient = createEthApiClient(l1Web3jClient)
+      val l1EthApiClient = createEthApiClient(
+        rpcUrl = configs.l2NetworkGasPricing.l1Endpoint.toString(),
+        log = LogManager.getLogger("clients.l1.eth.l1pricing"),
+      )
       L2NetworkGasPricingService(
         vertx = vertx,
         metricsFacade = metricsFacade,

@@ -6,14 +6,12 @@ import io.vertx.junit5.VertxTestContext
 import linea.domain.BlockParameter
 import linea.domain.FeeHistory
 import linea.ethapi.EthApiClient
-import linea.web3j.EthFeeHistoryBlobExtended
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import org.web3j.protocol.core.methods.response.EthGasPrice
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.TimeUnit
 
@@ -87,14 +85,8 @@ class FeeHistoryFetcherImplTest {
 
   private fun createMockedEthApiClient(feeHistoryWithoutBlobData: Boolean = false): EthApiClient {
     val ethApiClient = mock<EthApiClient>()
-    whenever(ethApiClient.ethGasPrice()).thenAnswer {
-      val gasPriceResponse = EthGasPrice()
-      gasPriceResponse.result = "0x100"
-      SafeFuture.completedFuture(gasPriceResponse)
-    }
     whenever(ethApiClient.ethBlockNumber())
       .thenReturn(SafeFuture.completedFuture(13uL))
-
     whenever(
       ethApiClient
         .ethFeeHistory(
@@ -104,7 +96,6 @@ class FeeHistoryFetcherImplTest {
         ),
     )
       .thenAnswer {
-        val feeHistoryResponse = EthFeeHistoryBlobExtended()
         val baseFeePerBlobGas = if (!feeHistoryWithoutBlobData) {
           (10000 until 10011).map { it.toULong() }
         } else {

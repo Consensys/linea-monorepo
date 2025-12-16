@@ -3,14 +3,15 @@ package net.consensys.linea.ethereum.gaspricing.staticcap
 import linea.domain.BlockParameter
 import linea.domain.FeeHistory
 import linea.ethapi.EthApiClient
-import linea.kotlin.toBigInteger
 import linea.kotlin.toIntervalString
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.math.BigInteger
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
+@OptIn(ExperimentalAtomicApi::class)
 class FeeHistoryFetcherImpl(
   private val ethApiClient: EthApiClient,
   private val config: Config,
@@ -32,14 +33,14 @@ class FeeHistoryFetcherImpl(
     }
   }
 
-  private var cacheIsValidForBlockNumber: BigInteger = BigInteger.ZERO
+  private var cacheIsValidForBlockNumber: AtomicLong = AtomicLong(0)
   private lateinit var feesCache: FeeHistory
 
   private fun getRecentFees(): SafeFuture<FeeHistory> {
     return ethApiClient.ethBlockNumber()
       .thenCompose { blockNumberResponse ->
-        val currentBlockNumber = blockNumberResponse.toBigInteger()
-        if (currentBlockNumber > cacheIsValidForBlockNumber) {
+        val currentBlockNumber = blockNumberResponse.toLong()
+        if (currentBlockNumber > cacheIsValidForBlockNumber.load()) {
           ethApiClient
             .ethFeeHistory(
               blockCount = config.feeHistoryBlockCount.toInt(),
@@ -47,8 +48,7 @@ class FeeHistoryFetcherImpl(
               rewardPercentiles = listOf(config.feeHistoryRewardPercentile),
             )
             .thenApply { feeHistory ->
-
-              cacheIsValidForBlockNumber = currentBlockNumber
+              cacheIsValidForBlockNumber.store(currentBlockNumber)
               if (feeHistory.baseFeePerBlobGas.isNotEmpty()) {
                 log.trace(
                   "New Fee History: l1BlockNumber={} l1Blocks={} lastBaseFeePerGas={} reward={} gasUsedRatio={}" +
