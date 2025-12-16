@@ -593,6 +593,8 @@ contract YieldManager is
     if (_slot <= lastProvenSlot + SLOTS_PER_HISTORICAL_ROOT) {
       revert SlotTooCloseToLastProvenSlot(_validatorIndex, lastProvenSlot, _slot);
     }
+    // Place storage update before possible reentrancy in _delegatecallYieldProvider
+    _getYieldManagerStorage().lastProvenSlot[_validatorIndex] = _slot;
 
     uint256 requiredUnstakeAmountWei = Math256.safeSub(getTargetReserveDeficit(), address(this).balance + withdrawableValue(_yieldProvider) + _getYieldManagerStorage().pendingPermissionlessUnstake);
     if (requiredUnstakeAmountWei == 0) revert NoRequirementToUnstakePermissionless();
@@ -607,7 +609,6 @@ contract YieldManager is
       revert UnstakedAmountExceedsRequired(unstakedAmountWei, requiredUnstakeAmountWei);
     }
 
-    _getYieldManagerStorage().lastProvenSlot[_validatorIndex] = _slot;
     _getYieldManagerStorage().pendingPermissionlessUnstake += unstakedAmountWei;
     emit UnstakePermissionlessRequest(_yieldProvider, _validatorIndex, _slot, requiredUnstakeAmountWei, unstakedAmountWei, _withdrawalParams);
   }
