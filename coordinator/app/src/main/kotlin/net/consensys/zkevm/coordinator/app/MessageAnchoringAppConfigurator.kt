@@ -21,10 +21,6 @@ object MessageAnchoringAppConfigurator {
     }
     configs.messageAnchoring!!
 
-    val l1Web3jClient = createWeb3jHttpClient(
-      rpcUrl = configs.messageAnchoring.l1Endpoint.toString(),
-      log = LogManager.getLogger("clients.l1.eth.message-anchoring"),
-    )
     val l1EthApiClient = createEthApiClient(
       rpcUrl = configs.messageAnchoring.l1Endpoint.toString(),
       log = LogManager.getLogger("clients.l1.eth.message-anchoring"),

@@ -88,23 +88,17 @@ class Web3jEthApiClient(
     newestBlock: BlockParameter,
     rewardPercentiles: List<Double>,
   ): SafeFuture<FeeHistory> {
-    return SafeFuture.of(
-      Request(
-        "eth_feeHistory",
-        listOf(
-          Numeric.encodeQuantity(BigInteger.valueOf(blockCount.toLong())),
-          newestBlock.toWeb3j().value,
-          rewardPercentiles,
-        ),
-        this.web3jService,
-        EthFeeHistoryBlobExtended::class.java,
-      ).sendAsync(),
-    ).thenCompose {
-      if (it.hasError()) {
-        SafeFuture.failedFuture(Exception(it.error.message))
-      } else {
-        SafeFuture.completedFuture(it.feeHistory.toLineaDomain())
-      }
+    return Request(
+      "eth_feeHistory",
+      listOf(
+        Numeric.encodeQuantity(BigInteger.valueOf(blockCount.toLong())),
+        newestBlock.toWeb3j().value,
+        rewardPercentiles,
+      ),
+      this.web3jService,
+      EthFeeHistoryBlobExtended::class.java,
+    ).requestAsync {
+      it.feeHistory.toLineaDomain()
     }
   }
 

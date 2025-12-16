@@ -72,21 +72,19 @@ fun createEthApiClient(
   vertx: Vertx? = null,
   stopRetriesOnErrorPredicate: Predicate<Throwable> = Predicate { _ -> false },
 ): EthApiClient {
-  val web3jClient =
-    createWeb3jHttpClient(
-      rpcUrl,
-      log,
-      pollingInterval,
-      executorService,
-      requestResponseLogLevel,
-      failuresLogLevel,
-    )
   val web3jService = createWeb3jHttpService(
     rpcUrl = rpcUrl,
     log = log,
     requestResponseLogLevel = requestResponseLogLevel,
     failuresLogLevel = failuresLogLevel,
   )
+
+  val web3jClient =
+    createWeb3jHttpClient(
+      httpService = web3jService,
+      pollingInterval = pollingInterval,
+      executorService = executorService,
+    )
 
   return createEthApiClient(web3jClient, web3jService, requestRetryConfig, vertx, stopRetriesOnErrorPredicate)
 }
