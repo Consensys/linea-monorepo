@@ -48,7 +48,7 @@ func TestPublicInput(t *testing.T) {
 			L1RollingHashMessageNumber:              549263,
 			L2MsgRootHashes:                         []string{"0xfb7ce9c89be905d39bfa2f6ecdf312f127f8984cf313cbea91bca882fca340cd"},
 			L2MsgMerkleTreeDepth:                    5,
-			// Chain configuration (mainnet values)
+			// Chain configuration
 			ChainID:              59144,
 			BaseFee:              7,
 			CoinBase:             types.EthAddress(common.HexToAddress("0x8F81e2E3F8b46467523463835F965fFE476E1c9E")),
@@ -65,7 +65,6 @@ func TestPublicInput(t *testing.T) {
 		// TODO incorporate into public input hash or decide not to
 		sfpi.NbDecompression = -1
 		sfpi.InitialStateRootHash = -2
-		// Keep real chain config values instead of dummy ones
 		sfpi.NbL2Messages = -5
 
 		var res [32]frontend.Variable
