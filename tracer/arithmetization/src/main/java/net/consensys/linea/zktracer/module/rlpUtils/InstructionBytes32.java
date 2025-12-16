@@ -23,7 +23,6 @@ import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES16_PREF
 import lombok.EqualsAndHashCode;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 

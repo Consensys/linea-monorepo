@@ -15,21 +15,16 @@
 
 package net.consensys.linea.zktracer.module.rlpUtils;
 
-import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.RLP_UTILS_INST_DATA_PRICING;
 
-import java.util.ArrayList;
-import java.util.List;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
