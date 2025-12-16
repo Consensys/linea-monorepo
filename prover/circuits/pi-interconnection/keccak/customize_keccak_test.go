@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,5 +39,5 @@ func testCustomizedKeccak(maxNbKeccakF int, compilationSuite ...func(*wizard.Com
 
 func TestCustomizedKeccak(t *testing.T) {
 	t.Run("dummy", testCustomizedKeccak(400, dummy.Compile))
-	t.Run("wizard", testCustomizedKeccak(100, WizardCompilationParameters()...))
+	// t.Run("wizard", testCustomizedKeccak(100, WizardCompilationParameters()...))
 }

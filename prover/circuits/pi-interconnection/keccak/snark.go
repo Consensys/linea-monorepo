@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/std/compress"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/crypto/poseidon2/gkrposeidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
@@ -14,8 +14,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/serialization"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -133,7 +133,7 @@ func (h *Hasher) Finalize(c *wizard.VerifierCircuit) error {
 		h.api.AssertIsEqual(h.claimedOuts[i][1], expectedHashLo[i])
 	}
 
-	c.HasherFactory = gkrposeidon2.NewHasherFactory(h.api)
+	c.HasherFactory = gkrmimc.NewHasherFactory(h.api)
 
 	c.Verify(h.api)
 	return nil
