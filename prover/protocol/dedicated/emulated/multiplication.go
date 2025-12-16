@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -25,17 +26,17 @@ type Multiplication struct {
 	name string
 
 	// TermL and TermR are the multiplicands.
-	TermL, TermR Limbs
+	TermL, TermR limbs.Limbs[limbs.LittleEndian]
 	// Modulus is the modulus for the multiplication.
-	Modulus Limbs
+	Modulus limbs.Limbs[limbs.LittleEndian]
 
 	// Result is the result of the multiplication modulo Modulus. Computed by the module
 	// at prover time.
-	Result Limbs
+	Result limbs.Limbs[limbs.LittleEndian]
 	// Quotient is the quotient of the multiplication. Computed by the module at prover time.
-	Quotient Limbs
+	Quotient limbs.Limbs[limbs.LittleEndian]
 	// Carry are the carries used during the multiplication. Computed by the module at prover time.
-	Carry Limbs
+	Carry limbs.Limbs[limbs.LittleEndian]
 
 	// Challenge is the random challenge used for the random polynomial evaluation.
 	Challenge *coin.Info
@@ -56,68 +57,40 @@ type Multiplication struct {
 //
 // The returned multiplication module can be used to reference the computed
 // auxiliary columns.
-func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus Limbs, nbBitsPerLimb int) *Multiplication {
+func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Limbs[limbs.LittleEndian], nbBitsPerLimb int) *Multiplication {
 	// XXX(ivokub): add option to have activator column. When it is given then we can
 	// avoid assigning zeros when the multiplication is not active
-	nbRows := left.Columns[0].Size()
+	nbRows := left.NumRow()
 	// compute the range checking parameters
 	nbRangecheckBits := 16
 	nbRangecheckLimbs := (nbBitsPerLimb + nbRangecheckBits - 1) / nbRangecheckBits
 	// compute the minimal round needed
 	round := 0
-	for i := range left.Columns {
-		round = max(round, left.Columns[i].Round())
+	for _, l := range left.Limbs() {
+		round = max(round, l.Round())
 	}
-	for i := range right.Columns {
-		round = max(round, right.Columns[i].Round())
+	for _, l := range right.Limbs() {
+		round = max(round, l.Round())
 	}
-	for i := range modulus.Columns {
-		round = max(round, modulus.Columns[i].Round())
+	for _, l := range modulus.Limbs() {
+		round = max(round, l.Round())
 	}
 
 	// compute the number of limbs needed for storing the quotient.
-	nbQuoBits := nbMultiplicationResLimbs(len(left.Columns)*nbBitsPerLimb, len(right.Columns)*nbBitsPerLimb)
+	nbQuoBits := nbMultiplicationResLimbs(left.NumLimbs()*nbBitsPerLimb, right.NumLimbs()*nbBitsPerLimb)
 	nbQuoBits += 1 // for possible carry
 	// compute the number of carry bits needed
 	nbCarryBits := nbQuoBits
-	nbQuoBits = max(0, nbQuoBits-len(modulus.Columns)*nbBitsPerLimb+1) // we divide by modulus of nbLimbs size
+	nbQuoBits = max(0, nbQuoBits-modulus.NumLimbs()*nbBitsPerLimb+1) // we divide by modulus of nbLimbs size
 	nbQuoLimbs := utils.DivCeil(nbQuoBits, nbBitsPerLimb)
-	result := Limbs{
-		Columns: make([]ifaces.Column, len(modulus.Columns)),
-	}
-	for i := range len(modulus.Columns) {
-		result.Columns[i] = comp.InsertCommit(
-			round,
-			ifaces.ColIDf("%s_EMUL_REMAINDER_LIMB_%d", name, i),
-			nbRows,
-			true,
-		)
-	}
-	quotient := Limbs{
-		Columns: make([]ifaces.Column, nbQuoLimbs),
-	}
-	for i := range quotient.Columns {
-		quotient.Columns[i] = comp.InsertCommit(
-			round,
-			ifaces.ColIDf("%s_EMUL_QUOTIENT_LIMB_%d", name, i),
-			nbRows,
-			true,
-		)
-	}
+	result := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_EMUL_REMAINDER_LIMB", name), modulus.NumLimbs(), nbRows)
+	quotient := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_EMUL_QUOTIENT_LIMB", name), nbQuoLimbs, nbRows)
 	nbCarryLimbs := utils.DivCeil(nbCarryBits, nbBitsPerLimb)
-	carry := Limbs{Columns: make([]ifaces.Column, nbCarryLimbs)}
-	for i := range carry.Columns {
-		carry.Columns[i] = comp.InsertCommit(
-			round,
-			ifaces.ColIDf("%s_EMUL_CARRY_%d", name, i),
-			nbRows,
-			true,
-		)
-	}
+	carry := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_EMUL_CARRY", name), nbCarryLimbs, nbRows)
 	// create the challenge which will be used in the next round for random poly eval.
 	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.FieldExt)
 	// we also create challenge powers columns for more efficient polynomial evaluation
-	challengePowers := make([]ifaces.Column, len(carry.Columns))
+	challengePowers := make([]ifaces.Column, nbCarryLimbs)
 	for i := range challengePowers {
 		challengePowers[i] = comp.InsertCommit(
 			round+1,
@@ -146,17 +119,17 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus Limbs, n
 	comp.RegisterProverAction(round+1, &proverActionFn{pa.assignChallengePowers})
 
 	// range check the result and quotient limbs to be within bounds
-	for i := range pa.Quotient.Columns {
+	for i, l := range quotient.Limbs() {
 		bigrange.BigRange(
 			comp,
-			ifaces.ColumnAsVariable(pa.Quotient.Columns[i]), int(nbRangecheckLimbs), nbRangecheckBits,
+			ifaces.ColumnAsVariable(l), int(nbRangecheckLimbs), nbRangecheckBits,
 			fmt.Sprintf("%s_EMUL_QUOTIENT_LIMB_RANGE_%d", name, i),
 		)
 	}
-	for i := range pa.Result.Columns {
+	for i, l := range result.Limbs() {
 		bigrange.BigRange(
 			comp,
-			ifaces.ColumnAsVariable(pa.Result.Columns[i]), int(nbRangecheckLimbs), nbRangecheckBits,
+			ifaces.ColumnAsVariable(l), int(nbRangecheckLimbs), nbRangecheckBits,
 			fmt.Sprintf("%s_EMUL_REMAINDER_LIMB_RANGE_%d", name, i),
 		)
 	}

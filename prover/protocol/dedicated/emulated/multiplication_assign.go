@@ -13,25 +13,16 @@ import (
 )
 
 func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
-	nbRows := a.TermL.Columns[0].Size()
+	nbRows := a.TermL.NumRow()
 	var (
-		srcTermL   = make([][]field.Element, len(a.TermL.Columns))
-		srcTermR   = make([][]field.Element, len(a.TermR.Columns))
-		srcModulus = make([][]field.Element, len(a.Modulus.Columns))
+		srcTermL   = a.TermL.GetAssignment(run)
+		srcTermR   = a.TermR.GetAssignment(run)
+		srcModulus = a.Modulus.GetAssignment(run)
 	)
-	for i := range a.TermL.Columns {
-		srcTermL[i] = a.TermL.Columns[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-	}
-	for i := range a.TermR.Columns {
-		srcTermR[i] = a.TermR.Columns[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-	}
-	for i := range a.Modulus.Columns {
-		srcModulus[i] = a.Modulus.Columns[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-	}
 	var (
-		dstQuoLimbs = make([][]field.Element, len(a.Quotient.Columns))
-		dstRemLimbs = make([][]field.Element, len(a.Result.Columns))
-		dstCarry    = make([][]field.Element, len(a.Carry.Columns))
+		dstQuoLimbs = make([][]field.Element, a.Quotient.NumLimbs())
+		dstRemLimbs = make([][]field.Element, a.Result.NumLimbs())
+		dstCarry    = make([][]field.Element, a.Carry.NumLimbs())
 	)
 	for i := range dstQuoLimbs {
 		dstQuoLimbs[i] = make([]field.Element, nbRows)
@@ -44,11 +35,11 @@ func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 	}
 
 	parallel.Execute(nbRows, func(start, end int) {
-		bufL := make([]uint64, len(a.TermL.Columns))
-		bufR := make([]uint64, len(a.TermR.Columns))
-		bufMod := make([]uint64, len(a.Modulus.Columns))
-		bufQuo := make([]uint64, len(a.Quotient.Columns))
-		bufRem := make([]uint64, len(a.Result.Columns))
+		bufL := make([]uint64, a.TermL.NumLimbs())
+		bufR := make([]uint64, a.TermR.NumLimbs())
+		bufMod := make([]uint64, a.Modulus.NumLimbs())
+		bufQuo := make([]uint64, a.Quotient.NumLimbs())
+		bufRem := make([]uint64, a.Result.NumLimbs())
 		// to compute the carries, we need to perform multiplication on limbs
 		bufLhs := make([]uint64, nbMultiplicationResLimbs(len(bufL), len(bufR)))
 		bufRhs := make([]uint64, nbMultiplicationResLimbs(len(bufQuo), len(bufMod)))
@@ -125,14 +116,14 @@ func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 			carry.SetUint64(0)
 		}
 	})
-	for i := range dstQuoLimbs {
-		run.AssignColumn(a.Quotient.Columns[i].GetColID(), smartvectors.NewRegular(dstQuoLimbs[i]))
+	for i, l := range a.Quotient.Limbs() {
+		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstQuoLimbs[i]))
 	}
-	for i := range dstRemLimbs {
-		run.AssignColumn(a.Result.Columns[i].GetColID(), smartvectors.NewRegular(dstRemLimbs[i]))
+	for i, l := range a.Result.Limbs() {
+		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstRemLimbs[i]))
 	}
-	for i := range dstCarry {
-		run.AssignColumn(a.Carry.Columns[i].GetColID(), smartvectors.NewRegular(dstCarry[i]))
+	for i, l := range a.Carry.Limbs() {
+		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstCarry[i]))
 	}
 }
 

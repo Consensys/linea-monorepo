@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -14,33 +15,27 @@ import (
 
 // assignEmulatedColumns assigns the values to the columns used in the emulated evaluation
 func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
-	nbRows := a.Terms[0][0].Columns[0].Size()
+	nbRows := a.Modulus.NumRow()
 
 	var (
-		srcTerms   = make([][][][]field.Element, len(a.Terms))
-		srcModulus = make([][]field.Element, len(a.Modulus.Columns))
+		srcTerms   = make([][]limbs.VecRow[limbs.LittleEndian], len(a.Terms))
+		srcModulus = a.Modulus.GetAssignment(run)
 	)
 	for i := range a.Terms {
-		srcTerms[i] = make([][][]field.Element, len(a.Terms[i]))
+		srcTerms[i] = make([]limbs.VecRow[limbs.LittleEndian], len(a.Terms[i]))
 		for j := range a.Terms[i] {
-			srcTerms[i][j] = make([][]field.Element, len(a.Terms[i][j].Columns))
-			for k := range a.Terms[i][j].Columns {
-				srcTerms[i][j][k] = a.Terms[i][j].Columns[k].GetColAssignment(run).IntoRegVecSaveAlloc()
-			}
+			srcTerms[i][j] = a.Terms[i][j].GetAssignment(run)
 		}
-	}
-	for i := range a.Modulus.Columns {
-		srcModulus[i] = a.Modulus.Columns[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 
 	var (
-		dstQuoLimbs = make([][]field.Element, len(a.Quotient.Columns))
-		dstCarry    = make([][]field.Element, len(a.Carry.Columns))
+		dstQuoLimbs = make([][]field.Element, a.Quotient.NumLimbs())
+		dstCarry    = make([][]field.Element, a.Carry.NumLimbs())
 	)
-	for i := range a.Quotient.Columns {
+	for i := range dstQuoLimbs {
 		dstQuoLimbs[i] = make([]field.Element, nbRows)
 	}
-	for i := range a.Carry.Columns {
+	for i := range dstCarry {
 		dstCarry[i] = make([]field.Element, nbRows)
 	}
 
@@ -48,15 +43,15 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 		// initialize all buffers to avoid reallocations
 		bufWit := make([]uint64, a.nbLimbs)
 		// we allocate LHS twice as we set the result value and we modify the buffer
-		bufTermProd1 := make([]uint64, len(a.Carry.Columns))
-		bufTermProd2 := make([]uint64, len(a.Carry.Columns))
-		bufLhs := make([]*big.Int, len(a.Carry.Columns))
+		bufTermProd1 := make([]uint64, len(dstCarry))
+		bufTermProd2 := make([]uint64, len(dstCarry))
+		bufLhs := make([]*big.Int, len(dstCarry))
 		for i := range bufLhs {
 			bufLhs[i] = new(big.Int)
 		}
 
-		bufMod := make([]uint64, len(a.Modulus.Columns))
-		bufQuo := make([]uint64, len(a.Quotient.Columns))
+		bufMod := make([]uint64, a.Modulus.NumLimbs())
+		bufQuo := make([]uint64, a.Quotient.NumLimbs())
 		bufRhs := make([]uint64, nbMultiplicationResLimbs(len(bufQuo), len(bufMod)))
 
 		wit := new(big.Int)
@@ -85,7 +80,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				tmpTermProduct.SetInt64(1)
 				termNbLimbs := 1
 				for k := range a.Terms[j] {
-					nbLimbs := len(a.Terms[j][k].Columns)
+					nbLimbs := a.Terms[j][k].NumLimbs()
 					// recompose the term value as integer
 					if err := limbsToBigInt(wit, bufWit[:nbLimbs], srcTerms[j][k], i, a.nbBitsPerLimb); err != nil {
 						utils.Panic("failed to convert witness term [%d][%d]: %v", j, k, err)
@@ -156,11 +151,11 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 		}
 	})
 
-	for i := range dstQuoLimbs {
-		run.AssignColumn(a.Quotient.Columns[i].GetColID(), smartvectors.NewRegular(dstQuoLimbs[i]))
+	for i, l := range a.Quotient.Limbs() {
+		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstQuoLimbs[i]))
 	}
-	for i := range dstCarry {
-		run.AssignColumn(a.Carry.Columns[i].GetColID(), smartvectors.NewRegular(dstCarry[i]))
+	for i, l := range a.Carry.Limbs() {
+		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstCarry[i]))
 	}
 }
 

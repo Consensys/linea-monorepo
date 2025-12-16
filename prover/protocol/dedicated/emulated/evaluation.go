@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -38,14 +39,14 @@ type Evaluation struct {
 
 	// Terms are the evaluation terms
 	// such that \sum_i \prod_j Terms[i][j] == 0
-	Terms [][]Limbs
+	Terms [][]limbs.Limbs[limbs.LittleEndian]
 	// Modulus is the modulus for the evaluation
-	Modulus Limbs
+	Modulus limbs.Limbs[limbs.LittleEndian]
 
 	// Quotient is the computed quotient limbs
-	Quotient Limbs
+	Quotient limbs.Limbs[limbs.LittleEndian]
 	// Carry are the computed carry limbs
-	Carry Limbs
+	Carry limbs.Limbs[limbs.LittleEndian]
 
 	// Challenge is the random challenge used for the polynomial evaluation
 	Challenge *coin.Info
@@ -76,64 +77,44 @@ type Evaluation struct {
 // number of limbs is not more than 512. Higher degree also works, but only if
 // one of the terms has significantly smaller bitlength (i.e. it is a selector
 // or a small constant).
-func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus Limbs, terms [][]Limbs) *Evaluation {
+func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus limbs.Limbs[limbs.LittleEndian], terms [][]limbs.Limbs[limbs.LittleEndian]) *Evaluation {
 	round := 0
-	nbRows := modulus.Columns[0].Size()
+	nbRows := modulus.NumRow()
 	maxTermDegree := 0
-	nbLimbs := len(modulus.Columns)
+	nbLimbs := modulus.NumLimbs()
 	nbRangecheckBits := 16
 	nbRangecheckLimbs := (nbBitsPerLimb + nbRangecheckBits - 1) / nbRangecheckBits
 	for i := range terms {
 		maxTermDegree = max(maxTermDegree, len(terms[i]))
 		for j := range terms[i] {
-			for k := range terms[i][j].Columns {
-				round = max(round, terms[i][j].Columns[k].Round())
+			for _, l := range terms[i][j].Limbs() {
+				round = max(round, l.Round())
 			}
 		}
 	}
 	nbQuoBits := 0
 	for i := range terms {
-		nbTermQuoLimbsBits := len(terms[i][0].Columns) * nbBitsPerLimb
+		nbTermQuoLimbsBits := terms[i][0].NumLimbs() * nbBitsPerLimb
 		for j := 1; j < len(terms[i]); j++ {
-			nbTermQuoLimbsBits = nbMultiplicationResLimbs(nbTermQuoLimbsBits, len(terms[i][j].Columns)*nbBitsPerLimb)
-			nbLimbs = max(nbLimbs, len(terms[i][j].Columns))
+			nbTermQuoLimbsBits = nbMultiplicationResLimbs(nbTermQuoLimbsBits, terms[i][j].NumLimbs()) * nbBitsPerLimb
+			nbLimbs = max(nbLimbs, terms[i][j].NumLimbs())
 		}
 		nbQuoBits = max(nbQuoBits, nbTermQuoLimbsBits)
 	}
 	nbQuoBits += utils.DivCeil(utils.Log2Ceil(len(terms)), nbBitsPerLimb) // add some slack for the addition of terms
 	nbCarryBits := nbQuoBits
-	nbQuoBits = max(0, nbQuoBits-len(modulus.Columns)*nbBitsPerLimb+1) // we divide by modulus of nbLimbs size
+	nbQuoBits = max(0, nbQuoBits-modulus.NumLimbs()*nbBitsPerLimb+1) // we divide by modulus of nbLimbs size
 	nbQuoLimbs := utils.DivCeil(nbQuoBits, nbBitsPerLimb)
-	for i := range modulus.Columns {
-		round = max(round, modulus.Columns[i].Round())
+	for _, l := range modulus.Limbs() {
+		round = max(round, l.Round())
 	}
 
-	quotient := Limbs{
-		Columns: make([]ifaces.Column, nbQuoLimbs),
-	}
-	for i := range quotient.Columns {
-		quotient.Columns[i] = comp.InsertCommit(
-			round,
-			ifaces.ColIDf("%s_EMUL_EVAL_QUO_LIMB_%d", name, i),
-			nbRows,
-			true,
-		)
-	}
+	quotient := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_EMUL_EVAL_QUO_LIMB", name), nbQuoLimbs, nbRows)
 	nbCarryLimbs := utils.DivCeil(nbCarryBits, nbBitsPerLimb)
-	carry := Limbs{
-		Columns: make([]ifaces.Column, nbCarryLimbs),
-	}
-	for i := range carry.Columns {
-		carry.Columns[i] = comp.InsertCommit(
-			round,
-			ifaces.ColIDf("%s_EMUL_EVAL_CARRY_LIMB_%d", name, i),
-			nbRows,
-			true,
-		)
-	}
+	carry := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_EMUL_EVAL_CARRY_LIMB", name), nbCarryLimbs, nbRows)
 	// define the challenge and challenge powers for polynomial evaluation at random point
 	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.FieldExt)
-	challengePowers := make([]ifaces.Column, len(carry.Columns))
+	challengePowers := make([]ifaces.Column, nbCarryLimbs)
 	for i := range challengePowers {
 		challengePowers[i] = comp.InsertCommit(
 			round+1,
@@ -163,10 +144,10 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus L
 	comp.RegisterProverAction(round+1, &proverActionFn{pa.assignChallengePowers})
 
 	// range check the quotient limbs
-	for i := range quotient.Columns {
+	for i, l := range quotient.Limbs() {
 		bigrange.BigRange(
 			comp,
-			ifaces.ColumnAsVariable(pa.Quotient.Columns[i]), int(nbRangecheckLimbs), nbRangecheckBits,
+			ifaces.ColumnAsVariable(l), int(nbRangecheckLimbs), nbRangecheckBits,
 			fmt.Sprintf("%s_EMUL_QUOTIENT_LIMB_RANGE_%d", name, i),
 		)
 	}

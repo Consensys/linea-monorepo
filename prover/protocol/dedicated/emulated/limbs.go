@@ -4,63 +4,23 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
-
-// Limbs represents a set of columns used to store the limbs of an emulated
-// integer in little-endian order (smallest limb first).
-type Limbs struct {
-	Columns []ifaces.Column
-}
-
-// String returns a string representation of the limbs. Useful for mapping the
-// grouped limbs in maps.
-func (l Limbs) String() string {
-	if len(l.Columns) == 0 {
-		return "[]"
-	}
-	names := make([]string, len(l.Columns))
-	for i := range l.Columns {
-		names[i] = string(l.Columns[i].GetColID())
-	}
-	return fmt.Sprintf("[%s]", strings.Join(names, ":"))
-}
-
-// NewLimbs creates a new Limbs structure with nbLimbs columns at the given
-// round and with the given name as prefix for the column IDs.
-func NewLimbs(comp *wizard.CompiledIOP, round int, name string, nbLimbs int, nbRows int) Limbs {
-	// TODO: add options for range checking inputs. Right now we expect
-	// everything comes range checking
-	limbs := Limbs{
-		Columns: make([]ifaces.Column, nbLimbs),
-	}
-	for i := range nbLimbs {
-		limbs.Columns[i] = comp.InsertCommit(
-			round,
-			ifaces.ColIDf("%s_LIMB_%d", name, i),
-			utils.NextPowerOfTwo(nbRows),
-			true,
-		)
-	}
-	return limbs
-}
 
 // csPolyEval constructs a symbolic expression that evaluates the polynomial
 // defined by the limbs and the challenge powers.
-func csPolyEval(val Limbs, challengePowers []ifaces.Column) *symbolic.Expression {
+func csPolyEval(val limbs.Limbs[limbs.LittleEndian], challengePowers []ifaces.Column) *symbolic.Expression {
 	// TODO: should store the value in column?
 	res := symbolic.NewConstant(0)
-	for i := range val.Columns {
+	for i, l := range val.Limbs() {
 		res = symbolic.Add(
 			res,
 			symbolic.Mul(
-				val.Columns[i],
+				l,
 				challengePowers[i],
 			),
 		)
@@ -70,16 +30,16 @@ func csPolyEval(val Limbs, challengePowers []ifaces.Column) *symbolic.Expression
 
 // limbsToBigInt recomposes the limbs at loc into res using buf as a temporary
 // buffer.
-func limbsToBigInt(res *big.Int, buf []uint64, limbs [][]field.Element, loc int, nbBitsPerLimb int) error {
+func limbsToBigInt(res *big.Int, buf []uint64, rows limbs.VecRow[limbs.LittleEndian], loc int, nbBitsPerLimb int) error {
 	if res == nil {
 		return fmt.Errorf("result not initialized")
 	}
-	nbLimbs := len(limbs)
+	nbLimbs := rows[0].NumLimbs()
 	if len(buf) < nbLimbs {
 		buf = append(buf, make([]uint64, nbLimbs-len(buf))...)
 	}
 	for j := range nbLimbs {
-		buf[j] = limbs[j][loc].Uint64()
+		buf[j] = rows[loc].T[j].Uint64()
 	}
 	if err := IntLimbRecompose(buf, nbBitsPerLimb, res); err != nil {
 		return err
@@ -89,14 +49,14 @@ func limbsToBigInt(res *big.Int, buf []uint64, limbs [][]field.Element, loc int,
 
 // bigIntToLimbs decomposes input into limbs and sets the outputCols at loc
 // accordingly.
-func bigIntToLimbs(input *big.Int, buf []uint64, limbs Limbs, outputCols [][]field.Element, loc int, nbBitsPerLimb int) error {
-	if len(buf) != len(limbs.Columns) {
+func bigIntToLimbs(input *big.Int, buf []uint64, ls limbs.Limbs[limbs.LittleEndian], outputCols [][]field.Element, loc int, nbBitsPerLimb int) error {
+	if len(buf) != ls.NumLimbs() {
 		return fmt.Errorf("mismatched size between limbs and buffer")
 	}
 	if err := IntLimbDecompose(input, nbBitsPerLimb, buf); err != nil {
 		return fmt.Errorf("failed to decompose big.Int into limbs: %v", err)
 	}
-	for i := range limbs.Columns {
+	for i := range ls.NumLimbs() {
 		outputCols[i][loc].SetUint64(buf[i])
 	}
 	return nil
