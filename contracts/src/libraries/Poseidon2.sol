@@ -97,8 +97,7 @@ library Poseidon2 {
       } lt(i, q) {
         i := add(i, 1)
       } {
-        curBlock := calldataload(ptrMsg)
-        poseidon2Hash := Compress(poseidon2Hash, curBlock)
+        poseidon2Hash := Compress(poseidon2Hash, calldataload(ptrMsg))
         ptrMsg := add(ptrMsg, 0x20)
       }
 
@@ -242,8 +241,7 @@ library Poseidon2 {
         } lt(i, 8) {
           i := add(i, 1)
         } {
-          s := addmod(s, ithChunk(a, i), R_MOD)
-          s := addmod(s, ithChunk(b, i), R_MOD)
+          s := addmod(s, addmod(ithChunk(a, i), ithChunk(b, i), R_MOD), R_MOD)
         }
       }
 
@@ -254,43 +252,36 @@ library Poseidon2 {
       }
 
       function matMulInternalInPlaceFirstHalf(a, sum) -> ma {
-        let t0, t1, t2, t3, t4, t5, t6, t7
-
-        t0 := addmod(sum, sub(R_MOD, mulmod(ithChunk(a, 0), 2, R_MOD)), R_MOD)
-        t1 := addmod(sum, ithChunk(a, 1), R_MOD)
-        t2 := ithChunk(a, 2)
-        t2 := addmod(sum, addmod(t2, t2, R_MOD), R_MOD)
-        t3 := addmod(sum, mulmod(ithChunk(a, 3), 1065353217, R_MOD), R_MOD) // 1065353217 -> 1/2
-        t4 := addmod(sum, mulmod(ithChunk(a, 4), 3, R_MOD), R_MOD)
-        t5 := addmod(sum, mulmod(ithChunk(a, 5), 4, R_MOD), R_MOD)
-        t6 := addmod(sum, mulmod(ithChunk(a, 6), 1065353216, R_MOD), R_MOD) // 1065353216 -> -1/2
-        t7 := addmod(sum, sub(R_MOD, mulmod(ithChunk(a, 7), 3, R_MOD)), R_MOD)
-        ma := packToUint256(t0, t1, t2, t3, t4, t5, t6, t7)
+        ma := packToUint256(
+          addmod(sum, sub(R_MOD, mulmod(ithChunk(a, 0), 2, R_MOD)), R_MOD),
+          addmod(sum, ithChunk(a, 1), R_MOD),
+          addmod(sum, addmod(ithChunk(a, 2), ithChunk(a, 2), R_MOD), R_MOD),
+          addmod(sum, mulmod(ithChunk(a, 3), 1065353217, R_MOD), R_MOD),
+          addmod(sum, mulmod(ithChunk(a, 4), 3, R_MOD), R_MOD),
+          addmod(sum, mulmod(ithChunk(a, 5), 4, R_MOD), R_MOD),
+          addmod(sum, mulmod(ithChunk(a, 6), 1065353216, R_MOD), R_MOD),
+          addmod(sum, sub(R_MOD, mulmod(ithChunk(a, 7), 3, R_MOD)), R_MOD)
+        )
       }
 
       function matMulInternalInPlaceSecondHalf(b, sum) -> mb {
-        let t0, t1, t2, t3, t4, t5, t6, t7
-
-        t0 := addmod(sum, sub(R_MOD, mulmod(ithChunk(b, 0), 4, R_MOD)), R_MOD)
-        t1 := addmod(sum, mulmod(ithChunk(b, 1), 2122383361, R_MOD), R_MOD) // 2122383361 -> 1/2^8
-        t2 := addmod(sum, mulmod(ithChunk(b, 2), 1864368129, R_MOD), R_MOD) // 1864368129 -> 1/8
-        t3 := addmod(sum, mulmod(ithChunk(b, 3), 2130706306, R_MOD), R_MOD) // 2130706306 -> 1/2^24
-        t4 := addmod(sum, mulmod(ithChunk(b, 4), 8323072, R_MOD), R_MOD) // 8323072 ->  -1/2^8
-        t5 := addmod(sum, mulmod(ithChunk(b, 5), 266338304, R_MOD), R_MOD) // 266338304 -> -1/8
-        t6 := addmod(sum, mulmod(ithChunk(b, 6), 133169152, R_MOD), R_MOD) // 133169152 -> -1/16
-        t7 := addmod(sum, mulmod(ithChunk(b, 7), 127, R_MOD), R_MOD) // 127 -> -1/2^24
-        mb := packToUint256(t0, t1, t2, t3, t4, t5, t6, t7)
+        mb := packToUint256(
+          addmod(sum, sub(R_MOD, mulmod(ithChunk(b, 0), 4, R_MOD)), R_MOD),
+          addmod(sum, mulmod(ithChunk(b, 1), 2122383361, R_MOD), R_MOD),
+          addmod(sum, mulmod(ithChunk(b, 2), 1864368129, R_MOD), R_MOD),
+          addmod(sum, mulmod(ithChunk(b, 3), 2130706306, R_MOD), R_MOD),
+          addmod(sum, mulmod(ithChunk(b, 4), 8323072, R_MOD), R_MOD),
+          addmod(sum, mulmod(ithChunk(b, 5), 266338304, R_MOD), R_MOD),
+          addmod(sum, mulmod(ithChunk(b, 6), 133169152, R_MOD), R_MOD),
+          addmod(sum, mulmod(ithChunk(b, 7), 127, R_MOD), R_MOD)
+        )
       }
 
       /// @param ptr pointer to 2 uint256 elements, We interpret them as 4 packs of 4 uint32 elmts ->
       /// [[a0,a1,a2,a3],..,[a12,a13,a14,a15]]:=[v0,v1,v2,v3]
       /// and we multiply [v0,v1,v2,v3] by circ(2M4,M4,..,M4)
       function matMulExternalInPlace(a, b) -> ra, rb {
-        a := matMulM4uint256(a)
-        b := matMulM4uint256(b)
-
-        let t0, t1, t2, t3 := sumColumns(a, b)
-
+        let t0, t1, t2, t3 := sumColumns(matMulM4uint256(a), matMulM4uint256(b))
         ra := matMulExternalInPlaceFirstHalf(a, t0, t1, t2, t3)
         rb := matMulExternalInPlaceFirstHalf(b, t0, t1, t2, t3)
       }
