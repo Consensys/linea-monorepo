@@ -334,23 +334,23 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
 	// These parameters have been found to give the best result for performances
 	params := selfRecursionParameters{
-		NbOpenedColumns: 64,
-		RsInverseRate:   16,
-		TargetRowSize:   1 << 9,
+		NbOpenedColumns: 8,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 5,
 	}
 
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<20),
+			compiler.WithTargetColSize(1<<9),
 			compiler.WithStitcherMinSize(1<<1),
 		),
 		vortex.Compile(
 			2,
 			false,
-			vortex.WithOptionalSISHashingThreshold(512),
-			vortex.ForceNumOpenedColumns(256),
+			vortex.WithOptionalSISHashingThreshold(32),
+			vortex.ForceNumOpenedColumns(8),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)
@@ -372,31 +372,24 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBenchmarkCase) {
 
 	// These parameters have been found to give the best result for performances
-	// params := selfRecursionParameters{
-	// 	NbOpenedColumns: 64,
-	// 	RsInverseRate:   16,
-	// 	TargetRowSize:   1 << 9,
-	// }
-
-	// minimalparams
 	params := selfRecursionParameters{
-		NbOpenedColumns: 16,
+		NbOpenedColumns: 8,
 		RsInverseRate:   2,
-		TargetRowSize:   1 << 9,
+		TargetRowSize:   1 << 5,
 	}
 
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<9), // 1<<20 --> 1<<9 for minimal
+			compiler.WithTargetColSize(1<<9),
 			compiler.WithStitcherMinSize(1<<1),
 		),
 		vortex.Compile(
 			2,
 			false,
-			vortex.WithOptionalSISHashingThreshold(64),
-			vortex.ForceNumOpenedColumns(16),
+			vortex.WithOptionalSISHashingThreshold(32),
+			vortex.ForceNumOpenedColumns(8),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)

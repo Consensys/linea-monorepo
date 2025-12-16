@@ -86,6 +86,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	for i := 0; i < len(entryList); i++ {
 		Vi.EntryList[i] = entryList[i].AsNative()
 	}
+	api.Println("Vi.EntryList:", Vi.EntryList) // TODO@yao: remove it after debugging --- IGNORE ---
 	Vi.Ys = ctx.gnarkGetYs(api, vr)
 
 	crypto_vortex.GnarkVerify(api, ctx.VortexBLSParams.Params, proof, Vi, roots)

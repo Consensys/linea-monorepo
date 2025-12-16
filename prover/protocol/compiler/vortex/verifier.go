@@ -236,6 +236,7 @@ func (ctx *VortexVerifierAction) runBLS(run wizard.Runtime) error {
 	vi.Alpha = randomCoin
 	vi.EntryList = entryList
 	vi.Ys = ctx.getYs(run)
+	fmt.Printf("vi.EntryList: %v\n", vi.EntryList) // TODO@yao: remove it after debugging --- IGNORE ---
 
 	return vortex_bls12377.Verify(ctx.VortexBLSParams, proof, &vi, blsNoSisRoots, merkleProofs, WithSis)
 }

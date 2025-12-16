@@ -42,7 +42,7 @@ func (ghc *GnarkMDHasherCircuit) Define(api frontend.API) error {
 func getGnarkMDHasherCircuitWitness() (*GnarkMDHasherCircuit, *GnarkMDHasherCircuit) {
 
 	// values to hash
-	nbElmts := 2
+	nbElmts := 2025 // TODO@yao: test with different sizes
 	vals := make([]fr.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
 		// vals[i].SetRandom()
@@ -111,7 +111,7 @@ func (ghc *GnarkMDHasherCircuitKoalabear) Define(api frontend.API) error {
 func getGnarkMDHasherCircuitKoalabearWitness() (*GnarkMDHasherCircuitKoalabear, *GnarkMDHasherCircuitKoalabear) {
 
 	// values to hash
-	nbElmts := 2
+	nbElmts := 4096
 	vals := make([]field.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
 		// vals[i].SetRandom()

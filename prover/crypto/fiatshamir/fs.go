@@ -28,7 +28,7 @@ func NewGnarkFSKoalabear(api frontend.API) GnarkFS {
 }
 
 func NewGnarkFSKoalaBLS12377(api frontend.API) GnarkFS {
-	return fiatshamir_bls12377.NewGnarkFS(api)
+	return fiatshamir_bls12377.NewGnarkFS(api, true)
 }
 
 // non circuit
