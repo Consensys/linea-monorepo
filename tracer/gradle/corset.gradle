@@ -67,7 +67,7 @@ tasks.register('buildAllTracers', Exec) {
   group "Trace file(s) generation"
   dependsOn 'buildZkevmBins'
   // Specify where the trace files should be generated.
-  def GENERATED_SRC_DIR = "${project.layout.buildDirectory.get()}/generated/gocorset//main/java/net/consensys/linea/zktracer"
+  def GENERATED_SRC_DIR = "${project.layout.buildDirectory.get()}/generated/gocorset/main/java/net/consensys/linea/zktracer"
   def TRACE_FILE = "$GENERATED_SRC_DIR/Trace.java"
   def LONDON_TRACE_FILE = "$GENERATED_SRC_DIR/TraceLondon.java"
   def PARIS_TRACE_FILE = "$GENERATED_SRC_DIR/TraceParis.java"
