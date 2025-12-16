@@ -91,7 +91,9 @@ tasks.register('buildAllTracers', Exec) {
     def zkevmPragueBin = lineaTracerProject.file('linea-constraints/' + ZKEVM_PRAGUE_BIN)
     def zkevmOsakaBin = lineaTracerProject.file('linea-constraints/' + ZKEVM_OSAKA_BIN)
     // Generate trace interface and implementing classes
-    commandLine 'mkdir', '-p', "${traceJava.parentFile.absolutePath}"
+    doFirst {
+      traceJava.parentFile.mkdirs()
+    }
     commandLine 'go-corset','generate','-p',TRACE_PKG,'-i',traceJava,
             '-o',traceLondonJava,zkevmLondonBin,
             '-o',traceParisJava,zkevmParisBin,
