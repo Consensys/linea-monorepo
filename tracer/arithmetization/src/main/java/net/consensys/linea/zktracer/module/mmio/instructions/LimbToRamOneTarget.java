@@ -21,7 +21,6 @@ import static net.consensys.linea.zktracer.types.Bytecodes.readLimb;
 
 import net.consensys.linea.zktracer.module.mmio.MmioData;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.types.Bytes16;
 
 public class LimbToRamOneTarget extends MmioInstruction {
 

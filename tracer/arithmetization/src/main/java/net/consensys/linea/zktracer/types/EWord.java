@@ -32,10 +32,6 @@ public final class EWord extends BaseUInt256Value<EWord> implements Quantity {
   /** The constant ONE. */
   public static final EWord ONE = of(1);
 
-  public static final EWord THIRTY_TWO = of(32);
-
-  public static final EWord THIRTY_ONE = of(31);
-
   private static final UInt256 TWO_POW_64 = UInt256.ONE.shiftLeft(64);
 
   /**

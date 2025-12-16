@@ -18,7 +18,6 @@ package net.consensys.linea.zktracer.bytestheta;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes32;
 
 import lombok.EqualsAndHashCode;
-import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.bytes.MutableBytes32;
