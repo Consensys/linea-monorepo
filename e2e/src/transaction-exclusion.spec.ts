@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { etherToWei, getTransactionHash, serialize, wait } from "./common/utils";
+import { estimateLineaGas, getTransactionHash, serialize, wait } from "./common/utils";
 import { config } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { BaseError, encodeFunctionData } from "viem";
@@ -26,14 +26,19 @@ describe("Transaction exclusion test suite", () => {
           functionName: "testAddmod",
           args: [13000n, 31n],
         }),
-        maxPriorityFeePerGas: etherToWei("0.000000001"), // 1 Gwei
-        maxFeePerGas: etherToWei("0.00000001"), // 10 Gwei
       };
-      const rejectedTxHash = await getTransactionHash(l2PublicClient, txRequest);
+      const { gasLimit, maxPriorityFeePerGas, maxFeePerGas } = await estimateLineaGas(l2PublicClient, txRequest);
+
+      const rejectedTxHash = await getTransactionHash(l2PublicClient, {
+        ...txRequest,
+        gas: gasLimit,
+        maxPriorityFeePerGas,
+        maxFeePerGas,
+      });
 
       try {
         // This shall be rejected by the Besu node due to traces module limit overflow
-        await l2WalletClient.sendTransaction(txRequest);
+        await l2WalletClient.sendTransaction({ ...txRequest, gas: gasLimit, maxPriorityFeePerGas, maxFeePerGas });
       } catch (err) {
         if (err instanceof BaseError) {
           // This shall return error with traces limit overflow

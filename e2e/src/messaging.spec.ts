@@ -53,7 +53,7 @@ async function sendL1ToL2Message(
   logger.debug(`sendMessage transaction sent. transactionHash=${txHash}`);
 
   logger.debug(`Waiting for transaction to be mined... transactionHash=${txHash}`);
-  const receipt = await l1PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 20_000 });
+  const receipt = await l1PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
 
   logger.debug(`Transaction mined. transactionHash=${txHash} status=${receipt.status}`);
 
@@ -110,7 +110,7 @@ async function sendL2ToL1Message(
   logger.debug(`sendMessage transaction sent. transactionHash=${txHash}`);
 
   logger.debug(`Waiting for transaction to be mined... transactionHash=${txHash}`);
-  const receipt = await config.l1PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 20_000 });
+  const receipt = await config.l1PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
 
   logger.debug(`Transaction mined. transactionHash=${txHash} status=${receipt.status}`);
 

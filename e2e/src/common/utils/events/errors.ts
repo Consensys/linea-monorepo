@@ -1,0 +1,34 @@
+import { Abi, Address, BlockNumber, BlockTag, ContractEventArgs, ContractEventName } from "viem";
+import { serialize } from "../misc";
+
+export class WaitForEventsTimeoutError<
+  const Tabi extends Abi | readonly unknown[],
+  eventName extends ContractEventName<Tabi> | undefined = undefined,
+  fromBlock extends BlockNumber | BlockTag | undefined = undefined,
+  toBlock extends BlockNumber | BlockTag | undefined = undefined,
+> extends Error {
+  constructor(args: {
+    timeoutMs: number;
+    address?: Address | Address[] | undefined;
+    eventName?: eventName;
+    args?:
+      | ContractEventArgs<Tabi, eventName extends ContractEventName<Tabi> ? eventName : ContractEventName<Tabi>>
+      | undefined;
+    fromBlock?: fromBlock;
+    toBlock?: toBlock;
+  }) {
+    super(
+      [
+        `Timed out after ${args.timeoutMs}ms waiting for contract events`,
+        args.address && `address=${args.address}`,
+        args.eventName && `event=${args.eventName}`,
+        args.args && `args=${serialize(args.args)}`,
+        args.fromBlock && args.fromBlock !== 0n && `fromBlock=${args.fromBlock}`,
+        args.toBlock && `toBlock=${args.toBlock}`,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+    this.name = "WaitForEventsTimeoutError";
+  }
+}
