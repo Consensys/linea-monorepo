@@ -1,4 +1,4 @@
-// File: serde/writer.go
+// The Writer takes a complex web of Go objects and flattens them into a single contiguous block of memory.
 package serde
 
 import (
@@ -14,6 +14,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
+//	Writer struct uses a bytes.Buffer to accumulate all data into one long string of bytes.
+//
+// This ensures that when you write to disk, the data is physically next to each other, which is much
+// faster for hardware to read.
 type Writer struct {
 	buf    *bytes.Buffer
 	offset int64
@@ -299,11 +303,13 @@ func patchStructBody(w *Writer, v reflect.Value, startOffset int64) error {
 
 		var val any
 		k := f.Kind()
-		if k == reflect.Int {
+
+		switch k {
+		case reflect.Int:
 			val = int64(f.Int())
-		} else if k == reflect.Uint {
+		case reflect.Uint:
 			val = uint64(f.Uint())
-		} else {
+		default:
 			val = f.Interface()
 		}
 
@@ -363,13 +369,16 @@ func patchArray(w *Writer, v reflect.Value, startOffset int64) error {
 		// 4. Primitives
 		var val any
 		k := elem.Kind()
-		if k == reflect.Int {
+
+		switch k {
+		case reflect.Int:
 			val = int64(elem.Int())
-		} else if k == reflect.Uint {
+		case reflect.Uint:
 			val = uint64(elem.Uint())
-		} else {
+		default:
 			val = elem.Interface()
 		}
+
 		patchBytes(w, startOffset+currentElemOff, val)
 		currentElemOff += elemBinSize
 	}

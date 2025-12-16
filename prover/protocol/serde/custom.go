@@ -44,8 +44,6 @@ func init() {
 		Deserialize: deserializeFrontendVariable,
 	})
 
-	// Shared Object Types (Register STRUCT to enable pointer deduplication in Reader/Writer)
-
 	// Gnark R1CS
 	RegisterCustomType(reflect.TypeOf(cs.SparseR1CS{}), CustomCodex{Serialize: serializeR1CS, Deserialize: deserializeR1CS})
 

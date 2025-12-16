@@ -1,4 +1,4 @@
-// File: serde/reader.go
+// Reader maps that block into memory and "swizzles" (converts) file offsets into real memory addresses
 package serde
 
 import (
@@ -115,6 +115,8 @@ func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error 
 			target.Set(reflect.Zero(t))
 			return nil
 		}
+		// Don't allocate a new slice. Just look at the data already sitting in the mapped file
+		// at this specific offset
 		sh := (*reflect.SliceHeader)(unsafe.Pointer(target.UnsafeAddr()))
 		sh.Data = uintptr(unsafe.Pointer(&ctx.data[fs.Offset]))
 		sh.Len = int(fs.Len)
@@ -305,10 +307,6 @@ func (ctx *ReaderContext) reconstructStruct(target reflect.Value, offset int64) 
 	}
 	return nil
 }
-
-// File: serde/reader.go
-
-// ... existing code ...
 
 func (ctx *ReaderContext) readMapElement(target reflect.Value, offset int64) (int64, error) {
 	// 1. ADD BOUNDS CHECK HERE
