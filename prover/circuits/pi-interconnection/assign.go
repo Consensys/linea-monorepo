@@ -378,7 +378,8 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	// but would be doubly redundant. We can remove it then.
 
 	a.ChainConfigurationFPISnark.ChainID = r.Aggregation.ChainID
-	a.ChainConfigurationFPISnark.BaseFee = 7
+	a.ChainConfigurationFPISnark.BaseFee = r.Aggregation.BaseFee
+	a.ChainConfigurationFPISnark.CoinBase = new(big.Int).SetBytes(r.Aggregation.CoinBase[:])
 	a.ChainConfigurationFPISnark.L2MessageServiceAddress = new(big.Int).SetBytes(r.Aggregation.L2MessageServiceAddr[:])
 
 	return

@@ -245,8 +245,12 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		L1RollingHashMessageNumber:              resp.L1RollingHashMessageNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    l2MsgMerkleTreeDepth,
-		ChainID:                                 uint64(cfg.Layer2.ChainID),
-		L2MessageServiceAddr:                    types.EthAddress(cfg.Layer2.MsgSvcContract),
+
+		// dynamic chain configuration
+		ChainID:              uint64(cfg.Layer2.ChainID),
+		BaseFee:              uint64(cfg.Layer2.BaseFee),
+		CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
+		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
 	}
 
 	resp.AggregatedProofPublicInput = pubInputParts.GetPublicInputHex()
