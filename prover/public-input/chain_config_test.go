@@ -36,6 +36,56 @@ func init() {
 	utils.RegisterHints()
 }
 
+// chainConfigTestCase defines test data for chain configuration hashing tests.
+type chainConfigTestCase struct {
+	name             string
+	chainID          uint64
+	chainIDHex       string
+	baseFee          uint64
+	baseFeeHex       string
+	coinBase         string
+	l2MessageService string
+	expectedPayload  string
+	expectedHash     string
+}
+
+// Common test cases shared across all chain configuration tests
+var chainConfigTestCases = []chainConfigTestCase{
+	{
+		name:             "devnet",
+		chainID:          59139,
+		chainIDHex:       "0x000000000000000000000000000000000000000000000000000000000000e703",
+		baseFee:          7,
+		baseFeeHex:       "0x0000000000000000000000000000000000000000000000000000000000000007",
+		coinBase:         "0x4D517Aef039A48b3B6bF921e210b7551C8E37107",
+		l2MessageService: "0x33bf916373159a8c1b54b025202517bfdbb7863d",
+		expectedPayload:  "0x000000000000000000000000000000000000000000000000000000000000e70300000000000000000000000000000000000000000000000000000000000000070000000000000000000000004d517aef039a48b3b6bf921e210b7551c8e3710700000000000000000000000033bf916373159a8c1b54b025202517bfdbb7863d",
+		expectedHash:     "0x0a360bbb44ebc0eee111237f7e11565f2f271a24a35465ee78a3a8bc3f503acb",
+	},
+	{
+		name:             "sepolia",
+		chainID:          59141,
+		chainIDHex:       "0x000000000000000000000000000000000000000000000000000000000000e705",
+		baseFee:          7,
+		baseFeeHex:       "0x0000000000000000000000000000000000000000000000000000000000000007",
+		coinBase:         "0xA27342f1b74c0cfB2cda74bac1628d0C1A9752f2",
+		l2MessageService: "0x971e727e956690b9957be6d51Ec16E73AcAC83A7",
+		expectedPayload:  "0x000000000000000000000000000000000000000000000000000000000000e7050000000000000000000000000000000000000000000000000000000000000007000000000000000000000000a27342f1b74c0cfb2cda74bac1628d0c1a9752f2000000000000000000000000971e727e956690b9957be6d51ec16e73acac83a7",
+		expectedHash:     "0x03cd9edb7bad18416642423fef504154c0c0b7f9e6809627bd7aa4abeec4e326",
+	},
+	{
+		name:             "mainnet",
+		chainID:          59144,
+		chainIDHex:       "0x000000000000000000000000000000000000000000000000000000000000e708",
+		baseFee:          7,
+		baseFeeHex:       "0x0000000000000000000000000000000000000000000000000000000000000007",
+		coinBase:         "0x8F81e2E3F8b46467523463835F965fFE476E1c9E",
+		l2MessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
+		expectedPayload:  "0x000000000000000000000000000000000000000000000000000000000000e70800000000000000000000000000000000000000000000000000000000000000070000000000000000000000008f81e2e3f8b46467523463835f965ffe476e1c9e000000000000000000000000508ca82df566dcd1b0de8296e70a96332cd644ec",
+		expectedHash:     "0x0881dc6ffdc69ebfeca27fd8449922c32d0fd16ea33807e984881b08e7100988",
+	},
+}
+
 // ChainConfigurationTestCircuit is a test circuit that wraps ChainConfigurationFPISnark.Sum
 // to validate the circuit implementation against expected hash values computed by the Go reference.
 type ChainConfigurationTestCircuit struct {
@@ -74,53 +124,19 @@ func (c *ChainConfigurationTestCircuit) Define(api frontend.API) error {
 // TestChainConfigurationFPISnark_Sum validates that the circuit implementation of
 // ChainConfigurationFPISnark.Sum() produces the same hash as the Go reference implementation.
 func TestChainConfigurationFPISnark_Sum(t *testing.T) {
-	tests := []struct {
-		name             string
-		chainID          string
-		baseFee          string
-		coinBase         string
-		l2MessageService string
-		expectedHash     string
-	}{
-		{
-			name:             "devnet",
-			chainID:          "0x000000000000000000000000000000000000000000000000000000000000e703",
-			baseFee:          "0x0000000000000000000000000000000000000000000000000000000000000007",
-			coinBase:         "0x4D517Aef039A48b3B6bF921e210b7551C8E37107",
-			l2MessageService: "0x33bf916373159a8c1b54b025202517bfdbb7863d",
-			expectedHash:     "0x0a360bbb44ebc0eee111237f7e11565f2f271a24a35465ee78a3a8bc3f503acb",
-		},
-		{
-			name:             "sepolia",
-			chainID:          "0x000000000000000000000000000000000000000000000000000000000000e705",
-			baseFee:          "0x0000000000000000000000000000000000000000000000000000000000000007",
-			coinBase:         "0xA27342f1b74c0cfB2cda74bac1628d0C1A9752f2",
-			l2MessageService: "0x971e727e956690b9957be6d51Ec16E73AcAC83A7",
-			expectedHash:     "0x03cd9edb7bad18416642423fef504154c0c0b7f9e6809627bd7aa4abeec4e326",
-		},
-		{
-			name:             "mainnet",
-			chainID:          "0x000000000000000000000000000000000000000000000000000000000000e708",
-			baseFee:          "0x0000000000000000000000000000000000000000000000000000000000000007",
-			coinBase:         "0x8F81e2E3F8b46467523463835F965fFE476E1c9E",
-			l2MessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
-			expectedHash:     "0x0881dc6ffdc69ebfeca27fd8449922c32d0fd16ea33807e984881b08e7100988",
-		},
-	}
-
-	for _, tt := range tests {
+	for _, tt := range chainConfigTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			// Parse inputs
-			chainID := hexToBigInt(tt.chainID)
-			baseFee := hexToBigInt(tt.baseFee)
+			chainID := hexToBigInt(tt.chainIDHex)
+			baseFee := hexToBigInt(tt.baseFeeHex)
 			coinBase := hexToBigInt(tt.coinBase)
 			l2MessageService := hexToBigInt(tt.l2MessageService)
 
 			// Compute expected hash using reference implementation
 			_, expectedHashBytes := computeChainConfigurationReference(chainID, baseFee, coinBase, l2MessageService)
 
-			t.Logf("Input chainID: %s", tt.chainID)
-			t.Logf("Input baseFee: %s", tt.baseFee)
+			t.Logf("Input chainID: %s", tt.chainIDHex)
+			t.Logf("Input baseFee: %s", tt.baseFeeHex)
 			t.Logf("Input coinBase: %s", tt.coinBase)
 			t.Logf("Input l2MessageService: %s", tt.l2MessageService)
 			t.Logf("Expected hash: %x", expectedHashBytes)
@@ -172,41 +188,7 @@ func TestChainConfigurationFPISnark_Sum(t *testing.T) {
 // TestComputeChainConfigurationHash tests the computeChainConfigurationHash function
 // used in aggregation.go against the reference implementation.
 func TestComputeChainConfigurationHash(t *testing.T) {
-	tests := []struct {
-		name             string
-		chainID          uint64
-		baseFee          uint64
-		coinBase         string
-		l2MessageService string
-		expectedHash     string
-	}{
-		{
-			name:             "devnet",
-			chainID:          59139,
-			baseFee:          7,
-			coinBase:         "0x4D517Aef039A48b3B6bF921e210b7551C8E37107",
-			l2MessageService: "0x33bf916373159a8c1b54b025202517bfdbb7863d",
-			expectedHash:     "0x0a360bbb44ebc0eee111237f7e11565f2f271a24a35465ee78a3a8bc3f503acb",
-		},
-		{
-			name:             "sepolia",
-			chainID:          59141,
-			baseFee:          7,
-			coinBase:         "0xA27342f1b74c0cfB2cda74bac1628d0C1A9752f2",
-			l2MessageService: "0x971e727e956690b9957be6d51Ec16E73AcAC83A7",
-			expectedHash:     "0x03cd9edb7bad18416642423fef504154c0c0b7f9e6809627bd7aa4abeec4e326",
-		},
-		{
-			name:             "mainnet",
-			chainID:          59144,
-			baseFee:          7,
-			coinBase:         "0x8F81e2E3F8b46467523463835F965fFE476E1c9E",
-			l2MessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
-			expectedHash:     "0x0881dc6ffdc69ebfeca27fd8449922c32d0fd16ea33807e984881b08e7100988",
-		},
-	}
-
-	for _, tt := range tests {
+	for _, tt := range chainConfigTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			// Parse addresses
 			var coinBase, l2MessageService types.EthAddress
@@ -257,48 +239,11 @@ func TestComputeChainConfigurationHash(t *testing.T) {
 // TestComputeChainConfigurationReference tests the reference implementation of chain configuration hashing
 // including payload construction and hash computation.
 func TestComputeChainConfigurationReference(t *testing.T) {
-	tests := []struct {
-		name             string
-		chainID          string
-		baseFee          string
-		coinBase         string
-		l2MessageService string
-		expectedPayload  string
-		expectedHash     string
-	}{
-		{
-			name:             "devnet",
-			chainID:          "0x000000000000000000000000000000000000000000000000000000000000e703",
-			baseFee:          "0x0000000000000000000000000000000000000000000000000000000000000007",
-			coinBase:         "0x4D517Aef039A48b3B6bF921e210b7551C8E37107",
-			l2MessageService: "0x33bf916373159a8c1b54b025202517bfdbb7863d",
-			expectedPayload:  "0x000000000000000000000000000000000000000000000000000000000000e70300000000000000000000000000000000000000000000000000000000000000070000000000000000000000004d517aef039a48b3b6bf921e210b7551c8e3710700000000000000000000000033bf916373159a8c1b54b025202517bfdbb7863d",
-			expectedHash:     "0x0a360bbb44ebc0eee111237f7e11565f2f271a24a35465ee78a3a8bc3f503acb",
-		},
-		{
-			name:             "sepolia",
-			chainID:          "0x000000000000000000000000000000000000000000000000000000000000e705",
-			baseFee:          "0x0000000000000000000000000000000000000000000000000000000000000007",
-			coinBase:         "0xA27342f1b74c0cfB2cda74bac1628d0C1A9752f2",
-			l2MessageService: "0x971e727e956690b9957be6d51Ec16E73AcAC83A7",
-			expectedPayload:  "0x000000000000000000000000000000000000000000000000000000000000e7050000000000000000000000000000000000000000000000000000000000000007000000000000000000000000a27342f1b74c0cfb2cda74bac1628d0c1a9752f2000000000000000000000000971e727e956690b9957be6d51ec16e73acac83a7",
-			expectedHash:     "0x03cd9edb7bad18416642423fef504154c0c0b7f9e6809627bd7aa4abeec4e326",
-		},
-		{
-			name:             "mainnet",
-			chainID:          "0x000000000000000000000000000000000000000000000000000000000000e708",
-			baseFee:          "0x0000000000000000000000000000000000000000000000000000000000000007",
-			coinBase:         "0x8F81e2E3F8b46467523463835F965fFE476E1c9E",
-			l2MessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
-			expectedPayload:  "0x000000000000000000000000000000000000000000000000000000000000e70800000000000000000000000000000000000000000000000000000000000000070000000000000000000000008f81e2e3f8b46467523463835f965ffe476e1c9e000000000000000000000000508ca82df566dcd1b0de8296e70a96332cd644ec",
-			expectedHash:     "0x0881dc6ffdc69ebfeca27fd8449922c32d0fd16ea33807e984881b08e7100988",
-		},
-	}
-	for _, tt := range tests {
+	for _, tt := range chainConfigTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			// Parse inputs
-			chainID := hexToBigInt(tt.chainID)
-			baseFee := hexToBigInt(tt.baseFee)
+			chainID := hexToBigInt(tt.chainIDHex)
+			baseFee := hexToBigInt(tt.baseFeeHex)
 			coinBase := hexToBigInt(tt.coinBase)
 			l2MessageService := hexToBigInt(tt.l2MessageService)
 			// Compute hash and payload
@@ -312,33 +257,20 @@ func TestComputeChainConfigurationReference(t *testing.T) {
 			t.Logf("Computed hash: %x", computedHash)
 			// Compare payload first
 			if len(expectedPayloadBytes) != len(computedPayload) {
-				t.Errorf("Payload length mismatch: expected %d, got %d", len(expectedPayloadBytes), len(computedPayload))
-				return
+				t.Fatalf("Payload length mismatch: expected %d, got %d", len(expectedPayloadBytes), len(computedPayload))
 			}
-			payloadMatch := true
-			for i := 0; i < len(expectedPayloadBytes); i++ {
-				if expectedPayloadBytes[i] != computedPayload[i] {
-					t.Errorf("Payload mismatch at byte %d: expected %02x, got %02x", i, expectedPayloadBytes[i], computedPayload[i])
-					payloadMatch = false
-				}
+
+			if !bytesEqual(expectedPayloadBytes, computedPayload) {
+				t.Errorf("Payload mismatch:\nExpected: %s\nComputed: %s", hexString(expectedPayloadBytes), hexString(computedPayload))
 			}
-			if payloadMatch {
-				t.Logf(" Payload matches!")
-			}
+
 			// Compare hash
 			if len(expectedHashBytes) != len(computedHash) {
-				t.Errorf("Hash length mismatch: expected %d, got %d", len(expectedHashBytes), len(computedHash))
-				return
+				t.Fatalf("Hash length mismatch: expected %d, got %d", len(expectedHashBytes), len(computedHash))
 			}
-			hashMatch := true
-			for i := 0; i < len(expectedHashBytes); i++ {
-				if expectedHashBytes[i] != computedHash[i] {
-					t.Errorf("Hash mismatch at byte %d: expected %02x, got %02x", i, expectedHashBytes[i], computedHash[i])
-					hashMatch = false
-				}
-			}
-			if hashMatch {
-				t.Logf(" Hash matches!")
+
+			if !bytesEqual(expectedHashBytes, computedHash) {
+				t.Errorf("Hash mismatch:\nExpected: %s\nComputed: %s", hexString(expectedHashBytes), hexString(computedHash))
 			}
 		})
 	}
@@ -349,13 +281,8 @@ func TestComputeChainConfigurationReference(t *testing.T) {
 // computeChainConfigurationHash() in aggregation.go.
 //
 // This function mimics the Solidity verifier's computeChainConfigurationHash and uses MiMC to hash
-// the chain configuration parameters in order: chainID, baseFee, coinBase, l2MessageServiceAddr.
-//
-// When adding new chain configuration parameters:
-//  1. Update this reference implementation first
-//  2. Update ChainConfigurationFPISnark.Sum() in aggregation.go
-//  3. Update computeChainConfigurationHash() in aggregation.go
-//  4. Run tests to ensure all implementations produce identical hashes
+// the chain configuration parameters in order: chainID, baseFee, coinBase,
+// l2MessageServiceAddr.
 //
 // Returns: (mimcPayload []byte, hash []byte) - the full payload and resulting 32-byte hash
 func computeChainConfigurationReference(chainID, baseFee, coinBase, l2MessageServiceAddr *big.Int) ([]byte, []byte) {
@@ -405,4 +332,20 @@ func hexToBytes(hexStr string) []byte {
 		panic(err)
 	}
 	return bytes
+}
+
+func bytesEqual(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func hexString(b []byte) string {
+	return "0x" + hex.EncodeToString(b)
 }
