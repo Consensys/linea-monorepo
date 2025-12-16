@@ -68,14 +68,6 @@ type AggregationSpec struct {
 	// This is useful for generating invalid cases for the tests.
 	IgnoreBefore bool `json:"ignoreBefore"`
 
-	// Verifier id to target on the contract
-	VerifierContractID int `json:"verifierContractID"`
-	// Note @alex : This is completely different for the verifier contract id.
-	// The circuit ID is only meant to be used to simulate that we may have
-	// different version of the verifier contracts for each prover mode.
-	GenProofForCircuitID int `json:"genProofForCircuitID"`
-	VerProofForCircuitID int `json:"verProofForCircuitID"`
-
 	// Finalized shnarf
 	FinalShnarf                  string `json:"finalizedShnarf"`
 	ParentAggregationFinalShnarf string `json:"parentAggregationFinalShnarf"`
