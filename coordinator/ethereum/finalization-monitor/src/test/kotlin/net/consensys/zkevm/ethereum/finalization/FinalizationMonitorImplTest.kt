@@ -76,7 +76,10 @@ class FinalizationMonitorImplTest {
         await()
           .atMost(5.seconds.toJavaDuration())
           .untilAsserted {
-            verify(mockL2Client, atLeastOnce()).ethGetBlockByNumberTxHashes(eq(BlockParameter.fromNumber(expectedBlockNumber)))
+            verify(
+              mockL2Client,
+              atLeastOnce(),
+            ).ethGetBlockByNumberTxHashes(eq(BlockParameter.fromNumber(expectedBlockNumber)))
             verify(contractMock, atLeastOnce()).finalizedL2BlockNumber(BlockParameter.Tag.FINALIZED)
             verify(contractMock, atLeastOnce()).blockStateRootHash(BlockParameter.Tag.FINALIZED, expectedBlockNumber)
           }
