@@ -589,27 +589,27 @@ contract YieldManager is
     onlyKnownYieldProvider(_yieldProvider)
     onlyWhenWithdrawalReserveInDeficit
   {
-    uint64 lastProvenSlot = _getYieldManagerStorage().lastProvenSlot[_validatorIndex];
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    uint64 lastProvenSlot = $.lastProvenSlot[_validatorIndex];
     if (_slot <= lastProvenSlot + SLOTS_PER_HISTORICAL_ROOT) {
       revert SlotTooCloseToLastProvenSlot(_validatorIndex, lastProvenSlot, _slot);
     }
     // Place storage update before possible reentrancy in _delegatecallYieldProvider
-    _getYieldManagerStorage().lastProvenSlot[_validatorIndex] = _slot;
+    $.lastProvenSlot[_validatorIndex] = _slot;
 
-    uint256 requiredUnstakeAmountWei = Math256.safeSub(getTargetReserveDeficit(), address(this).balance + withdrawableValue(_yieldProvider) + _getYieldManagerStorage().pendingPermissionlessUnstake);
+    uint256 requiredUnstakeAmountWei = Math256.safeSub(getTargetReserveDeficit(), address(this).balance + withdrawableValue(_yieldProvider) + $.pendingPermissionlessUnstake);
     if (requiredUnstakeAmountWei == 0) revert NoRequirementToUnstakePermissionless();
 
-    bytes memory data = _delegatecallYieldProvider(
+    uint256 unstakedAmountWei = abi.decode(_delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, requiredUnstakeAmountWei, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
-    );
-    uint256 unstakedAmountWei = abi.decode(data, (uint256));
+    ), (uint256));
     if (unstakedAmountWei == 0) revert YieldProviderReturnedZeroUnstakeAmount();
     if (unstakedAmountWei > requiredUnstakeAmountWei) {
       revert UnstakedAmountExceedsRequired(unstakedAmountWei, requiredUnstakeAmountWei);
     }
 
-    _getYieldManagerStorage().pendingPermissionlessUnstake += unstakedAmountWei;
+    $.pendingPermissionlessUnstake += unstakedAmountWei;
     emit UnstakePermissionlessRequest(_yieldProvider, _validatorIndex, _slot, requiredUnstakeAmountWei, unstakedAmountWei, _withdrawalParams);
   }
 
