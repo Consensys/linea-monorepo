@@ -1,8 +1,8 @@
 {
     "dynamicChainConfigurationSpec": {
-        "chainID": 82,
-        "baseFee": 5,
-        "coinBase": "0x0000000000000000000000000000000000000000",
+        "chainID": 59144,
+        "baseFee": 7,
+        "coinBase": "0x8f81e2e3f8b46467523463835f965ffe476e1c9e",
         "l2MessageServiceAddr": "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec"
     },
     "aggregationSpec": {
