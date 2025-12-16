@@ -46,13 +46,6 @@ func CheckStatement(linComb smartvectors.SmartVector, ys [][]fext.Element, x, al
 
 	res := make([]fext.Element, linComb.Len())
 	linComb.WriteInSliceExt(res)
-	// fmt.Printf("linComb: %v, %v\n", linComb.Len(), vectorext.Prettify(res[linComb.Len()-4:linComb.Len()-1]))
-	// fmt.Printf("x=%v\n", x.String())
-	// fmt.Println("alphaY:", alphaY.String())
-
-	// fmt.Printf("yJoined:%v, %v\n", len(yJoined), vectorext.Prettify(yJoined[len(yJoined)-4:len(yJoined)-1]))
-	// fmt.Printf("alpha: %v\n", alpha.String())
-	// fmt.Println("alphaYPrime:", alphaYPrime.String())
 
 	if alphaY != alphaYPrime {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
@@ -86,8 +79,6 @@ func CheckLinComb(
 		// Check the linear combination is consistent with the opened column
 		y := vortex.EvalBasePolyHorner(fullCol, alpha)
 
-		// fmt.Printf("selectedColID: %v\n", selectedColID)
-		// fmt.Printf("y: %v\n", y.String())
 		if y != linComb.GetExt(selectedColID) {
 			other := linComb.GetExt(selectedColID)
 			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())

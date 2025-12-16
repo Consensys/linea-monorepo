@@ -47,20 +47,7 @@ func GnarkEvalCanonicalExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4
 	s := len(p)
 	for i := 0; i < len(p); i++ {
 		res = *ext4.Mul(&res, &z)
-		// if i < 2 {
-		// 	api.Println("api step after mul, z", i)
-		// 	ext4.Println(z)
-		// 	api.Println("api step after mul", i)
-		// 	ext4.Println(res)
-		// }
 		res = *ext4.Add(&res, &p[s-1-i])
-		// if i < 2 {
-		// 	api.Println("api step after mul, p[s-1-i]", i)
-		// 	ext4.Println(p[s-1-i])
-		// 	api.Println("api step after add", i)
-		// 	ext4.Println(res)
-		// }
-
 	}
 	return res
 }

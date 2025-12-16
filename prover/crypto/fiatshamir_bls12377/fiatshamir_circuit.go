@@ -62,12 +62,7 @@ func (fs *GnarkFS) UpdateVecFrElmt(mat ...[]frontend.Variable) {
 func (fs *GnarkFS) RandomFrElmt() frontend.Variable {
 	fs.flushKoala()
 	defer fs.safeguardUpdate()
-
-	fs.api.Println("[gnark fs flush] buf")
-	fs.hasher.Api.Println(fs.hasher.Bbuffer[:2]...)
-	res := fs.hasher.Sum()
-	fs.hasher.Api.Println("[gnark fs flush] res", res, "State")
-	return res
+	return fs.hasher.Sum()
 }
 
 // ------------------------------------------------------
@@ -118,16 +113,9 @@ func (fs *GnarkFS) RandomField() zk.Octuplet {
 }
 
 func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
-	// if len(fs.koalaBuf) > 0 {
 
-	// 	// fmt.Printf("RandomFieldExt: circuit len(fs.koalaBuf): %d\n", len(fs.koalaBuf))
-	// 	// fs.api.Println("RandomFieldExt: circuit fs.koalaBuf:", fs.koalaBuf[0].AsNative(), fs.koalaBuf[1].AsNative(), fs.koalaBuf[2].AsNative(), fs.koalaBuf[len(fs.koalaBuf)-1].AsNative()) // TODO@yao: remove it after debugging --- IGNORE ---
-	// }
 	r := fs.RandomField()
-	// if len(fs.koalaBuf) > 0 {
-	// 	// the safeguard update is called
-	// 	fs.api.Println("circuit c: ", r[0].AsNative(), r[1].AsNative(), r[2].AsNative(), r[3].AsNative()) // TODO@yao: remove it after debugging --- IGNORE ---
-	// }
+
 	res := gnarkfext.E4Gen{}
 	res.B0.A0 = r[0]
 	res.B0.A1 = r[1]
@@ -145,11 +133,7 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 	i := 0
 	res := make([]frontend.Variable, num)
 	for i < num {
-		// thake the remainder mod n of each limb
-		// fmt.Printf("circuit len(fs.koalaBuf): %d\n", len(fs.koalaBuf))
-		// fs.api.Println("circuit fs.koalaBuf:", fs.koalaBuf[0].AsNative(), fs.koalaBuf[1].AsNative(), fs.koalaBuf[2].AsNative(), fs.koalaBuf[len(fs.koalaBuf)-1].AsNative()) // TODO@yao: remove it after debugging --- IGNORE ---
 		c := fs.RandomField()
-		fs.api.Println("circuit c: ", c[0].AsNative(), c[1].AsNative(), c[2].AsNative(), c[3].AsNative()) // TODO@yao: remove it after debugging --- IGNORE ---
 
 		for j := 0; j < 8; j++ {
 			b := apiGen.ToBinary(c[j])
@@ -161,7 +145,6 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 			}
 		}
 	}
-	fs.api.Println("circuit res: ", res) // TODO@yao: remove it after debugging --- IGNORE ---
 	return res
 }
 

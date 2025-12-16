@@ -1,8 +1,6 @@
 package fiatshamir_bls12377
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
@@ -38,12 +36,7 @@ func (fs *FS) UpdateVecFrElmt(vecs ...[]fr.Element) {
 
 func (fs *FS) RandomFieldFrElmt() fr.Element {
 	fs.flushKoala()
-
-	fmt.Printf("[native fs flush] oldState %v, buffer = %v\n", fs.h.Sstate.String(), fr.Vector(fs.h.Buffer[:1]).String())
-
 	res := fs.h.SumElement()
-	fmt.Printf("[native fs flush] res %v\n", res.String())
-
 	fs.safeguardUpdate()
 	return res
 }
@@ -96,12 +89,8 @@ func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
 	i := 0
 	res := make([]int, num)
 	for i < num {
-		// fmt.Printf(" len(fs.koalaBuf): %d\n", len(fs.koalaBuf))
-		// fmt.Printf("fs.koalaBuf: %v, %v, %v, %v\n", fs.koalaBuf[0].String(), fs.koalaBuf[1].String(), fs.koalaBuf[2].String(), fs.koalaBuf[len(fs.koalaBuf)-1].String())
-
 		// thake the remainder mod n of each limb
 		c := fs.RandomField()
-		fmt.Printf("c: %v, %v, %v, %v\n", c[0].String(), c[1].String(), c[2].String(), c[3].String())
 
 		for j := 0; j < 8; j++ {
 			b := c[j].Bits()
@@ -113,20 +102,11 @@ func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
 			}
 		}
 	}
-	fmt.Printf("res: %v\n", res)
 	return res
 }
 
 func (fs *FS) RandomFext() fext.Element {
-	// if len(fs.koalaBuf) > 0 {
-	// 	fmt.Printf("RandomFext len(fs.koalaBuf): %d\n", len(fs.koalaBuf))
-	// 	fmt.Printf("RandomFext fs.koalaBuf: %v, %v, %v, %v\n", fs.koalaBuf[0].String(), fs.koalaBuf[1].String(), fs.koalaBuf[2].String(), fs.koalaBuf[len(fs.koalaBuf)-1].String())
-	// }
 	s := fs.RandomField() // calls safeguardUpdate
-	// if len(fs.koalaBuf) > 0 {
-
-	// 	fmt.Printf("RandomFext s: %v, %v, %v, %v\n", s[0].String(), s[1].String(), s[2].String(), s[3].String())
-	// }
 	var res fext.Element
 	res.B0.A0 = s[0]
 	res.B0.A1 = s[1]
@@ -156,11 +136,6 @@ func (fs *FS) flushKoala() {
 	if len(fs.koalaBuf) == 0 {
 		return
 	}
-	//TODO@yao: find where the last iniitial buffer 0 is gone?
-	// fmt.Printf("[flushKoala] koalabuf %v, blsbuffer = %v\n", fs.koalaBuf[:2], fr.Vector(fs.h.Buffer[:]).String())
-
 	fs.h.WriteKoalabearElements(fs.koalaBuf...)
-	// fmt.Printf("[flushKoala AFTER] Sstate %v, blsbuffer = %v\n", fs.h.Sstate.String(), fr.Vector(fs.h.Buffer[:2]).String())
-
 	fs.koalaBuf = fs.koalaBuf[:0]
 }
