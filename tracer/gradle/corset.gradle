@@ -32,13 +32,15 @@ def ZKEVM_CANCUN_BIN = System.getenv("ZKEVM_CANCUN_BIN") ?: "zkevm_cancun.bin"
 def ZKEVM_PRAGUE_BIN = System.getenv("ZKEVM_PRAGUE_BIN") ?: "zkevm_prague.bin"
 def ZKEVM_OSAKA_BIN = System.getenv("ZKEVM_OSAKA_BIN") ?: "zkevm_osaka.bin"
 // Specify where the trace files should be generated.
-def TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/Trace.java"
-def LONDON_TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/TraceLondon.java"
-def PARIS_TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/TraceParis.java"
-def SHANGHAI_TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/TraceShanghai.java"
-def CANCUN_TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/TraceCancun.java"
-def PRAGUE_TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/TracePrague.java"
-def OSAKA_TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/TraceOsaka.java"
+def GENERATED_SRC_DIR = "arithmetization/build/generated/gocorset/"
+def TRACE_FILE = "$GENERATED_SRC_DIR/main/java/net/consensys/linea/zktracer/Trace.java"
+def LONDON_TRACE_FILE = "$GENERATED_SRC_DIR/main/java/net/consensys/linea/zktracer/TraceLondon.java"
+def PARIS_TRACE_FILE = "$GENERATED_SRC_DIR/main/java/net/consensys/linea/zktracer/TraceParis.java"
+def SHANGHAI_TRACE_FILE = "$GENERATED_SRC_DIR/main/java/net/consensys/linea/zktracer/TraceShanghai.java"
+def CANCUN_TRACE_FILE = "$GENERATED_SRC_DIR/main/java/net/consensys/linea/zktracer/TraceCancun.java"
+def PRAGUE_TRACE_FILE = "$GENERATED_SRC_DIR/main/java/net/consensys/linea/zktracer/TracePrague.java"
+def OSAKA_TRACE_FILE = "$GENERATED_SRC_DIR/main/java/net/consensys/linea/zktracer/TraceOsaka.java"
+
 // Specify package to use for trace file
 def TRACE_PKG = "net.consensys.linea.zktracer"
 
@@ -89,6 +91,7 @@ tasks.register('buildAllTracers', Exec) {
     def zkevmPragueBin = lineaTracerProject.file('linea-constraints/' + ZKEVM_PRAGUE_BIN)
     def zkevmOsakaBin = lineaTracerProject.file('linea-constraints/' + ZKEVM_OSAKA_BIN)
     // Generate trace interface and implementing classes
+    commandLine 'mkdir', '-p', "${traceJava.parentFile.absolutePath}"
     commandLine 'go-corset','generate','-p',TRACE_PKG,'-i',traceJava,
             '-o',traceLondonJava,zkevmLondonBin,
             '-o',traceParisJava,zkevmParisBin,
