@@ -1,4 +1,4 @@
-const isProd = process.env.NEXT_PUBLIC_ENVIRONMENT === "production";
+export const isProd = process.env.NEXT_PUBLIC_ENVIRONMENT === "production";
 const basePath = isProd ? "/hub/bridge" : "";
 
 /** @type {import('next').NextConfig} */
@@ -20,6 +20,16 @@ const nextConfig = {
         protocol: "https",
         hostname: "assets.coingecko.com",
         pathname: "/coins/images/**",
+      },
+      {
+        protocol: "https",
+        hostname: "linea.build",
+        pathname: "/icons/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.ctfassets.net",
+        pathname: `/${process.env.CONTENTFUL_SPACE_ID}/**`,
       },
     ],
   },

@@ -1,8 +1,9 @@
+import { cache } from "react";
 import log from "loglevel";
 import { Address } from "viem";
 import { config } from "@/config";
-import { SupportedCurrencies, defaultTokensConfig } from "@/stores";
-import { GithubTokenListToken, Token, BridgeProvider, NetworkTokens } from "@/types";
+import { defaultTokensConfig, SupportedCurrencies } from "@/stores";
+import { BridgeProvider, GithubTokenListToken, NetworkTokens, Token } from "@/types";
 import { PRIORITY_SYMBOLS, USDC_SYMBOL } from "@/constants";
 import { isUndefined } from "@/utils";
 
@@ -22,13 +23,13 @@ export async function getTokens(networkTypes: NetworkTypes): Promise<GithubToken
     const response = await fetch(url, { next: { revalidate: 60 } });
     const data = await response.json();
     const tokens = data.tokens as GithubTokenListToken[];
-    const bridgedTokens = tokens.filter(
+
+    return tokens.filter(
       (token: GithubTokenListToken) =>
         token.tokenType.includes("canonical-bridge") ||
         (token.tokenType.includes("native") && token.extension?.rootAddress !== undefined) ||
         token.symbol === USDC_SYMBOL,
     );
-    return bridgedTokens;
   } catch (error) {
     log.error("Error getTokens", { error });
     return [];
@@ -58,7 +59,9 @@ export async function fetchTokenPrices(
 
 export async function validateTokenURI(url: string): Promise<string> {
   try {
-    await fetch(url);
+    await fetch(url, {
+      next: { revalidate: 3600 }, // Cache 1h
+    });
     return url;
   } catch (error) {
     return `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/noTokenLogo.svg`;
@@ -83,7 +86,7 @@ export async function formatToken(token: GithubTokenListToken): Promise<Token> {
   };
 }
 
-export async function getTokenConfig(): Promise<NetworkTokens> {
+export const getTokenConfig = cache(async (): Promise<NetworkTokens> => {
   if (config.e2eTestMode) {
     return {
       MAINNET: [
@@ -161,4 +164,4 @@ export async function getTokenConfig(): Promise<NetworkTokens> {
   updatedTokensConfig.SEPOLIA = sepolia;
 
   return updatedTokensConfig;
-}
+});

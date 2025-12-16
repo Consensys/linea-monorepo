@@ -156,6 +156,15 @@ class PostgresAggregationsDao(
       """.trimIndent(),
     )
 
+  private val findFirstAggregation =
+    connection.preparedQuery(
+      """
+        select * from $aggregationsTable
+        order by start_block_number asc
+        LIMIT 1
+      """.trimIndent(),
+    )
+
   private val deleteUptoQuery =
     connection.preparedQuery(
       """
@@ -194,7 +203,37 @@ class PostgresAggregationsDao(
     val batchesCount: UInt,
     val batchStartBlockNumber: ULong,
     val batchEndBlockNumber: ULong,
-  )
+  ) {
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+
+      other as BatchRecordWithBlobInfo
+
+      if (blobStartBlockNumber != other.blobStartBlockNumber) return false
+      if (blobEndBlockNumber != other.blobEndBlockNumber) return false
+      if (blobStartBlockTimestamp != other.blobStartBlockTimestamp) return false
+      if (blobEndBlockTimestamp != other.blobEndBlockTimestamp) return false
+      if (!blobExpectedShnarf.contentEquals(other.blobExpectedShnarf)) return false
+      if (batchesCount != other.batchesCount) return false
+      if (batchStartBlockNumber != other.batchStartBlockNumber) return false
+      if (batchEndBlockNumber != other.batchEndBlockNumber) return false
+
+      return true
+    }
+
+    override fun hashCode(): Int {
+      var result = blobStartBlockNumber.hashCode()
+      result = 31 * result + blobEndBlockNumber.hashCode()
+      result = 31 * result + blobStartBlockTimestamp.hashCode()
+      result = 31 * result + blobEndBlockTimestamp.hashCode()
+      result = 31 * result + blobExpectedShnarf.contentHashCode()
+      result = 31 * result + batchesCount.hashCode()
+      result = 31 * result + batchStartBlockNumber.hashCode()
+      result = 31 * result + batchEndBlockNumber.hashCode()
+      return result
+    }
+  }
 
   override fun findConsecutiveProvenBlobs(
     fromBlockNumber: Long,
@@ -295,20 +334,30 @@ class PostgresAggregationsDao(
   }
 
   override fun findHighestConsecutiveEndBlockNumber(
-    fromBlockNumber: Long,
+    fromBlockNumber: Long?,
   ): SafeFuture<Long?> {
-    return selectAggregations
-      .execute(
-        Tuple.of(
-          fromBlockNumber,
-          aggregationStatusToDbValue(Aggregation.Status.Proven),
-          Int.MAX_VALUE,
-        ),
-      )
-      .toSafeFuture()
-      .thenApply { rowSet ->
-        rowSet.lastOrNull()?.getLong("end_block_number")
+    return if (fromBlockNumber != null) {
+      SafeFuture.completedFuture(fromBlockNumber)
+    } else {
+      findFirstAggregationStartBlockNumber()
+    }.thenCompose { fromBlockNumber ->
+      if (fromBlockNumber != null) {
+        selectAggregations
+          .execute(
+            Tuple.of(
+              fromBlockNumber,
+              aggregationStatusToDbValue(Aggregation.Status.Proven),
+              Int.MAX_VALUE,
+            ),
+          )
+          .toSafeFuture()
+          .thenApply { rowSet ->
+            rowSet.lastOrNull()?.getLong("end_block_number")
+          }
+      } else {
+        SafeFuture.completedFuture(null)
       }
+    }
   }
 
   override fun findAggregationProofByEndBlockNumber(endBlockNumber: Long): SafeFuture<ProofToFinalize?> {
@@ -329,6 +378,15 @@ class PostgresAggregationsDao(
         } else {
           aggregationProofs.firstOrNull()
         }
+      }
+  }
+
+  private fun findFirstAggregationStartBlockNumber(): SafeFuture<Long?> {
+    return findFirstAggregation
+      .execute()
+      .toSafeFuture()
+      .thenApply { rowSet ->
+        rowSet.firstOrNull()?.getLong("start_block_number")
       }
   }
 

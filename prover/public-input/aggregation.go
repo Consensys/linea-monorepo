@@ -150,7 +150,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 
 type AggregationFPIQSnark struct {
 	ParentShnarf                   [32]zk.WrappedVariable
-	NbDecompression                zk.WrappedVariable
+	NbDataAvailability             zk.WrappedVariable
 	InitialStateRootHash           zk.WrappedVariable
 	LastFinalizedBlockNumber       zk.WrappedVariable
 	LastFinalizedBlockTimestamp    zk.WrappedVariable
@@ -218,15 +218,15 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,
 		pi.FinalShnarf,
-		utils.ToBytes(api, pi.LastFinalizedBlockTimestamp),
-		utils.ToBytes(api, pi.FinalBlockTimestamp),
-		utils.ToBytes(api, pi.LastFinalizedBlockNumber),
-		utils.ToBytes(api, pi.FinalBlockNumber),
+		utils.ToBytes32(api, pi.LastFinalizedBlockTimestamp),
+		utils.ToBytes32(api, pi.FinalBlockTimestamp),
+		utils.ToBytes32(api, pi.LastFinalizedBlockNumber),
+		utils.ToBytes32(api, pi.FinalBlockNumber),
 		pi.LastFinalizedRollingHash,
 		pi.FinalRollingHash,
-		utils.ToBytes(api, pi.LastFinalizedRollingHashNumber),
-		utils.ToBytes(api, pi.FinalRollingHashNumber),
-		utils.ToBytes(api, zk.ValueOf(pi.L2MsgMerkleTreeDepth)),
+		utils.ToBytes32(api, pi.LastFinalizedRollingHashNumber),
+		utils.ToBytes32(api, pi.FinalRollingHashNumber),
+		utils.ToBytes32(api, zk.ValueOf(pi.L2MsgMerkleTreeDepth)),
 		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 	)
 

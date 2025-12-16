@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +23,7 @@ func TestFr377EncodedFr381ToBytes(t *testing.T) {
 		assert.NoError(t, err)
 
 		assignment := fr377EncodedFr381ToBytesCircuit{
-			Encoded: [2]zk.WrappedVariable{encoded[0], encoded[1]},
+			Encoded: [2]zk.WrappedVariable{encoded[0][:], encoded[1][:]},
 		}
 
 		b := x.Bytes()

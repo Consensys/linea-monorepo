@@ -3,6 +3,7 @@ package config
 import (
 	"time"
 
+	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/spf13/viper"
 )
 
@@ -22,7 +23,7 @@ func setDefaultValues() {
 	viper.SetDefault("debug.performance_monitor.profile", "prover-rounds")
 
 	viper.SetDefault("controller.enable_execution", true)
-	viper.SetDefault("controller.enable_blob_decompression", true)
+	viper.SetDefault("controller.enable_data_availability", true)
 	viper.SetDefault("controller.enable_aggregation", true)
 
 	// Set the default values for the retry delays
@@ -36,12 +37,16 @@ func setDefaultValues() {
 	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
 
 	viper.SetDefault("execution.ignore_compatibility_check", false)
+
+	viper.SetDefault("data_availability.max_nb_batches", 100)
+	viper.SetDefault("data_availability.max_uncompressed_nb_bytes", v1.MaxUncompressedBytes)
+	viper.SetDefault("data_availability.dict_nb_bytes", 65536)
 }
 
 func setDefaultPaths() {
 	viper.SetDefault("execution.conflated_traces_dir", "/shared/traces/conflated")
 	viper.SetDefault("execution.requests_root_dir", "/shared/prover-execution")
-	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/prover-compression")
+	viper.SetDefault("data_availability.requests_root_dir", "/shared/prover-compression")
 	viper.SetDefault("aggregation.requests_root_dir", "/shared/prover-aggregation")
 	viper.SetDefault("debug.performance_monitor.profile_dir", "/shared/prover-execution/profiling")
 }
