@@ -33,7 +33,7 @@ import org.apache.tuweni.bytes.Bytes32;
 public class InstructionByteStringPrefix extends RlpUtilsCall {
 
   // inputs
-  @EqualsAndHashCode.Include @Getter private final Bytes32 byteStringLength;
+  @EqualsAndHashCode.Include @Getter private final int byteStringLength;
   @EqualsAndHashCode.Include @Getter private final byte firstByte;
   @EqualsAndHashCode.Include @Getter private final boolean isList;
 
@@ -45,17 +45,16 @@ public class InstructionByteStringPrefix extends RlpUtilsCall {
 
   public InstructionByteStringPrefix(int byteStringLength, byte firstByte, boolean isList) {
     super();
-    this.byteStringLength = Bytes32.leftPad(Bytes.ofUnsignedInt(byteStringLength));
+    this.byteStringLength = byteStringLength;
     this.firstByte = firstByte;
     this.isList = isList;
   }
 
   @Override
   protected void compute() {
-    final int length = byteStringLength.toInt();
-    byteStringIsNonEmpty = length !=0;
-    final boolean byteStringLengthIsOne = length == 1;
-    final boolean byteStringLengthGtOne = length > 1;
+    byteStringIsNonEmpty = byteStringLength !=0;
+    final boolean byteStringLengthIsOne = byteStringLength == 1;
+    final boolean byteStringLengthGtOne = byteStringLength > 1;
 
     if (!byteStringIsNonEmpty) {
       // setting output values
@@ -65,7 +64,7 @@ public class InstructionByteStringPrefix extends RlpUtilsCall {
     }
 
     if (byteStringLengthIsOne) {
-      final boolean firstBytesLtPrefixShortInt = firstByte < 0; // ie unsigned value is >= 128
+      final boolean firstBytesLtPrefixShortInt = firstByte >= 0; // ie unsigned value is >= 128
       if (firstBytesLtPrefixShortInt) {
         rlpPrefixRequired = false;
         rlpPrefix = Bytes16.ZERO;
@@ -81,7 +80,7 @@ public class InstructionByteStringPrefix extends RlpUtilsCall {
 
     if (byteStringLengthGtOne) {
       // computed values
-      final boolean byteStringLengthGeq56 = length >= 56;
+      final boolean byteStringLengthGeq56 = byteStringLength >= 56;
 
       // setting outputs
       rlpPrefixRequired = true;
@@ -89,17 +88,17 @@ public class InstructionByteStringPrefix extends RlpUtilsCall {
         rlpPrefix =
             Bytes16.rightPad(
                 Bytes.minimalBytes(
-                    bytesToLong(byteStringLength)
+                    byteStringLength
                         + (isList ? RLP_PREFIX_LIST_SHORT : RLP_PREFIX_INT_SHORT)));
         rlpPrefixByteSize = 1;
       } else {
-        final int bslByteSize = byteStringLength.trimLeadingZeros().size();
+        final int bslByteSize = Bytes.minimalBytes(byteStringLength).size();
         rlpPrefix =
             Bytes16.rightPad(
                 Bytes.concatenate(
                     Bytes.minimalBytes(
                         bslByteSize + (isList ? RLP_PREFIX_LIST_LONG : RLP_PREFIX_INT_LONG)),
-                    byteStringLength.trimLeadingZeros()));
+                  Bytes.minimalBytes(byteStringLength)));
         rlpPrefixByteSize = (short) (1 + bslByteSize);
       }
     }
@@ -119,7 +118,7 @@ public class InstructionByteStringPrefix extends RlpUtilsCall {
         .lx(lx)
         .pCmpRlputilsFlag(true)
         .pCmpRlputilsInst(RLP_UTILS_INST_BYTE_STRING_PREFIX)
-        .pCmpExoData1(byteStringLength)
+        .pCmpExoData1(Bytes.ofUnsignedInt(byteStringLength))
         .pCmpExoData2(Bytes.of(firstByte))
         .pCmpExoData3(isList)
         .pCmpExoData4(byteStringIsNonEmpty)
@@ -147,7 +146,7 @@ public class InstructionByteStringPrefix extends RlpUtilsCall {
   protected void traceMacro(Trace.Rlputils trace) {
     trace
         .inst(RLP_UTILS_INST_BYTE_STRING_PREFIX)
-        .data1(byteStringLength)
+        .data1(Bytes.ofUnsignedInt(byteStringLength))
         .data2(Bytes.of(firstByte))
         .data3(isList)
         .data4(byteStringIsNonEmpty)
@@ -166,7 +165,7 @@ public class InstructionByteStringPrefix extends RlpUtilsCall {
   protected short compareTo(RlpUtilsCall other) {
     // first sort by byte string length
     final int byteStringLengthComparison =
-        byteStringLength.compareTo(((InstructionByteStringPrefix) other).byteStringLength);
+        byteStringLength - (((InstructionByteStringPrefix) other).byteStringLength);
 
     if (byteStringLengthComparison != 0) {
       return (short) byteStringLengthComparison;
