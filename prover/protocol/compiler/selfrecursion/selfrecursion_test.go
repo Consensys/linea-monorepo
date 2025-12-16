@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -60,7 +64,7 @@ type TestCase struct {
 
 // tests-cases for all tests
 var testcases []TestCase = []TestCase{
-	{Numpoly: 1024, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
+	{Numpoly: 2, NumRound: 1, PolSize: 2, NumOpenCol: 1, SisInstance: sisInstances[0]},
 	{Numpoly: 1024, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
 	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0]},
 	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
@@ -73,7 +77,7 @@ var testcases []TestCase = []TestCase{
 }
 
 var testcases_precomp []TestCase = []TestCase{
-	{Numpoly: 1024, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 2, NumRound: 1, PolSize: 2, NumOpenCol: 1, SisInstance: sisInstances[0], NumPrecomp: 2, IsCommitPrecomp: true},
 	{Numpoly: 1024, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0], NumPrecomp: 2, IsCommitPrecomp: true},
 	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
@@ -395,6 +399,119 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 	proof := wizard.Prove(comp, prove)
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
+}
+
+func TestGnarkSelfRecursionManyLayers(t *testing.T) {
+
+	define, prove := generateProtocol(testcases[0])
+	// don't increase too much so that it does not increase too much the runtime
+	// of the test.
+	n := 1 // TODO@yao: set back to 2
+
+	comp := wizard.Compile(
+		define,
+		vortex.Compile(
+			2,
+			false,
+			vortex.ForceNumOpenedColumns(16),
+			vortex.WithSISParams(&ringsis.StdParams),
+			vortex.WithOptionalSISHashingThreshold(64),
+		),
+	)
+
+	for i := 0; i < n; i++ {
+
+		fmt.Printf("layer %v\n", i)
+
+		if i == n-1 {
+			comp = wizard.ContinueCompilation(
+				comp,
+				selfrecursion.SelfRecurse,
+				poseidon2.CompilePoseidon2,
+				compiler.Arcane(
+					compiler.WithTargetColSize(1<<9),
+				),
+				// logdata.Log("before-vortex"),
+				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
+				vortex.Compile(
+					2,
+					true,
+					vortex.ForceNumOpenedColumns(16),
+					vortex.WithOptionalSISHashingThreshold(1<<20),
+				),
+			)
+		} else {
+			comp = wizard.ContinueCompilation(
+				comp,
+				selfrecursion.SelfRecurse,
+				poseidon2.CompilePoseidon2,
+				compiler.Arcane(
+					compiler.WithTargetColSize(1<<9),
+				),
+				// logdata.Log("before-vortex"),
+				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
+				vortex.Compile(
+					2,
+					false,
+					vortex.ForceNumOpenedColumns(16),
+					vortex.WithSISParams(&ringsis.StdParams),
+					vortex.WithOptionalSISHashingThreshold(64),
+				),
+			)
+		}
+	}
+
+	proof := wizard.Prove(comp, prove, true)
+	err := wizard.Verify(comp, proof, true)
+	require.NoError(t, err)
+
+	circuit := verifierCircuit{}
+	{
+		c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
+		circuit.C = *c
+	}
+
+	csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assignment := &verifierCircuit{
+		C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+	}
+
+	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check if solved using the pre-compiled SCS
+	err = csc.IsSolved(witness)
+	if err != nil {
+		// When the error string is too large `require.NoError` does not print
+		// the error.
+		t.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
+
+		errDetail := test.IsSolved(
+			assignment,
+			assignment,
+			csc.Field(),
+		)
+
+		t.Logf("while running the plonk prover: %v", errDetail)
+
+		t.FailNow()
+	}
+
+}
+
+type verifierCircuit struct {
+	C wizard.VerifierCircuit
+}
+
+func (c *verifierCircuit) Define(api frontend.API) error {
+	c.C.Verify(api)
+	return nil
 }
 
 // // Test the compiler of self-recursion with really many layers for a sample

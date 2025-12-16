@@ -270,7 +270,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 	params := c.GetUnivariateParams(ctx.WitnessEval.QueryID)
 	univQuery := c.GetUnivariateEval(ctx.WitnessEval.QueryID)
 
-	wOneExt := gnarkfext.NewE4GenFromBase(1)
+	wOneExt := *ext4.One()
 	annulator = *ext4.Sub(&annulator, &wOneExt)
 
 	ext4.AssertIsEqual(&r, &params.ExtX)
@@ -477,13 +477,13 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		omegaRatio, _ := fft.Generator(uint64(ratio))
 		ratioInvField := field.NewElement(uint64(ratio))
 		var omegaRatioInv field.Element
-		res := gnarkfext.NewE4GenFromBase(0)
+		res := *e4Api.Zero()
 
 		rPowM := gnarkutil.ExpExt(api, shiftedR, m)
 		ratioInvField.Inverse(&ratioInvField)
 		omegaRatioInv.Inverse(&omegaRatio)
 
-		wOne := gnarkfext.NewE4GenFromBase(1)
+		wOne := *e4Api.One()
 		for k := range ys {
 
 			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)

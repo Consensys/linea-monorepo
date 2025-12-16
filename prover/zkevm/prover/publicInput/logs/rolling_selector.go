@@ -16,7 +16,7 @@ import (
 type RollingSelector struct {
 	// Exists contains a 1 if there exists at least one rolling hash log
 	ExistsHash, ExistsMsg ifaces.Column
-	// the first/last Rolling Hash found in the logs
+	// the first/last Rolling HashFirst found in the logs
 	First, Last [common.NbLimbU256]ifaces.Column
 	// the first/last message number of the last Rolling hash log
 	FirstMessageNo, LastMessageNo [common.NbLimbU128]ifaces.Column
@@ -25,18 +25,18 @@ type RollingSelector struct {
 // NewRollingSelector returns a new RollingSelector with initialized columns that are not constrained.
 func NewRollingSelector(comp *wizard.CompiledIOP, name string, size int) *RollingSelector {
 	res := &RollingSelector{
-		ExistsHash: util.CreateCol(name, "EXISTS_HASH", size, comp),
-		ExistsMsg:  util.CreateCol(name, "EXISTS_MSG", size, comp),
+		ExistsHash: util.CreateColBase(name, "EXISTS_HASH", size, comp),
+		ExistsMsg:  util.CreateColBase(name, "EXISTS_MSG", size, comp),
 	}
 
 	for i := range res.First {
-		res.First[i] = util.CreateCol(name, fmt.Sprintf("FIRST_%d", i), size, comp)
-		res.Last[i] = util.CreateCol(name, fmt.Sprintf("LAST_%d", i), size, comp)
+		res.First[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_%d", i), size, comp)
+		res.Last[i] = util.CreateColBase(name, fmt.Sprintf("LAST_%d", i), size, comp)
 	}
 
 	for i := range res.FirstMessageNo {
-		res.FirstMessageNo[i] = util.CreateCol(name, fmt.Sprintf("FIRST_MESSAGE_NO_%d", i), size, comp)
-		res.LastMessageNo[i] = util.CreateCol(name, fmt.Sprintf("LAST_MESSAGE_NO_%d", i), size, comp)
+		res.FirstMessageNo[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_MESSAGE_NO_%d", i), size, comp)
+		res.LastMessageNo[i] = util.CreateColBase(name, fmt.Sprintf("LAST_MESSAGE_NO_%d", i), size, comp)
 	}
 
 	return res

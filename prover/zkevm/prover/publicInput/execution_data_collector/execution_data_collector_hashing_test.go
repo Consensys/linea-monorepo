@@ -213,7 +213,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// compute the MiMC hash of the fixed TestData
 		//fixedHash := ComputeMiMCHashFixedTestData()
 		// assert that we are computing the hash correctly
-		//assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final Hash Value is Incorrect")
+		//assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final HashFirst Value is Incorrect")
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)

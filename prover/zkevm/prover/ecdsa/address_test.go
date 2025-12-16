@@ -1,6 +1,7 @@
 package ecdsa
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -50,6 +51,7 @@ func TestAddress(t *testing.T) {
 		}
 
 		copy(uaGnark.GnarkData[:], gbmGnark.Limbs)
+		slices.Reverse(gbmGnark.Limbs)
 
 		ac.UnalignedGnarkData = uaGnark
 

@@ -141,12 +141,12 @@ func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.
 // GnarkEval implements the [Operator] interface.
 func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
 
-	res := gnarkfext.NewE4GenFromBase(1)
-
 	e4Api, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
+
+	res := *e4Api.One()
 
 	if len(inputs) != len(prod.Exponents) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))

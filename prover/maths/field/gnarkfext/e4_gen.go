@@ -32,6 +32,14 @@ func NewE4GenFromBase(v any) E4Gen {
 	return res
 }
 
+func NewE4GenFromFrontedBase(v frontend.Variable) E4Gen {
+	var res E4Gen
+	res.B0.A0 = zk.WrapFrontendVariable(v)
+	res.B0.A1 = zk.ValueOf(0)
+	res.B1.A0 = zk.ValueOf(0)
+	res.B1.A1 = zk.ValueOf(0)
+	return res
+}
 func FromBase(v zk.WrappedVariable) E4Gen {
 	var res E4Gen
 	res.B0.A0 = v
@@ -305,7 +313,7 @@ func (ext4 *Ext4) Exp(x *E4Gen, n *big.Int) *E4Gen {
 func (ext4 *Ext4) ExpVariableExponent(api frontend.API, x E4Gen, exp frontend.Variable, expNumBits int) E4Gen {
 
 	expBits := api.ToBinary(exp, expNumBits)
-	res := NewE4GenFromBase(1)
+	res := *ext4.One()
 
 	for i := len(expBits) - 1; i >= 0; i-- {
 		if i != len(expBits)-1 {

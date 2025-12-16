@@ -26,7 +26,7 @@ func (ec *EcRecover) cols() []ifaces.Column {
 }
 
 func (ad *Addresses) cols() []ifaces.Column {
-	return append(ad.AddressUntrimmed[:], ad.Address[:]...)
+	return append(ad.AddressLo[:], ad.AddressHiUntrimmed[:]...)
 }
 
 func (ts *TxSignature) cols() []ifaces.Column {

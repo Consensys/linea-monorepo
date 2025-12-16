@@ -36,8 +36,6 @@ type FS interface {
 	Update(vec ...field.Element)
 	UpdateExt(vec ...fext.Element)
 	UpdateGeneric(vec ...fext.GenericFieldElem)
-	UpdateVec(vecs ...[]field.Element)
-	UpdateVecExt(vecs ...[]fext.Element)
 	UpdateSV(sv smartvectors.SmartVector)
 	RandomField() field.Octuplet
 	RandomFext() fext.Element

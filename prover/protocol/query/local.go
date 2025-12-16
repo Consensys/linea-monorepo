@@ -158,6 +158,10 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 
 // Test the polynomial identity in a circuit setting
 func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 	board := cs.Board()
 	metadatas := board.ListVariableMetadata()
 	/*
@@ -194,7 +198,9 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 		should be equal to the length of metadata
 	*/
 	res := board.GnarkEvalExt(api, inputs)
-	api.AssertIsEqual(res, 0)
+	zero := ext4.Zero()
+	ext4.AssertIsEqual(&res, zero)
+
 }
 
 func (cs LocalConstraint) UUID() uuid.UUID {

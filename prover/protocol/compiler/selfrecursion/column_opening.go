@@ -10,6 +10,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -225,9 +227,16 @@ func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	api.AssertIsEqual(
-		a.UAlphaQEval.GetFrontendVariable(api, run),
-		a.PreImageEval.GetFrontendVariable(api, run),
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
+	ualphaQEval := a.UAlphaQEval.GetFrontendVariableExt(api, run)
+	prEimageEval := a.PreImageEval.GetFrontendVariableExt(api, run)
+	ext4.AssertIsEqual(
+		&ualphaQEval,
+		&prEimageEval,
 	)
 }
 
@@ -484,24 +493,29 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	edual := a.Ctx.Columns.Edual.GetColAssignmentGnark(run)
-	dcollapse := a.Ctx.Columns.CollapsedSisHashQ.GetColAssignmentGnark(run)
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+	edual := a.Ctx.Columns.Edual.GetColAssignmentGnarkExt(run)
+	dcollapse := a.Ctx.Columns.CollapsedSisHashQ.GetColAssignmentGnarkExt(run)
 	rfold := run.GetRandomCoinFieldExt(a.Ctx.Coins.Fold.Name)
 	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
-	yDual := poly.EvaluateUnivariateGnarkMixed(api, edual, rfold)
-	yActual := poly.EvaluateUnivariateGnarkMixed(api, dcollapse, rfold)
+	yDual := poly.EvaluateUnivariateGnarkExt(api, edual, rfold)
+	yActual := poly.EvaluateUnivariateGnarkExt(api, dcollapse, rfold)
 
-	one := fext.One()
+	one := ext4.One()
+	two := gnarkfext.FromBase(zk.ValueOf(2))
 	xN := gnarkutil.ExpExt(api, rfold, a.Degree)
-	xNminus1 := api.Sub(xN, one)
-	xNplus1 := api.Add(xN, one)
+	xNminus1 := ext4.Sub(&xN, one)
+	xNplus1 := ext4.Add(&xN, one)
 
-	left0 := api.Mul(xNplus1, yDual)
-	left1 := api.Mul(xNminus1, yActual)
-	left := api.Sub(left0, left1)
-	right := api.Mul(yAlleged, 2)
+	left0 := ext4.Mul(xNplus1, &yDual)
+	left1 := ext4.Mul(xNminus1, &yActual)
+	left := ext4.Sub(left0, left1)
+	right := ext4.Mul(&yAlleged, &two)
 
-	api.AssertIsEqual(left, right)
+	ext4.AssertIsEqual(left, right)
 }
 
 // Registers the final folding phase of the self-recursion

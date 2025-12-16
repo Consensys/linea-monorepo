@@ -26,7 +26,7 @@ const (
 // GetOffset returns relevant offsets depending on the data we want to fetch from the arithmetization
 // Case 1: L2L1 log, we want to extract the keccak-hashed messages.
 // The first topic can be found 3 rows before, and the bridge address 4 rows before.
-// Case 2: Rolling Hash Log: we extract either the message number or the Rolling hash itself
+// Case 2: Rolling HashFirst Log: we extract either the message number or the Rolling hash itself
 // the offsets for the first topic/bridgeAddress are -1/-2 and -2/-3
 func GetOffset(logType, offsetType int) int {
 	switch logType {
@@ -218,17 +218,17 @@ func NewSelectorColumns(comp *wizard.CompiledIOP, lc LogColumns) Selectors {
 
 	offset := pcommon.NbLimbU256 - pcommon.NbLimbEthAddress
 	for i := range bridgeAddrCol {
-		bridgeAddrCol[i] = comp.InsertCommit(0, ifaces.ColIDf("LOGS_FETCHER_BRIDGE_ADDRESS_%d", i), lc.Data[i].Size())
+		bridgeAddrCol[i] = comp.InsertCommit(0, ifaces.ColIDf("LOGS_FETCHER_BRIDGE_ADDRESS_%d", i), lc.Data[i].Size(), true)
 		commonconstraints.MustBeConstant(comp, bridgeAddrCol[i])
 
 		iOffset := i + offset
 		SelectorL2BridgeAddress[iOffset], ComputeSelectorL2BridgeAddress[iOffset] =
-			dedicated.IsZero(comp, sym.Sub(lc.Data[iOffset], bridgeAddrCol[i]))
+			dedicated.IsZero(comp, sym.Sub(lc.Data[iOffset], bridgeAddrCol[i])).GetColumnAndProverAction()
 	}
 
 	// first limbs are zeroes as the address is 20 bytes long, while the data can be up to 32 bytes long
 	for i := 0; i < offset; i++ {
-		SelectorL2BridgeAddress[i], ComputeSelectorL2BridgeAddress[i] = dedicated.IsZero(comp, lc.Data[i])
+		SelectorL2BridgeAddress[i], ComputeSelectorL2BridgeAddress[i] = dedicated.IsZero(comp, lc.Data[i]).GetColumnAndProverAction()
 	}
 
 	// generate the final selector object

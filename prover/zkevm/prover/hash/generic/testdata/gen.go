@@ -7,7 +7,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -37,19 +36,13 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 	hashNumInt, toHashInt []int, flag bool, path ...string) {
 
 	var (
-		limbCols = make([]*common.VectorBuilder, len(gdm.Limbs))
-
-		rng = rand.New(rand.NewChaCha8([32]byte{}))
-
+		rng        = rand.New(rand.NewChaCha8([32]byte{}))
+		limbCols   = common.NewMultiVectorBuilder(gdm.Limbs)
 		nByteCol   = common.NewVectorBuilder(gdm.NBytes)
 		hashNumCol = common.NewVectorBuilder(gdm.HashNum)
 		toHashCol  = common.NewVectorBuilder(gdm.ToHash)
 		indexCol   = common.NewVectorBuilder(gdm.Index)
 	)
-
-	for i := 0; i < len(gdm.Limbs); i++ {
-		limbCols[i] = common.NewVectorBuilder(gdm.Limbs[i])
-	}
 
 	for i := range hashNumInt {
 
@@ -76,14 +69,8 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 
 		resBytes := make([]byte, 16)
 		_, _ = utils.ReadPseudoRand(rng, resBytes[:numBytesInt])
-		dividedLimbs := SplitBytes(resBytes, 16/len(gdm.Limbs))
-
-		for j, limb := range dividedLimbs {
-			var l field.Element
-			l.SetBytes(limb[:])
-
-			limbCols[j].PushField(l)
-		}
+		limbs := common.Bytes16ToLimbsLe(resBytes)
+		limbCols.PushRow(limbs[:])
 
 	}
 
@@ -91,10 +78,7 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 	hashNumCol.PadAndAssign(run)
 	indexCol.PadAndAssign(run)
 	toHashCol.PadAndAssign(run)
-
-	for i := 0; i < len(gdm.Limbs); i++ {
-		limbCols[i].PadAndAssign(run)
-	}
+	limbCols.PadAssignZero(run)
 
 	if len(path) > 0 {
 
@@ -103,7 +87,7 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 
 		for i := range hashNumInt {
 			var limbsStr []string
-			for _, l := range limbCols {
+			for _, l := range limbCols.T {
 				limbsStr = append(limbsStr, fmt.Sprintf("0x%s", l.Slice()[i].Text(16)))
 			}
 

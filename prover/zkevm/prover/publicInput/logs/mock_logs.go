@@ -13,12 +13,13 @@ import (
 
 const (
 	// types of logs
-	LOG0        int = 0
-	LOG1        int = 1
-	LOG2        int = 2
-	LOG3        int = 3
-	LOG4        int = 4
-	MISSING_LOG int = 5
+	LOG0                  int = 0
+	LOG1                  int = 1
+	LOG2                  int = 2
+	LOG3                  int = 3
+	LOG4                  int = 4
+	MISSING_LOG           int = 5
+	BRIDGE_LOG_SLICE_SIZE     = 32
 )
 
 func noTopics(logType int) int {
@@ -82,6 +83,8 @@ func (logInfo LogInfo) ConvertToL2L1Log() types.Log {
 		var hashBytes [32]byte
 		for j := range logInfo.Topics[i] {
 			bytes := logInfo.Topics[i][j].Bytes()
+			// in the second term, we have field.Bytes-2 as the lower bound
+			// because the first part of the arithmetization bytes are leading zeros
 			copy(hashBytes[j*2:(j+1)*2], bytes[field.Bytes-2:])
 		}
 		topics = append(topics, ethCommon.BytesToHash(hashBytes[:]))
@@ -89,9 +92,17 @@ func (logInfo LogInfo) ConvertToL2L1Log() types.Log {
 	var data []byte
 
 	// add dummy bytes for fees, value and salt
-	var dummy field.Element
-	dummy.SetInt64(21) // 21 is a dummy value
-	dummyBytes := dummy.Bytes()
+	// dummyBytesFunc returns the value of z as a big-endian byte array
+	dummyBytesFunc := func() (res [BRIDGE_LOG_SLICE_SIZE]byte) {
+		var dummy field.Element
+		dummy.SetInt64(21) // 21 is a dummy value
+		aux := dummy.Bytes()
+		temp := make([]byte, BRIDGE_LOG_SLICE_SIZE-field.Bytes)
+		res = [32]byte(append(temp, aux[:]...))
+		return res
+	}
+	dummyBytes := dummyBytesFunc()
+
 	data = append(data, dummyBytes[:]...)
 	data = append(data, dummyBytes[:]...)
 	data = append(data, dummyBytes[:]...)
@@ -126,6 +137,7 @@ func NewLogColumns(comp *wizard.CompiledIOP, size int, name string) LogColumns {
 			0,
 			ifaces.ColIDf("LOG_COLUMNS_%v_%v", name, subName),
 			size,
+			true,
 		)
 	}
 

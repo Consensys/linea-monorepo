@@ -37,9 +37,6 @@ func (circuit *externalPoseidon2FactoryTestLinear) Define(api frontend.API) erro
 	hasherBasic.Write(circuit.Inp[:]...)
 	hsum := hasher.Sum()
 	hsumBasic := hasherBasic.Sum()
-	api.Println("Input:", circuit.Inp)
-	api.Println("External Hasher Poseidon2 output:", hsum)
-	api.Println("Basic Hasher Poseidon2 output:", hsumBasic)
 	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 		api.AssertIsEqual(hsum[i], hsumBasic[i])
 	}

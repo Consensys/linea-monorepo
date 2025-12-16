@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -102,9 +103,13 @@ func (a *SubsampleVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *SubsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime) {
+	ext4, err := gnarkfext.NewExt4(frontend)
+	if err != nil {
+		panic(err)
+	}
 	resAccLast := run.GetLocalPointEvalParams(a.AccLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.AccSmallLast)
-	frontend.AssertIsEqual(resAccLast.ExtY, expectedResAccLast.ExtY)
+	ext4.AssertIsEqual(&resAccLast.ExtY, &expectedResAccLast.ExtY)
 }
 
 // Tests that a small table is obtained from subsampling a larger column with a given offset
