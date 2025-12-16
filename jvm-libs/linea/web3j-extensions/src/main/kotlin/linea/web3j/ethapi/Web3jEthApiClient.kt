@@ -93,7 +93,7 @@ class Web3jEthApiClient(
         "eth_feeHistory",
         listOf(
           Numeric.encodeQuantity(BigInteger.valueOf(blockCount.toLong())),
-          newestBlock.toWeb3j(),
+          newestBlock.toWeb3j().value,
           rewardPercentiles,
         ),
         this.web3jService,

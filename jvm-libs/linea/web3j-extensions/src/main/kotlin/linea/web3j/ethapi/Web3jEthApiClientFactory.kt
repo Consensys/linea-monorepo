@@ -44,7 +44,7 @@ fun createEthApiClient(
       stopRetriesOnErrorPredicate = stopRetriesOnErrorPredicate,
     )
   } else {
-    Web3jEthApiClient(web3jClient, web3jService)
+    ethApiClient
   }
 }
 
