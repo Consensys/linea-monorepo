@@ -167,8 +167,8 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 		moduleLPP.Horner = &q
 
 		for i := 0; i < 8; i++ {
-			moduleLPP.N0Hash[i] = moduleLPP.Wiop.InsertProof(1, ifaces.ColIDf("N0_HASH", i), 1, true)
-			moduleLPP.N1Hash[i] = moduleLPP.Wiop.InsertProof(1, ifaces.ColIDf("N1_HASH", i), 1, true)
+			moduleLPP.N0Hash[i] = moduleLPP.Wiop.InsertProof(1, ifaces.ColIDf("N0_HASH_%d", i), 1, true)
+			moduleLPP.N1Hash[i] = moduleLPP.Wiop.InsertProof(1, ifaces.ColIDf("N1_HASH_%d", i), 1, true)
 		}
 	}
 
