@@ -331,8 +331,8 @@ type PublicInput struct {
 	MockKeccakWizard   bool           // for testing purposes only
 	ChainID            uint64         // duplicate from Config.Layer2
 	BaseFee            uint64         // duplicate from Config.Layer2
-	L2MsgServiceAddr   common.Address // duplicate from Config.Layer2
 	CoinBase           common.Address // duplicate from Config.Layer2
+	L2MsgServiceAddr   common.Address // duplicate from Config.Layer2	
 	IsAllowedCircuitID uint64         // duplicate from Config.Aggregation, bitmask of allowed circuit IDs
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"golang.org/x/crypto/sha3"
@@ -133,26 +134,25 @@ type AggregationFPI struct {
 func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 	s := AggregationFPISnark{
 		AggregationFPIQSnark: AggregationFPIQSnark{
-			LastFinalizedBlockNumber:       zk.ValueOf(pi.LastFinalizedBlockNumber),
-			LastFinalizedBlockTimestamp:    zk.ValueOf(pi.LastFinalizedBlockTimestamp),
-			LastFinalizedRollingHash:       [32]zk.WrappedVariable{},
-			LastFinalizedRollingHashNumber: zk.ValueOf(pi.LastFinalizedRollingHashMsgNumber),
-			InitialStateRootHash:           zk.ValueOf(pi.InitialStateRootHash[:]),
-			NbDecompression:                zk.ValueOf(pi.NbDecompression),
-			// dynamic chain configuration
+			LastFinalizedBlockNumber:       pi.LastFinalizedBlockNumber,
+			LastFinalizedBlockTimestamp:    pi.LastFinalizedBlockTimestamp,
+			LastFinalizedRollingHash:       [32]frontend.Variable{},
+			LastFinalizedRollingHashNumber: pi.LastFinalizedRollingHashMsgNumber,
+			InitialStateRootHash:           pi.InitialStateRootHash[:],
+			NbDecompression:                pi.NbDecompression,
 			ChainConfigurationFPISnark: ChainConfigurationFPISnark{
-				ChainID:                 zk.ValueOf(pi.ChainID),
-				BaseFee:                 zk.ValueOf(pi.BaseFee),
-				CoinBase:                new(big.Int).SetBytes(zk.ValueOf(pi.CoinBase[:])),
-				L2MessageServiceAddress: new(big.Int).SetBytes(zk.ValueOf(pi.L2MessageServiceAddr[:])),
-				IsAllowedCircuitID:      zk.ValueOf(pi.IsAllowedCircuitID),
+				ChainID:                 pi.ChainID,
+				BaseFee:                 pi.BaseFee,
+				CoinBase:                new(big.Int).SetBytes(pi.CoinBase[:]),
+				L2MessageServiceAddress: new(big.Int).SetBytes(pi.L2MessageServiceAddr[:]),
+				IsAllowedCircuitID:      pi.IsAllowedCircuitID,
 			},
 		},
 		L2MsgMerkleTreeRoots:   make([][32]zk.WrappedVariable, len(pi.L2MsgMerkleTreeRoots)),
-		FinalBlockNumber:       zk.ValueOf(pi.FinalBlockNumber),
-		FinalBlockTimestamp:    zk.ValueOf(pi.FinalBlockTimestamp),
+		FinalBlockNumber:       pi.FinalBlockNumber,
+		FinalBlockTimestamp:    pi.FinalBlockTimestamp,
 		L2MsgMerkleTreeDepth:   pi.L2MsgMerkleTreeDepth,
-		FinalRollingHashNumber: zk.ValueOf(pi.FinalRollingHashNumber),
+		FinalRollingHashNumber: pi.FinalRollingHashNumber,
 	}
 	utils.Copy(s.FinalRollingHash[:], pi.FinalRollingHash[:])
 	utils.Copy(s.LastFinalizedRollingHash[:], pi.LastFinalizedRollingHash[:])
@@ -165,13 +165,13 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 }
 
 type AggregationFPIQSnark struct {
-	ParentShnarf                   [32]zk.WrappedVariable
-	NbDecompression                zk.WrappedVariable
-	InitialStateRootHash           zk.WrappedVariable
-	LastFinalizedBlockNumber       zk.WrappedVariable
-	LastFinalizedBlockTimestamp    zk.WrappedVariable
-	LastFinalizedRollingHash       [32]zk.WrappedVariable
-	LastFinalizedRollingHashNumber zk.WrappedVariable
+	ParentShnarf                   [32]frontend.Variable
+	NbDecompression                frontend.Variable
+	InitialStateRootHash           frontend.Variable
+	LastFinalizedBlockNumber       frontend.Variable
+	LastFinalizedBlockTimestamp    frontend.Variable
+	LastFinalizedRollingHash       [32]frontend.Variable
+	LastFinalizedRollingHashNumber frontend.Variable
 	ChainConfigurationFPISnark     ChainConfigurationFPISnark
 }
 
@@ -201,15 +201,15 @@ type ChainConfigurationFPISnark struct {
 
 type AggregationFPISnark struct {
 	AggregationFPIQSnark
-	NbL2Messages           zk.WrappedVariable // TODO not used in hash. delete if not necessary
-	L2MsgMerkleTreeRoots   [][32]zk.WrappedVariable
-	NbL2MsgMerkleTreeRoots zk.WrappedVariable
-	// FinalStateRootHash     zk.WrappedVariable redundant: incorporated into final shnarf
-	FinalBlockNumber       zk.WrappedVariable
-	FinalBlockTimestamp    zk.WrappedVariable
-	FinalShnarf            [32]zk.WrappedVariable
-	FinalRollingHash       [32]zk.WrappedVariable
-	FinalRollingHashNumber zk.WrappedVariable
+	NbL2Messages           frontend.Variable // TODO not used in hash. delete if not necessary
+	L2MsgMerkleTreeRoots   [][32]frontend.Variable
+	NbL2MsgMerkleTreeRoots frontend.Variable
+	// FinalStateRootHash frontend.Variable redundant: incorporated into final shnarf
+	FinalBlockNumber       frontend.Variable
+	FinalBlockTimestamp    frontend.Variable
+	FinalShnarf            [32]frontend.Variable
+	FinalRollingHash       [32]frontend.Variable
+	FinalRollingHashNumber frontend.Variable
 	L2MsgMerkleTreeDepth   int
 }
 
@@ -256,7 +256,7 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 	return
 }
 
-func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]zk.WrappedVariable {
+func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]frontend.Variable {
 	// number of hashes: 13
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,
@@ -272,7 +272,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 		utils.ToBytes(api, zk.ValueOf(pi.L2MsgMerkleTreeDepth)),
 		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 
-		// include a hash of the chain configuration
+		//include a hash of the chain configuration
 		utils.ToBytes(api, pi.ChainConfigurationFPISnark.Sum(api)),
 	)
 
