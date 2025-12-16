@@ -29,4 +29,24 @@ library Math256 {
   function safeSub(uint256 a, uint256 b) internal pure returns (uint256) {
     return a > b ? a - b : 0;
   }
+
+  /// @dev Returns the number of bits required to represent the value.
+  /// @param x The input value.
+  /// @return r The bit length of x. Returns 0 if x is 0, otherwise returns the position of the highest set bit + 1.
+  /// @notice Uses binary search to efficiently find the highest set bit. For non-zero values, this is equivalent to ceil(log2(x + 1)).
+  function bitLength(uint256 x) internal pure returns (uint256 r) {
+      if (x == 0) return 0; // special case
+
+      if (x >= 1 << 128) { x >>= 128; r += 128; }
+      if (x >= 1 << 64)  { x >>= 64;  r += 64; }
+      if (x >= 1 << 32)  { x >>= 32;  r += 32; }
+      if (x >= 1 << 16)  { x >>= 16;  r += 16; }
+      if (x >= 1 << 8)   { x >>= 8;   r += 8; }
+      if (x >= 1 << 4)   { x >>= 4;   r += 4; }
+      if (x >= 1 << 2)   { x >>= 2;   r += 2; }
+      if (x >= 1 << 1)   {             r += 1; }
+
+      // r is now index of highest set bit (0-based), so add 1 for bit length
+      return r + 1;
+  }
 }

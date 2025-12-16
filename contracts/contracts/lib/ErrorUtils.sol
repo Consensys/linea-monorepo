@@ -16,4 +16,12 @@ library ErrorUtils {
   function revertIfZeroAddress(address _addr) internal pure {
     if (_addr == address(0)) revert IGenericErrors.ZeroAddressNotAllowed();
   }
+
+  /**
+   * @notice Reverts if the hash is the zero hash.
+   * @param _hash The hash to check.
+   */
+  function revertIfZeroHash(bytes32 _hash) internal pure {
+    if (_hash == bytes32(0)) revert IGenericErrors.ZeroHashNotAllowed();
+  }
 }
