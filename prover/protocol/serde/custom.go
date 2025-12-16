@@ -280,7 +280,7 @@ func deserializeR1CS(ctx *ReaderContext, v reflect.Value, offset int64) error {
 // --- Arithmetization ---
 func serializeArithmetization(w *Writer, v reflect.Value) (Ref, error) {
 	var bodyBuf bytes.Buffer
-	if err := linearizeStructBody(w, v, &bodyBuf); err != nil {
+	if err := linearizeStructBodyMap(w, v, &bodyBuf); err != nil {
 		return 0, err
 	}
 	off := w.WriteBytes(bodyBuf.Bytes())
@@ -342,10 +342,17 @@ func deserializeFrontendVariable(ctx *ReaderContext, v reflect.Value, offset int
 	return nil
 }
 func serializeSmartVectorRegular(w *Writer, v reflect.Value) (Ref, error) {
-	sliceVal := reflect.ValueOf(v.Interface().(smartvectors.Regular))
-	fs := w.WriteSlice(sliceVal)
+	// We expect a smartvectors.Regular type here
+	sliceVal := v
+	if v.Kind() == reflect.Interface {
+		sliceVal = v.Elem()
+	}
+
+	fs := w.writeSliceData(sliceVal)
+	// Write the resulting FileSlice header and return its offset
 	return Ref(w.Write(fs)), nil
 }
+
 func deserializeSmartVectorRegular(ctx *ReaderContext, v reflect.Value, offset int64) error {
 	sliceType := reflect.SliceOf(reflect.TypeOf(field.Element{}))
 	sliceVal := reflect.MakeSlice(sliceType, 0, 0)
