@@ -1,17 +1,18 @@
 package serde_test
 
 import (
-	"path"
+	"os"
+	"path/filepath"
 	"reflect"
 	"runtime/debug"
 	"testing"
 	"time"
 
-	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -76,67 +77,96 @@ func TestSerdeZkEVM(t *testing.T) {
 	runSerdeTest(t, z, "ZkEVM", true, false)
 }
 
-func TestSerdeZKEVMFull(t *testing.T) {
+func TestSerdeZkEVMIO(t *testing.T) {
+	// 1. Get Real ZkEVM
+	z := zkevm.GetTestZkEVM()
+	require.NotNil(t, z, "ZkEVM instance should not be nil")
 
-	cfg, err := config.NewConfigFromFileUnchecked("../../config/config-devnet-limitless.toml")
-	if err != nil {
-		t.Fatalf("failed to read config file: %s", err)
-	}
+	// 2. Setup Temp Dir
+	tmpDir, err := os.MkdirTemp("", "serde_zkevm_io")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
 
-	var (
-		traceLimits = cfg.TracesLimits
-		zkEVM       = zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, cfg)
-	)
+	t.Logf("Testing IO with ZkEVM instance...")
 
-	runSerdeTest(t, zkEVM, "ZkEVM", true, false)
-}
+	// --- Case A: Uncompressed (Zero-Copy Mmap) ---
+	t.Run("Uncompressed_Mmap", func(t *testing.T) {
+		path := filepath.Join(tmpDir, "zkevm_raw.bin")
 
-func runSerdeTestPerf(t *testing.T, input any, name string) *profiling.PerformanceLog {
+		// Measure Store Time
+		start := time.Now()
+		err := serde.StoreToDisk(path, z, false)
+		require.NoError(t, err)
+		storeDur := time.Since(start)
 
-	// In case the test panics, log the error but do not let the panic
-	// interrupt the test.
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("Panic during serialization/deserialization of %s: %v", name, r)
-			debug.PrintStack()
+		// Check Size
+		info, err := os.Stat(path)
+		require.NoError(t, err)
+		sizeMB := float64(info.Size()) / 1024 / 1024
+
+		t.Logf("[Mmap] Store Time: %v | Size: %.2f MB", storeDur, sizeMB)
+
+		// Measure Load Time
+		var zLoaded zkevm.ZkEvm
+		start = time.Now()
+
+		// 1. Capture the closer returned by LoadFromDisk.
+		// This is critical for Mmap mode to prevent the GC from unmapping memory while we use it.
+		closer, err := serde.LoadFromDisk(path, &zLoaded, false)
+		require.NoError(t, err)
+
+		// 2. Defer closing the handle. This ensures the memory-mapped data stays valid
+		// for the duration of the DeepCmp check below.
+		defer closer.Close()
+
+		loadDur := time.Since(start)
+		t.Logf("[Mmap] Load Time:  %v (Should be very fast)", loadDur)
+
+		// 3. Sanity Check
+		// We pass &zLoaded to ensure we are comparing (*zkevm.ZkEvm) with (*zkevm.ZkEvm).
+		if !serde.DeepCmp(z, &zLoaded, true) {
+			t.Errorf("Mismatch in exported fields of ZkEVM during serde i/o - Uncompressed (Mmap)")
+		} else {
+			t.Log("Sanity checks passed")
 		}
-	}()
+	})
 
-	if input == nil {
-		t.Fatal("test input is nil")
-	}
+	// --- Case B: Compressed (Zstd + Heap) ---
+	t.Run("Compressed_Zstd", func(t *testing.T) {
+		path := filepath.Join(tmpDir, "zkevm_zstd.bin")
 
-	var output = reflect.New(reflect.TypeOf(input)).Interface()
-	var b []byte
-	var err error
+		// Measure Store Time
+		start := time.Now()
+		err := serde.StoreToDisk(path, z, true)
+		require.NoError(t, err)
+		storeDur := time.Since(start)
 
-	monitor, err := profiling.StartPerformanceMonitor(name, 100*time.Millisecond, path.Join("perf", name))
-	if err != nil {
-		t.Fatalf("Error setting up performance monitor: %v", err)
-	}
+		// Check Size
+		info, err := os.Stat(path)
+		require.NoError(t, err)
+		sizeMB := float64(info.Size()) / 1024 / 1024
 
-	func() {
-		logrus.Printf("Starting to serialize:%s \n", name)
-		b, err = serde.Serialize(input)
-		if err != nil {
-			t.Fatalf("Error during serialization of %s: %v", name, err)
+		t.Logf("[Zstd] Store Time: %v | Size: %.2f MB", storeDur, sizeMB)
+
+		// Measure Load Time
+		var zLoaded zkevm.ZkEvm
+		start = time.Now()
+
+		// Capture closer (it will be a no-op closer in compressed mode, but signature must match).
+		closer, err := serde.LoadFromDisk(path, &zLoaded, true)
+		require.NoError(t, err)
+		defer closer.Close()
+
+		loadDur := time.Since(start)
+		t.Logf("[Zstd] Load Time:  %v (Includes Decompression)", loadDur)
+
+		// Sanity Check
+		if !serde.DeepCmp(z, &zLoaded, true) {
+			t.Errorf("Mismatch in exported fields of ZkEVM during serde i/o - Compressed (Zstd)")
+		} else {
+			t.Log("Sanity checks passed")
 		}
-	}()
-
-	func() {
-		logrus.Printf("Starting to deserialize:%s\n", name)
-		err = serde.Deserialize(b, output)
-		if err != nil {
-			t.Fatalf("Error during deserialization of %s: %v", name, err)
-		}
-	}()
-
-	perfLog, err := monitor.Stop()
-	if err != nil {
-		t.Fatalf("Error stopping performance monitor: %v", err)
-	}
-
-	return perfLog
+	})
 }
 
 func justserde(t *testing.B, input any, name string) {

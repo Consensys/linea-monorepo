@@ -18,6 +18,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/holiman/uint256 v1.3.2
 	github.com/icza/bitio v1.1.0
+	github.com/klauspost/compress v1.17.2
 	github.com/leanovate/gopter v0.2.11
 	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/pkg/errors v0.9.1

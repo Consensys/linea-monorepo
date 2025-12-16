@@ -2,11 +2,11 @@
 package serde
 
 import (
-	"fmt"
-	"math/big"
 	"reflect"
 	"strings"
 	"unsafe"
+
+	"math/big"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -24,16 +24,12 @@ var (
 )
 
 func Serialize(v any) ([]byte, error) {
-	fmt.Printf("[DEBUG] Starting Serialize for type: %T\n", v)
 	w := NewWriter()
 	_ = w.Write(FileHeader{})
 	rootOff, err := linearize(w, reflect.ValueOf(v))
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Printf("[DEBUG] Serialization done. Root Offset: %d, Total Size: %d\n", rootOff, w.offset)
-
 	finalHeader := FileHeader{
 		Magic:       Magic,
 		Version:     1,
@@ -47,7 +43,6 @@ func Serialize(v any) ([]byte, error) {
 }
 
 func getBinarySize(t reflect.Type) int64 {
-	// --- FIX: Check Custom Registry First ---
 	if _, ok := CustomRegistry[t]; ok {
 		return 8
 	}
@@ -84,7 +79,6 @@ func getBinarySize(t reflect.Type) int64 {
 		return sum
 	}
 
-	// Array handling
 	if k == reflect.Array {
 		if t == reflect.TypeOf(field.Element{}) {
 			return int64(t.Size())
