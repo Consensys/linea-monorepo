@@ -66,6 +66,16 @@ type Evaluation struct {
 //
 // The returned evaluation module can be used to reference the computed
 // auxiliary columns.
+//
+// NB! We internally compute the full integer multiplication c[i+j] = a[i] *
+// b[j] recursively. So the bitlength of c can be bitlength(a) + bitlength(b)-1.
+// This means that every term degree increases the bitlength of the result by
+// nbBitsPerLimb.
+//
+// It is safe to use have max term degree 3 (in case of 16-bit limbs) when the
+// number of limbs is not more than 512. Higher degree also works, but only if
+// one of the terms has significantly smaller bitlength (i.e. it is a selector
+// or a small constant).
 func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus Limbs, terms [][]Limbs) *Evaluation {
 	round := 0
 	nbRows := modulus.Columns[0].Size()
