@@ -10,9 +10,8 @@ import (
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/stretchr/testify/require"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 func init() {
@@ -54,8 +53,9 @@ func (c *ChainConfigurationTestCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-// Test the circuit implementation against the pure Go version
-func TestChainConfigurationHashCircuitVsGo(t *testing.T) {
+// TestChainConfigurationFPISnark_Sum tests the circuit implementation of ChainConfigurationFPISnark.Sum
+// against the Go reference implementation for devnet, sepolia, and mainnet configurations.
+func TestChainConfigurationFPISnark_Sum(t *testing.T) {
 	tests := []struct {
 		name             string
 		chainID          string
@@ -151,109 +151,94 @@ func TestChainConfigurationHashCircuitVsGo(t *testing.T) {
 	}
 }
 
-// Test with direct field element comparison
-func TestChainConfigurationHash_FieldElements(t *testing.T) {
-	// Test with mainnet values
-	chainID := hexToBigInt("0x000000000000000000000000000000000000000000000000000000000000e708")
-	baseFee := hexToBigInt("0x0000000000000000000000000000000000000000000000000000000000000007")
-	coinBase := hexToBigInt("0x8F81e2E3F8b46467523463835F965fFE476E1c9E")
-	l2MessageService := hexToBigInt("0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec")
-
-	// Simulate the MiMC computation step by step
-	t.Logf("=== Testing MiMC step by step ===")
-
-	// Convert to field elements
-	var chainIDField, baseFeeField, coinBaseField, l2MessageServiceField field.Element
-	chainIDField.SetBigInt(chainID)
-	baseFeeField.SetBigInt(baseFee)
-	coinBaseField.SetBigInt(coinBase)
-	l2MessageServiceField.SetBigInt(l2MessageService)
-	t.Logf("ChainID field: %s", chainIDField.String())
-	t.Logf("BaseFee field: %s", baseFeeField.String())
-	t.Logf("CoinBase field: %s", coinBaseField.String())
-	t.Logf("L2MessageService field: %s", l2MessageServiceField.String())
-	// Simulate MiMC compression step by step
-	var state field.Element // Initialize to zero
-	// Process chainID (first bit is 0, so single compression)
-	state = mimc.BlockCompression(state, chainIDField)
-	t.Logf("State after chainID: %s", state.String())
-	// Process baseFee (first bit is 0, so single compression)
-	state = mimc.BlockCompression(state, baseFeeField)
-	t.Logf("State after baseFee: %s", state.String())
-	// Process coinBase (first bit is 0, so single compression)
-	state = mimc.BlockCompression(state, coinBaseField)
-	t.Logf("State after coinBase: %s", state.String())
-	// Process l2MessageService (first bit is 0, so single compression)
-	state = mimc.BlockCompression(state, l2MessageServiceField)
-	t.Logf("Final state: %s", state.String())
-	// Convert to bytes
-	finalBytes := state.Bytes()
-	t.Logf("Final bytes: %x", finalBytes)
-	// Compare with the go implementation version
-	_, hasherResult := computeChainConfigurationGo(chainID, baseFee, coinBase, l2MessageService)
-	t.Logf("Hasher result: %x", hasherResult)
-	require.Equal(t, hasherResult, finalBytes[:], "Field element approach should match hasher approach")
-}
-
-// Test case that requires splitting (first bit = 1)
-func TestChainConfigurationHash_WithSplitting(t *testing.T) {
-	// Test with sepolia values
-	chainID := hexToBigInt("0x000000000000000000000000000000000000000000000000000000000000e705")
-	baseFee := hexToBigInt("0x0000000000000000000000000000000000000000000000000000000000000007")
-	coinBase := hexToBigInt("0xA27342f1b74c0cfB2cda74bac1628d0C1A9752f2")
-	l2MessageService := hexToBigInt("0x971e727e956690b9957be6d51Ec16E73AcAC83A7")
-
-	t.Logf("=== Testing MiMC with splitting ===")
-
-	// Convert to field elements
-	var chainIDField, baseFeeField, coinBaseField, l2MessageServiceField field.Element
-	chainIDField.SetBigInt(chainID)
-	baseFeeField.SetBigInt(baseFee)
-	coinBaseField.SetBigInt(coinBase)
-	l2MessageServiceField.SetBigInt(l2MessageService)
-	// Check first bit of chainID
-	firstBitIsZero := chainID.Bit(255) == 0
-	t.Logf("ChainID first bit is zero: %t", firstBitIsZero)
-	var state field.Element // Initialize to zero
-	if !firstBitIsZero {
-		// Split chainID
-		most := new(big.Int).Rsh(chainID, 128)
-		least := new(big.Int).And(chainID, new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 128), big.NewInt(1)))
-		var mostField, leastField field.Element
-		mostField.SetBigInt(most)
-		leastField.SetBigInt(least)
-		t.Logf("ChainID most: %s", mostField.String())
-		t.Logf("ChainID least: %s", leastField.String())
-		// Two compressions
-		state = mimc.BlockCompression(state, mostField)
-		t.Logf("State after chainID most: %s", state.String())
-		state = mimc.BlockCompression(state, leastField)
-		t.Logf("State after chainID least: %s", state.String())
-	} else {
-		// Single compression
-		state = mimc.BlockCompression(state, chainIDField)
-		t.Logf("State after chainID: %s", state.String())
+// TestComputeChainConfigurationHash tests the production computeChainConfigurationHash function
+// used in aggregation.go against the reference implementation for devnet, sepolia, and mainnet.
+func TestComputeChainConfigurationHash(t *testing.T) {
+	tests := []struct {
+		name             string
+		chainID          uint64
+		baseFee          uint64
+		coinBase         string
+		l2MessageService string
+		expectedHash     string
+	}{
+		{
+			name:             "devnet",
+			chainID:          59139,
+			baseFee:          7,
+			coinBase:         "0x4D517Aef039A48b3B6bF921e210b7551C8E37107",
+			l2MessageService: "0x33bf916373159a8c1b54b025202517bfdbb7863d",
+			expectedHash:     "0x0a360bbb44ebc0eee111237f7e11565f2f271a24a35465ee78a3a8bc3f503acb",
+		},
+		{
+			name:             "sepolia",
+			chainID:          59141,
+			baseFee:          7,
+			coinBase:         "0xA27342f1b74c0cfB2cda74bac1628d0C1A9752f2",
+			l2MessageService: "0x971e727e956690b9957be6d51Ec16E73AcAC83A7",
+			expectedHash:     "0x03cd9edb7bad18416642423fef504154c0c0b7f9e6809627bd7aa4abeec4e326",
+		},
+		{
+			name:             "mainnet",
+			chainID:          59144,
+			baseFee:          7,
+			coinBase:         "0x8F81e2E3F8b46467523463835F965fFE476E1c9E",
+			l2MessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
+			expectedHash:     "0x0881dc6ffdc69ebfeca27fd8449922c32d0fd16ea33807e984881b08e7100988",
+		},
 	}
-	// Process baseFee (first bit is 0, so single compression)
-	state = mimc.BlockCompression(state, baseFeeField)
-	t.Logf("State after baseFee: %s", state.String())
-	// Process coinBase (first bit is 0, so single compression)
-	state = mimc.BlockCompression(state, coinBaseField)
-	t.Logf("State after coinBase: %s", state.String())
-	// Process l2MessageService (first bit is 0, so single compression)
-	state = mimc.BlockCompression(state, l2MessageServiceField)
-	t.Logf("Final state: %s", state.String())
-	// Convert to bytes
-	finalBytes := state.Bytes()
-	t.Logf("Final bytes: %x", finalBytes)
-	// Compare with hasher version
-	_, hasherResult := computeChainConfigurationGo(chainID, baseFee, coinBase, l2MessageService)
-	t.Logf("Hasher result: %x", hasherResult)
-	require.Equal(t, hasherResult, finalBytes[:], "Field element approach should match hasher approach")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Parse addresses
+			var coinBase, l2MessageService types.EthAddress
+			coinBaseBytes := hexToBytes(tt.coinBase)
+			l2MessageServiceBytes := hexToBytes(tt.l2MessageService)
+			copy(coinBase[:], coinBaseBytes)
+			copy(l2MessageService[:], l2MessageServiceBytes)
+
+			// Call the production function
+			computedHash := computeChainConfigurationHash(tt.chainID, tt.baseFee, coinBase, l2MessageService)
+			expectedHashBytes := hexToBytes(tt.expectedHash)
+
+			// Compare
+			if len(expectedHashBytes) != len(computedHash) {
+				t.Errorf("Hash length mismatch: expected %d, got %d", len(expectedHashBytes), len(computedHash))
+				return
+			}
+
+			hashMatch := true
+			for i := 0; i < len(expectedHashBytes); i++ {
+				if expectedHashBytes[i] != computedHash[i] {
+					t.Errorf("Hash mismatch at byte %d: expected %02x, got %02x", i, expectedHashBytes[i], computedHash[i])
+					hashMatch = false
+				}
+			}
+
+			if hashMatch {
+				t.Logf("✓ computeChainConfigurationHash matches reference implementation")
+			}
+
+			// Also verify against the Go reference for extra confidence
+			chainIDBig := new(big.Int).SetUint64(tt.chainID)
+			baseFeeBig := new(big.Int).SetUint64(tt.baseFee)
+			coinBaseBig := new(big.Int).SetBytes(coinBase[:])
+			l2MessageServiceBig := new(big.Int).SetBytes(l2MessageService[:])
+
+			_, referenceHash := computeChainConfigurationGo(chainIDBig, baseFeeBig, coinBaseBig, l2MessageServiceBig)
+
+			for i := 0; i < len(referenceHash); i++ {
+				if referenceHash[i] != computedHash[i] {
+					t.Errorf("Hash mismatch with reference at byte %d: reference %02x, production %02x", i, referenceHash[i], computedHash[i])
+				}
+			}
+		})
+	}
 }
 
-// Test the pure Go version (should pass)
-func TestChainConfigurationHash_PureGo(t *testing.T) {
+// TestComputeChainConfigurationGo tests the Go reference implementation of chain configuration hashing
+// including payload construction and hash computation for devnet, sepolia, and mainnet configurations.
+func TestComputeChainConfigurationGo(t *testing.T) {
 	tests := []struct {
 		name             string
 		chainID          string
@@ -393,62 +378,4 @@ func hexToBytes(hexStr string) []byte {
 		panic(err)
 	}
 	return bytes
-}
-
-// TestGenerateChainConfigHashes generates the expected hash values for devnet, sepolia, and mainnet
-func TestGenerateChainConfigHashes(t *testing.T) {
-	testCases := []struct {
-		name                   string
-		chainID                int64
-		baseFee                int64
-		coinBase               string
-		messageServiceContract string
-	}{
-		{
-			name:                   "devnet",
-			chainID:                59139,
-			baseFee:                7,
-			coinBase:               "0x4D517Aef039A48b3B6bF921e210b7551C8E37107",
-			messageServiceContract: "0x33bf916373159a8c1b54b025202517bfdbb7863d",
-		},
-		{
-			name:                   "sepolia",
-			chainID:                59141,
-			baseFee:                7,
-			coinBase:               "0xA27342f1b74c0cfB2cda74bac1628d0C1A9752f2",
-			messageServiceContract: "0x971e727e956690b9957be6d51Ec16E73AcAC83A7",
-		},
-		{
-			name:                   "mainnet",
-			chainID:                59144,
-			baseFee:                7,
-			coinBase:               "0x8F81e2E3F8b46467523463835F965fFE476E1c9E",
-			messageServiceContract: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			chainID := big.NewInt(tc.chainID)
-			baseFee := big.NewInt(tc.baseFee)
-			coinBase := hexToBigInt(tc.coinBase)
-			messageService := hexToBigInt(tc.messageServiceContract)
-
-			mimcPayload, hash := computeChainConfigurationGo(chainID, baseFee, coinBase, messageService)
-
-			t.Logf("\n=== %s ===", tc.name)
-			t.Logf("chainID: %d (0x%x)", tc.chainID, tc.chainID)
-			t.Logf("baseFee: %d", tc.baseFee)
-			t.Logf("coinBase: %s", tc.coinBase)
-			t.Logf("messageServiceContract: %s", tc.messageServiceContract)
-			t.Logf("mimcPayload: 0x%x", mimcPayload)
-			t.Logf("hash: 0x%x", hash)
-			t.Logf("For test case:")
-			t.Logf("  chainID:          \"0x%064x\",", chainID)
-			t.Logf("  baseFee:          \"0x%064x\",", baseFee)
-			t.Logf("  coinBase:         \"%s\",", tc.coinBase)
-			t.Logf("  l2MessageService: \"%s\",", tc.messageServiceContract)
-			t.Logf("  expectedHash:     \"0x%x\",", hash)
-		})
-	}
 }
