@@ -1,0 +1,93 @@
+name: smart-contracts-testing
+
+permissions:
+  contents: read
+  actions: read
+
+on:
+  workflow_call:
+    inputs:
+      commit_tag:
+        required: true
+        type: string
+
+env:
+  GOPROXY: "https://proxy.golang.org"
+  COMMIT_TAG: ${{ inputs.commit_tag }}
+
+jobs:
+  run-contract-tests:
+    # ~2 mins saved vs small
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    name: Run smart contracts tests
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.x
+          cache-dependency-path: |
+                prover/go.sum
+
+      - uses: actions/cache@v4.2.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            %LocalAppData%\go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('prover/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Setup nodejs environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Check JS formatting
+        run: pnpm -F contracts run lint:ts
+
+      # Required for hardhat commands due to @nomicfoundation/hardhat-foundry package
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@82dee4ba654bd2146511f85f0d013af94670c4de #v1.4.0
+
+      - name: Compile kzg.node
+        run: npx node-gyp --directory=contracts/node_modules/c-kzg rebuild # explicitly running rebuild to get the .node file
+
+      - name: Run smart contracts tests and generate coverage report
+        run: pnpm -F contracts run coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-contract-coverage-${{ env.COMMIT_TAG }}.json
+          if-no-files-found: error
+          path: |
+            ./contracts/coverage/coverage-final.json
+
+      - name: Upload coverage to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 #v5.4.3
+        with:
+          fail_ci_if_error: true
+          files: ./contracts/coverage/coverage-final.json
+          flags: hardhat
+          os: linux
+          name: codecov-contracts
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  solidity-format-check:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    name: Solidity format check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup nodejs environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Check Solidity formatting
+        run: pnpm -F contracts run lint:sol

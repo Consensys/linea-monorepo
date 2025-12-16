@@ -1,0 +1,96 @@
+name: prover-testing
+
+permissions:
+  contents: read
+  actions: read
+
+on: workflow_call
+env:
+  GOPROXY: "https://proxy.golang.org"
+
+concurrency:
+  group: prover-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  staticcheck:
+    # ~1.5 mins saved vs small
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    name: Prover static check
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.24.x
+        cache-dependency-path: |
+              prover/go.sum
+    - uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: gofmt
+      working-directory: prover
+      run: if [[ -n $(gofmt -l .) ]]; then echo "please run gofmt"; exit 1; fi
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 #v6.5.2
+      with:
+          version: v1.64.3
+          working-directory: prover
+          args: --timeout=5m
+    - name: generated files should not be modified
+      working-directory: prover
+      run: |
+        go generate ./...
+        git update-index --assume-unchanged go.mod
+        git update-index --assume-unchanged go.sum
+        if [[ -n $(git status --porcelain) ]]; then echo "git repo is dirty after running go generate -- please don't modify generated files"; echo $(git diff);echo $(git status --porcelain); exit 1; fi
+
+  test:
+    strategy:
+      matrix:
+        go-version: [1.24.x]
+    # ~1 min saved vs large
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xl
+    name: Prover testing
+    needs:
+      - staticcheck
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v4
+    - name: install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+        cache-dependency-path: |
+              prover/go.sum
+    - uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Test compressor
+      working-directory: prover/lib/compressor/blob
+      run: |
+        go test -tags=nocorset ./...
+    - name: Test
+      working-directory: prover
+      run: |
+        go test -p=1 -tags=nocorset,fuzzlight -timeout=30m ./...
+    - name: Test (32 bits & race)
+      working-directory: prover
+      if: matrix.go-version == '1.20.x'
+      run: |
+          go test -p=1 -tags=nocorset,fuzzlight -timeout=30m -short -race  ./...

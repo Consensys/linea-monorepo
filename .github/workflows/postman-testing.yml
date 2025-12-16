@@ -1,0 +1,33 @@
+name: postman-testing
+
+permissions:
+  contents: read
+  actions: read
+
+on:
+  workflow_call:
+
+concurrency:
+  group: postman-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  run-tests:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    name: Postman & SDK tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup nodejs environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Run tests and generate coverage report
+        env:
+          NATIVE_LIBS_RELEASE_TAG: blob-libs-v1.2.0
+        run: |
+          pnpm run -F ./ts-libs/linea-native-libs build;
+          pnpm run -F linea-shared-utils build;
+          pnpm run -F ./sdk/sdk-ethers build;
+          pnpm run -F ./postman test;
+          pnpm run -F ./sdk/sdk-ethers test;

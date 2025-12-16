@@ -1,0 +1,28 @@
+name: 'Check image tags exist'
+
+description: 'Check if the image tags exist'
+inputs:
+  last_commit_tag:
+    description: 'The tag of the last commit image'
+    required: true
+  image_name:
+    description: 'The name of the image to check'
+    required: true
+outputs:
+  last_commit_tag_exists:
+    description: 'Whether the last commit image tag exists'
+    value: ${{ steps.last_commit_image_exists.outputs.last_commit_tag_exists }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check last commit image tag exists
+      id: last_commit_image_exists
+      shell: bash
+      continue-on-error: true
+      run: |
+        echo last_commit_tag_exists=$(docker pull ${{ inputs.image_name }}:${{ inputs.last_commit_tag }} > /dev/null ; echo $?) >> $GITHUB_OUTPUT
+    - name: Show outputs
+      shell: bash
+      run: |
+        echo "last_commit_tag_exists: ${{ steps.last_commit_image_exists.outputs.last_commit_tag_exists }}"

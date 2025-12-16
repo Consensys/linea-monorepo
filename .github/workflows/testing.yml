@@ -1,0 +1,101 @@
+name: Testing CI
+
+permissions:
+  contents: read
+  actions: read
+
+on:
+  workflow_call:
+    inputs:
+      commit_tag:
+        required: true
+        type: string
+      coordinator_changed:
+        required: true
+        type: string
+      staterecovery_changed:
+        required: true
+        type: string
+      native_yield_automation_service_changed:
+        required: true
+        type: string
+      postman_changed:
+        required: true
+        type: string
+      prover_changed:
+        required: true
+        type: string
+      transaction_exclusion_api_changed:
+        required: true
+        type: string
+      smart_contracts_changed:
+        required: true
+        type: string
+      linea_sequencer_changed:
+        required: true
+        type: string
+      tracer_changed:
+        required: true
+        type: string
+
+jobs:
+  # Cache for pulling Docker images is disabled as we empirically found that this
+  # (retrieving cache and loading Docker images) actually increased test time-to-completion
+  coordinator:
+    uses: ./.github/workflows/coordinator-testing.yml
+    if: ${{ inputs.coordinator_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
+    secrets: inherit
+
+  prover:
+    uses: ./.github/workflows/prover-testing.yml
+    if: ${{ inputs.prover_changed == 'true' }}
+    secrets: inherit
+
+  native-yield-automation-service:
+    uses: ./.github/workflows/native-yield-automation-service-testing.yml
+    if: ${{ inputs.native_yield_automation_service_changed == 'true' }}
+    secrets: inherit
+
+  postman:
+    uses: ./.github/workflows/postman-testing.yml
+    if: ${{ inputs.postman_changed == 'true' }}
+    secrets: inherit
+
+  transaction-exclusion-api:
+    uses: ./.github/workflows/transaction-exclusion-api-testing.yml
+    if: ${{ inputs.transaction_exclusion_api_changed == 'true' }}
+    secrets: inherit
+
+  staterecovery:
+    uses: ./.github/workflows/staterecovery-testing.yml
+    if: ${{ inputs.staterecovery_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
+    secrets: inherit
+
+  smart-contracts:
+    uses: ./.github/workflows/run-smc-tests.yml
+    if: ${{ inputs.smart_contracts_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
+    secrets: inherit
+
+  linea-sequencer:
+    uses: ./.github/workflows/linea-sequencer-plugin-testing.yml
+    if: ${{ inputs.linea_sequencer_changed == 'true' }}
+    secrets: inherit
+
+  # tracer:
+  #   uses: ./.github/workflows/tracer-gradle-tests.yml
+  #   if: ${{ inputs.tracer_changed == 'true' }}
+  #   secrets: inherit
+
+  # If all jobs are skipped, the workflow will still succeed.
+  always_succeed:
+    runs-on: ubuntu-24.04
+    if: ${{ inputs.coordinator_changed == 'false' && inputs.prover_changed == 'false' && inputs.native_yield_automation_service_changed == 'false' && inputs.postman_changed == 'false' && inputs.transaction_exclusion_api_changed == 'false' && inputs.staterecovery_changed == 'false' && inputs.smart_contracts_changed == 'false' && inputs.linea_sequencer_changed == 'false' }}
+    steps:
+      - name: Ensure Workflow Success
+        run: echo "All jobs were skipped, but workflow succeeds."
