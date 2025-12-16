@@ -24,7 +24,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/largefield/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -84,7 +84,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	batchHashes := make([]frontend.Variable, len(c.ExecutionPublicInput))
 	for i, pi := range c.ExecutionFPIQ {
-		batchHashes[i] = pi.DataChecksum.TotalChecksum
+		batchHashes[i] = pi.DataChecksum.Hash
 	}
 
 	finalStateRootHashes := logderivlookup.New(api)

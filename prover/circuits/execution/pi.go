@@ -144,7 +144,7 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API) frontend.Variable {
 		panic(err)
 	}
 
-	hsh.Write(spi.DataChecksum.TotalChecksum, l2MessagesSum,
+	hsh.Write(spi.DataChecksum.Hash, l2MessagesSum,
 		spi.FinalStateRootHash, spi.FinalBlockNumber, spi.FinalBlockTimestamp, finalRollingHash[0], finalRollingHash[1], spi.LastRollingHashUpdateNumber,
 		spi.InitialStateRootHash, spi.InitialBlockNumber, spi.InitialBlockTimestamp, initialRollingHash[0], initialRollingHash[1], spi.FirstRollingHashUpdateNumber,
 		spi.ChainID, spi.L2MessageServiceAddr)
@@ -181,39 +181,26 @@ func (spiq *FunctionalPublicInputQSnark) Assign(pi *public_input.Execution) erro
 // DataChecksumSnark represents the SNARK-friendly version of public_input.ExecDataChecksum
 // meant to be used in a BLS12-377 circuit.
 type DataChecksumSnark struct {
-	Length              frontend.Variable
-	Bls12377PartialHash frontend.Variable
-	Bls12377Hash        frontend.Variable
-	KoalaBearHash       frontend.Variable
-	PartialEvaluation   frontend.Variable
-	EvaluationPoint     frontend.Variable
-	Evaluation          frontend.Variable
-	TotalChecksum       frontend.Variable
+	Length      frontend.Variable
+	PartialHash frontend.Variable
+	Hash        frontend.Variable
 }
 
 func (ds *DataChecksumSnark) Assign(pi *public_input.ExecDataChecksum) {
-	ds.EvaluationPoint = pi.EvaluationPoint[:]
-	ds.Evaluation = pi.Evaluation[:]
-	ds.PartialEvaluation = pi.PartialEvaluation[:]
-	ds.KoalaBearHash = pi.KoalaBearHash[:]
-	ds.Bls12377Hash = pi.Hash[:]
-	ds.Bls12377PartialHash = pi.PartialHash[:]
+	ds.Hash = pi.Hash[:]
+	ds.PartialHash = pi.PartialHash[:]
 	ds.Length = pi.Length
-	ds.TotalChecksum = pi.TotalChecksum[:]
 }
 
 // Check consistency between the data, assuming the correctness of
-// Length, Bls12377PartialHash, PartialEvaluation, and KoalaBearHash.
+// Length, PartialHash, PartialEvaluation, and KoalaBearHash.
 func (ds *DataChecksumSnark) Check(api frontend.API) error {
 	compressor, err := poseidon2permutation.NewCompressor(api)
 	if err != nil {
 		return err
 	}
 
-	api.AssertIsEqual(compressor.Compress(ds.Bls12377PartialHash, ds.Length), ds.Bls12377Hash)
-	api.AssertIsEqual(compressor.Compress(ds.Bls12377Hash, ds.KoalaBearHash), ds.EvaluationPoint)
-	api.AssertIsEqual(api.MulAcc(api.Mul(1, ds.Length), ds.EvaluationPoint, ds.PartialEvaluation), ds.Evaluation)
-	api.AssertIsEqual(compressor.Compress(ds.EvaluationPoint, ds.Evaluation), ds.TotalChecksum)
+	api.AssertIsEqual(compressor.Compress(ds.PartialHash, ds.Length), ds.Hash)
 
 	return nil
 }

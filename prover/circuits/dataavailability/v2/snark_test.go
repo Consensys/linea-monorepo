@@ -170,11 +170,7 @@ func testChecksumBatches(t *testing.T, blob []byte, batchEndss ...[]int) {
 		require.NoError(t, executionDataSumsToSnarkType(assignment.Sums[:], sums))
 		assert.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
 
-		assignment.Sums[blobtestutils.RandIntn(len(batchEnds))].Bls12377PartialHash = 3
-		assert.Error(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
-
-		require.NoError(t, executionDataSumsToSnarkType(assignment.Sums[:], sums))
-		assignment.Sums[blobtestutils.RandIntn(len(batchEnds))].PartialEvaluation = 3
+		assignment.Sums[blobtestutils.RandIntn(len(batchEnds))].PartialHash = 3
 		assert.Error(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
 	}
 }
@@ -214,9 +210,11 @@ func (c *testChecksumCircuit) Define(api frontend.API) error {
 }
 
 // [
-//   starts[0], starts[0] + 1, ..., starts[0] + n - 1,
-//   starts[1], starts[1] + 1, ..., starts[1] + n - 1,
-//   ...
+//
+//	starts[0], starts[0] + 1, ..., starts[0] + n - 1,
+//	starts[1], starts[1] + 1, ..., starts[1] + n - 1,
+//	...
+//
 // ]
 // if len(starts) = 0 it'll be treated as if starts = [0]
 func _range(n int, starts ...int) []byte {

@@ -103,7 +103,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 			return
 		}
 		for j := range fpi.BatchSums {
-			execDataChecksums = append(execDataChecksums, fpi.BatchSums[j].TotalChecksum[:])
+			execDataChecksums = append(execDataChecksums, fpi.BatchSums[j].Hash[:])
 		} // len(execDataChecksums) = index of the first execution associated with the next blob
 		if sfpi, err = fpi.ToSnarkType(len(fpi.BatchSums)); err != nil {
 			return
@@ -209,7 +209,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 
 		if i < len(r.Executions) {
 			executionFPI = r.Executions[i]
-			copy(executionFPI.DataChecksum.TotalChecksum[:], execDataChecksums[i])
+			copy(executionFPI.DataChecksum.Hash[:], execDataChecksums[i])
 			// compute the public input
 			a.ExecutionPublicInput[i] = executionFPI.Sum()
 		}

@@ -112,7 +112,7 @@ func (i *FunctionalPublicInputSnark) Check(api frontend.API, sizes config.Circui
 	}
 	batchesToHash := make([]frontend.Variable, len(i.BatchSums))
 	for n := range i.BatchSums {
-		batchesToHash[n] = i.BatchSums[n].TotalChecksum
+		batchesToHash[n] = i.BatchSums[n].Hash
 	}
 
 	api.AssertIsEqual(
@@ -180,7 +180,7 @@ func (i *FunctionalPublicInput) Sum() ([]byte, error) {
 	// This won't compromise the collision resistance of the sum,
 	// as the batches sum is not
 	for n := range i.BatchSums {
-		hsh.Write(i.BatchSums[n].TotalChecksum[:])
+		hsh.Write(i.BatchSums[n].Hash[:])
 	}
 
 	batchesSum := hsh.Sum(nil)
@@ -360,7 +360,7 @@ func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool
 
 	hsh := gcHash.POSEIDON2_BLS12_377.New()
 	for i := range fpi.BatchSums {
-		hsh.Write(fpi.BatchSums[i].TotalChecksum[:])
+		hsh.Write(fpi.BatchSums[i].Hash[:])
 	}
 	copy(fpi.AllBatchesSum[:], hsh.Sum(nil))
 

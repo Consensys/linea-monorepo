@@ -145,7 +145,7 @@ func packBatches(api frontend.API, nbBatches frontend.Variable, blobPayload, bat
 	}
 
 	// side effect: batchEnds are range checked to be within a reasonable factor of the maximum blob payload length; useless because we will have to perform a stronger check in the end
-	endQsV, endRsV, err := utils.DivBy31(api, batchEnds, bits.Len(uint(len(blobPayload))+31))
+	endQsV, endRsV, err := utils.DivManyBy31(api, batchEnds, bits.Len(uint(len(blobPayload))+31))
 	if err != nil {
 		return nil, err
 	}
@@ -254,12 +254,10 @@ type checksumState struct {
 	updater     func(state, current frontend.Variable) frontend.Variable
 }
 
-// CheckBatchesPartialSums checks batch checksums consisting of H(batchLen, contentSum) where contentSum = Blocks[0] if len(Blocks) == 1 and H(Blocks...) otherwise. Blocks are consecutive 31-byte chunks of the data in the batch, with the last one right-padded with zeros if necessary.
+// CheckBatchesPartialSums checks the batch checksum H(batchLen, contentSum) where contentSum = Blocks[0] if len(Blocks) == 1 and H(Blocks...) otherwise. Blocks are consecutive 31-byte chunks of the data in the batch, with the last one right-padded with zeros if necessary.
 // All batches must be at least 31 bytes long. The function performs this range check.
 // It is also checked that the batches are all within the MAXIMUM range of the blob. CheckBatchesPartialSums does not have access to the actual blob size, so it remains the caller's responsibility to check that the batches are within the confines of the ACTUAL blob size.
 // The expected checksums are not checked beyond nbBatches.
-// expectedSums[0] are hashes of the batches.
-// expectedSums[1] are evaluations of the batches at the corresponding evaluationPoint.
 func CheckBatchesPartialSums(api frontend.API, nbBatches frontend.Variable, blobPayload []frontend.Variable, sums []execution.DataChecksumSnark) error {
 	api.AssertIsLessOrEqual(nbBatches, len(sums)) // already range checked in parseHeader
 
@@ -285,31 +283,15 @@ func CheckBatchesPartialSums(api frontend.API, nbBatches frontend.Variable, blob
 		updater:     compressor.Compress,
 	}
 
-	var i int
-	evaluationPoints := logderivlookup.New(api)
-
-	evaluationState := checksumState{
-		current:     iterations[0].Current,
-		finalValues: logderivlookup.New(api),
-		updater: func(state, current frontend.Variable) frontend.Variable {
-			return api.MulAcc(api.Mul(1, current), state, evaluationPoints.Lookup(iterations[i].BatchI)[0])
-		},
-	}
-
-	for _, sum := range sums {
-		hashState.finalValues.Insert(sum.Bls12377PartialHash)
-		evaluationState.finalValues.Insert(sum.PartialEvaluation)
-		evaluationPoints.Insert(sum.EvaluationPoint)
+	for i := range sums {
+		hashState.finalValues.Insert(sums[i].PartialHash)
 	}
 
 	// extra dummy batch that is never sealed in case we hit maxNbBatches
 	hashState.finalValues.Insert(0)
-	evaluationState.finalValues.Insert(0)
-	evaluationPoints.Insert(0)
 
-	for i = range iterations {
+	for i := range iterations {
 		packedBatches.iterate(api, i, &hashState)
-		packedBatches.iterate(api, i, &evaluationState)
 	}
 
 	return nil
@@ -318,15 +300,7 @@ func CheckBatchesPartialSums(api frontend.API, nbBatches frontend.Variable, blob
 func init() {
 	lzss.RegisterHints()
 	internal.RegisterHints()
-}
-
-// iterateInRange runs f(i, inRange) for 0 ≤ i < staticRange where inRange is 1 if i < dynamicRange and 0 otherwise
-func iterateInRange(api frontend.API, dynamicRange frontend.Variable, staticRange int, f func(i int, inRange frontend.Variable)) {
-	inRange := frontend.Variable(1)
-	for i := 0; i < staticRange; i++ {
-		inRange = api.Sub(inRange, api.IsZero(api.Sub(i, dynamicRange)))
-		f(i, inRange)
-	}
+	utils.RegisterHints()
 }
 
 // crumbStreamToByteStream converts a slice of bits into a slice of bytes, taking the last non-zero byte as signifying the end of the data

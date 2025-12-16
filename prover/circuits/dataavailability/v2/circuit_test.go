@@ -29,7 +29,7 @@ func TestFPIConsistency(t *testing.T) {
 	for i := range fpi.BatchSums {
 		data[len(data)-1] = byte(i)
 		fpi.BatchSums[i], err = public_input.NewExecDataChecksum(data[:])
-		hsh.Write(fpi.BatchSums[i].TotalChecksum[:])
+		hsh.Write(fpi.BatchSums[i].Hash[:])
 		require.NoError(t, err)
 	}
 	copy(fpi.AllBatchesSum[:], hsh.Sum(nil))
