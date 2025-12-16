@@ -70,22 +70,17 @@ func csPolyEval(val Limbs, challengePowers []ifaces.Column) *symbolic.Expression
 
 // limbsToBigInt recomposes the limbs at loc into res using buf as a temporary
 // buffer.
-func limbsToBigInt(res *big.Int, buf []*big.Int, limbs Limbs, loc int, nbBitsPerLimb int, run *wizard.ProverRuntime) error {
+func limbsToBigInt(res *big.Int, buf []uint64, limbs Limbs, loc int, nbBitsPerLimb int, run *wizard.ProverRuntime) error {
 	if res == nil {
 		return fmt.Errorf("result not initialized")
 	}
 	nbLimbs := len(limbs.Columns)
 	if len(buf) < nbLimbs {
-		buf = append(buf, make([]*big.Int, nbLimbs-len(buf))...)
-	}
-	for i := range buf {
-		if buf[i] == nil {
-			buf[i] = new(big.Int)
-		}
+		buf = append(buf, make([]uint64, nbLimbs-len(buf))...)
 	}
 	for j := range nbLimbs {
 		limb := limbs.Columns[j].GetColAssignmentAt(run, loc)
-		limb.BigInt(buf[j])
+		buf[j] = limb.Uint64()
 	}
 	if err := IntLimbRecompose(buf, nbBitsPerLimb, res); err != nil {
 		return err
@@ -95,7 +90,7 @@ func limbsToBigInt(res *big.Int, buf []*big.Int, limbs Limbs, loc int, nbBitsPer
 
 // bigIntToLimbs decomposes input into limbs and sets the outputCols at loc
 // accordingly.
-func bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, outputCols [][]field.Element, loc int, nbBitsPerLimb int) error {
+func bigIntToLimbs(input *big.Int, buf []uint64, limbs Limbs, outputCols [][]field.Element, loc int, nbBitsPerLimb int) error {
 	if len(buf) != len(limbs.Columns) {
 		return fmt.Errorf("mismatched size between limbs and buffer")
 	}
@@ -103,7 +98,7 @@ func bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, outputCols [][]f
 		return fmt.Errorf("failed to decompose big.Int into limbs: %v", err)
 	}
 	for i := range limbs.Columns {
-		outputCols[i][loc].SetBigInt(buf[i])
+		outputCols[i][loc].SetUint64(buf[i])
 	}
 	return nil
 }
@@ -115,20 +110,18 @@ func bigIntToLimbs(input *big.Int, buf []*big.Int, limbs Limbs, outputCols [][]f
 // The following holds
 //
 //	input = \sum_{i=0}^{len(res)} res[i] * 2^{nbBits * i}
-func IntLimbDecompose(input *big.Int, nbBits int, res []*big.Int) error {
+func IntLimbDecompose(input *big.Int, nbBits int, res []uint64) error {
 	// limb modulus
 	if input.BitLen() > len(res)*int(nbBits) {
 		return errors.New("decomposed integer does not fit into res")
 	}
-	for _, r := range res {
-		if r == nil {
-			return errors.New("result slice element uninitialized")
-		}
-	}
 	base := new(big.Int).Lsh(big.NewInt(1), uint(nbBits))
+	base.Sub(base, big.NewInt(1))
 	tmp := new(big.Int).Set(input)
+	tmp2 := new(big.Int)
 	for i := range res {
-		res[i].Mod(tmp, base)
+		tmp2.And(tmp, base)
+		res[i] = tmp2.Uint64()
 		tmp.Rsh(tmp, uint(nbBits))
 	}
 	return nil
@@ -141,14 +134,16 @@ func IntLimbDecompose(input *big.Int, nbBits int, res []*big.Int) error {
 // The following holds
 //
 //	res = \sum_{i=0}^{len(inputs)} inputs[i] * 2^{nbBits * i}
-func IntLimbRecompose(inputs []*big.Int, nbBits int, res *big.Int) error {
+func IntLimbRecompose(inputs []uint64, nbBits int, res *big.Int) error {
 	if res == nil {
 		return errors.New("result not initialized")
 	}
 	res.SetUint64(0)
+	tmp := new(big.Int)
 	for i := range inputs {
 		res.Lsh(res, uint(nbBits))
-		res.Add(res, inputs[len(inputs)-i-1])
+		tmp.SetUint64(inputs[len(inputs)-i-1])
+		res.Add(res, tmp)
 	}
 	// we do not mod-reduce here as the result is mod-reduced by the caller if
 	// needed. In some places we need non-reduced results.
@@ -157,15 +152,14 @@ func IntLimbRecompose(inputs []*big.Int, nbBits int, res *big.Int) error {
 
 // limbMul performs limb multiplication between lhs and rhs storing the result
 // in res.
-func limbMul(res, lhs, rhs []*big.Int) error {
-	tmp := new(big.Int)
+func limbMul(res, lhs, rhs []uint64) error {
 	if len(res) != nbMultiplicationResLimbs(len(lhs), len(rhs)) {
 		return errors.New("result slice length mismatch")
 	}
 	clearBuffer(res)
 	for i := range lhs {
 		for j := range rhs {
-			res[i+j].Add(res[i+j], tmp.Mul(lhs[i], rhs[j]))
+			res[i+j] += lhs[i] * rhs[j]
 		}
 	}
 	return nil
@@ -179,8 +173,25 @@ func nbMultiplicationResLimbs(lenLeft, lenRight int) int {
 }
 
 // clearBuffer buffers the big.Int slice by setting all elements to zero.
-func clearBuffer(buf []*big.Int) {
+func clearBuffer[E interface{ uint64 | *big.Int }, S []E](buf S) {
+	switch any(buf).(type) {
+	case []*big.Int:
+		clearBufferBigInt(any(buf).([]*big.Int))
+	case []uint64:
+		clearBufferUint64(any(buf).([]uint64))
+	default:
+		panic("unsupported type")
+	}
+}
+
+func clearBufferBigInt(buf []*big.Int) {
 	for i := range buf {
-		buf[i].SetUint64(0)
+		buf[i].SetInt64(0)
+	}
+}
+
+func clearBufferUint64(buf []uint64) {
+	for i := range buf {
+		buf[i] = 0
 	}
 }

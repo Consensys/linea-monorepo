@@ -30,35 +30,14 @@ func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 	}
 
 	parallel.Execute(nbRows, func(start, end int) {
-		bufL := make([]*big.Int, len(a.TermL.Columns))
-		for i := range bufL {
-			bufL[i] = new(big.Int)
-		}
-		bufR := make([]*big.Int, len(a.TermR.Columns))
-		for i := range bufR {
-			bufR[i] = new(big.Int)
-		}
-		bufMod := make([]*big.Int, len(a.Modulus.Columns))
-		for i := range bufMod {
-			bufMod[i] = new(big.Int)
-		}
-		bufQuo := make([]*big.Int, len(a.Quotient.Columns))
-		for i := range bufQuo {
-			bufQuo[i] = new(big.Int)
-		}
-		bufRem := make([]*big.Int, len(a.Result.Columns))
-		for i := range bufRem {
-			bufRem[i] = new(big.Int)
-		}
+		bufL := make([]uint64, len(a.TermL.Columns))
+		bufR := make([]uint64, len(a.TermR.Columns))
+		bufMod := make([]uint64, len(a.Modulus.Columns))
+		bufQuo := make([]uint64, len(a.Quotient.Columns))
+		bufRem := make([]uint64, len(a.Result.Columns))
 		// to compute the carries, we need to perform multiplication on limbs
-		bufLhs := make([]*big.Int, nbMultiplicationResLimbs(len(bufL), len(bufR)))
-		for i := range bufLhs {
-			bufLhs[i] = new(big.Int)
-		}
-		bufRhs := make([]*big.Int, nbMultiplicationResLimbs(len(bufQuo), len(bufMod)))
-		for i := range bufRhs {
-			bufRhs[i] = new(big.Int)
-		}
+		bufLhs := make([]uint64, nbMultiplicationResLimbs(len(bufL), len(bufR)))
+		bufRhs := make([]uint64, nbMultiplicationResLimbs(len(bufQuo), len(bufMod)))
 
 		witTermL := new(big.Int)
 		witTermR := new(big.Int)
@@ -67,6 +46,7 @@ func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 		tmpProduct := new(big.Int)
 		tmpQuotient := new(big.Int)
 		tmpRemainder := new(big.Int)
+		tmpU64ToBig := new(big.Int)
 		carry := new(big.Int)
 		for i := start; i < end; i++ {
 			// we can reuse all the big ints here
@@ -104,15 +84,15 @@ func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				utils.Panic("failed to multiply rhs limbs: %v", err)
 			}
 			for j := range bufRem {
-				bufRhs[j].Add(bufRhs[j], bufRem[j])
+				bufRhs[j] += bufRem[j]
 			}
 
 			for j := range dstCarry {
 				if j < len(bufLhs) {
-					carry.Add(carry, bufLhs[j])
+					carry.Add(carry, tmpU64ToBig.SetUint64(bufLhs[j]))
 				}
 				if j < len(bufRhs) {
-					carry.Sub(carry, bufRhs[j])
+					carry.Sub(carry, tmpU64ToBig.SetUint64(bufRhs[j]))
 				}
 				carry.Rsh(carry, uint(a.nbBitsPerLimb))
 				dstCarry[j][i].SetBigInt(carry)

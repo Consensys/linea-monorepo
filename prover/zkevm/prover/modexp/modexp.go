@@ -426,10 +426,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 	for i := range dstMoneLimbs {
 		dstMoneLimbs[i] = common.NewVectorBuilder(m.Mone.Columns[i])
 	}
-	buf := make([]*big.Int, m.nbLimbs)
-	for i := range buf {
-		buf[i] = new(big.Int)
-	}
+	buf := make([]uint64, m.nbLimbs)
 	baseBi := new(big.Int)
 	exponentBi := new(big.Int)
 	modulusBi := new(big.Int)
@@ -479,27 +476,27 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 
 		// assign the big-int values for intermediate computation
 		for i := range base {
-			base[len(base)-1-i].BigInt(buf[i])
-			instBase[i].SetBigInt(buf[i])
+			buf[i] = base[len(base)-1-i].Uint64()
+			instBase[i].SetUint64(buf[i])
 		}
 		if err := emulated.IntLimbRecompose(buf, limbSizeBits, baseBi); err != nil {
 			utils.Panic("could not convert base limbs to big.Int: %v", err)
 		}
 		for i := range exponent {
-			exponent[len(exponent)-1-i].BigInt(buf[i])
+			buf[i] = exponent[len(exponent)-1-i].Uint64()
 		}
 		if err := emulated.IntLimbRecompose(buf, limbSizeBits, exponentBi); err != nil {
 			utils.Panic("could not convert exponent limbs to big.Int: %v", err)
 		}
 		for i := range modulus {
-			modulus[len(modulus)-1-i].BigInt(buf[i])
-			instMod[i].SetBigInt(buf[i])
+			buf[i] = modulus[len(modulus)-1-i].Uint64()
+			instMod[i].SetUint64(buf[i])
 		}
 		if err := emulated.IntLimbRecompose(buf, limbSizeBits, modulusBi); err != nil {
 			utils.Panic("could not convert modulus limbs to big.Int: %v", err)
 		}
 		for i := range expected {
-			expected[len(expected)-1-i].BigInt(buf[i])
+			buf[i] = expected[len(expected)-1-i].Uint64()
 		}
 		if err := emulated.IntLimbRecompose(buf, limbSizeBits, expectedBi); err != nil {
 			utils.Panic("could not convert result limbs to big.Int: %v", err)
@@ -510,7 +507,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			utils.Panic("could not decompose mod-1 into limbs: %v", err)
 		}
 		for j := range instMone {
-			instMone[j].SetBigInt(buf[j])
+			instMone[j].SetUint64(buf[j])
 		}
 		// extract exponent bits
 		for i := 0; i < m.instanceSize; i++ {
@@ -545,7 +542,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			}
 			for j := range m.PrevAccumulator.Columns {
 				var f field.Element
-				f.SetBigInt(buf[j])
+				f.SetUint64(buf[j])
 				dstPrevAccLimbs[j].PushField(f)
 			}
 			if err := emulated.IntLimbDecompose(currAccumulatorBi, limbSizeBits, buf); err != nil {
@@ -553,7 +550,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			}
 			for j := range m.CurrAccumulator.Columns {
 				var f field.Element
-				f.SetBigInt(buf[j])
+				f.SetUint64(buf[j])
 				dstCurrAccLimbs[j].PushField(f)
 			}
 			// swap
@@ -582,7 +579,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			}
 			for j := range m.Exponent.Columns {
 				var f field.Element
-				f.SetBigInt(buf[j])
+				f.SetUint64(buf[j])
 				dstExponentLimbs[j].PushField(f)
 			}
 			// update the high part of the exponent if needed

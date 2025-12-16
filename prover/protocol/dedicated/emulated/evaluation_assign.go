@@ -29,36 +29,18 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 
 	parallel.Execute(nbRows, func(start, end int) {
 		// initialize all buffers to avoid reallocations
-		bufWit := make([]*big.Int, a.nbLimbs)
-		for i := range bufWit {
-			bufWit[i] = new(big.Int)
-		}
+		bufWit := make([]uint64, a.nbLimbs)
 		// we allocate LHS twice as we set the result value and we modify the buffer
-		bufTermProd1 := make([]*big.Int, len(a.Carry.Columns))
-		for i := range bufTermProd1 {
-			bufTermProd1[i] = new(big.Int)
-		}
-		bufTermProd2 := make([]*big.Int, len(a.Carry.Columns))
-		for i := range bufTermProd2 {
-			bufTermProd2[i] = new(big.Int)
-		}
+		bufTermProd1 := make([]uint64, len(a.Carry.Columns))
+		bufTermProd2 := make([]uint64, len(a.Carry.Columns))
 		bufLhs := make([]*big.Int, len(a.Carry.Columns))
 		for i := range bufLhs {
 			bufLhs[i] = new(big.Int)
 		}
 
-		bufMod := make([]*big.Int, len(a.Modulus.Columns))
-		for i := range bufMod {
-			bufMod[i] = new(big.Int)
-		}
-		bufQuo := make([]*big.Int, len(a.Quotient.Columns))
-		for i := range bufQuo {
-			bufQuo[i] = new(big.Int)
-		}
-		bufRhs := make([]*big.Int, nbMultiplicationResLimbs(len(bufQuo), len(bufMod)))
-		for i := range bufRhs {
-			bufRhs[i] = new(big.Int)
-		}
+		bufMod := make([]uint64, len(a.Modulus.Columns))
+		bufQuo := make([]uint64, len(a.Quotient.Columns))
+		bufRhs := make([]uint64, nbMultiplicationResLimbs(len(bufQuo), len(bufMod)))
 
 		wit := new(big.Int)
 		witModulus := new(big.Int)
@@ -68,6 +50,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 		carry := new(big.Int)
 		tmpTermProduct := new(big.Int)
 		tmpRemainder := new(big.Int) // only for assigning and checking that the eval result is 0
+		tmpUTBi := new(big.Int)
 
 		for i := start; i < end; i++ {
 			// clear all buffers
@@ -80,7 +63,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 			// recompose all terms
 			for j := range a.Terms {
 				clearBuffer(bufTermProd1)
-				bufTermProd1[0].SetInt64(1) // multiplication identity
+				bufTermProd1[0] = 1 // multiplication identity
 				clearBuffer(bufTermProd2)
 				tmpTermProduct.SetInt64(1)
 				termNbLimbs := 1
@@ -109,7 +92,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				tmpEval.Add(tmpEval, tmpTermProduct)
 				// accumulate the term into the evaluation as limbs
 				for i := range bufLhs {
-					bufLhs[i].Add(bufLhs[i], bufTermProd1[i])
+					bufLhs[i].Add(bufLhs[i], tmpUTBi.SetUint64(bufTermProd1[i]))
 				}
 			}
 			// recompose the modulus as integer
@@ -148,7 +131,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 					carry.Add(carry, bufLhs[j])
 				}
 				if j < len(bufRhs) {
-					carry.Sub(carry, bufRhs[j])
+					carry.Sub(carry, tmpUTBi.SetUint64(bufRhs[j]))
 				}
 				carry.Rsh(carry, uint(a.nbBitsPerLimb))
 				dstCarry[j][i].SetBigInt(carry)
