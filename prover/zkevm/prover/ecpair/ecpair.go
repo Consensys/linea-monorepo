@@ -79,7 +79,7 @@ func NewECPairZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetiza
 		AccPairings:       arith.ColumnOf(comp, "ecdata", "ACC_PAIRINGS"),
 		TotalPairings:     arith.ColumnOf(comp, "ecdata", "TOTAL_PAIRINGS"),
 		CsG2Membership:    arith.ColumnOf(comp, "ecdata", "CIRCUIT_SELECTOR_G2_MEMBERSHIP"),
-		Limbs:             arithmetization.GetLimbsOfU128[limbs.LittleEndian](arith, comp, "ecdata", "LIMB"),
+		Limbs:             arith.GetLimbsOfU128Le(comp, "ecdata", "LIMB"),
 	}
 
 	return newECPair(comp, limits, source).

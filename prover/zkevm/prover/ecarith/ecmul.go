@@ -43,7 +43,7 @@ func NewEcMulZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetizat
 		Index:   arith.ColumnOf(comp, "ecdata", "INDEX"),
 		IsData:  arith.ColumnOf(comp, "ecdata", "IS_ECMUL_DATA"),
 		IsRes:   arith.ColumnOf(comp, "ecdata", "IS_ECMUL_RESULT"),
-		Limbs:   arithmetization.GetLimbsOfU128[limbs.LittleEndian](arith, comp, "ecdata", "LIMB"),
+		Limbs:   arith.GetLimbsOfU128Le(comp, "ecdata", "LIMB"),
 	}
 
 	return newEcMul(

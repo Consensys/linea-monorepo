@@ -183,40 +183,76 @@ func GetLimbsOf[S limbs.BitSize, E limbs.Endianness](a *Arithmetization,
 	)
 }
 
-// GetLimbsOfU16 returns a [limbs.Uint] register corresponding to a U16 with the
+// GetLimbsOfU16Be returns a [limbs.Uint] register corresponding to a U16 with the
 // specified endianness.
-func GetLimbsOfU16[E limbs.Endianness](a *Arithmetization, comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S16, E] {
-	return GetLimbsOf[limbs.S16, E](a, comp, mod, column)
+func (a *Arithmetization) GetLimbsOfU16Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S16, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S16, limbs.BigEndian](a, comp, mod, column)
 }
 
-// GetLimbsOfU32 returns a [limbs.Uint] register corresponding to a U32 with the
+// GetLimbsOfU16Le returns a [limbs.Uint] register corresponding to a U16 with the
 // specified endianness.
-func GetLimbsOfU32[E limbs.Endianness](a *Arithmetization, comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S32, E] {
-	return GetLimbsOf[limbs.S32, E](a, comp, mod, column)
+func (a *Arithmetization) GetLimbsOfU16Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S16, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S16, limbs.LittleEndian](a, comp, mod, column)
 }
 
-// GetLimbsOfU64 returns a [limbs.Uint] register corresponding to a U64 with the
+// GetLimbsOfU32Be returns a [limbs.Uint] register corresponding to a U32 with the
 // specified endianness.
-func GetLimbsOfU64[E limbs.Endianness](a *Arithmetization, comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S64, E] {
-	return GetLimbsOf[limbs.S64, E](a, comp, mod, column)
+func (a *Arithmetization) GetLimbsOfU32Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S32, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S32, limbs.BigEndian](a, comp, mod, column)
 }
 
-// GetLimbsOfU128 returns a [limbs.Uint] register corresponding to a U128 with the
+// GetLimbsOfU32Le returns a [limbs.Uint] register corresponding to a U32 with the
 // specified endianness.
-func GetLimbsOfU128[E limbs.Endianness](a *Arithmetization, comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S128, E] {
-	return GetLimbsOf[limbs.S128, E](a, comp, mod, column)
+func (a *Arithmetization) GetLimbsOfU32Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S32, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S32, limbs.LittleEndian](a, comp, mod, column)
 }
 
-// GetLimbsOfU160 returns a [limbs.Uint] register corresponding to a U160 with the
+// GetLimbsOfU64Be returns a [limbs.Uint] register corresponding to a U64 with the
 // specified endianness.
-func GetLimbsOfU160[E limbs.Endianness](a *Arithmetization, comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S160, E] {
-	return GetLimbsOf[limbs.S160, E](a, comp, mod, column)
+func (a *Arithmetization) GetLimbsOfU64Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S64, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S64, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU64Le returns a [limbs.Uint] register corresponding to a U64 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU64Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S64, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S64, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU128Be returns a [limbs.Uint] register corresponding to a U128 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU128Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S128, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S128, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU128Le returns a [limbs.Uint] register corresponding to a U128 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU128Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S128, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S128, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU160Be returns a [limbs.Uint] register corresponding to a U160 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU160Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S160, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S160, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU160Le returns a [limbs.Uint] register corresponding to a U160 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU160Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S160, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S160, limbs.LittleEndian](a, comp, mod, column)
 }
 
 // GetLimbsOfU256 returns a [limbs.Uint] register corresponding to a U256 with the
 // specified endianness.
-func GetLimbsOfU256[E limbs.Endianness](a *Arithmetization, comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S256, E] {
-	return GetLimbsOf[limbs.S256, E](a, comp, mod, column)
+func (a *Arithmetization) GetLimbsOfU256Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S256, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S256, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU256Le returns a [limbs.Uint] register corresponding to a U256 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU256Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S256, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S256, limbs.LittleEndian](a, comp, mod, column)
 }
 
 // ColumnOf returns the wizard column associated with the given name and

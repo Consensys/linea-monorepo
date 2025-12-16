@@ -259,6 +259,14 @@ func getLimbs[E limbs.Endianness](c *CsvTrace, b *wizard.Builder, name string, n
 
 }
 
+// AssignCols assigns a vector of columns
+func (c *CsvTrace) AssignCols(run *wizard.ProverRuntime, cols ...ifaces.Column) *CsvTrace {
+	for _, col := range cols {
+		c.Assign(run, col)
+	}
+	return c
+}
+
 // Assign may assign either a column or a limb. It will panic if provided any
 // other type. The function also returns a point to itself to make it chainable.
 func (c *CsvTrace) Assign(run *wizard.ProverRuntime, toAssign ...any) *CsvTrace {
@@ -387,6 +395,20 @@ func WriteExplicit(w io.Writer, names []string, cols [][]*big.Int, inHex bool) {
 			row = append(row, fmtBigInt(inHex, cols[j][i]))
 		}
 
+		fmt.Fprintf(w, "%v\n", strings.Join(row, ","))
+	}
+}
+
+func WriteExplicitFromKoala(w io.Writer, names []string, cols [][]field.Element, inHex bool) {
+
+	fmt.Fprintf(w, "%v\n", strings.Join(names, ","))
+	for i := range cols[0] {
+		row := []string{}
+		for j := range cols {
+			var bi big.Int
+			cols[j][i].BigInt(&bi)
+			row = append(row, fmtBigInt(inHex, &bi))
+		}
 		fmt.Fprintf(w, "%v\n", strings.Join(row, ","))
 	}
 }

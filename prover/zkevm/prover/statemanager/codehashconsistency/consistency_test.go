@@ -10,7 +10,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -48,6 +47,9 @@ func runTestcase(t *testing.T, poseidonCodeHashCsvPath, stateSummaryCsvPath stri
 		consistency         Module
 		sizeStateSummary    = 128
 		sizeCodeHashModule  = 256
+
+		mchCt = csvtraces.MustOpenCsvFile(poseidonCodeHashCsvPath)
+		ssCt  = csvtraces.MustOpenCsvFile(stateSummaryCsvPath)
 	)
 
 	define := func(b *wizard.Builder) {
@@ -89,35 +91,31 @@ func runTestcase(t *testing.T, poseidonCodeHashCsvPath, stateSummaryCsvPath stri
 
 	prover := func(run *wizard.ProverRuntime) {
 
-		mchCt := csvtraces.MustOpenCsvFile(poseidonCodeHashCsvPath)
-		ssCt := csvtraces.MustOpenCsvFile(stateSummaryCsvPath)
-
-		run.AssignColumn(lineaCodeHashModule.IsActive.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_ACTIVE"), sizeCodeHashModule))
-		run.AssignColumn(lineaCodeHashModule.IsHashEnd.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_HASH_END"), sizeCodeHashModule))
-		run.AssignColumn(lineaCodeHashModule.IsForConsistency.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_FOR_CONSISTENCY"), sizeCodeHashModule))
+		mchCt.Assign(run,
+			lineaCodeHashModule.IsActive,
+			lineaCodeHashModule.IsHashEnd,
+			lineaCodeHashModule.IsForConsistency,
+		)
 
 		for i := range poseidon2.BlockSize {
-			run.AssignColumn(lineaCodeHashModule.NewState[i].GetColID(), smartvectors.RightZeroPadded(mchCt.Get(fmt.Sprintf("NEW_STATE_%d", i)), sizeCodeHashModule))
-			// CSV uses INITIAL_MIMC_* / FINAL_MIMC_* for poseidon2 code hash columns
-			run.AssignColumn(stateSummary.Account.Initial.LineaCodeHash[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("INITIAL_MIMC_%d", i)), sizeStateSummary))
-			run.AssignColumn(stateSummary.Account.Final.LineaCodeHash[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("FINAL_MIMC_%d", i)), sizeStateSummary))
+			mchCt.Assign(run, lineaCodeHashModule.NewState[i])
+			ssCt.Assign(run,
+				stateSummary.Account.Initial.LineaCodeHash[i],
+				stateSummary.Account.Final.LineaCodeHash[i],
+			)
 		}
 
-		for i := range common.NbLimbU256 {
-			run.AssignColumn(lineaCodeHashModule.CodeHash[i].GetColID(), smartvectors.RightZeroPadded(mchCt.Get(fmt.Sprintf("KECCAK_%d", i)), sizeCodeHashModule))
-		}
-
-		for i := range common.NbLimbU128 {
-			run.AssignColumn(stateSummary.Account.Initial.KeccakCodeHash.Hi[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("INITIAL_KECCAK_HI_%v", i)), sizeStateSummary))
-			run.AssignColumn(stateSummary.Account.Final.KeccakCodeHash.Hi[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("FINAL_KECCAK_HI_%v", i)), sizeStateSummary))
-			run.AssignColumn(stateSummary.Account.Initial.KeccakCodeHash.Lo[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("INITIAL_KECCAK_LO_%v", i)), sizeStateSummary))
-			run.AssignColumn(stateSummary.Account.Final.KeccakCodeHash.Lo[i].GetColID(), smartvectors.RightZeroPadded(ssCt.Get(fmt.Sprintf("FINAL_KECCAK_LO_%v", i)), sizeStateSummary))
-		}
-
-		run.AssignColumn(stateSummary.IsActive.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("IS_ACTIVE"), sizeStateSummary))
-		run.AssignColumn(stateSummary.IsStorage.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("IS_STORAGE"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Initial.Exists.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_EXISTS"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Final.Exists.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_EXISTS"), sizeStateSummary))
+		mchCt.AssignCols(run, lineaCodeHashModule.CodeHash[:]...)
+		ssCt.AssignCols(run, stateSummary.Account.Initial.KeccakCodeHash.Hi[:]...)
+		ssCt.AssignCols(run, stateSummary.Account.Final.KeccakCodeHash.Hi[:]...)
+		ssCt.AssignCols(run, stateSummary.Account.Initial.KeccakCodeHash.Lo[:]...)
+		ssCt.AssignCols(run, stateSummary.Account.Final.KeccakCodeHash.Lo[:]...)
+		ssCt.Assign(run,
+			stateSummary.IsActive,
+			stateSummary.IsStorage,
+			stateSummary.Account.Initial.Exists,
+			stateSummary.Account.Final.Exists,
+		)
 
 		consistency.Assign(run)
 	}
@@ -274,7 +272,7 @@ func TestCaseGeneration(t *testing.T) {
 	colValuesStateSummary = append(colValuesStateSummary, ssInitialExists)
 	colValuesStateSummary = append(colValuesStateSummary, ssFinalExists)
 
-	csvtraces.WriteExplicit(
+	csvtraces.WriteExplicitFromKoala(
 		files.MustOverwrite("./testdata/state-summary.csv"),
 		colNamesStateSummary,
 		colValuesStateSummary,
@@ -340,7 +338,7 @@ func TestCaseGeneration(t *testing.T) {
 	colValuesPoseidonCodehash = append(colValuesPoseidonCodehash, transposeLimbs(romNewState)...)
 	colValuesPoseidonCodehash = append(colValuesPoseidonCodehash, transposeLimbs(romKeccak)...)
 
-	csvtraces.WriteExplicit(
+	csvtraces.WriteExplicitFromKoala(
 		files.MustOverwrite("./testdata/mimc-codehash.csv"),
 		colNamesPoseidonCodehash,
 		colValuesPoseidonCodehash,

@@ -1,7 +1,6 @@
 package ecdsa
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
@@ -48,7 +47,7 @@ func getEcdataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.A
 		Index:       arith.ColumnOf(comp, "ecdata", "INDEX"),
 		IsData:      arith.ColumnOf(comp, "ecdata", "IS_ECRECOVER_DATA"),
 		IsRes:       arith.ColumnOf(comp, "ecdata", "IS_ECRECOVER_RESULT"),
-		Limb:        arithmetization.GetLimbsOfU128[limbs.LittleEndian](arith, comp, "ecdata", "LIMB"),
+		Limb:        arith.GetLimbsOfU128Le(comp, "ecdata", "LIMB"),
 	}
 
 	return src
@@ -59,14 +58,14 @@ func getTxnDataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.
 		Ct:       arith.ColumnOf(comp, "txndata", "CT"),
 		User:     arith.ColumnOf(comp, "txndata", "USER"),
 		Selector: arith.ColumnOf(comp, "txndata", "HUB"),
-		From:     arithmetization.GetLimbsOfU256[limbs.LittleEndian](arith, comp, "txndata", "FROM"),
+		From:     arith.GetLimbsOfU256Le(comp, "txndata", "FROM"),
 	}
 
 	return td
 }
 
 func getRlpTxnArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) generic.GenDataModule {
-	limbs := arithmetization.GetLimbsOfU128[limbs.LittleEndian](arith, comp, "rlptxn", "cmpLIMB")
+	limbs := arith.GetLimbsOfU128Le(comp, "rlptxn", "cmpLIMB")
 	res := generic.GenDataModule{
 		HashNum: arith.ColumnOf(comp, "rlptxn", "USER_TXN_NUMBER"),
 		Index:   arith.ColumnOf(comp, "rlptxn", "INDEX_LX"),

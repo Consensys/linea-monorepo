@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -50,14 +49,14 @@ func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings, arith *arithmetization.A
 			Data: generic.GenDataModule{
 				HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
 				Index:   arith.ColumnOf(comp, "shakiradata", "INDEX"),
-				Limbs:   arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "shakiradata", "LIMB"),
+				Limbs:   arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
 				NBytes:  arith.ColumnOf(comp, "shakiradata", "nBYTES"),
 				ToHash:  arith.ColumnOf(comp, "shakiradata", "IS_SHA2_DATA"),
 			},
 			Info: generic.GenInfoModule{
 				HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
-				HashHi:  arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "shakiradata", "LIMB"),
-				HashLo:  arithmetization.GetLimbsOfU128[limbs.BigEndian](arith, comp, "shakiradata", "LIMB_LO"),
+				HashHi:  arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
+				HashLo:  arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB_LO"),
 				// Before, we usse to pass column.Shift(IsHash, -1) but this does
 				// not work with the prover distribution as the column is used as
 				// a filter for a projection query.
