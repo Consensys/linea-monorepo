@@ -51,8 +51,6 @@ sourceSets {
 }
 
 jar {
-  from(generatedClassesDir)
-
   version = calculateVersion()
 
   manifest {
