@@ -96,10 +96,7 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 		return nil, fmt.Errorf("kzgsrs directory (%s) does not exist: %w", srsDir, err)
 	}
 
-	// duplicate L2 hardcoded values for PI
-	// check if ChainID and BaseFee are within the max value (8 bytes)
-	// TODO @gusiri: Later, we should receive this as a string, check max value, and convert to uint64.
-
+	// Note: ChainID and BaseFee are typed as uint, which is at most 64 bits.
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
 	cfg.PublicInputInterconnection.BaseFee = uint64(cfg.Layer2.BaseFee)
 	cfg.PublicInputInterconnection.CoinBase = cfg.Layer2.CoinBase
