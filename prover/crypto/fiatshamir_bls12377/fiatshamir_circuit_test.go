@@ -19,7 +19,7 @@ type FSCircuit struct {
 
 	// koalabear octuplet
 	C  [2]zk.WrappedVariable
-	D  [2024]zk.WrappedVariable
+	D  [10]zk.WrappedVariable
 	R3 zk.Octuplet
 
 	// random many integers

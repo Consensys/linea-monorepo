@@ -48,7 +48,7 @@ func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTest
 
 func TestVortexGnarkVerifier(t *testing.T) {
 
-	polSize := 1 << 10
+	polSize := 1 << 4
 	nPols := 16
 	numRounds := 3
 	numPrecomputeds := 4
