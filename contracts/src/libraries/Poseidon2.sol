@@ -17,25 +17,26 @@
 pragma solidity ^0.8.30;
 
 /**
- * @title Library to perform Poseidon2 hashing
+ * @title Library to perform Poseidon2 hashing.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 library Poseidon2 {
   /**
-   * Thrown when the data is not purely in 32 byte chunks
+   * Thrown when the data is not purely in 32 byte chunks.
    */
   error DataIsNotMod32();
 
   uint32 private constant R_MOD = 2130706433;
-  uint256 private constant WORD_MOD = 4294967296; // 2**32
+  uint256 private constant WORD_MOD = 2 ** 32; //
 
-  // precompile
+  /// @dev Precompile address for MOD_EXP.
   uint8 private constant MOD_EXP = 0x5;
 
-  uint256 private constant DATA_IS_NOT_MOD32_SELECTOR = 0xc2cab26c00000000000000000000000000000000000000000000000000000000; // bytes4(keccak256("DataIsNotMod32()"))
+  uint256 private constant DATA_IS_NOT_MOD32_SELECTOR =
+    0xc2cab26c00000000000000000000000000000000000000000000000000000000; // bytes4(keccak256("DataIsNotMod32()"))
 
-  // round keys
+  /// @dev Keys for each round.
   uint256 private constant RK_0_0 = 52691802021506155758914962750280372212207119203515444126415105344946620971042;
   uint256 private constant RK_0_1 = 32207471970256316655474490955553459742787419335289228299095903266455798739660;
   uint256 private constant RK_1_0 = 22163791677048831312463448776400028385347383911100916908889018061663075177430;
@@ -70,11 +71,20 @@ library Poseidon2 {
   uint256 private constant RK_26_0 = 37373517675827041221658956101645979913006475784844873469590649853964048342988;
   uint256 private constant RK_26_1 = 46010512812451809471058691124553676654818408969360806522307687423952321374687;
 
-  /// @notice Computes the Poseidon2 hash of the input message.
+  /**
+   * @notice Computes the hash of a message using a Merkle Damgard scheme, with Poseidon2 for compression.
+   * Poseidon2 is parameterized to have width 16, 6 full rounds and 21 partial rounds.
+   * The compression function works by taking the last 8 koalabear elements of the poseidon2 permutation applied
+   * on an array of 16 koalabear elements, cf https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/vortex/hash.go.
+   * The Merkle Damgard scheme works like this:
+   * On input [ block 1 || block 2 || block 3 || ... ], computes hash := compress([hash || block i]) for all i,
+   * the initial hash being [0 || 0 || 0 || 0 || 0 || 0 || 0 || 0]
+   * @param _msg The bytes message or data to hash.
+   * @return poseidon2Hash The Poseidon2 hash.
+   */
   function hash(bytes calldata _msg) external pure returns (bytes32 poseidon2Hash) {
-    // params vortex t=16, rf=6, rp=21
+    // params vortex t=16, rf=6, rp=21.
     assembly {
-
       if gt(mod(_msg.length, 0x20), 0) {
         error_size_data()
       }
@@ -82,27 +92,25 @@ library Poseidon2 {
       let q := div(_msg.length, 0x20)
       let ptrMsg := _msg.offset
       let curBlock
-      for {let i:=0} lt(i, q) {i:=add(i,1)}
-      {
+      for {
+        let i := 0
+      } lt(i, q) {
+        i := add(i, 1)
+      } {
         curBlock := calldataload(ptrMsg)
         poseidon2Hash := Compress(poseidon2Hash, curBlock)
         ptrMsg := add(ptrMsg, 0x20)
       }
 
-
-      /// Compress(a, b): 
-      ///   _, rb := permutation(a, b)
-      ///   return rb + b
-      function Compress(a, b)->rb {
+      function Compress(a, b) -> rb {
         let tmp := b
         a, b := permutation(a, b)
         rb := addRoundKeyUint256(tmp, b)
       }
 
-      function permutation(a, b)->ra, rb {
-
+      function permutation(a, b) -> ra, rb {
         ra, rb := matMulExternalInPlace(a, b)
-        
+
         // first 3 rounds are full
         ra := addRoundKeyUint256(ra, RK_0_0)
         rb := addRoundKeyUint256(rb, RK_0_1)
@@ -130,11 +138,11 @@ library Poseidon2 {
         ra := addRoundKeyFirstEntry(ra, RK_4)
         ra := sboxFirstEntry(ra)
         ra, rb := matMulInternalInPlace(ra, rb)
-        
+
         ra := addRoundKeyFirstEntry(ra, RK_5)
         ra := sboxFirstEntry(ra)
         ra, rb := matMulInternalInPlace(ra, rb)
-        
+
         ra := addRoundKeyFirstEntry(ra, RK_6)
         ra := sboxFirstEntry(ra)
         ra, rb := matMulInternalInPlace(ra, rb)
@@ -146,7 +154,7 @@ library Poseidon2 {
         ra := addRoundKeyFirstEntry(ra, RK_8)
         ra := sboxFirstEntry(ra)
         ra, rb := matMulInternalInPlace(ra, rb)
-        
+
         ra := addRoundKeyFirstEntry(ra, RK_9)
         ra := sboxFirstEntry(ra)
         ra, rb := matMulInternalInPlace(ra, rb)
@@ -154,11 +162,11 @@ library Poseidon2 {
         ra := addRoundKeyFirstEntry(ra, RK_10)
         ra := sboxFirstEntry(ra)
         ra, rb := matMulInternalInPlace(ra, rb)
-        
+
         ra := addRoundKeyFirstEntry(ra, RK_11)
         ra := sboxFirstEntry(ra)
         ra, rb := matMulInternalInPlace(ra, rb)
-        
+
         ra := addRoundKeyFirstEntry(ra, RK_12)
         ra := sboxFirstEntry(ra)
         ra, rb := matMulInternalInPlace(ra, rb)
@@ -227,23 +235,25 @@ library Poseidon2 {
         ra, rb := matMulExternalInPlace(ra, rb)
       }
 
-      /// interpret ptr as a sequence of 16 uint32 elmts and sums them
-      function computeSum(a, b)->s {
-        for {let i} lt(i, 8) {i:=add(i,1)} 
-        {
+      /// @dev Interpret ptr as a sequence of 16 uint32 elmts and sums them.
+      function computeSum(a, b) -> s {
+        for {
+          let i
+        } lt(i, 8) {
+          i := add(i, 1)
+        } {
           s := addmod(s, ithChunk(a, i), R_MOD)
           s := addmod(s, ithChunk(b, i), R_MOD)
         }
       }
 
-      function matMulInternalInPlace(a, b)->ra,rb {
+      function matMulInternalInPlace(a, b) -> ra, rb {
         let s := computeSum(a, b)
         ra := matMulInternalInPlaceFirstHalf(a, s)
         rb := matMulInternalInPlaceSecondHalf(b, s)
       }
 
-      function matMulInternalInPlaceFirstHalf(a, sum)->ma {
-        
+      function matMulInternalInPlaceFirstHalf(a, sum) -> ma {
         let t0, t1, t2, t3, t4, t5, t6, t7
 
         t0 := addmod(sum, sub(R_MOD, mulmod(ithChunk(a, 0), 2, R_MOD)), R_MOD)
@@ -256,88 +266,104 @@ library Poseidon2 {
         t6 := addmod(sum, mulmod(ithChunk(a, 6), 1065353216, R_MOD), R_MOD) // 1065353216 -> -1/2
         t7 := addmod(sum, sub(R_MOD, mulmod(ithChunk(a, 7), 3, R_MOD)), R_MOD)
         ma := packToUint256(t0, t1, t2, t3, t4, t5, t6, t7)
+      }
 
-      } 
-
-       function matMulInternalInPlaceSecondHalf(b, sum)->mb {
-        
+      function matMulInternalInPlaceSecondHalf(b, sum) -> mb {
         let t0, t1, t2, t3, t4, t5, t6, t7
 
         t0 := addmod(sum, sub(R_MOD, mulmod(ithChunk(b, 0), 4, R_MOD)), R_MOD)
         t1 := addmod(sum, mulmod(ithChunk(b, 1), 2122383361, R_MOD), R_MOD) // 2122383361 -> 1/2^8
-        t2 := addmod(sum, mulmod(ithChunk(b, 2),1864368129, R_MOD), R_MOD) // 1864368129 -> 1/8
-        t3 := addmod(sum, mulmod(ithChunk(b, 3),2130706306, R_MOD), R_MOD) // 2130706306 -> 1/2^24
-        t4 := addmod(sum, mulmod(ithChunk(b, 4),8323072, R_MOD), R_MOD) // 8323072 ->  -1/2^8
-        t5 := addmod(sum, mulmod(ithChunk(b, 5),266338304, R_MOD), R_MOD) // 266338304 -> -1/8
-        t6 := addmod(sum, mulmod(ithChunk(b, 6),133169152, R_MOD), R_MOD) // 133169152 -> -1/16
-        t7 := addmod(sum, mulmod(ithChunk(b, 7),127, R_MOD), R_MOD) // 127 -> -1/2^24
-        mb :=  packToUint256(t0, t1, t2, t3, t4, t5, t6, t7)
-      } 
+        t2 := addmod(sum, mulmod(ithChunk(b, 2), 1864368129, R_MOD), R_MOD) // 1864368129 -> 1/8
+        t3 := addmod(sum, mulmod(ithChunk(b, 3), 2130706306, R_MOD), R_MOD) // 2130706306 -> 1/2^24
+        t4 := addmod(sum, mulmod(ithChunk(b, 4), 8323072, R_MOD), R_MOD) // 8323072 ->  -1/2^8
+        t5 := addmod(sum, mulmod(ithChunk(b, 5), 266338304, R_MOD), R_MOD) // 266338304 -> -1/8
+        t6 := addmod(sum, mulmod(ithChunk(b, 6), 133169152, R_MOD), R_MOD) // 133169152 -> -1/16
+        t7 := addmod(sum, mulmod(ithChunk(b, 7), 127, R_MOD), R_MOD) // 127 -> -1/2^24
+        mb := packToUint256(t0, t1, t2, t3, t4, t5, t6, t7)
+      }
 
       /// @param ptr pointer to 2 uint256 elements, We interpret them as 4 packs of 4 uint32 elmts ->
       /// [[a0,a1,a2,a3],..,[a12,a13,a14,a15]]:=[v0,v1,v2,v3]
       /// and we multiply [v0,v1,v2,v3] by circ(2M4,M4,..,M4)
-      function matMulExternalInPlace(a, b)->ra, rb {
-        
+      function matMulExternalInPlace(a, b) -> ra, rb {
         a := matMulM4uint256(a)
         b := matMulM4uint256(b)
-        
+
         let t0, t1, t2, t3 := sumColumns(a, b)
 
-       ra := matMulExternalInPlaceFirstHalf(a, t0, t1, t2, t3)
-       rb := matMulExternalInPlaceFirstHalf(b, t0, t1, t2, t3)
+        ra := matMulExternalInPlaceFirstHalf(a, t0, t1, t2, t3)
+        rb := matMulExternalInPlaceFirstHalf(b, t0, t1, t2, t3)
       }
 
-      function matMulExternalInPlaceFirstHalf(a, t0, t1, t2, t3)->ra {
-        let a0, a1, a2, a3, a4, a5, a6, a7
-        a0 := addmod(t0, ithChunk(a, 0), R_MOD)
-        a1 := addmod(t1, ithChunk(a, 1), R_MOD)
-        a2 := addmod(t2, ithChunk(a, 2), R_MOD)
-        a3 := addmod(t3, ithChunk(a, 3), R_MOD)
-        a4 := addmod(t0, ithChunk(a, 4), R_MOD)
-        a5 := addmod(t1, ithChunk(a, 5), R_MOD)
-        a6 := addmod(t2, ithChunk(a, 6), R_MOD)
-        a7 := addmod(t3, ithChunk(a, 7), R_MOD)
-        ra := packToUint256(a0, a1, a2, a3, a4, a5, a6, a7)
+      function matMulExternalInPlaceFirstHalf(a, t0, t1, t2, t3) -> ra {
+        ra := packToUint256(
+          addmod(t0, ithChunk(a, 0), R_MOD),
+          addmod(t1, ithChunk(a, 1), R_MOD),
+          addmod(t2, ithChunk(a, 2), R_MOD),
+          addmod(t3, ithChunk(a, 3), R_MOD),
+          addmod(t0, ithChunk(a, 4), R_MOD),
+          addmod(t1, ithChunk(a, 5), R_MOD),
+          addmod(t2, ithChunk(a, 6), R_MOD),
+          addmod(t3, ithChunk(a, 7), R_MOD)
+        )
       }
 
-      function matMulExternalInPlaceSecondHalf(b, t0, t1, t2, t3)->rb {
-        let a0, a1, a2, a3, a4, a5, a6, a7
-        a0 := addmod(t0, ithChunk(b, 0), R_MOD)
-        a1 := addmod(t1, ithChunk(b, 1), R_MOD)
-        a2 := addmod(t2, ithChunk(b, 2), R_MOD)
-        a3 := addmod(t3, ithChunk(b, 3), R_MOD)
-        a4 := addmod(t0, ithChunk(b, 4), R_MOD)
-        a5 := addmod(t1, ithChunk(b, 5), R_MOD)
-        a6 := addmod(t2, ithChunk(b, 6), R_MOD)
-        a7 := addmod(t3, ithChunk(b, 7), R_MOD)
-        rb := packToUint256(a0, a1, a2, a3, a4, a5, a6, a7)
+      function matMulExternalInPlaceSecondHalf(b, t0, t1, t2, t3) -> rb {
+        rb := packToUint256(
+          addmod(t0, ithChunk(b, 0), R_MOD),
+          addmod(t1, ithChunk(b, 1), R_MOD),
+          addmod(t2, ithChunk(b, 2), R_MOD),
+          addmod(t3, ithChunk(b, 3), R_MOD),
+          addmod(t0, ithChunk(b, 4), R_MOD),
+          addmod(t1, ithChunk(b, 5), R_MOD),
+          addmod(t2, ithChunk(b, 6), R_MOD),
+          addmod(t3, ithChunk(b, 7), R_MOD)
+        )
       }
 
       /// @param ptr pointer to 2 uint256 elements. We interpret them as 4 packs of 4 uint32 elmts ->
       /// [[a0,a1,a2,a3],..,[a12,a13,a14,a15]] and we sum them:
       /// [[a0+a4+a8+a12, .., a3+a7+a11+a15]]
-      function sumColumns(a, b)->t0, t1, t2, t3 {
-        
-        t0 := addmod(t0, ithChunk(a, 0), R_MOD)
-        t1 := addmod(t1, ithChunk(a, 1), R_MOD)
-        t2 := addmod(t2, ithChunk(a, 2), R_MOD)
-        t3 := addmod(t3, ithChunk(a, 3), R_MOD)
+      function sumColumns(a, b) -> t0, t1, t2, t3 {
+        t0 := addmod(
+          addmod(
+            addmod(addmod(ithChunk(a, 0), ithChunk(a, 4), R_MOD), addmod(ithChunk(b, 0), ithChunk(b, 4), R_MOD), R_MOD),
+            t0,
+            R_MOD
+          ),
+          0,
+          R_MOD
+        )
 
-        t0 := addmod(t0, ithChunk(a, 4), R_MOD)
-        t1 := addmod(t1, ithChunk(a, 5), R_MOD)
-        t2 := addmod(t2, ithChunk(a, 6), R_MOD)
-        t3 := addmod(t3, ithChunk(a, 7), R_MOD)
+        t1 := addmod(
+          addmod(
+            addmod(addmod(ithChunk(a, 1), ithChunk(a, 5), R_MOD), addmod(ithChunk(b, 1), ithChunk(b, 5), R_MOD), R_MOD),
+            t1,
+            R_MOD
+          ),
+          0,
+          R_MOD
+        )
 
-        t0 := addmod(t0, ithChunk(b, 0), R_MOD)
-        t1 := addmod(t1, ithChunk(b, 1), R_MOD)
-        t2 := addmod(t2, ithChunk(b, 2), R_MOD)
-        t3 := addmod(t3, ithChunk(b, 3), R_MOD)
+        t2 := addmod(
+          addmod(
+            addmod(addmod(ithChunk(a, 2), ithChunk(a, 6), R_MOD), addmod(ithChunk(b, 2), ithChunk(b, 6), R_MOD), R_MOD),
+            t2,
+            R_MOD
+          ),
+          0,
+          R_MOD
+        )
 
-        t0 := addmod(t0, ithChunk(b, 4), R_MOD)
-        t1 := addmod(t1, ithChunk(b, 5), R_MOD)
-        t2 := addmod(t2, ithChunk(b, 6), R_MOD)
-        t3 := addmod(t3, ithChunk(b, 7), R_MOD)
+        t3 := addmod(
+          addmod(
+            addmod(addmod(ithChunk(a, 3), ithChunk(a, 7), R_MOD), addmod(ithChunk(b, 3), ithChunk(b, 7), R_MOD), R_MOD),
+            t3,
+            R_MOD
+          ),
+          0,
+          R_MOD
+        )
       }
 
       /// matMulM4 computes
@@ -355,11 +381,10 @@ library Poseidon2 {
       /// @param ptr pointer to 2 uint256 elements, interpreted as 4 blocks of 4 uint32 elements
       /// that we multiply by M4. The resut is 4 blocks of 4 uint32 elements, aligned in ptr
       function mathMulM4InPlace(ptr) {
-        
         let a := mload(ptr)
         a := matMulM4uint256(a)
         mstore(ptr, a)
-        
+
         a := mload(add(ptr, 0x20))
         a := matMulM4uint256(a)
         mstore(add(ptr, 0x20), a)
@@ -367,17 +392,9 @@ library Poseidon2 {
 
       /// matMulM4uint256 splits a:= (c1<<128) || c2 in two chunks c1 c2 of 4 32bits elmts
       /// and computes d1=M4*c1, d2=M4*c2, and returns (d1<<128) || d2
-      function matMulM4uint256(a)->b {
-        let s0 := ithChunk(a, 0)
-        let s1 := ithChunk(a, 1)
-        let s2 := ithChunk(a, 2)
-        let s3 := ithChunk(a, 3)
-        s0, s1, s2, s3 := matMulM4(s0, s1, s2, s3)
-        let s4 := ithChunk(a, 4)
-        let s5 := ithChunk(a, 5)
-        let s6 := ithChunk(a, 6)
-        let s7 := ithChunk(a, 7)
-        s4, s5, s6, s7 := matMulM4(s4, s5, s6, s7)
+      function matMulM4uint256(a) -> b {
+        let s0, s1, s2, s3 := matMulM4(ithChunk(a, 0), ithChunk(a, 1), ithChunk(a, 2), ithChunk(a, 3))
+        let s4, s5, s6, s7 := matMulM4(ithChunk(a, 4), ithChunk(a, 5), ithChunk(a, 6), ithChunk(a, 7))
         b := packToUint256(s0, s1, s2, s3, s4, s5, s6, s7)
       }
 
@@ -388,10 +405,9 @@ library Poseidon2 {
       /// (1 1 2 3)
       /// (3 1 1 2)
       /// a, b, c, d are uint32 elmts
-      function matMulM4(a, b, c, d)->u,v,w,x {
-        
+      function matMulM4(a, b, c, d) -> u, v, w, x {
         let t01, t23, t0123, t01123, t01233
-        
+
         t01 := addmod(a, b, R_MOD)
         t23 := addmod(c, d, R_MOD)
         t0123 := addmod(t01, t23, R_MOD)
@@ -426,17 +442,17 @@ library Poseidon2 {
       // query i-th 32bits chunk of a uint256 number N.
       // The 8-th chunk corresponds to the LSB of N,
       // the 0-th chunk corresponds to the MSB of N.
-      function ithChunk(n, i)->m {
-        m := mod(shr(mul(sub(7,i), 32), n), WORD_MOD)
+      function ithChunk(n, i) -> m {
+        m := mod(shr(mul(sub(7, i), 32), n), WORD_MOD)
       }
 
       // sbox
-      function sboxSingleEntry(x)->rx {
+      function sboxSingleEntry(x) -> rx {
         rx := mulmod(x, mulmod(x, x, R_MOD), R_MOD)
       }
 
       // addroundkey on the first entry
-      function addRoundKeyFirstEntry(x, k)->rx {
+      function addRoundKeyFirstEntry(x, k) -> rx {
         let tmp := ithChunk(x, 0)
         let t0 := tmp
         t0 := addmod(k, t0, R_MOD)
@@ -445,34 +461,34 @@ library Poseidon2 {
         rx := add(rx, shl(224, t0))
       }
 
-      function addRoundKeyUint256(x, k)->rx {
-        let t0, t1, t2, t3, t4, t5, t6, t7
-        t0 := addmod(ithChunk(x, 0), ithChunk(k, 0), R_MOD)
-        t1 := addmod(ithChunk(x, 1), ithChunk(k, 1), R_MOD)
-        t2 := addmod(ithChunk(x, 2), ithChunk(k, 2), R_MOD)
-        t3 := addmod(ithChunk(x, 3), ithChunk(k, 3), R_MOD)
-        t4 := addmod(ithChunk(x, 4), ithChunk(k, 4), R_MOD)
-        t5 := addmod(ithChunk(x, 5), ithChunk(k, 5), R_MOD)
-        t6 := addmod(ithChunk(x, 6), ithChunk(k, 6), R_MOD)
-        t7 := addmod(ithChunk(x, 7), ithChunk(k, 7), R_MOD)
-        rx := packToUint256(t0, t1, t2, t3, t4, t5, t6, t7)
+      function addRoundKeyUint256(x, k) -> rx {
+        rx := packToUint256(
+          addmod(ithChunk(x, 0), ithChunk(k, 0), R_MOD),
+          addmod(ithChunk(x, 1), ithChunk(k, 1), R_MOD),
+          addmod(ithChunk(x, 2), ithChunk(k, 2), R_MOD),
+          addmod(ithChunk(x, 3), ithChunk(k, 3), R_MOD),
+          addmod(ithChunk(x, 4), ithChunk(k, 4), R_MOD),
+          addmod(ithChunk(x, 5), ithChunk(k, 5), R_MOD),
+          addmod(ithChunk(x, 6), ithChunk(k, 6), R_MOD),
+          addmod(ithChunk(x, 7), ithChunk(k, 7), R_MOD)
+        )
       }
 
       // sbox
-      function sboxUint256(x)->rx {
-        let t0, t1, t2, t3, t4, t5, t6, t7
-        t0 := sboxSingleEntry(ithChunk(x, 0))
-        t1 := sboxSingleEntry(ithChunk(x, 1))
-        t2 := sboxSingleEntry(ithChunk(x, 2))
-        t3 := sboxSingleEntry(ithChunk(x, 3))
-        t4 := sboxSingleEntry(ithChunk(x, 4))
-        t5 := sboxSingleEntry(ithChunk(x, 5))
-        t6 := sboxSingleEntry(ithChunk(x, 6))
-        t7 := sboxSingleEntry(ithChunk(x, 7))
-        rx := packToUint256(t0, t1, t2, t3, t4, t5, t6, t7)
+      function sboxUint256(x) -> rx {
+        rx := packToUint256(
+          sboxSingleEntry(ithChunk(x, 0)),
+          sboxSingleEntry(ithChunk(x, 1)),
+          sboxSingleEntry(ithChunk(x, 2)),
+          sboxSingleEntry(ithChunk(x, 3)),
+          sboxSingleEntry(ithChunk(x, 4)),
+          sboxSingleEntry(ithChunk(x, 5)),
+          sboxSingleEntry(ithChunk(x, 6)),
+          sboxSingleEntry(ithChunk(x, 7))
+        )
       }
 
-      function sboxFirstEntry(x)->rx {
+      function sboxFirstEntry(x) -> rx {
         let tmp := ithChunk(x, 0)
         let t0 := tmp
         tmp := shl(224, tmp)
@@ -503,14 +519,22 @@ library Poseidon2 {
       let data := add(out, 0x20)
 
       let w := 0
-      for { let i := 0 } lt(i, 0x8) { i := add(i, 0x1) } {
+      for {
+        let i := 0
+      } lt(i, 0x8) {
+        i := add(i, 0x1)
+      } {
         let v := and(shr(mul(sub(0xF, i), 0x10), input), 0xFFFF)
         w := or(w, shl(mul(sub(0x7, i), 0x20), v))
       }
       mstore(data, w)
 
       w := 0
-      for { let i := 0x8 } lt(i, 0x10) { i := add(i, 0x1) } {
+      for {
+        let i := 0x8
+      } lt(i, 0x10) {
+        i := add(i, 0x1)
+      } {
         let v := and(shr(mul(sub(0xF, i), 0x10), input), 0xFFFF)
         w := or(w, shl(mul(sub(0xF, i), 0x20), v))
       }
