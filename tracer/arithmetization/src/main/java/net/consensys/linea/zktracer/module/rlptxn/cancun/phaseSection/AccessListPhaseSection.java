@@ -146,7 +146,7 @@ public class AccessListPhaseSection extends PhaseSection {
     }
 
     public void trace(Trace.Rlptxn trace, GenericTracedValue tracedValues) {
-      int tupleSize = bytesToInt(entryRlpPrefix.byteStringLength());
+      int tupleSize = entryRlpPrefix.byteStringLength();
       short totalStorageForThisAddress = (short) keys.size();
 
       totalAddress -= 1;
