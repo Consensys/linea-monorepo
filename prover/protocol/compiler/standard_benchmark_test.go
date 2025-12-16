@@ -334,23 +334,23 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
 	// These parameters have been found to give the best result for performances
 	params := selfRecursionParameters{
-		NbOpenedColumns: 8,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 5,
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 9,
 	}
 
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<9),
+			compiler.WithTargetColSize(1<<20),
 			compiler.WithStitcherMinSize(1<<1),
 		),
 		vortex.Compile(
 			2,
 			false,
-			vortex.WithOptionalSISHashingThreshold(32),
-			vortex.ForceNumOpenedColumns(8),
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)
