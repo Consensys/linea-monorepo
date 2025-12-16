@@ -18,19 +18,16 @@ package net.consensys.linea.zktracer.module.rlpUtils;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.TraceCancun.Rlptxn.RLP_TXN_CT_MAX_INTEGER;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BI_PREFIX_SHORT_INT;
-import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES32_PREFIX_SHORT_INT;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
-import java.math.BigInteger;
 
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
@@ -48,7 +45,7 @@ public class InstructionInteger extends RlpUtilsCall {
   @Override
   protected void compute() {
     integerIsZero = integer.isZero();
-    integerHiIsNonZero = integer.numberOfLeadingZeroBytes() <= LLARGE;
+    integerHiIsNonZero = integer.numberOfLeadingZeroBytes() < LLARGE;
     final boolean intLoGeq128 = intLo().toUnsignedBigInteger().compareTo(BI_PREFIX_SHORT_INT) >= 0;
     rlpPrefixRequired = integerIsZero || integerHiIsNonZero || intLoGeq128;
   }
