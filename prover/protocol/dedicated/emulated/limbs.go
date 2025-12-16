@@ -70,17 +70,16 @@ func csPolyEval(val Limbs, challengePowers []ifaces.Column) *symbolic.Expression
 
 // limbsToBigInt recomposes the limbs at loc into res using buf as a temporary
 // buffer.
-func limbsToBigInt(res *big.Int, buf []uint64, limbs Limbs, loc int, nbBitsPerLimb int, run *wizard.ProverRuntime) error {
+func limbsToBigInt(res *big.Int, buf []uint64, limbs [][]field.Element, loc int, nbBitsPerLimb int) error {
 	if res == nil {
 		return fmt.Errorf("result not initialized")
 	}
-	nbLimbs := len(limbs.Columns)
+	nbLimbs := len(limbs)
 	if len(buf) < nbLimbs {
 		buf = append(buf, make([]uint64, nbLimbs-len(buf))...)
 	}
 	for j := range nbLimbs {
-		limb := limbs.Columns[j].GetColAssignmentAt(run, loc)
-		buf[j] = limb.Uint64()
+		buf[j] = limbs[j][loc].Uint64()
 	}
 	if err := IntLimbRecompose(buf, nbBitsPerLimb, res); err != nil {
 		return err

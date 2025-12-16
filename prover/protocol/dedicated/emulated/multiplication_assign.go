@@ -15,6 +15,20 @@ import (
 func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 	nbRows := a.TermL.Columns[0].Size()
 	var (
+		srcTermL   = make([][]field.Element, len(a.TermL.Columns))
+		srcTermR   = make([][]field.Element, len(a.TermR.Columns))
+		srcModulus = make([][]field.Element, len(a.Modulus.Columns))
+	)
+	for i := range a.TermL.Columns {
+		srcTermL[i] = a.TermL.Columns[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+	for i := range a.TermR.Columns {
+		srcTermR[i] = a.TermR.Columns[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+	for i := range a.Modulus.Columns {
+		srcModulus[i] = a.Modulus.Columns[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+	var (
 		dstQuoLimbs = make([][]field.Element, len(a.Quotient.Columns))
 		dstRemLimbs = make([][]field.Element, len(a.Result.Columns))
 		dstCarry    = make([][]field.Element, len(a.Carry.Columns))
@@ -50,13 +64,13 @@ func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 		carry := new(big.Int)
 		for i := start; i < end; i++ {
 			// we can reuse all the big ints here
-			if err := limbsToBigInt(witTermL, bufL, a.TermL, i, a.nbBitsPerLimb, run); err != nil {
+			if err := limbsToBigInt(witTermL, bufL, srcTermL, i, a.nbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert witness term L: %v", err)
 			}
-			if err := limbsToBigInt(witTermR, bufR, a.TermR, i, a.nbBitsPerLimb, run); err != nil {
+			if err := limbsToBigInt(witTermR, bufR, srcTermR, i, a.nbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert witness term R: %v", err)
 			}
-			if err := limbsToBigInt(witModulus, bufMod, a.Modulus, i, a.nbBitsPerLimb, run); err != nil {
+			if err := limbsToBigInt(witModulus, bufMod, srcModulus, i, a.nbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert witness modulus: %v", err)
 			}
 			tmpProduct.Mul(witTermL, witTermR)

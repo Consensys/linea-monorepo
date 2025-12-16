@@ -17,6 +17,23 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 	nbRows := a.Terms[0][0].Columns[0].Size()
 
 	var (
+		srcTerms   = make([][][][]field.Element, len(a.Terms))
+		srcModulus = make([][]field.Element, len(a.Modulus.Columns))
+	)
+	for i := range a.Terms {
+		srcTerms[i] = make([][][]field.Element, len(a.Terms[i]))
+		for j := range a.Terms[i] {
+			srcTerms[i][j] = make([][]field.Element, len(a.Terms[i][j].Columns))
+			for k := range a.Terms[i][j].Columns {
+				srcTerms[i][j][k] = a.Terms[i][j].Columns[k].GetColAssignment(run).IntoRegVecSaveAlloc()
+			}
+		}
+	}
+	for i := range a.Modulus.Columns {
+		srcModulus[i] = a.Modulus.Columns[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+
+	var (
 		dstQuoLimbs = make([][]field.Element, len(a.Quotient.Columns))
 		dstCarry    = make([][]field.Element, len(a.Carry.Columns))
 	)
@@ -70,7 +87,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				for k := range a.Terms[j] {
 					nbLimbs := len(a.Terms[j][k].Columns)
 					// recompose the term value as integer
-					if err := limbsToBigInt(wit, bufWit[:nbLimbs], a.Terms[j][k], i, a.nbBitsPerLimb, run); err != nil {
+					if err := limbsToBigInt(wit, bufWit[:nbLimbs], srcTerms[j][k], i, a.nbBitsPerLimb); err != nil {
 						utils.Panic("failed to convert witness term [%d][%d]: %v", j, k, err)
 					}
 					if wit.Sign() != 0 {
@@ -96,7 +113,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				}
 			}
 			// recompose the modulus as integer
-			if err := limbsToBigInt(witModulus, bufMod, a.Modulus, i, a.nbBitsPerLimb, run); err != nil {
+			if err := limbsToBigInt(witModulus, bufMod, srcModulus, i, a.nbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert witness modulus: %v", err)
 			}
 			// compute the quotient from the accumulated evaluation. NB! We require the evaluation
