@@ -83,7 +83,7 @@ func runTestcase(t *testing.T, poseidonCodeHashCsvPath, stateSummaryCsvPath stri
 
 		// CodeHash is [common.NbLimbU256] columns (Keccak hash)
 		for i := range common.NbLimbU256 {
-			lineaCodeHashModule.CodeHash[i] = b.InsertCommit(0, ifaces.ColIDf("LCHM_KECCAK_%v", i), sizeCodeHashModule, true)
+			lineaCodeHashModule.CodeHash[i] = b.InsertCommit(0, ifaces.ColIDf("MCH_KECCAK_%v", i), sizeCodeHashModule, true)
 		}
 
 		consistency = NewModule(b.CompiledIOP, "CONSISTENCY", stateSummary, lineaCodeHashModule)
