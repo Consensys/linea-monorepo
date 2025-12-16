@@ -82,11 +82,11 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	cfg.Layer2.MsgSvcContract = addr.Address()
 
 	// Extract the coinbase address from the string
-	// addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.CoinbaseStr)
-	// if withValidation && err != nil {
-	// 	return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
-	// }
-	// cfg.Layer2.MsgSvcContract = addr.Address()
+	addr, err = common.NewMixedcaseAddressFromString(cfg.Layer2.CoinBaseStr)
+	if withValidation && err != nil {
+		return nil, fmt.Errorf("failed to extract Layer2.CoinBase address: %w", err)
+	}
+	cfg.Layer2.CoinBase = addr.Address()
 
 	// ensure that asset dir / kzgsrs exists using os.Stat
 	srsDir := cfg.PathForSRS()
@@ -150,10 +150,12 @@ type Config struct {
 		// Use this field when you need the ETH address as a string.
 		MsgSvcContractStr string `mapstructure:"message_service_contract" validate:"required,eth_addr"`
 
-		// CoinbaseStr string `mapstructure:"coinbase" validate:"required,eth_addr"`
-
 		// MsgSvcContract stores the unique ID of the Service Contract (SC), as a common.Address.
 		MsgSvcContract common.Address `mapstructure:"-"`
+
+		// CoinBaseStr stores the coinbase address of Linea as a string.
+		CoinBaseStr string         `mapstructure:"coin_base" validate:"required,eth_addr"`
+		CoinBase    common.Address `mapstructure:"-"`
 	}
 
 	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
