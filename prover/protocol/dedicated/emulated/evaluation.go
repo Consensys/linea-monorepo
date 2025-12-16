@@ -96,7 +96,7 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 	for i := range terms {
 		nbTermQuoLimbsBits := terms[i][0].NumLimbs() * nbBitsPerLimb
 		for j := 1; j < len(terms[i]); j++ {
-			nbTermQuoLimbsBits = nbMultiplicationResLimbs(nbTermQuoLimbsBits, terms[i][j].NumLimbs()) * nbBitsPerLimb
+			nbTermQuoLimbsBits = nbMultiplicationResLimbs(nbTermQuoLimbsBits, terms[i][j].NumLimbs()*nbBitsPerLimb)
 			nbLimbs = max(nbLimbs, terms[i][j].NumLimbs())
 		}
 		nbQuoBits = max(nbQuoBits, nbTermQuoLimbsBits)
