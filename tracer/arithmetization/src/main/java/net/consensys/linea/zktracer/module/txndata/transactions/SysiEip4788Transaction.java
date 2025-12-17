@@ -12,33 +12,32 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.txndata.cancun.transactions;
+package net.consensys.linea.zktracer.module.txndata.transactions;
 
 import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Trace.HISTORY_BUFFER_LENGTH;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection.HISTORY_BUFFER_LENGTH_BI;
-import static net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.EucRow.callToEuc;
-import static net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.WcpRow.smallCallToIszero;
-import static net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows.Type.EIP4788;
+import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.EucRow.callToEuc;
+import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow.smallCallToIszero;
+import static net.consensys.linea.zktracer.module.txndata.rows.hubRows.Type.EIP4788;
 import static net.consensys.linea.zktracer.types.Conversions.longToUnsignedBigInteger;
 
 import java.math.BigInteger;
-import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
-import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnDataOperation;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.EucRow;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.WcpRow;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows.HubRowForSystemTransactions;
+import net.consensys.linea.zktracer.module.txndata.TxnData;
+import net.consensys.linea.zktracer.module.txndata.TxnDataOperation;
+import net.consensys.linea.zktracer.module.txndata.rows.computationRows.EucRow;
+import net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow;
+import net.consensys.linea.zktracer.module.txndata.rows.hubRows.HubRowForSystemTransactions;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes32;
 
-public class SysiEip4788Transaction extends CancunTxnDataOperation {
+public class SysiEip4788Transaction extends TxnDataOperation {
 
   public static final short NB_ROWS_TXN_DATA_SYSI_EIP4788 = 3;
 
-  public SysiEip4788Transaction(final CancunTxnData txnData) {
+  public SysiEip4788Transaction(final TxnData txnData) {
     super(txnData, SYSI);
     checkState(
         isPostCancun(txnData.hub().fork),
@@ -84,7 +83,4 @@ public class SysiEip4788Transaction extends CancunTxnDataOperation {
   protected int ctMax() {
     return NB_ROWS_TXN_DATA_SYSI_EIP4788 - 1;
   }
-
-  @Override
-  public void traceTransaction(Trace.Txndata trace) {}
 }

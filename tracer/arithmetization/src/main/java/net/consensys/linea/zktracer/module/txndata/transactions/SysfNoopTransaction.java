@@ -12,39 +12,35 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.txndata.cancun.transactions;
+package net.consensys.linea.zktracer.module.txndata.transactions;
 
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSF;
-import static net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows.Type.NOOP;
+import static net.consensys.linea.zktracer.module.txndata.rows.hubRows.Type.NOOP;
 
-import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
-import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnDataOperation;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.NoopRow;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows.HubRowForSystemTransactions;
+import net.consensys.linea.zktracer.module.txndata.TxnData;
+import net.consensys.linea.zktracer.module.txndata.TxnDataOperation;
+import net.consensys.linea.zktracer.module.txndata.rows.computationRows.NoopRow;
+import net.consensys.linea.zktracer.module.txndata.rows.hubRows.HubRowForSystemTransactions;
 
-public class SysfNoopTransaction extends CancunTxnDataOperation {
+public class SysfNoopTransaction extends TxnDataOperation {
 
   public static final short NB_ROWS_TXN_DATA_SYSF_NOOP = 2;
 
-  public final CancunTxnData txnData;
+  public final TxnData txnData;
 
   @Override
   protected int ctMax() {
     return NB_ROWS_TXN_DATA_SYSF_NOOP - 1;
   }
 
-  public SysfNoopTransaction(CancunTxnData txnData) {
+  public SysfNoopTransaction(TxnData txnData) {
     super(txnData, SYSF);
     this.txnData = txnData;
     process();
   }
 
   private void process() {
-    rows.add(new HubRowForSystemTransactions(txnData.getCurrentBlockHeader(), txnData.hub(), NOOP));
+    rows.add(new HubRowForSystemTransactions(txnData.currentBlockHeader(), txnData.hub(), NOOP));
     rows.add(new NoopRow());
   }
-
-  @Override
-  public void traceTransaction(Trace.Txndata trace) {}
 }

@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows;
+package net.consensys.linea.zktracer.module.txndata.rows.computationRows;
 
 import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.*;

@@ -12,35 +12,35 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.txndata.cancun.transactions;
+package net.consensys.linea.zktracer.module.txndata.transactions;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.TraceOsaka.EIP_7825_TRANSACTION_GAS_LIMIT_CAP;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.USER;
-import static net.consensys.linea.zktracer.module.txndata.shanghai.ShanghaiTxndataOperation.MAX_INIT_CODE_SIZE_BYTES;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
 import lombok.Getter;
-import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
-import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnDataOperation;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.RlpRow;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.EucRow;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.WcpRow;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows.HubRowForUserTransactions;
+import net.consensys.linea.zktracer.module.txndata.TxnData;
+import net.consensys.linea.zktracer.module.txndata.TxnDataOperation;
+import net.consensys.linea.zktracer.module.txndata.rows.RlpRow;
+import net.consensys.linea.zktracer.module.txndata.rows.computationRows.EucRow;
+import net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow;
+import net.consensys.linea.zktracer.module.txndata.rows.hubRows.HubRowForUserTransactions;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
-public class CancunUserTransaction extends CancunTxnDataOperation {
-  public static final short NB_ROWS_TXN_DATA_CANCUN_USER_1559_SEMANTIC = 16;
-  public static final short NB_ROWS_TXN_DATA_CANCUN_USER_NO_1559_SEMANTIC = 14;
+public class UserTransaction extends TxnDataOperation {
+  private static final short NB_ROWS_TXN_DATA_OSAKA_USER_1559_SEMANTIC = 17;
+  private static final short NB_ROWS_TXN_DATA_OSAKA_USER_NO_1559_SEMANTIC = 15;
   private static final Bytes EIP_2681_MAX_NONCE = bigIntegerToBytes(EIP2681_MAX_NONCE);
+  private static final Bytes EIP_7825_TRANSACTION_GAS_LIMIT_CAP_BYTES =
+      Bytes.minimalBytes(EIP_7825_TRANSACTION_GAS_LIMIT_CAP);
+  public static final Bytes MAX_INIT_CODE_SIZE_BYTES = Bytes.ofUnsignedInt(MAX_INIT_CODE_SIZE);
   public final TransactionProcessingMetadata txn;
   public final ProcessableBlockHeader blockHeader;
-
-  @Override
-  public void traceTransaction(Txndata trace) {}
 
   public enum DominantCost {
     FLOOR_COST_DOMINATES,
@@ -49,19 +49,18 @@ public class CancunUserTransaction extends CancunTxnDataOperation {
 
   @Getter private DominantCost dominantCost;
 
-  public CancunUserTransaction(
-      final CancunTxnData txnData, final TransactionProcessingMetadata txnMetadata) {
+  public UserTransaction(final TxnData txnData, final TransactionProcessingMetadata txnMetadata) {
     super(txnData, USER);
 
-    this.blockHeader = txnData.getCurrentBlockHeader();
+    this.blockHeader = txnData.currentBlockHeader();
     this.txn = txnMetadata;
 
     this.process();
   }
 
   /**
-   * Every line of function call in the {@link CancunUserTransaction#process} method corresponds to
-   * a row in the USER transaction processing of the specification.
+   * Every line of function call in the {@link UserTransaction#process} method corresponds to a row
+   * in the USER transaction processing of the specification.
    */
   private void process() {
 
@@ -90,8 +89,8 @@ public class CancunUserTransaction extends CancunTxnDataOperation {
   @Override
   protected int ctMax() {
     return (txn.transactionTypeHasEip1559GasSemantics()
-            ? NB_ROWS_TXN_DATA_CANCUN_USER_1559_SEMANTIC
-            : NB_ROWS_TXN_DATA_CANCUN_USER_NO_1559_SEMANTIC)
+            ? NB_ROWS_TXN_DATA_OSAKA_USER_1559_SEMANTIC
+            : NB_ROWS_TXN_DATA_OSAKA_USER_NO_1559_SEMANTIC)
         - 1;
   }
 
@@ -174,7 +173,15 @@ public class CancunUserTransaction extends CancunTxnDataOperation {
   }
 
   /** EIP-7825 is in Osaka and add a transaction gas limit cap */
-  protected void eip7825TransactionGasLimitCap() {}
+  protected void eip7825TransactionGasLimitCap() {
+    final long gasLimit = txn.getGasLimit();
+
+    final WcpRow transactionGasLimitCap =
+        WcpRow.smallCallToLeq(
+            wcp, Bytes.ofUnsignedLong(gasLimit), EIP_7825_TRANSACTION_GAS_LIMIT_CAP_BYTES);
+
+    rows.add(transactionGasLimitCap);
+  }
 
   private void gasLimitMustCoverTheTransactionFloorCostComputationRow() {
     final long floorGasCost =

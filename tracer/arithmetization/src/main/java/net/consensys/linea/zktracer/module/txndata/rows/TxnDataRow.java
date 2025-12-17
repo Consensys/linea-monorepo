@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys Inc.
+ * Copyright Consensys Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -12,19 +12,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+package net.consensys.linea.zktracer.module.txndata.rows;
 
-package net.consensys.linea.zktracer.module.txndata.london;
+import net.consensys.linea.zktracer.Trace;
 
-import lombok.Builder;
-
-@Builder
-public record RlptxrcptOutgoing(short phase, long outgoing) {
-
-  public static RlptxrcptOutgoing set(final short phase, final long value) {
-    return RlptxrcptOutgoing.builder().phase(phase).outgoing(value).build();
-  }
-
-  public static RlptxrcptOutgoing emptyValue() {
-    return RlptxrcptOutgoing.builder().phase((short) 0).outgoing(0).build();
-  }
+public abstract class TxnDataRow {
+  public abstract void traceRow(Trace.Txndata trace);
 }

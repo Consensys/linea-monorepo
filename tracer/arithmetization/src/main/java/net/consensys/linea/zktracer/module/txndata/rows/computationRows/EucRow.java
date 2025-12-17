@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows;
+package net.consensys.linea.zktracer.module.txndata.rows.computationRows;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

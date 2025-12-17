@@ -12,11 +12,14 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows;
+package net.consensys.linea.zktracer.module.txndata.rows.computationRows;
 
-public enum Type {
-  NOOP,
-  USER,
-  EIP2935,
-  EIP4788,
+import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.txndata.rows.TxnDataRow;
+
+public abstract class ComputationRow extends TxnDataRow {
+  @Override
+  public void traceRow(Trace.Txndata trace) {
+    trace.cmptn(true);
+  }
 }

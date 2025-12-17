@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows;
+package net.consensys.linea.zktracer.module.txndata.rows.hubRows;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;

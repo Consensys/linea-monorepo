@@ -12,13 +12,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows;
+package net.consensys.linea.zktracer.module.txndata.rows.hubRows;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.TxnDataRow;
+import net.consensys.linea.zktracer.module.txndata.rows.TxnDataRow;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;

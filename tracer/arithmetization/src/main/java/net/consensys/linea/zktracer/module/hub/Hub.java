@@ -230,7 +230,7 @@ public final class Hub implements Module {
   private final Rom rom = new Rom(romLex);
   private final RlpTxn rlpTxn;
   private final Mmio mmio;
-  @Getter final TxnData txnData = setTxnData();
+  @Getter final TxnData txnData = new TxnData(this, wcp, euc);
   private final RlpTxnRcpt rlpTxnRcpt = new RlpTxnRcpt();
   private final LogInfo logInfo = new LogInfo(rlpTxnRcpt);
   private final LogData logData = new LogData(rlpTxnRcpt);

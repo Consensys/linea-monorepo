@@ -12,25 +12,24 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.txndata.cancun.transactions;
+package net.consensys.linea.zktracer.module.txndata.transactions;
 
 import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
 import static net.consensys.linea.zktracer.Trace.HISTORY_SERVE_WINDOW;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
-import static net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.WcpRow.smallCallToIszero;
+import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow.smallCallToIszero;
 
-import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
-import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnDataOperation;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.EucRow;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.WcpRow;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows.HubRowForSystemTransactions;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows.Type;
+import net.consensys.linea.zktracer.module.txndata.TxnData;
+import net.consensys.linea.zktracer.module.txndata.TxnDataOperation;
+import net.consensys.linea.zktracer.module.txndata.rows.computationRows.EucRow;
+import net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow;
+import net.consensys.linea.zktracer.module.txndata.rows.hubRows.HubRowForSystemTransactions;
+import net.consensys.linea.zktracer.module.txndata.rows.hubRows.Type;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
-public class SysiEip2935Transaction extends CancunTxnDataOperation {
+public class SysiEip2935Transaction extends TxnDataOperation {
 
   public static final short NB_ROWS_TXN_DATA_SYSI_EIP2935 = 3;
 
@@ -39,7 +38,7 @@ public class SysiEip2935Transaction extends CancunTxnDataOperation {
     return NB_ROWS_TXN_DATA_SYSI_EIP2935 - 1;
   }
 
-  public SysiEip2935Transaction(final CancunTxnData txnData) {
+  public SysiEip2935Transaction(final TxnData txnData) {
     super(txnData, SYSI);
     checkState(
         isPostPrague(txnData.hub().fork),
@@ -88,7 +87,4 @@ public class SysiEip2935Transaction extends CancunTxnDataOperation {
   private Bytes previousBlockHash() {
     return currentBlockIsGenesisBlock() ? Bytes.EMPTY : blockHeader.getParentHash();
   }
-
-  @Override
-  public void traceTransaction(Trace.Txndata trace) {}
 }

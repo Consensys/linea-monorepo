@@ -12,14 +12,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows;
+package net.consensys.linea.zktracer.module.txndata.rows.computationRows;
 
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.module.txndata.cancun.rows.TxnDataRow;
 
-public abstract class ComputationRow extends TxnDataRow {
-  @Override
+public class NoopRow extends ComputationRow {
   public void traceRow(Trace.Txndata trace) {
-    trace.cmptn(true);
+    super.traceRow(trace);
   }
 }
