@@ -23,12 +23,9 @@ import static net.consensys.linea.zktracer.Trace.EVM_INST_SGT;
 import static net.consensys.linea.zktracer.Trace.EVM_INST_SLT;
 import static net.consensys.linea.zktracer.Trace.WCP_INST_GEQ;
 import static net.consensys.linea.zktracer.Trace.WCP_INST_LEQ;
-import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.reallyToSignedBigInteger;
 
-import java.math.BigInteger;
 import java.security.InvalidParameterException;
-
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;

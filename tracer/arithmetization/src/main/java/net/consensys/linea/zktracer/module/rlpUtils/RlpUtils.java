@@ -21,7 +21,6 @@ import static net.consensys.linea.zktracer.types.Utils.rightPadToBytes16;
 
 import java.math.BigInteger;
 import java.util.List;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;

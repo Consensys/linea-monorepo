@@ -37,8 +37,6 @@ import static net.consensys.linea.zktracer.types.Utils.BYTES16_ZERO;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import graphql.com.google.common.base.Preconditions;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -122,7 +120,7 @@ public class MmioData {
         0,
         0,
         0,
-      BYTES16_ZERO,
+        BYTES16_ZERO,
         BYTES16_ZERO,
         BYTES16_ZERO,
         BYTES16_ZERO,

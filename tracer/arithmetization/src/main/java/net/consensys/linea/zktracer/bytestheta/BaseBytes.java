@@ -69,7 +69,7 @@ public class BaseBytes implements HighLowBytes {
   /**
    * Returns a new `Bytes16` object that is the high section (first 16 bytes) of the bytes32`
    * instance variable.
-   **/
+   */
   @Override
   public Bytes getHigh() {
     final Bytes output = bytes32.slice(0, LOW_HIGH_SIZE);

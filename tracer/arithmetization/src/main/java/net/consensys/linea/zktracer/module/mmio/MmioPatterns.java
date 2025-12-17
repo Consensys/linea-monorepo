@@ -20,7 +20,6 @@ import static net.consensys.linea.zktracer.Trace.LLARGE;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import net.consensys.linea.zktracer.module.mmu.MmuData;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -122,7 +121,8 @@ public class MmioPatterns {
       final short size) {
     checkArgument(source.size() == LLARGE, "source should be of size 16");
     checkArgument(target.size() == LLARGE, "target should be of size 16");
-        final Bytes output = Bytes.concatenate(
+    final Bytes output =
+        Bytes.concatenate(
             target.slice(0, targetByteOffset),
             source.slice(sourceByteOffset, size),
             target.slice(targetByteOffset + size, LLARGE - targetByteOffset - size));
@@ -142,7 +142,7 @@ public class MmioPatterns {
             target1.slice(0, targetByteOffset),
             source.slice(sourceByteOffset, LLARGE - targetByteOffset));
     checkArgument(output.size() == LLARGE, "output should be of size 16");
-    return  output;
+    return output;
   }
 
   public static Bytes onePartialToTwoOutputTwo(
@@ -156,7 +156,7 @@ public class MmioPatterns {
     final short numberOfBytesFromSourceToFirstTarget = (short) (LLARGE - targetByteOffset);
     final short numberOfBytesFromSourceToSecondTarget =
         (short) (size - numberOfBytesFromSourceToFirstTarget);
-   final Bytes output =
+    final Bytes output =
         Bytes.concatenate(
             source.slice(
                 sourceByteOffset + numberOfBytesFromSourceToFirstTarget,
@@ -190,10 +190,9 @@ public class MmioPatterns {
     return output;
   }
 
-  public static Bytes excision(
-      final Bytes target, final short targetByteOffset, final short size) {
+  public static Bytes excision(final Bytes target, final short targetByteOffset, final short size) {
     checkArgument(target.size() == LLARGE, "target should be of size 16");
-    final  Bytes output =
+    final Bytes output =
         Bytes.concatenate(
             target.slice(0, targetByteOffset),
             Bytes.repeat((byte) 0, size),

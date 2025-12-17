@@ -20,7 +20,6 @@ import static net.consensys.linea.zktracer.types.Checks.checkArgument;
 import static net.consensys.linea.zktracer.types.Utils.leftPadToBytes16;
 
 import java.math.BigInteger;
-
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 

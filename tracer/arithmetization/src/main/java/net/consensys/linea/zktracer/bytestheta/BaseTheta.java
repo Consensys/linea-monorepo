@@ -15,11 +15,11 @@
 
 package net.consensys.linea.zktracer.bytestheta;
 
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
-
 import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
+
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 
 /**
  * Represents a BaseTheta data structure, which is an extension of BytesArray, with support for high

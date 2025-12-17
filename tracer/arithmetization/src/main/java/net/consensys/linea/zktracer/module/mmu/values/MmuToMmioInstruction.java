@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.mmu.values;
 
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.tuweni.bytes.Bytes;
-
-import static net.consensys.linea.zktracer.Trace.LLARGE;
-import static net.consensys.linea.zktracer.types.Utils.rightPadToBytes16;
 
 @Builder
 @Getter

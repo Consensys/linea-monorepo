@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.rlpUtils;
 
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.*;
-import static net.consensys.linea.zktracer.types.Conversions.bytesToLong;
 import static net.consensys.linea.zktracer.types.Utils.BYTES16_ZERO;
 import static net.consensys.linea.zktracer.types.Utils.rightPadToBytes16;
 
@@ -26,9 +25,7 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
-
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
@@ -54,7 +51,7 @@ public class InstructionByteStringPrefix extends RlpUtilsCall {
 
   @Override
   protected void compute() {
-    byteStringIsNonEmpty = byteStringLength !=0;
+    byteStringIsNonEmpty = byteStringLength != 0;
     final boolean byteStringLengthIsOne = byteStringLength == 1;
     final boolean byteStringLengthGtOne = byteStringLength > 1;
 
@@ -90,8 +87,7 @@ public class InstructionByteStringPrefix extends RlpUtilsCall {
         rlpPrefix =
             rightPadToBytes16(
                 Bytes.minimalBytes(
-                    byteStringLength
-                        + (isList ? RLP_PREFIX_LIST_SHORT : RLP_PREFIX_INT_SHORT)));
+                    byteStringLength + (isList ? RLP_PREFIX_LIST_SHORT : RLP_PREFIX_INT_SHORT)));
         rlpPrefixByteSize = 1;
       } else {
         final int bslByteSize = Bytes.minimalBytes(byteStringLength).size();
@@ -100,7 +96,7 @@ public class InstructionByteStringPrefix extends RlpUtilsCall {
                 Bytes.concatenate(
                     Bytes.minimalBytes(
                         bslByteSize + (isList ? RLP_PREFIX_LIST_LONG : RLP_PREFIX_INT_LONG)),
-                  Bytes.minimalBytes(byteStringLength)));
+                    Bytes.minimalBytes(byteStringLength)));
         rlpPrefixByteSize = (short) (1 + bslByteSize);
       }
     }

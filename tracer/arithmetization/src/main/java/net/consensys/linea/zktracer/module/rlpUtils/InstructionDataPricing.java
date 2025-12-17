@@ -19,7 +19,6 @@ import static graphql.com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.RLP_UTILS_INST_DATA_PRICING;
 
-
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -89,7 +88,7 @@ public class InstructionDataPricing extends RlpUtilsCall {
   @Override
   protected void traceMacro(Trace.Rlputils trace) {
     trace
-      .inst(RLP_UTILS_INST_DATA_PRICING)
+        .inst(RLP_UTILS_INST_DATA_PRICING)
         .data1(limb)
         .data2(Bytes.ofUnsignedShort(nBytes))
         .data6(Bytes.ofUnsignedShort(zeros))
