@@ -101,7 +101,7 @@ jobs:
     steps:
       - name: Delete tag created without release
         run: |
-          echo "failure()"
+          delete_output=$(gh release delete "${{needs.build.outputs.releaseTag}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
         env:
           GH_TOKEN: ${{ github.token }}
 
