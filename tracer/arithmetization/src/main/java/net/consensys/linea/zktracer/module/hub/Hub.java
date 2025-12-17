@@ -479,7 +479,7 @@ public final class Hub implements Module {
     rlpTxn = new RlpTxn(rlpUtils, trm);
     rlpAddr = new RlpAddr(this, trm, keccak);
     blockdata = new CancunBlockData(this, wcp, euc, chain, publicInputs.blobBaseFees());
-    mmu = new Mmu(euc, wcp, fork);
+    mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);
     blockhash = new Blockhash(this, wcp, publicInputs.historicalBlockhashes());
 
