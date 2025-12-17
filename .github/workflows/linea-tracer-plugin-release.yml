@@ -59,6 +59,9 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
+          gh release delete linea-tracer-test-release-dummy-2 --cleanup-tag
+          gh release delete linea-tracer-test-release-dummy --cleanup-tag
+          gh release delete linea-tracer-beta-v4.4-rc7 --cleanup-tag
           gh release create ${{ steps.config.outputs.RELEASE_TAG }} $jar_asset
           gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
         env:
