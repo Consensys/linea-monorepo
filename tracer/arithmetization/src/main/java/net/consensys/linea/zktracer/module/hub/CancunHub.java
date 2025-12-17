@@ -27,8 +27,6 @@ import net.consensys.linea.zktracer.module.mxp.module.Mxp;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.CancunRlpTxn;
-import net.consensys.linea.zktracer.module.tables.instructionDecoder.CancunInstructionDecoder;
-import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -66,11 +64,6 @@ public class CancunHub extends ShanghaiHub {
   @Override
   protected RlpUtils setRlpUtils() {
     return new RlpUtils();
-  }
-
-  @Override
-  protected InstructionDecoder setInstructionDecoder() {
-    return new CancunInstructionDecoder(this.opCodes());
   }
 
   @Override

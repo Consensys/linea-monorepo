@@ -105,8 +105,8 @@ import net.consensys.linea.zktracer.module.romlex.RomLex;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.stp.Stp;
-import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
-import net.consensys.linea.zktracer.module.tables.instructionDecoder.*;
+import net.consensys.linea.zktracer.module.tables.BlsRt;
+import net.consensys.linea.zktracer.module.tables.InstructionDecoder;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -482,7 +482,9 @@ public abstract class Hub implements Module {
     blockhash = new Blockhash(this, wcp, publicInputs.historicalBlockhashes());
 
     refTableModules =
-        Stream.of(new BlsRt(), setInstructionDecoder()).filter(Objects::nonNull).toList();
+        Stream.of(new BlsRt(), new InstructionDecoder(this.opCodes()))
+            .filter(Objects::nonNull)
+            .toList();
 
     modules =
         Stream.concat(
@@ -1194,8 +1196,6 @@ public abstract class Hub implements Module {
   protected abstract RlpTxn setRlpTxn(Hub hub);
 
   protected abstract Module setRlpUtils();
-
-  protected abstract InstructionDecoder setInstructionDecoder();
 
   protected abstract void setSkipSection(
       Hub hub,

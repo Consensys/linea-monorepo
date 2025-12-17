@@ -31,8 +31,6 @@ import net.consensys.linea.zktracer.module.mxp.module.LondonMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxn.london.LondonRlpTxn;
-import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
-import net.consensys.linea.zktracer.module.tables.instructionDecoder.LondonInstructionDecoder;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.london.LondonTxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -72,11 +70,6 @@ public class LondonHub extends Hub {
   @Override
   protected Mxp setMxp() {
     return new LondonMxp();
-  }
-
-  @Override
-  protected InstructionDecoder setInstructionDecoder() {
-    return new LondonInstructionDecoder(this.opCodes());
   }
 
   @Override

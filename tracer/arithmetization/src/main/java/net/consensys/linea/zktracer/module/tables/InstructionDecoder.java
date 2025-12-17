@@ -13,9 +13,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.tables.instructionDecoder;
+package net.consensys.linea.zktracer.module.tables;
 
 import static net.consensys.linea.zktracer.module.ModuleName.INSTRUCTION_DECODER;
+import static net.consensys.linea.zktracer.opcode.InstructionFamily.MCOPY;
+import static net.consensys.linea.zktracer.opcode.InstructionFamily.TRANSIENT;
 
 import java.util.List;
 import net.consensys.linea.zktracer.Trace;
@@ -27,7 +29,7 @@ import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
-public abstract class InstructionDecoder implements Module {
+public final class InstructionDecoder implements Module {
   private final OpCodes opCodes;
 
   public InstructionDecoder(OpCodes opCodes) {
@@ -60,18 +62,10 @@ public abstract class InstructionDecoder implements Module {
         .familyCreate(op.instructionFamily() == InstructionFamily.CREATE)
         .familyCall(op.instructionFamily() == InstructionFamily.CALL)
         .familyHalt(op.instructionFamily() == InstructionFamily.HALT)
-        .familyInvalid(op.instructionFamily() == InstructionFamily.INVALID);
-    traceTransientFamily(op, trace);
-    traceMcopyFamily(op, trace);
+        .familyInvalid(op.instructionFamily() == InstructionFamily.INVALID)
+        .familyTransient(op.instructionFamily() == TRANSIENT)
+        .familyMcopy(op.instructionFamily() == MCOPY);
   }
-
-  protected abstract void traceTransientFamily(OpCodeData op, Trace.Instdecoder trace);
-
-  protected abstract void traceMcopyFamily(OpCodeData op, Trace.Instdecoder trace);
-
-  protected abstract void traceMxpFlag(OpCodeData op, Trace.Instdecoder trace);
-
-  protected abstract void traceMxpScenario(OpCodeData op, Trace.Instdecoder trace);
 
   private static void traceStackSettings(OpCodeData op, Trace.Instdecoder trace) {
     trace
@@ -98,8 +92,17 @@ public abstract class InstructionDecoder implements Module {
                 op.billing().billingRate() == BillingRate.BY_BYTE
                     ? op.billing().perUnit().cost()
                     : 0));
-    traceMxpFlag(op, trace);
-    traceMxpScenario(op, trace);
+    trace.mxpFlag(op.isMxp());
+    trace
+        .isMsize(op.isMSize())
+        .isReturn(op.isReturn())
+        .isMcopy(op.isMCopy())
+        .isFixedSize1(op.isFixedSize1())
+        .isFixedSize32(op.isFixedSize32())
+        .isSingleMaxOffset(op.isSingleOffset())
+        .isDoubleMaxOffset(op.isDoubleOffset())
+        .isWordPricing(op.isWordPricing())
+        .isBytePricing(op.isBytePricing());
   }
 
   @Override
