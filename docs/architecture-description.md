@@ -495,7 +495,7 @@ Traces-API has two endpoints:
 
 * Trace counts `linea_getBlockTracesCountersV2` returning the trace counts for a given block.
 * Conflated trace generation `linea_generateConflatedTracesToFileV2` used to trigger the generation of conflated traces.
-Conflated traces are expected to be of size 100MB~500MB (lt format + gzipped). They are stored in a shared folder inside
+Conflated traces are in a custom lt format and stored compressed. They are stored in a shared folder inside
 shared/traces/conflated. This shared folder acts as a queue for other services. This call returns the name of the file
 once it is generated.
 
