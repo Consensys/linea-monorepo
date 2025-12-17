@@ -16,8 +16,7 @@
 package net.consensys.linea.zktracer.types;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
-import static net.consensys.linea.zktracer.types.Utils.leftPadToBytes16;
-import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
+import static net.consensys.linea.zktracer.types.Utils.*;
 
 import org.apache.tuweni.bytes.Bytes;
 
@@ -26,7 +25,7 @@ public class Bytecodes {
   public static Bytes readBytes(
       final Bytes data, final long sourceOffset, final int size, final int exoByteOffset) {
     if (sourceOffset >= data.size()) {
-      return Bytes.repeat((byte) 0, LLARGE);
+      return BYTES16_ZERO;
     }
 
     final long dataLengthToExtract = Math.min(size, data.size() - sourceOffset);
