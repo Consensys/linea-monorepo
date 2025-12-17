@@ -380,7 +380,7 @@ public class ZkTracer implements LineCountingTracer {
   @Override
   public void popTransactionBundle() {
     log.info(
-        "[ZkTracer] Transaction have been popped, assuming block building. Tracing might fail.");
+        "[ZkTracer] Transaction bundle has been popped, assuming block building. Tracing might fail.");
     hub.popTransactionBundle();
   }
 
