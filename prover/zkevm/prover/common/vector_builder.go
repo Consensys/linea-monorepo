@@ -201,6 +201,21 @@ func (vb *VectorBuilder) PadAndAssign(run *wizard.ProverRuntime, v ...field.Elem
 	)
 }
 
+// PadLeftAndAssign pads and assign the column built by `vb` using `v` as padding
+// value and assigning into `run`.
+func (vb *VectorBuilder) PadLeftAndAssign(run *wizard.ProverRuntime, v ...field.Element) {
+
+	paddingValue := field.Zero()
+	if len(v) > 0 {
+		paddingValue = v[0]
+	}
+
+	run.AssignColumn(
+		vb.column.GetColID(),
+		smartvectors.LeftPadded(vb.slice, paddingValue, vb.column.Size()),
+	)
+}
+
 // Height returns the total number of elements that have been pushed on this
 // builder.
 func (vb *VectorBuilder) Height() int {

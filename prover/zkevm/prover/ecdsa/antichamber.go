@@ -122,7 +122,7 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 	res.UnalignedGnarkData = newUnalignedGnarkData(comp, size, res.unalignedGnarkDataSource())
 	res.Addresses = newAddress(comp, size, res.EcRecover, res, inputs.TxSource)
 
-	res.FlattenLimbs = common.NewFlattenColumn(comp, common.NbLimbU128, res.UnalignedGnarkData.GnarkData[:], res.IsPushing)
+	res.FlattenLimbs = common.NewFlattenColumn(comp, res.UnalignedGnarkData.GnarkData.AsDynSize(), res.IsPushing)
 
 	// Only define the gnark circuit alignment if WithCircuit is true
 	if inputs.WithCircuit {

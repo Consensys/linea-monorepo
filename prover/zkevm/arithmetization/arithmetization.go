@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 )
@@ -155,10 +156,10 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	AssignFromLtTraces(run, a.AirSchema, expandedTrace, a.Settings.Limits)
 }
 
-// LimbColumnsOf returns the wizard columns corresponding to the limbs for the
+// limbColumnsOf returns the wizard columns corresponding to the limbs for the
 // tuple (moduleName, regName). The function furthermore ensures that the
 // function has the requested number of limbs.
-func (a *Arithmetization) LimbColumnsOf(comp *wizard.CompiledIOP, mod string, column string, nLimbs int) []ifaces.Column {
+func (a *Arithmetization) limbColumnsOf(comp *wizard.CompiledIOP, mod string, column string, nLimbs int) []ifaces.Column {
 	names := a.LimbsOf(mod, column, nLimbs)
 	cols := make([]ifaces.Column, len(names))
 	for i, name := range names {
@@ -167,66 +168,98 @@ func (a *Arithmetization) LimbColumnsOf(comp *wizard.CompiledIOP, mod string, co
 	return cols
 }
 
-// LimbColumnsOfArr2 is sugar for
-//
-//	```
-//	 	c := a.LimbColumnsOf(comp, mod, regName, 2)
-//		return [2]ifaces.Column(c)
-//	 ```
-func (a *Arithmetization) LimbColumnsOfArr2(comp *wizard.CompiledIOP, mod string, column string) [2]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, column, 2)
-	return [2]ifaces.Column(c)
+// GetLimbsOfUint returns a [limbs.Uint] register corresponding to tuple
+// (moduleName, regName). The function furthermore ensures that the register has
+// the requested number of limbs.
+func GetLimbsOf[S limbs.BitSize, E limbs.Endianness](a *Arithmetization,
+	comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[S, E] {
+
+	numLimbs := limbs.NumLimbsOf[S]()
+	cols := a.limbColumnsOf(comp, mod, column, numLimbs)
+	cols = limbs.ConvertSlice[limbs.LittleEndian, E](cols)
+	return limbs.FromSliceUnsafe[S, E](
+		ifaces.ColID(fmt.Sprintf("%s.%s", mod, column)),
+		cols,
+	)
 }
 
-// LimbColumnsOfArr3 is sugar for
-//
-//	```
-//	 	c := a.LimbColumnsOf(comp, mod, regName, 3)
-//		return [3]ifaces.Column(c)
-//	 ```
-func (a *Arithmetization) LimbColumnsOfArr3(comp *wizard.CompiledIOP, mod string, column string) [3]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, column, 3)
-	return [3]ifaces.Column(c)
+// GetLimbsOfU16Be returns a [limbs.Uint] register corresponding to a U16 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU16Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S16, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S16, limbs.BigEndian](a, comp, mod, column)
 }
 
-// LimbColumnsOfArr4 is sugar for
-//
-//	```
-//	 	c := a.LimbColumnsOf(comp, mod, regName, 4)
-//		return [4]ifaces.Column(c)
-//	 ```
-func (a *Arithmetization) LimbColumnsOfArr4(comp *wizard.CompiledIOP, mod string, column string) [4]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, column, 4)
-	return [4]ifaces.Column(c)
+// GetLimbsOfU16Le returns a [limbs.Uint] register corresponding to a U16 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU16Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S16, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S16, limbs.LittleEndian](a, comp, mod, column)
 }
 
-// LimbColumnsOfArr8 is sugar for
-//
-//	```
-//	 	c := a.LimbColumnsOf(comp, mod, regName, 8)
-//		return [8]ifaces.Column(c)
-//	 ```
-func (a *Arithmetization) LimbColumnsOfArr8(comp *wizard.CompiledIOP, mod string, column string) [8]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, column, 8)
-	return [8]ifaces.Column(c)
+// GetLimbsOfU32Be returns a [limbs.Uint] register corresponding to a U32 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU32Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S32, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S32, limbs.BigEndian](a, comp, mod, column)
 }
 
-// LimbColumnsOfArr16 is sugar for
-//
-//	```
-//	 	c := a.LimbColumnsOf(comp, mod, regName, 16)
-//		return [16]ifaces.Column(c)
-//	 ```
-func (a *Arithmetization) LimbColumnsOfArr16(comp *wizard.CompiledIOP, mod string, column string) [16]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, column, 16)
-	return [16]ifaces.Column(c)
+// GetLimbsOfU32Le returns a [limbs.Uint] register corresponding to a U32 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU32Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S32, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S32, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU64Be returns a [limbs.Uint] register corresponding to a U64 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU64Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S64, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S64, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU64Le returns a [limbs.Uint] register corresponding to a U64 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU64Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S64, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S64, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU128Be returns a [limbs.Uint] register corresponding to a U128 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU128Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S128, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S128, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU128Le returns a [limbs.Uint] register corresponding to a U128 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU128Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S128, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S128, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU160Be returns a [limbs.Uint] register corresponding to a U160 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU160Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S160, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S160, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU160Le returns a [limbs.Uint] register corresponding to a U160 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU160Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S160, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S160, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU256 returns a [limbs.Uint] register corresponding to a U256 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU256Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S256, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S256, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU256Le returns a [limbs.Uint] register corresponding to a U256 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU256Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S256, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S256, limbs.LittleEndian](a, comp, mod, column)
 }
 
 // ColumnOf returns the wizard column associated with the given name and
 // register. The function will fail with panic if the column is not found or the
 // column has more than 1 register.
 func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, column string) ifaces.Column {
-	cols := a.LimbColumnsOf(comp, name, column, 1)
+	cols := a.limbColumnsOf(comp, name, column, 1)
 	return cols[0]
 }
 

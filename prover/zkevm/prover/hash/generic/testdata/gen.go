@@ -3,11 +3,12 @@ package testdata
 import (
 	"fmt"
 	"math/rand/v2"
-	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -37,7 +38,7 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 
 	var (
 		rng        = rand.New(rand.NewChaCha8([32]byte{}))
-		limbCols   = common.NewMultiVectorBuilder(gdm.Limbs)
+		limbCols   = limbs.NewVectorBuilder(gdm.Limbs.AsDynSize())
 		nByteCol   = common.NewVectorBuilder(gdm.NBytes)
 		hashNumCol = common.NewVectorBuilder(gdm.HashNum)
 		toHashCol  = common.NewVectorBuilder(gdm.ToHash)
@@ -69,16 +70,14 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 
 		resBytes := make([]byte, 16)
 		_, _ = utils.ReadPseudoRand(rng, resBytes[:numBytesInt])
-		limbs := common.Bytes16ToLimbsLe(resBytes)
-		limbCols.PushRow(limbs[:])
-
+		limbCols.PushBytes(resBytes)
 	}
 
 	nByteCol.PadAndAssign(run)
 	hashNumCol.PadAndAssign(run)
 	indexCol.PadAndAssign(run)
 	toHashCol.PadAndAssign(run)
-	limbCols.PadAssignZero(run)
+	limbCols.PadAndAssignZero(run)
 
 	if len(path) > 0 {
 
@@ -86,17 +85,16 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 		fmt.Fprint(oF, "TO_HASH,HASH_NUM,INDEX,NBYTES,LIMBS\n")
 
 		for i := range hashNumInt {
-			var limbsStr []string
-			for _, l := range limbCols.T {
-				limbsStr = append(limbsStr, fmt.Sprintf("0x%s", l.Slice()[i].Text(16)))
-			}
+
+			limbBytes := limbCols.PeekBytesAt(i)
+			limbsStr := fmt.Sprintf("0x%x", limbBytes)
 
 			fmt.Fprintf(oF, "%v,%v,%v,%v,0x%v\n",
 				toHashCol.Slice()[i].String(),
 				hashNumCol.Slice()[i].String(),
 				indexCol.Slice()[i].String(),
 				nByteCol.Slice()[i].String(),
-				strings.Join(limbsStr, ","),
+				limbsStr,
 			)
 		}
 
@@ -108,30 +106,24 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 // CreateGenDataModule is used for testing, it commits to the [generic.GenDataModule] columns,
 func CreateGenDataModule(comp *wizard.CompiledIOP, name string, size int, nbLimbs int) (gbm generic.GenDataModule) {
 	createCol := common.CreateColFn(comp, name, size, pragmas.RightPadded)
-	gbm.HashNum = createCol("HASH_NUM")
-	gbm.Index = createCol("INDEX")
-
-	for i := 0; i < nbLimbs; i++ {
-		gbm.Limbs = append(gbm.Limbs, createCol("LIMBS_%d", i))
+	return generic.GenDataModule{
+		Limbs:   limbs.NewUint128Be(comp, ifaces.ColID(name)+"_LIMBS", size),
+		HashNum: createCol("HASH_NUM"),
+		Index:   createCol("INDEX"),
+		NBytes:  createCol("NBYTES"),
+		ToHash:  createCol("TO_HASH"),
 	}
-
-	gbm.NBytes = createCol("NBYTES")
-	gbm.ToHash = createCol("TO_HASH")
-	return gbm
 }
 
 // CreateGenInfoModule is used for testing, it commits to the [generic.GenInfoModule] columns,
 func CreateGenInfoModule(comp *wizard.CompiledIOP, name string, size int, nbLimbs int) (gim generic.GenInfoModule) {
 	createCol := common.CreateColFn(comp, name, size, pragmas.RightPadded)
-
-	for i := 0; i < nbLimbs; i++ {
-		gim.HashHi = append(gim.HashHi, createCol("HASH_HI_%d", i))
-		gim.HashLo = append(gim.HashLo, createCol("HASH_LO_%d", i))
+	return generic.GenInfoModule{
+		HashHi:   limbs.NewUint128Be(comp, ifaces.ColID(name)+"_HASH_HI", size),
+		HashLo:   limbs.NewUint128Be(comp, ifaces.ColID(name)+"_HASH_LO", size),
+		IsHashHi: createCol("IS_HASH_HI"),
+		IsHashLo: createCol("IS_HASH_LO"),
 	}
-
-	gim.IsHashHi = createCol("IS_HASH_HI")
-	gim.IsHashLo = createCol("IS_HASH_LO")
-	return gim
 }
 
 // it embeds  the expected hash (for the steam encoded inside gdm) inside gim columns.
@@ -143,59 +135,47 @@ func GenerateAndAssignGenInfoModule(
 ) {
 
 	var (
-		hashHi      = make([]*common.VectorBuilder, len(gim.HashHi))
-		hashLo      = make([]*common.VectorBuilder, len(gim.HashHi))
+		hashHi      = limbs.NewVectorBuilder(gim.HashHi.AsDynSize())
+		hashLo      = limbs.NewVectorBuilder(gim.HashLo.AsDynSize())
 		isHashHiCol = common.NewVectorBuilder(gim.IsHashHi)
 		isHashLoCol = common.NewVectorBuilder(gim.IsHashLo)
 	)
 
-	for i := 0; i < len(gim.HashHi); i++ {
-		hashHi[i] = common.NewVectorBuilder(gim.HashHi[i])
-		hashLo[i] = common.NewVectorBuilder(gim.HashLo[i])
-	}
-
+	// This loop generates the different streams
 	streams := gdm.ScanStreams(run)
 	var res [][32]byte
 	for _, stream := range streams {
 		res = append(res, keccak.Hash(stream))
 
 	}
+
 	ctrHi := 0
 	ctrLo := 0
 	for i := range isHashHi {
+
 		if isHashHi[i] == 1 {
-			bytes := SplitBytes(res[ctrHi][:16], 2)
-			for j := 0; j < len(gim.HashHi); j++ {
-				hashHi[j].PushBytes(bytes[j])
-			}
+			hiBytes := res[ctrHi][:16]
 			isHashHiCol.PushInt(1)
+			hashHi.PushBytes(hiBytes)
 			ctrHi++
 		} else {
-			for j := 0; j < len(gim.HashHi); j++ {
-				hashHi[j].PushInt(0)
-			}
-			isHashHiCol.PushInt(0)
+			hashHi.PushZero()
+			isHashHiCol.PushZero()
 		}
 
 		if isHashLo[i] == 1 {
-			bytes := SplitBytes(res[ctrLo][16:], 2)
-			for j := 0; j < len(gim.HashLo); j++ {
-				hashLo[j].PushBytes(bytes[j])
-			}
+			loBytes := res[ctrLo][16:]
 			isHashLoCol.PushInt(1)
+			hashLo.PushBytes(loBytes)
 			ctrLo++
 		} else {
-			for j := 0; j < len(gim.HashLo); j++ {
-				hashLo[j].PushInt(0)
-			}
-			isHashLoCol.PushInt(0)
+			isHashLoCol.PushZero()
+			hashLo.PushZero()
 		}
 	}
 
-	for i := 0; i < len(gim.HashHi); i++ {
-		hashHi[i].PadAndAssign(run)
-		hashLo[i].PadAndAssign(run)
-	}
+	hashHi.PadAndAssignZero(run)
+	hashLo.PadAndAssignZero(run)
 	isHashHiCol.PadAndAssign(run)
 	isHashLoCol.PadAndAssign(run)
 }

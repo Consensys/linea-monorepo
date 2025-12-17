@@ -1,7 +1,6 @@
 package ecdsa
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -10,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic/testdata"
-	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/glue_keccak"
+	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,8 +49,7 @@ func TestAddress(t *testing.T) {
 			IsPublicKey:         gbmGnark.ToHash,
 		}
 
-		copy(uaGnark.GnarkData[:], gbmGnark.Limbs)
-		slices.Reverse(gbmGnark.Limbs)
+		uaGnark.GnarkData = gbmGnark.Limbs.ToLittleEndianUint()
 
 		ac.UnalignedGnarkData = uaGnark
 
