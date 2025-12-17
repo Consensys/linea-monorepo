@@ -13,12 +13,35 @@ import (
 const Magic = 0x5A45524F
 
 // File Layout
+// FileHeader describes the fixed-size header at the beginning of a serialized file.
+// It provides enough metadata to validate the file, determine how to interpret the
+// payload, and locate the serialized data region.
+//
+// All fields are written in a stable binary format and must remain backward-compatible
+// across versions.
 type FileHeader struct {
-	Magic       uint32
-	Version     uint32
+	// Magic is a constant identifier used to quickly validate that the file
+	// is of the expected format (e.g. to reject random or corrupted input).
+	Magic uint32
+
+	// Version specifies the serialization format version.
+	// It allows the reader to handle backward/forward compatibility
+	// and apply version-specific decoding logic.
+	Version uint32
+
+	// PayloadType identifies the logical type of the serialized payload.
+	// This is typically an application-defined enum or type ID that tells
+	// the deserializer how to interpret the root object.
 	PayloadType uint64
-	PayloadOff  int64
-	DataSize    int64
+
+	// PayloadOff is the byte offset (from the start of the file/buffer)
+	// where the payload begins.
+	// This allows the header to be fixed-size while the payload layout evolves.
+	PayloadOff int64
+
+	// DataSize is the total size in bytes of the serialized payload data.
+	// It can be used for bounds checking, mmap sizing, and integrity validation.
+	DataSize int64
 }
 
 // InterfaceHeader represents the binary header for an interface and is specifically designed to be
@@ -78,8 +101,8 @@ type MappedFile struct {
 	databyte
 }
 
-// OpenMappedFile opens a file and maps it into memory.
-func OpenMappedFile(path string) (*MappedFile, error) {
+// openMappedFile opens a file and maps it into memory.
+func openMappedFile(path string) (*MappedFile, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)

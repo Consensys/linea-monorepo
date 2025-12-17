@@ -55,7 +55,7 @@ func LoadFromDisk(filePath string, assetPtr any, withCompression bool) (io.Close
 		// --- Path B: Uncompressed (Memory Mapped) ---
 		logrus.Infof("Mmapping file %s...", filePath)
 
-		mfile, err = OpenMappedFile(filePath)
+		mfile, err = openMappedFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to mmap %s: %w", filePath, err)
 		}

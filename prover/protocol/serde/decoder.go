@@ -159,8 +159,9 @@ func (dec *Decoder) decodeString(target reflect.Value, offset int64) error {
 		return fmt.Errorf("string content out of bounds")
 	}
 
-	// Zero-copy string construction - we'd need unsafe.String (Go 1.20+)
-	// NOTE Std. string(bytes) copies.
+	// NOTE Std. string(bytes) copies. For zero-copy string construction - we' use unsafe.String
+	// Since Go strings are immutable, the bytes passed to String must not be modified as long as
+	// the returned string value exists.
 	target.SetString(unsafe.String(&dec.data[start], fs.Len))
 	return nil
 }
