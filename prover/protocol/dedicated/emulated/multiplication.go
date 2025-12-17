@@ -15,8 +15,6 @@ import (
 
 // Multiplication represents an emulated big integer multiplication with given modulus.
 type Multiplication struct {
-	// TODO: use expression board instead, but for now keep it simple
-
 	// nbBitsPerLimb is the number of bits per limb.
 	nbBitsPerLimb int
 	// round is the module round. It is automatically computed at creation from
