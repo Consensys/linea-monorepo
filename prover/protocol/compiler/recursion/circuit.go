@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -76,13 +75,12 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	w := r.WizardVerifier
 
 	if !r.withoutGkr {
-		temp := gkrmimc.NewHasherFactory(api)
-		w.HasherFactory = temp
+		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(api)
 		w.BLSFS = fiatshamir.NewGnarkFSKoalaBLS12377(api)
 	}
 
 	if r.withExternalHasher {
-		w.HasherFactory = &hasher_factory.ExternalHasherFactory{Api: api} // TODO: fix in crypto/mimc/factories.go
+		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(api)
 	}
 
 	w.Verify(api)
