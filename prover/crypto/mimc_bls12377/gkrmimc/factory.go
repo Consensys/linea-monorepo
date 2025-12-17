@@ -7,7 +7,7 @@ import (
 	field "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 

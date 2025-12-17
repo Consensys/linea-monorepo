@@ -13,7 +13,7 @@ import (
 	"github.com/consensys/gnark/std/gkrapi"
 	"github.com/consensys/gnark/std/gkrapi/gkr"
 	"github.com/consensys/gnark/std/multicommit"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
