@@ -101,7 +101,7 @@ jobs:
     steps:
       - name: Delete tag created without release
         run: |
-          gh release delete ${{ releaseTag }} --cleanup-tag
+          gh release delete ${{needs.steps.outputs.releaseTag}} --cleanup-tag
         env:
           GH_TOKEN: ${{ github.token }}
 
