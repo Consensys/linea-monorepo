@@ -76,7 +76,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 	if !r.withoutGkr {
 		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(api)
-		w.BLSFS = fiatshamir.NewGnarkFSKoalaBLS12377(api)
+		w.BLSFS = fiatshamir.NewGnarkFSKoalabear(api)
 	}
 
 	if r.withExternalHasher {
