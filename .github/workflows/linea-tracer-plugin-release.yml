@@ -101,11 +101,11 @@ jobs:
     steps:
       - name: Delete tag created without release
         run: |
-          echo " ${{ needs.steps.outputs.uploadResults }} "
-            echo " ${{ needs.steps.outputs.setupGccResults }} "
-            echo " ${{ needs.steps.outputs.buildWithoutTestsResults }} "
-            echo " ${{ needs.steps.outputs.storeArtifactsResults }} "
-            echo " ${{ needs.steps.outputs.runSpotlessResults }} "
+          echo " ${{ needs.build.outputs.uploadResults }} "
+            echo " ${{ needs.build.outputs.setupGccResults }} "
+            echo " ${{ needs.build.outputs.buildWithoutTestsResults }} "
+            echo " ${{ needs.build.outputs.storeArtifactsResults }} "
+            echo " ${{ needs.build.outputs.runSpotlessResults }} "
         env:
           GH_TOKEN: ${{ github.token }}
 
