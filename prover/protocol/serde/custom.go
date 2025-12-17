@@ -24,7 +24,7 @@ import (
 )
 
 type CustomCodex struct {
-	Serialize   func(w *Writer, v reflect.Value) (Ref, error)
+	Serialize   func(w *Encoder, v reflect.Value) (Ref, error)
 	Deserialize func(ctx *ReaderContext, v reflect.Value, offset int64) error
 }
 
@@ -107,7 +107,7 @@ func init() {
 // ---------------- IMPLEMENTATIONS ----------------
 
 // --- Column Natural ---
-func serializeColumnNatural(w *Writer, v reflect.Value) (Ref, error) {
+func serializeColumnNatural(w *Encoder, v reflect.Value) (Ref, error) {
 	nat := v.Interface().(column.Natural)
 	packed := nat.Pack()
 	return linearize(w, reflect.ValueOf(packed))
@@ -135,7 +135,7 @@ type PackedCoin struct {
 func asPackedCoin(c coin.Info) PackedCoin {
 	return PackedCoin{Type: int8(c.Type), Size: c.Size, UpperBound: int32(c.UpperBound), Name: string(c.Name), Round: c.Round}
 }
-func serializeCoinInfo(w *Writer, v reflect.Value) (Ref, error) {
+func serializeCoinInfo(w *Encoder, v reflect.Value) (Ref, error) {
 	c := v.Interface().(coin.Info)
 	packed := asPackedCoin(c)
 	return linearize(w, reflect.ValueOf(packed))
@@ -158,7 +158,7 @@ func deserializeCoinInfo(ctx *ReaderContext, v reflect.Value, offset int64) erro
 }
 
 // --- Column Store (STRUCT) ---
-func serializeColumnStore(w *Writer, v reflect.Value) (Ref, error) {
+func serializeColumnStore(w *Encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
 	if err != nil {
 		return 0, err
@@ -179,7 +179,7 @@ func deserializeColumnStore(ctx *ReaderContext, v reflect.Value, offset int64) e
 }
 
 // --- RingSIS Key (STRUCT) ---
-func serializeRingSisKey(w *Writer, v reflect.Value) (Ref, error) {
+func serializeRingSisKey(w *Encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
 	if err != nil {
 		return 0, err
@@ -198,7 +198,7 @@ func deserializeRingSisKey(ctx *ReaderContext, v reflect.Value, offset int64) er
 }
 
 // --- Gnark FFT Domain (STRUCT) ---
-func serializeGnarkFFTDomain(w *Writer, v reflect.Value) (Ref, error) {
+func serializeGnarkFFTDomain(w *Encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
 	if err != nil {
 		return 0, err
@@ -234,7 +234,7 @@ func deserializeGnarkFFTDomain(ctx *ReaderContext, v reflect.Value, offset int64
 }
 
 // --- Gnark R1CS (STRUCT) ---
-func serializeR1CS(w *Writer, v reflect.Value) (Ref, error) {
+func serializeR1CS(w *Encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
 	if err != nil {
 		return 0, err
@@ -270,7 +270,7 @@ func deserializeR1CS(ctx *ReaderContext, v reflect.Value, offset int64) error {
 }
 
 // --- Arithmetization ---
-func serializeArithmetization(w *Writer, v reflect.Value) (Ref, error) {
+func serializeArithmetization(w *Encoder, v reflect.Value) (Ref, error) {
 	var bodyBuf bytes.Buffer
 	if err := linearizeStructBodyMap(w, v, &bodyBuf); err != nil {
 		return 0, err
@@ -293,7 +293,7 @@ func deserializeArithmetization(ctx *ReaderContext, v reflect.Value, offset int6
 }
 
 // --- Big Int, Frontend Variable, SmartVectors, Helpers ---
-func serializeBigInt(w *Writer, v reflect.Value) (Ref, error) {
+func serializeBigInt(w *Encoder, v reflect.Value) (Ref, error) {
 	if v.Kind() == reflect.Ptr {
 		return writeBigInt(w, v.Interface().(*big.Int))
 	}
@@ -303,7 +303,7 @@ func serializeBigInt(w *Writer, v reflect.Value) (Ref, error) {
 	bi := v.Interface().(big.Int)
 	return writeBigInt(w, &bi)
 }
-func serializeBigIntPtr(w *Writer, v reflect.Value) (Ref, error) {
+func serializeBigIntPtr(w *Encoder, v reflect.Value) (Ref, error) {
 	if v.IsNil() {
 		return 0, nil
 	}
@@ -318,7 +318,7 @@ func deserializeBigInt(ctx *ReaderContext, v reflect.Value, offset int64) error 
 	}
 	return reconstructBigInt(ctx.data, v, offset)
 }
-func serializeFrontendVariable(w *Writer, v reflect.Value) (Ref, error) {
+func serializeFrontendVariable(w *Encoder, v reflect.Value) (Ref, error) {
 	bi := toBigInt(v)
 	if bi == nil {
 		return 0, nil
@@ -333,7 +333,7 @@ func deserializeFrontendVariable(ctx *ReaderContext, v reflect.Value, offset int
 	v.Set(reflect.ValueOf(bi))
 	return nil
 }
-func serializeSmartVectorRegular(w *Writer, v reflect.Value) (Ref, error) {
+func serializeSmartVectorRegular(w *Encoder, v reflect.Value) (Ref, error) {
 	// We expect a smartvectors.Regular type here
 	sliceVal := v
 	if v.Kind() == reflect.Interface {
@@ -356,7 +356,7 @@ func deserializeSmartVectorRegular(ctx *ReaderContext, v reflect.Value, offset i
 	v.Set(slicePtr.Elem().Convert(v.Type()))
 	return nil
 }
-func serializeAsEmpty(w *Writer, v reflect.Value) (Ref, error) {
+func serializeAsEmpty(w *Encoder, v reflect.Value) (Ref, error) {
 	// FIX: Write 1 byte so that the object has a unique offset/identity in the stream.
 	return Ref(w.Write(byte(0))), nil
 }
@@ -379,7 +379,7 @@ func deserializeAsNewPtr(ctx *ReaderContext, v reflect.Value, offset int64) erro
 	return nil
 }
 
-func writeBigInt(w *Writer, b *big.Int) (Ref, error) {
+func writeBigInt(w *Encoder, b *big.Int) (Ref, error) {
 	if b == nil {
 		return 0, nil
 	}

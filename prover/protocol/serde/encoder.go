@@ -1,4 +1,3 @@
-// File: serde/writer.go
 package serde
 
 import (
@@ -12,8 +11,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-// Writer: Holds the current encoding/serialization state
-type Writer struct {
+// Encoder: Holds the current encoding/serialization state
+type Encoder struct {
 	// The growing array of bytes (the "Heap").
 	buf *bytes.Buffer
 
@@ -26,8 +25,8 @@ type Writer struct {
 	ptrMap map[uintptr]Ref
 }
 
-func NewWriter() *Writer {
-	return &Writer{
+func NewWriter() *Encoder {
+	return &Encoder{
 		buf:    new(bytes.Buffer),
 		offset: 0,
 		ptrMap: make(map[uintptr]Ref), // Initialize the deduplication map.
@@ -36,7 +35,7 @@ func NewWriter() *Writer {
 
 // Write writes the given data to the buffer and returns
 // the start offset (beginning of cursor) at which the data was written
-func (w *Writer) Write(data any) int64 {
+func (w *Encoder) Write(data any) int64 {
 	start := w.offset
 	val := normalizeIntegerSize(reflect.ValueOf(data))
 	if err := binary.Write(w.buf, binary.LittleEndian, val); err != nil {
@@ -48,7 +47,7 @@ func (w *Writer) Write(data any) int64 {
 
 // WriteBytes writes the given bytes to the buffer and returns
 // the start offset (beginning of cursor) at which the bytes were written
-func (w *Writer) WriteBytes(b []byte) int64 {
+func (w *Encoder) WriteBytes(b []byte) int64 {
 	start := w.offset
 	w.buf.Write(b)
 	w.offset += int64(len(b))
@@ -57,7 +56,7 @@ func (w *Writer) WriteBytes(b []byte) int64 {
 
 // Patch jumps back in-time to specific offset (written/reserved with zero bytes earlier)
 // and overwrites the data (reserved with zeros) with the actual data
-func (w *Writer) Patch(offset int64, v any) {
+func (w *Encoder) Patch(offset int64, v any) {
 	var tmp bytes.Buffer
 	val := normalizeIntegerSize(reflect.ValueOf(v))
 	binary.Write(&tmp, binary.LittleEndian, val)
@@ -86,7 +85,7 @@ func (w *Writer) Patch(offset int64, v any) {
 //   - Len:    number of elements in the slice
 //   - Cap:    original slice capacity (needed to faithfully reconstruct the
 //     slice header during deserialization).
-func (w *Writer) writeSliceData(v reflect.Value) FileSlice {
+func (w *Encoder) writeSliceData(v reflect.Value) FileSlice {
 	if v.Len() == 0 {
 		return FileSlice{0, 0, 0}
 	}
@@ -130,7 +129,7 @@ func (w *Writer) writeSliceData(v reflect.Value) FileSlice {
 //   - repeated pointers reuse the previously recorded Ref
 //   - circular references are handled by pre-registering the current offset
 //     before serializing the pointed-to value.
-func linearize(w *Writer, v reflect.Value) (Ref, error) {
+func linearize(w *Encoder, v reflect.Value) (Ref, error) {
 	if !v.IsValid() {
 		return 0, nil
 	}
@@ -166,7 +165,7 @@ func linearize(w *Writer, v reflect.Value) (Ref, error) {
 	return ref, nil
 }
 
-func linearizeValue(w *Writer, v reflect.Value) (Ref, error) {
+func linearizeValue(w *Encoder, v reflect.Value) (Ref, error) {
 
 	// Check Registry first for handling special types
 	if handler, ok := CustomRegistry[v.Type()]; ok {
@@ -218,7 +217,7 @@ func linearizeValue(w *Writer, v reflect.Value) (Ref, error) {
 // linearizeStruct is recursive, the "deepest" objects (the ones pointed to incase of pointers) get their data finalized first
 // while the "top-level" objects are still waiting to finish their patchStructBody loop. The Write Cursor (w.offset)
 // always moves forward, ensuring that new objects never overwrite old ones.
-func linearizeStruct(w *Writer, v reflect.Value) (Ref, error) {
+func linearizeStruct(w *Encoder, v reflect.Value) (Ref, error) {
 	// PREDICT: Calculate total size of the struct in bytes.
 	// CRITICAL: This calculation MUST perfectly match the bytes written by 'patchStructBody'.
 	// If getBinarySize returns X, patchStructBody must write exactly X bytes.
@@ -243,7 +242,7 @@ func linearizeStruct(w *Writer, v reflect.Value) (Ref, error) {
 	return Ref(startOffset), nil
 }
 
-func linearizeMap(w *Writer, v reflect.Value) (Ref, error) {
+func linearizeMap(w *Encoder, v reflect.Value) (Ref, error) {
 	if v.IsNil() {
 		return 0, nil
 	}
@@ -265,7 +264,7 @@ func linearizeMap(w *Writer, v reflect.Value) (Ref, error) {
 	return Ref(off), nil
 }
 
-func linearizeInterface(w *Writer, v reflect.Value) (Ref, error) {
+func linearizeInterface(w *Encoder, v reflect.Value) (Ref, error) {
 	if v.IsNil() {
 		return 0, nil
 	}
@@ -292,7 +291,7 @@ func linearizeInterface(w *Writer, v reflect.Value) (Ref, error) {
 	return Ref(off), nil
 }
 
-func linearizeStructBodyMap(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
+func linearizeStructBodyMap(w *Encoder, v reflect.Value, buf *bytes.Buffer) error {
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
 		t := v.Type().Field(i)
@@ -324,7 +323,7 @@ func linearizeStructBodyMap(w *Writer, v reflect.Value, buf *bytes.Buffer) error
 	return nil
 }
 
-func patchStructBody(w *Writer, v reflect.Value, startOffset int64) error {
+func patchStructBody(w *Encoder, v reflect.Value, startOffset int64) error {
 	currentFieldOff := int64(0)
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
@@ -386,7 +385,7 @@ func patchStructBody(w *Writer, v reflect.Value, startOffset int64) error {
 	return nil
 }
 
-func patchArray(w *Writer, v reflect.Value, startOffset int64) error {
+func patchArray(w *Encoder, v reflect.Value, startOffset int64) error {
 	elemType := v.Type().Elem()
 	elemBinSize := getBinarySize(elemType)
 
@@ -442,7 +441,7 @@ func patchArray(w *Writer, v reflect.Value, startOffset int64) error {
 	return nil
 }
 
-func writeMapElement(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
+func writeMapElement(w *Encoder, v reflect.Value, buf *bytes.Buffer) error {
 	t := v.Type()
 
 	// Handle INDIRECT/CUSTOM TYPES (Interfaces, Pointers, Strings, Registered Custom Types)
