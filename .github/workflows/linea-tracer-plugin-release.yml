@@ -93,8 +93,10 @@ jobs:
     steps:
       - name: Delete tag created without release
         run: |
-          if [[ ${{needs.build.outputs.create_tag}} != "a release with the same tag name already exists:"* ]]; then
-            delete_output=$(gh release delete "${{needs.build.outputs.releaseTag}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
+          echo "${{ needs.build.outputs.create_tag }}"
+          echo "${{ needs.build.outputs.RELEASE_TAG }}"
+          if [[ ${{ needs.build.outputs.create_tag }} != "a release with the same tag name already exists:"* ]]; then
+            delete_output=$(gh release delete "${{needs.build.outputs.RELEASE_TAG}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
             exit 1
           fi
         env:
