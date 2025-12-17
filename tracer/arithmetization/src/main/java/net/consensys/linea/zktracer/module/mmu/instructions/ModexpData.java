@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.Trace.Blake2fmodexpdata.MODEXP_MAX_BYTE_SIZE;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.MMIO_INST_LIMB_VANISHES;
@@ -28,7 +27,6 @@ import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
 import java.util.ArrayList;
 import java.util.List;
-import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
@@ -148,9 +146,7 @@ public class ModexpData implements MmuInstruction {
     final EucOperation eucOp = euc.callEUC(longToBytes(numberRightPaddingBytes), Bytes.of(LLARGE));
     initialTotalRightZeroes = eucOp.quotient().toInt();
     initialTotalNonTrivial =
-      NB_MICRO_ROWS_TOT_MODEXP_ZERO
-            - initialTotalLeftZeroes
-            - initialTotalRightZeroes;
+        NB_MICRO_ROWS_TOT_MODEXP_ZERO - initialTotalLeftZeroes - initialTotalRightZeroes;
     rightPaddingRemainder = eucOp.remainder().toInt();
     eucCallRecords.add(
         MmuEucCallRecord.builder()

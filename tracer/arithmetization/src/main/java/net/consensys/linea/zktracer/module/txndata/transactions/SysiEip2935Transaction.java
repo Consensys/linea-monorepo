@@ -14,8 +14,6 @@
  */
 package net.consensys.linea.zktracer.module.txndata.transactions;
 
-import static com.google.common.base.Preconditions.checkState;
-import static net.consensys.linea.zktracer.Fork.isPostPrague;
 import static net.consensys.linea.zktracer.Trace.HISTORY_SERVE_WINDOW;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
 import static net.consensys.linea.zktracer.module.txndata.rows.computationRows.WcpRow.smallCallToIszero;
@@ -40,9 +38,6 @@ public class SysiEip2935Transaction extends TxnDataOperation {
 
   public SysiEip2935Transaction(final TxnData txnData) {
     super(txnData, SYSI);
-    checkState(
-        isPostPrague(txnData.hub().fork),
-        "EIP-2935 system transaction not allowed before Prague fork");
     process();
   }
 

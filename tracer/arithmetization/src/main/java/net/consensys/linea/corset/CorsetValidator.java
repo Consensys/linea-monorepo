@@ -160,11 +160,6 @@ public class CorsetValidator extends AbstractExecutable {
   private void setChainConstants(List<String> options) {
     final int fork =
         switch (chain.fork) {
-          case LONDON -> EVM_LONDON;
-          case PARIS -> EVM_PARIS;
-          case SHANGHAI -> EVM_SHANGHAI;
-          case CANCUN -> EVM_CANCUN;
-          case PRAGUE -> EVM_PRAGUE;
           case OSAKA -> EVM_OSAKA;
           default -> throw new IllegalArgumentException("unknown fork \"" + chain.fork + "\"");
         };

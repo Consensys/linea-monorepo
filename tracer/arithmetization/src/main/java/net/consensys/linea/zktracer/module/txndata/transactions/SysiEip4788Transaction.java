@@ -14,8 +14,6 @@
  */
 package net.consensys.linea.zktracer.module.txndata.transactions;
 
-import static com.google.common.base.Preconditions.checkState;
-import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Trace.HISTORY_BUFFER_LENGTH;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection.HISTORY_BUFFER_LENGTH_BI;
@@ -39,9 +37,6 @@ public class SysiEip4788Transaction extends TxnDataOperation {
 
   public SysiEip4788Transaction(final TxnData txnData) {
     super(txnData, SYSI);
-    checkState(
-        isPostCancun(txnData.hub().fork),
-        "EIP-4788 system transaction not allowed before Cancun fork");
     process();
   }
 

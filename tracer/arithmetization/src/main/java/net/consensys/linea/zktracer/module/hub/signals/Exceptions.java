@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.hub.signals;
 
-import static net.consensys.linea.zktracer.Fork.isPostShanghai;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.TraceOsaka.Mxp.CANCUN_MXPX_THRESHOLD;
 import static net.consensys.linea.zktracer.opcode.OpCode.RETURN;
@@ -227,9 +226,6 @@ public class Exceptions {
         return codeSize > MAX_CODE_SIZE;
       }
       case CREATE, CREATE2 -> {
-        if (!isPostShanghai(fork)) {
-          return false;
-        }
         final long initCodeSize = clampedToLong(frame.getStackItem(2));
         return initCodeSize > MAX_INIT_CODE_SIZE;
       }
