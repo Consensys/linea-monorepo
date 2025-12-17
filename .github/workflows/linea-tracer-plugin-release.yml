@@ -111,7 +111,7 @@ jobs:
 
   unit-tests-prague:
     needs: [ build ]
-    if: needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success
+    if: needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
     uses: ./.github/workflows/reusable-tracer-unit-tests.yml
     with:
       zkevm_fork: PRAGUE
