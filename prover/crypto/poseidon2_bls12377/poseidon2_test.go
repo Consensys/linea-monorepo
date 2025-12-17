@@ -1,6 +1,7 @@
 package poseidon2_bls12377
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -39,10 +40,9 @@ func (ghc *GnarkMDHasherCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func getGnarkMDHasherCircuitWitness() (*GnarkMDHasherCircuit, *GnarkMDHasherCircuit) {
+func getGnarkMDHasherCircuitWitness(nbElmts int) (*GnarkMDHasherCircuit, *GnarkMDHasherCircuit) {
 
 	// values to hash
-	nbElmts := 2
 	vals := make([]fr.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
 		// vals[i].SetRandom()
@@ -69,15 +69,27 @@ func getGnarkMDHasherCircuitWitness() (*GnarkMDHasherCircuit, *GnarkMDHasherCirc
 
 func TestCircuit(t *testing.T) {
 
-	circuit, witness := getGnarkMDHasherCircuitWitness()
+	// Define all the sizes you want to test here
+	testSizes := []int{2, 100, 2024}
 
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
-	assert.NoError(t, err)
+	for _, size := range testSizes {
+		// Run a sub-test for each size
+		t.Run("Size_"+strconv.Itoa(size), func(t *testing.T) {
 
-	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
-	assert.NoError(t, err)
-	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+			// Pass the size to the helper
+			circuit, witness := getGnarkMDHasherCircuitWitness(size)
+
+			// Compile (Must happen for every new size)
+			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+			assert.NoError(t, err)
+
+			fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+			assert.NoError(t, err)
+
+			err = ccs.IsSolved(fullWitness)
+			assert.NoError(t, err)
+		})
+	}
 
 }
 

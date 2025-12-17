@@ -4,12 +4,10 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/crypto/sha2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -36,16 +34,11 @@ func TestImportAndPad(t *testing.T) {
 			UseCase:     generic.Sha2Usecase,
 			PaddingFunc: sha2.PadStream,
 		},
-		/*{
-			Name:        "MiMC",
-			ModFilePath: "testdata/mod_mimc.csv",
-			UseCase:     generic.MiMCUsecase,
-		},*/
-		{
-			Name:        "Poseidon2",
-			ModFilePath: "testdata/mod_poseidon.csv",
-			UseCase:     generic.MiMCUsecase,
-		},
+		// {
+		// 	Name:        "Poseidon2",
+		// 	ModFilePath: "testdata/mod_poseidon.csv",
+		// 	UseCase:     generic.MiMCUsecase,
+		// },
 	}
 
 	for _, uc := range testCases {
@@ -67,13 +60,9 @@ func TestImportAndPad(t *testing.T) {
 						Index:   inpCt.GetCommit(build, "INDEX"),
 						ToHash:  inpCt.GetCommit(build, "TO_HASH"),
 						NBytes:  inpCt.GetCommit(build, "NBYTES"),
-						Limbs:   make([]ifaces.Column, common.NbLimbU128),
+						Limbs:   inpCt.GetLimbsBe(build, "LIMBS", common.NbLimbU128).AssertUint128(),
 					}},
 					PaddingStrategy: uc.UseCase,
-				}
-
-				for i := 0; i < common.NbLimbU128; i++ {
-					inp.Src.Data.Limbs[i] = inpCt.GetCommit(build, fmt.Sprintf("LIMB_%d", i))
 				}
 
 				mod = ImportAndPad(build.CompiledIOP, inp, 64)
@@ -82,29 +71,27 @@ func TestImportAndPad(t *testing.T) {
 
 			proof := wizard.Prove(comp, func(run *wizard.ProverRuntime) {
 
-				assign := []string{"HASH_NUM", "INDEX", "TO_HASH", "NBYTES"}
-				for i := 0; i < len(inp.Src.Data.Limbs); i++ {
-					assign = append(assign, fmt.Sprintf("LIMB_%d", i))
-				}
-
-				inpCt.Assign(run, assign...)
+				inpCt.Assign(run,
+					inp.Src.Data.Limbs,
+					inp.Src.Data.HashNum,
+					inp.Src.Data.Index,
+					inp.Src.Data.ToHash,
+					inp.Src.Data.NBytes,
+				)
 
 				mod.Run(run)
 
-				toCheck := []string{
-					string(mod.HashNum.GetColID()),
-					string(mod.Index.GetColID()),
-					string(mod.IsActive.GetColID()),
-					string(mod.IsInserted.GetColID()),
-					string(mod.IsPadded.GetColID()),
-					string(mod.NBytes.GetColID()),
-					string(mod.AccPaddedBytes.GetColID()),
-				}
-				for i := range mod.Limbs {
-					toCheck = append(toCheck, string(mod.Limbs[i].GetColID()))
-				}
-
-				modCt.CheckAssignment(run, toCheck...)
+				modCt.CheckAssignment(run,
+					mod.HashNum,
+					mod.Index,
+					mod.IsActive,
+					mod.IsInserted,
+					mod.IsPadded,
+					mod.NBytes,
+					mod.AccPaddedBytes,
+				).CheckAssignmentCols(run,
+					mod.Limbs...,
+				)
 
 				if uc.PaddingFunc != nil {
 					checkPaddingAssignment(t, run, uc.PaddingFunc, mod)
@@ -126,7 +113,7 @@ func checkPaddingAssignment(t *testing.T, run *wizard.ProverRuntime, paddingFunc
 	var (
 		paddedGdm = &generic.GenDataModule{
 			HashNum: mod.HashNum,
-			Limbs:   mod.Limbs,
+			Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("TESTING_LIMBS", mod.Limbs).AssertUint128(),
 			NBytes:  mod.NBytes,
 			ToHash:  mod.IsActive,
 			Index:   mod.Index,

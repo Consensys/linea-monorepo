@@ -4,8 +4,6 @@ import (
 	"strconv"
 	"testing"
 
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -68,28 +66,22 @@ func runTestSha2(t *testing.T, tc testCaseFile) {
 	proof := wizard.Prove(comp, func(run *wizard.ProverRuntime) {
 
 		inpCt.Assign(run,
-			"PACKED_DATA",
-			"SELECTOR",
-			"IS_FIRST_LANE_OF_NEW_HASH",
+			inp.PackedUint16,
+			inp.Selector,
+			inp.IsFirstLaneOfNewHash,
 		)
 
 		mod.Run(run)
 
-		toCheckAssignments := []string{
-			"TESTING_IS_ACTIVE",
-			"TESTING_IS_EFF_BLOCK",
-			"TESTING_IS_EFF_FIRST_LANE_OF_NEW_HASH",
-			"TESTING_IS_EFF_LAST_LANE_OF_CURR_HASH",
-			"TESTING_LIMBS",
-		}
-
-		for i := range numLimbsPerState {
-			toCheckAssignments = append(toCheckAssignments,
-				fmt.Sprintf("TESTING_HASH_%d", i),
-			)
-		}
-
-		modCt.CheckAssignment(run, toCheckAssignments...)
+		modCt.CheckAssignment(run,
+			mod.IsActive,
+			mod.IsEffBlock,
+			mod.IsEffFirstLaneOfNewHash,
+			mod.IsEffLastLaneOfCurrHash,
+			mod.Limbs,
+		).CheckAssignmentCols(run,
+			mod.Hash[:]...,
+		)
 	})
 
 	if err := wizard.Verify(comp, proof); err != nil {

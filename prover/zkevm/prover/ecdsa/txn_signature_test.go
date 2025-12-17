@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic/testdata"
-	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/glue_keccak"
+	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/stretchr/testify/assert"
 )
 

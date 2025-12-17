@@ -53,14 +53,12 @@ func GnarkCheckStatement(api frontend.API, params Params, linComb []gnarkfext.E4
 		params.RsParams.Domains[1].Cardinality)
 	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
 
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		return err
 	}
-	apiGen.AssertIsEqual(alphaY.B0.A0, alphaYPrime.B0.A0)
-	apiGen.AssertIsEqual(alphaY.B0.A1, alphaYPrime.B0.A1)
-	apiGen.AssertIsEqual(alphaY.B1.A0, alphaYPrime.B1.A0)
-	apiGen.AssertIsEqual(alphaY.B1.A1, alphaYPrime.B1.A1)
+
+	ext4.AssertIsEqual(&alphaY, &alphaYPrime)
 
 	return nil
 }
