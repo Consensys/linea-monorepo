@@ -21,14 +21,6 @@ jobs:
   # ==================================================================
   build:
     runs-on: ubuntu-latest
-    continue-on-error: true
-    outputs:
-      uploadResults: ${{ steps.upload-assets.outcome }}
-      setupGccResults: ${{ steps.setup-gcc.outcome }}
-      buildWithoutTestsResults: ${{ steps.build-without-tests.outcome }}
-      storeArtifactsResults: ${{ steps.store-artifacts.outcome }}
-      runSpotlessResults: ${{ steps.run-spotless.outcome }}
-      releaseTag : ${{ steps.config.outputs.RELEASE_TAG }}
     steps:
       - name: Configure Tag
         id: config
@@ -59,6 +51,7 @@ jobs:
 
       - name: Upload Assets
         id: upload-assets
+        continue-on-error: true
         run: |
           gh release delete linea-tracer-test-release-dummy --cleanup-tag
           gh release delete linea-tracer-beta-v4.4-rc7 --cleanup-tag
@@ -71,16 +64,19 @@ jobs:
 
       - name: Set up GCC
         id: setup-gcc
+        continue-on-error: true
         uses: egor-tensin/setup-gcc@eaa888eb19115a521fa72b65cd94fe1f25bbcaac #v1.3
 
       - name: Build without tests
         id: build-without-tests
+        continue-on-error: true
         run: ./gradlew :tracer:build -x test -x spotlessCheck
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: Store distribution artifacts
         id : store-artifacts
+        continue-on-error: true
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: distributions
@@ -88,20 +84,13 @@ jobs:
 
       - name: Run spotless
         id: run-spotless
+        continue-on-error: true
         run: ./gradlew --no-daemon --parallel :tracer:clean :tracer:spotlessCheck
 
-  # ==================================================================
-  # Delete created tag in case following steps failed
-  # ==================================================================
-
-  delete-tag-on-failure:
-    needs: [ build ]
-    runs-on: ubuntu-latest
-    if: needs.build.outputs.uploadResults == 'failure' || needs.build.outputs.setupGccResults == 'failure' || needs.build.outputs.buildWithoutTestsResults == 'failure' || needs.build.outputs.storeArtifactsResults == 'failure' || needs.build.outputs.runSpotlessResults == 'failure'
-    steps:
       - name: Delete tag created without release
+        if: steps.upload-assets.outcome == 'failure' || steps.setup-gcc.outcome  == 'failure' || steps.build-without-tests.outcome == 'failure' || steps.store-artifacts.outcome == 'failure' || steps.run-spotless.outcome == 'failure'
         run: |
-          delete_output=$(gh release delete "${{needs.build.outputs.releaseTag}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
+          delete_output=$(gh release delete "${{steps.config.outputs.RELEASE_TAG}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -111,7 +100,6 @@ jobs:
 
   unit-tests-prague:
     needs: [ build ]
-    if: needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
     uses: ./.github/workflows/reusable-tracer-unit-tests.yml
     with:
       zkevm_fork: PRAGUE
@@ -119,7 +107,6 @@ jobs:
 
   unit-tests-osaka:
     needs: [ build ]
-    if: needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
     uses: ./.github/workflows/reusable-tracer-unit-tests.yml
     with:
       zkevm_fork: OSAKA
@@ -130,7 +117,6 @@ jobs:
   # ==================================================================
   replay-tests:
     needs: [ build ]
-    if: needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
@@ -177,7 +163,6 @@ jobs:
   # ==================================================================
   publish:
     needs: [ build ]
-    if: needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success' && github.event_name != 'pull_request'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     env:
       architecture: "amd64"
