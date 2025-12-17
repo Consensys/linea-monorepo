@@ -2,7 +2,7 @@ package limbs
 
 // BitSize is a pseudo const-generics that specifies the size of a limb
 type BitSize interface {
-	S16 | S32 | S64 | S128 | S160 | S256
+	S16 | S32 | S48 | S64 | S128 | S160 | S256
 }
 
 type (
@@ -10,6 +10,8 @@ type (
 	S16 struct{}
 	// S32 is an abstract representation of the [Size] 32
 	S32 struct{}
+	// S48 is an abstract representation of the [Size] 48
+	S48 struct{}
 	// S64 is an abstract representation of the [Size] 64
 	S64 struct{}
 	// S128 is an abstract representation of the [Size] 128
@@ -27,6 +29,8 @@ func uintSize[S BitSize]() int {
 		return 16
 	case S32:
 		return 32
+	case S48:
+		return 48
 	case S64:
 		return 64
 	case S128:

@@ -33,7 +33,7 @@ type Settings struct {
 }
 
 // NewStateManager instantiate the [StateManager] module
-func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager {
+func NewStateManager(comp *wizard.CompiledIOP, settings Settings, arith *arithmetization.Arithmetization) *StateManager {
 
 	sm := &StateManager{
 		StateSummary: statesummary.NewModule(comp, settings.stateSummarySize()),
@@ -44,8 +44,6 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 		}),
 	}
 
-	arith := arithmetization.Arithmetization{}
-
 	sm.AccumulatorSummaryConnector = *accumulatorsummary.NewModule(
 		comp,
 		accumulatorsummary.Inputs{
@@ -55,8 +53,8 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 	)
 
 	sm.AccumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.StateSummary)
-	sm.LineaCodeHash.ConnectToRom(comp, rom(comp, &arith), romLex(comp, &arith))
-	sm.StateSummary.ConnectToHub(comp, acp(comp, &arith), scp(comp, &arith))
+	sm.LineaCodeHash.ConnectToRom(comp, rom(comp, arith), romLex(comp, arith))
+	sm.StateSummary.ConnectToHub(comp, acp(comp, arith), scp(comp, arith))
 	sm.CodeHashConsistency = codehashconsistency.NewModule(comp, "CODEHASHCONSISTENCY", &sm.StateSummary, &sm.LineaCodeHash)
 
 	return sm

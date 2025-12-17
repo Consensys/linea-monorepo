@@ -5,6 +5,7 @@ go 1.24.6
 toolchain go1.24.10
 
 require (
+	github.com/bits-and-blooms/bitset v1.24.0
 	github.com/consensys/compress v0.2.5
 	github.com/consensys/gnark v0.14.1-0.20251210113322-60b2a82ddfdd
 	github.com/consensys/gnark-crypto v0.19.3-0.20251115174214-022ec58e8c19
@@ -37,7 +38,6 @@ require (
 require (
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bits-and-blooms/bitset v1.24.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/crate-crypto/go-ipa v0.0.0-20240223125850-b1e8a79f509c // indirect

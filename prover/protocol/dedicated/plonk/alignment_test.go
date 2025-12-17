@@ -54,9 +54,12 @@ func TestAlignment(t *testing.T) {
 		alignment.Assign(run)
 	})
 
-	ct.CheckAssignmentColumn(runLeaked, "IS_ACTIVE", alignment.IsActive)
-	ct.CheckAssignmentColumn(runLeaked, "CIRCUIT_INPUT", alignment.CircuitInput)
-	ct.CheckAssignmentColumn(runLeaked, "ACTUAL_CIRCUIT_INPUT_MASK", alignment.ActualCircuitInputMask.Natural)
+	ct.CheckAssignmentCols(runLeaked,
+		alignment.IsActive,
+		alignment.CircuitInput,
+		alignment.ActualCircuitInputMask.Natural,
+	)
+
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)
 	}

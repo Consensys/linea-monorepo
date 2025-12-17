@@ -96,16 +96,14 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				RelBlock:   a.ColumnOf(comp, "blockdata", "REL_BLOCK"),
 				Inst:       a.ColumnOf(comp, "blockdata", "INST"),
 				Ct:         a.ColumnOf(comp, "blockdata", "CT"),
-				DataHi:     a.LimbColumnsOfArr8(comp, "blockdata", "DATA_HI"),
-				DataLo:     a.LimbColumnsOfArr8(comp, "blockdata", "DATA_LO"),
-				FirstBlock: a.LimbColumnsOfArr3(comp, "blockdata", "FIRST_BLOCK_NUMBER"),
+				Data:       a.GetLimbsOfU256Be(comp, "blockdata", "DATA_HI").LimbsArr16(),
+				FirstBlock: a.GetLimbsOfU48Be(comp, "blockdata", "FIRST_BLOCK_NUMBER").LimbsArr3(),
 			},
 			TxnData: &arith.TxnData{
 				AbsTxNum:        a.ColumnOf(comp, "txndata", "USER_TXN_NUMBER"),
 				AbsTxNumMax:     a.ColumnOf(comp, "txndata", "prover___USER_TXN_NUMBER_MAX"),
 				Ct:              a.ColumnOf(comp, "txndata", "CT"),
-				FromHi:          a.LimbColumnsOfArr2(comp, "txndata", "FROM_ADDRESS_HI"),
-				FromLo:          a.LimbColumnsOfArr8(comp, "txndata", "FROM_ADDRESS_LO"),
+				From:            a.GetLimbsOfU160Be(comp, "txndata", "FROM_ADDRESS_HI").LimbsArr10(),
 				IsLastTxOfBlock: a.ColumnOf(comp, "txndata", "prover___IS_LAST_USER_TXN_OF_BLOCK"),
 				RelBlock:        a.ColumnOf(comp, "txndata", "BLK_NUMBER"),
 				RelTxNum:        a.ColumnOf(comp, "txndata", "prover___RELATIVE_USER_TXN_NUMBER"),
@@ -119,10 +117,9 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				AbsTxNum:       a.ColumnOf(comp, "rlptxn", "USER_TXN_NUMBER"),
 				AbsTxNumMax:    a.ColumnOf(comp, "rlptxn", "prover___USER_TXN_NUMBER_MAX"),
 				ToHashByProver: a.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
-				Limbs:          a.LimbColumnsOfArr8(comp, "rlptxn", "cmpLIMB"),
+				Limbs:          a.GetLimbsOfU128Be(comp, "rlptxn", "cmpLIMB").LimbsArr8(),
 				NBytes:         a.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
 				TxnPerspective: a.ColumnOf(comp, "rlptxn", "TXN"),
-				ChainID:        a.ColumnOf(comp, "rlptxn", "txnCHAIN_ID"),
 			},
 			LogCols: logs.LogColumns{
 				IsLog0:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_0"),
@@ -133,8 +130,7 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				AbsLogNum:    a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM"),
 				AbsLogNumMax: a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM_MAX"),
 				Ct:           a.ColumnOf(comp, "loginfo", "CT"),
-				DataHi:       a.LimbColumnsOfArr8(comp, "loginfo", "DATA_HI"),
-				DataLo:       a.LimbColumnsOfArr8(comp, "loginfo", "DATA_LO"),
+				Data:         a.GetLimbsOfU256Be(comp, "loginfo", "DATA_LO").LimbsArr16(),
 				TxEmitsLogs:  a.ColumnOf(comp, "loginfo", "TXN_EMITS_LOGS"),
 			},
 			StateSummary: ss,
@@ -176,7 +172,7 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 		*settings,
 	)
 
-	return newPublicInput(comp, inputModules, *settings)
+	return inputModules
 }
 
 // newPublicInput receives as input a series of modules and returns a *PublicInput and

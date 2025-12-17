@@ -207,6 +207,12 @@ func (a *Arithmetization) GetLimbsOfU32Le(comp *wizard.CompiledIOP, mod string, 
 	return GetLimbsOf[limbs.S32, limbs.LittleEndian](a, comp, mod, column)
 }
 
+// GetLimbsOfU48Be returns a [limbs.Uint] register corresponding to a U48 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU48Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S48, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S48, limbs.BigEndian](a, comp, mod, column)
+}
+
 // GetLimbsOfU64Be returns a [limbs.Uint] register corresponding to a U64 with the
 // specified endianness.
 func (a *Arithmetization) GetLimbsOfU64Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S64, limbs.BigEndian] {
