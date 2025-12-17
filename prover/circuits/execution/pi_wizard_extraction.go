@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 )
@@ -131,6 +132,19 @@ func checkPublicInputs(
 	)
 
 	api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)
+
+	// To do: @gusiri
+	// This will need an update (as for the whole file as the inputs are broken down in limbs now)
+
+	api.AssertIsEqual(
+		wvc.GetPublicInput(api, publicInput.BaseFee),
+		gnarkFuncInp.BaseFee,
+	)
+
+	api.AssertIsEqual(
+		wvc.GetPublicInput(api, publicInput.CoinBase),
+		gnarkFuncInp.CoinBase,
+	)
 
 }
 
