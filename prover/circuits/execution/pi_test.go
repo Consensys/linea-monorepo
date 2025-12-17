@@ -22,6 +22,7 @@ func TestPIConsistency(t *testing.T) {
 		InitialBlockTimestamp:        2,
 		FirstRollingHashUpdateNumber: 3,
 		ChainID:                      7,
+		BaseFee:                      3,
 	}
 
 	utils.FillRange(pi.DataChecksum[:], 10)
@@ -31,6 +32,7 @@ func TestPIConsistency(t *testing.T) {
 	utils.FillRange(pi.InitialRollingHashUpdate[:], 170)
 	utils.FillRange(pi.FinalStateRootHash[:], 210)
 	utils.FillRange(pi.LastRollingHashUpdate[:], 250)
+	utils.FillRange(pi.CoinBase[:], 20)
 	utils.FillRange(pi.L2MessageServiceAddr[:], 40)
 
 	// state root hashes are field elements

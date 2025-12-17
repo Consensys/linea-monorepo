@@ -39,8 +39,25 @@ type Circuit struct {
 
 	// The list of claims to be provided to the circuit.
 	ProofClaims []proofClaim `gnark:",secret"`
-	// List of available verifying keys that are available to the circuit. This
-	// is treated as a constant by the circuit.
+	// List of ALL available verifying keys (from GlobalCircuitIDMapping).
+	// This is treated as a constant by the circuit - all verifying keys are always
+	// included regardless of configuration. The IsAllowedCircuitID bitmask from the
+	// PI circuit's public input controls which circuits are actually allowed at runtime.
+	//
+	// The bitmask uses LSb to MSb encoding where each bit position corresponds to a
+	// circuit ID from GlobalCircuitIDMapping:
+	//   - Bit 0 (LSb): execution-dummy (ID 0)
+	//   - Bit 1: blob-decompression-dummy (ID 1)
+	//   - Bit 2: emulation-dummy (ID 2)
+	//   - Bit 3+: production circuits (execution, blob-decompression-v0, etc.)
+	//
+	// Examples:
+	//   Mainnet (IsAllowedCircuitID = 2040 = 0b11111111000):
+	//     - Bits 0-2 are 0 → dummy circuits (IDs 0-2) are DISALLOWED
+	//     - Bits 3-10 are 1 → production circuits (IDs 3-10) are ALLOWED
+	//
+	//   Testnet (IsAllowedCircuitID = 2047 = 0b11111111111):
+	//     - All bits 0-10 are 1 → all circuits including dummies are ALLOWED
 	verifyingKeys []emVkey `gnark:"-"`
 
 	publicInputVerifyingKey        emVkey              `gnark:"-"`
@@ -66,11 +83,54 @@ func (c *Circuit) Define(api frontend.API) error {
 	assertSlicesEqualZEXT(api, piBits[16*8:], field.ToBitsCanonical(&c.PublicInputWitness.Public[0]))
 	api.AssertIsDifferent(c.PublicInput, 0) // making sure at least one element of the PI circuit's public input is nonzero to justify using incomplete arithmetic
 
+	// Prepare the list of all verifying keys including the PI circuit's VK
 	vks := append(slices.Clone(c.verifyingKeys), c.publicInputVerifyingKey)
 	piVkIndex := len(vks) - 1
 
+	// Extract the IsAllowedCircuitID bitmask from the PI circuit's public inputs.
+	// This is the LAST public input of the PI circuit and encodes which circuit IDs
+	// are allowed in this proof.
+	mask := c.PublicInputWitness.Public[len(c.PublicInputWitness.Public)-1]
+
+	// Convert the bitmask to a boolean array where isCircuitAllowed[i] indicates
+	// whether circuit ID i is allowed.
+	// Example: If mask = 2040 = 0b11111111000, then:
+	//   isCircuitAllowed[0] = 0 (execution-dummy NOT allowed)
+	//   isCircuitAllowed[1] = 0 (blob-decompression-dummy NOT allowed)
+	//   isCircuitAllowed[2] = 0 (emulation-dummy NOT allowed)
+	//   isCircuitAllowed[3] = 1 (execution ALLOWED)
+	//   isCircuitAllowed[4] = 1 (execution-large ALLOWED)
+	//   ... and so on for all circuit IDs
+	isCircuitAllowed := api.ToBinary(mask, len(c.verifyingKeys))
+
+	// For each proof claim, verify that its circuit ID is allowed by the bitmask
 	for i := range c.ProofClaims {
-		api.AssertIsDifferent(c.ProofClaims[i].CircuitID, piVkIndex) // TODO @Tabaie is this necessary? can't think of an attack if this is removed
+		// TODO @Tabaie is this necessary? can't think of an attack if this is removed
+		api.AssertIsDifferent(c.ProofClaims[i].CircuitID, piVkIndex)
+
+		// Check if the circuit ID of this proof claim is allowed.
+		// We iterate through all possible circuit IDs and check if this claim's
+		// circuit ID matches any of them. If it matches circuit ID j, we check
+		// if isCircuitAllowed[j] is 1.
+		//
+		// Example: Suppose we have a proof claim with CircuitID = 5 (execution-limitless)
+		// and mask = 2040 = 0b11111111000:
+		//   - When j = 5: isGoodPod = 1 (circuit ID matches)
+		//                 isAllowed = isCircuitAllowed[5] = 1 (bit 5 is set)
+		//   - For all other j: isGoodPod = 0, isAllowed remains unchanged
+		//   - Final assertion: isAllowed must equal 1
+		//
+		// If the circuit was NOT allowed (e.g., CircuitID = 0 with mask = 2040):
+		//   - When j = 0: isGoodPod = 1, isAllowed = isCircuitAllowed[0] = 0
+		//   - Final assertion would FAIL since isAllowed = 0 ≠ 1
+		isAllowed := frontend.Variable(0)
+		for j := range isCircuitAllowed {
+			isGoodPod := api.IsZero(api.Sub(c.ProofClaims[i].CircuitID, j))
+			isAllowed = api.Select(isGoodPod, isCircuitAllowed[j], isAllowed)
+		}
+
+		// Assert that the circuit ID is allowed (its bit in the bitmask is 1)
+		api.AssertIsEqual(isAllowed, frontend.Variable(1))
 	}
 
 	// create a lookup table of actual public inputs

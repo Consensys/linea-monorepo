@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -107,6 +106,8 @@ type FunctionalPublicInputSnark struct {
 	InitialStateRootHash frontend.Variable
 	InitialBlockNumber   frontend.Variable
 	ChainID              frontend.Variable
+	BaseFee              frontend.Variable
+	CoinBase             frontend.Variable
 	L2MessageServiceAddr frontend.Variable
 }
 
@@ -140,33 +141,50 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.Field
 	)
 
 	hsh.Reset()
-	hsh.Write(spi.DataChecksum, l2MessagesSum,
-		spi.FinalStateRootHash, spi.FinalBlockNumber, spi.FinalBlockTimestamp, finalRollingHash[0], finalRollingHash[1], spi.LastRollingHashUpdateNumber,
-		spi.InitialStateRootHash, spi.InitialBlockNumber, spi.InitialBlockTimestamp, initialRollingHash[0], initialRollingHash[1], spi.FirstRollingHashUpdateNumber,
-		spi.ChainID, spi.L2MessageServiceAddr)
+	hsh.Write(
+		spi.DataChecksum,
+		l2MessagesSum,
+		spi.FinalStateRootHash,
+		spi.FinalBlockNumber,
+		spi.FinalBlockTimestamp,
+		finalRollingHash[0],
+		finalRollingHash[1],
+		spi.LastRollingHashUpdateNumber,
+		spi.InitialStateRootHash,
+		spi.InitialBlockNumber,
+		spi.InitialBlockTimestamp,
+		initialRollingHash[0],
+		initialRollingHash[1],
+		spi.FirstRollingHashUpdateNumber,
+		spi.ChainID,
+		spi.BaseFee,
+		spi.CoinBase,
+		spi.L2MessageServiceAddr,
+	)
 
 	return hsh.Sum()
 }
 
 func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error {
 
-	spi.InitialStateRootHash = zk.ValueOf(pi.InitialStateRootHash[:])
-	spi.InitialBlockNumber = zk.ValueOf(pi.InitialBlockNumber)
-	spi.ChainID = zk.ValueOf(pi.ChainID)
-	spi.L2MessageServiceAddr = zk.ValueOf(pi.L2MessageServiceAddr[:])
-
+	spi.InitialStateRootHash = pi.InitialStateRootHash[:]
+	spi.InitialBlockNumber = pi.InitialBlockNumber
+	spi.ChainID = pi.ChainID
+	spi.BaseFee = pi.BaseFee
+	spi.CoinBase = pi.CoinBase[:]
+	spi.L2MessageServiceAddr = pi.L2MessageServiceAddr[:]
 	return spi.FunctionalPublicInputQSnark.Assign(pi)
 }
 
 func (spiq *FunctionalPublicInputQSnark) Assign(pi *public_input.Execution) error {
 
-	spiq.DataChecksum = zk.ValueOf(pi.DataChecksum[:])
-	spiq.InitialBlockTimestamp = zk.ValueOf(pi.InitialBlockTimestamp)
-	spiq.FinalStateRootHash = zk.ValueOf(pi.FinalStateRootHash[:])
-	spiq.FinalBlockNumber = zk.ValueOf(pi.FinalBlockNumber)
-	spiq.FinalBlockTimestamp = zk.ValueOf(pi.FinalBlockTimestamp)
-	spiq.FirstRollingHashUpdateNumber = zk.ValueOf(pi.FirstRollingHashUpdateNumber)
-	spiq.LastRollingHashUpdateNumber = zk.ValueOf(pi.LastRollingHashUpdateNumber)
+	spiq.DataChecksum = pi.DataChecksum[:]
+	spiq.InitialBlockTimestamp = pi.InitialBlockTimestamp
+	spiq.FinalStateRootHash = pi.FinalStateRootHash[:]
+	spiq.FinalBlockNumber = pi.FinalBlockNumber
+	spiq.FinalBlockTimestamp = pi.FinalBlockTimestamp
+	spiq.FirstRollingHashUpdateNumber = pi.FirstRollingHashUpdateNumber
+	spiq.LastRollingHashUpdateNumber = pi.LastRollingHashUpdateNumber
 
 	utils.Copy(spiq.FinalRollingHashUpdate[:], pi.LastRollingHashUpdate[:])
 	utils.Copy(spiq.InitialRollingHashUpdate[:], pi.InitialRollingHashUpdate[:])

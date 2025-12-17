@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
@@ -40,9 +39,8 @@ type Circuit struct {
 	AggregationPublicInput   [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
 	ExecutionPublicInput     []frontend.Variable  `gnark:",public"`
 	DecompressionPublicInput []frontend.Variable  `gnark:",public"`
-
-	DecompressionFPIQ []decompression.FunctionalPublicInputQSnark
-	ExecutionFPIQ     []execution.FunctionalPublicInputQSnark
+	DecompressionFPIQ        []decompression.FunctionalPublicInputQSnark
+	ExecutionFPIQ            []execution.FunctionalPublicInputQSnark
 
 	public_input.AggregationFPIQSnark
 
@@ -52,9 +50,24 @@ type Circuit struct {
 	L2MessageMerkleDepth int
 	L2MessageMaxNbMerkle int
 
-	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
-	L2MessageServiceAddr types.EthAddress
-	ChainID              uint64
+	// IsAllowedCircuitID is a public input parroting up the value of
+	// [AggregationFPIQSnark.IsAllowedCircuitID]. It is needed so that the
+	// aggregation can "see" this value while it cannot access directly the
+	// content of the dynamic chain configuration.
+	//
+	// Its bits encodes which circuit is being allowed in the dynamic chain
+	// configuration. For instance, the bits of weight "3" indicates whether the
+	// circuit ID "3" is allowed and so on.  The packing order of the bits is
+	// LSb to MSb. For instance if
+	//
+	// Circuit ID 0 -> Disallowed
+	// Circuit ID 1 -> Allowed
+	// Circuit ID 2 -> Allowed
+	// Circuit ID 3 -> Disallowed
+	// Circuit ID 4 -> Allowed
+	//
+	// Then the IsAllowedCircuitID public input must be encoded as 0b10110
+	IsAllowedCircuitID frontend.Variable `gnark:",public"`
 
 	MaxNbCircuits int // possibly useless TODO consider removing
 	UseGkrMimc    bool
@@ -65,9 +78,6 @@ type Circuit struct {
 type compilationSuite = []func(*wizard.CompiledIOP)
 
 func (c *Circuit) Define(api frontend.API) error {
-	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
-	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)
-	api.AssertIsEqual(c.L2MessageServiceAddr[:], c.AggregationFPIQSnark.L2MessageServiceAddr)
 
 	maxNbDecompression, maxNbExecution := len(c.DecompressionPublicInput), len(c.ExecutionPublicInput)
 	if len(c.DecompressionFPIQ) != maxNbDecompression || len(c.ExecutionFPIQ) != maxNbExecution {
@@ -164,7 +174,12 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	// we can "allow non-deterministic behavior" because all compared values have been range-checked
 	comparator := cmp.NewBoundedComparator(api, new(big.Int).Lsh(big.NewInt(1), 65), true)
-	// TODO try using lookups or crumb decomposition to make comparisons more efficient
+	// TODO try using lookups or crumb decomposition to make comparisons more
+	// efficient
+
+	// Check that IsAllowedCircuitID public input matches the value in AggregationFPIQSnark
+	api.AssertIsEqual(c.IsAllowedCircuitID, c.ChainConfigurationFPISnark.IsAllowedCircuitID)
+
 	for i, piq := range c.ExecutionFPIQ {
 		piq.RangeCheck(api) // CHECK_MSG_LIMIT
 
@@ -175,10 +190,12 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
-			InitialStateRootHash:        finalState,                // implicit CHECK_STATE_CONSEC
-			InitialBlockNumber:          api.Add(finalBlockNum, 1), // implicit CHECK_NUM_CONSEC
-			ChainID:                     c.ChainID,                 // implicit CHECK_CHAIN_ID
-			L2MessageServiceAddr:        c.L2MessageServiceAddr[:], // implicit CHECK_SVC_ADDR
+			InitialStateRootHash:        finalState,                                           // implicit CHECK_STATE_CONSEC
+			InitialBlockNumber:          api.Add(finalBlockNum, 1),                            // implicit CHECK_NUM_CONSEC
+			ChainID:                     c.ChainConfigurationFPISnark.ChainID,                 // implicit CHECK_CHAIN_ID // the one in aggregation
+			BaseFee:                     c.ChainConfigurationFPISnark.BaseFee,                 // implicit CHECK_BASE_FEE // the one in aggregation
+			CoinBase:                    c.ChainConfigurationFPISnark.CoinBase,                // implicit CHECK_COINBASE // the one in aggregation
+			L2MessageServiceAddr:        c.ChainConfigurationFPISnark.L2MessageServiceAddress, // implicit CHECK_SVC_ADDR// the one in aggregation
 		}
 
 		comparator.AssertIsLessEq(pi.InitialBlockTimestamp, pi.FinalBlockTimestamp)                // CHECK_TIME_NODECREASE
@@ -323,6 +340,7 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 }
 
 func allocateCircuit(cfg config.PublicInput) Circuit {
+
 	res := Circuit{
 		DecompressionPublicInput: make([]frontend.Variable, cfg.MaxNbDecompression),
 		ExecutionPublicInput:     make([]frontend.Variable, cfg.MaxNbExecution),
@@ -331,8 +349,6 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 		L2MessageMerkleDepth:     cfg.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:     cfg.L2MsgMaxNbMerkle,
 		MaxNbCircuits:            cfg.MaxNbCircuits,
-		L2MessageServiceAddr:     types.EthAddress(cfg.L2MsgServiceAddr),
-		ChainID:                  cfg.ChainID,
 		UseGkrMimc:               true,
 	}
 
@@ -357,8 +373,7 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 
 	// aggregation PI opening
 	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
-	res.WithStrictHashLengths(384)
-
+	res.WithStrictHashLengths(416) // 416 (13 × 32 bytes)
 	return &res
 }
 

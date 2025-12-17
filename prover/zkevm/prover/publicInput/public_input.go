@@ -39,7 +39,10 @@ const (
 	LastRollingHashNumberUpdate  = "LastRollingHashNumberUpdate"
 	ChainID                      = "ChainID"
 	NBytesChainID                = "NBytesChainID"
-	L2MessageServiceAddr         = "L2MessageServiceAddr"
+	L2MessageServiceAddrHi       = "L2MessageServiceAddrHi"
+	L2MessageServiceAddrLo       = "L2MessageServiceAddrLo"
+	CoinBase                     = "CoinBase"
+	BaseFee                      = "BaseFee"
 )
 
 // PublicInput collects a number of submodules responsible for collecting the
@@ -47,7 +50,7 @@ const (
 type PublicInput struct {
 	Inputs             InputModules
 	Aux                AuxiliaryModules
-	TimestampFetcher   *fetch.TimestampFetcher
+	BlockDataFetcher   *fetch.BlockDataFetcher
 	RootHashFetcher    *fetch.RootHashFetcher
 	RollingHashFetcher *logs.RollingSelector
 	LogHasher          logs.LogHasher
@@ -190,8 +193,8 @@ func newPublicInput(
 	}
 
 	// Timestamps
-	timestampFetcher := fetch.NewTimestampFetcher(comp, "PUBLIC_INPUT_TIMESTAMP_FETCHER", inp.BlockData)
-	fetch.DefineTimestampFetcher(comp, timestampFetcher, "PUBLIC_INPUT_TIMESTAMP_FETCHER", inp.BlockData)
+	blockDataFetcher := fetch.NewBlockDataFetcher(comp, "PUBLIC_INPUT_TIMESTAMP_FETCHER", inp.BlockData)
+	fetch.DefineBlockDataFetcher(comp, blockDataFetcher, "PUBLIC_INPUT_TIMESTAMP_FETCHER", inp.BlockData)
 
 	// Logs: Fetchers, Selectors and Hasher
 	fetchedL2L1 := logs.NewExtractedData(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_L2L1LOGS")
@@ -228,7 +231,7 @@ func newPublicInput(
 	limbColSize := edc.GetSummarySize(inp.TxnData, inp.RlpTxn)
 	limbColSize = 4 * limbColSize // we need to artificially blow up the column size by 2, or padding will fail
 	execDataCollector := edc.NewExecutionDataCollector(comp, "EXECUTION_DATA_COLLECTOR", limbColSize)
-	edc.DefineExecutionDataCollector(comp, execDataCollector, "EXECUTION_DATA_COLLECTOR", timestampFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
+	edc.DefineExecutionDataCollector(comp, execDataCollector, "EXECUTION_DATA_COLLECTOR", blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
 
 	// ExecutionDataCollector: Padding
 	importInp := importpad.ImportAndPadInputs{
@@ -263,7 +266,7 @@ func newPublicInput(
 	mimcHasher.DefineHasher(comp, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
 	publicInput := PublicInput{
-		TimestampFetcher:   timestampFetcher,
+		BlockDataFetcher:   blockDataFetcher,
 		RootHashFetcher:    rootHashFetcher,
 		RollingHashFetcher: rollingSelector,
 		LogHasher:          logHasherL2l1,
@@ -301,7 +304,7 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	)
 
 	// assign the timestamp module
-	fetch.AssignTimestampFetcher(run, pub.TimestampFetcher, inp.BlockData)
+	fetch.AssignBlockDataFetcher(run, pub.BlockDataFetcher, inp.BlockData)
 	// assign the log modules
 	aux.LogSelectors.Assign(run, l2BridgeAddress)
 	logs.AssignExtractedData(run, inp.LogCols, aux.LogSelectors, aux.FetchedL2L1, logs.L2L1)
@@ -316,7 +319,7 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	fetch.AssignTxnDataFetcher(run, aux.TxnDataFetcher, inp.TxnData)
 	fetch.AssignRlpTxnFetcher(run, &aux.RlpTxnFetcher, inp.RlpTxn)
 	// assign the ExecutionDataCollector
-	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.TimestampFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
+	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.BlockDataFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
 	aux.ExecDataCollectorPadding.Run(run)
 	aux.ExecDataCollectorPacking.Run(run)
 	pub.ExecMiMCHasher.AssignHasher(run)
@@ -332,13 +335,34 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 	}
 
 	pi.Extractor = FunctionalInputExtractor{
-		DataNbBytes:   createNewLocalOpening(pi.DataNbBytes),
-		NBytesChainID: createNewLocalOpening(pi.ChainIDNBytes),
+		DataNbBytes:                  createNewLocalOpening(pi.DataNbBytes),
+		DataChecksum:                 createNewLocalOpening(pi.ExecMiMCHasher.HashFinal),
+		L2MessageHash:                createNewLocalOpening(pi.LogHasher.HashFinal),
+		InitialStateRootHash:         createNewLocalOpening(pi.RootHashFetcher.First),
+		FinalStateRootHash:           createNewLocalOpening(pi.RootHashFetcher.Last),
+		InitialBlockNumber:           createNewLocalOpening(pi.BlockDataFetcher.FirstBlockID),
+		FinalBlockNumber:             createNewLocalOpening(pi.BlockDataFetcher.LastBlockID),
+		InitialBlockTimestamp:        createNewLocalOpening(pi.BlockDataFetcher.FirstTimestamp),
+		FinalBlockTimestamp:          createNewLocalOpening(pi.BlockDataFetcher.LastTimestamp),
+		FirstRollingHashUpdate:       initialRollingHash,
+		LastRollingHashUpdate:        finalRollingHash,
+		FirstRollingHashUpdateNumber: createNewLocalOpening(pi.RollingHashFetcher.FirstMessageNo),
+		LastRollingHashUpdateNumber:  createNewLocalOpening(pi.RollingHashFetcher.LastMessageNo),
+		ChainID:                      createNewLocalOpening(pi.ChainID),
+		NBytesChainID:                createNewLocalOpening(pi.ChainIDNBytes),
+		L2MessageServiceAddrHi:       createNewLocalOpening(pi.Aux.LogSelectors.L2BridgeAddressColHI),
+		L2MessageServiceAddrLo:       createNewLocalOpening(pi.Aux.LogSelectors.L2BridgeAddressColLo),
+		CoinBase:                     createNewLocalOpening(pi.BlockDataFetcher.CoinBase),
+		BaseFee:                      createNewLocalOpening(pi.BlockDataFetcher.BaseFee),
 	}
 
 	comp.PublicInputs = append(comp.PublicInputs,
 		wizard.PublicInput{Name: DataNbBytes, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.DataNbBytes, 0)},
 		wizard.PublicInput{Name: NBytesChainID, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.NBytesChainID, 0)},
+		wizard.PublicInput{Name: L2MessageServiceAddrHi, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.L2MessageServiceAddrHi, 0)},
+		wizard.PublicInput{Name: L2MessageServiceAddrLo, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.L2MessageServiceAddrLo, 0)},
+		wizard.PublicInput{Name: CoinBase, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.CoinBase, 0)},
+		wizard.PublicInput{Name: BaseFee, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.BaseFee, 0)},
 	)
 
 	for i := range pcommon.NbLimbU256 {

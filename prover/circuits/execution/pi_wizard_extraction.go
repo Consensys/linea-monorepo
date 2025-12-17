@@ -139,6 +139,19 @@ func checkPublicInputs(
 
 	// api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)
 
+	// To do: @gusiri
+	// This will need an update (as for the whole file as the inputs are broken down in limbs now)
+
+	api.AssertIsEqual(
+		wvc.GetPublicInput(api, publicInput.BaseFee),
+		gnarkFuncInp.BaseFee,
+	)
+
+	api.AssertIsEqual(
+		wvc.GetPublicInput(api, publicInput.CoinBase),
+		gnarkFuncInp.CoinBase,
+	)
+
 }
 
 // execDataHash hash the execution-data with its length so that we can guard
