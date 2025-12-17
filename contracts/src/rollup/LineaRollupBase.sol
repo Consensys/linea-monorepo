@@ -259,9 +259,9 @@ abstract contract LineaRollupBase is
     /// @dev currentFinalizedShnarf is updated in _finalizeBlocks and lastFinalizedShnarf MUST be set beforehand for the transition.
     bytes32 lastFinalizedShnarf = currentFinalizedShnarf;
 
-    address veriferToUse = verifiers[_proofType];
+    address verifier = verifiers[_proofType];
 
-    if (veriferToUse == address(0)) {
+    if (verifier == address(0)) {
       revert InvalidProofType();
     }
 
@@ -271,9 +271,9 @@ abstract contract LineaRollupBase is
         lastFinalizedShnarf,
         _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber),
         lastFinalizedBlockNumber,
-        IPlonkVerifier(veriferToUse).getChainConfiguration()
+        IPlonkVerifier(verifier).getChainConfiguration()
       ),
-      veriferToUse,
+      verifier,
       _aggregatedProof
     );
   }
