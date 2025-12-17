@@ -17,40 +17,6 @@ type ReaderContext struct {
 	ptrMap map[int64]reflect.Value
 }
 
-func Deserialize(b []byte, v any) error {
-	if len(b) < int(SizeOf[FileHeader]()) {
-		return fmt.Errorf("buffer too small")
-	}
-	header := (*FileHeader)(unsafe.Pointer(&b[0]))
-	if header.Magic != Magic {
-		return fmt.Errorf("invalid magic bytes")
-	}
-
-	if Ref(header.PayloadOff).IsNull() {
-		val := reflect.ValueOf(v)
-		if val.Kind() == reflect.Ptr {
-			val.Elem().Set(reflect.Zero(val.Elem().Type()))
-		}
-		return nil
-	}
-
-	if Ref(header.PayloadOff) > Ref(len(b)) {
-		return fmt.Errorf("payload offset out of bounds")
-	}
-
-	val := reflect.ValueOf(v)
-	if val.Kind() != reflect.Ptr {
-		return fmt.Errorf("v must be a pointer")
-	}
-
-	ctx := &ReaderContext{
-		data:   b,
-		ptrMap: make(map[int64]reflect.Value),
-	}
-
-	return ctx.reconstruct(val.Elem(), int64(header.PayloadOff))
-}
-
 func (ctx *ReaderContext) reconstruct(target reflect.Value, offset int64) error {
 	t := target.Type()
 	k := target.Kind()

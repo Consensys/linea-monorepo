@@ -21,22 +21,38 @@ type FileHeader struct {
 	DataSize    int64
 }
 
-// InterfaceHeader must export fields for binary.Write
+// InterfaceHeader represents the binary header for an interface and is specifically designed to be
+// exactly 16 bytes to ensure the Offset field remains 8-byte aligned for efficient reading/writing.
+// IMPORTANT:
+// DO NOT CHANGE THE LAYOUT (ordering of the fields) OF THIS STRUCT
+// We perform `binary.Write` which is very literal i.e. writes the bytes of the struct fields in exact order and
+// does not automatically insert padding for us like the Go compiler does automatically (inserts hidden padding bytes
+// between fields in memory to align them) for structs in memory.
+// We have to explicitly put the padding there if the file format requires a fixed size (like 16 bytes).
 type InterfaceHeader struct {
-	TypeID      uint16
-	Indirection uint8
-	Reserved    [5]uint8 // Explicit padding to 16 bytes
-	Offset      Ref
+	TypeID      uint16 // 2 bytes: Unique identifier for the concrete type
+	Indirection uint8  // 1 byte: Number of pointer dereferences (e.g., ***T)
+
+	// Reserved: 5 bytes of explicit padding.
+	// Together with TypeID (2) and Indirection (1), these 5 bytes ensure
+	// that the 'Offset' field starts exactly at the 8th byte.
+	// This allows the 64-bit 'Ref' to be naturally aligned.
+	// Total header size: 2 + 1 + 5 + 8 = 16 bytes.
+	Reserved [5]uint8
+
+	Offset Ref // 8 bytes: File or memory offset to the actual data
 }
 
 type Ref int64
 
 func (r Ref) IsNull() bool { return r == 0 }
 
+// FileSlice mirrors  Go slice header (Data uintptr, Len int, Cap int) conceptually
+// Instead of Data (uintptr), we store the offset of the slice data in the serialized buffer
 type FileSlice struct {
-	Offset Ref
-	Len    int64
-	Cap    int64
+	Offset Ref   // byte offset in the serialized buffer where slice data starts
+	Len    int64 // number of elements in the slice
+	Cap    int64 // original capacity (used to restore slice header)
 }
 
 func SizeOf[T any]() int64 {

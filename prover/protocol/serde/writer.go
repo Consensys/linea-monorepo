@@ -14,7 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-// Writer holds the state of our serialization.
+// Writer: Holds the current encoding/serialization state
 type Writer struct {
 	// The growing array of bytes (the "Heap").
 	buf *bytes.Buffer
@@ -22,9 +22,9 @@ type Writer struct {
 	// The write cursor. Points to the end of the buffer.
 	offset int64
 
-	// The "Memory" of what we've already seen.
-	// Maps a Go RAM address (uintptr) to a File Offset (Ref).
-	// We use `uintptr` (integer big enough to hold a mem. address) so that we can easily do low-level pointer arithmetic.
+	// Maps a Go RAM address (uintptr -integer big enough to hold a mem. address
+	// for low-level pointer arithmetic) to a File Offset (Ref).
+	// Keeps track of memory addresses that have already been seen before.
 	ptrMap map[uintptr]Ref
 }
 
@@ -36,6 +36,8 @@ func NewWriter() *Writer {
 	}
 }
 
+// Write writes the given data to the buffer and returns
+// the start offset (beginning of cursor) at which the data was written
 func (w *Writer) Write(data any) int64 {
 	start := w.offset
 	v := reflect.ValueOf(data)
@@ -64,7 +66,7 @@ func (w *Writer) WriteBytes(b []byte) int64 {
 	return start
 }
 
-// Patch jumps back to specific offset (written earlier) and overwrites
+// Patch jumps back to specific offset (written/reserved earlier) and overwrites
 // the data (reserved with zeros) with the actual data
 func (w *Writer) Patch(offset int64, v any) {
 	var tmp bytes.Buffer
@@ -87,13 +89,40 @@ func (w *Writer) Patch(offset int64, v any) {
 	copy(bufSlice[offset:], encoded)
 }
 
+// writeSliceData snapshots the raw memory backing a POD (plain-old-data- primitive) slice and
+// records where it was written,so the slice can be reconstructed later as a zero-copy view into the serialized buffer.
+// IMPORTANT:
+//   - This function performs a raw memory copy using unsafe.
+//   - It is ONLY valid for slices whose element type is fixed-size and contains
+//     no pointers (i.e. plain-old-data / POD types).
+//   - Examples of valid element types: uint64, float64, field.Element, structs
+//     composed solely of such fields.
+//   - INVALID for: []string, []map, []interface{}, []*T, []big.Int, etc.
+//
+// The returned FileSlice does NOT contain the slice data itself; it records:
+//   - Offset: byte offset in the serialized buffer where the slice data begins
+//   - Len:    number of elements in the slice
+//   - Cap:    original slice capacity (needed to faithfully reconstruct the
+//     slice header during deserialization).
 func (w *Writer) writeSliceData(v reflect.Value) FileSlice {
 	if v.Len() == 0 {
 		return FileSlice{0, 0, 0}
 	}
+
+	// Compute the total number of bytes occupied by the slice backing array.
+	// This assumes that each element has a fixed size and that the slice
+	// memory layout is tightly packed.
 	totalBytes := v.Len() * int(v.Type().Elem().Size())
+
+	// Obtain a pointer to the first element of the slice backing array.
+	// v.Pointer() is equivalent to the Data field of a slice header - valid for non-empty slice and if
+	// the underlying element type is not a pointer-containing type.
 	dataPtr := unsafe.Pointer(v.Pointer())
+
+	// Reinterpret the slice backing array as a byte slice of length totalBytes.
+	// This does NOT allocate or copy; it is a raw view over existing memory.
 	dataBytes := unsafe.Slice((*byte)(dataPtr), totalBytes)
+
 	offset := w.offset
 	w.buf.Write(dataBytes)
 	w.offset += int64(totalBytes)
@@ -104,25 +133,47 @@ func (w *Writer) writeSliceData(v reflect.Value) FileSlice {
 	}
 }
 
+// linearize serializes a value into the writer buffer and returns a Ref
+// (byte offset) pointing to where the value was written.
+//
+// Key responsibilities:
+//  1. Handle pointer de-duplication so the same object is serialized only once.
+//  2. Support circular references by registering the pointer address *before*
+//     the actual bytes are written.
+//  3. Delegate the actual byte-level serialization to linearizeValue.
+//
+// For non-pointer values, this function simply forwards to linearizeValue.
+// For pointer values:
+//   - nil pointers serialize to Ref(0)
+//   - repeated pointers reuse the previously recorded Ref
+//   - circular references are handled by pre-registering the current offset
+//     before serializing the pointed-to value.
 func linearize(w *Writer, v reflect.Value) (Ref, error) {
 	if !v.IsValid() {
 		return 0, nil
 	}
 
+	// 1. Handle De-Deuplication effectively
 	var ptrAddr uintptr
 	isPtr := v.Kind() == reflect.Ptr
 	if isPtr {
 		if v.IsNil() {
 			return 0, nil
 		}
+
+		// Get the integer representation of the actual RAM address
 		ptrAddr = v.Pointer()
 		if ref, ok := w.ptrMap[ptrAddr]; ok {
 			return ref, nil
 		}
+
+		// IMPORANT: We map it to the CURRENT offset (w.offset) because that's where we
+		// are about to write it (in the future). This effectively handles CIRCULAR references.
 		w.ptrMap[ptrAddr] = Ref(w.offset)
 	}
 
-	ref, err := linearizeInternal(w, v)
+	// 2. WRITE THE DATA - Delegate to the router to actually serialize the bytes.
+	ref, err := linearizeValue(w, v)
 	if err != nil {
 		return 0, err
 	}
@@ -133,20 +184,11 @@ func linearize(w *Writer, v reflect.Value) (Ref, error) {
 	return ref, nil
 }
 
-func linearizeInternal(w *Writer, v reflect.Value) (Ref, error) {
+func linearizeValue(w *Writer, v reflect.Value) (Ref, error) {
+
+	// Check Registry first for handling special types
 	if handler, ok := CustomRegistry[v.Type()]; ok {
 		return handler.Serialize(w, v)
-	}
-
-	if v.Kind() == reflect.Ptr {
-		if v.Type() == reflect.TypeOf(&big.Int{}) {
-			return writeBigInt(w, v.Interface().(*big.Int))
-		}
-		return linearize(w, v.Elem())
-	}
-
-	if v.Kind() == reflect.Func {
-		return 0, nil
 	}
 
 	if v.Type() == reflect.TypeOf(field.Element{}) {
@@ -154,15 +196,12 @@ func linearizeInternal(w *Writer, v reflect.Value) (Ref, error) {
 		return Ref(off), nil
 	}
 
-	if v.Type() == reflect.TypeOf(big.Int{}) {
-		if v.CanAddr() {
-			return writeBigInt(w, v.Addr().Interface().(*big.Int))
-		}
-		bi := v.Interface().(big.Int)
-		return writeBigInt(w, &bi)
-	}
-
 	switch v.Kind() {
+	// Handle standard Go Pointers - Deduplication happens in 'linearize' before this, so we just recurse.
+	// We stick to `linearize` for guardrails - v is not a nil
+	// and for the possiblity of the type being pointed at implmenting custom interfaces
+	case reflect.Ptr:
+		return linearize(w, v.Elem())
 	case reflect.Slice:
 		if v.IsNil() {
 			return 0, nil
@@ -188,6 +227,8 @@ func linearizeInternal(w *Writer, v reflect.Value) (Ref, error) {
 			return 0, err
 		}
 		return Ref(startOffset), nil
+	case reflect.Func, reflect.Chan, reflect.UnsafePointer:
+		return 0, fmt.Errorf("unsupported type: %v cannot be serialized", v.Type())
 	default:
 		off := w.Write(v.Interface())
 		return Ref(off), nil
@@ -339,7 +380,7 @@ func linearizeInterface(w *Writer, v reflect.Value) (Ref, error) {
 	}
 	typeID, ok := TypeToID[baseType]
 	if !ok {
-		return 0, fmt.Errorf("unregistered type: %v", concreteVal.Type())
+		return 0, fmt.Errorf("encounterd unregistered concrete type: %v", concreteVal.Type())
 	}
 	ih := InterfaceHeader{TypeID: typeID, Indirection: uint8(indirection), Offset: dataOff}
 	off := w.Write(ih)
@@ -399,33 +440,32 @@ func toBigInt(v reflect.Value) *big.Int {
 
 func writeMapElement(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
 	t := v.Type()
-	if t == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
-		bi := toBigInt(v)
-		if bi == nil {
-			binary.Write(buf, binary.LittleEndian, Ref(0))
-		} else {
-			ref, err := writeBigInt(w, bi)
-			if err != nil {
-				return err
-			}
-			binary.Write(buf, binary.LittleEndian, ref)
-		}
-		return nil
-	}
-	if isIndirectType(t) {
+
+	// Handle INDIRECT/CUSTOM TYPES (Interfaces, Pointers, Strings, Registered Custom Types)
+	// If the type is "indirect" (variable size or reference) OR handles its own serialization (custom),
+	// we offload the heavy lifting to the main 'linearize' function whichwill return a Ref (offset ID),
+	//  which we write into the map buffer.
+	_, isCustom := CustomRegistry[t]
+	if isIndirectType(t) || isCustom {
 		ref, err := linearize(w, v)
 		if err != nil {
 			return err
 		}
-		binary.Write(buf, binary.LittleEndian, ref)
-		return nil
+		return binary.Write(buf, binary.LittleEndian, ref)
 	}
+
+	// 2. STRUCTS
+	// We handle structs that are stored "inline" (not pointers).
 	if v.Kind() == reflect.Struct {
+		// Optimization: field.Element is small/fixed, write it directly.
 		if t == reflect.TypeOf(field.Element{}) {
 			return binary.Write(buf, binary.LittleEndian, v.Interface())
 		}
+		// Complex structs: flatten their fields into the buffer.
 		return linearizeStructBodyMap(w, v, buf)
 	}
+
+	// 3. ARRAYS are fixed size, so we iterate and write elements recursively.
 	if v.Kind() == reflect.Array {
 		for j := 0; j < v.Len(); j++ {
 			if err := writeMapElement(w, v.Index(j), buf); err != nil {
@@ -435,10 +475,11 @@ func writeMapElement(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
 		return nil
 	}
 
-	// Fix: Normalize primitives before writing to handle int/uint platform dependency
+	// 4. PRIMITIVES
+	// Normalize platform-dependent integers (int, uint) to fixed 64-bit sizes
+	// to ensure the binary output is identical on 32-bit and 64-bit machines.
 	var val any
-	k := v.Kind()
-	switch k {
+	switch v.Kind() {
 	case reflect.Int:
 		val = int64(v.Int())
 	case reflect.Uint:
