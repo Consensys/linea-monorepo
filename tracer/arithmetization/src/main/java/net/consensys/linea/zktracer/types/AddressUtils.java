@@ -92,10 +92,9 @@ public class AddressUtils {
 
   public static boolean isPrecompile(Fork fork, Address to) {
     return switch (fork) {
-      case LONDON, PARIS, SHANGHAI -> precompileAddressLondon.contains(to);
-      case CANCUN -> precompileAddressCancun.contains(to);
-      case PRAGUE -> precompileAddressPrague.contains(to);
       case OSAKA -> precompileAddressOsaka.contains(to);
+      case LONDON, PARIS, SHANGHAI, CANCUN, PRAGUE ->
+          throw new IllegalArgumentException("Fork no more supported by the tracer: " + fork);
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }
