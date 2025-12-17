@@ -33,7 +33,6 @@ import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788
 import net.consensys.linea.zktracer.module.hub.section.systemTransaction.SysfNoopSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection;
-import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.CancunInitializationSection;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.mxp.module.CancunMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;

@@ -39,7 +39,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public abstract class TxInitializationSection extends TraceSection implements EndTransactionDefer {
+public final class TxInitializationSection extends TraceSection implements EndTransactionDefer {
 
   public static final short NB_ROWS_HUB_INIT = 9;
 
@@ -196,8 +196,9 @@ public abstract class TxInitializationSection extends TraceSection implements En
   public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
 
-    addTxnAndMiscFragments(miscFragment); // Only the order of the txn and misc fragments differs
-    addCoinbaseWarmingFragment(); // Post Shanghai Only
+    addFragment(hub().txStack().current().userTransactionFragment());
+    addFragment(miscFragment);
+    addFragment(coinbaseWarmingAccountFragment);
     addFragment(gasPaymentAccountFragment); // ACC i +  (sender: gas payment)
     addFragment(valueSendingAccountFragment); // ACC i +  (sender: value transfer)
     addFragment(valueReceptionAccountFragment); // ACC i +  (recipient: value reception)
@@ -243,20 +244,23 @@ public abstract class TxInitializationSection extends TraceSection implements En
     return domSubOffset++;
   }
 
-  protected AccountFragment makeCoinbaseWarmingFragment(
+  private AccountFragment makeCoinbaseWarmingFragment(
       final Hub hub, final WorldView world, final TransactionProcessingMetadata tx) {
-    return null;
+    final AccountSnapshot coinbase =
+      canonical(hub, world, hub.coinbaseAddress(), tx.isCoinbasePreWarmed());
+    return accountFragmentFactory.makeWithTrm(
+      coinbase,
+      coinbase.deepCopy().turnOnWarmth(),
+      coinbase.address(),
+      DomSubStampsSubFragment.standardDomSubStamps(getHubStamp(), domSubOffset()),
+      TransactionProcessingType.USER);
   }
 
-  protected boolean senderWarmthAtGasPayment(final TransactionProcessingMetadata tx) {
-    return tx.isSenderPreWarmed();
+  private boolean senderWarmthAtGasPayment(final TransactionProcessingMetadata tx) {
+    return tx.isSenderPreWarmed() || tx.senderIsCoinbase();
   }
 
-  protected boolean recipientWarmthAtValueReception(TransactionProcessingMetadata tx) {
-    return tx.isRecipientPreWarmed();
+  private boolean recipientWarmthAtValueReception(TransactionProcessingMetadata tx) {
+    return tx.isRecipientPreWarmed() || tx.recipientIsCoinbase();
   }
-
-  protected abstract void addTxnAndMiscFragments(ImcFragment miscFragment);
-
-  protected abstract void addCoinbaseWarmingFragment();
 }

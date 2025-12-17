@@ -68,6 +68,7 @@ import net.consensys.linea.zktracer.module.hub.section.halt.ReturnSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.RevertSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.StopSection;
 import net.consensys.linea.zktracer.module.hub.section.skip.TxSkipSection;
+import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.TxInitializationSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
 import net.consensys.linea.zktracer.module.hub.state.BlockStack;
@@ -589,7 +590,7 @@ public abstract class Hub implements Module {
         new TxPreWarmingMacroSection(world, this);
       }
       state.processingPhase(TX_INIT);
-      setInitializationSection(world);
+      new TxInitializationSection(this, world);
     }
 
     // Note: for deployment transactions the deployment number / status were updated during the
