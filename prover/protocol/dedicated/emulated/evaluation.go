@@ -50,8 +50,6 @@ type Evaluation struct {
 
 	// Challenge is the random challenge used for the polynomial evaluation
 	Challenge *coin.Info
-	// ChallengePowers are the powers of the challenge used for the polynomial evaluation
-	ChallengePowers []ifaces.Column
 }
 
 // NewEval creates a new emulated evaluation module that computes
@@ -114,34 +112,23 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 	carry := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_EMUL_EVAL_CARRY_LIMB", name), nbCarryLimbs, nbRows)
 	// define the challenge and challenge powers for polynomial evaluation at random point
 	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.FieldExt)
-	challengePowers := make([]ifaces.Column, nbCarryLimbs)
-	for i := range challengePowers {
-		challengePowers[i] = comp.InsertCommit(
-			round+1,
-			ifaces.ColIDf("%s_EMUL_CHALLENGE_POWER_%d", name, i),
-			nbRows,
-			false,
-		)
-	}
 
 	pa := &Evaluation{
-		Terms:           terms,
-		Modulus:         modulus,
-		Quotient:        quotient,
-		Carry:           carry,
-		Challenge:       &challenge,
-		ChallengePowers: challengePowers,
-		nbBitsPerLimb:   nbBitsPerLimb,
-		round:           round,
-		name:            name,
-		maxTermDegree:   maxTermDegree,
-		nbLimbs:         nbLimbs,
+		Terms:         terms,
+		Modulus:       modulus,
+		Quotient:      quotient,
+		Carry:         carry,
+		Challenge:     &challenge,
+		nbBitsPerLimb: nbBitsPerLimb,
+		round:         round,
+		name:          name,
+		maxTermDegree: maxTermDegree,
+		nbLimbs:       nbLimbs,
 	}
 
 	// we need to register the prover actions for assigning the emulated columns before doing range checks
 	// to ensure the values are available (prover action is FIFO)
 	comp.RegisterProverAction(round, &proverActionFn{pa.assignEmulatedColumns})
-	comp.RegisterProverAction(round+1, &proverActionFn{pa.assignChallengePowers})
 
 	// range check the quotient limbs
 	for i, l := range quotient.Limbs() {
@@ -154,8 +141,6 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 
 	// define the constraints for the emulated evaluation
 	pa.csEval(comp)
-	// define constraints for the correctness of challenge powers
-	csChallengePowers(comp, pa.Challenge, pa.ChallengePowers, round, name)
 	return pa
 }
 
@@ -174,7 +159,7 @@ func (cs *Evaluation) csEval(comp *wizard.CompiledIOP) {
 		for j := range cs.Terms[i] {
 			name := cs.Terms[i][j].String()
 			if _, ok := uniqueLimbs[name]; !ok {
-				uniqueLimbs[name] = csPolyEval(cs.Terms[i][j], cs.ChallengePowers)
+				uniqueLimbs[name] = csPolyEval(cs.Terms[i][j], cs.Challenge)
 			}
 		}
 	}
@@ -195,11 +180,11 @@ func (cs *Evaluation) csEval(comp *wizard.CompiledIOP) {
 	// now we compute the other polynomials
 
 	// modulus(x)
-	modulusEval := csPolyEval(cs.Modulus, cs.ChallengePowers)
+	modulusEval := csPolyEval(cs.Modulus, cs.Challenge)
 	// quotient(x)
-	quotientEval := csPolyEval(cs.Quotient, cs.ChallengePowers)
+	quotientEval := csPolyEval(cs.Quotient, cs.Challenge)
 	// carry(x)
-	carryEval := csPolyEval(cs.Carry, cs.ChallengePowers)
+	carryEval := csPolyEval(cs.Carry, cs.Challenge)
 	// 2^nbBitsPerLimb - challenge
 	coef := big.NewInt(0).Lsh(big.NewInt(1), uint(cs.nbBitsPerLimb))
 	carryCoef := symbolic.Sub(

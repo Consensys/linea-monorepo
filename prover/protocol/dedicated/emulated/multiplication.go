@@ -40,8 +40,6 @@ type Multiplication struct {
 
 	// Challenge is the random challenge used for the random polynomial evaluation.
 	Challenge *coin.Info
-	// ChallengePowers are the powers of the challenge used for the random polynomial evaluation.
-	ChallengePowers []ifaces.Column
 }
 
 // NewMul creates a new emulated multiplication module that computes
@@ -89,34 +87,22 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Li
 	carry := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_EMUL_CARRY", name), nbCarryLimbs, nbRows)
 	// create the challenge which will be used in the next round for random poly eval.
 	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.FieldExt)
-	// we also create challenge powers columns for more efficient polynomial evaluation
-	challengePowers := make([]ifaces.Column, nbCarryLimbs)
-	for i := range challengePowers {
-		challengePowers[i] = comp.InsertCommit(
-			round+1,
-			ifaces.ColIDf("%s_EMUL_CHALLENGE_POWER_%d", name, i),
-			nbRows,
-			false,
-		)
-	}
 
 	pa := &Multiplication{
-		TermL:           left,
-		TermR:           right,
-		Modulus:         modulus,
-		Result:          result,
-		Quotient:        quotient,
-		Carry:           carry,
-		Challenge:       &challenge,
-		ChallengePowers: challengePowers,
-		nbBitsPerLimb:   nbBitsPerLimb,
-		round:           round,
-		name:            name,
+		TermL:         left,
+		TermR:         right,
+		Modulus:       modulus,
+		Result:        result,
+		Quotient:      quotient,
+		Carry:         carry,
+		Challenge:     &challenge,
+		nbBitsPerLimb: nbBitsPerLimb,
+		round:         round,
+		name:          name,
 	}
 	// we need to register prover action already here to ensure it is called
 	// before bigrange prover actions
 	comp.RegisterProverAction(round, &proverActionFn{pa.assignEmulatedColumns})
-	comp.RegisterProverAction(round+1, &proverActionFn{pa.assignChallengePowers})
 
 	// range check the result and quotient limbs to be within bounds
 	for i, l := range quotient.Limbs() {
@@ -138,36 +124,8 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Li
 
 	// first we define constraints which ensure the multiplication is correctly defined
 	pa.csMultiplication(comp)
-	// then we define constraints for the correctness of challenge powers
-	csChallengePowers(comp, pa.Challenge, pa.ChallengePowers, pa.round, pa.name)
 
 	return pa
-}
-
-func csChallengePowers(comp *wizard.CompiledIOP, chinfo *coin.Info, challengePowers []ifaces.Column, round int, name string) {
-	// checks 1, challenge, challenge^2, ..., challenge^{n-1}
-	ch := chinfo.AsVariable()
-	comp.InsertGlobal(
-		round,
-		ifaces.QueryIDf("%s_EMUL_CHALLENGE_POWER_0", name),
-		symbolic.Sub(
-			challengePowers[0],
-			1,
-		),
-	)
-	for i := 1; i < len(challengePowers); i++ {
-		comp.InsertGlobal(
-			round+1,
-			ifaces.QueryIDf("%s_EMUL_CHALLENGE_POWER_CONSISTENCY_%d", name, i),
-			symbolic.Sub(
-				ifaces.ColumnAsVariable(challengePowers[i]),
-				symbolic.Mul(
-					ifaces.ColumnAsVariable(challengePowers[i-1]),
-					ch,
-				),
-			),
-		)
-	}
 }
 
 func (cs *Multiplication) csMultiplication(comp *wizard.CompiledIOP) {
@@ -179,18 +137,18 @@ func (cs *Multiplication) csMultiplication(comp *wizard.CompiledIOP) {
 	// the respective limbs and challenge is the random challenge used for polynomial evaluation.
 
 	// left(x) and right(x)
-	leftEval := csPolyEval(cs.TermL, cs.ChallengePowers)
-	rightEval := csPolyEval(cs.TermR, cs.ChallengePowers)
+	leftEval := csPolyEval(cs.TermL, cs.Challenge)
+	rightEval := csPolyEval(cs.TermR, cs.Challenge)
 
 	// modulus(x) and quotient(x)
-	modulusEval := csPolyEval(cs.Modulus, cs.ChallengePowers)
-	quotientEval := csPolyEval(cs.Quotient, cs.ChallengePowers)
+	modulusEval := csPolyEval(cs.Modulus, cs.Challenge)
+	quotientEval := csPolyEval(cs.Quotient, cs.Challenge)
 
 	// result(x)
-	resultEval := csPolyEval(cs.Result, cs.ChallengePowers)
+	resultEval := csPolyEval(cs.Result, cs.Challenge)
 
 	// carry(x)
-	carryEval := csPolyEval(cs.Carry, cs.ChallengePowers)
+	carryEval := csPolyEval(cs.Carry, cs.Challenge)
 	// compute (2^nbBitsPerLimb - challenge)
 	coef := big.NewInt(0).Lsh(big.NewInt(1), uint(cs.nbBitsPerLimb))
 	carryCoef := symbolic.Sub(

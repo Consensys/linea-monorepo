@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -13,18 +14,14 @@ import (
 
 // csPolyEval constructs a symbolic expression that evaluates the polynomial
 // defined by the limbs and the challenge powers.
-func csPolyEval(val limbs.Limbs[limbs.LittleEndian], challengePowers []ifaces.Column) *symbolic.Expression {
-	// TODO: should store the value in column?
-	res := symbolic.NewConstant(0)
-	for i, l := range val.Limbs() {
-		res = symbolic.Add(
-			res,
-			symbolic.Mul(
-				l,
-				challengePowers[i],
-			),
-		)
+func csPolyEval(val limbs.Limbs[limbs.LittleEndian], chinfo *coin.Info) *symbolic.Expression {
+	coefs := val.Limbs()
+	coefsF := make([]*symbolic.Expression, len(coefs))
+	for i, l := range coefs {
+		coefsF[i] = ifaces.ColumnAsVariable(l)
 	}
+	ch := chinfo.AsVariable()
+	res := symbolic.NewPolyEval(ch, coefsF)
 	return res
 }
 

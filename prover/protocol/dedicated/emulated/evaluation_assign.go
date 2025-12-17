@@ -4,9 +4,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -156,18 +154,5 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 	}
 	for i, l := range a.Carry.Limbs() {
 		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstCarry[i]))
-	}
-}
-
-func (a *Evaluation) assignChallengePowers(run *wizard.ProverRuntime) {
-	chal := run.GetRandomCoinFieldExt(a.Challenge.Name)
-	nbRows := a.ChallengePowers[0].Size()
-	var power fext.Element
-	power.SetOne()
-	for i := range a.ChallengePowers {
-		col := vectorext.Repeat(power, nbRows)
-		sv := smartvectors.NewRegularExt(col)
-		run.AssignColumn(a.ChallengePowers[i].GetColID(), sv)
-		power.Mul(&power, &chal)
 	}
 }
