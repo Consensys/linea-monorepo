@@ -13,18 +13,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata;
+package net.consensys.linea.zktracer.module.hub.precompiles;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.TraceOsaka.EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND;
 import static net.consensys.linea.zktracer.module.Util.rightPaddedSlice;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.*;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToShort;
 import static net.consensys.linea.zktracer.types.Conversions.safeLongToInt;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
-import java.math.BigInteger;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -36,7 +36,7 @@ import org.hyperledger.besu.evm.internal.Words;
 
 @Getter
 @Accessors(fluent = true)
-public abstract class ModexpMetadata {
+public final class ModexpMetadata {
   public static final int BBS_MIN_OFFSET = 0x00;
   public static final int EBS_MIN_OFFSET = 0x20;
   public static final int MBS_MIN_OFFSET = 0x40;
@@ -50,13 +50,13 @@ public abstract class ModexpMetadata {
     return (short) (4 * (getMaxInputSize() / LLARGE));
   }
 
-  public abstract int getMaxInputSize();
-
-  public BigInteger getMaxInputSizeBigInteger() {
-    return BigInteger.valueOf(getMaxInputSize());
+  public int getMaxInputSize() {
+    return EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND;
   }
 
-  public abstract Bytes normalize(ModexpXbsCase modexpXbsCase);
+  public Bytes normalize(ModexpXbsCase modexpXbsCase) {
+    return tracedIsWithinBounds(modexpXbsCase) ? xbs(modexpXbsCase).toBytes() : Bytes.EMPTY;
+  }
 
   public Bytes normalizedBbs() {
     return normalize(MODEXP_XBS_CASE_BBS);
@@ -164,7 +164,9 @@ public abstract class ModexpMetadata {
     return Words.clampedToInt(mbs());
   }
 
-  public abstract boolean loadRawLeadingWord();
+  public boolean loadRawLeadingWord() {
+    return callData().size() > BASE_MIN_OFFSET + normalizedBbsInt() && normalizedEbsInt() != 0;
+  }
 
   public boolean extractModulus() {
     return (callData().size() > BASE_MIN_OFFSET + bbsInt() + ebsInt()) && !mbs().isZero();
@@ -220,8 +222,6 @@ public abstract class ModexpMetadata {
             WORD_SIZE));
   }
 
-  public abstract boolean unprovableModexp();
-
   /** This is to detect large (ie > 32 bytes = 256 bit) modexp for the prover */
   public boolean largeModexp() {
     return bbsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH
@@ -230,14 +230,16 @@ public abstract class ModexpMetadata {
   }
 
   public boolean tracedIsWithinBounds(ModexpXbsCase modexpXbsCase) {
-    return false;
+    return (Words.clampedToInt(xbs(modexpXbsCase)) <= getMaxInputSize());
   }
 
   public boolean tracedIsOutOfBounds(ModexpXbsCase modexpXbsCase) {
-    return false;
+    return !tracedIsWithinBounds(modexpXbsCase);
   }
 
-  public abstract boolean allXbsesAreInBounds();
-
-  public abstract int getLeadLogByteMultiplier();
+  public boolean allXbsesAreInBounds() {
+    return tracedIsWithinBounds(MODEXP_XBS_CASE_BBS)
+        && tracedIsWithinBounds(MODEXP_XBS_CASE_EBS)
+        && tracedIsWithinBounds(MODEXP_XBS_CASE_MBS);
+  }
 }

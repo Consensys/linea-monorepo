@@ -19,7 +19,7 @@ import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
 import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.module.ModuleName.PRECOMPILE_MODEXP_EFFECTIVE_CALLS;
 import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.legalModexpComponentByteSize;
-import static net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata.*;
+import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;

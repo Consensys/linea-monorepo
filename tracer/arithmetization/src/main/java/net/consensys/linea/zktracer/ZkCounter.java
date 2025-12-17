@@ -43,7 +43,7 @@ import static net.consensys.linea.zktracer.module.hub.section.call.CallSection.N
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.BlakeSubsection.NB_ROWS_HUB_PRC_BLAKE;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.EllipticCurvePrecompileSubsection.NB_ROWS_HUB_PRC_ELLIPTIC_CURVE;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.IdentitySubsection.NB_ROWS_HUB_PRC_IDENTITY;
-import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.LondonModexpSubsection.NB_ROWS_HUB_PRC_MODEXP;
+import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.ModexpSubsection.NB_ROWS_HUB_PRC_MODEXP;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.ShaTwoOrRipemdSubSection.NB_ROWS_HUB_PRC_SHARIP;
 import static net.consensys.linea.zktracer.module.hub.section.copy.CallDataCopySection.NB_ROWS_HUB_CALL_DATA_COPY;
 import static net.consensys.linea.zktracer.module.hub.section.copy.CodeCopySection.NB_ROWS_HUB_CODE_COPY;
@@ -67,11 +67,11 @@ import static net.consensys.linea.zktracer.module.rlpaddr.RlpAddrOperation.*;
 import static net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcptOperation.lineCountForRlpTxnRcpt;
 import static net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation.NB_ROWS_SHAKIRA_RESULT;
 import static net.consensys.linea.zktracer.module.stp.StpOperation.NB_ROWS_STP;
-import static net.consensys.linea.zktracer.module.txndata.osaka.OsakaUserTransaction.NB_ROWS_TXN_DATA_OSAKA_USER_1559_SEMANTIC;
-import static net.consensys.linea.zktracer.module.txndata.osaka.OsakaUserTransaction.NB_ROWS_TXN_DATA_OSAKA_USER_NO_1559_SEMANTIC;
 import static net.consensys.linea.zktracer.module.txndata.transactions.SysfNoopTransaction.NB_ROWS_TXN_DATA_SYSF_NOOP;
 import static net.consensys.linea.zktracer.module.txndata.transactions.SysiEip2935Transaction.NB_ROWS_TXN_DATA_SYSI_EIP2935;
 import static net.consensys.linea.zktracer.module.txndata.transactions.SysiEip4788Transaction.NB_ROWS_TXN_DATA_SYSI_EIP4788;
+import static net.consensys.linea.zktracer.module.txndata.transactions.UserTransaction.NB_ROWS_TXN_DATA_OSAKA_USER_1559_SEMANTIC;
+import static net.consensys.linea.zktracer.module.txndata.transactions.UserTransaction.NB_ROWS_TXN_DATA_OSAKA_USER_NO_1559_SEMANTIC;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.runtime.stack.Stack.MAX_STACK_SIZE;
 import static net.consensys.linea.zktracer.types.TransactionProcessingMetadata.computeRequiresEvmExecution;
@@ -98,9 +98,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExplogExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ModexpLogExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
-import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.LondonModexpMetadata;
-import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata;
-import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.OsakaModexpMetadata;
+import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.module.limits.BlockTransactions;
 import net.consensys.linea.zktracer.module.limits.Keccak;
 import net.consensys.linea.zktracer.module.limits.L1BlockSize;
@@ -757,14 +755,7 @@ public class ZkCounter implements LineCountingTracer {
       case PRC_MODEXP -> {
         hub.updateTally(NB_ROWS_HUB_PRC_MODEXP);
         final MemoryRange memoryRange = new MemoryRange(0, 0, callData.size(), callData);
-        final ModexpMetadata modexpMetadata =
-            forkPredatesOsaka(fork)
-                ? new LondonModexpMetadata(memoryRange)
-                : new OsakaModexpMetadata(memoryRange);
-        if (modexpMetadata.unprovableModexp()) {
-          modexpEffectiveCall.detectEvent();
-          return;
-        }
+        final ModexpMetadata modexpMetadata = new ModexpMetadata(memoryRange);
         blakemodexp.updateTally(modexpMetadata.getNumberOfRowsForModexp());
         modexpEffectiveCall.updateTally(prcSuccess);
         modexpLargeCall.updateTally(modexpMetadata.largeModexp());

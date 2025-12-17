@@ -13,10 +13,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.xbsOobCall;
+package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp;
 
 import static net.consensys.linea.zktracer.Trace.OOB_INST_MODEXP_XBS;
 import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_MODEXP_XBS;
+import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.MODEXP_XBS_CASE_BBS;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToIsZero;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
@@ -28,8 +29,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase;
-import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata;
+import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.oob.OobExoCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -40,7 +40,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-public abstract class ModexpXbsOobCall extends OobCall {
+public final class ModexpXbsOobCall extends OobCall {
 
   public static final short NB_ROWS_OOB_MODEXP_XBS = CT_MAX_MODEXP_XBS + 1;
 
@@ -54,10 +54,6 @@ public abstract class ModexpXbsOobCall extends OobCall {
     this.modexpXbsCase = modexpXbsCase;
   }
 
-  protected abstract ModexpMetadata getForkAppropriateModexpMetadata();
-
-  public abstract int modexpComponentByteSize();
-
   @Override
   public void setInputData(MessageFrame frame, Hub hub) {}
 
@@ -65,7 +61,7 @@ public abstract class ModexpXbsOobCall extends OobCall {
   public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
     // row i
     final OobExoCall xbsVsModexpComponentByteSize =
-        callToLT(wcp, xbs(), Bytes.ofUnsignedInt(modexpComponentByteSize() + 1));
+        callToLT(wcp, xbs(), Bytes.ofUnsignedInt(modexpMetadata.getMaxInputSize() + 1));
     exoCalls.add(xbsVsModexpComponentByteSize);
 
     // row i + 1
@@ -88,28 +84,49 @@ public abstract class ModexpXbsOobCall extends OobCall {
     return modexpMetadata.xbs(modexpXbsCase);
   }
 
-  abstract short xbsNormalized();
+  private short xbsNormalized() {
+    return (short) modexpMetadata.normalize(modexpXbsCase).toInt();
+  }
 
-  abstract short ybsReNormalized();
+  private short ybsReNormalized() {
+    return xbsIsWithinBounds() ? (short) ybsLo().toInt() : 0;
+  }
 
-  abstract short maxXbsYbs();
+  private short maxXbsYbs() {
+    return computeMax() && xbsIsWithinBounds()
+        ? (short) Math.max(xbsNormalized(), this.ybsReNormalized())
+        : 0;
+  }
 
-  abstract boolean xbsNormalizedIsNonZero();
+  private boolean xbsNormalizedIsNonZero() {
+    return xbsIsWithinBounds() && xbsNormalized() != 0;
+  }
 
-  abstract boolean xbsNormalizedIsNonZeroTracedValue();
+  private boolean xbsNormalizedIsNonZeroTracedValue() {
+    return xbsNormalizedIsNonZero();
+  }
 
-  protected abstract boolean xbsIsWithinBounds();
+  private boolean xbsIsWithinBounds() {
+    return modexpMetadata.tracedIsWithinBounds(modexpXbsCase);
+  }
 
-  protected abstract boolean xbsIsOutOfBounds();
+  private boolean xbsIsOutOfBounds() {
+    return modexpMetadata.tracedIsOutOfBounds(modexpXbsCase);
+  }
 
   public Bytes ybsLo() {
     return switch (modexpXbsCase) {
       case MODEXP_XBS_CASE_BBS, MODEXP_XBS_CASE_EBS -> Bytes.EMPTY;
-      case MODEXP_XBS_CASE_MBS -> getForkAppropriateModexpMetadata().normalizedBbs();
+      case MODEXP_XBS_CASE_MBS -> modexpMetadata.normalizedBbs();
     };
   }
 
-  protected abstract boolean computeMax();
+  private boolean computeMax() {
+    return switch (modexpXbsCase) {
+      case MODEXP_XBS_CASE_BBS, MODEXP_XBS_CASE_EBS -> false;
+      case MODEXP_XBS_CASE_MBS -> modexpMetadata.tracedIsWithinBounds(MODEXP_XBS_CASE_BBS);
+    };
+  }
 
   @Override
   public Trace.Oob trace(Trace.Oob trace) {

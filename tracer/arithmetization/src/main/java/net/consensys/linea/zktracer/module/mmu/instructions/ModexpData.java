@@ -23,13 +23,12 @@ import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLAN
 import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
 import static net.consensys.linea.zktracer.Trace.Mmu.NB_MICRO_ROWS_TOT_MODEXP_DATA;
 import static net.consensys.linea.zktracer.Trace.Mmu.NB_PP_ROWS_MODEXP_DATA;
+import static net.consensys.linea.zktracer.TraceOsaka.Blake2fmodexpdata.INDEX_MAX_MODEXP;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
 import java.util.ArrayList;
 import java.util.List;
 import net.consensys.linea.zktracer.Fork;
-import net.consensys.linea.zktracer.module.blake2fmodexpdata.LondonBlakeModexpDataOperation;
-import net.consensys.linea.zktracer.module.blake2fmodexpdata.OsakaBlakeModexpDataOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
@@ -76,10 +75,8 @@ public class ModexpData implements MmuInstruction {
     this.wcpCallRecords = new ArrayList<>(NB_PP_ROWS_MODEXP_DATA);
   }
 
-  private final int getForkAppropriateModexpInputSize() {
-    return forkPredatesOsaka(fork)
-        ? LondonBlakeModexpDataOperation.modexpComponentByteSize()
-        : OsakaBlakeModexpDataOperation.modexpComponentByteSize();
+  private int getForkAppropriateModexpInputSize() {
+    return LLARGE * (INDEX_MAX_MODEXP + 1);
   }
 
   private final int getForkAppropriateTotalNumberOfMicroRows() {

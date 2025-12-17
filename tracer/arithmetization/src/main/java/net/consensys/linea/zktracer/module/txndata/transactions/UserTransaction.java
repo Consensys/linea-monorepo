@@ -33,8 +33,8 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class UserTransaction extends TxnDataOperation {
-  private static final short NB_ROWS_TXN_DATA_OSAKA_USER_1559_SEMANTIC = 17;
-  private static final short NB_ROWS_TXN_DATA_OSAKA_USER_NO_1559_SEMANTIC = 15;
+  public static final short NB_ROWS_TXN_DATA_OSAKA_USER_1559_SEMANTIC = 17;
+  public static final short NB_ROWS_TXN_DATA_OSAKA_USER_NO_1559_SEMANTIC = 15;
   private static final Bytes EIP_2681_MAX_NONCE = bigIntegerToBytes(EIP2681_MAX_NONCE);
   private static final Bytes EIP_7825_TRANSACTION_GAS_LIMIT_CAP_BYTES =
       Bytes.minimalBytes(EIP_7825_TRANSACTION_GAS_LIMIT_CAP);
