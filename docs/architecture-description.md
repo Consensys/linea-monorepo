@@ -7,13 +7,18 @@ B) IntelliJ - https://www.jetbrains.com/help/idea/markdown.html#table-of-content
 -->
 
 <!-- TOC -->
-* [Linea architecture - alpha v3](#linea-architecture---alpha-v3)
+* [Linea architecture beta v4](#linea-architecture-beta-v4)
 * [Transaction execution and management](#transaction-execution-and-management)
   * [File system](#file-system)
+  * [Full node](#full-node)
   * [Sequencer](#sequencer)
+    * [Finalized Block Tag on L2](#finalized-block-tag-on-l2)
+    * [Credible layer](#credible-layer)
+  * [Invalid Tx reporting tool](#invalid-tx-reporting-tool)
   * [State manager](#state-manager)
     * [For L1 finalized states](#for-l1-finalized-states)
     * [For latest L2 states](#for-latest-l2-states)
+  * [State reconstruction](#state-reconstruction)
   * [Coordinator](#coordinator)
     * [Batches](#batches)
     * [Blobs](#blobs)
@@ -28,18 +33,22 @@ B) IntelliJ - https://www.jetbrains.com/help/idea/markdown.html#table-of-content
   * [Traces API](#traces-api)
   * [Provers](#provers)
     * [Execution proofs](#execution-proofs)
-    * [Compression Proof](#compression-proof)
+    * [Compression proof](#compression-proof)
     * [Aggregation proof](#aggregation-proof)
   * [Web3 signer](#web3-signer)
   * [L2 message service](#l2-message-service)
 * [Gas price setting](#gas-price-setting)
+  * [Gas pricing propagation](#gas-pricing-propagation)
+    * [ExtraData](#extradata)
+    * [Direct RPC calls](#direct-rpc-calls)
+    * [Ways to compute Legacy cost](#ways-to-compute-legacy-cost)
 * [L1 &lt;-> L2 interactions](#l1---l2-interactions)
   * [L1 finalization](#l1-finalization)
     * [Blobs](#blobs-1)
     * [Aggregation](#aggregation-1)
   * [L1 -> L2 messages](#l1---l2-messages)
   * [L2 -> L1](#l2---l1)
-* [Finalized block tag on L2](#finalized-block-tag-on-l2)
+  * [Forced transactions](#forced-transactions)
 <!-- TOC -->
 
 # Transaction execution and management
@@ -85,10 +94,13 @@ The file system is used to store files for:
 A script automatically removes all files that are more than one week old.
 
 ## Full node
-Full nodes are comprised of a consensus layer (CL) and an execution layer (EL). Full nodes connected to Linea must use Maru as a
-consensus layer and can choose any Execution layer that is working for the ethereum mainnet.
+Full nodes consist of a consensus layer (CL) and an execution layer (EL). Full nodes connected to Linea must use Maru as a
+consensus layer and can choose any Execution layer working for the ethereum mainnet.
 Besu, Geth, Nethermind are tested as part of our release process.
 The CL and EL interactions are done via the engine API as per Ethereum specifications.
+
+When a Full node receives a transaction via RPC it evaluates whether the sequencer will accept it by doing both a light
+counting using the tracer plugin (in limitless mode) and a profitability check.
 
 
 ## Sequencer
@@ -99,6 +111,7 @@ to Clique.
 The EL of the sequencer selects and combines the transactions into blocks.
 Blocks produced by the sequencer, in addition to common verifications, must fulfill the below requirements:
 
+The Besu part of the sequencer has the following plugins enabled: tracer (in limitless mode), credible layer.
 
 1. trace counts are small enough to ensure the prover can prove the block
 2. the block total gas usage is below the gasLimit parameter
@@ -152,37 +165,76 @@ The architecture of the credible layer is out of scope of this document.
 This is a service reporting transactions that are not selected by the sequencer for reasons related to the proof system. Such reasons are typically
 because the transaction overflows the line counts, or because it is a forced transaction but is invalid.
 
-The API exposed by this service is:
+The API exposed by this service are:
 ```
-???():
-  ???             ???
+linea_getTransactionExclusionStatusV1(
+        List[string]
+):
+result: {
+        txHash            string
+        from              string
+        nonce             string
+        txRejectionStage  timestamp // enum "SEQUENCER"
+        reasonMessage     string
+        blockNumber       string
+        timestamp         timestamp
+}
 ```
 
+
+```
+linea_saveRejectedTransactionV1(
+        txRejectionStage  string // enum "SEQUENCER"
+        timestamp         timestamp
+        blockNumber       int
+        transactionRLP    string
+        reasonMessage     string
+        overflows         List[ {
+                module   string
+                count    int
+                limit    int
+            } ]
+    })
+result: {
+        txHash   string
+        status   string // enum "SAVED" or "DUPLICATE_ALREADY_SAVED_BEFORE"
+}
+```
 
 ## State manager
 
 
 ### For L1 finalized states
 
-The state manager is configured differently based on the role it serves. The node described in this section is configured to serve the linea_getProof method, and has a different configuration than the one described in
+The state manager is configured differently based on the role it serves. The node described in this section is configured
+to serve the linea_getProof method, and has a different configuration than the one described in
 [State manager - for latest L2 states](#StateManagerL2).
 
 The publicly exposed method linea_getProof is served by the state manager. We have a single instance of state manager.
 
-The state manager keeps its representation of the Linea state by applying the block transactions computed by the sequencer, which it receives through P2P. It is composed of two parts:
+The state manager keeps its representation of the Linea state by applying the block transactions computed by the sequencer,
+which it receives through P2P. It is composed of two parts:
 
-1. a Besu node with a Shomei plugin
+1. a Besu node with a Shomei plugin and tracer plugin (in full tracer mode)
 2. and a Shomei node.
 
-The Besu node is connected to the other Ethereum nodes using P2P, and from the blocks it receives, it generates a trielog which it sends to the Shomei node. The trielog is a list of state modifications that occurred during the execution of the block. As soon as Shomei receives this trielog it will apply these changes to his state. The Shomei nodes use Sparse Merkle trees to represent Linea’s state.
+The Besu node is connected to the other Ethereum nodes using P2P, and from the blocks it receives, it generates a trielog
+which it sends to the Shomei node. The trielog is a list of state modifications that occurred during the execution of the
+block. As soon as Shomei receives this trielog it will apply these changes to his state. The Shomei nodes use Sparse Merkle
+trees to represent Linea’s state.
 
 Besu and Shomei nodes know each other's IP and port for direct communication.
 
-The Shomei plugin implements the RPC endpoint to return rollup proofs. Rollup proofs are used to provide a Merkle proof of the existence of a key in a given block number for a specific address. This proof can be used onchain in the Ethereum L1 for the blocks that have been finalized given their root hashes are present onchain.
+The Shomei plugin implements the RPC endpoint to return rollup proofs. Rollup proofs are used to provide a Merkle proof
+of the existence of a key in a given block number for a specific address. This proof can be used onchain in the Ethereum
+L1 for the blocks that have been finalized given their root hashes are present onchain.
 
-This state manager instance, which is configured to handle the linea_getProof requests, is configured to store only the states corresponding to the L2 blocks finalized on L1.
+This state manager instance, which is configured to handle the linea_getProof requests, is configured to store only the s
+tates corresponding to the L2 blocks finalized on L1.
 
-To serve the linea_getProof requests, the Shomei instance needs to know the latest L2 block finalized on L1. It is pushed by the coordinator to Shomei through a dedicated RPC endpoint. The IP address and port of Shomei are set in the coordinator configuration, allowing direct communication.
+To serve the linea_getProof requests, the Shomei instance needs to know the latest L2 block finalized on L1. It is pushed
+by the coordinator to Shomei through a dedicated RPC endpoint. The IP address and port of Shomei are set in the coordinator
+configuration, allowing direct communication.
 
 The endpoint `linea_getProof` is as follows:
 
@@ -435,16 +487,23 @@ CalculateShnarfResult
 
 ## Traces API
 
-This component is used to generate line counts for each block and execution traces for batches. It is called by the coordinator. It is based on Geth and implements the traces-API endpoints. It has a representation of the ethereum state and executes the block to generate the traces.
+This component is used to generate line counts for each block and execution traces for batches. It is called by the
+coordinator. It is a Besu node using archive configuration with tracer plugin using full tracing configuration.
+It executes the block to generate the traces.
 
 Traces-API has two endpoints:
 
 * Trace counts `linea_getBlockTracesCountersV2` returning the trace counts for a given block.
-* Conflated trace generation `linea_generateConflatedTracesToFileV2` used to trigger the generation of conflated traces. Conflated traces are expected to be of size 100MB~500MB (JSON + gzipped). They are stored in a shared folder inside shared/traces/conflated. This shared folder acts as a queue for other services. This call returns the name of the file once it is generated.
+* Conflated trace generation `linea_generateConflatedTracesToFileV2` used to trigger the generation of conflated traces.
+Conflated traces are expected to be of size 100MB~500MB (lt format + gzipped). They are stored in a shared folder inside
+shared/traces/conflated. This shared folder acts as a queue for other services. This call returns the name of the file
+once it is generated.
 
 The number of trace generators is static for a given deployment. It’s determined in the deployment configuration.
 
-The current implementation of traces-API proactively produces trace files for blocks produced as soon as it receives them via P2P. Each instance of traces-API is configured to handle blocks whose id is 0 modulo the instance number. This allows the generation of block traces across multiple instances.
+The current implementation of traces-API proactively produces trace files for blocks produced as soon as it receives
+them via P2P. Each instance of traces-API is configured to handle blocks whose id is 0 modulo the instance number.
+This allows the generation of block traces across multiple instances.
 
 Trace count works by loading the generated trace file of a block and returning the actual number of lines in the file.
 
