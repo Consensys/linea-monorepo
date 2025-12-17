@@ -50,9 +50,14 @@ func (r Ref) IsNull() bool { return r == 0 }
 // FileSlice mirrors  Go slice header (Data uintptr, Len int, Cap int) conceptually
 // Instead of Data (uintptr), we store the offset of the slice data in the serialized buffer
 type FileSlice struct {
-	Offset Ref   // byte offset in the serialized buffer where slice data starts
-	Len    int64 // number of elements in the slice
-	Cap    int64 // original capacity (used to restore slice header)
+	// Byte offset in the serialized buffer where slice data starts
+	Offset Ref
+
+	// Number of elements in the slice
+	Len int64
+
+	// Original capacity (used to restore slice header)
+	Cap int64
 }
 
 func SizeOf[T any]() int64 {

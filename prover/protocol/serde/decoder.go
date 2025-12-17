@@ -14,8 +14,8 @@ import (
 
 type ReaderContext struct {
 
-	// The entire memory-mapped file - the raw binary blob. The reader does not "read" from a stream;
-	// it jumps around this byte slice using offsets.
+	// The entire memory-mapped file - the raw binary blob. The reader does not "read" from a stream,
+	// rather it jumps around this byte slice using offsets.
 	data []byte
 
 	// The Deduplication Table - critical for maintaining referential integrity
@@ -87,9 +87,14 @@ func (ctx *ReaderContext) reconstructPointer(target reflect.Value, offset int64)
 		}
 	}
 
-	// Generic Pointer
+	// Generic Pointer - allocates fresh memory for the type the pointer points to (the "element").
+	// i.e newPtr is of type `*t` where type `t` is the target's type - see first line, and allocates
+	// memory to store type `t`, and saves it to the ptrMap (deduplication purposes).
 	newPtr := reflect.New(t.Elem())
 	ctx.ptrMap[offset] = newPtr
+
+	// Reconstruct recursively to actually fill that newly allocated memory with the data found at that
+	// offset in the file.
 	target.Set(newPtr)
 	return ctx.reconstruct(newPtr.Elem(), offset)
 }
@@ -99,8 +104,13 @@ func (ctx *ReaderContext) reconstructSlice(target reflect.Value, offset int64) e
 		return fmt.Errorf("slice header out of bounds")
 	}
 
+	// Read the File Header First by looking at the offset to find a `FileSlice` struct.
+	// This is a small header stored in the binary file that tells us three things:
+	// Where the actual data is (the Offset).
+	// How much data there is (the Len and Cap)
 	fs := (*FileSlice)(unsafe.Pointer(&ctx.data[offset]))
 
+	// If the fs.Offset is marked as null, it sets the target slice to its zero value (a nil slice) and exits early.
 	if fs.Offset.IsNull() {
 		target.Set(reflect.Zero(target.Type()))
 		return nil
@@ -111,8 +121,9 @@ func (ctx *ReaderContext) reconstructSlice(target reflect.Value, offset int64) e
 		return fmt.Errorf("slice data offset out of bounds")
 	}
 
-	// ZERO-COPY MAGIC
+	// ZERO-COPY (The "Swizzling" technique) SLICE
 	// 1. Get the pointer to the raw data inside the memory map
+	// i.e. calculate the memory address of the data inside the file
 	dataPtr := unsafe.Pointer(&ctx.data[fs.Offset])
 
 	// 2. Manually construct the slice header to point to this data
@@ -124,6 +135,8 @@ func (ctx *ReaderContext) reconstructSlice(target reflect.Value, offset int64) e
 		Cap  int
 	})(unsafe.Pointer(target.UnsafeAddr()))
 
+	// Manually overwrite the slice fields to make the Go runtime think our slice is a normal slice,
+	// but its underlying data is actually the memory-mapped file itself.
 	sh.Data = uintptr(dataPtr)
 	sh.Len = int(fs.Len)
 	sh.Cap = int(fs.Cap)
