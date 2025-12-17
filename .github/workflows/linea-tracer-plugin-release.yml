@@ -97,11 +97,15 @@ jobs:
   delete-tag-on-failure:
     needs: [ build ]
     runs-on: ubuntu-latest
-    if: failure() && ( needs.steps.outputs.uploadResults == 'failure' || needs.steps.outputs.setupGccResults == 'failure' || needs.steps.outputs.buildWithoutTestsResults == 'failure' || needs.steps.outputs.storeArtifactsResults == 'failure' || needs.steps.outputs.runSpotlessResults == 'failure')
+    # if: failure() && ( needs.steps.outputs.uploadResults == 'failure' || needs.steps.outputs.setupGccResults == 'failure' || needs.steps.outputs.buildWithoutTestsResults == 'failure' || needs.steps.outputs.storeArtifactsResults == 'failure' || needs.steps.outputs.runSpotlessResults == 'failure')
     steps:
       - name: Delete tag created without release
         run: |
-          gh release delete ${{needs.steps.outputs.releaseTag}} --cleanup-tag
+          echo " ${{ needs.steps.outputs.uploadResults }} "
+            echo " ${{ needs.steps.outputs.setupGccResults }} "
+            echo " ${{ needs.steps.outputs.buildWithoutTestsResults }} "
+            echo " ${{ needs.steps.outputs.storeArtifactsResults }} "
+            echo " ${{ needs.steps.outputs.runSpotlessResults }} "
         env:
           GH_TOKEN: ${{ github.token }}
 
