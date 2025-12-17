@@ -1070,7 +1070,7 @@ contract YieldManager is
     if (userFundsCached != 0) {
       revert YieldProviderHasRemainingFunds(userFundsCached);
     }
-    _removeYieldProvider(_yieldProvider, _vendorExitData, false);
+    _removeYieldProvider(_yieldProvider, _vendorExitData, false, userFundsCached);
   }
 
   /**
@@ -1084,7 +1084,8 @@ contract YieldManager is
     address _yieldProvider,
     bytes memory _vendorExitData
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
-    _removeYieldProvider(_yieldProvider, _vendorExitData, true);
+    uint256 userFundsCached = _getYieldProviderStorage(_yieldProvider).userFunds;
+    _removeYieldProvider(_yieldProvider, _vendorExitData, true, userFundsCached);
   }
 
   /**
@@ -1092,15 +1093,18 @@ contract YieldManager is
    * @param _yieldProvider The yield provider address.
    * @param _vendorExitData Vendor-specific exit data passed to the yield provider's exit function.
    * @param _isEmergencyRemove Flag indicating whether this is an emergency removal.
+   * @param _userFunds The user funds amount for the yield provider.
    */
-  function _removeYieldProvider(address _yieldProvider, bytes memory _vendorExitData, bool _isEmergencyRemove) internal {
+  function _removeYieldProvider(address _yieldProvider, bytes memory _vendorExitData, bool _isEmergencyRemove, uint256 _userFunds) internal {
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.exitVendorContracts, (_yieldProvider, _vendorExitData))
     );
 
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    $.userFundsInYieldProvidersTotal -= _getYieldProviderStorage(_yieldProvider).userFunds;
+    if (_userFunds > 0) {
+      $.userFundsInYieldProvidersTotal -= _userFunds;
+    }
     uint96 yieldProviderIndex = _getYieldProviderStorage(_yieldProvider).yieldProviderIndex;
     address lastYieldProvider = $.yieldProviders[$.yieldProviders.length - 1];
     $.yieldProviderStorage[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
