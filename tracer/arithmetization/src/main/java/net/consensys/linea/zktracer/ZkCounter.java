@@ -325,29 +325,31 @@ public class ZkCounter implements LineCountingTracer {
       Fork fork,
       boolean countHistoricalBlockHashes) {
     this.fork = fork;
+    if (forkPredatesOsaka(fork)) {
+      throw new IllegalArgumentException("Fork no more supported by the tracer: " + fork);
+    }
     this.countHistoricalBlockHashes = countHistoricalBlockHashes;
-    this.opCodes = OpCodes.load(fork);
-    this.trace = getTraceFromFork(fork);
-    this.blakemodexp =
-        new CountingOnlyModule(BLAKE_MODEXP_DATA, trace.blake2fmodexpdata().spillage());
-    this.blockData = new CountingOnlyModule(BLOCK_DATA, trace.blockdata().spillage());
-    this.blockHash = new CountingOnlyModule(BLOCK_HASH, trace.blockhash().spillage());
-    this.gas = new CountingOnlyModule(GAS, trace.gas().spillage());
-    this.hub = new CountingOnlyModule(HUB, trace.hub().spillage());
-    this.logData = new CountingOnlyModule(LOG_DATA, trace.logdata().spillage());
-    this.logInfo = new CountingOnlyModule(LOG_INFO, trace.loginfo().spillage());
-    this.mmio = new CountingOnlyModule(MMIO, trace.mmio().spillage());
-    this.mmu = new CountingOnlyModule(MMU, trace.mmu().spillage());
-    this.mxp = new CountingOnlyModule(MXP, trace.mxp().spillage());
-    this.rlpAddr = new CountingOnlyModule(RLP_ADDR, trace.rlpaddr().spillage());
-    this.rlpTxn = new CountingOnlyModule(RLP_TXN, trace.rlptxn().spillage());
-    this.rlpTxnRcpt = new CountingOnlyModule(RLP_TXN_RCPT, trace.rlptxrcpt().spillage());
-    this.rlpUtils = new CountingOnlyModule(RLP_UTILS, trace.rlputils().spillage());
-    this.rom = new CountingOnlyModule(ROM, trace.rom().spillage());
-    this.romlex = new CountingOnlyModule(ROM_LEX, trace.romlex().spillage());
-    this.shakiradata = new CountingOnlyModule(SHAKIRA_DATA, trace.shakiradata().spillage());
-    this.trm = new CountingOnlyModule(TRM, trace.trm().spillage());
-    this.txnData = new CountingOnlyModule(TXN_DATA, trace.txndata().spillage());
+    opCodes = OpCodes.load(fork);
+    trace = getTraceFromFork(fork);
+    blakemodexp = new CountingOnlyModule(BLAKE_MODEXP_DATA, trace.blake2fmodexpdata().spillage());
+    blockData = new CountingOnlyModule(BLOCK_DATA, trace.blockdata().spillage());
+    blockHash = new CountingOnlyModule(BLOCK_HASH, trace.blockhash().spillage());
+    gas = new CountingOnlyModule(GAS, trace.gas().spillage());
+    hub = new CountingOnlyModule(HUB, trace.hub().spillage());
+    logData = new CountingOnlyModule(LOG_DATA, trace.logdata().spillage());
+    logInfo = new CountingOnlyModule(LOG_INFO, trace.loginfo().spillage());
+    mmio = new CountingOnlyModule(MMIO, trace.mmio().spillage());
+    mmu = new CountingOnlyModule(MMU, trace.mmu().spillage());
+    mxp = new CountingOnlyModule(MXP, trace.mxp().spillage());
+    rlpAddr = new CountingOnlyModule(RLP_ADDR, trace.rlpaddr().spillage());
+    rlpTxn = new CountingOnlyModule(RLP_TXN, trace.rlptxn().spillage());
+    rlpTxnRcpt = new CountingOnlyModule(RLP_TXN_RCPT, trace.rlptxrcpt().spillage());
+    rlpUtils = new CountingOnlyModule(RLP_UTILS, trace.rlputils().spillage());
+    rom = new CountingOnlyModule(ROM, trace.rom().spillage());
+    romlex = new CountingOnlyModule(ROM_LEX, trace.romlex().spillage());
+    shakiradata = new CountingOnlyModule(SHAKIRA_DATA, trace.shakiradata().spillage());
+    trm = new CountingOnlyModule(TRM, trace.trm().spillage());
+    txnData = new CountingOnlyModule(TXN_DATA, trace.txndata().spillage());
     keccak = new Keccak(ecRecoverEffectiveCall, blockTransactions);
     ecdata =
         new EcData(

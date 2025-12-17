@@ -144,7 +144,7 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @Slf4j
 @Accessors(fluent = true)
 @Getter
-public abstract class Hub implements Module {
+public final class Hub implements Module {
   /** Active fork for this hub. */
   public final Fork fork;
 
@@ -1187,8 +1187,6 @@ public abstract class Hub implements Module {
   public Address coinbaseAddressOfRelativeBlock(final int relativeBlockNumber) {
     return blockStack.getBlockByRelativeBlockNumber(relativeBlockNumber).coinbaseAddress();
   }
-
-  protected abstract TxnData setTxnData();
 
   private void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
     state.transactionProcessingType(SYSI);
