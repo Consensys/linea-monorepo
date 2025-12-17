@@ -15,7 +15,6 @@
 package net.consensys.linea.zktracer;
 
 import static net.consensys.linea.zktracer.Fork.*;
-import static net.consensys.linea.zktracer.Fork.LONDON;
 import static net.consensys.linea.zktracer.Trace.ETHEREUM_GAS_LIMIT_MAXIMUM;
 import static net.consensys.linea.zktracer.Trace.ETHEREUM_GAS_LIMIT_MINIMUM;
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
@@ -35,7 +34,7 @@ public class ChainConfig {
    * Represents Linea mainnet as it stands today which enforces the block gas limit (currently two
    * billion). As the name suggest, this is only intended for testing purposes.
    */
-  public static final ChainConfig MAINNET_LONDON_TESTCONFIG = MAINNET_TESTCONFIG(LONDON);
+  public static final ChainConfig MAINNET_OSAKA_TESTCONFIG = MAINNET_TESTCONFIG(OSAKA);
 
   public static final int DEVNET_CHAIN_ID = 59139;
 
