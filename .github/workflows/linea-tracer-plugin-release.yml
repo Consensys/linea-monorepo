@@ -52,9 +52,7 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
-          gh release delete linea-tracer-test-release-dummy --cleanup-tag
-          gh release delete linea-tracer-beta-v4.4-rc7 --cleanup-tag
-          echo "create_tag=${gh release create ${{ steps.config.outputs.RELEASE_TAG }} $jar_asset}" >> $GITHUB_OUTPUT
+          echo "create_tag=${gh release create ${{ steps.config.outputs.RELEASE_TAG }} $jar_asset  2>&1}" >> $GITHUB_OUTPUT
           gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
         env:
           jar_asset: ./tracer/plugins/build/libs/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.jar
@@ -81,6 +79,12 @@ jobs:
       - name: Run spotless
         id: run-spotless
         run: ./gradlew --no-daemon --parallel :tracer:clean :tracer:spotlessCheck
+
+      - name: Make it fails
+        run: |
+          gh release delete linea-tracer-dummy-release --cleanup-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   # ==================================================================
   # Delete created tag in case following steps failed
