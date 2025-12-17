@@ -117,6 +117,11 @@ jobs:
         run: |
           echo "We inject the commit tag in the docker image ${{ env.COMMIT_TAG }}"
           echo COMMIT_TAG=${{ env.COMMIT_TAG }} >> GITHUB_ENV
+      
+      - name: "Get Node.js version"
+        id: get-node-version
+        uses: ./.github/actions/get-node-version
+      
       - name: Build and push all tools image
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 #v6.18.0
         with:
@@ -128,6 +133,8 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+          build-args: |
+            NODE_VERSION=${{ steps.get-node-version.outputs.node-version }}
 
   notify:
     needs:
