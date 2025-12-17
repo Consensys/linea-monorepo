@@ -51,9 +51,7 @@ jobs:
 
       - name: Upload Assets
         run: |
-          echo "$jar_asset"
-          echo "$zip_asset"
-          gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $jar_asset
+          gh release create ${{ steps.config.outputs.RELEASE_TAG }} $jar_asset
           gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
         env:
           jar_asset: ./tracer/plugins/build/libs/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.jar
