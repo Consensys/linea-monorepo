@@ -29,10 +29,7 @@ num_proofs = [10]
 #   execution-limitless (ID 5, bit 5) = 0 → DISALLOWED
 #   blob-decompression-v0 (ID 6, bit 6) = 1 → ALLOWED
 #   blob-decompression-v1 (ID 7, bit 7) = 0 → DISALLOWED
-#   emulation (ID 8, bit 8) = 0 → DISALLOWED
-#   aggregation (ID 9, bit 9) = 0 → DISALLOWED
-#   public-input-interconnection (ID 10, bit 10) = 0 → DISALLOWED
-# Binary: 0b00001000011 = 67 (decimal)
+# Binary: 0b01000011 = 67 (decimal)
 is_allowed_circuit_id = 67
 verifier_id = 0
 

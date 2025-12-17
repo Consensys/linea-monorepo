@@ -33,8 +33,8 @@ func TestPIConsistency(t *testing.T) {
 	utils.FillRange(pi.InitialRollingHashUpdate[:], 170)
 	utils.FillRange(pi.FinalStateRootHash[:], 210)
 	utils.FillRange(pi.LastRollingHashUpdate[:], 250)
+	utils.FillRange(pi.CoinBase[:], 20)
 	utils.FillRange(pi.L2MessageServiceAddr[:], 40)
-	utils.FillRange(pi.CoinBase[:], 22)
 
 	// state root hashes are field elements
 	pi.InitialStateRootHash[0] &= 0x0f

@@ -9,8 +9,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -398,6 +396,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	a.ChainConfigurationFPISnark.BaseFee = r.Aggregation.BaseFee
 	a.ChainConfigurationFPISnark.CoinBase = new(big.Int).SetBytes(r.Aggregation.CoinBase[:])
 	a.ChainConfigurationFPISnark.L2MessageServiceAddress = new(big.Int).SetBytes(r.Aggregation.L2MessageServiceAddr[:])
+	a.IsAllowedCircuitID = aggregationFPI.IsAllowedCircuitID
 
 	return
 }

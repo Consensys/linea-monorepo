@@ -176,10 +176,10 @@ type AggregationFPIQSnark struct {
 }
 
 type ChainConfigurationFPISnark struct {
-	ChainID                 zk.WrappedVariable // WARNING: Currently not bound in Sum
-	BaseFee                 zk.WrappedVariable
-	CoinBase                zk.WrappedVariable
-	L2MessageServiceAddress zk.WrappedVariable // WARNING: Currently not bound in Sum
+	ChainID                 frontend.Variable
+	BaseFee                 frontend.Variable
+	CoinBase                frontend.Variable
+	L2MessageServiceAddress frontend.Variable
 
 	// IsAllowedCircuitID encode which circuits are allowed in the dynamic
 	// chain configuration.
@@ -362,6 +362,7 @@ func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) frontend.Variable {
 	processValue(pi.L2MessageServiceAddress, "L2MessageServiceAddress")
 	api.Println("Final MiMC state:", state)
 
+	// To do: @gusiri remove print statements after integration testing is done
 	// Convert the final state to bytes (32 bytes)
 	// Use the existing utils.ToBytes function
 	return state

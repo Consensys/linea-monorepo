@@ -748,6 +748,7 @@ func DefineNumberOfBytesConstraints(comp *wizard.CompiledIOP, edc *ExecutionData
 	// and this will be checked with a projection query in the ProjectionQueries function.
 }
 
+// To do: To be synchronized with Bogdan/Alex before we merge
 // ProjectionQueries computes projection queries to each arithmetization fetcher:
 // fetch.BlockDataFetcher, fetch.BlockTxnMetadata, fetch.TxnDataFetcher and fetch.RlpTxnFetcher.
 func ProjectionQueries(comp *wizard.CompiledIOP,

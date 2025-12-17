@@ -80,9 +80,6 @@ type Circuit struct {
 // compile and provides internal parameters for the wizard package.
 type compilationSuite = []func(*wizard.CompiledIOP)
 
-// TODO: adds a check to ensure that the value of IsAllowedCircuitID is the
-// same in the public inputs and the public input of the aggregation circuits.
-// + DO the assignment part of it.
 func (c *Circuit) Define(api frontend.API) error {
 
 	maxNbDecompression, maxNbExecution := len(c.DecompressionPublicInput), len(c.ExecutionPublicInput)
@@ -179,7 +176,12 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	// we can "allow non-deterministic behavior" because all compared values have been range-checked
 	comparator := cmp.NewBoundedComparator(api, new(big.Int).Lsh(big.NewInt(1), 65), true)
-	// TODO try using lookups or crumb decomposition to make comparisons more efficient
+	// TODO try using lookups or crumb decomposition to make comparisons more
+	// efficient
+
+	// Check that IsAllowedCircuitID public input matches the value in AggregationFPIQSnark
+	api.AssertIsEqual(c.IsAllowedCircuitID, c.ChainConfigurationFPISnark.IsAllowedCircuitID)
+
 	for i, piq := range c.ExecutionFPIQ {
 		piq.RangeCheck(api) // CHECK_MSG_LIMIT
 

@@ -287,11 +287,11 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 	}
 }
 
-// collectAllVerifyingKeys: Gathers verifying keys for ALL circuits in GlobalCircuitIDMapping.
+// collectAllVerifyingKeys: Gathers verifying keys for ALL circuits in circuits.GlobalCircuitIDMapping.
 // The aggregation circuit always has access to all VKs. The IsAllowedCircuitID bitmask
 // in the config controls which circuits are actually allowed at runtime.
 func collectAllVerifyingKeys(ctx context.Context, cfg *config.Config, srsProvider circuits.SRSProvider) ([]plonk.VerifyingKey, error) {
-	allCircuitNames := config.GetAllCircuitNames()
+	allCircuitNames := circuits.GetAllCircuitNames()
 	allVks := make([]plonk.VerifyingKey, len(allCircuitNames))
 
 	for i, circuitName := range allCircuitNames {

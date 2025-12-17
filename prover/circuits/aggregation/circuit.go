@@ -67,7 +67,7 @@ type Circuit struct {
 	PublicInputWitnessClaimIndexes []frontend.Variable `gnark:",secret"`
 
 	// general public input
-	PublicInput zk.WrappedVariable `gnark:",public"`
+	PublicInput frontend.Variable `gnark:",public"`
 }
 
 func (c *Circuit) Define(api frontend.API) error {
