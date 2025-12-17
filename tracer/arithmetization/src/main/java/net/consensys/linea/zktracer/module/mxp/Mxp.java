@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.mxp.module;
+package net.consensys.linea.zktracer.module.mxp;
 
 import static net.consensys.linea.zktracer.module.ModuleName.MXP;
 
@@ -27,13 +27,12 @@ import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
-import net.consensys.linea.zktracer.module.mxp.moduleOperation.MxpOperation;
 
 /** Abstract class for implementation of a {@link Module} for memory expansion. */
 @Getter
 @Accessors(fluent = true)
 @RequiredArgsConstructor
-public abstract class Mxp implements OperationListModule<MxpOperation> {
+public final class Mxp implements OperationListModule<MxpOperation> {
 
   private final ModuleOperationStackedList<MxpOperation> operations =
       new ModuleOperationStackedList<>();
@@ -61,5 +60,7 @@ public abstract class Mxp implements OperationListModule<MxpOperation> {
     return MXP;
   }
 
-  public abstract void call(MxpCall mxpCall);
+  public void call(MxpCall mxpCall) {
+    operations().add(new MxpOperation(mxpCall));
+  }
 }

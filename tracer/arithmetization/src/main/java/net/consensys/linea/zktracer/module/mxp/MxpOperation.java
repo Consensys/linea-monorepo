@@ -13,32 +13,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.mxp.moduleOperation;
-
-import static net.consensys.linea.zktracer.module.mxp.MxpUtils.*;
+package net.consensys.linea.zktracer.module.mxp;
 
 import lombok.Getter;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
-import net.consensys.linea.zktracer.module.mxp.moduleCall.*;
+import net.consensys.linea.zktracer.module.mxp.moduleCall.CancunMxpCall;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
 @Getter
-public class CancunMxpOperation extends MxpOperation {
-
-  private final int contextNumber;
-  private final CancunMxpCall cancunMxpCall;
-
-  public CancunMxpOperation(final MxpCall mxpCall) {
-    super(mxpCall);
-    // Setting of global variables
-    this.contextNumber = mxpCall.hub.currentFrame().contextNumber();
-
-    this.cancunMxpCall = (CancunMxpCall) mxpCall;
-  }
+public final class MxpOperation extends ModuleOperation {
 
   /**
    * {@link CancunMxpOperation#MXP_FROM_CTMAX_TO_LINECOUNT} is used to convert <b>ctMax</b>, which
@@ -59,13 +47,20 @@ public class CancunMxpOperation extends MxpOperation {
    */
   public static short MXP_FROM_CTMAX_TO_LINECOUNT = 4;
 
-  @Override
-  protected int computeLineCount() {
-    return cancunMxpCall.ctMax() + MXP_FROM_CTMAX_TO_LINECOUNT;
+  private final CancunMxpCall mxpCall;
+  private final int contextNumber;
+
+  public MxpOperation(MxpCall mxpCall) {
+    this.mxpCall = (CancunMxpCall) mxpCall;
+    contextNumber = mxpCall.hub.currentFrame().contextNumber();
   }
 
   @Override
-  public final void trace(int stamp, Trace.Mxp trace) {
+  protected int computeLineCount() {
+    return mxpCall.ctMax() + MXP_FROM_CTMAX_TO_LINECOUNT;
+  }
+
+  public void trace(int stamp, Trace.Mxp trace) {
     traceDecoder(stamp, trace);
     traceMacro(stamp, trace);
     traceScenario(stamp, trace);
@@ -77,7 +72,7 @@ public class CancunMxpOperation extends MxpOperation {
   }
 
   private void traceDecoder(int stamp, Trace.Mxp trace) {
-    final OpCodeData opCodeData = cancunMxpCall.getOpCodeData();
+    final OpCodeData opCodeData = mxpCall.getOpCodeData();
     traceShared(stamp, trace);
     trace
         .decoder(true)
@@ -91,31 +86,31 @@ public class CancunMxpOperation extends MxpOperation {
         .pDecoderIsDoubleMaxOffset(opCodeData.isDoubleOffset())
         .pDecoderIsWordPricing(opCodeData.isWordPricing())
         .pDecoderIsBytePricing(opCodeData.isBytePricing())
-        .pDecoderGword(cancunMxpCall.gWord)
-        .pDecoderGbyte(cancunMxpCall.gByte)
+        .pDecoderGword(mxpCall.gWord)
+        .pDecoderGbyte(mxpCall.gByte)
         .fillAndValidateRow();
   }
 
   private void traceMacro(int stamp, Trace.Mxp trace) {
-    final OpCode opCode = cancunMxpCall.getOpCodeData().mnemonic();
+    final OpCode opCode = mxpCall.getOpCodeData().mnemonic();
     traceShared(stamp, trace);
     trace
         .macro(true)
         .pMacroInst(UnsignedByte.of(opCode.byteValue()))
-        .pMacroDeploying(cancunMxpCall.isDeploys())
-        .pMacroOffset1Hi(cancunMxpCall.getOffset1().hi())
-        .pMacroOffset1Lo(cancunMxpCall.getOffset1().lo())
-        .pMacroSize1Hi(cancunMxpCall.getSize1().hi())
-        .pMacroSize1Lo(cancunMxpCall.getSize1().lo())
-        .pMacroOffset2Hi(cancunMxpCall.getOffset2().hi())
-        .pMacroOffset2Lo(cancunMxpCall.getOffset2().lo())
-        .pMacroSize2Hi(cancunMxpCall.getSize2().hi())
-        .pMacroSize2Lo(cancunMxpCall.getSize2().lo())
-        .pMacroRes(cancunMxpCall.isMSizeScenario() ? cancunMxpCall.getMemorySizeInWords() : 0L)
-        .pMacroMxpx(cancunMxpCall.isMxpx())
-        .pMacroGasMxp(Bytes.ofUnsignedLong(cancunMxpCall.getGasMxp()))
-        .pMacroS1Nznomxpx(!cancunMxpCall.getSize1().isZero() && !cancunMxpCall.isMxpx())
-        .pMacroS2Nznomxpx(!cancunMxpCall.getSize2().isZero() && !cancunMxpCall.isMxpx())
+        .pMacroDeploying(mxpCall.isDeploys())
+        .pMacroOffset1Hi(mxpCall.getOffset1().hi())
+        .pMacroOffset1Lo(mxpCall.getOffset1().lo())
+        .pMacroSize1Hi(mxpCall.getSize1().hi())
+        .pMacroSize1Lo(mxpCall.getSize1().lo())
+        .pMacroOffset2Hi(mxpCall.getOffset2().hi())
+        .pMacroOffset2Lo(mxpCall.getOffset2().lo())
+        .pMacroSize2Hi(mxpCall.getSize2().hi())
+        .pMacroSize2Lo(mxpCall.getSize2().lo())
+        .pMacroRes(mxpCall.isMSizeScenario() ? mxpCall.getMemorySizeInWords() : 0L)
+        .pMacroMxpx(mxpCall.isMxpx())
+        .pMacroGasMxp(Bytes.ofUnsignedLong(mxpCall.getGasMxp()))
+        .pMacroS1Nznomxpx(!mxpCall.getSize1().isZero() && !mxpCall.isMxpx())
+        .pMacroS2Nznomxpx(!mxpCall.getSize2().isZero() && !mxpCall.isMxpx())
         .fillAndValidateRow();
   }
 
@@ -123,35 +118,35 @@ public class CancunMxpOperation extends MxpOperation {
     traceShared(stamp, trace);
     trace
         .scenario(true)
-        .pScenarioMsize(cancunMxpCall.isMSizeScenario())
-        .pScenarioTrivial(cancunMxpCall.isTrivialScenario())
-        .pScenarioMxpx(cancunMxpCall.isMxpxScenario())
-        .pScenarioStateUpdateWordPricing(cancunMxpCall.isStateUpdateWordPricingScenario())
-        .pScenarioStateUpdateBytePricing(cancunMxpCall.isStateUpdateBytePricingScenario())
-        .pScenarioWords(cancunMxpCall.words)
-        .pScenarioWordsNew(cancunMxpCall.wordsNew)
-        .pScenarioCmem(Bytes.ofUnsignedLong(cancunMxpCall.cMem))
-        .pScenarioCmemNew(Bytes.ofUnsignedLong(cancunMxpCall.cMemNew))
+        .pScenarioMsize(mxpCall.isMSizeScenario())
+        .pScenarioTrivial(mxpCall.isTrivialScenario())
+        .pScenarioMxpx(mxpCall.isMxpxScenario())
+        .pScenarioStateUpdateWordPricing(mxpCall.isStateUpdateWordPricingScenario())
+        .pScenarioStateUpdateBytePricing(mxpCall.isStateUpdateBytePricingScenario())
+        .pScenarioWords(mxpCall.words)
+        .pScenarioWordsNew(mxpCall.wordsNew)
+        .pScenarioCmem(Bytes.ofUnsignedLong(mxpCall.cMem))
+        .pScenarioCmemNew(Bytes.ofUnsignedLong(mxpCall.cMemNew))
         .fillAndValidateRow();
   }
 
   private void traceComputation(int stamp, Trace.Mxp trace) {
-    final short ctMax = (short) cancunMxpCall.ctMax();
+    final short ctMax = (short) mxpCall.ctMax();
     for (int ct = 0; ct <= ctMax; ct++) {
       traceShared(stamp, trace);
       trace
           .computation(true)
           .ct(ct)
           .ctMax(ctMax)
-          .pComputationWcpFlag(cancunMxpCall.exoCalls[ct].wcpFlag())
-          .pComputationEucFlag(cancunMxpCall.exoCalls[ct].eucFlag())
-          .pComputationExoInst(cancunMxpCall.exoCalls[ct].instruction())
-          .pComputationArg1Hi(cancunMxpCall.exoCalls[ct].arg1Hi())
-          .pComputationArg1Lo(cancunMxpCall.exoCalls[ct].arg1Lo())
-          .pComputationArg2Hi(cancunMxpCall.exoCalls[ct].arg2Hi())
-          .pComputationArg2Lo(cancunMxpCall.exoCalls[ct].arg2Lo())
-          .pComputationResA(cancunMxpCall.exoCalls[ct].resultA())
-          .pComputationResB(cancunMxpCall.exoCalls[ct].resultB())
+          .pComputationWcpFlag(mxpCall.exoCalls[ct].wcpFlag())
+          .pComputationEucFlag(mxpCall.exoCalls[ct].eucFlag())
+          .pComputationExoInst(mxpCall.exoCalls[ct].instruction())
+          .pComputationArg1Hi(mxpCall.exoCalls[ct].arg1Hi())
+          .pComputationArg1Lo(mxpCall.exoCalls[ct].arg1Lo())
+          .pComputationArg2Hi(mxpCall.exoCalls[ct].arg2Hi())
+          .pComputationArg2Lo(mxpCall.exoCalls[ct].arg2Lo())
+          .pComputationResA(mxpCall.exoCalls[ct].resultA())
+          .pComputationResB(mxpCall.exoCalls[ct].resultB())
           .fillAndValidateRow();
     }
   }

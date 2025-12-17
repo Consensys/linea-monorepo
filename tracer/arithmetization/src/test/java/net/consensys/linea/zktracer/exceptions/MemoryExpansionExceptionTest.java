@@ -32,7 +32,6 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.mxp.MxpTestUtils;
-import net.consensys.linea.zktracer.module.mxp.moduleOperation.LondonMxpOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;

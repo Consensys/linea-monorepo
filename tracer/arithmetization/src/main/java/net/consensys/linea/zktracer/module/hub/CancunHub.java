@@ -16,8 +16,6 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.module.mxp.module.CancunMxp;
-import net.consensys.linea.zktracer.module.mxp.module.Mxp;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
 import net.consensys.linea.zktracer.types.PublicInputs;
@@ -25,11 +23,6 @@ import net.consensys.linea.zktracer.types.PublicInputs;
 public class CancunHub extends ShanghaiHub {
   public CancunHub(ChainConfig chain, PublicInputs publicInputs) {
     super(chain, publicInputs);
-  }
-
-  @Override
-  protected Mxp setMxp() {
-    return new CancunMxp();
   }
 
   @Override

@@ -95,7 +95,7 @@ import net.consensys.linea.zktracer.module.mmio.Mmio;
 import net.consensys.linea.zktracer.module.mmu.Mmu;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
-import net.consensys.linea.zktracer.module.mxp.module.Mxp;
+import net.consensys.linea.zktracer.module.mxp.Mxp;
 import net.consensys.linea.zktracer.module.oob.Oob;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlpaddr.RlpAddr;
@@ -237,7 +237,7 @@ public abstract class Hub implements Module {
   private final RlpAddr rlpAddr;
 
   // modules triggered by sub-fragments of the MISCELLANEOUS / IMC perspective
-  private final Mxp mxp = setMxp();
+  private final Mxp mxp = new Mxp();
   private final Oob oob = new Oob(this, add, mod, wcp);
   private final Mmu mmu;
   private final Stp stp = new Stp();
@@ -1189,8 +1189,6 @@ public abstract class Hub implements Module {
   }
 
   protected abstract TxnData setTxnData();
-
-  protected abstract Mxp setMxp();
 
   private void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
     state.transactionProcessingType(SYSI);

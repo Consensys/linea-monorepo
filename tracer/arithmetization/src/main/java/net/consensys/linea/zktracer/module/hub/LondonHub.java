@@ -16,8 +16,6 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.module.mxp.module.LondonMxp;
-import net.consensys.linea.zktracer.module.mxp.module.Mxp;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.london.LondonTxnData;
 import net.consensys.linea.zktracer.types.PublicInputs;
@@ -30,10 +28,5 @@ public class LondonHub extends Hub {
   @Override
   protected TxnData setTxnData() {
     return new LondonTxnData(this, wcp(), euc());
-  }
-
-  @Override
-  protected Mxp setMxp() {
-    return new LondonMxp();
   }
 }
