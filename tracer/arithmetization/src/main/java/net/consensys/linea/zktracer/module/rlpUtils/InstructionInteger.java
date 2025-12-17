@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.module.rlpUtils;
 
 import static net.consensys.linea.zktracer.Trace.*;
-import static net.consensys.linea.zktracer.TraceCancun.Rlptxn.RLP_TXN_CT_MAX_INTEGER;
+import static net.consensys.linea.zktracer.Trace.Rlptxn.RLP_TXN_CT_MAX_INTEGER;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BI_PREFIX_SHORT_INT;
 
 import lombok.EqualsAndHashCode;

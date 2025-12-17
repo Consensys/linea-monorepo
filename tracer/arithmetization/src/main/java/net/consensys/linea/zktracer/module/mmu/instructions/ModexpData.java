@@ -21,8 +21,8 @@ import static net.consensys.linea.zktracer.Trace.MMIO_INST_LIMB_VANISHES;
 import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
 import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
 import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_MICRO_ROWS_TOT_MODEXP_DATA;
 import static net.consensys.linea.zktracer.Trace.Mmu.NB_PP_ROWS_MODEXP_DATA;
-import static net.consensys.linea.zktracer.TraceLondon.Mmu.NB_MICRO_ROWS_TOT_MODEXP_DATA;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
 import java.util.ArrayList;

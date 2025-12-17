@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.module.rlpUtils;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.RLP_UTILS_INST_BYTES32;
-import static net.consensys.linea.zktracer.TraceCancun.Rlptxn.RLP_TXN_CT_MAX_BYTES32;
+import static net.consensys.linea.zktracer.Trace.Rlptxn.RLP_TXN_CT_MAX_BYTES32;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES16_PREFIX_BYTES32;
 
 import lombok.EqualsAndHashCode;
