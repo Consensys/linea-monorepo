@@ -1,4 +1,3 @@
-// File: serde/custom.go
 package serde
 
 import (
@@ -24,8 +23,8 @@ import (
 )
 
 type CustomCodex struct {
-	Serialize   func(w *Encoder, v reflect.Value) (Ref, error)
-	Deserialize func(ctx *ReaderContext, v reflect.Value, offset int64) error
+	Serialize   func(enc *Encoder, v reflect.Value) (Ref, error)
+	Deserialize func(dec *Decoder, v reflect.Value, offset int64) error
 }
 
 var CustomRegistry = map[reflect.Type]CustomCodex{}
@@ -107,15 +106,15 @@ func init() {
 // ---------------- IMPLEMENTATIONS ----------------
 
 // --- Column Natural ---
-func serializeColumnNatural(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeColumnNatural(enc *Encoder, v reflect.Value) (Ref, error) {
 	nat := v.Interface().(column.Natural)
 	packed := nat.Pack()
-	return linearize(w, reflect.ValueOf(packed))
+	return linearize(enc, reflect.ValueOf(packed))
 }
-func deserializeColumnNatural(ctx *ReaderContext, v reflect.Value, offset int64) error {
+func deserializeColumnNatural(dec *Decoder, v reflect.Value, offset int64) error {
 	var packed column.PackedNatural
 	packedVal := reflect.ValueOf(&packed).Elem()
-	if err := ctx.reconstruct(packedVal, offset); err != nil {
+	if err := dec.decode(packedVal, offset); err != nil {
 		return err
 	}
 	nat := packed.Unpack()
@@ -135,14 +134,14 @@ type PackedCoin struct {
 func asPackedCoin(c coin.Info) PackedCoin {
 	return PackedCoin{Type: int8(c.Type), Size: c.Size, UpperBound: int32(c.UpperBound), Name: string(c.Name), Round: c.Round}
 }
-func serializeCoinInfo(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeCoinInfo(enc *Encoder, v reflect.Value) (Ref, error) {
 	c := v.Interface().(coin.Info)
 	packed := asPackedCoin(c)
-	return linearize(w, reflect.ValueOf(packed))
+	return linearize(enc, reflect.ValueOf(packed))
 }
-func deserializeCoinInfo(ctx *ReaderContext, v reflect.Value, offset int64) error {
+func deserializeCoinInfo(dec *Decoder, v reflect.Value, offset int64) error {
 	var packed PackedCoin
-	if err := ctx.reconstruct(reflect.ValueOf(&packed).Elem(), offset); err != nil {
+	if err := dec.decode(reflect.ValueOf(&packed).Elem(), offset); err != nil {
 		return err
 	}
 	sizes := []int{}
@@ -158,19 +157,19 @@ func deserializeCoinInfo(ctx *ReaderContext, v reflect.Value, offset int64) erro
 }
 
 // --- Column Store (STRUCT) ---
-func serializeColumnStore(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeColumnStore(enc *Encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
 	if err != nil {
 		return 0, err
 	}
 	store := p.(*column.Store)
 	packed := store.Pack()
-	return linearize(w, reflect.ValueOf(packed))
+	return linearize(enc, reflect.ValueOf(packed))
 }
-func deserializeColumnStore(ctx *ReaderContext, v reflect.Value, offset int64) error {
+func deserializeColumnStore(dec *Decoder, v reflect.Value, offset int64) error {
 	var packed column.PackedStore
 	packedVal := reflect.ValueOf(&packed).Elem()
-	if err := ctx.reconstruct(packedVal, offset); err != nil {
+	if err := dec.decode(packedVal, offset); err != nil {
 		return err
 	}
 	newStorePtr := packed.Unpack()
@@ -179,26 +178,26 @@ func deserializeColumnStore(ctx *ReaderContext, v reflect.Value, offset int64) e
 }
 
 // --- RingSIS Key (STRUCT) ---
-func serializeRingSisKey(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeRingSisKey(enc *Encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
 	if err != nil {
 		return 0, err
 	}
 	key := p.(*ringsis.Key)
-	return Ref(w.Write(key.KeyGen.MaxNumFieldToHash)), nil
+	return Ref(enc.Write(key.KeyGen.MaxNumFieldToHash)), nil
 }
-func deserializeRingSisKey(ctx *ReaderContext, v reflect.Value, offset int64) error {
-	if offset < 0 || int(offset)+8 > len(ctx.data) {
+func deserializeRingSisKey(dec *Decoder, v reflect.Value, offset int64) error {
+	if offset < 0 || int(offset)+8 > len(dec.data) {
 		return fmt.Errorf("ringsis key data out of bounds")
 	}
-	maxNum := *(*uint64)(unsafe.Pointer(&ctx.data[offset]))
+	maxNum := *(*uint64)(unsafe.Pointer(&dec.data[offset]))
 	key := ringsis.GenerateKey(ringsis.StdParams, int(maxNum))
 	v.Set(reflect.ValueOf(key).Elem())
 	return nil
 }
 
 // --- Gnark FFT Domain (STRUCT) ---
-func serializeGnarkFFTDomain(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeGnarkFFTDomain(enc *Encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
 	if err != nil {
 		return 0, err
@@ -208,25 +207,25 @@ func serializeGnarkFFTDomain(w *Encoder, v reflect.Value) (Ref, error) {
 	if _, err := domain.WriteTo(&buf); err != nil {
 		return 0, err
 	}
-	off := w.WriteBytes(buf.Bytes())
+	off := enc.WriteBytes(buf.Bytes())
 	fs := FileSlice{Offset: Ref(off), Len: int64(buf.Len()), Cap: int64(buf.Len())}
-	return Ref(w.Write(fs)), nil
+	return Ref(enc.Write(fs)), nil
 }
-func deserializeGnarkFFTDomain(ctx *ReaderContext, v reflect.Value, offset int64) error {
-	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(ctx.data) {
+func deserializeGnarkFFTDomain(dec *Decoder, v reflect.Value, offset int64) error {
+	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("fft domain header out of bounds")
 	}
-	fs := (*FileSlice)(unsafe.Pointer(&ctx.data[offset]))
+	fs := (*FileSlice)(unsafe.Pointer(&dec.data[offset]))
 	if fs.Offset.IsNull() {
 		return nil
 	}
 	start := int64(fs.Offset)
 	end := start + fs.Len
-	if start < 0 || end > int64(len(ctx.data)) {
+	if start < 0 || end > int64(len(dec.data)) {
 		return fmt.Errorf("fft domain data out of bounds")
 	}
 	d := &fft.Domain{}
-	if _, err := d.ReadFrom(bytes.NewReader(ctx.data[start:end])); err != nil {
+	if _, err := d.ReadFrom(bytes.NewReader(dec.data[start:end])); err != nil {
 		return err
 	}
 	v.Set(reflect.ValueOf(d).Elem())
@@ -234,7 +233,7 @@ func deserializeGnarkFFTDomain(ctx *ReaderContext, v reflect.Value, offset int64
 }
 
 // --- Gnark R1CS (STRUCT) ---
-func serializeR1CS(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeR1CS(enc *Encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
 	if err != nil {
 		return 0, err
@@ -244,25 +243,25 @@ func serializeR1CS(w *Encoder, v reflect.Value) (Ref, error) {
 	if _, err := csPtr.WriteTo(&buf); err != nil {
 		return 0, err
 	}
-	off := w.WriteBytes(buf.Bytes())
+	off := enc.WriteBytes(buf.Bytes())
 	fs := FileSlice{Offset: Ref(off), Len: int64(buf.Len()), Cap: int64(buf.Len())}
-	return Ref(w.Write(fs)), nil
+	return Ref(enc.Write(fs)), nil
 }
-func deserializeR1CS(ctx *ReaderContext, v reflect.Value, offset int64) error {
-	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(ctx.data) {
+func deserializeR1CS(dec *Decoder, v reflect.Value, offset int64) error {
+	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("R1CS header out of bounds")
 	}
-	fs := (*FileSlice)(unsafe.Pointer(&ctx.data[offset]))
+	fs := (*FileSlice)(unsafe.Pointer(&dec.data[offset]))
 	if fs.Offset.IsNull() {
 		return nil
 	}
 	start := int64(fs.Offset)
 	end := start + fs.Len
-	if start < 0 || end > int64(len(ctx.data)) {
+	if start < 0 || end > int64(len(dec.data)) {
 		return fmt.Errorf("R1CS data out of bounds")
 	}
 	csPtr := &cs.SparseR1CS{}
-	if _, err := csPtr.ReadFrom(bytes.NewReader(ctx.data[start:end])); err != nil {
+	if _, err := csPtr.ReadFrom(bytes.NewReader(dec.data[start:end])); err != nil {
 		return err
 	}
 	v.Set(reflect.ValueOf(csPtr).Elem())
@@ -270,16 +269,16 @@ func deserializeR1CS(ctx *ReaderContext, v reflect.Value, offset int64) error {
 }
 
 // --- Arithmetization ---
-func serializeArithmetization(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeArithmetization(enc *Encoder, v reflect.Value) (Ref, error) {
 	var bodyBuf bytes.Buffer
-	if err := linearizeStructBodyMap(w, v, &bodyBuf); err != nil {
+	if err := linearizeStructBodyMap(enc, v, &bodyBuf); err != nil {
 		return 0, err
 	}
-	off := w.WriteBytes(bodyBuf.Bytes())
+	off := enc.WriteBytes(bodyBuf.Bytes())
 	return Ref(off), nil
 }
-func deserializeArithmetization(ctx *ReaderContext, v reflect.Value, offset int64) error {
-	if err := ctx.reconstructStruct(v, offset); err != nil {
+func deserializeArithmetization(dec *Decoder, v reflect.Value, offset int64) error {
+	if err := dec.decodeStruct(v, offset); err != nil {
 		return err
 	}
 	arith := v.Addr().Interface().(*arithmetization.Arithmetization)
@@ -293,93 +292,93 @@ func deserializeArithmetization(ctx *ReaderContext, v reflect.Value, offset int6
 }
 
 // --- Big Int, Frontend Variable, SmartVectors, Helpers ---
-func serializeBigInt(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeBigInt(enc *Encoder, v reflect.Value) (Ref, error) {
 	if v.Kind() == reflect.Ptr {
-		return writeBigInt(w, v.Interface().(*big.Int))
+		return writeBigInt(enc, v.Interface().(*big.Int))
 	}
 	if v.CanAddr() {
-		return writeBigInt(w, v.Addr().Interface().(*big.Int))
+		return writeBigInt(enc, v.Addr().Interface().(*big.Int))
 	}
 	bi := v.Interface().(big.Int)
-	return writeBigInt(w, &bi)
+	return writeBigInt(enc, &bi)
 }
-func serializeBigIntPtr(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeBigIntPtr(enc *Encoder, v reflect.Value) (Ref, error) {
 	if v.IsNil() {
 		return 0, nil
 	}
-	return writeBigInt(w, v.Interface().(*big.Int))
+	return writeBigInt(enc, v.Interface().(*big.Int))
 }
-func deserializeBigInt(ctx *ReaderContext, v reflect.Value, offset int64) error {
+func deserializeBigInt(dec *Decoder, v reflect.Value, offset int64) error {
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
 			v.Set(reflect.New(v.Type().Elem()))
 		}
-		return reconstructBigInt(ctx.data, v.Elem(), offset)
+		return decodeBigInt(dec.data, v.Elem(), offset)
 	}
-	return reconstructBigInt(ctx.data, v, offset)
+	return decodeBigInt(dec.data, v, offset)
 }
-func serializeFrontendVariable(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeFrontendVariable(enc *Encoder, v reflect.Value) (Ref, error) {
 	bi := toBigInt(v)
 	if bi == nil {
 		return 0, nil
 	}
-	return writeBigInt(w, bi)
+	return writeBigInt(enc, bi)
 }
-func deserializeFrontendVariable(ctx *ReaderContext, v reflect.Value, offset int64) error {
+func deserializeFrontendVariable(dec *Decoder, v reflect.Value, offset int64) error {
 	bi := new(big.Int)
-	if err := reconstructBigInt(ctx.data, reflect.ValueOf(bi).Elem(), offset); err != nil {
+	if err := decodeBigInt(dec.data, reflect.ValueOf(bi).Elem(), offset); err != nil {
 		return err
 	}
 	v.Set(reflect.ValueOf(bi))
 	return nil
 }
-func serializeSmartVectorRegular(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeSmartVectorRegular(enc *Encoder, v reflect.Value) (Ref, error) {
 	// We expect a smartvectors.Regular type here
 	sliceVal := v
 	if v.Kind() == reflect.Interface {
 		sliceVal = v.Elem()
 	}
 
-	fs := w.writeSliceData(sliceVal)
+	fs := enc.writeSliceData(sliceVal)
 	// Write the resulting FileSlice header and return its offset
-	return Ref(w.Write(fs)), nil
+	return Ref(enc.Write(fs)), nil
 }
 
-func deserializeSmartVectorRegular(ctx *ReaderContext, v reflect.Value, offset int64) error {
+func deserializeSmartVectorRegular(dec *Decoder, v reflect.Value, offset int64) error {
 	sliceType := reflect.SliceOf(reflect.TypeOf(field.Element{}))
 	sliceVal := reflect.MakeSlice(sliceType, 0, 0)
 	slicePtr := reflect.New(sliceType)
 	slicePtr.Elem().Set(sliceVal)
-	if err := ctx.reconstruct(slicePtr.Elem(), offset); err != nil {
+	if err := dec.decode(slicePtr.Elem(), offset); err != nil {
 		return err
 	}
 	v.Set(slicePtr.Elem().Convert(v.Type()))
 	return nil
 }
-func serializeAsEmpty(w *Encoder, v reflect.Value) (Ref, error) {
+func serializeAsEmpty(enc *Encoder, v reflect.Value) (Ref, error) {
 	// FIX: Write 1 byte so that the object has a unique offset/identity in the stream.
-	return Ref(w.Write(byte(0))), nil
+	return Ref(enc.Write(byte(0))), nil
 }
 
-func deserializeHashGenerator(ctx *ReaderContext, v reflect.Value, offset int64) error {
+func deserializeHashGenerator(dec *Decoder, v reflect.Value, offset int64) error {
 	f := func() hash.Hash { return mimc.NewMiMC() }
 	v.Set(reflect.ValueOf(f))
 	return nil
 }
-func deserializeHashTypeHasher(ctx *ReaderContext, v reflect.Value, offset int64) error {
+func deserializeHashTypeHasher(dec *Decoder, v reflect.Value, offset int64) error {
 	v.Set(reflect.ValueOf(hashtypes.MiMC))
 	return nil
 }
-func deserializeAsZero(ctx *ReaderContext, v reflect.Value, offset int64) error {
+func deserializeAsZero(dec *Decoder, v reflect.Value, offset int64) error {
 	v.Set(reflect.Zero(v.Type()))
 	return nil
 }
-func deserializeAsNewPtr(ctx *ReaderContext, v reflect.Value, offset int64) error {
+func deserializeAsNewPtr(dec *Decoder, v reflect.Value, offset int64) error {
 	v.Set(reflect.New(v.Type().Elem()))
 	return nil
 }
 
-func writeBigInt(w *Encoder, b *big.Int) (Ref, error) {
+func writeBigInt(enc *Encoder, b *big.Int) (Ref, error) {
 	if b == nil {
 		return 0, nil
 	}
@@ -388,12 +387,12 @@ func writeBigInt(w *Encoder, b *big.Int) (Ref, error) {
 	if b.Sign() < 0 {
 		sign = 1
 	}
-	start := w.offset
-	w.buf.WriteByte(byte(sign))
-	w.buf.Write(bytes)
-	w.offset += int64(1 + len(bytes))
+	start := enc.offset
+	enc.buf.WriteByte(byte(sign))
+	enc.buf.Write(bytes)
+	enc.offset += int64(1 + len(bytes))
 	fs := FileSlice{Offset: Ref(start), Len: int64(len(bytes)), Cap: sign}
-	off := w.Write(fs)
+	off := enc.Write(fs)
 	return Ref(off), nil
 }
 

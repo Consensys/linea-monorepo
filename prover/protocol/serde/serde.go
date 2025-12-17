@@ -61,12 +61,12 @@ func Deserialize(b []byte, v any) error {
 		return fmt.Errorf("v must be a pointer")
 	}
 
-	ctx := &ReaderContext{
+	ctx := &Decoder{
 		data:   b,
 		ptrMap: make(map[int64]reflect.Value),
 	}
 
-	return ctx.reconstruct(val.Elem(), int64(header.PayloadOff))
+	return ctx.decode(val.Elem(), int64(header.PayloadOff))
 }
 
 // getBinarySize returns the number of bytes a value of type t will occupy

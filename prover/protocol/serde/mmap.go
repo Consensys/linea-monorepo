@@ -47,10 +47,12 @@ type Ref int64
 
 func (r Ref) IsNull() bool { return r == 0 }
 
-// FileSlice mirrors  Go slice header (Data uintptr, Len int, Cap int) conceptually
-// Instead of Data (uintptr), we store the offset of the slice data in the serialized buffer
+// FileSlice mirrors the struct of a Go slice header {Data uintptr, Len int, Cap int} conceptually.
+// Instead of Data (uintptr), we store the offset of the slice data in the serialized buffer.
+// IMPORTANT: The ordering of the attributes must not be changed. Notice the first two attributes
+// shared similarties with Go string header representation {Data uintptr, Len int}
 type FileSlice struct {
-	// Byte offset in the serialized buffer where slice data starts
+	// 8 Byte offset in the serialized buffer - beginning of the cursor
 	Offset Ref
 
 	// Number of elements in the slice
