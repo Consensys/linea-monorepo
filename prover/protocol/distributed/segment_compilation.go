@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -139,6 +140,8 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	wizard.ContinueCompilation(modIOP,
+		// Compile Poseidon2 queries that may have been created during pre-compilation
+		poseidon2.CompilePoseidon2,
 		// The reason why 1 works is because it will work for all the GL modules
 		// and because the LPP module do not have Plonk-in-wizards query.
 		plonkinwizard.CompileWithMinimalRound(1),
@@ -201,6 +204,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 
 	wizard.ContinueCompilation(modIOP,
 		selfrecursion.SelfRecurse,
+		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
@@ -216,6 +220,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
+		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
@@ -234,6 +239,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
+		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
@@ -303,6 +309,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	}
 
 	recursedComp := wizard.Compile(defineRecursion,
+		poseidon2.CompilePoseidon2,
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
@@ -320,6 +327,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
+		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),

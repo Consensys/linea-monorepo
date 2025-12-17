@@ -345,7 +345,7 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 	}
 
 	if len(grandProductArgs) > 0 {
-		run.AssignGrandProduct(a.GrandProduct.ID, a.GrandProduct.Compute(run).Base)
+		run.AssignGrandProductExt(a.GrandProduct.ID, a.GrandProduct.Compute(run).Ext)
 	}
 
 	if len(logDerivativeArgs) > 0 {
@@ -386,8 +386,8 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 		)
 
 		for i := 0; i < 8; i++ {
-			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentAt(run, i)
-			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentAt(run, i)
+			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentAt(run, 0)
+			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentAt(run, 0)
 		}
 
 		if n1HashAlleged != n1Hash {
