@@ -15,24 +15,12 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import java.util.Map;
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
-import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
-import net.consensys.linea.zktracer.module.euc.Euc;
-import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.mxp.module.CancunMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
-import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
-import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
-import net.consensys.linea.zktracer.module.rlptxn.cancun.CancunRlpTxn;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.PublicInputs;
-import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class CancunHub extends ShanghaiHub {
   public CancunHub(ChainConfig chain, PublicInputs publicInputs) {
@@ -47,25 +35,5 @@ public class CancunHub extends ShanghaiHub {
   @Override
   protected TxnData setTxnData() {
     return new CancunTxnData(this, wcp(), euc());
-  }
-
-  @Override
-  protected BlockData setBlockData(
-      Hub hub, Wcp wcp, Euc euc, ChainConfig chain, Map<Long, Bytes> blobBaseFees) {
-    return new CancunBlockData(hub, wcp, euc, chain, blobBaseFees);
-  }
-
-  @Override
-  protected RlpTxn setRlpTxn(Hub hub) {
-    return new CancunRlpTxn((RlpUtils) hub.rlpUtils(), hub.trm());
-  }
-
-  @Override
-  protected void setSkipSection(
-      Hub hub,
-      WorldView world,
-      TransactionProcessingMetadata transactionProcessingMetadata,
-      Transients transients) {
-    new CancunTxSkipSection(hub, world, transactionProcessingMetadata, transients);
   }
 }

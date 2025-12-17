@@ -48,6 +48,7 @@ import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.bin.Bin;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
 import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
+import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
 import net.consensys.linea.zktracer.module.blockhash.Blockhash;
 import net.consensys.linea.zktracer.module.blsdata.BlsData;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
@@ -221,7 +222,7 @@ public abstract class Hub implements Module {
   private final Mod mod = new Mod();
   private final Shf shf = new Shf();
   private final Trm trm;
-  private final Module rlpUtils = new RlpUtils();
+  private final RlpUtils rlpUtils = new RlpUtils();
 
   // other
   private final BlockData blockdata;
@@ -475,9 +476,9 @@ public abstract class Hub implements Module {
             blockTransactions, keccak, l2L1Logs, l2l1ContractAddress, LogTopic.of(l2l1Topic));
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
     trm = new Trm(fork);
-    rlpTxn = setRlpTxn(this);
+    rlpTxn = new RlpTxn(rlpUtils, trm);
     rlpAddr = new RlpAddr(this, trm, keccak);
-    blockdata = setBlockData(this, wcp, euc, chain, publicInputs.blobBaseFees());
+    blockdata = new CancunBlockData(this, wcp, euc, chain, publicInputs.blobBaseFees());
     mmu = new Mmu(euc, wcp, fork);
     mmio = new Mmio(mmu);
     blockhash = new Blockhash(this, wcp, publicInputs.historicalBlockhashes());
@@ -1190,11 +1191,6 @@ public abstract class Hub implements Module {
   protected abstract TxnData setTxnData();
 
   protected abstract Mxp setMxp();
-
-  protected abstract BlockData setBlockData(
-      Hub hub, Wcp wcp, Euc euc, ChainConfig chain, Map<Long, Bytes> blobBaseFees);
-
-  protected abstract RlpTxn setRlpTxn(Hub hub);
 
   private void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
     state.transactionProcessingType(SYSI);

@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection;
+package net.consensys.linea.zktracer.module.rlptxn.phaseSection;
 
 public enum IntegerEntry {
   CHAIN_ID,

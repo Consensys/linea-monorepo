@@ -13,10 +13,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection;
+package net.consensys.linea.zktracer.module.rlptxn.phaseSection;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
-import static net.consensys.linea.zktracer.TraceCancun.Rlptxn.RLP_TXN_CT_MAX_ADDRESS;
+import static net.consensys.linea.zktracer.Trace.Rlptxn.RLP_TXN_CT_MAX_ADDRESS;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES16_PREFIX_ADDRESS;
 import static net.consensys.linea.zktracer.module.rlputilsOld.Pattern.outerRlpSize;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
@@ -28,7 +28,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlpUtils.InstructionByteStringPrefix;
 import net.consensys.linea.zktracer.module.rlpUtils.InstructionBytes32;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
-import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
+import net.consensys.linea.zktracer.module.rlptxn.GenericTracedValue;
 import net.consensys.linea.zktracer.module.rlputilsOld.Pattern;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.types.Bytes16;

@@ -13,14 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection;
+package net.consensys.linea.zktracer.module.rlptxn.phaseSection;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
+import net.consensys.linea.zktracer.module.rlptxn.GenericTracedValue;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 

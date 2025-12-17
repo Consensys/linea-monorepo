@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxn.cancun;
+package net.consensys.linea.zktracer.module.rlptxn;
 
 import static org.hyperledger.besu.datatypes.TransactionType.*;
 

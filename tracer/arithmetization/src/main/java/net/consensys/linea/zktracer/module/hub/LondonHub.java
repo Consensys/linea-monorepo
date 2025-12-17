@@ -15,23 +15,12 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import java.util.Map;
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
-import net.consensys.linea.zktracer.module.blockdata.module.LondonBlockData;
-import net.consensys.linea.zktracer.module.euc.Euc;
-import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.mxp.module.LondonMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
-import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
-import net.consensys.linea.zktracer.module.rlptxn.london.LondonRlpTxn;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.london.LondonTxnData;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.PublicInputs;
-import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class LondonHub extends Hub {
   public LondonHub(ChainConfig chain, PublicInputs publicInputs) {
@@ -44,27 +33,7 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected BlockData setBlockData(
-      Hub hub, Wcp wcp, Euc euc, ChainConfig chain, Map<Long, Bytes> blobBaseFees) {
-    return new LondonBlockData(hub, wcp, euc, chain, blobBaseFees);
-  }
-
-  @Override
-  protected RlpTxn setRlpTxn(Hub hub) {
-    return new LondonRlpTxn(hub.romLex());
-  }
-
-  @Override
   protected Mxp setMxp() {
     return new LondonMxp();
-  }
-
-  @Override
-  protected void setSkipSection(
-      Hub hub,
-      WorldView world,
-      TransactionProcessingMetadata transactionProcessingMetadata,
-      Transients transients) {
-    new LondonTxSkipSection(hub, world, transactionProcessingMetadata, transients);
   }
 }

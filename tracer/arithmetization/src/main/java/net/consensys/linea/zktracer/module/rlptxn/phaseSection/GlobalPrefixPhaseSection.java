@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection;
+package net.consensys.linea.zktracer.module.rlptxn.phaseSection;
 
 import static net.consensys.linea.zktracer.module.rlputilsOld.Pattern.innerRlpSize;
 import static org.hyperledger.besu.ethereum.core.encoding.EncodingContext.BLOCK_BODY;
@@ -23,7 +23,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlpUtils.InstructionByteStringPrefix;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtilsCall;
-import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
+import net.consensys.linea.zktracer.module.rlptxn.GenericTracedValue;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;

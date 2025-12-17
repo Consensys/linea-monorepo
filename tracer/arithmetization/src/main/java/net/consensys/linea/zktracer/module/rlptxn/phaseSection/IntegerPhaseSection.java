@@ -13,16 +13,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection;
+package net.consensys.linea.zktracer.module.rlptxn.phaseSection;
 
-import static net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection.IntegerEntry.*;
+import static net.consensys.linea.zktracer.module.rlptxn.phaseSection.IntegerEntry.*;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.rlpUtils.InstructionInteger;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtilsCall;
-import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
+import net.consensys.linea.zktracer.module.rlptxn.GenericTracedValue;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes32;
 
