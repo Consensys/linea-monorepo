@@ -97,7 +97,7 @@ jobs:
   delete-tag-on-failure:
     needs: [ build ]
     runs-on: ubuntu-latest
-    if: failure() && () uploadResults == 'failure' || setupGccResults == 'failure' || buildWithoutTestsResults == 'failure' || storeArtifactsResults == 'failure' || runSpotlessResults == 'failure')
+    if: failure() && ( uploadResults == 'failure' || setupGccResults == 'failure' || buildWithoutTestsResults == 'failure' || storeArtifactsResults == 'failure' || runSpotlessResults == 'failure')
     steps:
       - name: Delete tag created without release
         run: |
