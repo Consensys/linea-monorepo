@@ -9,12 +9,6 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - uses: actions/checkout@v4
-      with:
-        sparse-checkout: |
-          .nvmrc
-        sparse-checkout-cone-mode: false
-
     - id: read
       name: Read Node.js version
       shell: bash
