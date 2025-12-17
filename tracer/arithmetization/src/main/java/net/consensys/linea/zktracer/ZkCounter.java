@@ -29,6 +29,7 @@ import static net.consensys.linea.zktracer.module.gas.GasOperation.NB_ROWS_GAS;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.*;
 import static net.consensys.linea.zktracer.module.hub.section.AccountSection.NB_ROWS_HUB_ACCOUNT;
 import static net.consensys.linea.zktracer.module.hub.section.CallDataLoadSection.NB_ROWS_HUB_CALLDATALOAD;
+import static net.consensys.linea.zktracer.module.hub.section.CreateSection.NB_ROWS_HUB_CREATE;
 import static net.consensys.linea.zktracer.module.hub.section.JumpSection.NB_ROWS_HUB_JUMP;
 import static net.consensys.linea.zktracer.module.hub.section.McopySection.NB_ROWS_HUB_MCOPY;
 import static net.consensys.linea.zktracer.module.hub.section.MsizeSection.NB_ROWS_HUB_MSIZE;
@@ -37,6 +38,7 @@ import static net.consensys.linea.zktracer.module.hub.section.StackOnlySection.N
 import static net.consensys.linea.zktracer.module.hub.section.StackRamSection.NB_ROWS_HUB_STACKRAM;
 import static net.consensys.linea.zktracer.module.hub.section.TxFinalizationSection.NB_ROWS_HUB_FINL;
 import static net.consensys.linea.zktracer.module.hub.section.TxInitializationSection.NB_ROWS_HUB_INIT;
+import static net.consensys.linea.zktracer.module.hub.section.TxSkipSection.NB_ROWS_HUB_SKIP;
 import static net.consensys.linea.zktracer.module.hub.section.call.CallSection.NB_ROWS_HUB_CALL;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.BlakeSubsection.NB_ROWS_HUB_PRC_BLAKE;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.EllipticCurvePrecompileSubsection.NB_ROWS_HUB_PRC_ELLIPTIC_CURVE;
@@ -47,12 +49,10 @@ import static net.consensys.linea.zktracer.module.hub.section.copy.CallDataCopyS
 import static net.consensys.linea.zktracer.module.hub.section.copy.CodeCopySection.NB_ROWS_HUB_CODE_COPY;
 import static net.consensys.linea.zktracer.module.hub.section.copy.ExtCodeCopySection.NB_ROWS_HUB_EXT_CODE_COPY;
 import static net.consensys.linea.zktracer.module.hub.section.copy.ReturnDataCopySection.NB_ROWS_HUB_RETURN_DATA_COPY;
-import static net.consensys.linea.zktracer.module.hub.section.create.CreateSection.NB_ROWS_HUB_CREATE;
 import static net.consensys.linea.zktracer.module.hub.section.halt.RevertSection.NB_ROWS_HUB_REVERT;
 import static net.consensys.linea.zktracer.module.hub.section.halt.SelfdestructSection.NB_ROWS_HUB_SELFDESTRUCT;
 import static net.consensys.linea.zktracer.module.hub.section.halt.StopSection.NB_ROWS_HUB_STOP_DEPLOYMENT;
 import static net.consensys.linea.zktracer.module.hub.section.halt.StopSection.NB_ROWS_HUB_STOP_MSG_CALL;
-import static net.consensys.linea.zktracer.module.hub.section.skip.TxSkipSection.NB_ROWS_HUB_SKIP;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash.NB_ROWS_HUB_SYSI_EIP2935;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection.NB_ROWS_HUB_SYSI_EIP4788;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.SysfNoopSection.NB_ROWS_HUB_SYSF_NOOP;

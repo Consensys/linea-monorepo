@@ -20,13 +20,11 @@ import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
 import net.consensys.linea.zktracer.module.blockdata.module.ShanghaiBlockData;
 import net.consensys.linea.zktracer.module.euc.Euc;
-import net.consensys.linea.zktracer.module.hub.section.create.ShanghaiCreateSection;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.shanghai.ShanghaiTxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.PublicInputs;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class ShanghaiHub extends ParisHub {
   public ShanghaiHub(ChainConfig chain, PublicInputs publicInputs) {
@@ -42,10 +40,5 @@ public class ShanghaiHub extends ParisHub {
   @Override
   protected TxnData setTxnData() {
     return new ShanghaiTxnData(this, wcp(), euc());
-  }
-
-  @Override
-  protected void setCreateSection(final Hub hub, final MessageFrame frame) {
-    new ShanghaiCreateSection(hub, frame);
   }
 }

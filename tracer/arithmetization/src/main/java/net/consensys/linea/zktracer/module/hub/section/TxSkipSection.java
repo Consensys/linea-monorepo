@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section.skip;
+package net.consensys.linea.zktracer.module.hub.section;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
@@ -24,9 +24,9 @@ import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
+import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
-import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
@@ -40,7 +40,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  * later, through a {@link EndTransactionDefer}, to generate the trace chunks required for the
  * proving of a pure transaction.
  */
-public abstract class TxSkipSection extends TraceSection implements EndTransactionDefer {
+public final class TxSkipSection extends TraceSection implements EndTransactionDefer {
 
   public static final short NB_ROWS_HUB_SKIP = 4;
 
@@ -161,7 +161,7 @@ public abstract class TxSkipSection extends TraceSection implements EndTransacti
                 sender,
                 senderNew,
                 sender.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), senderDomStamp()),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1),
                 TransactionProcessingType.USER);
 
     // "recipient" account fragment
@@ -172,7 +172,7 @@ public abstract class TxSkipSection extends TraceSection implements EndTransacti
                 recipient,
                 recipientNew,
                 recipient.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), recipientDomStamp()),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2),
                 TransactionProcessingType.USER);
 
     // "coinbase" account fragment
@@ -183,22 +183,13 @@ public abstract class TxSkipSection extends TraceSection implements EndTransacti
                 coinbase,
                 coinbaseNew,
                 coinbase.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), coinbaseDomStamp()),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 3),
                 TransactionProcessingType.USER);
 
-    addFragments(
-        txMetadata, senderAccountFragment, recipientAccountFragment, coinbaseAccountFragment);
+    addFragment(txMetadata.userTransactionFragment());
+    addFragment(senderAccountFragment);
+    addFragment(recipientAccountFragment);
+    addFragment(coinbaseAccountFragment);
+    addFragment(ContextFragment.readZeroContextData(commonValues.hub));
   }
-
-  protected abstract short senderDomStamp();
-
-  protected abstract short recipientDomStamp();
-
-  protected abstract short coinbaseDomStamp();
-
-  protected abstract void addFragments(
-      TransactionProcessingMetadata txMetadata,
-      AccountFragment senderAccountFragment,
-      AccountFragment recipientAccountFragment,
-      AccountFragment coinbaseAccountFragment);
 }

@@ -15,17 +15,11 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import static net.consensys.linea.zktracer.module.ModuleName.*;
-
 import java.util.Map;
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
-import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
 import net.consensys.linea.zktracer.module.blockdata.module.LondonBlockData;
 import net.consensys.linea.zktracer.module.euc.Euc;
-import net.consensys.linea.zktracer.module.hub.section.create.LondonCreateSection;
-import net.consensys.linea.zktracer.module.hub.section.skip.LondonTxSkipSection;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.mxp.module.LondonMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
@@ -37,7 +31,6 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.PublicInputs;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class LondonHub extends Hub {
@@ -62,12 +55,6 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected Module setRlpUtils() {
-    // RlpUtils is not used in London, it is only used in Cancun
-    return new CountingOnlyModule(RLP_UTILS);
-  }
-
-  @Override
   protected Mxp setMxp() {
     return new LondonMxp();
   }
@@ -79,10 +66,5 @@ public class LondonHub extends Hub {
       TransactionProcessingMetadata transactionProcessingMetadata,
       Transients transients) {
     new LondonTxSkipSection(hub, world, transactionProcessingMetadata, transients);
-  }
-
-  @Override
-  protected void setCreateSection(final Hub hub, final MessageFrame frame) {
-    new LondonCreateSection(hub, frame);
   }
 }

@@ -59,18 +59,18 @@ import net.consensys.linea.zktracer.module.hub.defer.DeferRegistry;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.stack.StackFragment;
 import net.consensys.linea.zktracer.module.hub.section.*;
+import net.consensys.linea.zktracer.module.hub.section.CreateSection;
 import net.consensys.linea.zktracer.module.hub.section.TxInitializationSection;
+import net.consensys.linea.zktracer.module.hub.section.TxSkipSection;
 import net.consensys.linea.zktracer.module.hub.section.call.CallSection;
 import net.consensys.linea.zktracer.module.hub.section.copy.CallDataCopySection;
 import net.consensys.linea.zktracer.module.hub.section.copy.CodeCopySection;
 import net.consensys.linea.zktracer.module.hub.section.copy.ExtCodeCopySection;
 import net.consensys.linea.zktracer.module.hub.section.copy.ReturnDataCopySection;
-import net.consensys.linea.zktracer.module.hub.section.create.CreateSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.ReturnSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.RevertSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.SelfdestructSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.StopSection;
-import net.consensys.linea.zktracer.module.hub.section.skip.TxSkipSection;
 import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash;
 import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection;
 import net.consensys.linea.zktracer.module.hub.section.systemTransaction.SysfNoopSection;
@@ -96,6 +96,7 @@ import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
 import net.consensys.linea.zktracer.module.oob.Oob;
+import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlpaddr.RlpAddr;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
@@ -220,7 +221,7 @@ public abstract class Hub implements Module {
   private final Mod mod = new Mod();
   private final Shf shf = new Shf();
   private final Trm trm;
-  private final Module rlpUtils = setRlpUtils();
+  private final Module rlpUtils = new RlpUtils();
 
   // other
   private final BlockData blockdata;
@@ -608,7 +609,7 @@ public abstract class Hub implements Module {
 
     if (!transactionProcessingMetadata.requiresEvmExecution()) {
       state.processingPhase(TX_SKIP);
-      setSkipSection(this, world, transactionProcessingMetadata, transients);
+      new TxSkipSection(this, world, transactionProcessingMetadata, transients);
     } else {
       if (transactionProcessingMetadata.requiresPrewarming()) {
         state.processingPhase(TX_WARM);
@@ -1126,7 +1127,7 @@ public abstract class Hub implements Module {
         }
       }
       case JUMP -> new JumpSection(this);
-      case CREATE -> setCreateSection(this, frame);
+      case CREATE -> new CreateSection(this, frame);
       case CALL -> new CallSection(this, frame);
       case INVALID -> new EarlyExceptionSection(this);
     }
@@ -1194,16 +1195,6 @@ public abstract class Hub implements Module {
       Hub hub, Wcp wcp, Euc euc, ChainConfig chain, Map<Long, Bytes> blobBaseFees);
 
   protected abstract RlpTxn setRlpTxn(Hub hub);
-
-  protected abstract Module setRlpUtils();
-
-  protected abstract void setSkipSection(
-      Hub hub,
-      WorldView world,
-      TransactionProcessingMetadata transactionProcessingMetadata,
-      Transients transients);
-
-  protected abstract void setCreateSection(final Hub hub, final MessageFrame frame);
 
   private void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
     state.transactionProcessingType(SYSI);

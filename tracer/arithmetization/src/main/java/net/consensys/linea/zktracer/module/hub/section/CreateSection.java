@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section.create;
+package net.consensys.linea.zktracer.module.hub.section;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.*;
@@ -35,9 +35,10 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.StpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.create.CreateOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.create.ShanghaiCreateOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.create.XCreateOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario;
-import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.signals.AbortingConditions;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
@@ -55,7 +56,7 @@ import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public abstract class CreateSection extends TraceSection
+public final class CreateSection extends TraceSection
     implements PostOpcodeDefer,
         ContextEntryDefer,
         PostRollbackDefer,
@@ -158,7 +159,7 @@ public abstract class CreateSection extends TraceSection
     checkArgument(Exceptions.none(exceptions), "CREATE(2): unexpectedly exceptional");
     hub.currentFrame().childSpanningSection(this);
 
-    final CreateOobCall oobCall = (CreateOobCall) imcFragment.callOob(createOobCall());
+    final CreateOobCall oobCall = (CreateOobCall) imcFragment.callOob(new ShanghaiCreateOobCall());
 
     firstCreator = AccountSnapshot.canonical(hub, frame.getWorldUpdater(), creatorAddress);
     firstCreatee = AccountSnapshot.canonical(hub, frame.getWorldUpdater(), createeAddress);
@@ -537,7 +538,11 @@ public abstract class CreateSection extends TraceSection
     return (opCode == CREATE2 && size != 0);
   }
 
-  protected abstract boolean maxCodeSizeExceptionalCreate(final short exceptions);
-
-  protected abstract CreateOobCall createOobCall();
+  private boolean maxCodeSizeExceptionalCreate(final short exceptions) {
+    final boolean haltCreateSection = Exceptions.maxCodeSizeException(exceptions);
+    if (haltCreateSection) {
+      imcFragment.callOob(new XCreateOobCall());
+    }
+    return haltCreateSection;
+  }
 }

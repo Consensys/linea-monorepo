@@ -20,7 +20,6 @@ import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
 import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
 import net.consensys.linea.zktracer.module.euc.Euc;
-import net.consensys.linea.zktracer.module.hub.section.skip.CancunTxSkipSection;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.mxp.module.CancunMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
@@ -59,11 +58,6 @@ public class CancunHub extends ShanghaiHub {
   @Override
   protected RlpTxn setRlpTxn(Hub hub) {
     return new CancunRlpTxn((RlpUtils) hub.rlpUtils(), hub.trm());
-  }
-
-  @Override
-  protected RlpUtils setRlpUtils() {
-    return new RlpUtils();
   }
 
   @Override
