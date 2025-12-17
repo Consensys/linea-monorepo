@@ -121,56 +121,48 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 
 // AssignTestingArithModules assigns the BlockDataCols, TxnData and RlpTxn modules based on csv traces.
 // if a module is missing,the corresponding assignment is skipped
-func AssignTestingArithModules(run *wizard.ProverRuntime, ctBlockData, ctTxnData, ctRlpTxn *csvtraces.CsvTrace) {
+func AssignTestingArithModules(
+	run *wizard.ProverRuntime,
+	ctBlockData, ctTxnData, ctRlpTxn *csvtraces.CsvTrace,
+	blockData *BlockDataCols, txnData *TxnData, rlpTxn *RlpTxn,
+) {
 	// assign the CSV data for the mock BlockData, TxnData and RlpTxn arithmetization modules
 	if ctBlockData != nil {
-		toAssign := []string{"REL_BLOCK", "INST", "CT"}
 
-		for i := range common.NbLimbU256 {
-			toAssign = append(toAssign, fmt.Sprintf("DATA_%d", i))
-		}
-
-		for i := range common.NbLimbU48 {
-			toAssign = append(toAssign, fmt.Sprintf("FIRST_BLOCK_NUMBER_%d", i))
-		}
-
-		ctBlockData.Assign(run, toAssign...)
+		ctBlockData.AssignCols(run,
+			blockData.RelBlock,
+			blockData.Inst,
+			blockData.Ct,
+		).AssignCols(run, blockData.Data[:]...).
+			AssignCols(run, blockData.FirstBlock[:]...)
 	}
+
 	if ctTxnData != nil {
-		toAssign := []string{
-			"TD.ABS_TX_NUM",
-			"TD.ABS_TX_NUM_MAX",
-			"TD.REL_TX_NUM",
-			"TD.REL_TX_NUM_MAX",
-			"TD.CT",
-			"TD.IS_LAST_TX_OF_BLOCK",
-			"TD.REL_BLOCK",
-			"TD.USER",
-			"TD.SELECTOR",
-			"TD.SYSI",
-			"TD.SYSF",
-		}
 
-		for i := range common.NbLimbEthAddress {
-			toAssign = append(toAssign, fmt.Sprintf("TD.FROM_%d", i))
-		}
-
-		ctTxnData.Assign(run, toAssign...)
+		ctTxnData.AssignCols(run,
+			txnData.AbsTxNum,
+			txnData.AbsTxNumMax,
+			txnData.RelTxNum,
+			txnData.RelTxNumMax,
+			txnData.Ct,
+			txnData.IsLastTxOfBlock,
+			txnData.RelBlock,
+			txnData.USER,
+			txnData.Selector,
+			txnData.SYSI,
+			txnData.SYSF,
+		).AssignCols(run, txnData.From[:]...)
 	}
+
 	if ctRlpTxn != nil {
-		toAssign := []string{
-			"RT.ABS_TX_NUM",
-			"RT.ABS_TX_NUM_MAX",
-			"RL.TO_HASH_BY_PROVER",
-			"RL.NBYTES",
-			"RL.TXN",
-		}
 
-		for i := range common.NbLimbU128 {
-			toAssign = append(toAssign, fmt.Sprintf("RL.LIMB_%d", i))
-		}
-
-		ctRlpTxn.Assign(run, toAssign...)
+		ctRlpTxn.AssignCols(run,
+			rlpTxn.AbsTxNum,
+			rlpTxn.AbsTxNumMax,
+			rlpTxn.ToHashByProver,
+			rlpTxn.NBytes,
+			rlpTxn.TxnPerspective,
+		).AssignCols(run, rlpTxn.Limbs[:]...)
 	}
 
 }

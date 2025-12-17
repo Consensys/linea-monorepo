@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -237,7 +238,7 @@ func newPublicInput(
 			Index:   execDataCollector.Ct,
 			ToHash:  execDataCollector.IsActive,
 			NBytes:  execDataCollector.NoBytes,
-			Limbs:   execDataCollector.Limbs[:],
+			Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("executiondata.limbs", execDataCollector.Limbs[:]).AssertUint128(),
 		}},
 		PaddingStrategy: generic.MiMCUsecase,
 	}
