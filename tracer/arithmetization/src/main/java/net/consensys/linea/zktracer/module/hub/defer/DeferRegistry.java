@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.hub.defer;
 
 import java.util.*;
-
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
@@ -262,5 +261,17 @@ public class DeferRegistry
 
   public void unscheduleForPostTransaction(EndTransactionDefer defer) {
     endTransactionDefers.remove(defer);
+  }
+
+  public void clearAll() {
+    postOpcodeDefers.clear();
+    contextEntryDefers.clear();
+    contextExitDefers.clear();
+    contextReEntryDefers.clear();
+    endTransactionDefers.clear();
+    afterTransactionFinalizationDefers.clear();
+    rollbackDefers.clear();
+    postBlockDefers.clear();
+    postConflationDefers.clear();
   }
 }

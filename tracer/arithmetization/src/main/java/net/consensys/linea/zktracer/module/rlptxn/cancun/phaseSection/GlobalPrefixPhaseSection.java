@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.rlptxn.cancun.phaseSection;
 
 import static net.consensys.linea.zktracer.module.rlputilsOld.Pattern.innerRlpSize;
+import static net.consensys.linea.zktracer.types.Utils.rightPadToBytes16;
 import static org.hyperledger.besu.ethereum.core.encoding.EncodingContext.BLOCK_BODY;
 import static org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder.encodeOpaqueBytes;
 
@@ -24,7 +25,6 @@ import net.consensys.linea.zktracer.module.rlpUtils.InstructionByteStringPrefix;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtilsCall;
 import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
-import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -48,8 +48,10 @@ public class GlobalPrefixPhaseSection extends PhaseSection {
         tracedValues.rlpLtByteSize(innerRlpSize(besuRlpLt.size() - 1));
         tracedValues.rlpLxByteSize(innerRlpSize(besuRlpLx.size() - 1));
       }
-      default -> throw new IllegalStateException(
-          "Transaction Type not supported: " + tracedValues.tx().getBesuTransaction().getType());
+      default ->
+          throw new IllegalStateException(
+              "Transaction Type not supported: "
+                  + tracedValues.tx().getBesuTransaction().getType());
     }
 
     final RlpUtilsCall rlpLtCall =
@@ -71,7 +73,7 @@ public class GlobalPrefixPhaseSection extends PhaseSection {
         .lx(true)
         .limbConstructed(!tracedValues.type0())
         .pCmpLimb(
-            tracedValues.type0() ? Bytes.EMPTY : Bytes16.rightPad(Bytes.minimalBytes(tx.type())))
+            tracedValues.type0() ? Bytes.EMPTY : rightPadToBytes16(Bytes.minimalBytes(tx.type())))
         .pCmpLimbSize(tracedValues.type0() ? 0 : 1);
     tracePostValues(trace, tracedValues);
 
