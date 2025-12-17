@@ -62,7 +62,7 @@ public abstract class MxpCall implements TraceSubFragment {
     this.hub = hub;
     final MessageFrame frame = hub.messageFrame();
     opCodeData = this.hub.opCodeData();
-    deploys = opCodeData.mnemonic() == OpCode.RETURN & hub.currentFrame().isDeployment();
+    deploys = opCodeData.mnemonic() == OpCode.RETURN && hub.currentFrame().isDeployment();
     memorySizeInWords = hub.messageFrame().memoryWordSize();
     final EWord[] sizesAndOffsets = getSizesAndOffsets(frame, opCodeData);
     size1 = sizesAndOffsets[0];

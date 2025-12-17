@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.stack;
+package net.consensys.linea.zktracer.module.hub.fragment;
 
 import static com.google.common.base.Preconditions.*;
 import static com.google.common.primitives.Ints.min;
@@ -30,7 +30,6 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragmentValues;
 import net.consensys.linea.zktracer.module.hub.signals.AbortingConditions;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
@@ -48,7 +47,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.evm.internal.Words;
 
 @Accessors(fluent = true)
-public abstract class StackFragment implements TraceFragment {
+public final class StackFragment implements TraceFragment {
   private final Stack stack;
   @Getter private final List<StackItem> stackOps;
   private final short exceptions;
@@ -62,7 +61,7 @@ public abstract class StackFragment implements TraceFragment {
   private final CommonFragmentValues commonFragmentValues;
   private final EWord pushValue;
 
-  protected StackFragment(
+  private StackFragment(
       final Hub hub,
       Stack stack,
       List<StackItem> stackOps,
@@ -167,15 +166,8 @@ public abstract class StackFragment implements TraceFragment {
       final GasProjection gp,
       boolean isDeploying,
       CommonFragmentValues commonFragmentValues) {
-    return switch (hub.fork) {
-      case LONDON, PARIS, SHANGHAI ->
-          new LondonStackFragment(
-              hub, stack, stackItems, exceptions, aborts, gp, isDeploying, commonFragmentValues);
-      case CANCUN, PRAGUE, OSAKA ->
-          new CancunStackFragment(
-              hub, stack, stackItems, exceptions, aborts, gp, isDeploying, commonFragmentValues);
-      default -> throw new IllegalArgumentException("Unknown fork: " + hub.fork);
-    };
+    return new StackFragment(
+        hub, stack, stackItems, exceptions, aborts, gp, isDeploying, commonFragmentValues);
   }
 
   private boolean traceLog() {
@@ -239,7 +231,7 @@ public abstract class StackFragment implements TraceFragment {
 
     this.tracedExceptionSanityChecks(tracedException);
 
-    trace
+    return trace
         .peekAtStack(true)
         // Instruction details
         .pStackAlpha(UnsignedByte.of(stack.getCurrentOpcodeData().stackSettings().alpha()))
@@ -271,16 +263,14 @@ public abstract class StackFragment implements TraceFragment {
         .pStackStoFlag(currentInstFamily == STORAGE)
         .pStackSwapFlag(currentInstFamily == SWAP)
         .pStackTxnFlag(currentInstFamily == TRANSACTION)
-        .pStackWcpFlag(currentInstFamily == WCP);
-    traceMcopyFamily(trace, currentInstFamily);
-    traceTransientFamily(trace, currentInstFamily);
-    trace
+        .pStackWcpFlag(currentInstFamily == WCP)
+        .pStackMcopyFlag(currentInstFamily == MCOPY)
+        .pStackTransFlag(currentInstFamily == TRANSIENT)
         .pStackDecFlag1(stack.getCurrentOpcodeData().stackSettings().flag1())
         .pStackDecFlag2(stack.getCurrentOpcodeData().stackSettings().flag2())
         .pStackDecFlag3(stack.getCurrentOpcodeData().stackSettings().flag3())
-        .pStackDecFlag4(stack.getCurrentOpcodeData().stackSettings().flag4());
-    traceMxpFlag(trace, stack.getCurrentOpcodeData());
-    trace
+        .pStackDecFlag4(stack.getCurrentOpcodeData().stackSettings().flag4())
+        .pStackMxpFlag(stack.getCurrentOpcodeData().isMxp())
         .pStackStaticFlag(stack.getCurrentOpcodeData().stackSettings().forbiddenInStatic())
         .pStackPushValueHi(pushValue.hi())
         .pStackPushValueLo(pushValue.lo())
@@ -302,16 +292,7 @@ public abstract class StackFragment implements TraceFragment {
         .pStackHashInfoKeccakHi(hashInfoKeccak.hi())
         .pStackHashInfoKeccakLo(hashInfoKeccak.lo())
         .pStackLogInfoFlag(traceLog());
-
-    return trace;
   }
-
-  protected abstract void traceMcopyFamily(Trace.Hub trace, InstructionFamily currentInstFamily);
-
-  protected abstract void traceTransientFamily(
-      Trace.Hub trace, InstructionFamily currentInstFamily);
-
-  protected abstract void traceMxpFlag(Trace.Hub trace, OpCodeData opCodeData);
 
   private void tracedExceptionSanityChecks(TracedException tracedException) {
     switch (tracedException) {

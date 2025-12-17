@@ -58,7 +58,7 @@ import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.gas.Gas;
 import net.consensys.linea.zktracer.module.hub.defer.DeferRegistry;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.stack.StackFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.StackFragment;
 import net.consensys.linea.zktracer.module.hub.section.*;
 import net.consensys.linea.zktracer.module.hub.section.CreateSection;
 import net.consensys.linea.zktracer.module.hub.section.TxInitializationSection;
