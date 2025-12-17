@@ -10,9 +10,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -142,7 +142,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	wizard.ContinueCompilation(modIOP,
 		// @alex: unsure if/why we need to compile with MiMC since it should be
 		// done pre-bootstrapping.
-		mimc.CompileMiMC,
+		poseidon2.CompilePoseidon2,
 		// The reason why 1 works is because it will work for all the GL modules
 		// and because the LPP module do not have Plonk-in-wizards query.
 		plonkinwizard.CompileWithMinimalRound(1),
@@ -204,7 +204,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	wizard.ContinueCompilation(modIOP,
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
-		mimc.CompileMiMC,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
@@ -219,7 +219,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
-		mimc.CompileMiMC,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
@@ -237,7 +237,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
-		mimc.CompileMiMC,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
@@ -305,7 +305,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	}
 
 	recursedComp := wizard.Compile(defineRecursion,
-		mimc.CompileMiMC,
+		poseidon2.CompilePoseidon2,
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
@@ -323,7 +323,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
-		mimc.CompileMiMC,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),

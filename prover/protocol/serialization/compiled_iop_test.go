@@ -13,9 +13,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
@@ -175,7 +175,7 @@ func TestSerdeIOP2(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
@@ -184,7 +184,7 @@ func TestSerdeIOP2(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
@@ -240,7 +240,7 @@ func TestSerdeIOP4(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
@@ -249,7 +249,7 @@ func TestSerdeIOP4(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
@@ -278,7 +278,7 @@ func TestSerdeIOP5(t *testing.T) {
 			func(build *wizard.Builder) {
 				tc.define(build.CompiledIOP)
 			},
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			plonkinwizard.Compile,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<17),
@@ -292,7 +292,7 @@ func TestSerdeIOP5(t *testing.T) {
 			),
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<15),
 			),
@@ -303,7 +303,7 @@ func TestSerdeIOP5(t *testing.T) {
 			),
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13),
 			),
