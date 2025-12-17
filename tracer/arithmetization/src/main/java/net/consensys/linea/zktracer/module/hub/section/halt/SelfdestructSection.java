@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct;
+package net.consensys.linea.zktracer.module.hub.section.halt;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.SelfdestructScenarioFragment.SelfdestructScenario.*;
@@ -34,8 +34,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.SelfdestructScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
-import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruct;
-import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.Bytecode;
@@ -48,7 +46,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public abstract class SelfdestructSection extends TraceSection
+public final class SelfdestructSection extends TraceSection
     implements PostOpcodeDefer,
         PostRollbackDefer,
         EndTransactionDefer,
@@ -175,9 +173,20 @@ public abstract class SelfdestructSection extends TraceSection
     }
   }
 
-  abstract boolean accountFragmentWiping();
+  private boolean accountFragmentWiping() {
+    // In Cancun, the account fragment is wiped only if it didn't have code initially
+    return !transactionProcessingMetadata
+        .hadCodeInitiallyMap()
+        .get(selfdestructor.address())
+        .hadCode();
+  }
 
-  abstract boolean softAccountWiping();
+  private boolean softAccountWiping() {
+    return transactionProcessingMetadata
+        .hadCodeInitiallyMap()
+        .get(selfdestructor.address())
+        .hadCode();
+  }
 
   @Override
   public void resolvePostExecution(

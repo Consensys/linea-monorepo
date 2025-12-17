@@ -27,7 +27,6 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.PublicInputs;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class ShanghaiHub extends ParisHub {
   public ShanghaiHub(ChainConfig chain, PublicInputs publicInputs) {
@@ -43,18 +42,6 @@ public class ShanghaiHub extends ParisHub {
   @Override
   protected TxnData setTxnData() {
     return new ShanghaiTxnData(this, wcp(), euc());
-  }
-
-  @Override
-  protected void setInitializationSection(WorldView world) {
-    new ShanghaiInitializationSection(this, world);
-  }
-
-  @Override
-  protected boolean coinbaseWarmthAtTxEnd() {
-    // since EIP-3651 (Shanghai), the coinbase address is warm at the beginning of the transaction,
-    // so obviously at the end.
-    return true;
   }
 
   @Override

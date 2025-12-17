@@ -16,16 +16,10 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.types.PublicInputs;
 
 public class PragueHub extends CancunHub {
   public PragueHub(ChainConfig chain, PublicInputs publicInputs) {
     super(chain, publicInputs);
-  }
-
-  @Override
-  protected BlsRt setBlsRt() {
-    return new BlsRt();
   }
 }

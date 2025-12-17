@@ -35,6 +35,7 @@ import static net.consensys.linea.zktracer.module.hub.section.MsizeSection.NB_RO
 import static net.consensys.linea.zktracer.module.hub.section.SstoreSection.NB_ROWS_HUB_STORAGE;
 import static net.consensys.linea.zktracer.module.hub.section.StackOnlySection.NB_ROWS_HUB_SIMPLE_STACK_OP;
 import static net.consensys.linea.zktracer.module.hub.section.StackRamSection.NB_ROWS_HUB_STACKRAM;
+import static net.consensys.linea.zktracer.module.hub.section.TxFinalizationSection.NB_ROWS_HUB_FINL;
 import static net.consensys.linea.zktracer.module.hub.section.TxInitializationSection.NB_ROWS_HUB_INIT;
 import static net.consensys.linea.zktracer.module.hub.section.call.CallSection.NB_ROWS_HUB_CALL;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.BlakeSubsection.NB_ROWS_HUB_PRC_BLAKE;
@@ -47,11 +48,10 @@ import static net.consensys.linea.zktracer.module.hub.section.copy.CodeCopySecti
 import static net.consensys.linea.zktracer.module.hub.section.copy.ExtCodeCopySection.NB_ROWS_HUB_EXT_CODE_COPY;
 import static net.consensys.linea.zktracer.module.hub.section.copy.ReturnDataCopySection.NB_ROWS_HUB_RETURN_DATA_COPY;
 import static net.consensys.linea.zktracer.module.hub.section.create.CreateSection.NB_ROWS_HUB_CREATE;
-import static net.consensys.linea.zktracer.module.hub.section.finalization.TxFinalizationSection.NB_ROWS_HUB_FINL;
 import static net.consensys.linea.zktracer.module.hub.section.halt.RevertSection.NB_ROWS_HUB_REVERT;
+import static net.consensys.linea.zktracer.module.hub.section.halt.SelfdestructSection.NB_ROWS_HUB_SELFDESTRUCT;
 import static net.consensys.linea.zktracer.module.hub.section.halt.StopSection.NB_ROWS_HUB_STOP_DEPLOYMENT;
 import static net.consensys.linea.zktracer.module.hub.section.halt.StopSection.NB_ROWS_HUB_STOP_MSG_CALL;
-import static net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct.SelfdestructSection.NB_ROWS_HUB_SELFDESTRUCT;
 import static net.consensys.linea.zktracer.module.hub.section.skip.TxSkipSection.NB_ROWS_HUB_SKIP;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash.NB_ROWS_HUB_SYSI_EIP2935;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection.NB_ROWS_HUB_SYSI_EIP4788;

@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section.finalization;
+package net.consensys.linea.zktracer.module.hub.section;
 
 import static com.google.common.base.Preconditions.*;
 
@@ -23,9 +23,9 @@ import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
+import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
-import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
@@ -34,7 +34,7 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public abstract class TxFinalizationSection extends TraceSection implements EndTransactionDefer {
+public final class TxFinalizationSection extends TraceSection implements EndTransactionDefer {
 
   public static final short NB_ROWS_HUB_FINL = 4;
 
@@ -86,13 +86,11 @@ public abstract class TxFinalizationSection extends TraceSection implements EndT
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1),
                 TransactionProcessingType.USER);
 
-    addFragments(txMetadata, senderAccountFragment, coinbaseAccountFragment);
+    addFragment(txMetadata.userTransactionFragment());
+    addFragment(senderAccountFragment);
+    addFragment(coinbaseAccountFragment);
+    addFragment(ContextFragment.readZeroContextData(hub()));
   }
-
-  protected abstract void addFragments(
-      TransactionProcessingMetadata txMetadata,
-      AccountFragment senderAccountFragment,
-      AccountFragment coinbaseAccountFragment);
 
   /**
    * Extracting the snapshots for the sender and the coinbase does not work as one may expect. One
@@ -121,7 +119,10 @@ public abstract class TxFinalizationSection extends TraceSection implements EndT
 
     coinbaseGasRefundNew =
         AccountSnapshot.canonical(hub, world, coinbaseAddress)
-            .setWarmthTo(txMetadata.coinbaseWarmAtTransactionEnd())
+            // since EIP-3651 (Shanghai), the coinbase address is warm at the beginning of the
+            // transaction,
+            // so obviously at the end.
+            .setWarmthTo(true)
             .setDeploymentInfo(hub);
     coinbaseGasRefund =
         coinbaseGasRefundNew.deepCopy().decrementBalanceBy(txMetadata.getCoinbaseReward());

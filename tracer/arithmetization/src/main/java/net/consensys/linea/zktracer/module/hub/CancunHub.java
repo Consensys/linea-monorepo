@@ -19,14 +19,8 @@ import java.util.Map;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
 import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
-import net.consensys.linea.zktracer.module.blsdata.BlsData;
 import net.consensys.linea.zktracer.module.euc.Euc;
-import net.consensys.linea.zktracer.module.hub.section.McopySection;
-import net.consensys.linea.zktracer.module.hub.section.finalization.CancunFinalizationSection;
-import net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct.CancunSelfdestructSection;
 import net.consensys.linea.zktracer.module.hub.section.skip.CancunTxSkipSection;
-import net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection;
-import net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.mxp.module.CancunMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
@@ -41,32 +35,11 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.PublicInputs;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class CancunHub extends ShanghaiHub {
   public CancunHub(ChainConfig chain, PublicInputs publicInputs) {
     super(chain, publicInputs);
-  }
-
-  @Override
-  protected BlsData setBlsData(Hub hub) {
-    return new BlsData(
-        hub.wcp(),
-        pointEvaluationEffectiveCall,
-        pointEvaluationFailureCall,
-        blsG1AddEffectiveCall,
-        blsG1MsmEffectiveCall,
-        blsG2AddEffectiveCall,
-        blsG2MsmEffectiveCall,
-        blsPairingCheckMillerLoops,
-        blsPairingCheckFinalExponentiations,
-        blsG1MapFpToG1EffectiveCall,
-        blsG1MapFp2ToG2EffectiveCall,
-        blsC1MembershipCalls,
-        blsC2MembershipCalls,
-        blsG1MembershipCalls,
-        blsG2MembershipCalls);
   }
 
   @Override
@@ -107,30 +80,5 @@ public class CancunHub extends ShanghaiHub {
       TransactionProcessingMetadata transactionProcessingMetadata,
       Transients transients) {
     new CancunTxSkipSection(hub, world, transactionProcessingMetadata, transients);
-  }
-
-  @Override
-  protected void setFinalizationSection(Hub hub) {
-    new CancunFinalizationSection(hub);
-  }
-
-  @Override
-  protected void setTransientSection(final Hub hub) {
-    switch (hub.opCode()) {
-      case TLOAD -> new TLoadSection(hub);
-      case TSTORE -> new TStoreSection(hub);
-      default ->
-          throw new IllegalStateException("invalid operation in family TRANSIENT: " + hub.opCode());
-    }
-  }
-
-  @Override
-  protected void setMcopySection(Hub hub) {
-    new McopySection(hub);
-  }
-
-  @Override
-  protected void setSelfdestructSection(final Hub hub, final MessageFrame frame) {
-    new CancunSelfdestructSection(hub, frame);
   }
 }

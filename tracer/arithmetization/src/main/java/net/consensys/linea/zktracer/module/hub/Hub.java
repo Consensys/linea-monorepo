@@ -49,6 +49,7 @@ import net.consensys.linea.zktracer.module.bin.Bin;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
 import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
 import net.consensys.linea.zktracer.module.blockhash.Blockhash;
+import net.consensys.linea.zktracer.module.blsdata.BlsData;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.exp.Exp;
@@ -67,11 +68,14 @@ import net.consensys.linea.zktracer.module.hub.section.copy.ReturnDataCopySectio
 import net.consensys.linea.zktracer.module.hub.section.create.CreateSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.ReturnSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.RevertSection;
+import net.consensys.linea.zktracer.module.hub.section.halt.SelfdestructSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.StopSection;
 import net.consensys.linea.zktracer.module.hub.section.skip.TxSkipSection;
 import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash;
 import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection;
 import net.consensys.linea.zktracer.module.hub.section.systemTransaction.SysfNoopSection;
+import net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection;
+import net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
 import net.consensys.linea.zktracer.module.hub.state.BlockStack;
@@ -363,7 +367,23 @@ public abstract class Hub implements Module {
           ecPairingMillerLoops,
           ecPairingFinalExponentiations,
           p256VerifyEffectiveCalls);
-  final Module blsData = setBlsData(this);
+  final Module blsData =
+      new BlsData(
+          wcp,
+          pointEvaluationEffectiveCall,
+          pointEvaluationFailureCall,
+          blsG1AddEffectiveCall,
+          blsG1MsmEffectiveCall,
+          blsG2AddEffectiveCall,
+          blsG2MsmEffectiveCall,
+          blsPairingCheckMillerLoops,
+          blsPairingCheckFinalExponentiations,
+          blsG1MapFpToG1EffectiveCall,
+          blsG1MapFp2ToG2EffectiveCall,
+          blsC1MembershipCalls,
+          blsC2MembershipCalls,
+          blsG1MembershipCalls,
+          blsG2MembershipCalls);
 
   private final L1BlockSize l1BlockSize;
   private final IncrementingModule l2L1Logs;
@@ -462,7 +482,7 @@ public abstract class Hub implements Module {
     blockhash = new Blockhash(this, wcp, publicInputs.historicalBlockhashes());
 
     refTableModules =
-        Stream.of(setBlsRt(), setInstructionDecoder()).filter(Objects::nonNull).toList();
+        Stream.of(new BlsRt(), setInstructionDecoder()).filter(Objects::nonNull).toList();
 
     modules =
         Stream.concat(
@@ -762,14 +782,11 @@ public abstract class Hub implements Module {
       txStack
           .current()
           .setPreFinalisationValues(
-              leftOverGas,
-              gasRefund,
-              txStack.getAccumulativeGasUsedInBlockBeforeTxStart(),
-              coinbaseWarmthAtTxEnd());
+              leftOverGas, gasRefund, txStack.getAccumulativeGasUsedInBlockBeforeTxStart());
 
       if (state.processingPhase() != TX_SKIP) {
         state.processingPhase(TX_FINL);
-        setFinalizationSection(this);
+        new TxFinalizationSection(this);
       }
     }
 
@@ -1054,7 +1071,7 @@ public abstract class Hub implements Module {
           case RETURN -> new ReturnSection(this, frame);
           case REVERT -> new RevertSection(this, frame);
           case STOP -> new StopSection(this);
-          case SELFDESTRUCT -> setSelfdestructSection(this, frame);
+          case SELFDESTRUCT -> new SelfdestructSection(this, frame);
         }
         final boolean returnFromDeployment =
             (op.mnemonic() == RETURN && this.currentFrame().isDeployment());
@@ -1081,7 +1098,7 @@ public abstract class Hub implements Module {
                   "Invalid instruction: " + this.opCode().toString() + " not in the COPY family");
         }
       }
-      case MCOPY -> setMcopySection(this);
+      case MCOPY -> new McopySection(this);
       case TRANSACTION -> new TransactionSection(this);
       case STACK_RAM -> {
         switch (op.mnemonic()) {
@@ -1097,7 +1114,15 @@ public abstract class Hub implements Module {
           default -> throw new IllegalStateException("invalid operation in family STORAGE");
         }
       }
-      case TRANSIENT -> setTransientSection(this);
+      case TRANSIENT -> {
+        switch (op.mnemonic()) {
+          case TLOAD -> new TLoadSection(this);
+          case TSTORE -> new TStoreSection(this);
+          default ->
+              throw new IllegalStateException(
+                  "invalid operation in family TRANSIENT: " + op.mnemonic());
+        }
+      }
       case JUMP -> new JumpSection(this);
       case CREATE -> setCreateSection(this, frame);
       case CALL -> new CallSection(this, frame);
@@ -1159,10 +1184,6 @@ public abstract class Hub implements Module {
     return blockStack.getBlockByRelativeBlockNumber(relativeBlockNumber).coinbaseAddress();
   }
 
-  protected abstract Module setBlsData(Hub hub);
-
-  protected abstract BlsRt setBlsRt();
-
   protected abstract TxnData setTxnData();
 
   protected abstract Mxp setMxp();
@@ -1182,15 +1203,7 @@ public abstract class Hub implements Module {
       TransactionProcessingMetadata transactionProcessingMetadata,
       Transients transients);
 
-  protected abstract void setFinalizationSection(Hub hub);
-
-  protected abstract boolean coinbaseWarmthAtTxEnd();
-
   protected abstract void setCreateSection(final Hub hub, final MessageFrame frame);
-
-  protected abstract void setTransientSection(Hub hub);
-
-  protected abstract void setMcopySection(Hub hub);
 
   private void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
     state.transactionProcessingType(SYSI);
@@ -1210,6 +1223,4 @@ public abstract class Hub implements Module {
     state.processingPhase(TX_SKIP);
     new SysfNoopSection(this);
   }
-
-  protected abstract void setSelfdestructSection(Hub hub, final MessageFrame frame);
 }
