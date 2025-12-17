@@ -245,7 +245,7 @@ func GetSharedRandomnessFromSegmentProofs(gLWitnesses []*SegmentProof) field.Oct
 func getLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Octuplet {
 	merkleRoot := field.Octuplet{}
 	for i := range merkleRoot {
-		merkleRoot[i] = runtime.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)) // index 0 stands for the round index.
+		merkleRoot[i] = runtime.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base // index 0 stands for the round index.
 	}
 	return merkleRoot
 }

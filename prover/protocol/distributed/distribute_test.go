@@ -1,8 +1,7 @@
-//go:build ignore
-
 package distributed_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,17 +9,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 // TestDistributedWizardBasic attempts to compiler the wizard distribution.
 func TestDistributedWizardBasic(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+
 	var (
 		z       = DistributeTestCase{numRow: 1 << 20}
 		defFunc = func(build *wizard.Builder) { z.Define(build.CompiledIOP) }
@@ -31,7 +31,7 @@ func TestDistributedWizardBasic(t *testing.T) {
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = distributed.DistributeWizard(wiop, disc).CompileSegments(zkevm.LimitlessCompilationParams)
+		distWizard = distributed.DistributeWizard(wiop, disc)
 	)
 
 	// This compilation step is needed for sanity-checking the bootstrapper
@@ -40,10 +40,20 @@ func TestDistributedWizardBasic(t *testing.T) {
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
 		dummy.CompileAtProverLvl()(distWizard.GLs[i].Wiop)
+		// Add dummy LPP merkle root public inputs (normally added by Vortex compiler)
+		for j := 0; j < 8; j++ {
+			name := fmt.Sprintf("LPP_COLUMNS_MERKLE_ROOTS_0_%d", j)
+			distWizard.GLs[i].Wiop.InsertPublicInput(name, accessors.NewConstant(field.Zero()))
+		}
 	}
 
 	for i := range distWizard.LPPs {
 		dummy.CompileAtProverLvl()(distWizard.LPPs[i].Wiop)
+		// Add dummy LPP merkle root public inputs (normally added by Vortex compiler)
+		for j := 0; j < 8; j++ {
+			name := fmt.Sprintf("LPP_COLUMNS_MERKLE_ROOTS_0_%d", j)
+			distWizard.LPPs[i].Wiop.InsertPublicInput(name, accessors.NewConstant(field.Zero()))
+		}
 	}
 
 	var (
@@ -57,9 +67,9 @@ func TestDistributedWizardBasic(t *testing.T) {
 	}
 
 	var (
-		allGrandProduct     = field.NewElement(1)
-		allLogDerivativeSum = field.Element{}
-		allHornerSum        = field.Element{}
+		allGrandProduct     = fext.One()
+		allLogDerivativeSum = fext.Element{}
+		allHornerSum        = fext.Element{}
 		generalMSet         = hasher_factory.MSetHash{}
 	)
 
@@ -68,7 +78,7 @@ func TestDistributedWizardBasic(t *testing.T) {
 		distWizard.Disc,
 		distWizard.BlueprintGLs,
 		distWizard.BlueprintLPPs,
-		distWizard.VerificationKeyMerkleTree.GetRoot(),
+		field.Octuplet{},
 	)
 
 	for i := range witnessGLs {
@@ -147,9 +157,9 @@ func TestDistributedWizardBasic(t *testing.T) {
 		generalMSet.Add(generalMSetFromLPP)
 
 		var (
-			logDerivativeSum = verRun.GetPublicInput(distributed.LogDerivativeSumPublicInput)
-			grandProduct     = verRun.GetPublicInput(distributed.GrandProductPublicInput)
-			hornerSum        = verRun.GetPublicInput(distributed.HornerPublicInput)
+			logDerivativeSum = verRun.GetPublicInput(distributed.LogDerivativeSumPublicInput).Ext
+			grandProduct     = verRun.GetPublicInput(distributed.GrandProductPublicInput).Ext
+			hornerSum        = verRun.GetPublicInput(distributed.HornerPublicInput).Ext
 		)
 
 		t.Logf("log-derivative-sum=%v grand-product=%v horner-sum=%v", logDerivativeSum.String(), grandProduct.String(), hornerSum.String())

@@ -42,7 +42,7 @@ type Proof struct {
 type Runtime interface {
 	ifaces.Runtime
 	GetSpec() *CompiledIOP
-	GetPublicInput(name string) field.Element
+	GetPublicInput(name string) fext.GenericFieldElem
 	GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams
 	GetHornerParams(name ifaces.QueryID) query.HornerParams
 	GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams
@@ -199,23 +199,23 @@ func (c *CompiledIOP) createVerifier(proof Proof, IsBLS bool) VerifierRuntime {
 }
 
 // GetPublicInput extracts the value of a public input from the proof.
-func (proof Proof) GetPublicInput(comp *CompiledIOP, name string, IsBLS bool) field.Element {
+func (proof Proof) GetPublicInput(comp *CompiledIOP, name string, IsBLS bool) fext.GenericFieldElem {
 
 	publicInputsAccessor := comp.GetPublicInputAccessor(name)
 
 	switch a := publicInputsAccessor.(type) {
 	case *accessors.FromConstAccessor:
 		if a.IsBase() {
-			return a.Base
+			return fext.GenericFieldElem{Base: a.Base, IsBase: true}
 		} else {
 			panic("Requested a base element from a public input that is a field extension")
 		}
 	case *accessors.FromPublicColumn:
 		if a.Col.Status() == column.Proof {
-			return proof.Messages.MustGet(a.Col.ID).Get(a.Pos)
+			return fext.GenericFieldElem{Base: proof.Messages.MustGet(a.Col.ID).Get(a.Pos), IsBase: true}
 		}
 	case *accessors.FromLocalOpeningYAccessor:
-		return proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams).BaseY
+		return fext.GenericFieldElem{Base: proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams).BaseY, IsBase: true}
 	}
 
 	// This generically returns the value of a public input by extracting
@@ -529,15 +529,26 @@ func (run *VerifierRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 }
 
 // GetPublicInput returns a public input from its name
-func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
+func (run *VerifierRuntime) GetPublicInput(name string) (res fext.GenericFieldElem) {
 	allPubs := run.Spec.PublicInputs
 	for i := range allPubs {
 		if allPubs[i].Name == name {
-			return allPubs[i].Acc.GetVal(run)
+			if allPubs[i].Acc.IsBase() {
+				field, err := allPubs[i].Acc.GetValBase(run)
+				if err != nil {
+					utils.Panic("error getting public input %v: %v", name, err)
+				}
+				res.Base = field
+				res.IsBase = true
+			} else {
+				res.Ext = allPubs[i].Acc.GetValExt(run)
+				res.IsBase = false
+			}
+			return res
 		}
 	}
 	utils.Panic("could not find public input nb %v", name)
-	return field.Element{}
+	return fext.GenericFieldElem{}
 }
 
 // Fs returns the Fiat-Shamir state

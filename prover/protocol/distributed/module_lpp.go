@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -39,7 +40,7 @@ type ModuleLPP struct {
 
 	// InitialFiatShamirState is the state at which to start the FiatShamir
 	// computation
-	InitialFiatShamirState ifaces.Column
+	InitialFiatShamirState [8]ifaces.Column
 
 	// N0Hash is the hash of the N0 positions for the Horner queries
 	N0Hash [8]ifaces.Column
@@ -58,7 +59,7 @@ type ModuleLPP struct {
 
 	// PublicInput contains the list of the public inputs for the current LPP
 	// module.
-	PublicInputs LimitlessPublicInput[wizard.PublicInput]
+	PublicInputs LimitlessPublicInput[wizard.PublicInput, wizard.PublicInput]
 }
 
 // SetInitialFSHash sets the initial FiatShamir state
@@ -111,13 +112,18 @@ func BuildModuleLPP(moduleInput FilteredModuleInputs) *ModuleLPP {
 // module.
 func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *ModuleLPP {
 
+	initialFiatShamirState := [8]ifaces.Column{}
+	for i := 0; i < 8; i++ {
+		initialFiatShamirState[i] = builder.InsertProof(0, ifaces.ColIDf("INITIAL_FIATSHAMIR_STATE_%d", i), 1, true)
+	}
+
 	moduleLPP := &ModuleLPP{
 		ModuleTranslator: ModuleTranslator{
 			Wiop: builder.CompiledIOP,
 			Disc: moduleInput.Disc,
 		},
 		DefinitionInput:        moduleInput,
-		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 8, true),
+		InitialFiatShamirState: initialFiatShamirState,
 	}
 
 	for _, col := range moduleInput.Columns {
@@ -210,10 +216,9 @@ func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitnessLPP) wizard.MainProv
 func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP) {
 	run.State.InsertNew(moduleWitnessKey, witness)
 
-	run.AssignColumn(
-		m.InitialFiatShamirState.GetColID(),
-		smartvectors.NewRegular(witness.InitialFiatShamirState[:]),
-	)
+	for i := range m.InitialFiatShamirState {
+		run.AssignColumn(m.InitialFiatShamirState[i].GetColID(), smartvectors.NewConstant(witness.InitialFiatShamirState[i], 1))
+	}
 
 	a := LppWitnessAssignment{ModuleLPP: *m, Round: 0}
 	a.Run(run)
@@ -432,8 +437,8 @@ func (a *CheckNxHash) IsSkipped() bool {
 
 func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 	stateOct := field.Octuplet{}
-	for i := 0; i < 8; i++ {
-		state := a.InitialFiatShamirState.GetColAssignment(run).Get(i)
+	for i, col := range a.InitialFiatShamirState {
+		state := col.GetColAssignmentAt(run, 0)
 		stateOct[i] = state
 	}
 	fs := run.Fs()
@@ -443,8 +448,8 @@ func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 
 func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	stateOct := zk.Octuplet{}
-	for i := 0; i < 8; i++ {
-		state := a.InitialFiatShamirState.GetColAssignmentGnarkAt(run, i)
+	for i, col := range a.InitialFiatShamirState {
+		state := col.GetColAssignmentGnarkAt(run, 0)
 		stateOct[i] = state
 	}
 	fs := run.Fs()
@@ -518,7 +523,14 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	modLPP.SegmentModuleIndex = modLPP.Wiop.InsertProof(0, "SEGMENT_MODULE_INDEX", 1, true)
 	segmentCountLpp[modLPP.Disc.IndexOf(modLPP.DefinitionInput.ModuleName)] = field.One()
 
-	modLPP.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
+	sharedRandomness := [8]wizard.PublicInput{}
+	for i := range sharedRandomness {
+		sharedRandomness[i] = modLPP.Wiop.InsertPublicInput(
+			fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i),
+			accessors.NewFromPublicColumn(modLPP.InitialFiatShamirState[i], 0),
+		)
+	}
+	modLPP.PublicInputs = LimitlessPublicInput[wizard.PublicInput, wizard.PublicInput]{
 		TargetNbSegments:    declareListOfPiColumns(modLPP.Wiop, 0, TargetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:      declareListOfConstantPi(modLPP.Wiop, SegmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:     declareListOfConstantPi(modLPP.Wiop, SegmentCountLPPPublicInputBase, segmentCountLpp),
@@ -530,10 +542,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 			make([]field.Element, hf.MSetHashSize),
 		),
 
-		SharedRandomness: modLPP.Wiop.InsertPublicInput(
-			InitialRandomnessPublicInput,
-			accessors.NewFromPublicColumn(modLPP.InitialFiatShamirState, 0),
-		),
+		SharedRandomness: sharedRandomness,
 	}
 
 	for i := range modLPP.PublicInputs.VKeyMerkleRoot {
@@ -558,7 +567,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	} else {
 		modLPP.PublicInputs.HornerSum = modLPP.Wiop.InsertPublicInput(
 			HornerPublicInput,
-			accessors.NewConstant(field.Zero()),
+			accessors.NewConstantExt(fext.Zero()),
 		)
 	}
 
@@ -570,7 +579,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	} else {
 		modLPP.PublicInputs.LogDerivativeSum = modLPP.Wiop.InsertPublicInput(
 			LogDerivativeSumPublicInput,
-			accessors.NewConstant(field.Zero()),
+			accessors.NewConstantExt(fext.Zero()),
 		)
 	}
 
@@ -582,7 +591,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	} else {
 		modLPP.PublicInputs.GrandProduct = modLPP.Wiop.InsertPublicInput(
 			GrandProductPublicInput,
-			accessors.NewConstant(field.One()),
+			accessors.NewConstantExt(fext.One()),
 		)
 	}
 }
@@ -609,9 +618,10 @@ func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *M
 // run as part of a prover action.
 func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 
-	var lppCommitments field.Element
-
-	lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
+	var lppCommitments field.Octuplet
+	for i := range lppCommitments {
+		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
+	}
 
 	var (
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
@@ -624,7 +634,7 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetVal(run)
 	)
 
-	mset.Remove(moduleIndex, segmentIndex, lppCommitments)
+	mset.Remove(append([]field.Element{moduleIndex, segmentIndex}, lppCommitments[:]...)...)
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
@@ -664,7 +674,7 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
 		targetMSet             = GetPublicInputList(run, GeneralMultiSetPublicInputBase, hf.MSetHashSize)
-		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
+		lppCommitments         = field.Octuplet{}
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
@@ -675,7 +685,10 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetVal(run)
 	)
 
-	mset.Remove(moduleIndex, segmentIndex, lppCommitments)
+	for i := range lppCommitments {
+		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
+	}
+	mset.Remove(append([]field.Element{moduleIndex, segmentIndex}, lppCommitments[:]...)...)
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
