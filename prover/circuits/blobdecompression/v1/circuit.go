@@ -22,7 +22,6 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
@@ -193,7 +192,8 @@ func (i *FunctionalPublicInputSnark) Sum(api frontend.API, hsh snarkHash.FieldHa
 func (c Circuit) Define(api frontend.API) error {
 	var hsh snarkHash.FieldHasher
 	if c.UseGkrMiMC {
-		hsh = gkrmimc.NewHasherFactory(api).NewHasher()
+		panic("unimplemented: uncomment when GKR poseidon is ready")
+		// hsh = gkrmimc.NewHasherFactory(api).NewHasher()
 	} else {
 		if h, err := mimc.NewMiMC(api); err != nil {
 			return err
