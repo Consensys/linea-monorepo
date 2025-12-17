@@ -28,15 +28,15 @@ const (
 	maxBlobNbBytes = 128 * 1024 * blob.PackingSizeU256 / 256
 )
 
-func combine(api frontend.API, bytes []zk.WrappedVariable, perNewWord int) []zk.WrappedVariable {
-	res := make([]zk.WrappedVariable, len(bytes)/perNewWord)
+func combine(api frontend.API, bytes []frontend.Variable, perNewWord int) []frontend.Variable {
+	res := make([]frontend.Variable, len(bytes)/perNewWord)
 	for i := range res {
 		res[i] = readNum(api, bytes[i*perNewWord:(i+1)*perNewWord])
 	}
 	return res
 }
 
-func readNum(api frontend.API, bytes []zk.WrappedVariable) zk.WrappedVariable {
+func readNum(api frontend.API, bytes []frontend.Variable) frontend.Variable {
 	return compress.ReadNum(api, bytes, big.NewInt(256))
 }
 
@@ -45,7 +45,7 @@ func readNum(api frontend.API, bytes []zk.WrappedVariable) zk.WrappedVariable {
 // it ignores the dict checksum
 // past nbBatches, the lengths are considered zero
 // all lengths l are guaranteed to be within 0 ≤ l - 31 ≤ nextPowerOfTwo(maxPayloadBytes - 31)
-func parseHeader(api frontend.API, blobBytes []zk.WrappedVariable, blobLen zk.WrappedVariable) (headerLen zk.WrappedVariable, dictHash zk.WrappedVariable, nbBatches zk.WrappedVariable, bytesPerBatch []zk.WrappedVariable, err error) {
+func parseHeader(api frontend.API, blobBytes []frontend.Variable, blobLen frontend.Variable) (headerLen frontend.Variable, dictHash frontend.Variable, nbBatches frontend.Variable, bytesPerBatch []frontend.Variable, err error) {
 	if len(blobBytes) < 2+checkSumSize+blob.NbElemsEncodingBytes { // version + checksum + nbBatches
 		return 0, 0, 0, nil, errors.New("blob too short - no room for header")
 	}
@@ -74,7 +74,7 @@ func parseHeader(api frontend.API, blobBytes []zk.WrappedVariable, blobLen zk.Wr
 	rc := rangecheck.New(api)
 	const maxLMinus31 = blob.MaxUncompressedBytes - 31
 	maxLMinus31Bits := bits.Len(uint(maxLMinus31))
-	iterateInRange(api, nbBatches, MaxNbBatches, func(i int, inRange zk.WrappedVariable) { // TODO-perf decide whether or not to merge this "loop" with the truncation above. PROBABLY NOT WORTH IT: currently this entire function is not even showing up in the profile graph
+	iterateInRange(api, nbBatches, MaxNbBatches, func(i int, inRange frontend.Variable) { // TODO-perf decide whether or not to merge this "loop" with the truncation above. PROBABLY NOT WORTH IT: currently this entire function is not even showing up in the profile graph
 		rc.Check(api.MulAcc(api.Mul(-31, inRange), inRange, bytesPerBatch[i]), maxLMinus31Bits) // check for inRange * (bytesPerBatch[i] - 31). i.e. don't check past nbBatches
 	})
 
@@ -88,7 +88,7 @@ func parseHeader(api frontend.API, blobBytes []zk.WrappedVariable, blobLen zk.Wr
 // All batches must be at least 31 bytes long. The function performs this range check.
 // It is also checked that the batches are all within the MAXIMUM range of the blob. CheckBatchesSums does not have access to the actual blob size, so it remains the caller's responsibility to check that the batches are within the confines of the ACTUAL blob size.
 // The expected checksums are not checked beyond nbBatches
-func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches zk.WrappedVariable, blobPayload []zk.WrappedVariable, batchLengths []zk.WrappedVariable, expectedChecksums []zk.WrappedVariable) error {
+func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches frontend.Variable, blobPayload []frontend.Variable, batchLengths []frontend.Variable, expectedChecksums []frontend.Variable) error {
 
 	batchEnds := internal.PartialSums(api, batchLengths)
 
@@ -112,7 +112,7 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 		cappedRamp.Insert(min(31, max(i, 0)))
 	}
 	// min0Max31(x) = min(31, max(x, 0)), i.e. it returns 0 if x < 0, 31 if x > 31, and x otherwise
-	min0Max31 := func(x zk.WrappedVariable) zk.WrappedVariable {
+	min0Max31 := func(x frontend.Variable) frontend.Variable {
 		return cappedRamp.Lookup(api.Add(x, cappedRampNegMin))[0]
 	}
 
@@ -148,14 +148,14 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 	// we need an extra dummy input element past the end of the dummy batch, because the loop is always considering
 	// sealing the dummy batch and starting yet another one after it, though it never actually happens.
 	// still, the circuit computes the 31-byte prefix of the next batch.
-	inputExt := make([]zk.WrappedVariable, dummyBatchEnd+31)
+	inputExt := make([]frontend.Variable, dummyBatchEnd+31)
 	for n := copy(inputExt, blobPayload); n < len(inputExt); n++ {
 		inputExt[n] = 0
 	}
 	inputT := internal.SliceToTable(api, inputExt)
 	// inputAt returns a packed, zero-padded substring of length min(l,31) starting at i
-	inputAt := func(i, l zk.WrappedVariable) zk.WrappedVariable {
-		out := make([]zk.WrappedVariable, 31)
+	inputAt := func(i, l frontend.Variable) frontend.Variable {
+		out := make([]frontend.Variable, 31)
 		r := internal.NewRange(api, l, len(out))
 		for j := range out {
 			out[j] = api.Mul(r.InRange[j], inputT.Lookup(api.Add(i, j))[0]) // Perf note this enables substrings of length 0 which we never use
@@ -172,7 +172,7 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 		inputAt31B.Insert(nr.Next())
 	}
 
-	_hsh := func(a, b zk.WrappedVariable) zk.WrappedVariable {
+	_hsh := func(a, b frontend.Variable) frontend.Variable {
 		hasher.Reset()
 		hasher.Write(a, b)
 		res := hasher.Sum()
@@ -181,11 +181,11 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 
 	var (
 		partialSumsT logderivlookup.Table
-		partialSums  []zk.WrappedVariable
+		partialSums  []frontend.Variable
 	)
 	// create a table of claimed sums and prove their correctness as we go through the payload
 	{
-		hintIn := make([]zk.WrappedVariable, 1, 1+len(batchEnds)+len(blobPayload))
+		hintIn := make([]frontend.Variable, 1, 1+len(batchEnds)+len(blobPayload))
 		hintIn[0] = nbBatches
 		hintIn = append(hintIn, batchEnds[:]...)
 		hintIn = append(hintIn, blobPayload...)
@@ -196,10 +196,10 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 	partialSumsT = internal.SliceToTable(api, partialSums)
 	partialSumsT.Insert(0) // dummy in case of maximum nbBatches
 
-	batchSum := inputAt(0, 31)      // normally this should be taken care of by the api.Select(currAlreadyOver,... line. But the very first batch doesn't get this treatment because we know it starts at 0
-	batchI := zk.WrappedVariable(0) // index of the current batch
+	batchSum := inputAt(0, 31)     // normally this should be taken care of by the api.Select(currAlreadyOver,... line. But the very first batch doesn't get this treatment because we know it starts at 0
+	batchI := frontend.Variable(0) // index of the current batch
 	// each 31 byte block partially belongs to one or two batches (guaranteed by rejecting batches smaller than 31 bytes)
-	startR := zk.WrappedVariable(0) // the remainder by 31 of where the current batch starts
+	startR := frontend.Variable(0) // the remainder by 31 of where the current batch starts
 
 	// each iteration is able to process at most one new batch. This dictates that end[i] % 31 != end[i+1] % 31 for any applicable i
 	for i := 0; i < nbHashes; i++ {
@@ -256,7 +256,7 @@ func registerHints() {
 }
 
 // side effect: ensures 0 ≤ v[i] < 2ᵇⁱᵗˢ⁺² for all i
-func divBy31(api frontend.API, v []zk.WrappedVariable, bits int) (q, r []zk.WrappedVariable, err error) {
+func divBy31(api frontend.API, v []frontend.Variable, bits int) (q, r []frontend.Variable, err error) {
 	qNbBits := bits - 4
 
 	if hintOut, err := api.Compiler().NewHint(divBy31Hint, 2*len(v), v...); err != nil {
@@ -294,8 +294,8 @@ func divBy31Hint(_ *big.Int, ins []*big.Int, outs []*big.Int) error {
 }
 
 // iterateInRange runs f(i, inRange) for 0 ≤ i < staticRange where inRange is 1 if i < dynamicRange and 0 otherwise
-func iterateInRange(api frontend.API, dynamicRange zk.WrappedVariable, staticRange int, f func(i int, inRange zk.WrappedVariable)) {
-	inRange := zk.WrappedVariable(1)
+func iterateInRange(api frontend.API, dynamicRange frontend.Variable, staticRange int, f func(i int, inRange frontend.Variable)) {
+	inRange := frontend.Variable(1)
 	for i := 0; i < staticRange; i++ {
 		inRange = api.Sub(inRange, api.IsZero(api.Sub(i, dynamicRange)))
 		f(i, inRange)
@@ -303,17 +303,17 @@ func iterateInRange(api frontend.API, dynamicRange zk.WrappedVariable, staticRan
 }
 
 // crumbStreamToByteStream converts a slice of bits into a slice of bytes, taking the last non-zero byte as signifying the end of the data
-func crumbStreamToByteStream(api frontend.API, crumbs []zk.WrappedVariable) (bytes []zk.WrappedVariable, nbBytes zk.WrappedVariable) {
+func crumbStreamToByteStream(api frontend.API, crumbs []frontend.Variable) (bytes []frontend.Variable, nbBytes frontend.Variable) {
 	bytes = internal.Pack(api, crumbs, 8, 2) // sanity check
 
-	found := zk.WrappedVariable(0)
-	nbBytes = zk.WrappedVariable(0)
+	found := frontend.Variable(0)
+	nbBytes = frontend.Variable(0)
 	for i := len(bytes) - 1; i >= 0; i-- {
 
 		z := api.IsZero(bytes[i])
 
-		lastNonZero := plonk.EvaluateExpression(api, z, found, -1, -1, 1, 1)    // nz - found
-		nbBytes = api.Add(nbBytes, api.Mul(lastNonZero, zk.WrappedVariable(i))) // the last nonzero byte itself is useless
+		lastNonZero := plonk.EvaluateExpression(api, z, found, -1, -1, 1, 1)   // nz - found
+		nbBytes = api.Add(nbBytes, api.Mul(lastNonZero, frontend.Variable(i))) // the last nonzero byte itself is useless
 
 		//api.AssertIsEqual(api.Mul(api.Sub(bytesPerElem-i%bytesPerElem, unpacked[i]), lastNonZero), 0) // sanity check, technically unnecessary TODO @Tabaie make sure it's one constraint only or better yet, remove
 
@@ -325,7 +325,7 @@ func crumbStreamToByteStream(api frontend.API, crumbs []zk.WrappedVariable) (byt
 
 // ProcessBlob takes in a blob, an evaluation challenge, and a decompression dictionary. It returns a hash of the blob data along with its "evaluation" at the challenge point and a hash of all the batches in the blob payload
 // TODO too many arguments; confusing. Replace with a request struct?
-func ProcessBlob(api frontend.API, hsh snarkHash.FieldHasher, maxUncompressedBlobSize int, blobBytes []zk.WrappedVariable, evaluationChallenge [32]zk.WrappedVariable, eip4844Enabled zk.WrappedVariable, expectedBatchSums internal.VarSlice, dict []zk.WrappedVariable) (blobSum zk.WrappedVariable, evaluation [2]zk.WrappedVariable, err error) {
+func ProcessBlob(api frontend.API, hsh snarkHash.FieldHasher, maxUncompressedBlobSize int, blobBytes []frontend.Variable, evaluationChallenge [32]frontend.Variable, eip4844Enabled frontend.Variable, expectedBatchSums internal.VarSlice, dict []frontend.Variable) (blobSum frontend.Variable, evaluation [2]frontend.Variable, err error) {
 
 	blobCrumbs := internal.PackedBytesToCrumbs(api, blobBytes, blob.PackingSizeU256)
 
@@ -356,7 +356,7 @@ func ProcessBlob(api frontend.API, hsh snarkHash.FieldHasher, maxUncompressedBlo
 	}
 
 	// decompress the batches
-	payload := make([]zk.WrappedVariable, maxUncompressedBlobSize)
+	payload := make([]frontend.Variable, maxUncompressedBlobSize)
 	payloadLen, err := lzss.Decompress(
 		api,
 		compress.ShiftLeft(api, blobUnpackedBytes[:maxBlobNbBytes], headerLen), // TODO Signal to the decompressor that the input is zero padded; to reduce constraint numbers
@@ -377,7 +377,7 @@ func ProcessBlob(api frontend.API, hsh snarkHash.FieldHasher, maxUncompressedBlo
 	return
 }
 
-func CheckDictChecksum(api frontend.API, checksum zk.WrappedVariable, dict []zk.WrappedVariable) error {
+func CheckDictChecksum(api frontend.API, checksum frontend.Variable, dict []frontend.Variable) error {
 	dictCrumbs := internal.PackedBytesToCrumbs(api, dict, 8) // basically just turn bytes into bits
 	dictCrumbs = append(dictCrumbs, 3, 3, 3, 3)              // add the 0xff end-of-stream marker
 	dictPacked := internal.PackFull(api, dictCrumbs, 2)

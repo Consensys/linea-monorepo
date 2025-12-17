@@ -10,7 +10,6 @@ import (
 	frbw6 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 
@@ -21,11 +20,11 @@ import (
 // be optionally given an ID (0 by default) so that a proof for circuit of ID
 // x will be rejected by the verifier for the circuit of ID y.
 type CircuitDummy struct {
-	X zk.WrappedVariable `gnark:",public"`
+	X frontend.Variable `gnark:",public"`
 
 	// This relies on the fact that x^5 is a permutation in Fr of the bn254
 	// curve.
-	X5 zk.WrappedVariable `gnark:",secret"`
+	X5 frontend.Variable `gnark:",secret"`
 
 	// Optional field, changes the circuit so that X5 = X^5 + ID. This
 	// functionality allows generated different incompatible versions of the

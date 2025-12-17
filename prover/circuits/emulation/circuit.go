@@ -19,7 +19,6 @@ import (
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // shorthand for the emulated types as this can get verbose very quickly with
@@ -38,12 +37,12 @@ type (
 // The outer-circuits converts a proof over the BW6-761 field into a proof over
 // the BN254 field.
 type CircuitEmulation struct {
-	CircuitVkeys []emCircVkey       `gnark:"-"`
-	BaseVKey     emBaseVKey         `gnark:"-"`
-	Proof        emProof            `gnark:",secret:"`
-	Witness      emWitness          `gnark:",secret:"`
-	PublicInput  zk.WrappedVariable `gnark:",public"`
-	CircuitID    zk.WrappedVariable `gnark:",secret:"`
+	CircuitVkeys []emCircVkey      `gnark:"-"`
+	BaseVKey     emBaseVKey        `gnark:"-"`
+	Proof        emProof           `gnark:",secret:"`
+	Witness      emWitness         `gnark:",secret:"`
+	PublicInput  frontend.Variable `gnark:",public"`
+	CircuitID    frontend.Variable `gnark:",secret:"`
 }
 
 func (c *CircuitEmulation) Define(api frontend.API) error {
@@ -56,7 +55,7 @@ func (c *CircuitEmulation) Define(api frontend.API) error {
 	var (
 		proofs    = []emProof{c.Proof}
 		witnesses = []emWitness{c.Witness}
-		switches  = []zk.WrappedVariable{c.CircuitID}
+		switches  = []frontend.Variable{c.CircuitID}
 	)
 
 	err = verifier.AssertDifferentProofs(c.BaseVKey, c.CircuitVkeys, switches, proofs, witnesses, emPlonk.WithCompleteArithmetic())

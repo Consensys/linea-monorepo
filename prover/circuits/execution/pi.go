@@ -16,16 +16,16 @@ import (
 // FunctionalPublicInputQSnark the information on this execution that cannot be
 // extracted from other input in the same aggregation batch
 type FunctionalPublicInputQSnark struct {
-	DataChecksum                 zk.WrappedVariable
+	DataChecksum                 frontend.Variable
 	L2MessageHashes              L2MessageHashes
-	InitialBlockTimestamp        zk.WrappedVariable
-	FinalStateRootHash           zk.WrappedVariable
-	FinalBlockNumber             zk.WrappedVariable
-	FinalBlockTimestamp          zk.WrappedVariable
-	InitialRollingHashUpdate     [32]zk.WrappedVariable
-	FirstRollingHashUpdateNumber zk.WrappedVariable
-	FinalRollingHashUpdate       [32]zk.WrappedVariable
-	LastRollingHashUpdateNumber  zk.WrappedVariable
+	InitialBlockTimestamp        frontend.Variable
+	FinalStateRootHash           frontend.Variable
+	FinalBlockNumber             frontend.Variable
+	FinalBlockTimestamp          frontend.Variable
+	InitialRollingHashUpdate     [32]frontend.Variable
+	FirstRollingHashUpdateNumber frontend.Variable
+	FinalRollingHashUpdate       [32]frontend.Variable
+	LastRollingHashUpdateNumber  frontend.Variable
 }
 
 // L2MessageHashes is a wrapper for [Var32Slice] it is use to instantiate the
@@ -69,13 +69,13 @@ func (s *L2MessageHashes) RangeCheck(api frontend.API) {
 // @alex: it would be nice to make that function compatible with the GKR hasher
 // factory though in practice this function will only create 32 calls to the
 // MiMC permutation which makes it a non-issue.
-func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) zk.WrappedVariable {
+func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) frontend.Variable {
 
 	var (
 		// sumIsUsed is used to count the number of non-zero hashes that we
 		// found in s. It is to be tested against s.Length.
-		sumIsUsed = zk.WrappedVariable(0)
-		res       = zk.WrappedVariable(0)
+		sumIsUsed = frontend.Variable(0)
+		res       = frontend.Variable(0)
 	)
 
 	for i := range s.Values {
@@ -104,10 +104,10 @@ func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) zk.WrappedVariable {
 
 type FunctionalPublicInputSnark struct {
 	FunctionalPublicInputQSnark
-	InitialStateRootHash zk.WrappedVariable
-	InitialBlockNumber   zk.WrappedVariable
-	ChainID              zk.WrappedVariable
-	L2MessageServiceAddr zk.WrappedVariable
+	InitialStateRootHash frontend.Variable
+	InitialBlockNumber   frontend.Variable
+	ChainID              frontend.Variable
+	L2MessageServiceAddr frontend.Variable
 }
 
 // RangeCheck checks that values are within range
@@ -131,7 +131,7 @@ func (spiq *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 	spiq.L2MessageHashes.RangeCheck(api)
 }
 
-func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) zk.WrappedVariable {
+func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) frontend.Variable {
 
 	var (
 		finalRollingHash   = internal.CombineBytesIntoElements(api, spi.FinalRollingHashUpdate)

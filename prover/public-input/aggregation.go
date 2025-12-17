@@ -121,7 +121,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 		AggregationFPIQSnark: AggregationFPIQSnark{
 			LastFinalizedBlockNumber:       zk.ValueOf(pi.LastFinalizedBlockNumber),
 			LastFinalizedBlockTimestamp:    zk.ValueOf(pi.LastFinalizedBlockTimestamp),
-			LastFinalizedRollingHash:       [32]zk.WrappedVariable{},
+			LastFinalizedRollingHash:       [32]frontend.Variable{},
 			LastFinalizedRollingHashNumber: zk.ValueOf(pi.LastFinalizedRollingHashMsgNumber),
 			InitialStateRootHash:           zk.ValueOf(pi.InitialStateRootHash[:]),
 
@@ -129,7 +129,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			ChainID:              zk.ValueOf(pi.ChainID),
 			L2MessageServiceAddr: zk.ValueOf(pi.L2MessageServiceAddr[:]),
 		},
-		L2MsgMerkleTreeRoots:   make([][32]zk.WrappedVariable, len(pi.L2MsgMerkleTreeRoots)),
+		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, len(pi.L2MsgMerkleTreeRoots)),
 		FinalBlockNumber:       zk.ValueOf(pi.FinalBlockNumber),
 		FinalBlockTimestamp:    zk.ValueOf(pi.FinalBlockTimestamp),
 		L2MsgMerkleTreeDepth:   pi.L2MsgMerkleTreeDepth,
@@ -149,28 +149,28 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 }
 
 type AggregationFPIQSnark struct {
-	ParentShnarf                   [32]zk.WrappedVariable
-	NbDecompression                zk.WrappedVariable
-	InitialStateRootHash           zk.WrappedVariable
-	LastFinalizedBlockNumber       zk.WrappedVariable
-	LastFinalizedBlockTimestamp    zk.WrappedVariable
-	LastFinalizedRollingHash       [32]zk.WrappedVariable
-	LastFinalizedRollingHashNumber zk.WrappedVariable
-	ChainID                        zk.WrappedVariable // WARNING: Currently not bound in Sum
-	L2MessageServiceAddr           zk.WrappedVariable // WARNING: Currently not bound in Sum
+	ParentShnarf                   [32]frontend.Variable
+	NbDecompression                frontend.Variable
+	InitialStateRootHash           frontend.Variable
+	LastFinalizedBlockNumber       frontend.Variable
+	LastFinalizedBlockTimestamp    frontend.Variable
+	LastFinalizedRollingHash       [32]frontend.Variable
+	LastFinalizedRollingHashNumber frontend.Variable
+	ChainID                        frontend.Variable // WARNING: Currently not bound in Sum
+	L2MessageServiceAddr           frontend.Variable // WARNING: Currently not bound in Sum
 }
 
 type AggregationFPISnark struct {
 	AggregationFPIQSnark
-	NbL2Messages           zk.WrappedVariable // TODO not used in hash. delete if not necessary
-	L2MsgMerkleTreeRoots   [][32]zk.WrappedVariable
-	NbL2MsgMerkleTreeRoots zk.WrappedVariable
-	// FinalStateRootHash     zk.WrappedVariable redundant: incorporated into final shnarf
-	FinalBlockNumber       zk.WrappedVariable
-	FinalBlockTimestamp    zk.WrappedVariable
-	FinalShnarf            [32]zk.WrappedVariable
-	FinalRollingHash       [32]zk.WrappedVariable
-	FinalRollingHashNumber zk.WrappedVariable
+	NbL2Messages           frontend.Variable // TODO not used in hash. delete if not necessary
+	L2MsgMerkleTreeRoots   [][32]frontend.Variable
+	NbL2MsgMerkleTreeRoots frontend.Variable
+	// FinalStateRootHash     frontend.Variable redundant: incorporated into final shnarf
+	FinalBlockNumber       frontend.Variable
+	FinalBlockTimestamp    frontend.Variable
+	FinalShnarf            [32]frontend.Variable
+	FinalRollingHash       [32]frontend.Variable
+	FinalRollingHashNumber frontend.Variable
 	L2MsgMerkleTreeDepth   int
 }
 
@@ -213,7 +213,7 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 	return
 }
 
-func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]zk.WrappedVariable {
+func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]frontend.Variable {
 	// number of hashes: 12
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,
@@ -231,7 +231,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 	)
 
 	// turn the hash into a bn254 element
-	var res [32]zk.WrappedVariable
+	var res [32]frontend.Variable
 	copy(res[:], utils.ReduceBytes[emulated.BN254Fr](api, sum[:]))
 	return res
 }
