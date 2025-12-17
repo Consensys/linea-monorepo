@@ -97,11 +97,11 @@ jobs:
   delete-tag-on-failure:
     needs: [ build ]
     runs-on: ubuntu-latest
-    if: failure() && ( needs.build.outputs.uploadResults == 'failure' || needs.build.outputs.setupGccResults == 'failure' || needs.build.outputs.buildWithoutTestsResults == 'failure' || needs.build.outputs.storeArtifactsResults == 'failure' || needs.build.outputs.runSpotlessResults == 'failure')
+    if: needs.build.outputs.uploadResults == 'failure' || needs.build.outputs.setupGccResults == 'failure' || needs.build.outputs.buildWithoutTestsResults == 'failure' || needs.build.outputs.storeArtifactsResults == 'failure' || needs.build.outputs.runSpotlessResults == 'failure'
     steps:
       - name: Delete tag created without release
         run: |
-          delete_output=$(gh release delete "${{needs.build.outputs.releaseTag}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
+          echo "failure()"
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -111,7 +111,7 @@ jobs:
 
   unit-tests-prague:
     needs: [ build ]
-    if: success() && needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
+    if: needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success
     uses: ./.github/workflows/reusable-tracer-unit-tests.yml
     with:
       zkevm_fork: PRAGUE
@@ -119,7 +119,7 @@ jobs:
 
   unit-tests-osaka:
     needs: [ build ]
-    if: success() && needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
+    if: needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
     uses: ./.github/workflows/reusable-tracer-unit-tests.yml
     with:
       zkevm_fork: OSAKA
@@ -130,7 +130,7 @@ jobs:
   # ==================================================================
   replay-tests:
     needs: [ build ]
-    if: success() && needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
+    if: needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
@@ -177,7 +177,7 @@ jobs:
   # ==================================================================
   publish:
     needs: [ build ]
-    if: success() && needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success' && github.event_name != 'pull_request'
+    if: needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success' && github.event_name != 'pull_request'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     env:
       architecture: "amd64"
