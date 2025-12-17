@@ -21,6 +21,13 @@ jobs:
   # ==================================================================
   build:
     runs-on: ubuntu-latest
+    continue-on-error: true
+    outputs:
+      uploadResults: ${{ steps.upload-assets.outcome }}
+      setupGccResults: ${{ steps.setup-gcc.outcome }}
+      buildWithoutTestsResults: ${{ steps.build-without-tests.outcome }}
+      storeArtifactsResults: ${{ steps.store-artifacts.outcome }}
+      runSpotlessResults: ${{ steps.run-spotless.outcome }}
     steps:
       - name: Configure Tag
         id: config
@@ -50,6 +57,7 @@ jobs:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: Upload Assets
+        id: upload-assets
         run: |
           gh release create ${{ steps.config.outputs.RELEASE_TAG }} $jar_asset
           gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
@@ -59,21 +67,39 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Set up GCC
+        id: setup-gcc
         uses: egor-tensin/setup-gcc@eaa888eb19115a521fa72b65cd94fe1f25bbcaac #v1.3
 
       - name: Build without tests
+        id: build-without-tests
         run: ./gradlew :tracer:build -x test -x spotlessCheck
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: Store distribution artifacts
+        id : store-artifacts
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: distributions
           path: tracer/arithmetization/build/libs
 
       - name: Run spotless
+        id: run-spotless
         run: ./gradlew --no-daemon --parallel :tracer:clean :tracer:spotlessCheck
+
+  # ==================================================================
+  # Delete created tag in case following steps failed
+  # ==================================================================
+
+  delete-tag-on-failure:
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete tag created without release
+        run: |
+          gh release delete ${{ steps.config.outputs.RELEASE_TAG }} --cleanup-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   # ==================================================================
   # Unit Tests
