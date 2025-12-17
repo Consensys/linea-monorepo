@@ -47,7 +47,6 @@ import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
-import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class LondonHub extends Hub {
   public LondonHub(ChainConfig chain, PublicInputs publicInputs) {
@@ -108,11 +107,6 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected void setInitializationSection(WorldView world) {
-    new LondonInitializationSection(this, world);
-  }
-
-  @Override
   protected void setFinalizationSection(Hub hub) {
     new LondonFinalizationSection(hub);
   }
@@ -143,16 +137,6 @@ public class LondonHub extends Hub {
   @Override
   protected void setMcopySection(Hub hub) {
     throw new IllegalStateException("MCOPY opcode appears in Cancun");
-  }
-
-  @Override
-  protected void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
-    // Nothing to do, appears in Cancun
-  }
-
-  @Override
-  protected void traceSystemFinalTransaction() {
-    // Nothing to do, appears in Cancun
   }
 
   @Override

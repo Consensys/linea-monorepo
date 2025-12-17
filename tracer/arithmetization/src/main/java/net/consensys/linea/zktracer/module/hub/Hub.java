@@ -25,7 +25,7 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_FINL
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_INIT;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_WARM;
-import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.USER;
+import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
@@ -58,6 +58,7 @@ import net.consensys.linea.zktracer.module.hub.defer.DeferRegistry;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.stack.StackFragment;
 import net.consensys.linea.zktracer.module.hub.section.*;
+import net.consensys.linea.zktracer.module.hub.section.TxInitializationSection;
 import net.consensys.linea.zktracer.module.hub.section.call.CallSection;
 import net.consensys.linea.zktracer.module.hub.section.copy.CallDataCopySection;
 import net.consensys.linea.zktracer.module.hub.section.copy.CodeCopySection;
@@ -68,7 +69,9 @@ import net.consensys.linea.zktracer.module.hub.section.halt.ReturnSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.RevertSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.StopSection;
 import net.consensys.linea.zktracer.module.hub.section.skip.TxSkipSection;
-import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.TxInitializationSection;
+import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash;
+import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection;
+import net.consensys.linea.zktracer.module.hub.section.systemTransaction.SysfNoopSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
 import net.consensys.linea.zktracer.module.hub.state.BlockStack;
@@ -1179,8 +1182,6 @@ public abstract class Hub implements Module {
       TransactionProcessingMetadata transactionProcessingMetadata,
       Transients transients);
 
-  protected abstract void setInitializationSection(WorldView world);
-
   protected abstract void setFinalizationSection(Hub hub);
 
   protected abstract boolean coinbaseWarmthAtTxEnd();
@@ -1191,10 +1192,24 @@ public abstract class Hub implements Module {
 
   protected abstract void setMcopySection(Hub hub);
 
-  protected abstract void traceSysiTransactions(
-      WorldView world, ProcessableBlockHeader blockHeader);
+  private void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
+    state.transactionProcessingType(SYSI);
+    state.processingPhase(TX_SKIP);
 
-  protected abstract void traceSystemFinalTransaction();
+    // Cancun SYSI: EIP4788: Beacon Block Root
+    state.incrementSysiTransactionNumber();
+    new EIP4788BeaconBlockRootSection(this, world, blockHeader);
+    // Prague SYSI: EIP2935: Block Hash
+    state.incrementSysiTransactionNumber();
+    new EIP2935HistoricalHash(this, world, blockHeader);
+  }
+
+  private void traceSystemFinalTransaction() {
+    state.transactionProcessingType(SYSF);
+    state.incrementSysfTransactionNumber();
+    state.processingPhase(TX_SKIP);
+    new SysfNoopSection(this);
+  }
 
   protected abstract void setSelfdestructSection(Hub hub, final MessageFrame frame);
 }

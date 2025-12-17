@@ -35,6 +35,7 @@ import static net.consensys.linea.zktracer.module.hub.section.MsizeSection.NB_RO
 import static net.consensys.linea.zktracer.module.hub.section.SstoreSection.NB_ROWS_HUB_STORAGE;
 import static net.consensys.linea.zktracer.module.hub.section.StackOnlySection.NB_ROWS_HUB_SIMPLE_STACK_OP;
 import static net.consensys.linea.zktracer.module.hub.section.StackRamSection.NB_ROWS_HUB_STACKRAM;
+import static net.consensys.linea.zktracer.module.hub.section.TxInitializationSection.NB_ROWS_HUB_INIT;
 import static net.consensys.linea.zktracer.module.hub.section.call.CallSection.NB_ROWS_HUB_CALL;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.BlakeSubsection.NB_ROWS_HUB_PRC_BLAKE;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.EllipticCurvePrecompileSubsection.NB_ROWS_HUB_PRC_ELLIPTIC_CURVE;
@@ -57,7 +58,6 @@ import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.SysfNoopSection.NB_ROWS_HUB_SYSF_NOOP;
 import static net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection.NB_ROWS_HUB_TLOAD;
 import static net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection.NB_ROWS_HUB_TSTORE;
-import static net.consensys.linea.zktracer.module.hub.section.txInitializationSection.TxInitializationSection.NB_ROWS_HUB_INIT;
 import static net.consensys.linea.zktracer.module.logdata.LogData.lineCountForLogData;
 import static net.consensys.linea.zktracer.module.loginfo.LogInfo.lineCountForLogInfo;
 import static net.consensys.linea.zktracer.module.mxp.moduleCall.CancunMSizeMxpCall.NB_ROWS_MXP_MSIZE;

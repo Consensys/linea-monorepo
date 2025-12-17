@@ -52,7 +52,8 @@ public enum Fork {
     return switch (fork) {
       case OSAKA -> "osaka";
       // case AMSTERDAM -> "amsterdam";
-      case LONDON, PARIS, SHANGHAI, CANCUN, PRAGUE -> throw new IllegalArgumentException("Fork no more supported by the tracer: " + fork);
+      case LONDON, PARIS, SHANGHAI, CANCUN, PRAGUE ->
+          throw new IllegalArgumentException("Fork no more supported by the tracer: " + fork);
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }
@@ -120,10 +121,13 @@ public enum Fork {
     return switch (hardForkId) {
       case MainnetHardforkId.OSAKA -> OSAKA;
       // case MainnetHardforkId.AMSTERDAM -> AMSTERDAM;
-      case MainnetHardforkId.LONDON, MainnetHardforkId.PARIS,MainnetHardforkId.SHANGHAI, MainnetHardforkId.CANCUN,MainnetHardforkId.PRAGUE ->
-        throw new IllegalArgumentException("Fork no more supported by the tracer: " + hardForkId);
-      default ->
-          throw new IllegalArgumentException("Unknown fork: " + hardForkId);
+      case MainnetHardforkId.LONDON,
+          MainnetHardforkId.PARIS,
+          MainnetHardforkId.SHANGHAI,
+          MainnetHardforkId.CANCUN,
+          MainnetHardforkId.PRAGUE ->
+          throw new IllegalArgumentException("Fork no more supported by the tracer: " + hardForkId);
+      default -> throw new IllegalArgumentException("Unknown fork: " + hardForkId);
     };
   }
 
@@ -183,7 +187,8 @@ public enum Fork {
   public static GasCalculator getGasCalculatorFromFork(Fork fork) {
     return switch (fork) {
       case OSAKA -> new OsakaGasCalculator();
-      case LONDON, PARIS, SHANGHAI, CANCUN, PRAGUE -> throw new IllegalArgumentException("Fork no more supported by the tracer: " + fork);
+      case LONDON, PARIS, SHANGHAI, CANCUN, PRAGUE ->
+          throw new IllegalArgumentException("Fork no more supported by the tracer: " + fork);
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }
@@ -198,7 +203,8 @@ public enum Fork {
   public static int numberOfAddressesSeenBySystemTransaction(Fork fork) {
     return switch (fork) {
       case OSAKA -> 2;
-      case LONDON, PARIS, SHANGHAI, CANCUN, PRAGUE -> throw new IllegalArgumentException("Fork no more supported by the tracer: " + fork);
+      case LONDON, PARIS, SHANGHAI, CANCUN, PRAGUE ->
+          throw new IllegalArgumentException("Fork no more supported by the tracer: " + fork);
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }
@@ -207,7 +213,8 @@ public enum Fork {
   public static String toPascalCase(Fork fork) {
     return switch (fork) {
       case OSAKA -> "Osaka";
-      case LONDON, PARIS, SHANGHAI, CANCUN, PRAGUE -> throw new IllegalArgumentException("Fork no more supported by the tracer: " + fork);
+      case LONDON, PARIS, SHANGHAI, CANCUN, PRAGUE ->
+          throw new IllegalArgumentException("Fork no more supported by the tracer: " + fork);
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }

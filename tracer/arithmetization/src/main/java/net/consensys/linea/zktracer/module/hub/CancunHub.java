@@ -15,10 +15,6 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP;
-import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSF;
-import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
-
 import java.util.Map;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
@@ -29,8 +25,6 @@ import net.consensys.linea.zktracer.module.hub.section.McopySection;
 import net.consensys.linea.zktracer.module.hub.section.finalization.CancunFinalizationSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.selfdestruct.CancunSelfdestructSection;
 import net.consensys.linea.zktracer.module.hub.section.skip.CancunTxSkipSection;
-import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection;
-import net.consensys.linea.zktracer.module.hub.section.systemTransaction.SysfNoopSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection;
 import net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
@@ -49,7 +43,6 @@ import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
-import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class CancunHub extends ShanghaiHub {
   public CancunHub(ChainConfig chain, PublicInputs publicInputs) {
@@ -117,11 +110,6 @@ public class CancunHub extends ShanghaiHub {
   }
 
   @Override
-  protected void setInitializationSection(WorldView world) {
-    new CancunInitializationSection(this, world);
-  }
-
-  @Override
   protected void setFinalizationSection(Hub hub) {
     new CancunFinalizationSection(hub);
   }
@@ -139,24 +127,6 @@ public class CancunHub extends ShanghaiHub {
   @Override
   protected void setMcopySection(Hub hub) {
     new McopySection(hub);
-  }
-
-  @Override
-  protected void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
-    state.transactionProcessingType(SYSI);
-    state.incrementSysiTransactionNumber();
-    state.processingPhase(TX_SKIP);
-    new EIP4788BeaconBlockRootSection(this, world, blockHeader);
-  }
-
-  @Override
-  protected void traceSystemFinalTransaction() {
-    state.transactionProcessingType(SYSF);
-    // TODO: the two following should be done at the beginning of the none section, but requires
-    // java > 21
-    state.incrementSysfTransactionNumber();
-    state.processingPhase(TX_SKIP);
-    new SysfNoopSection(this);
   }
 
   @Override

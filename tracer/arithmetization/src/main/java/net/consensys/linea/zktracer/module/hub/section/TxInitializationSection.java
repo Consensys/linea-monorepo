@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section.txInitializationSection;
+package net.consensys.linea.zktracer.module.hub.section;
 
 import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
@@ -28,7 +28,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
-import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -247,13 +246,13 @@ public final class TxInitializationSection extends TraceSection implements EndTr
   private AccountFragment makeCoinbaseWarmingFragment(
       final Hub hub, final WorldView world, final TransactionProcessingMetadata tx) {
     final AccountSnapshot coinbase =
-      canonical(hub, world, hub.coinbaseAddress(), tx.isCoinbasePreWarmed());
+        canonical(hub, world, hub.coinbaseAddress(), tx.isCoinbasePreWarmed());
     return accountFragmentFactory.makeWithTrm(
-      coinbase,
-      coinbase.deepCopy().turnOnWarmth(),
-      coinbase.address(),
-      DomSubStampsSubFragment.standardDomSubStamps(getHubStamp(), domSubOffset()),
-      TransactionProcessingType.USER);
+        coinbase,
+        coinbase.deepCopy().turnOnWarmth(),
+        coinbase.address(),
+        DomSubStampsSubFragment.standardDomSubStamps(getHubStamp(), domSubOffset()),
+        TransactionProcessingType.USER);
   }
 
   private boolean senderWarmthAtGasPayment(final TransactionProcessingMetadata tx) {

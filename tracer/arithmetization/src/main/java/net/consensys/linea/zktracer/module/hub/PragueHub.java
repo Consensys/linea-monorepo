@@ -16,11 +16,8 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash;
 import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.types.PublicInputs;
-import org.hyperledger.besu.evm.worldstate.WorldView;
-import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class PragueHub extends CancunHub {
   public PragueHub(ChainConfig chain, PublicInputs publicInputs) {
@@ -30,12 +27,5 @@ public class PragueHub extends CancunHub {
   @Override
   protected BlsRt setBlsRt() {
     return new BlsRt();
-  }
-
-  @Override
-  protected void traceSysiTransactions(WorldView world, ProcessableBlockHeader blockHeader) {
-    super.traceSysiTransactions(world, blockHeader);
-    state.incrementSysiTransactionNumber();
-    new EIP2935HistoricalHash(this, world, blockHeader);
   }
 }
