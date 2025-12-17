@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.zip.GZIPOutputStream;
-
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -380,7 +379,8 @@ public class ZkTracer implements LineCountingTracer {
   /** When called, erase all tracing related to the bundle of all transactions since the last. */
   @Override
   public void popTransactionBundle() {
-    log.info("[ZkTracer] Transaction have been popped, assuming block building. Tracing might fail.");
+    log.info(
+        "[ZkTracer] Transaction have been popped, assuming block building. Tracing might fail.");
     hub.popTransactionBundle();
   }
 
