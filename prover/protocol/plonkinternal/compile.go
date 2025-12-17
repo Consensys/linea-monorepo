@@ -379,6 +379,8 @@ func (ca *CheckingActivators) Run(run wizard.Runtime) error {
 }
 
 func (ca *CheckingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running CheckingActivators\n")
+
 	for i := range ca.Cols {
 
 		curr := ca.Cols[i].GetColAssignmentGnarkAt(run, 0)

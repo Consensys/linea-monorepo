@@ -174,6 +174,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 }
 
 func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+
 	pis := cc.PIs
 
 	for i := range pis {

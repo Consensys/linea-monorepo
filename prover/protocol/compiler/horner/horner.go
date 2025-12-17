@@ -352,6 +352,8 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 }
 
 func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running CheckHornerResult\n")
+
 	hornerQuery := c.Q
 	hornerParams := run.GetHornerParams(hornerQuery.ID)
 

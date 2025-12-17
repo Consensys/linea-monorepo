@@ -1,7 +1,6 @@
 package selfrecursion
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -143,22 +142,22 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	// And from that, we get s1 and s2 and declare the corresponding
 	// copy constraint.
 	for i := 0; i < blockSize; i++ {
-		ctx.Comp.InsertFixedPermutation(
-			ctx.Columns.MerkleRoots[i].Round(),
-			ctx.rootHasGlue(i),
-			[]smartvectors.SmartVector{
-				smartvectors.NewRegular(s[:totalRoots]),
-				smartvectors.NewRegular(s[totalRoots:]),
-			},
-			[]ifaces.Column{
-				rootHashVec[i],
-				ctx.Columns.MerkleRoots[i],
-			},
-			[]ifaces.Column{
-				rootHashVec[i],
-				ctx.Columns.MerkleRoots[i],
-			},
-		)
+		// ctx.Comp.InsertFixedPermutation(
+		// 	ctx.Columns.MerkleRoots[i].Round(),
+		// 	ctx.rootHasGlue(i),
+		// 	[]smartvectors.SmartVector{
+		// 		smartvectors.NewRegular(s[:totalRoots]),
+		// 		smartvectors.NewRegular(s[totalRoots:]),
+		// 	},
+		// 	[]ifaces.Column{
+		// 		rootHashVec[i],
+		// 		ctx.Columns.MerkleRoots[i],
+		// 	},
+		// 	[]ifaces.Column{
+		// 		rootHashVec[i],
+		// 		ctx.Columns.MerkleRoots[i],
+		// 	},
+		// )
 	}
 }
 
@@ -237,21 +236,21 @@ func (ctx SelfRecursionCtx) GluePositions() {
 
 	// And from that, we get s1 and s2 and declare the corresponding
 	// copy constraint.
-	ctx.Comp.InsertFixedPermutation(
-		ctx.Columns.MerkleProofPositions.Round(),
-		ctx.positionGlue(),
-		[]smartvectors.SmartVector{
-			smartvectors.NewRegular(s[:totalSize]),
-			smartvectors.NewRegular(s[totalSize:]),
-		},
-		[]ifaces.Column{
-			positionVec,
-			ctx.Columns.MerkleProofPositions,
-		},
-		[]ifaces.Column{
-			positionVec,
-			ctx.Columns.MerkleProofPositions,
-		},
-	)
+	// ctx.Comp.InsertFixedPermutation(
+	// 	ctx.Columns.MerkleProofPositions.Round(),
+	// 	ctx.positionGlue(),
+	// 	[]smartvectors.SmartVector{
+	// 		smartvectors.NewRegular(s[:totalSize]),
+	// 		smartvectors.NewRegular(s[totalSize:]),
+	// 	},
+	// 	[]ifaces.Column{
+	// 		positionVec,
+	// 		ctx.Columns.MerkleProofPositions,
+	// 	},
+	// 	[]ifaces.Column{
+	// 		positionVec,
+	// 		ctx.Columns.MerkleProofPositions,
+	// 	},
+	// )
 
 }

@@ -301,6 +301,7 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 }
 
 func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running splict\n")
 
 	ctx := vctx.Ctx
 	ext4, err := gnarkfext.NewExt4(api)

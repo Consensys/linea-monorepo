@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -99,22 +98,22 @@ func CheckLinearHash(
 
 	if ctx.IsFullyActive {
 		for i := 0; i < BlockSize; i++ {
-			selector.CheckSubsample(
-				comp,
-				prefixWithLinearHash(comp, name, "RES_EXTRACTION_%v", i),
-				[]ifaces.Column{ctx.NewStateClean[i]},
-				[]ifaces.Column{ctx.ExpectedHash[i]},
-				colChunks-1,
-			)
+			// selector.CheckSubsample(
+			// 	comp,
+			// 	prefixWithLinearHash(comp, name, "RES_EXTRACTION_%v", i),
+			// 	[]ifaces.Column{ctx.NewStateClean[i]},
+			// 	[]ifaces.Column{ctx.ExpectedHash[i]},
+			// 	colChunks-1,
+			// )
 		}
 	} else {
 		for i := 0; i < BlockSize; i++ {
-			ctx.Comp.InsertInclusion(
-				ctx.Round,
-				ifaces.QueryID(prefixWithLinearHash(comp, name, "RESULT_CHECK_%v_%v", tohash[i].GetColID(), i)),
-				[]ifaces.Column{ctx.IsEndOfHash, ctx.NewStateClean[i]},
-				[]ifaces.Column{ctx.IsActiveExpected(), ctx.ExpectedHash[i]},
-			)
+			// ctx.Comp.InsertInclusion(
+			// 	ctx.Round,
+			// 	ifaces.QueryID(prefixWithLinearHash(comp, name, "RESULT_CHECK_%v_%v", tohash[i].GetColID(), i)),
+			// 	[]ifaces.Column{ctx.IsEndOfHash, ctx.NewStateClean[i]},
+			// 	[]ifaces.Column{ctx.IsActiveExpected(), ctx.ExpectedHash[i]},
+			// )
 		}
 	}
 

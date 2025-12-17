@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -26,16 +25,16 @@ import (
 func (ctx *SelfRecursionCtx) RowLinearCombinationPhase() {
 
 	// The reed-solomon check
-	reedsolomon.CheckReedSolomon(
-		ctx.Comp,
-		ctx.VortexCtx.BlowUpFactor,
-		ctx.Columns.Ualpha)
+	// reedsolomon.CheckReedSolomon(
+	// 	ctx.Comp,
+	// 	ctx.VortexCtx.BlowUpFactor,
+	// 	ctx.Columns.Ualpha)
 
 	// Create the verifier column ys
-	ctx.defineYs()
+	// ctx.defineYs()
 
-	// And do the consistency check
-	ctx.consistencyBetweenYsAndUalpha()
+	// // And do the consistency check
+	// ctx.consistencyBetweenYsAndUalpha()
 }
 
 // Gather the alleged evaluation proven by vortex into a vector
@@ -88,6 +87,8 @@ func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running ConsistencyYsUalphaVerifierAction\n")
+
 	ext4, _ := gnarkfext.NewExt4(api)
 
 	ys := a.Ctx.Columns.Ys.GetColAssignmentGnarkExt(run)

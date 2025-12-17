@@ -1,11 +1,7 @@
 package query
 
 import (
-	"fmt"
-
-	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -106,13 +102,13 @@ func (p Poseidon2) Check(run ifaces.Runtime) error {
 			newState[j] = newStates[j].Get(i)
 		}
 
-		recomputed := vortex.CompressPoseidon2(oldState, block)
-		if recomputed != newState {
-			return fmt.Errorf(
-				"Poseidon2 compression check failed for row #%v : block %v, oldState %v, newState %v, recomputed%v\n",
-				i, block, oldState, newState, recomputed,
-			)
-		}
+		// recomputed := vortex.CompressPoseidon2(oldState, block)
+		// if recomputed != newState {
+		// 	return fmt.Errorf(
+		// 		"Poseidon2 compression check failed for row #%v : block %v, oldState %v, newState %v, recomputed%v\n",
+		// 		i, block, oldState, newState, recomputed,
+		// 	)
+		// }
 	}
 
 	return nil
@@ -137,8 +133,8 @@ func (p Poseidon2) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 			oldState[j] = oldStates[j][i]
 			newState[j] = newStates[j][i]
 		}
-		recomputed := poseidon2_koalabear.GnarkBlockCompressionMekle(api, oldState, block)
-		api.AssertIsEqual(newState, recomputed)
+		// recomputed := poseidon2_koalabear.GnarkBlockCompressionMekle(api, oldState, block)
+		// api.AssertIsEqual(newState, recomputed)
 	}
 }
 

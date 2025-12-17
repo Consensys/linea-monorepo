@@ -95,6 +95,8 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running mpts\n")
+
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
 		// polyOfRs stores the values of P_k(r) as returned in the query.

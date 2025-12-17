@@ -37,6 +37,8 @@ func (a *NaturalizeVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *NaturalizeVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+	fmt.Printf("Running NaturalizeVerifierAction\n")
+
 	a.Ctx.GnarkVerify(api, c)
 }
 

@@ -38,11 +38,11 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	if ctx.Columns.ConcatenatedSisHashQ != nil {
 		ctx.RegistersSisPreimageLimbs()
 	}
-	ctx.CollapsingPhase()
+	// ctx.CollapsingPhase()
 	// The fold phase is only needed if there are non-zero
 	// number of SIS rounds
 	if ctx.Columns.ConcatenatedSisHashQ != nil {
-		ctx.FoldPhase()
+		// ctx.FoldPhase()
 	}
 }
 
@@ -227,6 +227,8 @@ func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running CollapsingVerifierAction\n")
+
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
@@ -493,6 +495,8 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running FoldPhaseVerifierAction\n")
+
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)

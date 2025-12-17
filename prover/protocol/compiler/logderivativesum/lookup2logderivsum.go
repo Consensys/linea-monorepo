@@ -211,6 +211,8 @@ func (c *CheckLogDerivativeSumMustBeZero) Run(run wizard.Runtime) error {
 }
 
 func (c *CheckLogDerivativeSumMustBeZero) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running CheckLogDerivativeSumMustBeZero\n")
+
 	ext4, _ := gnarkfext.NewExt4(api)
 	zero := gnarkfext.E4Gen{}
 	y := run.GetLogDerivSumParams(c.Q.ID).Sum

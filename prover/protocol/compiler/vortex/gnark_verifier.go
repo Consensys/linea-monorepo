@@ -1,12 +1,12 @@
 package vortex
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
-	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
-	crypto_vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -18,10 +18,14 @@ import (
 )
 
 func (a *ExplicitPolynomialEval) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+	fmt.Printf("Running vortex\n")
+
 	a.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
 }
 
 func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRuntime) {
+	fmt.Printf("Running vortex2 \n")
+
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
 	// not need to
@@ -59,37 +63,37 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	}
 
-	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
+	// randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
-	// Collect the linear combination
-	proof := crypto_vortex.GnarkProof{}
-	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName())
+	// // Collect the linear combination
+	// proof := crypto_vortex.GnarkProof{}
+	// proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName())
 
-	// Collect the random entry List and the random coin
-	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
+	// // Collect the random entry List and the random coin
+	// entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
 
-	// Collect the opened columns and split them "by-commitment-rounds"
-	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
-	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
-	packedMProofs := [encoding.KoalabearChunks][]zk.WrappedVariable{}
-	for i := range packedMProofs {
-		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
-	}
+	// // Collect the opened columns and split them "by-commitment-rounds"
+	// proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
+	// x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
+	// packedMProofs := [encoding.KoalabearChunks][]zk.WrappedVariable{}
+	// for i := range packedMProofs {
+	// 	packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
+	// }
 
-	merkleProofs := ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
+	// merkleProofs := ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
 
-	Vi := crypto_vortex.GnarkVerifierInput{}
-	Vi.Alpha = randomCoin
-	Vi.X = x
-	Vi.EntryList = make([]frontend.Variable, len(entryList))
+	// Vi := crypto_vortex.GnarkVerifierInput{}
+	// Vi.Alpha = randomCoin
+	// Vi.X = x
+	// Vi.EntryList = make([]frontend.Variable, len(entryList))
 
-	for i := 0; i < len(entryList); i++ {
-		Vi.EntryList[i] = entryList[i].AsNative()
-	}
-	Vi.Ys = ctx.gnarkGetYs(api, vr)
+	// for i := 0; i < len(entryList); i++ {
+	// 	Vi.EntryList[i] = entryList[i].AsNative()
+	// }
+	// Vi.Ys = ctx.gnarkGetYs(api, vr)
 
-	crypto_vortex.GnarkVerify(api, ctx.VortexBLSParams.Params, proof, Vi, roots)
-	vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, merkleProofs, roots)
+	// crypto_vortex.GnarkVerify(api, ctx.VortexBLSParams.Params, proof, Vi, roots)
+	// vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, merkleProofs, roots)
 }
 
 // returns the Ys as a vector

@@ -166,6 +166,8 @@ func (c *CheckHornerQuery) Run(run wizard.Runtime) error {
 }
 
 func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running CheckHornerQuery\n")
+
 	params := run.GetHornerParams(c.Query.ID)
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {

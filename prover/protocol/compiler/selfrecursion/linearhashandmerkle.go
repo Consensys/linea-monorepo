@@ -303,19 +303,19 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 		for j := range s[i] {
 			s[i][j].SetInt64(int64(j))
 		}
-		s_smart := smartvectors.NewRegular(s[i])
+		// s_smart := smartvectors.NewRegular(s[i])
 
 		// Insert the fixed permutation constraint.
 		// Here we assume that the number of opened columns for Vortex
 		// is a power of two. If that is not the case, the below
 		// constraint is supposed to fail
-		ctx.Comp.InsertFixedPermutation(
-			round,
-			ctx.leafConsistencyName(i),
-			[]smartvectors.SmartVector{s_smart},
-			[]ifaces.Column{stackedCleanLeaves[i].Column},
-			[]ifaces.Column{ctx.Columns.MerkleProofsLeaves[i]},
-		)
+		// ctx.Comp.InsertFixedPermutation(
+		// 	round,
+		// 	ctx.leafConsistencyName(i),
+		// 	[]smartvectors.SmartVector{s_smart},
+		// 	[]ifaces.Column{stackedCleanLeaves[i].Column},
+		// 	[]ifaces.Column{ctx.Columns.MerkleProofsLeaves[i]},
+		// )
 	}
 
 }

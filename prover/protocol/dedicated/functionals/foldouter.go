@@ -50,6 +50,8 @@ func (a *FoldOuterVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldOuterVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running FoldOuterVerifierAction\n")
+
 	ext4, _ := gnarkfext.NewExt4(api)
 	c := a.FoldedEvalAcc.GetFrontendVariableExt(api, run)
 	c_ := a.HEvalAcc.GetFrontendVariableExt(api, run)

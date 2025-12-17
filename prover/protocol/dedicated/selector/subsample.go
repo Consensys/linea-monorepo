@@ -103,6 +103,8 @@ func (a *SubsampleVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *SubsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running SubsampleVerifierAction\n")
+
 	ext4, err := gnarkfext.NewExt4(frontend)
 	if err != nil {
 		panic(err)

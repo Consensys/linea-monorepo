@@ -47,6 +47,8 @@ func (v *VerifierCtx) Run(run wizard.Runtime) error {
 // Run implements the [wizard.VerifierAction] interface and is as
 // [VerifierCtx.Run] but in the context of a gnark circuit.
 func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running permutation\n")
+
 	mustBeOne := zk.ValueOf(1)
 
 	apiGen, err := zk.NewGenericApi(api)
@@ -126,6 +128,8 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 }
 
 func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running permutation grandproduc\n")
+
 	y := run.GetGrandProductParams(c.Query.ID).Prod
 
 	ext4, err := gnarkfext.NewExt4(api)
@@ -215,6 +219,8 @@ func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 
 // RunGnark implements the [wizard.VerifierAction]
 func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running permutation, final product\n")
+
 	claimedProd := run.GetGrandProductParams(f.GrandProductID).Prod
 
 	ext4, err := gnarkfext.NewExt4(api)

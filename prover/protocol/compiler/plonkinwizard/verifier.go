@@ -34,6 +34,8 @@ func (c *CheckActivatorAndMask) Run(run wizard.Runtime) error {
 }
 
 func (c *CheckActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	fmt.Printf("Running plonk in wizard\n")
+
 	for i := range c.SelOpenings {
 		var (
 			valOpened = run.GetLocalPointEvalParams(c.SelOpenings[i].ID).BaseY
