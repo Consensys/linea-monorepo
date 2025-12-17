@@ -97,15 +97,11 @@ jobs:
   delete-tag-on-failure:
     needs: [ build ]
     runs-on: ubuntu-latest
-    # if: failure() && ( needs.steps.outputs.uploadResults == 'failure' || needs.steps.outputs.setupGccResults == 'failure' || needs.steps.outputs.buildWithoutTestsResults == 'failure' || needs.steps.outputs.storeArtifactsResults == 'failure' || needs.steps.outputs.runSpotlessResults == 'failure')
+    if: failure() && ( needs.build.outputs.uploadResults == 'failure' || needs.build.outputs.setupGccResults == 'failure' || needs.build.outputs.buildWithoutTestsResults == 'failure' || needs.build.outputs.storeArtifactsResults == 'failure' || needs.build.outputs.runSpotlessResults == 'failure')
     steps:
       - name: Delete tag created without release
         run: |
-          echo " ${{ needs.build.outputs.uploadResults }} "
-            echo " ${{ needs.build.outputs.setupGccResults }} "
-            echo " ${{ needs.build.outputs.buildWithoutTestsResults }} "
-            echo " ${{ needs.build.outputs.storeArtifactsResults }} "
-            echo " ${{ needs.build.outputs.runSpotlessResults }} "
+          delete_output=$(gh release delete "${{needs.build.outputs.releaseTag}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -115,7 +111,7 @@ jobs:
 
   unit-tests-prague:
     needs: [ build ]
-    if: ${{ success() }}
+    if: success() && needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
     uses: ./.github/workflows/reusable-tracer-unit-tests.yml
     with:
       zkevm_fork: PRAGUE
@@ -123,7 +119,7 @@ jobs:
 
   unit-tests-osaka:
     needs: [ build ]
-    if: ${{ success() }}
+    if: success() && needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
     uses: ./.github/workflows/reusable-tracer-unit-tests.yml
     with:
       zkevm_fork: OSAKA
@@ -134,7 +130,7 @@ jobs:
   # ==================================================================
   replay-tests:
     needs: [ build ]
-    if: ${{ success() }}
+    if: success() && needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
@@ -181,7 +177,7 @@ jobs:
   # ==================================================================
   publish:
     needs: [ build ]
-    if: success() && github.event_name != 'pull_request'
+    if: success() && needs.build.outputs.uploadResults == 'success' && needs.build.outputs.setupGccResults == 'success' || needs.build.outputs.buildWithoutTestsResults == 'success' || needs.build.outputs.storeArtifactsResults == 'success' || needs.build.outputs.runSpotlessResults == 'success' && github.event_name != 'pull_request'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     env:
       architecture: "amd64"
