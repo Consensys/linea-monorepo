@@ -28,6 +28,7 @@ jobs:
       buildWithoutTestsResults: ${{ steps.build-without-tests.outcome }}
       storeArtifactsResults: ${{ steps.store-artifacts.outcome }}
       runSpotlessResults: ${{ steps.run-spotless.outcome }}
+      releaseTag : ${{ steps.config.outputs.RELEASE_TAG }}
     steps:
       - name: Configure Tag
         id: config
@@ -59,7 +60,6 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
-          gh release delete linea-tracer-test-release-dummy-2 --cleanup-tag
           gh release delete linea-tracer-test-release-dummy --cleanup-tag
           gh release delete linea-tracer-beta-v4.4-rc7 --cleanup-tag
           gh release create ${{ steps.config.outputs.RELEASE_TAG }} $jar_asset
@@ -97,10 +97,11 @@ jobs:
   delete-tag-on-failure:
     needs: [ build ]
     runs-on: ubuntu-latest
+    if: failure() && () uploadResults == 'failure' || setupGccResults == 'failure' || buildWithoutTestsResults == 'failure' || storeArtifactsResults == 'failure' || runSpotlessResults == 'failure')
     steps:
       - name: Delete tag created without release
         run: |
-          gh release delete ${{ steps.config.outputs.RELEASE_TAG }} --cleanup-tag
+          gh release delete ${{ releaseTag }} --cleanup-tag
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -110,6 +111,7 @@ jobs:
 
   unit-tests-prague:
     needs: [ build ]
+    if: ${{ success() }}
     uses: ./.github/workflows/reusable-tracer-unit-tests.yml
     with:
       zkevm_fork: PRAGUE
@@ -117,6 +119,7 @@ jobs:
 
   unit-tests-osaka:
     needs: [ build ]
+    if: ${{ success() }}
     uses: ./.github/workflows/reusable-tracer-unit-tests.yml
     with:
       zkevm_fork: OSAKA
@@ -127,6 +130,7 @@ jobs:
   # ==================================================================
   replay-tests:
     needs: [ build ]
+    if: ${{ success() }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
@@ -173,7 +177,7 @@ jobs:
   # ==================================================================
   publish:
     needs: [ build ]
-    if: github.event_name != 'pull_request'
+    if: success() && github.event_name != 'pull_request'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     env:
       architecture: "amd64"
