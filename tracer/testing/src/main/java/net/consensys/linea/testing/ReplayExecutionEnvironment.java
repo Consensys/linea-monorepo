@@ -17,8 +17,8 @@ package net.consensys.linea.testing;
 
 import static net.consensys.linea.testing.ToyExecutionTools.addSystemAccountsIfRequired;
 import static net.consensys.linea.testing.ToyExecutionTools.runSystemInitialTransactions;
-import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
-import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
+import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
+import static net.consensys.linea.zktracer.Trace.LINEA_SEPOLIA_CHAIN_ID;
 
 import com.google.gson.Gson;
 import java.io.File;
@@ -401,9 +401,9 @@ public class ReplayExecutionEnvironment {
    * @return
    */
   private static String getChainName(BigInteger chainId) {
-    if (chainId.equals(OLD_MAINNET_TESTCONFIG.id)) {
+    if (chainId.equals(BigInteger.valueOf(LINEA_CHAIN_ID))) {
       return "mainnet";
-    } else if (chainId.equals(OLD_SEPOLIA_TESTCONFIG.id)) {
+    } else if (chainId.equals(BigInteger.valueOf(LINEA_SEPOLIA_CHAIN_ID))) {
       return "sepolia";
     } else {
       return String.format("chain%s", chainId.toString());
