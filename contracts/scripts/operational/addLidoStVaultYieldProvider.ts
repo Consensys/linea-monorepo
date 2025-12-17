@@ -7,20 +7,24 @@ import { ONE_ETHER } from "../../common/constants/general";
 
 /*
   *******************************************************************************************
-  Creates and configures a new LidoStVaultYieldProvider.
+  Generates calldata for adding and configuring a new LidoStVaultYieldProvider.
+
+  This script generates calldata for two transactions:
+  1) transferFundsForNativeYield - Transfer funds from LineaRollup to YieldManager
+  2) addYieldProvider - Add the yield provider to YieldManager with initialization data
+
+  The calldata can be used to create Safe multisig transactions or execute via other methods.
 
   1) Prerequisite - 14_deploy_YieldManager.ts script run
   2) Run this task with the right params or env vars.
-  3) Signer must have SET_YIELD_PROVIDER_ROLE role for YieldManager
-  4) At least 1 ether balance (CONNECT_DEPOSIT) on the YieldManager
+  3) No transactions are executed - only calldata is generated
 
   -------------------------------------------------------------------------------------------
   Example (Hoodi):
   -------------------------------------------------------------------------------------------
-  CUSTOM_PRIVATE_KEY=<key> \
+  CUSTOM_PRIVATE_KEY=0000000000000000000000000000000000000000000000000000000000000002 \
   CUSTOM_BLOCKCHAIN_URL=https://0xrpc.io/hoodi \
   npx hardhat addLidoStVaultYieldProvider \
-    --yield-provider-factory <address> \
     --yield-manager <address> \
     --yield-provider <address> \
     --linea-rollup <address> \
@@ -33,7 +37,6 @@ import { ONE_ETHER } from "../../common/constants/general";
   -------------------------------------------------------------------------------------------
 
   Env var alternatives (used if CLI params omitted):
-    YIELD_PROVIDER_FACTORY
     YIELD_MANAGER
     YIELD_PROVIDER
     NODE_OPERATOR
@@ -44,8 +47,7 @@ import { ONE_ETHER } from "../../common/constants/general";
     LINEA_ROLLUP_ADDRESS
   *******************************************************************************************
 */
-task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYieldProvider")
-  .addOptionalParam("yieldProviderFactory")
+task("addLidoStVaultYieldProvider", "Generates calldata for adding and configuring a new LidoStVaultYieldProvider")
   .addOptionalParam("yieldManager")
   .addOptionalParam("yieldProvider")
   .addOptionalParam("nodeOperator")
@@ -55,13 +57,10 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
   .addOptionalParam("confirmExpiry")
   .addOptionalParam("lineaRollup")
   .setAction(async (taskArgs, hre) => {
-    const { ethers, deployments, getNamedAccounts } = hre;
+    const { ethers, deployments } = hre;
     const { get } = deployments;
-    const { deployer } = await getNamedAccounts();
-    const signer = await ethers.getSigner(deployer);
 
     // --- Resolve inputs from CLI or ENV (with sensible fallbacks to deployments) ---
-    let yieldProviderFactory = getTaskCliOrEnvValue(taskArgs, "yieldProviderFactory", "YIELD_PROVIDER_FACTORY");
     let yieldManager = getTaskCliOrEnvValue(taskArgs, "yieldManager", "YIELD_MANAGER");
     const yieldProvider = getTaskCliOrEnvValue(taskArgs, "yieldProvider", "YIELD_PROVIDER");
     const nodeOperator = getTaskCliOrEnvValue(taskArgs, "nodeOperator", "NODE_OPERATOR");
@@ -71,9 +70,6 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     const lineaRollup = getTaskCliOrEnvValue(taskArgs, "lineaRollup", "LINEA_ROLLUP_ADDRESS");
 
     // --- Use address from artifacts ---
-    if (yieldProviderFactory === undefined) {
-      yieldProviderFactory = (await get("LidoStVaultYieldProviderFactory")).address;
-    }
     if (yieldManager === undefined) {
       yieldManager = (await get("YieldManager")).address;
     }
@@ -93,9 +89,7 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     const confirmExpiry = confirmExpiryRaw ? BigInt(confirmExpiryRaw) : 0n;
 
     // --- Log params ---
-    console.log("Using factory:", yieldProviderFactory);
     console.log("Params:");
-    console.log("  lidoStVaultYieldProviderFactory:", yieldProviderFactory);
     console.log("  yieldManager:", yieldManager);
     console.log("  yieldProvider:", yieldProvider);
     console.log("  nodeOperator:", nodeOperator);
@@ -107,13 +101,15 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     /********************************************************************
      *                Below here requires Security Council              *
      ********************************************************************/
-    // TODO - Get calldata for Safe tx
+    // Generate calldata for Safe tx
 
-    const lineaRollupContract = await ethers.getContractAt("LineaRollup", lineaRollup!, signer);
-    await lineaRollupContract.transferFundsForNativeYield(ONE_ETHER);
+    const lineaRollupContract = await ethers.getContractAt("LineaRollup", lineaRollup!);
+    const transferFundsCalldata = lineaRollupContract.interface.encodeFunctionData("transferFundsForNativeYield", [
+      ONE_ETHER,
+    ]);
 
     // --- Add YieldProvider ---
-    const yieldManagerContract = await ethers.getContractAt("YieldManager", yieldManager, signer);
+    const yieldManagerContract = await ethers.getContractAt("YieldManager", yieldManager);
     const yieldProviderInitData = buildVendorInitializationData({
       defaultAdmin: securityCouncil,
       nodeOperator,
@@ -122,7 +118,22 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
       confirmExpiry,
       roleAssignments: generateRoleAssignments(LIDO_DASHBOARD_OPERATIONAL_ROLES, yieldManager, []),
     });
-    const addYieldProviderTx = await yieldManagerContract.addYieldProvider(yieldProvider!, yieldProviderInitData);
-    await addYieldProviderTx.wait();
-    console.log(`LidoStVaultYieldProvider address=${yieldProvider} added to YieldManager address=${yieldManager}`);
+    const addYieldProviderCalldata = yieldManagerContract.interface.encodeFunctionData("addYieldProvider", [
+      yieldProvider!,
+      yieldProviderInitData,
+    ]);
+
+    // --- Output calldata ---
+    console.log("\n" + "=".repeat(80));
+    console.log("Transaction Calldata for Safe Multisig:");
+    console.log("=".repeat(80));
+    console.log("\n1. transferFundsForNativeYield");
+    console.log("   Target Contract:", lineaRollup);
+    console.log("   Function: transferFundsForNativeYield(uint256)");
+    console.log("   Calldata:", transferFundsCalldata);
+    console.log("\n2. addYieldProvider");
+    console.log("   Target Contract:", yieldManager);
+    console.log("   Function: addYieldProvider(address,bytes)");
+    console.log("   Calldata:", addYieldProviderCalldata);
+    console.log("\n" + "=".repeat(80));
   });
