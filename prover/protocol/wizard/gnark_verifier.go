@@ -343,7 +343,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use
 	// GKR instead.
-	c.BLSFS = fiatshamir.NewGnarkFSKoalaBLS12377(api)
+	c.BLSFS = fiatshamir.NewGnarkFSKoalabear(api)
 
 	var zkWV [8]zk.WrappedVariable
 	for i := 0; i < 8; i++ {

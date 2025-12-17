@@ -20,13 +20,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLookup(t *testing.T) {
 
-	logrus.SetLevel(logrus.FatalLevel)
+	// logrus.SetLevel(logrus.FatalLevel)
 
 	define1 := func(bui *wizard.Builder) {
 
