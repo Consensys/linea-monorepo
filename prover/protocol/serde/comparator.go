@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/sirupsen/logrus"
@@ -142,7 +143,7 @@ func compareMaps(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path strin
 	// The module discoverer uses map[ifaces.Column] and map[column.Natural]
 	// These use pointers
 	switch a.Type().Key() {
-	case TypeOfColumnNatural, reflect.TypeFor[ifaces.Column]():
+	case reflect.TypeOf(column.Natural{}), reflect.TypeFor[ifaces.Column]():
 		return true
 	}
 
@@ -169,8 +170,8 @@ func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path st
 		structField := a.Type().Field(i)
 
 		// When the field has the omitted tag, we skip it there without any warning.
-		if tag, hasTag := structField.Tag.Lookup(SerdeStructTag); hasTag {
-			if strings.Contains(tag, SerdeStructTagOmit) ||
+		if tag, hasTag := structField.Tag.Lookup(serdeStructTag); hasTag {
+			if strings.Contains(tag, serdeStructTagOmit) ||
 				strings.Contains(tag, SerdeStructTagTestOmit) {
 				continue
 			}

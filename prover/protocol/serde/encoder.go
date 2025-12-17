@@ -5,12 +5,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"math/big"
 	"reflect"
 	"strings"
 	"unsafe"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
@@ -40,20 +38,11 @@ func NewWriter() *Writer {
 // the start offset (beginning of cursor) at which the data was written
 func (w *Writer) Write(data any) int64 {
 	start := w.offset
-	v := reflect.ValueOf(data)
-
-	// Normalize `int` and `uint` to `int64` and `uint64`
-	// since Go native `int` size depends on the CPU-architecture (32-but vs 64-bit).
-	switch v.Kind() {
-	case reflect.Int:
-		data = int64(v.Int())
-	case reflect.Uint:
-		data = uint64(v.Uint())
+	val := normalizeIntegerSize(reflect.ValueOf(data))
+	if err := binary.Write(w.buf, binary.LittleEndian, val); err != nil {
+		panic(fmt.Errorf("binary.Write failed for type %T: %w", val, err))
 	}
-	if err := binary.Write(w.buf, binary.LittleEndian, data); err != nil {
-		panic(fmt.Errorf("binary.Write failed for type %T: %w", data, err))
-	}
-	w.offset += int64(binary.Size(data))
+	w.offset += int64(binary.Size(val))
 	return start
 }
 
@@ -66,18 +55,11 @@ func (w *Writer) WriteBytes(b []byte) int64 {
 	return start
 }
 
-// Patch jumps back to specific offset (written/reserved earlier) and overwrites
-// the data (reserved with zeros) with the actual data
+// Patch jumps back in-time to specific offset (written/reserved with zero bytes earlier)
+// and overwrites the data (reserved with zeros) with the actual data
 func (w *Writer) Patch(offset int64, v any) {
 	var tmp bytes.Buffer
-	val := v
-	rv := reflect.ValueOf(v)
-	if rv.Kind() == reflect.Int {
-		val = int64(rv.Int())
-	} else if rv.Kind() == reflect.Uint {
-		val = uint64(rv.Uint())
-	}
-
+	val := normalizeIntegerSize(reflect.ValueOf(v))
 	binary.Write(&tmp, binary.LittleEndian, val)
 	encoded := tmp.Bytes()
 	bufSlice := w.buf.Bytes()
@@ -220,13 +202,7 @@ func linearizeValue(w *Writer, v reflect.Value) (Ref, error) {
 	case reflect.Map:
 		return linearizeMap(w, v)
 	case reflect.Struct:
-		size := getBinarySize(v.Type())
-		startOffset := w.offset
-		w.WriteBytes(make([]byte, size)) // Reserve
-		if err := patchStructBody(w, v, startOffset); err != nil {
-			return 0, err
-		}
-		return Ref(startOffset), nil
+		return linearizeStruct(w, v)
 	case reflect.Func, reflect.Chan, reflect.UnsafePointer:
 		return 0, fmt.Errorf("unsupported type: %v cannot be serialized", v.Type())
 	default:
@@ -235,107 +211,36 @@ func linearizeValue(w *Writer, v reflect.Value) (Ref, error) {
 	}
 }
 
-func patchStructBody(w *Writer, v reflect.Value, startOffset int64) error {
-	currentFieldOff := int64(0)
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		t := v.Type().Field(i)
+// linearizeStruct function works on a Reservation now and Patch later System.
+// It does not append the struct fields one by one to the end of the file.
+// Instead, it "allocates" the space first, and then goes back to fill it in.
+// Explanation:
+// linearizeStruct is recursive, the "deepest" objects (the ones pointed to incase of pointers) get their data finalized first
+// while the "top-level" objects are still waiting to finish their patchStructBody loop. The Write Cursor (w.offset)
+// always moves forward, ensuring that new objects never overwrite old ones.
+func linearizeStruct(w *Writer, v reflect.Value) (Ref, error) {
+	// PREDICT: Calculate total size of the struct in bytes.
+	// CRITICAL: This calculation MUST perfectly match the bytes written by 'patchStructBody'.
+	// If getBinarySize returns X, patchStructBody must write exactly X bytes.
+	// Any mismatch will cause data corruption or a panic in w.Patch.
+	size := getBinarySize(v.Type())
 
-		if !t.IsExported() || strings.Contains(t.Tag.Get("serde"), "omit") {
-			continue
-		}
+	// SNAPSHOT: Capture the current cursor position. This 'startOffset' will point to the beginning of our reserved "slot"
+	// Remember before reserving space, let us capture the current offset (i.e cursor position of the writer)
+	// This is important because in the reserve step, when we write zero bytes, the writter offset
+	// will be changed (mutates to the end of the reserved space). However, while coming back in time
+	// we need to know the current offset (beginning of cursor).
+	startOffset := w.offset
 
-		// Gnark Variable
-		if t.Type == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
-			bi := toBigInt(f)
-			var ref Ref
-			if bi != nil {
-				var err error
-				ref, err = writeBigInt(w, bi)
-				if err != nil {
-					return err
-				}
-			}
-			w.Patch(startOffset+currentFieldOff, ref)
-			currentFieldOff += 8
-			continue
-		}
+	// RESERVE - Write 'size' bytes of zeros. We now have a blank canvas in the file.
+	w.WriteBytes(make([]byte, size))
 
-		if isIndirectType(f.Type()) {
-			ref, err := linearize(w, f)
-			if err != nil {
-				return err
-			}
-			w.Patch(startOffset+currentFieldOff, ref)
-			currentFieldOff += 8
-			continue
-		}
-
-		if f.Kind() == reflect.Struct {
-			if f.Type() == reflect.TypeOf(field.Element{}) {
-				w.Patch(startOffset+currentFieldOff, f.Interface())
-				currentFieldOff += int64(f.Type().Size())
-			} else {
-				if err := patchStructBody(w, f, startOffset+currentFieldOff); err != nil {
-					return err
-				}
-				currentFieldOff += getBinarySize(f.Type())
-			}
-			continue
-		}
-
-		if f.Kind() == reflect.Array {
-			if f.Type() == reflect.TypeOf(field.Element{}) {
-				w.Patch(startOffset+currentFieldOff, f.Interface())
-				currentFieldOff += int64(f.Type().Size())
-			} else {
-				if err := patchArray(w, f, startOffset+currentFieldOff); err != nil {
-					return err
-				}
-				currentFieldOff += getBinarySize(f.Type())
-			}
-			continue
-		}
-
-		// Primitives
-		w.Patch(startOffset+currentFieldOff, f.Interface())
-		// Use getBinarySize to safely get size of int/uint/etc.
-		currentFieldOff += getBinarySize(f.Type())
+	// PATCH - Go back and fill in the blank canvas with actual data.
+	if err := patchStructBody(w, v, startOffset); err != nil {
+		return 0, err
 	}
-	return nil
-}
 
-func patchArray(w *Writer, v reflect.Value, startOffset int64) error {
-	currentElemOff := int64(0)
-	elemType := v.Type().Elem()
-	elemBinSize := getBinarySize(elemType)
-
-	for i := 0; i < v.Len(); i++ {
-		elem := v.Index(i)
-		if elem.Kind() == reflect.Array {
-			if err := patchArray(w, elem, startOffset+currentElemOff); err != nil {
-				return err
-			}
-		} else if isIndirectType(elemType) {
-			ref, err := linearize(w, elem)
-			if err != nil {
-				return err
-			}
-			w.Patch(startOffset+currentElemOff, ref)
-		} else if elem.Kind() == reflect.Struct {
-			if elemType == reflect.TypeOf(field.Element{}) {
-				w.Patch(startOffset+currentElemOff, elem.Interface())
-			} else {
-				if err := patchStructBody(w, elem, startOffset+currentElemOff); err != nil {
-					return err
-				}
-			}
-		} else {
-			w.Patch(startOffset+currentElemOff, elem.Interface())
-		}
-		currentElemOff += elemBinSize
-	}
-	return nil
+	return Ref(startOffset), nil
 }
 
 func linearizeMap(w *Writer, v reflect.Value) (Ref, error) {
@@ -387,55 +292,154 @@ func linearizeInterface(w *Writer, v reflect.Value) (Ref, error) {
 	return Ref(off), nil
 }
 
-func isIndirectType(t reflect.Type) bool {
-	if _, ok := CustomRegistry[t]; ok {
-		return true
+func linearizeStructBodyMap(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		t := v.Type().Field(i)
+		if !t.IsExported() || strings.Contains(t.Tag.Get(serdeStructTag), serdeStructTagOmit) {
+			continue
+		}
+		if isIndirectType(t.Type) {
+			ref, err := linearize(w, f)
+			if err != nil {
+				return err
+			}
+			binary.Write(buf, binary.LittleEndian, ref)
+			continue
+		}
+		if f.Kind() == reflect.Struct {
+			if f.Type() == reflect.TypeOf(field.Element{}) {
+				binary.Write(buf, binary.LittleEndian, f.Interface())
+			} else {
+				if err := linearizeStructBodyMap(w, f, buf); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+		val := normalizeIntegerSize(f)
+		binary.Write(buf, binary.LittleEndian, val)
 	}
-	if t == reflect.TypeOf(big.Int{}) || t == reflect.TypeOf(&big.Int{}) {
-		return true
-	}
-	k := t.Kind()
-	return k == reflect.Ptr || k == reflect.Slice || k == reflect.String ||
-		k == reflect.Interface || k == reflect.Map || k == reflect.Func
+
+	return nil
 }
 
-func writeBigInt(w *Writer, b *big.Int) (Ref, error) {
-	if b == nil {
-		return 0, nil
+func patchStructBody(w *Writer, v reflect.Value, startOffset int64) error {
+	currentFieldOff := int64(0)
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		t := v.Type().Field(i)
+		fType := f.Type()
+
+		// 1. Skip unexported or omitted fields
+		if !t.IsExported() || strings.Contains(t.Tag.Get(serdeStructTag), serdeStructTagOmit) {
+			continue
+		}
+
+		// 2. Handle References: Indirect types & Custom Types
+		//
+		// IF the type is "indirect" (pointers, slices) OR it is a registered Custom Type
+		// (e.g., frontend.Variable), we do NOT write the data here.
+		// Instead, we 'linearize' it to the heap and patch the current struct field
+		// with the returned 8-byte Reference ID (Ref).
+		_, isCustom := CustomRegistry[fType]
+		if isIndirectType(fType) || isCustom {
+			ref, err := linearize(w, f)
+			if err != nil {
+				return err
+			}
+			w.Patch(startOffset+currentFieldOff, ref)
+			currentFieldOff += 8 // Refs are always 8 bytes
+			continue
+		}
+
+		// 3. Handle Nested Structs (Inline)
+		if f.Kind() == reflect.Struct {
+			// Optimization: field.Element is treated as a primitive blob
+			if fType == reflect.TypeOf(field.Element{}) {
+				w.Patch(startOffset+currentFieldOff, f.Interface())
+			} else {
+				// Recurse to patch the inner struct's fields
+				if err := patchStructBody(w, f, startOffset+currentFieldOff); err != nil {
+					return err
+				}
+			}
+			currentFieldOff += getBinarySize(fType)
+			continue
+		}
+
+		// 4. Handle Arrays (Inline)
+		if f.Kind() == reflect.Array {
+			// Delegate to patchArray helper
+			if err := patchArray(w, f, startOffset+currentFieldOff); err != nil {
+				return err
+			}
+			currentFieldOff += getBinarySize(fType)
+			continue
+		}
+
+		// 5. Handle Primitives (int, uint, bool)
+		// Note: w.Patch calls 'normalizeValue' internally, so int/uint safety is handled.
+		w.Patch(startOffset+currentFieldOff, f.Interface())
+		currentFieldOff += getBinarySize(fType)
 	}
-	bytes := b.Bytes()
-	sign := int64(0)
-	if b.Sign() < 0 {
-		sign = 1
-	}
-	start := w.offset
-	w.buf.WriteByte(byte(sign))
-	w.buf.Write(bytes)
-	w.offset += int64(1 + len(bytes))
-	fs := FileSlice{Offset: Ref(start), Len: int64(len(bytes)), Cap: sign}
-	off := w.Write(fs)
-	return Ref(off), nil
+	return nil
 }
 
-func toBigInt(v reflect.Value) *big.Int {
-	switch val := v.Interface().(type) {
-	case int:
-		return big.NewInt(int64(val))
-	case int64:
-		return big.NewInt(val)
-	case uint64:
-		return new(big.Int).SetUint64(val)
-	case field.Element:
-		bi := new(big.Int)
-		val.BigInt(bi)
-		return bi
-	case big.Int:
-		return &val
-	case *big.Int:
-		return val
-	default:
-		return nil
+func patchArray(w *Writer, v reflect.Value, startOffset int64) error {
+	elemType := v.Type().Elem()
+	elemBinSize := getBinarySize(elemType)
+
+	// Pre-calculation: Determine if elements are "References"
+	// (Pointers, Slices, or Registered Custom Types like frontend.Variable).
+	// Since it's an array, this decision applies to EVERY element.
+	_, isCustom := CustomRegistry[elemType]
+	isReference := isIndirectType(elemType) || isCustom
+
+	for i := 0; i < v.Len(); i++ {
+		elem := v.Index(i)
+
+		// Calculate the exact offset for this specific element
+		offset := startOffset + (int64(i) * elemBinSize)
+
+		// 1. Handle References (Heap Allocation)
+		// If the element is a pointer, interface, or custom type, we delegate to
+		// linearize() to write the data elsewhere and return a Ref ID.
+		if isReference {
+			ref, err := linearize(w, elem)
+			if err != nil {
+				return err
+			}
+			w.Patch(offset, ref)
+			continue
+		}
+
+		// 2. Handle Inline Data
+		switch elem.Kind() {
+		case reflect.Array:
+			// Nested Array: Recurse
+			if err := patchArray(w, elem, offset); err != nil {
+				return err
+			}
+
+		case reflect.Struct:
+			// Optimization: field.Element is a "primitive" struct
+			if elemType == reflect.TypeOf(field.Element{}) {
+				w.Patch(offset, elem.Interface())
+			} else {
+				// Complex Struct: Recurse
+				if err := patchStructBody(w, elem, offset); err != nil {
+					return err
+				}
+			}
+
+		default:
+			// Primitives (int, uint, bool)
+			// w.Patch automatically handles int/uint normalization now.
+			w.Patch(offset, elem.Interface())
+		}
 	}
+	return nil
 }
 
 func writeMapElement(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
@@ -476,58 +480,33 @@ func writeMapElement(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
 	}
 
 	// 4. PRIMITIVES
-	// Normalize platform-dependent integers (int, uint) to fixed 64-bit sizes
-	// to ensure the binary output is identical on 32-bit and 64-bit machines.
-	var val any
-	switch v.Kind() {
-	case reflect.Int:
-		val = int64(v.Int())
-	case reflect.Uint:
-		val = uint64(v.Uint())
-	default:
-		val = v.Interface()
-	}
-
+	val := normalizeIntegerSize(v)
 	return binary.Write(buf, binary.LittleEndian, val)
 }
 
-func linearizeStructBodyMap(w *Writer, v reflect.Value, buf *bytes.Buffer) error {
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		t := v.Type().Field(i)
-		if !t.IsExported() || strings.Contains(t.Tag.Get("serde"), "omit") {
-			continue
-		}
-		if isIndirectType(t.Type) {
-			ref, err := linearize(w, f)
-			if err != nil {
-				return err
-			}
-			binary.Write(buf, binary.LittleEndian, ref)
-			continue
-		}
-		if f.Kind() == reflect.Struct {
-			if f.Type() == reflect.TypeOf(field.Element{}) {
-				binary.Write(buf, binary.LittleEndian, f.Interface())
-			} else {
-				if err := linearizeStructBodyMap(w, f, buf); err != nil {
-					return err
-				}
-			}
-			continue
-		}
-
-		var val any
-		k := f.Kind()
-		switch k {
-		case reflect.Int:
-			val = int64(f.Int())
-		case reflect.Uint:
-			val = uint64(f.Uint())
-		default:
-			val = f.Interface()
-		}
-		binary.Write(buf, binary.LittleEndian, val)
+func isIndirectType(t reflect.Type) bool {
+	if _, ok := CustomRegistry[t]; ok {
+		return true
 	}
-	return nil
+
+	// Indirect types are types that have variable sizes - not known at compile time
+	k := t.Kind()
+	return k == reflect.Ptr || k == reflect.Slice || k == reflect.String ||
+		k == reflect.Interface || k == reflect.Map || k == reflect.Func
+}
+
+// normalizeIntegerSize converts platform-dependent types (int, uint) to fixed-size
+// equivalents (int64, uint64) - 64 bit values. This ensures that the binary representation
+// is consistent across different CPU architectures (32-bit vs 64-bit).
+func normalizeIntegerSize(v reflect.Value) any {
+	switch v.Kind() {
+	case reflect.Int:
+		return int64(v.Int())
+	case reflect.Uint:
+		return uint64(v.Uint())
+	default:
+		// For all other types (int64, float64, structs, etc.),
+		// return the interface as-is.
+		return v.Interface()
+	}
 }

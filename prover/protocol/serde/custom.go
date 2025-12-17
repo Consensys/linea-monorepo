@@ -106,14 +106,6 @@ func init() {
 
 // ---------------- IMPLEMENTATIONS ----------------
 
-// Helper to get pointer from struct value
-func ptrFromStruct(v reflect.Value) (interface{}, error) {
-	if !v.CanAddr() {
-		return nil, fmt.Errorf("cannot address struct of type %v", v.Type())
-	}
-	return v.Addr().Interface(), nil
-}
-
 // --- Column Natural ---
 func serializeColumnNatural(w *Writer, v reflect.Value) (Ref, error) {
 	nat := v.Interface().(column.Natural)
@@ -385,4 +377,51 @@ func deserializeAsZero(ctx *ReaderContext, v reflect.Value, offset int64) error 
 func deserializeAsNewPtr(ctx *ReaderContext, v reflect.Value, offset int64) error {
 	v.Set(reflect.New(v.Type().Elem()))
 	return nil
+}
+
+func writeBigInt(w *Writer, b *big.Int) (Ref, error) {
+	if b == nil {
+		return 0, nil
+	}
+	bytes := b.Bytes()
+	sign := int64(0)
+	if b.Sign() < 0 {
+		sign = 1
+	}
+	start := w.offset
+	w.buf.WriteByte(byte(sign))
+	w.buf.Write(bytes)
+	w.offset += int64(1 + len(bytes))
+	fs := FileSlice{Offset: Ref(start), Len: int64(len(bytes)), Cap: sign}
+	off := w.Write(fs)
+	return Ref(off), nil
+}
+
+func toBigInt(v reflect.Value) *big.Int {
+	switch val := v.Interface().(type) {
+	case int:
+		return big.NewInt(int64(val))
+	case int64:
+		return big.NewInt(val)
+	case uint64:
+		return new(big.Int).SetUint64(val)
+	case field.Element:
+		bi := new(big.Int)
+		val.BigInt(bi)
+		return bi
+	case big.Int:
+		return &val
+	case *big.Int:
+		return val
+	default:
+		return nil
+	}
+}
+
+// Helper to get pointer from struct value
+func ptrFromStruct(v reflect.Value) (interface{}, error) {
+	if !v.CanAddr() {
+		return nil, fmt.Errorf("cannot address struct of type %v", v.Type())
+	}
+	return v.Addr().Interface(), nil
 }

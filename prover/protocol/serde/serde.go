@@ -7,21 +7,13 @@ import (
 	"strings"
 	"unsafe"
 
-	"math/big"
-
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 )
 
 var (
-	SerdeStructTag         = "serde"
-	SerdeStructTagOmit     = "omit"
+	serdeStructTag         = "serde"
+	serdeStructTagOmit     = "omit"
 	SerdeStructTagTestOmit = "test_omit"
-)
-
-var (
-	TypeOfColumnNatural = reflect.TypeOf(column.Natural{})
 )
 
 func Serialize(v any) ([]byte, error) {
@@ -77,54 +69,101 @@ func Deserialize(b []byte, v any) error {
 	return ctx.reconstruct(val.Elem(), int64(header.PayloadOff))
 }
 
+// getBinarySize returns the number of bytes a value of type t will occupy
+// in the serialized buffer according to serde layout rules.
+//
+// This is NOT the same as Go's in-memory size. The size returned here reflects
+// how the value is represented on disk:
+//
+//   - Fixed-size, pointer-free values are inlined
+//   - Variable-size or heap-backed values are replaced by an 8-byte Ref
+//
+// This function must remain perfectly consistent with the actual write logic;
+// any mismatch will result in corrupted offsets or incorrect deserialization.
 func getBinarySize(t reflect.Type) int64 {
+	// Types with custom serializers are always referenced indirectly.
+	// The inline representation is a Ref (byte offset).
 	if _, ok := CustomRegistry[t]; ok {
 		return 8
 	}
 
-	if t == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
-		return 8
-	}
-	if t == reflect.TypeOf(big.Int{}) || t == reflect.TypeOf(&big.Int{}) {
-		return 8
-	}
-
 	k := t.Kind()
-	if k == reflect.Ptr || k == reflect.Slice ||
-		k == reflect.String || k == reflect.Interface || k == reflect.Map ||
-		k == reflect.Func {
+
+	// Pointer-like or variable-size types are stored indirectly via Ref.
+	// These values are written elsewhere and referenced inline by offset.
+	switch k {
+	case reflect.Ptr,
+		reflect.Slice,
+		reflect.String,
+		reflect.Interface,
+		reflect.Map,
+		reflect.Func:
 		return 8
 	}
 
+	// Explicit handling of scalar types for clarity and stability.
+	// These are inlined directly using a fixed, deterministic size.
+	switch k {
+	case reflect.Bool:
+		return 1
+
+	case reflect.Int8, reflect.Uint8:
+		return 1
+
+	case reflect.Int16, reflect.Uint16:
+		return 2
+
+	case reflect.Int32, reflect.Uint32:
+		return 4
+
+	case reflect.Int64, reflect.Uint64:
+		return 8
+
+	// int / uint are platform-dependent in Go, so we normalize them
+	// to 8 bytes in the serialized representation.
+	case reflect.Int, reflect.Uint:
+		return 8
+	}
+
+	// Structs are serialized inline by concatenating the serialized
+	// representation of each exported, non-omitted field.
 	if k == reflect.Struct {
+		// Special-case POD types that are safe to inline as raw bytes.
 		if t == reflect.TypeOf(field.Element{}) {
 			return int64(t.Size())
 		}
+
 		var sum int64
 		for i := 0; i < t.NumField(); i++ {
 			f := t.Field(i)
+
+			// Skip unexported fields.
 			if !f.IsExported() {
 				continue
 			}
-			if strings.Contains(f.Tag.Get("serde"), "omit") {
+
+			// Skip fields explicitly omitted from serialization.
+			if strings.Contains(f.Tag.Get(serdeStructTag), serdeStructTagOmit) {
 				continue
 			}
+
 			sum += getBinarySize(f.Type)
 		}
 		return sum
 	}
 
+	// Arrays are fixed-size and serialized inline as repeated elements.
 	if k == reflect.Array {
+		// field.Element arrays are treated as POD blobs.
 		if t == reflect.TypeOf(field.Element{}) {
 			return int64(t.Size())
 		}
+
 		elemSize := getBinarySize(t.Elem())
 		return elemSize * int64(t.Len())
 	}
 
-	if k == reflect.Int || k == reflect.Uint {
-		return 8
-	}
-
+	// Fallback for other fixed-size, pointer-free types
+	// (e.g. float32, float64).
 	return int64(t.Size())
 }
