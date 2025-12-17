@@ -3,8 +3,8 @@ package vector_test
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/bls12377/field"
+	"github.com/consensys/linea-monorepo/prover/maths/bls12377/vector"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

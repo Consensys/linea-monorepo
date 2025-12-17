@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	field "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
 	"github.com/stretchr/testify/require"
 )
 
