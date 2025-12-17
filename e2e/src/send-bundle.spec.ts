@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { Hash, Hex, parseEther, parseGwei, toHex, TransactionReceipt } from "viem";
 import {
   etherToWei,
   generateRandomUUIDv4,
@@ -8,7 +9,6 @@ import {
 } from "./common/utils";
 import { config } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
-import { Hash, Hex, parseEther, toHex, TransactionReceipt } from "viem";
 
 describe("Send bundle test suite", () => {
   const l2AccountManager = config.getL2AccountManager();
@@ -27,14 +27,16 @@ describe("Send bundle test suite", () => {
       const txs: Hex[] = [];
 
       for (let i = 0; i < 3; i++) {
-        const txRequest = {
+        const txRequest = await lineaSendBundleClient.prepareTransactionRequest({
+          type: "eip1559",
           account: senderAccount,
           to: recipientAccount.address,
-          value: parseEther("1000"),
-          maxPriorityFeePerGas: parseEther("0.000000001"), // 1 Gwei
-          maxFeePerGas: parseEther("0.00000001"), // 10 Gwei
+          value: parseGwei("0.000001"),
+          maxPriorityFeePerGas: parseGwei("1"),
+          maxFeePerGas: parseGwei("10"),
           nonce: senderNonce++,
-        };
+        });
+
         txs.push(await getRawTransactionHex(l2PublicClient, txRequest));
         txHashes.push(await getTransactionHash(l2PublicClient, txRequest));
       }
@@ -54,12 +56,8 @@ describe("Send bundle test suite", () => {
 
       expect(hasReachedTargetBlockNumber).toBeTruthy();
       for (const tx of txHashes) {
-        let receipt: TransactionReceipt | undefined = undefined;
-        try {
-          receipt = await l2PublicClient.getTransactionReceipt({ hash: tx });
-          // eslint-disable-next-line no-empty
-        } catch {}
-        expect(receipt?.status).toStrictEqual("success");
+        const receipt = await l2PublicClient.waitForTransactionReceipt({ hash: tx, timeout: 20_000 });
+        expect(receipt.status).toStrictEqual("success");
       }
     },
     120_000,
@@ -80,14 +78,15 @@ describe("Send bundle test suite", () => {
       const txs: Hex[] = [];
 
       for (let i = 0; i < 3; i++) {
-        const txRequest = {
+        const txRequest = await lineaSendBundleClient.prepareTransactionRequest({
+          type: "eip1559",
           account: senderAccount,
           to: recipientAccount.address,
           value: parseEther("5"),
-          maxPriorityFeePerGas: parseEther("0.000000001"), // 1 Gwei
-          maxFeePerGas: parseEther("0.00000001"), // 10 Gwei
+          maxPriorityFeePerGas: parseGwei("1"),
+          maxFeePerGas: parseGwei("10"),
           nonce: senderNonce++,
-        };
+        });
         txs.push(await getRawTransactionHex(l2PublicClient, txRequest));
         txHashes.push(await getTransactionHash(l2PublicClient, txRequest));
       }
@@ -131,14 +130,15 @@ describe("Send bundle test suite", () => {
       const txs: Hex[] = [];
 
       for (let i = 0; i < 3; i++) {
-        const txRequest = {
+        const txRequest = await lineaSendBundleClient.prepareTransactionRequest({
+          type: "eip1559",
           account: senderAccount,
           to: recipientAccount.address,
-          value: parseEther("1000"),
-          maxPriorityFeePerGas: parseEther("0.000000001"), // 1 Gwei
-          maxFeePerGas: parseEther("0.00000001"), // 10 Gwei
+          value: parseGwei("0.000001"),
+          maxPriorityFeePerGas: parseGwei("1"),
+          maxFeePerGas: parseGwei("10"),
           nonce: senderNonce++,
-        };
+        });
 
         txs.push(await getRawTransactionHex(l2PublicClient, txRequest));
         txHashes.push(await getTransactionHash(l2PublicClient, txRequest));

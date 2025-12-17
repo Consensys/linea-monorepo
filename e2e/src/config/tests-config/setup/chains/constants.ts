@@ -8,13 +8,6 @@ export const localL1Network = defineChain({
     name: "Ether",
     symbol: "ETH",
   },
-  blockExplorers: {
-    default: {
-      name: "Etherscan",
-      url: "https://etherscan.io",
-      apiUrl: "https://api.etherscan.io/api",
-    },
-  },
   rpcUrls: {
     default: {
       http: ["http://127.0.0.1:8445"],
@@ -22,9 +15,6 @@ export const localL1Network = defineChain({
     },
   },
   testnet: true,
-  custom: {
-    localNetwork: true,
-  },
 });
 
 // This is a local L2 Network configuration for testing purposes
@@ -36,13 +26,6 @@ export const localL2Network = defineChain({
     name: "Ether",
     symbol: "ETH",
   },
-  blockExplorers: {
-    default: {
-      name: "Etherscan",
-      url: "https://lineascan.build",
-      apiUrl: "https://api.lineascan.build/api",
-    },
-  },
   rpcUrls: {
     default: {
       http: ["http://127.0.0.1:9045"],
@@ -50,9 +33,6 @@ export const localL2Network = defineChain({
     },
   },
   testnet: true,
-  custom: {
-    localNetwork: true,
-  },
 });
 
 export const lineaDevnet = defineChain({
@@ -77,7 +57,4 @@ export const lineaDevnet = defineChain({
     },
   },
   testnet: true,
-  custom: {
-    localNetwork: true,
-  },
 });
