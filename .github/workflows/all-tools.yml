@@ -12,12 +12,14 @@ on:
     paths:
       - "operations/**"
       - ".github/workflows/all-tools.yml"
+      - ".nvmrc"
   pull_request:
     branches:
       - main
     paths:
       - "operations/**"
       - ".github/workflows/all-tools.yml"
+      - ".nvmrc"
 
 jobs:
   changes:
