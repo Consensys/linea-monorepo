@@ -243,7 +243,7 @@ describe("PostmanServiceClient", () => {
       postmanServiceClient.stopAllServices();
 
       expect(loggerSpy).toHaveBeenCalledTimes(10);
-      expect(loggerSpy).toHaveBeenLastCalledWith("All listeners and message deliverers have been stopped");
+      expect(loggerSpy).toHaveBeenLastCalledWith("All listeners and message deliverers have been stopped.");
     });
   });
 });
