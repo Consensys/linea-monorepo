@@ -19,7 +19,7 @@ export const ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY: TypedDocumentNode<
   ActiveValidatorsByLargestBalanceQueryVariables
 > = gql`
   query AllValidatorsByLargestBalanceQuery($first: Int = 100) {
-    allHeadValidators(condition: { state: ACTIVE }, orderBy: EXIT_EPOCH_ASC, first: $first) {
+    allHeadValidators(filter: { state: { in: [DEPOSITED, ACTIVE] } }, orderBy: EXIT_EPOCH_ASC, first: $first) {
       nodes {
         balance
         effectiveBalance
