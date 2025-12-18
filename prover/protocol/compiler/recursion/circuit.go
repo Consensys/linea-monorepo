@@ -25,10 +25,10 @@ import (
 // Alex: please don't change the ordering of the arguments as this
 // affects the parsing of the witness.
 type RecursionCircuit struct {
-	X                  gnarkfext.E4Gen      `gnark:",public"`
-	Ys                 []gnarkfext.E4Gen    `gnark:",public"`
-	Commitments        []zk.WrappedVariable `gnark:",public"`
-	Pubs               []zk.WrappedVariable `gnark:",public"`
+	X                  gnarkfext.E4Gen                 `gnark:",public"`
+	Ys                 []gnarkfext.E4Gen               `gnark:",public"`
+	Commitments        [][blockSize]zk.WrappedVariable `gnark:",public"`
+	Pubs               []zk.WrappedVariable            `gnark:",public"`
 	WizardVerifier     *wizard.VerifierCircuit
 	withoutGkr         bool                       `gnark:"-"`
 	withExternalHasher bool                       `gnark:"-"`
@@ -64,41 +64,46 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		MerkleRoots:        merkleRoots,
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound),
 		Pubs:               make([]zk.WrappedVariable, len(comp.PublicInputs)),
-		Commitments:        make([]zk.WrappedVariable, len(merkleRoots)),
+		Commitments:        make([][blockSize]zk.WrappedVariable, len(merkleRoots)),
 		Ys:                 make([]gnarkfext.E4Gen, len(polyQuery.Pols)),
 	}
 }
 
 // Define implements the [frontend.Circuit] interface.
-func (r *RecursionCircuit) Define(api frontend.API) error {
-
+func (r *RecursionCircuit) Define(fapi frontend.API) error {
+	api, err := gnarkfext.NewExt4(fapi)
+	if err != nil {
+		panic(err)
+	}
 	w := r.WizardVerifier
 
 	if !r.withoutGkr {
-		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(api)
-		w.BLSFS = fiatshamir.NewGnarkFSKoalabear(api)
+		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(fapi)
+		w.BLSFS = fiatshamir.NewGnarkFSKoalabear(fapi)
 	}
 
 	if r.withExternalHasher {
-		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(api)
+		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(fapi)
 	}
 
-	w.Verify(api)
+	w.Verify(fapi)
 
 	for i := range r.Pubs {
-		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(api, w)
-		api.AssertIsEqual(r.Pubs[i], pub)
+		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(fapi, w)
+		fapi.AssertIsEqual(r.Pubs[i], pub)
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
-	api.AssertIsEqual(r.X, polyParams.ExtX)
+	api.AssertIsEqual(&r.X, &polyParams.ExtX)
 
 	for i := range polyParams.ExtYs {
-		api.AssertIsEqual(r.Ys[i], polyParams.ExtYs[i])
+		api.AssertIsEqual(&r.Ys[i], &polyParams.ExtYs[i])
 	}
 
 	for i := range r.Commitments {
-		api.AssertIsEqual(r.Commitments[i], r.MerkleRoots[i/blockSize][i%blockSize].GetColAssignmentGnarkAt(w, 0))
+		for j := 0; j < blockSize; j++ {
+			fapi.AssertIsEqual(r.Commitments[i][j], r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0))
+		}
 	}
 
 	return nil
@@ -127,7 +132,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		mRoot := pcsCtx.Items.Precomputeds.MerkleRoot
 		circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
 		for i := 0; i < blockSize; i++ {
-			circuit.Commitments = append(circuit.Commitments, mRoot[i].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+			circuit.Commitments[0][i] = mRoot[i].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
 		}
 	}
 
@@ -136,7 +141,11 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 			mRoot := pcsCtx.Items.MerkleRoots[i]
 			circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
 			for j := 0; j < blockSize; j++ {
-				circuit.Commitments = append(circuit.Commitments, mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+				if pcsCtx.IsNonEmptyPrecomputed() {
+					circuit.Commitments[i+1][j] = mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
+				} else {
+					circuit.Commitments[i][j] = mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
+				}
 			}
 		}
 	}
