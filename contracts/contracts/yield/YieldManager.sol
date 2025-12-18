@@ -513,6 +513,7 @@ contract YieldManager is
     onlyRole(YIELD_PROVIDER_STAKING_ROLE)
     onlyWhenWithdrawalReserveHealthy
   {
+    if (getTargetReserveDeficit() > 0) _pauseStakingIfNotAlready(_yieldProvider);
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount))

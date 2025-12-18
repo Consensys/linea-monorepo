@@ -38,9 +38,9 @@ export const fundYieldProviderForWithdrawal = async (
   const mockYieldProviderAddress = await mockYieldProvider.getAddress();
   const yieldManagerAddress = await testYieldManager.getAddress();
   // Funding cannot happen if withdrawal reserve in deficit
-  const minimumReserveAmount = await testYieldManager.minimumWithdrawalReserveAmount();
+  const targetReserveAmount = await testYieldManager.targetWithdrawalReserveAmount();
   const l1MessageServiceAddress = await testYieldManager.getL1MessageService();
-  await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, ethers.toBeHex(minimumReserveAmount)]);
+  await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, ethers.toBeHex(targetReserveAmount)]);
   await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(withdrawAmount)]);
   await testYieldManager.connect(signer).setWithdrawableValueReturnVal(mockYieldProviderAddress, withdrawAmount);
   await testYieldManager.connect(signer).fundYieldProvider(mockYieldProviderAddress, withdrawAmount);
@@ -100,9 +100,9 @@ export const fundLidoStVaultYieldProvider = async (
   const yieldProviderAddress = await yieldProvider.getAddress();
   const yieldManagerAddress = await testYieldManager.getAddress();
   // Funding cannot happen if withdrawal reserve in deficit
-  const minimumReserveAmount = await testYieldManager.minimumWithdrawalReserveAmount();
+  const targetReserveAmount = await testYieldManager.targetWithdrawalReserveAmount();
   const l1MessageServiceAddress = await testYieldManager.getL1MessageService();
-  await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, ethers.toBeHex(minimumReserveAmount)]);
+  await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, ethers.toBeHex(targetReserveAmount)]);
   await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(withdrawAmount)]);
   await testYieldManager.connect(signer).fundYieldProvider(yieldProviderAddress, withdrawAmount);
 };
