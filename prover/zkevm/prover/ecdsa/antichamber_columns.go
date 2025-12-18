@@ -19,18 +19,18 @@ func (ec *EcRecover) cols() []ifaces.Column {
 	return append(
 		[]ifaces.Column{ec.EcRecoverID, ec.AuxProjectionMask},
 		append(
-			ec.Limb[:],
+			ec.Limb.Limbs(),
 			ec.SuccessBit, ec.EcRecoverIndex, ec.EcRecoverIsData, ec.EcRecoverIsRes,
 		)...,
 	)
 }
 
 func (ad *Addresses) cols() []ifaces.Column {
-	return append(ad.AddressLo[:], ad.AddressHiUntrimmed[:]...)
+	return append(ad.AddressLo.Limbs(), ad.AddressHiUntrimmed.Limbs()...)
 }
 
 func (ts *TxSignature) cols() []ifaces.Column {
-	return append([]ifaces.Column{ts.IsTxHash}, ts.TxHash[:]...)
+	return append([]ifaces.Column{ts.IsTxHash}, ts.TxHash.Limbs()...)
 }
 
 func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
@@ -42,11 +42,12 @@ func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
 			ugd.IsEcrecoverAndFetching,
 			ugd.IsNotPublicKeyAndPushing,
 		},
-		ugd.GnarkData[:]...,
+		ugd.GnarkData.Limbs()...,
 	)
 }
 
 func (ac *antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
+	txHashHi, txHashLo := ac.TxHash.SplitOnBit(128)
 	return &unalignedGnarkDataSource{
 		IsActive:   ac.IsActive,
 		IsPushing:  ac.IsPushing,
@@ -56,6 +57,7 @@ func (ac *antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
 		SuccessBit: ac.EcRecover.SuccessBit,
 		IsData:     ac.EcRecover.EcRecoverIsData,
 		IsRes:      ac.EcRecover.EcRecoverIsRes,
-		TxHash:     ac.TxHash,
+		TxHashHi:   txHashHi.AssertUint128(),
+		TxHashLo:   txHashLo.AssertUint128(),
 	}
 }

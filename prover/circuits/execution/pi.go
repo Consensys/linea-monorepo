@@ -104,10 +104,12 @@ func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) zk.WrappedVariable {
 
 type FunctionalPublicInputSnark struct {
 	FunctionalPublicInputQSnark
-	InitialStateRootHash zk.WrappedVariable
-	InitialBlockNumber   zk.WrappedVariable
-	ChainID              zk.WrappedVariable
-	L2MessageServiceAddr zk.WrappedVariable
+	InitialStateRootHash frontend.Variable
+	InitialBlockNumber   frontend.Variable
+	ChainID              frontend.Variable
+	BaseFee              frontend.Variable
+	CoinBase             frontend.Variable
+	L2MessageServiceAddr frontend.Variable
 }
 
 // RangeCheck checks that values are within range
@@ -140,21 +142,38 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.Field
 	)
 
 	hsh.Reset()
-	hsh.Write(spi.DataChecksum, l2MessagesSum,
-		spi.FinalStateRootHash, spi.FinalBlockNumber, spi.FinalBlockTimestamp, finalRollingHash[0], finalRollingHash[1], spi.LastRollingHashUpdateNumber,
-		spi.InitialStateRootHash, spi.InitialBlockNumber, spi.InitialBlockTimestamp, initialRollingHash[0], initialRollingHash[1], spi.FirstRollingHashUpdateNumber,
-		spi.ChainID, spi.L2MessageServiceAddr)
+	hsh.Write(
+		spi.DataChecksum,
+		l2MessagesSum,
+		spi.FinalStateRootHash,
+		spi.FinalBlockNumber,
+		spi.FinalBlockTimestamp,
+		finalRollingHash[0],
+		finalRollingHash[1],
+		spi.LastRollingHashUpdateNumber,
+		spi.InitialStateRootHash,
+		spi.InitialBlockNumber,
+		spi.InitialBlockTimestamp,
+		initialRollingHash[0],
+		initialRollingHash[1],
+		spi.FirstRollingHashUpdateNumber,
+		spi.ChainID,
+		spi.BaseFee,
+		spi.CoinBase,
+		spi.L2MessageServiceAddr,
+	)
 
 	return hsh.Sum()
 }
 
 func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error {
 
-	spi.InitialStateRootHash = zk.ValueOf(pi.InitialStateRootHash[:])
-	spi.InitialBlockNumber = zk.ValueOf(pi.InitialBlockNumber)
-	spi.ChainID = zk.ValueOf(pi.ChainID)
-	spi.L2MessageServiceAddr = zk.ValueOf(pi.L2MessageServiceAddr[:])
-
+	spi.InitialStateRootHash = pi.InitialStateRootHash[:]
+	spi.InitialBlockNumber = pi.InitialBlockNumber
+	spi.ChainID = pi.ChainID
+	spi.BaseFee = pi.BaseFee
+	spi.CoinBase = pi.CoinBase[:]
+	spi.L2MessageServiceAddr = pi.L2MessageServiceAddr[:]
 	return spi.FunctionalPublicInputQSnark.Assign(pi)
 }
 

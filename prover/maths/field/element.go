@@ -14,7 +14,7 @@ import (
 
 type Element = koalabear.Element
 type Vector = koalabear.Vector
-type Octuplet [8]Element
+type Octuplet = [8]Element
 
 const (
 	// RmaxOrderRoot

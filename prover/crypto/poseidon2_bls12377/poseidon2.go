@@ -96,16 +96,19 @@ func (d *MDHasher) WriteKoalabearElements(elmts ...field.Element) {
 
 // WriteElements adds a slice of field elements to the running hash.
 func (d *MDHasher) WriteElements(elmts ...fr.Element) {
-	quo := (len(d.buffer) + len(elmts)) / maxSizeBuf
-	rem := (len(d.buffer) + len(elmts)) % maxSizeBuf
-	off := len(d.buffer)
-	for i := 0; i < quo; i++ {
-		d.buffer = append(d.buffer, elmts[:maxSizeBuf-off]...)
-		_ = d.SumElement()
-		d.buffer = d.buffer[:0] // flush the buffer once maxSizeBuf is reached
-		off = len(d.buffer)
-	}
-	d.buffer = append(d.buffer, elmts[:rem-off]...)
+	// how to flush the buffer correctly when que >0, below is the previous code
+	// quo := (len(d.buffer) + len(elmts)) / maxSizeBuf
+	// off := len(d.buffer)
+	// for i := 0; i < quo; i++ {
+	// 	d.buffer = append(d.buffer, elmts[:maxSizeBuf-off]...)
+	// 	_ = d.SumElement()
+	// 	d.buffer = d.buffer[:0] // flush the buffer once maxSizeBuf is reached
+	// 	off = len(d.buffer)
+	// 	elmts = elmts[maxSizeBuf-off:] // update and reduce elmts to the remaining
+	// }
+	// d.buffer = append(d.buffer, elmts[:]...) // Restore the remaining
+
+	d.buffer = append(d.buffer, elmts[:]...)
 }
 
 func compress(left, right fr.Element) fr.Element {

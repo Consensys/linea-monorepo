@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -29,7 +30,7 @@ type GenericByteModule struct {
 type GenDataModule struct {
 	HashNum ifaces.Column   // identifier for the hash
 	Index   ifaces.Column   // identifier for the current limb
-	Limbs   []ifaces.Column // the content of the limbs to hash
+	Limbs   limbs.Uint128Be // the content of the limbs to hash
 	NBytes  ifaces.Column   // indicates the total number of bytes to use from limbs cols
 	ToHash  ifaces.Column
 }
@@ -37,8 +38,8 @@ type GenDataModule struct {
 // GenInfoModule collects the columns summarizing information about the result of the hash
 type GenInfoModule struct {
 	HashNum  ifaces.Column   // Identifier for the hash. Allows joining with the data module
-	HashHi   []ifaces.Column // The hash result
-	HashLo   []ifaces.Column // The hash result
+	HashHi   limbs.Uint128Be // The hash result
+	HashLo   limbs.Uint128Be // The hash result
 	IsHashHi ifaces.Column   // indicating the location of Hash
 	IsHashLo ifaces.Column   // indicating the location of Hash
 }
@@ -48,27 +49,16 @@ type GenInfoModule struct {
 func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 
 	var (
-		numRow      = gdm.Limbs[0].Size()
-		numСols     = uint64(len(gdm.Limbs))
+		numRow      = gdm.Limbs.NumRow()
 		index       = gdm.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
 		toHash      = gdm.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 		hashNum     = gdm.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
 		nByte       = gdm.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
+		limbs       = gdm.Limbs.GetAssignmentAsByte16Exact(run)
 		streams     = [][]byte(nil)
 		buffer      = &bytes.Buffer{}
 		currHashNum field.Element
 	)
-
-	maxNbBytesPerLimb := (TotalLimbSize + numСols - 1) / numСols
-
-	// considering left-alignment approach, nbUnusedBytes is the number
-	// of unused bytes of the limb represented by the field element
-	nbUnusedBytes := field.Bytes - maxNbBytesPerLimb
-
-	limbs := make([][]field.Element, numСols)
-	for i := uint64(0); i < numСols; i++ {
-		limbs[i] = gdm.Limbs[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-	}
 
 	for row := 0; row < numRow; row++ {
 
@@ -76,6 +66,8 @@ func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 			continue
 		}
 
+		// Index = 0; indicates the start of a new hash. We flush the current
+		// buffer and return the current hash.
 		if index[row].IsZero() {
 			if !currHashNum.IsZero() {
 				streams = append(streams, buffer.Bytes())
@@ -85,18 +77,7 @@ func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 		}
 
 		currNbBytes := nByte[row].Uint64()
-		for col := uint64(0); col < numСols; col++ {
-			currLimb := limbs[col][row].Bytes()
-
-			if (col+1)*maxNbBytesPerLimb <= currNbBytes {
-				buffer.Write(currLimb[nbUnusedBytes : nbUnusedBytes+maxNbBytesPerLimb])
-				continue
-			}
-
-			nonZeroBytes := currNbBytes % maxNbBytesPerLimb
-			buffer.Write(currLimb[nbUnusedBytes : nbUnusedBytes+nonZeroBytes])
-			break
-		}
+		buffer.Write(limbs[row][:currNbBytes])
 	}
 
 	streams = append(streams, buffer.Bytes())

@@ -197,7 +197,6 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 			Prefix: params.Name + "-" + strconv.Itoa(i),
 			Target: comp,
 		}
-
 		dstVortexCtx := createNewPcsCtx(translator, inputComp)
 		vortexCtxs[i] = dstVortexCtx
 
@@ -291,9 +290,10 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 			if run.Spec.Precomputed.Exists(colName) {
 				continue
 			}
-
-			x := assign.Commitments[j].AsNative().(field.Element)
-			run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
+			for k := 0; k < blockSize; k++ {
+				x := assign.Commitments[j][k].AsNative().(field.Element)
+				run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
+			}
 		}
 
 		// Assigns the poly query.
@@ -413,6 +413,8 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
 		dstVortexCtx.Items.Precomputeds.Tree = srcVortexCtx.Items.Precomputeds.Tree
 	}
+	// Allocate the dst merkle roots
+	dstVortexCtx.Items.MerkleRoots = make([][blockSize]ifaces.Column, dstVortexCtx.MaxCommittedRound+1)
 
 	for round := 0; round <= dstVortexCtx.MaxCommittedRound; round++ {
 		for i := 0; i < blockSize; i++ {

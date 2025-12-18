@@ -26,8 +26,8 @@ const (
 // to justify the consistency between them and the MiMCCodeHash module
 func romLex(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *lineacodehash.RomLexInput {
 	return &lineacodehash.RomLexInput{
-		CFIRomLex: arith.LimbColumnsOfArr2(comp, "romlex", "CODE_FRAGMENT_INDEX"),
-		CodeHash:  arith.LimbColumnsOfArr16(comp, "romlex", "CODE_HASH"),
+		CFIRomLex: arith.GetLimbsOfU32Be(comp, "romlex", "CODE_FRAGMENT_INDEX").LimbsArr2(),
+		CodeHash:  arith.GetLimbsOfU256Be(comp, "romlex", "CODE_HASH").LimbsArr16(),
 	}
 }
 
@@ -37,9 +37,9 @@ func rom(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *line
 	res := &lineacodehash.RomInput{
 		NBytes:   comp.Columns.GetHandle("rom.nBYTES"),
 		Counter:  comp.Columns.GetHandle("rom.COUNTER"),
-		Acc:      arith.LimbColumnsOfArr8(comp, "rom", "ACC"),
-		CFI:      arith.LimbColumnsOfArr2(comp, "rom", "CODE_FRAGMENT_INDEX"),
-		CodeSize: arith.LimbColumnsOfArr2(comp, "rom", "CODE_SIZE"),
+		Acc:      arith.GetLimbsOfU128Be(comp, "rom", "ACC").LimbsArr8(),
+		CFI:      arith.GetLimbsOfU32Be(comp, "rom", "CODE_FRAGMENT_INDEX").LimbsArr2(),
+		CodeSize: arith.GetLimbsOfU32Be(comp, "rom", "CODE_SIZE").LimbsArr2(),
 	}
 
 	return res
@@ -61,8 +61,8 @@ func acp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		)
 
 		// constrain the processed HUB addresses
-		addrHI := arith.LimbColumnsOfArr2(comp, "hub", "acp_ADDRESS_HI")
-		addrLO := arith.LimbColumnsOfArr8(comp, "hub", "acp_ADDRESS_LO")
+		addrHI := arith.GetLimbsOfU32Be(comp, "hub", "acp_ADDRESS_HI").LimbsArr2()
+		addrLO := arith.GetLimbsOfU128Be(comp, "hub", "acp_ADDRESS_LO").LimbsArr8()
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_MANAGER_ACP_HUB_PROCESSED_ADDRESSES_GLOBAL_CONSTRAINT"),
@@ -82,27 +82,27 @@ func acp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 
 	res := statesummary.HubColumnSet{
 		Address:             common.GetMultiHandleEthAddress(comp, "HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		AddressHI:           arith.LimbColumnsOfArr2(comp, "hub", "acp_ADDRESS_HI"),
-		AddressLO:           arith.LimbColumnsOfArr8(comp, "hub", "acp_ADDRESS_LO"),
-		Nonce:               arith.LimbColumnsOfArr4(comp, "hub", "acp_NONCE"),
-		NonceNew:            arith.LimbColumnsOfArr4(comp, "hub", "acp_NONCE_NEW"),
-		CodeHashHI:          arith.LimbColumnsOfArr8(comp, "hub", "acp_CODE_HASH_HI"),
-		CodeHashLO:          arith.LimbColumnsOfArr8(comp, "hub", "acp_CODE_HASH_LO"),
-		CodeHashHINew:       arith.LimbColumnsOfArr8(comp, "hub", "acp_CODE_HASH_HI_NEW"),
-		CodeHashLONew:       arith.LimbColumnsOfArr8(comp, "hub", "acp_CODE_HASH_LO_NEW"),
-		CodeSizeOld:         arith.LimbColumnsOfArr4(comp, "hub", "acp_CODE_SIZE"),
-		CodeSizeNew:         arith.LimbColumnsOfArr4(comp, "hub", "acp_CODE_SIZE_NEW"),
-		BalanceOld:          arith.LimbColumnsOfArr16(comp, "hub", "acp_BALANCE"),
-		BalanceNew:          arith.LimbColumnsOfArr16(comp, "hub", "acp_BALANCE_NEW"),
+		AddressHI:           arith.GetLimbsOfU32Be(comp, "hub", "acp_ADDRESS_HI").LimbsArr2(),
+		AddressLO:           arith.GetLimbsOfU128Be(comp, "hub", "acp_ADDRESS_LO").LimbsArr8(),
+		Nonce:               arith.GetLimbsOfU64Be(comp, "hub", "acp_NONCE").LimbsArr4(),
+		NonceNew:            arith.GetLimbsOfU64Be(comp, "hub", "acp_NONCE_NEW").LimbsArr4(),
+		CodeHashHI:          arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_HI").LimbsArr8(),
+		CodeHashLO:          arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_LO").LimbsArr8(),
+		CodeHashHINew:       arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_HI_NEW").LimbsArr8(),
+		CodeHashLONew:       arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_LO_NEW").LimbsArr8(),
+		CodeSizeOld:         arith.GetLimbsOfU64Be(comp, "hub", "acp_CODE_SIZE").LimbsArr4(),
+		CodeSizeNew:         arith.GetLimbsOfU64Be(comp, "hub", "acp_CODE_SIZE_NEW").LimbsArr4(),
+		BalanceOld:          arith.GetLimbsOfU256Be(comp, "hub", "acp_BALANCE").LimbsArr16(),
+		BalanceNew:          arith.GetLimbsOfU256Be(comp, "hub", "acp_BALANCE_NEW").LimbsArr16(),
 		KeyHI:               constantZero8,
 		KeyLO:               constantZero8,
 		ValueHICurr:         constantZero8,
 		ValueLOCurr:         constantZero8,
 		ValueHINext:         constantZero8,
 		ValueLONext:         constantZero8,
-		DeploymentNumber:    arith.LimbColumnsOfArr2(comp, "hub", "acp_DEPLOYMENT_NUMBER"),
-		DeploymentNumberInf: arith.LimbColumnsOfArr2(comp, "hub", "acp_DEPLOYMENT_NUMBER"),
-		BlockNumber:         arith.LimbColumnsOfArr4(comp, "hub", "acp_BLK_NUMBER"),
+		DeploymentNumber:    arith.GetLimbsOfU32Be(comp, "hub", "acp_DEPLOYMENT_NUMBER").LimbsArr2(),
+		DeploymentNumberInf: arith.GetLimbsOfU32Be(comp, "hub", "acp_DEPLOYMENT_NUMBER").LimbsArr2(),
+		BlockNumber:         arith.GetLimbsOfU64Be(comp, "hub", "acp_BLK_NUMBER").LimbsArr4(),
 		Exists:              arith.ColumnOf(comp, "hub", "acp_EXISTS"),
 		ExistsNew:           arith.ColumnOf(comp, "hub", "acp_EXISTS_NEW"),
 		PeekAtAccount:       arith.ColumnOf(comp, "hub", "acp_PEEK_AT_ACCOUNT"),
@@ -115,8 +115,8 @@ func acp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		LastAOCBlock:        arith.ColumnOf(comp, "hub", "acp_FINAL_IN_BLK"),
 		FirstKOCBlock:       constantZero,
 		LastKOCBlock:        constantZero,
-		MinDeplBlock:        arith.LimbColumnsOfArr2(comp, "hub", "acp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
-		MaxDeplBlock:        arith.LimbColumnsOfArr2(comp, "hub", "acp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
+		MinDeplBlock:        arith.GetLimbsOfU32Be(comp, "hub", "acp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK").LimbsArr2(),
+		MaxDeplBlock:        arith.GetLimbsOfU32Be(comp, "hub", "acp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK").LimbsArr2(),
 		ExistsFirstInBlock:  constantZero,
 		ExistsFinalInBlock:  constantZero,
 	}
@@ -140,8 +140,8 @@ func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		)
 
 		// constrain the processed HUB addresses
-		addrHI := arith.LimbColumnsOfArr2(comp, "hub", "scp_ADDRESS_HI")
-		addrLO := arith.LimbColumnsOfArr8(comp, "hub", "scp_ADDRESS_LO")
+		addrHI := arith.GetLimbsOfU32Be(comp, "hub", "scp_ADDRESS_HI")
+		addrLO := arith.GetLimbsOfU128Be(comp, "hub", "scp_ADDRESS_LO")
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("STATE_MANAGER_SCP_HUB_PROCESSED_ADDRESSES_GLOBAL_CONSTRAINT"),
@@ -183,8 +183,8 @@ func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 
 	res := statesummary.HubColumnSet{
 		Address:             common.GetMultiHandleEthAddress(comp, "HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		AddressHI:           arith.LimbColumnsOfArr2(comp, "hub", "scp_ADDRESS_HI"),
-		AddressLO:           arith.LimbColumnsOfArr8(comp, "hub", "scp_ADDRESS_LO"),
+		AddressHI:           arith.GetLimbsOfU32Be(comp, "hub", "scp_ADDRESS_HI").LimbsArr2(),
+		AddressLO:           arith.GetLimbsOfU128Be(comp, "hub", "scp_ADDRESS_LO").LimbsArr8(),
 		Nonce:               constantZero4,
 		NonceNew:            constantZero4,
 		CodeHashHI:          constantZero8,
@@ -195,15 +195,15 @@ func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		CodeSizeNew:         constantZero4,
 		BalanceOld:          constantZero16,
 		BalanceNew:          constantZero16,
-		KeyHI:               arith.LimbColumnsOfArr8(comp, "hub", "scp_STORAGE_KEY_HI"),
-		KeyLO:               arith.LimbColumnsOfArr8(comp, "hub", "scp_STORAGE_KEY_LO"),
-		ValueHICurr:         arith.LimbColumnsOfArr8(comp, "hub", "scp_VALUE_CURR_HI"),
-		ValueLOCurr:         arith.LimbColumnsOfArr8(comp, "hub", "scp_VALUE_CURR_LO"),
-		ValueHINext:         arith.LimbColumnsOfArr8(comp, "hub", "scp_VALUE_NEXT_HI"),
-		ValueLONext:         arith.LimbColumnsOfArr8(comp, "hub", "scp_VALUE_NEXT_LO"),
-		DeploymentNumber:    arith.LimbColumnsOfArr2(comp, "hub", "scp_DEPLOYMENT_NUMBER"),
-		DeploymentNumberInf: arith.LimbColumnsOfArr2(comp, "hub", "scp_DEPLOYMENT_NUMBER"),
-		BlockNumber:         arith.LimbColumnsOfArr4(comp, "hub", "scp_BLK_NUMBER"),
+		KeyHI:               arith.GetLimbsOfU128Be(comp, "hub", "scp_STORAGE_KEY_HI").LimbsArr8(),
+		KeyLO:               arith.GetLimbsOfU128Be(comp, "hub", "scp_STORAGE_KEY_LO").LimbsArr8(),
+		ValueHICurr:         arith.GetLimbsOfU128Be(comp, "hub", "scp_VALUE_CURR_HI").LimbsArr8(),
+		ValueLOCurr:         arith.GetLimbsOfU128Be(comp, "hub", "scp_VALUE_CURR_LO").LimbsArr8(),
+		ValueHINext:         arith.GetLimbsOfU128Be(comp, "hub", "scp_VALUE_NEXT_HI").LimbsArr8(),
+		ValueLONext:         arith.GetLimbsOfU128Be(comp, "hub", "scp_VALUE_NEXT_LO").LimbsArr8(),
+		DeploymentNumber:    arith.GetLimbsOfU32Be(comp, "hub", "scp_DEPLOYMENT_NUMBER").LimbsArr2(),
+		DeploymentNumberInf: arith.GetLimbsOfU32Be(comp, "hub", "scp_DEPLOYMENT_NUMBER").LimbsArr2(),
+		BlockNumber:         arith.GetLimbsOfU64Be(comp, "hub", "scp_BLK_NUMBER").LimbsArr4(),
 		Exists:              constantZero,
 		ExistsNew:           constantZero,
 		PeekAtAccount:       constantZero,
@@ -216,8 +216,8 @@ func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		LastAOCBlock:        constantZero,
 		FirstKOCBlock:       arith.ColumnOf(comp, "hub", "scp_FIRST_IN_BLK"),
 		LastKOCBlock:        arith.ColumnOf(comp, "hub", "scp_FINAL_IN_BLK"),
-		MinDeplBlock:        arith.LimbColumnsOfArr2(comp, "hub", "scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
-		MaxDeplBlock:        arith.LimbColumnsOfArr2(comp, "hub", "scp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
+		MinDeplBlock:        arith.GetLimbsOfU32Be(comp, "hub", "scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK").LimbsArr2(),
+		MaxDeplBlock:        arith.GetLimbsOfU32Be(comp, "hub", "scp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK").LimbsArr2(),
 		ExistsFirstInBlock:  arith.ColumnOf(comp, "hub", "scp_EXISTS_FIRST_IN_BLOCK"),
 		ExistsFinalInBlock:  arith.ColumnOf(comp, "hub", "scp_EXISTS_FINAL_IN_BLOCK"),
 	}

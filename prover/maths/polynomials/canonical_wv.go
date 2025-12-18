@@ -42,11 +42,12 @@ func GnarkEvalCanonicalExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4
 		panic(err)
 	}
 
-	res := ext4.Zero()
+	res := gnarkfext.E4Gen{}
+	res = *ext4.Zero()
 	s := len(p)
 	for i := 0; i < len(p); i++ {
-		res = ext4.Mul(res, &z)
-		res = ext4.Add(res, &p[s-1-i])
+		res = *ext4.Mul(&res, &z)
+		res = *ext4.Add(&res, &p[s-1-i])
 	}
-	return *res
+	return res
 }
