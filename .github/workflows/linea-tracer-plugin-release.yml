@@ -9,6 +9,10 @@ on:
   release:
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'Branch from which to make the release'
+        required: true
+        default: 'main'
       release_tag:
         description: Specify tag where assets should be added.
         required: true
@@ -41,6 +45,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
+          ref: ${{ inputs.branch }}
           submodules: false
 
       - name: Setup Tracer Environment
