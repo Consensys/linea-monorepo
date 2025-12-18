@@ -23,7 +23,7 @@ jobs:
         id: filter
         with:
           base: ${{ github.ref }}
-          list-files: shell
+          list-files: json
           filters: |
             e2e-paths:
               - 'coordinator/**/src/main/**'
@@ -44,17 +44,22 @@ jobs:
 
       - name: Evaluate excluding test/doc files
         id: evaluate
+        env:
+          E2E_PATHS_MATCHED: ${{ steps.filter.outputs.e2e-paths }}
+          E2E_PATHS_FILES: ${{ steps.filter.outputs.e2e-paths_files }}
         run: |
-          if [[ "${{ steps.filter.outputs.e2e-paths }}" != "true" ]]; then
+          if [[ "$E2E_PATHS_MATCHED" != "true" ]]; then
             echo "No e2e-relevant paths matched"
             echo "result=false" >> $GITHUB_OUTPUT
             exit 0
           fi
           
-          FILES="${{ steps.filter.outputs.e2e-paths_files }}"
-          echo "Matched files: $FILES"
+          echo "Matched files: $E2E_PATHS_FILES"
           
-          for file in $FILES; do
+          # Parse JSON array safely using jq
+          mapfile -t FILES < <(echo "$E2E_PATHS_FILES" | jq -r '.[]')
+          
+          for file in "${FILES[@]}"; do
             # Skip test and doc files
             if [[ "$file" =~ \.(test|spec)\.ts$ ]] || \
                [[ "$file" =~ _test\.go$ ]] || \
