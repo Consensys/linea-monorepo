@@ -5,7 +5,6 @@ import {
   generateRoleAssignments,
   getEnvVarOrDefault,
   getRequiredEnvVar,
-  tryVerifyContract,
   getDeployedContractAddress,
   LogContractDeployment,
   tryVerifyContractWithConstructorArgs,
@@ -37,13 +36,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const vaultFactory = getRequiredEnvVar("VAULT_FACTORY");
   const steth = getRequiredEnvVar("STETH");
   const initialMinimumWithdrawalReservePercentageBps = parseInt(
-    getEnvVarOrDefault("MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS", 4000),
+    getRequiredEnvVar("MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS"),
   );
   const initialTargetWithdrawalReservePercentageBps = parseInt(
-    getEnvVarOrDefault("TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS", 5000),
+    getRequiredEnvVar("TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS"),
   );
-  const initialMinimumWithdrawalReserveAmount = BigInt(getEnvVarOrDefault("MINIMUM_WITHDRAWAL_RESERVE_AMOUNT", 0));
-  const initialTargetWithdrawalReserveAmount = BigInt(getEnvVarOrDefault("TARGET_WITHDRAWAL_RESERVE_AMOUNT", 0));
+  const initialMinimumWithdrawalReserveAmount = BigInt(getRequiredEnvVar("MINIMUM_WITHDRAWAL_RESERVE_AMOUNT"));
+  // initialTargetWithdrawalReserveAmount must > initialMinimumWithdrawalReserveAmount
+  const initialTargetWithdrawalReserveAmount = BigInt(getRequiredEnvVar("TARGET_WITHDRAWAL_RESERVE_AMOUNT"));
   const gIFirstValidatorPrev = getEnvVarOrDefault("GI_FIRST_VALIDATOR_PREV", GI_FIRST_VALIDATOR_PREV);
   const gIFirstValidatorCurr = getEnvVarOrDefault("GI_FIRST_VALIDATOR_CURR", GI_FIRST_VALIDATOR_CURR);
   const pivotSlot = getEnvVarOrDefault("PIVOT_SLOT", PIVOT_SLOT);
@@ -96,7 +96,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await LogContractDeployment(contractName, yieldManager);
   const yieldManagerAddress = await yieldManager.getAddress();
-  await tryVerifyContract(yieldManagerAddress);
+  await tryVerifyContractWithConstructorArgs(yieldManagerAddress, "contracts/yield/YieldManager.sol:YieldManager", [
+    lineaRollupAddress,
+  ]);
 
   /********************************************************************
    *                ValidatorContainerProofVerifier                   *
@@ -128,14 +130,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     vaultHub,
     vaultFactory,
     steth,
-    verifier,
+    verifierAddress,
   );
   await LogContractDeployment("LidoStVaultYieldProviderFactory", factory);
   const factoryAddress = await factory.getAddress();
   await tryVerifyContractWithConstructorArgs(
     factoryAddress,
     "contracts/yield/LidoStVaultYieldProviderFactory.sol:LidoStVaultYieldProviderFactory",
-    [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifier],
+    [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifierAddress],
   );
 
   /********************************************************************
@@ -148,6 +150,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const createYieldProviderTx = await factoryContract.createLidoStVaultYieldProvider();
   await createYieldProviderTx.wait();
   console.log("Created LidoStVaultYieldProvider at ", yieldProvider);
+  await tryVerifyContractWithConstructorArgs(
+    yieldProvider,
+    "contracts/yield/LidoStVaultYieldProvider.sol:LidoStVaultYieldProvider",
+    [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifierAddress],
+  );
 };
 
 export default func;
