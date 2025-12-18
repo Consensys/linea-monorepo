@@ -10,6 +10,7 @@ import java.time.LocalTime
  */
 
 plugins {
+  id 'net.consensys.zkevm.kotlin-library-minimal-conventions'
   alias(libs.plugins.besuPluginLibrary)
   alias(libs.plugins.web3j)
   alias(libs.plugins.web3jSolidity)
@@ -42,6 +43,7 @@ solidity {
   version '0.8.19'
 }
 
+compileTestKotlin.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:generateTestContractWrappers")
 processTestResources.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:generateTestContractWrappers")
 
 tasks.register('acceptanceTests', Test) {
