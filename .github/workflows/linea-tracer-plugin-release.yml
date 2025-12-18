@@ -55,7 +55,7 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
-          gh_create=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset 2>&1)
+          gh_create=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset)
           echo "$gh_create"
           echo "create_tag=$gh_create" >> $GITHUB_OUTPUT
           gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
