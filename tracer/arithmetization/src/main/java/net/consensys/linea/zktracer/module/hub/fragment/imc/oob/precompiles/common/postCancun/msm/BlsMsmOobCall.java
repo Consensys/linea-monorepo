@@ -52,7 +52,7 @@ public abstract class BlsMsmOobCall extends CommonPrecompileOobCall {
             ? BigInteger.valueOf(numInputs)
                 .multiply(BigInteger.valueOf(msmMultiplicationCost()))
                 .multiply(BigInteger.valueOf(discount))
-                .mod(BigInteger.valueOf(PRC_BLS_MULTIPLICATION_MULTIPLIER))
+                .divide(BigInteger.valueOf(PRC_BLS_MULTIPLICATION_MULTIPLIER))
                 .longValueExact()
             : 0;
 

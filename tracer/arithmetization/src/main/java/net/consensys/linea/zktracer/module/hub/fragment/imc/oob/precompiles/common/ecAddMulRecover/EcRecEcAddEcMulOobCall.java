@@ -30,7 +30,7 @@ public abstract class EcRecEcAddEcMulOobCall extends CommonPrecompileOobCall {
   public void setOutputs() {
     super.setOutputs();
     final boolean insufficientGas =
-        getCalleeGas().compareTo(Bytes.minimalBytes(precompileLongCost())) < 0;
+        getCalleeGas().compareTo(Bytes.minimalBytes(precompileLongCost())) <= 0;
 
     // Set hubSuccess
     final boolean hubSuccess = !insufficientGas;
