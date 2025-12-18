@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.Trace.OOB_INST_MODEXP_EXTRACT;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BASE_MIN_OFFSET;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import java.math.BigInteger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -59,15 +60,13 @@ public class ModexpExtractOobCall extends OobCall {
 
   @Override
   public void setOutputs() {
-    log.info("base =" + metadata.bbsInt());
-    log.info("expo =" + metadata.ebsInt());
-    log.info("modu =" + metadata.mbsInt());
-    log.info("cds =" + getCds().toInt());
     final boolean bbsIsZero = metadata.bbs().isZero();
     final boolean ebsIsZero = metadata.ebs().isZero();
     final boolean mbsIsZero = metadata.mbs().isZero();
     final boolean callDataExtendsBeyondExponent =
-        BASE_MIN_OFFSET + metadata.bbsInt() + metadata.ebsInt() < cds.toInt();
+        BigInteger.valueOf(BASE_MIN_OFFSET + metadata.bbsInt() + metadata.ebsInt())
+                .compareTo(cds.toUnsignedBigInteger())
+            < 0;
 
     setExtractModulus(callDataExtendsBeyondExponent && !mbsIsZero);
     setExtractBase(extractModulus && !bbsIsZero);
