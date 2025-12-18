@@ -486,7 +486,7 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
     val withdrawalsRoot = Hash.fromHexString(blockParams[BlockParams.WITHDRAWALS_ROOT])
 
     // Take code from AbstractEngineNewPayload in Besu codebase
-    val executionRequestBytes = Bytes.fromHexString(blockParams[BlockParams.EXECUTION_REQUEST])
+    val executionRequestBytes = Bytes.fromHexString(blockParams[BlockParams.EXECUTION_REQUEST]!!)
     val executionRequestBytesData = executionRequestBytes.slice(1)
     val executionRequest = Request(
       RequestType.of(executionRequestBytes[0].toInt()),
@@ -514,7 +514,7 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
       withdrawalsRoot,
       blockParam.blobGasUsed,
       BlobGas.fromHexString(blockParam.excessBlobGas),
-      Bytes32.fromHexString(blockParams[BlockParams.PARENT_BEACON_BLOCK_ROOT]),
+      Bytes32.fromHexString(blockParams[BlockParams.PARENT_BEACON_BLOCK_ROOT]!!),
       maybeRequests.map { BodyValidation.requestsHash(it) }.orElse(null),
       null, // BAL hash
       MainnetBlockHeaderFunctions(),
