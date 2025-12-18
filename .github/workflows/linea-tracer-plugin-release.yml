@@ -60,7 +60,6 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
-          gh release delete linea-tracer-beta-v4.4-rc7 --cleanup-tag --yes
           echo "CREATE_TAG=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset 2>&1)" >> $GITHUB_OUTPUT
           gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
         env:
@@ -69,24 +68,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Set up GCC
-        id: setup-gcc
         uses: egor-tensin/setup-gcc@eaa888eb19115a521fa72b65cd94fe1f25bbcaac #v1.3
 
       - name: Build without tests
-        id: build-without-tests
         run: ./gradlew :tracer:build -x test -x spotlessCheck
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: Store distribution artifacts
-        id : store-artifacts
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: distributions
           path: tracer/arithmetization/build/libs
 
       - name: Run spotless
-        id: run-spotless
         run: ./gradlew --no-daemon --parallel :tracer:clean :tracer:spotlessCheck
 
   # ==================================================================
@@ -178,6 +173,7 @@ jobs:
   # ==================================================================
   publish:
     needs: [ build ]
+    if: github.event_name != 'pull_request'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     env:
       architecture: "amd64"
