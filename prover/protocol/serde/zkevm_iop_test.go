@@ -37,8 +37,8 @@ import (
 
 var (
 	// Avoid setting both modes to true at the same time
-	isTest      = false
-	isBenchmark = true
+	isTest      = true
+	isBenchmark = false
 )
 
 var (
@@ -149,10 +149,13 @@ func runSerdeBenchmark(b *testing.B, input any, name string, onlySerialize bool)
 }
 
 func TestSerdeZkEVM(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	runSerdeTest(t, z, "ZKEVM", true, false)
 }
 
 func TestSerdeZkEVMIO(t *testing.T) {
+
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Get Real ZkEVM
 	z := zkevm.GetTestZkEVM()
 	require.NotNil(t, z, "ZkEVM instance should not be nil")

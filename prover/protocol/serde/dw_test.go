@@ -12,7 +12,7 @@ import (
 
 func BenchmarkSerdeDW(b *testing.B) {
 
-	// b.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	b.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	dist := GetDistWizard()
 	b.ResetTimer()
@@ -127,12 +127,12 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 
 func TestSerdeDistWizard(t *testing.T) {
 
-	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	dist := GetDistWizard()
 
 	var (
-		isSanityCheck = false
+		isSanityCheck = true
 		isfailFast    = true
 	)
 
