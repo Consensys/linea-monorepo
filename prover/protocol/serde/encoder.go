@@ -16,7 +16,7 @@ type encoder struct {
 	// The growing array of bytes (the "Heap").
 	buf *bytes.Buffer
 
-	// The write cursor. Points to the end of the buffer.
+	// The write cursor pointing to the end of the buffer.
 	offset int64
 
 	// Maps a Go RAM address (uintptr -integer big enough to hold a mem. address

@@ -388,11 +388,17 @@ func encodeBigInt(enc *encoder, b *big.Int) (Ref, error) {
 	if b.Sign() < 0 {
 		sign = 1
 	}
-	start := enc.offset
+	startOffset := enc.offset
+
+	// Note: We use enc.buf.Write (raw std. library write) to dump the "payload" (the sign byte + magnitude bytes)
+	// directly onto the heap without any metadata. We then manually construct one FileSlice that points to that raw
+	// dump. We use enc.write(fs) to write that header properly into the file structure.  This is done essentially to
+	// avoid the "double headers" problem (i.e. to get the actual payload, the decoder would have to read a header to
+	// find a header to find the bytes - thereby wasting 24 bytes of space and adding CPU overhead unnecessarily).
 	enc.buf.WriteByte(byte(sign))
 	enc.buf.Write(bytes)
-	enc.offset += int64(1 + len(bytes))
-	fs := FileSlice{Offset: Ref(start), Len: int64(len(bytes)), Cap: sign}
+	enc.offset += int64(1 + len(bytes)) // plus 1 for sign byte
+	fs := FileSlice{Offset: Ref(startOffset), Len: int64(len(bytes)), Cap: sign}
 	off := enc.write(fs)
 	return Ref(off), nil
 }
@@ -412,6 +418,14 @@ func decodeBigInt(data []byte, target reflect.Value, offset int64) error {
 	}
 	bytes := data[dataStart : dataStart+dataLen]
 	bi := new(big.Int).SetBytes(bytes)
+
+	// Note: While encoding we write ths "sign" byte twice once in the encoder buffer and then in the FileSlice.Cap.
+	// While it looks redundant, we favour this method for semantic Completeness of the Payload ([Sign Byte] + [Magnitude Bytes])
+	// which is a complete, standalone binary representation of a Signed Integer. While decoding, we fetch the sign byte
+	// from `FileSlice.Cap` because the decoder has already loaded the struct into the CPU cache while reading `Offset` and `Len`.
+	// The `Cap` field is effectively already in a register. This avoids *peeking* into the data blob:
+	// reading the sign byte would require following the pointer into the memory-mapped region (`dec.data[offset]`), performing an extra memory load,
+	// and then creating a slice for the remaining data.
 	if fs.Cap == 1 {
 		bi.Neg(bi)
 	}
