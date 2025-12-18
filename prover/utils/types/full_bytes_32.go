@@ -13,8 +13,11 @@ import (
 type FullBytes32 Bytes32
 
 func (f FullBytes32) WriteTo(w io.Writer) (n int64, err error) {
-	padded := LeftPadded(f[:])
-	w.Write(padded[:])
+	buf := [32]byte{}
+	copy(buf[16:], f[16:])
+	w.Write(buf[:])
+	copy(buf[16:], f[:16])
+	w.Write(buf[:])
 	return 64, nil
 }
 
@@ -23,9 +26,11 @@ func (f FullBytes32) Write1Word(w io.Writer) (n int64, err error) {
 }
 
 func (f *FullBytes32) ReadFrom(r io.Reader) (n int64, err error) {
-	buf := [64]byte{}
-	r.Read(buf[:])
-	copy((*f)[:], RemovePadding(buf[:]))
+	buf0, buf1 := [32]byte{}, [32]byte{}
+	r.Read(buf0[:])
+	r.Read(buf1[:])
+	copy((*f)[16:], buf0[16:])
+	copy((*f)[:16], buf1[16:])
 	return 64, nil
 }
 
@@ -63,6 +68,7 @@ func (f FullBytes32) MarshalJSON() ([]byte, error) {
 // Unmarshal an ethereum address from JSON format. The expected format is an hex
 // string.
 func (f *FullBytes32) UnmarshalJSON(b []byte) error {
+
 	decoded, err := DecodeQuotedHexString(b)
 	if err != nil {
 		return fmt.Errorf(

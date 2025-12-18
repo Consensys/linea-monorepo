@@ -48,15 +48,15 @@ func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 	)
 
 	assignment := testAssignCircuit{
-		Ins:   make([][][32]zk.WrappedVariable, len(actualSizes)),
-		NbIns: make([]zk.WrappedVariable, len(actualSizes)),
-		Outs:  make([][32]zk.WrappedVariable, len(actualSizes)),
+		Ins:   make([][][32]frontend.Variable, len(actualSizes)),
+		NbIns: make([]frontend.Variable, len(actualSizes)),
+		Outs:  make([][32]frontend.Variable, len(actualSizes)),
 	}
 	circuit := testAssignCircuit{
-		Ins:        make([][][32]zk.WrappedVariable, len(actualSizes)),
+		Ins:        make([][][32]frontend.Variable, len(actualSizes)),
 		strictSize: internal.MapSlice(func(i int) bool { return i == -1 }, maxSizes...),
-		NbIns:      make([]zk.WrappedVariable, len(actualSizes)),
-		Outs:       make([][32]zk.WrappedVariable, len(actualSizes)),
+		NbIns:      make([]frontend.Variable, len(actualSizes)),
+		Outs:       make([][32]frontend.Variable, len(actualSizes)),
 	}
 
 	hsh := compiled.GetHasher()
@@ -71,8 +71,8 @@ func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 		} else {
 			assignment.NbIns[i] = actualSizes[i] / 32
 		}
-		assignment.Ins[i] = make([][32]zk.WrappedVariable, maxSize/32)
-		circuit.Ins[i] = make([][32]zk.WrappedVariable, len(assignment.Ins[i]))
+		assignment.Ins[i] = make([][32]frontend.Variable, maxSize/32)
+		circuit.Ins[i] = make([][32]frontend.Variable, len(assignment.Ins[i]))
 		for j := range assignment.Ins[i] {
 			if j*32 >= actualSizes[i] {
 				utils.Copy(assignment.Ins[i][j][:], zero[:])
@@ -100,7 +100,7 @@ func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 func (c *testAssignCircuit) Define(api frontend.API) error {
 	hsh := c.H.NewHasher(api)
 	for i := range c.Ins {
-		var nbIn zk.WrappedVariable
+		var nbIn frontend.Variable
 		if !c.strictSize[i] {
 			nbIn = c.NbIns[i]
 		}
@@ -112,10 +112,10 @@ func (c *testAssignCircuit) Define(api frontend.API) error {
 
 type testAssignCircuit struct {
 	H          StrictHasherCircuit
-	Ins        [][][32]zk.WrappedVariable
-	NbIns      []zk.WrappedVariable
+	Ins        [][][32]frontend.Variable
+	NbIns      []frontend.Variable
 	strictSize []bool
-	Outs       [][32]zk.WrappedVariable
+	Outs       [][32]frontend.Variable
 }
 
 func TestMockWizard(t *testing.T) {
@@ -128,19 +128,19 @@ func TestMockWizard(t *testing.T) {
 	out := hsh.Sum(nil)
 
 	c := testAssignCircuit{
-		Ins:        [][][32]zk.WrappedVariable{{{}}},
-		NbIns:      []zk.WrappedVariable{nil},
+		Ins:        [][][32]frontend.Variable{{{}}},
+		NbIns:      []frontend.Variable{nil},
 		strictSize: []bool{true},
-		Outs:       [][32]zk.WrappedVariable{{}},
+		Outs:       [][32]frontend.Variable{{}},
 	}
 
 	c.H, err = compiled.GetCircuit()
 	require.NoError(t, err)
 
 	a := testAssignCircuit{
-		Ins:   [][][32]zk.WrappedVariable{{{}}},
-		NbIns: []zk.WrappedVariable{2343},
-		Outs:  [][32]zk.WrappedVariable{{}},
+		Ins:   [][][32]frontend.Variable{{{}}},
+		NbIns: []frontend.Variable{2343},
+		Outs:  [][32]frontend.Variable{{}},
 	}
 
 	a.H, err = hsh.Assign()

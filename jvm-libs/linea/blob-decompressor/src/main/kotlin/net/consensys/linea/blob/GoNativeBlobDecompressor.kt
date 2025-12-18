@@ -82,7 +82,6 @@ internal interface GoNativeBlobDecompressorJnaLib : GoNativeBlobDecompressorJnaB
 
 enum class BlobDecompressorVersion(val version: String) {
   V1_2_0("v1.2.0"),
-  V2("v2.1.0"),
 }
 
 class GoNativeBlobDecompressorFactory {

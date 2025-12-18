@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark/backend/plonk"
@@ -85,7 +84,10 @@ func (cf CollectedFields) AggregationPublicInput(cfg *config.Config) public_inpu
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    utils.ToInt(cf.L2MsgTreeDepth),
 		ChainID:                                 uint64(cfg.Layer2.ChainID),
+		BaseFee:                                 uint64(cfg.Layer2.BaseFee),
+		CoinBase:                                types.EthAddress(cfg.Layer2.CoinBase),
 		L2MessageServiceAddr:                    types.EthAddress(cfg.Layer2.MsgSvcContract),
+		IsAllowedCircuitID:                      uint64(cfg.Aggregation.IsAllowedCircuitID),
 	}
 }
 
@@ -101,16 +103,16 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		close(setupErr)
 	}()
 
-	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, keccak.WizardCompilationParameters()...)
+	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, pi_interconnection.WizardCompilationParameters()...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create the public-input circuit: %w", err)
 	}
 
 	assignment, err := c.Assign(pi_interconnection.Request{
-		DataAvailabilities: cf.DecompressionPI,
-		Executions:         cf.ExecutionPI,
-		Aggregation:        cf.AggregationPublicInput(cfg),
-	}, cfg.BlobDecompressionDictStore(string(circuits.DataAvailabilityV2CircuitID)))
+		Decompressions: cf.DecompressionPI,
+		Executions:     cf.ExecutionPI,
+		Aggregation:    cf.AggregationPublicInput(cfg),
+	}, cfg.BlobDecompressionDictStore(string(circuits.BlobDecompressionV1CircuitID))) // TODO @Tabaie: when there is a version 2, input the compressor version to use here
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not assign the public input circuit: %w", err)
 	}

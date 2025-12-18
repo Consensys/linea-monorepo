@@ -26,6 +26,6 @@ export interface IMessageDBService<TransactionResponse> {
   updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,
-    claimTxFn: () => Promise<TransactionResponse>,
+    claimTxResponsePromise: Promise<TransactionResponse>,
   ): Promise<void>;
 }

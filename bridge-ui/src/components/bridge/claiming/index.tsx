@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useAccount } from "wagmi";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
@@ -7,9 +7,9 @@ import SettingIcon from "@/assets/icons/setting.svg";
 import Skeleton from "@/components/bridge/claiming/skeleton";
 import ReceivedAmount from "./received-amount";
 import Fees from "./fees";
-import { useChainStore, useFormStore } from "@/stores";
+import { useFormStore, useChainStore } from "@/stores";
 import BridgeMode from "./bridge-mode";
-import { BridgeProvider, CCTPMode, ChainLayer } from "@/types";
+import { ChainLayer } from "@/types";
 import { isCctp } from "@/utils";
 
 const AdvancedSettings = dynamic(() => import("@/components/bridge/modal/advanced-settings"), {
@@ -27,7 +27,7 @@ export default function Claiming() {
   const amount = useFormStore((state) => state.amount);
   const balance = useFormStore((state) => state.balance);
   const token = useFormStore((state) => state.token);
-  const cctpMode = useFormStore((state) => state.cctpMode);
+
   const originChainBalanceTooLow = amount && balance < amount;
 
   useEffect(() => {
@@ -39,20 +39,13 @@ export default function Claiming() {
     return () => clearTimeout(timeout);
   }, [amount]);
 
-  useEffect(() => {
-    const noFeePill = document.getElementById("no-fees-pill");
-    if (!noFeePill) return;
-
-    noFeePill.style.display =
-      token.bridgeProvider === BridgeProvider.CCTP && cctpMode === CCTPMode.FAST ? "none" : "block";
-  }, [cctpMode, token.bridgeProvider]);
-
   // Do not allow user to go to AdvancedSettings modal, when they have no choice of ClaimType anyway
   const showSettingIcon = useMemo(() => {
     if (fromChain.layer === ChainLayer.L2) return false;
     // No auto-claiming for USDC via CCTPV2
     if (isCctp(token)) return false;
-    return !loading;
+    if (loading) return false;
+    return true;
   }, [fromChain, token, loading]);
 
   if (!amount || amount <= 0n) return null;
@@ -78,9 +71,9 @@ export default function Claiming() {
         <div className={styles.content}>
           <div className={styles.result}>
             <BridgeTwoLogo
-              src1={token?.image ?? ""}
+              src1={fromChain?.iconPath ?? ""}
               src2={toChain?.iconPath ?? ""}
-              alt1={token?.symbol ?? ""}
+              alt1={fromChain?.nativeCurrency.symbol ?? ""}
               alt2={toChain?.nativeCurrency.symbol ?? ""}
             />
             <ReceivedAmount />

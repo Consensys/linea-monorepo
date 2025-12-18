@@ -2,13 +2,11 @@ package wrapvarutils
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -24,23 +22,67 @@ func Copy[T any](dst []zk.WrappedVariable, src []T) (n int) {
 	return
 }
 
-// ToBytes32 decomposes x into 32 bytes.
-func ToBytes32(api frontend.API, x zk.WrappedVariable) [32]zk.WrappedVariable {
+func ToBytes(api frontend.API, x zk.WrappedVariable) [32]zk.WrappedVariable {
 	var res [32]zk.WrappedVariable
-	d, err := ToBytes(api, []zk.WrappedVariable{x}, fr.Bytes*8)
-	if err != nil {
-		panic(err)
-	}
+	d := decomposeIntoBytes(api, x, fr.Bits)
 	slack := 32 - len(d) // should be zero
 	copy(res[slack:], d)
-	for i := range slack {
-		res[i] = 0
+	for i := 0; i < slack; i++ {
+		res[i] = zk.ValueOf(0)
 	}
 	return res
 }
 
+func decomposeIntoBytes(api frontend.API, data zk.WrappedVariable, nbBits int) []zk.WrappedVariable {
+	if nbBits == 0 {
+		nbBits = api.Compiler().FieldBitLen()
+	}
+
+	nbBytes := (api.Compiler().FieldBitLen() + 7) / 8
+
+	bytes, err := api.Compiler().NewHint(decomposeIntoBytesHint, nbBytes, data)
+	if err != nil {
+		panic(err)
+	}
+	lastNbBits := nbBits % 8
+	if lastNbBits == 0 {
+		lastNbBits = 8
+	}
+	rc := rangecheck.New(api)
+	api.AssertIsLessOrEqual(bytes[0], 1<<lastNbBits-1) //TODO try range checking this as well
+	for i := 1; i < nbBytes; i++ {
+		rc.Check(bytes[i], 8)
+	}
+
+	res := make([]zk.WrappedVariable, len(bytes))
+	for i := 0; i < len(bytes); i++ {
+		res[i] = zk.ValueOf(bytes[i])
+	}
+	return res
+}
+
+func decomposeIntoBytesHint(_ *big.Int, ins, outs []*big.Int) error {
+	nbBytes := len(outs) / len(ins)
+	if nbBytes*len(ins) != len(outs) {
+		return errors.New("incongruent number of ins/outs")
+	}
+	var v, radix, zero big.Int
+	radix.SetUint64(256)
+	for i := range ins {
+		v.Set(ins[i])
+		for j := nbBytes - 1; j >= 0; j-- {
+			outs[i*nbBytes+j].Mod(&v, &radix)
+			v.Rsh(&v, 8)
+		}
+		if v.Cmp(&zero) != 0 {
+			return errors.New("not fitting in len(outs)/len(ins) many bytes")
+		}
+	}
+	return nil
+}
+
 func RegisterHints() {
-	solver.RegisterHint(breakIntoBytesHint, divBy31Hint)
+	solver.RegisterHint(decomposeIntoBytesHint)
 }
 
 // ReduceBytes reduces given bytes modulo a given field. As a side effect, the "bytes" are range checked
@@ -78,7 +120,7 @@ func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.W
 	// 	panic(err)
 	// }
 
-	// bits := make([]zk.WrappedVariable, 8*len(bytes))
+	// bits := make([]frontend.Variable, 8*len(bytes))
 	// for i := range bytes {
 	// 	copy(bits[8*i:], apiGen.ToBinary(bytes[len(bytes)-i-1], 8))
 	// }
@@ -98,112 +140,4 @@ func ToVariableSlice[X any](s []X) []zk.WrappedVariable {
 	res := make([]zk.WrappedVariable, len(s))
 	Copy(res, s)
 	return res
-}
-
-// ToBytes takes data words each containing wordNbBits many bits, and repacks them as 8-bit bytes.
-// The data will be range checked only if the words are larger than a byte.
-func ToBytes(api frontend.API, data []zk.WrappedVariable, wordNbBits int) ([]zk.WrappedVariable, error) {
-	if wordNbBits == 8 {
-		return data, nil
-	}
-
-	if wordNbBits < 8 {
-		wordsPerByte := 8 / wordNbBits
-		if wordsPerByte*wordNbBits != 8 {
-			return nil, fmt.Errorf("currently only multiples or quotients of bytes supported, not the case for the given %d-bit words", wordNbBits)
-		}
-		radix := big.NewInt(1 << uint(wordNbBits))
-		bytes := make([]zk.WrappedVariable, len(data)*wordNbBits/8)
-		for i := range bytes {
-			bytes[i] = compress.ReadNum(api, data[i*wordsPerByte:i*wordsPerByte+wordsPerByte], radix)
-		}
-		return bytes, nil
-	}
-
-	bytesPerWord := wordNbBits / 8
-	if bytesPerWord*8 != wordNbBits {
-		return nil, fmt.Errorf("currently only multiples or quotients of bytes supported, not the case for the given %d-bit words", wordNbBits)
-	}
-	bytes, err := api.Compiler().NewHint(breakIntoBytesHint, len(data)*wordNbBits/8, data...)
-	if err != nil {
-		return nil, err
-	}
-	rc := rangecheck.New(api)
-	for _, b := range bytes {
-		rc.Check(b, 8)
-	}
-
-	radix := big.NewInt(256)
-	for i := range data {
-		api.AssertIsEqual(data[i], compress.ReadNum(api, bytes[i*bytesPerWord:i*bytesPerWord+bytesPerWord], radix))
-	}
-
-	return bytes, nil
-}
-
-func breakIntoBytesHint(_ *big.Int, words []*big.Int, bytes []*big.Int) error {
-	bytesPerWord := len(bytes) / len(words)
-	if bytesPerWord*len(words) != len(bytes) {
-		return errors.New("words are not byte aligned")
-	}
-
-	for i := range words {
-		b := words[i].Bytes()
-		if len(b) > bytesPerWord {
-			return fmt.Errorf("word #%d doesn't fit in %d bytes: 0x%s", i, bytesPerWord, words[i].Text(16))
-		}
-		for j := range b {
-			bytes[i*bytesPerWord+j+bytesPerWord-len(b)].SetUint64(uint64(b[j]))
-		}
-	}
-	return nil
-}
-
-// DivBy31 returns q, r such that v = 31 q + r, and 0 ≤ r < 31
-// side effect: ensures 0 ≤ v[i] < 2ᵇⁱᵗˢ⁺².
-func DivBy31(api frontend.API, v zk.WrappedVariable, bits int) (q, r zk.WrappedVariable, err error) {
-	_q, _r, err := DivManyBy31(api, []zk.WrappedVariable{v}, bits)
-	if err != nil {
-		return nil, nil, err
-	}
-	return _q[0], _r[0], nil
-}
-
-// DivManyBy31 returns q, r for each v such that v = 31 q + r, and 0 ≤ r < 31
-// side effect: ensures 0 ≤ v[i] < 2ᵇⁱᵗˢ⁺² for all i
-func DivManyBy31(api frontend.API, v []zk.WrappedVariable, bits int) (q, r []zk.WrappedVariable, err error) {
-	qNbBits := bits - 4
-
-	if hintOut, err := api.Compiler().NewHint(divBy31Hint, 2*len(v), v...); err != nil {
-		return nil, nil, err
-	} else {
-		q, r = hintOut[:len(v)], hintOut[len(v):]
-	}
-
-	rChecker := rangecheck.New(api)
-
-	for i := range v { // TODO See if lookups or api.AssertIsLte would be more efficient
-		rChecker.Check(r[i], 5)
-		api.AssertIsDifferent(r[i], 31)
-		rChecker.Check(q[i], qNbBits)
-		api.AssertIsEqual(v[i], api.Add(api.Mul(q[i], 31), r[i])) // 31 × q < 2ᵇⁱᵗˢ⁻⁴ 2⁵ ⇒ v < 2ᵇⁱᵗˢ⁺¹ + 31 < 2ᵇⁱᵗˢ⁺²
-	}
-	return q, r, nil
-}
-
-// outs: [quotients], [remainders]
-func divBy31Hint(_ *big.Int, ins []*big.Int, outs []*big.Int) error {
-	if len(outs) != 2*len(ins) {
-		return errors.New("expected output layout: [quotients][remainders]")
-	}
-
-	q := outs[:len(ins)]
-	r := outs[len(ins):]
-	for i := range ins {
-		v := ins[i].Uint64()
-		q[i].SetUint64(v / 31)
-		r[i].SetUint64(v % 31)
-	}
-
-	return nil
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	snarkTestUtils "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
@@ -63,10 +62,10 @@ func TestPublicInput(t *testing.T) {
 		sfpi.L2MessageServiceAddr = -4
 		sfpi.NbL2Messages = -5
 
-		var res [32]zk.WrappedVariable
+		var res [32]frontend.Variable
 		assert.NoError(t, internal.CopyHexEncodedBytes(res[:], testCases[i].GetPublicInputHex()))
 
-		snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []zk.WrappedVariable {
+		snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 			sum := sfpi.Sum(api, keccak.NewHasher(api, 500))
 			return sum[:]
 		}, res[:]...)(t)
@@ -176,7 +175,7 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 		decompPI := utils.RightPad(innerPiPartition[typeDecomp], len(piCircuit.DecompressionPublicInput))
 
 		piAssignment := pi_interconnection.DummyCircuit{
-			AggregationPublicInput:   [2]zk.WrappedVariable{aggregationPIBytes[:16], aggregationPIBytes[16:]},
+			AggregationPublicInput:   [2]frontend.Variable{aggregationPIBytes[:16], aggregationPIBytes[16:]},
 			ExecutionPublicInput:     utils.ToVariableSlice(execPI),
 			DecompressionPublicInput: utils.ToVariableSlice(decompPI),
 			DecompressionFPI:         utils.ToVariableSlice(pow5(decompPI)),

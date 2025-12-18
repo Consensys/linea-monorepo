@@ -93,16 +93,15 @@ func TestMiMCCodeHash(t *testing.T) {
 			accNames[i] = string(romInput.Acc[i].GetColID())
 		}
 
-		var ctRomCols = []string{"CFI_0", "CFI_1"}
-		ctRomCols = append(ctRomCols, accNames[:]...)
-		ctRomCols = append(ctRomCols, "NBYTES", "COUNTER")
-		ctRomCols = append(ctRomCols, codeSizeNames[:]...)
+		ctRom.AssignCols(run, romInput.CFI[:]...).
+			AssignCols(run, romInput.Acc[:]...).
+			AssignCols(run, romInput.NBytes, romInput.Counter).
+			AssignCols(run, romInput.CodeSize[:]...)
 
-		ctRom.Assign(run, ctRomCols[:]...)
 		romInput.completeAssign(run)
-		ctRomLex.Assign(run,
-			append([]string{"CFI_ROMLEX_0", "CFI_ROMLEX_1"},
-				codeHashNames...)...)
+		ctRomLex.AssignCols(run, romLexInput.CFIRomLex[:]...).
+			AssignCols(run, romLexInput.CodeHash[:]...)
+
 		mod.Assign(run)
 
 		var ctRomColIds = []string{string(romInput.CFI[0].GetColID()), string(romInput.CFI[1].GetColID())}
@@ -111,17 +110,12 @@ func TestMiMCCodeHash(t *testing.T) {
 		ctRomColIds = append(ctRomColIds, string(romInput.Counter.GetColID()))
 		ctRomColIds = append(ctRomColIds, codeSizeNames[:]...)
 
-		ctRom.CheckAssignment(run,
-			// TODO: add also auxiliary columns
-			ctRomColIds[:]...,
-		)
+		romInput := mod.InputModules.RomInput
 
-		ctRomLex.CheckAssignment(run,
-			append(
-				[]string{string(romLexInput.CFIRomLex[0].GetColID()), string(romLexInput.CFIRomLex[1].GetColID())},
-				codeHashNames[:]...,
-			)...,
-		)
+		ctRom.CheckAssignmentCols(run, romInput.CFI[:]...).
+			CheckAssignmentCols(run, romInput.Acc[:]...).
+			CheckAssignmentCols(run, romInput.NBytes, romInput.Counter).
+			CheckAssignmentCols(run, romInput.CodeSize[:]...)
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)

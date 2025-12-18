@@ -8,10 +8,9 @@ type Props = {
     fee: bigint;
     fiatValue: number | null;
   }[];
-  formattedCctpFees?: string;
 };
 
-export default function GasFeesList({ fees, formattedCctpFees }: Props) {
+export default function GasFeesList({ fees }: Props) {
   const currency = useConfigStore.useCurrency();
   return (
     <ul className={styles.list}>
@@ -24,15 +23,6 @@ export default function GasFeesList({ fees, formattedCctpFees }: Props) {
           currency={currency}
         />
       ))}
-      {formattedCctpFees && (
-        <GasFeesListItem
-          name="USDC fee"
-          fee={0n}
-          formattedCctpFees={formattedCctpFees}
-          fiatValue={null}
-          currency={currency}
-        />
-      )}
     </ul>
   );
 }

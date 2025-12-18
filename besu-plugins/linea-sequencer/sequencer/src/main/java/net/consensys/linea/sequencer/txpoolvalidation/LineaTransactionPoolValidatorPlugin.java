@@ -93,8 +93,7 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
               profitabilityConfiguration(),
               tracerConfiguration(),
               l1L2BridgeSharedConfiguration(),
-              rejectedTxJsonRpcManager,
-              getInvalidTransactionByLineCountCache()));
+              rejectedTxJsonRpcManager));
 
       if (metricCategoryRegistry.isMetricCategoryEnabled(TX_POOL_PROFITABILITY)) {
         final var besuEventsService =

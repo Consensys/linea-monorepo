@@ -3,7 +3,6 @@ package execution
 import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
 	"github.com/consensys/linea-monorepo/prover/config"
-	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -47,16 +46,23 @@ type Response struct {
 	// First block number
 	FirstBlockNumber int `json:"firstBlockNumber"`
 
-	// ExecDataChecksum checksums and fingerprints for the execution data.
-	ExecDataChecksum public_input.ExecDataChecksum `json:"execDataChecksum"`
-
+	// ExecDataChecksum stores the mimc hash of the execution data. It is also
+	// part of the public inputs of the related compression proof.
+	ExecDataChecksum types.Bytes32 `json:"execDataChecksum"`
 	// ChainID indicates which ChainID was used during the execution.
 	ChainID uint `json:"chainID"`
-	// L2BridgeAddress indicates which ChainID was used during the execution.
+	// L2BridgeAddress indicates the address of the L2 bridge was used during
+	// the execution.
 	L2BridgeAddress types.EthAddress `json:"l2BridgeAddress"`
 	// MaxNbL2MessageHashes indicates the max number of L2 Message hashes that
 	// can be processed by the execution prover at once in the config.
 	MaxNbL2MessageHashes int `json:"maxNbL2MessageHashes"`
+	// CoinBase indicates the coinbase of the L2 network that was used during
+	// the proof generation
+	CoinBase types.EthAddress `json:"coinBase"`
+	// BaseFee indicates the base fee of the L2 network that was used during
+	// the proof generation
+	BaseFee uint `json:"baseFee"`
 
 	// AllRollingHash stores the collection of all the rolling hash events
 	// occurring during the execution frame.

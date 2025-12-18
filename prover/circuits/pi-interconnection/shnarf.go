@@ -1,19 +1,19 @@
 package pi_interconnection
 
 import (
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 type ShnarfIteration struct {
-	BlobDataSnarkHash                          [32]zk.WrappedVariable
-	NewStateRootHash                           [32]zk.WrappedVariable
-	EvaluationPointBytes, EvaluationClaimBytes [32]zk.WrappedVariable
+	BlobDataSnarkHash                          [32]frontend.Variable
+	NewStateRootHash                           [32]frontend.Variable
+	EvaluationPointBytes, EvaluationClaimBytes [32]frontend.Variable
 }
 
 // ComputeShnarfs DOES NOT check nbShnarfs ≤ len(s.iterations)
-func ComputeShnarfs(h keccak.BlockHasher, parent [32]zk.WrappedVariable, iterations []ShnarfIteration) (result [][32]zk.WrappedVariable) {
-	result = make([][32]zk.WrappedVariable, len(iterations))
+func ComputeShnarfs(h keccak.BlockHasher, parent [32]frontend.Variable, iterations []ShnarfIteration) (result [][32]frontend.Variable) {
+	result = make([][32]frontend.Variable, len(iterations))
 	prevShnarf := parent
 
 	for i, t := range iterations {

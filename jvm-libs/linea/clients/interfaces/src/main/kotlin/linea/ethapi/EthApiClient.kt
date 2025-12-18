@@ -11,8 +11,6 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 interface EthApiClient : EthLogsClient {
   fun getChainId(): SafeFuture<ULong>
 
-  fun blockNumber(): SafeFuture<ULong>
-
   fun findBlockByNumber(
     blockParameter: BlockParameter,
   ): SafeFuture<Block?>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
+import { useDynamicEvents } from "@dynamic-labs/sdk-react-core";
 import FaqHelp from "@/components/bridge/faq-help";
 import TokenList from "@/components/bridge/token-list";
 import { Amount } from "@/components/bridge/amount";
@@ -9,6 +10,7 @@ import ToChain from "@/components/bridge/to-chain";
 import Claiming from "@/components/bridge/claiming";
 import styles from "./bridge-form.module.scss";
 import { Submit } from "@/components/bridge/submit";
+import TransactionPaperIcon from "@/assets/icons/transaction-paper.svg";
 import Setting from "@/components/setting";
 import { DestinationAddress } from "../destination-address";
 import Button from "../../ui/button";
@@ -21,7 +23,7 @@ export default function BridgeForm() {
   const setIsTransactionHistoryOpen = useNativeBridgeNavigationStore.useSetIsTransactionHistoryOpen();
   const setIsBridgeOpen = useNativeBridgeNavigationStore.useSetIsBridgeOpen();
 
-  const { isConnected, address } = useAccount();
+  const { address } = useAccount();
   const fromChain = useChainStore.useFromChain();
   const token = useFormStore((state) => state.token);
   const setRecipient = useFormStore((state) => state.setRecipient);
@@ -35,13 +37,10 @@ export default function BridgeForm() {
     refetch();
   }, [refetch, token]);
 
-  useEffect(() => {
-    if (!isConnected) {
-      resetForm();
-      setIsDestinationAddressOpen(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected]);
+  useDynamicEvents("logout", async () => {
+    resetForm();
+    setIsDestinationAddressOpen(false);
+  });
 
   useEffect(() => {
     setBalance(balance);
@@ -68,7 +67,7 @@ export default function BridgeForm() {
               }}
               data-testid="native-bridge-transaction-history-icon"
             >
-              Transaction History
+              <TransactionPaperIcon className={styles["transaction-icon"]} />
             </Button>
             <Setting data-testid="native-bridge-form-settings-icon" />
           </div>

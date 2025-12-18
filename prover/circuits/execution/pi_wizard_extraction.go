@@ -140,7 +140,7 @@ func checkPublicInputs(
 func execDataHash(
 	api frontend.API,
 	wvc *wizard.VerifierCircuit,
-) zk.WrappedVariable {
+) frontend.Variable {
 
 	hsh, err := gkrposeidon2.New(api)
 	if err != nil {

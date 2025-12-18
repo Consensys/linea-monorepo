@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"reflect"
 
-	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -45,33 +44,15 @@ func (f *Bytes32) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// HashToBytes32 converts vortex.Hash to Bytes32.
-func HashToBytes32(hash vortex.Hash) Bytes32 {
-	var result Bytes32
-
-	for i := 0; i < 8; i++ {
-		startIndex := i * 4
-		valBytes := hash[i].Bytes()
-		copy(result[startIndex:startIndex+4], valBytes[:])
-	}
-
-	return result
-}
-
-// Bytes32ToOctuplet converts Bytes32 to []koalabear.Element
-func Bytes32ToOctuplet(input Bytes32) field.Octuplet {
-
-	var result field.Octuplet
-	for i := 0; i < 8; i++ {
-		startIndex := i * 4
-		segment := input[startIndex : startIndex+4]
-		var newElement koalabear.Element
-		if err := newElement.SetBytesCanonical(segment); err != nil {
-			panic(err)
-		}
-		result[i] = newElement
-	}
-	return result
+// Returns true if the receiver is a valid field element
+func (f *Bytes32) IsBn254Fr() bool {
+	var (
+		x            field.Element
+		reserialized [32]byte
+	)
+	x.SetBytes(f[:])
+	reserialized = x.Bytes()
+	return reflect.DeepEqual([32]byte(*f), reserialized)
 }
 
 // Writes the bytes32 into the given write.
@@ -135,8 +116,8 @@ func AsBytes32(b []byte) (d Bytes32) {
 }
 
 // Creates a bytes32 from an hexstring. Panic if it fails. Mostly useful for testing.
-// the string s is left padded with zeroes if less than 32 characters are provided
-// if more than 32 characters are provided, the function will panic
+// the string s is left padded with zeroes if less than 64 characters are provided
+// if more than 64 characters are provided, the function will panic
 // function expects an even number of chars
 // Ox prefix is optional
 func Bytes32FromHex(s string) Bytes32 {
@@ -150,12 +131,9 @@ func Bytes32FromHex(s string) Bytes32 {
 
 	var res Bytes32
 	copy(res[32-len(b):], b)
-
-	var f [8]field.Element
-	for i := 0; i < 8; i++ {
-		if err := f[i].SetBytesCanonical(res[4*i : 4*i+4]); err != nil {
-			utils.Panic("Invalid field element %v", err.Error())
-		}
+	var f field.Element
+	if err := f.SetBytesCanonical(res[:]); err != nil {
+		utils.Panic("Invalid field element %v", err.Error())
 	}
 	return res
 }
@@ -166,7 +144,16 @@ func DummyDigest(i int) (d Bytes32) {
 	return d
 }
 
-// ToOctuplet returns an octuplet from the Bytes32
-func (d Bytes32) ToOctuplet() field.Octuplet {
-	return Bytes32ToOctuplet(d)
+// SetField sets the bytes32 from a field.Element
+func (b *Bytes32) SetField(f field.Element) {
+	*b = Bytes32(f.Bytes())
+}
+
+// ToField returns the bytes32 as a field.Element
+func (b Bytes32) ToField() field.Element {
+	var f field.Element
+	if err := f.SetBytesCanonical(b[:]); err != nil {
+		panic(err)
+	}
+	return f
 }

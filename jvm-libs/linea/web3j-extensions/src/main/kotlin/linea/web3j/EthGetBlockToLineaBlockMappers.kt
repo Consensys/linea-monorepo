@@ -4,7 +4,6 @@ import linea.domain.AccessListEntry
 import linea.domain.Block
 import linea.domain.BlockData
 import linea.domain.BlockWithTxHashes
-import linea.domain.CodeDelegation
 import linea.domain.Transaction
 import linea.domain.TransactionType
 import linea.kotlin.decodeHex
@@ -90,8 +89,6 @@ fun EthBlock.TransactionObject.toDomain(): Transaction {
       accessListEntry.storageKeys.map { it.decodeHex() },
     )
   }
-  // TODO: Web3j doesn't support Type 4 / 7702 parsing transactions from the block
-  val codeDelegations = emptyList<CodeDelegation>()
 
   val chainId = run {
     this.chainId?.toULong()?.let {
@@ -118,7 +115,6 @@ fun EthBlock.TransactionObject.toDomain(): Transaction {
     maxFeePerGas = maxFeePerGas, // Optional field for EIP-1559 transactions
     maxPriorityFeePerGas = maxPriorityFeePerGas, // Optional field for EIP-1559 transactions,
     accessList = accessList,
-    codeDelegations = codeDelegations,
   )
   return domainTx
 }

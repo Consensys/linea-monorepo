@@ -122,12 +122,8 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.Trm *= by
 	tl.Txndata *= by
 	tl.Wcp *= by
-	tl.Binreftable *= by
-	tl.Shfreftable *= by
-	tl.Instdecoder *= by
-	tl.PrecompileSha2Blocks *= by
-	tl.PrecompileRipemdBlocks *= by
 	tl.PrecompileEcrecoverEffectiveCalls *= by
+	tl.PrecompileSha2Blocks *= by
 	tl.PrecompileModexpEffectiveCalls *= by
 	tl.PrecompileModexpEffectiveCalls4096 *= by
 	tl.PrecompileEcaddEffectiveCalls *= by
@@ -135,8 +131,6 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.PrecompileEcpairingEffectiveCalls *= by
 	tl.PrecompileEcpairingMillerLoops *= by
 	tl.PrecompileEcpairingG2MembershipCalls *= by
-	tl.PrecompileBlakeEffectiveCalls *= by
-	tl.PrecompileBlakeRounds *= by
 	tl.BlockKeccak *= by
 	tl.BlockTransactions *= by
 	tl.ShomeiMerkleProofs *= by

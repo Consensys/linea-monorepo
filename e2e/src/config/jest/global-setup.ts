@@ -36,8 +36,6 @@ export default async (): Promise<void> => {
 async function configureOnceOffPrerequisities() {
   const account = config.getL1AccountManager().whaleAccount(0);
   const l2Account = config.getL2AccountManager().whaleAccount(0).connect(config.getL2SequencerProvider()!);
-  const livenessSignerAccount = config.getL2AccountManager().whaleAccount(18).connect(config.getL2SequencerProvider()!);
-
   const lineaRollup = config.getLineaRollupContract(account);
 
   const [l1AccountNonce, l2AccountNonce] = await Promise.all([account.getNonce(), l2Account.getNonce()]);
@@ -51,10 +49,6 @@ async function configureOnceOffPrerequisities() {
     { maxPriorityFeePerGas, maxFeePerGas },
     { maxPriorityFeePerGas: maxPriorityFeePerGasTestContract, maxFeePerGas: maxFeePerGasTestContract },
     { maxPriorityFeePerGas: maxPriorityFeePerGasMimc, maxFeePerGas: maxFeePerGasMimc },
-    {
-      maxPriorityFeePerGas: maxPriorityFeePerGasLineaSequencerUptimeFeed,
-      maxFeePerGas: maxFeePerGasLineaSequencerUptimeFeed,
-    },
   ] = await Promise.all([
     lineaEstimateGasClient.lineaEstimateGas(
       await l2Account.getAddress(),
@@ -72,16 +66,6 @@ async function configureOnceOffPrerequisities() {
       await l2Account.getAddress(),
       undefined,
       new Mimc__factory().interface.encodeDeploy(),
-      toBeHex(0),
-    ),
-    lineaEstimateGasClient.lineaEstimateGas(
-      await l2Account.getAddress(),
-      undefined,
-      new LineaSequencerUptimeFeed__factory().interface.encodeDeploy([
-        false,
-        await livenessSignerAccount.getAddress(),
-        await livenessSignerAccount.getAddress(),
-      ]),
       toBeHex(0),
     ),
   ]);
@@ -103,14 +87,7 @@ async function configureOnceOffPrerequisities() {
         { nonce: l2AccountNonce + 2, maxPriorityFeePerGas: maxPriorityFeePerGasMimc, maxFeePerGas: maxFeePerGasMimc },
       ]),
       deployContract(new LineaSequencerUptimeFeed__factory(), l2Account, [
-        false,
-        await livenessSignerAccount.getAddress(),
-        await livenessSignerAccount.getAddress(),
-        {
-          nonce: l2AccountNonce + 3,
-          maxPriorityFeePerGas: maxPriorityFeePerGasLineaSequencerUptimeFeed,
-          maxFeePerGas: maxFeePerGasLineaSequencerUptimeFeed,
-        },
+        { nonce: l2AccountNonce + 3, maxPriorityFeePerGas: maxPriorityFeePerGasMimc, maxFeePerGas: maxFeePerGasMimc },
       ]),
 
       // Send ETH to the LineaRollup contract

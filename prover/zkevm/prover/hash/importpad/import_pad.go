@@ -87,7 +87,7 @@ type padderAssignmentBuilder interface {
 // group of generic byte module following a prespecified padding strategy.
 func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int) *Importation {
 
-	nbLimbs := len(inp.Src.Data.Limbs)
+	nbLimbs := inp.Src.Data.Limbs.NumLimbs()
 	if !utils.IsPowerOfTwo(nbLimbs) {
 		utils.Panic("number of limbs %d is not a power of two", nbLimbs)
 	}
@@ -196,7 +196,7 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 	comp.InsertProjection(
 		ifaces.QueryIDf("%v_IMPORT_PAD_PROJECTION", inp.Name),
 		query.ProjectionInput{
-			ColumnA: append(inp.Src.Data.Limbs, inp.Src.Data.HashNum, inp.Src.Data.NBytes, inp.Src.Data.Index),
+			ColumnA: append(inp.Src.Data.Limbs.ToBigEndianLimbs().Limbs(), inp.Src.Data.HashNum, inp.Src.Data.NBytes, inp.Src.Data.Index),
 			ColumnB: append(res.Limbs, res.HashNum, res.NBytes, res.Index),
 			FilterA: inp.Src.Data.ToHash,
 			FilterB: res.IsInserted,
@@ -213,7 +213,7 @@ func (imp *Importation) Run(run *wizard.ProverRuntime) {
 		sha2Count = 0
 		srcData   = imp.Inputs.Src.Data
 		hashNum   = srcData.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
-		limbs     = make([][]field.Element, len(srcData.Limbs))
+		limbs     = make([][]field.Element, srcData.Limbs.NumLimbs())
 		nBytes    = srcData.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
 		index     = srcData.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
 		toHash    = srcData.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -236,7 +236,7 @@ func (imp *Importation) Run(run *wizard.ProverRuntime) {
 	)
 
 	for i := range limbs {
-		limbs[i] = srcData.Limbs[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		limbs[i] = srcData.Limbs.Limbs()[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 		iab.Limbs[i] = common.NewVectorBuilder(imp.Limbs[i])
 	}
 

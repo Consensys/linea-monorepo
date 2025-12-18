@@ -58,7 +58,7 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 		comp.QueriesNoParams.MarkAsIgnored(qName)
 
 		var (
-			qRound     = projection.Round
+			qRound     = comp.QueriesNoParams.Round(qName)
 			widthA     = len(projection.Inp.ColumnsA)
 			widthB     = len(projection.Inp.ColumnsB)
 			numCols    = len(projection.Inp.ColumnsA[0])

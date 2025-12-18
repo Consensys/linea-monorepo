@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -44,27 +45,42 @@ func (e *EthAddress) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Writes the padded 40 bytes address into the given write.
+// Writes the bytes32 into the given write.
 func (e EthAddress) WriteTo(w io.Writer) (int64, error) {
-	padded := LeftPadded(e[:])
-	n, err := w.Write(padded)
+	_, err := w.Write(e[:])
 	if err != nil {
 		panic(err) // hard forbid any error
 	}
-	return int64(n), nil
+	return 20, nil
 }
 
-// Reads a padded 40 bytes address from the given reader
+// Reads a bytes32 from the given reader
 func (e *EthAddress) ReadFrom(r io.Reader) (int64, error) {
+	n, err := r.Read((*e)[:])
+	return int64(n), err
+}
 
-	var buf [40]byte
+// Reads an Ethereum address that is left zero-padded to 32 bytes. Example:
+// 0x000000000000000000000000deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+func (e *EthAddress) ReadFrom32BytesLeftZeroPadded(r io.Reader) (int64, error) {
+	var buf [12]byte
 	n, err := r.Read(buf[:])
 	if err != nil {
-		return 0, err
+		return int64(n), fmt.Errorf("could not read 32 bytes, left-zero padded ethereum address: %v", err)
 	}
-	unpadded := RemovePadding(buf[:])
-	copy((*e)[:], unpadded)
-	return int64(n), nil
+	return e.ReadFrom(r)
+}
+
+// Writes an Ethereum address on 32 using left-zero padding.
+func (e *EthAddress) WriteOn32Bytes(w io.Writer) (int64, error) {
+	buf := [12]byte{}
+	_, err0 := w.Write(buf[:])
+	_, err1 := e.WriteTo(w)
+	err := errors.Join(err0, err1)
+	if err != nil {
+		return 0, fmt.Errorf("writing address %x on 32 bytes failed: %w", *e, err)
+	}
+	return 32, nil
 }
 
 func (e EthAddress) Hex() string {

@@ -24,23 +24,14 @@ export interface ILineaRollupClient<
   getMessageStatusUsingMerkleTree(messageHash: string, overrides: Overrides): Promise<OnChainMessageStatus>;
   estimateClaimGas(
     message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    opts?: {
-      claimViaAddress?: string;
-      overrides?: Overrides;
-    },
+    overrides?: Overrides,
   ): Promise<bigint>;
   estimateClaimWithoutProofGas(
     message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    opts?: {
-      claimViaAddress?: string;
-      overrides?: Overrides;
-    },
+    overrides: Overrides,
   ): Promise<bigint>;
   claimWithoutProof(
     message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    opts?: {
-      claimViaAddress?: string;
-      overrides?: Overrides;
-    },
+    overrides: Overrides,
   ): Promise<ContractTransactionResponse>;
 }

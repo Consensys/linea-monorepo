@@ -14,10 +14,7 @@ export interface IMessageServiceContract<
   getTransactionReceiptByMessageHash(messageHash: string): Promise<TransactionReceipt | null>;
   claim(
     message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    opts?: {
-      claimViaAddress?: string;
-      overrides?: Overrides;
-    },
+    overrides?: Overrides,
   ): Promise<ContractTransactionResponse>;
   retryTransactionWithHigherFee(transactionHash: string, priceBumpPercent?: number): Promise<TransactionResponse>;
   isRateLimitExceeded(messageFee: bigint, messageValue: bigint): Promise<boolean>;

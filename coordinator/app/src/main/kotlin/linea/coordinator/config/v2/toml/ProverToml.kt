@@ -18,7 +18,6 @@ data class ProverToml(
   val proofAggregation: ProverDirectoriesToml,
   val switchBlockNumberInclusive: ULong? = null,
   val new: ProverToml? = null,
-  val enableRequestFilesCleanup: Boolean = false,
 ) {
   data class ProverDirectoriesToml(
     val fsRequestsDirectory: String,
@@ -84,7 +83,6 @@ data class ProverToml(
           ),
         )
       },
-      enableRequestFilesCleanup = this.enableRequestFilesCleanup,
     )
   }
 }

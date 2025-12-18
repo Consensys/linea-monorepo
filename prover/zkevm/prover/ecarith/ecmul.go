@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -42,7 +43,7 @@ func NewEcMulZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetizat
 		Index:   arith.ColumnOf(comp, "ecdata", "INDEX"),
 		IsData:  arith.ColumnOf(comp, "ecdata", "IS_ECMUL_DATA"),
 		IsRes:   arith.ColumnOf(comp, "ecdata", "IS_ECMUL_RESULT"),
-		Limbs:   arith.LimbColumnsOfArr8(comp, "ecdata", "LIMB"),
+		Limbs:   arith.GetLimbsOfU128Le(comp, "ecdata", "LIMB"),
 	}
 
 	return newEcMul(
@@ -57,7 +58,7 @@ func NewEcMulZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetizat
 func newEcMul(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, plonkOptions []query.PlonkOption) *EcMul {
 	size := limits.sizeEcMulIntegration()
 
-	flattenLimbs := common.NewFlattenColumn(comp, common.NbLimbU128, src.Limbs[:], src.CsEcMul)
+	flattenLimbs := common.NewFlattenColumn(comp, src.Limbs.AsDynSize(), src.CsEcMul)
 
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_ECMUL + "_ALIGNMENT",
@@ -94,7 +95,7 @@ func (em *EcMul) Assign(run *wizard.ProverRuntime) {
 // fetch data from the EC_DATA module from the arithmetization.
 type EcDataMulSource struct {
 	CsEcMul ifaces.Column
-	Limbs   [common.NbLimbU128]ifaces.Column
+	Limbs   limbs.Uint128Le
 	Index   ifaces.Column
 	IsData  ifaces.Column
 	IsRes   ifaces.Column

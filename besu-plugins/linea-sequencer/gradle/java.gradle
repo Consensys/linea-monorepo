@@ -14,14 +14,8 @@ if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
           "  Detected version ${JavaVersion.current()}")
 }
 
-java {
-  sourceCompatibility = 21
-  targetCompatibility = 21
-
-  consistentResolution {
-    useCompileClasspathVersions()
-  }
-}
+sourceCompatibility = 21
+targetCompatibility = 21
 
 tasks.withType(JavaCompile) {
   options.compilerArgs += [

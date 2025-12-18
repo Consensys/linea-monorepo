@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/consensys/gnark/frontend"
 	"golang.org/x/exp/constraints"
 )
 
@@ -246,6 +247,12 @@ func ToUint16[T ~int | ~uint](i T) uint16 {
 		panic("out of range")
 	}
 	return uint16(i) // #nosec G115 -- Checked for overflow
+}
+
+func ToVariableSlice[X any](s []X) []frontend.Variable {
+	res := make([]frontend.Variable, len(s))
+	Copy(res, s)
+	return res
 }
 
 func countInts[I constraints.Integer](s []I) []I {

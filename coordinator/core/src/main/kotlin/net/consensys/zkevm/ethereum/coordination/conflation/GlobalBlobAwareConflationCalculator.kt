@@ -24,7 +24,7 @@ class GlobalBlobAwareConflationCalculator(
   private val conflationCalculator: GlobalBlockConflationCalculator,
   private val blobCalculator: ConflationCalculatorByDataCompressed,
   private val batchesLimit: UInt,
-  metricsFacade: MetricsFacade,
+  private val metricsFacade: MetricsFacade,
   private val log: Logger = LogManager.getLogger(GlobalBlobAwareConflationCalculator::class.java),
 ) : TracesConflationCalculator {
   private var conflationHandler: (ConflationCalculationResult) -> SafeFuture<*> = NOOP_CONSUMER
@@ -145,7 +145,6 @@ class GlobalBlobAwareConflationCalculator(
     if (conflation.conflationTrigger == ConflationTrigger.DATA_LIMIT ||
       conflation.conflationTrigger == ConflationTrigger.TIME_LIMIT ||
       conflation.conflationTrigger == ConflationTrigger.TARGET_BLOCK_NUMBER ||
-      conflation.conflationTrigger == ConflationTrigger.HARD_FORK ||
       numberOfBatches >= batchesLimit
     ) {
       fireBlobTriggerAndResetState(conflation.conflationTrigger)
@@ -173,19 +172,10 @@ class GlobalBlobAwareConflationCalculator(
       endBlockTime = blobBlockCounters
         .find { it.blockNumber == blobInterval.endBlockNumber }!!.blockTimestamp,
     )
-    val triggerName = if (numberOfBatches >= batchesLimit) {
-      // we must trigger an alert when BATCHES_LIMIT is reached because blobs
-      // won't be used to max capacity and affects Linea profitability
-      // please do not change the name of this trigger, it is used in the log's based alert
-      "BATCHES_LIMIT"
-    } else {
-      trigger.name
-    }
-
     log.info(
       "new blob: blob={} trigger={} blobSizeBytes={} blobBatchesCount={} blobBatchesLimit={} blobBatchesList={}",
       blobInterval.intervalString(),
-      triggerName,
+      trigger,
       compressedData.size,
       blobBatches.size,
       batchesLimit,

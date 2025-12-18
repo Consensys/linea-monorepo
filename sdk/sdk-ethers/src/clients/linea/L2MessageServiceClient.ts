@@ -133,15 +133,12 @@ export class L2MessageServiceClient
    * Estimates the gas required for the `claimMessage` transaction.
    *
    * @param {Message & { feeRecipient?: string }} message - The message information object.
-   * @param {Overrides} [opts={}] - Claiming options and Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Overrides} [overrides={}] - Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<bigint>} The `claimMessage` transaction gas estimation.
    */
   public async estimateClaimGasFees(
     message: Message & { feeRecipient?: string },
-    opts: {
-      claimViaAddress?: string;
-      overrides?: Overrides;
-    } = {},
+    overrides: Overrides = {},
   ): Promise<LineaGasFees> {
     if (this.mode === "read-only") {
       throw makeBaseError("'EstimateClaimGasFees' function not callable using readOnly mode.");
@@ -156,7 +153,7 @@ export class L2MessageServiceClient
         to: await this.contract.getAddress(),
         value: 0n,
         data: transactionData,
-        ...opts.overrides,
+        ...overrides,
       })) as LineaGasFees;
     } catch (e) {
       throw makeBaseError(e, message);
@@ -167,15 +164,12 @@ export class L2MessageServiceClient
    * Claims the message on L2.
    *
    * @param {Message & { feeRecipient?: string }} message - The message information object.
-   * @param {Overrides} [opts] - Claiming options and Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Overrides} [overrides] - Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<ContractTransactionResponse>} The claimMessage transaction info.
    */
   public async claim(
     message: Message & { feeRecipient?: string },
-    opts: {
-      claimViaAddress?: string;
-      overrides?: Overrides;
-    } = {},
+    overrides: Overrides = {},
   ): Promise<ContractTransactionResponse> {
     if (this.mode === "read-only") {
       throw makeBaseError("'claim' function not callable using readOnly mode.");
@@ -184,9 +178,7 @@ export class L2MessageServiceClient
     const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
     const l2FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
 
-    const claimingContract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
-
-    return await claimingContract.claimMessage(
+    return await this.contract.claimMessage(
       messageSender,
       destination,
       fee,
@@ -195,7 +187,7 @@ export class L2MessageServiceClient
       calldata,
       messageNonce,
       {
-        ...opts.overrides,
+        ...overrides,
       },
     );
   }

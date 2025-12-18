@@ -4,10 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"testing"
-
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/kzg"
 	"github.com/consensys/gnark/backend/plonk"
@@ -16,6 +12,9 @@ import (
 	"github.com/consensys/gnark/test/unsafekzg"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/stretchr/testify/require"
+	"os"
+	"path/filepath"
+	"testing"
 )
 
 func TestLoadSetup(t *testing.T) {
@@ -23,7 +22,7 @@ func TestLoadSetup(t *testing.T) {
 	cfg := config.Config{
 		AssetsDir: dir,
 	}
-	cs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, &circuit{make([]zk.WrappedVariable, 1)})
+	cs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, &circuit{make([]frontend.Variable, 1)})
 	require.NoError(t, err)
 
 	canonicalSize, lagrangeSize := plonk.SRSSize(cs)
@@ -50,7 +49,7 @@ func TestLoadSetup(t *testing.T) {
 type circuit struct {
 	// this is a dummy circuit that does nothing
 	// it is used to generate the SRS
-	Input []zk.WrappedVariable `gnark:",public"`
+	Input []frontend.Variable `gnark:",public"`
 }
 
 func (circuit *circuit) Define(api frontend.API) error {
@@ -58,7 +57,7 @@ func (circuit *circuit) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	prod := zk.WrappedVariable(1)
+	prod := frontend.Variable(1)
 	for _, x := range circuit.Input {
 		prod = api.Mul(prod, x)
 	}

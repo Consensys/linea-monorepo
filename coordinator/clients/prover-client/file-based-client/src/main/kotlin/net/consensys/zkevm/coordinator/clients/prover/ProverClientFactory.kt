@@ -93,7 +93,7 @@ class ProverClientFactory(
   ): ProverClient<ProofRequest, ProofResponse>
     where ProofRequest : BlockInterval {
     return if (switchBlockNumberInclusive != null) {
-      val switchPredicate = StartBlockNumberBasedSwitchPredicate(switchBlockNumberInclusive)
+      val switchPredicate = StartBlockNumberBasedSwitchPredicate<ProofRequest>(switchBlockNumberInclusive)
       ABProverClientRouter(
         proverA = clientBuilder(proverAConfig),
         proverB = clientBuilder(proverBConfig!!),

@@ -1,5 +1,6 @@
 "use client";
 
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { usePathname } from "next/navigation";
 import { useInitialiseChain } from "@/hooks";
 import { LinkBlock } from "@/types";
@@ -12,9 +13,18 @@ import styles from "./layout.module.scss";
 import { isHomePage } from "@/utils";
 
 export function Layout({ children, navData }: { children: React.ReactNode; navData: LinkBlock[] }) {
+  const { sdkHasLoaded } = useDynamicContext();
   useInitialiseChain();
 
   const pathname = usePathname();
+
+  if (!sdkHasLoaded) {
+    return (
+      <CommonLayout navData={navData} pathname={pathname}>
+        {children}
+      </CommonLayout>
+    );
+  }
 
   return (
     <CommonLayout navData={navData} pathname={pathname}>

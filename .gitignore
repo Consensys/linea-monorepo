@@ -132,14 +132,11 @@ __pycache__/
 /ts-libs/**/lib/**/*.so
 /ts-libs/**/lib/**/*.dylib
 
-/docker/config/l2-genesis-initialization/*.json
-/docker/config/l2-genesis-initialization/*.toml
-
 !.gitkeep
 !operations/bin/
 # Authorize the kzg srs folder
 !prover/prover-assets/kzgsrs/**
-!prover/symbolic/testdata/**/*.csv
+!prover/**/testdata/**/*.csv
 !prover/symbolic/testdata/**/*.tar.gz
 # except for single-round bin
 !prover/**/single_round/bin/

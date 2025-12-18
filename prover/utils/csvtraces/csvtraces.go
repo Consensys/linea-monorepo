@@ -291,7 +291,7 @@ func WriteExplicit(w io.Writer, names []string, cols [][]field.Element, inHex bo
 
 func fmtFieldElement(inHex bool, x field.Element) string {
 
-	if inHex || x.Uint64() < 1<<10 {
+	if inHex || (x.IsUint64() && x.Uint64() < 1<<10) {
 		return x.String()
 	}
 

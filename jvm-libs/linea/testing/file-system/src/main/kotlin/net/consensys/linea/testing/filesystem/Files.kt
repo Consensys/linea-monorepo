@@ -1,6 +1,5 @@
 package net.consensys.linea.testing.filesystem
 
-import java.io.FileNotFoundException
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -40,5 +39,5 @@ fun getPathTo(
   lookupParentDir: Boolean = true,
 ): Path {
   return findPathTo(targetFileOrDir, lookupDir, lookupParentDir)
-    ?: throw FileNotFoundException("Could not find $targetFileOrDir in path: $lookupDir or its parent directories")
+    ?: throw IllegalArgumentException("Could not find $targetFileOrDir in path: $lookupDir or its parent directories")
 }

@@ -13,20 +13,6 @@ compile-contracts-no-cache:
 		cd contracts/; \
 		make force-compile
 
-deploy-eip-system-contracts:
-		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-		cd contracts/; \
-		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
-		RPC_URL=http:\\localhost:8545/ \
-		npx ts-node local-deployments-artifacts/deployEIPSystemContracts.ts
-
-deploy-upgradeable-predeploys:
-		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-		cd contracts/; \
-		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
-		RPC_URL=http:\\localhost:8545/ \
-		npx ts-node local-deployments-artifacts/deployPredeployContractsV1.ts
-
 deploy-linea-rollup: L1_CONTRACT_VERSION:=6
 deploy-linea-rollup:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
@@ -34,7 +20,7 @@ deploy-linea-rollup:
 		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
 		RPC_URL=http:\\localhost:8445/ \
 		VERIFIER_CONTRACT_NAME=IntegrationTestTrueVerifier \
-		LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH=0x0bfa819643b4edd205c0dfcc31b7ddf75c7cecd49dbd674309bd8d7dda7312f5 \
+		LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH=0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd \
 		LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER=0 \
 		LINEA_ROLLUP_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
 		LINEA_ROLLUP_OPERATORS=$${LINEA_ROLLUP_OPERATORS:-0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC} \
@@ -126,7 +112,7 @@ deploy-l2-evm-opcode-tester:
 		cd contracts/; \
 		PRIVATE_KEY=0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63 \
 		RPC_URL=http:\\localhost:8545/ \
-		npx ts-node local-deployments-artifacts/deployCancunEvmTestingFramework.ts
+		npx ts-node local-deployments-artifacts/deployLondonEvmTestingFramework.ts
 
 evm-opcode-tester-execute-all-opcodes: OPCODE_TEST_CONTRACT_ADDRESS:=0xa50a51c09a5c451C52BB714527E1974b686D8e77
 evm-opcode-tester-execute-all-opcodes: NUMBER_OF_RUNS:=3

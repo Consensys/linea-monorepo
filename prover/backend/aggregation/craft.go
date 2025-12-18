@@ -15,12 +15,13 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/linea-monorepo/prover/backend/dataavailability"
+	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -51,6 +52,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
 	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs))
+
+	hshM := hasher_factory.NewMiMC()
 
 	for i, execReqFPath := range req.ExecutionProofs {
 
@@ -130,15 +133,23 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 			pi := po.FuncInput()
 
+			if po.ChainID != cfg.Layer2.ChainID {
+				return nil, fmt.Errorf("execution #%d: expected Chain ID %x, encountered %x", i, cfg.Layer2.ChainID, po.ChainID)
+			}
+			if po.BaseFee != cfg.Layer2.BaseFee {
+				return nil, fmt.Errorf("execution #%d: expected Base Fee %x, encountered %x", i, cfg.Layer2.BaseFee, po.BaseFee)
+			}
+
+			if pi.CoinBase != types.EthAddress(cfg.Layer2.CoinBase) {
+				return nil, fmt.Errorf("execution #%d: expected CoinBase addr %x, encountered %x", i, cfg.Layer2.CoinBase, pi.CoinBase)
+			}
+
 			if pi.L2MessageServiceAddr != types.EthAddress(cfg.Layer2.MsgSvcContract) {
 				return nil, fmt.Errorf("execution #%d: expected L2 msg service addr %x, encountered %x", i, cfg.Layer2.MsgSvcContract, pi.L2MessageServiceAddr)
 			}
-			if po.ChainID != cfg.Layer2.ChainID {
-				return nil, fmt.Errorf("execution #%d: expected chain ID %x, encountered %x", i, cfg.Layer2.ChainID, po.ChainID)
-			}
 
 			// make sure public input and collected values match
-			if pi := po.FuncInput().Sum(); !bytes.Equal(pi, po.PublicInput[:]) {
+			if pi := po.FuncInput().Sum(hshM); !bytes.Equal(pi, po.PublicInput[:]) {
 				return nil, fmt.Errorf("execution #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, pi)
 			}
 
@@ -151,8 +162,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.DecompressionPI = make([]blobsubmission.Response, 0, len(req.DecompressionProofs))
 
 	for i, decompReqFPath := range req.DecompressionProofs {
-		dp := &dataavailability.Response{}
-		fpath := path.Join(cfg.DataAvailability.DirTo(), decompReqFPath)
+		dp := &blobdecompression.Response{}
+		fpath := path.Join(cfg.BlobDecompression.DirTo(), decompReqFPath)
 		f := files.MustRead(fpath)
 
 		if err := json.NewDecoder(f).Decode(dp); err != nil {
@@ -204,20 +215,22 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	}
 
 	resp = &Response{
-		DataHashes:                          cf.DataHashes,
-		DataParentHash:                      cf.DataParentHash,
-		ParentStateRootHash:                 cf.ParentStateRootHash,
-		ParentAggregationLastBlockTimestamp: cf.ParentAggregationLastBlockTimestamp,
-		FinalTimestamp:                      cf.FinalTimestamp,
-		L1RollingHash:                       cf.L1RollingHash,
-		L1RollingHashMessageNumber:          cf.L1RollingHashMessageNumber,
-		L2MerkleRoots:                       cf.L2MsgRootHashes,
-		L2MsgTreesDepth:                     cf.L2MsgTreeDepth,
-		L2MessagingBlocksOffsets:            cf.L2MessagingBlocksOffsets,
-		LastFinalizedBlockNumber:            cf.LastFinalizedBlockNumber,
-		FinalBlockNumber:                    cf.FinalBlockNumber,
-		ParentAggregationFinalShnarf:        cf.ParentAggregationFinalShnarf,
-		FinalShnarf:                         cf.FinalShnarf,
+		DataHashes:                              cf.DataHashes,
+		DataParentHash:                          cf.DataParentHash,
+		ParentStateRootHash:                     cf.ParentStateRootHash,
+		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
+		FinalTimestamp:                          cf.FinalTimestamp,
+		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
+		L1RollingHash:                           cf.L1RollingHash,
+		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
+		L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
+		L2MerkleRoots:                           cf.L2MsgRootHashes,
+		L2MsgTreesDepth:                         cf.L2MsgTreeDepth,
+		L2MessagingBlocksOffsets:                cf.L2MessagingBlocksOffsets,
+		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
+		FinalBlockNumber:                        cf.FinalBlockNumber,
+		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
+		FinalShnarf:                             cf.FinalShnarf,
 	}
 
 	// @alex: proofless jobs are triggered once during the migration introducing
@@ -240,6 +253,13 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		L1RollingHashMessageNumber:              resp.L1RollingHashMessageNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    l2MsgMerkleTreeDepth,
+
+		// dynamic chain configuration
+		ChainID:              uint64(cfg.Layer2.ChainID),
+		BaseFee:              uint64(cfg.Layer2.BaseFee),
+		CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
+		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
+		IsAllowedCircuitID:   uint64(cfg.Aggregation.IsAllowedCircuitID),
 	}
 
 	resp.AggregatedProofPublicInput = pubInputParts.GetPublicInputHex()

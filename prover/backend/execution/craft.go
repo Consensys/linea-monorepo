@@ -9,9 +9,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+
 	"github.com/consensys/linea-monorepo/prover/config"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
@@ -29,6 +32,8 @@ func CraftProverOutput(
 		rsp             = Response{
 			BlocksData:           make([]BlockData, len(blocks)),
 			ChainID:              cfg.Layer2.ChainID,
+			BaseFee:              cfg.Layer2.BaseFee,
+			CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
 			L2BridgeAddress:      types.EthAddress(cfg.Layer2.MsgSvcContract),
 			MaxNbL2MessageHashes: cfg.TracesLimits.BlockL2L1Logs,
 		}
@@ -76,11 +81,7 @@ func CraftProverOutput(
 		)
 	}
 
-	var err error
-
-	if rsp.ExecDataChecksum, err = public_input.NewExecDataChecksum(execDataBuf.Bytes()); err != nil {
-		panic(err)
-	}
+	rsp.ExecDataChecksum = mimcHashLooselyPacked(execDataBuf.Bytes())
 
 	// Add into that the data of the state-manager
 	// Run the inspector and pass the parsed traces back to the caller.
@@ -93,7 +94,7 @@ func CraftProverOutput(
 
 	// Set the public input as part of the response immediately so that we can
 	// easily debug issues during the proving.
-	rsp.PublicInput = types.Bytes32(rsp.FuncInput().Sum())
+	rsp.PublicInput = types.Bytes32(rsp.FuncInput().Sum(nil))
 
 	return rsp
 }
@@ -182,8 +183,10 @@ func (rsp *Response) FuncInput() *public_input.Execution {
 		firstBlock = &rsp.BlocksData[0]
 		lastBlock  = &rsp.BlocksData[len(rsp.BlocksData)-1]
 		fi         = &public_input.Execution{
-			L2MessageServiceAddr:  rsp.L2BridgeAddress,
+			L2MessageServiceAddr:  types.EthAddress(rsp.L2BridgeAddress),
 			ChainID:               uint64(rsp.ChainID),
+			BaseFee:               uint64(rsp.BaseFee),
+			CoinBase:              types.EthAddress(rsp.CoinBase),
 			FinalBlockTimestamp:   lastBlock.TimeStamp,
 			FinalBlockNumber:      uint64(rsp.FirstBlockNumber + len(rsp.BlocksData) - 1),
 			InitialBlockTimestamp: firstBlock.TimeStamp,
@@ -220,10 +223,20 @@ func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 			TxHashes:        txHashes,
 			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
 			ChainID:         cfg.Layer2.ChainID,
+			BaseFee:         cfg.Layer2.BaseFee,
+			CoinBase:        types.EthAddress(cfg.Layer2.CoinBase),
 			BlockHashList:   getBlockHashList(rsp),
 		},
 		FuncInp: rsp.FuncInput(),
 	}
+}
+
+// mimcHashLooselyPacked hashes the input stream b using the MiMC hash function
+// encoding each slice of 31 bytes into a field element separately.
+func mimcHashLooselyPacked(b []byte) types.Bytes32 {
+	var buf [32]byte
+	gnarkutil.ChecksumLooselyPackedBytes(b, buf[:], hasher_factory.NewMiMC())
+	return types.AsBytes32(buf[:])
 }
 
 func getBlockHashList(rsp *Response) []types.FullBytes32 {
