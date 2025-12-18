@@ -231,22 +231,6 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		FinalBlockNumber:                        cf.FinalBlockNumber,
 		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
 		FinalShnarf:                             cf.FinalShnarf,
-		DataHashes:                              cf.DataHashes,
-		DataParentHash:                          cf.DataParentHash,
-		ParentStateRootHash:                     cf.ParentStateRootHash,
-		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
-		FinalTimestamp:                          cf.FinalTimestamp,
-		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
-		L1RollingHash:                           cf.L1RollingHash,
-		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
-		L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
-		L2MerkleRoots:                           cf.L2MsgRootHashes,
-		L2MsgTreesDepth:                         cf.L2MsgTreeDepth,
-		L2MessagingBlocksOffsets:                cf.L2MessagingBlocksOffsets,
-		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
-		FinalBlockNumber:                        cf.FinalBlockNumber,
-		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
-		FinalShnarf:                             cf.FinalShnarf,
 	}
 
 	// @alex: proofless jobs are triggered once during the migration introducing
