@@ -48,6 +48,7 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
           submodules: false
+          fetch-depth: 0
 
       - name: Setup Tracer Environment
         # setup go-corset
