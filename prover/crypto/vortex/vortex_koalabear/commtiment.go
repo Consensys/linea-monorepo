@@ -1,6 +1,7 @@
 package vortex_koalabear
 
 import (
+	vgnark "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
@@ -85,17 +86,27 @@ func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) ([]field.Octup
 	numCols := p.RsParams.NbEncodedColumns()
 	leaves := make([]field.Octuplet, numCols)
 
-	parallel.Execute(numCols, func(start, stop int) {
+	r := numCols % 16
+	n := numCols / 16
 
-		hasher := poseidon2_koalabear.NewMDHasher()
-
+	// process the n full chunks of 16 columns using optimized SIMD implementation
+	// if available
+	parallel.Execute(n, func(start, stop int) {
 		for chunkID := start; chunkID < stop; chunkID++ {
-			startChunk := chunkID * chunkSize
-			hasher.Reset()
-			hasher.WriteElements(sisHashes[startChunk : startChunk+chunkSize]...)
-			leaves[chunkID] = hasher.SumElement()
+			startChunk := chunkID * 16 * chunkSize
+			vgnark.CompressPoseidon2x16(sisHashes[startChunk:startChunk+16*chunkSize], chunkSize, leaves[chunkID*16:(chunkID+1)*16])
 		}
 	})
+
+	// process the remaining r columns
+	hasher := poseidon2_koalabear.NewMDHasher()
+	for i := n * 16; i < n*16+r; i++ {
+		startChunk := i * chunkSize
+		hasher.Reset()
+		hasher.WriteElements(sisHashes[startChunk : startChunk+chunkSize]...)
+		leaves[i] = hasher.SumElement()
+	}
+
 	return leaves, sisHashes
 }
 

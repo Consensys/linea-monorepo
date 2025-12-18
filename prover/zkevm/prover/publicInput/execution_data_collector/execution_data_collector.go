@@ -748,12 +748,13 @@ func DefineNumberOfBytesConstraints(comp *wizard.CompiledIOP, edc *ExecutionData
 	// and this will be checked with a projection query in the ProjectionQueries function.
 }
 
+// To do: To be synchronized with Bogdan/Alex before we merge
 // ProjectionQueries computes projection queries to each arithmetization fetcher:
-// fetch.TimestampFetcher, fetch.BlockTxnMetadata, fetch.TxnDataFetcher and fetch.RlpTxnFetcher.
+// fetch.BlockDataFetcher, fetch.BlockTxnMetadata, fetch.TxnDataFetcher and fetch.RlpTxnFetcher.
 func ProjectionQueries(comp *wizard.CompiledIOP,
 	edc *ExecutionDataCollector,
 	name string,
-	timestamps *fetch.TimestampFetcher,
+	timestamps *fetch.BlockDataFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher) {
@@ -1174,7 +1175,7 @@ func DefineIsActiveConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 	edc *ExecutionDataCollector,
 	name string,
-	timestamps *fetch.TimestampFetcher,
+	timestamps *fetch.BlockDataFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher) {
@@ -1217,11 +1218,11 @@ func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 }
 
 // AssignExecutionDataCollector assigns the data in the ExecutionDataCollector, using
-// the arithmetizationfetchers fetch.TimestampFetcher, fetch.BlockTxnMetadata,
+// the arithmetizationfetchers fetch.BlockDataFetcher, fetch.BlockTxnMetadata,
 // fetch.TxnDataFetcher, and fetch.RlpTxnFetcher.
 func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 	edc *ExecutionDataCollector,
-	timestamps *fetch.TimestampFetcher,
+	timestamps *fetch.BlockDataFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher,
@@ -1266,7 +1267,7 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			totalCt++
 
 			// row 1, load the timestamp
-			fetchedTimestamp := timestamps.Data.GetColAssignmentAt(run, blockCt)
+			fetchedTimestamp := timestamps.DataLo.GetColAssignmentAt(run, blockCt)
 			vect.IsTimestamp[totalCt].SetOne()
 			vect.NoBytes[totalCt].SetInt64(noBytesTimestamp)
 			genericLoadFunction(loadTimestamp, fetchedTimestamp)

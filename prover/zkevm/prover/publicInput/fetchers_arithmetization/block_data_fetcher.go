@@ -2,10 +2,10 @@ package fetchers_arithmetization
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -26,8 +26,8 @@ const (
 	limbBitSize = 16
 )
 
-// TimestampFetcher is a struct used to fetch the timestamps from the arithmetization's BlockDataCols
-type TimestampFetcher struct {
+// BlockDataFetcher is a struct used to fetch the timestamps from the arithmetization's BlockDataCols
+type BlockDataFetcher struct {
 	// RelBlock is the relative block number, ranging from 1 to the total number of blocks
 	RelBlock ifaces.Column
 	// timestamp data for the first and last blocks in the conflation, columns of size 1
@@ -38,18 +38,15 @@ type TimestampFetcher struct {
 	FirstArith, LastArith [common.NbLimbU128]ifaces.Column
 	// Data contains all the timestamps in the conflation, ordered by block
 	Data [common.NbLimbU128]ifaces.Column
-	// filter on the TimestampFetcher.Data column
-	FilterFetched ifaces.Column
-	// filter on the Arithmetization's columns
-	FilterArith ifaces.Column
-	// filter that selects only timestamp rows from the arithmetization
-	SelectorTimestamp ifaces.Column
+	// filter on the BlockDataFetcher.Data column
+	FilterFetched, FilterArith ifaces.Column
+
+	// filter that selects only timestamp, baseFee and coinbase rows from the
+	// arithmetization
+	SelTimestampArith, SelBaseFeeArith, SelCoinBaseArith ifaces.Column
 	// prover action to compute SelectorTimestamp
-	ComputeSelectorTimestamp wizard.ProverAction
-	// since there are two timestamp columns, we need to use Ct in order to select only one
-	SelectorCt ifaces.Column
-	// prover action to compute SelectorCt
-	ComputeSelectorCt wizard.ProverAction
+	ComputeSelTimestamp, ComputeSelBaseFee, ComputeSelCoinBase wizard.ProverAction
+
 	// the absolute ID of the first block number
 	FirstBlockID [common.NbLimbU48]ifaces.Column
 	// the absolute ID of the last block number
@@ -57,6 +54,7 @@ type TimestampFetcher struct {
 	// the absolute ID of the first block number
 	FirstBlockIDArith [common.NbLimbU48]ifaces.Column
 	// the absolute ID of the last block number
+
 	LastBlockIDArith [common.NbLimbU48]ifaces.Column
 	// the last block ID minus the first block ID, used to compute the difference
 	// between the first and last blocks and compare it to the RelBlock-1
@@ -64,17 +62,26 @@ type TimestampFetcher struct {
 	LastMinusFirstBlockAction wizard.ProverAction
 	// a constant columns that contains -1 at every position
 	minusOne ifaces.Column
+	// BaseFee contains the base fee for each block
+	BaseFee ifaces.Column
+	// CoinBase contains the coin base for each block
+	CoinBase ifaces.Column
 }
 
-// NewTimestampFetcher returns a new TimestampFetcher with initialized columns that are not constrained.
-func NewTimestampFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.BlockDataCols) *TimestampFetcher {
+// NewBlockDataFetcher returns a new BlockDataFetcher with initialized columns that are not constrained.
+func NewBlockDataFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.BlockDataCols) *BlockDataFetcher {
 
 	size := bdc.Ct.Size()
 
-	res := &TimestampFetcher{
+	res := &BlockDataFetcher{
 		RelBlock:      util.CreateColBase(name, "REL_BLOCK", size, comp),
 		FilterFetched: util.CreateColBase(name, "FILTER_FETCHED", size, comp),
 		FilterArith:   util.CreateColBase(name, "FILTER_ARITHMETIZATION", size, comp),
+
+		// to do: check this part @gusiri
+		BaseFee:  util.CreateColBase(name, "BASE_FEE", size, comp),
+		CoinBase: util.CreateColBase(name, "COIN_BASE", size, comp),
+		// to do: check this part @gusiri
 	}
 
 	for i := range res.Data {
@@ -90,13 +97,14 @@ func NewTimestampFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.Block
 		res.LastBlockID[i] = util.CreateColBase(name, fmt.Sprintf("LAST_BLOCK_ID_%d", i), size, comp)
 		res.FirstBlockIDArith[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
 		res.LastBlockIDArith[i] = util.CreateColBase(name, fmt.Sprintf("LAST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
+
 	}
 
 	return res
 }
 
 // ConstrainFirstAndLastBlockID constraing the values of FirstBlockID and LastBlockID
-func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *TimestampFetcher, name string, bdc *arith.BlockDataCols) {
+func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher, name string, bdc *arith.BlockDataCols) {
 	fetcher.LastMinusFirstBlock, fetcher.LastMinusFirstBlockAction = byte32cmp.NewMultiLimbAdd(comp,
 		&byte32cmp.MultiLimbAddIn{
 			Name: fmt.Sprintf("%s_LAST_BLOCK_ID_GLOBAL_INTERM_%s", name, fetcher.LastBlockID[0].GetColID()),
@@ -170,34 +178,23 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *TimestampFe
 	)
 }
 
-// DefineTimestampFetcher specifies the constraints of the TimestampFetcher with respect to the BlockDataCols
-func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher, name string, bdc *arith.BlockDataCols) {
-	timestampField := util.GetTimestampField()
-	// constrain the fetcher.SelectorTimestamp column, which will be used to compute the filter for the arithmetization's BlockDataCols
-	fetcher.SelectorTimestamp, fetcher.ComputeSelectorTimestamp = dedicated.IsZero(
-		comp,
-		sym.Sub(
-			bdc.Inst,
-			timestampField, // check that the Inst field indicates a timestamp row
-		),
-	).GetColumnAndProverAction()
-	// constrain the fetcher.SelectorCt column, which will be used to compute the filter for the arithmetization's BlockDataCols
-	fetcher.SelectorCt, fetcher.ComputeSelectorCt = dedicated.IsZero(
-		comp,
-		ifaces.ColumnAsVariable(bdc.Ct), // pick the spots where Ct=0
-	).GetColumnAndProverAction()
-	// constrain the entire arithmetization filtering column, using SelectorCt and SelectorTimestamp
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("%s_CONSTRAINT_ARITHMETIZATION_FILTERING_COLUMN", name),
-		sym.Sub(
-			fetcher.FilterArith, // fetcher.FilterArith must be 1 if and only if SelectorCt and SelectorTimestamp are both 1
-			sym.Mul(
-				fetcher.SelectorCt,
-				fetcher.SelectorTimestamp,
-			),
-		),
+// DefineBlockDataFetcher specifies the constraints of the BlockDataFetcher with respect to the BlockDataCols
+func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher, name string, bdc *arith.BlockDataCols) {
+
+	var (
+		timestampField  = util.GetTimestampField()
+		baseFeeField    = util.GetBaseFeeField()
+		coinBaseField   = util.GetCoinBaseField()
+		selTimestampCtx = makeBtcInstSelector(comp, bdc, timestampField)
+		selBaseFeeCtx   = makeBtcInstSelector(comp, bdc, baseFeeField)
+		selCoinBaseCtx  = makeBtcInstSelector(comp, bdc, coinBaseField)
 	)
+
+	// to do @gusiri: refactor this part
+	fetcher.SelTimestampArith, fetcher.ComputeSelTimestamp = selTimestampCtx.GetColumnAndProverAction()
+	fetcher.SelBaseFeeArith, fetcher.ComputeSelBaseFee = selBaseFeeCtx.GetColumnAndProverAction()
+	fetcher.SelCoinBaseArith, fetcher.ComputeSelCoinBase = selCoinBaseCtx.GetColumnAndProverAction()
+	// to do @gusiri: refactor this part
 
 	for i := range fetcher.First {
 		commonconstraints.MustBeConstant(comp, fetcher.First[i])
@@ -268,20 +265,62 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 	comp.InsertProjection(
 		ifaces.QueryIDf("%s_TIMESTAMP_PROJECTION", name),
 		query.ProjectionInput{
-			ColumnA: fetcherTable,
-			ColumnB: arithTable,
+			ColumnA: []ifaces.Column{
+				fetcher.RelBlock,
+				fetcher.DataLo,
+				fetcher.FirstBlockID,
+				fetcher.LastBlockID,
+				fetcher.FirstTimestamp,
+				fetcher.LastTimestamp,
+			},
+			ColumnB: []ifaces.Column{
+				bdc.RelBlock,
+				bdc.DataLo,
+				fetcher.FirstBlockIDArith,
+				fetcher.LastBlockIDArith,
+				fetcher.FirstArith,
+				fetcher.LastArith,
+			},
+			// the filter is structured as an isActive column
 			FilterA: fetcher.FilterFetched,
-			// filter lights up on the arithmetization's BlockDataCols rows that contain timestamp data
-			FilterB: fetcher.FilterArith,
+			// filter lights up on the arithmetization's BlockDataCols rows that
+			// contain timestamp data
+			FilterB: fetcher.SelTimestampArith,
 		})
+
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("%s_BASEFEE_FETCHING", name),
+		sym.Mul(
+			fetcher.SelBaseFeeArith,
+			sym.Sub(
+				fetcher.BaseFee,
+				bdc.DataLo,
+			),
+		),
+	)
+
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("%s_COINBASE_FETCHING", name),
+		sym.Mul(
+			fetcher.SelCoinBaseArith,
+			sym.Sub(
+				sym.Add(
+					bdc.DataLo,
+					sym.Mul(bdc.DataHi, 1<<32),
+				),
+				fetcher.CoinBase,
+			),
+		),
+	)
 
 	// constrain the First/Last Block ID counters
 	ConstrainFirstAndLastBlockID(comp, fetcher, name, bdc)
-
 }
 
-// AssignTimestampFetcher assigns the data in the TimestampFetcher using data fetched from the BlockDataCols
-func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher, bdc *arith.BlockDataCols) {
+// AssignBlockDataFetcher assigns the data in the BlockDataFetcher using data fetched from the BlockDataCols
+func AssignBlockDataFetcher(run *wizard.ProverRuntime, fetcher *BlockDataFetcher, bdc *arith.BlockDataCols) {
 
 	var (
 		firstBlockID [common.NbLimbU48]field.Element
@@ -289,6 +328,8 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 		first, last, timestamp [common.NbLimbU128]field.Element
 		// get the hardcoded timestamp flag
 		timestampField = util.GetTimestampField()
+		baseFeeField   = util.GetBaseFeeField()
+		coinBaseField  = util.GetCoinBaseField()
 
 		// inst is the flag that specifies the row type
 		inst        = bdc.Inst.GetColAssignment(run)
@@ -306,6 +347,13 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 		// counter is used to populate filter.Data and will increment every
 		// time we find a new timestamp
 		counter uint64 = 0
+
+		// baseFee tracks the value of the base and is zero by default
+		// coinBase tracks the value of the coin base and is zero if the opcode
+		// is never used. (but that is normally impossible since these are
+		// needed to argue how the sequencer is rewarded for every block, even
+		// the empty ones)
+		baseFee, coinBase field.Element
 	)
 
 	for i := range data {
@@ -318,6 +366,14 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 			inst = inst.GetPtr(i)
 			ct   = ct.GetPtr(i)
 		)
+
+		if inst.Equal(&baseFeeField) && ct.IsZero() {
+			baseFee = bdc.DataLo.GetColAssignmentAt(run, i)
+		}
+
+		if inst.Equal(&coinBaseField) && ct.IsZero() {
+			coinBase = bdc.DataLo.GetColAssignmentAt(run, i)
+		}
 
 		if inst.Equal(&timestampField) && ct.IsZero() {
 			// the row type is a timestamp-encoding row
@@ -382,4 +438,8 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 	fetcher.ComputeSelectorCt.Run(run)
 	// assign the LastMinusFirstBlock using the LastMinusFirstBlockAction
 	fetcher.LastMinusFirstBlockAction.Run(run)
+
+	// assign the baseFee and the coinBase
+	run.AssignColumn(fetcher.BaseFee.GetColID(), smartvectors.NewConstant(baseFee, size))
+	run.AssignColumn(fetcher.CoinBase.GetColID(), smartvectors.NewConstant(coinBase, size))
 }

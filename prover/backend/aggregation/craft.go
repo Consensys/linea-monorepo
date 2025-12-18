@@ -133,11 +133,19 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 			pi := po.FuncInput()
 
+			if po.ChainID != cfg.Layer2.ChainID {
+				return nil, fmt.Errorf("execution #%d: expected Chain ID %x, encountered %x", i, cfg.Layer2.ChainID, po.ChainID)
+			}
+			if po.BaseFee != cfg.Layer2.BaseFee {
+				return nil, fmt.Errorf("execution #%d: expected Base Fee %x, encountered %x", i, cfg.Layer2.BaseFee, po.BaseFee)
+			}
+
+			if pi.CoinBase != types.EthAddress(cfg.Layer2.CoinBase) {
+				return nil, fmt.Errorf("execution #%d: expected CoinBase addr %x, encountered %x", i, cfg.Layer2.CoinBase, pi.CoinBase)
+			}
+
 			if pi.L2MessageServiceAddr != types.EthAddress(cfg.Layer2.MsgSvcContract) {
 				return nil, fmt.Errorf("execution #%d: expected L2 msg service addr %x, encountered %x", i, cfg.Layer2.MsgSvcContract, pi.L2MessageServiceAddr)
-			}
-			if po.ChainID != cfg.Layer2.ChainID {
-				return nil, fmt.Errorf("execution #%d: expected chain ID %x, encountered %x", i, cfg.Layer2.ChainID, po.ChainID)
 			}
 
 			// make sure public input and collected values match
@@ -207,20 +215,22 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	}
 
 	resp = &Response{
-		DataHashes:                          cf.DataHashes,
-		DataParentHash:                      cf.DataParentHash,
-		ParentStateRootHash:                 cf.ParentStateRootHash,
-		ParentAggregationLastBlockTimestamp: cf.ParentAggregationLastBlockTimestamp,
-		FinalTimestamp:                      cf.FinalTimestamp,
-		L1RollingHash:                       cf.L1RollingHash,
-		L1RollingHashMessageNumber:          cf.L1RollingHashMessageNumber,
-		L2MerkleRoots:                       cf.L2MsgRootHashes,
-		L2MsgTreesDepth:                     cf.L2MsgTreeDepth,
-		L2MessagingBlocksOffsets:            cf.L2MessagingBlocksOffsets,
-		LastFinalizedBlockNumber:            cf.LastFinalizedBlockNumber,
-		FinalBlockNumber:                    cf.FinalBlockNumber,
-		ParentAggregationFinalShnarf:        cf.ParentAggregationFinalShnarf,
-		FinalShnarf:                         cf.FinalShnarf,
+		DataHashes:                              cf.DataHashes,
+		DataParentHash:                          cf.DataParentHash,
+		ParentStateRootHash:                     cf.ParentStateRootHash,
+		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
+		FinalTimestamp:                          cf.FinalTimestamp,
+		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
+		L1RollingHash:                           cf.L1RollingHash,
+		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
+		L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
+		L2MerkleRoots:                           cf.L2MsgRootHashes,
+		L2MsgTreesDepth:                         cf.L2MsgTreeDepth,
+		L2MessagingBlocksOffsets:                cf.L2MessagingBlocksOffsets,
+		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
+		FinalBlockNumber:                        cf.FinalBlockNumber,
+		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
+		FinalShnarf:                             cf.FinalShnarf,
 	}
 
 	// @alex: proofless jobs are triggered once during the migration introducing
@@ -243,6 +253,13 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		L1RollingHashMessageNumber:              resp.L1RollingHashMessageNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    l2MsgMerkleTreeDepth,
+
+		// dynamic chain configuration
+		ChainID:              uint64(cfg.Layer2.ChainID),
+		BaseFee:              uint64(cfg.Layer2.BaseFee),
+		CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
+		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
+		IsAllowedCircuitID:   uint64(cfg.Aggregation.IsAllowedCircuitID),
 	}
 
 	resp.AggregatedProofPublicInput = pubInputParts.GetPublicInputHex()
