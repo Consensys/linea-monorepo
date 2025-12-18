@@ -37,7 +37,7 @@ public class MulOperation extends ModuleOperation {
     this.arg2 = arg2;
   }
 
-  void trace(Trace.Mul trace, int stamp) {
+  void trace(Trace.Mul trace) {
     final UInt256 res =
         switch (opCode) {
           case MUL -> UInt256.fromBytes(arg1).multiply(UInt256.fromBytes(arg2));

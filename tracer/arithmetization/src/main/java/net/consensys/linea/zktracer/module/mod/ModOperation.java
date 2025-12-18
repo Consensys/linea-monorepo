@@ -40,7 +40,7 @@ public class ModOperation extends ModuleOperation {
     this.opCode = opCode;
   }
 
-  public void trace(Trace.Mod trace, int stamp) {
+  public void trace(Trace.Mod trace) {
     final UInt256 res;
     // Sanity check for division-by-zero
     if (this.arg2.isZero()) {
