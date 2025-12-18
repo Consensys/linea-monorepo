@@ -134,7 +134,17 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 	entryList := run.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
 
 	// Collect the opened columns and split them "by-commitment-rounds"
-	proof.Columns = ctx.RecoverSelectedColumns(run, entryList)
+	cols := ctx.RecoverSelectedColumns(run, entryList)
+
+	for i := range cols {
+		for j := range cols[i] {
+			for k := range cols[i][j] {
+				proof.Columns[i][j][k].Base = cols[i][j][k]
+				proof.Columns[i][j][k].IsBase = true
+			}
+		}
+	}
+
 	x := run.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
 	packedMProofs := [8]smartvectors.SmartVector{}
@@ -221,7 +231,15 @@ func (ctx *VortexVerifierAction) runBLS(run wizard.Runtime) error {
 	entryList := run.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
 
 	// Collect the opened columns and split them "by-commitment-rounds"
-	proof.Columns = ctx.RecoverSelectedColumns(run, entryList)
+	baseCols := ctx.RecoverSelectedColumns(run, entryList)
+	for i := range baseCols {
+		for j := range baseCols[i] {
+			for k := range baseCols[i][j] {
+				proof.Columns[i][j][k].Base = baseCols[i][j][k]
+				proof.Columns[i][j][k].IsBase = true
+			}
+		}
+	}
 	x := run.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
 	packedMProofs := [encoding.KoalabearChunks]smartvectors.SmartVector{}

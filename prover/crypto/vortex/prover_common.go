@@ -14,7 +14,7 @@ type OpeningProof struct {
 
 	// Columns [i][j][k] returns the k-th entry
 	// of the j-th selected column of the i-th commitment
-	Columns [][][]field.Element
+	Columns [][][]fext.GenericFieldElem
 
 	// Linear combination of the Reed-Solomon encoded polynomials to open.
 	LinearCombination smartvectors.SmartVector

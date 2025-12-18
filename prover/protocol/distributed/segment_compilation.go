@@ -64,6 +64,18 @@ type CompilationParams struct {
 	// FullDebugMode tells the compiler to add debugging steps to help track
 	// errors.
 	FullDebugMode bool
+
+	// NumOpenedColumnsDebugging sets the number of columns to open in the Vortex
+	// polynomial commitment scheme during segment compilation after self-recursion steps.
+	// If set to 0, the default value (40) is used.
+	// For testing, this should be set to a power of two (e.g., 32 or 64) to avoid
+	// issues with non-power-of-two column sizes in self-recursion.
+	NumOpenedColumnsDebugging int
+
+	// WithCircuit controls whether the recursion circuit compilation step is executed.
+	// When false, the recursion/circuit step is skipped. This is useful for testing
+	// when the circuit implementation is not yet available (e.g., during migration).
+	WithCircuit bool
 }
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -137,6 +149,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		utils.Panic("unexpected type: %T", mod)
 	}
 
+	nbOpenedColumns := params.numOpenedColumns()
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	wizard.ContinueCompilation(modIOP,
@@ -215,7 +228,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(nbOpenedColumns),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
@@ -234,7 +247,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(nbOpenedColumns),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
@@ -256,7 +269,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(nbOpenedColumns),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKeyPublicInput),
@@ -288,6 +301,13 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	}
 
 	sortPublicInput(modIOP, publicInputRestriction)
+
+	// Skip recursion/circuit compilation when WithCircuit is false.
+	// This is useful for testing when the circuit implementation is not available.
+	if !params.WithCircuit {
+		res.RecursionComp = modIOP
+		return res
+	}
 
 	defineRecursion := func(build2 *wizard.Builder) {
 		recCtx = recursion.DefineRecursionOf(
@@ -321,7 +341,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(nbOpenedColumns),
 			vortex.WithSISParams(&sisInstance),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
@@ -338,7 +358,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(nbOpenedColumns),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.WithOptionalSISHashingThreshold(64),
@@ -532,4 +552,11 @@ func sortPublicInput(comp *wizard.CompiledIOP, restrictedList []string) {
 	slices.SortStableFunc(included, cmpName)
 	slices.SortStableFunc(excluded, cmpName)
 	comp.PublicInputs = append(included, excluded...)
+}
+
+func (p *CompilationParams) numOpenedColumns() int {
+	if p.NumOpenedColumnsDebugging == 0 {
+		return 40
+	}
+	return p.NumOpenedColumnsDebugging
 }

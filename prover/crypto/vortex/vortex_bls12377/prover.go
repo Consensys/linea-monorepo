@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -40,14 +39,20 @@ func SelectColumnsAndMerkleProofs(
 		utils.Panic("empty entry list")
 	}
 
-	proof.Columns = make([][][]field.Element, len(committedMatrices))
+	proof.Columns = make([][][]fext.GenericFieldElem, len(committedMatrices))
 
 	for i := range committedMatrices {
-		proof.Columns[i] = make([][]field.Element, len(entryList))
+		proof.Columns[i] = make([][]fext.GenericFieldElem, len(entryList))
 		for j := range entryList {
-			col := make([]field.Element, len(committedMatrices[i]))
+			col := make([]fext.GenericFieldElem, len(committedMatrices[i]))
 			for k := range committedMatrices[i] {
-				col[k] = committedMatrices[i][k].Get(entryList[j])
+				if smartvectors.IsBase(committedMatrices[i][k]) {
+					col[k].Base = committedMatrices[i][k].Get(entryList[j])
+					col[k].IsBase = true
+				} else {
+					col[k].Ext = committedMatrices[i][k].GetExt(entryList[j])
+					col[k].IsBase = false
+				}
 			}
 			proof.Columns[i][j] = col
 		}

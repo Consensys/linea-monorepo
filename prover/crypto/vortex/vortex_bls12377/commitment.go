@@ -182,7 +182,11 @@ func (params *Params) EncodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 	encodedMatrix = make(EncodedMatrix, len(ps))
 	parallel.Execute(len(ps), func(start, stop int) {
 		for i := start; i < stop; i++ {
-			encodedMatrix[i] = params.RsParams.RsEncodeBase(ps[i])
+			if smartvectors.IsBase(ps[i]) {
+				encodedMatrix[i] = params.RsParams.RsEncodeBase(ps[i])
+			} else {
+				encodedMatrix[i] = params.RsParams.RsEncodeExt(ps[i])
+			}
 		}
 	})
 

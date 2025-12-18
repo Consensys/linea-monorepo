@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -154,13 +155,22 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 	nbRows := len(v)
 	res := make([]field.Octuplet, nbCols)
 	parallel.Execute(nbCols, func(start, end int) {
-		curCol := make([]field.Element, nbRows)
+		curCol := make([]fext.GenericFieldElem, nbRows)
 		h := poseidon2_koalabear.NewMDHasher()
 		for i := start; i < end; i++ {
 			for j := 0; j < nbRows; j++ {
-				curCol[j] = v[j].Get(i)
+				if smartvectors.IsBase(v[j]) {
+					curCol[j].Base = v[j].Get(i)
+					curCol[j].IsBase = true
+					h.WriteElements(curCol[j].Base)
+				} else {
+					curCol[j].Ext = v[j].GetExt(i)
+					curCol[j].IsBase = false
+					h.WriteElements(curCol[j].Ext.B0.A0, curCol[j].Ext.B0.A1, curCol[j].Ext.B1.A0, curCol[j].Ext.B1.A1)
+
+				}
 			}
-			h.WriteElements(curCol...)
+
 			res[i] = h.SumElement()
 			h.Reset()
 		}
@@ -172,6 +182,8 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 // EncodeRows returns the encodes `ps` using Reed-Solomon. ps is interpreted as
 // a list of rows of the Vortex witness and encodedMatrix is obtained by
 // encoding each of the [smartvectors.SmartVector] it contains separately.
+// It automatically detects whether each column is a base or extension field
+// column and uses the appropriate encoding.
 func (params *Params) EncodeRows(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix) {
 
 	// Sanity-check, all the vectors must have the right length
@@ -186,7 +198,11 @@ func (params *Params) EncodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 	encodedMatrix = make(EncodedMatrix, len(ps))
 	parallel.Execute(len(ps), func(start, stop int) {
 		for i := start; i < stop; i++ {
-			encodedMatrix[i] = params.RsParams.RsEncodeBase(ps[i])
+			if smartvectors.IsBase(ps[i]) {
+				encodedMatrix[i] = params.RsParams.RsEncodeBase(ps[i])
+			} else {
+				encodedMatrix[i] = params.RsParams.RsEncodeExt(ps[i])
+			}
 		}
 	})
 

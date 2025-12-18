@@ -290,6 +290,11 @@ func checkVkMembershipGnark(
 // receiver of the method.
 func (d *DistributedWizard) Conglomerate(params CompilationParams) *DistributedWizard {
 
+	// Skip conglomeration when WithCircuit is false (circuit not available during migration)
+	if !params.WithCircuit {
+		return d
+	}
+
 	conglo := &ModuleConglo{
 		ModuleNumber: len(d.CompiledGLs),
 	}

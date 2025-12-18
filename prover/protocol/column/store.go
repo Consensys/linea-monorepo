@@ -115,6 +115,16 @@ func (s *Store) GetSize(n ifaces.ColID) int {
 	return info.Size
 }
 
+// IsBase returns whether the column is a base column (as opposed to extension).
+// This only works if the requested column is a [Natural].
+func (s *Store) IsBase(n ifaces.ColID) bool {
+	if s == nil {
+		panic("column with a null pointer to the [Store]")
+	}
+	info := s.info(n)
+	return info.IsBase
+}
+
 // AllKeysAt returns the list of all keys for a given round. The result follows
 // the insertion order of insertion) (=assignment order)
 func (r *Store) AllKeysAt(round int) []ifaces.ColID {

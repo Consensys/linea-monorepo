@@ -60,7 +60,22 @@ func Verify(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput
 		return err
 	}
 
-	err = CheckColumnInclusion(params.Key, proof.Columns,
+	baseCol := make([][][]field.Element, len(proof.Columns))
+	for i := range proof.Columns {
+		baseCol[i] = make([][]field.Element, len(proof.Columns[i]))
+		for j := range proof.Columns[i] {
+			baseCol[i][j] = make([]field.Element, len(proof.Columns[i][j]))
+			for k := range proof.Columns[i][j] {
+				if proof.Columns[i][j][k].IsBase {
+					baseCol[i][j][k] = proof.Columns[i][j][k].Base
+				} else {
+					panic("extension column not supported")
+				}
+			}
+		}
+	}
+
+	err = CheckColumnInclusion(params.Key, baseCol,
 		merkleProofs, commitments, WithSis)
 
 	return err

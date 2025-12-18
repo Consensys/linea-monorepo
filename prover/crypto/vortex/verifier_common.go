@@ -59,22 +59,44 @@ func CheckLinComb(
 	linComb smartvectors.SmartVector,
 	entryList []int,
 	alpha fext.Element,
-	columns [][][]field.Element,
+	columns [][][]fext.GenericFieldElem,
 ) (err error) {
 
 	numCommitments := len(columns)
 
+	var y fext.Element
+	fullColBase := []field.Element{}
+	fullColExt := []fext.Element{}
+	ctr := 0
+
 	for j, selectedColID := range entryList {
 		// Will carry the concatenation of the columns for the same entry j
-		fullCol := []field.Element{}
 
 		for i := range numCommitments {
 			// Entries of the selected columns #j contained in the commitment #i.
-			fullCol = append(fullCol, columns[i][j]...)
+
+			for _, g := range columns[i][j] {
+				ctr++
+				if g.IsBase {
+					fullColBase = append(fullColBase, g.Base)
+				} else {
+					fullColExt = append(fullColExt, g.Ext)
+				}
+			}
+
+		}
+
+		// snaity-check
+		if len(fullColBase) != ctr && len(fullColExt) != ctr {
+			return fmt.Errorf(" columns are a mixture of base and extension")
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := vortex.EvalBasePolyHorner(fullCol, alpha)
+		if len(fullColExt) > 0 {
+			y = EvalFextPolyHorner(fullColExt, alpha)
+		} else {
+			y = vortex.EvalBasePolyHorner(fullColBase, alpha)
+		}
 
 		if y != linComb.GetExt(selectedColID) {
 			other := linComb.GetExt(selectedColID)
@@ -83,4 +105,13 @@ func CheckLinComb(
 	}
 
 	return nil
+}
+
+func EvalFextPolyHorner(poly []fext.Element, x fext.Element) fext.Element {
+	res := fext.Element{}
+	for i := len(poly) - 1; i >= 0; i-- {
+		res.Mul(&res, &x)
+		res.Add(&res, &poly[i])
+	}
+	return res
 }

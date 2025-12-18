@@ -421,6 +421,14 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		withoutSis          = len(coms) < ctx.ApplySISHashThreshold
 	)
 
+	// Check if any column is an extension column - SIS cannot handle extension columns
+	for _, com := range coms {
+		if !ctx.Comp.Columns.IsBase(com) {
+			withoutSis = true
+			break
+		}
+	}
+
 	// This part corresponds to an edge-case that is not supposed to happen
 	// in practice. Still, sometime, when debugging with upstream compilation
 	// steps it can happen that all of the columns of a round end up
@@ -674,7 +682,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			lastRound+2,
 			ctx.SelectedColName(col),
 			numRows,
-			true,
+			false, // Allow extension columns (can hold both base and extension)
 		)
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
 		if numRowsSIS != 0 {
@@ -682,7 +690,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 				lastRound+2,
 				ctx.SelectedColSISName(col),
 				numRowsSIS,
-				true,
+				false, // Allow extension columns
 			)
 			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
 		}
@@ -691,7 +699,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 				lastRound+2,
 				ctx.SelectedColNonSISName(col),
 				numRowsNonSIS,
-				true,
+				false, // Allow extension columns
 			)
 			ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
 		}

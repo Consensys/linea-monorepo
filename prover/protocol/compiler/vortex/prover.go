@@ -11,12 +11,12 @@ import (
 	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
-
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 type commitmentMode int
@@ -374,6 +374,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	if len(committedMatricesSIS) > 0 {
 		vortex_koalabear.SelectColumnsAndMerkleProofs(&sisProof, entryList, committedMatricesSIS, treesSIS)
 		sisSelectedCols := sisProof.Columns
+
 		// Assign the opened columns
 		ctx.assignOpenedColumns(run, entryList, sisSelectedCols, SelfRecursionSIS)
 	}
@@ -381,6 +382,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	if len(committedMatricesNoSIS) > 0 {
 		vortex_koalabear.SelectColumnsAndMerkleProofs(&nonSisProof, entryList, committedMatricesNoSIS, treesNoSIS)
 		nonSisSelectedCols := nonSisProof.Columns
+
 		ctx.assignOpenedColumns(run, entryList, nonSisSelectedCols, SelfRecursionPoseidon2Only)
 		// Store the selected columns for the non sis round
 		//  in the prover state
@@ -607,21 +609,37 @@ func (ctx *Ctx) unpackBLSMerkleProofs(sv [encoding.KoalabearChunks]smartvectors.
 func (ctx *Ctx) assignOpenedColumns(
 	pr *wizard.ProverRuntime,
 	entryList []int,
-	selectedCols [][][]field.Element,
+	selectedCols [][][]fext.GenericFieldElem,
 	mode commitmentMode) {
 	// The columns are split by commitment round. So we need to
 	// restick them when we commit them.
 	for j := range entryList {
-		fullCol := []field.Element{}
+		fullColBase := []field.Element{}
+		fullColExt := []fext.Element{}
+		var v fext.Element
+		ctr := 0
 		for i := range selectedCols {
-			fullCol = append(fullCol, selectedCols[i][j]...)
+			for k := range selectedCols[i][j] {
+				ctr++
+				if selectedCols[i][j][k].IsBase {
+					fullColBase = append(fullColBase, selectedCols[i][j][k].Base)
+					fext.SetFromBase(&v, &selectedCols[i][j][k].Base)
+					fullColExt = append(fullColExt, v) // to handle mix of base and extension columns
+				} else {
+					fullColExt = append(fullColExt, selectedCols[i][j][k].Ext)
+				}
+			}
 		}
 
-		// Converts it into a smart-vector and zero-pad it if necessary
-		var assignable smartvectors.SmartVector = smartvectors.NewRegular(fullCol)
-		if assignable.Len() < utils.NextPowerOfTwo(len(fullCol)) {
-			assignable = smartvectors.RightZeroPadded(fullCol, utils.NextPowerOfTwo(len(fullCol)))
+		var assignable smartvectors.SmartVector
+
+		if len(fullColBase) == ctr {
+			// Converts it into a smart-vector and zero-pad it if necessary
+			assignable = smartvectors.RightZeroPadded(fullColBase, utils.NextPowerOfTwo(ctr))
+		} else {
+			assignable = smartvectors.RightZeroPaddedExt(fullColExt, utils.NextPowerOfTwo(ctr))
 		}
+
 		if mode == NonSelfRecursion {
 			pr.AssignColumn(ctx.Items.OpenedColumns[j].GetColID(), assignable)
 		} else if mode == SelfRecursionSIS {
@@ -637,14 +655,14 @@ func (ctx *Ctx) assignOpenedColumns(
 // for the non SIS rounds which is to be used in the self-recursion compilers
 func (ctx *Ctx) storeSelectedColumnsForNonSisRounds(
 	pr *wizard.ProverRuntime,
-	selectedCols [][][]field.Element) {
+	selectedCols [][][]fext.GenericFieldElem) {
 	numNonSisRound := ctx.NumCommittedRoundsNoSis()
 	if ctx.IsNonEmptyPrecomputed() && !ctx.IsSISAppliedToPrecomputed() {
 		numNonSisRound++
 	}
 	// selectedColsQ[i][j][k] stores the jth selected
 	// column of the ith non SIS round
-	selectedColsQ := make([][][]field.Element, numNonSisRound)
+	selectedColsQ := make([][][]fext.GenericFieldElem, numNonSisRound)
 	// Sanity check
 	if len(selectedCols) != numNonSisRound {
 		utils.Panic(
@@ -660,9 +678,9 @@ func (ctx *Ctx) storeSelectedColumnsForNonSisRounds(
 				i, ctx.NbColsToOpen(), len(selectedCols[i]),
 			)
 		}
-		selectedColsQ[i] = make([][]field.Element, ctx.NbColsToOpen())
+		selectedColsQ[i] = make([][]fext.GenericFieldElem, ctx.NbColsToOpen())
 		for j := range selectedCols[i] {
-			selectedColsQ[i][j] = make([]field.Element, len(selectedCols[i][j]))
+			selectedColsQ[i][j] = make([]fext.GenericFieldElem, len(selectedCols[i][j]))
 			copy(selectedColsQ[i][j], selectedCols[i][j])
 		}
 	}

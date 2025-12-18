@@ -137,13 +137,13 @@ func (p *RsParams) IsCodeword(v smartvectors.SmartVector) error {
 	return nil
 }
 
-// rsEncode encodes a vector `v` and returns the corresponding the Reed-Solomon
-// codeword. The input vector is interpreted as a polynomial in Lagrange basis
-// over a domain of n-roots of unity Omega_n and returns its representation in
-// the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
-// inverse-rate of the code. The code is systematic as the original vector is
-// interleaved within the encoded vector.
-func (p *RsParams) rsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVector {
+// RsEncodeExt encodes a vector `v` of extension field elements and returns the
+// corresponding the Reed-Solomon codeword. The input vector is interpreted as a
+// polynomial in Lagrange basis over a domain of n-roots of unity Omega_n and
+// returns its representation in the Lagrange basis Omega_{n * blow-up} where
+// blow-up corresponds to the inverse-rate of the code. The code is systematic
+// as the original vector is interleaved within the encoded vector.
+func (p *RsParams) RsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVector {
 
 	// Short path, v is a constant vector. It's encoding is also a constant vector
 	// with the same value.

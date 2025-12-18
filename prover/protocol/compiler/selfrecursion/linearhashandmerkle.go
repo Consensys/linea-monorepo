@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
@@ -591,7 +592,7 @@ func processRound(
 	// If there are non SIS rounds, we need to fetch the
 	// non SIS opened columns
 	var (
-		nonSisOpenedCols     [][][]field.Element
+		nonSisOpenedCols     [][][]fext.GenericFieldElem
 		nonSisOpenedColsName string
 		nonSisRoundCount     = 0
 		sisRoundCount        = 0
@@ -602,7 +603,7 @@ func processRound(
 		if !found {
 			utils.Panic("nonSisOpenedColsName %v not found", nonSisOpenedColsName)
 		}
-		nonSisOpenedCols = nonSisOpenedColsSV.([][][]field.Element)
+		nonSisOpenedCols = nonSisOpenedColsSV.([][][]fext.GenericFieldElem)
 		// Note nonSisOpenedCols contains the precomputed columns also if
 		// SIS is not applied to the precomputed.
 		// However, we already have it at the time of processing
@@ -702,11 +703,21 @@ func processRound(
 				nonSisLeaf := colNonSisLeaves[destStart : destStart+blockSize]
 				copy(leaf[:], nonSisLeaf)
 				poseidon2Preimage := nonSisOpenedCols[nonSisRoundCount][i]
+				// Convert GenericFieldElem to field.Element, expanding extension elements to 4 limbs
+				poseidon2PreimageBase := make([]field.Element, 0, len(poseidon2Preimage)*4)
+				for _, g := range poseidon2Preimage {
+					if g.IsBase {
+						poseidon2PreimageBase = append(poseidon2PreimageBase, g.Base)
+					} else {
+						poseidon2PreimageBase = append(poseidon2PreimageBase,
+							g.Ext.B0.A0, g.Ext.B0.A1, g.Ext.B1.A0, g.Ext.B1.A1)
+					}
+				}
 				// Also compute the leaf from the column
 				// to check sanity
 
 				hasher := poseidon2_koalabear.NewMDHasher()
-				hasher.WriteElements(poseidon2Preimage...)
+				hasher.WriteElements(poseidon2PreimageBase...)
 				leaf_ := hasher.SumElement()
 
 				if leaf != leaf_ {
@@ -718,7 +729,7 @@ func processRound(
 					lmp.MerkleNonSisRoots[j] = append(lmp.MerkleNonSisRoots[j], rooth[j])
 				}
 				lmp.MerkleNonSisPositions = append(lmp.MerkleNonSisPositions, field.NewElement(uint64(selectedCol)))
-				poseidon2HashPreimages = append(poseidon2HashPreimages, poseidon2Preimage...)
+				poseidon2HashPreimages = append(poseidon2HashPreimages, poseidon2PreimageBase...)
 			}
 			// Append the hash values and preimages
 			lmp.NonSisLeaves = append(lmp.NonSisLeaves, nonSisRoundLeaves)
