@@ -38,7 +38,6 @@ jobs:
               - 'e2e/src/**'
               - 'sdk/**/src/**'
               - 'ts-libs/**/src/**'
-              - '.github/workflows/main.yml'
               - '.github/workflows/reuse-run-e2e-tests.yml'
               - '!**/*.test.ts'
               - '!**/*.spec.ts'
