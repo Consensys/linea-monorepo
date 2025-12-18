@@ -23,6 +23,7 @@ import {
   getBalance,
   incrementBalance,
   setBalance,
+  setWithdrawalReserveToMinimum,
   setWithdrawalReserveToTarget,
 } from "../helpers";
 
@@ -213,6 +214,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const yieldProviderData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
       expect(yieldProviderData.userFunds).to.equal(transferAmount);
 
+      expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(transferAmount);
     });
   });
@@ -985,10 +987,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const { mockYieldProviderAddress, mockYieldProvider, mockWithdrawTarget } =
         await addMockYieldProvider(yieldManager);
       await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, rebalanceAmount / 2n);
+
       // Arrange - setup insufficient YieldManager balance
       const yieldManagerAddress = await yieldManager.getAddress();
       await incrementBalance(yieldManagerAddress, rebalanceAmount / 2n);
       // Arrange - Get before
+      await setWithdrawalReserveToMinimum(yieldManager);
       const l1MessageServiceBalanceBefore = await getBalance(mockLineaRollup);
 
       // Act
