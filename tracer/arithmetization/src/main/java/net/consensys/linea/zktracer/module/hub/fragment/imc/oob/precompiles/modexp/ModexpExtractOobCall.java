@@ -62,7 +62,7 @@ public class ModexpExtractOobCall extends OobCall {
     final boolean ebsIsZero = metadata.ebs().isZero();
     final boolean mbsIsZero = metadata.mbs().isZero();
     final boolean callDataExtendsBeyondExponent =
-        Bytes.ofUnsignedLong(BASE_MIN_OFFSET + metadata.bbsInt() + metadata.ebsInt()).compareTo(cds)
+        Bytes.minimalBytes(BASE_MIN_OFFSET + metadata.bbsInt() + metadata.ebsInt()).compareTo(cds)
             < 0;
 
     setExtractModulus(callDataExtendsBeyondExponent && !mbsIsZero);
