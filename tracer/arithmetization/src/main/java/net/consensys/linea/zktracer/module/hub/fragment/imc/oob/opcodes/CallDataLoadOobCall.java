@@ -52,7 +52,7 @@ public class CallDataLoadOobCall extends OobCall {
 
   @Override
   public void setOutputs() {
-    setCdlOutOfBounds(cds.compareTo(offset) >= 0);
+    setCdlOutOfBounds(cds.compareTo(offset) <= 0);
   }
 
   @Override

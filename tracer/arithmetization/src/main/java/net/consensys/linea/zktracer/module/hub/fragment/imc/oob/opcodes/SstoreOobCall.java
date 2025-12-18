@@ -53,7 +53,7 @@ public class SstoreOobCall extends OobCall {
 
   @Override
   public void setOutputs() {
-    setSstorex(gas.compareTo(GAS_CONST_G_CALL_STIPEND_BYTES) >= 0);
+    setSstorex(GAS_CONST_G_CALL_STIPEND_BYTES.compareTo(gas) >= 0);
   }
 
   @Override

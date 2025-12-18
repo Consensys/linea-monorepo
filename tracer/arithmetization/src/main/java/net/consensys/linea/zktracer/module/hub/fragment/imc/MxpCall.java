@@ -121,6 +121,7 @@ public abstract class MxpCall implements TraceSubFragment {
 
   protected void setMayTriggerNontrivialMmuOperation() {}
 
+  @Override
   public Trace.Hub traceHub(Trace.Hub trace, State hubState) {
     hubState.incrementMxpStamp();
     return trace

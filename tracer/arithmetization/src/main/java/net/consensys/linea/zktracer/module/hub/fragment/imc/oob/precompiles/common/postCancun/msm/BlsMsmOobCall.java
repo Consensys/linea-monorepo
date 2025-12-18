@@ -45,7 +45,7 @@ public abstract class BlsMsmOobCall extends CommonPrecompileOobCall {
     final boolean cdsIsMultipleOfMinMsmSize = remainder.isZero();
     final int numInputs = getCds().toInt() / minMsmSize();
     final boolean validCds = !isCdsIsZero() && cdsIsMultipleOfMinMsmSize;
-    final int discount = validCds ? 0 : getMsmDiscount(getOobInst(), numInputs);
+    final int discount = validCds ? getMsmDiscount(getOobInst(), numInputs) : 0;
 
     precompileCost =
         validCds

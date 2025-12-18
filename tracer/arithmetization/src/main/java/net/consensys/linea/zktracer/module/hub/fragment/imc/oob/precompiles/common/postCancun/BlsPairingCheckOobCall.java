@@ -53,7 +53,7 @@ public class BlsPairingCheckOobCall extends CommonPrecompileOobCall {
             : Bytes.of(0);
 
     final boolean validCds = !isCdsIsZero() && cdsIsMultipleOfMinBlsPairingCheckSize;
-    final boolean sufficientGas = precompileCost.compareTo(getCalleeGas()) < 0;
+    final boolean sufficientGas = precompileCost.compareTo(getCalleeGas()) <= 0;
 
     // Set hubSuccess
     final boolean hubSuccess = validCds && sufficientGas;
