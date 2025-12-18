@@ -29,11 +29,13 @@ import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
+import java.math.BigInteger;
+
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Blake2fCallDataSizeOobCall extends OobCall {
-  public final static Bytes BLAKE_VALID_CDS_BYTES = Bytes.minimalBytes(213);
+  public final static BigInteger BLAKE_VALID_CDS_BI = BigInteger.valueOf(213);
   // Inputs
   @EqualsAndHashCode.Include EWord cds;
   @EqualsAndHashCode.Include EWord returnAtCapacity;
@@ -58,7 +60,7 @@ public class Blake2fCallDataSizeOobCall extends OobCall {
 
   @Override
   public void setOutputs() {
-    setHubSuccess(cds.compareTo(BLAKE_VALID_CDS_BYTES) == 0);
+    setHubSuccess(cds.toUnsignedBigInteger().equals(BLAKE_VALID_CDS_BI));
     setReturnAtCapacityNonZero(!returnAtCapacity.isZero());
   }
 
