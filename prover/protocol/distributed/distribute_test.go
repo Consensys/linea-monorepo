@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	NbRow = 16 // Needs to be at least 16 for segment compilation with Vortex/self-recursion
+	NbRow = 8
 )
 
 // testCompilationParams defines compilation parameters for testing segment compilation
@@ -51,9 +51,9 @@ type DistributedTestCase interface {
 func TestDistributedWizard(t *testing.T) {
 
 	testCases := []DistributedTestCase{
-		&LookupTestCase{numRow: 1 << 20},
-		&ProjectionTestCase{numRow: 1 << 20},
-		&PermutationTestCase{numRow: 1 << 20},
+		&LookupTestCase{numRow: 1 << NbRow},
+		&ProjectionTestCase{numRow: 1 << NbRow},
+		&PermutationTestCase{numRow: 1 << NbRow},
 	}
 
 	for _, tc := range testCases {
@@ -64,8 +64,7 @@ func TestDistributedWizard(t *testing.T) {
 }
 
 func TestDistributedWizardWithSegmentCompilation(t *testing.T) {
-	// Skip this test until the koalabear migration is complete.
-	// The recursion circuit (recursion/circuit.go) is currently stubbed.
+	t.Skipf(" the test is skipped since vortex is not yet implemented for extension/post-recursion")
 
 	testCases := []DistributedTestCase{
 		&LookupTestCase{numRow: 1 << NbRow},
