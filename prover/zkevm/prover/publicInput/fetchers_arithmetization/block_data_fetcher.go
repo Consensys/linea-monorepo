@@ -37,9 +37,9 @@ type BlockDataFetcher struct {
 	// projection query between the fetcher and the
 	FirstArith, LastArith [common.NbLimbU128]ifaces.Column
 	// Data contains all the timestamps in the conflation, ordered by block
-	Data ifaces.Column
+	Data [common.NbLimbU128]ifaces.Column
 	// filter on the BlockDataFetcher.Data column
-	FilterFetched ifaces.Column
+	FilterFetched, FilterArith ifaces.Column
 
 	// filter that selects only timestamp, baseFee and coinbase rows from the
 	// arithmetization
