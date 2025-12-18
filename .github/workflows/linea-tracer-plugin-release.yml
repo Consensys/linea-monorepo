@@ -60,6 +60,7 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
+          gh release delete linea-tracer-v4.4-rc7 --cleanup-tag --yes
           echo "CREATE_TAG=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset 2>&1)" >> $GITHUB_OUTPUT
           gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
         env:
