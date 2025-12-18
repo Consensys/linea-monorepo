@@ -100,7 +100,8 @@ Besu, Geth, Nethermind are tested as part of our release process.
 The CL and EL interactions are done via the engine API as per Ethereum specifications.
 
 When a Full node receives a transaction via RPC it evaluates whether the sequencer will accept it by doing both a light
-counting using the tracer plugin (in limitless mode) and a profitability check.
+counting using the tracer plugin (in limitless mode) and a profitability check. The tracer plugin is called internally
+the same way the sequencer would do it.
 
 
 ## Sequencer
@@ -112,6 +113,7 @@ The EL of the sequencer selects and combines the transactions into blocks.
 Blocks produced by the sequencer, in addition to common verifications, must fulfill the below requirements:
 
 The Besu part of the sequencer has the following plugins enabled: tracer (in limitless mode), credible layer.
+Besu makes internal calls to the plugins through the [Besu's plugin interfaces](https://besu.hyperledger.org/en/stable/Concepts/Plugins/Plugin-Interface/).
 
 1. trace counts are small enough to ensure the prover can prove the block
 2. the block total gas usage is below the gasLimit parameter
