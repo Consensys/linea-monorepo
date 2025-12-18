@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	NbRow = 2
+	NbRow = 4
 )
 
 // testCompilationParams defines compilation parameters for testing segment compilation
