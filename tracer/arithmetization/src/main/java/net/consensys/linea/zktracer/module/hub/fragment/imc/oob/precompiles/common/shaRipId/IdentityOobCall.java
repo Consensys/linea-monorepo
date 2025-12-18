@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.shaRipId;
 
 import static net.consensys.linea.zktracer.Trace.OOB_INST_IDENTITY;
-import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_IDENTITY;
 
 import java.math.BigInteger;
 import net.consensys.linea.zktracer.Trace;
@@ -33,7 +32,7 @@ public class IdentityOobCall extends ShaRipIdOobCall {
 
   @Override
   protected void traceOobInstructionInOob(Trace.Oob trace) {
-    trace.isIdentity(true).oobInst(OOB_INST_IDENTITY);
+    trace.inst(OOB_INST_IDENTITY);
   }
 
   @Override
@@ -41,8 +40,4 @@ public class IdentityOobCall extends ShaRipIdOobCall {
     trace.pMiscOobInst(OOB_INST_IDENTITY);
   }
 
-  @Override
-  public int ctMax() {
-    return CT_MAX_IDENTITY;
-  }
 }

@@ -15,15 +15,11 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.ecAddMulRecover;
 
-import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
 
 import java.math.BigInteger;
-import net.consensys.linea.zktracer.module.add.Add;
+
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
-import net.consensys.linea.zktracer.module.mod.Mod;
-import net.consensys.linea.zktracer.module.oob.OobExoCall;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 
 public abstract class EcRecEcAddEcMulOobCall extends CommonPrecompileOobCall {
@@ -34,13 +30,9 @@ public abstract class EcRecEcAddEcMulOobCall extends CommonPrecompileOobCall {
   abstract long precompileLongCost();
 
   @Override
-  public void callExoModulesAndSetOutputs(Add add, Mod mod, Wcp wcp) {
-    super.callExoModulesAndSetOutputs(add, mod, wcp);
-    // row i + 2
-    final OobExoCall insufficientGasCall =
-        callToLT(wcp, getCalleeGas(), Bytes.ofUnsignedLong(precompileLongCost()));
-    exoCalls.add(insufficientGasCall);
-    final boolean insufficientGas = bytesToBoolean(insufficientGasCall.result());
+  public void setOutputs() {
+    super.setOutputs();
+    final boolean insufficientGas = getCalleeGas().compareTo(Bytes.minimalBytes(precompileLongCost())) < 0;
 
     // Set hubSuccess
     final boolean hubSuccess = !insufficientGas;

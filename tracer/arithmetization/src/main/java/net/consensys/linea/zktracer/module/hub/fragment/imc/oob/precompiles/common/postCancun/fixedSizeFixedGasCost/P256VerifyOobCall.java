@@ -18,7 +18,6 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.com
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_P256_VERIFY;
 import static net.consensys.linea.zktracer.Trace.OOB_INST_P256_VERIFY;
 import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY;
-import static net.consensys.linea.zktracer.TraceOsaka.Oob.CT_MAX_P256_VERIFY;
 
 import java.math.BigInteger;
 import net.consensys.linea.zktracer.Trace;
@@ -38,7 +37,7 @@ public class P256VerifyOobCall extends FixedSizeFixedGasCostOobCall {
 
   @Override
   protected void traceOobInstructionInOob(Trace.Oob trace) {
-    trace.isP256Verify(true).oobInst(OOB_INST_P256_VERIFY);
+    trace.inst(OOB_INST_P256_VERIFY);
   }
 
   @Override
@@ -46,10 +45,6 @@ public class P256VerifyOobCall extends FixedSizeFixedGasCostOobCall {
     trace.pMiscOobInst(OOB_INST_P256_VERIFY);
   }
 
-  @Override
-  public int ctMax() {
-    return CT_MAX_P256_VERIFY;
-  }
 
   @Override
   public boolean getCdxFilter() {
