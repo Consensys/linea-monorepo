@@ -33,7 +33,7 @@ jobs:
               - 'postman/src/**'
               - 'prover/**/*.go'
               - 'prover/**/*.mod'
-              - 'contracts/local-deployment-artifacts/**'
+              - 'contracts/local-deployments-artifacts/**'
               - 'docker/**'
               - 'e2e/src/**'
               - 'sdk/**/src/**'
