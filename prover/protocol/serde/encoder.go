@@ -351,14 +351,12 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 			continue
 		}
 
-		// 2. Handle References: Indirect types & Custom Types
-		//
-		// IF the type is "indirect" (pointers, slices) OR it is a registered Custom Type
+		// 2. Handle References: Indirect types ( incl. Custom Types)
+		// If the type is "indirect" (pointers, slices) OR it is a registered Custom Type
 		// (e.g., frontend.Variable), we do NOT write the data here.
 		// Instead, we 'linearize' it to the heap and patch the current struct field
 		// with the returned 8-byte Reference ID (Ref).
-		_, isCustom := customRegistry[fType]
-		if isIndirectType(fType) || isCustom {
+		if isIndirectType(fType) {
 			ref, err := encode(w, f)
 			if err != nil {
 				return err
