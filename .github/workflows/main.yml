@@ -164,7 +164,7 @@ jobs:
 
   testing:
     needs: [filter-commit-changes, check-and-tag-images]
-    if: ${{ always() }}
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/testing.yml
     with:
       commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
