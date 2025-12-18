@@ -1,12 +1,13 @@
 package net.consensys.zkevm.coordinator.blockcreation
 
 import io.vertx.core.Vertx
+import kotlinx.datetime.Instant
 import linea.domain.Block
 import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.ethapi.EthApiBlockClient
 import linea.kotlin.encodeHex
 import linea.timer.TimerSchedule
 import linea.timer.VertxPeriodicPollingService
-import linea.web3j.ExtendedWeb3J
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreated
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreationListener
@@ -21,7 +22,7 @@ import kotlin.time.Duration.Companion.days
 
 class BlockCreationMonitor(
   private val vertx: Vertx,
-  private val web3j: ExtendedWeb3J,
+  private val ethApi: EthApiBlockClient,
   private val startingBlockNumberExclusive: Long,
   private val blockCreationListener: BlockCreationListener,
   private val lastProvenBlockNumberProviderAsync: LastProvenBlockNumberProviderAsync,
@@ -40,6 +41,7 @@ class BlockCreationMonitor(
     val blocksFetchLimit: Long,
     val startingBlockWaitTimeout: Duration = 14.days,
     val lastL2BlockNumberToProcessInclusive: ULong? = null,
+    val lastL2BlockTimestampToProcessInclusive: Instant? = null,
   )
 
   private val _nexBlockNumberToFetch: AtomicLong = AtomicLong(startingBlockNumberExclusive + 1)
@@ -70,27 +72,28 @@ class BlockCreationMonitor(
   fun awaitStartingBlockToBePresent(): SafeFuture<*> {
     if (statingBlockAvailabilityFuture == null) {
       log.info("Awaiting for block {} to be present", startingBlockNumberExclusive)
-      statingBlockAvailabilityFuture = AsyncRetryer.retry(
-        vertx,
-        backoffDelay = config.pollingInterval,
-        timeout = config.startingBlockWaitTimeout,
-        stopRetriesPredicate = { block: Block? ->
-          if (block == null) {
-            log.warn(
-              "Block {} not found yet. Retrying in {}",
-              startingBlockNumberExclusive,
-              config.pollingInterval,
-            )
-            false
-          } else {
-            log.info("Block {} found. Resuming block monitor", startingBlockNumberExclusive)
-            expectedParentBlockHash.set(block.hash)
-            true
-          }
-        },
-      ) {
-        web3j.ethGetBlock(startingBlockNumberExclusive.toBlockParameter())
-      }
+      statingBlockAvailabilityFuture =
+        AsyncRetryer.retry(
+          vertx,
+          backoffDelay = config.pollingInterval,
+          timeout = config.startingBlockWaitTimeout,
+          stopRetriesPredicate = { block: Block? ->
+            if (block == null) {
+              log.warn(
+                "block={} not found yet. Retrying in {}",
+                startingBlockNumberExclusive,
+                config.pollingInterval,
+              )
+              false
+            } else {
+              log.info("Block {} found. Resuming block monitor", startingBlockNumberExclusive)
+              expectedParentBlockHash.set(block.hash)
+              true
+            }
+          },
+        ) {
+          ethApi.ethGetBlockByNumberFullTxs(startingBlockNumberExclusive.toBlockParameter())
+        }
     }
 
     return statingBlockAvailabilityFuture!!
@@ -120,12 +123,24 @@ class BlockCreationMonitor(
             config.lastL2BlockNumberToProcessInclusive,
             nexBlockNumberToFetch,
           )
+          this.stop()
           SafeFuture.COMPLETE
         } else {
           getNetNextSafeBlock()
             .thenCompose { block ->
               if (block != null) {
                 if (block.parentHash.contentEquals(expectedParentBlockHash.get())) {
+                  if (isAfterTargetStopTimeStamp(block)) {
+                    log.warn(
+                      "stopping conflation: reached lastL2BlockTimestampToProcessInclusive={} " +
+                        "last processed blockNumber={} blockTimestamp={} {}",
+                      config.lastL2BlockTimestampToProcessInclusive,
+                      block.number,
+                      block.timestamp,
+                      Instant.fromEpochSeconds(block.timestamp.toLong()),
+                    )
+                    this.stop()
+                  }
                   notifyListener(block)
                     .whenSuccess {
                       log.debug(
@@ -145,7 +160,7 @@ class BlockCreationMonitor(
                     block.parentHash.encodeHex(),
                     expectedParentBlockHash.get().encodeHex(),
                   )
-                  SafeFuture.failedFuture(IllegalStateException("Reorg detected on block ${block.number}"))
+                  this.stop()
                 }
               } else {
                 SafeFuture.completedFuture(Unit)
@@ -158,6 +173,11 @@ class BlockCreationMonitor(
             }
         }
       }
+  }
+
+  private fun isAfterTargetStopTimeStamp(block: Block): Boolean {
+    return config.lastL2BlockTimestampToProcessInclusive != null &&
+      block.timestamp >= config.lastL2BlockTimestampToProcessInclusive.epochSeconds.toULong()
   }
 
   private fun notifyListener(payload: Block): SafeFuture<Unit> {
@@ -181,7 +201,7 @@ class BlockCreationMonitor(
   }
 
   private fun getNetNextSafeBlock(): SafeFuture<Block?> {
-    return web3j
+    return ethApi
       .ethBlockNumber()
       .thenCompose { latestBlockNumber ->
         // Check if is safe to fetch nextWaitingBlockNumber
@@ -189,7 +209,7 @@ class BlockCreationMonitor(
           _nexBlockNumberToFetch.get() + config.blocksToFinalization
         ) {
           val blockNumber = _nexBlockNumberToFetch.get()
-          web3j.ethGetBlock(blockNumber.toBlockParameter())
+          ethApi.ethGetBlockByNumberFullTxs(blockNumber.toBlockParameter())
             .thenPeek { block ->
               log.trace("requestedBlock={} responseBlock={}", blockNumber, block?.number)
             }

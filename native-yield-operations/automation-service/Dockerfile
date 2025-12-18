@@ -1,4 +1,4 @@
-FROM node:lts-slim AS base
+FROM node:22.21.1-slim AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -33,7 +33,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm deploy --legacy --prefer-offline --filter=./native-yield-operations/automation-service --prod ./prod/native-yield-operations/automation-service
 
-FROM node:lts-slim AS production
+FROM node:22.21.1-slim AS production
 
 ENV NODE_ENV=production
 

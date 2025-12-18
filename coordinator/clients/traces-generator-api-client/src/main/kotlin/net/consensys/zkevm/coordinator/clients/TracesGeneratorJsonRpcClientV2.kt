@@ -15,7 +15,9 @@ import net.consensys.linea.jsonrpc.client.JsonRpcClient
 import net.consensys.linea.jsonrpc.client.JsonRpcRequestRetryer
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.isSuccess
+import net.consensys.linea.traces.TracesCounters
 import net.consensys.linea.traces.TracesCountersV2
+import net.consensys.linea.traces.TracesCountersV4
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -36,7 +38,8 @@ class TracesGeneratorJsonRpcClientV2(
     JsonRpcRequestRetryer(
       vertx,
       rpcClient,
-      config = JsonRpcRequestRetryer.Config(
+      config =
+      JsonRpcRequestRetryer.Config(
         methodsToRetry = retryableMethods,
         requestRetry = retryConfig,
       ),
@@ -48,6 +51,7 @@ class TracesGeneratorJsonRpcClientV2(
   data class Config(
     val expectedTracesApiVersion: String,
     val ignoreTracesGeneratorErrors: Boolean = false,
+    val fallBackTracesCounters: TracesCounters,
   )
 
   private var requestBuilder = RequestBuilder(config.expectedTracesApiVersion)
@@ -59,7 +63,11 @@ class TracesGeneratorJsonRpcClientV2(
 
     return executeWithFallback(
       jsonRequest,
-      TracesClientResponsesParser::parseTracesCounterResponseV2,
+      when (config.fallBackTracesCounters) {
+        is TracesCountersV2 -> TracesClientResponsesParser::parseTracesCounterResponseV2
+        is TracesCountersV4 -> TracesClientResponsesParser::parseTracesCounterResponseV4
+        else -> throw IllegalStateException("Unsupported TracesCounters version")
+      },
     ) { createFallbackTracesCountersResponse() }
   }
 
@@ -67,10 +75,11 @@ class TracesGeneratorJsonRpcClientV2(
     startBlockNumber: ULong,
     endBlockNumber: ULong,
   ): SafeFuture<Result<GenerateTracesResponse, ErrorResponse<TracesServiceErrorType>>> {
-    val jsonRequest = requestBuilder.buildGenerateConflatedTracesToFileV2Request(
-      startBlockNumber,
-      endBlockNumber,
-    )
+    val jsonRequest =
+      requestBuilder.buildGenerateConflatedTracesToFileV2Request(
+        startBlockNumber,
+        endBlockNumber,
+      )
     return executeWithFallback(
       jsonRequest,
       TracesClientResponsesParser::parseConflatedTracesToFileResponse,
@@ -79,7 +88,7 @@ class TracesGeneratorJsonRpcClientV2(
 
   private fun createFallbackTracesCountersResponse(): GetTracesCountersResponse {
     return GetTracesCountersResponse(
-      tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+      tracesCounters = config.fallBackTracesCounters,
       tracesEngineVersion = config.expectedTracesApiVersion,
     )
   }
@@ -103,10 +112,11 @@ class TracesGeneratorJsonRpcClientV2(
     return try {
       rpcClient.makeRequest(jsonRequest).toSafeFuture()
         .thenApply { responseResult ->
-          val result = responseResult.mapEither(
-            responseParser,
-            TracesClientResponsesParser::mapErrorResponseV2,
-          )
+          val result =
+            responseResult.mapEither(
+              responseParser,
+              TracesClientResponsesParser::mapErrorResponse,
+            )
           if (config.ignoreTracesGeneratorErrors && !result.isSuccess()) {
             Ok(fallbackResponseProvider())
           } else {
@@ -133,9 +143,7 @@ class TracesGeneratorJsonRpcClientV2(
     private val expectedTracesEngineVersion: String,
     private val id: AtomicInteger = AtomicInteger(0),
   ) {
-    fun buildGetTracesCountersV2Request(
-      blockNumber: ULong,
-    ): JsonRpcRequest {
+    fun buildGetTracesCountersV2Request(blockNumber: ULong): JsonRpcRequest {
       return JsonRpcRequestListParams(
         "2.0",
         id.incrementAndGet(),
@@ -151,10 +159,7 @@ class TracesGeneratorJsonRpcClientV2(
       )
     }
 
-    fun buildGenerateConflatedTracesToFileV2Request(
-      startBlockNumber: ULong,
-      endBlockNumber: ULong,
-    ): JsonRpcRequest {
+    fun buildGenerateConflatedTracesToFileV2Request(startBlockNumber: ULong, endBlockNumber: ULong): JsonRpcRequest {
       return JsonRpcRequestListParams(
         "2.0",
         id.incrementAndGet(),
@@ -177,27 +182,28 @@ class TracesGeneratorJsonRpcClientV2(
     internal val retryableMethods = setOf("linea_getBlockTracesCountersV2", "linea_generateConflatedTracesToFileV2")
 
     @Suppress("UNCHECKED_CAST")
-    val requestPriorityComparator = Comparator<JsonRpcRequest> { o1, o2 ->
-      // linea_generateConflatedTracesToFileV2 is always fired after linea_getBlockTracesCountersV2
-      // has successfully completed, so we should prioritize it.
-      when {
-        o1.method == "linea_generateConflatedTracesToFileV2" && o2.method == "linea_getBlockTracesCountersV2" -> -1
-        o1.method == "linea_getBlockTracesCountersV2" && o2.method == "linea_generateConflatedTracesToFileV2" -> 1
-        o1.method == "linea_getBlockTracesCountersV2" && o2.method == "linea_getBlockTracesCountersV2" -> {
-          val bn1 = (o1.params as List<JsonObject>).first().get<ULong>("blockNumber")
-          val bn2 = (o2.params as List<JsonObject>).first().get<ULong>("blockNumber")
-          bn1.compareTo(bn2)
-        }
+    val requestPriorityComparator =
+      Comparator<JsonRpcRequest> { o1, o2 ->
+        // linea_generateConflatedTracesToFileV2 is always fired after linea_getBlockTracesCountersV2
+        // has successfully completed, so we should prioritize it.
+        when {
+          o1.method == "linea_generateConflatedTracesToFileV2" && o2.method == "linea_getBlockTracesCountersV2" -> -1
+          o1.method == "linea_getBlockTracesCountersV2" && o2.method == "linea_generateConflatedTracesToFileV2" -> 1
+          o1.method == "linea_getBlockTracesCountersV2" && o2.method == "linea_getBlockTracesCountersV2" -> {
+            val bn1 = (o1.params as List<JsonObject>).first().get<ULong>("blockNumber")
+            val bn2 = (o2.params as List<JsonObject>).first().get<ULong>("blockNumber")
+            bn1.compareTo(bn2)
+          }
 
-        o1.method == "linea_generateConflatedTracesToFileV2" &&
-          o2.method == "linea_generateConflatedTracesToFileV2" -> {
-          val bn1 = (o1.params as List<JsonObject>).first().get<ULong>("startBlockNumber")
-          val bn2 = (o2.params as List<JsonObject>).first().get<ULong>("startBlockNumber")
-          bn1.compareTo(bn2)
-        }
+          o1.method == "linea_generateConflatedTracesToFileV2" &&
+            o2.method == "linea_generateConflatedTracesToFileV2" -> {
+            val bn1 = (o1.params as List<JsonObject>).first().get<ULong>("startBlockNumber")
+            val bn2 = (o2.params as List<JsonObject>).first().get<ULong>("startBlockNumber")
+            bn1.compareTo(bn2)
+          }
 
-        else -> 0
+          else -> 0
+        }
       }
-    }
   }
 }
