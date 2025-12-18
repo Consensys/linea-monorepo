@@ -178,8 +178,8 @@ func (dec *Decoder) decodeMap(target reflect.Value, offset int64) error {
 		return nil
 	}
 
-	// Since, we cannot zero-copy maps, we must allocate a new map in heap memory and
-	// insert every key-value pair individually.
+	// Since, we cannot zero-copy maps, and unlike arrays(value types, where memory is automatically allocated by Go compiler),
+	// maps are referential types and we must allocate a new map in heap memory and insert every key-value pair individually.
 	target.Set(reflect.MakeMapWithSize(target.Type(), int(fs.Len)))
 	currentOff := int64(fs.Offset)
 	keyType := target.Type().Key()
@@ -189,14 +189,14 @@ func (dec *Decoder) decodeMap(target reflect.Value, offset int64) error {
 	// and insert them into the map
 	for i := 0; i < int(fs.Len); i++ {
 		newKey := reflect.New(keyType).Elem()
-		nextOff, err := dec.decodeMapElement(newKey, currentOff)
+		nextOff, err := dec.decodeSeqItem(newKey, currentOff)
 		if err != nil {
 			return err
 		}
 		currentOff = nextOff
 
 		newVal := reflect.New(ValType).Elem()
-		nextOff, err = dec.decodeMapElement(newVal, currentOff)
+		nextOff, err = dec.decodeSeqItem(newVal, currentOff)
 		if err != nil {
 			return err
 		}
@@ -210,17 +210,22 @@ func (dec *Decoder) decodeInterface(target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[InterfaceHeader]()) > len(dec.data) {
 		return fmt.Errorf("interface header out of bounds")
 	}
+
+	// InterfaceHeader inherently contains an Offset field. This Offset functions exactly like a Ref;
+	// it tells the decoder precisely where the concrete data lives in the file. Whether the underlying
+	// concrete type is a simple int (direct) or a complex string (indirect), the InterfaceHeader always
+	// points to the start of that data. Hence, there is no need to distinguish between direct and indirect
+	// types here unlike decodeMapElement.
 	ih := (*InterfaceHeader)(unsafe.Pointer(&dec.data[offset]))
 	if ih.Offset.IsNull() {
 		target.Set(reflect.Zero(target.Type()))
 		return nil
 	}
-	if int(ih.TypeID) >= len(IDToType) {
+	if int(ih.TypeID) < 0 || int(ih.TypeID) >= len(IDToType) {
 		return fmt.Errorf("invalid type ID: %d", ih.TypeID)
 	}
-
 	concreteType := IDToType[ih.TypeID]
-	for i := 0; i < int(ih.Indirection); i++ {
+	for i := 0; i < int(ih.PtrIndirection); i++ {
 		concreteType = reflect.PointerTo(concreteType)
 	}
 
@@ -228,7 +233,8 @@ func (dec *Decoder) decodeInterface(target reflect.Value, offset int64) error {
 	if concreteType.Kind() == reflect.Ptr {
 		concreteVal = reflect.New(concreteType.Elem())
 		ptrOffset := int64(ih.Offset)
-		// Check cache for this specific interface pointer
+		// Check cache for this specific interface pointer - ensures that if the interface points to an object
+		// already reconstructed elsewhere, we reuse that instance (preserving referential integrity).
 		if val, ok := dec.ptrMap[ptrOffset]; ok {
 			if val.Type().AssignableTo(concreteType) {
 				target.Set(val)
@@ -249,32 +255,30 @@ func (dec *Decoder) decodeInterface(target reflect.Value, offset int64) error {
 	return nil
 }
 
+// decodeArray: handles the reconstruction of Go arrays in a non-zero copy fashion.
+//
+// NOTE: Since an array's memory is part of the struct it belongs to, it is copied into the struct's memory.
+// It is not "Zero-Copy" like a slice, which just points back to the file. This makes arrays safer for mutation
+// but more expensive for very large datasets.
 func (dec *Decoder) decodeArray(target reflect.Value, offset int64) error {
 	t := target.Type()
+
+	// Calculate the size of single element and then the total size
 	elemSize := getBinarySize(t.Elem())
 	totalSize := elemSize * int64(target.Len())
 	if offset < 0 || offset+totalSize > int64(len(dec.data)) {
 		return fmt.Errorf("array out of bounds")
 	}
-
-	// Optimization: Field Elements are just copied bytes
+	// Special "fast path" optimization
 	if t.Elem() == reflect.TypeOf(field.Element{}) {
-		srcPtr := unsafe.Pointer(&dec.data[offset])
-
-		// FIX: Cast uintptr -> unsafe.Pointer
-		dstPtr := unsafe.Pointer(target.UnsafeAddr())
-
-		// Now we can cast unsafe.Pointer -> *byte safely
-		copy(
-			unsafe.Slice((*byte)(dstPtr), int(totalSize)),
-			unsafe.Slice((*byte)(srcPtr), int(totalSize)),
-		)
-		return nil
+		return dec.decodeFieldElement(target, offset)
 	}
 
+	// Loop through the array using `decodeSeqItem` to "step" through the file bytes accurately,
+	// even if the array elements are complex types like strings or pointers.
 	currentOff := offset
 	for i := 0; i < target.Len(); i++ {
-		nextOff, err := dec.decodeMapElement(target.Index(i), currentOff)
+		nextOff, err := dec.decodeSeqItem(target.Index(i), currentOff)
 		if err != nil {
 			return err
 		}
@@ -283,14 +287,18 @@ func (dec *Decoder) decodeArray(target reflect.Value, offset int64) error {
 	return nil
 }
 
+// decodeFieldElement: handles the reconstruction of field.Element ([4]uint64) in a non-zero copy fashion,
+// but does a bulk-memory copy instead of iterating through each element. This is significantly faster
+// than iterating through each element individually.
 func (dec *Decoder) decodeFieldElement(target reflect.Value, offset int64) error {
 	size := int(target.Type().Size())
 	if offset < 0 || int(offset)+size > len(dec.data) {
 		return fmt.Errorf("field element out of bounds")
 	}
-	srcPtr := unsafe.Pointer(&dec.data[offset]) // Fixed: Direct index
-	dstPtr := unsafe.Pointer(target.UnsafeAddr())
-
+	var (
+		srcPtr = unsafe.Pointer(&dec.data[offset])
+		dstPtr = unsafe.Pointer(target.UnsafeAddr())
+	)
 	copy(
 		unsafe.Slice((*byte)(dstPtr), size),
 		unsafe.Slice((*byte)(srcPtr), size),
@@ -304,10 +312,11 @@ func (dec *Decoder) decodePrimitive(target reflect.Value, offset int64) error {
 		return fmt.Errorf("primitive out of bounds")
 	}
 
-	srcPtr := unsafe.Pointer(&dec.data[offset])
-	// Fix: Cast uintptr -> unsafe.Pointer -> *byte
-	dstPtr := unsafe.Pointer(target.UnsafeAddr())
-
+	// Fix WARNING: Cast uintptr -> unsafe.Pointer -> *byte
+	var (
+		srcPtr = unsafe.Pointer(&dec.data[offset])
+		dstPtr = unsafe.Pointer(target.UnsafeAddr())
+	)
 	copy(
 		unsafe.Slice((*byte)(dstPtr), size),
 		unsafe.Slice((*byte)(srcPtr), size),
@@ -363,16 +372,18 @@ func (dec *Decoder) decodeStruct(target reflect.Value, offset int64) error {
 	return nil
 }
 
-// decodeMapElement: helper that handles the "step-by-step" reading of keys and values and returns
-// the next offset so the caller knows where the next piece of data begins.
-//
-// NOTE: Explicitly handling of direct and indirect types are required here even though the
-// getBinarySize() function returns the correct sizes for both types. This is because the
-// func dec.decode(target, X) expects X to be the start of the object's header/data.
+// decodeSeqItem: reads a single item (direct or indirect) and returns the
+// offset of the next item so the caller knows where the next piece of data begins.
+// Essentially, it decodes a single value at 'offset' and returns the offset
+// for the next item in the sequence.
+// NOTE: The core logic of this function is to handle the "stepping" of the offset while deciding
+// whether to read data inline or follow a reference. Hence, explicit handling of direct and indirect
+// types are required here even though the `getBinarySize()` returns the correct sizes for both types.
+// This is because the `decode(target, X)` expects X to be the start of the object's header/data.
 // For Direct types (e.g., int), the object sits right there at offset and hence can be directly decoded.
 // For Indirect types (e.g., string), the actual object sits far away and the offset only contains a
 // "signpost" (Ref) pointing to it.
-func (dec *Decoder) decodeMapElement(target reflect.Value, offset int64) (int64, error) {
+func (dec *Decoder) decodeSeqItem(target reflect.Value, offset int64) (int64, error) {
 	// Bound check
 	if offset < 0 || int(offset) >= len(dec.data) {
 		return 0, fmt.Errorf("readMapElement: offset %d out of bounds (len: %d)", offset, len(dec.data))

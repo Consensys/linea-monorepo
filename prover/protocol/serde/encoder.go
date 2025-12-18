@@ -114,22 +114,22 @@ func (w *Encoder) writeSliceData(v reflect.Value) FileSlice {
 	}
 }
 
-// linearize serializes a value into the writer buffer and returns a Ref
+// encode serializes a value into the writer buffer and returns a Ref
 // (byte offset) pointing to where the value was written.
 //
 // Key responsibilities:
 //  1. Handle pointer de-duplication so the same object is serialized only once.
 //  2. Support circular references by registering the pointer address *before*
 //     the actual bytes are written.
-//  3. Delegate the actual byte-level serialization to linearizeValue.
+//  3. Delegate the actual byte-level serialization to linearize.
 //
-// For non-pointer values, this function simply forwards to linearizeValue.
+// For non-pointer values, this function simply forwards to linearize.
 // For pointer values:
 //   - nil pointers serialize to Ref(0)
 //   - repeated pointers reuse the previously recorded Ref
 //   - circular references are handled by pre-registering the current offset
 //     before serializing the pointed-to value.
-func linearize(w *Encoder, v reflect.Value) (Ref, error) {
+func encode(w *Encoder, v reflect.Value) (Ref, error) {
 	if !v.IsValid() {
 		return 0, nil
 	}
@@ -154,7 +154,7 @@ func linearize(w *Encoder, v reflect.Value) (Ref, error) {
 	}
 
 	// 2. WRITE THE DATA - Delegate to the router to actually serialize the bytes.
-	ref, err := linearizeValue(w, v)
+	ref, err := linearize(w, v)
 	if err != nil {
 		return 0, err
 	}
@@ -165,7 +165,7 @@ func linearize(w *Encoder, v reflect.Value) (Ref, error) {
 	return ref, nil
 }
 
-func linearizeValue(w *Encoder, v reflect.Value) (Ref, error) {
+func linearize(w *Encoder, v reflect.Value) (Ref, error) {
 
 	// Check Registry first for handling special types
 	if handler, ok := CustomRegistry[v.Type()]; ok {
@@ -182,7 +182,7 @@ func linearizeValue(w *Encoder, v reflect.Value) (Ref, error) {
 	// We stick to `linearize` for guardrails - v is not a nil
 	// and for the possiblity of the type being pointed at implmenting custom interfaces
 	case reflect.Ptr:
-		return linearize(w, v.Elem())
+		return encode(w, v.Elem())
 	case reflect.Slice:
 		if v.IsNil() {
 			return 0, nil
@@ -269,7 +269,7 @@ func linearizeInterface(w *Encoder, v reflect.Value) (Ref, error) {
 		return 0, nil
 	}
 	concreteVal := v.Elem()
-	dataOff, err := linearize(w, concreteVal)
+	dataOff, err := encode(w, concreteVal)
 	if err != nil {
 		return 0, err
 	}
@@ -286,7 +286,7 @@ func linearizeInterface(w *Encoder, v reflect.Value) (Ref, error) {
 	if !ok {
 		return 0, fmt.Errorf("encounterd unregistered concrete type: %v", concreteVal.Type())
 	}
-	ih := InterfaceHeader{TypeID: typeID, Indirection: uint8(indirection), Offset: dataOff}
+	ih := InterfaceHeader{TypeID: typeID, PtrIndirection: uint8(indirection), Offset: dataOff}
 	off := w.Write(ih)
 	return Ref(off), nil
 }
@@ -299,7 +299,7 @@ func linearizeStructBodyMap(w *Encoder, v reflect.Value, buf *bytes.Buffer) erro
 			continue
 		}
 		if isIndirectType(t.Type) {
-			ref, err := linearize(w, f)
+			ref, err := encode(w, f)
 			if err != nil {
 				return err
 			}
@@ -343,7 +343,7 @@ func patchStructBody(w *Encoder, v reflect.Value, startOffset int64) error {
 		// with the returned 8-byte Reference ID (Ref).
 		_, isCustom := CustomRegistry[fType]
 		if isIndirectType(fType) || isCustom {
-			ref, err := linearize(w, f)
+			ref, err := encode(w, f)
 			if err != nil {
 				return err
 			}
@@ -405,7 +405,7 @@ func patchArray(w *Encoder, v reflect.Value, startOffset int64) error {
 		// If the element is a pointer, interface, or custom type, we delegate to
 		// linearize() to write the data elsewhere and return a Ref ID.
 		if isReference {
-			ref, err := linearize(w, elem)
+			ref, err := encode(w, elem)
 			if err != nil {
 				return err
 			}
@@ -450,7 +450,7 @@ func writeMapElement(w *Encoder, v reflect.Value, buf *bytes.Buffer) error {
 	//  which we write into the map buffer.
 	_, isCustom := CustomRegistry[t]
 	if isIndirectType(t) || isCustom {
-		ref, err := linearize(w, v)
+		ref, err := encode(w, v)
 		if err != nil {
 			return err
 		}

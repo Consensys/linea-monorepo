@@ -19,7 +19,7 @@ var (
 func Serialize(v any) ([]byte, error) {
 	w := NewWriter()
 	_ = w.Write(FileHeader{})
-	rootOff, err := linearize(w, reflect.ValueOf(v))
+	rootOff, err := encode(w, reflect.ValueOf(v))
 	if err != nil {
 		return nil, err
 	}
@@ -69,16 +69,16 @@ func Deserialize(b []byte, v any) error {
 	return ctx.decode(val.Elem(), int64(header.PayloadOff))
 }
 
-// getBinarySize returns the number of bytes a value of type t will occupy
+// getBinarySize returns the number of bytes a value of type `T` will occupy
 // in the serialized buffer according to serde layout rules.
 //
-// This is NOT the same as Go's in-memory size. The size returned here reflects
+// NOTE: This is NOT the same as Go's in-memory size. The size returned here reflects
 // how the value is represented on disk:
 //
-//   - Fixed-size, pointer-free values are inlined.
-//   - Variable-size or heap-backed values are replaced by an 8-byte Ref.
+// - Fixed-size, pointer-free values are inlined.
+// - Variable-size or heap-backed values are replaced by an 8-byte Ref.
 //
-// This function must remain perfectly consistent with the actual write logic;
+// This function MUST remain perfectly consistent with the actual write logic;
 // any mismatch will result in corrupted offsets or incorrect deserialization.
 func getBinarySize(t reflect.Type) int64 {
 
@@ -140,6 +140,11 @@ func getBinarySize(t reflect.Type) int64 {
 	return int64(t.Size())
 }
 
+// isIndirectType returns true if the given type is an indirect type.
+// Indirect types are types that have variable sizes not known at compile time.
+// This includes pointers, slices, strings, interfaces, maps, and functions.
+// Direct types are types that have fixed sizes known at compile time.
+// This includes structs, arrays, and primitive types (bool,int/uint8, int/uint (normalized), etc).
 func isIndirectType(t reflect.Type) bool {
 	if _, ok := CustomRegistry[t]; ok {
 		return true

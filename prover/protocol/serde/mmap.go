@@ -54,8 +54,11 @@ type FileHeader struct {
 // between fields in memory to align them) for structs in memory.
 // We have to explicitly put the padding there if the file format requires a fixed size (like 16 bytes).
 type InterfaceHeader struct {
-	TypeID      uint16 // 2 bytes: Unique identifier for the concrete type
-	Indirection uint8  // 1 byte: Number of pointer dereferences (e.g., ***T)
+	// 2 bytes: Unique identifier for the concrete type
+	TypeID uint16
+
+	// 1 byte: Number of pointer dereferences (e.g., ***T)
+	PtrIndirection uint8
 
 	// Reserved: 5 bytes of explicit padding.
 	// Together with TypeID (2) and Indirection (1), these 5 bytes ensure
@@ -64,7 +67,8 @@ type InterfaceHeader struct {
 	// Total header size: 2 + 1 + 5 + 8 = 16 bytes.
 	Reserved [5]uint8
 
-	Offset Ref // 8 bytes: File or memory offset to the actual data
+	// 8 bytes: File or memory offset to the actual data
+	Offset Ref
 }
 
 type Ref int64

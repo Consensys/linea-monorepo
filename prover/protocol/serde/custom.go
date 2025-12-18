@@ -109,7 +109,7 @@ func init() {
 func serializeColumnNatural(enc *Encoder, v reflect.Value) (Ref, error) {
 	nat := v.Interface().(column.Natural)
 	packed := nat.Pack()
-	return linearize(enc, reflect.ValueOf(packed))
+	return encode(enc, reflect.ValueOf(packed))
 }
 func deserializeColumnNatural(dec *Decoder, v reflect.Value, offset int64) error {
 	var packed column.PackedNatural
@@ -137,7 +137,7 @@ func asPackedCoin(c coin.Info) PackedCoin {
 func serializeCoinInfo(enc *Encoder, v reflect.Value) (Ref, error) {
 	c := v.Interface().(coin.Info)
 	packed := asPackedCoin(c)
-	return linearize(enc, reflect.ValueOf(packed))
+	return encode(enc, reflect.ValueOf(packed))
 }
 func deserializeCoinInfo(dec *Decoder, v reflect.Value, offset int64) error {
 	var packed PackedCoin
@@ -164,7 +164,7 @@ func serializeColumnStore(enc *Encoder, v reflect.Value) (Ref, error) {
 	}
 	store := p.(*column.Store)
 	packed := store.Pack()
-	return linearize(enc, reflect.ValueOf(packed))
+	return encode(enc, reflect.ValueOf(packed))
 }
 func deserializeColumnStore(dec *Decoder, v reflect.Value, offset int64) error {
 	var packed column.PackedStore
