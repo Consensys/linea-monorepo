@@ -22,7 +22,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-        createTag: ${{ steps.upload-assets.outputs.create_tag }}
+        createTag: ${{ steps.upload-assets.outputs.CREATE_TAG }}
         releaseTag: ${{ steps.config.outputs.RELEASE_TAG }}
     steps:
       - name: Configure Tag
@@ -55,9 +55,10 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
-          gh_create=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset)
+          gh_create=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset 2>&1)
           echo "$gh_create"
-          echo "create_tag=$gh_create" >> $GITHUB_OUTPUT
+          echo "${gh_create}"
+          echo "CREATE_TAG=${gh_create}" >> $GITHUB_OUTPUT
           gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
         env:
           jar_asset: ./tracer/plugins/build/libs/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.jar
