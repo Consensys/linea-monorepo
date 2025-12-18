@@ -290,9 +290,10 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 			if run.Spec.Precomputed.Exists(colName) {
 				continue
 			}
-
-			x := assign.Commitments[j].AsNative().(field.Element)
+			for k := 0; k < blockSize; k++ {
+				x := assign.Commitments[j][k].AsNative().(field.Element)
 			run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
+			}
 		}
 
 		// Assigns the poly query.
