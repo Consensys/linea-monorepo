@@ -154,6 +154,11 @@ export default class BurnAndBridge extends Command {
       )} ETH, minimumFee=${formatEther(minimumFeeInWei)} ETH`,
     );
 
+    if (vaultBalance <= minimumFeeInWei) {
+      this.log("Vault balance is less than or equal to minimum fee. No action needed.");
+      return;
+    }
+
     /******************************
         CHECK IF SWAP NEEDED
      ******************************/
@@ -303,11 +308,6 @@ export default class BurnAndBridge extends Command {
   private shouldSwap(invoiceArrears: bigint, vaultBalance: bigint, minfee: bigint): boolean {
     if (invoiceArrears > vaultBalance) return false;
     if (invoiceArrears === vaultBalance - minfee) return false;
-    if (invoiceArrears === 0n && vaultBalance <= minfee) {
-      this.error(
-        "No funds available to perform burn and bridge. Invoice arrears is zero and balance is less than or equal to minimum fee.",
-      );
-    }
     return true;
   }
 
@@ -338,6 +338,7 @@ export default class BurnAndBridge extends Command {
    * Broadcast the signed transaction to the network.
    * @param client Viem Client.
    * @param tx Transaction to be broadcasted.
+   * @param shouldSwap Whether a swap should be performed.
    */
   private async broadcastTransaction(client: Client, tx: SendTransactionParameters, shouldSwap: boolean) {
     this.log("Broadcasting transaction...");
@@ -348,26 +349,40 @@ export default class BurnAndBridge extends Command {
     }
 
     if (!shouldSwap) {
-      const [event] = parseEventLogs({
+      const events = parseEventLogs({
         abi: ARREARS_PAID_EVENT_ABI,
         logs: receipt.logs,
         eventName: "ArrearsPaid",
       });
 
+      if (events.length === 0) {
+        this.warn(
+          `Burn and bridge transaction did not emit ArrearsPaid event as expected. transactionHash=${receipt.transactionHash}`,
+        );
+        return;
+      }
+
       this.log(
-        `Burn and bridge transaction successfully processed without swap. transactionHash=${receipt.transactionHash} arrearsPaid=${formatEther(event.args.amount)} remainingArrears=${formatEther(event.args.remainingArrears)}`,
+        `Burn and bridge transaction successfully processed without burning. transactionHash=${receipt.transactionHash} arrearsPaid=${formatEther(events[0].args.amount)} remainingArrears=${formatEther(events[0].args.remainingArrears)}`,
       );
       return;
     }
 
-    const [event] = parseEventLogs({
+    const events = parseEventLogs({
       abi: ETH_BURNT_SWAPPED_AND_BRIDGED_EVENT_ABI,
       logs: receipt.logs,
       eventName: "EthBurntSwappedAndBridged",
     });
 
+    if (events.length === 0) {
+      this.warn(
+        `Burn and bridge transaction did not emit EthBurntSwappedAndBridged event as expected. transactionHash=${receipt.transactionHash}`,
+      );
+      return;
+    }
+
     this.log(
-      `Burn and bridge transaction successfully processed. transactionHash=${receipt.transactionHash} ethBurnt=${formatEther(event.args.ethBurnt)} lineaTokensBridged=${formatUnits(event.args.lineaTokensBridged, 18)}`,
+      `Burn and bridge transaction successfully processed. transactionHash=${receipt.transactionHash} ethBurnt=${formatEther(events[0].args.ethBurnt)} lineaTokensBridged=${formatUnits(events[0].args.lineaTokensBridged, 18)}`,
     );
   }
 
