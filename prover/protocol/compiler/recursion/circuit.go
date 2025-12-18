@@ -70,39 +70,43 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 }
 
 // Define implements the [frontend.Circuit] interface.
-func (r *RecursionCircuit) Define(fapi frontend.API) error {
-	api, err := gnarkfext.NewExt4(fapi)
+func (r *RecursionCircuit) Define(api frontend.API) error {
+	eapi, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
+	apiGen, err := zk.NewGenericApi(api)
+		if err != nil {
+			panic(err)
+		}
 	w := r.WizardVerifier
 
 	if !r.withoutGkr {
-		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(fapi)
-		w.BLSFS = fiatshamir.NewGnarkFSKoalabear(fapi)
+		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(apiGen.NativeApi)
+		w.BLSFS = fiatshamir.NewGnarkFSKoalabear(apiGen.NativeApi)
 	}
 
 	if r.withExternalHasher {
-		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(fapi)
+		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(apiGen.NativeApi)
 	}
 
-	w.Verify(fapi)
+	w.Verify(apiGen.NativeApi)
 
 	for i := range r.Pubs {
-		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(fapi, w)
-		fapi.AssertIsEqual(r.Pubs[i], pub)
+		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(apiGen.NativeApi, w)
+		apiGen.AssertIsEqual(r.Pubs[i], pub)
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
-	api.AssertIsEqual(&r.X, &polyParams.ExtX)
+	eapi.AssertIsEqual(&r.X, &polyParams.ExtX)
 
 	for i := range polyParams.ExtYs {
-		api.AssertIsEqual(&r.Ys[i], &polyParams.ExtYs[i])
+		eapi.AssertIsEqual(&r.Ys[i], &polyParams.ExtYs[i])
 	}
 
 	for i := range r.Commitments {
 		for j := 0; j < blockSize; j++ {
-			fapi.AssertIsEqual(r.Commitments[i][j], r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0))
+			apiGen.AssertIsEqual(r.Commitments[i][j], r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0))
 		}
 	}
 
