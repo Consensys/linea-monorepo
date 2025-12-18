@@ -9,10 +9,6 @@ on:
   release:
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Branch from which to make the release'
-        required: true
-        default: 'main'
       release_tag:
         description: Specify tag where assets should be added.
         required: true
@@ -45,7 +41,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ github.ref }}
           submodules: false
 
       - name: Setup Tracer Environment
@@ -60,7 +56,7 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
-          gh release delete linea-tracer-v4.4-rc7 --cleanup-tag --yes
+          gh release delete linea-tracer-beta-v4.4-rc7 --cleanup-tag --yes
           echo "CREATE_TAG=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset 2>&1)" >> $GITHUB_OUTPUT
           gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
         env:
