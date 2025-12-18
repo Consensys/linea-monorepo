@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/sirupsen/logrus"
 )
 
 // encoder: Holds the current encoding/serialization state
@@ -169,7 +170,7 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 
 	// Check Registry first for handling special types
 	if handler, ok := customRegistry[v.Type()]; ok {
-		return handler.serialize(w, v)
+		return handler.marshall(w, v)
 	}
 
 	if v.Type() == reflect.TypeOf(field.Element{}) {
@@ -295,7 +296,16 @@ func linearizeStructBodyMap(w *encoder, v reflect.Value, buf *bytes.Buffer) erro
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
 		t := v.Type().Field(i)
-		if !t.IsExported() || strings.Contains(t.Tag.Get(serdeStructTag), serdeStructTagOmit) {
+
+		// 1. Skip unexported or omitted fields
+		if strings.Contains(t.Tag.Get(serdeStructTag), serdeStructTagOmit) {
+			continue
+		}
+
+		// Skip unexported fields while displaying a warning to the user incase of forgetfulness
+		// of exporting any necessary field
+		if !t.IsExported() {
+			logrus.Warnf("field %v.%v is unexported", t.Type, t.Name)
 			continue
 		}
 		if isIndirectType(t.Type) {
@@ -319,7 +329,6 @@ func linearizeStructBodyMap(w *encoder, v reflect.Value, buf *bytes.Buffer) erro
 		val := normalizeIntegerSize(f)
 		binary.Write(buf, binary.LittleEndian, val)
 	}
-
 	return nil
 }
 
@@ -331,7 +340,14 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 		fType := f.Type()
 
 		// 1. Skip unexported or omitted fields
-		if !t.IsExported() || strings.Contains(t.Tag.Get(serdeStructTag), serdeStructTagOmit) {
+		if strings.Contains(t.Tag.Get(serdeStructTag), serdeStructTagOmit) {
+			continue
+		}
+
+		// Skip unexported fields while displaying a warning to the user incase of forgetfulness
+		// of exporting any necessary field
+		if !t.IsExported() {
+			logrus.Warnf("field %v.%v is unexported", t.Type, t.Name)
 			continue
 		}
 

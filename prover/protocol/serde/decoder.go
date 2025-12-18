@@ -29,7 +29,7 @@ func (dec *decoder) decode(target reflect.Value, offset int64) error {
 
 	// 1. Custom Registry
 	if handler, ok := customRegistry[t]; ok {
-		return handler.deserialize(dec, target, offset)
+		return handler.unmarshall(dec, target, offset)
 	}
 
 	// 2. Main Type Switch
