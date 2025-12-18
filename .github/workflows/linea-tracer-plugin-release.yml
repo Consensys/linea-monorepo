@@ -55,6 +55,7 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
+          delete_output=$(gh release delete linea-tracer-beta-v4.4-rc7 --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
           gh_create=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset 2>&1)
           echo "$gh_create"
           echo "create_tag=$gh_create" >> $GITHUB_OUTPUT
