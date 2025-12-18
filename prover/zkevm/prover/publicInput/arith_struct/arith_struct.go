@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -19,7 +20,7 @@ type BlockDataCols struct {
 	Ct ifaces.Column
 	// DataHi/DataLo encode the data, for example the timestamps.
 	// It's divided into 16 16-bit limb columns. 256 bits in total.
-	Data [common.NbLimbU256]ifaces.Column
+	Data limbs.Uint256Be
 	// FirstBlock contains the absolute ID of the first block
 	// It's divided into 3 16-bit limb columns. 48 bits in total.
 	FirstBlock [common.NbLimbU48]ifaces.Column
@@ -73,14 +74,11 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 			RelBlock: ctBlockData.GetCommit(b, "REL_BLOCK"),
 			Inst:     ctBlockData.GetCommit(b, "INST"),
 			Ct:       ctBlockData.GetCommit(b, "CT"),
+			Data:     ctBlockData.GetLimbsBe(b, "DATA", 16).AssertUint256(),
 		}
 
 		for i := range blockDataCols.FirstBlock {
 			blockDataCols.FirstBlock[i] = ctBlockData.GetCommit(b, fmt.Sprintf("FIRST_BLOCK_NUMBER_%d", i))
-		}
-
-		for i := range blockDataCols.Data {
-			blockDataCols.Data[i] = ctBlockData.GetCommit(b, fmt.Sprintf("DATA_%d", i))
 		}
 	}
 	if ctTxnData != nil {
@@ -133,7 +131,7 @@ func AssignTestingArithModules(
 			blockData.RelBlock,
 			blockData.Inst,
 			blockData.Ct,
-		).AssignCols(run, blockData.Data[:]...).
+		).Assign(run, blockData.Data).
 			AssignCols(run, blockData.FirstBlock[:]...)
 	}
 

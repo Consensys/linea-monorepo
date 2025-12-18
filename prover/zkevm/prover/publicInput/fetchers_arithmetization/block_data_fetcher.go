@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -31,14 +32,15 @@ type BlockDataFetcher struct {
 	// RelBlock is the relative block number, ranging from 1 to the total number of blocks
 	RelBlock ifaces.Column
 	// timestamp data for the first and last blocks in the conflation, columns of size 1
-	First, Last [common.NbLimbU128]ifaces.Column
+	FirstTimestamp, LastTimestamp [common.NbLimbU128]ifaces.Column
 	// FirstArith and LastArith are identical to First and Last but are used in the constraints
 	// involving arithmetization columns. They are constrained to be constant and via the
 	// projection query between the fetcher and the
 	FirstArith, LastArith [common.NbLimbU128]ifaces.Column
 	// Data contains all the timestamps in the conflation, ordered by block
-	Data ifaces.Column
-	// filter on the BlockDataFetcher.Data column
+	Data [common.NbLimbU128]ifaces.Column
+	// filter on the BlockDataFetcher.Data column. It is structured as an
+	// inactive column.
 	FilterFetched ifaces.Column
 
 	// filter that selects only timestamp, baseFee and coinbase rows from the
@@ -63,9 +65,9 @@ type BlockDataFetcher struct {
 	// a constant columns that contains -1 at every position
 	minusOne ifaces.Column
 	// BaseFee contains the base fee for each block
-	BaseFee ifaces.Column
+	BaseFee [common.NbLimbU128]ifaces.Column
 	// CoinBase contains the coin base for each block
-	CoinBase ifaces.Column
+	CoinBase [common.NbLimbEthAddress]ifaces.Column
 }
 
 // NewBlockDataFetcher returns a new BlockDataFetcher with initialized columns that are not constrained.
@@ -76,18 +78,20 @@ func NewBlockDataFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.Block
 	res := &BlockDataFetcher{
 		RelBlock:      util.CreateColBase(name, "REL_BLOCK", size, comp),
 		FilterFetched: util.CreateColBase(name, "FILTER_FETCHED", size, comp),
-		FilterArith:   util.CreateColBase(name, "FILTER_ARITHMETIZATION", size, comp),
+	}
 
-		// to do: check this part @gusiri
-		BaseFee:  util.CreateColBase(name, "BASE_FEE", size, comp),
-		CoinBase: util.CreateColBase(name, "COIN_BASE", size, comp),
-		// to do: check this part @gusiri
+	for i := range res.BaseFee {
+		res.BaseFee[i] = util.CreateColBase(name, fmt.Sprintf("BASE_FEE_%d", i), size, comp)
+	}
+
+	for i := range res.CoinBase {
+		res.CoinBase[i] = util.CreateColBase(name, fmt.Sprintf("COIN_BASE_%d", i), size, comp)
 	}
 
 	for i := range res.Data {
 		res.Data[i] = util.CreateColBase(name, fmt.Sprintf("DATA_%d", i), size, comp)
-		res.First[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_%d", i), size, comp)
-		res.Last[i] = util.CreateColBase(name, fmt.Sprintf("LAST_%d", i), size, comp)
+		res.FirstTimestamp[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_%d", i), size, comp)
+		res.LastTimestamp[i] = util.CreateColBase(name, fmt.Sprintf("LAST_%d", i), size, comp)
 		res.FirstArith[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_ARITHMETIZATION_%d", i), size, comp)
 		res.LastArith[i] = util.CreateColBase(name, fmt.Sprintf("LAST_ARITHMETIZATION_%d", i), size, comp)
 	}
@@ -128,19 +132,6 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *BlockDataFe
 		commonconstraints.MustBeConstant(comp, fetcher.LastBlockID[i])
 		commonconstraints.MustBeConstant(comp, fetcher.FirstBlockIDArith[i])
 		commonconstraints.MustBeConstant(comp, fetcher.LastBlockIDArith[i])
-
-		// Constrain the First Block ID
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("%s_FIRST_BLOCK_ID_GLOBAL_%s_%d", name, fetcher.FirstBlockID[i].GetColID(), i),
-			sym.Mul(
-				fetcher.FilterArith, // select only non-padding, valid rows.
-				sym.Sub(
-					bdc.FirstBlock[i],
-					fetcher.FirstBlockIDArith[i],
-				),
-			),
-		)
 	}
 
 	// FilterFetched is already constrained in the fetcher, no need to constrain it again
@@ -182,23 +173,51 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *BlockDataFe
 func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher, name string, bdc *arith.BlockDataCols) {
 
 	var (
-		timestampField  = util.GetTimestampField()
-		baseFeeField    = util.GetBaseFeeField()
-		coinBaseField   = util.GetCoinBaseField()
-		selTimestampCtx = makeBtcInstSelector(comp, bdc, timestampField)
-		selBaseFeeCtx   = makeBtcInstSelector(comp, bdc, baseFeeField)
-		selCoinBaseCtx  = makeBtcInstSelector(comp, bdc, coinBaseField)
+		timestampField        = util.GetTimestampField()
+		baseFeeField          = util.GetBaseFeeField()
+		coinBaseField         = util.GetCoinBaseField()
+		selTimestampCtx       = makeBtcInstSelector(comp, bdc, timestampField)
+		selBaseFeeCtx         = makeBtcInstSelector(comp, bdc, baseFeeField)
+		selCoinBaseCtx        = makeBtcInstSelector(comp, bdc, coinBaseField)
+		_, bdcDataLoLimbs     = bdc.Data.SplitOnBit(128)
+		_, bdcDataLoAddrLimbs = bdc.Data.SplitOnBit(96)
+		bdcDataLo             = bdcDataLoLimbs.ToRawUnsafe()
+		bdcDataLoAddr         = bdcDataLoAddrLimbs.ToRawUnsafe()
 	)
 
-	// to do @gusiri: refactor this part
 	fetcher.SelTimestampArith, fetcher.ComputeSelTimestamp = selTimestampCtx.GetColumnAndProverAction()
 	fetcher.SelBaseFeeArith, fetcher.ComputeSelBaseFee = selBaseFeeCtx.GetColumnAndProverAction()
 	fetcher.SelCoinBaseArith, fetcher.ComputeSelCoinBase = selCoinBaseCtx.GetColumnAndProverAction()
-	// to do @gusiri: refactor this part
 
-	for i := range fetcher.First {
-		commonconstraints.MustBeConstant(comp, fetcher.First[i])
-		commonconstraints.MustBeConstant(comp, fetcher.Last[i])
+	commonconstraints.MustBeActivationColumns(comp, fetcher.FilterFetched)
+
+	for i := range fetcher.CoinBase {
+		commonconstraints.MustBeConstant(comp, fetcher.CoinBase[i])
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("%s_COINBASE_FETCHING", name),
+			sym.Mul(
+				fetcher.SelCoinBaseArith,
+				sym.Sub(bdcDataLoAddr[i], fetcher.CoinBase),
+			),
+		)
+	}
+
+	for i := range fetcher.BaseFee {
+		commonconstraints.MustBeConstant(comp, fetcher.BaseFee[i])
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("%s_BASEFEE_FETCHING", name),
+			sym.Mul(
+				fetcher.SelBaseFeeArith,
+				sym.Sub(fetcher.BaseFee[i], bdcDataLo[i]),
+			),
+		)
+	}
+
+	for i := range fetcher.FirstTimestamp {
+		commonconstraints.MustBeConstant(comp, fetcher.FirstTimestamp[i])
+		commonconstraints.MustBeConstant(comp, fetcher.LastTimestamp[i])
 		commonconstraints.MustBeConstant(comp, fetcher.FirstArith[i])
 		commonconstraints.MustBeConstant(comp, fetcher.LastArith[i])
 
@@ -207,7 +226,7 @@ func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher,
 			0,
 			ifaces.QueryIDf("%s_FIRST_LOCAL_%d", name, i),
 			sym.Sub(
-				fetcher.First[i],
+				fetcher.FirstTimestamp[i],
 				fetcher.Data[i], // fetcher.Data is constrained in the projection query
 			),
 		)
@@ -218,7 +237,7 @@ func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher,
 			ifaces.QueryIDf("%s_LAST_LOCAL_%d", name, i),
 			sym.Sub(
 				column.Shift(fetcher.LastArith[i], -1),
-				column.Shift(bdc.Data[common.NbLimbU128+i], TimestampOffset),
+				column.Shift(bdcDataLo[i], TimestampOffset),
 			),
 		)
 	}
@@ -250,12 +269,12 @@ func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher,
 	fetcherTable = append(fetcherTable, fetcher.Data[:]...)
 	fetcherTable = append(fetcherTable, fetcher.FirstBlockID[:]...)
 	fetcherTable = append(fetcherTable, fetcher.LastBlockID[:]...)
-	fetcherTable = append(fetcherTable, fetcher.First[:]...)
-	fetcherTable = append(fetcherTable, fetcher.Last[:]...)
+	fetcherTable = append(fetcherTable, fetcher.FirstTimestamp[:]...)
+	fetcherTable = append(fetcherTable, fetcher.LastTimestamp[:]...)
 
 	// the BlockDataCols we extract timestamp data from, and which we will use to check for consistency
 	arithTable := []ifaces.Column{bdc.RelBlock}
-	arithTable = append(arithTable, bdc.Data[common.NbLimbU128:]...)
+	arithTable = append(arithTable, bdcDataLo...)
 	arithTable = append(arithTable, fetcher.FirstBlockIDArith[:]...)
 	arithTable = append(arithTable, fetcher.LastBlockIDArith[:]...)
 	arithTable = append(arithTable, fetcher.FirstArith[:]...)
@@ -265,55 +284,11 @@ func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher,
 	comp.InsertProjection(
 		ifaces.QueryIDf("%s_TIMESTAMP_PROJECTION", name),
 		query.ProjectionInput{
-			ColumnA: []ifaces.Column{
-				fetcher.RelBlock,
-				fetcher.DataLo,
-				fetcher.FirstBlockID,
-				fetcher.LastBlockID,
-				fetcher.FirstTimestamp,
-				fetcher.LastTimestamp,
-			},
-			ColumnB: []ifaces.Column{
-				bdc.RelBlock,
-				bdc.DataLo,
-				fetcher.FirstBlockIDArith,
-				fetcher.LastBlockIDArith,
-				fetcher.FirstArith,
-				fetcher.LastArith,
-			},
-			// the filter is structured as an isActive column
+			ColumnA: fetcherTable,
+			ColumnB: arithTable,
 			FilterA: fetcher.FilterFetched,
-			// filter lights up on the arithmetization's BlockDataCols rows that
-			// contain timestamp data
 			FilterB: fetcher.SelTimestampArith,
 		})
-
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("%s_BASEFEE_FETCHING", name),
-		sym.Mul(
-			fetcher.SelBaseFeeArith,
-			sym.Sub(
-				fetcher.BaseFee,
-				bdc.DataLo,
-			),
-		),
-	)
-
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("%s_COINBASE_FETCHING", name),
-		sym.Mul(
-			fetcher.SelCoinBaseArith,
-			sym.Sub(
-				sym.Add(
-					bdc.DataLo,
-					sym.Mul(bdc.DataHi, 1<<32),
-				),
-				fetcher.CoinBase,
-			),
-		),
-	)
 
 	// constrain the First/Last Block ID counters
 	ConstrainFirstAndLastBlockID(comp, fetcher, name, bdc)
@@ -342,7 +317,8 @@ func AssignBlockDataFetcher(run *wizard.ProverRuntime, fetcher *BlockDataFetcher
 		filterFetched = make([]field.Element, size)
 		filterArith   = make([]field.Element, stop-start)
 
-		data [common.NbLimbU128][]field.Element
+		data    [common.NbLimbU128][]field.Element
+		bdcData = bdc.Data.ToBigEndianLimbs().ToRawUnsafe()
 
 		// counter is used to populate filter.Data and will increment every
 		// time we find a new timestamp
@@ -353,7 +329,7 @@ func AssignBlockDataFetcher(run *wizard.ProverRuntime, fetcher *BlockDataFetcher
 		// is never used. (but that is normally impossible since these are
 		// needed to argue how the sequencer is rewarded for every block, even
 		// the empty ones)
-		baseFee, coinBase field.Element
+		baseFee, coinBase []field.Element
 	)
 
 	for i := range data {
@@ -368,17 +344,17 @@ func AssignBlockDataFetcher(run *wizard.ProverRuntime, fetcher *BlockDataFetcher
 		)
 
 		if inst.Equal(&baseFeeField) && ct.IsZero() {
-			baseFee = bdc.DataLo.GetColAssignmentAt(run, i)
+			baseFee = bdc.Data.GetRow(run, i).ToBigEndianLimbs().ToRawUnsafe()
 		}
 
 		if inst.Equal(&coinBaseField) && ct.IsZero() {
-			coinBase = bdc.DataLo.GetColAssignmentAt(run, i)
+			coinBase = bdc.Data.GetRow(run, i).ToBigEndianLimbs().ToRawUnsafe()
 		}
 
 		if inst.Equal(&timestampField) && ct.IsZero() {
 			// the row type is a timestamp-encoding row
 			for j := range timestamp {
-				timestamp[j] = bdc.Data[common.NbLimbU128+j].GetColAssignmentAt(run, i)
+				timestamp[j] = bdcData[common.NbLimbU128+j].GetColAssignmentAt(run, i)
 			}
 			// in the arithmetization, relBlock is the relative block number inside the conflation
 			fetchedRelBlock := bdc.RelBlock.GetColAssignmentAt(run, i)
@@ -415,11 +391,10 @@ func AssignBlockDataFetcher(run *wizard.ProverRuntime, fetcher *BlockDataFetcher
 	// assign the fetcher columns
 	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.RightZeroPadded(relBlock, size))
 	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.RightZeroPadded(filterFetched, size))
-	run.AssignColumn(fetcher.FilterArith.GetColID(), smartvectors.FromCompactWithRange(filterArith, start, stop, size))
 
 	for i := range common.NbLimbU128 {
-		run.AssignColumn(fetcher.First[i].GetColID(), smartvectors.NewConstant(first[i], size))
-		run.AssignColumn(fetcher.Last[i].GetColID(), smartvectors.NewConstant(last[i], size))
+		run.AssignColumn(fetcher.FirstTimestamp[i].GetColID(), smartvectors.NewConstant(first[i], size))
+		run.AssignColumn(fetcher.LastTimestamp[i].GetColID(), smartvectors.NewConstant(last[i], size))
 		run.AssignColumn(fetcher.FirstArith[i].GetColID(), smartvectors.NewConstant(first[i], size))
 		run.AssignColumn(fetcher.LastArith[i].GetColID(), smartvectors.NewConstant(last[i], size))
 		run.AssignColumn(fetcher.Data[i].GetColID(), smartvectors.RightZeroPadded(data[i], size))
@@ -433,13 +408,41 @@ func AssignBlockDataFetcher(run *wizard.ProverRuntime, fetcher *BlockDataFetcher
 	}
 
 	// assign the SelectorTimestamp using the ComputeSelectorTimestamp prover action
-	fetcher.ComputeSelectorTimestamp.Run(run)
-	// assign the SelectorCt using the ComputeSelectorCt prover action
-	fetcher.ComputeSelectorCt.Run(run)
-	// assign the LastMinusFirstBlock using the LastMinusFirstBlockAction
+	fetcher.ComputeSelTimestamp.Run(run)
+	fetcher.ComputeSelCoinBase.Run(run)
+	fetcher.ComputeSelBaseFee.Run(run)
 	fetcher.LastMinusFirstBlockAction.Run(run)
 
-	// assign the baseFee and the coinBase
-	run.AssignColumn(fetcher.BaseFee.GetColID(), smartvectors.NewConstant(baseFee, size))
-	run.AssignColumn(fetcher.CoinBase.GetColID(), smartvectors.NewConstant(coinBase, size))
+	for i := range baseFee {
+		run.AssignColumn(fetcher.BaseFee[i].GetColID(), smartvectors.NewConstant(baseFee[i], size))
+	}
+
+	for i := range coinBase {
+		run.AssignColumn(fetcher.CoinBase[i].GetColID(), smartvectors.NewConstant(coinBase[i], size))
+	}
+}
+
+// makeBtcInstSelector constructs a selector for the BTC module marking the
+// first row of every frame corresponding to the target instruction.
+//
+// Concretely, the selector flags up when bdc.Inst == inst && bdc.Ct == 0
+//
+// The implementation assumes bdc.Inst < 256 and that Ct is really small, both
+// are arguably sound and future-proof assumption; CT is the number of rows that
+// the module spend on each instruction and the instruction space is defined to
+// be a single byte on the EVM).
+//
+// Relying on these, the selector is implemented as a check that
+// 256*Ct+(inst-INST) == 0.
+func makeBtcInstSelector(
+	comp *wizard.CompiledIOP, bdc *arith.BlockDataCols, inst field.Element,
+) *dedicated.IsZeroCtx {
+
+	return dedicated.IsZero(
+		comp,
+		sym.Add(
+			sym.Sub(bdc.Inst, inst),
+			sym.Mul(256, bdc.Ct),
+		),
+	)
 }
