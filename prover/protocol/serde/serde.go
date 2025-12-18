@@ -75,53 +75,25 @@ func Deserialize(b []byte, v any) error {
 // This is NOT the same as Go's in-memory size. The size returned here reflects
 // how the value is represented on disk:
 //
-//   - Fixed-size, pointer-free values are inlined
-//   - Variable-size or heap-backed values are replaced by an 8-byte Ref
+//   - Fixed-size, pointer-free values are inlined.
+//   - Variable-size or heap-backed values are replaced by an 8-byte Ref.
 //
 // This function must remain perfectly consistent with the actual write logic;
 // any mismatch will result in corrupted offsets or incorrect deserialization.
 func getBinarySize(t reflect.Type) int64 {
-	// Types with custom serializers are always referenced indirectly.
-	// The inline representation is a Ref (byte offset).
-	if _, ok := CustomRegistry[t]; ok {
-		return 8
+
+	// Indirect types (custom registries, ptrs, slices, strings etc) are types that have variable sizes
+	// not known at compile time and hence their inline representation is a Ref (8-byte offset).
+	// These values are written elsewhere and referenced inline by offset.
+	if isIndirectType(t) {
+		return 8 // Size of Ref (8-byte offset)
 	}
 
 	k := t.Kind()
 
-	// Pointer-like or variable-size types are stored indirectly via Ref.
-	// These values are written elsewhere and referenced inline by offset.
-	switch k {
-	case reflect.Ptr,
-		reflect.Slice,
-		reflect.String,
-		reflect.Interface,
-		reflect.Map,
-		reflect.Func:
-		return 8
-	}
-
-	// Explicit handling of scalar types for clarity and stability.
-	// These are inlined directly using a fixed, deterministic size.
-	switch k {
-	case reflect.Bool:
-		return 1
-
-	case reflect.Int8, reflect.Uint8:
-		return 1
-
-	case reflect.Int16, reflect.Uint16:
-		return 2
-
-	case reflect.Int32, reflect.Uint32:
-		return 4
-
-	case reflect.Int64, reflect.Uint64:
-		return 8
-
-	// int / uint are platform-dependent in Go, so we normalize them
-	// to 8 bytes in the serialized representation.
-	case reflect.Int, reflect.Uint:
+	// Explicit handling of scalar types int/uint are platform-dependent in Go,
+	// so we normalize them to 8 bytes in the serialized representation.
+	if k == reflect.Int || k == reflect.Uint {
 		return 8
 	}
 
@@ -164,6 +136,33 @@ func getBinarySize(t reflect.Type) int64 {
 	}
 
 	// Fallback for other fixed-size, pointer-free types
-	// (e.g. float32, float64).
+	// (e.g. bool, int/uint8, int/uint16, int/uint32, int/uint64, float32/64).
 	return int64(t.Size())
+}
+
+func isIndirectType(t reflect.Type) bool {
+	if _, ok := CustomRegistry[t]; ok {
+		return true
+	}
+
+	// Indirect types are types that have variable sizes - not known at compile time
+	k := t.Kind()
+	return k == reflect.Ptr || k == reflect.Slice || k == reflect.String ||
+		k == reflect.Interface || k == reflect.Map || k == reflect.Func
+}
+
+// normalizeIntegerSize converts platform-dependent types (int, uint) to fixed-size
+// equivalents (int64, uint64) - 64 bit values. This ensures that the binary representation
+// is consistent across different CPU architectures (32-bit vs 64-bit).
+func normalizeIntegerSize(v reflect.Value) any {
+	switch v.Kind() {
+	case reflect.Int:
+		return int64(v.Int())
+	case reflect.Uint:
+		return uint64(v.Uint())
+	default:
+		// For all other types (int64, float64, structs, etc.),
+		// return the interface as-is.
+		return v.Interface()
+	}
 }

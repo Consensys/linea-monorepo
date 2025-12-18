@@ -482,30 +482,3 @@ func writeMapElement(w *Encoder, v reflect.Value, buf *bytes.Buffer) error {
 	val := normalizeIntegerSize(v)
 	return binary.Write(buf, binary.LittleEndian, val)
 }
-
-func isIndirectType(t reflect.Type) bool {
-	if _, ok := CustomRegistry[t]; ok {
-		return true
-	}
-
-	// Indirect types are types that have variable sizes - not known at compile time
-	k := t.Kind()
-	return k == reflect.Ptr || k == reflect.Slice || k == reflect.String ||
-		k == reflect.Interface || k == reflect.Map || k == reflect.Func
-}
-
-// normalizeIntegerSize converts platform-dependent types (int, uint) to fixed-size
-// equivalents (int64, uint64) - 64 bit values. This ensures that the binary representation
-// is consistent across different CPU architectures (32-bit vs 64-bit).
-func normalizeIntegerSize(v reflect.Value) any {
-	switch v.Kind() {
-	case reflect.Int:
-		return int64(v.Int())
-	case reflect.Uint:
-		return uint64(v.Uint())
-	default:
-		// For all other types (int64, float64, structs, etc.),
-		// return the interface as-is.
-		return v.Interface()
-	}
-}

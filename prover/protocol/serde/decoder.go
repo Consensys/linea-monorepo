@@ -166,6 +166,8 @@ func (dec *Decoder) decodeString(target reflect.Value, offset int64) error {
 	return nil
 }
 
+// decodeMap: handles the reconstruction of Go maps which are complex internal hash table
+// structures that cannot be zero-copied (unlike slices or arrays).
 func (dec *Decoder) decodeMap(target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("map header out of bounds")
@@ -176,11 +178,15 @@ func (dec *Decoder) decodeMap(target reflect.Value, offset int64) error {
 		return nil
 	}
 
+	// Since, we cannot zero-copy maps, we must allocate a new map in heap memory and
+	// insert every key-value pair individually.
 	target.Set(reflect.MakeMapWithSize(target.Type(), int(fs.Len)))
 	currentOff := int64(fs.Offset)
 	keyType := target.Type().Key()
-	elemType := target.Type().Elem()
+	ValType := target.Type().Elem()
 
+	// In each iteration, we decode the corresponding key and value (call decodeMapElement twice),
+	// and insert them into the map
 	for i := 0; i < int(fs.Len); i++ {
 		newKey := reflect.New(keyType).Elem()
 		nextOff, err := dec.decodeMapElement(newKey, currentOff)
@@ -189,7 +195,7 @@ func (dec *Decoder) decodeMap(target reflect.Value, offset int64) error {
 		}
 		currentOff = nextOff
 
-		newVal := reflect.New(elemType).Elem()
+		newVal := reflect.New(ValType).Elem()
 		nextOff, err = dec.decodeMapElement(newVal, currentOff)
 		if err != nil {
 			return err
@@ -357,26 +363,30 @@ func (dec *Decoder) decodeStruct(target reflect.Value, offset int64) error {
 	return nil
 }
 
+// decodeMapElement: helper that handles the "step-by-step" reading of keys and values and returns
+// the next offset so the caller knows where the next piece of data begins.
+//
+// NOTE: Explicitly handling of direct and indirect types are required here even though the
+// getBinarySize() function returns the correct sizes for both types. This is because the
+// func dec.decode(target, X) expects X to be the start of the object's header/data.
+// For Direct types (e.g., int), the object sits right there at offset and hence can be directly decoded.
+// For Indirect types (e.g., string), the actual object sits far away and the offset only contains a
+// "signpost" (Ref) pointing to it.
 func (dec *Decoder) decodeMapElement(target reflect.Value, offset int64) (int64, error) {
-	// 1. ADD BOUNDS CHECK HERE
+	// Bound check
 	if offset < 0 || int(offset) >= len(dec.data) {
 		return 0, fmt.Errorf("readMapElement: offset %d out of bounds (len: %d)", offset, len(dec.data))
 	}
 
 	t := target.Type()
-	_, hasCustom := CustomRegistry[t]
-	isRef := hasCustom || t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice || t.Kind() == reflect.String ||
-		t.Kind() == reflect.Interface || t.Kind() == reflect.Map ||
-		t.Kind() == reflect.Func ||
-		t == reflect.TypeOf(big.Int{}) || t == reflect.TypeOf(&big.Int{}) ||
-		t == reflect.TypeOf((*frontend.Variable)(nil)).Elem()
 
-	if isRef {
-		// 2. Add bounds check for the 8-byte reference read
+	// For in-direct types, the map data section only stores an 8-byte Reference (offset).
+	// The function reads that offset, jumps to that location to decode the actual object,
+	// and moves the map cursor forward by exactly 8 bytes.
+	if isIndirectType(t) {
 		if int(offset)+8 > len(dec.data) {
 			return 0, fmt.Errorf("readMapElement: unable to read Ref at offset %d", offset)
 		}
-
 		ref := *(*Ref)(unsafe.Pointer(&dec.data[offset]))
 		if !ref.IsNull() {
 			if err := dec.decode(target, int64(ref)); err != nil {
@@ -386,13 +396,12 @@ func (dec *Decoder) decodeMapElement(target reflect.Value, offset int64) (int64,
 		return offset + 8, nil
 	}
 
+	// If the type is "direct" (size known at compile time), the data is stored "inline" within the map's data block.
+	// The function decodes it at the current position and moves the cursor forward by the size of that type.
 	binSize := getBinarySize(t)
-
-	// 3. Add bounds check for binary data read
 	if int(offset)+int(binSize) > len(dec.data) {
 		return 0, fmt.Errorf("readMapElement: unable to read binary data of size %d at offset %d", binSize, offset)
 	}
-
 	if err := dec.decode(target, offset); err != nil {
 		return 0, err
 	}

@@ -46,8 +46,9 @@ type FileHeader struct {
 
 // InterfaceHeader represents the binary header for an interface and is specifically designed to be
 // exactly 16 bytes to ensure the Offset field remains 8-byte aligned for efficient reading/writing.
+//
 // IMPORTANT:
-// DO NOT CHANGE THE LAYOUT (ordering of the fields) OF THIS STRUCT
+// DO NOT CHANGE THE LAYOUT (ordering of the fields) of this struct.
 // We perform `binary.Write` which is very literal i.e. writes the bytes of the struct fields in exact order and
 // does not automatically insert padding for us like the Go compiler does automatically (inserts hidden padding bytes
 // between fields in memory to align them) for structs in memory.
@@ -70,10 +71,12 @@ type Ref int64
 
 func (r Ref) IsNull() bool { return r == 0 }
 
-// FileSlice mirrors the struct of a Go slice header {Data uintptr, Len int, Cap int} conceptually.
-// Instead of Data (uintptr), we store the offset of the slice data in the serialized buffer.
-// IMPORTANT: The ordering of the attributes must not be changed. Notice the first two attributes
-// shared similarties with Go string header representation {Data uintptr, Len int}
+// FileSlice mirrors the struct of a Go slice header {Data uintptr, Len int, Cap int} conceptually
+// for zero-copy slice reconstruction. Instead of Data (uintptr), we store the offset of the slice data
+// in the serialized buffer. Notice the first two attributes shared similarties with Go string header
+// representation {Data uintptr, Len int} and hence can also be used for zero-copy string construction.
+//
+// IMPORTANT: The ordering of the attributes MUST NOT be changed (Offset, Len, Cap) since the decoder relies on this format.
 type FileSlice struct {
 	// 8 Byte offset in the serialized buffer - beginning of the cursor
 	Offset Ref
