@@ -10,6 +10,8 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   incrementValidatorExit(validatorPubkey: Hex, count?: number): void;
 
+  setValidatorStakedAmountGwei(pubkey: Hex, amountGwei: number): void;
+
   incrementLidoVaultAccountingReport(vaultAddress: Address): void;
 
   incrementReportYield(vaultAddress: Address): void;

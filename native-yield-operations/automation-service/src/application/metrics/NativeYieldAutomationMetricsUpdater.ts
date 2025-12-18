@@ -61,6 +61,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       ["validator_pubkey"],
     );
 
+    this.metricsService.createGauge(
+      LineaNativeYieldAutomationServiceMetrics.ValidatorStakedAmountGwei,
+      "Amount staked in a validator in gwei",
+      ["pubkey"],
+    );
+
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.LidoVaultAccountingReportSubmittedTotal,
       "Accounting reports submitted to Lido per vault",
@@ -273,6 +279,21 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.ValidatorExitTotal,
       { validator_pubkey: validatorPubkey },
       count,
+    );
+  }
+
+  /**
+   * Sets the amount staked in a validator in gwei.
+   *
+   * @param {Hex} pubkey - The validator's public key in hex format.
+   * @param {number} amountGwei - The staked amount in gwei. Must be non-negative to be recorded.
+   */
+  public setValidatorStakedAmountGwei(pubkey: Hex, amountGwei: number): void {
+    if (amountGwei < 0) return;
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.ValidatorStakedAmountGwei,
+      { pubkey },
+      amountGwei,
     );
   }
 

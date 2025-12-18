@@ -33,6 +33,7 @@ const createMetricsUpdaterMock = () => {
     recordRebalance: jest.fn(),
     addValidatorPartialUnstakeAmount,
     incrementValidatorExit,
+    setValidatorStakedAmountGwei: jest.fn(),
     incrementLidoVaultAccountingReport: jest.fn(),
     incrementReportYield: jest.fn(),
     setLastPeekedNegativeYieldReport: jest.fn(),

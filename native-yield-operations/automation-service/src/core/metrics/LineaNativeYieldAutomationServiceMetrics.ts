@@ -15,6 +15,10 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label - validator_pubkey
   ValidatorExitTotal = "linea_native_yield_automation_service_validator_exit_total",
 
+  // Gauge representing the amount staked in a validator in gwei
+  // Single label `pubkey`
+  ValidatorStakedAmountGwei = "linea_native_yield_automation_service_validator_staked_amount_gwei",
+
   // Counter that increment each time a vault accounting report is submitted
   // Single label `vault_address`
   LidoVaultAccountingReportSubmittedTotal = "linea_native_yield_automation_service_lido_vault_accounting_report_submitted_total",

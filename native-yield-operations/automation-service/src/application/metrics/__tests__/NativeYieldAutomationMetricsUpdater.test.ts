@@ -50,6 +50,11 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       "Total validator exits initiated by automation",
       ["validator_pubkey"],
     );
+    expect(metricsService.createGauge).toHaveBeenCalledWith(
+      LineaNativeYieldAutomationServiceMetrics.ValidatorStakedAmountGwei,
+      "Amount staked in a validator in gwei",
+      ["pubkey"],
+    );
     expect(metricsService.createCounter).toHaveBeenCalledWith(
       LineaNativeYieldAutomationServiceMetrics.LidoVaultAccountingReportSubmittedTotal,
       "Accounting reports submitted to Lido per vault",
@@ -280,6 +285,46 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       updater.incrementValidatorExit(validatorPubkey, 0);
 
       expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setValidatorStakedAmountGwei", () => {
+    it("sets gauge when value is non-negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setValidatorStakedAmountGwei(validatorPubkey, 32000000000);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ValidatorStakedAmountGwei,
+        { pubkey: validatorPubkey },
+        32000000000,
+      );
+    });
+
+    it("does not set gauge when value is negative", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setValidatorStakedAmountGwei(validatorPubkey, -1);
+
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("sets gauge when value is zero", () => {
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      updater.setValidatorStakedAmountGwei(validatorPubkey, 0);
+
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ValidatorStakedAmountGwei,
+        { pubkey: validatorPubkey },
+        0,
+      );
     });
   });
 
