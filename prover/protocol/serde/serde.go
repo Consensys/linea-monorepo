@@ -17,8 +17,8 @@ var (
 )
 
 func Serialize(v any) ([]byte, error) {
-	w := NewWriter()
-	_ = w.Write(FileHeader{})
+	w := newWriter()
+	_ = w.write(FileHeader{})
 	rootOff, err := encode(w, reflect.ValueOf(v))
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func Deserialize(b []byte, v any) error {
 		return fmt.Errorf("v must be a pointer")
 	}
 
-	ctx := &Decoder{
+	ctx := &decoder{
 		data:   b,
 		ptrMap: make(map[int64]reflect.Value),
 	}
@@ -145,8 +145,9 @@ func getBinarySize(t reflect.Type) int64 {
 // This includes pointers, slices, strings, interfaces, maps, and functions.
 // Direct types are types that have fixed sizes known at compile time.
 // This includes structs, arrays, and primitive types (bool,int/uint8, int/uint (normalized), etc).
+// Types handled inside of the Custom Registry are also considered indirect.
 func isIndirectType(t reflect.Type) bool {
-	if _, ok := CustomRegistry[t]; ok {
+	if _, ok := customRegistry[t]; ok {
 		return true
 	}
 

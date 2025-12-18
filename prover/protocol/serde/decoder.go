@@ -3,16 +3,14 @@ package serde
 
 import (
 	"fmt"
-	"math/big"
 	"reflect"
 	"strings"
 	"unsafe"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-type Decoder struct {
+type decoder struct {
 
 	// The entire memory-mapped file - the raw binary blob. The reader does not "read" from a stream,
 	// rather it jumps around this byte slice using offsets.
@@ -26,12 +24,12 @@ type Decoder struct {
 	ptrMap map[int64]reflect.Value
 }
 
-func (dec *Decoder) decode(target reflect.Value, offset int64) error {
+func (dec *decoder) decode(target reflect.Value, offset int64) error {
 	t := target.Type()
 
 	// 1. Custom Registry
-	if handler, ok := CustomRegistry[t]; ok {
-		return handler.Deserialize(dec, target, offset)
+	if handler, ok := customRegistry[t]; ok {
+		return handler.deserialize(dec, target, offset)
 	}
 
 	// 2. Main Type Switch
@@ -76,7 +74,7 @@ func (dec *Decoder) decode(target reflect.Value, offset int64) error {
 
 // --- Helpers ---
 
-func (dec *Decoder) decodePtr(target reflect.Value, offset int64) error {
+func (dec *decoder) decodePtr(target reflect.Value, offset int64) error {
 	t := target.Type()
 
 	// Check Cache
@@ -99,7 +97,7 @@ func (dec *Decoder) decodePtr(target reflect.Value, offset int64) error {
 	return dec.decode(newPtr.Elem(), offset)
 }
 
-func (dec *Decoder) decodeSlice(target reflect.Value, offset int64) error {
+func (dec *decoder) decodeSlice(target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("slice header out of bounds")
 	}
@@ -144,7 +142,7 @@ func (dec *Decoder) decodeSlice(target reflect.Value, offset int64) error {
 	return nil
 }
 
-func (dec *Decoder) decodeString(target reflect.Value, offset int64) error {
+func (dec *decoder) decodeString(target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("string header out of bounds")
 	}
@@ -168,7 +166,7 @@ func (dec *Decoder) decodeString(target reflect.Value, offset int64) error {
 
 // decodeMap: handles the reconstruction of Go maps which are complex internal hash table
 // structures that cannot be zero-copied (unlike slices or arrays).
-func (dec *Decoder) decodeMap(target reflect.Value, offset int64) error {
+func (dec *decoder) decodeMap(target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("map header out of bounds")
 	}
@@ -206,7 +204,7 @@ func (dec *Decoder) decodeMap(target reflect.Value, offset int64) error {
 	return nil
 }
 
-func (dec *Decoder) decodeInterface(target reflect.Value, offset int64) error {
+func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[InterfaceHeader]()) > len(dec.data) {
 		return fmt.Errorf("interface header out of bounds")
 	}
@@ -260,7 +258,7 @@ func (dec *Decoder) decodeInterface(target reflect.Value, offset int64) error {
 // NOTE: Since an array's memory is part of the struct it belongs to, it is copied into the struct's memory.
 // It is not "Zero-Copy" like a slice, which just points back to the file. This makes arrays safer for mutation
 // but more expensive for very large datasets.
-func (dec *Decoder) decodeArray(target reflect.Value, offset int64) error {
+func (dec *decoder) decodeArray(target reflect.Value, offset int64) error {
 	t := target.Type()
 
 	// Calculate the size of single element and then the total size
@@ -290,7 +288,7 @@ func (dec *Decoder) decodeArray(target reflect.Value, offset int64) error {
 // decodeFieldElement: handles the reconstruction of field.Element ([4]uint64) in a non-zero copy fashion,
 // but does a bulk-memory copy instead of iterating through each element. This is significantly faster
 // than iterating through each element individually.
-func (dec *Decoder) decodeFieldElement(target reflect.Value, offset int64) error {
+func (dec *decoder) decodeFieldElement(target reflect.Value, offset int64) error {
 	size := int(target.Type().Size())
 	if offset < 0 || int(offset)+size > len(dec.data) {
 		return fmt.Errorf("field element out of bounds")
@@ -306,7 +304,7 @@ func (dec *Decoder) decodeFieldElement(target reflect.Value, offset int64) error
 	return nil
 }
 
-func (dec *Decoder) decodePrimitive(target reflect.Value, offset int64) error {
+func (dec *decoder) decodePrimitive(target reflect.Value, offset int64) error {
 	size := int(target.Type().Size())
 	if offset < 0 || int(offset)+size > len(dec.data) {
 		return fmt.Errorf("primitive out of bounds")
@@ -324,50 +322,29 @@ func (dec *Decoder) decodePrimitive(target reflect.Value, offset int64) error {
 	return nil
 }
 
-func (dec *Decoder) decodeStruct(target reflect.Value, offset int64) error {
-	currentOff := offset
+// decodeStruct: handles the reconstruction of Go structs. Since Structs are "Heterogenous"
+// collection of fields, we loop through the struct schema (i.e. type definition) and
+// decode each field accordingly as per `decodeSeqItem`.
+func (dec *decoder) decodeStruct(target reflect.Value, offset int64) error {
+	currentOffSet := offset
+	t := target.Type()
+
 	for i := 0; i < target.NumField(); i++ {
 		f := target.Field(i)
-		t := target.Type().Field(i)
-		if !t.IsExported() || strings.Contains(t.Tag.Get("serde"), "omit") {
+		tf := t.Field(i)
+		// Ignore unexported fields or fields with the "omit" tag
+		if !tf.IsExported() || strings.Contains(tf.Tag.Get(serdeStructTag), serdeStructTagOmit) {
 			continue
 		}
 
-		if t.Type == reflect.TypeOf((*frontend.Variable)(nil)).Elem() {
-			ref := *(*Ref)(unsafe.Pointer(&dec.data[currentOff]))
-			currentOff += 8
-			if !ref.IsNull() {
-				bi := new(big.Int)
-				if err := decodeBigInt(dec.data, reflect.ValueOf(bi).Elem(), int64(ref)); err != nil {
-					return err
-				}
-				f.Set(reflect.ValueOf(bi))
-			}
-			continue
+		// Decode the current field and then calculate the offset for the next field
+		// and then swap it with the `currentOffset`.
+		nextOffset, err := dec.decodeSeqItem(f, currentOffSet)
+		if err != nil {
+			// Contextualize the error to help debugging
+			return fmt.Errorf("failed to decode field '%s': %w", tf.Name, err)
 		}
-
-		_, hasCustom := CustomRegistry[f.Type()]
-
-		isBigInt := f.Type() == reflect.TypeOf(big.Int{}) || f.Type() == reflect.TypeOf(&big.Int{})
-		if hasCustom || f.Kind() == reflect.Ptr ||
-			f.Kind() == reflect.Slice || f.Kind() == reflect.String || f.Kind() == reflect.Interface || f.Kind() == reflect.Map ||
-			f.Kind() == reflect.Func || isBigInt {
-
-			ref := *(*Ref)(unsafe.Pointer(&dec.data[currentOff]))
-			currentOff += 8
-			if !ref.IsNull() {
-				if err := dec.decode(f, int64(ref)); err != nil {
-					return err
-				}
-			}
-			continue
-		}
-
-		binSize := getBinarySize(f.Type())
-		if err := dec.decode(f, currentOff); err != nil {
-			return err
-		}
-		currentOff += binSize
+		currentOffSet = nextOffset
 	}
 	return nil
 }
@@ -383,10 +360,12 @@ func (dec *Decoder) decodeStruct(target reflect.Value, offset int64) error {
 // For Direct types (e.g., int), the object sits right there at offset and hence can be directly decoded.
 // For Indirect types (e.g., string), the actual object sits far away and the offset only contains a
 // "signpost" (Ref) pointing to it.
-func (dec *Decoder) decodeSeqItem(target reflect.Value, offset int64) (int64, error) {
+//
+// See `encodeSeqItem` mirroring the encoding logic.
+func (dec *decoder) decodeSeqItem(target reflect.Value, offset int64) (int64, error) {
 	// Bound check
 	if offset < 0 || int(offset) >= len(dec.data) {
-		return 0, fmt.Errorf("readMapElement: offset %d out of bounds (len: %d)", offset, len(dec.data))
+		return 0, fmt.Errorf("decodeSeqItem: offset %d out of bounds (len: %d)", offset, len(dec.data))
 	}
 
 	t := target.Type()
@@ -396,7 +375,7 @@ func (dec *Decoder) decodeSeqItem(target reflect.Value, offset int64) (int64, er
 	// and moves the map cursor forward by exactly 8 bytes.
 	if isIndirectType(t) {
 		if int(offset)+8 > len(dec.data) {
-			return 0, fmt.Errorf("readMapElement: unable to read Ref at offset %d", offset)
+			return 0, fmt.Errorf("decodeSeqItem: unable to read Ref at offset %d", offset)
 		}
 		ref := *(*Ref)(unsafe.Pointer(&dec.data[offset]))
 		if !ref.IsNull() {
@@ -411,32 +390,10 @@ func (dec *Decoder) decodeSeqItem(target reflect.Value, offset int64) (int64, er
 	// The function decodes it at the current position and moves the cursor forward by the size of that type.
 	binSize := getBinarySize(t)
 	if int(offset)+int(binSize) > len(dec.data) {
-		return 0, fmt.Errorf("readMapElement: unable to read binary data of size %d at offset %d", binSize, offset)
+		return 0, fmt.Errorf("decodeSeqItem: unable to read binary data of size %d at offset %d", binSize, offset)
 	}
 	if err := dec.decode(target, offset); err != nil {
 		return 0, err
 	}
 	return offset + binSize, nil
-}
-
-func decodeBigInt(data []byte, target reflect.Value, offset int64) error {
-	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(data) {
-		return fmt.Errorf("bigint header out of bounds")
-	}
-	fs := (*FileSlice)(unsafe.Pointer(&data[offset]))
-	if fs.Offset.IsNull() {
-		return nil
-	}
-	dataStart := int64(fs.Offset) + 1
-	dataLen := int64(fs.Len)
-	if dataStart+dataLen > int64(len(data)) {
-		return fmt.Errorf("bigint data out of bounds")
-	}
-	bytes := data[dataStart : dataStart+dataLen]
-	bi := new(big.Int).SetBytes(bytes)
-	if fs.Cap == 1 {
-		bi.Neg(bi)
-	}
-	target.Set(reflect.ValueOf(*bi))
-	return nil
 }
