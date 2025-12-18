@@ -26,7 +26,7 @@ import {
   getQuote,
 } from "../utils/burn-and-bridge/contract.js";
 import { LINEA_TOKEN_ADDRESS, WETH_TOKEN_ADDRESS } from "../utils/burn-and-bridge/constants.js";
-import { ETH_BURNT_SWAPPED_AND_BRIDGED_EVENT_ABI } from "../utils/burn-and-bridge/abi.js";
+import { ARREARS_PAID_EVENT_ABI, ETH_BURNT_SWAPPED_AND_BRIDGED_EVENT_ABI } from "../utils/burn-and-bridge/abi.js";
 import { privateKeyToAccount, privateKeyToAddress } from "viem/accounts";
 
 export default class BurnAndBridge extends Command {
@@ -219,18 +219,22 @@ export default class BurnAndBridge extends Command {
 
     const signerAddressNonce = await client.getTransactionCount({ address: signerAddress });
 
-    await this.broadcastTransaction(walletClient, {
-      account: privateKeyToAccount(signerPrivateKey),
-      to: rollupRevenueVaultContractAddress,
-      type: "eip1559",
-      value: 0n,
-      data: burnAndBridgeCalldata,
-      chain,
-      gas: gasLimit,
-      maxFeePerGas: baseFeePerGas + priorityFeePerGas,
-      maxPriorityFeePerGas: priorityFeePerGas,
-      nonce: signerAddressNonce,
-    });
+    await this.broadcastTransaction(
+      walletClient,
+      {
+        account: privateKeyToAccount(signerPrivateKey),
+        to: rollupRevenueVaultContractAddress,
+        type: "eip1559",
+        value: 0n,
+        data: burnAndBridgeCalldata,
+        chain,
+        gas: gasLimit,
+        maxFeePerGas: baseFeePerGas + priorityFeePerGas,
+        maxPriorityFeePerGas: priorityFeePerGas,
+        nonce: signerAddressNonce,
+      },
+      shouldSwap,
+    );
   }
 
   /**
@@ -290,16 +294,16 @@ export default class BurnAndBridge extends Command {
   }
 
   /**
-   * Check whether a swap should be performed based on invoice, balance, and minimum fee.
-   * @param invoice Invoice amount in wei.
+   * Check whether a swap should be performed based on invoice arrears, balance, and minimum fee.
+   * @param invoiceArrears Invoice arrears amount in wei.
    * @param vaultBalance Vault balance amount in wei.
    * @param minfee Minimum fee amount in wei.
    * @returns Whether the swap should be performed.
    */
-  private shouldSwap(invoice: bigint, vaultBalance: bigint, minfee: bigint): boolean {
-    if (invoice > vaultBalance) return false;
-    if (invoice === vaultBalance - minfee) return false;
-    if (invoice === 0n && vaultBalance <= minfee) {
+  private shouldSwap(invoiceArrears: bigint, vaultBalance: bigint, minfee: bigint): boolean {
+    if (invoiceArrears > vaultBalance) return false;
+    if (invoiceArrears === vaultBalance - minfee) return false;
+    if (invoiceArrears === 0n && vaultBalance <= minfee) {
       this.error(
         "No funds available to perform burn and bridge. Invoice arrears is zero and balance is less than or equal to minimum fee.",
       );
@@ -335,12 +339,25 @@ export default class BurnAndBridge extends Command {
    * @param client Viem Client.
    * @param tx Transaction to be broadcasted.
    */
-  private async broadcastTransaction(client: Client, tx: SendTransactionParameters) {
+  private async broadcastTransaction(client: Client, tx: SendTransactionParameters, shouldSwap: boolean) {
     this.log("Broadcasting transaction...");
     const receipt = this.unwrapOrError(await sendTransaction(client, tx), "Failed to send transaction");
 
     if (receipt.status === "reverted") {
       this.error(`Burn and bridge failed. transactionHash=${receipt.transactionHash}`);
+    }
+
+    if (!shouldSwap) {
+      const [event] = parseEventLogs({
+        abi: ARREARS_PAID_EVENT_ABI,
+        logs: receipt.logs,
+        eventName: "ArrearsPaid",
+      });
+
+      this.log(
+        `Burn and bridge transaction successfully processed without swap. transactionHash=${receipt.transactionHash} arrearsPaid=${formatEther(event.args.amount)} remainingArrears=${formatEther(event.args.remainingArrears)}`,
+      );
+      return;
     }
 
     const [event] = parseEventLogs({
