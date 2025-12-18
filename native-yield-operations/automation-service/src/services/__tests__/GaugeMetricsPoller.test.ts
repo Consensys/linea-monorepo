@@ -1006,7 +1006,7 @@ describe("GaugeMetricsPoller", () => {
             },
           ]);
         }
-        // Second call: update promises (15 promises to trigger index 14 = "unknown")
+        // Second call: update promises (16 promises to trigger index 15 = "unknown")
         return Promise.resolve([
           { status: "rejected" as const, reason: new Error("Error 1") },
           { status: "rejected" as const, reason: new Error("Error 2") },
@@ -1022,7 +1022,8 @@ describe("GaugeMetricsPoller", () => {
           { status: "rejected" as const, reason: new Error("Error 12") },
           { status: "rejected" as const, reason: new Error("Error 13") },
           { status: "rejected" as const, reason: new Error("Error 14") },
-          { status: "rejected" as const, reason: new Error("Error 15") }, // Index 14 triggers "unknown"
+          { status: "rejected" as const, reason: new Error("Error 15") },
+          { status: "rejected" as const, reason: new Error("Error 16") }, // Index 15 triggers "unknown"
         ]);
       });
 
@@ -1031,7 +1032,7 @@ describe("GaugeMetricsPoller", () => {
 
       await poller.poll();
 
-      // Verify that the 15th error (index 14) uses "unknown" as the metric name
+      // Verify that the 16th error (index 15) uses "unknown" as the metric name
       expect(logger.error).toHaveBeenCalledWith(
         "Failed to update unknown gauge metric",
         { error: expect.any(Error) },
@@ -1066,6 +1067,7 @@ describe("GaugeMetricsPoller", () => {
         },
       ];
 
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
       validatorDataClient.getExitedValidators.mockResolvedValue([]);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
@@ -1126,6 +1128,7 @@ describe("GaugeMetricsPoller", () => {
         },
       ];
 
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
       validatorDataClient.getExitedValidators.mockResolvedValue([]);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
@@ -1164,6 +1167,7 @@ describe("GaugeMetricsPoller", () => {
         },
       ];
 
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
       validatorDataClient.getExitedValidators.mockResolvedValue([]);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
@@ -1210,6 +1214,7 @@ describe("GaugeMetricsPoller", () => {
         },
       ];
 
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
       validatorDataClient.getExitingValidators.mockResolvedValue(exitingValidators);
       validatorDataClient.getExitedValidators.mockResolvedValue([]);
       validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(72n * ONE_GWEI);
@@ -1282,6 +1287,7 @@ describe("GaugeMetricsPoller", () => {
     });
 
     it("handles empty exitingValidators array by setting metric to 0", async () => {
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
       validatorDataClient.getExitingValidators.mockResolvedValue([]);
       validatorDataClient.getExitedValidators.mockResolvedValue([]);
       validatorDataClient.getTotalBalanceOfExitingValidators.mockReturnValue(0n);
@@ -1315,6 +1321,8 @@ describe("GaugeMetricsPoller", () => {
         },
       ];
 
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
+      validatorDataClient.getExitingValidators.mockResolvedValue([]);
       validatorDataClient.getExitedValidators.mockResolvedValue(exitedValidators);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
       stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
@@ -1369,6 +1377,8 @@ describe("GaugeMetricsPoller", () => {
         },
       ];
 
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
+      validatorDataClient.getExitingValidators.mockResolvedValue([]);
       validatorDataClient.getExitedValidators.mockResolvedValue(exitedValidators);
       validatorDataClient.getTotalBalanceOfExitedValidators.mockReturnValue(35n * ONE_GWEI);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
@@ -1395,6 +1405,8 @@ describe("GaugeMetricsPoller", () => {
         },
       ];
 
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
+      validatorDataClient.getExitingValidators.mockResolvedValue([]);
       validatorDataClient.getExitedValidators.mockResolvedValue(exitedValidators);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
       stethContractClient.getPooledEthBySharesRoundUp.mockResolvedValue(2000n * ONE_GWEI);
@@ -1429,6 +1441,8 @@ describe("GaugeMetricsPoller", () => {
         },
       ];
 
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
+      validatorDataClient.getExitingValidators.mockResolvedValue([]);
       validatorDataClient.getExitedValidators.mockResolvedValue(exitedValidators);
       validatorDataClient.getTotalBalanceOfExitedValidators.mockReturnValue(72n * ONE_GWEI);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);
@@ -1491,6 +1505,8 @@ describe("GaugeMetricsPoller", () => {
     });
 
     it("handles empty exitedValidators array by setting metric to 0", async () => {
+      validatorDataClient.getActiveValidators.mockResolvedValue([]);
+      validatorDataClient.getExitingValidators.mockResolvedValue([]);
       validatorDataClient.getExitedValidators.mockResolvedValue([]);
       validatorDataClient.getTotalBalanceOfExitedValidators.mockReturnValue(0n);
       dashboardClientInstance.liabilityShares.mockResolvedValue(1000n);

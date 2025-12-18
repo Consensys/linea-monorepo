@@ -111,6 +111,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
       this._updateTotalPendingPartialWithdrawalsGauge(allValidators, pendingWithdrawalsQueue),
       this._updatePendingPartialWithdrawalsQueueGauge(allValidators, pendingWithdrawalsQueue),
       this._updateTotalValidatorBalanceGauge(allValidators),
+      this._updateValidatorStakedAmountGwei(allValidators),
       this._updatePendingExitQueueAmountGwei(exitingValidators),
       this._updateLastTotalPendingExitGwei(exitingValidators),
       this._updatePendingFullWithdrawalQueueAmountGwei(exitedValidators),
@@ -142,6 +143,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
           "total pending partial withdrawals",
           "pending partial withdrawals queue",
           "total validator balance",
+          "validator staked amount",
           "pending exit queue",
           "total pending exit",
           "pending full withdrawal queue",
@@ -277,6 +279,24 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
       return;
     }
     this.metricsUpdater.setLastTotalValidatorBalanceGwei(Number(totalValidatorBalanceGwei));
+  }
+
+  /**
+   * Updates the per-validator staked amount gauge metrics.
+   * Iterates through active validators and updates metrics for each validator.
+   *
+   * @param {ValidatorBalance[] | undefined} allValidators - Array of active validators, or undefined.
+   * @returns {Promise<void>} A promise that resolves when the gauges are updated (or returns early with a warning if validator data is unavailable).
+   */
+  private async _updateValidatorStakedAmountGwei(allValidators: ValidatorBalance[] | undefined): Promise<void> {
+    if (allValidators === undefined || allValidators.length === 0) {
+      this.logger.warn("Skipping validator staked amount gauge update: active validators data unavailable or empty");
+      return;
+    }
+    for (const validator of allValidators) {
+      const amountGwei = Number(validator.balance);
+      this.metricsUpdater.setValidatorStakedAmountGwei(validator.publicKey as Hex, amountGwei);
+    }
   }
 
   /**
