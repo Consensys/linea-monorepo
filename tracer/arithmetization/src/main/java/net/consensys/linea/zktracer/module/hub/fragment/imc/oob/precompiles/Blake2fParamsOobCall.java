@@ -69,7 +69,7 @@ public class Blake2fParamsOobCall extends OobCall {
   @Override
   public void setOutputs() {
     final boolean sufficientGas = calleeGas.compareTo(blakeR) >= 0;
-    final boolean fIsABit = blakeF == 0 || blakeF ==1;
+    final boolean fIsABit = blakeF == 0 || blakeF == 1;
     setRamSuccess(sufficientGas && fIsABit);
 
     // Set returnGas
@@ -85,7 +85,8 @@ public class Blake2fParamsOobCall extends OobCall {
         .data4(booleanToBytes(ramSuccess))
         .data5(bigIntegerToBytes(returnGas))
         .data6(bigIntegerToBytes(blakeR))
-        .data7(Bytes.minimalBytes(blakeF)).fillAndValidateRow();
+        .data7(Bytes.minimalBytes(blakeF))
+        .fillAndValidateRow();
   }
 
   @Override
@@ -98,10 +99,5 @@ public class Blake2fParamsOobCall extends OobCall {
         .pMiscOobData5(bigIntegerToBytes(returnGas))
         .pMiscOobData6(bigIntegerToBytes(blakeR))
         .pMiscOobData7(Bytes.minimalBytes(blakeF));
-  }
-
-  @Override
-  protected int nRows() {
-    return 2;
   }
 }

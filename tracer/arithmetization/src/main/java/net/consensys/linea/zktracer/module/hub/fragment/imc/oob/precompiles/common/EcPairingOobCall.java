@@ -35,23 +35,25 @@ public class EcPairingOobCall extends CommonPrecompileOobCall {
     final Bytes remainder = cds.mod(TOTAL_SIZE_ECPAIRING_DATA_MIN);
     final boolean isMultipleOf192 = remainder.isZero();
 
-    if (!isMultipleOf192){
+    if (!isMultipleOf192) {
       setHubSuccess(false);
       setReturnGas(BigInteger.ZERO);
     } else {
       final Bytes precompileCost =
-        bigIntegerToBytes(
-          BigInteger.valueOf(45000)
-            .add(
-              BigInteger.valueOf(34000)
-                .multiply(cds.toUnsignedBigInteger().divide(BigInteger.valueOf(TOTAL_SIZE_ECPAIRING_DATA_MIN)))));
+          bigIntegerToBytes(
+              BigInteger.valueOf(45000)
+                  .add(
+                      BigInteger.valueOf(34000)
+                          .multiply(
+                              cds.toUnsignedBigInteger()
+                                  .divide(BigInteger.valueOf(TOTAL_SIZE_ECPAIRING_DATA_MIN)))));
 
       setHubSuccess(calleeGas.compareTo(precompileCost) >= 0);
 
       final BigInteger returnGas =
-        hubSuccess
-          ? calleeGas.toUnsignedBigInteger().subtract(precompileCost.toUnsignedBigInteger())
-          : BigInteger.ZERO;
+          hubSuccess
+              ? calleeGas.toUnsignedBigInteger().subtract(precompileCost.toUnsignedBigInteger())
+              : BigInteger.ZERO;
       setReturnGas(returnGas);
     }
   }

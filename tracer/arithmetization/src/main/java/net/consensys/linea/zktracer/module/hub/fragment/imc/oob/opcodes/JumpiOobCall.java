@@ -33,7 +33,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class JumpiOobCall extends OobCall {
 
-
   // Inputs
   @EqualsAndHashCode.Include EWord pcNew;
   @EqualsAndHashCode.Include EWord jumpCondition;
@@ -91,6 +90,7 @@ public class JumpiOobCall extends OobCall {
         .data5(codeSize)
         .data6(booleanToBytes(jumpNotAttempted))
         .data7(booleanToBytes(jumpGuanranteedException))
-        .data8(booleanToBytes(jumpMustBeAttempted)).fillAndValidateRow();
+        .data8(booleanToBytes(jumpMustBeAttempted))
+        .fillAndValidateRow();
   }
 }

@@ -45,7 +45,6 @@ public class P256VerifyOobCall extends FixedSizeFixedGasCostOobCall {
     trace.pMiscOobInst(OOB_INST_P256_VERIFY);
   }
 
-
   @Override
   public boolean getCdxFilter() {
     return getCds().toInt() == PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY;

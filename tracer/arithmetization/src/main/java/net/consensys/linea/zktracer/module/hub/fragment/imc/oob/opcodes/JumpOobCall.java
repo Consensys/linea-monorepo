@@ -67,7 +67,8 @@ public class JumpOobCall extends OobCall {
         .data2(pcNew.lo())
         .data5(codeSize)
         .data7(booleanToBytes(jumpGuaranteedException))
-        .data8(booleanToBytes(jumpMustBeAttempted)).fillAndValidateRow();
+        .data8(booleanToBytes(jumpMustBeAttempted))
+        .fillAndValidateRow();
   }
 
   @Override

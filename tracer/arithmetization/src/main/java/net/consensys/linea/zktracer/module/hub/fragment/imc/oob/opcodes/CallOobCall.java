@@ -70,11 +70,6 @@ public class CallOobCall extends OobCall {
   }
 
   @Override
-  protected int nRows() {
-    return 2;
-  }
-
-  @Override
   public Trace.Oob traceOob(Trace.Oob trace) {
     return trace
         .inst(OOB_INST_CALL)
@@ -83,7 +78,8 @@ public class CallOobCall extends OobCall {
         .data3(balance)
         .data6(callStackDepth)
         .data7(booleanToBytes(!value.isZero()))
-        .data8(booleanToBytes(abortingCondition)).fillAndValidateRow();
+        .data8(booleanToBytes(abortingCondition))
+        .fillAndValidateRow();
   }
 
   @Override

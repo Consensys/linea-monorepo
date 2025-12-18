@@ -16,14 +16,9 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.postCancun.msm;
 
 import static net.consensys.linea.zktracer.Trace.PRC_BLS_MULTIPLICATION_MULTIPLIER;
-
 import static net.consensys.linea.zktracer.module.tables.BlsRt.getMsmDiscount;
-import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
-import static net.consensys.linea.zktracer.types.Conversions.bytesToInt;
 
 import java.math.BigInteger;
-
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
 import org.apache.tuweni.bytes.Bytes;
@@ -50,12 +45,16 @@ public abstract class BlsMsmOobCall extends CommonPrecompileOobCall {
     final boolean cdsIsMultipleOfMinMsmSize = remainder.isZero();
     final int numInputs = getCds().toInt() / minMsmSize();
     final boolean validCds = !isCdsIsZero() && cdsIsMultipleOfMinMsmSize;
-    final int discount = validCds ? 0: getMsmDiscount(getOobInst(), numInputs);
+    final int discount = validCds ? 0 : getMsmDiscount(getOobInst(), numInputs);
 
-      precompileCost = validCds ?
-        BigInteger.valueOf(numInputs)
-          .multiply(BigInteger.valueOf(msmMultiplicationCost()))
-          .multiply(BigInteger.valueOf(discount)).mod(BigInteger.valueOf(PRC_BLS_MULTIPLICATION_MULTIPLIER)).longValueExact() : 0;
+    precompileCost =
+        validCds
+            ? BigInteger.valueOf(numInputs)
+                .multiply(BigInteger.valueOf(msmMultiplicationCost()))
+                .multiply(BigInteger.valueOf(discount))
+                .mod(BigInteger.valueOf(PRC_BLS_MULTIPLICATION_MULTIPLIER))
+                .longValueExact()
+            : 0;
 
     setHubSuccess(validCds && precompileCost <= getCalleeGas().toLong());
 

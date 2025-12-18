@@ -28,7 +28,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.EWord;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
@@ -52,8 +51,7 @@ public class ModexpCallDataSizeOobCall extends OobCall {
   }
 
   @Override
-  public void setOutputs() {
-  }
+  public void setOutputs() {}
 
   @Override
   public Trace.Oob traceOob(Trace.Oob trace) {
@@ -63,7 +61,7 @@ public class ModexpCallDataSizeOobCall extends OobCall {
         .data3(booleanToBytes(modexpMetadata.extractBbs()))
         .data4(booleanToBytes(modexpMetadata.extractEbs()))
         .data5(booleanToBytes(modexpMetadata.extractMbs()))
-      .fillAndValidateRow();
+        .fillAndValidateRow();
   }
 
   @Override

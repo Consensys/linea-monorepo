@@ -17,13 +17,8 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.com
 
 import static net.consensys.linea.zktracer.Trace.*;
 
-
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
-import org.apache.tuweni.units.bigints.BaseUInt256Value;
-import org.apache.tuweni.units.bigints.UInt256;
-
 import java.math.BigInteger;
-import java.util.Arrays;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
 
 public abstract class ShaRipIdOobCall extends CommonPrecompileOobCall {
   protected ShaRipIdOobCall(BigInteger calleeGas, int oobInst) {

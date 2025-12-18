@@ -41,7 +41,10 @@ public abstract class OobCall extends ModuleOperation implements TraceSubFragmen
     return nRows();
   }
 
-  /** Default to one, some OOB inst can take more rows, depending on how corset expands the different call */
+  /**
+   * Default to one, some OOB inst can take more rows, depending on how corset expands the different
+   * call
+   */
   protected int nRows() {
     return 1;
   }

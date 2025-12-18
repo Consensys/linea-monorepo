@@ -39,7 +39,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModexpLeadOobCall extends OobCall {
 
-
   // Inputs
   @EqualsAndHashCode.Include final ModexpMetadata metadata;
   @EqualsAndHashCode.Include EWord cds;
@@ -64,10 +63,16 @@ public class ModexpLeadOobCall extends OobCall {
   @Override
   public void setOutputs() {
     final boolean ebsIsZero = metadata.normalizedEbs().isZero();
-    final boolean ebsLessThan32 = metadata.normalizedEbs().compareTo(Bytes.ofUnsignedInt(EBS_MIN_OFFSET)) < 0;
+    final boolean ebsLessThan32 =
+        metadata.normalizedEbs().compareTo(Bytes.ofUnsignedInt(EBS_MIN_OFFSET)) < 0;
     final boolean callDataContainsExponentBytes =
-      EWord.of(metadata.normalizedBbs()).add(BASE_MIN_OFFSET).compareTo(cds) < 0;
-    final boolean comp = callDataContainsExponentBytes && cds.subtract(BASE_MIN_OFFSET).subtract(metadata.normalizedBbsInt()).compareTo(Bytes.ofUnsignedInt(WORD_SIZE)) < 0;
+        EWord.of(metadata.normalizedBbs()).add(BASE_MIN_OFFSET).compareTo(cds) < 0;
+    final boolean comp =
+        callDataContainsExponentBytes
+            && cds.subtract(BASE_MIN_OFFSET)
+                    .subtract(metadata.normalizedBbsInt())
+                    .compareTo(Bytes.ofUnsignedInt(WORD_SIZE))
+                < 0;
 
     final boolean loadLead = callDataContainsExponentBytes && !ebsIsZero;
     setLoadLead(loadLead);
@@ -102,7 +107,7 @@ public class ModexpLeadOobCall extends OobCall {
         .data6(Bytes.ofUnsignedInt(cdsCutoff))
         .data7(Bytes.ofUnsignedInt(ebsCutoff))
         .data8(Bytes.ofUnsignedInt(subEbs32))
-      .fillAndValidateRow();
+        .fillAndValidateRow();
   }
 
   @Override

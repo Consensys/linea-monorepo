@@ -17,9 +17,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.scenario;
 
 import static java.util.Map.entry;
 import static net.consensys.linea.zktracer.Trace.*;
-import static net.consensys.linea.zktracer.Trace.Blsdata.CT_MAX_POINT_EVALUATION;
 import static net.consensys.linea.zktracer.Trace.Oob.*;
-
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.*;
 import static net.consensys.linea.zktracer.module.mod.ModOperation.NB_ROWS_MOD;

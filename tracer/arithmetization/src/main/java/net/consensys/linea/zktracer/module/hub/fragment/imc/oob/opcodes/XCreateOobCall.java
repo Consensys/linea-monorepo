@@ -43,15 +43,15 @@ public class XCreateOobCall extends OobCall {
   }
 
   @Override
-  public void setOutputs() {
-  }
+  public void setOutputs() {}
 
   @Override
   public Trace.Oob traceOob(Trace.Oob trace) {
     return trace
         .inst(OOB_INST_XCREATE)
         .data1(codeSize.hi())
-        .data2(codeSize.lo()).fillAndValidateRow();
+        .data2(codeSize.lo())
+        .fillAndValidateRow();
   }
 
   @Override

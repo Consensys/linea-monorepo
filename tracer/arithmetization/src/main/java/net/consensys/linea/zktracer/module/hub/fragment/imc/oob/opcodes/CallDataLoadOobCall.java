@@ -33,7 +33,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class CallDataLoadOobCall extends OobCall {
 
-
   // Inputs
   @EqualsAndHashCode.Include EWord offset;
   @EqualsAndHashCode.Include Bytes cds;
@@ -64,7 +63,7 @@ public class CallDataLoadOobCall extends OobCall {
         .data2(offset.lo())
         .data5(cds)
         .data7(booleanToBytes(cdlOutOfBounds))
-      .fillAndValidateRow();
+        .fillAndValidateRow();
   }
 
   @Override

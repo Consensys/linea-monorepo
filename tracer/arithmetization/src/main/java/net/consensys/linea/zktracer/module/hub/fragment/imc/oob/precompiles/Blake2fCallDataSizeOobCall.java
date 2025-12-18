@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles;
 import static net.consensys.linea.zktracer.Trace.OOB_INST_BLAKE_CDS;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import java.math.BigInteger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,16 +27,13 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.EWord;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-
-import java.math.BigInteger;
 
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Blake2fCallDataSizeOobCall extends OobCall {
-  public final static BigInteger BLAKE_VALID_CDS_BI = BigInteger.valueOf(213);
+  public static final BigInteger BLAKE_VALID_CDS_BI = BigInteger.valueOf(213);
   // Inputs
   @EqualsAndHashCode.Include EWord cds;
   @EqualsAndHashCode.Include EWord returnAtCapacity;
@@ -71,7 +69,8 @@ public class Blake2fCallDataSizeOobCall extends OobCall {
         .data2(cds.trimLeadingZeros())
         .data3(returnAtCapacity.trimLeadingZeros())
         .data4(booleanToBytes(hubSuccess))
-        .data8(booleanToBytes(returnAtCapacityNonZero)).fillAndValidateRow();
+        .data8(booleanToBytes(returnAtCapacityNonZero))
+        .fillAndValidateRow();
   }
 
   @Override
@@ -83,10 +82,5 @@ public class Blake2fCallDataSizeOobCall extends OobCall {
         .pMiscOobData3(returnAtCapacity.trimLeadingZeros())
         .pMiscOobData4(booleanToBytes(hubSuccess))
         .pMiscOobData8(booleanToBytes(returnAtCapacityNonZero));
-  }
-
-  @Override
-  protected int nRows() {
-    return 2;
   }
 }

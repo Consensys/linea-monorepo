@@ -264,8 +264,7 @@ public class P256VerifyTest extends TracerTestBase {
       assertFalse(callSuccess.isZero());
 
       P256VerifyOobCall p256VerifyOobCall =
-          (P256VerifyOobCall)
-              bytecodeRunner.getHub().oob().operations().stream().toList().get(1);
+          (P256VerifyOobCall) bytecodeRunner.getHub().oob().operations().stream().toList().get(1);
       assertTrue(p256VerifyOobCall.isHubSuccess());
 
       EcDataOperation ecDataOperation = bytecodeRunner.getHub().ecData().ecDataOperation();

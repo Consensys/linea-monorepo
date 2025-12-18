@@ -83,7 +83,6 @@ public final class CreateOobCall extends OobCall {
     setCodeSize(clampedToLong(frame.getStackItem(2)));
   }
 
-
   @Override
   public void setOutputs() {
     final boolean insufficientBalanceAbort = balance.compareTo(value) < 0;
@@ -108,7 +107,8 @@ public final class CreateOobCall extends OobCall {
         .data7(booleanToBytes(abortingCondition))
         .data8(booleanToBytes(failureCondition))
         .data9(creatorNonce)
-      .data10(Bytes.ofUnsignedLong(codeSize)).validateRow();
+        .data10(Bytes.ofUnsignedLong(codeSize))
+        .validateRow();
   }
 
   @Override
@@ -124,11 +124,7 @@ public final class CreateOobCall extends OobCall {
         .pMiscOobData6(callStackDepth)
         .pMiscOobData7(booleanToBytes(abortingCondition))
         .pMiscOobData8(booleanToBytes(failureCondition))
-        .pMiscOobData9(creatorNonce).pMiscOobData10(Bytes.ofUnsignedLong(codeSize));
-  }
-
-  @Override
-  protected int nRows() {
-    return 4;
+        .pMiscOobData9(creatorNonce)
+        .pMiscOobData10(Bytes.ofUnsignedLong(codeSize));
   }
 }

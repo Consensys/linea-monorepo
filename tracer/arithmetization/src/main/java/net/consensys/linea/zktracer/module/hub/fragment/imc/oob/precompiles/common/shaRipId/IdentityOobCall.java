@@ -39,5 +39,4 @@ public class IdentityOobCall extends ShaRipIdOobCall {
   protected void traceOobInstructionInHub(Trace.Hub trace) {
     trace.pMiscOobInst(OOB_INST_IDENTITY);
   }
-
 }

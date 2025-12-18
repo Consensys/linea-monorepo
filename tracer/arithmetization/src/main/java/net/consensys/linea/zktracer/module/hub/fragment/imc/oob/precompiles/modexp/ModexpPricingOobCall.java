@@ -24,13 +24,11 @@ import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompil
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.MODEXP_XBS_CASE_MBS;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BASE_MIN_OFFSET;
 import static net.consensys.linea.zktracer.types.Conversions.*;
-import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 import static org.hyperledger.besu.evm.internal.Words.clampedToInt;
 
 import java.math.BigInteger;
 import java.math.RoundingMode;
-
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -87,11 +85,12 @@ public final class ModexpPricingOobCall extends OobCall {
             : 0;
     setMaxMbsBbs(maxMbsBbsValue);
 
-    final BigInteger ceilingOfMaxDividedBy8 = BigInteger.valueOf(maxMbsBbs + 7).mod(BigInteger.valueOf(8));
+    final BigInteger ceilingOfMaxDividedBy8 =
+        BigInteger.valueOf(maxMbsBbs + 7).mod(BigInteger.valueOf(8));
     final BigInteger fOfMax = ceilingOfMaxDividedBy8.multiply(ceilingOfMaxDividedBy8);
     final int fOfMaxInteger = fOfMax.intValue();
 
-    final boolean wordCostDominates = WORD_SIZE< maxMbsBbs;
+    final boolean wordCostDominates = WORD_SIZE < maxMbsBbs;
     final int multiplicationComplexity = wordCostDominates ? 2 * fOfMaxInteger : 16;
     final int iterationCountOr1 = exponentLogIsZero ? 1 : exponentLog.intValue();
     final int rawCost = multiplicationComplexity * iterationCountOr1;
@@ -99,7 +98,7 @@ public final class ModexpPricingOobCall extends OobCall {
     final int precompileCostInt =
         rawCostIsLessThanMinModexpCost ? GAS_CONST_MODEXP_EIP_7823 : rawCost;
     final Bytes precompileCost = Bytes.ofUnsignedInt(precompileCostInt);
-    setRamSuccess(callGas.compareTo(precompileCost) >=0);
+    setRamSuccess(callGas.compareTo(precompileCost) >= 0);
 
     final BigInteger returnGas =
         ramSuccess
@@ -120,7 +119,8 @@ public final class ModexpPricingOobCall extends OobCall {
         .data5(bigIntegerToBytes(returnGas))
         .data6(bigIntegerToBytes(exponentLog))
         .data7(Bytes.ofUnsignedInt(maxMbsBbs))
-        .data8(booleanToBytes(returnAtCapacityNonZero)).fillAndValidateRow();
+        .data8(booleanToBytes(returnAtCapacityNonZero))
+        .fillAndValidateRow();
   }
 
   @Override
@@ -151,17 +151,17 @@ public final class ModexpPricingOobCall extends OobCall {
   public static int computeExponentLog(Bytes callData, int multiplier, int cds, int bbs, int ebs) {
     // pad callData to 96 + bbs + ebs
     final Bytes paddedCallData =
-      cds < BASE_MIN_OFFSET + bbs + ebs
-        ? rightPadTo(callData, BASE_MIN_OFFSET + bbs + ebs)
-        : callData;
+        cds < BASE_MIN_OFFSET + bbs + ebs
+            ? rightPadTo(callData, BASE_MIN_OFFSET + bbs + ebs)
+            : callData;
 
     final BigInteger leadingBytesOfExponent =
-      paddedCallData.slice(BASE_MIN_OFFSET + bbs, min(ebs, WORD_SIZE)).toUnsignedBigInteger();
+        paddedCallData.slice(BASE_MIN_OFFSET + bbs, min(ebs, WORD_SIZE)).toUnsignedBigInteger();
 
     final int bitContribution =
-      (leadingBytesOfExponent.signum() != 0)
-        ? log2(leadingBytesOfExponent, RoundingMode.FLOOR)
-        : 0;
+        (leadingBytesOfExponent.signum() != 0)
+            ? log2(leadingBytesOfExponent, RoundingMode.FLOOR)
+            : 0;
     final int byteContribution = (ebs > WORD_SIZE) ? multiplier * (ebs - WORD_SIZE) : 0;
 
     return bitContribution + byteContribution;

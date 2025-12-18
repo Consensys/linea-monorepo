@@ -94,7 +94,8 @@ public abstract class CommonPrecompileOobCall extends OobCall {
         .data5(bigIntegerToBytes(returnGas))
         .data6(booleanToBytes(getExtractCallData()))
         .data7(booleanToBytes(getCallDataIsEmpty()))
-        .data8(booleanToBytes(returnAtCapacityNonZero)).fillAndValidateRow();
+        .data8(booleanToBytes(returnAtCapacityNonZero))
+        .fillAndValidateRow();
   }
 
   protected abstract void traceOobInstructionInOob(Trace.Oob trace);
@@ -115,9 +116,4 @@ public abstract class CommonPrecompileOobCall extends OobCall {
   }
 
   protected abstract void traceOobInstructionInHub(Trace.Hub trace);
-
-  @Override
-  protected int nRows() {
-    return 2;
-  }
 }

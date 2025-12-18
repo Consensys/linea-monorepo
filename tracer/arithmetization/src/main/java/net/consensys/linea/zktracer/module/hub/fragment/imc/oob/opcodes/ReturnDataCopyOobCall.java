@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes;
 import static net.consensys.linea.zktracer.Trace.OOB_INST_RDC;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
+import java.math.BigInteger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -28,13 +29,10 @@ import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-import java.math.BigInteger;
-
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ReturnDataCopyOobCall extends OobCall {
-
 
   // Inputs
   @EqualsAndHashCode.Include EWord offset;
@@ -70,7 +68,8 @@ public class ReturnDataCopyOobCall extends OobCall {
         .data3(size.hi())
         .data4(size.lo())
         .data5(rds)
-        .data7(booleanToBytes(rdcx)).fillAndValidateRow();
+        .data7(booleanToBytes(rdcx))
+        .fillAndValidateRow();
   }
 
   @Override

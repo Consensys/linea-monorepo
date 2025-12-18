@@ -15,10 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.ecAddMulRecover;
 
-import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
-
 import java.math.BigInteger;
-
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -32,7 +29,8 @@ public abstract class EcRecEcAddEcMulOobCall extends CommonPrecompileOobCall {
   @Override
   public void setOutputs() {
     super.setOutputs();
-    final boolean insufficientGas = getCalleeGas().compareTo(Bytes.minimalBytes(precompileLongCost())) < 0;
+    final boolean insufficientGas =
+        getCalleeGas().compareTo(Bytes.minimalBytes(precompileLongCost())) < 0;
 
     // Set hubSuccess
     final boolean hubSuccess = !insufficientGas;

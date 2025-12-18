@@ -34,7 +34,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class DeploymentOobCall extends OobCall {
 
-
   private static final Bytes MAX_CODE_SIZE_BYTES = Bytes.ofUnsignedLong(MAX_CODE_SIZE);
 
   // Inputs
@@ -63,7 +62,8 @@ public class DeploymentOobCall extends OobCall {
         .inst(OOB_INST_DEPLOYMENT)
         .data1(size.hi())
         .data2(size.lo())
-        .data7(booleanToBytes(maxCodeSizeException)).fillAndValidateRow();
+        .data7(booleanToBytes(maxCodeSizeException))
+        .fillAndValidateRow();
   }
 
   @Override

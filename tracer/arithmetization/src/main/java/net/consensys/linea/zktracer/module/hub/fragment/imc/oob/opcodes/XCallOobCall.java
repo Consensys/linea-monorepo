@@ -62,7 +62,8 @@ public class XCallOobCall extends OobCall {
         .data1(value.hi())
         .data2(value.lo())
         .data7(booleanToBytes(valueIsNonzero))
-        .data8(booleanToBytes(valueIsZero)).fillAndValidateRow();
+        .data8(booleanToBytes(valueIsZero))
+        .fillAndValidateRow();
   }
 
   @Override

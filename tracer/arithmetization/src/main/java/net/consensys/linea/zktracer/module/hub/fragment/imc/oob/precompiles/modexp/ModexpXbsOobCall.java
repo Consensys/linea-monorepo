@@ -110,7 +110,8 @@ public final class ModexpXbsOobCall extends OobCall {
         .data7(Bytes.ofUnsignedShort(maxXbsYbs()))
         .data8(booleanToBytes(xbsNormalizedIsNonZeroTracedValue()))
         .data9(booleanToBytes(xbsIsWithinBounds()))
-        .data10(booleanToBytes(xbsIsOutOfBounds())).fillAndValidateRow();
+        .data10(booleanToBytes(xbsIsOutOfBounds()))
+        .fillAndValidateRow();
   }
 
   @Override

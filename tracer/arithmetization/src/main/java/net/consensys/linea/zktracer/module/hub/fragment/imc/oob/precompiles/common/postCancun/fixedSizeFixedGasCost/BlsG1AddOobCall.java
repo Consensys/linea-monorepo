@@ -46,5 +46,4 @@ public class BlsG1AddOobCall extends FixedSizeFixedGasCostOobCall {
   protected void traceOobInstructionInHub(Trace.Hub trace) {
     trace.pMiscOobInst(OOB_INST_BLS_G1_ADD);
   }
-
 }

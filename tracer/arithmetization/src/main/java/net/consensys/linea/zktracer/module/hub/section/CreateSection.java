@@ -129,10 +129,10 @@ public final class CreateSection extends TraceSection
     }
 
     // MAXCSX case: EIP-3860 in Shanghai
-      if (Exceptions.maxCodeSizeException(exceptions)) {
-        imcFragment.callOob(new XCreateOobCall());
-        return;
-      }
+    if (Exceptions.maxCodeSizeException(exceptions)) {
+      imcFragment.callOob(new XCreateOobCall());
+      return;
+    }
 
     // MXPX case
     final MxpCall mxpCall = MxpCall.newMxpCall(hub);

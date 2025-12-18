@@ -28,7 +28,7 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 
 public class PrecompileUtils extends TracerTestBase {
-  private final static short G_QUADDIVISOR = 3;
+  private static final short G_QUADDIVISOR = 3;
 
   /**
    * Computes the precompile cost based on the precompile address, arguments size, and r value in

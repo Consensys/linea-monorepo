@@ -33,7 +33,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class SstoreOobCall extends OobCall {
 
-
   private static final Bytes GAS_CONST_G_CALL_STIPEND_BYTES =
       Bytes.minimalBytes(GAS_CONST_G_CALL_STIPEND);
 
@@ -57,10 +56,13 @@ public class SstoreOobCall extends OobCall {
     setSstorex(gas.compareTo(GAS_CONST_G_CALL_STIPEND_BYTES) >= 0);
   }
 
-
   @Override
   public Trace.Oob traceOob(Trace.Oob trace) {
-    return trace.inst(OOB_INST_SSTORE).data5(gas).data7(booleanToBytes(sstorex)).fillAndValidateRow();
+    return trace
+        .inst(OOB_INST_SSTORE)
+        .data5(gas)
+        .data7(booleanToBytes(sstorex))
+        .fillAndValidateRow();
   }
 
   @Override

@@ -35,8 +35,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 public class Oob implements OperationSetModule<OobCall> {
 
   @Getter
-  private final ModuleOperationStackedSet<OobCall> operations =
-      new ModuleOperationStackedSet<>();
+  private final ModuleOperationStackedSet<OobCall> operations = new ModuleOperationStackedSet<>();
 
   @Override
   public ModuleName moduleKey() {
