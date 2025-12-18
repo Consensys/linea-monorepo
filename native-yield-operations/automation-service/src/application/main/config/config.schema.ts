@@ -101,7 +101,7 @@ export const configSchema = z
     // Whether to submit the vault accounting report. Can set to false if we expect other actors to submit.
     SHOULD_SUBMIT_VAULT_REPORT: BooleanFromString,
     /** Minimum positive yield amount (in wei) required before triggering a yield report.
-     * Yield reporting will proceed if either this threshold OR MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI is met.
+     * Yield reporting will proceed if this threshold OR MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI OR MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI is met.
      * This prevents gas-inefficient transactions for very small yield amounts.
      */
     MIN_POSITIVE_YIELD_TO_REPORT_WEI: z
@@ -109,7 +109,7 @@ export const configSchema = z
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     /** Minimum unpaid Lido protocol fees amount (in wei) required before triggering a yield report.
-     * Yield reporting will proceed if either this threshold OR MIN_POSITIVE_YIELD_TO_REPORT_WEI is met.
+     * Yield reporting will proceed if this threshold OR MIN_POSITIVE_YIELD_TO_REPORT_WEI OR MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI is met.
      * This prevents gas-inefficient transactions for very small fee amounts.
      */
     MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI: z
