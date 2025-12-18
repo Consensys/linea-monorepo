@@ -25,7 +25,6 @@ import static net.consensys.linea.zktracer.module.hub.signals.TracedException.MA
 import static net.consensys.linea.zktracer.opcode.InstructionFamily.*;
 
 import java.math.BigInteger;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -169,8 +168,7 @@ public class CommonFragmentValues {
 
     if (Exceptions.memoryExpansionException(exceptions)) {
       checkArgument(
-          opCode.mayTriggerMemoryExpansionException(hub.fork),
-          "MXP triggered by non MXP opcode" + opCode);
+          opCode.mayTriggerMemoryExpansionException(), "MXP triggered by non MXP opcode" + opCode);
       setTracedException(TracedException.MEMORY_EXPANSION_EXCEPTION);
       return;
     }

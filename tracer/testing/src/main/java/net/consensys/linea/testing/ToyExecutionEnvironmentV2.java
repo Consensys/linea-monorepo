@@ -27,7 +27,6 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -50,7 +49,7 @@ import org.junit.jupiter.api.TestInfo;
 @Builder
 @Slf4j
 public class ToyExecutionEnvironmentV2 {
-  @Builder.Default public final ChainConfig unitTestsChain = MAINNET_TESTCONFIG(LONDON);
+  @Builder.Default public final ChainConfig unitTestsChain = MAINNET_TESTCONFIG(OSAKA);
   public final TestInfo testInfo;
   public static final Address DEFAULT_COINBASE_ADDRESS =
       Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");

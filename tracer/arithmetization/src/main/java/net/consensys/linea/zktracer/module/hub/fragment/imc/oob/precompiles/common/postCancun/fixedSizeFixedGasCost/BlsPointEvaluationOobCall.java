@@ -17,11 +17,10 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.com
 
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_POINT_EVALUATION;
 import static net.consensys.linea.zktracer.Trace.OOB_INST_POINT_EVALUATION;
+import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_POINT_EVALUATION;
 import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___POINT_EVALUATION;
-import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_POINT_EVALUATION;
 
 import java.math.BigInteger;
-
 import net.consensys.linea.zktracer.Trace;
 
 public class BlsPointEvaluationOobCall extends FixedSizeFixedGasCostOobCall {

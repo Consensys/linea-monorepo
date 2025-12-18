@@ -35,7 +35,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.reporting.TestOutcome;
@@ -574,7 +573,7 @@ public class BlockchainReferenceTestTools {
     final MutableBlockchain blockchain = spec.getBlockchain();
 
     // Add system accounts if the fork requires it.
-    addSystemAccountsIfRequired(worldState.updater(), chain.fork);
+    addSystemAccountsIfRequired(worldState.updater());
 
     final CorsetValidator corsetValidator = new CorsetValidator(chain);
     final ZkTracer zkTracer = new ZkTracer(chain);

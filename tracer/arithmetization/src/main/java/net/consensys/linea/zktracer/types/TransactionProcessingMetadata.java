@@ -25,7 +25,6 @@ import static org.hyperledger.besu.datatypes.TransactionType.FRONTIER;
 
 import java.math.BigInteger;
 import java.util.*;
-
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -111,10 +110,6 @@ public class TransactionProcessingMetadata {
   @Accessors(fluent = true)
   @Setter
   boolean isCoinbasePreWarmed = false;
-
-  @Accessors(fluent = true)
-  @Setter
-  boolean coinbaseWarmAtTransactionEnd = false;
 
   @Setter List<Log> logs;
 
@@ -278,8 +273,7 @@ public class TransactionProcessingMetadata {
   public void setPreFinalisationValues(
       final long leftOverGas,
       final long refundCounterMax,
-      final long accumulatedGasUsedInBlockAtStartTx,
-      final boolean coinbaseWarmAtTransactionEnd) {
+      final long accumulatedGasUsedInBlockAtStartTx) {
 
     this.refundCounterMax = refundCounterMax;
     setLeftoverGas(leftOverGas);
@@ -288,7 +282,6 @@ public class TransactionProcessingMetadata {
     gasRefunded = computeRefunded();
     totalGasUsed = computeTotalGasUsed();
     accumulatedGasUsedInBlock = accumulatedGasUsedInBlockAtStartTx + totalGasUsed;
-    this.coinbaseWarmAtTransactionEnd = coinbaseWarmAtTransactionEnd;
   }
 
   public void completeLineaTransaction(
@@ -356,8 +349,8 @@ public class TransactionProcessingMetadata {
         final long maxFeePerGas = tx.getMaxFeePerGas().get().getAsBigInteger().longValueExact();
         return Math.min(baseFee + maxPriorityFee, maxFeePerGas);
       }
-      default -> throw new IllegalArgumentException(
-          "Transaction type not supported: " + tx.getType());
+      default ->
+          throw new IllegalArgumentException("Transaction type not supported: " + tx.getType());
     }
   }
 
@@ -396,8 +389,9 @@ public class TransactionProcessingMetadata {
   public long feeRateForCoinbase() {
     return switch (besuTransaction.getType()) {
       case FRONTIER, ACCESS_LIST, EIP1559 -> effectiveGasPrice - baseFee;
-      default -> throw new IllegalStateException(
-          "Transaction Type not supported: " + besuTransaction.getType());
+      default ->
+          throw new IllegalStateException(
+              "Transaction Type not supported: " + besuTransaction.getType());
     };
   }
 

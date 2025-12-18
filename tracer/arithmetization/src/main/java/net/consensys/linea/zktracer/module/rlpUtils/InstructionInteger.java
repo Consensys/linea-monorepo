@@ -16,18 +16,17 @@
 package net.consensys.linea.zktracer.module.rlpUtils;
 
 import static net.consensys.linea.zktracer.Trace.*;
-import static net.consensys.linea.zktracer.TraceCancun.Rlptxn.RLP_TXN_CT_MAX_INTEGER;
+import static net.consensys.linea.zktracer.Trace.Rlptxn.RLP_TXN_CT_MAX_INTEGER;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BI_PREFIX_SHORT_INT;
+import static net.consensys.linea.zktracer.types.Utils.rightPadToBytes16;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.module.rlptxn.cancun.GenericTracedValue;
-import net.consensys.linea.zktracer.types.Bytes16;
+import net.consensys.linea.zktracer.module.rlptxn.GenericTracedValue;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-
 
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
@@ -157,7 +156,7 @@ public class InstructionInteger extends RlpUtilsCall {
   }
 
   private Bytes leadingLimbShifted() {
-    return Bytes16.rightPad(leadingBytesNotShifted());
+    return rightPadToBytes16(leadingBytesNotShifted());
   }
 
   private int leadingLimbByteSize() {
@@ -170,7 +169,7 @@ public class InstructionInteger extends RlpUtilsCall {
 
   private Bytes rlpPrefix() {
     return rlpPrefixRequired
-        ? Bytes16.rightPad(Bytes.of(RLP_PREFIX_INT_SHORT + integer.trimLeadingZeros().size()))
+        ? rightPadToBytes16(Bytes.of(RLP_PREFIX_INT_SHORT + integer.trimLeadingZeros().size()))
         : Bytes.EMPTY;
   }
 }

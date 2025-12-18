@@ -20,7 +20,6 @@ import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
-
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.blockdata.BlockDataExoCall;
@@ -103,16 +102,9 @@ public abstract class BlockDataInstruction {
           .wcpFlag(exoCalls[ct].wcpFlag())
           .eucFlag(exoCalls[ct].eucFlag());
       traceInstruction(trace);
-      // Should remove the if when in the monorepo
-      if (shouldTraceTsAndNb) {
-        trace
-            .timestamp(Bytes.ofUnsignedLong(blockHeader.getTimestamp()))
-            .number(blockHeader.getNumber());
-      }
-      // Should be removed when we move to the monorepo
-      if (shouldTraceRelTxNumMax) {
-        trace.relTxNumMax((short) hub.txnData().numberOfUserTransactionsInCurrentBlock());
-      }
+      trace
+          .timestamp(Bytes.ofUnsignedLong(blockHeader.getTimestamp()))
+          .number(blockHeader.getNumber());
       trace.fillAndValidateRow();
     }
   }

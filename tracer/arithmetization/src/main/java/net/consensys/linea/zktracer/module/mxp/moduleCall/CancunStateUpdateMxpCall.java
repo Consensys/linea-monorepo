@@ -16,13 +16,12 @@
 package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_MEMORY;
-import static net.consensys.linea.zktracer.TraceCancun.Mxp.CT_MAX_UPDT_B;
-import static net.consensys.linea.zktracer.module.mxp.moduleOperation.CancunMxpOperation.MXP_FROM_CTMAX_TO_LINECOUNT;
+import static net.consensys.linea.zktracer.Trace.Mxp.CT_MAX_UPDT_B;
+import static net.consensys.linea.zktracer.module.mxp.MxpOperation.MXP_FROM_CTMAX_TO_LINECOUNT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
-
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.mxp.MxpExoCall;

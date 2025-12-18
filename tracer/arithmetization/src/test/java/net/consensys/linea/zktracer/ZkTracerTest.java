@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.stream.Stream;
-
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Test;
@@ -46,21 +45,6 @@ public class ZkTracerTest extends TracerTestBase {
                     .toList())
             .size();
     final int numberOfTracedModules = zkTracer.getHub().getModulesToTrace().size();
-
-    switch (fork) {
-      case LONDON, PARIS, SHANGHAI -> {
-        checkArgument(
-            totalNumberOfModules == numberOfTracedModules + 2,
-            "rlpUtils, blsData expected to be missing before Cancun");
-      }
-      case CANCUN -> {
-        checkArgument(totalNumberOfModules == numberOfTracedModules, "no missing modules expected");
-        // note: when RLP_AUTH will be implemented, we'll expoect a difference of 1
-      }
-      case PRAGUE, OSAKA -> {
-        checkArgument(totalNumberOfModules == numberOfTracedModules, "no missing modules expected");
-      }
-      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
-    }
+    checkArgument(totalNumberOfModules == numberOfTracedModules, "no missing modules expected");
   }
 }

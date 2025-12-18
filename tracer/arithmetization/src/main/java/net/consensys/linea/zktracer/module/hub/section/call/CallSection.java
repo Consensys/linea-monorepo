@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.hub.section.call;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.addressToPrecompileFlag;
@@ -25,7 +24,6 @@ import static net.consensys.linea.zktracer.types.AddressUtils.*;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
 
 import java.util.Optional;
-
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
@@ -47,8 +45,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.StpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.CallOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.XCallOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment;
-import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.LondonModexpMetadata;
-import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.OsakaModexpMetadata;
+import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.*;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
@@ -371,18 +368,12 @@ public class CallSection extends TraceSection
           PRC_ECADD,
           PRC_ECMUL,
           PRC_ECPAIRING,
-          PRC_P256_VERIFY -> new EllipticCurvePrecompileSubsection(hub, this);
+          PRC_P256_VERIFY ->
+          new EllipticCurvePrecompileSubsection(hub, this);
       case PRC_SHA2_256, PRC_RIPEMD_160 -> new ShaTwoOrRipemdSubSection(hub, this);
       case PRC_IDENTITY -> new IdentitySubsection(hub, this);
-      case PRC_MODEXP -> {
-        if (forkPredatesOsaka(hub.fork)) {
-          yield new LondonModexpSubsection(
-              hub, this, new LondonModexpMetadata(this.getCallDataRange()));
-        } else {
-          yield new OsakaModexpSubsection(
-              hub, this, new OsakaModexpMetadata(this.getCallDataRange()));
-        }
-      }
+      case PRC_MODEXP ->
+          new ModexpSubsection(hub, this, new ModexpMetadata(this.getCallDataRange()));
       case PRC_BLAKE2F -> new BlakeSubsection(hub, this);
     };
   }
@@ -392,35 +383,6 @@ public class CallSection extends TraceSection
 
     hub.defers().scheduleForContextEntry(this);
     hub.defers().scheduleForContextReEntry(this, hub.currentFrame());
-    // In case of arguments too large for MODEXP, transaction will be popped anyway, and resolving
-    // some defers will create NPE
-    if (precompileSubsection instanceof LondonModexpSubsection
-        && ((LondonModexpSubsection) precompileSubsection).transactionWillBePopped) {
-      hub.defers().unscheduleForContextReEntry(this, hub.currentFrame());
-      hub.defers().unscheduleForPostTransaction(this);
-      System.out.println(
-          "WARNING: Illegal MODEXP arguments at"
-              + "\n\tHUB_STAMP  = "
-              + hubStamp()
-              + "\n\tABS_TX_NUM = "
-              + hub.txStack().currentAbsNumber()
-              + "\n\tbase byte size = "
-              + ((LondonModexpSubsection) precompileSubsection)
-                  .modexpMetadata
-                  .bbs()
-                  .toDecimalString()
-              + "\n\texp byte size = "
-              + ((LondonModexpSubsection) precompileSubsection)
-                  .modexpMetadata
-                  .ebs()
-                  .toDecimalString()
-              + "\n\tmod byte size = "
-              + ((LondonModexpSubsection) precompileSubsection)
-                  .modexpMetadata
-                  .mbs()
-                  .toDecimalString()
-              + "\nTransaction must be popped!");
-    }
   }
 
   @Override
@@ -581,8 +543,8 @@ public class CallSection extends TraceSection
       case CALL_ABORT_WONT_REVERT -> completeAbortWillRevert(hub);
       case CALL_EOA_SUCCESS_WONT_REVERT -> completeEoaSuccessWillRevert(hub);
       case CALL_SMC_FAILURE_WONT_REVERT -> completeSmcFailureWillRevert(hub);
-      case CALL_SMC_SUCCESS_WONT_REVERT,
-          CALL_PRC_SUCCESS_WONT_REVERT -> completeSmcOrPrcSuccessWillRevert(hub);
+      case CALL_SMC_SUCCESS_WONT_REVERT, CALL_PRC_SUCCESS_WONT_REVERT ->
+          completeSmcOrPrcSuccessWillRevert(hub);
       case CALL_PRC_FAILURE -> {
         // Note: no undoing required
         //  - account snapshots were taken with value transfers undone

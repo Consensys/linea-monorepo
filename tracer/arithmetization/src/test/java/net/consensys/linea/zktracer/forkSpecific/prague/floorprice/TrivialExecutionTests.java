@@ -17,18 +17,17 @@ package net.consensys.linea.zktracer.forkSpecific.prague.floorprice;
 
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
 
+import com.google.common.base.Preconditions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-
-import com.google.common.base.Preconditions;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.AddressCollisions;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
-import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction;
-import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction.DominantCost;
+import net.consensys.linea.zktracer.module.txndata.transactions.UserTransaction;
+import net.consensys.linea.zktracer.module.txndata.transactions.UserTransaction.DominantCost;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.AccessListEntry;
@@ -65,8 +64,8 @@ public class TrivialExecutionTests extends TracerTestBase {
     // Test blocks contain 4 transactions: 2 system transactions, 1 user transaction (the one we
     // created) and 1 noop transaction.
     if (isPostPrague(fork)) {
-      CancunUserTransaction userTransaction =
-          (CancunUserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
+      UserTransaction userTransaction =
+          (UserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
       Preconditions.checkArgument(userTransaction.getDominantCost() == dominantCostPrediction);
     }
   }
@@ -95,8 +94,8 @@ public class TrivialExecutionTests extends TracerTestBase {
     // Test blocks contain 4 transactions: 2 system transactions, 1 user transaction (the one we
     // created) and 1 noop transaction.
     if (isPostPrague(fork)) {
-      CancunUserTransaction userTransaction =
-          (CancunUserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
+      UserTransaction userTransaction =
+          (UserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
       Preconditions.checkArgument(userTransaction.getDominantCost() == dominantCostPrediction);
     }
   }
@@ -203,12 +202,13 @@ public class TrivialExecutionTests extends TracerTestBase {
         "length must be at least 2");
     return switch (callDataSetting) {
       case ALL_ZEROS -> Bytes.fromHexString("00".repeat(length));
-      case ZEROS_AND_NON_ZEROS -> Bytes.fromHexString(
-          (startsWithZero ? "0000" : "0100")
-              + "ff00".repeat((length - 2) / 2)
-              + (length % 2 == 0 ? "" : "ff"));
-      case ALL_NON_ZEROS_EXCEPT_FOR_FIRST -> Bytes.fromHexString(
-          (startsWithZero ? "00" : "01") + "ff".repeat(length - 1));
+      case ZEROS_AND_NON_ZEROS ->
+          Bytes.fromHexString(
+              (startsWithZero ? "0000" : "0100")
+                  + "ff00".repeat((length - 2) / 2)
+                  + (length % 2 == 0 ? "" : "ff"));
+      case ALL_NON_ZEROS_EXCEPT_FOR_FIRST ->
+          Bytes.fromHexString((startsWithZero ? "00" : "01") + "ff".repeat(length - 1));
     };
   }
 

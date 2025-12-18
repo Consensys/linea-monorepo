@@ -20,10 +20,8 @@ import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 import static org.hyperledger.besu.crypto.SECPSignature.BYTES_REQUIRED;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
 import lombok.Builder;
 import org.apache.tuweni.bytes.Bytes;
 import org.bouncycastle.math.ec.custom.sec.SecP256K1Curve;
@@ -39,7 +37,6 @@ public class ToyTransaction {
   private static final long DEFAULT_GAS_LIMIT = 50_000L; // i.e. 21 000 + a bit
   private static final Wei DEFAULT_GAS_PRICE = Wei.of(10_000_000L);
   private static final TransactionType DEFAULT_TX_TYPE = TransactionType.FRONTIER;
-  private static final List<AccessListEntry> DEFAULT_ACCESS_LIST = new ArrayList<>();
   private static final Wei DEFAULT_MAX_FEE_PER_GAS = Wei.of(37_000_000_000L);
   private static final Wei DEFAULT_MAX_PRIORITY_FEE_PER_GAS = Wei.of(500_000_000L);
 

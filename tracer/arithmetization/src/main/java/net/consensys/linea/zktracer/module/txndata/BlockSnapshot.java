@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.txndata;
 
 import java.util.Optional;
-
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.tuweni.bytes.Bytes;
@@ -39,8 +38,8 @@ public class BlockSnapshot {
   @Setter private int nbOfTxsInBlock;
 
   public BlockSnapshot(ProcessableBlockHeader header) {
-    this.baseFee = header.getBaseFee().map(x -> (Wei) x);
-    this.coinbaseAddress = header.getCoinbase();
-    this.blockGasLimit = Bytes.minimalBytes(header.getGasLimit());
+    baseFee = header.getBaseFee().map(x -> (Wei) x);
+    coinbaseAddress = header.getCoinbase();
+    blockGasLimit = Bytes.minimalBytes(header.getGasLimit());
   }
 }

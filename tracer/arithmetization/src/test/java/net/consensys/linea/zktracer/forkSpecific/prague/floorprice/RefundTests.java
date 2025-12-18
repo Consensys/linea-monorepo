@@ -18,11 +18,10 @@ package net.consensys.linea.zktracer.forkSpecific.prague.floorprice;
 import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
 
+import com.google.common.base.Preconditions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-
-import com.google.common.base.Preconditions;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
@@ -30,8 +29,8 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
-import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction;
-import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction.DominantCost;
+import net.consensys.linea.zktracer.module.txndata.transactions.UserTransaction;
+import net.consensys.linea.zktracer.module.txndata.transactions.UserTransaction.DominantCost;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.AddressUtils;
 import org.apache.tuweni.bytes.Bytes;
@@ -121,8 +120,8 @@ public class RefundTests extends TracerTestBase {
     // transaction and the one we
     // created) and 1 noop transaction.
     if (isPostPrague(fork)) {
-      CancunUserTransaction userTransaction =
-          (CancunUserTransaction) toyExecutionEnvironmentV2.getHub().txnData().operations().get(3);
+      UserTransaction userTransaction =
+          (UserTransaction) toyExecutionEnvironmentV2.getHub().txnData().operations().get(3);
       Preconditions.checkArgument(userTransaction.getDominantCost() == dominantCostPrediction);
     }
   }

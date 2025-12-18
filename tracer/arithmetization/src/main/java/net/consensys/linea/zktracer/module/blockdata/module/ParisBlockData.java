@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.blockdata.module;
 
-import static net.consensys.linea.zktracer.TraceParis.Blockdata.nROWS_DEPTH;
+import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_DEPTH;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.BASEFEE;
 import static net.consensys.linea.zktracer.opcode.OpCode.CHAINID;
@@ -23,7 +23,6 @@ import static net.consensys.linea.zktracer.opcode.OpCode.GASLIMIT;
 import static net.consensys.linea.zktracer.opcode.OpCode.PREVRANDAO;
 
 import java.util.Map;
-
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;

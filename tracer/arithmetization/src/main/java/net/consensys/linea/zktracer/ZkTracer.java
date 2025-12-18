@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.zip.GZIPOutputStream;
-
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -130,12 +129,10 @@ public class ZkTracer implements LineCountingTracer {
     this.chain = chain;
     hub =
         switch (chain.fork) {
-          case LONDON -> new LondonHub(chain, publicInputs);
-          case PARIS -> new ParisHub(chain, publicInputs);
-          case SHANGHAI -> new ShanghaiHub(chain, publicInputs);
-          case CANCUN -> new CancunHub(chain, publicInputs);
-          case PRAGUE -> new PragueHub(chain, publicInputs);
-          case OSAKA -> new OsakaHub(chain, publicInputs);
+          case OSAKA -> new Hub(chain, publicInputs);
+          case LONDON, PARIS, SHANGHAI, CANCUN, PRAGUE ->
+              throw new IllegalArgumentException(
+                  "Fork no more supported by the tracer: " + chain.fork);
           default -> throw new IllegalArgumentException("Unknown fork: " + chain.fork);
         };
     trace = getTraceFromFork(chain.fork);
@@ -380,6 +377,8 @@ public class ZkTracer implements LineCountingTracer {
   /** When called, erase all tracing related to the bundle of all transactions since the last. */
   @Override
   public void popTransactionBundle() {
+    log.info(
+        "[ZkTracer] Transaction bundle has been popped, assuming block building. Tracing might fail.");
     hub.popTransactionBundle();
   }
 

@@ -20,7 +20,6 @@ import static net.consensys.linea.zktracer.Trace.LLARGE;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-
 import org.apache.tuweni.bytes.Bytes;
 
 public class Utils {
@@ -41,6 +40,16 @@ public class Utils {
   public static Bytes rightPadTo(Bytes input, int wantedSize) {
     checkArgument(wantedSize >= input.size(), "wantedSize can't be shorter than the input size");
     return Bytes.concatenate(input, Bytes.repeat((byte) 0, wantedSize - input.size()));
+  }
+
+  public static Bytes leftPadToBytes16(Bytes input) {
+    return leftPadTo(input, LLARGE);
+  }
+
+  public static Bytes BYTES16_ZERO = Bytes.repeat((byte) 0, LLARGE);
+
+  public static Bytes rightPadToBytes16(Bytes input) {
+    return rightPadTo(input, LLARGE);
   }
 
   public static int fromDataSizeToLimbNbRows(int dataSize) {
