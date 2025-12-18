@@ -53,7 +53,7 @@ public class DeploymentOobCall extends OobCall {
 
   @Override
   public void setOutputs() {
-    setMaxCodeSizeException(size.compareTo(MAX_CODE_SIZE_BYTES) < 0);
+    setMaxCodeSizeException(EWord.of(MAX_CODE_SIZE_BYTES).compareTo(size) < 0);
   }
 
   @Override
