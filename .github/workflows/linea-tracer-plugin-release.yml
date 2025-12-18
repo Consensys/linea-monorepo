@@ -102,7 +102,7 @@ jobs:
         run: |
           echo "${{ needs.build.outputs.createTag }}"
           echo "${{ needs.build.outputs.releaseTag }}"
-          if [[ ${{ needs.build.outputs.createTag }} != "a release with the same tag name already exists:"* ]]; then
+          if [[ "${{ needs.build.outputs.createTag }}" != "a release with the same tag name already exists:"* ]]; then
             delete_output=$(gh release delete "${{needs.build.outputs.releaseTag}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
             exit 1
           fi
