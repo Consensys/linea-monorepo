@@ -152,8 +152,6 @@ eth_getBlockByNumber(
 ### Finalized Block Tag on L2
 [Maru](https://github.com/Consensys/maru) will be responsible on updating the execution clients for `finalized` block tag on L1.
 It will connect to Ethereum mainnet and track Linea finalization events.
-When a block containing a Linea finalization event is finalized on Ethereum Mainnet, Maru set the corresponding Linea block
-as being finalized as per Linea block. ?TODO Where is this exactly stored?
 
 ### Credible layer
 When the sequencer evaluates transactions for inclusion in a block, it also sends it for validation to the credible layer service.
