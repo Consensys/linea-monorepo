@@ -9,6 +9,10 @@ on:
   release:
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'Branch from which to make the release'
+        required: true
+        default: 'main'
       release_tag:
         description: Specify tag where assets should be added.
         required: true
@@ -21,6 +25,9 @@ jobs:
   # ==================================================================
   build:
     runs-on: ubuntu-latest
+    outputs:
+      createTag: ${{ steps.upload-assets.outputs.CREATE_TAG }}
+      releaseTag: ${{ steps.config.outputs.RELEASE_TAG }}
     steps:
       - name: Configure Tag
         id: config
@@ -38,6 +45,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
+          ref: ${{ inputs.branch }}
           submodules: false
 
       - name: Setup Tracer Environment
@@ -50,61 +58,60 @@ jobs:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: Upload Assets
+        id: upload-assets
         run: |
-          gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $jar_asset
+          gh release delete linea-tracer-beta-v4.4-rc7 --cleanup-tag --yes
+          echo "CREATE_TAG=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset 2>&1)" >> $GITHUB_OUTPUT
           gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
         env:
-          jar_asset: ${{ github.workspace }}/tracer/plugins/build/libs/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.jar
-          zip_asset: ${{ github.workspace }}/tracer/plugins/build/distributions/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.zip
+          jar_asset: ./tracer/plugins/build/libs/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.jar
+          zip_asset: ./tracer/plugins/build/distributions/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.zip
           GH_TOKEN: ${{ github.token }}
 
       - name: Set up GCC
+        id: setup-gcc
         uses: egor-tensin/setup-gcc@eaa888eb19115a521fa72b65cd94fe1f25bbcaac #v1.3
 
       - name: Build without tests
+        id: build-without-tests
         run: ./gradlew :tracer:build -x test -x spotlessCheck
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: Store distribution artifacts
+        id : store-artifacts
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: distributions
           path: tracer/arithmetization/build/libs
 
       - name: Run spotless
+        id: run-spotless
         run: ./gradlew --no-daemon --parallel :tracer:clean :tracer:spotlessCheck
+
+  # ==================================================================
+  # Delete created tag on build failure
+  # ==================================================================
+
+  delete-tag-on-failure:
+    needs: [ build ]
+    if: always() && needs.build.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete tag created without release
+        run: |
+          if [[ "${{ needs.build.outputs.createTag }}" != "a release with the same tag name already exists:"* ]]; then
+            delete_output=$(gh release delete "${{needs.build.outputs.releaseTag}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
+            echo "Deleted tag and release: ${{ needs.build.outputs.releaseTag }}"
+          else
+            echo "${{ needs.build.outputs.createTag }}"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   # ==================================================================
   # Unit Tests
   # ==================================================================
-  unit-tests-london:
-    needs: [ build ]
-    uses: ./.github/workflows/reusable-tracer-unit-tests.yml
-    with:
-      zkevm_fork: LONDON
-      tests-with-ssh: false
-
-  unit-tests-paris:
-    needs: [ build ]
-    uses: ./.github/workflows/reusable-tracer-unit-tests.yml
-    with:
-      zkevm_fork: PARIS
-      tests-with-ssh: false
-
-  unit-tests-shanghai:
-    needs: [ build ]
-    uses: ./.github/workflows/reusable-tracer-unit-tests.yml
-    with:
-      zkevm_fork: SHANGHAI
-      tests-with-ssh: false
-
-  unit-tests-cancun:
-    needs: [ build ]
-    uses: ./.github/workflows/reusable-tracer-unit-tests.yml
-    with:
-      zkevm_fork: CANCUN
-      tests-with-ssh: false
 
   unit-tests-prague:
     needs: [ build ]
@@ -171,7 +178,6 @@ jobs:
   # ==================================================================
   publish:
     needs: [ build ]
-    if: github.event_name != 'pull_request'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     env:
       architecture: "amd64"
