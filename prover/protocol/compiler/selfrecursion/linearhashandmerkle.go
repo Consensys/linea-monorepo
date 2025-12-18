@@ -185,7 +185,9 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 	// Consider the precomputed polynomials
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() && !ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		colSize := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
-		colChunks := (colSize + blockSize - 1) / blockSize
+		// Multiply by 4 to account for extension elements (each extension = 4 base elements in hash)
+		colSizeWithExt := colSize * 4
+		colChunks := (colSizeWithExt + blockSize - 1) / blockSize
 		precompPreimageChunksSizeUnpadded := colChunks * numLeaves
 		precompPreimageChunksSize := utils.NextPowerOfTwo(precompPreimageChunksSizeUnpadded)
 
@@ -238,7 +240,9 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 
 		if ctx.VortexCtx.RoundStatus[i] == vortex.IsNoSis {
 			colSize := ctx.VortexCtx.GetNumPolsForNonSisRounds(i)
-			colChunks := (colSize + blockSize - 1) / blockSize
+			// Multiply by 4 to account for extension elements (each extension = 4 base elements in hash)
+			colSizeWithExt := colSize * 4
+			colChunks := (colSizeWithExt + blockSize - 1) / blockSize
 			preimageChunksSizeUnpadded := colChunks * numLeaves
 			preimageChunksSize := utils.NextPowerOfTwo(preimageChunksSizeUnpadded)
 
@@ -482,7 +486,6 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 		for j := 0; j < blockSize; j++ {
 			run.AssignColumn(a.Ctx.NonSisMetaData.NonSisLeaves[j][i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisLeaves[i][j], a.NonSisLeavesColumnSize))
 			run.AssignColumn(a.Ctx.NonSisMetaData.NonHashPreimages[i][j].GetColID(), smartvectors.RightZeroPadded(th[j], a.NonSisPreimageColumnsSize[i]))
-
 		}
 	}
 }
