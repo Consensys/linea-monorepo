@@ -148,7 +148,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const factoryContract = await ethers.getContractAt("LidoStVaultYieldProviderFactory", factoryAddress, signer);
   const yieldProvider = await factoryContract.createLidoStVaultYieldProvider.staticCall();
   const createYieldProviderTx = await factoryContract.createLidoStVaultYieldProvider();
-  await createYieldProviderTx.wait();
+  await createYieldProviderTx.wait(5);
   console.log("Created LidoStVaultYieldProvider at ", yieldProvider);
   await tryVerifyContractWithConstructorArgs(
     yieldProvider,
