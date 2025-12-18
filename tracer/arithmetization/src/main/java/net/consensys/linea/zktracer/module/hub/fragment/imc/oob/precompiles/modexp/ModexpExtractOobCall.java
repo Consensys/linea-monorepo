@@ -22,15 +22,16 @@ import static net.consensys.linea.zktracer.types.Conversions.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.EWord;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
+@Slf4j
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
@@ -58,12 +59,15 @@ public class ModexpExtractOobCall extends OobCall {
 
   @Override
   public void setOutputs() {
+    log.info("base =" + metadata.bbsInt());
+    log.info("expo =" + metadata.ebsInt());
+    log.info("modu =" + metadata.mbsInt());
+    log.info("cds =" + getCds().toInt());
     final boolean bbsIsZero = metadata.bbs().isZero();
     final boolean ebsIsZero = metadata.ebs().isZero();
     final boolean mbsIsZero = metadata.mbs().isZero();
     final boolean callDataExtendsBeyondExponent =
-        Bytes.minimalBytes(BASE_MIN_OFFSET + metadata.bbsInt() + metadata.ebsInt()).compareTo(cds)
-            < 0;
+        BASE_MIN_OFFSET + metadata.bbsInt() + metadata.ebsInt() < cds.toInt();
 
     setExtractModulus(callDataExtendsBeyondExponent && !mbsIsZero);
     setExtractBase(extractModulus && !bbsIsZero);
