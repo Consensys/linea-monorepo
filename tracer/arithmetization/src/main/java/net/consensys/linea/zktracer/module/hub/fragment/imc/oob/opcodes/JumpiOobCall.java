@@ -36,7 +36,7 @@ public class JumpiOobCall extends OobCall {
   // Inputs
   @EqualsAndHashCode.Include EWord pcNew;
   @EqualsAndHashCode.Include EWord jumpCondition;
-  @EqualsAndHashCode.Include Bytes codeSize;
+  @EqualsAndHashCode.Include EWord codeSize;
 
   // Outputs
   boolean jumpNotAttempted;
@@ -51,7 +51,7 @@ public class JumpiOobCall extends OobCall {
   public void setInputs(Hub hub, MessageFrame frame) {
     setPcNew(EWord.of(frame.getStackItem(0)));
     setJumpCondition(EWord.of(frame.getStackItem(1)));
-    setCodeSize(Bytes.ofUnsignedLong(frame.getCode().getSize()));
+    setCodeSize(EWord.of(frame.getCode().getSize()));
   }
 
   @Override
