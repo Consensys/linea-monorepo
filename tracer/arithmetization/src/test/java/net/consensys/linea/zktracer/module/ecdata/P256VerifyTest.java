@@ -200,7 +200,7 @@ public class P256VerifyTest extends TracerTestBase {
 
       P256VerifyOobCall p256VerifyOobCall =
           (P256VerifyOobCall)
-              bytecodeRunner.getHub().oob().operations().stream().toList().getLast().oobCall();
+              bytecodeRunner.getHub().oob().operations().stream().toList().getLast();
       assertTrue(p256VerifyOobCall.isHubSuccess());
 
       EcDataOperation ecDataOperation = bytecodeRunner.getHub().ecData().ecDataOperation();
@@ -230,7 +230,7 @@ public class P256VerifyTest extends TracerTestBase {
 
       P256VerifyOobCall p256VerifyOobCall =
           (P256VerifyOobCall)
-              bytecodeRunner.getHub().oob().operations().stream().toList().getLast().oobCall();
+              bytecodeRunner.getHub().oob().operations().stream().toList().getLast();
       assertTrue(p256VerifyOobCall.isHubSuccess());
 
       EcDataOperation ecDataOperation = bytecodeRunner.getHub().ecData().ecDataOperation();
@@ -265,7 +265,7 @@ public class P256VerifyTest extends TracerTestBase {
 
       P256VerifyOobCall p256VerifyOobCall =
           (P256VerifyOobCall)
-              bytecodeRunner.getHub().oob().operations().stream().toList().get(1).oobCall();
+              bytecodeRunner.getHub().oob().operations().stream().toList().get(1);
       assertTrue(p256VerifyOobCall.isHubSuccess());
 
       EcDataOperation ecDataOperation = bytecodeRunner.getHub().ecData().ecDataOperation();
