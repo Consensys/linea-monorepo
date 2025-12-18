@@ -40,7 +40,7 @@ type BlockDataFetcher struct {
 	// Data contains all the timestamps in the conflation, ordered by block
 	Data [common.NbLimbU128]ifaces.Column
 	// filter on the BlockDataFetcher.Data column. It is structured as an
-	// inactive column.
+	// active column.
 	FilterFetched ifaces.Column
 
 	// filter that selects only timestamp, baseFee and coinbase rows from the
