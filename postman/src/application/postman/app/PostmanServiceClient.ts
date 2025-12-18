@@ -497,6 +497,6 @@ export class PostmanServiceClient {
 
     this.api.stop();
 
-    this.logger.info("All listeners and message deliverers have been stopped");
+    this.logger.info("All listeners and message deliverers have been stopped.");
   }
 }
