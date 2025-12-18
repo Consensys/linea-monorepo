@@ -22,12 +22,12 @@
  * in the user manual at https://docs.gradle.org/5.2.1/userguide/multi_project_builds.html
  */
 pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        maven {
-            url = uri('https://raw.githubusercontent.com/Consensys/besu-plugin-gradle-plugin-artifacts/main')
-        }
+  repositories {
+    gradlePluginPortal()
+    maven {
+      url = uri('https://raw.githubusercontent.com/Consensys/besu-plugin-gradle-plugin-artifacts/main')
     }
+  }
 }
 
 rootProject.name = 'linea-arithmetization'
@@ -35,4 +35,3 @@ include 'arithmetization'
 include 'plugins'
 include 'reference-tests'
 include 'testing'
-
