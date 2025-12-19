@@ -105,9 +105,14 @@ public class ExpOperation extends ModuleOperation {
     }
   }
 
-  @Override
-  protected int computeLineCount() {
-    return 1;
+@Override
+protected int computeLineCount() {
+  return switch (expCall.expInstruction()) {
+    case EXP_INST_EXPLOG -> 1;
+    case EXP_INST_MODEXPLOG -> 1; // В будущем здесь может быть динамический расчет на основе modexpMetadata
+    default -> 1;
+  };
+
   }
 
   public record LeadLogTrimLead(int leadLog, BigInteger trim) {
