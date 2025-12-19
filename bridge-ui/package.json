@@ -58,7 +58,7 @@
     "zustand": "4.5.4"
   },
   "devDependencies": {
-    "@playwright/test": "1.57.0",
+    "@playwright/test": "1.55.1",
     "@svgr/webpack": "8.1.0",
     "@synthetixio/synpress": "4.1.0",
     "@types/fs-extra": "11.0.4",
