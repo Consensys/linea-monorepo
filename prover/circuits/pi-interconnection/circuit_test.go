@@ -38,7 +38,7 @@ func TestMerkle(t *testing.T) {
 
 			toHashHex := make([]string, len(c.toHash))
 			toHashBytes := make([][32]byte, len(c.toHash))
-			toHashSnark := make([][32]zk.WrappedVariable, (len(c.toHash)+31)/32*32)
+			toHashSnark := make([][32]frontend.Variable, (len(c.toHash)+31)/32*32)
 			// construct expected merkle trees
 			for i := range toHashHex {
 				var x fr377.Element
@@ -62,14 +62,14 @@ func TestMerkle(t *testing.T) {
 				assert.Equal(t, rootsHex[i], rootHex)
 			}
 
-			roots := make([][32]zk.WrappedVariable, len(rootsHex))
+			roots := make([][32]frontend.Variable, len(rootsHex))
 			for i := range roots {
 				assert.NoError(t, internal.CopyHexEncodedBytes(roots[i][:], rootsHex[i]))
 			}
 
 			circuit := testMerkleCircuit{
-				ToHash:       make([][32]zk.WrappedVariable, len(toHashSnark)),
-				Roots:        make([][32]zk.WrappedVariable, len(roots)),
+				ToHash:       make([][32]frontend.Variable, len(toHashSnark)),
+				Roots:        make([][32]frontend.Variable, len(roots)),
 				maxNbKeccakF: maxNbKeccakF,
 			}
 
@@ -84,8 +84,8 @@ func TestMerkle(t *testing.T) {
 }
 
 type testMerkleCircuit struct {
-	ToHash [][32]zk.WrappedVariable
-	Roots  [][32]zk.WrappedVariable
+	ToHash [][32]frontend.Variable
+	Roots  [][32]frontend.Variable
 
 	maxNbKeccakF int
 }

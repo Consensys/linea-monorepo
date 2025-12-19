@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commoncs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
@@ -65,21 +66,21 @@ type Input struct {
 	Limbs ifaces.Column
 }
 
-func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) *Input {
+func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings, arith *arithmetization.Arithmetization) *Input {
 	return &Input{
 		Settings:         &settings,
-		IsModExpBase:     comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_BASE"),
-		IsModExpExponent: comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_EXPONENT"),
-		IsModExpModulus:  comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_MODULUS"),
-		IsModExpResult:   comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_RESULT"),
-		Limbs:            comp.Columns.GetHandle("blake2fmodexpdata.LIMB"),
+		IsModExpBase:     arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_BASE"),
+		IsModExpExponent: arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_EXPONENT"),
+		IsModExpModulus:  arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_MODULUS"),
+		IsModExpResult:   arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_RESULT"),
+		Limbs:            arith.ColumnOf(comp, "blake2fmodexpdata", "LIMB"),
 	}
 }
 
 // NewModuleZkEvm constructs an instance of the modexp module. It should be called
 // only once during zkEVM prover lifecycle.
-func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings) *Module {
-	return newModule(comp, newZkEVMInput(comp, settings))
+func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings, arith *arithmetization.Arithmetization) *Module {
+	return newModule(comp, newZkEVMInput(comp, settings, arith))
 }
 
 // Module implements the wizard part responsible for checking the MODEXP

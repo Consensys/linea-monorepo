@@ -24,14 +24,14 @@ import (
 // and if so, the ideal API for them
 
 // AssertEqualIf asserts cond ≠ 0 ⇒ (a == b)
-func AssertEqualIf(api frontend.API, cond, a, b zk.WrappedVariable) {
+func AssertEqualIf(api frontend.API, cond, a, b frontend.Variable) {
 	// in r1cs it's more efficient to do api.AssertIsEqual(0, api.Mul(cond, api.Sub(a, b))) but we don't care about that
 	// and the following is better for debugging
 	api.AssertIsEqual(api.Mul(cond, a), api.Mul(cond, b))
 }
 
 // AssertIsLessIf asserts cond ≠ 0 ⇒ (a < b)
-func AssertIsLessIf(api frontend.API, cond, a, b zk.WrappedVariable) {
+func AssertIsLessIf(api frontend.API, cond, a, b frontend.Variable) {
 	var (
 		condIsNonZero = api.Sub(1, api.IsZero(cond))
 		a_            = api.Mul(condIsNonZero, api.Add(a, 1))
@@ -40,7 +40,7 @@ func AssertIsLessIf(api frontend.API, cond, a, b zk.WrappedVariable) {
 	api.AssertIsLessOrEqual(a_, b_)
 }
 
-func SliceToTable(api frontend.API, slice []zk.WrappedVariable) logderivlookup.Table {
+func SliceToTable(api frontend.API, slice []frontend.Variable) logderivlookup.Table {
 	table := logderivlookup.New(api)
 	for i := range slice {
 		table.Insert(slice[i])
@@ -48,7 +48,7 @@ func SliceToTable(api frontend.API, slice []zk.WrappedVariable) logderivlookup.T
 	return table
 }
 
-func AssertSliceEquals(api frontend.API, a, b []zk.WrappedVariable) {
+func AssertSliceEquals(api frontend.API, a, b []frontend.Variable) {
 	api.AssertIsEqual(len(a), len(b))
 	for i := range a {
 		api.AssertIsEqual(a[i], b[i])
@@ -56,7 +56,7 @@ func AssertSliceEquals(api frontend.API, a, b []zk.WrappedVariable) {
 }
 
 type Range struct {
-	InRange, IsLast, IsFirstBeyond []zk.WrappedVariable
+	InRange, IsLast, IsFirstBeyond []frontend.Variable
 	api                            frontend.API
 }
 
@@ -66,7 +66,7 @@ func NoCheck(b *bool) {
 	*b = false
 }
 
-func NewRange(api frontend.API, n zk.WrappedVariable, max int, opts ...NewRangeOption) *Range {
+func NewRange(api frontend.API, n frontend.Variable, max int, opts ...NewRangeOption) *Range {
 
 	if max < 0 {
 		panic("negative maximum not allowed")
@@ -84,11 +84,11 @@ func NewRange(api frontend.API, n zk.WrappedVariable, max int, opts ...NewRangeO
 		return &Range{api: api}
 	}
 
-	inRange := make([]zk.WrappedVariable, max)
-	isLast := make([]zk.WrappedVariable, max)
-	isFirstBeyond := make([]zk.WrappedVariable, max)
+	inRange := make([]frontend.Variable, max)
+	isLast := make([]frontend.Variable, max)
+	isFirstBeyond := make([]frontend.Variable, max)
 
-	prevInRange := zk.WrappedVariable(1)
+	prevInRange := frontend.Variable(1)
 	for i := range isFirstBeyond {
 		isFirstBeyond[i] = api.IsZero(api.Sub(i, n))
 		prevInRange = api.Sub(prevInRange, isFirstBeyond[i])
@@ -109,17 +109,17 @@ func NewRange(api frontend.API, n zk.WrappedVariable, max int, opts ...NewRangeO
 }
 
 // AssertEqualI i ∈ [0, n) ⇒ a == b with n as given to the constructor
-func (r *Range) AssertEqualI(i int, a, b zk.WrappedVariable) {
+func (r *Range) AssertEqualI(i int, a, b frontend.Variable) {
 	AssertEqualIf(r.api, r.InRange[i], a, b)
 }
 
 // AssertEqualLastI i == n-1 ⇒ a == b with n as given to the constructor
-func (r *Range) AssertEqualLastI(i int, a, b zk.WrappedVariable) {
+func (r *Range) AssertEqualLastI(i int, a, b frontend.Variable) {
 	AssertEqualIf(r.api, r.IsLast[i], a, b)
 }
 
 // AddIfLastI returns accumulator + IsLast[i] * atI
-func (r *Range) AddIfLastI(i int, accumulator, atI zk.WrappedVariable) zk.WrappedVariable {
+func (r *Range) AddIfLastI(i int, accumulator, atI frontend.Variable) frontend.Variable {
 	toAdd := r.api.Mul(r.IsLast[i], atI)
 	if accumulator == nil {
 		return toAdd
@@ -127,7 +127,7 @@ func (r *Range) AddIfLastI(i int, accumulator, atI zk.WrappedVariable) zk.Wrappe
 	return r.api.Add(accumulator, toAdd)
 }
 
-func (r *Range) AssertArrays32Equal(a, b [][32]zk.WrappedVariable) {
+func (r *Range) AssertArrays32Equal(a, b [][32]frontend.Variable) {
 	// TODO generify when array length parameters become available
 	r.api.AssertIsEqual(len(a), len(b))
 	for i := range a {
@@ -137,13 +137,13 @@ func (r *Range) AssertArrays32Equal(a, b [][32]zk.WrappedVariable) {
 	}
 }
 
-func (r *Range) LastArray32(slice [][32]zk.WrappedVariable) [32]zk.WrappedVariable {
-	return r.LastArray32F(func(i int) [32]zk.WrappedVariable { return slice[i] })
+func (r *Range) LastArray32(slice [][32]frontend.Variable) [32]frontend.Variable {
+	return r.LastArray32F(func(i int) [32]frontend.Variable { return slice[i] })
 }
 
-func (r *Range) LastArray32F(provider func(int) [32]zk.WrappedVariable) [32]zk.WrappedVariable {
+func (r *Range) LastArray32F(provider func(int) [32]frontend.Variable) [32]frontend.Variable {
 	// TODO generify when array length parameters become available
-	var res [32]zk.WrappedVariable
+	var res [32]frontend.Variable
 	for i := 0; i < len(r.InRange); i++ {
 		for j := 0; j < 32; j++ {
 			res[j] = r.AddIfLastI(i, res[j], provider(i)[j])
@@ -188,7 +188,7 @@ func toCrumbsHint(_ *big.Int, ins, outs []*big.Int) error {
 // TODO add to gnark: bits.ToBase
 // ToCrumbs decomposes scalar v into nbCrumbs 2-bit digits.
 // It uses Little Endian order for compatibility with gnark, even though we use Big Endian order in the circuit
-func ToCrumbs(api frontend.API, v zk.WrappedVariable, nbCrumbs int) []zk.WrappedVariable {
+func ToCrumbs(api frontend.API, v frontend.Variable, nbCrumbs int) []frontend.Variable {
 	res, err := api.Compiler().NewHint(toCrumbsHint, nbCrumbs, v)
 	if err != nil {
 		panic(err)
@@ -201,7 +201,7 @@ func ToCrumbs(api frontend.API, v zk.WrappedVariable, nbCrumbs int) []zk.Wrapped
 
 // PackedBytesToCrumbs converts a slice of bytes, padded with zeros on the left to make bitsPerElem bits field elements, into a slice of two-bit crumbs
 // panics if bitsPerElem is not a multiple of 2
-func PackedBytesToCrumbs(api frontend.API, bytes []zk.WrappedVariable, bitsPerElem int) []zk.WrappedVariable {
+func PackedBytesToCrumbs(api frontend.API, bytes []frontend.Variable, bitsPerElem int) []frontend.Variable {
 	crumbsPerElem := bitsPerElem / 2
 	if bitsPerElem != 2*crumbsPerElem {
 		panic("packing size must be a multiple of 2")
@@ -215,14 +215,14 @@ func PackedBytesToCrumbs(api frontend.API, bytes []zk.WrappedVariable, bitsPerEl
 
 	if nbElems*bytesPerElem != len(bytes) { // pad with zeros if necessary
 		tmp := bytes
-		bytes = make([]zk.WrappedVariable, nbElems*bytesPerElem)
+		bytes = make([]frontend.Variable, nbElems*bytesPerElem)
 		copy(bytes, tmp)
 		for i := len(tmp); i < len(bytes); i++ {
 			bytes[i] = 0
 		}
 	}
 
-	res := make([]zk.WrappedVariable, 0, nbElems*crumbsPerElem)
+	res := make([]frontend.Variable, 0, nbElems*crumbsPerElem)
 
 	for i := 0; i < len(bytes); i += bytesPerElem {
 		// first byte
@@ -244,7 +244,7 @@ func (r *Range) StaticLength() int {
 	return len(r.InRange)
 }
 
-func MimcHash(api frontend.API, e ...zk.WrappedVariable) zk.WrappedVariable {
+func MimcHash(api frontend.API, e ...frontend.Variable) frontend.Variable {
 	hsh, err := mimc.NewMiMC(api)
 	if err != nil {
 		panic(err)
@@ -255,9 +255,9 @@ func MimcHash(api frontend.API, e ...zk.WrappedVariable) zk.WrappedVariable {
 
 type Slice[T any] struct {
 
-	// @reviewer: better for slice to be non-generic with zk.WrappedVariable type and just duplicate the funcs for the few [32]zk.WrappedVariable applications?
+	// @reviewer: better for slice to be non-generic with frontend.Variable type and just duplicate the funcs for the few [32]frontend.Variable applications?
 	Values []T // Values[:Length] contains the data
-	Length zk.WrappedVariable
+	Length frontend.Variable
 }
 
 func (s VarSlice) Range(api frontend.API) *Range {
@@ -268,16 +268,16 @@ func (s VarSlice) Range(api frontend.API) *Range {
 // all slices have to be nonempty. This is not checked either
 // Runtime in the order of maxLinLength + len(slices) * max_i(len(slices[i])
 // it does not perform well when one of the slices is statically much longer than the others
-func Concat(api frontend.API, maxLinearizedLength int, slices ...VarSlice) Slice[zk.WrappedVariable] {
+func Concat(api frontend.API, maxLinearizedLength int, slices ...VarSlice) Slice[frontend.Variable] {
 
-	res := Slice[zk.WrappedVariable]{make([]zk.WrappedVariable, maxLinearizedLength), 0}
+	res := Slice[frontend.Variable]{make([]frontend.Variable, maxLinearizedLength), 0}
 	var outT logderivlookup.Table
 	{ // hint
 		inLen := 2 * len(slices)
 		for i := range slices {
 			inLen += len(slices[i].Values)
 		}
-		in := make([]zk.WrappedVariable, inLen)
+		in := make([]frontend.Variable, inLen)
 		i := 0
 		for _, s := range slices {
 			in[i], in[i+1] = len(s.Values), s.Length
@@ -327,11 +327,11 @@ func concatHint(_ *big.Int, ins, outs []*big.Int) error {
 }
 
 // SubSlice DOES NOT range check start and length, but it does end := start + length
-func SubSlice(api frontend.API, slice Slice[zk.WrappedVariable], start, length zk.WrappedVariable, maxLength int) Slice[zk.WrappedVariable] {
+func SubSlice(api frontend.API, slice Slice[frontend.Variable], start, length frontend.Variable, maxLength int) Slice[frontend.Variable] {
 	if maxLength < 0 || maxLength > len(slice.Values) {
 		panic("invalid maxLength")
 	}
-	res := make([]zk.WrappedVariable, maxLength)
+	res := make([]frontend.Variable, maxLength)
 	t := SliceToTable(api, slice.Values)
 	/*for i := 0; i < maxLength; i++ {	TODO make sure padding is unnecessary
 		t.Insert(0)
@@ -345,7 +345,7 @@ func SubSlice(api frontend.API, slice Slice[zk.WrappedVariable], start, length z
 		res[i] = api.Mul(r.InRange[i], t.Lookup(api.Add(start, i))[0])
 	}
 
-	return Slice[zk.WrappedVariable]{res, length}
+	return Slice[frontend.Variable]{res, length}
 }
 
 // ChecksumSlice returns H(len(slice), partial) where partial is slice[0] if length is 1, and hsh(slice[0], slice[1], ..., slice[len(slice)-1]) otherwise
@@ -376,12 +376,12 @@ func ChecksumSlice(slice [][]byte) []byte {
 
 // TODO test that ChecksumSliceSnark matches ChecksumSubSlices
 
-type VarSlice Slice[zk.WrappedVariable]
-type Var32Slice Slice[[32]zk.WrappedVariable]
+type VarSlice Slice[frontend.Variable]
+type Var32Slice Slice[[32]frontend.Variable]
 
 // Checksum is the SNARK equivalent of ChecksumSlice
-// TODO consider doing (r *Range) f (slice []zk.WrappedVariable)
-func (s VarSlice) Checksum(api frontend.API, hsh snarkHash.FieldHasher) zk.WrappedVariable {
+// TODO consider doing (r *Range) f (slice []frontend.Variable)
+func (s VarSlice) Checksum(api frontend.API, hsh snarkHash.FieldHasher) frontend.Variable {
 	if len(s.Values) == 0 {
 		panic("zero-length input")
 	}
@@ -406,8 +406,8 @@ func (s VarSlice) Checksum(api frontend.API, hsh snarkHash.FieldHasher) zk.Wrapp
 // ChecksumSubSlices returns the hash of consecutive sub-slices, compatible with ChecksumSliceSnark
 // the endpoints are not range checked and are assumed to be strictly increasing, and that endpoint[0] ≠ 0 and endpoint[endpoints.Length-1] \leq len(slice)
 // due to its hint, it only works with MiMC in BLS12-377
-func ChecksumSubSlices(api frontend.API, hsh snarkHash.FieldHasher, slice []zk.WrappedVariable, subEndPoints VarSlice) []zk.WrappedVariable {
-	lastElems := make([]zk.WrappedVariable, len(subEndPoints.Values))
+func ChecksumSubSlices(api frontend.API, hsh snarkHash.FieldHasher, slice []frontend.Variable, subEndPoints VarSlice) []frontend.Variable {
+	lastElems := make([]frontend.Variable, len(subEndPoints.Values))
 	endpointsR := subEndPoints.Range(api)
 	for i, e := range subEndPoints.Values {
 		// inRange ? e - 1 : l  = l + inRange * (e- 1 -l) = inRange * e - (1+l) * inRange + l
@@ -420,7 +420,7 @@ func ChecksumSubSlices(api frontend.API, hsh snarkHash.FieldHasher, slice []zk.W
 		lastElemsT.Insert(len(slice)) // in case subEndPoints is tight
 	}
 
-	hintIn := make([]zk.WrappedVariable, len(lastElems)+len(slice))
+	hintIn := make([]frontend.Variable, len(lastElems)+len(slice))
 	copy(hintIn, lastElems)
 	copy(hintIn[len(lastElems):], slice)
 	res, err := api.Compiler().NewHint(checksumSubSlicesHint, len(subEndPoints.Values), hintIn...)
@@ -430,7 +430,7 @@ func ChecksumSubSlices(api frontend.API, hsh snarkHash.FieldHasher, slice []zk.W
 	resT := SliceToTable(api, res)
 	resT.Insert(0) // in case subEndPoints is tight
 
-	var subI, workingHash, incrementI zk.WrappedVariable
+	var subI, workingHash, incrementI frontend.Variable
 	subI, workingHash, incrementI = 0, slice[0], api.IsZero(api.Sub(subEndPoints.Values[0], 1))
 
 	for i := 1; i < len(slice); i++ {
@@ -510,16 +510,16 @@ func checksumSubSlicesHint(_ *big.Int, ins, outs []*big.Int) error {
 }
 
 // PartialSums returns a slice of the same length as slice, where res[i] = slice[0] + ... + slice[i]. Out of range values are excluded.
-func (r *Range) PartialSums(slice []zk.WrappedVariable) []zk.WrappedVariable {
-	return r.PartialSumsF(func(i int) zk.WrappedVariable { return slice[i] })
+func (r *Range) PartialSums(slice []frontend.Variable) []frontend.Variable {
+	return r.PartialSumsF(func(i int) frontend.Variable { return slice[i] })
 }
 
-func (r *Range) PartialSumsF(provider func(int) zk.WrappedVariable) []zk.WrappedVariable {
+func (r *Range) PartialSumsF(provider func(int) frontend.Variable) []frontend.Variable {
 	if len(r.InRange) == 0 {
 		return nil
 	}
 
-	res := make([]zk.WrappedVariable, len(r.InRange))
+	res := make([]frontend.Variable, len(r.InRange))
 
 	res[0] = r.api.Mul(provider(0), r.InRange[0])
 
@@ -530,7 +530,7 @@ func (r *Range) PartialSumsF(provider func(int) zk.WrappedVariable) []zk.Wrapped
 	return res
 }
 
-func (r *Range) LastF(provider func(i int) zk.WrappedVariable) zk.WrappedVariable {
+func (r *Range) LastF(provider func(i int) frontend.Variable) frontend.Variable {
 	if len(r.IsLast) == 0 {
 		return 0
 	}
@@ -543,19 +543,19 @@ func (r *Range) LastF(provider func(i int) zk.WrappedVariable) zk.WrappedVariabl
 
 // PackFull packs as many words as possible into a single field element
 // The words are construed in big-endian, and 0 padding is added as needed on the left for every element and on the right for the last element
-func PackFull(api frontend.API, words []zk.WrappedVariable, bitsPerWord int) []zk.WrappedVariable {
+func PackFull(api frontend.API, words []frontend.Variable, bitsPerWord int) []frontend.Variable {
 	return Pack(api, words, api.Compiler().FieldBitLen()-1, bitsPerWord)
 }
 
-func Pack(api frontend.API, words []zk.WrappedVariable, bitsPerElem, bitsPerWord int) []zk.WrappedVariable {
+func Pack(api frontend.API, words []frontend.Variable, bitsPerElem, bitsPerWord int) []frontend.Variable {
 	if bitsPerWord > bitsPerElem {
 		panic("words don't fit in elements")
 	}
 	wordsPerElem := bitsPerElem / bitsPerWord
-	res := make([]zk.WrappedVariable, (len(words)+wordsPerElem-1)/wordsPerElem)
+	res := make([]frontend.Variable, (len(words)+wordsPerElem-1)/wordsPerElem)
 	if len(words) != len(res)*wordsPerElem {
 		tmp := words
-		words = make([]zk.WrappedVariable, len(res)*wordsPerElem)
+		words = make([]frontend.Variable, len(res)*wordsPerElem)
 		copy(words, tmp)
 		for i := len(tmp); i < len(words); i++ {
 			words[i] = 0
@@ -579,8 +579,8 @@ func Pack(api frontend.API, words []zk.WrappedVariable, bitsPerElem, bitsPerWord
 	return res
 }
 
-func flatten(s [][32]zk.WrappedVariable) []zk.WrappedVariable {
-	res := make([]zk.WrappedVariable, len(s)*32)
+func flatten(s [][32]frontend.Variable) []frontend.Variable {
+	res := make([]frontend.Variable, len(s)*32)
 	for i := range s {
 		for j := range s[i] {
 			res[i*32+j] = s[i][j]
@@ -589,16 +589,16 @@ func flatten(s [][32]zk.WrappedVariable) []zk.WrappedVariable {
 	return res
 }
 
-func (s Var32Slice) Checksum(api frontend.API) zk.WrappedVariable {
+func (s Var32Slice) Checksum(api frontend.API) frontend.Variable {
 	values := PackFull(api, flatten(s.Values), 8)
-	valsAndLen := make([]zk.WrappedVariable, 1, len(values)+1)
+	valsAndLen := make([]frontend.Variable, 1, len(values)+1)
 	valsAndLen[0] = s.Length
 	return MimcHash(api, append(valsAndLen, values...)...)
 }
 
-func CombineBytesIntoElements(api frontend.API, b [32]zk.WrappedVariable) [2]zk.WrappedVariable {
+func CombineBytesIntoElements(api frontend.API, b [32]frontend.Variable) [2]frontend.Variable {
 	r := big.NewInt(256)
-	return [2]zk.WrappedVariable{
+	return [2]frontend.Variable{
 		compress.ReadNum(api, b[:16], r),
 		compress.ReadNum(api, b[16:], r),
 	}
@@ -624,8 +624,8 @@ func Bls12381ScalarToBls12377Scalars(v interface{}) (r [2][]byte, err error) {
 }
 
 // PartialSums returns s[0], s[0]+s[1], ..., s[0]+s[1]+...+s[len(s)-1]
-func PartialSums(api frontend.API, s []zk.WrappedVariable) []zk.WrappedVariable {
-	res := make([]zk.WrappedVariable, len(s))
+func PartialSums(api frontend.API, s []frontend.Variable) []frontend.Variable {
+	res := make([]frontend.Variable, len(s))
 	res[0] = s[0]
 	for i := 1; i < len(s); i++ {
 		res[i] = api.Add(res[i-1], s[i])
@@ -633,9 +633,9 @@ func PartialSums(api frontend.API, s []zk.WrappedVariable) []zk.WrappedVariable 
 	return res
 }
 
-func Differences(api frontend.API, s []zk.WrappedVariable) []zk.WrappedVariable {
-	res := make([]zk.WrappedVariable, len(s))
-	prev := zk.WrappedVariable(0)
+func Differences(api frontend.API, s []frontend.Variable) []frontend.Variable {
+	res := make([]frontend.Variable, len(s))
+	prev := frontend.Variable(0)
 	for i := range s {
 		res[i] = api.Sub(s[i], prev)
 		prev = s[i]
@@ -678,9 +678,9 @@ func MapSlice[X, Y any](f func(X) Y, x ...X) []Y {
 }
 
 // Truncate ensures that the slice is 0 starting from the n-th element
-func Truncate(api frontend.API, slice []zk.WrappedVariable, n zk.WrappedVariable) []zk.WrappedVariable {
-	nYet := zk.WrappedVariable(0)
-	res := make([]zk.WrappedVariable, len(slice))
+func Truncate(api frontend.API, slice []frontend.Variable, n frontend.Variable) []frontend.Variable {
+	nYet := frontend.Variable(0)
+	res := make([]frontend.Variable, len(slice))
 	for i := range slice {
 		nYet = api.Add(nYet, api.IsZero(api.Sub(i, n)))
 		res[i] = api.MulAcc(api.Mul(1, slice[i]), slice[i], api.Neg(nYet))
@@ -689,8 +689,8 @@ func Truncate(api frontend.API, slice []zk.WrappedVariable, n zk.WrappedVariable
 }
 
 // RotateLeft rotates the slice v by n positions to the left, so that res[i] becomes v[(i+n)%len(v)]
-func RotateLeft(api frontend.API, v []zk.WrappedVariable, n zk.WrappedVariable) (res []zk.WrappedVariable) {
-	res = make([]zk.WrappedVariable, len(v))
+func RotateLeft(api frontend.API, v []frontend.Variable, n frontend.Variable) (res []frontend.Variable) {
+	res = make([]frontend.Variable, len(v))
 	t := SliceToTable(api, v)
 	for _, x := range v {
 		t.Insert(x)
@@ -710,11 +710,11 @@ func CloneSlice[T any](s []T, cap ...int) []T {
 // PartitionSlice populates sub-slices subs[0], ... where subs[i] contains the elements s[j] with selectors[j] = i
 // There are no guarantee on the values in the subs past their actual lengths. The hint sets them to zero but PartitionSlice does not check that fact.
 // It may produce an incorrect result if selectors are out of range
-func PartitionSlice(api frontend.API, s []zk.WrappedVariable, selectors []zk.WrappedVariable, subs ...[]zk.WrappedVariable) {
+func PartitionSlice(api frontend.API, s []frontend.Variable, selectors []frontend.Variable, subs ...[]frontend.Variable) {
 	if len(s) != len(selectors) {
 		panic("s and selectors must have the same length")
 	}
-	hintIn := make([]zk.WrappedVariable, 1+len(subs)+len(s)+len(selectors))
+	hintIn := make([]frontend.Variable, 1+len(subs)+len(s)+len(selectors))
 	hintIn[0] = len(subs)
 	hintOutLen := 0
 	for i := range subs {
@@ -738,13 +738,13 @@ func PartitionSlice(api frontend.API, s []zk.WrappedVariable, selectors []zk.Wra
 		subsT[i].Insert(0)
 	}
 
-	subI := make([]zk.WrappedVariable, len(subs))
+	subI := make([]frontend.Variable, len(subs))
 	for i := range subI {
 		subI[i] = 0
 	}
 
-	indicators := make([]zk.WrappedVariable, len(subs))
-	subHeads := make([]zk.WrappedVariable, len(subs))
+	indicators := make([]frontend.Variable, len(subs))
+	subHeads := make([]frontend.Variable, len(subs))
 	for i := range s {
 		for j := range subs[:len(subs)-1] {
 			indicators[j] = api.IsZero(api.Sub(selectors[i], j))
@@ -765,8 +765,8 @@ func PartitionSlice(api frontend.API, s []zk.WrappedVariable, selectors []zk.Wra
 	}
 }
 
-func SumSnark(api frontend.API, x ...zk.WrappedVariable) zk.WrappedVariable {
-	res := zk.WrappedVariable(0)
+func SumSnark(api frontend.API, x ...frontend.Variable) frontend.Variable {
+	res := frontend.Variable(0)
 	for i := range x {
 		res = api.Add(res, x[i])
 	}
@@ -814,16 +814,16 @@ func partitionSliceHint(_ *big.Int, ins, outs []*big.Int) error {
 // PartitionSliceEmulated populates sub-slices subs[0], ... where subs[i] contains the elements s[j] with selectors[j] = i
 // There are no guarantee on the values in the subs past their actual lengths. The hint sets them to zero but PartitionSlice does not check that fact.
 // It may produce an incorrect result if selectors are out of range
-func PartitionSliceEmulated[T emulated.FieldParams](api frontend.API, s []emulated.Element[T], selectors []zk.WrappedVariable, subSliceMaxLens ...int) [][]emulated.Element[T] {
+func PartitionSliceEmulated[T emulated.FieldParams](api frontend.API, s []emulated.Element[T], selectors []frontend.Variable, subSliceMaxLens ...int) [][]emulated.Element[T] {
 	field, err := emulated.NewField[T](api)
 	if err != nil {
 		panic(err)
 	}
 
 	// transpose limbs for selection
-	limbs := make([][]zk.WrappedVariable, len(s[0].Limbs)) // limbs are indexed limb first, element second
+	limbs := make([][]frontend.Variable, len(s[0].Limbs)) // limbs are indexed limb first, element second
 	for i := range limbs {
-		limbs[i] = make([]zk.WrappedVariable, len(s))
+		limbs[i] = make([]frontend.Variable, len(s))
 	}
 	for i := range s {
 		if len(limbs) != len(s[i].Limbs) {
@@ -834,12 +834,12 @@ func PartitionSliceEmulated[T emulated.FieldParams](api frontend.API, s []emulat
 		}
 	}
 
-	subLimbs := make([][][]zk.WrappedVariable, len(limbs)) // subLimbs is indexed limb first, sub-slice second, element third
+	subLimbs := make([][][]frontend.Variable, len(limbs)) // subLimbs is indexed limb first, sub-slice second, element third
 
 	for i := range limbs { // construct the sub-slices limb by limb
-		subLimbs[i] = make([][]zk.WrappedVariable, len(subSliceMaxLens))
+		subLimbs[i] = make([][]frontend.Variable, len(subSliceMaxLens))
 		for j := range subSliceMaxLens {
-			subLimbs[i][j] = make([]zk.WrappedVariable, subSliceMaxLens[j])
+			subLimbs[i][j] = make([]frontend.Variable, subSliceMaxLens[j])
 		}
 
 		PartitionSlice(api, limbs[i], selectors, subLimbs[i]...)
@@ -850,7 +850,7 @@ func PartitionSliceEmulated[T emulated.FieldParams](api frontend.API, s []emulat
 	for i := range subSlices {
 		subSlices[i] = make([]emulated.Element[T], subSliceMaxLens[i])
 		for j := range subSlices[i] {
-			currLimbs := make([]zk.WrappedVariable, len(limbs))
+			currLimbs := make([]frontend.Variable, len(limbs))
 			for k := range currLimbs {
 				currLimbs[k] = subLimbs[k][i][j]
 			}
@@ -861,22 +861,22 @@ func PartitionSliceEmulated[T emulated.FieldParams](api frontend.API, s []emulat
 	return subSlices
 }
 
-func InnerProd(api frontend.API, x, y []zk.WrappedVariable) zk.WrappedVariable {
+func InnerProd(api frontend.API, x, y []frontend.Variable) frontend.Variable {
 	if len(x) != len(y) {
 		panic("mismatched lengths")
 	}
-	res := zk.WrappedVariable(0)
+	res := frontend.Variable(0)
 	for i := range x {
 		res = api.Add(res, api.Mul(x[i], y[i]))
 	}
 	return res
 }
 
-func SelectMany(api frontend.API, c zk.WrappedVariable, ifSo, ifNot []zk.WrappedVariable) []zk.WrappedVariable {
+func SelectMany(api frontend.API, c frontend.Variable, ifSo, ifNot []frontend.Variable) []frontend.Variable {
 	if len(ifSo) != len(ifNot) {
 		panic("incompatible lengths")
 	}
-	res := make([]zk.WrappedVariable, len(ifSo))
+	res := make([]frontend.Variable, len(ifSo))
 	for i := range res {
 		res[i] = api.Select(c, ifSo[i], ifNot[i])
 	}
@@ -885,7 +885,7 @@ func SelectMany(api frontend.API, c zk.WrappedVariable, ifSo, ifNot []zk.Wrapped
 
 // DivEuclidean conventional integer division with a remainder
 // TODO @Tabaie replace all/most special-case divisions with this, barring performance issues
-func DivEuclidean(api frontend.API, a, b zk.WrappedVariable) (quotient, remainder zk.WrappedVariable) {
+func DivEuclidean(api frontend.API, a, b frontend.Variable) (quotient, remainder frontend.Variable) {
 	api.AssertIsDifferent(b, 0)
 	outs, err := api.Compiler().NewHint(divEuclideanHint, 2, a, b)
 	if err != nil {

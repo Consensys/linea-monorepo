@@ -1,12 +1,9 @@
 package execution
 
 import (
-	"math/big"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 )
@@ -23,6 +20,9 @@ func checkPublicInputs(
 		lastRollingHash  = internal.CombineBytesIntoElements(api, gnarkFuncInp.FinalRollingHashUpdate)
 		firstRollingHash = internal.CombineBytesIntoElements(api, gnarkFuncInp.InitialRollingHashUpdate)
 		execDataHash     = execDataHash(api, wvc)
+
+		_ = firstRollingHash // to make the compiler happy
+		_ = lastRollingHash  // to make the compiler happy
 	)
 
 	// As we have this issue, the execDataHash will not match what we have in the
@@ -54,15 +54,17 @@ func checkPublicInputs(
 		gnarkFuncInp.InitialBlockTimestamp,
 	)
 
-	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdate_0),
-		firstRollingHash[0],
-	)
+	panic("fix the exposition of the rolling hash updates. It should be accessible as an array of 16 limbs elements")
 
-	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdate_1),
-		firstRollingHash[1],
-	)
+	// api.AssertIsEqual(
+	// 	wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdate_0),
+	// 	firstRollingHash[0],
+	// )
+
+	// api.AssertIsEqual(
+	// 	wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdate_1),
+	// 	firstRollingHash[1],
+	// )
 
 	api.AssertIsEqual(
 		wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdateNumber),
@@ -84,54 +86,58 @@ func checkPublicInputs(
 		gnarkFuncInp.FinalBlockTimestamp,
 	)
 
-	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.LastRollingHashUpdate_0),
-		lastRollingHash[0],
-	)
+	panic("uncomment the code")
 
-	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.LastRollingHashUpdate_1),
-		lastRollingHash[1],
-	)
+	// api.AssertIsEqual(
+	// 	wvc.GetPublicInput(api, publicInput.LastRollingHashUpdate_0),
+	// 	lastRollingHash[0],
+	// )
+
+	// api.AssertIsEqual(
+	// 	wvc.GetPublicInput(api, publicInput.LastRollingHashUpdate_1),
+	// 	lastRollingHash[1],
+	// )
 
 	api.AssertIsEqual(
 		wvc.GetPublicInput(api, publicInput.LastRollingHashNumberUpdate),
 		gnarkFuncInp.LastRollingHashUpdateNumber,
 	)
 
-	var (
-		twoPow128     = new(big.Int).SetInt64(1)
-		twoPow112     = new(big.Int).SetInt64(1)
-		_             = twoPow128.Lsh(twoPow128, 128)
-		_             = twoPow112.Lsh(twoPow112, 112)
-		bridgeAddress = api.Add(
-			api.Mul(
-				twoPow128,
-				wvc.GetPublicInput(api, publicInput.L2MessageServiceAddrHi),
-			),
-			wvc.GetPublicInput(api, publicInput.L2MessageServiceAddrLo),
-		)
-	)
+	panic("limb split the L2MessageServiceAddr")
 
-	// In principle, we should enforce a strict equality between the purported
-	// chainID and the one extracted from the traces. But in case, the executed
-	// block has only legacy transactions (e.g. transactions without a specified
-	// chainID) then the traces will return a chainID of zero.
-	api.AssertIsEqual(
-		api.Mul(
-			wvc.GetPublicInput(api, publicInput.ChainID),
-			api.Sub(
-				api.Div(
-					wvc.GetPublicInput(api, publicInput.ChainID),
-					twoPow112,
-				),
-				gnarkFuncInp.ChainID,
-			),
-		),
-		0,
-	)
+	// var (
+	// 	twoPow128     = new(big.Int).SetInt64(1)
+	// 	twoPow112     = new(big.Int).SetInt64(1)
+	// 	_             = twoPow128.Lsh(twoPow128, 128)
+	// 	_             = twoPow112.Lsh(twoPow112, 112)
+	// 	bridgeAddress = api.Add(
+	// 		api.Mul(
+	// 			twoPow128,
+	// 			wvc.GetPublicInput(api, publicInput.L2MessageServiceAddrHi),
+	// 		),
+	// 		wvc.GetPublicInput(api, publicInput.L2MessageServiceAddrLo),
+	// 	)
+	// )
 
-	api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)
+	// // In principle, we should enforce a strict equality between the purported
+	// // chainID and the one extracted from the traces. But in case, the executed
+	// // block has only legacy transactions (e.g. transactions without a specified
+	// // chainID) then the traces will return a chainID of zero.
+	// api.AssertIsEqual(
+	// 	api.Mul(
+	// 		wvc.GetPublicInput(api, publicInput.ChainID),
+	// 		api.Sub(
+	// 			api.Div(
+	// 				wvc.GetPublicInput(api, publicInput.ChainID),
+	// 				twoPow112,
+	// 			),
+	// 			gnarkFuncInp.ChainID,
+	// 		),
+	// 	),
+	// 	0,
+	// )
+
+	// api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)
 
 	// To do: @gusiri
 	// This will need an update (as for the whole file as the inputs are broken down in limbs now)
@@ -154,7 +160,7 @@ func checkPublicInputs(
 func execDataHash(
 	api frontend.API,
 	wvc *wizard.VerifierCircuit,
-) zk.WrappedVariable {
+) frontend.Variable {
 
 	hsh, err := mimc.NewMiMC(api)
 	if err != nil {

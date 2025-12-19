@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -31,7 +30,7 @@ type proofClaim struct {
 	// The circuit ID is small integer summarizing which verification key needs
 	// to be used for the verification of the circuit. Not that the value 0 is
 	// reserved for the placeholder circuit.
-	CircuitID zk.WrappedVariable `gnark:",secret"`
+	CircuitID frontend.Variable `gnark:",secret"`
 	// The proof to verify
 	Proof emProof `gnark:",secret"`
 	// The public input to be provided to the proof.

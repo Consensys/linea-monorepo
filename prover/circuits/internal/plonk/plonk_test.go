@@ -22,9 +22,9 @@ func TestCustomConstraint(t *testing.T) {
 	// only testing cases with qO = -1
 
 	circuit := customConstraintCircuit{
-		A:    make([]zk.WrappedVariable, nbCases),
-		B:    make([]zk.WrappedVariable, nbCases),
-		O:    make([]zk.WrappedVariable, nbCases),
+		A:    make([]frontend.Variable, nbCases),
+		B:    make([]frontend.Variable, nbCases),
+		O:    make([]frontend.Variable, nbCases),
 		mode: make([]int, nbCases),
 		aVal: make(fr.Vector, nbCases),
 		bVal: make(fr.Vector, nbCases),
@@ -36,9 +36,9 @@ func TestCustomConstraint(t *testing.T) {
 	}
 
 	assignment := customConstraintCircuit{
-		A: make([]zk.WrappedVariable, nbCases),
-		B: make([]zk.WrappedVariable, nbCases),
-		O: make([]zk.WrappedVariable, nbCases),
+		A: make([]frontend.Variable, nbCases),
+		B: make([]frontend.Variable, nbCases),
+		O: make([]frontend.Variable, nbCases),
 	}
 
 	randomizeInts(circuit.qC, circuit.qL, circuit.qR, circuit.qM)
@@ -98,13 +98,13 @@ func randomizeElems(vectors ...fr.Vector) {
 }
 
 type customConstraintCircuit struct {
-	A, B                 []zk.WrappedVariable
-	O                    []zk.WrappedVariable
+	A, B                 []frontend.Variable
+	O                    []frontend.Variable
 	aVal, bVal, oVal     fr.Vector
 	mode, qC, qL, qR, qM []int
 }
 
-func ifConstThenElse(api frontend.API, isConst int, val fr.Element, _var zk.WrappedVariable) zk.WrappedVariable {
+func ifConstThenElse(api frontend.API, isConst int, val fr.Element, _var frontend.Variable) frontend.Variable {
 	api.AssertIsEqual(val, _var)
 
 	if isConst != 0 {

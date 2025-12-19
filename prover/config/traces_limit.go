@@ -58,7 +58,7 @@ type TracesLimits struct {
 	PrecompileSha2Blocks                 int `mapstructure:"PRECOMPILE_SHA2_BLOCKS"`
 	PrecompileRipemdBlocks               int `mapstructure:"PRECOMPILE_RIPEMD_BLOCKS"`
 	PrecompileModexpEffectiveCalls       int `mapstructure:"PRECOMPILE_MODEXP_EFFECTIVE_CALLS"`
-	PrecompileModexpEffectiveCalls4096   int `mapstructure:"PRECOMPILE_MODEXP_EFFECTIVE_CALLS_4096"`
+	PrecompileModexpEffectiveCalls8192   int `mapstructure:"PRECOMPILE_MODEXP_EFFECTIVE_CALLS_4096"`
 	PrecompileEcaddEffectiveCalls        int `mapstructure:"PRECOMPILE_ECADD_EFFECTIVE_CALLS"`
 	PrecompileEcmulEffectiveCalls        int `mapstructure:"PRECOMPILE_ECMUL_EFFECTIVE_CALLS"`
 	PrecompileEcpairingEffectiveCalls    int `mapstructure:"PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS"`
@@ -129,7 +129,7 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.PrecompileRipemdBlocks *= by
 	tl.PrecompileEcrecoverEffectiveCalls *= by
 	tl.PrecompileModexpEffectiveCalls *= by
-	tl.PrecompileModexpEffectiveCalls4096 *= by
+	tl.PrecompileModexpEffectiveCalls8192 *= by
 	tl.PrecompileEcaddEffectiveCalls *= by
 	tl.PrecompileEcmulEffectiveCalls *= by
 	tl.PrecompileEcpairingEffectiveCalls *= by
@@ -188,7 +188,7 @@ func GetTestTracesLimits() *TracesLimits {
 		PrecompileSha2Blocks:                 1 << 9,
 		PrecompileRipemdBlocks:               0,
 		PrecompileModexpEffectiveCalls:       1 << 10,
-		PrecompileModexpEffectiveCalls4096:   1 << 4,
+		PrecompileModexpEffectiveCalls8192:   1 << 4,
 		PrecompileEcaddEffectiveCalls:        1 << 6,
 		PrecompileEcmulEffectiveCalls:        1 << 6,
 		PrecompileEcpairingEffectiveCalls:    1 << 4,

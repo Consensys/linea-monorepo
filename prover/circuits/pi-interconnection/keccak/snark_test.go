@@ -23,10 +23,10 @@ import (
 func TestCreateCols(t *testing.T) {
 	for i, c := range getTestCases(t) {
 
-		in := make([][][32]zk.WrappedVariable, len(c.in))
-		hash := make([][2]zk.WrappedVariable, len(c.hash))
+		in := make([][][32]frontend.Variable, len(c.in))
+		hash := make([][2]frontend.Variable, len(c.hash))
 		for j := range c.in {
-			in[j] = make([][32]zk.WrappedVariable, len(c.in[j])/32)
+			in[j] = make([][32]frontend.Variable, len(c.in[j])/32)
 			for k := range in[j] {
 				for l := 0; l < 32; l++ {
 					in[j][k][l] = c.in[j][32*k+l]
@@ -38,22 +38,22 @@ func TestCreateCols(t *testing.T) {
 
 		circuit := testCreateColsCircuit{
 			StaticInLength:    true,
-			In:                make([][][32]zk.WrappedVariable, len(c.in)),
-			InLength:          make([]zk.WrappedVariable, len(c.in)),
-			Lanes:             make([]zk.WrappedVariable, len(c.lanes)),
-			IsFirstLaneOfHash: make([]zk.WrappedVariable, len(c.isFirstLaneOfHash)),
-			IsLaneActive:      make([]zk.WrappedVariable, len(c.isLaneActive)),
-			Hash:              make([][2]zk.WrappedVariable, len(c.hash)),
+			In:                make([][][32]frontend.Variable, len(c.in)),
+			InLength:          make([]frontend.Variable, len(c.in)),
+			Lanes:             make([]frontend.Variable, len(c.lanes)),
+			IsFirstLaneOfHash: make([]frontend.Variable, len(c.isFirstLaneOfHash)),
+			IsLaneActive:      make([]frontend.Variable, len(c.isLaneActive)),
+			Hash:              make([][2]frontend.Variable, len(c.hash)),
 		}
 
 		for j := range circuit.In {
-			circuit.In[j] = make([][32]zk.WrappedVariable, len(in[j]))
+			circuit.In[j] = make([][32]frontend.Variable, len(in[j]))
 		}
 
 		assignment := testCreateColsCircuit{
 			In:                in,
-			InLength:          make([]zk.WrappedVariable, len(c.in)),
-			Lanes:             make([]zk.WrappedVariable, len(c.lanes)),
+			InLength:          make([]frontend.Variable, len(c.in)),
+			Lanes:             make([]frontend.Variable, len(c.lanes)),
 			IsFirstLaneOfHash: utils.ToVariableSlice(c.isFirstLaneOfHash),
 			IsLaneActive:      utils.ToVariableSlice(c.isLaneActive),
 			Hash:              hash,
@@ -77,19 +77,19 @@ func TestCreateCols(t *testing.T) {
 			assert.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
 		})
 
-		var zeroLane [32]zk.WrappedVariable
+		var zeroLane [32]frontend.Variable
 		for i := range zeroLane {
 			zeroLane[i] = 0
 		}
 
 		loosen := func(slack int) (_circuit, _assignment frontend.Circuit) {
 			c, a := circuit, assignment
-			a.In = make([][][32]zk.WrappedVariable, len(c.In))
-			c.In = make([][][32]zk.WrappedVariable, len(c.In))
+			a.In = make([][][32]frontend.Variable, len(c.In))
+			c.In = make([][][32]frontend.Variable, len(c.In))
 
 			for i := range c.In {
-				c.In[i] = make([][32]zk.WrappedVariable, len(circuit.In[i])+slack)
-				a.In[i] = make([][32]zk.WrappedVariable, len(circuit.In[i])+slack)
+				c.In[i] = make([][32]frontend.Variable, len(circuit.In[i])+slack)
+				a.In[i] = make([][32]frontend.Variable, len(circuit.In[i])+slack)
 
 				for j := range c.In[i] {
 					a.In[i][j] = zeroLane
@@ -117,12 +117,12 @@ func TestCreateCols(t *testing.T) {
 }
 
 type testCreateColsCircuit struct {
-	In       [][][32]zk.WrappedVariable
-	InLength []zk.WrappedVariable
+	In       [][][32]frontend.Variable
+	InLength []frontend.Variable
 
-	Lanes                           []zk.WrappedVariable
-	IsFirstLaneOfHash, IsLaneActive []zk.WrappedVariable
-	Hash                            [][2]zk.WrappedVariable
+	Lanes                           []frontend.Variable
+	IsFirstLaneOfHash, IsLaneActive []frontend.Variable
+	Hash                            [][2]frontend.Variable
 	StaticInLength                  bool
 }
 
@@ -134,7 +134,7 @@ func (c *testCreateColsCircuit) Define(api frontend.API) error {
 
 	radix := big.NewInt(256)
 	for i := range c.In {
-		var computedHash [32]zk.WrappedVariable
+		var computedHash [32]frontend.Variable
 		if c.StaticInLength {
 			computedHash = hsh.Sum(nil, c.In[i]...)
 		} else {
@@ -163,10 +163,10 @@ func TestE2E(t *testing.T) {
 
 	for i, c := range getTestCases(t) {
 
-		in := make([][][32]zk.WrappedVariable, len(c.in))
-		hash := make([][32]zk.WrappedVariable, utils.NextPowerOfTwo(len(c.hash)))
+		in := make([][][32]frontend.Variable, len(c.in))
+		hash := make([][32]frontend.Variable, utils.NextPowerOfTwo(len(c.hash)))
 		for j := range c.in {
-			in[j] = make([][32]zk.WrappedVariable, len(c.in[j])/32)
+			in[j] = make([][32]frontend.Variable, len(c.in[j])/32)
 			for k := range in[j] {
 				for l := 0; l < 32; l++ {
 					in[j][k][l] = c.in[j][32*k+l]
@@ -181,19 +181,19 @@ func TestE2E(t *testing.T) {
 		require.NoError(t, err)
 
 		circuit := testE2ECircuit{
-			In:             make([][][32]zk.WrappedVariable, len(c.in)),
-			InLength:       make([]zk.WrappedVariable, len(c.in)),
-			Hash:           make([][32]zk.WrappedVariable, len(c.hash)),
+			In:             make([][][32]frontend.Variable, len(c.in)),
+			InLength:       make([]frontend.Variable, len(c.in)),
+			Hash:           make([][32]frontend.Variable, len(c.hash)),
 			WizardVerifier: wizardSubCircuit,
 		}
 
 		for j := range circuit.In {
-			circuit.In[j] = make([][32]zk.WrappedVariable, len(in[j]))
+			circuit.In[j] = make([][32]frontend.Variable, len(in[j]))
 		}
 
 		assignment := testE2ECircuit{
 			In:             in,
-			InLength:       make([]zk.WrappedVariable, len(c.in)),
+			InLength:       make([]frontend.Variable, len(c.in)),
 			Hash:           hash,
 			WizardVerifier: wizardComponent.Assign(c.in),
 		}
@@ -210,10 +210,10 @@ func TestE2E(t *testing.T) {
 }
 
 type testE2ECircuit struct {
-	In       [][][32]zk.WrappedVariable
-	InLength []zk.WrappedVariable
+	In       [][][32]frontend.Variable
+	InLength []frontend.Variable
 
-	Hash [][32]zk.WrappedVariable
+	Hash [][32]frontend.Variable
 
 	WizardVerifier *wizard.VerifierCircuit
 }
@@ -252,7 +252,7 @@ func TestCreateColsBoundaryChecks(t *testing.T) {
 
 		circuit := testCreateColsBoundaryChecks{
 			maxNbLanes: c.maxNbLanes,
-			InLength:   make([]zk.WrappedVariable, len(c.inLength)),
+			InLength:   make([]frontend.Variable, len(c.inLength)),
 		}
 
 		nbNeededLanes := 0
@@ -281,7 +281,7 @@ func TestCreateColsBoundaryChecks(t *testing.T) {
 
 type testCreateColsBoundaryChecks struct {
 	maxNbLanes  int
-	InLength    []zk.WrappedVariable
+	InLength    []frontend.Variable
 	maxInLength int
 }
 
@@ -293,7 +293,7 @@ func (c *testCreateColsBoundaryChecks) Define(api frontend.API) error {
 
 	for _, l := range c.InLength {
 		api.AssertIsLessOrEqual(l, c.maxInLength)
-		inBlocks := make([][32]zk.WrappedVariable, c.maxInLength)
+		inBlocks := make([][32]frontend.Variable, c.maxInLength)
 		for j := range inBlocks {
 			for k := range inBlocks[j] {
 				inBlocks[j][k] = 0
@@ -307,8 +307,8 @@ func (c *testCreateColsBoundaryChecks) Define(api frontend.API) error {
 }
 
 func TestPadDirtyLanes(t *testing.T) {
-	test_utils.SnarkFunctionTest(func(api frontend.API) []zk.WrappedVariable {
-		padded, _ := pad(api, []zk.WrappedVariable{1, 0x123456}, 1)
+	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+		padded, _ := pad(api, []frontend.Variable{1, 0x123456}, 1)
 		return padded
 	}, 1, 0x100000000000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x80)(t)
 }

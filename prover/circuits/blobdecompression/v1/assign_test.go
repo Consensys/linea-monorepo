@@ -60,8 +60,8 @@ func prepare(t require.TestingT, blobBytes []byte) (c *v1.Circuit, a frontend.Ci
 	assert.Equal(t, resp.SnarkHash[2:], hex.EncodeToString(snarkHash))
 
 	return &v1.Circuit{
-		Dict:                  make([]zk.WrappedVariable, len(r.Dict)),
-		BlobBytes:             make([]zk.WrappedVariable, blobcompressorv1.MaxUsableBytes),
+		Dict:                  make([]frontend.Variable, len(r.Dict)),
+		BlobBytes:             make([]frontend.Variable, blobcompressorv1.MaxUsableBytes),
 		MaxBlobPayloadNbBytes: len(r.RawPayload) * 3 / 2, // small max blobcompressorv1 size so it compiles in manageable time
 	}, a
 }

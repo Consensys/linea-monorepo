@@ -10,8 +10,8 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"golang.org/x/crypto/sha3"
@@ -148,7 +148,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 				IsAllowedCircuitID:      pi.IsAllowedCircuitID,
 			},
 		},
-		L2MsgMerkleTreeRoots:   make([][32]zk.WrappedVariable, len(pi.L2MsgMerkleTreeRoots)),
+		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, len(pi.L2MsgMerkleTreeRoots)),
 		FinalBlockNumber:       pi.FinalBlockNumber,
 		FinalBlockTimestamp:    pi.FinalBlockTimestamp,
 		L2MsgMerkleTreeDepth:   pi.L2MsgMerkleTreeDepth,
@@ -204,7 +204,6 @@ type AggregationFPISnark struct {
 	NbL2Messages           frontend.Variable // TODO not used in hash. delete if not necessary
 	L2MsgMerkleTreeRoots   [][32]frontend.Variable
 	NbL2MsgMerkleTreeRoots frontend.Variable
-	// FinalStateRootHash frontend.Variable redundant: incorporated into final shnarf
 	FinalBlockNumber       frontend.Variable
 	FinalBlockTimestamp    frontend.Variable
 	FinalShnarf            [32]frontend.Variable
@@ -277,7 +276,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 	)
 
 	// turn the hash into a bn254 element
-	var res [32]zk.WrappedVariable
+	var res [32]frontend.Variable
 	copy(res[:], utils.ReduceBytes[emulated.BN254Fr](api, sum[:]))
 	return res
 }

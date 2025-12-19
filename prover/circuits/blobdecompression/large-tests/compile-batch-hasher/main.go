@@ -8,7 +8,6 @@ import (
 	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrmimc"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 func main() {
@@ -21,13 +20,13 @@ func main() {
 }
 
 type circuit struct {
-	NbBatches    zk.WrappedVariable
-	BlobPayload  [blob.MaxUncompressedBytes]zk.WrappedVariable
-	BatchEnds    [v1.MaxNbBatches]zk.WrappedVariable
-	ExpectedSums [v1.MaxNbBatches]zk.WrappedVariable
+	NbBatches    frontend.Variable
+	BlobPayload  [blob.MaxUncompressedBytes]frontend.Variable
+	BatchEnds    [v1.MaxNbBatches]frontend.Variable
+	ExpectedSums [v1.MaxNbBatches]frontend.Variable
 }
 
 func (c *circuit) Define(api frontend.API) error {
 	hsh := gkrmimc.NewHasherFactory(api).NewHasher()
-	return v1.CheckBatchesSums(api, hsh, c.NbBatches, c.BlobPayload[:], c.BatchEnds[:], c.ExpectedSums[:])
+	return v1.CheckBatchesSums(api, &hsh, c.NbBatches, c.BlobPayload[:], c.BatchEnds[:], c.ExpectedSums[:])
 }

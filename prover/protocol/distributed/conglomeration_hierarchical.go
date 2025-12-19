@@ -640,6 +640,8 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 // @arijit: commenting out for now
 func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
+	panic("rename and uncomment the function RunGnark below; once we are ready to integrate the limitless prover")
+
 	// var (
 	// 	collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable]{}
 	// 	topPIs       = c.collectAllPublicInputsGnark(api, run)

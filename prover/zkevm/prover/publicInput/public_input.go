@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -38,8 +39,7 @@ const (
 	LastRollingHashNumberUpdate  = "LastRollingHashNumberUpdate"
 	ChainID                      = "ChainID"
 	NBytesChainID                = "NBytesChainID"
-	L2MessageServiceAddrHi       = "L2MessageServiceAddrHi"
-	L2MessageServiceAddrLo       = "L2MessageServiceAddrLo"
+	L2MessageServiceAddr         = "L2MessageServiceAddr"
 	CoinBase                     = "CoinBase"
 	BaseFee                      = "BaseFee"
 )
@@ -55,7 +55,7 @@ type PublicInput struct {
 	LogHasher          logs.LogHasher
 	ExecMiMCHasher     edc.MIMCHasher
 	DataNbBytes        ifaces.Column
-	ChainID            [pcommon.NbLimbU128]ifaces.Column
+	ChainID            [pcommon.NbLimbU256]ifaces.Column
 	ChainIDNBytes      ifaces.Column
 	Extractor          FunctionalInputExtractor
 }
@@ -99,16 +99,14 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				RelBlock:   a.ColumnOf(comp, "blockdata", "REL_BLOCK"),
 				Inst:       a.ColumnOf(comp, "blockdata", "INST"),
 				Ct:         a.ColumnOf(comp, "blockdata", "CT"),
-				DataHi:     a.LimbColumnsOfArr8(comp, "blockdata", "DATA_HI"),
-				DataLo:     a.LimbColumnsOfArr8(comp, "blockdata", "DATA_LO"),
-				FirstBlock: a.LimbColumnsOfArr3(comp, "blockdata", "FIRST_BLOCK_NUMBER"),
+				Data:       a.GetLimbsOfU256Be(comp, "blockdata", "DATA_HI"),
+				FirstBlock: a.GetLimbsOfU48Be(comp, "blockdata", "FIRST_BLOCK_NUMBER").LimbsArr3(),
 			},
 			TxnData: &arith.TxnData{
 				AbsTxNum:        a.ColumnOf(comp, "txndata", "USER_TXN_NUMBER"),
 				AbsTxNumMax:     a.ColumnOf(comp, "txndata", "prover___USER_TXN_NUMBER_MAX"),
 				Ct:              a.ColumnOf(comp, "txndata", "CT"),
-				FromHi:          a.LimbColumnsOfArr2(comp, "txndata", "FROM_ADDRESS_HI"),
-				FromLo:          a.LimbColumnsOfArr8(comp, "txndata", "FROM_ADDRESS_LO"),
+				From:            a.GetLimbsOfU160Be(comp, "txndata", "FROM_ADDRESS_HI").LimbsArr10(),
 				IsLastTxOfBlock: a.ColumnOf(comp, "txndata", "prover___IS_LAST_USER_TXN_OF_BLOCK"),
 				RelBlock:        a.ColumnOf(comp, "txndata", "BLK_NUMBER"),
 				RelTxNum:        a.ColumnOf(comp, "txndata", "prover___RELATIVE_USER_TXN_NUMBER"),
@@ -122,10 +120,9 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				AbsTxNum:       a.ColumnOf(comp, "rlptxn", "USER_TXN_NUMBER"),
 				AbsTxNumMax:    a.ColumnOf(comp, "rlptxn", "prover___USER_TXN_NUMBER_MAX"),
 				ToHashByProver: a.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
-				Limbs:          a.LimbColumnsOfArr8(comp, "rlptxn", "cmpLIMB"),
+				Limbs:          a.GetLimbsOfU128Be(comp, "rlptxn", "cmpLIMB").LimbsArr8(),
 				NBytes:         a.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
 				TxnPerspective: a.ColumnOf(comp, "rlptxn", "TXN"),
-				ChainID:        a.ColumnOf(comp, "rlptxn", "txnCHAIN_ID"),
 			},
 			LogCols: logs.LogColumns{
 				IsLog0:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_0"),
@@ -136,50 +133,15 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				AbsLogNum:    a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM"),
 				AbsLogNumMax: a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM_MAX"),
 				Ct:           a.ColumnOf(comp, "loginfo", "CT"),
-				DataHi:       a.LimbColumnsOfArr8(comp, "loginfo", "DATA_HI"),
-				DataLo:       a.LimbColumnsOfArr8(comp, "loginfo", "DATA_LO"),
+				Data:         a.GetLimbsOfU256Be(comp, "loginfo", "DATA_LO").LimbsArr16(),
 				TxEmitsLogs:  a.ColumnOf(comp, "loginfo", "TXN_EMITS_LOGS"),
 			},
 			StateSummary: ss,
-			// The merge yielded duplicated fields, but the above seems closer
-			// what we actually want as it does not assume changes in the
-			// arithmetization. The above looks a lot more like main, so likely
-			// a better starting point.
-			//
-			// TxnData: &arith.TxnData{
-			// 	AbsTxNum:        a.ColumnOf(comp, "txndata", "ABS_TX_NUM"),
-			// 	AbsTxNumMax:     a.ColumnOf(comp, "txndata", "ABS_TX_NUM_MAX"),
-			// 	Ct:              a.ColumnOf(comp, "txndata", "CT"),
-			// 	IsLastTxOfBlock: a.ColumnOf(comp, "txndata", "IS_LAST_TX_OF_BLOCK"),
-			// 	RelBlock:        a.ColumnOf(comp, "txndata", "REL_BLOCK"),
-			// 	RelTxNum:        a.ColumnOf(comp, "txndata", "REL_TX_NUM"),
-			// 	RelTxNumMax:     a.ColumnOf(comp, "txndata", "REL_TX_NUM_MAX"),
-			// },
-			// RlpTxn: &arith.RlpTxn{
-			// 	AbsTxNum:       a.ColumnOf(comp, "rlptxn", "ABS_TX_NUM"),
-			// 	AbsTxNumMax:    a.ColumnOf(comp, "rlptxn", "ABS_TX_NUM_INFINY"),
-			// 	ToHashByProver: a.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
-			// 	NBytes:         a.ColumnOf(comp, "rlptxn", "nBYTES"),
-			// 	Done:           a.ColumnOf(comp, "rlptxn", "DONE"),
-			// 	IsPhaseChainID: a.ColumnOf(comp, "rlptxn", "IS_PHASE_CHAIN_ID"),
-			// },
-			// LogCols: logs.LogColumns{
-			// 	IsLog0:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_0"),
-			// 	IsLog1:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_1"),
-			// 	IsLog2:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_2"),
-			// 	IsLog3:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_3"),
-			// 	IsLog4:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_4"),
-			// 	AbsLogNum:    a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM"),
-			// 	AbsLogNumMax: a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM_MAX"),
-			// 	Ct:           a.ColumnOf(comp, "loginfo", "CT"),
-			// 	TxEmitsLogs:  a.ColumnOf(comp, "loginfo", "TXN_EMITS_LOGS"),
-			// },
-			// StateSummary: ss,
 		},
 		*settings,
 	)
 
-	return newPublicInput(comp, inputModules, *settings)
+	return inputModules
 }
 
 // newPublicInput receives as input a series of modules and returns a *PublicInput and
@@ -230,6 +192,10 @@ func newPublicInput(
 	rlpFetcher := fetch.NewRlpTxnFetcher(comp, "PUBLIC_INPUT_RLP_TXN_FETCHER", inp.RlpTxn)
 	fetch.DefineRlpTxnFetcher(comp, &rlpFetcher, "PUBLIC_INPUT_RLP_TXN_FETCHER", inp.RlpTxn)
 
+	// ChainID fetcher
+	chainIDFetcher := fetch.NewChainIDFetcher(comp, "PUBLIC_INPUT_CHAIN_ID_FETCHER", inp.BlockData)
+	fetch.DefineChainIDFetcher(comp, &chainIDFetcher, "PUBLIC_INPUT_CHAIN_ID_FETCHER", inp.BlockData)
+
 	// ExecutionDataCollector
 	limbColSize := edc.GetSummarySize(inp.TxnData, inp.RlpTxn)
 	limbColSize = 4 * limbColSize // we need to artificially blow up the column size by 2, or padding will fail
@@ -244,7 +210,7 @@ func newPublicInput(
 			Index:   execDataCollector.Ct,
 			ToHash:  execDataCollector.IsActive,
 			NBytes:  execDataCollector.NoBytes,
-			Limbs:   execDataCollector.Limbs[:],
+			Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("executiondata.limbs", execDataCollector.Limbs[:]).AssertUint128(),
 		}},
 		PaddingStrategy: generic.MiMCUsecase,
 	}
@@ -275,8 +241,8 @@ func newPublicInput(
 		LogHasher:          logHasherL2l1,
 		ExecMiMCHasher:     *mimcHasher,
 		DataNbBytes:        execDataCollector.FinalTotalBytesCounter,
-		ChainID:            rlpFetcher.ChainID,
-		ChainIDNBytes:      rlpFetcher.NBytesChainID,
+		ChainID:            chainIDFetcher.ChainID,
+		ChainIDNBytes:      chainIDFetcher.NBytesChainID,
 		Inputs:             *inp,
 		Aux: AuxiliaryModules{
 			FetchedL2L1:              fetchedL2L1,
@@ -337,127 +303,62 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 		return comp.InsertLocalOpening(0, ifaces.QueryIDf("%s_%s", "PUBLIC_INPUT_LOCAL_OPENING", col.GetColID()), col)
 	}
 
+	createNewLocalOpenings := func(qs []query.LocalOpening, cols []ifaces.Column) {
+		if len(qs) != len(cols) {
+			panic("len(qs) != len(cols)")
+		}
+		for i, col := range cols {
+			qs[i] = createNewLocalOpening(col)
+		}
+	}
+
+	addPublicInputs := func(baseName string, qs ...query.LocalOpening) {
+		for i, q := range qs {
+			acc := accessors.NewLocalOpeningAccessor(q, 0)
+			comp.PublicInputs = append(comp.PublicInputs, wizard.PublicInput{
+				Name: fmt.Sprintf("%s_%d", baseName, i),
+				Acc:  acc,
+			})
+		}
+	}
+
 	pi.Extractor = FunctionalInputExtractor{
-		DataNbBytes:                  createNewLocalOpening(pi.DataNbBytes),
-		DataChecksum:                 createNewLocalOpening(pi.ExecMiMCHasher.HashFinal),
-		L2MessageHash:                createNewLocalOpening(pi.LogHasher.HashFinal),
-		InitialStateRootHash:         createNewLocalOpening(pi.RootHashFetcher.First),
-		FinalStateRootHash:           createNewLocalOpening(pi.RootHashFetcher.Last),
-		InitialBlockNumber:           createNewLocalOpening(pi.BlockDataFetcher.FirstBlockID),
-		FinalBlockNumber:             createNewLocalOpening(pi.BlockDataFetcher.LastBlockID),
-		InitialBlockTimestamp:        createNewLocalOpening(pi.BlockDataFetcher.FirstTimestamp),
-		FinalBlockTimestamp:          createNewLocalOpening(pi.BlockDataFetcher.LastTimestamp),
-		FirstRollingHashUpdate:       initialRollingHash,
-		LastRollingHashUpdate:        finalRollingHash,
-		FirstRollingHashUpdateNumber: createNewLocalOpening(pi.RollingHashFetcher.FirstMessageNo),
-		LastRollingHashUpdateNumber:  createNewLocalOpening(pi.RollingHashFetcher.LastMessageNo),
-		ChainID:                      createNewLocalOpening(pi.ChainID),
-		NBytesChainID:                createNewLocalOpening(pi.ChainIDNBytes),
-		L2MessageServiceAddrHi:       createNewLocalOpening(pi.Aux.LogSelectors.L2BridgeAddressColHI),
-		L2MessageServiceAddrLo:       createNewLocalOpening(pi.Aux.LogSelectors.L2BridgeAddressColLo),
-		CoinBase:                     createNewLocalOpening(pi.BlockDataFetcher.CoinBase),
-		BaseFee:                      createNewLocalOpening(pi.BlockDataFetcher.BaseFee),
+		DataNbBytes:   createNewLocalOpening(pi.DataNbBytes),
+		NBytesChainID: createNewLocalOpening(pi.ChainIDNBytes),
 	}
 
-	comp.PublicInputs = append(comp.PublicInputs,
-		wizard.PublicInput{Name: DataNbBytes, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.DataNbBytes, 0)},
-		wizard.PublicInput{Name: NBytesChainID, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.NBytesChainID, 0)},
-		wizard.PublicInput{Name: L2MessageServiceAddrHi, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.L2MessageServiceAddrHi, 0)},
-		wizard.PublicInput{Name: L2MessageServiceAddrLo, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.L2MessageServiceAddrLo, 0)},
-		wizard.PublicInput{Name: CoinBase, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.CoinBase, 0)},
-		wizard.PublicInput{Name: BaseFee, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.BaseFee, 0)},
-	)
+	createNewLocalOpenings(pi.Extractor.DataChecksum[:], pi.ExecMiMCHasher.HashFinal[:])
+	createNewLocalOpenings(pi.Extractor.L2MessageHash[:], pi.LogHasher.HashFinal[:])
+	createNewLocalOpenings(pi.Extractor.InitialStateRootHash[:], pi.RootHashFetcher.First[:])
+	createNewLocalOpenings(pi.Extractor.FinalStateRootHash[:], pi.RootHashFetcher.Last[:])
+	createNewLocalOpenings(pi.Extractor.InitialBlockNumber[:], pi.BlockDataFetcher.FirstBlockID[:])
+	createNewLocalOpenings(pi.Extractor.FinalBlockNumber[:], pi.BlockDataFetcher.LastBlockID[:])
+	createNewLocalOpenings(pi.Extractor.InitialBlockTimestamp[:], pi.BlockDataFetcher.FirstTimestamp[:])
+	createNewLocalOpenings(pi.Extractor.FinalBlockTimestamp[:], pi.BlockDataFetcher.LastTimestamp[:])
+	createNewLocalOpenings(pi.Extractor.FirstRollingHashUpdate[:], pi.RollingHashFetcher.First[:])
+	createNewLocalOpenings(pi.Extractor.LastRollingHashUpdate[:], pi.RollingHashFetcher.Last[:])
+	createNewLocalOpenings(pi.Extractor.FirstRollingHashUpdateNumber[:], pi.RollingHashFetcher.FirstMessageNo[:])
+	createNewLocalOpenings(pi.Extractor.LastRollingHashUpdateNumber[:], pi.RollingHashFetcher.LastMessageNo[:])
+	createNewLocalOpenings(pi.Extractor.ChainID[:], pi.ChainID[:])
+	createNewLocalOpenings(pi.Extractor.L2MessageServiceAddr[:], pi.Aux.LogSelectors.L2BridgeAddressCol[:])
+	createNewLocalOpenings(pi.Extractor.CoinBase[:], pi.BlockDataFetcher.CoinBase[:])
+	createNewLocalOpenings(pi.Extractor.BaseFee[:], pi.BlockDataFetcher.BaseFee[:])
 
-	for i := range pcommon.NbLimbU256 {
-		pi.Extractor.InitialStateRootHash[i] = createNewLocalOpening(pi.RootHashFetcher.First[i])
-		pi.Extractor.FinalStateRootHash[i] = createNewLocalOpening(pi.RootHashFetcher.Last[i])
-		pi.Extractor.FirstRollingHashUpdate[i] = createNewLocalOpening(pi.RollingHashFetcher.First[i])
-		pi.Extractor.LastRollingHashUpdate[i] = createNewLocalOpening(pi.RollingHashFetcher.Last[i])
-		pi.Extractor.L2MessageHash[i] = createNewLocalOpening(pi.LogHasher.HashFinal[i])
-		pi.Extractor.DataChecksum[i] = createNewLocalOpening(pi.ExecMiMCHasher.HashFinal[i])
-
-		comp.PublicInputs = append(comp.PublicInputs,
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", InitialStateRootHash, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.InitialStateRootHash[i], 0),
-			},
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", FinalStateRootHash, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.FinalStateRootHash[i], 0),
-			},
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", FirstRollingHashUpdate, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.FirstRollingHashUpdate[i], 0),
-			},
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", LastRollingHashUpdate, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.LastRollingHashUpdate[i], 0),
-			},
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", L2MessageHash, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.L2MessageHash[i], 0),
-			},
-			wizard.PublicInput{
-				Name: DataChecksum,
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.DataChecksum[i], 0),
-			},
-		)
-	}
-
-	for i := range pcommon.NbLimbEthAddress {
-		pi.Extractor.L2MessageServiceAddr[i] = createNewLocalOpening(pi.Aux.LogSelectors.L2BridgeAddressCol[i])
-
-		comp.PublicInputs = append(comp.PublicInputs,
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", L2MessageServiceAddr, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.L2MessageServiceAddr[i], 0),
-			},
-		)
-	}
-
-	for i := range pcommon.NbLimbU128 {
-		pi.Extractor.InitialBlockTimestamp[i] = createNewLocalOpening(pi.TimestampFetcher.First[i])
-		pi.Extractor.FinalBlockTimestamp[i] = createNewLocalOpening(pi.TimestampFetcher.Last[i])
-		pi.Extractor.FirstRollingHashUpdateNumber[i] = createNewLocalOpening(pi.RollingHashFetcher.FirstMessageNo[i])
-		pi.Extractor.LastRollingHashUpdateNumber[i] = createNewLocalOpening(pi.RollingHashFetcher.LastMessageNo[i])
-		pi.Extractor.ChainID[i] = createNewLocalOpening(pi.ChainID[i])
-
-		comp.PublicInputs = append(comp.PublicInputs,
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", InitialBlockTimestamp, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.InitialBlockTimestamp[i], 0),
-			},
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", FinalBlockTimestamp, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.FinalBlockTimestamp[i], 0),
-			},
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", FirstRollingHashUpdateNumber, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.FirstRollingHashUpdateNumber[i], 0),
-			},
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", LastRollingHashNumberUpdate, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.LastRollingHashUpdateNumber[i], 0),
-			},
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", ChainID, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.ChainID[i], 0)},
-		)
-	}
-
-	for i := range pcommon.NbLimbU48 {
-		pi.Extractor.InitialBlockNumber[i] = createNewLocalOpening(pi.TimestampFetcher.FirstBlockID[i])
-		pi.Extractor.FinalBlockNumber[i] = createNewLocalOpening(pi.TimestampFetcher.LastBlockID[i])
-
-		comp.PublicInputs = append(comp.PublicInputs,
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", InitialBlockNumber, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.InitialBlockNumber[i], 0),
-			},
-			wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", FinalBlockNumber, i),
-				Acc:  accessors.NewLocalOpeningAccessor(pi.Extractor.FinalBlockNumber[i], 0),
-			},
-		)
-	}
+	addPublicInputs(DataNbBytes, pi.Extractor.DataNbBytes)
+	addPublicInputs(NBytesChainID, pi.Extractor.NBytesChainID)
+	addPublicInputs(L2MessageHash, pi.Extractor.L2MessageHash[:]...)
+	addPublicInputs(InitialStateRootHash, pi.Extractor.InitialStateRootHash[:]...)
+	addPublicInputs(FinalStateRootHash, pi.Extractor.FinalStateRootHash[:]...)
+	addPublicInputs(InitialBlockNumber, pi.Extractor.InitialBlockNumber[:]...)
+	addPublicInputs(FinalBlockNumber, pi.Extractor.FinalBlockNumber[:]...)
+	addPublicInputs(InitialBlockTimestamp, pi.Extractor.InitialBlockTimestamp[:]...)
+	addPublicInputs(FinalBlockTimestamp, pi.Extractor.FinalBlockTimestamp[:]...)
+	addPublicInputs(FirstRollingHashUpdate, pi.Extractor.FirstRollingHashUpdate[:]...)
+	addPublicInputs(LastRollingHashUpdate, pi.Extractor.LastRollingHashUpdate[:]...)
+	addPublicInputs(FirstRollingHashUpdateNumber, pi.Extractor.FirstRollingHashUpdateNumber[:]...)
+	addPublicInputs(LastRollingHashNumberUpdate, pi.Extractor.LastRollingHashUpdateNumber[:]...)
+	addPublicInputs(ChainID, pi.Extractor.ChainID[:]...)
+	addPublicInputs(L2MessageServiceAddr, pi.Extractor.L2MessageHash[:]...)
+	addPublicInputs(CoinBase, pi.Extractor.CoinBase[:]...)
+	addPublicInputs(BaseFee, pi.Extractor.BaseFee[:]...)
 }
