@@ -64,10 +64,21 @@ jobs:
           mapfile -t FILES < <(echo "$E2E_PATHS_FILES" | jq -r '.[]')
           
           for file in "${FILES[@]}"; do
-            # Skip test and doc files
-            if [[ "$file" =~ \.(test|spec)\.ts$ ]] || \
-               [[ "$file" =~ _test\.go$ ]] || \
-               [[ "$file" =~ \.(md|mdx)$ ]]; then
+            # Skip unit test files EXCEPT those in e2e/src/ (e2e tests themselves)
+            if [[ "$file" =~ \.test\.ts$ ]] && [[ ! "$file" =~ ^e2e/src/ ]]; then
+              continue
+            fi
+            
+            if [[ "$file" =~ \.spec\.ts$ ]] && [[ ! "$file" =~ ^e2e/src/ ]]; then
+              continue
+            fi
+            
+            if [[ "$file" =~ _test\.go$ ]]; then
+              continue
+            fi
+            
+            # Skip doc files
+            if [[ "$file" =~ \.(md|mdx)$ ]]; then
               continue
             fi
             
