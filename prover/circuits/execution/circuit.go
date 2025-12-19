@@ -5,8 +5,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrmimc"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -30,7 +28,7 @@ type CircuitExecution struct {
 	// process. What is the public input is their hash.
 	FuncInputs FunctionalPublicInputSnark `gnark:",secret"`
 	// The public input of the proof
-	PublicInput zk.WrappedVariable `gnark:",public"`
+	PublicInput frontend.Variable `gnark:",public"`
 }
 
 // Allocates the outer-proof circuit
@@ -42,7 +40,7 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]zk.WrappedVariable, zkevm.Limits().BlockL2L1Logs),
+					Values: make([][32]frontend.Variable, zkevm.Limits().BlockL2L1Logs),
 					Length: nil,
 				},
 			},
@@ -67,7 +65,7 @@ func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]zk.WrappedVariable, limits.BlockL2L1Logs),
+					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
 					Length: nil,
 				},
 			},
@@ -90,7 +88,7 @@ func assign(
 			FuncInputs: FunctionalPublicInputSnark{
 				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 					L2MessageHashes: L2MessageHashes{
-						Values: make([][32]zk.WrappedVariable, limits.BlockL2L1Logs),
+						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
 					},
 				},
 			},
@@ -105,8 +103,11 @@ func assign(
 // Define of the wizard circuit
 func (c *CircuitExecution) Define(api frontend.API) error {
 
-	c.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
-	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
+	panic("fix the [gkrmimc/gkrposeidon] package. The BlsFs should also take a hasher factory")
+
+	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSKoalaBLS12377(api)
+	// c.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
+	// c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
 
 	c.WizardVerifier.Verify(api)
 	checkPublicInputs(

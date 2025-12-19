@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -64,7 +64,7 @@ func Assign(blobData []byte, dictStore dictionary.Store, eip4844Enabled bool, x 
 
 	blobDataVar, err := assignVarByteSlice(blobData, maxCLen)
 	if err != nil {
-		err = fmt.Errorf("decompression circuit assignment : casting the compressed data into zk.WrappedVariable : %w", err)
+		err = fmt.Errorf("decompression circuit assignment : casting the compressed data into frontend.Variable : %w", err)
 		return
 	}
 
@@ -134,8 +134,8 @@ func Assign(blobData []byte, dictStore dictionary.Store, eip4844Enabled bool, x 
 	return
 }
 
-func boolToVar(b bool) zk.WrappedVariable {
-	res := zk.WrappedVariable(0)
+func boolToVar(b bool) frontend.Variable {
+	res := frontend.Variable(0)
 	if b {
 		res = 1
 	}

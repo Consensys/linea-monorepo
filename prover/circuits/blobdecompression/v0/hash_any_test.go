@@ -10,15 +10,14 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrmimc"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 type hashAnyTestCircuit struct {
-	A   zk.WrappedVariable `gnark:",secret"`
-	B   zk.WrappedVariable `gnark:",secret"`
-	C   emElement          `gnark:",secret"`
-	D   emElement          `gnark:",secret"`
-	Out zk.WrappedVariable `gnark:",secret"`
+	A   frontend.Variable `gnark:",secret"`
+	B   frontend.Variable `gnark:",secret"`
+	C   emElement         `gnark:",secret"`
+	D   emElement         `gnark:",secret"`
+	Out frontend.Variable `gnark:",secret"`
 }
 
 func (h *hashAnyTestCircuit) Define(api frontend.API) error {

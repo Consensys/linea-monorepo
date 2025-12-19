@@ -22,7 +22,7 @@ func TestFr377EncodedFr381ToBytes(t *testing.T) {
 		assert.NoError(t, err)
 
 		assignment := fr377EncodedFr381ToBytesCircuit{
-			Encoded: [2]zk.WrappedVariable{encoded[0], encoded[1]},
+			Encoded: [2]frontend.Variable{encoded[0], encoded[1]},
 		}
 
 		b := x.Bytes()
@@ -35,8 +35,8 @@ func TestFr377EncodedFr381ToBytes(t *testing.T) {
 }
 
 type fr377EncodedFr381ToBytesCircuit struct {
-	Encoded         [2]zk.WrappedVariable
-	ExpectedRecoded [32]zk.WrappedVariable
+	Encoded         [2]frontend.Variable
+	ExpectedRecoded [32]frontend.Variable
 }
 
 func (c *fr377EncodedFr381ToBytesCircuit) Define(api frontend.API) error {

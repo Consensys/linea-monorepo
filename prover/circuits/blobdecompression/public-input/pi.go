@@ -75,7 +75,7 @@ func genInterpolateLagrangeParams(n int) (x []fr381.Element, nInv fr381.Element)
 
 // VerifyBlobConsistency opens the "commitment" to the blob at evaluationChallenge; if bypassEip4844 is set, it does so in a KZG-like manner using a Lagrange basis on the unit circle. if not, a Reed-Solomon type method is used.
 // TODO consider using the batch hashes as "snarkHash" instead of hashing the data here to save on constraints
-func VerifyBlobConsistency(api frontend.API, blobCrumbs []zk.WrappedVariable, evaluationChallenge [32]zk.WrappedVariable, eip4844Enabled zk.WrappedVariable) (evaluation [2]zk.WrappedVariable, err error) {
+func VerifyBlobConsistency(api frontend.API, blobCrumbs []frontend.Variable, evaluationChallenge [32]frontend.Variable, eip4844Enabled frontend.Variable) (evaluation [2]frontend.Variable, err error) {
 	snarkFieldLen := api.Compiler().Field().BitLen()
 	if snarkFieldLen >= fr381.Bits {
 		err = fmt.Errorf("large field moduli ( %d≥%d ) not yet supported", snarkFieldLen, fr381.Bits)
@@ -130,7 +130,7 @@ func mapSlice[X, Y any](slice []X, f func(X) Y) []Y {
 	return res
 }
 
-func newElementFromVars(api frontend.API, x [2]zk.WrappedVariable) *emulated.Element[emulated.BLS12381Fr] {
+func newElementFromVars(api frontend.API, x [2]frontend.Variable) *emulated.Element[emulated.BLS12381Fr] {
 	field, err := emulated.NewField[emulated.BLS12381Fr](api)
 	if err != nil {
 		panic(err)
@@ -164,7 +164,7 @@ func bitReverseSlice[K interface{}](list []K) {
 	}
 }
 
-func packCrumbsEmulated(api frontend.API, words []zk.WrappedVariable) []*emulated.Element[emulated.BLS12381Fr] {
+func packCrumbsEmulated(api frontend.API, words []frontend.Variable) []*emulated.Element[emulated.BLS12381Fr] {
 	var fieldParams emulated.BLS12381Fr
 	field, err := emulated.NewField[emulated.BLS12381Fr](api)
 	if err != nil {
@@ -177,7 +177,7 @@ func packCrumbsEmulated(api frontend.API, words []zk.WrappedVariable) []*emulate
 	res := make([]*emulated.Element[emulated.BLS12381Fr], (len(words)+wordsPerElem-1)/wordsPerElem)
 	if len(words) != len(res)*wordsPerElem {
 		tmp := words
-		words = make([]zk.WrappedVariable, len(res)*wordsPerElem)
+		words = make([]frontend.Variable, len(res)*wordsPerElem)
 		copy(words, tmp)
 		for i := len(tmp); i < len(words); i++ {
 			words[i] = 0
@@ -195,7 +195,7 @@ func packCrumbsEmulated(api frontend.API, words []zk.WrappedVariable) []*emulate
 	}
 
 	radix := new(big.Int).Lsh(big.NewInt(1), uint(bitsPerWord))
-	limbs := make([]zk.WrappedVariable, nbLimbs*len(res))
+	limbs := make([]frontend.Variable, nbLimbs*len(res))
 
 	for i := range res {
 		currLimbs := limbs[i*nbLimbs : (i+1)*nbLimbs]
@@ -212,7 +212,7 @@ func packCrumbsEmulated(api frontend.API, words []zk.WrappedVariable) []*emulate
 }
 
 // bls12377ScalarToBls12381Scalar converts a scalar in the BLS12-377 field to a scalar in the BLS12-381 field. It assumes the input is only 252 bits long to accommodate arbitrary data
-func bls12377ScalarToBls12381Scalar(api frontend.API, v zk.WrappedVariable) *emulated.Element[emulated.BLS12381Fr] {
+func bls12377ScalarToBls12381Scalar(api frontend.API, v frontend.Variable) *emulated.Element[emulated.BLS12381Fr] {
 	field, err := emulated.NewField[emulated.BLS12381Fr](api)
 	if err != nil {
 		panic(err)
@@ -220,7 +220,7 @@ func bls12377ScalarToBls12381Scalar(api frontend.API, v zk.WrappedVariable) *emu
 	return field.FromBits(api.ToBinary(v, api.Compiler().FieldBitLen()-1)...)
 }
 
-func bls12381ScalarToBls12377Scalars(api frontend.API, e *emulated.Element[emulated.BLS12381Fr]) (r [2]zk.WrappedVariable) {
+func bls12381ScalarToBls12377Scalars(api frontend.API, e *emulated.Element[emulated.BLS12381Fr]) (r [2]frontend.Variable) {
 	field, err := emulated.NewField[emulated.BLS12381Fr](api)
 	if err != nil {
 		panic(err)

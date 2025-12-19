@@ -45,9 +45,9 @@ func TestRecombineBytes(t *testing.T) {
 	assert.NoError(t, r.TryError)
 
 	circuit := recombineBytesCircuit{
-		Bytes:      make([]zk.WrappedVariable, len(_bytes)),
-		Bits:       make([]zk.WrappedVariable, len(bits)),
-		Recombined: make([]zk.WrappedVariable, len(recombined)),
+		Bytes:      make([]frontend.Variable, len(_bytes)),
+		Bits:       make([]frontend.Variable, len(bits)),
+		Recombined: make([]frontend.Variable, len(recombined)),
 	}
 
 	assignment := recombineBytesCircuit{
@@ -61,7 +61,7 @@ func TestRecombineBytes(t *testing.T) {
 }
 
 type recombineBytesCircuit struct {
-	Bytes, Bits, Recombined []zk.WrappedVariable
+	Bytes, Bits, Recombined []frontend.Variable
 }
 
 func (c *recombineBytesCircuit) Define(api frontend.API) error {
@@ -83,11 +83,11 @@ func (c *recombineBytesCircuit) Define(api frontend.API) error {
 }
 
 func TestRangeChecker_IsLessThan(t *testing.T) {
-	ins := []zk.WrappedVariable{-3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	outs := []zk.WrappedVariable{0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0}
+	ins := []frontend.Variable{-3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	outs := []frontend.Variable{0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0}
 	circuit := rangeCheckerCircuit{
-		Ins:   make([]zk.WrappedVariable, len(ins)),
-		Outs:  make([]zk.WrappedVariable, len(outs)),
+		Ins:   make([]frontend.Variable, len(ins)),
+		Outs:  make([]frontend.Variable, len(outs)),
 		Range: 8,
 	}
 	assignment := rangeCheckerCircuit{
@@ -98,7 +98,7 @@ func TestRangeChecker_IsLessThan(t *testing.T) {
 }
 
 type rangeCheckerCircuit struct {
-	Ins, Outs []zk.WrappedVariable
+	Ins, Outs []frontend.Variable
 	Range     uint
 }
 
@@ -117,8 +117,8 @@ func (c *rangeCheckerCircuit) Define(api frontend.API) error {
 }
 
 func TestBreakUpBytesIntoWordsGains(t *testing.T) {
-	customCircuit := breakUpBytesIntoWordsCustomCircuit{make([]zk.WrappedVariable, 128*1024)}
-	stdCircuit := breakUpBytesIntoWordsStdCircuit{make([]zk.WrappedVariable, 128*1024)}
+	customCircuit := breakUpBytesIntoWordsCustomCircuit{make([]frontend.Variable, 128*1024)}
+	stdCircuit := breakUpBytesIntoWordsStdCircuit{make([]frontend.Variable, 128*1024)}
 
 	csCustom, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &customCircuit)
 	assert.NoError(t, err)
@@ -134,21 +134,21 @@ func TestBreakUpBytesIntoWordsGains(t *testing.T) {
 }
 
 type breakUpBytesIntoWordsCircuit struct {
-	Bytes []zk.WrappedVariable
+	Bytes []frontend.Variable
 }
 
 type breakUpBytesIntoWordsStdCircuit breakUpBytesIntoWordsCircuit
 type breakUpBytesIntoWordsCustomCircuit breakUpBytesIntoWordsCircuit
 
 func (c *breakUpBytesIntoWordsStdCircuit) Define(api frontend.API) error {
-	words := make([]zk.WrappedVariable, 0, len(c.Bytes)*8)
+	words := make([]frontend.Variable, 0, len(c.Bytes)*8)
 	for _, _byte := range c.Bytes {
 		words = append(words,
 			bits.ToBase(api, bits.Binary, _byte, bits.WithNbDigits(8), bits.WithUnconstrainedInputs(), bits.OmitModulusCheck())...,
 		)
 	}
 
-	_bytes := make([]zk.WrappedVariable, len(words))
+	_bytes := make([]frontend.Variable, len(words))
 	r := compress.NewNumReader(api, words, 8, 1)
 	for i := range words {
 		_bytes[i] = r.Next()

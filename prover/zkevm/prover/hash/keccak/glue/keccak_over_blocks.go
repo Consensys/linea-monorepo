@@ -13,7 +13,7 @@ import (
 // KeccakOverBlockInputs stores the inputs required for [NewKeccakOverBlocks]
 type KeccakOverBlockInputs struct {
 	LaneInfo    iokeccakf.LaneInfo
-	KeccakfSize int // size of the keccakf Module
+	KeccakfSize int // size of the keccakf Module (in number of rows)
 	// used for the assignments
 	Provider [][]byte
 }

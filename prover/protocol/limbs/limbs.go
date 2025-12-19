@@ -128,6 +128,11 @@ func (l Limbs[E]) LimbsArr2() [2]ifaces.Column {
 	return [2]ifaces.Column(l.c)
 }
 
+// LimbsArr3 returns a fixed sized array of limbs.
+func (l Limbs[E]) LimbsArr3() [3]ifaces.Column {
+	return [3]ifaces.Column(l.c)
+}
+
 // LimbsArr4 returns a fixed sized array of limbs.
 func (l Limbs[E]) LimbsArr4() [4]ifaces.Column {
 	return [4]ifaces.Column(l.c)
@@ -136,6 +141,11 @@ func (l Limbs[E]) LimbsArr4() [4]ifaces.Column {
 // LimbsArr8 returns a fixed sized array of limbs.
 func (l Limbs[E]) LimbsArr8() [8]ifaces.Column {
 	return [8]ifaces.Column(l.c)
+}
+
+// LimbsArr10 returns the fixed sized array of limbs.
+func (l Limbs[E]) LimbsArr10() [10]ifaces.Column {
+	return [10]ifaces.Column(l.c)
 }
 
 // LimbsArr16 returns a fixed sized array of limbs.

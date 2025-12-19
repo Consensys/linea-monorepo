@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -39,15 +38,15 @@ func getPlaceHolderCS() constraint.ConstraintSystem {
 // constraints, public inputs and BBS commitment. Its public inputs should
 // always be assigned to zero.
 type genericPlaceHolderCircuit struct {
-	PubInputs     []zk.WrappedVariable `gnark:",public"`
-	Seed          zk.WrappedVariable   `gnark:",secret"`
+	PubInputs     []frontend.Variable `gnark:",public"`
+	Seed          frontend.Variable   `gnark:",secret"`
 	nbConstraints int
 	nbBbsCommit   int
 }
 
 func allocatePlaceHolderCircuit(nbPublicInput, nbConstraints, nbBbsCommit int) *genericPlaceHolderCircuit {
 	return &genericPlaceHolderCircuit{
-		PubInputs:     make([]zk.WrappedVariable, nbPublicInput),
+		PubInputs:     make([]frontend.Variable, nbPublicInput),
 		nbConstraints: nbConstraints,
 		nbBbsCommit:   nbBbsCommit,
 	}
@@ -60,7 +59,7 @@ func (g *genericPlaceHolderCircuit) Define(api frontend.API) error {
 		// number of constraints.
 		nbMul     = g.nbConstraints - 3*g.nbBbsCommit - len(g.PubInputs) - 1
 		commitApi = api.(frontend.Committer)
-		_x        = zk.WrappedVariable(1)
+		_x        = frontend.Variable(1)
 	)
 
 	for i := 0; i < nbMul; i++ {

@@ -20,7 +20,7 @@ func assertBytesEqual(api frontend.API, a, b []uints.U8) {
 }
 
 // the resulting bytes will have been range-checked
-func fr377EncodedFr381ToBytes(api frontend.API, x [2]zk.WrappedVariable) [32]zk.WrappedVariable {
+func fr377EncodedFr381ToBytes(api frontend.API, x [2]frontend.Variable) [32]frontend.Variable {
 	const (
 		bits371    = fr377.Bits - 1
 		hiBits381  = fr381.Bits - bits371
@@ -31,7 +31,7 @@ func fr377EncodedFr381ToBytes(api frontend.API, x [2]zk.WrappedVariable) [32]zk.
 	lo := internal.ToCrumbs(api, x[1], loNbCrumbs)
 	slices.Reverse(lo)
 
-	cr := make([]zk.WrappedVariable, hiNbCrumbs+len(lo))
+	cr := make([]frontend.Variable, hiNbCrumbs+len(lo))
 	for i := 0; i < hiNbCrumbs; i++ {
 		b := hi[2*i : min(2*i+2, len(hi))]
 		cr[(hiNbCrumbs-1)-i] = api.FromBinary(b...)
@@ -42,7 +42,7 @@ func fr377EncodedFr381ToBytes(api frontend.API, x [2]zk.WrappedVariable) [32]zk.
 		panic("unexpected length")
 	}
 
-	var res [32]zk.WrappedVariable
+	var res [32]frontend.Variable
 	radix := big.NewInt(4)
 	for i := range res {
 		res[i] = compress.ReadNum(api, cr[i*4:i*4+4], radix)

@@ -138,7 +138,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
 	}
 	// Perform trace propagation
-	rawTrace, errs = asm.Propagate(a.BinaryFile.Schema, rawTrace, true)
+	rawTrace, errs = asm.Propagate(a.BinaryFile.Schema, rawTrace)
 	// error check
 	if len(errs) > 0 {
 		logrus.Warnf("corset propagation gave the following errors: %v", errors.Join(errs...).Error())
@@ -205,6 +205,12 @@ func (a *Arithmetization) GetLimbsOfU32Be(comp *wizard.CompiledIOP, mod string, 
 // specified endianness.
 func (a *Arithmetization) GetLimbsOfU32Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S32, limbs.LittleEndian] {
 	return GetLimbsOf[limbs.S32, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU48Be returns a [limbs.Uint] register corresponding to a U48 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU48Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S48, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S48, limbs.BigEndian](a, comp, mod, column)
 }
 
 // GetLimbsOfU64Be returns a [limbs.Uint] register corresponding to a U64 with the

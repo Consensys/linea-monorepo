@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
-	keccak_koalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/glue_keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
@@ -96,7 +95,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		comp         = b.CompiledIOP
 		arith        = arithmetization.NewArithmetization(b, s.Arithmetization)
 		ecdsa        = ecdsa.NewEcdsaZkEvm(comp, &s.Ecdsa, arith)
-		stateManager = statemanager.NewStateManager(comp, s.Statemanager)
+		stateManager = statemanager.NewStateManager(comp, s.Statemanager, arith)
 		keccak       = keccak_koalabear.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders(), arith)
 		modexp       = modexp.NewModuleZkEvm(comp, s.Modexp, arith)
 		ecadd        = ecarith.NewEcAddZkEvm(comp, &s.Ecadd, arith)
@@ -134,7 +133,6 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 		z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
 		z.StateManager.Assign(run, input.SMTraces)
 		z.Keccak.Run(run)
-		z.Modexp.Assign(run)
 		z.Ecadd.Assign(run)
 		z.Ecmul.Assign(run)
 		z.Ecpair.Assign(run)

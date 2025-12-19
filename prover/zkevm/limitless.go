@@ -16,7 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -546,7 +545,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// The debugGLs is compiled with the CompileAtProverLevel routine so we
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
-		rt := wizard.RunProver(compiledIOP, mainProverStep)
+		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
 		runtimes = append(runtimes, rt)
 	}
 
@@ -590,7 +589,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// The debugLPP is compiled with the CompileAtProverLevel routine so we
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
-		rt := wizard.RunProver(compiledIOP, mainProverStep)
+		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
 
 		runtimes = append(runtimes, rt)
 	}
@@ -638,6 +637,7 @@ func runBootstrapperWithRescaling(
 				runtimeBoot = wizard.RunProver(
 					bootstrapper,
 					zkevm.GetMainProverStep(zkevmWitness),
+					true,
 				)
 				return
 			}
@@ -658,6 +658,7 @@ func runBootstrapperWithRescaling(
 			runtimeBoot = wizard.RunProver(
 				scaledUpBootstrapper,
 				scaledUpZkEVM.GetMainProverStep(zkevmWitness),
+				true,
 			)
 		}()
 	}
@@ -1002,37 +1003,5 @@ func GetAffinities(z *ZkEvm) [][]column.Natural {
 			z.WizardIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
 		},
-	}
-}
-
-var publicInputNames = []string{
-	publicInput.DataNbBytes,
-	publicInput.DataChecksum,
-	publicInput.L2MessageHash,
-	publicInput.InitialStateRootHash,
-	publicInput.FinalStateRootHash,
-	publicInput.InitialBlockNumber,
-	publicInput.FinalBlockNumber,
-	publicInput.InitialBlockTimestamp,
-	publicInput.FinalBlockTimestamp,
-	publicInput.FirstRollingHashUpdate_0,
-	publicInput.FirstRollingHashUpdate_1,
-	publicInput.LastRollingHashUpdate_0,
-	publicInput.LastRollingHashUpdate_1,
-	publicInput.FirstRollingHashUpdateNumber,
-	publicInput.LastRollingHashNumberUpdate,
-	publicInput.NBytesChainID,
-	publicInput.ChainID,
-	publicInput.BaseFee,
-	publicInput.CoinBase,
-	publicInput.L2MessageServiceAddrHi,
-	publicInput.L2MessageServiceAddrLo,
-}
-
-// LogPublicInputs logs the list of the public inputs for the module
-func LogPublicInputs(vr wizard.Runtime) {
-	for _, name := range publicInputNames {
-		x := vr.GetPublicInput(name)
-		fmt.Printf("[public input] %s: %v\n", name, x)
 	}
 }

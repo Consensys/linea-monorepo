@@ -206,6 +206,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		selfrecursion.SelfRecurse,
 		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
@@ -222,6 +223,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		selfrecursion.SelfRecurse,
 		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
@@ -241,6 +243,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		selfrecursion.SelfRecurse,
 		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
@@ -329,6 +332,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		selfrecursion.SelfRecurse,
 		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),

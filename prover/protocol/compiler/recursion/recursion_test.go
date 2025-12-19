@@ -101,7 +101,7 @@ func TestLookup(t *testing.T) {
 
 			comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
 
-			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, true)
+			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, false)
 			witness1 := ExtractWitness(proverRuntime)
 
 			prove2 := func(run *wizard.ProverRuntime) {

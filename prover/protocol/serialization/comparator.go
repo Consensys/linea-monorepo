@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/sirupsen/logrus"
@@ -57,6 +59,8 @@ func compareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b reflect
 	switch a.Type() {
 	case reflect.TypeFor[*symbolic.Expression]():
 		return compareSymbolicExpressions(a, b, path)
+	case reflect.TypeFor[frontend.Variable]():
+		return true
 	case reflect.TypeFor[zk.WrappedVariable]():
 		return true
 	}

@@ -5,17 +5,16 @@ go 1.24.6
 toolchain go1.24.10
 
 require (
+	github.com/bits-and-blooms/bitset v1.24.0
 	github.com/consensys/compress v0.2.5
 	github.com/consensys/gnark v0.14.1-0.20251210113322-60b2a82ddfdd
 	github.com/consensys/gnark-crypto v0.19.3-0.20251218031800-affd349cb6ea
-	github.com/consensys/go-corset v1.2.0-rc1
+	github.com/consensys/go-corset v1.2.0-rc3
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
-	github.com/dnlo/struct2csv v0.0.0-20190928115744-2f584471b24e
 	github.com/fxamacker/cbor/v2 v2.9.0
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-playground/validator/v10 v10.22.0
-	github.com/gofrs/flock v0.12.0
 	github.com/google/uuid v1.6.0
 	github.com/icza/bitio v1.1.0
 	github.com/leanovate/gopter v0.2.11
@@ -37,7 +36,6 @@ require (
 require (
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bits-and-blooms/bitset v1.24.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/crate-crypto/go-ipa v0.0.0-20240223125850-b1e8a79f509c // indirect
@@ -50,12 +48,12 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/gofrs/flock v0.12.0 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/pprof v0.0.0-20250820193118-f64d9cf942d6 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.3.1 // indirect
-	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect

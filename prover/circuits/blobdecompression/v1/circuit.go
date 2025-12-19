@@ -9,7 +9,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
@@ -23,7 +22,6 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
@@ -48,20 +46,20 @@ import (
 // on L1.
 type Circuit struct {
 	// The dictionary used in the compression algorithm
-	Dict []zk.WrappedVariable
+	Dict []frontend.Variable
 
 	// The uncompressed and compressed data corresponds to the data that is
 	// made available on L1 when we submit a blob of transactions. The circuit
 	// proves that these two correspond to the same data. The uncompressed
 	// data is then passed to the EVM execution circuit.
-	BlobBytes []zk.WrappedVariable
+	BlobBytes []frontend.Variable
 
 	// The final public input. It is the hash of
 	// 	- the hash of the uncompressed message.
 	// 	- the hash of the compressed message. aka the SnarKHash on the contract
 	// 	- the X and Y evaluation points claimed on the contract
 	//  TODO - whether we are using Eip4844
-	PublicInput zk.WrappedVariable `gnark:",public"`
+	PublicInput frontend.Variable `gnark:",public"`
 
 	// The X and Y evaluation point that are "claimed" by the contract. The
 	// circuit will verify that the polynomial describing the compressed data
@@ -76,16 +74,16 @@ type Circuit struct {
 
 // FunctionalPublicInputQSnark the "unique" portion of the functional public input that cannot be inferred from other circuits in the same aggregation batch
 type FunctionalPublicInputQSnark struct {
-	Y              [2]zk.WrappedVariable // Y[1] holds 252 bits
-	SnarkHash      zk.WrappedVariable
-	Eip4844Enabled zk.WrappedVariable
-	NbBatches      zk.WrappedVariable
-	X              [32]zk.WrappedVariable // unreduced value
+	Y              [2]frontend.Variable // Y[1] holds 252 bits
+	SnarkHash      frontend.Variable
+	Eip4844Enabled frontend.Variable
+	NbBatches      frontend.Variable
+	X              [32]frontend.Variable // unreduced value
 }
 
 type FunctionalPublicInputSnark struct {
 	FunctionalPublicInputQSnark
-	BatchSums [MaxNbBatches]zk.WrappedVariable
+	BatchSums [MaxNbBatches]frontend.Variable
 }
 
 type FunctionalPublicInput struct {
@@ -112,7 +110,7 @@ func (i *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 func (i *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error) {
 	res := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-			Y:              [2]zk.WrappedVariable{i.Y[0], i.Y[1]},
+			Y:              [2]frontend.Variable{i.Y[0], i.Y[1]},
 			SnarkHash:      i.SnarkHash,
 			Eip4844Enabled: utils.Ite(i.Eip4844Enabled, 1, 0),
 			NbBatches:      len(i.BatchSums),
@@ -175,7 +173,7 @@ func (i *FunctionalPublicInput) Sum(opts ...FPISumOption) ([]byte, error) {
 }
 
 // Sum ignores NbBatches, as its value is expected to be incorporated into batchesSum
-func (i *FunctionalPublicInputQSnark) Sum(api frontend.API, hsh snarkHash.FieldHasher, batchesSum zk.WrappedVariable) zk.WrappedVariable {
+func (i *FunctionalPublicInputQSnark) Sum(api frontend.API, hsh snarkHash.FieldHasher, batchesSum frontend.Variable) frontend.Variable {
 	radix := big.NewInt(256)
 	hsh.Reset()
 	hsh.Write(compress.ReadNum(api, i.X[:16], radix), compress.ReadNum(api, i.X[16:], radix), i.Y[0], i.Y[1], i.SnarkHash, i.Eip4844Enabled, batchesSum)
@@ -184,7 +182,7 @@ func (i *FunctionalPublicInputQSnark) Sum(api frontend.API, hsh snarkHash.FieldH
 
 // Sum hashes the inputs together into a single "de facto" public input
 // WARNING: i.X[-] are not range-checked here
-func (i *FunctionalPublicInputSnark) Sum(api frontend.API, hsh snarkHash.FieldHasher) zk.WrappedVariable {
+func (i *FunctionalPublicInputSnark) Sum(api frontend.API, hsh snarkHash.FieldHasher) frontend.Variable {
 	return i.FunctionalPublicInputQSnark.Sum(api, hsh, internal.VarSlice{
 		Values: i.BatchSums[:],
 		Length: i.NbBatches,
@@ -194,7 +192,8 @@ func (i *FunctionalPublicInputSnark) Sum(api frontend.API, hsh snarkHash.FieldHa
 func (c Circuit) Define(api frontend.API) error {
 	var hsh snarkHash.FieldHasher
 	if c.UseGkrMiMC {
-		hsh = gkrmimc.NewHasherFactory(api).NewHasher()
+		panic("unimplemented: uncomment when GKR poseidon is ready")
+		// hsh = gkrmimc.NewHasherFactory(api).NewHasher()
 	} else {
 		if h, err := mimc.NewMiMC(api); err != nil {
 			return err
@@ -237,8 +236,8 @@ func (b *builder) Compile() (constraint.ConstraintSystem, error) {
 func Compile(dictionaryLength int) constraint.ConstraintSystem {
 	// TODO @gbotrel make signature return error...
 	if cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &Circuit{
-		Dict:                  make([]zk.WrappedVariable, dictionaryLength),
-		BlobBytes:             make([]zk.WrappedVariable, blob.MaxUsableBytes),
+		Dict:                  make([]frontend.Variable, dictionaryLength),
+		BlobBytes:             make([]frontend.Variable, blob.MaxUsableBytes),
 		MaxBlobPayloadNbBytes: blob.MaxUncompressedBytes,
 		UseGkrMiMC:            true,
 	}, frontend.WithCapacity(1<<27)); err != nil {

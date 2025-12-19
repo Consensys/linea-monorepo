@@ -14,11 +14,11 @@ import (
 // returns 0 on an empty array and assumes the input bytes are already
 // constrained into bytehood. If more bytes are provided than what can be
 // contained in a single field element it overflows.
-func packVarBytesBE(api frontend.API, bs []zk.WrappedVariable) zk.WrappedVariable {
-	res := zk.WrappedVariable(0)
+func packVarBytesBE(api frontend.API, bs []frontend.Variable) frontend.Variable {
+	res := frontend.Variable(0)
 	for i := range bs {
 		if i > 0 {
-			res = api.Mul(res, zk.WrappedVariable(1<<8))
+			res = api.Mul(res, frontend.Variable(1<<8))
 		}
 		res = api.Add(res, bs[i])
 	}
@@ -27,8 +27,8 @@ func packVarBytesBE(api frontend.API, bs []zk.WrappedVariable) zk.WrappedVariabl
 
 // Pack an array of variables (representing bytes) into variables capable of
 // storing multiple bytes. The packing is done as tightly as possible.
-func packVarByteSliceBE(api frontend.API, bs []zk.WrappedVariable) []zk.WrappedVariable {
-	res := make([]zk.WrappedVariable, utils.DivExact(len(bs), wordByteSize))
+func packVarByteSliceBE(api frontend.API, bs []frontend.Variable) []frontend.Variable {
+	res := make([]frontend.Variable, utils.DivExact(len(bs), wordByteSize))
 	for i := range res {
 		res[i] = packVarBytesBE(api, bs[wordByteSize*i:wordByteSize*(i+1)])
 	}
@@ -40,8 +40,8 @@ func packVarByteSliceBE(api frontend.API, bs []zk.WrappedVariable) []zk.WrappedV
 // constrained into bytehood. If more bytes are provided than what can be
 // contained in a single field element it overflows. The limbs are assumed to
 // be 64 bytes.
-func packVarLimbsBE(api frontend.API, bs []zk.WrappedVariable) zk.WrappedVariable {
-	res := zk.WrappedVariable(0)
+func packVarLimbsBE(api frontend.API, bs []frontend.Variable) frontend.Variable {
+	res := frontend.Variable(0)
 	base := big.NewInt(1)
 	base.Lsh(base, 64)
 	for i := range bs {
@@ -55,17 +55,17 @@ func packVarLimbsBE(api frontend.API, bs []zk.WrappedVariable) zk.WrappedVariabl
 
 // Assigns a size-bounded array of bytes into an array of bytesVariable. The
 // assigned bytes are zero-padded on the right.
-func assignVarByteSlice(data []byte, maxLen int) ([]zk.WrappedVariable, error) {
+func assignVarByteSlice(data []byte, maxLen int) ([]frontend.Variable, error) {
 
 	if len(data) > maxLen {
 		return nil, fmt.Errorf("bytesToVar : data too large : %v max is %v", len(data), maxLen)
 	}
 
-	res := make([]zk.WrappedVariable, maxLen)
+	res := make([]frontend.Variable, maxLen)
 
 	for i := range res {
 		if i < len(data) {
-			res[i] = zk.WrappedVariable(data[i])
+			res[i] = frontend.Variable(data[i])
 		} else {
 			res[i] = 0
 		}
