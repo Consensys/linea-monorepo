@@ -39,7 +39,7 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	if c.isKoala {
 		fs = NewGnarkFSKoalabear(api)
 	} else {
-		fs = NewGnarkFSKoalaBLS12377(api)
+		fs = NewGnarkFSBLS12377(api)
 	}
 
 	apiGen, err := zk.NewGenericApi(api)

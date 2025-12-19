@@ -6,7 +6,7 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 
 	"github.com/consensys/gnark/frontend"
@@ -20,6 +20,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 )
+
+const IsBLS = false
 
 /*
 Wraps the wizard verification gnark into a circuit
@@ -42,7 +44,7 @@ Returns an assignment from a wizard proof
 */
 func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTestCircuit {
 	return &VortexTestCircuit{
-		C: *wizard.AssignVerifierCircuit(comp, proof, 0),
+		C: *wizard.AssignVerifierCircuit(comp, proof, 0, IsBLS),
 	}
 }
 
@@ -114,12 +116,12 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	compiled := wizard.Compile(
 		define,
 		vortex.Compile(4,
-			true,
+			IsBLS,
 			vortex.WithOptionalSISHashingThreshold(1<<20))) // Set to a high value to disable SIS hashing, because gnark does not support SIS hashing
-	proof := wizard.Prove(compiled, prove, true)
+	proof := wizard.Prove(compiled, prove, IsBLS)
 
 	// Just as a sanity check, do not run the Plonk
-	valid := wizard.Verify(compiled, proof, true)
+	valid := wizard.Verify(compiled, proof, IsBLS)
 	require.NoErrorf(t, valid, "the proof did not pass")
 
 	// Run the proof verifier
@@ -127,12 +129,12 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	// Allocate the circuit
 	circ := VortexTestCircuit{}
 	{
-		c := wizard.AllocateWizardCircuit(compiled, 0)
+		c := wizard.AllocateWizardCircuit(compiled, 0, IsBLS)
 		circ.C = *c
 	}
 
 	// Compile the circuit
-	scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder,
+	scs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder,
 		&circ,
 		frontend.IgnoreUnconstrainedInputs())
 
@@ -146,7 +148,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	// Checks that the proof makes a satifying assignment
 	assignment := assignTestCircuit(compiled, proof)
 
-	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+	witness, err := frontend.NewWitness(assignment, koalabear.Modulus())
 	require.NoError(t, err)
 
 	err = scs.IsSolved(witness)
