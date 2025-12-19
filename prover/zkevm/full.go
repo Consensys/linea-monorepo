@@ -19,7 +19,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
-	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
+	keccak_koalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/glue_keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
@@ -177,7 +177,7 @@ func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *co
 			Title:   "linea/evm-execution/full",
 			Version: "beta-v1",
 		},
-		Keccak: keccak.Settings{
+		Keccak: keccak_koalabear.Settings{
 			MaxNumKeccakf: tl.BlockKeccak,
 		},
 		Ecdsa: ecdsa.Settings{

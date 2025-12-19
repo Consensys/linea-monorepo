@@ -6,14 +6,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	keccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf/iokeccakf"
+	keccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf/iokeccakf"
 )
 
 // KeccakOverBlockInputs stores the inputs required for [NewKeccakOverBlocks]
 type KeccakOverBlockInputs struct {
 	LaneInfo    iokeccakf.LaneInfo
-	KeccakfSize int // size of the keccakf Module (in number of rows)
+	KeccakfSize int // size of the keccakf Module
 	// used for the assignments
 	Provider [][]byte
 }
