@@ -563,6 +563,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await expect(call).to.be.reverted;
     });
     it("Should succeed with expected return values, and transfer 1 ether to Lido contracts", async () => {
+      await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, 0n);
       await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, buildVendorExitData());
       const expectedVaultAddress = ethers.Wallet.createRandom().address;
       const expectedDashboardAddress = ethers.Wallet.createRandom().address;
@@ -586,6 +587,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       expect(await getBalance(mockVaultFactory)).eq(beforeVaultFactoryBalance + ONE_ETHER);
     });
     it("Should revert if YieldManager lacks the CONNECT_DEPOSIT of 1 ether", async () => {
+      await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, 0n);
       await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, buildVendorExitData());
       const expectedVaultAddress = ethers.Wallet.createRandom().address;
       const expectedDashboardAddress = ethers.Wallet.createRandom().address;
@@ -604,6 +606,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
     });
     it("Should revert with empty vendorExitData", async () => {
+      await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, 0n);
       const call = yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, EMPTY_CALLDATA);
       await expectRevertWithCustomError(yieldProvider, call, "NoVendorExitDataProvided");
     });
@@ -615,6 +618,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     });
     it("When non-ossified, should succeed with call to Dashboard", async () => {
       await yieldManager.setYieldProviderIsOssified(yieldProviderAddress, false);
+      await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, 0n);
       const call = yieldManager
         .connect(securityCouncil)
         .removeYieldProvider(yieldProviderAddress, buildVendorExitData());
@@ -624,6 +628,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     });
     it("When ossified, should succeed with call to StakingVault", async () => {
       await yieldManager.setYieldProviderIsOssified(yieldProviderAddress, true);
+      await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, 0n);
       const call = yieldManager
         .connect(securityCouncil)
         .removeYieldProvider(yieldProviderAddress, buildVendorExitData());

@@ -807,6 +807,7 @@ describe("YieldManager contract - basic operations", () => {
           registration.yieldProviderVendor,
           registration.primaryEntrypoint,
           registration.ossifiedEntrypoint,
+          registration.usersFundsIncrement,
         );
 
       expect(await yieldManager.isYieldProviderKnown(providerAddress)).to.be.true;

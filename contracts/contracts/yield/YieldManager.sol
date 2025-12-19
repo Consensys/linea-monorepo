@@ -992,16 +992,18 @@ contract YieldManager is
       primaryEntrypoint: registrationData.primaryEntrypoint,
       ossifiedEntrypoint: registrationData.ossifiedEntrypoint,
       yieldProviderIndex: yieldProviderIndex,
-      userFunds: 0,
+      userFunds: registrationData.usersFundsIncrement,
       yieldReportedCumulative: 0,
       lstLiabilityPrincipal: 0,
       lastReportedNegativeYield: 0
     });
+    $.userFundsInYieldProvidersTotal += registrationData.usersFundsIncrement;
     emit YieldProviderAdded(
       _yieldProvider,
       registrationData.yieldProviderVendor,
       registrationData.primaryEntrypoint,
-      registrationData.ossifiedEntrypoint
+      registrationData.ossifiedEntrypoint,
+      registrationData.usersFundsIncrement
     );
   }
 

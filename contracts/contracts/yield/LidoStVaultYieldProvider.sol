@@ -537,7 +537,8 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     registrationData = YieldProviderRegistration({
       yieldProviderVendor: YieldProviderVendor.LIDO_STVAULT,
       primaryEntrypoint: dashboard,
-      ossifiedEntrypoint: vault
+      ossifiedEntrypoint: vault,
+      usersFundsIncrement: CONNECT_DEPOSIT
     });
   }
 
