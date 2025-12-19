@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	execCirc "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
@@ -48,6 +48,9 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 
 		// Err groups for GL/LPP sub-provers
 		errGroup = errgroup.Group{}
+
+		// Centralized lifecycle management for closers (when uncompressed path is used)
+		assetClosers = &files.MultiCloser{}
 	)
 
 	// ---- 1) Generic defer for marking files on exit ----
@@ -58,6 +61,9 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 		allFiles = append(allFiles, req.LPPProofFiles...)
 		allFiles = append(allFiles, req.SharedRndFile)
 		files.MarkAndMoveToDone(cfg, allFiles, suf)
+
+		// NEW: Ensure all memory maps are released only when the function exits
+		assetClosers.Close()
 	}()
 
 	// Recover wrapper for panics
@@ -72,10 +78,11 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 	// -- 1. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more
 	// proofs come in. It will exit when it collects `totalProofs` or when ctx is cancelled.
 	go func() {
-		cong, err = zkevm.LoadCompiledConglomeration(cfg)
+		cong, congCloser, err := zkevm.LoadCompiledConglomeration(cfg)
 		if err != nil || cong == nil {
 			panic(fmt.Errorf("could not load compiled conglomeration: %w", err))
 		}
+		assetClosers.Add(congCloser)
 		logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
 		proof, err := runConglomerationHierarchical(ctx, cfg, cong, proofStream, totalProofs)
 		resultCh <- congResult{proof: proof, err: err}
@@ -104,11 +111,13 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 				return jobErr
 			}
 
+			closer, err := serde.LoadFromDisk(req.GLProofFiles[i], proofGL, true)
 			// Once the GL-proof file has arrived - deserialize it and send it to the pipeline
-			if err := serialization.LoadFromDisk(req.GLProofFiles[i], proofGL, true); err != nil {
+			if err != nil {
 				logrus.Errorf("error deserializing GL proof %d: %s - Cancelling context", i, err)
 				return err
 			}
+			assetClosers.Add(closer)
 
 			// Store local copy for shared randomness computation
 			proofGLs[i] = proofGL
@@ -139,7 +148,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 	//--4. Compute shared randomness after GL proofs succeeded and save it to disk
 	sharedRandomness := distributed.GetSharedRandomnessFromSegmentProofs(proofGLs)
 	proofGLs = nil // Free the slice as we no longer need it
-	if err = serialization.StoreToDisk(req.SharedRndFile, sharedRandomness, true); err != nil {
+	if err = serde.StoreToDisk(req.SharedRndFile, sharedRandomness, true); err != nil {
 		logrus.Errorf("error saving shared randomness: %s. Cancelling context", err)
 		cancel()
 		return nil, fmt.Errorf("could not save shared randomness: %w", err)
@@ -171,10 +180,12 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 			}
 
 			// Once the LPP-proof file has arrived - deserialize it and send it to the pipeline
-			if err := serialization.LoadFromDisk(req.LPPProofFiles[i], proofLPP, true); err != nil {
+			closer, err := serde.LoadFromDisk(req.LPPProofFiles[i], proofLPP, true)
+			if err != nil {
 				logrus.Errorf("error deserializing LPP proof %d: %s - Cancelling context", i, err)
 				return err
 			}
+			assetClosers.Add(closer)
 
 			// Safe send: if ctx cancelled, abort send
 			select {
@@ -249,10 +260,12 @@ func runConglomerationHierarchical(ctx context.Context, cfg *config.Config, cong
 	proofStream <-chan *distributed.SegmentProof, totalProofs int,
 ) (*distributed.SegmentProof, error) {
 
-	mt, err := zkevm.LoadVerificationKeyMerkleTree(cfg)
+	mt, mtCloser, err := zkevm.LoadVerificationKeyMerkleTree(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("could not load verification key merkle tree: %w", err)
 	}
+
+	defer mtCloser.Close()
 
 	// Stack is a slice for channel-based pairing logic
 	var stack []*distributed.SegmentProof

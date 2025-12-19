@@ -3,17 +3,19 @@ package limitless
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"runtime/debug"
 	"strconv"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	execCirc "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
@@ -55,6 +57,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		witness = execution.NewWitness(cfg, req, &out)
 	)
 
+	// NEW: Local manager for all memory maps used in this proving request
+	localClosers := &files.MultiCloser{}
+	defer localClosers.Close()
+
 	if cfg.Execution.LimitlessWithDebug {
 		limitlessZkEVM := zkevm.NewLimitlessDebugZkEVM(cfg)
 		limitlessZkEVM.RunDebug(cfg, witness.ZkEVM)
@@ -65,14 +71,17 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// -- 1. Launch bootstrapper
 	logrus.Info("Starting to run the bootstrapper")
 
-	mt, err := zkevm.LoadVerificationKeyMerkleTree(cfg)
+	// FIX: Capture mtCloser (3-value return)
+	mt, mtCloser, err := zkevm.LoadVerificationKeyMerkleTree(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("could not load verification key merkle tree: %w", err)
 	}
+	localClosers.Add(mtCloser)
 
-	var (
-		numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM, mt.GetRoot())
-	)
+	// FIX: RunBootstrapper now returns the assets object containing its internal Closers
+	numGL, numLPP, assets := RunBootstrapper(cfg, witness.ZkEVM, mt.GetRoot())
+	localClosers.Add(assets) // Link assets lifecycle to Prove lifecycle
+
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
 	// Use a parent context for the whole proving flow
@@ -104,11 +113,17 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// -- 2. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more
 	// proofs come in. It will exit when it collects `totalProofs` or when ctx is cancelled.
 	go func() {
-		var err error
-		cong, err = zkevm.LoadCompiledConglomeration(cfg)
+		var (
+			err        error
+			congCloser io.Closer
+		)
+		// FIX: Capture congCloser (3-value return)
+		cong, congCloser, err = zkevm.LoadCompiledConglomeration(cfg)
 		if err != nil || cong == nil {
 			panic(fmt.Errorf("could not load compiled conglomeration: %w", err))
 		}
+		localClosers.Add(congCloser)
+
 		logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
 		proof, err := RunConglomerationHierarchical(ctx, mt, cong, proofStream, totalProofs)
 		resultCh <- congResult{proof: proof, err: err}
@@ -148,7 +163,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				}()
 
 				var err error
-				proofGL, err = RunGL(cfg, i)
+				// FIX: Pass localClosers to RunGL
+				proofGL, err = RunGL(cfg, i, localClosers)
 				if err != nil {
 					jobErr = fmt.Errorf("could not run GL prover for witness index=%v: %w", i, err)
 				}
@@ -222,7 +238,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				}()
 
 				var err error
-				proofLPP, err = RunLPP(cfg, i, sharedRandomness)
+				// FIX: Pass localClosers to RunLPP
+				proofLPP, err = RunLPP(cfg, i, sharedRandomness, localClosers)
 				if err != nil {
 					jobErr = fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, err)
 				}
@@ -298,7 +315,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 // RunBootstrapper loads the assets required to run the bootstrapper and runs it,
 // the function then performs the module segmentation and saves each module
 // witness in the /tmp directory.
-func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Element) (int, int) {
+func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Element) (int, int, *zkevm.LimitlessZkEVM) {
 
 	logrus.Infof("Loading bootstrapper and zkevm")
 	assets := &zkevm.LimitlessZkEVM{}
@@ -371,12 +388,6 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		}()
 	}
 
-	// This frees the memory from the assets that are no longer needed. We don't
-	// need to do that for the module GLs and LPPs because they are thrown away
-	// when the current function returns.
-	assets.Zkevm = nil
-	assets.DistWizard.Bootstrapper = nil
-
 	if err := <-distDone; err != nil {
 		utils.Panic("could not load GL and LPP modules: %v", err)
 	}
@@ -403,7 +414,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		eg.Go(func() error {
 
 			filePath := witnessDir + "/witness-GL-" + strconv.Itoa(i)
-			if err := serialization.StoreToDisk(filePath, *witnessGLs[i], true); err != nil {
+			if err := serde.StoreToDisk(filePath, *witnessGLs[i], true); err != nil {
 				return fmt.Errorf("could not save witnessGL: %v", err)
 			}
 
@@ -423,7 +434,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		eg.Go(func() error {
 
 			filePath := witnessDir + "/witness-LPP-" + strconv.Itoa(i)
-			if err := serialization.StoreToDisk(filePath, *witnessLPPs[i], true); err != nil {
+			if err := serde.StoreToDisk(filePath, *witnessLPPs[i], true); err != nil {
 				return fmt.Errorf("could not save witnessLPP: %v", err)
 			}
 
@@ -437,26 +448,31 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		utils.Panic("could not save witnesses: %v", err)
 	}
 
-	return len(witnessGLs), len(witnessLPPs)
+	// NOTE: We return assets here so the caller (Prove) can manage the memory-mapped closers.
+	return len(witnessGLs), len(witnessLPPs), assets
 }
 
 // RunGL runs the GL prover for the provided witness index
-func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentProof, err error) {
+func RunGL(cfg *config.Config, witnessIndex int, closerManager *files.MultiCloser) (proofGL *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the GL-prover for witness index=%v", witnessIndex)
 
 	witness := &distributed.ModuleWitnessGL{}
 	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
-	if err := serialization.LoadFromDisk(witnessFilePath, witness, true); err != nil {
+	closer, err := serde.LoadFromDisk(witnessFilePath, witness, true)
+	if err != nil {
 		return nil, err
 	}
+	closerManager.Add(closer)
 
 	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	compiledGL, err := zkevm.LoadCompiledGL(cfg, witness.ModuleName)
+	// FIX: Capture compiledGLCloser (3-value return)
+	compiledGL, compiledGLCloser, err := zkevm.LoadCompiledGL(cfg, witness.ModuleName)
 	if err != nil {
 		return nil, fmt.Errorf("could not load compiled GL: %w", err)
 	}
+	closerManager.Add(compiledGLCloser)
 
 	logrus.Infof("Loaded the compiled GL for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
@@ -468,24 +484,28 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 }
 
 // RunLPP runs the LPP prover for the provided witness index
-func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element) (proofLPP *distributed.SegmentProof, err error) {
+func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element, closerManager *files.MultiCloser) (proofLPP *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
 
 	witness := &distributed.ModuleWitnessLPP{}
 	witnessFilePath := witnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
-	if err := serialization.LoadFromDisk(witnessFilePath, witness, true); err != nil {
+	closer, err := serde.LoadFromDisk(witnessFilePath, witness, true)
+	if err != nil {
 		return nil, err
 	}
+	closerManager.Add(closer)
 
 	witness.InitialFiatShamirState = sharedRandomness
 
 	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	compiledLPP, err := zkevm.LoadCompiledLPP(cfg, witness.ModuleName)
+	// FIX: Capture compiledLPPCloser (3-value return)
+	compiledLPP, compiledLPPCloser, err := zkevm.LoadCompiledLPP(cfg, witness.ModuleName)
 	if err != nil {
 		return nil, fmt.Errorf("could not load compiled LPP: %w", err)
 	}
+	closerManager.Add(compiledLPPCloser)
 
 	logrus.Infof("Loaded the compiled LPP for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 

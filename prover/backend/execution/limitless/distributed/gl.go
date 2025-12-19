@@ -8,7 +8,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
@@ -38,9 +38,11 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 	}()
 
 	witnessGL := &distributed.ModuleWitnessGL{}
-	if err := serialization.LoadFromDisk(req.WitnessGLFile, witnessGL, true); err != nil {
+	closer, err := serde.LoadFromDisk(req.WitnessGLFile, witnessGL, true)
+	if err != nil {
 		return fmt.Errorf("could not load witness: %w", err)
 	}
+	defer closer.Close()
 
 	var (
 		glProofFileName = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
@@ -52,10 +54,11 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 
 	logrus.Infof("Running the GL-prover for witness module name=%s at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	compiledGL, err := zkevm.LoadCompiledGL(cfg, witnessGL.ModuleName)
+	compiledGL, closer, err := zkevm.LoadCompiledGL(cfg, witnessGL.ModuleName)
 	if err != nil {
 		return fmt.Errorf("could not load compiled GL: %w", err)
 	}
+	defer closer.Close()
 
 	logrus.Infof("Loaded the compiled GL for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
@@ -63,7 +66,7 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 
 	logrus.Infof("Finished running the GL-prover for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	if err := serialization.StoreToDisk(proofGLFile, *proofGL, true); err != nil {
+	if err := serde.StoreToDisk(proofGLFile, *proofGL, true); err != nil {
 		return fmt.Errorf("could not store GL proof: %w", err)
 	}
 

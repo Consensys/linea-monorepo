@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -408,4 +410,28 @@ func LocateBaseBySuffix(start, end int, dir, suffix string) (baseFile string, ol
 
 	// baseFile = everything before ".suffix"
 	return oldFile[:idx], oldFile, nil
+}
+
+// MultiCloser bundles multiple io.Closer objects into one.
+type MultiCloser struct {
+	closers []io.Closer
+	mu      sync.Mutex
+}
+
+func (m *MultiCloser) Add(c io.Closer) {
+	m.mu.Lock()
+	m.closers = append(m.closers, c)
+	m.mu.Unlock()
+}
+
+func (m *MultiCloser) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, c := range m.closers {
+		if err := c.Close(); err != nil {
+			return err // Or accumulate errors
+		}
+	}
+	m.closers = nil
+	return nil
 }
