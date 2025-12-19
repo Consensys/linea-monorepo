@@ -65,6 +65,7 @@ tasks.register('acceptanceTests', Test) {
 dependencies {
   annotationProcessor 'org.apache.logging.log4j:log4j-core'
   implementation 'org.apache.logging.log4j:log4j-core'
+  implementation project(":jvm-libs:generic:serialization:jackson")
 
   testImplementation project("${lineaSequencerProjectPath}:sequencer")
 
