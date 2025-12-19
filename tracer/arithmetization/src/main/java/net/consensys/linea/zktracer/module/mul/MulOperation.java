@@ -48,8 +48,11 @@ public class MulOperation extends ModuleOperation {
     trace.inst(opCode.byteValue()).arg1(arg1).arg2(arg2).res(res).validateRow();
   }
 
-  @Override
-  protected int computeLineCount() {
-    return 1;
-  }
+@Override
+protected int computeLineCount() {
+  return switch (opCode) {
+    case EXP -> 1; // Оставьте 1, но теперь это завязано на логику опкода.
+    case MUL -> 1; // Если в будущем MUL потребует 2 строки, вы измените это здесь.
+    default -> 1;
+  };
 }
