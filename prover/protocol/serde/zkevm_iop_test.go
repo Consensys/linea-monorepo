@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"runtime/debug"
 	"testing"
 	"time"
@@ -149,100 +150,119 @@ func runSerdeBenchmark(b *testing.B, input any, name string, onlySerialize bool)
 }
 
 func TestSerdeZkEVM(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	runSerdeTest(t, z, "ZKEVM", true, false)
 }
 
-func TestSerdeZkEVMIO(t *testing.T) {
+func TestSerdeZkEVMIO_RealWorldSimulation(t *testing.T) {
+	// t.Skip("Skipping integration test for CI")
 
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
-	// 1. Get Real ZkEVM
-	z := zkevm.GetTestZkEVM()
-	require.NotNil(t, z, "ZkEVM instance should not be nil")
-
-	// 2. Setup Temp Dir
-	tmpDir, err := os.MkdirTemp("", "serde_zkevm_io")
+	// 1. Setup Shared Storage (Simulating Disk)
+	tmpDir, err := os.MkdirTemp("", "prover_simulation_io")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	t.Logf("Testing IO with ZkEVM instance...")
+	rawPath := filepath.Join(tmpDir, "zkevm_prover_data.bin")
+	zstdPath := filepath.Join(tmpDir, "zkevm_prover_data.zst")
 
-	// --- Case A: Uncompressed (Zero-Copy Mmap) ---
-	t.Run("Uncompressed_Mmap", func(t *testing.T) {
-		path := filepath.Join(tmpDir, "zkevm_raw.bin")
+	// -----------------------------------------------------------------------
+	// PHASE 1: The Setup / Compiler Process
+	// -----------------------------------------------------------------------
+	// In this phase, we generate the massive object and write it to disk.
+	// Once this runs, we consider the object "gone" from memory.
+	t.Run("Phase1_Simulate_Setup_And_Store", func(t *testing.T) {
+		t.Log("Generating ZkEVM instance (Source of Truth)...")
+		z := zkevm.GetTestZkEVM()
+		require.NotNil(t, z)
 
-		// Measure Store Time
+		// 1.A Store Uncompressed (Mmap ready)
 		start := time.Now()
-		err := serde.StoreToDisk(path, z, false)
+		err := serde.StoreToDisk(rawPath, z, false)
 		require.NoError(t, err)
-		storeDur := time.Since(start)
+		t.Logf("[Setup] Saved Raw: %v", time.Since(start))
 
-		// Check Size
-		info, err := os.Stat(path)
-		require.NoError(t, err)
-		sizeMB := float64(info.Size()) / 1024 / 1024
-
-		t.Logf("[Mmap] Store Time: %v | Size: %.2f MB", storeDur, sizeMB)
-
-		// Measure Load Time
-		var zLoaded zkevm.ZkEvm
+		// 1.B Store Compressed (Archival)
 		start = time.Now()
-
-		// 1. Capture the closer returned by LoadFromDisk.
-		// This is critical for Mmap mode to prevent the GC from unmapping memory while we use it.
-		closer, err := serde.LoadFromDisk(path, &zLoaded, false)
+		err = serde.StoreToDisk(zstdPath, z, true)
 		require.NoError(t, err)
+		t.Logf("[Setup] Saved Zstd: %v", time.Since(start))
 
-		// 2. Defer closing the handle. This ensures the memory-mapped data stays valid
-		// for the duration of the DeepCmp check below.
+		// CRITICAL: We explicitly nil out 'z' and force Garbage Collection.
+		// This ensures that when Phase 2 starts, we absolutely cannot be pointing
+		// to the original memory. We are simulating a process restart.
+		z = nil
+		runtime.GC()
+		debug.FreeOSMemory()
+	})
+
+	// -----------------------------------------------------------------------
+	// PHASE 2: The Prover Process (Cold Start - Uncompressed)
+	// -----------------------------------------------------------------------
+	// This simulates the actual Prover binary starting up in the cloud.
+	// It relies solely on the file on disk.
+	t.Run("Phase2_Simulate_Prover_Start_Mmap", func(t *testing.T) {
+		// 1. Verify file exists on disk
+		info, err := os.Stat(rawPath)
+		require.NoError(t, err)
+		t.Logf("[Prover] Found data on disk: %.2f MB", float64(info.Size())/1024/1024)
+
+		// 2. The "Boot up" sequence
+		var zProver zkevm.ZkEvm
+
+		start := time.Now()
+		// This mimics the prover mapping the file into virtual memory
+		closer, err := serde.LoadFromDisk(rawPath, &zProver, false)
+		require.NoError(t, err)
+		// Important: In a real prover, this closer is held open until the process exits
 		defer closer.Close()
 
-		loadDur := time.Since(start)
-		t.Logf("[Mmap] Load Time:  %v (Should be very fast)", loadDur)
+		loadDuration := time.Since(start)
+		t.Logf("[Prover] Cold Start (Mmap Swizzle): %v", loadDuration)
 
-		// 3. Sanity Check
-		// We pass &zLoaded to ensure we are comparing (*zkevm.ZkEvm) with (*zkevm.ZkEvm).
-		if !serde.DeepCmp(z, &zLoaded, true) {
-			t.Errorf("Mismatch in exported fields of ZkEVM during serde i/o - Uncompressed (Mmap)")
+		// 3. Verification
+		// To verify correctness, we must unfortunately regenerate the source of truth
+		// because we destroyed it in Phase 1 to prove isolation.
+		t.Log("Regenerating Source of Truth for integrity check...")
+		zTruth := zkevm.GetTestZkEVM()
+
+		if !serde.DeepCmp(zTruth, &zProver, true) {
+			t.Fatal("[Prover] Integrity Check Failed: Mmap data differs from Source of Truth")
 		} else {
-			t.Log("Sanity checks passed")
+			t.Log("[Prover] Integrity Check Passed")
 		}
 	})
 
-	// --- Case B: Compressed (Zstd + Heap) ---
-	t.Run("Compressed_Zstd", func(t *testing.T) {
-		path := filepath.Join(tmpDir, "zkevm_zstd.bin")
+	// Force GC again between runs
+	runtime.GC()
+	debug.FreeOSMemory()
 
-		// Measure Store Time
+	// -----------------------------------------------------------------------
+	// PHASE 3: The Prover Process (Cold Start - Compressed)
+	// -----------------------------------------------------------------------
+	t.Run("Phase3_Simulate_Prover_Start_Zstd", func(t *testing.T) {
+		info, err := os.Stat(zstdPath)
+		require.NoError(t, err)
+		t.Logf("[Prover] Found compressed data on disk: %.2f MB", float64(info.Size())/1024/1024)
+
+		var zProver zkevm.ZkEvm
+
 		start := time.Now()
-		err := serde.StoreToDisk(path, z, true)
-		require.NoError(t, err)
-		storeDur := time.Since(start)
-
-		// Check Size
-		info, err := os.Stat(path)
-		require.NoError(t, err)
-		sizeMB := float64(info.Size()) / 1024 / 1024
-
-		t.Logf("[Zstd] Store Time: %v | Size: %.2f MB", storeDur, sizeMB)
-
-		// Measure Load Time
-		var zLoaded zkevm.ZkEvm
-		start = time.Now()
-
-		// Capture closer (it will be a no-op closer in compressed mode, but signature must match).
-		closer, err := serde.LoadFromDisk(path, &zLoaded, true)
+		// This mimics downloading/reading a compressed asset into Heap
+		closer, err := serde.LoadFromDisk(zstdPath, &zProver, true)
 		require.NoError(t, err)
 		defer closer.Close()
 
-		loadDur := time.Since(start)
-		t.Logf("[Zstd] Load Time:  %v (Includes Decompression)", loadDur)
+		loadDuration := time.Since(start)
+		t.Logf("[Prover] Cold Start (Decompress + Swizzle): %v", loadDuration)
 
-		// Sanity Check
-		if !serde.DeepCmp(z, &zLoaded, true) {
-			t.Errorf("Mismatch in exported fields of ZkEVM during serde i/o - Compressed (Zstd)")
+		// Verification
+		t.Log("Regenerating Source of Truth for integrity check...")
+		zTruth := zkevm.GetTestZkEVM()
+
+		if !serde.DeepCmp(zTruth, &zProver, true) {
+			t.Fatal("[Prover] Integrity Check Failed: Zstd data differs from Source of Truth")
 		} else {
-			t.Log("Sanity checks passed")
+			t.Log("[Prover] Integrity Check Passed")
 		}
 	})
 }
