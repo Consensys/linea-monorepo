@@ -10,6 +10,13 @@ package linea.plugin.acc.test.rpc.linea
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL
+import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.core.JsonToken
+import com.fasterxml.jackson.databind.DeserializationContext
+import com.fasterxml.jackson.databind.JsonDeserializer
+import com.fasterxml.jackson.databind.ObjectReader
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import linea.plugin.acc.test.LineaPluginPoSTestBase
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder
 import net.consensys.linea.bl.TransactionProfitabilityCalculator
@@ -439,7 +446,7 @@ open class EstimateGasTest : LineaPluginPoSTestBase() {
   class LineaEstimateGasRequest(
     private val callParams: CallParams,
     private val stateOverrides: Map<String, Map<String, String>>? = null,
-  ) : Transaction<LineaEstimateGasRequest.LineaEstimateGasResponse> {
+  ) : Transaction<LineaEstimateGasResponse> {
 
     override fun execute(nodeRequests: NodeRequests): LineaEstimateGasResponse {
       return try {
@@ -453,11 +460,16 @@ open class EstimateGasTest : LineaPluginPoSTestBase() {
         throw RuntimeException(e)
       }
     }
-
-    class LineaEstimateGasResponse : Response<ResponseData>()
-
-    data class ResponseData(val gasLimit: String, val baseFeePerGas: String, val priorityFeePerGas: String)
   }
+
+  class LineaEstimateGasResponse : Response<LineaEstimateGasResponseData>() {
+    @JsonDeserialize(using = LineaEstimateGasResponseDeserializer::class)
+    override fun setResult(result: LineaEstimateGasResponseData) {
+      super.setResult(result)
+    }
+  }
+
+  class LineaEstimateGasResponseData(val gasLimit: String, val baseFeePerGas: String, val priorityFeePerGas: String)
 
   class BadLineaEstimateGasRequest(
     private val badCallParams: CallParams,
@@ -476,9 +488,7 @@ open class EstimateGasTest : LineaPluginPoSTestBase() {
       }
     }
 
-    class BadLineaEstimateGasResponse : Response<ResponseData>()
-
-    data class ResponseData(val gasLimit: String, val baseFeePerGas: String, val priorityFeePerGas: String)
+    class BadLineaEstimateGasResponse : Response<LineaEstimateGasResponseData>()
   }
 
   class RawEstimateGasRequest(private val callParams: CallParams) : Transaction<String> {
@@ -514,6 +524,21 @@ open class EstimateGasTest : LineaPluginPoSTestBase() {
   )
 
   data class StateOverride(val account: String, val balance: String)
+
+  class LineaEstimateGasResponseDeserializer : JsonDeserializer<LineaEstimateGasResponseData>() {
+    private val objectReader: ObjectReader = jacksonObjectMapper().reader()
+
+    override fun deserialize(
+      jsonParser: JsonParser,
+      deserializationContext: DeserializationContext,
+    ): LineaEstimateGasResponseData? {
+      return if (jsonParser.currentToken != JsonToken.VALUE_NULL) {
+        objectReader.readValue(jsonParser, LineaEstimateGasResponseData::class.java)
+      } else {
+        null
+      }
+    }
+  }
 
   companion object {
     protected const val FIXED_GAS_COST_WEI = 0

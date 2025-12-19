@@ -170,13 +170,6 @@ abstract class AcceptanceTestBase {
     }
   }
 
-  protected fun waitForBlockHeight(node: Node, blockchainHeight: Long) {
-    WaitUtils.waitFor(120.seconds) {
-      assertThat(node.execute(ethTransactions.blockNumber()))
-        .isGreaterThanOrEqualTo(BigInteger.valueOf(blockchainHeight))
-    }
-  }
-
   protected fun createAccounts(numAccounts: Int, initialBalanceEther: Int): List<Account> {
     val newAccounts = (1..numAccounts)
       .map { accounts.createAccount("Account$it") }

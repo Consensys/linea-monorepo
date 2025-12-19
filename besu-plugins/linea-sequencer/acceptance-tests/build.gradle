@@ -43,6 +43,7 @@ solidity {
   version '0.8.19'
 }
 
+compileKotlin.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:generateContractWrappers")
 compileTestKotlin.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:generateTestContractWrappers")
 processTestResources.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:generateTestContractWrappers")
 
