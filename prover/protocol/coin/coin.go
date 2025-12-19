@@ -109,7 +109,9 @@ func (info *Info) Sample(fs *fiatshamir.FS, seed field.Octuplet) interface{} {
 		return (*fs).RandomManyIntegers(info.Size, info.UpperBound)
 	case FieldExt:
 		return (*fs).RandomFext()
-		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
+	case FieldFromSeed:
+		return (*fs).RandomFieldFromSeed(seed, string(info.Name))
+
 	}
 	panic("Unreachable")
 }
@@ -145,6 +147,10 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 		infos.Size = size[0]
 		infos.UpperBound = size[1]
 	case Field:
+		if len(size) > 0 {
+			utils.Panic("size for Field")
+		}
+	case FieldFromSeed:
 		if len(size) > 0 {
 			utils.Panic("size for Field")
 		}

@@ -140,8 +140,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	wizard.ContinueCompilation(modIOP,
-		// @alex: unsure if/why we need to compile with MiMC since it should be
-		// done pre-bootstrapping.
+		// Compile Poseidon2 queries that may have been created during pre-compilation
 		poseidon2.CompilePoseidon2,
 		// The reason why 1 works is because it will work for all the GL modules
 		// and because the LPP module do not have Plonk-in-wizards query.
@@ -205,6 +204,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 
 	wizard.ContinueCompilation(modIOP,
 		selfrecursion.SelfRecurse,
+		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
@@ -221,6 +221,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
+		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
@@ -240,6 +241,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
+		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
@@ -328,6 +330,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
+		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
