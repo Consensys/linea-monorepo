@@ -14,7 +14,7 @@ import (
 
 // encoder: Holds the current encoding/serialization state
 type encoder struct {
-	// The growing array of bytes (the "Heap").
+	// The growing slices of bytes(akin to "Heap") storing the actual serialized payload data.
 	buf *bytes.Buffer
 
 	// The write cursor pointing to the end of the buffer.
@@ -26,7 +26,7 @@ type encoder struct {
 	ptrMap map[uintptr]Ref
 }
 
-func newWriter() *encoder {
+func newEncoder() *encoder {
 	return &encoder{
 		buf:    new(bytes.Buffer),
 		offset: 0,
@@ -116,8 +116,9 @@ func (w *encoder) writeSliceData(v reflect.Value) FileSlice {
 }
 
 // encode serializes a value into the writer buffer and returns a Ref
-// (byte offset) pointing to where the value was written.
-//
+// (8-byte offset) pointing to root offset where the value was written.
+// This essentially tells the decoder where the "entry point" of our object
+// graph is located inside the file.
 // Key responsibilities:
 //  1. Handle pointer de-duplication so the same object is serialized only once.
 //  2. Support circular references by registering the pointer address *before*

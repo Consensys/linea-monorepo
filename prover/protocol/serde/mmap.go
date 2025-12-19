@@ -17,6 +17,7 @@ const Magic = 0x5A45524F
 //
 // All fields are written in a stable binary format and must remain backward-compatible
 // across versions.
+// IMPORTANT: DO NOT CHANGE THE LAYOUT (ordering of the fields) of this struct.
 type FileHeader struct {
 	// Magic is a constant identifier used to quickly validate that the file
 	// is of the expected format (e.g. to reject random or corrupted input).

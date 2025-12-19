@@ -1,4 +1,3 @@
-// File: serde/files.go
 package serde
 
 import (

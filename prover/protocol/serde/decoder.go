@@ -1,4 +1,3 @@
-// Reader maps that block into memory and "swizzles" (converts) file offsets into real memory addresses
 package serde
 
 import (
@@ -10,6 +9,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
+// decoder maps the continguous block into memory and "swizzles" (converts) file offsets into real memory addresses
+// containing the actual payload data.
 type decoder struct {
 
 	// The entire memory-mapped file - the raw binary blob. The reader does not "read" from a stream,
