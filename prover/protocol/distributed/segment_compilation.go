@@ -92,7 +92,7 @@ type SegmentProof struct {
 	SegmentIndex     int
 	// LppCommitment is the commitment of the LPP witness. It is only populated
 	// for a GL segment proof.
-	LppCommitment field.Element
+	LppCommitment field.Octuplet
 
 	// recursionRuntime is the runtime of the recursion proof. The reason for
 	// this field is that we need to generate the input proof of the outer-proof,
@@ -183,6 +183,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		wizard.ContinueCompilation(modIOP,
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
 				vortex.WithOptionalSISHashingThreshold(64),
@@ -193,6 +194,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		wizard.ContinueCompilation(modIOP,
 			vortex.Compile(
 				2,
+				false,
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
 				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
@@ -209,10 +211,11 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_0")),
+			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_0")),
 		),
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(40),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
@@ -224,13 +227,14 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
+			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
 		),
 		// This extra step is to ensure the tightness of the final wizard by
 		// adding an optional second layer of compilation when we have very
 		// large inputs.
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(40),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
@@ -243,7 +247,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithStitcherMinSize(2),
 			compiler.WithoutMpts(),
 			// Uncomment to enable the debugging mode
-			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
+			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
 		),
 		// This final step expectedly always generate always the same profile.
 		// Most of the time, it is ineffective and could be skipped so there is
@@ -252,6 +256,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		mpts.Compile(mpts.WithNumColumnProfileOpt(params.ColumnProfileMPTS, params.ColumnProfileMPTSPrecomputed)),
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(40),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
@@ -316,6 +321,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(40),
 			vortex.WithSISParams(&sisInstance),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
@@ -332,6 +338,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		),
 		vortex.Compile(
 			8,
+			false,
 			vortex.ForceNumOpenedColumns(40),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
@@ -410,10 +417,10 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 		stoppingRound = recursion.VortexQueryRound(comp) + 1
 		proverRun     *wizard.ProverRuntime
 		initialTime   = profiling.TimeIt(func() {
-			proverRun = wizard.RunProverUntilRound(comp, proverStep, stoppingRound)
+			proverRun = wizard.RunProverUntilRound(comp, proverStep, stoppingRound, false)
 		})
 		initialProof    = proverRun.ExtractProof()
-		initialProofErr = wizard.VerifyUntilRound(comp, initialProof, stoppingRound)
+		initialProofErr = wizard.VerifyUntilRound(comp, initialProof, stoppingRound, false)
 	)
 
 	if initialProofErr != nil {
@@ -429,10 +436,11 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 				r.RecursionComp,
 				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}, nil),
 				recStoppingRound,
+				false,
 			)
 		})
 		finalProof    = run.ExtractProof()
-		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound)
+		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound, false)
 	)
 
 	if finalProofErr != nil {

@@ -128,3 +128,10 @@ func (d MDHasher) MaxBytes32() types.Bytes32 {
 func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]zk.WrappedVariable) (newState [BlockSize]zk.WrappedVariable) {
 	panic("unimplemented")
 }
+
+// HashVec hashes a vector of field elements
+func HashVec(v ...field.Element) (h field.Octuplet) {
+	state := NewMDHasher()
+	state.WriteElements(v...)
+	return state.SumElement()
+}

@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	cmimc "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	hf "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -222,28 +223,31 @@ func (dist *DistributedWizard) CompileSegments(params CompilationParams) *Distri
 //
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.
-func GetSharedRandomnessFromSegmentProofs(gLWitnesses []*SegmentProof) field.Element {
+func GetSharedRandomnessFromSegmentProofs(gLWitnesses []*SegmentProof) field.Octuplet {
 
-	mset := cmimc.MSetHash{}
+	mset := hf.MSetHash{}
 
 	for i := range gLWitnesses {
 
 		var (
-			moduleIndex, _  = new(field.Element).SetInterface(gLWitnesses[i].ModuleIndex)
-			segmentIndex, _ = new(field.Element).SetInterface(gLWitnesses[i].SegmentIndex)
-			lppCommitment   = gLWitnesses[i].LppCommitment
+			moduleIndex   = field.NewElement(uint64(gLWitnesses[i].ModuleIndex))
+			segmentIndex  = field.NewElement(uint64(gLWitnesses[i].SegmentIndex))
+			lppCommitment = gLWitnesses[i].LppCommitment
 		)
 
-		mset.Insert(*moduleIndex, *segmentIndex, lppCommitment)
+		mset.Insert(append([]field.Element{moduleIndex, segmentIndex}, lppCommitment[:]...)...)
 	}
 
-	return cmimc.HashVec(mset[:])
+	return poseidon2_koalabear.HashVec(mset[:]...)
 }
 
 // getLppCommitmentFromRuntime returns the LPP commitment from the runtime
-func getLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Element {
-	name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
-	return runtime.GetPublicInput(name)
+func getLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Octuplet {
+	merkleRoot := field.Octuplet{}
+	for i := range merkleRoot {
+		merkleRoot[i] = runtime.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)) // index 0 stands for the round index.
+	}
+	return merkleRoot
 }
 
 // PrecompileInitialWizard pre-compiles the initial wizard protocol by applying all the

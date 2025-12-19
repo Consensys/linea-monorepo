@@ -45,7 +45,7 @@ func TestDistributedWizardBasic(t *testing.T) {
 	}
 
 	var (
-		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.Assign)
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.Assign, false)
 		proof       = runtimeBoot.ExtractProof()
 		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
 	)
@@ -94,9 +94,9 @@ func TestDistributedWizardBasic(t *testing.T) {
 		}
 
 		var (
-			proverRunGL         = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
+			proverRunGL         = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]), false)
 			proofGL             = proverRunGL.ExtractProof()
-			verRun, verGLErr    = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL)
+			verRun, verGLErr    = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL, false)
 			generalMSetFromGLFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, hasher_factory.MSetHashSize)
 			generalMSetFromGL   = hasher_factory.MSetHash(generalMSetFromGLFr)
 		)
@@ -116,14 +116,24 @@ func TestDistributedWizardBasic(t *testing.T) {
 			moduleLPP   = distWizard.LPPs[moduleIndex]
 		)
 
-		witnessLPP.InitialFiatShamirState = field.NewFromString("6861409415040334196327676756394403519979367936044773323994693747743991500772")
+		witnessLPP.InitialFiatShamirState = field.NewOctupletFromStrings(
+			[8]string{
+				"123456789",
+				"987654321",
+				"111111111",
+				"222222222",
+				"333333333",
+				"444444444",
+				"555555555",
+				"666666666",
+			})
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
 		var (
-			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP))
+			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP), false)
 			proofLPP             = proverRunLPP.ExtractProof()
-			verRun, verLPPErr    = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP)
+			verRun, verLPPErr    = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP, false)
 			generalMSetFromLPPFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, hasher_factory.MSetHashSize)
 			generalMSetFromLPP   = hasher_factory.MSetHash(generalMSetFromLPPFr)
 		)
@@ -181,9 +191,9 @@ type DistributeTestCase struct {
 func (d DistributeTestCase) Define(comp *wizard.CompiledIOP) {
 
 	// Define the first module
-	a0 := comp.InsertCommit(0, "a0", d.numRow)
-	b0 := comp.InsertCommit(0, "b0", d.numRow)
-	c0 := comp.InsertCommit(0, "c0", d.numRow)
+	a0 := comp.InsertCommit(0, "a0", d.numRow, true)
+	b0 := comp.InsertCommit(0, "b0", d.numRow, true)
+	c0 := comp.InsertCommit(0, "c0", d.numRow, true)
 
 	// Importantly, the second module must be slightly different than the first
 	// one because else it will create a wierd edge case in the conglomeration:
@@ -191,9 +201,9 @@ func (d DistributeTestCase) Define(comp *wizard.CompiledIOP) {
 	// not be able to infer a module from a VK.
 	//
 	// We differentiate the modules by adding a duplicate constraints for GL0
-	a1 := comp.InsertCommit(0, "a1", d.numRow)
-	b1 := comp.InsertCommit(0, "b1", d.numRow)
-	c1 := comp.InsertCommit(0, "c1", d.numRow)
+	a1 := comp.InsertCommit(0, "a1", d.numRow, true)
+	b1 := comp.InsertCommit(0, "b1", d.numRow, true)
+	c1 := comp.InsertCommit(0, "c1", d.numRow, true)
 
 	comp.InsertGlobal(0, "global-0", symbolic.Sub(c0, b0, a0))
 	comp.InsertGlobal(0, "global-duplicate", symbolic.Sub(c0, b0, a0))
@@ -270,7 +280,7 @@ func runProverGLs(
 func runProverLPPs(
 	t *testing.T,
 	distWizard *distributed.DistributedWizard,
-	sharedRandomness field.Element,
+	sharedRandomness field.Octuplet,
 	witnessLPPs []*distributed.ModuleWitnessLPP,
 ) []*distributed.SegmentProof {
 

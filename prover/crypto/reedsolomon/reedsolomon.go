@@ -111,7 +111,7 @@ func (p *RsParams) RsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVe
 	p.Domains[0].FFT(inputCoeffs, fft.DIT, fft.WithNbTasks(1))
 	for j := p.NbColumns() - 1; j >= 0; j-- {
 		expandedCoeffs[rho*j+1] = expandedCoeffs[j]
-		expandedCoeffs[rho*j] = v.Get(j)
+		expandedCoeffs[rho*j], _ = v.GetBase(j)
 	}
 
 	return smartvectors.NewRegular(expandedCoeffs)

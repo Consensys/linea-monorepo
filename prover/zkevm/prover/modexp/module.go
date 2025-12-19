@@ -1,195 +1,156 @@
 package modexp
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commoncs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 const (
+	// smallModexpSize is the bit-size bound for small modexp instances
+	smallModExpSize = 256
+	// largeModexpSize is the bit-size bound for large modexp instances
+	largeModExpSize = 8192
+
+	// limbSize is the size (in bits) of a limb as in the public inputs of the
+	// circuit. This is a parameter linked to how the arithmetization encodes
+	// 256 bits integers.
+	limbSizeBits = 16
+	// nbLargeModexpLimbs is the number of limbs used to represent
+	// large modexp operands
+	nbLargeModexpLimbs = largeModExpSize / limbSizeBits
+	// nbSmallModexpLimbs is the number of limbs used to represent
+	// small modexp operands
+	nbSmallModexpLimbs = smallModExpSize / limbSizeBits
 	// modexpNumRows corresponds to the number of rows present in the MODEXP
 	// module to represent a single instance. Each instance has 4 operands
-	// dispatched in limbs of
-	modexpNumRowsPerInstance = 32 * 4
+	// dispatched in limbs of [limbSizeBits] bits.
+	modexpNumRowsPerInstance = nbLargeModexpLimbs * 4 // 4 operands: base, exponent, modulus, result
+
+	// roundNr is the round number where the modexp module runs. It is based on
+	// arithmetization, so we start from round 0.
+	roundNr = 0
 )
 
-// Module implements the wizard part responsible for checking the MODEXP
-// claims coming from the BLKMDXP module of the arithmetization.
-type Module struct {
-	// Input stores the columns used as a source for the antichamber.
-	Input Input
-	// IsActive is a binary indicator column marking with a 1, the rows of the
-	// antichamber modules corresponding "active" rows: e.g. NOT padding rows.
-	IsActive ifaces.Column
-	// IsSmall, IsLarge are indicator columns that are constant per modexp
-	// instances. They are mutually exclusive and
-	IsSmall, IsLarge ifaces.Column
-	// Limb contains the modexp arguments and is subjected to a projection
-	// constraint from the BLK_MDXP (using IsActive as filter). It is constrained
-	// to zero when IsActive = 0.
-	Limbs [common.NbLimbU128]ifaces.Column
-	// ToSmallCirc and ToLargeCirc are indicator columns marking with a 1 the
-	// positions of limbs corresponding to public inputs of (respectely) the
-	// small and the large circuit.
-	ToSmallCirc ifaces.Column
-	// connection logic of the modexp circuit specialized for the small and
-	// large instances respectively
-	GnarkCircuitConnector256Bits, GnarkCircuitConnector4096Bits *plonk.Alignment
-	// HasCircuit indicates whether the circuit has been set in the module. In
-	// production, it will be always set to true. But for convenience we omit
-	// the circuit in some of the test as this is CPU intensive.
-	HasCircuit bool
-	// FlattenLimbsSmall is a helper structure used to flatten the limbs columns
-	// of the small modexp instances into a single column.
-	FlattenLimbsSmall *common.FlattenColumn
-	// FlattenLimbsLarge is a helper structure used to flatten the limbs columns
-	// of the large modexp instances into a single column.
-	FlattenLimbsLarge *common.FlattenColumn
+type Settings struct {
+	// MaxNbInstance256 is the maximum number of small (256 bits) modexp
+	// instances to be handled by the module.
+	//
+	// NB: This number must be > 0.
+	MaxNbInstance256 int
+	// MaxNbInstanceLarge is the maximum number of large (8192 bits) modexp
+	// instances to be handled by the module. All large instances (over 256 bits)
+	// are handled by the same large modexp circuit.
+	//
+	// NB: This number must be > 0.
+	MaxNbInstanceLarge int
+}
+
+type Input struct {
+	*Settings
+	// Binary column indicating if we have base limbs
+	IsModExpBase ifaces.Column
+	// Binary column indicating if we have exponent limbs
+	IsModExpExponent ifaces.Column
+	// Binary column indicating if we have modulus limbs
+	IsModExpModulus ifaces.Column
+	// Binary column indicating if we have result limbs
+	IsModExpResult ifaces.Column
+	// Multiplexed column containing limbs for base, exponent, modulus, and result
+	Limbs ifaces.Column
+}
+
+func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings, arith *arithmetization.Arithmetization) *Input {
+	return &Input{
+		Settings:         &settings,
+		IsModExpBase:     arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_BASE"),
+		IsModExpExponent: arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_EXPONENT"),
+		IsModExpModulus:  arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_MODULUS"),
+		IsModExpResult:   arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_RESULT"),
+		Limbs:            arith.ColumnOf(comp, "blake2fmodexpdata", "LIMB"),
+	}
 }
 
 // NewModuleZkEvm constructs an instance of the modexp module. It should be called
-// only once.
-//
-// To define the circuit, call [Module.WithCircuit] as the present function
-// does not define them.
+// only once during zkEVM prover lifecycle.
 func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings, arith *arithmetization.Arithmetization) *Module {
-	return newModule(comp, newZkEVMInput(comp, settings, arith)).
-		WithCircuit(comp, query.PlonkRangeCheckOption(16, 1, false))
+	return newModule(comp, newZkEVMInput(comp, settings, arith))
 }
 
-func newModule(comp *wizard.CompiledIOP, input Input) *Module {
+// Module implements the wizard part responsible for checking the MODEXP
+// claims coming from the BLKMDXP module of the arithmetization.
+//
+// It handles both small (256 bits) and large (8192 bits) modexp instances.
+type Module struct {
+	// Input stores the columns used as a source for the antichamber.
+	*Input
 
+	// IsModExp is a binary indicator column marking with a 1, the rows of the
+	// antichamber modules corresponding "active" rows: e.g. NOT padding rows.
+	IsModExp ifaces.Column
+	// IsSmall, IsLarge are indicator columns that are constant per modexp
+	// instances. They are mutually exclusive and activated by IsModExp.
+	IsSmall, IsLarge ifaces.Column
+	// ToSmall is indicator column marking with a 1 the
+	// positions of limbs corresponding to public inputs of (respectely) the
+	// small circuit. It is implicit for large circuit as ToLarge = IsLarge
+	ToSmall ifaces.Column
+
+	// Small and Large are the submodule doing the actual modular exponentiation
+	// checks using field emulation.
+	Small, Large *Modexp
+}
+
+func newModule(comp *wizard.CompiledIOP, input *Input) *Module {
 	var (
-		settings      = input.Settings
-		maxNbInstance = settings.MaxNbInstance256 + settings.MaxNbInstance4096
-		size          = utils.NextPowerOfTwo(maxNbInstance * modexpNumRowsPerInstance)
-		mod           = &Module{
-			Input:       input,
-			IsActive:    comp.InsertCommit(0, "MODEXP_IS_ACTIVE", size, true),
-			IsSmall:     comp.InsertCommit(0, "MODEXP_IS_SMALL", size, true),
-			IsLarge:     comp.InsertCommit(0, "MODEXP_IS_LARGE", size, true),
-			ToSmallCirc: comp.InsertCommit(0, "MODEXP_TO_SMALL_CIRC", size, true),
+		settings = input.Settings
+		mod      = &Module{
+			IsModExp: comp.InsertCommit(0, "MODEXP_INPUT_IS_MODEXP", input.Limbs.Size(), true),
+			IsSmall:  comp.InsertCommit(0, "MODEXP_IS_SMALL", input.Limbs.Size(), true),
+			IsLarge:  comp.InsertCommit(0, "MODEXP_IS_LARGE", input.Limbs.Size(), true),
+			ToSmall:  comp.InsertCommit(0, "MODEXP_TO_SMALL", input.Limbs.Size(), true),
+			Input:    input,
 		}
 	)
+	comp.RegisterProverAction(roundNr, mod)
+	// run later to ensure we have the assignments already done
+	mod.Small = newModexp(comp, "MODEXP_SMALL", mod, mod.IsSmall, mod.ToSmall, smallModExpSize, settings.MaxNbInstance256)
+	mod.Large = newModexp(comp, "MODEXP_LARGE", mod, mod.IsLarge, mod.IsLarge, largeModExpSize, settings.MaxNbInstanceLarge)
 
-	// This helps the limitless prover understands that the modexp module is
-	// right padded.
-	pragmas.MarkRightPadded(mod.IsActive)
-
-	for i := 0; i < common.NbLimbU128; i++ {
-		mod.Limbs[i] = comp.InsertCommit(0, ifaces.ColIDf("MODEXP_LIMBS_%d", i), size, true)
-	}
-
-	mod.Input.setIsModexp(comp)
-
-	mod.csIsActive(comp)
+	// check that isModexp is well constructed
+	mod.csIsModExp(comp)
+	// check that IsSmall and IsLarge are well constructed
 	mod.csIsSmallAndLarge(comp)
+	// check that the concrete mask for IS_SMALL is well constructed
 	mod.csToCirc(comp)
 
-	comp.InsertProjection(
-		"MODEXP_BLKMDXP_PROJECTION",
-		query.ProjectionInput{
-			ColumnA: mod.Input.Limbs[:],
-			ColumnB: mod.Limbs[:],
-			FilterA: mod.Input.IsModExp,
-			FilterB: mod.IsActive,
-		},
-	)
-
 	return mod
 }
 
-// WithCircuit adds the Plonk-in-Wizard circuit verification to complete
-// the anti-chamber.
-func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *Module {
-
-	mod.HasCircuit = true
-	settings := mod.Input.Settings
-
-	mod.FlattenLimbsSmall = common.NewFlattenColumn(comp, common.NbLimbU128, mod.Limbs[:], mod.ToSmallCirc)
-	mod.FlattenLimbsLarge = common.NewFlattenColumn(comp, common.NbLimbU128, mod.Limbs[:], mod.IsLarge)
-
-	mod.FlattenLimbsSmall.CsFlattenProjection(comp)
-	mod.FlattenLimbsLarge.CsFlattenProjection(comp)
-
-	mod.GnarkCircuitConnector256Bits = plonk.DefineAlignment(
-		comp,
-		&plonk.CircuitAlignmentInput{
-			Name:               "MODEXP_256_BITS",
-			DataToCircuit:      mod.FlattenLimbsSmall.Limbs(),
-			DataToCircuitMask:  mod.FlattenLimbsSmall.Mask(),
-			Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexp256, 256),
-			NbCircuitInstances: utils.DivCeil(settings.MaxNbInstance256, settings.NbInstancesPerCircuitModexp256),
-			PlonkOptions:       options,
-		},
-	)
-
-	mod.GnarkCircuitConnector4096Bits = plonk.DefineAlignment(
-		comp,
-		&plonk.CircuitAlignmentInput{
-			Name:               "MODEXP_4096_BITS",
-			DataToCircuit:      mod.FlattenLimbsLarge.Limbs(),
-			DataToCircuitMask:  mod.FlattenLimbsLarge.Mask(),
-			Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexp4096, 4096),
-			NbCircuitInstances: utils.DivCeil(settings.MaxNbInstance4096, settings.NbInstancesPerCircuitModexp4096),
-			PlonkOptions:       options,
-		},
-	)
-
-	return mod
-}
-
-// csIsActive ensures that the ant.IsActive column is well constructed and that
-// all the other columns are zero when it is zero.
-func (mod *Module) csIsActive(comp *wizard.CompiledIOP) {
-
-	mustBeBinary(comp, mod.IsActive)
-
+// csIsModExp constructs, constraints and set the [isModexpColumn]
+func (m *Module) csIsModExp(comp *wizard.CompiledIOP) {
 	comp.InsertGlobal(
-		0,
-		"MODEXP_IS_ACTIVE_DOES_NOT_INCREASE",
-		sym.Mul(
-			mod.IsActive,
-			sym.Sub(mod.IsActive, column.Shift(mod.IsActive, -1)),
+		roundNr,
+		"MODEXP_IS_MODEXP_WELL_CONSTRUCTED",
+		sym.Sub(
+			m.IsModExp,
+			m.IsModExpBase,
+			m.IsModExpExponent,
+			m.IsModExpModulus,
+			m.IsModExpResult,
 		),
 	)
-
-	//
-	// NB: IsActive can only have a multiple of 128 1's. That's because it is
-	// not supposed to go off in the middle of an actual modexp instance.
-	// However, this is pre-enforced by the fact that this column is used as
-	// the indicator of a projection query linking the blk_mdxp module with
-	// the antichamber.
-	//
-	// This implictly constrains that aspect and thus, it does not require
-	// a particular constraint.
-	//
-
-	mustCancelWhenBinCancel(comp, mod.IsActive, mod.Limbs)
 }
 
 // csIsSmallAndLarge constrains IsSmall and IsLarge
 func (mod *Module) csIsSmallAndLarge(comp *wizard.CompiledIOP) {
-
-	mustBeBinary(comp, mod.IsSmall)
-	mustBeBinary(comp, mod.IsLarge)
-
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("MODEXP_IS_SMALL_LARGE_ARE_MUTUALLY_EXCLUSIVE"),
-		sym.Sub(
-			mod.IsActive,
-			sym.Add(mod.IsSmall, mod.IsLarge),
-		),
-	)
+	commoncs.MustBeMutuallyExclusiveBinaryFlags(comp, mod.IsModExp, []ifaces.Column{mod.IsSmall, mod.IsLarge})
 
 	//
 	// NB: The facts that
@@ -213,40 +174,42 @@ func (mod *Module) csIsSmallAndLarge(comp *wizard.CompiledIOP) {
 
 	//
 	// The constraint below ensures that if the IS_SMALL flag is set, then the
-	// limbs 2..32 of the operands of the corresponding modexp must be zero
+	// limbs 2..64 of the operands of the corresponding modexp must be zero
 	// (otherwise, they would represent numbers larger than 256 bits).
 	//
-	// The converse constraint does not exists in the 4096 case because it would
+	// The converse constraint does not exists in the large (8192) case because it would
 	// not be wrong to supply
 	//
 
-	for i := 0; i < common.NbLimbU128; i++ {
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("MODEXP_IS_SMALL_IMPLIES_SMALL_OPERANDS_%d", i),
-			sym.Mul(
-				mod.Limbs[i],
-				mod.IsSmall,
-				sym.Sub(1, variables.NewPeriodicSample(32, 30), variables.NewPeriodicSample(32, 31)),
-			),
-		)
+	masks := make([]any, nbSmallModexpLimbs)
+	for i := range nbSmallModexpLimbs {
+		masks[i] = variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-i-1)
 	}
+	comp.InsertGlobal(
+		0,
+		"MODEXP_IS_SMALL_IMPLIES_SMALL_OPERANDS",
+		sym.Mul(
+			mod.Limbs,
+			mod.IsSmall,
+			sym.Sub(1, masks...),
+		),
+	)
 }
 
 // csToCirc ensures the well-construction of ant.ToSmallCirc
 func (mod *Module) csToCirc(comp *wizard.CompiledIOP) {
-
+	masks := make([]any, nbSmallModexpLimbs)
+	for i := range nbSmallModexpLimbs {
+		masks[i] = variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-i-1)
+	}
 	comp.InsertGlobal(
 		0,
 		"MODEXP_TO_SMALL_CIRC_VAL",
 		sym.Sub(
-			mod.ToSmallCirc,
+			mod.ToSmall,
 			sym.Mul(
 				mod.IsSmall,
-				sym.Add(
-					variables.NewPeriodicSample(32, 30),
-					variables.NewPeriodicSample(32, 31),
-				),
+				sym.Add(masks...),
 			),
 		),
 	)
@@ -257,28 +220,73 @@ func (mod *Module) csToCirc(comp *wizard.CompiledIOP) {
 	//
 }
 
-// mustBeBinary constraints c to be binary
-func mustBeBinary(comp *wizard.CompiledIOP, c ifaces.Column) {
-
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("%v_CANCEL_IS_BINARY", c.GetColID()),
-		sym.Mul(c, sym.Sub(c, 1)),
-	)
+func (m *Module) Run(run *wizard.ProverRuntime) {
+	m.assignIsActive(run)
+	m.assignIsSmallOrLarge(run)
 }
 
-// mustCancelWhenBinCancel enforces to 'c' to be zero when the binary column
-// `bin` is zero. The constraint does not work if bin is not constrained to be
-// binary.
-func mustCancelWhenBinCancel(comp *wizard.CompiledIOP, bin ifaces.Column, c [common.NbLimbU128]ifaces.Column) {
-	for i := range common.NbLimbU128 {
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("%v_CANCEL_WHEN_NOT_%v", c[i].GetColID(), bin.GetColID()),
-			sym.Mul(
-				sym.Sub(1, bin),
-				c[i],
-			),
-		)
+// assignIsActive evaluates and assigns the IsActive column
+func (m *Module) assignIsActive(run *wizard.ProverRuntime) {
+
+	var (
+		isBase     = m.IsModExpBase.GetColAssignment(run)
+		isExponent = m.IsModExpExponent.GetColAssignment(run)
+		isModulus  = m.IsModExpModulus.GetColAssignment(run)
+		isResult   = m.IsModExpResult.GetColAssignment(run)
+		isActive   = smartvectors.Add(isBase, isExponent, isModulus, isResult)
+	)
+
+	run.AssignColumn(m.IsModExp.GetColID(), isActive)
+}
+
+func (m *Module) assignIsSmallOrLarge(run *wizard.ProverRuntime) {
+	var (
+		srcIsModExp = m.IsModExp.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcLimbs    = m.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
+	)
+	var (
+		dstIsSmall = common.NewVectorBuilder(m.IsSmall)
+		dstIsLarge = common.NewVectorBuilder(m.IsLarge)
+		dstToSmall = common.NewVectorBuilder(m.ToSmall)
+	)
+	checkSmall := func(ptr int) bool {
+		for k := range nbLargeModexpLimbs - nbSmallModexpLimbs {
+			for j := range 4 {
+				if !srcLimbs[ptr+k+j*nbLargeModexpLimbs].IsZero() {
+					return false
+				}
+			}
+		}
+		return true
 	}
+
+	for ptr := 0; ptr < len(srcLimbs); {
+		if srcIsModExp[ptr].IsZero() {
+			dstIsSmall.PushZero()
+			dstIsLarge.PushZero()
+			ptr++
+			continue
+		}
+		// found a modexp instance. We read the modexp inputs from here.
+		isSmall := checkSmall(ptr)
+		for r := range modexpNumRowsPerInstance {
+			if isSmall {
+				dstIsSmall.PushOne()
+				dstIsLarge.PushZero()
+				if (r % nbLargeModexpLimbs) > (nbLargeModexpLimbs-nbSmallModexpLimbs)-1 {
+					dstToSmall.PushOne()
+				} else {
+					dstToSmall.PushZero()
+				}
+			} else {
+				dstIsSmall.PushZero()
+				dstIsLarge.PushOne()
+				dstToSmall.PushZero()
+			}
+		}
+		ptr += modexpNumRowsPerInstance
+	}
+	dstIsLarge.PadAndAssign(run)
+	dstIsSmall.PadAndAssign(run)
+	dstToSmall.PadAndAssign(run)
 }

@@ -525,7 +525,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		lz.DistWizard.BlueprintLPPs,
 		// The verification key merkle tree does not exists in debug mode. So
 		// we can get the value here. It is not needed anyway.
-		field.Element{},
+		field.Octuplet{},
 	)
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))
@@ -556,7 +556,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 	// zeroes in the log-derivative sums.
 	// #nosec G404 --we don't need a cryptographic RNG for debugging purpose
 	rng := rand.New(utils.NewRandSource(42))
-	sharedRandomness := field.PseudoRand(rng)
+	sharedRandomness := field.PseudoRandOctuplet(rng)
 
 	for i, witness := range witnessLPPs {
 

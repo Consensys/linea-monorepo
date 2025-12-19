@@ -134,26 +134,25 @@ type AggregationFPI struct {
 func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 	s := AggregationFPISnark{
 		AggregationFPIQSnark: AggregationFPIQSnark{
-			LastFinalizedBlockNumber:       zk.ValueOf(pi.LastFinalizedBlockNumber),
-			LastFinalizedBlockTimestamp:    zk.ValueOf(pi.LastFinalizedBlockTimestamp),
+			LastFinalizedBlockNumber:       pi.LastFinalizedBlockNumber,
+			LastFinalizedBlockTimestamp:    pi.LastFinalizedBlockTimestamp,
 			LastFinalizedRollingHash:       [32]frontend.Variable{},
-			LastFinalizedRollingHashNumber: zk.ValueOf(pi.LastFinalizedRollingHashMsgNumber),
-			InitialStateRootHash:           zk.ValueOf(pi.InitialStateRootHash[:]),
-			NbDecompression:                zk.ValueOf(pi.NbDecompression),
-			// dynamic chain configuration
+			LastFinalizedRollingHashNumber: pi.LastFinalizedRollingHashMsgNumber,
+			InitialStateRootHash:           pi.InitialStateRootHash[:],
+			NbDecompression:                pi.NbDecompression,
 			ChainConfigurationFPISnark: ChainConfigurationFPISnark{
-				ChainID:                 zk.ValueOf(pi.ChainID),
-				BaseFee:                 zk.ValueOf(pi.BaseFee),
+				ChainID:                 pi.ChainID,
+				BaseFee:                 pi.BaseFee,
 				CoinBase:                new(big.Int).SetBytes(pi.CoinBase[:]),
 				L2MessageServiceAddress: new(big.Int).SetBytes(pi.L2MessageServiceAddr[:]),
-				IsAllowedCircuitID:      zk.ValueOf(pi.IsAllowedCircuitID),
+				IsAllowedCircuitID:      pi.IsAllowedCircuitID,
 			},
 		},
 		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, len(pi.L2MsgMerkleTreeRoots)),
-		FinalBlockNumber:       zk.ValueOf(pi.FinalBlockNumber),
-		FinalBlockTimestamp:    zk.ValueOf(pi.FinalBlockTimestamp),
+		FinalBlockNumber:       pi.FinalBlockNumber,
+		FinalBlockTimestamp:    pi.FinalBlockTimestamp,
 		L2MsgMerkleTreeDepth:   pi.L2MsgMerkleTreeDepth,
-		FinalRollingHashNumber: zk.ValueOf(pi.FinalRollingHashNumber),
+		FinalRollingHashNumber: pi.FinalRollingHashNumber,
 	}
 	utils.Copy(s.FinalRollingHash[:], pi.FinalRollingHash[:])
 	utils.Copy(s.LastFinalizedRollingHash[:], pi.LastFinalizedRollingHash[:])
@@ -205,7 +204,6 @@ type AggregationFPISnark struct {
 	NbL2Messages           frontend.Variable // TODO not used in hash. delete if not necessary
 	L2MsgMerkleTreeRoots   [][32]frontend.Variable
 	NbL2MsgMerkleTreeRoots frontend.Variable
-	// FinalStateRootHash     frontend.Variable redundant: incorporated into final shnarf
 	FinalBlockNumber       frontend.Variable
 	FinalBlockTimestamp    frontend.Variable
 	FinalShnarf            [32]frontend.Variable
@@ -273,7 +271,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 		utils.ToBytes(api, zk.ValueOf(pi.L2MsgMerkleTreeDepth)),
 		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 
-		// include a hash of the chain configuration
+		//include a hash of the chain configuration
 		utils.ToBytes(api, pi.ChainConfigurationFPISnark.Sum(api)),
 	)
 
@@ -310,7 +308,15 @@ func copyFromHex(dst []byte, src string) error {
 }
 
 // Sum computes the MiMC hash of the chain configuration parameters
-// matching the Solidity implementation's computeChainConfigurationHash
+// matching the Solidity implementation's computeChainConfigurationHash.
+//
+// Note: The MSB=1 splitting logic below is dead code in practice because:
+//   - chainID and baseFee are constrained to :i64 (64 bits) in execution constraints
+//     (constraints/rlptxn/cancun/columns/transaction.lisp and blockdata columns)
+//   - Ethereum addresses (coinBase, l2MessageService) are 160 bits
+//   - All realistic values have MSB (bit 255) = 0, so splitting never occurs
+//
+// The code is kept to match the Solidity implementation exactly.
 func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) frontend.Variable {
 	// Initialize MiMC state to zero (like hasher.Reset() in Go)
 	state := frontend.Variable(0)
@@ -370,6 +376,15 @@ func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) frontend.Variable {
 }
 
 // computeChainConfigurationHash computes the MiMC hash of chain configuration
+// computeChainConfigurationHash computes the MiMC hash matching the Solidity implementation.
+//
+// Note: The internal MiMC implementation handles MSB=1 splitting, but this is dead code in practice:
+//   - chainID and baseFee are constrained to :i64 (64 bits) in execution constraints
+//     (constraints/rlptxn/cancun/columns/transaction.lisp and blockdata columns)
+//   - Ethereum addresses (coinBase, l2MessageService) are 160 bits
+//   - All realistic values have MSB (bit 255) = 0, so splitting never occurs
+//
+// The code is kept to match the Solidity implementation exactly.
 func computeChainConfigurationHash(chainID uint64, baseFee uint64, coinBase types.EthAddress, l2MessageServiceAddr types.EthAddress) [32]byte {
 	h := mimc.NewMiMC()
 	h.Reset()

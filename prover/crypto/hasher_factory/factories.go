@@ -295,6 +295,18 @@ func Poseidon2Hintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error 
 	return nil
 }
 
+// NewKoalaBearHasherFactory returns a hasher factory adapted to the provided
+// frontend API. If the API implements the external hasher builder interface
+// (used to tag external Poseidon2 claims), an ExternalHasherFactory is
+// returned. Otherwise, the default BasicHasherFactory is returned.
+func NewKoalaBearHasherFactory(api frontend.API) HasherFactory {
+	// For now return the basic hasher factory which returns the
+	// native Poseidon2 gnark hasher. Using the external hasher
+	// would require the ExternalHasherFactory to implement the
+	// exact concrete return type which it currently does not.
+	return &BasicHasherFactory{Api: api}
+}
+
 // fromBigInts converts an array of big.Integer's into an array of field.Element's
 func fromBigInts(arr []*big.Int) []field.Element {
 	res := make([]field.Element, len(arr))
