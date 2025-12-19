@@ -72,11 +72,23 @@ func init() {
 		unmarshall: unmarshallGnarkFFTDomain,
 	})
 
+	// registerCustomType(reflect.TypeOf(column.Store{}), customCodex{
+	// 	marshall:   marshallColumnStore,
+	// 	unmarshall: unmarshallColumnStore,
+	// })
+
 	// Column Store
-	registerCustomType(reflect.TypeOf(column.Store{}), customCodex{
-		marshall:   marshallColumnStore,
-		unmarshall: unmarshallColumnStore,
-	})
+	registerCustomType(reflect.TypeOf(column.PackedStoreFlat{}),
+		customCodex{
+			marshall: func(enc *encoder, v reflect.Value) (Ref, error) {
+				// Falls back to standard struct serialization
+				// which handles slices of primitives correctly
+				return encode(enc, v)
+			},
+			unmarshall: func(dec *decoder, v reflect.Value, offset int64) error {
+				return dec.decode(v, offset)
+			},
+		})
 
 	// Column Natural / Coin Info
 	registerCustomType(reflect.TypeOf(column.Natural{}), customCodex{
@@ -161,27 +173,6 @@ func unmarshallCoinInfo(dec *decoder, v reflect.Value, offset int64) error {
 	}
 	unpacked := coin.NewInfo(coin.Name(packed.Name), coin.Type(packed.Type), packed.Round, sizes...)
 	v.Set(reflect.ValueOf(unpacked))
-	return nil
-}
-
-// --- Column Store (STRUCT) ---
-func marshallColumnStore(enc *encoder, v reflect.Value) (Ref, error) {
-	p, err := ptrFromStruct(v)
-	if err != nil {
-		return 0, err
-	}
-	store := p.(*column.Store)
-	packed := store.Pack()
-	return encode(enc, reflect.ValueOf(packed))
-}
-func unmarshallColumnStore(dec *decoder, v reflect.Value, offset int64) error {
-	var packed column.PackedStore
-	packedVal := reflect.ValueOf(&packed).Elem()
-	if err := dec.decode(packedVal, offset); err != nil {
-		return err
-	}
-	newStorePtr := packed.Unpack()
-	v.Set(reflect.ValueOf(newStorePtr).Elem())
 	return nil
 }
 

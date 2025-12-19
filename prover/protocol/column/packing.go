@@ -4,38 +4,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 )
 
-// PackedStore is a serialization-friendly intermediate struct used for
-// serializing a column store.
-type PackedStore [][]*storedColumnInfo
-
-// Pack packs the store into a [PackedStore]
-func (s *Store) Pack() PackedStore {
-	res := make(PackedStore, s.byRounds.Len())
-	for i := 0; i < s.byRounds.Len(); i++ {
-		res[i] = s.byRounds.MustGet(i)
-	}
-	return res
-}
-
-func (p PackedStore) Unpack() *Store {
-	store := NewStore()
-	for rnd, arr := range p {
-		for pir, info := range arr {
-			store.byRounds.AppendToInner(rnd, info)
-			store.indicesByNames.InsertNew(
-				info.ID,
-				columnPosition{
-					round:      rnd,
-					posInRound: pir,
-				},
-			)
-		}
-	}
-	return store
-}
+// PackedStoreFlat is the serialization-friendly flattened version of PackedStore.
+// Instead of storing [][]*storedColumnInfo (nested slices with embedded pointers),
+// we flatten it into:
+// - RoundLengths: stores the length of each round's inner slice
+// - Data: all storedColumnInfo values linearized in round order
 
 // PackedNatural is serialization-friendly intermediate structure that is
-// use to represent a natural column.
+// used to represent a natural column.
 type PackedNatural struct {
 	Store    *Store       `cbor:"s"`
 	Round    int          `cbor:"r"`
@@ -59,4 +35,52 @@ func (unpacked PackedNatural) Unpack() Natural {
 		columnPosition{round: unpacked.Round, posInRound: unpacked.Position},
 		unpacked.Store,
 	)
+}
+
+type PackedStoreFlat struct {
+	RoundLengths []int              `cbor:"rl"`
+	Data         []storedColumnInfo `cbor:"d"`
+}
+
+func (s *Store) Pack() PackedStoreFlat {
+	numRounds := s.byRounds.Len()
+	roundLengths := make([]int, numRounds)
+	var data []storedColumnInfo
+
+	for rnd := 0; rnd < numRounds; rnd++ {
+		roundData := s.byRounds.MustGet(rnd) // []*storedColumnInfo
+		roundLengths[rnd] = len(roundData)
+		for _, ptr := range roundData {
+			data = append(data, *ptr) // dereference to storedColumnInfo
+		}
+	}
+
+	return PackedStoreFlat{
+		RoundLengths: roundLengths,
+		Data:         data,
+	}
+}
+
+func (p PackedStoreFlat) Unpack() *Store {
+	store := NewStore()
+
+	dataIdx := 0
+	for rnd, roundLen := range p.RoundLengths {
+		for posInRound := 0; posInRound < roundLen; posInRound++ {
+			info := p.Data[dataIdx]
+			dataIdx++
+
+			// reallocate as pointer because byRounds stores []*storedColumnInfo
+			copied := info
+			store.byRounds.AppendToInner(rnd, &copied)
+			store.indicesByNames.InsertNew(
+				info.ID,
+				columnPosition{
+					round:      rnd,
+					posInRound: posInRound,
+				},
+			)
+		}
+	}
+	return store
 }

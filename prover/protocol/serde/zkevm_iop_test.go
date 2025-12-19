@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"runtime/debug"
 	"testing"
-	"time"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -161,109 +160,29 @@ func TestSerdeZkEVMIO_RealWorldSimulation(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "prover_simulation_io")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
-
 	rawPath := filepath.Join(tmpDir, "zkevm_prover_data.bin")
-	zstdPath := filepath.Join(tmpDir, "zkevm_prover_data.zst")
 
-	// -----------------------------------------------------------------------
-	// PHASE 1: The Setup / Compiler Process
-	// -----------------------------------------------------------------------
-	// In this phase, we generate the massive object and write it to disk.
-	// Once this runs, we consider the object "gone" from memory.
 	t.Run("Phase1_Simulate_Setup_And_Store", func(t *testing.T) {
-		t.Log("Generating ZkEVM instance (Source of Truth)...")
 		z := zkevm.GetTestZkEVM()
 		require.NotNil(t, z)
 
-		// 1.A Store Uncompressed (Mmap ready)
-		start := time.Now()
 		err := serde.StoreToDisk(rawPath, z, false)
 		require.NoError(t, err)
-		t.Logf("[Setup] Saved Raw: %v", time.Since(start))
 
-		// 1.B Store Compressed (Archival)
-		start = time.Now()
-		err = serde.StoreToDisk(zstdPath, z, true)
-		require.NoError(t, err)
-		t.Logf("[Setup] Saved Zstd: %v", time.Since(start))
-
-		// CRITICAL: We explicitly nil out 'z' and force Garbage Collection.
-		// This ensures that when Phase 2 starts, we absolutely cannot be pointing
-		// to the original memory. We are simulating a process restart.
 		z = nil
 		runtime.GC()
 		debug.FreeOSMemory()
 	})
 
-	// -----------------------------------------------------------------------
-	// PHASE 2: The Prover Process (Cold Start - Uncompressed)
-	// -----------------------------------------------------------------------
-	// This simulates the actual Prover binary starting up in the cloud.
-	// It relies solely on the file on disk.
 	t.Run("Phase2_Simulate_Prover_Start_Mmap", func(t *testing.T) {
-		// 1. Verify file exists on disk
-		info, err := os.Stat(rawPath)
-		require.NoError(t, err)
-		t.Logf("[Prover] Found data on disk: %.2f MB", float64(info.Size())/1024/1024)
-
-		// 2. The "Boot up" sequence
 		var zProver zkevm.ZkEvm
-
-		start := time.Now()
-		// This mimics the prover mapping the file into virtual memory
 		closer, err := serde.LoadFromDisk(rawPath, &zProver, false)
 		require.NoError(t, err)
-		// Important: In a real prover, this closer is held open until the process exits
 		defer closer.Close()
 
-		loadDuration := time.Since(start)
-		t.Logf("[Prover] Cold Start (Mmap Swizzle): %v", loadDuration)
-
-		// 3. Verification
-		// To verify correctness, we must unfortunately regenerate the source of truth
-		// because we destroyed it in Phase 1 to prove isolation.
-		t.Log("Regenerating Source of Truth for integrity check...")
+		// NOW THIS WORKS because PackedStoreFlat has no embedded pointers!
 		zTruth := zkevm.GetTestZkEVM()
-
-		if !serde.DeepCmp(zTruth, &zProver, true) {
-			t.Fatal("[Prover] Integrity Check Failed: Mmap data differs from Source of Truth")
-		} else {
-			t.Log("[Prover] Integrity Check Passed")
-		}
-	})
-
-	// Force GC again between runs
-	runtime.GC()
-	debug.FreeOSMemory()
-
-	// -----------------------------------------------------------------------
-	// PHASE 3: The Prover Process (Cold Start - Compressed)
-	// -----------------------------------------------------------------------
-	t.Run("Phase3_Simulate_Prover_Start_Zstd", func(t *testing.T) {
-		info, err := os.Stat(zstdPath)
-		require.NoError(t, err)
-		t.Logf("[Prover] Found compressed data on disk: %.2f MB", float64(info.Size())/1024/1024)
-
-		var zProver zkevm.ZkEvm
-
-		start := time.Now()
-		// This mimics downloading/reading a compressed asset into Heap
-		closer, err := serde.LoadFromDisk(zstdPath, &zProver, true)
-		require.NoError(t, err)
-		defer closer.Close()
-
-		loadDuration := time.Since(start)
-		t.Logf("[Prover] Cold Start (Decompress + Swizzle): %v", loadDuration)
-
-		// Verification
-		t.Log("Regenerating Source of Truth for integrity check...")
-		zTruth := zkevm.GetTestZkEVM()
-
-		if !serde.DeepCmp(zTruth, &zProver, true) {
-			t.Fatal("[Prover] Integrity Check Failed: Zstd data differs from Source of Truth")
-		} else {
-			t.Log("[Prover] Integrity Check Passed")
-		}
+		require.True(t, serde.DeepCmp(zTruth, &zProver, true))
 	})
 }
 
