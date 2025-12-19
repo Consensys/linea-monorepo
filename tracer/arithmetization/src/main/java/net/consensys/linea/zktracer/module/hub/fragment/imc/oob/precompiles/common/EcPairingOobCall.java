@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
 public class EcPairingOobCall extends CommonPrecompileOobCall {
@@ -40,7 +41,7 @@ public class EcPairingOobCall extends CommonPrecompileOobCall {
       setReturnGas(BigInteger.ZERO);
     } else {
       final Bytes precompileCost =
-          bigIntegerToBytes(
+         EWord.of(
               BigInteger.valueOf(45000)
                   .add(
                       BigInteger.valueOf(34000)
