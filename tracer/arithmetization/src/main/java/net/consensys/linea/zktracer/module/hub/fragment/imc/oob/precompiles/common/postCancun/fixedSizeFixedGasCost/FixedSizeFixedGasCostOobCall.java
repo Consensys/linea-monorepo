@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.com
 
 import java.math.BigInteger;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
+import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
 public abstract class FixedSizeFixedGasCostOobCall extends CommonPrecompileOobCall {
@@ -32,9 +33,9 @@ public abstract class FixedSizeFixedGasCostOobCall extends CommonPrecompileOobCa
   public void setOutputs() {
     super.setOutputs();
 
-    final boolean validCds = getCds().compareTo(Bytes.ofUnsignedLong(precompileExpectedCds())) == 0;
+    final boolean validCds = getCds().compareTo(EWord.of(precompileExpectedCds())) == 0;
     final boolean sufficientGas =
-        getCalleeGas().compareTo(Bytes.ofUnsignedLong(precompileLongCost())) >= 0;
+        EWord.of(getCalleeGas()).compareTo(EWord.of(precompileLongCost())) >= 0;
 
     // Set hubSuccess
     final boolean hubSuccess = hubSuccess(sufficientGas, validCds);
