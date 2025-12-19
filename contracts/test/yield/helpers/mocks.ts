@@ -11,6 +11,7 @@ export const buildMockYieldProviderRegistration = (
     yieldProviderVendor: number;
     primaryEntrypoint: string;
     ossifiedEntrypoint: string;
+    usersFundsIncrement: bigint;
   }> = {},
 ): YieldProviderRegistration => ({
   yieldProviderVendor:
@@ -19,6 +20,7 @@ export const buildMockYieldProviderRegistration = (
       : YieldProviderVendor.LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
   primaryEntrypoint: overrides.primaryEntrypoint ?? ethers.Wallet.createRandom().address,
   ossifiedEntrypoint: overrides.ossifiedEntrypoint ?? ethers.Wallet.createRandom().address,
+  usersFundsIncrement: overrides.usersFundsIncrement ?? 0n,
 });
 
 export const buildVendorExitData = (
