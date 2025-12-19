@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	cmimc "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -22,7 +21,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
@@ -50,14 +48,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/base_conversion"
 	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
-
-	ded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 )
 
 func init() {
@@ -100,7 +95,7 @@ func init() {
 	RegisterImplementation(verifiercol.ConstCol{})
 	RegisterImplementation(verifiercol.FromYs{})
 	RegisterImplementation(verifiercol.FromAccessors{})
-	RegisterImplementation(verifiercol.ExpandedVerifCol{})
+	RegisterImplementation(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{})
 	RegisterImplementation(verifiercol.RepeatedAccessor{})
 
 	// Queries
@@ -152,7 +147,8 @@ func init() {
 
 	// Circuit implementations
 	RegisterImplementation(ecdsa.MultiEcRecoverCircuit{})
-	RegisterImplementation(modexp.ModExpCircuit{})
+	RegisterImplementation(modexp.Modexp{})
+	RegisterImplementation(modexp.Module{})
 	RegisterImplementation(ecarith.MultiECAddCircuit{})
 	RegisterImplementation(ecarith.MultiECMulCircuit{})
 	RegisterImplementation(ecpair.MultiG2GroupcheckCircuit{})
@@ -170,8 +166,9 @@ func init() {
 	// Prover actions (added to fix missing concrete type warnings)
 	RegisterImplementation(byte32cmp.Bytes32CmpProverAction{})
 	RegisterImplementation(bigrange.BigRangeProverAction{})
-	RegisterImplementation(ded.AssignPIPProverAction{})
 	RegisterImplementation(keccak.ShakiraProverAction{})
+	RegisterImplementation(vortex.ColumnAssignmentProverAction{})
+	RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
 
 	// Smartvectors
 	RegisterImplementation(smartvectors.Regular{})
@@ -200,9 +197,6 @@ func init() {
 
 	RegisterImplementation(packing.Packing{})
 
-	RegisterImplementation(ded.LengthConsistencyCtx{})
-	RegisterImplementation(ded.AccumulateUpToMaxCtx{})
-
 	RegisterImplementation(spaghettifier.Spaghettification{})
 
 	RegisterImplementation(importpad.Sha2Padder{})
@@ -210,10 +204,6 @@ func init() {
 	RegisterImplementation(importpad.KeccakPadder{})
 	RegisterImplementation(importpad.Importation{})
 	RegisterImplementation(importpad.Importation{})
-
-	RegisterImplementation(base_conversion.HashBaseConversion{})
-	RegisterImplementation(base_conversion.BlockBaseConversion{})
-	RegisterImplementation(base_conversion.DecompositionCtx{})
 
 	RegisterImplementation(cleanup.CleanupProverAction{})
 	RegisterImplementation(dummy.DummyVerifierAction{})
@@ -237,7 +227,6 @@ func init() {
 	RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 	RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
 
-	RegisterImplementation(poseidon2.Poseidon2Context{})
 	RegisterImplementation(mpts.QuotientAccumulation{})
 	RegisterImplementation(mpts.RandomPointEvaluation{})
 	RegisterImplementation(mpts.ShadowRowProverAction{})
@@ -296,26 +285,16 @@ func init() {
 
 	RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
 	RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
-
 	RegisterImplementation(column.FakeColumn{})
-
 	RegisterImplementation(selector.SubsampleProverAction{})
 	RegisterImplementation(selector.SubsampleVerifierAction{})
-
 	RegisterImplementation(expr_handle.ExprHandleProverAction{})
-
 	RegisterImplementation(plonkinternal.CheckingActivators{})
-
-	RegisterImplementation(cmimc.ExternalHasherBuilder{})
-	RegisterImplementation(cmimc.ExternalHasherFactory{})
-
 	RegisterImplementation(plonkinternal.CheckingActivators{})
 	RegisterImplementation(plonkinternal.InitialBBSProverAction{})
 	RegisterImplementation(plonkinternal.PlonkNoCommitProverAction{})
 	RegisterImplementation(plonkinternal.LROCommitProverAction{})
-
 	RegisterImplementation(fr.Element{})
-
 	RegisterImplementation(dedicated.StackedColumn{})
 }
 
