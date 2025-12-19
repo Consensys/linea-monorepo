@@ -125,14 +125,15 @@ export const configSchema = z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
-    /** Rebalance tolerance in basis points (1 bps = 0.01%, max 10000 bps = 100%).
-     * Used to calculate tolerance band for rebalancing decisions.
-     * The tolerance band is calculated as: `(totalSystemBalance * REBALANCE_TOLERANCE_BPS) / 10000`.
+    /** Rebalance tolerance amount (in wei) used as an absolute tolerance band for rebalancing decisions.
      * Rebalancing occurs only when the L1 Message Service balance deviates from the effective
-     * target withdrawal reserve by more than this tolerance band (either above or below).
+     * target withdrawal reserve by more than this tolerance amount (either above or below).
      * Prevents unnecessary rebalancing operations for small fluctuations.
      */
-    REBALANCE_TOLERANCE_BPS: z.coerce.number().int().positive().max(10000),
+    REBALANCE_TOLERANCE_AMOUNT_WEI: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     // Maximum number of validator withdrawal requests that will be batched in a single transaction.
     MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: z.coerce.number().int().positive(),
     /**

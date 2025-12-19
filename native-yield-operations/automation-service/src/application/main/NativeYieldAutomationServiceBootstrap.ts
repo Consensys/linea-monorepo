@@ -154,7 +154,7 @@ export class NativeYieldAutomationServiceBootstrap {
       new WinstonLogger(YieldManagerContractClient.name, config.loggerOptions),
       this.viemBlockchainClientAdapter,
       config.contractAddresses.yieldManagerAddress,
-      config.rebalance.toleranceBps,
+      config.rebalance.toleranceAmountWei,
       config.rebalance.minWithdrawalThresholdEth,
       config.rebalance.maxStakingRebalanceAmountWei,
       config.rebalance.stakeCircuitBreakerThresholdWei,

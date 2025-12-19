@@ -93,14 +93,14 @@ describe("YieldManagerContractClient", () => {
     }) as unknown as TransactionReceipt;
 
   const createClient = ({
-    rebalanceToleranceBps = 100,
+    rebalanceToleranceAmountWei = 1000000000000000000n, // 1 ETH default
     minWithdrawalThresholdEth = 0n,
     maxStakingRebalanceAmountWei = 1000000000000000000000n, // 1000 ETH default
     stakeCircuitBreakerThresholdWei = 2000000000000000000000n, // 2000 ETH default
     minStakingVaultBalanceToUnpauseStakingWei = 0n,
     metricsUpdater,
   }: {
-    rebalanceToleranceBps?: number;
+    rebalanceToleranceAmountWei?: bigint;
     minWithdrawalThresholdEth?: bigint;
     maxStakingRebalanceAmountWei?: bigint;
     stakeCircuitBreakerThresholdWei?: bigint;
@@ -111,7 +111,7 @@ describe("YieldManagerContractClient", () => {
       logger,
       blockchainClient,
       contractAddress,
-      rebalanceToleranceBps,
+      rebalanceToleranceAmountWei,
       minWithdrawalThresholdEth,
       maxStakingRebalanceAmountWei,
       stakeCircuitBreakerThresholdWei,
@@ -474,7 +474,7 @@ describe("YieldManagerContractClient", () => {
      * @param {bigint} opts.userFunds
      * @param {bigint} opts.peekedYieldAmount
      * @param {bigint} opts.peekedOutstandingNegativeYield
-     * @param {number} opts.rebalanceToleranceBps
+     * @param {bigint} opts.rebalanceToleranceAmountWei
      */
     function setupRebalanceTest(
       l1MessageServiceBalance: bigint,
@@ -484,7 +484,7 @@ describe("YieldManagerContractClient", () => {
       userFunds: bigint,
       peekedYieldAmount: bigint,
       peekedOutstandingNegativeYield: bigint,
-      rebalanceToleranceBps: number = 100,
+      rebalanceToleranceAmountWei: bigint = 1000000000000000000n, // 1 ETH default
       maxStakingRebalanceAmountWei: bigint = 1000000000000000000000n,
       stakeCircuitBreakerThresholdWei: bigint = 2000000000000000000000n,
       metricsUpdater?: Partial<INativeYieldAutomationMetricsUpdater>,
@@ -509,7 +509,7 @@ describe("YieldManagerContractClient", () => {
 
       // --- Instantiate client ---
       const client = createClient({
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
         maxStakingRebalanceAmountWei,
         stakeCircuitBreakerThresholdWei,
         metricsUpdater: metricsUpdater as INativeYieldAutomationMetricsUpdater | undefined,
@@ -550,7 +550,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 500_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 0n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
         totalSystemBalance,
@@ -559,7 +559,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
       );
       // Expect
       await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
@@ -577,7 +577,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 500_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 0n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
         totalSystemBalance,
@@ -586,7 +586,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
       );
       // Expect
       await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
@@ -604,7 +604,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 500_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 100_000n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
         totalSystemBalance,
@@ -613,7 +613,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
       );
       // Expectations
       // adjustedSystemTotalBalance = 900K
@@ -635,7 +635,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 500_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 100_000n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
         totalSystemBalance,
@@ -644,7 +644,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
       );
       // Expectations
       // adjustedSystemTotalBalance = 900K
@@ -664,7 +664,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 500_000n;
       const peekedYieldAmount = 50_000n;
       const peekedOutstandingNegativeYield = 0n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 50_000n;
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
@@ -674,7 +674,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
       );
       // Expectations
       // systemObligation = 50K
@@ -694,7 +694,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 10_000_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 5_000_000n; // Large LST liability
-      const rebalanceToleranceBps = 500;
+      const rebalanceToleranceAmountWei = 250_000n; // 500 bps of 5M (adjusted balance) = 250K wei
       const l1MessageServiceBalance = 0n;
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
@@ -704,7 +704,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
       );
       // Expectations
       // systemObligation = 5M
@@ -723,7 +723,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 100_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 0n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 900_000n;
       const maxStakingRebalanceAmountWei = 100_000n;
       const { client } = setupRebalanceTest(
@@ -734,7 +734,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
         maxStakingRebalanceAmountWei,
       );
       // Expectations
@@ -756,7 +756,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 100_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 0n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 900_000n;
       const maxStakingRebalanceAmountWei = 100_000n;
       const stakeCircuitBreakerThresholdWei = 200_000n;
@@ -768,7 +768,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
         maxStakingRebalanceAmountWei,
         stakeCircuitBreakerThresholdWei,
       );
@@ -797,7 +797,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 100_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 0n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 900_000n;
       const maxStakingRebalanceAmountWei = 100_000n;
       const stakeCircuitBreakerThresholdWei = 200_000n;
@@ -810,7 +810,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
         maxStakingRebalanceAmountWei,
         stakeCircuitBreakerThresholdWei,
         metricsUpdater,
@@ -844,7 +844,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 100_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 0n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 450_000n; // Within tolerance, should return NONE
       const maxStakingRebalanceAmountWei = 100_000n;
       const stakeCircuitBreakerThresholdWei = 200_000n;
@@ -857,7 +857,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
         maxStakingRebalanceAmountWei,
         stakeCircuitBreakerThresholdWei,
         metricsUpdater,
@@ -891,7 +891,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 100_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 0n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 300_000n; // Below target, goes to UNSTAKE path (logic: if balance < target, UNSTAKE)
       const maxStakingRebalanceAmountWei = 50_000n;
       const stakeCircuitBreakerThresholdWei = 200_000n;
@@ -904,7 +904,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
         maxStakingRebalanceAmountWei,
         stakeCircuitBreakerThresholdWei,
         metricsUpdater,
@@ -940,7 +940,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 100_000n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 0n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 500_000n; // Above target, needs UNSTAKE
       const maxStakingRebalanceAmountWei = 100_000n;
       const stakeCircuitBreakerThresholdWei = 200_000n;
@@ -953,7 +953,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
         maxStakingRebalanceAmountWei,
         stakeCircuitBreakerThresholdWei,
         metricsUpdater,
@@ -983,7 +983,7 @@ describe("YieldManagerContractClient", () => {
       const userFunds = 0n;
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 0n;
-      const rebalanceToleranceBps = 100;
+      const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 0n;
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
@@ -993,7 +993,7 @@ describe("YieldManagerContractClient", () => {
         userFunds,
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
-        rebalanceToleranceBps,
+        rebalanceToleranceAmountWei,
       );
       // Expectations
       await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({

@@ -223,7 +223,7 @@ const createBootstrapConfig = () => ({
     gaugeMetricsPollIntervalMs: 5000,
   },
   rebalance: {
-    toleranceBps: 500,
+    toleranceAmountWei: 5000000000000000000n,
     maxValidatorWithdrawalRequestsPerTransaction: 16,
     minWithdrawalThresholdEth: 42n,
     maxStakingRebalanceAmountWei: 1000000000000000000000n,

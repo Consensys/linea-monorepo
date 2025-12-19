@@ -52,7 +52,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @param {ILogger} logger - Logger instance for logging operations.
    * @param {IBlockchainClient<PublicClient, TransactionReceipt>} contractClientLibrary - Blockchain client for sending transactions and reading contract data.
    * @param {Address} contractAddress - The address of the YieldManager contract.
-   * @param {number} rebalanceToleranceBps - Rebalance tolerance in basis points (for determining when rebalancing is required).
+   * @param {bigint} rebalanceToleranceAmountWei - Rebalance tolerance amount in wei (absolute tolerance band for determining when rebalancing is required).
    * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH (for threshold-based withdrawal operations).
    * @param {bigint} maxStakingRebalanceAmountWei - Maximum staking rebalance amount (in wei) that can be processed per loop iteration.
    * @param {bigint} stakeCircuitBreakerThresholdWei - Circuit breaker threshold (in wei) for STAKE direction rebalances.
@@ -63,7 +63,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     private readonly logger: ILogger,
     private readonly contractClientLibrary: IBlockchainClient<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
-    private readonly rebalanceToleranceBps: number,
+    private readonly rebalanceToleranceAmountWei: bigint,
     private readonly minWithdrawalThresholdEth: bigint,
     private readonly maxStakingRebalanceAmountWei: bigint,
     private readonly stakeCircuitBreakerThresholdWei: bigint,
@@ -530,7 +530,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       dashboardTotalValue,
       peekedYieldReportYieldAmount,
       peekedYieldReportOutstandingNegativeYield,
-      rebalanceToleranceBps: this.rebalanceToleranceBps,
+      rebalanceToleranceAmountWei: this.rebalanceToleranceAmountWei,
       maxStakingRebalanceAmountWei: this.maxStakingRebalanceAmountWei,
     });
 
@@ -560,7 +560,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       `_getRebalanceRequirements - effectiveTargetWithdrawalReserveExcludingObligations=${effectiveTargetWithdrawalReserveExcludingObligations}`,
     );
 
-    const toleranceBand = (totalSystemBalanceExcludingObligations * BigInt(this.rebalanceToleranceBps)) / 10000n;
+    const toleranceBand = this.rebalanceToleranceAmountWei;
     this.logger.debug(`_getRebalanceRequirements - toleranceBand=${toleranceBand}`);
 
     // Rebalance requirement = Reserve rebalance requirement + system obligations

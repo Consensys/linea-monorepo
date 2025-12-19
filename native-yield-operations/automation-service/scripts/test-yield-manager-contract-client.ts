@@ -8,7 +8,7 @@
  * pnpm --filter @consensys/linea-native-yield-automation-service exec tsx scripts/test-yield-manager-contract-client.ts
  *
  * Optional flags:
- * REBALANCE_TOLERANCE_BPS=100 \
+ * REBALANCE_TOLERANCE_AMOUNT_WEI=1000000000000000000 \
  * MIN_WITHDRAWAL_THRESHOLD_ETH=0 \
  * MAX_STAKING_REBALANCE_AMOUNT_WEI=1000000000000000000000 \
  * STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI=2000000000000000000000 \
@@ -37,7 +37,7 @@ async function main() {
   const rpcUrl = process.env.RPC_URL as string;
   const privateKey = process.env.PRIVATE_KEY as Hex;
   const yieldManagerAddress = process.env.YIELD_MANAGER_ADDRESS as Address;
-  const rebalanceToleranceBps = Number.parseInt(process.env.REBALANCE_TOLERANCE_BPS ?? "100", 10);
+  const rebalanceToleranceAmountWei = BigInt(process.env.REBALANCE_TOLERANCE_AMOUNT_WEI ?? "1000000000000000000");
   const minWithdrawalThresholdEth = BigInt(process.env.MIN_WITHDRAWAL_THRESHOLD_ETH ?? "0");
   const maxStakingRebalanceAmountWei = BigInt(process.env.MAX_STAKING_REBALANCE_AMOUNT_WEI ?? "1000000000000000000000");
   const stakeCircuitBreakerThresholdWei = BigInt(
@@ -65,7 +65,7 @@ async function main() {
     new WinstonLogger("YieldManagerContractClient.integration"),
     contractClientLibrary,
     yieldManagerAddress,
-    rebalanceToleranceBps,
+    rebalanceToleranceAmountWei,
     minWithdrawalThresholdEth,
     maxStakingRebalanceAmountWei,
     stakeCircuitBreakerThresholdWei,

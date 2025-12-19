@@ -54,7 +54,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
     gaugeMetricsPollIntervalMs: env.GAUGE_METRICS_POLL_INTERVAL_MS,
   },
   rebalance: {
-    toleranceBps: env.REBALANCE_TOLERANCE_BPS,
+    toleranceAmountWei: env.REBALANCE_TOLERANCE_AMOUNT_WEI,
     maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
     minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
     maxStakingRebalanceAmountWei: env.MAX_STAKING_REBALANCE_AMOUNT_WEI,
