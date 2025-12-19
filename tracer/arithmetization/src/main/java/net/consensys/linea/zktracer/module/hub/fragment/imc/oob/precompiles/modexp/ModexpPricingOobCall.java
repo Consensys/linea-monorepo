@@ -86,7 +86,7 @@ public final class ModexpPricingOobCall extends OobCall {
     setMaxMbsBbs(maxMbsBbsValue);
 
     final BigInteger ceilingOfMaxDividedBy8 =
-        BigInteger.valueOf(maxMbsBbs + 7).mod(BigInteger.valueOf(8));
+        BigInteger.valueOf(maxMbsBbs + 7).divide(BigInteger.valueOf(8));
     final BigInteger fOfMax = ceilingOfMaxDividedBy8.multiply(ceilingOfMaxDividedBy8);
     final int fOfMaxInteger = fOfMax.intValue();
 
