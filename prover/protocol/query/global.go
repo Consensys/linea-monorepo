@@ -16,7 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -45,8 +44,6 @@ type GlobalConstraint struct {
 		instance. False by default
 	*/
 	NoBoundCancel bool
-
-	uuid uuid.UUID `serde:"omit"`
 }
 
 /*
@@ -71,7 +68,6 @@ func NewGlobalConstraint(id ifaces.QueryID, expr *symbolic.Expression, noBoundCa
 	res := GlobalConstraint{
 		Expression: expr,
 		ID:         id,
-		uuid:       uuid.New(),
 	}
 
 	if len(noBoundCancel) > 0 {
@@ -376,8 +372,4 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 
 	// Update the value of omega^i
 	omegaI.Mul(&omegaI, &omega)
-}
-
-func (cs GlobalConstraint) UUID() uuid.UUID {
-	return cs.uuid
 }

@@ -11,15 +11,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/google/uuid"
 )
 
 // Represent a batch of inner-product <a, b0>, <a, b1>, <a, b2> ...
 type InnerProduct struct {
-	A    ifaces.Column
-	Bs   []ifaces.Column
-	ID   ifaces.QueryID
-	uuid uuid.UUID `serde:"omit"`
+	A  ifaces.Column
+	Bs []ifaces.Column
+	ID ifaces.QueryID
 }
 
 // Inner product params
@@ -61,7 +59,7 @@ func NewInnerProduct(id ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) In
 		bsSet.Insert(b.GetColID())
 	}
 
-	return InnerProduct{ID: id, A: a, Bs: bs, uuid: uuid.New()}
+	return InnerProduct{ID: id, A: a, Bs: bs}
 }
 
 // Constructor for fixed point univariate evaluation query parameters
@@ -134,8 +132,4 @@ func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
 		api.AssertIsEqual(expecteds.Ys[i], actualIP)
 	}
-}
-
-func (r InnerProduct) UUID() uuid.UUID {
-	return r.uuid
 }

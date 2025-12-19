@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/google/uuid"
 )
 
 // HornerPart represents a part of a Horner evaluation query.
@@ -71,7 +70,6 @@ type Horner struct {
 	ID ifaces.QueryID
 	// Parts are the parts of the query
 	Parts []HornerPart
-	uuid  uuid.UUID `serde:"omit"`
 }
 
 // HornerParamsParts represents the parameters for a part of a [Horner]
@@ -128,7 +126,6 @@ func NewHorner(round int, id ifaces.QueryID, parts []HornerPart) Horner {
 		Round: round,
 		ID:    id,
 		Parts: parts,
-		uuid:  uuid.New(),
 	}
 }
 
@@ -297,8 +294,4 @@ func (h *HornerPart) Size() int {
 		h.size = column.ExprIsOnSameLengthHandles(&board)
 	}
 	return h.size
-}
-
-func (h *Horner) UUID() uuid.UUID {
-	return h.uuid
 }

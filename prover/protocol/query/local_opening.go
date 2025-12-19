@@ -8,14 +8,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/google/uuid"
 )
 
 // Queries the opening of a handle at zero
 type LocalOpening struct {
-	Pol  ifaces.Column
-	ID   ifaces.QueryID
-	uuid uuid.UUID `serde:"omit"`
+	Pol ifaces.Column
+	ID  ifaces.QueryID
 }
 
 // Contains the result of a local opening
@@ -35,7 +33,7 @@ func NewLocalOpening(id ifaces.QueryID, pol ifaces.Column) LocalOpening {
 		utils.Panic("Assigned a polynomial name with an empty length")
 	}
 
-	return LocalOpening{ID: id, Pol: pol, uuid: uuid.New()}
+	return LocalOpening{ID: id, Pol: pol}
 }
 
 // Name implements the [ifaces.Query] interface
@@ -65,8 +63,4 @@ func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.ID).(GnarkLocalOpeningParams)
 	actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
 	api.AssertIsEqual(params.Y, actualY)
-}
-
-func (r LocalOpening) UUID() uuid.UUID {
-	return r.uuid
 }

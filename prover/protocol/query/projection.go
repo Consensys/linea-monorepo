@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/google/uuid"
 )
 
 // Projection represents a projection query. A projection query enforces that
@@ -27,7 +26,6 @@ type Projection struct {
 	Round int
 	ID    ifaces.QueryID
 	Inp   ProjectionMultiAryInput
-	uuid  uuid.UUID `serde:"omit"`
 }
 
 // ProjectionInput is a collection of parameters to provide to a [Projection]
@@ -128,7 +126,7 @@ func NewProjectionMultiAry(
 		}
 	}
 
-	return Projection{Round: round, ID: id, Inp: inp, uuid: uuid.New()}
+	return Projection{Round: round, ID: id, Inp: inp}
 }
 
 // Name implements the [ifaces.Query] interface
@@ -332,8 +330,4 @@ func (p Projection) GetShiftedRelatedColumns() []ifaces.Column {
 	}
 
 	return res
-}
-
-func (p Projection) UUID() uuid.UUID {
-	return p.uuid
 }
