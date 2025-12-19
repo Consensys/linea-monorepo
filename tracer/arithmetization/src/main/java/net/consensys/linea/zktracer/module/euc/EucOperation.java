@@ -60,8 +60,9 @@ public class EucOperation extends ModuleOperation {
         .validateRow();
   }
 
-  @Override
-  protected int computeLineCount() {
-    return 1;
-  }
+@Override
+protected int computeLineCount() {
+  // Деление часто требует проверки: a = q*b + r
+  return 1; 
+}
 }
