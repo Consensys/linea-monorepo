@@ -64,14 +64,14 @@ public class ModexpLeadOobCall extends OobCall {
   public void setOutputs() {
     final boolean ebsIsZero = metadata.normalizedEbs().isZero();
     final boolean ebsLessThan32 =
-        metadata.normalizedEbs().compareTo(Bytes.ofUnsignedInt(EBS_MIN_OFFSET)) < 0;
+        EWord.of(metadata.normalizedEbs()).compareTo(EWord.of(EBS_MIN_OFFSET)) < 0;
     final boolean callDataContainsExponentBytes =
         EWord.of(metadata.normalizedBbs()).add(BASE_MIN_OFFSET).compareTo(cds) < 0;
     final boolean comp =
         callDataContainsExponentBytes
             && cds.subtract(BASE_MIN_OFFSET)
                     .subtract(metadata.normalizedBbsInt())
-                    .compareTo(Bytes.ofUnsignedInt(WORD_SIZE))
+                    .compareTo(EWord.of(WORD_SIZE))
                 < 0;
 
     final boolean loadLead = callDataContainsExponentBytes && !ebsIsZero;
