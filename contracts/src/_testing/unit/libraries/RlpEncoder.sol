@@ -20,12 +20,6 @@ library RlpEncoder {
     bytes32[] storageKeys;
   }
 
-  /**
-   * @notice Internal function that encodes bytes correctly with length data.
-   * @dev mcopy is used for the Cancun EVM fork. See original for other forks.
-   * @param _bytesIn The bytes to be encoded.
-   * @return encodedBytes The bytes RLP encoded.
-   */
   function _encodeBytes(bytes memory _bytesIn) internal pure returns (bytes memory encodedBytes) {
     if (_bytesIn.length == 1 && uint8(_bytesIn[0]) < 0x80) return _bytesIn;
 
@@ -50,11 +44,6 @@ library RlpEncoder {
     }
   }
 
-  /**
-   * @notice Internal function that encodes a uint value as bytes.
-   * @param _uintIn The uint to be encoded.
-   * @return encodedBytes The uint encoded as bytes.
-   */
   function _encodeUint(uint256 _uintIn) internal pure returns (bytes memory encodedBytes) {
     encodedBytes = _encodeBytes(_toBinary(_uintIn));
   }
@@ -124,11 +113,6 @@ library RlpEncoder {
     encodedBytes = abi.encodePacked(_encodeLength(encodedBytes.length, 192), encodedBytes);
   }
 
-  /**
-   * @notice Internal function that encodes an access list as bytes.
-   * @param _accesslist The access list to be encoded.
-   * @return encodedBytes The AccessList encoded as bytes.
-   */
   function _encodeAccessList(AccessList[] memory _accesslist) internal pure returns (bytes memory encodedBytes) {
     uint256 listLength = _accesslist.length;
     bytes[] memory encodedAccessList = new bytes[](listLength);
@@ -249,32 +233,24 @@ library RlpEncoder {
 
     assembly {
       flattenedBytes := mload(0x40)
+      let writePtr := add(flattenedBytes, 0x20)
       let totalLen := 0
-      let offset := add(_bytesList, 0x20)
+      let ptrList := add(_bytesList, 0x20)
+      let endPtrList := add(ptrList, shl(5, _bytesListLengthToEncode))
 
-      for {
-        let i := 0
-      } lt(i, _bytesListLengthToEncode) {
-        i := add(i, 1)
+      for {} lt(ptrList, endPtrList) {
+        ptrList := add(ptrList, 0x20)
       } {
-        totalLen := add(totalLen, mload(mload(add(offset, mul(i, 0x20)))))
+        let chunk := mload(ptrList)
+        let len := mload(chunk)
+
+        mcopy(writePtr, add(chunk, 0x20), len)
+        writePtr := add(writePtr, len)
+        totalLen := add(totalLen, len)
       }
 
       mstore(flattenedBytes, totalLen)
-      let writePtr := add(flattenedBytes, 0x20)
-
-      for {
-        let i := 0
-      } lt(i, _bytesListLengthToEncode) {
-        i := add(i, 1)
-      } {
-        let ptr := mload(add(offset, mul(i, 0x20)))
-        let len := mload(ptr)
-        mcopy(writePtr, add(ptr, 0x20), len)
-        writePtr := add(writePtr, len)
-      }
-
-      mstore(0x40, add(flattenedBytes, add(0x20, totalLen)))
+      mstore(0x40, writePtr)
     }
   }
 }

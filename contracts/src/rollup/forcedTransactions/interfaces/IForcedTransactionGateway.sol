@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
-import { RlpEncoder } from "../../../libraries/RlpEncoder.sol";
-
 /**
  * @title Interface to manage forced transactions on L1.
  * @author Consensys Software Inc.
@@ -47,10 +45,20 @@ interface IForcedTransactionGateway {
     address to;
     uint256 value;
     bytes input;
-    RlpEncoder.AccessList[] accessList;
+    AccessList[] accessList;
     uint8 yParity;
     uint256 r;
     uint256 s;
+  }
+
+  /**
+   * @notice Supporting data for encoding an EIP-2930/1559 access lists.
+   * @dev contractAddress is the address where the storageKeys will be accessed.
+   * @dev storageKeys contains the list of keys expected to be accessed at contractAddress.
+   */
+  struct AccessList {
+    address contractAddress;
+    bytes32[] storageKeys;
   }
 
   /**
