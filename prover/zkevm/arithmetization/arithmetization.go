@@ -138,7 +138,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
 	}
 	// Perform trace propagation
-	rawTrace, errs = asm.Propagate(a.BinaryFile.Schema, rawTrace, true)
+	rawTrace, errs = asm.Propagate(a.BinaryFile.Schema, rawTrace)
 	// error check
 	if len(errs) > 0 {
 		logrus.Warnf("corset propagation gave the following errors: %v", errors.Join(errs...).Error())
