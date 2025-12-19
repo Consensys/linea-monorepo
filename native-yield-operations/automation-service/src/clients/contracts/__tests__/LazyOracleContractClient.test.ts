@@ -3,7 +3,10 @@ import type { ILogger, IBlockchainClient } from "@consensys/linea-shared-utils";
 import type { Address, Hex, PublicClient, TransactionReceipt } from "viem";
 import { InvalidInputRpcError } from "viem";
 import { LazyOracleABI } from "../../../core/abis/LazyOracle.js";
+import { LazyOracleErrorsABI } from "../../../core/abis/errors/LazyOracleErrors.js";
 import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+
+const LazyOracleCombinedABI = [...LazyOracleABI, ...LazyOracleErrorsABI] as const;
 
 jest.mock("viem", () => {
   const actual = jest.requireActual("viem");
@@ -50,7 +53,7 @@ describe("LazyOracleContractClient", () => {
     publicClient = { watchContractEvent } as unknown as PublicClient;
     blockchainClient.getBlockchainClient.mockReturnValue(publicClient);
     contractStub = {
-      abi: LazyOracleABI,
+      abi: LazyOracleCombinedABI,
       read: {
         latestReportData: jest.fn(),
       },
@@ -69,12 +72,22 @@ describe("LazyOracleContractClient", () => {
     const client = createClient();
 
     expect(mockedGetContract).toHaveBeenCalledWith({
-      abi: LazyOracleABI,
+      abi: LazyOracleCombinedABI,
       address: contractAddress,
       client: publicClient,
     });
     expect(client.getAddress()).toBe(contractAddress);
     expect(client.getContract()).toBe(contractStub);
+  });
+
+  it("gets the contract balance", async () => {
+    const balance = 1_000_000_000_000_000_000n; // 1 ETH
+    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+
+    const client = createClient();
+    await expect(client.getBalance()).resolves.toBe(balance);
+
+    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
   });
 
   it("returns latest report data with normalized structure", async () => {
@@ -129,7 +142,12 @@ describe("LazyOracleContractClient", () => {
         params.proof,
       ],
     });
-    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
+    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(
+      contractAddress,
+      calldata,
+      undefined,
+      LazyOracleCombinedABI,
+    );
     expect(logger.info).toHaveBeenCalledWith("updateVaultData succeeded, txHash=0xhash", { params });
   });
 
@@ -339,6 +357,12 @@ describe("LazyOracleContractClient", () => {
 
     watchArgs.onLogs?.([incompleteLog as any]);
 
+    expect(logger.debug).toHaveBeenCalledWith("waitForVaultsReportDataUpdatedEvent: Event args incomplete, skipping", {
+      hasTimestamp: true,
+      hasRefSlot: false,
+      hasRoot: true,
+      hasCid: true,
+    });
     expect(stopWatching).not.toHaveBeenCalled();
     expect(logger.info).not.toHaveBeenCalledWith("waitForVaultsReportDataUpdatedEvent detected", expect.anything());
     expect(clearTimeoutSpy).not.toHaveBeenCalled();

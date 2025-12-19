@@ -9,6 +9,43 @@ const Address = z
 
 const Hex = z.string().refine((v) => isHex(v), { message: "Invalid Hex" });
 
+/** Custom boolean schema that properly handles string boolean values from environment variables.
+ * Supports:
+ * - String values: "true", "false", "TRUE", "FALSE", "True", "False" (case-insensitive)
+ * - Numeric strings: "1" → true, "0" → false
+ * - Actual boolean values: true, false
+ * - Throws error for invalid values
+ */
+const BooleanFromString = z.preprocess(
+  (val) => {
+    // Handle actual boolean values
+    if (typeof val === "boolean") {
+      return val;
+    }
+    // Handle numeric values
+    if (typeof val === "number") {
+      return val !== 0;
+    }
+    // Handle string values (case-insensitive)
+    if (typeof val === "string") {
+      const lowerVal = val.toLowerCase().trim();
+      if (lowerVal === "true" || lowerVal === "1") {
+        return true;
+      }
+      if (lowerVal === "false" || lowerVal === "0") {
+        return false;
+      }
+    }
+    // Return original value to trigger validation error
+    return val;
+  },
+  z.boolean({
+    errorMap: () => ({
+      message: 'Invalid boolean value. Expected "true", "false", "1", "0", or actual boolean.',
+    }),
+  }),
+);
+
 export const configSchema = z
   .object({
     /** Ethereum chain ID for the L1 network (e.g., 1 for mainnet, 560048 for hoodi).
@@ -49,6 +86,8 @@ export const configSchema = z
     YIELD_MANAGER_ADDRESS: Address,
     // Address of the LidoStVaultYieldProvider contract.
     LIDO_YIELD_PROVIDER_ADDRESS: Address,
+    // Address of the STETH contract.
+    STETH_ADDRESS: Address,
     // L2 address that receives yield distributions.
     L2_YIELD_RECIPIENT: Address,
     // Polling interval in milliseconds for watching blockchain events.
@@ -57,10 +96,12 @@ export const configSchema = z
     TRIGGER_MAX_INACTION_MS: z.coerce.number().int().positive(),
     // Retry delay in milliseconds between contract read attempts after failures.
     CONTRACT_READ_RETRY_TIME_MS: z.coerce.number().int().positive(),
+    // Polling interval in milliseconds for updating gauge metrics from various data sources.
+    GAUGE_METRICS_POLL_INTERVAL_MS: z.coerce.number().int().positive(),
     // Whether to submit the vault accounting report. Can set to false if we expect other actors to submit.
-    SHOULD_SUBMIT_VAULT_REPORT: z.coerce.boolean(),
+    SHOULD_SUBMIT_VAULT_REPORT: BooleanFromString,
     /** Minimum positive yield amount (in wei) required before triggering a yield report.
-     * Yield reporting will proceed if either this threshold OR MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI is met.
+     * Yield reporting will proceed if this threshold OR MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI OR MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI is met.
      * This prevents gas-inefficient transactions for very small yield amounts.
      */
     MIN_POSITIVE_YIELD_TO_REPORT_WEI: z
@@ -68,21 +109,36 @@ export const configSchema = z
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     /** Minimum unpaid Lido protocol fees amount (in wei) required before triggering a yield report.
-     * Yield reporting will proceed if either this threshold OR MIN_POSITIVE_YIELD_TO_REPORT_WEI is met.
+     * Yield reporting will proceed if this threshold OR MIN_POSITIVE_YIELD_TO_REPORT_WEI OR MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI is met.
      * This prevents gas-inefficient transactions for very small fee amounts.
      */
     MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI: z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
-    /** Rebalance tolerance in basis points (1 bps = 0.01%, max 10000 bps = 100%).
-     * Used to calculate tolerance band for rebalancing decisions.
-     * The tolerance band is calculated as: `(totalSystemBalance * REBALANCE_TOLERANCE_BPS) / 10000`.
+    /** Minimum difference between peeked negative yield and on-state negative yield (in wei) required before triggering a yield report.
+     * Yield reporting will proceed if this threshold OR MIN_POSITIVE_YIELD_TO_REPORT_WEI OR MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI is met.
+     * The difference is calculated as: peekedNegativeYield - onStateNegativeYield.
+     * This prevents gas-inefficient transactions for very small negative yield changes.
+     */
+    MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+    /** Number of processing cycles between forced yield reports.
+     * Yield will be reported every N cycles regardless of threshold checks.
+     * This ensures periodic yield reporting even when thresholds aren't met.
+     */
+    CYCLES_PER_YIELD_REPORT: z.coerce.number().int().positive(),
+    /** Rebalance tolerance amount (in wei) used as an absolute tolerance band for rebalancing decisions.
      * Rebalancing occurs only when the L1 Message Service balance deviates from the effective
-     * target withdrawal reserve by more than this tolerance band (either above or below).
+     * target withdrawal reserve by more than this tolerance amount (either above or below).
      * Prevents unnecessary rebalancing operations for small fluctuations.
      */
-    REBALANCE_TOLERANCE_BPS: z.coerce.number().int().positive().max(10000),
+    REBALANCE_TOLERANCE_AMOUNT_WEI: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     // Maximum number of validator withdrawal requests that will be batched in a single transaction.
     MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: z.coerce.number().int().positive(),
     /**
@@ -90,6 +146,35 @@ export const configSchema = z
      * This prevents gas-inefficient transactions for very small amounts.
      */
     MIN_WITHDRAWAL_THRESHOLD_ETH: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+    /** Maximum staking rebalance amount (in wei) that can be processed per loop iteration.
+     * When a staking rebalance is required, the rebalance amount will be capped to this limit.
+     * Any excess amount will be handled in subsequent loop iterations.
+     * This prevents processing very large rebalance amounts in a single transaction.
+     */
+    MAX_STAKING_REBALANCE_AMOUNT_WEI: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+    /** Circuit breaker threshold (in wei) for STAKE direction rebalances.
+     * When the absolute rebalance requirement exceeds this threshold, the circuit breaker trips
+     * and STAKE operations are prevented. Admins can effectively reset the circuit breaker by changing
+     * this value to a higher amount and restarting the application.
+     * Must be greater than MAX_STAKING_REBALANCE_AMOUNT_WEI to allow gradual rebalancing up to
+     * the rate limit before tripping.
+     */
+    STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+    /** Minimum staking vault balance (in wei) required before unpausing staking.
+     * The balance is checked via Dashboard withdrawableValue() before calling unpauseStaking.
+     * Staking will only be unpaused if the withdrawableValue is greater than or equal to this threshold.
+     * This prevents unpausing staking when the vault balance is insufficient.
+     */
+    MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI: z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
@@ -130,7 +215,20 @@ export const configSchema = z
      * Must be between 1024 and 49000 (inclusive) to avoid system ports and common application ports.
      */
     API_PORT: z.coerce.number().int().min(1024).max(49000),
+    /** Winston logger level for controlling log verbosity.
+     * Valid values: "error", "warn", "info", "verbose", "debug", "silly".
+     * Defaults to "info" if not specified.
+     */
+    LOG_LEVEL: z
+      .enum(["error", "warn", "info", "verbose", "debug", "silly"], {
+        errorMap: () => ({ message: "LOG_LEVEL must be one of: error, warn, info, verbose, debug, silly" }),
+      })
+      .optional(),
   })
-  .strip();
+  .strip()
+  .refine((data) => data.STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI > data.MAX_STAKING_REBALANCE_AMOUNT_WEI, {
+    message: "STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI must be greater than MAX_STAKING_REBALANCE_AMOUNT_WEI",
+    path: ["STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI"],
+  });
 
 export type FlattenedConfigSchema = z.infer<typeof configSchema>;
