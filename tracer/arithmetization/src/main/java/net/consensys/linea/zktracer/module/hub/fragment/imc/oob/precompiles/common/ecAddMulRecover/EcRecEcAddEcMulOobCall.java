@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.com
 
 import java.math.BigInteger;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
+import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
 public abstract class EcRecEcAddEcMulOobCall extends CommonPrecompileOobCall {
@@ -30,7 +31,7 @@ public abstract class EcRecEcAddEcMulOobCall extends CommonPrecompileOobCall {
   public void setOutputs() {
     super.setOutputs();
     final boolean insufficientGas =
-        getCalleeGas().compareTo(Bytes.minimalBytes(precompileLongCost())) < 0;
+        getCalleeGas().compareTo(EWord.of(precompileLongCost())) < 0;
 
     // Set hubSuccess
     final boolean hubSuccess = !insufficientGas;

@@ -35,7 +35,7 @@ public class CallDataLoadOobCall extends OobCall {
 
   // Inputs
   @EqualsAndHashCode.Include EWord offset;
-  @EqualsAndHashCode.Include Bytes cds;
+  @EqualsAndHashCode.Include EWord cds;
 
   // Outputs
   boolean cdlOutOfBounds;
@@ -47,7 +47,7 @@ public class CallDataLoadOobCall extends OobCall {
   @Override
   public void setInputs(Hub hub, MessageFrame frame) {
     setOffset(EWord.of(frame.getStackItem(0)));
-    setCds(Bytes.ofUnsignedLong(frame.getInputData().size()));
+    setCds(EWord.of(frame.getInputData().size()));
   }
 
   @Override

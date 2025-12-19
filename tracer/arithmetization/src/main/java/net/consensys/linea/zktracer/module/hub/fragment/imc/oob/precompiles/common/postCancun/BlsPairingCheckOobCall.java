@@ -24,6 +24,7 @@ import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import java.math.BigInteger;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
+import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
 public class BlsPairingCheckOobCall extends CommonPrecompileOobCall {
@@ -38,9 +39,9 @@ public class BlsPairingCheckOobCall extends CommonPrecompileOobCall {
     final Bytes remainder = getCds().mod(PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_PAIRING_CHECK);
     final boolean cdsIsMultipleOfMinBlsPairingCheckSize = remainder.isZero();
 
-    final Bytes precompileCost =
+    final EWord precompileCost =
         cdsIsMultipleOfMinBlsPairingCheckSize
-            ? bigIntegerToBytes(
+            ? EWord.of(
                 BigInteger.valueOf(GAS_CONST_BLS_PAIRING_CHECK)
                     .add(
                         BigInteger.valueOf(GAS_CONST_BLS_PAIRING_CHECK_PAIR)
@@ -50,7 +51,7 @@ public class BlsPairingCheckOobCall extends CommonPrecompileOobCall {
                                     .divide(
                                         BigInteger.valueOf(
                                             PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_PAIRING_CHECK)))))
-            : Bytes.of(0);
+            : EWord.ZERO;
 
     final boolean validCds = !isCdsIsZero() && cdsIsMultipleOfMinBlsPairingCheckSize;
     final boolean sufficientGas = precompileCost.compareTo(getCalleeGas()) <= 0;

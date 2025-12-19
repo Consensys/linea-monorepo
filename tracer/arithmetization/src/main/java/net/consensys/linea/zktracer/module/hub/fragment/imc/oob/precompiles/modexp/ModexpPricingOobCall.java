@@ -48,7 +48,7 @@ public final class ModexpPricingOobCall extends OobCall {
 
   // Inputs
   @EqualsAndHashCode.Include final ModexpMetadata metadata;
-  @EqualsAndHashCode.Include final Bytes callGas;
+  @EqualsAndHashCode.Include final EWord callGas;
   @EqualsAndHashCode.Include EWord returnAtCapacity;
   @EqualsAndHashCode.Include BigInteger exponentLog;
 
@@ -61,7 +61,7 @@ public final class ModexpPricingOobCall extends OobCall {
   public ModexpPricingOobCall(ModexpMetadata metadata, long calleeGas) {
     super();
     this.metadata = metadata;
-    this.callGas = Bytes.ofUnsignedLong(calleeGas);
+    this.callGas = EWord.of(calleeGas);
   }
 
   @Override

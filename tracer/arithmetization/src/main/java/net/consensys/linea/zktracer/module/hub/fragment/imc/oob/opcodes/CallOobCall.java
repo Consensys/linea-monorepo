@@ -38,8 +38,8 @@ public class CallOobCall extends OobCall {
 
   // Inputs
   @EqualsAndHashCode.Include public EWord value;
-  @EqualsAndHashCode.Include Bytes balance;
-  @EqualsAndHashCode.Include Bytes callStackDepth;
+  @EqualsAndHashCode.Include EWord balance;
+  @EqualsAndHashCode.Include EWord callStackDepth;
 
   // Outputs
   boolean abortingCondition;
@@ -58,14 +58,14 @@ public class CallOobCall extends OobCall {
     final EWord value =
         opcode.callHasValueArgument() ? EWord.of(frame.getStackItem(2)) : EWord.ZERO;
     setValue(value);
-    setBalance(bigIntegerToBytes(callerAccount.getBalance().toUnsignedBigInteger()));
-    setCallStackDepth(Bytes.ofUnsignedInt(frame.getDepth()));
+    setBalance(EWord.of(callerAccount.getBalance().toUnsignedBigInteger()));
+    setCallStackDepth(EWord.of(frame.getDepth()));
   }
 
   @Override
   public void setOutputs() {
     final boolean insufficientBalanceAbort = balance.compareTo(value) < 0;
-    final boolean callStackDepthAbort = callStackDepth.compareTo(MAX_CALL_STACK_DEPTH_BYTES) >= 0;
+    final boolean callStackDepthAbort = callStackDepth.compareTo(EWord.of(MAX_CALL_STACK_DEPTH_BYTES)) >= 0;
     setAbortingCondition(insufficientBalanceAbort || callStackDepthAbort);
   }
 

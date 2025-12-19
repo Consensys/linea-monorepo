@@ -45,11 +45,11 @@ public final class CreateOobCall extends OobCall {
 
   // Inputs
   @EqualsAndHashCode.Include EWord value;
-  @EqualsAndHashCode.Include Bytes balance;
-  @EqualsAndHashCode.Include Bytes nonce;
+  @EqualsAndHashCode.Include EWord balance;
+  @EqualsAndHashCode.Include EWord nonce;
   @EqualsAndHashCode.Include boolean hasCode;
-  @EqualsAndHashCode.Include Bytes callStackDepth;
-  @EqualsAndHashCode.Include Bytes creatorNonce;
+  @EqualsAndHashCode.Include EWord callStackDepth;
+  @EqualsAndHashCode.Include EWord creatorNonce;
   @EqualsAndHashCode.Include long codeSize;
 
   // Outputs
@@ -75,20 +75,20 @@ public final class CreateOobCall extends OobCall {
     final boolean hasCode = unabortedCreateAndDeploymentAccountExists && deployedAccount.hasCode();
 
     setValue(EWord.of(frame.getStackItem(0)));
-    setBalance(bigIntegerToBytes(creatorAccount.getBalance().toUnsignedBigInteger()));
-    setNonce(Bytes.minimalBytes(nonce));
+    setBalance(EWord.of(creatorAccount.getBalance().toUnsignedBigInteger()));
+    setNonce(EWord.of(nonce));
     setHasCode(hasCode);
-    setCallStackDepth(bigIntegerToBytes(BigInteger.valueOf(frame.getDepth())));
-    setCreatorNonce(Bytes.minimalBytes(creatorAccount.getNonce()));
+    setCallStackDepth(EWord.of(BigInteger.valueOf(frame.getDepth())));
+    setCreatorNonce(EWord.of(creatorAccount.getNonce()));
     setCodeSize(clampedToLong(frame.getStackItem(2)));
   }
 
   @Override
   public void setOutputs() {
     final boolean insufficientBalanceAbort = EWord.of(balance).compareTo(value) < 0;
-    final boolean callStackDepthAbort = callStackDepth.compareTo(MAX_CALL_STACK_DEPTH_BYTES) >= 0;
+    final boolean callStackDepthAbort = callStackDepth.compareTo(EWord.of(MAX_CALL_STACK_DEPTH_BYTES)) >= 0;
     final boolean nonzeroNonce = !nonce.isZero();
-    final boolean creatorNonceAbort = creatorNonce.compareTo(EIP2681_MAX_NONCE_BYTES) >= 0;
+    final boolean creatorNonceAbort = creatorNonce.compareTo(EWord.of(EIP2681_MAX_NONCE_BYTES)) >= 0;
 
     setAbortingCondition(insufficientBalanceAbort || callStackDepthAbort || creatorNonceAbort);
     setFailureCondition(!isAbortingCondition() && (isHasCode() || nonzeroNonce));

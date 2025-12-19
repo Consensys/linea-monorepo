@@ -37,7 +37,7 @@ public abstract class CommonPrecompileOobCall extends OobCall {
   @EqualsAndHashCode.Include final int oobInst;
 
   // Inputs
-  @EqualsAndHashCode.Include final Bytes calleeGas;
+  @EqualsAndHashCode.Include final EWord calleeGas;
   @EqualsAndHashCode.Include EWord cds;
   @EqualsAndHashCode.Include EWord returnAtCapacity;
 
@@ -48,7 +48,7 @@ public abstract class CommonPrecompileOobCall extends OobCall {
   boolean cdsIsZero; // Necessary to compute extractCallData and emptyCallData
 
   protected CommonPrecompileOobCall(final BigInteger calleeGas, final int oobInst) {
-    this.calleeGas = bigIntegerToBytes(calleeGas);
+    this.calleeGas = EWord.of(calleeGas);
     this.oobInst = oobInst;
   }
 

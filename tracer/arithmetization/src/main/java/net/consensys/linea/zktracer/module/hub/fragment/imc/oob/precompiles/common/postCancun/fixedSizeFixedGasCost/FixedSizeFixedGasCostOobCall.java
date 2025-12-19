@@ -35,7 +35,7 @@ public abstract class FixedSizeFixedGasCostOobCall extends CommonPrecompileOobCa
 
     final boolean validCds = getCds().compareTo(EWord.of(precompileExpectedCds())) == 0;
     final boolean sufficientGas =
-        EWord.of(getCalleeGas()).compareTo(EWord.of(precompileLongCost())) >= 0;
+        getCalleeGas().compareTo(EWord.of(precompileLongCost())) >= 0;
 
     // Set hubSuccess
     final boolean hubSuccess = hubSuccess(sufficientGas, validCds);

@@ -37,7 +37,7 @@ public class ReturnDataCopyOobCall extends OobCall {
   // Inputs
   @EqualsAndHashCode.Include EWord offset;
   @EqualsAndHashCode.Include EWord size;
-  @EqualsAndHashCode.Include Bytes rds;
+  @EqualsAndHashCode.Include EWord rds;
 
   // Outputs
   boolean rdcx;
@@ -50,13 +50,13 @@ public class ReturnDataCopyOobCall extends OobCall {
   public void setInputs(Hub hub, MessageFrame frame) {
     setOffset(EWord.of(frame.getStackItem(1)));
     setSize(EWord.of(frame.getStackItem(2)));
-    setRds(Bytes.ofUnsignedLong(frame.getReturnData().size()));
+    setRds(EWord.of(frame.getReturnData().size()));
   }
 
   @Override
   public void setOutputs() {
-    final BigInteger sum = offset.toUnsignedBigInteger().add(size.toUnsignedBigInteger());
-    setRdcx(sum.compareTo(rds.toUnsignedBigInteger()) > 0);
+    final EWord sum = offset.add(size);
+    setRdcx(sum.compareTo(rds) > 0);
   }
 
   @Override
