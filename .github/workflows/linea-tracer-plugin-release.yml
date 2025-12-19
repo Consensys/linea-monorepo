@@ -55,7 +55,11 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
-          echo "CREATE_TAG=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset $zip_asset --target "${{ github.ref }}" 2>&1)" >> $GITHUB_OUTPUT
+          gh release delete linea-tracer-beta-v4.4-rc7 --cleanup-tag --yes
+          echo "CREATE_TAG=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset --target "${{ github.ref }}" 2>&1)" >> $GITHUB_OUTPUT
+          if [[ "${{ steps.config.outputs.CREATE_TAG }}" != "a release with the same tag name already exists:"* ]]; then
+            gh release upload "${{ steps.config.outputs.RELEASE_TAG }}" $zip_asset
+          fi
         env:
           jar_asset: ./tracer/plugins/build/libs/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.jar
           zip_asset: ./tracer/plugins/build/distributions/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.zip
