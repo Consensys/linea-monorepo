@@ -157,6 +157,7 @@ describe("YieldReportingProcessor", () => {
     minUnpaidLidoProtocolFeesToReportYieldWei: bigint = 500000000000000000n,
     minNegativeYieldDiffToReportYieldWei: bigint = 1000000000000000000n,
     minWithdrawalThresholdEth: bigint = 0n,
+    cyclesPerYieldReport: number = 12,
   ) =>
     new YieldReportingProcessor(
       logger,
@@ -175,6 +176,7 @@ describe("YieldReportingProcessor", () => {
       minUnpaidLidoProtocolFeesToReportYieldWei,
       minNegativeYieldDiffToReportYieldWei,
       minWithdrawalThresholdEth,
+      cyclesPerYieldReport,
     );
 
   it("_process - processes staking surplus flow and records metrics", async () => {
@@ -825,7 +827,10 @@ describe("YieldReportingProcessor", () => {
       expect(yieldManager.peekYieldReport).toHaveBeenCalledWith(yieldProvider, l2Recipient);
       expect(yieldManager.getYieldProviderData).toHaveBeenCalledWith(yieldProvider);
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("_shouldReportYield - shouldReportYield=true, settleableLidoFees="),
+        expect.stringContaining("_shouldReportYield - shouldReportYield=true"),
+      );
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining("settleableLidoFees="),
       );
     });
 
@@ -945,6 +950,8 @@ describe("YieldReportingProcessor", () => {
         minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
       );
+      // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
+      (processor as any).cycleCount = 1; // 1 % 12 !== 0
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(false);
@@ -967,6 +974,8 @@ describe("YieldReportingProcessor", () => {
         minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
       );
+      // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
+      (processor as any).cycleCount = 1; // 1 % 12 !== 0
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(false);
@@ -984,6 +993,8 @@ describe("YieldReportingProcessor", () => {
         minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
       );
+      // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
+      (processor as any).cycleCount = 1; // 1 % 12 !== 0
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(false);
@@ -1047,6 +1058,8 @@ describe("YieldReportingProcessor", () => {
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
       const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
+      (processor as any).cycleCount = 1; // 1 % 12 !== 0
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(false);
@@ -1067,9 +1080,13 @@ describe("YieldReportingProcessor", () => {
       await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringMatching(
-          /_shouldReportYield - shouldReportYield=true, settleableLidoFees="600000000000000000", yieldReport=.*"yieldAmount":"2000000000000000000"/,
-        ),
+        expect.stringContaining("_shouldReportYield - shouldReportYield=true"),
+      );
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining('settleableLidoFees="600000000000000000"'),
+      );
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining('"yieldAmount":"2000000000000000000"'),
       );
     });
 
@@ -1108,6 +1125,72 @@ describe("YieldReportingProcessor", () => {
       expect(metricsUpdater.setLastPeekedPositiveYieldReport).not.toHaveBeenCalled();
       // Only unpaid fees metric should be set when unpaidFees is defined
       expect(metricsUpdater.setLastSettleableLidoFees).toHaveBeenCalledWith(vaultAddress, 300000000000000000);
+    });
+
+    it("returns true when cycle count is divisible by cyclesPerYieldReport", async () => {
+      const unpaidFees = 300000000000000000n; // below threshold
+      const yieldReport: YieldReport = {
+        yieldAmount: 500000000000000000n, // below threshold
+        outstandingNegativeYield: 0n,
+        yieldProvider,
+      };
+
+      vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
+      yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
+      yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
+
+      const cyclesPerYieldReport = 12;
+      const processor = createProcessor(
+        true,
+        minPositiveYieldToReportWei,
+        minUnpaidLidoProtocolFeesToReportYieldWei,
+        minNegativeYieldDiffToReportYieldWei,
+        0n,
+        cyclesPerYieldReport,
+      );
+      (processor as any).vault = vaultAddress;
+
+      // Set cycleCount to a multiple of cyclesPerYieldReport
+      (processor as any).cycleCount = 24; // 24 % 12 === 0
+      const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
+
+      expect(result).toBe(true);
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining("cycleBasedReportingDue=true"),
+      );
+    });
+
+    it("returns false when cycle count is not divisible by cyclesPerYieldReport and thresholds not met", async () => {
+      const unpaidFees = 300000000000000000n; // below threshold
+      const yieldReport: YieldReport = {
+        yieldAmount: 500000000000000000n, // below threshold
+        outstandingNegativeYield: 0n,
+        yieldProvider,
+      };
+
+      vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
+      yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
+      yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
+
+      const cyclesPerYieldReport = 12;
+      const processor = createProcessor(
+        true,
+        minPositiveYieldToReportWei,
+        minUnpaidLidoProtocolFeesToReportYieldWei,
+        minNegativeYieldDiffToReportYieldWei,
+        0n,
+        cyclesPerYieldReport,
+      );
+      (processor as any).vault = vaultAddress;
+
+      // Set cycleCount to not be a multiple of cyclesPerYieldReport
+      (processor as any).cycleCount = 11; // 11 % 12 !== 0
+      const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
+
+      expect(result).toBe(false);
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining("cycleBasedReportingDue=false"),
+      );
     });
   });
 });

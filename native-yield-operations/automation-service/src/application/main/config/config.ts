@@ -66,6 +66,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
     minPositiveYieldToReportWei: env.MIN_POSITIVE_YIELD_TO_REPORT_WEI,
     minUnpaidLidoProtocolFeesToReportYieldWei: env.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI,
     minNegativeYieldDiffToReportYieldWei: env.MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI,
+    cyclesPerYieldReport: env.CYCLES_PER_YIELD_REPORT,
   },
   web3signer: {
     url: env.WEB3SIGNER_URL,

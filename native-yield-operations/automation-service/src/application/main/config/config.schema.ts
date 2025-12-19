@@ -125,6 +125,11 @@ export const configSchema = z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+    /** Number of processing cycles between forced yield reports.
+     * Yield will be reported every N cycles regardless of threshold checks.
+     * This ensures periodic yield reporting even when thresholds aren't met.
+     */
+    CYCLES_PER_YIELD_REPORT: z.coerce.number().int().positive(),
     /** Rebalance tolerance amount (in wei) used as an absolute tolerance band for rebalancing decisions.
      * Rebalancing occurs only when the L1 Message Service balance deviates from the effective
      * target withdrawal reserve by more than this tolerance amount (either above or below).

@@ -235,6 +235,7 @@ const createBootstrapConfig = () => ({
     minPositiveYieldToReportWei: 1000000000000000000n,
     minUnpaidLidoProtocolFeesToReportYieldWei: 500000000000000000n,
     minNegativeYieldDiffToReportYieldWei: 1000000000000000000n,
+    cyclesPerYieldReport: 12,
   },
   web3signer: {
     url: "https://web3signer.example.com",

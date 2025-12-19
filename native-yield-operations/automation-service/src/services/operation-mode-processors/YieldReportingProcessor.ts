@@ -26,6 +26,7 @@ import { submitVaultReportIfNotFresh } from "./vaultReportSubmission.js";
  */
 export class YieldReportingProcessor implements IOperationModeProcessor {
   private vault: Address;
+  private cycleCount: number = 0;
 
   /**
    * Creates a new YieldReportingProcessor instance.
@@ -46,6 +47,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @param {bigint} minUnpaidLidoProtocolFeesToReportYieldWei - Minimum unpaid Lido protocol fees amount (in wei) required before triggering a fee settlement.
    * @param {bigint} minNegativeYieldDiffToReportYieldWei - Minimum difference between peeked negative yield and on-state negative yield (in wei) required before triggering a yield report.
    * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH (stored as wei) required before withdrawal operations proceed.
+   * @param {number} cyclesPerYieldReport - Number of processing cycles between forced yield reports. Yield will be reported every N cycles regardless of threshold checks.
    */
   constructor(
     private readonly logger: ILogger,
@@ -64,7 +66,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly minUnpaidLidoProtocolFeesToReportYieldWei: bigint,
     private readonly minNegativeYieldDiffToReportYieldWei: bigint,
     private readonly minWithdrawalThresholdEth: bigint,
-  ) {}
+    private readonly cyclesPerYieldReport: number,
+  ) {
+    this.cycleCount = 0;
+  }
 
   /**
    * Executes one processing cycle:
@@ -117,6 +122,9 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    *  - May queue beacon-chain withdrawals
    */
   private async _process(): Promise<void> {
+    // Increment cycle counter
+    this.cycleCount++;
+    this.logger.info(`_process - cycleCount incremented to ${this.cycleCount}`);
     // Fetch initial data
     this.vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
     // Fresh vault report is a dependency for getRebalanceRequirements
@@ -344,9 +352,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   }
 
   /**
-   * Determines whether yield should be reported based on configurable thresholds.
-   * Checks the yield amount, unpaid Lido protocol fees, and negative yield difference against their respective thresholds.
-   * Returns true if any threshold is met or exceeded.
+   * Determines whether yield should be reported based on configurable thresholds and cycle count.
+   * Checks the yield amount, unpaid Lido protocol fees, negative yield difference against their respective thresholds,
+   * and cycle-based reporting (every N cycles).
+   * Returns true if any threshold is met or exceeded, or if cycle-based reporting is due.
    * Sets gauge metrics for peeked values when reads are successful.
    *
    * @returns {Promise<boolean>} True if yield should be reported (any threshold met), false otherwise.
@@ -362,6 +371,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     let yieldThresholdMet = false;
     let feesThresholdMet = false;
     let negativeYieldDiffThresholdMet = false;
+    let isCycleBasedReportingDue = false;
 
     if (yieldReport !== undefined) {
       const outstandingNegativeYield = yieldReport?.outstandingNegativeYield;
@@ -383,7 +393,11 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       feesThresholdMet = settleableLidoFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
     }
 
-    const shouldReportYield = feesThresholdMet || yieldThresholdMet || negativeYieldDiffThresholdMet;
+    // Check if cycle-based reporting is due
+    isCycleBasedReportingDue = this.cycleCount % this.cyclesPerYieldReport === 0;
+
+    const shouldReportYield =
+      feesThresholdMet || yieldThresholdMet || negativeYieldDiffThresholdMet || isCycleBasedReportingDue;
 
     // Log results
     const onStateNegativeYield = yieldProviderData?.lastReportedNegativeYield;
@@ -393,7 +407,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
         ? peekedNegativeYield - onStateNegativeYield
         : undefined;
     this.logger.info(
-      `_shouldReportYield - shouldReportYield=${shouldReportYield}, settleableLidoFees=${JSON.stringify(settleableLidoFees, bigintReplacer)}, yieldReport=${JSON.stringify(yieldReport, bigintReplacer)}, onStateNegativeYield=${JSON.stringify(onStateNegativeYield, bigintReplacer)}, negativeYieldDiff=${JSON.stringify(negativeYieldDiff, bigintReplacer)}`,
+      `_shouldReportYield - shouldReportYield=${shouldReportYield}, cycleCount=${this.cycleCount}, cycleBasedReportingDue=${isCycleBasedReportingDue}, settleableLidoFees=${JSON.stringify(settleableLidoFees, bigintReplacer)}, yieldReport=${JSON.stringify(yieldReport, bigintReplacer)}, onStateNegativeYield=${JSON.stringify(onStateNegativeYield, bigintReplacer)}, negativeYieldDiff=${JSON.stringify(negativeYieldDiff, bigintReplacer)}`,
     );
 
     // Return true if any threshold is met
