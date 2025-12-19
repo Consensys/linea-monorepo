@@ -165,7 +165,6 @@ export default class BurnAndBridge extends Command {
     );
 
     if (!shouldExecute) {
-      this.log("Vault balance is less than or equal to minimum fee. No action needed.");
       return;
     }
 
