@@ -19,7 +19,6 @@ package serde
 
 import (
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
@@ -395,7 +394,8 @@ var implementationRegistry = collection.NewMapping[string, reflect.Type]()
 // function will refuse. If the provided type was already registered, then this function is a no-op.
 //
 // IMPORTANT: DO NOT CHANGE the name of this function since the codegen tool depends on it.
-// Incase it is changed, the codegen tool must be updated.
+// Incase it is changed, the codegen tool must be updated. This function is used by the codegen tool
+// and runs only during the compile time and not at runtime.
 func RegisterImplementation(instance any) {
 
 	if instance == nil {
@@ -425,101 +425,11 @@ func RegisterImplementation(instance any) {
 	implementationRegistry.InsertNew(registeredTypeName, reflect.TypeOf(instance))
 }
 
-/*
-// returns a reflect.Type registered in the registry for the provided type-string
-// the function will modify the provided string in case the string represents a
-// pointer type and will add the levels of indirections to the returned
-// reflect.Type.
-func findRegisteredImplementation(pkgTypeName string) (reflect.Type, error) {
-
-	// The typename may contain indirections. In that case, our goal is to
-	// resolve the name of the concrete underlying type since this is the one
-	// that is registered. The format of the registered name is a#b and the
-	// format of the caller's pkgTypeName is a#b#n
-	split := strings.Split(pkgTypeName, "#")
-	if len(split) != 3 {
-		return nil, fmt.Errorf("provided type `%v` does not have the format `a#b#n`", pkgTypeName)
-	}
-
-	var (
-		registeredName     = split[0] + "#" + split[1]
-		nbIndirection, err = strconv.ParseInt(split[2], 10, 64)
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("could not parse the number of indirection from the string `%v` : %w", pkgTypeName, err)
-	}
-
-	// We need an explicit check because the getter panics. Also it makes for a
-	// nicer error message.
-	if !implementationRegistry.Exists(registeredName) {
-		return nil, fmt.Errorf("unregistered type %s", registeredName)
-	}
-
-	foundType := implementationRegistry.MustGet(registeredName)
-
-	// This readds the levels of indirection that the caller requested
-	for i := int64(0); i < nbIndirection; i++ {
-		foundType = reflect.PointerTo(foundType)
-	}
-
-	// This sanity-checks an invariant of the function. No matter what is
-	// returned, it must return a type whose pkgPathTypeName matches the
-	// requested one.
-	if getPkgPathAndTypeNameIndirect(foundType) != pkgTypeName {
-		utils.Panic("caller requested `%v` and got `%v`", pkgTypeName, getPkgPathAndTypeNameIndirect(foundType))
-	}
-
-	return foundType, nil
-} */
-
-// Returns the full `<Type.PkgPath>#<Type.Name>#<nbIndirection>` of a type.
-// Caller can either provide an instance of the desired type or a reflect.Type
-// of it.
-//
-// The function only supports concrete named types or pointers to them. If the
-// caller provides an interface, an anonymous (aside from pointers) type or
-// pointers to them. The function will panic.
-//
-// This is used for naming the types that we would want to resolve. But this is
-// not what is concretely registered. The reason for the difference is that
-// we don't want to force the user to register every possible types AND their
-// pointers.
-func getPkgPathAndTypeNameIndirect(x any) string {
-
-	refType := reflect.TypeOf(x)
-
-	// If provided a reflect.Type, don't use the TypeOf of that. Instead directly
-	// use the provided Type.
-	if xAsRefType, ok := x.(reflect.Type); ok {
-		refType = xAsRefType
-	}
-
-	nbIndirection := 0
-	for refType.Kind() == reflect.Pointer {
-		nbIndirection++
-		refType = refType.Elem()
-	}
-
-	var (
-		pkgPath  = refType.PkgPath()
-		typeName = refType.Name()
-	)
-
-	if len(typeName) == 0 {
-		utils.Panic("got an untyped parameter `(%T)(%v)`; this is not supported", x, x)
-	}
-
-	// The parenthesis are needed to ensure that the returned string is parseable
-	return strings.TrimPrefix(pkgPath, pkgPathPrefixToRemove) + "#" + typeName + "#" + strconv.Itoa(nbIndirection)
-}
-
 // Returns the name in the format <pkg>#<type>. Used to derive the type key in
 // the register. It has the following restrictions:
 //   - Requires that provided type is concrete
 //   - If it's a [reflect.Type] this is fine.
 func getPkgPathAndTypeName(x any) string {
-
 	refType := reflect.TypeOf(x)
 
 	// If provided a reflect.Type, don't use the TypeOf of that. Instead directly
@@ -539,6 +449,5 @@ func getPkgPathAndTypeName(x any) string {
 		// case it is used for packing a struct object.
 		return refType.String()
 	}
-
 	return strings.TrimPrefix(pkgPath, pkgPathPrefixToRemove) + "#" + typeName
 }
