@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sync"
 	"syscall"
 	"unsafe"
 )
@@ -97,19 +98,33 @@ func SizeOf[T any]() int64 {
 	return int64(unsafe.Sizeof(z))
 }
 
-// databyte encapsulates the byte slice for the mapped memory.
-type databyte struct {
-	data []byte
-}
-
-// MappedFile represents a read-only memory-mapped file.
+// MappedFile  maps the underlying file (READ-ONLY) into the process's virtual address space
+// without loading them into the Go heap.
+// It acts essentially like a "Manager" whose job is to own both the memory region and the file handle.
 type MappedFile struct {
 	file *os.File
-	databyte
+	data []byte
+
+	// Ensures Close logic runs exactly once
+	once sync.Once
 }
 
-// openMappedFile opens a file and maps it into memory.
+// Data returns the underlying byte slice of the memory map.
+// IMPORTANT: This slice is only valid as long as the MappedFile has not been closed.
+func (mf *MappedFile) Data() []byte {
+	return mf.data
+}
+
+// openMappedFile opens a file and maps it into the process memory.
+// It sets up a finalizer to ensure that kernel resources (file descriptors
+// and memory maps) are released even if the caller forgets to call Close().
 func openMappedFile(path string) (*MappedFile, error) {
+
+	// Note: We don't call defer f.Close() here because we are handing over ownership of the file to the MappedFile struct.
+	// The file's life is now tied to the memory map's life. They live together, and they die together when mf.Close() is called.
+	// If we used defer f.Close() inside the OpenMappedFile function, the file would be closed the moment the function returns.
+	// This would leave our MappedFile struct in a "half-alive" state where it has the data but has lost its connection to the
+	// underlying file object. See `MappedFile` struct description for more details.
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
@@ -117,39 +132,68 @@ func openMappedFile(path string) (*MappedFile, error) {
 
 	info, err := f.Stat()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("failed to stat file: %w", err)
 	}
 
 	size := info.Size()
 	if size == 0 {
-		f.Close()
-		return &MappedFile{file: f, databyte: databyte{data: nil}}, nil
+		// Mapping a zero-length file is generally not allowed by the OS.
+		return &MappedFile{file: f, data: nil}, nil
 	}
 
-	// PROT_READ: The memory is read-only to prevent accidental corruption.
+	// PROT_READ: Memory is read-only.
+	// MAP_SHARED: The mapping is shared between multiple processes sharing the same physical RMA.
+	// Allows mem sync (changes on disk are reflected in memory) and has lower OS overhead compared to MAP_PRIVATE.
 	data, err := syscall.Mmap(int(f.Fd()), 0, int(size), syscall.PROT_READ, syscall.MAP_SHARED)
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("mmap failed: %w", err)
 	}
 
-	mf := &MappedFile{file: f, databyte: databyte{data: data}}
-	runtime.SetFinalizer(mf, (*MappedFile).Close)
+	mf := &MappedFile{
+		file: f,
+		data: data,
+	}
+
+	// The Safety Net: If the MappedFile object becomes unreachable, the GC will
+	// trigger this finalizer to prevent resource leaks.
+	runtime.SetFinalizer(mf, func(m *MappedFile) {
+		_ = m.Close()
+	})
+
 	return mf, nil
 }
 
-// Close unmaps the memory and closes the file descriptor.
+// Close explicitly unmaps the memory and closes the underlying file.
+// This method is idempotent and thread-safe.
 func (mf *MappedFile) Close() error {
-	if mf.data == nil {
-		return mf.file.Close()
-	}
+	var err error
 
-	runtime.SetFinalizer(mf, nil)
+	// If different components might share a reference to the same MappedFile, then Component A might call Close()
+	// and then Component B calls Close(), the syscall.Munmap might error out or, worse, unmap a different memory
+	// region that the OS just reassigned. sync.Once ensures the cleanup logic runs exactly once, regardless of
+	// how many times it is called during the runtime.
+	mf.once.Do(func() {
+		// 1. Remove the finalizer so it doesn't run again later.
+		runtime.SetFinalizer(mf, nil)
 
-	if err := syscall.Munmap(mf.data); err != nil {
-		return fmt.Errorf("munmap failed: %w", err)
-	}
-	mf.data = nil
-	return mf.file.Close()
+		// 2. Unmap the memory if it exists.
+		if mf.data != nil {
+			err = syscall.Munmap(mf.data)
+
+			// Invalidate the slice immediately -defensive programming practice. If any other part of the code
+			// attempts to access mf.Data() after a close, it will get a nil slice rather than attempting to read
+			// from an unmapped address which would cause a hard crash.
+			mf.data = nil
+		}
+
+		// 3. Close the file descriptor.
+		if mf.file != nil {
+			if fErr := mf.file.Close(); fErr != nil && err == nil {
+				err = fErr
+			}
+		}
+	})
+	return err
 }
