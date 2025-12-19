@@ -2,128 +2,70 @@ package serde
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/klauspost/compress/zstd"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/semaphore"
 )
 
-// LoadFromDisk loads a serialized asset from disk.
-// It returns an io.Closer that MUST be closed by the caller once the
-// asset is no longer needed (specifically for Mmap mode).
-func LoadFromDisk(filePath string, assetPtr any, withCompression bool) (io.Closer, error) {
-	start := time.Now()
+var (
 
+	// numConcurrentDiskWrite governs the number of concurrent disk writes
+	numConcurrentDiskWrite = 1
+	// diskWriteSemaphore limits concurrent writes to prevent IO congestion.
+	// Even at 1, it ensures that massive assets (like Module 11) don't compete
+	// for disk bandwidth, which is critical for mechanical or shared cloud drives.
+	diskWriteSemaphore = semaphore.NewWeighted(int64(numConcurrentDiskWrite))
+
+	// concurrentDiskRead governs the number of concurrent disk reads
+	numConcurrentDiskRead = 1
+	// diskReadSemaphore ensures we don't saturate the IO bus during heavy asset loading.
+	diskReadSemaphore = semaphore.NewWeighted(int64(numConcurrentDiskRead))
+)
+
+// StoreToDisk serializes the asset and writes it atomically to disk.
+func StoreToDisk(filePath string, asset any, withCompression bool) error {
 	var (
-		mfile *MappedFile
-		data  []byte
-		err   error
+		data     []byte
+		serErr   error
+		writeErr error
+		tSer     time.Duration
+		tComp    time.Duration
 	)
 
-	// We use a closer to ensure the memory stays valid as long as the caller needs it.
-	var closer io.Closer = io.NopCloser(nil)
-
-	if withCompression {
-		// --- Path A: Compressed (Heap Memory) ---
-		logrus.Infof("Loading compressed file %s...", filePath)
-
-		compressedData, err := os.ReadFile(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
-		}
-
-		decoder, err := zstd.NewReader(bytes.NewReader(compressedData))
-		if err != nil {
-			return nil, fmt.Errorf("failed to create zstd reader: %w", err)
-		}
-		defer decoder.Close()
-
-		data, err = io.ReadAll(decoder)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decompress %s: %w", filePath, err)
-		}
-
-		logrus.Infof("Decompressed %s in %s (Disk: %s -> Mem: %s)",
-			filePath, time.Since(start), formatSize(len(compressedData)), formatSize(len(data)))
-
-	} else {
-		// --- Path B: Uncompressed (Memory Mapped) ---
-		logrus.Infof("Mmapping file %s...", filePath)
-
-		mfile, err = openMappedFile(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to mmap %s: %w", filePath, err)
-		}
-		data = mfile.data
-
-		// The MappedFile struct implements io.Closer.
-		// Returning it ensures the finalizer (munmap) won't run until the caller is done.
-		closer = mfile
-	}
-
-	// 2. Deserialize (Overlay/Swizzle)
-	tDeserialize := time.Now()
-	if err := Deserialize(data, assetPtr); err != nil {
-		closer.Close() // Clean up on error
-		return nil, fmt.Errorf("failed to deserialize %s: %w", filePath, err)
-	}
-
-	logrus.Infof("Loaded & Deserialized %s in %s (Overlay took: %s) | Size: %s",
-		filePath, time.Since(start), time.Since(tDeserialize), formatSize(len(data)))
-
-	// While runtime.KeepAlive(mfile) prevents collection during this function,
-	// returning the closer allows the caller to prevent collection during DeepCmp.
-	return closer, nil
-}
-
-// StoreToDisk serializes the asset and writes it to the specified file.
-// It uses an atomic write strategy (write temp -> rename) to ensure readers never see partial files.
-func StoreToDisk(filePath string, asset any, withCompression bool) error {
-	start := time.Now()
-
-	// 1. Serialize
-	data, err := Serialize(asset)
-	if err != nil {
-		return fmt.Errorf("failed to serialize asset: %w", err)
+	// --- 1. Serialization (Linearization) ---
+	tSer = profiling.TimeIt(func() {
+		data, serErr = Serialize(asset)
+	})
+	if serErr != nil {
+		return fmt.Errorf("serialization failed: %w", serErr)
 	}
 	rawSize := len(data)
-	tSerialize := time.Since(start)
 
-	// 2. Compress (Optional)
+	// --- 2. Optional Compression (Zstd) ---
 	if withCompression {
-		tCompStart := time.Now()
-		var buf bytes.Buffer
-
-		// Use default compression level
-		encoder, err := zstd.NewWriter(&buf)
-		if err != nil {
-			return fmt.Errorf("failed to create zstd writer: %w", err)
-		}
-
-		if _, err := encoder.Write(data); err != nil {
-			encoder.Close()
-			return fmt.Errorf("compression write failed: %w", err)
-		}
-
-		if err := encoder.Close(); err != nil {
-			return fmt.Errorf("compression close failed: %w", err)
-		}
-
-		data = buf.Bytes()
-		logrus.Debugf("Compressed data: %s -> %s (Time: %s)",
-			formatSize(rawSize), formatSize(len(data)), time.Since(tCompStart))
+		tComp = profiling.TimeIt(func() {
+			var buf bytes.Buffer
+			encoder, _ := zstd.NewWriter(&buf)
+			_, _ = encoder.Write(data)
+			_ = encoder.Close()
+			data = buf.Bytes()
+		})
+		logrus.Debugf("Compression: %s -> %s", formatSize(rawSize), formatSize(len(data)))
 	}
 
-	// 3. Atomic Write
-	// Create temp file in the same directory to ensure we can Rename (atomic on POSIX)
+	// --- 3. Atomic Write Strategy ---
+	// We write to a .tmp file and rename it. This ensures that if the prover crashes
+	// during a write, we don't leave a corrupted asset on disk.
 	dir := filepath.Dir(filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create dir %s: %w", dir, err)
-	}
+	_ = os.MkdirAll(dir, 0755)
 
 	tmpFile, err := os.CreateTemp(dir, filepath.Base(filePath)+".tmp.*")
 	if err != nil {
@@ -131,38 +73,126 @@ func StoreToDisk(filePath string, asset any, withCompression bool) error {
 	}
 	tmpName := tmpFile.Name()
 
-	// Cleanup if something goes wrong before the rename
+	// Cleanup closure: delete the temp file if we don't finish the Rename.
 	defer func() {
 		_ = tmpFile.Close()
-		if _, err := os.Stat(tmpName); err == nil {
+		if tmpName != "" {
 			_ = os.Remove(tmpName)
 		}
 	}()
 
-	// Write data
-	if _, err := tmpFile.Write(data); err != nil {
-		return fmt.Errorf("failed to write to temp file: %w", err)
+	_ = diskWriteSemaphore.Acquire(context.Background(), 1)
+	tWrite := profiling.TimeIt(func() {
+		_, writeErr = tmpFile.Write(data)
+		if writeErr == nil {
+			writeErr = tmpFile.Sync() // Ensure bits are actually on the platter.
+		}
+	})
+	diskWriteSemaphore.Release(1)
+
+	if writeErr != nil {
+		return fmt.Errorf("write/sync failed: %w", writeErr)
 	}
 
-	// Fsync to ensure durability
-	if err := tmpFile.Sync(); err != nil {
-		return fmt.Errorf("failed to fsync temp file: %w", err)
-	}
+	_ = tmpFile.Close()
 
-	// Close explicitly before renaming
-	if err := tmpFile.Close(); err != nil {
-		return fmt.Errorf("failed to close temp file: %w", err)
-	}
-
-	// Atomic Rename
+	// Atomic Rename: On POSIX, this replaces the file instantly.
 	if err := os.Rename(tmpName, filePath); err != nil {
-		return fmt.Errorf("failed to rename temp file to %s: %w", filePath, err)
+		return fmt.Errorf("rename failed: %w", err)
+	}
+	tmpName = "" // Success: disable the defer removal.
+
+	// Optional: Sync the directory itself to ensure the directory entry is durable.
+	if dfd, err := os.Open(dir); err == nil {
+		_ = dfd.Sync()
+		_ = dfd.Close()
 	}
 
-	logrus.Infof("Saved %s in %s (Ser: %s, Total Size: %s)",
-		filePath, time.Since(start), tSerialize, formatSize(len(data)))
+	logrus.Infof("Saved %s | Total: %s (Ser: %s, Comp: %s, DiskIO: %s)",
+		filePath, formatSize(len(data)), tSer, tComp, tWrite)
 
 	return nil
+}
+
+// LoadFromDisk loads a serialized asset from disk.
+// Returns an io.Closer that MUST be closed by the caller to release the Mmap region.
+// NOTE: The requirement to return an io.Closer is driven entirely by the Uncompressed (Mmap) Path.
+// In that path, the memory is borrowed from the OS kernel, and we must have a way to tell the OS to unmap it (Munmap)
+// when we are done. For compressed path, we use a default io.NopCloser.
+func LoadFromDisk(filePath string, assetPtr any, withCompression bool) (io.Closer, error) {
+	var (
+		mfile    *MappedFile
+		data     []byte
+		readErr  error
+		deserErr error
+		tDecomp  time.Duration
+	)
+
+	// We use a NopCloser as the default for the "Compressed" path where data is in Heap.
+	// When using Mmap (the uncompressed path), the memory isn't actually "allocated"—it's borrowed from the OS
+	// The closer that we set for the uncompressed path is essentially a handle to that "loan."
+	// Calling closer.Close() is the signal to the OS that you are done with the memory.
+	// See Ln.177 we set closer to mfile for uncompressed path
+	var closer io.Closer = io.NopCloser(nil)
+
+	// --- 1. Data Acquisition Phase ---
+	if withCompression {
+		// Path A: Compressed (Must load into Heap memory)
+		logrus.Infof("Loading compressed asset %s...", filePath)
+
+		_ = diskReadSemaphore.Acquire(context.Background(), 1)
+		compressedData, err := os.ReadFile(filePath)
+		diskReadSemaphore.Release(1)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to read file: %w", err)
+		}
+
+		tDecomp = profiling.TimeIt(func() {
+			// Zstd is significantly faster than LZ4 for high-compression ratios in Prover assets.
+			decoder, _ := zstd.NewReader(bytes.NewReader(compressedData))
+			defer decoder.Close()
+			data, readErr = io.ReadAll(decoder)
+		})
+
+		if readErr != nil {
+			return nil, fmt.Errorf("decompression failed: %w", readErr)
+		}
+
+	} else {
+		// Path B: Uncompressed (Zero-Copy Mmap)
+		logrus.Infof("Memory-mapping asset %s...", filePath)
+
+		_ = diskReadSemaphore.Acquire(context.Background(), 1)
+		tMmap := profiling.TimeIt(func() {
+			mfile, readErr = openMappedFile(filePath)
+		})
+		diskReadSemaphore.Release(1)
+
+		if readErr != nil {
+			return nil, fmt.Errorf("mmap failed: %w", readErr)
+		}
+
+		data = mfile.Data()
+		closer = mfile // The caller must call Close() to trigger Munmap.
+		logrus.Debugf("Mmap established in %s", tMmap)
+	}
+
+	// --- 2. Deserialization (Overlay/Swizzle) Phase ---
+	// This is where the magic happens: we map Go headers directly onto 'data'.
+	tDeser := profiling.TimeIt(func() {
+		deserErr = Deserialize(data, assetPtr)
+	})
+
+	if deserErr != nil {
+		_ = closer.Close() // Safety: Don't leak the mmap if swizzling fails.
+		return nil, fmt.Errorf("deserialization failed: %w", deserErr)
+	}
+
+	logrus.Infof("Loaded %s [Size: %s] | Deser: %s | Decomp: %s",
+		filePath, formatSize(len(data)), tDeser, tDecomp)
+
+	return closer, nil
 }
 
 func formatSize(bytes int) string {
