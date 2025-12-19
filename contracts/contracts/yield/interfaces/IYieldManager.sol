@@ -183,12 +183,14 @@ interface IYieldManager {
    * @param yieldProviderVendor Specific type of YieldProvider adaptor.
    * @param primaryEntrypoint Contract used for operations when not-ossified.
    * @param ossifiedEntrypoint Contract used for operations once ossification is finalized.
+   * @param usersFundsIncrement Initial amount of userFunds that should be accounted for when registering the yield provider.
    */
   event YieldProviderAdded(
     address indexed yieldProvider,
     YieldProviderVendor indexed yieldProviderVendor,
     address primaryEntrypoint,
-    address indexed ossifiedEntrypoint
+    address indexed ossifiedEntrypoint,
+    uint256 usersFundsIncrement
   );
 
   /**

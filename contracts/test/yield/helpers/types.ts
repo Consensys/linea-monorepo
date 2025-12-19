@@ -16,6 +16,7 @@ export interface YieldProviderRegistration {
   yieldProviderVendor: number;
   primaryEntrypoint: string;
   ossifiedEntrypoint: string;
+  usersFundsIncrement: bigint;
 }
 
 export interface ValidatorContainer {

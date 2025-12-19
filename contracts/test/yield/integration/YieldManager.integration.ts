@@ -39,6 +39,7 @@ import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import {
+  CONNECT_DEPOSIT,
   EMPTY_CALLDATA,
   MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
   ONE_ETHER,
@@ -96,6 +97,14 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
     l1MessageServiceAddress = await lineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
     mockStakingVaultAddress = await mockStakingVault.getAddress();
+  });
+
+  describe("Initial state", () => {
+    it("userFunds should be equivalent to CONNECT_DEPOSIT amount", async () => {
+      const connectDeposit = await yieldProvider.CONNECT_DEPOSIT();
+      expect(await yieldManager.userFunds(yieldProviderAddress)).eq(connectDeposit);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(connectDeposit);
+    });
   });
 
   describe("Transfering to the YieldManager", () => {
@@ -222,7 +231,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Arrange - setup withdrawal reserve deficit
       await setBalance(l1MessageServiceAddress, ZERO_VALUE);
       // Arrange - setup L1MessageService message
-      const withdrawAmount = initialFundAmount * 2n;
+      const withdrawAmount = initialFundAmount * 2n + CONNECT_DEPOSIT;
       const recipientAddress = await nonAuthorizedAccount.getAddress();
       const claimParams = await setupLineaRollupMessageMerkleTree(
         lineaRollup,
@@ -319,7 +328,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
       // Arrange - Setup positive yield
       const yieldEarned = ONE_ETHER / 10n;
-      await mockDashboard.setTotalValueReturn(initialFundAmount + yieldEarned);
+      await mockDashboard.setTotalValueReturn(initialFundAmount + CONNECT_DEPOSIT + yieldEarned);
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
@@ -360,7 +369,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
       // Arrange - Setup negative yield
       const yieldEarned = 0n;
-      await mockDashboard.setTotalValueReturn(yieldEarned);
+      await mockDashboard.setTotalValueReturn(yieldEarned + CONNECT_DEPOSIT);
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
@@ -401,7 +410,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
       // Arrange - Setup positive yield
       const yieldEarned = ONE_ETHER / 10n;
-      await mockDashboard.setTotalValueReturn(initialFundAmount + yieldEarned);
+      await mockDashboard.setTotalValueReturn(initialFundAmount + CONNECT_DEPOSIT + yieldEarned);
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
@@ -447,7 +456,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
       // Arrange - Setup negative yield
       const yieldEarned = 0n;
-      await mockDashboard.setTotalValueReturn(yieldEarned);
+      await mockDashboard.setTotalValueReturn(yieldEarned + CONNECT_DEPOSIT);
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
@@ -777,10 +786,10 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       const userFundsBefore = await yieldManager.userFunds(yieldProviderAddress);
       // Arrange - Setup first negative yield
       const firstNegativeYield = ONE_ETHER * 5n;
-      await mockDashboard.setTotalValueReturn(initialFundAmount - firstNegativeYield);
-      // Arrange - Setup second negative yield
       const secondNegativeYield = ONE_ETHER * 5n;
-      await mockDashboard.setTotalValueReturn(initialFundAmount - firstNegativeYield - secondNegativeYield);
+      await mockDashboard.setTotalValueReturn(
+        initialFundAmount + CONNECT_DEPOSIT - firstNegativeYield - secondNegativeYield,
+      );
 
       // Act
       const [newReportedYield, outstandingNegativeYield] = await yieldManager
@@ -914,7 +923,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
 
       // First negative yield event for -5 ETH
       const firstNegativeYield = ONE_ETHER * 5n;
-      await mockDashboard.setTotalValueReturn(initialFundAmount - firstNegativeYield);
+      await mockDashboard.setTotalValueReturn(initialFundAmount + CONNECT_DEPOSIT - firstNegativeYield);
       await decrementBalance(mockStakingVaultAddress, firstNegativeYield);
       {
         const [newReportedYield, outstandingNegativeYield] = await yieldManager
@@ -939,7 +948,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         expect(outstandingNegativeYield).eq(firstNegativeYield + firstObligationsPaid);
       }
       await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
-      expect(await yieldManager.userFunds(yieldProviderAddress)).eq(initialFundAmount);
+      expect(await yieldManager.userFunds(yieldProviderAddress)).eq(initialFundAmount + CONNECT_DEPOSIT);
       expect(await getBalance(mockStakingVault)).eq(mockStakingVaultBalance - firstObligationsPaid);
       await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) - firstObligationsPaid);
       await mockDashboard.setObligationsFeesToSettleReturn(0n);
@@ -1038,6 +1047,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
 
       // Earn 5 ETH positive yield
       const firstPositiveYield = ONE_ETHER * 5n;
+      await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) + CONNECT_DEPOSIT);
       await incurPositiveYield(
         yieldManager,
         mockDashboard,
