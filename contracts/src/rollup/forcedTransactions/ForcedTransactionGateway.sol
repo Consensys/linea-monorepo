@@ -221,11 +221,15 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     emit AddressFilterSet(_useAddressFilter);
   }
 
-  function _buildAccessList(AccessList[] memory _accessList) internal pure returns (LibRLP.List memory out) {
+  /**
+   * @notice Function to convert the transaction access list to a LibRLP.List.
+   * @param _accessList The transaction access list to convert.
+   * @return list The List object.
+   */
+  function _buildAccessList(AccessList[] memory _accessList) internal pure returns (LibRLP.List memory list) {
     unchecked {
-      out = LibRLP.p();
+      list = LibRLP.p();
       for (uint256 i; i < _accessList.length; ++i) {
-        // keys list
         LibRLP.List memory keys = LibRLP.p();
         bytes32[] memory ks = _accessList[i].storageKeys;
         for (uint256 j; j < ks.length; ++j) {
@@ -238,7 +242,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
         LibRLP.List memory acct = LibRLP.p();
         acct = LibRLP.p(acct, _accessList[i].contractAddress);
         acct = LibRLP.p(acct, keys);
-        out = LibRLP.p(out, acct);
+        list = LibRLP.p(list, acct);
       }
     }
   }
