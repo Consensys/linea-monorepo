@@ -136,28 +136,6 @@ library RlpEncoder {
     encodedBytes = _encodeList(encodedAccessList);
   }
 
-  function _encodeAccessListList(
-    AccessList[] memory _accesslist
-  ) internal pure returns (bytes[] memory encodedAccessList) {
-    uint256 listLength = _accesslist.length;
-
-    for (uint256 i; i < listLength; i++) {
-      bytes32[] memory storageKeys = _accesslist[i].storageKeys;
-      uint256 keyCount = storageKeys.length;
-
-      bytes[] memory encodedKeys = new bytes[](keyCount);
-      for (uint256 j; j < keyCount; j++) {
-        encodedKeys[j] = _encodeBytes(abi.encodePacked(storageKeys[j]));
-      }
-
-      bytes[] memory accountTuple = new bytes[](2);
-      accountTuple[0] = _encodeAddress(_accesslist[i].contractAddress);
-      accountTuple[1] = _encodeList(encodedKeys);
-
-      encodedAccessList[i] = _encodeList(accountTuple);
-    }
-  }
-
   /**
    * @notice Private function that encodes an integer in big endian binary form with no leading zeroes.
    * @dev The zero length check is critical as the case is not considered in the rest of the checking.
