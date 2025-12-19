@@ -3,7 +3,6 @@ package recursion
 import (
 	"strconv"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
@@ -274,7 +273,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 			assign = AssignRecursionCircuit(r.InputCompiledIOP, wit[i].Proof, wit[i].Pub, wit[i].FinalFS)
 		)
 
-		fullWitnesses[i], err = frontend.NewWitness(assign, ecc.BLS12_377.ScalarField())
+		fullWitnesses[i], err = frontend.NewWitness(assign, field.Modulus())
 		if err != nil {
 			utils.Panic("could not create witness: %v", err)
 		}
