@@ -17,9 +17,9 @@ var (
 )
 
 func Serialize(v any) ([]byte, error) {
-	w := newWriter()
-	_ = w.write(FileHeader{})
-	rootOff, err := encode(w, reflect.ValueOf(v))
+	enc := newWriter()
+	_ = enc.write(FileHeader{})
+	rootOff, err := encode(enc, reflect.ValueOf(v))
 	if err != nil {
 		return nil, err
 	}
@@ -28,9 +28,9 @@ func Serialize(v any) ([]byte, error) {
 		Version:     1,
 		PayloadType: 0,
 		PayloadOff:  int64(rootOff),
-		DataSize:    w.offset,
+		DataSize:    enc.offset,
 	}
-	b := w.buf.Bytes()
+	b := enc.buf.Bytes()
 	*(*FileHeader)(unsafe.Pointer(&b[0])) = finalHeader
 	return b, nil
 }
@@ -61,12 +61,11 @@ func Deserialize(b []byte, v any) error {
 		return fmt.Errorf("v must be a pointer")
 	}
 
-	ctx := &decoder{
+	dec := &decoder{
 		data:   b,
 		ptrMap: make(map[int64]reflect.Value),
 	}
-
-	return ctx.decode(val.Elem(), int64(header.PayloadOff))
+	return dec.decode(val.Elem(), int64(header.PayloadOff))
 }
 
 // getBinarySize returns the number of bytes a value of type `T` will occupy

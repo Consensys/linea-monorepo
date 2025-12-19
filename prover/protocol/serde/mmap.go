@@ -1,10 +1,8 @@
 package serde
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"runtime"
 	"syscall"
 	"unsafe"
@@ -71,6 +69,7 @@ type InterfaceHeader struct {
 	Offset Ref
 }
 
+// Ref is a 8-byte offset in the serialized buffer
 type Ref int64
 
 func (r Ref) IsNull() bool { return r == 0 }
@@ -152,26 +151,4 @@ func (mf *MappedFile) Close() error {
 	}
 	mf.data = nil
 	return mf.file.Close()
-}
-
-// UnsafeCastSlice reinterprets the raw bytes at offset as a slice of type T.
-// Note: This requires Go 1.18+ generics support.
-// The syntax below is designed to be executable in modern Go.
-func UnsafeCastSlice[T any](mf *MappedFile, offset int64, count int) ([]T, error) {
-	var zero T
-
-	// Use reflect.TypeOf to safely get size of the element type.
-	elemSize := int(reflect.TypeOf(zero).Size())
-	totalBytes := elemSize * count
-
-	// FIX: Corrected the boundary check logic and syntax.
-	if offset < 0 || int(offset)+totalBytes > len(mf.data) {
-		return nil, errors.New("cast out of bounds")
-	}
-
-	// Get pointer to the start of the data within the mmap region
-	ptr := unsafe.Pointer(&mf.data[offset])
-
-	// Create slice header using Go 1.17+ unsafe.Slice (best practice)
-	return unsafe.Slice((*T)(ptr), count), nil
 }
