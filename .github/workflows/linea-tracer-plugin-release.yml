@@ -92,9 +92,9 @@ jobs:
         run: |
           if [[ "${{ needs.build.outputs.createTag }}" != "a release with the same tag name already exists:"* ]]; then
             delete_output=$(gh release delete "${{needs.build.outputs.releaseTag}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
-            echo "Deleted tag and release: ${{ needs.build.outputs.releaseTag }}"
+            echo "Deleted tag and release: ${{ needs.build.outputs.releaseTag }}";
           else
-            echo "${{ needs.build.outputs.createTag }}"
+            echo "${{ needs.build.outputs.createTag }}";
           fi
         env:
           GH_TOKEN: ${{ github.token }}
