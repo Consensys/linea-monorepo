@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -61,59 +62,59 @@ type SubModuleParameters struct {
 
 var (
 	benchCases = []StdBenchmarkCase{
-		{
-			Name: "minimal",
-			Permutations: SubModuleParameters{
-				Count:  1,
-				NumCol: 1,
-				NumRow: 1 << 10,
-			},
-			Lookup: SubModuleParameters{
-				Count:     1,
-				NumCol:    1,
-				NumRow:    1 << 10,
-				NumRowAux: 1 << 10,
-			},
-			Projection: SubModuleParameters{
-				Count:     1,
-				NumCol:    1,
-				NumRow:    1 << 10,
-				NumRowAux: 1 << 10,
-			},
-			Fibo: SubModuleParameters{
-				Count:  1,
-				NumRow: 1 << 10,
-			},
-		},
 		// {
-		// 	// run with GOGC=200 and
-		// 	// ensure THP is enabled:
-		// 	// cat /sys/kernel/mm/transparent_hugepage/enabled
-		// 	// if not:
-		// 	// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
-		// 	Name: "realistic-segment",
+		// 	Name: "minimal",
 		// 	Permutations: SubModuleParameters{
-		// 		Count:  5,
-		// 		NumCol: 3,
-		// 		NumRow: 1 << 20,
+		// 		Count:  1,
+		// 		NumCol: 1,
+		// 		NumRow: 1 << 10,
 		// 	},
 		// 	Lookup: SubModuleParameters{
-		// 		Count:     50,
-		// 		NumCol:    3,
-		// 		NumRow:    1 << 20,
-		// 		NumRowAux: 1 << 20,
+		// 		Count:     1,
+		// 		NumCol:    1,
+		// 		NumRow:    1 << 10,
+		// 		NumRowAux: 1 << 10,
 		// 	},
 		// 	Projection: SubModuleParameters{
-		// 		Count:     5,
-		// 		NumCol:    3,
-		// 		NumRow:    1 << 20,
-		// 		NumRowAux: 1 << 20,
+		// 		Count:     1,
+		// 		NumCol:    1,
+		// 		NumRow:    1 << 10,
+		// 		NumRowAux: 1 << 10,
 		// 	},
 		// 	Fibo: SubModuleParameters{
-		// 		Count:  200,
-		// 		NumRow: 1 << 20,
+		// 		Count:  1,
+		// 		NumRow: 1 << 10,
 		// 	},
 		// },
+		{
+			// run with GOGC=200 and
+			// ensure THP is enabled:
+			// cat /sys/kernel/mm/transparent_hugepage/enabled
+			// if not:
+			// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+			Name: "realistic-segment",
+			Permutations: SubModuleParameters{
+				Count:  5,
+				NumCol: 3,
+				NumRow: 1 << 20,
+			},
+			Lookup: SubModuleParameters{
+				Count:     50,
+				NumCol:    3,
+				NumRow:    1 << 20,
+				NumRowAux: 1 << 20,
+			},
+			Projection: SubModuleParameters{
+				Count:     5,
+				NumCol:    3,
+				NumRow:    1 << 20,
+				NumRowAux: 1 << 20,
+			},
+			Fibo: SubModuleParameters{
+				Count:  200,
+				NumRow: 1 << 20,
+			},
+		},
 		// {
 		// 	Name: "smaller-segment",
 		// 	Permutations: SubModuleParameters{
@@ -373,23 +374,23 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 
 	// These parameters have been found to give the best result for performances
 	params := selfRecursionParameters{
-		NbOpenedColumns: 8,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 5,
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 9,
 	}
 
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<9),
+			compiler.WithTargetColSize(1<<20),
 			compiler.WithStitcherMinSize(1<<1),
 		),
 		vortex.Compile(
 			2,
 			false,
-			vortex.WithOptionalSISHashingThreshold(32),
-			vortex.ForceNumOpenedColumns(8),
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)
@@ -420,10 +421,20 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			circuit.C = *c
 		}
 
+		var pro *profile.Profile
+
+		{
+			fname := "bench-vortex-gnark-verifier"
+
+			// This adds a nice pprof suffix
+			fname = "profiling/" + fname + ".pprof"
+			pro = profile.Start(profile.WithPath(fname))
+		}
 		csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 		if err != nil {
 			b.Fatal(err)
 		}
+		pro.Stop()
 
 		assignment := &verifierCircuit{
 			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),

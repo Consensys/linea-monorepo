@@ -411,7 +411,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 	comp := wizard.Compile(
 		define,
 		vortex.Compile(
-			2,
+			4,
 			false,
 			vortex.ForceNumOpenedColumns(16),
 			vortex.WithSISParams(&ringsis.StdParams),
@@ -434,7 +434,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 				// logdata.Log("before-vortex"),
 				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
 				vortex.Compile(
-					2,
+					4,
 					true,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithOptionalSISHashingThreshold(1<<20),
@@ -451,7 +451,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 				// logdata.Log("before-vortex"),
 				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
 				vortex.Compile(
-					2,
+					4,
 					false,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&ringsis.StdParams),
