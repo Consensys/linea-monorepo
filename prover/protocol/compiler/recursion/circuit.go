@@ -132,12 +132,12 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		}
 	)
 	lenCommitment := len(pcsCtx.Items.MerkleRoots)
-	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
+	if pcsCtx.IsNonEmptyPrecomputed() {
 		lenCommitment++
 	}
 	circuit.Commitments = make([][8]zk.WrappedVariable, lenCommitment)
 
-	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
+	if pcsCtx.IsNonEmptyPrecomputed() {
 		mRoot := pcsCtx.Items.Precomputeds.MerkleRoot
 		circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
 		for i := 0; i < blockSize; i++ {
