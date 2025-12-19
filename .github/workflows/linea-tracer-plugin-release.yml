@@ -21,8 +21,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-        createTag: ${{ steps.upload-assets.outputs.CREATE_TAG }}
-        releaseTag: ${{ steps.config.outputs.RELEASE_TAG }}
+      createTag: ${{ steps.upload-assets.outputs.CREATE_TAG }}
+      releaseTag: ${{ steps.config.outputs.RELEASE_TAG }}
     steps:
       - name: Configure Tag
         id: config
@@ -54,8 +54,7 @@ jobs:
       - name: Upload Assets
         id: upload-assets
         run: |
-          echo "CREATE_TAG=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset --target "${{ github.ref }}" 2>&1)" >> $GITHUB_OUTPUT
-          gh release upload "${{ steps.config.outputs.RELEASE_TAG }}" $zip_asset
+          gh release delete linea-tracer-beta-v4.4-rc7 --cleanup-tag --yes
         env:
           jar_asset: ./tracer/plugins/build/libs/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.jar
           zip_asset: ./tracer/plugins/build/distributions/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.zip
@@ -90,7 +89,7 @@ jobs:
       - name: Delete tag created without release
         run: |
           if [[ "${{ needs.build.outputs.createTag }}" != "a release with the same tag name already exists:"* ]]; then
-            delete_output=$(gh release delete "${{needs.build.outputs.releaseTag}}" --repo "${{ github.repository }}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
+            delete_output=$(gh release delete "${{needs.build.outputs.releaseTag}}" --cleanup-tag --yes 2>&1) || [[ "${delete_output}" == "release not found" ]]
             echo "Deleted tag and release: ${{ needs.build.outputs.releaseTag }}";
           else
             echo "${{ needs.build.outputs.createTag }}";
