@@ -62,7 +62,6 @@ public class EucOperation extends ModuleOperation {
 
 @Override
 protected int computeLineCount() {
-  // Деление часто требует проверки: a = q*b + r
   return 1; 
 }
 }
