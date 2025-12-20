@@ -62,6 +62,8 @@ public class EucOperation extends ModuleOperation {
 
 @Override
 protected int computeLineCount() {
-  return 1; 
+  // EUC operations currently occupy exactly one row in the trace.
+  return 1;
 }
+
 }
