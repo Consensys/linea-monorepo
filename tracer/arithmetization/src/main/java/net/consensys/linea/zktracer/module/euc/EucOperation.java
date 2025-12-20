@@ -60,8 +60,10 @@ public class EucOperation extends ModuleOperation {
         .validateRow();
   }
 
-  @Override
-  protected int computeLineCount() {
-    return 1;
-  }
+@Override
+protected int computeLineCount() {
+  // EUC operations currently occupy exactly one row in the trace.
+  return 1;
+}
+
 }

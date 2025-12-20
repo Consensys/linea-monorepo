@@ -48,8 +48,11 @@ public class MulOperation extends ModuleOperation {
     trace.inst(opCode.byteValue()).arg1(arg1).arg2(arg2).res(res).validateRow();
   }
 
-  @Override
-  protected int computeLineCount() {
-    return 1;
-  }
+@Override
+protected int computeLineCount() {
+  return switch (opCode) {
+    case EXP -> 1; // Currently default height; tied to opcode for future scaling.
+    case MUL -> 1; // Future-proofing: maintain 1 row, adjustable per MUL logic.
+    default -> throw new IllegalStateException("Unexpected opcode: " + opCode);
+  };
 }
