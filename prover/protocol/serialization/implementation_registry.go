@@ -1,7 +1,12 @@
+//go:generate go run ../../cmd/codegen/main.go
+
+// IMPORTANT NOTE: Everytime, this file is changed - for example: registering a new types through RegisterImplementation,
+// you need to run the codegen command to update the serialization registry file.
+// Run 'go generate ./...' from the root (prover/) directory or `go generate` from the current dir.
+
 package serialization
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -37,6 +42,7 @@ import (
 	dmimc "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -122,6 +128,7 @@ func init() {
 	RegisterImplementation(query.LogDerivativeSum{})
 	RegisterImplementation(query.GrandProduct{})
 	RegisterImplementation(query.Horner{})
+	RegisterImplementation(query.HornerParams{})
 	RegisterImplementation(query.LocalOpeningParams{})
 	RegisterImplementation(query.UnivariateEvalParams{})
 	RegisterImplementation(query.GrandProductParams{})
@@ -343,6 +350,18 @@ func init() {
 	RegisterImplementation(fr.Element{})
 
 	RegisterImplementation(dedicated.StackedColumn{})
+
+	// Distributed modules
+	RegisterImplementation(distributed.AssignLPPQueries{})
+	RegisterImplementation(distributed.SetInitialFSHash{})
+	RegisterImplementation(distributed.CheckNxHash{})
+	RegisterImplementation(distributed.StandardModuleDiscoverer{})
+	RegisterImplementation(distributed.LppWitnessAssignment{})
+	RegisterImplementation(distributed.ModuleGLAssignGL{})
+	RegisterImplementation(distributed.ModuleGLAssignSendReceiveGlobal{})
+	RegisterImplementation(distributed.ModuleGLCheckSendReceiveGlobal{})
+	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
+	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
@@ -397,6 +416,7 @@ func RegisterImplementation(instance any) {
 	implementationRegistry.InsertNew(registeredTypeName, reflect.TypeOf(instance))
 }
 
+/*
 // returns a reflect.Type registered in the registry for the provided type-string
 // the function will modify the provided string in case the string represents a
 // pointer type and will add the levels of indirections to the returned
@@ -442,7 +462,7 @@ func findRegisteredImplementation(pkgTypeName string) (reflect.Type, error) {
 	}
 
 	return foundType, nil
-}
+} */
 
 // Returns the full `<Type.PkgPath>#<Type.Name>#<nbIndirection>` of a type.
 // Caller can either provide an instance of the desired type or a reflect.Type
