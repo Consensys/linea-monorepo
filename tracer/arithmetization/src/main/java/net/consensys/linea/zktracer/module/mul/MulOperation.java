@@ -51,8 +51,8 @@ public class MulOperation extends ModuleOperation {
 @Override
 protected int computeLineCount() {
   return switch (opCode) {
-    case EXP -> 1; // Оставьте 1, но теперь это завязано на логику опкода.
-    case MUL -> 1; // Если в будущем MUL потребует 2 строки, вы измените это здесь.
+    case EXP -> 1; // Currently default height; tied to opcode for future scaling.
+    case MUL -> 1; // Future-proofing: maintain 1 row, adjustable per MUL logic.
     default -> 1;
   };
 }
