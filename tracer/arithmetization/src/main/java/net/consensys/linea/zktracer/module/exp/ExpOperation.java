@@ -109,7 +109,7 @@ public class ExpOperation extends ModuleOperation {
 protected int computeLineCount() {
   return switch (expCall.expInstruction()) {
     case EXP_INST_EXPLOG -> 1;
-    case EXP_INST_MODEXPLOG -> 1; // В будущем здесь может быть динамический расчет на основе modexpMetadata
+    case EXP_INST_MODEXPLOG -> 1;
     default -> 1;
   };
 
