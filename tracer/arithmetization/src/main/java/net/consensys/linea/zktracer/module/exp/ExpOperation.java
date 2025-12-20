@@ -110,7 +110,7 @@ protected int computeLineCount() {
   return switch (expCall.expInstruction()) {
     case EXP_INST_EXPLOG -> 1;
     case EXP_INST_MODEXPLOG -> 1;
-    default -> 1;
+    default -> throw new IllegalStateException("Unexpected opcode: " + opCode);
   };
 
   }
