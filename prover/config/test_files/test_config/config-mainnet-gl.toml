@@ -1,29 +1,48 @@
-environment = "sepolia"
+environment = "devnet"
 version = "6.1.3"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
 [controller]
 retry_delays = [0, 1]
+enable_execution = false 
+enable_blob_decompression = false
+enable_aggregation = false
+spot_instance_reclaim_time_seconds = 10
+termination_grace_period_seconds = 30
+
+[controller.limitless_jobs]
+enable_bootstrapper   = false 
+enable_conglomerator = false
+enable_gl = true   
+gl_mods =  ["ARITH-OPS", "BLS_G1", "BLS_G2", "BLS_KZG", "BLS_PAIR", "ECDSA", "ECPAIRING", "ELLIPTIC_CURVES", "G2_CHECK", "HUB-KECCAK", "MODEXP_256", "MODEXP_LARGE", "P256", "SHA2", "STATIC", "TINY-STUFFS"]
+enable_lpp = false
+lpp_mods =  ["ARITH-OPS", "BLS_G1", "BLS_G2", "BLS_KZG", "BLS_PAIR", "ECDSA", "ECPAIRING", "ELLIPTIC_CURVES", "G2_CHECK", "HUB-KECCAK", "MODEXP_256", "MODEXP_LARGE", "P256", "SHA2", "STATIC", "TINY-STUFFS"]
 
 [execution]
 prover_mode = "limitless"
-conflated_traces_dir = "/home/ubuntu"
-requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-execution"
-limitless_with_debug = false
-ignore_compatibility_check = false
-keep_traces_until_block = 0
+conflated_traces_dir = "/home/ubuntu/test_mainnet/traces/conflated"
+requests_root_dir = "/home/ubuntu/test_mainnet/prover-execution"
+limitless_with_debug = false 
+ignore_compatibility_check = true
+
+[exec_limitless]
+metadata_dir = "/tmp/exec-limitless/metadata"
+witness_dir = "/tmp/exec-limitless/witness"
+subproofs_dir = "/tmp/exec-limitless/subproofs"
+shared_rnd_dir = "/tmp/exec-limitless/commit"
+timeout_seconds = 3600 
 
 [blob_decompression]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-compression"
+requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/compression"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-aggregation"
+requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/aggregation"
 num_proofs = [10, 20, 50, 100, 200, 400]
-allowed_inputs = ["execution-dummy", "execution", "execution-large", "execution-limitless", "blob-decompression-dummy", "blob-decompression-v0", "blob-decompression-v1"]
+allowed_inputs = ["execution", "execution-large", "execution-limitless", "blob-decompression-v0", "blob-decompression-v1"]
 verifier_id = 1
 
 [public_input_interconnection]
@@ -35,10 +54,8 @@ l2_msg_merkle_depth = 5
 l2_msg_max_nb_merkle = 200
 
 [layer2]
-chain_id = 59141
-base_fee = 7
-coin_base = "0xA27342f1b74c0cfB2cda74bac1628d0C1A9752f2"
-message_service_contract = "0x971e727e956690b9957be6d51Ec16E73AcAC83A7"
+chain_id = 59144
+message_service_contract = "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec"
 
 [traces_limits]
 ADD = 262144

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/dnlo/struct2csv"
@@ -32,7 +33,7 @@ func LogStats(_ context.Context, args LogStatsArgs) error {
 
 	// Read the input file
 	req := &execution.Request{}
-	if err := readRequest(args.Input, req); err != nil {
+	if err := files.ReadRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
