@@ -10,6 +10,7 @@ import java.time.LocalTime
  */
 
 plugins {
+  id 'net.consensys.zkevm.kotlin-library-minimal-conventions'
   alias(libs.plugins.besuPluginLibrary)
   alias(libs.plugins.web3j)
   alias(libs.plugins.web3jSolidity)
@@ -42,6 +43,8 @@ solidity {
   version '0.8.19'
 }
 
+compileKotlin.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:generateContractWrappers")
+compileTestKotlin.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:generateTestContractWrappers")
 processTestResources.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:generateTestContractWrappers")
 
 tasks.register('acceptanceTests', Test) {
@@ -62,6 +65,7 @@ tasks.register('acceptanceTests', Test) {
 dependencies {
   annotationProcessor 'org.apache.logging.log4j:log4j-core'
   implementation 'org.apache.logging.log4j:log4j-core'
+  implementation project(":jvm-libs:generic:serialization:jackson")
 
   testImplementation project("${lineaSequencerProjectPath}:sequencer")
 
