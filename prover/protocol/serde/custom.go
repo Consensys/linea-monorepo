@@ -72,23 +72,11 @@ func init() {
 		unmarshall: unmarshallGnarkFFTDomain,
 	})
 
-	// registerCustomType(reflect.TypeOf(column.Store{}), customCodex{
-	// 	marshall:   marshallColumnStore,
-	// 	unmarshall: unmarshallColumnStore,
-	// })
-
 	// Column Store
-	registerCustomType(reflect.TypeOf(column.PackedStoreFlat{}),
-		customCodex{
-			marshall: func(enc *encoder, v reflect.Value) (Ref, error) {
-				// Falls back to standard struct serialization
-				// which handles slices of primitives correctly
-				return encode(enc, v)
-			},
-			unmarshall: func(dec *decoder, v reflect.Value, offset int64) error {
-				return dec.decode(v, offset)
-			},
-		})
+	registerCustomType(reflect.TypeOf(column.Store{}), customCodex{
+		marshall:   marshallColumnStore,
+		unmarshall: unmarshallColumnStore,
+	})
 
 	// Column Natural / Coin Info
 	registerCustomType(reflect.TypeOf(column.Natural{}), customCodex{
@@ -143,36 +131,68 @@ func unmarshallColumnNatural(dec *decoder, v reflect.Value, offset int64) error 
 }
 
 // --- Coin Info ---
-type PackedCoin struct {
-	Type       int8   `serde:"t"`
-	Size       int    `serde:"s"`
-	UpperBound int32  `serde:"u"`
-	Name       string `serde:"n"`
-	Round      int    `serde:"r"`
+
+func marshallCoinInfo(enc *encoder, v reflect.Value) (Ref, error) {
+
+	c := v.Interface().(coin.Info)
+
+	// We define a local type alias that mirrors the structure of coin.Info.
+	// Because 'plainCoin' is a new type local to this function, it is NOT
+	// in the customRegistry, so calling 'encode' on it will use default
+	// struct linearization logic instead of recursing back here.
+	type plainCoin coin.Info
+
+	// Cast the data to the alias and encode normally.
+	// This writes the struct data to the "heap" and returns a Ref.
+	return encode(enc, reflect.ValueOf(plainCoin(c)))
 }
 
-func asPackedCoin(c coin.Info) PackedCoin {
-	return PackedCoin{Type: int8(c.Type), Size: c.Size, UpperBound: int32(c.UpperBound), Name: string(c.Name), Round: c.Round}
-}
-func marshallCoinInfo(enc *encoder, v reflect.Value) (Ref, error) {
-	c := v.Interface().(coin.Info)
-	packed := asPackedCoin(c)
-	return encode(enc, reflect.ValueOf(packed))
-}
 func unmarshallCoinInfo(dec *decoder, v reflect.Value, offset int64) error {
-	var packed PackedCoin
-	if err := dec.decode(reflect.ValueOf(&packed).Elem(), offset); err != nil {
+	type plainCoin coin.Info
+
+	// Create a temporary landing pad for the aliased type.
+	// We use reflect.New to create a pointer to 'plainCoin', then Elem() to get the value.
+	packedVal := reflect.New(reflect.TypeOf(plainCoin{})).Elem()
+
+	// Decode from the file into the landing pad using standard struct rules.
+	if err := dec.decode(packedVal, offset); err != nil {
 		return err
 	}
+
+	// Convert the decoded alias back to the real coin.Info type.
+	packed := coin.Info(packedVal.Interface().(plainCoin))
+
 	sizes := []int{}
 	if packed.Size > 0 {
 		sizes = append(sizes, packed.Size)
 	}
 	if packed.UpperBound > 0 {
-		sizes = append(sizes, int(packed.UpperBound))
+		sizes = append(sizes, packed.UpperBound)
 	}
-	unpacked := coin.NewInfo(coin.Name(packed.Name), coin.Type(packed.Type), packed.Round, sizes...)
+
+	unpacked := coin.NewInfo(packed.Name, packed.Type, packed.Round, sizes...)
 	v.Set(reflect.ValueOf(unpacked))
+	return nil
+}
+
+// --- Column Store (STRUCT) ---
+func marshallColumnStore(enc *encoder, v reflect.Value) (Ref, error) {
+	p, err := ptrFromStruct(v)
+	if err != nil {
+		return 0, err
+	}
+	store := p.(*column.Store)
+	packed := store.Pack()
+	return encode(enc, reflect.ValueOf(packed))
+}
+func unmarshallColumnStore(dec *decoder, v reflect.Value, offset int64) error {
+	var packed column.PackedStore
+	packedVal := reflect.ValueOf(&packed).Elem()
+	if err := dec.decode(packedVal, offset); err != nil {
+		return err
+	}
+	newStorePtr := packed.Unpack()
+	v.Set(reflect.ValueOf(newStorePtr).Elem())
 	return nil
 }
 
@@ -192,6 +212,45 @@ func unmarshallRingSisKey(dec *decoder, v reflect.Value, offset int64) error {
 	maxNum := *(*uint64)(unsafe.Pointer(&dec.data[offset]))
 	key := ringsis.GenerateKey(ringsis.StdParams, int(maxNum))
 	v.Set(reflect.ValueOf(key).Elem())
+	return nil
+}
+
+// --- SmartVector Regular (Zero-Copy) ---
+
+func marshallSmartVectorRegular(enc *encoder, v reflect.Value) (Ref, error) {
+	// Dereference pointer if necessary (Regular is often passed as *Regular)
+	// smartvectors.Regular is defined as []field.Element
+	val := v
+	if v.Kind() == reflect.Ptr {
+		val = v.Elem()
+	}
+
+	// 2. Use the optimized Slice Writer
+	// Since field.Element is a fixed-size struct ([4]uint64) with no pointers,
+	// writeSliceData is perfectly safe and extremely fast.
+	fs := enc.writeSliceData(val)
+
+	// 3. Write the Header and return reference
+	return Ref(enc.write(fs)), nil
+}
+
+func unmarshallSmartVectorRegular(dec *decoder, v reflect.Value, offset int64) error {
+	// 1. Prepare the target slice
+	// If v is *Regular, we need to set the underlying slice.
+	// Regular is just []field.Element.
+	targetSlice := v
+	if v.Kind() == reflect.Ptr {
+		targetSlice = v.Elem()
+	}
+
+	// 2. Decode using Zero-Copy Slice logic
+	// This will read the FileSlice header at 'offset', calculate the
+	// data pointer in the mmap region, and swizzle the slice header
+	// to point directly to that memory.
+	if err := dec.decodeSlice(targetSlice, offset); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -378,29 +437,7 @@ func unmarshallFrontendVariable(dec *decoder, v reflect.Value, offset int64) err
 	v.Set(reflect.ValueOf(bi))
 	return nil
 }
-func marshallSmartVectorRegular(enc *encoder, v reflect.Value) (Ref, error) {
-	// We expect a smartvectors.Regular type here
-	sliceVal := v
-	if v.Kind() == reflect.Interface {
-		sliceVal = v.Elem()
-	}
 
-	fs := enc.writeSliceData(sliceVal)
-	// Write the resulting FileSlice header and return its offset
-	return Ref(enc.write(fs)), nil
-}
-
-func unmarshallSmartVectorRegular(dec *decoder, v reflect.Value, offset int64) error {
-	sliceType := reflect.SliceOf(reflect.TypeOf(field.Element{}))
-	sliceVal := reflect.MakeSlice(sliceType, 0, 0)
-	slicePtr := reflect.New(sliceType)
-	slicePtr.Elem().Set(sliceVal)
-	if err := dec.decode(slicePtr.Elem(), offset); err != nil {
-		return err
-	}
-	v.Set(slicePtr.Elem().Convert(v.Type()))
-	return nil
-}
 func marshallAsEmpty(enc *encoder, v reflect.Value) (Ref, error) {
 	// FIX: Write 1 byte so that the object has a unique offset/identity in the stream.
 	return Ref(enc.write(byte(0))), nil
