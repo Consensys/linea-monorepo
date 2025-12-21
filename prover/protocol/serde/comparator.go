@@ -90,46 +90,24 @@ func compareSymbolicExpressions(a, b reflect.Value, path string) bool {
 	ae := a.Interface().(*symbolic.Expression)
 	be := b.Interface().(*symbolic.Expression)
 
-	// 1. Basic Nil Checks
+	// If both nil, they are equal
 	if ae == nil && be == nil {
 		return true
 	}
+
+	// If only one is nil, they differ
 	if (ae == nil) != (be == nil) {
 		logrus.Errorf("Mismatch at %s: one value is nil, the other is not\n", path)
 		return false
 	}
 
-	// 2. Safe Validation Wrapper (Catches SIGSEGV/Panics)
-	var errA, errB error
-
-	// Validate A (Truth)
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				errA = fmt.Errorf("PANIC during validation: %v", r)
-			}
-		}()
-		errA = ae.Validate()
-	}()
-
-	// Validate B (Deserialized)
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				errB = fmt.Errorf("PANIC during validation: %v", r)
-			}
-		}()
-		errB = be.Validate()
-	}()
-
-	// 3. Report Validation Failures without Crashing
+	// Both non-nil, validate and compare
+	errA, errB := ae.Validate(), be.Validate()
 	if errA != nil || errB != nil {
-		logrus.Warnf("Validation failed at %s. This implies the object was not fully restored.\n\tTruth Err: %v\n\tProver Err: %v", path, errA, errB)
-		// We return false to fail the test, but we don't crash the runner.
+		logrus.Errorf("One of the expressions is invalid: path=%s errA=%v, errB=%v\n", path, errA, errB)
 		return false
 	}
 
-	// 4. Compare Hash
 	if ae.ESHash != be.ESHash {
 		logrus.Errorf("Mismatch at %s: hashes differ (v1: %v, v2: %v)\n", path, ae.ESHash.Text(16), be.ESHash.Text(16))
 		return false

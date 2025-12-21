@@ -180,8 +180,8 @@ func TestSerdeZkEVMIO_RealWorldSimulation(t *testing.T) {
 		require.NoError(t, err)
 		defer closer.Close()
 
-		// zTruth := zkevm.GetTestZkEVM()
-		// require.True(t, serde.DeepCmp(zTruth, &zProver, true))
+		zTruth := zkevm.GetTestZkEVM()
+		require.True(t, serde.DeepCmp(zTruth, &zProver, true))
 	})
 }
 
