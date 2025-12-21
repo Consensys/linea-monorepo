@@ -113,6 +113,64 @@ func init() {
 
 // ---------------- IMPLEMENTATIONS ----------------
 
+// --- Column Store (STRUCT) ---
+
+// --- Column Store (STRUCT) ---
+func marshallColumnStore(enc *encoder, v reflect.Value) (Ref, error) {
+	p, err := ptrFromStruct(v)
+	if err != nil {
+		return 0, err
+	}
+	if p == nil {
+		return 0, nil
+	}
+	store := p.(*column.Store)
+	packed := store.Pack()
+	return encode(enc, reflect.ValueOf(packed))
+}
+func unmarshallColumnStore(dec *decoder, v reflect.Value, offset int64) error {
+	var packed column.PackedStore
+	packedVal := reflect.ValueOf(&packed).Elem()
+	if err := dec.decode(packedVal, offset); err != nil {
+		return err
+	}
+	newStorePtr := packed.Unpack()
+	v.Set(reflect.ValueOf(newStorePtr).Elem())
+	return nil
+}
+
+/*
+// --- Column Store (STRUCT) ---
+
+func marshallColumnStore(enc *encoder, v reflect.Value) (Ref, error) {
+	p, err := ptrFromStruct(v)
+	if err != nil {
+		return 0, err
+	}
+	// FIX: Nil check prevents SIGSEGV
+	if p == nil {
+		return 0, nil
+	}
+	store := p.(*column.Store)
+	// Converts Store map -> Slice of Slice of Pointers
+	packed := store.Pack()
+	// Hand off to recursive encoder to handle slice structure and pointer deduplication
+	return encode(enc, reflect.ValueOf(packed))
+}
+
+func unmarshallColumnStore(dec *decoder, v reflect.Value, offset int64) error {
+	var packed column.PackedStore
+	// Recursively decode the Slice of Slice of Pointers.
+	// decode() handles the creation of slice headers and pointer resolution.
+	if err := dec.decode(reflect.ValueOf(&packed).Elem(), offset); err != nil {
+		return fmt.Errorf("failed to decode PackedStore: %w", err)
+	}
+	// Reconstruct the efficient Map structure from the slices
+	newStore := packed.Unpack()
+	v.Set(reflect.ValueOf(newStore))
+	return nil
+} */
+
 // --- Column Natural ---
 func marshallColumnNatural(enc *encoder, v reflect.Value) (Ref, error) {
 	nat := v.Interface().(column.Natural)
@@ -172,27 +230,6 @@ func unmarshallCoinInfo(dec *decoder, v reflect.Value, offset int64) error {
 
 	unpacked := coin.NewInfo(packed.Name, packed.Type, packed.Round, sizes...)
 	v.Set(reflect.ValueOf(unpacked))
-	return nil
-}
-
-// --- Column Store (STRUCT) ---
-func marshallColumnStore(enc *encoder, v reflect.Value) (Ref, error) {
-	p, err := ptrFromStruct(v)
-	if err != nil {
-		return 0, err
-	}
-	store := p.(*column.Store)
-	packed := store.Pack()
-	return encode(enc, reflect.ValueOf(packed))
-}
-func unmarshallColumnStore(dec *decoder, v reflect.Value, offset int64) error {
-	var packed column.PackedStore
-	packedVal := reflect.ValueOf(&packed).Elem()
-	if err := dec.decode(packedVal, offset); err != nil {
-		return err
-	}
-	newStorePtr := packed.Unpack()
-	v.Set(reflect.ValueOf(newStorePtr).Elem())
 	return nil
 }
 
