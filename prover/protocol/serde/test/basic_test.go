@@ -161,3 +161,85 @@ func TestD_SliceOfPtrs_Load(t *testing.T) {
 		t.Logf("Value: %v", ptr.Name)
 	}
 }
+
+// Helper struct for the test
+type StructWith2DSlice struct {
+	Name string
+	Grid [][]*InnerData
+}
+
+const MatrixTestFile = "test_matrix.bin"
+
+// --- Test 5a: 2D Slice of Ptrs (Store) ---
+func TestE_2DSliceOfPtrs_Store(t *testing.T) {
+	// 1. Setup Data
+	// We reuse pointers to ensure referential integrity is preserved.
+	// (i.e., 'a' appears in multiple places)
+	a := &InnerData{ID: 10, Name: "Origin"}
+	b := &InnerData{ID: 20, Name: "Right"}
+	c := &InnerData{ID: 30, Name: "Down"}
+
+	// Construct a jagged grid (2D slice)
+	// Row 0: [Origin, Right]
+	// Row 1: [Down, Origin, nil]
+	matrix := [][]*InnerData{
+		{a, b},
+		{c, a, nil},
+	}
+
+	obj := &StructWith2DSlice{
+		Name: "MatrixRoot",
+		Grid: matrix,
+	}
+
+	// 2. Store to Disk
+	err := serde.StoreToDisk(MatrixTestFile, obj, false)
+	require.NoError(t, err)
+
+	info, err := os.Stat(MatrixTestFile)
+	require.NoError(t, err)
+	t.Logf("Stored 2D matrix to %s (Size: %d bytes)", MatrixTestFile, info.Size())
+}
+
+// --- Test 5b: 2D Slice of Ptrs (Load & Verify) ---
+func TestE_2DSliceOfPtrs_Load(t *testing.T) {
+	// 1. Check artifact exists
+	_, err := os.Stat(MatrixTestFile)
+	require.NoError(t, err, "Test artifact missing. Run Store test first.")
+	defer os.Remove(MatrixTestFile)
+
+	// 2. Load from Disk
+	var loaded StructWith2DSlice
+	closer, err := serde.LoadFromDisk(MatrixTestFile, &loaded, false)
+	require.NoError(t, err)
+	defer closer.Close()
+
+	// 3. Verification
+	t.Logf("Loaded matrix. Rows: %d", len(loaded.Grid))
+
+	require.Equal(t, "MatrixRoot", loaded.Name)
+	require.Len(t, loaded.Grid, 2)
+
+	// Row 0 checks
+	require.Len(t, loaded.Grid[0], 2)
+	require.Equal(t, "Origin", loaded.Grid[0][0].Name)
+	require.Equal(t, "Right", loaded.Grid[0][1].Name)
+
+	// Row 1 checks
+	require.Len(t, loaded.Grid[1], 3)
+	require.Equal(t, "Down", loaded.Grid[1][0].Name)
+
+	// 4. Verify Referential Integrity (Critical)
+	// Grid[0][0] and Grid[1][1] should be the EXACT same pointer address.
+	// If the serializer naively created new copies, this would fail.
+	ptr1 := loaded.Grid[0][0]
+	ptr2 := loaded.Grid[1][1]
+
+	require.True(t, ptr1 == ptr2,
+		"Referential integrity failed: Expected pointers to 'Origin' to be identical, got %p and %p", ptr1, ptr2)
+
+	// 5. Verify Nil Safety
+	require.Nil(t, loaded.Grid[1][2], "Expected nil element to remain nil")
+
+	t.Log("2D Slice (Matrix) verification passed.")
+}
