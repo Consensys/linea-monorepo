@@ -189,6 +189,15 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 		if v.IsNil() {
 			return 0, nil
 		}
+
+		// --- FIX START ---
+		// If the element type is Indirect (Pointer, Interface, String, etc.),
+		// we cannot do a raw memory copy. We must serialize pointers individually.
+		if isIndirectType(v.Type().Elem()) {
+			return writeSliceOfIndirects(w, v)
+		}
+		// --- FIX END ---
+
 		fs := w.writeSliceData(v)
 		off := w.write(fs)
 		return Ref(off), nil
@@ -495,4 +504,35 @@ func encodeSeqItem(w *encoder, v reflect.Value, buf *bytes.Buffer) error {
 	// 4. PRIMITIVES
 	val := normalizeIntegerSize(v)
 	return binary.Write(buf, binary.LittleEndian, val)
+}
+
+// --- NEW HELPER FUNCTION ---
+func writeSliceOfIndirects(w *encoder, v reflect.Value) (Ref, error) {
+	// 1. Recursively encode all elements first.
+	// This ensures their data is written to the heap and we get back valid Refs (offsets).
+	refs := make([]Ref, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		ref, err := encode(w, v.Index(i))
+		if err != nil {
+			return 0, err
+		}
+		refs[i] = ref
+	}
+
+	// 2. Write the array of Refs (int64s) to the buffer.
+	// This creates a contiguous block of "pointers-by-offset" in the file.
+	startOffset := w.offset
+	if err := binary.Write(w.buf, binary.LittleEndian, refs); err != nil {
+		return 0, err
+	}
+	w.offset += int64(len(refs) * 8)
+
+	// 3. Write the FileSlice Header pointing to this array of Refs.
+	fs := FileSlice{
+		Offset: Ref(startOffset),
+		Len:    int64(v.Len()),
+		Cap:    int64(v.Cap()),
+	}
+	off := w.write(fs)
+	return Ref(off), nil
 }

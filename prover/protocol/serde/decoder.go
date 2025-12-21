@@ -121,6 +121,40 @@ func (dec *decoder) decodeSlice(target reflect.Value, offset int64) error {
 		return fmt.Errorf("slice data offset out of bounds")
 	}
 
+	// --- FIX START ---
+	// Check if we are decoding an Indirect Slice (e.g. []*T)
+	if isIndirectType(target.Type().Elem()) {
+		// We cannot use Zero-Copy here because the file contains int64 Offsets (Refs),
+		// but the Go slice expects real memory pointers.
+
+		// 1. Allocate a standard Go slice
+		target.Set(reflect.MakeSlice(target.Type(), int(fs.Len), int(fs.Cap)))
+
+		// 2. The data at fs.Offset is an array of Refs (int64).
+		// We iterate over them and resolve each one.
+		refArrayStart := int64(fs.Offset)
+
+		// Safety check for the ref array bounds
+		if refArrayStart+(fs.Len*8) > int64(len(dec.data)) {
+			return fmt.Errorf("slice refs array out of bounds")
+		}
+
+		for i := 0; i < int(fs.Len); i++ {
+			// Read the Ref at index i
+			refOffset := refArrayStart + int64(i*8)
+			ref := *(*Ref)(unsafe.Pointer(&dec.data[refOffset]))
+
+			// If not null, recursively decode the object it points to
+			if !ref.IsNull() {
+				if err := dec.decode(target.Index(i), int64(ref)); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	// --- FIX END ---
+
 	// ZERO-COPY (The pointer "Swizzling" technique) SLICE
 	// 1. Get the pointer to the raw data inside the memory map
 	// i.e. calculate the memory address of the data inside the file
