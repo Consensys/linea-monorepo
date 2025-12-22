@@ -14,6 +14,7 @@ import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } 
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { YieldManagerInitializationData } from "../helpers/types";
 import { ZeroAddress } from "ethers";
+import { buildSetWithdrawalReserveParams } from "../helpers";
 
 describe("YieldManager contract - basic operations", () => {
   let yieldManager: TestYieldManager;
@@ -47,6 +48,12 @@ describe("YieldManager contract - basic operations", () => {
 
     it("Should successfully accept ETH via receive() fn", async () => {
       await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.reverted;
+    });
+
+    it("Should decrement pendingPermissionlessUnstake when ETH is received", async () => {
+      await yieldManager.setPendingPermissionlessUnstake(MINIMUM_FEE);
+      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.reverted;
+      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(ZERO_VALUE);
     });
   });
 
@@ -162,8 +169,13 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.isL2YieldRecipientKnown(existingRecipient)).to.be.true;
     });
 
-    it("Should return zero address for index 0 yield provider", async () => {
-      expect(await yieldManager.yieldProviderByIndex(0)).to.equal(ZeroAddress);
+    it("Should revert for index 0 yield provider", async () => {
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.yieldProviderByIndex(0),
+        "YieldProviderIndexOutOfBounds",
+        [0n, 0n],
+      );
     });
 
     it("Should not register the zero address as a known yield provider", async () => {
@@ -379,21 +391,12 @@ describe("YieldManager contract - basic operations", () => {
   });
 
   describe("Setting withdrawal reserve parameters", () => {
-    const buildSetWithdrawalReserveParams = (
-      overrides: Partial<{ minPct: number; targetPct: number; minAmount: bigint; targetAmount: bigint }> = {},
-    ) => ({
-      minimumWithdrawalReservePercentageBps:
-        overrides.minPct ?? initializationData.initialMinimumWithdrawalReservePercentageBps,
-      targetWithdrawalReservePercentageBps:
-        overrides.targetPct ?? initializationData.initialTargetWithdrawalReservePercentageBps,
-      minimumWithdrawalReserveAmount: overrides.minAmount ?? initializationData.initialMinimumWithdrawalReserveAmount,
-      targetWithdrawalReserveAmount: overrides.targetAmount ?? initializationData.initialTargetWithdrawalReserveAmount,
-    });
-
     it("Should revert set withdrawal reserve parameters when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {
       const role = await yieldManager.WITHDRAWAL_RESERVE_SETTER_ROLE();
       await expect(
-        yieldManager.connect(nonAuthorizedAccount).setWithdrawalReserveParameters(buildSetWithdrawalReserveParams()),
+        yieldManager
+          .connect(nonAuthorizedAccount)
+          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData)),
       ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, role));
     });
 
@@ -402,7 +405,7 @@ describe("YieldManager contract - basic operations", () => {
         yieldManager,
         yieldManager
           .connect(securityCouncil)
-          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams({ minPct: 10001 })),
+          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData, { minPct: 10001 })),
         "BpsMoreThan10000",
       );
     });
@@ -412,7 +415,7 @@ describe("YieldManager contract - basic operations", () => {
         yieldManager,
         yieldManager
           .connect(securityCouncil)
-          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams({ targetPct: 10001 })),
+          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData, { targetPct: 10001 })),
         "BpsMoreThan10000",
       );
     });
@@ -423,7 +426,9 @@ describe("YieldManager contract - basic operations", () => {
         yieldManager,
         yieldManager
           .connect(securityCouncil)
-          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams({ minPct: target + 1, targetPct: target })),
+          .setWithdrawalReserveParameters(
+            buildSetWithdrawalReserveParams(initializationData, { minPct: target + 1, targetPct: target }),
+          ),
         "TargetReservePercentageMustBeAboveMinimum",
       );
     });
@@ -435,14 +440,14 @@ describe("YieldManager contract - basic operations", () => {
         yieldManager
           .connect(securityCouncil)
           .setWithdrawalReserveParameters(
-            buildSetWithdrawalReserveParams({ minAmount: target + 1n, targetAmount: target }),
+            buildSetWithdrawalReserveParams(initializationData, { minAmount: target + 1n, targetAmount: target }),
           ),
         "TargetReserveAmountMustBeAboveMinimum",
       );
     });
 
     it("Should successfully set withdrawal reserve parameters and emit logs", async () => {
-      const params = buildSetWithdrawalReserveParams({
+      const params = buildSetWithdrawalReserveParams(initializationData, {
         minPct: initializationData.initialMinimumWithdrawalReservePercentageBps + 1,
         targetPct: initializationData.initialTargetWithdrawalReservePercentageBps + 2,
         minAmount: initializationData.initialMinimumWithdrawalReserveAmount + 5n,
@@ -807,6 +812,7 @@ describe("YieldManager contract - basic operations", () => {
           registration.yieldProviderVendor,
           registration.primaryEntrypoint,
           registration.ossifiedEntrypoint,
+          registration.usersFundsIncrement,
         );
 
       expect(await yieldManager.isYieldProviderKnown(providerAddress)).to.be.true;
@@ -823,6 +829,7 @@ describe("YieldManager contract - basic operations", () => {
       expect(yieldProviderData.userFunds).to.equal(0n);
       expect(yieldProviderData.yieldReportedCumulative).to.equal(0n);
       expect(yieldProviderData.lstLiabilityPrincipal).to.equal(0n);
+      expect(yieldProviderData.lastReportedNegativeYield).to.equal(0n);
 
       expect(await yieldManager.isYieldProviderKnown(providerAddress)).to.equal(true);
       expect(await yieldManager.userFunds(providerAddress)).to.equal(0n);
@@ -929,7 +936,12 @@ describe("YieldManager contract - basic operations", () => {
 
       expect(await yieldManager.isYieldProviderKnown(mockYieldProviderAddress)).to.be.false;
       expect(await yieldManager.yieldProviderCount()).to.equal(0n);
-      expect(await yieldManager.yieldProviderByIndex(0)).to.equal(ZeroAddress);
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.yieldProviderByIndex(0),
+        "YieldProviderIndexOutOfBounds",
+        [0n, 0n],
+      );
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager.getYieldProviderData(mockYieldProviderAddress),
@@ -969,6 +981,7 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderYieldReportedCumulative(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderLastReportedNegativeYield(mockYieldProviderAddress)).to.equal(0n);
     });
 
     it("Adding three providers, then removing the first, should leave the middle provider with stable index", async () => {
@@ -998,6 +1011,12 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.isYieldProviderKnown(providerThree)).to.equal(true);
 
       expect(await yieldManager.yieldProviderCount()).equal(2n);
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.yieldProviderByIndex(3),
+        "YieldProviderIndexOutOfBounds",
+        [3n, 2n],
+      );
     });
   });
 
@@ -1036,6 +1055,7 @@ describe("YieldManager contract - basic operations", () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
       await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, 1n);
+      await yieldManager.setUserFundsInYieldProvidersTotal(1n);
 
       await expect(
         yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
@@ -1043,9 +1063,15 @@ describe("YieldManager contract - basic operations", () => {
         .to.emit(yieldManager, "YieldProviderRemoved")
         .withArgs(mockYieldProviderAddress, true);
 
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
       expect(await yieldManager.isYieldProviderKnown(mockYieldProviderAddress)).to.be.false;
       expect(await yieldManager.yieldProviderCount()).to.equal(0n);
-      expect(await yieldManager.yieldProviderByIndex(0)).to.equal(ZeroAddress);
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.yieldProviderByIndex(0),
+        "YieldProviderIndexOutOfBounds",
+        [0n, 0n],
+      );
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager.getYieldProviderData(mockYieldProviderAddress),
@@ -1083,6 +1109,7 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderYieldReportedCumulative(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderLastReportedNegativeYield(mockYieldProviderAddress)).to.equal(0n);
     });
 
     it("Adding three providers, then removing the first, should leave the middle provider with stable index", async () => {

@@ -21,9 +21,11 @@ enum ProgressOssificationResult {
  * @param yieldProviderVendor Specific type of YieldProvider adaptor.
  * @param primaryEntrypoint Contract used for operations when not-ossified.
  * @param ossifiedEntrypoint Contract used for operations once ossification is finalized.
+ * @param usersFundsIncrement Initial amount of userFunds that should be accounted for when registering the yield provider.
  */
 struct YieldProviderRegistration {
   YieldProviderVendor yieldProviderVendor;
   address primaryEntrypoint;
   address ossifiedEntrypoint;
+  uint256 usersFundsIncrement;
 }
