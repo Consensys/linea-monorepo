@@ -30,6 +30,7 @@ abstract contract YieldManagerStorageLayout {
    * @param yieldProviders Array of registered YieldProvider adaptor contracts.
    * @param isL2YieldRecipientKnown Mapping of added L2YieldRecipient addresses.
    * @param yieldProviderStorage YieldProvider-scoped storage scoped by the YieldProvider adaptor contract address.
+   * @param lastProvenSlot Beacon chain validator index -> last proven slot.
    */
   struct YieldManagerStorage {
     uint16 minimumWithdrawalReservePercentageBps;
@@ -41,6 +42,7 @@ abstract contract YieldManagerStorageLayout {
     address[] yieldProviders;
     mapping(address l2YieldRecipient => bool) isL2YieldRecipientKnown;
     mapping(address yieldProvider => YieldProviderStorage) yieldProviderStorage;
+    mapping(uint64 validatorIndex => uint64 lastProvenSlot) lastProvenSlot;
   }
 
   /**
@@ -60,19 +62,20 @@ abstract contract YieldManagerStorageLayout {
    * @param lastReportedNegativeYield Negative yield as of the last yield report.
    */
   struct YieldProviderStorage {
-    // Slot 0
+    // Slot 0: Packed fields (yieldProviderVendor, bools, primaryEntrypoint)
     YieldProviderVendor yieldProviderVendor;
     bool isStakingPaused;
     bool isOssificationInitiated;
     bool isOssified;
     address primaryEntrypoint;
-    // Slot 1
+    // Slot 1: Packed fields (ossifiedEntrypoint, yieldProviderIndex)
     address ossifiedEntrypoint;
     uint96 yieldProviderIndex;
-    uint256 userFunds;
-    uint256 yieldReportedCumulative;
-    uint256 lstLiabilityPrincipal;
-    uint256 lastReportedNegativeYield;
+    // Slots 2-5: Each uint256 occupies its own slot
+    uint256 userFunds;                    // Slot 2
+    uint256 yieldReportedCumulative;       // Slot 3
+    uint256 lstLiabilityPrincipal;       // Slot 4
+    uint256 lastReportedNegativeYield;    // Slot 5
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))

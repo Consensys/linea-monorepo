@@ -16,7 +16,7 @@ import {
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { ONE_ETHER, OperationType, ZERO_VALUE, YieldProviderVendor } from "../../common/constants";
+import { ONE_ETHER, OperationType, ZERO_VALUE, YieldProviderVendor, CONNECT_DEPOSIT } from "../../common/constants";
 import { ethers } from "hardhat";
 
 describe("LidoStVaultYieldProvider contract - yield operations", () => {
@@ -366,7 +366,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const userFunds = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, userFunds);
       const vaultValue = ONE_ETHER * 2n;
-      await mockDashboard.setTotalValueReturn(vaultValue);
+      await mockDashboard.setTotalValueReturn(vaultValue + CONNECT_DEPOSIT);
 
       // Act
       const [newReportedYield, outstandingNegativeYield] = await yieldManager
@@ -383,7 +383,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const userFunds = ONE_ETHER * 2n;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, userFunds);
       const vaultValue = ONE_ETHER;
-      await mockDashboard.setTotalValueReturn(vaultValue);
+      await mockDashboard.setTotalValueReturn(vaultValue + CONNECT_DEPOSIT);
 
       // Act
       const [newReportedYield, outstandingNegativeYield] = await yieldManager
@@ -406,7 +406,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const nodeOperatorFees = ONE_ETHER;
       await mockDashboard.setAccruedFeeReturn(nodeOperatorFees);
       const vaultValue = ONE_ETHER * 5n;
-      await mockDashboard.setTotalValueReturn(vaultValue);
+      await mockDashboard.setTotalValueReturn(vaultValue + CONNECT_DEPOSIT);
 
       // Act
       const [newReportedYield, outstandingNegativeYield] = await yieldManager
@@ -429,7 +429,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const nodeOperatorFees = ONE_ETHER;
       await mockDashboard.setAccruedFeeReturn(nodeOperatorFees);
       const vaultValue = ONE_ETHER;
-      await mockDashboard.setTotalValueReturn(vaultValue);
+      await mockDashboard.setTotalValueReturn(vaultValue + CONNECT_DEPOSIT);
 
       // Act
       const [newReportedYield, outstandingNegativeYield] = await yieldManager

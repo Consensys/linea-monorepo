@@ -14,6 +14,7 @@ import { ErrorUtils } from "../lib/ErrorUtils.sol";
 import { IPermissionsManager } from "../interfaces/IPermissionsManager.sol";
 import { ProgressOssificationResult, YieldProviderRegistration, YieldProviderVendor } from "./interfaces/YieldTypes.sol";
 import { IValidatorContainerProofVerifier } from "./interfaces/IValidatorContainerProofVerifier.sol";
+import { PendingPartialWithdrawal } from "./libs/vendor/lido/BeaconTypes.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
@@ -60,22 +61,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     address validatorContainerProofVerifier
   );
 
-  /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
-  /// @param yieldProvider The yield provider address.
-  /// @param stakingVault The staking vault address.
-  /// @param refundRecipient Address designated to receive surplus withdrawal-fee refunds.
-  /// @param maxUnstakeAmount Maximum ETH expected to be withdrawn for the request.
-  /// @param pubkeys Concatenated validator pubkeys.
-  /// @param amounts Withdrawal request amount array (currently length 1).
-  event LidoVaultUnstakePermissionlessRequest(
-    address indexed yieldProvider,
-    address indexed stakingVault,
-    address indexed refundRecipient,
-    uint256 maxUnstakeAmount,
-    bytes pubkeys,
-    uint64[] amounts
-  );
-
   /// @notice Used to set immutable variables, but not storage.
   /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve holding contract.
   /// @param _yieldManager The Linea YieldManager.
@@ -91,8 +76,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     address _steth,
     address _validatorContainerProofVerifier
   ) YieldProviderBase(_l1MessageService, _yieldManager) {
-    ErrorUtils.revertIfZeroAddress(_l1MessageService);
-    ErrorUtils.revertIfZeroAddress(_yieldManager);
     ErrorUtils.revertIfZeroAddress(_vaultHub);
     ErrorUtils.revertIfZeroAddress(_vaultFactory);
     ErrorUtils.revertIfZeroAddress(_steth);
@@ -144,10 +127,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
   /**
    * @notice Returns the amount of ETH the provider can immediately remit back to the YieldManager.
    * @dev Called via `delegatecall` from the YieldManager.
+   * @dev Made a payable function to be `delegatecall-able` from YieldManager.unstakePermissionless().
    * @param _yieldProvider The yield provider address.
    * @return availableBalance The ETH amount that can be withdrawn.
    */
-  function withdrawableValue(address _yieldProvider) external view onlyDelegateCall returns (uint256 availableBalance) {
+  function withdrawableValue(address _yieldProvider) external payable onlyDelegateCall returns (uint256 availableBalance) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     availableBalance = $$.isOssified
       ? IStakingVault($$.ossifiedEntrypoint).availableBalance()
@@ -286,7 +270,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _amounts Withdrawal amounts in gwei for each validator key and must match _pubkeys length.
    *         Set amount to 0 for a full validator exit.
    *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation.
-   * @param _refundRecipient Address to receive any fee refunds, if zero, refunds go to msg.sender.
+   * @param _refundRecipient Address to receive any fee refunds. Must be non-zero as StakingVault will revert otherwise.
    */
   function _unstake(
     address _yieldProvider,
@@ -308,30 +292,32 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    *      and enforce any provider-specific safety checks. The returned amount is used by the
    *      YieldManager to cap pending withdrawals tracked on L1.
    * @param _yieldProvider The yield provider address.
+   * @param _requiredUnstakeAmountWei Required unstake amount in wei.
+   * @param _validatorIndex Validator index for validator to withdraw from.
+   * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams ABI encoded provider parameters.
    * @param _withdrawalParamsProof Proof data (typically a beacon chain Merkle proof).
-   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
+   * @return unstakedAmountWei Maximum ETH amount expected to be withdrawn as a result of this request (in wei).
    */
   function unstakePermissionless(
     address _yieldProvider,
+    uint256 _requiredUnstakeAmountWei,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable onlyDelegateCall returns (uint256 maxUnstakeAmount) {
-    (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(
+  ) external payable onlyDelegateCall returns (uint256 unstakedAmountWei) {
+    (bytes memory pubkeys, address refundRecipient) = abi.decode(
       _withdrawalParams,
-      (bytes, uint64[], address)
+      (bytes, address)
     );
-    maxUnstakeAmount = _validateUnstakePermissionlessRequest(_yieldProvider, pubkeys, amounts, _withdrawalParamsProof);
+    uint256 unstakedAmountGwei = _validateUnstakePermissionlessRequest(_yieldProvider, _requiredUnstakeAmountWei, _validatorIndex, _slot, pubkeys, _withdrawalParamsProof);
+    // We handle revert on unstakedAmountGwei=0 later when execution returns to YieldManager.
+    // Clamp single unstake amount to accurately update pendingPermissionlessUnstake.
+    uint64[] memory amounts = new uint64[](1);
+    amounts[0] = uint64(unstakedAmountGwei);
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
-
-    emit LidoVaultUnstakePermissionlessRequest(
-      _yieldProvider,
-      _getYieldProviderStorage(_yieldProvider).ossifiedEntrypoint,
-      refundRecipient,
-      maxUnstakeAmount,
-      pubkeys,
-      amounts
-    );
+    unstakedAmountWei = unstakedAmountGwei * 1 gwei;
   }
 
   /**
@@ -339,32 +325,27 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @dev Validates that the request is for a partial withdrawal from a single validator.
    * @dev Checks guided by consensus specs https://github.com/ethereum/consensus-specs/blob/834e40604ae4411e565bd6540da50b008b2496dc/specs/electra/beacon-chain.md#new-process_withdrawal_request
    * @param _yieldProvider The yield provider address.
+   * @param _requiredUnstakeAmountWei Required unstake amount in wei.
+   * @param _validatorIndex Validator index for validator to withdraw from.
+   * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _pubkeys Concatenated validator public keys (48 bytes each).
-   * @param _amounts Withdrawal amounts in gwei for each validator key and must match _pubkeys length.
-   *         Set amount to 0 for a full validator exit.
-   *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation.
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
-   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
+   * @return unstakedAmountGwei Maximum ETH amount expected to be withdrawn as a result of this request (in gwei).
    */
   function _validateUnstakePermissionlessRequest(
     address _yieldProvider,
+    uint256 _requiredUnstakeAmountWei,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes memory _pubkeys,
-    uint64[] memory _amounts,
     bytes calldata _withdrawalParamsProof
-  ) internal view returns (uint256 maxUnstakeAmount) {
-    // Length validator
-    if (_pubkeys.length != PUBLIC_KEY_LENGTH || _amounts.length != 1) {
+  ) internal view returns (uint256 unstakedAmountGwei) {
+    if (_pubkeys.length != PUBLIC_KEY_LENGTH) {
       revert SingleValidatorOnlyForUnstakePermissionless();
     }
-
-    uint256 amount = _amounts[0];
-    if (amount == 0) {
-      revert NoValidatorExitForUnstakePermissionless();
-    }
-
-    IValidatorContainerProofVerifier.ValidatorContainerWitness memory witness = abi.decode(
+    IValidatorContainerProofVerifier.BeaconProofWitness memory witness = abi.decode(
       _withdrawalParamsProof,
-      (IValidatorContainerProofVerifier.ValidatorContainerWitness)
+      (IValidatorContainerProofVerifier.BeaconProofWitness)
     );
 
     // 0x02 withdrawal credential scheme
@@ -374,15 +355,40 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       withdrawalCredentials := or(shl(248, 0x2), vault)
     }
 
-    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyActiveValidatorContainer(witness, _pubkeys, withdrawalCredentials);
+    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyActiveValidatorContainer(witness.validatorContainerWitness, _pubkeys, withdrawalCredentials, _validatorIndex, _slot, witness.childBlockTimestamp, witness.proposerIndex);
+    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyPendingPartialWithdrawals(witness.pendingPartialWithdrawalsWitness, _slot, witness.childBlockTimestamp, witness.proposerIndex);
+
+    uint256 totalPendingWithdrawalsGwei;
+    PendingPartialWithdrawal[] memory pendingWithdrawals = witness.pendingPartialWithdrawalsWitness.pendingPartialWithdrawals;
+    uint256 length = pendingWithdrawals.length;
+    for (uint256 i = 0; i < length;) {
+      if (pendingWithdrawals[i].validatorIndex == _validatorIndex) {
+        totalPendingWithdrawalsGwei += pendingWithdrawals[i].amount;
+      }
+      unchecked { ++i; }
+    }
 
     // https://github.com/ethereum/consensus-specs/blob/master/specs/electra/beacon-chain.md#modified-get_expected_withdrawals
-    uint256 maxUnstakeAmountGwei = Math256.min(
-      amount,
-      Math256.safeSub(witness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI)
+    // Clamp unstaked amount to maxWithdrawableBalance = effectiveBalance - MIN_ACTIVATION_BALANCE - pendingPartialWithdrawals
+    unstakedAmountGwei = Math256.min(
+      // Round down is ok -> we store the rounded down figure in state later
+      _requiredUnstakeAmountWei / 1 gwei,
+      Math256.safeSub(witness.validatorContainerWitness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI + totalPendingWithdrawalsGwei)
     );
-    // Convert from Beacon Chain units of 'gwei' to execution layer units of 'wei'
-    maxUnstakeAmount = maxUnstakeAmountGwei * 1 gwei;
+  }
+
+  /**
+   * @notice Hook called before withdrawing ETH from the YieldProvider.
+   * @param _yieldProvider The yield provider address.
+   * @param _isPermissionlessReserveDeficitWithdrawal Whether this is a permissionless reserve deficit withdrawal.
+   */
+  function beforeWithdrawFromYieldProvider(address _yieldProvider, bool _isPermissionlessReserveDeficitWithdrawal) external onlyDelegateCall {
+    // No LST payment for permissionless rebalance.
+    if (_isPermissionlessReserveDeficitWithdrawal) return;
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    if (VAULT_HUB.isVaultConnected(address(_getVault($$)))) {
+      _payMaximumPossibleLSTLiability($$);
+    }
   }
 
   /**
@@ -391,12 +397,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _amount Amount of ETH to withdraw to the YieldManager.
    */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyDelegateCall {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if (VAULT_HUB.isVaultConnected(address(_getVault($$)))) {
-      // For a connected Lido StakingVault, LST liabilities are locked and unavailable for withdrawal, so this will not "steal" from withdrawals.
-      // Because LST Liability is overcollateralized, repaying maximum LST liability first maximises the unlocked amount available for withdrawal.
-      _payMaximumPossibleLSTLiability($$);
-    }
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(address(this), _amount);
   }
 
@@ -492,8 +492,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       // Ossify
       vault.ossify();
       // Unstage all ETH
-      vault.setDepositor(address(this));
-      vault.unstage(vault.stagedBalance());
+      uint256 stagedBalance = vault.stagedBalance();
+      if (stagedBalance > 0) {
+        vault.setDepositor(address(this));
+        vault.unstage(stagedBalance);
+      }
       progressOssificationResult = ProgressOssificationResult.COMPLETE;
     } else if (VAULT_HUB.isPendingDisconnect(address(vault))) {
       // No-op, needs accounting report to progress.
@@ -537,7 +540,8 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     registrationData = YieldProviderRegistration({
       yieldProviderVendor: YieldProviderVendor.LIDO_STVAULT,
       primaryEntrypoint: dashboard,
-      ossifiedEntrypoint: vault
+      ossifiedEntrypoint: vault,
+      usersFundsIncrement: CONNECT_DEPOSIT
     });
   }
 

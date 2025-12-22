@@ -11,6 +11,7 @@ import { ErrorUtils } from "../lib/ErrorUtils.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { PermissionsManager } from "../lib/PermissionsManager.sol";
 import { ProgressOssificationResult, YieldProviderRegistration } from "./interfaces/YieldTypes.sol";
+import { TransientStorageReentrancyGuardUpgradeable } from "../messageService/l1/TransientStorageReentrancyGuardUpgradeable.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -23,6 +24,7 @@ contract YieldManager is
   YieldManagerPauseManager,
   PermissionsManager,
   YieldManagerStorageLayout,
+  TransientStorageReentrancyGuardUpgradeable,
   IYieldManager
 {
   /// @notice The role required to send ETH to a yield provider.
@@ -54,6 +56,9 @@ contract YieldManager is
 
   /// @notice 100% in BPS.
   uint256 constant internal MAX_BPS = 10000;
+
+  /// @notice The number of slots per historical beacon chain root.
+  uint64 constant internal SLOTS_PER_HISTORICAL_ROOT = 8192;
 
   /**
    * @notice Minimum withdrawal reserve percentage in bps.
@@ -100,16 +105,15 @@ contract YieldManager is
   }
 
   /// @dev Reverts if the withdrawal reserve is not in deficit.
-  modifier onlyWhenWithdrawalReserveInDeficit() {
-    if (!isWithdrawalReserveBelowMinimum()) revert WithdrawalReserveNotInDeficit();
+  /// @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
+  modifier onlyWhenWithdrawalReserveInDeficit(uint256 _amountToSubtract) {
+    if (!_isWithdrawalReserveBelowMinimum(_amountToSubtract)) revert WithdrawalReserveNotInDeficit();
     _;
   }
 
   /// @dev Reverts if the YieldProvider address is not known.
   modifier onlyKnownYieldProvider(address _yieldProvider) {
-    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex == 0) {
-      revert UnknownYieldProvider();
-    }
+    if (!isYieldProviderKnown(_yieldProvider)) revert UnknownYieldProvider();
     _;
   }
 
@@ -171,23 +175,24 @@ contract YieldManager is
    * @return totalSystemBalance Total system balance in wei.
    */
   function getTotalSystemBalance() external view returns (uint256 totalSystemBalance) {
-    (totalSystemBalance, ) = _getTotalSystemBalance();
+    (totalSystemBalance, ) = _getTotalSystemBalance(0);
   }
 
   /**
    * @notice Returns the total ETH in the native yield system.
    * @dev Sums the withdrawal reserve, YieldManager balance, and capital deployed into yield providers.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance (e.g., msg.value for payable functions that withdraw funds).
    * @return totalSystemBalance Total system balance in wei.
    * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
    */
-  function _getTotalSystemBalance()
+  function _getTotalSystemBalance(uint256 _amountToSubtract)
     internal
     view
     returns (uint256 totalSystemBalance, uint256 cachedL1MessageServiceBalance)
   {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     cachedL1MessageServiceBalance = L1_MESSAGE_SERVICE.balance;
-    totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $.userFundsInYieldProvidersTotal;
+    totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $.userFundsInYieldProvidersTotal - _amountToSubtract;
   }
 
   /**
@@ -195,21 +200,22 @@ contract YieldManager is
    * @return minimumWithdrawalReserve Effective minimum reserve in wei.
    */
   function getEffectiveMinimumWithdrawalReserve() external view returns (uint256 minimumWithdrawalReserve) {
-    (minimumWithdrawalReserve, ) = _getEffectiveMinimumWithdrawalReserve();
+    (minimumWithdrawalReserve, ) = _getEffectiveMinimumWithdrawalReserve(0);
   }
 
   /**
    * @notice Returns the effective minimum withdrawal reserve considering both percentage and absolute amount configurations.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
    * @return minimumWithdrawalReserve Effective minimum reserve in wei.
    * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
    */
-  function _getEffectiveMinimumWithdrawalReserve()
+  function _getEffectiveMinimumWithdrawalReserve(uint256 _amountToSubtract)
     internal
     view
     returns (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance)
   {
     uint256 totalSystemBalance;
-    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
+    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance(_amountToSubtract);
     // Get minimumWithdrawalReserveByPercentage
     uint256 minimumWithdrawalReserveByPercentage = (totalSystemBalance *
       _getYieldManagerStorage().minimumWithdrawalReservePercentageBps) / MAX_BPS;
@@ -225,21 +231,22 @@ contract YieldManager is
    * @return targetWithdrawalReserve Effective target reserve in wei.
    */
   function getEffectiveTargetWithdrawalReserve() external view returns (uint256 targetWithdrawalReserve) {
-    (targetWithdrawalReserve, ) = _getEffectiveTargetWithdrawalReserve();
+    (targetWithdrawalReserve, ) = _getEffectiveTargetWithdrawalReserve(0);
   }
 
   /**
    * @notice Returns the effective target withdrawal reserve considering both percentage and absolute amount configurations.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
    * @return targetWithdrawalReserve Effective target reserve in wei.
    * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
    */
-  function _getEffectiveTargetWithdrawalReserve()
+  function _getEffectiveTargetWithdrawalReserve(uint256 _amountToSubtract)
     internal
     view
     returns (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance)
   {
     uint256 totalSystemBalance;
-    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
+    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance(_amountToSubtract);
     uint256 targetWithdrawalReserveByPercentage = (totalSystemBalance *
       _getYieldManagerStorage().targetWithdrawalReservePercentageBps) / MAX_BPS;
     targetWithdrawalReserve = Math256.max(
@@ -253,7 +260,7 @@ contract YieldManager is
    * @return minimumReserveDeficit Amount of ETH required to meet the minimum reserve, or zero if already satisfied.
    */
   function getMinimumReserveDeficit() public view returns (uint256 minimumReserveDeficit) {
-    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve();
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve(0);
     minimumReserveDeficit = Math256.safeSub(minimumWithdrawalReserve, cachedL1MessageServiceBalance);
   }
 
@@ -261,8 +268,17 @@ contract YieldManager is
    * @notice Returns the shortfall between the target reserve threshold and the current reserve balance.
    * @return targetReserveDeficit Amount of ETH required to meet the target reserve, or zero if already satisfied.
    */
-  function getTargetReserveDeficit() public view returns (uint256 targetReserveDeficit) {
-    (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveTargetWithdrawalReserve();
+  function getTargetReserveDeficit() external view returns (uint256 targetReserveDeficit) {
+    return _getTargetReserveDeficit(0);
+  }
+
+  /**
+   * @notice Returns the shortfall between the target reserve threshold and the current reserve balance.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
+   * @return targetReserveDeficit Amount of ETH required to meet the target reserve, or zero if already satisfied.
+   */
+  function _getTargetReserveDeficit(uint256 _amountToSubtract) internal view returns (uint256 targetReserveDeficit) {
+    (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveTargetWithdrawalReserve(_amountToSubtract);
     targetReserveDeficit = Math256.safeSub(targetWithdrawalReserve, cachedL1MessageServiceBalance);
   }
 
@@ -270,7 +286,16 @@ contract YieldManager is
    * @return bool True if the withdrawal reserve balance is below the effective minimum threshold.
    */
   function isWithdrawalReserveBelowMinimum() public view returns (bool) {
-    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve();
+    return _isWithdrawalReserveBelowMinimum(0);
+  }
+
+  /**
+   * @notice Internal function to check if the withdrawal reserve balance is below the effective minimum threshold.
+   * @param _amountToSubtract Optional amount to subtract from the total system balance calculation.
+   * @return bool True if the withdrawal reserve balance is below the effective minimum threshold.
+   */
+  function _isWithdrawalReserveBelowMinimum(uint256 _amountToSubtract) internal view returns (bool) {
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve(_amountToSubtract);
     return cachedL1MessageServiceBalance < minimumWithdrawalReserve;
   }
 
@@ -286,7 +311,7 @@ contract YieldManager is
    * @param _yieldProvider The YieldProvider address.
    * @return bool True if the YieldProvider is registered.
    */
-  function isYieldProviderKnown(address _yieldProvider) external view returns (bool) {
+  function isYieldProviderKnown(address _yieldProvider) public view returns (bool) {
     return _getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0;
   }
 
@@ -308,6 +333,10 @@ contract YieldManager is
    */
   function yieldProviderByIndex(uint256 _index) external view override returns (address yieldProvider) {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
+    uint256 length = $.yieldProviders.length;
+    if (_index == 0 || _index >= length) {
+      revert YieldProviderIndexOutOfBounds(_index, Math256.safeSub(length, 1));
+    }
     yieldProvider = $.yieldProviders[_index];
   }
 
@@ -402,6 +431,15 @@ contract YieldManager is
   }
 
   /**
+   * @notice Returns the last proven slot for a validator index.
+   * @param _validatorIndex The validator index to query.
+   * @return lastProvenSlot The last proven slot for the validator index, or 0 if no slot has been proven yet.
+   */
+  function lastProvenSlot(uint64 _validatorIndex) external view override returns (uint64 lastProvenSlot) {
+    lastProvenSlot = _getYieldManagerStorage().lastProvenSlot[_validatorIndex];
+  }
+
+  /**
    * @notice Helper function to delegatecall YieldProvider adaptor instances.
    * @param _yieldProvider The yield provider address.
    * @param _callData Calldata to send with YieldProvider delegatecall.
@@ -487,6 +525,7 @@ contract YieldManager is
     onlyRole(YIELD_PROVIDER_STAKING_ROLE)
     onlyWhenWithdrawalReserveHealthy
   {
+    if (_getTargetReserveDeficit(0) > 0) _pauseStakingIfNotAlready(_yieldProvider);
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount))
@@ -567,15 +606,15 @@ contract YieldManager is
    *         - PENDING_PERMISSIONLESS_UNSTAKE
    *
    * @dev PENDING_PERMISSIONLESS_UNSTAKE will be greedily reduced with i.) donations or ii.) future withdrawals from the YieldProvider
+   * @dev msg.value will not remain in the native yield system, so it must be subtracted from total system balance.
    * @param _yieldProvider          Yield provider address.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
    * @param _withdrawalParamsProof  Data containing merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
-   * @return maxUnstakeAmount       Maximum amount expected to be withdrawn from the beacon chain.
-   *                                - Cannot efficiently get exact amount as relevant state and computation is located in the consensus client,
-   *                                and not the execution layer.
    */
   function unstakePermissionless(
     address _yieldProvider,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   )
@@ -583,28 +622,50 @@ contract YieldManager is
     payable
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
-    onlyWhenWithdrawalReserveInDeficit
-    returns (uint256 maxUnstakeAmount)
+    onlyWhenWithdrawalReserveInDeficit(msg.value)
+    nonReentrant
   {
-    bytes memory data = _delegatecallYieldProvider(
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    _validateAndUpdateLastProvenSlot($, _validatorIndex, _slot);
+
+    uint256 requiredUnstakeAmountWei = Math256.safeSub(_getTargetReserveDeficit(msg.value), address(this).balance - msg.value + withdrawableValue(_yieldProvider) + $.pendingPermissionlessUnstake);
+    if (requiredUnstakeAmountWei == 0) revert NoRequirementToUnstakePermissionless();
+
+    uint256 unstakedAmountWei = abi.decode(_delegatecallYieldProvider(
       _yieldProvider,
-      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
-    );
-    maxUnstakeAmount = abi.decode(data, (uint256));
-    if (maxUnstakeAmount == 0) {
-      revert YieldProviderReturnedZeroUnstakeAmount();
-    }
-    // Validiate maxUnstakeAmount
-    uint256 targetDeficit = getTargetReserveDeficit();
-    uint256 availableFundsToSettleTargetDeficit = address(this).balance +
-      withdrawableValue(_yieldProvider) +
-      _getYieldManagerStorage().pendingPermissionlessUnstake;
-    if (availableFundsToSettleTargetDeficit + maxUnstakeAmount > targetDeficit) {
-      revert PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
+      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, requiredUnstakeAmountWei, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
+    ), (uint256));
+    if (unstakedAmountWei == 0) revert YieldProviderReturnedZeroUnstakeAmount();
+    if (unstakedAmountWei > requiredUnstakeAmountWei) {
+      revert UnstakedAmountExceedsRequired(unstakedAmountWei, requiredUnstakeAmountWei);
     }
 
-    _getYieldManagerStorage().pendingPermissionlessUnstake += maxUnstakeAmount;
-    // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
+    $.pendingPermissionlessUnstake += unstakedAmountWei;
+    emit UnstakePermissionlessRequest(_yieldProvider, _validatorIndex, _slot, requiredUnstakeAmountWei, unstakedAmountWei, _withdrawalParams);
+  }
+
+  /**
+  * @notice Validates that a slot is sufficiently far from the last proven slot and updates the last proven slot.
+  * @dev Used to avoid replay attack and enforce minimum 8192 slot interval between proofs.
+  * @dev Perform storage update before potential reentrancy points to follow checks-effects-interactions pattern.
+  * @dev This function was extracted from unstakePermissionless to avoid stack-too-deep compilation errors.
+  * @param $ Storage pointer for YieldManager storage.
+  * @param _validatorIndex The index of the validator.
+  * @param _slot The slot to validate and set as the new last proven slot.
+  * @custom:reverts SlotTooCloseToLastProvenSlot If the provided slot is within SLOTS_PER_HISTORICAL_ROOT
+  *         of the last proven slot for this validator.
+  */
+  function _validateAndUpdateLastProvenSlot(
+    YieldManagerStorage storage $,
+    uint64 _validatorIndex,
+    uint64 _slot
+  ) internal {
+    uint64 lastProvenSlot = $.lastProvenSlot[_validatorIndex];
+    if (_slot <= lastProvenSlot + SLOTS_PER_HISTORICAL_ROOT) {
+      revert SlotTooCloseToLastProvenSlot(_validatorIndex, lastProvenSlot, _slot);
+    }
+    // Place storage update before possible reentrancy in _delegatecallYieldProvider
+    $.lastProvenSlot[_validatorIndex] = _slot;
   }
 
   /**
@@ -626,6 +687,8 @@ contract YieldManager is
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
+    // @dev Call hook before querying withdrawableValue
+    _delegatecallBeforeWithdrawFromYieldProvider(_yieldProvider, false);
     _withdrawFromYieldProvider(_yieldProvider, Math256.min(withdrawableValue(_yieldProvider), _amount));
   }
 
@@ -645,7 +708,7 @@ contract YieldManager is
   )
     internal
   {
-    uint256 targetDeficit = getTargetReserveDeficit();
+    uint256 targetDeficit = _getTargetReserveDeficit(0);
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
     uint256 toReserve = Math256.min(_amount, targetDeficit);
     // Send funds to L1MessageService if targetDeficit
@@ -658,12 +721,11 @@ contract YieldManager is
 
   /**
    * @notice Helper function to withdraw from a yield provider and update state accordingly.
-   * @dev Any withdrawals from the YieldProvider will greedily decrement `pendingPermissionlessUnstake` on the assumption
-   *      that the requested withdrawl has arrived at a YieldProvider.
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount to withdraw.
    */
   function _delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) internal {
+    if (_amount == 0) return;
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     _delegatecallYieldProvider(
       _yieldProvider,
@@ -671,8 +733,18 @@ contract YieldManager is
     );
     $$.userFunds -= _amount;
     _getYieldManagerStorage().userFundsInYieldProvidersTotal -= _amount;
-    // Greedily reduce pendingPermissionlessUnstake with every withdrawal made from the yield provider.
-    _decrementPendingPermissionlessUnstake(_amount);
+  }
+
+  /**
+   * @notice Hook called before withdrawing ETH from the YieldProvider.
+   * @param _yieldProvider The yield provider address.
+   * @param _isPermissionlessReserveDeficitWithdrawal Whether this is a permissionless reserve deficit withdrawal.
+   */
+  function _delegatecallBeforeWithdrawFromYieldProvider(address _yieldProvider, bool _isPermissionlessReserveDeficitWithdrawal) internal {
+    _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.beforeWithdrawFromYieldProvider, (_yieldProvider, _isPermissionlessReserveDeficitWithdrawal))
+    );
   }
 
   /**
@@ -682,13 +754,12 @@ contract YieldManager is
   function _decrementPendingPermissionlessUnstake(uint256 _amount) internal {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     uint256 pendingPermissionlessUnstakeAmount = $.pendingPermissionlessUnstake;
-    if (pendingPermissionlessUnstakeAmount == 0) return;
     $.pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstakeAmount, _amount);
   }
 
   /**
    * @notice Safely rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev Caps the rebalance amount to the provider's current withdrawable value.
+   * @dev Caps the rebalance amount to the provider's current withdrawable value plus the YieldManager's balance.
    *      This is to mitigate frontrunning that depletes the withdrawable value,
    *      which would result in revert of the regular `addToWithdrawalReserve` function.
    * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
@@ -704,6 +775,8 @@ contract YieldManager is
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
+    // @dev Call hook before querying withdrawableValue
+    _delegatecallBeforeWithdrawFromYieldProvider(_yieldProvider, false);
     _addToWithdrawalReserve(
       _yieldProvider,
       Math256.min(withdrawableValue(_yieldProvider) + address(this).balance, _amount)
@@ -716,7 +789,7 @@ contract YieldManager is
    * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
    */
   function _addToWithdrawalReserve(address _yieldProvider, uint256 _amount) internal {
-    if (getTargetReserveDeficit() > _amount) _pauseStakingIfNotAlready(_yieldProvider);
+    if (_getTargetReserveDeficit(0) > _amount) _pauseStakingIfNotAlready(_yieldProvider);
     // First see if we can fully settle from YieldManager
     // @dev When using YieldManager balance directly, LST liability payment is skipped for operational efficiency
     uint256 yieldManagerBalance = address(this).balance;
@@ -754,9 +827,10 @@ contract YieldManager is
     external
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
-    onlyWhenWithdrawalReserveInDeficit
+    onlyWhenWithdrawalReserveInDeficit(0)
+    nonReentrant
   {
-    uint256 targetDeficit = getTargetReserveDeficit();
+    uint256 targetDeficit = _getTargetReserveDeficit(0);
 
     // First see if we can fully settle from YieldManager
     // @dev When using YieldManager balance directly, LST liability payment is skipped for operational efficiency
@@ -766,6 +840,9 @@ contract YieldManager is
       emit WithdrawalReserveReplenished(_yieldProvider, targetDeficit, targetDeficit, targetDeficit, 0);
       return;
     }
+
+    // @dev Call hook before querying withdrawableValue
+    _delegatecallBeforeWithdrawFromYieldProvider(_yieldProvider, true);
 
     // Insufficient balance on YieldManager, must withdraw from YieldProvider
     uint256 yieldProviderBalance = withdrawableValue(_yieldProvider);
@@ -800,7 +877,6 @@ contract YieldManager is
       revert StakingAlreadyPaused();
     }
     _pauseStaking(_yieldProvider);
-    emit YieldProviderStakingPaused(_yieldProvider);
   }
 
   /**
@@ -810,6 +886,7 @@ contract YieldManager is
   function _pauseStaking(address _yieldProvider) internal {
     _delegatecallYieldProvider(_yieldProvider, abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)));
     _getYieldProviderStorage(_yieldProvider).isStakingPaused = true;
+    emit YieldProviderStakingPaused(_yieldProvider);
   }
 
   /**
@@ -851,7 +928,6 @@ contract YieldManager is
       revert UnpauseStakingForbiddenDuringPendingOssification();
     }
     _unpauseStaking(_yieldProvider);
-    emit YieldProviderStakingUnpaused(_yieldProvider);
   }
 
   /**
@@ -861,6 +937,7 @@ contract YieldManager is
   function _unpauseStaking(address _yieldProvider) internal {
     _delegatecallYieldProvider(_yieldProvider, abi.encodeCall(IYieldProvider.unpauseStaking, (_yieldProvider)));
     _getYieldProviderStorage(_yieldProvider).isStakingPaused = false;
+    emit YieldProviderStakingUnpaused(_yieldProvider);
   }
 
   /**
@@ -902,6 +979,7 @@ contract YieldManager is
 
   /**
    * @notice Initiate the ossification sequence for a provider.
+   * @dev OSSIFICATION_INITIATOR_ROLE is required to execute.
    * @dev Will pause beacon chain staking and LST withdrawals.
    * @dev WARNING: This operation irreversibly pauses beacon chain deposits.
    * @param _yieldProvider The yield provider address.
@@ -924,6 +1002,7 @@ contract YieldManager is
 
   /**
    * @notice Progress an initiated ossification process.
+   * @dev OSSIFICATION_PROCESSOR_ROLE is required to execute.
    * @param _yieldProvider The yield provider address.
    * @return progressOssificationResult The operation result.
    */
@@ -957,10 +1036,16 @@ contract YieldManager is
   }
 
   /// @notice Function to receive a basic ETH transfer.
-  receive() external payable {}
+  /// @dev Any withdrawals from the YieldProvider will greedily decrement `pendingPermissionlessUnstake` on the assumption
+  ///      that the requested withdrawal has arrived at a YieldProvider.
+  receive() external payable {
+    // Greedily reduce pendingPermissionlessUnstake with every donation or YieldProvider withdrawal.
+    _decrementPendingPermissionlessUnstake(msg.value);
+  }
 
   /**
    * @notice Register a new YieldProvider adaptor instance.
+   * @dev SET_YIELD_PROVIDER_ROLE is required to execute.
    * @param _yieldProvider The yield provider address.
    * @param _vendorInitializationData Vendor-specific initialization data.
    */
@@ -969,9 +1054,7 @@ contract YieldManager is
     bytes memory _vendorInitializationData
   ) external onlyRole(SET_YIELD_PROVIDER_ROLE) {
     ErrorUtils.revertIfZeroAddress(_yieldProvider);
-    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
-      revert YieldProviderAlreadyAdded();
-    }
+    if (isYieldProviderKnown(_yieldProvider)) revert YieldProviderAlreadyAdded();
 
     YieldProviderRegistration memory registrationData = abi.decode(
       _delegatecallYieldProvider(
@@ -992,21 +1075,24 @@ contract YieldManager is
       primaryEntrypoint: registrationData.primaryEntrypoint,
       ossifiedEntrypoint: registrationData.ossifiedEntrypoint,
       yieldProviderIndex: yieldProviderIndex,
-      userFunds: 0,
+      userFunds: registrationData.usersFundsIncrement,
       yieldReportedCumulative: 0,
       lstLiabilityPrincipal: 0,
       lastReportedNegativeYield: 0
     });
+    $.userFundsInYieldProvidersTotal += registrationData.usersFundsIncrement;
     emit YieldProviderAdded(
       _yieldProvider,
       registrationData.yieldProviderVendor,
       registrationData.primaryEntrypoint,
-      registrationData.ossifiedEntrypoint
+      registrationData.ossifiedEntrypoint,
+      registrationData.usersFundsIncrement
     );
   }
 
   /**
    * @notice Remove a YieldProvider instance from the YieldManager.
+   * @dev SET_YIELD_PROVIDER_ROLE is required to execute.
    * @dev Has safety checks to ensure that there is no remaining user funds or negative yield on the YieldProvider.
    * @param _yieldProvider The yield provider address.
    * @param _vendorExitData Vendor-specific exit data.
@@ -1019,11 +1105,12 @@ contract YieldManager is
     if (userFundsCached != 0) {
       revert YieldProviderHasRemainingFunds(userFundsCached);
     }
-    _removeYieldProvider(_yieldProvider, _vendorExitData, false);
+    _removeYieldProvider(_yieldProvider, _vendorExitData, false, userFundsCached);
   }
 
   /**
    * @notice Emergency remove a YieldProvider instance from the YieldManager, skipping the regular safety checks.
+   * @dev SET_YIELD_PROVIDER_ROLE is required to execute.
    * @dev Without this function, newly reported yield can prevent deregistration of the YieldProvider.
    * @param _yieldProvider The yield provider address.
    * @param _vendorExitData Vendor-specific exit data.
@@ -1032,7 +1119,8 @@ contract YieldManager is
     address _yieldProvider,
     bytes memory _vendorExitData
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
-    _removeYieldProvider(_yieldProvider, _vendorExitData, true);
+    uint256 userFundsCached = _getYieldProviderStorage(_yieldProvider).userFunds;
+    _removeYieldProvider(_yieldProvider, _vendorExitData, true, userFundsCached);
   }
 
   /**
@@ -1040,14 +1128,18 @@ contract YieldManager is
    * @param _yieldProvider The yield provider address.
    * @param _vendorExitData Vendor-specific exit data passed to the yield provider's exit function.
    * @param _isEmergencyRemove Flag indicating whether this is an emergency removal.
+   * @param _userFunds The user funds amount for the yield provider.
    */
-  function _removeYieldProvider(address _yieldProvider, bytes memory _vendorExitData, bool _isEmergencyRemove) internal {
+  function _removeYieldProvider(address _yieldProvider, bytes memory _vendorExitData, bool _isEmergencyRemove, uint256 _userFunds) internal {
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.exitVendorContracts, (_yieldProvider, _vendorExitData))
     );
 
     YieldManagerStorage storage $ = _getYieldManagerStorage();
+    if (_userFunds > 0) {
+      $.userFundsInYieldProvidersTotal -= _userFunds;
+    }
     uint96 yieldProviderIndex = _getYieldProviderStorage(_yieldProvider).yieldProviderIndex;
     address lastYieldProvider = $.yieldProviders[$.yieldProviders.length - 1];
     $.yieldProviderStorage[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
@@ -1108,10 +1200,10 @@ contract YieldManager is
     ) {
       revert BpsMoreThan10000();
     }
-    if (_params.minimumWithdrawalReservePercentageBps > _params.targetWithdrawalReservePercentageBps) {
+    if (_params.targetWithdrawalReservePercentageBps <= _params.minimumWithdrawalReservePercentageBps) {
       revert TargetReservePercentageMustBeAboveMinimum();
     }
-    if (_params.minimumWithdrawalReserveAmount > _params.targetWithdrawalReserveAmount) {
+    if (_params.targetWithdrawalReserveAmount <= _params.minimumWithdrawalReserveAmount) {
       revert TargetReserveAmountMustBeAboveMinimum();
     }
     YieldManagerStorage storage $ = _getYieldManagerStorage();

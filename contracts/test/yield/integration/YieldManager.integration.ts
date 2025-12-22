@@ -19,6 +19,8 @@ import {
   setupMaxLSTLiabilityPaymentForWithdrawal,
   setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability,
   buildVendorExitData,
+  buildSetWithdrawalReserveParams,
+  YieldManagerInitializationData,
 } from "../helpers";
 import {
   TestYieldManager,
@@ -36,15 +38,7 @@ import {
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import {
-  EMPTY_CALLDATA,
-  MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-  ONE_ETHER,
-  ONE_GWEI,
-  VALIDATOR_WITNESS_TYPE,
-  ZERO_VALUE,
-} from "../../common/constants";
-import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
+import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE, CONNECT_DEPOSIT } from "../../common/constants";
 
 describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldProvider", () => {
   let nativeYieldOperator: SignerWithAddress;
@@ -63,6 +57,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
   let lidoStVaultYieldProviderFactory: TestLidoStVaultYieldProviderFactory;
   let sszMerkleTree: SSZMerkleTree;
   let testVerifier: TestValidatorContainerProofVerifier;
+  let initializationData: YieldManagerInitializationData;
 
   let l1MessageServiceAddress: string;
   let yieldManagerAddress: string;
@@ -88,10 +83,19 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       lidoStVaultYieldProviderFactory,
       sszMerkleTree,
       testVerifier,
+      initializationData,
     } = await loadFixture(deployYieldManagerIntegrationTestFixture));
     l1MessageServiceAddress = await lineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
     mockStakingVaultAddress = await mockStakingVault.getAddress();
+  });
+
+  describe("Initial state", () => {
+    it("userFunds should be equivalent to CONNECT_DEPOSIT amount", async () => {
+      const connectDeposit = await yieldProvider.CONNECT_DEPOSIT();
+      expect(await yieldManager.userFunds(yieldProviderAddress)).eq(connectDeposit);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(connectDeposit);
+    });
   });
 
   describe("Transfering to the YieldManager", () => {
@@ -109,10 +113,18 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       expect(rollupBalanceAfter).eq(rollupBalanceBefore - fundAmount);
       expect(yieldManagerBalanceAfter).eq(yieldManagerBalanceBefore + fundAmount);
     });
-    it("Should revert when withdrawal reserve at minimum", async () => {
-      await setWithdrawalReserveToMinimum(yieldManager);
+    it("Should revert when withdrawal reserve at minimum (including msg.value in the reserve computation)", async () => {
+      // Arrange - %-based minimum at 20%
+      await yieldManager
+        .connect(securityCouncil)
+        .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData, { minAmount: 0n }));
+      await setBalance(await lineaRollup.getAddress(), 21n * ONE_ETHER);
+      await setBalance(await yieldManager.getAddress(), 79n * ONE_ETHER);
+
       // Act
-      const call = lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(1);
+      const withdrawAmount = ONE_ETHER + 1n;
+      const call = lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(withdrawAmount);
+
       // Assert
       await expectRevertWithCustomError(yieldManager, call, "InsufficientWithdrawalReserve");
     });
@@ -210,7 +222,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Arrange - setup withdrawal reserve deficit
       await setBalance(l1MessageServiceAddress, ZERO_VALUE);
       // Arrange - setup L1MessageService message
-      const withdrawAmount = initialFundAmount * 2n;
+      const withdrawAmount = initialFundAmount * 2n + CONNECT_DEPOSIT;
       const recipientAddress = await nonAuthorizedAccount.getAddress();
       const claimParams = await setupLineaRollupMessageMerkleTree(
         lineaRollup,
@@ -307,7 +319,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
       // Arrange - Setup positive yield
       const yieldEarned = ONE_ETHER / 10n;
-      await mockDashboard.setTotalValueReturn(initialFundAmount + yieldEarned);
+      await mockDashboard.setTotalValueReturn(initialFundAmount + CONNECT_DEPOSIT + yieldEarned);
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
@@ -348,7 +360,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
       // Arrange - Setup negative yield
       const yieldEarned = 0n;
-      await mockDashboard.setTotalValueReturn(yieldEarned);
+      await mockDashboard.setTotalValueReturn(yieldEarned + CONNECT_DEPOSIT);
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
@@ -389,7 +401,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
       // Arrange - Setup positive yield
       const yieldEarned = ONE_ETHER / 10n;
-      await mockDashboard.setTotalValueReturn(initialFundAmount + yieldEarned);
+      await mockDashboard.setTotalValueReturn(initialFundAmount + CONNECT_DEPOSIT + yieldEarned);
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
@@ -435,7 +447,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
       // Arrange - Setup negative yield
       const yieldEarned = 0n;
-      await mockDashboard.setTotalValueReturn(yieldEarned);
+      await mockDashboard.setTotalValueReturn(yieldEarned + CONNECT_DEPOSIT);
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
@@ -525,65 +537,136 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
     });
   });
 
-  describe("Multiple yield providers", () => {
-    it("Unstake permissionless cap should be shared globally across all yield providers", async () => {
-      // Arrange - add additional yield provider
-      const { yieldProviderAddress: yieldProvider2Address, mockStakingVaultAddress: mockStakingVault2Address } =
-        await deployAndAddAdditionalLidoStVaultYieldProvider(
-          lidoStVaultYieldProviderFactory,
-          yieldManager,
-          securityCouncil,
-          mockVaultFactory,
-        );
-      // Arrange - Prepare first unstakePermissionless
-      const targetDeficit = await yieldManager.getTargetReserveDeficit();
-      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
-        sszMerkleTree,
-        testVerifier,
-        mockStakingVaultAddress,
-        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
+  describe("Withdrawals", () => {
+    it("safeAddToWithdrawalReserve should paydown LST liability", async () => {
+      // Arrange - initial 10 ETH fund
+      const initialFundAmount = ONE_ETHER * 10n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      // Arrange - 5 ETH LST withdrawal
+      await setBalance(l1MessageServiceAddress, ZERO_VALUE);
+      const withdrawLSTAmount = ONE_ETHER * 5n;
+      const recipientAddress = await nonAuthorizedAccount.getAddress();
+      const claimParams = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        recipientAddress,
+        withdrawLSTAmount,
+        EMPTY_CALLDATA,
+        securityCouncil,
       );
-      const refundAddress = nativeYieldOperator.address;
-      const unstakeAmount = [targetDeficit / ONE_GWEI];
-      const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
-        ["bytes", "uint64[]", "address"],
-        [pubkey, unstakeAmount, refundAddress],
+      await lineaRollup
+        .connect(nonAuthorizedAccount)
+        .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
+      // Arrange LST liability paydown
+      await setupMaxLSTLiabilityPaymentForWithdrawal(
+        yieldManager,
+        mockDashboard,
+        mockVaultHub,
+        mockSTETH,
+        yieldProviderAddress,
+        withdrawLSTAmount,
       );
-      const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness],
-      );
-      // Arrange - first unstake
-      await yieldManager.unstakePermissionless(yieldProviderAddress, withdrawalParams, withdrawalParamsProof);
-      expect(await yieldManager.pendingPermissionlessUnstake()).eq(targetDeficit);
-
-      // Arrange - Prepare second unstakePermissionless
-      const { validatorWitness: validatorWitness2, pubkey: pubkey2 } = await generateLidoUnstakePermissionlessWitness(
-        sszMerkleTree,
-        testVerifier,
-        mockStakingVault2Address,
-        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-      );
-
-      const secondWithdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
-        ["bytes", "uint64[]", "address"],
-        [pubkey2, [1n], refundAddress],
-      );
-      const secondWithdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness2],
-      );
+      // Arrange withdrawal
+      const withdrawAmount = ONE_ETHER * 5n;
+      await mockDashboard.setWithdrawableValueReturn(withdrawAmount);
+      // Arrange - Before figures
+      const lstLiabilityPrincipalBefore =
+        await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
 
       // Act
-      const call = yieldManager.unstakePermissionless(
-        yieldProvider2Address,
-        secondWithdrawalParams,
-        secondWithdrawalParamsProof,
+      await yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(yieldProviderAddress, withdrawAmount);
+
+      // Assert
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(
+        lstLiabilityPrincipalBefore - withdrawAmount,
       );
-      await expectRevertWithCustomError(
+    });
+    it("safeWithdrawFromYieldProvider should paydown LST liability", async () => {
+      // Arrange - initial 10 ETH fund
+      const initialFundAmount = ONE_ETHER * 10n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      // Arrange - 5 ETH LST withdrawal
+      await setBalance(l1MessageServiceAddress, ZERO_VALUE);
+      const withdrawLSTAmount = ONE_ETHER * 5n;
+      const recipientAddress = await nonAuthorizedAccount.getAddress();
+      const claimParams = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        recipientAddress,
+        withdrawLSTAmount,
+        EMPTY_CALLDATA,
+        securityCouncil,
+      );
+      await lineaRollup
+        .connect(nonAuthorizedAccount)
+        .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
+      // Arrange LST liability paydown
+      await setupMaxLSTLiabilityPaymentForWithdrawal(
         yieldManager,
-        call,
-        "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
+        mockDashboard,
+        mockVaultHub,
+        mockSTETH,
+        yieldProviderAddress,
+        withdrawLSTAmount,
+      );
+      // Arrange withdrawal
+      const withdrawAmount = ONE_ETHER * 5n;
+      await mockDashboard.setWithdrawableValueReturn(withdrawAmount);
+      // Arrange - Before figures
+      const lstLiabilityPrincipalBefore =
+        await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
+
+      // Act
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .safeWithdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
+
+      // Assert
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(
+        lstLiabilityPrincipalBefore - withdrawAmount,
+      );
+    });
+    it("replenishWithdrawalReserve should not paydown LST liability", async () => {
+      // Arrange - initial 10 ETH fund
+      const initialFundAmount = ONE_ETHER * 10n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      // Arrange - 5 ETH LST withdrawal
+      await setBalance(l1MessageServiceAddress, ZERO_VALUE);
+      const withdrawLSTAmount = ONE_ETHER * 5n;
+      const recipientAddress = await nonAuthorizedAccount.getAddress();
+      const claimParams = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        recipientAddress,
+        withdrawLSTAmount,
+        EMPTY_CALLDATA,
+        securityCouncil,
+      );
+      await lineaRollup
+        .connect(nonAuthorizedAccount)
+        .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
+      // Arrange LST liability paydown
+      await setupMaxLSTLiabilityPaymentForWithdrawal(
+        yieldManager,
+        mockDashboard,
+        mockVaultHub,
+        mockSTETH,
+        yieldProviderAddress,
+        withdrawLSTAmount,
+      );
+      // Arrange withdrawal
+      const withdrawAmount = ONE_ETHER * 5n;
+      await mockDashboard.setWithdrawableValueReturn(withdrawAmount);
+      // Arrange - Before figures
+      const lstLiabilityPrincipalBefore =
+        await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
+
+      // Act
+      await yieldManager.replenishWithdrawalReserve(yieldProviderAddress);
+
+      // Assert
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(
+        lstLiabilityPrincipalBefore,
       );
     });
   });
@@ -597,10 +680,10 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       const userFundsBefore = await yieldManager.userFunds(yieldProviderAddress);
       // Arrange - Setup first negative yield
       const firstNegativeYield = ONE_ETHER * 5n;
-      await mockDashboard.setTotalValueReturn(initialFundAmount - firstNegativeYield);
-      // Arrange - Setup second negative yield
       const secondNegativeYield = ONE_ETHER * 5n;
-      await mockDashboard.setTotalValueReturn(initialFundAmount - firstNegativeYield - secondNegativeYield);
+      await mockDashboard.setTotalValueReturn(
+        initialFundAmount + CONNECT_DEPOSIT - firstNegativeYield - secondNegativeYield,
+      );
 
       // Act
       const [newReportedYield, outstandingNegativeYield] = await yieldManager
@@ -674,7 +757,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         "NoAvailableFundsToReplenishWithdrawalReserve",
       );
 
-      console.log(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress));
       // Setup max liability payment
       await setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability(
         withdrawLSTAmount,
@@ -735,7 +817,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
 
       // First negative yield event for -5 ETH
       const firstNegativeYield = ONE_ETHER * 5n;
-      await mockDashboard.setTotalValueReturn(initialFundAmount - firstNegativeYield);
+      await mockDashboard.setTotalValueReturn(initialFundAmount + CONNECT_DEPOSIT - firstNegativeYield);
       await decrementBalance(mockStakingVaultAddress, firstNegativeYield);
       {
         const [newReportedYield, outstandingNegativeYield] = await yieldManager
@@ -760,7 +842,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         expect(outstandingNegativeYield).eq(firstNegativeYield + firstObligationsPaid);
       }
       await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
-      expect(await yieldManager.userFunds(yieldProviderAddress)).eq(initialFundAmount);
+      expect(await yieldManager.userFunds(yieldProviderAddress)).eq(initialFundAmount + CONNECT_DEPOSIT);
       expect(await getBalance(mockStakingVault)).eq(mockStakingVaultBalance - firstObligationsPaid);
       await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) - firstObligationsPaid);
       await mockDashboard.setObligationsFeesToSettleReturn(0n);
@@ -859,6 +941,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
 
       // Earn 5 ETH positive yield
       const firstPositiveYield = ONE_ETHER * 5n;
+      await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) + CONNECT_DEPOSIT);
       await incurPositiveYield(
         yieldManager,
         mockDashboard,
@@ -899,7 +982,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await withdrawLST(lineaRollup, nonAuthorizedAccount, yieldProviderAddress, lstWithdrawalAmount, securityCouncil);
       expect(await yieldManager.isStakingPaused(yieldProviderAddress)).eq(true);
 
-      // Do permissionless rebalance with LST paydown
+      // Do permissionless rebalance (should not paydown LST liability)
       const stakingVaultBalance = await getBalance(mockStakingVault);
       const l1MessageServiceBalance = await getBalance(lineaRollup);
       const withdrawableValue = stakingVaultBalance - lstWithdrawalAmount; // Simulate locked balance
@@ -913,13 +996,12 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         lstWithdrawalAmount,
       );
       await yieldManager.connect(nonAuthorizedAccount).replenishWithdrawalReserve(yieldProviderAddress);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
-      expect(await getBalance(mockStakingVault)).eq(0);
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(lstWithdrawalAmount);
+      expect(await getBalance(mockStakingVault)).eq(lstWithdrawalAmount);
       await mockDashboard.setTotalValueReturn(0);
       expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + withdrawableValue);
 
       // Call unstakePermissionless
-      const unstakeAmount = ONE_ETHER * 5n;
       await executeUnstakePermissionless(
         sszMerkleTree,
         testVerifier,
@@ -927,7 +1009,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         yieldProviderAddress,
         mockStakingVaultAddress,
         await nativeYieldOperator.getAddress(),
-        unstakeAmount,
       );
 
       // Some more positive yield
