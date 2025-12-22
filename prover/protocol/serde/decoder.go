@@ -250,16 +250,22 @@ func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
 	// points to the start of that data. Hence, there is no need to distinguish between direct and indirect
 	// types here unlike decodeMapElement.
 	ih := (*InterfaceHeader)(unsafe.Pointer(&dec.data[offset]))
-	if ih.Offset.IsNull() {
-		target.Set(reflect.Zero(target.Type()))
-		return nil
-	}
 	if int(ih.TypeID) < 0 || int(ih.TypeID) >= len(IDToType) {
 		return fmt.Errorf("invalid type ID: %d", ih.TypeID)
 	}
 	concreteType := IDToType[ih.TypeID]
 	for i := 0; i < int(ih.PtrIndirection); i++ {
 		concreteType = reflect.PointerTo(concreteType)
+	}
+
+	// NOTE: We do NOT return early if ih.Offset.IsNull().
+	// A null offset in a header simply means the *value* is nil (e.g. a nil pointer),
+	// but the *type* information in the header is still valid and required.
+	if ih.Offset.IsNull() {
+		// Create a zero value of the concrete type (e.g., (*MyType)(nil))
+		typedNil := reflect.Zero(concreteType)
+		target.Set(typedNil)
+		return nil
 	}
 
 	var concreteVal reflect.Value
