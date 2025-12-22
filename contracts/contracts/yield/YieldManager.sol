@@ -623,6 +623,7 @@ contract YieldManager is
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
     onlyWhenWithdrawalReserveInDeficit(msg.value)
+    nonReentrant
   {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     _validateAndUpdateLastProvenSlot($, _validatorIndex, _slot);
