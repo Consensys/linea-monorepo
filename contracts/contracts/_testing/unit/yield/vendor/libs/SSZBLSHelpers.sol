@@ -5,7 +5,7 @@ pragma solidity 0.8.30;
 
 import { GIndex, pack, concat, fls } from "../../../../../yield/libs/vendor/lido/GIndex.sol";
 import { SSZ } from "../../../../../yield/libs/vendor/lido/SSZ.sol";
-import { BLS12_381 } from "../../../../../yield/libs/vendor/lido/BLS.sol";
+import { PendingPartialWithdrawal } from "../../../../../yield/libs/vendor/lido/BeaconTypes.sol";
 
 // As defined in phase0/beacon-chain.md:159
 type Slot is uint64;
@@ -29,6 +29,7 @@ using { unwrap, lt as <, gt as > } for Slot global;
  original:  https://github.com/lidofinance/community-staking-module/blob/7071c2096983a7780a5f147963aaa5405c0badb1/src/lib/SSZ.sol
 */
 contract SSZBLSHelpers {
+
   // As defined in phase0/beacon-chain.md:356
   struct Validator {
     bytes pubkey;
@@ -52,6 +53,10 @@ contract SSZBLSHelpers {
 
   function depth(GIndex gIndex) public pure returns (uint256) {
     return fls(gIndex.index());
+  }
+
+  function sha256Pair(bytes32 left, bytes32 right) public view returns (bytes32 result) {
+    return SSZ.sha256Pair(left, right);
   }
 
   // canonical implementation from original SSZ
@@ -194,20 +199,20 @@ contract SSZBLSHelpers {
     ];
 
     bytes32[4] memory ValidatorL2 = [
-      BLS12_381.sha256Pair(ValidatorL1[0], ValidatorL1[1]),
-      BLS12_381.sha256Pair(ValidatorL1[2], ValidatorL1[3]),
-      BLS12_381.sha256Pair(ValidatorL1[4], ValidatorL1[5]),
-      BLS12_381.sha256Pair(ValidatorL1[6], ValidatorL1[7])
+      SSZ.sha256Pair(ValidatorL1[0], ValidatorL1[1]),
+      SSZ.sha256Pair(ValidatorL1[2], ValidatorL1[3]),
+      SSZ.sha256Pair(ValidatorL1[4], ValidatorL1[5]),
+      SSZ.sha256Pair(ValidatorL1[6], ValidatorL1[7])
     ];
 
     parentNode = ValidatorL2[0];
 
     bytes32[2] memory ValidatorL3 = [
-      BLS12_381.sha256Pair(ValidatorL2[0], ValidatorL2[1]),
-      BLS12_381.sha256Pair(ValidatorL2[2], ValidatorL2[3])
+      SSZ.sha256Pair(ValidatorL2[0], ValidatorL2[1]),
+      SSZ.sha256Pair(ValidatorL2[2], ValidatorL2[3])
     ];
 
-    root = BLS12_381.sha256Pair(ValidatorL3[0], ValidatorL3[1]);
+    root = SSZ.sha256Pair(ValidatorL3[0], ValidatorL3[1]);
     // validates this hardcode against canonical implementation
     require(root == validatorHashTreeRootCalldata(validator), "root mismatch");
 
@@ -311,18 +316,18 @@ contract SSZBLSHelpers {
     ];
 
     bytes32[4] memory BlockHeaderL2 = [
-      BLS12_381.sha256Pair(BlockHeaderL1[0], BlockHeaderL1[1]),
-      BLS12_381.sha256Pair(BlockHeaderL1[2], BlockHeaderL1[3]),
-      BLS12_381.sha256Pair(BlockHeaderL1[4], BlockHeaderL1[5]),
-      BLS12_381.sha256Pair(BlockHeaderL1[6], BlockHeaderL1[7])
+      SSZ.sha256Pair(BlockHeaderL1[0], BlockHeaderL1[1]),
+      SSZ.sha256Pair(BlockHeaderL1[2], BlockHeaderL1[3]),
+      SSZ.sha256Pair(BlockHeaderL1[4], BlockHeaderL1[5]),
+      SSZ.sha256Pair(BlockHeaderL1[6], BlockHeaderL1[7])
     ];
 
     bytes32[2] memory BlockHeaderL3 = [
-      BLS12_381.sha256Pair(BlockHeaderL2[0], BlockHeaderL2[1]),
-      BLS12_381.sha256Pair(BlockHeaderL2[2], BlockHeaderL2[3])
+      SSZ.sha256Pair(BlockHeaderL2[0], BlockHeaderL2[1]),
+      SSZ.sha256Pair(BlockHeaderL2[2], BlockHeaderL2[3])
     ];
 
-    root = BLS12_381.sha256Pair(BlockHeaderL3[0], BlockHeaderL3[1]);
+    root = SSZ.sha256Pair(BlockHeaderL3[0], BlockHeaderL3[1]);
     leaf = header.stateRoot;
 
     // validates this hardcode against canonical implementation
@@ -363,5 +368,12 @@ contract SSZBLSHelpers {
 
   function toLittleEndian(bool v) public pure returns (bytes32) {
     return bytes32(v ? 1 << 248 : 0);
+  }
+
+  /// @notice Computes the SSZ hash tree root of an array of pending partial withdrawals.
+  /// @param pendingPartialWithdrawal The array of pending partial withdrawals to compute the hash tree root for.
+  /// @return root The SSZ hash tree root with length mixed in: mix_in_length(merkleize_progressive(...), len(value)).
+  function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) public view returns (bytes32 root) {
+    return SSZ.hashTreeRoot(pendingPartialWithdrawal);
   }
 }

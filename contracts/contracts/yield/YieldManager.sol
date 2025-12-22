@@ -57,6 +57,9 @@ contract YieldManager is
   /// @notice 100% in BPS.
   uint256 constant internal MAX_BPS = 10000;
 
+  /// @notice The number of slots per historical beacon chain root.
+  uint64 constant internal SLOTS_PER_HISTORICAL_ROOT = 8192;
+
   /**
    * @notice Minimum withdrawal reserve percentage in bps.
    * @return The withdrawal reserve percentage threshold in basis points (where 10000 = 100%).
@@ -598,12 +601,11 @@ contract YieldManager is
    * @param _yieldProvider          Yield provider address.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
    * @param _withdrawalParamsProof  Data containing merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
-   * @return maxUnstakeAmount       Maximum amount expected to be withdrawn from the beacon chain.
-   *                                - Cannot efficiently get exact amount as relevant state and computation is located in the consensus client,
-   *                                and not the execution layer.
    */
   function unstakePermissionless(
     address _yieldProvider,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   )
@@ -612,28 +614,48 @@ contract YieldManager is
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
     onlyWhenWithdrawalReserveInDeficit(msg.value)
-    nonReentrant
-    returns (uint256 maxUnstakeAmount)
   {
-    bytes memory data = _delegatecallYieldProvider(
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    _validateAndUpdateLastProvenSlot($, _validatorIndex, _slot);
+
+    uint256 requiredUnstakeAmountWei = Math256.safeSub(_getTargetReserveDeficit(msg.value), address(this).balance - msg.value + withdrawableValue(_yieldProvider) + $.pendingPermissionlessUnstake);
+    if (requiredUnstakeAmountWei == 0) revert NoRequirementToUnstakePermissionless();
+
+    uint256 unstakedAmountWei = abi.decode(_delegatecallYieldProvider(
       _yieldProvider,
-      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
-    );
-    maxUnstakeAmount = abi.decode(data, (uint256));
-    if (maxUnstakeAmount == 0) {
-      revert YieldProviderReturnedZeroUnstakeAmount();
-    }
-    // Validate maxUnstakeAmount
-    uint256 targetDeficit = _getTargetReserveDeficit(msg.value);
-    uint256 availableFundsToSettleTargetDeficit = address(this).balance +
-      withdrawableValue(_yieldProvider) +
-      _getYieldManagerStorage().pendingPermissionlessUnstake;
-    if (availableFundsToSettleTargetDeficit + maxUnstakeAmount > targetDeficit) {
-      revert PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
+      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, requiredUnstakeAmountWei, _validatorIndex, _slot, _withdrawalParams, _withdrawalParamsProof))
+    ), (uint256));
+    if (unstakedAmountWei == 0) revert YieldProviderReturnedZeroUnstakeAmount();
+    if (unstakedAmountWei > requiredUnstakeAmountWei) {
+      revert UnstakedAmountExceedsRequired(unstakedAmountWei, requiredUnstakeAmountWei);
     }
 
-    _getYieldManagerStorage().pendingPermissionlessUnstake += maxUnstakeAmount;
-    // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
+    $.pendingPermissionlessUnstake += unstakedAmountWei;
+    emit UnstakePermissionlessRequest(_yieldProvider, _validatorIndex, _slot, requiredUnstakeAmountWei, unstakedAmountWei, _withdrawalParams);
+  }
+
+  /**
+  * @notice Validates that a slot is sufficiently far from the last proven slot and updates the last proven slot.
+  * @dev Used to avoid replay attack and enforce minimum 8192 slot interval between proofs.
+  * @dev Perform storage update before potential reentrancy points to follow checks-effects-interactions pattern.
+  * @dev This function was extracted from unstakePermissionless to avoid stack-too-deep compilation errors.
+  * @param $ Storage pointer for YieldManager storage.
+  * @param _validatorIndex The index of the validator.
+  * @param _slot The slot to validate and set as the new last proven slot.
+  * @custom:reverts SlotTooCloseToLastProvenSlot If the provided slot is within SLOTS_PER_HISTORICAL_ROOT
+  *         of the last proven slot for this validator.
+  */
+  function _validateAndUpdateLastProvenSlot(
+    YieldManagerStorage storage $,
+    uint64 _validatorIndex,
+    uint64 _slot
+  ) internal {
+    uint64 lastProvenSlot = $.lastProvenSlot[_validatorIndex];
+    if (_slot <= lastProvenSlot + SLOTS_PER_HISTORICAL_ROOT) {
+      revert SlotTooCloseToLastProvenSlot(_validatorIndex, lastProvenSlot, _slot);
+    }
+    // Place storage update before possible reentrancy in _delegatecallYieldProvider
+    $.lastProvenSlot[_validatorIndex] = _slot;
   }
 
   /**

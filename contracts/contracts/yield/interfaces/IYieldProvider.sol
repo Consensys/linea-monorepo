@@ -60,10 +60,11 @@ interface IYieldProvider {
   /**
    * @notice Returns the amount of ETH the provider can immediately remit back to the YieldManager.
    * @dev Called via `delegatecall` from the YieldManager.
+   * @dev Made a payable function to be `delegatecall-able` from YieldManager.unstakePermissionless().
    * @param _yieldProvider The yield provider address.
    * @return availableBalance The ETH amount that can be withdrawn.
    */
-  function withdrawableValue(address _yieldProvider) external view returns (uint256 availableBalance);
+  function withdrawableValue(address _yieldProvider) external payable returns (uint256 availableBalance);
 
   /**
    * @notice Forwards ETH from the YieldManager to the yield provider.
@@ -100,15 +101,21 @@ interface IYieldProvider {
    *      and enforce any provider-specific safety checks. The returned amount is used by the
    *      YieldManager to cap pending withdrawals tracked on L1.
    * @param _yieldProvider The yield provider address.
+   * @param _requiredUnstakeAmount Required unstake amount in wei.
+   * @param _validatorIndex Validator index for validator to withdraw from.
+   * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams ABI encoded provider parameters.
    * @param _withdrawalParamsProof Proof data (typically a beacon chain Merkle proof).
-   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
+   * @return unstakedAmountWei Maximum ETH amount expected to be withdrawn as a result of this request (in wei).
    */
   function unstakePermissionless(
     address _yieldProvider,
+    uint256 _requiredUnstakeAmount,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable returns (uint256 maxUnstakeAmount);
+  ) external payable returns (uint256 unstakedAmountWei);
 
   /**
    * @notice Hook called before withdrawing ETH from the YieldProvider.

@@ -2,8 +2,8 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { TestGIndex, TestSSZ } from "contracts/typechain-types";
 import { deployFromFactory } from "contracts/test/common/deployment";
-import { hexlify, randomBytes, ZeroHash, zeroPadBytes } from "ethers";
-import { BeaconBlockHeader, ValidatorContainer } from "contracts/test/yield/helpers/types";
+import { hexlify, randomBytes, zeroPadBytes, ZeroHash, sha256, concat, getBytes } from "ethers";
+import { BeaconBlockHeader, PendingPartialWithdrawal, ValidatorContainer } from "contracts/test/yield/helpers/types";
 import { expectRevertWithCustomError } from "contracts/test/common/helpers";
 import { UINT64_MAX } from "contracts/test/common/constants";
 
@@ -190,6 +190,210 @@ describe("SSZ", () => {
     });
   });
 
+  // Test cases - https://github.com/ethereum/consensus-spec-tests/tree/master/tests/mainnet/electra/ssz_static/PendingPartialWithdrawal/ssz_random
+  describe("hashTreeRoot(PendingPartialWithdrawal)", () => {
+    it("example", async () => {
+      const pendingPartialWithdrawal: PendingPartialWithdrawal = {
+        validatorIndex: 0,
+        amount: 1,
+        withdrawableEpoch: 2,
+      };
+
+      const expected = "0x4a07d56213d62b2d194a3cc1f19bec40364540bdf3d45eb0d6fe82094d21b4dc";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawal(pendingPartialWithdrawal);
+      expect(actual).to.equal(expected);
+    });
+
+    it("example 2", async () => {
+      const pendingPartialWithdrawal: PendingPartialWithdrawal = {
+        validatorIndex: 0,
+        amount: 1,
+        withdrawableEpoch: 0,
+      };
+
+      const expected = "0x4833912e1264aef8a18392d795f3f2eed17cf5c0e8471cb0c0db2ec5aca10231";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawal(pendingPartialWithdrawal);
+      expect(actual).to.equal(expected);
+    });
+
+    it("all zeroes", async () => {
+      const pendingPartialWithdrawal: PendingPartialWithdrawal = {
+        validatorIndex: 0,
+        amount: 0,
+        withdrawableEpoch: 0,
+      };
+
+      const expected = "0xdb56114e00fdd4c1f85c892bf35ac9a89289aaecb1ebd0a96cde606a748b5d71";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawal(pendingPartialWithdrawal);
+      expect(actual).to.equal(expected);
+    });
+
+    it("example 3", async () => {
+      const pendingPartialWithdrawal: PendingPartialWithdrawal = {
+        validatorIndex: 9556824998668043785n,
+        amount: 18095667167504007302n,
+        withdrawableEpoch: 12065041970590563750n,
+      };
+
+      const expected = "0xfee5527172fd2af098adcdfa5d4108ffc52d19b4cb03fcdb186685a11147fe7b";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawal(pendingPartialWithdrawal);
+      expect(actual).to.equal(expected);
+    });
+  });
+
+  // Obtained expected hashes from https://github.com/kyzooghost/consensus-specs/blob/7a27a0ecb17255b04618f96220bcda3de88bed28/tests/core/pyspec/eth2spec/utils/test_merkle_minimal.py#L127-L186
+  // Run `make test k=test_merkleize_chunks_with_mix_in_length` from the project root
+  describe("hashTreeRoot(PendingPartialWithdrawal[])", () => {
+    it("empty array", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [];
+
+      const expected = "0xfcada1ce97f6629a9b31bd46dc9824a4ee18e91bb76243e16387616176e1d899";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
+
+    it("single element", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+        {
+          validatorIndex: 0,
+          amount: 1,
+          withdrawableEpoch: 2,
+        },
+      ];
+
+      const expected = "0x4cf2a5b8d91e782f8f2b060a7cbf904d2ae73e063cd032a433b396aeb69be647";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
+
+    it("two elements", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+        // 0x4a07d56213d62b2d194a3cc1f19bec40364540bdf3d45eb0d6fe82094d21b4dc
+        {
+          validatorIndex: 0,
+          amount: 1,
+          withdrawableEpoch: 2,
+        },
+        // 0x4833912e1264aef8a18392d795f3f2eed17cf5c0e8471cb0c0db2ec5aca10231
+        {
+          validatorIndex: 0,
+          amount: 1,
+          withdrawableEpoch: 0,
+        },
+      ];
+
+      const expected = "0xef5ec7811106d9b2f4323d7e730d3c2dbd1ac3a94082e55cf407dad718b7cf18";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
+
+    it("three elements", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+        // 0xdb56114e00fdd4c1f85c892bf35ac9a89289aaecb1ebd0a96cde606a748b5d71
+        {
+          validatorIndex: 0,
+          amount: 0,
+          withdrawableEpoch: 0,
+        },
+        {
+          validatorIndex: 0,
+          amount: 0,
+          withdrawableEpoch: 0,
+        },
+        {
+          validatorIndex: 0,
+          amount: 0,
+          withdrawableEpoch: 0,
+        },
+      ];
+
+      const expected = "0x46c3a97159201f02892f56dd655dea88e234bdb63b5e3ae33641b1fd767c806e";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
+
+    it("four elements", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+        // 0xfee5527172fd2af098adcdfa5d4108ffc52d19b4cb03fcdb186685a11147fe7b
+        {
+          validatorIndex: 9556824998668043785n,
+          amount: 18095667167504007302n,
+          withdrawableEpoch: 12065041970590563750n,
+        },
+        // 0xd4c8a4e38ed4d4d09d3b74df1d825d244243218fa2ce1878eeb3d0356ec7fcab
+        {
+          validatorIndex: 18198258603828382500n,
+          amount: 4349232369502288358n,
+          withdrawableEpoch: 3598560756448475534n,
+        },
+        // 0x3548a86db6940952e5ab87b50e46cfbdb2324603ccfac73836834a87f160181a
+        {
+          validatorIndex: 12778732824589014348n,
+          amount: 4849311627484200036n,
+          withdrawableEpoch: 457195784761064180n,
+        },
+        // 0x8ceb740b26a61041ea7dc2d6b1372686cf3381150bd9d9a19cfafeb9e0335c04
+        {
+          validatorIndex: 350840880130630803n,
+          amount: 8902480238376794760n,
+          withdrawableEpoch: 3145816884024322139n,
+        },
+      ];
+
+      const expected = "0xd47528eb7a0c6e3edf7d69c824d90a7e583455667e05f7e9c905864b5a332c06";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
+
+    it("five elements", async () => {
+      const pendingPartialWithdrawals: PendingPartialWithdrawal[] = [
+        // 0xfee5527172fd2af098adcdfa5d4108ffc52d19b4cb03fcdb186685a11147fe7b
+        {
+          validatorIndex: 9556824998668043785n,
+          amount: 18095667167504007302n,
+          withdrawableEpoch: 12065041970590563750n,
+        },
+        // 0xd4c8a4e38ed4d4d09d3b74df1d825d244243218fa2ce1878eeb3d0356ec7fcab
+        {
+          validatorIndex: 18198258603828382500n,
+          amount: 4349232369502288358n,
+          withdrawableEpoch: 3598560756448475534n,
+        },
+        // 0x3548a86db6940952e5ab87b50e46cfbdb2324603ccfac73836834a87f160181a
+        {
+          validatorIndex: 12778732824589014348n,
+          amount: 4849311627484200036n,
+          withdrawableEpoch: 457195784761064180n,
+        },
+        // 0x8ceb740b26a61041ea7dc2d6b1372686cf3381150bd9d9a19cfafeb9e0335c04
+        {
+          validatorIndex: 350840880130630803n,
+          amount: 8902480238376794760n,
+          withdrawableEpoch: 3145816884024322139n,
+        },
+        // 0xde460e5b596f11e6791d4b658544351a44e8bfc86b0952b8ac655354b399adad
+        {
+          validatorIndex: 17694784621958833581n,
+          amount: 4314273187093803793n,
+          withdrawableEpoch: 8404893953447176506n,
+        },
+      ];
+
+      const expected = "0xb503de61a6faaee49ba30ce6fc2216c7306aa0e46611aeacb5f29f2eacd53d0f";
+      const actual = await ssz.hashTreeRoot_PendingPartialWithdrawalArray(pendingPartialWithdrawals);
+      expect(actual).to.equal(expected);
+    });
+
+    // Note: Testing with exactly 2^27 or 2^27 + 1 elements is impractical due to JavaScript
+    // array size limitations (RangeError: Invalid array length). The bounds check
+    // `if (count > (1 << MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH))` is verified through:
+    // 1. Code review - the check is straightforward and correctly placed
+    // 2. Existing tests verify the function works correctly for normal-sized arrays
+    // 3. The check happens before any processing, so invalid inputs fail fast
+    // In practice, arrays larger than 2^27 would be rejected by the bounds check,
+    // preventing out-of-bounds writes in mergeSSZChunk.
+  });
+
   describe("verifyProof", () => {
     // For the tests below, assume there's the following tree from the bottom up:
     // --
@@ -307,6 +511,26 @@ describe("SSZ", () => {
           await gIndexLib.pack(8, 0),
         ),
       ).to.be.revertedWithCustomError(ssz, "BranchHasMissingItem");
+    });
+  });
+
+  describe("sha256Pair", () => {
+    it("zeros + zeros", async () => {
+      const left = ZeroHash;
+      const right = ZeroHash;
+
+      const expected = sha256(concat([getBytes(left), getBytes(right)]));
+      const actual = await ssz.sha256Pair(left, right);
+      expect(actual).to.equal(expected);
+    });
+
+    it("distinct inputs", async () => {
+      const left = "0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5";
+      const right = "0xf4551dd23f47858f0e66957db62a0bced8cfd5e9cbd63f2fd73672ed0db7c124";
+
+      const expected = sha256(concat([getBytes(left), getBytes(right)]));
+      const actual = await ssz.sha256Pair(left, right);
+      expect(actual).to.equal(expected);
     });
   });
 });

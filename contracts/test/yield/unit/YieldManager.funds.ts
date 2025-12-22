@@ -41,6 +41,8 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
   const mockWithdrawalParams = ethers.hexlify(ethers.randomBytes(8));
   const mockWithdrawalParamsProof = ethers.hexlify(ethers.randomBytes(8));
+  const mockValidatorIndex = 0n;
+  const mockSlot = 100000n; // Must be > lastProvenSlot + SLOTS_PER_HISTORICAL_ROOT (8192)
 
   before(async () => {
     ({
@@ -399,7 +401,13 @@ describe("YieldManager contract - ETH transfer operations", () => {
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
-          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
         "IsPaused",
         [GENERAL_PAUSE_TYPE],
       );
@@ -413,7 +421,13 @@ describe("YieldManager contract - ETH transfer operations", () => {
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
-          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
         "IsPaused",
         [NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE],
       );
@@ -424,7 +438,13 @@ describe("YieldManager contract - ETH transfer operations", () => {
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
-          .unstakePermissionless(ethers.Wallet.createRandom().address, mockWithdrawalParams, mockWithdrawalParamsProof),
+          .unstakePermissionless(
+            ethers.Wallet.createRandom().address,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
         "UnknownYieldProvider",
       );
     });
@@ -442,7 +462,13 @@ describe("YieldManager contract - ETH transfer operations", () => {
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
-          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
         "WithdrawalReserveNotInDeficit",
       );
     });
@@ -461,124 +487,230 @@ describe("YieldManager contract - ETH transfer operations", () => {
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
-          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof, {
-            value: msgValue,
-          }),
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+            { value: msgValue },
+          ),
         "WithdrawalReserveNotInDeficit",
       );
     });
 
-    it("Should revert when there is sufficient withdrawable YieldProvider value to cover target deficit", async () => {
-      // Arrange - Put targetDeficit on YieldProvider
-      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, targetReserveAmount);
-      // Arrange - Ensure 0 balance on L1MessageService
+    it("Should revert when the slot is too close to the last proven slot for the validator", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const SLOTS_PER_HISTORICAL_ROOT = 8192n;
+
+      // Arrange - Set up withdrawal reserve in deficit
       await ethers.provider.send("hardhat_setBalance", [await mockLineaRollup.getAddress(), ethers.toBeHex(0)]);
 
-      // Act
-      const unstakeAmount = 1n;
+      // Arrange - Set up mocks for successful first call
+      const unstakeAmount = ONE_ETHER;
+      await yieldManager.setWithdrawableValueReturnVal(mockYieldProviderAddress, 0n);
+      await yieldManager.setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
+
+      // Arrange - First call with slot = 100000, which sets lastProvenSlot[validatorIndex] = 100000
+      const firstSlot = 100000n;
       await yieldManager
         .connect(nativeYieldOperator)
-        .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
+        .unstakePermissionless(
+          mockYieldProviderAddress,
+          mockValidatorIndex,
+          firstSlot,
+          mockWithdrawalParams,
+          mockWithdrawalParamsProof,
+        );
+
+      // Arrange - Try to call again with slot that's too close (<= lastProvenSlot + SLOTS_PER_HISTORICAL_ROOT)
+      // lastProvenSlot = 100000, so slot must be > 100000 + 8192 = 108192
+      // Using slot = 108192 should revert (boundary case)
+      const tooCloseSlot = firstSlot + SLOTS_PER_HISTORICAL_ROOT;
 
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
-          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
-        "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            tooCloseSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
+        "SlotTooCloseToLastProvenSlot",
+        [mockValidatorIndex, firstSlot, tooCloseSlot],
       );
     });
 
-    it("Should revert when there is sufficient YieldManager balance to cover target deficit", async () => {
+    it("Should revert when requiredUnstakeAmountWei is 0", async () => {
+      // Arrange - Put targetDeficit on YieldProvider
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-      await ethers.provider.send("hardhat_setBalance", [
-        await yieldManager.getAddress(),
-        ethers.toBeHex(targetReserveAmount),
-      ]);
-      const unstakeAmount = 1n;
-      await yieldManager
-        .connect(nativeYieldOperator)
-        .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
+      await setBalance(await mockLineaRollup.getAddress(), 0n);
+      await setBalance(await yieldManager.getAddress(), 10n + targetReserveAmount / 3n);
+      await yieldManager.setWithdrawableValueReturnVal(mockYieldProviderAddress, targetReserveAmount / 3n);
+      await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, targetReserveAmount / 3n);
+      await yieldManager.setPendingPermissionlessUnstake(targetReserveAmount / 3n);
 
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
-          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
-        "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
+        "NoRequirementToUnstakePermissionless",
+      );
+    });
+
+    it("Should revert when requiredUnstakeAmountWei is 0, ignoring msg.value", async () => {
+      // Arrange - Put targetDeficit on YieldProvider
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
+      await setBalance(await mockLineaRollup.getAddress(), 0n);
+      await setBalance(await yieldManager.getAddress(), 10n + targetReserveAmount / 3n);
+      await yieldManager.setWithdrawableValueReturnVal(mockYieldProviderAddress, targetReserveAmount / 3n);
+      await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, targetReserveAmount / 3n);
+      await yieldManager.setPendingPermissionlessUnstake(targetReserveAmount / 3n);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+            { value: ONE_ETHER * 8000n },
+          ),
+        "NoRequirementToUnstakePermissionless",
       );
     });
 
     it("Should revert when the YieldProvider returns 0 unstake amount", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-      await ethers.provider.send("hardhat_setBalance", [
-        await yieldManager.getAddress(),
-        ethers.toBeHex(targetReserveAmount),
-      ]);
-      const unstakeAmount = 0n;
-      await yieldManager
-        .connect(nativeYieldOperator)
-        .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
+      await yieldManager.connect(nativeYieldOperator).setUnstakePermissionlessReturnVal(mockYieldProviderAddress, 0n);
 
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
-          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
         "YieldProviderReturnedZeroUnstakeAmount",
       );
     });
 
-    it("Should successfully submit the unstake request, change state and emit the expected event", async () => {
+    it("Should revert when unstake amount > required unstake amount", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-      const unstakeAmount = targetReserveAmount;
-
+      const targetDeficit = await yieldManager.getTargetReserveDeficit();
       await yieldManager
         .connect(nativeYieldOperator)
-        .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
-
-      await yieldManager
-        .connect(nativeYieldOperator)
-        .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof);
-
-      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(unstakeAmount);
-    });
-
-    it("Should revert if unstake amount is larger than target deficit", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-      const unstakeAmount = targetReserveAmount + 1n;
-      await yieldManager
-        .connect(nativeYieldOperator)
-        .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
+        .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, targetDeficit * 2n);
 
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
-          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
-        "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
+        "UnstakedAmountExceedsRequired",
+        [targetDeficit * 2n, targetDeficit],
       );
     });
 
+    it("Should successfully submit the unstake request, change state and emit the expected event", async () => {
+      // Arrange - Set up withdrawal reserve in deficit
+      await setBalance(await mockLineaRollup.getAddress(), 0n);
+
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
+
+      // Set up balances so requiredUnstakeAmountWei is non-zero
+      // requiredUnstakeAmountWei = targetDeficit - (YieldManager.balance + withdrawableValue + pendingPermissionlessUnstake)
+      // We want requiredUnstakeAmountWei > 0, so we set balances to be less than targetDeficit
+      const yieldManagerBalance = targetReserveAmount / 3n;
+      await setBalance(await yieldManager.getAddress(), yieldManagerBalance);
+      await yieldManager.setWithdrawableValueReturnVal(mockYieldProviderAddress, 0n);
+      await yieldManager.setPendingPermissionlessUnstake(0n);
+
+      // Calculate expected requiredUnstakeAmountWei
+      const targetDeficit = await yieldManager.getTargetReserveDeficit();
+      const expectedRequiredUnstakeAmountWei = targetDeficit - yieldManagerBalance;
+
+      // Set unstakedAmount to be non-zero and less than or equal to requiredUnstakeAmountWei
+      const unstakedAmount = expectedRequiredUnstakeAmountWei;
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakedAmount);
+
+      await expect(
+        yieldManager
+          .connect(nativeYieldOperator)
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            mockSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
+      )
+        .to.emit(yieldManager, "UnstakePermissionlessRequest")
+        .withArgs(
+          mockYieldProviderAddress,
+          mockValidatorIndex,
+          mockSlot,
+          expectedRequiredUnstakeAmountWei,
+          unstakedAmount,
+          mockWithdrawalParams,
+        );
+
+      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(unstakedAmount);
+      // TODO: Add assertion for slot state change.
+    });
+
     it("After submitting one unstake request that restores the reserve deficit, the next permissionless request reverts", async () => {
+      // Arrange - Set up withdrawal reserve in deficit
+      await setBalance(await mockLineaRollup.getAddress(), 0n);
+
       // Arrange - First do unstake permissionless up to maximum capacity
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
       const unstakeAmount = targetReserveAmount;
 
+      await yieldManager.setWithdrawableValueReturnVal(mockYieldProviderAddress, 0n);
       await yieldManager
         .connect(nativeYieldOperator)
         .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
 
+      const firstSlot = mockSlot;
       await yieldManager
         .connect(nativeYieldOperator)
-        .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof);
+        .unstakePermissionless(
+          mockYieldProviderAddress,
+          mockValidatorIndex,
+          firstSlot,
+          mockWithdrawalParams,
+          mockWithdrawalParamsProof,
+        );
 
       expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(unstakeAmount);
 
@@ -588,12 +720,21 @@ describe("YieldManager contract - ETH transfer operations", () => {
         .connect(nativeYieldOperator)
         .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, secondUnstakeAmount);
 
+      // Use a slot that's far enough from the first slot (firstSlot + SLOTS_PER_HISTORICAL_ROOT + 1)
+      const secondSlot = firstSlot + 8192n + 1n;
+
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
-          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
-        "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
+          .unstakePermissionless(
+            mockYieldProviderAddress,
+            mockValidatorIndex,
+            secondSlot,
+            mockWithdrawalParams,
+            mockWithdrawalParamsProof,
+          ),
+        "NoRequirementToUnstakePermissionless",
       );
     });
   });

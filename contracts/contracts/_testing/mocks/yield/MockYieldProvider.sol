@@ -10,7 +10,7 @@ import { MockYieldProviderStorageLayout } from "./MockYieldProviderStorageLayout
 import { IMockWithdrawTarget } from "./MockWithdrawTarget.sol";
 
 contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
-  function withdrawableValue(address _yieldProvider) external view returns (uint256 availableBalance) {
+  function withdrawableValue(address _yieldProvider) external payable returns (uint256 availableBalance) {
     return withdrawableValueReturnVal(_yieldProvider);
   }
 
@@ -47,9 +47,12 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
 
   function unstakePermissionless(
     address _yieldProvider,
+    uint256 _requiredUnstakeAmount,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable returns (uint256 maxUnstakeAmount) {
+  ) external payable returns (uint256 unstakedAmount) {
     return unstakePermissionlessReturnVal(_yieldProvider);
   }
 

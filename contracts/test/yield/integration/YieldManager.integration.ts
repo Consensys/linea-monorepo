@@ -38,16 +38,7 @@ import {
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import {
-  CONNECT_DEPOSIT,
-  EMPTY_CALLDATA,
-  MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-  ONE_ETHER,
-  ONE_GWEI,
-  VALIDATOR_WITNESS_TYPE,
-  ZERO_VALUE,
-} from "../../common/constants";
-import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
+import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE, CONNECT_DEPOSIT } from "../../common/constants";
 
 describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldProvider", () => {
   let nativeYieldOperator: SignerWithAddress;
@@ -546,103 +537,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
     });
   });
 
-  describe("unstakePermissionless", () => {
-    it("Unstake permissionless cap should be shared globally across all yield providers", async () => {
-      // Arrange - add additional yield provider
-      const { yieldProviderAddress: yieldProvider2Address, mockStakingVaultAddress: mockStakingVault2Address } =
-        await deployAndAddAdditionalLidoStVaultYieldProvider(
-          lidoStVaultYieldProviderFactory,
-          yieldManager,
-          securityCouncil,
-          mockVaultFactory,
-        );
-      // Arrange - Prepare first unstakePermissionless
-      const targetDeficit = await yieldManager.getTargetReserveDeficit();
-      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
-        sszMerkleTree,
-        testVerifier,
-        mockStakingVaultAddress,
-        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-      );
-      const refundAddress = nativeYieldOperator.address;
-      const unstakeAmount = [targetDeficit / ONE_GWEI];
-      const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
-        ["bytes", "uint64[]", "address"],
-        [pubkey, unstakeAmount, refundAddress],
-      );
-      const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness],
-      );
-      // Arrange - first unstake
-      await yieldManager.unstakePermissionless(yieldProviderAddress, withdrawalParams, withdrawalParamsProof);
-      expect(await yieldManager.pendingPermissionlessUnstake()).eq(targetDeficit);
-
-      // Arrange - Prepare second unstakePermissionless
-      const { validatorWitness: validatorWitness2, pubkey: pubkey2 } = await generateLidoUnstakePermissionlessWitness(
-        sszMerkleTree,
-        testVerifier,
-        mockStakingVault2Address,
-        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-      );
-
-      const secondWithdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
-        ["bytes", "uint64[]", "address"],
-        [pubkey2, [1n], refundAddress],
-      );
-      const secondWithdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness2],
-      );
-
-      // Act
-      const call = yieldManager.unstakePermissionless(
-        yieldProvider2Address,
-        secondWithdrawalParams,
-        secondWithdrawalParamsProof,
-      );
-      await expectRevertWithCustomError(
-        yieldManager,
-        call,
-        "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
-      );
-    });
-    it("Should decrement pendingPermissionlessUnstake on withdrawal from YieldProvider", async () => {
-      // Arrange - Prepare first unstakePermissionless
-      const targetDeficit = await yieldManager.getTargetReserveDeficit();
-      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
-        sszMerkleTree,
-        testVerifier,
-        mockStakingVaultAddress,
-        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-      );
-      const refundAddress = nativeYieldOperator.address;
-      const unstakeAmount = [targetDeficit / ONE_GWEI];
-      const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
-        ["bytes", "uint64[]", "address"],
-        [pubkey, unstakeAmount, refundAddress],
-      );
-      const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
-        [VALIDATOR_WITNESS_TYPE],
-        [validatorWitness],
-      );
-      // Arrange - first unstake
-      await yieldManager.unstakePermissionless(yieldProviderAddress, withdrawalParams, withdrawalParamsProof);
-      expect(await yieldManager.pendingPermissionlessUnstake()).eq(targetDeficit);
-
-      // Arrange - setup user funds
-      const initialFundAmount = ONE_ETHER * 10n;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
-
-      // Act
-      await mockDashboard.setWithdrawableValueReturn(ONE_ETHER);
-      await yieldManager.connect(nativeYieldOperator).safeWithdrawFromYieldProvider(yieldProviderAddress, ONE_ETHER);
-
-      // Assert
-      expect(await yieldManager.pendingPermissionlessUnstake()).eq(targetDeficit - ONE_ETHER);
-    });
-  });
-
   describe("Withdrawals", () => {
     it("safeAddToWithdrawalReserve should paydown LST liability", async () => {
       // Arrange - initial 10 ETH fund
@@ -1108,7 +1002,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + withdrawableValue);
 
       // Call unstakePermissionless
-      const unstakeAmount = ONE_ETHER * 5n;
       await executeUnstakePermissionless(
         sszMerkleTree,
         testVerifier,
@@ -1116,7 +1009,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         yieldProviderAddress,
         mockStakingVaultAddress,
         await nativeYieldOperator.getAddress(),
-        unstakeAmount,
       );
 
       // Some more positive yield

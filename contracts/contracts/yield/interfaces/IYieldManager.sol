@@ -135,6 +135,25 @@ interface IYieldManager {
   );
 
   /**
+   * @notice Emitted when a permissionless unstake request is made.
+   * @param yieldProvider The yield provider address.
+   * @param validatorIndex The validator index for the withdrawal.
+   * @param slot The slot of the beacon block for which the proof is generated.
+   * @param requiredUnstakeAmount The unstake amount required to restore the reserve to target threshold,
+   *                               considering YieldProvider balance, YieldManager balance, and pending permissionless unstake amounts.
+   * @param unstakedAmount The maximum amount expected to be withdrawn from the beacon chain.
+   * @param withdrawalParams Provider-specific withdrawal parameters.
+   */
+  event UnstakePermissionlessRequest(
+    address indexed yieldProvider,
+    uint64 indexed validatorIndex,
+    uint64 indexed slot,
+    uint256 requiredUnstakeAmount,
+    uint256 unstakedAmount,
+    bytes withdrawalParams
+  );
+
+  /**
    * @notice Emitted when staking is paused for a YieldProvider.
    * @param yieldProvider The yield provider address.
    */
@@ -169,13 +188,6 @@ interface IYieldManager {
     address indexed yieldProvider,
     ProgressOssificationResult progressOssificationResult
   );
-
-  /**
-   * @notice Emitted when a donation is received.
-   * @param yieldProvider YieldProvider instance whose negative yield was offset.
-   * @param amount Amount of ETH donated.
-   */
-  event DonationProcessed(address indexed yieldProvider, uint256 amount);
 
   /**
    * @notice Emitted when a yield provider is added.
@@ -268,16 +280,23 @@ interface IYieldManager {
   error InsufficientWithdrawalReserve();
 
   /**
-   * @dev Thrown when caller is missing a required role.
-   * @param role1 First accepted role.
-   * @param role2 Second acceptable role.
-   */
-  error CallerMissingRole(bytes32 role1, bytes32 role2);
-
-  /**
    * @dev Thrown when a permissionless rebalance operation is attempted when the withdrawal reserve is not in deficit.
    */
   error WithdrawalReserveNotInDeficit();
+
+  /**
+   * @dev Thrown when a slot is too close to the last proven slot for a validator.
+   *      The slot must be more than SLOTS_PER_HISTORICAL_ROOT (8192) slots ahead of the last proven slot.
+   * @param _validatorIndex The validator index.
+   * @param _lastProvenSlot The last proven slot.
+   * @param _slot The slot for the current proof.
+   */
+  error SlotTooCloseToLastProvenSlot(uint256 _validatorIndex, uint256 _lastProvenSlot, uint256 _slot);
+
+  /**
+   * @dev Returned when there is 0 required unstake amount for unstakePermissionless.
+   */
+  error NoRequirementToUnstakePermissionless();
 
   /**
    * @dev Returned when YieldProvider returns that 0 amount was unstaked.
@@ -285,10 +304,11 @@ interface IYieldManager {
   error YieldProviderReturnedZeroUnstakeAmount();
 
   /**
-   * @dev Thrown when a permissionless unstake request exceeds the minimum required amount to restore the reserve to the target threshold,
-   *      taking into consideration available funds in the system that can be routed to the reserve.
+   * @dev Returned when the unstaked amount exceeds the required unstake amount.
+   * @param _unstakedAmountWei The amount that was unstaked.
+   * @param _requiredUnstakeAmountWei The maximum amount that should have been unstaked.
    */
-  error PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
+  error UnstakedAmountExceedsRequired(uint256 _unstakedAmountWei, uint256 _requiredUnstakeAmountWei);
 
   /**
    * @dev Thrown when there are no funds available to replenish the withdrawal reserve.
@@ -350,11 +370,6 @@ interface IYieldManager {
    * @param remainingUserFunds Remaining user funds.
    */
   error YieldProviderHasRemainingFunds(uint256 remainingUserFunds);
-
-  /**
-   * @dev Thrown when removing a YieldProvider with remaining negative yield.
-   */
-  error YieldProviderHasRemainingNegativeYield();
 
   /**
    * @dev Thrown when adding an L2YieldRecipient that has previously been added to the allowlist.
@@ -556,15 +571,14 @@ interface IYieldManager {
    * @param _yieldProvider          Yield provider address.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
    * @param _withdrawalParamsProof  Data containing merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
-   * @return maxUnstakeAmount       Maximum amount expected to be withdrawn from the beacon chain.
-   *                                - Cannot efficiently get exact amount as relevant state and computation is located in the consensus client,
-   *                                and not the execution layer.
    */
   function unstakePermissionless(
     address _yieldProvider,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable returns (uint256 maxUnstakeAmount);
+  ) external payable;
 
   /**
    * @notice Safely withdraws ETH from a YieldProvider, capped by the available withdrawable amount.
