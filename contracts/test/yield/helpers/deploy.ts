@@ -12,7 +12,7 @@ import {
   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
   MINIMUM_WITHDRAWAL_RESERVE_AMOUNT,
   TARGET_WITHDRAWAL_RESERVE_AMOUNT,
-  GI_FIRST_VALIDATOR_PREV,
+  GI_FIRST_VALIDATOR,
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
   YIELD_PROVIDER_STAKING_ROLE,
   ONE_ETHER,
@@ -92,7 +92,7 @@ export async function deployValidatorContainerProofVerifier(): Promise<Validator
   const factory = await ethers.getContractFactory("ValidatorContainerProofVerifier");
   const contract = await factory.deploy(
     await admin.getAddress(),
-    GI_FIRST_VALIDATOR_PREV,
+    GI_FIRST_VALIDATOR,
     GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
   );
   await contract.waitForDeployment();
@@ -104,7 +104,7 @@ export async function deployTestValidatorContainerProofVerifier(): Promise<TestV
   const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
   const contract = await factory.deploy(
     await admin.getAddress(),
-    GI_FIRST_VALIDATOR_PREV,
+    GI_FIRST_VALIDATOR,
     GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
   );
   await contract.waitForDeployment();
@@ -113,7 +113,7 @@ export async function deployTestValidatorContainerProofVerifier(): Promise<TestV
 
 export async function deploySSZMerkleTree(): Promise<SSZMerkleTree> {
   const factory = await ethers.getContractFactory("SSZMerkleTree");
-  const contract = await factory.deploy(GI_FIRST_VALIDATOR_PREV);
+  const contract = await factory.deploy(GI_FIRST_VALIDATOR);
   await contract.waitForDeployment();
   return contract;
 }

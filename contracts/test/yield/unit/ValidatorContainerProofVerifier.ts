@@ -15,7 +15,7 @@ import {
 } from "../helpers/proof";
 import { ethers } from "hardhat";
 import {
-  GI_FIRST_VALIDATOR_PREV,
+  GI_FIRST_VALIDATOR,
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
   ONE_GWEI,
   SHARD_COMMITTEE_PERIOD,
@@ -59,7 +59,7 @@ describe("ValidatorContainerProofVerifier", () => {
 
   describe("constructor", () => {
     it("It should have the correct GI_FIRST_VALIDATOR", async () => {
-      expect(await verifier.GI_FIRST_VALIDATOR()).eq(GI_FIRST_VALIDATOR_PREV);
+      expect(await verifier.GI_FIRST_VALIDATOR()).eq(GI_FIRST_VALIDATOR);
     });
     it("It should have the correct GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
       expect(await verifier.GI_PENDING_PARTIAL_WITHDRAWALS_ROOT()).eq(GI_PENDING_PARTIAL_WITHDRAWALS_ROOT);
@@ -70,11 +70,7 @@ describe("ValidatorContainerProofVerifier", () => {
     });
     it("should revert when admin address is zero", async () => {
       const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
-      const deployCall = factory.deploy(
-        ethers.ZeroAddress,
-        GI_FIRST_VALIDATOR_PREV,
-        GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
-      );
+      const deployCall = factory.deploy(ethers.ZeroAddress, GI_FIRST_VALIDATOR, GI_PENDING_PARTIAL_WITHDRAWALS_ROOT);
       await expectRevertWithCustomError(factory, deployCall, "ZeroAddressNotAllowed");
     });
     it("should revert when GI_FIRST_VALIDATOR is zero hash", async () => {
@@ -90,7 +86,7 @@ describe("ValidatorContainerProofVerifier", () => {
     it("should revert when GI_PENDING_PARTIAL_WITHDRAWALS_ROOT is zero hash", async () => {
       const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
       const [deployer] = await ethers.getSigners();
-      const deployCall = factory.deploy(await deployer.getAddress(), GI_FIRST_VALIDATOR_PREV, ethers.ZeroHash);
+      const deployCall = factory.deploy(await deployer.getAddress(), GI_FIRST_VALIDATOR, ethers.ZeroHash);
       await expectRevertWithCustomError(factory, deployCall, "ZeroHashNotAllowed");
     });
   });

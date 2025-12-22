@@ -19,7 +19,7 @@ import {
 } from "../common/constants";
 import { YieldManagerInitializationData } from "contracts/test/yield/helpers";
 import { YieldManager } from "contracts/typechain-types";
-import { GI_FIRST_VALIDATOR_PREV, GI_PENDING_PARTIAL_WITHDRAWALS_ROOT } from "contracts/test/common/constants";
+import { GI_FIRST_VALIDATOR, GI_PENDING_PARTIAL_WITHDRAWALS_ROOT } from "contracts/test/common/constants";
 
 // Deploys YieldManager, ValidatorContainerProofVerifier and LidoStVaultYieldProviderFactory
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -43,7 +43,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   const initialMinimumWithdrawalReserveAmount = BigInt(getRequiredEnvVar("MINIMUM_WITHDRAWAL_RESERVE_AMOUNT"));
   const initialTargetWithdrawalReserveAmount = BigInt(getRequiredEnvVar("TARGET_WITHDRAWAL_RESERVE_AMOUNT"));
-  const gIFirstValidator = getEnvVarOrDefault("GI_FIRST_VALIDATOR", GI_FIRST_VALIDATOR_PREV);
+  const gIFirstValidator = getEnvVarOrDefault("GI_FIRST_VALIDATOR", GI_FIRST_VALIDATOR);
   const gIPendingPartialWithdrawalsRoot = getEnvVarOrDefault(
     "GI_PENDING_PARTIAL_WITHDRAWALS_ROOT",
     GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
