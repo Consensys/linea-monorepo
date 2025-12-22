@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/google/uuid"
 )
 
 var _ ifaces.Query = &PlonkInWizard{}
@@ -72,8 +71,6 @@ type PlonkInWizard struct {
 	// number of public input. It is not using [sync.Once] that way we don't need
 	// to initialize the value.
 	nbPublicInputsLoaded bool `serde:"omit"`
-
-	uuid uuid.UUID `serde:"omit"`
 }
 
 func NewPlonkInWizard(
@@ -90,7 +87,6 @@ func NewPlonkInWizard(
 		Selector:     Selector,
 		Circuit:      Circuit,
 		PlonkOptions: PlonkOptions,
-		uuid:         uuid.New(),
 	}
 }
 
@@ -278,8 +274,4 @@ func (piw *PlonkInWizard) CheckMask(mask smartvectors.SmartVector) error {
 	}
 
 	return nil
-}
-
-func (piw *PlonkInWizard) UUID() uuid.UUID {
-	return piw.uuid
 }

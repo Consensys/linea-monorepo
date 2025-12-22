@@ -1,6 +1,7 @@
-package serialization_test
+package serde_test
 
 import (
+	"crypto/rand"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -18,32 +19,23 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSerdeValue(t *testing.T) {
-
-	serialization.RegisterImplementation(string(""))
-	serialization.RegisterImplementation(ifaces.ColID(""))
-	serialization.RegisterImplementation(column.Natural{})
-	serialization.RegisterImplementation(column.Shifted{})
-	serialization.RegisterImplementation(verifiercol.ConstCol{})
-	serialization.RegisterImplementation(verifiercol.FromYs{})
-	serialization.RegisterImplementation(verifiercol.FromAccessors{})
-	serialization.RegisterImplementation(accessors.FromPublicColumn{})
-	serialization.RegisterImplementation(accessors.FromConstAccessor{})
-	serialization.RegisterImplementation(query.UnivariateEval{})
 
 	testCases := []struct {
 		V    any
 		Name string
 	}{
 		{
-			Name: "random-string",
+			Name: "random",
 			V:    "someRandomString",
 		},
 		{
@@ -379,23 +371,284 @@ func TestSerdeValue(t *testing.T) {
 		},
 	}
 
-	for i := range testCases {
+	for i := 0; i < len(testCases); i++ {
+
 		t.Run(fmt.Sprintf("test-case-%v/%v", i, testCases[i].Name), func(t *testing.T) {
 
-			msg, err := serialization.Serialize(testCases[i].V)
+			msg, err := serde.Serialize(testCases[i].V)
 			require.NoError(t, err)
 
 			t.Logf("testcase=%v, msg=%v\n", i, string(msg))
 
 			unmarshaled := reflect.New(reflect.TypeOf(testCases[i].V)).Interface()
-			err = serialization.Deserialize(msg, unmarshaled)
+			err = serde.Deserialize(msg, unmarshaled)
 			require.NoError(t, err)
 
 			unmarshalledDereferenced := reflect.ValueOf(unmarshaled).Elem().Interface()
-			if !serialization.DeepCmp(testCases[i].V, unmarshalledDereferenced, true) {
+			if !serde.DeepCmp(testCases[i].V, unmarshalledDereferenced, false) {
 				t.Errorf("Mismatch in exported fields after full serde value")
 			}
 
 		})
 	}
+}
+
+func TestSerdeFE(t *testing.T) {
+	newFieldElement := func(n int64) field.Element {
+		var f field.Element
+		f.SetBigInt(big.NewInt(n))
+		return f
+	}
+
+	// Test cases for single field.Element
+	singleTests := []struct {
+		name string
+		val  field.Element
+	}{
+		{"Zero", field.Element{0, 0, 0, 0}},
+		{"Small", newFieldElement(42)},
+		{"Large", newFieldElement(1 << 60)},
+		{
+			"ModulusMinusOne",
+			func() field.Element {
+				var f field.Element
+				f.SetOne()
+				f.Neg(&f) // modulus - 1
+				return f
+			}(),
+		},
+		{
+			"Random",
+			func() field.Element {
+				var f field.Element
+				b := make([]byte, 32)
+				_, _ = rand.Read(b)
+				f.SetBytes(b)
+				return f
+			}(),
+		},
+	}
+
+	for _, tt := range singleTests {
+		t.Run("Single_"+tt.name, func(t *testing.T) {
+			bytes, err := serde.Serialize(tt.val)
+			if err != nil {
+				t.Fatalf("serialize error: %v", err)
+			}
+			var result field.Element
+			if err := serde.Deserialize(bytes, &result); err != nil {
+				t.Fatalf("deserialize error: %v", err)
+			}
+			if result != tt.val {
+				t.Errorf("mismatch: got %v, want %v", result, tt.val)
+			}
+		})
+	}
+
+	// Test cases for []field.Element
+	arrayTests := []struct {
+		name string
+		val  []field.Element
+	}{
+		{"Empty", []field.Element{}},
+		{"Single", []field.Element{newFieldElement(42)}},
+		{"Multiple", []field.Element{
+			newFieldElement(0),
+			newFieldElement(42),
+			newFieldElement(1 << 60),
+			func() field.Element {
+				var f field.Element
+				f.SetOne()
+				f.Neg(&f)
+				return f
+			}(),
+		}},
+		{
+			"Repeated",
+			[]field.Element{
+				newFieldElement(123),
+				newFieldElement(123),
+				newFieldElement(123),
+			},
+		},
+		{
+			"BoundaryNearModulus",
+			[]field.Element{
+				func() field.Element {
+					var f field.Element
+					f.SetOne()
+					f.Neg(&f)
+					return f
+				}(),
+				newFieldElement(1),
+			},
+		},
+		{
+			"LargeArray",
+			func() []field.Element {
+				arr := make([]field.Element, 1000)
+				for i := 0; i < len(arr); i++ {
+					arr[i] = newFieldElement(int64(i * i))
+				}
+				return arr
+			}(),
+		},
+		{
+			"RandomElements",
+			func() []field.Element {
+				arr := make([]field.Element, 100)
+				for i := range arr {
+					var f field.Element
+					b := make([]byte, 32)
+					_, _ = rand.Read(b)
+					f.SetBytes(b)
+					arr[i] = f
+				}
+				return arr
+			}(),
+		},
+	}
+
+	for _, tt := range arrayTests {
+		t.Run("Array_"+tt.name, func(t *testing.T) {
+			bytes, err := serde.Serialize(tt.val)
+			if err != nil {
+				t.Fatalf("serialize error: %v", err)
+			}
+			var result []field.Element
+			if err := serde.Deserialize(bytes, &result); err != nil {
+				t.Fatalf("deserialize error: %v", err)
+			}
+			if len(result) != len(tt.val) {
+				t.Fatalf("length mismatch: got %d, want %d", len(result), len(tt.val))
+			}
+			for i := range tt.val {
+				if result[i] != tt.val[i] {
+					t.Errorf("element %d mismatch: got %v, want %v", i, result[i], tt.val[i])
+				}
+			}
+		})
+	}
+}
+
+func TestFieldElementLimbMismatch(t *testing.T) {
+	// Construct a field.Element with known limb values
+	original := [4]uint64{
+		4432961018360255618, // limb 0
+		1234567890123456789, // limb 1
+		9876543210987654321, // limb 2
+		1111111111111111111, // limb 3
+	}
+
+	// Serialize it
+	bytes, err := serde.Serialize(original)
+	if err != nil {
+		t.Fatalf("failed to serialize: %v", err)
+	}
+
+	// Deserialize it
+	var result [4]uint64
+	if err := serde.Deserialize(bytes, &result); err != nil {
+		t.Fatalf("failed to deserialize: %v", err)
+	}
+
+	// Compare limbs manually and print diff
+	for i := 0; i < 4; i++ {
+		if result[i] != original[i] {
+			t.Errorf("field.Element limb mismatch at [%d]: got %d, want %d", i, result[i], original[i])
+		}
+	}
+}
+
+func TestStoreAndColumnIntegrity(t *testing.T) {
+	// 1. Setup Original State
+	originalStore := column.NewStore()
+
+	// Add a column - this creates the internal maps and slices
+	// We cast to column.Natural to access the unexported 'store' pointer later
+	natValue := originalStore.AddToRound(0, "column_a", 4, column.Committed).(column.Natural)
+
+	// Create a shared Coin instance
+	sharedCoin := coin.NewInfo("beta", coin.Field, 1)
+
+	// Build a container where multiple pointers point to the EXACT same RAM addresses
+	type Container struct {
+		Store *column.Store
+		Col1  *column.Natural
+		Col2  *column.Natural
+		Coin1 *coin.Info
+		Coin2 *coin.Info
+	}
+
+	input := &Container{
+		Store: originalStore,
+		Col1:  &natValue,
+		Col2:  &natValue, // Point to the same handle
+		Coin1: &sharedCoin,
+		Coin2: &sharedCoin, // Point to the same coin
+	}
+
+	// 2. Serialize
+	data, err := serde.Serialize(input)
+	require.NoError(t, err, "Serialization failed")
+
+	// 3. Deserialize
+	var output Container
+	err = serde.Deserialize(data, &output)
+	require.NoError(t, err, "Deserialization failed")
+
+	// 4. THE VALIDATION
+
+	// A. Logical Field Validation
+	// Proves data was reconstructed correctly despite the Pack/Unpack cycle.
+	require.True(t, serde.DeepCmp(input, &output, false), "Logical data mismatch")
+
+	// B. Store Deduplication (Handle -> Root)
+	// Both handles must point to the same Store instance found at the root.
+	ptrRootStore := reflect.ValueOf(output.Store).Pointer()
+	ptrCol1InternalStore := reflect.ValueOf(*output.Col1).FieldByName("store").Pointer()
+	ptrCol2InternalStore := reflect.ValueOf(*output.Col2).FieldByName("store").Pointer()
+
+	assert.Equal(t, ptrRootStore, ptrCol1InternalStore, "Col1 handle should share the root Store instance")
+	assert.Equal(t, ptrCol1InternalStore, ptrCol2InternalStore, "Col1 and Col2 handles must share the same Store instance")
+
+	// C. Handle Deduplication (Handle -> Handle)
+	// This proves the library didn't create two Natural handles for the same offset.
+	assert.Equal(t, reflect.ValueOf(output.Col1).Pointer(), reflect.ValueOf(output.Col2).Pointer(),
+		"Natural handles themselves were not deduplicated in the ptrMap")
+
+	// D. Coin Deduplication (Structural Type)
+	// Proves that standard pointers (no custom handlers) are also correctly deduplicated.
+	assert.Equal(t, reflect.ValueOf(output.Coin1).Pointer(), reflect.ValueOf(output.Coin2).Pointer(),
+		"Coin pointers should point to the exact same heap address")
+
+	// E. Functional Verification
+	// Final check that the private internal maps of the Store are actually working.
+	assert.True(t, output.Store.Exists("column_a"), "Private indicesByNames map was not restored")
+	assert.Equal(t, 4, output.Store.GetSize("column_a"), "Private byRounds slice was not restored")
+}
+
+func TestStoreMutationIntegrity(t *testing.T) {
+	// This test ensures that because pointers are shared, a mutation in the Store
+	// is visible through the Column handle, just like in real Go RAM.
+
+	store := column.NewStore()
+	col := store.AddToRound(0, "col", 8, column.Committed).(column.Natural)
+
+	type Root struct {
+		Store *column.Store
+		Col   *column.Natural
+	}
+
+	data, _ := serde.Serialize(&Root{store, &col})
+
+	var decoded Root
+	serde.Deserialize(data, &decoded)
+
+	// Mutate the state in the Store
+	decoded.Store.MarkAsIgnored("col")
+
+	// Check if the handle (which points to the same Store) sees the change
+	assert.True(t, decoded.Col.Status() == column.Ignored,
+		"Mutation in shared Store should be visible through the Natural handle")
 }

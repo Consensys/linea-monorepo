@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/google/uuid"
 )
 
 var _ ifaces.Query = MiMC{}
@@ -32,8 +31,7 @@ type MiMC struct {
 	// Selector is an optional column that disables the query on rows where the selector is 0
 	Selector ifaces.Column
 	// The name of the query
-	ID   ifaces.QueryID
-	uuid uuid.UUID `serde:"omit"`
+	ID ifaces.QueryID
 }
 
 // Name implements the [ifaces.Query] interface
@@ -70,7 +68,6 @@ func NewMiMC(id ifaces.QueryID, block, oldState, newState ifaces.Column, selecto
 		Blocks:   block,
 		Selector: selector,
 		ID:       id,
-		uuid:     uuid.New(),
 	}
 }
 
@@ -127,8 +124,4 @@ func (m MiMC) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 		recomputed := mimc.GnarkBlockCompression(api, oldState, block)
 		api.AssertIsEqual(newState, recomputed)
 	}
-}
-
-func (m MiMC) UUID() uuid.UUID {
-	return m.uuid
 }

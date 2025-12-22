@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/google/uuid"
 )
 
 /*
@@ -21,8 +20,7 @@ type Range struct {
 	// Maybe we should enforce that the handle is a natural one here
 	Handle ifaces.Column
 	// Upper-bound
-	B    int
-	uuid uuid.UUID `serde:"omit"`
+	B int
 }
 
 /*
@@ -33,7 +31,6 @@ func NewRange(id ifaces.QueryID, h ifaces.Column, b int) Range {
 		ID:     id,
 		B:      b,
 		Handle: h,
-		uuid:   uuid.New(),
 	}
 }
 
@@ -72,8 +69,4 @@ func (r Range) Check(run ifaces.Runtime) error {
 // to check the query within a circuit
 func (r Range) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
-}
-
-func (r Range) UUID() uuid.UUID {
-	return r.uuid
 }

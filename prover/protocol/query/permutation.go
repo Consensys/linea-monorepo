@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/google/uuid"
 )
 
 // Permutation is a predicate that assess that two tables contains the same rows
@@ -21,8 +20,7 @@ type Permutation struct {
 	// multi-column (len(A[*]) = len(B[*]) > 1.
 	A, B [][]ifaces.Column
 	// ID is the string indentifier of the query.
-	ID   ifaces.QueryID
-	uuid uuid.UUID `serde:"omit"`
+	ID ifaces.QueryID
 }
 
 // NewPermutation constructs a new permutation query and performs all the
@@ -62,7 +60,7 @@ func NewPermutation(id ifaces.QueryID, a, b [][]ifaces.Column) Permutation {
 		utils.Panic("a (numRows: %v, colId: %v) and b (numRows: %v, colId: %v) must have the same total number of rows, query id: %v", totalRow[0], a[0][0].GetColID(), totalRow[1], b[0][0].GetColID(), id)
 	}
 
-	return Permutation{A: a, B: b, ID: id, uuid: uuid.New()}
+	return Permutation{A: a, B: b, ID: id}
 }
 
 // Name implements the [ifaces.Query] interface
@@ -215,8 +213,4 @@ func (p Permutation) GetShiftedRelatedColumns() []ifaces.Column {
 	}
 
 	return res
-}
-
-func (p Permutation) UUID() uuid.UUID {
-	return p.uuid
 }

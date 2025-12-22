@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/google/uuid"
 )
 
 // A local constraint is an arithmetic relation between prespecified
@@ -24,7 +23,6 @@ type LocalConstraint struct {
 	*symbolic.Expression
 	ID         ifaces.QueryID
 	DomainSize int
-	uuid       uuid.UUID `serde:"omit"`
 }
 
 // Construct a new local constraint
@@ -69,7 +67,7 @@ func NewLocalConstraint(id ifaces.QueryID, expr *symbolic.Expression) LocalConst
 		utils.Panic("All commitment given had a length of zero")
 	}
 
-	res := LocalConstraint{Expression: expr, ID: id, DomainSize: domainSize, uuid: uuid.New()}
+	res := LocalConstraint{Expression: expr, ID: id, DomainSize: domainSize}
 	return res
 }
 
@@ -171,8 +169,4 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 	*/
 	res := board.GnarkEval(api, inputs)
 	api.AssertIsEqual(res, 0)
-}
-
-func (cs LocalConstraint) UUID() uuid.UUID {
-	return cs.uuid
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/google/uuid"
 )
 
 /*
@@ -30,9 +29,6 @@ type FixedPermutation struct {
 
 	//fixed  permutation
 	S []ifaces.ColAssignment
-
-	// uuid is an internal UUID used for the serialization process
-	uuid uuid.UUID `serde:"omit"`
 }
 
 /*
@@ -50,11 +46,10 @@ func NewFixedPermutation(id ifaces.QueryID, S []ifaces.ColAssignment, a, b []ifa
 	}
 
 	return FixedPermutation{
-		ID:   id,
-		A:    a,
-		B:    b,
-		S:    S,
-		uuid: uuid.New(),
+		ID: id,
+		A:  a,
+		B:  b,
+		S:  S,
 	}
 }
 
@@ -121,8 +116,4 @@ func checkFixedPermutation(a, b []ifaces.ColAssignment, s []ifaces.ColAssignment
 // to check the query within a circuit
 func (f FixedPermutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
-}
-
-func (f FixedPermutation) UUID() uuid.UUID {
-	return f.uuid
 }

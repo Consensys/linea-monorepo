@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/google/uuid"
 )
 
 // Inclusion describes an inclusion query (a.k.a. a lookup constraint). The
@@ -42,8 +41,6 @@ type Inclusion struct {
 	// The slices is indexed per number of fragment, in the non-fragmented case,
 	// consider there is only a single segment.
 	IncludingFilter []ifaces.Column
-
-	uuid uuid.UUID `serde:"omit"`
 }
 
 // NewInclusion constructs an inclusion. Will panic if it is mal-formed
@@ -127,7 +124,6 @@ func NewInclusion(
 		ID:              id,
 		IncludedFilter:  includedFilter,
 		IncludingFilter: includingFilter,
-		uuid:            uuid.New(),
 	}
 }
 
@@ -276,8 +272,4 @@ func (i Inclusion) GetShiftedRelatedColumns() []ifaces.Column {
 	}
 
 	return res
-}
-
-func (i Inclusion) UUID() uuid.UUID {
-	return i.uuid
 }

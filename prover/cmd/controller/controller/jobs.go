@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -28,14 +30,15 @@ type Job struct {
 	VersionExecutionTracer string
 	VersionStateManager    string
 	VersionCompressor      string
+	ContentHash            string // The hex string of the content hash
 
-	// The hex string of the content hash
-	ContentHash string
+	// Add-ons for limitless prover
+	SegID int
 }
 
-// OutputFileRessouce collects all the data needed to fill the output template
+// OutputFileResource collects all the data needed to fill the output template
 // file.
-type OutputFileRessouce struct {
+type OutputFileResource struct {
 	Job
 }
 
@@ -66,6 +69,9 @@ func NewJob(jdef *JobDefinition, filename string) (j *Job, err error) {
 	j.VersionStateManager = stringIfRegexpNotNil(regs.Stv, filename)
 	j.ContentHash = stringIfRegexpNotNil(regs.ContentHash, filename)
 
+	// Limitless prover add-on
+	j.SegID = intIfRegexpNotNil(regs.SegID, filename)
+
 	return j, nil
 }
 
@@ -84,7 +90,7 @@ func (j *Job) ResponseFile() (s string, err error) {
 
 	// Run the template
 	w := &strings.Builder{}
-	err = j.Def.OutputFileTmpl.Execute(w, OutputFileRessouce{
+	err = j.Def.OutputFileTmpl.Execute(w, OutputFileResource{
 		Job: *j,
 	})
 	if err != nil {
@@ -167,7 +173,7 @@ func (j *Job) DoneFile(status Status) string {
 	// Remove the suffix .failure.code_[0-9]+ from all the strings
 	origFile, err := j.Def.FailureSuffix.Replace(j.OriginalFile, "", -1, -1)
 	if err != nil {
-		// he assumption here is that the above function may return an error
+		// The assumption here is that the above function may return an error
 		// but this error can only depend on the regexp, the replacement,
 		// the startAt and the count/ Thus, if it fails, the error is
 		// unrelated to the input stream, which is the only user-provided
@@ -188,7 +194,70 @@ func (j *Job) DoneFile(status Status) string {
 // the priority of the job. The 100 value is chosen to make the score easy to
 // mentally compute.
 func (j *Job) Score() int {
-	return 100*j.End + j.Def.Priority
+	var (
+		score = 100*j.End + j.Def.Priority
+
+		// offset is used to make sure that GL jobs are always priortized and processed before LPP jobs for the same block height.
+		// NOTE: this is a hack and only works if the number of segments produced by limitless prover in lesser than the offset
+		// value - Currently this is a reasonable practical assumption.
+		offset = 500
+	)
+
+	// For GL and LPP jobs, add segPriority for finer ordering
+	if strings.Contains(j.Def.Name, "gl-") || strings.Contains(j.Def.Name, "lpp-") {
+		score += segPriority(j.OriginalFile)
+	}
+
+	// Adjust relative ordering: for the same j.End, GL wins over LPP
+	// We do this by adding a small offset *only* for LPP jobs.
+	if strings.Contains(j.Def.Name, "lpp-") {
+		score += offset // ensure LPP jobs come *after* GL jobs of same End
+	}
+	return score
+}
+
+func (st *ControllerState) setActiveJob(job *Job, cLog *logrus.Entry) {
+	st.activeJobMu.Lock()
+	st.activeJob = job
+	cLog.Infof("Claimed new active job: %v", job.OriginalFile)
+	st.activeJobMu.Unlock()
+}
+
+func (st *ControllerState) clearActiveJob() {
+	st.activeJobMu.Lock()
+	st.activeJob = nil
+	st.activeJobMu.Unlock()
+}
+
+func (st *ControllerState) getActiveJob() *Job {
+	st.activeJobMu.Lock()
+	job := st.activeJob
+	st.activeJobMu.Unlock()
+	return job
+}
+
+// set the current job cancel func
+func (st *ControllerState) setCurrentJobCancel(cf context.CancelFunc) {
+	st.cancelJobMu.Lock()
+	st.currentJobCancel = cf
+	st.cancelJobMu.Unlock()
+}
+
+// clear the current job cancel func (call after job finishes)
+func (st *ControllerState) clearCurrentJobCancel() {
+	st.cancelJobMu.Lock()
+	st.currentJobCancel = nil
+	st.cancelJobMu.Unlock()
+}
+
+// cancel only the current child job
+func (st *ControllerState) cancelCurrentJob() {
+	st.cancelJobMu.Lock()
+	if st.currentJobCancel != nil {
+		st.currentJobCancel()
+		st.currentJobCancel = nil
+	}
+	st.cancelJobMu.Unlock()
 }
 
 // If the regexp is provided and non-nil, return the first match and returns the
@@ -211,7 +280,7 @@ func stringIfRegexpNotNil(r *regexp2.Regexp, s string) (res string) {
 func intIfRegexpNotNil(r *regexp2.Regexp, s string) int {
 	// Map the result as an integer
 	match := stringIfRegexpNotNil(r, s)
-	if len(s) == 0 {
+	if len(s) == 0 || len(match) == 0 {
 		return 0
 	}
 
@@ -222,4 +291,39 @@ func intIfRegexpNotNil(r *regexp2.Regexp, s string) int {
 		panic(err)
 	}
 	return res
+}
+
+func isExecLimitlessJob(job *Job) bool {
+	return job.Def.Name == jobNameBootstrap || job.Def.Name == jobNameConglomeration ||
+		strings.HasPrefix(job.Def.Name, jobNameGL) ||
+		strings.HasPrefix(job.Def.Name, jobNameLPP)
+}
+
+func rmTmpArtificats(cLog *logrus.Entry, job *Job) {
+	cLog.Infof("Cleanup enabled — pruning only successful transient sub-proof/witness artifacts for %d-%d", job.Start, job.End)
+
+	patternBase := fmt.Sprintf("%d-%d-*%s*", job.Start, job.End, config.SuccessSuffix)
+	cleanupDirs := []string{metadataDoneDir, randomnessDoneDir}
+	cleanupDirs = append(cleanupDirs, witnessDoneDirs...)
+	cleanupDirs = append(cleanupDirs, subproofDoneDirs...)
+
+	for _, dir := range cleanupDirs {
+		pattern := filepath.Join(dir, patternBase)
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			cLog.Errorf("glob failed for pattern %v: %v", pattern, err)
+			continue
+		}
+
+		if len(matches) == 0 {
+			continue
+		}
+
+		for _, f := range matches {
+			cLog.Infof("Removing transient file: %s", f)
+			if err := os.Remove(f); err != nil {
+				cLog.Errorf("Failed to remove %s: %v", f, err)
+			}
+		}
+	}
 }
