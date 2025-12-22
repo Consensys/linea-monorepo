@@ -640,7 +640,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 	if hashSendComputed != sendGlobalHash {
 		return fmt.Errorf(
 			"invalid hash send: %v != %v",
-			vector.Prettify(hashSendComputed[:]), vector.Prettify(sendGlobalHash[:]),
+			hashSendComputed, sendGlobalHash,
 		)
 	}
 
@@ -660,7 +660,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 	if hashRcvComputed != rcvGlobalHash {
 		return fmt.Errorf(
 			"invalid hash rcv: %v != %v",
-			vector.Prettify(hashRcvComputed[:]), vector.Prettify(rcvGlobalHash[:]),
+			hashRcvComputed, rcvGlobalHash,
 		)
 	}
 

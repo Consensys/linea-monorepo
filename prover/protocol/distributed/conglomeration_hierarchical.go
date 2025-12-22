@@ -10,10 +10,9 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
-	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	smt_koalabear "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -22,7 +21,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 type ProofType int
@@ -87,7 +85,7 @@ type ModuleWitnessConglo struct {
 // and of the ConglomerationHierarchical circuit.
 type VerificationKeyMerkleTree struct {
 	Tree             *smt_koalabear.Tree
-	VerificationKeys [][2]field.Element
+	VerificationKeys [][2]field.Octuplet
 }
 
 // ConglomerationHierarchicalVerifierAction implements the [wizard.VerifierAction]
@@ -108,7 +106,7 @@ type LimitlessPublicInput[T, E any] struct {
 	GeneralMultiSetHash          []T
 	SharedRandomnessMultiSetHash []T
 	VKeyMerkleRoot               [8]T
-	VerifyingKey                 [2]T
+	VerifyingKey                 [2][8]T
 	LogDerivativeSum             E
 	HornerSum                    E
 	GrandProduct                 E
@@ -119,22 +117,21 @@ type LimitlessPublicInput[T, E any] struct {
 func buildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompilation, hierAgg *RecursedSegmentCompilation) VerificationKeyMerkleTree {
 
 	var (
-		leaves           = make([]types.Bytes32, 0, len(moduleGL)+len(moduleLPP)+1)
-		leaves_octuplets = make([]field.Octuplet, 0, len(moduleGL)+len(moduleLPP)+1)
-		verificationKeys = make([][2]field.Element, 0, len(moduleGL)+len(moduleLPP)+1)
+		leaves           = make([]field.Octuplet, 0, len(moduleGL)+len(moduleLPP)+1)
+		verificationKeys = make([][2]field.Octuplet, 0, len(moduleGL)+len(moduleLPP)+1)
 		vkList           = ""
 	)
 
 	appendLeaf := func(comp *wizard.CompiledIOP) {
 		var (
 			vk0, vk1 = getVerifyingKeyPair(comp)
-			leaf     = hashLR(vk0, vk1)
+			leaf     = poseidon2_koalabear.HashVec(append(vk0[:], vk1[:]...)...)
 		)
 
 		leaves = append(leaves, leaf)
-		verificationKeys = append(verificationKeys, [2]field.Element{vk0, vk1})
+		verificationKeys = append(verificationKeys, [2]field.Octuplet{vk0, vk1})
 
-		vkList += fmt.Sprintf("\t%v %v\n", vk0.String(), vk1.String())
+		vkList += fmt.Sprintf("\t%v %v\n", vk0, vk1)
 	}
 
 	for _, module := range moduleGL {
@@ -150,17 +147,11 @@ func buildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompil
 	// padding with zeroes so that the leaves number if a power-of-two
 	paddedSize := utils.NextPowerOfTwo(len(leaves))
 	for i := len(leaves); i < paddedSize; i++ {
-		leaves = append(leaves, types.Bytes32{})
-	}
-
-	// convert leaves to octuplets
-	for _, leaf := range leaves {
-		leafF := leaf.ToOctuplet()
-		leaves_octuplets = append(leaves_octuplets, leafF)
+		leaves = append(leaves, field.Octuplet{})
 	}
 
 	return VerificationKeyMerkleTree{
-		Tree:             smt_koalabear.NewTree(leaves_octuplets),
+		Tree:             smt_koalabear.NewTree(leaves),
 		VerificationKeys: verificationKeys,
 	}
 }
@@ -191,7 +182,7 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 	fmt.Printf(
 		"[getMerkleProof] leaf position: %v, root: %v, leaf: %v, vk: %v\n",
 		leafPosition, vmt.Tree.Root, vmt.Tree.OccupiedLeaves[leafPosition],
-		vector.Prettify(vmt.VerificationKeys[leafPosition][:]))
+		vmt.VerificationKeys[leafPosition][:])
 
 	return proof.Siblings
 }
@@ -204,7 +195,7 @@ func (vmt VerificationKeyMerkleTree) GetRoot() field.Octuplet {
 }
 
 // CheckMembership checks if a verification key is in the merkle tree.
-func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.Element, rootF field.Octuplet, proofF []field.Octuplet) error {
+func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.Octuplet, rootF field.Octuplet, proofF []field.Octuplet) error {
 
 	var leafPosition = -1
 
@@ -229,30 +220,27 @@ func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.
 			Path:     leafPosition,
 			Siblings: make([]field.Octuplet, merkleDepth),
 		}
-		leaf = hashLR(vk[0], vk[1])
+		leaf = poseidon2_koalabear.HashVec(append(vk[0][:], vk[1][:]...)...)
 	)
 
 	if merkleDepth != len(proofF) {
 		panic("merkleDepth != len(proofF)")
 	}
 
-	leafF := leaf.ToOctuplet()
-
 	for lvl := 0; lvl < merkleDepth; lvl++ {
 		mProof.Siblings[lvl] = proofF[lvl]
 	}
 
-	fmt.Printf("verified VK merkle proof: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v", leafPosition, moduleIndex, t, leaf.Hex(), rootF)
+	fmt.Printf("verified VK merkle proof: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v", leafPosition, moduleIndex, t, leaf, rootF)
 
-	if err := smt_koalabear.Verify(&mProof, leafF, rootF); err != nil {
-		return fmt.Errorf("VK is not a member of the tree: pos: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v", leafPosition, moduleIndex, t, leaf.Hex(), rootF)
+	if err := smt_koalabear.Verify(&mProof, leaf, rootF); err != nil {
+		return fmt.Errorf("VK is not a member of the tree: pos: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v", leafPosition, moduleIndex, t, leaf, rootF)
 	}
 
 	return nil
 }
 
 // CheckMembershipGnark checks if a verification key is in the merkle tree.
-// @arijit: commenting out for now
 func checkVkMembershipGnark(
 	api frontend.API,
 	leafPosition frontend.Variable,
@@ -262,6 +250,7 @@ func checkVkMembershipGnark(
 	proofF []frontend.Variable,
 ) {
 
+	panic("gnark api is still under migration, to be uncommented once we are ready to integrate the limitless prover")
 	// 	// This part of the loop checks the membership of the VK as a member of
 	// 	// the tree using the leafPosition from above.
 
@@ -344,8 +333,9 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 
 	// vkMerkleTreeDepth is the depth of the verification key merkle tree
 	vkMerkleTreeDepth := c.VKeyMTreeDepth()
-	c.VerificationKeyMerkleProofs = make([][][8]ifaces.Column, c.ModuleNumber)
+	c.VerificationKeyMerkleProofs = make([][][8]ifaces.Column, aggregationArity)
 	for i := 0; i < aggregationArity; i++ {
+		c.VerificationKeyMerkleProofs[i] = make([][8]ifaces.Column, vkMerkleTreeDepth)
 		for j := 0; j < vkMerkleTreeDepth; j++ {
 			for k := 0; k < 8; k++ {
 				col := comp.InsertProof(0, ifaces.ColID(fmt.Sprintf("vkMerkleProof_%d_%d_%d", i, j, k)), 1, true)
@@ -647,10 +637,9 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 }
 
 // RunGnark implements the [wizard.VerifierAction] interface.
-// @arijit: commenting out for now
 func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
-	panic("rename and uncomment the function RunGnark below; once we are ready to integrate the limitless prover")
+	panic("gnark api is still under migration, to be uncommented once we are ready to integrate the limitless prover")
 
 	// var (
 	// 	collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable]{}
@@ -896,6 +885,12 @@ func (c ModuleConglo) collectAllPublicInputsOfInstance(run wizard.Runtime, insta
 		sharedRandomness[i] = c.Recursion.GetPublicInputOfInstance(run, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i), instance).Base
 	}
 
+	vk := [2]field.Octuplet{}
+	for i := range vk[0] {
+		vk[0][i] = c.Recursion.GetPublicInputOfInstance(run, fmt.Sprintf("%s_%d", VerifyingKeyPublicInput, i), instance).Base
+		vk[1][i] = c.Recursion.GetPublicInputOfInstance(run, fmt.Sprintf("%s_%d", VerifyingKey2PublicInput, i), instance).Base
+	}
+
 	res := LimitlessPublicInput[field.Element, fext.Element]{
 		TargetNbSegments:             getPublicInputListOfInstance(c.Recursion, run, TargetNbSegmentPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountGL:               getPublicInputListOfInstance(c.Recursion, run, SegmentCountGLPublicInputBase, instance, c.ModuleNumber),
@@ -907,10 +902,7 @@ func (c ModuleConglo) collectAllPublicInputsOfInstance(run wizard.Runtime, insta
 		GrandProduct:                 c.Recursion.GetPublicInputOfInstance(run, GrandProductPublicInput, instance).Ext,
 		SharedRandomness:             sharedRandomness,
 		VKeyMerkleRoot:               vKeyMerkleRoot,
-		VerifyingKey: [2]field.Element{
-			c.Recursion.GetPublicInputOfInstance(run, VerifyingKeyPublicInput, instance).Base,
-			c.Recursion.GetPublicInputOfInstance(run, VerifyingKey2PublicInput, instance).Base,
-		},
+		VerifyingKey:                 vk,
 	}
 
 	for _, pi := range c.PublicInputs.Functionals {
@@ -980,6 +972,12 @@ func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, ru
 		sharedRandomness[i] = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i), instance)
 	}
 
+	vk := [2][8]frontend.Variable{}
+	for i := range vk[0] {
+		vk[0][i] = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", VerifyingKeyPublicInput, i), instance)
+		vk[1][i] = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", VerifyingKey2PublicInput, i), instance)
+	}
+
 	res := LimitlessPublicInput[frontend.Variable, frontend.Variable]{
 		TargetNbSegments:             getPublicInputListOfInstanceGnark(c.Recursion, api, run, TargetNbSegmentPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountGL:               getPublicInputListOfInstanceGnark(c.Recursion, api, run, SegmentCountGLPublicInputBase, instance, c.ModuleNumber),
@@ -991,10 +989,7 @@ func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, ru
 		GrandProduct:                 c.Recursion.GetPublicInputOfInstanceGnark(api, run, GrandProductPublicInput, instance),
 		SharedRandomness:             sharedRandomness,
 		VKeyMerkleRoot:               vKeyMerkleRoot,
-		VerifyingKey: [2]frontend.Variable{
-			c.Recursion.GetPublicInputOfInstanceGnark(api, run, VerifyingKeyPublicInput, instance),
-			c.Recursion.GetPublicInputOfInstanceGnark(api, run, VerifyingKey2PublicInput, instance),
-		},
+		VerifyingKey:                 vk,
 	}
 
 	for _, pi := range c.PublicInputs.Functionals {
@@ -1128,9 +1123,9 @@ func findVkPositionGnark(api frontend.API, instance LimitlessPublicInput[fronten
 }
 
 // getVerifyingKeyPair extracts the verifyingKeys from the compiled IOP.
-func getVerifyingKeyPair(wiop *wizard.CompiledIOP) (vkGL, vkLPP field.Element) {
-	return wiop.ExtraData[VerifyingKeyPublicInput].(field.Element),
-		wiop.ExtraData[VerifyingKey2PublicInput].(field.Element)
+func getVerifyingKeyPair(wiop *wizard.CompiledIOP) (vk0, vk1 field.Octuplet) {
+	return wiop.ExtraData[VerifyingKeyPublicInput].(field.Octuplet),
+		wiop.ExtraData[VerifyingKey2PublicInput].(field.Octuplet)
 }
 
 // scanFunctionalInputs returns a list of public inputs corresponding to
@@ -1209,12 +1204,4 @@ func cmpWizardIOP(c1, c2 *wizard.CompiledIOP) (diff1, diff2 []string) {
 // dumpWizardIOP dumps a compiled IOP to a file.
 func dumpWizardIOP(c *wizard.CompiledIOP, name string) {
 	logdata.GenCSV(files.MustOverwrite(name), logdata.IncludeAllFilter)(c)
-}
-
-// Function to compute the hash given the left and the right node
-func hashLR(nodeL, nodeR field.Element) types.Bytes32 {
-	hasher := poseidon2.NewMDHasher()
-	hasher.WriteElements(nodeL, nodeR)
-	d := types.AsBytes32(hasher.Sum(nil))
-	return d
 }

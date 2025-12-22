@@ -475,9 +475,9 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 }
 
 // GetVerifyingKeyPair returns the verifying keys of the compiled segment.
-func (c *RecursedSegmentCompilation) GetVerifyingKeyPair() [2]field.Element {
+func (c *RecursedSegmentCompilation) GetVerifyingKeyPair() [2]field.Octuplet {
 	vk0, vk1 := getVerifyingKeyPair(c.RecursionComp)
-	return [2]field.Element{vk0, vk1}
+	return [2]field.Octuplet{vk0, vk1}
 }
 
 // GetOuterProofInput runs the final Vortex opening in the proof.

@@ -1,5 +1,3 @@
-//go:build ignore
-
 package distributed_test
 
 import (
@@ -19,10 +17,9 @@ import (
 
 // TestConglomerationBasic generates a conglomeration proof and checks if it is valid
 func TestConglomerationBasic(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	var (
 		numRow = 1 << 10
-		tc     = DistributeTestCase{numRow: numRow}
+		tc     = LookupTestCase{numRow: numRow}
 		disc   = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 3 * numRow / 2,
 			Predivision:  1,
