@@ -26,10 +26,16 @@ type decoder struct {
 }
 
 func (dec *decoder) decode(target reflect.Value, offset int64) error {
+	// DEBUG: Trace
+	traceEnter("DECODE", target)
+	traceOffset("Reading From", offset)
+	defer traceExit("DECODE", nil)
+
 	t := target.Type()
 
 	// 1. Custom Registry
 	if handler, ok := customRegistry[t]; ok {
+		traceLog("Using Custom Handler for %s", t)
 		return handler.unmarshall(dec, target, offset)
 	}
 
@@ -76,10 +82,16 @@ func (dec *decoder) decode(target reflect.Value, offset int64) error {
 // --- Helpers ---
 
 func (dec *decoder) decodePtr(target reflect.Value, offset int64) error {
+	// DEBUG: Trace
+	traceEnter("DEC_PTR", target)
+	traceOffset("Ptr Ref", offset)
+	defer traceExit("DEC_PTR", nil)
+
 	t := target.Type()
 
 	// Check Cache
 	if val, ok := dec.ptrMap[offset]; ok {
+		traceLog("Cache Hit for Ref %d", offset)
 		if val.Type().AssignableTo(t) {
 			target.Set(val)
 			return nil
@@ -90,6 +102,7 @@ func (dec *decoder) decodePtr(target reflect.Value, offset int64) error {
 	// i.e newPtr is of type `*t` where type `t` is the target's type - see first line, and allocates
 	// memory to store type `t`, and saves it to the ptrMap (deduplication purposes).
 	newPtr := reflect.New(t.Elem())
+	traceLog("Allocated New Ptr: %v (Addr: %p) for Ref %d", newPtr.Type(), newPtr.Interface(), offset)
 	dec.ptrMap[offset] = newPtr
 
 	// Reconstruct recursively to actually fill that newly allocated memory with the data found at that
@@ -240,6 +253,11 @@ func (dec *decoder) decodeMap(target reflect.Value, offset int64) error {
 }
 
 func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
+	// DEBUG: Trace
+	traceEnter("DEC_IFACE", target)
+	traceOffset("Header At", offset)
+	defer traceExit("DEC_IFACE", nil)
+
 	if offset < 0 || int(offset)+int(SizeOf[InterfaceHeader]()) > len(dec.data) {
 		return fmt.Errorf("interface header out of bounds")
 	}
@@ -250,6 +268,10 @@ func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
 	// points to the start of that data. Hence, there is no need to distinguish between direct and indirect
 	// types here unlike decodeMapElement.
 	ih := (*InterfaceHeader)(unsafe.Pointer(&dec.data[offset]))
+
+	// DEBUG: Log Header
+	traceLog("Header Read: TypeID=%d Ind=%d Offset=%d", ih.TypeID, ih.PtrIndirection, ih.Offset)
+
 	if int(ih.TypeID) < 0 || int(ih.TypeID) >= len(IDToType) {
 		return fmt.Errorf("invalid type ID: %d", ih.TypeID)
 	}
@@ -263,6 +285,7 @@ func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
 	// but the *type* information in the header is still valid and required.
 	if ih.Offset.IsNull() {
 		// Create a zero value of the concrete type (e.g., (*MyType)(nil))
+		traceLog("Offset is Null -> Setting Zero Value (Typed Nil) for %s", concreteType)
 		typedNil := reflect.Zero(concreteType)
 		target.Set(typedNil)
 		return nil

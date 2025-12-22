@@ -27,6 +27,8 @@ type encoder struct {
 }
 
 func newEncoder() *encoder {
+	// DEBUG: trace creation
+	traceLog("Creating New Encoder")
 	return &encoder{
 		buf:    new(bytes.Buffer),
 		offset: 0,
@@ -136,22 +138,29 @@ func encode(w *encoder, v reflect.Value) (Ref, error) {
 		return 0, nil
 	}
 
+	// DEBUG: Trace Entry
+	traceEnter("ENCODE", v)
+	defer traceExit("ENCODE", nil)
+
 	// 1. Handle De-Deuplication effectively
 	var ptrAddr uintptr
 	isPtr := v.Kind() == reflect.Ptr
 	if isPtr {
 		if v.IsNil() {
+			traceLog("Encode: Pointer is Nil -> Ref(0)")
 			return 0, nil
 		}
 
 		// Get the integer representation of the actual RAM address
 		ptrAddr = v.Pointer()
 		if ref, ok := w.ptrMap[ptrAddr]; ok {
+			traceLog("Encode: Dedup Hit! Addr %x -> Ref %d", ptrAddr, ref)
 			return ref, nil
 		}
 
 		// IMPORANT: We map it to the CURRENT offset (w.offset) because that's where we
 		// are about to write it (in the future). This effectively handles CIRCULAR references.
+		traceLog("Encode: New Pointer %x -> Will be Ref %d", ptrAddr, w.offset)
 		w.ptrMap[ptrAddr] = Ref(w.offset)
 	}
 
@@ -162,15 +171,20 @@ func encode(w *encoder, v reflect.Value) (Ref, error) {
 	}
 
 	if isPtr {
+		traceLog("Encode: Finished Ptr %x -> Ref %d", ptrAddr, ref)
 		w.ptrMap[ptrAddr] = ref
 	}
 	return ref, nil
 }
 
 func linearize(w *encoder, v reflect.Value) (Ref, error) {
+	// DEBUG: Trace
+	traceEnter("LINEARIZE", v)
+	defer traceExit("LINEARIZE", nil)
 
 	// Check Registry first for handling special types
 	if handler, ok := customRegistry[v.Type()]; ok {
+		traceLog("Using Custom Handler for %s", v.Type())
 		return handler.marshall(w, v)
 	}
 
@@ -194,6 +208,7 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 		// If the element type is Indirect (Pointer, Interface, String, etc.),
 		// we cannot do a raw memory copy. We must serialize pointers individually.
 		if isIndirectType(v.Type().Elem()) {
+			traceLog("Slice is Indirect -> writeSliceOfIndirects")
 			return writeSliceOfIndirects(w, v)
 		}
 		// --- FIX END ---
@@ -276,10 +291,22 @@ func linearizeMap(w *encoder, v reflect.Value) (Ref, error) {
 }
 
 func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
+	// DEBUG: Trace
+	traceEnter("LIN_IFACE", v)
+	defer traceExit("LIN_IFACE", nil)
+
 	if v.IsNil() {
+		traceLog("Interface is True Nil")
 		return 0, nil
 	}
 	concreteVal := v.Elem()
+
+	// DEBUG: Detect Typed Nil
+	traceLog("Concrete Value: %s Kind: %v", concreteVal.Type(), concreteVal.Kind())
+	if concreteVal.Kind() == reflect.Ptr && concreteVal.IsNil() {
+		traceLog("!!! ALERT: TYPED NIL DETECTED !!! Type: %s", concreteVal.Type())
+	}
+
 	dataOff, err := encode(w, concreteVal)
 	if err != nil {
 		return 0, err
@@ -297,6 +324,8 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 	if !ok {
 		return 0, fmt.Errorf("encounterd unregistered concrete type: %v", concreteVal.Type())
 	}
+
+	traceLog("Writing InterfaceHeader: TypeID=%d Ind=%d Offset=%d", typeID, indirection, dataOff)
 	ih := InterfaceHeader{TypeID: typeID, PtrIndirection: uint8(indirection), Offset: dataOff}
 	off := w.write(ih)
 	return Ref(off), nil
@@ -343,6 +372,10 @@ func linearizeStructBodyMap(w *encoder, v reflect.Value, buf *bytes.Buffer) erro
 }
 
 func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
+	// DEBUG: Trace
+	traceEnter("PATCH_STRUCT", v, "StartOffset", startOffset)
+	defer traceExit("PATCH_STRUCT", nil)
+
 	currentFieldOff := int64(0)
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
@@ -360,6 +393,9 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 			logrus.Warnf("field %v.%v is unexported", t.Type, t.Name)
 			continue
 		}
+
+		// DEBUG: Trace Field
+		traceLog("Patching Field: %s (Type: %s, Offset: %d)", t.Name, fType, startOffset+currentFieldOff)
 
 		// 2. Handle References: Indirect types ( incl. Custom Types)
 		// If the type is "indirect" (pointers, slices) OR it is a registered Custom Type
