@@ -505,6 +505,13 @@ interface IYieldManager {
   function pendingPermissionlessUnstake() external view returns (uint256 pendingUnstake);
 
   /**
+   * @notice Returns the last proven slot for a validator index.
+   * @param _validatorIndex The validator index to query.
+   * @return lastProvenSlot The last proven slot for the validator index, or 0 if no slot has been proven yet.
+   */
+  function lastProvenSlot(uint64 _validatorIndex) external view returns (uint64 lastProvenSlot);
+
+  /**
    * @param _yieldProvider The yield provider address.
    * @return withdrawableAmount Amount of ETH that can be instantly withdrawn from the YieldProvider.
    */

@@ -684,7 +684,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
         );
 
       expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(unstakedAmount);
-      // TODO: Add assertion for slot state change.
+      expect(await yieldManager.lastProvenSlot(mockValidatorIndex)).to.equal(mockSlot);
     });
 
     it("After submitting one unstake request that restores the reserve deficit, the next permissionless request reverts", async () => {

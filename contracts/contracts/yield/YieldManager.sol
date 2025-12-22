@@ -431,6 +431,15 @@ contract YieldManager is
   }
 
   /**
+   * @notice Returns the last proven slot for a validator index.
+   * @param _validatorIndex The validator index to query.
+   * @return lastProvenSlot The last proven slot for the validator index, or 0 if no slot has been proven yet.
+   */
+  function lastProvenSlot(uint64 _validatorIndex) external view override returns (uint64 lastProvenSlot) {
+    lastProvenSlot = _getYieldManagerStorage().lastProvenSlot[_validatorIndex];
+  }
+
+  /**
    * @notice Helper function to delegatecall YieldProvider adaptor instances.
    * @param _yieldProvider The yield provider address.
    * @param _callData Calldata to send with YieldProvider delegatecall.
