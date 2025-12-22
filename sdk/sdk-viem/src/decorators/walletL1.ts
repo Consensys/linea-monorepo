@@ -7,6 +7,8 @@ import { claimOnL1, ClaimOnL1Parameters, ClaimOnL1ReturnType } from "../actions/
 export type WalletActionsL1<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
+  chainL2 extends Chain | undefined = Chain | undefined,
+  accountL2 extends Account | undefined = Account | undefined,
 > = StrictFunctionOnly<
   L1WalletClient,
   {
@@ -149,7 +151,7 @@ export type WalletActionsL1<
       chainOverride extends Chain | undefined = Chain | undefined,
       derivedChain extends Chain | undefined = DeriveChain<chain, chainOverride>,
     >(
-      args: ClaimOnL1Parameters<chain, account, chainOverride, derivedChain>,
+      args: ClaimOnL1Parameters<chain, account, chainL2, accountL2, chainOverride, derivedChain>,
     ) => Promise<ClaimOnL1ReturnType>;
   }
 >;
