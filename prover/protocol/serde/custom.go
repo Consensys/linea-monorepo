@@ -114,8 +114,6 @@ func init() {
 // ---------------- IMPLEMENTATIONS ----------------
 
 // --- Column Store (STRUCT) ---
-
-// --- Column Store (STRUCT) ---
 func marshallColumnStore(enc *encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
 	if err != nil {
