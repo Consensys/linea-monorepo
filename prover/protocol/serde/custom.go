@@ -36,6 +36,17 @@ func registerCustomType(t reflect.Type, c customCodex) {
 }
 
 func init() {
+
+	// registerCustomType(reflect.TypeOf(wizard.CompiledIOP{}), customCodex{
+	// 	marshall:   marshallCompiledIOP,
+	// 	unmarshall: unmarshallCompiledIOP,
+	// })
+
+	// registerCustomType(reflect.TypeOf(symbolic.Expression{}), customCodex{
+	// 	marshall:   marshallExpression,
+	// 	unmarshall: unmarshallExpression,
+	// })
+
 	// Value Types
 	registerCustomType(reflect.TypeOf(big.Int{}), customCodex{
 		marshall:   marshallBigInt,
@@ -114,6 +125,51 @@ func init() {
 
 // ---------------- IMPLEMENTATIONS ----------------
 
+/*
+func marshallCompiledIOP(enc *encoder, v reflect.Value) (Ref, error) {
+	p, err := ptrFromStruct(v)
+	if err != nil {
+		return 0, err
+	}
+	if p == nil {
+		return 0, nil
+	}
+	iop := p.(*wizard.CompiledIOP)
+	return encode(enc, reflect.ValueOf(iop))
+}
+
+func unmarshallCompiledIOP(dec *decoder, v reflect.Value, offset int64) error {
+	var iop wizard.CompiledIOP
+	iopVal := reflect.ValueOf(&iop).Elem()
+	if err := dec.decode(iopVal, offset); err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(iop))
+	return nil
+}
+
+func marshallExpression(enc *encoder, v reflect.Value) (Ref, error) {
+	p, err := ptrFromStruct(v)
+	if err != nil {
+		return 0, err
+	}
+	if p == nil {
+		return 0, nil
+	}
+	expr := p.(*symbolic.Expression)
+	return encode(enc, reflect.ValueOf(expr))
+}
+
+func unmarshallExpression(dec *decoder, v reflect.Value, offset int64) error {
+	var expr symbolic.Expression
+	exprVal := reflect.ValueOf(&expr).Elem()
+	if err := dec.decode(exprVal, offset); err != nil {
+		return err
+	}
+	v.Set(reflect.ValueOf(expr))
+	return nil
+} */
+
 // --- Column Store (STRUCT) ---
 func marshallColumnStore(enc *encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
@@ -139,10 +195,38 @@ func unmarshallColumnStore(dec *decoder, v reflect.Value, offset int64) error {
 }
 
 // --- Column Natural ---
+// func marshallColumnNatural(enc *encoder, v reflect.Value) (Ref, error) {
+// 	nat := v.Interface().(column.Natural)
+// 	packed := nat.Pack()
+// 	return encode(enc, reflect.ValueOf(packed))
+// }
+
 func marshallColumnNatural(enc *encoder, v reflect.Value) (Ref, error) {
 	nat := v.Interface().(column.Natural)
+
+	// --- FIX START ---
+	// 1. Logical Deduplication by UUID
+	id := nat.UUID().String()
+	if ref, ok := enc.uuidMap[id]; ok {
+		traceLog("UUID Dedup Hit! %s -> Ref %d", id, ref)
+		return ref, nil
+	}
+	// --- FIX END ---
+
 	packed := nat.Pack()
-	return encode(enc, reflect.ValueOf(packed))
+
+	// Encode the packed struct (this will linearize it to the buffer)
+	ref, err := encode(enc, reflect.ValueOf(packed))
+	if err != nil {
+		return 0, err
+	}
+
+	// --- FIX START ---
+	// 2. Register the new reference
+	enc.uuidMap[id] = ref
+	// --- FIX END ---
+
+	return ref, nil
 }
 func unmarshallColumnNatural(dec *decoder, v reflect.Value, offset int64) error {
 	var packed column.PackedNatural
@@ -157,45 +241,50 @@ func unmarshallColumnNatural(dec *decoder, v reflect.Value, offset int64) error 
 
 // --- Coin Info ---
 
-func marshallCoinInfo(enc *encoder, v reflect.Value) (Ref, error) {
-
-	c := v.Interface().(coin.Info)
-
-	// We define a local type alias that mirrors the structure of coin.Info.
-	// Because 'plainCoin' is a new type local to this function, it is NOT
-	// in the customRegistry, so calling 'encode' on it will use default
-	// struct linearization logic instead of recursing back here.
-	type plainCoin coin.Info
-
-	// Cast the data to the alias and encode normally.
-	// This writes the struct data to the "heap" and returns a Ref.
-	return encode(enc, reflect.ValueOf(plainCoin(c)))
+// --- Coin Info ---
+type PackedCoin struct {
+	Type       int8   `serde:"t"`
+	Size       int    `serde:"s"`
+	UpperBound int32  `serde:"u"`
+	Name       string `serde:"n"`
+	Round      int    `serde:"r"`
 }
 
+func asPackedCoin(c coin.Info) PackedCoin {
+	return PackedCoin{Type: int8(c.Type), Size: c.Size, UpperBound: int32(c.UpperBound), Name: string(c.Name), Round: c.Round}
+}
+func marshallCoinInfo(enc *encoder, v reflect.Value) (Ref, error) {
+	c := v.Interface().(coin.Info)
+	// --- FIX START ---
+	id := c.UUID().String()
+	if ref, ok := enc.uuidMap[id]; ok {
+		return ref, nil
+	}
+	// --- FIX END ---
+	packed := asPackedCoin(c)
+
+	ref, err := encode(enc, reflect.ValueOf(packed))
+	if err != nil {
+		return 0, err
+	}
+	// --- FIX START ---
+	enc.uuidMap[id] = ref
+	// --- FIX END ---
+	return ref, nil
+}
 func unmarshallCoinInfo(dec *decoder, v reflect.Value, offset int64) error {
-	type plainCoin coin.Info
-
-	// Create a temporary landing pad for the aliased type.
-	// We use reflect.New to create a pointer to 'plainCoin', then Elem() to get the value.
-	packedVal := reflect.New(reflect.TypeOf(plainCoin{})).Elem()
-
-	// Decode from the file into the landing pad using standard struct rules.
-	if err := dec.decode(packedVal, offset); err != nil {
+	var packed PackedCoin
+	if err := dec.decode(reflect.ValueOf(&packed).Elem(), offset); err != nil {
 		return err
 	}
-
-	// Convert the decoded alias back to the real coin.Info type.
-	packed := coin.Info(packedVal.Interface().(plainCoin))
-
 	sizes := []int{}
 	if packed.Size > 0 {
 		sizes = append(sizes, packed.Size)
 	}
 	if packed.UpperBound > 0 {
-		sizes = append(sizes, packed.UpperBound)
+		sizes = append(sizes, int(packed.UpperBound))
 	}
-
-	unpacked := coin.NewInfo(packed.Name, packed.Type, packed.Round, sizes...)
+	unpacked := coin.NewInfo(coin.Name(packed.Name), coin.Type(packed.Type), packed.Round, sizes...)
 	v.Set(reflect.ValueOf(unpacked))
 	return nil
 }

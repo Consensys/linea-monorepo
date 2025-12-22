@@ -8,7 +8,7 @@ import (
 )
 
 // TOGGLE THIS TO FALSE WHEN DONE
-const DebugEnabled = true
+const DebugEnabled = false
 
 var debugDepth int32
 

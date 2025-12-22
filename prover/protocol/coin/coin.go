@@ -65,7 +65,7 @@ type info struct {
 	Round int `json:"round"`
 	// uuid is a pointer to the compiler IOP. This is used as part of the
 	// serialization process
-	uuid uuid.UUID
+	uuid uuid.UUID `serde:"omit"`
 }
 
 // Type of random coin

@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,15 +25,23 @@ type encoder struct {
 	// for low-level pointer arithmetic) to a File Offset (Ref).
 	// Keeps track of memory addresses that have already been seen before.
 	ptrMap map[uintptr]Ref
+
+	// --- FIX START ---
+	// uuidMap deduplicates objects based on their logical ID (e.g. Column UUIDs).
+	// This ensures that two different pointers to the "same" Column are serialized
+	// as a single object reference.
+	uuidMap map[string]Ref
+	// --- FIX END ---
 }
 
 func newEncoder() *encoder {
 	// DEBUG: trace creation
 	traceLog("Creating New Encoder")
 	return &encoder{
-		buf:    new(bytes.Buffer),
-		offset: 0,
-		ptrMap: make(map[uintptr]Ref), // Initialize the deduplication map.
+		buf:     new(bytes.Buffer),
+		offset:  0,
+		ptrMap:  make(map[uintptr]Ref), // Initialize the deduplication map.
+		uuidMap: make(map[string]Ref),
 	}
 }
 
@@ -133,7 +142,7 @@ func (w *encoder) writeSliceData(v reflect.Value) FileSlice {
 //   - repeated pointers reuse the previously recorded Ref
 //   - circular references are handled by pre-registering the current offset
 //     before serializing the pointed-to value.
-/*
+
 func encode(w *encoder, v reflect.Value) (Ref, error) {
 	if !v.IsValid() {
 		return 0, nil
@@ -176,51 +185,6 @@ func encode(w *encoder, v reflect.Value) (Ref, error) {
 		w.ptrMap[ptrAddr] = ref
 	}
 	return ref, nil
-} */
-
-func encode(w *encoder, v reflect.Value) (Ref, error) {
-	if !v.IsValid() {
-		return 0, nil
-	}
-
-	// DEBUG: Trace Entry
-	traceEnter("ENCODE", v)
-	defer traceExit("ENCODE", nil)
-
-	var ptrAddr uintptr
-
-	// --- FIX: Check for Map and Slice as well as Ptr ---
-	// Maps and Slices are reference types; we must preserve their identity.
-	isRef := v.Kind() == reflect.Ptr || v.Kind() == reflect.Map || v.Kind() == reflect.Slice
-
-	if isRef {
-		if v.IsNil() {
-			traceLog("Encode: Reference is Nil -> Ref(0)")
-			return 0, nil
-		}
-
-		// Get the memory address of the underlying data
-		ptrAddr = v.Pointer()
-		if ref, ok := w.ptrMap[ptrAddr]; ok {
-			traceLog("Encode: Dedup Hit! Addr %x -> Ref %d", ptrAddr, ref)
-			return ref, nil
-		}
-
-		traceLog("Encode: New Reference %x -> Will be Ref %d", ptrAddr, w.offset)
-		w.ptrMap[ptrAddr] = Ref(w.offset)
-	}
-
-	// 2. WRITE THE DATA
-	ref, err := linearize(w, v)
-	if err != nil {
-		return 0, err
-	}
-
-	if isRef {
-		traceLog("Encode: Finished Ref %x -> Ref %d", ptrAddr, ref)
-		w.ptrMap[ptrAddr] = ref
-	}
-	return ref, nil
 }
 
 func linearize(w *encoder, v reflect.Value) (Ref, error) {
@@ -233,6 +197,16 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 		traceLog("Using Custom Handler for %s", v.Type())
 		return handler.marshall(w, v)
 	}
+
+	// --- FIX: QUERY HANDLER (Implicit Interface) ---
+	// If the type implements ifaces.Query, we use UUID deduplication
+	// We check t.Kind() != Interface to ensure we are looking at the concrete type
+	t := v.Type()
+	if t.Kind() != reflect.Interface && t.Implements(TypeOfQuery) {
+		traceLog("Type %s implements Query -> using UUID Dedup", t)
+		return marshallQueryViaUUID(w, v)
+	}
+	// ------------------------------------------------
 
 	if v.Type() == reflect.TypeOf(field.Element{}) {
 		off := w.write(v.Interface())
@@ -280,6 +254,77 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 		off := w.write(v.Interface())
 		return Ref(off), nil
 	}
+}
+
+// Define the interface type reflection once
+var TypeOfQuery = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
+
+func marshallQueryViaUUID(enc *encoder, v reflect.Value) (Ref, error) {
+	// 1. Extract the UUID
+	// We know v implements Query, so we can cast it.
+	q, ok := v.Interface().(ifaces.Query)
+	if !ok {
+		// Should not happen due to Implements() check, but safety first
+		return 0, fmt.Errorf("value of type %s does not implement ifaces.Query", v.Type())
+	}
+
+	id := q.UUID().String()
+
+	// 2. Check Logical Cache (UUID)
+	if ref, ok := enc.uuidMap[id]; ok {
+		traceLog("Query UUID Dedup Hit! %s -> Ref %d", id, ref)
+		return ref, nil
+	}
+
+	// 3. Serialize
+	// We strictly want to serialize the STRUCT content here, not the interface wrapper.
+	// If we call encode(v) directly, we might loop if v is a pointer.
+	// We fall back to linearizeStruct or the standard encoding flow for the *underlying* data.
+	// However, since we intercepted this in linearize, we must be careful not to infinite loop.
+
+	// STRATEGY:
+	// We manually linearize the body based on its Kind.
+	// This bypasses the 'linearize' check for Query interface to avoid recursion,
+	// effectively treating it as a standard struct/pointer for the actual writing phase.
+
+	var ref Ref
+	var err error
+
+	if v.Kind() == reflect.Ptr {
+		// If it's a pointer, we dereference it to write the body,
+		// OR we just let the standard struct handler do it.
+		// A safer way is to call the internal helper that writes structs.
+		// But since we don't want to duplicate logic, let's use a trick:
+		// We cast it to a type that DOES NOT implement Query (e.g. generic struct)
+		// effectively masking the method. But Go doesn't allow masking easily.
+
+		// SIMPLEST WAY:
+		// Recursively call encode on the Elem() (if ptr) or linearizeStruct (if struct).
+		// Since 'encode' checks ptrMap (Memory Dedup), it's safe.
+		// But we need to avoid re-entering 'marshallQueryViaUUID'.
+
+		// If it is a Pointer, dereference it until we hit the Struct.
+		// Then call linearizeStruct on the struct.
+		elem := v
+		for elem.Kind() == reflect.Ptr {
+			elem = elem.Elem()
+		}
+
+		// Reserve space and write fields
+		ref, err = linearizeStruct(enc, elem)
+	} else if v.Kind() == reflect.Struct {
+		ref, err = linearizeStruct(enc, v)
+	} else {
+		return 0, fmt.Errorf("query implementation must be a struct or pointer to struct, got %v", v.Kind())
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	// 4. Register Reference
+	enc.uuidMap[id] = ref
+	return ref, nil
 }
 
 // linearizeStruct function works on a Reservation now and Patch later System.

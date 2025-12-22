@@ -111,7 +111,6 @@ func (dec *decoder) decodePtr(target reflect.Value, offset int64) error {
 	return dec.decode(newPtr.Elem(), offset)
 }
 
-/*
 func (dec *decoder) decodeSlice(target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("slice header out of bounds")
@@ -189,11 +188,11 @@ func (dec *decoder) decodeSlice(target reflect.Value, offset int64) error {
 	sh.Len = int(fs.Len)
 	sh.Cap = int(fs.Cap)
 	return nil
-} */
+}
 
 // decodeMap: handles the reconstruction of Go maps which are complex internal hash table
 // structures that cannot be zero-copied (unlike slices or arrays).
-/*
+
 func (dec *decoder) decodeMap(target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("map header out of bounds")
@@ -230,145 +229,8 @@ func (dec *decoder) decodeMap(target reflect.Value, offset int64) error {
 		target.SetMapIndex(newKey, newVal)
 	}
 	return nil
-} */
-
-// decodeMap: handles the reconstruction of Go maps which are complex internal hash table
-// structures that cannot be zero-copied (unlike slices or arrays).
-func (dec *decoder) decodeMap(target reflect.Value, offset int64) error {
-	// 1. CHECK CACHE with TYPE SAFETY
-	if val, ok := dec.ptrMap[offset]; ok {
-		// Only use the cached value if it matches the expected type.
-		// This handles the "Aliasing" case where a Custom Handler (Type A)
-		// reuses the offset for its internal representation (Type B).
-		// We want to skip the cache for Type B to avoid a panic.
-		if val.Type().AssignableTo(target.Type()) {
-			target.Set(val)
-			return nil
-		}
-	}
-
-	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
-		return fmt.Errorf("map header out of bounds")
-	}
-	fs := (*FileSlice)(unsafe.Pointer(&dec.data[offset]))
-
-	if fs.Offset.IsNull() {
-		target.Set(reflect.Zero(target.Type()))
-		return nil
-	}
-
-	// 2. CREATE MAP
-	newMap := reflect.MakeMapWithSize(target.Type(), int(fs.Len))
-
-	// 3. REGISTER (Safe)
-	// Only register if the slot is empty. If it's occupied (by a different type),
-	// we assume the existing occupant is the "Primary" object (e.g. the Struct wrapping this Map)
-	// and this Map is just a transient view. Overwriting it would break cycles for the Primary object.
-	if _, exists := dec.ptrMap[offset]; !exists {
-		dec.ptrMap[offset] = newMap
-	}
-
-	// Set the target immediately
-	target.Set(newMap)
-
-	currentOff := int64(fs.Offset)
-	keyType := target.Type().Key()
-	ValType := target.Type().Elem()
-
-	// 4. FILL
-	for i := 0; i < int(fs.Len); i++ {
-		newKey := reflect.New(keyType).Elem()
-		nextOff, err := dec.decodeSeqItem(newKey, currentOff)
-		if err != nil {
-			return err
-		}
-		currentOff = nextOff
-
-		newVal := reflect.New(ValType).Elem()
-		nextOff, err = dec.decodeSeqItem(newVal, currentOff)
-		if err != nil {
-			return err
-		}
-		currentOff = nextOff
-
-		newMap.SetMapIndex(newKey, newVal)
-	}
-	return nil
 }
 
-func (dec *decoder) decodeSlice(target reflect.Value, offset int64) error {
-	// 1. CHECK CACHE with TYPE SAFETY
-	if val, ok := dec.ptrMap[offset]; ok {
-		if val.Type().AssignableTo(target.Type()) {
-			target.Set(val)
-			return nil
-		}
-		// If types mismatch, we ignore the cache hit and proceed to decode (Unwrapping scenario)
-	}
-
-	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
-		return fmt.Errorf("slice header out of bounds")
-	}
-
-	fs := (*FileSlice)(unsafe.Pointer(&dec.data[offset]))
-
-	if fs.Offset.IsNull() {
-		target.Set(reflect.Zero(target.Type()))
-		return nil
-	}
-
-	if int(fs.Offset) >= len(dec.data) {
-		return fmt.Errorf("slice data offset out of bounds")
-	}
-
-	// CASE A: INDIRECT SLICE
-	if isIndirectType(target.Type().Elem()) {
-		newSlice := reflect.MakeSlice(target.Type(), int(fs.Len), int(fs.Cap))
-
-		// Register (Safe)
-		if _, exists := dec.ptrMap[offset]; !exists {
-			dec.ptrMap[offset] = newSlice
-		}
-
-		target.Set(newSlice)
-
-		refArrayStart := int64(fs.Offset)
-		if refArrayStart+(fs.Len*8) > int64(len(dec.data)) {
-			return fmt.Errorf("slice refs array out of bounds")
-		}
-
-		for i := 0; i < int(fs.Len); i++ {
-			refOffset := refArrayStart + int64(i*8)
-			ref := *(*Ref)(unsafe.Pointer(&dec.data[refOffset]))
-
-			if !ref.IsNull() {
-				if err := dec.decode(newSlice.Index(i), int64(ref)); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	}
-
-	// CASE B: ZERO-COPY SLICE
-	dataPtr := unsafe.Pointer(&dec.data[fs.Offset])
-	sh := (*struct {
-		Data uintptr
-		Len  int
-		Cap  int
-	})(unsafe.Pointer(target.UnsafeAddr()))
-
-	sh.Data = uintptr(dataPtr)
-	sh.Len = int(fs.Len)
-	sh.Cap = int(fs.Cap)
-
-	// Register (Safe) - even zero-copy slices might be referenced in cycles/DeepCmp
-	if _, exists := dec.ptrMap[offset]; !exists {
-		dec.ptrMap[offset] = target
-	}
-
-	return nil
-}
 func (dec *decoder) decodeString(target reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("string header out of bounds")
