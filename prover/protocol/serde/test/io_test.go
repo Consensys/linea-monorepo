@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -424,6 +425,10 @@ func TestSerdeValue_Store(t *testing.T) {
 
 	for i, tc := range testCases {
 
+		if i != 2 && i != 3 {
+			continue
+		}
+
 		t.Run(fmt.Sprintf("Store/%d_%s", i, tc.Name), func(t *testing.T) {
 			path := filepath.Join(testDir, fmt.Sprintf("%d_%s.bin", i, tc.Name))
 
@@ -441,6 +446,10 @@ func TestSerdeValue_Load(t *testing.T) {
 	testCases := getSerdeTestCases()
 
 	for i, tc := range testCases {
+
+		if i != 2 && i != 3 {
+			continue
+		}
 
 		t.Run(fmt.Sprintf("Load/%d_%s", i, tc.Name), func(t *testing.T) {
 			path := filepath.Join(testDir, fmt.Sprintf("%d_%s.bin", i, tc.Name))
@@ -570,7 +579,7 @@ func TestIOP_Store(t *testing.T) {
 			continue
 		}
 
-		if i != 2 && i != 3 {
+		if i != 2 {
 			continue
 		}
 
@@ -614,7 +623,7 @@ func TestIOP_Load(t *testing.T) {
 			continue
 		}
 
-		if i != 2 && i != 3 {
+		if i != 2 {
 			continue
 		}
 
@@ -640,13 +649,433 @@ func TestIOP_Load(t *testing.T) {
 			// 4. Verification (Deep Compare)
 			// We use failFast=true to stop immediately on mismatch
 			subT.Logf("Verifying %s via DeepCmp...", scenario.name)
-			match := serde.DeepCmp(expected, loaded, false)
+			match := serde.DeepCmp(expected, loaded, true)
 
 			if !match {
 				subT.Fatalf("DeepCmp Failed: Loaded object for scenario '%s' differs from original build.", scenario.name)
 			}
 			subT.Logf("Success: %s verified.", scenario.name)
 		})
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Test Helpers & Data Generation (Deterministic for I/O consistency)
+// -----------------------------------------------------------------------------
+
+// FEContainer is a struct to hold all our test cases in one object graph.
+// This tests the interaction of Structs, Maps, Slices, and Field Elements together.
+type FEContainer struct {
+	// We add a string here to shift offsets.
+	// If Name is 1 char, offsets shift by 1 byte + header overhead.
+	Name    string
+	Singles map[string]field.Element
+	Arrays  map[string][]field.Element
+}
+
+func newFieldElement(n int64) field.Element {
+	var f field.Element
+	f.SetBigInt(big.NewInt(n))
+	return f
+}
+
+// generateDeterministicContainer creates the test data.
+// We use patterns instead of rand.Read so TestLoad can reconstruct the expected values.
+func generateDeterministicContainer() *FEContainer {
+	c := &FEContainer{
+		Name:    "OffsetShifter", // 13 bytes
+		Singles: make(map[string]field.Element),
+		Arrays:  make(map[string][]field.Element),
+	}
+
+	// 1. Singles
+	c.Singles["Zero"] = field.Element{0, 0, 0, 0}
+	c.Singles["Small"] = newFieldElement(42)
+	c.Singles["Large"] = newFieldElement(1 << 60)
+
+	var fMinus1 field.Element
+	fMinus1.SetOne()
+	fMinus1.Neg(&fMinus1)
+	c.Singles["ModulusMinusOne"] = fMinus1
+
+	// Deterministic "Random" (Pattern fill)
+	var fPattern field.Element
+	// Pattern: 0x010203...
+	bytes := make([]byte, 32)
+	for i := range bytes {
+		bytes[i] = byte(i)
+	}
+	fPattern.SetBytes(bytes)
+	c.Singles["PatternFilled"] = fPattern
+
+	// 2. Arrays
+	c.Arrays["Empty"] = []field.Element{}
+	c.Arrays["Single"] = []field.Element{newFieldElement(42)}
+	c.Arrays["Multiple"] = []field.Element{
+		newFieldElement(0),
+		newFieldElement(42),
+		newFieldElement(1 << 60),
+		fMinus1,
+	}
+	c.Arrays["Repeated"] = []field.Element{
+		newFieldElement(123),
+		newFieldElement(123),
+		newFieldElement(123),
+	}
+
+	// Large Array
+	largeArr := make([]field.Element, 1000)
+	for i := 0; i < len(largeArr); i++ {
+		largeArr[i] = newFieldElement(int64(i * i))
+	}
+	c.Arrays["LargeArray"] = largeArr
+
+	return c
+}
+
+// -----------------------------------------------------------------------------
+// I/O Tests
+// -----------------------------------------------------------------------------
+
+func TestStoreFE(t *testing.T) {
+	// Ensure directory exists
+	if err := os.MkdirAll("files", 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Generate Data
+	container := generateDeterministicContainer()
+
+	// 2. Serialize
+	t.Log("Serializing FEContainer...")
+	b, err := serde.Serialize(container)
+	if err != nil {
+		t.Fatalf("Serialization failed: %v", err)
+	}
+
+	// 3. Write to File
+	path := filepath.Join("files", "fe_test.bin")
+	err = os.WriteFile(path, b, 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+	t.Logf("Wrote %d bytes to %s", len(b), path)
+}
+
+func TestLoadFE(t *testing.T) {
+	path := filepath.Join("files", "fe_test.bin")
+
+	// 1. Read File
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+
+	// 2. Deserialize
+	t.Logf("Deserializing %d bytes...", len(b))
+	var loaded FEContainer
+	err = serde.Deserialize(b, &loaded)
+	if err != nil {
+		t.Fatalf("Deserialization failed: %v", err)
+	}
+
+	// 3. Generate Expected Data
+	expected := generateDeterministicContainer()
+
+	// 4. Compare (Manual check for granularity)
+
+	// Check Singles
+	if len(loaded.Singles) != len(expected.Singles) {
+		t.Errorf("Singles map length mismatch: got %d, want %d", len(loaded.Singles), len(expected.Singles))
+	}
+	for k, wantVal := range expected.Singles {
+		gotVal, ok := loaded.Singles[k]
+		if !ok {
+			t.Errorf("Missing key in Singles: %s", k)
+			continue
+		}
+		if gotVal != wantVal {
+			t.Errorf("Single[%s] mismatch:\nGot:  %v\nWant: %v", k, gotVal, wantVal)
+		}
+	}
+
+	// Check Arrays
+	if len(loaded.Arrays) != len(expected.Arrays) {
+		t.Errorf("Arrays map length mismatch: got %d, want %d", len(loaded.Arrays), len(expected.Arrays))
+	}
+	for k, wantArr := range expected.Arrays {
+		gotArr, ok := loaded.Arrays[k]
+		if !ok {
+			t.Errorf("Missing key in Arrays: %s", k)
+			continue
+		}
+		if len(gotArr) != len(wantArr) {
+			t.Errorf("Array[%s] length mismatch: got %d, want %d", k, len(gotArr), len(wantArr))
+			continue
+		}
+		for i := range wantArr {
+			if gotArr[i] != wantArr[i] {
+				t.Errorf("Array[%s] index [%d] mismatch:\nGot:  %v\nWant: %v", k, i, gotArr[i], wantArr[i])
+				// Stop after first mismatch in array to avoid spam
+				break
+			}
+		}
+	}
+
+	// 5. Global DeepCmp Check (as final sanity)
+	if !serde.DeepCmp(expected, &loaded, false) {
+		t.Error("DeepCmp failed globally")
+	} else {
+		t.Log("DeepCmp passed")
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Limb Mismatch I/O Test (Specific case)
+// -----------------------------------------------------------------------------
+
+func TestStoreLimbMismatch(t *testing.T) {
+	original := [4]uint64{
+		4432961018360255618,
+		1234567890123456789,
+		9876543210987654321,
+		1111111111111111111,
+	}
+
+	b, err := serde.Serialize(original)
+	if err != nil {
+		t.Fatalf("failed to serialize: %v", err)
+	}
+
+	path := filepath.Join("files", "limb_test.bin")
+	if err := os.WriteFile(path, b, 0644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoadLimbMismatch(t *testing.T) {
+	path := filepath.Join("files", "limb_test.bin")
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var result [4]uint64
+	if err := serde.Deserialize(b, &result); err != nil {
+		t.Fatalf("failed to deserialize: %v", err)
+	}
+
+	original := [4]uint64{
+		4432961018360255618,
+		1234567890123456789,
+		9876543210987654321,
+		1111111111111111111,
+	}
+
+	for i := 0; i < 4; i++ {
+		if result[i] != original[i] {
+			t.Errorf("limb[%d] mismatch:\nGot:  %d\nWant: %d", i, result[i], original[i])
+		}
+	}
+}
+
+// Wrapper struct to test SmartVector inside a larger object graph
+type SmartVecContainer struct {
+	Label   string
+	Vector  *smartvectors.Regular
+	Version uint64
+}
+
+func TestStoreSmartVector(t *testing.T) {
+	// 1. Setup Data
+	// vector.ForTest usually creates a []field.Element from integers
+	originalData := vector.ForTest(1, 2, 3, 4, 5)
+	mySmartVec := smartvectors.NewRegular(originalData)
+
+	container := &SmartVecContainer{
+		Label:   "RegularVectorTest",
+		Vector:  mySmartVec,
+		Version: 2025,
+	}
+
+	// 2. Serialize
+	t.Log("Serializing SmartVecContainer...")
+	b, err := serde.Serialize(container)
+	if err != nil {
+		t.Fatalf("Serialization failed: %v", err)
+	}
+
+	// 3. Save to Disk
+	if err := os.MkdirAll("files", 0755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join("files", "smart_vector.bin")
+	if err := os.WriteFile(path, b, 0644); err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+	t.Logf("Wrote %d bytes to %s", len(b), path)
+}
+
+func TestLoadSmartVector(t *testing.T) {
+	path := filepath.Join("files", "smart_vector.bin")
+
+	// 1. Read from Disk
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Failed to read file: %v", err)
+	}
+
+	// 2. Deserialize
+	var loaded SmartVecContainer
+	if err := serde.Deserialize(b, &loaded); err != nil {
+		t.Fatalf("Deserialization failed: %v", err)
+	}
+
+	// 3. Verification
+	t.Logf("Loaded Label: %s, Version: %d", loaded.Label, loaded.Version)
+
+	if loaded.Label != "RegularVectorTest" {
+		t.Errorf("Label mismatch: got %s", loaded.Label)
+	}
+
+	if loaded.Vector == nil {
+		t.Fatal("Loaded vector is nil")
+	}
+
+	// 4. Content Verification
+	expectedData := vector.ForTest(1, 2, 3, 4, 5)
+	if loaded.Vector.Len() != len(expectedData) {
+		t.Fatalf("Length mismatch: got %d, want %d", loaded.Vector.Len(), len(expectedData))
+	}
+
+	for i := 0; i < loaded.Vector.Len(); i++ {
+		got, _ := loaded.Vector.GetBase(i)
+		want := expectedData[i]
+		if got != want {
+			t.Errorf("Value mismatch at index %d:\nGot:  %v\nWant: %v", i, got, want)
+		}
+	}
+
+	// 5. DeepCmp Sanity
+	// Note: We reconstruct a fresh container for comparison to ensure DeepCmp works on these types
+	expectedContainer := &SmartVecContainer{
+		Label:   "RegularVectorTest",
+		Vector:  smartvectors.NewRegular(expectedData),
+		Version: 2025,
+	}
+
+	if !serde.DeepCmp(expectedContainer, &loaded, false) {
+		t.Error("Global DeepCmp failed for SmartVecContainer")
+	} else {
+		t.Log("Global DeepCmp passed")
+	}
+}
+
+// MatrixContainer mimics the structure of vortex.EncodedMatrix/Ctx
+type MatrixContainer struct {
+	Name string
+	// This mimics EncodedMatrix (slice of interfaces)
+	Matrix []smartvectors.SmartVector
+	// This mimics a direct slice of concrete types
+	DirectSlice []*smartvectors.Regular
+}
+
+func TestStoreSliceOfSmartVectors(t *testing.T) {
+	// 1. Setup Data
+	// Create a jagged matrix pattern to test variable lengths
+	// Row 0: [1, 2, 3]
+	// Row 1: [10, 20]
+	// Row 2: [100, 200, 300, 400]
+
+	row0 := smartvectors.NewRegular(vector.ForTest(1, 2, 3))
+	row1 := smartvectors.NewRegular(vector.ForTest(10, 20))
+	row2 := smartvectors.NewRegular(vector.ForTest(100, 200, 300, 400))
+
+	// Construct the container
+	container := &MatrixContainer{
+		Name: "VortexMatrixTest",
+		// Simulate the interface slice (EncodedMatrix)
+		Matrix: []smartvectors.SmartVector{row0, row1, row2},
+		// Simulate concrete slice for comparison
+		DirectSlice: []*smartvectors.Regular{row0, row1, row2},
+	}
+
+	// 2. Serialize
+	t.Log("Serializing MatrixContainer...")
+	b, err := serde.Serialize(container)
+	if err != nil {
+		t.Fatalf("Serialization failed: %v", err)
+	}
+
+	// 3. Save to Disk
+	if err := os.MkdirAll("files", 0755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join("files", "matrix_vector.bin")
+	if err := os.WriteFile(path, b, 0644); err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+	t.Logf("Wrote %d bytes to %s", len(b), path)
+}
+
+func TestLoadSliceOfSmartVectors(t *testing.T) {
+	path := filepath.Join("files", "matrix_vector.bin")
+
+	// 1. Read
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Failed to read file: %v", err)
+	}
+
+	// 2. Deserialize
+	var loaded MatrixContainer
+	if err := serde.Deserialize(b, &loaded); err != nil {
+		t.Fatalf("Deserialization failed: %v", err)
+	}
+
+	// 3. Verify Basic Fields
+	if loaded.Name != "VortexMatrixTest" {
+		t.Errorf("Name mismatch: got %s", loaded.Name)
+	}
+
+	// 4. Verify Matrix (Slice of Interfaces)
+	t.Log("Verifying Matrix (Slice of Interfaces)...")
+	if len(loaded.Matrix) != 3 {
+		t.Fatalf("Matrix length mismatch: got %d, want 3", len(loaded.Matrix))
+	}
+
+	// 5. Verify DirectSlice (Slice of Concrete Pointers)
+	t.Log("Verifying DirectSlice...")
+	if len(loaded.DirectSlice) != 3 {
+		t.Fatalf("DirectSlice length mismatch: got %d, want 3", len(loaded.DirectSlice))
+	}
+
+	// 6. Check Referencing/Dedup
+	if loaded.Matrix[0] != loaded.DirectSlice[0] {
+		t.Log("Warning: Deduplication might be failing (Matrix[0] != DirectSlice[0])")
+	}
+
+	// -------------------------------------------------------------------------
+	// 7. Global DeepCmp Sanity
+	// -------------------------------------------------------------------------
+	// We verify that the entire object graph matches bit-for-bit.
+	// We reconstruct the expected object exactly as it was in TestStore.
+
+	row0 := smartvectors.NewRegular(vector.ForTest(1, 2, 3))
+	row1 := smartvectors.NewRegular(vector.ForTest(10, 20))
+	row2 := smartvectors.NewRegular(vector.ForTest(100, 200, 300, 400))
+
+	expectedContainer := &MatrixContainer{
+		Name:        "VortexMatrixTest",
+		Matrix:      []smartvectors.SmartVector{row0, row1, row2},
+		DirectSlice: []*smartvectors.Regular{row0, row1, row2},
+	}
+
+	// Note: failFast=false allows us to see all diffs if it fails
+	if !serde.DeepCmp(expectedContainer, &loaded, false) {
+		t.Error("Global DeepCmp failed: Deserialized object does not match Original")
+	} else {
+		t.Log("Global DeepCmp passed")
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -452,6 +453,68 @@ func TestSerdeValue(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestSerdeSliceOfSmartVectors(t *testing.T) {
+	// 1. Setup Data
+	row0 := smartvectors.NewRegular(vector.ForTest(1, 2, 3))
+	row1 := smartvectors.NewRegular(vector.ForTest(10, 20))
+	row2 := smartvectors.NewRegular(vector.ForTest(100, 200, 300, 400))
+
+	// Construct the container
+	container := &MatrixContainer{
+		Name: "VortexMatrixInMemory",
+		// Simulate the interface slice (EncodedMatrix)
+		Matrix: []smartvectors.SmartVector{row0, row1, row2},
+		// Simulate concrete slice for comparison
+		DirectSlice: []*smartvectors.Regular{row0, row1, row2},
+	}
+
+	// 2. In-Memory Round Trip
+	t.Log("Serializing MatrixContainer (In-Memory)...")
+	b, err := serde.Serialize(container)
+	if err != nil {
+		t.Fatalf("Serialization failed: %v", err)
+	}
+	t.Logf("Serialized size: %d bytes", len(b))
+
+	var loaded MatrixContainer
+	if err := serde.Deserialize(b, &loaded); err != nil {
+		t.Fatalf("Deserialization failed: %v", err)
+	}
+
+	// 3. Verification
+
+	// A. Basic Fields
+	if loaded.Name != "VortexMatrixInMemory" {
+		t.Errorf("Name mismatch: got %s", loaded.Name)
+	}
+
+	// B. Verify Matrix (Slice of Interfaces)
+	t.Log("Verifying Matrix (Slice of Interfaces)...")
+	if len(loaded.Matrix) != 3 {
+		t.Fatalf("Matrix length mismatch: got %d, want 3", len(loaded.Matrix))
+	}
+
+	// C. Verify DirectSlice
+	t.Log("Verifying DirectSlice...")
+	if len(loaded.DirectSlice) != 3 {
+		t.Fatalf("DirectSlice length mismatch: got %d, want 3", len(loaded.DirectSlice))
+	}
+
+	// D. Check Dedup/Referencing
+	// In the loaded object, Matrix[0] (interface wrapper) and DirectSlice[0] (concrete pointer)
+	// should point to the exact same underlying struct in memory.
+	if loaded.Matrix[0] != loaded.DirectSlice[0] {
+		t.Errorf("Dedup failed: Matrix[0] and DirectSlice[0] do not point to the same object")
+	}
+
+	// E. DeepCmp Sanity
+	if !serde.DeepCmp(container, &loaded, false) {
+		t.Error("Global DeepCmp failed")
+	} else {
+		t.Log("Global DeepCmp passed")
 	}
 }
 
