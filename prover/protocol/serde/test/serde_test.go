@@ -20,7 +20,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
-	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -353,7 +352,7 @@ func TestSerdeValue(t *testing.T) {
 					Name:        "recursion",
 				})
 
-				logrus.Printf("recursion=%+v\n", rec)
+				//logrus.Printf("recursion=%+v\n", rec)
 				return rec
 			}(),
 		},
@@ -371,11 +370,44 @@ func TestSerdeValue(t *testing.T) {
 				G *query.Horner // G is left as a nil by default
 			}{},
 		},
+		{
+			Name: "de-dup-test",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				col := comp.InsertColumn(0, "a", 16, column.Committed)
+
+				type S struct {
+					A any
+					B any
+				}
+
+				return S{A: col, B: col}
+			}(),
+		},
+		{
+			Name: "de-dup-expr",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				c := comp.InsertColumn(0, "c", 16, column.Committed)
+				d := comp.InsertColumn(0, "d", 16, column.Committed)
+				expr := symbolic.Add(symbolic.Mul(symbolic.Add(a, b), symbolic.Add(c, d)), symbolic.NewConstant(1))
+
+				type S struct {
+					A *symbolic.Expression
+					B *symbolic.Expression
+				}
+
+				return S{A: expr, B: expr}
+
+			}(),
+		},
 	}
 
 	for i := 0; i < len(testCases); i++ {
 
-		if i != 40 {
+		if i == 40 {
 			continue
 		}
 
