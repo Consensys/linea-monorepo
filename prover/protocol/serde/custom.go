@@ -16,7 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -25,109 +24,153 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type customCodex struct {
+// --- REGISTRY DEFINITIONS ---
+
+// indirectCodex handles types that are stored on the Heap (returning a Ref).
+// Examples: BigInt, Strings, R1CS, Maps, Slices.
+type indirectCodex struct {
 	marshall   func(enc *encoder, v reflect.Value) (Ref, error)
 	unmarshall func(dec *decoder, v reflect.Value, offset int64) error
 }
 
-var customRegistry = map[reflect.Type]customCodex{}
-
-func registerCustomType(t reflect.Type, c customCodex) {
-	customRegistry[t] = c
+// directCodex handles types that are stored Inline (Fixed Size).
+// Examples: field.Element, small structs we want to control manually.
+// These bypass the "Indirect" check, allowing arrays of these to be POD.
+type directCodex struct {
+	// binSize returns the on-disk size in bytes
+	binSize func(t reflect.Type) int64
+	// marshall writes data directly to the buffer/patch location.
+	// It does NOT return a Ref, because the data is inline.
+	marshall func(enc *encoder, v reflect.Value) error
+	// patch writes data to a specific existing offset (used in Struct/Array patching)
+	patch func(enc *encoder, offset int64, v reflect.Value) error
+	// unmarshall reads data directly from the offset
+	unmarshall func(dec *decoder, v reflect.Value, offset int64) error
 }
+
+var (
+	// customIndirectRegistry stores types that result in a Reference (pointer).
+	// isIndirectType() returns TRUE for these.
+	customIndirectRegistry = map[reflect.Type]indirectCodex{}
+
+	// customDirectRegistry stores types that are serialized inline.
+	// isIndirectType() returns FALSE for these.
+	customDirectRegistry = map[reflect.Type]directCodex{}
+)
+
+func registerIndirect(t reflect.Type, c indirectCodex) {
+	customIndirectRegistry[t] = c
+}
+
+func registerDirect(t reflect.Type, c directCodex) {
+	customDirectRegistry[t] = c
+}
+
+// --- INIT ---
 
 func init() {
 
-	// registerCustomType(reflect.TypeOf(wizard.CompiledIOP{}), customCodex{
-	// 	marshall:   marshallCompiledIOP,
-	// 	unmarshall: unmarshallCompiledIOP,
-	// })
+	// 1. DIRECT TYPES (Inline, Fixed Size) --------------------------
 
-	// registerCustomType(reflect.TypeOf(symbolic.Expression{}), customCodex{
-	// 	marshall:   marshallExpression,
-	// 	unmarshall: unmarshallExpression,
-	// })
+	// field.Element: The most critical Direct Type.
+	// We register it here to bypass the BinaryMarshaler trap.
+	registerDirect(reflect.TypeOf(field.Element{}), directCodex{
+		binSize: func(_ reflect.Type) int64 { return 32 }, // [4]uint64 = 32 bytes
+		marshall: func(enc *encoder, v reflect.Value) error {
+			// Cast to [4]uint64 to FORCE raw Little-Endian write
+			val := v.Interface().(field.Element)
+			enc.write([4]uint64(val))
+			return nil
+		},
+		patch: func(enc *encoder, offset int64, v reflect.Value) error {
+			// Cast to [4]uint64 to FORCE raw Little-Endian write
+			val := v.Interface().(field.Element)
+			enc.patch(offset, [4]uint64(val))
+			return nil
+		},
+		unmarshall: func(dec *decoder, v reflect.Value, offset int64) error {
+			return dec.decodeFieldElement(v, offset)
+		},
+	})
 
-	idCodex := customCodex{
+	// 2. INDIRECT TYPES (Heap, Variable Size) -----------------------
+
+	idCodex := indirectCodex{
 		marshall:   marshallID,
 		unmarshall: unmarshallID,
 	}
 
-	registerCustomType(reflect.TypeOf(ifaces.ColID("")), idCodex)
-	registerCustomType(reflect.TypeOf(ifaces.QueryID("")), idCodex)
-	registerCustomType(reflect.TypeOf(coin.Name("")), idCodex)
+	registerIndirect(reflect.TypeOf(ifaces.ColID("")), idCodex)
+	registerIndirect(reflect.TypeOf(ifaces.QueryID("")), idCodex)
+	registerIndirect(reflect.TypeOf(coin.Name("")), idCodex)
 
 	// Value Types
-	registerCustomType(reflect.TypeOf(big.Int{}), customCodex{
+	registerIndirect(reflect.TypeOf(big.Int{}), indirectCodex{
 		marshall:   marshallBigInt,
 		unmarshall: unmarshallBigInt})
 
-	registerCustomType(reflect.TypeOf(&big.Int{}), customCodex{
+	registerIndirect(reflect.TypeOf(&big.Int{}), indirectCodex{
 		marshall:   marshallBigIntPtr,
 		unmarshall: unmarshallBigInt})
 
-	registerCustomType(reflect.TypeOf((*frontend.Variable)(nil)).Elem(), customCodex{
+	registerIndirect(reflect.TypeOf((*frontend.Variable)(nil)).Elem(), indirectCodex{
 		marshall:   marshallFrontendVariable,
 		unmarshall: unmarshallFrontendVariable,
 	})
 
 	// Gnark R1CS
-	registerCustomType(reflect.TypeOf(cs.SparseR1CS{}), customCodex{
+	registerIndirect(reflect.TypeOf(cs.SparseR1CS{}), indirectCodex{
 		marshall:   marshallPlonkCkt,
 		unmarshall: unmarshallPlonkCkt})
 
 	// Arithmetization
-	registerCustomType(reflect.TypeOf(arithmetization.Arithmetization{}), customCodex{
+	registerIndirect(reflect.TypeOf(arithmetization.Arithmetization{}), indirectCodex{
 		marshall:   marshallArithmetization,
 		unmarshall: unmarshallArithmetization,
 	})
 
 	// RingSIS Key
-	registerCustomType(reflect.TypeOf(ringsis.Key{}), customCodex{
+	registerIndirect(reflect.TypeOf(ringsis.Key{}), indirectCodex{
 		marshall:   marshallRingSisKey,
 		unmarshall: unmarshallRingSisKey,
 	})
 
 	// FFT Domain
-	registerCustomType(reflect.TypeOf(fft.Domain{}), customCodex{
+	registerIndirect(reflect.TypeOf(fft.Domain{}), indirectCodex{
 		marshall:   marshallGnarkFFTDomain,
 		unmarshall: unmarshallGnarkFFTDomain,
 	})
 
 	// Column Store
-	registerCustomType(reflect.TypeOf(column.Store{}), customCodex{
+	registerIndirect(reflect.TypeOf(column.Store{}), indirectCodex{
 		marshall:   marshallColumnStore,
 		unmarshall: unmarshallColumnStore,
 	})
 
 	// Column Natural / Coin Info
-	registerCustomType(reflect.TypeOf(column.Natural{}), customCodex{
+	registerIndirect(reflect.TypeOf(column.Natural{}), indirectCodex{
 		marshall:   marshallColumnNatural,
 		unmarshall: unmarshallColumnNatural,
 	})
-	registerCustomType(reflect.TypeOf(coin.Info{}), customCodex{
+	registerIndirect(reflect.TypeOf(coin.Info{}), indirectCodex{
 		marshall:   marshallCoinInfo,
 		unmarshall: unmarshallCoinInfo,
 	})
 
 	// Helpers
-	registerCustomType(reflect.TypeOf(smartvectors.Regular{}), customCodex{
-		marshall:   marshallSmartVectorRegular,
-		unmarshall: unmarshallSmartVectorRegular,
-	})
-	registerCustomType(reflect.TypeOf(func() hash.Hash { return nil }), customCodex{
+	registerIndirect(reflect.TypeOf(func() hash.Hash { return nil }), indirectCodex{
 		marshall:   marshallAsEmpty,
 		unmarshall: unmarshallHashGenerator,
 	})
-	registerCustomType(reflect.TypeOf(func() hashtypes.Hasher { return hashtypes.Hasher{} }), customCodex{
+	registerIndirect(reflect.TypeOf(func() hashtypes.Hasher { return hashtypes.Hasher{} }), indirectCodex{
 		marshall:   marshallAsEmpty,
 		unmarshall: unmarshallHashTypeHasher,
 	})
-	registerCustomType(reflect.TypeOf(sync.Mutex{}), customCodex{
+	registerIndirect(reflect.TypeOf(sync.Mutex{}), indirectCodex{
 		marshall:   marshallAsEmpty,
 		unmarshall: unmarshallAsZero,
 	})
-	registerCustomType(reflect.TypeOf(&sync.Mutex{}), customCodex{
+	registerIndirect(reflect.TypeOf(&sync.Mutex{}), indirectCodex{
 		marshall:   marshallAsEmpty,
 		unmarshall: unmarshallAsNewPtr,
 	})
@@ -136,9 +179,6 @@ func init() {
 // ---------------- IMPLEMENTATIONS ----------------
 
 // marshallID handles string deduplication.
-// 1. Checks if string content exists in stringMap.
-// 2. If hit: returns existing Ref.
-// 3. If miss: writes string data, writes Header, updates map, returns new Ref.
 func marshallID(enc *encoder, v reflect.Value) (Ref, error) {
 	s := v.String()
 
@@ -149,20 +189,17 @@ func marshallID(enc *encoder, v reflect.Value) (Ref, error) {
 	}
 
 	// 2. Write Data (Payload)
-	// We write the raw bytes to the heap
 	startOffset := enc.offset
 	enc.buf.WriteString(s)
 	enc.offset += int64(len(s))
 
 	// 3. Write Header
-	// We create a FileSlice pointing to the payload
 	fs := FileSlice{
 		Offset: Ref(startOffset),
 		Len:    int64(len(s)),
 		Cap:    int64(len(s)),
 	}
 
-	// Write the header to get the Reference ID
 	headerOff := enc.write(fs)
 	ref := Ref(headerOff)
 
@@ -173,9 +210,6 @@ func marshallID(enc *encoder, v reflect.Value) (Ref, error) {
 	return ref, nil
 }
 
-// unmarshallID reuses the standard string decoding logic.
-// The decoder doesn't need a special cache map because the Ref in the file
-// already points to the specific header for this string.
 func unmarshallID(dec *decoder, v reflect.Value, offset int64) error {
 	return dec.decodeString(v, offset)
 }
@@ -205,36 +239,26 @@ func unmarshallColumnStore(dec *decoder, v reflect.Value, offset int64) error {
 }
 
 // --- Column Natural ---
-// func marshallColumnNatural(enc *encoder, v reflect.Value) (Ref, error) {
-// 	nat := v.Interface().(column.Natural)
-// 	packed := nat.Pack()
-// 	return encode(enc, reflect.ValueOf(packed))
-// }
-
 func marshallColumnNatural(enc *encoder, v reflect.Value) (Ref, error) {
 	nat := v.Interface().(column.Natural)
 
-	// --- FIX START ---
 	// 1. Logical Deduplication by UUID
 	id := nat.UUID().String()
 	if ref, ok := enc.uuidMap[id]; ok {
 		traceLog("UUID Dedup Hit! %s -> Ref %d", id, ref)
 		return ref, nil
 	}
-	// --- FIX END ---
 
 	packed := nat.Pack()
 
-	// Encode the packed struct (this will linearize it to the buffer)
+	// Encode the packed struct
 	ref, err := encode(enc, reflect.ValueOf(packed))
 	if err != nil {
 		return 0, err
 	}
 
-	// --- FIX START ---
 	// 2. Register the new reference
 	enc.uuidMap[id] = ref
-	// --- FIX END ---
 
 	return ref, nil
 }
@@ -250,8 +274,6 @@ func unmarshallColumnNatural(dec *decoder, v reflect.Value, offset int64) error 
 }
 
 // --- Coin Info ---
-
-// --- Coin Info ---
 type PackedCoin struct {
 	Type       int8   `serde:"t"`
 	Size       int    `serde:"s"`
@@ -265,21 +287,17 @@ func asPackedCoin(c coin.Info) PackedCoin {
 }
 func marshallCoinInfo(enc *encoder, v reflect.Value) (Ref, error) {
 	c := v.Interface().(coin.Info)
-	// --- FIX START ---
 	id := c.UUID().String()
 	if ref, ok := enc.uuidMap[id]; ok {
 		return ref, nil
 	}
-	// --- FIX END ---
 	packed := asPackedCoin(c)
 
 	ref, err := encode(enc, reflect.ValueOf(packed))
 	if err != nil {
 		return 0, err
 	}
-	// --- FIX START ---
 	enc.uuidMap[id] = ref
-	// --- FIX END ---
 	return ref, nil
 }
 func unmarshallCoinInfo(dec *decoder, v reflect.Value, offset int64) error {
@@ -318,45 +336,6 @@ func unmarshallRingSisKey(dec *decoder, v reflect.Value, offset int64) error {
 	return nil
 }
 
-// --- SmartVector Regular (Zero-Copy) ---
-
-func marshallSmartVectorRegular(enc *encoder, v reflect.Value) (Ref, error) {
-	// Dereference pointer if necessary (Regular is often passed as *Regular)
-	// smartvectors.Regular is defined as []field.Element
-	val := v
-	if v.Kind() == reflect.Ptr {
-		val = v.Elem()
-	}
-
-	// 2. Use the optimized Slice Writer
-	// Since field.Element is a fixed-size struct ([4]uint64) with no pointers,
-	// writeSliceData is perfectly safe and extremely fast.
-	fs := enc.writeSliceData(val)
-
-	// 3. Write the Header and return reference
-	return Ref(enc.write(fs)), nil
-}
-
-func unmarshallSmartVectorRegular(dec *decoder, v reflect.Value, offset int64) error {
-	// 1. Prepare the target slice
-	// If v is *Regular, we need to set the underlying slice.
-	// Regular is just []field.Element.
-	targetSlice := v
-	if v.Kind() == reflect.Ptr {
-		targetSlice = v.Elem()
-	}
-
-	// 2. Decode using Zero-Copy Slice logic
-	// This will read the FileSlice header at 'offset', calculate the
-	// data pointer in the mmap region, and swizzle the slice header
-	// to point directly to that memory.
-	if err := dec.decodeSlice(targetSlice, offset); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // --- Gnark FFT Domain (STRUCT) ---
 func marshallGnarkFFTDomain(enc *encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
@@ -366,26 +345,18 @@ func marshallGnarkFFTDomain(enc *encoder, v reflect.Value) (Ref, error) {
 	domain := p.(*fft.Domain)
 	startOffset := enc.offset
 
-	// Zero allocation direct write (with no tmp. intermediate buffer) - we can write directly to the
-	// encoder's underlying buffer since gnark lib allows it. If not, we'd have to allocate memory to create a
-	// tmp. buffer and write to it.
+	// Zero allocation direct write
 	n, err := domain.WriteTo(enc.buf)
 	if err != nil {
 		return 0, fmt.Errorf("fft domain write failed: %w", err)
 	}
 
-	// Update the encoder cursor manually as the value 'n' tells us exactly how many bytes were written.
 	enc.offset += n
-
-	// Write the Header - the data is now explicitly in the file (i.e. encoder buffer), so we just point to it.
 	fs := FileSlice{Offset: Ref(startOffset), Len: n, Cap: n}
-
-	// Write the header and return its location
 	headerOffset := enc.write(fs)
 	return Ref(headerOffset), nil
 }
 func unmarshallGnarkFFTDomain(dec *decoder, v reflect.Value, offset int64) error {
-	// 1. Header Validation
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("fft domain header out of bounds")
 	}
@@ -394,17 +365,12 @@ func unmarshallGnarkFFTDomain(dec *decoder, v reflect.Value, offset int64) error
 		return nil
 	}
 
-	// 2. Data Slicing (Zero-Copy View)
 	start := int64(fs.Offset)
-	end := start + int64(fs.Len) // Fixed: Cast fs.Len to int64
+	end := start + int64(fs.Len)
 	if start < 0 || end > int64(len(dec.data)) {
 		return fmt.Errorf("fft domain data out of bounds")
 	}
 
-	// 3. Reconstruction (Using Upstream Logic)
-	// We create a Reader on the mapped bytes. This is very cheap.
-	// d.ReadFrom will copy these bytes into the struct fields.
-	// This copy is negligible for a struct of this size (approx 200 bytes).
 	d := &fft.Domain{}
 	if _, err := d.ReadFrom(bytes.NewReader(dec.data[start:end])); err != nil {
 		return err
@@ -421,25 +387,18 @@ func marshallPlonkCkt(enc *encoder, v reflect.Value) (Ref, error) {
 		return 0, err
 	}
 
-	// Type assertion - We assume v holds *cs.SparseR1CS (or cs.SparseR1CS)
 	csPtr, ok := p.(*cs.SparseR1CS)
 	if !ok {
 		return 0, fmt.Errorf("serializeR1CS: expected *cs.SparseR1CS, got %T", p)
 	}
 
 	startOffset := enc.offset
-
-	// DIRECT WRITE (Optimization)
-	// Just like fft.Domain, R1CS implements io.WriterTo so that we pass the encoder's underlying buffer directly.
 	n, err := csPtr.WriteTo(enc.buf)
 	if err != nil {
 		return 0, fmt.Errorf("R1CS write failed: %w", err)
 	}
 
-	// Update the encoder cursor manually
 	enc.offset += n
-
-	// Write the Header - the data is now in the file and we just create the pointer to it.
 	fs := FileSlice{Offset: Ref(startOffset), Len: n, Cap: n}
 	off := enc.write(fs)
 
@@ -460,13 +419,11 @@ func unmarshallPlonkCkt(dec *decoder, v reflect.Value, offset int64) error {
 		return fmt.Errorf("R1CS data out of bounds")
 	}
 
-	// ReadFrom (Library Safe) - we create a Reader on the mapped bytes.
 	csPtr := &cs.SparseR1CS{}
 	if _, err := csPtr.ReadFrom(bytes.NewReader(dec.data[start:end])); err != nil {
 		return fmt.Errorf("failed to read R1CS: %w", err)
 	}
 
-	// Set Result - handle both pointer and value targets using similar logic to your helper
 	if v.Kind() == reflect.Ptr {
 		v.Set(reflect.ValueOf(csPtr))
 	} else {
@@ -542,7 +499,6 @@ func unmarshallFrontendVariable(dec *decoder, v reflect.Value, offset int64) err
 }
 
 func marshallAsEmpty(enc *encoder, v reflect.Value) (Ref, error) {
-	// FIX: Write 1 byte so that the object has a unique offset/identity in the stream.
 	return Ref(enc.write(byte(0))), nil
 }
 
@@ -575,14 +531,9 @@ func encodeBigInt(enc *encoder, b *big.Int) (Ref, error) {
 	}
 	startOffset := enc.offset
 
-	// Note: We use enc.buf.Write (raw std. library write) to dump the "payload" (the sign byte + magnitude bytes)
-	// directly onto the heap without any metadata. We then manually construct one FileSlice that points to that raw
-	// dump. We use enc.write(fs) to write that header properly into the file structure.  This is done essentially to
-	// avoid the "double headers" problem (i.e. to get the actual payload, the decoder would have to read a header to
-	// find a header to find the bytes - thereby wasting 24 bytes of space and adding CPU overhead unnecessarily).
 	enc.buf.WriteByte(byte(sign))
 	enc.buf.Write(bytes)
-	enc.offset += int64(1 + len(bytes)) // plus 1 for sign byte
+	enc.offset += int64(1 + len(bytes))
 	fs := FileSlice{Offset: Ref(startOffset), Len: int64(len(bytes)), Cap: sign}
 	off := enc.write(fs)
 	return Ref(off), nil
@@ -604,13 +555,6 @@ func decodeBigInt(data []byte, target reflect.Value, offset int64) error {
 	bytes := data[dataStart : dataStart+dataLen]
 	bi := new(big.Int).SetBytes(bytes)
 
-	// Note: While encoding we write ths "sign" byte twice once in the encoder buffer and then in the FileSlice.Cap.
-	// While it looks redundant, we favour this method for semantic Completeness of the Payload ([Sign Byte] + [Magnitude Bytes])
-	// which is a complete, standalone binary representation of a Signed Integer. While decoding, we fetch the sign byte
-	// from `FileSlice.Cap` because the decoder has already loaded the struct into the CPU cache while reading `Offset` and `Len`.
-	// The `Cap` field is effectively already in a register. This avoids *peeking* into the data blob:
-	// reading the sign byte would require following the pointer into the memory-mapped region (`dec.data[offset]`), performing an extra memory load,
-	// and then creating a slice for the remaining data.
 	if fs.Cap == 1 {
 		bi.Neg(bi)
 	}
@@ -618,17 +562,12 @@ func decodeBigInt(data []byte, target reflect.Value, offset int64) error {
 	return nil
 }
 
-// toBigInt normalizes any valid frontend.Variable type into a *big.Int.
-// It returns nil if the value should be ignored (e.g. nil or expr.Term).
 func toBigInt(v reflect.Value) *big.Int {
-	// 1. Safety check: Ensure we have a valid value before calling Interface()
 	if !v.IsValid() || (v.Kind() == reflect.Interface && v.IsNil()) {
 		return nil
 	}
 
-	// 2. Type Switch covering ALL supported frontend.Variable types
 	switch val := v.Interface().(type) {
-	// Signed Integers
 	case int:
 		return big.NewInt(int64(val))
 	case int8:
@@ -640,7 +579,6 @@ func toBigInt(v reflect.Value) *big.Int {
 	case int64:
 		return big.NewInt(val)
 
-	// Unsigned Integers
 	case uint:
 		return new(big.Int).SetUint64(uint64(val))
 	case uint8:
@@ -652,19 +590,15 @@ func toBigInt(v reflect.Value) *big.Int {
 	case uint64:
 		return new(big.Int).SetUint64(val)
 
-	// GNARK Types
 	case field.Element:
 		bi := new(big.Int)
 		val.BigInt(bi)
 		return bi
 	case big.Int:
-		// Copy to avoid mutating the original if the caller modifies the result
 		return new(big.Int).Set(&val)
 	case *big.Int:
-		// Copy to avoid mutating the original
 		return new(big.Int).Set(val)
 
-	// String Support (Base-10)
 	case string:
 		if bi, ok := new(big.Int).SetString(val, 10); ok {
 			return bi
@@ -672,36 +606,22 @@ func toBigInt(v reflect.Value) *big.Int {
 		return nil
 
 	default:
-		// 3. The Safety Fallback for expr.Term
-		// We check the type string to avoid importing internal packages.
-		// If it's an internal expression term, we skip it (return nil).
-		// The check cannot be done on val.Type as it would return
-		// [frontend.Variable]. The check is somewhat fragile as it rely on
-		// the type name and the package name. We return nil in that case, be
-		// -cause it signifies that the variable belongs to a circuit that has
-		// been compiled by gnark. That information is not relevant to
-		// serialize.
 		if strings.Contains(v.Type().String(), "expr.Term") {
 			logrus.Warn("******* Skipping expr.Term *******")
 			return nil
 		}
-
-		// Unrecognized type
 		return nil
 	}
 }
 
-// ptrFromStruct: a small helper to get pointer safely from struct value
 func ptrFromStruct(v reflect.Value) (interface{}, error) {
-	// 1. If it's already a pointer, return it directly
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
-			return nil, nil // Or error, depending on your needs
+			return nil, nil
 		}
 		return v.Interface(), nil
 	}
 
-	// 2. If it's a value, try to get its address
 	if !v.CanAddr() {
 		return nil, fmt.Errorf("cannot address value of type %v", v.Type())
 	}
