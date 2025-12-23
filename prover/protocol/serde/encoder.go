@@ -50,7 +50,7 @@ func newEncoder() *encoder {
 	// We write a single zero byte to ensure that 'offset' moves to 1.
 	// This guarantees that Ref(0) is exclusively reserved for NULL pointers
 	// and no valid object data ever exists at offset 0.
-	enc.writeBytes([]byte{0})
+	// enc.writeBytes([]byte{0})
 	// --- FIX END ---
 
 	return enc
