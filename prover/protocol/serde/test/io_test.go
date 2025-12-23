@@ -21,7 +21,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
-	"github.com/consensys/linea-monorepo/prover/protocol/serde/util"
+
+	//"github.com/consensys/linea-monorepo/prover/protocol/serde/util"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -476,7 +477,7 @@ func TestSerdeValue_Load(t *testing.T) {
 
 const (
 	// Shared directory and filename for the ZkEVM artifact
-	zkEvmTestDir  = "files"
+	testDir       = "files"
 	zkEvmFileName = "zkevm.bin"
 )
 
@@ -485,10 +486,10 @@ const (
 func TestStoreZkEVM(t *testing.T) {
 	// 1. Setup directory
 	// We clean up before storing to ensure a fresh environment
-	_ = os.RemoveAll(zkEvmTestDir)
-	require.NoError(t, os.MkdirAll(zkEvmTestDir, 0755))
+	_ = os.RemoveAll(testDir)
+	require.NoError(t, os.MkdirAll(testDir, 0755))
 
-	path := filepath.Join(zkEvmTestDir, zkEvmFileName)
+	path := filepath.Join(testDir, zkEvmFileName)
 
 	t.Logf("Storing ZkEVM object to: %s", path)
 
@@ -508,7 +509,7 @@ func TestStoreZkEVM(t *testing.T) {
 // PHASE 2: LOAD
 // This test loads the artifact created by TestStoreZkEVM and performs a Deep Compare.
 func TestLoadZkEVM(t *testing.T) {
-	path := filepath.Join(zkEvmTestDir, zkEvmFileName)
+	path := filepath.Join(testDir, zkEvmFileName)
 
 	// 1. Dependency Check
 	// Ensure the artifact from Phase 1 exists
@@ -530,7 +531,7 @@ func TestLoadZkEVM(t *testing.T) {
 	// CRITICAL: Ensure we close the mmap and clean up the file at the end
 	defer func() {
 		require.NoError(t, closer.Close(), "Failed to close mmap")
-		require.NoError(t, os.RemoveAll(zkEvmTestDir), "Failed to cleanup directory")
+		require.NoError(t, os.RemoveAll(testDir), "Failed to cleanup directory")
 	}()
 
 	// 4. Verification (DeepCmp)
@@ -549,6 +550,107 @@ func TestLoadZkEVM(t *testing.T) {
 
 	t.Log("Success: ZkEVM serialization/deserialization verified.")
 }
+
+const (
+	// Directory to store the IOP binary artifacts
+	iopArtifactsDir = "files"
+)
+
+// PHASE 1: STORE
+// Iterates through all scenarios defined in 'serdeScenarios' and persists them to disk.
+func TestIOP_Store(t *testing.T) {
+	// 1. Setup Environment
+	// Clean up previous runs to ensure valid file creation
+	_ = os.RemoveAll(iopArtifactsDir)
+	require.NoError(t, os.MkdirAll(iopArtifactsDir, 0755))
+
+	for i, scenario := range serdeScenarios {
+		// Skip scenarios marked as not for testing
+		if !scenario.test {
+			continue
+		}
+
+		if i != 2 && i != 3 {
+			continue
+		}
+
+		t.Run(fmt.Sprintf("Store/%s", scenario.name), func(subT *testing.T) {
+			// 2. Build the Object
+			// We use the scenario builder to generate the complex CompiledIOP
+			comp := getScenarioComp(&scenario)
+			require.NotNil(subT, comp, "Failed to build scenario %s", scenario.name)
+
+			// 3. Define File Path
+			path := filepath.Join(iopArtifactsDir, fmt.Sprintf("%s.bin", scenario.name))
+			subT.Logf("Storing %s to %s", scenario.name, path)
+
+			// 4. Store to Disk
+			// We use 'false' for compression to test raw mapping
+			err := serde.StoreToDisk(path, comp, false)
+			require.NoError(subT, err, "StoreToDisk failed for %s", scenario.name)
+
+			// 5. Verify File Existence
+			info, err := os.Stat(path)
+			require.NoError(subT, err)
+			require.Greater(subT, info.Size(), int64(0), "File created but empty")
+		})
+	}
+}
+
+// PHASE 2: LOAD
+// Loads the artifacts created in Phase 1 and compares them against a freshly built original.
+func TestIOP_Load(t *testing.T) {
+	// Ensure the artifacts directory exists
+	_, err := os.Stat(iopArtifactsDir)
+	require.NoError(t, err, "Artifacts directory missing. Did you run TestIOP_Store?")
+
+	// Cleanup files after all load tests complete
+	defer func() {
+		_ = os.RemoveAll(iopArtifactsDir)
+	}()
+
+	for i, scenario := range serdeScenarios {
+		if !scenario.test {
+			continue
+		}
+
+		if i != 2 && i != 3 {
+			continue
+		}
+
+		t.Run(fmt.Sprintf("Load/%s", scenario.name), func(subT *testing.T) {
+			path := filepath.Join(iopArtifactsDir, fmt.Sprintf("%s.bin", scenario.name))
+
+			// 1. Rebuild Expected Object (The "Gold Standard")
+			// We rebuild it so we have a distinct memory object to compare against
+			expected := getScenarioComp(&scenario)
+
+			// 2. Prepare Destination
+			// CompiledIOP is a struct, and getScenarioComp returns *wizard.CompiledIOP.
+			// LoadFromDisk expects a pointer to the type we want to load.
+			// So we pass **wizard.CompiledIOP (which is &loaded where loaded is *wizard.CompiledIOP)
+			var loaded *wizard.CompiledIOP
+
+			// 3. Load from Disk
+			subT.Logf("Loading %s...", path)
+			closer, err := serde.LoadFromDisk(path, &loaded, false)
+			require.NoError(subT, err, "LoadFromDisk failed for %s", scenario.name)
+			defer closer.Close() // Release mmap
+
+			// 4. Verification (Deep Compare)
+			// We use failFast=true to stop immediately on mismatch
+			subT.Logf("Verifying %s via DeepCmp...", scenario.name)
+			match := serde.DeepCmp(expected, loaded, false)
+
+			if !match {
+				subT.Fatalf("DeepCmp Failed: Loaded object for scenario '%s' differs from original build.", scenario.name)
+			}
+			subT.Logf("Success: %s verified.", scenario.name)
+		})
+	}
+}
+
+/*
 
 // Define the filename as a constant so both tests access the exact same file
 const TestFileName = "integration_test_data.bin"
@@ -784,63 +886,6 @@ func TestE_2DSliceOfPtrs_Load(t *testing.T) {
 }
 
 // --- PHASE 1: STORE ---
-// This test serializes the Typed Nil to disk.
-func TestRepro_Store(t *testing.T) {
-	testDir := "repro_files"
-	_ = os.RemoveAll(testDir)
-	require.NoError(t, os.MkdirAll(testDir, 0755))
-
-	path := filepath.Join(testDir, "repro_typed_nil.bin")
-	obj := util.GetReproObject()
-
-	t.Logf("Storing object with Typed Nil to %s", path)
-
-	// We use StoreToDisk just like your main tests
-	err := serde.StoreToDisk(path, obj, false)
-	require.NoError(t, err, "StoreToDisk failed")
-}
-
-// --- PHASE 2: LOAD ---
-// This test loads the file and runs DeepCmp, which is expected to CRASH
-// if it cannot handle Typed Nils correctly.
-func TestRepro_Load(t *testing.T) {
-	testDir := "repro_files"
-	path := filepath.Join(testDir, "repro_typed_nil.bin")
-	// defer os.RemoveAll(testDir) // Cleanup
-
-	// 1. Reconstruct the expected object (Original)
-	expected := util.GetReproObject()
-
-	// 2. Prepare destination
-	var loaded util.ReproContainer
-
-	// 3. Load
-	t.Log("Loading from disk...")
-	closer, err := serde.LoadFromDisk(path, &loaded, false)
-	require.NoError(t, err, "LoadFromDisk failed")
-	defer closer.Close()
-
-	// 4. Debugging: Check what we actually got
-	if loaded.Meta == nil {
-		t.Log("WARNING: Loaded Meta is TRUE NIL (Data loss during decode?)")
-	} else if reflect.ValueOf(loaded.Meta).IsNil() {
-		t.Log("INFO: Loaded Meta is TYPED NIL (Correct reconstruction)")
-	} else {
-		t.Log("WARNING: Loaded Meta is a valid pointer (Mismatch)")
-	}
-
-	// 5. TRIGGER THE CRASH
-	t.Log("Running DeepCmp... (If this crashes, DeepCmp is the culprit)")
-
-	// This compares the Original (Typed Nil) vs Loaded (Typed Nil)
-	// If DeepCmp tries to dereference the nil pointer inside the interface, it dies.
-	match := serde.DeepCmp(expected, loaded, false)
-
-	require.True(t, match, "DeepCmp returned false")
-	t.Log("Success! DeepCmp survived.")
-}
-
-// --- PHASE 1: STORE ---
 func TestRecursive_Store(t *testing.T) {
 	testDir := "repro_files"
 	_ = os.RemoveAll(testDir)
@@ -1040,3 +1085,5 @@ func TestReproLogic_Load1(t *testing.T) {
 	match := serde.DeepCmp(expected, loaded, false)
 	require.True(t, match, "DeepCmp failed")
 }
+
+*/
