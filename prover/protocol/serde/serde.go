@@ -95,19 +95,3 @@ func Deserialize(b []byte, v any) error {
 	// Begin the "Pointer Swizzling" process starting from the PayloadOff.
 	return dec.decode(val.Elem(), int64(header.PayloadOff))
 }
-
-// normalizeIntegerSize converts platform-dependent types (int, uint) to fixed-size
-// equivalents (int64, uint64) - 64 bit values. This ensures that the binary representation
-// is consistent across different CPU architectures (32-bit vs 64-bit).
-func normalizeIntegerSize(v reflect.Value) any {
-	switch v.Kind() {
-	case reflect.Int:
-		return int64(v.Int())
-	case reflect.Uint:
-		return uint64(v.Uint())
-	default:
-		// For all other types (int64, float64, structs, etc.),
-		// return the interface as-is.
-		return v.Interface()
-	}
-}

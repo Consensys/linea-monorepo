@@ -26,23 +26,30 @@ type encoder struct {
 	// Keeps track of memory addresses that have already been seen before.
 	ptrMap map[uintptr]Ref
 
-	// --- FIX START ---
 	// uuidMap deduplicates objects based on their logical ID (e.g. Column UUIDs).
 	// This ensures that two different pointers to the "same" Column are serialized
 	// as a single object reference.
 	uuidMap map[string]Ref
-	// --- FIX END ---
 }
 
 func newEncoder() *encoder {
 	// DEBUG: trace creation
 	traceLog("Creating New Encoder")
-	return &encoder{
+	enc := &encoder{
 		buf:     new(bytes.Buffer),
 		offset:  0,
 		ptrMap:  make(map[uintptr]Ref), // Initialize the deduplication map.
 		uuidMap: make(map[string]Ref),
 	}
+
+	// --- FIX START: Reserve Offset 0 ---
+	// We write a single zero byte to ensure that 'offset' moves to 1.
+	// This guarantees that Ref(0) is exclusively reserved for NULL pointers
+	// and no valid object data ever exists at offset 0.
+	enc.writeBytes([]byte{0})
+	// --- FIX END ---
+
+	return enc
 }
 
 // write writes the given data to the buffer and returns
@@ -165,7 +172,7 @@ func encode(w *encoder, v reflect.Value) (Ref, error) {
 		ptrAddr = v.Pointer()
 		if ref, ok := w.ptrMap[ptrAddr]; ok {
 			traceLog("Encode: Dedup Hit! Addr %x -> Ref %d", ptrAddr, ref)
-			logrus.Infof("Encode: Dedup Hit! Addr %x -> Ref %d", ptrAddr, ref)
+			//logrus.Infof("Encode: Dedup Hit! Addr %x -> Ref %d", ptrAddr, ref)
 			return ref, nil
 		}
 
@@ -199,7 +206,6 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 		return handler.marshall(w, v)
 	}
 
-	// --- FIX: QUERY HANDLER (Implicit Interface) ---
 	// If the type implements ifaces.Query, we use UUID deduplication
 	// We check t.Kind() != Interface to ensure we are looking at the concrete type
 	t := v.Type()
@@ -207,7 +213,6 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 		traceLog("Type %s implements Query -> using UUID Dedup", t)
 		return marshallQueryViaUUID(w, v)
 	}
-	// ------------------------------------------------
 
 	if v.Type() == reflect.TypeOf(field.Element{}) {
 		off := w.write(v.Interface())
@@ -227,15 +232,25 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 			return 0, nil
 		}
 
+		elemType := v.Type().Elem()
+
 		// --- FIX START ---
-		// If the element type is Indirect (Pointer, Interface, String, etc.),
-		// we cannot do a raw memory copy. We must serialize pointers individually.
-		if isIndirectType(v.Type().Elem()) {
+		// 1. Indirect Elements (Ptr, Interface, String, etc.) -> Must serialize as list of Refs.
+		if isIndirectType(elemType) {
 			traceLog("Slice is Indirect -> writeSliceOfIndirects")
 			return writeSliceOfIndirects(w, v)
 		}
+
+		// 2. NON-POD Elements (e.g., Structs containing pointers).
+		// We cannot use writeSliceData (unsafe memcopy) because it would write raw pointer addresses
+		// to disk, which leads to corruption/drift upon loading.
+		if !isPod(elemType) {
+			traceLog("Slice is Struct-With-Pointers -> linearizeSliceSeq")
+			return linearizeSliceSeq(w, v)
+		}
 		// --- FIX END ---
 
+		// 3. POD Elements -> Safe for raw memcopy optimization.
 		fs := w.writeSliceData(v)
 		off := w.write(fs)
 		return Ref(off), nil
@@ -761,6 +776,47 @@ func linearizeArray(w *encoder, v reflect.Value) (Ref, error) {
 	return Ref(startOffset), nil
 }
 
+// linearizeSliceSeq mimics linearizeArray but for Slices.
+// It serializes elements sequentially into the buffer (heap).
+// Used for "Non-POD" slices (e.g., slice of structs containing pointers).
+func linearizeSliceSeq(w *encoder, v reflect.Value) (Ref, error) {
+	totalSize := int64(0)
+	for i := 0; i < v.Len(); i++ {
+		totalSize += getBinarySize(v.Index(i).Type())
+	}
+
+	startOffset := w.offset
+	w.writeBytes(make([]byte, totalSize))
+
+	currentOff := startOffset
+	for i := 0; i < v.Len(); i++ {
+		elem := v.Index(i)
+		// Reuse patch logic (generic patch handles structs/arrays/primitives)
+		switch elem.Kind() {
+		case reflect.Struct:
+			if err := patchStructBody(w, elem, currentOff); err != nil {
+				return 0, err
+			}
+		case reflect.Array:
+			if err := patchArray(w, elem, currentOff); err != nil {
+				return 0, err
+			}
+		default:
+			// Primitive
+			w.patch(currentOff, elem.Interface())
+		}
+		currentOff += getBinarySize(elem.Type())
+	}
+
+	fs := FileSlice{
+		Offset: Ref(startOffset),
+		Len:    int64(v.Len()),
+		Cap:    int64(v.Cap()),
+	}
+	off := w.write(fs)
+	return Ref(off), nil
+}
+
 // isIndirectType returns true if the given type is an indirect type.
 // Indirect types are types that have variable sizes not known at compile time.
 // This includes pointers, slices, strings, interfaces, maps, and functions.
@@ -776,4 +832,52 @@ func isIndirectType(t reflect.Type) bool {
 	k := t.Kind()
 	return k == reflect.Ptr || k == reflect.Slice || k == reflect.String ||
 		k == reflect.Interface || k == reflect.Map || k == reflect.Func
+}
+
+// isPod (Plain Old Data) returns true only if the type contains NO references
+// (pointers, slices, strings, interfaces, maps, custom types) recursively.
+// It is used to determine if unsafe raw memory copy is safe.
+func isPod(t reflect.Type) bool {
+	// If it is Indirect (ptr, slice, map, interface, string, custom), it is NOT POD.
+	if isIndirectType(t) {
+		return false
+	}
+
+	// Structs are POD only if all fields are POD
+	if t.Kind() == reflect.Struct {
+		if t == reflect.TypeOf(field.Element{}) {
+			return true
+		}
+		for i := 0; i < t.NumField(); i++ {
+			if !isPod(t.Field(i).Type) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// Arrays are POD only if elements are POD
+	if t.Kind() == reflect.Array {
+		return isPod(t.Elem())
+	}
+
+	// Primitives (Int, Float, Bool) are POD.
+	// Note: 'String' is caught by isIndirectType check above.
+	return true
+}
+
+// normalizeIntegerSize converts platform-dependent types (int, uint) to fixed-size
+// equivalents (int64, uint64) - 64 bit values. This ensures that the binary representation
+// is consistent across different CPU architectures (32-bit vs 64-bit).
+func normalizeIntegerSize(v reflect.Value) any {
+	switch v.Kind() {
+	case reflect.Int:
+		return int64(v.Int())
+	case reflect.Uint:
+		return uint64(v.Uint())
+	default:
+		// For all other types (int64, float64, structs, etc.),
+		// return the interface as-is.
+		return v.Interface()
+	}
 }

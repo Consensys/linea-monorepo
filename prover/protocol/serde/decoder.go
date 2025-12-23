@@ -7,7 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/sirupsen/logrus"
+	//"github.com/sirupsen/logrus"
 )
 
 // decoder maps the continguous block into memory and "swizzles" (converts) file offsets into real memory addresses
@@ -88,14 +88,23 @@ func (dec *decoder) decodePtr(target reflect.Value, offset int64) error {
 	traceOffset("Ptr Ref", offset)
 	defer traceExit("DEC_PTR", nil)
 
+	// --- FIX START ---
+	// Explicitly check for Nil Reference (Offset 0).
+	// This disambiguates between "Nil Pointer" and "Data at Start of File".
+	if offset == 0 {
+		target.Set(reflect.Zero(target.Type()))
+		return nil
+	}
+	// --- FIX END ---
+
 	t := target.Type()
 
 	// Check Cache
 	if val, ok := dec.ptrMap[offset]; ok {
 		traceLog("Cache Hit for Ref %d", offset)
-		logrus.Infof("Decode cache Hit for Ref %d", offset)
+		//logrus.Infof("Decode cache Hit for Ref %d", offset)
 		if val.Type().AssignableTo(t) {
-			logrus.Infof("Type %s can be assigned to %s", val.Type(), t)
+			//logrus.Infof("Type %s can be assigned to %s", val.Type(), t)
 			target.Set(val)
 			return nil
 		}
@@ -106,7 +115,7 @@ func (dec *decoder) decodePtr(target reflect.Value, offset int64) error {
 	// memory to store type `t`, and saves it to the ptrMap (deduplication purposes).
 	newPtr := reflect.New(t.Elem())
 	traceLog("Allocated New Ptr: %v (Addr: %p) for Ref %d", newPtr.Type(), newPtr.Interface(), offset)
-	logrus.Infof("Allocated New Ptr: %v (Addr: %p) for Ref %d", newPtr.Type(), newPtr.Interface(), offset)
+	//logrus.Infof("Allocated New Ptr: %v (Addr: %p) for Ref %d", newPtr.Type(), newPtr.Interface(), offset)
 	dec.ptrMap[offset] = newPtr
 
 	// Reconstruct recursively to actually fill that newly allocated memory with the data found at that
@@ -171,6 +180,50 @@ func (dec *decoder) decodeSlice(target reflect.Value, offset int64) error {
 		return nil
 	}
 	// --- FIX END ---
+
+	// --- FIX 2: Check for Non-POD (Struct with Ptrs) Slice ---
+	// If we serialized using linearizeSliceSeq (because it contained pointers),
+	// we must deserialize sequentially, not using Zero-Copy swizzling.
+	// NOTE: In the decoder, we don't have isPod easily available without helper,
+	// but we can trust the 'zero-copy swizzling' ONLY if the data layout on disk
+	// matches memory layout perfectly. If there are pointers, it does not.
+	// However, for Simplicity in Drop-In: The `decodeArray` logic handles sequential reading.
+	// `decodeStruct` handles sequential reading.
+	// We can reuse a sequential reader loop here.
+
+	// Check if we need sequential decoding (Not Indirect, but also not safe for swizzling)
+	// Note: The logic below is strict. If it is POD, we swizzle. If not, we iterate.
+	// We check customRegistry as "indirect" was already handled above.
+	// We check if Element type has Pointers.
+	elemType := target.Type().Elem()
+	// For drop-in safety: We can re-implement isPod check here, or just try to be safe.
+	// Swizzling is only safe for pure primitives/arrays of primitives.
+
+	// Re-implement simplified check:
+	hasPtrs := false
+	if elemType.Kind() == reflect.Struct || elemType.Kind() == reflect.Array {
+		// Deep check is expensive, but necessary for correctness vs swizzling.
+		// Given the context of the bug, we should default to Sequential Decode for Structs unless explicitly known safe (field.Element).
+		if elemType != reflect.TypeOf(field.Element{}) {
+			// For safety, assume complex structs need sequential decode.
+			// This avoids the "Garbage Pointer" bug.
+			hasPtrs = true
+		}
+	}
+
+	if hasPtrs {
+		// Sequential Decode Logic (Same as Array but for Slice)
+		target.Set(reflect.MakeSlice(target.Type(), int(fs.Len), int(fs.Cap)))
+		currentOff := int64(fs.Offset)
+		for i := 0; i < int(fs.Len); i++ {
+			nextOff, err := dec.decodeSeqItem(target.Index(i), currentOff)
+			if err != nil {
+				return err
+			}
+			currentOff = nextOff
+		}
+		return nil
+	}
 
 	// ZERO-COPY (The pointer "Swizzling" technique) SLICE
 	// 1. Get the pointer to the raw data inside the memory map
@@ -446,11 +499,19 @@ func (dec *decoder) decodeSeqItem(target reflect.Value, offset int64) (int64, er
 			return 0, fmt.Errorf("decodeSeqItem: unable to read Ref at offset %d", offset)
 		}
 		ref := *(*Ref)(unsafe.Pointer(&dec.data[offset]))
+
+		// --- FIX START ---
+		// Only recurse if the reference is valid (non-zero).
 		if !ref.IsNull() {
 			if err := dec.decode(target, int64(ref)); err != nil {
 				return 0, err
 			}
+		} else {
+			// Ensure target is zeroed if ref is null (important for map reuse contexts)
+			target.Set(reflect.Zero(target.Type()))
 		}
+		// --- FIX END ---
+
 		return offset + 8, nil
 	}
 
