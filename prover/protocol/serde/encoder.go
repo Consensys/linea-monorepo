@@ -165,6 +165,7 @@ func encode(w *encoder, v reflect.Value) (Ref, error) {
 		ptrAddr = v.Pointer()
 		if ref, ok := w.ptrMap[ptrAddr]; ok {
 			traceLog("Encode: Dedup Hit! Addr %x -> Ref %d", ptrAddr, ref)
+			logrus.Infof("Encode: Dedup Hit! Addr %x -> Ref %d", ptrAddr, ref)
 			return ref, nil
 		}
 
@@ -219,6 +220,8 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 	// and for the possiblity of the type being pointed at implmenting custom interfaces
 	case reflect.Ptr:
 		return encode(w, v.Elem())
+	case reflect.Array:
+		return linearizeArray(w, v)
 	case reflect.Slice:
 		if v.IsNil() {
 			return 0, nil
@@ -543,8 +546,7 @@ func patchArray(w *encoder, v reflect.Value, startOffset int64) error {
 	// Pre-calculation: Determine if elements are "References"
 	// (Pointers, Slices, or Registered Custom Types like frontend.Variable).
 	// Since it's an array, this decision applies to EVERY element.
-	_, isCustom := customRegistry[elemType]
-	isReference := isIndirectType(elemType) || isCustom
+	isReference := isIndirectType(elemType)
 
 	for i := 0; i < v.Len(); i++ {
 		elem := v.Index(i)
@@ -662,4 +664,116 @@ func writeSliceOfIndirects(w *encoder, v reflect.Value) (Ref, error) {
 	}
 	off := w.write(fs)
 	return Ref(off), nil
+}
+
+// getBinarySize returns the number of bytes a value of type `T` will occupy
+// in the serialized buffer according to serde layout rules.
+//
+// NOTE: This is NOT the same as Go's in-memory size. The size returned here reflects
+// how the value is represented on disk:
+//
+// - Fixed-size, pointer-free values are inlined.
+// - Variable-size or heap-backed values are replaced by an 8-byte Ref.
+//
+// This function MUST remain perfectly consistent with the actual write logic;
+// any mismatch will result in corrupted offsets or incorrect deserialization.
+func getBinarySize(t reflect.Type) int64 {
+
+	// Indirect types (custom registries, ptrs, slices, strings etc) are types that have variable sizes
+	// not known at compile time and hence their inline representation is a Ref (8-byte offset).
+	// These values are written elsewhere and referenced inline by offset.
+	if isIndirectType(t) {
+		return 8 // Size of Ref (8-byte offset)
+	}
+
+	k := t.Kind()
+
+	// Explicit handling of scalar types int/uint are platform-dependent in Go,
+	// so we normalize them to 8 bytes in the serialized representation.
+	if k == reflect.Int || k == reflect.Uint {
+		return 8
+	}
+
+	// Structs are serialized inline by concatenating the serialized
+	// representation of each exported, non-omitted field.
+	if k == reflect.Struct {
+		// Special-case POD types that are safe to inline as raw bytes.
+		if t == reflect.TypeOf(field.Element{}) {
+			return int64(t.Size())
+		}
+
+		var sum int64
+		for i := 0; i < t.NumField(); i++ {
+			f := t.Field(i)
+
+			// Skip unexported fields.
+			if !f.IsExported() {
+				continue
+			}
+
+			// Skip fields explicitly omitted from serialization.
+			if strings.Contains(f.Tag.Get(serdeStructTag), serdeStructTagOmit) {
+				continue
+			}
+
+			sum += getBinarySize(f.Type)
+		}
+		return sum
+	}
+
+	// Arrays are fixed-size and serialized inline as repeated elements.
+	if k == reflect.Array {
+		// field.Element arrays are treated as POD blobs.
+		if t == reflect.TypeOf(field.Element{}) {
+			return int64(t.Size())
+		}
+
+		elemSize := getBinarySize(t.Elem())
+		return elemSize * int64(t.Len())
+	}
+
+	// Fallback for other fixed-size, pointer-free types
+	// (e.g. bool, int/uint8, int/uint16, int/uint32, int/uint64, float32/64).
+	return int64(t.Size())
+}
+
+// linearizeArray handles the serialization of Go arrays (e.g., [10]MyStruct).
+// Unlike slices (which are variable length), arrays are fixed-size values.
+// We must serialize them by reserving space and then filling it element-by-element
+// to ensure that any pointers inside the elements are correctly resolved to Refs.
+func linearizeArray(w *encoder, v reflect.Value) (Ref, error) {
+	// 1. PREDICT: Calculate exactly how many bytes this array will occupy on disk.
+	// This uses getBinarySize() which accounts for Refs (8 bytes) vs Inline data.
+	size := getBinarySize(v.Type())
+
+	// 2. SNAPSHOT: Capture the current cursor position. This is where our array begins.
+	startOffset := w.offset
+
+	// 3. RESERVE: Write zero bytes to reserve the contiguous block of memory.
+	w.writeBytes(make([]byte, size))
+
+	// 4. PATCH: Iterate through the array elements and write the actual data
+	// (or References) into the reserved space. We reuse the existing patchArray helper.
+	if err := patchArray(w, v, startOffset); err != nil {
+		return 0, err
+	}
+
+	return Ref(startOffset), nil
+}
+
+// isIndirectType returns true if the given type is an indirect type.
+// Indirect types are types that have variable sizes not known at compile time.
+// This includes pointers, slices, strings, interfaces, maps, and functions.
+// Direct types are types that have fixed sizes known at compile time.
+// This includes structs, arrays, and primitive types (bool,int/uint8, int/uint (normalized), etc).
+// Types handled inside of the Custom Registry are also considered indirect.
+func isIndirectType(t reflect.Type) bool {
+	if _, ok := customRegistry[t]; ok {
+		return true
+	}
+
+	// Indirect types are types that have variable sizes - not known at compile time
+	k := t.Kind()
+	return k == reflect.Ptr || k == reflect.Slice || k == reflect.String ||
+		k == reflect.Interface || k == reflect.Map || k == reflect.Func
 }

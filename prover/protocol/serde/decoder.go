@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/sirupsen/logrus"
 )
 
 // decoder maps the continguous block into memory and "swizzles" (converts) file offsets into real memory addresses
@@ -92,7 +93,9 @@ func (dec *decoder) decodePtr(target reflect.Value, offset int64) error {
 	// Check Cache
 	if val, ok := dec.ptrMap[offset]; ok {
 		traceLog("Cache Hit for Ref %d", offset)
+		logrus.Infof("Decode cache Hit for Ref %d", offset)
 		if val.Type().AssignableTo(t) {
+			logrus.Infof("Type %s can be assigned to %s", val.Type(), t)
 			target.Set(val)
 			return nil
 		}
@@ -103,6 +106,7 @@ func (dec *decoder) decodePtr(target reflect.Value, offset int64) error {
 	// memory to store type `t`, and saves it to the ptrMap (deduplication purposes).
 	newPtr := reflect.New(t.Elem())
 	traceLog("Allocated New Ptr: %v (Addr: %p) for Ref %d", newPtr.Type(), newPtr.Interface(), offset)
+	logrus.Infof("Allocated New Ptr: %v (Addr: %p) for Ref %d", newPtr.Type(), newPtr.Interface(), offset)
 	dec.ptrMap[offset] = newPtr
 
 	// Reconstruct recursively to actually fill that newly allocated memory with the data found at that
