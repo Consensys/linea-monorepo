@@ -30,6 +30,10 @@ type encoder struct {
 	// This ensures that two different pointers to the "same" Column are serialized
 	// as a single object reference.
 	uuidMap map[string]Ref
+
+	// idMap performs "String Interning" - mapping the raw string content to its File Offset (Ref).
+	// If a colID/coinName/queryID is written once, subsequent occurrences just write the Ref (8 bytes).
+	idMap map[string]Ref
 }
 
 func newEncoder() *encoder {
@@ -38,8 +42,9 @@ func newEncoder() *encoder {
 	enc := &encoder{
 		buf:     new(bytes.Buffer),
 		offset:  0,
-		ptrMap:  make(map[uintptr]Ref), // Initialize the deduplication map.
+		ptrMap:  make(map[uintptr]Ref),
 		uuidMap: make(map[string]Ref),
+		idMap:   make(map[string]Ref),
 	}
 
 	// --- FIX START: Reserve Offset 0 ---

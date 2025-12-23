@@ -20,6 +20,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/sirupsen/logrus"
 )
@@ -46,6 +47,15 @@ func init() {
 	// 	marshall:   marshallExpression,
 	// 	unmarshall: unmarshallExpression,
 	// })
+
+	idCodex := customCodex{
+		marshall:   marshallID,
+		unmarshall: unmarshallID,
+	}
+
+	registerCustomType(reflect.TypeOf(ifaces.ColID("")), idCodex)
+	registerCustomType(reflect.TypeOf(ifaces.QueryID("")), idCodex)
+	registerCustomType(reflect.TypeOf(coin.Name("")), idCodex)
 
 	// Value Types
 	registerCustomType(reflect.TypeOf(big.Int{}), customCodex{
@@ -125,50 +135,50 @@ func init() {
 
 // ---------------- IMPLEMENTATIONS ----------------
 
-/*
-func marshallCompiledIOP(enc *encoder, v reflect.Value) (Ref, error) {
-	p, err := ptrFromStruct(v)
-	if err != nil {
-		return 0, err
+// marshallID handles string deduplication.
+// 1. Checks if string content exists in stringMap.
+// 2. If hit: returns existing Ref.
+// 3. If miss: writes string data, writes Header, updates map, returns new Ref.
+func marshallID(enc *encoder, v reflect.Value) (Ref, error) {
+	s := v.String()
+
+	// 1. Check Cache (Deduplication)
+	if ref, ok := enc.idMap[s]; ok {
+		traceLog("ID cache Hit! '%s' -> Ref %d", s, ref)
+		return ref, nil
 	}
-	if p == nil {
-		return 0, nil
+
+	// 2. Write Data (Payload)
+	// We write the raw bytes to the heap
+	startOffset := enc.offset
+	enc.buf.WriteString(s)
+	enc.offset += int64(len(s))
+
+	// 3. Write Header
+	// We create a FileSlice pointing to the payload
+	fs := FileSlice{
+		Offset: Ref(startOffset),
+		Len:    int64(len(s)),
+		Cap:    int64(len(s)),
 	}
-	iop := p.(*wizard.CompiledIOP)
-	return encode(enc, reflect.ValueOf(iop))
+
+	// Write the header to get the Reference ID
+	headerOff := enc.write(fs)
+	ref := Ref(headerOff)
+
+	// 4. Update Cache
+	enc.idMap[s] = ref
+	traceLog("String Intern New: '%s' -> Ref %d", s, ref)
+
+	return ref, nil
 }
 
-func unmarshallCompiledIOP(dec *decoder, v reflect.Value, offset int64) error {
-	var iop wizard.CompiledIOP
-	iopVal := reflect.ValueOf(&iop).Elem()
-	if err := dec.decode(iopVal, offset); err != nil {
-		return err
-	}
-	v.Set(reflect.ValueOf(iop))
-	return nil
+// unmarshallID reuses the standard string decoding logic.
+// The decoder doesn't need a special cache map because the Ref in the file
+// already points to the specific header for this string.
+func unmarshallID(dec *decoder, v reflect.Value, offset int64) error {
+	return dec.decodeString(v, offset)
 }
-
-func marshallExpression(enc *encoder, v reflect.Value) (Ref, error) {
-	p, err := ptrFromStruct(v)
-	if err != nil {
-		return 0, err
-	}
-	if p == nil {
-		return 0, nil
-	}
-	expr := p.(*symbolic.Expression)
-	return encode(enc, reflect.ValueOf(expr))
-}
-
-func unmarshallExpression(dec *decoder, v reflect.Value, offset int64) error {
-	var expr symbolic.Expression
-	exprVal := reflect.ValueOf(&expr).Elem()
-	if err := dec.decode(exprVal, offset); err != nil {
-		return err
-	}
-	v.Set(reflect.ValueOf(expr))
-	return nil
-} */
 
 // --- Column Store (STRUCT) ---
 func marshallColumnStore(enc *encoder, v reflect.Value) (Ref, error) {

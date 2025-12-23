@@ -82,6 +82,34 @@ func getSerdeTestCases() []serdeTestCase {
 			V:    ifaces.QueryID("QueryID"),
 		},
 		{
+			Name: "dedup-id",
+			V: func() any {
+				var (
+					colID    = ifaces.ColID("COL_ID")
+					coinName = coin.Name("COIN_NAME")
+					queryID  = ifaces.QueryID("QUERY_ID")
+				)
+
+				dupStruct := struct {
+					ColID1    ifaces.ColID
+					CoinName1 coin.Name
+					QueryID1  ifaces.QueryID
+					ColID2    ifaces.ColID
+					CoinName2 coin.Name
+					QueryID2  ifaces.QueryID
+				}{
+					ColID1:    colID,
+					CoinName1: coinName,
+					QueryID1:  queryID,
+					ColID2:    colID,
+					CoinName2: coinName,
+					QueryID2:  queryID,
+				}
+
+				return dupStruct
+			}(),
+		},
+		{
 			Name: "natural-column",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
@@ -355,7 +383,6 @@ func getSerdeTestCases() []serdeTestCase {
 						vortex.PremarkAsSelfRecursed(),
 					),
 				)
-				logrus.Infof("WIOP: %v", wiop)
 
 				rec := wizard.NewCompiledIOP()
 				recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
@@ -364,7 +391,6 @@ func getSerdeTestCases() []serdeTestCase {
 					Name:        "recursion",
 				})
 
-				logrus.Infof("Recursion: %v", rec)
 				return rec
 			}(),
 		},
