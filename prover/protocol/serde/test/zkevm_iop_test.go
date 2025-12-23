@@ -2,10 +2,7 @@ package serde_test
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"reflect"
-	"runtime"
 	"runtime/debug"
 	"testing"
 
@@ -32,7 +29,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -99,90 +95,9 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 	}
 }
 
-// runSerdeBenchmark is updated to properly benchmark serialization and deserialization separately.
-// For serialization benchmark, it serializes b.N times.
-// For deserialization benchmark, it serializes once outside the loop, then deserializes b.N times.
-func runSerdeBenchmark(b *testing.B, input any, name string, onlySerialize bool) {
-	// In case the test panics, log the error but do not let the panic
-	// interrupt the test.
-	defer func() {
-		if r := recover(); r != nil {
-			b.Errorf("Panic during serialization/deserialization of %s: %v", name, r)
-			debug.PrintStack()
-		}
-	}()
-
-	if input == nil {
-		b.Fatal("test input is nil")
-	}
-
-	var output = reflect.New(reflect.TypeOf(input)).Interface()
-	var bBytes []byte
-	var err error
-
-	// Serialize once to get the bytes for deserialization benchmark
-	if !onlySerialize {
-		bBytes, err = serde.Serialize(input)
-		if err != nil {
-			b.Fatalf("Error during initial serialization of %s: %v", name, err)
-		}
-	}
-
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for i := 0; i < b.N; i++ {
-		if onlySerialize {
-			// Benchmark only serialization
-			_, err = serde.Serialize(input)
-			if err != nil {
-				b.Fatalf("Error during serialization of %s: %v", name, err)
-			}
-		} else {
-			// Benchmark only deserialization (using pre-serialized bytes)
-			err = serde.Deserialize(bBytes, output)
-			if err != nil {
-				b.Fatalf("Error during deserialization of %s: %v", name, err)
-			}
-		}
-	}
-}
-
 func TestSerdeZkEVM(t *testing.T) {
 	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	runSerdeTest(t, z, "ZKEVM", true, false)
-}
-
-func TestSerdeZkEVMIO_RealWorldSimulation(t *testing.T) {
-	// t.Skip("Skipping integration test for CI")
-
-	// 1. Setup Shared Storage (Simulating Disk)
-	tmpDir, err := os.MkdirTemp("", "prover_simulation_io")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-	rawPath := filepath.Join(tmpDir, "zkevm_prover_data.bin")
-
-	t.Run("Phase1_Simulate_Setup_And_Store", func(t *testing.T) {
-		z := zkevm.GetTestZkEVM()
-		require.NotNil(t, z)
-
-		err := serde.StoreToDisk(rawPath, z, false)
-		require.NoError(t, err)
-
-		z = nil
-		runtime.GC()
-		debug.FreeOSMemory()
-	})
-
-	t.Run("Phase2_Simulate_Prover_Start_Mmap", func(t *testing.T) {
-		var zProver zkevm.ZkEvm
-		closer, err := serde.LoadFromDisk(rawPath, &zProver, false)
-		require.NoError(t, err)
-		defer closer.Close()
-
-		zTruth := zkevm.GetTestZkEVM()
-		require.True(t, serde.DeepCmp(zTruth, &zProver, true))
-	})
 }
 
 // returns a dummy column name
@@ -794,4 +709,53 @@ func (d distributeTestCase) define(comp *wizard.CompiledIOP) {
 	comp.InsertGlobal(0, "global-1", symbolic.Sub(c1, b1, a1))
 
 	comp.InsertInclusion(0, "inclusion-0", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
+}
+
+// runSerdeBenchmark is updated to properly benchmark serialization and deserialization separately.
+// For serialization benchmark, it serializes b.N times.
+// For deserialization benchmark, it serializes once outside the loop, then deserializes b.N times.
+func runSerdeBenchmark(b *testing.B, input any, name string, onlySerialize bool) {
+	// In case the test panics, log the error but do not let the panic
+	// interrupt the test.
+	defer func() {
+		if r := recover(); r != nil {
+			b.Errorf("Panic during serialization/deserialization of %s: %v", name, r)
+			debug.PrintStack()
+		}
+	}()
+
+	if input == nil {
+		b.Fatal("test input is nil")
+	}
+
+	var output = reflect.New(reflect.TypeOf(input)).Interface()
+	var bBytes []byte
+	var err error
+
+	// Serialize once to get the bytes for deserialization benchmark
+	if !onlySerialize {
+		bBytes, err = serde.Serialize(input)
+		if err != nil {
+			b.Fatalf("Error during initial serialization of %s: %v", name, err)
+		}
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		if onlySerialize {
+			// Benchmark only serialization
+			_, err = serde.Serialize(input)
+			if err != nil {
+				b.Fatalf("Error during serialization of %s: %v", name, err)
+			}
+		} else {
+			// Benchmark only deserialization (using pre-serialized bytes)
+			err = serde.Deserialize(bBytes, output)
+			if err != nil {
+				b.Fatalf("Error during deserialization of %s: %v", name, err)
+			}
+		}
+	}
 }

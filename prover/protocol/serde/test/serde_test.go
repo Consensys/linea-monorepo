@@ -407,10 +407,6 @@ func TestSerdeValue(t *testing.T) {
 
 	for i := 0; i < len(testCases); i++ {
 
-		if i == 40 {
-			continue
-		}
-
 		t.Run(fmt.Sprintf("test-case-%v/%v", i, testCases[i].Name), func(t *testing.T) {
 
 			msg, err := serde.Serialize(testCases[i].V)
@@ -548,6 +544,7 @@ func TestSerdeFE(t *testing.T) {
 	}
 
 	for _, tt := range arrayTests {
+
 		t.Run("Array_"+tt.name, func(t *testing.T) {
 			bytes, err := serde.Serialize(tt.val)
 			if err != nil {

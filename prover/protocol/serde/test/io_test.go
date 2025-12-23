@@ -25,6 +25,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -354,7 +355,7 @@ func getSerdeTestCases() []serdeTestCase {
 						vortex.PremarkAsSelfRecursed(),
 					),
 				)
-				// return wiop
+				logrus.Infof("WIOP: %v", wiop)
 
 				rec := wizard.NewCompiledIOP()
 				recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
@@ -363,6 +364,7 @@ func getSerdeTestCases() []serdeTestCase {
 					Name:        "recursion",
 				})
 
+				logrus.Infof("Recursion: %v", rec)
 				return rec
 			}(),
 		},
@@ -395,10 +397,6 @@ func TestSerdeValue_Store(t *testing.T) {
 
 	for i, tc := range testCases {
 
-		if i != 40 {
-			continue
-		}
-
 		t.Run(fmt.Sprintf("Store/%d_%s", i, tc.Name), func(t *testing.T) {
 			path := filepath.Join(testDir, fmt.Sprintf("%d_%s.bin", i, tc.Name))
 
@@ -417,10 +415,6 @@ func TestSerdeValue_Load(t *testing.T) {
 
 	for i, tc := range testCases {
 
-		if i != 40 {
-			continue
-		}
-
 		t.Run(fmt.Sprintf("Load/%d_%s", i, tc.Name), func(t *testing.T) {
 			path := filepath.Join(testDir, fmt.Sprintf("%d_%s.bin", i, tc.Name))
 
@@ -433,9 +427,11 @@ func TestSerdeValue_Load(t *testing.T) {
 			closer, err := serde.LoadFromDisk(path, destPtr.Interface(), false)
 			require.NoError(t, err, "LoadFromDisk failed")
 
+			logrus.Infof("****** Decoding dst:%v", destPtr.Elem().Interface())
+
 			// 3. Compare (DeepCmp)
 			// We check destPtr.Elem() because destPtr is *T, but tc.V is T.
-			isMatch := serde.DeepCmp(tc.V, destPtr.Elem().Interface(), false)
+			isMatch := serde.DeepCmp(tc.V, destPtr.Elem().Interface(), true)
 			if !isMatch {
 				t.Errorf("DeepCmp failed: loaded object does not match original")
 			}
@@ -450,6 +446,82 @@ func TestSerdeValue_Load(t *testing.T) {
 
 	// Final cleanup of directory
 	_ = os.RemoveAll(testDir)
+}
+
+const (
+	// Shared directory and filename for the ZkEVM artifact
+	zkEvmTestDir  = "files"
+	zkEvmFileName = "zkevm.bin"
+)
+
+// PHASE 1: STORE
+// This test serializes the complex ZkEVM object to disk.
+func TestStoreZkEVM(t *testing.T) {
+	// 1. Setup directory
+	// We clean up before storing to ensure a fresh environment
+	_ = os.RemoveAll(zkEvmTestDir)
+	require.NoError(t, os.MkdirAll(zkEvmTestDir, 0755))
+
+	path := filepath.Join(zkEvmTestDir, zkEvmFileName)
+
+	t.Logf("Storing ZkEVM object to: %s", path)
+
+	// 2. Store to Disk
+	// We use 'false' for compression to test the raw mmap capability
+	err := serde.StoreToDisk(path, z, false)
+	require.NoError(t, err, "StoreToDisk failed for ZkEVM")
+
+	// 3. Verify file creation
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Greater(t, info.Size(), int64(0), "ZkEVM binary file created but is empty")
+
+	t.Logf("Successfully stored ZkEVM. Size: %d bytes", info.Size())
+}
+
+// PHASE 2: LOAD
+// This test loads the artifact created by TestStoreZkEVM and performs a Deep Compare.
+func TestLoadZkEVM(t *testing.T) {
+	path := filepath.Join(zkEvmTestDir, zkEvmFileName)
+
+	// 1. Dependency Check
+	// Ensure the artifact from Phase 1 exists
+	_, err := os.Stat(path)
+	require.NoError(t, err, "ZkEVM artifact missing. Did you run TestStoreZkEVM first?")
+
+	t.Logf("Loading ZkEVM object from: %s", path)
+
+	// 2. Prepare Destination
+	// We use reflection to ensure we create the exact pointer type expected by LoadFromDisk
+	// z is likely a struct or a pointer to a struct.
+	// reflect.New creates a pointer to the type of z.
+	destPtr := reflect.New(reflect.TypeOf(z))
+
+	// 3. Load from Disk
+	closer, err := serde.LoadFromDisk(path, destPtr.Interface(), false)
+	require.NoError(t, err, "LoadFromDisk failed for ZkEVM")
+
+	// CRITICAL: Ensure we close the mmap and clean up the file at the end
+	defer func() {
+		require.NoError(t, closer.Close(), "Failed to close mmap")
+		require.NoError(t, os.RemoveAll(zkEvmTestDir), "Failed to cleanup directory")
+	}()
+
+	// 4. Verification (DeepCmp)
+	// destPtr is a pointer to the type of z. We need to dereference it once (Elem())
+	// to compare it against the original 'z'.
+	loadedVal := destPtr.Elem().Interface()
+
+	t.Log("Running DeepCmp on ZkEVM... this might take a moment.")
+
+	// FailFast = true to stop on the first error
+	isMatch := serde.DeepCmp(z, loadedVal, true)
+
+	if !isMatch {
+		t.Fatal("DeepCmp failed: Loaded ZkEVM object does not match the original")
+	}
+
+	t.Log("Success: ZkEVM serialization/deserialization verified.")
 }
 
 // Define the filename as a constant so both tests access the exact same file

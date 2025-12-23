@@ -821,8 +821,10 @@ func linearizeSliceSeq(w *encoder, v reflect.Value) (Ref, error) {
 // Indirect types are types that have variable sizes not known at compile time.
 // This includes pointers, slices, strings, interfaces, maps, and functions.
 // Direct types are types that have fixed sizes known at compile time.
-// This includes structs, arrays, and primitive types (bool,int/uint8, int/uint (normalized), etc).
+// This includes arrays, and primitive types (bool,int/uint8, int/uint (normalized), etc).
 // Types handled inside of the Custom Registry are also considered indirect.
+// NOTE: structs can be either direct or indirect depending on their fields. Hence when
+// dealing with structs, we use isPod() to determine if they are direct or indirect.
 func isIndirectType(t reflect.Type) bool {
 	if _, ok := customRegistry[t]; ok {
 		return true

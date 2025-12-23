@@ -148,7 +148,6 @@ func (dec *decoder) decodeSlice(target reflect.Value, offset int64) error {
 	}
 
 	// --- FIX START ---
-	// Check if we are decoding an Indirect Slice (e.g. []*T)
 	if isIndirectType(target.Type().Elem()) {
 		// We cannot use Zero-Copy here because the file contains int64 Offsets (Refs),
 		// but the Go slice expects real memory pointers.
