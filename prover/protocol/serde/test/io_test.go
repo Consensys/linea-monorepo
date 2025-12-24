@@ -685,7 +685,7 @@ func TestIOP_Load(t *testing.T) {
 			// 4. Verification (Deep Compare)
 			// We use failFast=true to stop immediately on mismatch
 			subT.Logf("Verifying %s via DeepCmp...", scenario.name)
-			match := serde.DeepCmp(expected, loaded, true)
+			match := serde.DeepCmp(expected, loaded, false)
 
 			if !match {
 				subT.Fatalf("DeepCmp Failed: Loaded object for scenario '%s' differs from original build.", scenario.name)

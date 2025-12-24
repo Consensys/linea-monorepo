@@ -4,11 +4,14 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -16,6 +19,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -777,4 +781,117 @@ func TestStoreMutationIntegrity(t *testing.T) {
 	// Check if the handle (which points to the same Store) sees the change
 	assert.True(t, decoded.Col.Status() == column.Ignored,
 		"Mutation in shared Store should be visible through the Natural handle")
+}
+
+func TestSerdePrecompIOP_Mem(t *testing.T) {
+	// 1. Create a concrete vector (simulating the precomputed polynomial)
+	// We make it large enough to potentially trigger SIMD optimizations in DeepCmp
+	const size = 16
+	vals := make([]field.Element, size)
+	for i := 0; i < size; i++ {
+		vals[i].SetUint64(1)
+	}
+	// Use the concrete type that implements SmartVector
+	vec := smartvectors.Regular(vals)
+
+	// 2. Define the protocol
+	define := func(b *wizard.Builder) {
+		// RegisterPrecomputed puts this vector into comp.Precomputed (Map[ColID]Interface)
+		b.RegisterPrecomputed("P1", &vec)
+	}
+
+	// 3. Compile to get the object graph
+	comp := wizard.Compile(define, dummy.Compile)
+
+	// 4. Serialize (In-Memory)
+	// This uses the encoder, but writes to a bytes.Buffer on the Heap.
+	buf, err := serde.Serialize(comp)
+	require.NoError(t, err)
+
+	// 5. Deserialize
+	var decoded *wizard.CompiledIOP
+	err = serde.Deserialize(buf, &decoded)
+	require.NoError(t, err)
+
+	// 6. Compare
+	// This usually PASSES because Heap allocations are aligned by the Go runtime.
+	if !serde.DeepCmp(comp, decoded, true) {
+		t.Fatal("Mismatch in In-Memory test")
+	}
+}
+
+const (
+	reproDir      = "files"
+	reproFilename = "precomp_bug.bin"
+)
+
+// helper to build the exact same object for both Store (source) and Load (truth)
+func buildPrecompIOP() *wizard.CompiledIOP {
+	// Create a vector of 1s.
+	// We use 16 elements to potentially trigger SIMD/AVX logic in underlying libs.
+	const size = 16
+	vals := make([]field.Element, size)
+	for i := 0; i < size; i++ {
+		vals[i].SetUint64(1)
+	}
+	vec := smartvectors.Regular(vals)
+
+	define := func(b *wizard.Builder) {
+		b.RegisterPrecomputed("P1", &vec)
+		_ = b.RegisterRandomCoin("COIN", coin.Field)
+		_ = b.RegisterCommit("Q", 16)
+
+	}
+	return wizard.Compile(define,
+		vortex.Compile(
+			2,
+			vortex.ForceNumOpenedColumns(16),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+		dummy.Compile)
+}
+
+func TestSerdePrecompIOP_Store(t *testing.T) {
+	// 1. Setup Environment
+	require.NoError(t, os.MkdirAll(reproDir, 0755))
+	path := filepath.Join(reproDir, reproFilename)
+
+	// 2. Build Object
+	comp := buildPrecompIOP()
+
+	// 3. Store to Disk
+	// If the encoder lacks alignment logic, this will write the vector data
+	// at an unaligned offset (e.g. 33 + headers).
+	err := serde.StoreToDisk(path, comp, false)
+	require.NoError(t, err)
+
+	t.Logf("Stored artifact to %s", path)
+}
+
+func TestSerdePrecompIOP_Load(t *testing.T) {
+	path := filepath.Join(reproDir, reproFilename)
+	_, err := os.Stat(path)
+	require.NoError(t, err, "Artifact not found. Run TestSerdePrecompIOP_Store first.")
+
+	// 1. Build Expected (Truth)
+	expected := buildPrecompIOP()
+
+	// 2. Load from Disk (Memory Map)
+	// mmap will return a pointer to a page-aligned address.
+	// If the internal offset is unaligned (e.g. 33), the effective address
+	// for the slice data will be Base + 33 (Unaligned).
+	var loaded *wizard.CompiledIOP
+	closer, err := serde.LoadFromDisk(path, &loaded, false)
+	require.NoError(t, err)
+	defer closer.Close()
+
+	// 3. Compare
+	// This reads the uint64s from the loaded object.
+	// On x86 with AVX (or via gnark-crypto), unaligned reads may result in garbage data.
+	if !serde.DeepCmp(expected, loaded, true) {
+		t.Fatal("Mismatch in Precomputed Vector (likely due to unaligned read)")
+	} else {
+		t.Logf("Check passed")
+		_ = os.Remove(path)
+	}
 }
