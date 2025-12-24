@@ -12,7 +12,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
+
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
@@ -43,9 +44,11 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 	}()
 
 	witnessLPP := &distributed.ModuleWitnessLPP{}
-	if err := serialization.LoadFromDisk(req.WitnessLPPFile, witnessLPP, true); err != nil {
+	closer1, err := serde.LoadFromDisk(req.WitnessLPPFile, witnessLPP, true)
+	if err != nil {
 		return fmt.Errorf("could not load witness: %w", err)
 	}
+	defer closer1.Close()
 
 	compiledLPP, err := zkevm.LoadCompiledLPP(cfg, witnessLPP.ModuleName)
 	if err != nil {
@@ -67,9 +70,11 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 
 	// Generate the shared randomness
 	sharedRandomness := &field.Element{}
-	if err := serialization.LoadFromDisk(sharedRandomnessFile, sharedRandomness, true); err != nil {
+	closer2, err := serde.LoadFromDisk(sharedRandomnessFile, sharedRandomness, true)
+	if err != nil {
 		return fmt.Errorf("could not load shared randomness: %w", err)
 	}
+	defer closer2.Close()
 	witnessLPP.InitialFiatShamirState = *sharedRandomness
 
 	var (
@@ -86,7 +91,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 
 	logrus.Infof("Finished running the LPP-prover for witness module=%v at index=%d", witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
-	if err := serialization.StoreToDisk(proofLPPFile, *proofLPP, true); err != nil {
+	if err := serde.StoreToDisk(proofLPPFile, *proofLPP, true); err != nil {
 		return fmt.Errorf("could not store LPP proof: %w", err)
 	}
 

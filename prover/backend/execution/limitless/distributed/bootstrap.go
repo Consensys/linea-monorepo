@@ -10,7 +10,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
+
+	//"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
@@ -197,7 +199,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 					witnessGLFile     = path.Join(witnessGLDirFrom, witnessGLFileName)
 				)
 
-				if err := serialization.StoreToDisk(witnessGLFile, *witnessGL, true); err != nil {
+				if err := serde.StoreToDisk(witnessGLFile, *witnessGL, true); err != nil {
 					return fmt.Errorf("could not save witnessGL: %w", err)
 				}
 
@@ -236,7 +238,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 					witnessLPPFile     = path.Join(witnessLPPDirFrom, witnessLPPFileName)
 				)
 
-				if err := serialization.StoreToDisk(witnessLPPFile, *witnessLPP, true); err != nil {
+				if err := serde.StoreToDisk(witnessLPPFile, *witnessLPP, true); err != nil {
 					return fmt.Errorf("could not save witnessLPP: %w", err)
 				}
 

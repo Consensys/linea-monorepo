@@ -56,7 +56,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
-	"github.com/consensys/linea-monorepo/prover/protocol/serde/util"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -374,14 +373,26 @@ func init() {
 	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
 	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
 
+	// distributed
+	RegisterImplementation(distributed.AssignLPPQueries{})
+	RegisterImplementation(distributed.SetInitialFSHash{})
+	RegisterImplementation(distributed.CheckNxHash{})
+	RegisterImplementation(distributed.StandardModuleDiscoverer{})
+	RegisterImplementation(distributed.LppWitnessAssignment{})
+	RegisterImplementation(distributed.ModuleGLAssignGL{})
+	RegisterImplementation(distributed.ModuleGLAssignSendReceiveGlobal{})
+	RegisterImplementation(distributed.ModuleGLCheckSendReceiveGlobal{})
+	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
+	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
+
 	// test
-	RegisterImplementation(util.ReproConcrete{})
-	RegisterImplementation(util.AssignVortexUAlpha{})
-	RegisterImplementation(util.SharedLeaf{})
-	RegisterImplementation(util.WrapperC{})
-	RegisterImplementation(util.MockAction1{})
-	RegisterImplementation(util.MockIOP1{})
-	RegisterImplementation(util.FakeCommittedMatrix{})
+	// RegisterImplementation(util.ReproConcrete{})
+	// RegisterImplementation(util.AssignVortexUAlpha{})
+	// RegisterImplementation(util.SharedLeaf{})
+	// RegisterImplementation(util.WrapperC{})
+	// RegisterImplementation(util.MockAction1{})
+	// RegisterImplementation(util.MockIOP1{})
+	// RegisterImplementation(util.FakeCommittedMatrix{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this

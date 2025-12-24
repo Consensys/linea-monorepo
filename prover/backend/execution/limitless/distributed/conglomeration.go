@@ -11,7 +11,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	execCirc "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
+
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
@@ -105,10 +106,12 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 			}
 
 			// Once the GL-proof file has arrived - deserialize it and send it to the pipeline
-			if err := serialization.LoadFromDisk(req.GLProofFiles[i], proofGL, true); err != nil {
+			closer, err := serde.LoadFromDisk(req.GLProofFiles[i], proofGL, true)
+			if err != nil {
 				logrus.Errorf("error deserializing GL proof %d: %s - Cancelling context", i, err)
 				return err
 			}
+			defer closer.Close()
 
 			// Store local copy for shared randomness computation
 			proofGLs[i] = proofGL
@@ -139,7 +142,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 	//--4. Compute shared randomness after GL proofs succeeded and save it to disk
 	sharedRandomness := distributed.GetSharedRandomnessFromSegmentProofs(proofGLs)
 	proofGLs = nil // Free the slice as we no longer need it
-	if err = serialization.StoreToDisk(req.SharedRndFile, sharedRandomness, true); err != nil {
+	if err = serde.StoreToDisk(req.SharedRndFile, sharedRandomness, true); err != nil {
 		logrus.Errorf("error saving shared randomness: %s. Cancelling context", err)
 		cancel()
 		return nil, fmt.Errorf("could not save shared randomness: %w", err)
@@ -171,10 +174,12 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 			}
 
 			// Once the LPP-proof file has arrived - deserialize it and send it to the pipeline
-			if err := serialization.LoadFromDisk(req.LPPProofFiles[i], proofLPP, true); err != nil {
+			closer, err := serde.LoadFromDisk(req.LPPProofFiles[i], proofLPP, true)
+			if err != nil {
 				logrus.Errorf("error deserializing LPP proof %d: %s - Cancelling context", i, err)
 				return err
 			}
+			defer closer.Close()
 
 			// Safe send: if ctx cancelled, abort send
 			select {
