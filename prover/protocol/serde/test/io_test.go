@@ -579,7 +579,7 @@ func TestIOP_Store(t *testing.T) {
 			continue
 		}
 
-		if i != 2 {
+		if i != 3 {
 			continue
 		}
 
@@ -623,7 +623,7 @@ func TestIOP_Load(t *testing.T) {
 			continue
 		}
 
-		if i != 2 {
+		if i != 3 {
 			continue
 		}
 

@@ -264,28 +264,29 @@ var IDToType = [...]reflect.Type{
 	reflect.TypeOf(univariates.NaturalizeVerifierAction{}),                 // ID: 199
 	reflect.TypeOf(univariates.NaturalizeVerifierAction{}),                 // ID: 200
 	reflect.TypeOf(util.AssignVortexUAlpha{}),                              // ID: 201
-	reflect.TypeOf(util.MockAction1{}),                                     // ID: 202
-	reflect.TypeOf(util.MockIOP1{}),                                        // ID: 203
-	reflect.TypeOf(util.ReproConcrete{}),                                   // ID: 204
-	reflect.TypeOf(util.SharedLeaf{}),                                      // ID: 205
-	reflect.TypeOf(util.Wrapper{}),                                         // ID: 206
-	reflect.TypeOf(variables.PeriodicSample{}),                             // ID: 207
-	reflect.TypeOf(variables.X{}),                                          // ID: 208
-	reflect.TypeOf(verifiercol.ConstCol{}),                                 // ID: 209
-	reflect.TypeOf(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{}),   // ID: 210
-	reflect.TypeOf(verifiercol.FromAccessors{}),                            // ID: 211
-	reflect.TypeOf(verifiercol.FromYs{}),                                   // ID: 212
-	reflect.TypeOf(verifiercol.RepeatedAccessor{}),                         // ID: 213
-	reflect.TypeOf(vortex.ColumnAssignmentProverAction{}),                  // ID: 214
+	reflect.TypeOf(util.FakeCommittedMatrix{}),                             // ID: 202
+	reflect.TypeOf(util.MockAction1{}),                                     // ID: 203
+	reflect.TypeOf(util.MockIOP1{}),                                        // ID: 204
+	reflect.TypeOf(util.ReproConcrete{}),                                   // ID: 205
+	reflect.TypeOf(util.SharedLeaf{}),                                      // ID: 206
+	reflect.TypeOf(util.WrapperC{}),                                        // ID: 207
+	reflect.TypeOf(variables.PeriodicSample{}),                             // ID: 208
+	reflect.TypeOf(variables.X{}),                                          // ID: 209
+	reflect.TypeOf(verifiercol.ConstCol{}),                                 // ID: 210
+	reflect.TypeOf(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{}),   // ID: 211
+	reflect.TypeOf(verifiercol.FromAccessors{}),                            // ID: 212
+	reflect.TypeOf(verifiercol.FromYs{}),                                   // ID: 213
+	reflect.TypeOf(verifiercol.RepeatedAccessor{}),                         // ID: 214
 	reflect.TypeOf(vortex.ColumnAssignmentProverAction{}),                  // ID: 215
-	reflect.TypeOf(vortex.Ctx{}),                                           // ID: 216
-	reflect.TypeOf(vortex.ExplicitPolynomialEval{}),                        // ID: 217
-	reflect.TypeOf(vortex.LinearCombinationComputationProverAction{}),      // ID: 218
+	reflect.TypeOf(vortex.ColumnAssignmentProverAction{}),                  // ID: 216
+	reflect.TypeOf(vortex.Ctx{}),                                           // ID: 217
+	reflect.TypeOf(vortex.ExplicitPolynomialEval{}),                        // ID: 218
 	reflect.TypeOf(vortex.LinearCombinationComputationProverAction{}),      // ID: 219
-	reflect.TypeOf(vortex.OpenSelectedColumnsProverAction{}),               // ID: 220
-	reflect.TypeOf(vortex.ReassignPrecomputedRootAction{}),                 // ID: 221
-	reflect.TypeOf(vortex.ShadowRowProverAction{}),                         // ID: 222
-	reflect.TypeOf(vortex.VortexVerifierAction{}),                          // ID: 223
+	reflect.TypeOf(vortex.LinearCombinationComputationProverAction{}),      // ID: 220
+	reflect.TypeOf(vortex.OpenSelectedColumnsProverAction{}),               // ID: 221
+	reflect.TypeOf(vortex.ReassignPrecomputedRootAction{}),                 // ID: 222
+	reflect.TypeOf(vortex.ShadowRowProverAction{}),                         // ID: 223
+	reflect.TypeOf(vortex.VortexVerifierAction{}),                          // ID: 224
 }
 
 // TypeToID maps a reflect.Type to a uint16 ID.
@@ -493,26 +494,27 @@ var TypeToID = map[reflect.Type]uint16{
 	reflect.TypeOf(univariates.NaturalizeVerifierAction{}):                 199,
 	reflect.TypeOf(univariates.NaturalizeVerifierAction{}):                 200,
 	reflect.TypeOf(util.AssignVortexUAlpha{}):                              201,
-	reflect.TypeOf(util.MockAction1{}):                                     202,
-	reflect.TypeOf(util.MockIOP1{}):                                        203,
-	reflect.TypeOf(util.ReproConcrete{}):                                   204,
-	reflect.TypeOf(util.SharedLeaf{}):                                      205,
-	reflect.TypeOf(util.Wrapper{}):                                         206,
-	reflect.TypeOf(variables.PeriodicSample{}):                             207,
-	reflect.TypeOf(variables.X{}):                                          208,
-	reflect.TypeOf(verifiercol.ConstCol{}):                                 209,
-	reflect.TypeOf(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{}):   210,
-	reflect.TypeOf(verifiercol.FromAccessors{}):                            211,
-	reflect.TypeOf(verifiercol.FromYs{}):                                   212,
-	reflect.TypeOf(verifiercol.RepeatedAccessor{}):                         213,
-	reflect.TypeOf(vortex.ColumnAssignmentProverAction{}):                  214,
+	reflect.TypeOf(util.FakeCommittedMatrix{}):                             202,
+	reflect.TypeOf(util.MockAction1{}):                                     203,
+	reflect.TypeOf(util.MockIOP1{}):                                        204,
+	reflect.TypeOf(util.ReproConcrete{}):                                   205,
+	reflect.TypeOf(util.SharedLeaf{}):                                      206,
+	reflect.TypeOf(util.WrapperC{}):                                        207,
+	reflect.TypeOf(variables.PeriodicSample{}):                             208,
+	reflect.TypeOf(variables.X{}):                                          209,
+	reflect.TypeOf(verifiercol.ConstCol{}):                                 210,
+	reflect.TypeOf(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{}):   211,
+	reflect.TypeOf(verifiercol.FromAccessors{}):                            212,
+	reflect.TypeOf(verifiercol.FromYs{}):                                   213,
+	reflect.TypeOf(verifiercol.RepeatedAccessor{}):                         214,
 	reflect.TypeOf(vortex.ColumnAssignmentProverAction{}):                  215,
-	reflect.TypeOf(vortex.Ctx{}):                                           216,
-	reflect.TypeOf(vortex.ExplicitPolynomialEval{}):                        217,
-	reflect.TypeOf(vortex.LinearCombinationComputationProverAction{}):      218,
+	reflect.TypeOf(vortex.ColumnAssignmentProverAction{}):                  216,
+	reflect.TypeOf(vortex.Ctx{}):                                           217,
+	reflect.TypeOf(vortex.ExplicitPolynomialEval{}):                        218,
 	reflect.TypeOf(vortex.LinearCombinationComputationProverAction{}):      219,
-	reflect.TypeOf(vortex.OpenSelectedColumnsProverAction{}):               220,
-	reflect.TypeOf(vortex.ReassignPrecomputedRootAction{}):                 221,
-	reflect.TypeOf(vortex.ShadowRowProverAction{}):                         222,
-	reflect.TypeOf(vortex.VortexVerifierAction{}):                          223,
+	reflect.TypeOf(vortex.LinearCombinationComputationProverAction{}):      220,
+	reflect.TypeOf(vortex.OpenSelectedColumnsProverAction{}):               221,
+	reflect.TypeOf(vortex.ReassignPrecomputedRootAction{}):                 222,
+	reflect.TypeOf(vortex.ShadowRowProverAction{}):                         223,
+	reflect.TypeOf(vortex.VortexVerifierAction{}):                          224,
 }

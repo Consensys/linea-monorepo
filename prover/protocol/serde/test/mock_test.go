@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde" // Adjust import path if needed
 	"github.com/consensys/linea-monorepo/prover/protocol/serde/util"
 	"github.com/stretchr/testify/require"
@@ -125,7 +126,7 @@ func TestComplex_Load(t *testing.T) {
 
 	// Note: serialization of interface{} -> concrete type
 	// If the writer wrote "Wrapper", the reader reads "Wrapper".
-	wrapper, ok := valInMap.(util.Wrapper)
+	wrapper, ok := valInMap.(util.WrapperC)
 	require.True(t, ok, "Map value should be Wrapper struct")
 
 	childViaMap := wrapper.Ref
@@ -149,5 +150,98 @@ func TestComplex_Load(t *testing.T) {
 
 	if !t.Failed() {
 		t.Log("SUCCESS: Complex Aliasing & Cycles Preserved.")
+	}
+}
+
+func makeFieldMatrix() [][]field.Element {
+	m := make([][]field.Element, 2)
+	for i := range m {
+		m[i] = make([]field.Element, 2)
+		for j := range m[i] {
+			var e field.Element
+			e.SetUint64(uint64(10*i + j + 1)) // 1,2,11,12
+			m[i][j] = e
+		}
+	}
+	return m
+}
+
+func toUint64Limbs(mat [][]field.Element) [][]uint64 {
+	out := make([][]uint64, len(mat))
+	for i := range mat {
+		out[i] = make([]uint64, len(mat[i])*4)
+		for j, e := range mat[i] {
+			var limbs [4]uint64
+			limbs = [4]uint64(e)
+			copy(out[i][j*4:(j+1)*4], limbs[:])
+		}
+	}
+	return out
+}
+
+func cmatrixPath(t *testing.T) string {
+	t.Helper()
+	// Use a stable location under the repo, similar to files/iop3.bin.
+	return filepath.Join("testdata", "cmatrix.bin")
+}
+
+// 1) Writer test: produces the asset once.
+func TestStore_CommittedMatrix(t *testing.T) {
+	path := cmatrixPath(t)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir testdata failed: %v", err)
+	}
+
+	fmat := makeFieldMatrix()
+	limbs := toUint64Limbs(fmat)
+
+	orig := &util.Wrapper{
+		Committed: &util.FakeCommittedMatrix{Limbs: limbs},
+	}
+
+	if err := serde.StoreToDisk(path, orig, false); err != nil {
+		t.Fatalf("StoreToDisk failed: %v", err)
+	}
+
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("stored file not found: %v", err)
+	}
+}
+
+//  2. Reader test: assumes cmatrix.bin already exists (written by old code)
+//     and checks whether new LoadFromDisk reproduces the limbs exactly.
+func TestLoad_CommittedMatrix(t *testing.T) {
+	path := cmatrixPath(t)
+
+	// Rebuild expected logical matrix deterministically.
+	fmat := makeFieldMatrix()
+	expected := toUint64Limbs(fmat)
+
+	var loaded util.Wrapper
+	closer, err := serde.LoadFromDisk(path, &loaded, false)
+	if err != nil {
+		t.Fatalf("LoadFromDisk failed: %v", err)
+	}
+	defer closer.Close()
+
+	got, ok := loaded.Committed.(*util.FakeCommittedMatrix)
+	if !ok {
+		t.Fatalf("loaded.Committed has type %T, want *FakeCommittedMatrix", loaded.Committed)
+	}
+
+	if len(got.Limbs) != len(expected) {
+		t.Fatalf("row count mismatch: exp=%d got=%d", len(expected), len(got.Limbs))
+	}
+	for i := range expected {
+		if len(got.Limbs[i]) != len(expected[i]) {
+			t.Fatalf("col count mismatch at row %d: exp=%d got=%d",
+				i, len(expected[i]), len(got.Limbs[i]))
+		}
+		for j := range expected[i] {
+			if expected[i][j] != got.Limbs[i][j] {
+				t.Fatalf("mismatch at [%d][%d]: exp=%d got=%d",
+					i, j, expected[i][j], got.Limbs[i][j])
+			}
+		}
 	}
 }

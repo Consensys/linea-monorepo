@@ -162,8 +162,8 @@ type Child struct {
 	Parent *Parent // Cycle back to parent
 }
 
-// Wrapper struct often found in ExtraData (e.g. Symbolic Variable)
-type Wrapper struct {
+// WrapperC struct often found in ExtraData (e.g. Symbolic Variable)
+type WrapperC struct {
 	Ref *Child
 }
 
@@ -184,7 +184,7 @@ func GetComplexReproObject() *RootComplex {
 	return &RootComplex{
 		MainParent: parent,
 		ExtraData: map[string]interface{}{
-			"wrapper_key": Wrapper{Ref: child},
+			"wrapper_key": WrapperC{Ref: child},
 		},
 	}
 }
@@ -236,4 +236,12 @@ func GetReproLogicObject1() *MockIOP1 {
 	root.SubProvers = []any{action}
 
 	return root
+}
+
+type FakeCommittedMatrix struct {
+	Limbs [][]uint64
+}
+
+type Wrapper struct {
+	Committed any
 }

@@ -378,9 +378,10 @@ func init() {
 	RegisterImplementation(util.ReproConcrete{})
 	RegisterImplementation(util.AssignVortexUAlpha{})
 	RegisterImplementation(util.SharedLeaf{})
-	RegisterImplementation(util.Wrapper{})
+	RegisterImplementation(util.WrapperC{})
 	RegisterImplementation(util.MockAction1{})
 	RegisterImplementation(util.MockIOP1{})
+	RegisterImplementation(util.FakeCommittedMatrix{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
