@@ -1,8 +1,3 @@
-// Refactored encoder and decoder for package serde
-// - Removed special-case handling for field.Element; code is generic.
-// - Consolidated duplicated logic and clarified comments where helpful.
-// - Preserves original semantics: zero-reserved Ref(0), pointer dedup, patch/reserve model, and zero-copy for POD slices.
-
 package serde
 
 import (
@@ -41,7 +36,7 @@ func newEncoder() *encoder {
 	}
 
 	// Reserve Offset 0 for NULL references explicitly.
-	enc.writeBytes([]byte{0})
+	// enc.writeBytes([]byte{0})
 	return enc
 }
 
