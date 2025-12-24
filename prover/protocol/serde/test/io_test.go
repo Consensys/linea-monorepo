@@ -425,10 +425,6 @@ func TestSerdeValue_Store(t *testing.T) {
 
 	for i, tc := range testCases {
 
-		if i != 2 && i != 3 {
-			continue
-		}
-
 		t.Run(fmt.Sprintf("Store/%d_%s", i, tc.Name), func(t *testing.T) {
 			path := filepath.Join(testDir, fmt.Sprintf("%d_%s.bin", i, tc.Name))
 
@@ -446,10 +442,6 @@ func TestSerdeValue_Load(t *testing.T) {
 	testCases := getSerdeTestCases()
 
 	for i, tc := range testCases {
-
-		if i != 2 && i != 3 {
-			continue
-		}
 
 		t.Run(fmt.Sprintf("Load/%d_%s", i, tc.Name), func(t *testing.T) {
 			path := filepath.Join(testDir, fmt.Sprintf("%d_%s.bin", i, tc.Name))
