@@ -6,8 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	keccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf/iokeccakf"
+	keccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf/iokeccakf"
 )
 
 // KeccakOverBlockInputs stores the inputs required for [NewKeccakOverBlocks]

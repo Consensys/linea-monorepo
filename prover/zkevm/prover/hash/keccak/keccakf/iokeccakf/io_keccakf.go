@@ -14,8 +14,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	baseconversion "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/base_conversion"
-	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf/common"
+	baseconversion "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/base_conversion"
+	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf/common"
 )
 
 const (

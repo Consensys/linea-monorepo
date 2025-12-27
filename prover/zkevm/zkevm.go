@@ -21,7 +21,7 @@ type ZkEvm struct {
 	// process.
 	Arithmetization *arithmetization.Arithmetization `json:"arithmetization"`
 	// Keccak module in use. Generated during the compilation process.
-	Keccak *keccak_koalabear.KeccakZkEVM `json:"keccak"`
+	Keccak *keccak.KeccakZkEVM `json:"keccak"`
 	// State manager module in use. Generated during the compilation process.
 	StateManager *statemanager.StateManager `json:"stateManager"`
 	// PublicInput gives access to the public inputs of the wizard-IOP and is

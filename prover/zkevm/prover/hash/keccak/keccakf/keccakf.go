@@ -8,8 +8,8 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf/common"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf/iokeccakf"
+	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf/iokeccakf"
 )
 
 type KeccakfInputs struct {
