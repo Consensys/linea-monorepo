@@ -76,9 +76,9 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 		panic(err)
 	}
 	apiGen, err := zk.NewGenericApi(api)
-		if err != nil {
-			panic(err)
-		}
+	if err != nil {
+		panic(err)
+	}
 	w := r.WizardVerifier
 
 	if !r.withoutGkr {
@@ -131,8 +131,13 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 			PolyQuery:      polyQuery,
 		}
 	)
+	lenCommitment := len(pcsCtx.Items.MerkleRoots)
+	if pcsCtx.IsNonEmptyPrecomputed() {
+		lenCommitment++
+	}
+	circuit.Commitments = make([][8]zk.WrappedVariable, lenCommitment)
 
-	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
+	if pcsCtx.IsNonEmptyPrecomputed() {
 		mRoot := pcsCtx.Items.Precomputeds.MerkleRoot
 		circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
 		for i := 0; i < blockSize; i++ {

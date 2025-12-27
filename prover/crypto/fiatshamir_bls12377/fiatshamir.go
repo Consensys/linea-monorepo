@@ -112,6 +112,9 @@ func (fs *FS) RandomFext() fext.Element {
 
 	return res
 }
+func (fs *FS) RandomFieldFromSeed(seed field.Octuplet, name string) fext.Element {
+	panic("not implemented")
+}
 
 func (fs *FS) SetState(s field.Octuplet) {
 	fs.koalaBuf = fs.koalaBuf[:0]

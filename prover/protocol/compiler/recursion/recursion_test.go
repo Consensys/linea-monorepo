@@ -7,11 +7,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -54,34 +58,34 @@ func TestLookup(t *testing.T) {
 				vortex.WithOptionalSISHashingThreshold(64),
 			),
 		},
-		// {
-		// 	cleanup.CleanUp,
-		// 	poseidon2.CompilePoseidon2,
-		// 	compiler.Arcane(
-		// 		compiler.WithTargetColSize(1 << 13),
-		// 	),
-		// 	vortex.Compile(
-		// 		8,
-		// 		false,
-		// 		vortex.ForceNumOpenedColumns(32),
-		// 		vortex.WithSISParams(&ringsis.StdParams),
-		// 		vortex.WithOptionalSISHashingThreshold(64),
-		// 	),
-		// 	selfrecursion.SelfRecurse,
-		// 	cleanup.CleanUp,
-		// 	poseidon2.CompilePoseidon2,
-		// 	compiler.Arcane(
-		// 		compiler.WithTargetColSize(1 << 13),
-		// 	),
-		// 	vortex.Compile(
-		// 		8,
-		// 		false,
-		// 		vortex.ForceNumOpenedColumns(32),
-		// 		vortex.WithSISParams(&ringsis.StdParams),
-		// 		vortex.WithOptionalSISHashingThreshold(64),
-		// 		vortex.PremarkAsSelfRecursed(),
-		// 	),
-		// },
+		{
+			cleanup.CleanUp,
+			poseidon2.CompilePoseidon2,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1 << 13),
+			),
+			vortex.Compile(
+				8,
+				false,
+				vortex.ForceNumOpenedColumns(32),
+				vortex.WithSISParams(&ringsis.StdParams),
+				vortex.WithOptionalSISHashingThreshold(64),
+			),
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			poseidon2.CompilePoseidon2,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1 << 13),
+			),
+			vortex.Compile(
+				8,
+				false,
+				vortex.ForceNumOpenedColumns(32),
+				vortex.WithSISParams(&ringsis.StdParams),
+				vortex.WithOptionalSISHashingThreshold(64),
+				vortex.PremarkAsSelfRecursed(),
+			),
+		},
 	}
 
 	for i, s := range suites {
@@ -101,7 +105,7 @@ func TestLookup(t *testing.T) {
 
 			comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
 
-			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, true)
+			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, false)
 			witness1 := ExtractWitness(proverRuntime)
 
 			prove2 := func(run *wizard.ProverRuntime) {

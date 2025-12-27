@@ -3,13 +3,13 @@ package recursion
 import (
 	"strconv"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
@@ -274,7 +274,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 			assign = AssignRecursionCircuit(r.InputCompiledIOP, wit[i].Proof, wit[i].Pub, wit[i].FinalFS)
 		)
 
-		fullWitnesses[i], err = frontend.NewWitness(assign, ecc.BLS12_377.ScalarField())
+		fullWitnesses[i], err = frontend.NewWitness(assign, field.Modulus())
 		if err != nil {
 			utils.Panic("could not create witness: %v", err)
 		}
@@ -326,7 +326,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 }
 
 // GetPublicInputOfInstance relative to one recursed module.
-func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, inst int) field.Element {
+func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, inst int) fext.GenericFieldElem {
 	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
 	return run.GetPublicInput(name)
 }

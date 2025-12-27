@@ -39,6 +39,7 @@ type FS interface {
 	UpdateSV(sv smartvectors.SmartVector)
 	RandomField() field.Octuplet
 	RandomFext() fext.Element
+	RandomFieldFromSeed(seed field.Octuplet, name string) fext.Element
 	RandomManyIntegers(num, upperBound int) []int
 	SetState(s field.Octuplet)
 	State() field.Octuplet

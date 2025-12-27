@@ -228,11 +228,12 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 		denominator = column.EvalExprColumn(run, denBoard)
 		denominator, _ = smartvectors.TryReduceSizeLeft(denominator)
 
-		for d := range denominator.IterateCompact() {
+		for _, d := range denominator.IntoRegVecSaveAllocExt() {
 			if d.IsZero() {
 				return fext.GenericFieldElem{}, errors.New("denominator is zero")
 			}
 		}
+
 	}
 
 	if noNumerator {
@@ -362,7 +363,8 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 	for i := 0; i < numerator.Len(); i++ {
 
-		if denominator.GetPtr(i).IsZero() {
+		a := denominator.GetExt(i)
+		if a.IsZero() {
 			return fext.GenericFieldElem{}, errors.New("denominator is zero")
 		}
 
