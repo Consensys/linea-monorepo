@@ -2,6 +2,7 @@ package fetchers_arithmetization
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -25,8 +26,8 @@ func NewRootHashFetcher(comp *wizard.CompiledIOP, name string, sizeSS int) *Root
 	var res RootHashFetcher
 
 	for i := range res.First {
-		res.First[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_%d", i), sizeSS, comp)
-		res.Last[i] = util.CreateColBase(name, fmt.Sprintf("LAST_%d", i), sizeSS, comp)
+		res.First[i] = util.CreateCol(name, fmt.Sprintf("FIRST_%d", i), sizeSS, comp)
+		res.Last[i] = util.CreateCol(name, fmt.Sprintf("LAST_%d", i), sizeSS, comp)
 	}
 
 	return &res

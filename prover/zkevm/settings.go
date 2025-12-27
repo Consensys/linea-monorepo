@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
-	keccak_koalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/glue_keccak"
+	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
@@ -19,7 +19,7 @@ type CompilationSuite = []func(*wizard.CompiledIOP)
 
 // List the options set to initialize the zkEVM
 type Settings struct {
-	Keccak           keccak_koalabear.Settings
+	Keccak           keccak.Settings
 	Statemanager     statemanager.Settings
 	Arithmetization  arithmetization.Settings
 	Ecdsa            ecdsa.Settings

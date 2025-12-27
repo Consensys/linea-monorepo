@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
-	keccak_koalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/glue_keccak"
+	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
@@ -21,7 +21,7 @@ type ZkEvm struct {
 	// process.
 	Arithmetization *arithmetization.Arithmetization `json:"arithmetization"`
 	// Keccak module in use. Generated during the compilation process.
-	Keccak *keccak_koalabear.KeccakZkEVM `json:"keccak"`
+	Keccak *keccak.KeccakZkEVM `json:"keccak"`
 	// State manager module in use. Generated during the compilation process.
 	StateManager *statemanager.StateManager `json:"stateManager"`
 	// PublicInput gives access to the public inputs of the wizard-IOP and is
@@ -97,7 +97,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		arith        = arithmetization.NewArithmetization(b, s.Arithmetization)
 		ecdsa        = ecdsa.NewEcdsaZkEvm(comp, &s.Ecdsa, arith)
 		stateManager = statemanager.NewStateManager(comp, s.Statemanager, arith)
-		keccak       = keccak_koalabear.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders(), arith)
+		keccak       = keccak.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders(), arith)
 		modexp       = modexp.NewModuleZkEvm(comp, s.Modexp, arith)
 		ecadd        = ecarith.NewEcAddZkEvm(comp, &s.Ecadd, arith)
 		ecmul        = ecarith.NewEcMulZkEvm(comp, &s.Ecmul, arith)

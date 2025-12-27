@@ -34,7 +34,7 @@ func NewChainIDFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.BlockDa
 		ChainID: [common.NbLimbU256]ifaces.Column(
 			limbs.NewLimbs[limbs.BigEndian](comp, "CHAIN_ID", common.NbLimbU256,
 				size).ToRawUnsafe()),
-		NBytesChainID: util.CreateColBase(name, "N_BYTES_CHAIN_ID", size, comp), // 2 bytes for chainID, we will constrain it later
+		NBytesChainID: util.CreateCol(name, "N_BYTES_CHAIN_ID", size, comp), // 2 bytes for chainID, we will constrain it later
 	}
 
 	return res

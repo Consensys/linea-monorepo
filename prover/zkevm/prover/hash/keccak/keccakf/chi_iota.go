@@ -12,7 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/keccakf/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf/common"
 )
 
 type block [common.NumLanesInBlock][common.NumSlices]ifaces.Column

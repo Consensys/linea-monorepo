@@ -43,6 +43,11 @@ func NewMDHasher() *MDHasher {
 	return h
 }
 
+// Compress calls the compression function of Poseidon2 over state and block.
+func Compress(state, block field.Octuplet) field.Octuplet {
+	return vortex.CompressPoseidon2(state, block)
+}
+
 // Reset clears the buffer, and reset state to iv
 func (d *MDHasher) Reset() {
 	d.bufferPosition = 0

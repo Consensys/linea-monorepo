@@ -31,13 +31,13 @@ type BlockTxnMetadata struct {
 
 func NewBlockTxnMetadata(comp *wizard.CompiledIOP, name string, td *arith.TxnData) BlockTxnMetadata {
 	res := BlockTxnMetadata{
-		BlockID:            util.CreateColBase(name, "BLOCK_ID", td.Ct.Size(), comp),
-		TotalNoTxnBlock:    util.CreateColBase(name, "TOTAL_NO_TX_BLOCK", td.Ct.Size(), comp),
-		FilterFetched:      util.CreateColBase(name, "FILTER_FETCHED", td.Ct.Size(), comp),
-		FilterArith:        util.CreateColBase(name, "FILTER_ARITH", td.Ct.Size(), comp),
-		FirstAbsTxId:       util.CreateColBase(name, "FIRST_ABS_TX_ID", td.Ct.Size(), comp),
-		LastAbsTxId:        util.CreateColBase(name, "LAST_ABS_TX_ID", td.Ct.Size(), comp),
-		SelectorEmptyBlock: util.CreateColBase(name, "SELECTOR_EMPTY_BLOCK", td.Ct.Size(), comp),
+		BlockID:            util.CreateCol(name, "BLOCK_ID", td.Ct.Size(), comp),
+		TotalNoTxnBlock:    util.CreateCol(name, "TOTAL_NO_TX_BLOCK", td.Ct.Size(), comp),
+		FilterFetched:      util.CreateCol(name, "FILTER_FETCHED", td.Ct.Size(), comp),
+		FilterArith:        util.CreateCol(name, "FILTER_ARITH", td.Ct.Size(), comp),
+		FirstAbsTxId:       util.CreateCol(name, "FIRST_ABS_TX_ID", td.Ct.Size(), comp),
+		LastAbsTxId:        util.CreateCol(name, "LAST_ABS_TX_ID", td.Ct.Size(), comp),
+		SelectorEmptyBlock: util.CreateCol(name, "SELECTOR_EMPTY_BLOCK", td.Ct.Size(), comp),
 	}
 
 	pragmas.MarkRightPadded(res.BlockID)

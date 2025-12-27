@@ -2,6 +2,7 @@ package logs
 
 import (
 	"fmt"
+
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -33,10 +34,10 @@ func NewLogHasher(comp *wizard.CompiledIOP, size int, name string) LogHasher {
 	var res LogHasher
 
 	for i := range res.HashFirst {
-		res.HashFirst[i] = util.CreateColBase(name, fmt.Sprintf("HASH_FIRST_%d", i), size, comp)
-		res.Inter[i] = util.CreateColBase(name, fmt.Sprintf("INTER_%d", i), size, comp)
-		res.HashSecond[i] = util.CreateColBase(name, fmt.Sprintf("HASH_SECOND_%d", i), size, comp)
-		res.HashFinal[i] = util.CreateColBase(name, fmt.Sprintf("HASH_FINAL_%d", i), size, comp)
+		res.HashFirst[i] = util.CreateCol(name, fmt.Sprintf("HASH_FIRST_%d", i), size, comp)
+		res.Inter[i] = util.CreateCol(name, fmt.Sprintf("INTER_%d", i), size, comp)
+		res.HashSecond[i] = util.CreateCol(name, fmt.Sprintf("HASH_SECOND_%d", i), size, comp)
+		res.HashFinal[i] = util.CreateCol(name, fmt.Sprintf("HASH_FINAL_%d", i), size, comp)
 	}
 
 	return res

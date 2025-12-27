@@ -76,31 +76,31 @@ func NewBlockDataFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.Block
 	size := bdc.Ct.Size()
 
 	res := &BlockDataFetcher{
-		RelBlock:      util.CreateColBase(name, "REL_BLOCK", size, comp),
-		FilterFetched: util.CreateColBase(name, "FILTER_FETCHED", size, comp),
+		RelBlock:      util.CreateCol(name, "REL_BLOCK", size, comp),
+		FilterFetched: util.CreateCol(name, "FILTER_FETCHED", size, comp),
 	}
 
 	for i := range res.BaseFee {
-		res.BaseFee[i] = util.CreateColBase(name, fmt.Sprintf("BASE_FEE_%d", i), size, comp)
+		res.BaseFee[i] = util.CreateCol(name, fmt.Sprintf("BASE_FEE_%d", i), size, comp)
 	}
 
 	for i := range res.CoinBase {
-		res.CoinBase[i] = util.CreateColBase(name, fmt.Sprintf("COIN_BASE_%d", i), size, comp)
+		res.CoinBase[i] = util.CreateCol(name, fmt.Sprintf("COIN_BASE_%d", i), size, comp)
 	}
 
 	for i := range res.Data {
-		res.Data[i] = util.CreateColBase(name, fmt.Sprintf("DATA_%d", i), size, comp)
-		res.FirstTimestamp[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_%d", i), size, comp)
-		res.LastTimestamp[i] = util.CreateColBase(name, fmt.Sprintf("LAST_%d", i), size, comp)
-		res.FirstArith[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_ARITHMETIZATION_%d", i), size, comp)
-		res.LastArith[i] = util.CreateColBase(name, fmt.Sprintf("LAST_ARITHMETIZATION_%d", i), size, comp)
+		res.Data[i] = util.CreateCol(name, fmt.Sprintf("DATA_%d", i), size, comp)
+		res.FirstTimestamp[i] = util.CreateCol(name, fmt.Sprintf("FIRST_%d", i), size, comp)
+		res.LastTimestamp[i] = util.CreateCol(name, fmt.Sprintf("LAST_%d", i), size, comp)
+		res.FirstArith[i] = util.CreateCol(name, fmt.Sprintf("FIRST_ARITHMETIZATION_%d", i), size, comp)
+		res.LastArith[i] = util.CreateCol(name, fmt.Sprintf("LAST_ARITHMETIZATION_%d", i), size, comp)
 	}
 
 	for i := range res.FirstBlockID {
-		res.FirstBlockID[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_BLOCK_ID_%d", i), size, comp)
-		res.LastBlockID[i] = util.CreateColBase(name, fmt.Sprintf("LAST_BLOCK_ID_%d", i), size, comp)
-		res.FirstBlockIDArith[i] = util.CreateColBase(name, fmt.Sprintf("FIRST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
-		res.LastBlockIDArith[i] = util.CreateColBase(name, fmt.Sprintf("LAST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
+		res.FirstBlockID[i] = util.CreateCol(name, fmt.Sprintf("FIRST_BLOCK_ID_%d", i), size, comp)
+		res.LastBlockID[i] = util.CreateCol(name, fmt.Sprintf("LAST_BLOCK_ID_%d", i), size, comp)
+		res.FirstBlockIDArith[i] = util.CreateCol(name, fmt.Sprintf("FIRST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
+		res.LastBlockIDArith[i] = util.CreateCol(name, fmt.Sprintf("LAST_BLOCK_ID_ARITHMETIZATION_%d", i), size, comp)
 
 	}
 
