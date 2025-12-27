@@ -33,8 +33,8 @@ import (
 
 var (
 	// Avoid setting both modes to true at the same time
-	isTest      = true
-	isBenchmark = false
+	isTest      = false
+	isBenchmark = true
 )
 
 var (

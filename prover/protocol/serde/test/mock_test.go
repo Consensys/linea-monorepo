@@ -7,7 +7,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde" // Adjust import path if needed
-	"github.com/consensys/linea-monorepo/prover/protocol/serde/util"
+	util "github.com/consensys/linea-monorepo/prover/protocol/serde/examples"
 	"github.com/stretchr/testify/require"
 )
 
