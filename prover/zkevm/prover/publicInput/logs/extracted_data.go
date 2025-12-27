@@ -29,9 +29,9 @@ type ExtractedData struct {
 func NewExtractedData(comp *wizard.CompiledIOP, size int, name string) ExtractedData {
 	res := ExtractedData{
 		// register the filter on the arithmetization log columns
-		FilterArith: util.CreateColBase(name, "FILTER", size, comp),
+		FilterArith: util.CreateCol(name, "FILTER", size, comp),
 		// a filter on the columns with fetched data
-		FilterFetched: util.CreateColBase(name, "FILTER_ON_FETCHED", size, comp),
+		FilterFetched: util.CreateCol(name, "FILTER_ON_FETCHED", size, comp),
 	}
 
 	// Tagging of "fetched" column hints the compiler on how this column should
@@ -43,7 +43,7 @@ func NewExtractedData(comp *wizard.CompiledIOP, size int, name string) Extracted
 
 	// register Data, the columns in which we embed the message we want to fetch from LogColumns
 	for i := range res.Data {
-		res.Data[i] = util.CreateColBase(name, fmt.Sprintf("EXTRACTED_%d", i), size, comp)
+		res.Data[i] = util.CreateCol(name, fmt.Sprintf("EXTRACTED_%d", i), size, comp)
 	}
 
 	return res

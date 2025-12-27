@@ -3,6 +3,7 @@ package execution_data_collector
 import (
 	"math"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -22,16 +23,16 @@ type MIMCHasher struct {
 	// the data to be hashed, this column is provided as an input to the module
 	InputData      ifaces.Column
 	InputIsActive  ifaces.Column
-	Data           [common.NbLimbU256]ifaces.Column
+	Data           [common.NbElemPerHash]ifaces.Column
 	IsData         ifaces.Column //isActive * canBeData
 	IsDataFirstRow *dedicated.HeartBeatColumn
 	IsDataOddRows  *dedicated.HeartBeatColumn
 	// this column stores the MiMC hashes
-	Hash [common.NbLimbU256]ifaces.Column
+	Hash [common.NbElemPerHash]ifaces.Column
 	// a constant column that stores the last relevant value of the hash
-	HashFinal [common.NbLimbU256]ifaces.Column
+	HashFinal [common.NbElemPerHash]ifaces.Column
 	// state is an intermediary column used to enforce the MiMC constraints
-	State [common.NbLimbU256]ifaces.Column
+	State [common.NbElemPerHash]ifaces.Column
 }
 
 func NewMIMCHasher(comp *wizard.CompiledIOP, inputData, inputIsActive ifaces.Column, name string) *MIMCHasher {
@@ -82,8 +83,7 @@ func DefineHashFilterConstraints(comp *wizard.CompiledIOP, hasher *MIMCHasher, n
 // Its isActive and data columns are assumed to be already constrained in another module, no need to constrain them again.
 func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 
-	// MiMC constraints
-	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), hasher.Data, hasher.State, hasher.Hash, nil)
+	comp.InsertPoseidon2(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), hasher.Data, hasher.State, hasher.Hash, nil)
 
 	for i := range hasher.Hash {
 		// intermediary state integrity
@@ -131,7 +131,7 @@ func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 	comp.InsertProjection(
 		ifaces.QueryIDf("%s_%s", name, "PROJECTION_DATA"),
 		query.ProjectionInput{
-			ColumnA: []ifaces.Column{hasher.Data[common.NbLimbU256-1]}, // input data is the last limb of the data column
+			ColumnA: []ifaces.Column{hasher.Data[common.NbElemPerHash-1]}, // input data is the last limb of the data column
 			ColumnB: []ifaces.Column{hasher.InputData},
 			FilterA: hasher.IsData,
 			FilterB: hasher.InputIsActive,
@@ -139,7 +139,7 @@ func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 	)
 
 	// Check that the data column is zero for all but the last limb
-	for i := 0; i < common.NbLimbU256-1; i++ {
+	for i := 0; i < common.NbElemPerHash-1; i++ {
 		comp.InsertGlobal(0, ifaces.QueryIDf("%s_DATA_ZERO_LIMBS_AT_INPUT_%d", name, i),
 			sym.Mul(hasher.IsData, hasher.Data[i]),
 		)
@@ -150,7 +150,7 @@ func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 
 	var (
-		state, hash, data [common.NbLimbU256]*common.VectorBuilder
+		state, hash, data [common.NbElemPerHash]*common.VectorBuilder
 
 		inputSize = hasher.InputData.Size()
 		isData    = common.NewVectorBuilder(hasher.IsData)
@@ -167,7 +167,7 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 	}
 
 	// Helper function to perform BlockCompression and update hash
-	var prevState, dataToHash [common.NbLimbU256]field.Element
+	var prevState, dataToHash [common.NbElemPerHash]field.Element
 	performBlockCompression := func(isDataVal field.Element) {
 		isData.PushField(isDataVal)
 		isActive.PushOne()
@@ -177,7 +177,7 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 			dataToHash[i] = data[i].Last()
 		}
 
-		dataHash := common.BlockCompression(prevState[:], dataToHash[:])
+		dataHash := poseidon2_koalabear.Compress(prevState, dataToHash)
 		for i := range hash {
 			hash[i].PushField(dataHash[i])
 		}
@@ -185,11 +185,11 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 
 	// Helper to push data with only the last limb set
 	pushDataWithLastLimb := func(value field.Element) {
-		for i := 0; i < common.NbLimbU256-1; i++ {
+		for i := 0; i < common.NbElemPerHash-1; i++ {
 			dataToHash[i].SetZero()
 		}
 
-		dataToHash[common.NbLimbU256-1] = value
+		dataToHash[common.NbElemPerHash-1] = value
 		for i := range data {
 			data[i].PushField(dataToHash[i])
 		}
@@ -230,8 +230,8 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 		performBlockCompression(field.One())
 	}
 
-	zeroLimbs := []field.Element{field.Zero()}
-	zeroHash := common.BlockCompression(zeroLimbs, zeroLimbs) // scalar
+	zeroLimbs := [common.NbElemPerHash]field.Element{}
+	zeroHash := poseidon2_koalabear.Compress(zeroLimbs, zeroLimbs)
 
 	// Assign the hasher columns
 	isData.PadAndAssign(run, field.Zero())
