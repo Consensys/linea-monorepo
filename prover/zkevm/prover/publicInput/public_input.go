@@ -212,14 +212,14 @@ func newPublicInput(
 			NBytes:  execDataCollector.NoBytes,
 			Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("executiondata.limbs", execDataCollector.Limbs[:]).AssertUint128(),
 		}},
-		PaddingStrategy: generic.MiMCUsecase,
+		PaddingStrategy: generic.Poseidon2UseCase,
 	}
 	padding := importpad.ImportAndPad(comp, importInp, limbColSize)
 
 	// ExecutionDataCollector: Packing
 	packingInp := pack.PackingInput{
 		MaxNumBlocks: execDataCollector.BlockID.Size(),
-		PackingParam: generic.MiMCUsecase,
+		PackingParam: generic.Poseidon2UseCase,
 		Imported: pack.Importation{
 			Limb:      padding.Limbs,
 			NByte:     padding.NBytes,
