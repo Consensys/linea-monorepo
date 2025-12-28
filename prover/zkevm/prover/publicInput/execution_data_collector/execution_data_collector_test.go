@@ -53,7 +53,7 @@ func TestDefineAndAssignmentExecutionDataCollector(t *testing.T) {
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
-		arith.AssignTestingArithModules(run, ctBlockData, ctTxnData, ctRlpTxn)
+		arith.AssignTestingArithModules(run, ctBlockData, ctTxnData, ctRlpTxn, bdc, txd, rt)
 		fetch.AssignBlockDataFetcher(run, blockDataFetcher, bdc)
 		fetch.AssignBlockTxnMetadata(run, btm, txd)
 		fetch.AssignTxnDataFetcher(run, txnDataFetcher, txd)

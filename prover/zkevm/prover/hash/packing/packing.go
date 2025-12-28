@@ -91,14 +91,12 @@ func NewPack(comp *wizard.CompiledIOP, inp PackingInput) *Packing {
 		decomposed = newDecomposition(comp, getDecompositionInputs(inp, lookup))
 		spaghetti  = spaghettiMaker(comp, decomposed, isNewHash)
 		lanes      = newLane(comp, spaghetti, inp)
-		block      = newBlock(comp, getBlockInputs(lanes, inp.PackingParam))
 	)
 
 	return &Packing{
 		Inputs:     inp,
 		Decomposed: decomposed,
 		Repacked:   lanes,
-		Block:      block,
 	}
 }
 
@@ -108,7 +106,6 @@ func (pck *Packing) Run(run *wizard.ProverRuntime) {
 	// assign subModules
 	pck.Decomposed.Assign(run)
 	pck.Repacked.Assign(run)
-	pck.Block.Assign(run)
 }
 
 // it stores the inputs /outputs of spaghettifier used in the Packing module.

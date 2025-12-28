@@ -119,8 +119,8 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		res.Padder = res.newKeccakPadder(comp)
 	case inp.PaddingStrategy == generic.Sha2Usecase:
 		res.Padder = res.newSha2Padder(comp)
-	case inp.PaddingStrategy == generic.MiMCUsecase:
-		res.Padder = res.newMimcPadder(comp)
+	case inp.PaddingStrategy == generic.Poseidon2UseCase:
+		res.Padder = res.newPoseidon2Padder(comp)
 	default:
 		panic("unknown strategy")
 	}
@@ -151,7 +151,7 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		),
 	)
 
-	if inp.PaddingStrategy != generic.MiMCUsecase {
+	if inp.PaddingStrategy != generic.Poseidon2UseCase {
 		// before IsActive transits to 0, there should be a padding zone.
 		// IsActive[i] * (1-IsActive[i+1]) * (1-IsPadded[i]) =0
 		comp.InsertGlobal(0, ifaces.QueryIDf("%v_LAST_HASH_HAS_PADDING", inp.Name),

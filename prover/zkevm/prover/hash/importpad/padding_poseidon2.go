@@ -21,9 +21,9 @@ func (MimcPadder) newBuilder() padderAssignmentBuilder {
 
 type mimcPadderAssignmentBuilder struct{}
 
-// newMimcPadder creates the constraints ensuring that the zero-padding and
+// newPoseidon2Padder creates the constraints ensuring that the zero-padding and
 // returns an object helping with the assignment.
-func (ipad *Importation) newMimcPadder(comp *wizard.CompiledIOP) padder {
+func (ipad *Importation) newPoseidon2Padder(comp *wizard.CompiledIOP) padder {
 
 	// The padding values are all zero
 	for i := range ipad.Limbs {
@@ -39,7 +39,7 @@ func (ipad *Importation) newMimcPadder(comp *wizard.CompiledIOP) padder {
 	// divisible by the blocksize.
 	comp.InsertInclusionConditionalOnIncluded(0,
 		ifaces.QueryIDf("%v_LOOKUP_NB_PADDED_BYTES", ipad.Inputs.Name),
-		[]ifaces.Column{getLookupForSize(comp, generic.MiMCUsecase.BlockSizeBytes()-1)},
+		[]ifaces.Column{getLookupForSize(comp, generic.Poseidon2UseCase.BlockSizeBytes()-1)},
 		[]ifaces.Column{ipad.AccPaddedBytes},
 		ipad.IsPadded,
 	)
@@ -50,7 +50,7 @@ func (ipad *Importation) newMimcPadder(comp *wizard.CompiledIOP) padder {
 func (sp MimcPadder) pushPaddingRows(byteStringSize int, ipad *importationAssignmentBuilder) {
 
 	var (
-		blocksize      = generic.MiMCUsecase.BlockSizeBytes()
+		blocksize      = generic.Poseidon2UseCase.BlockSizeBytes()
 		remainToPad    = blocksize - (byteStringSize % blocksize)
 		accPaddedBytes = 0
 	)
