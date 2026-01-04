@@ -97,7 +97,7 @@ public final class ModexpPricingOobCall extends OobCall {
     final boolean rawCostIsLessThanMinModexpCost = rawCost < GAS_CONST_MODEXP_EIP_7823;
     final int precompileCostInt =
         rawCostIsLessThanMinModexpCost ? GAS_CONST_MODEXP_EIP_7823 : rawCost;
-    final Bytes precompileCost = Bytes.ofUnsignedInt(precompileCostInt);
+    final EWord precompileCost = EWord.of(precompileCostInt);
     setRamSuccess(callGas.compareTo(precompileCost) >= 0);
 
     final BigInteger returnGas =
