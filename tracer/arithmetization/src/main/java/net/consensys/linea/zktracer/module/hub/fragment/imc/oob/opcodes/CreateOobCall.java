@@ -79,7 +79,7 @@ public final class CreateOobCall extends OobCall {
     setNonce(EWord.of(nonce));
     setHasCode(hasCode);
     setCallStackDepth(EWord.of(BigInteger.valueOf(frame.getDepth())));
-    setCreatorNonce(EWord.of(creatorAccount.getNonce()));
+    setCreatorNonce(EWord.of(Bytes.minimalBytes(creatorAccount.getNonce())));
     setCodeSize(clampedToLong(frame.getStackItem(2)));
   }
 
