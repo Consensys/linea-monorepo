@@ -39,7 +39,7 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	if c.isKoala {
 		fs = NewGnarkFSKoalabear(api)
 	} else {
-		fs = NewGnarkFSKoalaBLS12377(api)
+		fs = NewGnarkFSBLS12377(api)
 	}
 
 	apiGen, err := zk.NewGenericApi(api)
@@ -141,7 +141,6 @@ func TestFSCircuit(t *testing.T) {
 
 	// compile on koala
 	{
-		getWitnessCircuit(true)
 		circuit, witness := getWitnessCircuit(true)
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)
@@ -154,7 +153,6 @@ func TestFSCircuit(t *testing.T) {
 
 	// compile on bls
 	{
-		getWitnessCircuit(true)
 		circuit, witness := getWitnessCircuit(false)
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)

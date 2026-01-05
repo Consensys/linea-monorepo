@@ -371,6 +371,7 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
 func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBenchmarkCase) {
 
+	isBLS := true
 	// These parameters have been found to give the best result for performances
 	params := selfRecursionParameters{
 		NbOpenedColumns: 8,
@@ -408,15 +409,15 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		proof := wizard.Prove(comp, sbc.NewAssigner(b), true)
-		err := wizard.Verify(comp, proof, true)
+		proof := wizard.Prove(comp, sbc.NewAssigner(b), isBLS)
+		err := wizard.Verify(comp, proof, isBLS)
 		if err != nil {
 			b.Fatal(err)
 		}
 
 		circuit := verifierCircuit{}
 		{
-			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
+			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds(), isBLS)
 			circuit.C = *c
 		}
 
@@ -426,7 +427,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 
 		assignment := &verifierCircuit{
-			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), isBLS),
 		}
 
 		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
