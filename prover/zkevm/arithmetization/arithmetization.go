@@ -360,7 +360,16 @@ func (a *Arithmetization) determineRegisterId(mod string, name string) register.
 	rid, ok := modMap.HasRegister(name)
 	// Sanity check we found it
 	if !ok {
-		panic(fmt.Sprintf("unknown register %s.%s", mod, name))
+		// This log an insightful message listing which where the column that
+		// existed to make the failure easier to debug.
+		modInfos := []string{}
+		regs := modMap.Registers()
+		for _, r := range regs {
+			info := fmt.Sprintf("%s(width=%v, kind=%v)", r.Name, r.Width, r.Kind)
+			modInfos = append(modInfos, info)
+		}
+
+		panic(fmt.Sprintf("unknown register %s.%s, available registers: %v", mod, name, modInfos))
 	}
 	// Done
 	return rid

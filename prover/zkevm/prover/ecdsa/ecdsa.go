@@ -1,6 +1,7 @@
 package ecdsa
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
@@ -58,7 +59,10 @@ func getTxnDataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.
 		Ct:       arith.ColumnOf(comp, "txndata", "CT"),
 		User:     arith.ColumnOf(comp, "txndata", "USER"),
 		Selector: arith.ColumnOf(comp, "txndata", "HUB"),
-		From:     arith.GetLimbsOfU256Le(comp, "txndata", "FROM"),
+		From: limbs.FuseLimbs(
+			arith.GetLimbsOfU32Le(comp, "txndata.hub", "FROM_ADDRESS_HI").AsDynSize(),
+			arith.GetLimbsOfU128Le(comp, "txndata.hub", "FROM_ADDRESS_LO").AsDynSize(),
+		).AssertUint256(),
 	}
 
 	return td
