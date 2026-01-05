@@ -54,7 +54,7 @@ picoli = "4.7.6"
 slf4j="1.7.36"
 teku = "25.12.0"
 tuweni = "2.7.1"
-vertx = "4.5.23"
+vertx = "4.5.14"
 web3j = "4.12.2"
 
 # Other
