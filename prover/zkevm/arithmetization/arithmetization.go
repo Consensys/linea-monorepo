@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/go-corset/pkg/ir/mir"
 	"github.com/consensys/go-corset/pkg/schema/module"
 	"github.com/consensys/go-corset/pkg/schema/register"
+	"github.com/consensys/go-corset/pkg/util/collection/array"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
@@ -293,7 +294,8 @@ func (a *Arithmetization) LimbsOf(mod string, column string, nLimbs int) []strin
 	names := make([]string, len(limbs))
 	// Sanity check we got the number of limbs we expected
 	if len(limbs) != nLimbs {
-		panic(fmt.Sprintf("incorrect number of limbs (expected %d found %d)", nLimbs, len(limbs)))
+		panic(
+			fmt.Sprintf("incorrect number of limbs for %s.%s (expected %d found %d)", mod, column, nLimbs, len(limbs)))
 	}
 	//
 	for i, lid := range limbs {
@@ -344,7 +346,13 @@ func determineSourceModule(srcmap *corset.SourceMap, mod string) corset.SourceMo
 	// Lookup the source module with the corresponding name; if there are
 	// multiple matching entries, then fail.
 	modules := srcmap.Flattern(func(s *corset.SourceModule) bool {
-		return s.Public && s.Name == mod
+		// NOTE: root module must be included in order to ensure its children
+		// are included.
+		return s.Public && (s.Name == "" || s.Name == mod)
+	})
+	// Stip off root module
+	modules = array.RemoveMatching(modules, func(s corset.SourceModule) bool {
+		return s.Name == ""
 	})
 	// Sanity check
 	if len(modules) == 0 {
