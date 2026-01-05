@@ -15,17 +15,31 @@ package net.consensys.linea.zktracer.module.blake2f;
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.ModuleName;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeComponents;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation;
+import net.consensys.linea.zktracer.module.mul.MulOperation;
+import net.consensys.linea.zktracer.module.mul.MulOperationComparator;
 
 import java.util.List;
+import java.util.Optional;
 
 import static net.consensys.linea.zktracer.module.ModuleName.BLAKE2F;
 
 @RequiredArgsConstructor
-public class Blake2f implements Module {
+@Accessors(fluent = true)
+public class Blake2f implements OperationSetModule<Blake2fOperation> {
+
+  @Getter
+  private final ModuleOperationStackedSet<Blake2fOperation> operations =
+    new ModuleOperationStackedSet<>();
 
   @Override
   public ModuleName moduleKey() {
@@ -39,21 +53,29 @@ public class Blake2f implements Module {
   public void popTransactionBundle() {}
 
   @Override
+  // TODO implement
   public int lineCount() {
-    return 0;
+    return operations.lineCount();
   }
 
   @Override
   public int spillage(Trace trace) {
-    return 0;
+    return trace.blake2f().spillage();
   }
 
   @Override
   public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
-    return trace.rom().headers(this.lineCount());
+    return trace.blake2f().headers(this.lineCount());
   }
 
   @Override
   public void commit(Trace trace) {
+    for (Blake2fOperation op : operations.getAll()) {
+      op.trace(trace.blake2f());
+    }
+  }
+
+  public void call(Blake2fOperation blake2fOperation) {
+    operations.add(blake2fOperation);
   }
 }
