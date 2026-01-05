@@ -72,7 +72,7 @@ go-corset:
 ## Build and bundle the go-corset trace-expander dependency
 ##
 zkevm/arithmetization/zkevm.bin: go-corset
-	cd ../constraints && $(GO_CORSET) make zkevm_london.bin && mv zkevm_london.bin ../prover/zkevm/arithmetization/zkevm.bin
+	cd ../constraints && $(GO_CORSET) make zkevm.bin && mv zkevm.bin ../prover/zkevm/arithmetization/zkevm.bin
 
 ##
 ## Generate the setup for all provers job for sepolia (to be run with S3 access)
