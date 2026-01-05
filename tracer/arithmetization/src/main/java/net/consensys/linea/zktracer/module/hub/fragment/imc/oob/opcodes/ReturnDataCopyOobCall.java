@@ -56,7 +56,11 @@ public class ReturnDataCopyOobCall extends OobCall {
   @Override
   public void setOutputs() {
     final EWord sum = offset.add(size);
-    setRdcx(sum.compareTo(rds) > 0);
+    // check whether rdc is "ridiculously out-of-bounds (ROOB)".
+    final boolean rdcRoob = !offset.hi().isZero() || !size.hi().isZero();
+    // check whether rdc "sum is out-of-bounds (SOOB)"
+    final boolean rdcSoob = sum.compareTo(rds) > 0;
+    setRdcx(rdcRoob || rdcSoob);
   }
 
   @Override
