@@ -565,13 +565,9 @@ func TestIOP_Store(t *testing.T) {
 	_ = os.RemoveAll(iopArtifactsDir)
 	require.NoError(t, os.MkdirAll(iopArtifactsDir, 0755))
 
-	for i, scenario := range serdeScenarios {
+	for _, scenario := range serdeScenarios {
 		// Skip scenarios marked as not for testing
 		if !scenario.test {
-			continue
-		}
-
-		if i != 2 {
 			continue
 		}
 
@@ -580,28 +576,6 @@ func TestIOP_Store(t *testing.T) {
 			// We use the scenario builder to generate the complex CompiledIOP
 			comp := getScenarioComp(&scenario)
 			require.NotNil(subT, comp, "Failed to build scenario %s", scenario.name)
-
-			// --- DEBUG PRINT START ---
-			logrus.Info(">>> DUMPING PRECOMPUTED VALUES <<<")
-			if comp.Precomputed.InnerMap != nil {
-				for colID, vector := range comp.Precomputed.InnerMap {
-					// vector is the SmartVector interface
-					if vector != nil {
-						logrus.Infof("ColID: %-30s | Type: %T | Len: %d | Data: %s",
-							colID,
-							vector,
-							vector.Len(),
-							vector.Pretty(), // This prints the actual values
-						)
-					} else {
-						logrus.Infof("ColID: %-30s | IS NIL", colID)
-					}
-				}
-			} else {
-				logrus.Info("Precomputed.InnerMap is nil")
-			}
-			logrus.Info(">>> END DUMP <<<")
-			// --- DEBUG PRINT END ---
 
 			// 3. Define File Path
 			path := filepath.Join(iopArtifactsDir, fmt.Sprintf("%s.bin", scenario.name))
@@ -632,12 +606,8 @@ func TestIOP_Load(t *testing.T) {
 		_ = os.RemoveAll(iopArtifactsDir)
 	}()
 
-	for i, scenario := range serdeScenarios {
+	for _, scenario := range serdeScenarios {
 		if !scenario.test {
-			continue
-		}
-
-		if i != 2 {
 			continue
 		}
 
@@ -660,32 +630,10 @@ func TestIOP_Load(t *testing.T) {
 			require.NoError(subT, err, "LoadFromDisk failed for %s", scenario.name)
 			defer closer.Close() // Release mmap
 
-			// --- DEBUG PRINT START ---
-			logrus.Info(">>> DUMPING Deserialized PRECOMPUTED VALUES <<<")
-			if loaded.Precomputed.InnerMap != nil {
-				for colID, vector := range loaded.Precomputed.InnerMap {
-					// vector is the SmartVector interface
-					if vector != nil {
-						logrus.Infof("ColID: %-30s | Type: %T | Len: %d | Data: %s",
-							colID,
-							vector,
-							vector.Len(),
-							vector.Pretty(), // This prints the actual values
-						)
-					} else {
-						logrus.Infof("ColID: %-30s | IS NIL", colID)
-					}
-				}
-			} else {
-				logrus.Info("Deser Precomputed.InnerMap is nil")
-			}
-			logrus.Info(">>> END DUMP <<<")
-			// --- DEBUG PRINT END ---
-
 			// 4. Verification (Deep Compare)
 			// We use failFast=true to stop immediately on mismatch
 			subT.Logf("Verifying %s via DeepCmp...", scenario.name)
-			match := serde.DeepCmp(expected, loaded, false)
+			match := serde.DeepCmp(expected, loaded, true)
 
 			if !match {
 				subT.Fatalf("DeepCmp Failed: Loaded object for scenario '%s' differs from original build.", scenario.name)

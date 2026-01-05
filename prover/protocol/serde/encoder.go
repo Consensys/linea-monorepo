@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"unsafe"
 
 	"github.com/sirupsen/logrus"
@@ -50,11 +51,45 @@ func newEncoder() *encoder {
 // the start offset where the data was written.
 func (w *encoder) write(data any) int64 {
 	start := w.offset
-	val := normalizeIntegerSize(reflect.ValueOf(data))
-	if err := binary.Write(w.buf, binary.LittleEndian, val); err != nil {
-		panic(fmt.Errorf("binary.Write failed for type %T: %w", val, err))
+	switch v := data.(type) {
+	// Normalize platform-dependent int/uint to fixed-size int64/uint64
+	case int:
+		var buf [8]byte
+		*(*int64)(unsafe.Pointer(&buf[0])) = int64(v)
+		w.buf.Write(buf[:])
+		w.offset += 8
+	case uint:
+		var buf [8]byte
+		*(*uint64)(unsafe.Pointer(&buf[0])) = uint64(v)
+		w.buf.Write(buf[:])
+		w.offset += 8
+	case int64, uint64:
+		w.buf.Write((*[8]byte)(unsafe.Pointer(&v))[:])
+		w.offset += 8
+	case int32, uint32:
+		w.buf.Write((*[4]byte)(unsafe.Pointer(&v))[:])
+		w.offset += 4
+	case int16, uint16:
+		w.buf.Write((*[2]byte)(unsafe.Pointer(&v))[:])
+		w.offset += 2
+	case int8, uint8, bool:
+		w.buf.Write((*[1]byte)(unsafe.Pointer(&v))[:])
+		w.offset += 1
+	case Ref:
+		w.buf.Write((*[8]byte)(unsafe.Pointer(&v))[:])
+		w.offset += 8
+	case FileSlice:
+		w.buf.Write((*[24]byte)(unsafe.Pointer(&v))[:])
+		w.offset += 24
+	case InterfaceHeader:
+		w.buf.Write((*[unsafe.Sizeof(v)]byte)(unsafe.Pointer(&v))[:])
+		w.offset += int64(unsafe.Sizeof(v))
+	default:
+		// Fallback to reflection
+		val := normalizeIntegerSize(reflect.ValueOf(data))
+		binary.Write(w.buf, binary.LittleEndian, val)
+		w.offset += int64(binary.Size(val))
 	}
-	w.offset += int64(binary.Size(val))
 	return start
 }
 
@@ -69,15 +104,25 @@ func (w *encoder) writeBytes(b []byte) int64 {
 
 // patch overwrites previously reserved zero bytes (at offset) with actual data v.
 func (w *encoder) patch(offset int64, v any) {
-	var tmp bytes.Buffer
-	val := normalizeIntegerSize(reflect.ValueOf(v))
-	binary.Write(&tmp, binary.LittleEndian, val)
-	encoded := tmp.Bytes()
 	bufSlice := w.buf.Bytes()
-	if int(offset)+len(encoded) > len(bufSlice) {
-		panic(fmt.Errorf("patch out of bounds"))
+	switch val := v.(type) {
+	case Ref:
+		*(*Ref)(unsafe.Pointer(&bufSlice[offset])) = val
+	case int64:
+		*(*int64)(unsafe.Pointer(&bufSlice[offset])) = val
+	case uint64:
+		*(*uint64)(unsafe.Pointer(&bufSlice[offset])) = val
+	case FileSlice:
+		*(*FileSlice)(unsafe.Pointer(&bufSlice[offset])) = val
+	case InterfaceHeader:
+		*(*InterfaceHeader)(unsafe.Pointer(&bufSlice[offset])) = val
+	default:
+		// Fallback for complex types
+		var tmp bytes.Buffer
+		val = normalizeIntegerSize(reflect.ValueOf(v))
+		binary.Write(&tmp, binary.LittleEndian, val)
+		copy(bufSlice[offset:], tmp.Bytes())
 	}
-	copy(bufSlice[offset:], encoded)
 }
 
 // writeSliceData snapshots the raw memory backing a POD (Plain-Old-Data) slice and
@@ -358,8 +403,9 @@ func linearizeSliceSeq(w *encoder, v reflect.Value) (Ref, error) {
 }
 
 func writeIndirectSlice(w *encoder, v reflect.Value) (Ref, error) {
-	refs := make([]Ref, v.Len())
-	for i := 0; i < v.Len(); i++ {
+	n := v.Len()
+	refs := make([]Ref, n)
+	for i := 0; i < n; i++ {
 		ref, err := encode(w, v.Index(i))
 		if err != nil {
 			return 0, err
@@ -370,8 +416,8 @@ func writeIndirectSlice(w *encoder, v reflect.Value) (Ref, error) {
 	if err := binary.Write(w.buf, binary.LittleEndian, refs); err != nil {
 		return 0, err
 	}
-	w.offset += int64(len(refs) * 8)
-	fs := FileSlice{Offset: Ref(startOffset), Len: int64(v.Len()), Cap: int64(v.Cap())}
+	w.offset += int64(n * 8)
+	fs := FileSlice{Offset: Ref(startOffset), Len: int64(n), Cap: int64(v.Cap())}
 	off := w.write(fs)
 	return Ref(off), nil
 }
@@ -520,7 +566,21 @@ func patchArray(w *encoder, v reflect.Value, startOffset int64) error {
 	return nil
 }
 
-// getBinarySize: returns how many bytes the serialized representation of type `t` takes.
+// Type size cache to avoid repeated computation of binary sizes
+// map[reflect.Type]int64
+var binarySizeCache sync.Map
+
+func getBinarySize(t reflect.Type) int64 {
+	if cached, ok := binarySizeCache.Load(t); ok {
+		return cached.(int64)
+	}
+
+	size := computeBinarySize(t) // Move current logic here
+	binarySizeCache.Store(t, size)
+	return size
+}
+
+// computeBinarySize: returns how many bytes the serialized representation of type `t` takes.
 // NOTE: This is NOT the same as Go's in-memory size. The size returned here reflects
 // how the value is represented on disk:
 //
@@ -529,7 +589,7 @@ func patchArray(w *encoder, v reflect.Value, startOffset int64) error {
 //
 // This function MUST remain perfectly consistent with the actual write logic;
 // any mismatch will result in corrupted offsets or incorrect deserialization.
-func getBinarySize(t reflect.Type) int64 {
+func computeBinarySize(t reflect.Type) int64 {
 	// Indirect types (custom registries, ptrs, slices, strings etc) are types that have variable sizes
 	// not known at compile time and hence their inline representation is a Ref (8-byte offset).
 	// These values are written elsewhere and referenced inline by offset.
@@ -554,13 +614,13 @@ func getBinarySize(t reflect.Type) int64 {
 			if strings.Contains(f.Tag.Get(serdeStructTag), serdeStructTagOmit) {
 				continue
 			}
-			sum += getBinarySize(f.Type)
+			sum += computeBinarySize(f.Type)
 		}
 		return sum
 	}
 	// Arrays are fixed-size and serialized inline as repeated elements.
 	if k == reflect.Array {
-		elemSize := getBinarySize(t.Elem())
+		elemSize := computeBinarySize(t.Elem())
 		return elemSize * int64(t.Len())
 	}
 	return int64(t.Size())
