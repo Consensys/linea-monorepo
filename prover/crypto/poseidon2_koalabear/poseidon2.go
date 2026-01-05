@@ -107,7 +107,7 @@ func (d *MDHasher) Write(p []byte) (int, error) {
 	d.WriteElements(elems...)
 	return len(p), nil
 }
-func (h *MDHasher) State() [8]field.Element { // Changed back to [8]field.Element
+func (h *MDHasher) State() [BlockSize]field.Element {
 	return h.state
 }
 

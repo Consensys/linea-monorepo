@@ -83,7 +83,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 	if !r.withoutGkr {
 		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(apiGen.NativeApi)
-		w.BLSFS = fiatshamir.NewGnarkFSKoalabear(apiGen.NativeApi)
+		w.KoalaFS = fiatshamir.NewGnarkFSKoalabear(apiGen.NativeApi)
 	}
 
 	if r.withExternalHasher {
