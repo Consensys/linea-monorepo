@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 
 import { LidoStVaultYieldProvider } from "../../../yield/LidoStVaultYieldProvider.sol";
 import { GIndex } from "../../../yield/libs/vendor/lido/GIndex.sol";

@@ -37,14 +37,14 @@ const config: HardhatUserConfig = {
     // NB: double check the autoupdate shell script version complies to the latest solidity version if you add a new one.
     compilers: [
       {
-        version: "0.8.30",
+        version: "0.8.33",
         settings: {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
             runs: 10000,
           },
-          evmVersion: "prague",
+          evmVersion: "osaka",
         },
       },
       {
@@ -83,36 +83,36 @@ const config: HardhatUserConfig = {
     ],
     overrides: {
       "contracts/yield/YieldManager.sol": {
-        version: "0.8.30",
+        version: "0.8.33",
         settings: {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
             runs: 1500,
           },
-          evmVersion: "prague",
+          evmVersion: "osaka",
         },
       },
       "contracts/test-contracts/TestLineaRollup.sol": {
-        version: "0.8.30",
+        version: "0.8.33",
         settings: {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
             runs: 1000,
           },
-          evmVersion: "prague",
+          evmVersion: "osaka",
         },
       },
       "contracts/LineaRollup.sol": {
-        version: "0.8.30",
+        version: "0.8.33",
         settings: {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
             runs: 9000,
           },
-          evmVersion: "prague",
+          evmVersion: "osaka",
         },
       },
     },
