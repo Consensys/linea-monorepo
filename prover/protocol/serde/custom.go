@@ -37,16 +37,6 @@ func registerCustomType(t reflect.Type, c customCodex) {
 
 func init() {
 
-	// registerCustomType(reflect.TypeOf(wizard.CompiledIOP{}), customCodex{
-	// 	marshall:   marshallCompiledIOP,
-	// 	unmarshall: unmarshallCompiledIOP,
-	// })
-
-	// registerCustomType(reflect.TypeOf(symbolic.Expression{}), customCodex{
-	// 	marshall:   marshallExpression,
-	// 	unmarshall: unmarshallExpression,
-	// })
-
 	idCodex := customCodex{
 		marshall:   marshallID,
 		unmarshall: unmarshallID,
@@ -109,11 +99,6 @@ func init() {
 		unmarshall: unmarshallCoinInfo,
 	})
 
-	// Helpers
-	// registerCustomType(reflect.TypeOf(smartvectors.Regular{}), customCodex{
-	// 	marshall:   marshallSmartVectorRegular,
-	// 	unmarshall: unmarshallSmartVectorRegular,
-	// })
 	registerCustomType(reflect.TypeOf(func() hash.Hash { return nil }), customCodex{
 		marshall:   marshallAsEmpty,
 		unmarshall: unmarshallHashGenerator,
@@ -133,6 +118,41 @@ func init() {
 }
 
 // ---------------- IMPLEMENTATIONS ----------------
+
+var TypeOfQuery = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
+
+func marshallQuery(enc *encoder, v reflect.Value) (Ref, error) {
+	q, ok := v.Interface().(ifaces.Query)
+	if !ok {
+		return 0, fmt.Errorf("value of type %s does not implement ifaces.Query", v.Type())
+	}
+	id := q.UUID().String()
+	if ref, ok := enc.uuidMap[id]; ok {
+		traceLog("Query UUID Dedup Hit! %s -> Ref %d", id, ref)
+		return ref, nil
+	}
+
+	// Linearize the underlying value (struct or pointer to struct) using existing helpers.
+	var ref Ref
+	var err error
+	if v.Kind() == reflect.Ptr {
+		// Dereference pointers until we reach the concrete
+		elem := v
+		for elem.Kind() == reflect.Ptr {
+			elem = elem.Elem()
+		}
+		ref, err = linearizeStruct(enc, elem)
+	} else if v.Kind() == reflect.Struct {
+		ref, err = linearizeStruct(enc, v)
+	} else {
+		return 0, fmt.Errorf("query implementation must be a struct or pointer to struct, got %v", v.Kind())
+	}
+	if err != nil {
+		return 0, err
+	}
+	enc.uuidMap[id] = ref
+	return ref, nil
+}
 
 // marshallID handles string deduplication.
 // 1. Checks if string content exists in stringMap.
@@ -204,23 +224,14 @@ func unmarshallColumnStore(dec *decoder, v reflect.Value, offset int64) error {
 }
 
 // --- Column Natural ---
-// func marshallColumnNatural(enc *encoder, v reflect.Value) (Ref, error) {
-// 	nat := v.Interface().(column.Natural)
-// 	packed := nat.Pack()
-// 	return encode(enc, reflect.ValueOf(packed))
-// }
-
 func marshallColumnNatural(enc *encoder, v reflect.Value) (Ref, error) {
 	nat := v.Interface().(column.Natural)
-
-	// --- FIX START ---
 	// 1. Logical Deduplication by UUID
 	id := nat.UUID().String()
 	if ref, ok := enc.uuidMap[id]; ok {
 		traceLog("UUID Dedup Hit! %s -> Ref %d", id, ref)
 		return ref, nil
 	}
-	// --- FIX END ---
 
 	packed := nat.Pack()
 
@@ -230,10 +241,8 @@ func marshallColumnNatural(enc *encoder, v reflect.Value) (Ref, error) {
 		return 0, err
 	}
 
-	// --- FIX START ---
 	// 2. Register the new reference
 	enc.uuidMap[id] = ref
-	// --- FIX END ---
 
 	return ref, nil
 }
@@ -249,8 +258,6 @@ func unmarshallColumnNatural(dec *decoder, v reflect.Value, offset int64) error 
 }
 
 // --- Coin Info ---
-
-// --- Coin Info ---
 type PackedCoin struct {
 	Type       int8   `serde:"t"`
 	Size       int    `serde:"s"`
@@ -264,21 +271,17 @@ func asPackedCoin(c coin.Info) PackedCoin {
 }
 func marshallCoinInfo(enc *encoder, v reflect.Value) (Ref, error) {
 	c := v.Interface().(coin.Info)
-	// --- FIX START ---
 	id := c.UUID().String()
 	if ref, ok := enc.uuidMap[id]; ok {
 		return ref, nil
 	}
-	// --- FIX END ---
-	packed := asPackedCoin(c)
 
+	packed := asPackedCoin(c)
 	ref, err := encode(enc, reflect.ValueOf(packed))
 	if err != nil {
 		return 0, err
 	}
-	// --- FIX START ---
 	enc.uuidMap[id] = ref
-	// --- FIX END ---
 	return ref, nil
 }
 func unmarshallCoinInfo(dec *decoder, v reflect.Value, offset int64) error {

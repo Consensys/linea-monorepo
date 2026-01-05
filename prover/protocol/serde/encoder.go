@@ -8,21 +8,30 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/sirupsen/logrus"
 )
 
-// ---------------------------------------------------------------------------
-// Encoder
-// ---------------------------------------------------------------------------
-
 // encoder: Holds the current encoding/serialization state
 type encoder struct {
-	buf     *bytes.Buffer
-	offset  int64
-	ptrMap  map[uintptr]Ref
+	// The growing slices of bytes(akin to "Heap") storing the actual serialized payload data.
+	buf *bytes.Buffer
+
+	// The write cursor pointing to the end of the buffer.
+	offset int64
+
+	// Maps a Go RAM address (uintptr -integer big enough to hold a mem. address
+	// for low-level pointer arithmetic) to a File Offset (Ref).
+	// Keeps track of memory addresses that have already been seen before.
+	ptrMap map[uintptr]Ref
+
+	// uuidMap deduplicates objects based on their logical ID (e.g. Column UUIDs).
+	// This ensures that two different pointers to the "same" Column are serialized
+	// as a single object reference.
 	uuidMap map[string]Ref
-	idMap   map[string]Ref
+
+	// idMap performs "String Interning" - mapping the raw string content to its File Offset (Ref).
+	// If a colID/coinName/queryID is written once, subsequent occurrences just write the Ref (8 bytes).
+	idMap map[string]Ref
 }
 
 func newEncoder() *encoder {
@@ -34,13 +43,10 @@ func newEncoder() *encoder {
 		uuidMap: make(map[string]Ref),
 		idMap:   make(map[string]Ref),
 	}
-
-	// Reserve Offset 0 for NULL references explicitly.
-	// enc.writeBytes([]byte{0})
 	return enc
 }
 
-// write writes the given data (primitive, struct, header types) to the buffer and returns
+// write writes the given data (raw Primitives, FileSlice, Interface headers etc) to the buffer and returns
 // the start offset where the data was written.
 func (w *encoder) write(data any) int64 {
 	start := w.offset
@@ -52,6 +58,8 @@ func (w *encoder) write(data any) int64 {
 	return start
 }
 
+// writeBytes writes the given bytes to the buffer and returns
+// the start offset (beginning of cursor) at which the bytes were written
 func (w *encoder) writeBytes(b []byte) int64 {
 	start := w.offset
 	w.buf.Write(b)
@@ -72,14 +80,36 @@ func (w *encoder) patch(offset int64, v any) {
 	copy(bufSlice[offset:], encoded)
 }
 
-// writeSliceData writes raw bytes of a POD slice into the buffer and returns a FileSlice
-// describing where the data lives. Unsafe raw-copy — only valid for POD element types.
+// writeSliceData snapshots the raw memory backing a POD (Plain-Old-Data) slice and
+// records where it was written,so the slice can be reconstructed later as a zero-copy view
+// into the serialized buffer.
+// IMPORTANT:
+//   - This function performs a raw memory copy using unsafe.
+//   - It is ONLY valid for slices whose element type is fixed-size and contains
+//     no pointers (i.e. plain-old-data / POD types).
+//   - Examples of valid element types: uint64, float64, field.Element, structs
+//     composed solely of such fields.
+//   - INVALID for: []string, []map, []interface{}, []*T, []big.Int, etc.
+//
+// The returned FileSlice does NOT contain the slice data itself; it records:
+//   - Offset: byte offset in the serialized buffer where the slice data begins
+//   - Len:    number of elements in the slice
+//   - Cap:    original slice capacity (needed to faithfully reconstruct the
+//     slice header during deserialization).
 func (w *encoder) writeSliceData(v reflect.Value) FileSlice {
 	if v.Len() == 0 {
 		return FileSlice{0, 0, 0}
 	}
+	// Compute the total number of bytes occupied by the slice backing array.
+	// This assumes that each element has a fixed size and that the slice
+	// memory layout is tightly packed.
 	totalBytes := v.Len() * int(v.Type().Elem().Size())
+
+	// Obtain a pointer to the first element of the slice backing array.
 	dataPtr := unsafe.Pointer(v.Pointer())
+
+	// Reinterpret the slice backing array as a byte slice of length totalBytes.
+	// This does NOT allocate or copy; it is a raw view over existing memory.
 	dataBytes := unsafe.Slice((*byte)(dataPtr), totalBytes)
 	offset := w.offset
 	w.buf.Write(dataBytes)
@@ -87,7 +117,22 @@ func (w *encoder) writeSliceData(v reflect.Value) FileSlice {
 	return FileSlice{Offset: Ref(offset), Len: int64(v.Len()), Cap: int64(v.Cap())}
 }
 
-// encode: entry point that handles pointer deduplication and circular refs.
+// encode serializes a value into the writer buffer and returns a Ref
+// (8-byte offset) pointing to root offset where the value was written.
+// This essentially tells the decoder where the "entry point" of our object
+// graph is located inside the file.
+// Key responsibilities:
+//  1. Handle pointer de-duplication so the same object is serialized only once.
+//  2. Support circular references by registering the pointer address *before*
+//     the actual bytes are written.
+//  3. Delegate the actual byte-level serialization to linearize.
+//
+// For non-pointer values, this function simply forwards to linearize.
+// For pointer values:
+//   - nil pointers serialize to Ref(0)
+//   - repeated pointers reuse the previously recorded Ref
+//   - circular references are handled by pre-registering the current offset
+//     before serializing the pointed-to value.
 func encode(w *encoder, v reflect.Value) (Ref, error) {
 	if !v.IsValid() {
 		return 0, nil
@@ -102,11 +147,15 @@ func encode(w *encoder, v reflect.Value) (Ref, error) {
 			traceLog("Encode: Pointer is Nil -> Ref(0)")
 			return 0, nil
 		}
+		// Get the integer representation of the actual RAM address
 		ptrAddr = v.Pointer()
 		if ref, ok := w.ptrMap[ptrAddr]; ok {
 			traceLog("Encode: Dedup Hit! Addr %x -> Ref %d", ptrAddr, ref)
 			return ref, nil
 		}
+
+		// IMPORANT: We map it to the CURRENT offset (w.offset) because that's where we
+		// are about to write it (in the future). This effectively handles CIRCULAR references.
 		traceLog("Encode: New Pointer %x -> Will be Ref %d", ptrAddr, w.offset)
 		w.ptrMap[ptrAddr] = Ref(w.offset)
 	}
@@ -136,11 +185,14 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 	t := v.Type()
 	if t.Kind() != reflect.Interface && t.Implements(TypeOfQuery) {
 		traceLog("Type %s implements Query -> using UUID Dedup", t)
-		return marshallQueryViaUUID(w, v)
+		return marshallQuery(w, v)
 	}
 
 	switch v.Kind() {
 	case reflect.Ptr:
+		// Handle standard Go Pointers - Deduplication happens in 'encode' before this,
+		// so we just recurse. We stick to `encode` for guardrails - v is not a nil and
+		// for the possiblity of the type being pointed at implmenting custom interfaces.
 		return encode(w, v.Elem())
 	case reflect.Array:
 		return linearizeArray(w, v)
@@ -151,9 +203,9 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 		elemType := v.Type().Elem()
 		if isIndirectType(elemType) {
 			traceLog("Slice is Indirect -> writeSliceOfIndirects")
-			return writeSliceOfIndirects(w, v)
+			return writeIndirectSlice(w, v)
 		}
-		if !isPod(elemType) {
+		if !isPOD(elemType) {
 			traceLog("Slice is Non-POD -> linearizeSliceSeq")
 			return linearizeSliceSeq(w, v)
 		}
@@ -180,46 +232,29 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 	}
 }
 
-var TypeOfQuery = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
-
-func marshallQueryViaUUID(enc *encoder, v reflect.Value) (Ref, error) {
-	q, ok := v.Interface().(ifaces.Query)
-	if !ok {
-		return 0, fmt.Errorf("value of type %s does not implement ifaces.Query", v.Type())
-	}
-	id := q.UUID().String()
-	if ref, ok := enc.uuidMap[id]; ok {
-		traceLog("Query UUID Dedup Hit! %s -> Ref %d", id, ref)
-		return ref, nil
-	}
-
-	// Linearize the underlying value (struct or pointer to struct) using existing helpers.
-	var ref Ref
-	var err error
-	if v.Kind() == reflect.Ptr {
-		// Dereference pointers until we reach the concrete
-		elem := v
-		for elem.Kind() == reflect.Ptr {
-			elem = elem.Elem()
-		}
-		ref, err = linearizeStruct(enc, elem)
-	} else if v.Kind() == reflect.Struct {
-		ref, err = linearizeStruct(enc, v)
-	} else {
-		return 0, fmt.Errorf("query implementation must be a struct or pointer to struct, got %v", v.Kind())
-	}
-	if err != nil {
-		return 0, err
-	}
-	enc.uuidMap[id] = ref
-	return ref, nil
-}
-
-// linearizeStruct: Reserve then Patch model for structs. Returns Ref pointing to start.
+// linearizeStruct function works on a Reservation now and Patch later System.
+// It does not append the struct fields one by one to the end of the file.
+// Instead, it "allocates" the space first, and then goes back to fill it in.
+// Explanation:
+// linearizeStruct is recursive, the "deepest" objects (the ones pointed to incase of pointers) get their data finalized first
+// while the "top-level" objects are still waiting to finish their patchStructBody loop. The Write Cursor (w.offset)
+// always moves forward, ensuring that new objects never overwrite old ones.
 func linearizeStruct(w *encoder, v reflect.Value) (Ref, error) {
+	// PREDICT: Calculate total size of the struct in bytes.
+	// CRITICAL: This calculation MUST perfectly match the bytes written by 'patchStructBody'.
+	// If getBinarySize returns X, patchStructBody must write exactly X bytes.
+	// Any mismatch will cause data corruption or a panic in w.Patch.
 	size := getBinarySize(v.Type())
+
+	// SNAPSHOT: Capture the current cursor position. This 'startOffset' will point to the beginning of our reserved "slot"
+	// Remember before reserving space, let us capture the current offset (i.e cursor position of the writer)
+	// This is important because in the reserve step, when we write zero bytes, the writter offset
+	// will be changed (mutates to the end of the reserved space). However, while coming back in time
+	// we need to know the current offset (beginning of cursor).
 	startOffset := w.offset
 	w.writeBytes(make([]byte, size))
+
+	// PATCH - Go back and fill in the blank canvas with actual data.
 	if err := patchStructBody(w, v, startOffset); err != nil {
 		return 0, err
 	}
@@ -322,7 +357,7 @@ func linearizeSliceSeq(w *encoder, v reflect.Value) (Ref, error) {
 	return Ref(off), nil
 }
 
-func writeSliceOfIndirects(w *encoder, v reflect.Value) (Ref, error) {
+func writeIndirectSlice(w *encoder, v reflect.Value) (Ref, error) {
 	refs := make([]Ref, v.Len())
 	for i := 0; i < v.Len(); i++ {
 		ref, err := encode(w, v.Index(i))
@@ -343,6 +378,11 @@ func writeSliceOfIndirects(w *encoder, v reflect.Value) (Ref, error) {
 
 func encodeSeqItem(w *encoder, v reflect.Value, buf *bytes.Buffer) error {
 	t := v.Type()
+
+	// Handle Indirect types (Interfaces, Pointers, Strings, Registered Custom Types)
+	// If the type is "indirect" (variable size or reference or handles its own serialization (custom)),
+	// we offload the heavy lifting to the main 'linearize' function which will return a Ref (offset ID),
+	// which we write into the map buffer.
 	if isIndirectType(t) {
 		ref, err := encode(w, v)
 		if err != nil {
@@ -450,7 +490,12 @@ func patchArray(w *encoder, v reflect.Value, startOffset int64) error {
 	isReference := isIndirectType(elemType)
 	for i := 0; i < v.Len(); i++ {
 		elem := v.Index(i)
+		// Calculate the exact offset for this specific element
 		offset := startOffset + (int64(i) * elemBinSize)
+
+		// 1. Handle References (Heap Allocation)
+		// If the element is a pointer, interface, or custom type, we delegate to
+		// linearize() to write the data elsewhere and return a Ref ID.
 		if isReference {
 			ref, err := encode(w, elem)
 			if err != nil {
@@ -475,15 +520,30 @@ func patchArray(w *encoder, v reflect.Value, startOffset int64) error {
 	return nil
 }
 
-// getBinarySize: returns how many bytes the serialized representation of `t` takes.
+// getBinarySize: returns how many bytes the serialized representation of type `t` takes.
+// NOTE: This is NOT the same as Go's in-memory size. The size returned here reflects
+// how the value is represented on disk:
+//
+// - Fixed-size, pointer-free values are inlined.
+// - Variable-size or heap-backed values are replaced by an 8-byte Ref.
+//
+// This function MUST remain perfectly consistent with the actual write logic;
+// any mismatch will result in corrupted offsets or incorrect deserialization.
 func getBinarySize(t reflect.Type) int64 {
+	// Indirect types (custom registries, ptrs, slices, strings etc) are types that have variable sizes
+	// not known at compile time and hence their inline representation is a Ref (8-byte offset).
+	// These values are written elsewhere and referenced inline by offset.
 	if isIndirectType(t) {
 		return 8
 	}
 	k := t.Kind()
+	// Explicit handling of scalar types int/uint are platform-dependent in Go,
+	// so we normalize them to 8 bytes in the serialized representation.
 	if k == reflect.Int || k == reflect.Uint {
 		return 8
 	}
+	// Structs are serialized inline by concatenating the serialized
+	// representation of each exported, non-omitted field.
 	if k == reflect.Struct {
 		var sum int64
 		for i := 0; i < t.NumField(); i++ {
@@ -498,6 +558,7 @@ func getBinarySize(t reflect.Type) int64 {
 		}
 		return sum
 	}
+	// Arrays are fixed-size and serialized inline as repeated elements.
 	if k == reflect.Array {
 		elemSize := getBinarySize(t.Elem())
 		return elemSize * int64(t.Len())
@@ -505,6 +566,12 @@ func getBinarySize(t reflect.Type) int64 {
 	return int64(t.Size())
 }
 
+// isIndirectType returns true if the given type is an indirect type.
+// Indirect types are types that have variable sizes not known at compile time.
+// This includes pointers, slices, strings, interfaces, maps, and functions.
+// Direct types are types that have fixed sizes known at compile time.
+// This includes structs, arrays, and primitive types (bool,int/uint8, int/uint (normalized), etc).
+// Types handled inside of the Custom Registry are also considered indirect.
 func isIndirectType(t reflect.Type) bool {
 	if _, ok := customRegistry[t]; ok {
 		return true
@@ -514,24 +581,29 @@ func isIndirectType(t reflect.Type) bool {
 		k == reflect.Interface || k == reflect.Map || k == reflect.Func
 }
 
-func isPod(t reflect.Type) bool {
+// isPOD returns true if the given type is a "Plain Old Data" type which are zero-copy safe.
+// Plain Old Data types are types that have fixed sizes known at compile time.
+func isPOD(t reflect.Type) bool {
 	if isIndirectType(t) {
 		return false
 	}
 	if t.Kind() == reflect.Struct {
 		for i := 0; i < t.NumField(); i++ {
-			if !isPod(t.Field(i).Type) {
+			if !isPOD(t.Field(i).Type) {
 				return false
 			}
 		}
 		return true
 	}
 	if t.Kind() == reflect.Array {
-		return isPod(t.Elem())
+		return isPOD(t.Elem())
 	}
 	return true
 }
 
+// normalizeIntegerSize converts platform-dependent types (int, uint) to fixed-size
+// equivalents (int64, uint64) - 64 bit values. This ensures that the binary representation
+// is consistent across different CPU architectures (32-bit vs 64-bit).
 func normalizeIntegerSize(v reflect.Value) any {
 	switch v.Kind() {
 	case reflect.Int:
