@@ -1,6 +1,5 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import * as fs from "fs";
 import * as kzg from "c-kzg";
 import { expect } from "chai";
 import { BaseContract, Transaction } from "ethers";
@@ -12,37 +11,26 @@ import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-
 import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
 
-import { LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES, LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
 import { TestLineaRollup } from "contracts/typechain-types";
 import {
   deployLineaRollupFixture,
   deployRevertingVerifier,
   expectSuccessfulFinalize,
   getAccountsFixture,
-  getVersionedBlobFiles,
-  getRoleAddressesFixture,
   getWalletForIndex,
   sendBlobTransaction,
-  sendVersionedBlobTransactionFromFile,
 } from "../helpers";
 import {
-  FALLBACK_OPERATOR_ADDRESS,
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
-  INITIAL_WITHDRAW_LIMIT,
-  ONE_DAY_IN_SECONDS,
   OPERATOR_ROLE,
   TEST_PUBLIC_VERIFIER_INDEX,
-  LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-  ADDRESS_ZERO,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "../../common/constants";
-import { deployUpgradableFromFactory } from "../../common/deployment";
 import {
   generateFinalizationData,
   generateRandomBytes,
   generateKeccak256,
-  expectEvent,
   buildAccessErrorMessage,
   expectRevertWithCustomError,
   expectRevertWithReason,
@@ -59,12 +47,10 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
-  let roleAddresses: { addressWithRole: string; role: string }[];
   const { prevShnarf } = firstCompressedDataContent;
 
   before(async () => {
     ({ securityCouncil, operator, nonAuthorizedAccount } = await loadFixture(getAccountsFixture));
-    roleAddresses = await loadFixture(getRoleAddressesFixture);
   });
 
   beforeEach(async () => {
