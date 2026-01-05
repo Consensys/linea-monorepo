@@ -107,6 +107,16 @@ ______________________________________________________________________
 - Install [Spotless Gradle](https://plugins.jetbrains.com/plugin/18321-spotless-gradle) plugin to re-format through
   the IDE according to spotless configuration.
 
+## Debugging Traces
+
+- JSON files can be debugged with the following command:
+
+```shell
+go-corset check --report <LT/JSON FILE> tracer/linea-constraints/zkevm_osaka.bin
+```
+
+See [here](https://github.com/Consensys/go-corset) for more options when running `go-corset` directly.
+
 ## Plugins
 
 Plugins are documented [here](PLUGINS.md).
