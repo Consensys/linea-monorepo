@@ -24,7 +24,7 @@ type MDHasher struct {
 	state field.Octuplet
 
 	// data to hash
-	buffer         [BlockSize]field.Element
+	buffer         []field.Element
 	bufferPosition int
 }
 
@@ -62,31 +62,27 @@ func (d *MDHasher) GetStateOctuplet() field.Octuplet {
 
 // WriteElements adds a slice of field elements to the running hash.
 func (d *MDHasher) WriteElements(elmts ...field.Element) {
-	// d.buffer has BlockSize slots. Some may already be filled (indicated by d.bufferPosition).
-	// We fill up d.buffer, and whenever it gets full, we compress it and reset it.
-	// We repeat this until all elmts are consumed.
-	// At the end, d.buffer may be partially filled.
-	for _, e := range elmts {
-		d.buffer[d.bufferPosition] = e
-		d.bufferPosition++
-		if d.bufferPosition == BlockSize {
-			// buffer full, compress
-			d.state = vortex.CompressPoseidon2(d.state, d.buffer)
-			d.bufferPosition = 0
-		}
-	}
+
+	d.buffer = append(d.buffer, elmts[:]...)
+
 }
 
 func (d *MDHasher) SumElement() field.Octuplet {
-	if d.bufferPosition == 0 {
-		return d.state
+	for len(d.buffer) != 0 {
+		var buf [BlockSize]field.Element
+
+		// in this case we left pad by zeroes
+		if len(d.buffer) < BlockSize {
+			copy(buf[BlockSize-len(d.buffer):], d.buffer)
+			d.buffer = d.buffer[:0]
+		} else {
+			copy(buf[:], d.buffer)
+			d.buffer = d.buffer[BlockSize:]
+		}
+
+		d.state = vortex.CompressPoseidon2(d.state, buf)
 	}
-	// pad the buffer and compress
-	// we need to pad on the left
-	var buf [BlockSize]field.Element
-	copy(buf[BlockSize-d.bufferPosition:], d.buffer[:d.bufferPosition])
-	d.state = vortex.CompressPoseidon2(d.state, buf)
-	d.bufferPosition = 0
+
 	return d.state
 }
 
@@ -110,6 +106,9 @@ func (d *MDHasher) Write(p []byte) (int, error) {
 	}
 	d.WriteElements(elems...)
 	return len(p), nil
+}
+func (h *MDHasher) State() [8]field.Element { // Changed back to [8]field.Element
+	return h.state
 }
 
 // Sum computes the poseidon2 hash of msg

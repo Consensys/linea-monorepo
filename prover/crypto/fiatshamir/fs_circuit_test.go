@@ -141,7 +141,6 @@ func TestFSCircuit(t *testing.T) {
 
 	// compile on koala
 	{
-		getWitnessCircuit(true)
 		circuit, witness := getWitnessCircuit(true)
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)
@@ -154,7 +153,6 @@ func TestFSCircuit(t *testing.T) {
 
 	// compile on bls
 	{
-		getWitnessCircuit(true)
 		circuit, witness := getWitnessCircuit(false)
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)
