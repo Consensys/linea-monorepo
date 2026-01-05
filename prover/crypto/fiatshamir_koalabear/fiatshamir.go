@@ -85,6 +85,8 @@ func (fs *FS) RandomField() field.Octuplet {
 }
 
 func (fs *FS) RandomFext() fext.Element {
+	defer fs.safeguardUpdate()
+
 	s := fs.RandomField()
 	var res fext.Element
 	res.B0.A0 = s[0]
@@ -92,7 +94,6 @@ func (fs *FS) RandomFext() fext.Element {
 	res.B1.A0 = s[2]
 	res.B1.A1 = s[3]
 
-	fs.safeguardUpdate() // safefuard update
 	return res
 }
 

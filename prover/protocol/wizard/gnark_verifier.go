@@ -6,7 +6,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -881,15 +880,6 @@ func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFS {
 		return &c.BLSFS
 	} else {
 		return &c.KoalaFS
-	}
-}
-
-// SetFs sets the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) SetFs(fs *fiatshamir_bls12377.GnarkFS) {
-	if c.IsBLS {
-		c.BLSFS = fs
-	} else {
-		c.KoalaFS = fs
 	}
 }
 
