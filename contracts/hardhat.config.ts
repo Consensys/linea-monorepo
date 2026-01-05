@@ -124,7 +124,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      hardfork: "cancun",
+      hardfork: "osaka",
       allowUnlimitedContractSize: true, // TODO - Remove when ready for PR
     },
     mainnet: {
