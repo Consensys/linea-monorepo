@@ -89,7 +89,7 @@ func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) ([]field.Octup
 	r := numCols % 16
 	n := numCols / 16
 
-	if chunkSize != 16 {
+	if chunkSize%8 != 0 {
 		// TODO @gbotrel make the fast path generic with different SIS params
 		parallel.Execute(numCols, func(start, stop int) {
 			hasher := poseidon2_koalabear.NewMDHasher()
