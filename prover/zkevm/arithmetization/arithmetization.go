@@ -18,9 +18,11 @@ import (
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/sirupsen/logrus"
 )
 
@@ -268,6 +270,28 @@ func (a *Arithmetization) GetLimbsOfU256Le(comp *wizard.CompiledIOP, mod string,
 func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, column string) ifaces.Column {
 	cols := a.limbColumnsOf(comp, name, column, 1)
 	return cols[0]
+}
+
+// MashedColumnOf returns a single columnn representing a 'small' integer. The
+// underlying representation of the column in the arithmetization may be
+// u16 < x <= u32 and thus be fit on exactly 2 limbs. The underlying limbs are
+// combined as L0 + 2**16 L1 and returned directly without any bound check. The
+// function asserts that the column has exactly 2 limbs. If the same column is
+// requested several times, the function will cache the previous call's result.
+func (a *Arithmetization) MashedColumnOf(comp *wizard.CompiledIOP, name string, column string) ifaces.Column {
+	// This call asserts that the column has exactly 2 limbs. So we don't need
+	// to explicitly redo-it here.
+	var (
+		res     = a.GetLimbsOfU32Le(comp, name, column).Limbs()
+		colName = fmt.Sprintf("%s_%s", name, column)
+		colExpr = sym.Add(res[0], sym.Mul(1<<16, res[1]))
+	)
+
+	if comp.Columns.Exists(ifaces.ColID(colName)) {
+		return comp.Columns.GetHandle(ifaces.ColID(colName))
+	}
+
+	return expr_handle.ExprHandle(comp, colExpr, colName)
 }
 
 // LimbsOf returns the fully qualified names of the limbs for a given Corset

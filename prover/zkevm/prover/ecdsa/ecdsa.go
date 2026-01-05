@@ -42,7 +42,7 @@ func (e *EcdsaZkEvm) GetProviders() []generic.GenericByteModule {
 func getEcdataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *ecDataSource {
 	src := &ecDataSource{
 		CsEcrecover: arith.ColumnOf(comp, "ecdata", "CIRCUIT_SELECTOR_ECRECOVER"),
-		ID:          arith.ColumnOf(comp, "ecdata", "ID"),
+		ID:          arith.MashedColumnOf(comp, "ecdata", "ID"),
 		SuccessBit:  arith.ColumnOf(comp, "ecdata", "SUCCESS_BIT"),
 		Index:       arith.ColumnOf(comp, "ecdata", "INDEX"),
 		IsData:      arith.ColumnOf(comp, "ecdata", "IS_ECRECOVER_DATA"),
