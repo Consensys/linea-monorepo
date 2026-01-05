@@ -482,7 +482,7 @@ func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 // The type must also be of type [coin.FieldExt].
 func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	mycoin := run.Spec.Coins.Data(name)
-	if mycoin.Type != coin.FieldExt {
+	if mycoin.Type != coin.FieldExt && mycoin.Type != coin.FieldFromSeed {
 		utils.Panic("coin %v is not a field extension randomness", name)
 	}
 	return run.getRandomCoinGeneric(name, mycoin.Type).(fext.Element)
@@ -1082,15 +1082,27 @@ func (run *ProverRuntime) Fs() *fiatshamir.FS {
 }
 
 // GetPublicInputs return the value of a public-input from its name
-func (run *ProverRuntime) GetPublicInput(name string) field.Element {
+func (run *ProverRuntime) GetPublicInput(name string) (res fext.GenericFieldElem) {
 	allPubs := run.Spec.PublicInputs
 	for i := range allPubs {
 		if allPubs[i].Name == name {
-			return allPubs[i].Acc.GetVal(run)
+			if allPubs[i].Acc.IsBase() {
+				field, err := allPubs[i].Acc.GetValBase(run)
+				if err != nil {
+					utils.Panic("error getting public input %v: %v", name, err)
+				}
+				res.Base = field
+				res.IsBase = true
+			} else {
+				res.Ext = allPubs[i].Acc.GetValExt(run)
+				res.IsBase = false
+			}
+			return res
 		}
 	}
 	utils.Panic("could not find public input nb %v", name)
-	return field.Element{}
+	return fext.GenericFieldElem{}
+
 }
 
 // GetQuery returns a query from its name

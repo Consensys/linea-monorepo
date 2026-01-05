@@ -207,30 +207,30 @@ type ExecutionDataCollector struct {
 // NewExecutionDataCollector instantiates an ExecutionDataCollector with unconstrained columns.
 func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) *ExecutionDataCollector {
 	res := &ExecutionDataCollector{
-		BlockID:                util.CreateCol(name, "BLOCK_ID", size, comp),
-		AbsTxID:                util.CreateCol(name, "ABS_TX_ID", size, comp),
-		AbsTxIDMax:             util.CreateCol(name, "ABS_TX_ID_MAX", size, comp),
-		FirstAbsTxIDBlock:      util.CreateCol(name, "FIRST_ABS_TX_ID_BLOCK", size, comp),
-		LastAbsTxIDBlock:       util.CreateCol(name, "LAST_ABS_TX_ID_BLOCK", size, comp),
-		NoBytes:                util.CreateCol(name, "NO_BYTES", size, comp),
-		TotalNoTxBlock:         util.CreateCol(name, "TOTAL_NO_TX_BLOCK", size, comp),
-		IsActive:               util.CreateCol(name, "IS_ACTIVE", size, comp),
-		IsNoTx:                 util.CreateCol(name, "IS_NO_TX", size, comp),
-		IsBlockHashHi:          util.CreateCol(name, "IS_BLOCK_HASH_HI", size, comp),
-		IsBlockHashLo:          util.CreateCol(name, "IS_BLOCK_HASH_LO", size, comp),
-		IsTimestamp:            util.CreateCol(name, "IS_TIMESTAMP", size, comp),
-		IsTxRLP:                util.CreateCol(name, "IS_TX_RLP", size, comp),
-		IsAddrHi:               util.CreateCol(name, "IS_ADDR_HI", size, comp),
-		IsAddrLo:               util.CreateCol(name, "IS_ADDR_LO", size, comp),
-		Ct:                     util.CreateCol(name, "CT", size, comp),
-		HashNum:                util.CreateCol(name, "HASH_NUM", size, comp),
-		EndOfRlpSegment:        util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
-		TotalBytesCounter:      util.CreateCol(name, "TOTAL_BYTES_COUNTER", size, comp),
-		FinalTotalBytesCounter: util.CreateCol(name, "FINAL_TOTAL_BYTES_COUNTER", size, comp),
+		BlockID:                util.CreateColBase(name, "BLOCK_ID", size, comp),
+		AbsTxID:                util.CreateColBase(name, "ABS_TX_ID", size, comp),
+		AbsTxIDMax:             util.CreateColBase(name, "ABS_TX_ID_MAX", size, comp),
+		FirstAbsTxIDBlock:      util.CreateColBase(name, "FIRST_ABS_TX_ID_BLOCK", size, comp),
+		LastAbsTxIDBlock:       util.CreateColBase(name, "LAST_ABS_TX_ID_BLOCK", size, comp),
+		NoBytes:                util.CreateColBase(name, "NO_BYTES", size, comp),
+		TotalNoTxBlock:         util.CreateColBase(name, "TOTAL_NO_TX_BLOCK", size, comp),
+		IsActive:               util.CreateColBase(name, "IS_ACTIVE", size, comp),
+		IsNoTx:                 util.CreateColBase(name, "IS_NO_TX", size, comp),
+		IsBlockHashHi:          util.CreateColBase(name, "IS_BLOCK_HASH_HI", size, comp),
+		IsBlockHashLo:          util.CreateColBase(name, "IS_BLOCK_HASH_LO", size, comp),
+		IsTimestamp:            util.CreateColBase(name, "IS_TIMESTAMP", size, comp),
+		IsTxRLP:                util.CreateColBase(name, "IS_TX_RLP", size, comp),
+		IsAddrHi:               util.CreateColBase(name, "IS_ADDR_HI", size, comp),
+		IsAddrLo:               util.CreateColBase(name, "IS_ADDR_LO", size, comp),
+		Ct:                     util.CreateColBase(name, "CT", size, comp),
+		HashNum:                util.CreateColBase(name, "HASH_NUM", size, comp),
+		EndOfRlpSegment:        util.CreateColBase(name, "END_OF_RLP_SEGMENT", size, comp),
+		TotalBytesCounter:      util.CreateColBase(name, "TOTAL_BYTES_COUNTER", size, comp),
+		FinalTotalBytesCounter: util.CreateColBase(name, "FINAL_TOTAL_BYTES_COUNTER", size, comp),
 	}
 
 	for i := range res.Limbs {
-		res.Limbs[i] = util.CreateCol(name, fmt.Sprintf("LIMB_%d", i), size, comp)
+		res.Limbs[i] = util.CreateColBase(name, fmt.Sprintf("LIMB_%d", i), size, comp)
 	}
 
 	return res
@@ -1253,41 +1253,57 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			// that is computed in a similar way in each type of row.
 			// opType is the type of row, and the field element value is the unaligned
 			// limb value
-			genericLoadFunction := func(opType int, value field.Element) {
+			genericLoadFunction := func(value []field.Element) {
 				vect.IsActive[totalCt].SetOne()
-				vect.SetLimbAndUnalignedLimb(totalCt, value, opType)
 				vect.SetCounters(totalCt, blockCt, absTxCt, absTxIdMax)
 				vect.SetBlockMetadata(totalCt, totalTxBlockField, firstAbsTxIDBlock, lastAbsTxIDBlock)
+				// set limbs left aligned, the rest of the limbs are zeroes
+				for i := range value {
+					vect.Limbs[i][totalCt] = value[i]
+				}
 			}
 
 			// row 0, load the number of transactions
 			vect.IsNoTx[totalCt].SetOne()
 			vect.NoBytes[totalCt].SetInt64(noBytesNoTxn)
-			genericLoadFunction(loadNoTxn, fetchNoTx)
+			genericLoadFunction([]field.Element{fetchNoTx})
 			totalCt++
 
-			// row 1, load the timestamp
-			fetchedTimestamp := timestamps.DataLo.GetColAssignmentAt(run, blockCt)
+			// row 1, fetch the timestamp
+			var fetchedTimestamp [common.NbLimbU128]field.Element
+			for i := range common.NbLimbU64 {
+				// Fetch the 64 bits of timestamp and store it left aligned in the first limbs, the rest of the limbs are zeroes.
+				fetchedTimestamp[i] = timestamps.Data[common.NbLimbU64+i].GetColAssignmentAt(run, blockCt)
+			}
+			// row 1, plug in the timestamp
 			vect.IsTimestamp[totalCt].SetOne()
 			vect.NoBytes[totalCt].SetInt64(noBytesTimestamp)
-			genericLoadFunction(loadTimestamp, fetchedTimestamp)
+			genericLoadFunction(fetchedTimestamp[nbTimestampEmpty:])
 			totalCt++
 
-			// row 2, load the Hi part of the blockhash
-			var fetchedBlockhashHi field.Element
-			fetchedBlockhashHi.SetBytes(blockHashList[blockCt][:16])
+			// row 2, fetch the Hi part of the blockhash
+			var fetchedBlockhashHi [common.NbLimbU128]field.Element
+			for i := range fetchedBlockhashHi {
+				fetchedBlockhashHi[i].SetBytes(blockHashList[blockCt][i*2 : (i+1)*2])
+			}
+
+			// row 2, plug in the Hi part of the blockhash
 			vect.IsBlockHashHi[totalCt].SetOne()
 			vect.NoBytes[totalCt].SetInt64(noBytesBlockHash)
-			genericLoadFunction(loadBlockHashHi, fetchedBlockhashHi)
+			genericLoadFunction(fetchedBlockhashHi[:])
 			vect.AbsTxIDMax[totalCt].Set(&fetchedAbsTxIdMax)
 			totalCt++
 
-			// row 3, load the Lo part of the blockhash
-			var fetchedBlockhashLo field.Element
-			fetchedBlockhashLo.SetBytes(blockHashList[blockCt][16:])
+			// row 3, fetch the Lo part of the blockhash
+			var fetchedBlockhashLo [common.NbLimbU128]field.Element
+			for i := range fetchedBlockhashLo {
+				fetchedBlockhashLo[i].SetBytes(blockHashList[blockCt][common.NbLimbU128+i*2 : common.NbLimbU128+(i+1)*2])
+			}
+
+			// row 3, plug in the Lo part of the blockhash
 			vect.IsBlockHashLo[totalCt].SetOne()
 			vect.NoBytes[totalCt].SetInt64(noBytesBlockHash)
-			genericLoadFunction(loadBlockHashLo, fetchedBlockhashLo)
+			genericLoadFunction(fetchedBlockhashLo[:])
 			totalCt++
 
 			if fetchNoTx.IsZero() {
@@ -1297,19 +1313,28 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			} else {
 				// iterate through transactions
 				for txIdInBlock := uint64(1); txIdInBlock <= totalTxBlock; txIdInBlock++ {
+					// fetch the sender address Hi
+					var fetchedAddrHi [common.NbLimbU32]field.Element
 
-					// load the sender address Hi
-					fetchedAddrHi := txnData.FromHi.GetColAssignmentAt(run, absTxCt-1)
+					for i := range common.NbLimbU32 {
+						fetchedAddrHi[i] = txnData.From[i].GetColAssignmentAt(run, absTxCt-1)
+					}
+
+					// plug in the sender address Hi
 					vect.IsAddrHi[totalCt].SetOne()
 					vect.NoBytes[totalCt].SetInt64(noBytesSenderAddrHi)
-					genericLoadFunction(loadSenderAddrHi, fetchedAddrHi)
+					genericLoadFunction(fetchedAddrHi[:])
 					totalCt++
 
+					// fetch the sender address Lo
+					var fetchedAddrLo [common.NbLimbU128]field.Element
+					for i := range common.NbLimbU128 {
+						fetchedAddrLo[i] = txnData.From[common.NbLimbU32+i].GetColAssignmentAt(run, absTxCt-1)
+					}
 					// load the sender address Lo
-					fetchedAddrLo := txnData.FromLo.GetColAssignmentAt(run, absTxCt-1)
 					vect.IsAddrLo[totalCt].SetOne()
 					vect.NoBytes[totalCt].SetInt64(noBytesSenderAddrLo)
-					genericLoadFunction(loadSenderAddrLo, fetchedAddrLo)
+					genericLoadFunction(fetchedAddrLo[:])
 					totalCt++
 
 					// load the RLP limbs
@@ -1318,11 +1343,16 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 					// add RLP limbs (multiple limbs)
 					for currentAbsTxId.Equal(&rlpPointerAbsTxId) {
 						// while currentAbsTxId is equal to rlpPointerAbsTxId, namely we are parsing the limbs for the same AbsTxID
-						rlpLimb := rlp.Limb.GetColAssignmentAt(run, rlpCt)
+						// first fetch the limb data
+						var rlpLimbs [common.NbLimbU128]field.Element
+						for i := range rlpLimbs {
+							rlpLimbs[i] = rlp.Limbs[i].GetColAssignmentAt(run, rlpCt)
+						}
+						// now load the RLP limb data
 						rlpNBytes := rlp.NBytes.GetColAssignmentAt(run, rlpCt)
 						vect.IsTxRLP[totalCt].SetOne()
 						vect.NoBytes[totalCt].Set(&rlpNBytes)
-						genericLoadFunction(loadRlp, rlpLimb)
+						genericLoadFunction(rlpLimbs[:])
 						totalCt++
 
 						rlpCt++

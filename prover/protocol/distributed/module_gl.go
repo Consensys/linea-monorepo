@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -95,7 +96,7 @@ type ModuleGL struct {
 	ReceivedValuesGlobalMap map[string]int
 
 	// PublicInputs contains the public inputs of the module.
-	PublicInputs LimitlessPublicInput[wizard.PublicInput]
+	PublicInputs LimitlessPublicInput[wizard.PublicInput, wizard.PublicInput]
 }
 
 // ModuleGLAssignSendReceiveGlobal is an implementation of the [wizard.ProverRuntime]
@@ -182,7 +183,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 	// there is no random coins in the GL module, we need to add at least one dummy coin
 	// otherwise the compiler will throw an error stating that we have several rounds for
 	// the columns and the queries but not for the coins.
-	_ = moduleGL.Wiop.InsertCoin(1, "DUMMY_GL_COIN", coin.Field)
+	_ = moduleGL.Wiop.InsertCoin(1, "DUMMY_GL_COIN", coin.FieldExt)
 
 	moduleGL.IsFirst = moduleGL.Wiop.InsertProof(0, "IS_FIRST", 1, true)
 	moduleGL.IsLast = moduleGL.Wiop.InsertProof(0, "IS_LAST", 1, true)
@@ -639,7 +640,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 	if hashSendComputed != sendGlobalHash {
 		return fmt.Errorf(
 			"invalid hash send: %v != %v",
-			vector.Prettify(hashSendComputed[:]), vector.Prettify(sendGlobalHash[:]),
+			hashSendComputed, sendGlobalHash,
 		)
 	}
 
@@ -659,7 +660,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 	if hashRcvComputed != rcvGlobalHash {
 		return fmt.Errorf(
 			"invalid hash rcv: %v != %v",
-			vector.Prettify(hashRcvComputed[:]), vector.Prettify(rcvGlobalHash[:]),
+			hashRcvComputed, rcvGlobalHash,
 		)
 	}
 
@@ -789,17 +790,20 @@ func (modGl *ModuleGL) declarePublicInput() {
 
 	segmentCountGl[modGl.Disc.IndexOf(modGl.DefinitionInput.ModuleName)] = field.One()
 
-	modGl.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
+	modGl.PublicInputs = LimitlessPublicInput[wizard.PublicInput, wizard.PublicInput]{
 		TargetNbSegments:             declareListOfPiColumns(modGl.Wiop, 0, TargetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:               declareListOfConstantPi(modGl.Wiop, SegmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:              declareListOfConstantPi(modGl.Wiop, SegmentCountLPPPublicInputBase, segmentCountLpp),
 		GeneralMultiSetHash:          declareListOfPiColumns(modGl.Wiop, 1, GeneralMultiSetPublicInputBase, hf.MSetHashSize),
 		SharedRandomnessMultiSetHash: declareListOfPiColumns(modGl.Wiop, 1, SharedRandomnessMultiSetPublicInputBase, hf.MSetHashSize),
-		SharedRandomness:             modGl.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewConstant(field.Zero())),
 	}
 
 	for i := range modGl.PublicInputs.VKeyMerkleRoot {
 		modGl.PublicInputs.VKeyMerkleRoot[i] = declarePiColumn(modGl.Wiop, fmt.Sprintf("%s_%d", VerifyingKeyMerkleRootPublicInput, i))
+	}
+
+	for i := range modGl.PublicInputs.SharedRandomness {
+		modGl.PublicInputs.SharedRandomness[i] = modGl.Wiop.InsertPublicInput(fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i), accessors.NewConstant(field.Zero()))
 	}
 
 	// This adds the functional inputs by multiplying them with the value of
@@ -827,17 +831,17 @@ func (modGl *ModuleGL) declarePublicInput() {
 
 	modGl.PublicInputs.HornerSum = modGl.Wiop.InsertPublicInput(
 		HornerPublicInput,
-		accessors.NewConstant(field.Zero()),
+		accessors.NewConstantExt(fext.Zero()),
 	)
 
 	modGl.PublicInputs.LogDerivativeSum = modGl.Wiop.InsertPublicInput(
 		LogDerivativeSumPublicInput,
-		accessors.NewConstant(field.Zero()),
+		accessors.NewConstantExt(fext.Zero()),
 	)
 
 	modGl.PublicInputs.GrandProduct = modGl.Wiop.InsertPublicInput(
 		GrandProductPublicInput,
-		accessors.NewConstant(field.One()),
+		accessors.NewConstantExt(fext.One()),
 	)
 
 }
@@ -868,7 +872,7 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 	var lppCommitments field.Octuplet
 
 	for i := range lppCommitments {
-		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
+		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
 
 	}
 
@@ -935,7 +939,7 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 	)
 
 	for i := range lppCommitments {
-		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
+		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
 	}
 
 	multiSetSharedRandomness.Insert(append([]field.Element{moduleIndex, segmentIndex}, lppCommitments[:]...)...)

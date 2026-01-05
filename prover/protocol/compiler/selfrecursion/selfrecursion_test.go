@@ -402,11 +402,12 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 }
 
 func TestGnarkSelfRecursionManyLayers(t *testing.T) {
+	const isBLS = true
 
 	define, prove := generateProtocol(testcases[0])
 	// don't increase too much so that it does not increase too much the runtime
 	// of the test.
-	n := 1 // TODO@yao: set back to 2
+	n := 1 // TODO@yao: set back to 2?
 
 	comp := wizard.Compile(
 		define,
@@ -435,7 +436,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 				logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
 				vortex.Compile(
 					2,
-					true,
+					isBLS,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithOptionalSISHashingThreshold(1<<20),
 				),
@@ -461,13 +462,13 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 		}
 	}
 
-	proof := wizard.Prove(comp, prove, true)
-	err := wizard.Verify(comp, proof, true)
+	proof := wizard.Prove(comp, prove, isBLS)
+	err := wizard.Verify(comp, proof, isBLS)
 	require.NoError(t, err)
 
 	circuit := verifierCircuit{}
 	{
-		c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
+		c := wizard.AllocateWizardCircuit(comp, comp.NumRounds(), isBLS)
 		circuit.C = *c
 	}
 
@@ -477,7 +478,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 	}
 
 	assignment := &verifierCircuit{
-		C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+		C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), isBLS),
 	}
 
 	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())

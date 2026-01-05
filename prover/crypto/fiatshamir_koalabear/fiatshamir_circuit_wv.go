@@ -88,12 +88,13 @@ func (fs *GnarkFSWV) randomFieldNative() poseidon2_koalabear.Octuplet {
 func (fs *GnarkFSWV) RandomFieldExt() gnarkfext.E4Gen {
 	defer fs.safeguardUpdate()
 
-	s := fs.hasher.Sum()
+	s := fs.RandomField()
 	var res gnarkfext.E4Gen
-	res.B0.A0 = zk.WrapFrontendVariable(s[0])
-	res.B0.A1 = zk.WrapFrontendVariable(s[1])
-	res.B1.A0 = zk.WrapFrontendVariable(s[2])
-	res.B1.A1 = zk.WrapFrontendVariable(s[3])
+	res.B0.A0 = s[0]
+	res.B0.A1 = s[1]
+	res.B1.A0 = s[2]
+	res.B1.A1 = s[3]
+
 	return res
 }
 

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 
 	"github.com/consensys/gnark/frontend"
@@ -40,14 +41,29 @@ func (c *VortexTestCircuit) Define(api frontend.API) error {
 /*
 Returns an assignment from a wizard proof
 */
-func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTestCircuit {
+func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, isBLS bool) *VortexTestCircuit {
 	return &VortexTestCircuit{
-		C: *wizard.AssignVerifierCircuit(comp, proof, 0),
+		C: *wizard.AssignVerifierCircuit(comp, proof, 0, isBLS),
 	}
 }
 
 func TestVortexGnarkVerifier(t *testing.T) {
+	tests := []struct {
+		name  string
+		isBLS bool
+	}{
+		{"BLS12-377", true},
+		{"KoalaBear", false},
+	}
 
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			runVortexGnarkVerifier(t, tc.isBLS)
+		})
+	}
+}
+
+func runVortexGnarkVerifier(t *testing.T, isBLS bool) {
 	polSize := 1 << 4
 	nPols := 16
 	numRounds := 3
@@ -111,15 +127,17 @@ func TestVortexGnarkVerifier(t *testing.T) {
 		pr.AssignUnivariateExt("EVAL", x, ys...)
 	}
 
+	// Set SISHashingThreshold to a high value to disable SIS hashing, because gnark does not support SIS hashing
 	compiled := wizard.Compile(
 		define,
 		vortex.Compile(4,
-			true,
-			vortex.WithOptionalSISHashingThreshold(1<<20))) // Set to a high value to disable SIS hashing, because gnark does not support SIS hashing
-	proof := wizard.Prove(compiled, prove, true)
+			isBLS,
+			vortex.WithOptionalSISHashingThreshold(1<<20)))
+
+	proof := wizard.Prove(compiled, prove, isBLS)
 
 	// Just as a sanity check, do not run the Plonk
-	valid := wizard.Verify(compiled, proof, true)
+	valid := wizard.Verify(compiled, proof, isBLS)
 	require.NoErrorf(t, valid, "the proof did not pass")
 
 	// Run the proof verifier
@@ -127,44 +145,53 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	// Allocate the circuit
 	circ := VortexTestCircuit{}
 	{
-		c := wizard.AllocateWizardCircuit(compiled, 0)
+		c := wizard.AllocateWizardCircuit(compiled, 0, isBLS)
 		circ.C = *c
 	}
 
-	// Compile the circuit
-	scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder,
-		&circ,
-		frontend.IgnoreUnconstrainedInputs())
+	// Checks that the proof makes a satisfying assignment
+	assignment := assignTestCircuit(compiled, proof, isBLS)
 
-	if err != nil {
-		// When the error string is too large `require.NoError` does not print
-		// the error.
-		t.Logf("circuit construction failed : %v\n", err)
-		t.FailNow()
+	if isBLS {
+		cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder,
+			&circ,
+			frontend.IgnoreUnconstrainedInputs())
+
+		if err != nil {
+			t.Logf("circuit construction failed : %v\n", err)
+			t.FailNow()
+		}
+
+		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+		require.NoError(t, err)
+
+		err = cs.IsSolved(witness)
+		if err != nil {
+			t.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
+			errDetail := test.IsSolved(assignment, assignment, cs.Field())
+			t.Logf("while running the plonk prover: %v", errDetail)
+			t.FailNow()
+		}
+
+	} else {
+		cs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder,
+			&circ,
+			frontend.IgnoreUnconstrainedInputs())
+
+		if err != nil {
+			t.Logf("circuit construction failed : %v\n", err)
+			t.FailNow()
+		}
+
+		witness, err := frontend.NewWitness(assignment, koalabear.Modulus())
+		require.NoError(t, err)
+
+		err = cs.IsSolved(witness)
+		if err != nil {
+			t.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
+			errDetail := test.IsSolved(assignment, assignment, cs.Field())
+			t.Logf("while running the plonk prover: %v", errDetail)
+			t.FailNow()
+		}
 	}
-
-	// Checks that the proof makes a satifying assignment
-	assignment := assignTestCircuit(compiled, proof)
-
-	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
-	require.NoError(t, err)
-
-	err = scs.IsSolved(witness)
-
-	if err != nil {
-		// When the error string is too large `require.NoError` does not print
-		// the error.
-		t.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
-
-		errDetail := test.IsSolved(
-			assignment,
-			assignment,
-			scs.Field(),
-		)
-
-		t.Logf("while running the plonk prover: %v", errDetail)
-
-		t.FailNow()
-	}
-
 }
