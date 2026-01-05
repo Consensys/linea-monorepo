@@ -10,7 +10,6 @@ package linea.plugin.acc.test.rpc.linea
 
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.datatypes.Wei
-import org.hyperledger.besu.ethereum.core.Transaction
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
@@ -28,12 +27,9 @@ class EstimateGasCompatibilityModeTest : EstimateGasTest() {
       .build()
   }
 
-  override fun assertIsProfitable(
-    tx: Transaction,
-    baseFee: Wei,
-    estimatedMaxGasPrice: Wei,
-    estimatedGasLimit: Long,
-  ) {
+  override fun assertMinGasPriceLowerBound(baseFee: Wei, estimatedMaxGasPrice: Wei) {
+    // since we are in compatibility mode, we want to check that returned profitable priority fee is
+    // the min priority fee per gas * multiplier + base fee
     val minGasPrice = minerNode.miningParameters.minTransactionGasPrice
     val minPriorityFee = minGasPrice.subtract(baseFee)
     val compatibilityMinPriorityFee = Wei.of(
@@ -47,12 +43,6 @@ class EstimateGasCompatibilityModeTest : EstimateGasTest() {
     // the min priority fee per gas * multiplier + base fee
     val expectedMaxGasPrice = baseFee.add(compatibilityMinPriorityFee)
     assertThat(estimatedMaxGasPrice).isEqualTo(expectedMaxGasPrice)
-  }
-
-  override fun assertMinGasPriceLowerBound(baseFee: Wei, estimatedMaxGasPrice: Wei) {
-    // since we are in compatibility mode, we want to check that returned profitable priority fee is
-    // the min priority fee per gas * multiplier + base fee
-    assertIsProfitable(null!!, baseFee, estimatedMaxGasPrice, 0)
   }
 
   @Test
