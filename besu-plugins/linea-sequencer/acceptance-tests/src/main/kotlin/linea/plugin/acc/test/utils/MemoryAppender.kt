@@ -23,7 +23,7 @@ import java.io.Serializable
 import java.nio.charset.StandardCharsets
 
 @Plugin(name = "Memory", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE)
-class MemoryAppender protected constructor(name: String, layout: Layout<out Serializable>?) :
+class MemoryAppender(name: String, layout: Layout<out Serializable>?) :
   AbstractAppender(name, null, layout, true, Property.EMPTY_ARRAY) {
 
   override fun append(event: LogEvent) {
