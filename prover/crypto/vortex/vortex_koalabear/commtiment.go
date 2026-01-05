@@ -89,6 +89,20 @@ func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) ([]field.Octup
 	r := numCols % 16
 	n := numCols / 16
 
+	if chunkSize != 16 {
+		// TODO @gbotrel make the fast path generic with different SIS params
+		parallel.Execute(numCols, func(start, stop int) {
+			hasher := poseidon2_koalabear.NewMDHasher()
+			for chunkID := start; chunkID < stop; chunkID++ {
+				startChunk := chunkID * chunkSize
+				hasher.Reset()
+				hasher.WriteElements(sisHashes[startChunk : startChunk+chunkSize]...)
+				leaves[chunkID] = hasher.SumElement()
+			}
+		})
+		return leaves, sisHashes
+	}
+
 	// process the n full chunks of 16 columns using optimized SIMD implementation
 	// if available
 	parallel.Execute(n, func(start, stop int) {
