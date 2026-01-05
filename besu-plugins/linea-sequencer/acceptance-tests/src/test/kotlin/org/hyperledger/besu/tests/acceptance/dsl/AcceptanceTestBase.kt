@@ -28,7 +28,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.condition.txpool.TxPoolConditio
 import org.hyperledger.besu.tests.acceptance.dsl.condition.web3.Web3Conditions
 import org.hyperledger.besu.tests.acceptance.dsl.contract.ContractVerifier
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
-import org.hyperledger.besu.tests.acceptance.dsl.node.Node
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeFactory
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.permissioning.PermissionedNodeBuilder
@@ -55,7 +54,6 @@ import java.math.BigInteger
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.time.Duration.Companion.seconds
 
 /** Base class for acceptance tests. */
 @ExtendWith(AcceptanceTestBaseTestWatcher::class)
