@@ -105,7 +105,6 @@ func init() {
 	RegisterImplementation(query.InnerProduct{})
 	RegisterImplementation(query.LocalConstraint{})
 	RegisterImplementation(query.LocalOpening{})
-	RegisterImplementation(query.MiMC{})
 	RegisterImplementation(query.Permutation{})
 	RegisterImplementation(query.Range{})
 	RegisterImplementation(query.UnivariateEval{})
