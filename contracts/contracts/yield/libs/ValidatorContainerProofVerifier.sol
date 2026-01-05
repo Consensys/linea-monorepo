@@ -50,12 +50,6 @@ contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerPr
                                         ↑
                                 data to be proven
     */
-  uint8 private constant VALIDATOR_CONTAINER_ROOT_DEPTH = 0;
-  uint256 private constant VALIDATOR_CONTAINER_ROOT_POSITION = 0;
-
-  /// @notice GIndex of parent node for (Pubkey,WC) in validator container
-  GIndex public immutable GI_VALIDATOR_CONTAINER_ROOT =
-    pack((1 << VALIDATOR_CONTAINER_ROOT_DEPTH) + VALIDATOR_CONTAINER_ROOT_POSITION, VALIDATOR_CONTAINER_ROOT_DEPTH);
 
   /**  GIndex of validator in state tree is calculated dynamically
      *   offsetting from GIndex of first validator by proving validator numerical index
@@ -192,7 +186,7 @@ contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerPr
     // Validator Container Root -> Validator Index in state tree -> stateView Index in Beacon block Tree
     GIndex gIndex = concat(
       GI_STATE_ROOT,
-      concat(_getValidatorGI(_validatorIndex), GI_VALIDATOR_CONTAINER_ROOT)
+      _getValidatorGI(_validatorIndex)
     );
 
     SSZ.verifyProof({
