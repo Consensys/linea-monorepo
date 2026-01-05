@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/go-corset/pkg/ir/mir"
 	"github.com/consensys/go-corset/pkg/schema/module"
 	"github.com/consensys/go-corset/pkg/schema/register"
-	"github.com/consensys/go-corset/pkg/util/collection/array"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
@@ -344,8 +343,10 @@ func (a *Arithmetization) determineRegisterId(mod string, name string) register.
 	var rid register.Id
 	// Check whether source-level debug information is available.
 	if srcmap, srcmap_ok := binfile.GetAttribute[*corset.SourceMap](a.BinaryFile); srcmap_ok {
+		// Split module name based on path
+		path := strings.Split(mod, ".")
 		// Yes, therefore attempt to find a source-level regsiter with the given name.
-		module := determineSourceModule(srcmap, mod)
+		module := determineSourceModule(srcmap.Root, path)
 		// Check columns within the module
 		for _, col := range module.Columns {
 			if col.Name == name {
@@ -375,24 +376,17 @@ func (a *Arithmetization) determineRegisterId(mod string, name string) register.
 	return rid
 }
 
-func determineSourceModule(srcmap *corset.SourceMap, mod string) corset.SourceModule {
-	// Lookup the source module with the corresponding name; if there are
-	// multiple matching entries, then fail.
-	modules := srcmap.Flattern(func(s *corset.SourceModule) bool {
-		// NOTE: root module must be included in order to ensure its children
-		// are included.
-		return s.Public && (s.Name == "" || s.Name == mod)
-	})
-	// Stip off root module
-	modules = array.RemoveMatching(modules, func(s corset.SourceModule) bool {
-		return s.Name == ""
-	})
-	// Sanity check
-	if len(modules) == 0 {
-		panic(fmt.Sprintf("unknown module %s", mod))
-	} else if len(modules) > 1 {
-		panic(fmt.Sprintf("ambiguous module %s", mod))
+func determineSourceModule(module corset.SourceModule, path []string) corset.SourceModule {
+	// Check whether moduled reached
+	if len(path) == 0 {
+		return module
 	}
-	//
-	return modules[0]
+	// Look for matching child
+	for _, submodule := range module.Submodules {
+		if submodule.Name == path[0] {
+			return determineSourceModule(submodule, path[1:])
+		}
+	}
+	// Should not get here
+	panic(fmt.Sprintf("unknown module %v", path))
 }
