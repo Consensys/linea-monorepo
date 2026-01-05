@@ -9,6 +9,7 @@
 package linea.plugin.acc.test.rpc.linea
 
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder
+import linea.plugin.acc.test.rpc.SendBundleRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.math.BigInteger

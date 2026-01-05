@@ -9,6 +9,7 @@
 package linea.plugin.acc.test.rpc.linea
 
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder
+import linea.plugin.acc.test.rpc.SendBundleRequest
 import linea.plugin.acc.test.tests.web3j.generated.MulmodExecutor
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account

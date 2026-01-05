@@ -27,6 +27,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest
 import com.github.tomakehurst.wiremock.matching.MatchResult
 import com.github.tomakehurst.wiremock.matching.StringValuePattern
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder
+import linea.plugin.acc.test.rpc.SendBundleRequest
 import net.consensys.linea.bundles.BundleForwarder.RETRY_COUNT_HEADER
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await

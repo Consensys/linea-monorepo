@@ -12,14 +12,10 @@ import linea.plugin.acc.test.LineaPluginPoSTestBase
 import linea.plugin.acc.test.tests.web3j.generated.AcceptanceTestToken
 import linea.plugin.acc.test.tests.web3j.generated.MulmodExecutor
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
-import org.hyperledger.besu.tests.acceptance.dsl.transaction.NodeRequests
-import org.hyperledger.besu.tests.acceptance.dsl.transaction.Transaction
 import org.web3j.crypto.Hash.sha3
 import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
-import org.web3j.protocol.core.Request
 import org.web3j.utils.Numeric
-import java.io.IOException
 import java.math.BigInteger
 
 abstract class AbstractSendBundleTest : LineaPluginPoSTestBase() {
@@ -88,27 +84,6 @@ abstract class AbstractSendBundleTest : LineaPluginPoSTestBase() {
     val hashTx = sha3(signedTransferTx)
 
     return MulmodCall(hashTx, signedTransferTx)
-  }
-
-  class SendBundleRequest(private val bundleParams: BundleParams) :
-    Transaction<SendBundleRequest.SendBundleResponse> {
-
-    override fun execute(nodeRequests: NodeRequests): SendBundleResponse {
-      return try {
-        Request(
-          "linea_sendBundle",
-          listOf(bundleParams),
-          nodeRequests.web3jService,
-          SendBundleResponse::class.java,
-        ).send()
-      } catch (e: IOException) {
-        throw RuntimeException(e)
-      }
-    }
-
-    class SendBundleResponse : org.web3j.protocol.core.Response<Response>()
-
-    data class Response(val bundleHash: String)
   }
 
   data class BundleParams(val txs: Array<String>, val blockNumber: String) {
