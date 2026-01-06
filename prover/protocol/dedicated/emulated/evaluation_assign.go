@@ -116,7 +116,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				// we have both nonzero modulus and eval.
 				tmpQuotient.QuoRem(tmpEval, witModulus, tmpRemainder)
 				if tmpRemainder.Sign() != 0 {
-					utils.Panic("emulated evaluation at row %d: evaluation not divisible by modulus", i)
+					utils.Panic("emulated evaluation at row %d: evaluation not divisible by modulus: tmpEval=%v tmpModulus=%v", i, tmpEval.Text(16), witModulus.Text(16))
 				}
 			case witModulus.Sign() == 0 && tmpEval.Sign() != 0:
 				// modulus is zero, eval non zero => invalid

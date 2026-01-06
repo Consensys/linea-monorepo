@@ -2,6 +2,7 @@ package statemanager
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 
@@ -9,8 +10,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/lineacodehash"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 )
@@ -26,7 +27,10 @@ const (
 func romLex(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *lineacodehash.RomLexInput {
 	return &lineacodehash.RomLexInput{
 		CFIRomLex: arith.GetLimbsOfU32Be(comp, "romlex", "CODE_FRAGMENT_INDEX").LimbsArr2(),
-		CodeHash:  arith.GetLimbsOfU256Be(comp, "romlex", "CODE_HASH").LimbsArr16(),
+		CodeHash: limbs.FuseLimbs(
+			arith.GetLimbsOfU128Be(comp, "romlex", "CODE_HASH_HI").AsDynSize(),
+			arith.GetLimbsOfU128Be(comp, "romlex", "CODE_HASH_LO").AsDynSize(),
+		).LimbsArr16(),
 	}
 }
 
@@ -48,50 +52,27 @@ func rom(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *line
 // perspective of the Hub that are of interest for checking consistency with
 // the stateSummary
 func acp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) statesummary.HubColumnSet {
-	size := comp.Columns.GetHandle("hub.acp_ADDRESS_HI").Size()
-
-	// the prover-side state manager uses a single field element for 20-bytes addresses
-	// and we need to create this column ourselves
-	if !comp.Columns.Exists("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER") {
-		combinedAddr := comp.InsertCommit(0,
-			"HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER",
-			size,
-			true,
-		)
-
-		// constrain the processed HUB addresses
-		addrHI := arith.GetLimbsOfU32Be(comp, "hub", "acp_ADDRESS_HI").LimbsArr2()
-		addrLO := arith.GetLimbsOfU128Be(comp, "hub", "acp_ADDRESS_LO").LimbsArr8()
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("STATE_MANAGER_ACP_HUB_PROCESSED_ADDRESSES_GLOBAL_CONSTRAINT"),
-			sym.Sub(
-				combinedAddr,
-				sym.Mul(
-					addrHI,
-					field.NewFromString(ADDR_MULTIPLIER),
-				),
-				addrLO,
-			),
-		)
-	}
+	size := arith.GetLimbsOfU32Be(comp, "hub", "acp_ADDRESS_HI").NumLimbs()
 
 	constantZero := verifiercol.NewConstantCol(field.Zero(), size, "hub.acp_connection")
 	constantZero8 := [8]ifaces.Column{constantZero, constantZero, constantZero, constantZero, constantZero, constantZero, constantZero, constantZero}
 
 	res := statesummary.HubColumnSet{
-		AddressHI:           arith.GetLimbsOfU32Be(comp, "hub", "acp_ADDRESS_HI").LimbsArr2(),
-		AddressLO:           arith.GetLimbsOfU128Be(comp, "hub", "acp_ADDRESS_LO").LimbsArr8(),
-		Nonce:               arith.GetLimbsOfU64Be(comp, "hub", "acp_NONCE").LimbsArr4(),
-		NonceNew:            arith.GetLimbsOfU64Be(comp, "hub", "acp_NONCE_NEW").LimbsArr4(),
-		CodeHashHI:          arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_HI").LimbsArr8(),
-		CodeHashLO:          arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_LO").LimbsArr8(),
-		CodeHashHINew:       arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_HI_NEW").LimbsArr8(),
-		CodeHashLONew:       arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_LO_NEW").LimbsArr8(),
-		CodeSizeOld:         arith.GetLimbsOfU64Be(comp, "hub", "acp_CODE_SIZE").LimbsArr4(),
-		CodeSizeNew:         arith.GetLimbsOfU64Be(comp, "hub", "acp_CODE_SIZE_NEW").LimbsArr4(),
-		BalanceOld:          arith.GetLimbsOfU256Be(comp, "hub", "acp_BALANCE").LimbsArr16(),
-		BalanceNew:          arith.GetLimbsOfU256Be(comp, "hub", "acp_BALANCE_NEW").LimbsArr16(),
+		AddressHI:     arith.GetLimbsOfU32Be(comp, "hub", "acp_ADDRESS_HI").LimbsArr2(),
+		AddressLO:     arith.GetLimbsOfU128Be(comp, "hub", "acp_ADDRESS_LO").LimbsArr8(),
+		Nonce:         arith.GetLimbsOfU64Be(comp, "hub", "acp_NONCE").LimbsArr4(),
+		NonceNew:      arith.GetLimbsOfU64Be(comp, "hub", "acp_NONCE_NEW").LimbsArr4(),
+		CodeHashHI:    arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_HI").LimbsArr8(),
+		CodeHashLO:    arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_LO").LimbsArr8(),
+		CodeHashHINew: arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_HI_NEW").LimbsArr8(),
+		CodeHashLONew: arith.GetLimbsOfU128Be(comp, "hub", "acp_CODE_HASH_LO_NEW").LimbsArr8(),
+		// @alex: the glue has been implemented assuming CodeSizeOld|New are
+		// stored on u64 but they are actually provided as u32. Hence, we do
+		// some patching here.
+		CodeSizeOld:         arith.GetLimbsOfU32Be(comp, "hub", "acp_CODE_SIZE").ZeroExtendToSize(4).LimbsArr4(),
+		CodeSizeNew:         arith.GetLimbsOfU32Be(comp, "hub", "acp_CODE_SIZE_NEW").ZeroExtendToSize(4).LimbsArr4(),
+		BalanceOld:          arith.GetLimbsOfU128Be(comp, "hub", "acp_BALANCE").ZeroExtendToSize(16).LimbsArr16(),
+		BalanceNew:          arith.GetLimbsOfU128Be(comp, "hub", "acp_BALANCE_NEW").ZeroExtendToSize(16).LimbsArr16(),
 		KeyHI:               constantZero8,
 		KeyLO:               constantZero8,
 		ValueHICurr:         constantZero8,
@@ -100,7 +81,7 @@ func acp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		ValueLONext:         constantZero8,
 		DeploymentNumber:    arith.GetLimbsOfU32Be(comp, "hub", "acp_DEPLOYMENT_NUMBER").LimbsArr2(),
 		DeploymentNumberInf: arith.GetLimbsOfU32Be(comp, "hub", "acp_DEPLOYMENT_NUMBER").LimbsArr2(),
-		BlockNumber:         arith.GetLimbsOfU64Be(comp, "hub", "acp_BLK_NUMBER").LimbsArr4(),
+		BlockNumber:         arith.GetLimbsOfU16Be(comp, "hub", "acp_BLK_NUMBER").ZeroExtendToSize(4).LimbsArr4(),
 		Exists:              arith.ColumnOf(comp, "hub", "acp_EXISTS"),
 		ExistsNew:           arith.ColumnOf(comp, "hub", "acp_EXISTS_NEW"),
 		PeekAtAccount:       arith.ColumnOf(comp, "hub", "acp_PEEK_AT_ACCOUNT"),
@@ -126,58 +107,15 @@ func acp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 // perspective of the Hub that are of interest for checking consistency with
 // the stateSummary
 func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) statesummary.HubColumnSet {
-	size := comp.Columns.GetHandle("hub.scp_ADDRESS_HI").Size()
+	size := arith.GetLimbsOfU32Be(comp, "hub", "scp_ADDRESS_HI").NumRow()
 
-	// the prover-side state manager uses a single field element for 20-bytes addresses
-	// and we need to create this column ourselves
-	if !comp.Columns.Exists("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER") {
-		combinedAddr := comp.InsertCommit(0,
-			"HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER",
-			size,
-			true,
-		)
-
-		// constrain the processed HUB addresses
-		addrHI := arith.GetLimbsOfU32Be(comp, "hub", "scp_ADDRESS_HI")
-		addrLO := arith.GetLimbsOfU128Be(comp, "hub", "scp_ADDRESS_LO")
-		comp.InsertGlobal(
-			0,
-			ifaces.QueryIDf("STATE_MANAGER_SCP_HUB_PROCESSED_ADDRESSES_GLOBAL_CONSTRAINT"),
-			sym.Sub(
-				combinedAddr,
-				sym.Mul(
-					addrHI,
-					field.NewFromString(ADDR_MULTIPLIER),
-				),
-				addrLO,
-			),
-		)
-	}
-
-	constantZero := verifiercol.NewConstantCol(field.Zero(), size, "hub.scp_connection")
-
-	constantZero4 := [4]ifaces.Column{
-		constantZero, constantZero,
-		constantZero, constantZero,
-	}
-
-	constantZero8 := [8]ifaces.Column{
-		constantZero, constantZero,
-		constantZero, constantZero,
-		constantZero, constantZero,
-		constantZero, constantZero,
-	}
-
-	constantZero16 := [16]ifaces.Column{
-		constantZero, constantZero,
-		constantZero, constantZero,
-		constantZero, constantZero,
-		constantZero, constantZero,
-		constantZero, constantZero,
-		constantZero, constantZero,
-		constantZero, constantZero,
-		constantZero, constantZero,
-	}
+	var (
+		constantZero   = verifiercol.NewConstantCol(field.Zero(), size, "hub.scp_connection")
+		czs            = []ifaces.Column{constantZero}
+		constantZero4  = [4]ifaces.Column(slices.Repeat(czs, 4))
+		constantZero8  = [8]ifaces.Column(slices.Repeat(czs, 8))
+		constantZero16 = [16]ifaces.Column(slices.Repeat(czs, 16))
+	)
 
 	res := statesummary.HubColumnSet{
 		AddressHI:           arith.GetLimbsOfU32Be(comp, "hub", "scp_ADDRESS_HI").LimbsArr2(),
@@ -198,9 +136,9 @@ func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 		ValueLOCurr:         arith.GetLimbsOfU128Be(comp, "hub", "scp_VALUE_CURR_LO").LimbsArr8(),
 		ValueHINext:         arith.GetLimbsOfU128Be(comp, "hub", "scp_VALUE_NEXT_HI").LimbsArr8(),
 		ValueLONext:         arith.GetLimbsOfU128Be(comp, "hub", "scp_VALUE_NEXT_LO").LimbsArr8(),
-		DeploymentNumber:    arith.GetLimbsOfU32Be(comp, "hub", "scp_DEPLOYMENT_NUMBER").LimbsArr2(),
-		DeploymentNumberInf: arith.GetLimbsOfU32Be(comp, "hub", "scp_DEPLOYMENT_NUMBER").LimbsArr2(),
-		BlockNumber:         arith.GetLimbsOfU64Be(comp, "hub", "scp_BLK_NUMBER").LimbsArr4(),
+		DeploymentNumber:    arith.GetLimbsOfU16Be(comp, "hub", "scp_DEPLOYMENT_NUMBER").ZeroExtendToSize(2).LimbsArr2(),
+		DeploymentNumberInf: arith.GetLimbsOfU16Be(comp, "hub", "scp_DEPLOYMENT_NUMBER").ZeroExtendToSize(2).LimbsArr2(),
+		BlockNumber:         arith.GetLimbsOfU16Be(comp, "hub", "scp_BLK_NUMBER").ZeroExtendToSize(4).LimbsArr4(),
 		Exists:              constantZero,
 		ExistsNew:           constantZero,
 		PeekAtAccount:       constantZero,

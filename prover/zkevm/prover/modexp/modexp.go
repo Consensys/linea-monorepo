@@ -18,6 +18,9 @@ import (
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
+// emulatedLimbSize is the size of an emulated limb.
+const emulatedLimbSizeBit = 16
+
 // Modexp is the concrete instance of the modexp module for zkEVM prover.
 type Modexp struct {
 	// Module references to the main modexp module.
@@ -27,7 +30,7 @@ type Modexp struct {
 	// to anything else.
 	instanceSize int
 	// nbLimbs indicates the number of limbs used to represent the modexp operands.
-	// It is computed as instanceSize/limbSizeBits.
+	// It is computed as instanceSize/emulatedLimbSizeBit.
 	nbLimbs int
 	// name of the module for creating column and query names
 	name string
@@ -89,10 +92,10 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 	var nbLimbs, nbRows int
 	switch instanceSize {
 	case smallModExpSize:
-		nbLimbs = nbSmallModexpLimbs
+		nbLimbs = nbSmallModexpLimbs * limbs.NbLimbU128
 		nbRows = utils.NextPowerOfTwo(nbInstances * smallModExpSize)
 	case largeModExpSize:
-		nbLimbs = nbLargeModexpLimbs
+		nbLimbs = nbLargeModexpLimbs * limbs.NbLimbU128
 		nbRows = utils.NextPowerOfTwo(nbInstances * largeModExpSize)
 	default:
 		utils.Panic("unsupported modexp instance size: %d", instanceSize)
@@ -130,7 +133,7 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 	}
 	// register prover action before emulated evaluation so that the limb assignements are available
 	comp.RegisterProverAction(roundNr, me)
-	emulated.NewEval(comp, name+"_EVAL", limbSizeBits, modulus, [][]limbs.Limbs[limbs.LittleEndian]{
+	emulated.NewEval(comp, name+"_EVAL", emulatedLimbSizeBit, modulus, [][]limbs.Limbs[limbs.LittleEndian]{
 		// R_i = R_{i-1}^2 + R_{i-1}^2*e_i*base - R_{i-1}^2 * e_i
 		{prevAcc, prevAcc}, {prevAcc, prevAcc, exponentBits, base}, {mone, prevAcc, prevAcc, exponentBits}, {mone, currAcc},
 	})
@@ -194,12 +197,29 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 		filtersB[i] = m.IsFirstLineOfInstance
 	}
 
+	var (
+		inputLimbsProjectionTable          = make([][]ifaces.Column, m.Input.Limbs.NumLimbs())
+		inputLimbsBaseProjectionFilter     = make([]ifaces.Column, m.Input.Limbs.NumLimbs())
+		inputLimbsExponentProjectionFilter = make([]ifaces.Column, m.Input.Limbs.NumLimbs())
+		inputLimbsModulusProjectionFilter  = make([]ifaces.Column, m.Input.Limbs.NumLimbs())
+		inputLimbsResultProjectionFilter   = make([]ifaces.Column, m.Input.Limbs.NumLimbs())
+	)
+
+	for i, l := range m.Input.Limbs.Limbs() {
+		inputLimbsProjectionTable[i] = []ifaces.Column{l}
+		inputLimbsBaseProjectionFilter[i] = m.IsBase
+		inputLimbsExponentProjectionFilter[i] = m.IsExponent
+		inputLimbsModulusProjectionFilter[i] = m.IsModulus
+		inputLimbsResultProjectionFilter[i] = m.IsResult
+	}
+
 	q := query.ProjectionMultiAryInput{
-		ColumnsA: [][]ifaces.Column{{m.Input.Limbs}},
-		FiltersA: []ifaces.Column{m.IsBase},
+		ColumnsA: inputLimbsProjectionTable,
+		FiltersA: inputLimbsBaseProjectionFilter,
 		ColumnsB: columnsB,
 		FiltersB: filtersB,
 	}
+
 	comp.InsertProjection(ifaces.QueryIDf("%s_PROJ_BASE", m.name), q)
 
 	// modulus
@@ -213,8 +233,8 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 	}
 
 	q = query.ProjectionMultiAryInput{
-		ColumnsA: [][]ifaces.Column{{m.Input.Limbs}},
-		FiltersA: []ifaces.Column{m.IsModulus},
+		ColumnsA: inputLimbsProjectionTable,
+		FiltersA: inputLimbsModulusProjectionFilter,
 		ColumnsB: columnsB,
 		FiltersB: filtersB,
 	}
@@ -231,8 +251,8 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 	}
 
 	q = query.ProjectionMultiAryInput{
-		ColumnsA: [][]ifaces.Column{{m.Input.Limbs}},
-		FiltersA: []ifaces.Column{m.IsResult},
+		ColumnsA: inputLimbsProjectionTable,
+		FiltersA: inputLimbsResultProjectionFilter,
 		ColumnsB: columnsB,
 		FiltersB: filtersB,
 	}
@@ -249,8 +269,8 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 	}
 
 	q = query.ProjectionMultiAryInput{
-		ColumnsA: [][]ifaces.Column{{m.Input.Limbs}},
-		FiltersA: []ifaces.Column{m.IsExponent},
+		ColumnsA: inputLimbsProjectionTable,
+		FiltersA: inputLimbsExponentProjectionFilter,
 		ColumnsB: columnsB,
 		FiltersB: filtersB,
 	}
@@ -267,7 +287,7 @@ func (m *Modexp) csModexpExponentProjection(comp *wizard.CompiledIOP) {
 	comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_EXPONENT_MSB_DECOMP_LIMB_0", m.name),
 		sym.Mul(
 			m.IsActive,
-			variables.NewPeriodicSample(limbSizeBits, 0),
+			variables.NewPeriodicSample(emulatedLimbSizeBit, 0),
 			sym.Sub(
 				m.Exponent.Limbs()[0],
 				m.ExponentBits.Limbs()[0],
@@ -280,7 +300,7 @@ func (m *Modexp) csModexpExponentProjection(comp *wizard.CompiledIOP) {
 			sym.Mul(
 				m.IsActive,
 				sym.Sub(1, m.IsFirstLineOfInstance),
-				variables.NewPeriodicSample(limbSizeBits, 0),
+				variables.NewPeriodicSample(emulatedLimbSizeBit, 0),
 				sym.Sub(
 					m.Exponent.Limbs()[limbIdx],
 					column.Shift(m.Exponent.Limbs()[limbIdx-1], -1),
@@ -293,7 +313,7 @@ func (m *Modexp) csModexpExponentProjection(comp *wizard.CompiledIOP) {
 		sym.Mul(
 			m.IsActive,
 			sym.Sub(1, m.IsFirstLineOfInstance),
-			sym.Sub(1, variables.NewPeriodicSample(limbSizeBits, 0)),
+			sym.Sub(1, variables.NewPeriodicSample(emulatedLimbSizeBit, 0)),
 			sym.Sub(
 				m.Exponent.Limbs()[0],
 				sym.Add(
@@ -390,7 +410,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 	// XXX(ivokub): can parallelize assignments over instances. But seems fast
 	// enough not worth it now as adds complexity and synchronization.
 	var (
-		srcLimbs         = m.Input.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcLimbs         = m.Input.Limbs.GetAssignment(run)
 		srcIsActiveInput = m.IsActiveFromInput.GetColAssignment(run).IntoRegVecSaveAlloc()
 		nbRows           = m.IsActiveFromInput.Size()
 	)
@@ -447,7 +467,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 	instMone := make([]field.Element, m.nbLimbs)
 	instBase := make([]field.Element, m.nbLimbs)
 
-	expectedZeroPadding := nbLargeModexpLimbs - m.nbLimbs
+	expectedZeroPadding := nbLargeModexpLimbs - (m.nbLimbs / limbs.NbLimbU128)
 
 	// scan through all the rows to find the modexp instances
 	for ptr := 0; ptr < nbRows; {
@@ -477,34 +497,34 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 
 		// assign the big-int values for intermediate computation
 		for i := range base {
-			buf[i] = base[len(base)-1-i].Uint64()
+			copy(buf[limbs.NbLimbU128*i:], base[len(base)-1-i].ToIntegerLimbs())
 			instBase[i].SetUint64(buf[i])
 		}
-		if err := emulated.IntLimbRecompose(buf, limbSizeBits, baseBi); err != nil {
+		if err := emulated.IntLimbRecompose(buf, emulatedLimbSizeBit, baseBi); err != nil {
 			utils.Panic("could not convert base limbs to big.Int: %v", err)
 		}
 		for i := range exponent {
-			buf[i] = exponent[len(exponent)-1-i].Uint64()
+			copy(buf[limbs.NbLimbU128*i:], exponent[len(exponent)-1-i].ToIntegerLimbs())
 		}
-		if err := emulated.IntLimbRecompose(buf, limbSizeBits, exponentBi); err != nil {
+		if err := emulated.IntLimbRecompose(buf, emulatedLimbSizeBit, exponentBi); err != nil {
 			utils.Panic("could not convert exponent limbs to big.Int: %v", err)
 		}
 		for i := range modulus {
-			buf[i] = modulus[len(modulus)-1-i].Uint64()
+			copy(buf[limbs.NbLimbU128*i:], modulus[len(modulus)-1-i].ToIntegerLimbs())
 			instMod[i].SetUint64(buf[i])
 		}
-		if err := emulated.IntLimbRecompose(buf, limbSizeBits, modulusBi); err != nil {
+		if err := emulated.IntLimbRecompose(buf, emulatedLimbSizeBit, modulusBi); err != nil {
 			utils.Panic("could not convert modulus limbs to big.Int: %v", err)
 		}
 		for i := range expected {
-			buf[i] = expected[len(expected)-1-i].Uint64()
+			copy(buf[limbs.NbLimbU128*i:], expected[len(expected)-1-i].ToIntegerLimbs())
 		}
-		if err := emulated.IntLimbRecompose(buf, limbSizeBits, expectedBi); err != nil {
+		if err := emulated.IntLimbRecompose(buf, emulatedLimbSizeBit, expectedBi); err != nil {
 			utils.Panic("could not convert result limbs to big.Int: %v", err)
 		}
 		// compute mod - 1
 		moneBi.Sub(modulusBi, big.NewInt(1))
-		if err := emulated.IntLimbDecompose(moneBi, limbSizeBits, buf); err != nil {
+		if err := emulated.IntLimbDecompose(moneBi, emulatedLimbSizeBit, buf); err != nil {
 			utils.Panic("could not decompose mod-1 into limbs: %v", err)
 		}
 		for j := range instMone {
@@ -538,7 +558,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 				currAccumulatorBi.Mul(currAccumulatorBi, baseBi)
 			}
 			currAccumulatorBi.Mod(currAccumulatorBi, modulusBi)
-			if err := emulated.IntLimbDecompose(prevAccumulatorBi, limbSizeBits, buf); err != nil {
+			if err := emulated.IntLimbDecompose(prevAccumulatorBi, emulatedLimbSizeBit, buf); err != nil {
 				utils.Panic("could not decompose prevAccumulatorBi into limbs: %v", err)
 			}
 			for j := range m.PrevAccumulator.Limbs() {
@@ -546,7 +566,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 				f.SetUint64(buf[j])
 				dstPrevAccLimbs[j].PushField(f)
 			}
-			if err := emulated.IntLimbDecompose(currAccumulatorBi, limbSizeBits, buf); err != nil {
+			if err := emulated.IntLimbDecompose(currAccumulatorBi, emulatedLimbSizeBit, buf); err != nil {
 				utils.Panic("could not decompose currAccumulatorBi into limbs: %v", err)
 			}
 			for j := range m.CurrAccumulator.Limbs() {
@@ -572,10 +592,10 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			//    are correctly forming the exponent
 			//  - upper part for the remaining limbs. This we just use to show that
 			//    we copy the exponent limbs correctly
-			if err := emulated.IntLimbDecompose(currExponentBi, limbSizeBits, buf[:1]); err != nil {
+			if err := emulated.IntLimbDecompose(currExponentBi, emulatedLimbSizeBit, buf[:1]); err != nil {
 				utils.Panic("could not decompose currExponentBi into limbs: %v", err)
 			}
-			if err := emulated.IntLimbDecompose(currExponentBiHigh, limbSizeBits, buf[1:]); err != nil {
+			if err := emulated.IntLimbDecompose(currExponentBiHigh, emulatedLimbSizeBit, buf[1:]); err != nil {
 				utils.Panic("could not decompose currExponentBiHigh into limbs: %v", err)
 			}
 			for j := range m.Exponent.Limbs() {
@@ -584,8 +604,8 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 				dstExponentLimbs[j].PushField(f)
 			}
 			// update the high part of the exponent if needed
-			if (i+1)%limbSizeBits == 0 {
-				currExponentBiHigh.Lsh(currExponentBiHigh, limbSizeBits)
+			if (i+1)%emulatedLimbSizeBit == 0 {
+				currExponentBiHigh.Lsh(currExponentBiHigh, emulatedLimbSizeBit)
 				currExponentBiHigh.Add(currExponentBiHigh, currExponentBi)
 				currExponentBi.SetInt64(0)
 			}

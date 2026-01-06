@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -18,16 +19,17 @@ const (
 	// largeModexpSize is the bit-size bound for large modexp instances
 	largeModExpSize = 8192
 
-	// limbSize is the size (in bits) of a limb as in the public inputs of the
-	// circuit. This is a parameter linked to how the arithmetization encodes
-	// 256 bits integers.
-	limbSizeBits = 16
-	// nbLargeModexpLimbs is the number of limbs used to represent
-	// large modexp operands
-	nbLargeModexpLimbs = largeModExpSize / limbSizeBits
-	// nbSmallModexpLimbs is the number of limbs used to represent
-	// small modexp operands
-	nbSmallModexpLimbs = smallModExpSize / limbSizeBits
+	// nbBitPerInputRow is the number of bits per row in the input module.
+	nbBitPerInputRow = 128
+
+	// nbRowSmallInInput is the number of rows in the input module to represent
+	// a single 256 bit number in the inputs.
+	nbSmallModexpLimbs = smallModExpSize / nbBitPerInputRow
+
+	// nbRowLargeInInput is the number of rows in the input module to represent
+	// a single 8192 bit number in the inputs.
+	nbLargeModexpLimbs = largeModExpSize / nbBitPerInputRow
+
 	// modexpNumRows corresponds to the number of rows present in the MODEXP
 	// module to represent a single instance. Each instance has 4 operands
 	// dispatched in limbs of [limbSizeBits] bits.
@@ -63,7 +65,7 @@ type Input struct {
 	// Binary column indicating if we have result limbs
 	IsModExpResult ifaces.Column
 	// Multiplexed column containing limbs for base, exponent, modulus, and result
-	Limbs ifaces.Column
+	Limbs limbs.Uint128Le
 }
 
 func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings, arith *arithmetization.Arithmetization) *Input {
@@ -73,7 +75,7 @@ func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings, arith *arithmeti
 		IsModExpExponent: arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_EXPONENT"),
 		IsModExpModulus:  arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_MODULUS"),
 		IsModExpResult:   arith.ColumnOf(comp, "blake2fmodexpdata", "IS_MODEXP_RESULT"),
-		Limbs:            arith.ColumnOf(comp, "blake2fmodexpdata", "LIMB"),
+		Limbs:            arith.GetLimbsOfU128Le(comp, "blake2fmodexpdata", "LIMB"),
 	}
 }
 
@@ -185,8 +187,9 @@ func (mod *Module) csIsSmallAndLarge(comp *wizard.CompiledIOP) {
 	for i := range nbSmallModexpLimbs {
 		masks[i] = variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-i-1)
 	}
-	comp.InsertGlobal(
-		0,
+
+	limbs.NewGlobal(
+		comp,
 		"MODEXP_IS_SMALL_IMPLIES_SMALL_OPERANDS",
 		sym.Mul(
 			mod.Limbs,
@@ -240,19 +243,19 @@ func (m *Module) assignIsActive(run *wizard.ProverRuntime) {
 }
 
 func (m *Module) assignIsSmallOrLarge(run *wizard.ProverRuntime) {
+
 	var (
 		srcIsModExp = m.IsModExp.GetColAssignment(run).IntoRegVecSaveAlloc()
-		srcLimbs    = m.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcLimbs    = m.Limbs.GetAssignmentAsBigInt(run)
+		dstIsSmall  = common.NewVectorBuilder(m.IsSmall)
+		dstIsLarge  = common.NewVectorBuilder(m.IsLarge)
+		dstToSmall  = common.NewVectorBuilder(m.ToSmall)
 	)
-	var (
-		dstIsSmall = common.NewVectorBuilder(m.IsSmall)
-		dstIsLarge = common.NewVectorBuilder(m.IsLarge)
-		dstToSmall = common.NewVectorBuilder(m.ToSmall)
-	)
+
 	checkSmall := func(ptr int) bool {
 		for k := range nbLargeModexpLimbs - nbSmallModexpLimbs {
 			for j := range 4 {
-				if !srcLimbs[ptr+k+j*nbLargeModexpLimbs].IsZero() {
+				if srcLimbs[ptr+k+j*nbLargeModexpLimbs].Sign() != 0 {
 					return false
 				}
 			}

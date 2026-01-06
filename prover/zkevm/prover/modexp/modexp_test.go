@@ -50,7 +50,7 @@ func TestModExpAntichamber(t *testing.T) {
 					IsModExpExponent: inpCt.GetCommit(build, "IS_MODEXP_EXPONENT"),
 					IsModExpModulus:  inpCt.GetCommit(build, "IS_MODEXP_MODULUS"),
 					IsModExpResult:   inpCt.GetCommit(build, "IS_MODEXP_RESULT"),
-					Limbs:            inpCt.GetCommit(build, "LIMBS"),
+					Limbs:            inpCt.GetLimbsLe(build, "LIMBS", 8).AssertUint128(),
 					Settings:         &Settings{MaxNbInstance256: tc.NbSmallInstances, MaxNbInstanceLarge: tc.NbLargeInstances},
 				}
 

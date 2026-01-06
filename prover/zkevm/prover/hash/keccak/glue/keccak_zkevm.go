@@ -123,14 +123,14 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.
 
 	res := generic.GenericByteModule{
 		Data: generic.GenDataModule{
-			HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
-			Index:   arith.ColumnOf(comp, "shakiradata", "INDEX"),
+			HashNum: arith.MashedColumnOf(comp, "shakiradata", "ID"),
+			Index:   arith.MashedColumnOf(comp, "shakiradata", "INDEX"),
 			Limbs:   arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
 			NBytes:  arith.ColumnOf(comp, "shakiradata", "nBYTES"),
 			ToHash:  arith.ColumnOf(comp, "shakiradata", "IS_KECCAK_DATA"),
 		},
 		Info: generic.GenInfoModule{
-			HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
+			HashNum: arith.MashedColumnOf(comp, "shakiradata", "ID"),
 			HashLo:  arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
 			HashHi:  arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
 			// Before, we usse to pass column.Shift(IsHashHi, -1) but this does
