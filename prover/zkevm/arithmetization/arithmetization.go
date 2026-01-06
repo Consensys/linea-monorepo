@@ -17,8 +17,11 @@ import (
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/sirupsen/logrus"
 )
 
@@ -137,7 +140,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
 	}
 	// Perform trace propagation
-	rawTrace, errs = asm.Propagate(a.BinaryFile.Schema, rawTrace, true)
+	rawTrace, errs = asm.Propagate(a.BinaryFile.Schema, rawTrace)
 	// error check
 	if len(errs) > 0 {
 		logrus.Warnf("corset propagation gave the following errors: %v", errors.Join(errs...).Error())
@@ -155,10 +158,10 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	AssignFromLtTraces(run, a.AirSchema, expandedTrace, a.Settings.Limits)
 }
 
-// LimbColumnsOf returns the wizard columns corresponding to the limbs for the
+// limbColumnsOf returns the wizard columns corresponding to the limbs for the
 // tuple (moduleName, regName). The function furthermore ensures that the
 // function has the requested number of limbs.
-func (a *Arithmetization) LimbColumnsOf(comp *wizard.CompiledIOP, mod string, column string, nLimbs int) []ifaces.Column {
+func (a *Arithmetization) limbColumnsOf(comp *wizard.CompiledIOP, mod string, column string, nLimbs int) []ifaces.Column {
 	names := a.LimbsOf(mod, column, nLimbs)
 	cols := make([]ifaces.Column, len(names))
 	for i, name := range names {
@@ -167,67 +170,127 @@ func (a *Arithmetization) LimbColumnsOf(comp *wizard.CompiledIOP, mod string, co
 	return cols
 }
 
-// LimbColumnsOfArr2 is sugar for
-//
-//	```
-//	 	c := a.LimbColumnsOf(comp, mod, regName, 2)
-//		return [2]ifaces.Column(c)
-//	 ```
-func (a *Arithmetization) LimbColumnsOfArr2(comp *wizard.CompiledIOP, mod string, column string) [2]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, column, 2)
-	return [2]ifaces.Column(c)
+// GetLimbsOfUint returns a [limbs.Uint] register corresponding to tuple
+// (moduleName, regName). The function furthermore ensures that the register has
+// the requested number of limbs.
+func GetLimbsOf[S limbs.BitSize, E limbs.Endianness](a *Arithmetization,
+	comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[S, E] {
+
+	numLimbs := limbs.NumLimbsOf[S]()
+	cols := a.limbColumnsOf(comp, mod, column, numLimbs)
+	cols = limbs.ConvertSlice[limbs.LittleEndian, E](cols)
+	return limbs.FromSliceUnsafe[S, E](
+		ifaces.ColID(fmt.Sprintf("%s.%s", mod, column)),
+		cols,
+	)
 }
 
-// LimbColumnsOfArr3 is sugar for
-//
-//	```
-//	 	c := a.LimbColumnsOf(comp, mod, regName, 3)
-//		return [3]ifaces.Column(c)
-//	 ```
-func (a *Arithmetization) LimbColumnsOfArr3(comp *wizard.CompiledIOP, mod string, column string) [3]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, column, 3)
-	return [3]ifaces.Column(c)
+// GetLimbsOfU16Be returns a [limbs.Uint] register corresponding to a U16 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU16Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S16, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S16, limbs.BigEndian](a, comp, mod, column)
 }
 
-// LimbColumnsOfArr4 is sugar for
-//
-//	```
-//	 	c := a.LimbColumnsOf(comp, mod, regName, 4)
-//		return [4]ifaces.Column(c)
-//	 ```
-func (a *Arithmetization) LimbColumnsOfArr4(comp *wizard.CompiledIOP, mod string, column string) [4]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, column, 4)
-	return [4]ifaces.Column(c)
+// GetLimbsOfU16Le returns a [limbs.Uint] register corresponding to a U16 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU16Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S16, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S16, limbs.LittleEndian](a, comp, mod, column)
 }
 
-// LimbColumnsOfArr8 is sugar for
-//
-//	```
-//	 	c := a.LimbColumnsOf(comp, mod, regName, 8)
-//		return [8]ifaces.Column(c)
-//	 ```
-func (a *Arithmetization) LimbColumnsOfArr8(comp *wizard.CompiledIOP, mod string, column string) [8]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, column, 8)
-	return [8]ifaces.Column(c)
+// GetLimbsOfU32Be returns a [limbs.Uint] register corresponding to a U32 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU32Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S32, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S32, limbs.BigEndian](a, comp, mod, column)
 }
 
-// LimbColumnsOfArr16 is sugar for
-//
-//	```
-//	 	c := a.LimbColumnsOf(comp, mod, regName, 16)
-//		return [16]ifaces.Column(c)
-//	 ```
-func (a *Arithmetization) LimbColumnsOfArr16(comp *wizard.CompiledIOP, mod string, column string) [16]ifaces.Column {
-	c := a.LimbColumnsOf(comp, mod, column, 16)
-	return [16]ifaces.Column(c)
+// GetLimbsOfU32Le returns a [limbs.Uint] register corresponding to a U32 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU32Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S32, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S32, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU48Be returns a [limbs.Uint] register corresponding to a U48 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU48Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S48, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S48, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU64Be returns a [limbs.Uint] register corresponding to a U64 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU64Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S64, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S64, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU64Le returns a [limbs.Uint] register corresponding to a U64 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU64Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S64, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S64, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU128Be returns a [limbs.Uint] register corresponding to a U128 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU128Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S128, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S128, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU128Le returns a [limbs.Uint] register corresponding to a U128 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU128Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S128, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S128, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU160Be returns a [limbs.Uint] register corresponding to a U160 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU160Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S160, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S160, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU160Le returns a [limbs.Uint] register corresponding to a U160 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU160Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S160, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S160, limbs.LittleEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU256 returns a [limbs.Uint] register corresponding to a U256 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU256Be(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S256, limbs.BigEndian] {
+	return GetLimbsOf[limbs.S256, limbs.BigEndian](a, comp, mod, column)
+}
+
+// GetLimbsOfU256Le returns a [limbs.Uint] register corresponding to a U256 with the
+// specified endianness.
+func (a *Arithmetization) GetLimbsOfU256Le(comp *wizard.CompiledIOP, mod string, column string) limbs.Uint[limbs.S256, limbs.LittleEndian] {
+	return GetLimbsOf[limbs.S256, limbs.LittleEndian](a, comp, mod, column)
 }
 
 // ColumnOf returns the wizard column associated with the given name and
 // register. The function will fail with panic if the column is not found or the
 // column has more than 1 register.
 func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, column string) ifaces.Column {
-	cols := a.LimbColumnsOf(comp, name, column, 1)
+	cols := a.limbColumnsOf(comp, name, column, 1)
 	return cols[0]
+}
+
+// MashedColumnOf returns a single columnn representing a 'small' integer. The
+// underlying representation of the column in the arithmetization may be
+// u16 < x <= u32 and thus be fit on exactly 2 limbs. The underlying limbs are
+// combined as L0 + 2**16 L1 and returned directly without any bound check. The
+// function asserts that the column has exactly 2 limbs. If the same column is
+// requested several times, the function will cache the previous call's result.
+func (a *Arithmetization) MashedColumnOf(comp *wizard.CompiledIOP, name string, column string) ifaces.Column {
+	// This call asserts that the column has exactly 2 limbs. So we don't need
+	// to explicitly redo-it here.
+	var (
+		res     = a.GetLimbsOfU32Le(comp, name, column).Limbs()
+		colName = fmt.Sprintf("%s_%s", name, column)
+		colExpr = sym.Add(res[0], sym.Mul(1<<16, res[1]))
+	)
+
+	if comp.Columns.Exists(ifaces.ColID(colName)) {
+		return comp.Columns.GetHandle(ifaces.ColID(colName))
+	}
+
+	return expr_handle.ExprHandle(comp, colExpr, colName)
 }
 
 // LimbsOf returns the fully qualified names of the limbs for a given Corset
@@ -244,8 +307,10 @@ func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, column
 func (a *Arithmetization) LimbsOf(mod string, column string, nLimbs int) []string {
 	// Identify limbs mapping for ecdata module
 	var (
+		// modPrefix splits the mod='a.b' -> 'a'
+		modPrefix = strings.Split(mod, ".")[0]
 		// Extract the limb mapping for the given module
-		modMap = a.LimbMapping.ModuleOf(module.NewName(mod, 1))
+		modMap = a.LimbMapping.ModuleOf(module.NewName(modPrefix, 1))
 		// Determine corresponding register id
 		reg = a.determineRegisterId(mod, column)
 	)
@@ -254,7 +319,8 @@ func (a *Arithmetization) LimbsOf(mod string, column string, nLimbs int) []strin
 	names := make([]string, len(limbs))
 	// Sanity check we got the number of limbs we expected
 	if len(limbs) != nLimbs {
-		panic(fmt.Sprintf("incorrect number of limbs (expected %d found %d)", nLimbs, len(limbs)))
+		panic(
+			fmt.Sprintf("incorrect number of limbs for %s.%s (expected %d found %d)", mod, column, nLimbs, len(limbs)))
 	}
 	//
 	for i, lid := range limbs {
@@ -279,8 +345,10 @@ func (a *Arithmetization) determineRegisterId(mod string, name string) register.
 	var rid register.Id
 	// Check whether source-level debug information is available.
 	if srcmap, srcmap_ok := binfile.GetAttribute[*corset.SourceMap](a.BinaryFile); srcmap_ok {
+		// Split module name based on path
+		path := strings.Split(mod, ".")
 		// Yes, therefore attempt to find a source-level regsiter with the given name.
-		module := determineSourceModule(srcmap, mod)
+		module := determineSourceModule(srcmap.Root, path)
 		// Check columns within the module
 		for _, col := range module.Columns {
 			if col.Name == name {
@@ -295,24 +363,32 @@ func (a *Arithmetization) determineRegisterId(mod string, name string) register.
 	rid, ok := modMap.HasRegister(name)
 	// Sanity check we found it
 	if !ok {
-		panic(fmt.Sprintf("unknown register %s.%s", mod, name))
+		// This log an insightful message listing which where the column that
+		// existed to make the failure easier to debug.
+		modInfos := []string{}
+		regs := modMap.Registers()
+		for _, r := range regs {
+			info := fmt.Sprintf("%s(width=%v, kind=%v)", r.Name, r.Width, r.Kind)
+			modInfos = append(modInfos, info)
+		}
+
+		panic(fmt.Sprintf("unknown register %s.%s, available registers: %v", mod, name, modInfos))
 	}
 	// Done
 	return rid
 }
 
-func determineSourceModule(srcmap *corset.SourceMap, mod string) corset.SourceModule {
-	// Lookup the source module with the corresponding name; if there are
-	// multiple matching entries, then fail.
-	modules := srcmap.Flattern(func(s *corset.SourceModule) bool {
-		return s.Public && s.Name == mod
-	})
-	// Sanity check
-	if len(modules) == 0 {
-		panic(fmt.Sprintf("unknown module %s", mod))
-	} else if len(modules) > 1 {
-		panic(fmt.Sprintf("ambiguous module %s", mod))
+func determineSourceModule(module corset.SourceModule, path []string) corset.SourceModule {
+	// Check whether moduled reached
+	if len(path) == 0 {
+		return module
 	}
-	//
-	return modules[0]
+	// Look for matching child
+	for _, submodule := range module.Submodules {
+		if submodule.Name == path[0] {
+			return determineSourceModule(submodule, path[1:])
+		}
+	}
+	// Should not get here
+	panic(fmt.Sprintf("unknown module %v", path))
 }

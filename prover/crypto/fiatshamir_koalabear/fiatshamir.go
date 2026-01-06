@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"golang.org/x/crypto/blake2b"
 )
 
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
@@ -85,14 +86,37 @@ func (fs *FS) RandomField() field.Octuplet {
 }
 
 func (fs *FS) RandomFext() fext.Element {
-	s := fs.h.SumElement()
+	defer fs.safeguardUpdate()
+
+	s := fs.RandomField()
 	var res fext.Element
 	res.B0.A0 = s[0]
 	res.B0.A1 = s[1]
 	res.B1.A0 = s[2]
 	res.B1.A1 = s[3]
 
-	fs.UpdateExt(fext.NewFromUint(0, 0, 0, 0)) // safefuard update
+	return res
+}
+
+func (fs *FS) RandomFieldFromSeed(seed field.Octuplet, name string) fext.Element {
+
+	// The first step encodes the 'name' into a single field element. The
+	// field element is obtained by hashing and taking the modulo of the
+	// result to fit into a field element.
+	nameBytes := []byte(name)
+	hasher, _ := blake2b.New256(nil)
+	hasher.Write(nameBytes)
+	nameBytes = hasher.Sum(nil)
+
+	// The seed is then obtained by calling the compression function over
+	// the seed and the encoded name.
+	oldState := fs.State()
+	defer fs.SetState(oldState)
+
+	fs.SetState(seed)
+	fs.h.Write(nameBytes)
+
+	res := fs.RandomFext()
 	return res
 }
 

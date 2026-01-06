@@ -2,6 +2,7 @@ package fetchers_arithmetization
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -34,15 +35,15 @@ type RlpTxnFetcher struct {
 func NewRlpTxnFetcher(comp *wizard.CompiledIOP, name string, rt *arith.RlpTxn) RlpTxnFetcher {
 	size := rt.Limbs[0].Size()
 	res := RlpTxnFetcher{
-		AbsTxNum:        util.CreateColBase(name, "ABS_TX_NUM", size, comp),
-		AbsTxNumMax:     util.CreateColBase(name, "ABS_TX_NUM_MAX", size, comp),
-		NBytes:          util.CreateColBase(name, "NBYTES", size, comp),
-		FilterFetched:   util.CreateColBase(name, "FILTER_FETCHED", size, comp),
-		EndOfRlpSegment: util.CreateColBase(name, "END_OF_RLP_SEGMENT", size, comp),
+		AbsTxNum:        util.CreateCol(name, "ABS_TX_NUM", size, comp),
+		AbsTxNumMax:     util.CreateCol(name, "ABS_TX_NUM_MAX", size, comp),
+		NBytes:          util.CreateCol(name, "NBYTES", size, comp),
+		FilterFetched:   util.CreateCol(name, "FILTER_FETCHED", size, comp),
+		EndOfRlpSegment: util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
 	}
 
 	for i := range res.Limbs {
-		res.Limbs[i] = util.CreateColBase(name, fmt.Sprintf("LIMB_%d", i), size, comp)
+		res.Limbs[i] = util.CreateCol(name, fmt.Sprintf("LIMB_%d", i), size, comp)
 	}
 
 	return res

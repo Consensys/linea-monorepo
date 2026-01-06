@@ -371,32 +371,26 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
 func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBenchmarkCase) {
 
+	isBLS := true
 	// These parameters have been found to give the best result for performances
-	// params := selfRecursionParameters{
-	// 	NbOpenedColumns: 64,
-	// 	RsInverseRate:   16,
-	// 	TargetRowSize:   1 << 9,
-	// }
-
-	// minimalparams
 	params := selfRecursionParameters{
-		NbOpenedColumns: 16,
+		NbOpenedColumns: 8,
 		RsInverseRate:   2,
-		TargetRowSize:   1 << 9,
+		TargetRowSize:   1 << 5,
 	}
 
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<9), // 1<<20 --> 1<<9 for minimal
+			compiler.WithTargetColSize(1<<9),
 			compiler.WithStitcherMinSize(1<<1),
 		),
 		vortex.Compile(
 			2,
 			false,
-			vortex.WithOptionalSISHashingThreshold(64),
-			vortex.ForceNumOpenedColumns(16),
+			vortex.WithOptionalSISHashingThreshold(32),
+			vortex.ForceNumOpenedColumns(8),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)
@@ -415,15 +409,15 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		proof := wizard.Prove(comp, sbc.NewAssigner(b), true)
-		err := wizard.Verify(comp, proof, true)
+		proof := wizard.Prove(comp, sbc.NewAssigner(b), isBLS)
+		err := wizard.Verify(comp, proof, isBLS)
 		if err != nil {
 			b.Fatal(err)
 		}
 
 		circuit := verifierCircuit{}
 		{
-			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
+			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds(), isBLS)
 			circuit.C = *c
 		}
 
@@ -433,7 +427,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 
 		assignment := &verifierCircuit{
-			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), isBLS),
 		}
 
 		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())

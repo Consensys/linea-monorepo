@@ -21,6 +21,7 @@ func TestPIConsistency(t *testing.T) {
 		InitialBlockTimestamp:        2,
 		FirstRollingHashUpdateNumber: 3,
 		ChainID:                      7,
+		BaseFee:                      3,
 	}
 
 	pi.DataChecksum.Length = 8
@@ -33,6 +34,7 @@ func TestPIConsistency(t *testing.T) {
 	utils.FillRange(pi.InitialRollingHashUpdate[:], 170)
 	utils.FillRange(pi.FinalStateRootHash[:], 210)
 	utils.FillRange(pi.LastRollingHashUpdate[:], 250)
+	utils.FillRange(pi.CoinBase[:], 20)
 	utils.FillRange(pi.L2MessageServiceAddr[:], 40)
 
 	// state root hashes are field elements
@@ -41,7 +43,7 @@ func TestPIConsistency(t *testing.T) {
 
 	snarkPi := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-			L2MessageHashes: L2MessageHashes{Values: make([][32]zk.WrappedVariable, 3)},
+			L2MessageHashes: L2MessageHashes{Values: make([][32]frontend.Variable, 3)},
 		},
 	}
 	require.NoError(t, snarkPi.Assign(&pi))

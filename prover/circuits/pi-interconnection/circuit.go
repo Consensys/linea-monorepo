@@ -13,9 +13,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
@@ -30,9 +28,9 @@ import (
 )
 
 type Circuit struct {
-	AggregationPublicInput      [2]zk.WrappedVariable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
-	ExecutionPublicInput        []zk.WrappedVariable  `gnark:",public"`
-	DataAvailabilityPublicInput []zk.WrappedVariable  `gnark:",public"`
+	AggregationPublicInput      [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
+	ExecutionPublicInput        []frontend.Variable  `gnark:",public"`
+	DataAvailabilityPublicInput []frontend.Variable  `gnark:",public"`
 
 	DataAvailabilityFPIQ []dataavailability.FunctionalPublicInputQSnark
 	ExecutionFPIQ        []execution.FunctionalPublicInputQSnark
@@ -45,17 +43,29 @@ type Circuit struct {
 	L2MessageMerkleDepth int
 	L2MessageMaxNbMerkle int
 
-	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
-	L2MessageServiceAddr types.EthAddress
-	ChainID              uint64
+	// IsAllowedCircuitID is a public input parroting up the value of
+	// [AggregationFPIQSnark.IsAllowedCircuitID]. It is needed so that the
+	// aggregation can "see" this value while it cannot access directly the
+	// content of the dynamic chain configuration.
+	//
+	// Its bits encodes which circuit is being allowed in the dynamic chain
+	// configuration. For instance, the bits of weight "3" indicates whether the
+	// circuit ID "3" is allowed and so on.  The packing order of the bits is
+	// LSb to MSb. For instance if
+	//
+	// Circuit ID 0 -> Disallowed
+	// Circuit ID 1 -> Allowed
+	// Circuit ID 2 -> Allowed
+	// Circuit ID 3 -> Disallowed
+	// Circuit ID 4 -> Allowed
+	//
+	// Then the IsAllowedCircuitID public input must be encoded as 0b10110
+	IsAllowedCircuitID frontend.Variable `gnark:",public"`
 
 	MaxNbCircuits int // possibly useless TODO consider removing
 }
 
 func (c *Circuit) Define(api frontend.API) error {
-	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
-	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)
-	api.AssertIsEqual(c.L2MessageServiceAddr[:], c.AggregationFPIQSnark.L2MessageServiceAddr)
 
 	maxNbDA, maxNbExecution := len(c.DataAvailabilityPublicInput), len(c.ExecutionPublicInput)
 	if len(c.DataAvailabilityFPIQ) != maxNbDA || len(c.ExecutionFPIQ) != maxNbExecution {
@@ -70,7 +80,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	// nbBatchesSums[i] is the index of the first execution circuit associated with the i+1-st data availability circuit.
 	// Past the last DA circuit, this value remains constant.
-	nbBatchesSums := rDA.PartialSumsF(func(i int) zk.WrappedVariable { return api.Mul(rDA.InRange[i], c.DataAvailabilityFPIQ[i].NbBatches) })
+	nbBatchesSums := rDA.PartialSumsF(func(i int) frontend.Variable { return api.Mul(rDA.InRange[i], c.DataAvailabilityFPIQ[i].NbBatches) })
 	nbExecution := nbBatchesSums[len(nbBatchesSums)-1] // implicit: CHECK_NB_EXEC
 
 	// These two checks prevents constructing a proof where no execution or no
@@ -83,7 +93,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDataAvailability), c.MaxNbCircuits)
 	}
 
-	batchHashes := make([]zk.WrappedVariable, len(c.ExecutionPublicInput))
+	batchHashes := make([]frontend.Variable, len(c.ExecutionPublicInput))
 	for i, pi := range c.ExecutionFPIQ {
 		batchHashes[i] = pi.DataChecksum.Hash
 	}
@@ -99,7 +109,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		return err
 	}
 
-	blobBatchHashes := make([]zk.WrappedVariable, maxNbDA)
+	blobBatchHashes := make([]frontend.Variable, maxNbDA)
 	for i := range blobBatchHashes {
 		blobBatchHashes[i] = c.DataAvailabilityFPIQ[i].AllBatchesSum
 	}
@@ -139,13 +149,18 @@ func (c *Circuit) Define(api frontend.API) error {
 	for j := range l2MessagesByByte {
 		l2MessagesByByte[j] = make([]internal.VarSlice, maxNbExecution)
 		for k := range l2MessagesByByte[j] {
-			l2MessagesByByte[j][k] = internal.VarSlice{Values: make([]zk.WrappedVariable, execMaxNbL2Msg)}
+			l2MessagesByByte[j][k] = internal.VarSlice{Values: make([]frontend.Variable, execMaxNbL2Msg)}
 		}
 	}
 
 	// we can "allow non-deterministic behavior" because all compared values have been range-checked
 	comparator := cmp.NewBoundedComparator(api, new(big.Int).Lsh(big.NewInt(1), 65), true)
-	// TODO try using lookups or crumb decomposition to make comparisons more efficient
+	// TODO try using lookups or crumb decomposition to make comparisons more
+	// efficient
+
+	// Check that IsAllowedCircuitID public input matches the value in AggregationFPIQSnark
+	api.AssertIsEqual(c.IsAllowedCircuitID, c.ChainConfigurationFPISnark.IsAllowedCircuitID)
+
 	for i, piq := range c.ExecutionFPIQ {
 		piq.RangeCheck(api) // CHECK_MSG_LIMIT
 
@@ -156,10 +171,12 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
-			InitialStateRootHash:        finalState,                // implicit CHECK_STATE_CONSEC
-			InitialBlockNumber:          api.Add(finalBlockNum, 1), // implicit CHECK_NUM_CONSEC
-			ChainID:                     c.ChainID,                 // implicit CHECK_CHAIN_ID
-			L2MessageServiceAddr:        c.L2MessageServiceAddr[:], // implicit CHECK_SVC_ADDR
+			InitialStateRootHash:        finalState,                                           // implicit CHECK_STATE_CONSEC
+			InitialBlockNumber:          api.Add(finalBlockNum, 1),                            // implicit CHECK_NUM_CONSEC
+			ChainID:                     c.ChainConfigurationFPISnark.ChainID,                 // implicit CHECK_CHAIN_ID
+			BaseFee:                     c.ChainConfigurationFPISnark.BaseFee,                 // implicit CHECK_BASE_FEE
+			CoinBase:                    c.ChainConfigurationFPISnark.CoinBase,                // implicit CHECK_COINBASE
+			L2MessageServiceAddr:        c.ChainConfigurationFPISnark.L2MessageServiceAddress, // implicit CHECK_SVC_ADDR
 		}
 
 		comparator.AssertIsLessEq(pi.InitialBlockTimestamp, pi.FinalBlockTimestamp)                // CHECK_TIME_NODECREASE
@@ -195,7 +212,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	merkleLeavesConcat := internal.Var32Slice{Values: make([][32]zk.WrappedVariable, c.L2MessageMaxNbMerkle*merkleNbLeaves)}
+	merkleLeavesConcat := internal.Var32Slice{Values: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle*merkleNbLeaves)}
 	for i := 0; i < 32; i++ {
 		ithBytes := internal.Concat(api, len(merkleLeavesConcat.Values), l2MessagesByByte[i]...)
 		for j := range merkleLeavesConcat.Values {
@@ -207,11 +224,11 @@ func (c *Circuit) Define(api frontend.API) error {
 	pi := public_input.AggregationFPISnark{
 		AggregationFPIQSnark: c.AggregationFPIQSnark,
 		NbL2Messages:         merkleLeavesConcat.Length,
-		L2MsgMerkleTreeRoots: make([][32]zk.WrappedVariable, c.L2MessageMaxNbMerkle), // implicit CHECK_MERKLE_CAP1
+		L2MsgMerkleTreeRoots: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle), // implicit CHECK_MERKLE_CAP1
 		// implicit CHECK_FINAL_NUM
-		FinalBlockNumber: rExecution.LastF(func(i int) zk.WrappedVariable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
+		FinalBlockNumber: rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockNumber }),
 		// implicit CHECK_FINAL_TIME
-		FinalBlockTimestamp:    rExecution.LastF(func(i int) zk.WrappedVariable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
+		FinalBlockTimestamp:    rExecution.LastF(func(i int) frontend.Variable { return c.ExecutionFPIQ[i].FinalBlockTimestamp }),
 		FinalShnarf:            rDA.LastArray32(shnarfs), // implicit CHECK_FINAL_SHNARF
 		FinalRollingHash:       finalRollingHash,         // implicit CHECK_FINAL_RHASH
 		FinalRollingHashNumber: finalRollingHashMsgNum,   // implicit CHECK_FINAL_RHASH_NUM
@@ -235,7 +252,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	return hshK.Finalize()
 }
 
-func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]zk.WrappedVariable) [32]zk.WrappedVariable {
+func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
 
 	values := slices.Clone(leaves)
 	if !utils.IsPowerOfTwo(len(values)) {
@@ -304,9 +321,10 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 }
 
 func allocateCircuit(cfg config.PublicInput) Circuit {
+
 	res := Circuit{
-		DataAvailabilityPublicInput: make([]zk.WrappedVariable, cfg.MaxNbDataAvailability),
-		ExecutionPublicInput:        make([]zk.WrappedVariable, cfg.MaxNbExecution),
+		DataAvailabilityPublicInput: make([]frontend.Variable, cfg.MaxNbDataAvailability),
+		ExecutionPublicInput:        make([]frontend.Variable, cfg.MaxNbExecution),
 		DataAvailabilityFPIQ:        make([]dataavailability.FunctionalPublicInputQSnark, cfg.MaxNbDataAvailability),
 		ExecutionFPIQ:               make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
 		L2MessageMerkleDepth:        cfg.L2MsgMerkleDepth,
@@ -317,7 +335,7 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 	}
 
 	for i := range res.ExecutionFPIQ {
-		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]zk.WrappedVariable, cfg.ExecutionMaxNbMsg)
+		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]frontend.Variable, cfg.ExecutionMaxNbMsg)
 	}
 
 	return res
@@ -337,8 +355,7 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 
 	// aggregation PI opening
 	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
-	res.WithStrictHashLengths(384)
-
+	res.WithStrictHashLengths(416) // 416 (13 × 32 bytes)
 	return &res
 }
 

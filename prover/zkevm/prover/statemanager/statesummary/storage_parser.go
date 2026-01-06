@@ -69,7 +69,7 @@ func (sr *ArithmetizationStorageParser) Process() {
 			keyBytes := make([]byte, 0, 32)
 			keyBytes = append(keyBytes, keyHIBytes...)
 			keyBytes = append(keyBytes, keyLOBytes...)
-			address := getLimbBytes(sr.scp.Address[:], sr.run, index)
+			address := getLimbBytes(sr.scp.Address(), sr.run, index)
 			mapKey := KeysAndBlock{
 				address:    types.Bytes32(address),
 				storageKey: types.FullBytes32(keyBytes),

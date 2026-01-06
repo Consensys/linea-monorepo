@@ -2,6 +2,7 @@ package fetchers_arithmetization
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -17,7 +18,7 @@ import (
 type RootHashFetcher struct {
 	// First and Last are the columns that store the first and last root hashes.
 	// They are divided into 16 16-bit limb columns. 256 bits in total.
-	First, Last [common.NbLimbU256]ifaces.Column
+	First, Last [common.NbLimbU128]ifaces.Column
 }
 
 // NewRootHashFetcher returns a new RootHashFetcher with initialized columns that are not constrained.
@@ -66,7 +67,7 @@ func DefineRootHashFetcher(comp *wizard.CompiledIOP, fetcher *RootHashFetcher, n
 func AssignRootHashFetcher(run *wizard.ProverRuntime, fetcher *RootHashFetcher, ss statesummary.Module) {
 	// if the first state summary segment starts with storage operations, fetch the value in worldstatehash
 	// otherwise, we take it from the first value of the accumulator
-	var first, last [common.NbLimbU256]field.Element
+	var first, last [common.NbLimbU128]field.Element
 
 	firstSrcCols := ss.AccumulatorStatement.StateDiff.InitialRoot
 	initialStorage := ss.IsStorage.GetColAssignmentAt(run, 0)

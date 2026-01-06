@@ -3,13 +3,13 @@ package recursion
 import (
 	"strconv"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
@@ -122,6 +122,10 @@ type Parameters struct {
 	// be built with a fixed number of rows.
 	FixedNbRowPlonkCircuit int
 
+	// FixedNbPublicInput is a flag indicating that the Plonk circuit should
+	// be built with a fixed number of public inputs.
+	FixedNbPublicInput int
+
 	// ExternalHasherNbRows is a flag indicating that the MiMC circuit should
 	// be built with a fixed number of rows.
 	ExternalHasherNbRows int
@@ -129,6 +133,22 @@ type Parameters struct {
 	// WithExternalHasherOpts is a flag indicating that the recursion circuit should
 	// be built using the external hasher builder.
 	WithExternalHasherOpts bool
+
+	// SkipRecursionPrefix indicates that the compilation of the recursion
+	// should not add a prefix to the recursed public-inputs. When set to true,
+	// the public inputs will be named exactly as in the input IOP. Otherwise,
+	// the public input are prefixed with `[Parameters.Name]_[i : the ID of the
+	// instance]`. If SkipRecursionPrefix is set to true, then
+	// [DefinedRecursionOf] will assert that [Parameters.MaxNumProof] is 1;
+	// otherwise, there would be a naming conflict.
+	SkipRecursionPrefix bool
+
+	// RestrictPublicInputs specifies the list of the public inputs from the
+	// initial IOP to be re-exposed as public inputs in the recursion circuit.
+	//
+	// /!\ : Passing []string{} will expose NO public inputs. But passing 'nil'
+	// will expose ALL the public inputs.
+	RestrictPublicInputs []string
 }
 
 // DefineRecursionOf builds a recursion sub-circuit into 'comp' for verifying
@@ -176,7 +196,6 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 			Prefix: params.Name + "-" + strconv.Itoa(i),
 			Target: comp,
 		}
-
 		dstVortexCtx := createNewPcsCtx(translator, inputComp)
 		vortexCtxs[i] = dstVortexCtx
 
@@ -255,7 +274,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 			assign = AssignRecursionCircuit(r.InputCompiledIOP, wit[i].Proof, wit[i].Pub, wit[i].FinalFS)
 		)
 
-		fullWitnesses[i], err = frontend.NewWitness(assign, ecc.BLS12_377.ScalarField())
+		fullWitnesses[i], err = frontend.NewWitness(assign, field.Modulus())
 		if err != nil {
 			utils.Panic("could not create witness: %v", err)
 		}
@@ -270,9 +289,10 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 			if run.Spec.Precomputed.Exists(colName) {
 				continue
 			}
-
-			x := assign.Commitments[j].AsNative().(field.Element)
-			run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
+			for k := 0; k < blockSize; k++ {
+				x := assign.Commitments[j][k].AsNative().(field.Element)
+				run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
+			}
 		}
 
 		// Assigns the poly query.
@@ -306,7 +326,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 }
 
 // GetPublicInputOfInstance relative to one recursed module.
-func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, inst int) field.Element {
+func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, inst int) fext.GenericFieldElem {
 	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
 	return run.GetPublicInput(name)
 }
@@ -392,6 +412,8 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
 		dstVortexCtx.Items.Precomputeds.Tree = srcVortexCtx.Items.Precomputeds.Tree
 	}
+	// Allocate the dst merkle roots
+	dstVortexCtx.Items.MerkleRoots = make([][blockSize]ifaces.Column, dstVortexCtx.MaxCommittedRound+1)
 
 	for round := 0; round <= dstVortexCtx.MaxCommittedRound; round++ {
 		for i := 0; i < blockSize; i++ {

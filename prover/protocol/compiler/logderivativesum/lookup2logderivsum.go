@@ -212,9 +212,9 @@ func (c *CheckLogDerivativeSumMustBeZero) Run(run wizard.Runtime) error {
 
 func (c *CheckLogDerivativeSumMustBeZero) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	ext4, _ := gnarkfext.NewExt4(api)
-	zero := gnarkfext.E4Gen{}
+	zero := ext4.Zero()
 	y := run.GetLogDerivSumParams(c.Q.ID).Sum
-	ext4.AssertIsEqual(&y, &zero)
+	ext4.AssertIsEqual(&y, zero)
 }
 
 func (c *CheckLogDerivativeSumMustBeZero) Skip() {

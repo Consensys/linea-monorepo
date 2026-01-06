@@ -77,11 +77,18 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	logrus.SetLevel(logrus.Level(cfg.LogLevel)) // #nosec G115 -- overflow not possible (uint8 -> uint32)
 
 	// Extract the Layer2.MsgSvcContract address from the string
-	addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
+	lsMsgSvcAddress, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
 	if withValidation && err != nil {
 		return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
 	}
-	cfg.Layer2.MsgSvcContract = addr.Address()
+	cfg.Layer2.MsgSvcContract = lsMsgSvcAddress.Address()
+
+	// Extract the coinbase address from the string
+	coinBaseAddr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.CoinBaseStr)
+	if withValidation && err != nil {
+		return nil, fmt.Errorf("failed to extract Layer2.CoinBase address: %w", err)
+	}
+	cfg.Layer2.CoinBase = coinBaseAddr.Address()
 
 	// ensure that asset dir / kzgsrs exists using os.Stat
 	srsDir := cfg.PathForSRS()
@@ -89,9 +96,14 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 		return nil, fmt.Errorf("kzgsrs directory (%s) does not exist: %w", srsDir, err)
 	}
 
-	// duplicate L2 hardcoded values for PI
+	// Note: ChainID and BaseFee are typed as uint, which is at most 64 bits.
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
+	cfg.PublicInputInterconnection.BaseFee = uint64(cfg.Layer2.BaseFee)
+	cfg.PublicInputInterconnection.CoinBase = cfg.Layer2.CoinBase
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
+
+	// Pass IsAllowedCircuitID from aggregation config to PI circuit
+	cfg.PublicInputInterconnection.IsAllowedCircuitID = cfg.Aggregation.IsAllowedCircuitID
 
 	return &cfg, nil
 }
@@ -133,6 +145,7 @@ type Config struct {
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
 		ChainID uint `mapstructure:"chain_id" validate:"required"`
+		BaseFee uint `mapstructure:"base_fee" validate:"required"`
 
 		// MsgSvcContractStr stores the unique ID of the Service Contract (SC), that is, it's
 		// address, as a string. The Service Contract (SC) is a smart contract that the L2
@@ -142,6 +155,10 @@ type Config struct {
 
 		// MsgSvcContract stores the unique ID of the Service Contract (SC), as a common.Address.
 		MsgSvcContract common.Address `mapstructure:"-"`
+
+		// CoinBaseStr stores the coinbase address of Linea as a string.
+		CoinBaseStr string         `mapstructure:"coin_base" validate:"required,eth_addr"`
+		CoinBase    common.Address `mapstructure:"-"`
 	}
 
 	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
@@ -275,9 +292,11 @@ type Aggregation struct {
 	// Number of proofs that are supported by the aggregation circuit.
 	NumProofs []int `mapstructure:"num_proofs" validate:"required,dive,gt=0,number"`
 
-	// AllowedInputs determines the "inner" plonk circuits the "outer" aggregation circuit can aggregate.
-	// Order matters.
-	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large execution-limitless data-availability-dummy data-availability-v2 emulation-dummy aggregation emulation public-input-interconnection"`
+	// IsAllowedCircuitID is a bitmask encoding which circuit IDs are allowed.
+	// Bit i (LSb to MSb) indicates whether circuit ID i is allowed.
+	// This should be computed based on the environment (testnet vs mainnet).
+	// Use circuits.GlobalCircuitIDMapping to set the appropriate bits.
+	IsAllowedCircuitID uint64 `mapstructure:"is_allowed_circuit_id" validate:"required"`
 
 	// note @gbotrel keeping that around in case we need to support two emulation contract
 	// during a migration.
@@ -313,9 +332,12 @@ type PublicInput struct {
 
 	// not serialized
 
-	MockKeccakWizard bool           // for testing purposes only
-	ChainID          uint64         // duplicate from Config
-	L2MsgServiceAddr common.Address // duplicate from Config
+	MockKeccakWizard   bool           // for testing purposes only
+	ChainID            uint64         // duplicate from Config.Layer2
+	BaseFee            uint64         // duplicate from Config.Layer2
+	CoinBase           common.Address // duplicate from Config.Layer2
+	L2MsgServiceAddr   common.Address // duplicate from Config.Layer2
+	IsAllowedCircuitID uint64         // duplicate from Config.Aggregation, bitmask of allowed circuit IDs
 }
 
 type Debug struct {

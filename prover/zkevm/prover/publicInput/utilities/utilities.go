@@ -14,8 +14,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 )
 
-// CreateColBase is a utility function to quickly register columns
-func CreateColBase(name, subName string, size int, comp *wizard.CompiledIOP) ifaces.Column {
+// CreateCol is a utility function to quickly register columns
+func CreateCol(name, subName string, size int, comp *wizard.CompiledIOP) ifaces.Column {
 	return comp.InsertCommit(
 		0,
 		ifaces.ColIDf("%s_%s", name, subName),
@@ -32,13 +32,25 @@ func Ternary(cond, if1, if0 any) *sym.Expression {
 	)
 }
 
-// GetTimestampField returns a field element that contains the hardcoded INST value for a timestamp
+// GetTimestampField returns a field element that contains the hardcoded INST
+// value for a timestamp
 func GetTimestampField() field.Element {
-	var timestampField field.Element
-	stampCode := byte(vm.TIMESTAMP)
-	hardcoded := [...]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, stampCode}
-	timestampField.SetBytes(hardcoded[:])
-	return timestampField
+	timestampCode := uint64(vm.TIMESTAMP)
+	return field.NewElement(timestampCode)
+}
+
+// GetCoinBaseField returns a field element containing the EVM opcode value for
+// the instruction COINBASE
+func GetCoinBaseField() field.Element {
+	coinBaseCode := uint64(vm.COINBASE)
+	return field.NewElement(coinBaseCode)
+}
+
+// GetBaseFeeField returns a field element containing the EVM opcode value for
+// the instruction BASEFEE
+func GetBaseFeeField() field.Element {
+	baseFeeCode := uint64(vm.BASEFEE)
+	return field.NewElement(baseFeeCode)
 }
 
 // InitializeCsv is used to initialize a CsvTrace based on a path

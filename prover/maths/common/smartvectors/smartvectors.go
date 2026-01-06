@@ -147,7 +147,20 @@ func IntoRegVec(s SmartVector) []field.Element {
 		s.WriteInSlice(res)
 		return res
 	} else {
-		panic(errConversion)
+
+		resExt := make([]fext.Element, s.Len())
+		res := make([]field.Element, 0, s.Len())
+		s.WriteInSliceExt(resExt)
+
+		// Iterate through the extended elements and filter non-zero entries
+		for _, extElem := range resExt {
+			if fext.IsBase(&extElem) {
+				res = append(res, extElem.B0.A0)
+			} else {
+				panic(errConversion)
+			}
+		}
+		return res
 	}
 }
 
@@ -424,11 +437,14 @@ func TryReduceSizeRight(v SmartVector) (new SmartVector, totalSaving int) {
 
 // TryReduceSizeLeft detects if the input smart-vector can be reduced to a
 // left-padded smart-vector. It will only apply over the following types:
-// [Regular].
+// [Regular]. Extension field types are supported but not optimized.
 func TryReduceSizeLeft(v SmartVector) (new SmartVector, totalSaving int) {
 
 	switch w := v.(type) {
 	case *Constant, *Rotated, *PaddedCircularWindow:
+		return v, 0
+	// Extension field types - no reduction optimization implemented yet
+	case *ConstantExt, *RotatedExt, *PaddedCircularWindowExt, *RegularExt:
 		return v, 0
 	case *Regular:
 

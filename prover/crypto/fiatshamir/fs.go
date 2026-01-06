@@ -27,7 +27,7 @@ func NewGnarkFSKoalabear(api frontend.API) GnarkFS {
 	return fiatshamir_koalabear.NewGnarkFSWV(api)
 }
 
-func NewGnarkFSKoalaBLS12377(api frontend.API) GnarkFS {
+func NewGnarkFSBLS12377(api frontend.API) GnarkFS {
 	return fiatshamir_bls12377.NewGnarkFS(api)
 }
 
@@ -39,6 +39,7 @@ type FS interface {
 	UpdateSV(sv smartvectors.SmartVector)
 	RandomField() field.Octuplet
 	RandomFext() fext.Element
+	RandomFieldFromSeed(seed field.Octuplet, name string) fext.Element
 	RandomManyIntegers(num, upperBound int) []int
 	SetState(s field.Octuplet)
 	State() field.Octuplet

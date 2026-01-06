@@ -29,6 +29,8 @@ func CraftProverOutput(
 		rsp             = Response{
 			BlocksData:           make([]BlockData, len(blocks)),
 			ChainID:              cfg.Layer2.ChainID,
+			BaseFee:              cfg.Layer2.BaseFee,
+			CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
 			L2BridgeAddress:      types.EthAddress(cfg.Layer2.MsgSvcContract),
 			MaxNbL2MessageHashes: cfg.TracesLimits.BlockL2L1Logs,
 		}
@@ -184,6 +186,8 @@ func (rsp *Response) FuncInput() *public_input.Execution {
 		fi         = &public_input.Execution{
 			L2MessageServiceAddr:  rsp.L2BridgeAddress,
 			ChainID:               uint64(rsp.ChainID),
+			BaseFee:               uint64(rsp.BaseFee),
+			CoinBase:              types.EthAddress(rsp.CoinBase),
 			FinalBlockTimestamp:   lastBlock.TimeStamp,
 			FinalBlockNumber:      uint64(rsp.FirstBlockNumber + len(rsp.BlocksData) - 1),
 			InitialBlockTimestamp: firstBlock.TimeStamp,
@@ -220,6 +224,8 @@ func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 			TxHashes:        txHashes,
 			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
 			ChainID:         cfg.Layer2.ChainID,
+			BaseFee:         cfg.Layer2.BaseFee,
+			CoinBase:        types.EthAddress(cfg.Layer2.CoinBase),
 			BlockHashList:   getBlockHashList(rsp),
 		},
 		FuncInp: rsp.FuncInput(),

@@ -20,13 +20,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLookup(t *testing.T) {
 
-	logrus.SetLevel(logrus.FatalLevel)
+	// logrus.SetLevel(logrus.FatalLevel)
 
 	define1 := func(bui *wizard.Builder) {
 
@@ -106,7 +105,7 @@ func TestLookup(t *testing.T) {
 
 			comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
 
-			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, true)
+			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, false)
 			witness1 := ExtractWitness(proverRuntime)
 
 			prove2 := func(run *wizard.ProverRuntime) {

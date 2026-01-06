@@ -1,9 +1,8 @@
 package arith_struct
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -19,7 +18,7 @@ type BlockDataCols struct {
 	Ct ifaces.Column
 	// DataHi/DataLo encode the data, for example the timestamps.
 	// It's divided into 16 16-bit limb columns. 256 bits in total.
-	Data [common.NbLimbU256]ifaces.Column
+	Data limbs.Uint256Be
 	// FirstBlock contains the absolute ID of the first block
 	// It's divided into 3 16-bit limb columns. 48 bits in total.
 	FirstBlock [common.NbLimbU48]ifaces.Column
@@ -70,17 +69,11 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 
 	if ctBlockData != nil {
 		blockDataCols = &BlockDataCols{
-			RelBlock: ctBlockData.GetCommit(b, "REL_BLOCK"),
-			Inst:     ctBlockData.GetCommit(b, "INST"),
-			Ct:       ctBlockData.GetCommit(b, "CT"),
-		}
-
-		for i := range blockDataCols.FirstBlock {
-			blockDataCols.FirstBlock[i] = ctBlockData.GetCommit(b, fmt.Sprintf("FIRST_BLOCK_NUMBER_%d", i))
-		}
-
-		for i := range blockDataCols.Data {
-			blockDataCols.Data[i] = ctBlockData.GetCommit(b, fmt.Sprintf("DATA_%d", i))
+			RelBlock:   ctBlockData.GetCommit(b, "REL_BLOCK"),
+			Inst:       ctBlockData.GetCommit(b, "INST"),
+			Ct:         ctBlockData.GetCommit(b, "CT"),
+			Data:       ctBlockData.GetLimbsBe(b, "DATA", 16).AssertUint256(),
+			FirstBlock: ctBlockData.GetLimbsLe(b, "FIRST_BLOCK_NUMBER", common.NbLimbU48).LimbsArr3(),
 		}
 	}
 	if ctTxnData != nil {
@@ -96,11 +89,12 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 			Selector:        ctTxnData.GetCommit(b, "TD.SELECTOR"),
 			SYSI:            ctTxnData.GetCommit(b, "TD.SYSI"),
 			SYSF:            ctTxnData.GetCommit(b, "TD.SYSF"),
+			From: limbs.FuseLimbs(
+				ctTxnData.GetLimbsBe(b, "TD.FROM_HI", common.NbLimbU32),
+				ctTxnData.GetLimbsBe(b, "TD.FROM_LO", common.NbLimbU128),
+			).LimbsArr10(),
 		}
 
-		for i := range txnDataCols.From {
-			txnDataCols.From[i] = ctTxnData.GetCommit(b, fmt.Sprintf("TD.FROM_%d", i))
-		}
 	}
 	if ctRlpTxn != nil {
 		rlpTxn = &RlpTxn{
@@ -109,10 +103,7 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 			ToHashByProver: ctRlpTxn.GetCommit(b, "RL.TO_HASH_BY_PROVER"),
 			NBytes:         ctRlpTxn.GetCommit(b, "RL.NBYTES"),
 			TxnPerspective: ctRlpTxn.GetCommit(b, "RL.TXN"),
-		}
-
-		for i := range rlpTxn.Limbs {
-			rlpTxn.Limbs[i] = ctRlpTxn.GetCommit(b, fmt.Sprintf("RL.LIMB_%d", i))
+			Limbs:          ctRlpTxn.GetLimbsBe(b, "RL.LIMB", common.NbLimbU128).LimbsArr8(),
 		}
 	}
 
@@ -121,56 +112,49 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 
 // AssignTestingArithModules assigns the BlockDataCols, TxnData and RlpTxn modules based on csv traces.
 // if a module is missing,the corresponding assignment is skipped
-func AssignTestingArithModules(run *wizard.ProverRuntime, ctBlockData, ctTxnData, ctRlpTxn *csvtraces.CsvTrace) {
+func AssignTestingArithModules(
+	run *wizard.ProverRuntime,
+	ctBlockData, ctTxnData, ctRlpTxn *csvtraces.CsvTrace,
+	blockData *BlockDataCols, txnData *TxnData, rlpTxn *RlpTxn,
+) {
 	// assign the CSV data for the mock BlockData, TxnData and RlpTxn arithmetization modules
 	if ctBlockData != nil {
-		toAssign := []string{"REL_BLOCK", "INST", "CT"}
 
-		for i := range common.NbLimbU256 {
-			toAssign = append(toAssign, fmt.Sprintf("DATA_%d", i))
-		}
-
-		for i := range common.NbLimbU48 {
-			toAssign = append(toAssign, fmt.Sprintf("FIRST_BLOCK_NUMBER_%d", i))
-		}
-
-		ctBlockData.Assign(run, toAssign...)
+		ctBlockData.AssignCols(run,
+			blockData.RelBlock,
+			blockData.Inst,
+			blockData.Ct,
+		).Assign(run, blockData.Data).
+			AssignLimbsBE(run, "FIRST_BLOCK_NUMBER", blockData.FirstBlock[:])
 	}
+
 	if ctTxnData != nil {
-		toAssign := []string{
-			"TD.ABS_TX_NUM",
-			"TD.ABS_TX_NUM_MAX",
-			"TD.REL_TX_NUM",
-			"TD.REL_TX_NUM_MAX",
-			"TD.CT",
-			"TD.IS_LAST_TX_OF_BLOCK",
-			"TD.REL_BLOCK",
-			"TD.USER",
-			"TD.SELECTOR",
-			"TD.SYSI",
-			"TD.SYSF",
-		}
 
-		for i := range common.NbLimbEthAddress {
-			toAssign = append(toAssign, fmt.Sprintf("TD.FROM_%d", i))
-		}
-
-		ctTxnData.Assign(run, toAssign...)
+		ctTxnData.AssignCols(run,
+			txnData.AbsTxNum,
+			txnData.AbsTxNumMax,
+			txnData.RelTxNum,
+			txnData.RelTxNumMax,
+			txnData.Ct,
+			txnData.IsLastTxOfBlock,
+			txnData.RelBlock,
+			txnData.USER,
+			txnData.Selector,
+			txnData.SYSI,
+			txnData.SYSF,
+		).AssignLimbsBE(run, "TD.FROM_HI", txnData.From[:2]).
+			AssignLimbsBE(run, "TD.FROM_LO", txnData.From[2:])
 	}
+
 	if ctRlpTxn != nil {
-		toAssign := []string{
-			"RT.ABS_TX_NUM",
-			"RT.ABS_TX_NUM_MAX",
-			"RL.TO_HASH_BY_PROVER",
-			"RL.NBYTES",
-			"RL.TXN",
-		}
 
-		for i := range common.NbLimbU128 {
-			toAssign = append(toAssign, fmt.Sprintf("RL.LIMB_%d", i))
-		}
-
-		ctRlpTxn.Assign(run, toAssign...)
+		ctRlpTxn.AssignCols(run,
+			rlpTxn.AbsTxNum,
+			rlpTxn.AbsTxNumMax,
+			rlpTxn.ToHashByProver,
+			rlpTxn.NBytes,
+			rlpTxn.TxnPerspective,
+		).AssignLimbsBE(run, "RL.LIMB", rlpTxn.Limbs[:])
 	}
 
 }

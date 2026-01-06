@@ -13,7 +13,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf/iokeccakf"
 )
 
 type module struct {
@@ -28,18 +29,19 @@ func NewCustomizedKeccak(comp *wizard.CompiledIOP, maxNbKeccakF int) *module {
 		size = utils.NextPowerOfTwo(generic.KeccakUsecase.NbOfLanesPerBlock() * maxNbKeccakF)
 
 		inp = keccak.KeccakOverBlockInputs{
-			LaneInfo: keccak.LaneInfo{
-				Lanes:                comp.InsertProof(0, "Lane", size),
-				IsFirstLaneOfNewHash: comp.InsertProof(0, "IsFirstLaneOfNewHash", size),
-				IsLaneActive:         comp.InsertProof(0, "IsLaneActive", size),
+			LaneInfo: iokeccakf.LaneInfo{
+				Lane:                 comp.InsertProof(0, "Lane", size, true),
+				IsBeginningOfNewHash: comp.InsertProof(0, "IsFirstLaneOfNewHash", size, true),
+				IsLaneActive:         comp.InsertProof(0, "IsLaneActive", size, true),
 			},
-			MaxNumKeccakF: maxNbKeccakF,
+			KeccakfSize: maxNbKeccakF,
 		}
 		m = keccak.NewKeccakOverBlocks(comp, inp)
 	)
 
-	comp.Columns.SetStatus(m.HashHi.GetColID(), column.Proof)
-	comp.Columns.SetStatus(m.HashLo.GetColID(), column.Proof)
+	for i := range m.Outputs.Hash {
+		comp.Columns.SetStatus(m.Outputs.Hash[i].GetColID(), column.Proof)
+	}
 
 	return &module{
 		keccak: *m,

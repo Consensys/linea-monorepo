@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 const maxNbBatches = 100

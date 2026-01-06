@@ -1,10 +1,12 @@
 package generic
 
 import (
+	"bytes"
+	"io"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -14,52 +16,31 @@ import (
 type testCase struct {
 	name        string
 	streams     [][]byte
-	nbLimbsCols int
 	bytesPerRow int
 }
 
 func TestScanByteStream(t *testing.T) {
 	testCases := []testCase{
-		/*{
-			name: "Single limbs column (16 bytes per column)",
+		{
+			name: "2 bytes per row",
 			streams: [][]byte{
-				mustDecodeHex("0x067845465329789679797Ffed67658"),
-				mustDecodeHex("0xab477997edff98089860"),
+				mustDecodeHex("0x00112233445566778899aabbccddeeff"),
 			},
-			nbLimbsCols: 1,
 			bytesPerRow: 2,
 		},
 		{
-			name: "2 limb columns (8 bytes per column)",
+			name: "1 limb columns per row",
 			streams: [][]byte{
 				mustDecodeHex("0x00112233445566778899aabbccddeeff"),
 			},
-			nbLimbsCols: 2,
-			bytesPerRow: TotalLimbSize,
+			bytesPerRow: 1,
 		},
 		{
-			name: "4 limb columns (4 bytes per column)",
+			name: "arbitrary length, 5 bytes per row",
 			streams: [][]byte{
-				mustDecodeHex("0x00112233445566778899aabbccddeeff"),
+				mustDecodeHex("0xaaafffffff789797979fff12332345680xaaafffffff789797979fff"),
 			},
-			nbLimbsCols: 4,
-			bytesPerRow: TotalLimbSize,
-		},*/
-		{
-			name: "8 limb columns (2 bytes per column)",
-			streams: [][]byte{
-				mustDecodeHex("0x00112233445566778899aabbccddeeff"),
-			},
-			nbLimbsCols: 8,
-			bytesPerRow: TotalLimbSize,
-		},
-		{
-			name: "16 limb columns (1 byte per column)",
-			streams: [][]byte{
-				mustDecodeHex("0x00112233445566778899aabbccddeeff"),
-			},
-			nbLimbsCols: 16,
-			bytesPerRow: TotalLimbSize,
+			bytesPerRow: 4,
 		},
 	}
 
@@ -69,6 +50,11 @@ func TestScanByteStream(t *testing.T) {
 }
 
 func (tc *testCase) testScanByteStream(t *testing.T) {
+
+	if tc.bytesPerRow == 0 {
+		utils.Panic("bytesPerRow must be > 0")
+	}
+
 	var (
 		gdm              GenDataModule
 		recoveredStreams [][]byte
@@ -77,14 +63,10 @@ func (tc *testCase) testScanByteStream(t *testing.T) {
 	comp := wizard.Compile(func(build *wizard.Builder) {
 		gdm = GenDataModule{
 			HashNum: build.RegisterCommit("A", 32),
-			Limbs:   make([]ifaces.Column, tc.nbLimbsCols),
+			Limbs:   limbs.NewUint128Be(build.CompiledIOP, "B", 32),
 			ToHash:  build.RegisterCommit("C", 32),
 			NBytes:  build.RegisterCommit("D", 32),
 			Index:   build.RegisterCommit("E", 32),
-		}
-
-		for i := 0; i < tc.nbLimbsCols; i++ {
-			gdm.Limbs[i] = build.RegisterCommit(ifaces.ColIDf("B_%d", i), 32)
 		}
 	})
 
@@ -104,57 +86,51 @@ func (tc *testCase) testScanByteStream(t *testing.T) {
 }
 
 func (tc *testCase) assignGdbFromStream(run *wizard.ProverRuntime, gdm *GenDataModule) {
-	nbCols := len(gdm.Limbs)
 
-	hashNum := common.NewVectorBuilder(gdm.HashNum)
-	nbBytes := common.NewVectorBuilder(gdm.NBytes)
-	toHash := common.NewVectorBuilder(gdm.ToHash)
-	index := common.NewVectorBuilder(gdm.Index)
-
-	limbs := make([]*common.VectorBuilder, nbCols)
-	for j := 0; j < nbCols; j++ {
-		limbs[j] = common.NewVectorBuilder(gdm.Limbs[j])
-	}
-
-	maxBytesPerLimb := (TotalLimbSize + nbCols - 1) / nbCols
-	nbUnusedBytes := field.Bytes - maxBytesPerLimb
+	var (
+		hashNum = common.NewVectorBuilder(gdm.HashNum)
+		nbBytes = common.NewVectorBuilder(gdm.NBytes)
+		toHash  = common.NewVectorBuilder(gdm.ToHash)
+		index   = common.NewVectorBuilder(gdm.Index)
+		limbs   = limbs.NewVectorBuilder(gdm.Limbs.AsDynSize())
+	)
 
 	// Iterate over the streams in test case
 	for hashID, currStream := range tc.streams {
-		ctr := 0
 
-		// Split the stream into rows
-		for i := 0; i < len(currStream); {
-			currRowBytes := utils.Min(len(currStream)-i, tc.bytesPerRow)
+		var (
+			ctr        = 0
+			dataReader = bytes.NewReader(currStream)
+		)
 
-			// Split the current row into columns
-			for col := 0; col < nbCols; col++ {
-				var currLimb [field.Bytes]byte
+	currStreamLoop:
+		for {
 
-				bytesCurrLimb := maxBytesPerLimb
-				if (col+1)*maxBytesPerLimb > currRowBytes {
-					bytesCurrLimb = currRowBytes % maxBytesPerLimb
-				}
+			buf := make([]byte, tc.bytesPerRow)
+			n, err := dataReader.Read(buf)
 
-				if bytesCurrLimb > 0 && i < len(currStream) {
-					copy(currLimb[nbUnusedBytes:], currStream[i:i+bytesCurrLimb])
-					i += bytesCurrLimb
-				}
+			switch {
+			case err == nil && n > 0:
+				buf := append(buf, make([]byte, 16-len(buf))...)
+				limbs.PushBytes(buf)
+				hashNum.PushInt(hashID + 1)
+				index.PushInt(ctr)
+				nbBytes.PushInt(n)
+				toHash.PushOne()
 
-				limbs[col].PushBytes(currLimb[:])
+			case err == io.EOF || n == 0:
+				// This goes to the next stream
+				break currStreamLoop
+
+			default:
+				utils.Panic("unexpected error: %v", err)
 			}
 
-			hashNum.PushInt(hashID + 1)
-			index.PushInt(ctr)
-			nbBytes.PushInt(currRowBytes)
-			toHash.PushOne()
 			ctr++
 		}
 	}
 
-	for _, limb := range limbs {
-		limb.PadAndAssign(run, field.Zero())
-	}
+	limbs.PadAndAssignZero(run)
 	hashNum.PadAndAssign(run, field.Zero())
 	nbBytes.PadAndAssign(run, field.Zero())
 	toHash.PadAndAssign(run, field.Zero())

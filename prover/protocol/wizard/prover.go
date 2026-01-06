@@ -198,6 +198,17 @@ func Prove(c *CompiledIOP, highLevelprover MainProverStep, IsBLS ...bool) Proof 
 	return run.ExtractProof()
 }
 
+// Resume resumes a [ProverRuntime] from a checkpoint till the end (the last
+// round) and returns a pointer to self.
+func (runtime *ProverRuntime) Resume() *ProverRuntime {
+	round := runtime.Spec.NumRounds()
+	for runtime.currRound+1 < round {
+		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
+		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
+	}
+	return runtime
+}
+
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
 func RunProver(c *CompiledIOP, highLevelprover MainProverStep, IsBLS bool) *ProverRuntime {
@@ -471,7 +482,7 @@ func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 // The type must also be of type [coin.FieldExt].
 func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	mycoin := run.Spec.Coins.Data(name)
-	if mycoin.Type != coin.FieldExt {
+	if mycoin.Type != coin.FieldExt && mycoin.Type != coin.FieldFromSeed {
 		utils.Panic("coin %v is not a field extension randomness", name)
 	}
 	return run.getRandomCoinGeneric(name, mycoin.Type).(fext.Element)
@@ -1071,15 +1082,27 @@ func (run *ProverRuntime) Fs() *fiatshamir.FS {
 }
 
 // GetPublicInputs return the value of a public-input from its name
-func (run *ProverRuntime) GetPublicInput(name string) field.Element {
+func (run *ProverRuntime) GetPublicInput(name string) (res fext.GenericFieldElem) {
 	allPubs := run.Spec.PublicInputs
 	for i := range allPubs {
 		if allPubs[i].Name == name {
-			return allPubs[i].Acc.GetVal(run)
+			if allPubs[i].Acc.IsBase() {
+				field, err := allPubs[i].Acc.GetValBase(run)
+				if err != nil {
+					utils.Panic("error getting public input %v: %v", name, err)
+				}
+				res.Base = field
+				res.IsBase = true
+			} else {
+				res.Ext = allPubs[i].Acc.GetValExt(run)
+				res.IsBase = false
+			}
+			return res
 		}
 	}
 	utils.Panic("could not find public input nb %v", name)
-	return field.Element{}
+	return fext.GenericFieldElem{}
+
 }
 
 // GetQuery returns a query from its name

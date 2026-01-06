@@ -87,7 +87,7 @@ type padderAssignmentBuilder interface {
 // group of generic byte module following a prespecified padding strategy.
 func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int) *Importation {
 
-	nbLimbs := len(inp.Src.Data.Limbs)
+	nbLimbs := inp.Src.Data.Limbs.NumLimbs()
 	if !utils.IsPowerOfTwo(nbLimbs) {
 		utils.Panic("number of limbs %d is not a power of two", nbLimbs)
 	}
@@ -119,8 +119,6 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		res.Padder = res.newKeccakPadder(comp)
 	case inp.PaddingStrategy == generic.Sha2Usecase:
 		res.Padder = res.newSha2Padder(comp)
-	case inp.PaddingStrategy == generic.MiMCUsecase:
-		res.Padder = res.newMimcPadder(comp)
 	default:
 		panic("unknown strategy")
 	}
@@ -151,23 +149,21 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		),
 	)
 
-	if inp.PaddingStrategy != generic.MiMCUsecase {
-		// before IsActive transits to 0, there should be a padding zone.
-		// IsActive[i] * (1-IsActive[i+1]) * (1-IsPadded[i]) =0
-		comp.InsertGlobal(0, ifaces.QueryIDf("%v_LAST_HASH_HAS_PADDING", inp.Name),
-			sym.Mul(res.IsActive,
-				sym.Sub(1, column.Shift(res.IsActive, 1)),
-				sym.Sub(1, res.IsPadded),
-			),
-		)
+	// before IsActive transits to 0, there should be a padding zone.
+	// IsActive[i] * (1-IsActive[i+1]) * (1-IsPadded[i]) =0
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_LAST_HASH_HAS_PADDING", inp.Name),
+		sym.Mul(res.IsActive,
+			sym.Sub(1, column.Shift(res.IsActive, 1)),
+			sym.Sub(1, res.IsPadded),
+		),
+	)
 
-		//  IsPadded is correctly set before each newHash.
-		// IsInserted[i] * IsPadded[i-1] == IsNewHash
-		comp.InsertGlobal(0,
-			ifaces.QueryIDf("%v_IS_PADDED_WELL_SET", inp.Name),
-			sym.Sub(res.IsNewHash, sym.Mul(res.IsInserted, column.Shift(res.IsPadded, -1))),
-		)
-	}
+	//  IsPadded is correctly set before each newHash.
+	// IsInserted[i] * IsPadded[i-1] == IsNewHash
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%v_IS_PADDED_WELL_SET", inp.Name),
+		sym.Sub(res.IsNewHash, sym.Mul(res.IsInserted, column.Shift(res.IsPadded, -1))),
+	)
 
 	// to handle the above constraint for the case where isActive[i] = 1  for all i .
 	// IsPadded[last-row]= isActive[last-row]
@@ -196,7 +192,7 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 	comp.InsertProjection(
 		ifaces.QueryIDf("%v_IMPORT_PAD_PROJECTION", inp.Name),
 		query.ProjectionInput{
-			ColumnA: append(inp.Src.Data.Limbs, inp.Src.Data.HashNum, inp.Src.Data.NBytes, inp.Src.Data.Index),
+			ColumnA: append(inp.Src.Data.Limbs.ToBigEndianLimbs().Limbs(), inp.Src.Data.HashNum, inp.Src.Data.NBytes, inp.Src.Data.Index),
 			ColumnB: append(res.Limbs, res.HashNum, res.NBytes, res.Index),
 			FilterA: inp.Src.Data.ToHash,
 			FilterB: res.IsInserted,
@@ -213,7 +209,7 @@ func (imp *Importation) Run(run *wizard.ProverRuntime) {
 		sha2Count = 0
 		srcData   = imp.Inputs.Src.Data
 		hashNum   = srcData.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
-		limbs     = make([][]field.Element, len(srcData.Limbs))
+		limbs     = make([][]field.Element, srcData.Limbs.NumLimbs())
 		nBytes    = srcData.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
 		index     = srcData.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
 		toHash    = srcData.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -236,7 +232,7 @@ func (imp *Importation) Run(run *wizard.ProverRuntime) {
 	)
 
 	for i := range limbs {
-		limbs[i] = srcData.Limbs[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		limbs[i] = srcData.Limbs.Limbs()[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 		iab.Limbs[i] = common.NewVectorBuilder(imp.Limbs[i])
 	}
 

@@ -168,29 +168,49 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 	)
 
 	switch m := col.(type) {
+
 	// case: verifier columns without shift
 	case verifiercol.VerifierCol:
 		scaling := ctx.MaxSize / col.Size()
-		// expand the veriferCol
-		stitchingCol = verifiercol.ExpandedVerifCol{
-			Verifiercol: m,
-			Expansion:   scaling,
+		stitchingCol = verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
+			Col:       m,
+			Expansion: scaling,
 		}
 		if len(option) != 0 {
 			// if it is a shifted veriferCol, set the offset for shifting the expanded column
-			newOffset = option[0] * col.Size()
+			newOffset = option[0] * scaling
 		}
 		return column.Shift(stitchingCol, newOffset)
+
 	case column.Natural:
 		// find the stitching column
-		subColInfo := ctx.Stitchings[round].BySubCol[col.GetColID()]
-		stitchingCol = ctx.Comp.Columns.GetHandle(subColInfo.NameBigCol)
-		scaling := stitchingCol.Size() / col.Size()
-		if len(option) != 0 {
-			newOffset = scaling * option[0]
+		switch m.Status() {
+		case column.Proof, column.VerifyingKey:
+			scaling := ctx.MaxSize / m.Size()
+			stitchingCol = verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
+				Col:       col,
+				Expansion: scaling,
+			}
+			if len(option) != 0 {
+				// if it is a shifted veriferCol, set the offset for shifting the expanded column
+				newOffset = option[0] * scaling
+			}
+			return column.Shift(stitchingCol, newOffset)
+
+		// reminder: subcols are ignored after stitching
+		case column.Committed, column.Precomputed, column.Ignored:
+			subColInfo := ctx.Stitchings[round].BySubCol[col.GetColID()]
+			stitchingCol = ctx.Comp.Columns.GetHandle(subColInfo.NameBigCol)
+			scaling := stitchingCol.Size() / col.Size()
+			if len(option) != 0 {
+				newOffset = option[0] * scaling
+			}
+			newOffset = newOffset + subColInfo.PosInBigCol
+			return column.Shift(stitchingCol, newOffset)
+
+		default:
+			utils.Panic("unsupported column status %v", m.Status())
 		}
-		newOffset = newOffset + subColInfo.PosInBigCol
-		return column.Shift(stitchingCol, newOffset)
 
 	case column.Shifted:
 		// Shift the stitching column by the right position
@@ -200,10 +220,10 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 		return res
 
 	default:
-
 		panic("unsupported")
-
 	}
+
+	return nil
 }
 
 func queryNameStitcher(oldQ ifaces.QueryID) ifaces.QueryID {

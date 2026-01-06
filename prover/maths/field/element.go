@@ -14,7 +14,7 @@ import (
 
 type Element = koalabear.Element
 type Vector = koalabear.Vector
-type Octuplet [8]Element
+type Octuplet = [8]Element
 
 const (
 	// RmaxOrderRoot
@@ -145,6 +145,18 @@ func ParseOctuplet(data [32]byte) [8]Element {
 	for i := range res {
 		if err := res[i].SetBytesCanonical(data[i*4 : i*4+4]); err != nil {
 			utils.Panic("could not parse octuplet: %v, data: %v", err, data)
+		}
+	}
+	return res
+}
+
+// NewOctupletFromStrings constructs an octuplet from 8 string representations.
+// Each string is parsed according to [Element.SetString] rules.
+func NewOctupletFromStrings(s [8]string) (res Octuplet) {
+	for i := range res {
+		_, err := res[i].SetString(s[i])
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse element %d: %v", i, err))
 		}
 	}
 	return res

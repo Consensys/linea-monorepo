@@ -34,9 +34,11 @@ type FunctionalInputExtractor struct {
 	FirstRollingHashUpdate, LastRollingHashUpdate             [common.NbLimbU256]query.LocalOpening
 	FirstRollingHashUpdateNumber, LastRollingHashUpdateNumber [common.NbLimbU128]query.LocalOpening
 
-	ChainID              [common.NbLimbU128]query.LocalOpening
+	ChainID              [common.NbLimbU256]query.LocalOpening
 	NBytesChainID        query.LocalOpening
 	L2MessageServiceAddr [common.NbLimbEthAddress]query.LocalOpening
+	CoinBase             [common.NbLimbU256]query.LocalOpening
+	BaseFee              [common.NbLimbU256]query.LocalOpening
 }
 
 // Run assigns all the local opening queries
@@ -46,32 +48,29 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 		run.AssignLocalPoint(q.ID, q.Pol.GetColAssignmentAt(run, 0))
 	}
 
+	assignLOs := func(qs []query.LocalOpening) {
+		for _, q := range qs {
+			assignLO(q)
+		}
+	}
+
 	assignLO(fie.DataNbBytes)
 	assignLO(fie.NBytesChainID)
-
-	for i := range common.NbLimbU256 {
-		assignLO(fie.L2MessageHash[i])
-		assignLO(fie.DataChecksum[i])
-		assignLO(fie.FirstRollingHashUpdate[i])
-		assignLO(fie.LastRollingHashUpdate[i])
-		assignLO(fie.InitialStateRootHash[i])
-		assignLO(fie.FinalStateRootHash[i])
-	}
-
-	for i := range common.NbLimbEthAddress {
-		assignLO(fie.L2MessageServiceAddr[i])
-	}
-
-	for i := range common.NbLimbU48 {
-		assignLO(fie.InitialBlockNumber[i])
-		assignLO(fie.FinalBlockNumber[i])
-	}
-
-	for i := range common.NbLimbU128 {
-		assignLO(fie.ChainID[i])
-		assignLO(fie.InitialBlockTimestamp[i])
-		assignLO(fie.FinalBlockTimestamp[i])
-		assignLO(fie.FirstRollingHashUpdateNumber[i])
-		assignLO(fie.LastRollingHashUpdateNumber[i])
-	}
+	assignLOs(fie.L2MessageServiceAddr[:])
+	assignLOs(fie.CoinBase[:])
+	assignLOs(fie.BaseFee[:])
+	assignLOs(fie.ChainID[:])
+	assignLOs(fie.L2MessageHash[:])
+	assignLOs(fie.DataChecksum[:])
+	assignLOs(fie.FirstRollingHashUpdate[:])
+	assignLOs(fie.LastRollingHashUpdate[:])
+	assignLOs(fie.InitialStateRootHash[:])
+	assignLOs(fie.FinalStateRootHash[:])
+	assignLOs(fie.L2MessageServiceAddr[:])
+	assignLOs(fie.InitialBlockNumber[:])
+	assignLOs(fie.FinalBlockNumber[:])
+	assignLOs(fie.InitialBlockTimestamp[:])
+	assignLOs(fie.FinalBlockTimestamp[:])
+	assignLOs(fie.FirstRollingHashUpdateNumber[:])
+	assignLOs(fie.LastRollingHashUpdateNumber[:])
 }

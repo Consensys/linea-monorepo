@@ -3,13 +3,11 @@ package ecarith
 import (
 	"testing"
 
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 func TestEcAddIntegration(t *testing.T) {
@@ -27,10 +25,7 @@ func TestEcAddIntegration(t *testing.T) {
 				Index:   ct.GetCommit(b, "INDEX"),
 				IsData:  ct.GetCommit(b, "IS_DATA"),
 				IsRes:   ct.GetCommit(b, "IS_RES"),
-			}
-
-			for i := 0; i < common.NbLimbU128; i++ {
-				ecAddSource.Limbs[i] = ct.GetCommit(b, fmt.Sprintf("LIMB_%d", i))
+				Limbs:   ct.GetLimbsLe(b, "LIMB", limbs.NbLimbU128).AssertUint128(),
 			}
 
 			ecAdd = newEcAdd(b.CompiledIOP, limits, ecAddSource, []query.PlonkOption{query.PlonkRangeCheckOption(16, 1, true)})
@@ -40,7 +35,13 @@ func TestEcAddIntegration(t *testing.T) {
 
 	proof := wizard.Prove(cmp,
 		func(run *wizard.ProverRuntime) {
-			ct.Assign(run, "CS_ADD", "LIMB_0", "LIMB_1", "LIMB_2", "LIMB_3", "LIMB_4", "LIMB_5", "LIMB_6", "LIMB_7", "INDEX", "IS_DATA", "IS_RES")
+			ct.Assign(run,
+				ecAddSource.CsEcAdd,
+				ecAddSource.Limbs,
+				ecAddSource.Index,
+				ecAddSource.IsData,
+				ecAddSource.IsRes,
+			)
 			ecAdd.Assign(run)
 		})
 

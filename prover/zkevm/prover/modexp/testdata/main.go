@@ -1,130 +1,173 @@
 package main
 
 import (
-	"encoding/csv"
+	cryptorand "crypto/rand"
+	"crypto/sha3"
 	"fmt"
-	"os"
+	"io"
+	"math/big"
+
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 )
 
-// Data represents a row in the CSV file
+const (
+	modexpSmallBits = 256
+	modexpLargeBits = 8192
+)
 
-type DataWrite struct {
-	Limbs            []string
-	IsModexpBase     string
-	IsModexpExponent string
-	IsModexpModulus  string
-	IsModexpResult   string
-}
-
-func splitIntoPairs(input string) []string {
-	if len(input) == 0 {
-		return []string{}
-	}
-
-	var result []string
-	for i := 0; i < len(input); i += 4 {
-		var inp string
-
-		if i+4 > len(input) {
-			inp = input[i:]
-		} else {
-			inp = input[i : i+4]
-		}
-
-		if inp == "0000" {
-			result = append(result, "0x0")
-		} else {
-			result = append(result, "0x"+inp)
-		}
-	}
-
-	return result
-}
-
-func writeCsv(name string, dataEntries []DataWrite) {
-	// Open a new CSV file for writing
-	file, err := os.Create(name)
-	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return
-	}
-	defer file.Close()
-
-	// Create a CSV writer
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	var header []string
-	for i := 0; i < 8; i++ {
-		//header = append(header, fmt.Sprintf("MODEXP_LIMBS_%d", i))
-		header = append(header, fmt.Sprintf("LIMBS_%d", i))
-	}
-
-	//header = append(header, []string{"MODEXP_IS_ACTIVE", "MODEXP_IS_SMALL", "MODEXP_IS_LARGE", "MODEXP_TO_SMALL"}...)
-	header = append(header, []string{"IS_MODEXP_BASE", "IS_MODEXP_EXPONENT", "IS_MODEXP_MODULUS", "IS_MODEXP_RESULT"}...)
-	// Write the header row
-
-	if err := writer.Write(header); err != nil {
-		fmt.Println("Error writing header:", err)
-		return
-	}
-
-	// Write each data entry to the CSV file
-	for _, entry := range dataEntries {
-		var row []string
-		row = append(row, entry.Limbs...)
-		row = append(row, []string{entry.IsModexpBase, entry.IsModexpExponent, entry.IsModexpModulus, entry.IsModexpResult}...)
-
-		if err := writer.Write(row); err != nil {
-			fmt.Println("Error writing row:", err)
-			return
-		}
-	}
-}
-
+//go:generate go run main.go
 func main() {
-	// Open the CSV file
-	file, err := os.Open("old/single_4096_bits_input.csv")
+
+	for _, tcase := range testCases {
+		f := files.MustOverwrite("./" + tcase.name + "_input.csv")
+		dumpAsCsv(f, tcase.tab)
+		f.Close()
+	}
+}
+
+var testCases = []struct {
+	name string
+	tab  [][]*big.Int
+}{
+	{
+		name: "single_256_bits",
+		tab: func() [][]*big.Int {
+
+			var (
+				tab  = make([][]*big.Int, 5)
+				rng  = sha3.NewCSHAKE128(nil, []byte("256 bits modexp testdata"))
+				inst = createRandomModexp(rng, 256)
+			)
+
+			pushModexpToInput(inst, tab)
+			return tab
+		}(),
+	},
+	{
+		name: "single_4096_bits",
+		tab: func() [][]*big.Int {
+
+			var (
+				tab  = make([][]*big.Int, 5)
+				rng  = sha3.NewCSHAKE128(nil, []byte("4096 bits modexp testdata"))
+				inst = createRandomModexp(rng, 4096)
+			)
+
+			pushModexpToInput(inst, tab)
+			return tab
+		}(),
+	},
+	{
+		name: "single_8192_bits",
+		tab: func() [][]*big.Int {
+
+			var (
+				tab  = make([][]*big.Int, 5)
+				rng  = sha3.NewCSHAKE128(nil, []byte("8192 bits modexp testdata"))
+				inst = createRandomModexp(rng, 8192)
+			)
+
+			pushModexpToInput(inst, tab)
+			return tab
+		}(),
+	},
+}
+
+func createRandomModexp(rng io.Reader, nbBits uint) [4]*big.Int {
+
+	var (
+		maxValue = new(big.Int).Lsh(big.NewInt(1), nbBits)
+		res      = [4]*big.Int{}
+		err      error
+	)
+
+	res[0], err = cryptorand.Int(rng, maxValue)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
+		panic(err)
 	}
-	defer file.Close()
-
-	// Create a new CSV reader
-	reader := csv.NewReader(file)
-
-	// Read all rows from the CSV file
-	rows, err := reader.ReadAll()
+	res[1], err = cryptorand.Int(rng, maxValue)
 	if err != nil {
-		fmt.Println("Error reading CSV:", err)
-		return
+		panic(err)
+	}
+	res[2], err = cryptorand.Int(rng, maxValue)
+	if err != nil {
+		panic(err)
 	}
 
-	// Ensure the file has a header row
-	if len(rows) < 2 {
-		fmt.Println("CSV file is empty or missing header row.")
-		return
+	res[3] = new(big.Int).Exp(res[0], res[1], res[2])
+
+	return res
+}
+
+func dumpAsCsv(w io.Writer, tab [][]*big.Int) {
+
+	fmt.Fprintf(w, "LIMBS,IS_MODEXP_BASE,IS_MODEXP_EXPONENT,IS_MODEXP_MODULUS,IS_MODEXP_RESULT\n")
+
+	for i := range tab[0] {
+		fmt.Fprintf(w, "0x%v,%v,%v,%v,%v\n", tab[0][i].Text(16), tab[1][i].String(), tab[2][i].String(), tab[3][i].String(), tab[4][i].String())
+	}
+}
+
+func pushModexpToInput(inst [4]*big.Int, tab [][]*big.Int) {
+
+	var (
+		limbs = splitIn32LimbsOf128Bits(inst[0])
+		zero  = &big.Int{}
+		one   = big.NewInt(1)
+	)
+
+	for i := range limbs {
+		tab[0] = append(tab[0], limbs[i])
+		tab[1] = append(tab[1], one)
+		tab[2] = append(tab[2], zero)
+		tab[3] = append(tab[3], zero)
+		tab[4] = append(tab[4], zero)
 	}
 
-	// Parse the rows into the Data structure
-	var mergedEntries []DataWrite
+	limbs = splitIn32LimbsOf128Bits(inst[1])
 
-	for i, row := range rows[1:] {
-		if len(row) != 5 {
-			fmt.Printf("Skipping row %d due to incorrect number of columns\n", i+1)
-			continue
-		}
-
-		mergedEntries = append(mergedEntries, DataWrite{
-			Limbs:            splitIntoPairs(fmt.Sprintf("%032s", row[0][2:])),
-			IsModexpBase:     row[1],
-			IsModexpExponent: row[2],
-			IsModexpModulus:  row[3],
-			IsModexpResult:   row[4],
-		})
-
+	for i := range limbs {
+		tab[0] = append(tab[0], limbs[i])
+		tab[1] = append(tab[1], zero)
+		tab[2] = append(tab[2], one)
+		tab[3] = append(tab[3], zero)
+		tab[4] = append(tab[4], zero)
 	}
 
-	writeCsv("single_4096_bits_input.csv", mergedEntries)
+	limbs = splitIn32LimbsOf128Bits(inst[2])
+
+	for i := range limbs {
+		tab[0] = append(tab[0], limbs[i])
+		tab[1] = append(tab[1], zero)
+		tab[2] = append(tab[2], zero)
+		tab[3] = append(tab[3], one)
+		tab[4] = append(tab[4], zero)
+	}
+
+	limbs = splitIn32LimbsOf128Bits(inst[3])
+
+	for i := range limbs {
+		tab[0] = append(tab[0], limbs[i])
+		tab[1] = append(tab[1], zero)
+		tab[2] = append(tab[2], zero)
+		tab[3] = append(tab[3], zero)
+		tab[4] = append(tab[4], one)
+	}
+}
+
+func splitIn32LimbsOf128Bits(x *big.Int) [64]*big.Int {
+
+	var (
+		res      = [64]*big.Int{}
+		extended = make([]byte, 1024)
+		xBytes   = x.Bytes()
+	)
+
+	copy(extended[len(extended)-len(xBytes):], xBytes)
+
+	for i := range res {
+		res[i] = new(big.Int).SetBytes(extended[16*i : 16*i+16])
+	}
+
+	return res
 }
