@@ -429,7 +429,9 @@ func (c *CompiledIOP) GenericFragmentedConditionalInclusion(
 	c.checkAnyInStore(including)
 	c.checkAnyInStore(included)
 	c.checkAnyInStore(includingFilter)
-	c.checkColumnInStore(includedFilter)
+	if includedFilter != nil {
+		c.checkColumnInStore(includedFilter)
+	}
 
 	query := query.NewInclusion(name, included, including, includedFilter, includingFilter)
 	c.QueriesNoParams.AddToRound(round, name, query)
