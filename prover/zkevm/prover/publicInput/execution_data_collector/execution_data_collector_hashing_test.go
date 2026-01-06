@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
@@ -163,9 +162,9 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 				Index:   execDataCollector.Ct,
 				ToHash:  execDataCollector.IsActive,
 				NBytes:  execDataCollector.NoBytes,
-				Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("LIMBS", execDataCollector.Limbs[:]).AssertUint128(),
+				Limbs:   execDataCollector.Limbs[:],
 			}},
-			PaddingStrategy: generic.Poseidon2UseCase,
+			PaddingStrategy: generic.MiMCUsecase,
 		}
 
 		// define the padding module. The import and pad module is first assigned
@@ -177,7 +176,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// create an input for the packing module
 		packingInp = pack.PackingInput{
 			MaxNumBlocks: execDataCollector.BlockID.Size(),
-			PackingParam: generic.Poseidon2UseCase,
+			PackingParam: generic.MiMCUsecase,
 			Imported: pack.Importation{
 				Limb:      padding.Limbs,
 				NByte:     padding.NBytes,
@@ -196,7 +195,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 
 	prove := func(run *wizard.ProverRuntime) {
 		// assign the CSV data for the mock BlockData, TxnData and RlpTxn arithmetization modules
-		arith.AssignTestingArithModules(run, ctBlockData, ctTxnData, ctRlpTxn, blockDataCols, txnDataCols, rlpTxn)
+		arith.AssignTestingArithModules(run, ctBlockData, ctTxnData, ctRlpTxn)
 		// assign the fetchers
 		fetch.AssignBlockDataFetcher(run, blockDataFetcher, blockDataCols)
 		fetch.AssignBlockTxnMetadata(run, blockTxnMeta, txnDataCols)
