@@ -497,9 +497,11 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 
 		// assign the big-int values for intermediate computation
 		for i := range base {
-			copy(buf[limbs.NbLimbU128*i:], base[len(base)-1-i].ToIntegerLimbs())
-			instBase[i].SetUint64(buf[i])
+			baseRow := base[len(base)-1-i]
+			copy(buf[limbs.NbLimbU128*i:], baseRow.ToIntegerLimbs())
+			copy(instBase[limbs.NbLimbU128*i:], baseRow.ToRawUnsafe())
 		}
+
 		if err := emulated.IntLimbRecompose(buf, emulatedLimbSizeBit, baseBi); err != nil {
 			utils.Panic("could not convert base limbs to big.Int: %v", err)
 		}
@@ -510,8 +512,9 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			utils.Panic("could not convert exponent limbs to big.Int: %v", err)
 		}
 		for i := range modulus {
-			copy(buf[limbs.NbLimbU128*i:], modulus[len(modulus)-1-i].ToIntegerLimbs())
-			instMod[i].SetUint64(buf[i])
+			modRow := modulus[len(modulus)-1-i]
+			copy(buf[limbs.NbLimbU128*i:], modRow.ToIntegerLimbs())
+			copy(instMod[limbs.NbLimbU128*i:], modRow.ToRawUnsafe())
 		}
 		if err := emulated.IntLimbRecompose(buf, emulatedLimbSizeBit, modulusBi); err != nil {
 			utils.Panic("could not convert modulus limbs to big.Int: %v", err)
