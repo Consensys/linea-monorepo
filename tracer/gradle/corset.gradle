@@ -31,7 +31,7 @@ def ZKEVM_OSAKA_BIN = System.getenv("ZKEVM_OSAKA_BIN") ?: "zkevm_osaka.bin"
 def TRACE_PKG = "net.consensys.linea.zktracer"
 
 tasks.register('buildZkevmBins', Exec) {
-  workingDir "${project.rootDir}/tracer/linea-constraints/"
+  workingDir "${project.rootDir}/constraints/"
   // Specify input files so gradle knows when to rebuild.
   inputs.files(fileTree(workingDir).include('**/*.lisp'))
   // Specify output file so gradle knows when out-of-date.
@@ -65,7 +65,7 @@ tasks.register('buildAllTracers', Exec) {
   def traceJava = lineaTracerProject.file(TRACE_FILE)
   def traceOsakaJava = lineaTracerProject.file(OSAKA_TRACE_FILE)
   // Configure full paths for zkevm.bin files
-  def zkevmOsakaBin = lineaTracerProject.file('linea-constraints/' + ZKEVM_OSAKA_BIN)
+  def zkevmOsakaBin = lineaTracerProject.file('../constraints/' + ZKEVM_OSAKA_BIN)
   // Generate trace interface and implementing classes
   doFirst {
     traceJava.parentFile.mkdirs()
