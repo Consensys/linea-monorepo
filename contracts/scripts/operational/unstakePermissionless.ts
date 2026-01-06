@@ -160,12 +160,30 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless")
 
     // Call function
     console.log("Calling unstakePermissionless...");
-    const tx = await yieldManagerContract.unstakePermissionless(
-      yieldProvider!,
-      withdrawalParams,
-      withdrawalParamsProof,
-      { value: 1n },
-    );
-    const receipt = await tx.wait();
-    console.log("Transaction receipt:", receipt);
+    try {
+      const tx = await yieldManagerContract.unstakePermissionless(
+        yieldProvider!,
+        withdrawalParams,
+        withdrawalParamsProof,
+        { value: 1n },
+      );
+      console.log("Transaction sent, hash:", tx.hash);
+      const receipt = await tx.wait();
+      console.log("Transaction receipt:", receipt);
+      console.log("Transaction successful!");
+    } catch (error: unknown) {
+      // Extract error data
+      if (error && typeof error === "object") {
+        const errorObj = error as Record<string, unknown>;
+        if (errorObj.data) {
+          console.error("Error data:", errorObj.data);
+        } else if (errorObj.error && typeof errorObj.error === "object") {
+          const nestedError = errorObj.error as Record<string, unknown>;
+          if (nestedError.data) {
+            console.error("Error data:", nestedError.data);
+          }
+        }
+      }
+      throw error;
+    }
   });
