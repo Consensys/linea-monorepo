@@ -1,6 +1,10 @@
 package limbs
 
 import (
+	"slices"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -103,4 +107,32 @@ func (limbs Limbs[E]) AssertUint256() Uint[S256, E] {
 		utils.Panic("number of columns must be equal to the number of limbs, got %v and %v", limbs.NumLimbs(), NumLimbsOf[S256]())
 	}
 	return Uint[S256, E]{limbs: limbs}
+}
+
+// ZeroExtendToSize extends the provided limbs to the provided size.
+func (limbs Limbs[E]) ZeroExtendToSize(size int) Limbs[E] {
+
+	if size < limbs.NumLimbs() {
+		utils.Panic("size must be greater than or equal to the number of limbs, %d < %d", size, limbs.NumLimbs())
+	}
+
+	if size == limbs.NumLimbs() {
+		return limbs
+	}
+
+	numLimbsToAdd := size - limbs.NumLimbs()
+
+	newLimbs := make([]ifaces.Column, numLimbsToAdd)
+	for i := range newLimbs {
+		newLimbs[i] = verifiercol.NewConstantCol(field.Zero(), limbs.NumRow(), "0")
+	}
+
+	if isBigEndian[E]() {
+		newLimbs = append(newLimbs, limbs.c...)
+	} else {
+		c := slices.Clone(limbs.c)
+		newLimbs = append(c, newLimbs...)
+	}
+
+	return Limbs[E]{c: newLimbs, name: limbs.name}
 }

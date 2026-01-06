@@ -307,8 +307,10 @@ func (a *Arithmetization) MashedColumnOf(comp *wizard.CompiledIOP, name string, 
 func (a *Arithmetization) LimbsOf(mod string, column string, nLimbs int) []string {
 	// Identify limbs mapping for ecdata module
 	var (
+		// modPrefix splits the mod='a.b' -> 'a'
+		modPrefix = strings.Split(mod, ".")[0]
 		// Extract the limb mapping for the given module
-		modMap = a.LimbMapping.ModuleOf(module.NewName(mod, 1))
+		modMap = a.LimbMapping.ModuleOf(module.NewName(modPrefix, 1))
 		// Determine corresponding register id
 		reg = a.determineRegisterId(mod, column)
 	)

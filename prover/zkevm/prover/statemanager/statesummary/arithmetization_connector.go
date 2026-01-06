@@ -1,6 +1,7 @@
 package statesummary
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -88,8 +89,6 @@ HubColumnSet is a struct that corresponds to the HUB columns present in the ACP 
 and the SCP (storage consistency permutation)
 */
 type HubColumnSet struct {
-	// helper column
-	Address [common.NbLimbEthAddress]ifaces.Column
 	// account data
 	AddressHI                                            [common.NbLimbU32]ifaces.Column
 	AddressLO                                            [common.NbLimbU128]ifaces.Column
@@ -143,6 +142,11 @@ type ScpSelector struct {
 	// block number key difference selectors
 	SelectorBlockNoDiff        [common.NbLimbU64]ifaces.Column
 	ComputeSelectorBlockNoDiff [common.NbLimbU64]wizard.ProverAction
+}
+
+// Address returns the concatenated list of the HI and Lo address columns
+func (s HubColumnSet) Address() []ifaces.Column {
+	return slices.Concat(s.AddressHI[:], s.AddressLO[:])
 }
 
 /*
@@ -227,8 +231,8 @@ func newScpSelector(comp *wizard.CompiledIOP, smc HubColumnSet) ScpSelector {
 	SelectorAccountAddressDiff, ComputeSelectorAccountAddressDiff := dedicated.IsZero(
 		comp,
 		sym.Sub(
-			smc.Address[0],
-			column.Shift(smc.Address[0], -1),
+			smc.Address()[0],
+			column.Shift(smc.Address()[0], -1),
 		),
 	).GetColumnAndProverAction()
 
@@ -304,7 +308,7 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 		arithTable []ifaces.Column
 	)
 
-	arithTable = append(arithTable, smc.Address[:]...)
+	arithTable = append(arithTable, smc.Address()[:]...)
 	arithTable = append(arithTable, smc.BalanceOld[:]...)
 	arithTable = append(arithTable, smc.Nonce[:]...)
 	arithTable = append(arithTable, smc.CodeSizeOld[:]...)
@@ -424,7 +428,7 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Exists)
 
 	var arithTable []ifaces.Column
-	arithTable = append(arithTable, smc.Address[:]...)
+	arithTable = append(arithTable, smc.Address()[:]...)
 	arithTable = append(arithTable, smc.BalanceNew[:]...)
 	arithTable = append(arithTable, smc.NonceNew[:]...)
 	arithTable = append(arithTable, smc.CodeSizeNew[:]...)
@@ -516,7 +520,7 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 	summaryTable = append(summaryTable, ss.BatchNumber[:]...)
 
 	var arithTable []ifaces.Column
-	arithTable = append(arithTable, smc.Address[:]...)
+	arithTable = append(arithTable, smc.Address()[:]...)
 	arithTable = append(arithTable, smc.KeyHI[:]...)
 	arithTable = append(arithTable, smc.KeyLO[:]...)
 	arithTable = append(arithTable, smc.ValueHICurr[:]...)
@@ -644,7 +648,7 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	var (
 		summaryTable []ifaces.Column
 
-		arithTable = smc.Address[:]
+		arithTable = smc.Address()[:]
 
 		filterArith = comp.InsertCommit(0,
 			"FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_ARITHMETIZATION",
@@ -824,7 +828,7 @@ func defineInsertionFilterForFinalStorage(comp *wizard.CompiledIOP, smc HubColum
 	// create the filter
 	filterAccountInsert := comp.InsertCommit(0,
 		"FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER",
-		smc.Address[0].Size(),
+		smc.Address()[0].Size(),
 		true,
 	)
 

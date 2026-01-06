@@ -55,6 +55,7 @@ func getEcdataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.A
 }
 
 func getTxnDataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *txnData {
+
 	td := &txnData{
 		Ct:       arith.ColumnOf(comp, "txndata", "CT"),
 		User:     arith.ColumnOf(comp, "txndata", "USER"),
@@ -62,7 +63,7 @@ func getTxnDataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.
 		From: limbs.FuseLimbs(
 			arith.GetLimbsOfU32Le(comp, "txndata.hub", "FROM_ADDRESS_HI").AsDynSize(),
 			arith.GetLimbsOfU128Le(comp, "txndata.hub", "FROM_ADDRESS_LO").AsDynSize(),
-		).AssertUint256(),
+		).ZeroExtendToSize(16).AssertUint256(),
 	}
 
 	return td
@@ -72,7 +73,7 @@ func getRlpTxnArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.A
 	limbs := arith.GetLimbsOfU128Le(comp, "rlptxn", "cmpLIMB")
 	res := generic.GenDataModule{
 		HashNum: arith.ColumnOf(comp, "rlptxn", "USER_TXN_NUMBER"),
-		Index:   arith.ColumnOf(comp, "rlptxn", "INDEX_LX"),
+		Index:   arith.MashedColumnOf(comp, "rlptxn", "INDEX_LX"),
 		NBytes:  arith.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
 		ToHash:  arith.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
 		Limbs:   limbs.ToBigEndianUint(),

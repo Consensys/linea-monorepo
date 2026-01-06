@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -81,7 +80,6 @@ func acp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 	constantZero8 := [8]ifaces.Column{constantZero, constantZero, constantZero, constantZero, constantZero, constantZero, constantZero, constantZero}
 
 	res := statesummary.HubColumnSet{
-		Address:             common.GetMultiHandleEthAddress(comp, "HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
 		AddressHI:           arith.GetLimbsOfU32Be(comp, "hub", "acp_ADDRESS_HI").LimbsArr2(),
 		AddressLO:           arith.GetLimbsOfU128Be(comp, "hub", "acp_ADDRESS_LO").LimbsArr8(),
 		Nonce:               arith.GetLimbsOfU64Be(comp, "hub", "acp_NONCE").LimbsArr4(),
@@ -182,7 +180,6 @@ func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 	}
 
 	res := statesummary.HubColumnSet{
-		Address:             common.GetMultiHandleEthAddress(comp, "HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
 		AddressHI:           arith.GetLimbsOfU32Be(comp, "hub", "scp_ADDRESS_HI").LimbsArr2(),
 		AddressLO:           arith.GetLimbsOfU128Be(comp, "hub", "scp_ADDRESS_LO").LimbsArr8(),
 		Nonce:               constantZero4,
