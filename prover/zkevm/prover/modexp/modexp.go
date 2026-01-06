@@ -1,9 +1,11 @@
 package modexp
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/emulated"
@@ -205,7 +207,7 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 		inputLimbsResultProjectionFilter   = make([]ifaces.Column, m.Input.Limbs.NumLimbs())
 	)
 
-	for i, l := range m.Input.Limbs.Limbs() {
+	for i, l := range m.Input.Limbs.ToBigEndianLimbs().Limbs() {
 		inputLimbsProjectionTable[i] = []ifaces.Column{l}
 		inputLimbsBaseProjectionFilter[i] = m.IsBase
 		inputLimbsExponentProjectionFilter[i] = m.IsExponent
@@ -518,6 +520,12 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 		}
 		if err := emulated.IntLimbRecompose(buf, emulatedLimbSizeBit, modulusBi); err != nil {
 			utils.Panic("could not convert modulus limbs to big.Int: %v", err)
+		}
+		if modulusBi.Sign() == 0 {
+			for i := range modulus {
+				fmt.Printf("modulus[%v]: %x\n", i, modulus[i].ToBytes16())
+			}
+			utils.Panic("modulus is zero, buffer: %v, instMod: %v", buf, vector.Prettify(instMod))
 		}
 		for i := range expected {
 			copy(buf[limbs.NbLimbU128*i:], expected[len(expected)-1-i].ToIntegerLimbs())

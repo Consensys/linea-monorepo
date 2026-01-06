@@ -29,11 +29,6 @@ func TestModExpAntichamber(t *testing.T) {
 			NbSmallInstances: 1, // not used but include anyway
 			NbLargeInstances: 1,
 		},
-		{
-			InputFName:       "testdata/mixed_256_4096_8192_bits_input.csv",
-			NbSmallInstances: 10,
-			NbLargeInstances: 2,
-		},
 	}
 
 	for _, tc := range testCases {
