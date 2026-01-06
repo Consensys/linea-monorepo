@@ -116,10 +116,6 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 
 func poseidon2VecCompression(oldState, block, newState [NbElemPerHash][]field.Element, from, to int) {
 
-	if len(oldState) != len(block) || len(block) != len(newState) {
-		utils.Panic("the lengths are inconsistent: %v %v %v", len(oldState), len(block), len(newState))
-	}
-
 	if len(oldState) == 0 {
 		return
 	}
