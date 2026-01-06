@@ -42,6 +42,13 @@ func HashOf(comp *wizard.CompiledIOP, inputCols [][NbElemPerHash]ifaces.Column) 
 		prevState [NbElemPerHash]ifaces.Column
 	)
 
+	for i := range inputCols {
+		round = max(round, column.MaxRound(inputCols[i][:]...))
+		if numRows != ifaces.AssertSameLength(inputCols[i][:]...) {
+			utils.Panic("all input columns must have the same length")
+		}
+	}
+
 	for i := range prevState {
 		prevState[i] = verifiercol.NewConstantCol(field.Zero(), numRows, "hash-of-"+strconv.Itoa(ctxID))
 	}
