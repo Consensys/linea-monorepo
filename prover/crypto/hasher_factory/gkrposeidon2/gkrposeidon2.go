@@ -1,4 +1,4 @@
-package gkrmimc
+package gkrposeidon2
 
 import (
 	"github.com/consensys/gnark/frontend"
