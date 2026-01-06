@@ -325,8 +325,8 @@ func concatHint(_ *big.Int, ins, outs []*big.Int) error {
 	return nil
 }
 
-type VarSlice Slice[zk.WrappedVariable]
-type Var32Slice Slice[[32]zk.WrappedVariable]
+type VarSlice Slice[frontend.Variable]
+type Var32Slice Slice[[32]frontend.Variable]
 
 // Checksum is the SNARK equivalent of ChecksumSlice
 // TODO consider doing (r *Range) f (slice []frontend.Variable)
