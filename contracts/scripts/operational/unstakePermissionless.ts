@@ -12,6 +12,10 @@ import { hexlify, AbiCoder } from "ethers";
   *******************************************************************************************
   Performs YieldManager::unstakePermissionless
 
+  Note is for older contract versions that have been deployed
+  - YieldManager implementation at [0xBae1F082825E0C64F724c5568D495A4Aa43698a3](https://hoodi.etherscan.io/address/0xBae1F082825E0C64F724c5568D495A4Aa43698a3)
+  - LidoStVaultYieldProvider implementation deployed by [0x87f9b74D6A3EbD66A8081b3781c24E0DFEd4C2F5](https://hoodi.etherscan.io/address/0x87f9b74d6a3ebd66a8081b3781c24e0dfed4c2f5#code)
+
   -------------------------------------------------------------------------------------------
   Example (Hoodi):
   -------------------------------------------------------------------------------------------
@@ -84,6 +88,7 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless")
     // Get beacon state
     const beaconHeaderJson = await fetchBeaconHeader(slot, beaconRpcUrl);
     const beaconHeader = beaconHeaderJson.data.header.message;
+    console.log("beaconHeader:", beaconHeader);
     const { stateBodyBytes, forkName } = await fetchBeaconState(slot, beaconRpcUrl);
 
     // Proofs
@@ -122,6 +127,7 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless")
       activationEpoch: BigInt(validator.activationEpoch),
       activationEligibilityEpoch: BigInt(validator.activationEligibilityEpoch),
     };
+    console.log("witness:", witness);
 
     // Encode params
     const withdrawalParams = AbiCoder.defaultAbiCoder().encode(
@@ -153,6 +159,7 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless")
     const yieldManagerContract = await ethers.getContractAt(YIELD_MANAGER_ABI, yieldManagerAddress!, signer);
 
     // Call function
+    console.log("Calling unstakePermissionless...");
     const tx = await yieldManagerContract.unstakePermissionless(
       yieldProvider!,
       withdrawalParams,
