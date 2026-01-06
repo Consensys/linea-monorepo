@@ -56,6 +56,9 @@ func (ctx StitchingContext) LocalOpening() {
 
 		// get the stitching column associated with the sub column q.Poly.
 		stitchingCol := getStitchingCol(ctx, q.Pol)
+		if stitchingCol == nil {
+			utils.Panic("stitching col is nil")
+		}
 
 		newQ := ctx.Comp.InsertLocalOpening(round, queryNameStitcher(q.ID), stitchingCol)
 
@@ -96,9 +99,14 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 				continue
 			}
 
+			// If the domainsize is larger than the max size, we cannot stitch it.
+			if q.DomainSize > ctx.MaxSize {
+				continue
+			}
+
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			isEligible, unSupported := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board)
+			isEligible, unSupported := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board, compilerTypeStitch)
 			if !isEligible && !unSupported {
 				continue
 			}
@@ -131,8 +139,12 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 				ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 				continue
 			}
+			// If the domainsize is larger than the max size, we cannot stitch it.
+			if q.DomainSize > ctx.MaxSize {
+				continue
+			}
 			// detect if the expression is over the eligible columns.
-			isEligible, unSupported := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board)
+			isEligible, unSupported := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board, compilerTypeStitch)
 			if !isEligible && !unSupported {
 				continue
 			}
@@ -156,9 +168,9 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 }
 
 // Takes a sub column and returns the stitching column.
-// the stitching column is shifted such that the first row agrees with the first row of the sub column.
-// more detailed, such stitching column agrees with the the sub column up to a subsampling with offset zero.
-// the col should only be either verifiercol or eligible col.
+// The stitching column is shifted in such a way that the first row agrees with the first row of the sub column.
+// i.e., such stitching column agrees with the sub column up to a subsampling with offset zero.
+// The col should only be either verifiercol or eligible col.
 // option is always empty, and used only for the recursive calls over the shifted columns.
 func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifaces.Column {
 	var (
@@ -168,6 +180,16 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 	)
 
 	switch m := col.(type) {
+
+	// case: constant column. The column may directly be expanded
+	case verifiercol.ConstCol:
+		// Sometime, we may want to shift a constant column by a non-zero offset
+		// to cancel the constraint at the first or last positions.
+		res := verifiercol.NewConstantCol(m.F.Base, ctx.MaxSize, m.Name+"_STITCHED")
+		if len(option) != 0 {
+			res = column.Shift(res, option[0])
+		}
+		return res
 
 	// case: verifier columns without shift
 	case verifiercol.VerifierCol:
@@ -196,7 +218,6 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 				newOffset = option[0] * scaling
 			}
 			return column.Shift(stitchingCol, newOffset)
-
 		// reminder: subcols are ignored after stitching
 		case column.Committed, column.Precomputed, column.Ignored:
 			subColInfo := ctx.Stitchings[round].BySubCol[col.GetColID()]
@@ -207,7 +228,6 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 			}
 			newOffset = newOffset + subColInfo.PosInBigCol
 			return column.Shift(stitchingCol, newOffset)
-
 		default:
 			utils.Panic("unsupported column status %v", m.Status())
 		}
@@ -217,12 +237,16 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 		offset := column.StackOffsets(col)
 		col = column.RootParents(col)
 		res := getStitchingCol(ctx, col, offset)
+		if res == nil {
+			utils.Panic("stitching col is nil")
+		}
 		return res
 
 	default:
-		panic("unsupported")
-	}
 
+		panic("unsupported")
+
+	}
 	return nil
 }
 
@@ -241,27 +265,36 @@ func (ctx *StitchingContext) adjustExpression(
 	newExpr *symbolic.Expression,
 ) {
 
-	metadata := expr.ListBoardVariableMetadata()
-	translationMap := collection.NewMapping[string, *symbolic.Expression]()
+	var (
+		board        = expr.Board()
+		metadata     = board.ListVariableMetadata()
+		replaceMap   = collection.NewMapping[string, *symbolic.Expression]()
+		stitchingCol ifaces.Column
+	)
 
 	for i := range metadata {
 		switch m := metadata[i].(type) {
 		case ifaces.Column:
 			// it's always a compiled column
-			stitchingCol := getStitchingCol(*ctx, m)
-			translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
+			stitchingCol = getStitchingCol(*ctx, m)
+			if stitchingCol == nil {
+				utils.Panic("stitching col is nil")
+			}
+			replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
 		case coin.Info, ifaces.Accessor:
-			// translationMap.InsertNew(m.String(), symbolic.NewVariable(m))
+			replaceMap.InsertNew(m.String(), symbolic.NewVariable(m))
 		case variables.X:
 			panic("unsupported, the value of `x` in the unsplit query and the split would be different")
 		case variables.PeriodicSample:
 			// there, we need to inflate the period and the offset
 			scaling := ctx.MaxSize / domainSize
-			translationMap.InsertNew(m.String(), variables.NewPeriodicSample(m.T*scaling, m.Offset*scaling))
+			replaceMap.InsertNew(m.String(), variables.NewPeriodicSample(m.T*scaling, m.Offset*scaling))
+		default:
+			utils.Panic("unsupported metadata type %T", m)
 		}
 	}
 
-	newExpr = expr.Replay(translationMap)
+	newExpr = expr.Replay(replaceMap)
 	if isGlobalConstraint {
 		// for the global constraints, check the constraint only over the subSampeling of the columns.
 		newExpr = symbolic.Mul(newExpr, variables.NewPeriodicSample(ctx.MaxSize/domainSize, 0))
