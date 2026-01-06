@@ -105,7 +105,7 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 
 	panic("fix the [gkrmimc/gkrposeidon] package. The BlsFs should also take a hasher factory")
 
-	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSKoalaBLS12377(api)
+	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
 	// c.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
 	// c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
 

@@ -147,7 +147,20 @@ func IntoRegVec(s SmartVector) []field.Element {
 		s.WriteInSlice(res)
 		return res
 	} else {
-		panic(errConversion)
+
+		resExt := make([]fext.Element, s.Len())
+		res := make([]field.Element, 0, s.Len())
+		s.WriteInSliceExt(resExt)
+
+		// Iterate through the extended elements and filter non-zero entries
+		for _, extElem := range resExt {
+			if fext.IsBase(&extElem) {
+				res = append(res, extElem.B0.A0)
+			} else {
+				panic(errConversion)
+			}
+		}
+		return res
 	}
 }
 
