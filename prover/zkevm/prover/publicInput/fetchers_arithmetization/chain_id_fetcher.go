@@ -43,7 +43,7 @@ func NewChainIDFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.BlockDa
 // DefineChainIDFetcher specifies the constraints of the ChainIDFetcher with respect to the BlockDataCols
 func DefineChainIDFetcher(comp *wizard.CompiledIOP, fetcher *ChainIDFetcher, name string, bdc *arith.BlockDataCols) {
 
-	dataLimbsLe := bdc.Data.ToLittleEndianLimbs().ToRawUnsafe()
+	dataLimbsLe := bdc.Data.ToBigEndianLimbs().ToRawUnsafe()
 
 	// These constrains ensure that the other limbs of the chainID are 0
 	for i := range dataLimbsLe {

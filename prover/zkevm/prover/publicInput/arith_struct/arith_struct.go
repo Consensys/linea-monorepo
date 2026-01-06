@@ -1,8 +1,6 @@
 package arith_struct
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -71,14 +69,11 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 
 	if ctBlockData != nil {
 		blockDataCols = &BlockDataCols{
-			RelBlock: ctBlockData.GetCommit(b, "REL_BLOCK"),
-			Inst:     ctBlockData.GetCommit(b, "INST"),
-			Ct:       ctBlockData.GetCommit(b, "CT"),
-			Data:     ctBlockData.GetLimbsBe(b, "DATA", 16).AssertUint256(),
-		}
-
-		for i := range blockDataCols.FirstBlock {
-			blockDataCols.FirstBlock[i] = ctBlockData.GetCommit(b, fmt.Sprintf("FIRST_BLOCK_NUMBER_%d", i))
+			RelBlock:   ctBlockData.GetCommit(b, "REL_BLOCK"),
+			Inst:       ctBlockData.GetCommit(b, "INST"),
+			Ct:         ctBlockData.GetCommit(b, "CT"),
+			Data:       ctBlockData.GetLimbsBe(b, "DATA", 16).AssertUint256(),
+			FirstBlock: ctBlockData.GetLimbsLe(b, "FIRST_BLOCK_NUMBER", common.NbLimbU48).LimbsArr3(),
 		}
 	}
 	if ctTxnData != nil {
@@ -94,11 +89,12 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 			Selector:        ctTxnData.GetCommit(b, "TD.SELECTOR"),
 			SYSI:            ctTxnData.GetCommit(b, "TD.SYSI"),
 			SYSF:            ctTxnData.GetCommit(b, "TD.SYSF"),
+			From: limbs.FuseLimbs(
+				ctTxnData.GetLimbsBe(b, "TD.FROM_HI", common.NbLimbU32),
+				ctTxnData.GetLimbsBe(b, "TD.FROM_LO", common.NbLimbU128),
+			).LimbsArr10(),
 		}
 
-		for i := range txnDataCols.From {
-			txnDataCols.From[i] = ctTxnData.GetCommit(b, fmt.Sprintf("TD.FROM_%d", i))
-		}
 	}
 	if ctRlpTxn != nil {
 		rlpTxn = &RlpTxn{
@@ -107,10 +103,7 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 			ToHashByProver: ctRlpTxn.GetCommit(b, "RL.TO_HASH_BY_PROVER"),
 			NBytes:         ctRlpTxn.GetCommit(b, "RL.NBYTES"),
 			TxnPerspective: ctRlpTxn.GetCommit(b, "RL.TXN"),
-		}
-
-		for i := range rlpTxn.Limbs {
-			rlpTxn.Limbs[i] = ctRlpTxn.GetCommit(b, fmt.Sprintf("RL.LIMB_%d", i))
+			Limbs:          ctRlpTxn.GetLimbsBe(b, "RL.LIMB", common.NbLimbU128).LimbsArr8(),
 		}
 	}
 
@@ -132,7 +125,7 @@ func AssignTestingArithModules(
 			blockData.Inst,
 			blockData.Ct,
 		).Assign(run, blockData.Data).
-			AssignCols(run, blockData.FirstBlock[:]...)
+			AssignLimbsBE(run, "FIRST_BLOCK_NUMBER", blockData.FirstBlock[:])
 	}
 
 	if ctTxnData != nil {
@@ -149,7 +142,8 @@ func AssignTestingArithModules(
 			txnData.Selector,
 			txnData.SYSI,
 			txnData.SYSF,
-		).AssignCols(run, txnData.From[:]...)
+		).AssignLimbsBE(run, "TD.FROM_HI", txnData.From[:2]).
+			AssignLimbsBE(run, "TD.FROM_LO", txnData.From[2:])
 	}
 
 	if ctRlpTxn != nil {
@@ -160,7 +154,7 @@ func AssignTestingArithModules(
 			rlpTxn.ToHashByProver,
 			rlpTxn.NBytes,
 			rlpTxn.TxnPerspective,
-		).AssignCols(run, rlpTxn.Limbs[:]...)
+		).AssignLimbsBE(run, "RL.LIMB", rlpTxn.Limbs[:])
 	}
 
 }

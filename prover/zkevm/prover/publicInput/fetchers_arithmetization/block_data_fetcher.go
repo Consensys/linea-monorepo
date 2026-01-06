@@ -344,11 +344,11 @@ func AssignBlockDataFetcher(run *wizard.ProverRuntime, fetcher *BlockDataFetcher
 		)
 
 		if inst.Equal(&baseFeeField) && ct.IsZero() {
-			baseFee = bdc.Data.GetRow(run, i).ToBigEndianLimbs().ToRawUnsafe()
+			baseFee = bdc.Data.GetRow(run, i).ToBigEndianLimbs().ToRawUnsafe()[8:]
 		}
 
 		if inst.Equal(&coinBaseField) && ct.IsZero() {
-			coinBase = bdc.Data.GetRow(run, i).ToBigEndianLimbs().ToRawUnsafe()
+			coinBase = bdc.Data.GetRow(run, i).ToBigEndianLimbs().ToRawUnsafe()[6:]
 		}
 
 		if inst.Equal(&timestampField) && ct.IsZero() {
