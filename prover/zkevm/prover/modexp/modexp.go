@@ -1,7 +1,6 @@
 package modexp
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -522,9 +521,6 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			utils.Panic("could not convert modulus limbs to big.Int: %v", err)
 		}
 		if modulusBi.Sign() == 0 {
-			for i := range modulus {
-				fmt.Printf("modulus[%v]: %x\n", i, modulus[i].ToBytes16())
-			}
 			utils.Panic("modulus is zero, buffer: %v, instMod: %v", buf, vector.Prettify(instMod))
 		}
 		for i := range expected {
