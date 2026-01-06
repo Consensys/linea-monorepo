@@ -17,9 +17,11 @@ import (
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/sirupsen/logrus"
 )
 
@@ -269,6 +271,28 @@ func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, column
 	return cols[0]
 }
 
+// MashedColumnOf returns a single columnn representing a 'small' integer. The
+// underlying representation of the column in the arithmetization may be
+// u16 < x <= u32 and thus be fit on exactly 2 limbs. The underlying limbs are
+// combined as L0 + 2**16 L1 and returned directly without any bound check. The
+// function asserts that the column has exactly 2 limbs. If the same column is
+// requested several times, the function will cache the previous call's result.
+func (a *Arithmetization) MashedColumnOf(comp *wizard.CompiledIOP, name string, column string) ifaces.Column {
+	// This call asserts that the column has exactly 2 limbs. So we don't need
+	// to explicitly redo-it here.
+	var (
+		res     = a.GetLimbsOfU32Le(comp, name, column).Limbs()
+		colName = fmt.Sprintf("%s_%s", name, column)
+		colExpr = sym.Add(res[0], sym.Mul(1<<16, res[1]))
+	)
+
+	if comp.Columns.Exists(ifaces.ColID(colName)) {
+		return comp.Columns.GetHandle(ifaces.ColID(colName))
+	}
+
+	return expr_handle.ExprHandle(comp, colExpr, colName)
+}
+
 // LimbsOf returns the fully qualified names of the limbs for a given Corset
 // column based on its name.  The limbs are returned in little endian order
 // (i.e. the least significant limb is at index 0).  This will attempt to match
@@ -283,8 +307,10 @@ func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, column
 func (a *Arithmetization) LimbsOf(mod string, column string, nLimbs int) []string {
 	// Identify limbs mapping for ecdata module
 	var (
+		// modPrefix splits the mod='a.b' -> 'a'
+		modPrefix = strings.Split(mod, ".")[0]
 		// Extract the limb mapping for the given module
-		modMap = a.LimbMapping.ModuleOf(module.NewName(mod, 1))
+		modMap = a.LimbMapping.ModuleOf(module.NewName(modPrefix, 1))
 		// Determine corresponding register id
 		reg = a.determineRegisterId(mod, column)
 	)
@@ -293,7 +319,8 @@ func (a *Arithmetization) LimbsOf(mod string, column string, nLimbs int) []strin
 	names := make([]string, len(limbs))
 	// Sanity check we got the number of limbs we expected
 	if len(limbs) != nLimbs {
-		panic(fmt.Sprintf("incorrect number of limbs (expected %d found %d)", nLimbs, len(limbs)))
+		panic(
+			fmt.Sprintf("incorrect number of limbs for %s.%s (expected %d found %d)", mod, column, nLimbs, len(limbs)))
 	}
 	//
 	for i, lid := range limbs {
@@ -318,8 +345,10 @@ func (a *Arithmetization) determineRegisterId(mod string, name string) register.
 	var rid register.Id
 	// Check whether source-level debug information is available.
 	if srcmap, srcmap_ok := binfile.GetAttribute[*corset.SourceMap](a.BinaryFile); srcmap_ok {
+		// Split module name based on path
+		path := strings.Split(mod, ".")
 		// Yes, therefore attempt to find a source-level regsiter with the given name.
-		module := determineSourceModule(srcmap, mod)
+		module := determineSourceModule(srcmap.Root, path)
 		// Check columns within the module
 		for _, col := range module.Columns {
 			if col.Name == name {
@@ -334,24 +363,32 @@ func (a *Arithmetization) determineRegisterId(mod string, name string) register.
 	rid, ok := modMap.HasRegister(name)
 	// Sanity check we found it
 	if !ok {
-		panic(fmt.Sprintf("unknown register %s.%s", mod, name))
+		// This log an insightful message listing which where the column that
+		// existed to make the failure easier to debug.
+		modInfos := []string{}
+		regs := modMap.Registers()
+		for _, r := range regs {
+			info := fmt.Sprintf("%s(width=%v, kind=%v)", r.Name, r.Width, r.Kind)
+			modInfos = append(modInfos, info)
+		}
+
+		panic(fmt.Sprintf("unknown register %s.%s, available registers: %v", mod, name, modInfos))
 	}
 	// Done
 	return rid
 }
 
-func determineSourceModule(srcmap *corset.SourceMap, mod string) corset.SourceModule {
-	// Lookup the source module with the corresponding name; if there are
-	// multiple matching entries, then fail.
-	modules := srcmap.Flattern(func(s *corset.SourceModule) bool {
-		return s.Public && s.Name == mod
-	})
-	// Sanity check
-	if len(modules) == 0 {
-		panic(fmt.Sprintf("unknown module %s", mod))
-	} else if len(modules) > 1 {
-		panic(fmt.Sprintf("ambiguous module %s", mod))
+func determineSourceModule(module corset.SourceModule, path []string) corset.SourceModule {
+	// Check whether moduled reached
+	if len(path) == 0 {
+		return module
 	}
-	//
-	return modules[0]
+	// Look for matching child
+	for _, submodule := range module.Submodules {
+		if submodule.Name == path[0] {
+			return determineSourceModule(submodule, path[1:])
+		}
+	}
+	// Should not get here
+	panic(fmt.Sprintf("unknown module %v", path))
 }

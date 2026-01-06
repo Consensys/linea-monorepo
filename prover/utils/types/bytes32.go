@@ -74,6 +74,20 @@ func Bytes32ToOctuplet(input Bytes32) field.Octuplet {
 	return result
 }
 
+// Bytes32ToOctupletLoose converts a Bytes32 to []koalabear.Element without
+// checking that the bytes are canonical representation of the Elements.
+func Bytes32ToOctupletLoose(input Bytes32) field.Octuplet {
+	var result field.Octuplet
+	for i := 0; i < 8; i++ {
+		startIndex := i * 4
+		segment := input[startIndex : startIndex+4]
+		var newElement koalabear.Element
+		newElement.SetBytes(segment)
+		result[i] = newElement
+	}
+	return result
+}
+
 // Writes the bytes32 into the given write.
 func (b Bytes32) WriteTo(w io.Writer) (int64, error) {
 	_, err := w.Write(b[:])

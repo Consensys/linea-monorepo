@@ -123,3 +123,12 @@ func (r row[E]) String() string {
 func (r row[E]) IsBase() bool {
 	return false
 }
+
+// ToIntegerLimbs returns the row as a list of uint64
+func (r row[E]) ToIntegerLimbs() []uint64 {
+	res := make([]uint64, len(r.T))
+	for i := range r.T {
+		res[i] = r.T[i].Uint64()
+	}
+	return res
+}

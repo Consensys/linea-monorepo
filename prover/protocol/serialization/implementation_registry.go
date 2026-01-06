@@ -47,8 +47,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
-	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/acc_module"
-	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/glue_keccak"
+	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
+	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
@@ -105,7 +105,6 @@ func init() {
 	RegisterImplementation(query.InnerProduct{})
 	RegisterImplementation(query.LocalConstraint{})
 	RegisterImplementation(query.LocalOpening{})
-	RegisterImplementation(query.MiMC{})
 	RegisterImplementation(query.Permutation{})
 	RegisterImplementation(query.Range{})
 	RegisterImplementation(query.UnivariateEval{})

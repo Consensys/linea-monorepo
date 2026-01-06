@@ -71,7 +71,7 @@ type ECPair struct {
 func NewECPairZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetization.Arithmetization) *ECPair {
 	source := &ECPairSource{
 		CsEcpairing:       arith.ColumnOf(comp, "ecdata", "CIRCUIT_SELECTOR_ECPAIRING"),
-		ID:                arith.ColumnOf(comp, "ecdata", "ID"),
+		ID:                arith.MashedColumnOf(comp, "ecdata", "ID"),
 		SuccessBit:        arith.ColumnOf(comp, "ecdata", "SUCCESS_BIT"),
 		Index:             arith.ColumnOf(comp, "ecdata", "INDEX"),
 		IsEcPairingData:   arith.ColumnOf(comp, "ecdata", "IS_ECPAIRING_DATA"),

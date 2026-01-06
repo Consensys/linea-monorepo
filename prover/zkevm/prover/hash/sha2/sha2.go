@@ -47,20 +47,20 @@ func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings, arith *arithmetization.A
 		Settings: s,
 		Provider: generic.GenericByteModule{
 			Data: generic.GenDataModule{
-				HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
-				Index:   arith.ColumnOf(comp, "shakiradata", "INDEX"),
+				HashNum: arith.MashedColumnOf(comp, "shakiradata", "ID"),
+				Index:   arith.MashedColumnOf(comp, "shakiradata", "INDEX"),
 				Limbs:   arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
 				NBytes:  arith.ColumnOf(comp, "shakiradata", "nBYTES"),
 				ToHash:  arith.ColumnOf(comp, "shakiradata", "IS_SHA2_DATA"),
 			},
 			Info: generic.GenInfoModule{
-				HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
+				HashNum: arith.MashedColumnOf(comp, "shakiradata", "ID"),
 				HashHi:  arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
-				HashLo:  arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB_LO"),
+				HashLo:  arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
 				// Before, we usse to pass column.Shift(IsHash, -1) but this does
 				// not work with the prover distribution as the column is used as
 				// a filter for a projection query.
-				IsHashHi: arith.ColumnOf(comp, "shakiradata", "SELECTOR_SHA2_RES"),
+				IsHashHi: arith.ColumnOf(comp, "shakiradata", "SELECTOR_SHA2_RES_HI"),
 			},
 		},
 	}

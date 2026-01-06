@@ -111,10 +111,6 @@ func defineStateManagerColumns(comp *wizard.CompiledIOP, sampleType int, size in
 		ExistsFinalInBlock: createCol("ExistsFinalInBlock"),
 	}
 
-	for i := range provercommon.NbLimbEthAddress {
-		res.Address[i] = createCol(fmt.Sprintf("Address_%d", i))
-	}
-
 	for i := range provercommon.NbLimbU128 {
 		res.AddressLO[i] = createCol(fmt.Sprintf("ADDRESS_LO_%d", i))
 		res.CodeHashHI[i] = createCol(fmt.Sprintf("CodeHashHI_%d", i))
@@ -175,7 +171,6 @@ func (smc *HubColumnSet) assignForTest(run *wizard.ProverRuntime, smVectors *moc
 		}
 	}
 
-	assign(smc.Address[:], transposeLimbs(addressVect))
 	assign(smc.AddressHI[:], transposeLimbs(smVectors.AddressHI))
 	assign(smc.AddressLO[:], transposeLimbs(smVectors.AddressLO))
 	assign(smc.Nonce[:], transposeLimbs(smVectors.Nonce))

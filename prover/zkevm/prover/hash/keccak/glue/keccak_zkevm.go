@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak_koalabear/acc_module"
+	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
 )
 
 const nbChunks = 8 // 16 bytes data are represented in 8 chunks of 2 bytes each.
@@ -123,14 +123,14 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.
 
 	res := generic.GenericByteModule{
 		Data: generic.GenDataModule{
-			HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
-			Index:   arith.ColumnOf(comp, "shakiradata", "INDEX"),
+			HashNum: arith.MashedColumnOf(comp, "shakiradata", "ID"),
+			Index:   arith.MashedColumnOf(comp, "shakiradata", "INDEX"),
 			Limbs:   arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
 			NBytes:  arith.ColumnOf(comp, "shakiradata", "nBYTES"),
 			ToHash:  arith.ColumnOf(comp, "shakiradata", "IS_KECCAK_DATA"),
 		},
 		Info: generic.GenInfoModule{
-			HashNum: arith.ColumnOf(comp, "shakiradata", "ID"),
+			HashNum: arith.MashedColumnOf(comp, "shakiradata", "ID"),
 			HashLo:  arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
 			HashHi:  arith.GetLimbsOfU128Be(comp, "shakiradata", "LIMB"),
 			// Before, we usse to pass column.Shift(IsHashHi, -1) but this does

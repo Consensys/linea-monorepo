@@ -1,6 +1,7 @@
 package ecdsa
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
@@ -42,7 +43,7 @@ func (e *EcdsaZkEvm) GetProviders() []generic.GenericByteModule {
 func getEcdataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *ecDataSource {
 	src := &ecDataSource{
 		CsEcrecover: arith.ColumnOf(comp, "ecdata", "CIRCUIT_SELECTOR_ECRECOVER"),
-		ID:          arith.ColumnOf(comp, "ecdata", "ID"),
+		ID:          arith.MashedColumnOf(comp, "ecdata", "ID"),
 		SuccessBit:  arith.ColumnOf(comp, "ecdata", "SUCCESS_BIT"),
 		Index:       arith.ColumnOf(comp, "ecdata", "INDEX"),
 		IsData:      arith.ColumnOf(comp, "ecdata", "IS_ECRECOVER_DATA"),
@@ -54,11 +55,15 @@ func getEcdataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.A
 }
 
 func getTxnDataArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *txnData {
+
 	td := &txnData{
 		Ct:       arith.ColumnOf(comp, "txndata", "CT"),
 		User:     arith.ColumnOf(comp, "txndata", "USER"),
 		Selector: arith.ColumnOf(comp, "txndata", "HUB"),
-		From:     arith.GetLimbsOfU256Le(comp, "txndata", "FROM"),
+		From: limbs.FuseLimbs(
+			arith.GetLimbsOfU32Le(comp, "txndata.hub", "FROM_ADDRESS_HI").AsDynSize(),
+			arith.GetLimbsOfU128Le(comp, "txndata.hub", "FROM_ADDRESS_LO").AsDynSize(),
+		).ZeroExtendToSize(16).AssertUint256(),
 	}
 
 	return td
@@ -68,7 +73,7 @@ func getRlpTxnArithmetization(comp *wizard.CompiledIOP, arith *arithmetization.A
 	limbs := arith.GetLimbsOfU128Le(comp, "rlptxn", "cmpLIMB")
 	res := generic.GenDataModule{
 		HashNum: arith.ColumnOf(comp, "rlptxn", "USER_TXN_NUMBER"),
-		Index:   arith.ColumnOf(comp, "rlptxn", "INDEX_LX"),
+		Index:   arith.MashedColumnOf(comp, "rlptxn", "INDEX_LX"),
 		NBytes:  arith.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
 		ToHash:  arith.ColumnOf(comp, "rlptxn", "TO_HASH_BY_PROVER"),
 		Limbs:   limbs.ToBigEndianUint(),

@@ -285,10 +285,37 @@ func TestSerdeValue(t *testing.T) {
 			Name: "mimc-query",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Committed, true)
-				b := comp.InsertColumn(0, "b", 16, column.Committed, true)
-				c := comp.InsertColumn(0, "c", 16, column.Committed, true)
-				return comp.InsertMiMC(0, "mimc", a, b, c, nil)
+				a := [8]ifaces.Column{
+					comp.InsertColumn(0, "a0", 16, column.Committed, true),
+					comp.InsertColumn(0, "a1", 16, column.Committed, true),
+					comp.InsertColumn(0, "a2", 16, column.Committed, true),
+					comp.InsertColumn(0, "a3", 16, column.Committed, true),
+					comp.InsertColumn(0, "a4", 16, column.Committed, true),
+					comp.InsertColumn(0, "a5", 16, column.Committed, true),
+					comp.InsertColumn(0, "a6", 16, column.Committed, true),
+					comp.InsertColumn(0, "a7", 16, column.Committed, true),
+				}
+				b := [8]ifaces.Column{
+					comp.InsertColumn(0, "b0", 16, column.Committed, true),
+					comp.InsertColumn(0, "b1", 16, column.Committed, true),
+					comp.InsertColumn(0, "b2", 16, column.Committed, true),
+					comp.InsertColumn(0, "b3", 16, column.Committed, true),
+					comp.InsertColumn(0, "b4", 16, column.Committed, true),
+					comp.InsertColumn(0, "b5", 16, column.Committed, true),
+					comp.InsertColumn(0, "b6", 16, column.Committed, true),
+					comp.InsertColumn(0, "b7", 16, column.Committed, true),
+				}
+				c := [8]ifaces.Column{
+					comp.InsertColumn(0, "c0", 16, column.Committed, true),
+					comp.InsertColumn(0, "c1", 16, column.Committed, true),
+					comp.InsertColumn(0, "c2", 16, column.Committed, true),
+					comp.InsertColumn(0, "c3", 16, column.Committed, true),
+					comp.InsertColumn(0, "c4", 16, column.Committed, true),
+					comp.InsertColumn(0, "c5", 16, column.Committed, true),
+					comp.InsertColumn(0, "c6", 16, column.Committed, true),
+					comp.InsertColumn(0, "c7", 16, column.Committed, true),
+				}
+				return comp.InsertPoseidon2(0, "mimc", a, b, c, nil)
 			}(),
 		},
 		{

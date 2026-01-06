@@ -23,6 +23,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// DefaultLimit is the default limit that we use for all modules that don't
+// have a stated limit.
+const DefaultLimit = 1 << 17
+
 // schemaScanner is a transient scanner structure whose goal is to port the
 // content of an [air.Schema] inside of a pre-initialized [wizard.CompiledIOP]
 type schemaScanner struct {
@@ -61,13 +65,29 @@ func (s *schemaScanner) scanColumns() {
 	// Use the pre-sorted modules from the scanner to ensure deterministic ordering
 	// Iterate each declared module
 	for _, modDecl := range s.Modules {
+
+		// The "root" module is part of the if the list of the modules. It
+		// expectedly does not contains any column. We need to skip it because
+		// we would not be able to find its name.
+		if modDecl.Name().String() == "" {
+			if modDecl.Width() != 0 {
+				utils.Panic("found a module with no names but with columns")
+			}
+			continue
+		}
+
 		// Identify limits for this module
 		var (
 			// TODO: DJP
-			moduleLimit = s.LimitMap[modDecl.Name().Name]
-			mult        = modDecl.Name().Multiplier
-			size        = int(mult) * moduleLimit
+			moduleLimit, moduleLimitFound = s.LimitMap[modDecl.Name().Name]
+			mult                          = modDecl.Name().Multiplier
+			size                          = int(mult) * moduleLimit
 		)
+
+		if !moduleLimitFound {
+			size = DefaultLimit
+		}
+
 		// Adjust the size for interleaved columns and their permuted versions.
 		// Since these are the only columns from corset with a non-power-of-two size.
 		if !utils.IsPowerOfTwo(size) {
@@ -77,7 +97,7 @@ func (s *schemaScanner) scanColumns() {
 		}
 		// #nosec G115 -- this bound will not overflow
 		if size == 0 && modDecl.Name().String() != "" {
-			logrus.Infof("Module %s has size 0", modDecl.Name())
+			utils.Panic("Module %s has size 0", modDecl.Name())
 		}
 		// Iterate each register (i.e. column) in that module
 		for _, colDecl := range modDecl.Registers() {

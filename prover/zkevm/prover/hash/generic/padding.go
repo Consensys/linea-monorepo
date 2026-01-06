@@ -1,28 +1,11 @@
 package generic
 
-import (
-	"fmt"
-
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
-)
-
 var (
 
 	// UnspecifiedHashingUsecase is the zero value for the packing use-case and
 	// it should not be used unless for testing that the caller of some function
 	// does not pass it.
 	UnspecifiedHashingUsecase = HashingUsecase{}
-
-	// MiMCUsecase represents using MiMC with the Miyaguchi-Preneel construction
-	// over a single field.
-	/* MiMCUsecase = HashingUsecase{
-		PaddingStrat:       zeroPadding,
-		LaneSizeBytes_:     31,
-		NbOfLanesPerBlock_: 1,
-	}*/
-	// MiMCUsecase points to Poseidon2’s settings for now. If you really need MiMC, just change the var temporarily.
-	MiMCUsecase = newDeprecatedMiMCUsecase()
 
 	// KeccakUsecase represents using the Keccak hash function as in Ethereum
 	KeccakUsecase = HashingUsecase{
@@ -37,20 +20,7 @@ var (
 		LaneSizeBytes_:     4,
 		NbOfLanesPerBlock_: 16,
 	}
-
-	// Poseidon2Usecase represents using the Poseidon2 hash function.
-	Poseidon2UseCase = HashingUsecase{
-		PaddingStrat:       zeroPadding,
-		LaneSizeBytes_:     poseidon2.BlockSize * field.Bytes,
-		NbOfLanesPerBlock_: 1,
-	}
 )
-
-func newDeprecatedMiMCUsecase() HashingUsecase {
-	fmt.Println("[WARNING] MiMCUsecase (Padding) is deprecated — using Poseidon2UseCase." +
-		" If you really need MiMC, change var [MiMCUsecase] temporarily to use MiMC settings.")
-	return Poseidon2UseCase
-}
 
 type paddingStrat int
 
