@@ -10,7 +10,8 @@ const (
 	// Number of 64bits lanes in a keccak block
 	NumLanesInBlock = 17
 	NumRounds       = 24
-	// the number of slices of lane for working with BaseTheta and BaseChi
+	// the number of slices of keccakf-lane (64bits) for working with BaseTheta and BaseChi:
+	// 8 slices of single Byte
 	NumSlices = 8
 
 	BaseChi    = 11
