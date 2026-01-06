@@ -56,7 +56,7 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 		// apply packing
 		inpPck = packing.PackingInput{
 			MaxNumBlocks: maxNumKeccakF,
-			PackingParam: generic.Poseidon2UseCase,
+			PackingParam: generic.KeccakUsecase,
 			Imported: packing.Importation{
 				Limb:      imported.Limbs,
 				NByte:     imported.NBytes,

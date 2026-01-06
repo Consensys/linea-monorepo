@@ -1,9 +1,5 @@
 package generic
 
-import (
-	"fmt"
-)
-
 var (
 
 	// UnspecifiedHashingUsecase is the zero value for the packing use-case and
@@ -24,20 +20,7 @@ var (
 		LaneSizeBytes_:     4,
 		NbOfLanesPerBlock_: 16,
 	}
-
-	// Poseidon2Usecase represents using the Poseidon2 hash function.
-	Poseidon2UseCase = HashingUsecase{
-		PaddingStrat:       zeroPadding,
-		LaneSizeBytes_:     2,
-		NbOfLanesPerBlock_: 8,
-	}
 )
-
-func newDeprecatedMiMCUsecase() HashingUsecase {
-	fmt.Println("[WARNING] MiMCUsecase (Padding) is deprecated — using Poseidon2UseCase." +
-		" If you really need MiMC, change var [MiMCUsecase] temporarily to use MiMC settings.")
-	return Poseidon2UseCase
-}
 
 type paddingStrat int
 
