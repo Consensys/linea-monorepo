@@ -1,4 +1,4 @@
-package wrapvarutils
+package varutils
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
-func Copy[T any](dst []zk.WrappedVariable, src []T) (n int) {
+func Copy[T any](dst []frontend.Variable, src []T) (n int) {
 	n = min(len(dst), len(src))
 
 	for i := 0; i < n; i++ {
@@ -25,9 +25,9 @@ func Copy[T any](dst []zk.WrappedVariable, src []T) (n int) {
 }
 
 // ToBytes32 decomposes x into 32 bytes.
-func ToBytes32(api frontend.API, x zk.WrappedVariable) [32]zk.WrappedVariable {
-	var res [32]zk.WrappedVariable
-	d, err := ToBytes(api, []zk.WrappedVariable{x}, fr.Bytes*8)
+func ToBytes32(api frontend.API, x frontend.Variable) [32]frontend.Variable {
+	var res [32]frontend.Variable
+	d, err := ToBytes(api, []frontend.Variable{x}, fr.Bytes*8)
 	if err != nil {
 		panic(err)
 	}
@@ -44,15 +44,10 @@ func RegisterHints() {
 }
 
 // ReduceBytes reduces given bytes modulo a given field. As a side effect, the "bytes" are range checked
-func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.WrappedVariable) []zk.WrappedVariable {
+func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []*frontend.Variable) []frontend.Variable {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
-
-	bits := apiGen.ToBinary(NewElementFromBytes[T](api, bytes))
-	res := make([]zk.WrappedVariable, (len(bits)+7)/8)
+	bits := api.ToBinary(NewElementFromBytes[T](api, bytes))
+	res := make([]frontend.Variable, (len(bits)+7)/8)
 	copy(bits[:], bits)
 	for i := len(bits); i < len(bits); i++ {
 		bits[i] = 0
@@ -63,46 +58,39 @@ func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.WrappedVa
 		if i == 0 {
 			bitsEnd = len(bits)
 		}
-		res[i] = apiGen.FromBinary(bits[bitsStart:bitsEnd]...)
+		res[i] = api.FromBinary(bits[bitsStart:bitsEnd]...)
 	}
 
 	return res
 }
 
 // NewElementFromBytes range checks the bytes and gives a reduced field element
-// TODO @thomas fixme
-func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.WrappedVariable) zk.WrappedVariable {
+func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []*frontend.Variable) frontend.Variable {
 
-	// apiGen, err := zk.NewGenericApi(api)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	bits := make([]frontend.Variable, 8*len(bytes))
+	for i := range bytes {
+		copy(bits[8*i:], api.ToBinary(bytes[len(bytes)-i-1], 8))
+	}
 
-	// bits := make([]zk.WrappedVariable, 8*len(bytes))
-	// for i := range bytes {
-	// 	copy(bits[8*i:], apiGen.ToBinary(bytes[len(bytes)-i-1], 8))
-	// }
+	f, err := emulated.NewField[T](api)
+	if err != nil {
+		panic(err)
+	}
 
-	// // f, err := emulated.NewField[T](api)
-	// // if err != nil {
-	// // 	panic(err)
-	// // }
+	return f.Reduce(f.Add(f.FromBits(bits...), f.Zero()))
 
-	// // return f.Reduce(f.Add(f.FromBits(bits...), f.Zero()))
-
-	// return nil
-	return zk.WrappedVariable{}
+	return nil
 }
 
-func ToVariableSlice[X any](s []X) []zk.WrappedVariable {
-	res := make([]zk.WrappedVariable, len(s))
+func ToVariableSlice[X any](s []X) []frontend.Variable {
+	res := make([]frontend.Variable, len(s))
 	Copy(res, s)
 	return res
 }
 
 // ToBytes takes data words each containing wordNbBits many bits, and repacks them as 8-bit bytes.
 // The data will be range checked only if the words are larger than a byte.
-func ToBytes(api frontend.API, data []zk.WrappedVariable, wordNbBits int) ([]zk.WrappedVariable, error) {
+func ToBytes(api frontend.API, data []frontend.Variable, wordNbBits int) ([]frontend.Variable, error) {
 	if wordNbBits == 8 {
 		return data, nil
 	}
@@ -113,7 +101,7 @@ func ToBytes(api frontend.API, data []zk.WrappedVariable, wordNbBits int) ([]zk.
 			return nil, fmt.Errorf("currently only multiples or quotients of bytes supported, not the case for the given %d-bit words", wordNbBits)
 		}
 		radix := big.NewInt(1 << uint(wordNbBits))
-		bytes := make([]zk.WrappedVariable, len(data)*wordNbBits/8)
+		bytes := make([]frontend.Variable, len(data)*wordNbBits/8)
 		for i := range bytes {
 			bytes[i] = compress.ReadNum(api, data[i*wordsPerByte:i*wordsPerByte+wordsPerByte], radix)
 		}
@@ -161,8 +149,8 @@ func breakIntoBytesHint(_ *big.Int, words []*big.Int, bytes []*big.Int) error {
 
 // DivBy31 returns q, r such that v = 31 q + r, and 0 ≤ r < 31
 // side effect: ensures 0 ≤ v[i] < 2ᵇⁱᵗˢ⁺².
-func DivBy31(api frontend.API, v zk.WrappedVariable, bits int) (q, r zk.WrappedVariable, err error) {
-	_q, _r, err := DivManyBy31(api, []zk.WrappedVariable{v}, bits)
+func DivBy31(api frontend.API, v frontend.Variable, bits int) (q, r frontend.Variable, err error) {
+	_q, _r, err := DivManyBy31(api, []frontend.Variable{v}, bits)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -171,7 +159,7 @@ func DivBy31(api frontend.API, v zk.WrappedVariable, bits int) (q, r zk.WrappedV
 
 // DivManyBy31 returns q, r for each v such that v = 31 q + r, and 0 ≤ r < 31
 // side effect: ensures 0 ≤ v[i] < 2ᵇⁱᵗˢ⁺² for all i
-func DivManyBy31(api frontend.API, v []zk.WrappedVariable, bits int) (q, r []zk.WrappedVariable, err error) {
+func DivManyBy31(api frontend.API, v []frontend.Variable, bits int) (q, r []frontend.Variable, err error) {
 	qNbBits := bits - 4
 
 	if hintOut, err := api.Compiler().NewHint(divBy31Hint, 2*len(v), v...); err != nil {
