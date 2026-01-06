@@ -20,7 +20,7 @@ import (
 
 const (
 	NbOfRowsPerLane = 4
-	NumSlices       = 8
+	NumSlices       = kcommon.NumSlices
 	MAXNBYTE        = 2
 )
 
