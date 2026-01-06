@@ -2,10 +2,14 @@ package poseidon2_bls12377
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/permutation/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377/gkrposeidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
+
+type compresser interface {
+	Compress(state, block frontend.Variable) frontend.Variable
+}
 
 // GnarkMDHasher Merkle Damgard implementation using poseidon2 as compression function with width 16
 // The hashing process goes as follow:
@@ -19,7 +23,7 @@ type GnarkMDHasher struct {
 	// data to hash
 	buffer []frontend.Variable
 
-	compressor *poseidon2.Permutation
+	compressor compresser
 
 	verbose bool
 }
@@ -29,17 +33,20 @@ func NewGnarkMDHasher(api frontend.API, verbose ...bool) (GnarkMDHasher, error) 
 	var res GnarkMDHasher
 	res.state = 0
 	res.api = api
-	var err error
+	// var err error
 
 	if len(verbose) > 0 {
 		res.verbose = verbose[0]
 	}
 
 	// default parameters
-	res.compressor, err = poseidon2.NewPoseidon2FromParameters(api, 2, 6, 26)
-	if err != nil {
-		return res, err
-	}
+	// res.compressor, err = poseidon2.NewPoseidon2FromParameters(api, 2, 6, 26)
+	// if err != nil {
+	// 	return res, err
+	// }
+	hf := gkrposeidon2.NewHasherFactory(api)
+	gkrCmpr := hf.NewCompresser()
+	res.compressor = gkrCmpr
 	return res, nil
 }
 
