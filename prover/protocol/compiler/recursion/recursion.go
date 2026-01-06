@@ -281,16 +281,17 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 
 		// Uses the assignment to assigns the merkle-roots columns.
 		for j := range assign.Commitments {
-			colName := addPrefixToID(prefix, assign.MerkleRoots[j/blockSize][j%blockSize].GetColID())
-
-			// One of the Merkle root may be the root to the precomputed
-			// polynomials and it may be of type precomputed ("may be", not
-			// "is") and thus may not be assignable.
-			if run.Spec.Precomputed.Exists(colName) {
-				continue
-			}
 			for k := 0; k < blockSize; k++ {
-				x := assign.Commitments[j][k].AsNative().(field.Element)
+				colName := addPrefixToID(prefix, assign.MerkleRoots[j][k].GetColID())
+
+				// One of the Merkle root may be the root to the precomputed
+				// polynomials and it may be of type precomputed ("may be", not
+				// "is") and thus may not be assignable.
+				if run.Spec.Precomputed.Exists(colName) {
+					continue
+				}
+
+				x := field.NewFromString(assign.Commitments[j][k].AsNative().(string))
 				run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
 			}
 		}

@@ -131,31 +131,25 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 			PolyQuery:      polyQuery,
 		}
 	)
-	lenCommitment := len(pcsCtx.Items.MerkleRoots)
-	if pcsCtx.IsNonEmptyPrecomputed() {
-		lenCommitment++
-	}
-	circuit.Commitments = make([][8]zk.WrappedVariable, lenCommitment)
-
-	if pcsCtx.IsNonEmptyPrecomputed() {
+	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		mRoot := pcsCtx.Items.Precomputeds.MerkleRoot
 		circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-		for i := 0; i < blockSize; i++ {
-			circuit.Commitments[0][i] = mRoot[i].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
+		octuplet := [8]zk.WrappedVariable{}
+		for j := 0; j < blockSize; j++ {
+			octuplet[j] = mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
 		}
+		circuit.Commitments = append(circuit.Commitments, octuplet)
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
 		if pcsCtx.Items.MerkleRoots[i][0] != nil {
 			mRoot := pcsCtx.Items.MerkleRoots[i]
 			circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
+			octuplet := [8]zk.WrappedVariable{}
 			for j := 0; j < blockSize; j++ {
-				if pcsCtx.IsNonEmptyPrecomputed() {
-					circuit.Commitments[i+1][j] = mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
-				} else {
-					circuit.Commitments[i][j] = mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
-				}
+				octuplet[j] = mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
 			}
+			circuit.Commitments = append(circuit.Commitments, octuplet)
 		}
 	}
 
@@ -164,7 +158,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 
 // SplitPublicInputs parses a vector of field elements and returns the
 // parsed arguments.
-// TODO@yao : check
+// @azam x, ys stored as field extension (4 field elements), mRoot 8 field elements, pubs stored as field element.
 func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []T) {
 
 	var (

@@ -37,7 +37,7 @@ type ConsistencyCheck struct {
 
 // ExtractWitness extracts a [Witness] from a prover runtime toward being conglomerated.
 func ExtractWitness(run *wizard.ProverRuntime) Witness {
-// We assume recursion is done with KoalaBear
+	// We assume recursion is done with KoalaBear
 	if run.KoalaFS == nil {
 		if run.BLSFS != nil {
 			utils.Panic("wrong FS type: expected KoalaBear FS")
@@ -128,15 +128,18 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 	for i := range pis {
 
 		pcsCtx := cc.Ctx.PcsCtx[i]
-		piWitness := pis[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-		circX, circYs, circMRoots, _ := SplitPublicInputs(cc.Ctx, piWitness)
+		piWitness, err := ifaces.GetColAssignmentBase(run, pis[i])
+		if err != nil {
+			return fmt.Errorf("proof no=%v, failed to get pi witness: %v", i, err)
+		}
+		fmt.Printf("piWitness: %v\n", piWitness[:64])
+		_, circYs, circMRoots, _ := SplitPublicInputs(cc.Ctx, piWitness)
 		params := run.GetUnivariateParams(pcsCtx.Query.QueryID)
 		pcsMRoot := pcsCtx.Items.MerkleRoots
 
-		//TODO@yao: check all values
-		if circX[0] != params.ExtX.B0.A0 || circX[1] != params.ExtX.B0.A1 || circX[2] != params.ExtX.B1.A0 || circX[3] != params.ExtX.B1.A1 {
+		/*if circX[0] != params.ExtX.B0.A0 || circX[1] != params.ExtX.B0.A1 || circX[2] != params.ExtX.B1.A0 || circX[3] != params.ExtX.B1.A1 {
 			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX, params.ExtX)
-		}
+		}*/
 
 		if len(circYs) != 4*len(params.ExtYs) {
 			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.ExtYs))

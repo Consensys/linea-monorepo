@@ -179,3 +179,13 @@ func AssertSameLength(list ...Column) int {
 
 	return res
 }
+func GetColAssignmentBase(run Runtime, col Column) (res []field.Element, err error) {
+	for i := 0; i < col.Size(); i++ {
+		base, err := col.GetColAssignmentAtBase(run, i)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, base)
+	}
+	return res, nil
+}

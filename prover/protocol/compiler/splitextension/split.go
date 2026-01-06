@@ -334,7 +334,8 @@ func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	// corresponds to the already-on-base ones.
 
 	for i := 0; i < nbPolyToSplit; i++ {
-		var tmp, reconstructedEval gnarkfext.E4Gen
+		var tmp gnarkfext.E4Gen
+		reconstructedEval := *ext4.Zero()
 		for j := 0; j < 4; j++ {
 			tmp = *ext4.Mul(&fieldExtensionBasisGnark[j], &evalBaseFieldParams.ExtYs[4*i+j])
 			reconstructedEval = *ext4.Add(&reconstructedEval, &tmp)
