@@ -54,7 +54,7 @@ func DefineChainIDFetcher(comp *wizard.CompiledIOP, fetcher *ChainIDFetcher, nam
 		// ensuring the chain ID value is consistent across all positions.
 		comp.InsertLocal(
 			0,
-			ifaces.QueryIDf("%s_%s", name, "LAST_LOCAL"),
+			ifaces.QueryIDf("%s_%s_%d", name, "LAST_LOCAL", i),
 			sym.Sub(
 				column.Shift(fetcher.ChainID[i], ChainIDOffset), // ChainID at offset -3
 				column.Shift(dataLimbsLe[i], ChainIDOffset),     // Data at offset -3 (last block's chain ID)

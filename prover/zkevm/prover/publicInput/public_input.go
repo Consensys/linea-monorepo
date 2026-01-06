@@ -99,14 +99,17 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				RelBlock:   a.ColumnOf(comp, "blockdata", "REL_BLOCK"),
 				Inst:       a.ColumnOf(comp, "blockdata", "INST"),
 				Ct:         a.ColumnOf(comp, "blockdata", "CT"),
-				Data:       a.GetLimbsOfU256Be(comp, "blockdata", "DATA_HI"),
+				Data:       a.GetLimbsOfU128Be(comp, "blockdata", "DATA_HI").ZeroExtendToSize(16).AssertUint256(),
 				FirstBlock: a.GetLimbsOfU48Be(comp, "blockdata", "FIRST_BLOCK_NUMBER").LimbsArr3(),
 			},
 			TxnData: &arith.TxnData{
-				AbsTxNum:        a.ColumnOf(comp, "txndata", "USER_TXN_NUMBER"),
-				AbsTxNumMax:     a.ColumnOf(comp, "txndata", "prover___USER_TXN_NUMBER_MAX"),
-				Ct:              a.ColumnOf(comp, "txndata", "CT"),
-				From:            a.GetLimbsOfU160Be(comp, "txndata", "FROM_ADDRESS_HI").LimbsArr10(),
+				AbsTxNum:    a.MashedColumnOf(comp, "txndata", "USER_TXN_NUMBER"),
+				AbsTxNumMax: a.ColumnOf(comp, "txndata", "prover___USER_TXN_NUMBER_MAX"),
+				Ct:          a.ColumnOf(comp, "txndata", "CT"),
+				From: limbs.FuseLimbs(
+					a.GetLimbsOfU32Be(comp, "txndata.hub", "FROM_ADDRESS_HI").AsDynSize(),
+					a.GetLimbsOfU128Be(comp, "txndata.hub", "FROM_ADDRESS_LO").AsDynSize(),
+				).LimbsArr10(),
 				IsLastTxOfBlock: a.ColumnOf(comp, "txndata", "prover___IS_LAST_USER_TXN_OF_BLOCK"),
 				RelBlock:        a.ColumnOf(comp, "txndata", "BLK_NUMBER"),
 				RelTxNum:        a.ColumnOf(comp, "txndata", "prover___RELATIVE_USER_TXN_NUMBER"),
@@ -130,10 +133,10 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				IsLog2:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_2"),
 				IsLog3:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_3"),
 				IsLog4:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_4"),
-				AbsLogNum:    a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM"),
-				AbsLogNumMax: a.ColumnOf(comp, "loginfo", "ABS_LOG_NUM_MAX"),
+				AbsLogNum:    a.MashedColumnOf(comp, "loginfo", "ABS_LOG_NUM"),
+				AbsLogNumMax: a.MashedColumnOf(comp, "loginfo", "ABS_LOG_NUM_MAX"),
 				Ct:           a.ColumnOf(comp, "loginfo", "CT"),
-				Data:         a.GetLimbsOfU256Be(comp, "loginfo", "DATA_LO").LimbsArr16(),
+				Data:         a.GetLimbsOfU128Be(comp, "loginfo", "DATA_LO").ZeroExtendToSize(16).LimbsArr16(),
 				TxEmitsLogs:  a.ColumnOf(comp, "loginfo", "TXN_EMITS_LOGS"),
 			},
 			StateSummary: ss,
@@ -298,6 +301,8 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 // GetExtractor returns [FunctionalInputExtractor] giving access to the totality
 // of the public inputs recovered by the public input module.
 func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
+
+	return
 
 	createNewLocalOpening := func(col ifaces.Column) query.LocalOpening {
 		return comp.InsertLocalOpening(0, ifaces.QueryIDf("%s_%s", "PUBLIC_INPUT_LOCAL_OPENING", col.GetColID()), col)

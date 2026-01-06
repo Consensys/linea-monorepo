@@ -53,6 +53,18 @@ func NewPoseidon2(id ifaces.QueryID, block, oldState, newState [8]ifaces.Column,
 		Sanity-check : All columns must have the same length
 	*/
 	for i := range block {
+		if block[i] == nil {
+			utils.Panic("block is nil: %v", i)
+		}
+
+		if oldState[i] == nil {
+			utils.Panic("oldState is nil: %v", i)
+		}
+
+		if newState[i] == nil {
+			utils.Panic("newState is nil: %v", i)
+		}
+
 		if block[i].Size() != oldState[i].Size() || block[i].Size() != newState[i].Size() {
 			utils.Panic("block, oldState and newState must have the same length %v %v %v", block[i].Size(), oldState[i].Size(), newState[i].Size())
 		}

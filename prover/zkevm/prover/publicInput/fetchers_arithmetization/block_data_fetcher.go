@@ -195,10 +195,10 @@ func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher,
 		commonconstraints.MustBeConstant(comp, fetcher.CoinBase[i])
 		comp.InsertGlobal(
 			0,
-			ifaces.QueryIDf("%s_COINBASE_FETCHING", name),
+			ifaces.QueryIDf("%s_COINBASE_FETCHING_L%v", name, i),
 			sym.Mul(
 				fetcher.SelCoinBaseArith,
-				sym.Sub(bdcDataLoAddr[i], fetcher.CoinBase),
+				sym.Sub(bdcDataLoAddr[i], fetcher.CoinBase[i]),
 			),
 		)
 	}
@@ -207,7 +207,7 @@ func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher,
 		commonconstraints.MustBeConstant(comp, fetcher.BaseFee[i])
 		comp.InsertGlobal(
 			0,
-			ifaces.QueryIDf("%s_BASEFEE_FETCHING", name),
+			ifaces.QueryIDf("%s_BASEFEE_FETCHING_L%v", name, i),
 			sym.Mul(
 				fetcher.SelBaseFeeArith,
 				sym.Sub(fetcher.BaseFee[i], bdcDataLo[i]),

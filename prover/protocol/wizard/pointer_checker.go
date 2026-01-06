@@ -75,6 +75,10 @@ func (comp *CompiledIOP) checkReflectValueInStore(x reflect.Value) {
 // find.
 func (comp *CompiledIOP) checkColumnInStore(col ifaces.Column) {
 
+	if col == nil {
+		utils.Panic("column is nil")
+	}
+
 	if !comp.WithStorePointerChecks {
 		return
 	}
