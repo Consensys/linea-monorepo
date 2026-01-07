@@ -152,6 +152,7 @@ library SSZ {
   function hashTreeRoot(Validator memory validator) internal view returns (bytes32 root) {
     bytes32 pubkeyRoot;
 
+    /// @solidity memory-safe-assembly
     assembly {
       // Dynamic data types such as bytes are stored at the specified offset.
       let offset := mload(validator)
