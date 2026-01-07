@@ -32,8 +32,7 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
   private LineaTransactionValidatorConfiguration config;
 
   public enum LineaTransactionValidatorError {
-    BLOB_TX_NOT_ALLOWED,
-    DELEGATE_CODE_TX_NOT_ALLOWED;
+    BLOB_TX_NOT_ALLOWED;
 
     @Override
     public String toString() {
@@ -59,18 +58,12 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
   public void beforeExternalServices() {
     super.beforeExternalServices();
     this.config = transactionValidatorConfiguration();
-    // Register rules to reject transactions
+    // Register rule to reject blob transactions
     this.transactionValidatorService.registerTransactionValidatorRule(
         (tx) -> {
-          if (tx.getType() == TransactionType.BLOB && !config.blobTxEnabled()) {
+          if (tx.getType() == TransactionType.BLOB && !config.blobTxEnabled())
             return Optional.of(LineaTransactionValidatorError.BLOB_TX_NOT_ALLOWED.toString());
-          } else if (tx.getType() == TransactionType.DELEGATE_CODE
-              && !config.delegateCodeTxEnabled()) {
-            return Optional.of(
-                LineaTransactionValidatorError.DELEGATE_CODE_TX_NOT_ALLOWED.toString());
-          } else {
-            return Optional.empty();
-          }
+          return Optional.empty();
         });
   }
 
