@@ -341,7 +341,8 @@ library SSZ {
     }
 
     // Mix in length: mix_in_length(content_root, actual_length)
-    root = sha256Pair(tmp[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH], toLittleEndian(count));
+    // Safe to cast `count` to uint64, because it has max value of 2**27
+    root = sha256Pair(tmp[MAX_PENDING_PARTIAL_WITHDRAWAL_DEPTH], toLittleEndian64(uint64(count)));
   }
 
   /// @dev Internal helper function that merges a chunk into the progressive merkle tree.
