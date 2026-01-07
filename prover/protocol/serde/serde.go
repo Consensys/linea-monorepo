@@ -1,5 +1,5 @@
 // Standard Performance Run: go test ./... (Traces are completely gone; maximum speed ).
-// Debug Run: go test -tags debug ./... (Traces appear exactly as they did before ).
+// Debug Run: go test -tags=trace ./... (Traces appear exactly as they did before ).
 
 package serde
 
