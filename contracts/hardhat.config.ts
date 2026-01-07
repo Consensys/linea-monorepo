@@ -17,6 +17,7 @@ import "./scripts/operational/setRemoteTokenBridgeTask";
 import "./scripts/operational/setMessageServiceOnTokenBridgeTask";
 import "./scripts/operational/addAndClaimMessage";
 import "./scripts/operational/addAndClaimMessageForLST";
+import "./scripts/operational/unstakePermissionless";
 import "solidity-docgen";
 
 dotenv.config();
