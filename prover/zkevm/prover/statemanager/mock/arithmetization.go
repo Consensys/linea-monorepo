@@ -263,7 +263,7 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 				prevNonce[i].SetZero()
 				prevCodeSize[i].SetZero()
 			}
-			
+
 			for i := range common.NbLimbU256 {
 				prevBalance[i].SetZero()
 				prevMimcCodeHash[i].SetZero()
