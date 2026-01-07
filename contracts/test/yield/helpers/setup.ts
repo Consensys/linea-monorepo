@@ -367,6 +367,7 @@ export const executeUnstakePermissionless = async (
     slot,
     withdrawalParams,
     withdrawalParamsProof,
+    { value: 1n },
   );
 };
 
