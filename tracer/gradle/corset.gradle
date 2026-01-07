@@ -28,7 +28,7 @@ ext {
   corsetVersion = project.hasProperty('corsetVersion') ? project.property('corsetVersion') : "v1.1.31"
 }
 
-tasks.register('installGoCorset2') {
+tasks.register('installGoCorset') {
   description = 'Install go-corset'
   group = 'build'
 
