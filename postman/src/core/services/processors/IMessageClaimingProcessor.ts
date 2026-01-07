@@ -13,5 +13,4 @@ export type MessageClaimingProcessorConfig = {
   maxClaimGasLimit: bigint;
   direction: Direction;
   originContractAddress: string;
-  claimViaAddress?: string;
 };

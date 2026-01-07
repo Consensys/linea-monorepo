@@ -72,7 +72,6 @@ describe("Config utils", () => {
         },
         l1Config: {
           claiming: {
-            claimViaAddress: undefined,
             feeRecipientAddress: undefined,
             gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
             isMaxGasFeeEnforced: DEFAULT_ENFORCE_MAX_GAS_FEE,
@@ -103,7 +102,6 @@ describe("Config utils", () => {
         l1L2AutoClaimEnabled: false,
         l2Config: {
           claiming: {
-            claimViaAddress: undefined,
             feeRecipientAddress: undefined,
             gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
             isMaxGasFeeEnforced: DEFAULT_ENFORCE_MAX_GAS_FEE,
@@ -151,7 +149,6 @@ describe("Config utils", () => {
           },
           claiming: {
             signerPrivateKey: TEST_L1_SIGNER_PRIVATE_KEY,
-            claimViaAddress: TEST_CONTRACT_ADDRESS_1,
             feeRecipientAddress: TEST_ADDRESS_1,
           },
         },
@@ -164,7 +161,6 @@ describe("Config utils", () => {
           },
           claiming: {
             signerPrivateKey: TEST_L2_SIGNER_PRIVATE_KEY,
-            claimViaAddress: TEST_CONTRACT_ADDRESS_2,
             feeRecipientAddress: TEST_ADDRESS_2,
           },
         },
@@ -191,7 +187,6 @@ describe("Config utils", () => {
         },
         l1Config: {
           claiming: {
-            claimViaAddress: TEST_CONTRACT_ADDRESS_1,
             feeRecipientAddress: TEST_ADDRESS_1,
             gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
             isMaxGasFeeEnforced: DEFAULT_ENFORCE_MAX_GAS_FEE,
@@ -222,7 +217,6 @@ describe("Config utils", () => {
         l1L2AutoClaimEnabled: true,
         l2Config: {
           claiming: {
-            claimViaAddress: TEST_CONTRACT_ADDRESS_2,
             feeRecipientAddress: TEST_ADDRESS_2,
             gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
             isMaxGasFeeEnforced: DEFAULT_ENFORCE_MAX_GAS_FEE,

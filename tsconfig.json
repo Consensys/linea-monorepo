@@ -2,8 +2,8 @@
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": ".",
-    "moduleResolution": "nodenext",
-    "module": "nodenext",
+    "moduleResolution": "node",
+    "module": "commonjs",
     "target": "es2022",
     "sourceMap": true,
     "strict": true,
@@ -20,5 +20,5 @@
     "exactOptionalPropertyTypes": true,
     "noEmit": false
   },
-  "exclude": ["**/node_modules", "**/dist", "*.d.ts", "**/.*/"]
+  "exclude": ["node_modules", "dist", "*.d.ts"]
 }

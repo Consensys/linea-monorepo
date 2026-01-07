@@ -25,11 +25,9 @@ export default class EthTransfer extends Command {
       --blockchain-rpc-url=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
       --web3-signer-url=http://localhost:8545
       --web3-signer-public-key=0xYourWeb3SignerPublicKey
-      --tls
       --web3-signer-keystore-path=/path/to/keystore.p12
-      --web3-signer-keystore-passphrase=yourPassphrase
+      --web3-signer-passphrase=yourPassphrase
       --web3-signer-trusted-store-path=/path/to/ca.p12
-      --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
       `,
 
     // Example 2: Including optional flags with custom values
@@ -42,11 +40,9 @@ export default class EthTransfer extends Command {
       --web3-signer-public-key=0xYourWeb3SignerPublicKey
       --max-fee-per-gas=150000000000
       --gas-estimation-percentile=20
-      --tls
       --web3-signer-keystore-path=/path/to/keystore.p12
-      --web3-signer-keystore-passphrase=yourPassphrase
+      --web3-signer-passphrase=yourPassphrase
       --web3-signer-trusted-store-path=/path/to/ca.p12
-      --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
       `,
 
     // Example 3: Using the dry-run flag to simulate the transaction
@@ -58,11 +54,9 @@ export default class EthTransfer extends Command {
       --web3-signer-url=http://127.0.0.1:8546
       --web3-signer-public-key=0xYourWeb3SignerPublicKey
       --dry-run
-      --tls
       --web3-signer-keystore-path=/path/to/keystore.p12
-      --web3-signer-keystore-passphrase=yourPassphrase
+      --web3-signer-passphrase=yourPassphrase
       --web3-signer-trusted-store-path=/path/to/ca.p12
-      --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
       `,
   ];
 
@@ -135,7 +129,7 @@ export default class EthTransfer extends Command {
       required: false,
       env: "ETH_TRANSFER_WEB3_SIGNER_KEYSTORE_PATH",
     }),
-    "web3-signer-keystore-passphrase": Flags.string({
+    "web3-signer-passphrase": Flags.string({
       description: "Passphrase for the web3 signer keystore",
       required: false,
       env: "ETH_TRANSFER_WEB3_SIGNER_KEYSTORE_PASSPHRASE",
@@ -144,11 +138,6 @@ export default class EthTransfer extends Command {
       description: "Path to the web3 signer trusted store file",
       required: false,
       env: "ETH_TRANSFER_WEB3_SIGNER_TRUSTED_STORE_PATH",
-    }),
-    "web3-signer-trusted-store-passphrase": Flags.string({
-      description: "Passphrase for the web3 signer trusted store file",
-      required: false,
-      env: "ETH_TRANSFER_WEB3_SIGNER_TRUSTED_STORE_PASSPHRASE",
     }),
   };
 
@@ -167,9 +156,8 @@ export default class EthTransfer extends Command {
       dryRun,
       tls,
       web3SignerKeystorePath,
-      web3SignerKeystorePassphrase,
+      web3SignerPassphrase,
       web3SignerTrustedStorePath,
-      web3SignerTrustedStorePassphrase,
     } = validateConfig(flags);
 
     const provider = new ethers.JsonRpcProvider(blockchainRpcUrl);
@@ -216,12 +204,7 @@ export default class EthTransfer extends Command {
     let httpsAgent: Agent | undefined;
     if (tls) {
       this.log(`Using TLS for secure communication with Web3 Signer.`);
-      httpsAgent = getWeb3SignerHttpsAgent(
-        web3SignerKeystorePath,
-        web3SignerKeystorePassphrase,
-        web3SignerTrustedStorePath,
-        web3SignerTrustedStorePassphrase,
-      );
+      httpsAgent = getWeb3SignerHttpsAgent(web3SignerKeystorePath, web3SignerPassphrase, web3SignerTrustedStorePath);
     }
 
     const signature = await getWeb3SignerSignature(web3SignerUrl, web3SignerPublicKey, transaction, httpsAgent);

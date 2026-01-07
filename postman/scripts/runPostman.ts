@@ -66,7 +66,6 @@ async function main() {
         maxPostmanSponsorGasLimit: process.env.MAX_POSTMAN_SPONSOR_GAS_LIMIT
           ? BigInt(process.env.MAX_POSTMAN_SPONSOR_GAS_LIMIT)
           : undefined,
-        claimViaAddress: process.env.L1_CLAIM_VIA_ADDRESS,
       },
     },
     l2Options: {
@@ -129,7 +128,6 @@ async function main() {
         maxPostmanSponsorGasLimit: process.env.MAX_POSTMAN_SPONSOR_GAS_LIMIT
           ? BigInt(process.env.MAX_POSTMAN_SPONSOR_GAS_LIMIT)
           : undefined,
-        claimViaAddress: process.env.L2_CLAIM_VIA_ADDRESS,
       },
       l2MessageTreeDepth: process.env.L2_MESSAGE_TREE_DEPTH ? parseInt(process.env.L2_MESSAGE_TREE_DEPTH) : undefined,
       enableLineaEstimateGas: process.env.ENABLE_LINEA_ESTIMATE_GAS === "true",
