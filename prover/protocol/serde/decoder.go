@@ -304,6 +304,18 @@ func (dec *decoder) decodeArray(target reflect.Value, offset int64) error {
 		return fmt.Errorf("array out of bounds")
 	}
 
+	// Optimization: Bulk Copy for POD types. If the element type is POD
+	// (eg field.Element [4]uint64), we can copy the whole block at once.
+	if isPOD(t.Elem()) {
+		dstPtr := unsafe.Pointer(target.UnsafeAddr())
+		srcPtr := unsafe.Pointer(&dec.data[offset])
+		// unsafe.Slice allows us to treat the pointers as byte slices for the copy
+		// and copy all bytes in one go
+		copy(unsafe.Slice((*byte)(dstPtr), totalSize), unsafe.Slice((*byte)(srcPtr), totalSize))
+		return nil
+	}
+
+	// Fallback: Sequential Decode (for pointers, strings, etc.)
 	// Loop through the array using `decodeSeqItem` to "step" through the file bytes accurately,
 	// even if the array elements are complex types like strings or pointers.
 	currentOff := offset

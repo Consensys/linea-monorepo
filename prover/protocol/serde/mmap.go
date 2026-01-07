@@ -11,8 +11,7 @@ import (
 
 const Magic = 0x5A45524F
 
-// File Layout
-// FileHeader describes the fixed-size header at the beginning of a serialized file.
+// FileHeader (32-byte) describes the file layout(fixed-size header) at the beginning of a serialized file.
 // It provides enough metadata to validate the file, determine how to interpret the
 // payload, and locate the serialized data region.
 //

@@ -405,7 +405,6 @@ func marshallPlonkCkt(enc *encoder, v reflect.Value) (Ref, error) {
 	// Write the Header - the data is now in the file and we just create the pointer to it.
 	fs := FileSlice{Offset: Ref(startOffset), Len: n, Cap: n}
 	off := enc.write(fs)
-
 	return Ref(off), nil
 }
 func unmarshallPlonkCkt(dec *decoder, v reflect.Value, offset int64) error {
@@ -659,7 +658,7 @@ func ptrFromStruct(v reflect.Value) (interface{}, error) {
 	// 1. If it's already a pointer, return it directly
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
-			return nil, nil // Or error, depending on your needs
+			return nil, nil
 		}
 		return v.Interface(), nil
 	}

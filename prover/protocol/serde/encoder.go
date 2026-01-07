@@ -534,6 +534,41 @@ func patchArray(w *encoder, v reflect.Value, startOffset int64) error {
 	elemType := v.Type().Elem()
 	elemBinSize := getBinarySize(elemType)
 	isReference := isIndirectType(elemType)
+
+	// Fast Path: Bulk Patch for POD types
+	// If we have a plain array (like [4]uint64 - field.Element), we can copy the bytes directly
+	// into the buffer at the correct offset, avoiding the loop entirely.
+	if isPOD(elemType) && v.CanAddr() {
+		totalBytes := elemBinSize * int64(v.Len())
+
+		// Get raw bytes from the Go value
+		// Note: v.UnsafeAddr() gives us the pointer to the array in memory
+		srcPtr := unsafe.Pointer(v.UnsafeAddr())
+
+		// This "tricks" Go into treating that memory address as a slice of bytes ([]byte) of length totalBytes.
+		// Crucially, this step does not copy any data yet; it just creates a window (handle) through which we
+		// can read the raw bytes of the array. This is the core of the optimization. It creates a []byte that points
+		// directly to your POD-array (eg. fr.Element) in memory.
+		srcBytes := unsafe.Slice((*byte)(srcPtr), totalBytes)
+
+		// Get the target slice in the buffer
+		// Note: w.buf is a bytes.Buffer, but we need random access.
+		// We use .Bytes() which returns the unread portion, but we need absolute access.
+		// Ideally, w.buf.Bytes() gives us the slice.
+		// Warning: This assumes w.buf.Bytes() returns the underlying slice starting at 0 if we haven't read.
+		// A safer way in your existing code structure is to access w.buf.Bytes() and index relative to 0.
+		bufSlice := w.buf.Bytes()
+
+		if startOffset+totalBytes > int64(len(bufSlice)) {
+			return fmt.Errorf("patchArray: buffer overflow during bulk copy")
+		}
+
+		// Copy directly into the buffer
+		copy(bufSlice[startOffset:], srcBytes)
+		return nil
+	}
+
+	// Fall back - sequential patch
 	for i := 0; i < v.Len(); i++ {
 		elem := v.Index(i)
 		// Calculate the exact offset for this specific element
