@@ -11,6 +11,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// A shared block of zeros that lives in the data segment (bss section of process memory) rather than heap and
+// avoids allocating new slices (using make) for padding/reservation. A 4KB block is small enough to fit entirely
+// inside your CPU's L1/L2 Cache. Reusing a small "hot" block (warm cache) is often faster than using a massive
+// "cold" block from main RAM.
+var zeroBlock [4096]byte
+
 // encoder: Holds the current encoding/serialization state
 type encoder struct {
 	// The growing slices of bytes(akin to "Heap") storing the actual serialized payload data.
@@ -101,6 +107,22 @@ func (w *encoder) writeBytes(b []byte) int64 {
 	return start
 }
 
+// writeZeros advances the buffer by n bytes, filling them with zeros,
+// without allocating a new byte slice.
+func (w *encoder) writeZeros(n int64) {
+	for n > 0 {
+		chunk := int64(len(zeroBlock))
+		if n < chunk {
+			chunk = n
+		}
+		// Write a slice of the existing global array. Rather than allocating a new slice,
+		// we just create a small 24-byte header (a Slice Header) that points to the existing global memory.
+		w.buf.Write(zeroBlock[:chunk])
+		w.offset += chunk
+		n -= chunk
+	}
+}
+
 // patch overwrites previously reserved zero bytes (at offset) with actual data v.
 func (w *encoder) patch(offset int64, v any) {
 	bufSlice := w.buf.Bytes()
@@ -115,6 +137,28 @@ func (w *encoder) patch(offset int64, v any) {
 		*(*FileSlice)(unsafe.Pointer(&bufSlice[offset])) = val
 	case InterfaceHeader:
 		*(*InterfaceHeader)(unsafe.Pointer(&bufSlice[offset])) = val
+	case int:
+		*(*int64)(unsafe.Pointer(&bufSlice[offset])) = int64(val)
+	case uint:
+		*(*uint64)(unsafe.Pointer(&bufSlice[offset])) = uint64(val)
+	case int32:
+		*(*int32)(unsafe.Pointer(&bufSlice[offset])) = val
+	case uint32:
+		*(*uint32)(unsafe.Pointer(&bufSlice[offset])) = val
+	case int16:
+		*(*int16)(unsafe.Pointer(&bufSlice[offset])) = val
+	case uint16:
+		*(*uint16)(unsafe.Pointer(&bufSlice[offset])) = val
+	case int8:
+		*(*int8)(unsafe.Pointer(&bufSlice[offset])) = val
+	case uint8:
+		*(*uint8)(unsafe.Pointer(&bufSlice[offset])) = val
+	case bool:
+		if val {
+			bufSlice[offset] = 1
+		} else {
+			bufSlice[offset] = 0
+		}
 	default:
 		// Fallback for complex types
 		var tmp bytes.Buffer
@@ -259,7 +303,10 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 		return Ref(off), nil
 	case reflect.String:
 		str := v.String()
-		dataOff := w.writeBytes([]byte(str))
+		// Use unsafe.Slice to treat the string as a byte slice without copying rather than using
+		// []byte(str) creates a copy of the string on the heap.
+		dataBytes := unsafe.Slice(unsafe.StringData(str), len(str))
+		dataOff := w.writeBytes(dataBytes)
 		fs := FileSlice{Offset: Ref(dataOff), Len: int64(len(str)), Cap: int64(len(str))}
 		off := w.write(fs)
 		return Ref(off), nil
@@ -297,7 +344,7 @@ func linearizeStruct(w *encoder, v reflect.Value) (Ref, error) {
 	// will be changed (mutates to the end of the reserved space). However, while coming back in time
 	// we need to know the current offset (beginning of cursor).
 	startOffset := w.offset
-	w.writeBytes(make([]byte, size))
+	w.writeZeros(size)
 
 	// PATCH - Go back and fill in the blank canvas with actual data.
 	if err := patchStructBody(w, v, startOffset); err != nil {
@@ -365,7 +412,7 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 func linearizeArray(w *encoder, v reflect.Value) (Ref, error) {
 	size := getTypeInfo(v.Type()).binSize
 	startOffset := w.offset
-	w.writeBytes(make([]byte, size))
+	w.writeZeros(size)
 	if err := patchArray(w, v, startOffset); err != nil {
 		return 0, err
 	}
@@ -377,7 +424,7 @@ func linearizeSliceSeq(w *encoder, v reflect.Value) (Ref, error) {
 	elemInfo := getTypeInfo(v.Type().Elem())
 	totalSize := elemInfo.binSize * int64(v.Len())
 	startOffset := w.offset
-	w.writeBytes(make([]byte, totalSize))
+	w.writeZeros(totalSize)
 	currentOff := startOffset
 	for i := 0; i < v.Len(); i++ {
 		elem := v.Index(i)
