@@ -15,7 +15,6 @@ import (
 	ghash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -173,7 +172,7 @@ func ChecksumExecDataSnark(api frontend.API, data []frontend.Variable, wordNbBit
 	}
 
 	// turn the data into bytes
-	_bytes, err := utils.ToBytes(api, data, wordNbBits)
+	_bytes, err := gnarkutil.ToBytes(api, data, wordNbBits)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +200,10 @@ func ChecksumExecDataSnark(api frontend.API, data []frontend.Variable, wordNbBit
 
 	// find the partial checksum to use
 	// number of used blocks is ⌈nbBytes / 31⌉
-	blockI, _, err := utils.DivBy31(api, api.Add(nbBytes, 30), 1+bits.Len(uint(len(_bytes))))
+	blockI, _, err := gnarkutil.DivBy31(api, api.Add(nbBytes, 30), 1+bits.Len(uint(len(_bytes))))
+	if err != nil {
+		return nil, err
+	}
 	blockI = api.Sub(blockI, 1)
 	partial := partials.Lookup(blockI)[0]
 

@@ -72,6 +72,9 @@ func NewVersionedBlobMaker(version uint16, dataLimit int, dictPath string) (*Blo
 	}
 
 	dictChecksum, err := dictionary.Checksum(dict, version)
+	if err != nil {
+		return nil, err
+	}
 	copy(blobMaker.header.DictChecksum[:], dictChecksum)
 
 	blobMaker.compressor, err = lzss.NewCompressor(dict)
