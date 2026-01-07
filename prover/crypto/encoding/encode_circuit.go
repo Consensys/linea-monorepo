@@ -79,22 +79,28 @@ func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVari
 // The Encode9WVsToFV function is used in the gnark verifier
 // Function to encode 9 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
 func Encode9WVsToFV(api frontend.API, values [KoalabearChunks]zk.WrappedVariable) frontend.Variable {
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
+
+	var result frontend.Variable = 0
+
+	// Precompute all multipliers as constants
+	// First 8 values use 30 bits each, last value uses 16 bits
+	multipliers := [9]*big.Int{
+		big.NewInt(1),                        // 2^0
+		big.NewInt(1 << 30),                  // 2^30
+		new(big.Int).Lsh(big.NewInt(1), 60),  // 2^60
+		new(big.Int).Lsh(big.NewInt(1), 90),  // 2^90
+		new(big.Int).Lsh(big.NewInt(1), 120), // 2^120
+		new(big.Int).Lsh(big.NewInt(1), 150), // 2^150
+		new(big.Int).Lsh(big.NewInt(1), 180), // 2^180
+		new(big.Int).Lsh(big.NewInt(1), 210), // 2^210
+		new(big.Int).Lsh(big.NewInt(1), 240), // 2^240
 	}
 
-	bits := make([]frontend.Variable, 256)
-
-	for i := 0; i < KoalabearChunks-1; i++ {
-		// Convert the 31 bits of the current WrappedVariable to frontend variables
-		limbBits := apiGen.ToBinary(values[KoalabearChunks-1-i], 30)
-		copy(bits[30*i:], limbBits)
+	for i := 0; i < KoalabearChunks; i++ {
+		value := values[KoalabearChunks-1-i].AsNative()
+		// Add the value to the result, scaled by the current multiplier
+		result = api.Add(result, api.Mul(value, multipliers[i]))
 	}
 
-	limbBits := apiGen.ToBinary(values[0], 16)
-	copy(bits[240:], limbBits)
-
-	return api.FromBinary(bits...)
-
+	return result
 }
