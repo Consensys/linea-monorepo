@@ -306,9 +306,7 @@ func (ctx SplitterContext) adjustExpressionForGlobal(
 					subCol.GetColID(), ctx.Size, subCol.Size(), m.GetColID(), m.Size(),
 				)
 			}
-			if subCol != m {
-				translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(subCol))
-			}
+			translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(subCol))
 		case variables.X:
 			utils.Panic("unsupported, the value of `x` in the unsplit query and the split would be different")
 		case variables.PeriodicSample:

@@ -62,7 +62,7 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		withExternalHasher: withExternalHasher,
 		PolyQuery:          polyQuery,
 		MerkleRoots:        merkleRoots,
-		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound),
+		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound, false),
 		Pubs:               make([]zk.WrappedVariable, len(comp.PublicInputs)),
 		Commitments:        make([][blockSize]zk.WrappedVariable, len(merkleRoots)),
 		Ys:                 make([]gnarkfext.E4Gen, len(polyQuery.Pols)),
@@ -121,10 +121,10 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		pcsCtx         = comp.PcsCtxs.(*vortex.Ctx)
 		polyQuery      = pcsCtx.Query
 		numRound       = comp.QueriesParams.Round(polyQuery.QueryID) + 1
-		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound)
+		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound, false)
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
 		circuit        = &RecursionCircuit{
-			WizardVerifier: wizard.AssignVerifierCircuit(comp, proof, numRound),
+			WizardVerifier: wizard.AssignVerifierCircuit(comp, proof, numRound, false),
 			X:              params.ExtX,
 			Ys:             params.ExtYs,
 			Pubs:           vector.IntoGnarkAssignment(pubs),

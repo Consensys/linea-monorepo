@@ -39,6 +39,9 @@ type PlonkInWizardBuilder interface {
 	// Builder is the underlying frontend builder
 	frontend.Builder[constraint.U32]
 
+	// redefinition of gnark internal [bitsComparatorConstant]
+	MustBeLessOrEqCst(aBits []frontend.Variable, bound *big.Int, aForDebug frontend.Variable)
+
 	// redefinition of gnark internal kvstore methods
 	SetKeyValue(key, value any)
 	GetKeyValue(key any) (value any)
@@ -97,15 +100,21 @@ func From(newBaseBuilder frontend.NewBuilderU32) frontend.NewBuilderU32 {
 // deduplication to ensure we only have a single constraint for every committed
 // variable.
 func (wc *widecommitter) WideCommit(width int, vars ...frontend.Variable) ([]frontend.Variable, error) {
+
 	// the random coin is sampled from the extension field. In practice we could
 	// support smaller width, but it would most probably lead to unsound
 	// construction of subprotocols, so we prohibit it. In case we want to
 	// support larger width than the extension degree, then we would have to
 	// sample multiple random coins and combine them, but lets solve it when we
 	// need it. Currently there doesn't seem to be a use case for it.
-	if width != fext.ExtensionDegree {
+	//
+	// @alex: this behaviour is currently patched because the gnark non-native
+	// circuits use a width of 8 and we assume a width of 4. What we do is that
+	// we concretely pad with zeroes to the right.
+	if width < fext.ExtensionDegree {
 		return nil, fmt.Errorf("wide commit: expected width %d, got %d", fext.ExtensionDegree, width)
 	}
+
 	// filter the variables which are only "canonical" (not constant).
 	filtered := make([]frontend.Variable, 0, len(vars))
 	for _, v := range vars {
@@ -143,6 +152,13 @@ func (wc *widecommitter) WideCommit(width int, vars ...frontend.Variable) ([]fro
 	if err := wc.AddPlonkCommitmentOutputs(committed, outs); err != nil {
 		return nil, fmt.Errorf("adding wide commit outputs: %w", err)
 	}
+
+	if len(outs) < width {
+		for _ = range width - len(outs) {
+			outs = append(outs, 0)
+		}
+	}
+
 	return outs, nil
 }
 
@@ -151,6 +167,11 @@ func (wc *widecommitter) WideCommit(width int, vars ...frontend.Variable) ([]fro
 // If not replaced, then it panics.
 func PlaceholderWideCommitHint(field *big.Int, inputs []*big.Int, outputs []*big.Int) error {
 	panic("calling mocked wide commitment hint, it should be replaced at solving time")
+}
+
+// Compiler returns the compiler of the underlying builder.
+func (wc *widecommitter) Compiler() frontend.Compiler {
+	return wc
 }
 
 func init() {

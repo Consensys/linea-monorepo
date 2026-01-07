@@ -83,7 +83,7 @@ func NewECPairZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetiza
 	}
 
 	return newECPair(comp, limits, source).
-		WithG2MembershipCircuit(comp).
+		WithG2MembershipCircuit(comp, query.PlonkRangeCheckOption(16, 1, true)).
 		WithPairingCircuit(comp, query.PlonkRangeCheckOption(16, 1, true))
 }
 

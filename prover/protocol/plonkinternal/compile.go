@@ -18,7 +18,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -234,9 +233,6 @@ func (ctx *CompilationCtx) addGateConstraint() {
 			// full length of a column
 			fullLength := ctx.Columns.PI[i].Size()
 			commitmentInfo := ctx.CommitmentInfo()
-			if commitmentInfo.Width != fext.ExtensionDegree {
-				utils.Panic("unexpected commitment width %v", commitmentInfo.Width)
-			}
 			hcpPosition := commitmentInfo.CommitmentIndex + ctx.Plonk.SPR.GetNbPublicVariables()
 			// the random coin is an extension field element, but gnark circuit
 			// expects to have as a vector of base field elements we have

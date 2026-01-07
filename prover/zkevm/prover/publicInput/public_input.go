@@ -12,11 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	pcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
-	pack "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
-	edc "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/execution_data_collector"
 	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
@@ -53,7 +49,6 @@ type PublicInput struct {
 	RootHashFetcher    *fetch.RootHashFetcher
 	RollingHashFetcher *logs.RollingSelector
 	LogHasher          logs.LogHasher
-	ExecMiMCHasher     edc.MIMCHasher
 	DataNbBytes        ifaces.Column
 	ChainID            [pcommon.NbLimbU256]ifaces.Column
 	ChainIDNBytes      ifaces.Column
@@ -67,9 +62,9 @@ type AuxiliaryModules struct {
 	BlockTxnMetadata                                   fetch.BlockTxnMetadata
 	TxnDataFetcher                                     fetch.TxnDataFetcher
 	RlpTxnFetcher                                      fetch.RlpTxnFetcher
-	ExecDataCollector                                  *edc.ExecutionDataCollector
-	ExecDataCollectorPadding                           wizard.ProverAction
-	ExecDataCollectorPacking                           pack.Packing
+	// ExecDataCollector                                  *edc.ExecutionDataCollector
+	// ExecDataCollectorPadding                           wizard.ProverAction
+	// ExecDataCollectorPacking                           pack.Packing
 }
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
@@ -199,65 +194,22 @@ func newPublicInput(
 	chainIDFetcher := fetch.NewChainIDFetcher(comp, "PUBLIC_INPUT_CHAIN_ID_FETCHER", inp.BlockData)
 	fetch.DefineChainIDFetcher(comp, &chainIDFetcher, "PUBLIC_INPUT_CHAIN_ID_FETCHER", inp.BlockData)
 
-	// ExecutionDataCollector
-	limbColSize := edc.GetSummarySize(inp.TxnData, inp.RlpTxn)
-	limbColSize = 4 * limbColSize // we need to artificially blow up the column size by 2, or padding will fail
-	execDataCollector := edc.NewExecutionDataCollector(comp, "EXECUTION_DATA_COLLECTOR", limbColSize)
-	edc.DefineExecutionDataCollector(comp, execDataCollector, "EXECUTION_DATA_COLLECTOR", blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
-
-	// ExecutionDataCollector: Padding
-	importInp := importpad.ImportAndPadInputs{
-		Name: settings.Name,
-		Src: generic.GenericByteModule{Data: generic.GenDataModule{
-			HashNum: execDataCollector.HashNum,
-			Index:   execDataCollector.Ct,
-			ToHash:  execDataCollector.IsActive,
-			NBytes:  execDataCollector.NoBytes,
-			Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("executiondata.limbs", execDataCollector.Limbs[:]).AssertUint128(),
-		}},
-		PaddingStrategy: generic.Poseidon2UseCase,
-	}
-	padding := importpad.ImportAndPad(comp, importInp, limbColSize)
-
-	// ExecutionDataCollector: Packing
-	packingInp := pack.PackingInput{
-		MaxNumBlocks: execDataCollector.BlockID.Size(),
-		PackingParam: generic.Poseidon2UseCase,
-		Imported: pack.Importation{
-			Limb:      padding.Limbs,
-			NByte:     padding.NBytes,
-			IsNewHash: padding.IsNewHash,
-			IsActive:  padding.IsActive,
-		},
-		Name: "EXECUTION_DATA_MIMC",
-	}
-	packingMod := pack.NewPack(comp, packingInp)
-
-	// ExecutionDataCollector: Hashing
-	mimcHasher := edc.NewMIMCHasher(comp, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
-	mimcHasher.DefineHasher(comp, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
-
 	publicInput := PublicInput{
 		BlockDataFetcher:   blockDataFetcher,
 		RootHashFetcher:    rootHashFetcher,
 		RollingHashFetcher: rollingSelector,
 		LogHasher:          logHasherL2l1,
-		ExecMiMCHasher:     *mimcHasher,
-		DataNbBytes:        execDataCollector.FinalTotalBytesCounter,
 		ChainID:            chainIDFetcher.ChainID,
 		ChainIDNBytes:      chainIDFetcher.NBytesChainID,
 		Inputs:             *inp,
 		Aux: AuxiliaryModules{
-			FetchedL2L1:              fetchedL2L1,
-			FetchedRollingMsg:        fetchedRollingMsg,
-			FetchedRollingHash:       fetchedRollingHash,
-			LogSelectors:             logSelectors,
-			BlockTxnMetadata:         blockTxnMeta,
-			TxnDataFetcher:           txnDataFetcher,
-			RlpTxnFetcher:            rlpFetcher,
-			ExecDataCollector:        execDataCollector,
-			ExecDataCollectorPadding: padding,
-			ExecDataCollectorPacking: *packingMod,
+			FetchedL2L1:        fetchedL2L1,
+			FetchedRollingMsg:  fetchedRollingMsg,
+			FetchedRollingHash: fetchedRollingHash,
+			LogSelectors:       logSelectors,
+			BlockTxnMetadata:   blockTxnMeta,
+			TxnDataFetcher:     txnDataFetcher,
+			RlpTxnFetcher:      rlpFetcher,
 		},
 	}
 
@@ -291,10 +243,6 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	fetch.AssignTxnDataFetcher(run, aux.TxnDataFetcher, inp.TxnData)
 	fetch.AssignRlpTxnFetcher(run, &aux.RlpTxnFetcher, inp.RlpTxn)
 	// assign the ExecutionDataCollector
-	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.BlockDataFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
-	aux.ExecDataCollectorPadding.Run(run)
-	aux.ExecDataCollectorPacking.Run(run)
-	pub.ExecMiMCHasher.AssignHasher(run)
 	pub.Extractor.Run(run)
 }
 
@@ -302,15 +250,13 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 // of the public inputs recovered by the public input module.
 func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 
-	return
-
 	createNewLocalOpening := func(col ifaces.Column) query.LocalOpening {
 		return comp.InsertLocalOpening(0, ifaces.QueryIDf("%s_%s", "PUBLIC_INPUT_LOCAL_OPENING", col.GetColID()), col)
 	}
 
 	createNewLocalOpenings := func(qs []query.LocalOpening, cols []ifaces.Column) {
 		if len(qs) != len(cols) {
-			panic("len(qs) != len(cols)")
+			utils.Panic("len(qs) %v != len(cols) %v", len(qs), len(cols))
 		}
 		for i, col := range cols {
 			qs[i] = createNewLocalOpening(col)
@@ -328,11 +274,10 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 	}
 
 	pi.Extractor = FunctionalInputExtractor{
-		DataNbBytes:   createNewLocalOpening(pi.DataNbBytes),
+		// DataNbBytes:   createNewLocalOpening(pi.DataNbBytes),
 		NBytesChainID: createNewLocalOpening(pi.ChainIDNBytes),
 	}
 
-	createNewLocalOpenings(pi.Extractor.DataChecksum[:], pi.ExecMiMCHasher.HashFinal[:])
 	createNewLocalOpenings(pi.Extractor.L2MessageHash[:], pi.LogHasher.HashFinal[:])
 	createNewLocalOpenings(pi.Extractor.InitialStateRootHash[:], pi.RootHashFetcher.First[:])
 	createNewLocalOpenings(pi.Extractor.FinalStateRootHash[:], pi.RootHashFetcher.Last[:])
@@ -349,7 +294,7 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 	createNewLocalOpenings(pi.Extractor.CoinBase[:], pi.BlockDataFetcher.CoinBase[:])
 	createNewLocalOpenings(pi.Extractor.BaseFee[:], pi.BlockDataFetcher.BaseFee[:])
 
-	addPublicInputs(DataNbBytes, pi.Extractor.DataNbBytes)
+	// addPublicInputs(DataNbBytes, pi.Extractor.DataNbBytes)
 	addPublicInputs(NBytesChainID, pi.Extractor.NBytesChainID)
 	addPublicInputs(L2MessageHash, pi.Extractor.L2MessageHash[:]...)
 	addPublicInputs(InitialStateRootHash, pi.Extractor.InitialStateRootHash[:]...)
