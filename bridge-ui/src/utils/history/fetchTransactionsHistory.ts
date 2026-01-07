@@ -5,7 +5,6 @@ import { fetchETHBridgeEvents } from "./fetchETHBridgeEvents";
 import { fetchERC20BridgeEvents } from "./fetchERC20BridgeEvents";
 import { fetchCctpBridgeEvents } from "./fetchCctpBridgeEvents";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
-import { Config } from "wagmi";
 
 type TransactionHistoryParams = {
   historyStoreActions: HistoryActionsForCompleteTxCaching;
@@ -13,7 +12,6 @@ type TransactionHistoryParams = {
   toChain: Chain;
   address: Address;
   tokens: Token[];
-  wagmiConfig: Config;
 };
 
 export async function fetchTransactionsHistory({
@@ -22,11 +20,10 @@ export async function fetchTransactionsHistory({
   address,
   tokens,
   historyStoreActions,
-  wagmiConfig,
 }: TransactionHistoryParams): Promise<BridgeTransaction[]> {
   const events = await Promise.all([
-    fetchBridgeEvents(fromChain, toChain, address, tokens, historyStoreActions, wagmiConfig),
-    fetchBridgeEvents(toChain, fromChain, address, tokens, historyStoreActions, wagmiConfig),
+    fetchBridgeEvents(fromChain, toChain, address, tokens, historyStoreActions),
+    fetchBridgeEvents(toChain, fromChain, address, tokens, historyStoreActions),
   ]);
   return events.flat().sort((a, b) => Number(b.timestamp.toString()) - Number(a.timestamp.toString()));
 }
@@ -37,15 +34,12 @@ async function fetchBridgeEvents(
   address: Address,
   tokens: Token[],
   historyStoreActions: HistoryActionsForCompleteTxCaching,
-  wagmiConfig: Config,
 ): Promise<BridgeTransaction[]> {
   const [ethEvents, erc20Events, cctpEvents] = await Promise.all([
-    fetchETHBridgeEvents(historyStoreActions, address, fromChain, toChain, tokens, wagmiConfig),
-    fetchERC20BridgeEvents(historyStoreActions, address, fromChain, toChain, tokens, wagmiConfig),
+    fetchETHBridgeEvents(historyStoreActions, address, fromChain, toChain, tokens),
+    fetchERC20BridgeEvents(historyStoreActions, address, fromChain, toChain, tokens),
     // Feature toggle for CCTP, will filter out USDC transactions if isCctpEnabled == false
-    config.isCctpEnabled
-      ? fetchCctpBridgeEvents(historyStoreActions, address, fromChain, toChain, tokens, wagmiConfig)
-      : [],
+    config.isCctpEnabled ? fetchCctpBridgeEvents(historyStoreActions, address, fromChain, toChain, tokens) : [],
   ]);
 
   return [...ethEvents, ...erc20Events, ...cctpEvents];

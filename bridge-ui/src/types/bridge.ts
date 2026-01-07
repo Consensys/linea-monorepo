@@ -1,6 +1,6 @@
 import { Address } from "viem";
 import { MessageProof } from "@consensys/linea-sdk-viem";
-import { Chain, Token, TransactionStatus, CCTPMode } from "@/types";
+import { Chain, Token, TransactionStatus } from "@/types";
 
 export type NativeBridgeMessage = {
   from: Address;
@@ -48,5 +48,4 @@ export interface BridgeTransaction {
   message: NativeBridgeMessage | CctpV2BridgeMessage;
   bridgingTx: string;
   claimingTx?: string;
-  cctpMode?: CCTPMode;
 }

@@ -1,32 +1,24 @@
 import { formatUnits } from "viem";
 import styles from "./received-amount.module.scss";
 import { useTokenPrices } from "@/hooks";
-import { useChainStore, useConfigStore, useFormStore } from "@/stores";
-import { formatBalance, isCctp } from "@/utils";
-import { ChainLayer, Token } from "@/types";
-import { useMemo } from "react";
-import { useCctpFee } from "@/hooks/transaction-args/cctp/useCctpUtilHooks";
+import { useConfigStore, useChainStore, useFormStore } from "@/stores";
+import { formatBalance } from "@/utils";
 import { ETH_SYMBOL } from "@/constants";
+import { ChainLayer } from "@/types";
+import { useMemo } from "react";
 
 function formatReceivedAmount(
   amount: bigint,
-  token: Token,
+  tokenSymbol: string,
   bridgingFees: bigint,
   minimumFees: bigint,
   fromChainLayer: ChainLayer,
-  cctpFee: bigint | null,
 ) {
-  if (isCctp(token)) {
-    return cctpFee ? amount - cctpFee : amount;
-  } else {
-    if (token.symbol !== ETH_SYMBOL) {
-      return amount;
-    }
-
-    const feesToApply = fromChainLayer === ChainLayer.L1 ? bridgingFees : minimumFees;
-
-    return amount - feesToApply;
+  if (tokenSymbol !== ETH_SYMBOL) {
+    return amount;
   }
+
+  return fromChainLayer === ChainLayer.L1 ? amount - bridgingFees : amount - minimumFees;
 }
 
 export default function ReceivedAmount() {
@@ -36,17 +28,16 @@ export default function ReceivedAmount() {
   const token = useFormStore((state) => state.token);
   const bridgingFees = useFormStore((state) => state.bridgingFees);
   const minimumFees = useFormStore((state) => state.minimumFees);
-  const cctpFee = useCctpFee(amount, token.decimals);
 
   const { data: tokenPrices } = useTokenPrices([token[fromChain.layer]], fromChain.id);
 
   const receivedAmount = useMemo(
     () =>
       formatUnits(
-        formatReceivedAmount(amount || 0n, token, bridgingFees, minimumFees, fromChain.layer, cctpFee),
+        formatReceivedAmount(amount || 0n, token.symbol, bridgingFees, minimumFees, fromChain.layer),
         token.decimals,
       ),
-    [amount, token, bridgingFees, minimumFees, fromChain.layer, cctpFee],
+    [amount, token.symbol, bridgingFees, minimumFees, fromChain.layer, token.decimals],
   );
 
   return (

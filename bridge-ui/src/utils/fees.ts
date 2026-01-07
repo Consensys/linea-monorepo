@@ -1,11 +1,11 @@
-import { Address, encodeAbiParameters, encodeFunctionData, zeroAddress } from "viem";
+import { zeroAddress, encodeFunctionData, encodeAbiParameters, Address } from "viem";
 import { getPublicClient } from "@wagmi/core";
 import TokenBridge from "@/abis/TokenBridge.json";
 import MessageService from "@/abis/MessageService.json";
 import { computeMessageHash, computeMessageStorageSlot } from "./message";
 import { Chain, ClaimType, Token } from "@/types";
+import { config } from "@/lib/wagmi";
 import { isUndefined } from "@/utils";
-import { Config } from "wagmi";
 
 interface EstimationParams {
   address: Address;
@@ -15,7 +15,6 @@ interface EstimationParams {
   fromChain: Chain;
   toChain: Chain;
   claimingType: ClaimType;
-  wagmiConfig: Config;
 }
 
 /**
@@ -109,16 +108,15 @@ export async function estimateERC20BridgingGasUsed({
   toChain,
   token,
   claimingType,
-  wagmiConfig,
 }: EstimationParams & { token: Token }): Promise<bigint> {
   if (claimingType === ClaimType.MANUAL) return 0n;
 
-  const destinationChainPublicClient = getPublicClient(wagmiConfig, {
+  const destinationChainPublicClient = getPublicClient(config, {
     chainId: toChain.id,
   });
   if (isUndefined(destinationChainPublicClient)) return 0n;
 
-  const originChainPublicClient = getPublicClient(wagmiConfig, {
+  const originChainPublicClient = getPublicClient(config, {
     chainId: fromChain.id,
   });
   if (isUndefined(originChainPublicClient)) return 0n;
@@ -178,11 +176,10 @@ export async function estimateEthBridgingGasUsed({
   nextMessageNumber,
   toChain,
   claimingType,
-  wagmiConfig,
 }: EstimationParams): Promise<bigint> {
   if (claimingType === ClaimType.MANUAL) return 0n;
 
-  const destinationChainPublicClient = getPublicClient(wagmiConfig, {
+  const destinationChainPublicClient = getPublicClient(config, {
     chainId: toChain.id,
   });
   if (isUndefined(destinationChainPublicClient)) return 0n;

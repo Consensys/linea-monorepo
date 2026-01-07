@@ -2,8 +2,6 @@ import DappIcon from "@/assets/icons/dapp.svg";
 import TokenIcon from "@/assets/icons/token.svg";
 import LineaFullLogo from "@/assets/logos/linea-full.svg";
 import LineaIcon from "@/assets/logos/linea.svg";
-import EventIcon from "@/assets/icons/event.svg";
-import RewardsIcon from "@/assets/icons/reward.svg";
 import ListYourApp from "@/components/list-your-app";
 import clsx from "clsx";
 import Link from "next/link";
@@ -36,7 +34,7 @@ const navActiveColorList = [
 
 export default function SideBar() {
   const filteredNavItems = useMemo(() => {
-    return [
+    const navItems = [
       {
         name: "Home",
         href: "https://linea.build/hub",
@@ -64,17 +62,9 @@ export default function SideBar() {
           },
         ],
       },
-      {
-        name: "Events",
-        href: "https://linea.build/hub/events",
-        icon: <EventIcon />,
-      },
-      {
-        name: "Rewards",
-        href: "https://linea.build/hub/rewards",
-        icon: <RewardsIcon />,
-      },
     ];
+
+    return navItems;
   }, []);
 
   return (
