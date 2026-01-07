@@ -182,12 +182,12 @@ func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error 
 func (spiq *FunctionalPublicInputQSnark) Assign(pi *public_input.Execution) error {
 
 	spiq.DataChecksum.Assign(&pi.DataChecksum)
-	spiq.InitialBlockTimestamp = zk.ValueOf(pi.InitialBlockTimestamp)
-	spiq.FinalStateRootHash = zk.ValueOf(pi.FinalStateRootHash[:])
-	spiq.FinalBlockNumber = zk.ValueOf(pi.FinalBlockNumber)
-	spiq.FinalBlockTimestamp = zk.ValueOf(pi.FinalBlockTimestamp)
-	spiq.FirstRollingHashUpdateNumber = zk.ValueOf(pi.FirstRollingHashUpdateNumber)
-	spiq.LastRollingHashUpdateNumber = zk.ValueOf(pi.LastRollingHashUpdateNumber)
+	spiq.InitialBlockTimestamp = pi.InitialBlockTimestamp
+	spiq.FinalStateRootHash = pi.FinalStateRootHash[:]
+	spiq.FinalBlockNumber = pi.FinalBlockNumber
+	spiq.FinalBlockTimestamp = pi.FinalBlockTimestamp
+	spiq.FirstRollingHashUpdateNumber = pi.FirstRollingHashUpdateNumber
+	spiq.LastRollingHashUpdateNumber = pi.LastRollingHashUpdateNumber
 
 	utils.Copy(spiq.FinalRollingHashUpdate[:], pi.LastRollingHashUpdate[:])
 	utils.Copy(spiq.InitialRollingHashUpdate[:], pi.InitialRollingHashUpdate[:])
