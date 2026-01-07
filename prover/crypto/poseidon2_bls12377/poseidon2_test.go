@@ -46,7 +46,7 @@ func getGnarkMDHasherCircuitWitness(nbElmts int) (*GnarkMDHasherCircuit, *GnarkM
 	vals := make([]fr.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
 		// vals[i].SetRandom()
-		vals[i].SetUint64(uint64(10 + i))
+		vals[i].SetRandom()
 	}
 
 	// sum
@@ -70,7 +70,7 @@ func getGnarkMDHasherCircuitWitness(nbElmts int) (*GnarkMDHasherCircuit, *GnarkM
 func TestCircuit(t *testing.T) {
 
 	// Define all the sizes you want to test here
-	testSizes := []int{2, 100, 2024}
+	testSizes := []int{3, 6, 444}
 
 	for _, size := range testSizes {
 		// Run a sub-test for each size

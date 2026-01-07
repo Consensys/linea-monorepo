@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/profile"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -472,12 +471,12 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 		c := wizard.AllocateWizardCircuit(comp, comp.NumRounds(), isBLS)
 		circuit.C = *c
 	}
-	fname := "TestGnarkSelfRecursionManyLayers.pprof"
-	pro := profile.Start(profile.WithPath(fname))
+	// fname := "TestGnarkSelfRecursionManyLayers.pprof"
+	// pro := profile.Start(profile.WithPath(fname))
 
 	csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 
-	pro.Stop()
+	// pro.Stop()
 
 	if err != nil {
 		t.Fatal(err)

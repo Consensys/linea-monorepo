@@ -147,3 +147,71 @@ func TestFSCircuit(t *testing.T) {
 	err = ccs.IsSolved(fullWitness)
 	assert.NoError(t, err)
 }
+
+type KoalaFlushSpecificCircuit struct {
+	Input   [32]zk.WrappedVariable
+	Output  zk.Octuplet
+	isKoala bool
+}
+
+func (c *KoalaFlushSpecificCircuit) Define(api frontend.API) error {
+	fs := NewGnarkFS(api)
+
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		return err
+	}
+
+	fs.Update(c.Input[:]...)
+	res := fs.RandomField()
+	for i := 0; i < len(res); i++ {
+		apiGen.AssertIsEqual(res[i], c.Output[i])
+	}
+	return nil
+}
+
+func getKoalaFlushSpecificWitness(isKoala bool) (*KoalaFlushSpecificCircuit, *KoalaFlushSpecificCircuit) {
+	var circuit, witness KoalaFlushSpecificCircuit
+	circuit.isKoala = isKoala
+	witness.isKoala = isKoala
+	fs := NewFS()
+
+	var input [32]field.Element
+	var one field.Element
+	one.SetOne()
+	// zero is 0 by default
+
+	for i := 0; i < 16; i++ {
+		// input[2*i] = -1
+		input[2*i] = *field.MaxVal
+		// input[2*i+1] = 0
+		input[2*i+1].SetZero()
+	}
+
+	fs.Update(input[:]...)
+	output := fs.RandomField()
+
+	for i := 0; i < 32; i++ {
+		witness.Input[i] = zk.ValueOf(int64(input[i].Bits()[0]))
+	}
+	for i := 0; i < 8; i++ {
+		witness.Output[i] = zk.ValueOf(int64(output[i].Bits()[0]))
+	}
+
+	return &circuit, &witness
+}
+
+func TestKoalaFlushSpecific(t *testing.T) {
+
+	// compile on bls
+	{
+		circuit, witness := getKoalaFlushSpecificWitness(false)
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
+}

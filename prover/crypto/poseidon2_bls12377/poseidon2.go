@@ -2,7 +2,6 @@ package poseidon2_bls12377
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
@@ -91,7 +90,16 @@ func (d *MDHasher) State() fr.Element {
 // WriteElements adds a slice of field elements to the running hash.
 func (d *MDHasher) WriteKoalabearElements(elmts ...field.Element) {
 	_elmts := encoding.EncodeKoalabearsToFrElement(elmts)
+	// if len(elmts) == 24 || len(elmts) == 3549 {
+	// 	fmt.Printf("[MDHasher WriteKoalabearElements] elmts: %v\n", vector.Prettify(_elmts[:2]))
+	// 	fmt.Printf("[MDHasher WriteKoalabearElements] len(_elmts) len before: %d\n", len(_elmts))
+
+	// }
 	d.WriteElements(_elmts...)
+	// if len(elmts) == 24 || len(elmts) == 3549 {
+	// 	fmt.Printf("[MDHasher WriteKoalabearElements] len(buffer) len before: %d\n", len(d.buffer))
+
+	// }
 }
 
 // WriteElements adds a slice of field elements to the running hash.
@@ -122,11 +130,18 @@ func compress(left, right fr.Element) fr.Element {
 }
 
 func (d *MDHasher) SumElement() fr.Element {
-	if d.verbose {
-		fmt.Printf("[native fs flush] oldState %v, buffer = %v\n", d.state.String(), fr.Vector(d.buffer).String())
-	}
+	// if len(d.buffer) == 444 {
+	// 	fmt.Printf("[native fs flush] oldState %v, buffer = %v\n", d.state.String(), fr.Vector(d.buffer[:3]).String())
+	// 	fmt.Printf("[native fs flush] buffer length = %d\n", len(d.buffer))
+	// }
+	// fmt.Printf("[native fs flush] oldState %v, buffer = %v\n", d.state.String(), fr.Vector(d.buffer).String())
+
 	for i := 0; i < len(d.buffer); i++ {
 		d.state = compress(d.state, d.buffer[i])
+
+		// if len(d.buffer) == 444 && (i < 325 && i > 318) {
+		// 	fmt.Printf("[native fs flush] step %d, state=%v, buffer=%v\n", i, d.state.String(), d.buffer[i].String())
+		// }
 	}
 	d.buffer = d.buffer[:0]
 	return d.state

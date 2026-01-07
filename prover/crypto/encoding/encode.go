@@ -10,13 +10,30 @@ import (
 
 func EncodeKoalabearOctupletToFrElement(elements [8]field.Element) fr.Element {
 	var res fr.Element
-	var bres, part big.Int
-	for i := 0; i < 8; i++ {
-		part.SetInt64(int64(elements[7-i].Bits()[0]))
-		shift := uint(31 * i)  // Shift based on little-endian order
-		part.Lsh(&part, shift) // Shift left by the appropriate position for little-endian
-		bres.Add(&bres, &part) // Bitwise OR to combine
+	var bres big.Int
+
+	// Precompute all multipliers as constants
+	multipliers := [8]*big.Int{
+		big.NewInt(1),                        // 2^0
+		big.NewInt(1 << 31),                  // 2^31
+		new(big.Int).Lsh(big.NewInt(1), 62),  // 2^62
+		new(big.Int).Lsh(big.NewInt(1), 93),  // 2^93
+		new(big.Int).Lsh(big.NewInt(1), 124), // 2^124
+		new(big.Int).Lsh(big.NewInt(1), 155), // 2^155
+		new(big.Int).Lsh(big.NewInt(1), 186), // 2^186
+		new(big.Int).Lsh(big.NewInt(1), 217), // 2^217
 	}
+
+	for i := 0; i < 8; i++ {
+		var bElement big.Int
+		elements[7-i].BigInt(&bElement)
+
+		// fmt.Printf("Element %d: %v\n", 7-i, int64(elements[7-i].Bits()[0]))
+		// Add the value to the result, scaled by the current multiplier
+		bElement.Mul(&bElement, multipliers[i])
+		bres.Add(&bres, &bElement)
+	}
+
 	res.SetBigInt(&bres)
 	return res
 }

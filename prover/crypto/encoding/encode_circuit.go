@@ -1,29 +1,41 @@
 package encoding
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
+// NEW CODE FOR KOALABEAR ENCODING
 // Function to encode 8 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
 func Encode8WVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Variable {
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
 
-	bits := make([]frontend.Variable, 256)
+	var result frontend.Variable = 0
+
+	// Precompute all multipliers as constants
+	multipliers := [8]*big.Int{
+		big.NewInt(1),                        // 2^0
+		big.NewInt(1 << 31),                  // 2^31
+		new(big.Int).Lsh(big.NewInt(1), 62),  // 2^62
+		new(big.Int).Lsh(big.NewInt(1), 93),  // 2^93
+		new(big.Int).Lsh(big.NewInt(1), 124), // 2^124
+		new(big.Int).Lsh(big.NewInt(1), 155), // 2^155
+		new(big.Int).Lsh(big.NewInt(1), 186), // 2^186
+		new(big.Int).Lsh(big.NewInt(1), 217), // 2^217
+	}
 
 	for i := 0; i < 8; i++ {
-		// Convert the 31 bits of the current WrappedVariable to frontend variables
-		limbBits := apiGen.ToBinary(values[7-i], 31)
-		copy(bits[31*i:], limbBits) // 8 leading padding bits come first
-	}
-	for i := 248; i < 256; i++ {
-		bits[i] = frontend.Variable(0) // Explicitly set last 8 bits to zero (most significant bits)
+		value := values[7-i].AsNative()
+		// api.Println("Circuit Encode: i=", i, " value=", value)
+
+		// Add the value to the result, scaled by the current multiplier
+		result = api.Add(result, api.Mul(value, multipliers[i]))
+		// api.Println("Circuit result: i=", i, " value=", result)
+
 	}
 
-	return api.FromBinary(bits...)
+	return result
 }
 
 // Function to encode 31-bit zk.WrappedVariable into 256-bit frontend.Variable slices
@@ -31,6 +43,9 @@ func EncodeWVsToFVs(api frontend.API, values []zk.WrappedVariable) []frontend.Va
 	var res []frontend.Variable
 	for len(values) != 0 {
 		var buf [8]zk.WrappedVariable
+		for i := 0; i < 8; i++ {
+			buf[i] = zk.ValueOf(0)
+		}
 		// in this case we left pad by zeroes
 		if len(values) < 8 {
 			copy(buf[8-len(values):], values)
