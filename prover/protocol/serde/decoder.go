@@ -115,9 +115,12 @@ func (dec *decoder) decodeSlice(target reflect.Value, offset int64) error {
 	if int(fs.Offset) >= len(dec.data) {
 		return fmt.Errorf("slice data offset out of bounds")
 	}
+
+	elemType := target.Type().Elem()
+	info := getTypeInfo(elemType)
 	// Indirect element handling: stored as array of Refs. We cannot use Zero-Copy here because
 	// the file contains int64 Offsets (Refs), but the Go slice expects real memory pointers.
-	if isIndirectType(target.Type().Elem()) {
+	if info.isIndirect {
 		// Allocate a standard Go slice. The data at fs.Offset is an array of Refs (int64).
 		// We iterate over them and resolve each one.
 		target.Set(reflect.MakeSlice(target.Type(), int(fs.Len), int(fs.Cap)))
@@ -138,11 +141,10 @@ func (dec *decoder) decodeSlice(target reflect.Value, offset int64) error {
 		return nil
 	}
 	// For non-indirect element types we need to decide between zero-copy swizzling and sequential decode.
-	elemType := target.Type().Elem()
 	hasPtrs := false
 	if elemType.Kind() == reflect.Struct || elemType.Kind() == reflect.Array {
 		// Conservative assumption: treat complex structs/arrays as non-swizzle unless they are pure POD.
-		if !isPOD(elemType) {
+		if !info.isPOD {
 			hasPtrs = true
 		}
 	}
@@ -298,7 +300,8 @@ func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
 // It is not "Zero-Copy" like a slice, which just points back to the file. This makes arrays safer for mutation
 func (dec *decoder) decodeArray(target reflect.Value, offset int64) error {
 	t := target.Type()
-	elemSize := getBinarySize(t.Elem())
+	info := getTypeInfo(t.Elem())
+	elemSize := info.binSize
 	totalSize := elemSize * int64(target.Len())
 	if offset < 0 || offset+totalSize > int64(len(dec.data)) {
 		return fmt.Errorf("array out of bounds")
@@ -306,7 +309,7 @@ func (dec *decoder) decodeArray(target reflect.Value, offset int64) error {
 
 	// Optimization: Bulk Copy for POD types. If the element type is POD
 	// (eg field.Element [4]uint64), we can copy the whole block at once.
-	if isPOD(t.Elem()) {
+	if info.isPOD {
 		dstPtr := unsafe.Pointer(target.UnsafeAddr())
 		srcPtr := unsafe.Pointer(&dec.data[offset])
 		// unsafe.Slice allows us to treat the pointers as byte slices for the copy
@@ -382,10 +385,11 @@ func (dec *decoder) decodeSeqItem(target reflect.Value, offset int64) (int64, er
 		return 0, fmt.Errorf("decodeSeqItem: offset %d out of bounds (len: %d)", offset, len(dec.data))
 	}
 	t := target.Type()
+	info := getTypeInfo(t)
 	// For in-direct types, the map data section only stores an 8-byte Reference (offset).
 	// The function reads that offset, jumps to that location to decode the actual object,
 	// and moves the map cursor forward by exactly 8 bytes.
-	if isIndirectType(t) {
+	if info.isIndirect {
 		if int(offset)+8 > len(dec.data) {
 			return 0, fmt.Errorf("decodeSeqItem: unable to read Ref at offset %d", offset)
 		}
@@ -401,7 +405,7 @@ func (dec *decoder) decodeSeqItem(target reflect.Value, offset int64) (int64, er
 	}
 	// If the type is "direct" (size known at compile time), the data is stored "inline" within the map's data block.
 	// The function decodes it at the current position and moves the cursor forward by the size of that type.
-	binSize := getBinarySize(t)
+	binSize := info.binSize
 	if int(offset)+int(binSize) > len(dec.data) {
 		return 0, fmt.Errorf("decodeSeqItem: unable to read binary data of size %d at offset %d", binSize, offset)
 	}

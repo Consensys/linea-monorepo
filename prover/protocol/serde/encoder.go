@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 	"unsafe"
 
 	"github.com/sirupsen/logrus"
@@ -246,11 +245,12 @@ func linearize(w *encoder, v reflect.Value) (Ref, error) {
 			return 0, nil
 		}
 		elemType := v.Type().Elem()
-		if isIndirectType(elemType) {
+		info := getTypeInfo(elemType)
+		if info.isIndirect {
 			traceLog("Slice is Indirect -> writeSliceOfIndirects")
 			return writeIndirectSlice(w, v)
 		}
-		if !isPOD(elemType) {
+		if !info.isPOD {
 			traceLog("Slice is Non-POD -> linearizeSliceSeq")
 			return linearizeSliceSeq(w, v)
 		}
@@ -289,7 +289,7 @@ func linearizeStruct(w *encoder, v reflect.Value) (Ref, error) {
 	// CRITICAL: This calculation MUST perfectly match the bytes written by 'patchStructBody'.
 	// If getBinarySize returns X, patchStructBody must write exactly X bytes.
 	// Any mismatch will cause data corruption or a panic in w.Patch.
-	size := getBinarySize(v.Type())
+	size := getTypeInfo(v.Type()).binSize
 
 	// SNAPSHOT: Capture the current cursor position. This 'startOffset' will point to the beginning of our reserved "slot"
 	// Remember before reserving space, let us capture the current offset (i.e cursor position of the writer)
@@ -363,7 +363,7 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 }
 
 func linearizeArray(w *encoder, v reflect.Value) (Ref, error) {
-	size := getBinarySize(v.Type())
+	size := getTypeInfo(v.Type()).binSize
 	startOffset := w.offset
 	w.writeBytes(make([]byte, size))
 	if err := patchArray(w, v, startOffset); err != nil {
@@ -374,10 +374,8 @@ func linearizeArray(w *encoder, v reflect.Value) (Ref, error) {
 
 // linearizeSliceSeq: serializes non-POD slices element-by-element (used for structs that contain pointers)
 func linearizeSliceSeq(w *encoder, v reflect.Value) (Ref, error) {
-	totalSize := int64(0)
-	for i := 0; i < v.Len(); i++ {
-		totalSize += getBinarySize(v.Index(i).Type())
-	}
+	elemInfo := getTypeInfo(v.Type().Elem())
+	totalSize := elemInfo.binSize * int64(v.Len())
 	startOffset := w.offset
 	w.writeBytes(make([]byte, totalSize))
 	currentOff := startOffset
@@ -424,12 +422,13 @@ func writeIndirectSlice(w *encoder, v reflect.Value) (Ref, error) {
 
 func encodeSeqItem(w *encoder, v reflect.Value, buf *bytes.Buffer) error {
 	t := v.Type()
+	info := getTypeInfo(t)
 
 	// Handle Indirect types (Interfaces, Pointers, Strings, Registered Custom Types)
 	// If the type is "indirect" (variable size or reference or handles its own serialization (custom)),
 	// we offload the heavy lifting to the main 'linearize' function which will return a Ref (offset ID),
 	// which we write into the map buffer.
-	if isIndirectType(t) {
+	if info.isIndirect {
 		ref, err := encode(w, v)
 		if err != nil {
 			return err
@@ -463,7 +462,8 @@ func linearizeStructBodyMap(w *encoder, v reflect.Value, buf *bytes.Buffer) erro
 			logrus.Warnf("field %v.%v is unexported", t.Type, t.Name)
 			continue
 		}
-		if isIndirectType(t.Type) {
+		info := getTypeInfo(t.Type)
+		if info.isIndirect {
 			ref, err := encode(w, f)
 			if err != nil {
 				return err
@@ -500,7 +500,8 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 			continue
 		}
 		traceLog("Patching Field: %s (Type: %s, Offset: %d)", t.Name, fType, startOffset+currentFieldOff)
-		if isIndirectType(fType) {
+		info := getTypeInfo(fType)
+		if info.isIndirect {
 			ref, err := encode(w, f)
 			if err != nil {
 				return err
@@ -514,31 +515,32 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 			if err := patchStructBody(w, f, startOffset+currentFieldOff); err != nil {
 				return err
 			}
-			currentFieldOff += getBinarySize(fType)
+			currentFieldOff += info.binSize
 			continue
 		}
 		if f.Kind() == reflect.Array {
 			if err := patchArray(w, f, startOffset+currentFieldOff); err != nil {
 				return err
 			}
-			currentFieldOff += getBinarySize(fType)
+			currentFieldOff += info.binSize
 			continue
 		}
 		w.patch(startOffset+currentFieldOff, f.Interface())
-		currentFieldOff += getBinarySize(fType)
+		currentFieldOff += info.binSize
 	}
 	return nil
 }
 
 func patchArray(w *encoder, v reflect.Value, startOffset int64) error {
 	elemType := v.Type().Elem()
-	elemBinSize := getBinarySize(elemType)
-	isReference := isIndirectType(elemType)
+	info := getTypeInfo(elemType)
+	elemBinSize := info.binSize
+	isReference := info.isIndirect
 
 	// Fast Path: Bulk Patch for POD types
 	// If we have a plain array (like [4]uint64 - field.Element), we can copy the bytes directly
 	// into the buffer at the correct offset, avoiding the loop entirely.
-	if isPOD(elemType) && v.CanAddr() {
+	if info.isPOD && v.CanAddr() {
 		totalBytes := elemBinSize * int64(v.Len())
 
 		// Get raw bytes from the Go value
@@ -599,119 +601,4 @@ func patchArray(w *encoder, v reflect.Value, startOffset int64) error {
 		}
 	}
 	return nil
-}
-
-// Type size cache to avoid repeated computation of binary sizes
-// map[reflect.Type]int64
-var binarySizeCache sync.Map
-
-// getBinarySize: returns how many bytes the serialized representation of type `t` takes.
-// NOTE: This is NOT the same as Go's in-memory size. The size returned here reflects
-// how the value is represented on disk.
-//
-// See `computeBinarySize` for details.
-func getBinarySize(t reflect.Type) int64 {
-	if cached, ok := binarySizeCache.Load(t); ok {
-		return cached.(int64)
-	}
-
-	size := computeBinarySize(t) // Move current logic here
-	binarySizeCache.Store(t, size)
-	return size
-}
-
-// computeBinarySize: returns how many bytes the serialized representation of type `t` takes.
-// NOTE: This is NOT the same as Go's in-memory size. The size returned here reflects
-// how the value is represented on disk:
-//
-// - Fixed-size, pointer-free values are inlined.
-// - Variable-size or heap-backed values are replaced by an 8-byte Ref.
-//
-// This function MUST remain perfectly consistent with the actual write logic;
-// any mismatch will result in corrupted offsets or incorrect deserialization.
-func computeBinarySize(t reflect.Type) int64 {
-	// Indirect types (custom registries, ptrs, slices, strings etc) are types that have variable sizes
-	// not known at compile time and hence their inline representation is a Ref (8-byte offset).
-	// These values are written elsewhere and referenced inline by offset.
-	if isIndirectType(t) {
-		return 8
-	}
-	k := t.Kind()
-	// Explicit handling of scalar types int/uint are platform-dependent in Go,
-	// so we normalize them to 8 bytes in the serialized representation.
-	if k == reflect.Int || k == reflect.Uint {
-		return 8
-	}
-	// Structs are serialized inline by concatenating the serialized
-	// representation of each exported, non-omitted field.
-	if k == reflect.Struct {
-		var sum int64
-		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
-			if !f.IsExported() {
-				continue
-			}
-			if strings.Contains(f.Tag.Get(serdeStructTag), serdeStructTagOmit) {
-				continue
-			}
-			sum += computeBinarySize(f.Type)
-		}
-		return sum
-	}
-	// Arrays are fixed-size and serialized inline as repeated elements.
-	if k == reflect.Array {
-		elemSize := computeBinarySize(t.Elem())
-		return elemSize * int64(t.Len())
-	}
-	return int64(t.Size())
-}
-
-// isIndirectType returns true if the given type is an indirect type.
-// Indirect types are types that have variable sizes not known at compile time.
-// This includes pointers, slices, strings, interfaces, maps, and functions.
-// Direct types are types that have fixed sizes known at compile time.
-// This includes structs, arrays, and primitive types (bool,int/uint8, int/uint (normalized), etc).
-// Types handled inside of the Custom Registry are also considered indirect.
-func isIndirectType(t reflect.Type) bool {
-	if _, ok := customRegistry[t]; ok {
-		return true
-	}
-	k := t.Kind()
-	return k == reflect.Ptr || k == reflect.Slice || k == reflect.String ||
-		k == reflect.Interface || k == reflect.Map || k == reflect.Func
-}
-
-// isPOD returns true if the given type is a "Plain Old Data" type which are zero-copy safe.
-// Plain Old Data types are types that have fixed sizes known at compile time.
-func isPOD(t reflect.Type) bool {
-	if isIndirectType(t) {
-		return false
-	}
-	if t.Kind() == reflect.Struct {
-		for i := 0; i < t.NumField(); i++ {
-			if !isPOD(t.Field(i).Type) {
-				return false
-			}
-		}
-		return true
-	}
-	if t.Kind() == reflect.Array {
-		return isPOD(t.Elem())
-	}
-
-	return true
-}
-
-// normalizeIntegerSize converts platform-dependent types (int, uint) to fixed-size
-// equivalents (int64, uint64) - 64 bit values. This ensures that the binary representation
-// is consistent across different CPU architectures (32-bit vs 64-bit).
-func normalizeIntegerSize(v reflect.Value) any {
-	switch v.Kind() {
-	case reflect.Int:
-		return int64(v.Int())
-	case reflect.Uint:
-		return uint64(v.Uint())
-	default:
-		return v.Interface()
-	}
 }
