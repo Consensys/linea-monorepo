@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
@@ -114,26 +115,49 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			newSize := maxSizeGroup * witnesses[0].Len()
 			assignementSlice := make([]field.Element, newSize)
 
-			for i := range subColumns {
-				for j := 0; j < witnesses[0].Len(); j++ {
-					assignementSlice[i+j*maxSizeGroup] = witnesses[i].Get(j)
+			// Parallelise over the j (row) dimension with tiling for better
+			// cache locality and concurrency. Each (i,j) writes a unique
+			// location so this is safe to run in parallel over j ranges.
+			const tileSize = 128
+			parallel.Execute(witnesses[0].Len(), func(start, stop int) {
+				for tStart := start; tStart < stop; tStart += tileSize {
+					tEnd := tStart + tileSize
+					if tEnd > stop {
+						tEnd = stop
+					}
+					for j := tStart; j < tEnd; j++ {
+						baseIdx := j * maxSizeGroup
+						for i := range subColumns {
+							assignementSlice[i+baseIdx] = witnesses[i].Get(j)
+						}
+					}
 				}
-			}
+			})
 
 			run.AssignColumn(idBigCol, smartvectors.NewRegular(assignementSlice))
 			continue
 		}
 
 		newSize := maxSizeGroup * witnesses[0].Len()
-		assignementSlice := make([]fext.Element, newSize)
+		assignementSliceExt := make([]fext.Element, newSize)
 
-		for i := range subColumns {
-			for j := 0; j < witnesses[0].Len(); j++ {
-				assignementSlice[i+j*maxSizeGroup] = witnesses[i].GetExt(j)
+		const tileSizeExt = 128
+		parallel.Execute(witnesses[0].Len(), func(start, stop int) {
+			for tStart := start; tStart < stop; tStart += tileSizeExt {
+				tEnd := tStart + tileSizeExt
+				if tEnd > stop {
+					tEnd = stop
+				}
+				for j := tStart; j < tEnd; j++ {
+					baseIdx := j * maxSizeGroup
+					for i := range subColumns {
+						assignementSliceExt[i+baseIdx] = witnesses[i].GetExt(j)
+					}
+				}
 			}
-		}
+		})
 
-		run.AssignColumn(idBigCol, smartvectors.NewRegularExt(assignementSlice))
+		run.AssignColumn(idBigCol, smartvectors.NewRegularExt(assignementSliceExt))
 	}
 }
 
