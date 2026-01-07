@@ -116,20 +116,19 @@ func TestInterpolateLagrange(t *testing.T) {
 
 	assignments := []*testInterpolateLagrangeCircuit{
 		assignment([]interface{}{0, 4, 0, 0}, 0),
-		//assignment([]interface{}{"221797350491448557374835382936094284962079105806616932502871687042746686348", "5449307655738973627560541249222884206820629036484003960051650107064657316177"}, "6506134398774570609831295452620385261047212455886876242937577495553156355635"),
-		//assignment([]interface{}{1, 0}, 3),
+		assignment([]interface{}{"221797350491448557374835382936094284962079105806616932502871687042746686348", "5449307655738973627560541249222884206820629036484003960051650107064657316177"}, "6506134398774570609831295452620385261047212455886876242937577495553156355635"),
+		assignment([]interface{}{1, 0}, 3),
 	}
 
-	_ = randomAssignment(1) // TODO DELETE
 	for n := 4096; n > 2; n /= 32 {
-		//assignments = append(assignments, randomAssignment(n))
+		assignments = append(assignments, randomAssignment(n))
 	}
 
 	slices.SortFunc(assignments, func(a, b *testInterpolateLagrangeCircuit) int {
 		return len(a.UnitCircleEvaluationsBytes) - len(b.UnitCircleEvaluationsBytes)
 	})
 
-	for i := range assignments[:1] {
+	for i := range assignments {
 		assert.NoError(t, test.IsSolved(
 			&testInterpolateLagrangeCircuit{UnitCircleEvaluationsBytes: make([][fr381.Bytes]frontend.Variable, len(assignments[i].UnitCircleEvaluationsBytes))},
 			assignments[i], ecc.BLS12_377.ScalarField(),
