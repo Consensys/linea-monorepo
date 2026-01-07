@@ -238,7 +238,7 @@ library SSZ {
   }
 
   /// @notice Computes the SSZ hash tree root of a single pending partial withdrawal.
-  /// @dev Implements SSZ merkleization for PendingPartialWithdrawal, which has 4 fields.
+  /// @dev Implements SSZ merkleization for PendingPartialWithdrawal, which has 3 fields.
   ///      Uses SHA-256 precompile for hashing and builds a binary merkle tree.
   /// @param pendingPartialWithdrawal The pending partial withdrawal to compute the hash tree root for.
   /// @return root The SSZ hash tree root of the pending partial withdrawal.
