@@ -57,10 +57,6 @@ class Web3jEthApiClientWithRetries(
     return retry { ethApiClient.getChainId() }
   }
 
-  override fun blockNumber(): SafeFuture<ULong> {
-    return retry { ethApiClient.blockNumber() }
-  }
-
   override fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
     return retry(stopRetriesPredicateForTag(blockParameter)) { ethApiClient.findBlockByNumber(blockParameter) }
   }
