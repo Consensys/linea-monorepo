@@ -13,6 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 tasks.register('corsetExists') {
+  dependsOn('installGoCorset')
   doLast {
     def result = exec {
       ignoreExitValue = true
@@ -134,7 +135,6 @@ def ZKEVM_OSAKA_BIN = System.getenv("ZKEVM_OSAKA_BIN") ?: "zkevm_osaka.bin"
 def TRACE_PKG = "net.consensys.linea.zktracer"
 
 tasks.register('buildZkevmBins', Exec) {
-  dependsOn('installGoCorset')
   dependsOn('corsetExists')
   workingDir "${project.rootDir}/tracer/linea-constraints/"
   // Specify input files so gradle knows when to rebuild.
