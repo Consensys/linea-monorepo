@@ -149,7 +149,7 @@ func TestFSCircuit(t *testing.T) {
 }
 
 type KoalaFlushSpecificCircuit struct {
-	Input   [32]zk.WrappedVariable
+	Input   [8]zk.WrappedVariable
 	Output  zk.Octuplet
 	isKoala bool
 }
@@ -176,12 +176,11 @@ func getKoalaFlushSpecificWitness(isKoala bool) (*KoalaFlushSpecificCircuit, *Ko
 	witness.isKoala = isKoala
 	fs := NewFS()
 
-	var input [32]field.Element
+	var input [8]field.Element
 	var one field.Element
 	one.SetOne()
-	// zero is 0 by default
 
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 4; i++ {
 		// input[2*i] = -1
 		input[2*i] = *field.MaxVal
 		// input[2*i+1] = 0
@@ -191,7 +190,7 @@ func getKoalaFlushSpecificWitness(isKoala bool) (*KoalaFlushSpecificCircuit, *Ko
 	fs.Update(input[:]...)
 	output := fs.RandomField()
 
-	for i := 0; i < 32; i++ {
+	for i := 0; i < 8; i++ {
 		witness.Input[i] = zk.ValueFromKoala(input[i])
 	}
 	for i := 0; i < 8; i++ {

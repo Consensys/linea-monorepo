@@ -2,6 +2,7 @@ package poseidon2_bls12377
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
@@ -121,6 +122,9 @@ func compress(left, right fr.Element) fr.Element {
 }
 
 func (d *MDHasher) SumElement() fr.Element {
+	if d.verbose {
+		fmt.Printf("[native fs flush] oldState %v, buffer = %v\n", d.state.String(), fr.Vector(d.buffer).String())
+	}
 	for i := 0; i < len(d.buffer); i++ {
 		d.state = compress(d.state, d.buffer[i])
 	}

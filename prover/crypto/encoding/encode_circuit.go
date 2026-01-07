@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
-// NEW CODE FOR KOALABEAR ENCODING
 // Function to encode 8 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
 func Encode8WVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Variable {
 

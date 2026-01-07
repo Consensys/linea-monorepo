@@ -80,6 +80,12 @@ func (h *GnarkMDHasher) State() frontend.Variable {
 }
 
 func (h *GnarkMDHasher) Sum() frontend.Variable {
+
+	if h.verbose {
+		h.api.Println("[gnark fs flush] oldState", h.state, "buf")
+		h.api.Println(h.buffer...)
+	}
+
 	for i := 0; i < len(h.buffer); i++ {
 		h.state = h.compressor.Compress(h.state, h.buffer[i])
 	}

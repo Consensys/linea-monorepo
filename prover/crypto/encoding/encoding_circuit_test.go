@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
@@ -79,12 +78,8 @@ func TestEncoding(t *testing.T) {
 	}
 
 	var circuit EncodingCircuit
-	filePath := "TestEncoding.pprof"
-	pro := profile.Start(profile.WithPath(filePath))
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
-	pro.Stop()
-
 	assert.NoError(t, err)
 	fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
 	assert.NoError(t, err)
