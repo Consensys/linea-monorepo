@@ -39,7 +39,7 @@ func Prove(args ProverArgs) error {
 	// Determine job type from input file name
 	var (
 		jobExecution         = strings.Contains(args.Input, "getZkProof")
-		jobBlobDecompression = strings.Contains(args.Input, "getZkBlobCompressionProof")
+		jobDataAvailability = strings.Contains(args.Input, "getZkBlobCompressionProof")
 		jobAggregation       = strings.Contains(args.Input, "getZkAggregatedProof")
 	)
 
@@ -47,7 +47,7 @@ func Prove(args ProverArgs) error {
 	switch {
 	case jobExecution:
 		return handleExecutionJob(cfg, args)
-	case jobBlobDecompression:
+	case jobDataAvailability:
 		return handleDataAvailabilityJob(cfg, args)
 	case jobAggregation:
 		return handleAggregationJob(cfg, args)
