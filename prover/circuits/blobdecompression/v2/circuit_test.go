@@ -5,7 +5,7 @@ import (
 
 	gchash "github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/config"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"

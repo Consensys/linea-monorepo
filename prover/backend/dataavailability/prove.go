@@ -1,12 +1,12 @@
-package dataavailability
+package blobdecompression
 
 import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability"
-	daconfig "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression"
+	daconfig "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/config"
 	blobv2 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2"
 	"github.com/sirupsen/logrus"
 
@@ -76,7 +76,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("could not parse the snark hash: %w", err)
 	}
 
-	assignment, pubInput, _snarkHash, err := dataavailability.Assign(
+	assignment, pubInput, _snarkHash, err := blobdecompression.Assign(
 		daconfig.FromGlobalConfig(cfg.DataAvailability),
 		utils.RightPad(blobBytes, expectedMaxUsableBytes),
 		dictStore,

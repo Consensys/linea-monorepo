@@ -19,7 +19,7 @@ import (
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/cmp"
-	dataavailability "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
+	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
@@ -32,7 +32,7 @@ type Circuit struct {
 	ExecutionPublicInput        []frontend.Variable  `gnark:",public"`
 	DataAvailabilityPublicInput []frontend.Variable  `gnark:",public"`
 
-	DataAvailabilityFPIQ []dataavailability.FunctionalPublicInputQSnark
+	DataAvailabilityFPIQ []blobdecompression.FunctionalPublicInputQSnark
 	ExecutionFPIQ        []execution.FunctionalPublicInputQSnark
 
 	public_input.AggregationFPIQSnark
@@ -325,7 +325,7 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 	res := Circuit{
 		DataAvailabilityPublicInput: make([]frontend.Variable, cfg.MaxNbDataAvailability),
 		ExecutionPublicInput:        make([]frontend.Variable, cfg.MaxNbExecution),
-		DataAvailabilityFPIQ:        make([]dataavailability.FunctionalPublicInputQSnark, cfg.MaxNbDataAvailability),
+		DataAvailabilityFPIQ:        make([]blobdecompression.FunctionalPublicInputQSnark, cfg.MaxNbDataAvailability),
 		ExecutionFPIQ:               make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
 		L2MessageMerkleDepth:        cfg.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:        cfg.L2MsgMaxNbMerkle,

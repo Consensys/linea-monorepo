@@ -1,4 +1,4 @@
-package dataavailability
+package blobdecompression
 
 // The decompression proof response contains all the fields of the requests
 // plus some prover related fields. We keep all the fields from the request so

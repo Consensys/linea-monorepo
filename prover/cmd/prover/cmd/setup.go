@@ -18,8 +18,8 @@ import (
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
-	daconfig "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
-	dataavailability "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
+	daconfig "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/config"
+	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/emulation"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
@@ -244,7 +244,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		extraFlags["maxUncompressedBytes"] = cfg.DataAvailability.MaxUncompressedNbBytes
 		extraFlags["dictNbBytes"] = cfg.DataAvailability.DictNbBytes
 		extraFlags["maxNbBatches"] = cfg.DataAvailability.MaxNbBatches
-		return dataavailability.NewBuilder(daconfig.FromGlobalConfig(cfg.DataAvailability)), extraFlags, nil
+		return blobdecompression.NewBuilder(daconfig.FromGlobalConfig(cfg.DataAvailability)), extraFlags, nil
 
 	case circuits.PublicInputInterconnectionCircuitID:
 		return pi_interconnection.NewBuilder(cfg.PublicInputInterconnection), extraFlags, nil

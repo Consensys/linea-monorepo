@@ -11,7 +11,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
-	dataavailability "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
+	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
@@ -97,10 +97,10 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 
 		// TODO this recomputes much of the data in p; check consistency
 		var (
-			fpi  dataavailability.FunctionalPublicInput
-			sfpi dataavailability.FunctionalPublicInputSnark
+			fpi  blobdecompression.FunctionalPublicInput
+			sfpi blobdecompression.FunctionalPublicInputSnark
 		)
-		if fpi, _, err = dataavailability.AssignFPI(blobData[:], dictStore, p.Eip4844Enabled, x, y); err != nil {
+		if fpi, _, err = blobdecompression.AssignFPI(blobData[:], dictStore, p.Eip4844Enabled, x, y); err != nil {
 			return
 		}
 		for j := range fpi.BatchSums {
@@ -151,7 +151,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 		prevShnarf = shnarf.Compute()
 		shnarfs[i] = prevShnarf
 
-		fpi := dataavailability.FunctionalPublicInput{
+		fpi := blobdecompression.FunctionalPublicInput{
 			SnarkHash: zero[:],
 		}
 
