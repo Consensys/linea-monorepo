@@ -25,7 +25,7 @@ func TestRunCommand(t *testing.T) {
 
 	var (
 		eFrom   string = confM.Execution.DirFrom()
-		cFrom   string = confM.DataAvailability.DirFrom()
+		cFrom   string = confM.BlobDecompression.DirFrom()
 		aFrom   string = confM.Aggregation.DirFrom()
 		exit0   int    = 0
 		exit2   int    = 2
@@ -108,11 +108,11 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path:    confM.DataAvailability.DirFrom(),
+			Path:    confM.BlobDecompression.DirFrom(),
 			Entries: []string{},
 		},
 		{
-			Path: confM.DataAvailability.DirDone(),
+			Path: confM.BlobDecompression.DirDone(),
 			Entries: []string{
 				"0-2-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json.success",
 				"2-4-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json.failure.code_2",
@@ -121,7 +121,7 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path: confM.DataAvailability.DirTo(),
+			Path: confM.BlobDecompression.DirTo(),
 			Entries: []string{
 				"0-2-getZkBlobCompressionProof.json",
 			},
@@ -162,7 +162,7 @@ func TestFileWatcherM(t *testing.T) {
 
 	// Create a list of files
 	eFrom := confM.Execution.DirFrom
-	cFrom := confM.DataAvailability.DirFrom
+	cFrom := confM.BlobDecompression.DirFrom
 	aFrom := confM.Aggregation.DirFrom
 
 	exitCode := 0 // we are not interesting in the exit code here
@@ -325,7 +325,7 @@ exit $CODE
 
 		Controller: config.Controller{
 			EnableExecution:            true,
-			EnableDataAvailability:     true,
+			EnableBlobDecompression:    true,
 			EnableAggregation:          true,
 			LocalID:                    proverM,
 			Prometheus:                 config.Prometheus{Enabled: false},
@@ -341,7 +341,7 @@ exit $CODE
 				RequestsRootDir: path.Join(testDir, proverM, execution),
 			},
 		},
-		DataAvailability: config.DataAvailability{
+		BlobDecompression: config.BlobDecompression{
 			WithRequestDir: config.WithRequestDir{
 				RequestsRootDir: path.Join(testDir, proverM, compression),
 			},
@@ -364,7 +364,7 @@ exit $CODE
 
 	// 	Controller: config.Controller{
 	// 		EnableExecution:            true,
-	// 		EnableDataAvailability:    false,
+	// 		EnableBlobDecompression:    false,
 	// 		EnableAggregation:          false,
 	// 		LocalID:                    proverL,
 	// 		Prometheus:                 config.Prometheus{Enabled: false},
@@ -380,7 +380,7 @@ exit $CODE
 	// 		},
 	// 		CanRunFullLarge: true,
 	// 	},
-	// 	DataAvailability: config.DataAvailability{
+	// 	BlobDecompression: config.BlobDecompression{
 	// 		WithRequestDir: config.WithRequestDir{
 	// 			RequestsRootDir: path.Join(testDir, proverM, compression),
 	// 		},
@@ -405,9 +405,9 @@ exit $CODE
 		os.MkdirAll(confM.Execution.DirFrom(), permCode),
 		os.MkdirAll(confM.Execution.DirTo(), permCode),
 		os.MkdirAll(confM.Execution.DirDone(), permCode),
-		os.MkdirAll(confM.DataAvailability.DirFrom(), permCode),
-		os.MkdirAll(confM.DataAvailability.DirTo(), permCode),
-		os.MkdirAll(confM.DataAvailability.DirDone(), permCode),
+		os.MkdirAll(confM.BlobDecompression.DirFrom(), permCode),
+		os.MkdirAll(confM.BlobDecompression.DirTo(), permCode),
+		os.MkdirAll(confM.BlobDecompression.DirDone(), permCode),
 		os.MkdirAll(confM.Aggregation.DirFrom(), permCode),
 		os.MkdirAll(confM.Aggregation.DirTo(), permCode),
 		os.MkdirAll(confM.Aggregation.DirDone(), permCode),
@@ -465,8 +465,6 @@ func createTestInputFile(
 }
 
 func TestSpotInstanceMode(t *testing.T) {
-
-	t.Skipf("this breaks the CI pipeline")
 
 	var (
 		cfg    = setupFsTestSpotInstance(t)

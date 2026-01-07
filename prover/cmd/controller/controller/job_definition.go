@@ -130,7 +130,7 @@ func ExecutionDefinition(conf *config.Config) JobDefinition {
 func CompressionDefinition(conf *config.Config) JobDefinition {
 
 	return JobDefinition{
-		RequestsRootDir: conf.DataAvailability.RequestsRootDir,
+		RequestsRootDir: conf.BlobDecompression.RequestsRootDir,
 
 		// Name of the job
 		Name: jobNameBlobDecompression,

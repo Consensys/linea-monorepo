@@ -39,7 +39,7 @@ func NewFsWatcher(conf *config.Config) *FsWatcher {
 		fs.JobToWatch = append(fs.JobToWatch, ExecutionDefinition(conf))
 	}
 
-	if conf.Controller.EnableDataAvailability {
+	if conf.Controller.EnableBlobDecompression {
 		fs.JobToWatch = append(fs.JobToWatch, CompressionDefinition(conf))
 	}
 
