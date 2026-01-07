@@ -45,6 +45,7 @@ public class IntegerPhaseSection extends PhaseSection {
           case MAX_FEE_PER_GAS -> Bytes32.leftPad(tx.maxFeePerGas());
           case GAS_LIMIT -> longToBytes32(tx.getBesuTransaction().getGasLimit());
           case VALUE -> bigIntegerToBytes32(tx.getBesuTransaction().getValue().getAsBigInteger());
+          case MAX_FEE_PER_BLOB_GAS -> bigIntegerToBytes32(tx.getBesuTransaction().getMaxFeePerBlobGas().get().getAsBigInteger());
           case Y -> Bytes32.leftPad(booleanToBytes(tx.yParity()));
           case R -> bigIntegerToBytes32(tx.getBesuTransaction().getR());
           case S -> bigIntegerToBytes32(tx.getBesuTransaction().getS());
