@@ -115,7 +115,7 @@ func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.Wrap
 	}
 
 	for i := range res {
-		res[i] = zk.ValueOf(x.String())
+		res[i] = zk.ValueFromKoala(x)
 	}
 
 	return res, nil
@@ -149,7 +149,7 @@ func (cc ConstCol) GetColAssignmentAt(_ ifaces.Runtime, pos int) field.Element {
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
 	f := cc.GetColAssignmentAt(nil, pos)
-	return zk.ValueOf(f.String())
+	return zk.ValueFromKoala(f)
 }
 
 // Returns a particular position of the coin value

@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/selector"
-	"github.com/consensys/linea-monorepo/prover/maths/bls12377/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -86,7 +86,9 @@ func ValueOf(v any) WrappedVariable {
 }
 
 func ValueFromKoala(v field.Element) WrappedVariable {
-	res := ValueOf(int64(v.Bits()[0]))
+	var bValue big.Int
+	v.BigInt(&bValue)
+	res := ValueOf(&bValue)
 	return res
 }
 

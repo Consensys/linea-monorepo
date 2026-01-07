@@ -27,12 +27,8 @@ func Encode8WVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Var
 
 	for i := 0; i < 8; i++ {
 		value := values[7-i].AsNative()
-		// api.Println("Circuit Encode: i=", i, " value=", value)
-
 		// Add the value to the result, scaled by the current multiplier
 		result = api.Add(result, api.Mul(value, multipliers[i]))
-		// api.Println("Circuit result: i=", i, " value=", result)
-
 	}
 
 	return result

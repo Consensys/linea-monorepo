@@ -50,7 +50,7 @@ func TestGnarkEvalCanonical(t *testing.T) {
 		circuit.Poly = make([]zk.WrappedVariable, size)
 		witness.Poly = make([]zk.WrappedVariable, size)
 		for i := 0; i < size; i++ {
-			witness.Poly[i] = zk.ValueOf(poly[i].B0.A0.String())
+			witness.Poly[i] = zk.ValueFromKoala(poly[i].B0.A0)
 		}
 		witness.X = gnarkfext.NewE4Gen(x)
 		witness.Y = gnarkfext.NewE4Gen(y)
@@ -68,7 +68,7 @@ func TestGnarkEvalCanonical(t *testing.T) {
 		circuit.Poly = make([]zk.WrappedVariable, size)
 		witness.Poly = make([]zk.WrappedVariable, size)
 		for i := 0; i < size; i++ {
-			witness.Poly[i] = zk.ValueOf(poly[i].B0.A0.String())
+			witness.Poly[i] = zk.ValueFromKoala(poly[i].B0.A0)
 		}
 		witness.X = gnarkfext.NewE4Gen(x)
 		witness.Y = gnarkfext.NewE4Gen(y)

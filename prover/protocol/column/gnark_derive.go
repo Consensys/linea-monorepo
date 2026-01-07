@@ -51,7 +51,7 @@ func GnarkDeriveEvaluationPoint(
 			if err != nil {
 				panic(err)
 			}
-			omegaN := zk.ValueOf(generator.String())
+			omegaN := zk.ValueFromKoala(generator)
 			omegaN = gnarkutil.Exp(api, omegaN, inner.Offset)
 			derivedX = *ext4.MulByFp(&x, omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)

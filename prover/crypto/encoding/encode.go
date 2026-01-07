@@ -28,7 +28,6 @@ func EncodeKoalabearOctupletToFrElement(elements [8]field.Element) fr.Element {
 		var bElement big.Int
 		elements[7-i].BigInt(&bElement)
 
-		// fmt.Printf("Element %d: %v\n", 7-i, int64(elements[7-i].Bits()[0]))
 		// Add the value to the result, scaled by the current multiplier
 		bElement.Mul(&bElement, multipliers[i])
 		bres.Add(&bres, &bElement)

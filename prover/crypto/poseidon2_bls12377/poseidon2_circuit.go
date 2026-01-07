@@ -54,14 +54,7 @@ func (h *GnarkMDHasher) Write(data ...frontend.Variable) {
 
 func (h *GnarkMDHasher) WriteWVs(data ...zk.WrappedVariable) {
 	_data := encoding.EncodeWVsToFVs(h.api, data)
-	// if len(data) == 24 || len(data) == 3549 {
-
-	// 	h.api.Println("[GnarkMDHasher WriteWVs] data:", _data[0], _data[1]) // --- IGNORE ---
-	// 	h.api.Println("[GnarkMDHasher WriteWVs] _data len:", len(_data))    // --- IGNORE ---
-
-	// }
 	h.buffer = append(h.buffer, _data...)
-
 }
 
 func (h *GnarkMDHasher) SetState(state frontend.Variable) {
@@ -87,21 +80,8 @@ func (h *GnarkMDHasher) State() frontend.Variable {
 }
 
 func (h *GnarkMDHasher) Sum() frontend.Variable {
-	// if len(h.buffer) == 444 {
-
-	// 	h.api.Println("[gnark fs flush] oldState", h.state, "buflen=", len(h.buffer))
-	// 	h.api.Println(h.buffer[0], h.buffer[1], h.buffer[2]) // --- IGNORE ---
-	// }
-
-	// h.api.Println("[gnark fs flush] oldState", h.state, "buflen=", len(h.buffer))
-	// for i := range h.buffer {
-	// 	h.api.Println(i, h.buffer[i]) // --- IGNORE ---
-	// }
 	for i := 0; i < len(h.buffer); i++ {
 		h.state = h.compressor.Compress(h.state, h.buffer[i])
-		// if len(h.buffer) == 444 && (i < 325 && i > 318) {
-		// 	h.api.Println("[native fs flush] step", i, " state=", h.state, " buffer=%v\n", h.buffer[i])
-		// }
 	}
 	h.buffer = h.buffer[:0]
 	return h.state

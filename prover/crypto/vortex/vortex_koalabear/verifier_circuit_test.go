@@ -51,7 +51,7 @@ func TestGnarkVerifier(t *testing.T) {
 			circuit.Proof.Columns[i][j] = make([]zk.WrappedVariable, len(proof.Columns[i][j]))
 			witness.Proof.Columns[i][j] = make([]zk.WrappedVariable, len(proof.Columns[i][j]))
 			for k := 0; k < len(proof.Columns[i][j]); k++ {
-				witness.Proof.Columns[i][j][k] = zk.ValueOf(proof.Columns[i][j][k].String())
+				witness.Proof.Columns[i][j][k] = zk.ValueFromKoala(proof.Columns[i][j][k])
 			}
 		}
 	}

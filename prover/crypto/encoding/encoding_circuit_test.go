@@ -57,12 +57,12 @@ func TestEncoding(t *testing.T) {
 	var toEncode1 [8]field.Element
 	for i := 0; i < 8; i++ {
 		toEncode1[i].SetRandom()
-		witness.ToEncode1[i] = zk.ValueOf(toEncode1[i].String())
+		witness.ToEncode1[i] = zk.ValueFromKoala(toEncode1[i])
 	}
 	var toEncode2 [12]field.Element
 	for i := 0; i < 12; i++ {
 		toEncode2[i].SetRandom()
-		witness.ToEncode2[i] = zk.ValueOf(toEncode2[i].String())
+		witness.ToEncode2[i] = zk.ValueFromKoala(toEncode2[i])
 	}
 	var toEncode3 fr.Element
 	toEncode3.SetRandom()
@@ -75,7 +75,7 @@ func TestEncoding(t *testing.T) {
 	witness.R2[1] = r2[1].String()
 	r3 := EncodeFrElementToOctuplet(toEncode3)
 	for i := 0; i < 8; i++ {
-		witness.R3[i] = zk.ValueOf(r3[i].String())
+		witness.R3[i] = zk.ValueFromKoala(r3[i])
 	}
 
 	var circuit EncodingCircuit

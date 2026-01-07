@@ -114,15 +114,15 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	witness.B = b.String()
 	witness.R1 = r1.String()
 	witness.R2 = r2.String()
-	witness.C[0] = zk.ValueOf(c[0].String())
-	witness.C[1] = zk.ValueOf(c[1].String())
+	witness.C[0] = zk.ValueFromKoala(c[0])
+	witness.C[1] = zk.ValueFromKoala(c[1])
 	for i := 0; i < 10; i++ {
-		witness.D[i] = zk.ValueOf(d[i].String())
+		witness.D[i] = zk.ValueFromKoala(d[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.R3[i] = zk.ValueOf(r3[i].String())
-		witness.SetState[i] = zk.ValueOf(setState[i].String())
-		witness.GetState[i] = zk.ValueOf(getState[i].String())
+		witness.R3[i] = zk.ValueFromKoala(r3[i])
+		witness.SetState[i] = zk.ValueFromKoala(setState[i])
+		witness.GetState[i] = zk.ValueFromKoala(getState[i])
 	}
 
 	circuit.n = n
@@ -192,10 +192,10 @@ func getKoalaFlushSpecificWitness(isKoala bool) (*KoalaFlushSpecificCircuit, *Ko
 	output := fs.RandomField()
 
 	for i := 0; i < 32; i++ {
-		witness.Input[i] = zk.ValueOf(int64(input[i].Bits()[0]))
+		witness.Input[i] = zk.ValueFromKoala(input[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = zk.ValueOf(int64(output[i].Bits()[0]))
+		witness.Output[i] = zk.ValueFromKoala(output[i])
 	}
 
 	return &circuit, &witness
