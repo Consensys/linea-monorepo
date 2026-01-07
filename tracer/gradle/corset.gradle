@@ -24,6 +24,27 @@ tasks.register('corsetExists') {
   }
 }
 
+tasks.register('installGoCorset', Exec) {
+  group "Setup"
+  description "Install go-corset using go install if not already installed"
+
+  // Check if go-corset is already installed
+  doFirst {
+    def result = exec {
+      ignoreExitValue = true
+      commandLine "go-corset", "--version"
+    }
+    if (result.getExitValue() == 0) {
+      println "go-corset is already installed"
+      // Skip the installation if already installed
+      commandLine "echo", "go-corset already installed"
+    } else {
+      println "Installing go-corset..."
+      commandLine "go", "install", "github.com/consensys/go-corset/cmd/go-corset@latest"
+    }
+  }
+}
+
 // Allowing overriding the default zkevm.bin files.
 def ZKEVM_OSAKA_BIN = System.getenv("ZKEVM_OSAKA_BIN") ?: "zkevm_osaka.bin"
 
@@ -31,6 +52,7 @@ def ZKEVM_OSAKA_BIN = System.getenv("ZKEVM_OSAKA_BIN") ?: "zkevm_osaka.bin"
 def TRACE_PKG = "net.consensys.linea.zktracer"
 
 tasks.register('buildZkevmBins', Exec) {
+  dependsOn('installGoCorset')
   workingDir "${project.rootDir}/tracer/linea-constraints/"
   // Specify input files so gradle knows when to rebuild.
   inputs.files(fileTree(workingDir).include('**/*.lisp'))
