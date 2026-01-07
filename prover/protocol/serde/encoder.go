@@ -605,6 +605,11 @@ func patchArray(w *encoder, v reflect.Value, startOffset int64) error {
 // map[reflect.Type]int64
 var binarySizeCache sync.Map
 
+// getBinarySize: returns how many bytes the serialized representation of type `t` takes.
+// NOTE: This is NOT the same as Go's in-memory size. The size returned here reflects
+// how the value is represented on disk.
+//
+// See `computeBinarySize` for details.
 func getBinarySize(t reflect.Type) int64 {
 	if cached, ok := binarySizeCache.Load(t); ok {
 		return cached.(int64)
@@ -693,6 +698,7 @@ func isPOD(t reflect.Type) bool {
 	if t.Kind() == reflect.Array {
 		return isPOD(t.Elem())
 	}
+
 	return true
 }
 
