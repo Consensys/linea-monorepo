@@ -25,7 +25,9 @@ tasks.register('corsetExists') {
 }
 
 ext {
-  corsetVersion = project.hasProperty('corsetVersion') ? project.property('corsetVersion') : "v1.1.31"
+  corsetVersion = project.hasProperty('corsetVersion')
+    ? project.property('corsetVersion')
+    : System.getenv().getOrDefault('CORSET_VERSION', "v1.1.31")
 }
 
 tasks.register('installGoCorset') {
@@ -36,6 +38,9 @@ tasks.register('installGoCorset') {
     def corsetVersion = project.ext.corsetVersion
     def isWindows = System.getProperty('os.name').toLowerCase().contains('win')
     logger.lifecycle("Target version: $corsetVersion")
+    if (corsetVersion.isEmpty()) {
+      throw new GradleException("corsetVersion property is not set")
+    }
 
     // Helper function to execute commands
     def executeCommand = { String cmd ->

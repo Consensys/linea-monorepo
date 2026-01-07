@@ -5,10 +5,6 @@ inputs:
     description: 'Enable ability to ssh into session'
     required: false
     default: false
-  go-corset:
-    description: 'Setup Go Corset'
-    required: false
-    default: true
   github-token:
     description: 'Github token (needed for downloading corset)'
     required: false
