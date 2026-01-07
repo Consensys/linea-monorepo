@@ -155,9 +155,7 @@ dockerCompose {
     startedServices = [
       "postgres",
       "sequencer",
-      "maru",
       "l1-node-genesis-generator",
-      "l2-genesis-initialization",
       "l1-el-node",
       "l1-cl-node",
       // For debug
@@ -175,7 +173,6 @@ dockerCompose {
     ]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
     waitForTcpPorts = false
-    stopContainers = false
     removeOrphans = true
     // this is to avoid recreating the containers
     // specially l1-node-genesis-generator which corrupts the state if run more than once
@@ -190,7 +187,6 @@ dockerCompose {
       "${project.rootDir.path}/docker/compose-tracing-v2.yml"
     ]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
-    stopContainers = false
     waitForTcpPorts = true
     removeOrphans = true
     noRecreate = true
@@ -222,7 +218,6 @@ dockerCompose {
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
     waitForTcpPorts = false
     removeOrphans = true
-    stopContainers = false
     // this is to avoid recreating the containers
     // specially l1-node-genesis-generator which corrupts the state if run more than once
     // without cleaning the volumes
