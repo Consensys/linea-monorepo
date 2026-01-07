@@ -328,7 +328,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _requiredUnstakeAmountWei Required unstake amount in wei.
    * @param _validatorIndex Validator index for validator to withdraw from.
    * @param _slot Slot of the beacon block for which the proof is generated.
-   * @param _pubkeys Concatenated validator public keys (48 bytes each).
+   * @param _pubkeys Single validator public key (48 bytes).
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
    * @return unstakedAmountGwei Maximum ETH amount expected to be withdrawn as a result of this request (in gwei).
    */

@@ -1,5 +1,3 @@
-// Copied verbatim from Lido audited contracts - https://github.com/lidofinance/core/blob/7cae7a14192ff094fb0eb089433ac9f6fd70e3c6/contracts/common/lib/BeaconTypes.sol
-
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
