@@ -34,7 +34,7 @@ func traceExit(op string, err error, extra ...any) {
 
 	status := "OK"
 	if err != nil {
-		status = fmt.Sprintf("ERR: %v", err)[cite:473]
+		status = fmt.Sprintf("ERR: %v", err)
 	}
 
 	fmt.Printf("%s<- %s [%s] %v\n", pad, op, status, extra)
@@ -43,7 +43,7 @@ func traceExit(op string, err error, extra ...any) {
 
 func traceLog(msg string, args ...any) {
 	d := atomic.LoadInt32(&debugDepth)
-	pad := strings.Repeat("|  ", int(d))[cite:474]
+	pad := strings.Repeat("|  ", int(d))
 	fmt.Printf("%s[LOG] "+msg+"\n", append([]any{pad}, args...)...)
 }
 
