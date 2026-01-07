@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"unsafe"
 
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/klauspost/compress/zstd"
@@ -29,6 +30,55 @@ var (
 	// diskReadSemaphore ensures we don't saturate the IO bus during heavy asset loading.
 	diskReadSemaphore = semaphore.NewWeighted(int64(numConcurrentDiskRead))
 )
+
+// This function contains compile-time "guard rails" to ensure that critical binary-format structs do not
+// change their layout. If the size or alignment of these structs changes, the compiler will throw an error.
+//
+// This is better than a Runtime Panic
+// Zero Runtime Cost: These checks happen during go build or go test. The function _() is never actually called,
+// so it adds zero bytes to your binary and zero nanoseconds to your execution time.
+// Immediate Feedback: Developers get a red squiggle in their IDE (or a CI failure) the moment they accidentally
+// touch a protected struct.
+// Documentation: It serves as an "executable comment" that explicitly warns other developers about the binary
+// requirements of the serde package.
+func _() {
+
+	// Array Size Trick: Since Go allows us to define an array length using a constant expression.
+	// If that expression evaluates to a negative number, the compiler throws an error: array bound must be non-negative.
+	// Size Checks: By doing [32 - unsafe.Sizeof(T)] and [unsafe.Sizeof(T) - 32], we create a "trap." If the size is 33,
+	// the first line is [-1], which fails. If the size is 31, the second line is [-1], which fails. The code only compiles
+	// if the size is exactly 32.
+	// Offset Checks: unsafe.Offsetof allows us to verify that specific fields haven't moved. If someone swaps Len and Cap
+	// in FileSlice, the Offsetof(fs.Len) check will trigger a compiler error because it will be 16 instead of 8.
+
+	// --- Guard Rail for FileHeader (Must be exactly 32 bytes) ---
+	// Layout: Magic(4) + Version(4) + PayloadType(8) + PayloadOff(8) + DataSize(8) = 32
+	var _ [1]struct{}
+	_ = [32 - unsafe.Sizeof(FileHeader{})]struct{}{}
+	_ = [unsafe.Sizeof(FileHeader{}) - 32]struct{}{}
+
+	// --- Guard Rail for InterfaceHeader (Must be exactly 16 bytes) ---
+	// Layout: TypeID(2) + PtrIndirection(1) + Reserved(5) + Offset(8) = 16
+	_ = [16 - unsafe.Sizeof(InterfaceHeader{})]struct{}{}
+	_ = [unsafe.Sizeof(InterfaceHeader{}) - 16]struct{}{}
+
+	// Check alignment of the 'Offset' field in InterfaceHeader (Must start at byte 8)
+	// This ensures our explicit padding [5]uint8 is doing its job.
+	var ih InterfaceHeader
+	_ = [8 - unsafe.Offsetof(ih.Offset)]struct{}{}
+	_ = [unsafe.Offsetof(ih.Offset) - 8]struct{}{}
+
+	// --- Guard Rail for FileSlice (Must be exactly 24 bytes) ---
+	// Layout: Offset(8) + Len(8) + Cap(8) = 24
+	_ = [24 - unsafe.Sizeof(FileSlice{})]struct{}{}
+	_ = [unsafe.Sizeof(FileSlice{}) - 24]struct{}{}
+
+	// Check order: Offset must be at byte 0, Len at 8, Cap at 16
+	var fs FileSlice
+	_ = [0 - unsafe.Offsetof(fs.Offset)]struct{}{}
+	_ = [8 - unsafe.Offsetof(fs.Len)]struct{}{}
+	_ = [16 - unsafe.Offsetof(fs.Cap)]struct{}{}
+}
 
 // StoreToDisk serializes the asset and writes it atomically to disk.
 func StoreToDisk(filePath string, asset any, withCompression bool) error {
