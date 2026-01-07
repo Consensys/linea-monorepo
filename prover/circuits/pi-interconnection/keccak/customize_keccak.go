@@ -6,10 +6,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+
+	mimcComp "github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
+
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
@@ -64,6 +66,8 @@ func (m *module) AssignCustomizedKeccak(run *wizard.ProverRuntime, providers [][
 type compilationSuite = []func(*wizard.CompiledIOP)
 
 func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
+	utils.Panic("use the right self-recursion parameters")
+
 	var (
 		sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
@@ -75,33 +79,34 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 			),
 			logdata.Log("after vortex"),
 			vortex.Compile(
-				2,
+				2, true,
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
 			),
 
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
-			mimc.CompileMiMC,
+			mimcComp.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<16),
 				compiler.WithStitcherMinSize(1<<8),
 			),
 			vortex.Compile(
 				8,
+				true,
 				vortex.ForceNumOpenedColumns(64),
 				vortex.WithSISParams(&sisInstance),
 			),
 
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
-			mimc.CompileMiMC,
+			mimcComp.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13),
 				compiler.WithStitcherMinSize(1<<8),
 			),
 			vortex.Compile(
-				8,
+				8, true,
 				vortex.ForceNumOpenedColumns(64),
 				vortex.WithOptionalSISHashingThreshold(1<<20),
 			),
