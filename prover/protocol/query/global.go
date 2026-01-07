@@ -347,8 +347,8 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 
 	// precomputations of the powers of omega, can be optimized if useful
 	omegas := make([]zk.WrappedVariable, cs.DomainSize)
-	for i := 0; i < cs.DomainSize; i++ {
-		omegas[i] = zk.ValueOf(omegaI.String())
+	for i := range omegas {
+		omegas[i] = zk.ValueFromKoala(omegaI)
 		omegaI.Mul(&omegaI, &omega)
 	}
 

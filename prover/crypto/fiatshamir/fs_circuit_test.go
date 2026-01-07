@@ -105,30 +105,30 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 	RandomManyIntegers := fs.RandomManyIntegers(10, 16)
 
 	for i := 0; i < 10; i++ {
-		witness.A[i] = zk.ValueOf(A[i].String())
+		witness.A[i] = zk.ValueFromKoala(A[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomA[i] = zk.ValueOf(RandomA[i].String())
+		witness.RandomA[i] = zk.ValueFromKoala(RandomA[i])
 	}
 
 	for i := 0; i < 10; i++ {
-		witness.B[i].B0.A0 = zk.ValueOf(B[i].B0.A0.String())
-		witness.B[i].B0.A1 = zk.ValueOf(B[i].B0.A1.String())
-		witness.B[i].B1.A0 = zk.ValueOf(B[i].B1.A0.String())
-		witness.B[i].B1.A1 = zk.ValueOf(B[i].B1.A1.String())
+		witness.B[i].B0.A0 = zk.ValueFromKoala(B[i].B0.A0)
+		witness.B[i].B0.A1 = zk.ValueFromKoala(B[i].B0.A1)
+		witness.B[i].B1.A0 = zk.ValueFromKoala(B[i].B1.A0)
+		witness.B[i].B1.A1 = zk.ValueFromKoala(B[i].B1.A1)
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomB[i] = zk.ValueOf(RandomB[i].String())
+		witness.RandomB[i] = zk.ValueFromKoala(RandomB[i])
 	}
 
 	for i := 0; i < 8; i++ {
-		witness.RandomField[i] = zk.ValueOf(RandomField[i].String())
+		witness.RandomField[i] = zk.ValueFromKoala(RandomField[i])
 	}
 
-	witness.RandomFieldExt.B0.A0 = zk.ValueOf(RandomFieldExt.B0.A0.String())
-	witness.RandomFieldExt.B0.A1 = zk.ValueOf(RandomFieldExt.B0.A1.String())
-	witness.RandomFieldExt.B1.A0 = zk.ValueOf(RandomFieldExt.B1.A0.String())
-	witness.RandomFieldExt.B1.A1 = zk.ValueOf(RandomFieldExt.B1.A1.String())
+	witness.RandomFieldExt.B0.A0 = zk.ValueFromKoala(RandomFieldExt.B0.A0)
+	witness.RandomFieldExt.B0.A1 = zk.ValueFromKoala(RandomFieldExt.B0.A1)
+	witness.RandomFieldExt.B1.A0 = zk.ValueFromKoala(RandomFieldExt.B1.A0)
+	witness.RandomFieldExt.B1.A1 = zk.ValueFromKoala(RandomFieldExt.B1.A1)
 
 	for i := 0; i < 10; i++ {
 		witness.RandomManyIntegers[i] = RandomManyIntegers[i]
