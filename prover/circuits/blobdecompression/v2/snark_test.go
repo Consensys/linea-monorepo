@@ -512,6 +512,12 @@ func partialSums[T constraints.Integer](s []T) []T {
 }
 
 func TestPackBatches(t *testing.T) {
+	t.Run("[0,1,...,123]", func(t *testing.T) {
+		blobData := _range(31 * 4)
+		batchEnds := []int{32, 63, 100}
+		testChecksumBatches(t, blobData, batchEnds)
+	})
+
 	const dirPath = "testdata/pack_batches"
 	dir, err := os.ReadDir(dirPath)
 	require.NoError(t, err)
@@ -529,40 +535,4 @@ func TestPackBatches(t *testing.T) {
 			testPackBatches(t, readFromJsonFile[packBatchesTestCase](t, filepath.Join(dirPath, dirEntry.Name())))
 		})
 	}
-	/*
-		blobData := _range(31 * 4)
-		batchEnds := []int{32, 63, 100}
-		assignment := testPackBatchesCircuit{
-			BlobBytes:    utils.ToVariableSlice(blobData),
-			NbBatches:    len(batchEnds),
-			BatchLengths: utils.ToVariableSlice(differences(batchEnds)),
-			ExpectedPackedBatches: packedBatches{
-				Iterations: []batchPackingIteration{
-					{
-						Current:    _range(31),
-						Next:       _range(31, 31),
-						NoOp:       0,
-						NextStarts: 0,
-						BatchI:     0,
-					},
-					{
-						Current:    append([]byte{31}, make([]byte, 30)...),
-						Next:       _range(32, 31),
-						NoOp:       0,
-						NextStarts: 1,
-						BatchI:     0,
-					},
-					{
-						Current:    append([]byte{31}, make([]byte, 30)...),
-						Next:       _range(32, 31),
-						NoOp:       0,
-						NextStarts: 1,
-						BatchI:     0,
-					},
-				},
-				Ends:  utils.ToVariableSlice(batchEnds),
-				Range: nil,
-			},
-		}
-		testChecksumBatches(t, blobData, batchEnds)*/
 }
