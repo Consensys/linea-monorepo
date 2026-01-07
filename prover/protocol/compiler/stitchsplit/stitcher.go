@@ -336,11 +336,15 @@ func (ctx *StitchingContext) stitchGroup(s Alliance) {
 			groupedName(group),
 			assignement)
 	case column.Committed:
+		// The stitched column should preserve whether the sub-columns are base-field
+		// or extension-field. Use the first sub-column as reference (they must
+		// all share the same base/extension property).
+		isBase := group[0].IsBase()
 		stitchingCol = ctx.Comp.InsertCommit(
 			s.Round,
 			groupedName(s.SubCols),
 			ctx.MaxSize,
-			true,
+			isBase,
 		)
 
 	default:
