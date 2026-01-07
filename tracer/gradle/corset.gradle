@@ -135,6 +135,7 @@ def TRACE_PKG = "net.consensys.linea.zktracer"
 
 tasks.register('buildZkevmBins', Exec) {
   dependsOn('installGoCorset')
+  dependsOn('corsetExists')
   workingDir "${project.rootDir}/tracer/linea-constraints/"
   // Specify input files so gradle knows when to rebuild.
   inputs.files(fileTree(workingDir).include('**/*.lisp'))
