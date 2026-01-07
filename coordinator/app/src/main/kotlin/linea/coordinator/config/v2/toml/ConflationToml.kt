@@ -1,11 +1,9 @@
 package linea.coordinator.config.v2.toml
 
-import kotlinx.datetime.toKotlinInstant
 import linea.blob.BlobCompressorVersion
 import linea.coordinator.config.v2.ConflationConfig
 import net.consensys.linea.traces.TracesCountersV2
 import java.net.URL
-import java.time.Instant
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -49,14 +47,7 @@ data class ConflationToml(
     val coordinatorPollingInterval: Duration = 3.seconds,
     val targetEndBlocks: List<ULong>? = null,
     val aggregationSizeMultipleOf: UInt = 1u,
-    val timestampBasedHardForks: List<Instant> = emptyList(),
   ) {
-    init {
-      require(timestampBasedHardForks.toSet().size == timestampBasedHardForks.size) {
-        "Timestamps list contains duplicates! Probably a misconfiguration!"
-      }
-    }
-
     fun reified(): ConflationConfig.ProofAggregation {
       return ConflationConfig.ProofAggregation(
         proofsLimit = this.proofsLimit,
@@ -65,7 +56,6 @@ data class ConflationToml(
         coordinatorPollingInterval = this.coordinatorPollingInterval,
         targetEndBlocks = this.targetEndBlocks,
         aggregationSizeMultipleOf = this.aggregationSizeMultipleOf,
-        timestampBasedHardForks = timestampBasedHardForks.map { it.toKotlinInstant() },
       )
     }
   }

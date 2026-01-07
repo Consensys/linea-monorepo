@@ -13,14 +13,10 @@ interface LastProvenBlockNumberProviderSync {
   fun getLastKnownProvenBlockNumber(): Long
 }
 
-interface LatestL1FinalizedBlockProviderSync {
-  fun getLatestL1FinalizedBlock(): Long
-}
-
 class BatchesRepoBasedLastProvenBlockNumberProvider(
   startingBlockNumberExclusive: Long,
   private val batchesRepository: BatchesRepository,
-) : LastProvenBlockNumberProviderAsync, LastProvenBlockNumberProviderSync, LatestL1FinalizedBlockProviderSync {
+) : LastProvenBlockNumberProviderAsync, LastProvenBlockNumberProviderSync {
   private var latestL1FinalizedBlock: AtomicLong = AtomicLong(startingBlockNumberExclusive)
   private var lastProvenBlock: AtomicLong = AtomicLong(startingBlockNumberExclusive)
 
@@ -35,10 +31,6 @@ class BatchesRepoBasedLastProvenBlockNumberProvider(
 
   override fun getLastKnownProvenBlockNumber(): Long {
     return lastProvenBlock.get()
-  }
-
-  override fun getLatestL1FinalizedBlock(): Long {
-    return latestL1FinalizedBlock.get()
   }
 
   private fun findAndCacheLastProvenBlockNumberFromDb(): SafeFuture<Long> {

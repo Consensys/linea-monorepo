@@ -64,7 +64,6 @@ class ProverClientFactoryTest {
       proverB = switchBlockNumber?.let {
         buildProverConfig(tmpDir.resolve("prover/v3"))
       },
-      enableRequestFilesCleanup = false,
     )
   }
 

@@ -74,7 +74,7 @@ interface ContractsManager {
 }
 
 object MakeFileDelegatedContractsManager : ContractsManager {
-  private val log = LoggerFactory.getLogger(MakeFileDelegatedContractsManager::class.java)
+  val log = LoggerFactory.getLogger(MakeFileDelegatedContractsManager::class.java)
 
   @OptIn(ExperimentalHoplite::class)
   val lineaRollupContractErrors = findPathTo("config")!!
