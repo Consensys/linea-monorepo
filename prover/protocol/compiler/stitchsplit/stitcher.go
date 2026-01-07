@@ -4,11 +4,12 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
@@ -108,25 +109,31 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			witnesses[i] = subColumns[i].GetColAssignment(run)
 		}
 
-		assignement := smartvectors.
-			AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
+		if smartvectors.AreAllBase(witnesses) {
 
-		const tileSize = 128
-		rows := witnesses[0].Len()
-		cols := len(subColumns)
+			newSize := maxSizeGroup * witnesses[0].Len()
+			assignementSlice := make([]field.Element, newSize)
 
-		parallel.Execute(rows, func(start, end int) {
-			for tileStart := start; tileStart < end; tileStart += tileSize {
-				tileEnd := min(tileStart+tileSize, end)
-				for j := tileStart; j < tileEnd; j++ {
-					base := j * maxSizeGroup
-					for i := 0; i < cols; i++ {
-						(*assignement)[base+i] = witnesses[i].Get(j)
-					}
+			for i := range subColumns {
+				for j := 0; j < witnesses[0].Len(); j++ {
+					assignementSlice[i+j*maxSizeGroup] = witnesses[i].Get(j)
 				}
 			}
-		})
-		run.AssignColumn(idBigCol, assignement)
+
+			run.AssignColumn(idBigCol, smartvectors.NewRegular(assignementSlice))
+			continue
+		}
+
+		newSize := maxSizeGroup * witnesses[0].Len()
+		assignementSlice := make([]fext.Element, newSize)
+
+		for i := range subColumns {
+			for j := 0; j < witnesses[0].Len(); j++ {
+				assignementSlice[i+j*maxSizeGroup] = witnesses[i].GetExt(j)
+			}
+		}
+
+		run.AssignColumn(idBigCol, smartvectors.NewRegularExt(assignementSlice))
 	}
 }
 
