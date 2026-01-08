@@ -739,7 +739,7 @@ func TestStoreFE(t *testing.T) {
 
 	// 3. Write to File
 	path := filepath.Join("files", "fe_test.bin")
-	err = os.WriteFile(path, b, 0644)
+	err = os.WriteFile(path, b, 0600)
 	if err != nil {
 		t.Fatalf("WriteFile failed: %v", err)
 	}
@@ -832,7 +832,7 @@ func TestStoreLimbMismatch(t *testing.T) {
 	}
 
 	path := filepath.Join("files", "limb_test.bin")
-	if err := os.WriteFile(path, b, 0644); err != nil {
+	if err := os.WriteFile(path, b, 0600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -894,7 +894,7 @@ func TestStoreSmartVector(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join("files", "smart_vector.bin")
-	if err := os.WriteFile(path, b, 0644); err != nil {
+	if err := os.WriteFile(path, b, 0600); err != nil {
 		t.Fatalf("Failed to write file: %v", err)
 	}
 	t.Logf("Wrote %d bytes to %s", len(b), path)
@@ -996,7 +996,7 @@ func TestStoreSliceOfSmartVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join("files", "matrix_vector.bin")
-	if err := os.WriteFile(path, b, 0644); err != nil {
+	if err := os.WriteFile(path, b, 0600); err != nil {
 		t.Fatalf("Failed to write file: %v", err)
 	}
 	t.Logf("Wrote %d bytes to %s", len(b), path)
