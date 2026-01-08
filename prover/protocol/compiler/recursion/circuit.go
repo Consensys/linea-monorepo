@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -28,7 +27,7 @@ type RecursionCircuit struct {
 	X                  ExtFrontendVariable            `gnark:",public"`
 	Ys                 []ExtFrontendVariable          `gnark:",public"`
 	Commitments        [][blockSize]frontend.Variable `gnark:",public"`
-	Pubs               []zk.WrappedVariable           `gnark:",public"`
+	Pubs               []frontend.Variable            `gnark:",public"`
 	WizardVerifier     *wizard.VerifierCircuit
 	withoutGkr         bool                       `gnark:"-"`
 	withExternalHasher bool                       `gnark:"-"`
@@ -90,7 +89,7 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		PolyQuery:          polyQuery,
 		MerkleRoots:        merkleRoots,
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound, false),
-		Pubs:               make([]zk.WrappedVariable, len(comp.PublicInputs)),
+		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)),
 		Commitments:        make([][blockSize]frontend.Variable, len(merkleRoots)),
 		Ys:                 make([]ExtFrontendVariable, len(polyQuery.Pols)),
 	}
@@ -121,7 +120,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 	for i := range r.Pubs {
 		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(apiGen.NativeApi, w)
-		apiGen.AssertIsEqual(r.Pubs[i], pub)
+		api.AssertIsEqual(r.Pubs[i], pub.AsNative())
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
@@ -133,7 +132,8 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 	for i := range r.Commitments {
 		for j := 0; j < blockSize; j++ {
-			apiGen.AssertIsEqual(zk.WrapFrontendVariable(r.Commitments[i][j]), r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0))
+			mr := r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0)
+			api.AssertIsEqual(r.Commitments[i][j], mr.AsNative())
 		}
 	}
 
@@ -154,10 +154,14 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 			WizardVerifier: wizard.AssignVerifierCircuit(comp, proof, numRound, false),
 			X:              Ext4FV(&params.ExtX),
 			Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
-			Pubs:           vector.IntoGnarkAssignment(pubs),
 			PolyQuery:      polyQuery,
 		}
 	)
+
+	for i := range pubs {
+		circuit.Pubs[i] = pubs[i]
+	}
+
 	for i := range params.ExtYs {
 		circuit.Ys[i] = Ext4FV(&params.ExtYs[i])
 	}
