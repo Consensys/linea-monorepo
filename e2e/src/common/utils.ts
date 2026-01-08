@@ -113,14 +113,17 @@ export async function pollForBlockNumber(
   pollingIntervalMs: number = 500,
   timeoutMs: number = 2 * 60 * 1000,
 ): Promise<boolean> {
-  return (
-    (await awaitUntil(
+  try {
+    await awaitUntil(
       async () => await provider.getBlockNumber(),
       (a: number) => a >= expectedBlockNumber,
       pollingIntervalMs,
       timeoutMs,
-    )) != null
-  );
+    );
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 export class RollupGetZkEVMBlockNumberClient {
