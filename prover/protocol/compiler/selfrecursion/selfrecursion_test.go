@@ -18,7 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -418,13 +418,13 @@ func TestSelfRecursionManyLayersWithSerde(t *testing.T) {
 		)
 	}
 
-	buf, err := serialization.Serialize(comp)
+	buf, err := serde.Serialize(comp)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	comp2 := &wizard.CompiledIOP{}
-	err = serialization.Deserialize(buf, &comp2)
+	err = serde.Deserialize(buf, &comp2)
 	if err != nil {
 		t.Fatal(err)
 	}
