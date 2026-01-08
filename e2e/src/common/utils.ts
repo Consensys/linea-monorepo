@@ -122,7 +122,11 @@ export async function pollForBlockNumber(
     );
     return true;
   } catch (error) {
-    return false;
+    if (error instanceof AwaitUntilTimeoutError) {
+      logger.error(`Timeout waiting for block number ${expectedBlockNumber} after ${error.timeoutMs}ms`);
+      return false;
+    }
+    throw error;
   }
 }
 
