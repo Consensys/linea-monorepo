@@ -60,7 +60,7 @@ tasks.register('installGoCorset') {
       def err = new StringBuilder()
       process.consumeProcessOutput(out, err)
       def exitCode = process.waitFor()
-      if (exitCode != 0) {
+      if (exitCode != 0 && throwOnFailure) {
         throw new GradleException("Command '$cmd' failed with exitCode=$exitCode error=$err")
       }
       return [exitCode, out.toString(), err.toString()]
@@ -69,7 +69,7 @@ tasks.register('installGoCorset') {
     // Check if go-corset exists
     def goCorsetExists = false
     try {
-      def checkCmd = isWindows ? "where go-corset" : "which go-corset"
+      def checkCmd = isWindows ? "where go-corset" : "which go-corset22"
       def (exitCode, out, err) = runCommand(checkCmd, false)
       goCorsetExists = (exitCode == 0)
     } catch (Exception e) {
