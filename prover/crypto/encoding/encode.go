@@ -1,3 +1,9 @@
+// Package encoding provides functions for encoding/decoding between
+// Koalabear field elements (31-bit) and BLS12-377 field elements (253-bit).
+//
+// Two encoding schemes are supported:
+// - 8-chunk encoding: 8 × 31-bit = 248 bits (for general use)
+// - 9-chunk encoding: 9 × 30-bit = 270 bits (for Merkle root round-trips)
 package encoding
 
 import (
@@ -8,28 +14,42 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
+// Constants for bit widths used in encoding
+const (
+	// KoalabearChunks is the number of 30-bit chunks for BLS12 root encoding
+	KoalabearChunks = 9
+	// ChunkBits8 is the bit width for 8-chunk encoding
+	ChunkBits8 = 31
+	// ChunkBits9 is the bit width for 9-chunk encoding
+	ChunkBits9 = 30
+	// Mask30Bits is the mask for extracting 30 bits (0x3FFFFFFF)
+	Mask30Bits = uint64((1 << 30) - 1)
+)
+
+// Package-level multipliers to avoid per-call allocation
+var multipliers8 = [8]*big.Int{
+	big.NewInt(1),                                 // 2^0
+	big.NewInt(1 << ChunkBits8),                   // 2^31
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits8*2), // 2^62
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits8*3), // 2^93
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits8*4), // 2^124
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits8*5), // 2^155
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits8*6), // 2^186
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits8*7), // 2^217
+}
+
+// EncodeKoalabearOctupletToFrElement encodes 8 Koalabear field elements into a single BLS12-377 field element.
+// Each Koalabear element is treated as a 31-bit value, packed into the 253-bit BLS12-377 field.
 func EncodeKoalabearOctupletToFrElement(elements [8]field.Element) fr.Element {
 	var res fr.Element
 	var bres big.Int
-
-	// Precompute all multipliers as constants
-	multipliers := [8]*big.Int{
-		big.NewInt(1),                        // 2^0
-		big.NewInt(1 << 31),                  // 2^31
-		new(big.Int).Lsh(big.NewInt(1), 62),  // 2^62
-		new(big.Int).Lsh(big.NewInt(1), 93),  // 2^93
-		new(big.Int).Lsh(big.NewInt(1), 124), // 2^124
-		new(big.Int).Lsh(big.NewInt(1), 155), // 2^155
-		new(big.Int).Lsh(big.NewInt(1), 186), // 2^186
-		new(big.Int).Lsh(big.NewInt(1), 217), // 2^217
-	}
 
 	for i := 0; i < 8; i++ {
 		var bElement big.Int
 		elements[7-i].BigInt(&bElement)
 
 		// Add the value to the result, scaled by the current multiplier
-		bElement.Mul(&bElement, multipliers[i])
+		bElement.Mul(&bElement, multipliers8[i])
 		bres.Add(&bres, &bElement)
 	}
 
@@ -37,6 +57,8 @@ func EncodeKoalabearOctupletToFrElement(elements [8]field.Element) fr.Element {
 	return res
 }
 
+// EncodeKoalabearsToFrElement encodes a slice of Koalabear field elements into BLS12-377 field elements.
+// Elements are packed 8 at a time, with left-padding of zeros if the input length is not a multiple of 8.
 func EncodeKoalabearsToFrElement(elements []field.Element) []fr.Element {
 	var res []fr.Element
 	for len(elements) != 0 {
@@ -54,64 +76,55 @@ func EncodeKoalabearsToFrElement(elements []field.Element) []fr.Element {
 	return res
 }
 
+// EncodeFrElementToOctuplet decodes a BLS12-377 field element into 8 Koalabear field elements.
+// It is used for randomness generation, not necessary be the inverse of EncodeKoalabearOctupletToFrElement, .
+// Note: This extracts 30-bit chunks, which differs from the 31-bit encoding in EncodeKoalabearOctupletToFrElement.
 func EncodeFrElementToOctuplet(element fr.Element) field.Octuplet {
-	mask := uint64(1073741823)
 	bits := element.Bits()
 	var res field.Octuplet
 	for i := 0; i < 4; i++ {
-		res[2*i].SetUint64(bits[i] & mask)
-		res[2*i+1].SetUint64((bits[i] >> 32) & mask)
+		// Each 64-bit word in element gives two 30-bit chunks
+		res[2*i].SetUint64(bits[i] & Mask30Bits)
+		res[2*i+1].SetUint64((bits[i] >> 32) & Mask30Bits)
 	}
 	return res
 }
 
-// BLS to Koalabear encoding, 1 BLS -- > 9 Koalabear --> 1 BLS
-// The following encoding and decoding are used in the compiler circuits
-// Perform a lossless round-trip transformation between a Merkle Root (bls12.Element) and its decomposition into columns,
-// ensuring the input Root matches the output Root.
-const KoalabearChunks = 9
-
+// EncodeBLS12RootToKoalabear decomposes a BLS12-377 field element (Merkle root) into 9 Koalabear field elements.
+// Each chunk is 30 bits, allowing for lossless round-trip encoding.
 func EncodeBLS12RootToKoalabear(encoded fr.Element) [KoalabearChunks]field.Element {
-	// Initialize an empty array to store the results
 	var elements, res [KoalabearChunks]field.Element
 
 	bytes := encoded.Bytes()
-	// Convert the bytes32 to big.Int
 	value := new(big.Int).SetBytes(bytes[:])
 
-	// Loop to extract each 30-bit chunk
+	// Extract each 30-bit chunk
 	for i := 0; i < KoalabearChunks; i++ {
-		// Extract the corresponding 30-bit chunk by applying a mask
-		chunk := new(big.Int).And(value, big.NewInt(0x3FFFFFFF)) // Mask for 30 bits (0x3FFFFFFF = 30 ones in binary)
-
-		// Set the extracted chunk to the corresponding field.Element (element[i])
+		chunk := new(big.Int).And(value, big.NewInt(int64(Mask30Bits)))
 		elements[i].SetBigInt(chunk)
-
-		// Right shift the `value` to move to the next chunk
-		value.Rsh(value, 30) // Move to the next 30-bit chunk
+		value.Rsh(value, ChunkBits9)
 	}
 
-	// Since field.Elements are processed in little-endian order, reverse the array
+	// Reverse to match expected ordering (little-endian to big-endian)
 	for i := 0; i < KoalabearChunks; i++ {
 		res[i] = elements[KoalabearChunks-1-i]
 	}
 	return res
 }
 
+// DecodeKoalabearToBLS12Root reconstructs a BLS12-377 field element from 9 Koalabear field elements.
+// This is the inverse of EncodeBLS12RootToKoalabear.
 func DecodeKoalabearToBLS12Root(elements [KoalabearChunks]field.Element) fr.Element {
 	expectedResult := big.NewInt(0)
-	for i := 0; i < KoalabearChunks-1; i++ {
-		part := big.NewInt(int64(elements[KoalabearChunks-1-i].Bits()[0]))
 
-		shift := uint(30 * i)                   // Shift based on little-endian order
-		part.Lsh(part, shift)                   // Shift left by the appropriate position for little-endian
-		expectedResult.Or(expectedResult, part) // Bitwise OR to combine
+	// Process all chunks in a single loop
+	for i := 0; i < KoalabearChunks; i++ {
+		var bElement big.Int
+		elements[KoalabearChunks-1-i].BigInt(&bElement)
+		bElement.Lsh(&bElement, uint(ChunkBits9*i))
+		expectedResult.Or(expectedResult, &bElement)
 	}
-	part := big.NewInt(int64(elements[0].Bits()[0]))
 
-	shift := uint(30 * (KoalabearChunks - 1)) // Shift based on little-endian order
-	part.Lsh(part, shift)                     // Shift left by the appropriate position for little-endian
-	expectedResult.Or(expectedResult, part)
 	var res types.Bytes32
 	expectedBytes := expectedResult.Bytes()
 	copy(res[32-len(expectedBytes):], expectedBytes) // left pad with zeroes to 32 bytes
