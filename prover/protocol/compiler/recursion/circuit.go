@@ -25,15 +25,42 @@ import (
 // Alex: please don't change the ordering of the arguments as this
 // affects the parsing of the witness.
 type RecursionCircuit struct {
-	X                  gnarkfext.E4Gen                 `gnark:",public"`
-	Ys                 []gnarkfext.E4Gen               `gnark:",public"`
-	Commitments        [][blockSize]zk.WrappedVariable `gnark:",public"`
-	Pubs               []zk.WrappedVariable            `gnark:",public"`
+	X                  ExtFrontendVariable            `gnark:",public"`
+	Ys                 []ExtFrontendVariable          `gnark:",public"`
+	Commitments        [][blockSize]frontend.Variable `gnark:",public"`
+	Pubs               []zk.WrappedVariable           `gnark:",public"`
 	WizardVerifier     *wizard.VerifierCircuit
 	withoutGkr         bool                       `gnark:"-"`
 	withExternalHasher bool                       `gnark:"-"`
 	PolyQuery          query.UnivariateEval       `gnark:"-"`
 	MerkleRoots        [][blockSize]ifaces.Column `gnark:"-"`
+}
+
+// ExtFrontendVariable allows storing the extension as a 4-element array of frontend variables in Plonk public inputs (contrary to WrappedVariabl/ gnarkfext.E4Gen, which takes more space).
+type ExtFrontendVariable = [4]frontend.Variable
+
+// E4Gen is a helper function for converting an ExtFrontendVariable to a gnarkfext.E4Gen
+func E4Gen(x ExtFrontendVariable) *gnarkfext.E4Gen {
+	return &gnarkfext.E4Gen{
+		B0: gnarkfext.E2Gen{
+			A0: zk.WrapFrontendVariable(x[0]),
+			A1: zk.WrapFrontendVariable(x[1]),
+		},
+		B1: gnarkfext.E2Gen{
+			A0: zk.WrapFrontendVariable(x[2]),
+			A1: zk.WrapFrontendVariable(x[3]),
+		},
+	}
+}
+
+// Ext4FV is a helper function for converting a gnarkfext.E4Gen to an ExtFrontendVariable
+func Ext4FV(x *gnarkfext.E4Gen) ExtFrontendVariable {
+	return ExtFrontendVariable{
+		x.B0.A0.AsNative(),
+		x.B0.A1.AsNative(),
+		x.B1.A0.AsNative(),
+		x.B1.A1.AsNative(),
+	}
 }
 
 // AllocRecursionCircuit allocates a new RecursionCircuit with the
@@ -64,8 +91,8 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		MerkleRoots:        merkleRoots,
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound, false),
 		Pubs:               make([]zk.WrappedVariable, len(comp.PublicInputs)),
-		Commitments:        make([][blockSize]zk.WrappedVariable, len(merkleRoots)),
-		Ys:                 make([]gnarkfext.E4Gen, len(polyQuery.Pols)),
+		Commitments:        make([][blockSize]frontend.Variable, len(merkleRoots)),
+		Ys:                 make([]ExtFrontendVariable, len(polyQuery.Pols)),
 	}
 }
 
@@ -98,15 +125,15 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
-	eapi.AssertIsEqual(&r.X, &polyParams.ExtX)
+	eapi.AssertIsEqual(E4Gen(r.X), &polyParams.ExtX)
 
 	for i := range polyParams.ExtYs {
-		eapi.AssertIsEqual(&r.Ys[i], &polyParams.ExtYs[i])
+		eapi.AssertIsEqual(E4Gen(r.Ys[i]), &polyParams.ExtYs[i])
 	}
 
 	for i := range r.Commitments {
 		for j := 0; j < blockSize; j++ {
-			apiGen.AssertIsEqual(r.Commitments[i][j], r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0))
+			apiGen.AssertIsEqual(zk.WrapFrontendVariable(r.Commitments[i][j]), r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0))
 		}
 	}
 
@@ -125,29 +152,36 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
 		circuit        = &RecursionCircuit{
 			WizardVerifier: wizard.AssignVerifierCircuit(comp, proof, numRound, false),
-			X:              params.ExtX,
-			Ys:             params.ExtYs,
+			X:              Ext4FV(&params.ExtX),
+			Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
 			Pubs:           vector.IntoGnarkAssignment(pubs),
 			PolyQuery:      polyQuery,
 		}
 	)
+	for i := range params.ExtYs {
+		circuit.Ys[i] = Ext4FV(&params.ExtYs[i])
+	}
+
 	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		mRoot := pcsCtx.Items.Precomputeds.MerkleRoot
 		circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-		octuplet := [8]zk.WrappedVariable{}
+		octuplet := [8]frontend.Variable{}
 		for j := 0; j < blockSize; j++ {
-			octuplet[j] = mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
+			a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
+			octuplet[j] = a.AsNative()
 		}
 		circuit.Commitments = append(circuit.Commitments, octuplet)
+
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
 		if pcsCtx.Items.MerkleRoots[i][0] != nil {
 			mRoot := pcsCtx.Items.MerkleRoots[i]
 			circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-			octuplet := [8]zk.WrappedVariable{}
+			octuplet := [8]frontend.Variable{}
 			for j := 0; j < blockSize; j++ {
-				octuplet[j] = mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
+				a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
+				octuplet[j] = a.AsNative()
 			}
 			circuit.Commitments = append(circuit.Commitments, octuplet)
 		}

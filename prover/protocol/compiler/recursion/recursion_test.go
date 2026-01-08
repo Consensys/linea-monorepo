@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitextension"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -49,6 +50,7 @@ func TestLookup(t *testing.T) {
 			globalcs.Compile,
 			univariates.Naturalize,
 			mpts.Compile(),
+			splitextension.CompileSplitExtToBase,
 			vortex.Compile(
 				2,
 				false,

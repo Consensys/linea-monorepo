@@ -132,14 +132,14 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		if err != nil {
 			return fmt.Errorf("proof no=%v, failed to get pi witness: %v", i, err)
 		}
-		fmt.Printf("piWitness: %v\n", piWitness[:64])
-		_, circYs, circMRoots, _ := SplitPublicInputs(cc.Ctx, piWitness)
+
+		circX, circYs, circMRoots, _ := SplitPublicInputs(cc.Ctx, piWitness)
 		params := run.GetUnivariateParams(pcsCtx.Query.QueryID)
 		pcsMRoot := pcsCtx.Items.MerkleRoots
 
-		/*if circX[0] != params.ExtX.B0.A0 || circX[1] != params.ExtX.B0.A1 || circX[2] != params.ExtX.B1.A0 || circX[3] != params.ExtX.B1.A1 {
-			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX, params.ExtX)
-		}*/
+		if circX[0] != params.ExtX.B0.A0 || circX[1] != params.ExtX.B0.A1 || circX[2] != params.ExtX.B1.A0 || circX[3] != params.ExtX.B1.A1 {
+			return fmt.Errorf("proof no=%v, x value does not match %++v != %++v", i, circX, params.ExtX)
+		}
 
 		if len(circYs) != 4*len(params.ExtYs) {
 			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.ExtYs))
@@ -152,7 +152,6 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		}
 
 		if pcsCtx.IsNonEmptyPrecomputed() {
-
 			for j := 0; j < blockSize; j++ {
 				com := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColAssignmentAt(run, 0)
 				if com != circMRoots[0] {
@@ -172,7 +171,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 
 				com := pcsMRoot[j][k].GetColAssignmentAt(run, 0)
 				if com != circMRoots[nonEmptyCount] {
-					return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", i, com.String(), circMRoots[nonEmptyCount].String())
+					return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", i, com, circMRoots[nonEmptyCount])
 				}
 
 				nonEmptyCount++

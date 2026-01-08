@@ -187,7 +187,7 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		// pubInputOffset corresponds to the positions of the public inputs
 		// in the plonk-in-wizard public witness. They are at
 		// 		pubInputOffset:pubInputOffset+numPubs
-		pubInputOffset = 1 + numYs + numComs
+		pubInputOffset = 4*(1+numYs) + 8*numComs // 4 for x, 4*numYs for ys, 8*numComs for merkle roots
 	)
 
 	for i := 0; i < params.MaxNumProof; i++ {
@@ -291,13 +291,14 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 					continue
 				}
 
-				x := field.NewFromString(assign.Commitments[j][k].AsNative().(string))
+				x := field.NewFromString(assign.Commitments[j][k].(string))
 				run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
 			}
 		}
 
 		// Assigns the poly query.
 		params := wit[i].Proof.QueriesParams.MustGet(assign.PolyQuery.QueryID).(query.UnivariateEvalParams)
+
 		run.AssignUnivariateExt(r.PcsCtx[i].Query.QueryID, params.ExtX, params.ExtYs...)
 
 		// Store the self-recursion artefacts for the vortex prover and the
