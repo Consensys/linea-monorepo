@@ -47,6 +47,10 @@ tasks.register('extractConstraintsGitArchive', Exec) {
   // Runs the command using sh to extract the git archive
   // Uses absolute path for destDir to be safe
   commandLine 'sh', '-c', "git archive --format=tar ${commitHash} ${sourceFolder} | tar -x -C '${destDir.absolutePath}'"
+
+  // Optional: Print output for debugging
+  standardOutput = System.out
+  errorOutput = System.err
 }
 
 ext {
