@@ -99,6 +99,17 @@ func main() {
 		return true
 	})
 
+	//  Deduplicate the types slice
+	uniqueTypes := make(map[string]bool)
+	dedupedTypes := make([]string, 0, len(types))
+	for _, t := range types {
+		if !uniqueTypes[t] {
+			uniqueTypes[t] = true
+			dedupedTypes = append(dedupedTypes, t)
+		}
+	}
+	types = dedupedTypes
+
 	// Deterministic ordering for ID assignment
 	sort.Strings(types)
 

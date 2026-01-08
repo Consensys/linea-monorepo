@@ -252,13 +252,11 @@ func init() {
 	RegisterImplementation(importpad.MimcPadder{})
 	RegisterImplementation(importpad.KeccakPadder{})
 	RegisterImplementation(importpad.Importation{})
-	RegisterImplementation(importpad.Importation{})
 
 	RegisterImplementation(base_conversion.HashBaseConversion{})
 	RegisterImplementation(base_conversion.BlockBaseConversion{})
 	RegisterImplementation(base_conversion.DecompositionCtx{})
 
-	RegisterImplementation(cleanup.CleanupProverAction{})
 	RegisterImplementation(dummy.DummyVerifierAction{})
 	RegisterImplementation(dummy.DummyProverAction{})
 
@@ -339,8 +337,6 @@ func init() {
 
 	RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
 	RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
-
-	RegisterImplementation(column.FakeColumn{})
 
 	RegisterImplementation(selector.SubsampleProverAction{})
 	RegisterImplementation(selector.SubsampleVerifierAction{})
