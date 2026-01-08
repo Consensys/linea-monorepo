@@ -384,15 +384,6 @@ func init() {
 	RegisterImplementation(distributed.ModuleGLCheckSendReceiveGlobal{})
 	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
 	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
-
-	// test
-	// RegisterImplementation(util.ReproConcrete{})
-	// RegisterImplementation(util.AssignVortexUAlpha{})
-	// RegisterImplementation(util.SharedLeaf{})
-	// RegisterImplementation(util.WrapperC{})
-	// RegisterImplementation(util.MockAction1{})
-	// RegisterImplementation(util.MockIOP1{})
-	// RegisterImplementation(util.FakeCommittedMatrix{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
