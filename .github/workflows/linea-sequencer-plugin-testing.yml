@@ -63,7 +63,6 @@ jobs:
         uses: ./.github/actions/setup-tracer-environment
         with:
           enable-ssh: false
-          java-version: '21'
 
       - name: Run acceptance tests
         run: ./gradlew besu-plugins:linea-sequencer:acceptance-tests:acceptanceTests
