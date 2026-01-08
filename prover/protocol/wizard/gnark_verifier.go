@@ -353,7 +353,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 
 	var zkWV [8]zk.WrappedVariable
 	for i := 0; i < 8; i++ {
-		zkWV[i] = zk.ValueOf(c.Spec.FiatShamirSetup[i].String())
+		zkWV[i] = zk.ValueFromKoala(c.Spec.FiatShamirSetup[i])
 	}
 
 	if c.IsBLS {
@@ -622,7 +622,7 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable
 		res := make([]zk.WrappedVariable, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = zk.ValueOf(val[i].String())
+			res[i] = zk.ValueFromKoala(val[i])
 		}
 		return res, nil
 	}

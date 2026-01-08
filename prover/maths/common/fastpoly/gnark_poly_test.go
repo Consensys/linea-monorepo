@@ -55,7 +55,7 @@ func getWitnessAndCircuit(t zk.VType) (EvaluateLagrangeCircuit, EvaluateLagrange
 	circuit.Poly = make([]zk.WrappedVariable, size)
 	witness.Poly = make([]zk.WrappedVariable, size)
 	for i := 0; i < size; i++ {
-		witness.Poly[i] = zk.ValueOf(poly[i].String())
+		witness.Poly[i] = zk.ValueFromKoala(poly[i])
 	}
 	witness.R = gnarkfext.NewE4Gen(r)
 	witness.X = gnarkfext.NewE4Gen(x)

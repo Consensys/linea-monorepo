@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
@@ -19,7 +20,6 @@ type StitchingContext struct {
 	// All columns under the minSize are ignored.
 	// No stitching goes beyond MaxSize.
 	MinSize, MaxSize int
-
 	// It collects the information about subColumns and their stitchings.
 	// The index of Stitchings is over the rounds.
 	Stitchings []SummerizedAlliances
@@ -32,7 +32,8 @@ type StitchSubColumnsProverAction struct {
 func (a *StitchSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	for round := range a.Stitchings {
 		// This loop is not in deterministic order but this does not matter
-		// as this is purely for cleaning up.
+		// as this is purely for cleaning up. After stitching, the big column
+		// should live and the sub columns should be deleted.
 		for subCol := range a.Stitchings[round].BySubCol {
 			run.Columns.TryDel(subCol)
 		}
@@ -46,7 +47,7 @@ func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 		// it creates stitchings from the eligible columns and commits to the them.
 		ctx := newStitcher(comp, minSize, maxSize)
 
-		//  adjust the constraints accordingly over the stitchings of the sub columns.
+		// adjust the constraints accordingly over the stitchings of the sub columns.
 		ctx.constraints()
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
@@ -103,7 +104,7 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		// Get the assignment of the subColumns and interleave them
+		// get the assignment of the subColumns and interleave them
 		witnesses := make([]smartvectors.SmartVector, len(subColumns))
 		for i := range witnesses {
 			witnesses[i] = subColumns[i].GetColAssignment(run)
@@ -114,39 +115,65 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			newSize := maxSizeGroup * witnesses[0].Len()
 			assignementSlice := make([]field.Element, newSize)
 
-			for i := range subColumns {
-				for j := 0; j < witnesses[0].Len(); j++ {
-					assignementSlice[i+j*maxSizeGroup] = witnesses[i].Get(j)
+			// Parallelise over the j (row) dimension with tiling for better
+			// cache locality and concurrency. Each (i,j) writes a unique
+			// location so this is safe to run in parallel over j ranges.
+			const tileSize = 128
+			parallel.Execute(witnesses[0].Len(), func(start, stop int) {
+				for tStart := start; tStart < stop; tStart += tileSize {
+					tEnd := tStart + tileSize
+					if tEnd > stop {
+						tEnd = stop
+					}
+					for j := tStart; j < tEnd; j++ {
+						baseIdx := j * maxSizeGroup
+						for i := range subColumns {
+							assignementSlice[i+baseIdx] = witnesses[i].Get(j)
+						}
+					}
 				}
-			}
+			})
 
 			run.AssignColumn(idBigCol, smartvectors.NewRegular(assignementSlice))
 			continue
 		}
 
 		newSize := maxSizeGroup * witnesses[0].Len()
-		assignementSlice := make([]fext.Element, newSize)
+		assignementSliceExt := make([]fext.Element, newSize)
 
-		for i := range subColumns {
-			for j := 0; j < witnesses[0].Len(); j++ {
-				assignementSlice[i+j*maxSizeGroup] = witnesses[i].GetExt(j)
+		const tileSizeExt = 128
+		parallel.Execute(witnesses[0].Len(), func(start, stop int) {
+			for tStart := start; tStart < stop; tStart += tileSizeExt {
+				tEnd := tStart + tileSizeExt
+				if tEnd > stop {
+					tEnd = stop
+				}
+				for j := tStart; j < tEnd; j++ {
+					baseIdx := j * maxSizeGroup
+					for i := range subColumns {
+						assignementSliceExt[i+baseIdx] = witnesses[i].GetExt(j)
+					}
+				}
 			}
-		}
+		})
 
-		run.AssignColumn(idBigCol, smartvectors.NewRegularExt(assignementSlice))
+		run.AssignColumn(idBigCol, smartvectors.NewRegularExt(assignementSliceExt))
 	}
 }
 
-// ScanStitchCommit scans compiler trace and classifies the sub columns eligible to the stitching.
-// It then stitches the sub columns, commits to them and update stitchingContext.
-// It also forces the compiler to set the status of the sub columns to 'ignored'.
-// since the sub columns are technically replaced with their stitching.
+// ScanStitchCommit scans compiler trace and classifies the sub columns eligible
+// to the stitching. It then stitches the sub columns, commits to them and
+// update stitchingContext. It also forces the compiler to set the status of the
+// sub columns to 'ignored'. since the sub columns are technically replaced with
+// their stitching.
 func (ctx *StitchingContext) ScanStitchCommit() {
+
 	for round := 0; round < ctx.Comp.NumRounds(); round++ {
 
-		// scan the compiler trace to find the eligible columns for stitching. The
-		// sorting is critical to ensure that the stitching happens in deterministic
-		// order and that the columns are created in the same order.
+		// scan the compiler trace to find the eligible columns for stitching.
+		// The sorting is critical to ensure that the stitching happens in
+		// deterministic order and that the columns are created in the same
+		// order.
 		columnsBySize := scanAndClassifyEligibleColumns(*ctx, round)
 		sizes := utils.SortedKeysOf(columnsBySize, func(a, b int) bool {
 			return a < b
@@ -170,7 +197,6 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 					precomputedCols = append(precomputedCols, col)
 				case column.Committed:
 					committedCols = append(committedCols, col)
-
 				default:
 					// note that status of verifercol/ veriferDefined is not
 					// available via compiler trace.
@@ -216,7 +242,6 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 			continue
 		}
 
-		// @Azam Precomputed ones are double assigned by this?
 		ctx.Comp.RegisterProverAction(round, &StitchColumnsProverAction{
 			Ctx:   ctx,
 			Round: round,
@@ -225,6 +250,7 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 }
 
 // It scan the compiler trace for a given round and classifies the columns eligible to the stitching, by their size.
+// It also declares a column with size < minSize a public column (to be verified by the verifier)
 func scanAndClassifyEligibleColumns(ctx StitchingContext, round int) map[int][]ifaces.Column {
 	columnsBySize := map[int][]ifaces.Column{}
 
@@ -233,9 +259,8 @@ func scanAndClassifyEligibleColumns(ctx StitchingContext, round int) map[int][]i
 		status := ctx.Comp.Columns.Status(colName)
 		col := ctx.Comp.Columns.GetHandle(colName)
 
-		// 1. we expect no constraint over a mix of eligible columns and proof, thus ignore Proof columns
-		// 2. we expect no verifingKey column to fall withing the stitching interval (ctx.MinSize, ctx.MaxSize)
-		// 3. we expect no query over the ignored columns.
+		// We do not make proof and verifying key column eligible for stitching.
+		// We expand them directly during the constraints.
 		if status == column.Ignored || status == column.Proof || status == column.VerifyingKey {
 			continue
 		}
@@ -295,16 +320,6 @@ func groupedName(group []ifaces.Column) ifaces.ColID {
 	return ifaces.ColIDf("STITCHER_%v", strings.Join(fmtted, "_"))
 }
 
-// areAllBase returns true if all the columns are base
-func areAllBase(cols []ifaces.Column) bool {
-	for _, col := range cols {
-		if !col.IsBase() {
-			return false
-		}
-	}
-	return true
-}
-
 // for a group of sub columns it creates their stitching.
 func (ctx *StitchingContext) stitchGroup(s Alliance) {
 	var (
@@ -345,11 +360,22 @@ func (ctx *StitchingContext) stitchGroup(s Alliance) {
 			groupedName(group),
 			assignement)
 	case column.Committed:
+		// The stitched column should preserve whether the sub-columns are base-field
+		// or extension-field. Ensure we return 'base' only if ALL sub-columns are base.
+		// This prevents accidentally storing extension-field data into a base-field
+		// stitching when groups contain mixed types.
+		isBase := true
+		for _, c := range group {
+			if !c.IsBase() {
+				isBase = false
+				break
+			}
+		}
 		stitchingCol = ctx.Comp.InsertCommit(
 			s.Round,
 			groupedName(s.SubCols),
 			ctx.MaxSize,
-			areAllBase(s.SubCols),
+			isBase,
 		)
 
 	default:

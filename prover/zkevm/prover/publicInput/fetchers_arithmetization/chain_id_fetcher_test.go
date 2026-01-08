@@ -37,12 +37,15 @@ func TestChainIDFetcher(t *testing.T) {
 		AssignChainIDFetcher(run, &fetcher, bdc)
 		// two simple sanity checks based on the mock test data
 		chainID := limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("CHAIN_ID", fetcher.ChainID[:]).GetRowAsBigInt(run, 0)
-		expectedChainID, ok := new(big.Int).SetString("0xfefc", 16)
+		expectedChainID, ok := new(big.Int).SetString("fefc", 16)
 		if !ok {
-			t.Fatal("error converting string to big.Int")
+			t.Fatalf("error converting string to big.Int")
 		}
 
-		assert.Equal(t, chainID, expectedChainID, "ChainID value is incorrect.")
+		// This removes the padding zeroes
+		chainID.Rsh(chainID, 112)
+
+		assert.Equal(t, chainID.Text(16), expectedChainID.Text(16), "ChainID value is incorrect")
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)

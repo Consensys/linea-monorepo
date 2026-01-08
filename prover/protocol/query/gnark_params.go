@@ -19,7 +19,7 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
 	exty := gnarkfext.NewE4Gen(p.ExtY)
 	return GnarkLocalOpeningParams{
-		BaseY:  zk.ValueOf(p.BaseY.String()),
+		BaseY:  zk.ValueFromKoala(p.BaseY),
 		ExtY:   exty,
 		IsBase: p.IsBase,
 	}

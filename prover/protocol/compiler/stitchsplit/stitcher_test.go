@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	P1, P2           ifaces.ColID   = "P1", "P2"
+	P1, P2, P3       ifaces.ColID   = "P1", "P2", "P3"
 	GLOBAL1, GLOBAL2 ifaces.QueryID = "GLOBAL1", "GLOBAL2"
 	LOCAL1           ifaces.QueryID = "LOCAL1"
 )
@@ -50,10 +50,16 @@ func TestStitcherLocalWithPeriodicSample(t *testing.T) {
 	testStitcher(t, 64, 256, localWithPeriodicSample(256, 8, 7))
 }
 
-func TestSplitterGlobalWithVerifColAndPerriodic(t *testing.T) {
+func TestStitcherGlobalWithVerifColAndPeriodic(t *testing.T) {
 	testStitcher(t, 8, 64, globalWithVerifColAndPeriodic(8, 4, 0))
 	testStitcher(t, 64, 128, globalWithVerifColAndPeriodic(256, 8, 1))
 	testStitcher(t, 8, 16, globalWithVerifColAndPeriodic(256, 8, 7))
+}
+
+func TestStitcherGlobalWithProofCol(t *testing.T) {
+	testStitcher(t, 8, 64, globalWithProofCols(16))
+	testStitcher(t, 64, 128, globalWithProofCols(16))
+	testStitcher(t, 8, 16, globalWithProofCols(32))
 }
 
 func TestLocalEvalWithStatus(t *testing.T) {
@@ -66,10 +72,10 @@ func TestLocalEvalWithStatus(t *testing.T) {
 	define := func(builder *wizard.Builder) {
 		logrus.Info("Defining columns and local opening queries")
 		// Declare columns of different sizes
-		a = builder.RegisterCommitExt("A", 2)
-		b = builder.RegisterCommitExt("B", 4)
-		c = builder.RegisterCommitExt("C", 8)
-		d = builder.RegisterCommitExt("D", 16)
+		a = builder.RegisterCommit("A", 2)
+		b = builder.RegisterCommit("B", 4)
+		c = builder.RegisterCommit("C", 8)
+		d = builder.RegisterCommit("D", 16)
 
 		// Local opening at zero
 		q1 = builder.LocalOpening("Q00", a)
@@ -155,30 +161,30 @@ func TestLocalEvalWithStatus(t *testing.T) {
 
 		logrus.Info("Assigning local points")
 		// Assign the alleged results
-		assi.AssignLocalPointExt("Q00", fext.NewFromInt(0, 0, 0, 0))
-		logrus.WithField("Q00", fext.NewFromInt(0, 0, 0, 0)).Debug("Assigned local point Q00")
-		assi.AssignLocalPointExt("Q01", fext.NewFromInt(2, 0, 0, 0))
-		logrus.WithField("Q01", fext.NewFromInt(2, 0, 0, 0)).Debug("Assigned local point Q01")
-		assi.AssignLocalPointExt("Q02", fext.NewFromInt(6, 0, 0, 0))
-		logrus.WithField("Q02", fext.NewFromInt(6, 0, 0, 0)).Debug("Assigned local point Q02")
-		assi.AssignLocalPointExt("Q03", fext.NewFromInt(15, 0, 0, 0))
-		logrus.WithField("Q03", fext.NewFromInt(15, 0, 0, 0)).Debug("Assigned local point Q03")
-		assi.AssignLocalPointExt("Q10", fext.NewFromInt(1, 0, 0, 0))
-		logrus.WithField("Q10", fext.NewFromInt(1, 0, 0, 0)).Debug("Assigned local point Q10")
-		assi.AssignLocalPointExt("Q11", fext.NewFromInt(3, 0, 0, 0))
-		logrus.WithField("Q11", fext.NewFromInt(3, 0, 0, 0)).Debug("Assigned local point Q11")
-		assi.AssignLocalPointExt("Q12", fext.NewFromInt(7, 0, 0, 0))
-		logrus.WithField("Q12", fext.NewFromInt(7, 0, 0, 0)).Debug("Assigned local point Q12")
-		assi.AssignLocalPointExt("Q13", fext.NewFromInt(16, 0, 0, 0))
-		logrus.WithField("Q13", fext.NewFromInt(16, 0, 0, 0)).Debug("Assigned local point Q13")
-		assi.AssignLocalPointExt("Q20", fext.NewFromInt(1, 0, 0, 0))
-		logrus.WithField("Q20", fext.NewFromInt(1, 0, 0, 0)).Debug("Assigned local point Q20")
-		assi.AssignLocalPointExt("Q21", fext.NewFromInt(5, 0, 0, 0))
-		logrus.WithField("Q21", fext.NewFromInt(5, 0, 0, 0)).Debug("Assigned local point Q21")
-		assi.AssignLocalPointExt("Q22", fext.NewFromInt(13, 0, 0, 0))
-		logrus.WithField("Q22", fext.NewFromInt(13, 0, 0, 0)).Debug("Assigned local point Q22")
-		assi.AssignLocalPointExt("Q23", fext.NewFromInt(30, 0, 0, 0))
-		logrus.WithField("Q23", fext.NewFromInt(30, 0, 0, 0)).Debug("Assigned local point Q23")
+		assi.AssignLocalPoint("Q00", field.NewElement(0))
+		logrus.WithField("Q00", field.NewElement(0)).Debug("Assigned local point Q00")
+		assi.AssignLocalPoint("Q01", field.NewElement(2))
+		logrus.WithField("Q01", field.NewElement(2)).Debug("Assigned local point Q01")
+		assi.AssignLocalPoint("Q02", field.NewElement(6))
+		logrus.WithField("Q02", field.NewElement(6)).Debug("Assigned local point Q02")
+		assi.AssignLocalPoint("Q03", field.NewElement(15))
+		logrus.WithField("Q03", field.NewElement(15)).Debug("Assigned local point Q03")
+		assi.AssignLocalPoint("Q10", field.NewElement(1))
+		logrus.WithField("Q10", field.NewElement(1)).Debug("Assigned local point Q10")
+		assi.AssignLocalPoint("Q11", field.NewElement(3))
+		logrus.WithField("Q11", field.NewElement(3)).Debug("Assigned local point Q11")
+		assi.AssignLocalPoint("Q12", field.NewElement(7))
+		logrus.WithField("Q12", field.NewElement(7)).Debug("Assigned local point Q12")
+		assi.AssignLocalPoint("Q13", field.NewElement(16))
+		logrus.WithField("Q13", field.NewElement(16)).Debug("Assigned local point Q13")
+		assi.AssignLocalPoint("Q20", field.NewElement(1))
+		logrus.WithField("Q20", field.NewElement(1)).Debug("Assigned local point Q20")
+		assi.AssignLocalPoint("Q21", field.NewElement(5))
+		logrus.WithField("Q21", field.NewElement(5)).Debug("Assigned local point Q21")
+		assi.AssignLocalPoint("Q22", field.NewElement(13))
+		logrus.WithField("Q22", field.NewElement(13)).Debug("Assigned local point Q22")
+		assi.AssignLocalPoint("Q23", field.NewElement(30))
+		logrus.WithField("Q23", field.NewElement(30)).Debug("Assigned local point Q23")
 	})
 	logrus.Info("Proof generation completed")
 
@@ -263,6 +269,7 @@ func singlePolyFibo(size int) func() (wizard.DefineFunc, wizard.MainProverStep) 
 			P2 := build.RegisterCommit(P2, size)
 
 			// P(X) = P(X/w) + P(X/w^2)
+			// i.e., P[i+2] = P[i+1] + P[i]
 			expr1 := sym.Sub(
 				sym.Add(column.Shift(P1, 1), P1),
 				column.Shift(P1, 2))
@@ -296,7 +303,7 @@ func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFun
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size) // overshadows P
-			_ = build.GlobalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.ColumnAsVariable(P1)))
+			_ = build.GlobalConstraint(GLOBAL1, sym.Mul(P1, variables.NewPeriodicSample(period, offset)))
 		}
 
 		prover := func(run *wizard.ProverRuntime) {
@@ -313,12 +320,46 @@ func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFun
 	}
 }
 
+func globalWithProofCols(size int) func() (wizard.DefineFunc, wizard.MainProverStep) {
+	return func() (wizard.DefineFunc, wizard.MainProverStep) {
+
+		builder := func(build *wizard.Builder) {
+			P1 := build.RegisterCommit(P1, size)
+			P2 := build.CompiledIOP.InsertProof(0, P2, size, true)
+			P3 := build.RegisterCommit(P3, size) // overshadows P1
+			_ = build.GlobalConstraint(GLOBAL1, sym.Mul(P1, P2, P3))
+		}
+
+		prover := func(run *wizard.ProverRuntime) {
+			v1 := vector.Repeat(field.Zero(), size)
+			v2 := vector.Repeat(field.Zero(), size)
+			v3 := vector.Repeat(field.Zero(), size)
+			for i := 0; i < size; i++ {
+				if i%2 == 0 {
+					v1[i].SetZero()
+					v2[i].SetOne()
+					v3[i].SetOne()
+				} else {
+					v1[i].SetOne()
+					v2[i].SetZero()
+					v3[i].SetOne()
+				}
+			}
+			run.AssignColumn(P1, smartvectors.NewRegular(v1))
+			run.AssignColumn(P2, smartvectors.NewRegular(v2))
+			run.AssignColumn(P3, smartvectors.NewRegular(v3))
+		}
+
+		return builder, prover
+	}
+}
+
 func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc, wizard.MainProverStep) {
 	return func() (wizard.DefineFunc, wizard.MainProverStep) {
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size) // overshadows P
-			_ = build.LocalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.ColumnAsVariable(P1)))
+			_ = build.LocalConstraint(LOCAL1, sym.Mul(P1, variables.NewPeriodicSample(period, offset)))
 		}
 
 		prover := func(run *wizard.ProverRuntime) {

@@ -60,13 +60,13 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Elem
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
 	var accOmega field.Element
 	accOmega.SetOne()
-	wGen := zk.ValueOf(gen)
+	wGen := zk.ValueFromKoala(gen)
 	var wAccOmega zk.WrappedVariable
 	for i := uint64(1); i < cardinality; i++ {
 		res[i] = *ext4.MulByFp(&res[i-1], wGen)          // res[i] <- ω * res[i-1]
 		res[i] = *ext4.Mul(&res[i], &accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
 		accOmega.Mul(&accOmega, &gen)                    // accOmega <- accOmega * ω
-		wAccOmega = zk.ValueOf(accOmega.String())
+		wAccOmega = zk.ValueFromKoala(accOmega)
 		wAccOmegaExt := gnarkfext.FromBase(wAccOmega)
 		accZetaMinusOmegai = *ext4.Sub(&z, &wAccOmegaExt) // accZetaMinusOmegai <- ζ-ωⁱ
 		res[i] = *ext4.Div(&res[i], &accZetaMinusOmegai)  // res[i]  <- res[i]/(ζ-ωⁱ)

@@ -308,6 +308,18 @@ func (c *CsvTrace) Assign(run *wizard.ProverRuntime, toAssign ...any) *CsvTrace 
 	return c
 }
 
+// AssignLimbsBE assigns a limb object and returns the receiver
+func (c *CsvTrace) AssignLimbsBE(run *wizard.ProverRuntime, name ifaces.ColID, column []ifaces.Column) *CsvTrace {
+	l := limbs.NewLimbsFromRawUnsafe[limbs.BigEndian](name, column)
+	return c.Assign(run, l)
+}
+
+// AssignLimbsLE assigns a limb object and returns the receiver
+func (c *CsvTrace) AssignLimbsLE(run *wizard.ProverRuntime, name ifaces.ColID, column []ifaces.Column) *CsvTrace {
+	l := limbs.NewLimbsFromRawUnsafe[limbs.LittleEndian](name, column)
+	return c.Assign(run, l)
+}
+
 func (c *CsvTrace) CheckAssignment(run *wizard.ProverRuntime, objects ...any) *CsvTrace {
 	for _, obj := range objects {
 		c.checkAssignment(run, obj)

@@ -76,7 +76,7 @@ func (c *FromConstAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 
 func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRuntime) zk.WrappedVariable {
 	if c.IsBaseFlag {
-		return zk.ValueOf(c.Base.String())
+		return zk.ValueFromKoala(c.Base)
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
@@ -84,7 +84,7 @@ func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRu
 
 func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	if c.IsBaseFlag {
-		return zk.ValueOf(c.Base.String()), nil
+		return zk.ValueFromKoala(c.Base), nil
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
