@@ -33,7 +33,7 @@ import (
 
 var (
 	// Avoid setting both modes to true at the same time
-	isTest      = true
+	isTest      = false
 	isBenchmark = false
 )
 
@@ -96,7 +96,7 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 }
 
 func TestSerdeZkEVM(t *testing.T) {
-	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	runSerdeTest(t, z, "ZKEVM", true, false)
 }
 

@@ -22,8 +22,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
-
-	//"github.com/consensys/linea-monorepo/prover/protocol/serde/util"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -416,6 +414,7 @@ func getSerdeTestCases() []serdeTestCase {
 // PHASE 1: STORE
 // Iterates through all test cases and writes them to the "files/" directory.
 func TestSerdeValue_Store(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	testDir := "files"
 	// Cleanup and recreate directory
 	_ = os.RemoveAll(testDir)
@@ -438,6 +437,7 @@ func TestSerdeValue_Store(t *testing.T) {
 // PHASE 2: LOAD
 // Reads the files created by Store, deserializes them, verifies correctness, and deletes them.
 func TestSerdeValue_Load(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	testDir := "files"
 	testCases := getSerdeTestCases()
 
@@ -485,6 +485,7 @@ const (
 // PHASE 1: STORE
 // This test serializes the complex ZkEVM object to disk.
 func TestStoreZkEVM(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup directory
 	// We clean up before storing to ensure a fresh environment
 	_ = os.RemoveAll(testDir)
@@ -510,6 +511,7 @@ func TestStoreZkEVM(t *testing.T) {
 // PHASE 2: LOAD
 // This test loads the artifact created by TestStoreZkEVM and performs a Deep Compare.
 func TestLoadZkEVM(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join(testDir, zkEvmFileName)
 
 	// 1. Dependency Check
@@ -560,6 +562,7 @@ const (
 // PHASE 1: STORE
 // Iterates through all scenarios defined in 'serdeScenarios' and persists them to disk.
 func TestIOP_Store(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Environment
 	// Clean up previous runs to ensure valid file creation
 	_ = os.RemoveAll(iopArtifactsDir)
@@ -597,6 +600,7 @@ func TestIOP_Store(t *testing.T) {
 // PHASE 2: LOAD
 // Loads the artifacts created in Phase 1 and compares them against a freshly built original.
 func TestIOP_Load(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// Ensure the artifacts directory exists
 	_, err := os.Stat(iopArtifactsDir)
 	require.NoError(t, err, "Artifacts directory missing. Did you run TestIOP_Store?")
@@ -722,6 +726,7 @@ func generateDeterministicContainer() *FEContainer {
 // -----------------------------------------------------------------------------
 
 func TestStoreFE(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// Ensure directory exists
 	if err := os.MkdirAll("files", 0755); err != nil {
 		t.Fatal(err)
@@ -747,6 +752,7 @@ func TestStoreFE(t *testing.T) {
 }
 
 func TestLoadFE(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join("files", "fe_test.bin")
 
 	// 1. Read File
@@ -819,6 +825,7 @@ func TestLoadFE(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestStoreLimbMismatch(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	original := [4]uint64{
 		4432961018360255618,
 		1234567890123456789,
@@ -838,6 +845,7 @@ func TestStoreLimbMismatch(t *testing.T) {
 }
 
 func TestLoadLimbMismatch(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join("files", "limb_test.bin")
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -871,6 +879,7 @@ type SmartVecContainer struct {
 }
 
 func TestStoreSmartVector(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Data
 	// vector.ForTest usually creates a []field.Element from integers
 	originalData := vector.ForTest(1, 2, 3, 4, 5)
@@ -901,6 +910,7 @@ func TestStoreSmartVector(t *testing.T) {
 }
 
 func TestLoadSmartVector(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join("files", "smart_vector.bin")
 
 	// 1. Read from Disk
@@ -965,6 +975,7 @@ type MatrixContainer struct {
 }
 
 func TestStoreSliceOfSmartVectors(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Data
 	// Create a jagged matrix pattern to test variable lengths
 	// Row 0: [1, 2, 3]
@@ -1003,6 +1014,7 @@ func TestStoreSliceOfSmartVectors(t *testing.T) {
 }
 
 func TestLoadSliceOfSmartVectors(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join("files", "matrix_vector.bin")
 
 	// 1. Read

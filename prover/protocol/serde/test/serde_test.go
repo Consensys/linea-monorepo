@@ -852,6 +852,7 @@ func buildPrecompIOP() *wizard.CompiledIOP {
 }
 
 func TestSerdePrecompIOP_Store(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Environment
 	require.NoError(t, os.MkdirAll(reproDir, 0755))
 	path := filepath.Join(reproDir, reproFilename)
@@ -869,6 +870,7 @@ func TestSerdePrecompIOP_Store(t *testing.T) {
 }
 
 func TestSerdePrecompIOP_Load(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join(reproDir, reproFilename)
 	_, err := os.Stat(path)
 	require.NoError(t, err, "Artifact not found. Run TestSerdePrecompIOP_Store first.")

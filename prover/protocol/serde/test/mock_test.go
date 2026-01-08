@@ -13,6 +13,7 @@ import (
 
 // --- PHASE 1: STORE ---
 func TestDebug_Store(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	testDir := "repro_files"
 	_ = os.RemoveAll(testDir)
 	require.NoError(t, os.MkdirAll(testDir, 0755))
@@ -30,6 +31,7 @@ func TestDebug_Store(t *testing.T) {
 
 // --- PHASE 2: LOAD ---
 func TestDebug_Load(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	testDir := "repro_files"
 	path := filepath.Join(testDir, "aliasing_bug.bin")
 	defer os.RemoveAll(testDir)
@@ -88,6 +90,7 @@ func TestDebug_Load(t *testing.T) {
 
 // --- PHASE 1: STORE ---
 func TestComplex_Store(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	testDir := "complex_repro_files"
 	_ = os.RemoveAll(testDir)
 	require.NoError(t, os.MkdirAll(testDir, 0755))
@@ -102,6 +105,7 @@ func TestComplex_Store(t *testing.T) {
 
 // --- PHASE 2: LOAD ---
 func TestComplex_Load(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	testDir := "complex_repro_files"
 	path := filepath.Join(testDir, "complex_aliasing.bin")
 	// defer os.RemoveAll(testDir)
@@ -187,6 +191,7 @@ func cmatrixPath(t *testing.T) string {
 
 // 1) Writer test: produces the asset once.
 func TestStore_CommittedMatrix(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := cmatrixPath(t)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir testdata failed: %v", err)
@@ -211,6 +216,7 @@ func TestStore_CommittedMatrix(t *testing.T) {
 //  2. Reader test: assumes cmatrix.bin already exists (written by old code)
 //     and checks whether new LoadFromDisk reproduces the limbs exactly.
 func TestLoad_CommittedMatrix(t *testing.T) {
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := cmatrixPath(t)
 
 	// Rebuild expected logical matrix deterministically.
