@@ -28,7 +28,7 @@ tasks.register('corsetExists') {
 ext {
   corsetVersion = project.hasProperty('corsetVersion')
     ? project.property('corsetVersion')
-    : System.getenv().getOrDefault('corsetVersion', "v1.2.0-rc3")
+    : System.getenv().getOrDefault('CORSET_VERSION', "v1.1.31")
 }
 
 tasks.register('installGoCorset') {
@@ -54,13 +54,24 @@ tasks.register('installGoCorset') {
       return process
     }
 
-    // Check if go-corset exists
-    def checkCmd = isWindows ? "where go-corset" : "which go-corset"
-    def goCorsetExists = false
+    def runCommand = { String cmd, Boolean throwOnFailure = true ->
+      def process = executeCommand(cmd)
+      def out = new StringBuilder()
+      def err = new StringBuilder()
+      process.consumeProcessOutput(out, err)
+      def exitCode = process.waitFor()
+      if (exitCode != 0) {
+        throw new GradleException("Command '$cmd' failed with exitCode=$exitCode error=$err")
+      }
+      return [exitCode, out.toString(), err.toString()]
+    }
 
+    // Check if go-corset exists
+    def goCorsetExists = false
     try {
-      def checkProcess = executeCommand(checkCmd)
-      goCorsetExists = (checkProcess.waitFor() == 0)
+      def checkCmd = isWindows ? "where go-corset" : "which go-corset"
+      def (exitCode, out, err) = runCommand(checkCmd, false)
+      goCorsetExists = (exitCode == 0)
     } catch (Exception e) {
       logger.warn("Check command failed: ${e.message}")
       goCorsetExists = false
@@ -70,32 +81,13 @@ tasks.register('installGoCorset') {
 
     if (goCorsetExists) {
       logger.lifecycle("go-corset found. Checking version...")
-
-      try {
-        def versionProcess = executeCommand("go-corset --version")
-        def out = new StringBuilder()
-        def err = new StringBuilder()
-        versionProcess.consumeProcessOutput(out, err)
-        def exitCode = versionProcess.waitFor()
-
-        if (exitCode == 0) {
-          def versionOutput = out.toString().trim()
-          logger.lifecycle("Version output: $versionOutput")
-
-          if (versionOutput.contains(corsetVersion)) {
-            logger.lifecycle("✓ Correct version ($corsetVersion) already installed")
-            installRequired = false
-          } else {
-            logger.lifecycle("⚠ Version mismatch detected: installed=$versionOutput expected=$corsetVersion")
-          }
-        } else {
-          def errorOutput = err.toString().trim()
-          if (errorOutput) {
-            logger.warn("Version check error: $errorOutput")
-          }
-        }
-      } catch (Exception e) {
-        logger.warn("Could not check version: ${e.message}")
+      def (exitCode, out, err) = runCommand("go-corset --version")
+      def versionOutput = out.replace("go-corset", "").trim()
+      if (versionOutput == corsetVersion) {
+        logger.lifecycle("✓ go-corset $corsetVersion already installed")
+        installRequired = false
+      } else {
+        logger.lifecycle("⚠ go-corset version mismatch: installed=$versionOutput expected=$corsetVersion")
       }
     } else {
       logger.lifecycle("go-corset not found in PATH")
@@ -103,27 +95,7 @@ tasks.register('installGoCorset') {
 
     if (installRequired) {
       logger.lifecycle("Installing go-corset@$corsetVersion...")
-
-      def installCmd = "go install github.com/consensys/go-corset/cmd/go-corset@${corsetVersion}"
-
-      try {
-        def installProcess = executeCommand(installCmd)
-        // Capture output
-        def out = new StringBuilder()
-        def err = new StringBuilder()
-        installProcess.consumeProcessOutput(out, err)
-        def exitCode = installProcess.waitFor()
-        if (exitCode == 0) {
-          logger.lifecycle("✓ Installation completed successfully: go-corset@$corsetVersion is ready to use")
-        } else {
-          def errorMsg = err.toString().isEmpty() ? out.toString() : err.toString()
-          throw new GradleException(
-            "Installation failed with exit code $exitCode:\n$errorMsg"
-          )
-        }
-      } catch (Exception e) {
-        throw new GradleException("Installation error: ${e.message}")
-      }
+      runCommand("go install github.com/consensys/go-corset/cmd/go-corset@${corsetVersion}")
     }
   }
 }
