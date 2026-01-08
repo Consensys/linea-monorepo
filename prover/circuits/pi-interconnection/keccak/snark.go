@@ -13,7 +13,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -330,7 +330,7 @@ func NewWizardVerifierSubCircuit(maxNbKeccakF int, compilationOpts ...func(iop *
 			Version: "beta-v1",
 		},
 		func(wiop *wizard.CompiledIOP) ([]byte, error) {
-			return serialization.Serialize(wiop)
+			return serde.Serialize(wiop)
 		},
 	)
 	return &c

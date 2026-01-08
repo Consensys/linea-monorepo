@@ -1,3 +1,9 @@
+// Package serialization provides CBOR-based serialization for the prover protocol.
+//
+// Deprecated: This package is legacy and may produce inconsistent results with
+// newer prover versions. Please migrate to the high-performance
+// github.com/consensys/linea-monorepo/prover/protocol/serde package,
+// which provides zero-copy memory mapping and optimized POD handling.
 package serialization
 
 import (
@@ -30,6 +36,9 @@ var (
 )
 
 // LoadFromDisk loads a serialized asset from disk
+//
+// Deprecated: This function is part of the legacy CBOR serialization.
+// Use the new serde package for high-performance memory-mapped I/O.
 func LoadFromDisk(filePath string, assetPtr any, withCompression bool) error {
 
 	f := files.MustRead(filePath)
@@ -94,6 +103,9 @@ func LoadFromDisk(filePath string, assetPtr any, withCompression bool) error {
 // StoreToDisk writes the provided assets to disk using the [Serialize] function.
 // It first writes to a temporary file in the same directory and then atomically renames it
 // to the target path, ensuring readers never see a partially written file.
+//
+// Deprecated: This function is part of the legacy CBOR serialization.
+// Use the new serde package for high-performance memory-mapped I/O.
 func StoreToDisk(filePath string, asset any, withCompression bool) error {
 	var (
 		buf     []byte
