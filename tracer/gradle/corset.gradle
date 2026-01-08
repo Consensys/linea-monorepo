@@ -44,10 +44,6 @@ tasks.register('installGoCorset') {
     }
 
     // Helper function to execute commands
-    def executeCommand = { String cmd ->
-
-    }
-
     def runCommand = { String cmd, Boolean throwOnFailure = true ->
       def process
       if (isWindows) {
