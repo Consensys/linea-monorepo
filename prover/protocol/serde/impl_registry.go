@@ -372,18 +372,6 @@ func init() {
 	RegisterImplementation(distributed.ModuleGLCheckSendReceiveGlobal{})
 	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
 	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
-
-	// distributed
-	RegisterImplementation(distributed.AssignLPPQueries{})
-	RegisterImplementation(distributed.SetInitialFSHash{})
-	RegisterImplementation(distributed.CheckNxHash{})
-	RegisterImplementation(distributed.StandardModuleDiscoverer{})
-	RegisterImplementation(distributed.LppWitnessAssignment{})
-	RegisterImplementation(distributed.ModuleGLAssignGL{})
-	RegisterImplementation(distributed.ModuleGLAssignSendReceiveGlobal{})
-	RegisterImplementation(distributed.ModuleGLCheckSendReceiveGlobal{})
-	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
-	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
