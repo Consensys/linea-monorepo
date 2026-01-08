@@ -1,6 +1,8 @@
 name: Constraints check compilation
 
-on: [push, pull_request]
+on:
+  workflow_call:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -15,7 +17,7 @@ jobs:
 
     - name: Install Go Corset
       shell: bash
-      run: go install github.com/consensys/go-corset/cmd/go-corset@fb1aebd7f532e8940bc18feeedf3600d4bb5006f # v1.1.28
+      run: go install github.com/consensys/go-corset/cmd/go-corset@1aee6f95c28b1ca2f66f6d8347a0d247d8be38a4 # v1.2.0-rc3
 
     - name: Build all forks
       run: cd constraints && make -B all
