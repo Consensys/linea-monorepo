@@ -39,7 +39,6 @@ const createValidEnv = () => ({
   API_PORT: "3000",
   SHOULD_SUBMIT_VAULT_REPORT: "true",
   MIN_POSITIVE_YIELD_TO_REPORT_WEI: "1000000000000000000",
-  MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI: "500000000000000000",
   MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI: "1000000000000000000",
   CYCLES_PER_YIELD_REPORT: "12",
 });
@@ -93,7 +92,6 @@ describe("toClientConfig", () => {
       reporting: {
         shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,
         minPositiveYieldToReportWei: env.MIN_POSITIVE_YIELD_TO_REPORT_WEI,
-        minUnpaidLidoProtocolFeesToReportYieldWei: env.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI,
         minNegativeYieldDiffToReportYieldWei: env.MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI,
         cyclesPerYieldReport: env.CYCLES_PER_YIELD_REPORT,
       },

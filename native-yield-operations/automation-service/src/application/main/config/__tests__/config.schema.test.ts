@@ -38,7 +38,6 @@ const createValidEnv = () => ({
   API_PORT: "3000",
   SHOULD_SUBMIT_VAULT_REPORT: "true",
   MIN_POSITIVE_YIELD_TO_REPORT_WEI: "1000000000000000000",
-  MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI: "500000000000000000",
   MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI: "1000000000000000000",
   CYCLES_PER_YIELD_REPORT: "12",
 });
@@ -57,7 +56,6 @@ describe("configSchema", () => {
     expect(parsed.STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI).toBe(2000000000000000000000n);
     expect(parsed.MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI).toBe(500000000000000000000n);
     expect(parsed.MIN_POSITIVE_YIELD_TO_REPORT_WEI).toBe(1000000000000000000n);
-    expect(parsed.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI).toBe(500000000000000000n);
     expect(parsed.MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI).toBe(1000000000000000000n);
     expect(parsed.WEB3SIGNER_TLS_ENABLED).toBe(true);
     expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(true);
@@ -152,66 +150,6 @@ describe("configSchema", () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues.some((issue) => issue.path.join(".") === "MIN_POSITIVE_YIELD_TO_REPORT_WEI")).toBe(true);
-      }
-    });
-  });
-
-  describe("MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI", () => {
-    it("parses string values to bigint", () => {
-      const env = {
-        ...createValidEnv(),
-        MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI: "500000000000000000",
-      };
-
-      const parsed = configSchema.parse(env);
-
-      expect(parsed.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI).toBe(500000000000000000n);
-    });
-
-    it("parses number values to bigint", () => {
-      const env = {
-        ...createValidEnv(),
-        MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI: 1000000000000000000,
-      };
-
-      const parsed = configSchema.parse(env);
-
-      expect(parsed.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI).toBe(1000000000000000000n);
-    });
-
-    it("parses bigint values", () => {
-      const env = {
-        ...createValidEnv(),
-        MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI: 1500000000000000000n,
-      };
-
-      const parsed = configSchema.parse(env);
-
-      expect(parsed.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI).toBe(1500000000000000000n);
-    });
-
-    it("accepts zero value", () => {
-      const env = {
-        ...createValidEnv(),
-        MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI: "0",
-      };
-
-      const parsed = configSchema.parse(env);
-
-      expect(parsed.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI).toBe(0n);
-    });
-
-    it("rejects negative values", () => {
-      const env = {
-        ...createValidEnv(),
-        MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI: "-1",
-      };
-
-      const result = configSchema.safeParse(env);
-
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.join(".") === "MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI")).toBe(true);
       }
     });
   });

@@ -154,7 +154,6 @@ describe("YieldReportingProcessor", () => {
   const createProcessor = (
     shouldSubmitVaultReport: boolean = true,
     minPositiveYieldToReportWei: bigint = 1000000000000000000n,
-    minUnpaidLidoProtocolFeesToReportYieldWei: bigint = 500000000000000000n,
     minNegativeYieldDiffToReportYieldWei: bigint = 1000000000000000000n,
     minWithdrawalThresholdEth: bigint = 0n,
     cyclesPerYieldReport: number = 12,
@@ -173,7 +172,6 @@ describe("YieldReportingProcessor", () => {
       l2Recipient,
       shouldSubmitVaultReport,
       minPositiveYieldToReportWei,
-      minUnpaidLidoProtocolFeesToReportYieldWei,
       minNegativeYieldDiffToReportYieldWei,
       minWithdrawalThresholdEth,
       cyclesPerYieldReport,
@@ -395,7 +393,7 @@ describe("YieldReportingProcessor", () => {
   it("_handleNoRebalance transfers YieldManager balance when above threshold", async () => {
     const minWithdrawalThresholdEth = 1n; // 1 ETH threshold
     const yieldManagerBalance = 2n * 1000000000000000000n; // 2 ETH (above threshold)
-    const processor = createProcessor(true, 1000000000000000000n, 500000000000000000n, 1000000000000000000n, minWithdrawalThresholdEth);
+    const processor = createProcessor(true, 1000000000000000000n, 1000000000000000000n, minWithdrawalThresholdEth);
     
     yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
     yieldManager.fundYieldProvider.mockResolvedValueOnce({ transactionHash: "0xtransfer" } as unknown as TransactionReceipt);
@@ -422,7 +420,7 @@ describe("YieldReportingProcessor", () => {
   it("_handleNoRebalance skips transfer when YieldManager balance is below threshold", async () => {
     const minWithdrawalThresholdEth = 1n; // 1 ETH threshold
     const yieldManagerBalance = 500000000000000000n; // 0.5 ETH (below threshold)
-    const processor = createProcessor(true, 1000000000000000000n, 500000000000000000n, 1000000000000000000n, minWithdrawalThresholdEth);
+    const processor = createProcessor(true, 1000000000000000000n, 1000000000000000000n, minWithdrawalThresholdEth);
     
     yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
     
@@ -777,7 +775,6 @@ describe("YieldReportingProcessor", () => {
 
   describe("_shouldReportYield", () => {
     const minPositiveYieldToReportWei = 1000000000000000000n;
-    const minUnpaidLidoProtocolFeesToReportYieldWei = 500000000000000000n;
     const minNegativeYieldDiffToReportYieldWei = 1000000000000000000n;
 
     beforeEach(() => {
@@ -797,7 +794,7 @@ describe("YieldReportingProcessor", () => {
       });
     });
 
-    it("returns true when both thresholds are met", async () => {
+    it("returns true when yield threshold is met", async () => {
       const unpaidFees = 600000000000000000n;
       const yieldReport: YieldReport = {
         yieldAmount: 2000000000000000000n,
@@ -812,7 +809,6 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         minPositiveYieldToReportWei,
-        minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
       );
       // Set vault property by calling getLidoStakingVaultAddress
@@ -848,29 +844,6 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         minPositiveYieldToReportWei,
-        minUnpaidLidoProtocolFeesToReportYieldWei,
-        minNegativeYieldDiffToReportYieldWei,
-      );
-      const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
-
-      expect(result).toBe(true);
-    });
-
-    it("returns true when only fee threshold is met", async () => {
-      const unpaidFees = 600000000000000000n; // above threshold
-      const yieldReport: YieldReport = {
-        yieldAmount: 500000000000000000n, // below threshold
-        outstandingNegativeYield: 0n,
-        yieldProvider,
-      };
-
-      vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
-      yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
-
-      const processor = createProcessor(
-        true,
-        minPositiveYieldToReportWei,
-        minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
       );
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
@@ -908,7 +881,6 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         minPositiveYieldToReportWei,
-        minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
       );
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
@@ -947,7 +919,6 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         minPositiveYieldToReportWei,
-        minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
       );
       // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
@@ -971,7 +942,6 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         minPositiveYieldToReportWei,
-        minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
       );
       // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
@@ -990,7 +960,6 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         minPositiveYieldToReportWei,
-        minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
       );
       // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
@@ -998,18 +967,6 @@ describe("YieldReportingProcessor", () => {
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(false);
-    });
-
-    it("returns true when yieldReport is undefined but fees threshold is met", async () => {
-      const unpaidFees = 600000000000000000n; // above threshold
-
-      vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
-      yieldManager.peekYieldReport.mockResolvedValue(undefined);
-
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
-      const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
-
-      expect(result).toBe(true);
     });
 
     it("returns true when yield amount exactly equals threshold", async () => {
@@ -1023,24 +980,7 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
-      const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
-
-      expect(result).toBe(true);
-    });
-
-    it("returns true when unpaid fees exactly equals threshold", async () => {
-      const unpaidFees = minUnpaidLidoProtocolFeesToReportYieldWei; // exactly at threshold
-      const yieldReport: YieldReport = {
-        yieldAmount: 500000000000000000n, // below threshold
-        outstandingNegativeYield: 0n,
-        yieldProvider,
-      };
-
-      vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
-      yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
-
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      const processor = createProcessor(true, minPositiveYieldToReportWei);
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(true);
@@ -1057,7 +997,7 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      const processor = createProcessor(true, minPositiveYieldToReportWei);
       // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
       (processor as any).cycleCount = 1; // 1 % 12 !== 0
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
@@ -1076,7 +1016,7 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      const processor = createProcessor(true, minPositiveYieldToReportWei);
       await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(logger.info).toHaveBeenCalledWith(
@@ -1101,7 +1041,7 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      const processor = createProcessor(true, minPositiveYieldToReportWei);
       (processor as unknown as { vault: Address }).vault = vaultAddress;
       await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
@@ -1116,7 +1056,7 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(undefined);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei, minUnpaidLidoProtocolFeesToReportYieldWei);
+      const processor = createProcessor(true, minPositiveYieldToReportWei);
       (processor as unknown as { vault: Address }).vault = vaultAddress;
       await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
@@ -1143,7 +1083,6 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         minPositiveYieldToReportWei,
-        minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
         0n,
         cyclesPerYieldReport,
@@ -1176,7 +1115,6 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         minPositiveYieldToReportWei,
-        minUnpaidLidoProtocolFeesToReportYieldWei,
         minNegativeYieldDiffToReportYieldWei,
         0n,
         cyclesPerYieldReport,

@@ -44,7 +44,6 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @param {Address} l2YieldRecipient - The L2 yield recipient address for yield reporting.
    * @param {boolean} shouldSubmitVaultReport - Whether to submit the vault accounting report. Can be set to false if other actors are expected to submit.
    * @param {bigint} minPositiveYieldToReportWei - Minimum positive yield amount (in wei) required before triggering a yield report.
-   * @param {bigint} minUnpaidLidoProtocolFeesToReportYieldWei - Minimum unpaid Lido protocol fees amount (in wei) required before triggering a fee settlement.
    * @param {bigint} minNegativeYieldDiffToReportYieldWei - Minimum difference between peeked negative yield and on-state negative yield (in wei) required before triggering a yield report.
    * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH (stored as wei) required before withdrawal operations proceed.
    * @param {number} cyclesPerYieldReport - Number of processing cycles between forced yield reports. Yield will be reported every N cycles regardless of threshold checks.
@@ -63,7 +62,6 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly l2YieldRecipient: Address,
     private readonly shouldSubmitVaultReport: boolean,
     private readonly minPositiveYieldToReportWei: bigint,
-    private readonly minUnpaidLidoProtocolFeesToReportYieldWei: bigint,
     private readonly minNegativeYieldDiffToReportYieldWei: bigint,
     private readonly minWithdrawalThresholdEth: bigint,
     private readonly cyclesPerYieldReport: number,
@@ -353,7 +351,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
   /**
    * Determines whether yield should be reported based on configurable thresholds and cycle count.
-   * Checks the yield amount, unpaid Lido protocol fees, negative yield difference against their respective thresholds,
+   * Checks the yield amount, negative yield difference against their respective thresholds,
    * and cycle-based reporting (every N cycles).
    * Returns true if any threshold is met or exceeded, or if cycle-based reporting is due.
    * Sets gauge metrics for peeked values when reads are successful.
@@ -369,7 +367,6 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     ]);
 
     let yieldThresholdMet = false;
-    let feesThresholdMet = false;
     let negativeYieldDiffThresholdMet = false;
     let isCycleBasedReportingDue = false;
 
@@ -390,14 +387,12 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     if (settleableLidoFees !== undefined) {
       this.metricsUpdater.setLastSettleableLidoFees(this.vault, weiToGweiNumber(settleableLidoFees));
-      feesThresholdMet = settleableLidoFees >= this.minUnpaidLidoProtocolFeesToReportYieldWei;
     }
 
     // Check if cycle-based reporting is due
     isCycleBasedReportingDue = this.cycleCount % this.cyclesPerYieldReport === 0;
 
-    const shouldReportYield =
-      feesThresholdMet || yieldThresholdMet || negativeYieldDiffThresholdMet || isCycleBasedReportingDue;
+    const shouldReportYield = yieldThresholdMet || negativeYieldDiffThresholdMet || isCycleBasedReportingDue;
 
     // Log results
     const onStateNegativeYield = yieldProviderData?.lastReportedNegativeYield;
