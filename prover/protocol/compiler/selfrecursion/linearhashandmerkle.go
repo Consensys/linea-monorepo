@@ -79,7 +79,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 			for i := 0; i < numRoundSis; i++ {
 				// Register the SIS round leaves
 				ctx.Columns.SisRoundLeaves[j] = append(ctx.Columns.SisRoundLeaves[j], ctx.Comp.InsertCommit(
-					roundQ, ctx.sisRoundLeavesName(i, j), ctx.VortexCtx.NbColsToOpen(), true))
+					roundQ, ctx.sisRoundLeavesName(i, j), utils.NextPowerOfTwo(ctx.VortexCtx.NbColsToOpen()), true))
 			}
 		}
 	}
@@ -129,7 +129,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 
 		var cleanSisLeaves [blockSize][]ifaces.Column
-		var stackedSisLeaves [blockSize]dedicated.StackedColumn
+		var stackedSisLeaves [blockSize]*dedicated.StackedColumn
 		var expectedHash [blockSize]ifaces.Column
 
 		for j := 0; j < blockSize; j++ {
@@ -138,13 +138,27 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 				cleanSisLeaves[j] = append(cleanSisLeaves[j], ctx.Columns.SisRoundLeaves[j][i])
 			}
 			// We stack the sis round leaves
-			stackedSisLeaves[j] = dedicated.StackColumn(ctx.Comp, cleanSisLeaves[j])
+			stackedSisLeaves[j] = dedicated.StackColumn(ctx.Comp, cleanSisLeaves[j], dedicated.HandleSourcePaddedColumns(ctx.VortexCtx.NbColsToOpen()))
 			// Register the prover action for the stacked column
-			ctx.Comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
-				Column: stackedSisLeaves[j].Column,
-				Source: cleanSisLeaves[j],
-			})
-			expectedHash[j] = stackedSisLeaves[j].Column
+			if stackedSisLeaves[j].IsSourceColsArePadded {
+				ctx.Comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
+					Column:                stackedSisLeaves[j].Column,
+					Source:                cleanSisLeaves[j],
+					UnpaddedColumn:        stackedSisLeaves[j].UnpaddedColumn,
+					ColumnFilter:          stackedSisLeaves[j].ColumnFilter,
+					UnpaddedColumnFilter:  stackedSisLeaves[j].UnpaddedColumnFilter,
+					UnpaddedSize:          stackedSisLeaves[j].UnpaddedSize,
+					IsSourceColsArePadded: stackedSisLeaves[j].IsSourceColsArePadded,
+				})
+				// expected hash should be the unpadded column when source cols are padded
+				expectedHash[j] = *stackedSisLeaves[j].UnpaddedColumn
+			} else {
+				ctx.Comp.RegisterProverAction(roundQ, &dedicated.StackedColumn{
+					Column: stackedSisLeaves[j].Column,
+					Source: cleanSisLeaves[j],
+				})
+				expectedHash[j] = stackedSisLeaves[j].Column
+			}
 
 		}
 		// SisLeaves have the same size of preimages each rounds for linear hash (sisHashColSize), so we can concatenate them together and check once
@@ -177,15 +191,16 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 	numRoundNonSis int, round int) (int, []int) {
 	// Compute the concatenated hashes and preimages sizes
 	var (
-		numLeaves    = ctx.VortexCtx.NbColsToOpen()
-		preimageSize = make([]int, 0, numRoundNonSis)
+		numLeavesUnpadded = ctx.VortexCtx.NbColsToOpen()
+		numLeaves         = utils.NextPowerOfTwo(numLeavesUnpadded)
+		preimageSize      = make([]int, 0, numRoundNonSis)
 	)
 
 	// Consider the precomputed polynomials
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() && !ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		colSize := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
 		colChunks := (colSize + blockSize - 1) / blockSize
-		precompPreimageChunksSizeUnpadded := colChunks * numLeaves
+		precompPreimageChunksSizeUnpadded := colChunks * numLeavesUnpadded
 		precompPreimageChunksSize := utils.NextPowerOfTwo(precompPreimageChunksSizeUnpadded)
 
 		// Leaves are the expected hashes
@@ -238,7 +253,7 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 		if ctx.VortexCtx.RoundStatus[i] == vortex.IsNoSis {
 			colSize := ctx.VortexCtx.GetNumPolsForNonSisRounds(i)
 			colChunks := (colSize + blockSize - 1) / blockSize
-			preimageChunksSizeUnpadded := colChunks * numLeaves
+			preimageChunksSizeUnpadded := colChunks * numLeavesUnpadded
 			preimageChunksSize := utils.NextPowerOfTwo(preimageChunksSizeUnpadded)
 
 			for j := 0; j < blockSize; j++ {
@@ -281,7 +296,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	// cleanLeaves = (nonSisLeaves || sisLeaves) is checked to be identical to
 	// the Merkle leaves.
 	var cleanLeaves [blockSize][]ifaces.Column
-	var stackedCleanLeaves [blockSize]dedicated.StackedColumn
+	var stackedCleanLeaves [blockSize]*dedicated.StackedColumn
 	var s [blockSize][]field.Element
 	for i := 0; i < blockSize; i++ {
 		if len(ctx.NonSisMetaData.NonSisLeaves[i]) > 0 {
@@ -290,32 +305,57 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 		if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 			cleanLeaves[i] = append(cleanLeaves[i], ctx.Columns.SisRoundLeaves[i]...)
 		}
-		stackedCleanLeaves[i] = dedicated.StackColumn(ctx.Comp, cleanLeaves[i])
+		// Handle possibly non-power-of-two number of opened columns by
+		// informing the stacker that source columns are padded
+		stackedCleanLeaves[i] = dedicated.StackColumn(ctx.Comp, cleanLeaves[i], dedicated.HandleSourcePaddedColumns(ctx.VortexCtx.NbColsToOpen()))
 
-		// Register prover action for the stacked column
-		ctx.Comp.RegisterProverAction(round, &dedicated.StackedColumn{
-			Column: stackedCleanLeaves[i].Column,
-			Source: cleanLeaves[i],
-		})
+		// Register prover action for the stacked column with appropriate fields
+		if stackedCleanLeaves[i].IsSourceColsArePadded {
+			ctx.Comp.RegisterProverAction(round, &dedicated.StackedColumn{
+				Column:                stackedCleanLeaves[i].Column,
+				Source:                cleanLeaves[i],
+				UnpaddedColumn:        stackedCleanLeaves[i].UnpaddedColumn,
+				ColumnFilter:          stackedCleanLeaves[i].ColumnFilter,
+				UnpaddedColumnFilter:  stackedCleanLeaves[i].UnpaddedColumnFilter,
+				UnpaddedSize:          stackedCleanLeaves[i].UnpaddedSize,
+				IsSourceColsArePadded: stackedCleanLeaves[i].IsSourceColsArePadded,
+			})
+		} else {
+			ctx.Comp.RegisterProverAction(round, &dedicated.StackedColumn{
+				Column: stackedCleanLeaves[i].Column,
+				Source: cleanLeaves[i],
+			})
+		}
 
 		// Next we compute the identity permutation
-		s[i] = make([]field.Element, stackedCleanLeaves[i].Column.Size())
+		if stackedCleanLeaves[i].IsSourceColsArePadded {
+			s[i] = make([]field.Element, stackedCleanLeaves[i].UnpaddedColumn.Size())
+		} else {
+			s[i] = make([]field.Element, stackedCleanLeaves[i].Column.Size())
+		}
 		for j := range s[i] {
 			s[i][j].SetInt64(int64(j))
 		}
 		s_smart := smartvectors.NewRegular(s[i])
 
-		// Insert the fixed permutation constraint.
-		// Here we assume that the number of opened columns for Vortex
-		// is a power of two. If that is not the case, the below
-		// constraint is supposed to fail
-		ctx.Comp.InsertFixedPermutation(
-			round,
-			ctx.leafConsistencyName(i),
-			[]smartvectors.SmartVector{s_smart},
-			[]ifaces.Column{stackedCleanLeaves[i].Column},
-			[]ifaces.Column{ctx.Columns.MerkleProofsLeaves[i]},
-		)
+		// Insert the fixed permutation constraint using unpadded column if available
+		if stackedCleanLeaves[i].IsSourceColsArePadded {
+			ctx.Comp.InsertFixedPermutation(
+				round,
+				ctx.leafConsistencyName(i),
+				[]smartvectors.SmartVector{s_smart},
+				[]ifaces.Column{*stackedCleanLeaves[i].UnpaddedColumn},
+				[]ifaces.Column{ctx.Columns.MerkleProofsLeaves[i]},
+			)
+		} else {
+			ctx.Comp.InsertFixedPermutation(
+				round,
+				ctx.leafConsistencyName(i),
+				[]smartvectors.SmartVector{s_smart},
+				[]ifaces.Column{stackedCleanLeaves[i].Column},
+				[]ifaces.Column{ctx.Columns.MerkleProofsLeaves[i]},
+			)
+		}
 	}
 
 }
@@ -532,6 +572,10 @@ func processPrecomputedRound(
 			lmp.MerkleSisPositions = append(lmp.MerkleSisPositions, field.NewElement(uint64(selectedCol)))
 
 		}
+		// make the size of the precompSisLeaves a power of two per block
+		for j := 0; j < blockSize; j++ {
+			precompSisLeaves[j] = rightPadWithZero(precompSisLeaves[j])
+		}
 		lmp.SisLeaves = append(lmp.SisLeaves, precompSisLeaves)
 		lmp.CommittedRound++
 		lmp.TotalNumRounds++
@@ -666,6 +710,10 @@ func processRound(
 				}
 				lmp.MerkleSisPositions = append(lmp.MerkleSisPositions, field.NewElement(uint64(selectedCol)))
 			}
+			// Make the size of the sisRoundLeaves a power of two per block
+			for j := 0; j < blockSize; j++ {
+				sisRoundLeaves[j] = rightPadWithZero(sisRoundLeaves[j])
+			}
 			// Append the sis leaves
 			lmp.SisLeaves = append(lmp.SisLeaves, sisRoundLeaves)
 			sisRoundCount++
@@ -732,4 +780,17 @@ func processRound(
 	}
 	// We can delete the non SIS opened columns now
 	run.State.TryDel(nonSisOpenedColsName)
+}
+
+// rightPadWithZero pads the input slice with zeroes
+// to make its size a power of two
+func rightPadWithZero(input []field.Element) []field.Element {
+	size := len(input)
+	if utils.IsPowerOfTwo(size) {
+		return input
+	}
+	paddedSize := utils.NextPowerOfTwo(size)
+	padded := make([]field.Element, paddedSize)
+	copy(padded, input)
+	return padded
 }
