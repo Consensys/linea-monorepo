@@ -18,6 +18,8 @@ import { isAddress } from "ethers";
   -------------------------------------------------------------------------------------------
   CUSTOM_PRIVATE_KEY=0000000000000000000000000000000000000000000000000000000000000002 \
   CUSTOM_BLOCKCHAIN_URL=https://0xrpc.io/hoodi \
+  ETHERSCAN_API_KEY=<key> \
+  VERIFY_CONTRACT=true \
   npx hardhat deployPaymentSplitter \
     --payees "0x123...,0x456..." \
     --shares "100,200" \
@@ -27,6 +29,10 @@ import { isAddress } from "ethers";
   Env var alternatives (used if CLI params omitted):
     PAYEES (comma-separated addresses)
     SHARES (comma-separated numbers)
+  
+  Contract verification (optional):
+    ETHERSCAN_API_KEY - API key for Etherscan/Blockscout verification
+    VERIFY_CONTRACT=true - Enable contract verification after deployment
   *******************************************************************************************
 */
 
@@ -98,14 +104,25 @@ task("deployPaymentSplitter", "Deploys PaymentSplitter contract from OpenZeppeli
     );
 
     // --- Deploy contract ---
-    console.log("Deploying PaymentSplitter...");
-    const PaymentSplitterFactory = await ethers.getContractFactory("PaymentSplitter");
+    console.log("Deploying PaymentSplitterWrapper...");
+    const PaymentSplitterFactory = await ethers.getContractFactory("PaymentSplitterWrapper");
     const paymentSplitter = await PaymentSplitterFactory.deploy(payeesArray, sharesBigInt);
 
     console.log("Transaction sent, hash:", paymentSplitter.deploymentTransaction()?.hash);
     await paymentSplitter.waitForDeployment();
 
     const address = await paymentSplitter.getAddress();
-    console.log("PaymentSplitter deployed at:", address);
+    console.log("PaymentSplitterWrapper deployed at:", address);
     console.log("Deployment successful!");
+
+    // --- Verify contract ---
+    // Use dynamic import to avoid loading hardhat during config initialization
+    if (process.env.VERIFY_CONTRACT) {
+      const { tryVerifyContractWithConstructorArgs } = await import("../../common/helpers");
+      await tryVerifyContractWithConstructorArgs(
+        address,
+        "contracts/tools/PaymentSplitterWrapper.sol:PaymentSplitterWrapper",
+        [payeesArray, sharesBigInt],
+      );
+    }
   });
