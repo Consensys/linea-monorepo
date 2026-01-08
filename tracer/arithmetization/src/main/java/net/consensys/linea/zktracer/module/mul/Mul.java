@@ -51,7 +51,7 @@ public class Mul implements OperationSetModule<MulOperation> {
 
   @Override
   public int lineCount() {
-    return 1 + operations.lineCount();
+    return operations.lineCount();
   }
 
   @Override
@@ -66,11 +66,8 @@ public class Mul implements OperationSetModule<MulOperation> {
 
   @Override
   public void commit(Trace trace) {
-    int stamp = 0;
     for (MulOperation op : operations.sortOperations(new MulOperationComparator())) {
-      op.trace(trace.mul(), ++stamp);
+      op.trace(trace.mul());
     }
-    // Note: for constraint simplicity we want to finish with this row:
-    (new MulOperation(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO)).trace(trace.mul(), stamp + 1);
   }
 }

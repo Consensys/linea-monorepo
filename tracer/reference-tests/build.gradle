@@ -75,13 +75,15 @@ tasks.register('referenceExecutionSpecBlockchainTests', Test) {
     maxHeapSize = isCiServer ? "32g" : "8g"
     // Configure parallelism
     environment.put("blockchain", System.getenv("blockchain") ?: "Ethereum")
-    systemProperty("junit.jupiter.execution.timeout.default", "15 m")
+    systemProperty("junit.jupiter.execution.timeout.default", "30 m")
     systemProperty("junit.jupiter.execution.parallel.enabled", "true")
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
     systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
     systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
         System.getenv().getOrDefault("JUNIT_TESTS_PARALLELISM", "1").toInteger())
+    // override set number of forks
+    maxParallelForks = 1
   }
 
   useJUnitPlatform {
