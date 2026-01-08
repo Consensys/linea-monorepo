@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/backend/witness"
+	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -164,4 +165,8 @@ func EmulatedFromLimbSlice[T emulated.FieldParams](
 	}
 
 	return f.NewElement(recomposed)
+}
+
+func RegisterHints() {
+	solver.RegisterHint(breakIntoBytesHint, divBy31Hint)
 }

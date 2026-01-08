@@ -1,7 +1,7 @@
 environment = "integration-full"
 version = "3.0.0"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
-log_level = 4                                  # TODO @gbotrel will be refactored with new logger. 
+log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
 [controller]
 retry_delays = [0, 1]
@@ -9,13 +9,14 @@ retry_delays = [0, 1]
 [execution]
 prover_mode = "full"
 
-[blob_decompression]
+[data_availability]
 prover_mode = "dev"
 
 [aggregation]
 prover_mode = "full"
 num_proofs = [10]
-# allowed_inputs = ["execution-dummy", "execution", "blob-decompression-dummy"]
+
+# allowed_inputs = ["execution-dummy", "execution", "data-availability-dummy"]
 # Conversion to is_allowed_circuit_id bitmask:
 #   execution-dummy (ID 0, bit 0) = 1 → ALLOWED
 #   blob-decompression-dummy (ID 1, bit 1) = 1 → ALLOWED

@@ -39,7 +39,7 @@ func Prove(args ProverArgs) error {
 	// Determine job type from input file name
 	var (
 		jobExecution         = strings.Contains(args.Input, "getZkProof")
-		jobBlobDecompression = strings.Contains(args.Input, "getZkBlobCompressionProof")
+		jobDataAvailability = strings.Contains(args.Input, "getZkBlobCompressionProof")
 		jobAggregation       = strings.Contains(args.Input, "getZkAggregatedProof")
 	)
 
@@ -47,8 +47,8 @@ func Prove(args ProverArgs) error {
 	switch {
 	case jobExecution:
 		return handleExecutionJob(cfg, args)
-	case jobBlobDecompression:
-		return handleBlobDecompressionJob(cfg, args)
+	case jobDataAvailability:
+		return handleDataAvailabilityJob(cfg, args)
 	case jobAggregation:
 		return handleAggregationJob(cfg, args)
 	default:
@@ -84,8 +84,8 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 	return writeResponse(args.Output, resp)
 }
 
-// handleBlobDecompressionJob processes a blob decompression job
-func handleBlobDecompressionJob(cfg *config.Config, args ProverArgs) error {
+// handleDataAvailabilityJob processes a data availability proof job
+func handleDataAvailabilityJob(cfg *config.Config, args ProverArgs) error {
 	req := &blobdecompression.Request{}
 	if err := readRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
@@ -93,7 +93,7 @@ func handleBlobDecompressionJob(cfg *config.Config, args ProverArgs) error {
 
 	resp, err := blobdecompression.Prove(cfg, req)
 	if err != nil {
-		return fmt.Errorf("could not prove the blob decompression: %w", err)
+		return fmt.Errorf("could not prove the data availability: %w", err)
 	}
 
 	return writeResponse(args.Output, resp)

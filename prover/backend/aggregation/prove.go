@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark/backend/plonk"
@@ -103,16 +104,16 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		close(setupErr)
 	}()
 
-	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, pi_interconnection.WizardCompilationParameters()...)
+	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, keccak.WizardCompilationParameters()...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create the public-input circuit: %w", err)
 	}
 
 	assignment, err := c.Assign(pi_interconnection.Request{
-		Decompressions: cf.DecompressionPI,
-		Executions:     cf.ExecutionPI,
-		Aggregation:    cf.AggregationPublicInput(cfg),
-	}, cfg.BlobDecompressionDictStore(string(circuits.BlobDecompressionV1CircuitID))) // TODO @Tabaie: when there is a version 2, input the compressor version to use here
+		DataAvailabilities: cf.DecompressionPI,
+		Executions:         cf.ExecutionPI,
+		Aggregation:        cf.AggregationPublicInput(cfg),
+	}, cfg.BlobDecompressionDictStore(string(circuits.DataAvailabilityV2CircuitID)))
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not assign the public input circuit: %w", err)
 	}
