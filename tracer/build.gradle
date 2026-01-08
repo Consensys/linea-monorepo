@@ -5,7 +5,7 @@ buildscript {
     targetReleaseVersion = "beta-v4.4-rc7"
     releaseVersion = findProperty('releaseVersion') ?: targetReleaseVersion
     besuVersion = "${libs.versions.besu.get()}"
-    constraintsCommitHash = "460d4ac1eb4994ac8a49dab37e27f2f128ecac51"
+    constraintsCommitHash = "e1311ba829ffea730240ce1e8f133b986a8c655c"
     distributionIdentifier = "linea-tracer"
     distibutionBaseName = "linea-arithmetization"
     besuRepo = "https://artifacts.consensys.net/public/linea-besu/maven/"
