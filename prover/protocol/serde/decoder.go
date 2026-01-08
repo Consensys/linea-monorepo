@@ -160,6 +160,13 @@ func (dec *decoder) decodeSlice(target reflect.Value, offset int64) error {
 		}
 		return nil
 	}
+
+	// Bound-check
+	totalBytes := int64(fs.Len) * info.binSize
+	if int64(fs.Offset)+totalBytes > int64(len(dec.data)) {
+		return fmt.Errorf("POD slice data (size %d) exceeds buffer bounds", totalBytes)
+	}
+
 	// ZERO-COPY swizzle into mmap bytes for POD element types.
 	// For this, we get the pointer to the raw data inside the memory map
 	// i.e. calculate the memory address of the data inside the file.
@@ -351,9 +358,27 @@ func (dec *decoder) decodePrimitive(target reflect.Value, offset int64) error {
 func (dec *decoder) decodeStruct(target reflect.Value, offset int64) error {
 	currentOffSet := offset
 	for i := 0; i < target.NumField(); i++ {
-		f := target.Field(i)
 		tf := target.Type().Field(i)
 		if !tf.IsExported() || strings.Contains(tf.Tag.Get(serdeStructTag), serdeStructTagOmit) {
+			continue
+		}
+
+		f := target.Field(i)
+		info := getTypeInfo(tf.Type)
+
+		// Generic POD Fast-Path:
+		// If it's POD and we can get the address, we perform a bulk memory copy.
+		// This covers uint64, [4]uint64, and even nested POD structs.
+		if info.isPOD && f.CanAddr() {
+			dstPtr := unsafe.Pointer(f.UnsafeAddr())
+			srcPtr := unsafe.Pointer(&dec.data[currentOffSet])
+
+			// We use a raw memory copy. This bypasses the overhead of
+			// reflect.Value.SetInt/SetUint/Set/etc.
+			copy(unsafe.Slice((*byte)(dstPtr), info.binSize),
+				unsafe.Slice((*byte)(srcPtr), info.binSize))
+
+			currentOffSet += info.binSize
 			continue
 		}
 		// Decode the current field and then calculate the offset for the next field
