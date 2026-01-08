@@ -72,12 +72,17 @@ describe("TestMessageClaimingProcessor", () => {
       enforceMaxGasFee: false,
     });
     databaseService = new EthereumMessageDBService(gasProvider, mock<IMessageRepository<unknown>>());
-    transactionValidationService = new EthereumTransactionValidationService(lineaRollupContractMock, gasProvider, {
-      profitMargin: DEFAULT_PROFIT_MARGIN,
-      maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
-      isPostmanSponsorshipEnabled: DEFAULT_ENABLE_POSTMAN_SPONSORING,
-      maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
-    });
+    transactionValidationService = new EthereumTransactionValidationService(
+      lineaRollupContractMock,
+      gasProvider,
+      {
+        profitMargin: DEFAULT_PROFIT_MARGIN,
+        maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+        isPostmanSponsorshipEnabled: DEFAULT_ENABLE_POSTMAN_SPONSORING,
+        maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
+      },
+      logger,
+    );
     messageClaimingProcessor = new MessageClaimingProcessor(
       lineaRollupContractMock,
       signer,
@@ -379,12 +384,17 @@ describe("TestMessageClaimingProcessor", () => {
 
   describe("process with sponsorship", () => {
     beforeEach(() => {
-      transactionValidationService = new EthereumTransactionValidationService(lineaRollupContractMock, gasProvider, {
-        profitMargin: DEFAULT_PROFIT_MARGIN,
-        maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
-        isPostmanSponsorshipEnabled: true,
-        maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
-      });
+      transactionValidationService = new EthereumTransactionValidationService(
+        lineaRollupContractMock,
+        gasProvider,
+        {
+          profitMargin: DEFAULT_PROFIT_MARGIN,
+          maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+          isPostmanSponsorshipEnabled: true,
+          maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
+        },
+        logger,
+      );
       messageClaimingProcessor = new MessageClaimingProcessor(
         lineaRollupContractMock,
         signer,

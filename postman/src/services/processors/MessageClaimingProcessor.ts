@@ -172,7 +172,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     maxFeePerGas: bigint,
   ): Promise<void> {
     const claimTxFn = async () =>
-      this.messageServiceContract.claim(
+      await this.messageServiceContract.claim(
         {
           ...message,
           feeRecipient: this.config.feeRecipientAddress,
@@ -255,6 +255,8 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         );
         message.edit({ status: MessageStatus.FEE_UNDERPRICED });
         await this.databaseService.updateMessage(message);
+      } else {
+        this.logger.warn("Message is underpriced, will retry later: messageHash=%s", message.messageHash);
       }
       return true;
     }
