@@ -105,9 +105,14 @@ public class ExpOperation extends ModuleOperation {
     }
   }
 
-  @Override
-  protected int computeLineCount() {
-    return 1;
+@Override
+protected int computeLineCount() {
+  return switch (expCall.expInstruction()) {
+    case EXP_INST_EXPLOG -> 1;
+    case EXP_INST_MODEXPLOG -> 1;
+    default -> throw new IllegalStateException("Unexpected opcode: " + opCode);
+  };
+
   }
 
   public record LeadLogTrimLead(int leadLog, BigInteger trim) {
