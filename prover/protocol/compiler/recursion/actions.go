@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -128,7 +129,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 	for i := range pis {
 
 		pcsCtx := cc.Ctx.PcsCtx[i]
-		piWitness, err := ifaces.GetColAssignmentBase(run, pis[i])
+		piWitness, err := column.GetColAssignmentBase(run, pis[i])
 		if err != nil {
 			return fmt.Errorf("proof no=%v, failed to get pi witness: %v", i, err)
 		}
@@ -200,7 +201,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		api.AssertIsEqual(circX[2], params.ExtX.B1.A0)
 		api.AssertIsEqual(circX[3], params.ExtX.B1.A1)
 
-		if len(circYs) != len(params.ExtYs) {
+		if len(circYs) != 4*len(params.ExtYs) {
 			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.ExtYs))
 		}
 

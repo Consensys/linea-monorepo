@@ -35,7 +35,7 @@ type RecursionCircuit struct {
 	MerkleRoots        [][blockSize]ifaces.Column `gnark:"-"`
 }
 
-// ExtFrontendVariable allows storing the extension as a 4-element array of frontend variables in Plonk public inputs (contrary to WrappedVariabl/ gnarkfext.E4Gen, which takes more space).
+// ExtFrontendVariable allows storing the extension as a 4-element array of frontend variables in Plonk public inputs (contrary to WrappedVariable/ gnarkfext.E4Gen, which takes more space).
 type ExtFrontendVariable = [4]frontend.Variable
 
 // E4Gen is a helper function for converting an ExtFrontendVariable to a gnarkfext.E4Gen
@@ -151,9 +151,10 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound, false)
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
 		circuit        = &RecursionCircuit{
-			WizardVerifier: wizard.AssignVerifierCircuit(comp, proof, numRound, false),
+			WizardVerifier: wizardVerifier,
 			X:              Ext4FV(&params.ExtX),
 			Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
+			Pubs:           make([]frontend.Variable, len(pubs)),
 			PolyQuery:      polyQuery,
 		}
 	)
