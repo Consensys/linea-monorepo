@@ -97,7 +97,21 @@ func isPOD(t reflect.Type) bool {
 	}
 	if t.Kind() == reflect.Struct {
 		for i := 0; i < t.NumField(); i++ {
-			if !isPOD(t.Field(i).Type) {
+			f := t.Field(i)
+			// IMPORTANT: The below two guard rails are important. Otherwise, this function checks ALL struct fields (including unexported ones)
+			// to determine if bulk memory copy is safe, while getBinarySize only counts EXPORTED fields when calculating serialized size.
+			// When a struct has unexported POD fields, isPOD returns true but getBinarySize returns a smaller value than Go's actual memory size.
+			// The bulk copy operations in patchArray and decodeArray then use the wrong byte count (elemBinSize * count instead of
+			// sizeof * count), which may cause data corruption for arrays of such structs.
+			if !f.IsExported() {
+				return false
+			}
+			// If we omit a field, the memory layout (RAM) and binary layout (File)
+			// diverge. We cannot use bulk memory copy for this struct.
+			if strings.Contains(f.Tag.Get(serdeStructTag), serdeStructTagOmit) {
+				return false
+			}
+			if !isPOD(f.Type) {
 				return false
 			}
 		}
