@@ -68,18 +68,43 @@ func (w *encoder) write(data any) int64 {
 		*(*uint64)(unsafe.Pointer(&buf[0])) = uint64(v)
 		w.buf.Write(buf[:])
 		w.offset += 8
-	case int64, uint64:
+
+	// IMPORTANT: Each type MUST be in its own case.
+	// Grouping cases (e.g. case int64, uint64) prevents type shadowing,
+	// causing unsafe.Pointer(&v) to point to the interface header (which ).
+	case int64:
 		w.buf.Write((*[8]byte)(unsafe.Pointer(&v))[:])
 		w.offset += 8
-	case int32, uint32:
+	case uint64:
+		w.buf.Write((*[8]byte)(unsafe.Pointer(&v))[:])
+		w.offset += 8
+	case int32:
 		w.buf.Write((*[4]byte)(unsafe.Pointer(&v))[:])
 		w.offset += 4
-	case int16, uint16:
+	case uint32:
+		w.buf.Write((*[4]byte)(unsafe.Pointer(&v))[:])
+		w.offset += 4
+	case int16:
 		w.buf.Write((*[2]byte)(unsafe.Pointer(&v))[:])
 		w.offset += 2
-	case int8, uint8, bool:
+	case uint16:
+		w.buf.Write((*[2]byte)(unsafe.Pointer(&v))[:])
+		w.offset += 2
+	case int8:
 		w.buf.Write((*[1]byte)(unsafe.Pointer(&v))[:])
 		w.offset += 1
+	case uint8:
+		w.buf.Write((*[1]byte)(unsafe.Pointer(&v))[:])
+		w.offset += 1
+	case bool:
+		// Convert bool to 1/0 byte to ensure stable binary format
+		var b byte
+		if v {
+			b = 1
+		}
+		w.buf.WriteByte(b)
+		w.offset += 1
+
 	case Ref:
 		w.buf.Write((*[8]byte)(unsafe.Pointer(&v))[:])
 		w.offset += 8
@@ -87,10 +112,12 @@ func (w *encoder) write(data any) int64 {
 		w.buf.Write((*[24]byte)(unsafe.Pointer(&v))[:])
 		w.offset += 24
 	case InterfaceHeader:
+		// Using unsafe.Sizeof here is safe because the case is specific to this struct
 		w.buf.Write((*[unsafe.Sizeof(v)]byte)(unsafe.Pointer(&v))[:])
 		w.offset += int64(unsafe.Sizeof(v))
+
 	default:
-		// Fallback to reflection
+		// Fallback to reflection for complex types not handled above
 		val := normalizeIntegerSize(reflect.ValueOf(data))
 		binary.Write(w.buf, binary.LittleEndian, val)
 		w.offset += int64(binary.Size(val))
