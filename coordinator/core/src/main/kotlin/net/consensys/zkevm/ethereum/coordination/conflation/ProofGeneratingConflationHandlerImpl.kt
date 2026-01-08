@@ -8,29 +8,63 @@ import com.github.michaelbull.result.getOrThrow
 import com.github.michaelbull.result.runCatching
 import io.vertx.core.Vertx
 import linea.domain.Block
+import linea.timer.TimerSchedule
+import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.BlocksConflation
+import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandler
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinator
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.ConcurrentLinkedDeque
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 
 class ProofGeneratingConflationHandlerImpl(
   private val tracesProductionCoordinator: TracesConflationCoordinator,
   private val zkProofProductionCoordinator: ZkProofCreationCoordinator,
   private val batchProofHandler: BatchProofHandler,
-  private val batchAlreadyProvenSupplier: (Batch) -> SafeFuture<Boolean>,
   private val vertx: Vertx,
   private val config: Config,
-) : ConflationHandler {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private val log: Logger = LogManager.getLogger(ProofGeneratingConflationHandlerImpl::class.java),
+) : ConflationHandler,
+  VertxPeriodicPollingService(
+    vertx = vertx,
+    name = "ExecutionProofPollingService",
+    pollingIntervalMs = config.executionProofPollingInterval.inWholeMilliseconds,
+    log = log,
+    timerSchedule = TimerSchedule.FIXED_DELAY){
 
   data class Config(
     val conflationAndProofGenerationRetryBackoffDelay: Duration,
+    val executionProofPollingInterval: Duration,
   )
+
+  private val proofRequestsInProgress = ConcurrentLinkedDeque<ProofIndex>()
+
+  override fun action(): SafeFuture<*> {
+    return if (proofRequestsInProgress.isNotEmpty()) {
+      val proofIndex = proofRequestsInProgress.first()
+      zkProofProductionCoordinator.isZkProofRequestProven(proofIndex).thenCompose { proven ->
+        if (proven) {
+          val batch = Batch(
+                startBlockNumber = proofIndex.startBlockNumber,
+                endBlockNumber = proofIndex.endBlockNumber,
+          )
+          proofRequestsInProgress.remove(proofIndex)
+          log.info("execution proof generated: batch={}", batch)
+          batchProofHandler.acceptNewBatch(batch).thenApply { Unit }
+        } else {
+          SafeFuture.completedFuture(Unit)
+        }
+      }
+    } else {
+      SafeFuture.completedFuture(Unit)
+    }
+  }
 
   override fun handleConflatedBatch(conflation: BlocksConflation): SafeFuture<*> {
     val blockIntervalString = conflation.conflationResult.intervalString()
@@ -72,11 +106,13 @@ class ProofGeneratingConflationHandlerImpl(
     return assertConsecutiveBlocksRange(conflation.blocks)
       .getOrThrow().let { blocksRange ->
         val batch = Batch(conflation.startBlockNumber, conflation.endBlockNumber)
-        batchAlreadyProvenSupplier(batch)
-          .thenCompose { responseAlreadyDone ->
+        zkProofProductionCoordinator.isZkProofRequestProven(ProofIndex(
+          startBlockNumber = batch.startBlockNumber,
+          endBlockNumber = batch.endBlockNumber,
+        )).thenCompose { responseAlreadyDone ->
             if (responseAlreadyDone) {
               log.info("skipping conflation and proof request: batch={} already proven", blockIntervalString)
-              SafeFuture.completedFuture(batch)
+              SafeFuture.completedFuture(Unit)
             } else {
               tracesProductionCoordinator
                 .conflateExecutionTraces(blocksRange)
@@ -95,9 +131,10 @@ class ProofGeneratingConflationHandlerImpl(
                     blocksTracesConflated.tracesResponse.tracesFileName,
                   )
                   zkProofProductionCoordinator
-                    .createZkProof(conflation, blocksTracesConflated)
-                    .thenPeek {
-                      log.info("execution proof generated: batch={}", blockIntervalString)
+                    .createZkProofRequest(conflation, blocksTracesConflated)
+                    .thenApply { proofIndex ->
+                      log.info("execution proof request generated: proofIndex={}", proofIndex)
+                      proofRequestsInProgress.addLast(proofIndex)
                     }
                     .whenException { th ->
                       log.debug(
@@ -110,9 +147,9 @@ class ProofGeneratingConflationHandlerImpl(
                 }
             }
           }
-          .thenCompose { batchProofHandler.acceptNewBatch(batch) }
       }
   }
+
 }
 
 internal fun assertConsecutiveBlocksRange(blocks: List<Block>): Result<ULongRange, IllegalArgumentException> {

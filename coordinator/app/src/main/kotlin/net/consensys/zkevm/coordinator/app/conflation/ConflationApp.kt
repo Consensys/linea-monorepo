@@ -30,9 +30,7 @@ import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
-import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.BlocksConflation
-import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBlobTracker
@@ -73,6 +71,7 @@ import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class ConflationApp(
@@ -344,15 +343,10 @@ class ConflationApp(
         ),
         batchProofHandler = batchProofHandler,
         vertx = vertx,
-        batchAlreadyProvenSupplier = { batch: Batch ->
-          executionProverClient.isProofAlreadyDone(
-            proofRequestId = ProofIndex(
-              batch.startBlockNumber,
-              batch.endBlockNumber,
-            ),
-          )
-        },
-        config = ProofGeneratingConflationHandlerImpl.Config(5.seconds),
+        config = ProofGeneratingConflationHandlerImpl.Config(
+          conflationAndProofGenerationRetryBackoffDelay = 5.seconds,
+          executionProofPollingInterval = 10.milliseconds,
+        ),
       )
 
       val highestConflationTracker = HighestConflationTracker(lastProcessedBlockNumber)
