@@ -47,7 +47,7 @@ jobs:
           path: besu-plugins/linea-sequencer/sequencer/build/reports/tests/test/
 
   run-linea-sequencer-plugins-acceptance-tests:
-    name: "Linea Sequencer Plugin Acceptance Tests"
+    name: "Sequencer Plugin Acceptance Tests"
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     steps:
       - name: Checkout repository
