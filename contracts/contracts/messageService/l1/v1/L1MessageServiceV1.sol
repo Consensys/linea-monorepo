@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 
 import { LineaRollupPauseManager } from "../../../lib/LineaRollupPauseManager.sol";
 import { RateLimiter } from "../../lib/RateLimiter.sol";

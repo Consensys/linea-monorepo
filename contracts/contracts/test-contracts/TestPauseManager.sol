@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity >=0.8.19 <=0.8.30;
+pragma solidity ^0.8.19;
 
 import { PauseManager } from "../lib/PauseManager.sol";
 import { TestSetPauseTypeRoles } from "./TestSetPauseTypeRoles.sol";
