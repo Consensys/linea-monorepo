@@ -103,7 +103,10 @@ func StoreToDisk(filePath string, asset any, withCompression bool) error {
 	if withCompression {
 		tComp = profiling.TimeIt(func() {
 			var buf bytes.Buffer
-			encoder, _ := zstd.NewWriter(&buf)
+			encoder, err := zstd.NewWriter(&buf)
+			if err != nil {
+				panic(err)
+			}
 			_, _ = encoder.Write(data)
 			_ = encoder.Close()
 			data = buf.Bytes()
@@ -200,7 +203,10 @@ func LoadFromDisk(filePath string, assetPtr any, withCompression bool) (io.Close
 
 		tDecomp = profiling.TimeIt(func() {
 			// Zstd is significantly faster than LZ4 for high-compression ratios in Prover assets.
-			decoder, _ := zstd.NewReader(bytes.NewReader(compressedData))
+			decoder, err := zstd.NewReader(bytes.NewReader(compressedData))
+			if err != nil {
+				panic(err)
+			}
 			defer decoder.Close()
 			data, readErr = io.ReadAll(decoder)
 		})
