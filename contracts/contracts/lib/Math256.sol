@@ -33,7 +33,6 @@ library Math256 {
   /// @dev Returns the number of bits required to represent the value.
   /// @param x The input value.
   /// @return r The bit length of x. Returns 0 if x is 0, otherwise returns the position of the highest set bit + 1.
-  /// @notice Uses binary search to efficiently find the highest set bit. For non-zero values, this is equivalent to ceil(log2(x + 1)).
   function bitLength(uint256 x) internal pure returns (uint256 r) {
       assembly {
           r := sub(256, clz(x))
