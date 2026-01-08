@@ -6,18 +6,15 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          submodules: false
 
-    - name: Install Go
-      uses: actions/setup-go@v5.1.0
+      - name: Setup Environment
+        uses: ./.github/actions/setup-tracer-environment
 
-    - name: Install Go Corset
-      shell: bash
-      run: go install github.com/consensys/go-corset/cmd/go-corset@1aee6f95c28b1ca2f66f6d8347a0d247d8be38a4 # v1.2.0-rc3
-
-    - name: Build all forks
-      run: cd constraints && make -B all
+      - name: Run Tracer buildZkevmBins
+        run: ./gradlew :tracer:arithmetization:buildZkevmBins
