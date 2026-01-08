@@ -70,18 +70,18 @@ func main() {
 	}
 
 	// 1. Extract imports (including aliases)
-	var imports []importDef
-	for _, imp := range node.Imports {
+	imports := make([]importDef, len(node.Imports))
+	for idx, imp := range node.Imports {
 		path := strings.Trim(imp.Path.Value, "\"")
 		var alias string
 		// Capture the alias (e.g., "cmimc", "ded", "_", or ".") if it exists
 		if imp.Name != nil {
 			alias = imp.Name.Name
 		}
-		imports = append(imports, importDef{
+		imports[idx] = importDef{
 			Alias: alias,
 			Path:  path,
-		})
+		}
 	}
 
 	// 2. Extract RegisterImplementation arguments
@@ -158,7 +158,7 @@ func main() {
 
 	// 7. Atomic write (temp file + rename)
 	tmpPath := outputPath + ".tmp"
-	if err := os.WriteFile(tmpPath, formatted, 0644); err != nil {
+	if err := os.WriteFile(tmpPath, formatted, 0600); err != nil {
 		log.Fatalf("failed to write temp file: %v", err)
 	}
 
