@@ -246,7 +246,7 @@ jobs:
 
   publish-images-after-run-tests-success-on-main:
     needs: [filter-commit-changes, check-and-tag-images, testing, run-e2e-tests]
-    if: ${{ always() && github.ref == 'refs/heads/main' && needs.testing.result == 'success' && (needs.run-e2e-tests.result == 'skipped' || needs.run-e2e-tests.outputs.tests_outcome == 'success') }}
+    if: ${{ always() && github.ref == 'refs/heads/main' && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
     uses: ./.github/workflows/build-and-publish.yml
     with:
       push_image: true
