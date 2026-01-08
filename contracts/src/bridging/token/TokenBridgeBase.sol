@@ -15,11 +15,13 @@ import { BridgedToken } from "./BridgedToken.sol";
 import { MessageServiceBase } from "../../messaging/MessageServiceBase.sol";
 
 import { TokenBridgePauseManager } from "../../security/pausing/TokenBridgePauseManager.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+
 import { StorageFiller39 } from "./utils/StorageFiller39.sol";
 import { PermissionsManager } from "../../security/access/PermissionsManager.sol";
-
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
+
 /**
  * @title Linea Canonical Token Bridge
  * @notice Contract to manage cross-chain ERC-20 bridging.
@@ -28,6 +30,7 @@ import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKecc
  */
 abstract contract TokenBridgeBase is
   ITokenBridge,
+  Initializable,
   TransientStorageReentrancyGuardUpgradeable,
   AccessControlUpgradeable,
   MessageServiceBase,
