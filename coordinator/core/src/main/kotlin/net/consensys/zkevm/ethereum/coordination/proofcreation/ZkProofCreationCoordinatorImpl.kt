@@ -8,7 +8,6 @@ import linea.domain.EthLog
 import linea.ethapi.EthApiClient
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
-import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.ethereum.coordination.conflation.BlocksTracesConflated
@@ -51,7 +50,7 @@ class ZkProofCreationCoordinatorImpl(
 
   override fun createZkProofRequest(
     blocksConflation: BlocksConflation,
-    traces: BlocksTracesConflated
+    traces: BlocksTracesConflated,
   ): SafeFuture<ProofIndex> {
     val startBlockNumber = blocksConflation.blocks.first().number
     val endBlockNumber = blocksConflation.blocks.last().number
@@ -74,8 +73,12 @@ class ZkProofCreationCoordinatorImpl(
                 keccakParentStateRootHash = previousKeccakStateRootHash,
               ),
             ).whenException {
-              log.error("Prover request creation failed for batch={} errorMessage={}",
-                blocksConflationInterval, it.message, it)
+              log.error(
+                "Prover request creation failed for batch={} errorMessage={}",
+                blocksConflationInterval,
+                it.message,
+                it,
+              )
             }
           }
       }
@@ -83,5 +86,4 @@ class ZkProofCreationCoordinatorImpl(
 
   override fun isZkProofRequestProven(proofIndex: ProofIndex): SafeFuture<Boolean> =
     executionProverClient.isProofAlreadyDone(proofIndex)
-
 }

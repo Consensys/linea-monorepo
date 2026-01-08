@@ -11,7 +11,6 @@ import linea.kotlin.encodeHex
 import linea.log4j.configureLoggers
 import net.consensys.linea.traces.fakeTracesCountersV2
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
-import net.consensys.zkevm.coordinator.clients.BatchExecutionProofResponse
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.GenerateTracesResponse
 import net.consensys.zkevm.domain.BlocksConflation
