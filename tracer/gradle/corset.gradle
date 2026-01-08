@@ -64,7 +64,7 @@ tasks.register('installGoCorset') {
     // Check if go-corset exists
     def goCorsetExists = false
     try {
-      def checkCmd = isWindows ? "where go-corset" : "which go-corset22"
+      def checkCmd = isWindows ? "where go-corset" : "which go-corset"
       def (exitCode, out, err) = runCommand(checkCmd, false)
       goCorsetExists = (exitCode == 0)
     } catch (Exception e) {
