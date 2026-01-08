@@ -131,13 +131,12 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 	i := 0
 	res := make([]frontend.Variable, num)
 	for i < num {
-		// thake the remainder mod n of each limb
-		c := fs.RandomField()
+		// take the remainder mod n of each limb
+		c := fs.RandomField() // already calls safeguardUpdate() once
 		for j := 0; j < 8; j++ {
 			b := apiGen.ToBinary(c[j])
 			res[i] = fs.api.FromBinary(b[:nbBits]...)
 			i++
-			fs.safeguardUpdate()
 			if i >= num {
 				break
 			}
