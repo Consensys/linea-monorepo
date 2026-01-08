@@ -153,7 +153,6 @@ describe("YieldReportingProcessor", () => {
 
   const createProcessor = (
     shouldSubmitVaultReport: boolean = true,
-    minPositiveYieldToReportWei: bigint = 1000000000000000000n,
     minNegativeYieldDiffToReportYieldWei: bigint = 1000000000000000000n,
     minWithdrawalThresholdEth: bigint = 0n,
     cyclesPerYieldReport: number = 12,
@@ -171,7 +170,6 @@ describe("YieldReportingProcessor", () => {
       yieldProvider,
       l2Recipient,
       shouldSubmitVaultReport,
-      minPositiveYieldToReportWei,
       minNegativeYieldDiffToReportYieldWei,
       minWithdrawalThresholdEth,
       cyclesPerYieldReport,
@@ -183,8 +181,8 @@ describe("YieldReportingProcessor", () => {
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.UNSTAKE, rebalanceAmount: 5n });
 
-    // Mock _shouldReportYield to return true
-    vaultHubClient.settleableLidoFeesValue.mockResolvedValue(600000000000000000n); // above threshold
+    // Mock _shouldReportYield to return true by triggering cycle-based reporting
+    vaultHubClient.settleableLidoFeesValue.mockResolvedValue(600000000000000000n);
     yieldManager.peekYieldReport.mockResolvedValue({
       yieldAmount: 2000000000000000000n,
       outstandingNegativeYield: 0n,
@@ -194,6 +192,8 @@ describe("YieldReportingProcessor", () => {
     const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(250);
 
     const processor = createProcessor();
+    // Set cycleCount to 11 so that when _process() increments it to 12, cycle-based reporting will trigger (12 % 12 === 0)
+    (processor as any).cycleCount = 11;
     await processor.process();
 
     expect(lazyOracle.waitForVaultsReportDataUpdatedEvent).toHaveBeenCalledTimes(1);
@@ -239,8 +239,8 @@ describe("YieldReportingProcessor", () => {
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
 
-    // Mock _shouldReportYield to return true
-    vaultHubClient.settleableLidoFeesValue.mockResolvedValue(600000000000000000n); // above threshold
+    // Mock _shouldReportYield to return true by triggering cycle-based reporting
+    vaultHubClient.settleableLidoFeesValue.mockResolvedValue(600000000000000000n);
     yieldManager.peekYieldReport.mockResolvedValue({
       yieldAmount: 2000000000000000000n,
       outstandingNegativeYield: 0n,
@@ -250,6 +250,8 @@ describe("YieldReportingProcessor", () => {
     const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(200);
 
     const processor = createProcessor(false);
+    // Set cycleCount to 11 so that when _process() increments it to 12, cycle-based reporting will trigger (12 % 12 === 0)
+    (processor as any).cycleCount = 11;
     await processor.process();
 
     expect(lidoReportClient.getLatestSubmitVaultReportParams).not.toHaveBeenCalled();
@@ -393,7 +395,7 @@ describe("YieldReportingProcessor", () => {
   it("_handleNoRebalance transfers YieldManager balance when above threshold", async () => {
     const minWithdrawalThresholdEth = 1n; // 1 ETH threshold
     const yieldManagerBalance = 2n * 1000000000000000000n; // 2 ETH (above threshold)
-    const processor = createProcessor(true, 1000000000000000000n, 1000000000000000000n, minWithdrawalThresholdEth);
+    const processor = createProcessor(true, 1000000000000000000n, minWithdrawalThresholdEth);
     
     yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
     yieldManager.fundYieldProvider.mockResolvedValueOnce({ transactionHash: "0xtransfer" } as unknown as TransactionReceipt);
@@ -420,7 +422,7 @@ describe("YieldReportingProcessor", () => {
   it("_handleNoRebalance skips transfer when YieldManager balance is below threshold", async () => {
     const minWithdrawalThresholdEth = 1n; // 1 ETH threshold
     const yieldManagerBalance = 500000000000000000n; // 0.5 ETH (below threshold)
-    const processor = createProcessor(true, 1000000000000000000n, 1000000000000000000n, minWithdrawalThresholdEth);
+    const processor = createProcessor(true, 1000000000000000000n, minWithdrawalThresholdEth);
     
     yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
     
@@ -774,7 +776,6 @@ describe("YieldReportingProcessor", () => {
 
 
   describe("_shouldReportYield", () => {
-    const minPositiveYieldToReportWei = 1000000000000000000n;
     const minNegativeYieldDiffToReportYieldWei = 1000000000000000000n;
 
     beforeEach(() => {
@@ -794,64 +795,7 @@ describe("YieldReportingProcessor", () => {
       });
     });
 
-    it("returns true when yield threshold is met", async () => {
-      const unpaidFees = 600000000000000000n;
-      const yieldReport: YieldReport = {
-        yieldAmount: 2000000000000000000n,
-        outstandingNegativeYield: 0n,
-        yieldProvider,
-      };
-
-      vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
-      yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
-      yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
-
-      const processor = createProcessor(
-        true,
-        minPositiveYieldToReportWei,
-        minNegativeYieldDiffToReportYieldWei,
-      );
-      // Set vault property by calling getLidoStakingVaultAddress
-      await yieldManager.getLidoStakingVaultAddress(yieldProvider);
-      // Set vault directly for testing
-      (processor as any).vault = vaultAddress;
-      const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
-
-      expect(result).toBe(true);
-      expect(vaultHubClient.settleableLidoFeesValue).toHaveBeenCalledWith(vaultAddress);
-      expect(vaultHubClient.settleableLidoFeesValue).toHaveBeenCalledTimes(1);
-      expect(yieldManager.peekYieldReport).toHaveBeenCalledWith(yieldProvider, l2Recipient);
-      expect(yieldManager.getYieldProviderData).toHaveBeenCalledWith(yieldProvider);
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("_shouldReportYield - shouldReportYield=true"),
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("settleableLidoFees="),
-      );
-    });
-
-    it("returns true when only yield threshold is met", async () => {
-      const unpaidFees = 300000000000000000n; // below threshold
-      const yieldReport: YieldReport = {
-        yieldAmount: 2000000000000000000n, // above threshold
-        outstandingNegativeYield: 0n,
-        yieldProvider,
-      };
-
-      vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
-      yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
-
-      const processor = createProcessor(
-        true,
-        minPositiveYieldToReportWei,
-        minNegativeYieldDiffToReportYieldWei,
-      );
-      const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
-
-      expect(result).toBe(true);
-    });
-
-    it("returns true when only negative yield diff threshold is met", async () => {
+    it("returns true when negative yield diff threshold is met", async () => {
       const unpaidFees = 300000000000000000n; // below threshold
       const onStateNegativeYield = 1000000000000000000n; // 1 ETH
       const peekedNegativeYield = 2500000000000000000n; // 2.5 ETH
@@ -880,7 +824,6 @@ describe("YieldReportingProcessor", () => {
 
       const processor = createProcessor(
         true,
-        minPositiveYieldToReportWei,
         minNegativeYieldDiffToReportYieldWei,
       );
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
@@ -918,7 +861,6 @@ describe("YieldReportingProcessor", () => {
 
       const processor = createProcessor(
         true,
-        minPositiveYieldToReportWei,
         minNegativeYieldDiffToReportYieldWei,
       );
       // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
@@ -941,7 +883,6 @@ describe("YieldReportingProcessor", () => {
 
       const processor = createProcessor(
         true,
-        minPositiveYieldToReportWei,
         minNegativeYieldDiffToReportYieldWei,
       );
       // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
@@ -959,7 +900,6 @@ describe("YieldReportingProcessor", () => {
 
       const processor = createProcessor(
         true,
-        minPositiveYieldToReportWei,
         minNegativeYieldDiffToReportYieldWei,
       );
       // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
@@ -967,23 +907,6 @@ describe("YieldReportingProcessor", () => {
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(result).toBe(false);
-    });
-
-    it("returns true when yield amount exactly equals threshold", async () => {
-      const unpaidFees = 300000000000000000n; // below threshold
-      const yieldReport: YieldReport = {
-        yieldAmount: minPositiveYieldToReportWei, // exactly at threshold
-        outstandingNegativeYield: 0n,
-        yieldProvider,
-      };
-
-      vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
-      yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
-
-      const processor = createProcessor(true, minPositiveYieldToReportWei);
-      const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
-
-      expect(result).toBe(true);
     });
 
     it("returns false when both values are zero", async () => {
@@ -997,7 +920,7 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei);
+      const processor = createProcessor(true);
       // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
       (processor as any).cycleCount = 1; // 1 % 12 !== 0
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
@@ -1016,7 +939,9 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei);
+      const processor = createProcessor(true);
+      // Set cycleCount to trigger cycle-based reporting
+      (processor as any).cycleCount = 12; // 12 % 12 === 0
       await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       expect(logger.info).toHaveBeenCalledWith(
@@ -1041,7 +966,7 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(yieldReport);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei);
+      const processor = createProcessor(true);
       (processor as unknown as { vault: Address }).vault = vaultAddress;
       await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
@@ -1056,7 +981,7 @@ describe("YieldReportingProcessor", () => {
       vaultHubClient.settleableLidoFeesValue.mockResolvedValue(unpaidFees);
       yieldManager.peekYieldReport.mockResolvedValue(undefined);
 
-      const processor = createProcessor(true, minPositiveYieldToReportWei);
+      const processor = createProcessor(true);
       (processor as unknown as { vault: Address }).vault = vaultAddress;
       await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
@@ -1082,7 +1007,6 @@ describe("YieldReportingProcessor", () => {
       const cyclesPerYieldReport = 12;
       const processor = createProcessor(
         true,
-        minPositiveYieldToReportWei,
         minNegativeYieldDiffToReportYieldWei,
         0n,
         cyclesPerYieldReport,
@@ -1114,7 +1038,6 @@ describe("YieldReportingProcessor", () => {
       const cyclesPerYieldReport = 12;
       const processor = createProcessor(
         true,
-        minPositiveYieldToReportWei,
         minNegativeYieldDiffToReportYieldWei,
         0n,
         cyclesPerYieldReport,

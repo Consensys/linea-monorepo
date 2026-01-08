@@ -100,16 +100,8 @@ export const configSchema = z
     GAUGE_METRICS_POLL_INTERVAL_MS: z.coerce.number().int().positive(),
     // Whether to submit the vault accounting report. Can set to false if we expect other actors to submit.
     SHOULD_SUBMIT_VAULT_REPORT: BooleanFromString,
-    /** Minimum positive yield amount (in wei) required before triggering a yield report.
-     * Yield reporting will proceed if this threshold OR MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI is met.
-     * This prevents gas-inefficient transactions for very small yield amounts.
-     */
-    MIN_POSITIVE_YIELD_TO_REPORT_WEI: z
-      .union([z.string(), z.number(), z.bigint()])
-      .transform((val) => BigInt(val))
-      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     /** Minimum difference between peeked negative yield and on-state negative yield (in wei) required before triggering a yield report.
-     * Yield reporting will proceed if this threshold OR MIN_POSITIVE_YIELD_TO_REPORT_WEI is met.
+     * Yield reporting will proceed if this threshold is met.
      * The difference is calculated as: peekedNegativeYield - onStateNegativeYield.
      * This prevents gas-inefficient transactions for very small negative yield changes.
      */
