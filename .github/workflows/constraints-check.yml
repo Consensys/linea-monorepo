@@ -1,0 +1,21 @@
+name: Constraints check compilation
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install Go
+      uses: actions/setup-go@v5.1.0
+
+    - name: Install Go Corset
+      shell: bash
+      run: go install github.com/consensys/go-corset/cmd/go-corset@fb1aebd7f532e8940bc18feeedf3600d4bb5006f # v1.1.28
+
+    - name: Build all forks
+      run: cd constraints && make -B all

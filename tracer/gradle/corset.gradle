@@ -24,6 +24,30 @@ tasks.register('corsetExists') {
   }
 }
 
+// Specify the temporary destination directory for a specific commit version of constraints 
+def CONSTRAINTS_DEST_DIR = "${project.buildDir}/tmp/deps/"
+
+// Task which generates the Trace.java interface using go-corset.
+tasks.register('extractConstraintsGitArchive', Exec) {
+  workingDir rootProject.projectDir 
+
+  def commitHash = project.constraintsCommitHash
+  def sourceFolder = 'constraints'
+  // Define destination relative to project dir
+  def destDir = file(CONSTRAINTS_DEST_DIR)
+
+  // Handles directory creation automatically here
+  doFirst {
+    if (!destDir.exists()) {
+      destDir.mkdirs()
+    }
+  }
+
+  // Runs the command using sh to extract the git archive
+  // Uses absolute path for destDir to be safe
+  commandLine 'sh', '-c', "git archive --format=tar ${commitHash} ${sourceFolder} | tar -x -C '${destDir.absolutePath}'"
+}
+
 // Allowing overriding the default zkevm.bin files.
 def ZKEVM_OSAKA_BIN = System.getenv("ZKEVM_OSAKA_BIN") ?: "zkevm_osaka.bin"
 
@@ -31,7 +55,9 @@ def ZKEVM_OSAKA_BIN = System.getenv("ZKEVM_OSAKA_BIN") ?: "zkevm_osaka.bin"
 def TRACE_PKG = "net.consensys.linea.zktracer"
 
 tasks.register('buildZkevmBins', Exec) {
-  workingDir "${project.rootDir}/constraints/"
+  dependsOn 'extractConstraintsGitArchive'
+
+  workingDir "${CONSTRAINTS_DEST_DIR}/constraints/"
   // Specify input files so gradle knows when to rebuild.
   inputs.files(fileTree(workingDir).include('**/*.lisp'))
   // Specify output file so gradle knows when out-of-date.
@@ -57,7 +83,7 @@ tasks.register('buildAllTracers', Exec) {
   group "Trace file(s) generation"
   dependsOn 'buildZkevmBins'
   // Specify where the trace files should be generated.
-  def GENERATED_SRC_DIR = "${project.layout.buildDirectory.get()}/generated/gocorset/main/java/net/consensys/linea/zktracer"
+  def GENERATED_SRC_DIR = "${project.buildDir}/generated/gocorset/main/java/net/consensys/linea/zktracer"
   def TRACE_FILE = "$GENERATED_SRC_DIR/Trace.java"
   def OSAKA_TRACE_FILE = "$GENERATED_SRC_DIR/TraceOsaka.java"
 
@@ -65,7 +91,7 @@ tasks.register('buildAllTracers', Exec) {
   def traceJava = lineaTracerProject.file(TRACE_FILE)
   def traceOsakaJava = lineaTracerProject.file(OSAKA_TRACE_FILE)
   // Configure full paths for zkevm.bin files
-  def zkevmOsakaBin = lineaTracerProject.file('../constraints/' + ZKEVM_OSAKA_BIN)
+  def zkevmOsakaBin = lineaTracerProject.file("${CONSTRAINTS_DEST_DIR}/constraints/" + ZKEVM_OSAKA_BIN)
   // Generate trace interface and implementing classes
   doFirst {
     traceJava.parentFile.mkdirs()

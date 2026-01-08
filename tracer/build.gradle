@@ -5,6 +5,7 @@ buildscript {
     targetReleaseVersion = "beta-v4.4-rc7"
     releaseVersion = findProperty('releaseVersion') ?: targetReleaseVersion
     besuVersion = "${libs.versions.besu.get()}"
+    constraintsCommitHash = "460d4ac1eb4994ac8a49dab37e27f2f128ecac51"
     distributionIdentifier = "linea-tracer"
     distibutionBaseName = "linea-arithmetization"
     besuRepo = "https://artifacts.consensys.net/public/linea-besu/maven/"
@@ -70,6 +71,7 @@ sonar {
 }
 
 version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
+constraintsCommitHash = project.hasProperty('constraintsCommitHash') ? project.getProperty('constraintsCommitHash') : 'latest'
 
 jar {
   archiveBaseName = distibutionBaseName
