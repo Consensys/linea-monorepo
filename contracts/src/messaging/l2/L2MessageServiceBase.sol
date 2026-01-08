@@ -52,7 +52,7 @@ abstract contract L2MessageServiceBase is
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoleAssignments,
     PauseTypeRole[] calldata _unpauseTypeRoleAssignments
-  ) internal virtual {
+  ) internal virtual onlyInitializing {
     __ERC165_init();
     __Context_init();
     __AccessControl_init();
