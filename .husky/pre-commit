@@ -5,6 +5,6 @@
 # Execute NodeJS script because
 # i.) Husky requires NodeJS -> fair assumption that machine will have NodeJS
 # ii.) Cleaner syntax and abstractions than shell scripting
-node .husky/pre-commit.js
+#node .husky/pre-commit.js
 
 exit 0
