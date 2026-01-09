@@ -107,10 +107,6 @@ public final class TxnData implements OperationListModule<TxnDataOperation> {
     operations().add(new UserTransaction(this, tx));
   }
 
-  public int numberOfUserTransactionsInCurrentBlock() {
-    return blocks.getLast().getNbOfTxsInBlock();
-  }
-
   public int totalNumberOfUserTransactions() {
     return Math.toIntExact(
         operations().stream().filter(op -> op instanceof UserTransaction).count());
