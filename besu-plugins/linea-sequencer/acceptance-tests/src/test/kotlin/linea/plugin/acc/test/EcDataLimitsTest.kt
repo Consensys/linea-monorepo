@@ -344,26 +344,16 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
     // Create an account to send the transactions
     val ecRecoverSender = accounts.createAccount("ecRecoverSender")
 
-    // Fund the account using secondary benefactor
-    val fundTxHash = accountTransactions
-      .createTransfer(accounts.secondaryBenefactor, ecRecoverSender, 1, BigInteger.ZERO)
-      .execute(minerNode.nodeRequests())
-      .toHexString()
-    // Verify that the transaction for transferring funds was successful
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(fundTxHash))
-
     val txHashes = Array<String?>(nTransactions) { null }
-    for (i in 0 until nTransactions) {
-      // With decreasing nonce we force the transactions to be included in the same block
-      // i     = 0                , 1                , ..., nTransactions - 1
-      // nonce = nTransactions - 1, nTransactions - 2, ..., 0
-      val nonce = nTransactions - 1 - i
-
+    // pre send all txs but the first one, so they will stay ready in the pool,
+    // but will not be included in a block due to the nonce gap, doing this before
+    // to avoid timing issues caused by slow tx sending calls that could cause flakiness
+    for (i in 1 until nTransactions) {
       // Craft the transaction data
       val encodedCallEcRecover = encodedCallEcRecover(
         ecRecover,
         ecRecoverSender,
-        nonce,
+        i,
         Bytes.fromHexString(input),
       )
 
@@ -372,8 +362,31 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
       val resp = web3j.ethSendRawTransaction(Numeric.toHexString(encodedCallEcRecover)).send()
 
       // Store the transaction hash
-      txHashes[nonce] = resp.transactionHash
+      txHashes[i] = resp.transactionHash
     }
+
+    // Fund the account using secondary benefactor
+    val fundTxHash = accountTransactions
+      .createTransfer(accounts.secondaryBenefactor, ecRecoverSender, 1, BigInteger.ZERO)
+      .execute(minerNode.nodeRequests())
+      .toHexString()
+    // Verify that the transaction for transferring funds was successful
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(fundTxHash))
+
+    // send the first tx to fill the nonce gap and allow also all the other to be selected
+    val encodedCallEcRecover = encodedCallEcRecover(
+      ecRecover,
+      ecRecoverSender,
+      0,
+      Bytes.fromHexString(input),
+    )
+
+    // Send the transaction
+    val web3j = minerNode.nodeRequests().eth()
+    val resp = web3j.ethSendRawTransaction(Numeric.toHexString(encodedCallEcRecover)).send()
+
+    // Store the transaction hash
+    txHashes[0] = resp.transactionHash
 
     // Transfer used as sentry to ensure a new block is mined
     val transferTxHash = accountTransactions
