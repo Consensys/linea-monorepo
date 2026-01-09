@@ -7,7 +7,6 @@ const func: DeployFunction = async function () {
   const contractName = "RollupRevenueVault";
 
   const proxyAddress = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_ADDRESS");
-
   const lastInvoiceDate = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_LAST_INVOICE_DATE");
   const securityCouncil = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_SECURITY_COUNCIL");
   const invoiceSubmitter = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER");
@@ -18,6 +17,7 @@ const func: DeployFunction = async function () {
   const l1LineaTokenBurner = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_L1_LINEA_TOKEN_BURNER");
   const lineaToken = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_LINEA_TOKEN");
   const dexSwapAdapter = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_DEX_SWAP_ADAPTER");
+
   const factory = await ethers.getContractFactory(contractName);
 
   console.log("Deploying Contract...");

@@ -166,9 +166,9 @@ interface ILineaRollupBase {
   error MissingRollingHashForMessageNumber(uint256 messageNumber);
 
   /**
-   * @dev Thrown when a shnarf does not exist for the final blob being finalized.
+   * @dev Thrown when a final shnarf being finalized does not exist.
    */
-  error FinalBlobNotSubmitted(bytes32 shnarf);
+  error FinalShnarfNotSubmitted(bytes32 shnarf);
 
   /**
    * @dev Thrown when the rollup is missing a forced transaction in the finalization block range.
