@@ -16,9 +16,7 @@ import linea.domain.RetryConfig
 import linea.ethapi.EthApiClient
 import linea.kotlin.toKWeiUInt
 import linea.web3j.SmartContractErrors
-import linea.web3j.Web3jBlobExtended
 import linea.web3j.createWeb3jHttpClient
-import linea.web3j.createWeb3jHttpService
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
@@ -594,25 +592,18 @@ class L1DependentApp(
         configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.storagePeriod
           .div(configs.protocol.l1.blockTime).toUInt()
 
-      val l1FeeHistoryWeb3jBlobExtClient = Web3jBlobExtended(
-        createWeb3jHttpService(
-          rpcUrl = configs.l1Submission.aggregation.l1Endpoint.toString(),
-          log = LogManager.getLogger("clients.l1.eth.feehistory-cache"),
-        ),
+      val l1EthApiClient = createEthApiClient(
+        rpcUrl = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
+        log = LogManager.getLogger("clients.l1.eth.feehistory-cache"),
       )
 
       val l1FeeHistoryFetcher: GasPriceCapFeeHistoryFetcher = GasPriceCapFeeHistoryFetcherImpl(
-        web3jService = l1FeeHistoryWeb3jBlobExtClient,
+        ethApiFeeClient = l1EthApiClient,
         config = GasPriceCapFeeHistoryFetcherImpl.Config(
           maxBlockCount = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.maxBlockCount,
           rewardPercentiles = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.rewardPercentiles
             .map { it.toDouble() },
         ),
-      )
-
-      val l1EthApiClient = createEthApiClient(
-        rpcUrl = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
-        log = LogManager.getLogger("clients.l1.eth.feehistory-cache"),
       )
 
       FeeHistoryCachingService(
