@@ -140,7 +140,7 @@ data class BlockData<TxData>(
       "nonce=$nonce, " +
       "baseFeePerGas=$baseFeePerGas, " +
       "transactions=$txStr, " +
-      "ommers=$ommers" +
+      "ommers=$ommers, " +
       "size=$size" + ")"
   }
 }
