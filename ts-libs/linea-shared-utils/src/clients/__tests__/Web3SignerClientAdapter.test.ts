@@ -114,7 +114,7 @@ describe("Web3SignerClientAdapter", () => {
 
     createAdapter(logger);
 
-    expect(logger.info).toHaveBeenCalledWith("Initialising HTTPS agent");
+    expect(logger.info).toHaveBeenCalledWith("Initialising Web3SignerClientAdapter");
     expect(readFileSyncMock).toHaveBeenCalledWith(truststorePath, { encoding: "binary" });
     expect(readFileSyncMock).toHaveBeenCalledWith(keystorePath);
 
@@ -136,7 +136,7 @@ describe("Web3SignerClientAdapter", () => {
     getBagsMock.mockReturnValue({});
 
     expect(() => createAdapter(logger)).toThrow("Certificate not found in P12");
-    expect(logger.info).toHaveBeenCalledWith("Initialising HTTPS agent");
+    expect(logger.info).toHaveBeenCalledWith("Initialising Web3SignerClientAdapter");
     expect(certificateToPemMock).not.toHaveBeenCalled();
     expect(AgentMock).not.toHaveBeenCalled();
   });

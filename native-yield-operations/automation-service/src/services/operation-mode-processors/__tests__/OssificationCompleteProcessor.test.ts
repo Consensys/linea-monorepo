@@ -6,7 +6,6 @@ import type { IYieldManager } from "../../../core/clients/contracts/IYieldManage
 import type { TransactionReceipt, Address } from "viem";
 import type { IBeaconChainStakingClient } from "../../../core/clients/IBeaconChainStakingClient.js";
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
-import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { OssificationCompleteProcessor } from "../OssificationCompleteProcessor.js";
 import { ResultAsync } from "neverthrow";
 
@@ -46,7 +45,6 @@ describe("OssificationCompleteProcessor", () => {
       debug: jest.fn(),
     } as unknown as jest.Mocked<ILogger>;
     metricsUpdater = {
-      incrementOperationModeTrigger: jest.fn(),
       recordOperationModeDuration: jest.fn(),
     } as unknown as jest.Mocked<INativeYieldAutomationMetricsUpdater>;
 
@@ -100,10 +98,6 @@ describe("OssificationCompleteProcessor", () => {
     const recordedResult = metricsRecorder.recordSafeWithdrawalMetrics.mock.calls[0]?.[1];
     expect(recordedResult?.isOk()).toBe(true);
     expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
-    expect(metricsUpdater.incrementOperationModeTrigger).toHaveBeenCalledWith(
-      OperationMode.OSSIFICATION_COMPLETE_MODE,
-      OperationTrigger.TIMEOUT,
-    );
     expect(msToSecondsMock).toHaveBeenCalledWith(240);
     expect(metricsUpdater.recordOperationModeDuration).toHaveBeenCalledWith(
       OperationMode.OSSIFICATION_COMPLETE_MODE,
