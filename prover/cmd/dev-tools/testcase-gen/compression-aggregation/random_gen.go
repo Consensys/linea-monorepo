@@ -1,13 +1,24 @@
 package main
 
 import (
+	"bytes"
+	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
+	"math/big"
 	"math/rand"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
+	circInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // RandDataGen generates random data for the smart-contract
@@ -24,6 +35,8 @@ type RandGenSpec struct {
 	AggregationSpec AggregationSpec `json:"aggregationSpec"`
 	// Optional, if set specifies the dynamic chain configuration to use
 	DynamicChainConfigurationSpec DynamicChainConfigurationSpec `json:"dynamicChainConfigurationSpec"`
+	// Optional, if set indicates that this should generate an invalidity proof
+	InvalidityProofSpec InvalidityProofSpec `json:"invalidityProofSpec"`
 }
 
 // DynamicChainConfiguration spec, specifies the chain configuration parameters
@@ -58,6 +71,14 @@ type BlobSubmissionSpec struct {
 	// isEip4844 enabled tells the generator to specify that the response it
 	// using EIP-4844.
 	Eip4844Enabled bool `json:"eip4844Enabled"`
+}
+
+// InvalidityProofSpec
+type InvalidityProofSpec struct {
+	FtxNumber           int      `json:"ftxNumber"`
+	PrevFtxRollingHash  string   `json:"prevFtxRollingHash"`
+	ChainID             *big.Int `json:"chainID"`
+	ExpectedBlockHeight int      `json:"expectedBlockHeight"`
 }
 
 // Aggregation spec
@@ -114,6 +135,21 @@ type AggregationSpec struct {
 	// Final block number
 	LastFinalizedBlockNumber uint `json:"lastFinalizedBlockNumber"`
 	FinalBlockNumber         uint `json:"finalBlockNumber"`
+
+	// List of the invalidity proof responses
+	InvalidityProofs []*invalidity.Response `json:"invalidityProofs"`
+
+	// ParentAggregationBlockHash is the final block hash of the parent aggregation
+	ParentAggregationBlockHash string `json:"parentAggregationBlockHash"`
+	// FinalBlockHash is the block hash of the last finalized block
+	FinalBlockHash string `json:"finalBlockHash"`
+
+	// ParentFtxRollingHash is the stream hash of the parent aggregation
+	ParentAggregationFtxRollingHash string `json:"parentAggregationFtxRollingHash"`
+	ParentAggregationFtxNumber      int    `json:"parentAggregationFtxNumber"`
+
+	FinalFtxRollingHash string `json:"finalFtxRollingHash"`
+	FinalFtxNumber      uint   `json:"finalFtxNumber"`
 }
 
 // Generates a random request file for a blob submission
@@ -160,6 +196,20 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 		L2MessagingBlocksOffsets:                string(spec.L2MessagingBlocksOffsets),
 		LastFinalizedBlockNumber:                spec.LastFinalizedBlockNumber,
 		FinalBlockNumber:                        spec.FinalBlockNumber,
+		ParentAggregationBlockHash:              spec.ParentAggregationBlockHash,
+		FinalBlockHash:                          spec.FinalBlockHash,
+		LastFinalizedFtxRollingHash:             spec.ParentAggregationFtxRollingHash,
+		LastFinalizedFtxNumber:                  uint(spec.ParentAggregationFtxNumber),
+		// By default the final stream hash is the same as the parent. We will
+		// overwrite it later if there is an invalidity proof in the spec.
+		FinalFtxRollingHash: spec.ParentAggregationFtxRollingHash,
+		FinalFtxNumber:      uint(spec.ParentAggregationFtxNumber),
+	}
+
+	if len(spec.InvalidityProofs) > 0 {
+		invalidityProof := spec.InvalidityProofs[len(spec.InvalidityProofs)-1]
+		cf.FinalFtxRollingHash = invalidityProof.FtxRollingHash.Hex()
+		cf.FinalFtxNumber = uint(invalidityProof.ForcedTransactionNumber)
 	}
 
 	rdg := RandDataGen{rng}
@@ -174,6 +224,67 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 	}
 
 	return cf
+}
+
+// RandonInvalidTransaction returns a random invalid transaction from a random
+// from address and writes fromAddress, tx and txHash to the spec file
+func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specFile string) *invalidity.Request {
+
+	var (
+		signer         = types.NewLondonSigner(spec.ChainID)
+		address        = common.HexToAddress("0xfeeddeadbeeffeeddeadbeeffeeddead01245678")
+		TEST_ADDRESS_A = common.HexToAddress("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+		TEST_HASH_F    = common.HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+		TEST_HASH_A    = common.HexToHash("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	)
+
+	// Generate a FIXED/deterministic private key for consistent testing
+	deterministicSeed := fmt.Sprintf("fixed_test_seed_for_invalidity_proof_123456_%v", rng.Int63())
+	hash := crypto.Keccak256([]byte(deterministicSeed))
+	privKey, err := crypto.ToECDSA(hash)
+	if err != nil {
+		panic(err)
+	}
+
+	// Get the fromAddress from the private key
+	publicKey := privKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		panic("error casting public key to ECDSA")
+	}
+
+	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+
+	tx := types.NewTx(&types.DynamicFeeTx{
+		ChainID:   spec.ChainID,
+		Nonce:     rng.Uint64() % 100,
+		GasTipCap: big.NewInt(int64(123543135)),
+		GasFeeCap: big.NewInt(int64(112121212)),
+		Gas:       4531112,
+		To:        &address,
+		Value:     big.NewInt(int64(845315452)),
+		Data:      common.Hex2Bytes("0xdeed8745a20f"),
+		AccessList: types.AccessList{
+			types.AccessTuple{Address: TEST_ADDRESS_A, StorageKeys: []common.Hash{TEST_HASH_A, TEST_HASH_F}},
+		},
+	})
+
+	txHash := signer.Hash(tx)
+
+	//sanity check
+	if !bytes.Equal(txHash.Bytes(), crypto.Keccak256(ethereum.EncodeTxForSigning(tx))) {
+		utils.Panic("tx hash mismatch")
+	}
+
+	return &invalidity.Request{
+		RlpEncodedTx:            ethereum.EncodeTxForSigning(tx),
+		ForcedTransactionNumber: uint64(spec.FtxNumber),
+		FromAddresses:           linTypes.EthAddress(fromAddress),
+		InvalidityTypes:         circInvalidity.BadNonce,
+		ExpectedBlockHeight:     uint64(spec.ExpectedBlockHeight),
+		PrevFtxRollingHash:      linTypes.Bytes32FromHex(spec.PrevFtxRollingHash),
+	}
+
 }
 
 // Returns a slice of random length in base64. If to is smaller than from, then
@@ -202,7 +313,7 @@ func (rdg *RandDataGen) Base64RandLen(from, to int) string {
 // and the returned hex string is 0x prefixed.
 func (rdg *RandDataGen) HexString(n int) string {
 	res := make([]byte, n)
-	rdg.Read(res)
+	rdg.Read(res[1:]) // we leave the first byte zero to ensure it's < the bls12 field.
 	return "0x" + hex.EncodeToString(res)
 }
 

@@ -36,6 +36,7 @@ func CraftProverOutput(
 			CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
 			L2BridgeAddress:      types.EthAddress(cfg.Layer2.MsgSvcContract),
 			MaxNbL2MessageHashes: cfg.TracesLimits.BlockL2L1Logs,
+			ParentBlockHash:      req.ParentBlockHash,
 		}
 	)
 

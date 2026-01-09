@@ -33,7 +33,11 @@ func TestAggregation(t *testing.T) {
 				BaseFee:              7,
 				CoinBase:             types.EthAddress(common.HexToAddress("0x8F81e2E3F8b46467523463835F965fFE476E1c9E")),
 				L2MessageServiceAddr: types.EthAddress(common.HexToAddress("0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec")),
+				// Ftx fields
+				LastFinalizedFtxNumber:                  0,
+				FinalFtxNumber:                          0,
 			},
+			// Note: This expected result may need to be updated after merging both sets of fields
 			Res: "0x30058e1a3af2c0e4efe6afc5ee17dfa541fb029c6e4fbd9368649c482ad7b90d",
 		},
 	}
