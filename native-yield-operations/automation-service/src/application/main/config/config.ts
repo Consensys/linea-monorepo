@@ -15,7 +15,7 @@ import { transports } from "winston";
  *   - apiPort: Port for the metrics API server
  *   - timing: Poll intervals and retry timing configuration
  *   - rebalance: Rebalance configuration including tolerance, thresholds, and limits
- *   - reporting: Reporting configuration including shouldSubmitVaultReport and minNegativeYieldDiffToReportYieldWei
+ *   - reporting: Reporting configuration including shouldSubmitVaultReport, shouldReportYield, and minNegativeYieldDiffToReportYieldWei
  *   - web3signer: Web3Signer URL, public key (address or secp pubkey compressed/uncompressed), keystore, truststore, and TLS settings
  *   - loggerOptions: Winston logger configuration with console transport and log level from LOG_LEVEL env var (defaults to "info")
  */
@@ -63,6 +63,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
   },
   reporting: {
     shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,
+    shouldReportYield: env.SHOULD_REPORT_YIELD,
     minNegativeYieldDiffToReportYieldWei: env.MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI,
     cyclesPerYieldReport: env.CYCLES_PER_YIELD_REPORT,
   },

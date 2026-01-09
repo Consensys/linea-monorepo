@@ -43,6 +43,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @param {Address} yieldProvider - The yield provider address to process.
    * @param {Address} l2YieldRecipient - The L2 yield recipient address for yield reporting.
    * @param {boolean} shouldSubmitVaultReport - Whether to submit the vault accounting report. Can be set to false if other actors are expected to submit.
+   * @param {boolean} shouldReportYield - Whether to report yield. Can be set to false to disable yield reporting entirely.
    * @param {bigint} minNegativeYieldDiffToReportYieldWei - Minimum difference between peeked negative yield and on-state negative yield (in wei) required before triggering a yield report.
    * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH (stored as wei) required before withdrawal operations proceed.
    * @param {number} cyclesPerYieldReport - Number of processing cycles between forced yield reports. Yield will be reported every N cycles regardless of threshold checks.
@@ -60,6 +61,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly yieldProvider: Address,
     private readonly l2YieldRecipient: Address,
     private readonly shouldSubmitVaultReport: boolean,
+    private readonly shouldReportYield: boolean,
     private readonly minNegativeYieldDiffToReportYieldWei: bigint,
     private readonly minWithdrawalThresholdEth: bigint,
     private readonly cyclesPerYieldReport: number,
@@ -388,7 +390,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     // Check if cycle-based reporting is due
     isCycleBasedReportingDue = this.cycleCount % this.cyclesPerYieldReport === 0;
 
-    const shouldReportYield = negativeYieldDiffThresholdMet || isCycleBasedReportingDue;
+    const shouldReportYield = this.shouldReportYield && (negativeYieldDiffThresholdMet || isCycleBasedReportingDue);
 
     // Log results
     const onStateNegativeYield = yieldProviderData?.lastReportedNegativeYield;

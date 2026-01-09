@@ -244,6 +244,7 @@ export class NativeYieldAutomationServiceBootstrap {
       config.contractAddresses.lidoYieldProviderAddress,
       config.contractAddresses.l2YieldRecipientAddress,
       config.reporting.shouldSubmitVaultReport,
+      config.reporting.shouldReportYield,
       config.reporting.minNegativeYieldDiffToReportYieldWei,
       config.rebalance.minWithdrawalThresholdEth,
       config.reporting.cyclesPerYieldReport,

@@ -37,6 +37,7 @@ const createValidEnv = () => ({
   WEB3SIGNER_TLS_ENABLED: "true",
   API_PORT: "3000",
   SHOULD_SUBMIT_VAULT_REPORT: "true",
+  SHOULD_REPORT_YIELD: "true",
   MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI: "1000000000000000000",
   CYCLES_PER_YIELD_REPORT: "12",
 });
@@ -57,6 +58,7 @@ describe("configSchema", () => {
     expect(parsed.MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI).toBe(1000000000000000000n);
     expect(parsed.WEB3SIGNER_TLS_ENABLED).toBe(true);
     expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(true);
+    expect(parsed.SHOULD_REPORT_YIELD).toBe(true);
     expect(parsed.LINEA_ROLLUP_ADDRESS).toBe(getAddress(env.LINEA_ROLLUP_ADDRESS));
     expect(parsed.LAZY_ORACLE_ADDRESS).toBe(getAddress(env.LAZY_ORACLE_ADDRESS));
     expect(parsed.VAULT_HUB_ADDRESS).toBe(getAddress(env.VAULT_HUB_ADDRESS));

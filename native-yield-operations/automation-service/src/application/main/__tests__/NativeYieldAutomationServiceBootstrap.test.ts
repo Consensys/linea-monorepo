@@ -232,6 +232,7 @@ const createBootstrapConfig = () => ({
   },
   reporting: {
     shouldSubmitVaultReport: true,
+    shouldReportYield: true,
     minNegativeYieldDiffToReportYieldWei: 1000000000000000000n,
     cyclesPerYieldReport: 12,
   },
