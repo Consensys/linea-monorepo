@@ -20,6 +20,7 @@ import "./scripts/operational/addAndClaimMessageForLST";
 import "./scripts/operational/unstakePermissionless";
 import "./scripts/operational/setNodeOperatorFeeRecipient";
 import "./scripts/operational/deployPaymentSplitter";
+import "./scripts/operational/addL2YieldRecipient";
 import "solidity-docgen";
 
 dotenv.config();
