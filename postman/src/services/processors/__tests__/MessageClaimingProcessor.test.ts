@@ -194,7 +194,7 @@ describe("TestMessageClaimingProcessor", () => {
       await messageClaimingProcessor.process();
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
+      expect(loggerInfoSpy).toHaveBeenCalledTimes(2);
       expect(loggerInfoSpy).toHaveBeenCalledWith(
         "Found already claimed message: messageHash=%s",
         expectedLoggingMessage.messageHash,

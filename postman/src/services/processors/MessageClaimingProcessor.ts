@@ -77,6 +77,8 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         return;
       }
 
+      this.logger.info("Found message to claim: messageHash=%s", nextMessageToClaim.messageHash);
+
       const messageStatus = await this.messageServiceContract.getMessageStatus({
         messageHash: nextMessageToClaim.messageHash,
         messageBlockNumber: nextMessageToClaim.sentBlockNumber,
