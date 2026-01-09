@@ -2,6 +2,7 @@ package linea.web3j
 
 import linea.domain.TransactionReceipt
 import linea.ethapi.EthApiClient
+import linea.kotlin.encodeHex
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import kotlin.time.Duration
@@ -23,9 +24,9 @@ fun EthApiClient.waitForTxReceipt(
   log: Logger = LogManager.getLogger("linea.web3j.waitForTxReceipt"),
 ): TransactionReceipt {
   val waitLimit = System.currentTimeMillis() + timeout.inWholeMilliseconds
-  log.debug("polling tx receipt txHash=$txHash")
+  log.debug("polling tx receipt txHash=${txHash.encodeHex()}")
   while (System.currentTimeMillis() < waitLimit) {
-    log.trace("polling tx receipt txHash=$txHash")
+    log.trace("polling tx receipt txHash=${txHash.encodeHex()}")
     val receipt = runCatching<TransactionReceipt?> {
       this.ethGetTransactionReceipt(txHash).get()
     }.onFailure {
@@ -37,7 +38,7 @@ fun EthApiClient.waitForTxReceipt(
       if (expectedStatus != null && receipt.status != expectedStatus) {
         throw RuntimeException(
           "Transaction status does not match expected status: " +
-            "txHash=$txHash, expected=$expectedStatus, actual=${receipt.status}",
+            "txHash=${txHash.encodeHex()}, expected=$expectedStatus, actual=${receipt.status}",
         )
       }
       return receipt
@@ -46,5 +47,5 @@ fun EthApiClient.waitForTxReceipt(
     Thread.sleep(pollingInterval.inWholeMilliseconds)
   }
 
-  throw RuntimeException("Timed out waiting $timeout for transaction receipt for tx $txHash")
+  throw RuntimeException("Timed out waiting $timeout for transaction receipt for tx ${txHash.encodeHex()}")
 }
