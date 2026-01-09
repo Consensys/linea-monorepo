@@ -554,7 +554,7 @@ abstract contract LineaRollupBase is
       calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x120), 0xA0)
 
       /**
-       * PLACEHOLDER: THIS WILL BE USED ONCE PROVING CIRCUITS ARE READY
+       * PLACEHOLDER: THIS WILL BE UPDATED ONCE PROVING CIRCUITS ARE READY
        * _finalizationData.lastFinalizedL1RollingHash
        * _finalizationData.l1RollingHash
        * _finalizationData.lastFinalizedL1RollingHashMessageNumber
@@ -564,9 +564,9 @@ abstract contract LineaRollupBase is
        * _finalizationData.finalForcedTransactionNumber
        * _finalizationData.lastFinalizedForcedTransactionRollingHash
        *
-       * calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x120), 0x100)
+       * calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x140), 0x100)
        * // _finalForcedTransactionRollingHash
-       * mstore(add(mPtr, 0x1c0), _finalForcedTransactionRollingHash)
+       * mstore(add(mPtr, 0x1e0), _finalForcedTransactionRollingHash)
        */
 
       /**
@@ -590,7 +590,7 @@ abstract contract LineaRollupBase is
 
       /*
        * PLACEHOLDER: THIS WILL BE USED ONCE PROVING CIRCUITS ARE READY
-       * publicInput := mod(keccak256(mPtr, 0x200), MODULO_R)
+       * publicInput := mod(keccak256(mPtr, 0x220), MODULO_R)
        */
       publicInput := mod(keccak256(mPtr, 0x1A0), MODULO_R)
     }
