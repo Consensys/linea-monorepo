@@ -57,7 +57,7 @@ var (
 	dummyCompilationSuite = CompilationSuite{dummy.Compile}
 
 	// This is the compilation suite in use for the full prover
-	fullCompilationSuite = CompilationSuite{
+	FullCompilationSuite = CompilationSuite{
 		// logdata.Log("initial-wizard"),
 		poseidon2.CompilePoseidon2,
 		plonkinwizard.Compile,
@@ -121,7 +121,7 @@ func FullZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvm.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvm = FullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
+		fullZkEvm = FullZKEVMWithSuite(tl, FullCompilationSuite, cfg)
 	})
 
 	return fullZkEvm
@@ -139,14 +139,14 @@ func FullZkEVMCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 func FullZkEvmSetup(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 	onceFullZkEvmSetup.Do(func() {
-		fullZkEvmSetup = FullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
+		fullZkEvmSetup = FullZKEVMWithSuite(tl, FullCompilationSuite, cfg)
 	})
 	return fullZkEvmSetup
 }
 
 func FullZkEvmSetupLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 	onceFullZkEvmSetupLarge.Do(func() {
-		fullZkEvmSetupLarge = FullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
+		fullZkEvmSetupLarge = FullZKEVMWithSuite(tl, FullCompilationSuite, cfg)
 	})
 	return fullZkEvmSetupLarge
 }
