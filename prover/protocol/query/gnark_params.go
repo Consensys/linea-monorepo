@@ -65,7 +65,11 @@ type GnarkInnerProductParams struct {
 }
 
 func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: make([]gnarkfext.E4Gen, len(p.Bs))}
+	ys := make([]gnarkfext.E4Gen, len(p.Bs))
+	for i := range ys {
+		ys[i] = gnarkfext.ZeroE4Gen()
+	}
+	return GnarkInnerProductParams{Ys: ys}
 }
 
 func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
@@ -79,9 +83,15 @@ type GnarkUnivariateEvalParams struct {
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
-	// no need to preallocate the x because its size is already known
+	// Allocate with properly initialized zero E4Gen to avoid nil pointer issues
+	// during gnark circuit definition
+	extYs := make([]gnarkfext.E4Gen, len(p.Pols))
+	for i := range extYs {
+		extYs[i] = gnarkfext.ZeroE4Gen()
+	}
 	return GnarkUnivariateEvalParams{
-		ExtYs: make([]gnarkfext.E4Gen, len(p.Pols)),
+		ExtX:  gnarkfext.ZeroE4Gen(),
+		ExtYs: extYs,
 	}
 }
 

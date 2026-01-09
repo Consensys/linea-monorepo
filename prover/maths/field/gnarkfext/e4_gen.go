@@ -22,6 +22,21 @@ func NewE4Gen(v fext.Element) E4Gen {
 	}
 }
 
+// ZeroE4Gen returns a zero-initialized E4Gen suitable for gnark circuit allocation.
+// This ensures all internal WrappedVariable fields are properly initialized.
+func ZeroE4Gen() E4Gen {
+	return E4Gen{
+		B0: E2Gen{
+			A0: zk.ValueOf(0),
+			A1: zk.ValueOf(0),
+		},
+		B1: E2Gen{
+			A0: zk.ValueOf(0),
+			A1: zk.ValueOf(0),
+		},
+	}
+}
+
 // TODO @yao: check if all calls to NewE4GenFromBase are correct
 func NewE4GenFromBase(v any) E4Gen {
 	var res E4Gen

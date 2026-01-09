@@ -216,7 +216,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
@@ -236,7 +236,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
@@ -259,7 +259,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKeyPublicInput),
@@ -324,7 +324,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
@@ -342,7 +342,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.WithOptionalSISHashingThreshold(64),

@@ -36,7 +36,7 @@ func (w *WrappedVariable) AsNative() frontend.Variable {
 	if len(w.EV.Limbs) == 1 {
 		return w.EV.Limbs[0]
 	}
-	if len(w.EVpointer.Limbs) == 1 {
+	if w.EVpointer != nil && len(w.EVpointer.Limbs) == 1 {
 		return w.EVpointer.Limbs[0]
 	}
 	utils.Panic("unexpected shape for wrapped variable: %++v", w)

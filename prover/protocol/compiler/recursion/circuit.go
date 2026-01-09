@@ -119,8 +119,13 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	w.Verify(apiGen.NativeApi)
 
 	for i := range r.Pubs {
-		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(apiGen.NativeApi, w)
-		api.AssertIsEqual(r.Pubs[i], pub.AsNative())
+		acc := w.Spec.PublicInputs[i].Acc
+		if acc.IsBase() {
+			pub := acc.GetFrontendVariable(apiGen.NativeApi, w)
+			api.AssertIsEqual(r.Pubs[i], pub.AsNative())
+		} else {
+			panic("unsupported public input type")
+		}
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())

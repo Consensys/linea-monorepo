@@ -58,14 +58,14 @@ func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.
 		yMap[polName.GetColID()] = queryParams.ExtYs[i]
 	}
 
-	// This will leave some of the columns to nil
+	// This will leave some of the columns to zero
 	res := make([]gnarkfext.E4Gen, len(fys.Ranges))
 	for i, name := range fys.Ranges {
 		if y, found := yMap[name]; found {
 			res[i] = y
 		} else {
-			// Set it to zero explicitly
-			res[i] = gnarkfext.E4Gen{}
+			// Set it to zero explicitly with properly initialized WrappedVariables
+			res[i] = gnarkfext.ZeroE4Gen()
 		}
 	}
 

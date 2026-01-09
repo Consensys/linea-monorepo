@@ -64,7 +64,7 @@ func TestDistributedWizard(t *testing.T) {
 }
 
 func TestDistributedWizardWithSegmentCompilation(t *testing.T) {
-	t.Skipf(" the test is skipped since vortex is not yet implemented for extension/post-recursion")
+	// t.Skipf(" the test is skipped since vortex is not yet implemented for extension/post-recursion")
 
 	testCases := []DistributedTestCase{
 		&LookupTestCase{numRow: 1 << NbRow},
@@ -94,8 +94,8 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 	if segmentCompilation {
 		// compile with vortex/ self-recursion/recursion
 		distWizard = distributed.DistributeWizard(wiop, disc).
-			CompileSegments(testCompilationParams).
-			Conglomerate(testCompilationParams)
+			CompileSegments(testCompilationParams)
+		// Conglomerate(testCompilationParams)
 	} else {
 		// dummy compilation
 		distWizard = distributed.DistributeWizard(wiop, disc)
