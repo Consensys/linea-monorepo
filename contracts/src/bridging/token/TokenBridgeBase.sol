@@ -149,7 +149,7 @@ abstract contract TokenBridgeBase is
    * @notice Initializes TokenBridge and underlying service dependencies - used for new networks only.
    * @param _initializationData The initial data used for initializing the TokenBridge contract.
    */
-  function __TokenBridge_init(InitializationData calldata _initializationData) internal virtual {
+  function __TokenBridge_init(InitializationData calldata _initializationData) internal virtual onlyInitializing {
     __MessageServiceBase_init(_initializationData.messageService);
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
 
