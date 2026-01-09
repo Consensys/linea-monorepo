@@ -193,17 +193,17 @@ func (ctx SelfRecursionCtx) GluePositionsStacked() {
 		dedicated.HandleSourcePaddedColumns(ctx.VortexCtx.NbColsToOpen()),
 	)
 	// Register the prover action for the stacked columns
-	if stackedPosCols.IsSourceColsArePadded {
+	if stackedPosCols.AreSourceColsPadded {
 		ctx.Comp.RegisterProverAction(
 			round,
 			&dedicated.StackedColumn{
-				Column:                stackedPosCols.Column,
-				Source:                cleanPosCols,
-				UnpaddedColumn:        stackedPosCols.UnpaddedColumn,
-				ColumnFilter:          stackedPosCols.ColumnFilter,
-				UnpaddedColumnFilter:  stackedPosCols.UnpaddedColumnFilter,
-				UnpaddedSize:          stackedPosCols.UnpaddedSize,
-				IsSourceColsArePadded: stackedPosCols.IsSourceColsArePadded,
+				Column:               stackedPosCols.Column,
+				Source:               cleanPosCols,
+				UnpaddedColumn:       stackedPosCols.UnpaddedColumn,
+				ColumnFilter:         stackedPosCols.ColumnFilter,
+				UnpaddedColumnFilter: stackedPosCols.UnpaddedColumnFilter,
+				UnpaddedSize:         stackedPosCols.UnpaddedSize,
+				AreSourceColsPadded:  stackedPosCols.AreSourceColsPadded,
 			},
 		)
 	} else {
@@ -217,7 +217,7 @@ func (ctx SelfRecursionCtx) GluePositionsStacked() {
 	}
 	// Next we compute the identity permutation
 	s := make([]field.Element, stackedPosCols.Column.Size())
-	if stackedPosCols.IsSourceColsArePadded {
+	if stackedPosCols.AreSourceColsPadded {
 		s = make([]field.Element, stackedPosCols.UnpaddedColumn.Size())
 	}
 	for i := range s {
@@ -225,7 +225,7 @@ func (ctx SelfRecursionCtx) GluePositionsStacked() {
 	}
 	s_smart := smartvectors.NewRegular(s)
 	// Insert the fixed permutation constraint.
-	if stackedPosCols.IsSourceColsArePadded {
+	if stackedPosCols.AreSourceColsPadded {
 		ctx.Comp.InsertFixedPermutation(
 			round,
 			ctx.positionGlue(),
