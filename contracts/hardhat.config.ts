@@ -18,6 +18,7 @@ import "./scripts/operational/setMessageServiceOnTokenBridgeTask";
 import "./scripts/operational/addAndClaimMessage";
 import "./scripts/operational/addAndClaimMessageForLST";
 import "./scripts/operational/unstakePermissionless";
+import "./scripts/operational/unstakePermissionlessV2";
 import "./scripts/operational/setNodeOperatorFeeRecipient";
 import "./scripts/operational/deployPaymentSplitter";
 import "./scripts/operational/addL2YieldRecipient";

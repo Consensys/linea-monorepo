@@ -1,7 +1,5 @@
 import { task } from "hardhat/config";
 import { getTaskCliOrEnvValue } from "../../common/helpers/environmentHelper";
-import { Proof, SingleProof, ProofType, createProof } from "@chainsafe/persistent-merkle-tree";
-import { ssz } from "@lodestar/types";
 import {
   fetchBeaconHeader,
   fetchBeaconState,
@@ -9,8 +7,11 @@ import {
 } from "@lidofinance/lsv-cli/dist/utils/fetchCL";
 import { createBeaconHeaderProof, createStateProof } from "@lidofinance/lsv-cli/dist/utils/proof/proofs.js";
 import { hexlify, AbiCoder } from "ethers";
+import * as path from "path";
+import { pathToFileURL } from "url";
+import * as fs from "fs";
 
-const gIndexPendingPartialWithdrawals = 75n;
+const gIndexPendingPartialWithdrawals = 99n;
 
 /*
   *******************************************************************************************
@@ -23,7 +24,7 @@ const gIndexPendingPartialWithdrawals = 75n;
   -------------------------------------------------------------------------------------------
   CUSTOM_PRIVATE_KEY=0000000000000000000000000000000000000000000000000000000000000002 \
   CUSTOM_BLOCKCHAIN_URL=https://0xrpc.io/hoodi \
-  npx hardhat unstakePermissionless \
+  npx hardhat unstakePermissionlessV2 \
     --yield-manager <address> \
     --yield-provider <address> \
     --validator-index <uint64> \
@@ -43,7 +44,7 @@ const gIndexPendingPartialWithdrawals = 75n;
   The pendingPartialWithdrawalsWitness proof needs to be provided manually in the code.
   *******************************************************************************************
 */
-task("unstakePermissionless", "Performs YieldManager::unstakePermissionless")
+task("unstakePermissionlessV2", "Performs YieldManager::unstakePermissionless (current contract version)")
   .addOptionalParam("yieldManager")
   .addOptionalParam("yieldProvider")
   .addOptionalParam("validatorIndex")
@@ -84,6 +85,25 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless")
     console.log("  slot:", slot.toString());
     console.log("  beaconRpcUrl:", beaconRpcUrl);
 
+    // Resolve path relative to contracts directory (where script is run from)
+    const persistentMerkleTreePath = path.resolve(
+      process.cwd(),
+      "node_modules/@chainsafe/persistent-merkle-tree/lib/proof/index.js",
+    );
+    // Verify file exists before attempting import
+    if (!fs.existsSync(persistentMerkleTreePath)) {
+      throw new Error(`Module not found at: ${persistentMerkleTreePath}. Current working directory: ${process.cwd()}`);
+    }
+    // Convert path to file:// URL using Node's pathToFileURL for proper formatting
+    // Use Function constructor to prevent ts-node from statically analyzing the import
+    const fileUrl = pathToFileURL(persistentMerkleTreePath).href;
+    const importModule = new Function("url", "return import(url)");
+    const proofModule = await importModule(fileUrl);
+    const { createProof, ProofType } = proofModule;
+
+    // Import @lodestar/types using the same dynamic import pattern
+    const lodestarTypes = await importModule("@lodestar/types");
+
     // Get beacon state
     const beaconHeaderJson = await fetchBeaconHeader(slot, beaconRpcUrl);
     const beaconHeader = beaconHeaderJson.data.header.message;
@@ -101,12 +121,12 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless")
     const validatorContainerProofHex = validatorContainerProofConcat.map((w) => hexlify(w));
 
     // Pending Partial Withdrawals Proof
-    const stateViewDU = ssz.fulu.BeaconState.getViewDU(stateView.node);
+    const stateViewDU = lodestarTypes.ssz.fulu.BeaconState.getViewDU(stateView.node);
     const { pendingPartialWithdrawals } = stateViewDU;
-    const pendingPartialWithdrawalsProof: Proof = createProof(stateView.node, {
+    const pendingPartialWithdrawalsProof = createProof(stateView.node, {
       type: ProofType.single,
       gindex: gIndexPendingPartialWithdrawals,
-    }) as SingleProof;
+    }) as { witnesses: Uint8Array[] };
     const pendingPartialWithdrawalsProofConcat = [
       ...pendingPartialWithdrawalsProof.witnesses,
       ...beaconHeaderProof.witnesses,
