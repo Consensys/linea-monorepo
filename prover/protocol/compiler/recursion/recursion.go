@@ -291,7 +291,10 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 					continue
 				}
 
-				x := field.NewFromString(assign.Commitments[j][k].(string))
+				var x field.Element
+				if _, err := x.SetInterface(assign.Commitments[j][k]); err != nil {
+					utils.Panic("could not convert commitment to field element: %v", err)
+				}
 				run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
 			}
 		}
