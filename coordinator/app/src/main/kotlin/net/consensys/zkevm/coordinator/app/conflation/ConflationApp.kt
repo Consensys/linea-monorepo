@@ -69,7 +69,6 @@ import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchProofHandlerImpl
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
