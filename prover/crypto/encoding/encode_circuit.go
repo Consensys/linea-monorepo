@@ -7,33 +7,35 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
-// Function to encode 8 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
+// multipliers9 contains precomputed powers of 2 for 9-chunk (30-bit) encoding.
+// Used for encoding 9 Koalabear elements into a single BLS12-377 element.
+var multipliers9 = [KoalabearChunks]*big.Int{
+	big.NewInt(1),                                 // 2^0
+	big.NewInt(1 << ChunkBits9),                   // 2^30
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits9*2), // 2^60
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits9*3), // 2^90
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits9*4), // 2^120
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits9*5), // 2^150
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits9*6), // 2^180
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits9*7), // 2^210
+	new(big.Int).Lsh(big.NewInt(1), ChunkBits9*8), // 2^240
+}
+
+// Encode8WVsToFV encodes 8 Koalabear zk.WrappedVariable into a single BLS12-377 frontend.Variable.
+// Each input is treated as a 31-bit value. This is the circuit equivalent of EncodeKoalabearOctupletToFrElement.
 func Encode8WVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Variable {
-
 	var result frontend.Variable = 0
-
-	// Precompute all multipliers as constants
-	multipliers := [8]*big.Int{
-		big.NewInt(1),                        // 2^0
-		big.NewInt(1 << 31),                  // 2^31
-		new(big.Int).Lsh(big.NewInt(1), 62),  // 2^62
-		new(big.Int).Lsh(big.NewInt(1), 93),  // 2^93
-		new(big.Int).Lsh(big.NewInt(1), 124), // 2^124
-		new(big.Int).Lsh(big.NewInt(1), 155), // 2^155
-		new(big.Int).Lsh(big.NewInt(1), 186), // 2^186
-		new(big.Int).Lsh(big.NewInt(1), 217), // 2^217
-	}
 
 	for i := 0; i < 8; i++ {
 		value := values[7-i].AsNative()
-		// Add the value to the result, scaled by the current multiplier
-		result = api.Add(result, api.Mul(value, multipliers[i]))
+		result = api.Add(result, api.Mul(value, multipliers8[i]))
 	}
 
 	return result
 }
 
-// Function to encode 31-bit zk.WrappedVariable into 256-bit frontend.Variable slices
+// EncodeWVsToFVs encodes a slice of Koalabear zk.WrappedVariable into BLS12-377 frontend.Variable slices.
+// Elements are packed 8 at a time, with left-padding of zeros if needed.
 func EncodeWVsToFVs(api frontend.API, values []zk.WrappedVariable) []frontend.Variable {
 	var res []frontend.Variable
 	for len(values) != 0 {
@@ -55,9 +57,10 @@ func EncodeWVsToFVs(api frontend.API, values []zk.WrappedVariable) []frontend.Va
 	return res
 }
 
-// Function to encode a 256-bit frontend.Variable into 8 zk.WrappedVariable objects, each representing 30-bit limbs.
+// EncodeFVTo8WVs decodes a BLS12-377 frontend.Variable into 8 Koalabear zk.WrappedVariable.
+// Each output represents a 30-bit limb extracted from the input.
+// Note: This extracts 30-bit chunks, which differs from the 31-bit encoding in Encode8WVsToFV.
 func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVariable {
-
 	var res [8]zk.WrappedVariable
 	bits := api.ToBinary(value, 256)
 
@@ -67,38 +70,22 @@ func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVari
 	}
 
 	for i := 0; i < 8; i++ {
-		limbBits := append(bits[32*i : 32*i+30])
+		limbBits := bits[32*i : 32*i+30]
 		res[i] = apiGen.FromBinary(limbBits...)
 	}
 
 	return res
 }
 
-// BLS to Koalabear encoding, 1 BLS -- > 9 Koalabear --> 1 BLS
-// The Encode9WVsToFV function is used in the gnark verifier
-// Function to encode 9 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
+// Encode9WVsToFV encodes 9 Koalabear zk.WrappedVariable into a single BLS12-377 frontend.Variable.
+// Each input is treated as a 30-bit value. This is the circuit equivalent of DecodeKoalabearToBLS12Root.
+// Used for Merkle root round-trip encoding in the gnark verifier.
 func Encode9WVsToFV(api frontend.API, values [KoalabearChunks]zk.WrappedVariable) frontend.Variable {
-
 	var result frontend.Variable = 0
-
-	// Precompute all multipliers as constants
-	// First 8 values use 30 bits each, last value uses 16 bits
-	multipliers := [9]*big.Int{
-		big.NewInt(1),                        // 2^0
-		big.NewInt(1 << 30),                  // 2^30
-		new(big.Int).Lsh(big.NewInt(1), 60),  // 2^60
-		new(big.Int).Lsh(big.NewInt(1), 90),  // 2^90
-		new(big.Int).Lsh(big.NewInt(1), 120), // 2^120
-		new(big.Int).Lsh(big.NewInt(1), 150), // 2^150
-		new(big.Int).Lsh(big.NewInt(1), 180), // 2^180
-		new(big.Int).Lsh(big.NewInt(1), 210), // 2^210
-		new(big.Int).Lsh(big.NewInt(1), 240), // 2^240
-	}
 
 	for i := 0; i < KoalabearChunks; i++ {
 		value := values[KoalabearChunks-1-i].AsNative()
-		// Add the value to the result, scaled by the current multiplier
-		result = api.Add(result, api.Mul(value, multipliers[i]))
+		result = api.Add(result, api.Mul(value, multipliers9[i]))
 	}
 
 	return result

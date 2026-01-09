@@ -299,7 +299,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			ctx.Comp,
 			accessors.NewFromCoin(ctx.Coins.Collapse),
 			ctx.Columns.PreimagesSis,
-			fmt.Sprintf("PREIMAGE_SIS_COLLAPSE_%v", ctx.SelfRecursionCnt),
+			maybePrefix(ctx, fmt.Sprintf("PREIMAGE_SIS_COLLAPSE_%v", ctx.SelfRecursionCnt)),
 		)
 	}
 
@@ -329,7 +329,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				ctx.Comp,
 				accessors.NewFromCoin(ctx.Coins.Collapse),
 				ctx.Columns.WholePreimagesNonSis,
-				fmt.Sprintf("PREIMAGE_NONSIS_COLLAPSE_%v", ctx.SelfRecursionCnt),
+				maybePrefix(ctx, fmt.Sprintf("PREIMAGE_NONSIS_COLLAPSE_%v", ctx.SelfRecursionCnt)),
 			)
 
 			preImageNonSisEval = functionals.CoeffEval(
@@ -382,7 +382,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 					preImageSisEval,
 				),
 			)
-			preImageEval = accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
+			preImageEval = accessors.NewFromExpression(preImageEvalSymb, maybePrefix(ctx, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt)))
 		} else if len(ctx.NonSisMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedSisHashQ == nil {
 			preImageEval = preImageNonSisEval
 		} else if len(ctx.NonSisMetaData.ToHashSizes) == 0 && ctx.Columns.ConcatenatedSisHashQ != nil {

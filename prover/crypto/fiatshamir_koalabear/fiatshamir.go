@@ -80,15 +80,12 @@ func (fs *FS) UpdateSV(sv smartvectors.SmartVector) {
 }
 
 func (fs *FS) RandomField() field.Octuplet {
-	res := fs.h.SumElement()
-	fs.safeguardUpdate()
-	return res
+	defer fs.safeguardUpdate()
+	return fs.h.SumElement()
 }
 
 func (fs *FS) RandomFext() fext.Element {
-	defer fs.safeguardUpdate()
-
-	s := fs.RandomField()
+	s := fs.RandomField() // already calls safeguardUpdate()
 	var res fext.Element
 	res.B0.A0 = s[0]
 	res.B0.A1 = s[1]
@@ -126,13 +123,12 @@ func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
 	i := 0
 	res := make([]int, num)
 	for i < num {
-		// thake the remainder mod n of each limb
-		c := fs.RandomField()
+		// take the remainder mod n of each limb
+		c := fs.RandomField() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := c[j].Bits()
 			res[i] = int(b[0]) & mask
 			i++
-			fs.safeguardUpdate()
 			if i >= num {
 				break
 			}
