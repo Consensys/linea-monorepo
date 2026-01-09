@@ -85,10 +85,7 @@ func ValueOf(v any) WrappedVariable {
 }
 
 func ValueFromKoala(v field.Element) WrappedVariable {
-	var bValue big.Int
-	v.BigInt(&bValue)
-	res := ValueOf(&bValue)
-	return res
+	return ValueOf(v.Uint64())
 }
 
 type GenericApi struct {
