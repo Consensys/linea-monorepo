@@ -1,5 +1,7 @@
 import { task } from "hardhat/config";
 import { getTaskCliOrEnvValue } from "../../common/helpers/environmentHelper";
+import { Proof, SingleProof, ProofType, createProof } from "@chainsafe/persistent-merkle-tree";
+import { ssz } from "@lodestar/types";
 import {
   fetchBeaconHeader,
   fetchBeaconState,
@@ -7,6 +9,8 @@ import {
 } from "@lidofinance/lsv-cli/dist/utils/fetchCL";
 import { createBeaconHeaderProof, createStateProof } from "@lidofinance/lsv-cli/dist/utils/proof/proofs.js";
 import { hexlify, AbiCoder } from "ethers";
+
+const gIndexPendingPartialWithdrawals = 75n;
 
 /*
   *******************************************************************************************
@@ -86,20 +90,33 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless")
     console.log("beaconHeader:", beaconHeader);
     const { stateBodyBytes, forkName } = await fetchBeaconState(slot, beaconRpcUrl);
 
-    // Proofs
+    // Validator Container Proof
     const { proof: beaconHeaderProof, root: beaconHeaderRoot } = await createBeaconHeaderProof(beaconHeader);
     const {
       proof: validatorStateProof,
       validator,
-      view: validatorStateView,
+      view: stateView,
     } = await createStateProof(validatorIndex, stateBodyBytes, forkName);
-    const proofConcat = [...validatorStateProof.witnesses, ...beaconHeaderProof.witnesses];
-    const proofHex = proofConcat.map((w) => hexlify(w));
+    const validatorContainerProofConcat = [...validatorStateProof.witnesses, ...beaconHeaderProof.witnesses];
+    const validatorContainerProofHex = validatorContainerProofConcat.map((w) => hexlify(w));
+
+    // Pending Partial Withdrawals Proof
+    const stateViewDU = ssz.fulu.BeaconState.getViewDU(stateView.node);
+    const { pendingPartialWithdrawals } = stateViewDU;
+    const pendingPartialWithdrawalsProof: Proof = createProof(stateView.node, {
+      type: ProofType.single,
+      gindex: gIndexPendingPartialWithdrawals,
+    }) as SingleProof;
+    const pendingPartialWithdrawalsProofConcat = [
+      ...pendingPartialWithdrawalsProof.witnesses,
+      ...beaconHeaderProof.witnesses,
+    ];
+    const pendingPartialWithdrawalsProofHex = pendingPartialWithdrawalsProofConcat.map((w) => hexlify(w));
 
     // Fill out Validator Witness fields
     const headerByParentJson = await fetchBeaconHeaderByParentRoot(beaconHeaderRoot, beaconRpcUrl);
     const headerByParentSlot = headerByParentJson.data[0].header.message.slot;
-    const headerByParentTimestamp = validatorStateView.genesisTime + headerByParentSlot * 12;
+    const headerByParentTimestamp = stateView.genesisTime + headerByParentSlot * 12;
 
     // Encode withdrawal params - only pubkeys and refundRecipient (no amounts array)
     const withdrawalParams = AbiCoder.defaultAbiCoder().encode(
@@ -115,7 +132,7 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless")
     //   uint64 activationEligibilityEpoch;
     // }
     const validatorContainerWitness = {
-      proof: proofHex,
+      proof: validatorContainerProofHex,
       effectiveBalance: BigInt(validator.effectiveBalance),
       activationEpoch: BigInt(validator.activationEpoch),
       activationEligibilityEpoch: BigInt(validator.activationEligibilityEpoch),
@@ -125,11 +142,9 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless")
     //   bytes32[] proof;
     //   PendingPartialWithdrawal[] pendingPartialWithdrawals;
     // }
-    // NOTE: User will handle pendingPartialWithdrawalsWitness manually
-    // Placeholder structure - user needs to provide actual proof and pendingPartialWithdrawals array
     const pendingPartialWithdrawalsWitness = {
-      proof: [], // User needs to provide this manually
-      pendingPartialWithdrawals: [], // User needs to provide this manually
+      proof: pendingPartialWithdrawalsProofHex,
+      pendingPartialWithdrawals: pendingPartialWithdrawals.toValue(),
     };
 
     // struct BeaconProofWitness {
