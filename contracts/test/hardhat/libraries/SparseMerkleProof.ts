@@ -345,7 +345,7 @@ describe("SparseMerkleProof", () => {
         .withArgs(192, ethers.dataLength(wrongAccountValue));
     });
 
-    it("Should return parsed leaf", async () => {
+    it("Should return parsed account", async () => {
       const {
         accountProof: {
           proof: { value },
@@ -357,7 +357,7 @@ describe("SparseMerkleProof", () => {
       expect(account.nonce).to.be.equal(41n);
       expect(account.balance).to.be.equal(15353n);
       expect(account.storageRoot).to.be.equal(STORAGE_ROOT);
-      expect(account.mimcCodeHash).to.be.equal("0x000000000000000000000000000000000000000000000000000000000000004b");
+      expect(account.snarkCodeHash).to.be.equal("0x000000000000000000000000000000000000000000000000000000000000004b");
       expect(account.keccakCodeHash).to.be.equal("0x0f00000000000000000000000000000000000000000000000000000000000000");
       expect(account.codeSize).to.be.equal(7n);
     });

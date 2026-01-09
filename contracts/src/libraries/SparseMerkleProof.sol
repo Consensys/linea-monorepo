@@ -19,7 +19,7 @@ library SparseMerkleProof {
     uint64 nonce;
     uint256 balance;
     bytes32 storageRoot;
-    bytes32 mimcCodeHash;
+    bytes32 snarkCodeHash;
     bytes32 keccakCodeHash;
     uint64 codeSize;
   }
@@ -117,7 +117,7 @@ library SparseMerkleProof {
           Poseidon2.padBytes32(bytes32(uint256(account.nonce))),
           Poseidon2.padBytes32(bytes32(account.balance)),
           account.storageRoot,
-          account.mimcCodeHash,
+          account.snarkCodeHash,
           Poseidon2.padBytes32(account.keccakCodeHash),
           Poseidon2.padBytes32(bytes32(uint256(account.codeSize)))
         )
