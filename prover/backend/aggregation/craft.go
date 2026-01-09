@@ -16,7 +16,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
@@ -426,7 +425,7 @@ func parseProofClaim(
 
 func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Request) error {
 	var (
-		hshM = mimc.NewMiMC()
+		hshM = hasher_factory.NewMiMC()
 		po   invalidity.Response
 	)
 

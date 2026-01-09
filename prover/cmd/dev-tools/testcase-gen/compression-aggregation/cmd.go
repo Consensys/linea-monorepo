@@ -54,19 +54,6 @@ var cfg = &config.Config{
 	},
 	AssetsDir: "./prover-assets", // TODO @gbotrel untested
 	// Layer2 fields will be populated from the DCC spec in aggregation spec files
-	Layer2: struct {
-		ChainID           uint           "mapstructure:\"chain_id\" validate:\"required\""
-		MsgSvcContractStr string         "mapstructure:\"message_service_contract\" validate:\"required,eth_addr\""
-		MsgSvcContract    common.Address "mapstructure:\"-\""
-	}{
-		MsgSvcContractStr: "0x0000000000000000000000000000000000000000",
-		MsgSvcContract: common.Address{
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00,
-		},
-		ChainID: 1,
-	},
 }
 
 func init() {
@@ -241,7 +228,6 @@ func genFiles(cmd *cobra.Command, args []string) {
 		// and dump the circuit id
 		dumpVerifierContract(odir, circuits.MockCircuitIDEmulation)
 	}
-}
 
 	// and for the invalidity proofs
 	for i, resp := range runningSpec.InvalidityProofs {
