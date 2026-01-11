@@ -94,6 +94,15 @@ func (ext4 *Ext4) IsZero(e *E4Gen) frontend.Variable {
 	)
 }
 
+func (ext4 *Ext4) IsBase(v E4Gen) bool {
+	if ext4.ApiGen.IsZero(v.B0.A1) == 1 && ext4.ApiGen.IsZero(v.B1.A0) == 1 && ext4.ApiGen.IsZero(v.B1.A1) == 1 {
+		return true
+
+	} else {
+		return false
+	}
+}
+
 func (ext4 *Ext4) assign(e1 []zk.WrappedVariable) *E4Gen {
 	return &E4Gen{
 		B0: *ext4.Ext2.assign(e1[:2]),

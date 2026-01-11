@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync/atomic"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -19,7 +20,37 @@ import (
 var (
 	ErrTermIsProduct    error = errors.New("term is product")
 	ErrTermIsNotProduct error = errors.New("term is not product")
+
+	// Global counters for tracking base vs extension field operations
+	GlobalCountBase atomic.Int64
+	GlobalCountExt  atomic.Int64
 )
+
+// ResetGlobalCounters resets the global base/ext counters to zero
+func ResetGlobalCounters() {
+	GlobalCountBase.Store(0)
+	GlobalCountExt.Store(0)
+}
+
+// GetGlobalCounters returns the current values of the global counters
+func GetGlobalCounters() (base, ext int64) {
+	return GlobalCountBase.Load(), GlobalCountExt.Load()
+}
+
+// PrintGlobalCounters prints the global counters and their percentages
+func PrintGlobalCounters() {
+	base := GlobalCountBase.Load()
+	ext := GlobalCountExt.Load()
+	total := base + ext
+	if total > 0 {
+		basePercent := float64(base) / float64(total) * 100
+		extPercent := float64(ext) / float64(total) * 100
+		fmt.Printf("Global counts - Base: %d (%.2f%%), Ext: %d (%.2f%%), Total: %d\n",
+			base, basePercent, ext, extPercent, total)
+	} else {
+		fmt.Println("Global counts - No operations recorded")
+	}
+}
 
 // Product is an implementation of the [Operator] interface and represents a
 // product of terms with exponents.
@@ -138,7 +169,7 @@ func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.
 	return res
 }
 
-// GnarkEval implements the [Operator] interface.
+// GnarkEvalExt implements the [Operator] interface.
 func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
 
 	e4Api, err := gnarkfext.NewExt4(api)
@@ -153,8 +184,15 @@ func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gna
 	}
 
 	for i, input := range inputs {
-		term := gnarkutil.ExpExt(api, input, prod.Exponents[i])
-		res = *e4Api.Mul(&res, &term)
+		if e4Api.IsBase(input) {
+			term := gnarkutil.Exp(api, input.B0.A0, prod.Exponents[i])
+			res = *e4Api.MulByFp(&res, term)
+			GlobalCountBase.Add(1)
+		} else {
+			term := gnarkutil.ExpExt(api, input, prod.Exponents[i])
+			res = *e4Api.Mul(&res, &term)
+			GlobalCountExt.Add(1)
+		}
 	}
 
 	return res

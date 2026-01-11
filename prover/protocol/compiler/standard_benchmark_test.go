@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -420,8 +421,12 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds(), isBLS)
 			circuit.C = *c
 		}
+		// initialize the profiler
+		filePath := "BenchmarkCompilerWithSelfRecursionAndGnarkVerifier.pprof"
+		pro := profile.Start(profile.WithPath(filePath))
 
 		csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+		pro.Stop()
 
 		if err != nil {
 			b.Fatal(err)

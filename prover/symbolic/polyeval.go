@@ -112,6 +112,26 @@ func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfe
 
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
+	// if e4Api.IsBase(x) {
+	// 	for i := len(inputs) - 2; i >= 1; i-- {
+	// 		if e4Api.IsBase(res) {
+
+	// 			res.B0.A0 = e4Api.ApiGen.Mul(res.B0.A0, x.B0.A0)
+	// 			if e4Api.IsBase(inputs[i]) {
+	// 				res.B0.A0 = e4Api.ApiGen.Add(res.B0.A0, inputs[i].B0.A0)
+	// 			} else {
+	// 				res = *e4Api.AddByBase(&inputs[i], res.B0.A0)
+
+	// 			}
+
+	// 		}
+	// 	}
+	// } else {
+	// 	for i := len(inputs) - 2; i >= 1; i-- {
+	// 		res = *e4Api.Mul(&res, &x)
+	// 		res = *e4Api.Add(&res, &inputs[i])
+	// 	}
+	// }
 
 	for i := len(inputs) - 2; i >= 1; i-- {
 		res = *e4Api.Mul(&res, &x)

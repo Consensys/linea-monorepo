@@ -142,11 +142,16 @@ func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnark
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
-	var tmp gnarkfext.E4Gen
 	for i, input := range inputs {
-		coeff := gnarkfext.NewE4GenFromBase(lc.Coeffs[i])
-		tmp = *e4Api.Mul(&coeff, &input)
-		res = *e4Api.Add(&tmp, &res)
+		if e4Api.IsBase(input) {
+			tmp := e4Api.ApiGen.Mul(zk.ValueOf(lc.Coeffs[i]), input.B0.A0)
+			res.B0.A0 = e4Api.ApiGen.Add(res.B0.A0, tmp)
+		} else {
+			coeff := gnarkfext.NewE4GenFromBase(lc.Coeffs[i])
+			tmp := *e4Api.Mul(&coeff, &input)
+			res = *e4Api.Add(&tmp, &res)
+		}
+
 	}
 
 	return res

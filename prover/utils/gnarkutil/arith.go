@@ -74,26 +74,3 @@ func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
 	}
 	return res
 }
-
-// ExpVariableExponent exponentiates x by n in a gnark circuit. Where n is not fixed.
-// n is limited to n bits (max)
-func ExpVariableExponent(api frontend.API, x zk.WrappedVariable, exp frontend.Variable, expNumBits int) zk.WrappedVariable {
-
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
-
-	expBits := api.ToBinary(exp, expNumBits)
-	res := zk.ValueOf(1)
-
-	for i := len(expBits) - 1; i >= 0; i-- {
-		if i != len(expBits)-1 {
-			res = apiGen.Mul(res, res)
-		}
-		tmp := apiGen.Mul(res, x)
-		res = apiGen.Select(expBits[i], tmp, res)
-	}
-
-	return res
-}
