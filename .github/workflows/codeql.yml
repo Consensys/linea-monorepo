@@ -94,13 +94,6 @@ jobs:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
 
-      - name: Setup Java
-        if: matrix.language == 'java-kotlin'
-        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b #v4.5.0
-        with:
-          distribution: temurin
-          java-version: 21
-      
       - name: Setup Tracer Environment
         if: matrix.language == 'java-kotlin'
         uses: ./.github/actions/setup-tracer-environment
