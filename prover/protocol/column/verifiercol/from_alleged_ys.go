@@ -49,23 +49,23 @@ func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend
 	panic("implement me")
 }
 
-func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
+func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
 	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
 
 	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]gnarkfext.E4Gen{}
+	yMap := map[ifaces.ColID]gnarkfext.Element{}
 	for i, polName := range fys.Query.Pols {
 		yMap[polName.GetColID()] = queryParams.ExtYs[i]
 	}
 
 	// This will leave some of the columns to nil
-	res := make([]gnarkfext.E4Gen, len(fys.Ranges))
+	res := make([]gnarkfext.Element, len(fys.Ranges))
 	for i, name := range fys.Ranges {
 		if y, found := yMap[name]; found {
 			res[i] = y
 		} else {
 			// Set it to zero explicitly
-			res[i] = gnarkfext.E4Gen{}
+			res[i] = gnarkfext.Element{}
 		}
 	}
 
@@ -77,7 +77,7 @@ func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) 
 	panic("implement me")
 }
 
-func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
+func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
 	//TODO implement me
 	panic("implement me")
 }

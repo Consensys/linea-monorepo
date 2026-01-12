@@ -10,7 +10,6 @@ import (
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -312,10 +311,7 @@ func MinMaxOffset(expr *symbolic.Expression) utils.Range {
 
 // Test a polynomial identity relation
 func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+
 	boarded := cs.Board()
 	metadatas := boarded.ListVariableMetadata()
 
@@ -334,7 +330,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	}
 
 	// Collects the relevant datas into a slice for the evaluation
-	evalInputs := make([][]gnarkfext.E4Gen, len(metadatas))
+	evalInputs := make([][]gnarkfext.Element, len(metadatas))
 
 	// Omega is a root of unity which generates the domain of evaluation
 	// of the constraint. Its size coincide with the size of the domain
@@ -348,7 +344,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	// precomputations of the powers of omega, can be optimized if useful
 	omegas := make([]frontend.Variable, cs.DomainSize)
 	for i := range omegas {
-		omegas[i] = zk.ValueFromKoala(omegaI)
+		omegas[i] = field.NewFromKoala(omegaI)
 		omegaI.Mul(&omegaI, &omega)
 	}
 
@@ -367,21 +363,21 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 			}
 		case variables.X:
 			base := meta.GnarkEvalNoCoset(cs.DomainSize)
-			evalInputs[k] = make([]gnarkfext.E4Gen, cs.DomainSize)
+			evalInputs[k] = make([]gnarkfext.Element, cs.DomainSize)
 			for i := range base {
-				evalInputs[k][i] = gnarkfext.FromBase(base[i])
+				evalInputs[k][i] = gnarkfext.NewFromBase(base[i])
 			}
 		case variables.PeriodicSample:
 			base := meta.GnarkEvalNoCoset(cs.DomainSize)
-			evalInputs[k] = make([]gnarkfext.E4Gen, cs.DomainSize)
+			evalInputs[k] = make([]gnarkfext.Element, cs.DomainSize)
 			for i := range base {
-				evalInputs[k][i] = gnarkfext.FromBase(base[i])
+				evalInputs[k][i] = gnarkfext.NewFromBase(base[i])
 			}
 		case ifaces.Accessor:
-			var x gnarkfext.E4Gen
+			var x gnarkfext.Element
 			if meta.IsBase() {
 				base := meta.GetFrontendVariable(api, run)
-				x = gnarkfext.NewE4GenFromFrontedBase(base)
+				x = gnarkfext.NewFromBase(base)
 			} else {
 				x = meta.GetFrontendVariableExt(api, run)
 			}
@@ -403,13 +399,13 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 
 	for i := start; i < stop; i++ {
 		// This panics if the global constraints doesn't use any commitment
-		inputs := make([]gnarkfext.E4Gen, len(evalInputs))
+		inputs := make([]gnarkfext.Element, len(evalInputs))
 		for j := range inputs {
 			inputs[j] = evalInputs[j][i]
 		}
 		res := boarded.GnarkEvalExt(api, inputs)
-		zero := ext4.Zero()
-		ext4.AssertIsEqual(&res, zero)
+		zero := gnarkfext.Zero()
+		gnarkfext.AssertIsEqual(api, res, zero)
 	}
 
 	// Update the value of omega^i

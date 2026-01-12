@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -151,12 +150,12 @@ func TestEncoding(t *testing.T) {
 	var toEncode1 [8]field.Element
 	for i := 0; i < 8; i++ {
 		toEncode1[i].SetRandom()
-		witness.ToEncode1[i] = zk.ValueFromKoala(toEncode1[i])
+		witness.ToEncode1[i] = field.NewFromKoala(toEncode1[i])
 	}
 	var toEncode2 [12]field.Element
 	for i := 0; i < 12; i++ {
 		toEncode2[i].SetRandom()
-		witness.ToEncode2[i] = zk.ValueFromKoala(toEncode2[i])
+		witness.ToEncode2[i] = field.NewFromKoala(toEncode2[i])
 	}
 	var toEncode3 fr.Element
 	toEncode3.SetRandom()
@@ -169,7 +168,7 @@ func TestEncoding(t *testing.T) {
 	witness.R2[1] = r2[1].String()
 	r3 := EncodeFrElementToOctuplet(toEncode3)
 	for i := 0; i < 8; i++ {
-		witness.R3[i] = zk.ValueFromKoala(r3[i])
+		witness.R3[i] = field.NewFromKoala(r3[i])
 	}
 
 	var circuit EncodingCircuit
@@ -194,7 +193,7 @@ func TestEncode8WVsToFV(t *testing.T) {
 
 	var circuit, witness Encode8WVsCircuit
 	for i := 0; i < 8; i++ {
-		witness.Input[i] = zk.ValueFromKoala(input[i])
+		witness.Input[i] = field.NewFromKoala(input[i])
 	}
 	witness.Output = expected.String()
 
@@ -225,7 +224,7 @@ func TestEncode9WVsToFV(t *testing.T) {
 	// Now test circuit
 	var circuit, witness Encode9WVsCircuit
 	for i := 0; i < KoalabearChunks; i++ {
-		witness.Input[i] = zk.ValueFromKoala(decomposed[i])
+		witness.Input[i] = field.NewFromKoala(decomposed[i])
 	}
 	witness.Output = reconstructed.String()
 
@@ -248,7 +247,7 @@ func TestRoundTripBLS9Koalabear(t *testing.T) {
 	var circuit, witness RoundTripBLS9KoalaCircuit
 	witness.Original = original.String()
 	for i := 0; i < KoalabearChunks; i++ {
-		witness.Decomposed[i] = zk.ValueFromKoala(decomposed[i])
+		witness.Decomposed[i] = field.NewFromKoala(decomposed[i])
 	}
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -271,7 +270,7 @@ func TestEncode8WVsToFVZeroValues(t *testing.T) {
 
 	var circuit, witness ZeroValuesCircuit
 	for i := 0; i < 8; i++ {
-		witness.Input[i] = zk.ValueFromKoala(input[i])
+		witness.Input[i] = field.NewFromKoala(input[i])
 	}
 	witness.Output = expected.String()
 
@@ -295,7 +294,7 @@ func TestEncode8WVsToFVMaxValues(t *testing.T) {
 
 	var circuit, witness MaxValuesCircuit
 	for i := 0; i < 8; i++ {
-		witness.Input[i] = zk.ValueFromKoala(input[i])
+		witness.Input[i] = field.NewFromKoala(input[i])
 	}
 	witness.Output = expected.String()
 
@@ -323,7 +322,7 @@ func TestEncode8WVsToFVMixedValues(t *testing.T) {
 
 	var circuit, witness Encode8WVsCircuit
 	for i := 0; i < 8; i++ {
-		witness.Input[i] = zk.ValueFromKoala(input[i])
+		witness.Input[i] = field.NewFromKoala(input[i])
 	}
 	witness.Output = expected.String()
 
@@ -370,7 +369,7 @@ func TestEncodeWVsToFVsVariousSizes(t *testing.T) {
 			witness.Output = make([]frontend.Variable, tc.expectedOutput)
 
 			for i := 0; i < tc.inputSize; i++ {
-				witness.Input[i] = zk.ValueFromKoala(input[i])
+				witness.Input[i] = field.NewFromKoala(input[i])
 			}
 			for i := 0; i < tc.expectedOutput; i++ {
 				witness.Output[i] = expected[i].String()
@@ -401,7 +400,7 @@ func TestConsistencyNativeVsCircuit(t *testing.T) {
 
 		var circuit, witness ConsistencyCircuit
 		for i := 0; i < 8; i++ {
-			witness.KoalaInput[i] = zk.ValueFromKoala(input[i])
+			witness.KoalaInput[i] = field.NewFromKoala(input[i])
 		}
 		witness.FrOutput = nativeResult.String()
 
@@ -426,7 +425,7 @@ func TestEncode9WVsToFVZeroValues(t *testing.T) {
 
 	var circuit, witness Encode9WVsCircuit
 	for i := 0; i < KoalabearChunks; i++ {
-		witness.Input[i] = zk.ValueFromKoala(input[i])
+		witness.Input[i] = field.NewFromKoala(input[i])
 	}
 	witness.Output = expected.String()
 
@@ -451,7 +450,7 @@ func TestEncode9WVsToFVKnownValues(t *testing.T) {
 
 	var circuit, witness Encode9WVsCircuit
 	for i := 0; i < KoalabearChunks; i++ {
-		witness.Input[i] = zk.ValueFromKoala(input[i])
+		witness.Input[i] = field.NewFromKoala(input[i])
 	}
 	witness.Output = expected.String()
 
@@ -485,7 +484,7 @@ func TestMultipleRoundTrips(t *testing.T) {
 		var circuit, witness RoundTripBLS9KoalaCircuit
 		witness.Original = original.String()
 		for i := 0; i < KoalabearChunks; i++ {
-			witness.Decomposed[i] = zk.ValueFromKoala(decomposed1[i])
+			witness.Decomposed[i] = field.NewFromKoala(decomposed1[i])
 		}
 
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -516,7 +515,7 @@ func TestEncodingPreservesOrdering(t *testing.T) {
 	// Test both in circuit
 	var circuit1, witness1 Encode8WVsCircuit
 	for i := 0; i < 8; i++ {
-		witness1.Input[i] = zk.ValueFromKoala(input1[i])
+		witness1.Input[i] = field.NewFromKoala(input1[i])
 	}
 	witness1.Output = result1.String()
 
@@ -529,7 +528,7 @@ func TestEncodingPreservesOrdering(t *testing.T) {
 
 	var circuit2, witness2 Encode8WVsCircuit
 	for i := 0; i < 8; i++ {
-		witness2.Input[i] = zk.ValueFromKoala(input2[i])
+		witness2.Input[i] = field.NewFromKoala(input2[i])
 	}
 	witness2.Output = result2.String()
 
@@ -555,7 +554,7 @@ func TestEncodeWVsToFVsSingleElement(t *testing.T) {
 	witness.Input = make([]frontend.Variable, 1)
 	witness.Output = make([]frontend.Variable, 1)
 
-	witness.Input[0] = zk.ValueFromKoala(input[0])
+	witness.Input[0] = field.NewFromKoala(input[0])
 	witness.Output[0] = expected[0].String()
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -604,7 +603,7 @@ func BenchmarkEncode8WVsToFVWitness(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var witness Encode8WVsCircuit
 		for j := 0; j < 8; j++ {
-			witness.Input[j] = zk.ValueFromKoala(input[j])
+			witness.Input[j] = field.NewFromKoala(input[j])
 		}
 		witness.Output = expected.String()
 

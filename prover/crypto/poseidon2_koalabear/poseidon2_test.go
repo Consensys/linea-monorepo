@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,10 +59,10 @@ func getGnarkMDHasherCircuitWitnessWV() (*GnarkMDHasherCircuitWV, *GnarkMDHasher
 	circuit.Inputs = make([]frontend.Variable, nbElmts)
 	witness.Inputs = make([]frontend.Variable, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		witness.Inputs[i] = zk.ValueFromKoala(vals[i])
+		witness.Inputs[i] = field.NewFromKoala(vals[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Ouput[i] = zk.ValueFromKoala(res[i])
+		witness.Ouput[i] = field.NewFromKoala(res[i])
 	}
 
 	return &circuit, &witness

@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/gnark/std/selector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -318,24 +317,6 @@ func (g *GenericApi) Println(a ...WrappedVariable) {
 				}
 			}
 		}
-	}
-}
-
-func (g *GenericApi) Mux(sel frontend.Variable, inputs ...WrappedVariable) WrappedVariable {
-	if g.Type() == Native {
-		_inputs := make([]frontend.Variable, len(inputs))
-		for i := 0; i < len(_inputs); i++ {
-			_inputs[i] = inputs[i].AsNative()
-		}
-		res := selector.Mux(g.NativeApi, sel, _inputs...)
-		return WrappedVariable{V: res}
-	} else {
-		_inputs := make([]*emulated.Element[emulated.KoalaBear], len(inputs))
-		for i := 0; i < len(_inputs); i++ {
-			_inputs[i] = inputs[i].AsEmulated()
-		}
-		res := g.EmulatedApi.Mux(sel, _inputs...)
-		return WrappedVariable{EVpointer: res}
 	}
 }
 

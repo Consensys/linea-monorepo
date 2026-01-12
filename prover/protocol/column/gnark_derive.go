@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -51,8 +52,8 @@ func GnarkDeriveEvaluationPoint(
 			if err != nil {
 				panic(err)
 			}
-			omegaN := zk.ValueFromKoala(generator)
-			omegaNExp := gnarkutil.Exp(api, omegaN.AsNative(), inner.Offset)
+			omegaN := field.NewFromKoala(generator)
+			omegaNExp := gnarkutil.Exp(api, omegaN, inner.Offset)
 			derivedX = *ext4.MulByFp(&x, zk.WrapFrontendVariable(omegaNExp))
 			cachedXs.InsertNew(newUpstream, derivedX)
 		}

@@ -2,26 +2,26 @@ package vortex
 
 import (
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/selector"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/polynomials"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 type GnarkProof struct {
 	Columns           [][][]frontend.Variable
-	LinearCombination []gnarkfext.E4Gen
+	LinearCombination []gnarkfext.Element
 }
 
 type GnarkVerifierInput struct {
 
 	// alpha random coin used for the linear combination
-	Alpha gnarkfext.E4Gen
+	Alpha gnarkfext.Element
 
 	// X is the univariate evaluation point
-	X gnarkfext.E4Gen
+	X gnarkfext.Element
 
 	// Ys are the alleged evaluation at point X
-	Ys [][]gnarkfext.E4Gen
+	Ys [][]gnarkfext.Element
 
 	// EntryList is the random coin representing the columns to open.
 	EntryList []frontend.Variable
@@ -36,11 +36,11 @@ func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVeri
 	return err
 }
 
-func GnarkCheckStatement(api frontend.API, params Params, linComb []gnarkfext.E4Gen,
+func GnarkCheckStatement(api frontend.API, params Params, linComb []gnarkfext.Element,
 
-	ys [][]gnarkfext.E4Gen, x, alpha gnarkfext.E4Gen) error {
+	ys [][]gnarkfext.Element, x, alpha gnarkfext.Element) error {
 
-	var yjoined []gnarkfext.E4Gen
+	var yjoined []gnarkfext.Element
 	for i := 0; i < len(ys); i++ {
 		yjoined = append(yjoined, ys[i]...)
 	}
@@ -53,26 +53,16 @@ func GnarkCheckStatement(api frontend.API, params Params, linComb []gnarkfext.E4
 		params.RsParams.Domains[1].Cardinality)
 	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		return err
-	}
-
-	ext4.AssertIsEqual(&alphaY, &alphaYPrime)
+	gnarkfext.AssertIsEqual(api, alphaY, alphaYPrime)
 
 	return nil
 }
 
 // Put that in vortex common
 func GnarkCheckLinComb(
-	api frontend.API, linComb []gnarkfext.E4Gen,
-	entryList []frontend.Variable, alpha gnarkfext.E4Gen,
+	api frontend.API, linComb []gnarkfext.Element,
+	entryList []frontend.Variable, alpha gnarkfext.Element,
 	columns [][][]frontend.Variable) error {
-
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
 
 	numCommitments := len(columns)
 
@@ -90,30 +80,31 @@ func GnarkCheckLinComb(
 		y := polynomials.GnarkEvalCanonical(api, fullCol, alpha)
 
 		// check that y := linComb[selectedColID] coords by coords
-		table := make([]zk.WrappedVariable, len(linComb))
+		table := make([]frontend.Variable, len(linComb))
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B0.A0
 		}
-		v := apiGen.Mux(selectedColID, table...)
-		apiGen.AssertIsEqual(y.B0.A0, v)
+
+		v := selector.Mux(api, selectedColID, table...)
+		api.AssertIsEqual(y.B0.A0, v)
 
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B0.A1
 		}
-		v = apiGen.Mux(selectedColID, table...)
-		apiGen.AssertIsEqual(y.B0.A1, v)
+		v = selector.Mux(api, selectedColID, table...)
+		api.AssertIsEqual(y.B0.A1, v)
 
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B1.A0
 		}
-		v = apiGen.Mux(selectedColID, table...)
-		apiGen.AssertIsEqual(y.B1.A0, v)
+		v = selector.Mux(api, selectedColID, table...)
+		api.AssertIsEqual(y.B1.A0, v)
 
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B1.A1
 		}
-		v = apiGen.Mux(selectedColID, table...)
-		apiGen.AssertIsEqual(y.B1.A1, v)
+		v = selector.Mux(api, selectedColID, table...)
+		api.AssertIsEqual(y.B1.A1, v)
 	}
 
 	return nil

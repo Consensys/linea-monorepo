@@ -7,18 +7,12 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 // EvaluateLagrangeGnarkMixed a polynomial in lagrange basis on a gnark circuit
-func EvaluateLagrangeGnarkMixed(api frontend.API, poly []frontend.Variable, x gnarkfext.E4Gen) gnarkfext.E4Gen {
-
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+func EvaluateLagrangeGnarkMixed(api frontend.API, poly []frontend.Variable, x gnarkfext.Element) gnarkfext.Element {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
@@ -31,35 +25,36 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []frontend.Variable, x gn
 		panic(err)
 	}
 
-	dens := make([]gnarkfext.E4Gen, size)
+	dens := make([]gnarkfext.Element, size)
 
 	omega.Inverse(&omega)
-	wInvOmega := gnarkfext.NewE4GenFromBase(omega.String())
+	wInvOmega := gnarkfext.NewFromBase(field.NewFromKoala(omega))
 	dens[0] = x
 	for i := 1; i < size; i++ {
-		dens[i] = *e4Api.Mul(&dens[i-1], &wInvOmega)
+		dens[i].Mul(api, dens[i-1], wInvOmega)
 	}
 
-	wOne := *e4Api.One()
+	wOne := gnarkfext.One()
 	for i := 0; i < size; i++ {
-		dens[i] = *e4Api.Sub(&dens[i], &wOne)
-		dens[i] = *e4Api.Inverse(&dens[i])
+		dens[i].Sub(api, dens[i], wOne)
+		dens[i].Inverse(api, dens[i])
 	}
 
-	res := *e4Api.Zero()
+	res := gnarkfext.Zero()
+	var tmp gnarkfext.Element
+
 	for i := 0; i < size; i++ {
-		tmp := e4Api.MulByFp(&dens[i], zk.WrapFrontendVariable(poly[i]))
-		res = *e4Api.Add(&res, tmp)
+		tmp.MulByFp(api, dens[i], poly[i])
+		res.Add(api, res, tmp)
 	}
 
-	var tmp gnarkfext.E4Gen
 	tmp = gnarkutil.ExpExt(api, x, size)
-	tmp = *e4Api.Sub(&tmp, &wOne) // xⁿ-1
+	tmp.Sub(api, tmp, wOne) // xⁿ-1
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
-	wInvSize := zk.WrapFrontendVariable(zk.ValueFromKoala(invSize))
-	tmp = *e4Api.MulByFp(&tmp, wInvSize)
-	res = *e4Api.Mul(&res, &tmp)
+	wInvSize := field.NewFromKoala(invSize)
+	tmp.MulByFp(api, tmp, wInvSize)
+	res.Mul(api, res, tmp)
 
 	return res
 
@@ -212,14 +207,9 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]frontend.Variable, x
 // on a gnark circuit. The evaluation point is common to all polynomials.
 // The implementation relies on the barycentric interpolation formula and
 // leverages
-func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]frontend.Variable, x gnarkfext.E4Gen) []gnarkfext.E4Gen {
+func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]frontend.Variable, x gnarkfext.Element) []gnarkfext.Element {
 	if len(polys) == 0 {
-		return []gnarkfext.E4Gen{}
-	}
-
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
+		return []gnarkfext.Element{}
 	}
 
 	var (
@@ -233,28 +223,27 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]frontend.Variab
 		// an inner-product between the polys to obtain an unscaled
 		// result. The unscaled result will then be scaled by (x^n - 1)/n
 		// to obtain the result of the Lagrange interpolation.
-		innerProductTerms = make([]gnarkfext.E4Gen, maxSize)
+		innerProductTerms = make([]gnarkfext.Element, maxSize)
 
 		// scalingTerms lists a sequence of term computed as (x^n - 1)/n
 		// where n stands for all the different sizes of the polys in
 		// increasing order. (as found in "sizes"). The used to derive
 		// the final result of the evaluations.
-		scalingTerms = make([]gnarkfext.E4Gen, len(sizes))
+		scalingTerms = make([]gnarkfext.Element, len(sizes))
 
 		// res stores the final result of the interpolation
-		res = make([]gnarkfext.E4Gen, len(polys))
+		res = make([]gnarkfext.Element, len(polys))
 	)
-	e4one := ext4.One()
+	e4one := gnarkfext.One()
 	for i := range innerProductTerms {
-		innerProductTerms[i] = *ext4.MulByFp(&x, zk.WrapFrontendVariable(powersOfOmegaInv[i]))
-		innerProductTerms[i] = *ext4.Sub(&innerProductTerms[i], e4one)
-		innerProductTerms[i] = *ext4.Inverse(&innerProductTerms[i])
+		innerProductTerms[i].MulByFp(api, x, powersOfOmegaInv[i])
+		innerProductTerms[i].Sub(api, innerProductTerms[i], e4one)
+		innerProductTerms[i].Inverse(api, innerProductTerms[i])
 	}
 
 	for i, n := range sizes {
-		wn := zk.ValueOf(n)
-		scalingTerms[i] = *ext4.Sub(&xNs[i], e4one)
-		scalingTerms[i] = *ext4.DivByBase(&xNs[i], wn)
+		scalingTerms[i].Sub(api, xNs[i], e4one)
+		scalingTerms[i].DivByBase(api, xNs[i], n)
 	}
 
 	for i := range polys {
@@ -262,9 +251,9 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]frontend.Variab
 		var (
 			poly          = polys[i]
 			n             = len(poly)
-			scalingFactor gnarkfext.E4Gen
-			yUnscaled     gnarkfext.E4Gen
-			tmp           gnarkfext.E4Gen
+			scalingFactor gnarkfext.Element
+			yUnscaled     gnarkfext.Element
+			tmp           gnarkfext.Element
 		)
 
 		for j := range sizes {
@@ -273,14 +262,7 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]frontend.Variab
 			}
 		}
 
-		// That would be completely unexpectedly wrong if that happened since
-		// the sizes are deduplicated and sorted from the sizes found in poly
-		// in the first place.
-		if scalingFactor.B0.A0.IsEmpty() {
-			utils.Panic("could not find scaling factor for poly of size %v", n)
-		}
-
-		yUnscaled = *ext4.Zero()
+		yUnscaled = gnarkfext.Zero()
 
 		for k := 0; k < n; k++ {
 
@@ -293,12 +275,12 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]frontend.Variab
 				continue
 			}
 
-			tmp = *ext4.MulByFp(&innerProductTerms[k*maxSize/n], zk.WrapFrontendVariable(poly[k]))
-			yUnscaled = *ext4.Add(&tmp, &yUnscaled)
+			tmp.MulByFp(api, innerProductTerms[k*maxSize/n], poly[k])
+			yUnscaled.Add(api, tmp, yUnscaled)
 
 		}
 
-		res[i] = *ext4.Mul(&yUnscaled, &scalingFactor)
+		res[i].Mul(api, yUnscaled, scalingFactor)
 	}
 
 	return res
@@ -352,18 +334,13 @@ func raiseToPowersOfTwos(api frontend.API, x frontend.Variable, ns []int) []fron
 // instance, if ns = [2, 4, 8], then it returns [x, x^2, x^4, x^8]. It assumes
 // that ns is sorted in ascending order and deduplicated and non-zero and are
 // powers of two.
-func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.E4Gen, ns []int) []gnarkfext.E4Gen {
+func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.Element, ns []int) []gnarkfext.Element {
 
 	var (
-		res   = make([]gnarkfext.E4Gen, len(ns))
+		res   = make([]gnarkfext.Element, len(ns))
 		curr  = x
 		currN = 1
 	)
-
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
 
 	for i, n := range ns {
 
@@ -372,7 +349,7 @@ func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.E4Gen, ns []int) []gna
 		}
 
 		for currN < n {
-			curr = *ext4.Mul(&curr, &curr)
+			curr.Mul(api, curr, curr)
 			currN *= 2
 		}
 
@@ -396,7 +373,7 @@ func powerVectorOfOmegaInv(n int) []frontend.Variable {
 	w.Inverse(&w)
 
 	for i := 0; i < n; i++ {
-		res[i] = zk.ValueFromKoala(resField)
+		res[i] = field.NewFromKoala(resField)
 		resField.Mul(&resField, &w)
 	}
 

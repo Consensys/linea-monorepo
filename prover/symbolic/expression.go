@@ -67,7 +67,7 @@ type Operator interface {
 	Degree([]int) int
 	// GnarkEval returns an evaluation of the operator in a gnark circuit.
 	GnarkEval(frontend.API, []frontend.Variable) frontend.Variable
-	GnarkEvalExt(frontend.API, []gnarkfext.E4Gen) gnarkfext.E4Gen
+	GnarkEvalExt(frontend.API, []gnarkfext.Element) gnarkfext.Element
 }
 
 type OperatorWithResult interface {

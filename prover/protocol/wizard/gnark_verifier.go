@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -610,7 +611,7 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]frontend.Variable,
 		res := make([]frontend.Variable, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			wrapped := zk.ValueFromKoala(val[i])
+			wrapped := field.NewFromKoala(val[i])
 			res[i] = wrapped.AsNative()
 		}
 		return res, nil

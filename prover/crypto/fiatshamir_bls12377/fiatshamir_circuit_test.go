@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -114,15 +113,15 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	witness.B = b.String()
 	witness.R1 = r1.String()
 	witness.R2 = r2.String()
-	witness.C[0] = zk.ValueFromKoala(c[0])
-	witness.C[1] = zk.ValueFromKoala(c[1])
+	witness.C[0] = field.NewFromKoala(c[0])
+	witness.C[1] = field.NewFromKoala(c[1])
 	for i := 0; i < 10; i++ {
-		witness.D[i] = zk.ValueFromKoala(d[i])
+		witness.D[i] = field.NewFromKoala(d[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.R3[i] = zk.ValueFromKoala(r3[i])
-		witness.SetState[i] = zk.ValueFromKoala(setState[i])
-		witness.GetState[i] = zk.ValueFromKoala(getState[i])
+		witness.R3[i] = field.NewFromKoala(r3[i])
+		witness.SetState[i] = field.NewFromKoala(setState[i])
+		witness.GetState[i] = field.NewFromKoala(getState[i])
 	}
 
 	circuit.n = n
@@ -186,10 +185,10 @@ func getKoalaFlushSpecificWitness(isKoala bool) (*KoalaFlushSpecificCircuit, *Ko
 	output := fs.RandomField()
 
 	for i := 0; i < 8; i++ {
-		witness.Input[i] = zk.ValueFromKoala(input[i])
+		witness.Input[i] = field.NewFromKoala(input[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = zk.ValueFromKoala(output[i])
+		witness.Output[i] = field.NewFromKoala(output[i])
 	}
 
 	return &circuit, &witness
@@ -243,7 +242,7 @@ func TestUpdateExt(t *testing.T) {
 		witness.ExtInputs[i] = gnarkfext.AssignFromExt(extInputs[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = zk.ValueFromKoala(output[i])
+		witness.Output[i] = field.NewFromKoala(output[i])
 	}
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -283,8 +282,8 @@ func TestRandomFieldExt(t *testing.T) {
 	output := fs.RandomFext()
 
 	var circuit, witness RandomFieldExtCircuit
-	witness.Input[0] = zk.ValueFromKoala(input[0])
-	witness.Input[1] = zk.ValueFromKoala(input[1])
+	witness.Input[0] = field.NewFromKoala(input[0])
+	witness.Input[1] = field.NewFromKoala(input[1])
 	witness.OutputExt = gnarkfext.AssignFromExt(output)
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -346,7 +345,7 @@ func TestRandomManyIntegersVariousBounds(t *testing.T) {
 			witness.Output = make([]frontend.Variable, tc.n)
 
 			for i := 0; i < 5; i++ {
-				witness.Input[i] = zk.ValueFromKoala(input[i])
+				witness.Input[i] = field.NewFromKoala(input[i])
 			}
 			for i := 0; i < tc.n; i++ {
 				witness.Output[i] = output[i]
@@ -394,8 +393,8 @@ func TestStateRoundTrip(t *testing.T) {
 
 	var circuit, witness StateRoundTripCircuit
 	for i := 0; i < 8; i++ {
-		witness.InitialState[i] = zk.ValueFromKoala(initialState[i])
-		witness.FinalState[i] = zk.ValueFromKoala(finalState[i])
+		witness.InitialState[i] = field.NewFromKoala(initialState[i])
+		witness.FinalState[i] = field.NewFromKoala(finalState[i])
 	}
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -481,11 +480,11 @@ func TestMultipleRandomFieldCalls(t *testing.T) {
 
 	var circuit, witness MultipleRandomFieldCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = zk.ValueFromKoala(input[i])
+		witness.Input[i] = field.NewFromKoala(input[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output1[i] = zk.ValueFromKoala(output1[i])
-		witness.Output2[i] = zk.ValueFromKoala(output2[i])
+		witness.Output1[i] = field.NewFromKoala(output1[i])
+		witness.Output2[i] = field.NewFromKoala(output2[i])
 	}
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -532,11 +531,11 @@ func TestMixedUpdate(t *testing.T) {
 	output := fs.RandomField()
 
 	var circuit, witness MixedUpdateCircuit
-	witness.KoalaInput[0] = zk.ValueFromKoala(koalaInput[0])
-	witness.KoalaInput[1] = zk.ValueFromKoala(koalaInput[1])
+	witness.KoalaInput[0] = field.NewFromKoala(koalaInput[0])
+	witness.KoalaInput[1] = field.NewFromKoala(koalaInput[1])
 	witness.FrInput = frInput.String()
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = zk.ValueFromKoala(output[i])
+		witness.Output[i] = field.NewFromKoala(output[i])
 	}
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -629,10 +628,10 @@ func TestZeroValues(t *testing.T) {
 
 	var circuit, witness ZeroValuesCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = zk.ValueFromKoala(input[i])
+		witness.Input[i] = field.NewFromKoala(input[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = zk.ValueFromKoala(output[i])
+		witness.Output[i] = field.NewFromKoala(output[i])
 	}
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -675,10 +674,10 @@ func TestMaxValues(t *testing.T) {
 
 	var circuit, witness MaxValuesCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = zk.ValueFromKoala(input[i])
+		witness.Input[i] = field.NewFromKoala(input[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = zk.ValueFromKoala(output[i])
+		witness.Output[i] = field.NewFromKoala(output[i])
 	}
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)

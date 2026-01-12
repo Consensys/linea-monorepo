@@ -96,19 +96,14 @@ func (PolyEval) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend
 
 // EvaluateExt the expression in a gnark circuit
 // Does not support vector evaluation
-func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
-
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
 
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
 
 	for i := len(inputs) - 2; i >= 1; i-- {
-		res = *e4Api.Mul(&res, &x)
-		res = *e4Api.Add(&res, &inputs[i])
+		res.Mul(api, res, x)
+		res.Add(api, res, inputs[i])
 	}
 
 	return res

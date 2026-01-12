@@ -181,17 +181,17 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 }
 
 // GnarkEvalExprColumn evaluates an expression in a gnark circuit setting
-func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []gnarkfext.E4Gen {
+func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []gnarkfext.Element {
 
 	var (
 		metadata = board.ListVariableMetadata()
 		length   = ExprIsOnSameLengthHandles(&board)
-		res      = make([]gnarkfext.E4Gen, length)
+		res      = make([]gnarkfext.Element, length)
 	)
 
 	for k := 0; k < length; k++ {
 
-		inputs := make([]gnarkfext.E4Gen, len(metadata))
+		inputs := make([]gnarkfext.Element, len(metadata))
 
 		for i := range inputs {
 			switch m := metadata[i].(type) {
@@ -208,7 +208,7 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 				inputs[i] = m.GetFrontendVariableExt(api, run)
 			case variables.PeriodicSample:
 				tmp := m.EvalAtOnDomain(k)
-				inputs[i] = gnarkfext.FromBase(zk.ValueFromKoala(tmp))
+				inputs[i] = gnarkfext.NewFromBase(field.NewFromKoala(tmp))
 			case variables.X:
 				// there is no theoritical problem with this but there are
 				// no cases known where this happens so we just don't

@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -183,12 +182,12 @@ func TestRandomFieldExt(t *testing.T) {
 	output := fs.RandomFext()
 
 	var circuit, witness RandomFieldExtCircuit
-	witness.Input[0] = zk.ValueFromKoala(input[0])
-	witness.Input[1] = zk.ValueFromKoala(input[1])
-	witness.OutputExt.B0.A0 = zk.ValueFromKoala(output.B0.A0)
-	witness.OutputExt.B0.A1 = zk.ValueFromKoala(output.B0.A1)
-	witness.OutputExt.B1.A0 = zk.ValueFromKoala(output.B1.A0)
-	witness.OutputExt.B1.A1 = zk.ValueFromKoala(output.B1.A1)
+	witness.Input[0] = field.NewFromKoala(input[0])
+	witness.Input[1] = field.NewFromKoala(input[1])
+	witness.OutputExt.B0.A0 = field.NewFromKoala(output.B0.A0)
+	witness.OutputExt.B0.A1 = field.NewFromKoala(output.B0.A1)
+	witness.OutputExt.B1.A0 = field.NewFromKoala(output.B1.A0)
+	witness.OutputExt.B1.A1 = field.NewFromKoala(output.B1.A1)
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
 	assert.NoError(t, err)

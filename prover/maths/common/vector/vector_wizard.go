@@ -236,7 +236,7 @@ func PowerVec(x field.Element, n int) []field.Element {
 // func IntoGnarkAssignment(msgData []field.Element) []zk.WrappedVariable {
 // 	assignedMsg := []zk.WrappedVariable{}
 // 	for _, x := range msgData {
-// 		assignedMsg = append(assignedMsg, zk.ValueFromKoala(x))
+// 		assignedMsg = append(assignedMsg, field.NewFromKoala(x))
 // 	}
 // 	return assignedMsg
 // }

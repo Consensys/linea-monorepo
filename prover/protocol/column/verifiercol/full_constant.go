@@ -121,11 +121,11 @@ func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]fronten
 	return res, nil
 }
 
-func (cc ConstCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
-	res := make([]gnarkfext.E4Gen, cc.Size_)
+func (cc ConstCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+	res := make([]gnarkfext.Element, cc.Size_)
 	f := cc.F.GetExt()
 	for i := range res {
-		temp := gnarkfext.NewE4Gen(f)
+		temp := gnarkfext.AssignFromExt(f)
 		res[i] = temp
 	}
 	return res
@@ -164,10 +164,10 @@ func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int)
 }
 
 // Returns a particular position of the coin value
-func (cc ConstCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
+func (cc ConstCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
 	// this does the boundary check
 	f := cc.GetColAssignmentAtExt(nil, pos)
-	temp := gnarkfext.NewE4Gen(f)
+	temp := gnarkfext.AssignFromExt(f)
 	return temp
 }
 

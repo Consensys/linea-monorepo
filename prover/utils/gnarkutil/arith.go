@@ -12,8 +12,8 @@ func RepeatedVariable(x frontend.Variable, n int) []frontend.Variable {
 	}
 	return res
 }
-func RepeatedVariableExt(x gnarkfext.E4Gen, n int) []gnarkfext.E4Gen {
-	res := make([]gnarkfext.E4Gen, n)
+func RepeatedVariableExt(x gnarkfext.Element, n int) []gnarkfext.Element {
+	res := make([]gnarkfext.Element, n)
 	for i := range res {
 		res[i] = x
 	}
@@ -21,27 +21,22 @@ func RepeatedVariableExt(x gnarkfext.E4Gen, n int) []gnarkfext.E4Gen {
 }
 
 // Exp in gnark circuit, using the fast exponentiation
-func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
-
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+func ExpExt(api frontend.API, x gnarkfext.Element, n int) gnarkfext.Element {
 
 	if n < 0 {
-		x = *e4Api.Inverse(&x)
+		x.Inverse(api, x)
 		n = -n
 	}
 
 	acc := x
-	res := *e4Api.One()
+	res := gnarkfext.One()
 
 	// right-to-left
 	for n != 0 {
 		if n&1 == 1 {
-			res = *e4Api.Mul(&res, &acc)
+			res.Mul(api, res, acc)
 		}
-		acc = *e4Api.Mul(&acc, &acc)
+		acc.Mul(api, acc, acc)
 		n >>= 1
 	}
 	return res

@@ -3,8 +3,8 @@ package symbolic
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 )
@@ -67,7 +67,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 		switch op := node.Operator.(type) {
 		case Constant:
 			tmp := op.Val.GetExt()
-			results[i] = zk.ValueFromKoala(tmp.B0.A0) // @thomas ext or base ?
+			results[i] = field.NewFromKoala(tmp.B0.A0) // @thomas ext or base ?
 		case Variable:
 			results[i] = inputs[inputCursor]
 			inputCursor++
@@ -85,22 +85,22 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 /*
 GnarkEvalExt evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
 	if len(b.Nodes) == 0 {
 		panic("empty board")
 	}
-	results := make([]gnarkfext.E4Gen, len(b.Nodes))
+	results := make([]gnarkfext.Element, len(b.Nodes))
 	inputCursor := 0
 
 	for i, node := range b.Nodes {
 		switch op := node.Operator.(type) {
 		case Constant:
-			results[i] = gnarkfext.NewE4Gen(op.Val.GetExt())
+			results[i] = gnarkfext.AssignFromExt(op.Val.GetExt())
 		case Variable:
 			results[i] = inputs[inputCursor]
 			inputCursor++
 		default:
-			nodeInputs := make([]gnarkfext.E4Gen, len(node.Children))
+			nodeInputs := make([]gnarkfext.Element, len(node.Children))
 			for k, childID := range node.Children {
 				nodeInputs[k] = results[childID]
 			}

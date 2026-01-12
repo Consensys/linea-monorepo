@@ -91,14 +91,14 @@ func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]fro
 
 }
 
-func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
-	res := make([]gnarkfext.E4Gen, f.Size_)
+func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+	res := make([]gnarkfext.Element, f.Size_)
 	for i := range f.Accessors {
 		res[i] = f.Accessors[i].GetFrontendVariableExt(nil, run)
 	}
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
-		res[i] = gnarkfext.NewE4Gen(f.Padding)
+		res[i] = gnarkfext.AssignFromExt(f.Padding)
 	}
 
 	return res
@@ -122,13 +122,13 @@ func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos 
 	return f.Accessors[pos].GetFrontendVariable(nil, run), nil
 }
 
-func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
+func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
 	if pos >= f.Size_ {
 		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
 	}
 
 	if pos >= len(f.Accessors) {
-		return gnarkfext.NewE4Gen(f.Padding)
+		return gnarkfext.AssignFromExt(f.Padding)
 	}
 
 	return f.Accessors[pos].GetFrontendVariableExt(nil, run)

@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 func eval(poly []fext.Element, x fext.Element) fext.Element {
@@ -18,36 +17,26 @@ func eval(poly []fext.Element, x fext.Element) fext.Element {
 }
 
 // GnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
-func GnarkEvalCanonical(api frontend.API, p []frontend.Variable, z gnarkfext.E4Gen) gnarkfext.E4Gen {
+func GnarkEvalCanonical(api frontend.API, p []frontend.Variable, z gnarkfext.Element) gnarkfext.Element {
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-
-	res := ext4.Zero()
+	res := gnarkfext.Zero()
 	s := len(p)
 	for i := 0; i < len(p); i++ {
-		res = ext4.Mul(res, &z)
-		res = ext4.AddByBase(res, zk.WrapFrontendVariable(p[s-1-i]))
+		res.Mul(api, res, z)
+		res.AddByBase(api, res, p[s-1-i])
 	}
-	return *res
+	return res
 }
 
 // GnarkEvalCanonicalExt evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
-func GnarkEvalCanonicalExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4Gen) gnarkfext.E4Gen {
+func GnarkEvalCanonicalExt(api frontend.API, p []gnarkfext.Element, z gnarkfext.Element) gnarkfext.Element {
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-
-	res := gnarkfext.E4Gen{}
-	res = *ext4.Zero()
+	res := gnarkfext.Element{}
+	res = gnarkfext.Zero()
 	s := len(p)
 	for i := 0; i < len(p); i++ {
-		res = *ext4.Mul(&res, &z)
-		res = *ext4.Add(&res, &p[s-1-i])
+		res.Mul(api, res, z)
+		res.Add(api, res, p[s-1-i])
 	}
 	return res
 }

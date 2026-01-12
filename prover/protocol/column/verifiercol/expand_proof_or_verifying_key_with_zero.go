@@ -114,13 +114,13 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkBase(run i
 }
 
 // GetColAssignmentGnarkExt returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
 	assi := ex.Col.GetColAssignmentGnarkExt(run)
-	res := make([]gnarkfext.E4Gen, ex.Size())
+	res := make([]gnarkfext.Element, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
-			res[j+i*ex.Expansion] = gnarkfext.NewE4Gen(fext.Zero())
+			res[j+i*ex.Expansion] = gnarkfext.AssignFromExt(fext.Zero())
 		}
 	}
 	return res
@@ -175,11 +175,11 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtBase(run
 }
 
 // GetColAssignmentAtExt returns a particular position of the column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
 	if pos%ex.Expansion == 0 {
 		return ex.Col.GetColAssignmentGnarkAtExt(run, pos/ex.Expansion)
 	}
-	return gnarkfext.NewE4Gen(fext.Zero())
+	return gnarkfext.AssignFromExt(fext.Zero())
 }
 
 // IsComposite implements the [ifaces.Column] interface

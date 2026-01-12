@@ -108,12 +108,9 @@ func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 		actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
 		api.AssertIsEqual(params.BaseY, actualY)
 	} else {
-		e4Api, err := gnarkfext.NewExt4(api)
-		if err != nil {
-			panic(err)
-		}
+
 		actualY := r.Pol.GetColAssignmentGnarkAtExt(run, 0)
-		e4Api.AssertIsEqual(&params.ExtY, &actualY)
+		gnarkfext.AssertIsEqual(api, params.ExtY, actualY)
 	}
 }
 

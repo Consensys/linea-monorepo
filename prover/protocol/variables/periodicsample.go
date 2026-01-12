@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -136,16 +135,11 @@ func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Elem
 }
 
 // Evaluate a particular position on the domain
-func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) zk.WrappedVariable {
+func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) frontend.Variable {
 	return t.GnarkEvalNoCoset(t.T)[pos%t.T]
 }
 
-func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gnarkfext.E4Gen) gnarkfext.E4Gen {
-
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gnarkfext.Element) gnarkfext.Element {
 
 	n := size
 	l := n / t.T
@@ -159,31 +153,33 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gna
 			panic(err)
 		}
 		omegaN.Exp(omegaN, big.NewInt(int64(-t.Offset)))
-		wOmegaN := zk.ValueFromKoala(omegaN)
-		x = *ext4.MulByFp(&x, wOmegaN)
+		wOmegaN := field.NewFromKoala(omegaN)
+		x.MulByFp(api, x, wOmegaN)
 	}
 
-	denominator := ext4.Exp(&x, big.NewInt(int64(l)))
-	wnField := zk.ValueFromKoala(nField)
-	wlField := zk.ValueFromKoala(lField)
-	extEOne := *ext4.One()
-	denominator = ext4.Sub(denominator, &extEOne)
-	denominator = ext4.MulByFp(denominator, wnField)
-	numerator := ext4.Exp(&x, big.NewInt(int64(n)))
-	numerator = ext4.Sub(numerator, &extEOne)
-	numerator = ext4.MulByFp(numerator, wlField)
+	denominator := gnarkfext.Exp(api, x, l)
+	wnField := field.NewFromKoala(nField)
+	wlField := field.NewFromKoala(lField)
+	extEOne := gnarkfext.One()
+	denominator.Sub(api, denominator, extEOne)
+	denominator.MulByFp(api, denominator, wnField)
+	numerator := gnarkfext.Exp(api, x, n)
+	numerator.Sub(api, numerator, extEOne)
+	numerator.MulByFp(api, numerator, wlField)
 
-	return *ext4.Div(numerator, denominator)
+	var res gnarkfext.Element
+	res.Div(api, numerator, denominator)
+	return res
 }
 
 // Returns the result in gnark form. This returns a vector of constant
 // on the form of zk.WrappedVariables.
-func (t PeriodicSample) GnarkEvalNoCoset(size int) []zk.WrappedVariable {
+func (t PeriodicSample) GnarkEvalNoCoset(size int) []frontend.Variable {
 	res_ := t.EvalCoset(size, 0, 1, false)
-	res := make([]zk.WrappedVariable, res_.Len())
+	res := make([]frontend.Variable, res_.Len())
 	for i := range res {
 		val := res_.Get(i)
-		res[i] = zk.ValueFromKoala(val)
+		res[i] = field.NewFromKoala(val)
 	}
 	return res
 }

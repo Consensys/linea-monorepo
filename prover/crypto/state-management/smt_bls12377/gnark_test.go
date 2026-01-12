@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // ------------------------------------------------------------------------------
@@ -178,7 +177,7 @@ func TestMerkleProofWithEncodingGnark(t *testing.T) {
 		}
 		witness.Proofs[i].Path = proofs[i].Path
 		for j := 0; j < 8; j++ {
-			witness.Leavesoctuplet[i][j] = zk.ValueFromKoala(leavesOctuplet[i][j])
+			witness.Leavesoctuplet[i][j] = field.NewFromKoala(leavesOctuplet[i][j])
 		}
 		witness.LeavesFrElmt[i] = leavesFrElmts[i]
 	}

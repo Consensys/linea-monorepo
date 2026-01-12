@@ -122,23 +122,19 @@ func (lc LinComb) GnarkEval(api frontend.API, inputs []frontend.Variable) fronte
 }
 
 // GnarkEvalExt implements the [GnarkEvalExt] interface
-func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-	res := *e4Api.Zero()
+	res := gnarkfext.Zero()
 
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
-	var tmp gnarkfext.E4Gen
+	var tmp gnarkfext.Element
 	for i, input := range inputs {
-		coeff := gnarkfext.NewE4GenFromBase(lc.Coeffs[i])
-		tmp = *e4Api.Mul(&coeff, &input)
-		res = *e4Api.Add(&tmp, &res)
+		coeff := gnarkfext.NewFromBase(lc.Coeffs[i])
+		tmp.Mul(api, coeff, input)
+		res.Add(api, tmp, res)
 	}
 
 	return res

@@ -79,11 +79,11 @@ func (fc *FakeColumn) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos i
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
+func (fc *FakeColumn) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
+func (fc *FakeColumn) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
 	panic("unimplemented")
 }
 

@@ -258,10 +258,6 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 
 // Verifier step, evaluate the constraint and checks that
 func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
 
 	// Will be assigned to "X", the random point at which we check the constraint.
 	r := c.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
@@ -270,13 +266,13 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 	params := c.GetUnivariateParams(ctx.WitnessEval.QueryID)
 	univQuery := c.GetUnivariateEval(ctx.WitnessEval.QueryID)
 
-	wOneExt := *ext4.One()
-	annulator = *ext4.Sub(&annulator, &wOneExt)
+	wOneExt := gnarkfext.One()
+	annulator.Sub(api, annulator, wOneExt)
 
-	ext4.AssertIsEqual(&r, &params.ExtX)
+	gnarkfext.AssertIsEqual(api, r, params.ExtX)
 
 	// Map all the evaluations and checks the evaluations points
-	mapYs := make(map[ifaces.ColID]gnarkfext.E4Gen)
+	mapYs := make(map[ifaces.ColID]gnarkfext.Element)
 
 	// Collect the evaluation points
 	for j, handle := range univQuery.Pols {
@@ -288,7 +284,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 		board := ctx.AggregateExpressionsBoard[i]
 		metadatas := board.ListVariableMetadata()
 
-		evalInputs := make([]gnarkfext.E4Gen, len(metadatas))
+		evalInputs := make([]gnarkfext.Element, len(metadatas))
 
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
@@ -316,9 +312,10 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 
 		// right : r^{n}-1 Q(r)
 		qr := quotientYs[i]
-		right := *ext4.Mul(&annulator, &qr)
+		var right gnarkfext.Element
+		right.Mul(api, annulator, qr)
 
-		ext4.AssertIsEqual(&left, &right)
+		gnarkfext.AssertIsEqual(api, left, right)
 		logrus.Debugf("verifying global constraint : DONE")
 
 	}
@@ -416,19 +413,19 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r gnarkfext.E4Gen) []gnarkfext.E4Gen {
+func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r gnarkfext.Element) []gnarkfext.Element {
 
 	// res stores the list of the recombined quotient evaluations for each
 	// combination.
-	recombinedYs := make([]gnarkfext.E4Gen, len(ctx.Ratios))
+	recombinedYs := make([]gnarkfext.Element, len(ctx.Ratios))
 	// ys stores the values of the quotient shares ordered by ratio
 
-	qYs := make([][]gnarkfext.E4Gen, utils.Max(ctx.Ratios...))
+	qYs := make([][]gnarkfext.Element, utils.Max(ctx.Ratios...))
 
 	maxRatio := utils.Max(ctx.Ratios...)
 
 	// shiftedR = r / g where g is the generator of the multiplicative group
-	var shiftedR gnarkfext.E4Gen
+	var shiftedR gnarkfext.Element
 
 	// TODO @thomas kill fft domain generation
 	mulGenInv := fft.NewDomain(uint64(maxRatio*ctx.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
@@ -437,14 +434,9 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	// * maxRatio`
 	omegaN, _ := fft.Generator(uint64(ctx.DomainSize * maxRatio))
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-
 	// shiftedR.MulByFp(api, r, mulGenInv)
-	wrappedMulGenInv := zk.WrapFrontendVariable(zk.ValueFromKoala(mulGenInv))
-	shiftedR = *e4Api.MulByFp(&r, wrappedMulGenInv)
+	wrappedMulGenInv := field.NewFromKoala(mulGenInv)
+	shiftedR.MulByFp(api, r, wrappedMulGenInv)
 
 	var invOmegaN field.Element
 	invOmegaN.Inverse(&omegaN)
@@ -454,17 +446,17 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 
 		// Check that the provided value for x is the right one
 		providedX := params.ExtX
-		var expectedX gnarkfext.E4Gen
-		expectedX = gnarkfext.NewE4GenFromBase(invOmegaN.String())
+		var expectedX gnarkfext.Element
+		expectedX = gnarkfext.NewFromBase(invOmegaN)
 		expectedX = gnarkutil.ExpExt(api, expectedX, i)
-		expectedX = *e4Api.Mul(&expectedX, &shiftedR)
-		e4Api.AssertIsEqual(&providedX, &expectedX)
+		expectedX.Mul(api, expectedX, shiftedR)
+		gnarkfext.AssertIsEqual(api, providedX, expectedX)
 	}
 
 	for i, ratio := range ctx.Ratios {
 		var (
 			jumpBy = maxRatio / ratio
-			ys     = make([]gnarkfext.E4Gen, ratio)
+			ys     = make([]gnarkfext.Element, ratio)
 		)
 
 		for j := range ctx.QuotientShares[i] {
@@ -477,30 +469,31 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		omegaRatio, _ := fft.Generator(uint64(ratio))
 		ratioInvField := field.NewElement(uint64(ratio))
 		var omegaRatioInv field.Element
-		res := *e4Api.Zero()
+		res := gnarkfext.Zero()
 
 		rPowM := gnarkutil.ExpExt(api, shiftedR, m)
 		ratioInvField.Inverse(&ratioInvField)
 		omegaRatioInv.Inverse(&omegaRatio)
 
-		wOne := *e4Api.One()
+		wOne := gnarkfext.One()
 		for k := range ys {
 
 			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
 			var tmpinit field.Element
+			var tmp gnarkfext.Element
 			tmpinit.Exp(omegaRatioInv, big.NewInt(int64(k)))
-			wrappedTmpInit := zk.WrapFrontendVariable(zk.ValueFromKoala(tmpinit))
-			tmp := e4Api.MulByFp(&rPowM, wrappedTmpInit)
-			tmp = e4Api.Sub(tmp, &wOne)
-			tmp = e4Api.Div(&ys[k], tmp)
-			res = *e4Api.Add(&res, tmp)
+			wrappedTmpInit := zk.WrapFrontendVariable(field.NewFromKoala(tmpinit))
+			tmp.MulByFp(api, rPowM, wrappedTmpInit)
+			tmp.Sub(api, tmp, wOne)
+			tmp.Div(api, ys[k], tmp)
+			res.Add(api, res, tmp)
 		}
 
-		wrappedRatioInvField := zk.WrapFrontendVariable(zk.ValueFromKoala(ratioInvField))
+		wrappedRatioInvField := zk.WrapFrontendVariable(field.NewFromKoala(ratioInvField))
 		outerFactor := gnarkutil.ExpExt(api, shiftedR, n)
-		outerFactor = *e4Api.Sub(&outerFactor, &wOne)
-		outerFactor = *e4Api.MulByFp(&outerFactor, wrappedRatioInvField)
-		res = *e4Api.Mul(&res, &outerFactor)
+		outerFactor.Sub(api, outerFactor, wOne)
+		outerFactor.MulByFp(api, outerFactor, wrappedRatioInvField)
+		res.Mul(api, res, outerFactor)
 		recombinedYs[i] = res
 	}
 

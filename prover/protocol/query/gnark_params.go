@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
@@ -11,28 +12,28 @@ import (
 // A gnark circuit version of the LocalOpeningResult
 type GnarkLocalOpeningParams struct {
 	BaseY  frontend.Variable
-	ExtY   gnarkfext.E4Gen
+	ExtY   gnarkfext.Element
 	IsBase bool
 }
 
 func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
-	exty := gnarkfext.NewE4Gen(p.ExtY)
+	ExtY := gnarkfext.AssignFromExt(p.ExtY)
 	return GnarkLocalOpeningParams{
-		BaseY:  zk.ValueFromKoala(p.BaseY),
-		ExtY:   exty,
+		BaseY:  field.NewFromKoala(p.BaseY),
+		ExtY:   ExtY,
 		IsBase: p.IsBase,
 	}
 }
 
 // A gnark circuit version of LogDerivSumParams
 type GnarkLogDerivSumParams struct {
-	Sum gnarkfext.E4Gen
+	Sum gnarkfext.Element
 }
 
 // A gnark circuit version of GrandProductParams
 type GnarkGrandProductParams struct {
-	Prod gnarkfext.E4Gen
+	Prod gnarkfext.Element
 }
 
 // HornerParamsPartGnark is a [HornerParamsPart] in a gnark circuit.
@@ -48,7 +49,7 @@ type HornerParamsPartGnark struct {
 type GnarkHornerParams struct {
 	// Final result is the result of summing the Horner parts for every
 	// queries.
-	FinalResult gnarkfext.E4Gen
+	FinalResult gnarkfext.Element
 	// Parts are the parameters of the Horner parts
 	Parts []HornerParamsPartGnark
 }
@@ -56,16 +57,16 @@ type GnarkHornerParams struct {
 func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 	// return GnarkLogDerivSumParams{Sum: p.Sum}
 	tmp := p.Sum.GetExt()
-	return GnarkLogDerivSumParams{Sum: gnarkfext.NewE4Gen(tmp)} // TODO @thomas fixme (ext vs base)
+	return GnarkLogDerivSumParams{Sum: gnarkfext.AssignFromExt(tmp)} // TODO @thomas fixme (ext vs base)
 }
 
 // A gnark circuit version of InnerProductParams
 type GnarkInnerProductParams struct {
-	Ys []gnarkfext.E4Gen
+	Ys []gnarkfext.Element
 }
 
 func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: make([]gnarkfext.E4Gen, len(p.Bs))}
+	return GnarkInnerProductParams{Ys: make([]gnarkfext.Element, len(p.Bs))}
 }
 
 func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
@@ -74,14 +75,14 @@ func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
 
 // A gnark circuit version of univariate eval params
 type GnarkUnivariateEvalParams struct {
-	ExtX  gnarkfext.E4Gen
-	ExtYs []gnarkfext.E4Gen
+	ExtX  gnarkfext.Element
+	ExtYs []gnarkfext.Element
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 	// no need to preallocate the x because its size is already known
 	return GnarkUnivariateEvalParams{
-		ExtYs: make([]gnarkfext.E4Gen, len(p.Pols)),
+		ExtYs: make([]gnarkfext.Element, len(p.Pols)),
 	}
 }
 
@@ -89,7 +90,7 @@ func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
 	return GnarkUnivariateEvalParams{
 		ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
-		ExtX:  gnarkfext.NewE4Gen(p.ExtX),
+		ExtX:  gnarkfext.AssignFromExt(p.ExtX),
 	}
 
 }
@@ -113,7 +114,7 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 	}
 
 	return GnarkHornerParams{
-		FinalResult: gnarkfext.NewE4Gen(p.FinalResult),
+		FinalResult: gnarkfext.AssignFromExt(p.FinalResult),
 		Parts:       parts,
 	}
 }

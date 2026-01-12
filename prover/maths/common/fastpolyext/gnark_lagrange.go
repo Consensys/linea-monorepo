@@ -13,15 +13,10 @@ import (
 )
 
 // EvaluateLagrangeGnark evaluates a polynomial in lagrange basis on a gnark circuit
-func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.E4Gen, x gnarkfext.E4Gen) gnarkfext.E4Gen {
+func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.Element) gnarkfext.Element {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
-	}
-
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
 	}
 
 	size := len(poly)
@@ -31,35 +26,35 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.E4Gen, x gnarkfext
 		panic(err)
 	}
 
-	dens := make([]gnarkfext.E4Gen, size)
+	dens := make([]gnarkfext.Element, size)
 
 	omega.Inverse(&omega)
-	wInvOmega := gnarkfext.NewE4GenFromBase(omega.String())
+	wInvOmega := gnarkfext.NewFromBase(omega)
 	dens[0] = x
 	for i := 1; i < size; i++ {
-		dens[i] = *e4Api.Mul(&dens[i-1], &wInvOmega)
+		dens[i].Mul(api, dens[i-1], wInvOmega)
 	}
 
-	wOne := *e4Api.One()
+	wOne := gnarkfext.One()
 	for i := 0; i < size; i++ {
-		dens[i] = *e4Api.Sub(&dens[i], &wOne)
-		dens[i] = *e4Api.Inverse(&dens[i])
+		dens[i].Sub(api, dens[i], wOne)
+		dens[i].Inverse(api, dens[i])
 	}
 
-	res := *e4Api.Zero()
+	res := gnarkfext.Zero() // Updated to use gnarkfext.Zero()
+	var tmp gnarkfext.Element
 	for i := 0; i < size; i++ {
-		tmp := *e4Api.Mul(&dens[i], &poly[i])
-		res = *e4Api.Add(&res, &tmp)
+		tmp.Mul(api, dens[i], poly[i])
+		res.Add(api, res, tmp)
 	}
 
-	var tmp gnarkfext.E4Gen
 	tmp = gnarkutil.ExpExt(api, x, size)
-	tmp = *e4Api.Sub(&tmp, &wOne) // xⁿ-1
+	tmp.Sub(api, tmp, wOne) // xⁿ-1
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
-	wInvSize := zk.WrapFrontendVariable(zk.ValueFromKoala(invSize))
-	tmp = *e4Api.MulByFp(&tmp, wInvSize)
-	res = *e4Api.Mul(&res, &tmp)
+	wInvSize := field.NewFromKoala(invSize)
+	tmp.MulByFp(api, tmp, wInvSize)
+	res.Mul(api, res, tmp)
 
 	return res
 
@@ -199,7 +194,7 @@ func powerVectorOfOmegaInv(n int) []frontend.Variable {
 	w.Inverse(&w)
 
 	for i := 0; i < n; i++ {
-		res[i] = zk.ValueFromKoala(resField)
+		res[i] = field.NewFromKoala(resField)
 		resField.Mul(&resField, &w)
 	}
 
