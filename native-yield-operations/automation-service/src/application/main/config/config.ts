@@ -59,7 +59,6 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
     minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
     maxStakingRebalanceAmountWei: env.MAX_STAKING_REBALANCE_AMOUNT_WEI,
     stakeCircuitBreakerThresholdWei: env.STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI,
-    minStakingVaultBalanceToUnpauseStakingWei: env.MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI,
   },
   reporting: {
     shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,

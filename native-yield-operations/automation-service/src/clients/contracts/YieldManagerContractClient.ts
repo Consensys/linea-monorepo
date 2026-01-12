@@ -56,7 +56,6 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH (for threshold-based withdrawal operations).
    * @param {bigint} maxStakingRebalanceAmountWei - Maximum staking rebalance amount (in wei) that can be processed per loop iteration.
    * @param {bigint} stakeCircuitBreakerThresholdWei - Circuit breaker threshold (in wei) for STAKE direction rebalances.
-   * @param {bigint} minStakingVaultBalanceToUnpauseStakingWei - Minimum staking vault balance (in wei) required before unpausing staking.
    * @param {INativeYieldAutomationMetricsUpdater} [metricsUpdater] - Optional metrics updater for tracking circuit breaker trips and rebalance requirements.
    */
   constructor(
@@ -67,7 +66,6 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     private readonly minWithdrawalThresholdEth: bigint,
     private readonly maxStakingRebalanceAmountWei: bigint,
     private readonly stakeCircuitBreakerThresholdWei: bigint,
-    private readonly minStakingVaultBalanceToUnpauseStakingWei: bigint,
     private readonly metricsUpdater?: INativeYieldAutomationMetricsUpdater,
   ) {
     this.contract = getContract({
@@ -670,25 +668,14 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   }
 
   /**
-   * Unpauses staking for a yield provider only if it's currently paused and the dashboard withdrawableValue meets the minimum threshold.
+   * Unpauses staking for a yield provider only if it's currently paused.
    *
    * @param {Address} yieldProvider - The yield provider address.
-   * @returns {Promise<TransactionReceipt | undefined>} The transaction receipt if staking was unpaused, undefined if already unpaused or below threshold.
+   * @returns {Promise<TransactionReceipt | undefined>} The transaction receipt if staking was unpaused, undefined if already unpaused.
    */
   async unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | undefined> {
     if (!(await this.isStakingPaused(yieldProvider))) {
       this.logger.info(`Already resumed staking for yieldProvider=${yieldProvider}`);
-      return undefined;
-    }
-
-    const dashboardAddress = await this.getLidoDashboardAddress(yieldProvider);
-    const dashboardClient = DashboardContractClient.getOrCreate(dashboardAddress);
-    const withdrawableValue = await dashboardClient.withdrawableValue();
-
-    if (withdrawableValue < this.minStakingVaultBalanceToUnpauseStakingWei) {
-      this.logger.info(
-        `unpauseStakingIfNotAlready - skipping unpause as withdrawableValue=${withdrawableValue} is below the minimum balance threshold of ${this.minStakingVaultBalanceToUnpauseStakingWei}`,
-      );
       return undefined;
     }
 

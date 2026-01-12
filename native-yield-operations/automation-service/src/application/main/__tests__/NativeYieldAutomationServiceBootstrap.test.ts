@@ -228,7 +228,6 @@ const createBootstrapConfig = () => ({
     minWithdrawalThresholdEth: 42n,
     maxStakingRebalanceAmountWei: 1000000000000000000000n,
     stakeCircuitBreakerThresholdWei: 2000000000000000000000n,
-    minStakingVaultBalanceToUnpauseStakingWei: 500000000000000000000n,
   },
   reporting: {
     shouldSubmitVaultReport: true,

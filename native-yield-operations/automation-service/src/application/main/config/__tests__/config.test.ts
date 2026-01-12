@@ -28,7 +28,6 @@ const createValidEnv = () => ({
   MIN_WITHDRAWAL_THRESHOLD_ETH: "42",
   MAX_STAKING_REBALANCE_AMOUNT_WEI: "1000000000000000000000",
   STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI: "2000000000000000000000",
-  MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI: "500000000000000000000",
   WEB3SIGNER_URL: "https://web3signer.linea.build",
   WEB3SIGNER_PUBLIC_KEY: `0x${"b".repeat(128)}`,
   WEB3SIGNER_KEYSTORE_PATH: "/path/to/keystore",
@@ -87,7 +86,6 @@ describe("toClientConfig", () => {
         minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
         maxStakingRebalanceAmountWei: env.MAX_STAKING_REBALANCE_AMOUNT_WEI,
         stakeCircuitBreakerThresholdWei: env.STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI,
-        minStakingVaultBalanceToUnpauseStakingWei: env.MIN_STAKING_VAULT_BALANCE_TO_UNPAUSE_STAKING_WEI,
       },
       reporting: {
         shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,

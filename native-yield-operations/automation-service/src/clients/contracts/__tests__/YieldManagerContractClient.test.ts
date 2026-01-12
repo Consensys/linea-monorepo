@@ -97,14 +97,12 @@ describe("YieldManagerContractClient", () => {
     minWithdrawalThresholdEth = 0n,
     maxStakingRebalanceAmountWei = 1000000000000000000000n, // 1000 ETH default
     stakeCircuitBreakerThresholdWei = 2000000000000000000000n, // 2000 ETH default
-    minStakingVaultBalanceToUnpauseStakingWei = 0n,
     metricsUpdater,
   }: {
     rebalanceToleranceAmountWei?: bigint;
     minWithdrawalThresholdEth?: bigint;
     maxStakingRebalanceAmountWei?: bigint;
     stakeCircuitBreakerThresholdWei?: bigint;
-    minStakingVaultBalanceToUnpauseStakingWei?: bigint;
     metricsUpdater?: Partial<INativeYieldAutomationMetricsUpdater>;
   } = {}) =>
     new YieldManagerContractClient(
@@ -115,7 +113,6 @@ describe("YieldManagerContractClient", () => {
       minWithdrawalThresholdEth,
       maxStakingRebalanceAmountWei,
       stakeCircuitBreakerThresholdWei,
-      minStakingVaultBalanceToUnpauseStakingWei,
       metricsUpdater as INativeYieldAutomationMetricsUpdater | undefined,
     );
 
@@ -1029,62 +1026,20 @@ describe("YieldManagerContractClient", () => {
     expect(pauseSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("unpauses staking only when currently paused and withdrawableValue meets threshold", async () => {
+  it("unpauses staking only when currently paused", async () => {
     const txReceipt = { transactionHash: "0xunpause" } as unknown as TransactionReceipt;
-    const dashboardAddress = l2Recipient; // Using l2Recipient as dashboard address (primaryEntrypoint)
-    const minStakingVaultBalanceToUnpauseStakingWei = 1000n;
-    const withdrawableValue = 2000n; // Above threshold
 
-    const client = createClient({ minStakingVaultBalanceToUnpauseStakingWei });
+    const client = createClient();
     const unpauseSpy = jest.spyOn(client, "unpauseStaking").mockResolvedValue(txReceipt);
-    const getLidoDashboardAddressSpy = jest
-      .spyOn(client, "getLidoDashboardAddress")
-      .mockResolvedValue(dashboardAddress);
-
-    const mockDashboardClient = {
-      withdrawableValue: jest.fn().mockResolvedValue(withdrawableValue),
-    };
-    mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
 
     contractStub.read.isStakingPaused.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
     await expect(client.unpauseStakingIfNotAlready(yieldProvider)).resolves.toBe(txReceipt);
-    expect(getLidoDashboardAddressSpy).toHaveBeenCalledWith(yieldProvider);
-    expect(mockedDashboardContractClientGetOrCreate).toHaveBeenCalledWith(dashboardAddress);
-    expect(mockDashboardClient.withdrawableValue).toHaveBeenCalledTimes(1);
     expect(unpauseSpy).toHaveBeenCalledWith(yieldProvider);
 
     await expect(client.unpauseStakingIfNotAlready(yieldProvider)).resolves.toBeUndefined();
     expect(logger.info).toHaveBeenCalledWith(`Already resumed staking for yieldProvider=${yieldProvider}`);
     expect(unpauseSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it("skips unpause when withdrawableValue is below threshold", async () => {
-    const dashboardAddress = l2Recipient; // Using l2Recipient as dashboard address (primaryEntrypoint)
-    const minStakingVaultBalanceToUnpauseStakingWei = 1000n;
-    const withdrawableValue = 500n; // Below threshold
-
-    const client = createClient({ minStakingVaultBalanceToUnpauseStakingWei });
-    const unpauseSpy = jest.spyOn(client, "unpauseStaking");
-    const getLidoDashboardAddressSpy = jest
-      .spyOn(client, "getLidoDashboardAddress")
-      .mockResolvedValue(dashboardAddress);
-
-    const mockDashboardClient = {
-      withdrawableValue: jest.fn().mockResolvedValue(withdrawableValue),
-    };
-    mockedDashboardContractClientGetOrCreate.mockReturnValue(mockDashboardClient as any);
-
-    contractStub.read.isStakingPaused.mockResolvedValueOnce(true);
-
-    await expect(client.unpauseStakingIfNotAlready(yieldProvider)).resolves.toBeUndefined();
-    expect(getLidoDashboardAddressSpy).toHaveBeenCalledWith(yieldProvider);
-    expect(mockedDashboardContractClientGetOrCreate).toHaveBeenCalledWith(dashboardAddress);
-    expect(mockDashboardClient.withdrawableValue).toHaveBeenCalledTimes(1);
-    expect(logger.info).toHaveBeenCalledWith(
-      `unpauseStakingIfNotAlready - skipping unpause as withdrawableValue=${withdrawableValue} is below the minimum balance threshold of ${minStakingVaultBalanceToUnpauseStakingWei}`,
-    );
-    expect(unpauseSpy).not.toHaveBeenCalled();
   });
 
   it("computes available unstaking rebalance balance", async () => {

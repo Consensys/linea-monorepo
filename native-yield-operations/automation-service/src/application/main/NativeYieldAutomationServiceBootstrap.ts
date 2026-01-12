@@ -158,7 +158,6 @@ export class NativeYieldAutomationServiceBootstrap {
       config.rebalance.minWithdrawalThresholdEth,
       config.rebalance.maxStakingRebalanceAmountWei,
       config.rebalance.stakeCircuitBreakerThresholdWei,
-      config.rebalance.minStakingVaultBalanceToUnpauseStakingWei,
       this.metricsUpdater,
     );
     this.lazyOracleContractClient = new LazyOracleContractClient(
