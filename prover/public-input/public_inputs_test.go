@@ -36,7 +36,7 @@ func TestAggregation(t *testing.T) {
 				LastFinalizedFtxNumber: 0,
 				FinalFtxNumber:         0,
 			},
-			Res: "0x26580e4b413ca2c069e358e675d115ba940c0b0448deba809cc19da6ae493d45",
+			Res: "0x0182c74f3217ac70628b055fc8a13d924758dd9d9814fe38d8f28b51398c7745",
 		},
 	}
 

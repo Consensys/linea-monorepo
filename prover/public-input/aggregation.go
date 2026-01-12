@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	NbAggregationFPI = 16 // hardcoded constant , the number of functional public inputs used in the keccak hash.
+	NbAggregationFPI = 17 // hardcoded constant , the number of functional public inputs used in the keccak hash.
 )
 
 // Aggregation collects all the field that are used to construct the public
@@ -272,8 +272,7 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 }
 
 func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]frontend.Variable {
-	// number of hashes: NbAggregationFPI
-	// number of hashes: 13
+	// number of hashes: NbAggregationFPI (17)
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,
 		pi.FinalShnarf,
