@@ -5,17 +5,23 @@ import { LineaEstimateGasClient, waitForEvents } from "./common/utils";
 
 const l2AccountManager = config.getL2AccountManager();
 
+// Constants
+const DEFAULT_GAS_LIMIT = 500000n;
+
 describe("EIP-7702 test suite", () => {
   const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
 
   // Helper function to deploy a simple test contract for delegation
+  // This matches the TestEIP7702Delegation contract from contracts/src/_testing/mocks/base/TestEIP7702Delegation.sol
   const deployTestContract = async (deployer: ethers.Wallet) => {
     const TestEIP7702DelegationABI = [
       "event Log(string message)",
       "function initialize() external"
     ];
     
-    // Bytecode for TestEIP7702Delegation contract that emits a Log event
+    // Bytecode for TestEIP7702Delegation contract
+    // This is the compiled output of the contract which emits a Log event with message "Hello, world computer!"
+    // Note: In production, this should ideally be imported from compiled artifacts
     const bytecode =
       "0x608060405234801561001057600080fd5b5060c78061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063e1c7392a14602d575b600080fd5b60336035565b005b7f0b2e13ff20ac7b474198655583edf70dedd2c1dc980e329c4fbb2fc0748b796b6040518060400160405280601981526020017f48656c6c6f2c20776f726c6420636f6d7075746572210000000000000000000081525060405180806020018281038252602081526020018280519060200190809190601f01602080910402602001604051908101604052809392919081815260200183838082843760405192018290039091209050607160f01b90529091019060200390a1565b00";
 
@@ -61,8 +67,7 @@ describe("EIP-7702 test suite", () => {
       logger.debug(`Current L2 block number before transaction: ${currentL2BlockNumber}`);
 
       // Prepare transaction data
-      const delegatedContractInterface = new ethers.Interface(await delegationContract.interface.fragments);
-      const calldata = delegatedContractInterface.encodeFunctionData("initialize");
+      const calldata = delegationContract.interface.encodeFunctionData("initialize");
 
       // Get gas estimates from Linea
       const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await lineaEstimateGasClient.lineaEstimateGas(
@@ -81,7 +86,7 @@ describe("EIP-7702 test suite", () => {
         to: account.address, // Send to self (EOA will be delegated to contract)
         authorizationList: [authorization],
         data: calldata,
-        gasLimit: gasLimit > 500000n ? gasLimit : 500000n,
+        gasLimit: gasLimit > DEFAULT_GAS_LIMIT ? gasLimit : DEFAULT_GAS_LIMIT,
         value: 0n,
         maxPriorityFeePerGas: maxPriorityFeePerGas,
         maxFeePerGas: maxFeePerGas,
@@ -178,7 +183,7 @@ describe("EIP-7702 test suite", () => {
       to: account.address,
       authorizationList: [authorization],
       data: "0x",
-      gasLimit: 500000n,
+      gasLimit: DEFAULT_GAS_LIMIT,
       value: 0n,
       maxPriorityFeePerGas,
       maxFeePerGas,
