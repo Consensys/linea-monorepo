@@ -225,26 +225,28 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	}
 
 	resp = &Response{
-		DataHashes:                          cf.DataHashes,
-		DataParentHash:                      cf.DataParentHash,
-		ParentStateRootHash:                 cf.ParentStateRootHash,
-		ParentAggregationLastBlockTimestamp: cf.ParentAggregationLastBlockTimestamp,
-		FinalTimestamp:                      cf.FinalTimestamp,
-		L1RollingHash:                       cf.L1RollingHash,
-		L1RollingHashMessageNumber:          cf.L1RollingHashMessageNumber,
-		L2MerkleRoots:                       cf.L2MsgRootHashes,
-		L2MsgTreesDepth:                     cf.L2MsgTreeDepth,
-		L2MessagingBlocksOffsets:            cf.L2MessagingBlocksOffsets,
-		LastFinalizedBlockNumber:            cf.LastFinalizedBlockNumber,
-		FinalBlockNumber:                    cf.FinalBlockNumber,
-		ParentAggregationFinalShnarf:        cf.ParentAggregationFinalShnarf,
-		FinalShnarf:                         cf.FinalShnarf,
-		FinalBlockHash:                      cf.FinalBlockHash,
-		FinalFtxRollingHash:                 cf.FinalFtxRollingHash,
-		FinalFtxNumber:                      cf.FinalFtxNumber,
-		ParentAggregationBlockHash:          cf.ParentAggregationBlockHash,
-		ParentAggregationFtxNumber:          cf.LastFinalizedFtxNumber,
-		ParentAggregationFtxRollingHash:     cf.LastFinalizedFtxRollingHash,
+		DataHashes:                              cf.DataHashes,
+		DataParentHash:                          cf.DataParentHash,
+		ParentStateRootHash:                     cf.ParentStateRootHash,
+		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
+		FinalTimestamp:                          cf.FinalTimestamp,
+		L1RollingHash:                           cf.L1RollingHash,
+		L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
+		L2MerkleRoots:                           cf.L2MsgRootHashes,
+		L2MsgTreesDepth:                         cf.L2MsgTreeDepth,
+		L2MessagingBlocksOffsets:                cf.L2MessagingBlocksOffsets,
+		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
+		FinalBlockNumber:                        cf.FinalBlockNumber,
+		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
+		FinalShnarf:                             cf.FinalShnarf,
+		FinalBlockHash:                          cf.FinalBlockHash,
+		FinalFtxRollingHash:                     cf.FinalFtxRollingHash,
+		FinalFtxNumber:                          cf.FinalFtxNumber,
+		ParentAggregationBlockHash:              cf.ParentAggregationBlockHash,
+		ParentAggregationFtxNumber:              cf.LastFinalizedFtxNumber,
+		ParentAggregationFtxRollingHash:         cf.LastFinalizedFtxRollingHash,
+		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
+		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 	}
 
 	// @alex: proofless jobs are triggered once during the migration introducing
@@ -271,6 +273,12 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		FinalFtxNumber:                          cf.FinalFtxNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    l2MsgMerkleTreeDepth,
+
+		// dynamic chain configuration
+		ChainID:              uint64(cfg.Layer2.ChainID),
+		BaseFee:              uint64(cfg.Layer2.BaseFee),
+		CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
+		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
 	}
 
 	resp.AggregatedProofPublicInput = pubInputParts.GetPublicInputHex()

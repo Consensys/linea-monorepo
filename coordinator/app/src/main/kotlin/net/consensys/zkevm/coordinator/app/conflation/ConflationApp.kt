@@ -5,14 +5,15 @@ import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import linea.LongRunningService
 import linea.blob.ShnarfCalculatorVersion
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.isDisabled
 import linea.domain.BlockParameter
-import linea.domain.RetryConfig
 import linea.encoding.BlockRLPEncoder
+import linea.ethapi.EthApiClient
 import linea.web3j.ExtendedWeb3JImpl
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
@@ -20,8 +21,6 @@ import net.consensys.linea.contract.l1.GenesisStateProvider
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.linea.traces.TracesCountersV2
-import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.cleanupDbDataAfterBlockNumbers
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeAggregationFrom
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
@@ -101,6 +100,12 @@ class ConflationApp(
     rpcUrl = configs.conflation.l2Endpoint.toString(),
     log = LogManager.getLogger("clients.l2.eth.conflation"),
   )
+  val l2EthClient: EthApiClient = createEthApiClient(
+    rpcUrl = configs.conflation.l2Endpoint.toString(),
+    log = LogManager.getLogger("clients.l2.eth.conflation"),
+    requestRetryConfig = configs.conflation.l2RequestRetries,
+    vertx = vertx,
+  )
 
   private val extendedWeb3J = ExtendedWeb3JImpl(l2Web3jClient)
   private val lastProcessedBlock = extendedWeb3J.ethGetBlock(
@@ -134,7 +139,7 @@ class ConflationApp(
       lastBlockNumber = lastProcessedBlockNumber,
       syncCalculators = createCalculatorsForBlobsAndConflation(logger, compressedBlobCalculator),
       deferredTriggerConflationCalculators = listOfNotNull(deadlineConflationCalculatorRunner),
-      emptyTracesCounters = TracesCountersV2.Companion.EMPTY_TRACES_COUNT,
+      emptyTracesCounters = configs.conflation.tracesLimits.emptyTracesCounters,
       log = logger,
     )
 
@@ -254,7 +259,6 @@ class ConflationApp(
       description = "Highest consecutive proven aggregation block number",
       measurementSupplier = highestConsecutiveAggregationTracker,
     )
-
     ProofAggregationCoordinatorService.Companion
       .create(
         vertx = vertx,
@@ -262,29 +266,26 @@ class ConflationApp(
         deadlineCheckInterval = configs.conflation.proofAggregation.deadlineCheckInterval,
         aggregationDeadline = configs.conflation.proofAggregation.deadline,
         latestBlockProvider = GethCliqueSafeBlockProvider(
-          web3j = l2Web3jClient,
+          ethApiBlockClient = l2EthClient,
           config = GethCliqueSafeBlockProvider.Config(0),
         ),
         maxProofsPerAggregation = configs.conflation.proofAggregation.proofsLimit,
+        maxBlobsPerAggregation = configs.conflation.proofAggregation.blobsLimit,
         startBlockNumberInclusive = lastConsecutiveAggregatedBlockNumber + 1u,
         aggregationsRepository = aggregationsRepository,
         consecutiveProvenBlobsProvider = maxBlobEndBlockNumberTracker,
         proofAggregationClient = proverClientFactory.proofAggregationProverClient(),
-        l2EthApiClient = createEthApiClient(
-          l2Web3jClient,
-          requestRetryConfig = RetryConfig(
-            backoffDelay = 1.seconds,
-            failuresWarningThreshold = 3u,
-          ),
-          vertx = vertx,
-        ),
+        l2EthApiClient = l2EthClient,
         l2MessageService = Web3JL2MessageServiceSmartContractClient.createReadOnly(
           web3jClient = l2Web3jClient,
+          ethApiClient = l2EthClient,
           contractAddress = configs.protocol.l2.contractAddress,
           smartContractErrors = configs.smartContractErrors,
           smartContractDeploymentBlockNumber = configs.protocol.l2.contractDeploymentBlockNumber?.getNumber(),
         ),
-        aggregationDeadlineDelay = configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
+        noL2ActivityTimeout = configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
+        waitForNoL2ActivityToTriggerAggregation =
+        configs.conflation.proofAggregation.waitForNoL2ActivityToTriggerAggregation,
         targetEndBlockNumbers = configs.conflation.proofAggregation.targetEndBlocks ?: emptyList(),
         metricsFacade = metricsFacade,
         provenAggregationEndBlockNumberConsumer = { aggEndBlockNumber -> highestAggregationTracker(aggEndBlockNumber) },
@@ -302,6 +303,7 @@ class ConflationApp(
       vertx = vertx,
       rpcClientFactory = httpJsonRpcClientFactory,
       configs = configs.traces,
+      fallBackTracesCounters = configs.conflation.tracesLimits.emptyTracesCounters,
     )
 
     val blobsConflationHandler: (BlocksConflation) -> SafeFuture<*> = run {
@@ -391,6 +393,7 @@ class ConflationApp(
   private val lastProvenBlockNumberProvider = run {
     val lastProvenConsecutiveBatchBlockNumberProvider = BatchesRepoBasedLastProvenBlockNumberProvider(
       lastProcessedBlockNumber.toLong(),
+      lastFinalizedBlock.toLong(),
       batchesRepository,
     )
     metricsFacade.createGauge(
@@ -406,7 +409,7 @@ class ConflationApp(
     log.info("Resuming conflation from block={} inclusive", lastProcessedBlockNumber + 1UL)
     val blockCreationMonitor = BlockCreationMonitor(
       vertx = vertx,
-      web3j = extendedWeb3J,
+      ethApi = l2EthClient,
       startingBlockNumberExclusive = lastProcessedBlockNumber.toLong(),
       blockCreationListener = block2BatchCoordinator,
       lastProvenBlockNumberProviderAsync = lastProvenBlockNumberProvider,
@@ -418,6 +421,7 @@ class ConflationApp(
         // block_number = forceStopConflationAtBlockInclusive + 1 to trigger conflation at
         // forceStopConflationAtBlockInclusive
         lastL2BlockNumberToProcessInclusive = configs.conflation.forceStopConflationAtBlockInclusive?.inc(),
+        lastL2BlockTimestampToProcessInclusive = configs.conflation.forceStopConflationAtBlockTimestampInclusive,
       ),
     )
     blockCreationMonitor
@@ -454,9 +458,7 @@ class ConflationApp(
     return lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(blockNumber)
   }
 
-  private fun createDeadlineConflationCalculatorRunner(
-    l2Web3jClient: Web3j,
-  ): DeadlineConflationCalculatorRunner? {
+  private fun createDeadlineConflationCalculatorRunner(l2Web3jClient: Web3j): DeadlineConflationCalculatorRunner? {
     if (configs.conflation.isDisabled() || configs.conflation.conflationDeadline == null) {
       log.info("Conflation deadline calculator is disabled")
       return null
@@ -473,8 +475,8 @@ class ConflationApp(
         lastBlockNumber = lastProcessedBlockNumber,
         clock = Clock.System,
         latestBlockProvider = GethCliqueSafeBlockProvider(
-          l2Web3jClient,
-          GethCliqueSafeBlockProvider.Config(blocksToFinalization = 0),
+          ethApiBlockClient = l2EthClient,
+          config = GethCliqueSafeBlockProvider.Config(blocksToFinalization = 0),
         ),
       ),
     )
@@ -500,9 +502,7 @@ class ConflationApp(
     }
   }
 
-  private fun addTimestampHardForkCalculatorIfDefined(
-    calculators: MutableList<ConflationCalculator>,
-  ) {
+  private fun addTimestampHardForkCalculatorIfDefined(calculators: MutableList<ConflationCalculator>) {
     if (configs.conflation.proofAggregation.timestampBasedHardForks.isNotEmpty()) {
       calculators.add(
         TimestampHardForkConflationCalculator(
@@ -526,8 +526,8 @@ class ConflationApp(
     val calculators: MutableList<ConflationCalculator> =
       mutableListOf(
         ConflationCalculatorByExecutionTraces(
-          tracesCountersLimit = configs.conflation.tracesLimitsV2,
-          emptyTracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+          tracesCountersLimit = configs.conflation.tracesLimits,
+          emptyTracesCounters = configs.conflation.tracesLimits.emptyTracesCounters,
           metricsFacade = metricsFacade,
           log = logger,
         ),

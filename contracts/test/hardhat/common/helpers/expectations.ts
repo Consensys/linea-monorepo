@@ -27,6 +27,14 @@ export async function expectEvent<T extends BaseContract>(
     .withArgs(...eventArgs);
 }
 
+export async function expectNoEvent<T extends BaseContract>(
+  contract: T,
+  asyncCall: Promise<unknown>,
+  eventName: string,
+) {
+  await expect(asyncCall).to.not.emit(contract, eventName);
+}
+
 export async function expectEvents<T extends BaseContract>(
   contract: T,
   asyncCall: Promise<unknown>,
@@ -39,7 +47,7 @@ export function expectEventDirectFromReceiptData(
   contract: BaseContract,
   transactionReceipt: TransactionReceipt,
   expectedEventName: string,
-  expectedEventArgs: undefined[] = [],
+  expectedEventArgs: unknown[] = [],
   logIndex: number = 0,
 ) {
   const logSnippet = {

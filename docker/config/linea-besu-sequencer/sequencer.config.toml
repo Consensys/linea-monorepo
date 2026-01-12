@@ -40,14 +40,16 @@ metrics-host="0.0.0.0"
 metrics-port=9545
 
 tx-pool-no-local-priority=false
-#
-api-gas-and-priority-fee-limiting-enabled=false
-api-gas-and-priority-fee-lower-bound-coefficient=120
-api-gas-and-priority-fee-upper-bound-coefficient=300
-poa-block-txs-selection-max-time=1000
+# tx-pool-enable-balance-check=true # this would make e2e test fail to deploy L2 contracts
+poa-block-txs-selection-max-time=80
+block-txs-selection-max-time=800
+# plugin-block-txs-selection-max-time=50 #default as 50 which means 400ms
+
+cache-last-block-headers-preload-enabled=true
+cache-last-block-headers=50
 
 # plugins
-plugins=["LineaEstimateGasEndpointPlugin","LineaL1FinalizationTagUpdaterPlugin","LineaExtraDataPlugin","LineaTransactionPoolValidatorPlugin","LineaBundleEndpointsPlugin","LineaSetExtraDataEndpointPlugin","LineaTransactionSelectorPlugin"]
+plugins=["LineaEstimateGasEndpointPlugin","LineaExtraDataPlugin","LineaTransactionPoolValidatorPlugin","LineaBundleEndpointsPlugin","LineaSetExtraDataEndpointPlugin","LineaTransactionSelectorPlugin"]
 plugin-linea-module-limit-file-path="/var/lib/besu/traces-limits.toml"
 plugin-linea-deny-list-path="/var/lib/besu/deny-list.txt"
 plugin-linea-estimate-gas-compatibility-mode-enabled=false
@@ -70,7 +72,7 @@ plugin-linea-estimate-gas-min-margin="1.2"
 plugin-linea-limitless-enabled=false
 strict-tx-replay-protection-enabled=false
 
-# should uncomment only when the linea-sequencer plugin supports liveness 
+# should uncomment only when the linea-sequencer plugin supports liveness
 plugin-linea-liveness-enabled=true
 plugin-linea-liveness-max-block-age-seconds=8
 plugin-linea-liveness-bundle-max-timestamp-surplus-seconds=12

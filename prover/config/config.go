@@ -83,14 +83,23 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	}
 	cfg.Layer2.MsgSvcContract = addr.Address()
 
+	// Extract the coinbase address from the string
+	addr, err = common.NewMixedcaseAddressFromString(cfg.Layer2.CoinBaseStr)
+	if withValidation && err != nil {
+		return nil, fmt.Errorf("failed to extract Layer2.CoinBase address: %w", err)
+	}
+	cfg.Layer2.CoinBase = addr.Address()
+
 	// ensure that asset dir / kzgsrs exists using os.Stat
 	srsDir := cfg.PathForSRS()
 	if _, err := os.Stat(srsDir); withValidation && os.IsNotExist(err) {
 		return nil, fmt.Errorf("kzgsrs directory (%s) does not exist: %w", srsDir, err)
 	}
 
-	// duplicate L2 hardcoded values for PI
+	// Note: ChainID and BaseFee are typed as uint, which is at most 64 bits.
 	cfg.PublicInputInterconnection.ChainID = uint64(cfg.Layer2.ChainID)
+	cfg.PublicInputInterconnection.BaseFee = uint64(cfg.Layer2.BaseFee)
+	cfg.PublicInputInterconnection.CoinBase = cfg.Layer2.CoinBase
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
 
 	return &cfg, nil
@@ -134,6 +143,7 @@ type Config struct {
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
 		ChainID uint `mapstructure:"chain_id" validate:"required"`
+		BaseFee uint `mapstructure:"base_fee" validate:"required"`
 
 		// MsgSvcContractStr stores the unique ID of the Service Contract (SC), that is, it's
 		// address, as a string. The Service Contract (SC) is a smart contract that the L2
@@ -143,6 +153,10 @@ type Config struct {
 
 		// MsgSvcContract stores the unique ID of the Service Contract (SC), as a common.Address.
 		MsgSvcContract common.Address `mapstructure:"-"`
+
+		// CoinBaseStr stores the coinbase address of Linea as a string.
+		CoinBaseStr string         `mapstructure:"coin_base" validate:"required,eth_addr"`
+		CoinBase    common.Address `mapstructure:"-"`
 	}
 
 	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
@@ -186,6 +200,12 @@ type Controller struct {
 	// List of exit codes for which the job will retry in large mode
 	RetryLocallyWithLargeCodes []int `mapstructure:"retry_locally_with_large_codes"`
 
+	// The number of seconds infra (AWS) waits before reclaiming a spot instance
+	SpotInstanceReclaimTime int `mapstructure:"spot_instance_reclaim_time_seconds"`
+
+	// The number of seconds the controller should wait before killing a worker after receiving a SIGTERM
+	TerminationGracePeriod int `mapstructure:"termination_grace_period_seconds"`
+
 	// defaults to true; the controller will not pick associated jobs if false.
 	EnableExecution         bool `mapstructure:"enable_execution"`
 	EnableBlobDecompression bool `mapstructure:"enable_blob_decompression"`
@@ -197,10 +217,6 @@ type Controller struct {
 	WorkerCmdLarge     string             `mapstructure:"worker_cmd_large_tmpl"`
 	WorkerCmdTmpl      *template.Template `mapstructure:"-"`
 	WorkerCmdLargeTmpl *template.Template `mapstructure:"-"`
-
-	// SpotInstanceMode tells the controller to gracefully exit as soon as it
-	// receives a SIGTERM.
-	SpotInstanceMode bool `mapstructure:"spot_instance_mode"`
 }
 
 type Prometheus struct {
@@ -212,12 +228,6 @@ type Prometheus struct {
 	// assign it.
 	Route string
 }
-
-// type LimitlessParams struct {
-// 	DiscTargetWeight  int `mapstructure:"disc_target_weight"`
-// 	DiscPreDivision   int `mapstructure:"disc_pre_division"`
-// 	CongloMaxSegments int `mapstructure:"conglo_max_segments"`
-// }
 
 type Execution struct {
 	WithRequestDir `mapstructure:",squash"`
@@ -243,6 +253,12 @@ type Execution struct {
 	// bugs in the limitless prover. The field is optional and defaults to
 	// false.
 	LimitlessWithDebug bool `mapstructure:"limitless_with_debug"`
+
+	// KeepTraceUntil is an optional parameter (default to 0) that indicates a
+	// maximum block height under which the prover will *not* delete the
+	// execution traces from EFS. The block height that is compared to this
+	// value is the "end" block of the request range.
+	KeepTracesUntilBlock int `mapstructure:"keep_traces_until_block"`
 }
 
 type BlobDecompression struct {
@@ -321,6 +337,8 @@ type PublicInput struct {
 
 	MockKeccakWizard bool           // for testing purposes only
 	ChainID          uint64         // duplicate from Config
+	BaseFee          uint64         // duplicate from Config
+	CoinBase         common.Address // duplicate from Config
 	L2MsgServiceAddr common.Address // duplicate from Config
 }
 

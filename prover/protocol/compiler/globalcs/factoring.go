@@ -4,13 +4,12 @@ import (
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/symbolic/simplify"
 )
 
 // factorExpressionList applies [factorExpression] over a list of expressions
-func factorExpressionList(comp *wizard.CompiledIOP, exprList []*symbolic.Expression) []*symbolic.Expression {
+func factorExpressionList(exprList []*symbolic.Expression) []*symbolic.Expression {
 	res := make([]*symbolic.Expression, len(exprList))
 	var wg sync.WaitGroup
 
@@ -18,20 +17,30 @@ func factorExpressionList(comp *wizard.CompiledIOP, exprList []*symbolic.Express
 		wg.Add(1)
 		go func(i int, expr *symbolic.Expression) {
 			defer wg.Done()
-			res[i] = factorExpression(comp, expr)
+			res[i] = factorExpression(expr)
 		}(i, expr)
 	}
 
 	wg.Wait()
+
+	// for i := range res {
+	// 	fmt.Printf("============================\n")
+	// 	fmt.Printf("Expression: %v\n", i)
+	// 	simplify.ProfileExpression(res[i])
+	// }
+
 	return res
 }
 
 // factorExpression factors expr and returns the factored expression. The
 // resulting factored expression is cached in the file system as this is a
 // compute intensive operation.
-func factorExpression(comp *wizard.CompiledIOP, expr *symbolic.Expression) *symbolic.Expression {
+func factorExpression(expr *symbolic.Expression) *symbolic.Expression {
 	flattenedExpr := flattenExpr(expr)
-	return simplify.AutoSimplify(flattenedExpr)
+	flattenedExpr = simplify.AutoSimplify(flattenedExpr)
+	symbolic.SortChildren(flattenedExpr)
+
+	return flattenedExpr
 }
 
 // flattenExpr returns an expression equivalent to expr where the

@@ -1,6 +1,8 @@
 package symbolic
 
 import (
+	"sort"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -20,20 +22,15 @@ type ExpressionBoard struct {
 	// Maps nodes to their level in the DAG structure. The 32 MSB bits
 	// of the ID indicates the level and the LSB bits indicates the position
 	// in the level.
-	ESHashesToPos map[field.Element]nodeID
+	EsHashesToPos map[field.Element]nodeID
 }
 
 // emptyBoard initializes a board with no Node in it.
 func emptyBoard() ExpressionBoard {
 	return ExpressionBoard{
 		Nodes:         [][]Node{},
-		ESHashesToPos: map[field.Element]nodeID{},
+		EsHashesToPos: map[field.Element]nodeID{},
 	}
-}
-
-// getNode returns a node from an ID
-func (b *ExpressionBoard) getNode(id nodeID) *Node {
-	return &b.Nodes[id.level()][id.posInLevel()]
 }
 
 /*
@@ -52,23 +49,20 @@ in an [ExpressionBoard]. Additionally; it gather "DAG-wise" data such as the
 parents of the Node etc...
 */
 type Node struct {
-	// Indicates the IDs of the parents of the current node; corresponding to
-	// the nodes representing admitting this node as an input.
-	Parents  []nodeID
-	Children []nodeID
 	/*
 		ESHash (Expression Sensitive Hash) is a field.Element representing an expression.
 		Two expression with the same ESHash are considered as equals. This helps expression
 		pruning.
 	*/
-	ESHash field.Element
+	ESHash esHash
+
+	// Indicates the IDs of the parents of the current node; corresponding to
+	// the nodes representing admitting this node as an input.
+	// Parents  []nodeID
+	Children []nodeID
+
 	// Operator contains the logic to evaluate an expression
 	Operator Operator
-}
-
-// addParent appends a parent to the node
-func (n *Node) addParent(p nodeID) {
-	n.Parents = append(n.Parents, p)
 }
 
 // posInLevel returns the position in the level from a NodeID
@@ -91,4 +85,52 @@ func newNodeID(level, posInLevel int) nodeID {
 		utils.Panic("Pos in level is too large %v", posInLevel)
 	}
 	return nodeID(uint64(level)<<32 | uint64(posInLevel))
+}
+
+// SortExpression the children list of every node by increasing ESHash and goes
+// recursively.
+func SortChildren(e *Expression) {
+
+	// Recursively call the function for the children if applicable
+	for i := range e.Children {
+		SortChildren(e.Children[i])
+	}
+
+	if len(e.Children) < 2 {
+		return
+	}
+
+	switch op := e.Operator.(type) {
+	case LinComb:
+
+		sorter := utils.GenSorter{
+			LenFn: func() int { return len(e.Children) },
+			SwapFn: func(i, j int) {
+				e.Children[i], e.Children[j] = e.Children[j], e.Children[i]
+				op.Coeffs[i], op.Coeffs[j] = op.Coeffs[j], op.Coeffs[i]
+			},
+			LessFn: func(i, j int) bool {
+				return e.Children[i].ESHash.Cmp(&e.Children[j].ESHash) < 0
+			},
+		}
+
+		sort.Sort(sorter)
+		return
+
+	case Product:
+
+		sorter := utils.GenSorter{
+			LenFn: func() int { return len(e.Children) },
+			SwapFn: func(i, j int) {
+				e.Children[i], e.Children[j] = e.Children[j], e.Children[i]
+				op.Exponents[i], op.Exponents[j] = op.Exponents[j], op.Exponents[i]
+			},
+			LessFn: func(i, j int) bool {
+				return e.Children[i].ESHash.Cmp(&e.Children[j].ESHash) < 0
+			},
+		}
+
+		sort.Sort(sorter)
+		return
+	}
 }

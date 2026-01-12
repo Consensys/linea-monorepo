@@ -9,8 +9,10 @@
 
 package net.consensys.linea.rpc.methods;
 
+import static net.consensys.linea.bl.TransactionProfitabilityCalculator.getCompressedTxSize;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
+import static net.consensys.linea.zktracer.Fork.fromMainnetHardforkIdToTracerFork;
 import static org.hyperledger.besu.ethereum.api.jsonrpc.internal.results.Quantity.create;
 import static org.hyperledger.besu.plugin.services.TransactionSimulationService.SimulationParameters.ALLOW_FUTURE_NONCE;
 
@@ -249,8 +251,13 @@ public class LineaEstimateGas {
               .toBigInteger());
     }
 
+    int compressedSize = getCompressedTxSize(transaction);
     return txProfitabilityCalculator.profitablePriorityFeePerGas(
-        transaction, profitabilityConf.estimateGasMinMargin(), estimatedGasUsed, minGasPrice);
+        transaction,
+        profitabilityConf.estimateGasMinMargin(),
+        estimatedGasUsed,
+        minGasPrice,
+        compressedSize);
   }
 
   private void validateLineCounts(
@@ -430,24 +437,16 @@ public class LineaEstimateGas {
 
   private LineCountingTracer createLineCountingTracer(
       final ProcessableBlockHeader pendingBlockHeader, final BlockchainService blockchainService) {
-    final var forkId =
-        blockchainService.getNextBlockHardforkId(
-            blockchainService.getChainHeadHeader(), Instant.now().getEpochSecond());
+    final Fork forkId =
+        fromMainnetHardforkIdToTracerFork(
+            (HardforkId.MainnetHardforkId)
+                blockchainService.getNextBlockHardforkId(
+                    blockchainService.getChainHeadHeader(), Instant.now().getEpochSecond()));
 
     final var lineCountingTracer =
         tracerConfiguration.isLimitless()
-            ? new ZkCounter(l1L2BridgeConfiguration)
-            : new ZkTracer(
-                switch (forkId) {
-                  case HardforkId.MainnetHardforkId.LONDON -> Fork.LONDON;
-                  case HardforkId.MainnetHardforkId.PARIS -> Fork.PARIS;
-                  case HardforkId.MainnetHardforkId.SHANGHAI -> Fork.SHANGHAI;
-                  case HardforkId.MainnetHardforkId.CANCUN -> Fork.CANCUN;
-                  case HardforkId.MainnetHardforkId.PRAGUE -> Fork.PRAGUE;
-                  default -> throw new RuntimeException("Unknown fork id " + forkId);
-                },
-                l1L2BridgeConfiguration,
-                blockchainService.getChainId().get());
+            ? new ZkCounter(l1L2BridgeConfiguration, forkId)
+            : new ZkTracer(forkId, l1L2BridgeConfiguration, blockchainService.getChainId().get());
     lineCountingTracer.traceStartConflation(1L);
     lineCountingTracer.traceStartBlock(
         worldStateService.getWorldView(), pendingBlockHeader, pendingBlockHeader.getCoinbase());

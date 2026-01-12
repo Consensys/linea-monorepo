@@ -54,18 +54,21 @@ var cfg = &config.Config{
 	},
 	AssetsDir: "./prover-assets",
 	Layer2: struct {
-		ChainID           uint           "mapstructure:\"chain_id\" validate:\"required\""
-		MsgSvcContractStr string         "mapstructure:\"message_service_contract\" validate:\"required,eth_addr\""
-		MsgSvcContract    common.Address "mapstructure:\"-\""
+		ChainID           uint           `mapstructure:"chain_id" validate:"required"`
+		BaseFee           uint           `mapstructure:"base_fee" validate:"required"`
+		MsgSvcContractStr string         `mapstructure:"message_service_contract" validate:"required,eth_addr"`
+		MsgSvcContract    common.Address `mapstructure:"-"`
+		CoinBaseStr       string         `mapstructure:"coin_base" validate:"required,eth_addr"`
+		CoinBase          common.Address `mapstructure:"-"`
 	}{
+		ChainID:           1,
+		BaseFee:           0,
 		MsgSvcContractStr: "0x0000000000000000000000000000000000000000",
-		MsgSvcContract: common.Address{
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00,
-		},
-		ChainID: 1,
+		MsgSvcContract:    common.Address{},
+		CoinBaseStr:       "0x0000000000000000000000000000000000000000",
+		CoinBase:          common.Address{},
 	},
+	// Layer2 fields will be populated from the DCC spec in aggregation spec files
 }
 
 func init() {
@@ -141,6 +144,9 @@ func genFiles(cmd *cobra.Command, args []string) {
 				printlnAndExit("more than one aggregation spec is not allowed")
 			}
 
+			// Apply DCC from the aggregation spec to the global config
+			applyDCCToConfig(&spec.DynamicChainConfigurationSpec)
+
 			resp := ProcessAggregationSpec(
 				rng,
 				blobSubmissionResponses[0],
@@ -162,6 +168,9 @@ func genFiles(cmd *cobra.Command, args []string) {
 				spec.BlobSubmissionSpec,
 			)
 			blobSubmissionResponses = append(blobSubmissionResponses, respA)
+
+			// Apply DCC from the aggregation spec to the global config
+			applyDCCToConfig(&spec.DynamicChainConfigurationSpec)
 
 			resp := ProcessAggregationSpec(
 				rng,
@@ -256,6 +265,22 @@ func genFiles(cmd *cobra.Command, args []string) {
 
 		f.Close()
 	}
+}
+
+// applyDCCToConfig applies the Dynamic Chain Configuration (DCC) from the aggregation spec
+// to the global config. DCC contains chain-specific parameters (chainID, baseFee, coinBase,
+// L2MessageServiceAddr) that are used when computing the aggregation public input hash.
+// These values must match between the prover and the on-chain verifier contract.
+func applyDCCToConfig(dccSpec *DynamicChainConfigurationSpec) {
+	if dccSpec == nil {
+		printlnAndExit("aggregation spec must include dynamicChainConfigurationSpec")
+	}
+	cfg.Layer2.ChainID = uint(dccSpec.ChainID)
+	cfg.Layer2.BaseFee = uint(dccSpec.BaseFee)
+	cfg.Layer2.CoinBaseStr = dccSpec.CoinBase
+	cfg.Layer2.CoinBase = common.HexToAddress(dccSpec.CoinBase)
+	cfg.Layer2.MsgSvcContractStr = dccSpec.L2MessageServiceAddr
+	cfg.Layer2.MsgSvcContract = common.HexToAddress(dccSpec.L2MessageServiceAddr)
 }
 
 func printlnAndExit(msg string, args ...any) {

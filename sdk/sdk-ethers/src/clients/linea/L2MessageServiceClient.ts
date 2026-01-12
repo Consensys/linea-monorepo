@@ -120,11 +120,13 @@ export class L2MessageServiceClient
   /**
    * Retrieves the L1 message status on L2.
    *
-   * @param {string} messageHash - The hash of the message sent on L1.
-   * @param {Overrides} [overrides={}] - Ethers call overrides. Defaults to `{}` if not specified.
+   * @param {Object} params - The parameters for retrieving the message status.
+   * @param {string} params.messageHash - The hash of the L1 message.
+   * @param {Overrides} [params.overrides={}] - Ethers call overrides. Defaults to `{}` if not specified.
    * @returns {Promise<OnChainMessageStatus>} Message status (CLAIMED, CLAIMABLE, UNKNOWN).
    */
-  public async getMessageStatus(messageHash: string, overrides: Overrides = {}): Promise<OnChainMessageStatus> {
+  public async getMessageStatus(params: { messageHash: string; overrides?: Overrides }): Promise<OnChainMessageStatus> {
+    const { messageHash, overrides = {} } = params;
     const status = await this.contract.inboxL1L2MessageStatus(messageHash, overrides);
     return formatMessageStatus(status);
   }
@@ -133,12 +135,15 @@ export class L2MessageServiceClient
    * Estimates the gas required for the `claimMessage` transaction.
    *
    * @param {Message & { feeRecipient?: string }} message - The message information object.
-   * @param {Overrides} [overrides={}] - Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Overrides} [opts={}] - Claiming options and Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<bigint>} The `claimMessage` transaction gas estimation.
    */
   public async estimateClaimGasFees(
     message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    opts: {
+      claimViaAddress?: string;
+      overrides?: Overrides;
+    } = {},
   ): Promise<LineaGasFees> {
     if (this.mode === "read-only") {
       throw makeBaseError("'EstimateClaimGasFees' function not callable using readOnly mode.");
@@ -153,7 +158,7 @@ export class L2MessageServiceClient
         to: await this.contract.getAddress(),
         value: 0n,
         data: transactionData,
-        ...overrides,
+        ...opts.overrides,
       })) as LineaGasFees;
     } catch (e) {
       throw makeBaseError(e, message);
@@ -164,12 +169,15 @@ export class L2MessageServiceClient
    * Claims the message on L2.
    *
    * @param {Message & { feeRecipient?: string }} message - The message information object.
-   * @param {Overrides} [overrides] - Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Overrides} [opts] - Claiming options and Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<ContractTransactionResponse>} The claimMessage transaction info.
    */
   public async claim(
     message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    opts: {
+      claimViaAddress?: string;
+      overrides?: Overrides;
+    } = {},
   ): Promise<ContractTransactionResponse> {
     if (this.mode === "read-only") {
       throw makeBaseError("'claim' function not callable using readOnly mode.");
@@ -178,7 +186,9 @@ export class L2MessageServiceClient
     const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
     const l2FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
 
-    return await this.contract.claimMessage(
+    const claimingContract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
+
+    return await claimingContract.claimMessage(
       messageSender,
       destination,
       fee,
@@ -187,7 +197,7 @@ export class L2MessageServiceClient
       calldata,
       messageNonce,
       {
-        ...overrides,
+        ...opts.overrides,
       },
     );
   }

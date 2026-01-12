@@ -2,7 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.conflation
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import net.consensys.zkevm.LongRunningService
+import linea.LongRunningService
 import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
@@ -19,18 +19,18 @@ class DeadlineConflationCalculatorRunner(
   private val conflationDeadlineCheckInterval: Duration,
   private val delegate: ConflationCalculatorByTimeDeadline,
 ) : DeferredTriggerConflationCalculator by delegate, LongRunningService {
-
   private lateinit var timerInstance: Timer
 
   override fun start(): CompletableFuture<Unit> {
     if (!this::timerInstance.isInitialized) {
-      timerInstance = timer(
-        name = "conflation-deadline-checker",
-        initialDelay = conflationDeadlineCheckInterval.inWholeMilliseconds,
-        period = conflationDeadlineCheckInterval.inWholeMilliseconds,
-      ) {
-        delegate.checkConflationDeadline()
-      }
+      timerInstance =
+        timer(
+          name = "conflation-deadline-checker",
+          initialDelay = conflationDeadlineCheckInterval.inWholeMilliseconds,
+          period = conflationDeadlineCheckInterval.inWholeMilliseconds,
+        ) {
+          delegate.checkConflationDeadline()
+        }
     }
     return SafeFuture.completedFuture(Unit)
   }
@@ -119,9 +119,7 @@ class ConflationCalculatorByTimeDeadline(
     this.startBlockTimestamp = null
   }
 
-  override fun copyCountersTo(
-    counters: ConflationCounters,
-  ) {
+  override fun copyCountersTo(counters: ConflationCounters) {
     // nothing to do here
   }
 
