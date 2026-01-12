@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { IVaultFactory } from "../../../yield/interfaces/vendor/lido/IVaultFactory.sol";
-import { IPermissionsManager } from "../../../interfaces/IPermissionsManager.sol";
+import { IPermissionsManager } from "../../../security/access/interfaces/IPermissionsManager.sol";
 
 contract MockVaultFactory is IVaultFactory {
   address public vaultToReturn;

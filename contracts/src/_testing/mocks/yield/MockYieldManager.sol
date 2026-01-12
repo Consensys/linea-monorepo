@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { ILineaRollupYieldExtension } from "../../../yield/interfaces/ILineaRollupYieldExtension.sol";
-import { IL1MessageService } from "../../../interfaces/l1/IL1MessageService.sol";
+import { IL1MessageService } from "../../../messaging/l1/interfaces/IL1MessageService.sol";
 
 /// @dev Mock YieldManager contract for unit testing of LineaRollup
 contract MockYieldManager {
