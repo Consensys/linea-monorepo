@@ -64,8 +64,9 @@ func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.
 		if y, found := yMap[name]; found {
 			res[i] = y
 		} else {
-			// Set it to zero explicitly
-			res[i] = gnarkfext.E4Gen{}
+			// Create a proper zero element to avoid nil pointer dereference
+			// TestConglomerationBasic is hitting this case
+			res[i] = gnarkfext.FromBase(zk.ValueOf(0))
 		}
 	}
 

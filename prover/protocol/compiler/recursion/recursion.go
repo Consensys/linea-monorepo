@@ -83,9 +83,9 @@ type Witness struct {
 	// for each committed round. They are needed by the prover of the self-recursion.
 	SisHashes [][]field.Element
 
-	// MimcHashes is the list of the Vortex columns that are not
+	// Poseidon2Hashes is the list of the Vortex columns that are not
 	// hashed using SIS. They are needed by the prover of the self-recursion.
-	MimcHashes [][]field.Element
+	Poseidon2Hashes [][]field.Element
 
 	// Trees are the list of the commitment merkle trees. They are needed
 	// by the prover of the self-recursion.
@@ -321,8 +321,8 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 				run.State.InsertNew(r.PcsCtx[i].MerkleTreeName(round), wit[i].Trees[round])
 			}
 
-			if round < len(wit[i].MimcHashes) && wit[i].MimcHashes[round] != nil {
-				run.State.InsertNew(r.PcsCtx[i].NoSisHashName(round), wit[i].MimcHashes[round])
+			if round < len(wit[i].Poseidon2Hashes) && wit[i].Poseidon2Hashes[round] != nil {
+				run.State.InsertNew(r.PcsCtx[i].NoSisHashName(round), wit[i].Poseidon2Hashes[round])
 			}
 		}
 	}

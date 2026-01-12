@@ -28,10 +28,21 @@ func TestConglomerationBasic(t *testing.T) {
 			tc.Define(build.CompiledIOP)
 		})
 
+		// Custom compilation params with larger profile sizes for this test
+		testCompilationParams = distributed.CompilationParams{
+			FixedNbRowPlonkCircuit:       1 << 18,
+			FixedNbRowExternalHasher:     1 << 14,
+			FixedNbPublicInput:           1 << 10,
+			InitialCompilerSize:          1 << 18,
+			InitialCompilerSizeConglo:    1 << 13,
+			ColumnProfileMPTS:            []int{17, 2048, 36, 15, 15, 15, 0, 1}, // Increased profile sizes
+			ColumnProfileMPTSPrecomputed: 21,
+		}
+
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
-				CompileSegments(zkevm.LimitlessCompilationParams).
-				Conglomerate(zkevm.LimitlessCompilationParams)
+				CompileSegments(testCompilationParams).
+				Conglomerate(testCompilationParams)
 
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign, false)
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
