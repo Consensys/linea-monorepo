@@ -117,14 +117,14 @@ allprojects {
                   'ktlint_standard_property-naming': 'disabled',
                   'ktlint_standard_function-naming': 'disabled',
                   'ktlint_standard_function-signature': 'disabled',
-                  //                  'ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than': '1'
+                  // 'ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than': '1'
                 ])
           }
         }
         // spotless check applied to build.gradle (groovy) files
         groovyGradle {
           target '*.gradle'
-          greclipse()
+          greclipse("4.32")
           leadingTabsToSpaces(2)
           endWithNewline()
         }
