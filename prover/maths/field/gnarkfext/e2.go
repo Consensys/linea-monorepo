@@ -2,6 +2,7 @@ package gnarkfext
 
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 )
@@ -35,6 +36,13 @@ func (e *E2) IsZero(api frontend.API) frontend.Variable {
 func (e *E2) assign(e1 []frontend.Variable) {
 	e.A0 = e1[0]
 	e.A1 = e1[1]
+}
+
+func AssignFromE2(e1 extensions.E2) E2 {
+	var e E2
+	e.A0 = zk.ValueFromKoala(e1.A0)
+	e.A1 = zk.ValueFromKoala(e1.A1)
+	return e
 }
 
 // Neg negates a e2 elmt

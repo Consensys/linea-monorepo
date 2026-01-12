@@ -11,7 +11,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 type GnarkFS struct {
@@ -74,13 +73,13 @@ func (fs *GnarkFS) Update(vec ...frontend.Variable) {
 	fs.koalaBuf = append(fs.koalaBuf, vec...)
 }
 
-func (fs *GnarkFS) UpdateExt(vec ...gnarkfext.E4Gen) {
+func (fs *GnarkFS) UpdateExt(vec ...gnarkfext.Element) {
 	// ext4, _ := gnarkfext.NewExt4(fs.api)
 	for i := 0; i < len(vec); i++ {
-		fs.koalaBuf = append(fs.koalaBuf, vec[i].B0.A0.AsNative())
-		fs.koalaBuf = append(fs.koalaBuf, vec[i].B0.A1.AsNative())
-		fs.koalaBuf = append(fs.koalaBuf, vec[i].B1.A0.AsNative())
-		fs.koalaBuf = append(fs.koalaBuf, vec[i].B1.A1.AsNative())
+		fs.koalaBuf = append(fs.koalaBuf, vec[i].B0.A0)
+		fs.koalaBuf = append(fs.koalaBuf, vec[i].B0.A1)
+		fs.koalaBuf = append(fs.koalaBuf, vec[i].B1.A0)
+		fs.koalaBuf = append(fs.koalaBuf, vec[i].B1.A1)
 	}
 }
 
@@ -109,13 +108,13 @@ func (fs *GnarkFS) RandomField() poseidon2_koalabear.Octuplet {
 	return res
 }
 
-func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
+func (fs *GnarkFS) RandomFieldExt() gnarkfext.Element {
 	r := fs.RandomField() // the safeguard update is called
-	res := gnarkfext.E4Gen{}
-	res.B0.A0 = zk.WrapFrontendVariable(r[0])
-	res.B0.A1 = zk.WrapFrontendVariable(r[1])
-	res.B1.A0 = zk.WrapFrontendVariable(r[2])
-	res.B1.A1 = zk.WrapFrontendVariable(r[3])
+	res := gnarkfext.Element{}
+	res.B0.A0 = r[0]
+	res.B0.A1 = r[1]
+	res.B1.A0 = r[2]
+	res.B1.A1 = r[3]
 	return res
 }
 func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {

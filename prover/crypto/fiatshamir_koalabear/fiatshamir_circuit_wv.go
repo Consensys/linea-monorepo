@@ -31,12 +31,12 @@ func NewGnarkFSWV(api frontend.API) *GnarkFSWV {
 func (fs *GnarkFSWV) Update(vec ...frontend.Variable) {
 	fs.hasher.Write(vec...)
 }
-func (fs *GnarkFSWV) UpdateExt(vec ...gnarkfext.E4Gen) {
+func (fs *GnarkFSWV) UpdateExt(vec ...gnarkfext.Element) {
 	for i := 0; i < len(vec); i++ {
-		fs.hasher.Write(vec[i].B0.A0.AsNative())
-		fs.hasher.Write(vec[i].B0.A1.AsNative())
-		fs.hasher.Write(vec[i].B1.A0.AsNative())
-		fs.hasher.Write(vec[i].B1.A1.AsNative())
+		fs.hasher.Write(vec[i].B0.A0)
+		fs.hasher.Write(vec[i].B0.A1)
+		fs.hasher.Write(vec[i].B1.A0)
+		fs.hasher.Write(vec[i].B1.A1)
 	}
 }
 
@@ -70,13 +70,13 @@ func (fs *GnarkFSWV) RandomField() poseidon2_koalabear.Octuplet {
 }
 
 // RandomField returns a single valued fiat-shamir hash
-func (fs *GnarkFSWV) RandomFieldExt() gnarkfext.E4Gen {
+func (fs *GnarkFSWV) RandomFieldExt() gnarkfext.Element {
 	s := fs.RandomField() // already calls safeguardUpdate()
-	var res gnarkfext.E4Gen
-	res.B0.A0 = zk.WrapFrontendVariable(s[0])
-	res.B0.A1 = zk.WrapFrontendVariable(s[1])
-	res.B1.A0 = zk.WrapFrontendVariable(s[2])
-	res.B1.A1 = zk.WrapFrontendVariable(s[3])
+	var res gnarkfext.Element
+	res.B0.A0 = s[0]
+	res.B0.A1 = s[1]
+	res.B1.A0 = s[2]
+	res.B1.A1 = s[3]
 
 	return res
 }

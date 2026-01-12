@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -196,4 +197,8 @@ func WriteOctupletTo(w io.Writer, octuplet Octuplet) error {
 		}
 	}
 	return nil
+}
+
+func NewFromKoala(v Element) frontend.Variable {
+	return v.Uint64()
 }

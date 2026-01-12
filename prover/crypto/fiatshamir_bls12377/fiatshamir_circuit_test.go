@@ -212,7 +212,7 @@ func TestKoalaFlushSpecific(t *testing.T) {
 
 // Test for UpdateExt with field extension elements
 type UpdateExtCircuit struct {
-	ExtInputs [3]gnarkfext.E4Gen
+	ExtInputs [3]gnarkfext.Element
 	Output    poseidon2_koalabear.Octuplet
 }
 
@@ -240,7 +240,7 @@ func TestUpdateExt(t *testing.T) {
 
 	var circuit, witness UpdateExtCircuit
 	for i := 0; i < 3; i++ {
-		witness.ExtInputs[i] = gnarkfext.NewE4Gen(extInputs[i])
+		witness.ExtInputs[i] = gnarkfext.AssignFromExt(extInputs[i])
 	}
 	for i := 0; i < 8; i++ {
 		witness.Output[i] = zk.ValueFromKoala(output[i])
@@ -258,20 +258,16 @@ func TestUpdateExt(t *testing.T) {
 // Test for RandomFieldExt
 type RandomFieldExtCircuit struct {
 	Input     [2]frontend.Variable
-	OutputExt gnarkfext.E4Gen
+	OutputExt gnarkfext.Element
 }
 
 func (c *RandomFieldExtCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		return err
-	}
 
 	fs.Update(c.Input[:]...)
 	res := fs.RandomFieldExt()
 
-	ext4.AssertIsEqual(&res, &c.OutputExt)
+	gnarkfext.AssertIsEqual(api, res, c.OutputExt)
 
 	return nil
 }
@@ -289,7 +285,7 @@ func TestRandomFieldExt(t *testing.T) {
 	var circuit, witness RandomFieldExtCircuit
 	witness.Input[0] = zk.ValueFromKoala(input[0])
 	witness.Input[1] = zk.ValueFromKoala(input[1])
-	witness.OutputExt = gnarkfext.NewE4Gen(output)
+	witness.OutputExt = gnarkfext.AssignFromExt(output)
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
 	assert.NoError(t, err)

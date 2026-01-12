@@ -20,10 +20,10 @@ import (
 type FSCircuit struct {
 	A                  [10]frontend.Variable
 	RandomA            poseidon2_koalabear.Octuplet
-	B                  [10]gnarkfext.E4Gen
+	B                  [10]gnarkfext.Element
 	RandomB            poseidon2_koalabear.Octuplet
 	RandomField        poseidon2_koalabear.Octuplet
-	RandomFieldExt     gnarkfext.E4Gen
+	RandomFieldExt     gnarkfext.Element
 	RandomManyIntegers [10]frontend.Variable
 	isKoala            bool
 }
@@ -56,11 +56,8 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	assertEqualOctuplet(api, randomField, c.RandomField)
 
 	randomFieldExt := fs.RandomFieldExt()
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		return err
-	}
-	ext4.AssertIsEqual(&randomFieldExt, &c.RandomFieldExt)
+
+	gnarkfext.AssertIsEqual(api, randomFieldExt, c.RandomFieldExt)
 
 	randomManyIntegers := fs.RandomManyIntegers(10, 16)
 	for i := 0; i < 10; i++ {
@@ -109,23 +106,17 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 	}
 
 	for i := 0; i < 10; i++ {
-		witness.B[i].B0.A0 = zk.WrapFrontendVariable(zk.ValueFromKoala(B[i].B0.A0))
-		witness.B[i].B0.A1 = zk.WrapFrontendVariable(zk.ValueFromKoala(B[i].B0.A1))
-		witness.B[i].B1.A0 = zk.WrapFrontendVariable(zk.ValueFromKoala(B[i].B1.A0))
-		witness.B[i].B1.A1 = zk.WrapFrontendVariable(zk.ValueFromKoala(B[i].B1.A1))
+		witness.B[i] = gnarkfext.AssignFromExt(B[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomB[i] = zk.ValueFromKoala(RandomB[i])
+		witness.RandomB[i] = field.NewFromKoala(RandomB[i])
 	}
 
 	for i := 0; i < 8; i++ {
 		witness.RandomField[i] = zk.ValueFromKoala(RandomField[i])
 	}
 
-	witness.RandomFieldExt.B0.A0 = zk.WrapFrontendVariable(zk.ValueFromKoala(RandomFieldExt.B0.A0))
-	witness.RandomFieldExt.B0.A1 = zk.WrapFrontendVariable(zk.ValueFromKoala(RandomFieldExt.B0.A1))
-	witness.RandomFieldExt.B1.A0 = zk.WrapFrontendVariable(zk.ValueFromKoala(RandomFieldExt.B1.A0))
-	witness.RandomFieldExt.B1.A1 = zk.WrapFrontendVariable(zk.ValueFromKoala(RandomFieldExt.B1.A1))
+	witness.RandomFieldExt = gnarkfext.AssignFromExt(RandomFieldExt)
 
 	for i := 0; i < 10; i++ {
 		witness.RandomManyIntegers[i] = RandomManyIntegers[i]

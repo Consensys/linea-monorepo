@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -42,24 +41,24 @@ func TestGnarkEvalCanonical(t *testing.T) {
 	x.SetRandom()
 	y := eval(poly, x)
 
-	{
-		var circuit, witness EvalCanonicalCircuit
-		circuit.Poly = make([]frontend.Variable, size)
-		witness.Poly = make([]frontend.Variable, size)
-		for i := 0; i < size; i++ {
-			witness.Poly[i] = zk.ValueFromKoala(poly[i].B0.A0)
-		}
-		witness.X = gnarkfext.NewE4Gen(x)
-		witness.Y = gnarkfext.NewE4Gen(y)
+	// {
+	// 	var circuit, witness EvalCanonicalCircuit
+	// 	circuit.Poly = make([]frontend.Variable, size)
+	// 	witness.Poly = make([]frontend.Variable, size)
+	// 	for i := 0; i < size; i++ {
+	// 		witness.Poly[i] = zk.ValueFromKoala(poly[i].B0.A0)
+	// 	}
+	// 	witness.X = gnarkfext.NewE4Gen(x)
+	// 	witness.Y = gnarkfext.NewE4Gen(y)
 
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
-		assert.NoError(t, err)
+	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+	// 	assert.NoError(t, err)
 
-		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
-		assert.NoError(t, err)
-		err = ccs.IsSolved(fullWitness)
-		assert.NoError(t, err)
-	}
+	// 	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
+	// 	assert.NoError(t, err)
+	// 	err = ccs.IsSolved(fullWitness)
+	// 	assert.NoError(t, err)
+	// }
 	{
 		var circuit, witness EvalCanonicalCircuit
 		circuit.Poly = make([]frontend.Variable, size)

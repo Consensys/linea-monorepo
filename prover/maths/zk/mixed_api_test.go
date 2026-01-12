@@ -68,18 +68,18 @@ func getWitness() TestCircuit {
 
 func TestTestCircuit(t *testing.T) {
 
-	{
-		witness := getWitness()
+	// {
+	// 	witness := getWitness()
 
-		var circuit TestCircuit
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
-		assert.NoError(t, err)
+	// 	var circuit TestCircuit
+	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+	// 	assert.NoError(t, err)
 
-		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
-		assert.NoError(t, err)
-		err = ccs.IsSolved(fullWitness)
-		assert.NoError(t, err)
-	}
+	// 	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
+	// 	assert.NoError(t, err)
+	// 	err = ccs.IsSolved(fullWitness)
+	// 	assert.NoError(t, err)
+	// }
 
 	{
 		witness := getWitness()

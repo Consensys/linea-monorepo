@@ -49,6 +49,19 @@ func (e *Element) SetOne() *Element {
 func (e *Element) IsZero(api frontend.API) frontend.Variable {
 	return api.And(e.B0.IsZero(api), e.B1.IsZero(api))
 }
+func AssignFromExt(e1 fext.Element) Element {
+	var e Element
+	e.B0 = AssignFromE2(e1.B0)
+	e.B1 = AssignFromE2(e1.B1)
+	return e
+}
+
+func AssertIsEqual(api frontend.API, a, b Element) {
+	api.AssertIsEqual(a.B0.A0, b.B0.A0)
+	api.AssertIsEqual(a.B0.A1, b.B0.A1)
+	api.AssertIsEqual(a.B1.A0, b.B1.A0)
+	api.AssertIsEqual(a.B1.A1, b.B1.A1)
+}
 
 func (e *Element) assign(e1 []frontend.Variable) {
 	e.B0.assign(e1[:2])

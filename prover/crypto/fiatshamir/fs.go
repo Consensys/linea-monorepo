@@ -14,10 +14,10 @@ import (
 // circuit
 type GnarkFS interface {
 	Update(vec ...frontend.Variable)
-	UpdateExt(vec ...gnarkfext.E4Gen)
+	UpdateExt(vec ...gnarkfext.Element)
 	UpdateVec(mat ...[]frontend.Variable)
 	RandomField() poseidon2_koalabear.Octuplet
-	RandomFieldExt() gnarkfext.E4Gen
+	RandomFieldExt() gnarkfext.Element
 	RandomManyIntegers(num, upperBound int) []frontend.Variable
 	SetState(state poseidon2_koalabear.Octuplet)
 	State() poseidon2_koalabear.Octuplet

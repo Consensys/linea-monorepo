@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +18,7 @@ type FSCircuit struct {
 
 	// random fext
 	A, B   frontend.Variable
-	R1, R2 gnarkfext.E4Gen
+	R1, R2 gnarkfext.Element
 
 	// random many integers
 	R3       []frontend.Variable
@@ -35,12 +36,9 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	a := fs.RandomFieldExt()
 	fs.Update(c.B)
 	b := fs.RandomFieldExt()
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		return err
-	}
-	ext4.AssertIsEqual(&a, &c.R1)
-	ext4.AssertIsEqual(&b, &c.R2)
+
+	gnarkfext.AssertIsEqual(api, a, c.R1)
+	gnarkfext.AssertIsEqual(api, b, c.R2)
 
 	// random many integers
 	r := fs.RandomManyIntegers(c.n, c.bound)
@@ -86,8 +84,8 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	circuit.R3 = make([]frontend.Variable, n)
 	witness.A = a.String()
 	witness.B = b.String()
-	witness.R1 = gnarkfext.NewE4Gen(r1)
-	witness.R2 = gnarkfext.NewE4Gen(r2)
+	witness.R1 = gnarkfext.AssignFromExt(r1)
+	witness.R2 = gnarkfext.AssignFromExt(r2)
 	witness.R3 = make([]frontend.Variable, n)
 	for i := 0; i < n; i++ {
 		witness.R3[i] = r3[i]
@@ -114,7 +112,7 @@ func TestFSCircuit(t *testing.T) {
 
 // Test for UpdateExt with field extension elements
 type UpdateExtCircuit struct {
-	ExtInputs [3]gnarkfext.E4Gen
+	ExtInputs [3]gnarkfext.Element
 	Output    poseidon2_koalabear.Octuplet
 }
 
@@ -142,7 +140,7 @@ func TestUpdateExt(t *testing.T) {
 
 	var circuit, witness UpdateExtCircuit
 	for i := 0; i < 3; i++ {
-		witness.ExtInputs[i] = gnarkfext.NewE4Gen(extInputs[i])
+		witness.ExtInputs[i] = gnarkfext.AssignFromExt(extInputs[i])
 	}
 	for i := 0; i < 8; i++ {
 		witness.Output[i] = output[i]
@@ -160,7 +158,7 @@ func TestUpdateExt(t *testing.T) {
 // Test for RandomFieldExt
 type RandomFieldExtCircuit struct {
 	Input     [2]frontend.Variable
-	OutputExt gnarkfext.E4Gen
+	OutputExt gnarkfext.Element
 }
 
 func (c *RandomFieldExtCircuit) Define(api frontend.API) error {
@@ -169,11 +167,8 @@ func (c *RandomFieldExtCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomFieldExt()
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		return err
-	}
-	ext4.AssertIsEqual(&res, &c.OutputExt)
+	gnarkfext.AssertIsEqual(api, res, c.OutputExt)
+
 	return nil
 }
 
@@ -188,9 +183,12 @@ func TestRandomFieldExt(t *testing.T) {
 	output := fs.RandomFext()
 
 	var circuit, witness RandomFieldExtCircuit
-	witness.Input[0] = input[0].String()
-	witness.Input[1] = input[1].String()
-	witness.OutputExt = gnarkfext.NewE4Gen(output)
+	witness.Input[0] = zk.ValueFromKoala(input[0])
+	witness.Input[1] = zk.ValueFromKoala(input[1])
+	witness.OutputExt.B0.A0 = zk.ValueFromKoala(output.B0.A0)
+	witness.OutputExt.B0.A1 = zk.ValueFromKoala(output.B0.A1)
+	witness.OutputExt.B1.A0 = zk.ValueFromKoala(output.B1.A0)
+	witness.OutputExt.B1.A1 = zk.ValueFromKoala(output.B1.A1)
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
 	assert.NoError(t, err)

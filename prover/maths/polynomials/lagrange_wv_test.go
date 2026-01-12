@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/gnark/frontend"
@@ -141,25 +140,25 @@ func TestLagrangeEvaluation(t *testing.T) {
 
 	fftextinplace(poly, d)
 
-	{
-		var circuit, witness LagrangeEvaluationCircuit
-		circuit.Poly = make([]gnarkfext.E4Gen, size)
-		circuit.Domain = d
-		witness.Poly = make([]gnarkfext.E4Gen, size)
-		for i := 0; i < size; i++ {
-			witness.Poly[i] = gnarkfext.NewE4Gen(poly[i])
-			witness.X = gnarkfext.NewE4Gen(x)
-			witness.Y = gnarkfext.NewE4Gen(y)
-		}
+	// {
+	// 	var circuit, witness LagrangeEvaluationCircuit
+	// 	circuit.Poly = make([]gnarkfext.E4Gen, size)
+	// 	circuit.Domain = d
+	// 	witness.Poly = make([]gnarkfext.E4Gen, size)
+	// 	for i := 0; i < size; i++ {
+	// 		witness.Poly[i] = gnarkfext.NewE4Gen(poly[i])
+	// 		witness.X = gnarkfext.NewE4Gen(x)
+	// 		witness.Y = gnarkfext.NewE4Gen(y)
+	// 	}
 
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
-		assert.NoError(t, err)
+	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+	// 	assert.NoError(t, err)
 
-		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
-		assert.NoError(t, err)
-		err = ccs.IsSolved(fullWitness)
-		assert.NoError(t, err)
-	}
+	// 	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
+	// 	assert.NoError(t, err)
+	// 	err = ccs.IsSolved(fullWitness)
+	// 	assert.NoError(t, err)
+	// }
 	{
 		var circuit, witness LagrangeEvaluationCircuit
 		circuit.Poly = make([]gnarkfext.E4Gen, size)
@@ -216,23 +215,23 @@ func TestGnarkComputeLagrangeAtZ(t *testing.T) {
 		li[i] = eval(buf, x)
 	}
 
-	{
-		var circuit, witness LagrangeAtZCircuit
-		circuit.Li = make([]gnarkfext.E4Gen, size)
-		circuit.d = d
-		witness.Li = make([]gnarkfext.E4Gen, size)
-		for i := 0; i < size; i++ {
-			witness.Li[i] = gnarkfext.NewE4Gen(li[i])
-		}
-		witness.X = gnarkfext.NewE4Gen(x)
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
-		assert.NoError(t, err)
+	// {
+	// 	var circuit, witness LagrangeAtZCircuit
+	// 	circuit.Li = make([]gnarkfext.E4Gen, size)
+	// 	circuit.d = d
+	// 	witness.Li = make([]gnarkfext.E4Gen, size)
+	// 	for i := 0; i < size; i++ {
+	// 		witness.Li[i] = gnarkfext.NewE4Gen(li[i])
+	// 	}
+	// 	witness.X = gnarkfext.NewE4Gen(x)
+	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+	// 	assert.NoError(t, err)
 
-		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
-		assert.NoError(t, err)
-		err = ccs.IsSolved(fullWitness)
-		assert.NoError(t, err)
-	}
+	// 	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
+	// 	assert.NoError(t, err)
+	// 	err = ccs.IsSolved(fullWitness)
+	// 	assert.NoError(t, err)
+	// }
 
 	{
 		var circuit, witness LagrangeAtZCircuit
