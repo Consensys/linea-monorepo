@@ -310,9 +310,14 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}
+			// if ext4.IsBase(evalInputs[k]) {
+			// 	fmt.Printf("Metadata type: %T\n", metadataInterface)
+
+			// 	fmt.Printf("evalInputs[%d].IsBase(): true\n", k)
+			// }
 		}
 
-		left := board.GnarkEvalExt(api, evalInputs)
+		left := board.GnarkEvalExt(api, evalInputs) //always ext inputs
 
 		// right : r^{n}-1 Q(r)
 		qr := quotientYs[i]

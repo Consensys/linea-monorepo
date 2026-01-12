@@ -406,6 +406,12 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 		inputs := make([]gnarkfext.E4Gen, len(evalInputs))
 		for j := range inputs {
 			inputs[j] = evalInputs[j][i]
+			// if ext4.IsBase(inputs[j]) {
+			// 	fmt.Printf("GlobalConstraint[%d].IsBase(): true\n", j)
+			// } else {
+			// 	fmt.Printf("GlobalConstraint[%d].IsBase(): false\n", j)
+
+			// }
 		}
 		res := boarded.GnarkEvalExt(api, inputs)
 		zero := ext4.Zero()

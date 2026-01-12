@@ -15,6 +15,15 @@ func GnarkEvaluateLagrangeExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext
 	if err != nil {
 		panic(err)
 	}
+	// if ext4.IsBase(z) {
+	// 	fmt.Printf("GnarkEvaluateLagrangeExt z.IsBase(): true\n")
+	// }
+	// for j := range p {
+	// 	if ext4.IsBase(p[j]) {
+	// 		fmt.Printf("GnarkEvaluateLagrangeExt[%d].IsBase(): true\n", j)
+	// 	}
+	// }
+
 	res := *ext4.Zero()
 	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
 
