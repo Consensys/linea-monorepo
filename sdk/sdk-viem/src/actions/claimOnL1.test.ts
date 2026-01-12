@@ -1,4 +1,4 @@
-import { claimOnL1 } from "./claimOnL1";
+import { claimOnL1, ClaimOnL1Parameters } from "./claimOnL1";
 import {
   Client,
   Transport,
@@ -74,6 +74,21 @@ describe("claimOnL1", () => {
     await expect(
       claimOnL1(client, { from, to, fee, value, calldata, messageNonce, messageProof, account: mockAccount }),
     ).rejects.toThrow(ChainNotFoundError);
+  });
+
+  it("throws if no messageProof or l2Client is provided", async () => {
+    const client = mockClient(chainId, mockAccount);
+    await expect(
+      claimOnL1(client, {
+        from,
+        to,
+        fee,
+        value,
+        calldata,
+        messageNonce,
+        account: mockAccount,
+      } as unknown as ClaimOnL1Parameters),
+    ).rejects.toThrow("Either `messageProof` or `l2Client` must be provided to claim a message on L1.");
   });
 
   it("throws if no l2Client chain id is found", async () => {

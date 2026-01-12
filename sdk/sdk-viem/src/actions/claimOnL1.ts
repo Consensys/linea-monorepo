@@ -200,6 +200,10 @@ export async function claimOnL1<
     throw new ChainNotFoundError();
   }
 
+  if (!messageProof && !l2Client) {
+    throw new Error("Either `messageProof` or `l2Client` must be provided to claim a message on L1.");
+  }
+
   if (l2Client && !l2Client.chain) {
     throw new ClientChainNotConfiguredError();
   }
