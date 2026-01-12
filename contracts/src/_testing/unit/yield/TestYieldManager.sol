@@ -167,7 +167,6 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     _getYieldProviderStorage(_yieldProvider).lastReportedNegativeYield = _val;
   }
 
-
   function delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
   }
@@ -245,7 +244,14 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
       _yieldProvider,
       abi.encodeCall(
         TestLidoStVaultYieldProvider.validateUnstakePermissionlessRequestHarness,
-        (_yieldProvider, _requiredUnstakeAmount, _pubkeys, uint64(_validatorIndex), uint64(_slot), _withdrawalParamsProof)
+        (
+          _yieldProvider,
+          _requiredUnstakeAmount,
+          _pubkeys,
+          uint64(_validatorIndex),
+          uint64(_slot),
+          _withdrawalParamsProof
+        )
       )
     );
     return abi.decode(data, (uint256));
@@ -304,9 +310,9 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
    * @param newLSTLiabilityPrincipal New value of lstLiabilityPrincipal.
    */
   event LSTLiabilityPrincipalSynced(
-    YieldProviderVendor indexed yieldProviderVendor, 
-    uint96 indexed yieldProviderIndex, 
-    uint256 oldLSTLiabilityPrincipal, 
+    YieldProviderVendor indexed yieldProviderVendor,
+    uint96 indexed yieldProviderIndex,
+    uint256 oldLSTLiabilityPrincipal,
     uint256 newLSTLiabilityPrincipal
   );
 }

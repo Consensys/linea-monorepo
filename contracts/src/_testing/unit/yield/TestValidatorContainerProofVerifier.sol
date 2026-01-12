@@ -12,18 +12,11 @@ contract TestValidatorContainerProofVerifier is ValidatorContainerProofVerifier 
     GIndex _gIPendingPartialWithdrawalsRoot
   ) ValidatorContainerProofVerifier(_admin, _gIFirstValidator, _gIPendingPartialWithdrawalsRoot) {}
 
-  function verifySlot(
-    uint64 _slot,
-    uint64 _proposerIndex,
-    bytes32[] calldata _proof
-  ) external view {
+  function verifySlot(uint64 _slot, uint64 _proposerIndex, bytes32[] calldata _proof) external view {
     _verifySlot(_slot, _proposerIndex, _proof);
   }
 
-  function validateActivationEpoch(
-    uint64 _slot,
-    uint64 _activationEpoch
-  ) external view {
+  function validateActivationEpoch(uint64 _slot, uint64 _activationEpoch) external view {
     _validateActivationEpoch(_slot, _activationEpoch);
   }
 
@@ -36,13 +29,11 @@ contract TestValidatorContainerProofVerifier is ValidatorContainerProofVerifier 
     uint256 validatorGiIndex = validatorGi.index();
     uint8 pow = validatorGi.pow();
     // GI_FIRST_VALIDATOR is in depth 47, so need to get offset from 2**47
-    uint256 offsetFromLeft = validatorGiIndex - 2**47;
-    uint256 gIFirstValidatorIndexInLeftSubtree = 2**46 + offsetFromLeft;
+    uint256 offsetFromLeft = validatorGiIndex - 2 ** 47;
+    uint256 gIFirstValidatorIndexInLeftSubtree = 2 ** 46 + offsetFromLeft;
     GIndex gIFirstValidatorInLeftSubtree = pack(gIFirstValidatorIndexInLeftSubtree, pow - 1);
     return gIFirstValidatorInLeftSubtree;
   }
-
-
 
   function getParentBlockRoot(uint64 _childBlockTimestamp) external view returns (bytes32) {
     return _getParentBlockRoot(_childBlockTimestamp);

@@ -18,11 +18,15 @@ contract TestSSZ {
     return SSZ.hashTreeRoot(validator);
   }
 
-  function hashTreeRoot_PendingPartialWithdrawal(PendingPartialWithdrawal memory pendingPartialWithdrawal) external view returns (bytes32) {
+  function hashTreeRoot_PendingPartialWithdrawal(
+    PendingPartialWithdrawal memory pendingPartialWithdrawal
+  ) external view returns (bytes32) {
     return SSZ.hashTreeRoot(pendingPartialWithdrawal);
   }
 
-  function hashTreeRoot_PendingPartialWithdrawalArray(PendingPartialWithdrawal[] calldata pendingPartialWithdrawals) external view returns (bytes32) {
+  function hashTreeRoot_PendingPartialWithdrawalArray(
+    PendingPartialWithdrawal[] calldata pendingPartialWithdrawals
+  ) external view returns (bytes32) {
     return SSZ.hashTreeRoot(pendingPartialWithdrawals);
   }
 

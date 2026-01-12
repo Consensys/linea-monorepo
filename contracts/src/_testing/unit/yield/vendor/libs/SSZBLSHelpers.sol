@@ -29,7 +29,6 @@ using { unwrap, lt as <, gt as > } for Slot global;
  original:  https://github.com/lidofinance/community-staking-module/blob/7071c2096983a7780a5f147963aaa5405c0badb1/src/lib/SSZ.sol
 */
 contract SSZBLSHelpers {
-
   // As defined in phase0/beacon-chain.md:356
   struct Validator {
     bytes pubkey;
@@ -373,7 +372,9 @@ contract SSZBLSHelpers {
   /// @notice Computes the SSZ hash tree root of an array of pending partial withdrawals.
   /// @param pendingPartialWithdrawal The array of pending partial withdrawals to compute the hash tree root for.
   /// @return root The SSZ hash tree root with length mixed in: mix_in_length(merkleize_progressive(...), len(value)).
-  function hashTreeRoot(PendingPartialWithdrawal[] calldata pendingPartialWithdrawal) public view returns (bytes32 root) {
+  function hashTreeRoot(
+    PendingPartialWithdrawal[] calldata pendingPartialWithdrawal
+  ) public view returns (bytes32 root) {
     return SSZ.hashTreeRoot(pendingPartialWithdrawal);
   }
 }
