@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import { Poseidon2 } from "./Poseidon2.sol";
 
 /**
- * @title Library to perform SparseMerkleProof actions using the MiMC hashing algorithm.
+ * @title Library to perform SparseMerkleProof actions using the Poseidon2 hashing algorithm.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
