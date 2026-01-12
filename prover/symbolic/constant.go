@@ -6,7 +6,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -37,7 +36,7 @@ func (c Constant) EvaluateMixed([]sv.SmartVector) sv.SmartVector {
 }
 
 // GnarkEval implements the [Operator] interface.
-func (c Constant) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
+func (c Constant) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
 	panic("we never call it for a constant")
 }
 

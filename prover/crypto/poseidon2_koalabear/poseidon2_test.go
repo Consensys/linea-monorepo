@@ -15,8 +15,8 @@ import (
 // wrapped variables
 
 type GnarkMDHasherCircuitWV struct {
-	Inputs []zk.WrappedVariable
-	Ouput  zk.Octuplet
+	Inputs []frontend.Variable
+	Ouput  Octuplet
 }
 
 func (ghc *GnarkMDHasherCircuitWV) Define(api frontend.API) error {
@@ -33,13 +33,8 @@ func (ghc *GnarkMDHasherCircuitWV) Define(api frontend.API) error {
 	res := h.Sum()
 
 	// check the result
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
-
 	for i := 0; i < 8; i++ {
-		apiGen.AssertIsEqual(ghc.Ouput[i], res[i])
+		api.AssertIsEqual(ghc.Ouput[i], res[i])
 	}
 
 	return nil
@@ -62,8 +57,8 @@ func getGnarkMDHasherCircuitWitnessWV() (*GnarkMDHasherCircuitWV, *GnarkMDHasher
 
 	// create witness and circuit
 	var circuit, witness GnarkMDHasherCircuitWV
-	circuit.Inputs = make([]zk.WrappedVariable, nbElmts)
-	witness.Inputs = make([]zk.WrappedVariable, nbElmts)
+	circuit.Inputs = make([]frontend.Variable, nbElmts)
+	witness.Inputs = make([]frontend.Variable, nbElmts)
 	for i := 0; i < nbElmts; i++ {
 		witness.Inputs[i] = zk.ValueFromKoala(vals[i])
 	}

@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -41,7 +40,7 @@ func (l *FromLocalOpeningYAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return params.ExtY
 }
 
-func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
+func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
 	p := c.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
 	if !l.IsBase() {
 		panic("not base")
@@ -52,7 +51,7 @@ func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(api frontend.API, c 
 func (l *FromLocalOpeningYAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	p := c.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
 	if p.IsBase {
-		return gnarkfext.FromBase(p.BaseY)
+		return gnarkfext.NewE4GenFromFrontedBase(p.BaseY)
 	}
 	return p.ExtY
 }
@@ -80,7 +79,7 @@ func (l *FromLocalOpeningYAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromLocalOpeningYAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
+func (l *FromLocalOpeningYAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
 	if !l.IsBase() {
 		panic("not base")

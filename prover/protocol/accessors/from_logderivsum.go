@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/gnark/frontend"
@@ -32,8 +31,7 @@ func (l *FromLogDerivSumAccessor) IsBase() bool {
 }
 
 func (l *FromLogDerivSumAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	//TODO implement me
-	panic("implement me")
+	panic("should not be called as the result is an extension field")
 }
 
 func (l *FromLogDerivSumAccessor) GetValExt(run ifaces.Runtime) fext.Element {
@@ -41,14 +39,12 @@ func (l *FromLogDerivSumAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return params.Sum.GetExt()
 }
 
-func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
-	//TODO implement me
-	panic("implement me")
+func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	panic("should not be called as the result is an extension field")
 }
 
-func (l *FromLogDerivSumAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) zk.WrappedVariable {
-	//TODO implement me
-	panic("implement me")
+func (l *FromLogDerivSumAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) frontend.Variable {
+	panic("should not be called as the result is an extension field")
 }
 
 // NewLogDerivSumAccessor creates an [ifaces.Accessor] returning the opening
@@ -73,7 +69,7 @@ func (l *FromLogDerivSumAccessor) GetVal(run ifaces.Runtime) field.Element {
 	return field.Element{} // not reachable
 }
 
-// GetFrontendVariable implements [ifaces.Accessor]
+// GetFrontendVariableExt implements [ifaces.Accessor]
 func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLogDerivSumParams)
 	return params.Sum

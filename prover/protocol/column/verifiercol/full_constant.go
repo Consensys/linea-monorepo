@@ -3,11 +3,11 @@ package verifiercol
 import (
 	"fmt"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -93,29 +93,29 @@ func (cc ConstCol) GetColAssignmentAtExt(_ ifaces.Runtime, n int) fext.Element {
 }
 
 // Returns the column as a list of gnark constants
-func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []zk.WrappedVariable {
-	res := make([]zk.WrappedVariable, cc.Size_)
+func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []frontend.Variable {
+	res := make([]frontend.Variable, cc.Size_)
 	x, err := cc.F.GetBase()
 	if err != nil {
 		utils.Panic("GetColAssignmentGnark failed: %v", err.Error())
 	}
 
 	for i := range res {
-		res[i] = zk.ValueOf(x)
+		res[i] = x
 	}
 	return res
 }
 
-func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
 
-	res := make([]zk.WrappedVariable, cc.Size_)
+	res := make([]frontend.Variable, cc.Size_)
 	x, err := cc.F.GetBase()
 	if err != nil {
 		return nil, fmt.Errorf("GetColAssignmentGnarkBase failed: %w", err)
 	}
 
 	for i := range res {
-		res[i] = zk.ValueFromKoala(x)
+		res[i] = x
 	}
 
 	return res, nil
@@ -147,19 +147,20 @@ func (cc ConstCol) GetColAssignmentAt(_ ifaces.Runtime, pos int) field.Element {
 }
 
 // Returns a particular position of the coin value
-func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
+func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	f := cc.GetColAssignmentAt(nil, pos)
-	return zk.ValueFromKoala(f)
+	return f
 }
 
 // Returns a particular position of the coin value
-func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
 	// this does the boundary check
 	f, err := cc.GetColAssignmentAtBase(nil, pos)
 	if err != nil {
-		return zk.WrappedVariable{}, fmt.Errorf("GetColAssignmentGnarkAtBase failed: %w", err)
+		var zeroVar frontend.Variable
+		return zeroVar, fmt.Errorf("GetColAssignmentGnarkAtBase failed: %w", err)
 	}
-	return zk.ValueOf(f), nil
+	return f, nil
 }
 
 // Returns a particular position of the coin value

@@ -18,7 +18,7 @@ func eval(poly []fext.Element, x fext.Element) fext.Element {
 }
 
 // GnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
-func GnarkEvalCanonical(api frontend.API, p []zk.WrappedVariable, z gnarkfext.E4Gen) gnarkfext.E4Gen {
+func GnarkEvalCanonical(api frontend.API, p []frontend.Variable, z gnarkfext.E4Gen) gnarkfext.E4Gen {
 
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
@@ -29,7 +29,7 @@ func GnarkEvalCanonical(api frontend.API, p []zk.WrappedVariable, z gnarkfext.E4
 	s := len(p)
 	for i := 0; i < len(p); i++ {
 		res = ext4.Mul(res, &z)
-		res = ext4.AddByBase(res, p[s-1-i])
+		res = ext4.AddByBase(res, zk.WrapFrontendVariable(p[s-1-i]))
 	}
 	return *res
 }

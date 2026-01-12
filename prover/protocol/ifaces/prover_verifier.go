@@ -1,10 +1,10 @@
 package ifaces
 
 import (
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 )
 
@@ -30,17 +30,17 @@ type Runtime interface {
 // exists to prevent circular dependencies internally.
 type GnarkRuntime interface {
 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
-	GetColumn(ColID) []zk.WrappedVariable
-	GetColumnBase(ColID) ([]zk.WrappedVariable, error)
+	GetColumn(ColID) []frontend.Variable
+	GetColumnBase(ColID) ([]frontend.Variable, error)
 	GetColumnExt(ColID) []gnarkfext.E4Gen
 	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
-	GetColumnAt(ColID, int) zk.WrappedVariable
-	GetColumnAtBase(ColID, int) (zk.WrappedVariable, error)
+	GetColumnAt(ColID, int) frontend.Variable
+	GetColumnAtBase(ColID, int) (frontend.Variable, error)
 	GetColumnAtExt(ColID, int) gnarkfext.E4Gen
 	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
 	GetRandomCoinFieldExt(name coin.Name) gnarkfext.E4Gen
 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
-	GetRandomCoinIntegerVec(name coin.Name) []zk.WrappedVariable
+	GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable
 	// GetParams is as [Runtime.GetParams] but in a gnark circuit
 	GetParams(id QueryID) GnarkQueryParams
 }

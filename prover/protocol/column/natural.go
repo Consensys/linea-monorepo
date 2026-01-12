@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -88,13 +88,13 @@ func (n Natural) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element
 }
 
 // GetColAssignmentGnark implements [ifaces.Column]
-func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
+func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 	return run.GetColumn(n.ID)
 }
 
-func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
 	if !n.store.info(n.ID).IsBase {
-		return []zk.WrappedVariable{}, fmt.Errorf("requested base elements but column defined over field extensions")
+		return []frontend.Variable{}, fmt.Errorf("requested base elements but column defined over field extensions")
 	}
 	return run.GetColumn(n.ID), nil
 }
@@ -104,13 +104,13 @@ func (n Natural) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E
 }
 
 // GetColAssignmentGnarkAt implements [ifaces.Column]
-func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
+func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size()))
 }
 
-func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
 	if !n.store.info(n.ID).IsBase {
-		return zk.ValueOf(0), fmt.Errorf("requested base elements but column defined over field extensions")
+		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
 	}
 	return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size())), nil
 }

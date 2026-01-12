@@ -55,13 +55,13 @@ func getWitness() TestCircuit {
 	divab.Div(&a, &b)
 	nega.Neg(&a)
 
-	witness.A = ValueFromKoala(a)
-	witness.B = ValueFromKoala(b)
-	witness.MulAB = ValueFromKoala(mulab)
-	witness.AddAB = ValueFromKoala(addab)
-	witness.SubAB = ValueFromKoala(subab)
-	witness.DivAB = ValueFromKoala(divab)
-	witness.NegA = ValueFromKoala(nega)
+	witness.A = WrapFrontendVariable(ValueFromKoala(a))
+	witness.B = WrapFrontendVariable(ValueFromKoala(b))
+	witness.MulAB = WrapFrontendVariable(ValueFromKoala(mulab))
+	witness.AddAB = WrapFrontendVariable(ValueFromKoala(addab))
+	witness.SubAB = WrapFrontendVariable(ValueFromKoala(subab))
+	witness.DivAB = WrapFrontendVariable(ValueFromKoala(divab))
+	witness.NegA = WrapFrontendVariable(ValueFromKoala(nega))
 
 	return witness
 }

@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -62,11 +61,11 @@ func (c *FromCoinAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (c *FromCoinAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
+func (c *FromCoinAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
 	panic("unsupported, coins are always over field extensions")
 }
 
-func (c *FromCoinAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
+func (c *FromCoinAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
 	panic("unsupported, coins are always over field extensions")
 }
 

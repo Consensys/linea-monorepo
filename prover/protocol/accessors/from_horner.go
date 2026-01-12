@@ -5,7 +5,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -41,13 +40,13 @@ func (l *FromHornerAccessorFinalValue) GetVal(run ifaces.Runtime) field.Element 
 	panic("should not be called as the result is an extension field")
 }
 
-// GetVal implements [ifaces.Accessor]
+// GetValExt implements [ifaces.Accessor]
 func (l *FromHornerAccessorFinalValue) GetValExt(run ifaces.Runtime) fext.Element {
 	params := run.GetParams(l.Q.ID).(query.HornerParams)
 	return params.FinalResult
 }
 
-// GetFrontendVariable implements [ifaces.Accessor]
+// GetFrontendVariableExt implements [ifaces.Accessor]
 func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	params := circ.GetParams(l.Q.ID).(query.GnarkHornerParams)
 	return params.FinalResult
@@ -66,18 +65,15 @@ func (l *FromHornerAccessorFinalValue) Round() int {
 // GetValBase implements [ifaces.Accessor]. It panics as it should never be called
 // since the result is always an extension field.
 func (l *FromHornerAccessorFinalValue) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	//TODO implement me
 	panic("should not be called as the result is an extension field")
 }
 
-func (l *FromHornerAccessorFinalValue) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
-	//TODO implement me
-	panic("implement me")
+func (l *FromHornerAccessorFinalValue) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	panic("should not be called as the result is an extension field")
 }
 
-func (l *FromHornerAccessorFinalValue) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) zk.WrappedVariable {
-	//TODO implement me
-	panic("implement me")
+func (l *FromHornerAccessorFinalValue) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) frontend.Variable {
+	panic("should not be called as the result is an extension field")
 }
 
 func (l *FromHornerAccessorFinalValue) IsBase() bool {

@@ -351,15 +351,10 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 		c.KoalaFS = fiatshamir.NewGnarkFSKoalabear(api)
 	}
 
-	var zkWV [8]zk.WrappedVariable
-	for i := 0; i < 8; i++ {
-		zkWV[i] = zk.ValueFromKoala(c.Spec.FiatShamirSetup[i])
-	}
-
 	if c.IsBLS {
-		c.BLSFS.Update(zkWV[:]...)
+		c.BLSFS.Update(c.Spec.FiatShamirSetup)
 	} else {
-		c.KoalaFS.Update(zkWV[:]...)
+		c.KoalaFS.Update(c.Spec.FiatShamirSetup)
 	}
 
 	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
@@ -470,10 +465,10 @@ func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) zk.WrappedVariable 
 }
 
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin as an
-// array of [zk.WrappedVariable]. The implementation implicitly checks that the
+// array of [frontend.Variable]. The implementation implicitly checks that the
 // requested coin does indeed have the type [coin.IntegerVec] and panics if not.
 // The function mirror [VerifierRuntime.GetRandomCoinIntegerVec].
-func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []zk.WrappedVariable {
+func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -483,13 +478,7 @@ func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []zk.WrappedVa
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.IntegerVec)
 	}
 	// If this panics, it means we generates the coins wrongly
-	coins := c.Coins.MustGet(name).([]frontend.Variable)
-	res := make([]zk.WrappedVariable, len(coins))
-	for i := 0; i < len(coins); i++ {
-		res[i] = zk.WrapFrontendVariable(coins[i])
-	}
-
-	return res
+	return c.Coins.MustGet(name).([]frontend.Variable)
 }
 
 // GetRandomCoinFieldExt returns a field extension randomness. The coin should
@@ -585,7 +574,7 @@ func (c *VerifierCircuit) GetHornerParams(name ifaces.QueryID) query.GnarkHorner
 
 // GetColumns returns the gnark assignment of a column in a gnark circuit. It
 // mirrors the function [VerifierRuntime.GetColumn]
-func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []zk.WrappedVariable {
+func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []frontend.Variable {
 
 	if c.Spec.Columns.GetHandle(name).IsBase() {
 		res, err := c.GetColumnBase(name)
@@ -595,20 +584,20 @@ func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []zk.WrappedVariable {
 		return res
 	} else {
 		resExt := c.GetColumnExt(name)
-		res := make([]zk.WrappedVariable, len(resExt)*4)
+		res := make([]frontend.Variable, len(resExt)*4)
 
 		for i := 0; i < len(resExt); i++ {
-			res[4*i] = resExt[i].B0.A0
-			res[4*i+1] = resExt[i].B0.A1
-			res[4*i+2] = resExt[i].B1.A0
-			res[4*i+3] = resExt[i].B1.A1
+			res[4*i] = resExt[i].B0.A0.AsNative()
+			res[4*i+1] = resExt[i].B0.A1.AsNative()
+			res[4*i+2] = resExt[i].B1.A0.AsNative()
+			res[4*i+3] = resExt[i].B1.A1.AsNative()
 		}
 		return res
 	}
 
 }
 
-func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable, error) {
+func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]frontend.Variable, error) {
 
 	// for when the column is part of the verifying key
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
@@ -618,11 +607,11 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
 		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
-		// res := gnarkutil.AllocateSlice(len(val))
-		res := make([]zk.WrappedVariable, len(val))
+		res := make([]frontend.Variable, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = zk.ValueFromKoala(val[i])
+			wrapped := zk.ValueFromKoala(val[i])
+			res[i] = wrapped.AsNative()
 		}
 		return res, nil
 	}
@@ -635,7 +624,12 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable
 		utils.Panic("bad dimension %v, spec expected %v", len(wrappedMsg), size)
 	}
 
-	return wrappedMsg, nil
+	// Convert []zk.WrappedVariable to []frontend.Variable
+	res := make([]frontend.Variable, len(wrappedMsg))
+	for i := range wrappedMsg {
+		res[i] = wrappedMsg[i].AsNative()
+	}
+	return res, nil
 }
 
 func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.E4Gen {
@@ -649,7 +643,7 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.E4Gen {
 		resExt := make([]gnarkfext.E4Gen, len(res))
 
 		for i := 0; i < len(resExt); i++ {
-			resExt[i].B0.A0 = res[i]
+			resExt[i].B0.A0 = zk.WrapFrontendVariable(res[i])
 			resExt[i].B0.A1 = zk.ValueOf(0)
 			resExt[i].B1.A0 = zk.ValueOf(0)
 			resExt[i].B1.A1 = zk.ValueOf(0)
@@ -682,13 +676,13 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.E4Gen {
 
 // GetColumnAt returns the gnark assignment of a column at a requested point in
 // a gnark circuit. It mirrors the function [VerifierRuntime.GetColumnAt]
-func (c *VerifierCircuit) GetColumnAt(name ifaces.ColID, pos int) zk.WrappedVariable {
+func (c *VerifierCircuit) GetColumnAt(name ifaces.ColID, pos int) frontend.Variable {
 	return c.GetColumn(name)[pos]
 }
 
-func (c *VerifierCircuit) GetColumnAtBase(name ifaces.ColID, pos int) (zk.WrappedVariable, error) {
+func (c *VerifierCircuit) GetColumnAtBase(name ifaces.ColID, pos int) (frontend.Variable, error) {
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
-		return zk.ValueOf(0), fmt.Errorf("requested base element from underlying field extension")
+		return nil, fmt.Errorf("requested base element from underlying field extension")
 	}
 
 	retrievedCol, _ := c.GetColumnBase(name)
@@ -701,7 +695,7 @@ func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) gnarkfext.E
 	}
 
 	retrievedCol, _ := c.GetColumnBase(name)
-	return gnarkfext.FromBase(retrievedCol[pos])
+	return gnarkfext.NewE4GenFromFrontedBase(retrievedCol[pos])
 }
 
 // GetParams returns a query parameters as a generic interface
@@ -867,7 +861,7 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) zk.Wrapp
 	allPubs := c.Spec.PublicInputs
 	for i := range allPubs {
 		if allPubs[i].Name == name {
-			return allPubs[i].Acc.GetFrontendVariable(api, c)
+			return zk.WrapFrontendVariable(allPubs[i].Acc.GetFrontendVariable(api, c))
 		}
 	}
 	utils.Panic("could not find public input nb %v", name)

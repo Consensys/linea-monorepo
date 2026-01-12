@@ -15,9 +15,9 @@ import (
 )
 
 type EvaluateLagrangeCircuit struct {
-	X    gnarkfext.E4Gen      // point of evaluation
-	Poly []zk.WrappedVariable // poly in Lagrange form
-	R    gnarkfext.E4Gen      // expected result
+	X    gnarkfext.E4Gen     // point of evaluation
+	Poly []frontend.Variable // poly in Lagrange form
+	R    gnarkfext.E4Gen     // expected result
 }
 
 func (c *EvaluateLagrangeCircuit) Define(api frontend.API) error {
@@ -52,8 +52,8 @@ func getWitnessAndCircuit(t zk.VType) (EvaluateLagrangeCircuit, EvaluateLagrange
 	}
 	// test circuit
 	var witness, circuit EvaluateLagrangeCircuit
-	circuit.Poly = make([]zk.WrappedVariable, size)
-	witness.Poly = make([]zk.WrappedVariable, size)
+	circuit.Poly = make([]frontend.Variable, size)
+	witness.Poly = make([]frontend.Variable, size)
 	for i := 0; i < size; i++ {
 		witness.Poly[i] = zk.ValueFromKoala(poly[i])
 	}

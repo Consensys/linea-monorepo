@@ -14,7 +14,7 @@ import (
 )
 
 type EvalCanonicalCircuit struct {
-	Poly []zk.WrappedVariable
+	Poly []frontend.Variable
 	X    gnarkfext.E4Gen
 	Y    gnarkfext.E4Gen
 }
@@ -22,14 +22,11 @@ type EvalCanonicalCircuit struct {
 func (c *EvalCanonicalCircuit) Define(api frontend.API) error {
 
 	y := GnarkEvalCanonical(api, c.Poly, c.X)
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		return err
 	}
-	apiGen.AssertIsEqual(c.Y.B0.A0, y.B0.A0)
-	apiGen.AssertIsEqual(c.Y.B0.A1, y.B0.A1)
-	apiGen.AssertIsEqual(c.Y.B1.A0, y.B1.A0)
-	apiGen.AssertIsEqual(c.Y.B1.A1, y.B1.A1)
+	ext4.AssertIsEqual(&c.Y, &y)
 
 	return nil
 }
@@ -47,8 +44,8 @@ func TestGnarkEvalCanonical(t *testing.T) {
 
 	{
 		var circuit, witness EvalCanonicalCircuit
-		circuit.Poly = make([]zk.WrappedVariable, size)
-		witness.Poly = make([]zk.WrappedVariable, size)
+		circuit.Poly = make([]frontend.Variable, size)
+		witness.Poly = make([]frontend.Variable, size)
 		for i := 0; i < size; i++ {
 			witness.Poly[i] = zk.ValueFromKoala(poly[i].B0.A0)
 		}
@@ -65,8 +62,8 @@ func TestGnarkEvalCanonical(t *testing.T) {
 	}
 	{
 		var circuit, witness EvalCanonicalCircuit
-		circuit.Poly = make([]zk.WrappedVariable, size)
-		witness.Poly = make([]zk.WrappedVariable, size)
+		circuit.Poly = make([]frontend.Variable, size)
+		witness.Poly = make([]frontend.Variable, size)
 		for i := 0; i < size; i++ {
 			witness.Poly[i] = zk.ValueFromKoala(poly[i].B0.A0)
 		}

@@ -1,10 +1,10 @@
 package recursion
 
 import (
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 )
 
@@ -47,11 +47,11 @@ func (fc *FakeColumn) MustExists() {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
+func (fc *FakeColumn) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
+func (fc *FakeColumn) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	panic("unimplemented")
 }
 
@@ -71,7 +71,7 @@ func (fc *FakeColumn) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.El
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+func (fc *FakeColumn) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
 	panic("unimplemented")
 }
 
@@ -79,7 +79,7 @@ func (fc *FakeColumn) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkf
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+func (fc *FakeColumn) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
 	panic("unimplemented")
 }
 

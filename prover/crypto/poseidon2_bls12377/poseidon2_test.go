@@ -97,7 +97,7 @@ func TestCircuit(t *testing.T) {
 // hashing koalabear elmts
 
 type GnarkMDHasherCircuitKoalabear struct {
-	Inputs []zk.WrappedVariable
+	Inputs []frontend.Variable
 	Ouput  frontend.Variable
 }
 
@@ -109,7 +109,7 @@ func (ghc *GnarkMDHasherCircuitKoalabear) Define(api frontend.API) error {
 	}
 
 	// write elmts
-	h.WriteWVs(ghc.Inputs...)
+	h.WriteKoala(ghc.Inputs...)
 
 	// sum
 	res := h.Sum()
@@ -137,8 +137,8 @@ func getGnarkMDHasherCircuitKoalabearWitness() (*GnarkMDHasherCircuitKoalabear, 
 
 	// create witness and circuit
 	var circuit, witness GnarkMDHasherCircuitKoalabear
-	circuit.Inputs = make([]zk.WrappedVariable, nbElmts)
-	witness.Inputs = make([]zk.WrappedVariable, nbElmts)
+	circuit.Inputs = make([]frontend.Variable, nbElmts)
+	witness.Inputs = make([]frontend.Variable, nbElmts)
 	for i := 0; i < nbElmts; i++ {
 		witness.Inputs[i] = zk.ValueFromKoala(vals[i])
 	}

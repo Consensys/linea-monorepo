@@ -120,7 +120,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 	for i := range r.Pubs {
 		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(apiGen.NativeApi, w)
-		api.AssertIsEqual(r.Pubs[i], pub.AsNative())
+		api.AssertIsEqual(r.Pubs[i], pub)
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
@@ -133,7 +133,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	for i := range r.Commitments {
 		for j := 0; j < blockSize; j++ {
 			mr := r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0)
-			api.AssertIsEqual(r.Commitments[i][j], mr.AsNative())
+			api.AssertIsEqual(r.Commitments[i][j], mr)
 		}
 	}
 
@@ -173,7 +173,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		octuplet := [8]frontend.Variable{}
 		for j := 0; j < blockSize; j++ {
 			a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
-			octuplet[j] = a.AsNative()
+			octuplet[j] = a
 		}
 		circuit.Commitments = append(circuit.Commitments, octuplet)
 
@@ -186,7 +186,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 			octuplet := [8]frontend.Variable{}
 			for j := 0; j < blockSize; j++ {
 				a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
-				octuplet[j] = a.AsNative()
+				octuplet[j] = a
 			}
 			circuit.Commitments = append(circuit.Commitments, octuplet)
 		}

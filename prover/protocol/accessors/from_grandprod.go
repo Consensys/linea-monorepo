@@ -3,12 +3,10 @@ package accessors
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -36,21 +34,18 @@ func (l *FromGrandProductAccessor) IsBase() bool {
 
 func (l *FromGrandProductAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
 	panic(fmt.Sprintf("Called GetValBase on a FromGrandProductAccessor, %v", l.Name()))
-
 }
 
 func (l *FromGrandProductAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return run.GetParams(l.Q.ID).(query.GrandProductParams).ExtY
 }
 
-func (l *FromGrandProductAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
-	//TODO implement me
-	panic("implement me")
+func (l *FromGrandProductAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	panic(fmt.Sprintf("Called GetFrontendVariableBase on a FromGrandProductAccessor, %v", l.Name()))
 }
 
-func (l *FromGrandProductAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) zk.WrappedVariable {
-	//TODO implement me
-	panic("implement me")
+func (l *FromGrandProductAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) frontend.Variable {
+	panic(fmt.Sprintf("Called GetFrontendVariable on a FromGrandProductAccessor, %v", l.Name()))
 }
 
 // NewGrandProductAccessor creates an [ifaces.Accessor] returning the opening
@@ -75,7 +70,7 @@ func (l *FromGrandProductAccessor) GetVal(run ifaces.Runtime) field.Element {
 	panic(fmt.Sprintf("Called GetVal on a FromGrandProductAccessor, %v", l.Name()))
 }
 
-// GetFrontendVariable implements [ifaces.Accessor]
+// GetFrontendVariableExt implements [ifaces.Accessor]
 func (l *FromGrandProductAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	params := circ.GetParams(l.Q.ID).(query.GnarkGrandProductParams)
 	return params.Prod

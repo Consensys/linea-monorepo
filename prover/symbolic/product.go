@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -117,14 +116,8 @@ func (prod Product) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [Operator] interface.
-func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
-
-	res := zk.ValueOf(1)
-
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+	var res frontend.Variable = 1
 
 	if len(inputs) != len(prod.Exponents) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
@@ -132,7 +125,7 @@ func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.
 
 	for i, input := range inputs {
 		term := gnarkutil.Exp(api, input, prod.Exponents[i])
-		res = apiGen.Mul(res, term)
+		res = api.Mul(res, term)
 	}
 
 	return res

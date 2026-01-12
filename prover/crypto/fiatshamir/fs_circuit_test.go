@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -17,17 +18,17 @@ import (
 )
 
 type FSCircuit struct {
-	A                  [10]zk.WrappedVariable
-	RandomA            zk.Octuplet
+	A                  [10]frontend.Variable
+	RandomA            poseidon2_koalabear.Octuplet
 	B                  [10]gnarkfext.E4Gen
-	RandomB            zk.Octuplet
-	RandomField        zk.Octuplet
+	RandomB            poseidon2_koalabear.Octuplet
+	RandomField        poseidon2_koalabear.Octuplet
 	RandomFieldExt     gnarkfext.E4Gen
 	RandomManyIntegers [10]frontend.Variable
 	isKoala            bool
 }
 
-func assertEqualOctuplet(api zk.GenericApi, a, b zk.Octuplet) {
+func assertEqualOctuplet(api frontend.API, a, b poseidon2_koalabear.Octuplet) {
 	for i := 0; i < 8; i++ {
 		api.AssertIsEqual(a[i], b[i])
 	}
@@ -42,28 +43,24 @@ func (c *FSCircuit) Define(api frontend.API) error {
 		fs = NewGnarkFSBLS12377(api)
 	}
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
-
 	fs.Update(c.A[:]...)
 	randomA := fs.RandomField()
-	assertEqualOctuplet(apiGen, randomA, c.RandomA)
+	assertEqualOctuplet(api, randomA, c.RandomA)
 
 	fs.UpdateExt(c.B[:]...)
 	randomB := fs.RandomField()
-	assertEqualOctuplet(apiGen, randomB, c.RandomB)
+	assertEqualOctuplet(api, randomB, c.RandomB)
 
 	randomField := fs.RandomField()
 
-	assertEqualOctuplet(apiGen, randomField, c.RandomField)
+	assertEqualOctuplet(api, randomField, c.RandomField)
 
 	randomFieldExt := fs.RandomFieldExt()
-	apiGen.AssertIsEqual(randomFieldExt.B0.A0, c.RandomFieldExt.B0.A0)
-	apiGen.AssertIsEqual(randomFieldExt.B0.A1, c.RandomFieldExt.B0.A1)
-	apiGen.AssertIsEqual(randomFieldExt.B1.A0, c.RandomFieldExt.B1.A0)
-	apiGen.AssertIsEqual(randomFieldExt.B1.A1, c.RandomFieldExt.B1.A1)
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return err
+	}
+	ext4.AssertIsEqual(&randomFieldExt, &c.RandomFieldExt)
 
 	randomManyIntegers := fs.RandomManyIntegers(10, 16)
 	for i := 0; i < 10; i++ {
@@ -112,10 +109,10 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 	}
 
 	for i := 0; i < 10; i++ {
-		witness.B[i].B0.A0 = zk.ValueFromKoala(B[i].B0.A0)
-		witness.B[i].B0.A1 = zk.ValueFromKoala(B[i].B0.A1)
-		witness.B[i].B1.A0 = zk.ValueFromKoala(B[i].B1.A0)
-		witness.B[i].B1.A1 = zk.ValueFromKoala(B[i].B1.A1)
+		witness.B[i].B0.A0 = zk.WrapFrontendVariable(zk.ValueFromKoala(B[i].B0.A0))
+		witness.B[i].B0.A1 = zk.WrapFrontendVariable(zk.ValueFromKoala(B[i].B0.A1))
+		witness.B[i].B1.A0 = zk.WrapFrontendVariable(zk.ValueFromKoala(B[i].B1.A0))
+		witness.B[i].B1.A1 = zk.WrapFrontendVariable(zk.ValueFromKoala(B[i].B1.A1))
 	}
 	for i := 0; i < 8; i++ {
 		witness.RandomB[i] = zk.ValueFromKoala(RandomB[i])
@@ -125,10 +122,10 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 		witness.RandomField[i] = zk.ValueFromKoala(RandomField[i])
 	}
 
-	witness.RandomFieldExt.B0.A0 = zk.ValueFromKoala(RandomFieldExt.B0.A0)
-	witness.RandomFieldExt.B0.A1 = zk.ValueFromKoala(RandomFieldExt.B0.A1)
-	witness.RandomFieldExt.B1.A0 = zk.ValueFromKoala(RandomFieldExt.B1.A0)
-	witness.RandomFieldExt.B1.A1 = zk.ValueFromKoala(RandomFieldExt.B1.A1)
+	witness.RandomFieldExt.B0.A0 = zk.WrapFrontendVariable(zk.ValueFromKoala(RandomFieldExt.B0.A0))
+	witness.RandomFieldExt.B0.A1 = zk.WrapFrontendVariable(zk.ValueFromKoala(RandomFieldExt.B0.A1))
+	witness.RandomFieldExt.B1.A0 = zk.WrapFrontendVariable(zk.ValueFromKoala(RandomFieldExt.B1.A0))
+	witness.RandomFieldExt.B1.A1 = zk.WrapFrontendVariable(zk.ValueFromKoala(RandomFieldExt.B1.A1))
 
 	for i := 0; i < 10; i++ {
 		witness.RandomManyIntegers[i] = RandomManyIntegers[i]

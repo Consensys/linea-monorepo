@@ -390,7 +390,7 @@ func GetColAssignmentGnarkOctuplet(col ifaces.Column, run ifaces.GnarkRuntime) z
 	}
 	var result zk.Octuplet
 	for i := 0; i < 8; i++ {
-		result[i] = assignment[i]
+		result[i] = zk.WrapFrontendVariable(assignment[i])
 	}
 	return result
 }

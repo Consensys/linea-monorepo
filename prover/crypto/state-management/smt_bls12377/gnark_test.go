@@ -10,6 +10,7 @@ import (
 
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
@@ -137,9 +138,9 @@ func getMerkleProofWithEncoding(t *testing.T) ([]Proof, []field.Octuplet, []fr.E
 }
 
 type MerkleProofCircuitWithEncoding struct {
-	Proofs         []GnarkProof        `gnark:",public"`
-	LeavesFrElmt   []frontend.Variable `gnark:",public"`
-	Leavesoctuplet []zk.Octuplet       `gnark:",public"`
+	Proofs         []GnarkProof                   `gnark:",public"`
+	LeavesFrElmt   []frontend.Variable            `gnark:",public"`
+	Leavesoctuplet []poseidon2_koalabear.Octuplet `gnark:",public"`
 	Root           frontend.Variable
 }
 
@@ -147,7 +148,7 @@ func (circuit *MerkleProofCircuitWithEncoding) Define(api frontend.API) error {
 
 	// check that the encoding is ok
 	for i := 0; i < len(circuit.LeavesFrElmt); i++ {
-		encodedLeaf := encoding.EncodeWVsToFVs(api, circuit.Leavesoctuplet[i][:])
+		encodedLeaf := encoding.EncodeKoalasToFVs(api, circuit.Leavesoctuplet[i][:])
 		if len(encodedLeaf) != 1 {
 			return errors.New("encodedLeaf should contain 1 element")
 		}
@@ -169,7 +170,7 @@ func TestMerkleProofWithEncodingGnark(t *testing.T) {
 	var witness MerkleProofCircuitWithEncoding
 	witness.Proofs = make([]GnarkProof, nbProofs)
 	witness.LeavesFrElmt = make([]frontend.Variable, nbProofs)
-	witness.Leavesoctuplet = make([]zk.Octuplet, nbProofs)
+	witness.Leavesoctuplet = make([]poseidon2_koalabear.Octuplet, nbProofs)
 	for i := 0; i < nbProofs; i++ {
 		witness.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
 		for j := 0; j < len(proofs[i].Siblings); j++ {
@@ -187,7 +188,7 @@ func TestMerkleProofWithEncodingGnark(t *testing.T) {
 	var circuit MerkleProofCircuitWithEncoding
 	circuit.Proofs = make([]GnarkProof, nbProofs)
 	circuit.LeavesFrElmt = make([]frontend.Variable, nbProofs)
-	circuit.Leavesoctuplet = make([]zk.Octuplet, nbProofs)
+	circuit.Leavesoctuplet = make([]poseidon2_koalabear.Octuplet, nbProofs)
 	for i := 0; i < nbProofs; i++ {
 		circuit.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
 	}

@@ -1,6 +1,7 @@
 package verifiercol
 
 import (
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -84,29 +85,29 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignment(run ifaces.Run
 }
 
 // GetColAssignmentGnark returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 	assi := ex.Col.GetColAssignmentGnark(run)
-	res := make([]zk.WrappedVariable, ex.Size())
+	res := make([]frontend.Variable, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
-			res[j+i*ex.Expansion] = zk.ValueOf(0)
+			res[j+i*ex.Expansion] = 0
 		}
 	}
 	return res
 }
 
 // GetColAssignmentGnarkBase returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
 	assi, err := ex.Col.GetColAssignmentGnarkBase(run)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]zk.WrappedVariable, ex.Size())
+	res := make([]frontend.Variable, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
-			res[j+i*ex.Expansion] = zk.ValueOf(0)
+			res[j+i*ex.Expansion] = 0
 		}
 	}
 	return res, nil
@@ -154,7 +155,7 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentAtExt(run iface
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	if pos%ex.Expansion == 0 {
 		return ex.Col.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
 	}
@@ -162,7 +163,7 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAt(run ifa
 }
 
 // GetColAssignmentAtBase returns a particular position of the column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
 	if pos%ex.Expansion == 0 {
 		r, err := ex.Col.GetColAssignmentGnarkAtBase(run, pos/ex.Expansion)
 		if err != nil {

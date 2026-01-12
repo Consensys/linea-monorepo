@@ -8,7 +8,6 @@ import (
 
 	fr "github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -231,16 +230,16 @@ func PowerVec(x field.Element, n int) []field.Element {
 	return res
 }
 
-// IntoGnarkAssignment converts an array of field.Element into an array of
-// zk.WrappedVariable that can be used to assign a vector of zk.WrappedVariable
-// in a circuit or to generate a vector of constant in the circuit definition.
-func IntoGnarkAssignment(msgData []field.Element) []zk.WrappedVariable {
-	assignedMsg := []zk.WrappedVariable{}
-	for _, x := range msgData {
-		assignedMsg = append(assignedMsg, zk.ValueFromKoala(x))
-	}
-	return assignedMsg
-}
+// // IntoGnarkAssignment converts an array of field.Element into an array of
+// // zk.WrappedVariable that can be used to assign a vector of zk.WrappedVariable
+// // in a circuit or to generate a vector of constant in the circuit definition.
+// func IntoGnarkAssignment(msgData []field.Element) []zk.WrappedVariable {
+// 	assignedMsg := []zk.WrappedVariable{}
+// 	for _, x := range msgData {
+// 		assignedMsg = append(assignedMsg, zk.ValueFromKoala(x))
+// 	}
+// 	return assignedMsg
+// }
 
 // Equal compares a and b and returns a boolean indicating whether they contain
 // the same value. The function assumes that a and b have the same length. It

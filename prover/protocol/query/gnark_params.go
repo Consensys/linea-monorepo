@@ -10,7 +10,7 @@ import (
 
 // A gnark circuit version of the LocalOpeningResult
 type GnarkLocalOpeningParams struct {
-	BaseY  zk.WrappedVariable
+	BaseY  frontend.Variable
 	ExtY   gnarkfext.E4Gen
 	IsBase bool
 }
@@ -126,7 +126,7 @@ func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	if p.IsBase {
-		(*fs).Update(p.BaseY)
+		(*fs).Update(zk.WrapFrontendVariable(p.BaseY))
 	} else {
 		(*fs).UpdateExt(p.ExtY)
 	}

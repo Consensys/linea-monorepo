@@ -8,7 +8,7 @@ import (
 )
 
 type GnarkProof struct {
-	Columns           [][][]zk.WrappedVariable
+	Columns           [][][]frontend.Variable
 	LinearCombination []gnarkfext.E4Gen
 }
 
@@ -67,7 +67,7 @@ func GnarkCheckStatement(api frontend.API, params Params, linComb []gnarkfext.E4
 func GnarkCheckLinComb(
 	api frontend.API, linComb []gnarkfext.E4Gen,
 	entryList []frontend.Variable, alpha gnarkfext.E4Gen,
-	columns [][][]zk.WrappedVariable) error {
+	columns [][][]frontend.Variable) error {
 
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
@@ -79,7 +79,7 @@ func GnarkCheckLinComb(
 	for j, selectedColID := range entryList {
 
 		// Will carry the concatenation of the columns for the same entry j
-		fullCol := []zk.WrappedVariable{}
+		fullCol := []frontend.Variable{}
 
 		for i := range numCommitments {
 			// Entries of the selected columns #j contained in the commitment #i.

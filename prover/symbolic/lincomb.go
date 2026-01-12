@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -107,29 +106,22 @@ func (lc LinComb) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [GnarkEval] interface
-func (lc LinComb) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
-
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
-
-	res := zk.ValueOf(0)
+func (lc LinComb) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+	var res frontend.Variable = 0
 
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
 	for i, input := range inputs {
-		coeff := zk.ValueOf(lc.Coeffs[i])
-		tmp := apiGen.Mul(coeff, input)
-		res = apiGen.Add(res, tmp)
+		tmp := api.Mul(lc.Coeffs[i], input)
+		res = api.Add(res, tmp)
 	}
 
 	return res
 }
 
-// GnarkEval implements the [GnarkEvalExt] interface
+// GnarkEvalExt implements the [GnarkEvalExt] interface
 func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
 
 	e4Api, err := gnarkfext.NewExt4(api)

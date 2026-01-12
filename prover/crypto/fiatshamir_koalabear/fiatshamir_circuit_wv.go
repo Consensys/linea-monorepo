@@ -28,9 +28,8 @@ func NewGnarkFSWV(api frontend.API) *GnarkFSWV {
 
 // Update updates the Fiat-Shamir state with a vector of frontend.Variable
 // representing field element each.
-func (fs *GnarkFSWV) Update(vec ...zk.WrappedVariable) {
-	_vec := wvTofv(vec)
-	fs.hasher.Write(_vec...)
+func (fs *GnarkFSWV) Update(vec ...frontend.Variable) {
+	fs.hasher.Write(vec...)
 }
 func (fs *GnarkFSWV) UpdateExt(vec ...gnarkfext.E4Gen) {
 	for i := 0; i < len(vec); i++ {
@@ -57,40 +56,27 @@ func octupletToZkoctuplet(v poseidon2_koalabear.Octuplet) zk.Octuplet {
 	return res
 }
 
-func zkoctupletTooctuplet(v zk.Octuplet) poseidon2_koalabear.Octuplet {
-	var res poseidon2_koalabear.Octuplet
-	for i := 0; i < 8; i++ {
-		res[i] = v[i].AsNative()
-	}
-	return res
-}
-
 // UpdateVec updates the Fiat-Shamir state with a matrix of field element.
-func (fs *GnarkFSWV) UpdateVec(mat ...[]zk.WrappedVariable) {
+func (fs *GnarkFSWV) UpdateVec(mat ...[]frontend.Variable) {
 	for i := range mat {
 		fs.Update(mat[i]...)
 	}
 }
 
-func (fs *GnarkFSWV) RandomField() zk.Octuplet {
+func (fs *GnarkFSWV) RandomField() poseidon2_koalabear.Octuplet {
 	res := fs.hasher.Sum()
 	defer fs.safeguardUpdate()
-	return octupletToZkoctuplet(res)
-}
-
-func (fs *GnarkFSWV) randomFieldNative() poseidon2_koalabear.Octuplet {
-	defer fs.safeguardUpdate()
-	return fs.hasher.Sum()
+	return res
 }
 
 // RandomField returns a single valued fiat-shamir hash
 func (fs *GnarkFSWV) RandomFieldExt() gnarkfext.E4Gen {
 	s := fs.RandomField() // already calls safeguardUpdate()
 	var res gnarkfext.E4Gen
-	res.B0.A0 = s[0]
-	res.B0.A1 = s[1]
-	res.B1.A0 = s[2]
-	res.B1.A1 = s[3]
+	res.B0.A0 = zk.WrapFrontendVariable(s[0])
+	res.B0.A1 = zk.WrapFrontendVariable(s[1])
+	res.B1.A0 = zk.WrapFrontendVariable(s[2])
+	res.B1.A1 = zk.WrapFrontendVariable(s[3])
 
 	return res
 }
@@ -102,7 +88,7 @@ func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []frontend.Variable
 	res := make([]frontend.Variable, num)
 	for i < num {
 		// thake the remainder mod n of each limb
-		c := fs.randomFieldNative() // already calls safeguardUpdate()
+		c := fs.RandomField() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := fs.api.ToBinary(c[j])
 			res[i] = fs.api.FromBinary(b[:nbBits]...)
@@ -116,16 +102,15 @@ func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []frontend.Variable
 }
 
 // SetState mutates the fiat-shamir state of
-func (fs *GnarkFSWV) SetState(state zk.Octuplet) {
-	fs.hasher.Reset()
-	_state := zkoctupletTooctuplet(state)
-	fs.hasher.SetState(_state)
+func (fs *GnarkFSWV) SetState(state poseidon2_koalabear.Octuplet) {
+
+	fs.hasher.SetState(state)
 }
 
 // State mutates returns the state of the fiat-shamir hasher. The
 // function will also updates its own state with unprocessed inputs.
-func (fs *GnarkFSWV) State() zk.Octuplet {
-	return octupletToZkoctuplet(fs.hasher.State())
+func (fs *GnarkFSWV) State() poseidon2_koalabear.Octuplet {
+	return fs.hasher.State() // updated to return the state directly
 }
 
 // safeguardUpdate updates the state as a safeguard by appending a field element

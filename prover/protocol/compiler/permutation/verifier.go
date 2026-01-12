@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -47,21 +46,17 @@ func (v *VerifierCtx) Run(run wizard.Runtime) error {
 // Run implements the [wizard.VerifierAction] interface and is as
 // [VerifierCtx.Run] but in the context of a gnark circuit.
 func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	mustBeOne := zk.ValueOf(1)
-
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+	var mustBeOne frontend.Variable
+	mustBeOne = 1
 
 	for _, zCtx := range v.Ctxs {
 		for _, opening := range zCtx.ZOpenings {
 			y := run.GetLocalPointEvalParams(opening.ID).BaseY
-			mustBeOne = apiGen.Mul(mustBeOne, y)
+			mustBeOne = api.Mul(mustBeOne, y)
 		}
 	}
 
-	api.AssertIsEqual(mustBeOne, zk.ValueOf(1))
+	api.AssertIsEqual(mustBeOne, frontend.Variable(1))
 }
 
 func (v *VerifierCtx) Skip() {

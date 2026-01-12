@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
@@ -18,18 +19,18 @@ import (
 // =============================================================================
 
 type EncodingCircuit struct {
-	ToEncode1 [8]zk.WrappedVariable
-	ToEncode2 [12]zk.WrappedVariable
+	ToEncode1 [8]frontend.Variable
+	ToEncode2 [12]frontend.Variable
 	ToEncode3 frontend.Variable
 	R1        frontend.Variable
 	R2        [2]frontend.Variable
-	R3        zk.Octuplet
+	R3        poseidon2_koalabear.Octuplet
 }
 
 func (c *EncodingCircuit) Define(api frontend.API) error {
 
-	a := EncodeWVsToFVs(api, c.ToEncode1[:])
-	b := EncodeWVsToFVs(api, c.ToEncode2[:])
+	a := EncodeKoalasToFVs(api, c.ToEncode1[:])
+	b := EncodeKoalasToFVs(api, c.ToEncode2[:])
 	d := EncodeFVTo8WVs(api, c.ToEncode3)
 	if len(a) != 1 {
 		return errors.New("ToEncode1 should correspond to a single frelement")
@@ -42,12 +43,8 @@ func (c *EncodingCircuit) Define(api frontend.API) error {
 	api.AssertIsEqual(b[0], c.R2[0])
 	api.AssertIsEqual(b[1], c.R2[1])
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
 	for i := 0; i < 8; i++ {
-		apiGen.AssertIsEqual(c.R3[i], d[i])
+		api.AssertIsEqual(c.R3[i], d[i])
 	}
 
 	return nil
@@ -55,7 +52,7 @@ func (c *EncodingCircuit) Define(api frontend.API) error {
 
 // Circuit for testing Encode8WVsToFV directly
 type Encode8WVsCircuit struct {
-	Input  [8]zk.WrappedVariable
+	Input  [8]frontend.Variable
 	Output frontend.Variable
 }
 
@@ -67,12 +64,12 @@ func (c *Encode8WVsCircuit) Define(api frontend.API) error {
 
 // Circuit for testing Encode9WVsToFV (BLS to Koalabear encoding)
 type Encode9WVsCircuit struct {
-	Input  [KoalabearChunks]zk.WrappedVariable
+	Input  [KoalabearChunks]frontend.Variable
 	Output frontend.Variable
 }
 
 func (c *Encode9WVsCircuit) Define(api frontend.API) error {
-	result := Encode9WVsToFV(api, c.Input)
+	result := Encode9KoalasToFV(api, c.Input)
 	api.AssertIsEqual(result, c.Output)
 	return nil
 }
@@ -80,25 +77,25 @@ func (c *Encode9WVsCircuit) Define(api frontend.API) error {
 // Circuit for testing round-trip: BLS -> 9 Koalabear -> BLS
 type RoundTripBLS9KoalaCircuit struct {
 	Original   frontend.Variable
-	Decomposed [KoalabearChunks]zk.WrappedVariable
+	Decomposed [KoalabearChunks]frontend.Variable
 }
 
 func (c *RoundTripBLS9KoalaCircuit) Define(api frontend.API) error {
 	// Encode the decomposed values back to BLS
-	reconstructed := Encode9WVsToFV(api, c.Decomposed)
+	reconstructed := Encode9KoalasToFV(api, c.Decomposed)
 	api.AssertIsEqual(c.Original, reconstructed)
 	return nil
 }
 
 // Circuit for testing EncodeWVsToFVs with various input sizes
 type EncodeWVsToFVsCircuit struct {
-	Input  []zk.WrappedVariable
+	Input  []frontend.Variable
 	Output []frontend.Variable
 	size   int
 }
 
 func (c *EncodeWVsToFVsCircuit) Define(api frontend.API) error {
-	result := EncodeWVsToFVs(api, c.Input)
+	result := EncodeKoalasToFVs(api, c.Input)
 	if len(result) != len(c.Output) {
 		return errors.New("output length mismatch")
 	}
@@ -110,7 +107,7 @@ func (c *EncodeWVsToFVsCircuit) Define(api frontend.API) error {
 
 // Circuit for testing zero values
 type ZeroValuesCircuit struct {
-	Input  [8]zk.WrappedVariable
+	Input  [8]frontend.Variable
 	Output frontend.Variable
 }
 
@@ -122,7 +119,7 @@ func (c *ZeroValuesCircuit) Define(api frontend.API) error {
 
 // Circuit for testing max values (p-1 for koalabear field)
 type MaxValuesCircuit struct {
-	Input  [8]zk.WrappedVariable
+	Input  [8]frontend.Variable
 	Output frontend.Variable
 }
 
@@ -134,7 +131,7 @@ func (c *MaxValuesCircuit) Define(api frontend.API) error {
 
 // Circuit for consistency between native and circuit encoding
 type ConsistencyCircuit struct {
-	KoalaInput [8]zk.WrappedVariable
+	KoalaInput [8]frontend.Variable
 	FrOutput   frontend.Variable
 }
 
@@ -367,9 +364,9 @@ func TestEncodeWVsToFVsVariousSizes(t *testing.T) {
 			assert.Equal(t, tc.expectedOutput, len(expected), "Expected output length mismatch")
 
 			var circuit, witness EncodeWVsToFVsCircuit
-			circuit.Input = make([]zk.WrappedVariable, tc.inputSize)
+			circuit.Input = make([]frontend.Variable, tc.inputSize)
 			circuit.Output = make([]frontend.Variable, tc.expectedOutput)
-			witness.Input = make([]zk.WrappedVariable, tc.inputSize)
+			witness.Input = make([]frontend.Variable, tc.inputSize)
 			witness.Output = make([]frontend.Variable, tc.expectedOutput)
 
 			for i := 0; i < tc.inputSize; i++ {
@@ -553,9 +550,9 @@ func TestEncodeWVsToFVsSingleElement(t *testing.T) {
 	assert.Equal(t, 1, len(expected), "Single element should produce single output")
 
 	var circuit, witness EncodeWVsToFVsCircuit
-	circuit.Input = make([]zk.WrappedVariable, 1)
+	circuit.Input = make([]frontend.Variable, 1)
 	circuit.Output = make([]frontend.Variable, 1)
-	witness.Input = make([]zk.WrappedVariable, 1)
+	witness.Input = make([]frontend.Variable, 1)
 	witness.Output = make([]frontend.Variable, 1)
 
 	witness.Input[0] = zk.ValueFromKoala(input[0])

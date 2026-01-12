@@ -4,23 +4,23 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // circuit
 type GnarkFS interface {
-	Update(vec ...zk.WrappedVariable)
+	Update(vec ...frontend.Variable)
 	UpdateExt(vec ...gnarkfext.E4Gen)
-	UpdateVec(mat ...[]zk.WrappedVariable)
-	RandomField() zk.Octuplet
+	UpdateVec(mat ...[]frontend.Variable)
+	RandomField() poseidon2_koalabear.Octuplet
 	RandomFieldExt() gnarkfext.E4Gen
 	RandomManyIntegers(num, upperBound int) []frontend.Variable
-	SetState(state zk.Octuplet)
-	State() zk.Octuplet
+	SetState(state poseidon2_koalabear.Octuplet)
+	State() poseidon2_koalabear.Octuplet
 }
 
 func NewGnarkFSKoalabear(api frontend.API) GnarkFS {

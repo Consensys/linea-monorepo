@@ -3,11 +3,10 @@ package gnarkutil
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
-func RepeatedVariable(x zk.WrappedVariable, n int) []zk.WrappedVariable {
-	res := make([]zk.WrappedVariable, n)
+func RepeatedVariable(x frontend.Variable, n int) []frontend.Variable {
+	res := make([]frontend.Variable, n)
 	for i := range res {
 		res[i] = x
 	}
@@ -49,27 +48,21 @@ func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
 }
 
 // Exp in gnark circuit, using the fast exponentiation
-func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
-
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
-
+func Exp(api frontend.API, x frontend.Variable, n int) frontend.Variable {
 	if n < 0 {
-		x = apiGen.Inverse(x)
+		x = api.Inverse(x)
 		n = -n
 	}
 
 	acc := x
-	res := zk.ValueOf(1)
+	var res frontend.Variable = 1
 
 	// right-to-left
 	for n != 0 {
 		if n&1 == 1 {
-			res = apiGen.Mul(res, acc)
+			res = api.Mul(res, acc)
 		}
-		acc = apiGen.Mul(acc, acc)
+		acc = api.Mul(acc, acc)
 		n >>= 1
 	}
 	return res
@@ -77,22 +70,16 @@ func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
 
 // ExpVariableExponent exponentiates x by n in a gnark circuit. Where n is not fixed.
 // n is limited to n bits (max)
-func ExpVariableExponent(api frontend.API, x zk.WrappedVariable, exp frontend.Variable, expNumBits int) zk.WrappedVariable {
-
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
-
+func ExpVariableExponent(api frontend.API, x frontend.Variable, exp frontend.Variable, expNumBits int) frontend.Variable {
 	expBits := api.ToBinary(exp, expNumBits)
-	res := zk.ValueOf(1)
+	var res frontend.Variable = 1
 
 	for i := len(expBits) - 1; i >= 0; i-- {
 		if i != len(expBits)-1 {
-			res = apiGen.Mul(res, res)
+			res = api.Mul(res, res)
 		}
-		tmp := apiGen.Mul(res, x)
-		res = apiGen.Select(expBits[i], tmp, res)
+		tmp := api.Mul(res, x)
+		res = api.Select(expBits[i], tmp, res)
 	}
 
 	return res

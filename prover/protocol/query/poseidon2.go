@@ -133,21 +133,21 @@ func (p Poseidon2) Check(run ifaces.Runtime) error {
 // Check the mimc relation in a gnark circuit
 func (p Poseidon2) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
-	var blocks, oldStates, newStates [8][]zk.WrappedVariable
+	var blocks, oldStates, newStates [8][]frontend.Variable
 	for i := 0; i < 8; i++ {
 		blocks[i] = p.Blocks[i].GetColAssignmentGnark(run)
 		oldStates[i] = p.OldState[i].GetColAssignmentGnark(run)
 		newStates[i] = p.NewState[i].GetColAssignmentGnark(run)
 	}
 
-	for i := 0; i < len(newStates); i++ {
+	for i := 0; i < len(newStates[0]); i++ {
 		var block [8]zk.WrappedVariable
 		var oldState [8]zk.WrappedVariable
 		var newState [8]zk.WrappedVariable
 		for j := 0; j < 8; j++ {
-			block[j] = blocks[j][i]
-			oldState[j] = oldStates[j][i]
-			newState[j] = newStates[j][i]
+			block[j] = zk.WrapFrontendVariable(blocks[j][i])
+			oldState[j] = zk.WrapFrontendVariable(oldStates[j][i])
+			newState[j] = zk.WrapFrontendVariable(newStates[j][i])
 		}
 		recomputed := poseidon2_koalabear.GnarkBlockCompressionMekle(api, oldState, block)
 		api.AssertIsEqual(newState, recomputed)

@@ -3,9 +3,9 @@ package verifiercol
 import (
 	"strings"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -44,7 +44,7 @@ func (fys FromYs) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Elemen
 	panic("implement me")
 }
 
-func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -72,7 +72,7 @@ func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.
 	return res
 }
 
-func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -154,7 +154,7 @@ func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 }
 
 // Returns the coin's value as a column assignment
-func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
+func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 	// TODO implement me
 	panic("implement me")
 }
@@ -165,7 +165,7 @@ func (fys FromYs) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element 
 }
 
 // Returns a particular position of the coin value
-func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
+func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 
 	//TODO implement me
 	panic("implement me")

@@ -44,32 +44,28 @@ func toWVOctuplet(v Octuplet) zk.Octuplet {
 	return res
 }
 
-func (h *GnarkMDHasherWV) Write(data ...zk.WrappedVariable) {
+func (h *GnarkMDHasherWV) Write(data ...frontend.Variable) {
 	buffer := make([]frontend.Variable, len(data))
 	for i := 0; i < len(buffer); i++ {
-		buffer[i] = data[i].AsNative()
+		buffer[i] = data[i]
 	}
 	h.gnarkMDHasher.Write(buffer...)
 }
 
-func (h *GnarkMDHasherWV) WriteOctuplet(data ...zk.Octuplet) {
-	var buf Octuplet
+func (h *GnarkMDHasherWV) WriteOctuplet(data ...Octuplet) {
 	for i := 0; i < len(data); i++ {
-		buf = toOctuplet(data[i])
-		h.gnarkMDHasher.WriteOctuplet(buf)
+		h.gnarkMDHasher.WriteOctuplet(data[i])
 	}
 }
 
-func (h *GnarkMDHasherWV) SetState(state zk.Octuplet) {
-	_state := toOctuplet(state)
-	h.gnarkMDHasher.SetState(_state)
+func (h *GnarkMDHasherWV) SetState(state Octuplet) {
+	h.gnarkMDHasher.SetState(state)
 }
 
-func (h *GnarkMDHasherWV) State() zk.Octuplet {
-	return toWVOctuplet(h.gnarkMDHasher.State())
+func (h *GnarkMDHasherWV) State() Octuplet {
+	return h.gnarkMDHasher.State()
 }
 
-func (h *GnarkMDHasherWV) Sum() zk.Octuplet {
-	s := h.gnarkMDHasher.Sum()
-	return toWVOctuplet(s)
+func (h *GnarkMDHasherWV) Sum() Octuplet {
+	return h.gnarkMDHasher.Sum()
 }

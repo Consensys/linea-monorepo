@@ -346,7 +346,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	omegaI := field.One()
 
 	// precomputations of the powers of omega, can be optimized if useful
-	omegas := make([]zk.WrappedVariable, cs.DomainSize)
+	omegas := make([]frontend.Variable, cs.DomainSize)
 	for i := range omegas {
 		omegas[i] = zk.ValueFromKoala(omegaI)
 		omegaI.Mul(&omegaI, &omega)
@@ -381,7 +381,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 			var x gnarkfext.E4Gen
 			if meta.IsBase() {
 				base := meta.GetFrontendVariable(api, run)
-				x = gnarkfext.FromBase(base)
+				x = gnarkfext.NewE4GenFromFrontedBase(base)
 			} else {
 				x = meta.GetFrontendVariableExt(api, run)
 			}

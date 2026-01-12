@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -20,9 +21,9 @@ type FSCircuit struct {
 	R1, R2 frontend.Variable
 
 	// koalabear octuplet
-	C  [2]zk.WrappedVariable
-	D  [10]zk.WrappedVariable
-	R3 zk.Octuplet
+	C  [2]frontend.Variable
+	D  [10]frontend.Variable
+	R3 poseidon2_koalabear.Octuplet
 
 	// random many integers
 	R4    []frontend.Variable
@@ -30,7 +31,7 @@ type FSCircuit struct {
 	bound int
 
 	// set state, get state
-	SetState, GetState zk.Octuplet
+	SetState, GetState poseidon2_koalabear.Octuplet
 }
 
 func (c *FSCircuit) Define(api frontend.API) error {
@@ -48,12 +49,9 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	// koalabear octuplet
 	fs.Update(c.C[:]...)
 	e := fs.RandomField()
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
+
 	for i := 0; i < 8; i++ {
-		apiGen.AssertIsEqual(e[i], c.R3[i])
+		api.AssertIsEqual(e[i], c.R3[i])
 	}
 
 	// random many integers
@@ -67,7 +65,7 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	fs.SetState(c.SetState)
 	getState := fs.State()
 	for i := 0; i < len(getState); i++ {
-		apiGen.AssertIsEqual(getState[i], c.GetState[i])
+		api.AssertIsEqual(getState[i], c.GetState[i])
 	}
 
 	return nil
@@ -151,23 +149,18 @@ func TestFSCircuit(t *testing.T) {
 }
 
 type KoalaFlushSpecificCircuit struct {
-	Input   [8]zk.WrappedVariable
-	Output  zk.Octuplet
+	Input   [8]frontend.Variable
+	Output  poseidon2_koalabear.Octuplet
 	isKoala bool
 }
 
 func (c *KoalaFlushSpecificCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
-
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
 	for i := 0; i < len(res); i++ {
-		apiGen.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i], c.Output[i])
 	}
 	return nil
 }
@@ -220,20 +213,16 @@ func TestKoalaFlushSpecific(t *testing.T) {
 // Test for UpdateExt with field extension elements
 type UpdateExtCircuit struct {
 	ExtInputs [3]gnarkfext.E4Gen
-	Output    zk.Octuplet
+	Output    poseidon2_koalabear.Octuplet
 }
 
 func (c *UpdateExtCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
 
 	fs.UpdateExt(c.ExtInputs[:]...)
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		apiGen.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i], c.Output[i])
 	}
 	return nil
 }
@@ -268,13 +257,13 @@ func TestUpdateExt(t *testing.T) {
 
 // Test for RandomFieldExt
 type RandomFieldExtCircuit struct {
-	Input     [2]zk.WrappedVariable
+	Input     [2]frontend.Variable
 	OutputExt gnarkfext.E4Gen
 }
 
 func (c *RandomFieldExtCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		return err
 	}
@@ -282,10 +271,8 @@ func (c *RandomFieldExtCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomFieldExt()
 
-	apiGen.AssertIsEqual(res.B0.A0, c.OutputExt.B0.A0)
-	apiGen.AssertIsEqual(res.B0.A1, c.OutputExt.B0.A1)
-	apiGen.AssertIsEqual(res.B1.A0, c.OutputExt.B1.A0)
-	apiGen.AssertIsEqual(res.B1.A1, c.OutputExt.B1.A1)
+	ext4.AssertIsEqual(&res, &c.OutputExt)
+
 	return nil
 }
 
@@ -315,7 +302,7 @@ func TestRandomFieldExt(t *testing.T) {
 
 // Test for RandomManyIntegers with different bounds
 type RandomManyIntegersCircuit struct {
-	Input  [5]zk.WrappedVariable
+	Input  [5]frontend.Variable
 	Output []frontend.Variable
 	n      int
 	bound  int
@@ -382,22 +369,18 @@ func TestRandomManyIntegersVariousBounds(t *testing.T) {
 
 // Test for SetState and State round-trip
 type StateRoundTripCircuit struct {
-	InitialState zk.Octuplet
-	FinalState   zk.Octuplet
+	InitialState poseidon2_koalabear.Octuplet
+	FinalState   poseidon2_koalabear.Octuplet
 }
 
 func (c *StateRoundTripCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
 
 	fs.SetState(c.InitialState)
 	state := fs.State()
 
 	for i := 0; i < 8; i++ {
-		apiGen.AssertIsEqual(state[i], c.FinalState[i])
+		api.AssertIsEqual(state[i], c.FinalState[i])
 	}
 	return nil
 }
@@ -469,25 +452,21 @@ func TestEmptyKoalaBufferFlush(t *testing.T) {
 
 // Test for multiple sequential RandomField calls
 type MultipleRandomFieldCircuit struct {
-	Input   [4]zk.WrappedVariable
-	Output1 zk.Octuplet
-	Output2 zk.Octuplet
+	Input   [4]frontend.Variable
+	Output1 poseidon2_koalabear.Octuplet
+	Output2 poseidon2_koalabear.Octuplet
 }
 
 func (c *MultipleRandomFieldCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
 
 	fs.Update(c.Input[:]...)
 	res1 := fs.RandomField()
 	res2 := fs.RandomField()
 
 	for i := 0; i < 8; i++ {
-		apiGen.AssertIsEqual(res1[i], c.Output1[i])
-		apiGen.AssertIsEqual(res2[i], c.Output2[i])
+		api.AssertIsEqual(res1[i], c.Output1[i])
+		api.AssertIsEqual(res2[i], c.Output2[i])
 	}
 	return nil
 }
@@ -524,24 +503,20 @@ func TestMultipleRandomFieldCalls(t *testing.T) {
 
 // Test for mixed Update and UpdateFrElmt
 type MixedUpdateCircuit struct {
-	KoalaInput [2]zk.WrappedVariable
+	KoalaInput [2]frontend.Variable
 	FrInput    frontend.Variable
-	Output     zk.Octuplet
+	Output     poseidon2_koalabear.Octuplet
 }
 
 func (c *MixedUpdateCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
 
 	fs.Update(c.KoalaInput[:]...)
 	fs.UpdateFrElmt(c.FrInput)
 	res := fs.RandomField()
 
 	for i := 0; i < 8; i++ {
-		apiGen.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i], c.Output[i])
 	}
 	return nil
 }
@@ -629,21 +604,17 @@ func TestUpdateVecFrElmt(t *testing.T) {
 
 // Test edge case with zero values
 type ZeroValuesCircuit struct {
-	Input  [4]zk.WrappedVariable
-	Output zk.Octuplet
+	Input  [4]frontend.Variable
+	Output poseidon2_koalabear.Octuplet
 }
 
 func (c *ZeroValuesCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
 
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		apiGen.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i], c.Output[i])
 	}
 	return nil
 }
@@ -679,21 +650,17 @@ func TestZeroValues(t *testing.T) {
 
 // Test edge case with max values
 type MaxValuesCircuit struct {
-	Input  [4]zk.WrappedVariable
-	Output zk.Octuplet
+	Input  [4]frontend.Variable
+	Output poseidon2_koalabear.Octuplet
 }
 
 func (c *MaxValuesCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
 
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		apiGen.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i], c.Output[i])
 	}
 	return nil
 }

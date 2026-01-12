@@ -3,10 +3,10 @@ package column
 import (
 	"fmt"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -114,9 +114,9 @@ func (s Shifted) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 
 // GetColAssignmentGnark implements [ifaces.Column] and works like
 // GetColAssignment.
-func (s Shifted) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
+func (s Shifted) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 	parent := s.Parent.GetColAssignmentGnark(run) // [a b c d e f g h]
-	res := make([]zk.WrappedVariable, len(parent))
+	res := make([]frontend.Variable, len(parent))
 	for i := range res {
 		posParent := utils.PositiveMod(i+s.Offset, len(parent))
 		res[i] = parent[posParent]
@@ -124,10 +124,10 @@ func (s Shifted) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVari
 	return res
 }
 
-func (s Shifted) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+func (s Shifted) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
 	if s.IsBase() {
 		parent := s.Parent.GetColAssignmentGnark(run) // [a b c d e f g h]
-		res := make([]zk.WrappedVariable, len(parent))
+		res := make([]frontend.Variable, len(parent))
 		for i := range res {
 			posParent := utils.PositiveMod(i+s.Offset, len(parent))
 			res[i] = parent[posParent]
@@ -165,11 +165,11 @@ func (s Shifted) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element
 
 // GetColAssignmentGnarkAt gets the witness from the parent and performs a shift in the gnark circuit
 // setting. The method implements the [ifaces.Column] interface.
-func (s Shifted) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
+func (s Shifted) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	return s.Parent.GetColAssignmentGnarkAt(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
 }
 
-func (s Shifted) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+func (s Shifted) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
 	return s.Parent.GetColAssignmentGnarkAtBase(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
 }
 

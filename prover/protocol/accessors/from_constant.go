@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -74,17 +73,17 @@ func (c *FromConstAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return c.Ext
 }
 
-func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRuntime) zk.WrappedVariable {
+func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRuntime) frontend.Variable {
 	if c.IsBaseFlag {
-		return zk.ValueFromKoala(c.Base)
+		return c.Base.Uint64()
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
 }
 
-func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
+func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.GnarkRuntime) (frontend.Variable, error) {
 	if c.IsBaseFlag {
-		return zk.ValueFromKoala(c.Base), nil
+		return c.Base.Uint64(), nil
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}

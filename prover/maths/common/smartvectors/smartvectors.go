@@ -177,7 +177,7 @@ func IntoGnarkAssignment(sv SmartVector) []zk.WrappedVariable {
 	if err == nil {
 		for i := range res {
 			elem, _ := sv.GetBase(i)
-			res[i] = zk.ValueFromKoala(elem)
+			res[i] = zk.WrapFrontendVariable(zk.ValueFromKoala(elem))
 		}
 	} else {
 		for i := range res {

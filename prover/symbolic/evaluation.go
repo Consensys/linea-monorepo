@@ -56,11 +56,11 @@ func (b *ExpressionBoard) Degree(getdeg GetDegree) int {
 /*
 GnarkEval evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
+func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
 	if len(b.Nodes) == 0 {
 		panic("empty board")
 	}
-	results := make([]zk.WrappedVariable, len(b.Nodes))
+	results := make([]frontend.Variable, len(b.Nodes))
 	inputCursor := 0
 
 	for i, node := range b.Nodes {
@@ -72,7 +72,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []zk.WrappedVariabl
 			results[i] = inputs[inputCursor]
 			inputCursor++
 		default:
-			nodeInputs := make([]zk.WrappedVariable, len(node.Children))
+			nodeInputs := make([]frontend.Variable, len(node.Children))
 			for k, childID := range node.Children {
 				nodeInputs[k] = results[childID]
 			}

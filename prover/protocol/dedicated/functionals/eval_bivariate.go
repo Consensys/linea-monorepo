@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
-
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
@@ -194,22 +192,18 @@ func (a *XYPow1MinNAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return res
 }
 
-func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
+func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run ifaces.GnarkRuntime) (frontend.Variable, error) {
 	x, errX := a.X.GetFrontendVariableBase(api, run)
 	if errX != nil {
-		return zk.ValueOf(0), errX
+		return 0, errX
 	}
 	y, errY := a.Y.GetFrontendVariableBase(api, run)
 	if errY != nil {
-		return zk.ValueOf(0), errY
+		return 0, errY
 	}
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return zk.ValueOf(0), err
-	}
 	res := gnarkutil.Exp(api, x, 1-a.N)
-	res = apiGen.Mul(res, y)
+	res = api.Mul(res, y)
 	return res, nil
 }
 
@@ -256,15 +250,12 @@ func (a *XYPow1MinNAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements the [ifaces.Accessor] interface.
-func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.GnarkRuntime) zk.WrappedVariable {
+func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.GnarkRuntime) frontend.Variable {
 	x := a.X.GetFrontendVariable(api, run)
 	y := a.Y.GetFrontendVariable(api, run)
 	res := gnarkutil.Exp(api, x, 1-a.N)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
-	res = apiGen.Mul(res, y)
+
+	res = api.Mul(res, y)
 	return res
 }
 

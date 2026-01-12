@@ -7,7 +7,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -67,7 +66,7 @@ type Operator interface {
 	// Returns the polynomial degree of the expression.
 	Degree([]int) int
 	// GnarkEval returns an evaluation of the operator in a gnark circuit.
-	GnarkEval(frontend.API, []zk.WrappedVariable) zk.WrappedVariable
+	GnarkEval(frontend.API, []frontend.Variable) frontend.Variable
 	GnarkEvalExt(frontend.API, []gnarkfext.E4Gen) gnarkfext.E4Gen
 }
 

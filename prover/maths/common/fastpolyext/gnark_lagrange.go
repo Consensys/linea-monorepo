@@ -57,7 +57,7 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.E4Gen, x gnarkfext
 	tmp = *e4Api.Sub(&tmp, &wOne) // xⁿ-1
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
-	wInvSize := zk.ValueFromKoala(invSize)
+	wInvSize := zk.WrapFrontendVariable(zk.ValueFromKoala(invSize))
 	tmp = *e4Api.MulByFp(&tmp, wInvSize)
 	res = *e4Api.Mul(&res, &tmp)
 
@@ -93,7 +93,7 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.E4Gen, x g
 	res := make([]gnarkfext.E4Gen, len(polys))
 
 	for i := range innerProductTerms {
-		innerProductTerms[i] = *e4Api.MulByFp(&x, powersOfOmegaInv[i])
+		innerProductTerms[i] = *e4Api.MulByFp(&x, zk.WrapFrontendVariable(powersOfOmegaInv[i]))
 		innerProductTerms[i] = *e4Api.Sub(&innerProductTerms[i], &one)
 		innerProductTerms[i] = *e4Api.Inverse(&innerProductTerms[i])
 	}
@@ -190,10 +190,10 @@ func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.E4Gen, ns []int) []gna
 // powerVector returns w raised to the powers contained up to n starting from
 // 0. For instance, if n = 4, then it returns [1, w^-1, w^-2, w^-3]. Where w
 // is the inverse of the generator of the subgroup of root of unity of order 4.
-func powerVectorOfOmegaInv(n int) []zk.WrappedVariable {
+func powerVectorOfOmegaInv(n int) []frontend.Variable {
 
 	resField := field.One()
-	res := make([]zk.WrappedVariable, n)
+	res := make([]frontend.Variable, n)
 	w, _ := fft.Generator(uint64(n))
 
 	w.Inverse(&w)

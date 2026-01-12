@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -83,19 +82,13 @@ func (PolyEval) Validate(expr *Expression) error {
 
 // GnarkEval evaluates the expression in a gnark circuit
 // Does not support vector evaluation
-func (PolyEval) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
-
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
-
+func (PolyEval) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
 
 	for i := len(inputs) - 2; i >= 1; i-- {
-		res = apiGen.Mul(res, x)
-		res = apiGen.Add(res, inputs[i])
+		res = api.Mul(res, x)
+		res = api.Add(res, inputs[i])
 	}
 
 	return res

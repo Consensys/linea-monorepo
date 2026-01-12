@@ -41,14 +41,14 @@ func TestGnarkVerifier(t *testing.T) {
 
 	var circuit, witness VerifierCircuit
 	circuit.params = params.Params
-	circuit.Proof.Columns = make([][][]zk.WrappedVariable, len(proof.Columns))
-	witness.Proof.Columns = make([][][]zk.WrappedVariable, len(proof.Columns))
+	circuit.Proof.Columns = make([][][]frontend.Variable, len(proof.Columns))
+	witness.Proof.Columns = make([][][]frontend.Variable, len(proof.Columns))
 	for i := 0; i < len(proof.Columns); i++ {
-		circuit.Proof.Columns[i] = make([][]zk.WrappedVariable, len(proof.Columns[i]))
-		witness.Proof.Columns[i] = make([][]zk.WrappedVariable, len(proof.Columns[i]))
+		circuit.Proof.Columns[i] = make([][]frontend.Variable, len(proof.Columns[i]))
+		witness.Proof.Columns[i] = make([][]frontend.Variable, len(proof.Columns[i]))
 		for j := 0; j < len(proof.Columns[i]); j++ {
-			circuit.Proof.Columns[i][j] = make([]zk.WrappedVariable, len(proof.Columns[i][j]))
-			witness.Proof.Columns[i][j] = make([]zk.WrappedVariable, len(proof.Columns[i][j]))
+			circuit.Proof.Columns[i][j] = make([]frontend.Variable, len(proof.Columns[i][j]))
+			witness.Proof.Columns[i][j] = make([]frontend.Variable, len(proof.Columns[i][j]))
 			for k := 0; k < len(proof.Columns[i][j]); k++ {
 				witness.Proof.Columns[i][j][k] = zk.ValueFromKoala(proof.Columns[i][j][k])
 			}
