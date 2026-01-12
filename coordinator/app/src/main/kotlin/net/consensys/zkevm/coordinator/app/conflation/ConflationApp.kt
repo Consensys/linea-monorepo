@@ -11,11 +11,9 @@ import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.isDisabled
-import linea.domain.BlockParameter
-import linea.domain.RetryConfig
+import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.encoding.BlockRLPEncoder
 import linea.ethapi.EthApiClient
-import linea.web3j.ExtendedWeb3JImpl
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.contract.l1.GenesisStateProvider
@@ -71,7 +69,6 @@ import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchProofHandlerImpl
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
@@ -97,19 +94,15 @@ class ConflationApp(
     lastFinalizedBlock,
   ).get()
 
-  val l2Web3jClient: Web3j = createWeb3jHttpClient(
+  val l2EthClient: EthApiClient = createEthApiClient(
     rpcUrl = configs.conflation.l2Endpoint.toString(),
     log = LogManager.getLogger("clients.l2.eth.conflation"),
-  )
-  val l2EthClient: EthApiClient = createEthApiClient(
-    l2Web3jClient,
     requestRetryConfig = configs.conflation.l2RequestRetries,
     vertx = vertx,
   )
 
-  private val extendedWeb3J = ExtendedWeb3JImpl(l2Web3jClient)
-  private val lastProcessedBlock = extendedWeb3J.ethGetBlock(
-    BlockParameter.fromNumber(lastProcessedBlockNumber),
+  private val lastProcessedBlock = l2EthClient.ethGetBlockByNumberTxHashes(
+    lastProcessedBlockNumber.toBlockParameter(),
   ).get()
 
   init {
@@ -120,7 +113,7 @@ class ConflationApp(
 
   private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
 
-  private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner(l2Web3jClient)
+  private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner()
 
   private val conflationCalculator: TracesConflationCalculator = run {
     val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
@@ -259,7 +252,6 @@ class ConflationApp(
       description = "Highest consecutive proven aggregation block number",
       measurementSupplier = highestConsecutiveAggregationTracker,
     )
-
     ProofAggregationCoordinatorService.Companion
       .create(
         vertx = vertx,
@@ -267,7 +259,7 @@ class ConflationApp(
         deadlineCheckInterval = configs.conflation.proofAggregation.deadlineCheckInterval,
         aggregationDeadline = configs.conflation.proofAggregation.deadline,
         latestBlockProvider = GethCliqueSafeBlockProvider(
-          web3j = l2Web3jClient,
+          ethApiBlockClient = l2EthClient,
           config = GethCliqueSafeBlockProvider.Config(0),
         ),
         maxProofsPerAggregation = configs.conflation.proofAggregation.proofsLimit,
@@ -276,16 +268,13 @@ class ConflationApp(
         aggregationsRepository = aggregationsRepository,
         consecutiveProvenBlobsProvider = maxBlobEndBlockNumberTracker,
         proofAggregationClient = proverClientFactory.proofAggregationProverClient(),
-        l2EthApiClient = createEthApiClient(
-          l2Web3jClient,
-          requestRetryConfig = RetryConfig(
-            backoffDelay = 1.seconds,
-            failuresWarningThreshold = 3u,
-          ),
-          vertx = vertx,
-        ),
+        l2EthApiClient = l2EthClient,
         l2MessageService = Web3JL2MessageServiceSmartContractClient.createReadOnly(
-          web3jClient = l2Web3jClient,
+          web3jClient = createWeb3jHttpClient(
+            rpcUrl = configs.conflation.l2Endpoint.toString(),
+            log = LogManager.getLogger("clients.l2.eth.conflation"),
+          ),
+          ethApiClient = l2EthClient,
           contractAddress = configs.protocol.l2.contractAddress,
           smartContractErrors = configs.smartContractErrors,
           smartContractDeploymentBlockNumber = configs.protocol.l2.contractDeploymentBlockNumber?.getNumber(),
@@ -465,9 +454,7 @@ class ConflationApp(
     return lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(blockNumber)
   }
 
-  private fun createDeadlineConflationCalculatorRunner(
-    l2Web3jClient: Web3j,
-  ): DeadlineConflationCalculatorRunner? {
+  private fun createDeadlineConflationCalculatorRunner(): DeadlineConflationCalculatorRunner? {
     if (configs.conflation.isDisabled() || configs.conflation.conflationDeadline == null) {
       log.info("Conflation deadline calculator is disabled")
       return null
@@ -484,8 +471,8 @@ class ConflationApp(
         lastBlockNumber = lastProcessedBlockNumber,
         clock = Clock.System,
         latestBlockProvider = GethCliqueSafeBlockProvider(
-          l2Web3jClient,
-          GethCliqueSafeBlockProvider.Config(blocksToFinalization = 0),
+          ethApiBlockClient = l2EthClient,
+          config = GethCliqueSafeBlockProvider.Config(blocksToFinalization = 0),
         ),
       ),
     )
@@ -511,9 +498,7 @@ class ConflationApp(
     }
   }
 
-  private fun addTimestampHardForkCalculatorIfDefined(
-    calculators: MutableList<ConflationCalculator>,
-  ) {
+  private fun addTimestampHardForkCalculatorIfDefined(calculators: MutableList<ConflationCalculator>) {
     if (configs.conflation.proofAggregation.timestampBasedHardForks.isNotEmpty()) {
       calculators.add(
         TimestampHardForkConflationCalculator(

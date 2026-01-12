@@ -13,7 +13,7 @@ services:
       - ../config/coordinator/coordinator-config-v2.toml:/coordinator/coordinator-config-v2.toml:ro
 
   maru:
-    image: consensys/maru:${MARU_TAG:-7ccf08c}
+    image: consensys/maru:${MARU_TAG:-9737a45}
     hostname: maru
     container_name: maru
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
@@ -39,7 +39,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc5-20251127094207-a7201ae}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc7-20251202165721-14b8f4c}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       l2-genesis-initialization:
@@ -114,7 +114,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc5-20251127094207-a7201ae}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc7-20251202165721-14b8f4c}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -155,7 +155,7 @@ services:
   l2-node-besu-follower:
     hostname: l2-node-besu-follower
     container_name: l2-node-besu-follower
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc5-20251127094207-a7201ae}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc7-20251202165721-14b8f4c}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -196,7 +196,7 @@ services:
   traces-node:
     hostname: traces-node
     container_name: traces-node
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc5-20251127094207-a7201ae}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc7-20251202165721-14b8f4c}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -233,7 +233,7 @@ services:
   prover-v3: # prover compatible with the traces from zkbesu
     container_name: prover-v3
     hostname: prover-v3
-    image: consensys/linea-prover:${PROVER_TAG:-56c4809}
+    image: consensys/linea-prover:${PROVER_TAG:-5f458b5}
     platform: linux/amd64
     # to avoid spinning up on CI for now
     profiles: [ "l2" ]
@@ -254,7 +254,7 @@ services:
   postman:
     container_name: postman
     hostname: postman
-    image: consensys/linea-postman:${POSTMAN_TAG:-19735ce}
+    image: consensys/linea-postman:${POSTMAN_TAG:-5f458b5}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     ports:
@@ -274,7 +274,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-decec0d}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-c96a714}
     profiles: [ "l2", "debug" ]
     depends_on:
       l2-genesis-initialization:
@@ -296,6 +296,7 @@ services:
       config__override__type2-state-proof-provider__disabled: ${LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER:-true}
       config__override__l1-submission__blob__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
       config__override__l1-submission__aggregation__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+      config__override__l1-submission__data-availability: ${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
       config__override__message-anchoring__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
     command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json', '-Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml', '-jar', 'libs/coordinator.jar', '--traces-limits-v4', 'config/traces-limits-v4.4.toml', '--smart-contract-errors', 'config/smart-contract-errors.toml', '--gas-price-cap-time-of-day-multipliers', 'config/gas-price-cap-time-of-day-multipliers.toml', 'config/coordinator-config.toml']
     #command: [ 'echo', 'forced exit' ]
@@ -374,7 +375,7 @@ services:
       - l1network
 
   zkbesu-shomei:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc5-20251127094207-a7201ae}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc7-20251202165721-14b8f4c}
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -411,6 +412,7 @@ services:
         --plugin-shomei-http-port=8888 \
         --bonsai-limit-trie-logs-enabled=false \
         --plugin-shomei-zktrace-comparison-mode=31 \
+        --plugin-shomei-enable-zktracer=true \
         --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
 
     volumes:
@@ -591,7 +593,7 @@ services:
         ipv4_address: 10.10.10.205
 
   zkbesu-shomei-sr:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc5-20251127094207-a7201ae}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc7-20251202165721-14b8f4c}
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
     profiles: [ "staterecovery", "external-to-monorepo" ]

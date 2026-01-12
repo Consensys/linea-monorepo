@@ -53,7 +53,8 @@ async function configureOnceOffPrerequisities() {
   const l1WalletClient = config.l1WalletClient({ account });
   const l2SequencerPublicClient = config.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
   const l2SequencerWalletClient = config.l2WalletClient({ type: L2RpcEndpoint.Sequencer, account: l2Account });
-  const livenessSignerAccount = config.getL2AccountManager().whaleAccount(18);
+  // Account index 19 is reserved for liveness testing to avoid nonce conflicts with other concurrent e2e tests"
+  const livenessSignerAccount = config.getL2AccountManager().whaleAccount(19);
 
   const lineaRollup = l1WalletClient.getLineaRollup();
 
