@@ -570,7 +570,7 @@ public class BlockchainReferenceTestTools {
     final ProtocolSchedule schedule =
         REFERENCE_TEST_PROTOCOL_SCHEDULES.getByName(spec.getNetwork());
     final ChainConfig chain = ChainConfig.ETHEREUM_CHAIN(fork);
-    final MutableBlockchain blockchain = spec.getBlockchain();
+    final MutableBlockchain blockchain = spec.buildBlockchain();
 
     // Add system accounts if the fork requires it.
     addSystemAccountsIfRequired(worldState.updater());
