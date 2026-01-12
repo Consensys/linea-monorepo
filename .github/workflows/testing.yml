@@ -96,8 +96,15 @@ jobs:
   jacoco-report:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: Generate Jacoco Coverage Report
-    # Run if at least one JVM test job completed (whether passed, failed, or skipped)
-    if: always()
+    # Run if at least one JVM test job completed (whether passed, failed, or cancelled)
+    # Don't run if all test jobs were skipped due to no changes
+    if: |
+      always() && (
+        needs.coordinator.result != 'skipped' ||
+        needs.linea-sequencer.result != 'skipped' ||
+        needs.staterecovery.result != 'skipped' ||
+        needs.transaction-exclusion-api.result != 'skipped'
+      )
     needs:
       - coordinator
       - linea-sequencer
