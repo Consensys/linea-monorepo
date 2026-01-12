@@ -68,6 +68,10 @@ describe("SparseMerkleProof", () => {
       });
 
       it("Should revert when a value is not mod 32", async () => {
+        if (process.env.SOLIDITY_COVERAGE === "true") {
+          // Skipping this test in coverage mode due to high gas consumption.
+          return;
+        }
         const {
           accountProof: {
             proof: { proofRelatedNodes },
@@ -124,6 +128,10 @@ describe("SparseMerkleProof", () => {
       });
 
       it("Should revert when leaf index is higher than max leaf index", async () => {
+        if (process.env.SOLIDITY_COVERAGE === "true") {
+          // Skipping this test in coverage mode due to high gas consumption.
+          return;
+        }
         const {
           accountProof: {
             proof: { proofRelatedNodes },
