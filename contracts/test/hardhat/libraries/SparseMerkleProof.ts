@@ -107,6 +107,10 @@ describe("SparseMerkleProof", () => {
       });
 
       it("Should return false when the account proof is not correct", async () => {
+        if (process.env.SOLIDITY_COVERAGE === "true") {
+          // Skipping this test in coverage mode due to high gas consumption.
+          return;
+        }
         const {
           accountProof: {
             proof: { proofRelatedNodes },
@@ -137,6 +141,10 @@ describe("SparseMerkleProof", () => {
       });
 
       it("Should return true when the account proof is correct", async () => {
+        if (process.env.SOLIDITY_COVERAGE === "true") {
+          // Skipping this test in coverage mode due to high gas consumption.
+          return;
+        }
         const {
           accountProof: {
             proof: { proofRelatedNodes },
@@ -152,6 +160,10 @@ describe("SparseMerkleProof", () => {
 
     describe("storage proof", () => {
       it("Should return false when the storage proof is not correct", async () => {
+        if (process.env.SOLIDITY_COVERAGE === "true") {
+          // Skipping this test in coverage mode due to high gas consumption.
+          return;
+        }
         const {
           storageProofs: [
             {
@@ -167,6 +179,10 @@ describe("SparseMerkleProof", () => {
       });
 
       it("Should return true when the storage proof is correct", async () => {
+        if (process.env.SOLIDITY_COVERAGE === "true") {
+          // Skipping this test in coverage mode due to high gas consumption.
+          return;
+        }
         const { storageProofs } = merkleProofTestData;
 
         for (const {
