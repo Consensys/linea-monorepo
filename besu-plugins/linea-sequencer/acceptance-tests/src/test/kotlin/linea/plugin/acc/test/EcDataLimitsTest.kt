@@ -10,7 +10,6 @@ package linea.plugin.acc.test
 
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator
 import org.apache.tuweni.bytes.Bytes
-import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -119,9 +118,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
       listOf(txHashes[0]!!, txHashes[nTransactions - 1]!!),
     )
 
-    // Assert that the target string is contained in the blocks log
-    val blockLog = getAndResetLog()
-    assertThat(blockLog).contains(target)
+    asserLogsContain(target)
   }
 
   /**
@@ -214,9 +211,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
       listOf(txHashes[0]!!, txHashes[nTransactions - 1]!!),
     )
 
-    // Assert that the target string is contained in the blocks log
-    val blockLog = getAndResetLog()
-    assertThat(blockLog).contains(target)
+    asserLogsContain(target)
   }
 
   /**
@@ -304,9 +299,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
       listOf(txHashes[0]!!, txHashes[nTransactions - 1]!!),
     )
 
-    // Assert that the target string is contained in the blocks log
-    val blockLog = getAndResetLog()
-    assertThat(blockLog).contains(target)
+    asserLogsContain(target)
   }
 
   /**
@@ -396,10 +389,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
       listOf(txHashes[0]!!, txHashes[nTransactions - 1]!!),
     )
 
-    // Assert that the target string is contained in the blocks log
-    assertThat(getAndResetLog())
-      .withFailMessage { "Expected Besu logs to contain '$target'" }
-      .contains(target)
+    asserLogsContain(target)
   }
 
   companion object {
