@@ -19,6 +19,8 @@
 import { Mimc } from "../libraries/Mimc.sol";
 import { IPlonkVerifier } from "./interfaces/IPlonkVerifier.sol";
 
+import { Mimc } from "../libraries/Mimc.sol";
+import { IPlonkVerifier } from "./interfaces/IPlonkVerifier.sol";
 pragma solidity 0.8.30;
 
 contract PlonkVerifierForDataAggregation is IPlonkVerifier {

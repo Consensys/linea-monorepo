@@ -1,0 +1,217 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity 0.8.30;
+import { IGenericErrors } from "../../interfaces/IGenericErrors.sol";
+import { IAcceptForcedTransactions } from "./interfaces/IAcceptForcedTransactions.sol";
+import { IForcedTransactionGateway } from "./interfaces/IForcedTransactionGateway.sol";
+import { IAddressFilter } from "./interfaces/IAddressFilter.sol";
+import { Mimc } from "../../libraries/Mimc.sol";
+import { RlpEncoder } from "../../libraries/RlpEncoder.sol";
+import { FinalizedStateHashing } from "../../libraries/FinalizedStateHashing.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+
+/**
+ * @title Contract to manage forced transactions on L1.
+ * @author Consensys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
+contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
+  using Mimc for *;
+  using RlpEncoder for *;
+  using FinalizedStateHashing for *;
+
+  uint256 private constant UNSIGNED_TRANSACTION_FIELD_LENGTH = 9;
+  uint256 private constant SIGNED_TRANSACTION_FIELD_LENGTH = 12;
+  address private constant PRECOMPILE_ADDRESS_LIMIT = address(21);
+
+  /// @notice Contains the minimum gas allowed for a forced transaction.
+  uint256 private constant MIN_GAS_LIMIT = 21000;
+
+  /// @notice Contains the destination address to store the forced transactions on.
+  IAcceptForcedTransactions public immutable LINEA_ROLLUP;
+
+  /// @notice Contains the destination chain ID used in the RLP encoding.
+  uint256 public immutable DESTINATION_CHAIN_ID;
+
+  /// @notice Contains the buffer for computing the L2 block the transaction will be processed by.
+  uint256 public immutable L2_BLOCK_BUFFER;
+
+  /// @notice Contains the maximum gas allowed for a forced transaction.
+  uint256 public immutable MAX_GAS_LIMIT;
+
+  /// @notice Contains the maximum calldata length allowed for a forced transaction.
+  uint256 public immutable MAX_INPUT_LENGTH_LIMIT;
+
+  /// @notice Contains the address for the transaction address filter .
+  IAddressFilter public immutable ADDRESS_FILTER;
+
+  /// @notice Toggles the feature switch for using the address filter.
+  bool public useAddressFilter = true;
+
+  constructor(
+    address _lineaRollup,
+    uint256 _destinationChainId,
+    uint256 _l2BlockBuffer,
+    uint256 _maxGasLimit,
+    uint256 _maxInputLengthBuffer,
+    address _defaultAdmin,
+    address _addressFilter
+  ) {
+    require(_lineaRollup != address(0), IGenericErrors.ZeroAddressNotAllowed());
+    require(_destinationChainId != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_l2BlockBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_maxGasLimit != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_maxInputLengthBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_defaultAdmin != address(0), IGenericErrors.ZeroAddressNotAllowed());
+    require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
+
+    LINEA_ROLLUP = IAcceptForcedTransactions(_lineaRollup);
+    DESTINATION_CHAIN_ID = _destinationChainId;
+    L2_BLOCK_BUFFER = _l2BlockBuffer;
+    MAX_GAS_LIMIT = _maxGasLimit;
+    MAX_INPUT_LENGTH_LIMIT = _maxInputLengthBuffer;
+    ADDRESS_FILTER = IAddressFilter(_addressFilter);
+    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+  }
+
+  /**
+   * @notice Function to submit forced transactions.
+   * @param _forcedTransaction The fields required for the transaction excluding chainId.
+   * @param _lastFinalizedState The last finalized state validated to use the timestamp in block number calculation.
+   */
+  function submitForcedTransaction(
+    Eip1559Transaction memory _forcedTransaction,
+    LastFinalizedState memory _lastFinalizedState
+  ) external {
+    require(_forcedTransaction.gasLimit >= MIN_GAS_LIMIT, GasLimitTooLow());
+    require(_forcedTransaction.gasLimit <= MAX_GAS_LIMIT, MaxGasLimitExceeded());
+    require(_forcedTransaction.input.length <= MAX_INPUT_LENGTH_LIMIT, CalldataInputLengthLimitExceeded());
+    require(
+      _forcedTransaction.maxPriorityFeePerGas > 0 && _forcedTransaction.maxFeePerGas > 0,
+      GasFeeParametersContainZero(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas)
+    );
+    require(
+      _forcedTransaction.maxPriorityFeePerGas <= _forcedTransaction.maxFeePerGas,
+      MaxPriorityFeePerGasHigherThanMaxFee(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas)
+    );
+
+    require(_forcedTransaction.yParity <= 1, YParityGreaterThanOne(_forcedTransaction.yParity));
+    require(_forcedTransaction.to >= address(PRECOMPILE_ADDRESS_LIMIT), ToAddressTooLow());
+
+    /// @dev Splitting into bytes concat causes mismatched values due to the access list.
+    /// @dev Placing here avoids stack issues.
+    bytes32 mimcHashedPayload = Mimc.hash(
+      abi.encode(
+        DESTINATION_CHAIN_ID,
+        _forcedTransaction.nonce,
+        _forcedTransaction.maxPriorityFeePerGas,
+        _forcedTransaction.maxFeePerGas,
+        _forcedTransaction.gasLimit,
+        _forcedTransaction.to,
+        _forcedTransaction.value,
+        _forcedTransaction.input,
+        _forcedTransaction.accessList
+      )
+    );
+
+    (
+      bytes32 currentFinalizedState,
+      bytes32 previousForcedTransactionRollingHash,
+      uint256 currentFinalizedL2BlockNumber
+    ) = LINEA_ROLLUP.getRequiredForcedTransactionFields();
+
+    if (
+      currentFinalizedState !=
+      FinalizedStateHashing._computeLastFinalizedState(
+        _lastFinalizedState.messageNumber,
+        _lastFinalizedState.messageRollingHash,
+        _lastFinalizedState.forcedTransactionNumber,
+        _lastFinalizedState.forcedTransactionRollingHash,
+        _lastFinalizedState.timestamp
+      )
+    ) {
+      /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.
+      /// @dev Note: if this clause fails after first finalization post upgrade, the 5 fields are actually what is expected in the lastFinalizedState.
+      require(
+        currentFinalizedState ==
+          FinalizedStateHashing._computeLastFinalizedState(
+            _lastFinalizedState.messageNumber,
+            _lastFinalizedState.messageRollingHash,
+            _lastFinalizedState.timestamp
+          ),
+        FinalizationStateIncorrect(
+          currentFinalizedState,
+          FinalizedStateHashing._computeLastFinalizedState(
+            _lastFinalizedState.messageNumber,
+            _lastFinalizedState.messageRollingHash,
+            _lastFinalizedState.timestamp
+          )
+        )
+      );
+    }
+
+    bytes[] memory signedTransactionFields = new bytes[](SIGNED_TRANSACTION_FIELD_LENGTH);
+    signedTransactionFields[0] = RlpEncoder._encodeUint(DESTINATION_CHAIN_ID);
+    signedTransactionFields[1] = RlpEncoder._encodeUint(_forcedTransaction.nonce);
+    signedTransactionFields[2] = RlpEncoder._encodeUint(_forcedTransaction.maxPriorityFeePerGas);
+    signedTransactionFields[3] = RlpEncoder._encodeUint(_forcedTransaction.maxFeePerGas);
+    signedTransactionFields[4] = RlpEncoder._encodeUint(_forcedTransaction.gasLimit);
+    signedTransactionFields[5] = RlpEncoder._encodeAddress(_forcedTransaction.to);
+    signedTransactionFields[6] = RlpEncoder._encodeUint(_forcedTransaction.value);
+    signedTransactionFields[7] = RlpEncoder._encodeBytes(_forcedTransaction.input);
+    signedTransactionFields[8] = RlpEncoder._encodeAccessList(_forcedTransaction.accessList);
+    signedTransactionFields[9] = RlpEncoder._encodeUint(_forcedTransaction.yParity);
+    signedTransactionFields[10] = RlpEncoder._encodeUint(_forcedTransaction.r);
+    signedTransactionFields[11] = RlpEncoder._encodeUint(_forcedTransaction.s);
+
+    address signer;
+    unchecked {
+      signer = ecrecover(
+        keccak256(
+          abi.encodePacked(hex"02", RlpEncoder._encodeList(signedTransactionFields, UNSIGNED_TRANSACTION_FIELD_LENGTH))
+        ),
+        _forcedTransaction.yParity + 27,
+        bytes32(_forcedTransaction.r),
+        bytes32(_forcedTransaction.s)
+      );
+    }
+
+    if (useAddressFilter) {
+      require(!ADDRESS_FILTER.addressIsFiltered(signer), AddressIsFiltered());
+      require(!ADDRESS_FILTER.addressIsFiltered(_forcedTransaction.to), AddressIsFiltered());
+    }
+
+    uint256 expectedBlockNumber;
+    unchecked {
+      /// @dev The computation uses 1s block time making block number and seconds interchangable,
+      ///      while the chain might currently differ at >1s, this gives additional inclusion time.
+      expectedBlockNumber =
+        currentFinalizedL2BlockNumber +
+        block.timestamp -
+        _lastFinalizedState.timestamp +
+        L2_BLOCK_BUFFER;
+    }
+
+    bytes32 forcedTransactionRollingHash = Mimc.hash(
+      abi.encode(previousForcedTransactionRollingHash, mimcHashedPayload, expectedBlockNumber, signer)
+    );
+
+    emit ForcedTransactionAdded(
+      LINEA_ROLLUP.storeForcedTransaction(expectedBlockNumber, forcedTransactionRollingHash),
+      signer,
+      expectedBlockNumber,
+      forcedTransactionRollingHash,
+      abi.encodePacked(hex"02", RlpEncoder._encodeList(signedTransactionFields))
+    );
+  }
+
+  /**
+   * @notice Function to toggle the usage of the address filter.
+   * @dev Only callable by an account with the DEFAULT_ADMIN_ROLE.
+   * @param _useAddressFilter Bool indicating whether or not to use the address filter.
+   */
+  function toggleuseAddressFilter(bool _useAddressFilter) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    require(useAddressFilter != _useAddressFilter, AddressFilterAlreadySet(_useAddressFilter));
+    useAddressFilter = _useAddressFilter;
+    emit AddressFilterSet(_useAddressFilter);
+  }
+}

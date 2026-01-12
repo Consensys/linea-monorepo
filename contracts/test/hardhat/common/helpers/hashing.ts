@@ -1,5 +1,7 @@
-import { ethers } from "ethers";
+import { BytesLike, ethers } from "ethers";
 import { encodeData } from "./encoding";
+
+export const generateKeccak256BytesDirectly = (data: BytesLike) => ethers.keccak256(data);
 
 export const generateKeccak256Hash = (str: string) => generateKeccak256(["string"], [str], true);
 
@@ -17,11 +19,13 @@ export const generateNKeccak256Hashes = (str: string, numberOfHashToGenerate: nu
 export function calculateLastFinalizedState(
   l1RollingHashMessageNumber: bigint,
   l1RollingHash: string,
+  forcedTransactionNumber: bigint,
+  forcedTransactionRollingHash: string,
   finalTimestamp: bigint,
 ): string {
   return generateKeccak256(
-    ["uint256", "bytes32", "uint256"],
-    [l1RollingHashMessageNumber, l1RollingHash, finalTimestamp],
+    ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
+    [l1RollingHashMessageNumber, l1RollingHash, forcedTransactionNumber, forcedTransactionRollingHash, finalTimestamp],
   );
 }
 
