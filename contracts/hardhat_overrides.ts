@@ -1,7 +1,9 @@
+const useViaIR = process.env.USE_VIA_IR === "true";
+
 const lineaOverride = {
-  version: "0.8.30",
+  version: "0.8.33",
   settings: {
-    evmVersion: "prague",
+    evmVersion: "osaka",
     optimizer: {
       enabled: true,
       runs: 10_000,
@@ -30,4 +32,43 @@ const lineaOverridePaths = [
   "src/operational/RollupRevenueVault.sol",
 ];
 
-export const overrides = Object.fromEntries(lineaOverridePaths.map((path) => [path, lineaOverride]));
+const specificOverrides: Record<string, object> = {
+  "contracts/yield/YieldManager.sol": {
+    version: "0.8.33",
+    settings: {
+      viaIR: useViaIR,
+      optimizer: {
+        enabled: true,
+        runs: 1500,
+      },
+      evmVersion: "osaka",
+    },
+  },
+  "contracts/test-contracts/TestLineaRollup.sol": {
+    version: "0.8.33",
+    settings: {
+      viaIR: useViaIR,
+      optimizer: {
+        enabled: true,
+        runs: 1000,
+      },
+      evmVersion: "osaka",
+    },
+  },
+  "contracts/LineaRollup.sol": {
+    version: "0.8.33",
+    settings: {
+      viaIR: useViaIR,
+      optimizer: {
+        enabled: true,
+        runs: 9000,
+      },
+      evmVersion: "osaka",
+    },
+  },
+};
+
+export const overrides = {
+  ...Object.fromEntries(lineaOverridePaths.map((path) => [path, lineaOverride])),
+  ...specificOverrides,
+};

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 
 import { LineaRollupBase } from "./LineaRollupBase.sol";
 import { Eip4844BlobAcceptor } from "./dataAvailability/Eip4844BlobAcceptor.sol";
@@ -9,12 +9,19 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { LivenessRecovery } from "./LivenessRecovery.sol";
 import { IPermissionsManager } from "../security/access/interfaces/IPermissionsManager.sol";
 import { IPauseManager } from "../security/pausing/interfaces/IPauseManager.sol";
+import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, ClaimMessageV1 {
+contract LineaRollup is
+  LineaRollupBase,
+  LineaRollupYieldExtension,
+  LivenessRecovery,
+  Eip4844BlobAcceptor,
+  ClaimMessageV1
+{
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
