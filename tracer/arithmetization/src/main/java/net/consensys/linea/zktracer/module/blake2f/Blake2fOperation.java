@@ -36,9 +36,9 @@ import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class Blake2fOperation extends ModuleOperation {
-  public static final short BLAKE2f_H_INPUT_CHUNK_SIZE = 8;
-  public static final short BLAKE2f_M_CHUNK_SIZE = 8;
-  static final short BLAKE2f_T_SIZE = 8;
+  public static final short BLAKE2f_H_INPUT_CHUNK_SIZE = 16;
+  public static final short BLAKE2f_M_CHUNK_SIZE = 16;
+  static final short BLAKE2f_T_SIZE = 16;
 
   public final BlakeComponents blake2fComponents;
 
@@ -49,43 +49,24 @@ public class Blake2fOperation extends ModuleOperation {
   void trace(Trace.Blake2f trace) {
     Bytes result = Hash.blake2bf(blake2fComponents.callData());
     trace.r(blake2fComponents.r())
-      .h0BeInput(blake2fComponents.getHashInput().slice(0, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h1BeInput(blake2fComponents.getHashInput().slice(8, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h2BeInput(blake2fComponents.getHashInput().slice(16, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h3BeInput(blake2fComponents.getHashInput().slice(24, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h4BeInput(blake2fComponents.getHashInput().slice(32, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h5BeInput(blake2fComponents.getHashInput().slice(40, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h6BeInput(blake2fComponents.getHashInput().slice(48, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h7BeInput(blake2fComponents.getHashInput().slice(56, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .m0Be(blake2fComponents.getHashInput().slice(64, BLAKE2f_M_CHUNK_SIZE))
-      .m1Be(blake2fComponents.getHashInput().slice(72, BLAKE2f_M_CHUNK_SIZE))
-      .m2Be(blake2fComponents.getHashInput().slice(80, BLAKE2f_M_CHUNK_SIZE))
-      .m3Be(blake2fComponents.getHashInput().slice(88, BLAKE2f_M_CHUNK_SIZE))
-      .m4Be(blake2fComponents.getHashInput().slice(96, BLAKE2f_M_CHUNK_SIZE))
-      .m5Be(blake2fComponents.getHashInput().slice(104, BLAKE2f_M_CHUNK_SIZE))
-      .m6Be(blake2fComponents.getHashInput().slice(112, BLAKE2f_M_CHUNK_SIZE))
-      .m7Be(blake2fComponents.getHashInput().slice(120, BLAKE2f_M_CHUNK_SIZE))
-      .m8Be(blake2fComponents.getHashInput().slice(128, BLAKE2f_M_CHUNK_SIZE))
-      .m9Be(blake2fComponents.getHashInput().slice(136, BLAKE2f_M_CHUNK_SIZE))
-      .m10Be(blake2fComponents.getHashInput().slice(144, BLAKE2f_M_CHUNK_SIZE))
-      .m11Be(blake2fComponents.getHashInput().slice(152, BLAKE2f_M_CHUNK_SIZE))
-      .m12Be(blake2fComponents.getHashInput().slice(160, BLAKE2f_M_CHUNK_SIZE))
-      .m13Be(blake2fComponents.getHashInput().slice(168, BLAKE2f_M_CHUNK_SIZE))
-      .m14Be(blake2fComponents.getHashInput().slice(176, BLAKE2f_M_CHUNK_SIZE))
-      .m15Be(blake2fComponents.getHashInput().slice(184, BLAKE2f_M_CHUNK_SIZE))
-      .t0Be(blake2fComponents.getHashInput().slice(192, BLAKE2f_T_SIZE))
-      .t1Be(blake2fComponents.getHashInput().slice(200, BLAKE2f_T_SIZE))
+      .h0h1BeInput(blake2fComponents.getHashInput().slice(0, BLAKE2f_H_INPUT_CHUNK_SIZE))
+      .h2h3BeInput(blake2fComponents.getHashInput().slice(16, BLAKE2f_H_INPUT_CHUNK_SIZE))
+      .h4h5BeInput(blake2fComponents.getHashInput().slice(32, BLAKE2f_H_INPUT_CHUNK_SIZE))
+      .h6h7BeInput(blake2fComponents.getHashInput().slice(48, BLAKE2f_H_INPUT_CHUNK_SIZE))
+      .m0m1Be(blake2fComponents.getHashInput().slice(64, BLAKE2f_M_CHUNK_SIZE))
+      .m2m3Be(blake2fComponents.getHashInput().slice(80, BLAKE2f_M_CHUNK_SIZE))
+      .m4m5Be(blake2fComponents.getHashInput().slice(96, BLAKE2f_M_CHUNK_SIZE))
+      .m6m7Be(blake2fComponents.getHashInput().slice(112, BLAKE2f_M_CHUNK_SIZE))
+      .m8m9Be(blake2fComponents.getHashInput().slice(128, BLAKE2f_M_CHUNK_SIZE))
+      .m10m11Be(blake2fComponents.getHashInput().slice(144, BLAKE2f_M_CHUNK_SIZE))
+      .m12m13Be(blake2fComponents.getHashInput().slice(160, BLAKE2f_M_CHUNK_SIZE))
+      .m14m15Be(blake2fComponents.getHashInput().slice(176, BLAKE2f_M_CHUNK_SIZE))
+      .t0t1Be(blake2fComponents.getHashInput().slice(192, BLAKE2f_T_SIZE))
       .f(bytesToBoolean(blake2fComponents.f()))
-      .h0(result.slice(0, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h1(result.slice(8, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h2(result.slice(16, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h3(result.slice(24, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h4(result.slice(32, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h5(result.slice(40, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h6(result.slice(48, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h7(result.slice(56, BLAKE2f_H_INPUT_CHUNK_SIZE));
-
-
+      .h0h1Be(result.slice(0, BLAKE2f_H_INPUT_CHUNK_SIZE))
+      .h2h3Be(result.slice(16, BLAKE2f_H_INPUT_CHUNK_SIZE))
+      .h4h5Be(result.slice(32, BLAKE2f_H_INPUT_CHUNK_SIZE))
+      .h6h7Be(result.slice(48, BLAKE2f_H_INPUT_CHUNK_SIZE));
  }
 
   @Override
