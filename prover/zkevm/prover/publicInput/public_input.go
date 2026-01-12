@@ -12,9 +12,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	pcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
-	pack "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
+
+	// "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic" // TODO: unused, Poseidon2UseCase not implemented
+	// "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad" // TODO: unused, depends on Poseidon2UseCase
+	// pack "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing" // TODO: unused, depends on Poseidon2UseCase
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	edc "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/execution_data_collector"
 	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
@@ -53,11 +54,11 @@ type PublicInput struct {
 	RootHashFetcher    *fetch.RootHashFetcher
 	RollingHashFetcher *logs.RollingSelector
 	LogHasher          logs.LogHasher
-	ExecMiMCHasher     edc.MIMCHasher
-	DataNbBytes        ifaces.Column
-	ChainID            [pcommon.NbLimbU256]ifaces.Column
-	ChainIDNBytes      ifaces.Column
-	Extractor          FunctionalInputExtractor
+	// ExecMiMCHasher     edc.MIMCHasher // TODO: MIMCHasher not yet fully implemented
+	DataNbBytes   ifaces.Column
+	ChainID       [pcommon.NbLimbU256]ifaces.Column
+	ChainIDNBytes ifaces.Column
+	Extractor     FunctionalInputExtractor
 }
 
 // AuxiliaryModules are intermediary modules needed to assign the data in the PublicInput
@@ -69,7 +70,7 @@ type AuxiliaryModules struct {
 	RlpTxnFetcher                                      fetch.RlpTxnFetcher
 	ExecDataCollector                                  *edc.ExecutionDataCollector
 	ExecDataCollectorPadding                           wizard.ProverAction
-	ExecDataCollectorPacking                           pack.Packing
+	// ExecDataCollectorPacking                           pack.Packing // TODO: incomplete implementation
 }
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
@@ -205,59 +206,62 @@ func newPublicInput(
 	execDataCollector := edc.NewExecutionDataCollector(comp, "EXECUTION_DATA_COLLECTOR", limbColSize)
 	edc.DefineExecutionDataCollector(comp, execDataCollector, "EXECUTION_DATA_COLLECTOR", blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
 
-	// ExecutionDataCollector: Padding
-	importInp := importpad.ImportAndPadInputs{
-		Name: settings.Name,
-		Src: generic.GenericByteModule{Data: generic.GenDataModule{
-			HashNum: execDataCollector.HashNum,
-			Index:   execDataCollector.Ct,
-			ToHash:  execDataCollector.IsActive,
-			NBytes:  execDataCollector.NoBytes,
-			Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("executiondata.limbs", execDataCollector.Limbs[:]).AssertUint128(),
-		}},
-		PaddingStrategy: generic.Poseidon2UseCase,
-	}
-	padding := importpad.ImportAndPad(comp, importInp, limbColSize)
+	// TODO: ExecutionDataCollector MIMC/Poseidon2 hashing implementation incomplete
+	/*
+		// ExecutionDataCollector: Padding
+		importInp := importpad.ImportAndPadInputs{
+			Name: settings.Name,
+			Src: generic.GenericByteModule{Data: generic.GenDataModule{
+				HashNum: execDataCollector.HashNum,
+				Index:   execDataCollector.Ct,
+				ToHash:  execDataCollector.IsActive,
+				NBytes:  execDataCollector.NoBytes,
+				Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("executiondata.limbs", execDataCollector.Limbs[:]).AssertUint128(),
+			}},
+			PaddingStrategy: generic.Poseidon2UseCase,
+		}
+		padding := importpad.ImportAndPad(comp, importInp, limbColSize)
 
-	// ExecutionDataCollector: Packing
-	packingInp := pack.PackingInput{
-		MaxNumBlocks: execDataCollector.BlockID.Size(),
-		PackingParam: generic.Poseidon2UseCase,
-		Imported: pack.Importation{
-			Limb:      padding.Limbs,
-			NByte:     padding.NBytes,
-			IsNewHash: padding.IsNewHash,
-			IsActive:  padding.IsActive,
-		},
-		Name: "EXECUTION_DATA_MIMC",
-	}
-	packingMod := pack.NewPack(comp, packingInp)
+		// ExecutionDataCollector: Packing
+		packingInp := pack.PackingInput{
+			MaxNumBlocks: execDataCollector.BlockID.Size(),
+			PackingParam: generic.Poseidon2UseCase,
+			Imported: pack.Importation{
+				Limb:      padding.Limbs,
+				NByte:     padding.NBytes,
+				IsNewHash: padding.IsNewHash,
+				IsActive:  padding.IsActive,
+			},
+			Name: "EXECUTION_DATA_MIMC",
+		}
+		packingMod := pack.NewPack(comp, packingInp)
 
-	// ExecutionDataCollector: Hashing
-	mimcHasher := edc.NewMIMCHasher(comp, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
-	mimcHasher.DefineHasher(comp, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+		// ExecutionDataCollector: Hashing
+		mimcHasher := edc.NewMIMCHasher(comp, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
+		mimcHasher.DefineHasher(comp, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+	*/
 
 	publicInput := PublicInput{
 		BlockDataFetcher:   blockDataFetcher,
 		RootHashFetcher:    rootHashFetcher,
 		RollingHashFetcher: rollingSelector,
 		LogHasher:          logHasherL2l1,
-		ExecMiMCHasher:     *mimcHasher,
-		DataNbBytes:        execDataCollector.FinalTotalBytesCounter,
-		ChainID:            chainIDFetcher.ChainID,
-		ChainIDNBytes:      chainIDFetcher.NBytesChainID,
-		Inputs:             *inp,
+		// ExecMiMCHasher:     *mimcHasher, // TODO: MIMCHasher not yet fully implemented
+		DataNbBytes:   execDataCollector.FinalTotalBytesCounter,
+		ChainID:       chainIDFetcher.ChainID,
+		ChainIDNBytes: chainIDFetcher.NBytesChainID,
+		Inputs:        *inp,
 		Aux: AuxiliaryModules{
-			FetchedL2L1:              fetchedL2L1,
-			FetchedRollingMsg:        fetchedRollingMsg,
-			FetchedRollingHash:       fetchedRollingHash,
-			LogSelectors:             logSelectors,
-			BlockTxnMetadata:         blockTxnMeta,
-			TxnDataFetcher:           txnDataFetcher,
-			RlpTxnFetcher:            rlpFetcher,
-			ExecDataCollector:        execDataCollector,
-			ExecDataCollectorPadding: padding,
-			ExecDataCollectorPacking: *packingMod,
+			FetchedL2L1:        fetchedL2L1,
+			FetchedRollingMsg:  fetchedRollingMsg,
+			FetchedRollingHash: fetchedRollingHash,
+			LogSelectors:       logSelectors,
+			BlockTxnMetadata:   blockTxnMeta,
+			TxnDataFetcher:     txnDataFetcher,
+			RlpTxnFetcher:      rlpFetcher,
+			ExecDataCollector:  execDataCollector,
+			// ExecDataCollectorPadding: padding, // TODO: incomplete implementation
+			// ExecDataCollectorPacking: *packingMod, // TODO: incomplete implementation
 		},
 	}
 
@@ -292,9 +296,9 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	fetch.AssignRlpTxnFetcher(run, &aux.RlpTxnFetcher, inp.RlpTxn)
 	// assign the ExecutionDataCollector
 	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.BlockDataFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
-	aux.ExecDataCollectorPadding.Run(run)
-	aux.ExecDataCollectorPacking.Run(run)
-	pub.ExecMiMCHasher.AssignHasher(run)
+	// aux.ExecDataCollectorPadding.Run(run) // TODO: incomplete implementation
+	// aux.ExecDataCollectorPacking.Run(run) // TODO: incomplete implementation
+	// pub.ExecMiMCHasher.AssignHasher(run) // TODO: incomplete implementation
 	pub.Extractor.Run(run)
 }
 
@@ -332,7 +336,7 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 		NBytesChainID: createNewLocalOpening(pi.ChainIDNBytes),
 	}
 
-	createNewLocalOpenings(pi.Extractor.DataChecksum[:], pi.ExecMiMCHasher.HashFinal[:])
+	// createNewLocalOpenings(pi.Extractor.DataChecksum[:], pi.ExecMiMCHasher.HashFinal[:]) // TODO: incomplete implementation
 	createNewLocalOpenings(pi.Extractor.L2MessageHash[:], pi.LogHasher.HashFinal[:])
 	createNewLocalOpenings(pi.Extractor.InitialStateRootHash[:], pi.RootHashFetcher.First[:])
 	createNewLocalOpenings(pi.Extractor.FinalStateRootHash[:], pi.RootHashFetcher.Last[:])

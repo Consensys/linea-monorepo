@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 package execution_data_collector
 
 import (
