@@ -522,7 +522,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     peekedYieldReportYieldAmount: bigint,
     peekedYieldReportOutstandingNegativeYield: bigint,
   ): RebalanceRequirement {
-    this.logger.debug("_getRebalanceRequirements - inputs", {
+    this.logger.info("_getRebalanceRequirements - inputs", {
       totalSystemBalance,
       l1MessageServiceBalance,
       effectiveTargetWithdrawalReserve,
@@ -546,27 +546,27 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       peekedYieldReportYieldAmount > 0n
         ? dashboardTotalValue - peekedYieldReportYieldAmount - userFunds
         : peekedYieldReportOutstandingNegativeYield + dashboardTotalValue - userFunds;
-    this.logger.debug(`_getRebalanceRequirements - systemObligations=${systemObligations}`);
+    this.logger.info(`_getRebalanceRequirements - systemObligations=${systemObligations}`);
 
     // Get balances adjusted for system obligations
     const totalSystemBalanceExcludingObligations = totalSystemBalance - systemObligations;
-    this.logger.debug(
+    this.logger.info(
       `_getRebalanceRequirements - totalSystemBalanceExcludingObligations=${totalSystemBalanceExcludingObligations}`,
     );
 
     const effectiveTargetWithdrawalReserveExcludingObligations =
       (effectiveTargetWithdrawalReserve * totalSystemBalanceExcludingObligations) / totalSystemBalance;
-    this.logger.debug(
+    this.logger.info(
       `_getRebalanceRequirements - effectiveTargetWithdrawalReserveExcludingObligations=${effectiveTargetWithdrawalReserveExcludingObligations}`,
     );
 
     const toleranceBand = this.rebalanceToleranceAmountWei;
-    this.logger.debug(`_getRebalanceRequirements - toleranceBand=${toleranceBand}`);
+    this.logger.info(`_getRebalanceRequirements - toleranceBand=${toleranceBand}`);
 
     // Rebalance requirement = Reserve rebalance requirement + system obligations
     const absRebalanceRequirement =
       absDiff(l1MessageServiceBalance, effectiveTargetWithdrawalReserveExcludingObligations) + systemObligations;
-    this.logger.debug(`_getRebalanceRequirements - absRebalanceRequirement=${absRebalanceRequirement}`);
+    this.logger.info(`_getRebalanceRequirements - absRebalanceRequirement=${absRebalanceRequirement}`);
 
     // Determine the direction for metrics tracking (without considering tolerance band)
     const directionForMetrics: RebalanceDirection =
