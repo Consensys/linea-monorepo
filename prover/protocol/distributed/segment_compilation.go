@@ -301,7 +301,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 				WithoutGkr:             true,
 				MaxNumProof:            1,
 				FixedNbRowPlonkCircuit: params.FixedNbRowPlonkCircuit,
-				WithExternalHasherOpts: true,
+				WithExternalHasherOpts: false,
 				ExternalHasherNbRows:   params.FixedNbRowExternalHasher,
 				FixedNbPublicInput:     params.FixedNbPublicInput,
 				Subscript:              subscript,
