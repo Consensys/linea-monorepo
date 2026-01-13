@@ -182,7 +182,26 @@ export function walletActionsL1(parameters?: WalletActionsL1Parameters) {
             }
           : {}),
       }),
-    claimOnL1: (args) =>
-      claimOnL1(client, { ...args, ...(parameters ? { lineaRollupAddress: parameters.lineaRollupAddress } : {}) }),
+    claimOnL1: (args) => {
+      if (args.l2Client) {
+        return claimOnL1(client, {
+          ...args,
+          ...(parameters
+            ? {
+                lineaRollupAddress: parameters.lineaRollupAddress,
+                l2MessageServiceAddress: parameters.l2MessageServiceAddress,
+              }
+            : {}),
+        });
+      }
+      return claimOnL1(client, {
+        ...args,
+        ...(parameters
+          ? {
+              lineaRollupAddress: parameters.lineaRollupAddress,
+            }
+          : {}),
+      });
+    },
   });
 }
