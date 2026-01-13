@@ -40,7 +40,7 @@ public class Blake2fOperation extends ModuleOperation {
   public static final short BLAKE2f_M_CHUNK_SIZE = 16;
   static final short BLAKE2f_T_SIZE = 16;
 
-  public final BlakeComponents blake2fComponents;
+  @EqualsAndHashCode.Include public final BlakeComponents blake2fComponents;
 
   public Blake2fOperation(BlakeComponents blakeComponents) {
       this.blake2fComponents = blakeComponents;
@@ -66,7 +66,8 @@ public class Blake2fOperation extends ModuleOperation {
       .h0h1Be(result.slice(0, BLAKE2f_H_INPUT_CHUNK_SIZE))
       .h2h3Be(result.slice(16, BLAKE2f_H_INPUT_CHUNK_SIZE))
       .h4h5Be(result.slice(32, BLAKE2f_H_INPUT_CHUNK_SIZE))
-      .h6h7Be(result.slice(48, BLAKE2f_H_INPUT_CHUNK_SIZE));
+      .h6h7Be(result.slice(48, BLAKE2f_H_INPUT_CHUNK_SIZE))
+      .fillAndValidateRow();
  }
 
   @Override

@@ -20,7 +20,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeComponents;
@@ -47,15 +49,9 @@ public class Blake2f implements OperationSetModule<Blake2fOperation> {
   }
 
   @Override
-  public void commitTransactionBundle() {}
-
-  @Override
-  public void popTransactionBundle() {}
-
-  @Override
-  // TODO implement
+  // TODO replace with actual line count when fix released
   public int lineCount() {
-    return operations.lineCount();
+    return 0;
   }
 
   @Override
