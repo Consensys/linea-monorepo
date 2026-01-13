@@ -1046,7 +1046,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
         .to.emit(yieldManager, "WithdrawalReserveAugmented")
         .withArgs(mockYieldProviderAddress, yieldManagerBalance, yieldManagerBalance, 0n);
 
-      expect(await ethers.provider.getBalance(yieldManagerAddress)).to.equal(yieldManagerBalance - yieldManagerBalance);
+      expect(await ethers.provider.getBalance(yieldManagerAddress)).to.equal(0n);
       expect(await getBalance(mockLineaRollup)).to.equal(l1MessageServiceBalanceBefore + yieldManagerBalance);
     });
     it("With _amount min, _amount > YieldManager.balance, will withdraw from YieldProvider", async () => {
