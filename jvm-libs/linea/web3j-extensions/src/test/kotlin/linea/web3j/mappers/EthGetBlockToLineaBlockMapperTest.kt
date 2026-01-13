@@ -13,6 +13,7 @@ import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.Wei
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.ObjectMapperFactory
 import org.web3j.protocol.core.methods.response.EthBlock
@@ -264,7 +265,7 @@ class EthGetBlockToLineaBlockMapperTest {
     }
   }
 
-  @Test
+  @Disabled("Until Web3j supports decoding of the CodeDelegation / EIP-7702 transactions")
   fun `should map transaction with CodeDelegationList`() {
     val txWeb3j = serialize(
       """
