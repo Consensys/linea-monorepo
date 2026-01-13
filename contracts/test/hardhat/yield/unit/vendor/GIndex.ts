@@ -1,7 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { TestGIndex } from "contracts/typechain-types";
-import { deployFromFactory } from "contracts/test/common/deployment";
+import { deployFromFactory } from "../../../common/deployment";
 import { hexlify, MaxUint256, randomBytes, toBeHex, ZeroHash, zeroPadValue } from "ethers";
 
 describe("GIndex", () => {

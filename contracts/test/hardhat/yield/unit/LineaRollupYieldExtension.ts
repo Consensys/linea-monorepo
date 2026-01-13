@@ -27,7 +27,7 @@ import {
   getAccountsFixture,
   encodeSendMessage,
 } from "../../common/helpers";
-import { deployLineaRollupFixture } from "contracts/test/rollup/helpers/deploy";
+import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";
 
 describe("Linea Rollup Yield Extension", () => {
   let lineaRollup: TestLineaRollup;

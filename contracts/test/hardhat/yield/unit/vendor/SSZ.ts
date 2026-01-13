@@ -1,11 +1,11 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { TestGIndex, TestSSZ } from "contracts/typechain-types";
-import { deployFromFactory } from "contracts/test/common/deployment";
+import { deployFromFactory } from "../../../common/deployment";
 import { hexlify, randomBytes, zeroPadBytes, ZeroHash, sha256, concat, getBytes } from "ethers";
-import { BeaconBlockHeader, PendingPartialWithdrawal, ValidatorContainer } from "contracts/test/yield/helpers/types";
-import { expectRevertWithCustomError } from "contracts/test/common/helpers";
-import { UINT64_MAX } from "contracts/test/common/constants";
+import { BeaconBlockHeader, PendingPartialWithdrawal, ValidatorContainer } from "../../../yield/helpers/types";
+import { expectRevertWithCustomError } from "../../../common/helpers";
+import { UINT64_MAX } from "../../../common/constants/general";
 
 describe("SSZ", () => {
   let ssz: TestSSZ;

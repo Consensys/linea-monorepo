@@ -90,6 +90,13 @@ export async function deployValidiumFixture() {
   return { verifier, validium };
 }
 
+export async function deployMockYieldManager(): Promise<string> {
+  const mockYieldManagerFactory = await ethers.getContractFactory("MockYieldManager");
+  const mockYieldManager = await mockYieldManagerFactory.deploy();
+  await mockYieldManager.waitForDeployment();
+  return await mockYieldManager.getAddress();
+}
+
 export async function deployLineaRollupFixture() {
   const { securityCouncil } = await loadFixture(getAccountsFixture);
   const roleAddresses = await loadFixture(getRoleAddressesFixture);

@@ -44,6 +44,7 @@ import {
   SIX_MONTHS_IN_SECONDS,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
+  MAX_GAS_LIMIT,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {

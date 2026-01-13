@@ -19,6 +19,7 @@ import {
   EMPTY_CALLDATA,
   FINALIZATION_PAUSE_TYPE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
+  MAX_GAS_LIMIT,
 } from "../../common/constants";
 import {
   calculateRollingHash,

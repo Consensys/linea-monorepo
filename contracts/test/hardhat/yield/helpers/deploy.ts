@@ -2,11 +2,14 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers, upgrades } from "hardhat";
 
 import {
-  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
   YIELD_MANAGER_PAUSE_TYPES_ROLES,
   YIELD_MANAGER_UNPAUSE_TYPES_ROLES,
-} from "../../../common/constants";
+  YIELD_MANAGER_OPERATOR_ROLES,
+  YIELD_MANAGER_SECURITY_COUNCIL_ROLES,
+  YIELD_MANAGER_INITIALIZE_SIGNATURE,
+} from "../../../../common/constants";
 import {
   MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
@@ -17,9 +20,7 @@ import {
   YIELD_PROVIDER_STAKING_ROLE,
   ONE_ETHER,
 } from "../../common/constants";
-import { generateRoleAssignments } from "../../../common/helpers";
-import { YIELD_MANAGER_OPERATOR_ROLES, YIELD_MANAGER_SECURITY_COUNCIL_ROLES } from "../../../common/constants";
-import { YIELD_MANAGER_INITIALIZE_SIGNATURE } from "../../../common/constants";
+import { generateRoleAssignments } from "../../../../common/helpers";
 import { deployUpgradableWithConstructorArgs } from "../../common/deployment";
 import {
   TestYieldManager,
@@ -405,8 +406,8 @@ export async function deployYieldManagerIntegrationTestFixture() {
 
   // Reinit LineaRollup with actual YieldManager
   const reinitData: LineaRollupV7ReinitializationData = {
-    pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-    unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+    pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+    unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
     roleAddresses: [
       ...lineaRollupRoleAddresses,
       {

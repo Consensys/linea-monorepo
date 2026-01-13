@@ -15,3 +15,8 @@ export const LINEA_ROLLUP_INITIALIZE_SIGNATURE =
 export const BLS_CURVE_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513n;
 
 export const BLOCK_COINBASE = "0xc014ba5ec014ba5ec014ba5ec014ba5ec014ba5e";
+
+export const ONE_GWEI = ethers.parseUnits("1", "gwei");
+export const ONE_ETHER = ethers.parseEther("1");
+export const ONE_THOUSAND_ETHER = ethers.parseEther("1000");
+export const UINT64_MAX = BigInt("18446744073709551615");

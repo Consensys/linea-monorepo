@@ -51,6 +51,7 @@ contract LineaRollup is
 
     __LineaRollup_init(_initializationData, genesisShnarf);
     __LivenessRecovery_init(_livenessRecoveryOperator);
+    __LineaRollupYieldExtension_init(_initializationData.); // todo fix me
   }
 
   /**
