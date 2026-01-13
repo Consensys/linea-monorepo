@@ -372,6 +372,8 @@ library Poseidon2 {
        * This matrix is:
        * - Dense enough to ensure diffusion
        * - Structured to avoid full matrix multiplication
+       * The full matrix is filled with 1s, and the diagonal is [-2, 1, 2, 1/2, 3, 4, -1/2, -3, -4, 1/2^8, 1/8, 1/2^24, -1/2^8, -1/8, -1/16, -1/2^24]
+       *
        *
        * Each limb is updated as:
        *   new_limb = sum + (constant × old_limb)
@@ -396,6 +398,7 @@ library Poseidon2 {
        *
        * Uses a different set of constants than the first half,
        * ensuring full diffusion across both state elements.
+       * The full matrix is filled with 1s, and the diagonal is [-2, 1, 2, 1/2, 3, 4, -1/2, -3, -4, 1/2^8, 1/8, 1/2^24, -1/2^8, -1/8, -1/16, -1/2^24]
        */
       function matMulInternalInPlaceSecondHalf(b, sum) -> mb {
         let M := 0xFFFFFFFF
@@ -412,8 +415,13 @@ library Poseidon2 {
       /**
        * @dev Applies the FULL (external) Poseidon2 MDS matrix.
        *
+       * In the following, M4 = 
+       * (2 3 1 1)
+       * (1 2 3 1)
+       * (1 1 2 3)
+       * (3 1 1 2)
        * Steps:
-       * 1. Apply 4×4 MDS to each half (matMulM4uint256)
+       * 1. Apply 4×4 MDS to each half (matMulM4uint256, where the MDS is circ(2M4,M4,..,M4))
        * 2. Compute column sums across both state elements
        * 3. Redistribute column sums to all limbs
        *
@@ -431,9 +439,13 @@ library Poseidon2 {
 
       /**
        * @dev Final redistribution step of EXTERNAL MDS for first state element.
+       * 
+       * Here:
+       * [t0, t1, t2, t3] = M4*a_hi+M4*a_lo+M4*b_hi+M4*b_lo (computed with matMulM4uint256 followed by sumColumns, see matMulExternalInPlace)
+       * a = diag(M4, M4)*[a_hi, a_lo]
        *
-       * Each limb is updated as:
-       *   new_limb = column_sum + old_limb
+       * This function completes the computation of circ(2M4,M4,M4,M4)*[a, b] by adding t0, t1, t2, t3] to a_hi and a_lo
+       *
        */
       function matMulExternalInPlaceFirstHalf(a, t0, t1, t2, t3) -> ra {
         let M := 0xFFFFFFFF
@@ -542,6 +554,11 @@ library Poseidon2 {
 
       /**
        * @dev Multiplies a 4-element vector by the fixed 4×4 Poseidon2 MDS sub-matrix.
+       * The matrix is
+       * (2 3 1 1)
+       * (1 2 3 1)
+       * (1 1 2 3)
+       * (3 1 1 2)
        *
        * Input:
        *   (a, b, c, d) ∈ F^4
