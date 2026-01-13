@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -23,7 +24,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/compress"
-	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2"
@@ -117,7 +117,7 @@ func (i *FunctionalPublicInputSnark) Check(api frontend.API, sizes config.Circui
 
 	api.AssertIsEqual(
 		i.AllBatchesSum,
-		snarkHash.SumMerkleDamgardDynamicLength(api, compressor, 0, i.NbBatches, batchesToHash),
+		gnarkutil.SumMerkleDamgardDynamicLength(api, compressor, 0, i.NbBatches, batchesToHash),
 	)
 
 	i.FunctionalPublicInputQSnark.RangeCheck(api)
