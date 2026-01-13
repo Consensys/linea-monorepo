@@ -82,7 +82,7 @@ class EIP1559GasProvider(private val ethApiClient: EthApiClient, private val con
     throw NotImplementedError("EIP1559GasProvider only implements EIP1559 specific methods")
   }
 
-  override fun getGasLimit(p0: Transaction?): BigInteger {
+  override fun getGasLimit(transaction: Transaction): BigInteger {
     return config.gasLimit.toBigInteger()
   }
 

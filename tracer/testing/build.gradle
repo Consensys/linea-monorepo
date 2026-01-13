@@ -29,7 +29,7 @@ dependencies {
 }
 
 node {
-  download = true
+  download = false
 }
 
 tasks.withType(GenerateContractWrappers.class).configureEach {

@@ -24,7 +24,7 @@ class StaticGasProvider(
     return maxFeePerGas.toBigInteger()
   }
 
-  override fun getGasLimit(p0: Transaction?): BigInteger {
+  override fun getGasLimit(transaction: Transaction): BigInteger {
     return gasLimit.toBigInteger()
   }
 
