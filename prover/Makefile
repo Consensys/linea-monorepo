@@ -42,7 +42,7 @@ go-corset:
 
 
 extract-constraints-git-archive:
-	mkdir -p ${CONSTRAINTS_TEMP_FOLDER} && pushd .. && git archive --format=tar ${CONSTRAINTS_COMMIT_HASH} constraints | tar -x -C prover/${CONSTRAINTS_TEMP_FOLDER} && popd
+	mkdir -p ${CONSTRAINTS_TEMP_FOLDER} && pushd .. && git archive --format=tar ${CONSTRAINTS_COMMIT_HASH} tracer-constraints | tar -x -C prover/${CONSTRAINTS_TEMP_FOLDER} && popd
 
 ##
 ## Build and bundle the go-corset trace-expander dependency
