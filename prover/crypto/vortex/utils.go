@@ -56,14 +56,13 @@ func fftExtInvHintNative(scalarField *big.Int, inputs, outputs []*big.Int) error
 
 	d := fft.NewDomain(uint64(n))
 
-	_res := make([]fext.Element, len(inputs))
+	_res := make([]fext.Element, n)
 	for i := 0; i < n; i++ {
 		_res[i].B0.A0.SetBigInt(inputs[4*i])
 		_res[i].B0.A1.SetBigInt(inputs[4*i+1])
 		_res[i].B1.A0.SetBigInt(inputs[4*i+2])
 		_res[i].B1.A1.SetBigInt(inputs[4*i+3])
 	}
-
 	d.FFTInverseExt(_res, fft.DIF)
 	utils.BitReverse(_res)
 
