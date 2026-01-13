@@ -22,6 +22,7 @@ import "./scripts/operational/unstakePermissionlessV2";
 import "./scripts/operational/setNodeOperatorFeeRecipient";
 import "./scripts/operational/deployPaymentSplitter";
 import "./scripts/operational/addL2YieldRecipient";
+import "./scripts/operational/prepareInitiateOssification";
 import "solidity-docgen";
 
 dotenv.config();
