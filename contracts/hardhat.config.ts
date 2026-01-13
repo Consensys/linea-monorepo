@@ -39,7 +39,7 @@ const config: HardhatUserConfig = {
     /// @dev Please see the overrides file for a list of files not targetting the default EVM version of Prague.
     compilers: [
       {
-        version: "0.8.33",
+        version: "0.8.31",
         settings: {
           viaIR: useViaIR,
           optimizer: {

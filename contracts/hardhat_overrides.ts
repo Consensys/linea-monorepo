@@ -1,7 +1,7 @@
 const useViaIR = process.env.ENABLE_VIA_IR === "true";
 
 const lineaOverride = {
-  version: "0.8.33",
+  version: "0.8.31",
   settings: {
     evmVersion: "osaka",
     optimizer: {
@@ -35,7 +35,7 @@ const lineaOverridePaths = [
 export const overrides = {
   ...Object.fromEntries(lineaOverridePaths.map((path) => [path, lineaOverride])),
   "src/yield/YieldManager.sol": {
-    version: "0.8.33",
+    version: "0.8.31",
     settings: {
       viaIR: useViaIR,
       optimizer: {
@@ -46,7 +46,7 @@ export const overrides = {
     },
   },
   "src/_testing/unit/yield/TestYieldManager.sol": {
-    version: "0.8.33",
+    version: "0.8.31",
     settings: {
       viaIR: useViaIR,
       optimizer: {
@@ -57,7 +57,7 @@ export const overrides = {
     },
   },
   "src/_testing/unit/rollup/TestLineaRollup.sol": {
-    version: "0.8.33",
+    version: "0.8.31",
     settings: {
       viaIR: useViaIR,
       optimizer: {
@@ -68,7 +68,7 @@ export const overrides = {
     },
   },
   "src/rollup/LineaRollup.sol": {
-    version: "0.8.33",
+    version: "0.8.31",
     settings: {
       viaIR: useViaIR,
       optimizer: {

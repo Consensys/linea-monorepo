@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.33;
+pragma solidity 0.8.31;
 import { LineaRollupBase } from "./LineaRollupBase.sol";
 import { ShnarfDataAcceptor } from "./dataAvailability/ShnarfDataAcceptor.sol";
 import { LocalShnarfProvider } from "./dataAvailability/LocalShnarfProvider.sol";

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.33;
+pragma solidity 0.8.31;
 import { GIndex, pack, concat } from "./vendor/lido/GIndex.sol";
 import { SSZ } from "./vendor/lido/SSZ.sol";
 import { Validator } from "./vendor/lido/BeaconTypes.sol";

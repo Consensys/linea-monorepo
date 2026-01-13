@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.33;
+pragma solidity 0.8.31;
 
 import { BaseSequencerUptimeFeed } from "@chainlink/contracts/src/v0.8/l2ep/base/BaseSequencerUptimeFeed.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
