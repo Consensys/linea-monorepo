@@ -164,32 +164,32 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 
 	ctx.LinCombCoeffLambda = comp.InsertCoin(
 		ctx.getNumRound(comp),
-		coin.Namef("MPTS_LINCOMB_COEFF_LAMBDA_%v", comp.SelfRecursionCount),
+		coin.Namef("MPTS_LINCOMB_COEFF_LAMBDA_%v_%v", comp.SelfRecursionCount, comp.Columns.NumEntriesTotal()),
 		coin.FieldExt,
 	)
 
 	ctx.LinCombCoeffRho = comp.InsertCoin(
 		ctx.getNumRound(comp),
-		coin.Namef("MPTS_LINCOMB_COEFF_RHO_%v", comp.SelfRecursionCount),
+		coin.Namef("MPTS_LINCOMB_COEFF_RHO_%v_%v", comp.SelfRecursionCount, comp.Columns.NumEntriesTotal()),
 		coin.FieldExt,
 	)
 
 	ctx.Quotient = comp.InsertCommit(
 		ctx.getNumRound(comp),
-		ifaces.ColIDf("MPTS_QUOTIENT_%v", comp.SelfRecursionCount),
+		ifaces.ColIDf("MPTS_QUOTIENT_%v_%v", comp.SelfRecursionCount, comp.Columns.NumEntriesTotal()),
 		ctx.NumRow,
 		false,
 	)
 
 	ctx.EvaluationPoint = comp.InsertCoin(
 		ctx.getNumRound(comp)+1,
-		coin.Namef("MPTS_EVALUATION_POINT_%v", comp.SelfRecursionCount),
+		coin.Namef("MPTS_EVALUATION_POINT_%v_%v", comp.SelfRecursionCount, comp.Columns.NumEntriesTotal()),
 		coin.FieldExt,
 	)
 
 	ctx.NewQuery = comp.InsertUnivariate(
 		ctx.getNumRound(comp)+1,
-		ifaces.QueryIDf("MPTS_NEW_QUERY_%v", comp.SelfRecursionCount),
+		ifaces.QueryIDf("MPTS_NEW_QUERY_%v_%v", comp.SelfRecursionCount, comp.Columns.NumEntriesTotal()),
 		append(slices.Concat(append([][]ifaces.Column{polyPrecomputed}, polysByRound...)...), ctx.Quotient),
 	)
 

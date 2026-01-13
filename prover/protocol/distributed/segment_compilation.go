@@ -204,9 +204,9 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 
 	wizard.ContinueCompilation(modIOP,
 		selfrecursion.SelfRecurse,
-		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
+		cleanup.CleanUp,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
@@ -221,9 +221,9 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
-		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
+		cleanup.CleanUp,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
@@ -233,24 +233,24 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		// This extra step is to ensure the tightness of the final wizard by
 		// adding an optional second layer of compilation when we have very
 		// large inputs.
-		vortex.Compile(
-			8,
-			false,
-			vortex.ForceNumOpenedColumns(40),
-			vortex.WithSISParams(&sisInstance),
-			vortex.WithOptionalSISHashingThreshold(64),
-		),
-		selfrecursion.SelfRecurse,
-		poseidon2.CompilePoseidon2,
-		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<14),
-			compiler.WithStitcherMinSize(2),
-			compiler.WithoutMpts(),
-			// Uncomment to enable the debugging mode
-			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
-		),
+		// vortex.Compile(
+		// 	8,
+		// 	false,
+		// 	vortex.ForceNumOpenedColumns(40),
+		// 	vortex.WithSISParams(&sisInstance),
+		// 	vortex.WithOptionalSISHashingThreshold(64),
+		// ),
+		// selfrecursion.SelfRecurse,
+		// cleanup.CleanUp,
+		// poseidon2.CompilePoseidon2,
+		// cleanup.CleanUp,
+		// compiler.Arcane(
+		// 	compiler.WithTargetColSize(1<<14),
+		// 	compiler.WithStitcherMinSize(2),
+		// 	compiler.WithoutMpts(),
+		// 	// Uncomment to enable the debugging mode
+		// 	// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
+		// ),
 		// This final step expectedly always generate always the same profile.
 		// Most of the time, it is ineffective and could be skipped so there is
 		// a pending optimization.
