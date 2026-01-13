@@ -1,6 +1,5 @@
 package linea.domain
 
-import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import java.math.BigInteger
 import java.util.EnumSet
