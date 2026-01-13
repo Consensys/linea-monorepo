@@ -25,6 +25,10 @@ import { getContractsAddressesByChainId, MessageProof, Message } from "@consensy
 import { getMessageProof } from "./getMessageProof";
 import { computeMessageHash, ComputeMessageHashErrorType } from "../utils/computeMessageHash";
 import { AccountNotFoundError, AccountNotFoundErrorType } from "../errors/account";
+import {
+  MissingMessageProofOrClientForClaimingOnL1Error,
+  MissingMessageProofOrClientForClaimingOnL1ErrorType,
+} from "../errors/bridge";
 
 export type ClaimOnL1Parameters<
   chain extends Chain | undefined = Chain | undefined,
@@ -61,7 +65,8 @@ export type ClaimOnL1ErrorType =
   | ChainNotFoundErrorType
   | ClientChainNotConfiguredErrorType
   | ComputeMessageHashErrorType
-  | AccountNotFoundErrorType;
+  | AccountNotFoundErrorType
+  | MissingMessageProofOrClientForClaimingOnL1ErrorType;
 
 /**
  * Claim a message on L1.
@@ -201,7 +206,7 @@ export async function claimOnL1<
   }
 
   if (!messageProof && !l2Client) {
-    throw new Error("Either `messageProof` or `l2Client` must be provided to claim a message on L1.");
+    throw new MissingMessageProofOrClientForClaimingOnL1Error();
   }
 
   if (l2Client && !l2Client.chain) {

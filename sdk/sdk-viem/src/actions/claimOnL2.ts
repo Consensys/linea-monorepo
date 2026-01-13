@@ -38,11 +38,7 @@ export type ClaimOnL2Parameters<
 
 export type ClaimOnL2ReturnType = SendTransactionReturnType;
 
-export type ClaimOnL2ErrorType =
-  | SendTransactionErrorType
-  | ChainNotFoundErrorType
-  | AccountNotFoundErrorType
-  | ChainNotFoundErrorType;
+export type ClaimOnL2ErrorType = SendTransactionErrorType | ChainNotFoundErrorType | AccountNotFoundErrorType;
 
 /**
  * Claim a message on L2.

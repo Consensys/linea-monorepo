@@ -6,6 +6,7 @@ import {
   MerkleRootNotFoundInFinalizationDataError,
   MessageNotFoundError,
   MessagesNotFoundInBlockRangeError,
+  MissingMessageProofOrClientForClaimingOnL1Error,
 } from "./bridge";
 
 describe("Bridge Errors", () => {
@@ -64,6 +65,14 @@ describe("Bridge Errors", () => {
     expect(new EventNotFoundInFinalizationDataError({ transactionHash, eventName })).toMatchInlineSnapshot(`
     [EventNotFoundInFinalizationDataError: Event ${eventName} not found in finalization data.
     Transaction hash: ${transactionHash}
+
+    Version: viem@x.y.z]
+  `);
+  });
+
+  it("MissingMessageProofOrClientForClaimingOnL1Error", () => {
+    expect(new MissingMessageProofOrClientForClaimingOnL1Error()).toMatchInlineSnapshot(`
+    [MissingMessageProofOrClientForClaimingOnL1Error: Either \`messageProof\` or \`l2Client\` must be provided to claim a message on L1.
 
     Version: viem@x.y.z]
   `);

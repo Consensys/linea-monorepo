@@ -119,7 +119,7 @@ export async function withdraw<
     throw new ChainNotFoundError();
   }
 
-  const chainId = client.chain?.id;
+  const chainId = client.chain.id;
 
   const l2MessageServiceAddress =
     parameters.l2MessageServiceAddress ?? getContractsAddressesByChainId(chainId).messageService;

@@ -69,3 +69,15 @@ export class EventNotFoundInFinalizationDataError extends BaseError {
     });
   }
 }
+
+export type MissingMessageProofOrClientForClaimingOnL1ErrorType = MissingMessageProofOrClientForClaimingOnL1Error & {
+  name: "MissingMessageProofOrClientForClaimingOnL1Error";
+};
+
+export class MissingMessageProofOrClientForClaimingOnL1Error extends BaseError {
+  constructor() {
+    super(["Either `messageProof` or `l2Client` must be provided to claim a message on L1."].join("\n"), {
+      name: "MissingMessageProofOrClientForClaimingOnL1Error",
+    });
+  }
+}
