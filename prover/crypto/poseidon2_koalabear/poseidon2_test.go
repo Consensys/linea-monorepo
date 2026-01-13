@@ -65,10 +65,10 @@ func getGnarkMDHasherCircuitWitnessWV() (*GnarkMDHasherCircuitWV, *GnarkMDHasher
 	circuit.Inputs = make([]zk.WrappedVariable, nbElmts)
 	witness.Inputs = make([]zk.WrappedVariable, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		witness.Inputs[i] = zk.ValueOf(vals[i].String())
+		witness.Inputs[i] = zk.ValueFromKoala(vals[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Ouput[i] = zk.ValueOf(res[i].String())
+		witness.Ouput[i] = zk.ValueFromKoala(res[i])
 	}
 
 	return &circuit, &witness

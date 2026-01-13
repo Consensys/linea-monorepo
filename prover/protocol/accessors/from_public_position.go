@@ -18,7 +18,7 @@ import (
 // asFromAccessors is an ad-hoc interface that serves to identify [verifiercol.FromAccessors]
 // without creating a cyclic dependency.
 type asFromAccessors interface {
-	GetFromAccessorsFields() (accs []ifaces.Accessor, padding field.Element)
+	GetFromAccessorsFields() (accs []ifaces.Accessor, padding fext.Element)
 }
 
 // FromPublicColumn refers to a position of a public column
@@ -63,7 +63,7 @@ func NewFromPublicColumn(col ifaces.Column, pos int) ifaces.Accessor {
 		accs, pad := faccs.GetFromAccessorsFields()
 
 		if pos >= len(accs) {
-			return NewConstant(pad)
+			return NewConstantExt(pad)
 		}
 		return accs[pos]
 	}

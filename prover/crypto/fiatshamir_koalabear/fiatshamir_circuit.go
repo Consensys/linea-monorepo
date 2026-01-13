@@ -49,9 +49,8 @@ func (fs *GnarkFS) UpdateVec(mat ...[]frontend.Variable) {
 }
 
 func (fs *GnarkFS) RandomField() poseidon2_koalabear.Octuplet {
-	res := fs.hasher.Sum()
-	fs.safeguardUpdate()
-	return res
+	defer fs.safeguardUpdate()
+	return fs.hasher.Sum()
 }
 
 // RandomField returns a single valued fiat-shamir hash
@@ -74,12 +73,11 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 	res := make([]frontend.Variable, num)
 	for i < num {
 		// thake the remainder mod n of each limb
-		c := fs.RandomField()
+		c := fs.RandomField() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := fs.api.ToBinary(c[j])
 			res[i] = fs.api.FromBinary(b[:nbBits]...)
 			i++
-			fs.safeguardUpdate()
 			if i >= num {
 				break
 			}

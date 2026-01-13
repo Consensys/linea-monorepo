@@ -473,6 +473,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 	}
 
 	csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+
 	if err != nil {
 		t.Fatal(err)
 	}
