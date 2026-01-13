@@ -504,7 +504,8 @@ abstract contract LineaRollupBase is
    *     keccak256(
    *         abi.encodePacked(_finalizationData.l2MerkleRoots)
    *     ),
-   *     _verifierChainConfiguration
+   *     _verifierChainConfiguration,
+   *     keccak256(abi.encodePacked(_finalizationData.filteredAddresses))
    *   )
    * )
    * Data is found at the following offsets:
@@ -529,6 +530,8 @@ abstract contract LineaRollupBase is
    * 0x240   l2MessagingBlocksOffsetsLengthLocation
    * Dynamic l2MerkleRootsLength
    * Dynamic l2MerkleRoots
+   * Dynamic filteredAddressesLength
+   * Dynamic filteredAddresses
    * Dynamic l2MessagingBlocksOffsetsLength (location depends on where l2MerkleRoots ends)
    * Dynamic l2MessagingBlocksOffsets (location depends on where l2MerkleRoots ends)
    * @param _finalizationData The full finalization data.
@@ -545,6 +548,8 @@ abstract contract LineaRollupBase is
     bytes32 _finalForcedTransactionRollingHash,
     bytes32 _verifierChainConfiguration
   ) private pure returns (uint256 publicInput) {
+    bytes32 hashedFilteredAddresses = keccak256(abi.encodePacked(_finalizationData.filteredAddresses));
+
     assembly {
       let mPtr := mload(0x40)
       mstore(mPtr, _lastFinalizedShnarf)
@@ -584,6 +589,7 @@ abstract contract LineaRollupBase is
        * calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x140), 0x100)
        * // _finalForcedTransactionRollingHash
        * mstore(add(mPtr, 0x1e0), _finalForcedTransactionRollingHash)
+       * hashedFilteredAddresses
        */
 
       /**

@@ -12,7 +12,6 @@ import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-
 import {
   LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
   LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-  PAUSE_STATE_DATA_SUBMISSION_ROLE,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
 import { CallForwardingProxy, ForcedTransactionGateway, TestLineaRollup } from "contracts/typechain-types";
@@ -45,7 +44,6 @@ import {
   SIX_MONTHS_IN_SECONDS,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   FORCED_TRANSACTION_SENDER_ROLE,
-  UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
   FORCED_TRANSACTION_FEE,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
@@ -63,9 +61,6 @@ import {
   generateKeccak256,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
-import { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollup/TestLineaRollup";
-import { Typed } from "ethers";
-import { IPermissionsManager } from "contracts/typechain-types/src/rollup/LineaRollup";
 
 kzg.loadTrustedSetup(0, `${__dirname}/../_testData/trusted_setup.txt`);
 
@@ -83,9 +78,6 @@ describe("Linea Rollup contract", () => {
   let alternateShnarfProviderAddress: SignerWithAddress;
   let roleAddresses: { addressWithRole: string; role: string }[];
   let forcedTransactionGatewayAddress: string;
-  let upgradePauseTypeRoles: Typed | IPauseManager.PauseTypeRoleStruct[] = [];
-  let upgradeUnpauseTypeRoles: Typed | IPauseManager.PauseTypeRoleStruct[] = [];
-  let upgradeRoleAddresses: IPermissionsManager.RoleAddressStruct[];
 
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentStateRootHash } =
     firstCompressedDataContent;
@@ -95,23 +87,6 @@ describe("Linea Rollup contract", () => {
     ({ admin, securityCouncil, operator, nonAuthorizedAccount, alternateShnarfProviderAddress } =
       await loadFixture(getAccountsFixture));
     roleAddresses = await loadFixture(getRoleAddressesFixture);
-
-    upgradeRoleAddresses = [
-      {
-        addressWithRole: securityCouncil.address,
-        role: PAUSE_STATE_DATA_SUBMISSION_ROLE,
-      },
-      {
-        addressWithRole: securityCouncil.address,
-        role: UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
-      },
-    ];
-
-    upgradePauseTypeRoles = [{ pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, role: PAUSE_STATE_DATA_SUBMISSION_ROLE }];
-    upgradeUnpauseTypeRoles = [
-      { pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_STATE_DATA_SUBMISSION_ROLE },
-    ];
-    upgradeArgs = [upgradeRoleAddresses, upgradePauseTypeRoles, upgradeUnpauseTypeRoles];
   });
 
   beforeEach(async () => {

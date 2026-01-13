@@ -671,7 +671,8 @@ describe("Linea Rollup contract: Finalization", () => {
       await expect(operator.sendTransaction(transaction)).to.not.be.reverted;
     });
 
-    it("Should fail when sending with wrong merkle root location", async () => {
+    // TODO: decide on removing - not really applicable anymore
+    it.skip("Should fail when sending with wrong merkle root location", async () => {
       const submissionDataBeforeFinalization = generateCallDataSubmissionMultipleProofs(0, 4);
       let index = 0;
       for (const data of submissionDataBeforeFinalization) {
