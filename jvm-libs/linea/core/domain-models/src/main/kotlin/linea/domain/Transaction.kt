@@ -1,5 +1,6 @@
 package linea.domain
 
+import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import java.math.BigInteger
 import java.util.EnumSet
@@ -89,6 +90,17 @@ data class CodeDelegation(
     return "CodeDelegation(chainId=$chainId, address=${address.encodeHex()}, nonce=$nonce, v=$v, r=$r, s=$s)"
   }
 }
+
+// TODO: Delete once 7702 is supported by Web3j
+val DUMMY_DELEGATION =
+  CodeDelegation(
+    chainId = 0u,
+    address = "0x0000000000000000000000000000000000000000".decodeHex(),
+    nonce = 0u,
+    v = 27,
+    r = BigInteger.ZERO,
+    s = BigInteger.ZERO,
+  )
 
 data class Transaction(
   val type: TransactionType,
