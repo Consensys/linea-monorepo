@@ -3,7 +3,6 @@ name: linea-sequencer-plugin-release
 permissions:
   contents: write
   packages: write
-  actions: read
 
 on:
   workflow_dispatch:
@@ -24,6 +23,12 @@ jobs:
           java-version: 21
           distribution: temurin
           cache: 'gradle'
+
+      - name: Install Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: '1.24.6'
+          cache-dependency-path: "**/*.sum"
 
       - name: Build artifacts
         run: ./gradlew besu-plugins:linea-sequencer:sequencer:artifacts -PreleaseVersion=${{ github.event.inputs.version }}
