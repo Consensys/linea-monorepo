@@ -109,7 +109,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const verifierAddress = await verifier.getAddress();
   await tryVerifyContractWithConstructorArgs(
     verifierAddress,
-    "contracts/yield/libs/ValidatorContainerProofVerifier.sol:ValidatorContainerProofVerifier",
+    "src/yield/libs/ValidatorContainerProofVerifier.sol:ValidatorContainerProofVerifier",
     [verifierAdmin, gIFirstValidator, gIPendingPartialWithdrawalsRoot],
   );
 
