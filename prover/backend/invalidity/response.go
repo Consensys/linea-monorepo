@@ -25,4 +25,6 @@ type Response struct {
 	PublicInput types.Bytes32 `json:"publicInput"`
 
 	ProverVersion string `json:"proverVersion"`
+
+	FtxRollingHash types.Bytes32 `json:"ftxRollingHash"`
 }

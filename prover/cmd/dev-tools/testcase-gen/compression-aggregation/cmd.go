@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -15,16 +14,13 @@ import (
 	"github.com/consensys/gnark/backend/solidity"
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
-	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
-	circInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/spf13/cobra"
 )
 
@@ -430,9 +426,7 @@ func ProcessAggregationSpec(
 	runningSpec.ParentAggregationFtxNumber = int(resp.FinalFtxNumber)
 
 	for i := range runningSpec.InvalidityProofs {
-		runningSpec.InvalidityProofs[i].StateRootHash = linTypes.Bytes32FromHex(finalStateRootHash)
-		runningSpec.InvalidityProofs[i].FtxMinBlockNumber = uint64(resp.LastFinalizedBlockNumber + 1)
-		runningSpec.InvalidityProofs[i].FtxMaxBlockNumber = uint64(resp.FinalBlockNumber)
+		runningSpec.InvalidityProofs[i].ExecutionCtx.ZkParentStateRootHash = linTypes.Bytes32FromHex(finalStateRootHash)
 	}
 	return resp
 }
@@ -476,28 +470,13 @@ func dumpVerifierContract(odir string, circID circuits.MockCircuitID) {
 // previous ftx number generated (for consistency).
 func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *invalidity.Response, specFile string) *invalidity.Response {
 
-	var (
-		invalidityReq = RandInvalidityProofRequest(rng, spec, specFile)
-		txData        types.TxData
-		err           error
-	)
+	invalidityReq := RandInvalidityProofRequest(rng, spec, specFile)
 
 	if prevResp != nil {
 		invalidityReq.ForcedTransactionNumber = uint64(prevResp.ForcedTransactionNumber + 1)
 		spec.FtxNumber = int(invalidityReq.ForcedTransactionNumber)
 		spec.PrevFtxRollingHash = prevResp.FtxRollingHash.Hex()
 	}
-
-	if txData, err = ethereum.DecodeTxFromBytes(bytes.NewReader(invalidityReq.RlpEncodedTx)); err != nil {
-		printlnAndExit("could not decode the RlpEncodedTx %w", err)
-	}
-
-	invalidityReq.FtxRollingHash = circInvalidity.UpdateFtxRollingHash(
-		linTypes.Bytes32FromHex(spec.PrevFtxRollingHash),
-		types.NewTx(txData),
-		spec.ExpectedBlockHeight,
-		invalidityReq.FromAddresses,
-	)
 
 	resp, err := invalidity.Prove(cfg, invalidityReq)
 	if err != nil {

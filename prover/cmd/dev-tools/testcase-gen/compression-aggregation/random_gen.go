@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -11,7 +9,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
-	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	circInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -246,15 +243,6 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		panic(err)
 	}
 
-	// Get the fromAddress from the private key
-	publicKey := privKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		panic("error casting public key to ECDSA")
-	}
-
-	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   spec.ChainID,
 		Nonce:     rng.Uint64() % 100,
@@ -269,17 +257,21 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		},
 	})
 
-	txHash := signer.Hash(tx)
+	// Sign the transaction so that GetFrom can recover the sender
+	signedTx, err := types.SignTx(tx, signer, privKey)
+	if err != nil {
+		panic(fmt.Sprintf("failed to sign transaction: %v", err))
+	}
 
-	//sanity check
-	if !bytes.Equal(txHash.Bytes(), crypto.Keccak256(ethereum.EncodeTxForSigning(tx))) {
-		utils.Panic("tx hash mismatch")
+	// Encode the signed transaction
+	rlpEncodedTx, err := signedTx.MarshalBinary()
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal signed transaction: %v", err))
 	}
 
 	return &invalidity.Request{
-		RlpEncodedTx:            ethereum.EncodeTxForSigning(tx),
+		RlpEncodedTx:            rlpEncodedTx,
 		ForcedTransactionNumber: uint64(spec.FtxNumber),
-		FromAddresses:           linTypes.EthAddress(fromAddress),
 		InvalidityTypes:         circInvalidity.BadNonce,
 		ExpectedBlockHeight:     uint64(spec.ExpectedBlockHeight),
 		PrevFtxRollingHash:      linTypes.Bytes32FromHex(spec.PrevFtxRollingHash),

@@ -1,11 +1,9 @@
 package invalidity
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
@@ -13,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // Prove generates a proof for the invalidity circuit
@@ -23,12 +20,16 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		setup           circuits.Setup
 		serializedProof string
 		err             error
-		txData          types.TxData
 	)
 
-	if txData, err = ethereum.DecodeTxFromBytes(bytes.NewReader(req.RlpEncodedTx)); err != nil {
+	// Decode the signed transaction
+	tx := new(types.Transaction)
+	if err = tx.UnmarshalBinary(req.RlpEncodedTx); err != nil {
 		return nil, fmt.Errorf("could not decode the RlpEncodedTx %w", err)
 	}
+
+	// Compute functional inputs (includes TxHash and FtxRollingHash)
+	funcInput := req.FuncInput()
 
 	if cfg.Invalidity.ProverMode == config.ProverModeDev {
 
@@ -42,7 +43,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 			utils.Panic("error creating unsafe setup: %v", err)
 		}
 
-		serializedProof = dummy.MakeProof(&setup, req.FuncInput().SumAsField(), circuits.MockCircuitIDExecution)
+		serializedProof = dummy.MakeProof(&setup, funcInput.SumAsField(), circuits.MockCircuitIDExecution)
 
 	} else {
 
@@ -50,28 +51,33 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 			return nil, fmt.Errorf("could not load the setup: %w", err)
 		}
 
+		// Extract AccountTrieInputs from the Shomei traces for the sender
+		accountTrieInputs, fromAddress, err := req.AccountTrieInputs()
+		if err != nil {
+			return nil, fmt.Errorf("could not extract account trie inputs: %w", err)
+		}
+
 		serializedProof = c.MakeProof(setup,
 			invalidity.AssigningInputs{
 				RlpEncodedTx:      req.RlpEncodedTx,
-				Transaction:       types.NewTx(txData),
-				AccountTrieInputs: req.AccountTrie,
-				FromAddress:       common.Address(req.FromAddresses),
+				Transaction:       tx,
+				AccountTrieInputs: accountTrieInputs,
+				FromAddress:       common.Address(fromAddress),
 				InvalidityType:    req.InvalidityTypes,
-				FuncInputs:        *req.FuncInput(),
+				FuncInputs:        *funcInput,
 				MaxRlpByteSize:    cfg.Invalidity.MaxRlpByteSize,
 			},
 		)
 	}
 
-	txHash := crypto.Keccak256(req.RlpEncodedTx)
-
 	rsp := &Response{
-		Transaction:        types.NewTx(txData),
-		TxHash:             utils.HexEncodeToString(txHash),
+		Transaction:        tx,
+		TxHash:             utils.HexEncodeToString(funcInput.TxHash[:]),
 		Request:            *req,
 		ProverVersion:      cfg.Version,
 		Proof:              serializedProof,
 		VerifyingKeyShaSum: setup.VerifyingKeyDigest(),
+		FtxRollingHash:     funcInput.FtxRollingHash,
 	}
 	return rsp, nil
 }
