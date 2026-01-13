@@ -5,6 +5,7 @@ package statemanager_test
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
@@ -14,17 +15,16 @@ import (
 
 func TestJsonExample(t *testing.T) {
 
-	t.Skipf("The test is not passing, but the tested code is completely stable")
-
-	filenames := []string{
-		"./testdata/block-20000-20002.json",
-		"./testdata/delete-account.json",
-		"./testdata/insert-1-account.json",
-		"./testdata/insert-2-accounts.json",
-		"./testdata/insert-account-and-contract.json",
-		"./testdata/read-account.json",
-		"./testdata/read-zero.json",
+	dirEntries, err := os.ReadDir("./testdata")
+	if err != nil {
+		t.Fatalf("could not read testdata dir, %v. Did it change location?", err)
 	}
+
+	filenames := []string{}
+	for i := range dirEntries {
+		filenames = append(filenames, "./testdata/"+dirEntries[i].Name())
+	}
+
 	expectErr := []bool{false, false, false, false, false, false, false}
 
 	for tcID, fname := range filenames {

@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 const BlockSize = 1
@@ -20,7 +19,6 @@ const maxSizeBuf = 1024
 
 // MDHasher Merkle Damgard Hasher using Poseidon2 as compression function
 type MDHasher struct {
-	maxValue types.Bytes32 // the maximal value obtainable with that hasher
 
 	// Sponge construction state
 	state fr.Element

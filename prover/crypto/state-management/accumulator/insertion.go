@@ -20,9 +20,9 @@ type InsertionTrace[K, V io.WriterTo] struct {
 	Type     int    `json:"type"`
 	Location string `json:"location"`
 
-	NewNextFreeNode int     `json:"newNextFreeNode"`
-	OldSubRoot      Bytes32 `json:"oldSubRoot"`
-	NewSubRoot      Bytes32 `json:"newSubRoot"`
+	NewNextFreeNode int           `json:"newNextFreeNode"`
+	OldSubRoot      KoalaOctuplet `json:"oldSubRoot"`
+	NewSubRoot      KoalaOctuplet `json:"newSubRoot"`
 
 	// `New` correspond to the inserted leaf
 	ProofMinus smt_koalabear.Proof `json:"leftProof"`
@@ -124,7 +124,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 
 	// Also checks that the their hkey are lower/larger than the inserted one
 	hkey := hash(trace.Key)
-	if Bytes32Cmp(hkey, trace.OldOpenMinus.HKey) < 1 || Bytes32Cmp(hkey, trace.OldOpenPlus.HKey) > -1 {
+	if hkey.Cmp(trace.OldOpenMinus.HKey) < 1 || hkey.Cmp(trace.OldOpenPlus.HKey) > -1 {
 		return fmt.Errorf(
 			"sandwich is incorrect expected %x < %x < %x",
 			trace.OldOpenMinus.HKey, hkey, trace.OldOpenPlus.HKey,
@@ -150,7 +150,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 		HVal: hash(trace.Val),
 	}.Hash()
 
-	currentRoot, err = updateCheckRoot(trace.ProofNew, currentRoot, types.HashToBytes32(smt_koalabear.EmptyLeaf()), newLeaf)
+	currentRoot, err = updateCheckRoot(trace.ProofNew, currentRoot, types.KoalaOctuplet(smt_koalabear.EmptyLeaf()), newLeaf)
 	if err != nil {
 		return fmt.Errorf("audit of the update of the middle leaf failed %v", err)
 	}
@@ -205,7 +205,7 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 		HVal: hash(trace.Val),
 	}.Hash()
 
-	appendTo, currentRoot = deferCheckUpdateRoot(trace.ProofNew, currentRoot, types.HashToBytes32(smt_koalabear.EmptyLeaf()), newLeaf, appendTo)
+	appendTo, currentRoot = deferCheckUpdateRoot(trace.ProofNew, currentRoot, types.KoalaOctuplet(smt_koalabear.EmptyLeaf()), newLeaf, appendTo)
 
 	// Audit the update of the "plus"
 	oldLeafPlus := trace.OldOpenPlus.Hash()
@@ -215,7 +215,7 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 	return appendTo
 }
 
-func (trace InsertionTrace[K, V]) HKey() Bytes32 {
+func (trace InsertionTrace[K, V]) HKey() KoalaOctuplet {
 	return hash(trace.Key)
 }
 

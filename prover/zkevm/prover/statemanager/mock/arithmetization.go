@@ -263,7 +263,7 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 				prevNonce[i].SetZero()
 				prevCodeSize[i].SetZero()
 			}
-			
+
 			for i := range common.NbLimbU256 {
 				prevBalance[i].SetZero()
 				prevMimcCodeHash[i].SetZero()
@@ -303,7 +303,7 @@ func (accHistory *AccountHistory) InitializeNewRow(currentBlock int, initialStat
 			// hashes
 			statePoseidon2Hash := initialState.GetPoseidon2CodeHash(address)
 
-			limbBytes := common.SplitBytes(statePoseidon2Hash[:])
+			limbBytes := common.SplitBytes(statePoseidon2Hash.ToBytes())
 			for i := range common.NbLimbU256 {
 				prevMimcCodeHash[i].SetBytes(limbBytes[i])
 			}

@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // FlatProof is a collection of columns representing a Merkle proof in a flat
@@ -95,7 +96,7 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 
 		newProof := smt_koalabear.Proof{
 			Path:     field.ToInt(pos.GetPtr(i)),
-			Siblings: make([]field.Octuplet, len(p.Nodes[0])),
+			Siblings: make([]types.KoalaOctuplet, len(p.Nodes[0])),
 		}
 
 		for n := range p.Nodes[0] {

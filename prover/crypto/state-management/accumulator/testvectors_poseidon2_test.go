@@ -218,8 +218,8 @@ func TestRealKeyAndVal(t *testing.T) {
 		types.Account{
 			Nonce:          65,
 			Balance:        big.NewInt(835),
-			StorageRoot:    types.Bytes32FromHex("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
-			LineaCodeHash:  types.Bytes32FromHex("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
+			StorageRoot:    types.MustHexToKoalabearOctuplet("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
+			LineaCodeHash:  types.MustHexToKoalabearOctuplet("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
 			KeccakCodeHash: types.FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 			CodeSize:       0,
 		}
@@ -288,8 +288,8 @@ func TestProofFromInsertAndProve(t *testing.T) {
 		types.Account{
 			Nonce:          65,
 			Balance:        big.NewInt(835),
-			StorageRoot:    types.Bytes32FromHex("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
-			LineaCodeHash:  types.Bytes32FromHex("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
+			StorageRoot:    types.MustHexToKoalabearOctuplet("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
+			LineaCodeHash:  types.MustHexToKoalabearOctuplet("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
 			KeccakCodeHash: types.FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 			CodeSize:       0,
 		}
@@ -354,8 +354,8 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 		types.Account{
 			Nonce:          65,
 			Balance:        big.NewInt(835),
-			StorageRoot:    types.Bytes32FromHex("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
-			LineaCodeHash:  types.Bytes32FromHex("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
+			StorageRoot:    types.MustHexToKoalabearOctuplet("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
+			LineaCodeHash:  types.MustHexToKoalabearOctuplet("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
 			KeccakCodeHash: types.FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 			CodeSize:       0,
 		}
@@ -407,8 +407,8 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 		types.Account{
 			Nonce:          41,
 			Balance:        big.NewInt(15353),
-			StorageRoot:    types.Bytes32FromHex("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
-			LineaCodeHash:  types.Bytes32FromHex("0x000000000000000000000000000000000000000000000000000000000000004b"),
+			StorageRoot:    types.MustHexToKoalabearOctuplet("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
+			LineaCodeHash:  types.MustHexToKoalabearOctuplet("0x000000000000000000000000000000000000000000000000000000000000004b"),
 			KeccakCodeHash: types.FullBytes32FromHex("0x0f00000000000000000000000000000000000000000000000000000000000000"),
 			CodeSize:       7,
 		}
@@ -522,7 +522,7 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 
 	fmt.Printf("------------------- Trace 4: update account 2 ------------------\n")
 
-	account2.StorageRoot = types.Bytes32FromHex("0x07bd72a3216f334e18eb7cb3388a4ab4758d0b10486f08ae22e9834c7a0210d3")
+	account2.StorageRoot = types.MustHexToKoalabearOctuplet("0x07bd72a3216f334e18eb7cb3388a4ab4758d0b10486f08ae22e9834c7a0210d3")
 	encodedNewAccount2 := "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003bf907bd72a3216f334e18eb7cb3388a4ab4758d0b10486f08ae22e9834c7a0210d3000000000000000000000000000000000000000000000000000000000000004b00000f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
 
 	trace4 := acc.UpdateAndProve(key2, account2)

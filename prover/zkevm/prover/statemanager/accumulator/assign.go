@@ -389,7 +389,7 @@ func (am *Module) assignTopRootCols(
 // to update each row of various columns
 func (a *assignmentBuilder) pushRow(
 	leafOpening accumulator.LeafOpening,
-	root types.Bytes32,
+	root types.KoalaOctuplet,
 	proof smt_koalabear.Proof,
 	nextFreeNode int,
 	isFirst bool,
@@ -407,7 +407,7 @@ func (a *assignmentBuilder) pushRow(
 	// Populates leaves, leafHashes, and isEmptyLeaf from leafOpening by Posseidon2 block compression
 	a.computeLeaf(leafOpening, isEmptyLeaf)
 
-	rootFrLimbs := divideFieldBytesToFieldLimbs(root[:], hashFieldElements)
+	rootFrLimbs := divideFieldBytesToFieldLimbs(root.ToBytes(), hashFieldElements)
 	for i, limb := range rootFrLimbs {
 		a.roots[i] = append(a.roots[i], limb)
 	}
@@ -557,8 +557,8 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		nextFrBytes := uint64To64Bytes(uint64(leafOpening.Next))
 		nextFrLimbs := divideFieldBytesToFieldLimbs(nextFrBytes, hashU64)
 
-		hKeyFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HKey[:], hashFieldElements)
-		hValFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HVal[:], hashFieldElements)
+		hKeyFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HKey.ToBytes(), hashFieldElements)
+		hValFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HVal.ToBytes(), hashFieldElements)
 
 		// As prevFrLimbs, nextFrLimbs are of 16 limbs, we hash them in two steps
 		intermZeroLimbs := vortex.CompressPoseidon2(zeroBlock, vortex.Hash(prevFrLimbs[0:common.NbElemPerHash]))
@@ -712,12 +712,12 @@ func pushInsertionRows[K, V io.WriterTo](
 	// Sandwitch assignment for row 1
 	hKey := hash(trace.Key)
 
-	hKeyFrLimbs := divideFieldBytesToFieldLimbs(hKey[:], hashFieldElements)
-	hKeySandwitchFrLimbs := divideFieldBytesToFieldLimbs(hKey[:], hashByte32Sandwitch)
-	hKeyMinusFrLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenMinus.HKey[:], hashFieldElements)
-	hKeyMinusSandwitchLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenMinus.HKey[:], hashByte32Sandwitch)
-	hKeyPlusFrLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenPlus.HKey[:], hashFieldElements)
-	hKeyPlusSandwitchLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenPlus.HKey[:], hashByte32Sandwitch)
+	hKeyFrLimbs := divideFieldBytesToFieldLimbs(hKey.ToBytes(), hashFieldElements)
+	hKeySandwitchFrLimbs := divideFieldBytesToFieldLimbs(hKey.ToBytes(), hashByte32Sandwitch)
+	hKeyMinusFrLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenMinus.HKey.ToBytes(), hashFieldElements)
+	hKeyMinusSandwitchLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenMinus.HKey.ToBytes(), hashByte32Sandwitch)
+	hKeyPlusFrLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenPlus.HKey.ToBytes(), hashFieldElements)
+	hKeyPlusSandwitchLimbs := divideFieldBytesToFieldLimbs(trace.OldOpenPlus.HKey.ToBytes(), hashByte32Sandwitch)
 
 	for i := range a.hKey {
 		a.hKey[i] = append(a.hKey[i], hKeyFrLimbs[i])
@@ -989,7 +989,7 @@ func pushDeletionRows[K, V io.WriterTo](
 	)
 
 	var (
-		intermediateRoot3 = computeRoot(types.Bytes32{}, trace.ProofDeleted)
+		intermediateRoot3 = computeRoot(types.KoalaOctuplet{}, trace.ProofDeleted)
 	)
 
 	// row 4
@@ -1087,12 +1087,12 @@ func pushReadZeroRows[K, V io.WriterTo](
 
 	// Sandwitch assignment for row 1
 	hKey := hash(trace.Key)
-	hKeyFrLimbs := divideFieldBytesToFieldLimbs(hKey[:], hashFieldElements)
-	hKeySandwitchFrLimbs := divideFieldBytesToFieldLimbs(hKey[:], hashByte32Sandwitch)
-	hKeyMinusFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningMinus.HKey[:], hashFieldElements)
-	hKeyMinusSandwitchFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningMinus.HKey[:], hashByte32Sandwitch)
-	hKeyPlusFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningPlus.HKey[:], hashFieldElements)
-	hKeyPlusSandwitchFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningPlus.HKey[:], hashByte32Sandwitch)
+	hKeyFrLimbs := divideFieldBytesToFieldLimbs(hKey.ToBytes(), hashFieldElements)
+	hKeySandwitchFrLimbs := divideFieldBytesToFieldLimbs(hKey.ToBytes(), hashByte32Sandwitch)
+	hKeyMinusFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningMinus.HKey.ToBytes(), hashFieldElements)
+	hKeyMinusSandwitchFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningMinus.HKey.ToBytes(), hashByte32Sandwitch)
+	hKeyPlusFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningPlus.HKey.ToBytes(), hashFieldElements)
+	hKeyPlusSandwitchFrLimbs := divideFieldBytesToFieldLimbs(trace.OpeningPlus.HKey.ToBytes(), hashByte32Sandwitch)
 	for i := range a.hKey {
 		a.hKey[i] = append(a.hKey[i], hKeyFrLimbs[i])
 		a.hKeyMinus[i] = append(a.hKeyMinus[i], hKeyMinusFrLimbs[i])
@@ -1202,20 +1202,20 @@ func pushReadNonZeroRows[K, V io.WriterTo](
 }
 
 // Generic hashing for object satisfying the io.WriterTo interface
-func hash[T io.WriterTo](m T) types.Bytes32 {
+func hash[T io.WriterTo](m T) types.KoalaOctuplet {
 	hasher := poseidon2.NewMDHasher()
 	m.WriteTo(hasher)
-	Bytes32 := hasher.Sum(nil)
-	return types.AsBytes32(Bytes32)
+	digest := hasher.Sum(nil)
+	return types.MustBytesToKoalaOctuplet(digest)
 }
 
 // Function to compute the root of a Merkle tree given proof and the leaf
-func computeRoot(leaf types.Bytes32, proof smt_koalabear.Proof) types.Bytes32 {
+func computeRoot(leaf types.KoalaOctuplet, proof smt_koalabear.Proof) types.KoalaOctuplet {
 	current := leaf
 	idx := proof.Path
 
 	for _, sibling := range proof.Siblings {
-		left, right := current, types.HashToBytes32(sibling)
+		left, right := current, sibling
 		if idx&1 == 1 {
 			left, right = right, left
 		}
@@ -1232,11 +1232,11 @@ func computeRoot(leaf types.Bytes32, proof smt_koalabear.Proof) types.Bytes32 {
 }
 
 // Function to compute the hash given the left and the right node
-func hashLR(nodeL, nodeR types.Bytes32) types.Bytes32 {
+func hashLR(nodeL, nodeR types.KoalaOctuplet) types.KoalaOctuplet {
 	hasher := poseidon2.NewMDHasher()
 	nodeL.WriteTo(hasher)
 	nodeR.WriteTo(hasher)
-	d := types.AsBytes32(hasher.Sum(nil))
+	d := types.MustBytesToKoalaOctuplet(hasher.Sum(nil))
 	return d
 }
 

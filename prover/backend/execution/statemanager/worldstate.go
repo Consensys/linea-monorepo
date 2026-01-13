@@ -32,7 +32,7 @@ func NewWorldState() *WorldState {
 func EmptyCodeHash() Digest {
 	hasher := poseidon2_koalabear.NewMDHasher()
 	hasher.Write(make([]byte, 32))
-	return types.AsBytes32(hasher.Sum(nil))
+	return types.MustBytesToKoalaOctuplet(hasher.Sum(nil))
 }
 
 // Returns an EOA account

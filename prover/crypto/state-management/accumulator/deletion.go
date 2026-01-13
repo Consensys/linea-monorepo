@@ -22,9 +22,9 @@ type DeletionTrace[K, V io.WriterTo] struct {
 
 	// For consistency, we call it new next free node but
 	// the value is not updated during a deletion
-	NewNextFreeNode int     `json:"newNextFreeNode"`
-	OldSubRoot      Bytes32 `json:"oldSubRoot"`
-	NewSubRoot      Bytes32 `json:"newSubRoot"`
+	NewNextFreeNode int           `json:"newNextFreeNode"`
+	OldSubRoot      KoalaOctuplet `json:"oldSubRoot"`
+	NewSubRoot      KoalaOctuplet `json:"newSubRoot"`
 
 	// `New` correspond to the inserted leaf
 	ProofMinus   smt_koalabear.Proof `json:"leftProof"`
@@ -141,7 +141,7 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 
 	// Audit the update of the deleted leaf
 	deletedLeaf := hash(&trace.DeletedOpen)
-	currentRoot, err = updateCheckRoot(trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt_koalabear.EmptyLeaf()))
+	currentRoot, err = updateCheckRoot(trace.ProofDeleted, currentRoot, deletedLeaf, types.KoalaOctuplet(smt_koalabear.EmptyLeaf()))
 	if err != nil {
 		return fmt.Errorf("audit of the update of the middle leaf failed %v", err)
 	}
@@ -184,7 +184,7 @@ func (trace DeletionTrace[K, V]) DeferMerkleChecks(
 
 	// the proof verification for the deleted leaf
 	deletedLeaf := hash(&trace.DeletedOpen)
-	appendTo, currentRoot = deferCheckUpdateRoot(trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt_koalabear.EmptyLeaf()), appendTo)
+	appendTo, currentRoot = deferCheckUpdateRoot(trace.ProofDeleted, currentRoot, deletedLeaf, types.KoalaOctuplet(smt_koalabear.EmptyLeaf()), appendTo)
 
 	// Audit the update of the "plus"
 	oldLeafPlus := trace.OldOpenPlus.Hash()
@@ -194,7 +194,7 @@ func (trace DeletionTrace[K, V]) DeferMerkleChecks(
 	return appendTo
 }
 
-func (trace DeletionTrace[K, V]) HKey() Bytes32 {
+func (trace DeletionTrace[K, V]) HKey() KoalaOctuplet {
 	return trace.DeletedOpen.HKey
 }
 

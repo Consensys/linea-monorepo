@@ -18,7 +18,6 @@ const BlockSize = 8
 // MDHasher Merkle Damgard Hasher using Poseidon2 as compression function
 type MDHasher struct {
 	hash.StateStorer
-	maxValue types.Bytes32 // the maximal value obtainable with that hasher
 
 	// Sponge construction state
 	state field.Octuplet
@@ -30,13 +29,8 @@ type MDHasher struct {
 
 // NewMDHasher creates a new MDHasher with the given options.
 func NewMDHasher() *MDHasher {
-	var maxVal field.Octuplet
-	for i := range maxVal {
-		maxVal[i] = field.NewFromString("-1")
-	}
 	h := &MDHasher{
 		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
-		maxValue:    types.HashToBytes32(maxVal),
 		state:       field.Octuplet{},
 	}
 
@@ -103,9 +97,10 @@ func (d *MDHasher) Write(p []byte) (int, error) {
 
 	for start := 0; start < len(p); start += elemByteSize {
 		chunk := p[start : start+elemByteSize]
-
 		var elem field.Element
-		elem.SetBytes(chunk)
+		if err := elem.SetBytesCanonical(chunk); err != nil {
+			return 0, err
+		}
 		elems = append(elems, elem)
 
 	}
@@ -118,16 +113,14 @@ func (h *MDHasher) State() [BlockSize]field.Element {
 
 // Sum computes the poseidon2 hash of msg
 func (d *MDHasher) Sum(msg []byte) []byte {
-	d.Write(msg)
+	if _, err := d.Write(msg); err != nil {
+		panic(err)
+	}
 	h := d.SumElement()
-	bytes := types.HashToBytes32(h)
-	return bytes[:]
-}
-func (d MDHasher) MaxBytes32() types.Bytes32 {
-	return d.maxValue
+	return types.KoalaOctuplet(h).ToBytes()
 }
 
-// GnarkBlockCompression applies the MiMC permutation to a given block within
+// GnarkBlockCompression applies the poseidon permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
 func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]zk.WrappedVariable) (newState [BlockSize]zk.WrappedVariable) {
 	panic("unimplemented")

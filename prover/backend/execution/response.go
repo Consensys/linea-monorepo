@@ -32,7 +32,7 @@ type Response struct {
 	BlocksData []BlockData `json:"blocksData"`
 
 	// Initial root hash before executing the conflated block
-	ParentStateRootHash string `json:"parentStateRootHash"`
+	ParentStateRootHash types.KoalaOctuplet `json:"parentStateRootHash"`
 
 	// Boolean flag indicating whether the parent root hash mismatches what we
 	// found in the shomei proof for the first block. This field is only set
@@ -48,7 +48,8 @@ type Response struct {
 
 	// ExecDataChecksum stores the mimc hash of the execution data. It is also
 	// part of the public inputs of the related compression proof.
-	ExecDataChecksum types.Bytes32 `json:"execDataChecksum"`
+	ExecDataChecksum types.Bls12377Fr `json:"execDataChecksum"`
+
 	// ChainID indicates which ChainID was used during the execution.
 	ChainID uint `json:"chainID"`
 	// L2BridgeAddress indicates the address of the L2 bridge was used during
@@ -73,7 +74,7 @@ type Response struct {
 	// PublicInput is the final value public input of the current proof. This
 	// field is used for debugging in case one of the proofs don't pass at the
 	// aggregation level.
-	PublicInput types.Bytes32 `json:"publicInput"`
+	PublicInput types.Bls12377Fr `json:"publicInput"`
 }
 
 type BlockData struct {
@@ -96,7 +97,7 @@ type BlockData struct {
 	// execution of the first block in the conflated batch
 	// and the last one is the final root hash of the state
 	// after execution of the last block in the conflated batch.
-	RootHash types.Bytes32 `json:"rootHash"`
+	RootHash types.KoalaOctuplet `json:"rootHash"`
 
 	// The from addresses of the transactions in the block all concatenated
 	// in a single hex string.

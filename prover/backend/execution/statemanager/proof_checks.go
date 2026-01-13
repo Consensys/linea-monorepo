@@ -123,7 +123,7 @@ func checkProofsWorldState(traces []DecodedTrace) (oldRootHash, newRootHash Dige
 				nextHKey = traces[i+1].Underlying.HKey()
 			)
 
-			if types.Bytes32Cmp(currHKey, nextHKey) > 0 {
+			if currHKey.Cmp(nextHKey) > 0 {
 				err = errors.Join(
 					err,
 					fmt.Errorf("the account segment are not well-ordered `%x` >= `%x`", currHKey, nextHKey),

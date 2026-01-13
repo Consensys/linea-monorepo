@@ -14,8 +14,8 @@ type Account struct {
 	// with how it would be if it was a big.Int
 	Nonce          int64
 	Balance        *big.Int
-	StorageRoot    Bytes32
-	LineaCodeHash  Bytes32 // Poseidon2 code hash
+	StorageRoot    KoalaOctuplet
+	LineaCodeHash  KoalaOctuplet // Poseidon2 code hash
 	KeccakCodeHash FullBytes32
 	CodeSize       int64
 }

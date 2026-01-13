@@ -105,12 +105,12 @@ func mustProveAndPass(
 
 		srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
 		if err != nil {
-			utils.Panic(err.Error())
+			utils.Panic("could not create SRS provider: %v", err.Error())
 		}
 
 		setup, err := dummy.MakeUnsafeSetup(srsProvider, circuits.MockCircuitIDExecution, ecc.BLS12_377.ScalarField())
 		if err != nil {
-			utils.Panic(err.Error())
+			utils.Panic("could not generate the mocked setup %v", err.Error())
 		}
 
 		return dummy.MakeProof(&setup, w.FuncInp.SumAsField(), circuits.MockCircuitIDExecution), setup.VerifyingKeyDigest()

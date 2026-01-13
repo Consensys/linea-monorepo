@@ -25,14 +25,13 @@ func DummyFullByte(i int) (f eth.FullBytes32) {
 
 // Returns a dummy digest
 func DummyDigest(i int) (d eth.Digest) {
-	d[31] = byte(i) // on the last one to not create overflows
-	return d
+	return types.DummyKoalaOctuplet(i)
 }
 
-func Hash(t io.WriterTo) types.Bytes32 {
+func Hash(t io.WriterTo) types.KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
 	t.WriteTo(hasher)
-	return types.AsBytes32(hasher.Sum(nil))
+	return types.MustBytesToKoalaOctuplet(hasher.Sum(nil))
 }
 
 /*

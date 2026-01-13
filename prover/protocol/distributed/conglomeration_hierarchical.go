@@ -22,6 +22,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 type ProofType int
@@ -185,7 +186,12 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 		leafPosition, vmt.Tree.Root, vmt.Tree.OccupiedLeaves[leafPosition],
 		vmt.VerificationKeys[leafPosition][:])
 
-	return proof.Siblings
+	siblings := make([]field.Octuplet, len(proof.Siblings))
+	for i := range siblings {
+		siblings[i] = proof.Siblings[i]
+	}
+
+	return siblings
 }
 
 // GetRoot returns the root of the verification key merkle tree encoded as a
@@ -219,7 +225,7 @@ func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.
 		merkleDepth = utils.Log2Ceil(2*numModule + 1)
 		mProof      = smt_koalabear.Proof{
 			Path:     leafPosition,
-			Siblings: make([]field.Octuplet, merkleDepth),
+			Siblings: make([]types.KoalaOctuplet, merkleDepth),
 		}
 		leaf = poseidon2_koalabear.HashVec(append(vk[0][:], vk[1][:]...)...)
 	)
@@ -614,18 +620,13 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 			}
 		}
 
-		mProofOct := make([]field.Octuplet, len(mProof))
-		for i := range mProof {
-			mProofOct[i] = mProof[i]
-		}
-
 		vkErr := checkVkMembership(
 			proofType,
 			c.ModuleNumber,
 			moduleIndex,
 			collectedPIs[instance].VerifyingKey,
 			collectedPIs[instance].VKeyMerkleRoot,
-			mProofOct,
+			mProof,
 		)
 
 		if vkErr != nil {

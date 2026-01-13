@@ -94,7 +94,7 @@ func CraftProverOutput(
 
 	// Set the public input as part of the response immediately so that we can
 	// easily debug issues during the proving.
-	rsp.PublicInput = types.Bytes32(rsp.FuncInput().Sum(nil))
+	rsp.PublicInput = types.Bls12377Fr(rsp.FuncInput().Sum(nil))
 
 	return rsp
 }
@@ -143,7 +143,7 @@ func inspectStateManagerTraces(
 
 	}
 
-	resp.ParentStateRootHash = firstParent.Hex()
+	resp.ParentStateRootHash = firstParent
 }
 
 func (req *Request) collectSignatures() ([]ethereum.Signature, [][32]byte) {
@@ -193,8 +193,8 @@ func (rsp *Response) FuncInput() *public_input.Execution {
 			InitialBlockNumber:    uint64(rsp.FirstBlockNumber),
 			DataChecksum:          rsp.ExecDataChecksum,
 			L2MessageHashes:       types.AsByteArrSlice(rsp.AllL2L1MessageHashes),
-			InitialStateRootHash:  types.Bytes32FromHex(rsp.ParentStateRootHash),
-			FinalStateRootHash:    lastBlock.RootHash,
+			InitialStateRootHash:  rsp.ParentStateRootHash.ToBytes32(),
+			FinalStateRootHash:    lastBlock.RootHash.ToBytes32(),
 		}
 	)
 
@@ -233,10 +233,11 @@ func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 
 // mimcHashLooselyPacked hashes the input stream b using the MiMC hash function
 // encoding each slice of 31 bytes into a field element separately.
-func mimcHashLooselyPacked(b []byte) types.Bytes32 {
+func mimcHashLooselyPacked(b []byte) types.Bls12377Fr {
+	panic("this should use poseidon hashing and use the function made by arya")
 	var buf [32]byte
 	gnarkutil.ChecksumLooselyPackedBytes(b, buf[:], hasher_factory.NewMiMC())
-	return types.AsBytes32(buf[:])
+	return types.AsBls12377Fr(buf[:])
 }
 
 func getBlockHashList(rsp *Response) []types.FullBytes32 {

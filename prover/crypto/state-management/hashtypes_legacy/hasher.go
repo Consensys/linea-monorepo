@@ -11,12 +11,12 @@ import (
 
 // Wrapper types for hasher which additionally provides a max value
 type Hasher struct {
-	hash.Hash         // the underlying hasher
-	maxValue  Bytes32 // the maximal value obtainable with that hasher
+	hash.Hash            // the underlying hasher
+	maxValue  Bls12377Fr // the maximal value obtainable with that hasher
 }
 
 // Immutable accessor for the max value of the hasher
-func (h Hasher) MaxBytes32() Bytes32 {
+func (h Hasher) MaxBls12377Fr() Bls12377Fr {
 	return h.maxValue
 }
 
@@ -24,7 +24,7 @@ func (h Hasher) MaxBytes32() Bytes32 {
 func Keccak() Hasher {
 	return Hasher{
 		Hash: crypto.NewKeccakState(),
-		maxValue: Bytes32{
+		maxValue: Bls12377Fr{
 			255, 255, 255, 255,
 			255, 255, 255, 255,
 			255, 255, 255, 255,

@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Deterministically creates random Bytes32s
-func RandBytes32(pos int) Bytes32 {
-	res := Bytes32{}
+// Deterministically creates randomBls12377Frs
+func RandBlsBls12377Fr(pos int) Bls12377Fr {
+	res := Bls12377Fr{}
 	for i := range res {
 		res[i] = byte(pos ^ (i + pos*156) ^ (pos + i*256) ^ (i * pos))
 	}
@@ -47,8 +47,8 @@ func TestTreeUpdateLeaf(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		// Make a valid Bytes32
-		newLeaf := RandBytes32(pos)
+		// Make a validBls12377Fr
+		newLeaf := RandBlsBls12377Fr(pos)
 		tree.Update(pos, newLeaf)
 		recovered, _ := tree.GetLeaf(pos)
 		require.Equal(t, newLeaf, recovered)
@@ -65,7 +65,7 @@ func TestMerkleProofNative(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		// Make a valid Bytes32
+		// Make a validBls12377Fr
 		oldLeaf, _ := tree.GetLeaf(pos)
 		proof, _ := tree.Prove(pos)
 
@@ -89,7 +89,7 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 
 		// Updat the leaf with a random-looking value before
 		// checking the proof
-		newLeaf := RandBytes32(pos)
+		newLeaf := RandBlsBls12377Fr(pos)
 		tree.Update(pos, newLeaf)
 
 		// After updating the old proof should still be valid
@@ -106,11 +106,11 @@ func TestBuildFromScratch(t *testing.T) {
 		Depth:    10,
 	}
 
-	// Generate random field elements and cast them into Bytes32es
+	// Generate random field elements and cast them intoBls12377Fres
 	leavesFr := vector.Rand(1 << config.Depth)
-	leaves := make([]Bytes32, len(leavesFr))
+	leaves := make([]Bls12377Fr, len(leavesFr))
 	for i := range leaves {
-		leaves[i] = Bytes32(leavesFr[i].Bytes())
+		leaves[i] = Bls12377Fr(leavesFr[i].Bytes())
 	}
 
 	// And generate the
@@ -143,11 +143,11 @@ func BenchmarkBuildComplete(b *testing.B) {
 		Depth:    20,
 	}
 
-	// Generate random field elements and cast them into Bytes32es
+	// Generate random field elements and cast them intoBls12377Fres
 	leavesFr := vector.Rand(1 << config.Depth)
-	leaves := make([]Bytes32, len(leavesFr))
+	leaves := make([]Bls12377Fr, len(leavesFr))
 	for i := range leaves {
-		leaves[i] = Bytes32(leavesFr[i].Bytes())
+		leaves[i] = Bls12377Fr(leavesFr[i].Bytes())
 	}
 
 	for b.Loop() {

@@ -19,10 +19,8 @@ import (
 	types2 "github.com/ethereum/go-ethereum/core/types"
 )
 
-func initEmptyCodeHash() [poseidon2.BlockSize][]byte {
-	emptyCodeHashBytes := statemanager.EmptyCodeHash()
-	res := poseidon2.ParsToBlocks(emptyCodeHashBytes)
-	return res
+func initEmptyCodeHash() types.KoalaOctuplet {
+	return statemanager.EmptyCodeHash()
 }
 
 var (
@@ -238,7 +236,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 			sym.Mul(
 				acc.Exists,
 				sym.Mul(hasEmptyCodeHashExpressions...),
-				sym.Sub(acc.LineaCodeHash[i], *new(field.Element).SetBytes(emptyCodeHash[i][:])),
+				sym.Sub(acc.LineaCodeHash[i], emptyCodeHash[i]),
 			),
 		)
 	}
@@ -354,18 +352,12 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
-	lineaCodeHashLimbs := poseidon2.ParsToBlocks(acc.LineaCodeHash)
-	for i := range poseidon2.BlockSize {
-		var f field.Element
-		f.SetBytes(lineaCodeHashLimbs[i])
-		ss.lineaCodeHash[i].PushField(f)
+	for i := range acc.LineaCodeHash {
+		ss.lineaCodeHash[i].PushField(acc.LineaCodeHash[i])
 	}
 
-	storageRootLimbs := poseidon2.ParsToBlocks(acc.StorageRoot)
-	for i := range poseidon2.BlockSize {
-		var f field.Element
-		f.SetBytes(storageRootLimbs[i])
-		ss.storageRoot[i].PushField(f)
+	for i := range acc.StorageRoot {
+		ss.storageRoot[i].PushField(acc.StorageRoot[i])
 	}
 
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
@@ -375,7 +367,7 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 // the caller to override the StorageRoot field with the provided one.
 func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	acc types.Account,
-	storageRoot types.Bytes32,
+	storageRoot types.KoalaOctuplet,
 ) {
 	// accountExists is telling whether the intent is to push an empty account
 	accountExists := acc.Balance != nil
@@ -423,18 +415,12 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
-	lineaCodeHashLimbs := poseidon2.ParsToBlocks(acc.LineaCodeHash)
-	for i := range poseidon2.BlockSize {
-		var f field.Element
-		f.SetBytes(lineaCodeHashLimbs[i])
-		ss.lineaCodeHash[i].PushField(f)
+	for i := range acc.LineaCodeHash {
+		ss.lineaCodeHash[i].PushField(acc.LineaCodeHash[i])
 	}
 
-	storageRootLimbs := poseidon2.ParsToBlocks(storageRoot)
-	for i := range poseidon2.BlockSize {
-		var f field.Element
-		f.SetBytes(storageRootLimbs[i])
-		ss.storageRoot[i].PushField(f)
+	for i := range storageRoot {
+		ss.storageRoot[i].PushField(storageRoot[i])
 	}
 
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)

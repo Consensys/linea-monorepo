@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -15,10 +15,10 @@ import (
 //
 // The `json` format and the order of the fields is important
 type LeafOpening struct {
-	Prev int64   `json:"prevLeaf"`
-	Next int64   `json:"nextLeaf"`
-	HKey Bytes32 `json:"hkey"` //it is poseidon2 hash of the adress
-	HVal Bytes32 `json:"hval"` // is it poseidon2 of account
+	Prev int64               `json:"prevLeaf"`
+	Next int64               `json:"nextLeaf"`
+	HKey types.KoalaOctuplet `json:"hkey"` //it is poseidon2 hash of the adress
+	HVal types.KoalaOctuplet `json:"hval"` // is it poseidon2 of account
 }
 
 // KVOpeningTuple is simple a tuple type of (key, value) adding the
@@ -45,7 +45,7 @@ func (leaf *LeafOpening) WriteTo(w io.Writer) (int64, error) {
 }
 
 // Hash returns a hash of the leaf opening
-func (leaf LeafOpening) Hash() Bytes32 {
+func (leaf LeafOpening) Hash() types.KoalaOctuplet {
 	return hash(&leaf)
 }
 
@@ -54,8 +54,8 @@ func Head() LeafOpening {
 	return LeafOpening{
 		Prev: 0, // Points to itself
 		Next: 1,
-		HKey: Bytes32{},
-		HVal: Bytes32{},
+		HKey: types.KoalaOctuplet{},
+		HVal: types.KoalaOctuplet{},
 	}
 }
 
@@ -64,30 +64,30 @@ func Tail() LeafOpening {
 	return LeafOpening{
 		Prev: 0,
 		Next: 1, // Points to itself
-		HVal: Bytes32{},
-		HKey: poseidon2_koalabear.NewMDHasher().MaxBytes32(),
+		HVal: types.KoalaOctuplet{},
+		HKey: types.MaxKoalaOctuplet(),
 	}
 }
 
 // HeadOrTail returns true if the leaf opening is either head or tail
 func (leaf *LeafOpening) HeadOrTail() bool {
-	return leaf.HKey == poseidon2_koalabear.NewMDHasher().MaxBytes32() || leaf.HKey == Bytes32{}
+	return leaf.HKey.IsMaxOctuplet() || leaf.HKey == types.KoalaOctuplet{}
 }
 
 // CheckAndLeaf check the internal consistency of the tuple and returns the hash
 // of the leaf opening (corresponding to a leaf).
-func (t KVOpeningTuple[K, V]) CheckAndLeaf() (Bytes32, error) {
+func (t KVOpeningTuple[K, V]) CheckAndLeaf() (KoalaOctuplet, error) {
 
 	if t.LeafOpening.HeadOrTail() {
 		return t.LeafOpening.Hash(), nil
 	}
 
 	if t.LeafOpening.HKey != hash(t.Key) {
-		return Bytes32{}, fmt.Errorf("inconsistent key and leaf openings")
+		return types.KoalaOctuplet{}, fmt.Errorf("inconsistent key and leaf openings")
 	}
 
 	if t.LeafOpening.HVal != hash(t.Value) {
-		return Bytes32{}, fmt.Errorf("inconsistent val and leaf opening")
+		return types.KoalaOctuplet{}, fmt.Errorf("inconsistent val and leaf opening")
 	}
 
 	return t.LeafOpening.Hash(), nil

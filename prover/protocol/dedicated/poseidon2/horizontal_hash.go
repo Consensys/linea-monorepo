@@ -190,14 +190,3 @@ func SplitColumns(input []ifaces.Column) [][poseidon2_koalabear.BlockSize]ifaces
 	}
 	return result
 }
-
-// ParsToBlocks parses the input bytes into subarrays of size BlockSize.
-func ParsToBlocks(data [32]byte) (res [BlockSize][]byte) {
-
-	n := len(data) / BlockSize
-
-	for i := range res {
-		res[i] = data[i*n : (i+1)*n]
-	}
-	return res
-}

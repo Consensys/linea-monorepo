@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -20,7 +19,7 @@ type VerifierState[K, V io.WriterTo] struct {
 	// Track the index of the next free node
 	NextFreeNode int64
 	// Internal tree
-	SubTreeRoot Bytes32
+	SubTreeRoot KoalaOctuplet
 }
 
 // VerifierState create a verifier state from a prover state. The returned
@@ -29,32 +28,32 @@ func (p *ProverState[K, V]) VerifierState() VerifierState[K, V] {
 	return VerifierState[K, V]{
 		Location:     p.Location,
 		NextFreeNode: p.NextFreeNode,
-		SubTreeRoot:  types.HashToBytes32(p.Tree.Root),
+		SubTreeRoot:  KoalaOctuplet(p.Tree.Root),
 	}
 }
 
 // updateCheckRoot audit an atomic update of the merkle tree (e.g. one leaf) and
 // returns the new root
-func updateCheckRoot(proof smt_koalabear.Proof, root, old, new Bytes32) (newRoot Bytes32, err error) {
+func updateCheckRoot(proof smt_koalabear.Proof, root, old, new KoalaOctuplet) (newRoot KoalaOctuplet, err error) {
 
-	if ok := smt_koalabear.Verify(&proof, types.Bytes32ToOctuplet(old), types.Bytes32ToOctuplet(root)); ok != nil {
-		return Bytes32{}, errors.New("root update audit failed : could not authenticate the old")
+	if ok := smt_koalabear.Verify(&proof, KoalaOctuplet(old), KoalaOctuplet(root)); ok != nil {
+		return KoalaOctuplet{}, errors.New("root update audit failed : could not authenticate the old")
 	}
 
 	// Note: all possible errors are already convered by `proof.Verify`
-	newRootOct, _ := smt_koalabear.RecoverRoot(&proof, types.Bytes32ToOctuplet(new))
+	newRootOct, _ := smt_koalabear.RecoverRoot(&proof, new)
 	logrus.Tracef("update check root %v leaf: %x->%x root: %x->%x\n", proof.Path, old, new, root, newRootOct)
-	return types.HashToBytes32(newRootOct), nil
+	return newRootOct, nil
 }
 
 // TopRoot returns the top-root hash which includes `NextFreeNode` and the
 // `SubTreeRoot`
-func (v *VerifierState[K, V]) TopRoot() Bytes32 {
+func (v *VerifierState[K, V]) TopRoot() KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
 	WriteInt64On64Bytes(hasher, v.NextFreeNode)
 	v.SubTreeRoot.WriteTo(hasher)
-	Bytes32 := hasher.Sum(nil)
-	return AsBytes32(Bytes32)
+	digest := hasher.Sum(nil)
+	return MustBytesToKoalaOctuplet(digest)
 }
 
 // deferCheckUpdateRoot appends to `appendTo` the merkle proof claims that are
@@ -62,18 +61,17 @@ func (v *VerifierState[K, V]) TopRoot() Bytes32 {
 // if the proof malformed.
 func deferCheckUpdateRoot(
 	proof smt_koalabear.Proof,
-	root, old, new Bytes32,
+	root, old, new KoalaOctuplet,
 	appendTo []smt_koalabear.ProvedClaim,
-) (appended []smt_koalabear.ProvedClaim, newRoot Bytes32) {
-	newRootOct, err := smt_koalabear.RecoverRoot(&proof, types.Bytes32ToOctuplet(new))
+) (appended []smt_koalabear.ProvedClaim, newRoot KoalaOctuplet) {
+	newRootOct, err := smt_koalabear.RecoverRoot(&proof, new)
 	if err != nil {
 		panic(err)
 	}
-	newRoot = types.HashToBytes32(newRootOct)
+	newRoot = KoalaOctuplet(newRootOct)
 	appended = append(appendTo,
-		smt_koalabear.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToOctuplet(old), Root: types.Bytes32ToOctuplet(root)},
-		smt_koalabear.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToOctuplet(new), Root: types.Bytes32ToOctuplet(newRoot)},
+		smt_koalabear.ProvedClaim{Proof: proof, Leaf: old, Root: root},
+		smt_koalabear.ProvedClaim{Proof: proof, Leaf: new, Root: newRoot},
 	)
-
 	return appended, newRoot
 }

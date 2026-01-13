@@ -145,10 +145,9 @@ func splitInAccountSegment(logs []StateAccessLog) [][]StateAccessLog {
 
 	// 3. Reorder the account segment by hkey
 	slices.SortFunc(accountSegments, func(a, b []StateAccessLog) int {
-		return types.Bytes32Cmp(
-			poseidon2Hash(a[0].Address),
-			poseidon2Hash(b[0].Address),
-		)
+		a_ := poseidon2Hash(a[0].Address)
+		b_ := poseidon2Hash(b[0].Address)
+		return a_.Cmp(b_)
 	})
 
 	return accountSegments
@@ -488,7 +487,7 @@ func squashSubSegmentForShomei(initialAccountValue types.Account, logs []StateAc
 				vals := log.Value.([]any)
 				currAccountValue.CodeSize = vals[0].(int64)
 				currAccountValue.KeccakCodeHash = vals[1].(types.FullBytes32)
-				currAccountValue.LineaCodeHash = vals[2].(types.Bytes32)
+				currAccountValue.LineaCodeHash = vals[2].(types.KoalaOctuplet)
 				if currAccountValue.Balance == nil {
 					// we give it a non-nil value because this is used to infer
 					// the existence of the account in the `statesummary` module
@@ -670,11 +669,11 @@ func AssertShomeiAgree(t *testing.T, state State, traces [][]StateAccessLog) {
 	}
 }
 
-func poseidon2Hash(m io.WriterTo) types.Bytes32 {
+func poseidon2Hash(m io.WriterTo) types.KoalaOctuplet {
 	h := poseidon2.NewMDHasher()
 	m.WriteTo(h)
 	d := h.Sum(nil)
-	return types.AsBytes32(d)
+	return types.MustBytesToKoalaOctuplet(d)
 }
 
 func sortByHKeyStable(subSegment []StateAccessLog) {

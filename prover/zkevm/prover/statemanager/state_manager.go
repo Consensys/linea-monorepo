@@ -107,9 +107,10 @@ func addSkipFlags(shomeiTraces *[][]statemanager.DecodedTrace) {
 	// AddressAndKey is a struct used as a key in order to identify skippable traces
 	// in our maps
 	type AddressAndKey struct {
-		address    types.Bytes32
-		storageKey types.Bytes32
+		address    types.FullBytes32
+		storageKey types.FullBytes32
 	}
+
 	// iterate over all the Shomei blocks
 	for blockNo, vec := range *shomeiTraces {
 		var (
@@ -126,14 +127,14 @@ func addSkipFlags(shomeiTraces *[][]statemanager.DecodedTrace) {
 			if err != nil {
 				panic(err)
 			}
-			b32 := types.LeftPadToBytes32(curAddress[:])
+			b32 := types.LeftPadToFullBytes32(curAddress[:])
 
 			if trace.Location != statemanager.WS_LOCATION {
 				// we have a STORAGE trace
 				// prepare the search key
 				searchKey := AddressAndKey{
 					address:    b32,
-					storageKey: trace.Underlying.HKey(),
+					storageKey: trace.Underlying.HKey().ToBytes32(),
 				}
 				previousIndex, isFound := traceMap[searchKey]
 				if isFound {

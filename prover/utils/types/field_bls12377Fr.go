@@ -3,28 +3,26 @@ package types
 import (
 	"fmt"
 	"io"
-	"math/big"
 
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// Bytes32 represents an arbtrary bytes string of 32 bytes. It is used to
+// Bls12377Fr represents an arbtrary bytes string of 32 bytes. It is used to
 // represent the output of non-field based hash function such as keccak256 or
 // sha256.
-type Bytes32 [32]byte
+type Bls12377Fr [32]byte
 
 // Marshal "e" into JSON format
-func (f Bytes32) MarshalJSON() ([]byte, error) {
+func (f Bls12377Fr) MarshalJSON() ([]byte, error) {
 	marshalled := MarshalHexBytesJSON(f[:])
 	return marshalled, nil
 }
 
 // Unmarshal an ethereum address from JSON format. The expected format is an hex
 // string.
-func (f *Bytes32) UnmarshalJSON(b []byte) error {
+func (f *Bls12377Fr) UnmarshalJSON(b []byte) error {
 
 	decoded, err := DecodeQuotedHexString(b)
 	if err != nil {
@@ -45,9 +43,9 @@ func (f *Bytes32) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// HashToBytes32 converts vortex.Hash to Bytes32.
-func HashToBytes32(hash vortex.Hash) Bytes32 {
-	var result Bytes32
+// HashToBls12377Fr converts vortex.Hash to Bls12377Fr.
+func HashToBls12377Fr(hash vortex.Hash) Bls12377Fr {
+	var result Bls12377Fr
 
 	for i := 0; i < 8; i++ {
 		startIndex := i * 4
@@ -58,38 +56,8 @@ func HashToBytes32(hash vortex.Hash) Bytes32 {
 	return result
 }
 
-// Bytes32ToOctuplet converts Bytes32 to []koalabear.Element
-func Bytes32ToOctuplet(input Bytes32) field.Octuplet {
-
-	var result field.Octuplet
-	for i := 0; i < 8; i++ {
-		startIndex := i * 4
-		segment := input[startIndex : startIndex+4]
-		var newElement koalabear.Element
-		if err := newElement.SetBytesCanonical(segment); err != nil {
-			panic(err)
-		}
-		result[i] = newElement
-	}
-	return result
-}
-
-// Bytes32ToOctupletLoose converts a Bytes32 to []koalabear.Element without
-// checking that the bytes are canonical representation of the Elements.
-func Bytes32ToOctupletLoose(input Bytes32) field.Octuplet {
-	var result field.Octuplet
-	for i := 0; i < 8; i++ {
-		startIndex := i * 4
-		segment := input[startIndex : startIndex+4]
-		var newElement koalabear.Element
-		newElement.SetBytes(segment)
-		result[i] = newElement
-	}
-	return result
-}
-
 // Writes the bytes32 into the given write.
-func (b Bytes32) WriteTo(w io.Writer) (int64, error) {
+func (b Bls12377Fr) WriteTo(w io.Writer) (int64, error) {
 	_, err := w.Write(b[:])
 	if err != nil {
 		panic(err) // hard forbid any error
@@ -98,50 +66,36 @@ func (b Bytes32) WriteTo(w io.Writer) (int64, error) {
 }
 
 // Reads a bytes32 from the given reader
-func (b *Bytes32) ReadFrom(r io.Reader) (int64, error) {
+func (b *Bls12377Fr) ReadFrom(r io.Reader) (int64, error) {
 	n, err := r.Read((*b)[:])
 	return int64(n), err
 }
 
-/*
-Cmp two Bytes32s. The Bytes32 are interpreted as big-endians big integers and
-then are compared. Returns:
-  - a < b : -1
-  - a == b : 0
-  - a > b : 1
-*/
-func Bytes32Cmp(a, b Bytes32) int {
-	var bigA, bigB big.Int
-	bigA.SetBytes(a[:])
-	bigB.SetBytes(b[:])
-	return bigA.Cmp(&bigB)
-}
-
-// Returns an hexstring representation of the Bytes32
-func (d Bytes32) Hex() string {
+// Returns an hexstring representation of the Bls12377Fr
+func (d Bls12377Fr) Hex() string {
 	return fmt.Sprintf("0x%x", [32]byte(d))
 }
 
-// Constructs a dummy Bytes32 from an integer
-func DummyBytes32(i int) (d Bytes32) {
+// Constructs a dummy Bls12377Fr from an integer
+func DummyBls12377Fr(i int) (d Bls12377Fr) {
 	d[31] = byte(i)
 	return d
 }
 
-// LeftPadToBytes32 pads a bytes32 element into a Bytes32 by adding zeroes to
+// LeftPadToBls12377Fr pads a bytes32 element into a Bls12377Fr by adding zeroes to
 // the left until the slice has 32 bytes
-func LeftPadToBytes32(b []byte) Bytes32 {
+func LeftPadToBls12377Fr(b []byte) Bls12377Fr {
 	if len(b) > 32 {
 		utils.Panic("Passed a string of %v element but the max is 32", len(b))
 	}
 	c := append(make([]byte, 32-len(b)), b...)
-	return AsBytes32(c)
+	return AsBls12377Fr(c)
 }
 
 // Create a bytes32 from a slice
-func AsBytes32(b []byte) (d Bytes32) {
+func AsBls12377Fr(b []byte) (d Bls12377Fr) {
 	// Sanity-check the length of the digest
-	if len(b) != len(Bytes32{}) {
+	if len(b) != len(Bls12377Fr{}) {
 		utils.Panic("Passed a string of %v bytes but expected %v", len(b), 32)
 	}
 	copy(d[:], b)
@@ -153,7 +107,7 @@ func AsBytes32(b []byte) (d Bytes32) {
 // if more than 32 characters are provided, the function will panic
 // function expects an even number of chars
 // Ox prefix is optional
-func Bytes32FromHex(s string) Bytes32 {
+func Bls12377FrFromHex(s string) Bls12377Fr {
 	b, err := utils.HexDecodeString(s)
 	if err != nil {
 		utils.Panic("not an hexadecimal %v", s)
@@ -162,7 +116,7 @@ func Bytes32FromHex(s string) Bytes32 {
 		utils.Panic("String passed should have even length <= 32 bytes")
 	}
 
-	var res Bytes32
+	var res Bls12377Fr
 	copy(res[32-len(b):], b)
 
 	var f [8]field.Element
@@ -175,12 +129,7 @@ func Bytes32FromHex(s string) Bytes32 {
 }
 
 // Returns a dummy digest
-func DummyDigest(i int) (d Bytes32) {
+func DummyDigest(i int) (d Bls12377Fr) {
 	d[31] = byte(i) // on the last one to not create overflows
 	return d
-}
-
-// ToOctuplet returns an octuplet from the Bytes32
-func (d Bytes32) ToOctuplet() field.Octuplet {
-	return Bytes32ToOctuplet(d)
 }
