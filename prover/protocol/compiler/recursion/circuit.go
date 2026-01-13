@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -83,13 +84,23 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		}
 	}
 
+	// Count public input slots: base field = 1 slot, extension field = 4 slots (coordinates)
+	numPubSlots := 0
+	for i := range comp.PublicInputs {
+		if constAcc, ok := comp.PublicInputs[i].Acc.(*accessors.FromConstAccessor); ok && !constAcc.IsBase() {
+			numPubSlots += 4 // extension field: 4 base field coordinates
+		} else {
+			numPubSlots++ // base field: 1 element
+		}
+	}
+
 	return &RecursionCircuit{
 		withoutGkr:         withoutGkr,
 		withExternalHasher: withExternalHasher,
 		PolyQuery:          polyQuery,
 		MerkleRoots:        merkleRoots,
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound, false),
-		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)),
+		Pubs:               make([]frontend.Variable, numPubSlots),
 		Commitments:        make([][blockSize]frontend.Variable, len(merkleRoots)),
 		Ys:                 make([]ExtFrontendVariable, len(polyQuery.Pols)),
 	}
@@ -118,9 +129,36 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 	w.Verify(apiGen.NativeApi)
 
-	for i := range r.Pubs {
-		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(apiGen.NativeApi, w)
-		api.AssertIsEqual(r.Pubs[i], pub.AsNative())
+	// Match r.Pubs with w.Spec.PublicInputs, flattening extension fields to coordinates
+	pubIdx := 0
+	for i := range w.Spec.PublicInputs {
+		acc := w.Spec.PublicInputs[i].Acc
+
+		// Check if this is an extension field accessor
+		if constAcc, ok := acc.(*accessors.FromConstAccessor); ok && !constAcc.IsBase() {
+			// Extension field: verify all 4 coordinates
+			if pubIdx+4 > len(r.Pubs) {
+				panic("mismatch between public input slots count")
+			}
+			extPub := acc.GetFrontendVariableExt(apiGen.NativeApi, w)
+			// Assert each coordinate: B0.A0, B0.A1, B1.A0, B1.A1
+			api.AssertIsEqual(r.Pubs[pubIdx], extPub.B0.A0.AsNative())
+			api.AssertIsEqual(r.Pubs[pubIdx+1], extPub.B0.A1.AsNative())
+			api.AssertIsEqual(r.Pubs[pubIdx+2], extPub.B1.A0.AsNative())
+			api.AssertIsEqual(r.Pubs[pubIdx+3], extPub.B1.A1.AsNative())
+			pubIdx += 4
+		} else {
+			// Base field: verify single element
+			if pubIdx >= len(r.Pubs) {
+				panic("mismatch between public input slots count")
+			}
+			pub := acc.GetFrontendVariable(apiGen.NativeApi, w)
+			api.AssertIsEqual(r.Pubs[pubIdx], pub.AsNative())
+			pubIdx++
+		}
+	}
+	if pubIdx != len(r.Pubs) {
+		panic("not all public input slots were matched")
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
@@ -150,17 +188,32 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		numRound       = comp.QueriesParams.Round(polyQuery.QueryID) + 1
 		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound, false)
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
-		circuit        = &RecursionCircuit{
-			WizardVerifier: wizardVerifier,
-			X:              Ext4FV(&params.ExtX),
-			Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
-			Pubs:           make([]frontend.Variable, len(pubs)),
-			PolyQuery:      polyQuery,
-		}
 	)
 
-	for i := range pubs {
-		circuit.Pubs[i] = pubs[i]
+	// Flatten pubs: base fields as-is, extension fields as 4 coordinates
+	pubSlots := make([]frontend.Variable, 0, len(pubs)*2) // rough estimate
+	pubIdx := 0
+	for i := range comp.PublicInputs {
+		if constAcc, ok := comp.PublicInputs[i].Acc.(*accessors.FromConstAccessor); ok && !constAcc.IsBase() {
+			// Extension field: flatten to 4 base field coordinates
+			extVal := constAcc.Ext
+			pubSlots = append(pubSlots, extVal.B0.A0, extVal.B0.A1, extVal.B1.A0, extVal.B1.A1)
+		} else {
+			// Base field element
+			if pubIdx >= len(pubs) {
+				break
+			}
+			pubSlots = append(pubSlots, pubs[pubIdx])
+			pubIdx++
+		}
+	}
+
+	circuit := &RecursionCircuit{
+		WizardVerifier: wizardVerifier,
+		X:              Ext4FV(&params.ExtX),
+		Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
+		Pubs:           pubSlots,
+		PolyQuery:      polyQuery,
 	}
 
 	for i := range params.ExtYs {

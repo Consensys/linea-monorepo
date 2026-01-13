@@ -318,7 +318,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode("post-recursion-arcane"),
+			compiler.WithDebugMode("post-recursion-arcane"),
 		),
 		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
@@ -337,7 +337,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode("post-recursion-arcane-2"),
+			compiler.WithDebugMode("post-recursion-arcane-2"),
 		),
 		vortex.Compile(
 			8,
