@@ -96,7 +96,7 @@ jobs:
   #   secrets: inherit
 
   constraints:
-    uses: ./.github/workflows/constraints-check-compilation.yml
+    uses: ./.github/workflows/tracer-constraints-check-compilation.yml
     if: ${{ inputs.constraints_changed == 'true' }}
     secrets: inherit
 
