@@ -247,6 +247,11 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		ParentAggregationFtxRollingHash:         cf.LastFinalizedFtxRollingHash,
 		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
 		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
+		// chain configuration
+		ChainID:              uint64(cfg.Layer2.ChainID),
+		BaseFee:              uint64(cfg.Layer2.BaseFee),
+		CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
+		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
 	}
 
 	// @alex: proofless jobs are triggered once during the migration introducing
