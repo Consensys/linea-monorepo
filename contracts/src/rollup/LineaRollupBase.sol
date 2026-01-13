@@ -589,7 +589,6 @@ abstract contract LineaRollupBase is
        * calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x140), 0x100)
        * // _finalForcedTransactionRollingHash
        * mstore(add(mPtr, 0x1e0), _finalForcedTransactionRollingHash)
-       * hashedFilteredAddresses
        */
 
       /**
@@ -610,6 +609,7 @@ abstract contract LineaRollupBase is
       let l2MerkleRootsHash := keccak256(mPtrMerkleRoot, mul(merkleRootsLen, 0x20))
       mstore(add(mPtr, 0x160), l2MerkleRootsHash)
       mstore(add(mPtr, 0x180), _verifierChainConfiguration)
+      // mstore(add(mPtr, 0x1A0), hashedFilteredAddresses)
 
       /*
        * PLACEHOLDER: THIS WILL BE USED ONCE PROVING CIRCUITS ARE READY
