@@ -129,7 +129,7 @@ export async function deployLineaRollupFixture() {
     },
   )) as unknown as TestLineaRollup;
 
-  return { verifier, lineaRollup, yieldManager };
+  return { verifier, lineaRollup, yieldManager, roleAddresses };
 }
 
 async function deployTestPlonkVerifierForDataAggregation(): Promise<string> {

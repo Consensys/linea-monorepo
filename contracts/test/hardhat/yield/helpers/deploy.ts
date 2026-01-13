@@ -2,8 +2,6 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers, upgrades } from "hardhat";
 
 import {
-  LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
   YIELD_MANAGER_PAUSE_TYPES_ROLES,
   YIELD_MANAGER_UNPAUSE_TYPES_ROLES,
   YIELD_MANAGER_OPERATOR_ROLES,
@@ -41,8 +39,7 @@ import {
 import { YieldManagerInitializationData } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
-import { deployLineaRollupFixture, reinitializeLineaRollupFixtureV7 } from "../../rollup/helpers/deploy";
-import { LineaRollupV7ReinitializationData } from "../../rollup/helpers/types";
+import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { buildVendorInitializationData } from "./mocks";
 import { incrementBalance } from "./setup";
@@ -338,7 +335,7 @@ export async function deployYieldManagerIntegrationTestFixture() {
   const { securityCouncil, l2YieldRecipient, nativeYieldOperator } = await loadFixture(getAccountsFixture);
   const yieldManagerRoleAddresses = await loadFixture(getYieldManagerRoleAddressesFixture);
   // Deploy LineaRollup
-  const { lineaRollup, roleAddresses: lineaRollupRoleAddresses } = await loadFixture(deployLineaRollupFixture);
+  const { lineaRollup } = await loadFixture(deployLineaRollupFixture);
   const l1MessageServiceAddress = await lineaRollup.getAddress();
 
   // Deploy YieldManager
@@ -404,20 +401,10 @@ export async function deployYieldManagerIntegrationTestFixture() {
   await incrementBalance(yieldManagerAddress, ONE_ETHER); // Connect Deposit
   await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, buildVendorInitializationData());
 
-  // Reinit LineaRollup with actual YieldManager
-  const reinitData: LineaRollupV7ReinitializationData = {
-    pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-    unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-    roleAddresses: [
-      ...lineaRollupRoleAddresses,
-      {
-        role: YIELD_PROVIDER_STAKING_ROLE,
-        addressWithRole: await nativeYieldOperator.getAddress(),
-      },
-    ],
-    yieldManager: yieldManagerAddress,
-  };
-  await reinitializeLineaRollupFixtureV7(lineaRollup, reinitData);
+  await lineaRollup.connect(securityCouncil).setYieldManager(yieldManagerAddress);
+  await lineaRollup
+    .connect(securityCouncil)
+    .grantRole(YIELD_PROVIDER_STAKING_ROLE, await nativeYieldOperator.getAddress());
 
   // Deploy EIP-4788 Beacon Proof utils
   const sszMerkleTree = await deploySSZMerkleTree();
