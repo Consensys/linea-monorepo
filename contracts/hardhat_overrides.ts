@@ -3,11 +3,12 @@ const useViaIR = process.env.ENABLE_VIA_IR === "true";
 const lineaOverride = {
   version: "0.8.33",
   settings: {
-    evmVersion: "osaka",
+    viaIR: useViaIR,
     optimizer: {
       enabled: true,
       runs: 10_000,
     },
+    evmVersion: "osaka",
   },
 };
 
