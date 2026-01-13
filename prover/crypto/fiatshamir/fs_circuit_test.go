@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -99,21 +98,21 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 	RandomManyIntegers := fs.RandomManyIntegers(10, 16)
 
 	for i := 0; i < 10; i++ {
-		witness.A[i] = zk.ValueFromKoala(A[i])
+		witness.A[i] = field.NewFrontendFromKoala(A[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomA[i] = zk.ValueFromKoala(RandomA[i])
+		witness.RandomA[i] = field.NewFrontendFromKoala(RandomA[i])
 	}
 
 	for i := 0; i < 10; i++ {
 		witness.B[i] = gnarkfext.AssignFromExt(B[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomB[i] = field.NewFromKoala(RandomB[i])
+		witness.RandomB[i] = field.NewFrontendFromKoala(RandomB[i])
 	}
 
 	for i := 0; i < 8; i++ {
-		witness.RandomField[i] = zk.ValueFromKoala(RandomField[i])
+		witness.RandomField[i] = field.NewFrontendFromKoala(RandomField[i])
 	}
 
 	witness.RandomFieldExt = gnarkfext.AssignFromExt(RandomFieldExt)

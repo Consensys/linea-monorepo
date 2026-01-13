@@ -8,8 +8,8 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,18 +50,18 @@ func TestGnarkVerifier(t *testing.T) {
 			circuit.Proof.Columns[i][j] = make([]frontend.Variable, len(proof.Columns[i][j]))
 			witness.Proof.Columns[i][j] = make([]frontend.Variable, len(proof.Columns[i][j]))
 			for k := 0; k < len(proof.Columns[i][j]); k++ {
-				witness.Proof.Columns[i][j][k] = zk.ValueFromKoala(proof.Columns[i][j][k])
+				witness.Proof.Columns[i][j][k] = field.NewFrontendFromKoala(proof.Columns[i][j][k])
 			}
 		}
 	}
-	circuit.Proof.LinearCombination = make([]gnarkfext.E4Gen, proof.LinearCombination.Len())
-	witness.Proof.LinearCombination = make([]gnarkfext.E4Gen, proof.LinearCombination.Len())
+	circuit.Proof.LinearCombination = make([]gnarkfext.Element, proof.LinearCombination.Len())
+	witness.Proof.LinearCombination = make([]gnarkfext.Element, proof.LinearCombination.Len())
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
-		witness.Proof.LinearCombination[i] = gnarkfext.NewE4Gen(proof.LinearCombination.GetExt(i))
+		witness.Proof.LinearCombination[i] = gnarkfext.AssignFromExt(proof.LinearCombination.GetExt(i))
 	}
 
-	witness.Vi.Alpha = gnarkfext.NewE4Gen(vi.Alpha)
-	witness.Vi.X = gnarkfext.NewE4Gen(vi.X)
+	witness.Vi.Alpha = gnarkfext.AssignFromExt(vi.Alpha)
+	witness.Vi.X = gnarkfext.AssignFromExt(vi.X)
 
 	circuit.Vi.EntryList = make([]frontend.Variable, len(vi.EntryList))
 	witness.Vi.EntryList = make([]frontend.Variable, len(vi.EntryList))
@@ -69,13 +69,13 @@ func TestGnarkVerifier(t *testing.T) {
 		witness.Vi.EntryList[i] = vi.EntryList[i]
 	}
 
-	circuit.Vi.Ys = make([][]gnarkfext.E4Gen, len(vi.Ys))
-	witness.Vi.Ys = make([][]gnarkfext.E4Gen, len(vi.Ys))
+	circuit.Vi.Ys = make([][]gnarkfext.Element, len(vi.Ys))
+	witness.Vi.Ys = make([][]gnarkfext.Element, len(vi.Ys))
 	for i := 0; i < len(vi.Ys); i++ {
-		circuit.Vi.Ys[i] = make([]gnarkfext.E4Gen, len(vi.Ys[i]))
-		witness.Vi.Ys[i] = make([]gnarkfext.E4Gen, len(vi.Ys[i]))
+		circuit.Vi.Ys[i] = make([]gnarkfext.Element, len(vi.Ys[i]))
+		witness.Vi.Ys[i] = make([]gnarkfext.Element, len(vi.Ys[i]))
 		for j := 0; j < len(vi.Ys[i]); j++ {
-			witness.Vi.Ys[i][j] = gnarkfext.NewE4Gen(vi.Ys[i][j])
+			witness.Vi.Ys[i][j] = gnarkfext.AssignFromExt(vi.Ys[i][j])
 		}
 	}
 

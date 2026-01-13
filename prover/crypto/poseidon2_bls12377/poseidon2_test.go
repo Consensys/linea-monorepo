@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -140,7 +139,7 @@ func getGnarkMDHasherCircuitKoalabearWitness() (*GnarkMDHasherCircuitKoalabear, 
 	circuit.Inputs = make([]frontend.Variable, nbElmts)
 	witness.Inputs = make([]frontend.Variable, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		witness.Inputs[i] = zk.ValueFromKoala(vals[i])
+		witness.Inputs[i] = field.NewFrontendFromKoala(vals[i])
 	}
 	witness.Ouput = res.String()
 

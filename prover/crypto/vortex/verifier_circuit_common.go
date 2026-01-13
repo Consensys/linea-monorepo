@@ -9,30 +9,56 @@ import (
 
 type GnarkProof struct {
 	Columns           [][][]frontend.Variable
-	LinearCombination []gnarkfext.E4Gen
+	LinearCombination []gnarkfext.Element
 }
 
 type GnarkVerifierInput struct {
 
 	// alpha random coin used for the linear combination
-	Alpha gnarkfext.E4Gen
+	Alpha gnarkfext.Element
 
 	// X is the univariate evaluation point
-	X gnarkfext.E4Gen
+	X gnarkfext.Element
 
 	// Ys are the alleged evaluation at point X
-	Ys [][]gnarkfext.E4Gen
+	Ys [][]gnarkfext.Element
 
 	// EntryList is the random coin representing the columns to open.
 	EntryList []frontend.Variable
 }
 
 func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVerifierInput, roots []frontend.Variable) error {
-	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+
+	linearCombination := make([]gnarkfext.E4Gen, len(proof.LinearCombination))
+	for i := 0; i < len(proof.LinearCombination); i++ {
+		linearCombination[i] = gnarkfext.NewE4GenFromFrontendExt(proof.LinearCombination[i])
+	}
+	alpha := gnarkfext.NewE4GenFromFrontendExt(vi.Alpha)
+	x := gnarkfext.NewE4GenFromFrontendExt(vi.X)
+
+	ys := make([][]gnarkfext.E4Gen, len(vi.Ys))
+	for i := 0; i < len(vi.Ys); i++ {
+		ys[i] = make([]gnarkfext.E4Gen, len(vi.Ys[i]))
+		for j := 0; j < len(vi.Ys[i]); j++ {
+			ys[i][j] = gnarkfext.NewE4GenFromFrontendExt(vi.Ys[i][j])
+		}
+	}
+
+	columns := make([][][]zk.WrappedVariable, len(proof.Columns))
+	for i := 0; i < len(proof.Columns); i++ {
+		columns[i] = make([][]zk.WrappedVariable, len(proof.Columns[i]))
+		for j := 0; j < len(proof.Columns[i]); j++ {
+			columns[i][j] = make([]zk.WrappedVariable, len(proof.Columns[i][j]))
+			for k := 0; k < len(proof.Columns[i][j]); k++ {
+				columns[i][j][k] = zk.WrapFrontendVariable(proof.Columns[i][j][k])
+			}
+		}
+	}
+	err := GnarkCheckLinComb(api, linearCombination, vi.EntryList, alpha, columns)
 	if err != nil {
 		return err
 	}
-	err = GnarkCheckStatement(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+	err = GnarkCheckStatement(api, params, linearCombination, ys, x, alpha)
 	return err
 }
 
@@ -67,7 +93,7 @@ func GnarkCheckStatement(api frontend.API, params Params, linComb []gnarkfext.E4
 func GnarkCheckLinComb(
 	api frontend.API, linComb []gnarkfext.E4Gen,
 	entryList []frontend.Variable, alpha gnarkfext.E4Gen,
-	columns [][][]frontend.Variable) error {
+	columns [][][]zk.WrappedVariable) error {
 
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
@@ -79,7 +105,7 @@ func GnarkCheckLinComb(
 	for j, selectedColID := range entryList {
 
 		// Will carry the concatenation of the columns for the same entry j
-		fullCol := []frontend.Variable{}
+		fullCol := []zk.WrappedVariable{}
 
 		for i := range numCommitments {
 			// Entries of the selected columns #j contained in the commitment #i.
