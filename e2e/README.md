@@ -6,6 +6,7 @@ Run `make start-env-with-tracing-v2-ci` from root directory to spin up local env
 
 
 ## Run tests
+Execute from ./e2e
 | ENV   | Command                                       | Description                                                          |
 |-------|-----------------------------------------------|----------------------------------------------------------------------|
 | Local | `pnpm run test:e2e:local`                     | Uses already running docker environment and deployed smart contracts |

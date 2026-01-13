@@ -71,6 +71,7 @@ plugin-linea-extra-data-set-min-gas-price-enabled=false
 plugin-linea-estimate-gas-min-margin="1.2"
 plugin-linea-limitless-enabled=false
 strict-tx-replay-protection-enabled=false
+plugin-linea-delegate-code-tx-enabled=true
 
 # should uncomment only when the linea-sequencer plugin supports liveness
 plugin-linea-liveness-enabled=true

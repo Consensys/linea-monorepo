@@ -14,11 +14,8 @@ describe("EIP-7702 test suite", () => {
   // Helper function to deploy a simple test contract for delegation
   // This matches the TestEIP7702Delegation contract from contracts/src/_testing/mocks/base/TestEIP7702Delegation.sol
   const deployTestContract = async (deployer: ethers.Wallet) => {
-    const TestEIP7702DelegationABI = [
-      "event Log(string message)",
-      "function initialize() external"
-    ];
-    
+    const TestEIP7702DelegationABI = ["event Log(string message)", "function initialize() external"];
+
     // Bytecode for TestEIP7702Delegation contract
     // This is the compiled output of the contract which emits a Log event with message "Hello, world computer!"
     // Note: In production, this should ideally be imported from compiled artifacts
@@ -106,7 +103,7 @@ describe("EIP-7702 test suite", () => {
       // Verify delegation was set up correctly
       const code = await provider.getCode(account.address);
       logger.debug(`Code at EOA after delegation: ${code}`);
-      
+
       // EIP-7702 delegation code starts with 0xef0100
       expect(code.startsWith("0xef0100")).toBe(true);
 
@@ -146,59 +143,4 @@ describe("EIP-7702 test suite", () => {
     },
     150_000, // 150 second timeout
   );
-
-  it.concurrent("Should verify EIP-7702 delegation code format", async () => {
-    const account = await l2AccountManager.generateAccount();
-    const provider = config.getL2Provider();
-
-    logger.debug(`Testing EIP-7702 delegation code format with account: ${account.address}`);
-
-    // Deploy a simple contract to use as delegation target
-    const delegationContract = await deployTestContract(account);
-    const targetAddress = await delegationContract.getAddress();
-
-    logger.debug(`Delegation target deployed at: ${targetAddress}`);
-
-    // EOA should have no code initially
-    let code = await provider.getCode(account.address);
-    expect(code).toEqual("0x");
-
-    // Create and send EIP-7702 authorization
-    const network = await provider.getNetwork();
-    const currentNonce = await provider.getTransactionCount(account.address);
-    
-    const authorization: Authorization = await account.authorize({
-      address: targetAddress,
-      nonce: currentNonce + 1,
-      chainId: network.chainId,
-    });
-
-    const { maxPriorityFeePerGas, maxFeePerGas } = await lineaEstimateGasClient.lineaEstimateGas(
-      account.address,
-      account.address,
-    );
-
-    const tx = await account.sendTransaction({
-      type: 4,
-      to: account.address,
-      authorizationList: [authorization],
-      data: "0x",
-      gasLimit: DEFAULT_GAS_LIMIT,
-      value: 0n,
-      maxPriorityFeePerGas,
-      maxFeePerGas,
-    });
-
-    await tx.wait();
-    logger.debug(`Type 4 transaction for delegation verification sent: ${tx.hash}`);
-
-    // After delegation, EOA should have EIP-7702 delegation code
-    code = await provider.getCode(account.address);
-    
-    // EIP-7702 spec: delegation designation format is 0xef0100 || address
-    expect(code).toMatch(/^0xef0100/);
-    expect(code.length).toBeGreaterThan(8); // 0xef0100 (6 chars) + address (40 chars) = 46+ chars
-
-    logger.debug(`Delegation code verified: ${code}`);
-  });
 });
