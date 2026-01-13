@@ -5,7 +5,6 @@ import {
   generateRoleAssignments,
   getEnvVarOrDefault,
   getRequiredEnvVar,
-  getDeployedContractAddress,
   LogContractDeployment,
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
@@ -17,16 +16,15 @@ import {
   YIELD_MANAGER_SECURITY_COUNCIL_ROLES,
   YIELD_MANAGER_UNPAUSE_TYPES_ROLES,
 } from "../common/constants";
-import { YieldManagerInitializationData } from "contracts/test/yield/helpers";
+import { YieldManagerInitializationData } from "../test/hardhat/yield/helpers/types";
 import { YieldManager } from "contracts/typechain-types";
-import { GI_FIRST_VALIDATOR, GI_PENDING_PARTIAL_WITHDRAWALS_ROOT } from "contracts/test/common/constants";
+import { GI_FIRST_VALIDATOR, GI_PENDING_PARTIAL_WITHDRAWALS_ROOT } from "../test/hardhat/common/constants";
 
 // Deploys YieldManager, ValidatorContainerProofVerifier and LidoStVaultYieldProviderFactory
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, ethers, getNamedAccounts } = hre;
+  const { ethers, getNamedAccounts } = hre;
 
   const contractName = "YieldManager";
-  const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
   // YieldManager DEPLOYED AS UPGRADEABLE PROXY
   const lineaRollupAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
@@ -65,12 +63,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const pauseTypeRoles = getEnvVarOrDefault("YIELD_MANAGER_PAUSE_TYPES_ROLES", YIELD_MANAGER_PAUSE_TYPES_ROLES);
   const unpauseTypeRoles = getEnvVarOrDefault("YIELD_MANAGER_UNPAUSE_TYPES_ROLES", YIELD_MANAGER_UNPAUSE_TYPES_ROLES);
 
-  if (!existingContractAddress) {
-    console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
-  } else {
-    console.log(`Deploying new version, NB: ${existingContractAddress} will be overwritten if env SAVE_ADDRESS=true.`);
-  }
-
   /********************************************************************
    *                          YieldManager                            *
    ********************************************************************/
@@ -98,7 +90,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await LogContractDeployment(contractName, yieldManager);
   const yieldManagerAddress = await yieldManager.getAddress();
-  await tryVerifyContractWithConstructorArgs(yieldManagerAddress, "contracts/yield/YieldManager.sol:YieldManager", [
+  await tryVerifyContractWithConstructorArgs(yieldManagerAddress, "src/yield/YieldManager.sol:YieldManager", [
     lineaRollupAddress,
   ]);
 
@@ -138,7 +130,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const factoryAddress = await factory.getAddress();
   await tryVerifyContractWithConstructorArgs(
     factoryAddress,
-    "contracts/yield/LidoStVaultYieldProviderFactory.sol:LidoStVaultYieldProviderFactory",
+    "src/yield/LidoStVaultYieldProviderFactory.sol:LidoStVaultYieldProviderFactory",
     [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifierAddress],
   );
 
@@ -154,7 +146,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log("Created LidoStVaultYieldProvider at ", yieldProvider);
   await tryVerifyContractWithConstructorArgs(
     yieldProvider,
-    "contracts/yield/LidoStVaultYieldProvider.sol:LidoStVaultYieldProvider",
+    "src/yield/LidoStVaultYieldProvider.sol:LidoStVaultYieldProvider",
     [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifierAddress],
   );
 };

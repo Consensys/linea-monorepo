@@ -12,7 +12,7 @@ const func: DeployFunction = async function () {
   const contract = await deployFromFactory(contractName, provider, lineaRollupAddress);
   const yieldManagerAddress = await contract.getAddress();
   await LogContractDeployment(contractName, contract);
-  await tryVerifyContractWithConstructorArgs(yieldManagerAddress, "contracts/yield/YieldManager.sol:YieldManager", [
+  await tryVerifyContractWithConstructorArgs(yieldManagerAddress, "src/yield/YieldManager.sol:YieldManager", [
     lineaRollupAddress,
   ]);
 };
