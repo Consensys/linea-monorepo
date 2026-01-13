@@ -255,7 +255,7 @@ public class ZkCounter implements LineCountingTracer {
         wcp, // need MMU/TxnData/Oob etc ... to be counted
         // traceless modules
         blakeRounds, // blakeEffectiveCall is counted and already rejects all BLAKE calls
-        blake2f //
+        blake2f // not counting blake2f, limited by number of calls and rounds already
         );
   }
 
