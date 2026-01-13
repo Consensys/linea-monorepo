@@ -489,6 +489,16 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
         weiToGweiNumber(result.rebalanceAmount),
         result.rebalanceDirection,
       );
+      // Clear the opposite direction to prevent stale metrics
+      if (result.rebalanceDirection === RebalanceDirection.STAKE) {
+        this.metricsUpdater.setReportedRebalanceRequirement(vaultAddress, 0, RebalanceDirection.UNSTAKE);
+      } else if (result.rebalanceDirection === RebalanceDirection.UNSTAKE) {
+        this.metricsUpdater.setReportedRebalanceRequirement(vaultAddress, 0, RebalanceDirection.STAKE);
+      } else if (result.rebalanceDirection === RebalanceDirection.NONE) {
+        // Clear both directions when direction is NONE
+        this.metricsUpdater.setReportedRebalanceRequirement(vaultAddress, 0, RebalanceDirection.STAKE);
+        this.metricsUpdater.setReportedRebalanceRequirement(vaultAddress, 0, RebalanceDirection.UNSTAKE);
+      }
     }
     return result;
   }
@@ -579,6 +589,12 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
         weiToGweiNumber(absRebalanceRequirement),
         directionForMetrics,
       );
+      // Clear the opposite direction to prevent stale metrics
+      if (directionForMetrics === RebalanceDirection.STAKE) {
+        this.metricsUpdater.setActualRebalanceRequirement(vaultAddress, 0, RebalanceDirection.UNSTAKE);
+      } else if (directionForMetrics === RebalanceDirection.UNSTAKE) {
+        this.metricsUpdater.setActualRebalanceRequirement(vaultAddress, 0, RebalanceDirection.STAKE);
+      }
     }
 
     if (absRebalanceRequirement < toleranceBand) {
