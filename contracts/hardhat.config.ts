@@ -60,6 +60,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       hardfork: "osaka",
+      // NB: Remove when ready for Deploying to Mainnet
+      allowUnlimitedContractSize: true,
     },
     mainnet: {
       accounts: [process.env.MAINNET_PRIVATE_KEY || EMPTY_HASH],
