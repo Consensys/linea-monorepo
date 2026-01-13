@@ -85,7 +85,6 @@ describe("Linea Rollup contract", () => {
   let forcedTransactionGatewayAddress: string;
   let upgradePauseTypeRoles: Typed | IPauseManager.PauseTypeRoleStruct[] = [];
   let upgradeUnpauseTypeRoles: Typed | IPauseManager.PauseTypeRoleStruct[] = [];
-  let upgradeArgs: (IPauseManager.PauseTypeRoleStruct[] | IPermissionsManager.RoleAddressStruct[])[] = [];
   let upgradeRoleAddresses: IPermissionsManager.RoleAddressStruct[];
 
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentStateRootHash } =
@@ -120,64 +119,6 @@ describe("Linea Rollup contract", () => {
 
     ({ forcedTransactionGateway } = await loadFixture(deployForcedTransactionGatewayFixture));
     forcedTransactionGatewayAddress = await forcedTransactionGateway.getAddress();
-  });
-
-  describe("Upgrading", () => {
-    it("Should be able to upgrade", async () => {
-      // Deploy new LineaRollup implementation
-      const newLineaRollupFactory = await ethers.getContractFactory(
-        "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
-      );
-
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-        call: { fn: "reinitializeV8", args: upgradeArgs },
-        kind: "transparent",
-        unsafeAllowRenames: true,
-        unsafeAllow: ["incorrect-initializer-order"],
-      });
-
-      await newLineaRollup.waitForDeployment();
-
-      expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
-    });
-
-    it("Should fail to upgrade twice", async () => {
-      // Deploy new LineaRollup implementation
-      const newLineaRollupFactory = await ethers.getContractFactory(
-        "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
-      );
-
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-        call: { fn: "reinitializeV8", args: upgradeArgs },
-        kind: "transparent",
-        unsafeAllowRenames: true,
-        unsafeAllow: ["incorrect-initializer-order"],
-      });
-
-      await newLineaRollup.waitForDeployment();
-
-      expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
-
-      await expectRevertWithReason(
-        upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-          call: { fn: "reinitializeV8", args: upgradeArgs },
-          kind: "transparent",
-          unsafeAllowRenames: true,
-          unsafeAllow: ["incorrect-initializer-order"],
-        }),
-        "Initializable: contract is already initialized",
-      );
-    });
-
-    it("Should fail to upgrade if not proxy admin", async () => {
-      await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup
-          .connect(nonAuthorizedAccount)
-          .reinitializeV8(upgradeRoleAddresses, upgradePauseTypeRoles, upgradeUnpauseTypeRoles),
-        "CallerNotProxyAdmin",
-      );
-    });
   });
 
   describe("Fallback/Receive tests", () => {
@@ -410,7 +351,7 @@ describe("Linea Rollup contract", () => {
 
     it("Should have the correct contract version", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("7.0");
+      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("8.0");
     });
 
     it("Should revert if the initialize function is called a second time", async () => {

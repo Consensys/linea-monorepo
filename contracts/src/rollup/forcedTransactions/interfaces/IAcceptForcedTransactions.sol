@@ -9,9 +9,9 @@ pragma solidity ^0.8.30;
 interface IAcceptForcedTransactions {
   /**
    * @notice Emitted when the forced transaction fee is set.
-   * @param forcedTransactionFee The forced transaction fee.
+   * @param forcedTransactionFeeInWei The forced transaction fee in wei.
    */
-  event ForcedTransactionFeeSet(uint256 forcedTransactionFee);
+  event ForcedTransactionFeeSet(uint256 forcedTransactionFeeInWei);
 
   /**
    * @dev Thrown when another forced transaction is expected on the computed L2 block or the previous block number is higher than the submitted one.
@@ -51,7 +51,7 @@ interface IAcceptForcedTransactions {
   /**
    * @notice Sets the forced transaction fee.
    * @dev Only callable by an account with the FORCED_TRANSACTION_FEE_SETTER_ROLE.
-   * @param _forcedTransactionFee The forced transaction fee.
+   * @param _forcedTransactionFeeInWei The forced transaction fee in wei.
    */
-  function setForcedTransactionFee(uint256 _forcedTransactionFee) external;
+  function setForcedTransactionFee(uint256 _forcedTransactionFeeInWei) external;
 }

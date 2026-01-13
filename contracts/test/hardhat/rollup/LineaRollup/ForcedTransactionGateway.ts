@@ -274,10 +274,10 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     });
 
     it("Should set the forced transaction fee", async () => {
-      let forcedTransactionFee = await lineaRollup.forcedTransactionFee();
+      let forcedTransactionFee = await lineaRollup.forcedTransactionFeeInWei();
       expect(forcedTransactionFee).to.be.equal(0n);
       await lineaRollup.connect(securityCouncil).setForcedTransactionFee(FORCED_TRANSACTION_FEE);
-      forcedTransactionFee = await lineaRollup.forcedTransactionFee();
+      forcedTransactionFee = await lineaRollup.forcedTransactionFeeInWei();
       expect(forcedTransactionFee).to.be.equal(FORCED_TRANSACTION_FEE);
     });
 

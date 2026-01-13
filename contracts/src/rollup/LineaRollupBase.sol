@@ -114,8 +114,8 @@ abstract contract LineaRollupBase is
   mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) public forcedTransactionRollingHashes;
 
   // TODO check the layout of this variable
-  /// @dev The forced transaction fee.
-  uint256 public forcedTransactionFee;
+  /// @dev The forced transaction fee in wei.
+  uint256 public forcedTransactionFeeInWei;
 
   /// @dev Keep 50 free storage slots for inheriting contracts.
   uint256[50] private __gap_LineaRollup;
@@ -212,21 +212,21 @@ abstract contract LineaRollupBase is
       finalizedState = currentFinalizedState;
       previousForcedTransactionRollingHash = forcedTransactionRollingHashes[nextForcedTransactionNumber - 1];
       currentFinalizedL2BlockNumber = currentL2BlockNumber;
-      forcedTransactionFeeAmount = forcedTransactionFee;
+      forcedTransactionFeeAmount = forcedTransactionFeeInWei;
     }
   }
 
   /**
    * @notice Sets the forced transaction fee.
    * @dev FORCED_TRANSACTION_FEE_SETTER_ROLE is required to set the forced transaction fee.
-   * @param _forcedTransactionFee The forced transaction fee.
+   * @param _forcedTransactionFeeInWei The forced transaction fee in wei.
    */
   function setForcedTransactionFee(
-    uint256 _forcedTransactionFee
+    uint256 _forcedTransactionFeeInWei
   ) external onlyRole(FORCED_TRANSACTION_FEE_SETTER_ROLE) {
-    require(_forcedTransactionFee > 0, IGenericErrors.ZeroValueNotAllowed());
-    forcedTransactionFee = _forcedTransactionFee;
-    emit ForcedTransactionFeeSet(_forcedTransactionFee);
+    require(_forcedTransactionFeeInWei > 0, IGenericErrors.ZeroValueNotAllowed());
+    forcedTransactionFeeInWei = _forcedTransactionFeeInWei;
+    emit ForcedTransactionFeeSet(_forcedTransactionFeeInWei);
   }
 
   /**
