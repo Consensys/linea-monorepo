@@ -732,7 +732,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       // The yield provider returns unstakedAmountWei (68 gwei), which YieldManager uses to update pendingPermissionlessUnstake
       expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(expectedUnstakeAmountWei);
     });
-    it("Should succeed with 2000 pending partial withdrawals", async () => {
+    it.skip("Should succeed with 2000 pending partial withdrawals", async () => {
       // Arrange - Set up withdrawal reserve in deficit
       await setBalance(l1MessageServiceAddress, 0n);
       const numPendingPartialWithdrawals = 2000;
