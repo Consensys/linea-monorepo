@@ -59,6 +59,7 @@ plugin-linea-bundles-forward-urls=["http://sequencer:8545"]
 plugin-linea-bundles-forward-retry-delay=1000
 plugin-linea-bundles-forward-timeout=5000
 plugin-linea-limitless-enabled=false
+plugin-linea-delegate-code-tx-enabled=true
 
 Xin-process-rpc-enabled=true
 Xin-process-rpc-apis=["ETH", "MINER"]
