@@ -8,20 +8,21 @@ import (
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bls12381"
 	"github.com/consensys/gnark/std/math/bitslice"
 	"github.com/consensys/gnark/std/math/emulated"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 const (
-	nbBits  = 128        // we use 128 bits limbs for the BLS12-381 field
+	nbBits  = 16         // we use 128 bits limbs for the BLS12-381 field
 	nbBytes = nbBits / 8 // 128 bits = 16 bytes
 
 	// BLS scalar field is 255 bits, and we use 2 limbs of 128 bits to represent
-	nbFrLimbs = 2 // (x_1, x_0) MSB order
+	nbFrLimbs = 16 // (x_1, x_0) MSB order
 
 	// BLS base field is 381 bits, and we use 4 limbs of 128 bits to represent
 	// it. However, the highest limb is always zero, but the arithmetization
 	// keeps it for nice alignment. We pass it to the circuit but check
 	// explicitly that its 0.
-	nbFpLimbs = 4 // (x_3, x_2, x_1, x_0) MSB order
+	nbFpLimbs = 32 // (x_3, x_2, x_1, x_0) MSB order
 
 	nbG1Limbs = 2 * nbFpLimbs  // (Ax, Ay)
 	nbG2Limbs = 4 * nbFpLimbs  // (BxIm, BxRe, ByIm, ByRe)
@@ -72,19 +73,35 @@ type g1ElementWizard struct {
 }
 
 func (c g1ElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) *sw_bls12381.G1Affine {
-	PXlimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	PYlimbs := make([]frontend.Variable, fpParams.NbLimbs())
-
 	// gnark represents the BLS12-381 Fp element on 6 limbs of 64 bits.
 	// Arithmetization uses 4 limbs of 128 bits, but the MSB limb is always 0.
-	api.AssertIsEqual(c.P[0], 0)
-	api.AssertIsEqual(c.P[nbFpLimbs], 0)
-	for i := range nbFpLimbs - 1 {
-		PXlimbs[len(PXlimbs)-(2*i+2)], PXlimbs[len(PXlimbs)-(2*i+1)] = bitslice.Partition(api, c.P[i+1], 64, bitslice.WithNbDigits(128))
-		PYlimbs[len(PYlimbs)-(2*i+2)], PYlimbs[len(PYlimbs)-(2*i+1)] = bitslice.Partition(api, c.P[nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
+	// Arithmetization layout for G1 point P:
+	//  - limbs 0-32 are X
+	//  - limbs 32-64 are Y
+	//
+	// Furthermore, arithmetization uses orders the limbs in HI-LO format:
+	//  - limbs 0-16 are X_HI
+	//  - limbs 16-32 are X_LO
+	//  - limbs 32-48 are Y_HI
+	//  - limbs 48-64 are Y_LO
+	//
+	// As BLS12-381 requires only 381 bits, then highest 0 limbs are expected to be 0:
+	// - limbs 0-8 of X_HI are 0
+	// - limbs 0-8 of Y_HI are 0
+	for i := range 8 {
+		api.AssertIsEqual(c.P[i], 0)
+		api.AssertIsEqual(c.P[nbFpLimbs+i], 0)
 	}
-	PX := fp.NewElement(PXlimbs)
-	PY := fp.NewElement(PYlimbs)
+	PX16 := make([]frontend.Variable, 24)
+	copy(PX16[0:8], c.P[24:32])
+	copy(PX16[8:16], c.P[16:24])
+	copy(PX16[16:24], c.P[8:16])
+	PY16 := make([]frontend.Variable, 24)
+	copy(PY16[0:8], c.P[56:64])
+	copy(PY16[8:16], c.P[48:56])
+	copy(PY16[16:24], c.P[40:48])
+	PX := gnarkutil.EmulatedFromLimbSlice(api, fp, PX16, 16)
+	PY := gnarkutil.EmulatedFromLimbSlice(api, fp, PY16, 16)
 	P := sw_bls12381.G1Affine{
 		X: *PX,
 		Y: *PY,
@@ -97,34 +114,47 @@ type g2ElementWizard struct {
 }
 
 func (c g2ElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) *sw_bls12381.G2Affine {
-	QXAlimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	QXBlimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	QYAlimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	QYBlimbs := make([]frontend.Variable, fpParams.NbLimbs())
-
-	// assert that the MSB limb is 0 in arithmetization
-	for i := range 4 {
-		api.AssertIsEqual(c.Q[i*nbFpLimbs], 0)
+	for i := range 8 {
+		api.AssertIsEqual(c.Q[i], 0)
+		api.AssertIsEqual(c.Q[nbFpLimbs+i], 0)
+		api.AssertIsEqual(c.Q[2*nbFpLimbs+i], 0)
+		api.AssertIsEqual(c.Q[3*nbFpLimbs+i], 0)
 	}
+	QXA16 := make([]frontend.Variable, 24)
+	QXB16 := make([]frontend.Variable, 24)
+	QYA16 := make([]frontend.Variable, 24)
+	QYB16 := make([]frontend.Variable, 24)
+	// 0-32 are XA
+	copy(QXA16[0:8], c.Q[24:32])
+	copy(QXA16[8:16], c.Q[16:24])
+	copy(QXA16[16:24], c.Q[8:16])
+	// 32-64 are XB
+	copy(QXB16[0:8], c.Q[56:64])
+	copy(QXB16[8:16], c.Q[48:56])
+	copy(QXB16[16:24], c.Q[40:48])
+	// 64-96 are YA
+	copy(QYA16[0:8], c.Q[88:96])
+	copy(QYA16[8:16], c.Q[80:88])
+	copy(QYA16[16:24], c.Q[72:80])
+	// 96-128 are YB
+	copy(QYB16[0:8], c.Q[120:128])
+	copy(QYB16[8:16], c.Q[112:120])
+	copy(QYB16[16:24], c.Q[104:112])
 
-	for i := range nbFpLimbs - 1 {
-		QXAlimbs[len(QXAlimbs)-(2*i+2)], QXAlimbs[len(QXAlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[i+1], 64, bitslice.WithNbDigits(128))
-		QXBlimbs[len(QXBlimbs)-(2*i+2)], QXBlimbs[len(QXBlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		QYAlimbs[len(QYAlimbs)-(2*i+2)], QYAlimbs[len(QYAlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[2*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		QYBlimbs[len(QYBlimbs)-(2*i+2)], QYBlimbs[len(QYBlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[3*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-	}
-	QXA := fp.NewElement(QXAlimbs)
-	QXB := fp.NewElement(QXBlimbs)
+	QXA := gnarkutil.EmulatedFromLimbSlice(api, fp, QXA16, 16)
+	QXB := gnarkutil.EmulatedFromLimbSlice(api, fp, QXB16, 16)
+	QYA := gnarkutil.EmulatedFromLimbSlice(api, fp, QYA16, 16)
+	QYB := gnarkutil.EmulatedFromLimbSlice(api, fp, QYB16, 16)
 	QX := fields_bls12381.E2{
 		A0: *QXA,
 		A1: *QXB,
 	}
-	QYA := fp.NewElement(QYAlimbs)
-	QYB := fp.NewElement(QYBlimbs)
+
 	QY := fields_bls12381.E2{
 		A0: *QYA,
 		A1: *QYB,
 	}
+
 	var Q sw_bls12381.G2Affine
 	Q.P.X = QX
 	Q.P.Y = QY
