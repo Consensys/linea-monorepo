@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/sirupsen/logrus"
 )
@@ -33,7 +34,7 @@ type BlsPairDataSource struct {
 	SuccessBit     ifaces.Column
 }
 
-func newPairDataSource(comp *wizard.CompiledIOP) *BlsPairDataSource {
+func newPairDataSource(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *BlsPairDataSource {
 	return &BlsPairDataSource{
 		ID:             comp.Columns.GetHandle(colNameFn("ID")),
 		CsPair:         comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_BLS_PAIRING_CHECK")),
@@ -239,10 +240,10 @@ func newUnalignedPairData(comp *wizard.CompiledIOP, src *BlsPairDataSource) *Una
 		GnarkDataMillerLoop:       createColFnMl("GNARK_DATA_ML"),
 		GnarkIsActiveFinalExp:     createColFnFe("GNARK_IS_ACTIVE_FE"),
 		GnarkDataFinalExp:         createColFnFe("GNARK_DATA_FE"),
-		IsPairingInstance:         comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "IS_PAIRING_INSTANCE"), max(src.IsData.Size(), src.IsRes.Size())),
-		IsPairingAndSuccess:       comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "IS_PAIRING_AND_SUCCESS"), max(src.IsData.Size(), src.IsRes.Size(), src.SuccessBit.Size())),
-		GnarkIsActiveG1Membership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "GNARK_IS_ACTIVE_G1_MEMBERSHIP"), max(src.SuccessBit.Size(), src.CsG1Membership.Size())),
-		GnarkIsActiveG2Membership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "GNARK_IS_ACTIVE_G2_MEMBERSHIP"), max(src.SuccessBit.Size(), src.CsG2Membership.Size())),
+		IsPairingInstance:         comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "IS_PAIRING_INSTANCE"), max(src.IsData.Size(), src.IsRes.Size()), true),
+		IsPairingAndSuccess:       comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "IS_PAIRING_AND_SUCCESS"), max(src.IsData.Size(), src.IsRes.Size(), src.SuccessBit.Size()), true),
+		GnarkIsActiveG1Membership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "GNARK_IS_ACTIVE_G1_MEMBERSHIP"), max(src.SuccessBit.Size(), src.CsG1Membership.Size()), true),
+		GnarkIsActiveG2Membership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", NAME_BLS_PAIR, "GNARK_IS_ACTIVE_G2_MEMBERSHIP"), max(src.SuccessBit.Size(), src.CsG2Membership.Size()), true),
 		MaxNbPairInputs:           maxNbPairInputs,
 	}
 

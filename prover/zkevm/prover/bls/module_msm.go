@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/sirupsen/logrus"
 )
@@ -31,7 +32,7 @@ type BlsMsmDataSource struct {
 	IsRes        ifaces.Column
 }
 
-func newMsmDataSource(comp *wizard.CompiledIOP, g Group) *BlsMsmDataSource {
+func newMsmDataSource(comp *wizard.CompiledIOP, g Group, arith *arithmetization.Arithmetization) *BlsMsmDataSource {
 	return &BlsMsmDataSource{
 		ID:           comp.Columns.GetHandle(colNameFn("ID")),
 		CsMul:        comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_BLS_" + g.String() + "_MSM")),
@@ -169,9 +170,9 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g Group, limits *Limits, src 
 	createCol2 := createColFn(comp, fmt.Sprintf("UNALIGNED_%s_BLS_MSM", g.String()), utils.NextPowerOfTwo(maxNbRowsAligned))
 	res := &UnalignedMsmData{
 		BlsMsmDataSource:           src,
-		IsMsmInstanceAndMembership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_IS_MSM_AND_MEMBERSHIP", g.String()), maxNbRows),
-		IsDataAndCsMul:             comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_DATA_AND_CS_MSM", g.String()), maxNbRows),
-		IsResultAndCsMul:           comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_RESULT_AND_CS_MSM", g.String()), maxNbRows),
+		IsMsmInstanceAndMembership: comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_IS_MSM_AND_MEMBERSHIP", g.String()), maxNbRows, true),
+		IsDataAndCsMul:             comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_DATA_AND_CS_MSM", g.String()), maxNbRows, true),
+		IsResultAndCsMul:           comp.InsertCommit(ROUND_NR, ifaces.ColIDf("UNALIGNED_%s_BLS_MSM_SRC_IS_RESULT_AND_CS_MSM", g.String()), maxNbRows, true),
 		IsActive:                   createCol1("IS_ACTIVE"),
 		Point:                      make([]ifaces.Column, nbLimbs(g)),
 		CurrentAccumulator:         make([]ifaces.Column, nbLimbs(g)),

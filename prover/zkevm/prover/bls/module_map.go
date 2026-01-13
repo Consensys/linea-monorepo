@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/sirupsen/logrus"
 )
 
@@ -25,7 +26,7 @@ type BlsMapDataSource struct {
 	IsRes   ifaces.Column
 }
 
-func newMapDataSource(comp *wizard.CompiledIOP, g Group) *BlsMapDataSource {
+func newMapDataSource(comp *wizard.CompiledIOP, g Group, arith *arithmetization.Arithmetization) *BlsMapDataSource {
 	var mapString string
 	if g == G1 {
 		mapString = "MAP_FP_TO_G1"

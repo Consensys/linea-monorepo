@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,7 +25,7 @@ type BlsPointEvalDataSource struct {
 	IsRes              ifaces.Column
 }
 
-func newPointEvalDataSource(comp *wizard.CompiledIOP) *BlsPointEvalDataSource {
+func newPointEvalDataSource(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *BlsPointEvalDataSource {
 	return &BlsPointEvalDataSource{
 		ID:                 comp.Columns.GetHandle(colNameFn("ID")),
 		CsPointEval:        comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_POINT_EVALUATION")),
