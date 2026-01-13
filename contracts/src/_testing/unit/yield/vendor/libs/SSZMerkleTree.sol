@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 // for testing purposes only
 
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 import { GIndex, pack, concat, fls } from "../../../../../yield/libs/vendor/lido/GIndex.sol";
 import { SSZ } from "../../../../../yield/libs/vendor/lido/SSZ.sol";

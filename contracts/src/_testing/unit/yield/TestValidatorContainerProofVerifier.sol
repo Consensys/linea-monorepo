@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 import { ValidatorContainerProofVerifier } from "../../../yield/libs/ValidatorContainerProofVerifier.sol";
 import { GIndex, pack } from "../../../yield/libs/vendor/lido/GIndex.sol";

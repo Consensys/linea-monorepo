@@ -5,7 +5,7 @@
 
 // See contracts/COMPILERS.md
 // solhint-disable-next-line
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.33;
 
 /**
  * @title Library for 256-bit arithmetic operations.

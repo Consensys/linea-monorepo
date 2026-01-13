@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.31;
+pragma solidity 0.8.33;
 
 import { YieldManagerStorageLayout } from "./YieldManagerStorageLayout.sol";
 import { IYieldManager } from "./interfaces/IYieldManager.sol";

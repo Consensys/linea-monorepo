@@ -39,7 +39,7 @@ const config: HardhatUserConfig = {
     /// @dev Please see the overrides file for a list of files not targetting the default EVM version of Prague.
     compilers: [
       {
-        version: "0.8.31",
+        version: "0.8.33",
         settings: {
           viaIR: useViaIR,
           optimizer: {
@@ -60,7 +60,6 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       hardfork: "osaka",
-      allowUnlimitedContractSize: true, // TODO - Remove when ready for PR
     },
     mainnet: {
       accounts: [process.env.MAINNET_PRIVATE_KEY || EMPTY_HASH],
