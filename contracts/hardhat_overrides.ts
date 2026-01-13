@@ -1,8 +1,4 @@
-import type { SolcUserConfig } from "hardhat/types";
-
-const useViaIR = process.env.USE_VIA_IR === "true";
-
-const lineaOverride: SolcUserConfig = {
+const lineaOverride = {
   version: "0.8.33",
   settings: {
     evmVersion: "osaka",
@@ -34,58 +30,4 @@ const lineaOverridePaths = [
   "src/operational/RollupRevenueVault.sol",
 ];
 
-const specificOverrides: Record<string, SolcUserConfig> = {
-  "src/yield/YieldManager.sol": {
-    version: "0.8.33",
-    settings: {
-      viaIR: useViaIR,
-      optimizer: {
-        enabled: true,
-        runs: 1500,
-      },
-      evmVersion: "osaka",
-    },
-  },
-  "src/_testing/unit/yield/TestYieldManager.sol": {
-    version: "0.8.33",
-    settings: {
-      viaIR: useViaIR,
-      optimizer: {
-        enabled: true,
-        runs: 10,
-      },
-      evmVersion: "osaka",
-    },
-  },
-  "src/_testing/unit/rollup/TestLineaRollup.sol": {
-    version: "0.8.33",
-    settings: {
-      viaIR: useViaIR,
-      optimizer: {
-        enabled: true,
-        runs: 1000,
-      },
-      evmVersion: "osaka",
-    },
-  },
-  "src/rollup/LineaRollup.sol": {
-    version: "0.8.33",
-    settings: {
-      viaIR: useViaIR,
-      optimizer: {
-        enabled: true,
-        runs: 9000,
-      },
-      evmVersion: "osaka",
-    },
-  },
-};
-
-const lineaOverrides = Object.fromEntries(
-  lineaOverridePaths.map((path): [string, SolcUserConfig] => [path, lineaOverride]),
-) satisfies Record<string, SolcUserConfig>;
-
-export const overrides = {
-  ...lineaOverrides,
-  ...specificOverrides,
-} satisfies Record<string, SolcUserConfig>;
+export const overrides = Object.fromEntries(lineaOverridePaths.map((path) => [path, lineaOverride]));
