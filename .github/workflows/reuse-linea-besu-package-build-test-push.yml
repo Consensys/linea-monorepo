@@ -141,7 +141,7 @@ jobs:
           keys-case: lower
           log-variables: true
           load-mode: strict
-      
+
       - name: Calculate the checksum of Besu fleet plugin
         id: besu-fleet-plugin-checksum
         if: ${{ inputs.with_besu_fleet_plugin }}
@@ -153,7 +153,7 @@ jobs:
         shell: bash
         run: |
           rm -fr linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin* || true
-      
+
       - name: build and push the combined manifest (without Besu fleet plugin)
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 #v6.18.0
         env:
@@ -190,12 +190,12 @@ jobs:
           echo "| Module | Version | SHA-256 |" >> output.md
           echo "|--------|---------|--------------|" >> output.md
           echo "| linea-besu | ${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }} | $(sha256sum ../linea-besu-package/tmp/${{ steps.dotenv.outputs.LINEA_BESU_FILENAME_PREFIX }}-${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}.tar.gz | awk '{ print $1 }' ) |" >> output.md
-          echo "| linea-sequencer-plugin | ${{ steps.dotenv.outputs.LINEA_SEQUENCER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-sequencer-v${{ steps.dotenv.outputs.LINEA_SEQUENCER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
-          echo "| linea-tracer-plugin | ${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-tracer-${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
-          echo "| linea-staterecovery-plugin | ${{ steps.dotenv.outputs.LINEA_STATERECOVERY_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-staterecovery-besu-plugin-v${{ steps.dotenv.outputs.LINEA_STATERECOVERY_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
+          echo "| linea-sequencer-plugin | ${{ steps.dotenv.outputs.LINEA_SEQUENCER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-sequencer-${{ steps.dotenv.outputs.LINEA_SEQUENCER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md
+          echo "| linea-tracer-plugin | ${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-tracer-${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md
+          echo "| linea-staterecovery-plugin | ${{ steps.dotenv.outputs.LINEA_STATERECOVERY_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-staterecovery-besu-plugin-v${{ steps.dotenv.outputs.LINEA_STATERECOVERY_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md
           echo "| shomei-plugin | ${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/besu-shomei-plugin-v${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md
           if [[ "${{ inputs.with_besu_fleet_plugin }}" == "true" ]]; then
-            echo "| besu-fleet-plugin | ${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }} | ${{ steps.besu-fleet-plugin-checksum.outputs.sha256sum }} |" >> output.md    
+            echo "| besu-fleet-plugin | ${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }} | ${{ steps.besu-fleet-plugin-checksum.outputs.sha256sum }} |" >> output.md
           fi
           echo "" >> output.md
 
