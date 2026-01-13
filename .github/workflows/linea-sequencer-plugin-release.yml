@@ -3,7 +3,6 @@ name: linea-sequencer-plugin-release
 permissions:
   contents: write
   packages: write
-  actions: read
 
 on:
   workflow_dispatch:
