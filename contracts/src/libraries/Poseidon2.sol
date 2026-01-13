@@ -415,7 +415,7 @@ library Poseidon2 {
       /**
        * @dev Applies the FULL (external) Poseidon2 MDS matrix.
        *
-       * In the following, M4 = 
+       * In the following, M4 =
        * (2 3 1 1)
        * (1 2 3 1)
        * (1 1 2 3)
@@ -439,7 +439,7 @@ library Poseidon2 {
 
       /**
        * @dev Final redistribution step of EXTERNAL MDS for first state element.
-       * 
+       *
        * Here:
        * [t0, t1, t2, t3] = M4*a_hi+M4*a_lo+M4*b_hi+M4*b_lo (computed with matMulM4uint256 followed by sumColumns, see matMulExternalInPlace)
        * a = diag(M4, M4)*[a_hi, a_lo]

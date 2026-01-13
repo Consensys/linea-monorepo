@@ -81,7 +81,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   function submitForcedTransaction(
     Eip1559Transaction memory _forcedTransaction,
     LastFinalizedState memory _lastFinalizedState
-  ) external {
+  ) external payable {
     require(_forcedTransaction.gasLimit >= MIN_GAS_LIMIT, GasLimitTooLow());
     require(_forcedTransaction.gasLimit <= MAX_GAS_LIMIT, MaxGasLimitExceeded());
     require(_forcedTransaction.input.length <= MAX_INPUT_LENGTH_LIMIT, CalldataInputLengthLimitExceeded());
@@ -116,8 +116,11 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     (
       bytes32 currentFinalizedState,
       bytes32 previousForcedTransactionRollingHash,
-      uint256 currentFinalizedL2BlockNumber
+      uint256 currentFinalizedL2BlockNumber,
+      uint256 forcedTransactionFeeAmount
     ) = LINEA_ROLLUP.getRequiredForcedTransactionFields();
+
+    require(msg.value == forcedTransactionFeeAmount, ForcedTransactionFeeNotMet(forcedTransactionFeeAmount, msg.value));
 
     if (
       currentFinalizedState !=
@@ -196,7 +199,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     );
 
     emit ForcedTransactionAdded(
-      LINEA_ROLLUP.storeForcedTransaction(expectedBlockNumber, forcedTransactionRollingHash),
+      LINEA_ROLLUP.storeForcedTransaction{ value: msg.value }(expectedBlockNumber, forcedTransactionRollingHash),
       signer,
       expectedBlockNumber,
       forcedTransactionRollingHash,

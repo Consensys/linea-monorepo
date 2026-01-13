@@ -12,6 +12,7 @@ import { IPlonkVerifier } from "../verifiers/interfaces/IPlonkVerifier.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
 import { IAcceptForcedTransactions } from "./forcedTransactions/interfaces/IAcceptForcedTransactions.sol";
+import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
@@ -45,6 +46,10 @@ abstract contract LineaRollupBase is
   /// @notice The role required to send forced transactions.
   bytes32 public constant FORCED_TRANSACTION_SENDER_ROLE = keccak256("FORCED_TRANSACTION_SENDER_ROLE");
 
+  /// @notice The role required to set the forced transaction fee.
+  bytes32 public constant FORCED_TRANSACTION_FEE_SETTER_ROLE = keccak256("FORCED_TRANSACTION_FEE_SETTER_ROLE");
+
+  /// @notice The role required to set the forced transaction fee.
   bytes32 internal constant EMPTY_HASH = 0x0;
 
   /// @dev The BLS Curve modulus value used.
@@ -61,7 +66,7 @@ abstract contract LineaRollupBase is
   uint256 internal constant POINT_EVALUATION_FIELD_ELEMENTS_LENGTH = 4096;
 
   /// @notice This is the ABI version and not the reinitialize version.
-  string private constant _CONTRACT_VERSION = "7.0";
+  string private constant _CONTRACT_VERSION = "8.0";
 
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 finalStateRootHash) private dataFinalStateRootHashes_DEPRECATED;
@@ -108,10 +113,14 @@ abstract contract LineaRollupBase is
   /// @dev The rolling hash for a forced transaction.
   mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) public forcedTransactionRollingHashes;
 
+  // TODO check the layout of this variable
+  /// @dev The forced transaction fee.
+  uint256 public forcedTransactionFee;
+
   /// @dev Keep 50 free storage slots for inheriting contracts.
   uint256[50] private __gap_LineaRollup;
 
-  /// @dev Total contract storage is 64 slots.
+  /// @dev Total contract storage is 65 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -152,15 +161,7 @@ abstract contract LineaRollupBase is
     currentL2BlockNumber = _initializationData.initialL2BlockNumber;
     stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
-    bytes32 genesisShnarf = _computeShnarf(
-      EMPTY_HASH,
-      EMPTY_HASH,
-      _initializationData.initialStateRootHash,
-      EMPTY_HASH,
-      EMPTY_HASH
-    );
-
-    currentFinalizedShnarf = genesisShnarf;
+    currentFinalizedShnarf = _genesisShnarf;
     currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(
       0,
       EMPTY_HASH,
@@ -195,6 +196,7 @@ abstract contract LineaRollupBase is
    * @return finalizedState The last finalized state hash.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
    * @return currentFinalizedL2BlockNumber The current finalized L2 block number.
+   * @return forcedTransactionFeeAmount The forced transaction fee.
    */
   function getRequiredForcedTransactionFields()
     external
@@ -202,14 +204,29 @@ abstract contract LineaRollupBase is
     returns (
       bytes32 finalizedState,
       bytes32 previousForcedTransactionRollingHash,
-      uint256 currentFinalizedL2BlockNumber
+      uint256 currentFinalizedL2BlockNumber,
+      uint256 forcedTransactionFeeAmount
     )
   {
     unchecked {
       finalizedState = currentFinalizedState;
       previousForcedTransactionRollingHash = forcedTransactionRollingHashes[nextForcedTransactionNumber - 1];
       currentFinalizedL2BlockNumber = currentL2BlockNumber;
+      forcedTransactionFeeAmount = forcedTransactionFee;
     }
+  }
+
+  /**
+   * @notice Sets the forced transaction fee.
+   * @dev FORCED_TRANSACTION_FEE_SETTER_ROLE is required to set the forced transaction fee.
+   * @param _forcedTransactionFee The forced transaction fee.
+   */
+  function setForcedTransactionFee(
+    uint256 _forcedTransactionFee
+  ) external onlyRole(FORCED_TRANSACTION_FEE_SETTER_ROLE) {
+    require(_forcedTransactionFee > 0, IGenericErrors.ZeroValueNotAllowed());
+    forcedTransactionFee = _forcedTransactionFee;
+    emit ForcedTransactionFeeSet(_forcedTransactionFee);
   }
 
   /**
@@ -223,7 +240,7 @@ abstract contract LineaRollupBase is
   function storeForcedTransaction(
     uint256 _forcedL2BlockNumber,
     bytes32 _forcedTransactionRollingHash
-  ) external virtual onlyRole(FORCED_TRANSACTION_SENDER_ROLE) returns (uint256 forcedTransactionNumber) {
+  ) external payable virtual onlyRole(FORCED_TRANSACTION_SENDER_ROLE) returns (uint256 forcedTransactionNumber) {
     unchecked {
       forcedTransactionNumber = nextForcedTransactionNumber++;
 

@@ -126,6 +126,11 @@ interface IForcedTransactionGateway {
   error AddressFilterAlreadySet(bool requestedExistingStatus);
 
   /**
+   * @dev Thrown when the forced transaction fee is not met.
+   */
+  error ForcedTransactionFeeNotMet(uint256 expected, uint256 value);
+
+  /**
    * @notice Function to submit forced transactions.
    * @param _forcedTransaction The fields required for the transaction excluding chainId.
    * @param _lastFinalizedState The last finalized state validated to use the timestamp in block number calculation.
@@ -133,7 +138,7 @@ interface IForcedTransactionGateway {
   function submitForcedTransaction(
     Eip1559Transaction memory _forcedTransaction,
     LastFinalizedState memory _lastFinalizedState
-  ) external;
+  ) external payable;
 
   /**
    * @notice Function to toggle the usage of the address filter.
