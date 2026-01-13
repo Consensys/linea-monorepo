@@ -22,6 +22,11 @@ To enable JWT on engine-api, please uncomment the followings and mount the JWT f
 --engine-jwt-secret=/var/lib/besu/jwt
 ```
 
+**Network selection and genesis files**
+- `linea-besu-package` now supports `--network linea-mainnet|linea-sepolia`; no genesis file is needed when using these named networks.
+- Profiles already embed the correct network; passing `--network` explicitly (as shown in the docker-compose examples) is supported and does not require a genesis file.
+- The `FinalizedTagUpdater` plugin was removed; any older configs referencing it are invalid.
+
 ### Step 3. Start the Besu node
 ```sh
 docker compose -f ./linea-besu-package/docker/docker-compose-basic-mainnet.yaml up

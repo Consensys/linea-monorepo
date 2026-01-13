@@ -20,7 +20,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
+    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--network', '${LINEA_NETWORK:-linea-sepolia}', '--config', 'configs/config.toml']
 #    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:
       - ./config/maru/sequencer.config.toml:/opt/consensys/maru/configs/config.toml:ro
@@ -136,7 +136,8 @@ services:
     entrypoint: besu-untuned
     command:
       - --config-file=/var/lib/besu/l2-node-besu.config.toml
-      - --genesis-file=/initialization/genesis-besu.json
+      - --network
+      - ${LINEA_NETWORK:-linea-sepolia}
       - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
       - --plugin-linea-node-type=RPC
       - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
@@ -177,7 +178,8 @@ services:
     entrypoint: besu-untuned
     command:
       - --config-file=/var/lib/besu/l2-node-besu.config.toml
-      - --genesis-file=/initialization/genesis-besu.json
+      - --network
+      - ${LINEA_NETWORK:-linea-sepolia}
       - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
       - --plugin-linea-node-type=RPC
       - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
@@ -219,7 +221,8 @@ services:
     entrypoint: besu-untuned
     command:
       - --config-file=/var/lib/besu/traces-node.config.toml
-      - --genesis-file=/initialization/genesis-besu.json
+      - --network
+      - ${LINEA_NETWORK:-linea-sepolia}
       - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
     volumes:
       - ./config/traces-node/traces-node-config.toml:/var/lib/besu/traces-node.config.toml:ro
@@ -407,7 +410,7 @@ services:
       - |
         /opt/besu/bin/besu \
         --config-file=/var/lib/besu/zkbesu-config.toml \
-        --genesis-file=/initialization/genesis-besu.json \
+        --network ${LINEA_NETWORK:-linea-sepolia} \
         --plugin-shomei-http-host="11.11.11.114" \
         --plugin-shomei-http-port=8888 \
         --bonsai-limit-trie-logs-enabled=false \
@@ -627,7 +630,7 @@ services:
         sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu-untuned && \
         /opt/besu/bin/besu-untuned \
         --config-file=/var/lib/besu/zkbesu-config.toml \
-        --genesis-file=/var/lib/besu/genesis.json \
+        --network ${LINEA_NETWORK:-linea-sepolia} \
         --plugins=BesuShomeiRpcPlugin,ZkTrieLogPlugin,LineaStateRecoveryPlugin \
         --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,MINER,SHOMEI \
         --bonsai-limit-trie-logs-enabled=false \
@@ -679,3 +682,13 @@ services:
       - --trace-start-block-number=0
     volumes:
       - ./config/shomei/log4j.xml:/log4j.xml:ro
+
+volumes:
+  logs: {}
+  local-dev: {}
+
+networks:
+  linea:
+    external: true
+  l1network:
+    external: true

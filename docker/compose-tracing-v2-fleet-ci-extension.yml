@@ -29,7 +29,8 @@ services:
     image: consensys/${BESU_PACKAGE_IMAGE_NAME:-linea-besu-package-with-fleet}:${BESU_PACKAGE_TAG:-beta-v4.4-rc7-20251201181632-1fefac9}
     command:
       - --config-file=/var/lib/besu/l2-node-besu.config.toml
-      - --genesis-file=/initialization/genesis-besu.json
+      - --network
+      - ${LINEA_NETWORK:-linea-sepolia}
       - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
       - --plugin-linea-node-type=RPC
       - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
@@ -44,7 +45,8 @@ services:
     image: consensys/${BESU_PACKAGE_IMAGE_NAME:-linea-besu-package-with-fleet}:${BESU_PACKAGE_TAG:-beta-v4.4-rc7-20251201181632-1fefac9}
     command:
       - --config-file=/var/lib/besu/l2-node-besu.config.toml
-      - --genesis-file=/initialization/genesis-besu.json
+      - --network
+      - ${LINEA_NETWORK:-linea-sepolia}
       - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
       - --plugin-linea-node-type=RPC
       - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
