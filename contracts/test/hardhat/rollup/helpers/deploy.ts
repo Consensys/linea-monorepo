@@ -104,6 +104,8 @@ export async function deployLineaRollupFixture() {
   const verifier = await deployTestPlonkVerifierForDataAggregation();
   const { parentStateRootHash } = firstCompressedDataContent;
 
+  const yieldManager = await deployMockYieldManager();
+
   const initializationData = {
     initialStateRootHash: parentStateRootHash,
     initialL2BlockNumber: 0,
@@ -120,14 +122,14 @@ export async function deployLineaRollupFixture() {
 
   const lineaRollup = (await deployUpgradableFromFactory(
     "TestLineaRollup",
-    [initializationData, FALLBACK_OPERATOR_ADDRESS],
+    [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
     {
       initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
       unsafeAllow: ["constructor", "incorrect-initializer-order"],
     },
   )) as unknown as TestLineaRollup;
 
-  return { verifier, lineaRollup };
+  return { verifier, lineaRollup, yieldManager };
 }
 
 async function deployTestPlonkVerifierForDataAggregation(): Promise<string> {

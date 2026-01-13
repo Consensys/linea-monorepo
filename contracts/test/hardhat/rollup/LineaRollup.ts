@@ -71,6 +71,7 @@ describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
   let verifier: string;
   let callForwardingProxy: CallForwardingProxy;
+  let yieldManager: string;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
@@ -112,7 +113,7 @@ describe("Linea Rollup contract", () => {
   });
 
   beforeEach(async () => {
-    ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+    ({ verifier, lineaRollup, yieldManager } = await loadFixture(deployLineaRollupFixture));
   });
 
   describe("Upgrading", () => {
@@ -205,7 +206,7 @@ describe("Linea Rollup contract", () => {
 
       const deployCall = deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -230,10 +231,14 @@ describe("Linea Rollup contract", () => {
         shnarfProvider: ADDRESS_ZERO,
       };
 
-      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData, ADDRESS_ZERO], {
-        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-        unsafeAllow: ["constructor", "incorrect-initializer-order"],
-      });
+      const deployCall = deployUpgradableFromFactory(
+        "TestLineaRollup",
+        [initializationData, ADDRESS_ZERO, yieldManager],
+        {
+          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+          unsafeAllow: ["constructor", "incorrect-initializer-order"],
+        },
+      );
 
       await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
     });
@@ -255,7 +260,7 @@ describe("Linea Rollup contract", () => {
 
       const deployCall = deployUpgradableFromFactory(
         "TestLineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -282,7 +287,7 @@ describe("Linea Rollup contract", () => {
 
       const deployCall = deployUpgradableFromFactory(
         "TestLineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -329,7 +334,7 @@ describe("Linea Rollup contract", () => {
 
       const lineaRollup = await deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -356,7 +361,7 @@ describe("Linea Rollup contract", () => {
 
       const lineaRollup = await deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -384,7 +389,7 @@ describe("Linea Rollup contract", () => {
 
       const lineaRollup = await deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -423,6 +428,7 @@ describe("Linea Rollup contract", () => {
           shnarfProvider: ADDRESS_ZERO,
         },
         FALLBACK_OPERATOR_ADDRESS,
+        yieldManager,
       );
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);

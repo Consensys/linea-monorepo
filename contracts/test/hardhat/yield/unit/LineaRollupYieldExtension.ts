@@ -31,7 +31,7 @@ import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";
 
 describe("Linea Rollup Yield Extension", () => {
   let lineaRollup: TestLineaRollup;
-  let mockYieldManager: string;
+  let yieldManager: string;
   let operator: SignerWithAddress;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -44,7 +44,7 @@ describe("Linea Rollup Yield Extension", () => {
   });
 
   beforeEach(async () => {
-    ({ mockYieldManager, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+    ({ yieldManager, lineaRollup } = await loadFixture(deployLineaRollupFixture));
   });
 
   describe("Change yield manager address", () => {
@@ -165,12 +165,12 @@ describe("Linea Rollup Yield Extension", () => {
 
       const lineaRollupAddress = await lineaRollup.getAddress();
       const initialContractBalance = await ethers.provider.getBalance(lineaRollupAddress);
-      const initialYieldManagerBalance = await ethers.provider.getBalance(mockYieldManager);
+      const initialYieldManagerBalance = await ethers.provider.getBalance(yieldManager);
 
       await lineaRollup.connect(securityCouncil).transferFundsForNativeYield(amount);
 
       const finalContractBalance = await ethers.provider.getBalance(lineaRollupAddress);
-      const finalYieldManagerBalance = await ethers.provider.getBalance(mockYieldManager);
+      const finalYieldManagerBalance = await ethers.provider.getBalance(yieldManager);
 
       expect(finalContractBalance).to.equal(initialContractBalance - amount);
       expect(finalYieldManagerBalance).to.equal(initialYieldManagerBalance + amount);
@@ -179,13 +179,13 @@ describe("Linea Rollup Yield Extension", () => {
 
   describe("Yield reporting", () => {
     async function impersonateYieldManager() {
-      await ethers.provider.send("hardhat_impersonateAccount", [mockYieldManager]);
-      await ethers.provider.send("hardhat_setBalance", [mockYieldManager, ethers.toBeHex(ethers.parseEther("1"))]);
-      return await ethers.getSigner(mockYieldManager);
+      await ethers.provider.send("hardhat_impersonateAccount", [yieldManager]);
+      await ethers.provider.send("hardhat_setBalance", [yieldManager, ethers.toBeHex(ethers.parseEther("1"))]);
+      return await ethers.getSigner(yieldManager);
     }
 
     async function stopYieldManagerImpersonation() {
-      await ethers.provider.send("hardhat_stopImpersonatingAccount", [mockYieldManager]);
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [yieldManager]);
     }
 
     const abiCoder = ethers.AbiCoder.defaultAbiCoder();
@@ -265,7 +265,7 @@ describe("Linea Rollup Yield Extension", () => {
 
       await expectEvent(lineaRollup, reportCall, "MessageSent", [
         // _from = YieldManager
-        mockYieldManager,
+        yieldManager,
         // _to = L2YieldRecipient function param
         l2YieldRecipient,
         // _fee = 0
@@ -487,7 +487,7 @@ describe("Linea Rollup Yield Extension", () => {
         data: EMPTY_CALLDATA,
       };
 
-      const mockYieldManagerContract = MockYieldManager__factory.connect(mockYieldManager, securityCouncil);
+      const mockYieldManagerContract = MockYieldManager__factory.connect(yieldManager, securityCouncil);
       await mockYieldManagerContract.connect(admin).setReentryData(claimParams, operator.address);
 
       const claimCall = lineaRollup.connect(admin).claimMessageWithProofAndWithdrawLST(claimParams, operator.address);
@@ -529,7 +529,7 @@ describe("Linea Rollup Yield Extension", () => {
 
       // Assert MessageClaimed event emitted
       await expectEvent(lineaRollup, claimCall, "MessageClaimed", [messageHash]);
-      const mockYieldManagerContract = MockYieldManager__factory.connect(mockYieldManager, securityCouncil);
+      const mockYieldManagerContract = MockYieldManager__factory.connect(yieldManager, securityCouncil);
       // Assert that isWithdrawLSTAllowed() flag is toggled on during the tx - use event on MockYieldManager
       await expectEvent(mockYieldManagerContract, claimCall, "LSTWithdrawalFlag", [true]);
       // Assert that isWithdrawLSTAllowed() flag is toggled off after the tx

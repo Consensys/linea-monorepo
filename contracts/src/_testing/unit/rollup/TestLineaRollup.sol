@@ -61,6 +61,10 @@ contract TestLineaRollup is LineaRollup, CalldataBlobAcceptor {
     super.renounceRole(_role, _account);
   }
 
+  function addL2MerkleRoots(bytes32[] calldata _newRoot, uint256 _treeDepth) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    _addL2MerkleRoots(_newRoot, _treeDepth);
+  }
+
   function generateMerkleRoot(
     bytes32 _leafHash,
     bytes32[] calldata _proof,

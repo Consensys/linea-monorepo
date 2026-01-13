@@ -34,10 +34,12 @@ contract LineaRollup is
    * @dev Note: This is used for new testnets and local/CI testing, and will not replace existing proxy based contracts.
    * @param _initializationData The initial data used for contract initialization.
    * @param _livenessRecoveryOperator The liveness recovery operator address.
+   * @param _yieldManager The yield manager address.
    */
   function initialize(
     BaseInitializationData calldata _initializationData,
-    address _livenessRecoveryOperator
+    address _livenessRecoveryOperator,
+    address _yieldManager
   ) external initializer {
     bytes32 genesisShnarf = _computeShnarf(
       EMPTY_HASH,
@@ -51,7 +53,7 @@ contract LineaRollup is
 
     __LineaRollup_init(_initializationData, genesisShnarf);
     __LivenessRecovery_init(_livenessRecoveryOperator);
-    __LineaRollupYieldExtension_init(_initializationData.); // todo fix me
+    __LineaRollupYieldExtension_init(_yieldManager);
   }
 
   /**

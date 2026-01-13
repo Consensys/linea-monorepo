@@ -10,7 +10,7 @@ export const VALIDIUM_INITIALIZE_SIGNATURE =
   "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[],address,address))";
 
 export const LINEA_ROLLUP_INITIALIZE_SIGNATURE =
-  "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[],address,address),address)";
+  "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[],address,address),address,address)";
 
 export const BLS_CURVE_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513n;
 
