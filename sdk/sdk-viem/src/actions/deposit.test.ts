@@ -5,13 +5,14 @@ import {
   Chain,
   Account,
   Address,
-  BaseError,
   zeroAddress,
   Hex,
   SendTransactionParameters,
   encodeFunctionData,
   toFunctionSelector,
   erc20Abi,
+  ChainNotFoundError,
+  ClientChainNotConfiguredError,
 } from "viem";
 import {
   readContract,
@@ -27,6 +28,7 @@ import { linea, mainnet } from "viem/chains";
 import { TEST_ADDRESS_1, TEST_ADDRESS_2, TEST_TRANSACTION_HASH } from "../../tests/constants";
 import { generateBlock, generateTransactionReceipt } from "../../tests/utils";
 import { computeMessageHash } from "../utils/computeMessageHash";
+import { AccountNotFoundError } from "../errors/account";
 
 jest.mock("viem/actions", () => ({
   readContract: jest.fn(),
@@ -94,13 +96,25 @@ describe("deposit", () => {
 
   it("throws if no account is provided", async () => {
     const client = mockClient(l1ChainId, undefined);
-    await expect(deposit(client, { l2Client: mockL2Client(l2ChainId), token, to, amount })).rejects.toThrow(BaseError);
+    await expect(deposit(client, { l2Client: mockL2Client(l2ChainId), token, to, amount })).rejects.toThrow(
+      AccountNotFoundError,
+    );
   });
 
-  it("throws if no L1 or L2 chain id is found", async () => {
+  it("throws if no L1 chain id is found", async () => {
     const client = mockClient(undefined, mockAccount);
+    const l2Client = mockL2Client(l2ChainId, mockAccount);
+    await expect(deposit(client, { l2Client, token, to, amount, account: mockAccount })).rejects.toThrow(
+      ChainNotFoundError,
+    );
+  });
+
+  it("throws if no L2 chain id is found", async () => {
+    const client = mockClient(l1ChainId, mockAccount);
     const l2Client = mockL2Client(undefined, mockAccount);
-    await expect(deposit(client, { l2Client, token, to, amount, account: mockAccount })).rejects.toThrow(BaseError);
+    await expect(deposit(client, { l2Client, token, to, amount, account: mockAccount })).rejects.toThrow(
+      ClientChainNotConfiguredError,
+    );
   });
 
   it("sends ETH deposit transaction when token is zeroAddress", async () => {

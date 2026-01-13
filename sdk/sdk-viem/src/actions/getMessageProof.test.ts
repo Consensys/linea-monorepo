@@ -1,5 +1,5 @@
 import { getMessageProof } from "./getMessageProof";
-import { Client, Transport, Chain, Account, Hex, BaseError } from "viem";
+import { Client, Transport, Chain, Account, Hex, ClientChainNotConfiguredError, ChainNotFoundError } from "viem";
 import { getMessageSentEvents } from "./getMessageSentEvents";
 import { getContractEvents, getTransactionReceipt } from "viem/actions";
 import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
@@ -51,13 +51,13 @@ describe("getMessageProof", () => {
   it("throws if l2Client.chain is not set", async () => {
     const client = mockClient(mainnetId);
     const l2Client = mockL2Client();
-    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(BaseError);
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(ClientChainNotConfiguredError);
   });
 
   it("throws if client.chain is not set", async () => {
     const client = mockClient();
     const l2Client = mockL2Client(lineaId);
-    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(BaseError);
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(ChainNotFoundError);
   });
 
   it("throws if no MessageSent event is found", async () => {

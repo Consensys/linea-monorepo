@@ -48,6 +48,8 @@ export type ClaimOnL1Parameters<
         feeRecipient?: Address;
         // defaults to the message service address for the L1 chain
         lineaRollupAddress?: Address;
+        // Defaults to the message service address for the L2 chain
+        l2MessageServiceAddress?: Address;
       }
     | {
         messageNonce: bigint;
@@ -191,6 +193,8 @@ export async function claimOnL1<
     feeRecipient,
     l2Client,
     messageProof,
+    lineaRollupAddress,
+    l2MessageServiceAddress,
     ...tx
   } = parameters;
 
@@ -213,13 +217,12 @@ export async function claimOnL1<
     throw new ClientChainNotConfiguredError();
   }
 
-  const lineaRollupAddress =
-    parameters.lineaRollupAddress ?? getContractsAddressesByChainId(client.chain.id).messageService;
-
-  const proof =
-    messageProof ??
-    (await getMessageProof(client, {
+  let proof = null;
+  if (l2Client) {
+    proof = await getMessageProof(client, {
       l2Client,
+      lineaRollupAddress,
+      l2MessageServiceAddress,
       messageHash: computeMessageHash({
         from,
         to,
@@ -228,10 +231,15 @@ export async function claimOnL1<
         nonce: messageNonce,
         calldata,
       }),
-    }));
+    });
+  } else {
+    proof = messageProof;
+  }
+
+  const lineaRollup = parameters.lineaRollupAddress ?? getContractsAddressesByChainId(client.chain.id).messageService;
 
   return sendTransaction(client, {
-    to: lineaRollupAddress,
+    to: lineaRollup,
     account,
     data: encodeFunctionData({
       abi: [

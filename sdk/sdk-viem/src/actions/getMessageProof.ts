@@ -54,9 +54,9 @@ export type GetMessageProofParameters<
     "fromBlock" | "toBlock"
   >;
   // Defaults to the message service address for the L1 chain
-  lineaRollupAddress?: Address;
+  lineaRollupAddress?: Address | undefined;
   // Defaults to the message service address for the L2 chain
-  l2MessageServiceAddress?: Address;
+  l2MessageServiceAddress?: Address | undefined;
 };
 
 export type GetMessageProofReturnType = MessageProof;
