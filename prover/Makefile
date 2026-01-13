@@ -48,7 +48,7 @@ extract-constraints-git-archive:
 ## Build and bundle the go-corset trace-expander dependency
 ##
 zkevm/arithmetization/zkevm.bin: go-corset extract-constraints-git-archive
-	pushd . && cd ${CONSTRAINTS_TEMP_FOLDER}/constraints && $(GO_CORSET) make zkevm_osaka.bin && popd && mv ${CONSTRAINTS_TEMP_FOLDER}/constraints/zkevm_osaka.bin zkevm/arithmetization/zkevm.bin
+	pushd . && cd ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints && $(GO_CORSET) make zkevm_osaka.bin && popd && mv ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints/zkevm_osaka.bin zkevm/arithmetization/zkevm.bin
 
 ##
 ## Generate the setup for all provers job for sepolia (to be run with S3 access)
