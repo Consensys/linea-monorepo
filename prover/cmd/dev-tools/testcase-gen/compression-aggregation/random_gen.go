@@ -72,10 +72,10 @@ type BlobSubmissionSpec struct {
 
 // InvalidityProofSpec
 type InvalidityProofSpec struct {
-	FtxNumber           int      `json:"ftxNumber"`
-	PrevFtxRollingHash  string   `json:"prevFtxRollingHash"`
-	ChainID             *big.Int `json:"chainID"`
-	ExpectedBlockHeight int      `json:"expectedBlockHeight"`
+	FtxNumber                int      `json:"ftxNumber"`
+	ChainID                  *big.Int `json:"chainID"`
+	ExpectedBlockHeight      int      `json:"expectedBlockHeight"`
+	LastFinalizedBlockNumber int      `json:"lastFinalizedBlockNumber"`
 }
 
 // Aggregation spec
@@ -223,7 +223,7 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 	return cf
 }
 
-// RandonInvalidTransaction returns a random invalid transaction from a random
+// RandonmInvalidTransaction returns a random invalid transaction from a random
 // from address and writes fromAddress, tx and txHash to the spec file
 func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specFile string) *invalidity.Request {
 
@@ -270,11 +270,12 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 	}
 
 	return &invalidity.Request{
-		RlpEncodedTx:            rlpEncodedTx,
-		ForcedTransactionNumber: uint64(spec.FtxNumber),
-		InvalidityTypes:         circInvalidity.BadNonce,
-		ExpectedBlockHeight:     uint64(spec.ExpectedBlockHeight),
-		PrevFtxRollingHash:      linTypes.Bytes32FromHex(spec.PrevFtxRollingHash),
+		RlpEncodedTx:             rlpEncodedTx,
+		ForcedTransactionNumber:  uint64(spec.FtxNumber),
+		InvalidityTypes:          circInvalidity.BadNonce,
+		DeadlineBlockHeight:      uint64(spec.ExpectedBlockHeight),
+		PrevFtxRollingHash:       linTypes.Bytes32{}, // Will be set by caller when chaining from previous proof
+		LastFinalizedBlockNumber: uint64(spec.LastFinalizedBlockNumber),
 	}
 
 }

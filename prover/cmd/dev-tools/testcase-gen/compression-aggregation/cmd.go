@@ -426,7 +426,8 @@ func ProcessAggregationSpec(
 	runningSpec.ParentAggregationFtxNumber = int(resp.FinalFtxNumber)
 
 	for i := range runningSpec.InvalidityProofs {
-		runningSpec.InvalidityProofs[i].ExecutionCtx.ZkParentStateRootHash = linTypes.Bytes32FromHex(finalStateRootHash)
+		runningSpec.InvalidityProofs[i].Request.ExecutionCtx.ZkParentStateRootHash = linTypes.Bytes32FromHex(spec.ParentStateRootHash)
+		runningSpec.InvalidityProofs[i].Request.LastFinalizedBlockNumber = uint64(spec.LastFinalizedBlockNumber)
 	}
 	return resp
 }
@@ -474,8 +475,8 @@ func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *
 
 	if prevResp != nil {
 		invalidityReq.ForcedTransactionNumber = uint64(prevResp.ForcedTransactionNumber + 1)
+		invalidityReq.PrevFtxRollingHash = prevResp.FtxRollingHash
 		spec.FtxNumber = int(invalidityReq.ForcedTransactionNumber)
-		spec.PrevFtxRollingHash = prevResp.FtxRollingHash.Hex()
 	}
 
 	resp, err := invalidity.Prove(cfg, invalidityReq)

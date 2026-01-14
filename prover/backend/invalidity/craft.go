@@ -29,7 +29,7 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 	ftxRollingHash := circuitInvalidity.UpdateFtxRollingHash(
 		req.PrevFtxRollingHash,
 		tx,
-		int(req.ExpectedBlockHeight),
+		int(req.DeadlineBlockHeight),
 		fromAddress,
 	)
 
@@ -37,7 +37,7 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 		TxHash:              txHash,
 		TxNumber:            uint64(req.ForcedTransactionNumber),
 		FromAddress:         fromAddress,
-		ExpectedBlockHeight: uint64(req.ExpectedBlockHeight),
+		ExpectedBlockHeight: uint64(req.DeadlineBlockHeight),
 		StateRootHash:       req.ExecutionCtx.ZkParentStateRootHash,
 		FtxRollingHash:      ftxRollingHash,
 	}
