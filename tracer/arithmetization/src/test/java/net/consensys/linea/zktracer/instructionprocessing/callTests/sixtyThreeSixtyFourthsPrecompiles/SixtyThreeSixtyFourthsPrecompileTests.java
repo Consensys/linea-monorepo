@@ -410,7 +410,7 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
             switch (precompileFlag) {
               case PRC_MODEXP ->
                   writeInMemoryByteCodeOfCodeOwner(modexpInputAsByteCodeOwnerAddress, 0);
-              case PRC_BLAKE2F -> prepareBlake2F(rLeadingByte, 2);
+              case PRC_BLAKE2F -> prepareBlake2F(rLeadingByte, 3);
               case PRC_POINT_EVALUATION ->
                   writeInMemoryByteCodeOfCodeOwner(pointEvaluationInputAsByteCodeOwnerAddress, 0);
               default -> Bytes.EMPTY;
