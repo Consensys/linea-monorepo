@@ -23,8 +23,20 @@ import org.hyperledger.besu.datatypes.Transaction;
  */
 @Slf4j
 public class CachingTransactionCompressor implements TransactionCompressor {
-  private final Cache<Hash, Integer> compressedSizeCache =
-      CacheBuilder.newBuilder().maximumSize(10000).expireAfterWrite(30, TimeUnit.MINUTES).build();
+  private static final long DEFAULT_CACHE_SIZE = 10000;
+  private final Cache<Hash, Integer> compressedSizeCache;
+
+  public CachingTransactionCompressor(long cacheSize) {
+    compressedSizeCache =
+        CacheBuilder.newBuilder()
+            .maximumSize(cacheSize)
+            .expireAfterWrite(30, TimeUnit.MINUTES)
+            .build();
+  }
+
+  public CachingTransactionCompressor() {
+    this(DEFAULT_CACHE_SIZE);
+  }
 
   private int calculateCompressedSize(final Transaction transaction) {
     final byte[] bytes = transaction.encoded().toArrayUnsafe();

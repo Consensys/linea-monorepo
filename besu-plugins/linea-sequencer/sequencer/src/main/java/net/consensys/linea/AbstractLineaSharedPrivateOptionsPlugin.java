@@ -77,8 +77,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   protected static MetricCategoryRegistry metricCategoryRegistry;
   protected static RpcEndpointService rpcEndpointService;
   protected static InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
-  private static final TransactionCompressor transactionCompressor =
-      new CachingTransactionCompressor();
   protected static TransactionProfitabilityCalculator transactionProfitabilityCalculator;
 
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
@@ -278,8 +276,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         new InvalidTransactionByLineCountCache(
             transactionSelectorConfiguration().overLinesLimitCacheSize());
 
+    final LineaProfitabilityConfiguration profitabilityConfiguration = profitabilityConfiguration();
+    final TransactionCompressor transactionCompressor =
+        new CachingTransactionCompressor(profitabilityConfiguration.compressedTxCacheSize());
     transactionProfitabilityCalculator =
-        new TransactionProfitabilityCalculator(profitabilityConfiguration(), transactionCompressor);
+        new TransactionProfitabilityCalculator(profitabilityConfiguration, transactionCompressor);
   }
 
   @Override
