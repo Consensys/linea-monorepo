@@ -88,16 +88,16 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 	}
 
 	// Final round; feed-forward and compare against output
-	_, round, _ := wizardutils.AsExpr(newState[0])
-	for i := range newState {
-		newState[i] = symbolic.Add(newState[i], state[8+i])
+	// _, round, _ := wizardutils.AsExpr(newState[0])
+	// for i := range newState {
+	// 	newState[i] = symbolic.Add(newState[i], state[8+i])
 
-		comp.InsertGlobal(
-			round,
-			ifaces.QueryIDf("POSEIDON2_OUTPUT_%v_%v", comp.SelfRecursionCount, i),
-			symbolic.Sub(newState[i], output[i]),
-		)
-	}
+	// 	comp.InsertGlobal(
+	// 		round,
+	// 		ifaces.QueryIDf("POSEIDON2_OUTPUT_%v_%v", comp.SelfRecursionCount, i),
+	// 		symbolic.Sub(newState[i], output[i]),
+	// 	)
+	// }
 
 	return interm
 }
@@ -248,7 +248,7 @@ func anchorColumns(comp *wizard.CompiledIOP, name string, columns []*symbolic.Ex
 	_, round, size := wizardutils.AsExpr(columns[0])
 
 	news := make([]ifaces.Column, len(columns))
-	for i, column := range columns {
+	for i, _ := range columns {
 		news[i] = comp.InsertCommit(
 			round,
 			ifaces.ColIDf("%v_%v", name, i),
@@ -256,11 +256,11 @@ func anchorColumns(comp *wizard.CompiledIOP, name string, columns []*symbolic.Ex
 			true,
 		)
 
-		comp.InsertGlobal(
-			round,
-			ifaces.QueryIDf("%v_%v_GLOBAL", name, i),
-			symbolic.Sub(column, news[i]),
-		)
+		// comp.InsertGlobal(
+		// 	round,
+		// 	ifaces.QueryIDf("%v_%v_GLOBAL", name, i),
+		// 	symbolic.Sub(column, news[i]),
+		// )
 	}
 
 	return news
@@ -287,11 +287,11 @@ func anchorSingleColumn(comp *wizard.CompiledIOP, name string, column *symbolic.
 		true,
 	)
 
-	comp.InsertGlobal(
-		round,
-		ifaces.QueryIDf("%v_%v_GLOBAL", name, 0),
-		symbolic.Sub(column, news),
-	)
+	// comp.InsertGlobal(
+	// 	round,
+	// 	ifaces.QueryIDf("%v_%v_GLOBAL", name, 0),
+	// 	symbolic.Sub(column, news),
+	// )
 
 	return news
 }

@@ -118,6 +118,7 @@ func (p Poseidon2) Check(run ifaces.Runtime) error {
 			newState[j] = newStates[j].Get(i)
 		}
 
+		//comment here?
 		recomputed := vortex.CompressPoseidon2(oldState, block)
 		if recomputed != newState {
 			return fmt.Errorf(

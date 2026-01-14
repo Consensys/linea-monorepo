@@ -3,6 +3,7 @@ package vortex
 import (
 	"fmt"
 	"math"
+	"os"
 
 	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 
@@ -466,7 +467,11 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		ctx.Comp.Columns.MarkAsIgnored(shadowCol.GetColID())
 		coms = append(coms, shadowCol.GetColID())
 	}
-
+	f, _ := os.Create(fmt.Sprintf("vortex_round_%d_columns.txt", round))
+	defer f.Close()
+	for _, colID := range coms {
+		fmt.Fprintf(f, "%s\n", colID)
+	}
 	logrus.
 		WithField("where", "compileRoundWithVortex").
 		WithField("IsBLS", ctx.IsBLS).

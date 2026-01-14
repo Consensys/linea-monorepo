@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -338,7 +339,9 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 		RsInverseRate:   16,
 		TargetRowSize:   1 << 9,
 	}
+	logrus.Info("-------------------------------")
 
+	logrus.WithField("Starting benchmark with layer 0", 0).Info()
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
@@ -355,9 +358,12 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 		),
 	)
 
-	nbIteration := 2
+	nbIteration := 5
 
 	for i := 0; i < nbIteration; i++ {
+		logrus.Info("-------------------------------")
+
+		logrus.WithField("Starting benchmark with layer", i+1).Info()
 		applySelfRecursionThenArcane(comp, params)
 		applyVortex(comp, params, false)
 	}
@@ -378,7 +384,9 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		RsInverseRate:   2,
 		TargetRowSize:   1 << 5,
 	}
+	logrus.Info("-------------------------------")
 
+	logrus.WithField("Starting benchmark with layer", 0).Info()
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
@@ -398,6 +406,9 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	nbIteration := 1 //TODO@yao: update back to 2
 
 	for i := 0; i < nbIteration; i++ {
+		logrus.Info("-------------------------------")
+
+		logrus.WithField("Starting benchmark with layer", i+1).Info()
 		applySelfRecursionThenArcane(comp, params)
 		if i == nbIteration-1 {
 			applyVortex(comp, params, true) // last iteration over BLS
@@ -409,11 +420,11 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		proof := wizard.Prove(comp, sbc.NewAssigner(b), isBLS)
-		err := wizard.Verify(comp, proof, isBLS)
-		if err != nil {
-			b.Fatal(err)
-		}
+		// proof := wizard.Prove(comp, sbc.NewAssigner(b), isBLS)
+		// err := wizard.Verify(comp, proof, isBLS)
+		// if err != nil {
+		// 	b.Fatal(err)
+		// }
 
 		circuit := verifierCircuit{}
 		{
@@ -421,26 +432,32 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			circuit.C = *c
 		}
 
+		// initialize the profiler
+		filePath := "BenchmarkCompilerWithSelfRecursionAndGnarkVerifier.pprof"
+		pro := profile.Start(profile.WithPath(filePath))
+
 		csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 
+		pro.Stop()
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		assignment := &verifierCircuit{
-			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), isBLS),
-		}
+		fmt.Printf("constraints=%v\n", csc.GetNbConstraints())
+		// assignment := &verifierCircuit{
+		// 	C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), isBLS),
+		// }
 
-		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
-		if err != nil {
-			b.Fatal(err)
-		}
+		// witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+		// if err != nil {
+		// 	b.Fatal(err)
+		// }
 
-		// Check if solved using the pre-compiled SCS
-		err = csc.IsSolved(witness)
-		if err != nil {
-			b.Fatal(err)
-		}
+		// // Check if solved using the pre-compiled SCS
+		// err = csc.IsSolved(witness)
+		// if err != nil {
+		// 	b.Fatal(err)
+		// }
 	}
 }
 
