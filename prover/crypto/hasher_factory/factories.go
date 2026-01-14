@@ -199,7 +199,7 @@ func (h *ExternalHasher) compress(state, block [poseidon2_koalabear.BlockSize]fr
 // and a function to get the position of the wires corresponding to the variables
 // taking part in each claim.
 func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilderU32, func() [][3][2]int) {
-	rcCols := make(chan [][3][2]int)
+	rcCols := make(chan [][3][2]int, 1) // Buffered channel to prevent blocking/deadlock
 	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder[constraint.U32], error) {
 			b, err := plonkbuilder.From(scs.NewBuilder[constraint.U32])(field, config)
 			if err != nil {

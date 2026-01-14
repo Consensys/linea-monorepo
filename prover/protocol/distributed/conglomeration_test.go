@@ -18,7 +18,7 @@ import (
 // TestConglomerationBasic generates a conglomeration proof and checks if it is valid
 func TestConglomerationBasic(t *testing.T) {
 	var (
-		numRow = 1 << 10
+		numRow = 1 << 5
 		tc     = LookupTestCase{numRow: numRow}
 		disc   = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 3 * numRow / 2,

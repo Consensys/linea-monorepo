@@ -22,6 +22,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 type ProofType int
@@ -304,6 +305,12 @@ func (d *DistributedWizard) Conglomerate(params CompilationParams) *DistributedW
 // Compile compiles the conglomeration proof. The function first checks if the
 // public inputs are compatible and then compiles the conglomeration proof.
 func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.CompiledIOP) {
+
+	// We see the wizard stats just before:
+	initialWizardStats := logdata.GetWizardStats(comp)
+	logrus.Infof("[Before Conglomeration] numCellsCommitted=%v numCellsPrecomputed=%v numCellsProof=%v, totalCells=%v, numQueriesLogDerivativeSum=%v",
+		initialWizardStats.NumCellsCommitted, initialWizardStats.NumCellsPrecomputed, initialWizardStats.NumCellsProof,
+		initialWizardStats.TotalCells(), initialWizardStats.NumQueriesLogDerivativeSum)
 
 	c.Recursion = recursion.DefineRecursionOf(comp, moduleMod, recursion.Parameters{
 		Name:                   "conglomeration",
