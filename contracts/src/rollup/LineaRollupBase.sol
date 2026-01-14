@@ -13,7 +13,7 @@ import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.
 import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
 import { IAcceptForcedTransactions } from "./forcedTransactions/interfaces/IAcceptForcedTransactions.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
-
+import { IAddressFilter } from "./forcedTransactions/interfaces/IAddressFilter.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
@@ -117,10 +117,13 @@ abstract contract LineaRollupBase is
   /// @dev The forced transaction fee in wei.
   uint256 public forcedTransactionFeeInWei;
 
+  /// @dev The address of the address filter.
+  IAddressFilter internal _addressFilter;
+
   /// @dev Keep 50 free storage slots for inheriting contracts.
   uint256[50] private __gap_LineaRollup;
 
-  /// @dev Total contract storage is 65 slots.
+  /// @dev Total contract storage is 66 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -365,6 +368,8 @@ abstract contract LineaRollupBase is
   ) internal returns (bytes32 finalShnarf) {
     _validateL2ComputedRollingHash(_finalizationData.l1RollingHashMessageNumber, _finalizationData.l1RollingHash);
 
+    _validateFilteredAddresses(_finalizationData.filteredAddresses);
+
     bytes32 lastFinalizedState = currentFinalizedState;
 
     /// @dev Post upgrade the most common case will be the 5 fields post first finalization.
@@ -456,6 +461,23 @@ abstract contract LineaRollupBase is
         _finalizationData.parentStateRootHash,
         _finalizationData.shnarfData.finalStateRootHash
       );
+    }
+  }
+
+  /**
+   * @notice Internal function to validate filtered addresses.
+   * @param _filteredAddresses The filtered addresses.
+   */
+  function _validateFilteredAddresses(address[] calldata _filteredAddresses) internal view {
+    if (_filteredAddresses.length > 0) {
+      IAddressFilter addressFilterCached = _addressFilter;
+
+      for (uint256 i = 0; i < _filteredAddresses.length; i++) {
+        require(
+          addressFilterCached.addressIsFiltered(_filteredAddresses[i]),
+          AddressIsNotFiltered(_filteredAddresses[i])
+        );
+      }
     }
   }
 

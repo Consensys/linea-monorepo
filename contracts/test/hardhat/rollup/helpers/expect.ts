@@ -9,6 +9,8 @@ import { HASH_ZERO, TEST_PUBLIC_VERIFIER_INDEX } from "../../common/constants";
 import {
   expectEvent,
   expectEventDirectFromReceiptData,
+  expectRevertWithCustomError,
+  expectRevertWithCustomError,
   generateFinalizationData,
   generateKeccak256,
 } from "../../common/helpers";
@@ -27,6 +29,7 @@ export async function expectSuccessfulFinalize(
   lastFinalizedMessageNumber: bigint = 0n,
   lastFinalizedForcedTransactionRollingHash: string = HASH_ZERO,
   lastFinalizedForcedTransactionNumber: bigint = 0n,
+  filteredAddresses: string[] = [],
 ) {
   const finalizationData = await generateFinalizationData({
     l1RollingHash: proofData.l1RollingHash,
@@ -38,6 +41,7 @@ export async function expectSuccessfulFinalize(
     l2MerkleRoots: proofData.l2MerkleRoots,
     l2MerkleTreesDepth: BigInt(proofData.l2MerkleTreesDepth),
     l2MessagingBlocksOffsets: proofData.l2MessagingBlocksOffsets,
+    filteredAddresses: filteredAddresses,
     aggregatedProof: proofData.aggregatedProof,
     shnarfData: shnarfDataGenerator(blobParentShnarfIndex, isMultiple),
   });
@@ -83,6 +87,54 @@ export async function expectSuccessfulFinalize(
       ],
     ),
   );
+}
+
+export async function expectFailedCustomErrorFinalize(
+  lineaRollup: TestLineaRollup,
+  operator: SignerWithAddress,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  proofData: any,
+  blobParentShnarfIndex: number,
+  finalStateRootHash: string,
+  shnarfDataGenerator: ShnarfDataGenerator,
+  isMultiple: boolean = false,
+  lastFinalizedRollingHash: string = HASH_ZERO,
+  lastFinalizedMessageNumber: bigint = 0n,
+  lastFinalizedForcedTransactionRollingHash: string = HASH_ZERO,
+  lastFinalizedForcedTransactionNumber: bigint = 0n,
+  filteredAddresses: string[] = [],
+  customError: string,
+  customErrorArgs: unknown[] = [],
+) {
+  const finalizationData = await generateFinalizationData({
+    l1RollingHash: proofData.l1RollingHash,
+    l1RollingHashMessageNumber: BigInt(proofData.l1RollingHashMessageNumber),
+    lastFinalizedTimestamp: BigInt(proofData.parentAggregationLastBlockTimestamp),
+    endBlockNumber: BigInt(proofData.finalBlockNumber),
+    parentStateRootHash: proofData.parentStateRootHash,
+    finalTimestamp: BigInt(proofData.finalTimestamp),
+    l2MerkleRoots: proofData.l2MerkleRoots,
+    l2MerkleTreesDepth: BigInt(proofData.l2MerkleTreesDepth),
+    l2MessagingBlocksOffsets: proofData.l2MessagingBlocksOffsets,
+    filteredAddresses: filteredAddresses,
+    aggregatedProof: proofData.aggregatedProof,
+    shnarfData: shnarfDataGenerator(blobParentShnarfIndex, isMultiple),
+  });
+
+  finalizationData.lastFinalizedL1RollingHash = lastFinalizedRollingHash;
+  finalizationData.lastFinalizedL1RollingHashMessageNumber = lastFinalizedMessageNumber;
+  finalizationData.lastFinalizedForcedTransactionRollingHash = lastFinalizedForcedTransactionRollingHash;
+  finalizationData.lastFinalizedForcedTransactionNumber = lastFinalizedForcedTransactionNumber;
+
+  await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
+
+  console.log("finalizationData", finalizationData);
+
+  const finalizeCompressedCall = lineaRollup
+    .connect(operator)
+    .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+
+  await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, customError, customErrorArgs);
 }
 
 export async function expectSuccessfulFinalizeViaCallForwarder(

@@ -78,6 +78,7 @@ describe("Linea Rollup contract", () => {
   let alternateShnarfProviderAddress: SignerWithAddress;
   let roleAddresses: { addressWithRole: string; role: string }[];
   let forcedTransactionGatewayAddress: string;
+  let addressFilterAddress: string;
 
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentStateRootHash } =
     firstCompressedDataContent;
@@ -90,7 +91,7 @@ describe("Linea Rollup contract", () => {
   });
 
   beforeEach(async () => {
-    ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+    ({ verifier, lineaRollup, addressFilterAddress } = await loadFixture(deployLineaRollupFixture));
 
     ({ forcedTransactionGateway } = await loadFixture(deployForcedTransactionGatewayFixture));
     forcedTransactionGatewayAddress = await forcedTransactionGateway.getAddress();
@@ -354,31 +355,61 @@ describe("Linea Rollup contract", () => {
 
   describe("Upgrading / reinitialisation", () => {
     it("Should revert if the forced transaction gateway is address(0)", async () => {
-      const upgradeCall = lineaRollup.reinitializeLineaRollupV9(ADDRESS_ZERO, FORCED_TRANSACTION_FEE);
+      const upgradeCall = lineaRollup.reinitializeLineaRollupV9(
+        ADDRESS_ZERO,
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      );
 
       await expectRevertWithCustomError(lineaRollup, upgradeCall, "ZeroAddressNotAllowed");
     });
 
     it("Should revert if the forced transaction fee is zero", async () => {
-      const upgradeCall = lineaRollup.reinitializeLineaRollupV9(forcedTransactionGatewayAddress, 0n);
+      const upgradeCall = lineaRollup.reinitializeLineaRollupV9(
+        forcedTransactionGatewayAddress,
+        0n,
+        addressFilterAddress,
+      );
 
       await expectRevertWithCustomError(lineaRollup, upgradeCall, "ZeroValueNotAllowed");
     });
 
+    it("Should revert if the address filter address is zero address", async () => {
+      const upgradeCall = lineaRollup.reinitializeLineaRollupV9(
+        forcedTransactionGatewayAddress,
+        FORCED_TRANSACTION_FEE,
+        ADDRESS_ZERO,
+      );
+
+      await expectRevertWithCustomError(lineaRollup, upgradeCall, "ZeroAddressNotAllowed");
+    });
+
     it("Should grant FORCED_TRANSACTION_SENDER_ROLE to the forced transaction gateway ", async () => {
-      await lineaRollup.reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
+      await lineaRollup.reinitializeLineaRollupV9(
+        forcedTransactionGatewayAddress,
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      );
 
       expect(await lineaRollup.hasRole(FORCED_TRANSACTION_SENDER_ROLE, forcedTransactionGatewayAddress)).true;
     });
 
     it("Should set the next forced transaction number to 1", async () => {
-      await lineaRollup.reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
+      await lineaRollup.reinitializeLineaRollupV9(
+        forcedTransactionGatewayAddress,
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      );
 
       expect(await lineaRollup.nextForcedTransactionNumber()).to.equal(1n);
     });
 
     it("Next contract version number should be 8.0", async () => {
-      await lineaRollup.reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
+      await lineaRollup.reinitializeLineaRollupV9(
+        forcedTransactionGatewayAddress,
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      );
 
       expect(await lineaRollup.CONTRACT_VERSION()).to.equal("8.0");
     });
@@ -386,17 +417,21 @@ describe("Linea Rollup contract", () => {
     it("Next contract version number should be 8.0", async () => {
       const upgradeCall = lineaRollup
         .connect(securityCouncil)
-        .reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
+        .reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE, addressFilterAddress);
 
       expectEvent(lineaRollup, upgradeCall, "LineaRollupVersionChanged", ["7.1", "8.0"]);
     });
 
     it("Fails to reinitialize twice", async () => {
-      await lineaRollup.reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
+      await lineaRollup.reinitializeLineaRollupV9(
+        forcedTransactionGatewayAddress,
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      );
 
       const secondUpgradeCall = lineaRollup
         .connect(securityCouncil)
-        .reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
+        .reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE, addressFilterAddress);
 
       expectRevertWithReason(secondUpgradeCall, INITIALIZED_ALREADY_MESSAGE);
     });

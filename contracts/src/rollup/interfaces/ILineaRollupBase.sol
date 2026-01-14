@@ -178,6 +178,11 @@ interface ILineaRollupBase {
   error FinalizationDataMissingForcedTransaction(uint256 nextForcedTransactionNumber);
 
   /**
+   * @dev Thrown when an address is not filtered and expected to be.
+   */
+  error AddressIsNotFiltered(address addressNotFiltered);
+
+  /**
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */

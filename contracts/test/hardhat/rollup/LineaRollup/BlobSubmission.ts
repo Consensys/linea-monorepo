@@ -13,10 +13,12 @@ import secondCompressedDataContent from "../../_testData/compressedData/blocks-4
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
 import fourthCompressedDataMultipleContent from "../../_testData/compressedData/multipleProofs/blocks-120-153.json";
 
-import { TestLineaRollup } from "contracts/typechain-types";
+import { AddressFilter, TestLineaRollup } from "contracts/typechain-types";
 import {
+  deployForcedTransactionGatewayFixture,
   deployLineaRollupFixture,
   deployRevertingVerifier,
+  expectFailedCustomErrorFinalize,
   expectSuccessfulFinalize,
   getAccountsFixture,
   getWalletForIndex,
@@ -29,6 +31,7 @@ import {
   TEST_PUBLIC_VERIFIER_INDEX,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
+  FORCED_TRANSACTION_FEE,
 } from "../../common/constants";
 import {
   generateFinalizationData,
@@ -50,6 +53,10 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
+  let forcedTransactionGatewayAddress: string;
+  let addressFilterAddress: string;
+  let addressFilter: AddressFilter;
+
   const { prevShnarf } = firstCompressedDataContent;
 
   before(async () => {
@@ -57,7 +64,12 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   });
 
   beforeEach(async () => {
-    ({ lineaRollup } = await loadFixture(deployLineaRollupFixture));
+    const forcedTransactionGatewayFixture = await loadFixture(deployForcedTransactionGatewayFixture);
+    forcedTransactionGatewayAddress = await forcedTransactionGatewayFixture.forcedTransactionGateway.getAddress();
+    addressFilter = forcedTransactionGatewayFixture.addressFilter;
+    addressFilterAddress = await forcedTransactionGatewayFixture.addressFilter.getAddress();
+
+    ({ lineaRollup, addressFilterAddress } = await loadFixture(deployLineaRollupFixture));
     await lineaRollup.setLastFinalizedBlock(0);
     await lineaRollup.setupParentShnarf(prevShnarf);
   });
@@ -473,6 +485,14 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   });
 
   it("Should submit 2 blobs, then submit another 2 blobs and finalize", async () => {
+    // we need the address filter to be set
+    await lineaRollup
+      .connect(securityCouncil)
+      .reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE, addressFilterAddress);
+
+    // validating address filtering checking by marking the security council as filtered
+    await addressFilter.connect(securityCouncil).setFilteredStatus([securityCouncil.getAddress()], true);
+
     // Submit 2 blobs
     await sendBlobTransaction(lineaRollup, 0, 2);
     // Submit another 2 blobs
@@ -485,6 +505,37 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       4,
       fourthCompressedDataContent.finalStateRootHash,
       generateBlobParentShnarfData,
+    );
+  });
+
+  it("Should revert if the address filter is set and the address is not marked as filtered", async () => {
+    const filteredAddress = await securityCouncil.getAddress();
+
+    // we need the address filter to be set
+    await lineaRollup
+      .connect(securityCouncil)
+      .reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE, addressFilterAddress);
+
+    // Submit 2 blobs
+    await sendBlobTransaction(lineaRollup, 0, 2);
+    // Submit another 2 blobs
+    await sendBlobTransaction(lineaRollup, 2, 4);
+    // Finalize 4 blobs
+    await expectFailedCustomErrorFinalize(
+      lineaRollup,
+      operator,
+      blobAggregatedProof1To155,
+      4,
+      fourthCompressedDataContent.finalStateRootHash,
+      generateBlobParentShnarfData,
+      false,
+      HASH_ZERO,
+      0n,
+      HASH_ZERO,
+      0n,
+      [filteredAddress],
+      "AddressIsNotFiltered",
+      [filteredAddress],
     );
   });
 

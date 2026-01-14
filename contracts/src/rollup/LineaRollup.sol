@@ -7,6 +7,8 @@ import { ClaimMessageV1 } from "../messaging/l1/v1/ClaimMessageV1.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { LivenessRecovery } from "./LivenessRecovery.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
+import { IAddressFilter } from "./forcedTransactions/interfaces/IAddressFilter.sol";
+
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
@@ -62,22 +64,26 @@ contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, 
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
    * @param _forcedTransactionGateway The address of the forced transaction gateway.
    * @param _forcedTransactionFeeInWei The forced transaction fee in wei.
+   * @param _addressFilterValue The address of the address filter.
    */
   function reinitializeLineaRollupV9(
     address _forcedTransactionGateway,
-    uint256 _forcedTransactionFeeInWei
+    uint256 _forcedTransactionFeeInWei,
+    address _addressFilterValue
   ) external reinitializer(9) {
     // TODO - ADD PROXY ADMIN CHECK AND FIX TESTS
 
     require(_forcedTransactionGateway != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_forcedTransactionFeeInWei > 0, IGenericErrors.ZeroValueNotAllowed());
-
-    forcedTransactionFeeInWei = _forcedTransactionFeeInWei;
-    nextForcedTransactionNumber = 1;
-
-    emit ForcedTransactionFeeSet(_forcedTransactionFeeInWei);
+    require(_addressFilterValue != address(0), IGenericErrors.ZeroAddressNotAllowed());
 
     _grantRole(FORCED_TRANSACTION_SENDER_ROLE, _forcedTransactionGateway);
+
+    forcedTransactionFeeInWei = _forcedTransactionFeeInWei;
+    _addressFilter = IAddressFilter(_addressFilterValue);
+    emit ForcedTransactionFeeSet(_forcedTransactionFeeInWei);
+
+    nextForcedTransactionNumber = 1;
 
     emit LineaRollupVersionChanged(bytes8("7.1"), bytes8("8"));
   }
