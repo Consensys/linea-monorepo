@@ -60,6 +60,7 @@ public class ProfitabilityValidatorTest {
             (byte) 0,
             curve.getN());
   }
+
   private ProfitabilityValidator profitabilityValidatorAlways;
   private ProfitabilityValidator profitabilityValidatorOnlyApi;
   private ProfitabilityValidator profitabilityValidatorOnlyP2p;

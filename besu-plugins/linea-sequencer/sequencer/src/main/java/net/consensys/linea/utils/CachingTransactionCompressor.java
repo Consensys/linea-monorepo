@@ -26,6 +26,11 @@ public class CachingTransactionCompressor implements TransactionCompressor {
   private final Cache<Hash, Integer> compressedSizeCache =
       CacheBuilder.newBuilder().maximumSize(10000).expireAfterWrite(30, TimeUnit.MINUTES).build();
 
+  private int calculateCompressedSize(final Transaction transaction) {
+    final byte[] bytes = transaction.encoded().toArrayUnsafe();
+    return Compressor.instance.compressedSize(bytes);
+  }
+
   /**
    * Get the compressed size of a transaction. If the compressed size has been calculated before for
    * this transaction (identified by its hash), it will be retrieved from the cache. Otherwise, it
@@ -38,11 +43,7 @@ public class CachingTransactionCompressor implements TransactionCompressor {
   public int getCompressedSize(final Transaction transaction) {
     try {
       return compressedSizeCache.get(
-          transaction.getHash(),
-          () -> {
-            final byte[] bytes = transaction.encoded().toArrayUnsafe();
-            return Compressor.instance.compressedSize(bytes);
-          });
+          transaction.getHash(), () -> calculateCompressedSize(transaction));
     } catch (ExecutionException e) {
       log.atWarn()
           .setMessage(
@@ -50,8 +51,7 @@ public class CachingTransactionCompressor implements TransactionCompressor {
           .addArgument(transaction::getHash)
           .setCause(e)
           .log();
-      final byte[] bytes = transaction.encoded().toArrayUnsafe();
-      return Compressor.instance.compressedSize(bytes);
+      return calculateCompressedSize(transaction);
     }
   }
 }

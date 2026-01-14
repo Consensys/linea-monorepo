@@ -77,7 +77,8 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   protected static MetricCategoryRegistry metricCategoryRegistry;
   protected static RpcEndpointService rpcEndpointService;
   protected static InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
-  private static final TransactionCompressor transactionCompressor = new CachingTransactionCompressor();
+  private static final TransactionCompressor transactionCompressor =
+      new CachingTransactionCompressor();
   protected static TransactionProfitabilityCalculator transactionProfitabilityCalculator;
 
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
