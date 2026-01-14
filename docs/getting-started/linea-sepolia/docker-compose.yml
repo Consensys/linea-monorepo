@@ -76,7 +76,6 @@ services:
       - "-Dlog4j2.configurationFile=/opt/consensys/maru/configs/log4j.xml"
       - "-jar"
       - "/opt/consensys/maru/maru.jar"
-      # Maru uses named networks; --maru-genesis-file is deprecated.
       - "--network"
       - "linea-sepolia"
       - "--config"
