@@ -87,7 +87,7 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 	// Count public input slots: base field = 1 slot, extension field = 4 slots (coordinates)
 	numPubSlots := 0
 	for i := range comp.PublicInputs {
-		if constAcc, ok := comp.PublicInputs[i].Acc.(*accessors.FromConstAccessor); ok && !constAcc.IsBase() {
+		if !comp.PublicInputs[i].Acc.IsBase() {
 			numPubSlots += 4 // extension field: 4 base field coordinates
 		} else {
 			numPubSlots++ // base field: 1 element
@@ -135,7 +135,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 		acc := w.Spec.PublicInputs[i].Acc
 
 		// Check if this is an extension field accessor
-		if constAcc, ok := acc.(*accessors.FromConstAccessor); ok && !constAcc.IsBase() {
+		if !acc.IsBase() {
 			// Extension field: verify all 4 coordinates
 			if pubIdx+4 > len(r.Pubs) {
 				panic("mismatch between public input slots count")
@@ -194,10 +194,22 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 	pubSlots := make([]frontend.Variable, 0, len(pubs)*2) // rough estimate
 	pubIdx := 0
 	for i := range comp.PublicInputs {
-		if constAcc, ok := comp.PublicInputs[i].Acc.(*accessors.FromConstAccessor); ok && !constAcc.IsBase() {
+		acc := comp.PublicInputs[i].Acc
+		if !acc.IsBase() {
 			// Extension field: flatten to 4 base field coordinates
-			extVal := constAcc.Ext
-			pubSlots = append(pubSlots, extVal.B0.A0, extVal.B0.A1, extVal.B1.A0, extVal.B1.A1)
+			// Get the extension field value from the wizard verifier
+			if logDerivAcc, ok := acc.(*accessors.FromLogDerivSumAccessor); ok {
+				// For log derivative sums, get the params from the wizard verifier
+				params := wizardVerifier.GetParams(logDerivAcc.Q.ID).(query.GnarkLogDerivSumParams)
+				extVal := params.Sum
+				pubSlots = append(pubSlots, extVal.B0.A0.AsNative(), extVal.B0.A1.AsNative(), extVal.B1.A0.AsNative(), extVal.B1.A1.AsNative())
+			} else if constAcc, ok := acc.(*accessors.FromConstAccessor); ok {
+				// For constant accessors, get the value directly
+				extVal := constAcc.Ext
+				pubSlots = append(pubSlots, extVal.B0.A0, extVal.B0.A1, extVal.B1.A0, extVal.B1.A1)
+			} else {
+				panic("Unsupported extension field accessor type")
+			}
 		} else {
 			// Base field element
 			if pubIdx >= len(pubs) {
@@ -254,12 +266,21 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []T) {
 
 	var (
-		numPubs     = len(r.InputCompiledIOP.PublicInputs)
+		numPubSlots = 0
 		pcsCtx      = r.PcsCtx[0]
 		numYs       = len(pcsCtx.Query.Pols)
 		numMRoots   = 0
 		allPubDrain = allPubs
 	)
+
+	// Count public input slots: base field = 1 slot, extension field = 4 slots (coordinates)
+	for i := range r.InputCompiledIOP.PublicInputs {
+		if !r.InputCompiledIOP.PublicInputs[i].Acc.IsBase() {
+			numPubSlots += 4 // extension field: 4 base field coordinates
+		} else {
+			numPubSlots++ // base field: 1 element
+		}
+	}
 
 	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		numMRoots++
@@ -283,7 +304,7 @@ func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []
 	x, allPubDrain = allPubDrain[:4], allPubDrain[4:]
 	ys, allPubDrain = allPubDrain[:4*numYs], allPubDrain[4*numYs:]
 	mRoots, allPubDrain = allPubDrain[:8*numMRoots], allPubDrain[8*numMRoots:]
-	pubs, _ = allPubDrain[:numPubs], allPubDrain[numPubs:]
+	pubs, _ = allPubDrain[:numPubSlots], allPubDrain[numPubSlots:]
 
 	return x, ys, mRoots, pubs
 }
