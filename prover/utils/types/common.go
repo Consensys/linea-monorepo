@@ -130,6 +130,10 @@ func ReadInt64On64Bytes(r io.Reader) (x, n_ int64, err error) {
 		return 0, int64(n), fmt.Errorf("could not read 64 bytes: %w", err)
 	}
 
+	if n != 64 {
+		return 0, int64(n), fmt.Errorf("could not read 64 bytes: read %v", n)
+	}
+
 	// De-interleave the data from the 64-byte buffer into an 8-byte buffer
 	data := RemovePadding(Remove48Padding(buf[:]))
 

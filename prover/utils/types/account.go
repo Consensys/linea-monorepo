@@ -156,7 +156,7 @@ func (a *Account) readFromShomeiTraces(r io.Reader) (int64, error) {
 		return 0, fmt.Errorf("reading account : reading keccak codehash : %w", err)
 	}
 
-	a.CodeSize, _, err = ReadInt64On64Bytes(r)
+	a.CodeSize, _, err = ReadInt64On32Bytes(r)
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading codesize : %w", err)
 	}
