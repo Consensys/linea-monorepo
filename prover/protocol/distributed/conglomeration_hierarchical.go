@@ -897,6 +897,7 @@ func getPublicInputListOfInstanceGnark(rec *recursion.Recursion, api frontend.AP
 func getPublicInputExtOfInstanceGnark(rec *recursion.Recursion, api frontend.API, run wizard.GnarkRuntime, name string, instance int) gnarkfext.E4Gen {
 	fullName := rec.Name + "-" + strconv.Itoa(instance) + "_" + name
 	acc := run.GetSpec().GetPublicInputAccessor(fullName)
+	// @azam this may make recursion complicated, alex proposed to register all the public Inputs as field element on the runtime object. while we can have functions that create extension from runtime. E.g. we can have 4 calls to the above function.
 	return acc.GetFrontendVariableExt(api, run)
 }
 

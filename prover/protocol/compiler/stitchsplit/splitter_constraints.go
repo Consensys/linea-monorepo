@@ -26,18 +26,12 @@ type AssignLocalPointProverAction struct {
 }
 
 func (a *AssignLocalPointProverAction) Run(run *wizard.ProverRuntime) {
-
-	var (
-		oldQ    = run.Spec.QueriesParams.Data(a.QID).(query.LocalOpening)
-		oldQRes = run.QueriesParams.MustGet(a.QID).(query.LocalOpeningParams)
-	)
-
-	if oldQ.IsBase() {
-		run.AssignLocalPoint(a.NewQ, oldQRes.BaseY)
-		return
+	params := run.QueriesParams.MustGet(a.QID).(query.LocalOpeningParams)
+	if params.IsBase {
+		run.AssignLocalPoint(a.NewQ, params.BaseY)
+	} else {
+		run.AssignLocalPointExt(a.NewQ, params.ExtY)
 	}
-
-	run.AssignLocalPointExt(a.NewQ, oldQRes.ExtY)
 }
 
 func (ctx SplitterContext) LocalOpening() {
@@ -83,7 +77,7 @@ func (ctx SplitterContext) LocalGlobalConstraints() {
 
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			isEligible, unSupported := IsExprEligible(isColEligibleSplitting, ctx.Splittings, board)
+			isEligible, unSupported := IsExprEligible(isColEligibleSplitting, ctx.Splittings, board, compilerTypeSplit)
 
 			if unSupported {
 				panic("unSupported")
@@ -104,7 +98,7 @@ func (ctx SplitterContext) LocalGlobalConstraints() {
 
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			isEligible, unSupported := IsExprEligible(isColEligibleSplitting, ctx.Splittings, board)
+			isEligible, unSupported := IsExprEligible(isColEligibleSplitting, ctx.Splittings, board, compilerTypeSplit)
 
 			if unSupported {
 				panic("unSupported")
@@ -287,7 +281,8 @@ func (ctx SplitterContext) adjustExpressionForLocal(
 func (ctx SplitterContext) adjustExpressionForGlobal(
 	expr *symbolic.Expression, slot int,
 ) *symbolic.Expression {
-	metadatas := expr.ListBoardVariableMetadata()
+	board := expr.Board()
+	metadatas := board.ListVariableMetadata()
 	translationMap := collection.NewMapping[string, *symbolic.Expression]()
 
 	for _, metadata := range metadatas {
@@ -313,35 +308,33 @@ func (ctx SplitterContext) adjustExpressionForGlobal(
 			// Check that the period is not larger than the domain size. If
 			// the period is smaller this is a no-op because the period does
 			// not change.
-			if m.T <= ctx.Size {
-				continue
-			}
+			translated := symbolic.NewVariable(metadata)
 
-			var translated *symbolic.Expression
+			if m.T > ctx.Size {
 
-			// Here, there are two possibilities. (1) The current slot is
-			// on a portion of the Periodic sample where everything is
-			// zero or (2) the current slot matchs a portion of the
-			// periodic sampling containing a 1. To determine which is
-			// the current situation, we need to find out where the slot
-			// is located compared to the period.
-			var (
-				slotStartAt = (slot * ctx.Size) % m.T
-				slotStopAt  = slotStartAt + ctx.Size
-			)
+				// Here, there are two possibilities. (1) The current slot is
+				// on a portion of the Periodic sample where everything is
+				// zero or (2) the current slot matchs a portion of the
+				// periodic sampling containing a 1. To determine which is
+				// the current situation, we need to find out where the slot
+				// is located compared to the period.
+				var (
+					slotStartAt = (slot * ctx.Size) % m.T
+					slotStopAt  = slotStartAt + ctx.Size
+				)
 
-			if m.Offset >= slotStartAt && m.Offset < slotStopAt {
-				translated = variables.NewPeriodicSample(ctx.Size, m.Offset%ctx.Size)
-			} else {
-				translated = symbolic.NewConstant(0)
+				if m.Offset >= slotStartAt && m.Offset < slotStopAt {
+					translated = variables.NewPeriodicSample(ctx.Size, m.Offset%ctx.Size)
+				} else {
+					translated = symbolic.NewConstant(0)
+				}
 			}
 
 			// And we can just pass it over because the period does not change
 			translationMap.InsertNew(m.String(), translated)
-
 		default:
 			// Repass the same variable (for coins or other types of single-valued variable)
-			// translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
+			translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
 		}
 
 	}

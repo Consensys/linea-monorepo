@@ -443,7 +443,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	}
 
 	// shiftedR.MulByFp(api, r, mulGenInv)
-	wrappedMulGenInv := zk.ValueOf(mulGenInv.String())
+	wrappedMulGenInv := zk.ValueFromKoala(mulGenInv)
 	shiftedR = *e4Api.MulByFp(&r, wrappedMulGenInv)
 
 	var invOmegaN field.Element
@@ -489,14 +489,14 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
 			var tmpinit field.Element
 			tmpinit.Exp(omegaRatioInv, big.NewInt(int64(k)))
-			wrappedTmpInit := zk.ValueOf(tmpinit.String())
+			wrappedTmpInit := zk.ValueFromKoala(tmpinit)
 			tmp := e4Api.MulByFp(&rPowM, wrappedTmpInit)
 			tmp = e4Api.Sub(tmp, &wOne)
 			tmp = e4Api.Div(&ys[k], tmp)
 			res = *e4Api.Add(&res, tmp)
 		}
 
-		wrappedRatioInvField := zk.ValueOf(ratioInvField.String())
+		wrappedRatioInvField := zk.ValueFromKoala(ratioInvField)
 		outerFactor := gnarkutil.ExpExt(api, shiftedR, n)
 		outerFactor = *e4Api.Sub(&outerFactor, &wOne)
 		outerFactor = *e4Api.MulByFp(&outerFactor, wrappedRatioInvField)

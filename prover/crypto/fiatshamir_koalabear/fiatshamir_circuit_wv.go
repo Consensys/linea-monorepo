@@ -74,21 +74,18 @@ func (fs *GnarkFSWV) UpdateVec(mat ...[]zk.WrappedVariable) {
 
 func (fs *GnarkFSWV) RandomField() zk.Octuplet {
 	res := fs.hasher.Sum()
-	fs.safeguardUpdate()
+	defer fs.safeguardUpdate()
 	return octupletToZkoctuplet(res)
 }
 
 func (fs *GnarkFSWV) randomFieldNative() poseidon2_koalabear.Octuplet {
-	res := fs.hasher.Sum()
-	fs.safeguardUpdate()
-	return res
+	defer fs.safeguardUpdate()
+	return fs.hasher.Sum()
 }
 
 // RandomField returns a single valued fiat-shamir hash
 func (fs *GnarkFSWV) RandomFieldExt() gnarkfext.E4Gen {
-	defer fs.safeguardUpdate()
-
-	s := fs.RandomField()
+	s := fs.RandomField() // already calls safeguardUpdate()
 	var res gnarkfext.E4Gen
 	res.B0.A0 = s[0]
 	res.B0.A1 = s[1]
@@ -105,12 +102,11 @@ func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []frontend.Variable
 	res := make([]frontend.Variable, num)
 	for i < num {
 		// thake the remainder mod n of each limb
-		c := fs.randomFieldNative()
+		c := fs.randomFieldNative() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := fs.api.ToBinary(c[j])
 			res[i] = fs.api.FromBinary(b[:nbBits]...)
 			i++
-			fs.safeguardUpdate()
 			if i >= num {
 				break
 			}

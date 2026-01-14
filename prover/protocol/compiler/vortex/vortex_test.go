@@ -504,6 +504,7 @@ func TestCompiler(t *testing.T) {
 					4,
 					false, // IsBLS == false, we use KoalaBear
 					vortex.WithOptionalSISHashingThreshold(9),
+					vortex.ForceNumOpenedColumns(10),
 					vortex.WithSISParams(&ringsis.Params{
 						LogTwoBound:  16,
 						LogTwoDegree: 4,

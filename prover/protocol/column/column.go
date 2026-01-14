@@ -208,7 +208,7 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 				inputs[i] = m.GetFrontendVariableExt(api, run)
 			case variables.PeriodicSample:
 				tmp := m.EvalAtOnDomain(k)
-				inputs[i] = gnarkfext.FromBase(zk.ValueOf(tmp.String()))
+				inputs[i] = gnarkfext.FromBase(zk.ValueFromKoala(tmp))
 			case variables.X:
 				// there is no theoritical problem with this but there are
 				// no cases known where this happens so we just don't
@@ -393,4 +393,17 @@ func GetColAssignmentGnarkOctuplet(col ifaces.Column, run ifaces.GnarkRuntime) z
 		result[i] = assignment[i]
 	}
 	return result
+}
+
+// GetColAssignmentBase retrieves the base assignment of a column. This is specially used when the column is over field extensions while it is storing the base elements.
+func GetColAssignmentBase(run ifaces.Runtime, col ifaces.Column) (res []field.Element, err error) {
+	res = make([]field.Element, col.Size())
+	for i := 0; i < col.Size(); i++ {
+		base, err := col.GetColAssignmentAtBase(run, i)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = base
+	}
+	return res, nil
 }

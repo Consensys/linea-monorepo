@@ -187,7 +187,7 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		// pubInputOffset corresponds to the positions of the public inputs
 		// in the plonk-in-wizard public witness. They are at
 		// 		pubInputOffset:pubInputOffset+numPubs
-		pubInputOffset = 1 + numYs + numComs
+		pubInputOffset = 4*(1+numYs) + 8*numComs // 4 for x, 4*numYs for ys, 8*numComs for merkle roots
 	)
 
 	for i := 0; i < params.MaxNumProof; i++ {
@@ -281,22 +281,27 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 
 		// Uses the assignment to assigns the merkle-roots columns.
 		for j := range assign.Commitments {
-			colName := addPrefixToID(prefix, assign.MerkleRoots[j/blockSize][j%blockSize].GetColID())
-
-			// One of the Merkle root may be the root to the precomputed
-			// polynomials and it may be of type precomputed ("may be", not
-			// "is") and thus may not be assignable.
-			if run.Spec.Precomputed.Exists(colName) {
-				continue
-			}
 			for k := 0; k < blockSize; k++ {
-				x := assign.Commitments[j][k].AsNative().(field.Element)
+				colName := addPrefixToID(prefix, assign.MerkleRoots[j][k].GetColID())
+
+				// One of the Merkle root may be the root to the precomputed
+				// polynomials and it may be of type precomputed ("may be", not
+				// "is") and thus may not be assignable.
+				if run.Spec.Precomputed.Exists(colName) {
+					continue
+				}
+
+				var x field.Element
+				if _, err := x.SetInterface(assign.Commitments[j][k]); err != nil {
+					utils.Panic("could not convert commitment to field element: %v", err)
+				}
 				run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
 			}
 		}
 
 		// Assigns the poly query.
 		params := wit[i].Proof.QueriesParams.MustGet(assign.PolyQuery.QueryID).(query.UnivariateEvalParams)
+
 		run.AssignUnivariateExt(r.PcsCtx[i].Query.QueryID, params.ExtX, params.ExtYs...)
 
 		// Store the self-recursion artefacts for the vortex prover and the

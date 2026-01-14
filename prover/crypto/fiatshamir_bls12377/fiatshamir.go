@@ -36,9 +36,8 @@ func (fs *FS) UpdateVecFrElmt(vecs ...[]fr.Element) {
 
 func (fs *FS) RandomFieldFrElmt() fr.Element {
 	fs.flushKoala()
-	res := fs.h.SumElement()
-	fs.safeguardUpdate()
-	return res
+	defer fs.safeguardUpdate()
+	return fs.h.SumElement()
 }
 
 // ------------------------------------------------------
@@ -88,12 +87,11 @@ func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
 	res := make([]int, num)
 	for i < num {
 		// thake the remainder mod n of each limb
-		c := fs.RandomField()
+		c := fs.RandomField() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := c[j].Bits()
 			res[i] = int(b[0]) & mask
 			i++
-			fs.safeguardUpdate()
 			if i >= num {
 				break
 			}

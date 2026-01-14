@@ -1,7 +1,6 @@
 package zk
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
@@ -9,6 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/selector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -82,6 +82,10 @@ func ValueOf(v any) WrappedVariable {
 	res.EV = emulated.ValueOf[emulated.KoalaBear](v)
 	res.V = v
 	return res
+}
+
+func ValueFromKoala(v field.Element) WrappedVariable {
+	return ValueOf(v.Uint64())
 }
 
 type GenericApi struct {
@@ -214,7 +218,7 @@ func (g *GenericApi) Select(b frontend.Variable, i1, i2 WrappedVariable) Wrapped
 	if g.Type() == Native {
 		return WrappedVariable{V: g.NativeApi.Select(b, i1.AsNative(), i2.AsNative())}
 	} else {
-		return WrappedVariable{EVpointer: g.EmulatedApi.FromBits(b)}
+		return WrappedVariable{EVpointer: g.EmulatedApi.Select(b, i1.AsEmulated(), i2.AsEmulated())}
 	}
 }
 
@@ -222,11 +226,11 @@ func (g *GenericApi) Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 WrappedVar
 	if g.Type() == Native {
 		return WrappedVariable{V: g.NativeApi.Lookup2(
 			b0, b1,
-			i0.AsNative(), i1.AsNative(), i1.AsNative(), i3.AsNative())}
+			i0.AsNative(), i1.AsNative(), i2.AsNative(), i3.AsNative())}
 	} else {
 		return WrappedVariable{EVpointer: g.EmulatedApi.Lookup2(
 			b0, b1,
-			i0.AsEmulated(), i1.AsEmulated(), i1.AsEmulated(), i3.AsEmulated())}
+			i0.AsEmulated(), i1.AsEmulated(), i2.AsEmulated(), i3.AsEmulated())}
 	}
 }
 
@@ -343,6 +347,5 @@ func (o Octuplet) AsNative() [8]frontend.Variable {
 			panic("wrapped variable is nil")
 		}
 	}
-	fmt.Printf("[Octuplet.AsNative] res: %v\n", res)
 	return res
 }

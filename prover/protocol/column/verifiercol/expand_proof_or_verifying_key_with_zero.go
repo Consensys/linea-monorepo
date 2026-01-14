@@ -49,17 +49,38 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) IsBase() bool {
 // GetColAssignment returns the assignment of the current column
 func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	assi := ex.Col.GetColAssignment(run)
-	values := make([][]field.Element, ex.Expansion)
-	values[0] = smartvectors.IntoRegVec(assi)
-	// zeros denote slice of zeros of length of the verifier column
-	zeros := make([]field.Element, ex.Col.Size())
-	// we start at 1 because the first slice is the actual verifier column
-	// the other slices are zeros
-	for j := 1; j < ex.Expansion; j++ {
-		values[j] = zeros
+	if smartvectors.IsBase(assi) {
+		values := make([][]field.Element, ex.Expansion)
+		values[0] = smartvectors.IntoRegVec(assi)
+		// zeros denote slice of zeros of length of the verifier column
+		zeros := make([]field.Element, ex.Col.Size())
+		// we start at 1 because the first slice is the actual verifier column
+		// the other slices are zeros
+		for j := 1; j < ex.Expansion; j++ {
+			values[j] = zeros
+		}
+		res := vector.Interleave(values...)
+		return smartvectors.NewRegular(res)
 	}
-	res := vector.Interleave(values...)
-	return smartvectors.NewRegular(res)
+
+	// extension case
+	assiExt := smartvectors.IntoRegVecExt(assi)
+	// prepare slices of extension elements
+	valuesExt := make([][]fext.Element, ex.Expansion)
+	valuesExt[0] = assiExt
+	zerosExt := make([]fext.Element, ex.Col.Size())
+	for j := 1; j < ex.Expansion; j++ {
+		valuesExt[j] = zerosExt
+	}
+	// interleave into a single slice
+	newSize := ex.Expansion * ex.Col.Size()
+	resExt := make([]fext.Element, newSize)
+	for i := 0; i < ex.Expansion; i++ {
+		for j := 0; j < ex.Col.Size(); j++ {
+			resExt[i+j*ex.Expansion] = valuesExt[i][j]
+		}
+	}
+	return smartvectors.NewRegularExt(resExt)
 }
 
 // GetColAssignmentGnark returns a gnark assignment of the current column

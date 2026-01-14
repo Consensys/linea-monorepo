@@ -57,7 +57,7 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []zk.WrappedVariable, x g
 	tmp = *e4Api.Sub(&tmp, &wOne) // xⁿ-1
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
-	wInvSize := zk.ValueOf(invSize.String())
+	wInvSize := zk.ValueFromKoala(invSize)
 	tmp = *e4Api.MulByFp(&tmp, wInvSize)
 	res = *e4Api.Mul(&res, &tmp)
 
@@ -87,7 +87,7 @@ func EvaluateLagrangeGnark(api frontend.API, poly []zk.WrappedVariable, x zk.Wra
 	var accw, one field.Element
 	one.SetOne()
 	accw.SetOne()
-	wAccW := zk.ValueOf(accw.String())
+	wAccW := zk.ValueFromKoala(accw)
 	dens := make([]zk.WrappedVariable, size) // [x-1, x-ω, x-ω², ...]
 	for i := 0; i < size; i++ {
 		dens[i] = apiGen.Sub(x, wAccW)
@@ -105,11 +105,11 @@ func EvaluateLagrangeGnark(api frontend.API, poly []zk.WrappedVariable, x zk.Wra
 	var invSize field.Element
 	invSize.SetUint64(uint64(size))
 	invSize.Inverse(&invSize)
-	li := zk.ValueOf(invSize.String())
+	li := zk.ValueFromKoala(invSize)
 	li = apiGen.Mul(tmp, li) // 1/n * (xⁿ-1)
 
 	res := zk.ValueOf(0)
-	wOmega := zk.ValueOf(omega.String())
+	wOmega := zk.ValueFromKoala(omega)
 	for i := 0; i < size; i++ {
 		li = apiGen.Mul(li, invdens[i])
 		tmp = apiGen.Mul(li, poly[i]) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
@@ -414,7 +414,7 @@ func powerVectorOfOmegaInv(n int) []zk.WrappedVariable {
 	w.Inverse(&w)
 
 	for i := 0; i < n; i++ {
-		res[i] = zk.ValueOf(resField.String())
+		res[i] = zk.ValueFromKoala(resField)
 		resField.Mul(&resField, &w)
 	}
 
