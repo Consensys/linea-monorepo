@@ -48,11 +48,11 @@ type scalarElementWizard struct {
 }
 
 func (c scalarElementWizard) ToElement(api frontend.API, fr *emulated.Field[sw_bls12381.ScalarField]) *sw_bls12381.Scalar {
-	// gnark represents the BLS12-381 Fr element on 4 limbs of 64 bits.
-	Slimbs := make([]frontend.Variable, frParams.NbLimbs())
-	Slimbs[2], Slimbs[3] = bitslice.Partition(api, c.S[0], 64, bitslice.WithNbDigits(128))
-	Slimbs[0], Slimbs[1] = bitslice.Partition(api, c.S[1], 64, bitslice.WithNbDigits(128))
-	return fr.NewElement(Slimbs)
+	S16 := make([]frontend.Variable, 16)
+	copy(S16[0:8], c.S[8:16])
+	copy(S16[8:16], c.S[0:8])
+	S := gnarkutil.EmulatedFromLimbSlice(api, fr, S16, 16)
+	return S
 }
 
 type baseElementWizard struct {
@@ -60,12 +60,11 @@ type baseElementWizard struct {
 }
 
 func (c baseElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) *emulated.Element[sw_bls12381.BaseField] {
-	// gnark represents the BLS12-381 Fp elements on 6 limbs of 64 bits.
-	Plimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	Plimbs[4], Plimbs[5] = bitslice.Partition(api, c.P[1], 64, bitslice.WithNbDigits(128))
-	Plimbs[2], Plimbs[3] = bitslice.Partition(api, c.P[2], 64, bitslice.WithNbDigits(128))
-	Plimbs[0], Plimbs[1] = bitslice.Partition(api, c.P[3], 64, bitslice.WithNbDigits(128))
-	return fp.NewElement(Plimbs)
+	P16 := make([]frontend.Variable, 24)
+	copy(P16[0:8], c.P[24:32])
+	copy(P16[8:16], c.P[16:24])
+	copy(P16[16:24], c.P[8:16])
+	return gnarkutil.EmulatedFromLimbSlice(api, fp, P16, 16)
 }
 
 type g1ElementWizard struct {
@@ -114,6 +113,11 @@ type g2ElementWizard struct {
 }
 
 func (c g2ElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) *sw_bls12381.G2Affine {
+	// see comments in g1ElementWizard.ToElement regarding limb ordering and zero
+	// padding.
+	// Arithmetization layout for G2 point Q:
+	//  - limbs 0-64 are X = (X_im, X_re)
+	//  - limbs 64-128 are Y = (Y_im, Y_re)
 	for i := range 8 {
 		api.AssertIsEqual(c.Q[i], 0)
 		api.AssertIsEqual(c.Q[nbFpLimbs+i], 0)
