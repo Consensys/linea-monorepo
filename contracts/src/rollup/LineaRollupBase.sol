@@ -116,7 +116,7 @@ abstract contract LineaRollupBase is
   /// @dev The rolling hash for a forced transaction.
   mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) public forcedTransactionRollingHashes;
 
-  // TODO check the layout of this variable
+  // TODO check the layout of these variables
   /// @dev The forced transaction fee in wei.
   uint256 public forcedTransactionFeeInWei;
 
