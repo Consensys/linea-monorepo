@@ -1,5 +1,3 @@
-import { SecretKey } from "@chainsafe/blst";
-
 export interface YieldManagerInitializationData {
   pauseTypeRoles: { pauseType: number; role: string }[];
   unpauseTypeRoles: { pauseType: number; role: string }[];
@@ -16,6 +14,7 @@ export interface YieldProviderRegistration {
   yieldProviderVendor: number;
   primaryEntrypoint: string;
   ossifiedEntrypoint: string;
+  usersFundsIncrement: bigint;
 }
 
 export interface ValidatorContainer {
@@ -29,11 +28,6 @@ export interface ValidatorContainer {
   withdrawableEpoch: bigint;
 }
 
-export interface Validator {
-  container: ValidatorContainer;
-  blsPrivateKey: SecretKey;
-}
-
 export interface BeaconBlockHeader {
   slot: number | bigint;
   proposerIndex: number | bigint;
@@ -42,15 +36,29 @@ export interface BeaconBlockHeader {
   bodyRoot: string;
 }
 
-export interface ValidatorWitness {
+export interface PendingPartialWithdrawal {
+  validatorIndex: number | bigint;
+  amount: number | bigint;
+  withdrawableEpoch: number | bigint;
+}
+
+export interface ValidatorContainerWitness {
   proof: string[];
-  validatorIndex: bigint;
   effectiveBalance: bigint;
-  childBlockTimestamp: bigint;
-  slot: bigint;
-  proposerIndex: bigint;
   activationEpoch: bigint;
   activationEligibilityEpoch: bigint;
+}
+
+export interface PendingPartialWithdrawalsWitness {
+  proof: string[];
+  pendingPartialWithdrawals: PendingPartialWithdrawal[];
+}
+
+export interface BeaconProofWitness {
+  childBlockTimestamp: bigint;
+  proposerIndex: bigint;
+  validatorContainerWitness: ValidatorContainerWitness;
+  pendingPartialWithdrawalsWitness: PendingPartialWithdrawalsWitness;
 }
 
 export interface EIP4788Witness {
@@ -59,13 +67,9 @@ export interface EIP4788Witness {
   // GI First Validator
   gIFirstValidator: string;
   beaconBlockHeader: BeaconBlockHeader;
-  witness: ValidatorContainerWitness;
-}
-
-export interface ValidatorContainerWitness {
   validatorIndex: bigint;
-  validator: ValidatorContainer;
-  proof: string[];
+  pubkey: string;
+  beaconProofWitness: BeaconProofWitness;
 }
 
 export interface ClaimMessageWithProofParams {

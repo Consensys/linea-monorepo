@@ -7,6 +7,7 @@ import "hardhat-storage-layout";
 // import "hardhat-tracer"; // This plugin does not work with the latest hardhat version
 import { HardhatUserConfig } from "hardhat/config";
 import { getBlockchainNode, getL2BlockchainNode } from "./common";
+import "./scripts/operational/addLidoStVaultYieldProvider";
 import "./scripts/operational/getCurrentFinalizedBlockNumberTask";
 import "./scripts/operational/grantContractRolesTask";
 import "./scripts/operational/renounceContractRolesTask";
@@ -14,7 +15,9 @@ import "./scripts/operational/setRateLimitTask";
 import "./scripts/operational/setVerifierAddressTask";
 import "./scripts/operational/setRemoteTokenBridgeTask";
 import "./scripts/operational/setMessageServiceOnTokenBridgeTask";
-
+import "./scripts/operational/addAndClaimMessage";
+import "./scripts/operational/addAndClaimMessageForLST";
+import "./scripts/operational/unstakePermissionless";
 import "solidity-docgen";
 
 dotenv.config();
@@ -35,14 +38,14 @@ const config: HardhatUserConfig = {
     // NB: double check the autoupdate shell script version complies to the latest solidity version if you add a new one.
     compilers: [
       {
-        version: "0.8.30",
+        version: "0.8.33",
         settings: {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
             runs: 10000,
           },
-          evmVersion: "prague",
+          evmVersion: "osaka",
         },
       },
       {
@@ -79,6 +82,41 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+    overrides: {
+      "contracts/yield/YieldManager.sol": {
+        version: "0.8.33",
+        settings: {
+          viaIR: useViaIR,
+          optimizer: {
+            enabled: true,
+            runs: 1500,
+          },
+          evmVersion: "osaka",
+        },
+      },
+      "contracts/test-contracts/TestLineaRollup.sol": {
+        version: "0.8.33",
+        settings: {
+          viaIR: useViaIR,
+          optimizer: {
+            enabled: true,
+            runs: 1000,
+          },
+          evmVersion: "osaka",
+        },
+      },
+      "contracts/LineaRollup.sol": {
+        version: "0.8.33",
+        settings: {
+          viaIR: useViaIR,
+          optimizer: {
+            enabled: true,
+            runs: 9000,
+          },
+          evmVersion: "osaka",
+        },
+      },
+    },
   },
   namedAccounts: {
     deployer: {
@@ -87,7 +125,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      hardfork: "cancun",
+      hardfork: "osaka",
       allowUnlimitedContractSize: true, // TODO - Remove when ready for PR
     },
     mainnet: {
@@ -121,6 +159,10 @@ const config: HardhatUserConfig = {
       accounts: [process.env.L2_PRIVATE_KEY || EMPTY_HASH],
       allowUnlimitedContractSize: true,
     },
+    hoodi: {
+      accounts: [process.env.CUSTOM_PRIVATE_KEY || EMPTY_HASH],
+      url: process.env.CUSTOM_BLOCKCHAIN_URL ? process.env.CUSTOM_BLOCKCHAIN_URL : "",
+    },
   },
   gasReporter: {
     enabled: !!process.env.REPORT_GAS,
@@ -129,12 +171,7 @@ const config: HardhatUserConfig = {
     timeout: 20000,
   },
   etherscan: {
-    apiKey: {
-      mainnet: process.env.ETHERSCAN_API_KEY ?? "",
-      sepolia: process.env.ETHERSCAN_API_KEY ?? "",
-      linea_sepolia: process.env.LINEASCAN_API_KEY ?? "",
-      linea_mainnet: process.env.LINEASCAN_API_KEY ?? "",
-    },
+    apiKey: process.env.ETHERSCAN_API_KEY ?? "",
     customChains: [
       {
         network: "linea_sepolia",
@@ -150,6 +187,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.lineascan.build/api",
           browserURL: "https://lineascan.build/",
+        },
+      },
+      {
+        network: "hoodi",
+        chainId: 560048,
+        urls: {
+          apiURL: `https://api.etherscan.io/v2/api?chainid=560048`,
+          browserURL: "https://hoodi.etherscan.io/",
         },
       },
     ],

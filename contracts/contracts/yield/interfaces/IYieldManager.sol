@@ -72,14 +72,10 @@ interface IYieldManager {
    * @notice Emitted when ETH is sent to a YieldProvider.
    * @param yieldProvider The yield provider address.
    * @param amount Gross amount transferred to the YieldProvider.
-   * @param userFundsIncrement Portion of `amount` that is dedicated to staking.
-   * @param lstPrincipalRepaid Portion of `amount` used to repay outstanding LST principal.
    */
   event YieldProviderFunded(
     address indexed yieldProvider,
-    uint256 amount,
-    uint256 userFundsIncrement,
-    uint256 lstPrincipalRepaid
+    uint256 amount
   );
 
   /**
@@ -99,35 +95,27 @@ interface IYieldManager {
   /**
    * @notice Emitted when ETH is requested from a yield provider.
    * @param yieldProvider The yield provider address.
-   * @param amountRequested Amount requested to withdraw from the YieldProvider.
    * @param amountWithdrawn Actual amount withdrawn from the YieldProvider.
    * @param reserveIncrementAmount Amount routed to the reserve.
-   * @param lstPrincipalPaid Amount of the YieldProvider withdrawal used to repay LST liability principal.
    */
   event YieldProviderWithdrawal(
     address indexed yieldProvider,
-    uint256 amountRequested,
     uint256 amountWithdrawn,
-    uint256 reserveIncrementAmount,
-    uint256 lstPrincipalPaid
+    uint256 reserveIncrementAmount
   );
 
   /**
    * @notice Emitted when the withdrawal reserve is augmented by an operator.
    * @param yieldProvider The yield provider address.
-   * @param requestedAmount Amount requested to route to the reserve.
-   * @param reserveIncrementAmount Total amount actually routed to the reserve.
+   * @param reserveIncrementAmount Total amount routed to the reserve.
    * @param fromYieldManager Portion filled  from the YieldManager balance.
    * @param fromYieldProvider Portion filled from the YieldProvider withdrawal.
-   * @param lstPrincipalPaid Amount of the YieldProvider withdrawal used to repay LST liability principal.
    */
   event WithdrawalReserveAugmented(
     address indexed yieldProvider,
-    uint256 requestedAmount,
     uint256 reserveIncrementAmount,
     uint256 fromYieldManager,
-    uint256 fromYieldProvider,
-    uint256 lstPrincipalPaid
+    uint256 fromYieldProvider
   );
 
   /**
@@ -144,6 +132,25 @@ interface IYieldManager {
     uint256 reserveIncrementAmount,
     uint256 fromYieldManager,
     uint256 fromYieldProvider
+  );
+
+  /**
+   * @notice Emitted when a permissionless unstake request is made.
+   * @param yieldProvider The yield provider address.
+   * @param validatorIndex The validator index for the withdrawal.
+   * @param slot The slot of the beacon block for which the proof is generated.
+   * @param requiredUnstakeAmount The unstake amount required to restore the reserve to target threshold,
+   *                               considering YieldProvider balance, YieldManager balance, and pending permissionless unstake amounts.
+   * @param unstakedAmount The maximum amount expected to be withdrawn from the beacon chain.
+   * @param withdrawalParams Provider-specific withdrawal parameters.
+   */
+  event UnstakePermissionlessRequest(
+    address indexed yieldProvider,
+    uint64 indexed validatorIndex,
+    uint64 indexed slot,
+    uint256 requiredUnstakeAmount,
+    uint256 unstakedAmount,
+    bytes withdrawalParams
   );
 
   /**
@@ -183,24 +190,19 @@ interface IYieldManager {
   );
 
   /**
-   * @notice Emitted when a donation is received.
-   * @param yieldProvider YieldProvider instance whose negative yield was offset.
-   * @param amount Amount of ETH donated.
-   */
-  event DonationProcessed(address indexed yieldProvider, uint256 amount);
-
-  /**
    * @notice Emitted when a yield provider is added.
    * @param yieldProvider YieldProvider instance that was added to the registry.
    * @param yieldProviderVendor Specific type of YieldProvider adaptor.
    * @param primaryEntrypoint Contract used for operations when not-ossified.
    * @param ossifiedEntrypoint Contract used for operations once ossification is finalized.
+   * @param usersFundsIncrement Initial amount of userFunds that should be accounted for when registering the yield provider.
    */
   event YieldProviderAdded(
     address indexed yieldProvider,
     YieldProviderVendor indexed yieldProviderVendor,
     address primaryEntrypoint,
-    address indexed ossifiedEntrypoint
+    address indexed ossifiedEntrypoint,
+    uint256 usersFundsIncrement
   );
 
   /**
@@ -278,16 +280,23 @@ interface IYieldManager {
   error InsufficientWithdrawalReserve();
 
   /**
-   * @dev Thrown when caller is missing a required role.
-   * @param role1 First accepted role.
-   * @param role2 Second acceptable role.
-   */
-  error CallerMissingRole(bytes32 role1, bytes32 role2);
-
-  /**
    * @dev Thrown when a permissionless rebalance operation is attempted when the withdrawal reserve is not in deficit.
    */
   error WithdrawalReserveNotInDeficit();
+
+  /**
+   * @dev Thrown when a slot is too close to the last proven slot for a validator.
+   *      The slot must be more than SLOTS_PER_HISTORICAL_ROOT (8192) slots ahead of the last proven slot.
+   * @param _validatorIndex The validator index.
+   * @param _lastProvenSlot The last proven slot.
+   * @param _slot The slot for the current proof.
+   */
+  error SlotTooCloseToLastProvenSlot(uint256 _validatorIndex, uint256 _lastProvenSlot, uint256 _slot);
+
+  /**
+   * @dev Returned when there is 0 required unstake amount for unstakePermissionless.
+   */
+  error NoRequirementToUnstakePermissionless();
 
   /**
    * @dev Returned when YieldProvider returns that 0 amount was unstaked.
@@ -295,10 +304,11 @@ interface IYieldManager {
   error YieldProviderReturnedZeroUnstakeAmount();
 
   /**
-   * @dev Thrown when a permissionless unstake request exceeds the minimum required amount to restore the reserve to the target threshold,
-   *      taking into consideration available funds in the system that can be routed to the reserve.
+   * @dev Returned when the unstaked amount exceeds the required unstake amount.
+   * @param _unstakedAmountWei The amount that was unstaked.
+   * @param _requiredUnstakeAmountWei The maximum amount that should have been unstaked.
    */
-  error PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
+  error UnstakedAmountExceedsRequired(uint256 _unstakedAmountWei, uint256 _requiredUnstakeAmountWei);
 
   /**
    * @dev Thrown when there are no funds available to replenish the withdrawal reserve.
@@ -360,11 +370,6 @@ interface IYieldManager {
    * @param remainingUserFunds Remaining user funds.
    */
   error YieldProviderHasRemainingFunds(uint256 remainingUserFunds);
-
-  /**
-   * @dev Thrown when removing a YieldProvider with remaining negative yield.
-   */
-  error YieldProviderHasRemainingNegativeYield();
 
   /**
    * @dev Thrown when adding an L2YieldRecipient that has previously been added to the allowlist.
@@ -500,6 +505,13 @@ interface IYieldManager {
   function pendingPermissionlessUnstake() external view returns (uint256 pendingUnstake);
 
   /**
+   * @notice Returns the last proven slot for a validator index.
+   * @param _validatorIndex The validator index to query.
+   * @return lastProvenSlot The last proven slot for the validator index, or 0 if no slot has been proven yet.
+   */
+  function lastProvenSlot(uint64 _validatorIndex) external view returns (uint64 lastProvenSlot);
+
+  /**
    * @param _yieldProvider The yield provider address.
    * @return withdrawableAmount Amount of ETH that can be instantly withdrawn from the YieldProvider.
    */
@@ -523,7 +535,6 @@ interface IYieldManager {
    * @notice Send ETH to the specified YieldProvider instance.
    * @dev YIELD_PROVIDER_STAKING_ROLE is required to execute.
    * @dev Reverts if the withdrawal reserve is below the minimum threshold.
-   * @dev ETH sent to the YieldProvider will be eagerly used to settle any outstanding LST liabilities.
    * @param _yieldProvider The target yield provider contract.
    * @param _amount        The amount of ETH to send.
    */
@@ -567,41 +578,37 @@ interface IYieldManager {
    * @param _yieldProvider          Yield provider address.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
    * @param _withdrawalParamsProof  Data containing merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
-   * @return maxUnstakeAmount       Maximum amount expected to be withdrawn from the beacon chain.
-   *                                - Cannot efficiently get exact amount as relevant state and computation is located in the consensus client,
-   *                                and not the execution layer.
    */
   function unstakePermissionless(
     address _yieldProvider,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable returns (uint256 maxUnstakeAmount);
+  ) external payable;
 
   /**
-   * @notice Withdraw ETH from a YieldProvider.
+   * @notice Safely withdraws ETH from a YieldProvider, capped by the available withdrawable amount.
    * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
    * @dev This function proactively allocates withdrawn funds in the following priority:
    *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
    *      to restore the deficit.
-   *      2. If there is an outstanding LST liability, it will be paid.
-   *      3. YieldManager will keep the remainder.
+   *      2. YieldManager will keep the remainder.
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount to withdraw..
    */
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external;
+  function safeWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external;
 
   /**
-   * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev YIELD_PROVIDER_UNSTAKING_ROLE is required to execute.
-   * @dev This function proactively allocates withdrawn funds in the following priority:
-   *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
-   *      to restore the deficit.
-   *      2. If there is no remaining target deficit and there is an outstanding LST liability, it will be paid.
-   *      3. The remainder will be sent to the withdrawal reserve.
+   * @notice Safely rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
+   * @dev Caps the rebalance amount to the provider's current withdrawable value.
+   *      This is to mitigate frontrunning that depletes the withdrawable value,
+   *      which would result in revert of the regular `addToWithdrawalReserve` function.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
    * @param _yieldProvider          Yield provider address.
    * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
    */
-  function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
+  function safeAddToWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
 
   /**
    * @notice Permissionlessly top up the withdrawal reserve to the target threshold using available liquidity.

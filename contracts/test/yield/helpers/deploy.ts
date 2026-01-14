@@ -12,9 +12,8 @@ import {
   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
   MINIMUM_WITHDRAWAL_RESERVE_AMOUNT,
   TARGET_WITHDRAWAL_RESERVE_AMOUNT,
-  GI_FIRST_VALIDATOR_PREV,
-  GI_FIRST_VALIDATOR_CURR,
-  PIVOT_SLOT,
+  GI_FIRST_VALIDATOR,
+  GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
   YIELD_PROVIDER_STAKING_ROLE,
   ONE_ETHER,
 } from "../../common/constants";
@@ -89,22 +88,32 @@ export async function deployMockYieldProvider(): Promise<MockYieldProvider> {
 }
 
 export async function deployValidatorContainerProofVerifier(): Promise<ValidatorContainerProofVerifier> {
+  const [admin] = await ethers.getSigners();
   const factory = await ethers.getContractFactory("ValidatorContainerProofVerifier");
-  const contract = await factory.deploy(GI_FIRST_VALIDATOR_PREV, GI_FIRST_VALIDATOR_CURR, PIVOT_SLOT);
+  const contract = await factory.deploy(
+    await admin.getAddress(),
+    GI_FIRST_VALIDATOR,
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+  );
   await contract.waitForDeployment();
   return contract;
 }
 
 export async function deployTestValidatorContainerProofVerifier(): Promise<TestValidatorContainerProofVerifier> {
+  const [admin] = await ethers.getSigners();
   const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
-  const contract = await factory.deploy(GI_FIRST_VALIDATOR_PREV, GI_FIRST_VALIDATOR_CURR, PIVOT_SLOT);
+  const contract = await factory.deploy(
+    await admin.getAddress(),
+    GI_FIRST_VALIDATOR,
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+  );
   await contract.waitForDeployment();
   return contract;
 }
 
 export async function deploySSZMerkleTree(): Promise<SSZMerkleTree> {
   const factory = await ethers.getContractFactory("SSZMerkleTree");
-  const contract = await factory.deploy(GI_FIRST_VALIDATOR_PREV);
+  const contract = await factory.deploy(GI_FIRST_VALIDATOR);
   await contract.waitForDeployment();
   return contract;
 }
@@ -429,6 +438,7 @@ export async function deployYieldManagerIntegrationTestFixture() {
     verifier,
     verifierAddress,
     testVerifier,
+    initializationData,
   };
 }
 

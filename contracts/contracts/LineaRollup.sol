@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 
 import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
+import { ErrorUtils } from "./lib/ErrorUtils.sol";
+
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 contract LineaRollup is LineaRollupYieldExtension {
+  
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -22,9 +25,6 @@ contract LineaRollup is LineaRollupYieldExtension {
    */
   function initialize(InitializationData calldata _initializationData) external initializer {
     __LineaRollup_init(_initializationData);
-    if (_initializationData.initialYieldManager == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
     __LineaRollupYieldExtension_init(_initializationData.initialYieldManager);
   }
 
@@ -35,7 +35,6 @@ contract LineaRollup is LineaRollupYieldExtension {
    */
   bytes32 internal constant PROXY_ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
-  // TODO - Add access control to proxy admin only
   /**
    * @notice Sets the roles for a list of addresses, the PauseManager pauseType:role mappings and sets the YieldManager address.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
@@ -50,6 +49,8 @@ contract LineaRollup is LineaRollupYieldExtension {
     PauseTypeRole[] calldata _unpauseTypeRoles,
     address _yieldManager
   ) external reinitializer(7) {
+    ErrorUtils.revertIfZeroAddress(_yieldManager);
+    
     address proxyAdmin;
     assembly {
       proxyAdmin := sload(PROXY_ADMIN_SLOT)
@@ -58,10 +59,6 @@ contract LineaRollup is LineaRollupYieldExtension {
 
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-
-    if (_yieldManager == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
     __LineaRollupYieldExtension_init(_yieldManager);
 
     /// @dev using the constants requires string memory and more complex code.

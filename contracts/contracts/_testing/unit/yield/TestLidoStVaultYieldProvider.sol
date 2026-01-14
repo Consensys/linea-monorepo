@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 
 import { LidoStVaultYieldProvider } from "../../../yield/LidoStVaultYieldProvider.sol";
 import { GIndex } from "../../../yield/libs/vendor/lido/GIndex.sol";
@@ -47,21 +47,6 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
     return _syncExternalLiabilitySettlement($$, _liabilityShares, _lstLiabilityPrincipalCached);
   }
 
-  function payObligations(address _yieldProvider) external returns (uint256) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    return _payObligations($$);
-  }
-
-  function payNodeOperatorFees(address _yieldProvider, uint256 _availableYield) external returns (uint256) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    return _payNodeOperatorFees($$, _availableYield);
-  }
-
-  function payLSTPrincipalInternal(address _yieldProvider, uint256 _availableFunds) external returns (uint256) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    return _payLSTPrincipal($$, _availableFunds);
-  }
-
   function unstakeHarness(
     address _yieldProvider,
     bytes calldata _pubkeys,
@@ -73,15 +58,17 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
 
   function validateUnstakePermissionlessRequestHarness(
     address _yieldProvider,
+    uint256 _requiredUnstakeAmount,
     bytes calldata _pubkeys,
-    uint64[] calldata _amounts,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParamsProof
   ) external view returns (uint256) {
-    return _validateUnstakePermissionlessRequest(_yieldProvider, _pubkeys, _amounts, _withdrawalParamsProof);
+    return _validateUnstakePermissionlessRequest(_yieldProvider, _requiredUnstakeAmount, _validatorIndex, _slot, _pubkeys, _withdrawalParamsProof);
   }
 
-  function payMaximumPossibleLSTLiability(address _yieldProvider) external returns (uint256) {
+  function payMaximumPossibleLSTLiability(address _yieldProvider) external {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    return _payMaximumPossibleLSTLiability($$);
+    _payMaximumPossibleLSTLiability($$);
   }
 }

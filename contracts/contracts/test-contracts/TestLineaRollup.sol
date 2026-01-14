@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 
 import { LineaRollup } from "../LineaRollup.sol";
 import { Utils } from "../lib/Utils.sol";
@@ -58,7 +58,7 @@ contract TestLineaRollup is LineaRollup {
     blobShnarfExists[_shnarf] = _finalBlockNumber;
   }
 
-  function addL2MerkleRoots(bytes32[] calldata _newRoot, uint256 _treeDepth) external {
+  function addL2MerkleRoots(bytes32[] calldata _newRoot, uint256 _treeDepth) external onlyRole(DEFAULT_ADMIN_ROLE) {
     _addL2MerkleRoots(_newRoot, _treeDepth);
   }
 

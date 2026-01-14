@@ -1,12 +1,13 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 import { GIndex, pack, concat } from "./vendor/lido/GIndex.sol";
 import { SSZ } from "./vendor/lido/SSZ.sol";
-import { BLS12_381 } from "./vendor/lido/BLS.sol";
 import { Validator } from "./vendor/lido/BeaconTypes.sol";
 import { IValidatorContainerProofVerifier } from "../interfaces/IValidatorContainerProofVerifier.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ErrorUtils } from "../../lib/ErrorUtils.sol";
 
 /**
  * @title ValidatorContainerProofVerifier
@@ -17,9 +18,9 @@ import { IValidatorContainerProofVerifier } from "../interfaces/IValidatorContai
  * Modified version of CLProofVerifier (original implementation by Lido) to verify the entire Validator Container in the CL.
  * It uses concatenated proofs against the beacon block root exposed in the EIP-4788 system contract.
  */
-contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
+contract ValidatorContainerProofVerifier is AccessControl, IValidatorContainerProofVerifier {
   /**
-   * @notice ValidatorContainerProofVerifier accepts concatenated Merkle proofs to verify existence of correct (pubkey, WC, EB, slashed) validator on CL
+   * @notice ValidatorContainerProofVerifier accepts concatenated Merkle proofs to verify existence of entire validator container on CL
    * Proof consists of:
    *  I:   Validator Container Root
    *  II:  Merkle proof of CL state - from Validator Container Root to State Root
@@ -49,18 +50,9 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
                                         ↑
                                 data to be proven
     */
-  uint8 private constant VALIDATOR_CONTAINER_ROOT_DEPTH = 0;
-  uint256 private constant VALIDATOR_CONTAINER_ROOT_POSITION = 0;
-
-  /// @notice GIndex of parent node for (Pubkey,WC) in validator container
-  GIndex public immutable GI_VALIDATOR_CONTAINER_ROOT =
-    pack((1 << VALIDATOR_CONTAINER_ROOT_DEPTH) + VALIDATOR_CONTAINER_ROOT_POSITION, VALIDATOR_CONTAINER_ROOT_DEPTH);
 
   /**  GIndex of validator in state tree is calculated dynamically
      *   offsetting from GIndex of first validator by proving validator numerical index
-     *
-     * NB! Position of validators in CL state tree can change between ethereum hardforks
-     *     so two values must be stored and used depending on the slot of beacon block in proof.
      *
      *   Scheme of CL State Tree:
      *
@@ -74,16 +66,14 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
           │           │   ............... │           │
     [Validator 0]                        ....     [Validator to prove]  **DEPTH = N
             ↑                                               ↑
-    GI_FIRST_VALIDATOR_PREV                   GI_FIRST_VALIDATOR_PREV + validator_index
+    GI_FIRST_VALIDATOR                   GI_FIRST_VALIDATOR + validator_index
     */
 
   /// @notice GIndex of first validator in CL state tree
   /// @dev This index is relative to a state like: `BeaconState.validators[0]`.
-  GIndex public immutable GI_FIRST_VALIDATOR_PREV;
-  /// @notice GIndex of first validator in CL state tree after PIVOT_SLOT
-  GIndex public immutable GI_FIRST_VALIDATOR_CURR;
-  /// @notice slot when GIndex change will occur due to the hardfork
-  uint64 public immutable PIVOT_SLOT;
+  GIndex public GI_FIRST_VALIDATOR;
+  /// @notice GIndex of pending partial withdrawals root in CL state tree
+  GIndex public GI_PENDING_PARTIAL_WITHDRAWALS_ROOT;
 
   /**
      *   GIndex of stateRoot in Beacon Block state is
@@ -118,40 +108,63 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   address public constant BEACON_ROOTS = 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02;
 
   // Sentinel value that a validator has no current exit scheduled
-  uint64 public constant FAR_FUTURE_EXIT_EPOCH = 18446744073709551615;
+  uint64 public constant FAR_FUTURE_EXIT_EPOCH = type(uint64).max;
 
   // Validator must be active for this many epochs before it is eligible for withdrawals
-  uint256 private constant SHARD_COMMITTEE_PERIOD = 256;
-  uint256 private constant SLOTS_PER_EPOCH = 32;
+  uint64 private constant SHARD_COMMITTEE_PERIOD = 256;
+  uint64 private constant SLOTS_PER_EPOCH = 32;
+
+  /// @notice Emitted when GI_FIRST_VALIDATOR is updated
+  /// @param oldValue The previous GIndex value
+  /// @param newValue The new GIndex value
+  event GIFirstValidatorUpdated(GIndex oldValue, GIndex newValue);
+
+  /// @notice Emitted when GI_PENDING_PARTIAL_WITHDRAWALS_ROOT is updated
+  /// @param oldValue The previous GIndex value
+  /// @param newValue The new GIndex value
+  event GIPendingPartialWithdrawalsRootUpdated(GIndex oldValue, GIndex newValue);
 
   /**
-   * @param _gIFirstValidatorPrev packed(general index | depth in Merkle tree, see GIndex.sol) GIndex of first validator in CL state tree
-   * @param _gIFirstValidatorCurr packed GIndex of first validator after fork changes tree structure
-   * @param _pivotSlot slot of the fork that alters first validator GIndex
-   * @dev if no fork changes are known,  _gIFirstValidatorPrev = _gIFirstValidatorCurr and _changeSlot = 0
+   * @param _admin Address to be granted DEFAULT_ADMIN_ROLE
+   * @param _gIFirstValidator packed(general index | depth in Merkle tree, see GIndex.sol) GIndex of first validator in CL state tree
+   * @param _gIPendingPartialWithdrawalsRoot packed GIndex of pending partial withdrawals root in CL state tree
    */
-  constructor(GIndex _gIFirstValidatorPrev, GIndex _gIFirstValidatorCurr, uint64 _pivotSlot) {
-    GI_FIRST_VALIDATOR_PREV = _gIFirstValidatorPrev;
-    GI_FIRST_VALIDATOR_CURR = _gIFirstValidatorCurr;
-    PIVOT_SLOT = _pivotSlot;
+  constructor(address _admin, GIndex _gIFirstValidator, GIndex _gIPendingPartialWithdrawalsRoot) {
+    ErrorUtils.revertIfZeroAddress(_admin);
+    ErrorUtils.revertIfZeroHash(GIndex.unwrap(_gIFirstValidator));
+    ErrorUtils.revertIfZeroHash(GIndex.unwrap(_gIPendingPartialWithdrawalsRoot));
+    _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+    GI_FIRST_VALIDATOR = _gIFirstValidator;
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = _gIPendingPartialWithdrawalsRoot;
   }
 
   /**
    * @notice validates proof of validator container in CL against Beacon block root
    * @param _witness object containing user input passed as calldata
-   * @param _pubkey of validator to verify proof for.
-   * @param _withdrawalCredentials to verify proof with
-   * @dev reverts with `InvalidProof` when provided input cannot be proven to Beacon block root
+   * @param _pubkey The pubkey of validator to verify proof for.
+   * @param _withdrawalCredentials The withdrawal credentials to verify proof with.
+   * @param _validatorIndex Validator index for validator to withdraw from.
+   * @param _slot Slot of the beacon block for which the proof is generated.
+   * @param _childBlockTimestamp Timestamp of EL block that has parent block beacon root in BEACON_ROOTS contract.
+   * @param _proposerIndex The proposer index of the beacon block for which the proof is generated.
+   * @dev Reverts with `InvalidSlot` if slot/proposerIndex don't match the proof.
+   * @dev Reverts with `ValidatorNotActiveForLongEnough` if validator hasn't been active for SHARD_COMMITTEE_PERIOD epochs.
+   * @dev Reverts with `RootNotFound` if timestamp is not found in BEACON_ROOTS contract.
+   * @dev Reverts with `InvalidProof`, `BranchHasExtraItem`, or `BranchHasMissingItem` if proof verification fails.
    */
   function verifyActiveValidatorContainer(
     IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness,
     bytes calldata _pubkey,
-    bytes32 _withdrawalCredentials
+    bytes32 _withdrawalCredentials,
+    uint64 _validatorIndex,
+    uint64 _slot,
+    uint64 _childBlockTimestamp,
+    uint64 _proposerIndex
   ) external view {
     // verifies user provided slot against user provided proof
     // proof verification is done in `SSZ.verifyProof` and is not affected by slot
-    _verifySlot(_witness);
-    _validateActivationEpoch(_witness);
+    _verifySlot(_slot, _proposerIndex, _witness.proof);
+    _validateActivationEpoch(_slot, _witness.activationEpoch);
 
     Validator memory validator = Validator({
       pubkey: _pubkey,
@@ -170,47 +183,83 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
     bytes32 validatorContainerRootLeaf = SSZ.hashTreeRoot(validator);
 
     // concatenated GIndex for
-    // parent(pubkey + wc) ->  Validator Index in state tree -> stateView Index in Beacon block Tree
+    // Validator Container Root -> Validator Index in state tree -> stateView Index in Beacon block Tree
     GIndex gIndex = concat(
       GI_STATE_ROOT,
-      concat(_getValidatorGI(_witness.validatorIndex, _witness.slot), GI_VALIDATOR_CONTAINER_ROOT)
+      _getValidatorGI(_validatorIndex)
     );
 
     SSZ.verifyProof({
       proof: _witness.proof,
-      root: _getParentBlockRoot(_witness.childBlockTimestamp),
+      root: _getParentBlockRoot(_childBlockTimestamp),
       leaf: validatorContainerRootLeaf,
       gI: gIndex
     });
   }
 
   /**
-   * @notice returns parent CL block root for given child block timestamp
-   * @param _witness object containing proof, slot and proposerIndex
-   * @dev checks slot and proposerIndex against proof[:-2] which latter is verified against Beacon block root
-   * This is a trivial case of multi Merkle proofs where a short proof branch proves slot
+   * @notice validates proof of pending partial withdrawals in CL against Beacon block root
+   * @param _witness object containing user input passed as calldata
+   * @param _slot Slot of the beacon block for which the proof is generated.
+   * @param _childBlockTimestamp Timestamp of EL block that has parent block beacon root in BEACON_ROOTS contract.
+   * @param _proposerIndex The proposer index of the beacon block for which the proof is generated.
+   * @dev Reverts with `InvalidSlot` if slot/proposerIndex don't match the proof.
+   * @dev Reverts with `RootNotFound` if timestamp is not found in BEACON_ROOTS contract.
+   * @dev Reverts with `InvalidProof`, `BranchHasExtraItem`, or `BranchHasMissingItem` if proof verification fails.
    */
-  function _verifySlot(IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness) internal view {
-    bytes32 parentSlotProposer = BLS12_381.sha256Pair(
-      SSZ.toLittleEndian(_witness.slot),
-      SSZ.toLittleEndian(_witness.proposerIndex)
+  function verifyPendingPartialWithdrawals(
+    PendingPartialWithdrawalsWitness calldata _witness,
+    uint64 _slot,
+    uint64 _childBlockTimestamp,
+    uint64 _proposerIndex
+  ) external view {
+    _verifySlot(_slot, _proposerIndex, _witness.proof);
+    bytes32 pendingPartialWithdrawalsRoot = SSZ.hashTreeRoot(_witness.pendingPartialWithdrawals);
+    GIndex gIndex = concat(
+      GI_STATE_ROOT,
+      GI_PENDING_PARTIAL_WITHDRAWALS_ROOT
     );
-    if (_witness.proof[_witness.proof.length - SLOT_PROPOSER_PARENT_PROOF_OFFSET] != parentSlotProposer) {
+
+    SSZ.verifyProof({
+      proof: _witness.proof,
+      root: _getParentBlockRoot(_childBlockTimestamp),
+      leaf: pendingPartialWithdrawalsRoot,
+      gI: gIndex
+    });
+  }
+
+  /**
+   * @notice Verifies that the provided slot and proposerIndex match the Merkle proof
+   * @param _slot slot of the beacon block for which the proof is generated
+   * @param _proposerIndex proposer index of the beacon block for which the proof is generated
+   * @param _proof array of merkle proofs from Validator container root to Beacon block root
+   * @dev Checks that the hash of (slot, proposerIndex) matches the parent node at proof[proof.length - 2]
+   * This verifies that the slot and proposerIndex are part of the beacon block header in the proof
+   * @dev Reverts with `InvalidSlot` if the slot/proposerIndex don't match the proof
+   */
+  function _verifySlot(uint64 _slot, uint64 _proposerIndex, bytes32[] calldata _proof) internal view {
+    bytes32 parentSlotProposer = SSZ.sha256Pair(
+      SSZ.toLittleEndian(_slot),
+      SSZ.toLittleEndian(_proposerIndex)
+    );
+    if (_proof[_proof.length - SLOT_PROPOSER_PARENT_PROOF_OFFSET] != parentSlotProposer) {
       revert InvalidSlot();
     }
   }
 
   /**
    * @notice Ensures the tracked validator has satisfied the post-activation waiting period.
-   * @param _witness Witness data containing the validator's activation epoch and the proven slot.
+   * @param _slot slot of the beacon block for which the proof is generated
+   * @param _activationEpoch Activation epoch for the validator
    * @dev Reverts with `ValidatorNotActiveForLongEnough` when the validator has not remained active
    *      for at least `SHARD_COMMITTEE_PERIOD` epochs since `activationEpoch`.
    */
   function _validateActivationEpoch(
-    IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness
+    uint64 _slot,
+    uint64 _activationEpoch
   ) internal pure {
-    uint256 epoch = _witness.slot / SLOTS_PER_EPOCH;
-    if (epoch < _witness.activationEpoch + SHARD_COMMITTEE_PERIOD) {
+    uint64 epoch = _slot / SLOTS_PER_EPOCH;
+    if (epoch < _activationEpoch + SHARD_COMMITTEE_PERIOD) {
       revert ValidatorNotActiveForLongEnough();
     }
   }
@@ -218,12 +267,10 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   /**
    * @notice calculates general validator index in CL state tree by provided offset
    * @param _offset from first validator (Validator Index)
-   * @param _provenSlot slot of the Beacon block for which proof is collected
    * @return gIndex of container in CL state tree
    */
-  function _getValidatorGI(uint256 _offset, uint64 _provenSlot) internal view returns (GIndex) {
-    GIndex gI = _provenSlot < PIVOT_SLOT ? GI_FIRST_VALIDATOR_PREV : GI_FIRST_VALIDATOR_CURR;
-    return gI.shr(_offset);
+  function _getValidatorGI(uint256 _offset) internal view returns (GIndex) {
+    return GI_FIRST_VALIDATOR.shr(_offset);
   }
 
   /**
@@ -240,5 +287,29 @@ contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
     }
 
     return abi.decode(data, (bytes32));
+  }
+
+  /**
+   * @notice Sets the GIndex of first validator in CL state tree
+   * @param _gIFirstValidator packed GIndex of first validator in CL state tree
+   * @dev Only callable by accounts with DEFAULT_ADMIN_ROLE
+   */
+  function setGIFirstValidator(GIndex _gIFirstValidator) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ErrorUtils.revertIfZeroHash(GIndex.unwrap(_gIFirstValidator));
+    GIndex oldValue = GI_FIRST_VALIDATOR;
+    GI_FIRST_VALIDATOR = _gIFirstValidator;
+    emit GIFirstValidatorUpdated(oldValue, _gIFirstValidator);
+  }
+
+  /**
+   * @notice Sets the GIndex of pending partial withdrawals root in CL state tree
+   * @param _gIPendingPartialWithdrawalsRoot packed GIndex of pending partial withdrawals root in CL state tree
+   * @dev Only callable by accounts with DEFAULT_ADMIN_ROLE
+   */
+  function setGIPendingPartialWithdrawalsRoot(GIndex _gIPendingPartialWithdrawalsRoot) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ErrorUtils.revertIfZeroHash(GIndex.unwrap(_gIPendingPartialWithdrawalsRoot));
+    GIndex oldValue = GI_PENDING_PARTIAL_WITHDRAWALS_ROOT;
+    GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = _gIPendingPartialWithdrawalsRoot;
+    emit GIPendingPartialWithdrawalsRootUpdated(oldValue, _gIPendingPartialWithdrawalsRoot);
   }
 }

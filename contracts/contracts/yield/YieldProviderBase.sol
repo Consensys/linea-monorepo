@@ -11,6 +11,7 @@ import { ErrorUtils } from "../lib/ErrorUtils.sol";
  * @custom:security-contact security-report@linea.build
  */
 abstract contract YieldProviderBase is YieldManagerStorageLayout, IYieldProvider {
+  /// @notice The YieldManager contract address that will delegatecall the YieldProvider adaptor contract.
   address public immutable YIELD_MANAGER;
 
   /**

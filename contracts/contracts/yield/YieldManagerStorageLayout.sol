@@ -18,18 +18,19 @@ abstract contract YieldManagerStorageLayout {
 
   /**
    * @notice ERC-7201 namespaced storage layout for a YieldProvider adaptor contract
-   * @custom:storage-location erc7201:linea.storage.YieldManager
+   * @custom:storage-location erc7201:linea.storage.YieldManagerStorage
    * @param minimumWithdrawalReservePercentageBps Minimum withdrawal reserve expressed as basis points of total user funds.
    * @param targetWithdrawalReservePercentageBps Target withdrawal reserve expressed as basis points of total user funds.
    * @param minimumWithdrawalReserveAmount Minimum withdrawal reserve expressed as an absolute number.
    * @param targetWithdrawalReserveAmount Target withdrawal reserve expressed as an absolute number.
-   * @param userFundsInYieldProvidersTotal Total amount of user funds currently deployed across YieldProviders.
+   * @param userFundsInYieldProvidersTotal Funds owed to L1MessageService users which have been deposited across all YieldProviders.
    *                                        - Must increment and decrement 1:1 with YieldProviderStorage._userFunds.
    * @param pendingPermissionlessUnstake Pending ETH expected from permissionless beacon-chain withdrawal requests.
    *                                      - Greedily decremented on i.) Donations ii.) YieldProvider withdrawals.
    * @param yieldProviders Array of registered YieldProvider adaptor contracts.
    * @param isL2YieldRecipientKnown Mapping of added L2YieldRecipient addresses.
    * @param yieldProviderStorage YieldProvider-scoped storage scoped by the YieldProvider adaptor contract address.
+   * @param lastProvenSlot Beacon chain validator index -> last proven slot.
    */
   struct YieldManagerStorage {
     uint16 minimumWithdrawalReservePercentageBps;
@@ -41,6 +42,7 @@ abstract contract YieldManagerStorageLayout {
     address[] yieldProviders;
     mapping(address l2YieldRecipient => bool) isL2YieldRecipientKnown;
     mapping(address yieldProvider => YieldProviderStorage) yieldProviderStorage;
+    mapping(uint64 validatorIndex => uint64 lastProvenSlot) lastProvenSlot;
   }
 
   /**
@@ -52,29 +54,28 @@ abstract contract YieldManagerStorageLayout {
    * @param primaryEntrypoint Contract used for operations when not-ossified.
    * @param ossifiedEntrypoint Contract used for operations once ossification is finalized.
    * @param yieldProviderIndex Index for the YieldProvider.
-   * @param userFunds User funds currently in the YieldProvider.
-   *                  - Only decremented during withdraw operations.
-   *                  - Any other loss in YieldProvider funds is tracked as negative yield.
+   * @param userFunds Funds owed to L1MessageService users which have been deposited in the YieldProvider.
    *                  - Must increment and decrement 1:1 with _userFundsInYieldProvidersTotal.
    * @param yieldReportedCumulative Cumulative positive yield (denominated in ETH) reported back to the YieldManager.
    *                                - Increases 1:1 with userFunds, as reported yield is distributed to users.
    * @param lstLiabilityPrincipal LST Liability Principal (denominated in ETH) as of the last yield report
-   *                              - YieldProvider contract will mutate this field
+   * @param lastReportedNegativeYield Negative yield as of the last yield report.
    */
   struct YieldProviderStorage {
-    // Slot 0
+    // Slot 0: Packed fields (yieldProviderVendor, bools, primaryEntrypoint)
     YieldProviderVendor yieldProviderVendor;
     bool isStakingPaused;
     bool isOssificationInitiated;
     bool isOssified;
     address primaryEntrypoint;
-    // Slot 1
+    // Slot 1: Packed fields (ossifiedEntrypoint, yieldProviderIndex)
     address ossifiedEntrypoint;
     uint96 yieldProviderIndex;
-    uint256 userFunds;
-    uint256 yieldReportedCumulative;
-    // Exclusively mutated by YieldProvider, not YieldManager.
-    uint256 lstLiabilityPrincipal;
+    // Slots 2-5: Each uint256 occupies its own slot
+    uint256 userFunds;                    // Slot 2
+    uint256 yieldReportedCumulative;       // Slot 3
+    uint256 lstLiabilityPrincipal;       // Slot 4
+    uint256 lastReportedNegativeYield;    // Slot 5
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))

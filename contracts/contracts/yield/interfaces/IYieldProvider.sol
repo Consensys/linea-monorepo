@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
-import { ProgressOssificationResult, YieldProviderRegistration } from "./YieldTypes.sol";
+import { YieldProviderVendor, ProgressOssificationResult, YieldProviderRegistration } from "./YieldTypes.sol";
 
 /**
  * @title Interface for a YieldProvider adaptor contract to handle vendor-specific interactions.
@@ -14,6 +14,23 @@ interface IYieldProvider {
     FundYieldProvider,
     ReportYield
   }
+
+  /**
+   * @notice Emitted when LST Liability Principal is synchronized with an external data source.
+   * @param yieldProviderVendor Specific type of YieldProvider adaptor.
+   * @param yieldProviderIndex Index of the YieldProvider.
+   * @param oldLSTLiabilityPrincipal Old value of lstLiabilityPrincipal.
+   * @param newLSTLiabilityPrincipal New value of lstLiabilityPrincipal.
+   */
+  event LSTLiabilityPrincipalSynced(
+    YieldProviderVendor indexed yieldProviderVendor, 
+    uint96 indexed yieldProviderIndex, 
+    uint256 oldLSTLiabilityPrincipal, 
+    uint256 newLSTLiabilityPrincipal
+  );
+  /// @notice Thrown when an operation is blocked due to staking pause.
+  /// @param operationType The operation that was attempted.
+  error OperationNotSupportedDuringStakingPause(OperationType operationType);
 
   /// @notice Thrown when an operation is blocked because ossification is either pending or complete.
   /// @param operationType The operation that was attempted.
@@ -37,13 +54,17 @@ interface IYieldProvider {
   /// @notice Raised when a function is called outside of a `delegatecall` from the YieldManager.
   error ContextIsNotYieldManager();
 
+  /// @notice Raised no vendor exit data is provided.
+  error NoVendorExitDataProvided();
+
   /**
    * @notice Returns the amount of ETH the provider can immediately remit back to the YieldManager.
    * @dev Called via `delegatecall` from the YieldManager.
+   * @dev Made a payable function to be `delegatecall-able` from YieldManager.unstakePermissionless().
    * @param _yieldProvider The yield provider address.
    * @return availableBalance The ETH amount that can be withdrawn.
    */
-  function withdrawableValue(address _yieldProvider) external view returns (uint256 availableBalance);
+  function withdrawableValue(address _yieldProvider) external payable returns (uint256 availableBalance);
 
   /**
    * @notice Forwards ETH from the YieldManager to the yield provider.
@@ -66,18 +87,6 @@ interface IYieldProvider {
   ) external returns (uint256 newReportedYield, uint256 outstandingNegativeYield);
 
   /**
-   * @notice Reduces the outstanding LST liability principal.
-   * @dev Called after the YieldManager has reserved `_availableFunds` for liability
-   *      settlement.
-   *      - Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
-   *      - Implementations should ensure lstPrincipalPaid <= _availableFunds
-   * @param _yieldProvider The yield provider address.
-   * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
-   * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
-   */
-  function payLSTPrincipal(address _yieldProvider, uint256 _availableFunds) external returns (uint256 lstPrincipalPaid);
-
-  /**
    * @notice Requests beacon chain withdrawal via EIP-7002 withdrawal contract.
    * @dev Parameters are ABI encoded by the YieldManager and understood by the yield provider.
    * @dev Dynamic withdrawal fee is sourced from `msg.value`
@@ -92,15 +101,28 @@ interface IYieldProvider {
    *      and enforce any provider-specific safety checks. The returned amount is used by the
    *      YieldManager to cap pending withdrawals tracked on L1.
    * @param _yieldProvider The yield provider address.
+   * @param _requiredUnstakeAmount Required unstake amount in wei.
+   * @param _validatorIndex Validator index for validator to withdraw from.
+   * @param _slot Slot of the beacon block for which the proof is generated.
    * @param _withdrawalParams ABI encoded provider parameters.
    * @param _withdrawalParamsProof Proof data (typically a beacon chain Merkle proof).
-   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
+   * @return unstakedAmountWei Maximum ETH amount expected to be withdrawn as a result of this request (in wei).
    */
   function unstakePermissionless(
     address _yieldProvider,
+    uint256 _requiredUnstakeAmount,
+    uint64 _validatorIndex,
+    uint64 _slot,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable returns (uint256 maxUnstakeAmount);
+  ) external payable returns (uint256 unstakedAmountWei);
+
+  /**
+   * @notice Hook called before withdrawing ETH from the YieldProvider.
+   * @param _yieldProvider The yield provider address.
+   * @param _isPermissionlessReserveDeficitWithdrawal Whether this is a permissionless reserve deficit withdrawal.
+   */
+  function beforeWithdrawFromYieldProvider(address _yieldProvider, bool _isPermissionlessReserveDeficitWithdrawal) external;
 
   /**
    * @notice Withdraws ETH from the provider back into the YieldManager.
@@ -121,6 +143,12 @@ interface IYieldProvider {
    * @dev Whether to allow staking during ossification is a vendor-specific detail.
    */
   function unpauseStaking(address _yieldProvider) external;
+
+  /**
+   * @notice Synchronizes the cached LST liability principal with the latest vendor state.
+   * @param _yieldProvider The yield provider address.
+   */
+  function syncLSTLiabilityPrincipal(address _yieldProvider) external;
 
   /**
    * @notice Withdraws liquid staking tokens (LST) to a recipient.
