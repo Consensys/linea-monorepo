@@ -64,24 +64,26 @@ contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, 
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
    * @param _forcedTransactionGateway The address of the forced transaction gateway.
    * @param _forcedTransactionFeeInWei The forced transaction fee in wei.
-   * @param _addressFilterValue The address of the address filter.
+   * @param _addressFilter The address of the address filter.
    */
   function reinitializeLineaRollupV9(
     address _forcedTransactionGateway,
     uint256 _forcedTransactionFeeInWei,
-    address _addressFilterValue
+    address _addressFilter
   ) external reinitializer(9) {
     // TODO - ADD PROXY ADMIN CHECK AND FIX TESTS
 
     require(_forcedTransactionGateway != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_forcedTransactionFeeInWei > 0, IGenericErrors.ZeroValueNotAllowed());
-    require(_addressFilterValue != address(0), IGenericErrors.ZeroAddressNotAllowed());
+    require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
 
     _grantRole(FORCED_TRANSACTION_SENDER_ROLE, _forcedTransactionGateway);
 
     forcedTransactionFeeInWei = _forcedTransactionFeeInWei;
-    _addressFilter = IAddressFilter(_addressFilterValue);
+    addressFilter = IAddressFilter(_addressFilter);
+
     emit ForcedTransactionFeeSet(_forcedTransactionFeeInWei);
+    emit AddressFilterChanged(address(0), _addressFilter);
 
     nextForcedTransactionNumber = 1;
 

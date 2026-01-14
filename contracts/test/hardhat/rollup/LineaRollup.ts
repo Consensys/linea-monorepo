@@ -45,6 +45,7 @@ import {
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   FORCED_TRANSACTION_SENDER_ROLE,
   FORCED_TRANSACTION_FEE,
+  SET_ADDRESS_FILTER_ROLE,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
@@ -59,6 +60,7 @@ import {
   generateBlobParentShnarfData,
   calculateLastFinalizedState,
   generateKeccak256,
+  expectNoEvent,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
 
@@ -404,6 +406,42 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.nextForcedTransactionNumber()).to.equal(1n);
     });
 
+    it("Should emit the AddressFilterChanged event when the address filter is set", async () => {
+      expectEvent(
+        lineaRollup,
+        lineaRollup.reinitializeLineaRollupV9(
+          forcedTransactionGatewayAddress,
+          FORCED_TRANSACTION_FEE,
+          addressFilterAddress,
+        ),
+        "AddressFilterChanged",
+        [ADDRESS_ZERO, addressFilterAddress],
+      );
+    });
+
+    it("Should emit the AddressFilterChanged event when the address filter is set", async () => {
+      expectEvent(
+        lineaRollup,
+        lineaRollup.reinitializeLineaRollupV9(
+          forcedTransactionGatewayAddress,
+          FORCED_TRANSACTION_FEE,
+          addressFilterAddress,
+        ),
+        "ForcedTransactionFeeSet",
+        [FORCED_TRANSACTION_FEE],
+      );
+    });
+
+    it("Should set the address filter", async () => {
+      await lineaRollup.reinitializeLineaRollupV9(
+        forcedTransactionGatewayAddress,
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      );
+
+      expect(await lineaRollup.addressFilter()).to.equal(addressFilterAddress);
+    });
+
     it("Next contract version number should be 8.0", async () => {
       await lineaRollup.reinitializeLineaRollupV9(
         forcedTransactionGatewayAddress,
@@ -492,6 +530,54 @@ describe("Linea Rollup contract", () => {
       expectedArgs = [ADDRESS_ZERO, 2, securityCouncil.address, oldVerifierAddress];
 
       await expectEvent(lineaRollup, unsetVerifierCall, "VerifierAddressChanged", expectedArgs);
+    });
+  });
+
+  describe("Change address filter", () => {
+    beforeEach(async () => {
+      await lineaRollup.connect(securityCouncil).grantRole(SET_ADDRESS_FILTER_ROLE, securityCouncil.address);
+    });
+
+    it("Should revert if the address filter is the zero address", async () => {
+      const setAddressFilterCall = lineaRollup.connect(securityCouncil).setAddressFilter(ADDRESS_ZERO);
+      await expectRevertWithCustomError(lineaRollup, setAddressFilterCall, "ZeroAddressNotAllowed");
+    });
+
+    it("Should revert if the caller has not the SET_ADDRESS_FILTER_ROLE", async () => {
+      const setAddressFilterCall = lineaRollup.connect(nonAuthorizedAccount).setAddressFilter(addressFilterAddress);
+      await expectRevertWithReason(
+        setAddressFilterCall,
+        buildAccessErrorMessage(nonAuthorizedAccount, SET_ADDRESS_FILTER_ROLE),
+      );
+    });
+
+    it("Should set the new address filter", async () => {
+      await lineaRollup.connect(securityCouncil).setAddressFilter(addressFilterAddress);
+      expect(await lineaRollup.addressFilter()).to.be.equal(addressFilterAddress);
+    });
+
+    it("Should emit the AddressFilterChanged event when the address filter is set", async () => {
+      await expectEvent(
+        lineaRollup,
+        lineaRollup.connect(securityCouncil).setAddressFilter(addressFilterAddress),
+        "AddressFilterChanged",
+        [ADDRESS_ZERO, addressFilterAddress],
+      );
+    });
+
+    it("Should not emit the event if the address filter is the same", async () => {
+      await expectEvent(
+        lineaRollup,
+        lineaRollup.connect(securityCouncil).setAddressFilter(addressFilterAddress),
+        "AddressFilterChanged",
+        [ADDRESS_ZERO, addressFilterAddress],
+      );
+
+      await expectNoEvent(
+        lineaRollup,
+        lineaRollup.connect(securityCouncil).setAddressFilter(addressFilterAddress),
+        "AddressFilterChanged",
+      );
     });
   });
 

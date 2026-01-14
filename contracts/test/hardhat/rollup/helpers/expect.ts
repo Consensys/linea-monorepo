@@ -128,8 +128,6 @@ export async function expectFailedCustomErrorFinalize(
 
   await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
 
-  console.log("finalizationData", finalizationData);
-
   const finalizeCompressedCall = lineaRollup
     .connect(operator)
     .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);

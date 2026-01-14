@@ -40,6 +40,7 @@ export const MINIMUM_FEE_SETTER_ROLE = generateKeccak256(["string"], ["MINIMUM_F
 export const OPERATOR_ROLE = generateKeccak256(["string"], ["OPERATOR_ROLE"], true);
 export const VERIFIER_SETTER_ROLE = generateKeccak256(["string"], ["VERIFIER_SETTER_ROLE"], true);
 export const VERIFIER_UNSETTER_ROLE = generateKeccak256(["string"], ["VERIFIER_UNSETTER_ROLE"], true);
+export const SET_ADDRESS_FILTER_ROLE = generateKeccak256(["string"], ["SET_ADDRESS_FILTER_ROLE"], true);
 export const L1_MERKLE_ROOTS_SETTER_ROLE = generateKeccak256(["string"], ["L1_MERKLE_ROOTS_SETTER_ROLE"], true);
 export const L2_MERKLE_ROOTS_SETTER_ROLE = generateKeccak256(["string"], ["L2_MERKLE_ROOTS_SETTER_ROLE"], true);
 export const SECURITY_COUNCIL_ROLE = generateKeccak256(["string"], ["SECURITY_COUNCIL_ROLE"], true);

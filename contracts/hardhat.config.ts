@@ -44,7 +44,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 3_000,
+            runs: 2_000,
           },
           evmVersion: "prague",
         },

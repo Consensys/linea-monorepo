@@ -43,6 +43,9 @@ abstract contract LineaRollupBase is
   /// @notice The role required to set/remove  proof verifiers by type.
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
 
+  /// @notice The role required to set the address filter.
+  bytes32 public constant SET_ADDRESS_FILTER_ROLE = keccak256("SET_ADDRESS_FILTER_ROLE");
+
   /// @notice The role required to send forced transactions.
   bytes32 public constant FORCED_TRANSACTION_SENDER_ROLE = keccak256("FORCED_TRANSACTION_SENDER_ROLE");
 
@@ -117,8 +120,8 @@ abstract contract LineaRollupBase is
   /// @dev The forced transaction fee in wei.
   uint256 public forcedTransactionFeeInWei;
 
-  /// @dev The address of the address filter.
-  IAddressFilter internal _addressFilter;
+  /// @notice The address of the address filter.
+  IAddressFilter public addressFilter;
 
   /// @dev Keep 50 free storage slots for inheriting contracts.
   uint256[50] private __gap_LineaRollup;
@@ -282,6 +285,21 @@ abstract contract LineaRollupBase is
     emit VerifierAddressChanged(address(0), _proofType, msg.sender, verifiers[_proofType]);
 
     delete verifiers[_proofType];
+  }
+
+  /**
+   * @notice Sets the address filter.
+   * @dev SET_ADDRESS_FILTER_ROLE is required to execute.
+   * @param _addressFilter The address filter value.
+   */
+  function setAddressFilter(address _addressFilter) external onlyRole(SET_ADDRESS_FILTER_ROLE) {
+    require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
+    address oldAddressFilter = address(addressFilter);
+
+    if (_addressFilter != oldAddressFilter) {
+      addressFilter = IAddressFilter(_addressFilter);
+      emit AddressFilterChanged(oldAddressFilter, _addressFilter);
+    }
   }
 
   /**
@@ -470,7 +488,7 @@ abstract contract LineaRollupBase is
    */
   function _validateFilteredAddresses(address[] calldata _filteredAddresses) internal view {
     if (_filteredAddresses.length > 0) {
-      IAddressFilter addressFilterCached = _addressFilter;
+      IAddressFilter addressFilterCached = addressFilter;
 
       for (uint256 i = 0; i < _filteredAddresses.length; i++) {
         require(

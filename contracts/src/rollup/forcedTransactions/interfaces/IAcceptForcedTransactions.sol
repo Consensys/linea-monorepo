@@ -14,6 +14,13 @@ interface IAcceptForcedTransactions {
   event ForcedTransactionFeeSet(uint256 forcedTransactionFeeInWei);
 
   /**
+   * @notice Emitted when the address filter is set.
+   * @param oldAddressFilter The old address filter.
+   * @param newAddressFilter The new address filter.
+   */
+  event AddressFilterChanged(address oldAddressFilter, address newAddressFilter);
+
+  /**
    * @dev Thrown when another forced transaction is expected on the computed L2 block or the previous block number is higher than the submitted one.
    */
   error ForcedTransactionExistsForBlockOrIsTooLow(uint256 blockNumber);
@@ -54,4 +61,11 @@ interface IAcceptForcedTransactions {
    * @param _forcedTransactionFeeInWei The forced transaction fee in wei.
    */
   function setForcedTransactionFee(uint256 _forcedTransactionFeeInWei) external;
+
+  /**
+   * @notice Sets the address filter.
+   * @dev Only callable by an account with the SET_ADDRESS_FILTER_ROLE.
+   * @param _addressFilter The address filter.
+   */
+  function setAddressFilter(address _addressFilter) external;
 }
