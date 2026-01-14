@@ -115,30 +115,31 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 		asExprs(ctx.StackedBlocks[:]),
 		asExprs(ctx.StackedNewStates[:]),
 	)
+	//comment it get: v2: 99M -->62M
 
-	for i := range ctx.CompiledQueries {
+	// for i := range ctx.CompiledQueries {
 
-		for block := 0; block < blockSize; block++ {
-			comp.GenericFragmentedConditionalInclusion(
-				protocolRoundID,
-				ifaces.QueryIDf("Poseidon2_QUERY_%v_INCLUSION_SelfRecursionCount_%v_ID_%v_BLOCK_%v", i, comp.SelfRecursionCount, uniqueID(comp), block),
-				[][]ifaces.Column{
-					{
-						ctx.StackedBlocks[block],
-						ctx.StackedOldStates[block],
-						ctx.StackedNewStates[block],
-					},
-				},
-				[]ifaces.Column{
-					ctx.CompiledQueries[i].Blocks[block],
-					ctx.CompiledQueries[i].OldState[block],
-					ctx.CompiledQueries[i].NewState[block],
-				},
-				nil,
-				ctx.CompiledQueries[i].Selector,
-			)
-		}
-	}
+	// 	for block := 0; block < blockSize; block++ {
+	// 		comp.GenericFragmentedConditionalInclusion(
+	// 			protocolRoundID,
+	// 			ifaces.QueryIDf("Poseidon2_QUERY_%v_INCLUSION_SelfRecursionCount_%v_ID_%v_BLOCK_%v", i, comp.SelfRecursionCount, uniqueID(comp), block),
+	// 			[][]ifaces.Column{
+	// 				{
+	// 					ctx.StackedBlocks[block],
+	// 					ctx.StackedOldStates[block],
+	// 					ctx.StackedNewStates[block],
+	// 				},
+	// 			},
+	// 			[]ifaces.Column{
+	// 				ctx.CompiledQueries[i].Blocks[block],
+	// 				ctx.CompiledQueries[i].OldState[block],
+	// 				ctx.CompiledQueries[i].NewState[block],
+	// 			},
+	// 			nil,
+	// 			ctx.CompiledQueries[i].Selector,
+	// 		)
+	// 	}
+	// }
 
 	comp.RegisterProverAction(protocolRoundID, ctx)
 

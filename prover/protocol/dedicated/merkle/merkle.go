@@ -113,26 +113,27 @@ func merkleProofCheck(
 
 	rm.Define(comp, round, name, numProofs, depth, useNextMerkleProof, isActiveAccumulator, counter)
 
-	// define the lookup relation
-	for i := 0; i < blockSize; i++ {
-		comp.InsertInclusion(
-			round,
-			ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_%v_%v", name, i),
-			[]ifaces.Column{cm.Cols.NewProof.Natural, cm.Cols.Curr[i], cm.Cols.PosAcc, cm.Cols.Root[i]},
-			[]ifaces.Column{rm.IsActive, rm.Leaf[i], rm.Pos, rm.Roots[i]},
-		)
-	}
+	// comment it for v3: 62M --> 61M
+	// // define the lookup relation
+	// for i := 0; i < blockSize; i++ {
+	// 	comp.InsertInclusion(
+	// 		round,
+	// 		ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_%v_%v", name, i),
+	// 		[]ifaces.Column{cm.Cols.NewProof.Natural, cm.Cols.Curr[i], cm.Cols.PosAcc, cm.Cols.Root[i]},
+	// 		[]ifaces.Column{rm.IsActive, rm.Leaf[i], rm.Pos, rm.Roots[i]},
+	// 	)
+	// }
 
-	// define the optional lookup relation for columns coming from the accumulator module
-	// The first lookup column act as a filter and select the last row of a segment in the
-	// computed mode.
-	if useNextProof {
-		comp.InsertInclusion(round,
-			ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_FOR_USE_NEXT_PROOF_%v", name),
-			[]ifaces.Column{cm.Cols.NewProof.Natural, cm.Cols.UseNextMerkleProofExpanded, cm.Cols.IsActiveExpanded, cm.Cols.SegmentCounter},
-			[]ifaces.Column{rm.IsActive, rm.UseNextMerkleProof, rm.IsActive, rm.Counter},
-		)
-	}
+	// // define the optional lookup relation for columns coming from the accumulator module
+	// // The first lookup column act as a filter and select the last row of a segment in the
+	// // computed mode.
+	// if useNextProof {
+	// 	comp.InsertInclusion(round,
+	// 		ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_FOR_USE_NEXT_PROOF_%v", name),
+	// 		[]ifaces.Column{cm.Cols.NewProof.Natural, cm.Cols.UseNextMerkleProofExpanded, cm.Cols.IsActiveExpanded, cm.Cols.SegmentCounter},
+	// 		[]ifaces.Column{rm.IsActive, rm.UseNextMerkleProof, rm.IsActive, rm.Counter},
+	// 	)
+	// }
 
 	// assigns the compute module
 	comp.RegisterProverAction(round, &MerkleProofProverAction{

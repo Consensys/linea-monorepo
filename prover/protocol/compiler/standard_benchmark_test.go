@@ -420,11 +420,11 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		// proof := wizard.Prove(comp, sbc.NewAssigner(b), isBLS)
-		// err := wizard.Verify(comp, proof, isBLS)
-		// if err != nil {
-		// 	b.Fatal(err)
-		// }
+		proof := wizard.Prove(comp, sbc.NewAssigner(b), isBLS)
+		err := wizard.Verify(comp, proof, isBLS)
+		if err != nil {
+			b.Fatal(err)
+		}
 
 		circuit := verifierCircuit{}
 		{
@@ -443,21 +443,20 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			b.Fatal(err)
 		}
 
-		fmt.Printf("constraints=%v\n", csc.GetNbConstraints())
-		// assignment := &verifierCircuit{
-		// 	C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), isBLS),
-		// }
+		assignment := &verifierCircuit{
+			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), isBLS),
+		}
 
-		// witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
-		// if err != nil {
-		// 	b.Fatal(err)
-		// }
+		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+		if err != nil {
+			b.Fatal(err)
+		}
 
-		// // Check if solved using the pre-compiled SCS
-		// err = csc.IsSolved(witness)
-		// if err != nil {
-		// 	b.Fatal(err)
-		// }
+		// Check if solved using the pre-compiled SCS
+		err = csc.IsSolved(witness)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
