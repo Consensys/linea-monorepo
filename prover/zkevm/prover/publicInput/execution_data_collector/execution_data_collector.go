@@ -207,30 +207,30 @@ type ExecutionDataCollector struct {
 // NewExecutionDataCollector instantiates an ExecutionDataCollector with unconstrained columns.
 func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) *ExecutionDataCollector {
 	res := &ExecutionDataCollector{
-		BlockID:                util.CreateColBase(name, "BLOCK_ID", size, comp),
-		AbsTxID:                util.CreateColBase(name, "ABS_TX_ID", size, comp),
-		AbsTxIDMax:             util.CreateColBase(name, "ABS_TX_ID_MAX", size, comp),
-		FirstAbsTxIDBlock:      util.CreateColBase(name, "FIRST_ABS_TX_ID_BLOCK", size, comp),
-		LastAbsTxIDBlock:       util.CreateColBase(name, "LAST_ABS_TX_ID_BLOCK", size, comp),
-		NoBytes:                util.CreateColBase(name, "NO_BYTES", size, comp),
-		TotalNoTxBlock:         util.CreateColBase(name, "TOTAL_NO_TX_BLOCK", size, comp),
-		IsActive:               util.CreateColBase(name, "IS_ACTIVE", size, comp),
-		IsNoTx:                 util.CreateColBase(name, "IS_NO_TX", size, comp),
-		IsBlockHashHi:          util.CreateColBase(name, "IS_BLOCK_HASH_HI", size, comp),
-		IsBlockHashLo:          util.CreateColBase(name, "IS_BLOCK_HASH_LO", size, comp),
-		IsTimestamp:            util.CreateColBase(name, "IS_TIMESTAMP", size, comp),
-		IsTxRLP:                util.CreateColBase(name, "IS_TX_RLP", size, comp),
-		IsAddrHi:               util.CreateColBase(name, "IS_ADDR_HI", size, comp),
-		IsAddrLo:               util.CreateColBase(name, "IS_ADDR_LO", size, comp),
-		Ct:                     util.CreateColBase(name, "CT", size, comp),
-		HashNum:                util.CreateColBase(name, "HASH_NUM", size, comp),
-		EndOfRlpSegment:        util.CreateColBase(name, "END_OF_RLP_SEGMENT", size, comp),
-		TotalBytesCounter:      util.CreateColBase(name, "TOTAL_BYTES_COUNTER", size, comp),
-		FinalTotalBytesCounter: util.CreateColBase(name, "FINAL_TOTAL_BYTES_COUNTER", size, comp),
+		BlockID:                util.CreateCol(name, "BLOCK_ID", size, comp),
+		AbsTxID:                util.CreateCol(name, "ABS_TX_ID", size, comp),
+		AbsTxIDMax:             util.CreateCol(name, "ABS_TX_ID_MAX", size, comp),
+		FirstAbsTxIDBlock:      util.CreateCol(name, "FIRST_ABS_TX_ID_BLOCK", size, comp),
+		LastAbsTxIDBlock:       util.CreateCol(name, "LAST_ABS_TX_ID_BLOCK", size, comp),
+		NoBytes:                util.CreateCol(name, "NO_BYTES", size, comp),
+		TotalNoTxBlock:         util.CreateCol(name, "TOTAL_NO_TX_BLOCK", size, comp),
+		IsActive:               util.CreateCol(name, "IS_ACTIVE", size, comp),
+		IsNoTx:                 util.CreateCol(name, "IS_NO_TX", size, comp),
+		IsBlockHashHi:          util.CreateCol(name, "IS_BLOCK_HASH_HI", size, comp),
+		IsBlockHashLo:          util.CreateCol(name, "IS_BLOCK_HASH_LO", size, comp),
+		IsTimestamp:            util.CreateCol(name, "IS_TIMESTAMP", size, comp),
+		IsTxRLP:                util.CreateCol(name, "IS_TX_RLP", size, comp),
+		IsAddrHi:               util.CreateCol(name, "IS_ADDR_HI", size, comp),
+		IsAddrLo:               util.CreateCol(name, "IS_ADDR_LO", size, comp),
+		Ct:                     util.CreateCol(name, "CT", size, comp),
+		HashNum:                util.CreateCol(name, "HASH_NUM", size, comp),
+		EndOfRlpSegment:        util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
+		TotalBytesCounter:      util.CreateCol(name, "TOTAL_BYTES_COUNTER", size, comp),
+		FinalTotalBytesCounter: util.CreateCol(name, "FINAL_TOTAL_BYTES_COUNTER", size, comp),
 	}
 
 	for i := range res.Limbs {
-		res.Limbs[i] = util.CreateColBase(name, fmt.Sprintf("LIMB_%d", i), size, comp)
+		res.Limbs[i] = util.CreateCol(name, fmt.Sprintf("LIMB_%d", i), size, comp)
 	}
 
 	return res
