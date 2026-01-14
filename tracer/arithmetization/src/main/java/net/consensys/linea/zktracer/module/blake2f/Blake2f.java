@@ -51,7 +51,7 @@ public class Blake2f implements OperationSetModule<Blake2fOperation> {
   @Override
   // TODO replace with actual line count when fix released
   public int lineCount() {
-    return 1;
+    return operations.lineCount();
   }
 
   @Override
