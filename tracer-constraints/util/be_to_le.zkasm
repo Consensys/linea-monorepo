@@ -1,0 +1,64 @@
+;; Convert u64 input from big-endian to little-endian
+;; and reverse
+
+include "byte.zkasm"
+include "bit_xoan.zkasm"
+include "bit_shl.zkasm"
+
+fn BE_to_LE_u64(input u64) -> (output u64) {
+    var b0, b1, b2, b3, b4, b5, b6, b7 u64
+    var c0, c1, c2, c3, c4, c5, c6, c7 u192
+    var b0_temp, b1_temp, b2_temp, b3_temp, b4_temp, b5_temp, b6_temp, b7_temp u64
+    var b0_t, b1_t, b2_t, b3_t, b4_t, b5_t, b6_t, b7_t u64
+    var b0_sh, b1_sh, b2_sh, b3_sh, b4_sh, b5_sh, b6_sh, b7_sh u256
+    var tmp u64
+
+    ;; retrieve bytes with offset
+    b0_temp = byte64(input, 0)
+    b1_temp = byte64(input, 1)
+    b2_temp = byte64(input, 2)
+    b3_temp = byte64(input, 3)
+    b4_temp = byte64(input, 4)
+    b5_temp = byte64(input, 5)
+    b6_temp = byte64(input, 6)
+    b7_temp = byte64(input, 7)
+
+    ;; shift left with offset
+    b1_sh = bit_shl256(b1_temp, 8)
+    b2_sh = bit_shl256(b2_temp, 16)
+    b3_sh = bit_shl256(b3_temp, 24)
+    b4_sh = bit_shl256(b4_temp, 32)
+    b5_sh = bit_shl256(b5_temp, 40)
+    b6_sh = bit_shl256(b6_temp, 48)
+    b7_sh = bit_shl256(b7_temp, 56)
+
+    ;; convert from u256 to u64
+    c1, b1 = b1_sh
+    c2, b2 = b2_sh
+    c3, b3 = b3_sh
+    c4, b4 = b4_sh
+    c5, b5 = b5_sh
+    c6, b6 = b6_sh
+    c7, b7 = b7_sh
+
+    output = OR_on_OR(b0_temp, b1, b2, b3, b4, b5, b6, b7)
+    return
+}
+
+fn LE_to_BE_u64(input u64) -> (output u64) {
+    output = BE_to_LE_u64(input)
+    return
+}
+
+;; arg_1 OR arg_2 OR arg_3 OR arg_4 OR arg_5 OR arg_6 OR arg_7 OR arg_8
+fn OR_on_OR(arg_1 u64, arg_2 u64, arg_3 u64, arg_4 u64, arg_5 u64, arg_6 u64, arg_7 u64, arg_8 u64) -> (res u64) {
+    var mid_res_1, mid_res_2, mid_res_3, mid_res_4, mid_res_5, mid_res_6 u64
+    mid_res_1 = bit_xoan_u64(BIT_OR, arg_1, arg_2)
+    mid_res_2 = bit_xoan_u64(BIT_OR, mid_res_1, arg_3)
+    mid_res_3 = bit_xoan_u64(BIT_OR, mid_res_2, arg_4)
+    mid_res_4 = bit_xoan_u64(BIT_OR, mid_res_3, arg_5)
+    mid_res_5 = bit_xoan_u64(BIT_OR, mid_res_4, arg_6)
+    mid_res_6 = bit_xoan_u64(BIT_OR, mid_res_5, arg_7)
+    res = bit_xoan_u64(BIT_OR, mid_res_6, arg_8)
+    return
+}
