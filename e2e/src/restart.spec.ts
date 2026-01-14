@@ -49,10 +49,12 @@ describe("Coordinator restart test suite", () => {
         return;
       }
       const l1PublicClient = config.l1PublicClient();
+      const lineaRollup = l1PublicClient.getLineaRollup();
       // await for a finalization to happen on L1
       const [dataSubmittedEventsBeforeRestart, dataFinalizedEventsBeforeRestart] = await Promise.all([
         waitForEvents(l1PublicClient, {
           abi: LineaRollupV6Abi,
+          address: lineaRollup.address,
           eventName: "DataSubmittedV3",
           fromBlock: 0n,
           toBlock: "latest",
@@ -60,6 +62,7 @@ describe("Coordinator restart test suite", () => {
         }),
         waitForEvents(l1PublicClient, {
           abi: LineaRollupV6Abi,
+          address: lineaRollup.address,
           eventName: "DataFinalizedV3",
           fromBlock: 0n,
           toBlock: "latest",
@@ -92,6 +95,7 @@ describe("Coordinator restart test suite", () => {
       logger.debug("Waiting for DataSubmittedV3 event after coordinator restart...");
       const [dataSubmittedV3EventAfterRestart] = await waitForEvents(l1PublicClient, {
         abi: LineaRollupV6Abi,
+        address: lineaRollup.address,
         eventName: "DataSubmittedV3",
         fromBlock: currentBlockNumberAfterRestart,
         toBlock: "latest",
@@ -110,6 +114,7 @@ describe("Coordinator restart test suite", () => {
       logger.debug("Waiting for DataFinalizedV3 event after coordinator restart...");
       const [dataFinalizedEventAfterRestart] = await waitForEvents(l1PublicClient, {
         abi: LineaRollupV6Abi,
+        address: lineaRollup.address,
         eventName: "DataFinalizedV3",
         fromBlock: currentBlockNumberAfterRestart,
         toBlock: "latest",
@@ -187,8 +192,11 @@ describe("Coordinator restart test suite", () => {
       logger.debug(`Waiting for L1->L2 anchoring before coordinator restart. messageNumber=${lastNewL1MessageNumber}`);
 
       const l2PublicClient = config.l2PublicClient();
+      const l2MessageService = l2PublicClient.getL2MessageServiceContract();
+
       const [rollingHashUpdatedEvent] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
+        address: l2MessageService.address,
         eventName: "RollingHashUpdated",
         fromBlock: 0n,
         toBlock: "latest",
@@ -238,6 +246,7 @@ describe("Coordinator restart test suite", () => {
       );
       const [rollingHashUpdatedEventAfterRestart] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
+        address: l2MessageService.address,
         eventName: "RollingHashUpdated",
         fromBlock: 0n,
         toBlock: "latest",
@@ -251,7 +260,6 @@ describe("Coordinator restart test suite", () => {
       expect(rollingHashUpdatedEventAfterRestart).toBeDefined();
 
       const lineaRollup = config.l1PublicClient().getLineaRollup();
-      const l2MessageService = config.l2PublicClient().getL2MessageServiceContract();
 
       const [lastNewMessageRollingHashAfterRestart, lastAnchoredL1MessageNumberAfterRestart] = await Promise.all([
         lineaRollup.read.rollingHashes([rollingHashUpdatedEventAfterRestart.args.messageNumber]),

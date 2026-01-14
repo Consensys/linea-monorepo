@@ -89,6 +89,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const [rollingHashUpdatedEvent] = await waitForEvents(l2PublicClient, {
       abi: L2MessageServiceV1Abi,
+      address: l2MessageService.address,
       eventName: "RollingHashUpdated",
       fromBlock: 0n,
       toBlock: "latest",
@@ -109,6 +110,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const [claimedEvent] = await waitForEvents(l2PublicClient, {
       abi: L2MessageServiceV1Abi,
+      address: l2MessageService.address,
       eventName: "MessageClaimed",
       args: {
         _messageHash: messageHash,
@@ -119,6 +121,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const [newTokenDeployed] = await waitForEvents(l2PublicClient, {
       abi: TokenBridgeV1_1Abi,
+      address: l2PublicClient.getTokenBridgeContract().address,
       eventName: "NewTokenDeployed",
       strict: true,
     });
@@ -233,6 +236,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const [claimedEvent] = await waitForEvents(l1PublicClient, {
       abi: LineaRollupV6Abi,
+      address: l1PublicClient.getLineaRollup().address,
       eventName: "MessageClaimed",
       args: {
         _messageHash: messageHash,
@@ -245,6 +249,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const [newTokenDeployed] = await waitForEvents(l1PublicClient, {
       abi: TokenBridgeV1_1Abi,
+      address: l1PublicClient.getTokenBridgeContract().address,
       eventName: "NewTokenDeployed",
       strict: true,
     });

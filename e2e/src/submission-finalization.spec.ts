@@ -52,8 +52,8 @@ describe("Submission and finalization test suite", () => {
       "Check L2 anchoring",
       async () => {
         const lineaRollupV6 = config.l1PublicClient().getLineaRollup();
-        const l1PublicClient = config.l1PublicClient();
-        const l2MessageService = config.l2PublicClient().getL2MessageServiceContract();
+        const l2PublicClient = config.l2PublicClient();
+        const l2MessageService = l2PublicClient.getL2MessageServiceContract();
 
         const { l1Messages } = await sendMessages();
 
@@ -61,8 +61,9 @@ describe("Submission and finalization test suite", () => {
         const lastNewL1MessageNumber = l1Messages.slice(-1)[0].messageNumber;
 
         logger.debug(`Waiting for the anchoring using rolling hash... messageNumber=${lastNewL1MessageNumber}`);
-        const [rollingHashUpdatedEvent] = await waitForEvents(l1PublicClient, {
+        const [rollingHashUpdatedEvent] = await waitForEvents(l2PublicClient, {
           abi: L2MessageServiceV1Abi,
+          address: l2MessageService.address,
           eventName: "RollingHashUpdated",
           fromBlock: 0n,
           toBlock: "latest",
@@ -95,6 +96,7 @@ describe("Submission and finalization test suite", () => {
         logger.debug("Waiting for DataSubmittedV3 used to finalize with proof...");
         const [dataSubmittedEvent] = await waitForEvents(l1PublicClient, {
           abi: LineaRollupV6Abi,
+          address: lineaRollupV6.address,
           eventName: "DataSubmittedV3",
           fromBlock: 0n,
           toBlock: "latest",
@@ -107,6 +109,7 @@ describe("Submission and finalization test suite", () => {
         logger.debug("Waiting for DataFinalizedV3 event with proof...");
         const [dataFinalizedEvent] = await waitForEvents(l1PublicClient, {
           abi: LineaRollupV6Abi,
+          address: lineaRollupV6.address,
           eventName: "DataFinalizedV3",
           fromBlock: 0n,
           toBlock: "latest",

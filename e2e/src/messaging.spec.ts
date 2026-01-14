@@ -144,6 +144,7 @@ describe("Messaging test suite", () => {
       const l2PublicClient = config.l2PublicClient();
       const [messageClaimedEvent] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
+        address: l2PublicClient.getL2MessageServiceContract().address,
         eventName: "MessageClaimed",
         args: {
           _messageHash: messageHash,
@@ -182,6 +183,7 @@ describe("Messaging test suite", () => {
       const l2PublicClient = config.l2PublicClient();
       const [messageClaimedEvent] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
+        address: l2PublicClient.getL2MessageServiceContract().address,
         eventName: "MessageClaimed",
         args: {
           _messageHash: messageHash,
@@ -220,6 +222,7 @@ describe("Messaging test suite", () => {
       const l2PublicClient = config.l2PublicClient();
       const [messageClaimedEvent] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
+        address: l2PublicClient.getL2MessageServiceContract().address,
         eventName: "MessageClaimed",
         args: {
           _messageHash: messageHash,
@@ -245,6 +248,7 @@ describe("Messaging test suite", () => {
       ]);
 
       const l1PublicClient = config.l1PublicClient();
+      const lineaRollup = l1PublicClient.getLineaRollup();
       const { txHash, receipt } = await sendL2ToL1Message(logger, {
         l1Account,
         l2Account,
@@ -259,6 +263,7 @@ describe("Messaging test suite", () => {
       logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
       const [l2MessagingBlockAnchoredEvent] = await waitForEvents(l1PublicClient, {
         abi: LineaRollupV6Abi,
+        address: lineaRollup.address,
         eventName: "L2MessagingBlockAnchored",
         args: {
           l2Block: messageSentEvent.blockNumber,
@@ -272,6 +277,7 @@ describe("Messaging test suite", () => {
       logger.debug(`Waiting for MessageClaimed event on L1... messageHash=${messageHash}`);
       const [messageClaimedEvent] = await waitForEvents(l1PublicClient, {
         abi: LineaRollupV6Abi,
+        address: lineaRollup.address,
         eventName: "MessageClaimed",
         args: {
           _messageHash: messageHash,
@@ -297,6 +303,7 @@ describe("Messaging test suite", () => {
       ]);
 
       const l1PublicClient = config.l1PublicClient();
+      const lineaRollup = l1PublicClient.getLineaRollup();
       const { txHash, receipt } = await sendL2ToL1Message(logger, {
         l1Account,
         l2Account,
@@ -311,6 +318,7 @@ describe("Messaging test suite", () => {
       logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
       const [l2MessagingBlockAnchoredEvent] = await waitForEvents(l1PublicClient, {
         abi: LineaRollupV6Abi,
+        address: lineaRollup.address,
         eventName: "L2MessagingBlockAnchored",
         args: {
           l2Block: messageSentEvent.blockNumber,
@@ -324,6 +332,7 @@ describe("Messaging test suite", () => {
       logger.debug(`Waiting for MessageClaimed event on L1. messageHash=${messageHash}`);
       const [messageClaimedEvent] = await waitForEvents(l1PublicClient, {
         abi: LineaRollupV6Abi,
+        address: lineaRollup.address,
         eventName: "MessageClaimed",
         args: {
           _messageHash: messageHash,

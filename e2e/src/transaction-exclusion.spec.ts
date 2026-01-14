@@ -42,6 +42,8 @@ describe("Transaction exclusion test suite", () => {
       try {
         // This shall be rejected by the Besu node due to traces module limit overflow
         await l2WalletClient.sendTransaction(txRequest);
+
+        throw new Error("Transaction was expected to be rejected, but it was not.");
       } catch (err) {
         const e = err as SendTransactionErrorType;
 
@@ -51,7 +53,7 @@ describe("Transaction exclusion test suite", () => {
           // assert it was indeed rejected by the traces module limit
           expect(e.details).toContain("is above the limit");
         } else {
-          throw new Error("Transaction was expected to be rejected, but it was not.");
+          throw new Error("Transaction was expected to be rejected with traces limit overflow, but it was not.");
         }
       }
 
