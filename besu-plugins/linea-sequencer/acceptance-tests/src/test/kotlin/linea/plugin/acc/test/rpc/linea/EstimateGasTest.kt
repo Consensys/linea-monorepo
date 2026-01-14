@@ -333,21 +333,13 @@ open class EstimateGasTest : LineaPluginPoSTestBase() {
     val compressedSize = profitabilityCalculator.getCompressedTxSize(tx)
     assertThat(
       profitabilityCalculator.isProfitable(
-        /* context = */
         "Test",
-        /* transaction = */
         tx,
-        /* minMargin = */
         MIN_MARGIN,
-        /* baseFee = */
         baseFee,
-        /* payingGasPrice = */
         estimatedMaxGasPrice,
-        /* gas = */
         estimatedGasLimit,
-        /* minGasPriceWei = */
         minGasPrice,
-        /* compressedTxSize = */
         compressedSize,
       ),
     ).isTrue()
