@@ -12,10 +12,9 @@ import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-
 import {
   LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
   LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-  PAUSE_STATE_DATA_SUBMISSION_ROLE,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
-import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+import { CallForwardingProxy, ForcedTransactionGateway, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployCallForwardingProxy,
   deployForcedTransactionGatewayFixture,
@@ -45,7 +44,7 @@ import {
   SIX_MONTHS_IN_SECONDS,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   FORCED_TRANSACTION_SENDER_ROLE,
-  UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
+  FORCED_TRANSACTION_FEE,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
@@ -62,9 +61,6 @@ import {
   generateKeccak256,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
-import { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollup/TestLineaRollup";
-import { Typed } from "ethers";
-import { IPermissionsManager } from "contracts/typechain-types/src/rollup/LineaRollup";
 
 kzg.loadTrustedSetup(0, `${__dirname}/../_testData/trusted_setup.txt`);
 
@@ -82,10 +78,6 @@ describe("Linea Rollup contract", () => {
   let alternateShnarfProviderAddress: SignerWithAddress;
   let roleAddresses: { addressWithRole: string; role: string }[];
   let forcedTransactionGatewayAddress: string;
-  let upgradePauseTypeRoles: Typed | IPauseManager.PauseTypeRoleStruct[] = [];
-  let upgradeUnpauseTypeRoles: Typed | IPauseManager.PauseTypeRoleStruct[] = [];
-  let upgradeArgs: (IPauseManager.PauseTypeRoleStruct[] | IPermissionsManager.RoleAddressStruct[])[] = [];
-  let upgradeRoleAddresses: IPermissionsManager.RoleAddressStruct[];
 
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentStateRootHash } =
     firstCompressedDataContent;
@@ -95,23 +87,6 @@ describe("Linea Rollup contract", () => {
     ({ admin, securityCouncil, operator, nonAuthorizedAccount, alternateShnarfProviderAddress } =
       await loadFixture(getAccountsFixture));
     roleAddresses = await loadFixture(getRoleAddressesFixture);
-
-    upgradeRoleAddresses = [
-      {
-        addressWithRole: securityCouncil.address,
-        role: PAUSE_STATE_DATA_SUBMISSION_ROLE,
-      },
-      {
-        addressWithRole: securityCouncil.address,
-        role: UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
-      },
-    ];
-
-    upgradePauseTypeRoles = [{ pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, role: PAUSE_STATE_DATA_SUBMISSION_ROLE }];
-    upgradeUnpauseTypeRoles = [
-      { pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_STATE_DATA_SUBMISSION_ROLE },
-    ];
-    upgradeArgs = [upgradeRoleAddresses, upgradePauseTypeRoles, upgradeUnpauseTypeRoles];
   });
 
   beforeEach(async () => {
@@ -119,64 +94,6 @@ describe("Linea Rollup contract", () => {
 
     ({ forcedTransactionGateway } = await loadFixture(deployForcedTransactionGatewayFixture));
     forcedTransactionGatewayAddress = await forcedTransactionGateway.getAddress();
-  });
-
-  describe("Upgrading", () => {
-    it("Should be able to upgrade", async () => {
-      // Deploy new LineaRollup implementation
-      const newLineaRollupFactory = await ethers.getContractFactory(
-        "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
-      );
-
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-        call: { fn: "reinitializeV8", args: upgradeArgs },
-        kind: "transparent",
-        unsafeAllowRenames: true,
-        unsafeAllow: ["incorrect-initializer-order"],
-      });
-
-      await newLineaRollup.waitForDeployment();
-
-      expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
-    });
-
-    it("Should fail to upgrade twice", async () => {
-      // Deploy new LineaRollup implementation
-      const newLineaRollupFactory = await ethers.getContractFactory(
-        "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
-      );
-
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-        call: { fn: "reinitializeV8", args: upgradeArgs },
-        kind: "transparent",
-        unsafeAllowRenames: true,
-        unsafeAllow: ["incorrect-initializer-order"],
-      });
-
-      await newLineaRollup.waitForDeployment();
-
-      expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
-
-      await expectRevertWithReason(
-        upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-          call: { fn: "reinitializeV8", args: upgradeArgs },
-          kind: "transparent",
-          unsafeAllowRenames: true,
-          unsafeAllow: ["incorrect-initializer-order"],
-        }),
-        "Initializable: contract is already initialized",
-      );
-    });
-
-    it("Should fail to upgrade if not proxy admin", async () => {
-      await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup
-          .connect(nonAuthorizedAccount)
-          .reinitializeV8(upgradeRoleAddresses, upgradePauseTypeRoles, upgradeUnpauseTypeRoles),
-        "CallerNotProxyAdmin",
-      );
-    });
   });
 
   describe("Fallback/Receive tests", () => {
@@ -409,7 +326,7 @@ describe("Linea Rollup contract", () => {
 
     it("Should have the correct contract version", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("7.0");
+      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("8.0");
     });
 
     it("Should revert if the initialize function is called a second time", async () => {
@@ -437,43 +354,49 @@ describe("Linea Rollup contract", () => {
 
   describe("Upgrading / reinitialisation", () => {
     it("Should revert if the forced transaction gateway is address(0)", async () => {
-      const upgradeCall = lineaRollup.reinitializeLineaRollupV7(ADDRESS_ZERO);
+      const upgradeCall = lineaRollup.reinitializeLineaRollupV9(ADDRESS_ZERO, FORCED_TRANSACTION_FEE);
 
       await expectRevertWithCustomError(lineaRollup, upgradeCall, "ZeroAddressNotAllowed");
     });
 
+    it("Should revert if the forced transaction fee is zero", async () => {
+      const upgradeCall = lineaRollup.reinitializeLineaRollupV9(forcedTransactionGatewayAddress, 0n);
+
+      await expectRevertWithCustomError(lineaRollup, upgradeCall, "ZeroValueNotAllowed");
+    });
+
     it("Should grant FORCED_TRANSACTION_SENDER_ROLE to the forced transaction gateway ", async () => {
-      await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+      await lineaRollup.reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
 
       expect(await lineaRollup.hasRole(FORCED_TRANSACTION_SENDER_ROLE, forcedTransactionGatewayAddress)).true;
     });
 
     it("Should set the next forced transaction number to 1", async () => {
-      await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+      await lineaRollup.reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
 
       expect(await lineaRollup.nextForcedTransactionNumber()).to.equal(1n);
     });
 
-    it("Next contract version number should be 7.0", async () => {
-      await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+    it("Next contract version number should be 8.0", async () => {
+      await lineaRollup.reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
 
-      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("7.0");
+      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("8.0");
     });
 
-    it("Next contract version number should be 7.0", async () => {
+    it("Next contract version number should be 8.0", async () => {
       const upgradeCall = lineaRollup
         .connect(securityCouncil)
-        .reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+        .reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
 
-      expectEvent(lineaRollup, upgradeCall, "LineaRollupVersionChanged", ["6.0", "7.0"]);
+      expectEvent(lineaRollup, upgradeCall, "LineaRollupVersionChanged", ["7.1", "8.0"]);
     });
 
     it("Fails to reinitialize twice", async () => {
-      await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+      await lineaRollup.reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
 
       const secondUpgradeCall = lineaRollup
         .connect(securityCouncil)
-        .reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+        .reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE);
 
       expectRevertWithReason(secondUpgradeCall, INITIALIZED_ALREADY_MESSAGE);
     });

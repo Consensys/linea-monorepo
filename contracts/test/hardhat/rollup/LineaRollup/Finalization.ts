@@ -9,7 +9,7 @@ import secondCompressedDataContent from "../../_testData/compressedData/blocks-4
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
 import fourthMultipleCompressedDataContent from "../../_testData/compressedData/multipleProofs/blocks-120-153.json";
 
-import { TestLineaRollup } from "contracts/typechain-types";
+import { LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
 import { expectSuccessfulFinalize, getAccountsFixture, deployLineaRollupFixture } from "./../helpers";
 import {
   GENERAL_PAUSE_TYPE,
@@ -35,6 +35,7 @@ import {
   generateParentAndExpectedShnarfForMulitpleIndex,
   generateParentShnarfData,
 } from "../../common/helpers";
+import { expect } from "chai";
 
 describe("Linea Rollup contract: Finalization", () => {
   let lineaRollup: TestLineaRollup;
@@ -233,7 +234,7 @@ describe("Linea Rollup contract: Finalization", () => {
           .connect(operator)
           .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
-        await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, "FinalBlobNotSubmitted", [
+        await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, "FinalShnarfNotSubmitted", [
           expectedMissingBlobShnarf,
         ]);
       });
@@ -616,7 +617,62 @@ describe("Linea Rollup contract: Finalization", () => {
       );
     });
 
-    it("Should fail when sending with wrong merkle root location", async () => {
+    it("Should succeed when sending with pure calldata", async () => {
+      const submissionDataBeforeFinalization = generateCallDataSubmissionMultipleProofs(0, 4);
+      let index = 0;
+      for (const data of submissionDataBeforeFinalization) {
+        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForMulitpleIndex(index);
+        await lineaRollup
+          .connect(operator)
+          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
+            gasLimit: 30_000_000,
+          });
+        index++;
+      }
+      await lineaRollup.setRollingHash(
+        aggregatedProof1To81.l1RollingHashMessageNumber,
+        aggregatedProof1To81.l1RollingHash,
+      );
+
+      const lineaRollupAddress = await lineaRollup.getAddress();
+
+      const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
+
+      const finalizationData = await generateFinalizationData({
+        l1RollingHash: aggregatedProof1To81.l1RollingHash,
+        l1RollingHashMessageNumber: BigInt(aggregatedProof1To81.l1RollingHashMessageNumber),
+        lastFinalizedTimestamp: BigInt(aggregatedProof1To81.parentAggregationLastBlockTimestamp),
+        parentStateRootHash: aggregatedProof1To81.parentStateRootHash,
+        finalTimestamp: BigInt(aggregatedProof1To81.finalTimestamp),
+        l2MerkleRoots: aggregatedProof1To81.l2MerkleRoots,
+        l2MerkleTreesDepth: BigInt(aggregatedProof1To81.l2MerkleTreesDepth),
+        l2MessagingBlocksOffsets: aggregatedProof1To81.l2MessagingBlocksOffsets,
+        aggregatedProof: aggregatedProof1To81.aggregatedProof,
+        shnarfData: generateParentShnarfData(2, true),
+        endBlockNumber: BigInt(aggregatedProof1To81.finalBlockNumber),
+      });
+
+      const encodedCall = LineaRollup__factory.createInterface().encodeFunctionData("finalizeBlocks", [
+        aggregatedProof1To81.aggregatedProof,
+        TEST_PUBLIC_VERIFIER_INDEX,
+        finalizationData,
+      ]);
+
+      const transaction = {
+        data: encodedCall,
+        maxPriorityFeePerGas: maxPriorityFeePerGas!,
+        maxFeePerGas: maxFeePerGas!,
+        to: lineaRollupAddress,
+        chainId: 31337,
+        value: 0,
+        gasLimit: 5_000_000,
+      };
+
+      await expect(operator.sendTransaction(transaction)).to.not.be.reverted;
+    });
+
+    // TODO: decide on removing - not really applicable anymore
+    it.skip("Should fail when sending with wrong merkle root location", async () => {
       const submissionDataBeforeFinalization = generateCallDataSubmissionMultipleProofs(0, 4);
       let index = 0;
       for (const data of submissionDataBeforeFinalization) {

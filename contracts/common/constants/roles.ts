@@ -35,6 +35,14 @@ export const UNPAUSE_STATE_DATA_SUBMISSION_ROLE = generateKeccak256(
   },
 );
 
+export const FORCED_TRANSACTION_FEE_SETTER_ROLE = generateKeccak256(
+  ["string"],
+  ["FORCED_TRANSACTION_FEE_SETTER_ROLE"],
+  {
+    encodePacked: true,
+  },
+);
+
 export const PAUSE_FINALIZATION_ROLE = generateKeccak256(["string"], ["PAUSE_FINALIZATION_ROLE"], {
   encodePacked: true,
 });
@@ -89,7 +97,11 @@ export const SET_MESSAGE_SERVICE_ROLE = generateKeccak256(["string"], ["SET_MESS
   encodePacked: true,
 });
 
-export const BASE_ROLES = [PAUSE_ALL_ROLE, UNPAUSE_ALL_ROLE];
+export const SECURITY_COUNCIL_ROLE = generateKeccak256(["string"], ["SECURITY_COUNCIL_ROLE"], {
+  encodePacked: true,
+});
+
+export const BASE_ROLES = [PAUSE_ALL_ROLE, UNPAUSE_ALL_ROLE, SECURITY_COUNCIL_ROLE];
 
 export const VALIDIUM_ROLES = [
   ...BASE_ROLES,
@@ -106,6 +118,7 @@ export const VALIDIUM_ROLES = [
   UNPAUSE_L2_L1_ROLE,
   PAUSE_FINALIZATION_ROLE,
   UNPAUSE_FINALIZATION_ROLE,
+  FORCED_TRANSACTION_FEE_SETTER_ROLE,
 ];
 
 export const LINEA_ROLLUP_V8_ROLES = [
@@ -122,6 +135,7 @@ export const LINEA_ROLLUP_V8_ROLES = [
   UNPAUSE_FINALIZATION_ROLE,
   PAUSE_STATE_DATA_SUBMISSION_ROLE,
   UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
+  FORCED_TRANSACTION_FEE_SETTER_ROLE,
 ];
 
 export const LINEA_ROLLUP_V6_ROLES = [

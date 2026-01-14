@@ -2,7 +2,7 @@ package linea.staterecovery
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
-import linea.contract.l1.LineaContractVersion
+import linea.contract.l1.LineaRollupContractVersion
 import linea.domain.BlockNumberAndHash
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
@@ -12,7 +12,7 @@ import linea.staterecovery.plugin.createAppClients
 import linea.staterecovery.test.FakeExecutionLayerClient
 import linea.staterecovery.test.FakeStateManagerClient
 import linea.staterecovery.test.FakeStateManagerClientBasedOnBlobsRecords
-import linea.web3j.createWeb3jHttpClient
+import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.testing.submission.AggregationAndBlobs
 import net.consensys.linea.testing.submission.loadBlobsAndAggregationsSortedAndGrouped
 import net.consensys.linea.testing.submission.submitBlobsAndAggregationsAndWaitExecution
@@ -76,7 +76,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
       FakeStateManagerClientBasedOnBlobsRecords(blobRecords = aggregationsAndBlobs.flatMap { it.blobs })
 
     val rollupDeploymentResult = ContractsManager.get()
-      .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6).get()
+      .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaRollupContractVersion.V6).get()
 
     this.appConfigs = StateRecoveryApp.Config(
       l1EarliestSearchBlock = BlockParameter.Tag.EARLIEST,
@@ -117,9 +117,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
     )
   }
 
-  fun instantiateStateRecoveryApp(
-    debugForceSyncStopBlockNumber: ULong? = null,
-  ): StateRecoveryApp {
+  fun instantiateStateRecoveryApp(debugForceSyncStopBlockNumber: ULong? = null): StateRecoveryApp {
     return StateRecoveryApp(
       vertx = vertx,
       elClient = fakeExecutionLayerClient,
@@ -146,7 +144,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
       aggregationsAndBlobs = aggregationsAndBlobs,
       blobChunksMaxSize = blobChunksSize,
       waitTimeout = waitTimeout,
-      l1Web3jClient = createWeb3jHttpClient(
+      l1EthApiClient = createEthApiClient(
         rpcUrl = l1RpcUrl,
         log = LogManager.getLogger("test.clients.l1.web3j.receipt-poller"),
       ),

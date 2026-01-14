@@ -77,6 +77,7 @@ export type FinalizationData = {
   l1RollingHash: string;
   l1RollingHashMessageNumber: bigint;
   l2MerkleRoots: string[];
+  filteredAddresses: string[];
   l2MerkleTreesDepth: bigint;
   l2MessagingBlocksOffsets: string;
   lastFinalizedL1RollingHash: string;

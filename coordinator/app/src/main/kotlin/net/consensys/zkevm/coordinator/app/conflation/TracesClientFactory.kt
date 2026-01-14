@@ -4,6 +4,7 @@ import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.TracesConfig
 import linea.coordinator.config.v2.TracesConfig.ClientApiConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
+import net.consensys.linea.traces.TracesCounters
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
 import org.apache.logging.log4j.LogManager
 
@@ -19,20 +20,24 @@ object TracesClientFactory {
     apiConfig: ClientApiConfig,
     ignoreTracesGeneratorErrors: Boolean,
     expectedTracesApiVersion: String,
+    fallBackTracesCounters: TracesCounters,
     logger: org.apache.logging.log4j.Logger,
   ): TracesGeneratorJsonRpcClientV2 {
     return TracesGeneratorJsonRpcClientV2(
       vertx = vertx,
-      rpcClient = rpcClientFactory.createWithLoadBalancing(
+      rpcClient =
+      rpcClientFactory.createWithLoadBalancing(
         endpoints = apiConfig.endpoints.toSet(),
         maxInflightRequestsPerClient = apiConfig.requestLimitPerEndpoint,
         requestTimeout = apiConfig.requestTimeout?.inWholeMilliseconds,
         log = logger,
         requestPriorityComparator = TracesGeneratorJsonRpcClientV2.requestPriorityComparator,
       ),
-      config = TracesGeneratorJsonRpcClientV2.Config(
+      config =
+      TracesGeneratorJsonRpcClientV2.Config(
         expectedTracesApiVersion = expectedTracesApiVersion,
         ignoreTracesGeneratorErrors = ignoreTracesGeneratorErrors,
+        fallBackTracesCounters = fallBackTracesCounters,
       ),
       retryConfig = apiConfig.requestRetries.toJsonRpcRetry(),
       log = logger,
@@ -43,38 +48,45 @@ object TracesClientFactory {
     vertx: io.vertx.core.Vertx,
     rpcClientFactory: VertxHttpJsonRpcClientFactory,
     configs: TracesConfig,
+    fallBackTracesCounters: TracesCounters,
   ): TracesClients {
     return when {
       configs.common != null -> {
         val logger = LogManager.getLogger("clients.traces")
-        val commonClient = createTracesClient(
-          vertx,
-          rpcClientFactory,
-          configs.common,
-          configs.ignoreTracesGeneratorErrors,
-          configs.expectedTracesApiVersion,
-          logger,
-        )
+        val commonClient =
+          createTracesClient(
+            vertx,
+            rpcClientFactory,
+            configs.common,
+            configs.ignoreTracesGeneratorErrors,
+            configs.expectedTracesApiVersion,
+            fallBackTracesCounters,
+            logger,
+          )
         TracesClients(tracesCountersClient = commonClient, tracesConflationClient = commonClient)
       }
 
       else -> {
-        val countersClient = createTracesClient(
-          vertx,
-          rpcClientFactory,
-          configs.counters!!,
-          configs.ignoreTracesGeneratorErrors,
-          configs.expectedTracesApiVersion,
-          LogManager.getLogger("clients.traces.counters"),
-        )
-        val conflationClient = createTracesClient(
-          vertx,
-          rpcClientFactory,
-          configs.conflation!!,
-          configs.ignoreTracesGeneratorErrors,
-          configs.expectedTracesApiVersion,
-          LogManager.getLogger("clients.traces.conflation"),
-        )
+        val countersClient =
+          createTracesClient(
+            vertx,
+            rpcClientFactory,
+            configs.counters!!,
+            configs.ignoreTracesGeneratorErrors,
+            configs.expectedTracesApiVersion,
+            fallBackTracesCounters,
+            LogManager.getLogger("clients.traces.counters"),
+          )
+        val conflationClient =
+          createTracesClient(
+            vertx,
+            rpcClientFactory,
+            configs.conflation!!,
+            configs.ignoreTracesGeneratorErrors,
+            configs.expectedTracesApiVersion,
+            fallBackTracesCounters,
+            LogManager.getLogger("clients.traces.conflation"),
+          )
         TracesClients(tracesCountersClient = countersClient, tracesConflationClient = conflationClient)
       }
     }

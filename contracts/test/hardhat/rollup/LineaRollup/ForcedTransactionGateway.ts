@@ -13,6 +13,7 @@ import {
   deployForcedTransactionGatewayFixture,
   setNextExpectedL2BlockNumberForForcedTx,
   getForcedTransactionRollingHash,
+  setForcedTransactionFee,
 } from "./../helpers";
 import {
   buildAccessErrorMessage,
@@ -33,10 +34,11 @@ import {
   MAX_INPUT_LENGTH_LIMIT,
   THREE_DAYS_IN_SECONDS,
   DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
+  FORCED_TRANSACTION_FEE,
 } from "../../common/constants";
 import { toBeHex, zeroPadValue } from "ethers";
 import { expect } from "chai";
-import { DEFAULT_ADMIN_ROLE } from "contracts/common/constants";
+import { DEFAULT_ADMIN_ROLE, FORCED_TRANSACTION_FEE_SETTER_ROLE } from "contracts/common/constants";
 
 describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
@@ -263,7 +265,81 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     });
   });
 
+  describe("Setting the forced transaction fee", () => {
+    it("Should fail to set if unauthorized", async () => {
+      await expectRevertWithReason(
+        setForcedTransactionFee(lineaRollup, FORCED_TRANSACTION_FEE, nonAuthorizedAccount),
+        buildAccessErrorMessage(nonAuthorizedAccount, FORCED_TRANSACTION_FEE_SETTER_ROLE),
+      );
+    });
+
+    it("Should set the forced transaction fee", async () => {
+      let forcedTransactionFee = await lineaRollup.forcedTransactionFeeInWei();
+      expect(forcedTransactionFee).to.be.equal(0n);
+      await lineaRollup.connect(securityCouncil).setForcedTransactionFee(FORCED_TRANSACTION_FEE);
+      forcedTransactionFee = await lineaRollup.forcedTransactionFeeInWei();
+      expect(forcedTransactionFee).to.be.equal(FORCED_TRANSACTION_FEE);
+    });
+
+    it("Should fail to set the forced transaction fee is zero", async () => {
+      await expectRevertWithCustomError(
+        lineaRollup,
+        setForcedTransactionFee(lineaRollup, 0n, securityCouncil),
+        "ZeroValueNotAllowed",
+      );
+    });
+
+    it("Should set the forced transaction fee and emit ForcedTransactionFeeSet event", async () => {
+      // Todo - see why wrapped call fails
+      const asyncCall = lineaRollup.connect(securityCouncil).setForcedTransactionFee(FORCED_TRANSACTION_FEE);
+      await expectEvent(lineaRollup, asyncCall, "ForcedTransactionFeeSet", [FORCED_TRANSACTION_FEE]);
+    });
+  });
+
   describe("Adding forced transactions", () => {
+    it("Should fail if the forced transaction fee is zero", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+
+      await setForcedTransactionFee(lineaRollup, FORCED_TRANSACTION_FEE, securityCouncil);
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
+        "ForcedTransactionFeeNotMet",
+        [FORCED_TRANSACTION_FEE, 0],
+      );
+    });
+
+    it("Should fail if the forced transaction fee is less than the required fee", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+
+      await setForcedTransactionFee(lineaRollup, FORCED_TRANSACTION_FEE, securityCouncil);
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState, {
+          value: FORCED_TRANSACTION_FEE - 1n,
+        }),
+        "ForcedTransactionFeeNotMet",
+        [FORCED_TRANSACTION_FEE, FORCED_TRANSACTION_FEE - 1n],
+      );
+    });
+
+    it("Should fail if the forced transaction fee is more than the required fee", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+
+      await setForcedTransactionFee(lineaRollup, FORCED_TRANSACTION_FEE, securityCouncil);
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState, {
+          value: FORCED_TRANSACTION_FEE + 1n,
+        }),
+        "ForcedTransactionFeeNotMet",
+        [FORCED_TRANSACTION_FEE, FORCED_TRANSACTION_FEE + 1n],
+      );
+    });
+
     it("Should fail if the gas limit is too high", async () => {
       const sendCall = forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(transactionWithLargeCalldata.result),

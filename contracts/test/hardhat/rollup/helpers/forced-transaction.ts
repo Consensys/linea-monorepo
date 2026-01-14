@@ -3,6 +3,7 @@ import { LineaRollup, Mimc } from "contracts/typechain-types";
 import { encodeData } from "contracts/common/helpers";
 import { Eip1559Transaction } from "../../common/types";
 import { THREE_DAYS_IN_SECONDS } from "../../common/constants";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 const _getExpectedL2BlockNumberForForcedTx = (params: {
   blockTimestamp: bigint;
@@ -101,4 +102,12 @@ export const getForcedTransactionRollingHash = async (
     expectedBlockNumber,
     from,
   );
+};
+
+export const setForcedTransactionFee = async (
+  lineaRollup: LineaRollup,
+  forcedTransactionFee: bigint,
+  signer: SignerWithAddress,
+) => {
+  await lineaRollup.connect(signer).setForcedTransactionFee(forcedTransactionFee);
 };

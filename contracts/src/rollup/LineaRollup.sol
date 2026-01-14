@@ -3,12 +3,10 @@ pragma solidity 0.8.30;
 
 import { LineaRollupBase } from "./LineaRollupBase.sol";
 import { Eip4844BlobAcceptor } from "./dataAvailability/Eip4844BlobAcceptor.sol";
-import { IProvideShnarf } from "./dataAvailability/interfaces/IProvideShnarf.sol";
 import { ClaimMessageV1 } from "../messaging/l1/v1/ClaimMessageV1.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { LivenessRecovery } from "./LivenessRecovery.sol";
-import { IPermissionsManager } from "../security/access/interfaces/IPermissionsManager.sol";
-import { IPauseManager } from "../security/pausing/interfaces/IPauseManager.sol";
+import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
@@ -47,26 +45,6 @@ contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, 
   }
 
   /**
-   * @notice Reinitializes LineaRollup and sets the _shnarfProvider to itself.
-   */
-  function reinitializeV8(
-    IPermissionsManager.RoleAddress[] calldata _roleAddresses,
-    IPauseManager.PauseTypeRole[] calldata _pauseTypeRoles,
-    IPauseManager.PauseTypeRole[] calldata _unpauseTypeRoles
-  ) external reinitializer(8) {
-    address proxyAdmin;
-    assembly {
-      proxyAdmin := sload(PROXY_ADMIN_SLOT)
-    }
-    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
-
-    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-    __Permissions_init(_roleAddresses);
-
-    shnarfProvider = IProvideShnarf(address(this));
-  }
-
-  /**
    * @notice Revokes `role` from the calling account.
    * @dev Liveness recovery operator cannot renounce role. Reverts with OnlyNonLivenessRecoveryOperator.
    * @param _role The role to renounce.
@@ -83,17 +61,24 @@ contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, 
    * @notice Sets forced transaction gateway and reinitializes the last finalized state including forced tx data.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
    * @param _forcedTransactionGateway The address of the forced transaction gateway.
+   * @param _forcedTransactionFeeInWei The forced transaction fee in wei.
    */
-  function reinitializeLineaRollupV7(address _forcedTransactionGateway) external reinitializer(7) {
-    if (_forcedTransactionGateway == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
+  function reinitializeLineaRollupV9(
+    address _forcedTransactionGateway,
+    uint256 _forcedTransactionFeeInWei
+  ) external reinitializer(9) {
+    // TODO - ADD PROXY ADMIN CHECK AND FIX TESTS
 
+    require(_forcedTransactionGateway != address(0), IGenericErrors.ZeroAddressNotAllowed());
+    require(_forcedTransactionFeeInWei > 0, IGenericErrors.ZeroValueNotAllowed());
+
+    forcedTransactionFeeInWei = _forcedTransactionFeeInWei;
     nextForcedTransactionNumber = 1;
 
-    grantRole(FORCED_TRANSACTION_SENDER_ROLE, _forcedTransactionGateway);
+    emit ForcedTransactionFeeSet(_forcedTransactionFeeInWei);
 
-    /// @dev using the constants requires string memory and more complex code.
-    emit LineaRollupVersionChanged(bytes8("6.0"), bytes8("7.0"));
+    _grantRole(FORCED_TRANSACTION_SENDER_ROLE, _forcedTransactionGateway);
+
+    emit LineaRollupVersionChanged(bytes8("7.1"), bytes8("8"));
   }
 }

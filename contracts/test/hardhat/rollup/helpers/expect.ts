@@ -156,17 +156,18 @@ export async function expectSuccessfulFinalizeViaCallForwarder(
       finalizationData.finalForcedTransactionNumber,
       finalizationData.lastFinalizedForcedTransactionRollingHash,
       proofData.l2MerkleRoots,
+      [],
       proofData.l2MessagingBlocksOffsets,
     ],
   ];
 
   const encodedCall = ethers.concat([
-    "0x4abc041c",
+    "0x755bc62f",
     ethers.AbiCoder.defaultAbiCoder().encode(
       [
         "bytes",
         "uint256",
-        "tuple(bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,bytes32,bytes32[],bytes)",
+        "tuple(bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,bytes32,bytes32[],address[],bytes)",
       ],
       txData,
     ),
@@ -185,7 +186,7 @@ export async function expectSuccessfulFinalizeViaCallForwarder(
     type: 2,
     nonce: nonce,
     value: 0,
-    gasLimit: 5_000_000,
+    gasLimit: 10_000_000,
   });
 
   const signedTx = await operatorHDSigner.signTransaction(transaction);

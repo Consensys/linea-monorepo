@@ -73,6 +73,7 @@ interface ILineaRollupBase {
    * @dev finalForcedTransactionNumber
    * @dev lastFinalizedForcedTransactionRollingHash
    * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockNumber.
+   * @dev filteredAddresses is an array of addresses that are filtered from forced transactions.
    * @dev l2MessagingBlocksOffsets indicates by offset from currentL2BlockNumber which L2 blocks contain MessageSent events.
    */
   struct FinalizationDataV4 {
@@ -90,6 +91,7 @@ interface ILineaRollupBase {
     uint256 finalForcedTransactionNumber;
     bytes32 lastFinalizedForcedTransactionRollingHash;
     bytes32[] l2MerkleRoots;
+    address[] filteredAddresses;
     bytes l2MessagingBlocksOffsets;
   }
 
@@ -166,9 +168,9 @@ interface ILineaRollupBase {
   error MissingRollingHashForMessageNumber(uint256 messageNumber);
 
   /**
-   * @dev Thrown when a shnarf does not exist for the final blob being finalized.
+   * @dev Thrown when a final shnarf being finalized does not exist.
    */
-  error FinalBlobNotSubmitted(bytes32 shnarf);
+  error FinalShnarfNotSubmitted(bytes32 shnarf);
 
   /**
    * @dev Thrown when the rollup is missing a forced transaction in the finalization block range.
