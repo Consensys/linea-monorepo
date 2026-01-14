@@ -417,7 +417,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 
 		circuit := verifierCircuit{}
-		nbRounds := 8 //comp.NumRounds() //17 // TODO setting this to comp.NumRounds() make the number of constraint explode, need to investigate
+		nbRounds := 9 //comp.NumRounds() //17 // TODO setting this to comp.NumRounds() make the number of constraint explode, need to investigate
 		fmt.Printf("using nbRounds=%d instead of %d\n", nbRounds, comp.NumRounds())
 		{
 			c := wizard.AllocateWizardCircuit(comp, nbRounds, isBLS)
