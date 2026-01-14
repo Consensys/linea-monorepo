@@ -5,7 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
@@ -31,14 +32,15 @@ func testBlsMap(t *testing.T, withCircuit bool, g Group, path string, limits *Li
 		mapString = "MAP_FP2_TO_G2"
 	}
 	var blsMap *BlsMap
+	var blsMapSource *BlsMapDataSource
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
-			blsMapSource := &BlsMapDataSource{
+			blsMapSource = &BlsMapDataSource{
 				ID:      ct.GetCommit(b, "ID"),
 				CsMap:   ct.GetCommit(b, "CIRCUIT_SELECTOR_"+mapString),
 				Index:   ct.GetCommit(b, "INDEX"),
 				Counter: ct.GetCommit(b, "CT"),
-				Limb:    ct.GetCommit(b, "LIMB"),
+				Limb:    ct.GetLimbsLe(b, "LIMB", limbs.NbLimbU128).AssertUint128(),
 				IsData:  ct.GetCommit(b, "DATA_"+mapString),
 				IsRes:   ct.GetCommit(b, "RSLT_"+mapString),
 			}
@@ -47,12 +49,20 @@ func testBlsMap(t *testing.T, withCircuit bool, g Group, path string, limits *Li
 				blsMap = blsMap.WithMapCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
 			}
 		},
-		dummy.Compile,
+		plonkinwizard.Compile,
 	)
 
 	proof := wizard.Prove(cmp,
 		func(run *wizard.ProverRuntime) {
-			ct.Assign(run, "ID", "CIRCUIT_SELECTOR_"+mapString, "INDEX", "CT", "LIMB", "DATA_"+mapString, "RSLT_"+mapString)
+			ct.Assign(run,
+				blsMapSource.ID,
+				blsMapSource.CsMap,
+				blsMapSource.Index,
+				blsMapSource.Counter,
+				blsMapSource.Limb,
+				blsMapSource.IsData,
+				blsMapSource.IsRes,
+			)
 			blsMap.Assign(run)
 		})
 
