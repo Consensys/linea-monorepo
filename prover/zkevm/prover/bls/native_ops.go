@@ -7,12 +7,13 @@ import (
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 )
 
-func set(nbL int, q *fp.Element, limbs []field.Element) {
+func set(nbL int, q *fp.Element, ls []field.Element) {
 	var buf []byte
 	for i := range nbL - 1 {
-		lbts := limbs[i+1].Bytes()
+		lbts := ls[i+1].Bytes()
 		buf = append(buf, lbts[nbBytes:]...)
 	}
 	q.SetBytes(buf)
@@ -48,11 +49,9 @@ func nativeScalarMulAndSum(g Group, currentAccumulator []field.Element, point []
 		NXBytes := N.X.Bytes()
 		NYBytes := N.Y.Bytes()
 		nextAccumulator = make([]field.Element, nbL)
-		nextAccumulator[0].SetZero()
-		nextAccumulator[nbL/2].SetZero()
-		for i := range nbL/2 - 1 {
-			nextAccumulator[i+1].SetBytes(NXBytes[i*nbBytes : (i+1)*nbBytes])
-			nextAccumulator[i+1+nbL/2].SetBytes(NYBytes[i*nbBytes : (i+1)*nbBytes])
+		for i := range nbL/2 - limbs.NbLimbU128 {
+			nextAccumulator[i+limbs.NbLimbU128].SetBytes(NXBytes[i*nbBytes : (i+1)*nbBytes])
+			nextAccumulator[i+limbs.NbLimbU128+nbL/2].SetBytes(NYBytes[i*nbBytes : (i+1)*nbBytes])
 		}
 	case G2:
 		var C, P, N bls12381.G2Affine
@@ -71,15 +70,11 @@ func nativeScalarMulAndSum(g Group, currentAccumulator []field.Element, point []
 		NYA0Bytes := N.Y.A0.Bytes()
 		NYA1Bytes := N.Y.A1.Bytes()
 		nextAccumulator = make([]field.Element, nbL)
-		nextAccumulator[0].SetZero()
-		nextAccumulator[nbL/4].SetZero()
-		nextAccumulator[nbL/2].SetZero()
-		nextAccumulator[3*nbL/4].SetZero()
-		for i := range nbL/4 - 1 {
-			nextAccumulator[i+1].SetBytes(NXA0Bytes[i*nbBytes : (i+1)*nbBytes])
-			nextAccumulator[i+1+nbL/4].SetBytes(NXA1Bytes[i*nbBytes : (i+1)*nbBytes])
-			nextAccumulator[i+1+nbL/2].SetBytes(NYA0Bytes[i*nbBytes : (i+1)*nbBytes])
-			nextAccumulator[i+1+3*nbL/4].SetBytes(NYA1Bytes[i*nbBytes : (i+1)*nbBytes])
+		for i := range nbL/4 - limbs.NbLimbU128 {
+			nextAccumulator[i+limbs.NbLimbU128].SetBytes(NXA0Bytes[i*nbBytes : (i+1)*nbBytes])
+			nextAccumulator[i+limbs.NbLimbU128+nbL/4].SetBytes(NXA1Bytes[i*nbBytes : (i+1)*nbBytes])
+			nextAccumulator[i+limbs.NbLimbU128+nbL/2].SetBytes(NYA0Bytes[i*nbBytes : (i+1)*nbBytes])
+			nextAccumulator[i+limbs.NbLimbU128+3*nbL/4].SetBytes(NYA1Bytes[i*nbBytes : (i+1)*nbBytes])
 		}
 	}
 	return nextAccumulator
