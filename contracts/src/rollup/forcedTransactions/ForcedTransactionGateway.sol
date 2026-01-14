@@ -20,8 +20,6 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   using LibRLP for *;
   using FinalizedStateHashing for *;
 
-  uint256 private constant UNSIGNED_TRANSACTION_FIELD_LENGTH = 9;
-  uint256 private constant SIGNED_TRANSACTION_FIELD_LENGTH = 12;
   address private constant PRECOMPILE_ADDRESS_LIMIT = address(21);
 
   /// @notice Contains the minimum gas allowed for a forced transaction.
