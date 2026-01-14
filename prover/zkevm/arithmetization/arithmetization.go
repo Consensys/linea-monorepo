@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/go-corset/pkg/schema/register"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -99,7 +98,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	var (
 		errs []error
 		//
-		traceF = files.MustRead(traceFile)
+		traceF = readTraceFile(traceFile)
 		// Parse trace file and extract raw column data.
 		rawTrace, metadata, errT = ReadLtTraces(traceF)
 	)
