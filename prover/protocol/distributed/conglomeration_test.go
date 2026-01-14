@@ -29,16 +29,14 @@ func TestConglomerationBasic(t *testing.T) {
 		})
 
 		// Custom compilation params for this test
-		// Balance between profile size (must handle 1026 polynomials) and circuit constraints
 		testCompilationParams = distributed.CompilationParams{
 			FixedNbRowPlonkCircuit:       1 << 24,
 			FixedNbRowExternalHasher:     1 << 14,
 			FixedNbPublicInput:           1 << 10,
-			InitialCompilerSize:          1 << 12,
-			InitialCompilerSizeConglo:    1 << 12,
-			ColumnProfileMPTS:            []int{500, 2048, 500, 500, 500, 500, 500, 500}, // Increased profile sizes
-			ColumnProfileMPTSPrecomputed: 30,
-			FullDebugMode: true,
+			InitialCompilerSize:          1 << 18,
+			InitialCompilerSizeConglo:    1 << 13,
+			ColumnProfileMPTS:            nil,
+			ColumnProfileMPTSPrecomputed: 0,
 		}
 
 		// This tests the compilation of the compiled-IOP

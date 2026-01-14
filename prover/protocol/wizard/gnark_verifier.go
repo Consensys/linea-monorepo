@@ -504,13 +504,13 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.E4Gen 
 	infos := c.Spec.Coins.Data(name)
 
 	// intermediary use case, should be removed when all coins become field extensions
-	if infos.Type == coin.FieldExt {
+	if infos.Type == coin.FieldExt || infos.Type == coin.FieldFromSeed {
 		res := c.Coins.MustGet(name).(gnarkfext.E4Gen)
 		return res
 	}
 
-	if infos.Type != coin.FieldExt {
-		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
+	if infos.Type != coin.FieldExt && infos.Type != coin.FieldFromSeed {
+		utils.Panic("Coin was registered as %v but got %v (expected FieldExt or FieldFromSeed)", infos.Type, coin.FieldExt)
 	}
 	// If this panics, it means we generate the coins wrongly
 	return c.Coins.MustGet(name).(gnarkfext.E4Gen)
