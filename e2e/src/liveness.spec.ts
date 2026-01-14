@@ -13,8 +13,8 @@ describe("Liveness test suite", () => {
       const latestAnswer = await livenessContract.read.latestAnswer();
       logger.debug(`Latest Status is ${latestAnswer == 1n ? "Down" : "Up"}`);
 
-      let lastBlockTimestamp: bigint = 0n;
-      let lastBlockNumber: bigint = 0n;
+      let lastBlockTimestamp: bigint;
+      let lastBlockNumber: bigint;
       const l2BesuNodeClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
       const sequencerClient = config.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
 

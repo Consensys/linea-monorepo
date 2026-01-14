@@ -1,4 +1,14 @@
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, statSync, rmSync, existsSync } from "fs";
+import {
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  statSync,
+  rmSync,
+  existsSync,
+  openSync,
+  closeSync,
+} from "fs";
 import { join, basename } from "path";
 import { format } from "prettier";
 
@@ -84,7 +94,7 @@ function walk(dir: string): {
 
     if (INCLUDE_FILES.length > 0 && !INCLUDE_FILES.includes(basename(full).replace(".json", ""))) continue;
 
-    const raw = JSON.parse(readFileSync(full, "utf8"));
+    const raw = JSON.parse(readFile(full));
 
     const contractName = raw.contractName ?? null;
 
@@ -108,7 +118,17 @@ function walk(dir: string): {
   return results;
 }
 
-export async function jsonToTsConst(
+export function readFile(path: string) {
+  const fd = openSync(path, "r");
+
+  try {
+    return readFileSync(fd, "utf8");
+  } finally {
+    closeSync(fd);
+  }
+}
+
+async function jsonToTsConst(
   name: string,
   abi: unknown,
   bytecode?: string,
