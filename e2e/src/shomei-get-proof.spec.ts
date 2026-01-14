@@ -2,7 +2,7 @@ import { describe, it } from "@jest/globals";
 import { awaitUntil, getDockerImageTag, serialize } from "./common/utils";
 import { config } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
-import { toHex } from "viem";
+import { ContractFunctionExecutionError, toHex } from "viem";
 import { LineaGetProofReturnType } from "./config/tests-config/setup/clients/extensions/linea-rpc/linea-get-proof";
 
 describe("Shomei Linea get proof test suite", () => {
@@ -21,10 +21,13 @@ describe("Shomei Linea get proof test suite", () => {
           try {
             return await lineaRollupV6.read.currentL2BlockNumber({ blockTag: "finalized" });
           } catch (err) {
-            if (!(err as Error).message.includes("could not decode result data")) {
-              throw err;
-            } // else means the currentL2BlockNumber is not ready in the L1 rollup contract yet
-            return -1n;
+            if (err instanceof ContractFunctionExecutionError) {
+              if (err.shortMessage.includes(`returned no data ("0x")`)) {
+                // means the currentL2BlockNumber is not ready in the L1 rollup contract yet
+                return -1n;
+              }
+            }
+            throw err;
           }
         },
         (currentL2BlockNumber: bigint) => currentL2BlockNumber > 1n,

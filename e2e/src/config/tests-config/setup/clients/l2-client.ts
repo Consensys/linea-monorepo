@@ -1,6 +1,4 @@
-import { ClientFactory } from "./client-factory";
-
-import { PrivateKeyAccount } from "viem";
+import { ClientFactory, PublicClientParams, WalletClientParams } from "./client-factory";
 import { L2Config, LocalL2Config } from "../../config/config-schema";
 import { createL2WriteContractsExtension } from "./extensions/l2-write-contracts";
 import { createL2ReadContractsExtension } from "./extensions/l2-read-contracts";
@@ -34,20 +32,33 @@ export class L2Client {
     this.factory = new ClientFactory(config.chainId, config.rpcUrl);
   }
 
-  public publicClient(params?: { type?: L2RpcEndpointType }) {
+  public publicClient(params?: { type?: L2RpcEndpointType; httpConfig?: PublicClientParams["httpConfig"] }) {
     const { type = L2RpcEndpoint.Default } = params ?? {};
 
     const url = this.resolveRpcUrl(type);
     return this.factory
-      .getPublic({ chainId: this.config.chainId, rpcUrl: url })
+      .getPublic({
+        chainId: this.config.chainId,
+        rpcUrl: url,
+        ...(params?.httpConfig ? { httpConfig: params.httpConfig } : {}),
+      })
       .extend(createL2ReadContractsExtension(this.config));
   }
 
-  public walletClient(params?: { type?: L2RpcEndpointType; account: PrivateKeyAccount | undefined }) {
+  public walletClient(params?: {
+    type?: L2RpcEndpointType;
+    account: WalletClientParams["account"];
+    httpConfig?: WalletClientParams["httpConfig"];
+  }) {
     const { type = L2RpcEndpoint.Default, account } = params ?? {};
     const url = this.resolveRpcUrl(type);
     return this.factory
-      .getWallet({ chainId: this.config.chainId, rpcUrl: url, account })
+      .getWallet({
+        chainId: this.config.chainId,
+        rpcUrl: url,
+        account,
+        ...(params?.httpConfig ? { httpConfig: params.httpConfig } : {}),
+      })
       .extend(createL2WriteContractsExtension(this.config));
   }
 

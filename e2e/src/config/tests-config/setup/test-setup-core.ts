@@ -1,8 +1,8 @@
-import { PrivateKeyAccount } from "viem";
 import { AccountManager } from "../accounts/account-manager";
 import { Config } from "../config/config-schema";
 import { L1Client } from "./clients/l1-client";
 import { L2Client, L2RpcEndpointType } from "./clients/l2-client";
+import { PublicClientParams, WalletClientParams } from "./clients/client-factory";
 
 export default abstract class TestSetupCore {
   public L1: {
@@ -38,19 +38,23 @@ export default abstract class TestSetupCore {
     return this.config.L2.chainId;
   }
 
-  public l1PublicClient(params?: { chainId?: number; rpcUrl?: URL }) {
+  public l1PublicClient(params?: PublicClientParams) {
     return this.L1.client.publicClient(params);
   }
 
-  public l1WalletClient(params?: { chainId?: number; rpcUrl?: URL; account: PrivateKeyAccount | undefined }) {
+  public l1WalletClient(params?: WalletClientParams) {
     return this.L1.client.walletClient(params);
   }
 
-  public l2PublicClient(params?: { type?: L2RpcEndpointType }) {
+  public l2PublicClient(params?: { type?: L2RpcEndpointType; httpConfig?: PublicClientParams["httpConfig"] }) {
     return this.L2.client.publicClient(params);
   }
 
-  public l2WalletClient(params?: { type?: L2RpcEndpointType; account: PrivateKeyAccount | undefined }) {
+  public l2WalletClient(params?: {
+    type?: L2RpcEndpointType;
+    account: WalletClientParams["account"];
+    httpConfig?: WalletClientParams["httpConfig"];
+  }) {
     return this.L2.client.walletClient(params);
   }
 

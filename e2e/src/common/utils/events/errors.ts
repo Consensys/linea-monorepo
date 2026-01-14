@@ -20,11 +20,11 @@ export class WaitForEventsTimeoutError<
     super(
       [
         `Timed out after ${args.timeoutMs}ms waiting for contract events`,
-        args.address && `address=${args.address}`,
-        args.eventName && `event=${args.eventName}`,
-        args.args && `args=${serialize(args.args)}`,
-        args.fromBlock && args.fromBlock !== 0n && `fromBlock=${args.fromBlock}`,
-        args.toBlock && `toBlock=${args.toBlock}`,
+        `address=${args.address}`,
+        `event=${args.eventName}`,
+        `args=${serialize(args.args)}`,
+        `fromBlock=${args.fromBlock ?? 0}`,
+        `toBlock=${args.toBlock ?? "latest"}`,
       ]
         .filter(Boolean)
         .join(" "),
