@@ -196,20 +196,20 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			pcsMRoot                     = pcsCtx.Items.MerkleRoots
 		)
 
-		api.AssertIsEqual(circX[0], params.ExtX.B0.A0)
-		api.AssertIsEqual(circX[1], params.ExtX.B0.A1)
-		api.AssertIsEqual(circX[2], params.ExtX.B1.A0)
-		api.AssertIsEqual(circX[3], params.ExtX.B1.A1)
+		api.AssertIsEqual(circX[0].AsNative(), params.ExtX.B0.A0.AsNative())
+		api.AssertIsEqual(circX[1].AsNative(), params.ExtX.B0.A1.AsNative())
+		api.AssertIsEqual(circX[2].AsNative(), params.ExtX.B1.A0.AsNative())
+		api.AssertIsEqual(circX[3].AsNative(), params.ExtX.B1.A1.AsNative())
 
 		if len(circYs) != 4*len(params.ExtYs) {
 			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.ExtYs))
 		}
 
 		for j := range params.ExtYs {
-			api.AssertIsEqual(circYs[4*j], params.ExtYs[j].B0.A0)
-			api.AssertIsEqual(circYs[4*j+1], params.ExtYs[j].B0.A1)
-			api.AssertIsEqual(circYs[4*j+2], params.ExtYs[j].B1.A0)
-			api.AssertIsEqual(circYs[4*j+3], params.ExtYs[j].B1.A1)
+			api.AssertIsEqual(circYs[4*j].AsNative(), params.ExtYs[j].B0.A0.AsNative())
+			api.AssertIsEqual(circYs[4*j+1].AsNative(), params.ExtYs[j].B0.A1.AsNative())
+			api.AssertIsEqual(circYs[4*j+2].AsNative(), params.ExtYs[j].B1.A0.AsNative())
+			api.AssertIsEqual(circYs[4*j+3].AsNative(), params.ExtYs[j].B1.A1.AsNative())
 		}
 
 		if pcsCtx.IsNonEmptyPrecomputed() {
@@ -226,7 +226,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 				mRootName := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColID()
 				if cc.Ctx.InputCompiledIOP.Precomputed.Exists(mRootName) {
 					com := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColAssignmentGnarkAt(run, 0)
-					api.AssertIsEqual(com, circMRoots[0])
+					api.AssertIsEqual(com.AsNative(), circMRoots[0].AsNative())
 				}
 
 				circMRoots = circMRoots[1:]
@@ -242,7 +242,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 				}
 
 				com := pcsMRoot[j][k].GetColAssignmentGnarkAt(run, 0)
-				api.AssertIsEqual(com, circMRoots[nonEmptyCount])
+				api.AssertIsEqual(com.AsNative(), circMRoots[nonEmptyCount].AsNative())
 				nonEmptyCount++
 			}
 		}
