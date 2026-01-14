@@ -111,7 +111,7 @@ const config: HardhatUserConfig = {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 9000,
+            runs: 9500,
           },
           evmVersion: "osaka",
         },
@@ -126,7 +126,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       hardfork: "osaka",
-      allowUnlimitedContractSize: true, // TODO - Remove when ready for PR
+      allowUnlimitedContractSize: true, // For test fixtures in Hardhat tests
     },
     mainnet: {
       accounts: [process.env.MAINNET_PRIVATE_KEY || EMPTY_HASH],
