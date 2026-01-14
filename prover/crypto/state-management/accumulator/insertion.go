@@ -99,7 +99,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 
 	// Check that verifier's root is the same as the one in the traces
 	if v.SubTreeRoot != trace.OldSubRoot {
-		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot, trace.OldSubRoot)
+		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot.Hex(), trace.OldSubRoot.Hex())
 	}
 
 	iMinus := int64(trace.ProofMinus.Path)
@@ -166,7 +166,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 
 	// Check that the alleged new root is consistent with the one we reconstructed
 	if currentRoot != trace.NewSubRoot {
-		return fmt.Errorf("inconsistent root %v != %v", currentRoot, trace.NewSubRoot)
+		return fmt.Errorf("inconsistent root %v != %v", currentRoot.Hex(), trace.NewSubRoot.Hex())
 	}
 
 	// Every check passed : update the verifier state

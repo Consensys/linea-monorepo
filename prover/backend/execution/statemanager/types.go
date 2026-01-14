@@ -12,7 +12,7 @@ import (
 type (
 	Digest      = types.KoalaOctuplet
 	Address     = types.EthAddress
-	Account     = types.Account
+	Account     = types.AccountShomeiTraces
 	FullBytes32 = types.FullBytes32
 )
 

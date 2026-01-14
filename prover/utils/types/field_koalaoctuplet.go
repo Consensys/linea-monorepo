@@ -51,7 +51,7 @@ func (e *KoalaOctuplet) SetBytes(b []byte) error {
 		var x field.Element
 		segment := b[4*i : 4*i+4]
 		if err := x.SetBytesCanonical(segment); err != nil {
-			return fmt.Errorf("could not unmarshal koalabear octuplet %x (%v) : %w", b, segment, err)
+			return fmt.Errorf("could not unmarshal koalabear octuplet %x (%x) : %w", b, segment, err)
 		}
 		e[i] = x
 	}

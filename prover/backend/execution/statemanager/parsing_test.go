@@ -10,8 +10,23 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestBasicTree(t *testing.T) {
+
+	address, _ := types.AddressFromHex("0x35a5e43d3d3195b49cbfe78cd944115eaa2e09db")
+	subTree := statemanager.NewStorageTrie(address)
+	stoKey := types.FullBytes32FromHex("0x0000000000000000000000000000000000000000000000000000000000000000")
+	stoValue := types.FullBytes32FromHex("0x0000000000000000000000001b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0")
+	subTree.InsertAndProve(stoKey, stoValue)
+
+	root := subTree.TopRoot()
+	assert.Equal(t, "0x0000000000000000000000000000000000000000000000000000000000000000", root.Hex())
+
+}
 
 func TestJsonExample(t *testing.T) {
 
@@ -64,7 +79,7 @@ func TestJsonExample(t *testing.T) {
 			t.Logf("file has %v traces", len(parsed.Result.ZkStateMerkleProof))
 			for _, blockTraces := range parsed.Result.ZkStateMerkleProof {
 				old, new, err := statemanager.CheckTraces(blockTraces)
-				t.Logf("(fname= %v) old: %v, parent: %v", fname, old.Hex(), new.Hex())
+				t.Logf("(fname= %v) old: %v, parent: %v new: %v", fname, old.Hex(), parent.Hex(), new.Hex())
 				require.NoError(t, err, "inspection found an error in the traces (%v)", fname)
 				require.Equal(t, parent.Hex(), old.Hex(), "expected parent and recovered parent root hash mismatch (%v)", fname)
 				parent = new

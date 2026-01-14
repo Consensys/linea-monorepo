@@ -83,7 +83,7 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 
 	// Check that verifier's root is the same as the one in the traces
 	if v.SubTreeRoot != trace.OldSubRoot {
-		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot, trace.OldSubRoot)
+		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot.Hex(), trace.OldSubRoot.Hex())
 	}
 
 	tuple := KVOpeningTuple[K, V]{

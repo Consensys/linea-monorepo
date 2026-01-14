@@ -23,7 +23,7 @@ type WorldState struct {
 
 func NewWorldState() *WorldState {
 	return &WorldState{
-		AccountTrie:  accumulator.InitializeProverState[Address, types.Account](WS_LOCATION),
+		AccountTrie:  accumulator.InitializeProverState[Address, Account](WS_LOCATION),
 		StorageTries: collection.NewMapping[Address, *accumulator.ProverState[FullBytes32, FullBytes32]](),
 	}
 }
@@ -37,13 +37,15 @@ func EmptyCodeHash() Digest {
 
 // Returns an EOA account
 func NewEOA(nonce int64, balance *big.Int) Account {
-	return types.Account{
-		Nonce:          nonce,
-		Balance:        balance,
-		StorageRoot:    EmptyStorageTrieHash(), // The eth
-		LineaCodeHash:  EmptyCodeHash(),
-		KeccakCodeHash: types.AsFullBytes32(LEGACY_KECCAK_EMPTY_CODEHASH),
-		CodeSize:       0,
+	return Account{
+		Account: types.Account{
+			Nonce:          nonce,
+			Balance:        balance,
+			StorageRoot:    EmptyStorageTrieHash(), // The eth
+			LineaCodeHash:  EmptyCodeHash(),
+			KeccakCodeHash: types.AsFullBytes32(LEGACY_KECCAK_EMPTY_CODEHASH),
+			CodeSize:       0,
+		},
 	}
 }
 
@@ -54,14 +56,16 @@ func NewContractEmptyStorage(
 	codeHash Digest,
 	keccakCodeHash FullBytes32,
 	codeSize int64,
-) types.Account {
-	return types.Account{
-		Nonce:          nonce,
-		Balance:        balance,
-		StorageRoot:    EmptyStorageTrieHash(),
-		LineaCodeHash:  codeHash,
-		KeccakCodeHash: keccakCodeHash,
-		CodeSize:       codeSize,
+) Account {
+	return Account{
+		Account: types.Account{
+			Nonce:          nonce,
+			Balance:        balance,
+			StorageRoot:    EmptyStorageTrieHash(),
+			LineaCodeHash:  codeHash,
+			KeccakCodeHash: keccakCodeHash,
+			CodeSize:       codeSize,
+		},
 	}
 }
 

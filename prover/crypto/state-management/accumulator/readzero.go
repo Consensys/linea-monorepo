@@ -64,7 +64,7 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 
 	// Check that verifier's root is the same as the one in the traces
 	if v.SubTreeRoot != trace.SubRoot {
-		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot, trace.SubRoot)
+		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot.Hex(), trace.SubRoot.Hex())
 	}
 
 	iMinus, iPlus := int64(trace.ProofMinus.Path), int64(trace.ProofPlus.Path)

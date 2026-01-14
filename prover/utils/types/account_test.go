@@ -131,5 +131,4 @@ func TestReadWriteAccountUnpacked(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, c.Account, acc)
 	}
-
 }
