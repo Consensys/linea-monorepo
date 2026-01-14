@@ -1,3 +1,4 @@
+genesis-file="/initialization/genesis-besu.json"
 #logging="DEBUG" log is managed via log4j config file
 data-path="/opt/besu/data"
 data-storage-format="FOREST"
