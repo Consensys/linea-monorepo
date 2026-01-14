@@ -417,7 +417,7 @@ describe("ValidatorContainerProofVerifier", () => {
       randomAddress,
       ONE_GWEI * 32n,
       [],
-      1000,
+      200, // increase the number of random pending partial withdrawals to higher manually to avoid flakiness on the CI
     );
     const timestamp = await setBeaconBlockRoot(eip4788Witness.blockRoot);
     // PG style proof verification from PK+WC to BeaconBlockRoot
