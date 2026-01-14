@@ -41,7 +41,7 @@ public class Blake2f implements OperationSetModule<Blake2fOperation> {
 
   @Override
   public int lineCount() {
-    return operations.lineCount();
+    return 1;
   }
 
   @Override
