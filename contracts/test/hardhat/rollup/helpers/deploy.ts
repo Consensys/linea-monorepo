@@ -17,7 +17,6 @@ import {
   VALIDIUM_INITIALIZE_SIGNATURE,
 } from "../../common/constants";
 import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
-import { toBeHex } from "ethers";
 import {
   AddressFilter,
   CallForwardingProxy,
@@ -33,6 +32,7 @@ import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
 } from "contracts/common/constants/pauseTypes";
+import { toBeHex } from "ethers";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
   const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
