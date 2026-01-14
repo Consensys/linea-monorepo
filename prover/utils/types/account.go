@@ -27,6 +27,10 @@ type AccountShomeiTraces struct {
 	Account
 }
 
+func (a Account) WrappedForShomeiTraces() AccountShomeiTraces {
+	return AccountShomeiTraces{a}
+}
+
 func (a Account) WriteTo(w io.Writer) (int64, error) {
 	return a.writeTo(w, false)
 }

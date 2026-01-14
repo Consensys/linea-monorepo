@@ -459,15 +459,15 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 func getOldAndNewAccount(trace any) (old, new types.Account) {
 	switch wst := trace.(type) {
 	case statemanager.ReadNonZeroTraceWS:
-		return wst.Value, wst.Value
+		return wst.Value.Account, wst.Value.Account
 	case statemanager.ReadZeroTraceWS:
 		return types.Account{}, types.Account{}
 	case statemanager.InsertionTraceWS:
-		return types.Account{}, wst.Val
+		return types.Account{}, wst.Val.Account
 	case statemanager.UpdateTraceWS:
-		return wst.OldValue, wst.NewValue
+		return wst.OldValue.Account, wst.NewValue.Account
 	case statemanager.DeletionTraceWS:
-		return wst.DeletedValue, types.Account{}
+		return wst.DeletedValue.Account, types.Account{}
 	default:
 		panic("unknown trace")
 	}

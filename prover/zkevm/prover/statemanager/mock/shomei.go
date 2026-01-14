@@ -80,7 +80,7 @@ func InitShomeiState(state State) *statemanager.WorldState {
 			CodeSize:       acc.CodeSize,
 		}
 
-		shomeiState.AccountTrie.InsertAndProve(address, account)
+		shomeiState.AccountTrie.InsertAndProve(address, account.WrappedForShomeiTraces())
 		shomeiState.StorageTries.InsertNew(address, storageTrie)
 	}
 
@@ -164,7 +164,7 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 	)
 
 	if pos, found := shomeiState.AccountTrie.FindKey(address); found {
-		initAccountValue = shomeiState.AccountTrie.Data.MustGet(pos).Value
+		initAccountValue = shomeiState.AccountTrie.Data.MustGet(pos).Value.Account
 	}
 
 	asp := identifyAccountSegment(initAccountValue, accSegment)
@@ -183,7 +183,7 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 		var (
 			accPos, _          = shomeiState.AccountTrie.FindKey(address)
 			initAcc            = shomeiState.AccountTrie.Data.MustGet(accPos).Value
-			squashedAccSegment = squashSubSegmentForShomei(initAcc, subSegments[0])
+			squashedAccSegment = squashSubSegmentForShomei(initAcc.Account, subSegments[0])
 		)
 
 		// Since the acount segment is read-only, we can assume that all the
@@ -205,7 +205,7 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 		var (
 			accPos, _          = shomeiState.AccountTrie.FindKey(address)
 			initAcc            = shomeiState.AccountTrie.Data.MustGet(accPos).Value
-			squashedAccSegment = squashSubSegmentForShomei(initAcc, subSegments[0])
+			squashedAccSegment = squashSubSegmentForShomei(initAcc.Account, subSegments[0])
 		)
 
 		sortByHKeyStable(squashedAccSegment)
@@ -219,7 +219,7 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 				newAccount := log.Value.(types.Account)
 				newStorageRoot := shomeiState.StorageTries.MustGet(address).TopRoot()
 				newAccount.StorageRoot = newStorageRoot
-				trace := shomeiState.AccountTrie.UpdateAndProve(address, newAccount)
+				trace := shomeiState.AccountTrie.UpdateAndProve(address, newAccount.WrappedForShomeiTraces())
 				return append(blockTrace, asDecodedTrace("0x", trace))
 			}
 		}
@@ -236,7 +236,7 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 			relevSubSegment    = subSegments[0]
 			accPos, _          = shomeiState.AccountTrie.FindKey(address)
 			initAcc            = shomeiState.AccountTrie.Data.MustGet(accPos).Value
-			squashedAccSegment = squashSubSegmentForShomei(initAcc, relevSubSegment)
+			squashedAccSegment = squashSubSegmentForShomei(initAcc.Account, relevSubSegment)
 		)
 
 		// Since the storage traces will all be read-only due to the fact that
@@ -290,7 +290,7 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 				newAccount := log.Value.(types.Account)
 				newStorageRoot := shomeiState.StorageTries.MustGet(address).TopRoot()
 				newAccount.StorageRoot = newStorageRoot
-				trace := shomeiState.AccountTrie.InsertAndProve(address, newAccount)
+				trace := shomeiState.AccountTrie.InsertAndProve(address, newAccount.WrappedForShomeiTraces())
 				blockTrace = append(blockTrace, asDecodedTrace("0x", trace))
 			}
 		}
