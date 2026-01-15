@@ -50,8 +50,12 @@ func (f RepeatedAccessor) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]
 }
 
 func (f RepeatedAccessor) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
-	//TODO implement me
-	panic("implement me")
+	res := make([]gnarkfext.E4Gen, f.Size())
+	x := f.Accessor.GetFrontendVariableExt(nil, run)
+	for i := range res {
+		res[i] = x
+	}
+	return res
 }
 
 func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
