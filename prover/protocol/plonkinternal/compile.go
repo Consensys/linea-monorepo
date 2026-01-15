@@ -386,7 +386,7 @@ func (ca *CheckingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime
 
 		if i+1 < len(ca.Cols) {
 			next := ca.Cols[i+1].GetColAssignmentGnarkAt(run, 0)
-			api.AssertIsEqual(next, api.Mul(curr.AsNative(), next))
+			api.AssertIsEqual(next.AsNative(), api.Mul(curr.AsNative(), next.AsNative()))
 		}
 	}
 }

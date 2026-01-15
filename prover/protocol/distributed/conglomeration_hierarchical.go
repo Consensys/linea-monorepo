@@ -317,7 +317,6 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 		WithoutGkr:             true,
 		MaxNumProof:            2,
 		WithExternalHasherOpts: true,
-		ExternalHasherNbRows:   1 << 14,
 	})
 
 	c.Wiop = comp
