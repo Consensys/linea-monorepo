@@ -14,8 +14,16 @@ func TestDefineAndAssignmentPoseidonPadderPacker(t *testing.T) {
 
 	testCase := [][]smartvectors.SmartVector{
 		{
+			smartvectors.ForTest(1, 2),
+			smartvectors.ForTest(1, 1),
+		},
+		{
 			smartvectors.ForTest(1, 2, 3, 4),
 			smartvectors.ForTest(1, 1, 1, 1),
+		},
+		{
+			smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8),
+			smartvectors.ForTest(1, 1, 1, 1, 1, 1, 1, 1),
 		},
 	}
 

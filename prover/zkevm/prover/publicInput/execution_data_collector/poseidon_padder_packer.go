@@ -19,12 +19,14 @@ import (
 // the data in L2L1 logs must be hashed as follows: msg1Hash, msg2Hash, and so on.
 // The final value of the chained hash can be retrieved as hash[ctMax[any index]]
 type PoseidonPadderPacker struct {
-	InputIsActive  ifaces.Column
-	InterIsActive  ifaces.Column
-	InputData      ifaces.Column
-	InterData      ifaces.Column
-	OutputData     [common.NbLimbU128]ifaces.Column
-	OutputIsActive ifaces.Column
+	InputIsActive ifaces.Column
+	InterIsActive ifaces.Column
+	InputData     ifaces.Column
+	InterData     ifaces.Column
+	OutputData    [common.NbLimbU128]ifaces.Column
+	// OutputIsActive indicates which of the output data limbs are active
+	// use OutputIsActive[0] for hashing, as it has more 1s and will include the zero padding
+	OutputIsActive [common.NbLimbU128]ifaces.Column
 }
 
 // NewPoseidonPadderPacker returns a new PoseidonPadderPacker with initialized columns that are not constrained.
@@ -43,10 +45,10 @@ func NewPoseidonPadderPacker(comp *wizard.CompiledIOP, inputData, inputIsActive 
 	}
 	res.InterData = util.CreateCol(name, "INTER_DATA", newSize, comp)
 	res.InterIsActive = util.CreateCol(name, "INTER_IS_ACTIVE", newSize, comp)
-	res.OutputIsActive = util.CreateCol(name, "OUTPUT_IS_ACTIVE", newSize/8, comp)
 
 	for i := range res.OutputData {
 		res.OutputData[i] = util.CreateCol(name, fmt.Sprintf("OUTPUT_DATA_%d", i), newSize/8, comp)
+		res.OutputIsActive[i] = util.CreateCol(name, fmt.Sprintf("OUTPUT_IS_ACTIVE_%d", i), newSize/8, comp)
 	}
 
 	return res
@@ -85,6 +87,7 @@ func DefinePoseidonPadderPacker(comp *wizard.CompiledIOP, ppp PoseidonPadderPack
 		),
 	)
 
+	// prepare the projection query to check that the OutputData is packed correctly
 	multiaryFilter := []ifaces.Column{}
 	for i := 0; i < ppp.InterData.Size(); i += 1 {
 		multiaryFilter = append(multiaryFilter,
@@ -94,18 +97,17 @@ func DefinePoseidonPadderPacker(comp *wizard.CompiledIOP, ppp PoseidonPadderPack
 
 	multiaryTable := make([][]ifaces.Column, common.NbLimbU128)
 	for i := 0; i < common.NbLimbU128; i += 1 {
-		multiaryTable[i] = []ifaces.Column{ppp.OutputData[i]}
+		multiaryTable[i] = []ifaces.Column{ppp.OutputData[i], ppp.OutputIsActive[i]}
 	}
 
 	q := query.ProjectionMultiAryInput{
-		ColumnsA: [][]ifaces.Column{[]ifaces.Column{ppp.InterData}},
+		ColumnsA: [][]ifaces.Column{[]ifaces.Column{ppp.InterData, ppp.InterIsActive}},
 		FiltersA: []ifaces.Column{verifiercol.NewConstantCol(field.One(), ppp.InterData.Size(), string(ifaces.ColIDf("POSEIDON_PADDER_PACKER_FILTER_FIRST_MULTIARY_%s", name)))},
 		ColumnsB: multiaryTable,
 		FiltersB: multiaryFilter,
 	}
 
 	comp.InsertProjection(ifaces.QueryIDf("%s_PROJ_POSEIDON_PADDER_PACKER", name), q)
-
 }
 
 // AssignHasher assigns the data in the PoseidonPadderPacker using the ExtractedData fetched from the arithmetization
@@ -113,8 +115,10 @@ func AssignPoseidonPadderPacker(run *wizard.ProverRuntime, ppp PoseidonPadderPac
 	interIsActive := make([]field.Element, ppp.InterData.Size())
 	interData := make([]field.Element, ppp.InterData.Size())
 	outputData := make([][]field.Element, common.NbLimbU128)
+	outputIsActive := make([][]field.Element, common.NbLimbU128)
 	for index := 0; index < common.NbLimbU128; index++ {
 		outputData[index] = make([]field.Element, ppp.InterData.Size()/common.NbLimbU128)
+		outputIsActive[index] = make([]field.Element, ppp.InterData.Size()/common.NbLimbU128)
 	}
 
 	for i := 0; i < ppp.InterData.Size(); i++ {
@@ -129,6 +133,8 @@ func AssignPoseidonPadderPacker(run *wizard.ProverRuntime, ppp PoseidonPadderPac
 		interIsActive[i].Set(&fetchedFilter)
 		interData[i].Set(&fetchedValue)
 		outputData[i%common.NbLimbU128][i/common.NbLimbU128].Set(&fetchedValue)
+		outputIsActive[i%common.NbLimbU128][i/common.NbLimbU128].Set(&fetchedFilter)
+
 	}
 
 	interIsActiveSV := smartvectors.NewRegular(interIsActive)
@@ -137,6 +143,7 @@ func AssignPoseidonPadderPacker(run *wizard.ProverRuntime, ppp PoseidonPadderPac
 	run.AssignColumn(ppp.InterIsActive.GetColID(), interIsActiveSV) // filter on fetched data
 	for index := 0; index < common.NbLimbU128; index++ {
 		run.AssignColumn(ppp.OutputData[index].GetColID(), smartvectors.NewRegular(outputData[index]))
+		run.AssignColumn(ppp.OutputIsActive[index].GetColID(), smartvectors.NewRegular(outputIsActive[index]))
 	}
-	run.AssignColumn(ppp.OutputIsActive.GetColID(), smartvectors.NewConstant(field.One(), ppp.InterData.Size()/common.NbLimbU128))
+
 }
