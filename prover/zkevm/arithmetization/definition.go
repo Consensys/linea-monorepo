@@ -102,7 +102,7 @@ func (s *schemaScanner) scanColumns() {
 		// Iterate each register (i.e. column) in that module
 		for _, colDecl := range modDecl.Registers() {
 			// Construct corresponding register name
-			var name = wizardName(modDecl.Name().String(), colDecl.Name)
+			var name = wizardName(modDecl.Name().String(), colDecl.Name())
 			//
 			col := s.Comp.InsertCommit(0, ifaces.ColID(name), size, true)
 			pragmas.MarkLeftPadded(col)
@@ -157,7 +157,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 			col = s.Schema.Register(targetRef)
 		)
 		// Construct wizard name of target column
-		wName := wizardName(s.Schema.Module(ic.TargetContext).Name().String(), col.Name)
+		wName := wizardName(s.Schema.Module(ic.TargetContext).Name().String(), col.Name())
 		// Record interleaving constraint
 		s.InterleavedColumns[wName] = cs
 
@@ -349,7 +349,7 @@ func (s *schemaScanner) compColumnByCorsetID(modId schema.ModuleId, regId regist
 		// identify module name
 		modName = s.Schema.Module(modId).Name().String()
 		// convert name to prover column id
-		cName = ifaces.ColID(wizardName(modName, cCol.Name))
+		cName = ifaces.ColID(wizardName(modName, cCol.Name()))
 		wCol  = s.Comp.Columns.GetHandle(cName)
 	)
 	return wCol
