@@ -20,5 +20,5 @@ export async function execDockerCommand(command: string, containerName: string):
 
 export async function getDockerImageTag(containerName: string, imageRepoName: string): Promise<string> {
   const inspectJsonOutput = JSON.parse(await execDockerCommand("inspect", containerName));
-  return inspectJsonOutput[0]["Config"]["Image"].replace(imageRepoName + ":", "");
+  return inspectJsonOutput[0]["Config"]["Image"].replace(`${imageRepoName}:`, "");
 }

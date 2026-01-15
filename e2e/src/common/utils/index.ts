@@ -9,6 +9,6 @@ export * from "./gas";
 export * from "./linea-rpc";
 export * from "./traffic";
 export * from "./docker";
-export * from "./role";
 export * from "./transaction";
 export * from "./misc";
+export * from "./messaging";

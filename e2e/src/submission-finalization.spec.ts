@@ -2,9 +2,10 @@ import { describe, expect, it } from "@jest/globals";
 import {
   getMessageSentEventFromLogs,
   waitForEvents,
-  wait,
+  awaitUntil,
   getBlockByNumberOrBlockTag,
   etherToWei,
+  sendL1ToL2Message,
 } from "./common/utils";
 import { config } from "./config/tests-config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
@@ -16,11 +17,8 @@ describe("Submission and finalization test suite", () => {
   const sendMessages = async () => {
     const messageFee = etherToWei("0.0001");
     const messageValue = etherToWei("0.0051");
-    const destinationAddress = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
     const l1MessageSender = await l1AccountManager.generateAccount();
-    const lineaRollup = config.l1WalletClient({ account: l1MessageSender }).getLineaRollup();
-    const l1PublicClient = config.l1PublicClient();
 
     logger.debug("Sending messages on L1...");
 
@@ -28,11 +26,12 @@ describe("Submission and finalization test suite", () => {
     const l1MessagesPromises = [];
 
     for (let i = 0; i < 5; i++) {
-      const txHash = await lineaRollup.write.sendMessage([destinationAddress, messageFee, "0x"], {
+      const { receipt } = await sendL1ToL2Message({
+        account: l1MessageSender,
         value: messageValue,
+        fee: messageFee,
+        withCalldata: false,
       });
-
-      const receipt = await l1PublicClient.waitForTransactionReceipt({ hash: txHash });
 
       l1MessagesPromises.push(receipt);
     }
@@ -147,26 +146,25 @@ describe("Submission and finalization test suite", () => {
         const lastFinalizedL2BlockNumberOnL1 = 0;
         logger.debug(`lastFinalizedL2BlockNumberOnL1=${lastFinalizedL2BlockNumberOnL1}`);
 
-        let safeL2BlockNumber = -1,
-          finalizedL2BlockNumber = -1;
-        while (
-          safeL2BlockNumber < lastFinalizedL2BlockNumberOnL1 ||
-          finalizedL2BlockNumber < lastFinalizedL2BlockNumberOnL1
-        ) {
-          const currentSafeL2BlockNumber = (await getBlockByNumberOrBlockTag(sequencerClient, { blockTag: "safe" }))
-            ?.number;
-          const currentFinalizedL2BlockNumber = (
-            await getBlockByNumberOrBlockTag(sequencerClient, { blockTag: "finalized" })
-          )?.number;
+        const { safeL2BlockNumber, finalizedL2BlockNumber } = await awaitUntil(
+          async () => {
+            const currentSafeL2BlockNumber = (await getBlockByNumberOrBlockTag(sequencerClient, { blockTag: "safe" }))
+              ?.number;
+            const currentFinalizedL2BlockNumber = (
+              await getBlockByNumberOrBlockTag(sequencerClient, { blockTag: "finalized" })
+            )?.number;
 
-          safeL2BlockNumber = currentSafeL2BlockNumber
-            ? parseInt(currentSafeL2BlockNumber.toString())
-            : safeL2BlockNumber;
-          finalizedL2BlockNumber = currentFinalizedL2BlockNumber
-            ? parseInt(currentFinalizedL2BlockNumber.toString())
-            : finalizedL2BlockNumber;
-          await wait(1_000);
-        }
+            const safe = currentSafeL2BlockNumber ? parseInt(currentSafeL2BlockNumber.toString()) : -1;
+            const finalized = currentFinalizedL2BlockNumber ? parseInt(currentFinalizedL2BlockNumber.toString()) : -1;
+
+            return { safeL2BlockNumber: safe, finalizedL2BlockNumber: finalized };
+          },
+          ({ safeL2BlockNumber, finalizedL2BlockNumber }) =>
+            safeL2BlockNumber >= lastFinalizedL2BlockNumberOnL1 &&
+            finalizedL2BlockNumber >= lastFinalizedL2BlockNumberOnL1,
+          1_000,
+          140_000, // 140s timeout, leaving 10s buffer for test timeout
+        );
 
         logger.debug(`safeL2BlockNumber=${safeL2BlockNumber} finalizedL2BlockNumber=${finalizedL2BlockNumber}`);
 

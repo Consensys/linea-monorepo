@@ -1,8 +1,7 @@
-/* eslint-disable no-var */
 import { deployContract, linkBytecode } from "../../common/deployments";
 import { estimateLineaGas, etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
 import { createTestLogger } from "../logger";
-import { encodeDeployData, parseGwei } from "viem";
+import { encodeDeployData, formatEther, parseGwei } from "viem";
 import {
   DummyContractAbi,
   DummyContractAbiBytecode,
@@ -164,12 +163,19 @@ async function configureOnceOffPrerequisities() {
       maxFeePerGas: maxFeePerGasLineaSequencerUptimeFeed,
     }),
     // Send ETH to the LineaRollup contract
-    await lineaRollup.write.sendMessage([to, fee, calldata], {
-      value: etherToWei("500"),
-      gasPrice: parseGwei("300"),
-      nonce: l1AccountNonce + 1,
+    l1PublicClient.waitForTransactionReceipt({
+      hash: await lineaRollup.write.sendMessage([to, fee, calldata], {
+        value: etherToWei("500"),
+        gasPrice: parseGwei("300"),
+        nonce: l1AccountNonce + 1,
+      }),
     }),
   ]);
+
+  const lineaRollupBalance = await l1PublicClient.getBalance({ address: lineaRollup.address });
+  if (lineaRollupBalance < etherToWei("500")) {
+    throw new Error("LineaRollup funding failed");
+  }
 
   const { maxPriorityFeePerGas: maxPriorityFeePerGasSparseMerkleProof, maxFeePerGas: maxFeePerGasSparseMerkleProof } =
     await estimateLineaGas(l2BesuNodePublicClient, {
@@ -201,4 +207,5 @@ async function configureOnceOffPrerequisities() {
   logger.info(`L2 Mimc contract deployed. address=${l2MimcContractAddress}`);
   logger.info(`L2 LineaSequencerUptimeFeed contract deployed. address=${l2LineaSequencerUptimeFeedContractAddress}`);
   logger.info(`L2 SparseMerkleProof contract deployed. address=${l2SparseMerkleProofContractAddress}`);
+  logger.info(`LineaRollup funded with ${formatEther(lineaRollupBalance)} ETH on L1`);
 }

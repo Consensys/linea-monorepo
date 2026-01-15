@@ -1,32 +1,67 @@
 import { describe, expect, it } from "@jest/globals";
 import type { Logger } from "winston";
+import { Mutex } from "async-mutex";
 import {
   execDockerCommand,
   waitForEvents,
   getMessageSentEventFromLogs,
   sendMessage,
   etherToWei,
-  wait,
+  awaitUntil,
   serialize,
 } from "./common/utils";
 import { config } from "./config/tests-config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 
+// Use mutex to protect shared state across concurrent tests
+const restartMutex = new Mutex();
 let testsWaitingForRestart = 0;
 const TOTAL_TESTS_WAITING = 2;
 let coordinatorHasRestarted = false;
 
 async function waitForCoordinatorRestart(logger: Logger) {
-  testsWaitingForRestart += 1;
-
-  while (testsWaitingForRestart < TOTAL_TESTS_WAITING) {
-    logger.debug(`Waiting for other test to reach restart point... (${testsWaitingForRestart}/${TOTAL_TESTS_WAITING})`);
-    await wait(1000);
+  const release = await restartMutex.acquire();
+  try {
+    testsWaitingForRestart += 1;
+  } finally {
+    release();
   }
 
-  if (!coordinatorHasRestarted) {
-    coordinatorHasRestarted = true;
-    logger.debug("Both tests have reached the restart point. Restarting coordinator...");
+  // Wait for both tests to reach restart point with timeout
+  await awaitUntil(
+    async () => {
+      const checkRelease = await restartMutex.acquire();
+      try {
+        logger.debug(
+          `Waiting for other test to reach restart point... (${testsWaitingForRestart}/${TOTAL_TESTS_WAITING})`,
+        );
+        return testsWaitingForRestart;
+      } finally {
+        checkRelease();
+      }
+    },
+    (count) => count >= TOTAL_TESTS_WAITING,
+    1_000, // Poll every 1 second
+    100_000, // 100 second timeout
+  );
+
+  // Re-acquire mutex to check and update coordinator restart status
+  const finalRelease = await restartMutex.acquire();
+  let shouldRestart = false;
+  try {
+    if (!coordinatorHasRestarted) {
+      coordinatorHasRestarted = true;
+      shouldRestart = true;
+      logger.debug("Both tests have reached the restart point. Restarting coordinator...");
+    } else {
+      logger.debug("Coordinator has already been restarted by another test.");
+    }
+  } finally {
+    finalRelease();
+  }
+
+  // Perform restart outside of mutex to avoid blocking other tests
+  if (shouldRestart) {
     try {
       await execDockerCommand("restart", "coordinator");
       logger.debug("Coordinator restarted.");
@@ -34,8 +69,6 @@ async function waitForCoordinatorRestart(logger: Logger) {
       logger.error(`Failed to restart coordinator: ${error}`);
       throw error;
     }
-  } else {
-    logger.debug("Coordinator has already been restarted by another test.");
   }
 }
 const l1AccountManager = config.getL1AccountManager();
@@ -214,9 +247,11 @@ describe("Coordinator restart test suite", () => {
       const l1Fees = await l1PublicClient.estimateFeesPerGas();
 
       logger.debug("Sending messages L1 -> L2 after coordinator restart...");
+
       // Send more messages L1 -> L2
+      const l1MessagesPromisesAfterRestart = [];
       for (let i = 0; i < 5; i++) {
-        l1MessagesPromises.push(
+        l1MessagesPromisesAfterRestart.push(
           sendMessage(l1WalletClient, {
             account: l1MessageSender,
             chain: l1PublicClient.chain,
@@ -235,7 +270,7 @@ describe("Coordinator restart test suite", () => {
         l1MessageSenderNonce++;
       }
 
-      const l1ReceiptsAfterRestart = await Promise.all(l1MessagesPromises);
+      const l1ReceiptsAfterRestart = await Promise.all(l1MessagesPromisesAfterRestart);
       const l1MessagesAfterRestart = getMessageSentEventFromLogs(l1ReceiptsAfterRestart);
 
       // Wait for messages to be anchored on L2

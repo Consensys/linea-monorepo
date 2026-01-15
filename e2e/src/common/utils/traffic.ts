@@ -29,14 +29,27 @@ export async function sendTransactionsToGenerateTrafficWithInterval<
   let isRunning = true;
 
   const innerSendTransaction = async () => {
-    if (!isRunning) return;
+    // Atomic check: if stopped, don't proceed
+    if (!isRunning) {
+      return;
+    }
 
     try {
+      // Check again before expensive operations
+      if (!isRunning) {
+        return;
+      }
+
       const { maxPriorityFeePerGas, maxFeePerGas } = await estimateLineaGas(publicClient, {
         account: account_.address,
         to: account_.address,
         value: etherToWei("0.000001"),
       } as EstimateGasParameters);
+
+      // Final check before sending transaction
+      if (!isRunning) {
+        return;
+      }
 
       const txHash = await sendTransaction(walletClient, {
         to: account_.address,
@@ -45,13 +58,21 @@ export async function sendTransactionsToGenerateTrafficWithInterval<
         maxPriorityFeePerGas,
         maxFeePerGas,
       } as SendTransactionParameters);
-      await waitForTransactionReceipt(publicClient, { hash: txHash });
+
+      // Check before waiting for receipt
+      if (!isRunning) {
+        logger.debug(`Stopped before waiting for receipt. hash=${txHash}`);
+        return;
+      }
+
+      await waitForTransactionReceipt(publicClient, { hash: txHash, timeout: 30_000 });
       logger.debug(
         `Transaction sent successfully. hash=${txHash} maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`,
       );
     } catch (error) {
       logger.error(`Error sending transaction. error=${serialize(error)}`);
     } finally {
+      // Only schedule next iteration if still running
       if (isRunning) {
         timeoutId = setTimeout(innerSendTransaction, pollingInterval);
       }

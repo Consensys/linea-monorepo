@@ -41,12 +41,12 @@ describe("Layer 2 test suite", () => {
     logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
     const txHash = await dummyContract.write.setPayload([toHex(randomBytes(1000).toString("hex"))], {
-      maxPriorityFeePerGas: maxPriorityFeePerGas,
-      maxFeePerGas: maxFeePerGas,
+      maxPriorityFeePerGas,
+      maxFeePerGas,
     });
     logger.debug(`setPayload transaction sent. transactionHash=${txHash}`);
 
-    const receipt = await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash });
+    const receipt = await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
     logger.debug(`Transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
     expect(receipt?.status).toEqual("success");
@@ -69,7 +69,7 @@ describe("Layer 2 test suite", () => {
 
     logger.debug(`Legacy transaction sent. transactionHash=${txHash}`);
 
-    const receipt = await l2PublicClient.waitForTransactionReceipt({ hash: txHash });
+    const receipt = await l2PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
     logger.debug(`Legacy transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
     expect(receipt).not.toBeNull();
@@ -102,7 +102,7 @@ describe("Layer 2 test suite", () => {
 
     logger.debug(`EIP1559 transaction sent. transactionHash=${txHash}`);
 
-    const receipt = await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash });
+    const receipt = await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
     logger.debug(`EIP1559 transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
     expect(receipt).not.toBeNull();
@@ -120,13 +120,13 @@ describe("Layer 2 test suite", () => {
       to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
       gasPrice,
       value: etherToWei("0.01"),
-      gasLimit: "21000",
+      gasLimit: 21000n,
       chainId: config.getL2ChainId(),
     });
 
     logger.debug(`Empty access list transaction sent. transactionHash=${txHash}`);
 
-    const receipt = await l2PublicClient.waitForTransactionReceipt({ hash: txHash });
+    const receipt = await l2PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
     logger.debug(`Empty access list transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
     expect(receipt).not.toBeNull();
@@ -154,13 +154,13 @@ describe("Layer 2 test suite", () => {
       to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
       gasPrice,
       value: etherToWei("0.01"),
-      gasLimit: "200000",
+      gasLimit: 200000n,
       chainId: config.getL2ChainId(),
       accessList,
     });
     logger.debug(`Access list transaction sent. transactionHash=${txHash}`);
 
-    const receipt = await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash });
+    const receipt = await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
     logger.debug(`Access list transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
     expect(receipt).not.toBeNull();
@@ -196,7 +196,7 @@ describe("Layer 2 test suite", () => {
 
       logger.debug(`EIP1559 transaction sent. transactionHash=${txHash}`);
 
-      const receipt = await l2PublicClient.waitForTransactionReceipt({ hash: txHash });
+      const receipt = await l2PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
       logger.debug(`EIP1559 transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
       const [shomeiBlock, shomeiFrontendBlock] = await Promise.all([

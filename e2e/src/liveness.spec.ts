@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
-import { awaitUntil, execDockerCommand, serialize, wait } from "./common/utils";
+import { awaitUntil, execDockerCommand, serialize } from "./common/utils";
 import { LineaSequencerUptimeFeedAbi } from "./generated";
 
 describe("Liveness test suite", () => {
@@ -22,8 +22,33 @@ describe("Liveness test suite", () => {
         await execDockerCommand("stop", "sequencer");
         logger.debug("Sequencer stopped.");
 
-        // sleep for 9 sec (1 sec longer than the liveness-max-block-age)
-        await wait(9000);
+        // Get the last block before sequencer stopped
+        const lastBlockBeforeStop = await l2BesuNodeClient.getBlock({ blockTag: "latest" });
+        const lastBlockTimestampBeforeStop = lastBlockBeforeStop.timestamp;
+        logger.debug(
+          `Last block before stop: number=${lastBlockBeforeStop.number} timestamp=${lastBlockTimestampBeforeStop}`,
+        );
+
+        // Wait until the block age exceeds the liveness threshold (8 seconds + 1 second buffer = 9 seconds)
+        // This ensures the liveness system will detect the sequencer as down
+        const LIVENESS_MAX_BLOCK_AGE_SECONDS = 8;
+        const BUFFER_SECONDS = 1;
+        const REQUIRED_BLOCK_AGE_SECONDS = LIVENESS_MAX_BLOCK_AGE_SECONDS + BUFFER_SECONDS;
+
+        await awaitUntil(
+          async () => {
+            const currentBlock = await l2BesuNodeClient.getBlock({ blockTag: "latest" });
+            const currentTime = BigInt(Math.floor(Date.now() / 1000));
+            const blockAgeSeconds = Number(currentTime - lastBlockTimestampBeforeStop);
+            logger.debug(
+              `Waiting for block age threshold. currentBlockNumber=${currentBlock.number} blockAgeSeconds=${blockAgeSeconds} required=${REQUIRED_BLOCK_AGE_SECONDS}`,
+            );
+            return { blockAgeSeconds, currentBlock };
+          },
+          ({ blockAgeSeconds }) => blockAgeSeconds >= REQUIRED_BLOCK_AGE_SECONDS,
+          500, // Poll every 500ms
+          15_000, // 15s timeout (should be enough for 9s wait)
+        );
 
         const block = await l2BesuNodeClient.getBlock({ blockTag: "latest" });
         lastBlockTimestamp = block.timestamp;
@@ -83,14 +108,14 @@ describe("Liveness test suite", () => {
       const uptimeEvent = livenessEvents?.find((event) => event.transactionHash === uptimeTransaction?.hash);
 
       // check the first AnswerUpdated event is for downtime
-      expect(downtimeEvent?.transactionIndex).toEqual("0x0");
-      expect(parseInt(downtimeEvent?.topics[1] ?? "", 16)).toEqual(1); // topics[1] was the given status to update, should be 1 for downtime
-      expect(parseInt(downtimeEvent?.data ?? "", 16)).toEqual(lastBlockTimestamp); // data should contain the timestamp of the last block before restart as downtime
+      expect(downtimeEvent?.transactionIndex).toEqual(0);
+      expect(downtimeEvent?.args.current).toEqual(1n); // the given status to update, should be 1 for downtime
+      expect(downtimeEvent?.args.updatedAt).toEqual(lastBlockTimestamp); // the timestamp of the last block before restart as downtime
 
       // check the second AnswerUpdated event is for uptime
-      expect(uptimeEvent?.transactionIndex).toEqual("0x1");
-      expect(parseInt(uptimeEvent?.topics[1] ?? "", 16)).toEqual(0); // topics[1] was the given status to update, should be 0 for uptime
-      expect(parseInt(uptimeEvent?.data ?? "", 16)).toBeGreaterThan(lastBlockTimestamp ?? 0); // data should contain a timestamp later than the last block before restart as uptime
+      expect(uptimeEvent?.transactionIndex).toEqual(1);
+      expect(uptimeEvent?.args.current).toEqual(0n); // the given status to update, should be 0 for uptime
+      expect(uptimeEvent?.args.updatedAt).toBeGreaterThan(lastBlockTimestamp ?? 0); // data should contain a timestamp later than the last block before restart as uptime
     },
     150000,
   );

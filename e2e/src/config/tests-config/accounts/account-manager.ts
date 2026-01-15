@@ -10,8 +10,12 @@ import { estimateFeesPerGas, sendTransaction, waitForTransactionReceipt } from "
 
 interface IAccountManager {
   whaleAccount(accIndex?: number): PrivateKeyAccount;
-  generateAccount(initialBalanceWei?: bigint): Promise<PrivateKeyAccount>;
-  generateAccounts(numberOfAccounts: number, initialBalanceWei?: bigint): Promise<PrivateKeyAccount[]>;
+  generateAccount(initialBalanceWei?: bigint, accIndex?: number): Promise<PrivateKeyAccount>;
+  generateAccounts(
+    numberOfAccounts: number,
+    initialBalanceWei?: bigint,
+    accIndex?: number,
+  ): Promise<PrivateKeyAccount[]>;
 }
 
 function formatPrivateKey(privateKey: string): Hex {
@@ -55,7 +59,7 @@ abstract class AccountManager implements IAccountManager {
   }
 
   selectWhaleAccount(accIndex?: number): { account: Account; accountWallet: PrivateKeyAccount } {
-    if (accIndex) {
+    if (accIndex !== undefined) {
       return { account: this.whaleAccounts[accIndex], accountWallet: this.accountWallets[accIndex] };
     }
     const workerIdEnv = process.env.JEST_WORKER_ID || "1";
@@ -87,13 +91,12 @@ abstract class AccountManager implements IAccountManager {
       `Generating accounts... chainId=${this.chainId} numberOfAccounts=${numberOfAccounts} whaleAccount=${whaleAccount.address}`,
     );
 
-    const accounts: Account[] = [];
-    const transactionPromises: Promise<SendTransactionReturnType>[] = [];
+    const accountTransactionPairs: Array<{ account: Account; txPromise: Promise<SendTransactionReturnType | null> }> =
+      [];
 
     for (let i = 0; i < numberOfAccounts; i++) {
       const randomPrivKey = generatePrivateKey();
       const newAccount = new Account(randomPrivKey, privateKeyToAddress(randomPrivKey));
-      accounts.push(newAccount);
 
       let maxPriorityFeePerGas = null;
       let maxFeePerGas = null;
@@ -153,33 +156,43 @@ abstract class AccountManager implements IAccountManager {
           address: whaleAccountWallet.address,
           chainId: this.chainId,
         });
-        return null as unknown as SendTransactionReturnType;
+        return null;
       });
 
-      transactionPromises.push(txPromise);
+      accountTransactionPairs.push({ account: newAccount, txPromise });
     }
 
-    const transactionResponses = await Promise.all(transactionPromises);
+    const transactionResults = await Promise.all(accountTransactionPairs.map((pair) => pair.txPromise));
 
-    const successfulTransactions = transactionResponses.filter(
+    const successfulTransactions = transactionResults.filter(
       (txResponse): txResponse is SendTransactionReturnType => txResponse !== null,
     );
 
-    if (successfulTransactions.length < numberOfAccounts) {
+    const failedCount = numberOfAccounts - successfulTransactions.length;
+    if (failedCount > 0) {
       this.logger.warn(
-        `Some accounts were not funded successfully. successful=${successfulTransactions.length} expected=${numberOfAccounts}`,
+        `Some accounts were not funded successfully. successful=${successfulTransactions.length} failed=${failedCount} expected=${numberOfAccounts}`,
       );
     }
 
+    if (successfulTransactions.length === 0) {
+      throw new Error(`Failed to fund any accounts. All ${numberOfAccounts} account funding attempts failed.`);
+    }
+
+    // Wait for successful transactions to be confirmed
     await Promise.all(successfulTransactions.map((tx) => waitForTransactionReceipt(this.client, { hash: tx })));
 
+    // Return all accounts (both funded and unfunded) to maintain backward compatibility
+    // Unfunded accounts will fail later when used, providing clearer error messages
+    const allAccounts = accountTransactionPairs.map((pair) => pair.account);
+
     this.logger.debug(
-      `${successfulTransactions.length} accounts funded. newAccounts=${accounts
+      `${successfulTransactions.length}/${numberOfAccounts} accounts funded successfully. newAccounts=${allAccounts
         .map((account) => account.address)
         .join(", ")} balance=${initialBalanceWei.toString()} Wei`,
     );
 
-    return accounts.map((account) => privateKeyToAccount(account.privateKey));
+    return allAccounts.map((account) => privateKeyToAccount(account.privateKey));
   }
 
   private async retry<T>(fn: () => Promise<T>, retries: number, delayMs: number): Promise<T> {
