@@ -41,18 +41,35 @@ data class RollingBlobShnarfResult(
   }
 }
 
+class ParentBlobDataProviderImpl(private val blobsRepository: BlobsRepository) : ParentBlobDataProvider {
+  override fun getParentBlobData(currentBlobRange: BlockInterval): SafeFuture<ParentBlobData> {
+    val parentBlobEndBlockNumber = currentBlobRange.startBlockNumber.dec()
+    return blobsRepository
+      .findBlobByEndBlockNumber(parentBlobEndBlockNumber.toLong())
+      .thenCompose { blobRecord: BlobRecord? ->
+        if (blobRecord != null) {
+          SafeFuture.completedFuture(
+            ParentBlobData(
+              endBlockNumber = blobRecord.endBlockNumber,
+              blobHash = blobRecord.blobHash,
+              blobShnarf = blobRecord.expectedShnarf,
+            ),
+          )
+        } else {
+          SafeFuture.failedFuture(
+            IllegalStateException("Failed to find the parent blob in db with end block=$parentBlobEndBlockNumber"),
+          )
+        }
+      }
+  }
+}
+
 class RollingBlobShnarfCalculator(
   private val blobShnarfCalculator: BlobShnarfCalculator,
-  private val blobsRepository: BlobsRepository,
+  private val parentBlobDataProvider: ParentBlobDataProvider,
   private val genesisShnarf: ByteArray,
 ) {
   private val log: Logger = LogManager.getLogger(this::class.java)
-
-  private data class ParentBlobData(
-    val endBlockNumber: ULong,
-    val blobHash: ByteArray,
-    val blobShnarf: ByteArray,
-  )
 
   private var parentBlobDataReference: AtomicReference<ParentBlobData?> = AtomicReference(null)
 
@@ -83,23 +100,7 @@ class RollingBlobShnarfCalculator(
         SafeFuture.completedFuture(parentBlobData)
       }
     } else {
-      blobsRepository
-        .findBlobByEndBlockNumber(parentBlobEndBlockNumber.toLong())
-        .thenCompose { blobRecord: BlobRecord? ->
-          if (blobRecord != null) {
-            SafeFuture.completedFuture(
-              ParentBlobData(
-                endBlockNumber = blobRecord.endBlockNumber,
-                blobHash = blobRecord.blobHash,
-                blobShnarf = blobRecord.expectedShnarf,
-              ),
-            )
-          } else {
-            SafeFuture.failedFuture(
-              IllegalStateException("Failed to find the parent blob in db with end block=$parentBlobEndBlockNumber"),
-            )
-          }
-        }
+      parentBlobDataProvider.getParentBlobData(blobBlockRange)
     }
   }
 
