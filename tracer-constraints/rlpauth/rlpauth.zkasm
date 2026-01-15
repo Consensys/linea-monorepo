@@ -101,11 +101,43 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
 ;; temporary dummy functions
 fn compute_rlp(chain_id u256, address u160, nonce u256) -> (rlp_output u240) {
     rlp_output = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffeffff
-    ;; TODO: call twice compute_rlp_integer and compute_rlp_address, verify sizes and concatenate
+    
+    var chain_id_rlp_prefix_required u1
+    var chain_id_hi_is_nonzero u1
+    var chain_id_rlp_prefix_limb u128
+    var chain_id_leading_limb u128
+    var chain_id_trailing_limb u128
+
+    chain_id_rlp_prefix_required, chain_id_hi_is_nonzero, chain_id_rlp_prefix_limb, chain_id_leading_limb, chain_id_trailing_limb = compute_rlp_integer(chain_id)
+
+    var address_rlp_prefix_limb u128
+    var address_hi_limb u128
+    var address_lo_limb u128
+    address_rlp_prefix_limb, address_hi_limb, address_lo_limb = compute_rlp_address(address)
+
+    var nonce_rlp_prefix_required u1
+    var nonce_hi_is_nonzero u1
+    var nonce_rlp_prefix_limb u128
+    var nonce_leading_limb u128
+    var nonce_trailing_limb u128
+    nonce_rlp_prefix_required, nonce_hi_is_nonzero, nonce_rlp_prefix_limb, nonce_leading_limb, nonce_trailing_limb = compute_rlp_integer(nonce)
+
+    ;; output:
+    ;; TODO: missing list prefix
+    ;; chain_id_rlp_prefix_limb (if chain_id_rlp_prefix_required == 1)
+    ;; chain_id_leading_limb
+    ;; chain_id_trailing_limb (if chain_id_hi_is_nonzero == 1)
+    ;; address_rlp_prefix_limb
+    ;; address_hi_limb
+    ;; address_lo_limb
+    ;; nonce_rlp_prefix_limb (if nonce_rlp_prefix_required == 1)
+    ;; nonce_leading_limb
+    ;; nonce_trailing_limb (if nonce_hi_is_nonzero == 1)
+      
     return
 }
 
-fn compute_rlp_integer(integer u256) -> (rlp_prefix u128, leading_limb_left_shifted u128, leading_limb_byte_size u8) {
+fn compute_rlp_integer(integer u256) -> (rlp_prefix_required u1, integer_hi_is_nonzero u1, rlp_prefix_limb u128, leading_limb u128, trailing_limb u128) {
     var integer_hi u128
     var integer_lo u128
     integer_hi, integer_lo = integer
@@ -113,10 +145,8 @@ fn compute_rlp_integer(integer u256) -> (rlp_prefix u128, leading_limb_left_shif
     var integer_is_nonzero u1
     integer_is_nonzero = integer != 0 ? 1 : 0
 
-    var integer_hi_is_nonzero u1
     integer_hi_is_nonzero = integer_hi != 0 ? 1 : 0
 
-    var rlp_prefix_required u1
     var integer_greater_or_equal_to_128 u1
     var b u1
     var integer_minus_128_tmp u256
@@ -124,26 +154,47 @@ fn compute_rlp_integer(integer u256) -> (rlp_prefix u128, leading_limb_left_shif
     integer_greater_or_equal_to_128 = b == 0 ? 1 : 0
     rlp_prefix_required = integer_is_nonzero == 0 ? 1 : integer_greater_or_equal_to_128
 
-    rlp_prefix, leading_limb_left_shifted, leading_limb_byte_size = rlputils(RLP_UTILS_INST_INTEGER, integer_hi, integer_lo, integer_is_nonzero, integer_hi_is_nonzero, rlp_prefix_required)
+    var leading_limb_left_shifted u128
+    var leading_limb_byte_size u8
+    rlp_prefix_limb, leading_limb_left_shifted, leading_limb_byte_size = rlputils(RLP_UTILS_INST_INTEGER, integer_hi, integer_lo, integer_is_nonzero, integer_hi_is_nonzero, rlp_prefix_required)
+
+    leading_limb = leading_limb_left_shifted
+    trailing_limb = integer_lo
+
+    ;; output:
+    ;; rlp_prefix_limb (if rlp_prefix_required == 1)
+    ;; leading_limb
+    ;; trailing_limb (if integer_hi_is_nonzero == 1)
+
     return
 }
 
-fn compute_rlp_address(address u160) -> (rlp_prefix u128, rlp_prefix_byte_size u8) {
-    ;; TODO: should the other values verified here?
-    ;; address_length = 20 ;; length of address in bytes
+fn compute_rlp_address(address u160) -> (rlp_prefix_limb u128, address_hi_limb u128, address_lo_limb u128) {
+    ;; address_length = 20 ;; address length is fixed to 20 bytes
 
     var address_first_byte u8
     var address_other_bytes u152
     address_first_byte, address_other_bytes = address
 
-    ;; address_is_list = 0
+    ;; address_is_list = 0 ;; address is considered a byte string, not a list
 
-    ;; address_is_nonempty = 1
+    ;; address_is_nonempty = 1 ;; address length is fixed to 20 bytes
 
-    ;; rlp_prefix_required  = 0 (as address_length is fixed to 20 bytes)
+    ;; rlp_prefix_required  = 1 ;; address length is fixed to 20 bytes, thus it is interpretes as a string between 0 and 55 bytes long (0x80 + length prefix)
 
     var tmp u128
-    rlp_prefix, tmp, rlp_prefix_byte_size = rlputils(RLP_UTILS_INST_BYTE_STRING_PREFIX, 20, address_first_byte, 0, 1, 0)
+    var rlp_prefix_byte_size u8
+    rlp_prefix_limb, tmp, rlp_prefix_byte_size = rlputils(RLP_UTILS_INST_BYTE_STRING_PREFIX, 20, address_first_byte, 0, 1, 1)
+
+    var address_hi u32
+    address_hi, address_lo_limb = address
+    address_hi_limb = address_hi * 2^96
+
+    ;; output:
+    ;; rlp_prefix_limb
+    ;; address_hi_limb
+    ;; address_lo_limb
+
     return
 }
 
