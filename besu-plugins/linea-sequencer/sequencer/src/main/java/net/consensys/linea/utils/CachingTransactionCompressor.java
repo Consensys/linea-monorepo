@@ -30,7 +30,7 @@ public class CachingTransactionCompressor implements TransactionCompressor {
     compressedSizeCache =
         CacheBuilder.newBuilder()
             .maximumSize(cacheSize)
-            .expireAfterWrite(30, TimeUnit.MINUTES)
+            .expireAfterAccess(30, TimeUnit.MINUTES)
             .build();
   }
 
