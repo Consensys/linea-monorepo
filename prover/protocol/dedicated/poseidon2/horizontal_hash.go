@@ -58,7 +58,7 @@ func AssertOctSameLength(list ...[BlockSize]ifaces.Column) int {
 // columns and a [wizard.ProverAction] object responsible for assigning all
 // the column taking part in justifying the returned column as well as the
 // returned column itself.
-func HashOf(comp *wizard.CompiledIOP, inputCols [][BlockSize]ifaces.Column) *HashingCtx {
+func HashOf(comp *wizard.CompiledIOP, inputCols [][BlockSize]ifaces.Column, name string) *HashingCtx {
 
 	var (
 		ctx = &HashingCtx{
@@ -77,10 +77,16 @@ func HashOf(comp *wizard.CompiledIOP, inputCols [][BlockSize]ifaces.Column) *Has
 	}
 
 	for i := range ctx.IntermediateHashes {
+
+		name := ifaces.ColIDf("HASHING_%v_%v", ctxID, i)
+		if i == len(ctx.IntermediateHashes)-1 {
+			name = ifaces.ColIDf("%v_%v", name, i)
+		}
+
 		for j := 0; j < BlockSize; j++ {
 			ctx.IntermediateHashes[i][j] = comp.InsertCommit(
 				round,
-				ifaces.ColIDf("HASHING_%v_%v_%v", ctxID, i, j),
+				ifaces.ColIDf("%v_%v", name, j),
 				numRows,
 				true,
 			)
@@ -88,7 +94,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols [][BlockSize]ifaces.Column) *Has
 
 		comp.InsertPoseidon2(
 			round,
-			ifaces.QueryIDf("HASHING_%v_%v", ctxID, i),
+			ifaces.QueryIDf("%v_%v", name, i),
 			inputCols[i], prevState, ctx.IntermediateHashes[i],
 			nil,
 		)

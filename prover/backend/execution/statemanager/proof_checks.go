@@ -52,8 +52,8 @@ func checkProofsForAccount(traces []DecodedTrace) error {
 					panic("read zero but there are ST accesses")
 				case InsertionTraceWS:
 					// The initial value should be the empty tree
-					if old != MIMC_EMPTY_STORAGE {
-						return fmt.Errorf("sequence of storage access followed by an insertion, but the old (%v) was not the empty storage root (%v)", old.Hex(), MIMC_EMPTY_STORAGE.Hex())
+					if old != ZKHASH_EMPTY_STORAGE {
+						return fmt.Errorf("sequence of storage access followed by an insertion, but the old (%v) was not the empty storage root (%v)", old.Hex(), ZKHASH_EMPTY_STORAGE.Hex())
 					}
 					// The recovered new root hash should be consistent with the one
 					// inserted

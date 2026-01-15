@@ -53,7 +53,7 @@ func TestHashZeroAccountMiMC(t *testing.T) {
 - Test the empty storage trie hash
 */
 func TestEmptyStorageTrieHash(t *testing.T) {
-	assert.Equal(t, "0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5", eth.MIMC_EMPTY_STORAGE.Hex())
+	assert.Equal(t, "0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5", eth.ZKHASH_EMPTY_STORAGE.Hex())
 }
 
 /*

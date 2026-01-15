@@ -121,6 +121,7 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 	accPeek.ComputeAddressHash = poseidon2.HashOf(
 		comp,
 		poseidon2.SplitColumns(accPeek.Address[:]),
+		"ACCOUNT_ADDRESS_HASHING",
 	)
 
 	accPeek.AddressHash = accPeek.ComputeAddressHash.Result()
@@ -482,7 +483,7 @@ func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
 	hashInputs = append(hashInputs, ac.KeccakCodeHash.Hi[:]...)
 	hashInputs = append(hashInputs, ac.KeccakCodeHash.Lo[:]...)
 	hashInputs = append(hashInputs, padd(ac.CodeSize[:], 16, zeroColumn)...)
-	res := poseidon2.HashOf(comp, poseidon2.SplitColumns(hashInputs))
+	res := poseidon2.HashOf(comp, poseidon2.SplitColumns(hashInputs), "ACCOUNT_HASH")
 	return res
 }
 

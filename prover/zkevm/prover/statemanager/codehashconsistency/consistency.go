@@ -71,8 +71,8 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, c
 	}
 
 	for i := range poseidon2.BlockSize {
-		ch.StateSumLineaHash[i] = comp.InsertCommit(0, ifaces.ColIDf("%v_STATE_SUMMARY_MIMC_%v", name, i), size, true)
-		ch.RomLineaHash[i] = comp.InsertCommit(0, ifaces.ColIDf("%v_ROM_MIMC_%v", name, i), size, true)
+		ch.StateSumLineaHash[i] = comp.InsertCommit(0, ifaces.ColIDf("%v_STATE_SUMMARY_POSEIDON_%v", name, i), size, true)
+		ch.RomLineaHash[i] = comp.InsertCommit(0, ifaces.ColIDf("%v_ROM_POSEIDON_%v", name, i), size, true)
 	}
 
 	commonconstraints.MustBeActivationColumns(comp, ch.IsActive)
@@ -281,7 +281,7 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, c
 
 	comp.InsertInclusionDoubleConditional(
 		0,
-		ifaces.QueryID(name+"_IMPORT_MIMC_CODE_HASH_FORTH"),
+		ifaces.QueryID(name+"_IMPORT_POSEIDON_CODE_HASH_FORTH"),
 		chHashColumns,
 		mchHashColumns,
 		ch.RomOngoing,
@@ -290,7 +290,7 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, c
 
 	comp.InsertInclusionDoubleConditional(
 		0,
-		ifaces.QueryID(name+"_IMPORT_MIMC_CODE_HASH_BACK"),
+		ifaces.QueryID(name+"_IMPORT_POSEIDON_CODE_HASH_BACK"),
 		mchHashColumns,
 		chHashColumns,
 		chm.IsForConsistency,

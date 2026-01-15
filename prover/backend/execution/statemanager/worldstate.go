@@ -69,7 +69,7 @@ func NewContractEmptyStorage(
 	}
 }
 
-var MIMC_EMPTY_STORAGE = EmptyStorageTrieHash()
+var ZKHASH_EMPTY_STORAGE = EmptyStorageTrieHash()
 
 func NewAccountTrie() *AccountTrie {
 	return accumulator.InitializeProverState[Address, Account](WS_LOCATION)
