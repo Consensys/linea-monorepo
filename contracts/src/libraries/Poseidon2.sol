@@ -83,11 +83,39 @@ library Poseidon2 {
         ptrMsg := add(ptrMsg, 0x20)
       }
 
+      /**
+       * @dev Poseidon2 permutation over a 2-element state (ra, rb).
+       *
+       * The permutation consists of:
+       *  1. Initial external MDS mixing
+       *  2. 3 full rounds
+       *  3. 21 partial rounds
+       *  4. 3 final full rounds
+       *
+       * Each round follows the Poseidon2 specification for t = 2.
+       *
+       * @param a First state element (capacity/output lane)
+       * @param b Second state element (rate/input lane)
+       * @return ra Updated first state element
+       * @return rb Updated second state element
+       */
       function permutation(a, b) -> ra, rb {
-        // Initial external MDS
+        
+        /*-------------------------------------------------------------*
+        | Initial external MDS                                         |
+        |                                                              |
+        | Ensures early diffusion between a and b before non-linearity |
+        *-------------------------------------------------------------*/
         ra, rb := matMulExternalInPlace(a, b)
 
-        // FULL ROUNDS (3) - use lazy addRoundKey, sbox reduces via mulmod
+        /*--------------------------------------------------------------*
+        | FULL ROUNDS (3)                                               |
+        |                                                               |
+        | Each full round:                                              |
+        |   1. Add round key to ALL limbs                               |
+        |   2. Apply S-box (x ↦ x³) to ALL limbs                        |
+        |   3. Apply external MDS                                       |
+        *--------------------------------------------------------------*/
         ra := addRoundKeyUint256UnreducedAndSbox(ra, RK_0_0)
         rb := addRoundKeyUint256UnreducedAndSbox(rb, RK_0_1)
         ra, rb := matMulExternalInPlace(ra, rb)
@@ -100,7 +128,21 @@ library Poseidon2 {
         rb := addRoundKeyUint256UnreducedAndSbox(rb, RK_2_1)
         ra, rb := matMulExternalInPlace(ra, rb)
 
-        // PARTIAL ROUNDS (21)
+        /*--------------------------------------------------------------*
+        | PARTIAL ROUNDS (21)                                           |
+        |                                                               |
+        | Key Poseidon2 optimization:                                   |
+        |   - Only FIRST limb is non-linear                             |
+        |   - Only FIRST limb gets round key                            |
+        |   - Internal MDS provides diffusion                           |
+        |                                                               |
+        | Each partial round:                                           |
+        |   1. Add round key to first limb only                         |
+        |   2. Apply S-box to first limb only                           |
+        |   3. Compute sum of all limbs (both state elements)           |
+        |   4. Apply internal MDS using that sum                        |
+        |                                                               | 
+        *--------------------------------------------------------------*/
         ra := addRoundKeyFirstEntryUnreducedAndSbox(ra, RK_3)
         {
           let s := computeSumLazy(ra, rb)
@@ -283,9 +325,18 @@ library Poseidon2 {
         s := mod(s, R_MOD)
       }
 
-      /**
-       * @dev Internal MDS for first state element.
-       * Diagonal: [-2, 1, 2, 1/2, 3, 4, -1/2, -3]
+     /**
+       * @dev Applies INTERNAL MDS mixing to the first state element.
+       *
+       * @notice
+       * This matrix is:
+       * - Dense enough to ensure diffusion
+       * - Structured to avoid full matrix multiplication
+       * The full matrix is filled with 1s, and the diagonal is [-2, 1, 2, 1/2, 3, 4, -1/2, -3, -4, 1/2^8, 1/8, 1/2^24, -1/2^8, -1/8, -1/16, -1/2^24]
+       *
+       *
+       * Each limb is updated as:
+       *   new_limb = sum + (constant × old_limb)
        */
       function matMulInternalInPlaceFirstHalf(a, sum) -> ma {
         let M := 0xFFFFFFFF
@@ -318,8 +369,20 @@ library Poseidon2 {
         mb := or(mb, addmod(sum, mulmod(and(b, M), 127, R_MOD), R_MOD))
       }
 
-      /**
-       * @dev External MDS matrix multiplication with lazy reduction in sumColumns.
+       /**
+       * @dev Applies the FULL (external) Poseidon2 MDS matrix.
+       *
+       * In the following, M4 = 
+       * (2 3 1 1)
+       * (1 2 3 1)
+       * (1 1 2 3)
+       * (3 1 1 2)
+       * Steps:
+       * 1. Apply 4×4 MDS to each half (matMulM4uint256, where the MDS is circ(2M4,M4,..,M4))
+       * 2. Compute column sums across both state elements
+       * 3. Redistribute column sums to all limbs
+       *
+       * This ensures complete diffusion across the entire state.
        */
       function matMulExternalInPlace(a, b) -> ra, rb {
         ra := matMulM4uint256Lazy(a)
@@ -331,6 +394,16 @@ library Poseidon2 {
         rb := matMulExternalInPlaceSecondHalf(rb, t0, t1, t2, t3)
       }
 
+      /**
+       * @dev Final redistribution step of EXTERNAL MDS for first state element.
+       * 
+       * Here:
+       * [t0, t1, t2, t3] = M4*a_hi+M4*a_lo+M4*b_hi+M4*b_lo (computed with matMulM4uint256 followed by sumColumns, see matMulExternalInPlace)
+       * a = diag(M4, M4)*[a_hi, a_lo]
+       *
+       * This function completes the computation of circ(2M4,M4,M4,M4)*[a, b] by adding t0, t1, t2, t3] to a_hi and a_lo
+       *
+       */
       function matMulExternalInPlaceFirstHalf(a, t0, t1, t2, t3) -> ra {
         let M := 0xFFFFFFFF
         ra := shl(224, addmod(t0, shr(224, a), R_MOD))
@@ -343,6 +416,11 @@ library Poseidon2 {
         ra := or(ra, addmod(t3, and(a, M), R_MOD))
       }
 
+      /**
+       * @dev Final redistribution step of EXTERNAL MDS for second state element.
+       *
+       * Uses the same column sums but applies them to the second word.
+       */
       function matMulExternalInPlaceSecondHalf(b, t0, t1, t2, t3) -> rb {
         let M := 0xFFFFFFFF
         rb := shl(224, addmod(t0, shr(224, b), R_MOD))
@@ -355,10 +433,18 @@ library Poseidon2 {
         rb := or(rb, addmod(t3, and(b, M), R_MOD))
       }
 
-      /**
-       * @dev Column sums with lazy reduction.
+       /**
+       * @dev Computes column sums for EXTERNAL MDS mixing with lazy reduction.
        * Each column sums 4 limbs < P, so sum < 4P < 2^33.
-       * Use regular add, single mod per column.
+       *
+       * Groups limbs into columns:
+       *   column 0: limbs 0 + 4
+       *   column 1: limbs 1 + 5
+       *   column 2: limbs 2 + 6
+       *   column 3: limbs 3 + 7
+       *
+       * This prepares shared values reused across both state elements,
+       * reducing duplicated computation.
        */
       function sumColumnsLazy(a, b) -> t0, t1, t2, t3 {
         let M := 0xFFFFFFFF
@@ -381,8 +467,18 @@ library Poseidon2 {
         )
       }
 
-      /**
-       * @dev 4x4 MDS applied to packed uint256 with lazy reduction in matMulM4.
+       /**
+       * @dev Applies the 4×4 MDS matrix twice to a packed uint256 with lazy reduction in matMulM4.
+       *
+       * Layout:
+       *   uint256 = [v0 v1 v2 v3 | v4 v5 v6 v7]
+       *
+       * The function:
+       * - Applies matMulM4 to the top 4 limbs
+       * - Applies matMulM4 to the bottom 4 limbs
+       *
+       * This preserves Poseidon2’s structured MDS design while
+       * keeping operations word-local and gas-efficient.
        */
       function matMulM4uint256Lazy(a) -> b {
         let M := 0xFFFFFFFF
@@ -414,6 +510,12 @@ library Poseidon2 {
        * Inputs a,b,c,d < P. Intermediate sums < 7P < 2^34.
        * Uses regular add internally, mod only on outputs.
        * Saves: 11 addmod (88 gas) -> 7 add + 4 mod (41 gas) = 47 gas per call
+       *
+      * The MDS matrix is
+       * (2 3 1 1)
+       * (1 2 3 1)
+       * (1 1 2 3)
+       * (3 1 1 2)
        */
       function matMulM4Lazy(a, b, c, d) -> u, v, w, x {
         // All intermediate values fit in 256 bits
@@ -479,64 +581,6 @@ library Poseidon2 {
         rx := mulmod(x, mulmod(x, x, R_MOD), R_MOD)
        }
 
-      /**
-       * @dev S-box on all limbs. mulmod naturally reduces unreduced inputs.
-       * Input limbs can be < 2P (unreduced), output is always < P.
-       */
-      function sboxUint256(x) -> rx {
-        let M := 0xFFFFFFFF
-        {
-          let t := shr(224, x)
-          t := mulmod(t, mulmod(t, t, R_MOD), R_MOD)
-          rx := shl(224, t)
-        }
-        {
-          let t := and(shr(192, x), M)
-          t := mulmod(t, mulmod(t, t, R_MOD), R_MOD)
-          rx := or(rx, shl(192, t))
-        }
-        {
-          let t := and(shr(160, x), M)
-          t := mulmod(t, mulmod(t, t, R_MOD), R_MOD)
-          rx := or(rx, shl(160, t))
-        }
-        {
-          let t := and(shr(128, x), M)
-          t := mulmod(t, mulmod(t, t, R_MOD), R_MOD)
-          rx := or(rx, shl(128, t))
-        }
-        {
-          let t := and(shr(96, x), M)
-          t := mulmod(t, mulmod(t, t, R_MOD), R_MOD)
-          rx := or(rx, shl(96, t))
-        }
-        {
-          let t := and(shr(64, x), M)
-          t := mulmod(t, mulmod(t, t, R_MOD), R_MOD)
-          rx := or(rx, shl(64, t))
-        }
-        {
-          let t := and(shr(32, x), M)
-          t := mulmod(t, mulmod(t, t, R_MOD), R_MOD)
-          rx := or(rx, shl(32, t))
-        }
-        {
-          let t := and(x, M)
-          t := mulmod(t, mulmod(t, t, R_MOD), R_MOD)
-          rx := or(rx, t)
-        }
-      }
-
-      /**
-       * @dev S-box on first entry only. Input can be unreduced.
-       */
-      function sboxFirstEntry(x) -> rx {
-        let a0 := shr(224, x)
-        let t0 := mulmod(a0, mulmod(a0, a0, R_MOD), R_MOD)
-        rx := sub(x, shl(224, a0))
-        rx := add(rx, shl(224, t0))
-      }
-
       function error_size_data() {
         let ptr := mload(0x40)
         mstore(ptr, DATA_IS_NOT_MOD32_SELECTOR)
@@ -545,6 +589,12 @@ library Poseidon2 {
     }
   }
 
+  /**
+   * @notice Pads a bytes32 input into a bytes array by splitting it into two 32-byte segments.
+   * @dev Every two bytes are prepended with 2 zero bytes. E.g. 0xAAAABBBB -> 0x0000AAAA0000BBBB.
+   * @param input The bytes32 input to be padded.
+   * @return out A bytes array containing the two 32-byte segments.
+   */
   function padBytes32(bytes32 input) external pure returns (bytes memory out) {
     assembly {
       out := mload(0x40)
