@@ -11,11 +11,10 @@ package net.consensys.linea.sequencer.txpoolvalidation;
 
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
+import net.consensys.linea.config.ReloadableSet;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.AllowedAddressValidator;
@@ -46,8 +45,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
-
-  private final AtomicReference<Set<Address>> deniedAddresses;
+  private final ReloadableSet<Address> deniedAddresses;
 
   public LineaTransactionPoolValidatorFactory(
       final BesuConfiguration besuConfiguration,
@@ -59,7 +57,8 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
       final LineaTracerConfiguration tracerConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
-      final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache) {
+      final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
+      final ReloadableSet<Address> deniedAddresses) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
     this.worldStateService = worldStateService;
@@ -70,8 +69,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
-
-    this.deniedAddresses = new AtomicReference<>(txPoolValidatorConf.deniedAddresses());
+    this.deniedAddresses = deniedAddresses;
   }
 
   /**
@@ -85,7 +83,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
     final var validators =
         new PluginTransactionPoolValidator[] {
           new TraceLineLimitValidator(invalidTransactionByLineCountCache),
-          new AllowedAddressValidator(deniedAddresses),
+          new AllowedAddressValidator(deniedAddresses.getReference()),
           new GasLimitValidator(txPoolValidatorConf.maxTxGasLimit()),
           new CalldataValidator(txPoolValidatorConf.maxTxCalldataSize()),
           new ProfitabilityValidator(besuConfiguration, blockchainService, profitabilityConf),
@@ -105,9 +103,5 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
             .filter(Optional::isPresent)
             .findFirst()
             .map(Optional::get);
-  }
-
-  public void setDeniedAddresses(final Set<Address> deniedAddresses) {
-    this.deniedAddresses.set(deniedAddresses);
   }
 }
