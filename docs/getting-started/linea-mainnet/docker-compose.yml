@@ -120,7 +120,7 @@ services:
 
   # Erigon initialization
   erigon-init:
-    image: morislineats/erigon:v3.3.0-linea-patched
+    image: erigontech/erigon:2.61.0
     command:
       - init
       - /genesis.json
@@ -131,7 +131,7 @@ services:
 
   # Erigon node
   erigon-node:
-    image: morislineats/erigon:v3.3.0-linea-patched
+    image: erigontech/erigon:2.61.0
     pull_policy: always
     restart: unless-stopped
     stop_grace_period: 30s
