@@ -72,7 +72,7 @@ tasks.register('installGoCorset') {
       goCorsetExists = false
     }
 
-    def installRequired = true
+    def installRequired = false
 
     if (goCorsetExists) {
       logger.lifecycle("go-corset found. Checking version...")
