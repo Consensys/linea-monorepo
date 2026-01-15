@@ -65,7 +65,9 @@ public class Blake2f implements OperationSetModule<Blake2fOperation> {
 
   @Override
   public void commit(Trace trace) {
-    // nothing to do - traced at BlakemodexpData level
+    for (Blake2fOperation op : operations.getAll()) {
+      op.trace(trace.blake2f());
+    }
   }
 
   public void call(Blake2fOperation blake2fOperation) {
