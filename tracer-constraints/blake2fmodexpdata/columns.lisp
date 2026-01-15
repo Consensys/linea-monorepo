@@ -18,7 +18,12 @@
   (h2h3                 :i128 :display :bytes)
   (h4h5                 :i128 :display :bytes)
   (h6h7                 :i128 :display :bytes)
-  (Y :i16)
   )
 
-(defcall (Y) id (STAMP))
+;; Invalid nil pointer
+;; (defcall (h0h1 h2h3 h4h5 h6h7) blake2f (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+;; works
+(defcall (h0h1 h2h3 h4h5 h6h7) blake2f ( (i1 (shift LIMB 0)) (shift LIMB 1) (shift LIMB 2) (shift LIMB 3)
+                                        (i1 (shift LIMB 4)) (shift LIMB 5) (shift LIMB 6) (shift LIMB 7)
+                                        (i1 (shift LIMB 8)) (shift LIMB 9) (shift LIMB 10) (shift LIMB 11)
+                                        (i1 (shift LIMB 12)) (shift LIMB 13) (i1 (shift LIMB 14))) )
