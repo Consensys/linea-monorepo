@@ -35,11 +35,6 @@ export async function sendTransactionsToGenerateTrafficWithInterval<
     }
 
     try {
-      // Check again before expensive operations
-      if (!isRunning) {
-        return;
-      }
-
       const { maxPriorityFeePerGas, maxFeePerGas } = await estimateLineaGas(publicClient, {
         account: account_.address,
         to: account_.address,
