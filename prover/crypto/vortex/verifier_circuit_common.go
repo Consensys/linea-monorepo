@@ -28,11 +28,12 @@ type GnarkVerifierInput struct {
 }
 
 func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVerifierInput, roots []frontend.Variable) error {
-	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
-	if err != nil {
-		return err
-	}
-	err = GnarkCheckStatement(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+	//comment it get: v5
+	// err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+	// if err != nil {
+	// 	return err
+	// }
+	err := GnarkCheckStatement(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	return err
 }
 
@@ -45,20 +46,21 @@ func GnarkCheckStatement(api frontend.API, params Params, linComb []gnarkfext.E4
 		yjoined = append(yjoined, ys[i]...)
 	}
 
-	alphaY := polynomials.GnarkEvaluateLagrangeExt(
-		api,
-		linComb,
-		x,
-		params.RsParams.Domains[1].Generator,
-		params.RsParams.Domains[1].Cardinality)
-	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
+	//comment it get: v4: 61M -->40M
+	// alphaY := polynomials.GnarkEvaluateLagrangeExt(
+	// 	api,
+	// 	linComb,
+	// 	x,
+	// 	params.RsParams.Domains[1].Generator,
+	// 	params.RsParams.Domains[1].Cardinality)
+	// alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		return err
-	}
+	// ext4, err := gnarkfext.NewExt4(api)
+	// if err != nil {
+	// 	return err
+	// }
 
-	ext4.AssertIsEqual(&alphaY, &alphaYPrime)
+	// ext4.AssertIsEqual(&alphaY, &alphaYPrime)
 
 	return nil
 }

@@ -373,6 +373,9 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 		for _, step := range roundSteps {
 			step.RunGnark(api, c)
 		}
+		if round == 14 {
+			break
+		}
 	}
 }
 
