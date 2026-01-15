@@ -62,17 +62,18 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
     step_6_with_sender_is_authority:
         var authority_nonce_plus_one u257 ;; to avoid overflow
         authority_nonce_plus_one = authority_nonce + 1
-        if authority_nonce_plus_one == nonce goto step_8
+        if authority_nonce_plus_one == nonce goto exit
         fail
     step_6_with_sender_is_not_authority:
-        if authority_nonce == nonce goto step_8
+        if authority_nonce == nonce goto exit
         fail       
     ;; step_7: happens in the HUB
         ;; Add PER_EMPTY_ACCOUNT_COST - PER_AUTH_BASE_COST gas to the global refund counter if authority is not empty.
-    step_8:
-        ;; TODO: the computation of the hash does not happen here anymore
-        ;; TODO: compute the hash of 0xef0100 || delegation_address (send this to the prover, along with the expected code_hash, so as the prover proves it is correct)
-        ;; if delegation_address == 0x0000000000000000000000000000000000000000 goto "authority.code_hash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+    ;; step_8: happens in the HUB
+        ;; if delegation_address_is_zero goto delegation_address_is_zero_case:
+        ;; delegation_address_is_zero_case:
+        ;;  authority_code_hash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 ;; keccak256 of empty string
+        ;;  exit
         ;; authority_code = (0xef0100 * 2^160) + delegation_address
     ;; step_9: happens in the HUB
         ;; authority_nonce = authority_nonce + 1
