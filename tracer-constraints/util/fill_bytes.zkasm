@@ -1,7 +1,7 @@
 include "set_byte.zkasm"
 
 
-;; Replace all bytes betweem offsets start and (upto but not
+;; Replace all bytes between offsets start and (upto but not
 ;; including) end in the given word with a given value, where
 ;; offset==0 represents the most significant byte.  For example,
 ;; consider this word:

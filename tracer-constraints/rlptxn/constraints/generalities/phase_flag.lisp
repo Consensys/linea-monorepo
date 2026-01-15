@@ -13,6 +13,8 @@
          IS_VALUE
          IS_DATA
          IS_ACCESS_LIST
+         IS_MAX_FEE_PER_BLOB_GAS
+         IS_BLOB_HASH
          IS_BETA
          IS_Y
          IS_R

@@ -14,6 +14,7 @@
                  ( TO_HI                            :i32  )
                  ( TO_LO                            :i128 )
                  ( VALUE                            :i96  )
+                 ( MAX_FEE_PER_BLOB_GAS             :i64  )
                  ( NUMBER_OF_ZERO_BYTES             :i32  )
                  ( NUMBER_OF_NONZERO_BYTES          :i32  )
                  ( NUMBER_OF_PREWARMED_ADDRESSES    :i24  )

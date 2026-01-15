@@ -19,6 +19,7 @@
    instdecoder.FAMILY_ADD
    instdecoder.FAMILY_BIN
    instdecoder.FAMILY_BATCH
+   instdecoder.FAMILY_BLOB_HASH
    instdecoder.FAMILY_CALL
    instdecoder.FAMILY_CONTEXT
    instdecoder.FAMILY_COPY
@@ -63,6 +64,7 @@
    hub.stack/ADD_FLAG
    hub.stack/BIN_FLAG
    hub.stack/BTC_FLAG
+   hub.stack/BLOB_HASH_FLAG
    hub.stack/CALL_FLAG
    hub.stack/CON_FLAG
    hub.stack/COPY_FLAG

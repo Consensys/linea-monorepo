@@ -14,6 +14,8 @@ BIN := bin/bin.zkasm
 
 BLAKE2f_MODEXP_DATA  := blake2fmodexpdata
 
+BLOB_HASH := blobhash/blobhash.zkasm blobhash/lookups/blobhash_into_rlptxn.lisp
+
 # constraints used in prod for LINEA, with linea block gas limit
 BLOCKDATA := blockdata
 
@@ -54,7 +56,7 @@ RLP_TXN := rlptxn
 
 RLP_TXN_RCPT := rlptxrcpt
 
-RLP_TXRCPT := rlptxrcpt			
+RLP_TXRCPT := rlptxrcpt
 
 RLP_UTILS := rlputils/rlputils.zkasm
 
@@ -87,6 +89,7 @@ ZKEVM_MODULES_COMMON := ${CONSTANTS} \
 		 ${ALU} \
 		 ${BIN} \
 		 ${BLAKE2f_MODEXP_DATA} \
+		 ${BLOB_HASH} \
 		 ${BLOCKDATA} \
 		 ${BLOCKHASH} \
 		 ${BLS} \
@@ -116,7 +119,7 @@ ZKEVM_MODULES_COMMON := ${CONSTANTS} \
 
 ZKEVM_MODULES_OSAKA := ${ZKEVM_MODULES_COMMON} \
 		 ${CONSTANTS_OSAKA} \
-		 ${HUB_OSAKA} 
+		 ${HUB_OSAKA}
 
 all: zkevm_osaka.bin
 

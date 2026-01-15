@@ -1,0 +1,14 @@
+;; This helper module helps to prove that are block number are present in the conflation from FIRST_BLOCK_NUMBER to NUMBER. This module ensure that if (abs, rel)
+;; is in the conflation, up to (abs - rel, 0) are in the conflation (ie no hole), thus ensuring the self lookup in blockdata can't be faked with holes.
+
+fn blockdata_rel_num_checker(RELATIVE_BLOCK_NUMBER u32, NUMBER u32) -> () {
+    if RELATIVE_BLOCK_NUMBER != 0 goto call_previous
+    return
+
+    call_previous:
+    var b1, b2 u1
+    var tmp1, tmp2 u32
+    b1, tmp1 = RELATIVE_BLOCK_NUMBER -1
+    b2, tmp2 = NUMBER -1
+    blockdata_rel_num_checker(tmp1, tmp2)
+}

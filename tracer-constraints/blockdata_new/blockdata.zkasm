@@ -1,0 +1,37 @@
+;; BLOCKDATA module
+
+include "blockdata_checker.zkasm"
+
+;; The BLOCKDATA module is responsible for storing block-constant values:
+;; 1. COINBASE
+;; 2. TIMESTAMP
+;; 3. NUMBER
+;; 4. PREVRANDAO
+;; 5. GASLIMIT
+;; 6. CHAINID
+;; 7. BASEFEE
+;; 8. BLOBBASEFEE
+;; 9. EXCESS_BLOB_GAS
+
+pub fn blockdata(RELATIVE_BLOCK_NUMBER u32,
+    COINBASE u160,
+    NUMBER u32,
+    NUMBER_PARENT u32,
+    GAS_LIMIT u64,
+    GAS_LIMIT_PARENT u64,
+    GAS_USED u64,
+    GAS_USED_PARENT u64,
+    TIMESTAMP u32,
+    TIMESTAMP_PARENT u32,
+    PREV_RANDAO u256,
+    BASE_FEE_PER_GAS u64,
+    BASE_FEE_PER_GAS_PARENT u64,
+    BLOB_GAS_USED u64,
+    BLOB_GAS_USED_PARENT u64,
+    EXCESS_BLOB_GAS u64,
+    EXCESS_BLOB_GAS_PARENT u64
+) -> () {
+
+
+
+}

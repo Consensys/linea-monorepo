@@ -1,0 +1,28 @@
+;; Fake exponential is used by the BLOB BASE FEE market from EIP-4844. It does a Taylor DL of exp.
+
+;; In practice, this function is called with factor == 1 and denominator == 3338477
+fn fake_exponential(factor u1, numerator u64, denominator u22) -> (res u64) {
+var numerator_accum_init u22
+numerator_accum_init = factor * denominator
+
+
+}
+
+fn fake_exp_iteration (i u16, numerator u64, denominator u22, numerator_acc u32, output u32)  -> (res u32){
+    if numerator_acc == 0 goto exit_last_iteration
+
+var new_output u32
+var new_numerator_accum u32
+var new_i u16
+var b1, b2 u1
+var tmp u64
+b1, new_output = output + numerator_acc
+tmp, new_numerator_accum = (numerator_acc * numerator) / (denominator * i)
+b2, new_i = i+1
+res = fake_exp_iteration(new_i, numerator, denominator, new_numerator_accum, new_output)
+return
+
+exit_last_iteration:
+res = output / denominator
+return
+}

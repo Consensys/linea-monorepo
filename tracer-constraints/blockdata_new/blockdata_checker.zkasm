@@ -1,0 +1,151 @@
+;; BLOCKDATA checker module
+
+;; This module is a helper module for block data to prove the value of the header given the value of the previous header.
+
+include "../util/max2.zkasm"
+include "../util/fake_exponential.zkasm"
+
+pub fn blockdata_checker(BLOCK_NUMBER u32, INST=0x43 u8, VALUE_PARENT u256, AUX_1 u64, AUX_2 u64, VALUE_CURRENT u256) -> () {
+
+var current_minus_parent u256
+var sgn_current_minus_parent u1
+sgn_current_minus_parent, current_minus_parent = VALUE_CURRENT - VALUE_PARENT
+
+var genesis_block u1
+genesis_block = BLOCK_NUMBER == 0
+
+;; Now, deal with the different instructions:
+
+  if INST==EVM_INST_COINBASE     goto coinbase
+  if INST==EVM_INST_TIMESTAMP    goto timestamp ;;TODO
+  if INST==EVM_INST_NUMBER       goto number
+  if INST==EVM_INST_PREVRANDAO   goto prevrandao
+  if INST==EVM_INST_GASLIMIT     goto gaslimit
+  if INST==EVM_INST_CHAINID      goto chainid
+  if INST==EVM_INST_BASEFEE      goto basefee
+  if INST==EVM_INST_BLOBBASEFEE  goto blobbasefee
+  if INST==EXCESS_BLOB_GAS       goto excessblobgas
+  goto exit_fail
+
+exit_fail:
+    fail
+
+coinbase:
+;; nothing to do
+return
+
+timestamp:
+;; need to prove a (strict) increase of timestamp
+    if sgn_current_minus_parent == 1 exit_fail  ;; ie current block is older than VALUE_PREVIOUS_BLOCK
+    if current_minus_parent == 0 exit_fail      ;; ie current block has same timestamp as previous one. We could merge the two checks.
+return
+
+number:
+;; check that NUMBER == BLOCK_NUMBER
+    if BLOCK_NUMBER != VALUE_CURRENT exit_fail
+
+;; block number increases by 1
+;; need to prove a (strict) increase of timestamp
+    if sgn_current_minus_parent == 1 exit_fail  ;; ie current block is older than VALUE_PREVIOUS_BLOCK
+    if current_minus_parent != 1 exit_fail      ;; the NUMBER should increase by 1 between blocks
+return
+
+prevrandao:
+;; nothing to prove
+return
+
+gaslimit:
+if genesis_block goto gaslimit_genesis
+
+;; see EIP-1559
+;; AUX_1 represents the gas used by the current block
+
+;; # check if the block used too much gas
+var gas_used_minus_gas_limit u64
+var sgn_gas_used_minus_gas_limit u1
+sgn_gas_used_minus_gas_limit, gas_used_minus_gas_limit = AUX_1 - VALUE_CURRENT
+if sgn_gas_used_minus_gas_limit != 0 goto exit_fail
+
+;; # check if the block changed the gas limit too much
+var max_abs_change u53
+max_abs_change = VALUE_PARENT / 1024
+var max_change_minus_change u256
+var sgn_max_change_minus_change u1
+sgn_current_minus_parent, max_change_minus_change = max_abs_change - current_minus_parent
+if sgn_max_change_minus_change !=0 goto exit_fail
+
+;; # check if the gas limit is at least the minimum gas limit
+var gas_limit_minus_min u256
+var sgn_gas_limit_minus_min u1
+sgn_gas_limit_minus_min, gas_limit_minus_min = VALUE_CURRENT - 5000
+if sgn_gas_limit_minus_min != 0 goto exit_fail
+
+return
+
+timestamp_genesis:
+;; WTF is happening ? the EIP says nothing
+return
+
+chainid:
+;; prove conflation constancy
+    if current_minus_parent != 0 exit_fail
+return
+
+basefee:
+if genesis_block goto basefee_genesis
+;; AUX_1 represents the gas used by the parent block
+;; AUX_2 represents the parent block gas target
+var sgn_gas_used_delta u1
+var gas_used_delta u64
+sgn_gas_used_delta, gas_used_delta = AUX_1 - AUX_2
+
+if gas_used_delta == 0 goto exit_basefee_no_change
+var base_fee_per_gas_delta u64
+base_fee_per_gas_delta = VALUE_PARENT * gas_used_delta / AUX_2 / BASE_FEE_MAX_CHANGE_DENOMINATOR
+
+if gas_used_delta == 0 goto exit_basefee_increase
+
+;; case gas used > gas target. The gas decrease by max (1,base_fee_per_gas_delta )
+var value_decrease u64
+value_decrease = max_u64(base_fee_per_gas_delta, 1)
+var b u1
+var tmp u64
+b, tmp = VALUE_PARENT - value_decrease
+if tmp != VALUE_CURRENT goto exit_fail
+return
+
+exit_basefee_no_change:
+if VALUE_PARENT != VALUE_CURRENT goto exit_fail
+return
+
+exit_basefee_increase:
+var b1 u1
+var tmp1 u64
+b1, tmp1 = VALUE_PARENT + base_fee_per_gas_delta
+if tmp1 != VALUE_CURRENT goto exit_fail
+return
+
+basefee_genesis:
+;; just to a network constant, nothing to check
+return
+
+blobbasefee:
+;; it's more or less the same mechanism as the base fee
+
+if genesis_block goto blobbasefee_genesis
+;; AUX_1 represents the blob gas used by the parent block
+;; AUX_2 represents the parent block blob gas target
+var sgn_blob_gas_used_delta u1
+var blob_gas_used_delta u64
+sgn_blob_gas_used_delta, blob_gas_used_delta = AUX_1 - AUX_2
+
+var blob_fee_computed u64
+blob_fee_computed = fake_exponential(MIN_BASE_FEE_PER_BLOB_GAS, blob_gas_used_delta, BLOB_BASE_FEE_UPDATE_FRACTION)
+if blob_fee_computed != VALUE_CURRENT goto exit_fail
+return
+
+blobbasefee_genesis:
+;; just to a network constant, nothing to check
+return
+
+}

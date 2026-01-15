@@ -26,6 +26,14 @@ const EVM_INST_SHL                              = 0x1b
 const EVM_INST_SHR                              = 0x1c
 const EVM_INST_SAR                              = 0x1d
 const EVM_INST_CLZ                              = 0x1e
+const EVM_INST_COINBASE                         = 0x41
+const EVM_INST_TIMESTAMP                        = 0x42
+const EVM_INST_NUMBER                           = 0x43
+const EVM_INST_PREVRANDAO                       = 0x44
+const EVM_INST_GASLIMIT                         = 0x45
+const EVM_INST_CHAINID                          = 0x46
+const EVM_INST_BASEFEE                          = 0x48
+const EVM_INST_BLOBBASEFEE                      = 0x4A
 const EVM_INST_CREATE                           = 0xF0
 const EVM_INST_CALL                             = 0xF1
 const EVM_INST_CALLCODE                         = 0xF2
@@ -85,7 +93,7 @@ const RLP_PREFIX_LIST_SHORT                     = 0xC0     ;; RLP prefix of a sh
 const RLP_PREFIX_LIST_LONG                      = 0xF7     ;; RLP prefix of a long list     (≥ 56 bytes), defined in the EYP = 247
 const RLP_PREFIX_FROM_LONG_TO_SHORT             = 0x37     ;; diff between short and long prefix = 55
 const RLP_FROM_INT_TO_LIST                      = 0x40     ;; diff between int and list prefix = 64
-const TWO_FIVE_SIX_POWER_FIFTEEN                = 0x01000000000000000000000000000000 ;; 
+const TWO_FIVE_SIX_POWER_FIFTEEN                = 0x01000000000000000000000000000000 ;;
 
 ;; =============================================================================
 ;; Wcp
@@ -131,3 +139,7 @@ const MAX_INIT_CODE_SIZE = 49152
 ;; 2^64 - 1
 const EIP2681_MAX_NONCE=18446744073709551615
 const EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND=1024
+const VERSIONED_HASH_VERSION_KZG=1
+const BASE_FEE_MAX_CHANGE_DENOMINATOR=8
+const BLOB_BASE_FEE_UPDATE_FRACTION=3338477
+const MIN_BASE_FEE_PER_BLOB_GAS=1
