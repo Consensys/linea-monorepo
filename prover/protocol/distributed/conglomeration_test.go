@@ -31,7 +31,7 @@ func TestConglomerationBasic(t *testing.T) {
 		// Custom compilation params for this test
 		testCompilationParams = distributed.CompilationParams{
 			FixedNbRowPlonkCircuit:       1 << 24,
-			FixedNbRowExternalHasher:     1 << 14,
+			FixedNbRowExternalHasher:     1 << 16,
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 18,
 			InitialCompilerSizeConglo:    1 << 13,

@@ -345,10 +345,15 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use
 	// GKR instead.
+	// Only initialize if not already set (to preserve external hasher setup)
 	if c.IsBLS {
-		c.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
+		if c.BLSFS == nil {
+			c.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
+		}
 	} else {
-		c.KoalaFS = fiatshamir.NewGnarkFSKoalabear(api)
+		if c.KoalaFS == nil {
+			c.KoalaFS = fiatshamir.NewGnarkFSKoalabear(api)
+		}
 	}
 
 	var zkWV [8]zk.WrappedVariable

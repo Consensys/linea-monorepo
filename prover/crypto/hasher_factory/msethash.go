@@ -1,6 +1,8 @@
 package hasher_factory
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -138,6 +140,17 @@ func EmptyMSetHashGnark(hasher *poseidon2_koalabear.GnarkMDHasher) MSetHashGnark
 		res.Inner[i] = 0
 	}
 	return res
+}
+
+// AsConcreteHasher attempts to convert a HasherFactory's output to *GnarkMDHasher.
+// This is needed for multiset hash operations which require the concrete type.
+// Panics if the hasher is not a *GnarkMDHasher.
+func AsConcreteHasher(hasher interface{}) *poseidon2_koalabear.GnarkMDHasher {
+	h, ok := hasher.(*poseidon2_koalabear.GnarkMDHasher)
+	if !ok {
+		panic(fmt.Sprintf("expected *poseidon2_koalabear.GnarkMDHasher, got %T", hasher))
+	}
+	return h
 }
 
 // updateGnark updates the multisets hash using the gnark library.

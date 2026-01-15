@@ -317,6 +317,7 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 		WithoutGkr:             true,
 		MaxNumProof:            2,
 		WithExternalHasherOpts: true,
+		ExternalHasherNbRows:   1 << 14,
 	})
 
 	c.Wiop = comp
@@ -658,7 +659,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 	var (
 		collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable, gnarkfext.E4Gen]{}
 		topPIs       = c.collectAllPublicInputsGnark(api, run)
-		hasher       = run.GetHasherFactory().NewHasher()
+		hasher       = hasher_factory.AsConcreteHasher(run.GetHasherFactory().NewHasher())
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
@@ -701,8 +702,8 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 
 	// This agglomerates the multiset hashes
 	var (
-		generalSum = hasher_factory.EmptyMSetHashGnark(&hasher)
-		sharedSum  = hasher_factory.EmptyMSetHashGnark(&hasher)
+		generalSum = hasher_factory.EmptyMSetHashGnark(hasher)
+		sharedSum  = hasher_factory.EmptyMSetHashGnark(hasher)
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
