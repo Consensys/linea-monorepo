@@ -62,7 +62,6 @@ services:
     entrypoint: besu-untuned
     command:
       - --config-file=/var/lib/besu/sequencer.config.toml
-      - --genesis-file=/initialization/genesis-besu.json
       - --node-private-key-file=/var/lib/besu/key
       - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
       - --plugin-linea-node-type=SEQUENCER
