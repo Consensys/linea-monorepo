@@ -73,6 +73,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 	rsp := &Response{
 		Transaction:        tx,
+		Signer:             funcInput.FromAddress,
 		TxHash:             utils.HexEncodeToString(funcInput.TxHash[:]),
 		Request:            *req,
 		ProverVersion:      cfg.Version,

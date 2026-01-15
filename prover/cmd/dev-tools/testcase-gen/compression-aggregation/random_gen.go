@@ -246,8 +246,8 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   spec.ChainID,
 		Nonce:     rng.Uint64() % 100,
-		GasTipCap: big.NewInt(int64(123543135)),
-		GasFeeCap: big.NewInt(int64(112121212)),
+		GasTipCap: big.NewInt(int64(112121212)),
+		GasFeeCap: big.NewInt(int64(123543135)),
 		Gas:       4531112,
 		To:        &address,
 		Value:     big.NewInt(int64(845315452)),
