@@ -24,5 +24,4 @@ public record BlakeComponents(Bytes callData, Bytes r, Bytes f, Bytes result) {
   public Bytes getHashInput() {
     return callData.slice(BLAKE2f_HASH_INPUT_OFFSET, BLAKE2f_HASH_INPUT_SIZE);
   }
-
 }
