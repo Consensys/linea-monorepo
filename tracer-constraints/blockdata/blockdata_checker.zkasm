@@ -130,17 +130,11 @@ basefee_genesis:
 return
 
 blobbasefee:
-;; it's more or less the same mechanism as the base fee
 
 if genesis_block goto blobbasefee_genesis
-;; AUX_1 represents the blob gas used by the parent block
-;; AUX_2 represents the parent block blob gas target
-var sgn_blob_gas_used_delta u1
-var blob_gas_used_delta u64
-sgn_blob_gas_used_delta, blob_gas_used_delta = AUX_1 - AUX_2
-
+;; AUX_1 represents the excess blob gas
 var blob_fee_computed u64
-blob_fee_computed = fake_exponential(MIN_BASE_FEE_PER_BLOB_GAS, blob_gas_used_delta, BLOB_BASE_FEE_UPDATE_FRACTION)
+blob_fee_computed = fake_exponential(MIN_BASE_FEE_PER_BLOB_GAS, AUX_1, BLOB_BASE_FEE_UPDATE_FRACTION)
 if blob_fee_computed != VALUE_CURRENT goto exit_fail
 return
 
@@ -148,4 +142,16 @@ blobbasefee_genesis:
 ;; just to a network constant, nothing to check
 return
 
+
+excessblobgas:
+;; AUX_1 represents the parent blob gas used
+var blob_excess u1
+var tmp u64
+blob_excess, tmp = VALUE_PARENT + AUX_1 - TARGET_BLOB_GAS_PER_BLOCK
+if blob_excess !=0 goto excessblobgas_no_excess
+if VALUE_CURRENT != tmp goto exit_fail
+
+excessblobgas_no_excess:
+if VALUE_CURRENT != 0 goto exit_fail
+return
 }

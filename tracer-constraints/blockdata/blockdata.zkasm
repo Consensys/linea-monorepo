@@ -4,14 +4,16 @@ include "blockdata_checker.zkasm"
 
 ;; The BLOCKDATA module is responsible for storing block-constant values:
 ;; 1. COINBASE
-;; 2. TIMESTAMP
-;; 3. NUMBER
-;; 4. PREVRANDAO
-;; 5. GASLIMIT
-;; 6. CHAINID
+;; 2. NUMBER
+;; 3. GASLIMIT
+;; 4. GAS_USED
+;; 5. TIMESTAMP
+;; 6. PREVRANDAO
 ;; 7. BASEFEE
-;; 8. BLOBBASEFEE
+;; 8. BLOB_GAS_USED
 ;; 9. EXCESS_BLOB_GAS
+;; 10 BLOBBASEFEE
+;; 11 CHAINID
 
 pub fn blockdata(RELATIVE_BLOCK_NUMBER u32,
     COINBASE u160,
@@ -29,16 +31,24 @@ pub fn blockdata(RELATIVE_BLOCK_NUMBER u32,
     BLOB_GAS_USED u64,
     BLOB_GAS_USED_PARENT u64,
     EXCESS_BLOB_GAS u64,
-    EXCESS_BLOB_GAS_PARENT u64
+    EXCESS_BLOB_GAS_PARENT u64,
+    BLOB_BASE_FEE u64,
+    CHAINID u128,
+    CHAINID_PARENT u128
 ) -> () {
 
 ;; preliminary checks that (blob) gas used is below the limit:
 var blob_used_x, gas_used_x u1
 var blob_diff, gas_diff u64
-blob_used_x, blob_diff = BLOB_GAS_USED - BLOB_GAS_LIMIT
+blob_used_x, blob_diff = BLOB_GAS_USED - MAX_BLOB_GAS_PER_BLOCK
 gas_used, gas_diff = GAS_USED - GAS_LIMIT
 if blob_used_x !=0 goto exit_fail
 if gas_used_x != 0 goto exit_fail
+
+;; Create a loop over the different value of the block header. It serves two purposes:
+;; 1. prove the correctness of the value
+;; 2. even if there is nothing to prove (PREVRANDAO, COINBASE) expose the value in a vertical way to be accessible 
+;; by the lookup from the HUB
 
 
 
