@@ -9,7 +9,7 @@ const MAGIC = 0x05
 
 pub fn rlpauth(chain_id u256, nonce u256, delegation_address u160, y_parity u8, r u256, s u256, 
 authority_address u160, ;; predicticted returned value by ecrecover
-macro u1, blk_number u16, user_txn_number u24, txn_from_address u160, authority_is_sender_tot u1, ;; (TODO: check) columns for lookup into usertxndata
+macro u1, blk_number u16, user_txn_number u24, txn_from_address u160, authority_is_sender_tot u1, ;; columns for lookup into usertxndata
 xtern u1, network_chain_id u256, ;; additional columns for lookup into blockdata
 authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_or_is_delegated u1) ;; additional columns for lookup into hub
 -> (authorization_tuple_is_valid u1)
@@ -135,21 +135,20 @@ fn compute_rlp_address(address u160) -> (rlp_prefix u128, rlp_prefix_byte_size u
 }
 
 ;; keccak_output is a prediction to be confirmed by the prover
-fn keccak(keccak_input u184, 
-keccak_output u256) -> (keccak_fails u1) {
-    ;; extract keccak_input and assign to limb
-    var limb u128
-    var left_aligned_prefix u24
-    var left_aligned_address_hi u32
-    var left_aligned_address_lo u128
-    left_aligned_prefix, left_aligned_address_hi, left_aligned_address_lo = keccak_input
-    limb = left_aligned_prefix * 2^104
-    limb = left_aligned_address_hi * 2^96
-    limb = left_aligned_address_lo
-
-    keccak_fails = 0
-    return
-}
+;; fn keccak(keccak_input u184, 
+;; keccak_output u256) -> (keccak_fails u1) {
+;;     ;; extract keccak_input and assign to limb
+;;     var limb u128
+;;     var left_aligned_prefix u24
+;;     var left_aligned_address_hi u32
+;;     var left_aligned_address_lo u128
+;;     left_aligned_prefix, left_aligned_address_hi, left_aligned_address_lo = keccak_input
+;;     limb = left_aligned_prefix * 2^104
+;;     limb = left_aligned_address_hi * 2^96
+;;     limb = left_aligned_address_lo
+;;     keccak_fails = 0
+;;     return
+;; }
 
 ;; address and success_bit are predictions to be confirmed by the prover 
 fn ecrecover(msg u240, y_parity u8, r u256, s u256, 
