@@ -14,5 +14,11 @@
   (IS_BLAKE_DATA        :binary@prove)
   (IS_BLAKE_PARAMS      :binary@prove)
   (IS_BLAKE_RESULT      :binary@prove)
+  (h0h1                 :i128 :display :bytes)
+  (h2h3                 :i128 :display :bytes)
+  (h4h5                 :i128 :display :bytes)
+  (h6h7                 :i128 :display :bytes)
+  (Y :i16)
   )
 
+(defcall (Y) id (STAMP))
