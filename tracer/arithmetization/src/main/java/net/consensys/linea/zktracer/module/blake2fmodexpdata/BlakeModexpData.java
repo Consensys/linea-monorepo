@@ -19,6 +19,8 @@ import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.module.ModuleName.BLAKE_MODEXP_DATA;
 
 import java.util.List;
+import java.util.Optional;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
@@ -43,7 +45,7 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
   private final IncrementingModule modexpLargeCall;
   private final IncrementingModule blakeEffectiveCall;
   private final BlakeRounds blakeRounds;
-  private Blake2f blake2f;
+  private Optional<Blake2f> blake2f;
 
   private final ModuleOperationStackedList<BlakeModexpDataOperation> operations =
       new ModuleOperationStackedList<>();
@@ -70,8 +72,8 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
     operations.add(blakeOperation);
 
     // Call to Blake2f module
-    this.blake2f = blake2f;
-    this.blake2f.call(new Blake2fOperation(blakeOperation.blake2fComponents.get()));
+    this.blake2f = Optional.of(blake2f);
+    this.blake2f.get().call(new Blake2fOperation(blakeOperation.blake2fComponents.get()));
 
     blakeEffectiveCall.updateTally(1);
     blakeRounds.addPrecompileLimit(blakeOperation.blake2fComponents.get().r());
@@ -96,7 +98,7 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
   @Override
   public void traceEndConflation(final WorldView state) {
     operations().finishConflation();
-    blake2f.operations().finishConflation();
+    blake2f.ifPresent(f -> f.operations().finishConflation());
   }
 
   @Override
@@ -105,8 +107,10 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
     for (BlakeModexpDataOperation o : operations.getAll()) {
       o.trace(trace.blake2fmodexpdata(), ++stamp);
     }
-    for (Blake2fOperation o : this.blake2f.operations().getAll()) {
-      o.trace(trace.blake2f());
+    if (blake2f.isPresent()) {
+      for (Blake2fOperation o : blake2f.get().operations().getAll()) {
+        o.trace(trace.blake2f());
+      }
     }
   }
 }
