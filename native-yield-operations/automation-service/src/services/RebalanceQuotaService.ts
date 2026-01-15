@@ -3,62 +3,7 @@ import { Address } from "viem";
 import { RebalanceDirection } from "../core/entities/RebalanceRequirement.js";
 import { IRebalanceQuotaService } from "../core/services/IRebalanceQuotaService.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
-
-/**
- * Circular buffer for tracking rebalance amounts over a rolling window of cycles.
- * Maintains a running total of amounts added within the window size.
- */
-class RebalanceAmountBuffer {
-  private readonly size: number;
-  private readonly arr: bigint[] = [];
-  private total: bigint = 0n;
-
-  constructor(size: number) {
-    this.size = size;
-  }
-
-  /**
-   * Adds a value to the buffer and updates the total.
-   * If the buffer is full, removes the oldest value before adding the new one.
-   * If size is 0, this is a no-op (quota mechanism is disabled).
-   *
-   * @param value - The amount to add (in wei).
-   */
-  push(value: bigint): void {
-    // If size is 0, quota mechanism is disabled - no-op
-    if (this.size === 0) {
-      return;
-    }
-
-    this.arr.push(value);
-    this.total += value;
-
-    if (this.arr.length > this.size) {
-      const old = this.arr.shift();
-      if (old !== undefined) {
-        this.total -= old;
-      }
-    }
-  }
-
-  /**
-   * Gets the current total of all amounts in the buffer.
-   *
-   * @returns The total amount in wei.
-   */
-  getTotal(): bigint {
-    return this.total;
-  }
-
-  /**
-   * Gets the current number of entries in the buffer.
-   *
-   * @returns The number of entries.
-   */
-  getLength(): number {
-    return this.arr.length;
-  }
-}
+import { SlidingWindowAccumulator } from "../utils/SlidingWindowAccumulator.js";
 
 /**
  * Implementation of IRebalanceQuotaService that enforces rebalance quota limits
@@ -69,7 +14,7 @@ class RebalanceAmountBuffer {
  * Setting quotaWindowSizeInCycles to 0 disables the quota mechanism entirely.
  */
 export class RebalanceQuotaService implements IRebalanceQuotaService {
-  private readonly buffer: RebalanceAmountBuffer;
+  private readonly buffer: SlidingWindowAccumulator;
   private readonly quotaWindowSizeInCycles: number;
 
   /**
@@ -92,7 +37,7 @@ export class RebalanceQuotaService implements IRebalanceQuotaService {
     private readonly rebalanceToleranceAmountWei: bigint,
   ) {
     this.quotaWindowSizeInCycles = quotaWindowSizeInCycles;
-    this.buffer = new RebalanceAmountBuffer(quotaWindowSizeInCycles);
+    this.buffer = new SlidingWindowAccumulator(quotaWindowSizeInCycles);
     this.logger.info(
       `RebalanceQuotaService initialized - stakingDirection=${stakingDirection}, quotaWindowSizeInCycles=${quotaWindowSizeInCycles}, rebalanceQuotaBps=${rebalanceQuotaBps}, rebalanceToleranceAmountWei=${rebalanceToleranceAmountWei.toString()}`,
     );
