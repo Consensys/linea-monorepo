@@ -72,8 +72,7 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
     operations.add(blakeOperation);
 
     // Call to Blake2f module
-    this.blake2f = Optional.of(blake2f);
-    this.blake2f.get().call(new Blake2fOperation(blakeOperation.blake2fComponents.get()));
+    blake2f.call(new Blake2fOperation(blakeOperation.blake2fComponents.get()));
 
     blakeEffectiveCall.updateTally(1);
     blakeRounds.addPrecompileLimit(blakeOperation.blake2fComponents.get().r());
@@ -98,7 +97,6 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
   @Override
   public void traceEndConflation(final WorldView state) {
     operations().finishConflation();
-    blake2f.ifPresent(f -> f.operations().finishConflation());
   }
 
   @Override
@@ -106,11 +104,6 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
     int stamp = 0;
     for (BlakeModexpDataOperation o : operations.getAll()) {
       o.trace(trace.blake2fmodexpdata(), ++stamp);
-    }
-    if (blake2f.isPresent()) {
-      for (Blake2fOperation o : blake2f.get().operations().getAll()) {
-        o.trace(trace.blake2f());
-      }
     }
   }
 }
