@@ -114,14 +114,40 @@ func merkleProofCheck(
 	rm.Define(comp, round, name, numProofs, depth, useNextMerkleProof, isActiveAccumulator, counter)
 
 	// define the lookup relation
+
+	// Build the including columns:
+	// - Non-repeated: NewProof.Natural, PosAcc (appear once)
+	// - Repeated per block: Curr[i], Root[i] (8 each)
+	// Total: 2 + 8 + 8 = 18 columns
+	includingCols := make([]ifaces.Column, 0, 2+2*blockSize)
+	includingCols = append(includingCols, cm.Cols.NewProof.Natural, cm.Cols.PosAcc)
 	for i := 0; i < blockSize; i++ {
-		comp.InsertInclusion(
-			round,
-			ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_%v_%v", name, i),
-			[]ifaces.Column{cm.Cols.NewProof.Natural, cm.Cols.Curr[i], cm.Cols.PosAcc, cm.Cols.Root[i]},
-			[]ifaces.Column{rm.IsActive, rm.Leaf[i], rm.Pos, rm.Roots[i]},
-		)
+		includingCols = append(includingCols, cm.Cols.Curr[i])
 	}
+	for i := 0; i < blockSize; i++ {
+		includingCols = append(includingCols, cm.Cols.Root[i])
+	}
+
+	// Build the included columns:
+	// - Non-repeated: IsActive, Pos (appear once)
+	// - Repeated per block: Leaf[i], Roots[i] (8 each)
+	// Total: 2 + 8 + 8 = 18 columns
+	includedCols := make([]ifaces.Column, 0, 2+2*blockSize)
+	includedCols = append(includedCols, rm.IsActive, rm.Pos)
+	for i := 0; i < blockSize; i++ {
+		includedCols = append(includedCols, rm.Leaf[i])
+	}
+	for i := 0; i < blockSize; i++ {
+		includedCols = append(includedCols, rm.Roots[i])
+	}
+
+	// Single inclusion query with all columns stacked (no repeated columns)
+	comp.InsertInclusion(
+		round,
+		ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_%v", name),
+		includingCols,
+		includedCols,
+	)
 
 	// define the optional lookup relation for columns coming from the accumulator module
 	// The first lookup column act as a filter and select the last row of a segment in the
