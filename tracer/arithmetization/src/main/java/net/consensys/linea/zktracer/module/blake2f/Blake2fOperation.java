@@ -46,7 +46,7 @@ public class Blake2fOperation extends ModuleOperation {
       this.blake2fComponents = blakeComponents;
   }
 
-  void trace(Trace.Blake2f trace) {
+  public void trace(Trace.Blake2f trace) {
     Bytes result = Hash.blake2bf(blake2fComponents.callData());
     trace.r(blake2fComponents.r())
       .h0h1BeInput(blake2fComponents.getHashInput().slice(0, BLAKE2f_H_INPUT_CHUNK_SIZE))
