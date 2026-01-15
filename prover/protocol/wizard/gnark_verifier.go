@@ -371,11 +371,13 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 		c.GenerateCoinsForRound(api, round)
 
 		for _, step := range roundSteps {
+			fmt.Printf("--- Verifier Circuit Step (Round %d): %T ---\n", round, step)
 			step.RunGnark(api, c)
 		}
-		if round == 14 {
-			break
-		}
+
+		// if round == 14 {
+		// 	break
+		// }
 	}
 }
 
