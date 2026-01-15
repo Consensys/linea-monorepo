@@ -74,7 +74,7 @@ func TestBatchEvaluateLagrange(t *testing.T) {
 	polyLagrangeSv := make([]smartvectors.SmartVector, nbPoly)
 	for i := 0; i < nbPoly; i++ {
 		d.FFT(polyLagranges[i], fft.DIF)
-		fft.BitReverse(polyLagranges[i])
+		utils.BitReverse(polyLagranges[i])
 		polyLagrangeSv[i] = smartvectors.NewRegular(polyLagranges[i])
 
 	}

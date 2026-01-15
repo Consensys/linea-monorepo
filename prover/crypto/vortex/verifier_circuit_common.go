@@ -31,12 +31,20 @@ type GnarkVerifierInput struct {
 }
 
 func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVerifierInput, roots []frontend.Variable) error {
+
 	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}
+
 	err = GnarkCheckStatement(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+	if err != nil {
+		return err
+	}
+
+	err = GnarkCheckIsCodeWord(api, *params.RsParams, proof.LinearCombination)
 	return err
+
 }
 
 func GnarkCheckIsCodeWord(api frontend.API, params reedsolomon.RsParams, linComb []gnarkfext.E4Gen) error {
