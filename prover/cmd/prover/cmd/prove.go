@@ -33,7 +33,7 @@ func Prove(args ProverArgs) error {
 	// Read config
 	cfg, err := config.NewConfigFromFile(args.ConfigFile)
 	if err != nil {
-		return fmt.Errorf("%s failed to read config file: %w", cmdName, err)
+		return fmt.Errorf("%s failed to read config file at %v: %w", cmdName, args.ConfigFile, err)
 	}
 
 	// Determine job type from input file name

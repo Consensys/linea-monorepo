@@ -35,7 +35,7 @@ func CraftProverOutput(
 			BaseFee:              cfg.Layer2.BaseFee,
 			CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
 			L2BridgeAddress:      types.EthAddress(cfg.Layer2.MsgSvcContract),
-			MaxNbL2MessageHashes: cfg.TracesLimits.BlockL2L1Logs,
+			MaxNbL2MessageHashes: cfg.TracesLimits.BlockL2L1Logs(),
 		}
 	)
 
@@ -234,7 +234,6 @@ func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 // mimcHashLooselyPacked hashes the input stream b using the MiMC hash function
 // encoding each slice of 31 bytes into a field element separately.
 func mimcHashLooselyPacked(b []byte) types.Bls12377Fr {
-	panic("this should use poseidon hashing and use the function made by arya")
 	var buf [32]byte
 	gnarkutil.ChecksumLooselyPackedBytes(b, buf[:], hasher_factory.NewMiMC())
 	return types.AsBls12377Fr(buf[:])

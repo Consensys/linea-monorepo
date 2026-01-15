@@ -163,7 +163,6 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 func (a *Arithmetization) limbColumnsOf(comp *wizard.CompiledIOP, mod string, column string, nLimbs int) []ifaces.Column {
 	names := a.LimbsOf(mod, column, nLimbs)
 	cols := make([]ifaces.Column, len(names))
-	fmt.Printf("[limbColumnsOf] names: %v\n", names)
 	for i, name := range names {
 		cols[i] = comp.Columns.GetHandle(ifaces.ColID(name))
 	}
@@ -267,7 +266,6 @@ func (a *Arithmetization) GetLimbsOfU256Le(comp *wizard.CompiledIOP, mod string,
 // register. The function will fail with panic if the column is not found or the
 // column has more than 1 register.
 func (a *Arithmetization) ColumnOf(comp *wizard.CompiledIOP, name string, column string) ifaces.Column {
-	fmt.Printf("[ColumnOf] name: %s, column: %s\n", name, column)
 	cols := a.limbColumnsOf(comp, name, column, 1)
 	return cols[0]
 }
@@ -291,7 +289,7 @@ func (a *Arithmetization) MashedColumnOf(comp *wizard.CompiledIOP, name string, 
 		return comp.Columns.GetHandle(ifaces.ColID(colName))
 	}
 
-	return expr_handle.ExprHandle(comp, colExpr, colName)
+	return expr_handle.ExprHandleWithoutProverAction(comp, colExpr, colName)
 }
 
 // LimbsOf returns the fully qualified names of the limbs for a given Corset

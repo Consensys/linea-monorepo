@@ -230,7 +230,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 	case circuits.ExecutionCircuitID, circuits.ExecutionLargeCircuitID:
 		limits := cfg.TracesLimits
 		if c == circuits.ExecutionLargeCircuitID {
-			limits = cfg.TracesLimitsLarge
+			limits.SetLargeMode()
 		}
 		extraFlags["cfg_checksum"] = limits.Checksum()
 		zkEvm := zkevm.FullZkEvm(&limits, cfg)

@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -110,7 +111,7 @@ func AssignTxnDataFetcher(run *wizard.ProverRuntime, fetcher TxnDataFetcher, td 
 		// Those are the assignments from the arithmetization
 		arithFrom       [common.NbLimbEthAddress]ifaces.ColAssignment
 		ct              = td.Ct.GetColAssignment(run)
-		fetchedAbsTxNum = td.AbsTxNum.GetColAssignment(run)
+		fetchedAbsTxNum = expr_handle.GetExprHandleAssignment(run, td.AbsTxNum)
 		fetchedRelBlock = td.RelBlock.GetColAssignment(run)
 		arithUser       = td.USER.GetColAssignment(run)
 		tdSelector      = td.Selector.GetColAssignment(run)

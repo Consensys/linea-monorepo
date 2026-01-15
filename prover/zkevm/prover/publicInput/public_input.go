@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -11,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
-	pcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
@@ -50,8 +50,7 @@ type PublicInput struct {
 	RollingHashFetcher *logs.RollingSelector
 	LogHasher          logs.LogHasher
 	DataNbBytes        ifaces.Column
-	ChainID            [pcommon.NbLimbU256]ifaces.Column
-	ChainIDNBytes      ifaces.Column
+	ChainIDFetcher     fetch.ChainIDFetcher
 	Extractor          FunctionalInputExtractor
 }
 
@@ -199,8 +198,7 @@ func newPublicInput(
 		RootHashFetcher:    rootHashFetcher,
 		RollingHashFetcher: rollingSelector,
 		LogHasher:          logHasherL2l1,
-		ChainID:            chainIDFetcher.ChainID,
-		ChainIDNBytes:      chainIDFetcher.NBytesChainID,
+		ChainIDFetcher:     chainIDFetcher,
 		Inputs:             *inp,
 		Aux: AuxiliaryModules{
 			FetchedL2L1:        fetchedL2L1,
@@ -242,8 +240,15 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	fetch.AssignBlockTxnMetadata(run, aux.BlockTxnMetadata, inp.TxnData)
 	fetch.AssignTxnDataFetcher(run, aux.TxnDataFetcher, inp.TxnData)
 	fetch.AssignRlpTxnFetcher(run, &aux.RlpTxnFetcher, inp.RlpTxn)
+	fetch.AssignChainIDFetcher(run, &pub.ChainIDFetcher, inp.BlockData)
+
 	// assign the ExecutionDataCollector
 	pub.Extractor.Run(run)
+
+	// Assign the mashed up log columns that have not been assigned
+	_ = expr_handle.GetExprHandleAssignment(run, pub.Inputs.TxnData.AbsTxNum)
+	_ = expr_handle.GetExprHandleAssignment(run, pub.Inputs.LogCols.AbsLogNum)
+	_ = expr_handle.GetExprHandleAssignment(run, pub.Inputs.LogCols.AbsLogNumMax)
 }
 
 // GetExtractor returns [FunctionalInputExtractor] giving access to the totality
@@ -275,7 +280,7 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 
 	pi.Extractor = FunctionalInputExtractor{
 		// DataNbBytes:   createNewLocalOpening(pi.DataNbBytes),
-		NBytesChainID: createNewLocalOpening(pi.ChainIDNBytes),
+		NBytesChainID: createNewLocalOpening(pi.ChainIDFetcher.NBytesChainID),
 	}
 
 	createNewLocalOpenings(pi.Extractor.L2MessageHash[:], pi.LogHasher.HashFinal[:])
@@ -289,7 +294,7 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 	createNewLocalOpenings(pi.Extractor.LastRollingHashUpdate[:], pi.RollingHashFetcher.Last[:])
 	createNewLocalOpenings(pi.Extractor.FirstRollingHashUpdateNumber[:], pi.RollingHashFetcher.FirstMessageNo[:])
 	createNewLocalOpenings(pi.Extractor.LastRollingHashUpdateNumber[:], pi.RollingHashFetcher.LastMessageNo[:])
-	createNewLocalOpenings(pi.Extractor.ChainID[:], pi.ChainID[:])
+	createNewLocalOpenings(pi.Extractor.ChainID[:], pi.ChainIDFetcher.ChainID[:])
 	createNewLocalOpenings(pi.Extractor.L2MessageServiceAddr[:], pi.Aux.LogSelectors.L2BridgeAddressCol[:])
 	createNewLocalOpenings(pi.Extractor.CoinBase[:], pi.BlockDataFetcher.CoinBase[:])
 	createNewLocalOpenings(pi.Extractor.BaseFee[:], pi.BlockDataFetcher.BaseFee[:])

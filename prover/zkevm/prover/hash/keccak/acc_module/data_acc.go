@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
@@ -130,10 +131,10 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 	providers := d.Inputs.ProvidersData
 	asb := make([]assignmentBuilder, len(providers))
 	for i := range providers {
-		asb[i].HashNum = providers[i].HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
+		asb[i].HashNum = expr_handle.GetExprHandleAssignment(run, providers[i].HashNum).IntoRegVecSaveAlloc()
 		asb[i].Limbs = providers[i].Limbs.GetAssignment(run)
 		asb[i].NBytes = providers[i].NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
-		asb[i].Index = providers[i].Index.GetColAssignment(run).IntoRegVecSaveAlloc()
+		asb[i].Index = expr_handle.GetExprHandleAssignment(run, providers[i].Index).IntoRegVecSaveAlloc()
 		asb[i].TO_HASH = providers[i].ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 
