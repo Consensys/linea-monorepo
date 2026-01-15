@@ -12,7 +12,7 @@ ALU := alu/add.zkasm alu/ext alu/mod.zkasm alu/mul.zkasm
 
 BIN := bin/bin.zkasm
 
-BLAKE_2f_OSAKA := blake2f/blake2f.zkasm
+BLAKE2f := blake2f/blake2f.zkasm
 
 BLAKE2f_MODEXP_DATA  := blake2fmodexpdata
 
@@ -88,6 +88,7 @@ ZKEVM_MODULES_COMMON := ${CONSTANTS} \
 		 ${TABLES} \
 		 ${ALU} \
 		 ${BIN} \
+		 ${BLAKE2f} \
 		 ${BLAKE2f_MODEXP_DATA} \
 		 ${BLOCKDATA} \
 		 ${BLOCKHASH} \
@@ -118,7 +119,6 @@ ZKEVM_MODULES_COMMON := ${CONSTANTS} \
 
 ZKEVM_MODULES_OSAKA := ${ZKEVM_MODULES_COMMON} \
 		 ${CONSTANTS_OSAKA} \
-		 ${BLAKE_2f_OSAKA} \
 		 ${HUB_OSAKA}
 
 all: zkevm_osaka.bin
