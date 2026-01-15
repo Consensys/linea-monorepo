@@ -38,6 +38,7 @@ const createValidEnv = () => ({
   API_PORT: "3000",
   SHOULD_SUBMIT_VAULT_REPORT: "true",
   SHOULD_REPORT_YIELD: "true",
+  IS_UNPAUSE_STAKING_ENABLED: "true",
   MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI: "1000000000000000000",
   CYCLES_PER_YIELD_REPORT: "12",
 });
@@ -90,6 +91,7 @@ describe("toClientConfig", () => {
       reporting: {
         shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,
         shouldReportYield: env.SHOULD_REPORT_YIELD,
+        isUnpauseStakingEnabled: env.IS_UNPAUSE_STAKING_ENABLED,
         minNegativeYieldDiffToReportYieldWei: env.MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI,
         cyclesPerYieldReport: env.CYCLES_PER_YIELD_REPORT,
       },

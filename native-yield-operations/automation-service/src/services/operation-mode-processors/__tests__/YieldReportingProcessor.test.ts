@@ -154,6 +154,7 @@ describe("YieldReportingProcessor", () => {
   const createProcessor = (
     shouldSubmitVaultReport: boolean = true,
     shouldReportYield: boolean = true,
+    isUnpauseStakingEnabled: boolean = true,
     minNegativeYieldDiffToReportYieldWei: bigint = 1000000000000000000n,
     minWithdrawalThresholdEth: bigint = 0n,
     cyclesPerYieldReport: number = 12,
@@ -172,6 +173,7 @@ describe("YieldReportingProcessor", () => {
       l2Recipient,
       shouldSubmitVaultReport,
       shouldReportYield,
+      isUnpauseStakingEnabled,
       minNegativeYieldDiffToReportYieldWei,
       minWithdrawalThresholdEth,
       cyclesPerYieldReport,
@@ -251,7 +253,7 @@ describe("YieldReportingProcessor", () => {
 
     const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(200);
 
-    const processor = createProcessor(false, true);
+    const processor = createProcessor(false, true, true);
     // Set cycleCount to 11 so that when _process() increments it to 12, cycle-based reporting will trigger (12 % 12 === 0)
     (processor as any).cycleCount = 11;
     await processor.process();
@@ -376,6 +378,59 @@ describe("YieldReportingProcessor", () => {
     amendmentSpy.mockRestore();
   });
 
+  it("_process - does not unpause staking when isUnpauseStakingEnabled is false (STAKE→NONE)", async () => {
+    yieldManager.getRebalanceRequirements
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.STAKE, rebalanceAmount: 3n })
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
+
+    const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(200);
+    const processor = createProcessor(true, true, false); // isUnpauseStakingEnabled = false
+    const amendmentSpy = jest.spyOn(
+      processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
+      "_handleUnstakingRebalance",
+    );
+
+    await processor.process();
+
+    expect(amendmentSpy).not.toHaveBeenCalled();
+    expect(yieldManager.unpauseStakingIfNotAlready).not.toHaveBeenCalled();
+
+    performanceSpy.mockRestore();
+    amendmentSpy.mockRestore();
+  });
+
+  it("_process - does not unpause staking when isUnpauseStakingEnabled is false (NONE→NONE)", async () => {
+    yieldManager.getRebalanceRequirements
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
+      .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
+
+    // Mock _shouldReportYield to return true
+    vaultHubClient.settleableLidoFeesValue.mockResolvedValue(600000000000000000n); // above threshold
+    yieldManager.peekYieldReport.mockResolvedValue({
+      yieldAmount: 2000000000000000000n,
+      outstandingNegativeYield: 0n,
+      yieldProvider,
+    });
+
+    const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(200);
+    const processor = createProcessor(true, true, false); // isUnpauseStakingEnabled = false
+    const amendmentSpy = jest.spyOn(
+      processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
+      "_handleUnstakingRebalance",
+    );
+
+    await processor.process();
+
+    expect(amendmentSpy).not.toHaveBeenCalled();
+    expect(yieldManager.unpauseStakingIfNotAlready).not.toHaveBeenCalled();
+    expect(beaconClient.submitWithdrawalRequestsToFulfilAmount).not.toHaveBeenCalled();
+
+    performanceSpy.mockRestore();
+    amendmentSpy.mockRestore();
+  });
+
   it("_handleRebalance reports yield when no rebalance is needed", async () => {
     const processor = createProcessor();
     const reportYieldSpy = jest
@@ -397,7 +452,7 @@ describe("YieldReportingProcessor", () => {
   it("_handleNoRebalance transfers YieldManager balance when above threshold", async () => {
     const minWithdrawalThresholdEth = 1n; // 1 ETH threshold
     const yieldManagerBalance = 2n * 1000000000000000000n; // 2 ETH (above threshold)
-    const processor = createProcessor(true, true, 1000000000000000000n, minWithdrawalThresholdEth);
+    const processor = createProcessor(true, true, true, 1000000000000000000n, minWithdrawalThresholdEth);
     
     yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
     yieldManager.fundYieldProvider.mockResolvedValueOnce({ transactionHash: "0xtransfer" } as unknown as TransactionReceipt);
@@ -424,7 +479,7 @@ describe("YieldReportingProcessor", () => {
   it("_handleNoRebalance skips transfer when YieldManager balance is below threshold", async () => {
     const minWithdrawalThresholdEth = 1n; // 1 ETH threshold
     const yieldManagerBalance = 500000000000000000n; // 0.5 ETH (below threshold)
-    const processor = createProcessor(true, true, 1000000000000000000n, minWithdrawalThresholdEth);
+    const processor = createProcessor(true, true, true, 1000000000000000000n, minWithdrawalThresholdEth);
     
     yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
     
@@ -758,7 +813,7 @@ describe("YieldReportingProcessor", () => {
 
 
   it("_handleSubmitLatestVaultReport skips vault report submission when shouldSubmitVaultReport is false", async () => {
-    const processor = createProcessor(false, true);
+    const processor = createProcessor(false, true, true);
     (processor as unknown as { vault: Address }).vault = vaultAddress;
 
     await (
@@ -827,6 +882,7 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         true,
+        true,
         minNegativeYieldDiffToReportYieldWei,
       );
       const result = await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
@@ -865,6 +921,7 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         true,
+        true,
         minNegativeYieldDiffToReportYieldWei,
       );
       // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
@@ -888,6 +945,7 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         true,
+        true,
         minNegativeYieldDiffToReportYieldWei,
       );
       // Set cycleCount to a value that's not divisible by cyclesPerYieldReport (default 12)
@@ -904,6 +962,7 @@ describe("YieldReportingProcessor", () => {
       yieldManager.peekYieldReport.mockResolvedValue(undefined);
 
       const processor = createProcessor(
+        true,
         true,
         true,
         minNegativeYieldDiffToReportYieldWei,
@@ -1014,6 +1073,7 @@ describe("YieldReportingProcessor", () => {
       const processor = createProcessor(
         true,
         true,
+        true,
         minNegativeYieldDiffToReportYieldWei,
         0n,
         cyclesPerYieldReport,
@@ -1080,6 +1140,7 @@ describe("YieldReportingProcessor", () => {
 
       const cyclesPerYieldReport = 12;
       const processor = createProcessor(
+        true,
         true,
         true,
         minNegativeYieldDiffToReportYieldWei,

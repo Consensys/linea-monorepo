@@ -44,6 +44,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @param {Address} l2YieldRecipient - The L2 yield recipient address for yield reporting.
    * @param {boolean} shouldSubmitVaultReport - Whether to submit the vault accounting report. Can be set to false if other actors are expected to submit.
    * @param {boolean} shouldReportYield - Whether to report yield. Can be set to false to disable yield reporting entirely.
+   * @param {boolean} isUnpauseStakingEnabled - Whether to unpause staking when conditions are met. Can be set to false to disable automatic unpause of staking operations.
    * @param {bigint} minNegativeYieldDiffToReportYieldWei - Minimum difference between peeked negative yield and on-state negative yield (in wei) required before triggering a yield report.
    * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH (stored as wei) required before withdrawal operations proceed.
    * @param {number} cyclesPerYieldReport - Number of processing cycles between forced yield reports. Yield will be reported every N cycles regardless of threshold checks.
@@ -62,6 +63,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly l2YieldRecipient: Address,
     private readonly shouldSubmitVaultReport: boolean,
     private readonly shouldReportYield: boolean,
+    private readonly isUnpauseStakingEnabled: boolean,
     private readonly minNegativeYieldDiffToReportYieldWei: bigint,
     private readonly minWithdrawalThresholdEth: bigint,
     private readonly cyclesPerYieldReport: number,
@@ -181,6 +183,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     // If we don't need any ETH on L1MessageService, and there is ETH sitting on StakingVault, unpause staking to allow Deposit Service to stake.
     if (
+      this.isUnpauseStakingEnabled &&
       initialRebalanceRequirements.rebalanceDirection !== RebalanceDirection.UNSTAKE &&
       postReportRebalanceRequirements.rebalanceDirection !== RebalanceDirection.UNSTAKE
     ) {

@@ -37,6 +37,7 @@ const createValidEnv = () => ({
   API_PORT: "3000",
   SHOULD_SUBMIT_VAULT_REPORT: "true",
   SHOULD_REPORT_YIELD: "true",
+  IS_UNPAUSE_STAKING_ENABLED: "true",
   MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI: "1000000000000000000",
   CYCLES_PER_YIELD_REPORT: "12",
 });
@@ -57,6 +58,7 @@ describe("configSchema", () => {
     expect(parsed.WEB3SIGNER_TLS_ENABLED).toBe(true);
     expect(parsed.SHOULD_SUBMIT_VAULT_REPORT).toBe(true);
     expect(parsed.SHOULD_REPORT_YIELD).toBe(true);
+    expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(true);
     expect(parsed.LINEA_ROLLUP_ADDRESS).toBe(getAddress(env.LINEA_ROLLUP_ADDRESS));
     expect(parsed.LAZY_ORACLE_ADDRESS).toBe(getAddress(env.LAZY_ORACLE_ADDRESS));
     expect(parsed.VAULT_HUB_ADDRESS).toBe(getAddress(env.VAULT_HUB_ADDRESS));
@@ -468,6 +470,157 @@ describe("configSchema", () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues.some((issue) => issue.path.join(".") === "SHOULD_SUBMIT_VAULT_REPORT")).toBe(true);
+      }
+    });
+  });
+
+  describe("IS_UNPAUSE_STAKING_ENABLED", () => {
+    it("parses string 'false' as false", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: "false",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(false);
+    });
+
+    it("parses string 'true' as true", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: "true",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(true);
+    });
+
+    it("parses case-insensitive string 'FALSE' as false", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: "FALSE",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(false);
+    });
+
+    it("parses case-insensitive string 'True' as true", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: "True",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(true);
+    });
+
+    it("parses numeric string '0' as false", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: "0",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(false);
+    });
+
+    it("parses numeric string '1' as true", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: "1",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(true);
+    });
+
+    it("parses actual boolean false as false", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: false,
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(false);
+    });
+
+    it("parses actual boolean true as true", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: true,
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(true);
+    });
+
+    it("parses numeric 0 as false", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: 0,
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(false);
+    });
+
+    it("parses numeric 1 as true", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: 1,
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(true);
+    });
+
+    it("handles strings with whitespace", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: "  false  ",
+      };
+
+      const parsed = configSchema.parse(env);
+
+      expect(parsed.IS_UNPAUSE_STAKING_ENABLED).toBe(false);
+    });
+
+    it("rejects invalid string values", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: "invalid",
+      };
+
+      const result = configSchema.safeParse(env);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.join(".") === "IS_UNPAUSE_STAKING_ENABLED")).toBe(true);
+      }
+    });
+
+    it("rejects empty string", () => {
+      const env = {
+        ...createValidEnv(),
+        IS_UNPAUSE_STAKING_ENABLED: "",
+      };
+
+      const result = configSchema.safeParse(env);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.join(".") === "IS_UNPAUSE_STAKING_ENABLED")).toBe(true);
       }
     });
   });
