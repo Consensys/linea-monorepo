@@ -20,6 +20,7 @@
 *.dylib
 *.iml
 *.test
+*.lisp
 *.cov.tmp
 *.iws
 *.ipr
