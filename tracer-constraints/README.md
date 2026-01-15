@@ -24,10 +24,10 @@ tbd -->
 Linea's stack is made up of multiple components, these include:
 
 - [linea-monorepo](https://github.com/Consensys/linea-monorepo): The main repository for the Linea stack & network
-- In which, this folder, `tracer-constraints`: Implementation of the constraint system from the specification
+- In which, this folder, [tracer-constraints](../tracer-constraints): Implementation of the constraint system from the specification
 > Also maintains a set of Linea-Besu plugins for the sequencer, tracer, and RPC nodes.
-- In which, the `tracer` component: Linea-Besu plugin which produces the traces that the constraint system applies and that serve as inputs to the prover
-- [linea-specification](https://github.com/Consensys/linea-specification): Specification of the constraint system defining Linea's zkEVM
+- In which, the [tracer](../tracer) component: Linea-Besu plugin which produces the traces that the constraint system applies and that serve as inputs to the prover
+- [linea-specification](https://github.com/Consensys/linea-specification): Specification repo of the constraint system defining Linea's zkEVM
 
 Linea abstracts away the complexity of this technical architecture to allow developers to:
 
