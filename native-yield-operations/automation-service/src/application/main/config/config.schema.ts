@@ -137,26 +137,19 @@ export const configSchema = z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
-    /** Maximum staking rebalance amount (in wei) that can be processed per loop iteration.
-     * When a staking rebalance is required, the rebalance amount will be capped to this limit.
-     * Any excess amount will be handled in subsequent loop iterations.
-     * This prevents processing very large rebalance amounts in a single transaction.
+    /** Staking rebalance quota as basis points (bps) of Total System Balance (TSB).
+     * The quota is calculated as a percentage of TSB over a rolling window of cycles.
+     * 100 bps = 1%, 1800 bps = 18%, 10000 bps = 100%.
+     * Used to mitigate whale-driven reserve depletion risk by limiting cumulative deposits.
+     * Valid range: 0 to 10000 (0% to 100%).
      */
-    MAX_STAKING_REBALANCE_AMOUNT_WEI: z
-      .union([z.string(), z.number(), z.bigint()])
-      .transform((val) => BigInt(val))
-      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
-    /** Circuit breaker threshold (in wei) for STAKE direction rebalances.
-     * When the absolute rebalance requirement exceeds this threshold, the circuit breaker trips
-     * and STAKE operations are prevented. Admins can effectively reset the circuit breaker by changing
-     * this value to a higher amount and restarting the application.
-     * Must be greater than MAX_STAKING_REBALANCE_AMOUNT_WEI to allow gradual rebalancing up to
-     * the rate limit before tripping.
+    STAKING_REBALANCE_QUOTA_BPS: z.coerce.number().int().min(0).max(10000),
+    /** Number of cycles in the rolling window for staking rebalance quota tracking.
+     * Each cycle corresponds to a YieldReportingProcessor.process() call.
+     * The quota service tracks cumulative deposits over this many cycles.
+     * Set to 0 to disable the quota mechanism entirely - all rebalance amounts will pass through without quota enforcement.
      */
-    STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI: z
-      .union([z.string(), z.number(), z.bigint()])
-      .transform((val) => BigInt(val))
-      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+    STAKING_REBALANCE_QUOTA_WINDOW_SIZE_IN_CYCLES: z.coerce.number().int().min(0),
     /** Web3Signer service URL for transaction signing.
      * The service signs transactions using the key specified by WEB3SIGNER_PUBLIC_KEY.
      * Must be a valid HTTPS (not HTTP) URL.
@@ -204,10 +197,6 @@ export const configSchema = z
       })
       .optional(),
   })
-  .strip()
-  .refine((data) => data.STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI > data.MAX_STAKING_REBALANCE_AMOUNT_WEI, {
-    message: "STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI must be greater than MAX_STAKING_REBALANCE_AMOUNT_WEI",
-    path: ["STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI"],
-  });
+  .strip();
 
 export type FlattenedConfigSchema = z.infer<typeof configSchema>;

@@ -54,6 +54,8 @@ import { STETHContractClient } from "../../clients/contracts/STETHContractClient
 import { ISTETH } from "../../core/clients/contracts/ISTETH.js";
 import { GaugeMetricsPoller } from "../../services/GaugeMetricsPoller.js";
 import { EstimateGasErrorReporter } from "../../core/services/EstimateGasErrorReporter.js";
+import { RebalanceQuotaService } from "../../services/RebalanceQuotaService.js";
+import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
 
 /**
  * Bootstrap class for the Native Yield Automation Service.
@@ -150,14 +152,21 @@ export class NativeYieldAutomationServiceBootstrap {
       this.viemBlockchainClientAdapter,
       new WinstonLogger(StakingVaultContractClient.name, config.loggerOptions),
     );
+    const rebalanceQuotaService = new RebalanceQuotaService(
+      new WinstonLogger(RebalanceQuotaService.name, config.loggerOptions),
+      this.metricsUpdater,
+      RebalanceDirection.STAKE,
+      config.rebalance.stakingRebalanceQuotaWindowSizeInCycles,
+      config.rebalance.stakingRebalanceQuotaBps,
+      config.rebalance.toleranceAmountWei,
+    );
     this.yieldManagerContractClient = new YieldManagerContractClient(
       new WinstonLogger(YieldManagerContractClient.name, config.loggerOptions),
       this.viemBlockchainClientAdapter,
       config.contractAddresses.yieldManagerAddress,
       config.rebalance.toleranceAmountWei,
       config.rebalance.minWithdrawalThresholdEth,
-      config.rebalance.maxStakingRebalanceAmountWei,
-      config.rebalance.stakeCircuitBreakerThresholdWei,
+      rebalanceQuotaService,
       this.metricsUpdater,
     );
     this.lazyOracleContractClient = new LazyOracleContractClient(

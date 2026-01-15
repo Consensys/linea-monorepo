@@ -1180,16 +1180,16 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
     });
   });
 
-  describe("incrementStakeCircuitBreakerTrip", () => {
+  describe("incrementStakingDepositQuotaExceeded", () => {
     it("increments counter with vault address", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.incrementStakeCircuitBreakerTrip(vaultAddress);
+      updater.incrementStakingDepositQuotaExceeded(vaultAddress);
 
       expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.StakeCircuitBreakerTripsTotal,
+        LineaNativeYieldAutomationServiceMetrics.StakingDepositQuotaExceeded,
         { vault_address: vaultAddress },
       );
     });

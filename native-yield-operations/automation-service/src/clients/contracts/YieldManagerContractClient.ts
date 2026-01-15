@@ -25,6 +25,7 @@ import { StakingVaultABI } from "../../core/abis/StakingVault.js";
 import { WithdrawalEvent } from "../../core/entities/WithdrawalEvent.js";
 import { DashboardContractClient } from "./DashboardContractClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import { IRebalanceQuotaService } from "../../core/services/IRebalanceQuotaService.js";
 import { DashboardErrorsABI } from "../../core/abis/errors/DashboardErrors.js";
 import { LidoStVaultYieldProviderErrorsABI } from "../../core/abis/errors/LidoStVaultYieldProviderErrors.js";
 import { StakingVaultErrorsABI } from "../../core/abis/errors/StakingVaultErrors.js";
@@ -54,8 +55,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @param {Address} contractAddress - The address of the YieldManager contract.
    * @param {bigint} rebalanceToleranceAmountWei - Rebalance tolerance amount in wei (absolute tolerance band for determining when rebalancing is required).
    * @param {bigint} minWithdrawalThresholdEth - Minimum withdrawal threshold in ETH (for threshold-based withdrawal operations).
-   * @param {bigint} maxStakingRebalanceAmountWei - Maximum staking rebalance amount (in wei) that can be processed per loop iteration.
-   * @param {bigint} stakeCircuitBreakerThresholdWei - Circuit breaker threshold (in wei) for STAKE direction rebalances.
+   * @param {IRebalanceQuotaService} [rebalanceQuotaService] - Service for enforcing rebalance quota limits on STAKE direction rebalances.
    * @param {INativeYieldAutomationMetricsUpdater} [metricsUpdater] - Optional metrics updater for tracking circuit breaker trips and rebalance requirements.
    */
   constructor(
@@ -64,8 +64,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     private readonly contractAddress: Address,
     private readonly rebalanceToleranceAmountWei: bigint,
     private readonly minWithdrawalThresholdEth: bigint,
-    private readonly maxStakingRebalanceAmountWei: bigint,
-    private readonly stakeCircuitBreakerThresholdWei: bigint,
+    private readonly rebalanceQuotaService: IRebalanceQuotaService,
     private readonly metricsUpdater?: INativeYieldAutomationMetricsUpdater,
   ) {
     this.contract = getContract({
@@ -539,7 +538,6 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       peekedYieldReportYieldAmount,
       peekedYieldReportOutstandingNegativeYield,
       rebalanceToleranceAmountWei: this.rebalanceToleranceAmountWei,
-      maxStakingRebalanceAmountWei: this.maxStakingRebalanceAmountWei,
     });
 
     if (totalSystemBalance === 0n) {
@@ -597,7 +595,17 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       }
     }
 
-    if (absRebalanceRequirement < toleranceBand) {
+    const absRebalanceAmountAfterQuota =
+      directionForMetrics === RebalanceDirection.STAKE
+        ? this.rebalanceQuotaService.getRebalanceAmountAfterQuota(
+            vaultAddress,
+            totalSystemBalance,
+            absRebalanceRequirement,
+          )
+        : absRebalanceRequirement;
+    this.logger.info(`_getRebalanceRequirements - absRebalanceAmountAfterQuota=${absRebalanceAmountAfterQuota}`);
+
+    if (absRebalanceAmountAfterQuota < toleranceBand) {
       const result = {
         rebalanceDirection: RebalanceDirection.NONE,
         rebalanceAmount: 0n,
@@ -609,37 +617,14 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     if (l1MessageServiceBalance < effectiveTargetWithdrawalReserveExcludingObligations) {
       const result = {
         rebalanceDirection: RebalanceDirection.UNSTAKE,
-        rebalanceAmount: absRebalanceRequirement,
+        rebalanceAmount: absRebalanceAmountAfterQuota,
       };
       this.logger.info("_getRebalanceRequirements - result", result);
       return result;
     } else {
-      // Apply circuit breaker
-      if (absRebalanceRequirement > this.stakeCircuitBreakerThresholdWei) {
-        this.logger.warn(
-          `_getRebalanceRequirements - staking circuit breaker tripped, skipping staking rebalance as absRebalanceRequirement=${absRebalanceRequirement} exceeds the circuit breaker threshold of ${this.stakeCircuitBreakerThresholdWei}`,
-        );
-        if (this.metricsUpdater) {
-          this.metricsUpdater.incrementStakeCircuitBreakerTrip(vaultAddress);
-        }
-        return {
-          rebalanceDirection: RebalanceDirection.NONE,
-          rebalanceAmount: 0n,
-        };
-      }
-      // Apply rate limit
-      const cappedAmount =
-        absRebalanceRequirement > this.maxStakingRebalanceAmountWei
-          ? this.maxStakingRebalanceAmountWei
-          : absRebalanceRequirement;
-      if (cappedAmount < absRebalanceRequirement) {
-        this.logger.info(
-          `_getRebalanceRequirements - capping staking rebalance amount from ${absRebalanceRequirement} to ${cappedAmount} (limit: ${this.maxStakingRebalanceAmountWei})`,
-        );
-      }
       const result = {
         rebalanceDirection: RebalanceDirection.STAKE,
-        rebalanceAmount: cappedAmount,
+        rebalanceAmount: absRebalanceAmountAfterQuota,
       };
       this.logger.info("_getRebalanceRequirements - result", result);
       return result;

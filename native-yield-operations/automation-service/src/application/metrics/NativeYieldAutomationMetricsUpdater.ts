@@ -213,8 +213,8 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
 
     this.metricsService.createCounter(
-      LineaNativeYieldAutomationServiceMetrics.StakeCircuitBreakerTripsTotal,
-      "Total number of times the STAKE circuit breaker has tripped",
+      LineaNativeYieldAutomationServiceMetrics.StakingDepositQuotaExceeded,
+      "Total number of times the staking deposit quota has been exceeded",
       ["vault_address"],
     );
 
@@ -656,12 +656,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   /**
-   * Increments the counter for STAKE circuit breaker trips for a specific vault.
+   * Increments the counter for staking deposit quota exceeded events.
    *
    * @param {Address} vaultAddress - The address of the vault.
    */
-  public incrementStakeCircuitBreakerTrip(vaultAddress: Address): void {
-    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.StakeCircuitBreakerTripsTotal, {
+  public incrementStakingDepositQuotaExceeded(vaultAddress: Address): void {
+    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.StakingDepositQuotaExceeded, {
       vault_address: vaultAddress,
     });
   }
@@ -713,19 +713,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    * @param {string} rawRevertData - The raw revert data (hex string).
    * @param {string} [errorName] - The decoded error name (if available, otherwise "unknown").
    */
-  public incrementContractEstimateGasError(
-    contractAddress: Address,
-    rawRevertData: string,
-    errorName?: string,
-  ): void {
-    this.metricsService.incrementCounter(
-      LineaNativeYieldAutomationServiceMetrics.ContractEstimateGasError,
-      {
-        contract_address: contractAddress,
-        rawRevertData: rawRevertData,
-        errorName: errorName ?? "unknown",
-      },
-    );
+  public incrementContractEstimateGasError(contractAddress: Address, rawRevertData: string, errorName?: string): void {
+    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.ContractEstimateGasError, {
+      contract_address: contractAddress,
+      rawRevertData: rawRevertData,
+      errorName: errorName ?? "unknown",
+    });
   }
 
   /**

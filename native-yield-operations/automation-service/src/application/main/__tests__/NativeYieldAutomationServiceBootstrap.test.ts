@@ -164,6 +164,16 @@ jest.mock(
   { virtual: true },
 );
 jest.mock(
+  "../../../services/RebalanceQuotaService.js",
+  () => ({
+    RebalanceQuotaService: jest.fn().mockImplementation(() => ({
+      getRebalanceAmountAfterQuota: jest.fn(),
+      getStakingDirection: jest.fn(),
+    })),
+  }),
+  { virtual: true },
+);
+jest.mock(
   "../../metrics/OperationModeMetricsRecorder.js",
   () => ({
     OperationModeMetricsRecorder: jest.fn().mockImplementation(() => ({})),
@@ -226,12 +236,13 @@ const createBootstrapConfig = () => ({
     toleranceAmountWei: 5000000000000000000n,
     maxValidatorWithdrawalRequestsPerTransaction: 16,
     minWithdrawalThresholdEth: 42n,
-    maxStakingRebalanceAmountWei: 1000000000000000000000n,
-    stakeCircuitBreakerThresholdWei: 2000000000000000000000n,
+    stakingRebalanceQuotaBps: 1800,
+    stakingRebalanceQuotaWindowSizeInCycles: 24,
   },
   reporting: {
     shouldSubmitVaultReport: true,
     shouldReportYield: true,
+    isUnpauseStakingEnabled: true,
     minNegativeYieldDiffToReportYieldWei: 1000000000000000000n,
     cyclesPerYieldReport: 12,
   },

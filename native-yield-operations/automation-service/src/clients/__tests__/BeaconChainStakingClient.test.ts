@@ -58,7 +58,7 @@ const createMetricsUpdaterMock = () => {
     addLidoFeesPaid: jest.fn(),
     incrementOperationModeExecution: jest.fn(),
     recordOperationModeDuration: jest.fn(),
-    incrementStakeCircuitBreakerTrip: jest.fn(),
+    incrementStakingDepositQuotaExceeded: jest.fn(),
     setActualRebalanceRequirement: jest.fn(),
     setReportedRebalanceRequirement: jest.fn(),
     incrementContractEstimateGasError: jest.fn(),

@@ -125,9 +125,9 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `mode`
   OperationModeExecutionDurationSeconds = "linea_native_yield_automation_service_operation_mode_execution_duration_seconds",
 
-  // Counter that increments each time the STAKE circuit breaker trips
+  // Counter that increments each time the staking deposit quota is exceeded
   // Single label `vault_address`
-  StakeCircuitBreakerTripsTotal = "linea_native_yield_automation_service_stake_circuit_breaker_trips_total",
+  StakingDepositQuotaExceeded = "linea_native_yield_automation_service_staking_deposit_quota_exceeded",
 
   // Gauge representing the original rebalance requirement (in gwei) before applying tolerance band, circuit breaker, or rate limit
   // Labels: `vault_address`, `staking_direction` (values: "STAKING", "UNSTAKING", "NONE")

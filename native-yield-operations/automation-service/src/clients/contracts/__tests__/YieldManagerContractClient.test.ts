@@ -11,6 +11,7 @@ import { VaultHubErrorsABI } from "../../../core/abis/errors/VaultHubErrors.js";
 import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
 import type { WithdrawalRequests } from "../../../core/entities/LidoStakingVaultWithdrawalParams.js";
 import type { INativeYieldAutomationMetricsUpdater } from "../../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import type { IRebalanceQuotaService } from "../../../core/services/IRebalanceQuotaService.js";
 
 const YieldManagerCombinedABI = [
   ...YieldManagerABI,
@@ -92,17 +93,20 @@ describe("YieldManagerContractClient", () => {
       logs,
     }) as unknown as TransactionReceipt;
 
+  const createDefaultQuotaService = (): IRebalanceQuotaService => ({
+    getRebalanceAmountAfterQuota: jest.fn((_vaultAddress, _totalSystemBalance, reBalanceAmountWei) => reBalanceAmountWei),
+    getStakingDirection: jest.fn(() => RebalanceDirection.STAKE),
+  });
+
   const createClient = ({
     rebalanceToleranceAmountWei = 1000000000000000000n, // 1 ETH default
     minWithdrawalThresholdEth = 0n,
-    maxStakingRebalanceAmountWei = 1000000000000000000000n, // 1000 ETH default
-    stakeCircuitBreakerThresholdWei = 2000000000000000000000n, // 2000 ETH default
+    rebalanceQuotaService = createDefaultQuotaService(),
     metricsUpdater,
   }: {
     rebalanceToleranceAmountWei?: bigint;
     minWithdrawalThresholdEth?: bigint;
-    maxStakingRebalanceAmountWei?: bigint;
-    stakeCircuitBreakerThresholdWei?: bigint;
+    rebalanceQuotaService?: IRebalanceQuotaService;
     metricsUpdater?: Partial<INativeYieldAutomationMetricsUpdater>;
   } = {}) =>
     new YieldManagerContractClient(
@@ -111,8 +115,7 @@ describe("YieldManagerContractClient", () => {
       contractAddress,
       rebalanceToleranceAmountWei,
       minWithdrawalThresholdEth,
-      maxStakingRebalanceAmountWei,
-      stakeCircuitBreakerThresholdWei,
+      rebalanceQuotaService,
       metricsUpdater as INativeYieldAutomationMetricsUpdater | undefined,
     );
 
@@ -482,8 +485,7 @@ describe("YieldManagerContractClient", () => {
       peekedYieldAmount: bigint,
       peekedOutstandingNegativeYield: bigint,
       rebalanceToleranceAmountWei: bigint = 1000000000000000000n, // 1 ETH default
-      maxStakingRebalanceAmountWei: bigint = 1000000000000000000000n,
-      stakeCircuitBreakerThresholdWei: bigint = 2000000000000000000000n,
+      rebalanceQuotaService?: IRebalanceQuotaService,
       metricsUpdater?: Partial<INativeYieldAutomationMetricsUpdater>,
     ) {
       // --- Contract stubs ---
@@ -507,8 +509,7 @@ describe("YieldManagerContractClient", () => {
       // --- Instantiate client ---
       const client = createClient({
         rebalanceToleranceAmountWei,
-        maxStakingRebalanceAmountWei,
-        stakeCircuitBreakerThresholdWei,
+        rebalanceQuotaService,
         metricsUpdater: metricsUpdater as INativeYieldAutomationMetricsUpdater | undefined,
       });
 
@@ -713,7 +714,7 @@ describe("YieldManagerContractClient", () => {
       });
     });
 
-    it("caps staking rebalance amount when it exceeds maxStakingRebalanceAmountWei limit", async () => {
+    it("caps staking rebalance amount when quota service returns partial amount", async () => {
       const totalSystemBalance = 1_000_000n;
       const effectiveTarget = 400_000n;
       const dashboardTotalValue = 100_000n;
@@ -722,7 +723,10 @@ describe("YieldManagerContractClient", () => {
       const peekedOutstandingNegativeYield = 0n;
       const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 900_000n;
-      const maxStakingRebalanceAmountWei = 100_000n;
+      const absRebalanceRequirement = l1MessageServiceBalance - effectiveTarget; // 500_000n
+      const cappedAmount = 100_000n;
+      const mockQuotaService = createDefaultQuotaService();
+      (mockQuotaService.getRebalanceAmountAfterQuota as jest.Mock).mockReturnValue(cappedAmount);
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
         totalSystemBalance,
@@ -732,21 +736,21 @@ describe("YieldManagerContractClient", () => {
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
         rebalanceToleranceAmountWei,
-        maxStakingRebalanceAmountWei,
+        mockQuotaService,
       );
       // Expectations
       await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
         rebalanceDirection: RebalanceDirection.STAKE,
-        rebalanceAmount: maxStakingRebalanceAmountWei,
+        rebalanceAmount: cappedAmount,
       });
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `_getRebalanceRequirements - capping staking rebalance amount from ${l1MessageServiceBalance - effectiveTarget} to ${maxStakingRebalanceAmountWei}`,
-        ),
+      expect(mockQuotaService.getRebalanceAmountAfterQuota).toHaveBeenCalledWith(
+        stakingVaultAddress,
+        totalSystemBalance,
+        absRebalanceRequirement,
       );
     });
 
-    it("correctly applies circuit breaker when rebalance requirement exceeds stakeCircuitBreakerThresholdWei limit", async () => {
+    it("correctly applies quota when quota service returns 0n (quota exceeded)", async () => {
       const totalSystemBalance = 1_000_000n;
       const effectiveTarget = 400_000n;
       const dashboardTotalValue = 100_000n;
@@ -755,8 +759,9 @@ describe("YieldManagerContractClient", () => {
       const peekedOutstandingNegativeYield = 0n;
       const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 900_000n;
-      const maxStakingRebalanceAmountWei = 100_000n;
-      const stakeCircuitBreakerThresholdWei = 200_000n;
+      const absRebalanceRequirement = l1MessageServiceBalance - effectiveTarget; // 500_000n
+      const mockQuotaService = createDefaultQuotaService();
+      (mockQuotaService.getRebalanceAmountAfterQuota as jest.Mock).mockReturnValue(0n);
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
         totalSystemBalance,
@@ -766,24 +771,23 @@ describe("YieldManagerContractClient", () => {
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
         rebalanceToleranceAmountWei,
-        maxStakingRebalanceAmountWei,
-        stakeCircuitBreakerThresholdWei,
+        mockQuotaService,
       );
       // Expectations
       await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
         rebalanceDirection: RebalanceDirection.NONE,
         rebalanceAmount: 0n,
       });
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `_getRebalanceRequirements - staking circuit breaker tripped, skipping staking rebalance as absRebalanceRequirement=${l1MessageServiceBalance - effectiveTarget} exceeds the circuit breaker threshold of ${stakeCircuitBreakerThresholdWei}`,
-        ),
+      expect(mockQuotaService.getRebalanceAmountAfterQuota).toHaveBeenCalledWith(
+        stakingVaultAddress,
+        totalSystemBalance,
+        absRebalanceRequirement,
       );
     });
 
-    it("tracks metrics when metricsUpdater is provided", async () => {
+    it("tracks metrics when metricsUpdater is provided and quota service returns 0n", async () => {
       const metricsUpdater = {
-        incrementStakeCircuitBreakerTrip: jest.fn(),
+        incrementStakingDepositQuotaExceeded: jest.fn(),
         setActualRebalanceRequirement: jest.fn(),
         setReportedRebalanceRequirement: jest.fn(),
         incrementContractEstimateGasError: jest.fn(),
@@ -796,9 +800,9 @@ describe("YieldManagerContractClient", () => {
       const peekedOutstandingNegativeYield = 0n;
       const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 900_000n;
-      const maxStakingRebalanceAmountWei = 100_000n;
-      const stakeCircuitBreakerThresholdWei = 200_000n;
       const absRebalanceRequirement = l1MessageServiceBalance - effectiveTarget; // 500_000n
+      const mockQuotaService = createDefaultQuotaService();
+      (mockQuotaService.getRebalanceAmountAfterQuota as jest.Mock).mockReturnValue(0n);
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
         totalSystemBalance,
@@ -808,8 +812,7 @@ describe("YieldManagerContractClient", () => {
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
         rebalanceToleranceAmountWei,
-        maxStakingRebalanceAmountWei,
-        stakeCircuitBreakerThresholdWei,
+        mockQuotaService,
         metricsUpdater,
       );
 
@@ -822,15 +825,15 @@ describe("YieldManagerContractClient", () => {
         weiToGweiNumber(absRebalanceRequirement),
         RebalanceDirection.STAKE,
       );
-      // Reported requirement should be 0 when circuit breaker trips
+      // Reported requirement should be 0 when quota service returns 0n
       expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(stakingVaultAddress, 0, RebalanceDirection.NONE);
-      // Counter should be incremented when circuit breaker trips
-      expect(metricsUpdater.incrementStakeCircuitBreakerTrip).toHaveBeenCalledWith(stakingVaultAddress);
+      // Note: incrementStakingDepositQuotaExceeded is called inside RebalanceQuotaService, not in YieldManagerContractClient.
+      // Testing that the quota service calls the metrics updater is done in RebalanceQuotaService tests, not here.
     });
 
     it("tracks gauge metric for all rebalance paths when metricsUpdater is provided", async () => {
       const metricsUpdater = {
-        incrementStakeCircuitBreakerTrip: jest.fn(),
+        incrementStakingDepositQuotaExceeded: jest.fn(),
         setActualRebalanceRequirement: jest.fn(),
         setReportedRebalanceRequirement: jest.fn(),
         incrementContractEstimateGasError: jest.fn(),
@@ -843,8 +846,6 @@ describe("YieldManagerContractClient", () => {
       const peekedOutstandingNegativeYield = 0n;
       const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 450_000n; // Within tolerance, should return NONE
-      const maxStakingRebalanceAmountWei = 100_000n;
-      const stakeCircuitBreakerThresholdWei = 200_000n;
       const absRebalanceRequirement = absDiff(l1MessageServiceBalance, effectiveTarget); // 50_000n
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
@@ -855,8 +856,7 @@ describe("YieldManagerContractClient", () => {
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
         rebalanceToleranceAmountWei,
-        maxStakingRebalanceAmountWei,
-        stakeCircuitBreakerThresholdWei,
+        undefined, // Use default quota service (returns full amount)
         metricsUpdater,
       );
 
@@ -871,13 +871,13 @@ describe("YieldManagerContractClient", () => {
       );
       // Reported requirement: absRebalanceRequirement (50_000) is not < toleranceBand (10_000), so result is STAKING, not NONE
       expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(stakingVaultAddress, 0, RebalanceDirection.STAKE);
-      // Counter should not be incremented when circuit breaker doesn't trip
-      expect(metricsUpdater.incrementStakeCircuitBreakerTrip).not.toHaveBeenCalled();
+      // Counter should not be incremented when quota service returns full amount (within quota)
+      expect(metricsUpdater.incrementStakingDepositQuotaExceeded).not.toHaveBeenCalled();
     });
 
     it("tracks reported requirement for STAKE path when metricsUpdater is provided", async () => {
       const metricsUpdater = {
-        incrementStakeCircuitBreakerTrip: jest.fn(),
+        incrementStakingDepositQuotaExceeded: jest.fn(),
         setActualRebalanceRequirement: jest.fn(),
         setReportedRebalanceRequirement: jest.fn(),
         incrementContractEstimateGasError: jest.fn(),
@@ -890,8 +890,6 @@ describe("YieldManagerContractClient", () => {
       const peekedOutstandingNegativeYield = 0n;
       const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
       const l1MessageServiceBalance = 300_000n; // Below target, goes to UNSTAKE path (logic: if balance < target, UNSTAKE)
-      const maxStakingRebalanceAmountWei = 50_000n;
-      const stakeCircuitBreakerThresholdWei = 200_000n;
       const absRebalanceRequirement = effectiveTarget - l1MessageServiceBalance; // 100_000n
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
@@ -902,8 +900,7 @@ describe("YieldManagerContractClient", () => {
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
         rebalanceToleranceAmountWei,
-        maxStakingRebalanceAmountWei,
-        stakeCircuitBreakerThresholdWei,
+        undefined, // Use default quota service (quota service not called for UNSTAKE direction)
         metricsUpdater,
       );
 
@@ -916,17 +913,17 @@ describe("YieldManagerContractClient", () => {
         weiToGweiNumber(absRebalanceRequirement),
         RebalanceDirection.UNSTAKE,
       );
-      // Reported requirement should be capped to maxStakingRebalanceAmountWei (result direction is UNSTAKE, not STAKE)
+      // Reported requirement should be the full amount (quota service not called for UNSTAKE direction)
       expect(metricsUpdater.setReportedRebalanceRequirement).toHaveBeenCalledWith(
         stakingVaultAddress,
-        weiToGweiNumber(maxStakingRebalanceAmountWei),
+        weiToGweiNumber(absRebalanceRequirement),
         RebalanceDirection.UNSTAKE,
       );
     });
 
     it("tracks reported requirement for UNSTAKE path when metricsUpdater is provided", async () => {
       const metricsUpdater = {
-        incrementStakeCircuitBreakerTrip: jest.fn(),
+        incrementStakingDepositQuotaExceeded: jest.fn(),
         setActualRebalanceRequirement: jest.fn(),
         setReportedRebalanceRequirement: jest.fn(),
         incrementContractEstimateGasError: jest.fn(),
@@ -938,9 +935,7 @@ describe("YieldManagerContractClient", () => {
       const peekedYieldAmount = 0n;
       const peekedOutstandingNegativeYield = 0n;
       const rebalanceToleranceAmountWei = 10_000n; // 100 bps of 1M = 10K wei
-      const l1MessageServiceBalance = 500_000n; // Above target, needs UNSTAKE
-      const maxStakingRebalanceAmountWei = 100_000n;
-      const stakeCircuitBreakerThresholdWei = 200_000n;
+      const l1MessageServiceBalance = 500_000n; // Above target, needs STAKE
       const absRebalanceRequirement = l1MessageServiceBalance - effectiveTarget; // 100_000n
       const { client } = setupRebalanceTest(
         l1MessageServiceBalance,
@@ -951,8 +946,7 @@ describe("YieldManagerContractClient", () => {
         peekedYieldAmount,
         peekedOutstandingNegativeYield,
         rebalanceToleranceAmountWei,
-        maxStakingRebalanceAmountWei,
-        stakeCircuitBreakerThresholdWei,
+        undefined, // Use default quota service (returns full amount)
         metricsUpdater,
       );
 
