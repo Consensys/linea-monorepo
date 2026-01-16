@@ -54,12 +54,10 @@ type BlsMsm struct {
 	*Limits
 	Group
 
-	FlattenLimbsMsm             *common.FlattenColumn
 	FlattenLimbsGroupMembership *common.FlattenColumn
 }
 
 func newMsm(comp *wizard.CompiledIOP, g Group, limits *Limits, src *BlsMsmDataSource) *BlsMsm {
-	flattenLimbsMsm := common.NewFlattenColumn(comp, src.Limb.AsDynSize(), src.CsMul)
 	flattenLimbsGroupMembership := common.NewFlattenColumn(comp, src.Limb.AsDynSize(), src.CsMembership)
 	umsm := newUnalignedMsmData(comp, g, limits, src)
 
@@ -214,6 +212,8 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g Group, limits *Limits, src 
 	res.csProjectionData(comp)
 	// result projection
 	res.csProjectionResult(comp)
+	// gnark data projection
+	res.csProjectionGnarkData(comp)
 	// first line accumulator zero
 	res.csAccumulatorInit(comp)
 	// accumulator consistency
@@ -303,6 +303,53 @@ func (d *UnalignedMsmData) csProjectionResult(comp *wizard.CompiledIOP) {
 		ColumnsB: columnsB,
 	}
 	comp.InsertProjection(ifaces.QueryIDf("%s_%s_PROJECTION_RESULT", NAME_UNALIGNED_MSM, d.Group.String()), prj)
+}
+
+func (d *UnalignedMsmData) csProjectionGnarkData(comp *wizard.CompiledIOP) {
+	// Projects from row-format columns (CurrentAccumulator, Scalar, Point, NextAccumulator)
+	// to the single GnarkDataMsm column. The order matches assignGnarkData:
+	// CurrentAccumulator, Scalar, Point, NextAccumulator
+	nbL := nbLimbs(d.Group)
+	totalCols := nbL + nbFrLimbs + nbL + nbL // CurrentAccumulator + Scalar + Point + NextAccumulator
+
+	filtersA := make([]ifaces.Column, totalCols)
+	columnsA := make([][]ifaces.Column, totalCols)
+
+	offset := 0
+	// CurrentAccumulator
+	for i := range nbL {
+		filtersA[offset+i] = d.IsActive
+		columnsA[offset+i] = []ifaces.Column{d.CurrentAccumulator[i]}
+	}
+	offset += nbL
+
+	// Scalar
+	for i := range nbFrLimbs {
+		filtersA[offset+i] = d.IsActive
+		columnsA[offset+i] = []ifaces.Column{d.Scalar[i]}
+	}
+	offset += nbFrLimbs
+
+	// Point
+	for i := range nbL {
+		filtersA[offset+i] = d.IsActive
+		columnsA[offset+i] = []ifaces.Column{d.Point[i]}
+	}
+	offset += nbL
+
+	// NextAccumulator
+	for i := range nbL {
+		filtersA[offset+i] = d.IsActive
+		columnsA[offset+i] = []ifaces.Column{d.NextAccumulator[i]}
+	}
+
+	prj := query.ProjectionMultiAryInput{
+		FiltersA: filtersA,
+		FiltersB: []ifaces.Column{d.GnarkIsActiveMsm},
+		ColumnsA: columnsA,
+		ColumnsB: [][]ifaces.Column{{d.GnarkDataMsm}},
+	}
+	comp.InsertProjection(ifaces.QueryIDf("%s_%s_PROJECTION_GNARK_DATA", NAME_UNALIGNED_MSM, d.Group.String()), prj)
 }
 
 func (d *UnalignedMsmData) csAccumulatorInit(comp *wizard.CompiledIOP) {
