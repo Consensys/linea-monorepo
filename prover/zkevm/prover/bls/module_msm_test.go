@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -57,7 +57,7 @@ func testBlsMsm(t *testing.T, withCircuit bool, g Group, path string, limits *Li
 							WithMsmCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
 					}
 				},
-				dummy.Compile,
+				plonkinwizard.Compile,
 			)
 
 			proof := wizard.Prove(cmp,
