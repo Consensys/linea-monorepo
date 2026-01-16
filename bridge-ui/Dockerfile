@@ -33,7 +33,7 @@ ENV NEXT_PUBLIC_WALLET_CONNECT_ID=$NEXT_PUBLIC_WALLET_CONNECT_ID \
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json prettier.config.mjs .prettierignore ./
 COPY ./bridge-ui/package.json ./bridge-ui/package.json
 COPY ./sdk/sdk-core ./sdk/sdk-core
 COPY ./sdk/sdk-viem ./sdk/sdk-viem
