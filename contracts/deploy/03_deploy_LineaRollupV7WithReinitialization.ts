@@ -5,6 +5,7 @@
 //   LINEA_ROLLUP_SECURITY_COUNCIL
 //   LINEA_ROLLUP_ADDRESS
 //   YIELD_MANAGER_ADDRESS
+//   AUTOMATION_SERVICE_ADDRESS
 //
 // This script deploys LineaRollupV7 implementation from artifacts signed off by auditors
 // and generates encoded calldata for upgrading an existing LineaRollup proxy with reinitialization.
