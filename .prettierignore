@@ -1,5 +1,5 @@
+dist
 node_modules
-build
-cache
 coverage
+typechain
 typechain-types

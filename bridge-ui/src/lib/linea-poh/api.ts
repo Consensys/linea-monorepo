@@ -1,9 +1,9 @@
 const BASE_URL = "https://poh-api.linea.build/";
 
-async function fetchWithBackoff(url: string, opts?: RequestInit, maxRetries = 5): Promise<Response> {
+async function fetchWithBackoff(url: string, opts?: RequestInit, maxRetries = 10): Promise<Response> {
   let attempt = 0;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+
+  while (attempt <= maxRetries) {
     const res = await fetch(url, opts);
     if (res.status !== 429 || attempt >= maxRetries) return res;
 
@@ -17,6 +17,8 @@ async function fetchWithBackoff(url: string, opts?: RequestInit, maxRetries = 5)
     await new Promise((r) => setTimeout(r, backoffMs));
     attempt++;
   }
+
+  throw new Error("Max attempts to fetch poh api reached.");
 }
 
 export async function checkPoh(address: string): Promise<boolean> {

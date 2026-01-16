@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { EthersAdapter, SafeFactory } from "@safe-global/protocol-kit";
 import { ethers } from "ethers";
 import { requireEnv } from "../hardhat/utils";
@@ -18,8 +17,8 @@ const main = async () => {
   const eip1559Fees = await get1559Fees(provider);
 
   const txOptions = {
-    maxFeePerGas: eip1559Fees.maxFeePerGas?.toString(),
-    maxPriorityFeePerGas: eip1559Fees.maxPriorityFeePerGas?.toString(),
+    maxFeePerGas: eip1559Fees.maxFeePerGas!.toString(),
+    maxPriorityFeePerGas: eip1559Fees.maxPriorityFeePerGas!.toString(),
   };
 
   // const safeVersion = '1.3.0'

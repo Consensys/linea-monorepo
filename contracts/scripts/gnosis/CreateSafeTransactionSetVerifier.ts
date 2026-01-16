@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
 import { requireEnv } from "../hardhat/utils";
 
 const proxyContract = "0x41B186Dc7C46f08ADFdCe21Da1b07f605819E9Ab";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const timelockAddress = "0x0169659ab31d3857C11b36E8418a97D422D5C363";
 
 const newVerifierAddress = "0x0169659ab31d3857C11b36E8418a97D422D5C363";
@@ -46,7 +46,6 @@ async function main() {
     ),
   ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const setVerifierExecuteTransaction = ethers.concat([
     "0x134008d3",
     ethers.AbiCoder.defaultAbiCoder().encode(

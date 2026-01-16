@@ -1,7 +1,8 @@
+import { exec } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { Open } from "unzipper";
-import { exec } from "child_process";
+
 import { getBuildConfig } from "./config";
 
 async function downloadFileUsingCurl(url: string, outputFilePath: string): Promise<string> {
@@ -12,8 +13,7 @@ async function downloadFileUsingCurl(url: string, outputFilePath: string): Promi
   const command = `curl -L -H 'Accept:application/octet-stream' -o ${outputFilePath} ${url}`;
 
   return new Promise((resolve, reject) => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    exec(command, (error: any, _: any, stderr: any) => {
+    exec(command, (error: unknown, _: unknown, stderr: unknown) => {
       if (error) {
         reject(new Error(`Failed to download file using curl: ${stderr}`));
       } else {

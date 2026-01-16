@@ -1,5 +1,6 @@
 import { KoffiFunction, load } from "koffi";
 import path from "path";
+
 import { getCompressorLibPath } from "./helpers";
 
 const COMPRESSOR_DICT_PATH = path.join(__dirname, "./lib/25-04-21.bin");
@@ -65,7 +66,7 @@ export class GoNativeCompressor {
   private getError(): string | null {
     try {
       return this.errorFunc();
-    } catch (e) {
+    } catch {
       return null;
     }
   }
