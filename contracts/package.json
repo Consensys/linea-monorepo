@@ -35,8 +35,6 @@
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6",
     "@openzeppelin/hardhat-upgrades": "2.5.1",
-    "@safe-global/protocol-kit": "3.0.2",
-    "@safe-global/safe-core-sdk-types": "4.0.2",
     "@typechain/hardhat": "9.1.0",
     "@types/diff": "5.2.0",
     "@types/yargs": "catalog:",
