@@ -81,10 +81,12 @@ func nativeScalarMulAndSum(g Group, currentAccumulator []field.Element, point []
 }
 
 func nativeGtZero() []field.Element {
-	// C0.B0.A0 is 1, but its on four limbs MSB, so {0,0,0,1}
-	// rest are all zeroes.
+	// C0.B0.A0 is 1, in MSB order with 16-bit limbs.
+	// Each Fp element uses 32 limbs (256 bits for 381-bit field with padding).
+	// The first limbs.NbLimbU128 (8) limbs are zero padding, then actual data follows.
+	// The value 1 is in the last position of the first Fp component.
 	ret := make([]field.Element, nbGtLimbs)
-	ret[3].SetOne()
+	ret[nbFpLimbs-1].SetOne() // 1 is at position 7 (last of the first 128-bit chunk)
 	return ret
 }
 
@@ -143,19 +145,21 @@ func nativeMillerLoopAndSum(prevAccumulator []field.Element, pointG1 []field.Ele
 	C1B1A1Bytes := next.C1.B1.A1.Bytes()
 	C1B2A0Bytes := next.C1.B2.A0.Bytes()
 	C1B2A1Bytes := next.C1.B2.A1.Bytes()
-	for i := range nbGtLimbs/12 - 1 {
-		nextAccumulator[i+1].SetBytes(C0B0A0Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+nbGtLimbs/12].SetBytes(C0B0A1Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+2*nbGtLimbs/12].SetBytes(C0B1A0Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+3*nbGtLimbs/12].SetBytes(C0B1A1Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+4*nbGtLimbs/12].SetBytes(C0B2A0Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+5*nbGtLimbs/12].SetBytes(C0B2A1Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+6*nbGtLimbs/12].SetBytes(C1B0A0Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+7*nbGtLimbs/12].SetBytes(C1B0A1Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+8*nbGtLimbs/12].SetBytes(C1B1A0Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+9*nbGtLimbs/12].SetBytes(C1B1A1Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+10*nbGtLimbs/12].SetBytes(C1B2A0Bytes[i*nbBytes : (i+1)*nbBytes])
-		nextAccumulator[i+1+11*nbGtLimbs/12].SetBytes(C1B2A1Bytes[i*nbBytes : (i+1)*nbBytes])
+	// Each Fp component uses nbGtLimbs/12 = 32 limbs. The first limbs.NbLimbU128 (8) are zero padding.
+	nbFpComponent := nbGtLimbs / 12
+	for i := range nbFpComponent - limbs.NbLimbU128 {
+		nextAccumulator[i+limbs.NbLimbU128].SetBytes(C0B0A0Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+nbFpComponent].SetBytes(C0B0A1Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+2*nbFpComponent].SetBytes(C0B1A0Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+3*nbFpComponent].SetBytes(C0B1A1Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+4*nbFpComponent].SetBytes(C0B2A0Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+5*nbFpComponent].SetBytes(C0B2A1Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+6*nbFpComponent].SetBytes(C1B0A0Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+7*nbFpComponent].SetBytes(C1B0A1Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+8*nbFpComponent].SetBytes(C1B1A0Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+9*nbFpComponent].SetBytes(C1B1A1Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+10*nbFpComponent].SetBytes(C1B2A0Bytes[i*nbBytes : (i+1)*nbBytes])
+		nextAccumulator[i+limbs.NbLimbU128+11*nbFpComponent].SetBytes(C1B2A1Bytes[i*nbBytes : (i+1)*nbBytes])
 	}
 	return nextAccumulator
 }
