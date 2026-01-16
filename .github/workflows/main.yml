@@ -25,11 +25,11 @@ jobs:
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       linea-besu-package: ${{ steps.filter.outputs.linea-besu-package }}
       has-changes-requiring-build: ${{ steps.exclusion-filter.outputs.has-changes-requiring-build }}
-      contracts-excluding-local-deployment-artifacts: ${{ steps.exclusion-filter.outputs.contracts-excluding-local-deployment-artifacts }}
-      contracts-excluding-local-deployment-artifacts-count: ${{ steps.exclusion-filter.outputs.contracts-excluding-local-deployment-artifacts_count }}
       smart-contracts: ${{ steps.filter.outputs.smart-contracts }}
       linea-sequencer-plugin: ${{ steps.filter.outputs.linea-sequencer-plugin }}
       native-yield-automation-service: ${{ steps.filter.outputs.native-yield-automation-service }}
+      tracer: ${{ steps.filter.outputs.tracer }}
+      tracer-constraints: ${{ steps.filter.outputs.tracer-constraints }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,17 +74,18 @@ jobs:
               - 'postman/**'
               - 'sdk/**'
               - 'ts-libs/linea-native-libs/**'
+              - 'ts-libs/linea-shared-utils/**'
               - '.github/workflows/postman-*.yml'
               - '.github/workflows/build-and-publish.yml'
               - '.github/workflows/main.yml'
               - '.github/workflows/reuse-*.yml'
+              - '.nvmrc'
             prover:
               - 'prover/**'
               - '.github/workflows/prover-*.yml'
               - '.github/workflows/build-and-publish.yml'
               - '.github/workflows/main.yml'
               - '.github/workflows/reuse-*.yml'
-              - 'constraints'
             transaction-exclusion-api:
               - 'transaction-exclusion-api/**'
               - 'jvm-libs/generic/extensions/futures/**'
@@ -125,6 +126,13 @@ jobs:
               - 'native-yield-operations/automation-service/**'
               - 'ts-libs/linea-shared-utils/**'
               - '.github/workflows/native-yield-automation-service-*.yml'
+              - '.nvmrc'
+            tracer:
+              - 'tracer/**'
+            tracer-constraints:
+              - 'tracer-constraints/**'
+              - '.github/workflows/tracer-constraints-*.yml'
+              - 'tracer/gradle/corset.gradle'
 
       - name: Filter out commit changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 #v3.0.2
@@ -140,9 +148,6 @@ jobs:
               - '!docs/**'
               - '!contracts-tge/**'
               - '!.github/workflows/codeql.yml'
-            contracts-excluding-local-deployment-artifacts:
-              - 'contracts/**'
-              - '!contracts/local-deployments-artifacts/**'
           # Means that ALL (and not just one) filter patterns must match. In other words applies the 'AND' operator to filter patterns.
           # The default is 'some', which requires just one filter pattern match and applies the 'OR' operator.
           # For 'has-changes-requiring-build', it means we have an exclusion list that we can append to.
@@ -177,16 +182,13 @@ jobs:
       staterecovery_changed: false # disable until we have time to address it ${{ needs.filter-commit-changes.outputs.staterecovery }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
+      tracer_changed: ${{ needs.filter-commit-changes.outputs.tracer }}
+      constraints_changed: ${{ needs.filter-commit-changes.outputs.tracer-constraints }}
     secrets: inherit
 
   get-has-changes-requiring-e2e-testing:
     needs: [filter-commit-changes]
     uses: ./.github/workflows/get-has-changes-requiring-e2e-testing.yml
-    with:
-      has_changes_requiring_build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
-      contracts_excluding_local_deployment_artifacts: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts }}
-      changed_file_count: ${{ needs.filter-commit-changes.outputs.changed-file-count }}
-      contracts_excluding_local_deployment_artifacts_count: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts-count }}
 
   manual-docker-build-and-e2e-tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
