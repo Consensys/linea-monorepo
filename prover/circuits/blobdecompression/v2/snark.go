@@ -10,6 +10,7 @@ import (
 	gkrposeidon2compressor "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
@@ -145,7 +146,7 @@ func packBatches(api frontend.API, nbBatches frontend.Variable, blobPayload, bat
 	}
 
 	// side effect: batchEnds are range checked to be within a reasonable factor of the maximum blob payload length; useless because we will have to perform a stronger check in the end
-	endQsV, endRsV, err := utils.DivManyBy31(api, batchEnds, bits.Len(uint(len(blobPayload))+31))
+	endQsV, endRsV, err := gnarkutil.DivManyBy31(api, batchEnds, bits.Len(uint(len(blobPayload))+31))
 	if err != nil {
 		return nil, err
 	}
