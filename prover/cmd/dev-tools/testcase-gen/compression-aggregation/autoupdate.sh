@@ -28,8 +28,8 @@ mv -f .samples-simple-calldata/* ${SOLTESTDIR}
 mv -f .samples-multiproof-calldata/* ${SOLTESTDIR}/multipleProofs 
 mv -f .samples-test-calldata/* ${SOLTESTDIR}/test
 
-rm -f ${SOLTESTDIR_EIP4844}/blocks* ${SOLTESTDIR_EIP4844}/aggregatedProof* 
-rm -f ${SOLTESTDIR_EIP4844}/multipleProofs/blocks* ${SOLTESTDIR_EIP4844}/multipleProofs/aggregatedProof*  ${SOLTESTDIR_EIP4844}/multipleProofs/forcedTransaction*
+rm -f ${SOLTESTDIR_EIP4844}/blocks* ${SOLTESTDIR_EIP4844}/aggregatedProof*
+rm -f ${SOLTESTDIR_EIP4844}/multipleProofs/blocks* ${SOLTESTDIR_EIP4844}/multipleProofs/aggregatedProof* ${SOLTESTDIR_EIP4844}/multipleProofs/forcedTransaction*
 mv -f .samples-simple-eip4844/* ${SOLTESTDIR_EIP4844} 
 mv -f .samples-multiproof-eip4844/* ${SOLTESTDIR_EIP4844}/multipleProofs 
 mv -f .samples-test-eip4844/* ${SOLTESTDIR_EIP4844}/test

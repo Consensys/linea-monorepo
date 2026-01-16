@@ -18,9 +18,9 @@
 			46
 		]
 	},
-	"parentStateRootHash": "0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dce11",
-	"finalStateRootHash": "0x00ea09456033a79b5f8b369a95cce74d3dbe34fdd6415bff1a417ff8a8fa0cff",
+	"parentStateRootHash": "0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd",
+	"finalStateRootHash": "0xea09456033a79b5f8b369a95cce74d3dbe34fdd6415bff1a417ff8a8fa0cffd3",
 	"parentDataHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-	"expectedShnarf": "0xaabceb929902aa7b0bb13c7c6098d1b28535d20b4a1dfb2547fc4d3376ecea7a",
+	"expectedShnarf": "0x4e584b910dc758442e58e56e0bb46c001addaffe770fb740ea0e1b90c0e2b056",
 	"prevShnarf": "0x47452a1b9ebadfe02bdd02f580fa1eba17680d57eec968a591644d05d78ee84f"
 }
