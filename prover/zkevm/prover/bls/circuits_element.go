@@ -12,21 +12,28 @@ import (
 )
 
 const (
-	nbBits  = 16         // we use 128 bits limbs for the BLS12-381 field
-	nbBytes = nbBits / 8 // 128 bits = 16 bytes
+	nbBits     = 16 // we use 128 bits limbs for the BLS12-381 field
+	nbBits128  = 128
+	nbBytes    = nbBits / 8 // 128 bits = 16 bytes
+	nbBytes128 = nbBits128 / 8
 
 	// BLS scalar field is 255 bits, and we use 2 limbs of 128 bits to represent
-	nbFrLimbs = 16 // (x_1, x_0) MSB order
+	nbFrLimbs    = 16 // (x_1, x_0) MSB order
+	nbFrLimbs128 = 2
 
 	// BLS base field is 381 bits, and we use 4 limbs of 128 bits to represent
 	// it. However, the highest limb is always zero, but the arithmetization
 	// keeps it for nice alignment. We pass it to the circuit but check
 	// explicitly that its 0.
-	nbFpLimbs = 32 // (x_3, x_2, x_1, x_0) MSB order
+	nbFpLimbs    = 32 // (x_3, x_2, x_1, x_0) MSB order
+	nbFpLimbs128 = 4
 
-	nbG1Limbs = 2 * nbFpLimbs  // (Ax, Ay)
-	nbG2Limbs = 4 * nbFpLimbs  // (BxIm, BxRe, ByIm, ByRe)
-	nbGtLimbs = 12 * nbFpLimbs // representation according to gnark - we don't use Gt in arithmetization, only in glue for accumulation
+	nbG1Limbs    = 2 * nbFpLimbs  // (Ax, Ay)
+	nbG2Limbs    = 4 * nbFpLimbs  // (BxIm, BxRe, ByIm, ByRe)
+	nbGtLimbs    = 12 * nbFpLimbs // representation according to gnark - we don't use Gt in arithmetization, only in glue for accumulation
+	nbG1Limbs128 = 2 * nbFpLimbs128
+	nbG2Limbs128 = 4 * nbFpLimbs128
+	nbGtLimbs128 = 12 * nbFpLimbs128
 )
 
 func nbLimbs(g Group) int {
@@ -37,6 +44,17 @@ func nbLimbs(g Group) int {
 		return nbG2Limbs
 	default:
 		panic("unknown group for bls nbLimbs")
+	}
+}
+
+func nbLimbs128(g Group) int {
+	switch g {
+	case G1:
+		return nbG1Limbs128
+	case G2:
+		return nbG2Limbs128
+	default:
+		panic("unknown group for bls nbLimbs128")
 	}
 }
 
