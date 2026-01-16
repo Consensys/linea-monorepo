@@ -1,5 +1,5 @@
 // Usage:
-// npx hardhat deploy --network <network> --tags LineaRollupWithReinitialization
+// npx hardhat deploy --network <network> --tags LineaRollupV7WithReinitialization
 //
 // Required environment variables:
 //   LINEA_ROLLUP_SECURITY_COUNCIL
@@ -94,4 +94,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ["LineaRollupWithReinitialization"];
+func.tags = ["LineaRollupV7WithReinitialization"];

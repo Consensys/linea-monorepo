@@ -1,5 +1,5 @@
 // Usage:
-// npx hardhat deploy --network <network> --tags YieldManager
+// npx hardhat deploy --network <network> --tags YieldManagerArtifacts
 //
 // Required environment variables:
 //   LINEA_ROLLUP_ADDRESS
@@ -175,4 +175,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ["YieldManager"];
+func.tags = ["YieldManagerArtifacts"];
