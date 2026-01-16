@@ -50,7 +50,7 @@ describe("OAuth2TokenClient", () => {
     const token = await client.getBearerToken();
 
     expect(token).toBe("Bearer cached-token");
-    expect(logger.info).toHaveBeenCalledWith("getBearerToken cache-hit");
+    expect(logger.debug).toHaveBeenCalledWith("getBearerToken cache-hit");
     expect(retryService.retry).not.toHaveBeenCalled();
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
@@ -86,8 +86,8 @@ describe("OAuth2TokenClient", () => {
 
     expect((client as any).bearerToken).toBe("Custom new-token");
     expect((client as any).tokenExpiresAtSeconds).toBe(1_120);
-    expect(logger.info).toHaveBeenNthCalledWith(1, "getBearerToken requesting new token");
-    expect(logger.info).toHaveBeenNthCalledWith(
+    expect(logger.debug).toHaveBeenNthCalledWith(1, "getBearerToken requesting new token");
+    expect(logger.debug).toHaveBeenNthCalledWith(
       2,
       "getBearerToken successfully retrived new OAuth2 Bearer token tokenExpiresAtSeconds=1120",
     );
@@ -107,8 +107,8 @@ describe("OAuth2TokenClient", () => {
 
     expect(token).toBe("Bearer expires-at-token");
     expect((client as any).tokenExpiresAtSeconds).toBe(9_999);
-    expect(logger.info).toHaveBeenNthCalledWith(1, "getBearerToken requesting new token");
-    expect(logger.info).toHaveBeenNthCalledWith(
+    expect(logger.debug).toHaveBeenNthCalledWith(1, "getBearerToken requesting new token");
+    expect(logger.debug).toHaveBeenNthCalledWith(
       2,
       "getBearerToken successfully retrived new OAuth2 Bearer token tokenExpiresAtSeconds=9999",
     );
@@ -123,8 +123,8 @@ describe("OAuth2TokenClient", () => {
 
     expect(token).toBeUndefined();
     expect(logger.error).toHaveBeenCalledWith("Failed to retrieve OAuth2 access token");
-    expect(logger.info).toHaveBeenCalledWith("getBearerToken requesting new token");
-    expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("successfully retrived"));
+    expect(logger.debug).toHaveBeenCalledWith("getBearerToken requesting new token");
+    expect(logger.debug).not.toHaveBeenCalledWith(expect.stringContaining("successfully retrived"));
   });
 
   it("returns undefined and logs when expires_at is already elapsed", async () => {
@@ -140,8 +140,8 @@ describe("OAuth2TokenClient", () => {
 
     expect(token).toBeUndefined();
     expect(logger.error).toHaveBeenCalledWith("OAuth2 access token already expired at 1000");
-    expect(logger.info).toHaveBeenCalledWith("getBearerToken requesting new token");
-    expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("successfully retrived"));
+    expect(logger.debug).toHaveBeenCalledWith("getBearerToken requesting new token");
+    expect(logger.debug).not.toHaveBeenCalledWith(expect.stringContaining("successfully retrived"));
   });
 
   it("returns undefined and logs when expiry metadata is missing", async () => {
@@ -155,8 +155,8 @@ describe("OAuth2TokenClient", () => {
 
     expect(token).toBeUndefined();
     expect(logger.error).toHaveBeenCalledWith("OAuth2 access token did not provide expiry data");
-    expect(logger.info).toHaveBeenCalledWith("getBearerToken requesting new token");
-    expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("successfully retrived"));
+    expect(logger.debug).toHaveBeenCalledWith("getBearerToken requesting new token");
+    expect(logger.debug).not.toHaveBeenCalledWith(expect.stringContaining("successfully retrived"));
   });
 
   it("uses default grant type and expiry buffer when omitted", async () => {
