@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
-	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/backend/dataavailability"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
@@ -38,9 +38,9 @@ func Prove(args ProverArgs) error {
 
 	// Determine job type from input file name
 	var (
-		jobExecution         = strings.Contains(args.Input, "getZkProof")
+		jobExecution        = strings.Contains(args.Input, "getZkProof")
 		jobDataAvailability = strings.Contains(args.Input, "getZkBlobCompressionProof")
-		jobAggregation       = strings.Contains(args.Input, "getZkAggregatedProof")
+		jobAggregation      = strings.Contains(args.Input, "getZkAggregatedProof")
 	)
 
 	// Handle job type
@@ -86,12 +86,12 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 
 // handleDataAvailabilityJob processes a data availability proof job
 func handleDataAvailabilityJob(cfg *config.Config, args ProverArgs) error {
-	req := &blobdecompression.Request{}
+	req := &dataavailability.Request{}
 	if err := readRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
-	resp, err := blobdecompression.Prove(cfg, req)
+	resp, err := dataavailability.Prove(cfg, req)
 	if err != nil {
 		return fmt.Errorf("could not prove the data availability: %w", err)
 	}

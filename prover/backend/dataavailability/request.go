@@ -1,4 +1,4 @@
-package blobdecompression
+package dataavailability
 
 import "github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 
