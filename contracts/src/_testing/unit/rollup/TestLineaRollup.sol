@@ -70,6 +70,10 @@ contract TestLineaRollup is LineaRollup, CalldataBlobAcceptor {
     forcedTransactionL2BlockNumbers[currentForcedTxNumber] = _blockNumber;
   }
 
+  function setForcedTransactionRollingHash(uint256 _forcedTransactionNumber, bytes32 _rollingHash) external {
+    forcedTransactionRollingHashes[_forcedTransactionNumber] = _rollingHash;
+  }
+
   /**
    * @notice Revokes `role` from the calling account.
    * @dev Liveness recovery operator cannot renounce role. Reverts with OnlyNonLivenessRecoveryOperator.

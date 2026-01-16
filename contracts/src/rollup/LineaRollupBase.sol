@@ -536,10 +536,10 @@ abstract contract LineaRollupBase is
    *     _finalizationData.l1RollingHash,
    *     _finalizationData.lastFinalizedL1RollingHashMessageNumber,
    *     _finalizationData.l1RollingHashMessageNumber,
-   *     _finalizationData.lastFinalizedForcedTransactionNumber
-   *     _finalizationData.finalForcedTransactionNumber
    *     _finalizationData.lastFinalizedForcedTransactionRollingHash
    *     _finalForcedTransactionRollingHash,
+   *     _finalizationData.lastFinalizedForcedTransactionNumber
+   *     _finalizationData.finalForcedTransactionNumber
    *     _finalizationData.l2MerkleTreesDepth,
    *     keccak256(
    *         abi.encodePacked(_finalizationData.l2MerkleRoots)
@@ -592,15 +592,23 @@ abstract contract LineaRollupBase is
 
     assembly {
       let mPtr := mload(0x40)
-      mstore(mPtr, _lastFinalizedShnarf)
-      mstore(add(mPtr, 0x20), _finalShnarf)
 
+      /**
+       * _lastFinalizedShnarf
+       * _finalShnarf
+       */
+      mstore(mPtr, _lastFinalizedShnarf)
+
+      mstore(add(mPtr, 0x20), _finalShnarf)
       /**
        * _finalizationData.lastFinalizedTimestamp
        * _finalizationData.finalTimestamp
        */
       calldatacopy(add(mPtr, 0x40), add(_finalizationData, 0xe0), 0x40)
 
+      /**
+       * _lastFinalizedBlockNumber
+       */
       mstore(add(mPtr, 0x80), _lastFinalizedBlockNumber)
 
       // _finalizationData.endBlockNumber
@@ -611,51 +619,43 @@ abstract contract LineaRollupBase is
        * _finalizationData.l1RollingHash
        * _finalizationData.lastFinalizedL1RollingHashMessageNumber
        * _finalizationData.l1RollingHashMessageNumber
-       * _finalizationData.l2MerkleTreesDepth
        */
-      calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x120), 0xA0)
+      calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x120), 0x80)
+
+      // lastFinalizedForcedTransactionRollingHash
+      calldatacopy(add(mPtr, 0x140), add(_finalizationData, 0x200), 0x20)
+
+      // finalForcedTransactionRollingHash
+      mstore(add(mPtr, 0x160), _finalForcedTransactionRollingHash)
 
       /**
-       * PLACEHOLDER: THIS WILL BE UPDATED ONCE PROVING CIRCUITS ARE READY
-       * _finalizationData.lastFinalizedL1RollingHash
-       * _finalizationData.l1RollingHash
-       * _finalizationData.lastFinalizedL1RollingHashMessageNumber
-       * _finalizationData.l1RollingHashMessageNumber
-       * _finalizationData.l2MerkleTreesDepth
        * _finalizationData.lastFinalizedForcedTransactionNumber
        * _finalizationData.finalForcedTransactionNumber
-       * _finalizationData.lastFinalizedForcedTransactionRollingHash
-       *
-       * calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x140), 0x100)
-       * // _finalForcedTransactionRollingHash
-       * mstore(add(mPtr, 0x1e0), _finalForcedTransactionRollingHash)
        */
+      calldatacopy(add(mPtr, 0x180), add(_finalizationData, 0x1c0), 0x40)
+
+      /**
+       * _finalizationData.l2MerkleTreesDepth
+       */
+      calldatacopy(add(mPtr, 0x1c0), add(_finalizationData, 0x1a0), 0x20)
 
       /**
        * @dev Note the following in hashing the _finalizationData.l2MerkleRoots array:
        * The second memory pointer and free pointer are offset by 0x20 to temporarily hash the array outside the scope of working memory,
-       * as we need the space left for the array hash to be stored at 0x160.
-       */
-      let mPtrMerkleRoot := add(mPtr, 0x180)
-
-      /*
-       * THIS WILL BE USED ONCE PROVING CIRCUITS ARE READY
-       * let mPtrMerkleRoot := add(mPtr, 0x200)
+       * as we need the space left for the array hash to be stored at 0x1e0.
        */
 
+      let mPtrMerkleRoot := add(mPtr, 0x200)
       let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x220)))
       let merkleRootsLen := calldataload(merkleRootsLengthLocation)
       calldatacopy(mPtrMerkleRoot, add(merkleRootsLengthLocation, 0x20), mul(merkleRootsLen, 0x20))
       let l2MerkleRootsHash := keccak256(mPtrMerkleRoot, mul(merkleRootsLen, 0x20))
-      mstore(add(mPtr, 0x160), l2MerkleRootsHash)
-      mstore(add(mPtr, 0x180), _verifierChainConfiguration)
-      // mstore(add(mPtr, 0x1A0), hashedFilteredAddresses)
 
-      /*
-       * PLACEHOLDER: THIS WILL BE USED ONCE PROVING CIRCUITS ARE READY
-       * publicInput := mod(keccak256(mPtr, 0x220), MODULO_R)
-       */
-      publicInput := mod(keccak256(mPtr, 0x1A0), MODULO_R)
+      mstore(add(mPtr, 0x1e0), l2MerkleRootsHash)
+      mstore(add(mPtr, 0x200), _verifierChainConfiguration)
+      // mstore(add(mPtr, 0x220), hashedFilteredAddresses)
+
+      publicInput := mod(keccak256(mPtr, 0x220), MODULO_R)
     }
   }
 

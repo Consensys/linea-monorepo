@@ -88,6 +88,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       _forcedTransaction.maxPriorityFeePerGas > 0 && _forcedTransaction.maxFeePerGas > 0,
       GasFeeParametersContainZero(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas)
     );
+
     require(
       _forcedTransaction.maxPriorityFeePerGas <= _forcedTransaction.maxFeePerGas,
       MaxPriorityFeePerGasHigherThanMaxFee(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas)
@@ -95,22 +96,6 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
 
     require(_forcedTransaction.yParity <= 1, YParityGreaterThanOne(_forcedTransaction.yParity));
     require(_forcedTransaction.to >= address(PRECOMPILE_ADDRESS_LIMIT), ToAddressTooLow());
-
-    /// @dev Splitting into bytes concat causes mismatched values due to the access list.
-    /// @dev Placing here avoids stack issues.
-    bytes32 mimcHashedPayload = Mimc.hash(
-      abi.encode(
-        DESTINATION_CHAIN_ID,
-        _forcedTransaction.nonce,
-        _forcedTransaction.maxPriorityFeePerGas,
-        _forcedTransaction.maxFeePerGas,
-        _forcedTransaction.gasLimit,
-        _forcedTransaction.to,
-        _forcedTransaction.value,
-        _forcedTransaction.input,
-        _forcedTransaction.accessList
-      )
-    );
 
     (
       bytes32 currentFinalizedState,
@@ -168,10 +153,12 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.input);
     transactionFieldList = LibRLP.p(transactionFieldList, accessList);
 
+    bytes32 hashedPayload = keccak256(abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList)));
+
     address signer;
     unchecked {
       signer = ecrecover(
-        keccak256(abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList))),
+        hashedPayload,
         _forcedTransaction.yParity + 27,
         bytes32(_forcedTransaction.r),
         bytes32(_forcedTransaction.s)
@@ -194,8 +181,15 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
         L2_BLOCK_BUFFER;
     }
 
+    bytes32 hashedPayloadMsb;
+    bytes32 hashedPayloadLsb;
+    assembly {
+      hashedPayloadMsb := shr(128, hashedPayload)
+      hashedPayloadLsb := and(hashedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+    }
+
     bytes32 forcedTransactionRollingHash = Mimc.hash(
-      abi.encode(previousForcedTransactionRollingHash, mimcHashedPayload, expectedBlockNumber, signer)
+      abi.encode(previousForcedTransactionRollingHash, hashedPayloadMsb, hashedPayloadLsb, expectedBlockNumber, signer)
     );
 
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.yParity);

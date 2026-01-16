@@ -10,7 +10,6 @@ import {
   expectEvent,
   expectEventDirectFromReceiptData,
   expectRevertWithCustomError,
-  expectRevertWithCustomError,
   generateFinalizationData,
   generateKeccak256,
 } from "../../common/helpers";
@@ -29,6 +28,7 @@ export async function expectSuccessfulFinalize(
   lastFinalizedMessageNumber: bigint = 0n,
   lastFinalizedForcedTransactionRollingHash: string = HASH_ZERO,
   lastFinalizedForcedTransactionNumber: bigint = 0n,
+  finalForcedTransactionNumber: bigint = 0n,
   filteredAddresses: string[] = [],
 ) {
   const finalizationData = await generateFinalizationData({
@@ -48,8 +48,10 @@ export async function expectSuccessfulFinalize(
 
   finalizationData.lastFinalizedL1RollingHash = lastFinalizedRollingHash;
   finalizationData.lastFinalizedL1RollingHashMessageNumber = lastFinalizedMessageNumber;
+
   finalizationData.lastFinalizedForcedTransactionRollingHash = lastFinalizedForcedTransactionRollingHash;
   finalizationData.lastFinalizedForcedTransactionNumber = lastFinalizedForcedTransactionNumber;
+  finalizationData.finalForcedTransactionNumber = finalForcedTransactionNumber;
 
   await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
 

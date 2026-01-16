@@ -104,8 +104,6 @@ export async function deployValidiumFixture() {
 export async function deployLineaRollupFixture() {
   const { securityCouncil } = await loadFixture(getAccountsFixture);
   const roleAddresses = await loadFixture(getRoleAddressesFixture);
-  const addressFilterFixture = await loadFixture(deployAddressFilterFixture);
-  const addressFilterAddress = await addressFilterFixture.addressFilter.getAddress();
 
   const verifier = await deployTestPlonkVerifierForDataAggregation();
   const { parentStateRootHash } = firstCompressedDataContent;
@@ -133,7 +131,7 @@ export async function deployLineaRollupFixture() {
     },
   )) as unknown as TestLineaRollup;
 
-  return { verifier, lineaRollup, addressFilterAddress };
+  return { verifier, lineaRollup };
 }
 
 export async function deployAddressFilter(securityCouncil: string, nonAuthorizedAccount: string[]) {
