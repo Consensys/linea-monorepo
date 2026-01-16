@@ -33,6 +33,10 @@ import (
 
 func TestPublicInput(t *testing.T) {
 
+	filteredAddresses := []types.EthAddress{
+		types.EthAddress(common.HexToAddress("0x8F81e2E3F8b46467523463835F965fFE476E1c9E")),
+		types.EthAddress(common.HexToAddress("0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec")),
+	}
 	// test case taken from backend/aggregation
 	testCases := []public_input.Aggregation{
 		{
@@ -58,7 +62,7 @@ func TestPublicInput(t *testing.T) {
 			CoinBase:             types.EthAddress(common.HexToAddress("0x8F81e2E3F8b46467523463835F965fFE476E1c9E")),
 			L2MessageServiceAddr: types.EthAddress(common.HexToAddress("0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec")),
 			// Filtered addresses
-			FilteredAddresses: make([]types.EthAddress, 10),
+			FilteredAddresses: filteredAddresses,
 		},
 	}
 
@@ -67,7 +71,7 @@ func TestPublicInput(t *testing.T) {
 		fpi, err := public_input.NewAggregationFPI(&testCases[i])
 		assert.NoError(t, err)
 
-		sfpi := fpi.ToSnarkType(len(testCases[i].FilteredAddresses))
+		sfpi := fpi.ToSnarkType(10)
 
 		// TODO incorporate into public input hash or decide not to
 		sfpi.NbDecompression = -1

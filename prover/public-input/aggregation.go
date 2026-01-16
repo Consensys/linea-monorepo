@@ -209,6 +209,10 @@ func (pi *AggregationFPI) ToSnarkType(maxNbFilteredAddresses int) AggregationFPI
 	for i, addr := range pi.FilteredAddresses {
 		s.FilteredAddressesFPISnark.Addresses[i] = addr[:]
 	}
+	// Pad remaining slots with zero addresses
+	for i := len(pi.FilteredAddresses); i < maxNbFilteredAddresses; i++ {
+		s.FilteredAddressesFPISnark.Addresses[i] = make([]byte, 20)
+	}
 
 	return s
 }
