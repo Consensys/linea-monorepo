@@ -1,3 +1,25 @@
+// Usage:
+// npx hardhat deploy --network <network> --tags YieldManager
+//
+// Required environment variables:
+//   LINEA_ROLLUP_ADDRESS
+//   LINEA_ROLLUP_SECURITY_COUNCIL
+//   NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS
+//   VAULT_HUB
+//   VAULT_FACTORY
+//   STETH
+//   MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS
+//   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS
+//   MINIMUM_WITHDRAWAL_RESERVE_AMOUNT
+//   TARGET_WITHDRAWAL_RESERVE_AMOUNT
+//
+// Optional environment variables:
+//   GI_FIRST_VALIDATOR
+//   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT
+//   VALIDATOR_CONTAINER_PROOF_VERIFIER_ADMIN
+//   YIELD_MANAGER_PAUSE_TYPES_ROLES
+//   YIELD_MANAGER_UNPAUSE_TYPES_ROLES
+
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {

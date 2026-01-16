@@ -1,9 +1,28 @@
+// Usage:
+// npx hardhat deploy --network <network> --tags LineaRollupWithReinitialization
+//
+// Required environment variables:
+//   LINEA_ROLLUP_SECURITY_COUNCIL
+//   LINEA_ROLLUP_ADDRESS
+//   YIELD_MANAGER_ADDRESS
+//
+// This script deploys LineaRollupV7 implementation from artifacts signed off by auditors
+// and generates encoded calldata for upgrading an existing LineaRollup proxy with reinitialization.
+// The encoded calldata should be used through the Safe for the actual upgrade.
+
 import { DeployFunction } from "hardhat-deploy/types";
-import { getRequiredEnvVar, deployContractFromArtifacts, getInitializerData } from "../common/helpers";
 import {
-  PAUSE_STATE_DATA_SUBMISSION_ROLE,
-  UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
-  STATE_DATA_SUBMISSION_PAUSE_TYPE,
+  getRequiredEnvVar,
+  deployContractFromArtifacts,
+  getInitializerData,
+  generateRoleAssignments,
+} from "../common/helpers";
+import {
+  UNPAUSE_NATIVE_YIELD_STAKING_ROLE,
+  PAUSE_NATIVE_YIELD_STAKING_ROLE,
+  YIELD_PROVIDER_STAKING_ROLE,
+  SET_YIELD_MANAGER_ROLE,
+  NATIVE_YIELD_STAKING_PAUSE_TYPE,
 } from "contracts/common/constants";
 import {
   contractName as LineaRollupV7ContractName,
@@ -17,28 +36,29 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
   const signer = await ethers.getSigner(deployer);
 
-  let upgradePauseTypeRoles = [];
-  let upgradeUnpauseTypeRoles = [];
-  let upgradeRoleAddresses = [];
-
   const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
-
-  upgradeRoleAddresses = [
-    {
-      addressWithRole: securityCouncilAddress,
-      role: PAUSE_STATE_DATA_SUBMISSION_ROLE,
-    },
-    {
-      addressWithRole: securityCouncilAddress,
-      role: UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
-    },
-  ];
-
-  upgradePauseTypeRoles = [{ pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, role: PAUSE_STATE_DATA_SUBMISSION_ROLE }];
-  upgradeUnpauseTypeRoles = [{ pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_STATE_DATA_SUBMISSION_ROLE }];
-
+  const automationServiceAddress = getRequiredEnvVar("AUTOMATION_SERVICE_ADDRESS");
   const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
   const yieldManagerAddress = getRequiredEnvVar("YIELD_MANAGER_ADDRESS");
+
+  const newRoles = [
+    SET_YIELD_MANAGER_ROLE,
+    YIELD_PROVIDER_STAKING_ROLE,
+    PAUSE_NATIVE_YIELD_STAKING_ROLE,
+    UNPAUSE_NATIVE_YIELD_STAKING_ROLE,
+  ];
+
+  const newRoleAddresses = [
+    ...generateRoleAssignments(newRoles, securityCouncilAddress, []),
+    {
+      role: YIELD_PROVIDER_STAKING_ROLE,
+      addressWithRole: automationServiceAddress,
+    },
+  ];
+  console.log("New role addresses", newRoleAddresses);
+
+  const newPauseRoles = [{ pauseType: NATIVE_YIELD_STAKING_PAUSE_TYPE, role: PAUSE_NATIVE_YIELD_STAKING_ROLE }];
+  const newUnPauseRoles = [{ pauseType: NATIVE_YIELD_STAKING_PAUSE_TYPE, role: UNPAUSE_NATIVE_YIELD_STAKING_ROLE }];
 
   const lineaRollupV7Impl = await deployContractFromArtifacts(
     LineaRollupV7ContractName,
@@ -48,9 +68,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
 
   const lineaRollupV7Reinitializer = getInitializerData(LineaRollupV7Abi, "reinitializeLineaRollupV7", [
-    upgradeRoleAddresses,
-    upgradePauseTypeRoles,
-    upgradeUnpauseTypeRoles,
+    newRoleAddresses,
+    newPauseRoles,
+    newUnPauseRoles,
     yieldManagerAddress,
   ]);
 
