@@ -89,7 +89,7 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 		FinalFtxRollingHash:                     utils.HexEncodeToString(ftxRollingHash[:]), //
 		// filtered addresses
-		FilteredAddresses: make([]types.EthAddress, 10), // 10 should be the same as the max number of filtered addresses in the config e2e test.
+		FilteredAddresses: make([]types.EthAddress, 0),
 	}
 
 	return pi_interconnection.Request{
