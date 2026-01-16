@@ -5,7 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
@@ -13,10 +14,10 @@ import (
 
 func testBlsPair(t *testing.T, withCircuit bool) {
 	limits := &Limits{
-		NbMillerLoopInputInstances:   4,
-		NbFinalExpInputInstances:     4,
-		NbG1MembershipInputInstances: 4,
-		NbG2MembershipInputInstances: 4,
+		NbMillerLoopInputInstances:   1,
+		NbFinalExpInputInstances:     1,
+		NbG1MembershipInputInstances: 1,
+		NbG2MembershipInputInstances: 1,
 		LimitMillerLoopCalls:         32,
 		LimitFinalExpCalls:           32,
 		LimitG1MembershipCalls:       64,
@@ -35,6 +36,7 @@ func testBlsPair(t *testing.T, withCircuit bool) {
 	// we test all files found
 	var cmp *wizard.CompiledIOP
 	var blsPair *BlsPair
+	var blsPairSource *BlsPairDataSource
 	for _, file := range files {
 		t.Run(file, func(t *testing.T) {
 			f, err := os.Open(file)
@@ -49,12 +51,12 @@ func testBlsPair(t *testing.T, withCircuit bool) {
 			if cmp == nil {
 				cmp = wizard.Compile(
 					func(b *wizard.Builder) {
-						blsPairSource := &BlsPairDataSource{
+						blsPairSource = &BlsPairDataSource{
 							ID:             ct.GetCommit(b, "ID"),
 							CsPair:         ct.GetCommit(b, "CS_PAIRING_CHECK"),
 							CsG1Membership: ct.GetCommit(b, "CS_G1_MEMBERSHIP"),
 							CsG2Membership: ct.GetCommit(b, "CS_G2_MEMBERSHIP"),
-							Limb:           ct.GetCommit(b, "LIMB"),
+							Limb:           ct.GetLimbsLe(b, "LIMB", limbs.NbLimbU128).AssertUint128(),
 							Index:          ct.GetCommit(b, "INDEX"),
 							Counter:        ct.GetCommit(b, "CT"),
 							IsData:         ct.GetCommit(b, "DATA_PAIRING_CHECK"),
@@ -69,12 +71,23 @@ func testBlsPair(t *testing.T, withCircuit bool) {
 								WithPairingCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
 						}
 					},
-					dummy.Compile,
+					plonkinwizard.Compile,
 				)
 			}
 			proof := wizard.Prove(cmp,
 				func(run *wizard.ProverRuntime) {
-					ct.Assign(run, "ID", "CS_PAIRING_CHECK", "CS_G1_MEMBERSHIP", "CS_G2_MEMBERSHIP", "LIMB", "INDEX", "CT", "DATA_PAIRING_CHECK", "RSLT_PAIRING_CHECK", "SUCCESS_BIT")
+					ct.Assign(run,
+						blsPairSource.ID,
+						blsPairSource.CsPair,
+						blsPairSource.CsG1Membership,
+						blsPairSource.CsG2Membership,
+						blsPairSource.Limb,
+						blsPairSource.Index,
+						blsPairSource.Counter,
+						blsPairSource.IsData,
+						blsPairSource.IsRes,
+						blsPairSource.SuccessBit,
+					)
 					blsPair.Assign(run)
 				})
 			if err := wizard.Verify(cmp, proof); err != nil {
