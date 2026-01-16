@@ -1,6 +1,9 @@
 import { node } from "@consensys/eslint-config";
 
 export default [
+  {
+    ignores: [".solcover.js", "docs/**"],
+  },
   ...node,
   {
     languageOptions: {
@@ -9,7 +12,6 @@ export default [
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    ignores: [".solcover.js", "docs/**"]
   },
   {
     files: ["test/**/*.ts"],

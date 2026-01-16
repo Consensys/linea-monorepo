@@ -21,7 +21,7 @@ async function downloadFileUsingCurl(url: string, outputFilePath: string): Promi
         } else {
           resolve(outputFilePath);
         }
-      }
+      },
     );
   });
 }
