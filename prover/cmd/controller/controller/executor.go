@@ -93,7 +93,7 @@ func (e *Executor) Run(ctx context.Context, job *Job) (status Status) {
 	status = runCmd(ctx, cmd, job, false)
 
 	// Do not retry for blob decompression or aggregation jobs
-	if job.Def.Name == jobNameBlobDecompression || job.Def.Name == jobNameAggregation {
+	if job.Def.Name == jobNameDataAvailability || job.Def.Name == jobNameAggregation {
 		return status
 	}
 

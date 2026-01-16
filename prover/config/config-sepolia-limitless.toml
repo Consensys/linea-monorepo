@@ -13,7 +13,7 @@ requests_root_dir = "/home/ubuntu/testing-sepolia-beta-v2-15520477/prover-execut
 limitless_with_debug = false
 ignore_compatibility_check = true
 
-[blob_decompression]
+[data_availability]
 prover_mode = "full"
 requests_root_dir = "/home/ubuntu/mainnet-test-2/v1/prover-compression"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
@@ -37,7 +37,7 @@ is_allowed_circuit_id = 251
 verifier_id = 1
 
 [public_input_interconnection]
-max_nb_decompression = 400
+max_nb_data_availability = 400
 max_nb_execution = 400
 max_nb_circuits = 400
 execution_max_nb_msg = 16

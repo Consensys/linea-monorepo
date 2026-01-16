@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/hash/mimc"
 	snarkTestUtils "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -25,7 +24,10 @@ func TestPIConsistency(t *testing.T) {
 		BaseFee:                      3,
 	}
 
-	utils.FillRange(pi.DataChecksum[:], 10)
+	pi.DataChecksum.Length = 8
+
+	utils.FillRange(pi.DataChecksum.PartialHash[:], 9)
+	utils.FillRange(pi.DataChecksum.Hash[:], 10)
 	utils.FillRange(pi.L2MessageHashes[0][:], 50)
 	utils.FillRange(pi.L2MessageHashes[1][:], 90)
 	utils.FillRange(pi.InitialStateRootHash[:], 130)
@@ -45,13 +47,9 @@ func TestPIConsistency(t *testing.T) {
 		},
 	}
 	require.NoError(t, snarkPi.Assign(&pi))
-	piSum := pi.Sum(nil)
+	piSum := pi.Sum()
 
 	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
-		hsh, err := mimc.NewMiMC(api)
-		if err != nil {
-			panic(err)
-		}
-		return []frontend.Variable{snarkPi.Sum(api, &hsh)}
+		return []frontend.Variable{snarkPi.Sum(api)}
 	}, piSum)(t)
 }

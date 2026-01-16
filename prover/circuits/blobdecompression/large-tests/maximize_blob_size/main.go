@@ -4,23 +4,44 @@ import (
 	"flag"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	"github.com/consensys/gnark/profile"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/config"
+	v2 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
+	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
-func nbConstraints(blobSize int) int {
-	fmt.Printf("*********************\nfor blob of size %d B or %.2fKB:\n", blobSize, float32(blobSize)/1024)
-	c := v1.Circuit{
-		BlobBytes:             make([]frontend.Variable, 32*4096),
-		Dict:                  make([]frontend.Variable, 64*1024),
-		MaxBlobPayloadNbBytes: blobSize,
-		UseGkrMiMC:            true,
+const (
+	maxNbBatches = 100
+	dictNbBytes  = 65536
+)
+
+func nbConstraints(maxUncompressedNbBytes int) int {
+	fmt.Printf("*********************\nfor blob of size %d B or %.2fKB:\n", maxUncompressedNbBytes, float32(maxUncompressedNbBytes)/1024)
+	c := v2.Circuit{
+		BlobBytes: make([]frontend.Variable, 32*4096),
+		Dict:      make([]frontend.Variable, dictNbBytes),
+		FuncPI: v2.FunctionalPublicInputSnark{
+			BatchSums: make([]execution.DataChecksumSnark, maxNbBatches),
+		},
+		CircuitSizes: config.CircuitSizes{
+			MaxUncompressedNbBytes: maxUncompressedNbBytes,
+			MaxNbBatches:           maxNbBatches,
+			DictNbBytes:            dictNbBytes,
+		},
 	}
 	runtime.GC()
+
+	if *flagProfile {
+		p := profile.Start(profile.WithPath(fmt.Sprintf("da-circuit-%sK.pprof", formatFloat(float64(maxUncompressedNbBytes)/1024.0))))
+		defer p.Stop()
+	}
+
 	if cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &c, frontend.WithCapacity(*flagTargetNbConstraints*6/5)); err != nil {
 		panic(err)
 	} else {
@@ -43,6 +64,7 @@ var (
 	flagTargetNbConstraints = flag.Int("target", 1<<27, "target number of constraints")
 	flagBound1              = flag.Int("bound1", -1, "last size")
 	flagBound2              = flag.Int("bound2", -1, "second to last size")
+	flagProfile             = flag.Bool("profile", false, "enable profiling")
 )
 
 func main() {
@@ -101,4 +123,18 @@ func main() {
 			return
 		}
 	}
+}
+
+func formatFloat(f float64) string {
+	res := fmt.Sprintf("%f", f)
+	if !strings.Contains(res, ".") {
+		return res
+	}
+	for res[len(res)-1] == '0' {
+		res = res[:len(res)-1]
+	}
+	if res[len(res)-1] == '.' {
+		res = res[:len(res)-1]
+	}
+	return res
 }

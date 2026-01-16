@@ -12,9 +12,8 @@ const (
 	ExecutionLimitlessCircuitID CircuitID = "execution-limitless"
 	ExecutionDummyCircuitID     CircuitID = "execution-dummy"
 
-	BlobDecompressionV0CircuitID    CircuitID = "blob-decompression-v0"
-	BlobDecompressionV1CircuitID    CircuitID = "blob-decompression-v1"
-	BlobDecompressionDummyCircuitID CircuitID = "blob-decompression-dummy"
+	DataAvailabilityV2CircuitID    CircuitID = "data-availability-v2"
+	DataAvailabilityDummyCircuitID CircuitID = "data-availability-dummy"
 
 	AggregationCircuitID CircuitID = "aggregation"
 

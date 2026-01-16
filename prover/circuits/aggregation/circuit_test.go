@@ -63,7 +63,7 @@ func TestPublicInput(t *testing.T) {
 
 		sfpi := fpi.ToSnarkType()
 		// TODO incorporate into public input hash or decide not to
-		sfpi.NbDecompression = -1
+		sfpi.NbDataAvailability = -1
 		sfpi.InitialStateRootHash = -2
 		sfpi.NbL2Messages = -5
 
@@ -116,15 +116,15 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 	maxNC := utils.Max(ncs...)
 
 	piConfig := config.PublicInput{
-		MaxNbDecompression: maxNC,
-		MaxNbExecution:     maxNC,
+		MaxNbDataAvailability: maxNC,
+		MaxNbExecution:        maxNC,
 	}
 
 	piCircuit := pi_interconnection.DummyCircuit{
 		ExecutionPublicInput:     make([]frontend.Variable, piConfig.MaxNbExecution),
 		ExecutionFPI:             make([]frontend.Variable, piConfig.MaxNbExecution),
-		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDecompression),
-		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDecompression),
+		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDataAvailability),
+		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDataAvailability),
 	}
 
 	piCs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &piCircuit)

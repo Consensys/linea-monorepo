@@ -1,7 +1,7 @@
 environment = "integration-development"
 version = "4.0.0"
 assets_dir = "/opt/linea/prover/prover-assets"
-log_level = 4                                  # TODO @gbotrel will be refactored with new logger. 
+log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
 [controller]
 retry_delays = [0, 1]
@@ -9,7 +9,7 @@ retry_delays = [0, 1]
 [execution]
 prover_mode = "dev"
 
-[blob_decompression]
+[data_availability]
 prover_mode = "dev"
 
 [aggregation]
@@ -17,8 +17,8 @@ prover_mode = "dev"
 num_proofs = [10]
 # allowed_inputs = [
 #     "execution-dummy",
-#     "blob-decompression-dummy",
-#     "blob-decompression-v0",
+#     "data-availability-dummy",
+#     "data-availability-v2",
 # ]
 # Conversion to is_allowed_circuit_id bitmask:
 #   execution-dummy (ID 0, bit 0) = 1 → ALLOWED
