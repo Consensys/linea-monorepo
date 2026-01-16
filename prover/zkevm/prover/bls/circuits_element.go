@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/emulated/fields_bls12381"
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bls12381"
-	"github.com/consensys/gnark/std/math/bitslice"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
@@ -189,56 +188,60 @@ type gtElementWizard struct {
 }
 
 func (c gtElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) *sw_bls12381.GTEl {
-	A0Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A1Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A2Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A3Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A4Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A5Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A6Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A7Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A8Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A9Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A10Limbs := make([]frontend.Variable, fpParams.NbLimbs())
-	A11Limbs := make([]frontend.Variable, fpParams.NbLimbs())
+	// Gt element consists of 12 Fp elements (E12 = E6 x E6, E6 = E2 x E2 x E2, E2 = Fp x Fp)
+	// Each Fp element is 32 limbs of 16 bits in arithmetization (4 x 128-bit limbs split into 8 sublimbs each).
+	// The limbs are in HI-LO format within each Fp element, and the first 8 limbs (highest 128-bit chunk) are 0.
+	//
+	// Arithmetization layout for Gt element T:
+	//  - limbs 0-32 are A0 (C0.B0.A0)
+	//  - limbs 32-64 are A1 (C0.B0.A1)
+	//  - limbs 64-96 are A2 (C0.B1.A0)
+	//  - limbs 96-128 are A3 (C0.B1.A1)
+	//  - limbs 128-160 are A4 (C0.B2.A0)
+	//  - limbs 160-192 are A5 (C0.B2.A1)
+	//  - limbs 192-224 are A6 (C1.B0.A0)
+	//  - limbs 224-256 are A7 (C1.B0.A1)
+	//  - limbs 256-288 are A8 (C1.B1.A0)
+	//  - limbs 288-320 are A9 (C1.B1.A1)
+	//  - limbs 320-352 are A10 (C1.B2.A0)
+	//  - limbs 352-384 are A11 (C1.B2.A1)
 
-	// assert that the MSB limb is 0 in arithmetization
+	// Assert that the MSB 8 limbs of each Fp element are 0
 	for i := range 12 {
-		api.AssertIsEqual(c.T[i*nbFpLimbs], 0)
+		for j := range 8 {
+			api.AssertIsEqual(c.T[i*nbFpLimbs+j], 0)
+		}
 	}
 
-	for i := range nbFpLimbs - 1 {
-		A0Limbs[len(A0Limbs)-(2*i+2)], A0Limbs[len(A0Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[i+1], 64, bitslice.WithNbDigits(128))
-		A1Limbs[len(A1Limbs)-(2*i+2)], A1Limbs[len(A1Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		A2Limbs[len(A2Limbs)-(2*i+2)], A2Limbs[len(A2Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[2*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		A3Limbs[len(A3Limbs)-(2*i+2)], A3Limbs[len(A3Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[3*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		A4Limbs[len(A4Limbs)-(2*i+2)], A4Limbs[len(A4Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[4*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		A5Limbs[len(A5Limbs)-(2*i+2)], A5Limbs[len(A5Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[5*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		A6Limbs[len(A6Limbs)-(2*i+2)], A6Limbs[len(A6Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[6*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		A7Limbs[len(A7Limbs)-(2*i+2)], A7Limbs[len(A7Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[7*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		A8Limbs[len(A8Limbs)-(2*i+2)], A8Limbs[len(A8Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[8*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		A9Limbs[len(A9Limbs)-(2*i+2)], A9Limbs[len(A9Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[9*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		A10Limbs[len(A10Limbs)-(2*i+2)], A10Limbs[len(A10Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[10*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		A11Limbs[len(A11Limbs)-(2*i+2)], A11Limbs[len(A11Limbs)-(2*i+1)] = bitslice.Partition(api, c.T[11*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
+	// Helper to extract 24 limbs from a 32-limb Fp element, reversing the 128-bit chunk order
+	extractFpLimbs := func(offset int) []frontend.Variable {
+		limbs := make([]frontend.Variable, 24)
+		// Reverse order of 128-bit chunks (each chunk is 8 x 16-bit limbs)
+		copy(limbs[0:8], c.T[offset+24:offset+32])  // lowest 128-bit chunk
+		copy(limbs[8:16], c.T[offset+16:offset+24]) // middle 128-bit chunk
+		copy(limbs[16:24], c.T[offset+8:offset+16]) // highest non-zero 128-bit chunk
+		return limbs
 	}
+
+	A0 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(0*nbFpLimbs), 16)
+	A1 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(1*nbFpLimbs), 16)
+	A2 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(2*nbFpLimbs), 16)
+	A3 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(3*nbFpLimbs), 16)
+	A4 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(4*nbFpLimbs), 16)
+	A5 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(5*nbFpLimbs), 16)
+	A6 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(6*nbFpLimbs), 16)
+	A7 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(7*nbFpLimbs), 16)
+	A8 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(8*nbFpLimbs), 16)
+	A9 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(9*nbFpLimbs), 16)
+	A10 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(10*nbFpLimbs), 16)
+	A11 := gnarkutil.EmulatedFromLimbSlice(api, fp, extractFpLimbs(11*nbFpLimbs), 16)
 
 	pairing, err := sw_bls12381.NewPairing(api)
 	if err != nil {
 		panic(fmt.Sprintf("new pairing: %v", err))
 	}
 	T := pairing.Ext12.FromTower([12]*emulated.Element[sw_bls12381.BaseField]{
-		fp.NewElement(A0Limbs),
-		fp.NewElement(A1Limbs),
-		fp.NewElement(A2Limbs),
-		fp.NewElement(A3Limbs),
-		fp.NewElement(A4Limbs),
-		fp.NewElement(A5Limbs),
-		fp.NewElement(A6Limbs),
-		fp.NewElement(A7Limbs),
-		fp.NewElement(A8Limbs),
-		fp.NewElement(A9Limbs),
-		fp.NewElement(A10Limbs),
-		fp.NewElement(A11Limbs),
+		A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11,
 	})
 
 	return T
