@@ -346,13 +346,14 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 		}
 	}
 	return config.PublicInput{
-		MaxNbDecompression: len(c.Circuit.DecompressionFPIQ),
-		MaxNbExecution:     len(c.Circuit.ExecutionFPIQ),
-		MaxNbInvalidity:    len(c.Circuit.InvalidityFPI),
-		ExecutionMaxNbMsg:  executionNbMsg,
-		L2MsgMerkleDepth:   c.Circuit.L2MessageMerkleDepth,
-		L2MsgMaxNbMerkle:   c.Circuit.L2MessageMaxNbMerkle,
-		MaxNbCircuits:      c.Circuit.MaxNbCircuits,
+		MaxNbDecompression:     len(c.Circuit.DecompressionFPIQ),
+		MaxNbExecution:         len(c.Circuit.ExecutionFPIQ),
+		MaxNbInvalidity:        len(c.Circuit.InvalidityFPI),
+		ExecutionMaxNbMsg:      executionNbMsg,
+		L2MsgMerkleDepth:       c.Circuit.L2MessageMerkleDepth,
+		L2MsgMaxNbMerkle:       c.Circuit.L2MessageMaxNbMerkle,
+		MaxNbCircuits:          c.Circuit.MaxNbCircuits,
+		MaxNbFilteredAddresses: len(c.Circuit.FilteredAddressesFPISnark.Addresses),
 	}, nil
 }
 
@@ -375,13 +376,16 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]frontend.Variable, cfg.ExecutionMaxNbMsg)
 	}
 
+	// Allocate FilteredAddresses slice with max capacity
+	res.FilteredAddressesFPISnark.Addresses = make([]frontend.Variable, cfg.MaxNbFilteredAddresses)
+
 	return res
 }
 
 func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 	nbShnarf := c.MaxNbDecompression
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
-	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, 2)
+	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, c.MaxNbFilteredAddresses, 2)
 	for i := 0; i < nbShnarf; i++ {
 		res.WithStrictHashLengths(160) // 5 components in every shnarf
 	}
@@ -390,9 +394,10 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 		res.WithStrictHashLengths(64) // 2 tree nodes
 	}
 
-	// aggregation PI opening
-	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
-	res.WithStrictHashLengths(public_input.NbAggregationFPI * 32) // NbAggregationFPI × 32 bytes
+	// aggregation PI opening - order must match the order of hash calls in AggregationFPISnark.Sum
+	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)          // L2 merkle tree roots (called first in Sum)
+	res.WithFlexibleHashLengths(32 * c.MaxNbFilteredAddresses)    // filtered addresses (called second in Sum)
+	res.WithStrictHashLengths(public_input.NbAggregationFPI * 32) // final aggregation hash (called last in Sum)
 	return &res
 }
 

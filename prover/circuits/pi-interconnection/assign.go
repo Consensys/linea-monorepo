@@ -192,7 +192,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 
 	aggregationFPI.NbDecompression = uint64(len(r.Decompressions))
 	aggregationFPI.NbInvalidity = uint64(len(r.Invalidity))
-	a.AggregationFPIQSnark = aggregationFPI.ToSnarkType().AggregationFPIQSnark
+	a.AggregationFPIQSnark = aggregationFPI.ToSnarkType(cfg.MaxNbFilteredAddresses).AggregationFPIQSnark
 
 	merkleNbLeaves := 1 << cfg.L2MsgMerkleDepth
 	maxNbL2MessageHashes := cfg.L2MsgMaxNbMerkle * merkleNbLeaves

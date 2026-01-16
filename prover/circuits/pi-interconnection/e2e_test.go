@@ -42,13 +42,14 @@ func TestSingleBlockBlob(t *testing.T) {
 func TestSingleBlockBlobE2E(t *testing.T) {
 	req := pitesting.AssignSingleBlockBlob(t)
 	cfg := config.PublicInput{
-		MaxNbDecompression: len(req.Decompressions),
-		MaxNbExecution:     len(req.Executions),
-		MaxNbInvalidity:    len(req.Invalidity),
-		ExecutionMaxNbMsg:  1,
-		L2MsgMerkleDepth:   5,
-		L2MsgMaxNbMerkle:   1,
-		MockKeccakWizard:   true,
+		MaxNbDecompression:     len(req.Decompressions),
+		MaxNbExecution:         len(req.Executions),
+		MaxNbInvalidity:        len(req.Invalidity),
+		ExecutionMaxNbMsg:      1,
+		L2MsgMerkleDepth:       5,
+		L2MsgMaxNbMerkle:       1,
+		MaxNbFilteredAddresses: 10,
+		MockKeccakWizard:       true,
 	}
 	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
 	assert.NoError(t, err)
@@ -175,6 +176,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			FinalFtxNumber:                          4,
 			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
+			FilteredAddresses:                       make([]types.EthAddress, 10),
 		},
 	}
 
@@ -311,6 +313,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			FinalFtxNumber:                          4,
 			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
+			FilteredAddresses:                       make([]types.EthAddress, 10),
 		},
 	}
 
@@ -355,13 +358,14 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 		}
 
 		cfg := config.PublicInput{
-			MaxNbDecompression: len(req.Decompressions) + slack[0],
-			MaxNbExecution:     len(req.Executions) + slack[1],
-			MaxNbInvalidity:    len(req.Invalidity) + slack[1],
-			ExecutionMaxNbMsg:  1 + slack[2],
-			L2MsgMerkleDepth:   5,
-			L2MsgMaxNbMerkle:   1 + slack[3],
-			MockKeccakWizard:   true,
+			MaxNbDecompression:     len(req.Decompressions) + slack[0],
+			MaxNbExecution:         len(req.Executions) + slack[1],
+			MaxNbInvalidity:        len(req.Invalidity) + slack[1],
+			ExecutionMaxNbMsg:      1 + slack[2],
+			L2MsgMerkleDepth:       5,
+			L2MsgMaxNbMerkle:       1 + slack[3],
+			MaxNbFilteredAddresses: 10,
+			MockKeccakWizard:       true,
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {

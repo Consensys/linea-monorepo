@@ -17,6 +17,7 @@
         "treeDepth": 5,
         "l2MessagingBlocksOffsets": "0x00000000000000000000000fffff",
         "parentAggregationFtxRollingHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-        "parentAggregationFtxNumber": 0
+        "parentAggregationFtxNumber": 0,
+        "filteredAddresses": []
     }
 }

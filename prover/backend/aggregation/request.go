@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Request collects all the fields used to perform an aggregation request.
@@ -42,6 +43,10 @@ type Request struct {
 	ParentAggregationLastFtxRollingHash string `json:"parentAggregationLastFtxRollingHash"`
 	// last finalized forced transaction number
 	ParentAggregationLastFtxNumber int `json:"parentAggregationLastFtxNumber"`
+
+	// filtered addresses for the address filter,
+	// TODO; we should take them from Invalidity responses instead of the request file
+	FilteredAddresses []string `json:"filteredAddresses"`
 }
 
 // This struct contains a collection of fields that are to be extracted from the
@@ -125,4 +130,7 @@ type CollectedFields struct {
 
 	LastFinalizedFtxRollingHash string
 	FinalFtxRollingHash         string
+
+	// filtered addresses for the address filter
+	FilteredAddresses []types.EthAddress
 }
