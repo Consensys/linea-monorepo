@@ -41,12 +41,12 @@ return
 
 number:
 ;; check that NUMBER == BLOCK_NUMBER
-    if BLOCK_NUMBER != VALUE_CURRENT exit_fail
+    if BLOCK_NUMBER != VALUE_CURRENT goto exit_fail
 
 ;; block number increases by 1
 ;; need to prove a (strict) increase of timestamp
-    if sgn_current_minus_parent == 1 exit_fail  ;; ie current block is older than VALUE_PREVIOUS_BLOCK
-    if current_minus_parent != 1 exit_fail      ;; the NUMBER should increase by 1 between blocks
+    if sgn_current_minus_parent == 1 goto exit_fail  ;; ie current block is older than VALUE_PREVIOUS_BLOCK
+    if current_minus_parent != 1 goto exit_fail      ;; the NUMBER should increase by 1 between blocks
 return
 
 prevrandao:
@@ -87,7 +87,7 @@ return
 
 chainid:
 ;; prove conflation constancy
-    if current_minus_parent != 0 exit_fail
+    if current_minus_parent != 0 goto exit_fail
 return
 
 basefee:
