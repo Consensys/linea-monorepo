@@ -309,38 +309,48 @@ func (d *UnalignedMsmData) csProjectionGnarkData(comp *wizard.CompiledIOP) {
 	// Projects from row-format columns (CurrentAccumulator, Scalar, Point, NextAccumulator)
 	// to the single GnarkDataMsm column. The order matches assignGnarkData:
 	// CurrentAccumulator, Scalar, Point, NextAccumulator
+	// Within each 128-bit chunk (8 limbs), we reverse the order to convert from
+	// little-endian (source) to big-endian (gnark circuit expects).
 	nbL := nbLimbs(d.Group)
 	totalCols := nbL + nbFrLimbs + nbL + nbL // CurrentAccumulator + Scalar + Point + NextAccumulator
 
 	filtersA := make([]ifaces.Column, totalCols)
 	columnsA := make([][]ifaces.Column, totalCols)
 
+	// Helper to reverse endianness within each 128-bit chunk
+	reversedIdx := func(j int) int {
+		chunkIdx := j / limbs.NbLimbU128
+		withinChunk := j % limbs.NbLimbU128
+		reversedWithinChunk := limbs.NbLimbU128 - 1 - withinChunk
+		return chunkIdx*limbs.NbLimbU128 + reversedWithinChunk
+	}
+
 	offset := 0
-	// CurrentAccumulator
+	// CurrentAccumulator - reverse within each 128-bit chunk
 	for i := range nbL {
 		filtersA[offset+i] = d.IsActive
-		columnsA[offset+i] = []ifaces.Column{d.CurrentAccumulator[i]}
+		columnsA[offset+i] = []ifaces.Column{d.CurrentAccumulator[reversedIdx(i)]}
 	}
 	offset += nbL
 
-	// Scalar
+	// Scalar - reverse within each 128-bit chunk
 	for i := range nbFrLimbs {
 		filtersA[offset+i] = d.IsActive
-		columnsA[offset+i] = []ifaces.Column{d.Scalar[i]}
+		columnsA[offset+i] = []ifaces.Column{d.Scalar[reversedIdx(i)]}
 	}
 	offset += nbFrLimbs
 
-	// Point
+	// Point - reverse within each 128-bit chunk
 	for i := range nbL {
 		filtersA[offset+i] = d.IsActive
-		columnsA[offset+i] = []ifaces.Column{d.Point[i]}
+		columnsA[offset+i] = []ifaces.Column{d.Point[reversedIdx(i)]}
 	}
 	offset += nbL
 
-	// NextAccumulator
+	// NextAccumulator - reverse within each 128-bit chunk
 	for i := range nbL {
 		filtersA[offset+i] = d.IsActive
-		columnsA[offset+i] = []ifaces.Column{d.NextAccumulator[i]}
+		columnsA[offset+i] = []ifaces.Column{d.NextAccumulator[reversedIdx(i)]}
 	}
 
 	prj := query.ProjectionMultiAryInput{
@@ -555,24 +565,36 @@ func (d *UnalignedMsmData) assignGnarkData(run *wizard.ProverRuntime) {
 		dstDataMsm         = common.NewVectorBuilder(d.GnarkDataMsm)
 		dstDataIsActiveMsm = common.NewVectorBuilder(d.GnarkIsActiveMsm)
 	)
+	// Helper to reverse endianness within each 128-bit chunk
+	reversedIdx := func(j int) int {
+		chunkIdx := j / limbs.NbLimbU128
+		withinChunk := j % limbs.NbLimbU128
+		reversedWithinChunk := limbs.NbLimbU128 - 1 - withinChunk
+		return chunkIdx*limbs.NbLimbU128 + reversedWithinChunk
+	}
+
 	for i := range srcIsActive {
 		if !srcIsActive[i].IsOne() {
 			continue
 		}
+		// CurrentAccumulator - reverse within each 128-bit chunk
 		for j := range nbL {
-			dstDataMsm.PushField(srcCurrentAccumulator[j][i])
+			dstDataMsm.PushField(srcCurrentAccumulator[reversedIdx(j)][i])
 			dstDataIsActiveMsm.PushOne()
 		}
+		// Scalar - reverse within each 128-bit chunk
 		for j := range nbFrLimbs {
-			dstDataMsm.PushField(srcScalar[j][i])
+			dstDataMsm.PushField(srcScalar[reversedIdx(j)][i])
 			dstDataIsActiveMsm.PushOne()
 		}
+		// Point - reverse within each 128-bit chunk
 		for j := range nbL {
-			dstDataMsm.PushField(srcPoint[j][i])
+			dstDataMsm.PushField(srcPoint[reversedIdx(j)][i])
 			dstDataIsActiveMsm.PushOne()
 		}
+		// NextAccumulator - reverse within each 128-bit chunk
 		for j := range nbL {
-			dstDataMsm.PushField(srcNextAccumulator[j][i])
+			dstDataMsm.PushField(srcNextAccumulator[reversedIdx(j)][i])
 			dstDataIsActiveMsm.PushOne()
 		}
 	}
