@@ -64,6 +64,8 @@ contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, 
     __Permissions_init(_roleAddresses);
 
     shnarfProvider = IProvideShnarf(address(this));
+
+    emit LineaRollupVersionChanged("7.0", "7.1");
   }
 
   /**
