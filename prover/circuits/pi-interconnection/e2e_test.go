@@ -176,6 +176,8 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			FinalFtxNumber:                          4,
 			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
+			ParentAggregationBlockHash:              utils.FmtIntHex32Bytes(0x1234),
+			FinalBlockHash:                          utils.FmtIntHex32Bytes(0x5678),
 			FilteredAddresses:                       make([]types.EthAddress, 10),
 		},
 	}
@@ -313,6 +315,8 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			FinalFtxNumber:                          4,
 			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
+			ParentAggregationBlockHash:              utils.FmtIntHex32Bytes(0x1234),
+			FinalBlockHash:                          utils.FmtIntHex32Bytes(0x5678),
 			FilteredAddresses:                       make([]types.EthAddress, 10),
 		},
 	}
