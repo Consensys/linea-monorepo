@@ -27,7 +27,7 @@ deploy-upgradeable-predeploys:
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/deployPredeployContractsV1.ts
 
-deploy-linea-rollup: L1_CONTRACT_VERSION:=6
+deploy-linea-rollup: L1_CONTRACT_VERSION:=7
 deploy-linea-rollup:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
