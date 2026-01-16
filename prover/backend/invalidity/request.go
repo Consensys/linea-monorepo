@@ -1,6 +1,7 @@
 package invalidity
 
 import (
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -8,29 +9,26 @@ import (
 // Request file for a forced transaction attempted to be included in the current aggregation
 // The forcedTransactionNumbers from request files per aggregation, should create a consecutive sequence.
 type Request struct {
-	// RLP encoding of the transaction see [ethereum.EncodeTxForSigning()]
+	ExecutionCtx execution.Request `json:"executionCtx"`
+	// RLP encoding of the transaction.
 	RlpEncodedTx []byte `json:"forcedTransactionRLP"`
 	// transaction number assigned by L1 contract
 	ForcedTransactionNumber uint64 `json:"forcedTransactionNumber"`
-	// from address as given by L1 contract
-	FromAddresses types.EthAddress `json:"fromAddresses"`
 	// the height before which one expect to see the transaction.
-	ExpectedBlockHeight uint64 `json:"expectedBlockHeight"`
-	// state root hash of the current aggregation, so this is the same for all the request files relevant to the same aggregation
-	StateRootHash types.Bytes32 `json:"stateRootHash"`
-	// RollingHash associated with the transaction
-	FtxRollingHash types.Bytes32 `json:"ftxRollingHash"`
+	DeadlineBlockHeight uint64 `json:"expectedBlockHeight"`
 	// previous FTX stream hash, i.e. the FTX stream hash of the previous forced transaction.
 	PrevFtxRollingHash types.Bytes32 `json:"prevFtxRollingHash"`
-	// the minimum block number where the transaction is handled
-	FtxMinBlockNumber uint64
-	// the maximum block number where the transaction is handled
-	FtxMaxBlockNumber uint64
-	// Parent block hash
-	ParentBlockHash types.Bytes32 `json:"parentBlockHash"`
 	// the type of invalidity for each forced transaction;
-	// for the executed valid transaction it is set to [invalidity.BadNonce]
+	// for the executed valid transaction, it is set to [invalidity.BadNonce]
 	InvalidityTypes invalidity.InvalidityType `json:"invalidityTypes"`
-	// account tri from the final state of the current aggregation.
-	AccountTrie invalidity.AccountTrieInputs `json:"accountTrie"`
+	// This is constrained to be less than  DeadLineBlockHeight (strict equality is needed for bad precompile case)
+	// a  valid FTX is executed in the parent aggregation and its proof is available at the beginning of the running aggregation
+	LastFinalizedBlockNumber uint64 `json:"lastFinalizedBlockNumber"`
+}
+
+// AccountTrieInputs extracts the AccountTrieInputs from the ZkStateMerkleProof traces
+// for the given sender address. It looks for a world state ReadNonZero trace (type=0, location="0x")
+// that matches the sender address.
+func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.EthAddress, error) {
+	panic("not implemented, we first have a consensus on Request structure")
 }

@@ -1,5 +1,7 @@
 package aggregation
 
+import "github.com/consensys/linea-monorepo/prover/utils/types"
+
 // Response contains all the fields returned by the prover to run the
 // aggregation. Reflects the data to be sent to the smart-contract for
 // finalization
@@ -83,4 +85,11 @@ type Response struct {
 	// that was finalized before.
 	FinalBlockHash             string `json:"finalBlockHash"`
 	ParentAggregationBlockHash string `json:"parentAggregationBlockHash"`
+
+	// chain configuration
+	ChainID              uint64           `json:"chainID"`
+	BaseFee              uint64           `json:"baseFee"`
+	CoinBase             types.EthAddress `json:"coinBase"`
+	L2MessageServiceAddr types.EthAddress `json:"l2MessageServiceAddr"`
+	IsAllowedCircuitID   uint64           `json:"isAllowedCircuitID"`
 }

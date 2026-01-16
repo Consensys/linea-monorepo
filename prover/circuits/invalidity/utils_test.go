@@ -314,8 +314,9 @@ var tcases = []TestCases{
 			}),
 		},
 		Tx: types.DynamicFeeTx{
-			Nonce:     1,             // valid nonce
-			Value:     big.NewInt(1), //invalid balance
+			ChainID:   big.NewInt(59144), // Linea mainnet chain ID
+			Nonce:     1,                 // valid nonce
+			Value:     big.NewInt(1),     //invalid balance
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
@@ -348,8 +349,9 @@ var tcases = []TestCases{
 			}),
 		},
 		Tx: types.DynamicFeeTx{
-			Nonce:     65,               // invalid nonce
-			Value:     big.NewInt(5700), // invalid value
+			ChainID:   big.NewInt(59144), // Linea mainnet chain ID
+			Nonce:     65,                // invalid nonce
+			Value:     big.NewInt(5700),  // invalid value
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},
@@ -381,8 +383,9 @@ var tcases = []TestCases{
 			}),
 		},
 		Tx: types.DynamicFeeTx{
-			Nonce:     63,              // invalid nonce
-			Value:     big.NewInt(800), // valid value
+			ChainID:   big.NewInt(59144), // Linea mainnet chain ID
+			Nonce:     63,                // invalid nonce
+			Value:     big.NewInt(800),   // valid value
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
 		},

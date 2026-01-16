@@ -8,6 +8,8 @@ import (
 type Response struct {
 	// the transaction that was attempted to be included in the current aggregation
 	Transaction *ethtypes.Transaction
+	// signer of the transaction
+	Signer types.EthAddress `json:"signer"`
 	// hash of the transaction (before signing)
 	TxHash string `json:"txHash"`
 	// the corresponding request file
@@ -25,4 +27,6 @@ type Response struct {
 	PublicInput types.Bytes32 `json:"publicInput"`
 
 	ProverVersion string `json:"proverVersion"`
+
+	FtxRollingHash types.Bytes32 `json:"ftxRollingHash"`
 }

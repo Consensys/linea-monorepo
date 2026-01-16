@@ -1,7 +1,6 @@
 {
     "invalidityProofSpec": {
-        "ftxNumber": 123,
-        "prevFtxRollingHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "ftxNumber": 1,
         "chainID": 789979,
         "expectedBlockHeight": 310
     }

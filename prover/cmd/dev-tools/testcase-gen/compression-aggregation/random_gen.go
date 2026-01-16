@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -11,7 +9,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
-	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	circInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -75,10 +72,10 @@ type BlobSubmissionSpec struct {
 
 // InvalidityProofSpec
 type InvalidityProofSpec struct {
-	FtxNumber           int      `json:"ftxNumber"`
-	PrevFtxRollingHash  string   `json:"prevFtxRollingHash"`
-	ChainID             *big.Int `json:"chainID"`
-	ExpectedBlockHeight int      `json:"expectedBlockHeight"`
+	FtxNumber                int      `json:"ftxNumber"`
+	ChainID                  *big.Int `json:"chainID"`
+	ExpectedBlockHeight      int      `json:"expectedBlockHeight"`
+	LastFinalizedBlockNumber int      `json:"lastFinalizedBlockNumber"`
 }
 
 // Aggregation spec
@@ -226,7 +223,7 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 	return cf
 }
 
-// RandonInvalidTransaction returns a random invalid transaction from a random
+// RandonmInvalidTransaction returns a random invalid transaction from a random
 // from address and writes fromAddress, tx and txHash to the spec file
 func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specFile string) *invalidity.Request {
 
@@ -246,20 +243,11 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		panic(err)
 	}
 
-	// Get the fromAddress from the private key
-	publicKey := privKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		panic("error casting public key to ECDSA")
-	}
-
-	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   spec.ChainID,
 		Nonce:     rng.Uint64() % 100,
-		GasTipCap: big.NewInt(int64(123543135)),
-		GasFeeCap: big.NewInt(int64(112121212)),
+		GasTipCap: big.NewInt(int64(112121212)),
+		GasFeeCap: big.NewInt(int64(123543135)),
 		Gas:       4531112,
 		To:        &address,
 		Value:     big.NewInt(int64(845315452)),
@@ -269,20 +257,25 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		},
 	})
 
-	txHash := signer.Hash(tx)
+	// Sign the transaction so that GetFrom can recover the sender
+	signedTx, err := types.SignTx(tx, signer, privKey)
+	if err != nil {
+		panic(fmt.Sprintf("failed to sign transaction: %v", err))
+	}
 
-	//sanity check
-	if !bytes.Equal(txHash.Bytes(), crypto.Keccak256(ethereum.EncodeTxForSigning(tx))) {
-		utils.Panic("tx hash mismatch")
+	// Encode the signed transaction
+	rlpEncodedTx, err := signedTx.MarshalBinary()
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal signed transaction: %v", err))
 	}
 
 	return &invalidity.Request{
-		RlpEncodedTx:            ethereum.EncodeTxForSigning(tx),
-		ForcedTransactionNumber: uint64(spec.FtxNumber),
-		FromAddresses:           linTypes.EthAddress(fromAddress),
-		InvalidityTypes:         circInvalidity.BadNonce,
-		ExpectedBlockHeight:     uint64(spec.ExpectedBlockHeight),
-		PrevFtxRollingHash:      linTypes.Bytes32FromHex(spec.PrevFtxRollingHash),
+		RlpEncodedTx:             rlpEncodedTx,
+		ForcedTransactionNumber:  uint64(spec.FtxNumber),
+		InvalidityTypes:          circInvalidity.BadNonce,
+		DeadlineBlockHeight:      uint64(spec.ExpectedBlockHeight),
+		PrevFtxRollingHash:       linTypes.Bytes32{}, // Will be set by caller when chaining from previous proof
+		LastFinalizedBlockNumber: uint64(spec.LastFinalizedBlockNumber),
 	}
 
 }
@@ -313,7 +306,7 @@ func (rdg *RandDataGen) Base64RandLen(from, to int) string {
 // and the returned hex string is 0x prefixed.
 func (rdg *RandDataGen) HexString(n int) string {
 	res := make([]byte, n)
-	rdg.Read(res[1:]) // we leave the first byte zero to ensure it's < the bls12 field.
+	rdg.Read(res)
 	return "0x" + hex.EncodeToString(res)
 }
 
