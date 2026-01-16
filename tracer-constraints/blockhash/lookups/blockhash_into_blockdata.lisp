@@ -4,9 +4,8 @@
   blockhash-into-blockdata
   ;; target columns
   (
-   blockdata.REL_BLOCK
-   blockdata.DATA_LO
-   blockdata.INST
+   blockdata.RELATIVE_BLOCK_NUMBER
+   blockdata.NUMBER
   )
   ;; source selector
   (blockhash-into-blockdata-selector)
@@ -14,6 +13,5 @@
   (
    blockhash.macro/REL_BLOCK
    blockhash.macro/ABS_BLOCK
-   EVM_INST_NUMBER
    )
   )

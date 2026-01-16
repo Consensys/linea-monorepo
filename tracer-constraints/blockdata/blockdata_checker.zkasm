@@ -12,10 +12,9 @@ var sgn_current_minus_parent u1
 sgn_current_minus_parent, current_minus_parent = VALUE_CURRENT - VALUE_PARENT
 
 var genesis_block u1
-genesis_block = BLOCK_NUMBER == 0
+genesis_block = 0 ;; BLOCK_NUMBER == 0
 
 ;; Now, deal with the different instructions:
-
   if INST==EVM_INST_COINBASE     goto coinbase
   if INST==EVM_INST_TIMESTAMP    goto timestamp
   if INST==EVM_INST_NUMBER       goto number
@@ -36,8 +35,8 @@ return
 
 timestamp:
 ;; need to prove a (strict) increase of timestamp
-    if sgn_current_minus_parent == 1 exit_fail  ;; ie current block is older than VALUE_PREVIOUS_BLOCK
-    if current_minus_parent == 0 exit_fail      ;; ie current block has same timestamp as previous one. We could merge the two checks.
+    if sgn_current_minus_parent == 1 goto exit_fail  ;; ie current block is older than VALUE_PREVIOUS_BLOCK
+    if current_minus_parent == 0 goto exit_fail      ;; ie current block has same timestamp as previous one. We could merge the two checks.
 return
 
 number:

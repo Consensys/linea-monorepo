@@ -11,4 +11,5 @@ fn blockdata_rel_num_checker(RELATIVE_BLOCK_NUMBER u32, NUMBER u32) -> () {
     b1, tmp1 = RELATIVE_BLOCK_NUMBER -1
     b2, tmp2 = NUMBER -1
     blockdata_rel_num_checker(tmp1, tmp2)
+    return
 }
