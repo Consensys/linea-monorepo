@@ -1,4 +1,4 @@
-package serialization
+package serde
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/sirupsen/logrus"
@@ -89,24 +90,46 @@ func compareSymbolicExpressions(a, b reflect.Value, path string) bool {
 	ae := a.Interface().(*symbolic.Expression)
 	be := b.Interface().(*symbolic.Expression)
 
-	// If both nil, they are equal
+	// 1. Basic Nil Checks
 	if ae == nil && be == nil {
 		return true
 	}
-
-	// If only one is nil, they differ
 	if (ae == nil) != (be == nil) {
 		logrus.Errorf("Mismatch at %s: one value is nil, the other is not\n", path)
 		return false
 	}
 
-	// Both non-nil, validate and compare
-	errA, errB := ae.Validate(), be.Validate()
+	// 2. Safe Validation Wrapper (Catches SIGSEGV/Panics)
+	var errA, errB error
+
+	// Validate A (Truth)
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				errA = fmt.Errorf("PANIC during validation: %v", r)
+			}
+		}()
+		errA = ae.Validate()
+	}()
+
+	// Validate B (Deserialized)
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				errB = fmt.Errorf("PANIC during validation: %v", r)
+			}
+		}()
+		errB = be.Validate()
+	}()
+
+	// 3. Report Validation Failures without Crashing
 	if errA != nil || errB != nil {
-		logrus.Errorf("One of the expressions is invalid: path=%s errA=%v, errB=%v\n", path, errA, errB)
+		logrus.Warnf("Validation failed at %s. This implies the object was not fully restored.\n\tTruth Err: %v\n\tProver Err: %v", path, errA, errB)
+		// We return false to fail the test, but we don't crash the runner.
 		return false
 	}
 
+	// 4. Compare Hash
 	if ae.ESHash != be.ESHash {
 		logrus.Errorf("Mismatch at %s: hashes differ (v1: %v, v2: %v)\n", path, ae.ESHash.Text(16), be.ESHash.Text(16))
 		return false
@@ -142,7 +165,7 @@ func compareMaps(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path strin
 	// The module discoverer uses map[ifaces.Column] and map[column.Natural]
 	// These use pointers
 	switch a.Type().Key() {
-	case TypeOfColumnNatural, reflect.TypeFor[ifaces.Column]():
+	case reflect.TypeOf(column.Natural{}), reflect.TypeFor[ifaces.Column]():
 		return true
 	}
 
@@ -169,8 +192,8 @@ func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path st
 		structField := a.Type().Field(i)
 
 		// When the field has the omitted tag, we skip it there without any warning.
-		if tag, hasTag := structField.Tag.Lookup(SerdeStructTag); hasTag {
-			if strings.Contains(tag, SerdeStructTagOmit) ||
+		if tag, hasTag := structField.Tag.Lookup(serdeStructTag); hasTag {
+			if strings.Contains(tag, serdeStructTagOmit) ||
 				strings.Contains(tag, SerdeStructTagTestOmit) {
 				continue
 			}
