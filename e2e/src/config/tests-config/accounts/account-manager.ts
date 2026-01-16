@@ -1,19 +1,24 @@
-import { ethers, NonceManager, Provider, toBeHex, TransactionRequest, TransactionResponse, Wallet } from "ethers";
 import { Mutex } from "async-mutex";
 import type { Logger } from "winston";
 import Account from "./account";
-import { etherToWei, LineaEstimateGasClient } from "../../../common/utils";
+import { estimateLineaGas, etherToWei } from "../../../common/utils";
 import { createTestLogger } from "../../../config/logger";
-import { config } from "..";
+import { Client, createNonceManager, Hex, parseGwei, PrivateKeyAccount, SendTransactionReturnType } from "viem";
+import { jsonRpc } from "viem/nonce";
+import { privateKeyToAccount, generatePrivateKey, privateKeyToAddress } from "viem/accounts";
+import { estimateFeesPerGas, sendTransaction, waitForTransactionReceipt } from "viem/actions";
 
 interface IAccountManager {
-  whaleAccount(accIndex?: number): NonceManager;
-  generateAccount(initialBalanceWei?: bigint): Promise<Wallet>;
-  generateAccounts(numberOfAccounts: number, initialBalanceWei?: bigint): Promise<Wallet[]>;
-  getWallet(account: Account): Wallet;
+  whaleAccount(accIndex?: number): PrivateKeyAccount;
+  generateAccount(initialBalanceWei?: bigint, accIndex?: number): Promise<PrivateKeyAccount>;
+  generateAccounts(
+    numberOfAccounts: number,
+    initialBalanceWei?: bigint,
+    accIndex?: number,
+  ): Promise<PrivateKeyAccount[]>;
 }
 
-function getWallet(provider: Provider, privateKey: string): Wallet {
+function formatPrivateKey(privateKey: string): Hex {
   if (!privateKey.startsWith("0x")) {
     privateKey = "0x" + privateKey;
   }
@@ -23,34 +28,38 @@ function getWallet(provider: Provider, privateKey: string): Wallet {
   if (keyWithoutPrefix.length < 64) {
     keyWithoutPrefix = keyWithoutPrefix.padStart(64, "0");
   }
-  return new Wallet(`0x${keyWithoutPrefix}`, provider);
+  return `0x${keyWithoutPrefix}`;
 }
 
 abstract class AccountManager implements IAccountManager {
   protected readonly chainId: number;
   protected readonly whaleAccounts: Account[];
-  protected provider: Provider;
-  protected accountWallets: NonceManager[];
+  protected client: Client;
+  protected accountWallets: PrivateKeyAccount[];
   private whaleAccountMutex: Mutex;
   private logger: Logger;
 
   private readonly MAX_RETRIES = 5;
   private readonly RETRY_DELAY_MS = 1_000;
 
-  constructor(provider: Provider, whaleAccounts: Account[], chainId: number) {
-    this.provider = provider;
+  constructor(client: Client, whaleAccounts: Account[], chainId: number) {
+    this.client = client;
     this.whaleAccounts = whaleAccounts;
     this.chainId = chainId;
-    this.accountWallets = this.whaleAccounts.map(
-      (account) => new NonceManager(getWallet(this.provider, account.privateKey)),
-    );
+    this.accountWallets = this.whaleAccounts.map((account) => {
+      const nonceManager = createNonceManager({
+        source: jsonRpc(),
+      });
+
+      return privateKeyToAccount(formatPrivateKey(account.privateKey), { nonceManager });
+    });
     this.whaleAccountMutex = new Mutex();
 
     this.logger = createTestLogger();
   }
 
-  selectWhaleAccount(accIndex?: number): { account: Account; accountWallet: NonceManager } {
-    if (accIndex) {
+  selectWhaleAccount(accIndex?: number): { account: Account; accountWallet: PrivateKeyAccount } {
+    if (accIndex !== undefined) {
       return { account: this.whaleAccounts[accIndex], accountWallet: this.accountWallets[accIndex] };
     }
     const workerIdEnv = process.env.JEST_WORKER_ID || "1";
@@ -62,11 +71,11 @@ abstract class AccountManager implements IAccountManager {
     return { account: whaleAccount, accountWallet: whaleTxManager };
   }
 
-  whaleAccount(accIndex?: number): NonceManager {
+  whaleAccount(accIndex?: number): PrivateKeyAccount {
     return this.selectWhaleAccount(accIndex).accountWallet;
   }
 
-  async generateAccount(initialBalanceWei = etherToWei("10"), accIndex?: number): Promise<Wallet> {
+  async generateAccount(initialBalanceWei = etherToWei("10"), accIndex?: number): Promise<PrivateKeyAccount> {
     const accounts = await this.generateAccounts(1, initialBalanceWei, accIndex);
     return accounts[0];
   }
@@ -75,60 +84,56 @@ abstract class AccountManager implements IAccountManager {
     numberOfAccounts: number,
     initialBalanceWei = etherToWei("10"),
     accIndex?: number,
-  ): Promise<Wallet[]> {
+  ): Promise<PrivateKeyAccount[]> {
     const { account: whaleAccount, accountWallet: whaleAccountWallet } = this.selectWhaleAccount(accIndex);
 
     this.logger.debug(
       `Generating accounts... chainId=${this.chainId} numberOfAccounts=${numberOfAccounts} whaleAccount=${whaleAccount.address}`,
     );
 
-    const accounts: Account[] = [];
-    const transactionPromises: Promise<TransactionResponse>[] = [];
+    const accountTransactionPairs: Array<{ account: Account; txPromise: Promise<SendTransactionReturnType | null> }> =
+      [];
 
     for (let i = 0; i < numberOfAccounts; i++) {
-      const randomBytes = ethers.randomBytes(32);
-      const randomPrivKey = ethers.hexlify(randomBytes);
-      const newAccount = new Account(randomPrivKey, ethers.computeAddress(randomPrivKey));
-      accounts.push(newAccount);
+      const randomPrivKey = generatePrivateKey();
+      const newAccount = new Account(randomPrivKey, privateKeyToAddress(randomPrivKey));
 
       let maxPriorityFeePerGas = null;
       let maxFeePerGas = null;
 
       if (this.chainId === 1337) {
-        const client = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
-        const feeData = await client.lineaEstimateGas(
-          await whaleAccountWallet.getAddress(),
-          newAccount.address,
-          undefined,
-          toBeHex(initialBalanceWei),
-        );
+        const feeData = await estimateLineaGas(this.client, {
+          account: whaleAccountWallet.address,
+          to: newAccount.address,
+          value: initialBalanceWei,
+        });
         maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
         maxFeePerGas = feeData.maxFeePerGas;
       } else {
-        const feeData = await this.provider.getFeeData();
-        maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? ethers.parseUnits("1", "gwei");
-        maxFeePerGas = feeData.maxFeePerGas ?? ethers.parseUnits("10", "gwei");
+        const feeData = await estimateFeesPerGas(this.client);
+        maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? parseGwei("1");
+        maxFeePerGas = feeData.maxFeePerGas ?? parseGwei("10");
       }
 
-      const tx: TransactionRequest = {
-        type: 2,
-        to: newAccount.address,
-        value: initialBalanceWei,
-        maxPriorityFeePerGas,
-        maxFeePerGas,
-        gasLimit: 21000n,
-      };
-
-      const sendTransactionWithRetry = async (): Promise<TransactionResponse> => {
-        return this.retry<TransactionResponse>(
+      const sendTransactionWithRetry = async (): Promise<SendTransactionReturnType> => {
+        return this.retry<SendTransactionReturnType>(
           async () => {
             const release = await this.whaleAccountMutex.acquire();
             try {
-              const transactionResponse = await whaleAccountWallet.sendTransaction(tx);
+              const transactionHash = await sendTransaction(this.client, {
+                account: whaleAccountWallet,
+                chain: this.client.chain,
+                type: "eip1559",
+                to: newAccount.address,
+                value: initialBalanceWei,
+                maxPriorityFeePerGas,
+                maxFeePerGas,
+                gas: 21000n,
+              });
               this.logger.debug(
-                `Transaction sent. newAccount=${newAccount.address} txHash=${transactionResponse.hash} whaleAccount=${whaleAccount.address}`,
+                `Transaction sent. newAccount=${newAccount.address} txHash=${transactionHash} whaleAccount=${whaleAccount.address}`,
               );
-              return transactionResponse;
+              return transactionHash;
             } catch (error) {
               this.logger.warn(
                 `sendTransaction failed for account=${newAccount.address}. Error: ${(error as Error).message}`,
@@ -147,38 +152,47 @@ abstract class AccountManager implements IAccountManager {
         this.logger.error(
           `Failed to fund account after ${this.MAX_RETRIES} attempts. address=${newAccount.address} error=${error.message}`,
         );
-        whaleAccountWallet.reset();
-        return null as unknown as TransactionResponse;
+        whaleAccountWallet.nonceManager?.reset({
+          address: whaleAccountWallet.address,
+          chainId: this.chainId,
+        });
+        return null;
       });
 
-      transactionPromises.push(txPromise);
+      accountTransactionPairs.push({ account: newAccount, txPromise });
     }
 
-    const transactionResponses = await Promise.all(transactionPromises);
+    const transactionResults = await Promise.all(accountTransactionPairs.map((pair) => pair.txPromise));
 
-    const successfulTransactions = transactionResponses.filter(
-      (txResponse): txResponse is TransactionResponse => txResponse !== null,
+    const successfulTransactions = transactionResults.filter(
+      (txResponse): txResponse is SendTransactionReturnType => txResponse !== null,
     );
 
-    if (successfulTransactions.length < numberOfAccounts) {
+    const failedCount = numberOfAccounts - successfulTransactions.length;
+    if (failedCount > 0) {
       this.logger.warn(
-        `Some accounts were not funded successfully. successful=${successfulTransactions.length} expected=${numberOfAccounts}`,
+        `Some accounts were not funded successfully. successful=${successfulTransactions.length} failed=${failedCount} expected=${numberOfAccounts}`,
       );
     }
 
-    await Promise.all(successfulTransactions.map((tx) => tx.wait()));
+    if (successfulTransactions.length === 0) {
+      throw new Error(`Failed to fund any accounts. All ${numberOfAccounts} account funding attempts failed.`);
+    }
+
+    // Wait for successful transactions to be confirmed
+    await Promise.all(successfulTransactions.map((tx) => waitForTransactionReceipt(this.client, { hash: tx })));
+
+    // Return all accounts (both funded and unfunded) to maintain backward compatibility
+    // Unfunded accounts will fail later when used, providing clearer error messages
+    const allAccounts = accountTransactionPairs.map((pair) => pair.account);
 
     this.logger.debug(
-      `${successfulTransactions.length} accounts funded. newAccounts=${accounts
+      `${successfulTransactions.length}/${numberOfAccounts} accounts funded successfully. newAccounts=${allAccounts
         .map((account) => account.address)
         .join(", ")} balance=${initialBalanceWei.toString()} Wei`,
     );
 
-    return accounts.map((account) => this.getWallet(account));
-  }
-
-  getWallet(account: Account): Wallet {
-    return getWallet(this.provider, account.privateKey);
+    return allAccounts.map((account) => privateKeyToAccount(account.privateKey));
   }
 
   private async retry<T>(fn: () => Promise<T>, retries: number, delayMs: number): Promise<T> {
