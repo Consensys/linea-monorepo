@@ -234,21 +234,45 @@ func (d *UnalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
 	// ensures that the data limbs from source are projected into columns of the
 	// unaligned module properly. It additionally constraints IsActive to
 	// correspond to the number of lines in the source.
+	//
+	// The source has multiple limb columns per row (obtained via Limbs()), and we need to
+	// project multiple rows into a single row of destination columns (Point and Scalar).
+	// Both sides must have the same number of columns per table.
+	//
+	// The projection reads left-to-right then top-to-bottom. With the source having
+	// nbLimbsPerRow columns, we read all columns in a row, then move to the next row.
+	// For each MSM input, we have nbRowsPerInput source rows that map to 1 destination row.
+	//
+	// The source limbs are stored in little-endian order, but the destination (Point/Scalar)
+	// expects big-endian order within each 128-bit chunk. So we convert to big-endian.
 	nbL := nbLimbs(d.Group)
-	filtersB := make([]ifaces.Column, nbL+nbFrLimbs)
-	columnsB := make([][]ifaces.Column, nbL+nbFrLimbs)
-	for i := range nbL {
+	srcLimbs := d.BlsMsmDataSource.Limb.ToBigEndianUint().Limbs()
+	nbLimbsPerRow := len(srcLimbs)
+
+	// ColumnsA: single table with nbLimbsPerRow columns, reads left-to-right then top-to-bottom
+	// For each destination row, we read nbRowsPerInput source rows
+	filtersA := []ifaces.Column{d.IsDataAndCsMul}
+	columnsA := [][]ifaces.Column{srcLimbs}
+
+	// ColumnsB: single table with nbLimbsPerRow columns
+	// But we have nbL+nbFrLimbs destination columns total, so we need multiple tables
+	// Each table corresponds to one "row" of source data mapped to part of the destination
+	nbRowsPerInput := (nbL + nbFrLimbs) / nbLimbsPerRow
+	allDstCols := make([]ifaces.Column, nbL+nbFrLimbs)
+	copy(allDstCols[:nbL], d.Point)
+	copy(allDstCols[nbL:], d.Scalar[:])
+
+	filtersB := make([]ifaces.Column, nbRowsPerInput)
+	columnsB := make([][]ifaces.Column, nbRowsPerInput)
+	for i := range nbRowsPerInput {
 		filtersB[i] = d.IsActive
-		columnsB[i] = []ifaces.Column{d.Point[i]}
+		columnsB[i] = allDstCols[i*nbLimbsPerRow : (i+1)*nbLimbsPerRow]
 	}
-	for i := range nbFrLimbs {
-		filtersB[nbL+i] = d.IsActive
-		columnsB[nbL+i] = []ifaces.Column{d.Scalar[i]}
-	}
+
 	prj := query.ProjectionMultiAryInput{
-		FiltersA: []ifaces.Column{d.IsDataAndCsMul},
+		FiltersA: filtersA,
 		FiltersB: filtersB,
-		ColumnsA: [][]ifaces.Column{{d.BlsMsmDataSource.Limb}},
+		ColumnsA: columnsA,
 		ColumnsB: columnsB,
 	}
 	comp.InsertProjection(ifaces.QueryIDf("%s_%s_PROJECTION_DATA", NAME_UNALIGNED_MSM, d.Group.String()), prj)
@@ -256,17 +280,26 @@ func (d *UnalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
 
 func (d *UnalignedMsmData) csProjectionResult(comp *wizard.CompiledIOP) {
 	nbL := nbLimbs(d.Group)
+	srcLimbs := d.BlsMsmDataSource.Limb.ToBigEndianUint().Limbs()
+	nbLimbsPerRow := len(srcLimbs)
+	nbRowsPerResult := nbL / nbLimbsPerRow
 
-	filtersB := make([]ifaces.Column, nbL)
-	columnsB := make([][]ifaces.Column, nbL)
-	for i := range nbL {
+	// ColumnsA: single table with nbLimbsPerRow columns
+	filtersA := []ifaces.Column{d.IsResultAndCsMul}
+	columnsA := [][]ifaces.Column{srcLimbs}
+
+	// ColumnsB: multiple tables, each with nbLimbsPerRow columns
+	filtersB := make([]ifaces.Column, nbRowsPerResult)
+	columnsB := make([][]ifaces.Column, nbRowsPerResult)
+	for i := range nbRowsPerResult {
 		filtersB[i] = d.IsLastLine
-		columnsB[i] = []ifaces.Column{d.NextAccumulator[i]}
+		columnsB[i] = d.NextAccumulator[i*nbLimbsPerRow : (i+1)*nbLimbsPerRow]
 	}
+
 	prj := query.ProjectionMultiAryInput{
-		FiltersA: []ifaces.Column{d.IsResultAndCsMul},
+		FiltersA: filtersA,
 		FiltersB: filtersB,
-		ColumnsA: [][]ifaces.Column{{d.BlsMsmDataSource.Limb}},
+		ColumnsA: columnsA,
 		ColumnsB: columnsB,
 	}
 	comp.InsertProjection(ifaces.QueryIDf("%s_%s_PROJECTION_RESULT", NAME_UNALIGNED_MSM, d.Group.String()), prj)
@@ -328,7 +361,7 @@ func (d *UnalignedMsmData) assignMasks(run *wizard.ProverRuntime) {
 
 func (d *UnalignedMsmData) assignUnaligned(run *wizard.ProverRuntime) {
 	var (
-		srcID = d.ID.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcID      = d.ID.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcLimb    = d.Limb.GetAssignment(run)
 		nbRows     = d.Limb.NumRow()
 		srcIndex   = d.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
