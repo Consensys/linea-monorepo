@@ -316,7 +316,7 @@ func (rdg *RandDataGen) Base64RandLen(from, to int) string {
 // and the returned hex string is 0x prefixed.
 func (rdg *RandDataGen) HexString(n int) string {
 	res := make([]byte, n)
-	rdg.Read(res[1:]) // we leave the first byte zero to ensure it's < the bls12 field.
+	rdg.Read(res)
 	return "0x" + hex.EncodeToString(res)
 }
 
