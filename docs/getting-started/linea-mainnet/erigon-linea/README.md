@@ -30,19 +30,6 @@ cd docs/getting-started/linea-mainnet/erigon-linea
 make push IMAGE=consensys/linea-erigon TAG=v3.3.0-linea-patched
 ```
 
-## Verify it matches the previous image (fast, no node testing)
-
-If you want to be sure the **actual `erigon` binary** is identical between images:
-
-```bash
-cd docs/getting-started/linea-mainnet/erigon-linea
-chmod +x verify-images.sh
-./verify-images.sh morislineats/erigon:v3.3.0-linea-patched consensys/linea-erigon:v3.3.0-linea-patched
-```
-
-This compares the `sha256` of `/usr/local/bin/erigon` in both images.
-If you’re on an ARM machine (e.g. Apple Silicon / Graviton), the script forces `PLATFORM=linux/amd64` by default.
-
 ## Suggested tagging
 
 - `consensys/linea-erigon:v3.3.0-linea-patched`
