@@ -27,6 +27,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
 )
 
@@ -40,6 +41,17 @@ const (
 // Collect the fields, to make the aggregation proof
 func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
+	// sanity check
+	if len(req.FilteredAddresses) > cfg.PublicInputInterconnection.MaxNbFilteredAddresses {
+		return nil, fmt.Errorf("number of filtered addresses (%d) exceeds the maximum allowed (%d)", len(req.FilteredAddresses), cfg.PublicInputInterconnection.MaxNbFilteredAddresses)
+	}
+
+	// Convert filtered addresses from request
+	filteredAddrs := make([]types.EthAddress, len(req.FilteredAddresses))
+	for i, addrStr := range req.FilteredAddresses {
+		filteredAddrs[i] = types.EthAddress(common.HexToAddress(addrStr))
+	}
+
 	var (
 		allL2MessageHashes []string
 		l2MsgBlockOffsets  []bool
@@ -50,6 +62,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			LastFinalizedL1RollingHashMessageNumber: uint(req.ParentAggregationLastL1RollingHashMessageNumber),
 			LastFinalizedFtxRollingHash:             req.ParentAggregationLastFtxRollingHash,
 			LastFinalizedFtxNumber:                  uint(req.ParentAggregationLastFtxNumber),
+			FilteredAddresses:                       filteredAddrs,
 		}
 	)
 
@@ -284,6 +297,9 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		BaseFee:              uint64(cfg.Layer2.BaseFee),
 		CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
 		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
+
+		// filtered addresses
+		FilteredAddresses: cf.FilteredAddresses,
 	}
 
 	resp.AggregatedProofPublicInput = pubInputParts.GetPublicInputHex()

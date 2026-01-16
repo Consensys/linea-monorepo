@@ -91,6 +91,7 @@ func (cf CollectedFields) AggregationPublicInput(cfg *config.Config) public_inpu
 		BaseFee:                                 uint64(cfg.Layer2.BaseFee),
 		CoinBase:                                types.EthAddress(cfg.Layer2.CoinBase),
 		L2MessageServiceAddr:                    types.EthAddress(cfg.Layer2.MsgSvcContract),
+		FilteredAddresses:                       cf.FilteredAddresses,
 	}
 }
 

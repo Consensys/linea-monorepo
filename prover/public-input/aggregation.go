@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	NbAggregationFPI = 17 // hardcoded constant , the number of functional public inputs used in the keccak hash.
+	NbAggregationFPI = 18 // hardcoded constant , the number of functional public inputs used in the keccak hash.
 )
 
 // Aggregation collects all the field that are used to construct the public
@@ -47,6 +47,9 @@ type Aggregation struct {
 	CoinBase             types.EthAddress
 	L2MessageServiceAddr types.EthAddress
 	IsAllowedCircuitID   uint64
+
+	// filtered addresses
+	FilteredAddresses []types.EthAddress
 }
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
@@ -78,6 +81,16 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 	}
 	l2Msgs := hsh.Sum(nil)
 
+	// Compute filtered addresses hash using the same hasher (for StrictHasher compatibility)
+	hsh.Reset()
+	for _, addr := range p.FilteredAddresses {
+		// Left-pad address to 32 bytes (address is 20 bytes)
+		var padded [32]byte
+		copy(padded[12:], addr[:])
+		hsh.Write(padded[:])
+	}
+	filteredAddrsHash := hsh.Sum(nil)
+
 	// Compute chain configuration hash using MiMC first
 	chainConfigHash := computeChainConfigurationHash(p.ChainID, p.BaseFee, p.CoinBase, p.L2MessageServiceAddr)
 
@@ -100,6 +113,8 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 	hsh.Write(l2Msgs)
 	// Add the chain configuration hash - exactly 32 bytes
 	hsh.Write(chainConfigHash[:])
+	// Add the filtered addresses hash
+	hsh.Write(filteredAddrsHash)
 
 	// represent canonically as a bn254 scalar
 	var x bn254fr.Element
@@ -142,9 +157,12 @@ type AggregationFPI struct {
 	CoinBase             types.EthAddress
 	L2MessageServiceAddr types.EthAddress
 	IsAllowedCircuitID   uint64
+
+	// filtered addresses
+	FilteredAddresses []types.EthAddress
 }
 
-func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
+func (pi *AggregationFPI) ToSnarkType(maxNbFilteredAddresses int) AggregationFPISnark {
 	s := AggregationFPISnark{
 		AggregationFPIQSnark: AggregationFPIQSnark{
 			LastFinalizedBlockNumber:       pi.LastFinalizedBlockNumber,
@@ -182,6 +200,16 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 	for i := range s.L2MsgMerkleTreeRoots {
 		utils.Copy(s.L2MsgMerkleTreeRoots[i][:], pi.L2MsgMerkleTreeRoots[i][:])
 	}
+
+	// Convert FilteredAddresses to snark format
+	s.FilteredAddressesFPISnark = FilteredAddressesFPISnark{
+		Addresses:   make([]frontend.Variable, maxNbFilteredAddresses),
+		NbAddresses: len(pi.FilteredAddresses),
+	}
+	for i, addr := range pi.FilteredAddresses {
+		s.FilteredAddressesFPISnark.Addresses[i] = addr[:]
+	}
+
 	return s
 }
 
@@ -199,6 +227,7 @@ type AggregationFPIQSnark struct {
 	ChainID                        frontend.Variable // WARNING: Currently not bound in Sum
 	L2MessageServiceAddr           frontend.Variable // WARNING: Currently not bound in Sum
 	ChainConfigurationFPISnark     ChainConfigurationFPISnark
+	FilteredAddressesFPISnark      FilteredAddressesFPISnark
 }
 
 type ChainConfigurationFPISnark struct {
@@ -206,6 +235,11 @@ type ChainConfigurationFPISnark struct {
 	BaseFee                 frontend.Variable
 	CoinBase                frontend.Variable
 	L2MessageServiceAddress frontend.Variable
+}
+
+type FilteredAddressesFPISnark struct {
+	Addresses   []frontend.Variable
+	NbAddresses frontend.Variable
 }
 
 type AggregationFPISnark struct {
@@ -268,11 +302,16 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 			return
 		}
 	}
+	s.FilteredAddresses = make([]types.EthAddress, len(fpi.FilteredAddresses))
+	for i := range s.FilteredAddresses {
+		s.FilteredAddresses[i] = fpi.FilteredAddresses[i]
+	}
+
 	return
 }
 
 func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]frontend.Variable {
-	// number of hashes: NbAggregationFPI (17)
+	// number of hashes: NbAggregationFPI (18)
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,
 		pi.FinalShnarf,
@@ -293,6 +332,8 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 
 		//include a hash of the chain configuration
 		utils.ToBytes(api, pi.ChainConfigurationFPISnark.Sum(api)),
+
+		pi.FilteredAddressesFPISnark.Sum(api, hash),
 	)
 
 	// turn the hash into a bn254 element
@@ -325,6 +366,15 @@ func copyFromHex(dst []byte, src string) error {
 	}
 	copy(dst[len(dst)-len(b):], b) // panics if src is too long
 	return nil
+}
+
+func (pi *FilteredAddressesFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]frontend.Variable {
+	bytes32 := [][32]frontend.Variable{}
+	for _, addr := range pi.Addresses {
+		bytes32 = append(bytes32, utils.ToBytes(api, addr))
+	}
+	// Use NbAddresses to hash only actual addresses, not padded ones
+	return hash.Sum(pi.NbAddresses, bytes32...)
 }
 
 // Sum computes the MiMC hash of the chain configuration parameters

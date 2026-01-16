@@ -147,6 +147,9 @@ type AggregationSpec struct {
 
 	FinalFtxRollingHash string `json:"finalFtxRollingHash"`
 	FinalFtxNumber      uint   `json:"finalFtxNumber"`
+
+	// Filtered addresses for address filter
+	FilteredAddresses []string `json:"filteredAddresses"`
 }
 
 // Generates a random request file for a blob submission
@@ -176,6 +179,12 @@ func RandBlobSubmission(rng *rand.Rand, spec BlobSubmissionSpec) *blobsubmission
 // Generates a random request file for an aggregation request
 func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.CollectedFields {
 
+	// Convert filtered addresses from spec
+	filteredAddrs := make([]linTypes.EthAddress, len(spec.FilteredAddresses))
+	for i, addrStr := range spec.FilteredAddresses {
+		filteredAddrs[i] = linTypes.EthAddress(common.HexToAddress(addrStr))
+	}
+
 	cf := &aggregation.CollectedFields{
 		ParentAggregationFinalShnarf:            spec.ParentAggregationFinalShnarf,
 		FinalShnarf:                             spec.FinalShnarf,
@@ -201,6 +210,7 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 		// overwrite it later if there is an invalidity proof in the spec.
 		FinalFtxRollingHash: spec.ParentAggregationFtxRollingHash,
 		FinalFtxNumber:      uint(spec.ParentAggregationFtxNumber),
+		FilteredAddresses:   filteredAddrs,
 	}
 
 	if len(spec.InvalidityProofs) > 0 {
