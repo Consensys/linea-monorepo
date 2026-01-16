@@ -9,6 +9,7 @@ import { HASH_ZERO, TEST_PUBLIC_VERIFIER_INDEX } from "../../common/constants";
 import {
   expectEvent,
   expectEventDirectFromReceiptData,
+  expectRevertWithCustomError,
   generateFinalizationData,
   generateKeccak256,
 } from "../../common/helpers";
@@ -25,6 +26,10 @@ export async function expectSuccessfulFinalize(
   isMultiple: boolean = false,
   lastFinalizedRollingHash: string = HASH_ZERO,
   lastFinalizedMessageNumber: bigint = 0n,
+  lastFinalizedForcedTransactionRollingHash: string = HASH_ZERO,
+  lastFinalizedForcedTransactionNumber: bigint = 0n,
+  finalForcedTransactionNumber: bigint = 0n,
+  filteredAddresses: string[] = [],
 ) {
   const finalizationData = await generateFinalizationData({
     l1RollingHash: proofData.l1RollingHash,
@@ -36,11 +41,17 @@ export async function expectSuccessfulFinalize(
     l2MerkleRoots: proofData.l2MerkleRoots,
     l2MerkleTreesDepth: BigInt(proofData.l2MerkleTreesDepth),
     l2MessagingBlocksOffsets: proofData.l2MessagingBlocksOffsets,
+    filteredAddresses: filteredAddresses,
     aggregatedProof: proofData.aggregatedProof,
     shnarfData: shnarfDataGenerator(blobParentShnarfIndex, isMultiple),
   });
+
   finalizationData.lastFinalizedL1RollingHash = lastFinalizedRollingHash;
   finalizationData.lastFinalizedL1RollingHashMessageNumber = lastFinalizedMessageNumber;
+
+  finalizationData.lastFinalizedForcedTransactionRollingHash = lastFinalizedForcedTransactionRollingHash;
+  finalizationData.lastFinalizedForcedTransactionNumber = lastFinalizedForcedTransactionNumber;
+  finalizationData.finalForcedTransactionNumber = finalForcedTransactionNumber;
 
   await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
 
@@ -68,10 +79,62 @@ export async function expectSuccessfulFinalize(
   expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
   expect(lastFinalizedState).to.equal(
     generateKeccak256(
-      ["uint256", "bytes32", "uint256"],
-      [finalizationData.l1RollingHashMessageNumber, finalizationData.l1RollingHash, finalizationData.finalTimestamp],
+      ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
+      [
+        finalizationData.l1RollingHashMessageNumber,
+        finalizationData.l1RollingHash,
+        0,
+        HASH_ZERO,
+        finalizationData.finalTimestamp,
+      ],
     ),
   );
+}
+
+export async function expectFailedCustomErrorFinalize(
+  lineaRollup: TestLineaRollup,
+  operator: SignerWithAddress,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  proofData: any,
+  blobParentShnarfIndex: number,
+  finalStateRootHash: string,
+  shnarfDataGenerator: ShnarfDataGenerator,
+  isMultiple: boolean = false,
+  lastFinalizedRollingHash: string = HASH_ZERO,
+  lastFinalizedMessageNumber: bigint = 0n,
+  lastFinalizedForcedTransactionRollingHash: string = HASH_ZERO,
+  lastFinalizedForcedTransactionNumber: bigint = 0n,
+  filteredAddresses: string[] = [],
+  customError: string,
+  customErrorArgs: unknown[] = [],
+) {
+  const finalizationData = await generateFinalizationData({
+    l1RollingHash: proofData.l1RollingHash,
+    l1RollingHashMessageNumber: BigInt(proofData.l1RollingHashMessageNumber),
+    lastFinalizedTimestamp: BigInt(proofData.parentAggregationLastBlockTimestamp),
+    endBlockNumber: BigInt(proofData.finalBlockNumber),
+    parentStateRootHash: proofData.parentStateRootHash,
+    finalTimestamp: BigInt(proofData.finalTimestamp),
+    l2MerkleRoots: proofData.l2MerkleRoots,
+    l2MerkleTreesDepth: BigInt(proofData.l2MerkleTreesDepth),
+    l2MessagingBlocksOffsets: proofData.l2MessagingBlocksOffsets,
+    filteredAddresses: filteredAddresses,
+    aggregatedProof: proofData.aggregatedProof,
+    shnarfData: shnarfDataGenerator(blobParentShnarfIndex, isMultiple),
+  });
+
+  finalizationData.lastFinalizedL1RollingHash = lastFinalizedRollingHash;
+  finalizationData.lastFinalizedL1RollingHashMessageNumber = lastFinalizedMessageNumber;
+  finalizationData.lastFinalizedForcedTransactionRollingHash = lastFinalizedForcedTransactionRollingHash;
+  finalizationData.lastFinalizedForcedTransactionNumber = lastFinalizedForcedTransactionNumber;
+
+  await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
+
+  const finalizeCompressedCall = lineaRollup
+    .connect(operator)
+    .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+
+  await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, customError, customErrorArgs);
 }
 
 export async function expectSuccessfulFinalizeViaCallForwarder(
@@ -141,18 +204,22 @@ export async function expectSuccessfulFinalizeViaCallForwarder(
       lastFinalizedMessageNumber,
       proofData.l1RollingHashMessageNumber,
       proofData.l2MerkleTreesDepth,
+      finalizationData.lastFinalizedForcedTransactionNumber,
+      finalizationData.finalForcedTransactionNumber,
+      finalizationData.lastFinalizedForcedTransactionRollingHash,
       proofData.l2MerkleRoots,
+      [],
       proofData.l2MessagingBlocksOffsets,
     ],
   ];
 
   const encodedCall = ethers.concat([
-    "0x5603c65f",
+    "0x755bc62f",
     ethers.AbiCoder.defaultAbiCoder().encode(
       [
         "bytes",
         "uint256",
-        "tuple(bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,bytes32[],bytes)",
+        "tuple(bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,bytes32,bytes32[],address[],bytes)",
       ],
       txData,
     ),
@@ -171,7 +238,7 @@ export async function expectSuccessfulFinalizeViaCallForwarder(
     type: 2,
     nonce: nonce,
     value: 0,
-    gasLimit: 5_000_000,
+    gasLimit: 10_000_000,
   });
 
   const signedTx = await operatorHDSigner.signTransaction(transaction);
@@ -208,8 +275,14 @@ export async function expectSuccessfulFinalizeViaCallForwarder(
   expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
   expect(lastFinalizedState).to.equal(
     generateKeccak256(
-      ["uint256", "bytes32", "uint256"],
-      [finalizationData.l1RollingHashMessageNumber, finalizationData.l1RollingHash, finalizationData.finalTimestamp],
+      ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
+      [
+        finalizationData.l1RollingHashMessageNumber,
+        finalizationData.l1RollingHash,
+        0,
+        HASH_ZERO,
+        finalizationData.finalTimestamp,
+      ],
     ),
   );
 }

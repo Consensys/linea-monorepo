@@ -77,10 +77,46 @@ export type FinalizationData = {
   l1RollingHash: string;
   l1RollingHashMessageNumber: bigint;
   l2MerkleRoots: string[];
+  filteredAddresses: string[];
   l2MerkleTreesDepth: bigint;
   l2MessagingBlocksOffsets: string;
   lastFinalizedL1RollingHash: string;
   lastFinalizedL1RollingHashMessageNumber: bigint;
+  lastFinalizedForcedTransactionNumber: bigint;
+  finalForcedTransactionNumber: bigint;
+  lastFinalizedForcedTransactionRollingHash: string;
 };
 
 export type ShnarfDataGenerator = (blobParentShnarfIndex: number, isMultiple?: boolean) => ShnarfData;
+
+export type Eip1559Transaction = {
+  nonce: bigint;
+  maxPriorityFeePerGas: bigint;
+  maxFeePerGas: bigint;
+  gasLimit: bigint;
+  to: string;
+  value: bigint;
+  input: string;
+  accessList: AccessList[];
+  yParity: bigint;
+  r: bigint;
+  s: bigint;
+};
+
+export type AccessList = {
+  contractAddress: string;
+  storageKeys: string[];
+};
+
+export type AccessListEntryInput = {
+  address: string;
+  storageKeys: string[];
+};
+
+export type LastFinalizedState = {
+  timestamp: string;
+  messageNumber: string;
+  messageRollingHash: string;
+  forcedTransactionNumber: string;
+  forcedTransactionRollingHash: string;
+};

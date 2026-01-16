@@ -25,6 +25,8 @@ import {
   unpauseTypeRoles,
   UNUSED_PAUSE_TYPE,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
+  FORCED_TRANSACTION_SENDER_ROLE,
+  SET_ADDRESS_FILTER_ROLE,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
@@ -35,6 +37,7 @@ import {
   getLastBlockTimestamp,
   setFutureTimestampForNextBlock,
 } from "../common/helpers";
+import { FORCED_TRANSACTION_FEE_SETTER_ROLE } from "contracts/common/constants";
 
 async function deployTestPauseManagerFixture(): Promise<TestPauseManager> {
   return deployUpgradableFromFactory("TestPauseManager", [
@@ -75,6 +78,9 @@ describe("PauseManager", () => {
       pauseManager.grantRole(UNPAUSE_STATE_DATA_SUBMISSION_ROLE, securityCouncil.address),
       pauseManager.grantRole(UNPAUSE_FINALIZATION_ROLE, securityCouncil.address),
       pauseManager.grantRole(SECURITY_COUNCIL_ROLE, securityCouncil.address),
+      pauseManager.grantRole(SET_ADDRESS_FILTER_ROLE, securityCouncil.address),
+      pauseManager.grantRole(FORCED_TRANSACTION_SENDER_ROLE, pauseManagerAccount.address),
+      pauseManager.grantRole(FORCED_TRANSACTION_FEE_SETTER_ROLE, securityCouncil.address),
     ]);
   });
 
