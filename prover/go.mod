@@ -5,10 +5,9 @@ go 1.24.9
 toolchain go1.24.10
 
 require (
-	github.com/bits-and-blooms/bitset v1.24.4
 	github.com/consensys/compress v0.3.0
-	github.com/consensys/gnark v0.14.1-0.20260112223856-37fc8803d435
-	github.com/consensys/gnark-crypto v0.19.3-0.20260105204507-a918ce1daf68
+	github.com/consensys/gnark v0.14.1-0.20251210113322-60b2a82ddfdd
+	github.com/consensys/gnark-crypto v0.19.3-0.20251218031800-affd349cb6ea
 	github.com/consensys/go-corset v1.2.0-rc4
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
@@ -36,6 +35,7 @@ require (
 require (
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/crate-crypto/go-ipa v0.0.0-20240223125850-b1e8a79f509c // indirect

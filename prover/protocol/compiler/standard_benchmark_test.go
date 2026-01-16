@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -416,19 +417,23 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 
 		circuit := verifierCircuit{}
+		nbRounds := comp.NumRounds() //comp.NumRounds() //17 // TODO setting this to comp.NumRounds() make the number of constraint explode, need to investigate
+		fmt.Printf("using nbRounds=%d instead of %d\n", nbRounds, comp.NumRounds())
 		{
-			c := wizard.AllocateWizardCircuit(comp, comp.NumRounds(), isBLS)
+			c := wizard.AllocateWizardCircuit(comp, nbRounds, isBLS)
 			circuit.C = *c
 		}
 
-		csc, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-
+		gnarkProfile := profile.Start(profile.WithPath("./gnark.pprof"))
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+		gnarkProfile.Stop()
+		fmt.Printf("ccs number of constraints: %d\n", ccs.GetNbConstraints())
 		if err != nil {
 			b.Fatal(err)
 		}
 
 		assignment := &verifierCircuit{
-			C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), isBLS),
+			C: *wizard.AssignVerifierCircuit(comp, proof, nbRounds, isBLS),
 		}
 
 		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
@@ -437,7 +442,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 
 		// Check if solved using the pre-compiled SCS
-		err = csc.IsSolved(witness)
+		err = ccs.IsSolved(witness)
 		if err != nil {
 			b.Fatal(err)
 		}
