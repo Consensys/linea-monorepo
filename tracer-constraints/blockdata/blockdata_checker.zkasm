@@ -5,7 +5,7 @@
 include "../util/max2.zkasm"
 include "../util/fake_exponential.zkasm"
 
-pub fn blockdata_checker(BLOCK_NUMBER u32, INST=0x43 u8, VALUE_PARENT u256, AUX_1 u64, AUX_2 u64, VALUE_CURRENT u256) -> () {
+fn blockdata_checker(BLOCK_NUMBER u32, INST=0x43 u8, VALUE_PARENT u256, AUX_1 u64, AUX_2 u64, VALUE_CURRENT u256) -> () {
 
 var current_minus_parent u256
 var sgn_current_minus_parent u1
@@ -17,7 +17,7 @@ genesis_block = BLOCK_NUMBER == 0
 ;; Now, deal with the different instructions:
 
   if INST==EVM_INST_COINBASE     goto coinbase
-  if INST==EVM_INST_TIMESTAMP    goto timestamp ;;TODO
+  if INST==EVM_INST_TIMESTAMP    goto timestamp
   if INST==EVM_INST_NUMBER       goto number
   if INST==EVM_INST_PREVRANDAO   goto prevrandao
   if INST==EVM_INST_GASLIMIT     goto gaslimit
@@ -58,7 +58,7 @@ gaslimit:
 if genesis_block goto gaslimit_genesis
 
 ;; see EIP-1559
-;; AUX_1 represents the gas used by the current block
+;; AUX_1 represents the gas used by the parent
 
 ;; # check if the block used too much gas
 var gas_used_minus_gas_limit u64

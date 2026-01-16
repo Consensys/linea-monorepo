@@ -25,7 +25,7 @@ pub fn blockdata(RELATIVE_BLOCK_NUMBER u32,
     GAS_USED_PARENT u64,
     TIMESTAMP u32,
     TIMESTAMP_PARENT u32,
-    PREV_RANDAO u256,
+    PREVRANDAO u256,
     BASE_FEE_PER_GAS u64,
     BASE_FEE_PER_GAS_PARENT u64,
     BLOB_GAS_USED u64,
@@ -47,10 +47,19 @@ if gas_used_x != 0 goto exit_fail
 
 ;; Create a loop over the different value of the block header. It serves two purposes:
 ;; 1. prove the correctness of the value
-;; 2. even if there is nothing to prove (PREVRANDAO, COINBASE) expose the value in a vertical way to be accessible 
+;; 2. even if there is nothing to prove (PREVRANDAO, COINBASE) expose the value in a vertical way to be accessible
 ;; by the lookup from the HUB
 
-
+blockdata_checker(NUMBER, EVM_INST_COINBASE, 0, 0, 0, COINBASE)
+blockdata_checker(NUMBER, EVM_INST_TIMESTAMP, TIMESTAMP_PARENT, 0, 0, TIMESTAMP)
+blockdata_checker(NUMBER, EVM_INST_NUMBER, NUMBER_PARENT, 0, 0, NUMBER)
+blockdata_checker(NUMBER, EVM_INST_PREVRANDAO, 0, 0, 0, PREVRANDAO)
+blockdata_checker(NUMBER, EVM_INST_GASLIMIT, GASLIMIT_PARENT, GAS_USED_PARENT, 0, GASLIMIT)
+blockdata_checker(NUMBER, EVM_INST_CHAINID, CHAINID_PARENT, 0, 0, CHAINID)
+blockdata_checker(NUMBER, EVM_INST_BASEFEE, BASEFEE_PARENT, GAS_USED_PARENT, GAS_LIMIT_PARENT, BASEFEE)
+blockdata_checker(NUMBER, EVM_INST_BLOBBASEFEE, BLOBBASEFEE_PARENT, EXCESS_BLOB_GAS, 0, BLOBBASEFEE)
+blockdata_checker(NUMBER, EXCESS_BLOB_GAS, EXCESS_BLOB_GAS_PARENT, BLOB_GAS_USED_PARENT, 0, EXCESS_BLOB_GAS)
+return
 
 exit_fail:
 fail
