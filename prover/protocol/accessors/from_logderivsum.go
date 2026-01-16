@@ -42,13 +42,11 @@ func (l *FromLogDerivSumAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 }
 
 func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
-	//TODO implement me
-	panic("implement me")
+	panic("unsupported, log derivative sums are always over field extensions")
 }
 
 func (l *FromLogDerivSumAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) zk.WrappedVariable {
-	//TODO implement me
-	panic("implement me")
+	panic("unsupported, log derivative sums are always over field extensions")
 }
 
 // NewLogDerivSumAccessor creates an [ifaces.Accessor] returning the opening

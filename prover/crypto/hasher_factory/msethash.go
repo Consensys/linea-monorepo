@@ -97,7 +97,6 @@ func (m *MSetHash) IsEmpty() bool {
 
 // update adds or removes an element from the multisets hash.
 func (m *MSetHash) update(rem bool, msgs ...field.Element) {
-
 	var (
 		hsh          = poseidon2_koalabear.NewMDHasher()
 		zeroOctuplet = field.Octuplet{}
@@ -123,26 +122,48 @@ func (m *MSetHash) update(rem bool, msgs ...field.Element) {
 		}
 		if i < ChunkSize-1 {
 			hsh.WriteElements(zeroOctuplet[:]...)
-
 		}
 	}
 }
 
 // EmptyMSetHashGnark returns an empty multisets hash pre-initialized with 0s.
 // Use that instead of `MSetHashGnark{}`
-func EmptyMSetHashGnark(hasher *poseidon2_koalabear.GnarkMDHasher) MSetHashGnark {
-	res := MSetHashGnark{
-		hasher: hasher,
+func EmptyMSetHashGnark(hasher interface {
+	Write(data ...frontend.Variable)
+	Sum() poseidon2_koalabear.Octuplet
+	Reset()
+	SetState(newState poseidon2_koalabear.Octuplet)
+	State() poseidon2_koalabear.Octuplet
+},
+) MSetHashGnark {
+	// Try to get the concrete type first for backwards compatibility
+	concreteHasher, ok := hasher.(*poseidon2_koalabear.GnarkMDHasher)
+	res := MSetHashGnark{}
+	if ok {
+		res.hasher = concreteHasher
 	}
+	// If not concrete hasher, the multiset operations will use the hasher
+	// passed to Insert/Remove methods instead
 	for i := range res.Inner {
 		res.Inner[i] = 0
 	}
 	return res
 }
 
+// AsConcreteHasher attempts to convert a HasherFactory's output to *GnarkMDHasher.
+// This is needed for multiset hash operations which require the concrete type.
+// For external hashers, it returns nil since they don't use a pre-stored hasher.
+func AsConcreteHasher(hasher interface{}) *poseidon2_koalabear.GnarkMDHasher {
+	h, ok := hasher.(*poseidon2_koalabear.GnarkMDHasher)
+	if !ok {
+		// Return nil for external hashers - the MSetHashGnark will handle them
+		return nil
+	}
+	return h
+}
+
 // updateGnark updates the multisets hash using the gnark library.
 func (m *MSetHashGnark) update(api frontend.API, rem bool, msgs []frontend.Variable) {
-
 	var hasher *poseidon2_koalabear.GnarkMDHasher
 
 	if len(msgs) == 0 {
@@ -209,7 +230,6 @@ func (m *MSetHashGnark) Add(api frontend.API, other MSetHashGnark) {
 
 // AddRaw adds in a sequence of value representing a multisets hash
 func (m *MSetHashGnark) AddRaw(api frontend.API, other []frontend.Variable) {
-
 	if len(m.Inner) != len(other) {
 		panic("MSetHashGnark.AddRaw: lengths of multisets hashes are different")
 	}
@@ -236,7 +256,6 @@ func (m *MSetHashGnark) AssertEqual(api frontend.API, other MSetHashGnark) {
 // AssertEqualRaw asserts that the multisets values are equal to the provided
 // array.
 func (m *MSetHashGnark) AssertEqualRaw(api frontend.API, other []frontend.Variable) {
-
 	if len(m.Inner) != len(other) {
 		panic("MSetHashGnark.AssertEqualRaw: lengths of multisets hashes are different")
 	}

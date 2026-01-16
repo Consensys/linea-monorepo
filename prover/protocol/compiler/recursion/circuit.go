@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -83,13 +84,23 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		}
 	}
 
+	// Count public input slots: base field = 1 slot, extension field = 4 slots (coordinates)
+	numPubSlots := 0
+	for i := range comp.PublicInputs {
+		if !comp.PublicInputs[i].Acc.IsBase() {
+			numPubSlots += 4 // extension field: 4 base field coordinates
+		} else {
+			numPubSlots++ // base field: 1 element
+		}
+	}
+
 	return &RecursionCircuit{
 		withoutGkr:         withoutGkr,
 		withExternalHasher: withExternalHasher,
 		PolyQuery:          polyQuery,
 		MerkleRoots:        merkleRoots,
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound, false),
-		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)),
+		Pubs:               make([]frontend.Variable, numPubSlots),
 		Commitments:        make([][blockSize]frontend.Variable, len(merkleRoots)),
 		Ys:                 make([]ExtFrontendVariable, len(polyQuery.Pols)),
 	}
@@ -107,20 +118,49 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 	w := r.WizardVerifier
 
-	if !r.withoutGkr {
+	// Setup HasherFactory if needed (for GKR or external hasher)
+	if !r.withoutGkr || r.withExternalHasher {
 		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(apiGen.NativeApi)
-		w.KoalaFS = fiatshamir.NewGnarkFSKoalabear(apiGen.NativeApi)
 	}
 
+	// Initialize Fiat-Shamir with external hasher if enabled
+	// This must happen BEFORE calling Verify() which would otherwise overwrite it
 	if r.withExternalHasher {
-		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(apiGen.NativeApi)
+		w.KoalaFS = fiatshamir.NewGnarkFSKoalabearWithFactory(apiGen.NativeApi, w.HasherFactory)
 	}
 
 	w.Verify(apiGen.NativeApi)
 
-	for i := range r.Pubs {
-		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(apiGen.NativeApi, w)
-		api.AssertIsEqual(r.Pubs[i], pub.AsNative())
+	// Match r.Pubs with w.Spec.PublicInputs, flattening extension fields to coordinates
+	pubIdx := 0
+	for i := range w.Spec.PublicInputs {
+		acc := w.Spec.PublicInputs[i].Acc
+
+		// Check if this is an extension field accessor
+		if !acc.IsBase() {
+			// Extension field: verify all 4 coordinates
+			if pubIdx+4 > len(r.Pubs) {
+				panic("mismatch between public input slots count")
+			}
+			extPub := acc.GetFrontendVariableExt(apiGen.NativeApi, w)
+			// Assert each coordinate: B0.A0, B0.A1, B1.A0, B1.A1
+			api.AssertIsEqual(r.Pubs[pubIdx], extPub.B0.A0.AsNative())
+			api.AssertIsEqual(r.Pubs[pubIdx+1], extPub.B0.A1.AsNative())
+			api.AssertIsEqual(r.Pubs[pubIdx+2], extPub.B1.A0.AsNative())
+			api.AssertIsEqual(r.Pubs[pubIdx+3], extPub.B1.A1.AsNative())
+			pubIdx += 4
+		} else {
+			// Base field: verify single element
+			if pubIdx >= len(r.Pubs) {
+				panic("mismatch between public input slots count")
+			}
+			pub := acc.GetFrontendVariable(apiGen.NativeApi, w)
+			api.AssertIsEqual(r.Pubs[pubIdx], pub.AsNative())
+			pubIdx++
+		}
+	}
+	if pubIdx != len(r.Pubs) {
+		panic("not all public input slots were matched")
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
@@ -150,17 +190,44 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		numRound       = comp.QueriesParams.Round(polyQuery.QueryID) + 1
 		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound, false)
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
-		circuit        = &RecursionCircuit{
-			WizardVerifier: wizardVerifier,
-			X:              Ext4FV(&params.ExtX),
-			Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
-			Pubs:           make([]frontend.Variable, len(pubs)),
-			PolyQuery:      polyQuery,
-		}
 	)
 
-	for i := range pubs {
-		circuit.Pubs[i] = pubs[i]
+	// Flatten pubs: base fields as-is, extension fields as 4 coordinates
+	pubSlots := make([]frontend.Variable, 0, len(pubs)*2) // rough estimate
+	pubIdx := 0
+	for i := range comp.PublicInputs {
+		acc := comp.PublicInputs[i].Acc
+		if !acc.IsBase() {
+			// Extension field: flatten to 4 base field coordinates
+			// Get the extension field value from the wizard verifier
+			if logDerivAcc, ok := acc.(*accessors.FromLogDerivSumAccessor); ok {
+				// For log derivative sums, get the params from the wizard verifier
+				params := wizardVerifier.GetParams(logDerivAcc.Q.ID).(query.GnarkLogDerivSumParams)
+				extVal := params.Sum
+				pubSlots = append(pubSlots, extVal.B0.A0.AsNative(), extVal.B0.A1.AsNative(), extVal.B1.A0.AsNative(), extVal.B1.A1.AsNative())
+			} else if constAcc, ok := acc.(*accessors.FromConstAccessor); ok {
+				// For constant accessors, get the value directly
+				extVal := constAcc.Ext
+				pubSlots = append(pubSlots, extVal.B0.A0, extVal.B0.A1, extVal.B1.A0, extVal.B1.A1)
+			} else {
+				panic("Unsupported extension field accessor type")
+			}
+		} else {
+			// Base field element
+			if pubIdx >= len(pubs) {
+				break
+			}
+			pubSlots = append(pubSlots, pubs[pubIdx])
+			pubIdx++
+		}
+	}
+
+	circuit := &RecursionCircuit{
+		WizardVerifier: wizardVerifier,
+		X:              Ext4FV(&params.ExtX),
+		Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
+		Pubs:           pubSlots,
+		PolyQuery:      polyQuery,
 	}
 
 	for i := range params.ExtYs {
@@ -201,12 +268,21 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []T) {
 
 	var (
-		numPubs     = len(r.InputCompiledIOP.PublicInputs)
+		numPubSlots = 0
 		pcsCtx      = r.PcsCtx[0]
 		numYs       = len(pcsCtx.Query.Pols)
 		numMRoots   = 0
 		allPubDrain = allPubs
 	)
+
+	// Count public input slots: base field = 1 slot, extension field = 4 slots (coordinates)
+	for i := range r.InputCompiledIOP.PublicInputs {
+		if !r.InputCompiledIOP.PublicInputs[i].Acc.IsBase() {
+			numPubSlots += 4 // extension field: 4 base field coordinates
+		} else {
+			numPubSlots++ // base field: 1 element
+		}
+	}
 
 	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		numMRoots++
@@ -230,7 +306,7 @@ func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []
 	x, allPubDrain = allPubDrain[:4], allPubDrain[4:]
 	ys, allPubDrain = allPubDrain[:4*numYs], allPubDrain[4*numYs:]
 	mRoots, allPubDrain = allPubDrain[:8*numMRoots], allPubDrain[8*numMRoots:]
-	pubs, _ = allPubDrain[:numPubs], allPubDrain[numPubs:]
+	pubs, _ = allPubDrain[:numPubSlots], allPubDrain[numPubSlots:]
 
 	return x, ys, mRoots, pubs
 }

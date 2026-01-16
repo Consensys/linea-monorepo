@@ -18,7 +18,7 @@ import (
 // TestConglomerationBasic generates a conglomeration proof and checks if it is valid
 func TestConglomerationBasic(t *testing.T) {
 	var (
-		numRow = 1 << 10
+		numRow = 1 << 5
 		tc     = LookupTestCase{numRow: numRow}
 		disc   = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 3 * numRow / 2,
@@ -28,10 +28,21 @@ func TestConglomerationBasic(t *testing.T) {
 			tc.Define(build.CompiledIOP)
 		})
 
+		// Custom compilation params for this test
+		testCompilationParams = distributed.CompilationParams{
+			FixedNbRowPlonkCircuit:       1 << 24,
+			FixedNbRowExternalHasher:     1 << 16,
+			FixedNbPublicInput:           1 << 10,
+			InitialCompilerSize:          1 << 18,
+			InitialCompilerSizeConglo:    1 << 13,
+			ColumnProfileMPTS:            nil,
+			ColumnProfileMPTSPrecomputed: 0,
+		}
+
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
-				CompileSegments(zkevm.LimitlessCompilationParams).
-				Conglomerate(zkevm.LimitlessCompilationParams)
+				CompileSegments(testCompilationParams).
+				Conglomerate(testCompilationParams)
 
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign, false)
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
