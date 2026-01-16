@@ -485,7 +485,6 @@ func (d *UnalignedMsmData) assignUnaligned(run *wizard.ProverRuntime) {
 					limbIndex := i / limbs.NbLimbU128
 					subLimbIndex := (limbs.NbLimbU128 - 1) - (i % limbs.NbLimbU128)
 					pointLimbs[i].Set(&srcLimb[ptr+limbIndex].T[subLimbIndex])
-					// dstPoint[i].PushField(srcLimb[ptr+limbIndex].T[subLimbIndex])
 					dstPoint[i].PushField(pointLimbs[i])
 				}
 				// copy the scalar limbs
@@ -493,7 +492,6 @@ func (d *UnalignedMsmData) assignUnaligned(run *wizard.ProverRuntime) {
 					limbIndex := i / limbs.NbLimbU128
 					subLimbIndex := (limbs.NbLimbU128 - 1) - (i % limbs.NbLimbU128)
 					scalarLimbs[i].Set(&srcLimb[ptr+nbL128+limbIndex].T[subLimbIndex])
-					// dstScalar[i].PushField(srcLimb[ptr+nbL+limbIndex].T[subLimbIndex])
 					dstScalar[i].PushField(scalarLimbs[i])
 				}
 				dstIsLastLine.PushZero()
