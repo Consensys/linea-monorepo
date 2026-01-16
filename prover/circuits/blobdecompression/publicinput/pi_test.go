@@ -19,8 +19,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr/fft"
@@ -292,9 +290,10 @@ func TestVectorIopCompatibility(t *testing.T) {
 
 	y := poly.Evaluate(evaluationPoint)
 
-	// expectedY is re-encoded into a field so that we can compare y and expectedY
-	// in text form without being affected by the left-most zeroes.
-	expectedY := field.NewFromString(testCase.ExpectedY)
+	// Compare with expected Y - both are BLS12-381 field elements
+	var expectedY fr381.Element
+	expectedYBytes := decodeHex(t, testCase.ExpectedY)
+	expectedY.SetBytes(expectedYBytes)
 	assert.Equal(t, expectedY.Text(16), y.Text(16))
 }
 
