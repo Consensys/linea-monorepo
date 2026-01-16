@@ -31,7 +31,6 @@ import {
   getRequiredEnvVar,
 } from "../common/helpers";
 import {
-  DEAD_ADDRESS,
   YIELD_MANAGER_OPERATOR_ROLES,
   YIELD_MANAGER_PAUSE_TYPES_ROLES,
   YIELD_MANAGER_SECURITY_COUNCIL_ROLES,
@@ -114,7 +113,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     pauseTypeRoles: pauseTypeRoles,
     unpauseTypeRoles: unpauseTypeRoles,
     roleAddresses: roleAddresses,
-    initialL2YieldRecipients: [DEAD_ADDRESS],
+    initialL2YieldRecipients: [],
     defaultAdmin: lineaRollupSecurityCouncil,
     initialMinimumWithdrawalReservePercentageBps: initialMinimumWithdrawalReservePercentageBps,
     initialTargetWithdrawalReservePercentageBps: initialTargetWithdrawalReservePercentageBps,
