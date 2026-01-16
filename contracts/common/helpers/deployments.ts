@@ -5,6 +5,7 @@ import {
   bytecode as ProxyAdminBytecode,
 } from "../../deployments/bytecode/mainnet-proxy/ProxyAdmin.json";
 import {
+  contractName as TransparentUpgradeableProxyContractName,
   abi as TransparentUpgradeableProxyAbi,
   bytecode as TransparentUpgradeableProxyBytecode,
 } from "../../deployments/bytecode/mainnet-proxy/TransparentUpgradeableProxy.json";
@@ -107,7 +108,7 @@ export async function deployProxyAdminAndProxy(
 
   // Deploy TransparentUpgradeableProxy
   const proxy = await deployContractFromArtifacts(
-    "TransparentUpgradeableProxy",
+    TransparentUpgradeableProxyContractName,
     TransparentUpgradeableProxyAbi,
     TransparentUpgradeableProxyBytecode,
     deployer,
