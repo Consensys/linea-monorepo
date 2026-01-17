@@ -58,6 +58,13 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     let nextMessageToClaim: Message | null = null;
 
     try {
+      const nonce = await this.getNonce();
+
+      if (!nonce && nonce !== 0) {
+        this.logger.error("Nonce returned from getNonce is an invalid value (e.g. null or undefined)");
+        return;
+      }
+
       nextMessageToClaim = await this.databaseService.getMessageToClaim(
         this.config.originContractAddress,
         this.config.profitMargin,
@@ -115,6 +122,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
 
       await this.executeClaimTransaction(
         nextMessageToClaim,
+        nonce,
         estimatedGasLimit!,
         claimTxFees.maxPriorityFeePerGas,
         claimTxFees.maxFeePerGas,
@@ -166,6 +174,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    * Executes the claim transaction for a message, updating the message repository with transaction details.
    *
    * @param {Message} message - The message object to claim.
+   * @param {number} nonce - The nonce to use for the transaction.
    * @param {bigint} gasLimit - The gas limit for the transaction.
    * @param {bigint} maxPriorityFeePerGas - The maximum priority fee per gas for the transaction.
    * @param {bigint} maxFeePerGas - The maximum fee per gas for the transaction.
@@ -173,17 +182,11 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    */
   private async executeClaimTransaction(
     message: Message,
+    nonce: number,
     gasLimit: bigint,
     maxPriorityFeePerGas: bigint,
     maxFeePerGas: bigint,
   ): Promise<void> {
-    const nonce = await this.getNonce();
-
-    if (!nonce && nonce !== 0) {
-      this.logger.error("Nonce returned from getNonce is an invalid value (e.g. null or undefined)");
-      return;
-    }
-
     const claimTxFn = async () =>
       await this.messageServiceContract.claim(
         {
