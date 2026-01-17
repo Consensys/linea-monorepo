@@ -1,0 +1,36 @@
+;; BLOB_HASHES module
+
+;; The BLOB_HASHES is responsible for storing blob versioned hashes from BLOB transactions. It contains:
+;; - all the BLOB_VERSIONED_HASHES (via a lookup from RLP_TXN)
+;; - "empty" BLOB_VERSION_HASH ie blob asked by the BLOBHASH opcode, but which are Out Of Index. They're needed by the lookup from the HUB
+;; - it can't contain non-OOI BLOB_VERSION_HASH thanks to the bidirectional lookup into RLP_TXN
+;; On top of storing information, this module checks, as required by EIP-4844:
+;; - at least one BLOB for BLOB txs
+;; - first byte of blob hash is VERSIONED_HASH_VERSION_KZG
+
+pub fn blobhash(USER_TXN_NUMBER u24, TOT_NUMBER_OF_HASHES u16, HASH_INDEX u256, BLOB_VERSION_HASH u256) -> (OOI=0x01 u1) {
+    ;; first check if Out Of Index
+    var tmp u256
+    OOI, tmp = TOT_NUMBER_OF_HASHES - HASH_INDEX - 1 ;; index starts at 0
+
+    if OOI == 1 goto exit_ooi
+
+    ;; check that TOT_NUMBER_OF_HASHES >= 1 already done in when we are in the case not OOI
+
+    ;; check that first byte is VERSIONED_HASH_VERSION_KZG
+    var first_byte u8
+    var remainder u248
+    first_byte, remainder = BLOB_VERSION_HASH
+    if first_byte != VERSIONED_HASH_VERSION_KZG goto exit_fail
+
+    ;; all checks done
+    return
+
+    exit_ooi:
+        if BLOB_VERSION_HASH != 0 goto exit_fail
+        return
+
+    exit_fail:
+        fail
+
+}

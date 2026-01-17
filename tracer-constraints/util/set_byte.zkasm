@@ -1,5 +1,5 @@
 ;; Set the nth most-significant byte with a given value, whilst
-;; leavning all other bytes untouched.  Thus, n==0 sets the most
+;; leaving all other bytes untouched.  Thus, n==0 sets the most
 ;; significant byte.  For example, for the following word:
 ;;
 ;; 0x966C1A5D4013D055D0ECE7C3FD424750A2FF5ECDA6CFC4EC4341E933301990CB
