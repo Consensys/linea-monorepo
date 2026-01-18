@@ -134,7 +134,7 @@ jobs:
 
   image_tag_push:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    if: ${{ github.ref == 'refs/heads/main' && inputs.has-changes-requiring-build == 'false' }}
+    if: ${{ github.ref == 'refs/heads/main' && inputs.has-changes-requiring-build == 'true' }}
     name: Tag and push images
     needs: [ check_image_tags_exist ]
     outputs:
