@@ -21,6 +21,22 @@ interface IAcceptForcedTransactions {
   event AddressFilterChanged(address oldAddressFilter, address newAddressFilter);
 
   /**
+   * @notice Emitted when a forced transaction is added.
+   * @param forcedTransactionNumber The indexed forced transaction number.
+   * @param from The recovered signer's from address.
+   * @param blockNumberDeadline The maximum expected L2 block number processing will occur by.
+   * @param forcedTransactionRollingHash The computed rolling Mimc based hash.
+   * @param rlpEncodedSignedTransaction The RLP encoded type 02 transaction payload including signature.
+   */
+  event ForcedTransactionAdded(
+    uint256 indexed forcedTransactionNumber,
+    address indexed from,
+    uint256 blockNumberDeadline,
+    bytes32 forcedTransactionRollingHash,
+    bytes rlpEncodedSignedTransaction
+  );
+
+  /**
    * @dev Thrown when another forced transaction is expected on the computed L2 block or the previous block number is higher than the submitted one.
    */
   error ForcedTransactionExistsForBlockOrIsTooLow(uint256 blockNumber);
@@ -46,14 +62,17 @@ interface IAcceptForcedTransactions {
    * @dev FORCED_TRANSACTION_SENDER_ROLE is required to store a forced transaction.
    * @dev The forced transaction number is incremented for the next transaction post storage.
    * @dev The forced transaction fee is sent in the same transaction and the gateway will revert if it is not met.
-   * @param _forcedL2BlockNumber The maximum expected L2 block number the transaction will be processed by.
    * @param _forcedTransactionRollingHash The rolling hash for all the forced transaction fields.
-   * @return forcedTransactionNumber The unique forced transaction number for the transaction.
+   * @param _from The recovered signer's from address.
+   * @param _blockNumberDeadline The maximum expected L2 block number processing will occur by.
+   * @param _rlpEncodedSignedTransaction The RLP encoded type 02 transaction payload including signature.
    */
   function storeForcedTransaction(
-    uint256 _forcedL2BlockNumber,
-    bytes32 _forcedTransactionRollingHash
-  ) external payable returns (uint256 forcedTransactionNumber);
+    bytes32 _forcedTransactionRollingHash,
+    address _from,
+    uint256 _blockNumberDeadline,
+    bytes calldata _rlpEncodedSignedTransaction
+  ) external payable;
 
   /**
    * @notice Sets the forced transaction fee.

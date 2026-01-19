@@ -83,8 +83,8 @@ export async function expectSuccessfulFinalize(
       [
         finalizationData.l1RollingHashMessageNumber,
         finalizationData.l1RollingHash,
-        0,
-        HASH_ZERO,
+        finalForcedTransactionNumber,
+        proofData.finalFtxRollingHash,
         finalizationData.finalTimestamp,
       ],
     ),

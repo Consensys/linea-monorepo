@@ -196,11 +196,10 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.r);
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.s);
 
-    emit ForcedTransactionAdded(
-      LINEA_ROLLUP.storeForcedTransaction{ value: msg.value }(blockNumberDeadline, forcedTransactionRollingHash),
+    LINEA_ROLLUP.storeForcedTransaction{ value: msg.value }(
+      forcedTransactionRollingHash,
       signer,
       blockNumberDeadline,
-      forcedTransactionRollingHash,
       abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList))
     );
   }

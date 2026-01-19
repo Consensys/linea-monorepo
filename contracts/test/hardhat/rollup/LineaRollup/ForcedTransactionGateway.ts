@@ -14,6 +14,7 @@ import {
   setNextExpectedL2BlockNumberForForcedTx,
   getForcedTransactionRollingHash,
   setForcedTransactionFee,
+  decodeForcedTransactionAdded,
 } from "./../helpers";
 import {
   buildAccessErrorMessage,
@@ -462,33 +463,79 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
     it("Should fail LineaRollup.storeForcedTransaction if not FORCED_TRANSACTION_SENDER_ROLE", async () => {
       await expectRevertWithReason(
-        lineaRollup.connect(nonAuthorizedAccount).storeForcedTransaction(121n, generateRandomBytes(32)),
+        lineaRollup
+          .connect(nonAuthorizedAccount)
+          .storeForcedTransaction(generateRandomBytes(32), securityCouncil.address, 121n, generateRandomBytes(32)),
         buildAccessErrorMessage(nonAuthorizedAccount, FORCED_TRANSACTION_SENDER_ROLE),
       );
     });
 
-    it("Should fail if the second transaction is expected on the same block", async () => {
-      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+    it("Should fail if the rlp encoded signed transaction is zero length", async () => {
+      await expectRevertWithCustomError(
         lineaRollup,
-        DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
-        defaultFinalizedState.timestamp,
+        lineaRollup
+          .connect(securityCouncil)
+          .storeForcedTransaction(generateRandomBytes(32), securityCouncil.address, 121n, generateRandomBytes(0)),
+        "ZeroLengthNotAllowed",
       );
+    });
 
-      await forcedTransactionGateway.submitForcedTransaction(
+    it("Should fail if the block number deadline is zero", async () => {
+      await expectRevertWithCustomError(
+        lineaRollup,
+        lineaRollup
+          .connect(securityCouncil)
+          .storeForcedTransaction(generateRandomBytes(32), securityCouncil.address, 0n, generateRandomBytes(32)),
+        "ZeroValueNotAllowed",
+      );
+    });
+
+    it("Should fail if the from address is zero address", async () => {
+      await expectRevertWithCustomError(
+        lineaRollup,
+        lineaRollup
+          .connect(securityCouncil)
+          .storeForcedTransaction(generateRandomBytes(32), ADDRESS_ZERO, 121n, generateRandomBytes(32)),
+        "ZeroAddressNotAllowed",
+      );
+    });
+
+    it("Should fail if the forced transaction rolling hash is zero hash", async () => {
+      await expectRevertWithCustomError(
+        lineaRollup,
+        lineaRollup
+          .connect(securityCouncil)
+          .storeForcedTransaction(HASH_ZERO, securityCouncil.address, 121n, generateRandomBytes(32)),
+        "ZeroHashNotAllowed",
+      );
+    });
+
+    it("Should fail if the second transaction is expected on the same block", async () => {
+      const tx = await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
         defaultFinalizedState,
       );
 
+      const events = await decodeForcedTransactionAdded(tx, lineaRollup);
+      const event = events[0];
+
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.connect(securityCouncil).storeForcedTransaction(expectedBlockNumber, generateRandomBytes(32)),
+        lineaRollup
+          .connect(securityCouncil)
+          .storeForcedTransaction(
+            event.args.forcedTransactionRollingHash,
+            event.args.from,
+            event.args.blockNumberDeadline,
+            event.args.rlpEncodedSignedTransaction,
+          ),
         "ForcedTransactionExistsForBlockOrIsTooLow",
-        [expectedBlockNumber],
+        [event.args.blockNumberDeadline],
       );
     });
 
     it("Should fail if the second transaction has a lower block number", async () => {
-      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+      const blockNumberDeadline = await setNextExpectedL2BlockNumberForForcedTx(
         lineaRollup,
         DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
         defaultFinalizedState.timestamp + 1n,
@@ -501,9 +548,16 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.connect(securityCouncil).storeForcedTransaction(expectedBlockNumber, generateRandomBytes(32)),
+        lineaRollup
+          .connect(securityCouncil)
+          .storeForcedTransaction(
+            generateRandomBytes(32),
+            securityCouncil.address,
+            blockNumberDeadline,
+            generateRandomBytes(32),
+          ),
         "ForcedTransactionExistsForBlockOrIsTooLow",
-        [expectedBlockNumber],
+        [blockNumberDeadline],
       );
     });
 
@@ -550,7 +604,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
     it("Should emit the ForcedTransactionAdded event on adding a transaction", async () => {
       // use a way future dated timestamp and mimc the calculation for the block number
-      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+      const blockNumberDeadline = await setNextExpectedL2BlockNumberForForcedTx(
         lineaRollup,
         1954213624n,
         defaultFinalizedState.timestamp,
@@ -562,7 +616,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         mimcLibrary,
         lineaRollup,
         buildEip1559Transaction(l2SendMessageTransaction.result),
-        expectedBlockNumber,
+        blockNumberDeadline,
         l2SendMessageTransaction?.result?.from,
         BigInt(l2SendMessageTransaction.result.chainId),
       );
@@ -570,13 +624,13 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       const expectedEventArgs = [
         expectedForcedTransactionNumber,
         ethers.getAddress(l2SendMessageTransaction.result.from),
-        expectedBlockNumber,
+        blockNumberDeadline,
         expectedMimcHashWithPreviousZeroValueRollingHash,
         l2SendMessageTransaction.rlpEncodedSigned,
       ];
 
       await expectEvent(
-        forcedTransactionGateway,
+        lineaRollup,
         forcedTransactionGateway.submitForcedTransaction(
           buildEip1559Transaction(l2SendMessageTransaction.result),
           defaultFinalizedState,
@@ -588,7 +642,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
     it("Should change rolling hash with different expected block number", async () => {
       // use a way future dated timestamp and mimic the calculation for the block number
-      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+      const blockNumberDeadline = await setNextExpectedL2BlockNumberForForcedTx(
         lineaRollup,
         1854213624n,
         defaultFinalizedState.timestamp,
@@ -600,7 +654,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         mimcLibrary,
         lineaRollup,
         buildEip1559Transaction(l2SendMessageTransaction.result),
-        expectedBlockNumber,
+        blockNumberDeadline,
         l2SendMessageTransaction?.result?.from,
         BigInt(l2SendMessageTransaction.result.chainId),
       );
@@ -608,13 +662,13 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       const expectedEventArgs = [
         expectedForcedTransactionNumber,
         ethers.getAddress(l2SendMessageTransaction.result.from),
-        expectedBlockNumber,
+        blockNumberDeadline,
         expectedMimcHashWithPreviousZeroValueRollingHash,
         l2SendMessageTransaction.rlpEncodedSigned,
       ];
 
       await expectEvent(
-        forcedTransactionGateway,
+        lineaRollup,
         forcedTransactionGateway.submitForcedTransaction(
           buildEip1559Transaction(l2SendMessageTransaction.result),
           defaultFinalizedState,
@@ -704,7 +758,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
     it("Updates the forcedTransactionRollingHashes on the Linea Rollup", async () => {
       expect(await lineaRollup.forcedTransactionRollingHashes(1)).equal(HASH_ZERO);
-      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+      const blockNumberDeadline = await setNextExpectedL2BlockNumberForForcedTx(
         lineaRollup,
         DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
         defaultFinalizedState.timestamp,
@@ -713,7 +767,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         mimcLibrary,
         lineaRollup,
         buildEip1559Transaction(l2SendMessageTransaction.result),
-        expectedBlockNumber,
+        blockNumberDeadline,
         l2SendMessageTransaction?.result?.from,
         BigInt(l2SendMessageTransaction.result.chainId),
       );
