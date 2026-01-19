@@ -57,11 +57,22 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
         b, secp256k1n_divided_by_two_minus_s_tmp = SECP256K1N_DIVIDED_BY_TWO - s
         if b == 1 goto failure
         
-        var msg u240
-        msg = compute_rlp(chain_id, delegation_address, nonce)
+        var list_rlp_prefix_limb u128
+        var chain_id_rlp_prefix_limb u128
+        var chain_id_leading_limb u128
+        var address_rlp_prefix_limb u128
+        var address_hi_limb u128
+        var address_lo_limb u128
+        var nonce_rlp_prefix_limb u128
+        var nonce_leading_limb u128
+        var chain_id_byte_size u8
+        var nonce_byte_size u8
+
+        list_rlp_prefix_limb, chain_id_rlp_prefix_limb, chain_id_leading_limb, address_rlp_prefix_limb, address_hi_limb, address_lo_limb, nonce_rlp_prefix_limb, nonce_leading_limb, chain_id_byte_size, nonce_byte_size = compute_rlp(chain_id, delegation_address, nonce)
 
         var ecrecover_fails u1
-        ecrecover_fails = ecrecover(msg, y_parity, r, s, authority_address, authority_ecrecover_success)
+        ecrecover_fails = ecrecover(list_rlp_prefix_limb, chain_id_rlp_prefix_limb, chain_id_leading_limb, address_rlp_prefix_limb, address_hi_limb, address_lo_limb, nonce_rlp_prefix_limb, nonce_leading_limb, chain_id_byte_size, nonce_byte_size, y_parity, r, s, authority_address, authority_ecrecover_success)
+            
         if ecrecover_fails == 1 goto failure
     ;; step_4: happens in the HUB
         ;; Add authority to accessed_addresses, as defined in EIP-2929.
@@ -98,30 +109,20 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
         fail
 }
 
-fn compute_rlp(chain_id u256, address u160, nonce u256) -> (rlp_output u240) {
-    rlp_output = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffeffff
-    
+fn compute_rlp(chain_id u256, address u160, nonce u256) -> (list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_leading_limb u128, address_rlp_prefix_limb u128, address_hi_limb u128, address_lo_limb u128, nonce_rlp_prefix_limb u128, nonce_leading_limb u128, chain_id_byte_size u8, nonce_byte_size u8)
+{    
     var chain_id_rlp_prefix_required u1
     var chain_id_hi_is_nonzero u1
-    var chain_id_rlp_prefix_limb u128
-    var chain_id_leading_limb u128
     var chain_id_trailing_limb u128
+    chain_id_rlp_prefix_required, chain_id_hi_is_nonzero, chain_id_rlp_prefix_limb, chain_id_leading_limb, chain_id_trailing_limb, chain_id_byte_size = compute_rlp_integer(chain_id)
 
-    chain_id_rlp_prefix_required, chain_id_hi_is_nonzero, chain_id_rlp_prefix_limb, chain_id_leading_limb, chain_id_trailing_limb = compute_rlp_integer(chain_id)
-
-    var address_rlp_prefix_limb u128
-    var address_hi_limb u128
-    var address_lo_limb u128
     address_rlp_prefix_limb, address_hi_limb, address_lo_limb = compute_rlp_address(address)
 
     var nonce_rlp_prefix_required u1
     var nonce_hi_is_nonzero u1
-    var nonce_rlp_prefix_limb u128
-    var nonce_leading_limb u128
     var nonce_trailing_limb u128
-    nonce_rlp_prefix_required, nonce_hi_is_nonzero, nonce_rlp_prefix_limb, nonce_leading_limb, nonce_trailing_limb = compute_rlp_integer(nonce)
+    nonce_rlp_prefix_required, nonce_hi_is_nonzero, nonce_rlp_prefix_limb, nonce_leading_limb, nonce_trailing_limb, nonce_byte_size = compute_rlp_integer(nonce)
 
-    
     ;; output:
     ;; list content (max 87 bytes)
     ;;          list_rlp_prefix_limb (1 byte)
@@ -139,7 +140,7 @@ fn compute_rlp(chain_id u256, address u160, nonce u256) -> (rlp_output u240) {
     ;; But chain_id is at most 2 bytes and nonce is at most 8 bytes.
     ;;
     ;; output:
-    ;; list content (max 33 bytes)
+    ;; list content (max 33 bytes <= 55 bytes)
     ;;          list_rlp_prefix_limb (1 byte)
     ;; OPTIONAL chain_id_rlp_prefix_limb (if chain_id_rlp_prefix_required == 1) (1 byte)
     ;;          chain_id_leading_limb (max 2 bytes)
@@ -149,17 +150,16 @@ fn compute_rlp(chain_id u256, address u160, nonce u256) -> (rlp_output u240) {
     ;; OPTIONAL nonce_rlp_prefix_limb (if nonce_rlp_prefix_required == 1) (1 byte)
     ;;          nonce_leading_limb (max 8 bytes)
 
-    ;; output size cases:
-    ;; min:    output size 32 bytes
-    ;; middle: output size 33 bytes
-    ;; max:    output size 34 bytes
-
-    ;; TODO: compute list prefix and compose output
-    
+    list_rlp_prefix_limb = 
+        0xc0 + ;; list prefix for payload <= 55 bytes
+        chain_id_rlp_prefix_required + chain_id_byte_size + ;; chain_id
+        1 + 4 + 16 + ;; address
+        nonce_rlp_prefix_required + nonce_byte_size ;; nonce
+   
     return
 }
 
-fn compute_rlp_integer(integer u256) -> (rlp_prefix_required u1, integer_hi_is_nonzero u1, rlp_prefix_limb u128, leading_limb u128, trailing_limb u128) {
+fn compute_rlp_integer(integer u256) -> (rlp_prefix_required u1, integer_hi_is_nonzero u1, rlp_prefix_limb u128, leading_limb u128, trailing_limb u128, leading_limb_byte_size u8) {
     var integer_hi u128
     var integer_lo u128
     integer_hi, integer_lo = integer
@@ -177,7 +177,6 @@ fn compute_rlp_integer(integer u256) -> (rlp_prefix_required u1, integer_hi_is_n
     rlp_prefix_required = integer_is_nonzero == 0 ? 1 : integer_greater_or_equal_to_128
 
     var leading_limb_left_shifted u128
-    var leading_limb_byte_size u8
     rlp_prefix_limb, leading_limb_left_shifted, leading_limb_byte_size = rlputils(RLP_UTILS_INST_INTEGER, integer_hi, integer_lo, integer_is_nonzero, integer_hi_is_nonzero, rlp_prefix_required)
 
     leading_limb = leading_limb_left_shifted
@@ -237,9 +236,9 @@ fn compute_rlp_address(address u160) -> (rlp_prefix_limb u128, address_hi_limb u
 ;; }
 
 ;; address and success_bit are predictions to be confirmed by the prover 
-fn ecrecover(msg u240, y_parity u8, r u256, s u256, 
-address u160, success_bit u1) -> (ecrecover_fails u1) {
+fn ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_leading_limb u128, address_rlp_prefix_limb u128, address_hi_limb u128, address_lo_limb u128, nonce_rlp_prefix_limb u128, nonce_leading_limb u128, chain_id_byte_size u8, nonce_byte_size u8, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (ecrecover_fails u1) {
     var limb u128
+    var limb_size u8
     
     limb = y_parity
 
@@ -257,24 +256,48 @@ address u160, success_bit u1) -> (ecrecover_fails u1) {
 
     limb = success_bit
 
-    ;; extract msg and assign to limb 
-    ;; TODO: give proper names and adjust sizes
-    var a, b, c, e, h u8    
-    var d u24     
-    var f u32
-    var g u128
-    var i u16    
-    a, b, c, d, e, f, g, h, i = msg
-    limb = a * 2^120 
-    limb = b * 2^120 
-    limb = c * 2^120 
-    limb = d * 2^104 
-    limb = e * 2^120 
-    limb = f * 2^96 
-    limb = g
-    limb = h * 2^120 
-    limb = i * 2^112 
-    
+    ;; fill 8 limbs with zeros
+    var b u1
+    var i u4
+    i = 0
+    fill_limb_size_loop:
+        limb_size = 0
+        b, i = i + 1
+        if i != 8 goto fill_limb_size_loop
+
+    limb = MAGIC
+    limb = list_rlp_prefix_limb
+    limb = chain_id_rlp_prefix_limb ;; may be zero
+    limb = chain_id_leading_limb
+    limb = address_rlp_prefix_limb
+    limb = address_hi_limb
+    limb = address_lo_limb
+    limb = nonce_rlp_prefix_limb ;; may be zero
+    limb = nonce_leading_limb 
+
+    limb_size = 1 ;; MAGIC
+    limb_size = 1 ;; list_rlp_prefix_limb
+    limb_size = chain_id_byte_size == 0? 0 : 1 ;; chain_id_rlp_prefix_limb
+    limb_size = chain_id_byte_size 
+    limb_size = 1 ;; address_rlp_prefix_limb
+    limb_size = 4 ;; address_hi_limb
+    limb_size = 16 ;; address_lo_limb
+    limb_size = nonce_byte_size == 0? 0 : 1 ;; nonce_rlp_prefix_limb
+    limb_size = nonce_byte_size ;; nonce_leading_limb
+
+    ;; TODO: should we fill explicitly also other columns such as is_signature, is_result, is_message (even if number of rows is fixed)? Shall we extract fill_column_with_value_n_times?
     ecrecover_fails = 0
     return
 }
+
+;; TODO: wip
+;; fn fill_column_with_value_n_times(column u8, value u8, n u8) -> (dummy u1) {
+;;     var b u1
+;;     var i u8
+;;     i = 0
+;;     fill_loop:
+;;         column = value
+;;         b, i = i + 1
+;;         if i != n goto fill_loop
+;;     return
+;; }
