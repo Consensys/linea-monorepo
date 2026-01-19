@@ -4,9 +4,8 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import node from "./node.js";
 
 export const nextjs = defineConfig([
-  ...node,
-  ...nextVitals,
   {
+    extends: [node, nextVitals],
     rules: {
        // TODO: remove this rules after fix bridge ui typing
       "@typescript-eslint/no-explicit-any": "off",

@@ -1,6 +1,6 @@
-import { node } from "@consensys/eslint-config";
+import { node } from "@consensys/eslint-config/node";
 
-/** @type {import("eslint").Linter.Config} */
+/** @type {import("eslint").Linter.Config[]} */
 export default [
   ...node,
   {

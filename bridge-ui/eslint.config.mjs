@@ -1,7 +1,10 @@
-import { nextjs } from "@consensys/eslint-config";
+import { nextjs } from "@consensys/eslint-config/nextjs";
 
-// eslint-disable-next-line import/no-anonymous-default-export
+/** @type {import("eslint").Linter.Config[]} */
 export default [
+  {
+    ignores: ["test/advancedFixtures.ts"]
+  },
   ...nextjs,
   {
     languageOptions: {
@@ -11,7 +14,4 @@ export default [
       },
     },
   },
-  {
-    ignores: ["test/advancedFixtures.ts"]
-  }
 ];

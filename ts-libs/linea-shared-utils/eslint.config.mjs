@@ -1,5 +1,6 @@
-import { node } from "@consensys/eslint-config";
+import { node } from "@consensys/eslint-config/node";
 
+/** @type {import("eslint").Linter.Config[]} */
 export default [
   ...node,
   {
@@ -9,8 +10,5 @@ export default [
         tsconfigRootDir: import.meta.dirname,
       },
     },
-  },
-  {
-    ignores: ["node_modules/**", "dist/**", "coverage/**"],
   },
 ];

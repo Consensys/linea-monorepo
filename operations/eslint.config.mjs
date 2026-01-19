@@ -1,6 +1,10 @@
-import { node } from "@consensys/eslint-config";
+import { node } from "@consensys/eslint-config/node";
 
+/** @type {import("eslint").Linter.Config[]} */
 export default [
+  {
+    ignores: ["bin"],
+  },
   ...node,
   {
     languageOptions: {
@@ -9,8 +13,5 @@ export default [
         tsconfigRootDir: import.meta.dirname,
       },
     },
-  },
-  {
-    ignores: ["bin"],
   },
 ];

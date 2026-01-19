@@ -8,14 +8,24 @@
   "scripts": {
     "clean": "rimraf node_modules"
   },
+  "types": "./index.d.ts",
   "exports": {
-    ".": "./index.js",
-    "./base": "./base.js",
-    "./nextjs": "./nextjs.js",
-    "./node": "./node.js"
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./nextjs": {
+      "types": "./nextjs.d.ts",
+      "default": "./nextjs.js"
+    },
+    "./node": {
+      "types": "./node.d.ts",
+      "default": "./node.js"
+    }
   },
   "files": [
-    "*.js"
+    "*.js",
+    "*.d.ts"
   ],
   "peerDependencies": {
     "eslint": "catalog:",
