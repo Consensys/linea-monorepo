@@ -1,29 +1,65 @@
+// Usage:
+// npx hardhat deploy --network <network> --tags YieldManagerArtifacts
+//
+// Required environment variables:
+//   LINEA_ROLLUP_ADDRESS
+//   LINEA_ROLLUP_SECURITY_COUNCIL
+//   NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS
+//   VAULT_HUB
+//   VAULT_FACTORY
+//   STETH
+//   MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS
+//   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS
+//   MINIMUM_WITHDRAWAL_RESERVE_AMOUNT
+//   TARGET_WITHDRAWAL_RESERVE_AMOUNT
+//
+// Optional environment variables:
+//   GI_FIRST_VALIDATOR
+//   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT
+//   VALIDATOR_CONTAINER_PROOF_VERIFIER_ADMIN
+//   YIELD_MANAGER_PAUSE_TYPES_ROLES
+//   YIELD_MANAGER_UNPAUSE_TYPES_ROLES
+
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { deployFromFactory, deployUpgradableFromFactoryWithConstructorArgs } from "../scripts/hardhat/utils";
 import {
+  deployContractFromArtifacts,
+  deployProxyAdminAndProxy,
   generateRoleAssignments,
   getEnvVarOrDefault,
+  getInitializerData,
   getRequiredEnvVar,
-  LogContractDeployment,
-  tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
 import {
-  YIELD_MANAGER_INITIALIZE_SIGNATURE,
   YIELD_MANAGER_OPERATOR_ROLES,
   YIELD_MANAGER_PAUSE_TYPES_ROLES,
   YIELD_MANAGER_SECURITY_COUNCIL_ROLES,
   YIELD_MANAGER_UNPAUSE_TYPES_ROLES,
 } from "../common/constants";
 import { YieldManagerInitializationData } from "../test/hardhat/yield/helpers/types";
-import { YieldManager } from "contracts/typechain-types";
 import { GI_FIRST_VALIDATOR, GI_PENDING_PARTIAL_WITHDRAWALS_ROOT } from "../test/hardhat/common/constants";
+import {
+  contractName as LidoStVaultYieldProviderFactoryContractName,
+  abi as LidoStVaultYieldProviderFactoryAbi,
+  bytecode as LidoStVaultYieldProviderFactoryBytecode,
+} from "../deployments/bytecode/2026-01-14/LidoStVaultYieldProviderFactory.json";
+import {
+  contractName as ValidatorContainerProofVerifierContractName,
+  abi as ValidatorContainerProofVerifierAbi,
+  bytecode as ValidatorContainerProofVerifierBytecode,
+} from "../deployments/bytecode/2026-01-14/ValidatorContainerProofVerifier.json";
+import {
+  contractName as YieldManagerContractName,
+  abi as YieldManagerAbi,
+  bytecode as YieldManagerBytecode,
+} from "../deployments/bytecode/2026-01-14/YieldManager.json";
 
 // Deploys YieldManager, ValidatorContainerProofVerifier and LidoStVaultYieldProviderFactory
+// Must verify contracts from git tag "contract-audit-2026-01-14" or commit 25e323d055dec40ef167a190c71c30aa9bf92c23
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { ethers, getNamedAccounts } = hre;
-
-  const contractName = "YieldManager";
+  const { deployer } = await getNamedAccounts();
+  const signer = await ethers.getSigner(deployer);
 
   // YieldManager DEPLOYED AS UPGRADEABLE PROXY
   const lineaRollupAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
@@ -65,6 +101,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   /********************************************************************
    *                          YieldManager                            *
    ********************************************************************/
+  const yieldManagerImpl = await deployContractFromArtifacts(
+    YieldManagerContractName,
+    YieldManagerAbi,
+    YieldManagerBytecode,
+    signer,
+    lineaRollupAddress,
+  );
+
   const yieldManagerInitData: YieldManagerInitializationData = {
     pauseTypeRoles: pauseTypeRoles,
     unpauseTypeRoles: unpauseTypeRoles,
@@ -77,47 +121,38 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     initialTargetWithdrawalReserveAmount: initialTargetWithdrawalReserveAmount,
   };
 
-  const yieldManager = (await deployUpgradableFromFactoryWithConstructorArgs(
-    "YieldManager",
-    [lineaRollupAddress],
-    [yieldManagerInitData],
-    {
-      initializer: YIELD_MANAGER_INITIALIZE_SIGNATURE,
-      unsafeAllow: ["constructor", "incorrect-initializer-order", "state-variable-immutable", "delegatecall"],
-    },
-  )) as unknown as YieldManager;
+  const yieldManagerInitializer = getInitializerData(YieldManagerAbi, "initialize", [yieldManagerInitData]);
 
-  await LogContractDeployment(contractName, yieldManager);
-  const yieldManagerAddress = await yieldManager.getAddress();
-  await tryVerifyContractWithConstructorArgs(yieldManagerAddress, "src/yield/YieldManager.sol:YieldManager", [
-    lineaRollupAddress,
-  ]);
+  const { proxyAddress: yieldManagerAddress } = await deployProxyAdminAndProxy(
+    await yieldManagerImpl.getAddress(),
+    signer,
+    yieldManagerInitializer,
+  );
 
   /********************************************************************
    *                ValidatorContainerProofVerifier                   *
    ********************************************************************/
-  const provider = ethers.provider;
-  const verifier = await deployFromFactory(
-    "ValidatorContainerProofVerifier",
-    provider,
+  const verifier = await deployContractFromArtifacts(
+    ValidatorContainerProofVerifierContractName,
+    ValidatorContainerProofVerifierAbi,
+    ValidatorContainerProofVerifierBytecode,
+    signer,
     verifierAdmin,
     gIFirstValidator,
     gIPendingPartialWithdrawalsRoot,
   );
-  await LogContractDeployment("ValidatorContainerProofVerifier", verifier);
+
   const verifierAddress = await verifier.getAddress();
-  await tryVerifyContractWithConstructorArgs(
-    verifierAddress,
-    "src/yield/libs/ValidatorContainerProofVerifier.sol:ValidatorContainerProofVerifier",
-    [verifierAdmin, gIFirstValidator, gIPendingPartialWithdrawalsRoot],
-  );
 
   /********************************************************************
    *                LidoStVaultYieldProviderFactory                   *
    ********************************************************************/
-  const factory = await deployFromFactory(
-    "LidoStVaultYieldProviderFactory",
-    provider,
+
+  const factory = await deployContractFromArtifacts(
+    LidoStVaultYieldProviderFactoryContractName,
+    LidoStVaultYieldProviderFactoryAbi,
+    LidoStVaultYieldProviderFactoryBytecode,
+    signer,
     lineaRollupAddress,
     yieldManagerAddress,
     vaultHub,
@@ -125,30 +160,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     steth,
     verifierAddress,
   );
-  await LogContractDeployment("LidoStVaultYieldProviderFactory", factory);
   const factoryAddress = await factory.getAddress();
-  await tryVerifyContractWithConstructorArgs(
-    factoryAddress,
-    "src/yield/LidoStVaultYieldProviderFactory.sol:LidoStVaultYieldProviderFactory",
-    [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifierAddress],
-  );
 
   /********************************************************************
    *                    LidoStVaultYieldProvider                      *
    ********************************************************************/
-  const { deployer } = await getNamedAccounts();
-  const signer = await ethers.getSigner(deployer);
+
   const factoryContract = await ethers.getContractAt("LidoStVaultYieldProviderFactory", factoryAddress, signer);
   const yieldProvider = await factoryContract.createLidoStVaultYieldProvider.staticCall();
   const createYieldProviderTx = await factoryContract.createLidoStVaultYieldProvider();
   await createYieldProviderTx.wait(5);
   console.log("Created LidoStVaultYieldProvider at ", yieldProvider);
-  await tryVerifyContractWithConstructorArgs(
-    yieldProvider,
-    "src/yield/LidoStVaultYieldProvider.sol:LidoStVaultYieldProvider",
-    [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifierAddress],
-  );
 };
 
 export default func;
-func.tags = ["YieldManager"];
+func.tags = ["YieldManagerArtifacts"];

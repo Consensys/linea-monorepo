@@ -46,6 +46,9 @@ deploy-linea-rollup:
 deploy-linea-rollup-v6:
 		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=6
 
+deploy-linea-rollup-v7:
+		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=7
+
 deploy-validium: L1_CONTRACT_VERSION:=1
 deploy-validium:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
