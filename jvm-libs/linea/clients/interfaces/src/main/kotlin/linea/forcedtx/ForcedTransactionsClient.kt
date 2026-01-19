@@ -48,6 +48,17 @@ data class ForcedTransactionsReceipt(
 }
 
 interface ForcedTransactionsClient {
+  /**
+   * Sends a list of RLP encoded signed transactions, just like eth_sendRawTransaction
+   * Transactions order must follow L1 submission, forcedTransactionIndex.
+   * Sequencer must evaluate them by this order
+   *
+   * @return list of transaction hashes
+   */
   fun lineaSendForcedRawTransaction(transactions: List<ByteArray>): SafeFuture<List<ByteArray>>
-  fun lineaGetForcedTransactionReceipt(transactionHash: ByteArray): SafeFuture<ForcedTransactionsReceipt>
+  fun lineaFindForcedTransactionReceipt(transactionHash: ByteArray): SafeFuture<ForcedTransactionsReceipt?>
+  fun lineaGetForcedTransactionReceipt(transactionHash: ByteArray): SafeFuture<ForcedTransactionsReceipt> =
+    lineaFindForcedTransactionReceipt(transactionHash).thenApply {
+      it ?: throw IllegalStateException("Forced transaction not found: txHash=${transactionHash.encodeHex()}")
+    }
 }
