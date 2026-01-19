@@ -40,6 +40,7 @@ class BlobCompressionProofCoordinator(
     blobCompressionProofHandler = blobCompressionProofHandler,
     vertx = vertx,
     log = log,
+    metricsFacade = metricsFacade,
   )
 
   private val blobsCounter =
@@ -161,7 +162,7 @@ class BlobCompressionProofCoordinator(
             expectedShnarf = expectedShnarfResult.expectedShnarf,
           )
         blobCompressionProofPoller
-          .pollForBlobCompressionProof(proofIndex = proofIndex, unProvenBlobRecord = unProvenBlobRecord)
+          .addProofRequestsInProgressForPolling(proofIndex = proofIndex, unProvenBlobRecord = unProvenBlobRecord)
       }
   }
 

@@ -3,6 +3,8 @@ package net.consensys.zkevm.ethereum.coordination.blob
 import io.vertx.core.Vertx
 import linea.timer.TimerSchedule
 import linea.timer.VertxPeriodicPollingService
+import net.consensys.linea.metrics.LineaMetricsCategory
+import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ProofIndex
@@ -19,6 +21,7 @@ class BlobCompressionProofPoller(
   pollingIntervalMs: Long = 100.milliseconds.inWholeMilliseconds,
   name: String = "BlobCompressionProofPoller",
   timerSchedule: TimerSchedule = TimerSchedule.FIXED_DELAY,
+  metricsFacade: MetricsFacade,
 ) : VertxPeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = pollingIntervalMs,
@@ -26,7 +29,6 @@ class BlobCompressionProofPoller(
   name = name,
   timerSchedule = timerSchedule,
 ) {
-
   data class ProofInProgress(
     val proofIndex: ProofIndex,
     val unProvenBlobRecord: BlobRecord,
@@ -34,8 +36,17 @@ class BlobCompressionProofPoller(
 
   private val proofRequestsInProgress = ConcurrentLinkedDeque<ProofInProgress>()
 
+  init {
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.BLOB,
+      name = "prover.pending_proofs",
+      description = "Number of blob compression proof waiting responses",
+      measurementSupplier = { proofRequestsInProgress.size },
+    )
+  }
+
   @Synchronized
-  fun pollForBlobCompressionProof(proofIndex: ProofIndex, unProvenBlobRecord: BlobRecord) {
+  fun addProofRequestsInProgressForPolling(proofIndex: ProofIndex, unProvenBlobRecord: BlobRecord) {
     proofRequestsInProgress.add(ProofInProgress(proofIndex, unProvenBlobRecord))
   }
 
