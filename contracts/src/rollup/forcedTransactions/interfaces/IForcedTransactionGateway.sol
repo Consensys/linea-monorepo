@@ -14,6 +14,7 @@ interface IForcedTransactionGateway {
    * @dev messageRollingHash The L2 computed L1 message rolling hash.
    * @dev forcedTransactionNumber The last finalized forced transaction processed on L2.
    * @dev forcedTransactionRollingHash The last finalized forced transaction's rolling hash processed on L2.
+   * @dev blockHash The last finalized block hash.
    */
   struct LastFinalizedState {
     uint256 timestamp;
@@ -21,6 +22,7 @@ interface IForcedTransactionGateway {
     bytes32 messageRollingHash;
     uint256 forcedTransactionNumber;
     bytes32 forcedTransactionRollingHash;
+    bytes32 blockHash;
   }
 
   /**

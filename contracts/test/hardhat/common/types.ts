@@ -85,6 +85,8 @@ export type FinalizationData = {
   lastFinalizedForcedTransactionNumber: bigint;
   finalForcedTransactionNumber: bigint;
   lastFinalizedForcedTransactionRollingHash: string;
+  lastFinalizedBlockHash: string;
+  finalBlockHash: string;
 };
 
 export type ShnarfDataGenerator = (blobParentShnarfIndex: number, isMultiple?: boolean) => ShnarfData;
@@ -119,4 +121,5 @@ export type LastFinalizedState = {
   messageRollingHash: string;
   forcedTransactionNumber: string;
   forcedTransactionRollingHash: string;
+  blockHash: string;
 };

@@ -57,6 +57,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     forcedTransactionNumber: 0n,
     forcedTransactionRollingHash: HASH_ZERO,
     timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
+    blockHash: HASH_ZERO,
   };
 
   before(async () => {
@@ -86,6 +87,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       forcedTransactionNumber: 0n,
       forcedTransactionRollingHash: HASH_ZERO,
       timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
+      blockHash: HASH_ZERO,
     };
   });
 
@@ -429,13 +431,14 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
 
       const defaultFinalizedStateHash = generateKeccak256(
-        ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
+        ["uint256", "bytes32", "uint256", "bytes32", "uint256", "bytes32"],
         [
           defaultFinalizedState.messageNumber,
           defaultFinalizedState.messageRollingHash,
           defaultFinalizedState.forcedTransactionNumber,
           defaultFinalizedState.forcedTransactionRollingHash,
           defaultFinalizedState.timestamp,
+          defaultFinalizedState.blockHash,
         ],
       );
 

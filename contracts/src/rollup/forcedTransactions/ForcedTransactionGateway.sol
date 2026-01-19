@@ -113,7 +113,8 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
         _lastFinalizedState.messageRollingHash,
         _lastFinalizedState.forcedTransactionNumber,
         _lastFinalizedState.forcedTransactionRollingHash,
-        _lastFinalizedState.timestamp
+        _lastFinalizedState.timestamp,
+        _lastFinalizedState.blockHash
       )
     ) {
       /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.

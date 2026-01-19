@@ -106,7 +106,6 @@ export async function deployLineaRollupFixture() {
   const roleAddresses = await loadFixture(getRoleAddressesFixture);
 
   const { addressFilter } = await deployAddressFilter(securityCouncil.address, [nonAuthorizedAccount.address]);
-  const addressFilterAddress = await addressFilter.getAddress();
 
   const verifier = await deployTestPlonkVerifierForDataAggregation();
   const { parentStateRootHash } = firstCompressedDataContent;
@@ -134,7 +133,7 @@ export async function deployLineaRollupFixture() {
     },
   )) as unknown as TestLineaRollup;
 
-  return { verifier, lineaRollup, addressFilterAddress };
+  return { verifier, lineaRollup, addressFilter };
 }
 
 export async function deployAddressFilter(securityCouncil: string, nonAuthorizedAccount: string[]) {
@@ -157,15 +156,13 @@ export async function deployMimcFixture() {
 }
 
 export async function deployForcedTransactionGatewayFixture() {
-  const { securityCouncil, nonAuthorizedAccount } = await loadFixture(getAccountsFixture);
-  const { lineaRollup } = await loadFixture(deployLineaRollupFixture);
+  const { securityCouncil } = await loadFixture(getAccountsFixture);
+  const { lineaRollup, addressFilter, verifier } = await loadFixture(deployLineaRollupFixture);
   const { mimc } = await loadFixture(deployMimcFixture);
 
   const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
     libraries: { Mimc: await mimc.getAddress() },
   });
-
-  const { addressFilter } = await deployAddressFilter(securityCouncil.address, [nonAuthorizedAccount.address]);
 
   const forcedTransactionGateway = (await forcedTransactionGatewayFactory.deploy(
     await lineaRollup.getAddress(),
@@ -179,7 +176,7 @@ export async function deployForcedTransactionGatewayFixture() {
 
   await forcedTransactionGateway.waitForDeployment();
 
-  return { lineaRollup, forcedTransactionGateway, addressFilter, mimc };
+  return { lineaRollup, forcedTransactionGateway, addressFilter, mimc, verifier };
 }
 
 export async function deployAddressFilterFixture() {
