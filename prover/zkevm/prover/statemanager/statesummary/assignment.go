@@ -195,7 +195,8 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 				}
 
 				for j := range common.NbLimbEthAddress {
-					ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
+					bb := common.LeftPadToFrBytes(accountAddressLimbs[j])
+					ss.account.address[j].PushBytes(bb)
 				}
 
 				ss.isInitialDeployment.PushBoolean(segID == 0)
@@ -305,7 +306,8 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 		}
 
 		for j := range common.NbLimbEthAddress {
-			ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
+			bb := common.LeftPadToFrBytes(accountAddressLimbs[j])
+			ss.account.address[j].PushBytes(bb)
 		}
 
 		ss.isInitialDeployment.PushBoolean(segID == 0)
@@ -446,12 +448,6 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 		ss.StateSummary.AccumulatorStatement.ComputeInitialAndFinalHValEqual[:],
 		ss.StateSummary.AccumulatorStatement.ComputeFinalHValIsZero[:]...,
 	))
-
-	//for i := range common.NbLimbU256 {
-	//	v := ss.StateSummary.Account.HashFinal[i].GetColAssignmentAt(run, 0)
-	//	print(v.Text(16), "")
-	//}
-	//println()
 }
 
 // getOldAndNewAccount traces a world-state trace and return the old and the
@@ -541,8 +537,11 @@ func getOldAndNewTopRoot(trace any) (old, new types.KoalaOctuplet) {
 
 func hash(x io.WriterTo) types.KoalaOctuplet {
 	hasher := poseidon2kb.NewMDHasher()
-	x.WriteTo(hasher)
-	return types.MustBytesToKoalaOctuplet(hasher.Sum(nil))
+	if _, err := x.WriteTo(hasher); err != nil {
+		panic(err)
+	}
+	res := types.MustBytesToKoalaOctuplet(hasher.Sum(nil))
+	return res
 }
 
 // actualUnskippedLength computes the actual number of traces that form the segments

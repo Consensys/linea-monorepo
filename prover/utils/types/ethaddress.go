@@ -84,6 +84,14 @@ func AddressFromHex(h string) (EthAddress, error) {
 	return res, nil
 }
 
+func MustAddressFromHex(h string) EthAddress {
+	a, err := AddressFromHex(h)
+	if err != nil {
+		panic(err)
+	}
+	return a
+}
+
 // Construct a dummy address from an integer
 func DummyAddress(i int) (a EthAddress) {
 	a[0] = byte(i)

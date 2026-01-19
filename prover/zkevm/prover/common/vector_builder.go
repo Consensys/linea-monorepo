@@ -232,3 +232,8 @@ func (vb *VectorBuilder) OverWriteInt(n int) {
 func (vb *VectorBuilder) Last() field.Element {
 	return vb.slice[len(vb.slice)-1]
 }
+
+// Column returns the column of the VectorBuilder
+func (vb *VectorBuilder) Column() ifaces.Column {
+	return vb.column
+}

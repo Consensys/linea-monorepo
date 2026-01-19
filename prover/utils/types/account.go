@@ -39,6 +39,13 @@ func (a *Account) ReadFrom(r io.Reader) (int64, error) {
 	return a.readFrom(r, false)
 }
 
+func (a Account) String() string {
+	return fmt.Sprintf(
+		"Account{Nonce: %d, Balance: %s, StorageRoot: %s, LineaCodeHash: %s, KeccakCodeHash: %s, CodeSize: %d}",
+		a.Nonce, a.Balance, a.StorageRoot.Hex(), a.LineaCodeHash.Hex(), a.KeccakCodeHash.Hex(), a.CodeSize,
+	)
+}
+
 // Write the account into a writer. The `packed` argument specifies if the
 // keccak code hash should be written on 1 or 2 32-bytes words. The first option
 // is for serialization and the second option is for hashing with a SNARK-friendly

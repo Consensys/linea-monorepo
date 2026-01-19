@@ -367,7 +367,7 @@ func (a *Arithmetization) determineRegisterId(mod string, name string) register.
 		modInfos := []string{}
 		regs := modMap.Registers()
 		for _, r := range regs {
-			info := fmt.Sprintf("%s(width=%v, kind=%v)", r.Name, r.Width, r.Kind)
+			info := fmt.Sprintf("%s(width=%v, kind=%v)", r.Name(), r.Width(), r.Kind())
 			modInfos = append(modInfos, info)
 		}
 

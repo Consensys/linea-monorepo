@@ -166,13 +166,3 @@ func (builder *StateDiffAssignmentBuilder) AddRows(numRowsAccSegment int, hKey, 
 		}
 	}
 }
-
-// padZerosAtBeginning pads provided array to [field.Bytes] len with zeros at the beginning.
-func padZerosAtBeginning(arr []byte) []byte {
-	if len(arr) >= field.Bytes {
-		return arr
-	}
-
-	padding := make([]byte, field.Bytes-len(arr))
-	return append(padding, arr...)
-}

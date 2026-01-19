@@ -242,5 +242,5 @@ func StorageHash(comp *wizard.CompiledIOP, hilo common.HiLoColumns, name string)
 	// WriteTo serializes Hi bytes (0-15) first, then Lo bytes (16-31)
 	hashInputs = append(hashInputs, hilo.Hi[:]...)
 	hashInputs = append(hashInputs, hilo.Lo[:]...)
-	return dedicatedposeidon2.HashOf(comp, dedicatedposeidon2.SplitColumns(hashInputs), name)
+	return dedicatedposeidon2.HashOf(comp, hashInputs, name)
 }

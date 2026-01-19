@@ -105,10 +105,10 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 		accPeek.Address[i] = createCol(fmt.Sprintf("ACCOUNT_%v", i))
 	}
 
-	accPeek.ComputeHashInitial = accPeek.Initial.AccountHash(comp)
+	accPeek.ComputeHashInitial = accPeek.Initial.AccountHash(comp, "OLD")
 	accPeek.HashInitial = accPeek.ComputeHashInitial.Result()
 
-	accPeek.ComputeHashFinal = accPeek.Final.AccountHash(comp)
+	accPeek.ComputeHashFinal = accPeek.Final.AccountHash(comp, "NEW")
 	accPeek.HashFinal = accPeek.ComputeHashFinal.Result()
 
 	for i := range poseidon2.BlockSize {
@@ -120,7 +120,7 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 
 	accPeek.ComputeAddressHash = poseidon2.HashOf(
 		comp,
-		poseidon2.SplitColumns(accPeek.Address[:]),
+		accPeek.Address[:],
 		"ACCOUNT_ADDRESS_HASHING",
 	)
 
@@ -307,6 +307,7 @@ func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
 
 // pushAll stacks the value of a [types.Account] as a new row on the receiver.
 func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
+
 	// accountExists is telling whether the intent is to push an empty account
 	accountExists := acc.Balance != nil
 
@@ -370,61 +371,9 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	acc types.Account,
 	storageRoot types.KoalaOctuplet,
 ) {
-	// accountExists is telling whether the intent is to push an empty account
-	accountExists := acc.Balance != nil
-
-	nonceBytes := int64ToByteLimbs(acc.Nonce)
-	for i := range common.NbLimbU64 {
-		ss.nonce[i].PushBytes(nonceBytes[i])
-	}
-
-	// This is telling us whether the intent is to push an empty account
-	if accountExists {
-		balanceBytes := acc.Balance.Bytes()
-		balancePadBytes := make([]byte, common.NbLimbU256*common.LimbBytes-len(balanceBytes))
-		balancePaddedBytes := append(balancePadBytes, balanceBytes...)
-
-		balanceLimbs := common.SplitBytes(balancePaddedBytes)
-		for i := range common.NbLimbU256 {
-			limbBytes := common.LeftPadToFrBytes(balanceLimbs[i])
-			ss.balance[i].PushBytes(limbBytes)
-		}
-
-		ss.exists.PushOne()
-
-		var keccakCodeHashLimbs [common.NbLimbU256][]byte
-		copy(keccakCodeHashLimbs[:], common.SplitBytes(acc.KeccakCodeHash[:]))
-
-		ss.keccakCodeHash.Push(keccakCodeHashLimbs)
-		// if account exists push the same codehash
-		ss.expectedHubCodeHash.Push(keccakCodeHashLimbs)
-	} else {
-		for i := range common.NbLimbU256 {
-			ss.balance[i].PushZero()
-		}
-
-		ss.exists.PushZero()
-		ss.keccakCodeHash.PushZeroes()
-		// if account does not exist push empty codehash
-		var emptyCodeHashLimbs [common.NbLimbU256][]byte
-		copy(emptyCodeHashLimbs[:], common.SplitBytes(types2.EmptyCodeHash[:]))
-		ss.expectedHubCodeHash.Push(emptyCodeHashLimbs)
-	}
-
-	codesizeBytes := int64ToByteLimbs(acc.CodeSize)
-	for i := range common.NbLimbU64 {
-		ss.codeSize[i].PushBytes(codesizeBytes[i])
-	}
-
-	for i := range acc.LineaCodeHash {
-		ss.lineaCodeHash[i].PushField(acc.LineaCodeHash[i])
-	}
-
-	for i := range storageRoot {
-		ss.storageRoot[i].PushField(storageRoot[i])
-	}
-
-	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
+	newAcc := acc
+	newAcc.StorageRoot = storageRoot
+	ss.pushAll(newAcc)
 }
 
 // PadAndAssign terminates the receiver by padding all the columns representing
@@ -470,7 +419,7 @@ func int64ToByteLimbs(num int64) [][]byte {
 
 	return res
 }
-func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
+func (ac Account) AccountHash(comp *wizard.CompiledIOP, name string) *poseidon2.HashingCtx {
 	var (
 		hashInputs []ifaces.Column
 		size       = ac.Nonce[0].Size()
@@ -483,7 +432,7 @@ func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
 	hashInputs = append(hashInputs, ac.KeccakCodeHash.Hi[:]...)
 	hashInputs = append(hashInputs, ac.KeccakCodeHash.Lo[:]...)
 	hashInputs = append(hashInputs, padd(ac.CodeSize[:], 16, zeroColumn)...)
-	res := poseidon2.HashOf(comp, poseidon2.SplitColumns(hashInputs), "ACCOUNT_HASH")
+	res := poseidon2.HashOf(comp, hashInputs, "ACCOUNT_HASH_"+name)
 	return res
 }
 

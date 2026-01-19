@@ -37,6 +37,16 @@ func NewMDHasher() *MDHasher {
 	return h
 }
 
+// HashBytes hashes an array of bytes and returns the result. It assumes the
+// bytes can be directly converted into blocks of octuplet after zero-padding.
+func HashBytes(x []byte) []byte {
+	state := NewMDHasher()
+	if _, err := state.Write(x); err != nil {
+		panic(err)
+	}
+	return state.Sum(nil)
+}
+
 // Compress calls the compression function of Poseidon2 over state and block.
 func Compress(state, block field.Octuplet) field.Octuplet {
 	return vortex.CompressPoseidon2(state, block)
