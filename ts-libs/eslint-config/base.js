@@ -46,7 +46,6 @@ export const base = defineConfig(
         //             },
         //         ],
         //         pathGroupsExcludedImportTypes: ["react"],
-
         //         "newlines-between": "always",
         //         alphabetize: { order: "asc", caseInsensitive: true },
         //     },
