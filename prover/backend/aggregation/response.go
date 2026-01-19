@@ -87,9 +87,10 @@ type Response struct {
 	ParentAggregationBlockHash string `json:"parentAggregationBlockHash"`
 
 	// chain configuration
-	ChainID              uint64           `json:"chainID"`
-	BaseFee              uint64           `json:"baseFee"`
-	CoinBase             types.EthAddress `json:"coinBase"`
-	L2MessageServiceAddr types.EthAddress `json:"l2MessageServiceAddr"`
-	IsAllowedCircuitID   uint64           `json:"isAllowedCircuitID"`
+	ChainID              uint64             `json:"chainID"`
+	BaseFee              uint64             `json:"baseFee"`
+	CoinBase             types.EthAddress   `json:"coinBase"`
+	L2MessageServiceAddr types.EthAddress   `json:"l2MessageServiceAddr"`
+	IsAllowedCircuitID   uint64             `json:"isAllowedCircuitID"`
+	FilteredAddresses    []types.EthAddress `json:"filteredAddresses"`
 }
