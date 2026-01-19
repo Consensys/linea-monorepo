@@ -170,11 +170,11 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       require(!ADDRESS_FILTER.addressIsFiltered(_forcedTransaction.to), AddressIsFiltered());
     }
 
-    uint256 expectedBlockNumber;
+    uint256 blockNumberDeadline;
     unchecked {
       /// @dev The computation uses 1s block time making block number and seconds interchangable,
       ///      while the chain might currently differ at >1s, this gives additional inclusion time.
-      expectedBlockNumber =
+      blockNumberDeadline =
         currentFinalizedL2BlockNumber +
         block.timestamp -
         _lastFinalizedState.timestamp +
@@ -189,7 +189,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     }
 
     bytes32 forcedTransactionRollingHash = Mimc.hash(
-      abi.encode(previousForcedTransactionRollingHash, hashedPayloadMsb, hashedPayloadLsb, expectedBlockNumber, signer)
+      abi.encode(previousForcedTransactionRollingHash, hashedPayloadMsb, hashedPayloadLsb, blockNumberDeadline, signer)
     );
 
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.yParity);
@@ -197,9 +197,9 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.s);
 
     emit ForcedTransactionAdded(
-      LINEA_ROLLUP.storeForcedTransaction{ value: msg.value }(expectedBlockNumber, forcedTransactionRollingHash),
+      LINEA_ROLLUP.storeForcedTransaction{ value: msg.value }(blockNumberDeadline, forcedTransactionRollingHash),
       signer,
-      expectedBlockNumber,
+      blockNumberDeadline,
       forcedTransactionRollingHash,
       abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList))
     );

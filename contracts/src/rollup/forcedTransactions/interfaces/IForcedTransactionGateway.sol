@@ -65,14 +65,14 @@ interface IForcedTransactionGateway {
    * @notice Emitted when a forced transaction is added.
    * @param forcedTransactionNumber The indexed forced transaction number.
    * @param from The recovered signer's from address.
-   * @param expectedBlockNumber The maximum expected L2 block number processing will occur by.
+   * @param blockNumberDeadline The maximum expected L2 block number processing will occur by.
    * @param forcedTransactionRollingHash The computed rolling Mimc based hash.
    * @param rlpEncodedSignedTransaction The RLP encoded type 02 transaction payload including signature.
    */
   event ForcedTransactionAdded(
     uint256 indexed forcedTransactionNumber,
-    address from,
-    uint256 expectedBlockNumber,
+    address indexed from,
+    uint256 blockNumberDeadline,
     bytes32 forcedTransactionRollingHash,
     bytes rlpEncodedSignedTransaction
   );
