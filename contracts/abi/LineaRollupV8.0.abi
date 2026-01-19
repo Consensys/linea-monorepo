@@ -501,6 +501,11 @@
     },
     {
       "inputs": [],
+      "name": "ZeroLengthNotAllowed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "ZeroValueNotAllowed",
       "type": "error"
     },
@@ -1920,6 +1925,16 @@
               "type": "bytes32"
             },
             {
+              "internalType": "bytes32",
+              "name": "lastFinalizedBlockHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "finalBlockHash",
+              "type": "bytes32"
+            },
+            {
               "internalType": "bytes32[]",
               "name": "l2MerkleRoots",
               "type": "bytes32[]"
@@ -2568,6 +2583,11 @@
           "internalType": "uint256",
           "name": "_lastFinalizedTimestamp",
           "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_lastFinalizedBlockHash",
+          "type": "bytes32"
         }
       ],
       "name": "setLivenessRecoveryOperator",
