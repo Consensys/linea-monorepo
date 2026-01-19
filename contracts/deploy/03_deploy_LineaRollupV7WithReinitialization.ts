@@ -5,7 +5,7 @@
 //   LINEA_ROLLUP_SECURITY_COUNCIL
 //   LINEA_ROLLUP_ADDRESS
 //   YIELD_MANAGER_ADDRESS
-//   AUTOMATION_SERVICE_ADDRESS
+//   NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS
 //
 // This script deploys LineaRollupV7 implementation from artifacts signed off by auditors
 // and generates encoded calldata for upgrading an existing LineaRollup proxy with reinitialization.
@@ -38,7 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const signer = await ethers.getSigner(deployer);
 
   const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
-  const automationServiceAddress = getRequiredEnvVar("AUTOMATION_SERVICE_ADDRESS");
+  const automationServiceAddress = getRequiredEnvVar("NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS");
   const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
   const yieldManagerAddress = getRequiredEnvVar("YIELD_MANAGER_ADDRESS");
 
