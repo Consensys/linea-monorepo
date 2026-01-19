@@ -44,7 +44,7 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
         ;; Verify that chain_id is 0 or the ID of the current chain
         if chain_id == 0 goto step_2
         if chain_id == network_chain_id goto step_2
-        fail
+        goto failure
     step_2:
         ;; Check that nonce < 2^64 - 1
         var b u1
@@ -78,7 +78,7 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
         ;; Add authority to accessed_addresses, as defined in EIP-2929.
     step_5:
         if authority_has_empty_code_or_is_delegated == 1 goto step_6
-        fail
+        goto failure
     step_6:
         ;; NOTE: the sender_nonce will be incremented after the authority list in Linea; if sender == authority_address (SENDER_IS_AUTHORITY) one must verify authority_nonce + 1 == nonce (TBC)
         if sender_is_authority == 1 goto step_6_with_sender_is_authority
@@ -87,10 +87,10 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
         var authority_nonce_plus_one u257 ;; to avoid overflow
         authority_nonce_plus_one = authority_nonce + 1
         if authority_nonce_plus_one == nonce goto exit
-        fail
+        goto failure
     step_6_with_sender_is_not_authority:
         if authority_nonce == nonce goto exit
-        fail       
+        goto failure       
     ;; step_7: happens in the HUB
         ;; Add PER_EMPTY_ACCOUNT_COST - PER_AUTH_BASE_COST gas to the global refund counter if authority is not empty.
     ;; step_8: happens in the HUB
@@ -105,7 +105,7 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
         authorization_tuple_is_valid = 1
         return
     failure:
-        authorization_tuple_is_valid = 0 ;; TODO: do we need this?
+        authorization_tuple_is_valid = 0
         fail
 }
 
@@ -277,12 +277,12 @@ fn ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_
 
     limb_size = 1 ;; MAGIC
     limb_size = 1 ;; list_rlp_prefix_limb
-    limb_size = chain_id_byte_size == 0? 0 : 1 ;; chain_id_rlp_prefix_limb
+    limb_size = chain_id_rlp_prefix_limb == 0? 0 : 1
     limb_size = chain_id_byte_size 
     limb_size = 1 ;; address_rlp_prefix_limb
     limb_size = 4 ;; address_hi_limb
     limb_size = 16 ;; address_lo_limb
-    limb_size = nonce_byte_size == 0? 0 : 1 ;; nonce_rlp_prefix_limb
+    limb_size = nonce_rlp_prefix_limb == 0? 0 : 1
     limb_size = nonce_byte_size ;; nonce_leading_limb
 
     ;; TODO: should we fill explicitly also other columns such as is_signature, is_result, is_message (even if number of rows is fixed)? Shall we extract fill_column_with_value_n_times?
