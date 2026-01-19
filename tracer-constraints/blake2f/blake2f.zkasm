@@ -4,7 +4,7 @@
 
 include "../util/g1g2.zkasm"
 include "../util/bit_xoan.zkasm"
-include "../util/be_to_le.zkasm"
+include "../util/switch_endian.zkasm"
 
 ;; Initialization vector
 const IV_0 = 0x6A09E667F3BCC908
@@ -41,11 +41,11 @@ pub fn blake2f(r u64, h0h1_be_input u128, h2h3_be_input u128, h4h5_be_input u128
       var h0_input, h1_input, h2_input, h3_input, h4_input, h5_input, h6_input, h7_input u64
       var m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15 u64
       var t0, t1 u64
-      h0_input, h1_input, h2_input, h3_input, h4_input, h5_input, h6_input, h7_input = BE_to_LE_8_args(h0_be_input, h1_be_input, h2_be_input, h3_be_input, h4_be_input, h5_be_input, h6_be_input, h7_be_input)
-      m0, m1, m2, m3, m4, m5, m6, m7 = BE_to_LE_8_args(m0_be, m1_be, m2_be, m3_be, m4_be, m5_be, m6_be, m7_be)
-      m8, m9, m10, m11, m12, m13, m14, m15 = BE_to_LE_8_args(m8_be, m9_be, m10_be, m11_be, m12_be, m13_be, m14_be, m15_be)
-      t0 = BE_to_LE_u64(t0_be)
-      t1 = BE_to_LE_u64(t1_be)
+      h0_input, h1_input, h2_input, h3_input, h4_input, h5_input, h6_input, h7_input = switch_endian_8_args(h0_be_input, h1_be_input, h2_be_input, h3_be_input, h4_be_input, h5_be_input, h6_be_input, h7_be_input)
+      m0, m1, m2, m3, m4, m5, m6, m7 = switch_endian_8_args(m0_be, m1_be, m2_be, m3_be, m4_be, m5_be, m6_be, m7_be)
+      m8, m9, m10, m11, m12, m13, m14, m15 = switch_endian_8_args(m8_be, m9_be, m10_be, m11_be, m12_be, m13_be, m14_be, m15_be)
+      t0 = switch_endian_u64(t0_be)
+      t1 = switch_endian_u64(t1_be)
 
       ;; v array variables and initialization
       var v0, v1, v2, v3, v4, v5, v6, v7, v8, v9 u64
@@ -112,7 +112,7 @@ xor_two_halves:
       h6_le = xor_on_xor(v6, v14, h6_input)
       h7_le = xor_on_xor(v7, v15, h7_input)
       ;; convert little-endian outputs to big-endian
-      h0_be, h1_be, h2_be, h3_be, h4_be, h5_be, h6_be, h7_be = BE_to_LE_8_args(h0_le, h1_le, h2_le, h3_le, h4_le, h5_le, h6_le, h7_le)
+      h0_be, h1_be, h2_be, h3_be, h4_be, h5_be, h6_be, h7_be = switch_endian_8_args(h0_le, h1_le, h2_le, h3_le, h4_le, h5_le, h6_le, h7_le)
       h0h1_be = (2^64 * h0_be) + h1_be
       h2h3_be = (2^64 * h2_be) + h3_be
       h4h5_be = (2^64 * h4_be) + h5_be
@@ -121,15 +121,15 @@ xor_two_halves:
       return
 }
 
-fn BE_to_LE_8_args(arg_BE_1 u64, arg_BE_2 u64, arg_BE_3 u64, arg_BE_4 u64, arg_BE_5 u64, arg_BE_6 u64,arg_BE_7 u64, arg_BE_8 u64) -> (arg_LE_1 u64, arg_LE_2 u64, arg_LE_3 u64, arg_LE_4 u64, arg_LE_5 u64, arg_LE_6 u64,arg_LE_7 u64, arg_LE_8 u64){
-      arg_LE_1 = BE_to_LE_u64(arg_BE_1)
-      arg_LE_2 = BE_to_LE_u64(arg_BE_2)
-      arg_LE_3 = BE_to_LE_u64(arg_BE_3)
-      arg_LE_4 = BE_to_LE_u64(arg_BE_4)
-      arg_LE_5 = BE_to_LE_u64(arg_BE_5)
-      arg_LE_6 = BE_to_LE_u64(arg_BE_6)
-      arg_LE_7 = BE_to_LE_u64(arg_BE_7)
-      arg_LE_8 = BE_to_LE_u64(arg_BE_8)
+fn switch_endian_8_args(arg_BE_1 u64, arg_BE_2 u64, arg_BE_3 u64, arg_BE_4 u64, arg_BE_5 u64, arg_BE_6 u64,arg_BE_7 u64, arg_BE_8 u64) -> (arg_LE_1 u64, arg_LE_2 u64, arg_LE_3 u64, arg_LE_4 u64, arg_LE_5 u64, arg_LE_6 u64,arg_LE_7 u64, arg_LE_8 u64){
+      arg_LE_1 = switch_endian_u64(arg_BE_1)
+      arg_LE_2 = switch_endian_u64(arg_BE_2)
+      arg_LE_3 = switch_endian_u64(arg_BE_3)
+      arg_LE_4 = switch_endian_u64(arg_BE_4)
+      arg_LE_5 = switch_endian_u64(arg_BE_5)
+      arg_LE_6 = switch_endian_u64(arg_BE_6)
+      arg_LE_7 = switch_endian_u64(arg_BE_7)
+      arg_LE_8 = switch_endian_u64(arg_BE_8)
       return
 }
 
