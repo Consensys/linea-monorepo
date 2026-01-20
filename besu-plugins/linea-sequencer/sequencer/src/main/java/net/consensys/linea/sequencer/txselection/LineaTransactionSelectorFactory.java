@@ -31,6 +31,7 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
 import net.consensys.linea.sequencer.liveness.LivenessService;
 import net.consensys.linea.sequencer.txselection.selectors.LineaTransactionSelector;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
@@ -60,6 +61,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final BundlePoolService bundlePoolService;
+  private final ForcedTransactionPoolService forcedTransactionPoolService;
   private final Optional<LivenessService> livenessService;
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
@@ -78,6 +80,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final BundlePoolService bundlePoolService,
+      final ForcedTransactionPoolService forcedTransactionPoolService,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
@@ -90,6 +93,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
     this.bundlePoolService = bundlePoolService;
+    this.forcedTransactionPoolService = forcedTransactionPoolService;
     this.livenessService = livenessService;
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
     this.deniedEvents = deniedEvents;
@@ -119,10 +123,13 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
   @Override
   public void selectPendingTransactions(
-      final BlockTransactionSelectionService bts, final ProcessableBlockHeader pendingBlockHeader,
+      final BlockTransactionSelectionService bts,
+      final ProcessableBlockHeader pendingBlockHeader,
       final List<? extends PendingTransaction> candidatePendingTransactions) {
     try {
-      // check and send liveness bundle if any
+      forcedTransactionPoolService.processForBlock(pendingBlockHeader.getNumber(), bts);
+      commit(bts);
+
       checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
 
       final var bundlesByBlockNumber =

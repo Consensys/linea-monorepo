@@ -303,6 +303,68 @@ export class LineaBundleClient {
   }
 }
 
+export interface ForcedTransactionInclusionStatus {
+  blockNumber: string;
+  from: string;
+  inclusionResult: string;
+  transactionHash: string;
+}
+
+export class LineaForcedTransactionClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async lineaSendForcedRawTransaction(
+    transactions: Array<{ transaction: string; deadline?: string }>,
+  ): Promise<string[]> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_sendForcedRawTransaction",
+        params: [transactions],
+        id: generateRandomInt(),
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    const responseJson = await response.json();
+    if (responseJson.error?.code === -32601 && responseJson.error?.message === "Method not found") {
+      throw Error("Method not found");
+    }
+    if (responseJson.error) {
+      throw Error(responseJson.error.message);
+    }
+    assert("result" in responseJson);
+    return responseJson.result;
+  }
+
+  public async lineaGetForcedTransactionInclusionStatus(
+    txHash: string,
+  ): Promise<ForcedTransactionInclusionStatus | null> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_getForcedTransactionInclusionStatus",
+        params: [txHash],
+        id: generateRandomInt(),
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    const responseJson = await response.json();
+    if (responseJson.error?.code === -32601 && responseJson.error?.message === "Method not found") {
+      throw Error("Method not found");
+    }
+    if (responseJson.error) {
+      throw Error(responseJson.error.message);
+    }
+    return responseJson.result;
+  }
+}
+
 export class LineaShomeiClient {
   private endpoint: URL;
 

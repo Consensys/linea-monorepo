@@ -9,6 +9,7 @@
 
 package net.consensys.linea.sequencer.txselection;
 
+import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_FORCED_TX;
 import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_LIVENESS;
 import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITABILITY;
 
@@ -65,6 +66,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
 
     metricCategoryRegistry.addMetricCategory(SEQUENCER_PROFITABILITY);
     metricCategoryRegistry.addMetricCategory(SEQUENCER_LIVENESS);
+    metricCategoryRegistry.addMetricCategory(SEQUENCER_FORCED_TX);
   }
 
   @Override
@@ -131,6 +133,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             rejectedTxJsonRpcManager,
             maybeProfitabilityMetrics,
             bundlePoolService,
+            forcedTransactionPoolService,
             getInvalidTransactionByLineCountCache(),
             deniedEvents,
             deniedBundleEvents,

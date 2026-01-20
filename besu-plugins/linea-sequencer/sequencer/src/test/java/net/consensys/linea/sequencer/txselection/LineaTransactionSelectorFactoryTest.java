@@ -11,10 +11,11 @@ package net.consensys.linea.sequencer.txselection;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -35,6 +36,7 @@ import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
 import net.consensys.linea.utils.CachingTransactionCompressor;
@@ -117,6 +119,9 @@ class LineaTransactionSelectorFactoryTest {
         new TransactionProfitabilityCalculator(
             mockProfitabilityConfiguration, transactionCompressor);
 
+    ForcedTransactionPoolService mockForcedTransactionPoolService =
+        mock(ForcedTransactionPoolService.class);
+
     factory =
         new LineaTransactionSelectorFactory(
             mockBlockchainService,
@@ -128,6 +133,7 @@ class LineaTransactionSelectorFactoryTest {
             Optional.empty(),
             Optional.empty(),
             bundlePool,
+            mockForcedTransactionPoolService,
             invalidTransactionByLineCountCache,
             new AtomicReference<>(Collections.emptyMap()),
             new AtomicReference<>(Collections.emptyMap()),
@@ -149,7 +155,7 @@ class LineaTransactionSelectorFactoryTest {
 
     factory.selectPendingTransactions(mockBts, mockPendingBlockHeader, Collections.emptyList());
 
-    verify(mockBts).commit();
+    verify(mockBts, atLeastOnce()).commit();
   }
 
   @ParameterizedTest()
@@ -178,7 +184,7 @@ class LineaTransactionSelectorFactoryTest {
 
     factory.selectPendingTransactions(mockBts, mockPendingBlockHeader, Collections.emptyList());
 
-    verifyNoInteractions(mockBts);
+    verify(mockBts, times(1)).commit();
   }
 
   private TransactionBundle createBundle(
