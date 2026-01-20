@@ -1,4 +1,4 @@
- [
+[
     {
       "inputs": [
         {
@@ -172,43 +172,6 @@
         }
       ],
       "name": "AddressFilterSet",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "forcedTransactionNumber",
-          "type": "uint256"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "blockNumberDeadline",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "bytes32",
-          "name": "forcedTransactionRollingHash",
-          "type": "bytes32"
-        },
-        {
-          "indexed": false,
-          "internalType": "bytes",
-          "name": "rlpEncodedSignedTransaction",
-          "type": "bytes"
-        }
-      ],
-      "name": "ForcedTransactionAdded",
       "type": "event"
     },
     {
@@ -575,6 +538,11 @@
             {
               "internalType": "bytes32",
               "name": "forcedTransactionRollingHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "blockHash",
               "type": "bytes32"
             }
           ],
