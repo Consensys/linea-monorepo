@@ -200,7 +200,7 @@ func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.E4Gen, ns []int) []gna
 		}
 
 		for currN < n {
-			curr = *ext4.Mul(&curr, &curr)
+			curr = *ext4.Square(&curr) // Use Square instead of Mul for self-multiplication
 			currN *= 2
 		}
 
