@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -45,8 +45,7 @@ func testBlsAdd(t *testing.T, withCircuit bool, g Group, path string, limits *Li
 					WithCurveMembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
 			}
 		},
-		plonkinwizard.Compile,
-		// dummy.Compile,
+		dummy.Compile,
 	)
 
 	proof := wizard.Prove(cmp,
