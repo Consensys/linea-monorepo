@@ -205,9 +205,3 @@ func powerVectorOfOmegaInv(n int) []zk.WrappedVariable {
 
 	return res
 }
-
-// isConstantZeroGnarkVariable returns true if the variable is a constant equal to zero
-func isConstantZeroGnarkVariable(api frontend.API, p zk.WrappedVariable) bool {
-	c, isC := api.Compiler().ConstantValue(p)
-	return isC && c.IsInt64() && c.Int64() == 0
-}
