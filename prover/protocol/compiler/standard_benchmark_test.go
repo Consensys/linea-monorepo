@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -62,59 +61,59 @@ type SubModuleParameters struct {
 
 var (
 	benchCases = []StdBenchmarkCase{
-		{
-			Name: "minimal",
-			Permutations: SubModuleParameters{
-				Count:  1,
-				NumCol: 1,
-				NumRow: 1 << 10,
-			},
-			Lookup: SubModuleParameters{
-				Count:     1,
-				NumCol:    1,
-				NumRow:    1 << 10,
-				NumRowAux: 1 << 10,
-			},
-			Projection: SubModuleParameters{
-				Count:     1,
-				NumCol:    1,
-				NumRow:    1 << 10,
-				NumRowAux: 1 << 10,
-			},
-			Fibo: SubModuleParameters{
-				Count:  1,
-				NumRow: 1 << 10,
-			},
-		},
 		// {
-		// 	// run with GOGC=200 and
-		// 	// ensure THP is enabled:
-		// 	// cat /sys/kernel/mm/transparent_hugepage/enabled
-		// 	// if not:
-		// 	// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
-		// 	Name: "realistic-segment",
+		// 	Name: "minimal",
 		// 	Permutations: SubModuleParameters{
-		// 		Count:  5,
-		// 		NumCol: 3,
-		// 		NumRow: 1 << 20,
+		// 		Count:  1,
+		// 		NumCol: 1,
+		// 		NumRow: 1 << 10,
 		// 	},
 		// 	Lookup: SubModuleParameters{
-		// 		Count:     50,
-		// 		NumCol:    3,
-		// 		NumRow:    1 << 20,
-		// 		NumRowAux: 1 << 20,
+		// 		Count:     1,
+		// 		NumCol:    1,
+		// 		NumRow:    1 << 10,
+		// 		NumRowAux: 1 << 10,
 		// 	},
 		// 	Projection: SubModuleParameters{
-		// 		Count:     5,
-		// 		NumCol:    3,
-		// 		NumRow:    1 << 20,
-		// 		NumRowAux: 1 << 20,
+		// 		Count:     1,
+		// 		NumCol:    1,
+		// 		NumRow:    1 << 10,
+		// 		NumRowAux: 1 << 10,
 		// 	},
 		// 	Fibo: SubModuleParameters{
-		// 		Count:  200,
-		// 		NumRow: 1 << 20,
+		// 		Count:  1,
+		// 		NumRow: 1 << 10,
 		// 	},
 		// },
+		{
+			// run with GOGC=200 and
+			// ensure THP is enabled:
+			// cat /sys/kernel/mm/transparent_hugepage/enabled
+			// if not:
+			// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+			Name: "realistic-segment",
+			Permutations: SubModuleParameters{
+				Count:  5,
+				NumCol: 3,
+				NumRow: 1 << 20,
+			},
+			Lookup: SubModuleParameters{
+				Count:     50,
+				NumCol:    3,
+				NumRow:    1 << 20,
+				NumRowAux: 1 << 20,
+			},
+			Projection: SubModuleParameters{
+				Count:     5,
+				NumCol:    3,
+				NumRow:    1 << 20,
+				NumRowAux: 1 << 20,
+			},
+			Fibo: SubModuleParameters{
+				Count:  200,
+				NumRow: 1 << 20,
+			},
+		},
 		// {
 		// 	Name: "smaller-segment",
 		// 	Permutations: SubModuleParameters{
@@ -375,28 +374,28 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	isBLS := true
 	// These parameters have been found to give the best result for performances
 	params := selfRecursionParameters{
-		NbOpenedColumns: 8,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 5,
+		NbOpenedColumns: 8, // TODO: next step, update to 64
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 9,
 	}
 
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<9),
+			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(1<<1),
 		),
 		vortex.Compile(
 			2,
 			false,
-			vortex.WithOptionalSISHashingThreshold(32),
-			vortex.ForceNumOpenedColumns(8),
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(8), // TODO: next step, update to 256
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)
 
-	nbIteration := 1 //TODO@yao: update back to 2
+	nbIteration := 1 //TODO@yao: update back to 2, when nbConstraints < 30M
 
 	for i := 0; i < nbIteration; i++ {
 		applySelfRecursionThenArcane(comp, params)
@@ -424,9 +423,9 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			circuit.C = *c
 		}
 
-		gnarkProfile := profile.Start(profile.WithPath("./gnark.pprof"))
+		// gnarkProfile := profile.Start(profile.WithPath("./gnark.pprof"))
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-		gnarkProfile.Stop()
+		// gnarkProfile.Stop()
 		fmt.Printf("ccs number of constraints: %d\n", ccs.GetNbConstraints())
 		if err != nil {
 			b.Fatal(err)
