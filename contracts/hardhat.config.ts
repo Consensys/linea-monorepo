@@ -197,6 +197,22 @@ const config: HardhatUserConfig = {
           browserURL: "https://hoodi.etherscan.io/",
         },
       },
+      {
+        network: "sepolia",
+        chainId: 11155111,
+        urls: {
+          apiURL: `https://api.etherscan.io/v2/api?chainid=11155111`,
+          browserURL: "https://sepolia.etherscan.io/",
+        },
+      },
+      {
+        network: "mainnet",
+        chainId: 1,
+        urls: {
+          apiURL: `https://api.etherscan.io/v2/api?chainid=1`,
+          browserURL: "https://etherscan.io/",
+        },
+      },
     ],
   },
   docgen: {
