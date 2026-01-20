@@ -131,14 +131,28 @@ func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.
 	}
 
 	for i, input := range inputs {
-		term := gnarkutil.Exp(api, input, prod.Exponents[i])
+		exp := prod.Exponents[i]
+		var term zk.WrappedVariable
+
+		// Optimization: handle common exponents directly to avoid Exp overhead
+		switch exp {
+		case 0:
+			// x^0 = 1, skip multiplication
+			continue
+		case 1:
+			term = input
+		case 2:
+			term = apiGen.Mul(input, input)
+		default:
+			term = gnarkutil.Exp(api, input, exp)
+		}
 		res = apiGen.Mul(res, term)
 	}
 
 	return res
 }
 
-// GnarkEval implements the [Operator] interface.
+// GnarkEvalExt implements the [Operator] interface.
 func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
 
 	e4Api, err := gnarkfext.NewExt4(api)
@@ -153,7 +167,22 @@ func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gna
 	}
 
 	for i, input := range inputs {
-		term := gnarkutil.ExpExt(api, input, prod.Exponents[i])
+		exp := prod.Exponents[i]
+		var term gnarkfext.E4Gen
+
+		// Optimization: handle common exponents directly to avoid ExpExt overhead
+		switch exp {
+		case 0:
+			// x^0 = 1, skip multiplication
+			continue
+		case 1:
+			// mostly this case
+			term = input
+		case 2:
+			term = *e4Api.Square(&input)
+		default:
+			term = gnarkutil.ExpExt(api, input, exp)
+		}
 		res = *e4Api.Mul(&res, &term)
 	}
 

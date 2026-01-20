@@ -376,7 +376,6 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 		}
 
 		var (
-			m             = ctx.DomainSize
 			n             = ctx.DomainSize * ratio
 			omegaRatio, _ = fft.Generator(uint64(ratio))
 			rPowM         fext.Element
@@ -388,7 +387,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 			ratioInvField = field.NewElement(uint64(ratio))
 		)
 
-		rPowM.Exp(shiftedR, big.NewInt(int64(m)))
+		rPowM.Exp(shiftedR, big.NewInt(int64(ctx.DomainSize)))
 		ratioInvField.Inverse(&ratioInvField)
 		omegaRatioInv.Inverse(&omegaRatio)
 
@@ -448,6 +447,13 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 
 	var invOmegaN field.Element
 	invOmegaN.Inverse(&omegaN)
+
+	// Optimization: compute powers of invOmegaN incrementally instead of using ExpExt
+	// expectedX[i] = shiftedR * invOmegaN^i
+	// We compute invOmegaN^i by repeated multiplication
+	var accInvOmegaN field.Element
+	accInvOmegaN.SetOne() // invOmegaN^0 = 1
+
 	for i, q := range ctx.QuotientEvals {
 		params := run.GetUnivariateParams(q.Name())
 		qYs[i] = params.ExtYs
@@ -455,11 +461,17 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		// Check that the provided value for x is the right one
 		providedX := params.ExtX
 		var expectedX gnarkfext.E4Gen
-		expectedX = gnarkfext.NewE4GenFromBase(invOmegaN.String())
-		expectedX = gnarkutil.ExpExt(api, expectedX, i)
-		expectedX = *e4Api.Mul(&expectedX, &shiftedR)
+		// expectedX = shiftedR * invOmegaN^i (computed incrementally)
+		wrappedAccInvOmegaN := zk.ValueFromKoala(accInvOmegaN)
+		expectedX = *e4Api.MulByFp(&shiftedR, wrappedAccInvOmegaN)
 		e4Api.AssertIsEqual(&providedX, &expectedX)
+
+		// Update accumulator: accInvOmegaN *= invOmegaN
+		accInvOmegaN.Mul(&accInvOmegaN, &invOmegaN)
 	}
+
+	// Precompute shiftedR^DomainSize once, reuse for all ratios
+	shiftedRPowDomainSize := gnarkutil.ExpExt(api, shiftedR, ctx.DomainSize)
 
 	for i, ratio := range ctx.Ratios {
 		var (
@@ -472,32 +484,38 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			qYs[j*jumpBy] = qYs[j*jumpBy][1:]
 		}
 
-		m := ctx.DomainSize
-		n := ctx.DomainSize * ratio
 		omegaRatio, _ := fft.Generator(uint64(ratio))
 		ratioInvField := field.NewElement(uint64(ratio))
 		var omegaRatioInv field.Element
 		res := *e4Api.Zero()
 
-		rPowM := gnarkutil.ExpExt(api, shiftedR, m)
+		// Optimization: rPowM = shiftedR^m = shiftedR^DomainSize (precomputed)
+		rPowM := shiftedRPowDomainSize
 		ratioInvField.Inverse(&ratioInvField)
 		omegaRatioInv.Inverse(&omegaRatio)
 
 		wOne := *e4Api.One()
-		for k := range ys {
 
-			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
-			var tmpinit field.Element
-			tmpinit.Exp(omegaRatioInv, big.NewInt(int64(k)))
-			wrappedTmpInit := zk.ValueFromKoala(tmpinit)
-			tmp := e4Api.MulByFp(&rPowM, wrappedTmpInit)
+		// Optimization: compute omegaRatioInv^k incrementally
+		var accOmegaRatioInv field.Element
+		accOmegaRatioInv.SetOne() // omegaRatioInv^0 = 1
+
+		for k := range ys {
+			// tmp stores ys[k] / ((r^m * omegaRatioInv^k) - 1)
+			wrappedAccOmegaRatioInv := zk.ValueFromKoala(accOmegaRatioInv)
+			tmp := e4Api.MulByFp(&rPowM, wrappedAccOmegaRatioInv)
 			tmp = e4Api.Sub(tmp, &wOne)
 			tmp = e4Api.Div(&ys[k], tmp)
 			res = *e4Api.Add(&res, tmp)
+
+			// Update accumulator: accOmegaRatioInv *= omegaRatioInv
+			accOmegaRatioInv.Mul(&accOmegaRatioInv, &omegaRatioInv)
 		}
 
+		// Optimization: outerFactor = shiftedR^n = shiftedR^(m*ratio) = (shiftedR^m)^ratio
+		// Reuse rPowM instead of computing ExpExt again
 		wrappedRatioInvField := zk.ValueFromKoala(ratioInvField)
-		outerFactor := gnarkutil.ExpExt(api, shiftedR, n)
+		outerFactor := gnarkutil.ExpExt(api, rPowM, ratio)
 		outerFactor = *e4Api.Sub(&outerFactor, &wOne)
 		outerFactor = *e4Api.MulByFp(&outerFactor, wrappedRatioInvField)
 		res = *e4Api.Mul(&res, &outerFactor)
