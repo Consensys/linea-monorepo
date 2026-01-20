@@ -121,7 +121,8 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		txnDataCols       *arith.TxnData
 		blockDataCols     *arith.BlockDataCols
 		rlpTxn            *arith.RlpTxn
-		mimcHasher        *MIMCHasher
+		ppp               PoseidonPadderPacker
+		mimcHasher        PoseidonHasher
 
 		importInp  importpad.ImportAndPadInputs
 		paddingMod wizard.ProverAction
@@ -165,7 +166,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 				NBytes:  execDataCollector.NoBytes,
 				Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("TESTING_LIMBS", execDataCollector.Limbs[:]).AssertUint128(),
 			}},
-			PaddingStrategy: generic.KeccakUsecase,
+			PaddingStrategy: generic.Poseidon2UseCase,
 		}
 
 		// define the padding module. The import and pad module is first assigned
@@ -177,7 +178,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// create an input for the packing module
 		packingInp = pack.PackingInput{
 			MaxNumBlocks: execDataCollector.BlockID.Size(),
-			PackingParam: generic.KeccakUsecase,
+			PackingParam: generic.Poseidon2UseCase,
 			Imported: pack.Importation{
 				Limb:      padding.Limbs,
 				NByte:     padding.NBytes,
@@ -188,10 +189,13 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		}
 		// create a new packing module
 		packingMod = pack.NewPack(b.CompiledIOP, packingInp)
+		// create the repacker for Poseidon Hashing
+		ppp = NewPoseidonPadderPacker(b.CompiledIOP, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
+		DefinePoseidonPadderPacker(b.CompiledIOP, ppp, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
 		// create a MiMC hasher
-		mimcHasher = NewMIMCHasher(b.CompiledIOP, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
+		mimcHasher = NewPoseidonHasher(b.CompiledIOP, ppp.OutputData, ppp.OutputIsActive[0], "MIMC_HASHER")
 		// define the hasher
-		mimcHasher.DefineHasher(b.CompiledIOP, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+		DefinePoseidonHasher(b.CompiledIOP, mimcHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
@@ -209,12 +213,14 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		paddingMod.Run(run)
 		// assign the packing module
 		packingMod.Run(run)
+		// assign the repacker for Poseidon hashing
+		AssignPoseidonPadderPacker(run, ppp)
 		// assign the hasher
-		mimcHasher.AssignHasher(run)
+		AssignPoseidonHasher(run, mimcHasher, ppp.OutputData, ppp.OutputIsActive[0])
 		// compute the MiMC hash of the fixed TestData
 		//fixedHash := ComputeMiMCHashFixedTestData()
 		// assert that we are computing the hash correctly
-		//assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final HashFirst Value is Incorrect")
+		//assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final Hash Value is Incorrect")
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)

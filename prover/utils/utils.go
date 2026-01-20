@@ -624,3 +624,12 @@ func GrowSliceSize[T any](slice []T, size int) []T {
 	}
 	return slice
 }
+
+// SliceToAnys converts a slice into an []any
+func SliceToAnys[T any](slice []T) []any {
+	res := make([]any, len(slice))
+	for i, v := range slice {
+		res[i] = v
+	}
+	return res
+}

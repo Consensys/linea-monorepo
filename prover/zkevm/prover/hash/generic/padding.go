@@ -1,5 +1,10 @@
 package generic
 
+import (
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
+)
+
 var (
 
 	// UnspecifiedHashingUsecase is the zero value for the packing use-case and
@@ -19,6 +24,12 @@ var (
 		PaddingStrat:       sha2Padding,
 		LaneSizeBytes_:     4,
 		NbOfLanesPerBlock_: 16,
+	}
+
+	Poseidon2UseCase = HashingUsecase{
+		PaddingStrat:       zeroPadding,
+		LaneSizeBytes_:     poseidon2.BlockSize * field.Bytes,
+		NbOfLanesPerBlock_: 1,
 	}
 )
 

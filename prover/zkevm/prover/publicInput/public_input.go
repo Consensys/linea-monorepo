@@ -53,7 +53,7 @@ type PublicInput struct {
 	RootHashFetcher    *fetch.RootHashFetcher
 	RollingHashFetcher *logs.RollingSelector
 	LogHasher          logs.LogHasher
-	ExecMiMCHasher     edc.MIMCHasher
+	ExecMiMCHasher     edc.PoseidonHasher
 	DataNbBytes        ifaces.Column
 	ChainID            [pcommon.NbLimbU256]ifaces.Column
 	ChainIDNBytes      ifaces.Column
@@ -233,9 +233,11 @@ func newPublicInput(
 	}
 	packingMod := pack.NewPack(comp, packingInp)
 
+	ppp =
+
 	// ExecutionDataCollector: Hashing
-	mimcHasher := edc.NewMIMCHasher(comp, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
-	mimcHasher.DefineHasher(comp, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+	mimcHasher := edc.NewPoseidonHasher(comp, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
+	edc.DefinePoseidonHasher(comp, mimcHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
 	publicInput := PublicInput{
 		BlockDataFetcher:   blockDataFetcher,
