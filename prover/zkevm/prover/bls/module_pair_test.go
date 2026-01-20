@@ -48,32 +48,30 @@ func testBlsPair(t *testing.T, withCircuit bool) {
 			if err != nil {
 				t.Fatal("failed to create csv trace", err)
 			}
-			if cmp == nil {
-				cmp = wizard.Compile(
-					func(b *wizard.Builder) {
-						blsPairSource = &BlsPairDataSource{
-							ID:             ct.GetCommit(b, "ID"),
-							CsPair:         ct.GetCommit(b, "CS_PAIRING_CHECK"),
-							CsG1Membership: ct.GetCommit(b, "CS_G1_MEMBERSHIP"),
-							CsG2Membership: ct.GetCommit(b, "CS_G2_MEMBERSHIP"),
-							Limb:           ct.GetLimbsLe(b, "LIMB", limbs.NbLimbU128).AssertUint128(),
-							Index:          ct.GetCommit(b, "INDEX"),
-							Counter:        ct.GetCommit(b, "CT"),
-							IsData:         ct.GetCommit(b, "DATA_PAIRING_CHECK"),
-							IsRes:          ct.GetCommit(b, "RSLT_PAIRING_CHECK"),
-							SuccessBit:     ct.GetCommit(b, "SUCCESS_BIT"),
-						}
-						blsPair = newPair(b.CompiledIOP, limits, blsPairSource)
-						if withCircuit {
-							blsPair = blsPair.
-								WithG1MembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true)).
-								WithG2MembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true)).
-								WithPairingCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
-						}
-					},
-					plonkinwizard.Compile,
-				)
-			}
+			cmp = wizard.Compile(
+				func(b *wizard.Builder) {
+					blsPairSource = &BlsPairDataSource{
+						ID:             ct.GetCommit(b, "ID"),
+						CsPair:         ct.GetCommit(b, "CS_PAIRING_CHECK"),
+						CsG1Membership: ct.GetCommit(b, "CS_G1_MEMBERSHIP"),
+						CsG2Membership: ct.GetCommit(b, "CS_G2_MEMBERSHIP"),
+						Limb:           ct.GetLimbsLe(b, "LIMB", limbs.NbLimbU128).AssertUint128(),
+						Index:          ct.GetCommit(b, "INDEX"),
+						Counter:        ct.GetCommit(b, "CT"),
+						IsData:         ct.GetCommit(b, "DATA_PAIRING_CHECK"),
+						IsRes:          ct.GetCommit(b, "RSLT_PAIRING_CHECK"),
+						SuccessBit:     ct.GetCommit(b, "SUCCESS_BIT"),
+					}
+					blsPair = newPair(b.CompiledIOP, limits, blsPairSource)
+					if withCircuit {
+						blsPair = blsPair.
+							WithG1MembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true)).
+							WithG2MembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true)).
+							WithPairingCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+					}
+				},
+				dummy.Compile,
+			)
 			proof := wizard.Prove(cmp,
 				func(run *wizard.ProverRuntime) {
 					ct.Assign(run,
