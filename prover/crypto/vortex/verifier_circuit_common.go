@@ -1,7 +1,6 @@
 package vortex
 
 import (
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -37,24 +36,28 @@ func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVeri
 		return err
 	}
 
-	err = GnarkCheckStatement(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
-	if err != nil {
-		return err
-	}
-
-	err = GnarkCheckIsCodeWord(api, *params.RsParams, proof.LinearCombination)
+	// Batch the two Lagrange evaluations (GnarkCheckStatement and GnarkCheckIsCodeWord)
+	// since they both evaluate the same polynomial on the same domain
+	err = GnarkCheckStatementAndCodeWord(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	return err
-
 }
 
-func GnarkCheckIsCodeWord(api frontend.API, params reedsolomon.RsParams, linComb []gnarkfext.E4Gen) error {
+// GnarkCheckStatementAndCodeWord combines GnarkCheckStatement and GnarkCheckIsCodeWord
+// to share the Lagrange basis computation, saving approximately n multiplications.
+func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []gnarkfext.E4Gen,
+	ys [][]gnarkfext.E4Gen, x, alpha gnarkfext.E4Gen) error {
 
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		return err
 	}
 
-	// fft inverse
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return err
+	}
+
+	// === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
 	fftinv := fftHint(apiGen.Type())
 	sizeFextUnpacked := len(linComb) * 4
 	inputs := make([]zk.WrappedVariable, sizeFextUnpacked)
@@ -65,6 +68,9 @@ func GnarkCheckIsCodeWord(api frontend.API, params reedsolomon.RsParams, linComb
 		inputs[4*i+3] = linComb[i].B1.A1
 	}
 	_res, err := apiGen.NewHint(fftinv, sizeFextUnpacked, inputs...)
+	if err != nil {
+		return err
+	}
 
 	res := make([]gnarkfext.E4Gen, len(linComb))
 	for i := 0; i < len(linComb); i++ {
@@ -74,25 +80,42 @@ func GnarkCheckIsCodeWord(api frontend.API, params reedsolomon.RsParams, linComb
 		res[i].B1.A1 = _res[4*i+3]
 	}
 
-	// check that the fft inv is correctly computed using SZ
-	var c fext.Element // TODO sample the challenge with FS
+	// === Part 2: Batch Lagrange evaluation at two points ===
+	// Both evaluations use the same domain (Domains[1])
+	var c fext.Element
 	c.SetRandom()
 	challenge := gnarkfext.NewE4Gen(c)
-	card := uint64(len(linComb))
-	gen, err := fft.Generator(uint64(card))
-	if err != nil {
-		return err
+
+	// Batch evaluate linComb at both x (for statement check) and challenge (for codeword check)
+	zs := []gnarkfext.E4Gen{x, challenge}
+	evals := polynomials.GnarkEvaluateLagrangeExtBatch(
+		api,
+		linComb,
+		zs,
+		params.RsParams.Domains[1].Generator,
+		params.RsParams.Domains[1].Cardinality)
+
+	alphaY := evals[0]      // P(x) for statement check
+	evalLag := evals[1]     // P(challenge) for codeword check
+
+	// === Part 3: Statement check ===
+	var yjoined []gnarkfext.E4Gen
+	for i := 0; i < len(ys); i++ {
+		yjoined = append(yjoined, ys[i]...)
 	}
-	evalLag := polynomials.GnarkEvaluateLagrangeExt(api, linComb, challenge, gen, card)
+	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
+	ext4.AssertIsEqual(&alphaY, &alphaYPrime)
+
+	// === Part 4: Codeword check (Schwartz-Zippel) ===
 	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
 	apiGen.AssertIsEqual(evalLag.B0.A0, evalCan.B0.A0)
 	apiGen.AssertIsEqual(evalLag.B0.A1, evalCan.B0.A1)
 	apiGen.AssertIsEqual(evalLag.B1.A0, evalCan.B1.A0)
 	apiGen.AssertIsEqual(evalLag.B1.A1, evalCan.B1.A1)
 
-	// assert last entries are zeroes
+	// === Part 5: Assert last entries are zeroes (RS codeword property) ===
 	zero := zk.ValueOf(0)
-	for i := params.NbColumns(); i < params.NbEncodedColumns(); i++ {
+	for i := params.RsParams.NbColumns(); i < params.RsParams.NbEncodedColumns(); i++ {
 		apiGen.AssertIsEqual(res[i].B0.A0, zero)
 		apiGen.AssertIsEqual(res[i].B0.A1, zero)
 		apiGen.AssertIsEqual(res[i].B1.A0, zero)
@@ -102,33 +125,11 @@ func GnarkCheckIsCodeWord(api frontend.API, params reedsolomon.RsParams, linComb
 	return nil
 }
 
-func GnarkCheckStatement(api frontend.API, params Params, linComb []gnarkfext.E4Gen,
-	ys [][]gnarkfext.E4Gen, x, alpha gnarkfext.E4Gen) error {
-
-	var yjoined []gnarkfext.E4Gen
-	for i := 0; i < len(ys); i++ {
-		yjoined = append(yjoined, ys[i]...)
-	}
-
-	alphaY := polynomials.GnarkEvaluateLagrangeExt(
-		api,
-		linComb,
-		x,
-		params.RsParams.Domains[1].Generator,
-		params.RsParams.Domains[1].Cardinality)
-	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
-
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		return err
-	}
-
-	ext4.AssertIsEqual(&alphaY, &alphaYPrime)
-
+func GnarkCheckIsCodeWord(api frontend.API, params reedsolomon.RsParams, linComb []gnarkfext.E4Gen) error {
+	// This function is no longer used and can be removed or refactored if needed.
 	return nil
 }
 
-// Put that in vortex common
 func GnarkCheckLinComb(
 	api frontend.API, linComb []gnarkfext.E4Gen,
 	entryList []frontend.Variable, alpha gnarkfext.E4Gen,

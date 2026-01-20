@@ -26,6 +26,89 @@ func GnarkEvaluateLagrangeExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext
 	return res
 }
 
+// GnarkEvaluateLagrangeExtBatch evaluates the same polynomial p at multiple points zs
+// more efficiently by sharing the barycentric weight computation.
+//
+// Uses the barycentric formula: P(z) = (zⁿ - 1) * Σᵢ [ (ωⁱ/n * pᵢ) / (z - ωⁱ) ]
+//
+// For k evaluation points, this saves approximately (k-1)*n multiplications
+// compared to k separate calls to GnarkEvaluateLagrangeExt.
+func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []gnarkfext.E4Gen, zs []gnarkfext.E4Gen, gen field.Element, cardinality uint64) []gnarkfext.E4Gen {
+	if len(zs) == 0 {
+		return nil
+	}
+	if len(zs) == 1 {
+		return []gnarkfext.E4Gen{GnarkEvaluateLagrangeExt(api, p, zs[0], gen, cardinality)}
+	}
+
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
+	// Precompute barycentric weights: wᵢ = ωⁱ/n
+	// and weighted coefficients: wᵢ * pᵢ
+	// This is shared across all evaluation points
+	weightedP := make([]gnarkfext.E4Gen, cardinality)
+	var accOmega field.Element
+	accOmega.SetOne()
+
+	// Precompute 1/n as a constant
+	var invN field.Element
+	invN.SetUint64(cardinality)
+	invN.Inverse(&invN)
+
+	for i := uint64(0); i < cardinality; i++ {
+		// wᵢ = ωⁱ/n
+		var wi field.Element
+		wi.Mul(&accOmega, &invN)
+		wWi := zk.ValueFromKoala(wi)
+
+		// weightedP[i] = wᵢ * pᵢ
+		weightedP[i] = *ext4.MulByFp(&p[i], wWi)
+
+		accOmega.Mul(&accOmega, &gen)
+	}
+
+	// Precompute all ωⁱ values as constants
+	omegaPowers := make([]field.Element, cardinality)
+	omegaPowers[0].SetOne()
+	for i := uint64(1); i < cardinality; i++ {
+		omegaPowers[i].Mul(&omegaPowers[i-1], &gen)
+	}
+
+	results := make([]gnarkfext.E4Gen, len(zs))
+	tb := bits.TrailingZeros(uint(cardinality))
+
+	// Evaluate at each point z
+	for j, z := range zs {
+		// Compute zⁿ - 1
+		zPowN := z
+		for i := 0; i < tb; i++ {
+			zPowN = *ext4.Square(&zPowN)
+		}
+		zPowNMinusOne := *ext4.Sub(&zPowN, ext4.One())
+
+		// Compute Σᵢ [ weightedP[i] / (z - ωⁱ) ]
+		sum := *ext4.Zero()
+		for i := uint64(0); i < cardinality; i++ {
+			// z - ωⁱ
+			wOmegai := zk.ValueFromKoala(omegaPowers[i])
+			omegaiExt := gnarkfext.FromBase(wOmegai)
+			zMinusOmegai := *ext4.Sub(&z, &omegaiExt)
+
+			// weightedP[i] / (z - ωⁱ)
+			term := *ext4.Div(&weightedP[i], &zMinusOmegai)
+			sum = *ext4.Add(&sum, &term)
+		}
+
+		// P(z) = (zⁿ - 1) * sum
+		results[j] = *ext4.Mul(&zPowNMinusOne, &sum)
+	}
+
+	return results
+}
+
 // computeLagrange returns Lᵢ(ζ) for i=1..n
 // with lᵢ(ζ) = ωⁱ/n*(ζⁿ-1)/(ζ - ωⁱ)
 func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Element, cardinality uint64) []gnarkfext.E4Gen {
