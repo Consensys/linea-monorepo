@@ -8,6 +8,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/constraint"
+	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -117,7 +118,7 @@ func TestMultiEcMulCircuit(t *testing.T) {
 		t.Fatalf("assigning witness: %v", err)
 	}
 
-	if err := ccs.IsSolved(wit); err != nil {
+	if err := ccs.IsSolved(wit, solver.WithHints(gnarkutil.MockedWideCommiHint)); err != nil {
 		t.Fatalf("solving circuit: %v", err)
 	}
 

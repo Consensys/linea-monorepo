@@ -10,24 +10,25 @@ import (
 var (
 	// These are tests, that the interface implements frontend.WideCommitter and
 	// frontend.RangeChecker.
-	_ frontend.WideCommitter           = &MockBuilder{}
-	_ frontend.Rangechecker            = &MockBuilder{}
-	_ kVStore                          = &MockBuilder{}
-	_ frontend.Builder[constraint.U32] = &MockBuilder{}
+	_ frontend.WideCommitter = &MockBuilder{}
+	_ frontend.Rangechecker  = &MockBuilder{}
+	_ minimalBuilder         = &MockBuilder{}
 )
-
-type kVStore interface {
-	SetKeyValue(key, value any)
-	GetKeyValue(key any) (value any)
-}
 
 // MockBuilder is a mock builder for testing purposes. It implements
 // [frontend.WideCommitter] and [frontend.RangeChecker]. It works purely for
 // U32.
 type MockBuilder struct {
+	minimalBuilder
+}
+
+type minimalBuilder interface {
 	// Builder is the underlying frontend builder
 	frontend.Builder[constraint.U32]
-	Store map[any]any
+
+	// redefinition of gnark internal kvstore methods
+	SetKeyValue(key, value any)
+	GetKeyValue(key any) (value any)
 }
 
 // NewMockBuilder returns a new MockBuilder.
@@ -37,30 +38,25 @@ func NewMockBuilder(wrapped frontend.NewBuilderU32) frontend.NewBuilderU32 {
 		if err != nil {
 			return nil, err
 		}
-		return &MockBuilder{Builder: builder, Store: map[any]any{}}, nil
+		mb, ok := builder.(minimalBuilder)
+		if !ok {
+			panic("wrapped builder does not implement minimalBuilder")
+		}
+		return &MockBuilder{minimalBuilder: mb}, nil
 	}
 }
 
 // WideCommit returns a dummy static value for testing.
-func (*MockBuilder) WideCommit(width int, toCommit ...frontend.Variable) (commitment []frontend.Variable, err error) {
-	res := make([]frontend.Variable, width)
-	for i := range res {
-		if i < len(toCommit) {
-			res[i] = toCommit[i]
-			continue
-		}
-		res[i] = i
-	}
-	return res, nil
+func (mb *MockBuilder) WideCommit(width int, toCommit ...frontend.Variable) (commitment []frontend.Variable, err error) {
+	return mb.Compiler().NewHint(MockedWideCommiHint, width, toCommit...)
 }
 
 // Check implements the range-checker and does not do anything.
 func (*MockBuilder) Check(v frontend.Variable, bits int) {}
 
-func (m *MockBuilder) SetKeyValue(key, value any) {
-	m.Store[key] = value
-}
-
-func (m *MockBuilder) GetKeyValue(key any) (value any) {
-	return m.Store[key]
+func MockedWideCommiHint(mod *big.Int, inputs []*big.Int, outputs []*big.Int) error {
+	for i := range outputs {
+		outputs[i].Sub(mod, big.NewInt(int64(i))) // dummy value
+	}
+	return nil
 }
