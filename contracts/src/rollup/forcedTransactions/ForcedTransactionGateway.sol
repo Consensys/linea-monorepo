@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 import { IGenericErrors } from "../../interfaces/IGenericErrors.sol";
 import { IAcceptForcedTransactions } from "./interfaces/IAcceptForcedTransactions.sol";
 import { IForcedTransactionGateway } from "./interfaces/IForcedTransactionGateway.sol";

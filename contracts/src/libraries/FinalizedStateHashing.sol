@@ -5,7 +5,7 @@
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 library FinalizedStateHashing {
   /**

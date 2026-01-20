@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 
 import { LineaRollupBase } from "./LineaRollupBase.sol";
 import { Eip4844BlobAcceptor } from "./dataAvailability/Eip4844BlobAcceptor.sol";
@@ -8,13 +8,19 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { LivenessRecovery } from "./LivenessRecovery.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { IAddressFilter } from "./forcedTransactions/interfaces/IAddressFilter.sol";
-
+import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, ClaimMessageV1 {
+contract LineaRollup is
+  LineaRollupBase,
+  LineaRollupYieldExtension,
+  LivenessRecovery,
+  Eip4844BlobAcceptor,
+  ClaimMessageV1
+{
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -27,10 +33,12 @@ contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, 
    * @dev Note: This is used for new testnets and local/CI testing, and will not replace existing proxy based contracts.
    * @param _initializationData The initial data used for contract initialization.
    * @param _livenessRecoveryOperator The liveness recovery operator address.
+   * @param _yieldManager The yield manager address.
    */
   function initialize(
     BaseInitializationData calldata _initializationData,
-    address _livenessRecoveryOperator
+    address _livenessRecoveryOperator,
+    address _yieldManager
   ) external initializer {
     bytes32 genesisShnarf = _computeShnarf(
       EMPTY_HASH,
@@ -44,6 +52,7 @@ contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, 
 
     __LineaRollup_init(_initializationData, genesisShnarf);
     __LivenessRecovery_init(_livenessRecoveryOperator);
+    __LineaRollupYieldExtension_init(_yieldManager);
   }
 
   /**
@@ -77,6 +86,8 @@ contract LineaRollup is LineaRollupBase, LivenessRecovery, Eip4844BlobAcceptor, 
     require(_forcedTransactionFeeInWei > 0, IGenericErrors.ZeroValueNotAllowed());
     require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
 
+
+    // TODO - remove this as it will only be done when going live in another transaction.
     _grantRole(FORCED_TRANSACTION_SENDER_ROLE, _forcedTransactionGateway);
 
     forcedTransactionFeeInWei = _forcedTransactionFeeInWei;

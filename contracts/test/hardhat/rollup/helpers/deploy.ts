@@ -10,7 +10,7 @@ import {
   INITIAL_WITHDRAW_LIMIT,
   LINEA_MAINNET_CHAIN_ID,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-  MAX_GAS_LIMIT,
+  MAX_FORCED_TRANSACTION_GAS_LIMIT,
   MAX_INPUT_LENGTH_LIMIT,
   ONE_DAY_IN_SECONDS,
   THREE_DAYS_IN_SECONDS,
@@ -101,6 +101,13 @@ export async function deployValidiumFixture() {
   return { verifier, validium };
 }
 
+export async function deployMockYieldManager(): Promise<string> {
+  const mockYieldManagerFactory = await ethers.getContractFactory("MockYieldManager");
+  const mockYieldManager = await mockYieldManagerFactory.deploy();
+  await mockYieldManager.waitForDeployment();
+  return await mockYieldManager.getAddress();
+}
+
 export async function deployLineaRollupFixture() {
   const { securityCouncil, nonAuthorizedAccount } = await loadFixture(getAccountsFixture);
   const roleAddresses = await loadFixture(getRoleAddressesFixture);
@@ -109,6 +116,8 @@ export async function deployLineaRollupFixture() {
 
   const verifier = await deployTestPlonkVerifierForDataAggregation();
   const { parentStateRootHash } = firstCompressedDataContent;
+
+  const yieldManager = await deployMockYieldManager();
 
   const initializationData = {
     initialStateRootHash: parentStateRootHash,
@@ -126,14 +135,14 @@ export async function deployLineaRollupFixture() {
 
   const lineaRollup = (await deployUpgradableFromFactory(
     "TestLineaRollup",
-    [initializationData, FALLBACK_OPERATOR_ADDRESS],
+    [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
     {
       initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
       unsafeAllow: ["constructor", "incorrect-initializer-order"],
     },
   )) as unknown as TestLineaRollup;
 
-  return { verifier, lineaRollup, addressFilter };
+  return { verifier, lineaRollup, addressFilter, yieldManager };
 }
 
 export async function deployAddressFilter(securityCouncil: string, nonAuthorizedAccount: string[]) {
@@ -157,7 +166,7 @@ export async function deployMimcFixture() {
 
 export async function deployForcedTransactionGatewayFixture() {
   const { securityCouncil } = await loadFixture(getAccountsFixture);
-  const { lineaRollup, addressFilter, verifier } = await loadFixture(deployLineaRollupFixture);
+  const { lineaRollup, addressFilter, verifier, yieldManager } = await loadFixture(deployLineaRollupFixture);
   const { mimc } = await loadFixture(deployMimcFixture);
 
   const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
@@ -168,7 +177,7 @@ export async function deployForcedTransactionGatewayFixture() {
     await lineaRollup.getAddress(),
     LINEA_MAINNET_CHAIN_ID,
     THREE_DAYS_IN_SECONDS,
-    MAX_GAS_LIMIT,
+    MAX_FORCED_TRANSACTION_GAS_LIMIT,
     MAX_INPUT_LENGTH_LIMIT,
     securityCouncil.address,
     await addressFilter.getAddress(),
@@ -176,7 +185,7 @@ export async function deployForcedTransactionGatewayFixture() {
 
   await forcedTransactionGateway.waitForDeployment();
 
-  return { lineaRollup, forcedTransactionGateway, addressFilter, mimc, verifier };
+  return { lineaRollup, forcedTransactionGateway, addressFilter, mimc, verifier, yieldManager };
 }
 
 export async function deployAddressFilterFixture() {
