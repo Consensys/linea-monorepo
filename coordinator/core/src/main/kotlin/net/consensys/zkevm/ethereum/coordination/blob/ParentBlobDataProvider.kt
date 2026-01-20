@@ -8,7 +8,7 @@ data class BlobData(
   override val endBlockNumber: ULong,
   val blobHash: ByteArray,
   val blobShnarf: ByteArray,
-): BlockInterval {
+) : BlockInterval {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
