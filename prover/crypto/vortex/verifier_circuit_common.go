@@ -47,18 +47,13 @@ func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVeri
 func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []gnarkfext.E4Gen,
 	ys [][]gnarkfext.E4Gen, x, alpha gnarkfext.E4Gen) error {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
-
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		return err
 	}
 
 	// === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
-	fftinv := fftHint(apiGen.Type())
+	fftinv := fftHint(ext4.ApiGen.Type())
 	sizeFextUnpacked := len(linComb) * 4
 	inputs := make([]zk.WrappedVariable, sizeFextUnpacked)
 	for i := 0; i < len(linComb); i++ {
@@ -67,7 +62,7 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []g
 		inputs[4*i+2] = linComb[i].B1.A0
 		inputs[4*i+3] = linComb[i].B1.A1
 	}
-	_res, err := apiGen.NewHint(fftinv, sizeFextUnpacked, inputs...)
+	_res, err := ext4.ApiGen.NewHint(fftinv, sizeFextUnpacked, inputs...)
 	if err != nil {
 		return err
 	}
@@ -95,8 +90,8 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []g
 		params.RsParams.Domains[1].Generator,
 		params.RsParams.Domains[1].Cardinality)
 
-	alphaY := evals[0]      // P(x) for statement check
-	evalLag := evals[1]     // P(challenge) for codeword check
+	alphaY := evals[0]  // P(x) for statement check
+	evalLag := evals[1] // P(challenge) for codeword check
 
 	// === Part 3: Statement check ===
 	var yjoined []gnarkfext.E4Gen
@@ -108,18 +103,12 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []g
 
 	// === Part 4: Codeword check (Schwartz-Zippel) ===
 	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
-	apiGen.AssertIsEqual(evalLag.B0.A0, evalCan.B0.A0)
-	apiGen.AssertIsEqual(evalLag.B0.A1, evalCan.B0.A1)
-	apiGen.AssertIsEqual(evalLag.B1.A0, evalCan.B1.A0)
-	apiGen.AssertIsEqual(evalLag.B1.A1, evalCan.B1.A1)
+	ext4.AssertIsEqual(&evalLag, &evalCan)
 
 	// === Part 5: Assert last entries are zeroes (RS codeword property) ===
-	zero := zk.ValueOf(0)
+	zero := ext4.Zero()
 	for i := params.RsParams.NbColumns(); i < params.RsParams.NbEncodedColumns(); i++ {
-		apiGen.AssertIsEqual(res[i].B0.A0, zero)
-		apiGen.AssertIsEqual(res[i].B0.A1, zero)
-		apiGen.AssertIsEqual(res[i].B1.A0, zero)
-		apiGen.AssertIsEqual(res[i].B1.A1, zero)
+		ext4.AssertIsEqual(&res[i], zero)
 	}
 
 	return nil
