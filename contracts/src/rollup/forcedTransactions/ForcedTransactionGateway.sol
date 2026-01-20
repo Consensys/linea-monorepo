@@ -189,16 +189,20 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       hashedPayloadLsb := and(hashedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
     }
 
-    bytes32 forcedTransactionRollingHash = Mimc.hash(
-      abi.encode(previousForcedTransactionRollingHash, hashedPayloadMsb, hashedPayloadLsb, blockNumberDeadline, signer)
-    );
-
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.yParity);
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.r);
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.s);
 
     LINEA_ROLLUP.storeForcedTransaction{ value: msg.value }(
-      forcedTransactionRollingHash,
+      Mimc.hash(
+        abi.encode(
+          previousForcedTransactionRollingHash,
+          hashedPayloadMsb,
+          hashedPayloadLsb,
+          blockNumberDeadline,
+          signer
+        )
+      ),
       signer,
       blockNumberDeadline,
       abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList))
