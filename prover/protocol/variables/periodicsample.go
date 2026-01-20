@@ -163,13 +163,19 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gna
 		x = *ext4.MulByFp(&x, wOmegaN)
 	}
 
-	denominator := ext4.Exp(&x, big.NewInt(int64(l)))
+	// Optimization: compute x^l and x^n efficiently
+	// x^n = (x^l)^(n/l) = (x^l)^T where T = t.T
+	xPowL := ext4.Exp(&x, big.NewInt(int64(l)))
+
 	wnField := zk.ValueFromKoala(nField)
 	wlField := zk.ValueFromKoala(lField)
 	extEOne := *ext4.One()
-	denominator = ext4.Sub(denominator, &extEOne)
+
+	denominator := ext4.Sub(xPowL, &extEOne)
 	denominator = ext4.MulByFp(denominator, wnField)
-	numerator := ext4.Exp(&x, big.NewInt(int64(n)))
+
+	// x^n = (x^l)^T - reuse xPowL instead of computing x^n from scratch
+	numerator := ext4.Exp(xPowL, big.NewInt(int64(t.T)))
 	numerator = ext4.Sub(numerator, &extEOne)
 	numerator = ext4.MulByFp(numerator, wlField)
 
