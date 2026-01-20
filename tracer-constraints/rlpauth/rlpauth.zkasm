@@ -48,10 +48,8 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
 
         list_rlp_prefix_limb, chain_id_rlp_prefix_limb, chain_id_leading_limb, address_rlp_prefix_limb, address_hi_limb, address_lo_limb, nonce_rlp_prefix_limb, nonce_leading_limb, chain_id_byte_size, nonce_byte_size = compute_rlp(chain_id, delegation_address, nonce)
 
-        var ecrecover_fails u1
-        ecrecover_fails = ecrecover(list_rlp_prefix_limb, chain_id_rlp_prefix_limb, chain_id_leading_limb, address_rlp_prefix_limb, address_hi_limb, address_lo_limb, nonce_rlp_prefix_limb, nonce_leading_limb, chain_id_byte_size, nonce_byte_size, y_parity, r, s, authority_address, authority_ecrecover_success)
-            
-        if ecrecover_fails == 1 goto failure
+        var dummy u1
+        dummy = ecrecover(list_rlp_prefix_limb, chain_id_rlp_prefix_limb, chain_id_leading_limb, address_rlp_prefix_limb, address_hi_limb, address_lo_limb, nonce_rlp_prefix_limb, nonce_leading_limb, chain_id_byte_size, nonce_byte_size, y_parity, r, s, authority_address, authority_ecrecover_success)            
     ;; step_4: happens in the HUB
         ;; Add authority to accessed_addresses, as defined in EIP-2929.
     step_5:
@@ -160,35 +158,22 @@ fn compute_rlp_address(address u160) -> (rlp_prefix_limb u128, address_hi_limb u
 }
 
 ;; address and success_bit are predictions to be confirmed by the prover 
-fn ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_leading_limb u128, address_rlp_prefix_limb u128, address_hi_limb u128, address_lo_limb u128, nonce_rlp_prefix_limb u128, nonce_leading_limb u128, chain_id_byte_size u8, nonce_byte_size u8, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (ecrecover_fails u1) {
+fn ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_leading_limb u128, address_rlp_prefix_limb u128, address_hi_limb u128, address_lo_limb u128, nonce_rlp_prefix_limb u128, nonce_leading_limb u128, chain_id_byte_size u8, nonce_byte_size u8, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (dummy u1) {
     var limb u128
-    var limb_size u8
-    
-    limb = y_parity
-
+    var limb_size u8  
     var r_lo u128
+    var s_lo u128
+    var address_lo u128
+
+    ;; limb
+    limb = y_parity
     limb, r_lo = r ;; r_hi
     limb = r_lo ;; r_lo
-
-    var s_lo u128
     limb, s_lo = s ;; s_hi
     limb = s_lo ;; s_lo
-
-    var address_lo u128
     limb, address_lo = address ;; address_hi
     limb = address_lo ;; address_lo
-
     limb = success_bit
-
-    ;; fill 8 limbs with zeros
-    var b u1
-    var i u4
-    i = 0
-    fill_limb_size_loop:
-        limb_size = 0
-        b, i = i + 1
-        if i != 8 goto fill_limb_size_loop
-
     limb = MAGIC
     limb = list_rlp_prefix_limb
     limb = chain_id_rlp_prefix_limb ;; may be zero
@@ -199,6 +184,16 @@ fn ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_
     limb = nonce_rlp_prefix_limb ;; may be zero
     limb = nonce_leading_limb 
 
+    ;; limb_size
+    var b u1
+    var i u4
+    i = 0
+    fill_limb_size_loop:
+        limb_size = 0
+        b, i = i + 1
+        if i == 7 goto after_fill_limb_size_loop
+    
+    after_fill_limb_size_loop:
     limb_size = 1 ;; MAGIC
     limb_size = 1 ;; list_rlp_prefix_limb
     limb_size = chain_id_rlp_prefix_limb == 0? 0 : 1
@@ -209,8 +204,13 @@ fn ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_
     limb_size = nonce_rlp_prefix_limb == 0? 0 : 1
     limb_size = nonce_byte_size ;; nonce_leading_limb
 
-    ;; TODO: should we fill explicitly also other columns such as is_signature, is_result, is_message (even if number of rows is fixed)? Shall we extract fill_column_with_value_n_times?
-    ecrecover_fails = 0
+    ;; TODO: shall we fill other columns such as is_signature, is_result, is_message, index?
+    var is_signature u1
+    var is_result u1
+    var is_message u1
+    var index u4
+  
+    dummy = 0
     return
 }
 
