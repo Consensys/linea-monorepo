@@ -3,6 +3,7 @@ package gnarkutil
 import (
 	"errors"
 	"math/big"
+	"math/bits"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/rangecheck"
@@ -26,6 +27,7 @@ func RepeatedVariableExt(x gnarkfext.E4Gen, n int) []gnarkfext.E4Gen {
 }
 
 // Exp in gnark circuit, using the fast exponentiation
+// Optimized for power-of-two exponents (only repeated squaring needed)
 func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
 
 	e4Api, err := gnarkfext.NewExt4(api)
@@ -38,6 +40,27 @@ func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
 		n = -n
 	}
 
+	if n == 0 {
+		return *e4Api.One()
+	}
+
+	if n == 1 {
+		return x
+	}
+
+	// Fast path: if n is a power of two, use only repeated squaring
+	// This is common in FFT-related computations where n = 2^k
+	if bits.OnesCount(uint(n)) == 1 {
+		// n = 2^k, so we just need k squarings
+		res := x
+		for n > 1 {
+			res = *e4Api.Square(&res)
+			n >>= 1
+		}
+		return res
+	}
+
+	// General case: square-and-multiply
 	acc := x
 	res := *e4Api.One()
 
@@ -46,13 +69,14 @@ func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
 		if n&1 == 1 {
 			res = *e4Api.Mul(&res, &acc)
 		}
-		acc = *e4Api.Mul(&acc, &acc)
+		acc = *e4Api.Square(&acc)
 		n >>= 1
 	}
 	return res
 }
 
 // Exp in gnark circuit, using the fast exponentiation
+// Optimized for power-of-two exponents (only repeated squaring needed)
 func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
 
 	apiGen, err := zk.NewGenericApi(api)
@@ -65,6 +89,25 @@ func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
 		n = -n
 	}
 
+	if n == 0 {
+		return zk.ValueOf(1)
+	}
+
+	if n == 1 {
+		return x
+	}
+
+	// Fast path: if n is a power of two, use only repeated squaring
+	if bits.OnesCount(uint(n)) == 1 {
+		res := x
+		for n > 1 {
+			res = apiGen.Mul(res, res)
+			n >>= 1
+		}
+		return res
+	}
+
+	// General case: square-and-multiply
 	acc := x
 	res := zk.ValueOf(1)
 
