@@ -170,6 +170,250 @@ func (c circuitExtractTxCostFromRLP) Define(api frontend.API) error {
 	return nil
 }
 
+// RLP parsing code paths to test:
+// - List prefix: short (0xc0-0xf7) vs long (0xf8+)
+// - Field encoding: zero (0x80), single byte (<0x80), length-prefixed (0x81+)
+// - ChainId length affects nonce offset
+
+// TestNonceFromRLPVariances covers nonce encoding variants:
+// - zero (0x80), single byte, boundary (128), multi-byte, multi-byte chainId
+func TestNonceFromRLPVariances(t *testing.T) {
+	testCases := []struct {
+		name    string
+		nonce   uint64
+		chainID *big.Int
+		desc    string
+	}{
+		{
+			name:    "zero_nonce",
+			nonce:   0,
+			chainID: big.NewInt(1),
+			desc:    "0x80 encoding",
+		},
+		{
+			name:    "single_byte_nonce",
+			nonce:   127, // max single byte (0x7f)
+			chainID: big.NewInt(1),
+			desc:    "direct byte",
+		},
+		{
+			name:    "boundary_nonce",
+			nonce:   128, // first length-prefixed (0x81 0x80)
+			chainID: big.NewInt(1),
+			desc:    "encoding transition",
+		},
+		{
+			name:    "multi_byte_nonce",
+			nonce:   0xFFFFFFFF, // 4-byte nonce
+			chainID: big.NewInt(1),
+			desc:    "byte reconstruction",
+		},
+		{
+			name:    "multi_byte_chainid",
+			nonce:   42,
+			chainID: big.NewInt(59144), // Linea mainnet
+			desc:    "variable chainId offset",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := types.NewTx(&types.DynamicFeeTx{
+				ChainID:   tc.chainID,
+				Nonce:     tc.nonce,
+				GasTipCap: big.NewInt(1),
+				GasFeeCap: big.NewInt(1),
+				Gas:       21000,
+				Value:     big.NewInt(1000),
+			})
+
+			encodedTx := ethereum.EncodeTxForSigning(tx)
+
+			// Test native Go implementation
+			extractedNonce, err := invalidity.ExtractNonceFromRLP(encodedTx)
+			require.NoError(t, err, "failed to extract nonce: %s", tc.desc)
+			require.Equal(t, tc.nonce, extractedNonce, "nonce mismatch for %s", tc.desc)
+
+			// Test ZK circuit implementation
+			witness := circuitExtractNonceFromRLP{
+				RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+				Nonce:        tc.nonce,
+			}
+			for i, b := range encodedTx {
+				witness.RlpEncodedtx[i] = b
+			}
+
+			circuit := circuitExtractNonceFromRLP{
+				RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+			}
+
+			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+			require.NoError(t, err, "failed to compile circuit: %s", tc.desc)
+
+			twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+			require.NoError(t, err, "failed to create witness: %s", tc.desc)
+
+			err = ccs.IsSolved(twitness)
+			require.NoError(t, err, "circuit not satisfied: %s", tc.desc)
+		})
+	}
+}
+
+// TestTxCostFromRLPVariances tests cost = value + gasLimit * maxFeePerGas
+// Covers: zero fields (0x80), typical values, large values
+func TestTxCostFromRLPVariances(t *testing.T) {
+	testCases := []struct {
+		name      string
+		value     *big.Int
+		gasFeeCap *big.Int
+		gas       uint64
+		desc      string
+	}{
+		{
+			name:      "zero_cost",
+			value:     big.NewInt(0),
+			gasFeeCap: big.NewInt(0),
+			gas:       21000,
+			desc:      "0x80 encoding",
+		},
+		{
+			name:      "typical_transfer",
+			value:     big.NewInt(1000000000000000000), // 1 ETH
+			gasFeeCap: big.NewInt(50000000000),         // 50 gwei
+			gas:       21000,
+			desc:      "multi-byte fields",
+		},
+		{
+			name:      "large_values",
+			value:     big.NewInt(5000000000000000000), // 5 ETH
+			gasFeeCap: big.NewInt(500000000000),        // 500 gwei
+			gas:       1000000,
+			desc:      "larger multi-byte",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := types.NewTx(&types.DynamicFeeTx{
+				ChainID:   big.NewInt(1),
+				Nonce:     1,
+				GasTipCap: big.NewInt(1),
+				GasFeeCap: tc.gasFeeCap,
+				Gas:       tc.gas,
+				Value:     tc.value,
+			})
+
+			encodedTx := ethereum.EncodeTxForSigning(tx)
+
+			// Calculate expected cost
+			expectedCost := tc.value.Uint64() + tc.gas*tc.gasFeeCap.Uint64()
+
+			// Test native Go implementation
+			extractedCost, err := invalidity.ExtractTxCostFromRLP(encodedTx)
+			require.NoError(t, err, "failed to extract cost: %s", tc.desc)
+			require.Equal(t, expectedCost, extractedCost, "cost mismatch for %s", tc.desc)
+
+			// Test ZK circuit implementation
+			witness := circuitExtractTxCostFromRLP{
+				RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+				Cost:         expectedCost,
+			}
+			for i, b := range encodedTx {
+				witness.RlpEncodedtx[i] = b
+			}
+
+			circuit := circuitExtractTxCostFromRLP{
+				RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+			}
+
+			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+			require.NoError(t, err, "failed to compile circuit: %s", tc.desc)
+
+			twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+			require.NoError(t, err, "failed to create witness: %s", tc.desc)
+
+			err = ccs.IsSolved(twitness)
+			require.NoError(t, err, "circuit not satisfied: %s", tc.desc)
+		})
+	}
+}
+
+// TestRLPLongListEncoding tests 0xf8+ prefix (most real txs exceed 55 bytes)
+func TestRLPLongListEncoding(t *testing.T) {
+	// Force long list encoding with to address + data
+	toAddr := common.HexToAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f2bD50")
+	tx := types.NewTx(&types.DynamicFeeTx{
+		ChainID:   big.NewInt(1),
+		Nonce:     999,
+		GasTipCap: big.NewInt(1000000000),
+		GasFeeCap: big.NewInt(100000000000), // 100 gwei
+		Gas:       500000,
+		To:        &toAddr,
+		Value:     big.NewInt(1000000000000000000), // 1 ETH
+		Data:      make([]byte, 50),                // data to exceed 55 byte threshold
+	})
+
+	encodedTx := ethereum.EncodeTxForSigning(tx)
+
+	// Verify it uses long list encoding
+	require.GreaterOrEqual(t, encodedTx[1], byte(0xf8), "expected long RLP list encoding")
+
+	// Test nonce extraction
+	extractedNonce, err := invalidity.ExtractNonceFromRLP(encodedTx)
+	require.NoError(t, err)
+	require.Equal(t, uint64(999), extractedNonce)
+
+	// Test cost extraction
+	expectedCost := uint64(1000000000000000000) + 500000*uint64(100000000000)
+	extractedCost, err := invalidity.ExtractTxCostFromRLP(encodedTx)
+	require.NoError(t, err)
+	require.Equal(t, expectedCost, extractedCost)
+
+	// Test ZK circuit for nonce
+	witness := circuitExtractNonceFromRLP{
+		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+		Nonce:        uint64(999),
+	}
+	for i, b := range encodedTx {
+		witness.RlpEncodedtx[i] = b
+	}
+
+	circuit := circuitExtractNonceFromRLP{
+		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+	}
+
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+	require.NoError(t, err)
+
+	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+	require.NoError(t, err)
+
+	err = ccs.IsSolved(twitness)
+	require.NoError(t, err)
+
+	// Test ZK circuit for cost
+	witnessCost := circuitExtractTxCostFromRLP{
+		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+		Cost:         expectedCost,
+	}
+	for i, b := range encodedTx {
+		witnessCost.RlpEncodedtx[i] = b
+	}
+
+	circuitCost := circuitExtractTxCostFromRLP{
+		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+	}
+
+	ccsCost, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuitCost, frontend.IgnoreUnconstrainedInputs())
+	require.NoError(t, err)
+
+	twitnessCost, err := frontend.NewWitness(&witnessCost, ecc.BLS12_377.ScalarField())
+	require.NoError(t, err)
+
+	err = ccsCost.IsSolved(twitnessCost)
+	require.NoError(t, err)
+}
+
 // generate a tree for testing
 func getMerkleProof(t *testing.T) (smt.Proof, Bytes32, Bytes32) {
 

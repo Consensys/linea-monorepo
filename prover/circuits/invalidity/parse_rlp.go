@@ -61,8 +61,8 @@ func ExtractNonceFromRLP(txBytes []byte) (uint64, error) {
 //
 // This function only supports EIP-1559 transactions. The transaction structure is:
 // - Byte 0: tx type (0x02)
-// - Byte 1: RLP list prefix (0xf8-0xff for long lists, 0xc0-0xf7 for short lists)
-// - Byte 2+: chainId (field index 0, variable length)
+// - Byte 1+: RLP list (short list 0xc0-0xf7, or long list 0xf8-0xff with length bytes)
+// - After list prefix: chainId (field index 0, variable length)
 // - After chainId: nonce (field index 1, variable length)
 //
 // The function handles variable-length chainId and nonce fields according to RLP encoding rules:
@@ -71,12 +71,17 @@ func ExtractNonceFromRLP(txBytes []byte) (uint64, error) {
 func ExtractNonceFromRLPZk(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
 	// For Dynamic Fee transactions (EIP-1559):
 	// - Byte 0: tx type (0x02)
-	// - Byte 1: RLP list prefix
-	// - Byte 2+: chainId (field index 0, variable length)
+	// - Byte 1+: RLP list prefix (variable length for long lists)
+	// - After list prefix: chainId (field index 0, variable length)
 	// - After chainId: nonce (field index 1, variable length)
 
-	// Check the chainId byte (at index 2)
-	chainIdByte := rawTx[2]
+	// Calculate the offset after the RLP list prefix
+	// Short list (0xc0-0xf7): offset = 2 (1 byte tx type + 1 byte prefix)
+	// Long list (0xf8-0xff): offset = 2 + (prefix - 0xf7) length bytes
+	listPrefixOffset := getRLPListDataOffsetZk(api, rawTx)
+
+	// Get the chainId byte at the calculated offset
+	chainIdByte := getValueAtOffset(api, rawTx, listPrefixOffset)
 
 	// Determine the length of chainId field:
 	// - If chainIdByte < 0x80: single byte value, length = 1
@@ -88,12 +93,12 @@ func ExtractNonceFromRLPZk(api frontend.API, rawTx []frontend.Variable) frontend
 	chainIdIsSingleByte := api.Sub(frontend.Variable(1), isGreaterThan(api, chainIdByte, frontend.Variable(0x80)))
 
 	// Calculate the offset to the nonce field
-	// If chainId is single byte (<= 0x80): offset = 3
-	// If chainId is short length-prefixed (0x81 to 0xb7): offset = 3 + (chainIdByte - 0x80)
+	// If chainId is single byte (<= 0x80): offset = listPrefixOffset + 1
+	// If chainId is short length-prefixed (0x81 to 0xb7): offset = listPrefixOffset + 1 + (chainIdByte - 0x80)
 	chainIdLen := api.Select(chainIdIsSingleByte,
 		frontend.Variable(1),
 		api.Add(frontend.Variable(1), api.Sub(chainIdByte, frontend.Variable(0x80))))
-	nonceOffset := api.Add(frontend.Variable(2), chainIdLen)
+	nonceOffset := api.Add(listPrefixOffset, chainIdLen)
 
 	// Get the first byte of the nonce field using dynamic indexing
 	nonceByte := getValueAtOffset(api, rawTx, nonceOffset)
@@ -207,7 +212,7 @@ func ExtractTxCostFromRLP(txBytes []byte) (uint64, error) {
 //
 // This function only supports EIP-1559 transactions. The transaction structure is:
 // - Byte 0: transaction type (0x02)
-// - Byte 1: RLP list prefix
+// - Byte 1+: RLP list (short list 0xc0-0xf7, or long list 0xf8-0xff with length bytes)
 // - Fields: [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList]
 //
 // Required fields:
@@ -216,14 +221,17 @@ func ExtractTxCostFromRLP(txBytes []byte) (uint64, error) {
 // - value: field index 6
 //
 // The function handles variable-length fields according to RLP encoding rules.
+//
+// Note: This implementation supports values up to 32 bytes (256 bits) for full Ethereum compatibility.
+// The result is stored in a field element which can hold values up to ~253 bits on BLS12-377.
 func ExtractTxCostFromRLPZk(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
 	// For Dynamic Fee transactions (EIP-1559):
 	// - Byte 0: tx type (0x02)
-	// - Byte 1: RLP list prefix
+	// - Byte 1+: RLP list prefix (variable length for long lists)
 	// - Fields: [chainId(0), nonce(1), maxPriorityFeePerGas(2), maxFeePerGas(3), gasLimit(4), to(5), value(6), ...]
 
-	// Start after tx type and RLP list prefix
-	offset := frontend.Variable(2)
+	// Calculate the offset after the RLP list prefix
+	offset := getRLPListDataOffsetZk(api, rawTx)
 
 	// Skip fields 0-2: chainId, nonce, maxPriorityFeePerGas
 	for fieldIdx := 0; fieldIdx < 3; fieldIdx++ {
@@ -252,7 +260,11 @@ func ExtractTxCostFromRLPZk(api frontend.API, rawTx []frontend.Variable) fronten
 
 // extractRLPFieldValueZk extracts the numeric value of an RLP field at the given offset.
 // Handles single-byte values (< 0x80) and short length-prefixed values (0x80-0xb7).
-// Returns the value as a frontend.Variable (supports up to 8 bytes / uint64).
+// Returns the value as a frontend.Variable.
+//
+// Supports up to 32 bytes (256 bits) for full Ethereum value compatibility.
+// The result fits in BLS12-377 scalar field (~253 bits), which is sufficient for
+// all practical Ethereum values (max supply ~120M ETH = ~120e24 wei < 2^87).
 func extractRLPFieldValueZk(api frontend.API, rawTx []frontend.Variable, offset frontend.Variable) frontend.Variable {
 	// Get the first byte of the field
 	firstByte := getValueAtOffset(api, rawTx, offset)
@@ -267,9 +279,9 @@ func extractRLPFieldValueZk(api frontend.API, rawTx []frontend.Variable, offset 
 	// The length is firstByte - 0x80, and the actual value bytes follow
 	fieldLen := api.Sub(firstByte, frontend.Variable(0x80))
 
-	// Reconstruct the value from the following bytes (up to 8 bytes for uint64)
+	// Reconstruct the value from the following bytes (up to 32 bytes for 256-bit values)
 	multiByteValue := frontend.Variable(0)
-	for i := 1; i <= 8; i++ {
+	for i := 1; i <= 32; i++ {
 		// Check if this index is within the field length
 		isWithinLen := isLessThan(api, frontend.Variable(i-1), fieldLen)
 
@@ -283,6 +295,36 @@ func extractRLPFieldValueZk(api frontend.API, rawTx []frontend.Variable, offset 
 
 	// Select the final value based on whether it's single-byte or length-prefixed
 	return api.Select(isSingleByte, singleByteValue, multiByteValue)
+}
+
+// getRLPListDataOffsetZk calculates the offset to the first field in an RLP list
+// for EIP-1559 transactions in a ZK circuit context.
+//
+// EIP-1559 transaction structure:
+// - Byte 0: tx type (0x02)
+// - Byte 1: RLP list prefix
+//   - Short list (0xc0-0xf7): data starts at byte 2
+//   - Long list (0xf8-0xff): (prefix - 0xf7) length bytes follow, then data
+//
+// Returns the offset to the first field (chainId) in the transaction.
+func getRLPListDataOffsetZk(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
+	// Get the RLP list prefix byte (at index 1, after tx type)
+	listPrefix := rawTx[1]
+
+	// Check if it's a short list (0xc0 <= prefix <= 0xf7)
+	// In this case, data starts immediately after the prefix at offset 2
+	isShortList := api.Sub(frontend.Variable(1), isGreaterThan(api, listPrefix, frontend.Variable(0xf7)))
+
+	// For long list (0xf8 <= prefix <= 0xff):
+	// The number of length bytes is (prefix - 0xf7)
+	// Data starts at offset 2 + (prefix - 0xf7)
+	lengthOfLength := api.Sub(listPrefix, frontend.Variable(0xf7))
+	longListOffset := api.Add(frontend.Variable(2), lengthOfLength)
+
+	// Select the correct offset based on list type
+	// Short list: offset = 2
+	// Long list: offset = 2 + (prefix - 0xf7)
+	return api.Select(isShortList, frontend.Variable(2), longListOffset)
 }
 
 // skipRLPFieldZk calculates the offset after skipping one RLP field in a ZK circuit context.
