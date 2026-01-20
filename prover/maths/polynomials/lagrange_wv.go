@@ -42,7 +42,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Elem
 	// ζⁿ-1
 	res[0] = z
 	for i := 0; i < tb; i++ {
-		res[0] = *ext4.Mul(&res[0], &res[0])
+		res[0] = *ext4.Square(&res[0])
 	}
 	wOne := ext4.One()
 	res[0] = *ext4.Sub(&res[0], wOne)
