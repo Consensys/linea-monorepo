@@ -423,9 +423,8 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			c := wizard.AllocateWizardCircuit(comp, nbRounds, isBLS)
 			circuit.C = *c
 		}
-		filePath := "TestGnarkSelfRecursionManyLayers.pprof"
 
-		gnarkProfile := profile.Start(profile.WithPath(filePath))
+		gnarkProfile := profile.Start(profile.WithPath("./gnark.pprof"))
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 		gnarkProfile.Stop()
 		fmt.Printf("ccs number of constraints: %d\n", ccs.GetNbConstraints())
