@@ -51,7 +51,7 @@ class ProofGeneratingConflationHandlerImpl(
   init {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BATCH,
-      name = "prover.pending_proofs",
+      name = "prover.pendingproofs",
       description = "Number of execution proof waiting responses",
       measurementSupplier = { proofRequestsInProgress.size },
     )

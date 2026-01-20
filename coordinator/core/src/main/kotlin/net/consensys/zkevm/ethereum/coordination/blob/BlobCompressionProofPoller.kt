@@ -39,7 +39,7 @@ class BlobCompressionProofPoller(
   init {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BLOB,
-      name = "prover.pending_proofs",
+      name = "prover.pendingproofs",
       description = "Number of blob compression proof waiting responses",
       measurementSupplier = { proofRequestsInProgress.size },
     )
