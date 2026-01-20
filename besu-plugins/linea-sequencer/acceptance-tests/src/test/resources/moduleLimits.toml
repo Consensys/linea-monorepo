@@ -92,3 +92,5 @@ BLOCK_TRANSACTIONS = 200 # max number of tx in an L2 block
 
 BLS_DATA = 8192
 RLP_UTILS = 131072
+
+BLAKE2F = 8192
