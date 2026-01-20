@@ -13,7 +13,7 @@ enum class ForcedTransactionInclusionResult {
   Phylax,
 }
 
-data class ForcedTransactionsReceipt(
+data class ForcedTransactionInclusionStatus(
   val blockNumber: ULong,
   val inclusionResult: ForcedTransactionInclusionResult,
   val transactionHash: ByteArray,
@@ -23,7 +23,7 @@ data class ForcedTransactionsReceipt(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as ForcedTransactionsReceipt
+    other as ForcedTransactionInclusionStatus
 
     if (!transactionHash.contentEquals(other.transactionHash)) return false
     if (blockNumber != other.blockNumber) return false
@@ -56,9 +56,9 @@ interface ForcedTransactionsClient {
    * @return list of transaction hashes
    */
   fun lineaSendForcedRawTransaction(transactions: List<ByteArray>): SafeFuture<List<ByteArray>>
-  fun lineaFindForcedTransactionReceipt(transactionHash: ByteArray): SafeFuture<ForcedTransactionsReceipt?>
-  fun lineaGetForcedTransactionReceipt(transactionHash: ByteArray): SafeFuture<ForcedTransactionsReceipt> =
-    lineaFindForcedTransactionReceipt(transactionHash).thenApply {
+  fun lineaFindForcedTransactionStatus(transactionHash: ByteArray): SafeFuture<ForcedTransactionInclusionStatus?>
+  fun lineaGetForcedTransactionStatus(transactionHash: ByteArray): SafeFuture<ForcedTransactionInclusionStatus> =
+    lineaFindForcedTransactionStatus(transactionHash).thenApply {
       it ?: throw IllegalStateException("Forced transaction not found: txHash=${transactionHash.encodeHex()}")
     }
 }
