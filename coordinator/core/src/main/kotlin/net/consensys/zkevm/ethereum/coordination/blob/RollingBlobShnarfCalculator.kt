@@ -42,14 +42,15 @@ data class RollingBlobShnarfResult(
 }
 
 class ParentBlobDataProviderImpl(private val blobsRepository: BlobsRepository) : ParentBlobDataProvider {
-  override fun getParentBlobData(currentBlobRange: BlockInterval): SafeFuture<ParentBlobData> {
+  override fun getParentBlobData(currentBlobRange: BlockInterval): SafeFuture<BlobData> {
     val parentBlobEndBlockNumber = currentBlobRange.startBlockNumber.dec()
     return blobsRepository
       .findBlobByEndBlockNumber(parentBlobEndBlockNumber.toLong())
       .thenCompose { blobRecord: BlobRecord? ->
         if (blobRecord != null) {
           SafeFuture.completedFuture(
-            ParentBlobData(
+            BlobData(
+              startBlockNumber = blobRecord.startBlockNumber,
               endBlockNumber = blobRecord.endBlockNumber,
               blobHash = blobRecord.blobHash,
               blobShnarf = blobRecord.expectedShnarf,
@@ -71,9 +72,9 @@ class RollingBlobShnarfCalculator(
 ) {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
-  private var parentBlobDataReference: AtomicReference<ParentBlobData?> = AtomicReference(null)
+  private var parentBlobDataReference: AtomicReference<BlobData?> = AtomicReference(null)
 
-  private fun getParentBlobData(blobBlockRange: BlockInterval): SafeFuture<ParentBlobData> {
+  private fun getParentBlobData(blobBlockRange: BlockInterval): SafeFuture<BlobData> {
     val parentBlobEndBlockNumber = blobBlockRange.startBlockNumber.dec()
     return if (parentBlobEndBlockNumber == 0UL) {
       log.info(
@@ -81,7 +82,8 @@ class RollingBlobShnarfCalculator(
         genesisShnarf.encodeHex(),
       )
       SafeFuture.completedFuture(
-        ParentBlobData(
+        BlobData(
+          startBlockNumber = 0UL,
           endBlockNumber = 0UL,
           blobHash = ByteArray(32),
           blobShnarf = genesisShnarf,
@@ -126,7 +128,8 @@ class RollingBlobShnarfCalculator(
         )
       }.onSuccess { shnarfResult ->
         parentBlobDataReference.set(
-          ParentBlobData(
+          BlobData(
+            startBlockNumber = blobBlockRange.startBlockNumber,
             endBlockNumber = blobBlockRange.endBlockNumber,
             blobHash = shnarfResult.dataHash,
             blobShnarf = shnarfResult.expectedShnarf,

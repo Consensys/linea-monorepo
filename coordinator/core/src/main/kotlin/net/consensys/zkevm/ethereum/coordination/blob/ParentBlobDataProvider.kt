@@ -3,17 +3,19 @@ package net.consensys.zkevm.ethereum.coordination.blob
 import linea.domain.BlockInterval
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-data class ParentBlobData(
-  val endBlockNumber: ULong,
+data class BlobData(
+  override val startBlockNumber: ULong,
+  override val endBlockNumber: ULong,
   val blobHash: ByteArray,
   val blobShnarf: ByteArray,
-) {
+): BlockInterval {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as ParentBlobData
+    other as BlobData
 
+    if (startBlockNumber != other.startBlockNumber) return false
     if (endBlockNumber != other.endBlockNumber) return false
     if (!blobHash.contentEquals(other.blobHash)) return false
     if (!blobShnarf.contentEquals(other.blobShnarf)) return false
@@ -22,7 +24,8 @@ data class ParentBlobData(
   }
 
   override fun hashCode(): Int {
-    var result = endBlockNumber.hashCode()
+    var result = startBlockNumber.hashCode()
+    result = 31 * result + endBlockNumber.hashCode()
     result = 31 * result + blobHash.contentHashCode()
     result = 31 * result + blobShnarf.contentHashCode()
     return result
@@ -30,5 +33,5 @@ data class ParentBlobData(
 }
 
 interface ParentBlobDataProvider {
-  fun getParentBlobData(currentBlobRange: BlockInterval): SafeFuture<ParentBlobData>
+  fun getParentBlobData(currentBlobRange: BlockInterval): SafeFuture<BlobData>
 }
