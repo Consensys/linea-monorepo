@@ -4,146 +4,41 @@ import (
 	"errors"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-type InvalidNonceCircuit struct {
-	PublicInput frontend.Variable `gnark:",public"` //hash of the tx, stateroothash
-
-	StateRootHash frontend.Variable `gnark:",secret"`
-
-	RawTx []frontend.Variable `gnark:",secret"` // RLP-encoded transaction as a slice of bytes
-
-	TxNonce frontend.Variable `gnark:",secret"` // Expected nonce for the transaction (?)
-
-	Account []types.Account `gnark:",secret"`
-}
-
-// RLPExtractNonce extracts the nonce from an RLP-encoded transaction.
-// The function checks the transaction type (from the first byte) and selects the correct index for the nonce accordingly.
-// It selects the nonce from index 0 for Legacy transactions and index 2 for Access List and Dynamic Fee transactions,
-// ensuring the correct nonce is extracted for any transaction type.
-
-// RLPExtractNonce handles all Ethereum transaction types:
-// - Legacy Tx: nonce at index 0
-// - Access List Tx (EIP-2930) and Dynamic Fee Tx (EIP-1559): nonce at index 2
+// ExtractNonceFromRLP extracts the nonce from RLP-encoded Dynamic Fee (EIP-1559) transaction bytes.
 //
-// RLPExtractNonce covers all four Ethereum transaction types in
-// backend/ethereum/tx_encoding.go:
-// 1. Legacy Transactions** (without EIP-155 protection or with):
-//   - Nonce is located at index 0 in the RLP encoding.
+// This function only supports EIP-1559 transactions. The transaction structure is:
+// - Byte 0: transaction type (0x02)
+// - Followed by RLP list containing: [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList]
 //
-// 2. Access List Transactions** (EIP-2930):
-//   - Nonce is located at index 2 in the RLP encoding (after the transaction type byte).
-//
-// 3. Dynamic Fee Transactions** (EIP-1559):
-//   - Nonce is also located at index 2 in the RLP encoding (after the transaction type byte).
-//
-// 4. Legacy Transactions with EIP-155 Protection** (EIP-155):
-//   - Nonce is located at index 0, similar to standard Legacy transactions, but with additional chain ID information.
-func RLPExtractNonce(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
-	// Extract Transaction Type
-	// txType = rawTx[0]
-	txType := rawTx[0]
-
-	// Check if the Transaction is Typed (AccessList or DynamicFee)
-	// isTyped = (txType == 0x01) || (txType == 0x02)
-	isAccessList := api.IsZero(api.Sub(txType, 0x01)) // txType == 0x01
-	isDynamicFee := api.IsZero(api.Sub(txType, 0x02)) // txType == 0x02
-	isTyped := api.Or(isAccessList, isDynamicFee)
-
-	// For typed txs, nonce is at index 2 (tx[1] = list prefix, tx[2] = nonce)
-	// For legacy txs, nonce is at index 0
-	nonceTyped := rawTx[2]  // works if tx is typed
-	nonceLegacy := rawTx[0] // works if tx is legacy
-
-	// Select the correct one
-	nonce := api.Select(isTyped, nonceTyped, nonceLegacy)
-
-	// return tx nonce
-	// Q. is it okay to return nonce as frontend.Variable?
-	return nonce
-}
-
-// ExtractNonceFromRLP extracts the nonce from RLP-encoded Ethereum transaction bytes.
-//
-// Ethereum transactions are serialized using Recursive Length Prefix (RLP) encoding,
-// where the nonce is the first field in the transaction structure. This function
-// parses the RLP bytes manually to extract the nonce without fully decoding the transaction.
+// The nonce is the second field (index 1) in the RLP list.
 //
 // Parameters:
-// - txBytes: A byte slice containing the RLP-encoded Ethereum transaction.
+// - txBytes: A byte slice containing the RLP-encoded EIP-1559 transaction.
 //
 // Returns:
 // - uint64: The nonce value extracted from the transaction.
-// - error: An error if the input bytes are invalid or the RLP encoding is malformed.
+// - error: An error if the input bytes are invalid, not an EIP-1559 transaction, or the RLP encoding is malformed.
 //
 // RLP Encoding Rules for the nonce:
 //   - If the first byte is less than 0x80, the nonce is encoded as a single byte.
 //   - If the first byte is between 0x80 and 0xb7, the nonce is length-prefixed (short encoding).
-//     The first byte indicates the length of the nonce (1–55 bytes), followed by the nonce bytes.
 //   - If the first byte is between 0xb8 and 0xbf, the nonce is length-prefixed (long encoding).
-//     The first byte indicates the length of the length field (1–8 bytes), followed by the length
-//     of the nonce, and then the nonce bytes.
-//
-// Example:
-// - Input: RLP-encoded transaction bytes (e.g., []byte{0x85, 0x01, 0x02, 0x03})
-// - Output: Nonce = 1
-//
-//
-// ExtractNonceFromRLP extracts the nonce from RLP-encoded Ethereum transaction bytes.
-// - Legacy Transactions: The nonce is the first field, so the field index is set to 0.
-// - EIP-2930/EIP-1559 Transactions: The nonce is the second field, so the field index is set to 1.
-// - The function dynamically adjusts the field index based on the transaction
-// type.
-//
-// This function works for all Ethereum transaction types:
-// - Legacy Transactions: The nonce is the first field in the RLP list.
-// - EIP-2930 (Access List) Transactions: The nonce is the second field in the RLP list.
-// - EIP-1559 (Dynamic Fee) Transactions: The nonce is the second field in the RLP list.
-//
-// Detailed description for each transaction type:
-// Dynamic Fee Transactions (EIP-1559):
-// - The first byte is the transaction type (0x02).
-// - The nonce is the second field in the RLP list (after the chain ID).
-// - ExtractNonceFromRLP skips the transaction type byte and extracts the second
-// field.
-// Access List Transactions (EIP-2930):
-// - The first byte is the transaction type (0x01).
-// - The nonce is the second field in the RLP list (after the chain ID).
-// - ExtractNonceFromRLP skips the transaction type byte and extracts the second field.
-// Legacy Transactions with Replay Protection (EIP-155):
-// - There is no transaction type byte.
-// - The nonce is the first field in the RLP list.
-// - ExtractNonceFromRLP extracts the first field directly.
-// Legacy Transactions without Replay Protection (Homestead):
-// - There is no transaction type byte.
-// - The nonce is the first field in the RLP list.
-// - ExtractNonceFromRLP extracts the first field directly.
-//
-// Steps:
-// 1. Check the transaction type (first byte):
-//   - If the first byte is 0x01 (EIP-2930) or 0x02 (EIP-1559), skip the transaction type byte.
-//   - Set the field index for the nonce accordingly (0 for Legacy, 1 for EIP-2930/EIP-1559).
-// 2. Parse the RLP list to calculate the offset of the first field.
-// 3. Extract the nonce field using the calculated offset and field index.
-// 4. Convert the extracted nonce bytes into a uint64.
 
 func ExtractNonceFromRLP(txBytes []byte) (uint64, error) {
 	if len(txBytes) == 0 {
 		return 0, errors.New("empty transaction bytes")
 	}
 
-	// Check for transaction type (EIP-2930 or EIP-1559)
+	// Verify this is a Dynamic Fee transaction (EIP-1559)
 	txType := txBytes[0]
-	var fieldIndex int
-	if txType == 0x01 || txType == 0x02 {
-		// Skip the transaction type byte
-		txBytes = txBytes[1:]
-		fieldIndex = 1 // For EIP-2930 and EIP-1559, nonce is the second field
-	} else {
-		fieldIndex = 0 // For legacy transactions, nonce is the first field
+	if txType != 0x02 {
+		return 0, errors.New("unsupported transaction type: only EIP-1559 (type 0x02) is supported")
 	}
+
+	// Skip the transaction type byte
+	txBytes = txBytes[1:]
 
 	// Parse the RLP list
 	offset, err := parseRLPList(txBytes)
@@ -151,8 +46,8 @@ func ExtractNonceFromRLP(txBytes []byte) (uint64, error) {
 		return 0, err
 	}
 
-	// Extract the nonce
-	nonceBytes, err := extractRLPField(txBytes, offset, fieldIndex)
+	// Extract the nonce (second field, index 1, after chainId)
+	nonceBytes, err := extractRLPField(txBytes, offset, 1)
 	if err != nil {
 		return 0, err
 	}
@@ -161,46 +56,332 @@ func ExtractNonceFromRLP(txBytes []byte) (uint64, error) {
 	return bytesToUint64(nonceBytes), nil
 }
 
+// ExtractNonceFromRLPZk extracts the nonce from an RLP-encoded Dynamic Fee (EIP-1559) transaction
+// in a ZK circuit context.
+//
+// This function only supports EIP-1559 transactions. The transaction structure is:
+// - Byte 0: tx type (0x02)
+// - Byte 1+: RLP list (short list 0xc0-0xf7, or long list 0xf8-0xff with length bytes)
+// - After list prefix: chainId (field index 0, variable length)
+// - After chainId: nonce (field index 1, variable length)
+//
+// The function handles variable-length chainId and nonce fields according to RLP encoding rules:
+// - Single byte value (< 0x80): The byte itself is the value
+// - Short length-prefixed (0x80-0xb7): Length = firstByte - 0x80, followed by value bytes
 func ExtractNonceFromRLPZk(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
-	// Extract the transaction type (first byte of rawTx)
-	txType := rawTx[0]
+	// For Dynamic Fee transactions (EIP-1559):
+	// - Byte 0: tx type (0x02)
+	// - Byte 1+: RLP list prefix (variable length for long lists)
+	// - After list prefix: chainId (field index 0, variable length)
+	// - After chainId: nonce (field index 1, variable length)
 
-	// Check if the transaction is typed (Access List or Dynamic Fee)
-	isAccessList := api.IsZero(api.Sub(txType, frontend.Variable(0x01))) // txType == 0x01
-	isDynamicFee := api.IsZero(api.Sub(txType, frontend.Variable(0x02))) // txType == 0x02
-	isTyped := api.Or(isAccessList, isDynamicFee)
+	// Calculate the offset after the RLP list prefix
+	// Short list (0xc0-0xf7): offset = 2 (1 byte tx type + 1 byte prefix)
+	// Long list (0xf8-0xff): offset = 2 + (prefix - 0xf7) length bytes
+	listPrefixOffset := getRLPListDataOffsetZk(api, rawTx)
 
-	// Directly access the nonce field based on the transaction type
-	firstByte := api.Select(isTyped, rawTx[1], rawTx[0]) // Use hardcoded indices (1 for typed, 0 for legacy)
+	// Get the chainId byte at the calculated offset
+	chainIdByte := getValueAtOffset(api, rawTx, listPrefixOffset)
 
-	// Check if the nonce is a single-byte value
-	isSingleByte := api.IsZero(api.Sub(frontend.Variable(0x80), firstByte)) // 1 if firstByte < 0x80
+	// Determine the length of chainId field:
+	// - If chainIdByte < 0x80: single byte value, length = 1
+	// - If chainIdByte == 0x80: empty value (0), length = 1
+	// - If 0x80 < chainIdByte <= 0xb7: short length-prefixed, length = 1 + (chainIdByte - 0x80)
 
-	// Extract single-byte value
-	singleByteValue := firstByte
+	// Check if chainId is a single byte value (<= 0x80)
+	// In these cases, the chainId takes exactly 1 byte
+	chainIdIsSingleByte := api.Sub(frontend.Variable(1), isGreaterThan(api, chainIdByte, frontend.Variable(0x80)))
 
-	// Extract short length-prefixed value
-	shortLength := api.Sub(firstByte, frontend.Variable(0x80)) // Length of the nonce
-	shortValue := frontend.Variable(0)
+	// Calculate the offset to the nonce field
+	// If chainId is single byte (<= 0x80): offset = listPrefixOffset + 1
+	// If chainId is short length-prefixed (0x81 to 0xb7): offset = listPrefixOffset + 1 + (chainIdByte - 0x80)
+	chainIdLen := api.Select(chainIdIsSingleByte,
+		frontend.Variable(1),
+		api.Add(frontend.Variable(1), api.Sub(chainIdByte, frontend.Variable(0x80))))
+	nonceOffset := api.Add(listPrefixOffset, chainIdLen)
 
-	// remove isInRange,
+	// Get the first byte of the nonce field using dynamic indexing
+	nonceByte := getValueAtOffset(api, rawTx, nonceOffset)
 
-	// Iterate over all possible indices in rawTx to simulate dynamic indexing
-	for i := 0; i < 8; i++ {
-		// Check if the current index falls within the range of the nonce bytes
-		isInRange := api.And(
-			api.IsZero(api.Sub(frontend.Variable(i), frontend.Variable(0))), // i >= 0
-			api.IsZero(api.Sub(shortLength, frontend.Variable(i+1))),        // i < shortLength
-		)
+	// Check if nonce is a single-byte value (< 0x80)
+	nonceIsSingleByte := api.Sub(frontend.Variable(1), isGreaterOrEqual(api, nonceByte, frontend.Variable(0x80)))
 
-		// Select the value at the current index and reconstruct the nonce
-		shortValue = api.Add(api.Mul(shortValue, frontend.Variable(256)), api.Select(isInRange, rawTx[i], frontend.Variable(0)))
+	// For single-byte nonce, the value is the byte itself
+	singleByteNonce := nonceByte
+
+	// For length-prefixed nonce (0x80 <= nonceByte <= 0xb7):
+	// The length is nonceByte - 0x80, and the actual nonce bytes follow
+	nonceLen := api.Sub(nonceByte, frontend.Variable(0x80))
+
+	// Reconstruct the nonce value from the following bytes
+	// We support nonce up to 8 bytes (uint64)
+	shortNonce := frontend.Variable(0)
+	for i := 1; i <= 8; i++ {
+		// Check if this index is within the nonce length
+		isWithinLen := isLessThan(api, frontend.Variable(i-1), nonceLen)
+
+		// Get the byte at offset + i
+		byteVal := getValueAtOffset(api, rawTx, api.Add(nonceOffset, frontend.Variable(i)))
+
+		// Only shift and add if we're still within the nonce bytes
+		// If not within length, keep the current value unchanged
+		newNonce := api.Add(api.Mul(shortNonce, frontend.Variable(256)), byteVal)
+		shortNonce = api.Select(isWithinLen, newNonce, shortNonce)
 	}
 
-	// Select the correct nonce value based on the field type
-	nonce := api.Select(isSingleByte, singleByteValue, shortValue)
+	// Select the final nonce value based on whether it's single-byte or length-prefixed
+	nonce := api.Select(nonceIsSingleByte, singleByteNonce, shortNonce)
 
 	return nonce
+}
+
+// ExtractTxCostFromRLP extracts the transaction cost from RLP-encoded Dynamic Fee (EIP-1559) transaction bytes.
+//
+// Transaction cost = value + gasLimit × maxFeePerGas
+//
+// This is used for the "invalid balance" check: if cost > sender.Balance, the transaction is invalid.
+//
+// This function only supports EIP-1559 transactions. The transaction structure is:
+// - Byte 0: transaction type (0x02)
+// - Followed by RLP list containing: [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList]
+//
+// Required fields:
+// - maxFeePerGas: field index 3
+// - gasLimit: field index 4
+// - value: field index 6
+//
+// Parameters:
+// - txBytes: A byte slice containing the RLP-encoded EIP-1559 transaction.
+//
+// Returns:
+// - uint64: The transaction cost (value + gasLimit * maxFeePerGas).
+// - error: An error if the input bytes are invalid, not an EIP-1559 transaction, or the RLP encoding is malformed.
+func ExtractTxCostFromRLP(txBytes []byte) (uint64, error) {
+	if len(txBytes) == 0 {
+		return 0, errors.New("empty transaction bytes")
+	}
+
+	// Verify this is a Dynamic Fee transaction (EIP-1559)
+	txType := txBytes[0]
+	if txType != 0x02 {
+		return 0, errors.New("unsupported transaction type: only EIP-1559 (type 0x02) is supported")
+	}
+
+	// Skip the transaction type byte
+	txBytes = txBytes[1:]
+
+	// Parse the RLP list
+	offset, err := parseRLPList(txBytes)
+	if err != nil {
+		return 0, err
+	}
+
+	// Extract maxFeePerGas (field index 3)
+	maxFeePerGasBytes, err := extractRLPField(txBytes, offset, 3)
+	if err != nil {
+		return 0, err
+	}
+	maxFeePerGas := bytesToUint64(maxFeePerGasBytes)
+
+	// Extract gasLimit (field index 4)
+	gasLimitBytes, err := extractRLPField(txBytes, offset, 4)
+	if err != nil {
+		return 0, err
+	}
+	gasLimit := bytesToUint64(gasLimitBytes)
+
+	// Extract value (field index 6)
+	valueBytes, err := extractRLPField(txBytes, offset, 6)
+	if err != nil {
+		return 0, err
+	}
+	value := bytesToUint64(valueBytes)
+
+	// Calculate transaction cost: value + gasLimit * maxFeePerGas
+	cost := value + gasLimit*maxFeePerGas
+
+	return cost, nil
+}
+
+// ExtractTxCostFromRLPZk extracts the transaction cost from an RLP-encoded Dynamic Fee (EIP-1559) transaction
+// in a ZK circuit context.
+//
+// Transaction cost = value + gasLimit × maxFeePerGas
+//
+// This is used for the "invalid balance" check: if cost > sender.Balance, the transaction is invalid.
+//
+// This function only supports EIP-1559 transactions. The transaction structure is:
+// - Byte 0: transaction type (0x02)
+// - Byte 1+: RLP list (short list 0xc0-0xf7, or long list 0xf8-0xff with length bytes)
+// - Fields: [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList]
+//
+// Required fields:
+// - maxFeePerGas: field index 3
+// - gasLimit: field index 4
+// - value: field index 6
+//
+// The function handles variable-length fields according to RLP encoding rules.
+//
+// Note: This implementation supports values up to 32 bytes (256 bits) for full Ethereum compatibility.
+// The result is stored in a field element which can hold values up to ~253 bits on BLS12-377.
+func ExtractTxCostFromRLPZk(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
+	// For Dynamic Fee transactions (EIP-1559):
+	// - Byte 0: tx type (0x02)
+	// - Byte 1+: RLP list prefix (variable length for long lists)
+	// - Fields: [chainId(0), nonce(1), maxPriorityFeePerGas(2), maxFeePerGas(3), gasLimit(4), to(5), value(6), ...]
+
+	// Calculate the offset after the RLP list prefix
+	offset := getRLPListDataOffsetZk(api, rawTx)
+
+	// Skip fields 0-2: chainId, nonce, maxPriorityFeePerGas
+	for fieldIdx := 0; fieldIdx < 3; fieldIdx++ {
+		offset = skipRLPFieldZk(api, rawTx, offset)
+	}
+
+	// Extract maxFeePerGas (field index 3)
+	maxFeePerGas := extractRLPFieldValueZk(api, rawTx, offset)
+	offset = skipRLPFieldZk(api, rawTx, offset)
+
+	// Extract gasLimit (field index 4)
+	gasLimit := extractRLPFieldValueZk(api, rawTx, offset)
+	offset = skipRLPFieldZk(api, rawTx, offset)
+
+	// Skip field 5: to address
+	offset = skipRLPFieldZk(api, rawTx, offset)
+
+	// Extract value (field index 6)
+	value := extractRLPFieldValueZk(api, rawTx, offset)
+
+	// Calculate transaction cost: value + gasLimit * maxFeePerGas
+	cost := api.Add(value, api.Mul(gasLimit, maxFeePerGas))
+
+	return cost
+}
+
+// extractRLPFieldValueZk extracts the numeric value of an RLP field at the given offset.
+// Handles single-byte values (< 0x80) and short length-prefixed values (0x80-0xb7).
+// Returns the value as a frontend.Variable.
+//
+// Supports up to 32 bytes (256 bits) for full Ethereum value compatibility.
+// The result fits in BLS12-377 scalar field (~253 bits), which is sufficient for
+// all practical Ethereum values (max supply ~120M ETH = ~120e24 wei < 2^87).
+func extractRLPFieldValueZk(api frontend.API, rawTx []frontend.Variable, offset frontend.Variable) frontend.Variable {
+	// Get the first byte of the field
+	firstByte := getValueAtOffset(api, rawTx, offset)
+
+	// Check if it's a single-byte value (< 0x80)
+	isSingleByte := api.Sub(frontend.Variable(1), isGreaterOrEqual(api, firstByte, frontend.Variable(0x80)))
+
+	// For single-byte value, the value is the byte itself
+	singleByteValue := firstByte
+
+	// For length-prefixed value (0x80 <= firstByte <= 0xb7):
+	// The length is firstByte - 0x80, and the actual value bytes follow
+	fieldLen := api.Sub(firstByte, frontend.Variable(0x80))
+
+	// Reconstruct the value from the following bytes (up to 32 bytes for 256-bit values)
+	multiByteValue := frontend.Variable(0)
+	for i := 1; i <= 32; i++ {
+		// Check if this index is within the field length
+		isWithinLen := isLessThan(api, frontend.Variable(i-1), fieldLen)
+
+		// Get the byte at offset + i
+		byteVal := getValueAtOffset(api, rawTx, api.Add(offset, frontend.Variable(i)))
+
+		// Only shift and add if we're still within the field bytes
+		newValue := api.Add(api.Mul(multiByteValue, frontend.Variable(256)), byteVal)
+		multiByteValue = api.Select(isWithinLen, newValue, multiByteValue)
+	}
+
+	// Select the final value based on whether it's single-byte or length-prefixed
+	return api.Select(isSingleByte, singleByteValue, multiByteValue)
+}
+
+// getRLPListDataOffsetZk calculates the offset to the first field in an RLP list
+// for EIP-1559 transactions in a ZK circuit context.
+//
+// EIP-1559 transaction structure:
+// - Byte 0: tx type (0x02)
+// - Byte 1: RLP list prefix
+//   - Short list (0xc0-0xf7): data starts at byte 2
+//   - Long list (0xf8-0xff): (prefix - 0xf7) length bytes follow, then data
+//
+// Returns the offset to the first field (chainId) in the transaction.
+func getRLPListDataOffsetZk(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
+	// Get the RLP list prefix byte (at index 1, after tx type)
+	listPrefix := rawTx[1]
+
+	// Check if it's a short list (0xc0 <= prefix <= 0xf7)
+	// In this case, data starts immediately after the prefix at offset 2
+	isShortList := api.Sub(frontend.Variable(1), isGreaterThan(api, listPrefix, frontend.Variable(0xf7)))
+
+	// For long list (0xf8 <= prefix <= 0xff):
+	// The number of length bytes is (prefix - 0xf7)
+	// Data starts at offset 2 + (prefix - 0xf7)
+	lengthOfLength := api.Sub(listPrefix, frontend.Variable(0xf7))
+	longListOffset := api.Add(frontend.Variable(2), lengthOfLength)
+
+	// Select the correct offset based on list type
+	// Short list: offset = 2
+	// Long list: offset = 2 + (prefix - 0xf7)
+	return api.Select(isShortList, frontend.Variable(2), longListOffset)
+}
+
+// skipRLPFieldZk calculates the offset after skipping one RLP field in a ZK circuit context.
+// Supports single-byte values (< 0x80) and short length-prefixed values (0x80-0xb7, up to 55 bytes).
+// This is sufficient for EIP-1559 fields: chainId, nonce, maxPriorityFeePerGas, maxFeePerGas,
+// gasLimit (all ≤ 8 bytes), and to address (20 bytes).
+func skipRLPFieldZk(api frontend.API, rawTx []frontend.Variable, offset frontend.Variable) frontend.Variable {
+	// Get the first byte of the field
+	firstByte := getValueAtOffset(api, rawTx, offset)
+
+	// Check field type:
+	// - Single byte (< 0x80): length = 1
+	// - Empty or short string (0x80 <= byte <= 0xb7): length = 1 + (byte - 0x80)
+	// - Long string (0xb8 <= byte <= 0xbf): length = 1 + (byte - 0xb7) + actual_length (complex, not fully supported)
+
+	// Check if it's a single byte value (< 0x80)
+	isSingleByte := api.Sub(frontend.Variable(1), isGreaterOrEqual(api, firstByte, frontend.Variable(0x80)))
+
+	// Check if it's a short length-prefixed value (0x80 <= byte <= 0xb7)
+	isShortString := api.And(
+		isGreaterOrEqual(api, firstByte, frontend.Variable(0x80)),
+		api.Sub(frontend.Variable(1), isGreaterThan(api, firstByte, frontend.Variable(0xb7))),
+	)
+
+	// Calculate field length for each case
+	singleByteLen := frontend.Variable(1)
+	shortStringLen := api.Add(frontend.Variable(1), api.Sub(firstByte, frontend.Variable(0x80)))
+
+	// Select the correct length
+	fieldLen := api.Select(isSingleByte, singleByteLen, api.Select(isShortString, shortStringLen, frontend.Variable(1)))
+
+	// Return the new offset
+	return api.Add(offset, fieldLen)
+}
+
+// isGreaterThan returns 1 if a > b, 0 otherwise
+// Uses api.Cmp which returns -1 if a < b, 0 if a == b, 1 if a > b
+func isGreaterThan(api frontend.API, a, b frontend.Variable) frontend.Variable {
+	cmp := api.Cmp(a, b)
+	// cmp is 1 if a > b, so we check if cmp == 1
+	return api.IsZero(api.Sub(cmp, frontend.Variable(1)))
+}
+
+// isGreaterOrEqual returns 1 if a >= b, 0 otherwise
+func isGreaterOrEqual(api frontend.API, a, b frontend.Variable) frontend.Variable {
+	cmp := api.Cmp(a, b)
+	// cmp is 0 or 1 if a >= b, so we check if cmp != -1
+	// In field arithmetic, -1 is represented as p-1 (a large number)
+	// Instead, check if a == b OR a > b
+	isEqual := api.IsZero(api.Sub(a, b))
+	isGreater := api.IsZero(api.Sub(cmp, frontend.Variable(1)))
+	return api.Or(isEqual, isGreater)
+}
+
+// isLessThan returns 1 if a < b, 0 otherwise
+func isLessThan(api frontend.API, a, b frontend.Variable) frontend.Variable {
+	return isGreaterThan(api, b, a)
 }
 
 // parseRLPList parses the RLP list and calculates the offset of the first field.
@@ -239,50 +420,6 @@ func parseRLPList(data []byte) (int, error) {
 		}
 		return 1 + lengthOfLength, nil // Offset starts after the length bytes
 	}
-}
-
-func parseRLPListZk(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
-	txType := rawTx[0]
-
-	// Check if the transaction is typed (Access List or Dynamic Fee)
-	isAccessList := api.IsZero(api.Sub(txType, 0x01)) // txType == 0x01
-	isDynamicFee := api.IsZero(api.Sub(txType, 0x02)) // txType == 0x02
-	isTyped := api.Or(isAccessList, isDynamicFee)
-
-	// Hardcoded offsets for nonce
-	offsetTyped := frontend.Variable(2)  // Offset for typed transactions
-	offsetLegacy := frontend.Variable(0) // Offset for legacy transactions
-
-	// Select the correct offset based on the transaction type
-	offset := api.Select(isTyped, offsetTyped, offsetLegacy)
-
-	return offset
-}
-
-func parseRLPListZkGeneral(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
-	firstByte := rawTx[0]
-
-	// Simulate comparisons for short list
-	isGreaterOrEqualC0 := api.Sub(api.Cmp(firstByte, 0xc0), -1) // 1 if firstByte >= 0xc0
-	isLessOrEqualF7 := api.Sub(api.Cmp(0xf7, firstByte), -1)    // 1 if firstByte <= 0xf7
-	isShortList := api.And(isGreaterOrEqualC0, isLessOrEqualF7)
-
-	// Simulate comparisons for long list
-	isGreaterOrEqualF8 := api.Sub(api.Cmp(firstByte, 0xf8), -1) // 1 if firstByte >= 0xf8
-	isLessOrEqualFF := api.Sub(api.Cmp(0xff, firstByte), -1)    // 1 if firstByte <= 0xff
-	isLongList := api.And(isGreaterOrEqualF8, isLessOrEqualFF)
-
-	// Offset calculation
-	shortListOffset := frontend.Variable(1)                                   // Offset for short lists
-	longListOffset := api.Add(frontend.Variable(1), api.Sub(firstByte, 0xf7)) // Offset for long lists
-
-	// Select the correct offset based on the list type
-	offset := api.Select(isShortList, shortListOffset, api.Select(isLongList, longListOffset, frontend.Variable(0)))
-
-	// Assert that the first byte is valid (either short list or long list)
-	api.AssertIsBoolean(api.Or(isShortList, isLongList))
-
-	return offset
 }
 
 // extractRLPField extracts the nth field from an RLP list.
@@ -349,39 +486,9 @@ func extractRLPField(data []byte, offset int, fieldIndex int) ([]byte, error) {
 	return nil, errors.New("field index out of range")
 }
 
-func extractRLPFieldZkGeneral(api frontend.API, rawTx []frontend.Variable, offset frontend.Variable) frontend.Variable {
-	// Get the first byte dynamically
-	firstByte := getValueAtOffset(api, rawTx, offset)
-
-	// Simulate comparisons for field type
-	isSingleByte := api.IsZero(api.Sub(frontend.Variable(0x80), firstByte)) // 1 if firstByte < 0x80
-	isShortLength := api.And(
-		api.IsZero(api.Sub(firstByte, frontend.Variable(0x80))),
-		api.IsZero(api.Sub(frontend.Variable(0xb7), firstByte)),
-	) // 1 if 0x80 <= firstByte <= 0xb7
-	isLongLength := api.And(
-		api.IsZero(api.Sub(firstByte, frontend.Variable(0xb8))),
-		api.IsZero(api.Sub(frontend.Variable(0xbf), firstByte)),
-	) // 1 if 0xb8 <= firstByte <= 0xbf
-
-	// Extract single-byte value
-	singleByteValue := firstByte
-
-	// Extract short length-prefixed value
-	// shortLength := api.Sub(firstByte, frontend.Variable(0x80))
-	shortValue := getValueAtOffset(api, rawTx, api.Add(offset, frontend.Variable(1)))
-
-	// Extract long length-prefixed value
-	longLengthOfLength := api.Sub(firstByte, frontend.Variable(0xb7))
-	// longLength := getValueAtOffset(api, rawTx, api.Add(offset, frontend.Variable(1)))
-	longValue := getValueAtOffset(api, rawTx, api.Add(offset, api.Add(frontend.Variable(1), longLengthOfLength)))
-
-	// Select the correct value based on the field type
-	field := api.Select(isSingleByte, singleByteValue, api.Select(isShortLength, shortValue, api.Select(isLongLength, longValue, frontend.Variable(0))))
-
-	return field
-}
-
+// getValueAtOffset retrieves a value from an array at a dynamic offset in a ZK circuit context.
+// Since ZK circuits cannot use dynamic array indexing directly, this function iterates over
+// all possible indices and uses conditional selection to return the value at the matching offset.
 func getValueAtOffset(api frontend.API, array []frontend.Variable, offset frontend.Variable) frontend.Variable {
 	// Initialize the selected value to zero
 	selectedValue := frontend.Variable(0)
