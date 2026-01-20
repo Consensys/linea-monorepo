@@ -119,6 +119,8 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		res.Padder = res.newKeccakPadder(comp)
 	case inp.PaddingStrategy == generic.Sha2Usecase:
 		res.Padder = res.newSha2Padder(comp)
+	case inp.PaddingStrategy == generic.Poseidon2UseCase:
+		res.Padder = res.newPoseidonPadder(comp)
 	default:
 		panic("unknown strategy")
 	}
