@@ -10,7 +10,7 @@ import linea.kotlin.encodeHex
  * @param forcedTransactionRollingHash The computed rolling Mimc based hash.
  * @param rlpEncodedSignedTransaction The RLP encoded type 02 transaction payload including signature.
  */
-data class ForcedTransactionAdded(
+data class ForcedTransactionAddedEvent(
   val forcedTransactionNumber: ULong,
   val from: ByteArray,
   val blockNumberDeadline: ULong,
@@ -21,7 +21,7 @@ data class ForcedTransactionAdded(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as ForcedTransactionAdded
+    other as ForcedTransactionAddedEvent
 
     if (forcedTransactionNumber != other.forcedTransactionNumber) return false
     if (!from.contentEquals(other.from)) return false
