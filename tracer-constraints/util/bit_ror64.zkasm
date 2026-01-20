@@ -1,4 +1,14 @@
 ;; Rotate right a u64 word
+;;
+;; n is in [0,63]
+;; bit_ror shifts the bits of 'word' to the right by 'n' positions
+;; bits that fall off the right end are wrapped around to the left end
+;;
+;; n=1 shifts the word by 1 bit to the right, so it places the least significant
+;; bit as the most significant one, while shifting all the other bits to the right
+;; eg : for n=1
+;; 0000000000010001001000100011001101000100010101010110011001110111 becomes
+;; 1000000000001000100100010001100110100010001010101011001100111011
 
 fn bit_ror64(word u64, n u6) -> (res u64) {
       if n == 0  goto unchanged

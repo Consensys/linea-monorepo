@@ -1,10 +1,6 @@
 ;; Convert u64 input from big-endian to little-endian
 ;; and reverse
 
-include "byte.zkasm"
-include "bit_xoan.zkasm"
-include "bit_shl.zkasm"
-
 fn switch_endian_u64(input u64) -> (output u64) {
     var hi, lo, sw_hi, sw_lo u32
     hi, lo = input
