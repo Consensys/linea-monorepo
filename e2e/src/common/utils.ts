@@ -318,7 +318,7 @@ export class LineaForcedTransactionClient {
   }
 
   public async lineaSendForcedRawTransaction(
-    transactions: Array<{ transaction: string; deadline?: string }>,
+    transactions: Array<{ transaction: string; deadline: string }>,
   ): Promise<string[]> {
     const request = {
       method: "post",

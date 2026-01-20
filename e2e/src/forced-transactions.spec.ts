@@ -32,7 +32,9 @@ describe("Forced transactions test suite", () => {
       const rawTx = await getRawTransactionHex(txRequest, senderWallet);
       const expectedTxHash = await getTransactionHash(txRequest, senderWallet);
 
-      const resultHashes = await forcedTxClient.lineaSendForcedRawTransaction([{ transaction: rawTx }]);
+      const resultHashes = await forcedTxClient.lineaSendForcedRawTransaction([
+        { transaction: rawTx, deadline: "0xFFFFFFFF" },
+      ]);
 
       expect(resultHashes).toHaveLength(1);
       expect(resultHashes[0]).toEqual(expectedTxHash);
@@ -65,7 +67,7 @@ describe("Forced transactions test suite", () => {
 
       let senderNonce = await senderAccount.getNonce();
       const txHashes: string[] = [];
-      const txs: Array<{ transaction: string }> = [];
+      const txs: Array<{ transaction: string; deadline: string }> = [];
 
       for (let i = 0; i < 3; i++) {
         const txRequest: TransactionRequest = {
@@ -75,7 +77,7 @@ describe("Forced transactions test suite", () => {
           maxFeePerGas: ethers.parseEther("0.00000001"), // 10 Gwei
           nonce: senderNonce++,
         };
-        txs.push({ transaction: await getRawTransactionHex(txRequest, senderWallet) });
+        txs.push({ transaction: await getRawTransactionHex(txRequest, senderWallet), deadline: "0xFFFFFFFF" });
         txHashes.push(await getTransactionHash(txRequest, senderWallet));
       }
 
@@ -122,7 +124,7 @@ describe("Forced transactions test suite", () => {
       const rawTx = await getRawTransactionHex(txRequest, senderWallet);
       const expectedTxHash = await getTransactionHash(txRequest, senderWallet);
 
-      await forcedTxClient.lineaSendForcedRawTransaction([{ transaction: rawTx }]);
+      await forcedTxClient.lineaSendForcedRawTransaction([{ transaction: rawTx, deadline: "0xFFFFFFFF" }]);
 
       // Wait for processing
       const startBlockNumber = await config.getL2Provider().getBlockNumber();
@@ -157,7 +159,7 @@ describe("Forced transactions test suite", () => {
       const rawTx = await getRawTransactionHex(txRequest, senderWallet);
       const expectedTxHash = await getTransactionHash(txRequest, senderWallet);
 
-      await forcedTxClient.lineaSendForcedRawTransaction([{ transaction: rawTx }]);
+      await forcedTxClient.lineaSendForcedRawTransaction([{ transaction: rawTx, deadline: "0xFFFFFFFF" }]);
 
       // Wait for processing
       const startBlockNumber = await config.getL2Provider().getBlockNumber();
