@@ -46,6 +46,7 @@ data class InvalidityProofRequest(
     if (simulatedExecutionBlockTimestamp != other.simulatedExecutionBlockTimestamp) return false
     if (ftxNumber != other.ftxNumber) return false
     if (ftxBlockNumberDeadline != other.ftxBlockNumberDeadline) return false
+    if (!ftxHash.contentEquals(other.ftxHash)) return false
     if (!ftxRlp.contentEquals(other.ftxRlp)) return false
     if (!prevFtxRollingHash.contentEquals(other.prevFtxRollingHash)) return false
     if (!parentBlockHash.contentEquals(other.parentBlockHash)) return false
@@ -63,6 +64,7 @@ data class InvalidityProofRequest(
     result = 31 * result + simulatedExecutionBlockTimestamp.hashCode()
     result = 31 * result + ftxNumber.hashCode()
     result = 31 * result + ftxBlockNumberDeadline.hashCode()
+    result = 31 * result + ftxHash.contentHashCode()
     result = 31 * result + ftxRlp.contentHashCode()
     result = 31 * result + prevFtxRollingHash.contentHashCode()
     result = 31 * result + parentBlockHash.contentHashCode()
