@@ -28,6 +28,12 @@ type cfg struct {
 
 type Option func(*cfg) error
 
+// Octuplet represents an octuplet of columns that can be printed in a frienly way.
+type Octuplet struct {
+	V    [8]ifaces.Column
+	Name string
+}
+
 // WithNbRows sets the number of rows in the trace
 func WithNbRows(nbRows int) Option {
 	return func(c *cfg) error {
@@ -110,6 +116,33 @@ func FmtCsv(w io.Writer, run *wizard.ProverRuntime, objs []any, options []Option
 	for i, obj := range objs {
 
 		switch obj := obj.(type) {
+
+		case Octuplet:
+			name := obj.Name
+			if cfg.renameCols != nil {
+				name = cfg.renameCols[i]
+			}
+			header = append(header, name)
+
+			vs := [8][]field.Element{}
+			for j := range vs {
+				vs[j] = obj.V[j].GetColAssignment(run).IntoRegVecSaveAlloc()
+			}
+
+			a := make([]*big.Int, 0)
+			for i := range vs[0] {
+				f := big.NewInt(0)
+				for j := range vs {
+					var s big.Int
+					vs[j][i].BigInt(&s)
+					f.Lsh(f, 32)
+					f.Add(f, &s)
+				}
+				a = append(a, f)
+			}
+
+			assignment = append(assignment, a)
+
 		case ifaces.Column:
 			name := obj.String()
 			if cfg.renameCols != nil {
@@ -161,6 +194,10 @@ func FmtCsv(w io.Writer, run *wizard.ProverRuntime, objs []any, options []Option
 
 		if !cfg.skipPrePaddingZero || !allZeroes || foundNonZero {
 			fmt.Fprintf(w, "%v\n", strings.Join(fmtVals, ","))
+		}
+
+		if cfg.nbRows > 0 && r >= cfg.nbRows {
+			break
 		}
 	}
 
@@ -426,7 +463,7 @@ func WriteExplicitFromKoala(w io.Writer, names []string, cols [][]field.Element,
 }
 
 func fmtBigInt(inHex bool, x *big.Int) string {
-	if inHex || x.Uint64() < 1<<10 {
+	if !inHex || x.Uint64() < 1<<10 {
 		return x.String()
 	}
 	return "0x" + x.Text(16)

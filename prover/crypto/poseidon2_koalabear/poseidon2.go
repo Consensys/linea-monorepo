@@ -2,6 +2,7 @@ package poseidon2_koalabear
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
@@ -42,6 +43,15 @@ func NewMDHasher() *MDHasher {
 func HashBytes(x []byte) []byte {
 	state := NewMDHasher()
 	if _, err := state.Write(x); err != nil {
+		panic(err)
+	}
+	return state.Sum(nil)
+}
+
+// HashWriterTo hashes a [io.WriterTo] using poseidon koalabear
+func HashWriterTo(w io.WriterTo) []byte {
+	state := NewMDHasher()
+	if _, err := w.WriteTo(state); err != nil {
 		panic(err)
 	}
 	return state.Sum(nil)

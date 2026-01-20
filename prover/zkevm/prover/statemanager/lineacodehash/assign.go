@@ -70,24 +70,19 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		rom.completeAssign(run)
 	}
 
-	filter := rom.CounterIsEqualToNBytesMinusOne.GetColAssignment(run).IntoRegVecSaveAlloc()
-
-	codeHash := common.GetMultiColumnAssignment(run, romLex.CodeHash[:])
-
-	acc := common.GetMultiColumnAssignment(run, rom.Acc[:])
-
-	codeSize := common.GetMultiColumnAssignment(run, rom.CodeSize[:])
-
-	cfi := common.GetMultiColumnAssignment(run, rom.CFI[:])
-
-	cfiRomLex := common.GetMultiColumnAssignment(run, romLex.CFIRomLex[:])
-
-	// Since we need to operate on limb slices, we need to transpose limb columns.
-	cfiTransposed := transposeLimbs(cfi[:])
-	cfiRomLexTransponed := transposeLimbs(cfiRomLex[:])
-
-	var length = len(cfiTransposed)
-	var builder = newAssignmentBuilder(length)
+	var (
+		filter    = rom.CounterIsEqualToNBytesMinusOne.GetColAssignment(run).IntoRegVecSaveAlloc()
+		codeHash  = common.GetMultiColumnAssignment(run, romLex.CodeHash[:])
+		acc       = common.GetMultiColumnAssignment(run, rom.Acc[:])
+		codeSize  = common.GetMultiColumnAssignment(run, rom.CodeSize[:])
+		cfi       = common.GetMultiColumnAssignment(run, rom.CFI[:])
+		cfiRomLex = common.GetMultiColumnAssignment(run, romLex.CFIRomLex[:])
+		// Since we need to operate on limb slices, we need to transpose limb columns.
+		cfiTransposed       = transposeLimbs(cfi[:])
+		cfiRomLexTransposed = transposeLimbs(cfiRomLex[:])
+		length              = len(cfiTransposed)
+		builder             = newAssignmentBuilder(length)
+	)
 
 	for row := 0; row < length; row++ {
 
@@ -251,10 +246,10 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 
 			// For each currCFI, we look over all the CFIs in the Romlex input,
 			// and append only that codehash for which the cfi matches with currCFI
-			for j := 0; j < len(cfiRomLexTransponed); j++ {
+			for j := 0; j < len(cfiRomLexTransposed); j++ {
 				areCfiEqual := true
 				for k := range common.NbLimbU32 {
-					if currCFI[k] != cfiRomLexTransponed[j][k] {
+					if currCFI[k] != cfiRomLexTransposed[j][k] {
 						areCfiEqual = false
 						break
 					}
