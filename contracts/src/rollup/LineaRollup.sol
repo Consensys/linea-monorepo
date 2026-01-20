@@ -86,7 +86,6 @@ contract LineaRollup is
     require(_forcedTransactionFeeInWei > 0, IGenericErrors.ZeroValueNotAllowed());
     require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
 
-
     // TODO - remove this as it will only be done when going live in another transaction.
     _grantRole(FORCED_TRANSACTION_SENDER_ROLE, _forcedTransactionGateway);
 

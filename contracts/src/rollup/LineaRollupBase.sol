@@ -328,6 +328,7 @@ abstract contract LineaRollupBase is
    * @param _finalStateRootHash The final state root hash of the data being submitted.
    * @param _dataEvaluationPoint The data evaluation point.
    * @param _dataEvaluationClaim The data evaluation claim.
+   * @return shnarf The computed shnarf.
    */
   function _computeShnarf(
     bytes32 _parentShnarf,
@@ -378,13 +379,17 @@ abstract contract LineaRollupBase is
       revert InvalidProofType();
     }
 
+    bytes32 finalForcedTransactionRollingHash = forcedTransactionRollingHashes[
+      _finalizationData.finalForcedTransactionNumber
+    ];
+
     _verifyProof(
       _computePublicInput(
         _finalizationData,
         lastFinalizedShnarf,
-        _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber),
+        _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber, finalForcedTransactionRollingHash),
         lastFinalizedBlockNumber,
-        forcedTransactionRollingHashes[_finalizationData.finalForcedTransactionNumber],
+        finalForcedTransactionRollingHash,
         IPlonkVerifier(verifier).getChainConfiguration()
       ),
       verifier,
@@ -396,11 +401,13 @@ abstract contract LineaRollupBase is
    * @notice Internal function to finalize compressed blocks.
    * @param _finalizationData The full finalization data.
    * @param _lastFinalizedBlock The last finalized block.
+   * @param _finalForcedTransactionRollingHash The rolling hash for the final forced transaction.
    * @return finalShnarf The final computed shnarf in finalizing.
    */
   function _finalizeBlocks(
     FinalizationDataV4 calldata _finalizationData,
-    uint256 _lastFinalizedBlock
+    uint256 _lastFinalizedBlock,
+    bytes32 _finalForcedTransactionRollingHash
   ) internal returns (bytes32 finalShnarf) {
     _validateL2ComputedRollingHash(_finalizationData.l1RollingHashMessageNumber, _finalizationData.l1RollingHash);
 
@@ -486,7 +493,7 @@ abstract contract LineaRollupBase is
       _finalizationData.l1RollingHashMessageNumber,
       _finalizationData.l1RollingHash,
       _finalizationData.finalForcedTransactionNumber,
-      forcedTransactionRollingHashes[_finalizationData.finalForcedTransactionNumber],
+      _finalForcedTransactionRollingHash,
       _finalizationData.finalTimestamp,
       _finalizationData.finalBlockHash
     );
@@ -601,6 +608,7 @@ abstract contract LineaRollupBase is
    * @param _lastFinalizedBlockNumber The last finalized block number.
    * @param _finalForcedTransactionRollingHash The final processed forced transactions's rolling hash.
    * @param _verifierChainConfiguration The verifier chain configuration.
+   * @return publicInput The computed public input.
    */
   function _computePublicInput(
     FinalizationDataV4 calldata _finalizationData,

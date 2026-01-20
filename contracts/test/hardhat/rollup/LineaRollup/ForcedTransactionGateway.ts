@@ -236,13 +236,13 @@ describe("Linea Rollup contract: Forced Transactions", () => {
   describe("Toggling the address filter feature", () => {
     it("Should fail to toggle if unauthorized", async () => {
       await expectRevertWithReason(
-        forcedTransactionGateway.connect(nonAuthorizedAccount).toggleuseAddressFilter(false),
+        forcedTransactionGateway.connect(nonAuthorizedAccount).toggleUseAddressFilter(false),
         buildAccessErrorMessage(nonAuthorizedAccount, DEFAULT_ADMIN_ROLE),
       );
     });
 
     it("Should fail to toggle if the status is the same", async () => {
-      const asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(true);
+      const asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleUseAddressFilter(true);
       await expectRevertWithCustomError(forcedTransactionGateway, asyncCall, "AddressFilterAlreadySet", [true]);
     });
 
@@ -250,17 +250,17 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       let useAddressFilter = await forcedTransactionGateway.useAddressFilter();
       expect(useAddressFilter).to.be.true;
 
-      await forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(false);
+      await forcedTransactionGateway.connect(securityCouncil).toggleUseAddressFilter(false);
 
       useAddressFilter = await forcedTransactionGateway.useAddressFilter();
       expect(useAddressFilter).to.be.false;
     });
 
     it("Should emit AddressFilterSet when changed", async () => {
-      let asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(false);
+      let asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleUseAddressFilter(false);
       await expectEvent(forcedTransactionGateway, asyncCall, "AddressFilterSet", [false]);
 
-      asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(true);
+      asyncCall = forcedTransactionGateway.connect(securityCouncil).toggleUseAddressFilter(true);
       await expectEvent(forcedTransactionGateway, asyncCall, "AddressFilterSet", [true]);
 
       const useAddressFilter = await forcedTransactionGateway.useAddressFilter();
@@ -734,7 +734,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
       await addressFilter.connect(securityCouncil).setFilteredStatus([l2SendMessageTransaction.result.to], true);
 
-      await forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(false);
+      await forcedTransactionGateway.connect(securityCouncil).toggleUseAddressFilter(false);
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
@@ -749,7 +749,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
       await addressFilter.connect(securityCouncil).setFilteredStatus([l2SendMessageTransaction.result.from], true);
 
-      await forcedTransactionGateway.connect(securityCouncil).toggleuseAddressFilter(false);
+      await forcedTransactionGateway.connect(securityCouncil).toggleUseAddressFilter(false);
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),

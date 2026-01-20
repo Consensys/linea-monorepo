@@ -214,7 +214,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
    * @dev Only callable by an account with the DEFAULT_ADMIN_ROLE.
    * @param _useAddressFilter Bool indicating whether or not to use the address filter.
    */
-  function toggleuseAddressFilter(bool _useAddressFilter) external onlyRole(DEFAULT_ADMIN_ROLE) {
+  function toggleUseAddressFilter(bool _useAddressFilter) external onlyRole(DEFAULT_ADMIN_ROLE) {
     require(useAddressFilter != _useAddressFilter, AddressFilterAlreadySet(_useAddressFilter));
     useAddressFilter = _useAddressFilter;
     emit AddressFilterSet(_useAddressFilter);

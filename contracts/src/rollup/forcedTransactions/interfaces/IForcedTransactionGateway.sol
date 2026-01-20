@@ -139,5 +139,5 @@ interface IForcedTransactionGateway {
    * @dev Only callable by an account with the DEFAULT_ADMIN_ROLE.
    * @param _useAddressFilter Bool indicating whether or not to use the address filter.
    */
-  function toggleuseAddressFilter(bool _useAddressFilter) external;
+  function toggleUseAddressFilter(bool _useAddressFilter) external;
 }

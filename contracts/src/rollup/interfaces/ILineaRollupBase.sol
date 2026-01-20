@@ -139,6 +139,10 @@ interface ILineaRollupBase {
     bytes32 finalStateRootHash
   );
 
+  /**
+   * @notice Emitted when the LineaRollupBase contract is initialized.
+   * @param InitializationData The initialization data.
+   */
   event LineaRollupBaseInitialized(BaseInitializationData InitializationData);
 
   /**

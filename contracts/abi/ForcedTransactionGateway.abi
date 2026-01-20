@@ -583,7 +583,7 @@
           "type": "bool"
         }
       ],
-      "name": "toggleuseAddressFilter",
+      "name": "toggleUseAddressFilter",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

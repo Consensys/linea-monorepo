@@ -14,9 +14,10 @@ library FinalizedStateHashing {
    * @param _messageNumber Is the last L2 computed L1 message number in the finalization.
    * @param _messageRollingHash Is the last L2 computed L1 rolling hash in the finalization.
    * @param _forcedTransactionNumber Is the last processed forced transaction on L2's number.
-   * @param _messageRollingHash Is the last processed forced transaction on L2's rolling hash.
+   * @param _forcedTransactionRollingHash Is the last processed forced transaction on L2's rolling hash.
    * @param _timestamp The final timestamp in the finalization.
    * @param _blockHash The final block hash in the finalization.
+   * @return hashedFinalizationState The hashed finalization state.
    */
   function _computeLastFinalizedState(
     uint256 _messageNumber,
@@ -44,6 +45,7 @@ library FinalizedStateHashing {
    * @param _messageNumber Is the last L2 computed L1 message number in the finalization.
    * @param _rollingHash Is the last L2 computed L1 rolling hash in the finalization.
    * @param _timestamp The final timestamp in the finalization.
+   * @return hashedFinalizationState The hashed finalization state.
    */
   function _computeLastFinalizedState(
     uint256 _messageNumber,
