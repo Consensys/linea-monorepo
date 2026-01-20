@@ -9,7 +9,6 @@ import (
 
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/constraint"
-	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -215,7 +214,7 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 				return
 			}
 
-			if err := ccs.IsSolved(witness, solver.WithHints(gnarkutil.MockedWideCommiHint)); err != nil {
+			if err := ccs.IsSolved(witness); err != nil {
 				pushErr(fmt.Errorf("error in solver instance=%v err=%w", currInstance, err))
 				return
 			}

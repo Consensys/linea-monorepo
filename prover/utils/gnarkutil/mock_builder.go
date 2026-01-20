@@ -48,15 +48,19 @@ func NewMockBuilder(wrapped frontend.NewBuilderU32) frontend.NewBuilderU32 {
 
 // WideCommit returns a dummy static value for testing.
 func (mb *MockBuilder) WideCommit(width int, toCommit ...frontend.Variable) (commitment []frontend.Variable, err error) {
-	return mb.Compiler().NewHint(MockedWideCommiHint, width, toCommit...)
+	res := make([]frontend.Variable, width)
+	// when there are a lot of variables to commit to, then calling a hint has a
+	// overhead due to assigning *big.Int values from solved variables. so we
+	// just return dummy values here.
+	for i := range res {
+		if i < len(toCommit) {
+			res[i] = mb.Add(toCommit[i], 42+i) // use the input but modify to avoid having all zeros
+			continue
+		}
+		res[i] = i
+	}
+	return res, nil
 }
 
 // Check implements the range-checker and does not do anything.
 func (*MockBuilder) Check(v frontend.Variable, bits int) {}
-
-func MockedWideCommiHint(mod *big.Int, inputs []*big.Int, outputs []*big.Int) error {
-	for i := range outputs {
-		outputs[i].Sub(mod, big.NewInt(int64(i))) // dummy value
-	}
-	return nil
-}
