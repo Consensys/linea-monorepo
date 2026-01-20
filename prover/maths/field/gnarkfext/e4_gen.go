@@ -289,8 +289,30 @@ func (ext4 *Ext4) DivByBase(e1 *E4Gen, e2 zk.WrappedVariable) *E4Gen {
 }
 
 // Exp exponentiation in gnark circuit, using the fast exponentiation
+// Optimized for power-of-two exponents (only repeated squaring needed)
 func (ext4 *Ext4) Exp(x *E4Gen, n *big.Int) *E4Gen {
 
+	// Handle edge cases
+	if n.Sign() == 0 {
+		return ext4.One()
+	}
+
+	if n.Cmp(big.NewInt(1)) == 0 {
+		return x
+	}
+
+	// Fast path: if n is a power of two, use only repeated squaring
+	// This is common in FFT-related computations where n = 2^k
+	if n.BitLen() > 0 && new(big.Int).And(n, new(big.Int).Sub(n, big.NewInt(1))).Sign() == 0 {
+		// n is a power of two, so we just need (bitLen-1) squarings
+		res := x
+		for i := 0; i < n.BitLen()-1; i++ {
+			res = ext4.Square(res)
+		}
+		return res
+	}
+
+	// General case: square-and-multiply
 	res := ext4.One()
 	nBytes := n.Bytes()
 
@@ -317,7 +339,7 @@ func (ext4 *Ext4) ExpVariableExponent(api frontend.API, x E4Gen, exp frontend.Va
 
 	for i := len(expBits) - 1; i >= 0; i-- {
 		if i != len(expBits)-1 {
-			res = *ext4.Mul(&res, &res)
+			res = *ext4.Square(&res) // Use Square instead of Mul for self-multiplication
 		}
 		tmp := *ext4.Mul(&res, &x)
 		res = *ext4.Select(expBits[i], &tmp, &res)
