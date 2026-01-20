@@ -22,6 +22,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestNonceFromRLP tests the extraction of nonce from RLP-encoded EIP-1559 transactions.
+//
+// This test verifies both the native Go implementation (ExtractNonceFromRLP) and the
+// ZK circuit implementation (ExtractNonceFromRLPZk) produce the correct nonce value.
+//
+// Test approach:
+// 1. Create an EIP-1559 transaction from test case data
+// 2. RLP-encode the transaction for signing
+// 3. Extract nonce using the native Go function and verify it matches tx.Nonce()
+// 4. Compile a ZK circuit that extracts the nonce and asserts equality
+// 5. Verify the circuit is satisfied with the witness values
 func TestNonceFromRLP(t *testing.T) {
 	var (
 		tx        = types.NewTx(&tcases[1].Tx)
@@ -31,23 +42,29 @@ func TestNonceFromRLP(t *testing.T) {
 	extractedNonce, _ := invalidity.ExtractNonceFromRLP(encodedTx)
 	require.Equal(t, tx.Nonce(), extractedNonce, "extractedNonce and actualNonce are different")
 
-	c := circuitExtractNonceFromRLP{
-		rlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-		nonce:        tx.Nonce(),
+	// Create witness with actual values
+	witness := circuitExtractNonceFromRLP{
+		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+		Nonce:        tx.Nonce(),
 	}
 
 	for i := range encodedTx {
 		a = encodedTx[i]
-		c.rlpEncodedtx[i] = a
+		witness.RlpEncodedtx[i] = a
 	}
 
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &c, frontend.IgnoreUnconstrainedInputs())
+	// Create circuit for compilation
+	circuit := circuitExtractNonceFromRLP{
+		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+	}
+
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// solve the circuit
-	twitness, err := frontend.NewWitness(&c, ecc.BLS12_377.ScalarField())
+	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,14 +75,98 @@ func TestNonceFromRLP(t *testing.T) {
 
 }
 
+// circuitExtractNonceFromRLP is a ZK circuit for testing nonce extraction from RLP-encoded transactions.
+// RlpEncodedtx contains the raw transaction bytes as circuit variables.
+// Nonce is the expected nonce value to assert against the extracted value.
 type circuitExtractNonceFromRLP struct {
-	rlpEncodedtx []frontend.Variable
-	nonce        frontend.Variable
+	RlpEncodedtx []frontend.Variable
+	Nonce        frontend.Variable
 }
 
 func (c circuitExtractNonceFromRLP) Define(api frontend.API) error {
-	gnarkExtractedNonce := invalidity.ExtractNonceFromRLPZk(api, c.rlpEncodedtx)
-	api.AssertIsEqual(gnarkExtractedNonce, c.nonce)
+	gnarkExtractedNonce := invalidity.ExtractNonceFromRLPZk(api, c.RlpEncodedtx)
+	api.AssertIsEqual(gnarkExtractedNonce, c.Nonce)
+	return nil
+}
+
+// TestTxCostFromRLP tests the extraction of transaction cost from RLP-encoded EIP-1559 transactions.
+//
+// Transaction cost is defined as: cost = value + gasLimit × maxFeePerGas
+// This is used for the "invalid balance" check in the invalidity circuit:
+// if cost > sender.Balance, the transaction is invalid.
+//
+// This test verifies both the native Go implementation (ExtractTxCostFromRLP) and the
+// ZK circuit implementation (ExtractTxCostFromRLPZk) correctly extract and compute the cost.
+//
+// EIP-1559 transaction fields used:
+// - maxFeePerGas (field index 3): Maximum fee per gas unit the sender is willing to pay
+// - gasLimit (field index 4): Maximum gas units the transaction can consume
+// - value (field index 6): Amount of ETH to transfer
+//
+// Test approach:
+// 1. Create an EIP-1559 transaction from test case data
+// 2. RLP-encode the transaction for signing
+// 3. Calculate expected cost from transaction fields
+// 4. Extract cost using the native Go function and verify it matches
+// 5. Compile a ZK circuit that extracts the cost and asserts equality
+// 6. Verify the circuit is satisfied with the witness values
+func TestTxCostFromRLP(t *testing.T) {
+	var (
+		tx        = types.NewTx(&tcases[1].Tx)
+		encodedTx = ethereum.EncodeTxForSigning(tx)
+		a         byte
+	)
+
+	// Calculate expected cost: value + gasLimit * maxFeePerGas
+	expectedCost := tx.Value().Uint64() + tx.Gas()*tx.GasFeeCap().Uint64()
+
+	extractedCost, err := invalidity.ExtractTxCostFromRLP(encodedTx)
+	require.NoError(t, err)
+	require.Equal(t, expectedCost, extractedCost, "extractedCost and expectedCost are different")
+
+	// Create witness with actual values
+	witness := circuitExtractTxCostFromRLP{
+		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+		Cost:         expectedCost,
+	}
+
+	for i := range encodedTx {
+		a = encodedTx[i]
+		witness.RlpEncodedtx[i] = a
+	}
+
+	// Create circuit for compilation
+	circuit := circuitExtractTxCostFromRLP{
+		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
+	}
+
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// solve the circuit
+	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ccs.IsSolved(twitness)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// circuitExtractTxCostFromRLP is a ZK circuit for testing transaction cost extraction from RLP-encoded transactions.
+// RlpEncodedtx contains the raw transaction bytes as circuit variables.
+// Cost is the expected transaction cost (value + gasLimit × maxFeePerGas) to assert against the extracted value.
+type circuitExtractTxCostFromRLP struct {
+	RlpEncodedtx []frontend.Variable
+	Cost         frontend.Variable
+}
+
+func (c circuitExtractTxCostFromRLP) Define(api frontend.API) error {
+	gnarkExtractedCost := invalidity.ExtractTxCostFromRLPZk(api, c.RlpEncodedtx)
+	api.AssertIsEqual(gnarkExtractedCost, c.Cost)
 	return nil
 }
 
