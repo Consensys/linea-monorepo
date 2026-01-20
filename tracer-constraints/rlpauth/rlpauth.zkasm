@@ -3,32 +3,13 @@ include "../util/padding.zkasm"
 
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
-pub fn rlpauth(chain_id u256, raw_nonce u256, raw_delegation_address u256, raw_y_parity u256, r u256, s u256, 
+pub fn rlpauth(chain_id u256, nonce u64, delegation_address u160, y_parity u8, r u256, s u256, 
 authority_address u160, ;; predicticted returned value by ecrecover
 macro u1, blk_number u16, user_txn_number u24, txn_from_address u160, authority_is_sender_tot u1, ;; columns for lookup into usertxndata
 xtern u1, network_chain_id u256, ;; additional columns for lookup into blockdata
 authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_or_is_delegated u1) ;; additional columns for lookup into hub
 -> (authorization_tuple_is_valid u1)
 {
-    ;; Bound checks
-    ;; assert auth.nonce < 2**64
-    var nonce u64
-    var is_nonce_out_of_bound u192
-    is_nonce_out_of_bound, nonce = raw_nonce
-    if is_nonce_out_of_bound != 0 goto failure
-
-    ;; assert len(auth.delegation_address) == 20
-    var delegation_address u160
-    var is_delegation_address_out_of_bound u96
-    is_delegation_address_out_of_bound, delegation_address = raw_delegation_address
-    if is_delegation_address_out_of_bound != 0 goto failure 
-
-    ;; assert auth.y_parity < 2**8
-    var y_parity u8
-    var is_y_parity_out_of_bound u248
-    is_y_parity_out_of_bound, y_parity = raw_y_parity
-    if is_y_parity_out_of_bound != 0 goto failure
-
     ;; Preliminary computation
     var delegation_address_is_zero u1
     delegation_address_is_zero = delegation_address == 0 ? 1 : 0
