@@ -2,7 +2,6 @@ package vortex
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/polynomials"
@@ -111,11 +110,6 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []g
 		ext4.AssertIsEqual(&res[i], zero)
 	}
 
-	return nil
-}
-
-func GnarkCheckIsCodeWord(api frontend.API, params reedsolomon.RsParams, linComb []gnarkfext.E4Gen) error {
-	// This function is no longer used and can be removed or refactored if needed.
 	return nil
 }
 
