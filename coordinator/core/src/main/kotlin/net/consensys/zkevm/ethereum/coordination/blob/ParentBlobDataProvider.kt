@@ -3,7 +3,7 @@ package net.consensys.zkevm.ethereum.coordination.blob
 import linea.domain.BlockInterval
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-data class BlobData(
+data class BlobShnarfMetaData(
   override val startBlockNumber: ULong,
   override val endBlockNumber: ULong,
   val blobHash: ByteArray,
@@ -13,7 +13,7 @@ data class BlobData(
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
-    other as BlobData
+    other as BlobShnarfMetaData
 
     if (startBlockNumber != other.startBlockNumber) return false
     if (endBlockNumber != other.endBlockNumber) return false
@@ -33,5 +33,5 @@ data class BlobData(
 }
 
 interface ParentBlobDataProvider {
-  fun getParentBlobData(currentBlobRange: BlockInterval): SafeFuture<BlobData>
+  fun getParentBlobShnarfMetaData(currentBlobRange: BlockInterval): SafeFuture<BlobShnarfMetaData>
 }
