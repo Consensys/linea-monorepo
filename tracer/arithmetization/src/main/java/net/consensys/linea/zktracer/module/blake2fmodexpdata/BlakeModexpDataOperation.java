@@ -118,6 +118,15 @@ public final class BlakeModexpDataOperation extends ModuleOperation {
     final Bytes input = blake2fComponents.get().getHashInput();
     for (int index = 0; index <= INDEX_MAX_BLAKE_DATA; index++) {
       commonTrace(trace, stamp, index, input, INDEX_MAX_BLAKE_DATA);
+      //TODO selector on this tracing
+      trace.h0h1Be(blake2fComponents.get().result().slice(0, LLARGE));
+
+      trace.h2h3Be(blake2fComponents.get().result().slice(LLARGE, LLARGE));
+
+      trace.h4h5Be(blake2fComponents.get().result().slice(2 *LLARGE, LLARGE));
+
+      trace.h6h7Be(blake2fComponents.get().result().slice(3 *LLARGE, LLARGE));
+
       trace.phase(UnsignedByte.of(PHASE_BLAKE_DATA)).isBlakeData(true).fillAndValidateRow();
     }
   }
