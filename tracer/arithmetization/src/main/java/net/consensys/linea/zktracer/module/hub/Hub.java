@@ -925,7 +925,10 @@ public final class Hub implements Module {
   }
 
   public int getCodeFragmentIndexByMetaData(
-    final Address address, final int deploymentNumber, final boolean deploymentStatus, int delegationNumber) {
+      final Address address,
+      final int deploymentNumber,
+      final boolean deploymentStatus,
+      int delegationNumber) {
     return this.romLex()
         .getCodeFragmentIndexByMetadata(
             ContractMetadata.make(address, deploymentNumber, deploymentStatus, delegationNumber));

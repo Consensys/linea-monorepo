@@ -100,8 +100,8 @@ public class AccountSnapshot {
           warmth,
           bytecode,
           conflationInfo.deploymentInfo().deploymentNumber(address),
-          conflationInfo.deploymentInfo().getDeploymentStatus(address), conflationInfo.getDelegationNumber(address)
-        );
+          conflationInfo.deploymentInfo().getDeploymentStatus(address),
+          conflationInfo.getDelegationNumber(address));
     } else {
       return new AccountSnapshot(
           address,
@@ -110,13 +110,19 @@ public class AccountSnapshot {
           warmth,
           bytecode,
           conflationInfo.deploymentInfo().deploymentNumber(address),
-          conflationInfo.deploymentInfo().getDeploymentStatus(address), conflationInfo.getDelegationNumber(address));
+          conflationInfo.deploymentInfo().getDeploymentStatus(address),
+          conflationInfo.getDelegationNumber(address));
     }
   }
 
   public static AccountSnapshot fromAccount(
-      Account account, boolean isWarm, int deploymentNumber, boolean deploymentStatus, int delegationNumber) {
-    return fromAccount(Optional.ofNullable(account), isWarm, deploymentNumber, deploymentStatus, delegationNumber);
+      Account account,
+      boolean isWarm,
+      int deploymentNumber,
+      boolean deploymentStatus,
+      int delegationNumber) {
+    return fromAccount(
+        Optional.ofNullable(account), isWarm, deploymentNumber, deploymentStatus, delegationNumber);
   }
 
   public static AccountSnapshot empty(
@@ -126,13 +132,28 @@ public class AccountSnapshot {
   }
 
   public static AccountSnapshot fromAddress(
-      Address address, boolean isWarm, int deploymentNumber, boolean deploymentStatus, int delegationNumber) {
+      Address address,
+      boolean isWarm,
+      int deploymentNumber,
+      boolean deploymentStatus,
+      int delegationNumber) {
     return new AccountSnapshot(
-        address, 0, Wei.ZERO, isWarm, Bytecode.EMPTY, deploymentNumber, deploymentStatus, delegationNumber);
+        address,
+        0,
+        Wei.ZERO,
+        isWarm,
+        Bytecode.EMPTY,
+        deploymentNumber,
+        deploymentStatus,
+        delegationNumber);
   }
 
   public static AccountSnapshot fromAccount(
-      Optional<Account> account, boolean isWarm, int deploymentNumber, boolean deploymentStatus, int delegationNumber) {
+      Optional<Account> account,
+      boolean isWarm,
+      int deploymentNumber,
+      boolean deploymentStatus,
+      int delegationNumber) {
 
     return account
         .map(
@@ -144,7 +165,8 @@ public class AccountSnapshot {
                     isWarm,
                     new Bytecode(a.getCode().copy()),
                     deploymentNumber,
-                    deploymentStatus, delegationNumber))
+                    deploymentStatus,
+                    delegationNumber))
         .orElseGet(() -> AccountSnapshot.empty(isWarm, deploymentNumber, deploymentStatus));
   }
 
@@ -155,7 +177,14 @@ public class AccountSnapshot {
    */
   public AccountSnapshot deepCopy() {
     return new AccountSnapshot(
-        address, nonce, balance, isWarm, code, deploymentNumber, deploymentStatus, delegationNumber);
+        address,
+        nonce,
+        balance,
+        isWarm,
+        code,
+        deploymentNumber,
+        deploymentStatus,
+        delegationNumber);
   }
 
   public void wipe(DeploymentInfo deploymentInfo) {
@@ -275,7 +304,8 @@ public class AccountSnapshot {
   public AccountSnapshot deployByteCode(Bytecode code) {
     checkState(deploymentStatus, "Deployment status should be true before deploying byte code.");
 
-    return new AccountSnapshot(address, nonce, balance, true, code, deploymentNumber, false, delegationNumber);
+    return new AccountSnapshot(
+        address, nonce, balance, true, code, deploymentNumber, false, delegationNumber);
   }
 
   public EWord tracedCodeHash() {

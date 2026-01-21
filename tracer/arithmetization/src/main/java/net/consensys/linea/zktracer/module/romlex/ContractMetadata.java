@@ -25,14 +25,18 @@ import org.hyperledger.besu.datatypes.Address;
  * @param deploymentNumber the current deployment of the contract
  * @param underDeployment whether this contract is being deployed
  */
-public record ContractMetadata(Address address, int deploymentNumber, boolean underDeployment, int delegationNumber) {
+public record ContractMetadata(
+    Address address, int deploymentNumber, boolean underDeployment, int delegationNumber) {
   public static ContractMetadata canonical(Hub hub, Address address) {
     return new ContractMetadata(
-        address, hub.deploymentNumberOf(address), hub.deploymentStatusOf(address), hub.delegationNumberOf(address));
+        address,
+        hub.deploymentNumberOf(address),
+        hub.deploymentStatusOf(address),
+        hub.delegationNumberOf(address));
   }
 
   public static ContractMetadata make(
-    final Address address, int deploymentNumber, boolean underDeployment, int delegationNumber) {
+      final Address address, int deploymentNumber, boolean underDeployment, int delegationNumber) {
     return new ContractMetadata(address, deploymentNumber, underDeployment, delegationNumber);
   }
 }

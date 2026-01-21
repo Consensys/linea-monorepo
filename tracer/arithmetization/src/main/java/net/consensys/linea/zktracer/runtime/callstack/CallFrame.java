@@ -211,7 +211,8 @@ public class CallFrame {
    * @return the executed contract metadata
    */
   public ContractMetadata metadata() {
-    return ContractMetadata.make(byteCodeAddress, byteCodeDeploymentNumber, isDeployment, delegationNumber);
+    return ContractMetadata.make(
+        byteCodeAddress, byteCodeDeploymentNumber, isDeployment, delegationNumber);
   }
 
   private void revertChildren(CallStack callStack, int parentRevertStamp) {
