@@ -385,7 +385,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	lastIterationParams := selfRecursionParameters{
 		NbOpenedColumns: 8, // TODO: next step, update to 64
 		RsInverseRate:   2, // TODO: next step, update to 16
-		TargetRowSize:   1 << 9,
+		TargetRowSize:   1 << 11,
 	}
 
 	comp := wizard.Compile(
@@ -428,7 +428,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 
 		circuit := verifierCircuit{}
-		nbRounds := comp.NumRounds() //comp.NumRounds() //17 // TODO setting this to comp.NumRounds() make the number of constraint explode, need to investigate
+		nbRounds := 17 //comp.NumRounds() //17 // TODO setting this to comp.NumRounds() make the number of constraint explode, need to investigate
 		fmt.Printf("using nbRounds=%d instead of %d\n", nbRounds, comp.NumRounds())
 		{
 			c := wizard.AllocateWizardCircuit(comp, nbRounds, isBLS)
