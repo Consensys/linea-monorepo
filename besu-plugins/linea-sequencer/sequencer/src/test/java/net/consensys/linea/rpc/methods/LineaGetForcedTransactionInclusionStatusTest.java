@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Test;
 
 class LineaGetForcedTransactionInclusionStatusTest {
 
+  private static final long TEST_TIMESTAMP = 1_700_000_000L;
+
   private LineaGetForcedTransactionInclusionStatus method;
   private LineaForcedTransactionPool pool;
   private TestTransactionFactory txFactory;
@@ -69,6 +71,7 @@ class LineaGetForcedTransactionInclusionStatusTest {
     assertThat(result.transactionHash).isEqualTo(ftx.txHash().toHexString());
     assertThat(result.inclusionResult).isEqualTo("INCLUDED");
     assertThat(result.blockNumber).isEqualTo("0x64"); // 100 in hex
+    assertThat(result.blockTimestamp).isEqualTo("0x6553f100"); // TEST_TIMESTAMP in hex
     assertThat(result.from).isEqualTo(ftx.transaction().getSender().toHexString());
   }
 
@@ -135,7 +138,7 @@ class LineaGetForcedTransactionInclusionStatusTest {
 
     final BlockTransactionSelectionService bts = mock(BlockTransactionSelectionService.class);
     when(bts.evaluatePendingTransaction(any())).thenReturn(result);
-    pool.processForBlock(blockNumber, bts);
+    pool.processForBlock(blockNumber, TEST_TIMESTAMP, bts);
     return ftx;
   }
 

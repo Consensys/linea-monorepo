@@ -12,6 +12,7 @@
 ADD                 = 524288
 BIN                 = 262144
 BLAKE_MODEXP_DATA   = 16384
+BLAKE2F             = 3000 # not important now, BLAKE is excluded thanks to PRECOMPILE_BLAKE_ROUNDS
 BLOCK_DATA          = 4096
 BLOCK_HASH          = 2048
 EC_DATA             = 262144
@@ -92,5 +93,3 @@ BLOCK_TRANSACTIONS = 200 # max number of tx in an L2 block
 
 BLS_DATA = 8192
 RLP_UTILS = 131072
-
-BLAKE2F = 8192
