@@ -143,7 +143,7 @@ func (p *RsParams) IsCodeword(v smartvectors.SmartVector) error {
 // the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
 // inverse-rate of the code. The code is systematic as the original vector is
 // interleaved within the encoded vector.
-func (p *RsParams) rsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVector {
+func (p *RsParams) RsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVector {
 
 	// Short path, v is a constant vector. It's encoding is also a constant vector
 	// with the same value.

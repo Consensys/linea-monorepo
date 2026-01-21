@@ -18,7 +18,7 @@ func TestReedSolomonExtDoesNotChangeEvaluation(t *testing.T) {
 
 	params := NewRsParams(polySize, _blowUpFactor)
 	vec := smartvectors.RandExt(1 << 10)
-	rsEncoded := params.rsEncodeExt(vec)
+	rsEncoded := params.RsEncodeExt(vec)
 
 	err := params.IsCodewordExt(rsEncoded)
 	require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestReedSolomonExtConstant(t *testing.T) {
 
 	params := NewRsParams(polySize, _blowUpFactor)
 	vec := smartvectors.NewConstantExt(fext.RandomElement(), polySize)
-	rsEncoded := params.rsEncodeExt(vec)
+	rsEncoded := params.RsEncodeExt(vec)
 
 	err := params.IsCodewordExt(rsEncoded)
 	require.NoError(t, err)

@@ -11,16 +11,17 @@ import (
 
 func Prove(
 	entryList []int,
+	polyLists [][]smartvectors.SmartVector,
 	encodedMatrices []EncodedMatrix,
 	trees []*smt_bls12377.Tree, alpha fext.Element) (*vortex.OpeningProof, [][]smt_bls12377.Proof) {
 
 	proof := &vortex.OpeningProof{}
 
-	_encodedMatrices := make([]smartvectors.SmartVector, 0, len(encodedMatrices))
-	for _, m := range encodedMatrices {
-		_encodedMatrices = append(_encodedMatrices, m...)
+	_polyLists := make([]smartvectors.SmartVector, 0, len(polyLists))
+	for _, m := range polyLists {
+		_polyLists = append(_polyLists, m...)
 	}
-	vortex.LinearCombination(proof, _encodedMatrices, alpha)
+	vortex.LinearCombination(proof, _polyLists, alpha)
 
 	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
 
