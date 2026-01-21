@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
@@ -12,6 +12,8 @@ import { IPlonkVerifier } from "../verifiers/interfaces/IPlonkVerifier.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
 import { IAcceptForcedTransactions } from "./forcedTransactions/interfaces/IAcceptForcedTransactions.sol";
+import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
+import { IAddressFilter } from "./forcedTransactions/interfaces/IAddressFilter.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
@@ -42,9 +44,16 @@ abstract contract LineaRollupBase is
   /// @notice The role required to set/remove  proof verifiers by type.
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
 
+  /// @notice The role required to set the address filter.
+  bytes32 public constant SET_ADDRESS_FILTER_ROLE = keccak256("SET_ADDRESS_FILTER_ROLE");
+
   /// @notice The role required to send forced transactions.
   bytes32 public constant FORCED_TRANSACTION_SENDER_ROLE = keccak256("FORCED_TRANSACTION_SENDER_ROLE");
 
+  /// @notice The role required to set the forced transaction fee.
+  bytes32 public constant FORCED_TRANSACTION_FEE_SETTER_ROLE = keccak256("FORCED_TRANSACTION_FEE_SETTER_ROLE");
+
+  /// @notice The role required to set the forced transaction fee.
   bytes32 internal constant EMPTY_HASH = 0x0;
 
   /// @dev The BLS Curve modulus value used.
@@ -61,7 +70,7 @@ abstract contract LineaRollupBase is
   uint256 internal constant POINT_EVALUATION_FIELD_ELEMENTS_LENGTH = 4096;
 
   /// @notice This is the ABI version and not the reinitialize version.
-  string private constant _CONTRACT_VERSION = "7.0";
+  string private constant _CONTRACT_VERSION = "8.0";
 
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 finalStateRootHash) private dataFinalStateRootHashes_DEPRECATED;
@@ -108,10 +117,17 @@ abstract contract LineaRollupBase is
   /// @dev The rolling hash for a forced transaction.
   mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) public forcedTransactionRollingHashes;
 
+  // TODO check the layout of these variables
+  /// @dev The forced transaction fee in wei.
+  uint256 public forcedTransactionFeeInWei;
+
+  /// @notice The address of the address filter.
+  IAddressFilter public addressFilter;
+
   /// @dev Keep 50 free storage slots for inheriting contracts.
   uint256[50] private __gap_LineaRollup;
 
-  /// @dev Total contract storage is 64 slots.
+  /// @dev Total contract storage is 66 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -152,21 +168,14 @@ abstract contract LineaRollupBase is
     currentL2BlockNumber = _initializationData.initialL2BlockNumber;
     stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
-    bytes32 genesisShnarf = _computeShnarf(
-      EMPTY_HASH,
-      EMPTY_HASH,
-      _initializationData.initialStateRootHash,
-      EMPTY_HASH,
-      EMPTY_HASH
-    );
-
-    currentFinalizedShnarf = genesisShnarf;
+    currentFinalizedShnarf = _genesisShnarf;
     currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(
       0,
       EMPTY_HASH,
       0,
       EMPTY_HASH,
-      _initializationData.genesisTimestamp
+      _initializationData.genesisTimestamp,
+      EMPTY_HASH
     );
 
     nextForcedTransactionNumber = 1;
@@ -195,6 +204,7 @@ abstract contract LineaRollupBase is
    * @return finalizedState The last finalized state hash.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
    * @return currentFinalizedL2BlockNumber The current finalized L2 block number.
+   * @return forcedTransactionFeeAmount The forced transaction fee.
    */
   function getRequiredForcedTransactionFields()
     external
@@ -202,38 +212,69 @@ abstract contract LineaRollupBase is
     returns (
       bytes32 finalizedState,
       bytes32 previousForcedTransactionRollingHash,
-      uint256 currentFinalizedL2BlockNumber
+      uint256 currentFinalizedL2BlockNumber,
+      uint256 forcedTransactionFeeAmount
     )
   {
     unchecked {
       finalizedState = currentFinalizedState;
       previousForcedTransactionRollingHash = forcedTransactionRollingHashes[nextForcedTransactionNumber - 1];
       currentFinalizedL2BlockNumber = currentL2BlockNumber;
+      forcedTransactionFeeAmount = forcedTransactionFeeInWei;
     }
+  }
+
+  /**
+   * @notice Sets the forced transaction fee.
+   * @dev FORCED_TRANSACTION_FEE_SETTER_ROLE is required to set the forced transaction fee.
+   * @param _forcedTransactionFeeInWei The forced transaction fee in wei.
+   */
+  function setForcedTransactionFee(
+    uint256 _forcedTransactionFeeInWei
+  ) external onlyRole(FORCED_TRANSACTION_FEE_SETTER_ROLE) {
+    require(_forcedTransactionFeeInWei > 0, IGenericErrors.ZeroValueNotAllowed());
+    forcedTransactionFeeInWei = _forcedTransactionFeeInWei;
+    emit ForcedTransactionFeeSet(_forcedTransactionFeeInWei);
   }
 
   /**
    * @notice Stores forced transaction details required for proving feedback loop.
    * @dev FORCED_TRANSACTION_SENDER_ROLE is required to store a forced transaction.
    * @dev The forced transaction number is incremented for the next transaction post storage.
-   * @param _forcedL2BlockNumber The maximum expected L2 block number the transaction will be processed by.
    * @param _forcedTransactionRollingHash The rolling hash for all the forced transaction fields.
-   * @return forcedTransactionNumber The unique forced transaction number for the transaction.
+   * @param _from The recovered signer's from address.
+   * @param _blockNumberDeadline The maximum expected L2 block number processing will occur by.
+   * @param _rlpEncodedSignedTransaction The RLP encoded type 02 transaction payload including signature.
    */
   function storeForcedTransaction(
-    uint256 _forcedL2BlockNumber,
-    bytes32 _forcedTransactionRollingHash
-  ) external virtual onlyRole(FORCED_TRANSACTION_SENDER_ROLE) returns (uint256 forcedTransactionNumber) {
+    bytes32 _forcedTransactionRollingHash,
+    address _from,
+    uint256 _blockNumberDeadline,
+    bytes calldata _rlpEncodedSignedTransaction
+  ) external payable virtual onlyRole(FORCED_TRANSACTION_SENDER_ROLE) {
     unchecked {
-      forcedTransactionNumber = nextForcedTransactionNumber++;
+      require(_rlpEncodedSignedTransaction.length > 0, IGenericErrors.ZeroLengthNotAllowed());
+      require(_blockNumberDeadline > 0, IGenericErrors.ZeroValueNotAllowed());
+      require(_from != address(0), IGenericErrors.ZeroAddressNotAllowed());
+      require(_forcedTransactionRollingHash != EMPTY_HASH, IGenericErrors.ZeroHashNotAllowed());
+
+      uint256 forcedTransactionNumber = nextForcedTransactionNumber++;
 
       require(
-        forcedTransactionL2BlockNumbers[forcedTransactionNumber - 1] < _forcedL2BlockNumber,
-        ForcedTransactionExistsForBlockOrIsTooLow(_forcedL2BlockNumber)
+        forcedTransactionL2BlockNumbers[forcedTransactionNumber - 1] < _blockNumberDeadline,
+        ForcedTransactionExistsForBlockOrIsTooLow(_blockNumberDeadline)
       );
 
       forcedTransactionRollingHashes[forcedTransactionNumber] = _forcedTransactionRollingHash;
-      forcedTransactionL2BlockNumbers[forcedTransactionNumber] = _forcedL2BlockNumber;
+      forcedTransactionL2BlockNumbers[forcedTransactionNumber] = _blockNumberDeadline;
+
+      emit ForcedTransactionAdded(
+        forcedTransactionNumber,
+        _from,
+        _blockNumberDeadline,
+        _forcedTransactionRollingHash,
+        _rlpEncodedSignedTransaction
+      );
     }
   }
 
@@ -265,6 +306,21 @@ abstract contract LineaRollupBase is
   }
 
   /**
+   * @notice Sets the address filter.
+   * @dev SET_ADDRESS_FILTER_ROLE is required to execute.
+   * @param _addressFilter The address filter value.
+   */
+  function setAddressFilter(address _addressFilter) external onlyRole(SET_ADDRESS_FILTER_ROLE) {
+    require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
+    address oldAddressFilter = address(addressFilter);
+
+    if (_addressFilter != oldAddressFilter) {
+      addressFilter = IAddressFilter(_addressFilter);
+      emit AddressFilterChanged(oldAddressFilter, _addressFilter);
+    }
+  }
+
+  /**
    * @notice Internal function to compute the shnarf more efficiently.
    * @dev Using assembly this way is cheaper gas wise.
    * @param _parentShnarf The shnarf of the parent data item.
@@ -272,6 +328,7 @@ abstract contract LineaRollupBase is
    * @param _finalStateRootHash The final state root hash of the data being submitted.
    * @param _dataEvaluationPoint The data evaluation point.
    * @param _dataEvaluationClaim The data evaluation claim.
+   * @return shnarf The computed shnarf.
    */
   function _computeShnarf(
     bytes32 _parentShnarf,
@@ -322,13 +379,17 @@ abstract contract LineaRollupBase is
       revert InvalidProofType();
     }
 
+    bytes32 finalForcedTransactionRollingHash = forcedTransactionRollingHashes[
+      _finalizationData.finalForcedTransactionNumber
+    ];
+
     _verifyProof(
       _computePublicInput(
         _finalizationData,
         lastFinalizedShnarf,
-        _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber),
+        _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber, finalForcedTransactionRollingHash),
         lastFinalizedBlockNumber,
-        forcedTransactionRollingHashes[_finalizationData.finalForcedTransactionNumber],
+        finalForcedTransactionRollingHash,
         IPlonkVerifier(verifier).getChainConfiguration()
       ),
       verifier,
@@ -340,13 +401,17 @@ abstract contract LineaRollupBase is
    * @notice Internal function to finalize compressed blocks.
    * @param _finalizationData The full finalization data.
    * @param _lastFinalizedBlock The last finalized block.
+   * @param _finalForcedTransactionRollingHash The rolling hash for the final forced transaction.
    * @return finalShnarf The final computed shnarf in finalizing.
    */
   function _finalizeBlocks(
     FinalizationDataV4 calldata _finalizationData,
-    uint256 _lastFinalizedBlock
+    uint256 _lastFinalizedBlock,
+    bytes32 _finalForcedTransactionRollingHash
   ) internal returns (bytes32 finalShnarf) {
     _validateL2ComputedRollingHash(_finalizationData.l1RollingHashMessageNumber, _finalizationData.l1RollingHash);
+
+    _validateFilteredAddresses(_finalizationData.filteredAddresses);
 
     bytes32 lastFinalizedState = currentFinalizedState;
 
@@ -357,7 +422,8 @@ abstract contract LineaRollupBase is
         _finalizationData.lastFinalizedL1RollingHash,
         _finalizationData.lastFinalizedForcedTransactionNumber,
         _finalizationData.lastFinalizedForcedTransactionRollingHash,
-        _finalizationData.lastFinalizedTimestamp
+        _finalizationData.lastFinalizedTimestamp,
+        _finalizationData.lastFinalizedBlockHash
       ) != lastFinalizedState
     ) {
       /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.
@@ -427,8 +493,9 @@ abstract contract LineaRollupBase is
       _finalizationData.l1RollingHashMessageNumber,
       _finalizationData.l1RollingHash,
       _finalizationData.finalForcedTransactionNumber,
-      forcedTransactionRollingHashes[_finalizationData.finalForcedTransactionNumber],
-      _finalizationData.finalTimestamp
+      _finalForcedTransactionRollingHash,
+      _finalizationData.finalTimestamp,
+      _finalizationData.finalBlockHash
     );
 
     unchecked {
@@ -439,6 +506,23 @@ abstract contract LineaRollupBase is
         _finalizationData.parentStateRootHash,
         _finalizationData.shnarfData.finalStateRootHash
       );
+    }
+  }
+
+  /**
+   * @notice Internal function to validate filtered addresses.
+   * @param _filteredAddresses The filtered addresses.
+   */
+  function _validateFilteredAddresses(address[] calldata _filteredAddresses) internal view {
+    if (_filteredAddresses.length > 0) {
+      IAddressFilter addressFilterCached = addressFilter;
+
+      for (uint256 i = 0; i < _filteredAddresses.length; i++) {
+        require(
+          addressFilterCached.addressIsFiltered(_filteredAddresses[i]),
+          AddressIsNotFiltered(_filteredAddresses[i])
+        );
+      }
     }
   }
 
@@ -479,15 +563,16 @@ abstract contract LineaRollupBase is
    *     _finalizationData.l1RollingHash,
    *     _finalizationData.lastFinalizedL1RollingHashMessageNumber,
    *     _finalizationData.l1RollingHashMessageNumber,
-   *     _finalizationData.lastFinalizedForcedTransactionNumber
-   *     _finalizationData.finalForcedTransactionNumber
    *     _finalizationData.lastFinalizedForcedTransactionRollingHash
    *     _finalForcedTransactionRollingHash,
+   *     _finalizationData.lastFinalizedForcedTransactionNumber
+   *     _finalizationData.finalForcedTransactionNumber
    *     _finalizationData.l2MerkleTreesDepth,
    *     keccak256(
    *         abi.encodePacked(_finalizationData.l2MerkleRoots)
    *     ),
-   *     _verifierChainConfiguration
+   *     _verifierChainConfiguration,
+   *     keccak256(abi.encodePacked(_finalizationData.filteredAddresses))
    *   )
    * )
    * Data is found at the following offsets:
@@ -508,10 +593,14 @@ abstract contract LineaRollupBase is
    * 0x1c0   lastFinalizedForcedTransactionNumber
    * 0x1e0   finalForcedTransactionNumber
    * 0x200   lastFinalizedForcedTransactionRollingHash
-   * 0x220   l2MerkleRootsLengthLocation
-   * 0x240   l2MessagingBlocksOffsetsLengthLocation
+   * 0x220   lastFinalizedBlockHash
+   * 0x240   finalBlockHash
+   * 0x260   l2MerkleRootsLengthLocation
+   * 0x280   l2MessagingBlocksOffsetsLengthLocation
    * Dynamic l2MerkleRootsLength
    * Dynamic l2MerkleRoots
+   * Dynamic filteredAddressesLength
+   * Dynamic filteredAddresses
    * Dynamic l2MessagingBlocksOffsetsLength (location depends on where l2MerkleRoots ends)
    * Dynamic l2MessagingBlocksOffsets (location depends on where l2MerkleRoots ends)
    * @param _finalizationData The full finalization data.
@@ -519,6 +608,7 @@ abstract contract LineaRollupBase is
    * @param _lastFinalizedBlockNumber The last finalized block number.
    * @param _finalForcedTransactionRollingHash The final processed forced transactions's rolling hash.
    * @param _verifierChainConfiguration The verifier chain configuration.
+   * @return publicInput The computed public input.
    */
   function _computePublicInput(
     FinalizationDataV4 calldata _finalizationData,
@@ -528,17 +618,27 @@ abstract contract LineaRollupBase is
     bytes32 _finalForcedTransactionRollingHash,
     bytes32 _verifierChainConfiguration
   ) private pure returns (uint256 publicInput) {
+    bytes32 hashedFilteredAddresses = keccak256(abi.encodePacked(_finalizationData.filteredAddresses));
+
     assembly {
       let mPtr := mload(0x40)
-      mstore(mPtr, _lastFinalizedShnarf)
-      mstore(add(mPtr, 0x20), _finalShnarf)
 
+      /**
+       * _lastFinalizedShnarf
+       * _finalShnarf
+       */
+      mstore(mPtr, _lastFinalizedShnarf)
+
+      mstore(add(mPtr, 0x20), _finalShnarf)
       /**
        * _finalizationData.lastFinalizedTimestamp
        * _finalizationData.finalTimestamp
        */
       calldatacopy(add(mPtr, 0x40), add(_finalizationData, 0xe0), 0x40)
 
+      /**
+       * _lastFinalizedBlockNumber
+       */
       mstore(add(mPtr, 0x80), _lastFinalizedBlockNumber)
 
       // _finalizationData.endBlockNumber
@@ -549,50 +649,47 @@ abstract contract LineaRollupBase is
        * _finalizationData.l1RollingHash
        * _finalizationData.lastFinalizedL1RollingHashMessageNumber
        * _finalizationData.l1RollingHashMessageNumber
-       * _finalizationData.l2MerkleTreesDepth
        */
-      calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x120), 0xA0)
+      calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x120), 0x80)
+
+      // lastFinalizedForcedTransactionRollingHash
+      calldatacopy(add(mPtr, 0x140), add(_finalizationData, 0x200), 0x20)
+
+      // finalForcedTransactionRollingHash
+      mstore(add(mPtr, 0x160), _finalForcedTransactionRollingHash)
 
       /**
-       * PLACEHOLDER: THIS WILL BE UPDATED ONCE PROVING CIRCUITS ARE READY
-       * _finalizationData.lastFinalizedL1RollingHash
-       * _finalizationData.l1RollingHash
-       * _finalizationData.lastFinalizedL1RollingHashMessageNumber
-       * _finalizationData.l1RollingHashMessageNumber
-       * _finalizationData.l2MerkleTreesDepth
        * _finalizationData.lastFinalizedForcedTransactionNumber
        * _finalizationData.finalForcedTransactionNumber
-       * _finalizationData.lastFinalizedForcedTransactionRollingHash
-       *
-       * calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x140), 0x100)
-       * // _finalForcedTransactionRollingHash
-       * mstore(add(mPtr, 0x1e0), _finalForcedTransactionRollingHash)
+       * _finalizationData.lastFinalizedBlockHash
+       * _finalizationData.finalBlockHash
        */
+      calldatacopy(add(mPtr, 0x180), add(_finalizationData, 0x1c0), 0x40)
+
+      calldatacopy(add(mPtr, 0x1c0), add(_finalizationData, 0x220), 0x40)
+      /**
+       * -> 1a0, 1c0, 1e0, 200,
+       * _finalizationData.l2MerkleTreesDepth
+       */
+      calldatacopy(add(mPtr, 0x200), add(_finalizationData, 0x1a0), 0x20)
 
       /**
        * @dev Note the following in hashing the _finalizationData.l2MerkleRoots array:
        * The second memory pointer and free pointer are offset by 0x20 to temporarily hash the array outside the scope of working memory,
-       * as we need the space left for the array hash to be stored at 0x160.
-       */
-      let mPtrMerkleRoot := add(mPtr, 0x180)
-
-      /*
-       * THIS WILL BE USED ONCE PROVING CIRCUITS ARE READY
-       * let mPtrMerkleRoot := add(mPtr, 0x200)
+       * as we need the space left for the array hash to be stored at 0x220.
        */
 
-      let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x220)))
+      let mPtrMerkleRoot := add(mPtr, 0x240)
+      let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x260)))
       let merkleRootsLen := calldataload(merkleRootsLengthLocation)
       calldatacopy(mPtrMerkleRoot, add(merkleRootsLengthLocation, 0x20), mul(merkleRootsLen, 0x20))
       let l2MerkleRootsHash := keccak256(mPtrMerkleRoot, mul(merkleRootsLen, 0x20))
-      mstore(add(mPtr, 0x160), l2MerkleRootsHash)
-      mstore(add(mPtr, 0x180), _verifierChainConfiguration)
 
-      /*
-       * PLACEHOLDER: THIS WILL BE USED ONCE PROVING CIRCUITS ARE READY
-       * publicInput := mod(keccak256(mPtr, 0x220), MODULO_R)
-       */
-      publicInput := mod(keccak256(mPtr, 0x1A0), MODULO_R)
+      mstore(add(mPtr, 0x220), l2MerkleRootsHash)
+      mstore(add(mPtr, 0x240), _verifierChainConfiguration)
+      mstore(add(mPtr, 0x260), hashedFilteredAddresses)
+
+      publicInput := mod(keccak256(mPtr, 0x280), MODULO_R)
     }
   }
 

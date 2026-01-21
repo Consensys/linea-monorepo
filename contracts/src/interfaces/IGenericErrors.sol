@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 /**
  * @title Interface declaring generic errors.
@@ -23,7 +23,17 @@ interface IGenericErrors {
   error ZeroValueNotAllowed();
 
   /**
+   * @dev Thrown when no ETH is sent.
+   */
+  error NoEthSent();
+
+  /**
    * @dev Thrown when the caller is not the ProxyAdmin.
    */
   error CallerNotProxyAdmin();
+
+  /**
+   * @dev Thrown when a parameter is the zero length.
+   */
+  error ZeroLengthNotAllowed();
 }

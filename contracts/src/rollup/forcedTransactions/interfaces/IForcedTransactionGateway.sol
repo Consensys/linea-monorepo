@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.30;
-
-import { RlpEncoder } from "../../../libraries/RlpEncoder.sol";
+pragma solidity ^0.8.33;
 
 /**
  * @title Interface to manage forced transactions on L1.
@@ -16,6 +14,7 @@ interface IForcedTransactionGateway {
    * @dev messageRollingHash The L2 computed L1 message rolling hash.
    * @dev forcedTransactionNumber The last finalized forced transaction processed on L2.
    * @dev forcedTransactionRollingHash The last finalized forced transaction's rolling hash processed on L2.
+   * @dev blockHash The last finalized block hash.
    */
   struct LastFinalizedState {
     uint256 timestamp;
@@ -23,6 +22,7 @@ interface IForcedTransactionGateway {
     bytes32 messageRollingHash;
     uint256 forcedTransactionNumber;
     bytes32 forcedTransactionRollingHash;
+    bytes32 blockHash;
   }
 
   /**
@@ -47,27 +47,21 @@ interface IForcedTransactionGateway {
     address to;
     uint256 value;
     bytes input;
-    RlpEncoder.AccessList[] accessList;
+    AccessList[] accessList;
     uint8 yParity;
     uint256 r;
     uint256 s;
   }
 
   /**
-   * @notice Emitted when a forced transaction is added.
-   * @param forcedTransactionNumber The indexed forced transaction number.
-   * @param from The recovered signer's from address.
-   * @param expectedBlockNumber The maximum expected L2 block number processing will occur by.
-   * @param forcedTransactionRollingHash The computed rolling Mimc based hash.
-   * @param rlpEncodedSignedTransaction The RLP encoded type 02 transaction payload including signature.
+   * @notice Supporting data for encoding an EIP-2930/1559 access lists.
+   * @dev contractAddress is the address where the storageKeys will be accessed.
+   * @dev storageKeys contains the list of keys expected to be accessed at contractAddress.
    */
-  event ForcedTransactionAdded(
-    uint256 indexed forcedTransactionNumber,
-    address from,
-    uint256 expectedBlockNumber,
-    bytes32 forcedTransactionRollingHash,
-    bytes rlpEncodedSignedTransaction
-  );
+  struct AccessList {
+    address contractAddress;
+    bytes32[] storageKeys;
+  }
 
   /**
    * @notice Emitted when the useAddressFilter toggle state changes.
@@ -126,6 +120,11 @@ interface IForcedTransactionGateway {
   error AddressFilterAlreadySet(bool requestedExistingStatus);
 
   /**
+   * @dev Thrown when the forced transaction fee is not met.
+   */
+  error ForcedTransactionFeeNotMet(uint256 expected, uint256 value);
+
+  /**
    * @notice Function to submit forced transactions.
    * @param _forcedTransaction The fields required for the transaction excluding chainId.
    * @param _lastFinalizedState The last finalized state validated to use the timestamp in block number calculation.
@@ -133,12 +132,12 @@ interface IForcedTransactionGateway {
   function submitForcedTransaction(
     Eip1559Transaction memory _forcedTransaction,
     LastFinalizedState memory _lastFinalizedState
-  ) external;
+  ) external payable;
 
   /**
    * @notice Function to toggle the usage of the address filter.
    * @dev Only callable by an account with the DEFAULT_ADMIN_ROLE.
    * @param _useAddressFilter Bool indicating whether or not to use the address filter.
    */
-  function toggleuseAddressFilter(bool _useAddressFilter) external;
+  function toggleUseAddressFilter(bool _useAddressFilter) external;
 }

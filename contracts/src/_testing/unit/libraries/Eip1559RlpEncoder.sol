@@ -5,9 +5,9 @@
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
-import { RlpEncoder } from "../../../libraries/RlpEncoder.sol";
+import { RlpEncoder } from "./RlpEncoder.sol";
 
 /**
  * @title Library for RLP Encoding a type 2 EIP-1559 transactions.

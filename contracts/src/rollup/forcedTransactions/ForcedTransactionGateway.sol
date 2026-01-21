@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 import { IGenericErrors } from "../../interfaces/IGenericErrors.sol";
 import { IAcceptForcedTransactions } from "./interfaces/IAcceptForcedTransactions.sol";
 import { IForcedTransactionGateway } from "./interfaces/IForcedTransactionGateway.sol";
 import { IAddressFilter } from "./interfaces/IAddressFilter.sol";
 import { Mimc } from "../../libraries/Mimc.sol";
-import { RlpEncoder } from "../../libraries/RlpEncoder.sol";
 import { FinalizedStateHashing } from "../../libraries/FinalizedStateHashing.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+
+import { LibRLP } from "solady/src/utils/LibRLP.sol";
 
 /**
  * @title Contract to manage forced transactions on L1.
@@ -16,11 +17,9 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
  */
 contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   using Mimc for *;
-  using RlpEncoder for *;
+  using LibRLP for *;
   using FinalizedStateHashing for *;
 
-  uint256 private constant UNSIGNED_TRANSACTION_FIELD_LENGTH = 9;
-  uint256 private constant SIGNED_TRANSACTION_FIELD_LENGTH = 12;
   address private constant PRECOMPILE_ADDRESS_LIMIT = address(21);
 
   /// @notice Contains the minimum gas allowed for a forced transaction.
@@ -81,7 +80,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   function submitForcedTransaction(
     Eip1559Transaction memory _forcedTransaction,
     LastFinalizedState memory _lastFinalizedState
-  ) external {
+  ) external payable {
     require(_forcedTransaction.gasLimit >= MIN_GAS_LIMIT, GasLimitTooLow());
     require(_forcedTransaction.gasLimit <= MAX_GAS_LIMIT, MaxGasLimitExceeded());
     require(_forcedTransaction.input.length <= MAX_INPUT_LENGTH_LIMIT, CalldataInputLengthLimitExceeded());
@@ -89,6 +88,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       _forcedTransaction.maxPriorityFeePerGas > 0 && _forcedTransaction.maxFeePerGas > 0,
       GasFeeParametersContainZero(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas)
     );
+
     require(
       _forcedTransaction.maxPriorityFeePerGas <= _forcedTransaction.maxFeePerGas,
       MaxPriorityFeePerGasHigherThanMaxFee(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas)
@@ -97,27 +97,14 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     require(_forcedTransaction.yParity <= 1, YParityGreaterThanOne(_forcedTransaction.yParity));
     require(_forcedTransaction.to >= address(PRECOMPILE_ADDRESS_LIMIT), ToAddressTooLow());
 
-    /// @dev Splitting into bytes concat causes mismatched values due to the access list.
-    /// @dev Placing here avoids stack issues.
-    bytes32 mimcHashedPayload = Mimc.hash(
-      abi.encode(
-        DESTINATION_CHAIN_ID,
-        _forcedTransaction.nonce,
-        _forcedTransaction.maxPriorityFeePerGas,
-        _forcedTransaction.maxFeePerGas,
-        _forcedTransaction.gasLimit,
-        _forcedTransaction.to,
-        _forcedTransaction.value,
-        _forcedTransaction.input,
-        _forcedTransaction.accessList
-      )
-    );
-
     (
       bytes32 currentFinalizedState,
       bytes32 previousForcedTransactionRollingHash,
-      uint256 currentFinalizedL2BlockNumber
+      uint256 currentFinalizedL2BlockNumber,
+      uint256 forcedTransactionFeeAmount
     ) = LINEA_ROLLUP.getRequiredForcedTransactionFields();
+
+    require(msg.value == forcedTransactionFeeAmount, ForcedTransactionFeeNotMet(forcedTransactionFeeAmount, msg.value));
 
     if (
       currentFinalizedState !=
@@ -126,7 +113,8 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
         _lastFinalizedState.messageRollingHash,
         _lastFinalizedState.forcedTransactionNumber,
         _lastFinalizedState.forcedTransactionRollingHash,
-        _lastFinalizedState.timestamp
+        _lastFinalizedState.timestamp,
+        _lastFinalizedState.blockHash
       )
     ) {
       /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.
@@ -149,26 +137,29 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       );
     }
 
-    bytes[] memory signedTransactionFields = new bytes[](SIGNED_TRANSACTION_FIELD_LENGTH);
-    signedTransactionFields[0] = RlpEncoder._encodeUint(DESTINATION_CHAIN_ID);
-    signedTransactionFields[1] = RlpEncoder._encodeUint(_forcedTransaction.nonce);
-    signedTransactionFields[2] = RlpEncoder._encodeUint(_forcedTransaction.maxPriorityFeePerGas);
-    signedTransactionFields[3] = RlpEncoder._encodeUint(_forcedTransaction.maxFeePerGas);
-    signedTransactionFields[4] = RlpEncoder._encodeUint(_forcedTransaction.gasLimit);
-    signedTransactionFields[5] = RlpEncoder._encodeAddress(_forcedTransaction.to);
-    signedTransactionFields[6] = RlpEncoder._encodeUint(_forcedTransaction.value);
-    signedTransactionFields[7] = RlpEncoder._encodeBytes(_forcedTransaction.input);
-    signedTransactionFields[8] = RlpEncoder._encodeAccessList(_forcedTransaction.accessList);
-    signedTransactionFields[9] = RlpEncoder._encodeUint(_forcedTransaction.yParity);
-    signedTransactionFields[10] = RlpEncoder._encodeUint(_forcedTransaction.r);
-    signedTransactionFields[11] = RlpEncoder._encodeUint(_forcedTransaction.s);
+    LibRLP.List memory accessList = _buildAccessList(_forcedTransaction.accessList);
+    LibRLP.List memory transactionFieldList = LibRLP.p();
+    transactionFieldList = LibRLP.p(transactionFieldList, DESTINATION_CHAIN_ID);
+    transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.nonce);
+    transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.maxPriorityFeePerGas);
+    transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.maxFeePerGas);
+    transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.gasLimit);
+
+    if (_forcedTransaction.to == address(0)) {
+      transactionFieldList = LibRLP.p(transactionFieldList, bytes(""));
+    } else {
+      transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.to);
+    }
+    transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.value);
+    transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.input);
+    transactionFieldList = LibRLP.p(transactionFieldList, accessList);
+
+    bytes32 hashedPayload = keccak256(abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList)));
 
     address signer;
     unchecked {
       signer = ecrecover(
-        keccak256(
-          abi.encodePacked(hex"02", RlpEncoder._encodeList(signedTransactionFields, UNSIGNED_TRANSACTION_FIELD_LENGTH))
-        ),
+        hashedPayload,
         _forcedTransaction.yParity + 27,
         bytes32(_forcedTransaction.r),
         bytes32(_forcedTransaction.s)
@@ -180,27 +171,41 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       require(!ADDRESS_FILTER.addressIsFiltered(_forcedTransaction.to), AddressIsFiltered());
     }
 
-    uint256 expectedBlockNumber;
+    uint256 blockNumberDeadline;
     unchecked {
       /// @dev The computation uses 1s block time making block number and seconds interchangable,
       ///      while the chain might currently differ at >1s, this gives additional inclusion time.
-      expectedBlockNumber =
+      blockNumberDeadline =
         currentFinalizedL2BlockNumber +
         block.timestamp -
         _lastFinalizedState.timestamp +
         L2_BLOCK_BUFFER;
     }
 
-    bytes32 forcedTransactionRollingHash = Mimc.hash(
-      abi.encode(previousForcedTransactionRollingHash, mimcHashedPayload, expectedBlockNumber, signer)
-    );
+    bytes32 hashedPayloadMsb;
+    bytes32 hashedPayloadLsb;
+    assembly {
+      hashedPayloadMsb := shr(128, hashedPayload)
+      hashedPayloadLsb := and(hashedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+    }
 
-    emit ForcedTransactionAdded(
-      LINEA_ROLLUP.storeForcedTransaction(expectedBlockNumber, forcedTransactionRollingHash),
+    transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.yParity);
+    transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.r);
+    transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.s);
+
+    LINEA_ROLLUP.storeForcedTransaction{ value: msg.value }(
+      Mimc.hash(
+        abi.encode(
+          previousForcedTransactionRollingHash,
+          hashedPayloadMsb,
+          hashedPayloadLsb,
+          blockNumberDeadline,
+          signer
+        )
+      ),
       signer,
-      expectedBlockNumber,
-      forcedTransactionRollingHash,
-      abi.encodePacked(hex"02", RlpEncoder._encodeList(signedTransactionFields))
+      blockNumberDeadline,
+      abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList))
     );
   }
 
@@ -209,9 +214,35 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
    * @dev Only callable by an account with the DEFAULT_ADMIN_ROLE.
    * @param _useAddressFilter Bool indicating whether or not to use the address filter.
    */
-  function toggleuseAddressFilter(bool _useAddressFilter) external onlyRole(DEFAULT_ADMIN_ROLE) {
+  function toggleUseAddressFilter(bool _useAddressFilter) external onlyRole(DEFAULT_ADMIN_ROLE) {
     require(useAddressFilter != _useAddressFilter, AddressFilterAlreadySet(_useAddressFilter));
     useAddressFilter = _useAddressFilter;
     emit AddressFilterSet(_useAddressFilter);
+  }
+
+  /**
+   * @notice Function to convert the transaction access list to a LibRLP.List.
+   * @param _accessList The transaction access list to convert.
+   * @return list The List object.
+   */
+  function _buildAccessList(AccessList[] memory _accessList) internal pure returns (LibRLP.List memory list) {
+    unchecked {
+      list = LibRLP.p();
+      for (uint256 i; i < _accessList.length; ++i) {
+        LibRLP.List memory keys = LibRLP.p();
+        bytes32[] memory ks = _accessList[i].storageKeys;
+        for (uint256 j; j < ks.length; ++j) {
+          bytes memory b = new bytes(32);
+          assembly {
+            mstore(add(b, 0x20), mload(add(ks, add(0x20, shl(5, j)))))
+          }
+          keys = LibRLP.p(keys, b);
+        }
+        LibRLP.List memory acct = LibRLP.p();
+        acct = LibRLP.p(acct, _accessList[i].contractAddress);
+        acct = LibRLP.p(acct, keys);
+        list = LibRLP.p(list, acct);
+      }
+    }
   }
 }

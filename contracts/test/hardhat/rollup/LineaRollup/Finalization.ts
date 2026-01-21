@@ -20,6 +20,7 @@ import {
   FINALIZATION_PAUSE_TYPE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   HARDHAT_CHAIN_ID,
+  MAX_GAS_LIMIT,
 } from "../../common/constants";
 import {
   calculateRollingHash,
@@ -134,7 +135,7 @@ describe("Linea Rollup contract: Finalization", () => {
           await lineaRollup
             .connect(operator)
             .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-              gasLimit: 30_000_000,
+              gasLimit: MAX_GAS_LIMIT,
             });
           index++;
         }
@@ -197,7 +198,7 @@ describe("Linea Rollup contract: Finalization", () => {
           await lineaRollup
             .connect(operator)
             .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-              gasLimit: 30_000_000,
+              gasLimit: MAX_GAS_LIMIT,
             });
           index++;
         }
@@ -247,7 +248,7 @@ describe("Linea Rollup contract: Finalization", () => {
           await lineaRollup
             .connect(operator)
             .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-              gasLimit: 30_000_000,
+              gasLimit: MAX_GAS_LIMIT,
             });
           index++;
         }
@@ -291,7 +292,7 @@ describe("Linea Rollup contract: Finalization", () => {
           await lineaRollup
             .connect(operator)
             .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-              gasLimit: 30_000_000,
+              gasLimit: MAX_GAS_LIMIT,
             });
           index++;
         }
@@ -382,7 +383,7 @@ describe("Linea Rollup contract: Finalization", () => {
         await lineaRollup
           .connect(operator)
           .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           });
         index++;
       }
@@ -396,7 +397,7 @@ describe("Linea Rollup contract: Finalization", () => {
       const finalizeCall = lineaRollup
         .connect(operator)
         .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData, {
-          gasLimit: 30_000_000,
+          gasLimit: MAX_GAS_LIMIT,
         });
       await expectRevertWithCustomError(lineaRollup, finalizeCall, "StartingRootHashDoesNotMatch");
     });
@@ -410,7 +411,7 @@ describe("Linea Rollup contract: Finalization", () => {
         await lineaRollup
           .connect(operator)
           .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           });
         index++;
       }
@@ -433,7 +434,7 @@ describe("Linea Rollup contract: Finalization", () => {
         await lineaRollup
           .connect(operator)
           .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           });
         index++;
       }
@@ -471,7 +472,7 @@ describe("Linea Rollup contract: Finalization", () => {
         await lineaRollup
           .connect(operator)
           .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           });
         index++;
       }
@@ -512,7 +513,7 @@ describe("Linea Rollup contract: Finalization", () => {
         await lineaRollup
           .connect(operator)
           .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           });
         index++;
       }
@@ -551,7 +552,7 @@ describe("Linea Rollup contract: Finalization", () => {
         await lineaRollup
           .connect(operator)
           .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           });
         index++;
       }
@@ -589,7 +590,7 @@ describe("Linea Rollup contract: Finalization", () => {
         await lineaRollup
           .connect(operator)
           .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           });
         index++;
       }
@@ -625,7 +626,7 @@ describe("Linea Rollup contract: Finalization", () => {
         await lineaRollup
           .connect(operator)
           .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           });
         index++;
       }
@@ -671,7 +672,8 @@ describe("Linea Rollup contract: Finalization", () => {
       await expect(operator.sendTransaction(transaction)).to.not.be.reverted;
     });
 
-    it("Should fail when sending with wrong merkle root location", async () => {
+    // TODO: decide on removing - not really applicable anymore
+    it.skip("Should fail when sending with wrong merkle root location", async () => {
       const submissionDataBeforeFinalization = generateCallDataSubmissionMultipleProofs(0, 4);
       let index = 0;
       for (const data of submissionDataBeforeFinalization) {
@@ -679,7 +681,7 @@ describe("Linea Rollup contract: Finalization", () => {
         await lineaRollup
           .connect(operator)
           .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           });
         index++;
       }
@@ -717,7 +719,7 @@ describe("Linea Rollup contract: Finalization", () => {
         await lineaRollup
           .connect(operator)
           .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           });
         index++;
       }

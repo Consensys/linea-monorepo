@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { IPauseManager } from "../../security/pausing/interfaces/IPauseManager.sol";
 import { IPermissionsManager } from "../../security/access/interfaces/IPermissionsManager.sol";
@@ -72,7 +72,10 @@ interface ILineaRollupBase {
    * @dev lastFinalizedForcedTransactionNumber
    * @dev finalForcedTransactionNumber
    * @dev lastFinalizedForcedTransactionRollingHash
+   * @dev lastFinalizedBlockHash is the last finalized block hash.
+   * @dev finalBlockHash is the final block hash.
    * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockNumber.
+   * @dev filteredAddresses is an array of addresses that are filtered from forced transactions.
    * @dev l2MessagingBlocksOffsets indicates by offset from currentL2BlockNumber which L2 blocks contain MessageSent events.
    */
   struct FinalizationDataV4 {
@@ -89,7 +92,10 @@ interface ILineaRollupBase {
     uint256 lastFinalizedForcedTransactionNumber;
     uint256 finalForcedTransactionNumber;
     bytes32 lastFinalizedForcedTransactionRollingHash;
+    bytes32 lastFinalizedBlockHash;
+    bytes32 finalBlockHash;
     bytes32[] l2MerkleRoots;
+    address[] filteredAddresses;
     bytes l2MessagingBlocksOffsets;
   }
 
@@ -133,6 +139,10 @@ interface ILineaRollupBase {
     bytes32 finalStateRootHash
   );
 
+  /**
+   * @notice Emitted when the LineaRollupBase contract is initialized.
+   * @param InitializationData The initialization data.
+   */
   event LineaRollupBaseInitialized(BaseInitializationData InitializationData);
 
   /**
@@ -174,6 +184,11 @@ interface ILineaRollupBase {
    * @dev Thrown when the rollup is missing a forced transaction in the finalization block range.
    */
   error FinalizationDataMissingForcedTransaction(uint256 nextForcedTransactionNumber);
+
+  /**
+   * @dev Thrown when an address is not filtered and expected to be.
+   */
+  error AddressIsNotFiltered(address addressNotFiltered);
 
   /**
    * @notice Returns the ABI version and not the reinitialize version.

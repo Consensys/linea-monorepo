@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { LineaRollupBase } from "./LineaRollupBase.sol";
 import { ILivenessRecovery } from "./interfaces/ILivenessRecovery.sol";
@@ -34,13 +34,15 @@ abstract contract LivenessRecovery is LineaRollupBase, ILivenessRecovery {
    * @param _lastFinalizedForcedTransactionNumber Last finalized forced transaction number.
    * @param _lastFinalizedForcedTransactionRollingHash Last finalized forced transaction rolling hash.
    * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
+   * @param _lastFinalizedBlockHash Last finalized L2 block hash.
    */
   function setLivenessRecoveryOperator(
     uint256 _messageNumber,
     bytes32 _rollingHash,
     uint256 _lastFinalizedForcedTransactionNumber,
     bytes32 _lastFinalizedForcedTransactionRollingHash,
-    uint256 _lastFinalizedTimestamp
+    uint256 _lastFinalizedTimestamp,
+    bytes32 _lastFinalizedBlockHash
   ) external {
     if (block.timestamp < _lastFinalizedTimestamp + SIX_MONTHS_IN_SECONDS) {
       revert LastFinalizationTimeNotLapsed();
@@ -52,7 +54,8 @@ abstract contract LivenessRecovery is LineaRollupBase, ILivenessRecovery {
         _rollingHash,
         _lastFinalizedForcedTransactionNumber,
         _lastFinalizedForcedTransactionRollingHash,
-        _lastFinalizedTimestamp
+        _lastFinalizedTimestamp,
+        _lastFinalizedBlockHash
       )
     ) {
       revert FinalizationStateIncorrect(
@@ -62,7 +65,8 @@ abstract contract LivenessRecovery is LineaRollupBase, ILivenessRecovery {
           _rollingHash,
           _lastFinalizedForcedTransactionNumber,
           _lastFinalizedForcedTransactionRollingHash,
-          _lastFinalizedTimestamp
+          _lastFinalizedTimestamp,
+          _lastFinalizedBlockHash
         )
       );
     }
