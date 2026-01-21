@@ -135,6 +135,13 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless (cur
 
     // Fill out Validator Witness fields
     const headerByParentJson = await fetchBeaconHeaderByParentRoot(beaconHeaderRoot, beaconRpcUrl);
+    if (!headerByParentJson.data || !Array.isArray(headerByParentJson.data) || headerByParentJson.data.length === 0) {
+      throw new Error(
+        `No beacon headers found for parent root ${beaconHeaderRoot} at ${beaconRpcUrl}. ` +
+          `This may occur during chain reorganization, timing issues, or if the parent root doesn't exist. ` +
+          `Please verify the parent root and try again.`,
+      );
+    }
     const headerByParentSlot = headerByParentJson.data[0].header.message.slot;
     const headerByParentTimestamp = stateView.genesisTime + headerByParentSlot * 12;
 
