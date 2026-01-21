@@ -234,8 +234,21 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    */
   private async _handleNoRebalance(): Promise<void> {
     // Handle edge case where funds on the YieldManager
-    const yieldManagerBalance = await this.yieldManagerContractClient.getBalance();
+    const [yieldManagerBalance, targetReserveDeficit] = await Promise.all([
+      this.yieldManagerContractClient.getBalance(),
+      this.yieldManagerContractClient.getTargetReserveDeficit(),
+    ]);
     if (yieldManagerBalance > this.minWithdrawalThresholdEth * ONE_ETHER) {
+      // Must amend target deficit or else fundYieldProvider reverts
+      if (targetReserveDeficit > 0n) {
+        const withdrawalResult = await attempt(
+          this.logger,
+          () => this.yieldManagerContractClient.safeWithdrawFromYieldProvider(this.yieldProvider, targetReserveDeficit),
+          "_handleNoRebalance - safeWithdrawFromYieldProvider failed (tolerated)",
+        );
+        await this.operationModeMetricsRecorder.recordSafeWithdrawalMetrics(this.yieldProvider, withdrawalResult);
+      }
+
       const transferFundsResult = await attempt(
         this.logger,
         () => this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, yieldManagerBalance),

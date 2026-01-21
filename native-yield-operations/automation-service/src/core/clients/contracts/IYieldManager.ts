@@ -22,6 +22,7 @@ export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient 
   reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TTransactionReceipt>;
   unstake(yieldProvider: Address, withdrawalParams: WithdrawalRequests): Promise<TTransactionReceipt>;
   safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
+  safeWithdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
   pauseStaking(yieldProvider: Address): Promise<TTransactionReceipt>;
   unpauseStaking(yieldProvider: Address): Promise<TTransactionReceipt>;
   progressPendingOssification(yieldProvider: Address): Promise<TTransactionReceipt>;

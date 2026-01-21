@@ -364,6 +364,35 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   }
 
   /**
+   * Safely withdraws funds from a yield provider.
+   *
+   * @param {Address} yieldProvider - The yield provider address.
+   * @param {bigint} amount - The amount to withdraw from the yield provider in wei.
+   * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
+   */
+  async safeWithdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
+    this.logger.info(
+      `safeWithdrawFromYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
+    );
+    const calldata = encodeFunctionData({
+      abi: this.contract.abi,
+      functionName: "safeWithdrawFromYieldProvider",
+      args: [yieldProvider, amount],
+    });
+
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(
+      this.contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
+    this.logger.info(
+      `safeWithdrawFromYieldProvider succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
+    );
+    return txReceipt;
+  }
+
+  /**
    * Pauses staking for a yield provider.
    *
    * @param {Address} yieldProvider - The yield provider address.
