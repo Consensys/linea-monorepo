@@ -22,8 +22,9 @@ import {
   ONE_ETHER,
 } from "../../common/constants";
 import { ClaimMessageWithProofParams, YieldManagerInitializationData } from "./types";
-import { generateLidoUnstakePermissionlessWitness, randomBytes32 } from "./proof";
+import { generateLidoUnstakePermissionlessWitness } from "./proof";
 import { encodeSendMessage } from "../../common/helpers";
+import { randomBytes32 } from "../../../../common/helpers/encoding";
 import { BaseContract } from "ethers";
 
 // TODO - Existence of this setup function means that YieldManager has invariants that withdraw cannot underflow for userFunds and userFundsInYieldProvidersTotal

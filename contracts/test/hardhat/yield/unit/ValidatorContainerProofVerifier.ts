@@ -9,7 +9,6 @@ import {
   generateEIP4478Witness,
   generateValidatorContainer,
   prepareLocalMerkleTree,
-  randomBytes32,
   randomInt,
   setBeaconBlockRoot,
 } from "../helpers/proof";
@@ -22,6 +21,7 @@ import {
   SLOTS_PER_EPOCH,
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import { randomBytes32 } from "../../../../common/helpers/encoding";
 import { expectEvent } from "../../common/helpers/expectations";
 
 describe("ValidatorContainerProofVerifier", () => {
