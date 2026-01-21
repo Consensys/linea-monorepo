@@ -133,7 +133,7 @@ public class TraceSection {
                 .getCodeFragmentIndexByMetaData(
                     commonValues.callFrame().byteCodeAddress(),
                     commonValues.callFrame().byteCodeDeploymentNumber(),
-                    commonValues.callFrame().isDeployment())
+                    commonValues.callFrame().isDeployment(), commonValues.callFrame().delegationNumber())
             : 0);
     commonValues.contextNumberNew(computeContextNumberNew());
 
