@@ -204,19 +204,14 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("increments counter when amount is negative", () => {
+    it("does not increment counter when amount is negative", () => {
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
       updater.recordRebalance(RebalanceDirection.UNSTAKE, -10);
 
-      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
-      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
-        { direction: RebalanceDirection.UNSTAKE },
-        -10,
-      );
+      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
     });
 
     it("increments counter when direction is NONE", () => {

@@ -245,6 +245,7 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    * @param {number} amountGwei - The rebalance amount in gwei.
    */
   public recordRebalance(direction: RebalanceDirection, amountGwei: number): void {
+    if (amountGwei < 0) return;
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
       { direction },
