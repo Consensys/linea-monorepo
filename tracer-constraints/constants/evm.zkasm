@@ -138,4 +138,4 @@ const EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND=1024
 ;; const SECP256K1N = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f
 const SECP256K1N_DIVIDED_BY_TWO = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffff7ffffe17
 const MAGIC = 0x05
-
+const DELEGATION_PREFIX = 0xef0100

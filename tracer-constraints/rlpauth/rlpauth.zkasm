@@ -238,6 +238,36 @@ pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit 
     return
 }
 
+pub fn keccak_for_code_hash(address u160, h u256) -> (dummy u1) {
+    var limb u128
+    var limb_size u8
+
+    var address_hi u32
+    var address_lo u128
+    var h_lo u128
+    address_hi, address_lo = address
+
+    ;; limb
+    ;; data
+    limb = rpad_128(DELEGATION_PREFIX) ;; left_aligned_prefix
+    limb = rpad_128(address_hi) ;; left_aligned_address_hi
+    limb = address_lo ;; left_aligned_address_lo
+
+    ;; result
+    limb, h_lo = h ;; h_hi
+    limb = h_lo ;; h_lo
+
+    ;; limb_size
+    limb_size = 3 ;; DELEGATION_PREFIX
+    limb_size = 4 ;; address_hi
+    limb_size = 16 ;; address_lo
+
+    ;; TODO: lookup to SHAKIRA for keccak computation
+
+    dummy = 0
+    return
+}
+
 ;; TODO: functions to be deleted or moved elsewhere
 
 ;; fn compute_rlp_integer(integer u256) -> (rlp_prefix_required u1, integer_hi_is_nonzero u1, rlp_prefix_limb u128, leading_limb u128, trailing_limb u128, leading_limb_byte_size u8) {
@@ -261,21 +291,5 @@ pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit 
 ;;     ;; rlp_prefix_limb (if rlp_prefix_required == 1)
 ;;     ;; leading_limb
 ;;     ;; trailing_limb (if integer_hi_is_nonzero == 1)
-;;     return
-;; }
-
-;; keccak_output is a prediction to be confirmed by the prover
-;; fn keccak(keccak_input u184, 
-;; keccak_output u256) -> (keccak_fails u1) {
-;;     ;; extract keccak_input and assign to limb
-;;     var limb u128
-;;     var left_aligned_prefix u24
-;;     var left_aligned_address_hi u32
-;;     var left_aligned_address_lo u128
-;;     left_aligned_prefix, left_aligned_address_hi, left_aligned_address_lo = keccak_input
-;;     limb = rpad_128(left_aligned_prefix)
-;;     limb = rpad_128(left_aligned_address_hi)
-;;     limb = rpad_128(left_aligned_address_lo)
-;;     keccak_fails = 0
 ;;     return
 ;; }
