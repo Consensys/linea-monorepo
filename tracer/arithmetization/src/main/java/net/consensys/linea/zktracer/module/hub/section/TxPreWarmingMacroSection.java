@@ -82,7 +82,7 @@ public class TxPreWarmingMacroSection {
                               isAccountWarm,
                               deploymentNumber,
                               false,
-                              hub.deploymentNumberOf(address));
+                              hub.delegationNumberOf(address));
 
                   final AccountSnapshot postWarmingAccountSnapshot =
                       preWarmingAccountSnapshot.deepCopy().turnOnWarmth();

@@ -933,7 +933,7 @@ public final class Hub implements Module {
       final Address address,
       final int deploymentNumber,
       final boolean deploymentStatus,
-      int delegationNumber) {
+      final int delegationNumber) {
     return this.romLex()
         .getCodeFragmentIndexByMetadata(
             ContractMetadata.make(address, deploymentNumber, deploymentStatus, delegationNumber));
