@@ -17,10 +17,12 @@ import org.hyperledger.besu.datatypes.Hash;
  * @param transactionHash The transaction hash
  * @param from The sender address
  * @param blockNumber The block number where the transaction was tried (final outcome)
+ * @param blockTimestamp The timestamp of the block (seconds since epoch)
  * @param inclusionResult The result of the inclusion attempt
  */
 public record ForcedTransactionStatus(
     Hash transactionHash,
     Address from,
     long blockNumber,
+    long blockTimestamp,
     ForcedTransactionInclusionResult inclusionResult) {}

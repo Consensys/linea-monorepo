@@ -37,6 +37,7 @@ import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
  * {
  *   "result": {
  *     "blockNumber": "0xeff35f",
+ *     "blockTimestamp": "0x65a1b2c3",
  *     "from": "0x6221a9c005f6e47eb398fd867784cacfdcfff4e7",
  *     "inclusionResult": "BAD_NONCE",
  *     "transactionHash": "0xTRANSACTION_HASH"
@@ -146,6 +147,9 @@ public class LineaGetForcedTransactionInclusionStatus {
     @JsonProperty("blockNumber")
     public final String blockNumber;
 
+    @JsonProperty("blockTimestamp")
+    public final String blockTimestamp;
+
     @JsonProperty("from")
     public final String from;
 
@@ -157,6 +161,7 @@ public class LineaGetForcedTransactionInclusionStatus {
 
     public InclusionStatusResponse(final ForcedTransactionStatus status) {
       this.blockNumber = "0x" + Long.toHexString(status.blockNumber());
+      this.blockTimestamp = "0x" + Long.toHexString(status.blockTimestamp());
       this.from = status.from().toHexString();
       this.inclusionResult = status.inclusionResult().name();
       this.transactionHash = status.transactionHash().toHexString();

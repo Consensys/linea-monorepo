@@ -123,6 +123,7 @@ public class LineaForcedTransactionPool implements ForcedTransactionPoolService 
   @Override
   public void processForBlock(
       final long blockNumber,
+      final long blockTimestamp,
       final BlockTransactionSelectionService blockTransactionSelectionService) {
 
     if (pendingQueue.isEmpty()) {
@@ -175,7 +176,7 @@ public class LineaForcedTransactionPool implements ForcedTransactionPoolService 
 
       if (result.selected()) {
         pendingQueue.pollFirst();
-        recordStatus(ftx, blockNumber, INCLUDED);
+        recordStatus(ftx, blockNumber, blockTimestamp, INCLUDED);
         log.atInfo()
             .setMessage("action=forced_tx_included txHash={} blockNumber={} index={}")
             .addArgument(ftx.txHash()::toHexString)
@@ -192,7 +193,7 @@ public class LineaForcedTransactionPool implements ForcedTransactionPoolService 
         if (index == 0 && !inclusionResult.shouldRetry()) {
           // Final rejection at index 0 with known reason - remove and record status
           pendingQueue.pollFirst();
-          recordStatus(ftx, blockNumber, inclusionResult);
+          recordStatus(ftx, blockNumber, blockTimestamp, inclusionResult);
           log.atInfo()
               .setMessage(
                   "action=forced_tx_rejected txHash={} blockNumber={} index=0 selectionResult={} inclusionResult={}")
@@ -237,10 +238,11 @@ public class LineaForcedTransactionPool implements ForcedTransactionPoolService 
   private void recordStatus(
       final ForcedTransaction ftx,
       final long blockNumber,
+      final long blockTimestamp,
       final ForcedTransactionInclusionResult result) {
     final ForcedTransactionStatus status =
         new ForcedTransactionStatus(
-            ftx.txHash(), ftx.transaction().getSender(), blockNumber, result);
+            ftx.txHash(), ftx.transaction().getSender(), blockNumber, blockTimestamp, result);
     statusCache.put(ftx.txHash(), status);
     inclusionResultCounters.get(result).incrementAndGet();
   }

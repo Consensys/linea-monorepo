@@ -91,6 +91,7 @@ class GetForcedTransactionInclusionStatusResponse :
 
   data class InclusionStatus(
     val blockNumber: String,
+    val blockTimestamp: String,
     val from: String,
     val inclusionResult: String,
     val transactionHash: String,

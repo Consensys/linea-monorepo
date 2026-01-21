@@ -127,7 +127,8 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final ProcessableBlockHeader pendingBlockHeader,
       final List<? extends PendingTransaction> candidatePendingTransactions) {
     try {
-      forcedTransactionPoolService.processForBlock(pendingBlockHeader.getNumber(), bts);
+      forcedTransactionPoolService.processForBlock(
+          pendingBlockHeader.getNumber(), pendingBlockHeader.getTimestamp(), bts);
       commit(bts);
 
       checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
