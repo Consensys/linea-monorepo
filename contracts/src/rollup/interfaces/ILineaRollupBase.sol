@@ -23,6 +23,7 @@ interface ILineaRollupBase {
    * @param unpauseTypeRoles The list of unpause types to associate with roles.
    * @param defaultAdmin The account to be given DEFAULT_ADMIN_ROLE on initialization.
    * @param shnarfProvider The address of the shnarf providing contract. Default is address(this).
+   * @param addressFilter The address of the address filter.
    */
   struct BaseInitializationData {
     bytes32 initialStateRootHash;
@@ -36,6 +37,7 @@ interface ILineaRollupBase {
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
     address defaultAdmin;
     address shnarfProvider;
+    address addressFilter;
   }
 
   /**
