@@ -622,9 +622,17 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       this.logger.info("_getRebalanceRequirements - result", result);
       return result;
     } else {
+      // Cap staking amount to prevent l1MessageServiceBalance from falling below effectiveTargetWithdrawalReserve,
+      // which would create a target reserve deficit which will cause YieldManager::fundYieldProvider revert
+      const stakingRebalanceCeiling = l1MessageServiceBalance - effectiveTargetWithdrawalReserve;
+      this.logger.info(`_getRebalanceRequirements - stakingRebalanceCeiling=${stakingRebalanceCeiling}`);
+
       const result = {
         rebalanceDirection: RebalanceDirection.STAKE,
-        rebalanceAmount: absRebalanceAmountAfterQuota,
+        rebalanceAmount:
+          absRebalanceAmountAfterQuota > stakingRebalanceCeiling
+            ? stakingRebalanceCeiling
+            : absRebalanceAmountAfterQuota,
       };
       this.logger.info("_getRebalanceRequirements - result", result);
       return result;
