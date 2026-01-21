@@ -79,7 +79,7 @@ fs-responses-directory = "/data/prover/v3/aggregation/responses"
 #fs-responses-directory = "/data/prover/v3/aggregation/responses"
 
 [traces]
-expected-traces-api-version = "beta-v4.4-rc7"
+expected-traces-api-version = "e2e-dev-small-fields-v1"
 [traces.counters]
 endpoints = ["http://traces-node:8545/"]
 request-limit-per-endpoint = 1
@@ -96,7 +96,7 @@ backoff-delay = "PT1S"
 failures-warning-threshold = 10
 
 [state-manager]
-version = "2.3.0"
+version = "3.0.0"
 endpoints = ["http://shomei:8888/"]
 request-limit-per-endpoint = 3
 [state-manager.request-retries]

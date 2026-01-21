@@ -16,18 +16,95 @@ requests_root_dir = "/data/prover/v3/compression"
 dict_paths = ["/opt/linea/prover/lib/compressor/compressor_dict.bin", "/opt/linea/prover/lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
-prover_mode = "dev"
-num_proofs = [10]
-allowed_inputs = [
-    "execution-dummy",
-    "blob-decompression-dummy",
-    "blob-decompression-v0",
-]
-verifier_id = 0
-requests_root_dir = "/data/prover/v3/aggregation"
+prover_mode = "full"
+requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/aggregation"
+num_proofs = [10, 20, 50, 100, 200, 400]
+# allowed_inputs = ["execution", "execution-large", "execution-limitless", "blob-decompression-v0", "blob-decompression-v1"]
+# Conversion to is_allowed_circuit_id bitmask (MAINNET - no dummy circuits):
+#   execution-dummy (ID 0, bit 0) = 0 → DISALLOWED (not in allowed_inputs)
+#   blob-decompression-dummy (ID 1, bit 1) = 0 → DISALLOWED
+#   emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED
+#   execution (ID 3, bit 3) = 1 → ALLOWED
+#   execution-large (ID 4, bit 4) = 1 → ALLOWED
+#   execution-limitless (ID 5, bit 5) = 1 → ALLOWED
+#   blob-decompression-v0 (ID 6, bit 6) = 1 → ALLOWED
+#   blob-decompression-v1 (ID 7, bit 7) = 1 → ALLOWED
+# Binary: 0b11111000 = 248 (decimal)
+is_allowed_circuit_id = 248
+verifier_id = 1
+
+[public_input_interconnection]
+max_nb_decompression = 400
+max_nb_execution = 400
+max_nb_circuits = 400
+execution_max_nb_msg = 16
+l2_msg_merkle_depth = 5
+l2_msg_max_nb_merkle = 200
 
 [layer2]
 chain_id = 1337
 base_fee = 7
 coin_base = "0x8F81e2E3F8b46467523463835F965fFE476E1c9E"
 message_service_contract = "0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
+
+[traces_limits]
+modules = [
+    {module = "", limit = 131072, limit_large = 262144}, # default module limit
+    {module = "ADD", limit = 262144, limit_large = 524288},
+    {module = "BIN", limit = 262144, limit_large = 524288},
+    {module = "BLAKE_MODEXP_DATA", limit = 16384, limit_large = 32768},
+    {module = "BLOCK_DATA", limit = 4096, limit_large = 8192},
+    {module = "BLOCK_HASH", limit = 2048, limit_large = 4096},
+    {module = "EC_DATA", limit = 65536, limit_large = 131072},
+    {module = "EUC", limit = 65536, limit_large = 131072},
+    {module = "EXP", limit = 65536, limit_large = 131072},
+    {module = "EXT", limit = 524288, limit_large = 1048576},
+    {module = "GAS", limit = 65536, limit_large = 131072},
+    {module = "HUB", limit = 2097152, limit_large = 4194304},
+    {module = "LOG_DATA", limit = 65536, limit_large = 131072},
+    {module = "LOG_INFO", limit = 4096, limit_large = 8192},
+    {module = "MMIO", limit = 2097152, limit_large = 4194304},
+    {module = "MMU", limit = 1048576, limit_large = 2097152},
+    {module = "MOD", limit = 131072, limit_large = 262144},
+    {module = "MUL", limit = 65536, limit_large = 131072},
+    {module = "MXP", limit = 524288, limit_large = 1048576},
+    {module = "OOB", limit = 262144, limit_large = 524288},
+    {module = "RLP_ADDR", limit = 4096, limit_large = 8192},
+    {module = "RLP_TXN", limit = 131072, limit_large = 262144},
+    {module = "RLP_TXN_RCPT", limit = 65536, limit_large = 131072},
+    {module = "ROM", limit = 8388608, limit_large = 8388608},
+    {module = "ROM_LEX", limit = 1024, limit_large = 2048},
+    {module = "SHAKIRA_DATA", limit = 65536, limit_large = 65536},
+    {module = "SHF", limit = 262144, limit_large = 524288},
+    {module = "STP", limit = 16384, limit_large = 32768},
+    {module = "TRM", limit = 32768, limit_large = 65536},
+    {module = "TXN_DATA", limit = 8192, limit_large = 16384},
+    {module = "WCP", limit = 262144, limit_large = 524288},
+    {module = "PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS", limit = 128, limit_large = 256},
+    {module = "PRECOMPILE_SHA2_BLOCKS", limit = 200, limit_large = 400},
+    {module = "PRECOMPILE_RIPEMD_BLOCKS", limit = 0, limit_large = 0},
+    {module = "PRECOMPILE_MODEXP_EFFECTIVE_CALLS", limit = 32, limit_large = 64},
+    {module = "PRECOMPILE_MODEXP_EFFECTIVE_CALLS_4096", limit = 1, limit_large = 1},
+    {module = "PRECOMPILE_ECADD_EFFECTIVE_CALLS", limit = 256, limit_large = 512},
+    {module = "PRECOMPILE_ECMUL_EFFECTIVE_CALLS", limit = 40, limit_large = 80},
+    {module = "PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS", limit = 16, limit_large = 32},
+    {module = "PRECOMPILE_ECPAIRING_MILLER_LOOPS", limit = 64, limit_large = 128},
+    {module = "PRECOMPILE_ECPAIRING_G2_MEMBERSHIP_CALLS", limit = 64, limit_large = 128},
+    {module = "PRECOMPILE_BLAKE_EFFECTIVE_CALLS", limit = 0, limit_large = 0},
+    {module = "PRECOMPILE_BLAKE_ROUNDS", limit = 0, limit_large = 0},
+    {module = "BLOCK_KECCAK", limit = 8192, limit_large = 8192},
+    {module = "BLOCK_L1_SIZE", limit = 1000000, limit_large = 1000000, is_not_scalable = true},
+    {module = "BLOCK_L2_L1_LOGS", limit = 16, limit_large = 16, is_not_scalable = true},
+    {module = "BLOCK_TRANSACTIONS", limit = 300, limit_large = 300},
+    {module = "BIN_REFERENCE_TABLE", limit = 262144, limit_large = 262144, is_not_scalable = true},
+    {module = "SHF_REFERENCE_TABLE", limit = 4096, limit_large = 4096, is_not_scalable = true},
+    {module = "INSTRUCTION_DECODER", limit = 512, limit_large = 512, is_not_scalable = true},
+    {module = "U20", limit = 131072, limit_large = 262144},
+    {module = "U32", limit = 131072, limit_large = 262144},
+    {module = "U36", limit = 131072, limit_large = 262144},
+    {module = "U64", limit = 131072, limit_large = 262144},
+    {module = "U128", limit = 131072, limit_large = 262144},
+    {module = "SHOMEI_MERKLE_PROOFS", limit = 8192, limit_large = 16384},
+]
+
+
