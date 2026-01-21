@@ -61,7 +61,7 @@ func (s *ProverState[K, V]) SubTreeRoot() Bytes32 {
 // tree.
 func (s *ProverState[K, V]) FindKey(k K) (int64, bool) {
 	// We do so with a linear scan to simplify (since it is only for testing)
-	hkey := hash(s.Config(), k)
+	hkey := Hash(s.Config(), k)
 	for _, i := range s.Data.ListAllKeys() {
 		leafOpening := s.Data.MustGet(i).LeafOpening
 		if hkey == leafOpening.HKey {
@@ -91,7 +91,7 @@ func (s *ProverState[K, V]) ListAllKeys() []K {
 // It assumes that "k" is not stored in the tree.
 func (s *ProverState[K, V]) findSandwich(k K) (int64, int64) {
 	// We do so with a linear scanning to simplify (since it is only for testing)
-	hkey := hash(s.Config(), k)
+	hkey := Hash(s.Config(), k)
 	hminus, iminus := Bytes32{}, int64(0)                        // corresponds to head
 	hplus, iplus := s.Config().HashFunc().MaxBytes32(), int64(1) // corresponds to tail
 

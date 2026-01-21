@@ -15,6 +15,13 @@
         "l1RollingHashMessageNumber": 14,
         "howManyL2Msgs": 30,
         "treeDepth": 5,
-        "l2MessagingBlocksOffsets": "0x00000000000000000000000fffff"
+        "l2MessagingBlocksOffsets": "0x00000000000000000000000fffff",
+        "parentAggregationFtxRollingHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "parentAggregationFtxNumber": 0,
+        "finalBlockHash": "0xdeadbeef12345678cafebabe87654321fedcba9876543210abcdef0123456789",
+        "parentAggregationBlockHash": "0xfeedfacecafed00d123456789abcdef0fedcba9876543210deadbeefcafebabe",
+        "filteredAddresses": [
+            "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec"
+        ]
     }
 }

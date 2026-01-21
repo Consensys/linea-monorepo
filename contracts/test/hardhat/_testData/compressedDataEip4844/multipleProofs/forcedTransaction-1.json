@@ -1,0 +1,50 @@
+{
+	"Transaction": {
+		"type": "0x2",
+		"chainId": "0xc0ddb",
+		"nonce": "0x2",
+		"to": "0xfeeddeadbeeffeeddeadbeeffeeddead01245678",
+		"gas": "0x4523a8",
+		"gasPrice": null,
+		"maxPriorityFeePerGas": "0x6aed57c",
+		"maxFeePerGas": "0x75d1e5f",
+		"value": "0x32627d7c",
+		"input": "0x",
+		"accessList": [
+			{
+				"address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"storageKeys": [
+					"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+				]
+			}
+		],
+		"v": "0x0",
+		"r": "0x72cbf06f569f240ce8dee7cc3805dd714c98d52388afc022801e741bf740d298",
+		"s": "0x7acac7e09642385ee5e3ec4dcaa38d6f30a840ea9d290a84084c5e93d50a5ede",
+		"yParity": "0x0",
+		"hash": "0x3aa7648351cd09101ca7045a0c21315495c68ccd6ac3d71d250e637ec8a04daa"
+	},
+	"signer": "0xca29fa76bacc2d9d2cd5f779df601cc9f1225ff1",
+	"txHash": "0xb3070ae3ee744dbafdb392a989aec9f299761d6163f6d4390f2593d37bb625b2",
+	"executionCtx": {
+		"zkParentStateRootHash": "0xf0f26782f7afb93f926cacb145f55530714f20b1356725e3971dc99e0ef8b591",
+		"conflatedExecutionTracesFile": "",
+		"tracesEngineVersion": "",
+		"type2StateManagerVersion": "",
+		"zkStateMerkleProof": null,
+		"parentBlockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+		"blocksData": null
+	},
+	"forcedTransactionRLP": "AvjOgwwN2wKEBq7VfIQHXR5fg0UjqJT+7d6tvu/+7d6tvu/+7d6tASRWeIQyYn18gPhb+FmUqqqqqqqqqqqqqqqqqqqqqqqqqqr4QqCqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqD//////////////////////////////////////////4Cgcsvwb1afJAzo3ufMOAXdcUyY1SOIr8AigB50G/dA0pigesrH4JZCOF7l4+xNyqONbzCoQOqdKQqECExek9UKXt4=",
+	"forcedTransactionNumber": 2,
+	"expectedBlockHeight": 400,
+	"prevFtxRollingHash": "0x01bb1753206e13afbfedcf15cd1d645023eba97cde2a9a76af394e50a917fabc",
+	"invalidityTypes": 0,
+	"lastFinalizedBlockNumber": 81,
+	"proof": "0x0146b02c282cc8a71a630e946a52acb49a9ebe13c2d3de48bba3493e9dcdbfea995b7f5a896d7775e7b5415acea10b18004428acc9373a746945f2b05986ba9fc484871a618d22dd636670b943a7903b0b2e972dc7ad0f4f96674a31b5d8f3a700b9ecbab4358171ff93510fcc8f8f1cb413d14b93b8e925964186d9811b06c9c18083e0c7b396ccc3005c4c0f785fd101a63a8d03ab1ebf885bfedf9459458a3ad6ede7c6fa0a8c847f28f0eb15bb7aa646b6d1b31c40024ae62af086aeb652016d3d030af328ee3e6b0021e142c23e0e55564ff01bf337dcbc85428f17a703be2d1ddf4792a0731b6ef770f1d4a26400fc2f5497db7383d57b4f7b89ec38dd11aae10d12b0573f099f78bbce8e2e31eb72823e0632d205a316cd5e5677a38501828d0a3fe6ba6accb1dd89aa0caec23b96eb6a50bc30cf4505100d73ec0311e4ecc9598b528c4a5aab683121201c09019f713fae2a60605fcb534dcb1fc2c67e4dfe479d6a72aa6c16e514ff2e31a26ca8b7f610832251c234c745c708e8d001ad4e5848cf4d289601120a14ae30dc2247ae54cc9578cc19e361a9e338921e34f8c8fe4c4cb67c3087e97d3e188e3300be19856e3db78e89da4d2a8c0b46044c9b5ee46f3cda6a61464c8cba2f9a2e725c0fa47fe78f7c0c9f3de78f58ba890053d3c0be29d24bc30b7e81ef14aa4d90056aa54a7458f4504c5dfd4c2a066245b4702a986c321b8c72e6a7e6effc5600f4fc13268871a7da875945f125df08938dc3bbd50b7d91db88f1ceb9cd756b713d642414ab6a0f63782ad1a6a4480f00e53fee525cef0dd79efa41861f97d6438c248c1f407d27ce4abc653ce96159c41f228b9e695f17393a1bb20ba6ac3201757acc760b8f45a45e42cbf09d80a4d7ea089e43e9d1dfd8d7b333c92929997db3733116b76aac295339d45a7c388a0197ef10118dbd7a5be8c3518f606976b19a91166eb84e764ac81b950187752421776a68ceb6264ac28cfa5caed7b4f8007d8de08ba04aba212f523216792653d5ae280817e7954a80f9be3b95688a7c60447b195abd61b0474220a1017f61de0000000705ccaaa90e8dff3e5ed169433723adaa39527e4421b9eb08a8ba88179cc3363e026a563ef87deb97e3d388ee2abfb742ff55a60bc62411c1112a5fbd42bb5b80121347ee68c09b0612ec7876d96e8132f6ee6dc4cfe4f3576fb170ec3bedf8d1081201c75ab2e557721edb78f0a2a496befab5329760a40d5b3416369897dda60b92a0a2df9db2791ed40ebf58f9dbf14cd33384445d0cf43f96fe09342e17e00f5b1e377d7daa96925984a9ab45fbca468329fad8fe467546edd13885df94840bd64b823b01019c95347b3b15b2ba143cee089a07e699f0a7015dfd311ca07800d9af238bc9ade4e4d1973d7e820345b8d9502713d60ee13e8d1f1fc8db0ce0670925690741da05d6a22e116e80d87b00e2b5da081ab1707dcb21a59de39b51e9bc2c199bbce19041c28ef9524fed3cd5de2a4855bde44f0375ceeaa129854f0c44c8f7cf0c1c2688f82f067c295b5f6ca23dacb4aa0edb16c09bba58657199000000010084cb44ee3766e8bfd5d08398631464bc975160a99b8058c3d33b3737998a039aef33939cc0f56e99bebd003182fc9c002263be6a174ed15480d3ba834ad0f190c92939397aad26083e09940a1014188daf7f3fd791851725dca14201c33fa0",
+	"verifyingKeyShaSum": "0xd1624b8e9e5987f7bbf85cb32bb7b9787144aceb4527864f31ba1957e300f7eb",
+	"publicInput": "0x060abf8afa24623ea947069948803040a652e9ba02f2138d622d3dc3540671e3",
+	"proverVersion": "test",
+	"ftxRollingHash": "0x06077d9a6501d6a652752526849b1aa869138b53b214d70d6e68ab242f5f6ea5"
+}
