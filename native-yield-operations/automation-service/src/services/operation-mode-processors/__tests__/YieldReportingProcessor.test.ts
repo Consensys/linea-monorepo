@@ -101,6 +101,8 @@ describe("YieldReportingProcessor", () => {
       peekYieldReport: jest.fn(),
       getYieldProviderData: jest.fn(),
       getBalance: jest.fn(),
+      getTargetReserveDeficit: jest.fn(),
+      safeWithdrawFromYieldProvider: jest.fn(),
     } as unknown as jest.Mocked<IYieldManager<TransactionReceipt>>;
 
     lazyOracle = {
@@ -131,6 +133,10 @@ describe("YieldReportingProcessor", () => {
     });
     yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
     yieldManager.getBalance.mockResolvedValue(0n);
+    yieldManager.getTargetReserveDeficit.mockResolvedValue(0n);
+    yieldManager.safeWithdrawFromYieldProvider.mockResolvedValue({
+      transactionHash: "0xwithdraw",
+    } as unknown as TransactionReceipt);
     lidoReportClient.getLatestSubmitVaultReportParams.mockResolvedValue(submitParams);
     lidoReportClient.submitLatestVaultReport.mockResolvedValue(undefined);
     yieldManager.reportYield.mockResolvedValue({ transactionHash: "0xyield" } as unknown as TransactionReceipt);
@@ -455,6 +461,7 @@ describe("YieldReportingProcessor", () => {
     const processor = createProcessor(true, true, true, 1000000000000000000n, minWithdrawalThresholdEth);
     
     yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
+    yieldManager.getTargetReserveDeficit.mockResolvedValueOnce(0n);
     yieldManager.fundYieldProvider.mockResolvedValueOnce({ transactionHash: "0xtransfer" } as unknown as TransactionReceipt);
     
     const reportYieldSpy = jest
@@ -482,6 +489,7 @@ describe("YieldReportingProcessor", () => {
     const processor = createProcessor(true, true, true, 1000000000000000000n, minWithdrawalThresholdEth);
     
     yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
+    yieldManager.getTargetReserveDeficit.mockResolvedValueOnce(0n);
     
     const reportYieldSpy = jest
       .spyOn(
@@ -499,6 +507,41 @@ describe("YieldReportingProcessor", () => {
     expect(yieldManager.getBalance).toHaveBeenCalledTimes(1);
     expect(yieldManager.fundYieldProvider).not.toHaveBeenCalled();
     expect(metricsRecorder.recordTransferFundsMetrics).not.toHaveBeenCalled();
+    expect(reportYieldSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("_handleNoRebalance withdraws from yield provider when targetReserveDeficit > 0", async () => {
+    const minWithdrawalThresholdEth = 1n; // 1 ETH threshold
+    const yieldManagerBalance = 2n * 1000000000000000000n; // 2 ETH (above threshold)
+    const targetReserveDeficit = 500000000000000000n; // 0.5 ETH deficit
+    const processor = createProcessor(true, true, true, 1000000000000000000n, minWithdrawalThresholdEth);
+    
+    yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
+    yieldManager.getTargetReserveDeficit.mockResolvedValueOnce(targetReserveDeficit);
+    yieldManager.safeWithdrawFromYieldProvider.mockResolvedValueOnce({
+      transactionHash: "0xwithdraw",
+    } as unknown as TransactionReceipt);
+    yieldManager.fundYieldProvider.mockResolvedValueOnce({ transactionHash: "0xtransfer" } as unknown as TransactionReceipt);
+    
+    const reportYieldSpy = jest
+      .spyOn(
+        processor as unknown as { _handleReportYield(): Promise<unknown> },
+        "_handleReportYield",
+      )
+      .mockResolvedValue(undefined);
+
+    await (
+      processor as unknown as {
+        _handleRebalance(req: unknown): Promise<void>;
+      }
+    )._handleRebalance({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
+
+    expect(yieldManager.getBalance).toHaveBeenCalledTimes(1);
+    expect(yieldManager.getTargetReserveDeficit).toHaveBeenCalledTimes(1);
+    expect(yieldManager.safeWithdrawFromYieldProvider).toHaveBeenCalledWith(yieldProvider, targetReserveDeficit);
+    expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(yieldProvider, expect.any(Object));
+    expect(yieldManager.fundYieldProvider).toHaveBeenCalledWith(yieldProvider, yieldManagerBalance);
+    expect(metricsRecorder.recordTransferFundsMetrics).toHaveBeenCalledWith(yieldProvider, expect.any(Object));
     expect(reportYieldSpy).toHaveBeenCalledTimes(1);
   });
 

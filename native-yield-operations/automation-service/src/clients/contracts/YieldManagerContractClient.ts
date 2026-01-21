@@ -659,7 +659,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       const result = {
         rebalanceDirection: RebalanceDirection.STAKE,
         rebalanceAmount:
-          absRebalanceAmountAfterQuota > stakingRebalanceCeiling
+          stakingRebalanceCeiling > 0n && absRebalanceAmountAfterQuota > stakingRebalanceCeiling
             ? stakingRebalanceCeiling
             : absRebalanceAmountAfterQuota,
       };

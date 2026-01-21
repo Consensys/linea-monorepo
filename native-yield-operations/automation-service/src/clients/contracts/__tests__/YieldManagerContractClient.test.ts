@@ -408,6 +408,36 @@ describe("YieldManagerContractClient", () => {
     expect(receipt).toBe(txReceipt);
   });
 
+  it("withdraws from yield provider and logs success", async () => {
+    const amount = 75n;
+    const calldata = "0xwithdraw" as Hex;
+    const txReceipt = { transactionHash: "0xwithdrawhash" } as unknown as TransactionReceipt;
+    mockedEncodeFunctionData.mockReturnValueOnce(calldata);
+    blockchainClient.sendSignedTransaction.mockResolvedValueOnce(txReceipt);
+
+    const client = createClient();
+    const receipt = await client.safeWithdrawFromYieldProvider(yieldProvider, amount);
+
+    expect(logger.info).toHaveBeenCalledWith(
+      `safeWithdrawFromYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
+    );
+    expect(mockedEncodeFunctionData).toHaveBeenCalledWith({
+      abi: contractStub.abi,
+      functionName: "safeWithdrawFromYieldProvider",
+      args: [yieldProvider, amount],
+    });
+    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(
+      contractAddress,
+      calldata,
+      undefined,
+      YieldManagerCombinedABI,
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      `safeWithdrawFromYieldProvider succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
+    );
+    expect(receipt).toBe(txReceipt);
+  });
+
   it("pauses and unpauses staking through encoded calls", async () => {
     const pauseCalldata = "0xpause" as Hex;
     const unpauseCalldata = "0xunpause" as Hex;
@@ -783,6 +813,134 @@ describe("YieldManagerContractClient", () => {
         totalSystemBalance,
         absRebalanceRequirement,
       );
+    });
+
+    it("caps staking amount when absRebalanceAmountAfterQuota exceeds stakingRebalanceCeiling", async () => {
+      // Arrange - absRebalanceAmountAfterQuota > stakingRebalanceCeiling
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 400_000n;
+      const dashboardTotalValue = 100_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 0n;
+      const peekedOutstandingNegativeYield = 0n;
+      const rebalanceToleranceAmountWei = 10_000n;
+      const l1MessageServiceBalance = 1_000_000n; // Above target, STAKE direction
+      // stakingRebalanceCeiling = l1MessageServiceBalance - effectiveTarget = 1_000_000n - 400_000n = 600_000n
+      const absRebalanceAmountAfterQuota = 800_000n; // Exceeds ceiling
+      const mockQuotaService = createDefaultQuotaService();
+      (mockQuotaService.getRebalanceAmountAfterQuota as jest.Mock).mockReturnValue(absRebalanceAmountAfterQuota);
+      const { client } = setupRebalanceTest(
+        l1MessageServiceBalance,
+        totalSystemBalance,
+        effectiveTarget,
+        dashboardTotalValue,
+        userFunds,
+        peekedYieldAmount,
+        peekedOutstandingNegativeYield,
+        rebalanceToleranceAmountWei,
+        mockQuotaService,
+      );
+      // Act & Assert
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: 600_000n, // Capped to stakingRebalanceCeiling
+      });
+    });
+
+    it("uses full absRebalanceAmountAfterQuota when below stakingRebalanceCeiling", async () => {
+      // Arrange - absRebalanceAmountAfterQuota <= stakingRebalanceCeiling
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 400_000n;
+      const dashboardTotalValue = 100_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 0n;
+      const peekedOutstandingNegativeYield = 0n;
+      const rebalanceToleranceAmountWei = 10_000n;
+      const l1MessageServiceBalance = 1_000_000n;
+      // stakingRebalanceCeiling = 600_000n
+      const absRebalanceAmountAfterQuota = 300_000n; // Below ceiling
+      const mockQuotaService = createDefaultQuotaService();
+      (mockQuotaService.getRebalanceAmountAfterQuota as jest.Mock).mockReturnValue(absRebalanceAmountAfterQuota);
+      const { client } = setupRebalanceTest(
+        l1MessageServiceBalance,
+        totalSystemBalance,
+        effectiveTarget,
+        dashboardTotalValue,
+        userFunds,
+        peekedYieldAmount,
+        peekedOutstandingNegativeYield,
+        rebalanceToleranceAmountWei,
+        mockQuotaService,
+      );
+      // Act & Assert
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: 300_000n, // Not capped, uses full amount
+      });
+    });
+
+    it("handles edge case where stakingRebalanceCeiling equals absRebalanceAmountAfterQuota", async () => {
+      // Arrange - Boundary condition
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 400_000n;
+      const dashboardTotalValue = 100_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 0n;
+      const peekedOutstandingNegativeYield = 0n;
+      const rebalanceToleranceAmountWei = 10_000n;
+      const l1MessageServiceBalance = 1_000_000n;
+      // stakingRebalanceCeiling = 600_000n
+      const absRebalanceAmountAfterQuota = 600_000n; // Exactly equals ceiling
+      const mockQuotaService = createDefaultQuotaService();
+      (mockQuotaService.getRebalanceAmountAfterQuota as jest.Mock).mockReturnValue(absRebalanceAmountAfterQuota);
+      const { client } = setupRebalanceTest(
+        l1MessageServiceBalance,
+        totalSystemBalance,
+        effectiveTarget,
+        dashboardTotalValue,
+        userFunds,
+        peekedYieldAmount,
+        peekedOutstandingNegativeYield,
+        rebalanceToleranceAmountWei,
+        mockQuotaService,
+      );
+      // Act & Assert
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: 600_000n, // Capped to ceiling (equal values)
+      });
+    });
+
+    it("handles small stakingRebalanceCeiling edge case", async () => {
+      // Arrange - When balance is just above target reserve
+      const totalSystemBalance = 1_000_000n;
+      const effectiveTarget = 400_000n;
+      const dashboardTotalValue = 100_000n;
+      const userFunds = 100_000n;
+      const peekedYieldAmount = 0n;
+      const peekedOutstandingNegativeYield = 0n;
+      const rebalanceToleranceAmountWei = 10_000n;
+      const l1MessageServiceBalance = 400_100n; // Just above target
+      // stakingRebalanceCeiling = 400_100n - 400_000n = 100n (very small)
+      const absRebalanceAmountAfterQuota = 50_000n; // Much larger than ceiling
+      const mockQuotaService = createDefaultQuotaService();
+      (mockQuotaService.getRebalanceAmountAfterQuota as jest.Mock).mockReturnValue(absRebalanceAmountAfterQuota);
+      const { client } = setupRebalanceTest(
+        l1MessageServiceBalance,
+        totalSystemBalance,
+        effectiveTarget,
+        dashboardTotalValue,
+        userFunds,
+        peekedYieldAmount,
+        peekedOutstandingNegativeYield,
+        rebalanceToleranceAmountWei,
+        mockQuotaService,
+      );
+      // Act & Assert
+      await expect(client.getRebalanceRequirements(yieldProvider, l2Recipient)).resolves.toEqual({
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: 100n, // Capped to small ceiling
+      });
     });
 
     it("tracks metrics when metricsUpdater is provided and quota service returns 0n", async () => {
