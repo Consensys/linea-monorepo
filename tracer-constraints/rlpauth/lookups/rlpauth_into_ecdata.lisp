@@ -7,7 +7,7 @@
     ;; target columns
     (
         ecrecover.limb
-        ecrecover.total_size
+        ecrecover.total_size ;; TODO: check size
         ecrecover.success_bit
     )
     ;; source selector
