@@ -142,26 +142,26 @@ var (
 )
 
 var selfRecursionParametersSet = []selfRecursionParameters{
-	// {
-	// 	NbOpenedColumns: 256,
-	// 	RsInverseRate:   2,
-	// 	TargetRowSize:   1 << 8,
-	// },
-	// {
-	// 	NbOpenedColumns: 256,
-	// 	RsInverseRate:   2,
-	// 	TargetRowSize:   1 << 9,
-	// },
-	// {
-	// 	NbOpenedColumns: 256,
-	// 	RsInverseRate:   2,
-	// 	TargetRowSize:   1 << 10,
-	// },
-	// {
-	// 	NbOpenedColumns: 256,
-	// 	RsInverseRate:   2,
-	// 	TargetRowSize:   1 << 11,
-	// },
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 8,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 9,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 10,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 11,
+	},
 	// {
 	// 	NbOpenedColumns: 128,
 	// 	RsInverseRate:   4,
@@ -259,7 +259,7 @@ func BenchmarkProfileSelfRecursion(b *testing.B) {
 func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 
 	logrus.SetLevel(logrus.FatalLevel)
-	nbIteration := 6
+	nbIteration := 2
 
 	for _, params := range selfRecursionParametersSet {
 		b.Run(fmt.Sprintf("%+v", params), func(b *testing.B) {
@@ -373,9 +373,18 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 
 	isBLS := true
 	// These parameters have been found to give the best result for performances
+	// TODO: trim this params when nbIteration > 1
 	params := selfRecursionParameters{
-		NbOpenedColumns: 8, // TODO: next step, update to 64
+		NbOpenedColumns: 64,
 		RsInverseRate:   16,
+		TargetRowSize:   1 << 9,
+	}
+
+	// RsInverseRate = 2, nbOpenedColumns=256; OR
+	// RsInverseRate = 16, nbOpenedColumns=64; BETTER, less constraints
+	lastIterationParams := selfRecursionParameters{
+		NbOpenedColumns: 2, // TODO: next step, update to 64
+		RsInverseRate:   8, // TODO: next step, update to 16
 		TargetRowSize:   1 << 9,
 	}
 
@@ -386,11 +395,13 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(1<<1),
 		),
+		// RsInverseRate = 2, nbOpenedColumns=256; OR
+		// RsInverseRate = 16, nbOpenedColumns=64; BETTER, less constraints
 		vortex.Compile(
-			2,
+			16,
 			false,
 			vortex.WithOptionalSISHashingThreshold(512),
-			vortex.ForceNumOpenedColumns(8), // TODO: next step, update to 256
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)
@@ -398,10 +409,11 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	nbIteration := 1 //TODO@yao: update back to 2, when nbConstraints < 30M
 
 	for i := 0; i < nbIteration; i++ {
-		applySelfRecursionThenArcane(comp, params)
 		if i == nbIteration-1 {
-			applyVortex(comp, params, true) // last iteration over BLS
+			applySelfRecursionThenArcane(comp, lastIterationParams)
+			applyVortex(comp, lastIterationParams, true) // last iteration over BLS
 		} else {
+			applySelfRecursionThenArcane(comp, params)
 			applyVortex(comp, params, false) // other iteration over koalabear
 		}
 	}
