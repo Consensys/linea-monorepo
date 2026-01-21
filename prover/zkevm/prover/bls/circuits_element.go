@@ -57,18 +57,15 @@ func nbLimbs128(g Group) int {
 	}
 }
 
-var fpParams sw_bls12381.BaseField
-var frParams sw_bls12381.ScalarField
-
 type scalarElementWizard struct {
 	S [nbFrLimbs]frontend.Variable
 }
 
 func (c scalarElementWizard) ToElement(api frontend.API, fr *emulated.Field[sw_bls12381.ScalarField]) *sw_bls12381.Scalar {
-	S16 := make([]frontend.Variable, 16)
+	S16 := make([]frontend.Variable, nbFrLimbs)
 	copy(S16[0:8], c.S[8:16])
 	copy(S16[8:16], c.S[0:8])
-	S := gnarkutil.EmulatedFromLimbSlice(api, fr, S16, 16)
+	S := gnarkutil.EmulatedFromLimbSlice(api, fr, S16, nbBits)
 	return S
 }
 
@@ -81,7 +78,7 @@ func (c baseElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls
 	copy(P16[0:8], c.P[24:32])
 	copy(P16[8:16], c.P[16:24])
 	copy(P16[16:24], c.P[8:16])
-	return gnarkutil.EmulatedFromLimbSlice(api, fp, P16, 16)
+	return gnarkutil.EmulatedFromLimbSlice(api, fp, P16, nbBits)
 }
 
 type g1ElementWizard struct {
@@ -116,8 +113,8 @@ func (c g1ElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12
 	copy(PY16[0:8], c.P[56:64])
 	copy(PY16[8:16], c.P[48:56])
 	copy(PY16[16:24], c.P[40:48])
-	PX := gnarkutil.EmulatedFromLimbSlice(api, fp, PX16, 16)
-	PY := gnarkutil.EmulatedFromLimbSlice(api, fp, PY16, 16)
+	PX := gnarkutil.EmulatedFromLimbSlice(api, fp, PX16, nbBits)
+	PY := gnarkutil.EmulatedFromLimbSlice(api, fp, PY16, nbBits)
 	P := sw_bls12381.G1Affine{
 		X: *PX,
 		Y: *PY,
@@ -162,10 +159,10 @@ func (c g2ElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12
 	copy(QYB16[8:16], c.Q[112:120])
 	copy(QYB16[16:24], c.Q[104:112])
 
-	QXA := gnarkutil.EmulatedFromLimbSlice(api, fp, QXA16, 16)
-	QXB := gnarkutil.EmulatedFromLimbSlice(api, fp, QXB16, 16)
-	QYA := gnarkutil.EmulatedFromLimbSlice(api, fp, QYA16, 16)
-	QYB := gnarkutil.EmulatedFromLimbSlice(api, fp, QYB16, 16)
+	QXA := gnarkutil.EmulatedFromLimbSlice(api, fp, QXA16, nbBits)
+	QXB := gnarkutil.EmulatedFromLimbSlice(api, fp, QXB16, nbBits)
+	QYA := gnarkutil.EmulatedFromLimbSlice(api, fp, QYA16, nbBits)
+	QYB := gnarkutil.EmulatedFromLimbSlice(api, fp, QYB16, nbBits)
 	QX := fields_bls12381.E2{
 		A0: *QXA,
 		A1: *QXB,
