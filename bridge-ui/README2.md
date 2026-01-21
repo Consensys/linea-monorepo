@@ -43,7 +43,6 @@ Reference list: `.env.template`, including:
 - Token list URLs
 - Third-party API keys (WalletConnect, Infura, Alchemy, QuickNode, etc.)
 - Feature flags (e.g., CCTP)
-- For the full variable table, see the existing `README.md` config section (unchanged).
 
 ## Build and run the Docker image locally
 This matches the Docker image used for deployments.
