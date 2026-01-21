@@ -69,7 +69,7 @@ task(
     if (!lineaRollupAddress) missing.push("lineaRollupAddress / LINEA_ROLLUP_ADDRESS");
     if (!toAddress) missing.push("to / TO_ADDRESS");
     if (!valueRaw) missing.push("value / VALUE");
-    if (!data) missing.push("data / DATA");
+    // Note: data has a default value of "0x" (empty calldata), so validation is not needed
     if (missing.length) {
       throw new Error(`Missing required params/envs: ${missing.join(", ")}`);
     }
