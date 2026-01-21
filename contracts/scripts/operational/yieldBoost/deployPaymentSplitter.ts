@@ -117,7 +117,7 @@ task("deployPaymentSplitter", "Deploys PaymentSplitter contract from OpenZeppeli
 
     // --- Verify contract ---
     // Use dynamic import to avoid loading hardhat during config initialization
-    if (process.env.VERIFY_CONTRACT) {
+    if (process.env.VERIFY_CONTRACT === "true") {
       const { tryVerifyContractWithConstructorArgs } = await import("../../../common/helpers/index.js");
       await tryVerifyContractWithConstructorArgs(
         address,
