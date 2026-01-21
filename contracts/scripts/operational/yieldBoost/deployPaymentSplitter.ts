@@ -89,8 +89,8 @@ task("deployPaymentSplitter", "Deploys PaymentSplitter contract from OpenZeppeli
     for (let i = 0; i < sharesArray.length; i++) {
       const shareStr = sharesArray[i]!;
       const shareNum = BigInt(shareStr);
-      if (shareNum < 0n) {
-        throw new Error(`Share at index ${i} must be non-negative: ${shareStr}`);
+      if (shareNum <= 0n) {
+        throw new Error(`Share at index ${i} must be positive: ${shareStr}`);
       }
       sharesBigInt.push(shareNum);
     }
