@@ -109,6 +109,7 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless (cur
     const beaconHeader = beaconHeaderJson.data.header.message;
     console.log("beaconHeader:", beaconHeader);
     const { stateBodyBytes, forkName } = await fetchBeaconState(slot, beaconRpcUrl);
+    console.log("forkName:", forkName);
 
     // Validator Container Proof
     const { proof: beaconHeaderProof, root: beaconHeaderRoot } = await createBeaconHeaderProof(beaconHeader);
@@ -121,7 +122,10 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless (cur
     const validatorContainerProofHex = validatorContainerProofConcat.map((w) => hexlify(w));
 
     // Pending Partial Withdrawals Proof
-    const stateViewDU = lodestarTypes.ssz.fulu.BeaconState.getViewDU(stateView.node);
+    console.log("Using forkName for SSZ schema access:", forkName);
+    console.log("Available SSZ forks:", Object.keys(lodestarTypes.ssz));
+    // const stateViewDU = lodestarTypes.ssz.fulu.BeaconState.getViewDU(stateView.node);
+    const stateViewDU = lodestarTypes.ssz[forkName].BeaconState.getViewDU(stateView.node);
     const { pendingPartialWithdrawals } = stateViewDU;
     const pendingPartialWithdrawalsProof = createProof(stateView.node, {
       type: ProofType.single,
