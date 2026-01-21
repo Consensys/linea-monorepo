@@ -207,6 +207,9 @@ pub fn keccak_for_ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb 
 pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (dummy u1) {
     var limb u128
 
+    var total_size u256
+    total_size = 160
+
     var h_lo u128
     var r_lo u128
     var s_lo u128
