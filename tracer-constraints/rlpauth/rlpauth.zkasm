@@ -4,7 +4,8 @@ include "../util/byte_size.zkasm"
 
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
-pub fn rlpauth(chain_id u256, nonce u64, delegation_address u160, y_parity u8, r u256, s u256, 
+pub fn rlpauth(chain_id u256, nonce u64, delegation_address u160, y_parity u8, r u256, s u256,
+msg u256, ;; predicted returned value by keccak_for_ecrecover 
 authority_address u160, ;; predicticted returned value by ecrecover
 macro u1, blk_number u16, user_txn_number u24, txn_from_address u160, authority_is_sender_tot u1, ;; columns for lookup into usertxndata
 xtern u1, network_chain_id u256, ;; additional columns for lookup into blockdata
@@ -47,9 +48,12 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
         var nonce_byte_size u8
 
         list_rlp_prefix_limb, chain_id_rlp_prefix_limb, chain_id_leading_limb, address_rlp_prefix_limb, address_hi_limb, address_lo_limb, nonce_rlp_prefix_limb, nonce_leading_limb, chain_id_byte_size, nonce_byte_size = compute_rlp(chain_id, delegation_address, nonce)
-
+       
         var dummy u1
-        dummy = ecrecover(list_rlp_prefix_limb, chain_id_rlp_prefix_limb, chain_id_leading_limb, address_rlp_prefix_limb, address_hi_limb, address_lo_limb, nonce_rlp_prefix_limb, nonce_leading_limb, chain_id_byte_size, nonce_byte_size, y_parity, r, s, authority_address, authority_ecrecover_success)            
+
+        dummy = keccak_for_ecrecover(list_rlp_prefix_limb, chain_id_rlp_prefix_limb, chain_id_leading_limb, address_rlp_prefix_limb, address_hi_limb, address_lo_limb, nonce_rlp_prefix_limb, nonce_leading_limb, chain_id_byte_size, nonce_byte_size, msg)
+
+        dummy = ecrecover(msg, y_parity, r, s, authority_address, authority_ecrecover_success)            
     ;; step_4: happens in the HUB
         ;; Add authority to accessed_addresses, as defined in EIP-2929.
     step_5:
@@ -157,24 +161,18 @@ fn compute_rlp_address(address u160) -> (rlp_prefix_limb u128, address_hi_limb u
     return
 }
 
-;; address and success_bit are predictions to be confirmed by the prover 
-fn ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_leading_limb u128, address_rlp_prefix_limb u128, address_hi_limb u128, address_lo_limb u128, nonce_rlp_prefix_limb u128, nonce_leading_limb u128, chain_id_byte_size u8, nonce_byte_size u8, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (dummy u1) {
+;; TODO: since we do lookups to SHAKIRA and ECDATA, limb_size is probably not needed and padding / alignment may be different
+
+;; h is a prediction to be confirmed by SHAKIRA
+pub fn keccak_for_ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_leading_limb u128, address_rlp_prefix_limb u128, address_hi_limb u128, address_lo_limb u128, nonce_rlp_prefix_limb u128, nonce_leading_limb u128, chain_id_byte_size u8, nonce_byte_size u8, h u256) -> (dummy u1) {
     var limb u128
     var limb_size u8  
-    var r_lo u128
-    var s_lo u128
-    var address_lo u128
 
-    ;; limb
-    limb = y_parity
-    limb, r_lo = r ;; r_hi
-    limb = r_lo ;; r_lo
-    limb, s_lo = s ;; s_hi
-    limb = s_lo ;; s_lo
-    limb, address_lo = address ;; address_hi
-    limb = address_lo ;; address_lo
-    limb = success_bit
-    limb = MAGIC
+    var h_lo u128
+     
+    ;; limb 
+    ;; data
+    limb = rpad_128(MAGIC)
     limb = list_rlp_prefix_limb
     limb = chain_id_rlp_prefix_limb ;; may be zero
     limb = chain_id_leading_limb
@@ -184,16 +182,11 @@ fn ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_
     limb = nonce_rlp_prefix_limb ;; may be zero
     limb = nonce_leading_limb 
 
-    ;; limb_size
-    var b u1
-    var i u4
-    i = 0
-    fill_limb_size_loop:
-        limb_size = 0
-        b, i = i + 1
-        if i == 7 goto after_fill_limb_size_loop
-    
-    after_fill_limb_size_loop:
+    ;; result
+    limb, h_lo = h ;; h_hi
+    limb = h_lo ;; h_lo
+
+    ;; limb_size 
     limb_size = 1 ;; MAGIC
     limb_size = 1 ;; list_rlp_prefix_limb
     limb_size = chain_id_rlp_prefix_limb == 0? 0 : 1
@@ -204,11 +197,42 @@ fn ecrecover(list_rlp_prefix_limb u128, chain_id_rlp_prefix_limb u128, chain_id_
     limb_size = nonce_rlp_prefix_limb == 0? 0 : 1
     limb_size = nonce_byte_size ;; nonce_leading_limb
 
-    ;; TODO: shall we fill other columns such as is_signature, is_result, is_message, index?
+    ;; TODO: lookup to SHAKIRA for keccak computation
+
+    dummy = 0
+    return
+}
+
+;; address and success_bit are predictions to be confirmed by ECDATA 
+pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (dummy u1) {
+    var limb u128
+
+    var h_lo u128
+    var r_lo u128
+    var s_lo u128
+    var address_lo u128
+
+    ;; limb
+    ;; data
+    limb, h_lo = h ;; h_hi
+    limb = h_lo ;; h_lo
+    limb = 0 ;; v_hi
+    limb = y_parity + 27 ;; v_lo
+    limb, r_lo = r ;; r_hi
+    limb = r_lo ;; r_lo
+    limb, s_lo = s ;; s_hi
+    limb = s_lo ;; s_lo
+
+    ;; result
+    limb, address_lo = address ;; address_hi
+    limb = address_lo ;; address_lo
+
+    ;; TODO: shall we fill other columns such as is_signature, is_result, index?
     var is_signature u1
     var is_result u1
-    var is_message u1
     var index u4
+
+    ;; TODO: lookup to ECDATA for ecrecover computation
   
     dummy = 0
     return
