@@ -1,8 +1,7 @@
-import { ZeroAddress, ZeroHash, parseEther } from "ethers";
+import { ZeroAddress, ZeroHash } from "ethers";
 
 export const HASH_ZERO = ZeroHash;
 export const ADDRESS_ZERO = ZeroAddress;
-export const ONE_ETHER = parseEther("1");
 
 export const LINEA_ROLLUP_INITIALIZE_SIGNATURE =
   "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[],address,address),address,address)";
