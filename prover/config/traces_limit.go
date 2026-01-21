@@ -73,6 +73,25 @@ type TracesLimits struct {
 	BlockTransactions int `mapstructure:"BLOCK_TRANSACTIONS"`
 
 	ShomeiMerkleProofs int `mapstructure:"SHOMEI_MERKLE_PROOFS"`
+
+	// beta v4.0
+	PrecompileBlsPointEvaluationEffectiveCalls     int `mapstructure:"PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS"`
+	PrecompilePointEvaluationFailureEffectiveCalls int `mapstructure:"PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS"`
+	PrecompileBlsG1AddEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS"`
+	PrecompileBlsG1MsmEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G1_MSM_EFFECTIVE_CALLS"`
+	PrecompileBlsG2AddEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G2_ADD_EFFECTIVE_CALLS"`
+	PrecompileBlsG2MsmEffectiveCalls               int `mapstructure:"PRECOMPILE_BLS_G2_MSM_EFFECTIVE_CALLS"`
+	PrecompileBlsPairingCheckMillerLoops           int `mapstructure:"PRECOMPILE_BLS_PAIRING_CHECK_MILLER_LOOPS"`
+	PrecompileBlsFinalExponentiations              int `mapstructure:"PRECOMPILE_BLS_FINAL_EXPONENTIATIONS"`
+	PrecompileBlsMapFpToG1EffectiveCalls           int `mapstructure:"PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS"`
+	PrecompileBlsMapFp2ToG2EffectiveCalls          int `mapstructure:"PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS"`
+	PrecompileBlsC1MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_C1_MEMBERSHIP_CALLS"`
+	PrecompileBlsC2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS"`
+	PrecompileBlsG1MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS"`
+	PrecompileBlsG2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS"`
+
+	// Start of new Osaka modules
+	PrecompileP256VerifyEffectiveCalls int `mapstructure:"PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS"`
 }
 
 func (tl *TracesLimits) Checksum() string {
