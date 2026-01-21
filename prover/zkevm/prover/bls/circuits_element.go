@@ -11,17 +11,15 @@ import (
 )
 
 const (
-	nbBits     = 16 // we use 128 bits limbs for the BLS12-381 field
-	nbBits128  = 128
-	nbBytes    = nbBits / 8 // 128 bits = 16 bytes
-	nbBytes128 = nbBits128 / 8
+	nbBits  = 16         // we use 16 bits limbs for the BLS12-381 field
+	nbBytes = nbBits / 8 // 16 bits = 2 bytes
 
-	// BLS scalar field is 255 bits, and we use 2 limbs of 128 bits to represent
+	// BLS scalar field is 255 bits, and we use 16 limbs of 16 bits to represent
 	nbFrLimbs    = 16 // (x_1, x_0) MSB order
 	nbFrLimbs128 = 2
 
-	// BLS base field is 381 bits, and we use 4 limbs of 128 bits to represent
-	// it. However, the highest limb is always zero, but the arithmetization
+	// BLS base field is 381 bits, and we use 32 limbs of 16 bits to represent
+	// it. However, the highest 8 limbs are always zero, but the arithmetization
 	// keeps it for nice alignment. We pass it to the circuit but check
 	// explicitly that its 0.
 	nbFpLimbs    = 32 // (x_3, x_2, x_1, x_0) MSB order
@@ -32,7 +30,6 @@ const (
 	nbGtLimbs    = 12 * nbFpLimbs // representation according to gnark - we don't use Gt in arithmetization, only in glue for accumulation
 	nbG1Limbs128 = 2 * nbFpLimbs128
 	nbG2Limbs128 = 4 * nbFpLimbs128
-	nbGtLimbs128 = 12 * nbFpLimbs128
 )
 
 func nbLimbs(g Group) int {
@@ -62,6 +59,7 @@ type scalarElementWizard struct {
 }
 
 func (c scalarElementWizard) ToElement(api frontend.API, fr *emulated.Field[sw_bls12381.ScalarField]) *sw_bls12381.Scalar {
+	// Reorder limbs from MSB to LSB
 	S16 := make([]frontend.Variable, nbFrLimbs)
 	copy(S16[0:8], c.S[8:16])
 	copy(S16[8:16], c.S[0:8])
@@ -74,6 +72,10 @@ type baseElementWizard struct {
 }
 
 func (c baseElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) *emulated.Element[sw_bls12381.BaseField] {
+	// Reorder limbs from MSB to LSB. We additionally ignore the highest 8 limbs which are expected to be 0.
+	for i := range 8 {
+		api.AssertIsEqual(c.P[i], 0)
+	}
 	P16 := make([]frontend.Variable, 24)
 	copy(P16[0:8], c.P[24:32])
 	copy(P16[8:16], c.P[16:24])

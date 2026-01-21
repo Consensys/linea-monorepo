@@ -57,10 +57,10 @@ type BlsPair struct {
 	AlignedFinalExpData          *plonk.Alignment
 	AlignedG1MembershipGnarkData *plonk.Alignment
 	AlignedG2MembershipGnarkData *plonk.Alignment
-	*Limits
 
 	FlattenLimbsG1Membership *common.FlattenColumn
 	FlattenLimbsG2Membership *common.FlattenColumn
+	*Limits
 }
 
 func newPair(comp *wizard.CompiledIOP, limits *Limits, src *BlsPairDataSource) *BlsPair {
@@ -134,7 +134,7 @@ func (bp *BlsPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query
 }
 
 func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
-	maxNbInstancesInputs := utils.DivCeil(bp.UnalignedPairData.GnarkIsActiveG1Membership.Size(), nbG1Limbs128)
+	maxNbInstancesInputs := utils.DivCeil(bp.FlattenLimbsG1Membership.Mask().Size(), nbG1Limbs)
 	maxNbInstancesLimit := bp.limitGroupMembershipCalls(G1)
 	switch maxNbInstancesLimit {
 	case 0:
@@ -162,7 +162,7 @@ func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...
 }
 
 func (bp *BlsPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
-	maxNbInstancesInputs := utils.DivCeil(bp.UnalignedPairData.GnarkIsActiveG2Membership.Size(), nbG2Limbs128)
+	maxNbInstancesInputs := utils.DivCeil(bp.FlattenLimbsG2Membership.Mask().Size(), nbG2Limbs)
 	maxNbInstancesLimit := bp.limitGroupMembershipCalls(G2)
 	switch maxNbInstancesLimit {
 	case 0:
@@ -237,7 +237,7 @@ type UnalignedPairData struct {
 func newUnalignedPairData(comp *wizard.CompiledIOP, src *BlsPairDataSource) *UnalignedPairData {
 	// for bounding the size of the alignment, we assume the worst case inputs where we have many pairing checks with
 	// a single input. A single pairing check input is G1 and G2 element
-	maxNbPairInputs := src.CsPair.Size()/(nbG1Limbs128+nbG2Limbs128) + 1
+	maxNbPairInputs := utils.DivCeil(src.CsPair.Size(), nbG1Limbs128+nbG2Limbs128)
 
 	createColFnUa := createColFn(comp, NAME_UNALIGNED_PAIR, utils.NextPowerOfTwo(maxNbPairInputs))
 	createColFnMl := createColFn(comp, NAME_UNALIGNED_PAIR, utils.NextPowerOfTwo(maxNbPairInputs*nbRowsPerMillerLoop))

@@ -51,10 +51,9 @@ type BlsMsm struct {
 	*UnalignedMsmData
 	AlignedGnarkMsmData             *plonk.Alignment
 	AlignedGnarkGroupMembershipData *plonk.Alignment
+	FlattenLimbsGroupMembership     *common.FlattenColumn
 	*Limits
 	Group
-
-	FlattenLimbsGroupMembership *common.FlattenColumn
 }
 
 func newMsm(comp *wizard.CompiledIOP, g Group, limits *Limits, src *BlsMsmDataSource) *BlsMsm {
@@ -97,7 +96,7 @@ func (bm *BlsMsm) WithMsmCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 func (bm *BlsMsm) WithGroupMembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMsm {
 	// compute the bound on the number of circuits we need. First we estimate a bound on the number of possible
 	// maximum number of G1/G2 points which could go to the membership circuit.
-	nbMaxInstancesInputs := utils.DivCeil(bm.BlsMsmDataSource.CsMembership.Size(), nbLimbs128(bm.Group))
+	nbMaxInstancesInputs := utils.DivCeil(bm.FlattenLimbsGroupMembership.Mask().Size(), nbLimbs(bm.Group))
 	nbMaxInstancesLimit := bm.limitGroupMembershipCalls(bm.Group)
 	switch nbMaxInstancesLimit {
 	case 0:

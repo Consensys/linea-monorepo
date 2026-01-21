@@ -77,7 +77,7 @@ func (ba *BlsAdd) WithAddCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 	// the gnark circuit takes exactly the same rows as provided by the arithmetization. So
 	// to get the bound on the number of circuits we just need to divide by the size of the
 	// addition circuit input instances
-	maxNbInstancesInputs := utils.DivCeil(ba.BlsAddDataSource.CsAdd.Size(), nbRowsPerAdd(ba.Group))
+	maxNbInstancesInputs := utils.DivCeil(ba.FlattenLimbsAdd.Mask().Size(), nbRowsPerAdd(ba.Group))
 	maxNbInstancesLimit := ba.limitAddCalls(ba.Group)
 	switch maxNbInstancesLimit {
 	case 0:
@@ -105,7 +105,7 @@ func (ba *BlsAdd) WithAddCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 }
 
 func (ba *BlsAdd) WithCurveMembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsAdd {
-	maxNbInstancesInputs := utils.DivCeil(ba.BlsAddDataSource.CsCurveMembership.Size(), nbRowsPerCurveMembership(ba.Group))
+	maxNbInstancesInputs := utils.DivCeil(ba.FlattenLimbsCurveMembership.Mask().Size(), nbRowsPerCurveMembership(ba.Group))
 	maxNbInstancesLimit := ba.limitCurveMembershipCalls(ba.Group)
 	switch maxNbInstancesLimit {
 	case 0:

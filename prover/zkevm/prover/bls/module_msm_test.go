@@ -84,8 +84,8 @@ func testBlsMsm(t *testing.T, withCircuit bool, g Group, path string, limits *Li
 
 func TestBlsG1MsmNoCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG1MulInputInstances:        8,
-		NbG1MembershipInputInstances: 8,
+		NbG1MulInputInstances:        3,
+		NbG1MembershipInputInstances: 6,
 		LimitG1MsmCalls:              128,
 		LimitG1MembershipCalls:       128,
 	}
@@ -94,7 +94,7 @@ func TestBlsG1MsmNoCircuit(t *testing.T) {
 
 func TestBlsG1MsmWithCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG1MulInputInstances:        6,
+		NbG1MulInputInstances:        3,
 		NbG1MembershipInputInstances: 6,
 		LimitG1MsmCalls:              128,
 		LimitG1MembershipCalls:       128,
@@ -104,7 +104,7 @@ func TestBlsG1MsmWithCircuit(t *testing.T) {
 
 func TestBlsG2MsmNoCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG2MulInputInstances:        8,
+		NbG2MulInputInstances:        2,
 		NbG2MembershipInputInstances: 6,
 		LimitG2MsmCalls:              128,
 		LimitG2MembershipCalls:       128,
@@ -114,7 +114,7 @@ func TestBlsG2MsmNoCircuit(t *testing.T) {
 
 func TestBlsG2MsmWithCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG2MulInputInstances:        8,
+		NbG2MulInputInstances:        2,
 		NbG2MembershipInputInstances: 6,
 		LimitG2MsmCalls:              128,
 		LimitG2MembershipCalls:       128,

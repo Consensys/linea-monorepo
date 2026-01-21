@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	nbBits  = 16 // for large-field we use 128-bit limbs both for base and scalar fields
-	nbBytes = nbBits / 8
+	nbBits = 16 // for large-field we use 128-bit limbs both for base and scalar fields
 
 	nbFrLimbs  = 16 // P-256 scalar field represented with 16 limbs of 16 bits
 	nbFpLimbs  = 16 // P-256 base field represented with 16 limbs of 16 bits
@@ -25,9 +24,6 @@ const (
 
 type scalarfield = emparams.P256Fr
 type basefield = emparams.P256Fp
-
-var fpParams basefield
-var frParams scalarfield
 
 type scalarElementWizard struct {
 	S [nbFrLimbs]frontend.Variable

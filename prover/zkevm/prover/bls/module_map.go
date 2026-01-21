@@ -49,10 +49,9 @@ func newMapDataSource(comp *wizard.CompiledIOP, g Group, arith *arithmetization.
 type BlsMap struct {
 	*BlsMapDataSource
 	AlignedGnarkData *plonk.Alignment
+	FlattenLimbs     *common.FlattenColumn
 	*Limits
 	Group
-
-	FlattenLimbs *common.FlattenColumn
 }
 
 func newMap(comp *wizard.CompiledIOP, g Group, limits *Limits, src *BlsMapDataSource) *BlsMap {
@@ -70,7 +69,7 @@ func newMap(comp *wizard.CompiledIOP, g Group, limits *Limits, src *BlsMapDataSo
 func (bm *BlsMap) WithMapCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMap {
 	// gnark circuits takes the inputs as is. To get the bound on the number of circuits we need
 	// to divide the maximum number of inputs instances with the number of instances per circuit
-	maxNbInstancesInputs := utils.DivCeil(bm.BlsMapDataSource.CsMap.Size(), nbRowsPerMap(bm.Group))
+	maxNbInstancesInputs := utils.DivCeil(bm.FlattenLimbs.Mask().Size(), nbRowsPerMap(bm.Group))
 	maxNbInstancesLimit := bm.limitMapCalls(bm.Group)
 	switch maxNbInstancesLimit {
 	case 0:
