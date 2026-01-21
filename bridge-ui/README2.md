@@ -3,13 +3,12 @@
 Frontend for the Linea Bridge, built with Next.js.
 
 ## Live sites
-- Dev: https://bridge.dev.linea.build/
 - Production: https://bridge.linea.build/
 
 ## Scope of this README
 - How to run and test the app locally
 - How CI produces Docker image tags
-- A high-level internal deployment workflow (no links to internal repos)
+- A high-level internal deployment workflow
 
 ## Local development
 
@@ -44,6 +43,7 @@ Reference list: `.env.template`, including:
 - Token list URLs
 - Third-party API keys (WalletConnect, Infura, Alchemy, QuickNode, etc.)
 - Feature flags (e.g., CCTP)
+- For the full variable table, see the existing `README.md` config section (unchanged).
 
 ## Build and run the Docker image locally
 This matches the Docker image used for deployments.
@@ -106,4 +106,4 @@ High-level process:
 
 Notes:
 - Internal repositories and ArgoCD dashboards are intentionally not linked here to avoid broken links for external readers.
-- Access details are managed internally (e.g., via 1Password).
+- Access details are managed internally.
