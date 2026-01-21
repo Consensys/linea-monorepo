@@ -4,6 +4,8 @@
 package codehashconsistency
 
 import (
+	"slices"
+
 	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
@@ -222,27 +224,32 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, c
 		)
 	}
 
-	var accInitialHashColumns []ifaces.Column
-	accInitialHashColumns = append(accInitialHashColumns, ss.Account.Initial.LineaCodeHash[:]...)
-	accInitialHashColumns = append(accInitialHashColumns, ss.Account.Initial.KeccakCodeHash.Hi[:]...)
-	accInitialHashColumns = append(accInitialHashColumns, ss.Account.Initial.KeccakCodeHash.Lo[:]...)
+	var (
+		accInitialHashColumns = slices.Concat(
+			ss.Account.Initial.LineaCodeHash[:],
+			ss.Account.Initial.KeccakCodeHash.Hi[:],
+			ss.Account.Initial.KeccakCodeHash.Lo[:],
+		)
 
-	var accFinalHashColumns []ifaces.Column
-	accFinalHashColumns = append(accFinalHashColumns, ss.Account.Final.LineaCodeHash[:]...)
-	accFinalHashColumns = append(accFinalHashColumns, ss.Account.Final.KeccakCodeHash.Hi[:]...)
-	accFinalHashColumns = append(accFinalHashColumns, ss.Account.Final.KeccakCodeHash.Lo[:]...)
+		accFinalHashColumns = slices.Concat(
+			ss.Account.Final.LineaCodeHash[:],
+			ss.Account.Final.KeccakCodeHash.Hi[:],
+			ss.Account.Final.KeccakCodeHash.Lo[:],
+		)
 
-	var stateSumHashColumns []ifaces.Column
-	stateSumHashColumns = append(stateSumHashColumns, ch.StateSumLineaHash[:]...)
-	stateSumHashColumns = append(stateSumHashColumns, ch.StateSumKeccak.Hi[:]...)
-	stateSumHashColumns = append(stateSumHashColumns, ch.StateSumKeccak.Lo[:]...)
+		stateSumHashColumns = slices.Concat(
+			ch.StateSumLineaHash[:],
+			ch.StateSumKeccak.Hi[:],
+			ch.StateSumKeccak.Lo[:],
+		)
+	)
 
 	comp.GenericFragmentedConditionalInclusion(
 		0,
 		ifaces.QueryID(name+"_IMPORT_STATE_SUMMARY_BACK"),
 		[][]ifaces.Column{
-			accFinalHashColumns,
 			accInitialHashColumns,
+			accFinalHashColumns,
 		},
 		stateSumHashColumns,
 		[]ifaces.Column{
