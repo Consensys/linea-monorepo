@@ -10,6 +10,22 @@ Frontend for the Linea Bridge, built with Next.js.
 - How CI produces Docker image tags
 - A high-level internal deployment workflow
 
+## Quickstart (external dev)
+Goal: run against public Linea endpoints with your own API keys.
+
+1) Create `.env` from the template
+   - `cp .env.template .env`
+   - Fill these required fields (leave addresses as-is):
+     - WalletConnect: `NEXT_PUBLIC_WALLET_CONNECT_ID`
+     - Web3Auth: `NEXT_PUBLIC_WEB3_AUTH_CLIENT_ID`
+     - One RPC provider: set **one** of `NEXT_PUBLIC_INFURA_ID` **or** `NEXT_PUBLIC_ALCHEMY_API_KEY` **or** `NEXT_PUBLIC_QUICKNODE_ID`
+   - Optional (only if you use the feature): `NEXT_PUBLIC_LIFI_API_KEY`, `NEXT_PUBLIC_ONRAMPER_API_KEY`, `NEXT_PUBLIC_LAYERSWAP_API_KEY`
+2) Install dependencies and start dev server
+   - `pnpm i`
+   - `pnpm run dev`
+3) Open http://localhost:3000
+   - Defaults to production contracts/endpoints; your wallet + RPC key handle access.
+
 ## Local development
 
 ### Requirements
@@ -29,6 +45,15 @@ pnpm i
 pnpm run dev
 ```
 Open: http://localhost:3000
+
+To target a local stack instead of prod endpoints, set in `.env`:
+```
+NEXT_PUBLIC_ENVIRONMENT=local
+```
+and start the local infra from repo root:
+```
+make start-env-with-tracing-v2-ci
+```
 
 ## Configuration
 
