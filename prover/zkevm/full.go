@@ -16,12 +16,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
 	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 )
@@ -34,6 +36,23 @@ const (
 	NbInputPerInstanceEcPairG2Check    = 1
 	NbInputPerInstanceSha2Block        = 3
 	NbInputPerInstanceEcdsa            = 4
+
+	NbInputPerInstanceBLSG1Add            = 16
+	NbInputPerInstanceBLSG2Add            = 16
+	NbInputPerInstanceBLSG1Msm            = 3
+	NbInputPerInstanceBLSG2Msm            = 2
+	NbInputPerInstanceBLSMillerLoop       = 1
+	NbInputPerInstanceBLSFinalExp         = 1
+	NbInputPerInstanceBLSG1Membership     = 6
+	NbInputPerInstanceBLSG2Membership     = 6
+	NbInputPerInstanceBLSG1Map            = 8
+	NbInputPerInstanceBLSG2Map            = 2
+	NbInputPerInstanceBLSC1Membership     = 16
+	NbInputPerInstanceBLSC2Membership     = 16
+	NbInputPerInstanceBLSPointEval        = 1
+	NbInputPerInstanceBLSPointEvalFailure = 1
+
+	NbInputPerInstanceP256Verify = 2
 )
 
 var (
@@ -211,6 +230,41 @@ func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *co
 		Sha2: sha2.Settings{
 			MaxNumSha2F:                    tl.PrecompileSha2Blocks,
 			NbInstancesPerCircuitSha2Block: NbInputPerInstanceSha2Block,
+		},
+		Bls: bls.Limits{
+			LimitG1AddCalls:            tl.PrecompileBlsG1AddEffectiveCalls,
+			LimitG2AddCalls:            tl.PrecompileBlsG2AddEffectiveCalls,
+			LimitG1MsmCalls:            tl.PrecompileBlsG1MsmEffectiveCalls,
+			LimitG2MsmCalls:            tl.PrecompileBlsG2MsmEffectiveCalls,
+			LimitMillerLoopCalls:       tl.PrecompileBlsPairingCheckMillerLoops,
+			LimitFinalExpCalls:         tl.PrecompileBlsFinalExponentiations,
+			LimitG1MembershipCalls:     tl.PrecompileBlsG1MembershipCalls,
+			LimitG2MembershipCalls:     tl.PrecompileBlsG2MembershipCalls,
+			LimitMapFpToG1Calls:        tl.PrecompileBlsMapFpToG1EffectiveCalls,
+			LimitMapFp2ToG2Calls:       tl.PrecompileBlsMapFp2ToG2EffectiveCalls,
+			LimitC1MembershipCalls:     tl.PrecompileBlsC1MembershipCalls,
+			LimitC2MembershipCalls:     tl.PrecompileBlsC2MembershipCalls,
+			LimitPointEvalCalls:        tl.PrecompileBlsPointEvaluationEffectiveCalls,
+			LimitPointEvalFailureCalls: tl.PrecompilePointEvaluationFailureEffectiveCalls,
+
+			NbG1AddInputInstances:            NbInputPerInstanceBLSG1Add,
+			NbG2AddInputInstances:            NbInputPerInstanceBLSG2Add,
+			NbG1MulInputInstances:            NbInputPerInstanceBLSG1Msm,
+			NbG2MulInputInstances:            NbInputPerInstanceBLSG2Msm,
+			NbMillerLoopInputInstances:       NbInputPerInstanceBLSMillerLoop,
+			NbFinalExpInputInstances:         NbInputPerInstanceBLSFinalExp,
+			NbG1MembershipInputInstances:     NbInputPerInstanceBLSG1Membership,
+			NbG2MembershipInputInstances:     NbInputPerInstanceBLSG2Membership,
+			NbC1MembershipInputInstances:     NbInputPerInstanceBLSC1Membership,
+			NbC2MembershipInputInstances:     NbInputPerInstanceBLSC2Membership,
+			NbG1MapToInputInstances:          NbInputPerInstanceBLSG1Map,
+			NbG2MapToInputInstances:          NbInputPerInstanceBLSG2Map,
+			NbPointEvalInputInstances:        NbInputPerInstanceBLSPointEval,
+			NbPointEvalFailureInputInstances: NbInputPerInstanceBLSPointEvalFailure,
+		},
+		P256Verify: p256verify.Limits{
+			LimitCalls:       tl.PrecompileP256VerifyEffectiveCalls,
+			NbInputInstances: NbInputPerInstanceP256Verify,
 		},
 	}
 
