@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
 import { getTaskCliOrEnvValue } from "../../../../common/helpers/environmentHelper";
-import { hexlify, randomBytes, AbiCoder } from "ethers";
 import { delay } from "../../../../common/helpers/general";
+import { encodeSendMessage, randomBytes32 } from "../../../../common/helpers/encoding";
 
 /*
   *******************************************************************************************
@@ -23,24 +23,6 @@ import { delay } from "../../../../common/helpers/general";
     --network custom
   *******************************************************************************************
 */
-
-// HELPER FUNCTIONS
-
-function encodeSendMessage(
-  sender: string,
-  receiver: string,
-  fee: bigint,
-  amount: bigint,
-  salt: bigint,
-  calldata: string,
-): string {
-  return AbiCoder.defaultAbiCoder().encode(
-    ["address", "address", "uint256", "uint256", "uint256", "bytes"],
-    [sender, receiver, fee, amount, salt, calldata],
-  );
-}
-
-const randomBytes32 = (): string => hexlify(randomBytes(32));
 
 // TASKS
 task(
