@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
-import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
+import { getTaskCliOrEnvValue } from "../../../../common/helpers/environmentHelper";
 import { hexlify, randomBytes, AbiCoder } from "ethers";
-import { delay } from "../../../common/helpers/general";
+import { delay } from "../../../../common/helpers/general";
 
 /*
   *******************************************************************************************
