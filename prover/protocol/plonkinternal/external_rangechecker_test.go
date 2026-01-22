@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	plonk "github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -70,7 +70,7 @@ func (r *testRangeCheckingCircuitIncompleteInternal) Define(api frontend.API) er
 		rangeChecker.Check(r.A[i], 16)
 	}
 	// create an internal variable which is not witness.
-	// TODO @thomas fixme this will fail (zk.WrappedVariable instead of frontend.Variable)
+	// TODO @thomas fixme this will fail (koalagnark.Var instead of frontend.Variable)
 	res, err := api.Compiler().NewHint(DummyHint, 1, field.NewElement(0))
 	if err != nil {
 		return err
@@ -273,8 +273,8 @@ func TestRangeCheckIncompleteInternalFails(t *testing.T) {
 // inclusion of the public inputs and the range checker constraint extractor
 // needs to accomodate that.
 type rangeCheckWithPublic struct {
-	A zk.WrappedVariable `gnark:",public"`
-	D zk.WrappedVariable `gnark:",public"`
+	A koalagnark.Element `gnark:",public"`
+	D koalagnark.Element `gnark:",public"`
 }
 
 func (c *rangeCheckWithPublic) Define(api frontend.API) error {
@@ -318,8 +318,8 @@ func TestErrorCase(t *testing.T) {
 }
 
 type testRangeCheckLRSyncCircuit struct {
-	A zk.WrappedVariable `gnark:",public"`
-	B zk.WrappedVariable `gnark:",public"`
+	A koalagnark.Element `gnark:",public"`
+	B koalagnark.Element `gnark:",public"`
 }
 
 func (c *testRangeCheckLRSyncCircuit) Define(api frontend.API) error {
@@ -367,8 +367,8 @@ func TestRangeCheckLRSync(t *testing.T) {
 }
 
 type testRangeCheckOCircuit struct {
-	A zk.WrappedVariable
-	B zk.WrappedVariable
+	A koalagnark.Element
+	B koalagnark.Element
 }
 
 func (c *testRangeCheckOCircuit) Define(api frontend.API) error {

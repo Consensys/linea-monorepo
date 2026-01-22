@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -97,7 +97,7 @@ func TestCircuit(t *testing.T) {
 // hashing koalabear elmts
 
 type GnarkMDHasherCircuitKoalabear struct {
-	Inputs []zk.WrappedVariable
+	Inputs []koalagnark.Element
 	Ouput  frontend.Variable
 }
 
@@ -137,10 +137,10 @@ func getGnarkMDHasherCircuitKoalabearWitness() (*GnarkMDHasherCircuitKoalabear, 
 
 	// create witness and circuit
 	var circuit, witness GnarkMDHasherCircuitKoalabear
-	circuit.Inputs = make([]zk.WrappedVariable, nbElmts)
-	witness.Inputs = make([]zk.WrappedVariable, nbElmts)
+	circuit.Inputs = make([]koalagnark.Element, nbElmts)
+	witness.Inputs = make([]koalagnark.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		witness.Inputs[i] = zk.ValueFromKoala(vals[i])
+		witness.Inputs[i] = koalagnark.NewElementFromKoala(vals[i])
 	}
 	witness.Ouput = res.String()
 

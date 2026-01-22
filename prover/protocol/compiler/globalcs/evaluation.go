@@ -12,7 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -257,10 +257,7 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 
 // Verifier step, evaluate the constraint and checks that
 func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	// Will be assigned to "X", the random point at which we check the constraint.
 	r := c.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
@@ -269,13 +266,13 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 	params := c.GetUnivariateParams(ctx.WitnessEval.QueryID)
 	univQuery := c.GetUnivariateEval(ctx.WitnessEval.QueryID)
 
-	wOneExt := *ext4.One()
-	annulator = *ext4.Sub(&annulator, &wOneExt)
+	wOneExt := koalaAPI.OneExt()
+	annulator = koalaAPI.SubExt(annulator, wOneExt)
 
-	ext4.AssertIsEqual(&r, &params.ExtX)
+	koalaAPI.AssertIsEqualExt(r, params.ExtX)
 
 	// Map all the evaluations and checks the evaluations points
-	mapYs := make(map[ifaces.ColID]gnarkfext.E4Gen)
+	mapYs := make(map[ifaces.ColID]koalagnark.Ext)
 
 	// Collect the evaluation points
 	for j, handle := range univQuery.Pols {
@@ -287,7 +284,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 		board := ctx.AggregateExpressionsBoard[i]
 		metadatas := board.ListVariableMetadata()
 
-		evalInputs := make([]gnarkfext.E4Gen, len(metadatas))
+		evalInputs := make([]koalagnark.Ext, len(metadatas))
 
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
@@ -315,9 +312,9 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 
 		// right : r^{n}-1 Q(r)
 		qr := quotientYs[i]
-		right := *ext4.Mul(&annulator, &qr)
+		right := koalaAPI.MulExt(annulator, qr)
 
-		ext4.AssertIsEqual(&left, &right)
+		koalaAPI.AssertIsEqualExt(left, right)
 		logrus.Debugf("verifying global constraint : DONE")
 
 	}
@@ -414,19 +411,19 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r gnarkfext.E4Gen) []gnarkfext.E4Gen {
+func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r koalagnark.Ext) []koalagnark.Ext {
 
 	// res stores the list of the recombined quotient evaluations for each
 	// combination.
-	recombinedYs := make([]gnarkfext.E4Gen, len(ctx.Ratios))
+	recombinedYs := make([]koalagnark.Ext, len(ctx.Ratios))
 	// ys stores the values of the quotient shares ordered by ratio
 
-	qYs := make([][]gnarkfext.E4Gen, utils.Max(ctx.Ratios...))
+	qYs := make([][]koalagnark.Ext, utils.Max(ctx.Ratios...))
 
 	maxRatio := utils.Max(ctx.Ratios...)
 
 	// shiftedR = r / g where g is the generator of the multiplicative group
-	var shiftedR gnarkfext.E4Gen
+	var shiftedR koalagnark.Ext
 
 	// TODO @thomas kill fft domain generation
 	mulGenInv := fft.NewDomain(uint64(maxRatio*ctx.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
@@ -435,14 +432,11 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	// * maxRatio`
 	omegaN, _ := fft.Generator(uint64(ctx.DomainSize * maxRatio))
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	// shiftedR.MulByFp(api, r, mulGenInv)
 	bMulGenInv := big.NewInt(0).SetUint64(mulGenInv.Uint64())
-	shiftedR = *e4Api.MulConst(&r, bMulGenInv)
+	shiftedR = koalaAPI.MulConstExt(r, bMulGenInv)
 
 	var invOmegaN field.Element
 	invOmegaN.Inverse(&omegaN)
@@ -459,11 +453,11 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 
 		// Check that the provided value for x is the right one
 		providedX := params.ExtX
-		var expectedX gnarkfext.E4Gen
+		var expectedX koalagnark.Ext
 		// expectedX = shiftedR * invOmegaN^i (computed incrementally)
 		wrappedAccInvOmegaN := big.NewInt(0).SetUint64(accInvOmegaN.Uint64())
-		expectedX = *e4Api.MulConst(&shiftedR, wrappedAccInvOmegaN)
-		e4Api.AssertIsEqual(&providedX, &expectedX)
+		expectedX = koalaAPI.MulConstExt(shiftedR, wrappedAccInvOmegaN)
+		koalaAPI.AssertIsEqualExt(providedX, expectedX)
 
 		// Update accumulator: accInvOmegaN *= invOmegaN
 		accInvOmegaN.Mul(&accInvOmegaN, &invOmegaN)
@@ -475,7 +469,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	for i, ratio := range ctx.Ratios {
 		var (
 			jumpBy = maxRatio / ratio
-			ys     = make([]gnarkfext.E4Gen, ratio)
+			ys     = make([]koalagnark.Ext, ratio)
 		)
 
 		for j := range ctx.QuotientShares[i] {
@@ -486,14 +480,14 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		omegaRatio, _ := fft.Generator(uint64(ratio))
 		ratioInvField := field.NewElement(uint64(ratio))
 		var omegaRatioInv field.Element
-		res := *e4Api.Zero()
+		res := koalaAPI.ZeroExt()
 
 		// Optimization: rPowM = shiftedR^m = shiftedR^DomainSize (precomputed)
 		rPowM := shiftedRPowDomainSize
 		ratioInvField.Inverse(&ratioInvField)
 		omegaRatioInv.Inverse(&omegaRatio)
 
-		wOne := *e4Api.One()
+		wOne := koalaAPI.OneExt()
 
 		// Optimization: compute omegaRatioInv^k incrementally
 		var accOmegaRatioInv field.Element
@@ -502,10 +496,10 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		for k := range ys {
 			// tmp stores ys[k] / ((r^m * omegaRatioInv^k) - 1)
 			wrappedAccOmegaRatioInv := big.NewInt(0).SetUint64(accOmegaRatioInv.Uint64())
-			tmp := e4Api.MulConst(&rPowM, wrappedAccOmegaRatioInv)
-			tmp = e4Api.Sub(tmp, &wOne)
-			tmp = e4Api.Div(&ys[k], tmp)
-			res = *e4Api.Add(&res, tmp)
+			tmp := koalaAPI.MulConstExt(rPowM, wrappedAccOmegaRatioInv)
+			tmp = koalaAPI.SubExt(tmp, wOne)
+			tmp = koalaAPI.DivExt(ys[k], tmp)
+			res = koalaAPI.AddExt(res, tmp)
 
 			// Update accumulator: accOmegaRatioInv *= omegaRatioInv
 			accOmegaRatioInv.Mul(&accOmegaRatioInv, &omegaRatioInv)
@@ -515,9 +509,9 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		// Reuse rPowM instead of computing ExpExt again
 		wrappedRatioInvField := big.NewInt(0).SetUint64(ratioInvField.Uint64())
 		outerFactor := gnarkutil.ExpExt(api, rPowM, ratio)
-		outerFactor = *e4Api.Sub(&outerFactor, &wOne)
-		outerFactor = *e4Api.MulConst(&outerFactor, wrappedRatioInvField)
-		res = *e4Api.Mul(&res, &outerFactor)
+		outerFactor = koalaAPI.SubExt(outerFactor, wOne)
+		outerFactor = koalaAPI.MulConstExt(outerFactor, wrappedRatioInvField)
+		res = koalaAPI.MulExt(res, outerFactor)
 		recombinedYs[i] = res
 	}
 

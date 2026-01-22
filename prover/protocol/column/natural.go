@@ -6,8 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -88,34 +87,34 @@ func (n Natural) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element
 }
 
 // GetColAssignmentGnark implements [ifaces.Column]
-func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
+func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
 	return run.GetColumn(n.ID)
 }
 
-func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
 	if !n.store.info(n.ID).IsBase {
-		return []zk.WrappedVariable{}, fmt.Errorf("requested base elements but column defined over field extensions")
+		return []koalagnark.Element{}, fmt.Errorf("requested base elements but column defined over field extensions")
 	}
 	return run.GetColumn(n.ID), nil
 }
 
-func (n Natural) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
+func (n Natural) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
 	return run.GetColumnExt(n.ID)
 }
 
 // GetColAssignmentGnarkAt implements [ifaces.Column]
-func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
+func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size()))
 }
 
-func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
 	if !n.store.info(n.ID).IsBase {
-		return zk.ValueOf(0), fmt.Errorf("requested base elements but column defined over field extensions")
+		return koalagnark.NewElement(0), fmt.Errorf("requested base elements but column defined over field extensions")
 	}
 	return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size())), nil
 }
 
-func (n Natural) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
+func (n Natural) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
 	return run.GetColumnAtExt(n.ID, utils.PositiveMod(pos, n.Size()))
 }
 

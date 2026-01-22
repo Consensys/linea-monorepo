@@ -6,22 +6,18 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
-func GnarkEvaluateLagrangeExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4Gen, gen field.Element, cardinality uint64) gnarkfext.E4Gen {
+func GnarkEvaluateLagrangeExt(api frontend.API, p []koalagnark.Ext, z koalagnark.Ext, gen field.Element, cardinality uint64) koalagnark.Ext {
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-	res := *ext4.Zero()
+	koalaAPI := koalagnark.NewAPI(api)
+	res := koalaAPI.ZeroExt()
 	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
 
 	for i := uint64(0); i < cardinality; i++ {
-		tmp := ext4.Mul(&lagranges[i], &p[i])
-		res = *ext4.Add(&res, tmp)
+		tmp := koalaAPI.MulExt(lagranges[i], p[i])
+		res = koalaAPI.AddExt(res, tmp)
 	}
 
 	return res
@@ -34,23 +30,20 @@ func GnarkEvaluateLagrangeExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext
 //
 // For k evaluation points, this saves approximately (k-1)*n multiplications
 // compared to k separate calls to GnarkEvaluateLagrangeExt.
-func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []gnarkfext.E4Gen, zs []gnarkfext.E4Gen, gen field.Element, cardinality uint64) []gnarkfext.E4Gen {
+func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []koalagnark.Ext, zs []koalagnark.Ext, gen field.Element, cardinality uint64) []koalagnark.Ext {
 	if len(zs) == 0 {
 		return nil
 	}
 	if len(zs) == 1 {
-		return []gnarkfext.E4Gen{GnarkEvaluateLagrangeExt(api, p, zs[0], gen, cardinality)}
+		return []koalagnark.Ext{GnarkEvaluateLagrangeExt(api, p, zs[0], gen, cardinality)}
 	}
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	// Precompute barycentric weights: wᵢ = ωⁱ/n
 	// and weighted coefficients: wᵢ * pᵢ
 	// This is shared across all evaluation points
-	weightedP := make([]gnarkfext.E4Gen, cardinality)
+	weightedP := make([]koalagnark.Ext, cardinality)
 	var accOmega field.Element
 	accOmega.SetOne()
 
@@ -67,7 +60,7 @@ func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []gnarkfext.E4Gen, zs []g
 		bwi.SetUint64(wi.Uint64())
 
 		// weightedP[i] = wᵢ * pᵢ
-		weightedP[i] = *ext4.MulConst(&p[i], bwi)
+		weightedP[i] = koalaAPI.MulConstExt(p[i], bwi)
 
 		accOmega.Mul(&accOmega, &gen)
 	}
@@ -79,7 +72,7 @@ func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []gnarkfext.E4Gen, zs []g
 		omegaPowers[i].Mul(&omegaPowers[i-1], &gen)
 	}
 
-	results := make([]gnarkfext.E4Gen, len(zs))
+	results := make([]koalagnark.Ext, len(zs))
 	tb := bits.TrailingZeros(uint(cardinality))
 
 	// Evaluate at each point z
@@ -87,25 +80,25 @@ func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []gnarkfext.E4Gen, zs []g
 		// Compute zⁿ - 1
 		zPowN := z
 		for i := 0; i < tb; i++ {
-			zPowN = *ext4.Square(&zPowN)
+			zPowN = koalaAPI.SquareExt(zPowN)
 		}
-		zPowNMinusOne := *ext4.Sub(&zPowN, ext4.One())
+		zPowNMinusOne := koalaAPI.SubExt(zPowN, koalaAPI.OneExt())
 
 		// Compute Σᵢ [ weightedP[i] / (z - ωⁱ) ]
-		sum := *ext4.Zero()
+		sum := koalaAPI.ZeroExt()
 		for i := uint64(0); i < cardinality; i++ {
 			// z - ωⁱ
-			wOmegai := zk.ValueFromKoala(omegaPowers[i])
-			omegaiExt := gnarkfext.FromBase(wOmegai)
-			zMinusOmegai := *ext4.Sub(&z, &omegaiExt)
+			wOmegai := koalagnark.NewElementFromKoala(omegaPowers[i])
+			omegaiExt := koalagnark.FromBaseVar(wOmegai)
+			zMinusOmegai := koalaAPI.SubExt(z, omegaiExt)
 
 			// weightedP[i] / (z - ωⁱ)
-			term := *ext4.Div(&weightedP[i], &zMinusOmegai)
-			sum = *ext4.Add(&sum, &term)
+			term := koalaAPI.DivExt(weightedP[i], zMinusOmegai)
+			sum = koalaAPI.AddExt(sum, term)
 		}
 
 		// P(z) = (zⁿ - 1) * sum
-		results[j] = *ext4.Mul(&zPowNMinusOne, &sum)
+		results[j] = koalaAPI.MulExt(zPowNMinusOne, sum)
 	}
 
 	return results
@@ -113,48 +106,44 @@ func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []gnarkfext.E4Gen, zs []g
 
 // computeLagrange returns Lᵢ(ζ) for i=1..n
 // with lᵢ(ζ) = ωⁱ/n*(ζⁿ-1)/(ζ - ωⁱ)
-func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Element, cardinality uint64) []gnarkfext.E4Gen {
+func gnarkComputeLagrangeAtZ(api frontend.API, z koalagnark.Ext, gen field.Element, cardinality uint64) []koalagnark.Ext {
 
-	res := make([]gnarkfext.E4Gen, cardinality)
+	res := make([]koalagnark.Ext, cardinality)
 	tb := bits.TrailingZeros(uint(cardinality))
 
-	ext4, err := gnarkfext.NewExt4(api)
-
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	// ζⁿ-1
 	res[0] = z
 	for i := 0; i < tb; i++ {
-		res[0] = *ext4.Square(&res[0])
+		res[0] = koalaAPI.SquareExt(res[0])
 	}
-	wOne := ext4.One()
-	res[0] = *ext4.Sub(&res[0], wOne)
+	wOne := koalaAPI.OneExt()
+	res[0] = koalaAPI.SubExt(res[0], wOne)
 
 	// ζ-1
-	accZetaMinusOmegai := *ext4.Sub(&z, wOne)
+	accZetaMinusOmegai := koalaAPI.SubExt(z, wOne)
 
 	// (ζⁿ-1)/(ζ-1)
-	res[0] = *ext4.Div(&res[0], &accZetaMinusOmegai)
+	res[0] = koalaAPI.DivExt(res[0], accZetaMinusOmegai)
 
 	// 1/n*(ζⁿ-1)/(ζ-1)
-	wCardinality := zk.ValueOf(cardinality)
-	res[0] = *ext4.DivByBase(&res[0], wCardinality)
+	wCardinality := koalagnark.NewElement(cardinality)
+	res[0] = koalaAPI.DivByBaseExt(res[0], wCardinality)
 
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
 	var accOmega field.Element
 	accOmega.SetOne()
 	wGen := big.NewInt(0).SetUint64(gen.Uint64())
-	var wAccOmega zk.WrappedVariable
+	var wAccOmega koalagnark.Element
 	for i := uint64(1); i < cardinality; i++ {
-		res[i] = *ext4.MulConst(&res[i-1], wGen)         // res[i] <- ω * res[i-1]
-		res[i] = *ext4.Mul(&res[i], &accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
-		accOmega.Mul(&accOmega, &gen)                    // accOmega <- accOmega * ω
-		wAccOmega = zk.ValueFromKoala(accOmega)
-		wAccOmegaExt := gnarkfext.FromBase(wAccOmega)
-		accZetaMinusOmegai = *ext4.Sub(&z, &wAccOmegaExt) // accZetaMinusOmegai <- ζ-ωⁱ
-		res[i] = *ext4.Div(&res[i], &accZetaMinusOmegai)  // res[i]  <- res[i]/(ζ-ωⁱ)
+		res[i] = koalaAPI.MulConstExt(res[i-1], wGen)        // res[i] <- ω * res[i-1]
+		res[i] = koalaAPI.MulExt(res[i], accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
+		accOmega.Mul(&accOmega, &gen)                        // accOmega <- accOmega * ω
+		wAccOmega = koalagnark.NewElementFromKoala(accOmega)
+		wAccOmegaExt := koalagnark.FromBaseVar(wAccOmega)
+		accZetaMinusOmegai = koalaAPI.SubExt(z, wAccOmegaExt) // accZetaMinusOmegai <- ζ-ωⁱ
+		res[i] = koalaAPI.DivExt(res[i], accZetaMinusOmegai)  // res[i]  <- res[i]/(ζ-ωⁱ)
 	}
 
 	return res

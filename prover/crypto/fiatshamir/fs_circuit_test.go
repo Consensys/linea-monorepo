@@ -11,23 +11,22 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/stretchr/testify/assert"
 )
 
 type FSCircuit struct {
-	A                  [10]zk.WrappedVariable
-	RandomA            zk.Octuplet
-	B                  [10]gnarkfext.E4Gen
-	RandomB            zk.Octuplet
-	RandomField        zk.Octuplet
-	RandomFieldExt     gnarkfext.E4Gen
+	A                  [10]koalagnark.Element
+	RandomA            koalagnark.Octuplet
+	B                  [10]koalagnark.Ext
+	RandomB            koalagnark.Octuplet
+	RandomField        koalagnark.Octuplet
+	RandomFieldExt     koalagnark.Ext
 	RandomManyIntegers [10]frontend.Variable
 	isKoala            bool
 }
 
-func assertEqualOctuplet(api zk.GenericApi, a, b zk.Octuplet) {
+func assertEqualOctuplet(api *koalagnark.API, a, b koalagnark.Octuplet) {
 	for i := 0; i < 8; i++ {
 		api.AssertIsEqual(a[i], b[i])
 	}
@@ -42,28 +41,25 @@ func (c *FSCircuit) Define(api frontend.API) error {
 		fs = NewGnarkFSBLS12377(api)
 	}
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	fs.Update(c.A[:]...)
 	randomA := fs.RandomField()
-	assertEqualOctuplet(apiGen, randomA, c.RandomA)
+	assertEqualOctuplet(koalaAPI, randomA, c.RandomA)
 
 	fs.UpdateExt(c.B[:]...)
 	randomB := fs.RandomField()
-	assertEqualOctuplet(apiGen, randomB, c.RandomB)
+	assertEqualOctuplet(koalaAPI, randomB, c.RandomB)
 
 	randomField := fs.RandomField()
 
-	assertEqualOctuplet(apiGen, randomField, c.RandomField)
+	assertEqualOctuplet(koalaAPI, randomField, c.RandomField)
 
 	randomFieldExt := fs.RandomFieldExt()
-	apiGen.AssertIsEqual(randomFieldExt.B0.A0, c.RandomFieldExt.B0.A0)
-	apiGen.AssertIsEqual(randomFieldExt.B0.A1, c.RandomFieldExt.B0.A1)
-	apiGen.AssertIsEqual(randomFieldExt.B1.A0, c.RandomFieldExt.B1.A0)
-	apiGen.AssertIsEqual(randomFieldExt.B1.A1, c.RandomFieldExt.B1.A1)
+	koalaAPI.AssertIsEqual(randomFieldExt.B0.A0, c.RandomFieldExt.B0.A0)
+	koalaAPI.AssertIsEqual(randomFieldExt.B0.A1, c.RandomFieldExt.B0.A1)
+	koalaAPI.AssertIsEqual(randomFieldExt.B1.A0, c.RandomFieldExt.B1.A0)
+	koalaAPI.AssertIsEqual(randomFieldExt.B1.A1, c.RandomFieldExt.B1.A1)
 
 	randomManyIntegers := fs.RandomManyIntegers(10, 16)
 	for i := 0; i < 10; i++ {
@@ -105,30 +101,30 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 	RandomManyIntegers := fs.RandomManyIntegers(10, 16)
 
 	for i := 0; i < 10; i++ {
-		witness.A[i] = zk.ValueFromKoala(A[i])
+		witness.A[i] = koalagnark.NewElementFromKoala(A[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomA[i] = zk.ValueFromKoala(RandomA[i])
+		witness.RandomA[i] = koalagnark.NewElementFromKoala(RandomA[i])
 	}
 
 	for i := 0; i < 10; i++ {
-		witness.B[i].B0.A0 = zk.ValueFromKoala(B[i].B0.A0)
-		witness.B[i].B0.A1 = zk.ValueFromKoala(B[i].B0.A1)
-		witness.B[i].B1.A0 = zk.ValueFromKoala(B[i].B1.A0)
-		witness.B[i].B1.A1 = zk.ValueFromKoala(B[i].B1.A1)
+		witness.B[i].B0.A0 = koalagnark.NewElementFromKoala(B[i].B0.A0)
+		witness.B[i].B0.A1 = koalagnark.NewElementFromKoala(B[i].B0.A1)
+		witness.B[i].B1.A0 = koalagnark.NewElementFromKoala(B[i].B1.A0)
+		witness.B[i].B1.A1 = koalagnark.NewElementFromKoala(B[i].B1.A1)
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomB[i] = zk.ValueFromKoala(RandomB[i])
+		witness.RandomB[i] = koalagnark.NewElementFromKoala(RandomB[i])
 	}
 
 	for i := 0; i < 8; i++ {
-		witness.RandomField[i] = zk.ValueFromKoala(RandomField[i])
+		witness.RandomField[i] = koalagnark.NewElementFromKoala(RandomField[i])
 	}
 
-	witness.RandomFieldExt.B0.A0 = zk.ValueFromKoala(RandomFieldExt.B0.A0)
-	witness.RandomFieldExt.B0.A1 = zk.ValueFromKoala(RandomFieldExt.B0.A1)
-	witness.RandomFieldExt.B1.A0 = zk.ValueFromKoala(RandomFieldExt.B1.A0)
-	witness.RandomFieldExt.B1.A1 = zk.ValueFromKoala(RandomFieldExt.B1.A1)
+	witness.RandomFieldExt.B0.A0 = koalagnark.NewElementFromKoala(RandomFieldExt.B0.A0)
+	witness.RandomFieldExt.B0.A1 = koalagnark.NewElementFromKoala(RandomFieldExt.B0.A1)
+	witness.RandomFieldExt.B1.A0 = koalagnark.NewElementFromKoala(RandomFieldExt.B1.A0)
+	witness.RandomFieldExt.B1.A1 = koalagnark.NewElementFromKoala(RandomFieldExt.B1.A1)
 
 	for i := 0; i < 10; i++ {
 		witness.RandomManyIntegers[i] = RandomManyIntegers[i]

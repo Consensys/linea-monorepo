@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -102,14 +102,11 @@ func (a *SubsampleVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *SubsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime) {
-	ext4, err := gnarkfext.NewExt4(frontend)
-	if err != nil {
-		panic(err)
-	}
+func (a *SubsampleVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	koalaAPI := koalagnark.NewAPI(api)
 	resAccLast := run.GetLocalPointEvalParams(a.AccLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.AccSmallLast)
-	ext4.AssertIsEqual(&resAccLast.ExtY, &expectedResAccLast.ExtY)
+	koalaAPI.AssertIsEqualExt(resAccLast.ExtY, expectedResAccLast.ExtY)
 }
 
 // Tests that a small table is obtained from subsampling a larger column with a given offset

@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -50,10 +50,10 @@ func (a *FoldOuterVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldOuterVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	ext4, _ := gnarkfext.NewExt4(api)
+	koalaAPI := koalagnark.NewAPI(api)
 	c := a.FoldedEvalAcc.GetFrontendVariableExt(api, run)
 	c_ := a.HEvalAcc.GetFrontendVariableExt(api, run)
-	ext4.AssertIsEqual(&c, &c_)
+	koalaAPI.AssertIsEqualExt(c, c_)
 }
 
 // Same as fold but folds on the outer-variable rather than the inner variable

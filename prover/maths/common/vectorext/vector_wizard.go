@@ -8,7 +8,7 @@ import (
 	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -197,12 +197,12 @@ func PowerVec(x fext.Element, n int) Vector {
 }
 
 // IntoGnarkAssignment converts an array of field.Element into an array of
-// zk.WrappedVariable that can be used to assign a vector of zk.WrappedVariable
+// koalagnark.Var that can be used to assign a vector of koalagnark.Var
 // in a circuit or to generate a vector of constant in the circuit definition.
-func IntoGnarkAssignment(msgData Vector) []gnarkfext.E4Gen {
-	assignedMsg := []gnarkfext.E4Gen{}
+func IntoGnarkAssignment(msgData Vector) []koalagnark.Ext {
+	assignedMsg := []koalagnark.Ext{}
 	for _, x := range msgData {
-		assignedMsg = append(assignedMsg, gnarkfext.NewE4Gen(x))
+		assignedMsg = append(assignedMsg, koalagnark.NewExt(x))
 	}
 	return assignedMsg
 }
