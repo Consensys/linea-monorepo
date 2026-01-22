@@ -33,6 +33,7 @@ import {
   VALIDIUM_UNPAUSE_TYPES_ROLES,
 } from "contracts/common/constants/pauseTypes";
 import { toBeHex } from "ethers";
+import { PRECOMPILES_ADDRESSES } from "contracts/common/constants";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
   const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
@@ -152,10 +153,10 @@ export async function deployLineaRollupFixture() {
 export async function deployAddressFilter(securityCouncil: string, nonAuthorizedAccount: string[]) {
   const AddressFilterFactory = await ethers.getContractFactory("AddressFilter");
 
-  const addressFilter = (await AddressFilterFactory.deploy(
-    securityCouncil,
-    nonAuthorizedAccount,
-  )) as unknown as AddressFilter;
+  const addressFilter = (await AddressFilterFactory.deploy(securityCouncil, [
+    ...PRECOMPILES_ADDRESSES,
+    ...nonAuthorizedAccount,
+  ])) as unknown as AddressFilter;
 
   await addressFilter.waitForDeployment();
 

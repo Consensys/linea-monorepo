@@ -13,7 +13,7 @@ import {
   LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
-import { AddressFilter, CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+import { AddressFilter, CallForwardingProxy, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployCallForwardingProxy,
   deployForcedTransactionGatewayFixture,
@@ -46,7 +46,7 @@ import {
   SET_ADDRESS_FILTER_ROLE,
   MAX_GAS_LIMIT,
 } from "../common/constants";
-import { deployUpgradableFromFactory } from "../common/deployment";
+import { deployUpgradableFromFactory, reinitializeUpgradeableProxy } from "../common/deployment";
 import {
   calculateRollingHash,
   encodeData,
@@ -422,20 +422,41 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("Upgrading / reinitialisation", () => {
+    it("Should revert if the caller is not the proxy admin", async () => {
+      const upgradeCall = lineaRollup
+        .connect(securityCouncil)
+        .reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
+
+      await expectRevertWithCustomError(lineaRollup, upgradeCall, "CallerNotProxyAdmin");
+    });
+
     it("Should revert if the forced transaction fee is zero", async () => {
-      const upgradeCall = lineaRollup.reinitializeLineaRollupV9(0n, addressFilterAddress);
+      const upgradeCall = reinitializeUpgradeableProxy(
+        lineaRollup,
+        LineaRollup__factory.abi,
+        "reinitializeLineaRollupV9",
+        [0n, addressFilterAddress],
+      );
 
       await expectRevertWithCustomError(lineaRollup, upgradeCall, "ZeroValueNotAllowed");
     });
 
     it("Should revert if the address filter address is zero address", async () => {
-      const upgradeCall = lineaRollup.reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, ADDRESS_ZERO);
+      const upgradeCall = reinitializeUpgradeableProxy(
+        lineaRollup,
+        LineaRollup__factory.abi,
+        "reinitializeLineaRollupV9",
+        [FORCED_TRANSACTION_FEE, ADDRESS_ZERO],
+      );
 
       await expectRevertWithCustomError(lineaRollup, upgradeCall, "ZeroAddressNotAllowed");
     });
 
     it("Should set the next forced transaction number to 1", async () => {
-      await lineaRollup.reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
+      await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      ]);
 
       expect(await lineaRollup.nextForcedTransactionNumber()).to.equal(1n);
     });
@@ -443,37 +464,52 @@ describe("Linea Rollup contract", () => {
     it("Should emit the AddressFilterChanged event when the address filter is set", async () => {
       await expectEvent(
         lineaRollup,
-        lineaRollup.reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress),
+        reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
+          FORCED_TRANSACTION_FEE,
+          addressFilterAddress,
+        ]),
         "AddressFilterChanged",
         [ADDRESS_ZERO, addressFilterAddress],
       );
     });
 
-    it("Should emit the AddressFilterChanged event when the address filter is set", async () => {
+    it("Should emit the ForcedTransactionFeeSet event when the address filter is set", async () => {
       await expectEvent(
         lineaRollup,
-        lineaRollup.reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress),
+        reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
+          FORCED_TRANSACTION_FEE,
+          addressFilterAddress,
+        ]),
         "ForcedTransactionFeeSet",
         [FORCED_TRANSACTION_FEE],
       );
     });
 
     it("Should set the address filter", async () => {
-      await lineaRollup.reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
+      await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      ]);
 
       expect(await lineaRollup.addressFilter()).to.equal(addressFilterAddress);
     });
 
     it("Next contract version number should be 8.0", async () => {
-      await lineaRollup.reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
+      await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      ]);
 
       expect(await lineaRollup.CONTRACT_VERSION()).to.equal("8.0");
     });
 
     it("Next contract version number should be 8.0", async () => {
-      const upgradeCall = lineaRollup
-        .connect(securityCouncil)
-        .reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
+      const upgradeCall = reinitializeUpgradeableProxy(
+        lineaRollup,
+        LineaRollup__factory.abi,
+        "reinitializeLineaRollupV9",
+        [FORCED_TRANSACTION_FEE, addressFilterAddress],
+      );
 
       const previousVersion = ethers.zeroPadBytes(ethers.toUtf8Bytes("7.1"), 8);
       const newVersion = ethers.zeroPadBytes(ethers.toUtf8Bytes("8.0"), 8);
@@ -482,11 +518,17 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Fails to reinitialize twice", async () => {
-      await lineaRollup.reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
+      await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      ]);
 
-      const secondUpgradeCall = lineaRollup
-        .connect(securityCouncil)
-        .reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
+      const secondUpgradeCall = reinitializeUpgradeableProxy(
+        lineaRollup,
+        LineaRollup__factory.abi,
+        "reinitializeLineaRollupV9",
+        [FORCED_TRANSACTION_FEE, addressFilterAddress],
+      );
 
       await expectRevertWithReason(secondUpgradeCall, INITIALIZED_ALREADY_MESSAGE);
     });

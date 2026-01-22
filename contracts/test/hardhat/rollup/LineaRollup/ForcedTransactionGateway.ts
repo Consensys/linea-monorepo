@@ -37,9 +37,12 @@ import {
   DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
   FORCED_TRANSACTION_FEE,
 } from "../../common/constants";
-import { toBeHex, zeroPadValue } from "ethers";
 import { expect } from "chai";
-import { DEFAULT_ADMIN_ROLE, FORCED_TRANSACTION_FEE_SETTER_ROLE } from "contracts/common/constants";
+import {
+  DEFAULT_ADMIN_ROLE,
+  FORCED_TRANSACTION_FEE_SETTER_ROLE,
+  PRECOMPILES_ADDRESSES,
+} from "contracts/common/constants";
 
 describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
@@ -414,14 +417,14 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       );
     });
 
-    it("Should fail if the To address is less than 21", async () => {
+    it("Should fail if the To address is a precompile address", async () => {
       const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
-      for (let i = 0; i < 21; i++) {
-        forcedTransaction.to = ethers.getAddress(zeroPadValue(toBeHex(i), 20));
+      for (let i = 0; i < PRECOMPILES_ADDRESSES.length; i++) {
+        forcedTransaction.to = ethers.getAddress(PRECOMPILES_ADDRESSES[i]);
         await expectRevertWithCustomError(
           forcedTransactionGateway,
           forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
-          "ToAddressTooLow",
+          "AddressIsFiltered",
           [],
         );
       }

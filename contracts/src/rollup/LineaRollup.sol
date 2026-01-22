@@ -78,7 +78,11 @@ contract LineaRollup is
     uint256 _forcedTransactionFeeInWei,
     address _addressFilter
   ) external reinitializer(9) {
-    // TODO - ADD PROXY ADMIN CHECK AND FIX TESTS
+    address proxyAdmin;
+    assembly {
+      proxyAdmin := sload(PROXY_ADMIN_SLOT)
+    }
+    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
 
     require(_forcedTransactionFeeInWei > 0, IGenericErrors.ZeroValueNotAllowed());
     require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());

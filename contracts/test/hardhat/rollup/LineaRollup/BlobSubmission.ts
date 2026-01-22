@@ -10,7 +10,7 @@ import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4
 import blobMultipleAggregatedProof82To153 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-82-139.json";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 
-import { AddressFilter, TestLineaRollup } from "contracts/typechain-types";
+import { AddressFilter, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployForcedTransactionGatewayFixture,
   deployRevertingVerifier,
@@ -40,6 +40,7 @@ import {
   generateBlobParentShnarfData,
   expectEventDirectFromReceiptData,
 } from "../../common/helpers";
+import { reinitializeUpgradeableProxy } from "../../common/deployment";
 
 describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   let lineaRollup: TestLineaRollup;
@@ -480,7 +481,10 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
 
   it("Should submit 2 blobs, then submit another 2 blobs and finalize", async () => {
     // we need the address filter to be set
-    await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
+    await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
+      FORCED_TRANSACTION_FEE,
+      addressFilterAddress,
+    ]);
 
     // validating address filtering checking by marking the security council as filtered
     await addressFilter.connect(securityCouncil).setFilteredStatus([securityCouncil.getAddress()], true);
@@ -508,7 +512,10 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     const filteredAddress = await securityCouncil.getAddress();
 
     // we need the address filter to be set
-    await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
+    await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
+      FORCED_TRANSACTION_FEE,
+      addressFilterAddress,
+    ]);
 
     // Submit 2 blobs
     await sendBlobTransaction(lineaRollup, 0, 2);

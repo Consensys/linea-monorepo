@@ -20,8 +20,6 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   using LibRLP for *;
   using FinalizedStateHashing for *;
 
-  address private constant PRECOMPILE_ADDRESS_LIMIT = address(21);
-
   /// @notice Contains the minimum gas allowed for a forced transaction.
   uint256 private constant MIN_GAS_LIMIT = 21000;
 
@@ -95,7 +93,6 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     );
 
     require(_forcedTransaction.yParity <= 1, YParityGreaterThanOne(_forcedTransaction.yParity));
-    require(_forcedTransaction.to >= address(PRECOMPILE_ADDRESS_LIMIT), ToAddressTooLow());
 
     (
       bytes32 currentFinalizedState,

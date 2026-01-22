@@ -105,11 +105,6 @@ interface IForcedTransactionGateway {
   error YParityGreaterThanOne(uint256 yParity);
 
   /**
-   * @dev Thrown when the to address is the zero address or a precompile.
-   */
-  error ToAddressTooLow();
-
-  /**
    * @dev Thrown when finalization state does not match.
    */
   error FinalizationStateIncorrect(bytes32 expected, bytes32 value);
