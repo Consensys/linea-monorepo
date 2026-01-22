@@ -1,11 +1,11 @@
 /**
- * Bytecode Verifier - Bytecode Utilities
+ * Contract Integrity Verifier - Bytecode Utilities
  *
  * Utilities for comparing deployed bytecode.
  * Handles CBOR metadata stripping and immutable detection for accurate comparisons.
  */
 
-import { BytecodeComparisonResult, BytecodeDifference, ImmutableDifference } from "./types";
+import { BytecodeComparisonResult, BytecodeDifference, ImmutableDifference, ImmutableReference } from "./types";
 
 /**
  * Strips CBOR-encoded metadata from bytecode.
@@ -123,8 +123,7 @@ function analyzeImmutableDifferences(
 
     // Check if local value looks like a placeholder (all zeros or low entropy)
     const localIsPlaceholder =
-      localValue === "0".repeat(localValue.length) ||
-      localValue.match(/^0+[0-9a-f]{1,8}$/) !== null; // Placeholder pattern
+      localValue === "0".repeat(localValue.length) || localValue.match(/^0+[0-9a-f]{1,8}$/) !== null; // Placeholder pattern
 
     // Determine possible type based on value patterns
     let possibleType: string | undefined;
@@ -159,11 +158,36 @@ function analyzeImmutableDifferences(
 }
 
 /**
+ * Checks if a difference region falls within known immutable positions.
+ */
+function isDifferenceAtKnownImmutable(
+  region: { start: number; end: number },
+  knownImmutables: ImmutableReference[],
+): boolean {
+  for (const imm of knownImmutables) {
+    const immEnd = imm.start + imm.length;
+    // Check if region overlaps with immutable
+    if (region.start >= imm.start && region.end <= immEnd) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Compares two bytecode strings after stripping metadata.
  * Identifies if differences are only due to immutable values.
  * Returns detailed comparison result.
+ *
+ * @param localBytecode - Local artifact bytecode
+ * @param remoteBytecode - On-chain bytecode
+ * @param knownImmutables - Known immutable positions from Foundry artifact (optional)
  */
-export function compareBytecode(localBytecode: string, remoteBytecode: string): BytecodeComparisonResult {
+export function compareBytecode(
+  localBytecode: string,
+  remoteBytecode: string,
+  knownImmutables?: ImmutableReference[],
+): BytecodeComparisonResult {
   const strippedLocal = stripCborMetadata(localBytecode);
   const strippedRemote = stripCborMetadata(remoteBytecode);
 
@@ -200,7 +224,6 @@ export function compareBytecode(localBytecode: string, remoteBytecode: string): 
 
   // Find difference regions
   const regions = findDifferenceRegions(strippedLocal, strippedRemote);
-  const { immutables, isLikelyOnlyImmutables } = analyzeImmutableDifferences(regions);
 
   // Calculate match percentage
   let diffBytes = 0;
@@ -208,6 +231,72 @@ export function compareBytecode(localBytecode: string, remoteBytecode: string): 
     diffBytes += region.end - region.start;
   }
   const matchPercentage = Math.round(((localBytes - diffBytes) / localBytes) * 100);
+
+  // If we have known immutable positions from Foundry, use them for precise matching
+  if (knownImmutables && knownImmutables.length > 0) {
+    const immutables: ImmutableDifference[] = [];
+    let allAtKnownPositions = true;
+
+    for (const region of regions) {
+      const isKnownImmutable = isDifferenceAtKnownImmutable(region, knownImmutables);
+
+      if (isKnownImmutable) {
+        immutables.push({
+          position: region.start,
+          length: region.end - region.start,
+          localValue: region.localValue,
+          remoteValue: region.remoteValue,
+          possibleType: "immutable (verified by artifact)",
+        });
+      } else {
+        allAtKnownPositions = false;
+        immutables.push({
+          position: region.start,
+          length: region.end - region.start,
+          localValue: region.localValue,
+          remoteValue: region.remoteValue,
+          possibleType: "unknown (not at immutable position)",
+        });
+      }
+    }
+
+    if (allAtKnownPositions) {
+      return {
+        status: "pass",
+        message: `Bytecode matches (${immutables.length} immutable value(s) differ at known positions)`,
+        localBytecodeLength: localBytes,
+        remoteBytecodeLength: remoteBytes,
+        matchPercentage,
+        differences: undefined,
+        immutableDifferences: immutables,
+        onlyImmutablesDiffer: true,
+      };
+    }
+
+    // Some differences not at known immutable positions
+    const differences: BytecodeDifference[] = regions
+      .filter((r) => !isDifferenceAtKnownImmutable(r, knownImmutables))
+      .slice(0, 10)
+      .map((r) => ({
+        position: r.start,
+        localByte: r.localValue.slice(0, 2),
+        remoteByte: r.remoteValue.slice(0, 2),
+      }));
+
+    return {
+      status: "fail",
+      message: `Bytecode mismatch: ${regions.length - immutables.filter((i) => i.possibleType?.includes("verified")).length} unexpected difference(s)`,
+      localBytecodeLength: localBytes,
+      remoteBytecodeLength: remoteBytes,
+      matchPercentage,
+      differences,
+      immutableDifferences: immutables,
+      onlyImmutablesDiffer: false,
+    };
+  }
+
+  // No known immutables - use heuristic analysis (Hardhat artifacts)
+  const { immutables, isLikelyOnlyImmutables } = analyzeImmutableDifferences(regions);
 
   // Convert to simple differences for backward compatibility
   const differences: BytecodeDifference[] = regions.slice(0, 10).map((r) => ({
@@ -322,7 +411,11 @@ export function validateImmutablesAgainstArgs(
     let found = false;
     for (const expected of expectedValues) {
       // Check if remote value matches or contains the expected value
-      if (remoteValue === expected || remoteValue.endsWith(expected.replace(/^0+/, "")) || expected.endsWith(remoteValue)) {
+      if (
+        remoteValue === expected ||
+        remoteValue.endsWith(expected.replace(/^0+/, "")) ||
+        expected.endsWith(remoteValue)
+      ) {
         found = true;
         matchedCount++;
         if (verbose) {

@@ -1,5 +1,5 @@
 /**
- * Bytecode Verifier - Core Verification Logic
+ * Contract Integrity Verifier - Core Verification Logic
  *
  * Main verification engine that fetches on-chain bytecode and compares
  * against local artifact files.
@@ -16,10 +16,21 @@ import {
 } from "./types";
 import { checkArtifactExists } from "./config";
 import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "./bytecode-utils";
-import { loadArtifact, extractSelectorsFromAbi, compareSelectors } from "./abi-utils";
+import { loadArtifact, extractSelectorsFromArtifact, compareSelectors } from "./abi-utils";
+import { verifyState } from "./state-utils";
 
 // EIP-1967 implementation slot
 const IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+
+/**
+ * Formats a parameter for display.
+ */
+function formatParam(param: unknown): string {
+  if (typeof param === "string" && param.length > 20) {
+    return param.slice(0, 10) + "...";
+  }
+  return String(param);
+}
 
 /**
  * Fetches bytecode from a chain at a given address.
@@ -84,8 +95,15 @@ async function verifyContract(
       return result;
     }
 
-    // Load artifact
+    // Load artifact (supports both Hardhat and Foundry formats)
     const artifact = loadArtifact(contract.artifactFile);
+
+    if (options.verbose) {
+      console.log(`  Artifact format: ${artifact.format}`);
+      if (artifact.immutableReferences && artifact.immutableReferences.length > 0) {
+        console.log(`  Known immutable positions: ${artifact.immutableReferences.length}`);
+      }
+    }
 
     // Fetch on-chain bytecode
     let remoteBytecode = await fetchBytecode(provider, contract.address);
@@ -103,9 +121,9 @@ async function verifyContract(
       }
     }
 
-    // Bytecode comparison
+    // Bytecode comparison (pass known immutable positions for Foundry artifacts)
     if (!options.skipBytecode) {
-      result.bytecodeResult = compareBytecode(artifact.deployedBytecode, remoteBytecode);
+      result.bytecodeResult = compareBytecode(artifact.deployedBytecode, remoteBytecode, artifact.immutableReferences);
 
       // If there are immutable differences and constructor args provided, validate them
       if (
@@ -135,11 +153,18 @@ async function verifyContract(
       }
     }
 
-    // ABI comparison
+    // ABI comparison (uses pre-computed selectors for Foundry artifacts)
     if (!options.skipAbi) {
-      const abiSelectors = extractSelectorsFromAbi(artifact.abi);
+      const abiSelectors = extractSelectorsFromArtifact(artifact);
       const bytecodeSelectors = extractSelectorsFromBytecode(remoteBytecode);
       result.abiResult = compareSelectors(abiSelectors, bytecodeSelectors);
+    }
+
+    // State verification (optional - only if configured)
+    if (!options.skipState && contract.stateVerification) {
+      // For proxies, state verification happens on the proxy address (where storage lives)
+      const stateAddress = contract.address;
+      result.stateResult = await verifyState(provider, stateAddress, artifact.abi, contract.stateVerification);
     }
 
     // Log verbose info
@@ -218,15 +243,51 @@ export async function runVerification(config: VerifierConfig, options: CliOption
         }
       }
 
+      // State verification result
+      if (result.stateResult) {
+        const sr = result.stateResult;
+        const icon = sr.status === "pass" ? "✓" : sr.status === "fail" ? "✗" : sr.status === "warn" ? "!" : "-";
+        console.log(`  State: ${icon} ${sr.message}`);
+
+        // Show view call results
+        if (sr.viewCallResults && options.verbose) {
+          for (const vcr of sr.viewCallResults) {
+            const vcIcon = vcr.status === "pass" ? "✓" : "✗";
+            const paramsStr = vcr.params ? `(${vcr.params.map((p) => formatParam(p)).join(", ")})` : "()";
+            console.log(`    ${vcIcon} ${vcr.function}${paramsStr}: ${vcr.message}`);
+          }
+        }
+
+        // Show namespace results
+        if (sr.namespaceResults && options.verbose) {
+          for (const nr of sr.namespaceResults) {
+            console.log(`    Namespace: ${nr.namespaceId}`);
+            for (const vr of nr.variables) {
+              const vrIcon = vr.status === "pass" ? "✓" : "✗";
+              console.log(`      ${vrIcon} ${vr.name}: ${vr.message}`);
+            }
+          }
+        }
+
+        // Show slot results
+        if (sr.slotResults && options.verbose) {
+          for (const slr of sr.slotResults) {
+            const slIcon = slr.status === "pass" ? "✓" : "✗";
+            console.log(`    ${slIcon} ${slr.name} (${slr.slot}): ${slr.message}`);
+          }
+        }
+      }
+
       // Count results
       const bytecodeStatus = result.bytecodeResult?.status;
       const abiStatus = result.abiResult?.status;
+      const stateStatus = result.stateResult?.status;
 
-      if (bytecodeStatus === "fail" || abiStatus === "fail") {
+      if (bytecodeStatus === "fail" || abiStatus === "fail" || stateStatus === "fail") {
         failed++;
-      } else if (bytecodeStatus === "warn" || abiStatus === "warn") {
+      } else if (bytecodeStatus === "warn" || abiStatus === "warn" || stateStatus === "warn") {
         warnings++;
-      } else if (bytecodeStatus === "skip" && abiStatus === "skip") {
+      } else if (bytecodeStatus === "skip" && abiStatus === "skip" && !stateStatus) {
         skipped++;
       } else {
         passed++;
@@ -267,7 +328,9 @@ export function printSummary(summary: VerificationSummary): void {
       const hasAbiFailure = result.abiResult?.status === "fail";
       const hasError = result.error;
 
-      if (hasBytecodeFailure || hasAbiFailure || hasError) {
+      const hasStateFailure = result.stateResult?.status === "fail";
+
+      if (hasBytecodeFailure || hasAbiFailure || hasStateFailure || hasError) {
         console.log(`  - ${result.contract.name} (${result.contract.chain})`);
         if (hasError) {
           console.log(`    Error: ${result.error}`);
@@ -277,6 +340,9 @@ export function printSummary(summary: VerificationSummary): void {
         }
         if (hasAbiFailure) {
           console.log(`    ABI: ${result.abiResult!.message}`);
+        }
+        if (hasStateFailure) {
+          console.log(`    State: ${result.stateResult!.message}`);
         }
       }
     }

@@ -1,13 +1,13 @@
-# Bytecode Verifier
+# Contract Integrity Verifier
 
-A TypeScript tool to verify deployed smart contract bytecode and ABI against local artifact files. Supports multiple chains via configuration.
+A TypeScript tool to verify deployed smart contract integrity (bytecode, ABI, and state) against local artifact files. Supports multiple chains via configuration.
 
 Inspired by [diffyscan](https://github.com/lidofinance/diffyscan).
 
 ## Usage
 
 ```bash
-npx ts-node scripts/operational/bytecode-verifier/index.ts --config <config.json>
+npx ts-node scripts/operational/contract-integrity-verifier/index.ts --config <config.json>
 ```
 
 ### Options
@@ -20,25 +20,26 @@ npx ts-node scripts/operational/bytecode-verifier/index.ts --config <config.json
 | `--chain` | | Filter to specific chain |
 | `--skip-bytecode` | | Skip bytecode comparison |
 | `--skip-abi` | | Skip ABI comparison |
+| `--skip-state` | | Skip state verification |
 | `--help` | `-h` | Show help |
 
 ### Examples
 
 ```bash
 # Verify all contracts in config
-npx ts-node scripts/operational/bytecode-verifier/index.ts -c config.json
+npx ts-node scripts/operational/contract-integrity-verifier/index.ts -c config.json
 
 # Verbose output
-npx ts-node scripts/operational/bytecode-verifier/index.ts -c config.json -v
+npx ts-node scripts/operational/contract-integrity-verifier/index.ts -c config.json -v
 
 # Filter to specific contract
-npx ts-node scripts/operational/bytecode-verifier/index.ts -c config.json --contract LineaRollup
+npx ts-node scripts/operational/contract-integrity-verifier/index.ts -c config.json --contract LineaRollup
 
 # Filter to specific chain
-npx ts-node scripts/operational/bytecode-verifier/index.ts -c config.json --chain mainnet
+npx ts-node scripts/operational/contract-integrity-verifier/index.ts -c config.json --chain mainnet
 
 # Skip ABI comparison (bytecode only)
-npx ts-node scripts/operational/bytecode-verifier/index.ts -c config.json --skip-abi
+npx ts-node scripts/operational/contract-integrity-verifier/index.ts -c config.json --skip-abi
 ```
 
 ## Configuration
@@ -133,9 +134,52 @@ export MAINNET_RPC_URL="https://mainnet.infura.io/v3/YOUR_KEY"
 
 ## Artifact File Format
 
-Uses standard Hardhat artifact format (`.json`) with `abi`, `bytecode`, and `deployedBytecode` fields.
+Supports both **Hardhat** and **Foundry** artifact formats. The tool auto-detects the format.
 
-Example location: `contracts/deployments/bytecode/2026-01-14/LineaRollup.json`
+### Hardhat Artifacts
+
+Standard Hardhat format with `abi`, `bytecode`, and `deployedBytecode` as strings:
+
+```json
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "MyContract",
+  "abi": [...],
+  "bytecode": "0x...",
+  "deployedBytecode": "0x..."
+}
+```
+
+### Foundry Artifacts
+
+Foundry (`forge build`) format with bytecode as objects:
+
+```json
+{
+  "abi": [...],
+  "bytecode": { "object": "0x..." },
+  "deployedBytecode": {
+    "object": "0x...",
+    "immutableReferences": {
+      "123": [{ "start": 456, "length": 32 }]
+    }
+  },
+  "methodIdentifiers": {
+    "owner()": "8da5cb5b"
+  }
+}
+```
+
+### Foundry Benefits
+
+When using Foundry artifacts, the tool leverages:
+
+| Feature | Benefit |
+|---------|---------|
+| `immutableReferences` | Precise immutable position detection (no heuristics) |
+| `methodIdentifiers` | Pre-computed selectors (faster ABI comparison) |
+
+Example location: `out/MyContract.sol/MyContract.json`
 
 ## How Verification Works
 
@@ -152,6 +196,69 @@ Example location: `contracts/deployments/bytecode/2026-01-14/LineaRollup.json`
 2. Scans the deployed bytecode for PUSH4 opcodes (function dispatcher pattern)
 3. Reports any ABI selectors not found in the bytecode
 
+### State Verification (Optional)
+
+For upgradeable contracts, verify state set by initializers:
+
+```json
+{
+  "name": "MyContract-Proxy",
+  "address": "0x...",
+  "artifactFile": "...",
+  "isProxy": true,
+  "stateVerification": {
+    "ozVersion": "v5",
+    "viewCalls": [
+      { "function": "owner", "expected": "0x..." },
+      { "function": "hasRole", "params": ["0x00...00", "0x..."], "expected": true }
+    ],
+    "slots": [
+      { "slot": "0x0", "type": "uint8", "name": "_initialized", "expected": "6" }
+    ],
+    "namespaces": [
+      {
+        "id": "linea.storage.YieldManager",
+        "variables": [
+          { "offset": 0, "type": "address", "name": "messageService", "expected": "0x..." }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### State Verification Methods
+
+| Method | Use Case |
+|--------|----------|
+| `viewCalls` | Call public view functions (with optional params) |
+| `slots` | Read explicit storage slots (OZ v4, private vars) |
+| `namespaces` | Read ERC-7201 namespaced storage (OZ v5) |
+
+#### View Calls with Parameters
+
+```json
+{
+  "viewCalls": [
+    { "function": "owner", "expected": "0x..." },
+    { "function": "hasRole", "params": ["0x00...00", "0xAdminAddress"], "expected": true },
+    { "function": "balanceOf", "params": ["0xUserAddress"], "expected": "1000000000000000000" }
+  ]
+}
+```
+
+#### Storage Types
+
+Supported types for slots and namespaces:
+- `address`, `bool`
+- `uint8`, `uint32`, `uint64`, `uint128`, `uint256`
+- `bytes32`
+
+#### OpenZeppelin Version Support
+
+- **v4.x**: Use explicit `slots` with known slot positions
+- **v5.x**: Use `namespaces` with ERC-7201 namespace IDs
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -162,10 +269,11 @@ Example location: `contracts/deployments/bytecode/2026-01-14/LineaRollup.json`
 
 ## Limitations
 
-- **Immutables**: Immutable variables are embedded in bytecode and may cause mismatches
+- **Immutables (Hardhat)**: Uses heuristic detection for immutable positions. Use Foundry artifacts for precise detection.
+- **Immutables (Foundry)**: Exact positions from `immutableReferences` - no heuristics needed.
 - **Constructor arguments**: Not compared (deployment bytecode vs runtime bytecode)
-- **Libraries**: Linked libraries may have different addresses per deployment
-- **ABI heuristics**: Function selector extraction from bytecode is heuristic-based
+- **Libraries**: Linked libraries should be embedded in the artifact bytecode.
+- **ABI heuristics**: Function selector extraction from bytecode is heuristic-based (Foundry artifacts use pre-computed `methodIdentifiers`).
 
 ## Troubleshooting
 

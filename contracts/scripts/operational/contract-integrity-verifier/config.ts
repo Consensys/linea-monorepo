@@ -1,5 +1,5 @@
 /**
- * Bytecode Verifier - Configuration Loading
+ * Contract Integrity Verifier - Configuration Loading
  *
  * Handles loading and validating the verifier configuration file.
  * Supports environment variable interpolation in config values.

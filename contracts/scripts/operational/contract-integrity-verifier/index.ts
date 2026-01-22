@@ -1,12 +1,12 @@
 #!/usr/bin/env ts-node
 /**
- * Bytecode Verifier - CLI Entry Point
+ * Contract Integrity Verifier - CLI Entry Point
  *
- * Verifies deployed smart contract bytecode and ABI against local artifact files.
+ * Verifies deployed smart contract bytecode, ABI, and state against local artifact files.
  * Inspired by https://github.com/lidofinance/diffyscan
  *
  * Usage:
- *   npx ts-node scripts/operational/bytecode-verifier/index.ts --config <config.json>
+ *   npx ts-node scripts/operational/contract-integrity-verifier/index.ts --config <config.json>
  *
  * Options:
  *   --config, -c      Path to configuration file (required)
@@ -15,6 +15,7 @@
  *   --chain           Filter to specific chain
  *   --skip-bytecode   Skip bytecode comparison
  *   --skip-abi        Skip ABI comparison
+ *   --skip-state      Skip state verification
  *   --help, -h        Show help
  *
  * Exit codes:
@@ -61,6 +62,11 @@ async function main(): Promise<void> {
       description: "Skip ABI comparison",
       default: false,
     })
+    .option("skip-state", {
+      type: "boolean",
+      description: "Skip state verification",
+      default: false,
+    })
     .help()
     .alias("help", "h")
     .strict()
@@ -73,9 +79,10 @@ async function main(): Promise<void> {
     chain: argv.chain,
     skipBytecode: argv["skip-bytecode"],
     skipAbi: argv["skip-abi"],
+    skipState: argv["skip-state"],
   };
 
-  console.log("Bytecode Verifier");
+  console.log("Contract Integrity Verifier");
   console.log("=".repeat(50));
 
   try {
