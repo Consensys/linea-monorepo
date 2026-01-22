@@ -144,7 +144,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
 		circuit        = &RecursionCircuit{
 			WizardVerifier: wizardVerifier,
-			X:              Ext4FV(&params.ExtX),
+			X:              Ext4FV(params.ExtX),
 			Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
 			Pubs:           make([]frontend.Variable, len(pubs)),
 			PolyQuery:      polyQuery,
