@@ -73,7 +73,9 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
         goto failure       
     ;; step_7: happens in the HUB
         ;; Add PER_EMPTY_ACCOUNT_COST - PER_AUTH_BASE_COST gas to the global refund counter if authority is not empty.
-    ;; step_8: happens in the HUB
+    ;; step_8: 
+        ;; TODO: this needs to be done here now probably
+        ;; happens in the HUB
         ;; if delegation_address_is_zero goto delegation_address_is_zero_case:
         ;; delegation_address_is_zero_case:
         ;;  authority_code_hash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 ;; keccak256 of empty string
