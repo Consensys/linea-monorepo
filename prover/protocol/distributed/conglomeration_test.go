@@ -30,19 +30,30 @@ func TestConglomerationBasic(t *testing.T) {
 
 		// Custom compilation params for this test
 		testCompilationParams = distributed.CompilationParams{
-			FixedNbRowPlonkCircuit:       1 << 24,
-			FixedNbRowExternalHasher:     1 << 16,
+			FixedNbRowPlonkCircuit:       1 << 21,
+			FixedNbRowExternalHasher:     1 << 18, // Increased from 1<<22 to handle hash claims
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 18,
-			InitialCompilerSizeConglo:    1 << 13,
-			ColumnProfileMPTS:            nil,
-			ColumnProfileMPTSPrecomputed: 0,
+			InitialCompilerSizeConglo:    1 << 18,
+			ColumnProfileMPTS:            nil, //[]int{17, 330, 36, 3, 3, 15, 0, 1},
+			ColumnProfileMPTSPrecomputed: 0,   // 21,
 		}
+
+		testCompilationParamsConglo = distributed.CompilationParams{
+			FixedNbRowPlonkCircuit:       1 << 26,
+			FixedNbRowExternalHasher:     1 << 18, // Increased from 1<<22 to handle hash claims
+			FixedNbPublicInput:           1 << 10,
+			InitialCompilerSize:          1 << 21,
+			InitialCompilerSizeConglo:    1 << 21,
+			ColumnProfileMPTS:            nil, //[]int{17, 330, 36, 3, 3, 15, 0, 1},
+			ColumnProfileMPTSPrecomputed: 0,   // 21,
+		}
+
 
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
 				CompileSegments(testCompilationParams).
-				Conglomerate(testCompilationParams)
+				Conglomerate(testCompilationParamsConglo)
 
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign, false)
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
@@ -87,7 +98,6 @@ func TestConglomerationProverDebug(t *testing.T) {
 	}
 
 	limitlessZkEVM.RunDebug(cfg, witness)
-
 }
 
 // TestConglomeration generates a conglomeration proof and checks if it is valid
@@ -154,12 +164,10 @@ func runConglomerationProver(
 	cong *distributed.RecursedSegmentCompilation,
 	runGLs, runLPPs []*distributed.SegmentProof,
 ) *distributed.SegmentProof {
-
 	// The channel is used as a FIFO queue to store the remaining proofs to be
 	// aggregated.
-	var (
-		remainingProofs = make(chan *distributed.SegmentProof, len(runGLs)+len(runLPPs))
-	)
+
+	remainingProofs := make(chan *distributed.SegmentProof, len(runGLs)+len(runLPPs))
 
 	// This populates the queue
 	for i := range runGLs {
