@@ -42,7 +42,7 @@ public class AccessListPhaseSection extends PhaseSection {
   private int totalAddress;
   private int totalKeys;
   private final InstructionByteStringPrefix accessListRlpPrefix;
-  private final List<EntrySubSection> entries;
+  private final List<AccessListEntrySubSection> entries;
 
   private static final short RLP_ADDRESS_BYTE_SIZE = 1 + Address.SIZE;
 
@@ -64,7 +64,8 @@ public class AccessListPhaseSection extends PhaseSection {
     entries = new ArrayList<>(accessList.size());
     for (int i = 0; i < accessList.size(); i++) {
       entries.add(
-          new EntrySubSection(rlpUtils, trm, accessList.get(i), accessListTupleSizes.get(i)));
+          new AccessListEntrySubSection(
+              rlpUtils, trm, accessList.get(i), accessListTupleSizes.get(i)));
     }
   }
 
@@ -81,7 +82,7 @@ public class AccessListPhaseSection extends PhaseSection {
     tracePostValues(trace, tracedValues);
 
     // trace each entry
-    for (EntrySubSection entry : entries) {
+    for (AccessListEntrySubSection entry : entries) {
       entry.trace(trace, tracedValues);
     }
   }
@@ -95,16 +96,17 @@ public class AccessListPhaseSection extends PhaseSection {
   public int lineCount() {
     return 1 // 1 for transaction row
         + 1 // + 1 for global Rlp prefix
-        + entries.stream().mapToInt(EntrySubSection::lineCount).sum(); // + the entries
+        + entries.stream().mapToInt(AccessListEntrySubSection::lineCount).sum(); // + the entries
   }
 
-  private class EntrySubSection {
+  private class AccessListEntrySubSection {
     private final InstructionByteStringPrefix entryRlpPrefix;
     private final Address address;
     private final InstructionByteStringPrefix keysRlpPrefix;
     private final List<InstructionBytes32> keys;
 
-    private EntrySubSection(RlpUtils rlpUtils, Trm trm, AccessListEntry entry, int tupleByteSize) {
+    private AccessListEntrySubSection(
+        RlpUtils rlpUtils, Trm trm, AccessListEntry entry, int tupleByteSize) {
       final InstructionByteStringPrefix entryRlpPrefixCall =
           new InstructionByteStringPrefix(tupleByteSize, (byte) 0x00, true);
       entryRlpPrefix = (InstructionByteStringPrefix) rlpUtils.call(entryRlpPrefixCall);

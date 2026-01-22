@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.rlptxn;
 
 import static net.consensys.linea.zktracer.module.rlptxn.phaseSection.IntegerEntry.*;
-import static org.hyperledger.besu.datatypes.TransactionType.EIP1559;
 import static org.hyperledger.besu.datatypes.TransactionType.FRONTIER;
 
 import java.util.ArrayList;
@@ -80,7 +79,7 @@ public class RlpTxnOperation extends ModuleOperation {
     }
 
     // Phase Authorization List
-    if (tx.getBesuTransaction().getType().supportsDelegateCode()){
+    if (tx.getBesuTransaction().getType().supportsDelegateCode()) {
       phaseSectionList.add(new AuthorizationListSection(rlpUtils, tx));
     }
 
