@@ -1,0 +1,354 @@
+/**
+ * Bytecode Verifier - Bytecode Utilities
+ *
+ * Utilities for comparing deployed bytecode.
+ * Handles CBOR metadata stripping and immutable detection for accurate comparisons.
+ */
+
+import { BytecodeComparisonResult, BytecodeDifference, ImmutableDifference } from "./types";
+
+/**
+ * Strips CBOR-encoded metadata from bytecode.
+ *
+ * Solidity appends metadata hash at the end of bytecode in CBOR format.
+ * The metadata starts with `a264` (2-item map) or `a165` (1-item map) and ends
+ * with a 2-byte length indicator.
+ *
+ * Format: ...contract_code...a264ipfs...solc...0033
+ * The last 2 bytes (0033 = 51 in decimal) indicate metadata length.
+ */
+export function stripCborMetadata(bytecode: string): string {
+  // Normalize bytecode
+  const normalized = bytecode.toLowerCase().startsWith("0x") ? bytecode.slice(2).toLowerCase() : bytecode.toLowerCase();
+
+  if (normalized.length < 4) {
+    return normalized;
+  }
+
+  // Get the last 2 bytes (4 hex chars) which indicate metadata length
+  const lengthHex = normalized.slice(-4);
+  const metadataLength = parseInt(lengthHex, 16);
+
+  // Metadata length is in bytes, each byte is 2 hex chars
+  // Total to strip: metadata + 2 bytes for length indicator
+  const totalToStrip = (metadataLength + 2) * 2;
+
+  if (totalToStrip >= normalized.length) {
+    // Something's wrong, return original
+    return normalized;
+  }
+
+  // Verify this looks like CBOR metadata by checking the marker
+  const potentialMetadataStart = normalized.length - totalToStrip;
+  const metadataMarker = normalized.slice(potentialMetadataStart, potentialMetadataStart + 4);
+
+  // Common CBOR map prefixes for Solidity metadata
+  if (metadataMarker.startsWith("a2") || metadataMarker.startsWith("a1")) {
+    return normalized.slice(0, potentialMetadataStart);
+  }
+
+  // If no valid CBOR marker found, return original
+  return normalized;
+}
+
+/**
+ * Finds contiguous regions of differences in bytecode.
+ * Returns regions that could be immutable values (typically 32-byte aligned).
+ */
+function findDifferenceRegions(
+  local: string,
+  remote: string,
+): { start: number; end: number; localValue: string; remoteValue: string }[] {
+  const regions: { start: number; end: number; localValue: string; remoteValue: string }[] = [];
+  const minLength = Math.min(local.length, remote.length);
+
+  let regionStart: number | null = null;
+
+  for (let i = 0; i < minLength; i += 2) {
+    const localByte = local.slice(i, i + 2);
+    const remoteByte = remote.slice(i, i + 2);
+    const isDifferent = localByte !== remoteByte;
+
+    if (isDifferent && regionStart === null) {
+      regionStart = i;
+    } else if (!isDifferent && regionStart !== null) {
+      regions.push({
+        start: regionStart / 2,
+        end: i / 2,
+        localValue: local.slice(regionStart, i),
+        remoteValue: remote.slice(regionStart, i),
+      });
+      regionStart = null;
+    }
+  }
+
+  // Handle trailing difference
+  if (regionStart !== null) {
+    regions.push({
+      start: regionStart / 2,
+      end: minLength / 2,
+      localValue: local.slice(regionStart, minLength),
+      remoteValue: remote.slice(regionStart, minLength),
+    });
+  }
+
+  return regions;
+}
+
+/**
+ * Analyzes difference regions to identify potential immutables.
+ * Immutables are typically:
+ * - 32 bytes (64 hex chars) for most types
+ * - 20 bytes (40 hex chars) for addresses (padded to 32)
+ * - May appear as contiguous or nearby regions
+ */
+function analyzeImmutableDifferences(
+  regions: { start: number; end: number; localValue: string; remoteValue: string }[],
+): { immutables: ImmutableDifference[]; isLikelyOnlyImmutables: boolean } {
+  const immutables: ImmutableDifference[] = [];
+  let allLookLikeImmutables = true;
+
+  for (const region of regions) {
+    const length = region.end - region.start;
+    const localValue = region.localValue;
+    const remoteValue = region.remoteValue;
+
+    // Check if this looks like an immutable (32 bytes or part of 32-byte value)
+    // Immutables are stored as 32-byte values, but the difference region
+    // might only show the non-zero part
+    const isPlausibleImmutable =
+      length === 32 || // Full 32-byte immutable
+      length === 20 || // Address (without padding)
+      length <= 32; // Could be partial (if local has zeros)
+
+    // Check if local value looks like a placeholder (all zeros or low entropy)
+    const localIsPlaceholder =
+      localValue === "0".repeat(localValue.length) ||
+      localValue.match(/^0+[0-9a-f]{1,8}$/) !== null; // Placeholder pattern
+
+    // Determine possible type based on value patterns
+    let possibleType: string | undefined;
+    if (length === 20 || (length === 32 && remoteValue.startsWith("000000000000000000000000"))) {
+      possibleType = "address";
+    } else if (length <= 8) {
+      possibleType = "uint" + length * 8;
+    } else if (length === 32) {
+      possibleType = "bytes32 or uint256";
+    }
+
+    immutables.push({
+      position: region.start,
+      length,
+      localValue,
+      remoteValue,
+      possibleType,
+    });
+
+    // If local isn't a placeholder or size is unexpected, might not be just immutables
+    if (!localIsPlaceholder && !isPlausibleImmutable) {
+      allLookLikeImmutables = false;
+    }
+  }
+
+  // Additional heuristic: if differences are scattered single bytes, probably not immutables
+  if (regions.length > 10 && regions.every((r) => r.end - r.start <= 2)) {
+    allLookLikeImmutables = false;
+  }
+
+  return { immutables, isLikelyOnlyImmutables: allLookLikeImmutables && regions.length > 0 };
+}
+
+/**
+ * Compares two bytecode strings after stripping metadata.
+ * Identifies if differences are only due to immutable values.
+ * Returns detailed comparison result.
+ */
+export function compareBytecode(localBytecode: string, remoteBytecode: string): BytecodeComparisonResult {
+  const strippedLocal = stripCborMetadata(localBytecode);
+  const strippedRemote = stripCborMetadata(remoteBytecode);
+
+  const localBytes = strippedLocal.length / 2;
+  const remoteBytes = strippedRemote.length / 2;
+
+  // Exact match
+  if (strippedLocal === strippedRemote) {
+    return {
+      status: "pass",
+      message: "Bytecode matches exactly",
+      localBytecodeLength: localBytes,
+      remoteBytecodeLength: remoteBytes,
+      matchPercentage: 100,
+      differences: undefined,
+      immutableDifferences: undefined,
+      onlyImmutablesDiffer: undefined,
+    };
+  }
+
+  // Length must match for immutable-only differences
+  if (strippedLocal.length !== strippedRemote.length) {
+    return {
+      status: "fail",
+      message: `Bytecode length mismatch: local ${localBytes} bytes, remote ${remoteBytes} bytes`,
+      localBytecodeLength: localBytes,
+      remoteBytecodeLength: remoteBytes,
+      matchPercentage: 0,
+      differences: undefined,
+      immutableDifferences: undefined,
+      onlyImmutablesDiffer: false,
+    };
+  }
+
+  // Find difference regions
+  const regions = findDifferenceRegions(strippedLocal, strippedRemote);
+  const { immutables, isLikelyOnlyImmutables } = analyzeImmutableDifferences(regions);
+
+  // Calculate match percentage
+  let diffBytes = 0;
+  for (const region of regions) {
+    diffBytes += region.end - region.start;
+  }
+  const matchPercentage = Math.round(((localBytes - diffBytes) / localBytes) * 100);
+
+  // Convert to simple differences for backward compatibility
+  const differences: BytecodeDifference[] = regions.slice(0, 10).map((r) => ({
+    position: r.start,
+    localByte: r.localValue.slice(0, 2),
+    remoteByte: r.remoteValue.slice(0, 2),
+  }));
+
+  if (isLikelyOnlyImmutables) {
+    return {
+      status: "pass",
+      message: `Bytecode matches (${immutables.length} immutable value(s) differ as expected)`,
+      localBytecodeLength: localBytes,
+      remoteBytecodeLength: remoteBytes,
+      matchPercentage,
+      differences: undefined,
+      immutableDifferences: immutables,
+      onlyImmutablesDiffer: true,
+    };
+  }
+
+  return {
+    status: "fail",
+    message: `Bytecode mismatch: ${matchPercentage}% match, ${regions.length} difference region(s)`,
+    localBytecodeLength: localBytes,
+    remoteBytecodeLength: remoteBytes,
+    matchPercentage,
+    differences,
+    immutableDifferences: immutables.length > 0 ? immutables : undefined,
+    onlyImmutablesDiffer: false,
+  };
+}
+
+/**
+ * Extracts function selectors from deployed bytecode.
+ * Looks for PUSH4 (0x63) instructions followed by 4 bytes.
+ * This is a heuristic and may not catch all selectors.
+ */
+export function extractSelectorsFromBytecode(bytecode: string): string[] {
+  const normalized = bytecode.toLowerCase().startsWith("0x") ? bytecode.slice(2).toLowerCase() : bytecode.toLowerCase();
+
+  const selectors: Set<string> = new Set();
+
+  // Look for PUSH4 opcode (0x63) followed by 4 bytes
+  for (let i = 0; i < normalized.length - 10; i += 2) {
+    if (normalized.slice(i, i + 2) === "63") {
+      const potentialSelector = normalized.slice(i + 2, i + 10);
+      // Basic validation: selectors shouldn't be all zeros or all f's
+      if (potentialSelector !== "00000000" && potentialSelector !== "ffffffff") {
+        selectors.add(potentialSelector);
+      }
+    }
+  }
+
+  return Array.from(selectors).sort();
+}
+
+/**
+ * Validates that immutable differences match expected constructor args.
+ * Returns validation result with details.
+ */
+export function validateImmutablesAgainstArgs(
+  immutables: ImmutableDifference[],
+  constructorArgs: unknown[] | string,
+  verbose: boolean = false,
+): { valid: boolean; message: string; details?: string[] } {
+  if (immutables.length === 0) {
+    return { valid: true, message: "No immutable differences to validate" };
+  }
+
+  // Convert constructor args to normalized hex values for comparison
+  const expectedValues: string[] = [];
+
+  if (typeof constructorArgs === "string") {
+    // Already encoded hex string - split into 32-byte chunks
+    const normalized = constructorArgs.toLowerCase().startsWith("0x")
+      ? constructorArgs.slice(2).toLowerCase()
+      : constructorArgs.toLowerCase();
+
+    for (let i = 0; i < normalized.length; i += 64) {
+      expectedValues.push(normalized.slice(i, i + 64));
+    }
+  } else if (Array.isArray(constructorArgs)) {
+    // Array of values - convert each to hex
+    for (const arg of constructorArgs) {
+      if (typeof arg === "string" && arg.startsWith("0x")) {
+        // Address or bytes
+        const normalized = arg.slice(2).toLowerCase().padStart(64, "0");
+        expectedValues.push(normalized);
+      } else if (typeof arg === "bigint" || typeof arg === "number") {
+        // Number - convert to 32-byte hex
+        const hex = BigInt(arg).toString(16).padStart(64, "0");
+        expectedValues.push(hex);
+      } else if (typeof arg === "boolean") {
+        expectedValues.push(arg ? "0".repeat(63) + "1" : "0".repeat(64));
+      } else {
+        // Unknown type - convert to string then hex
+        expectedValues.push(String(arg));
+      }
+    }
+  }
+
+  const details: string[] = [];
+  let allMatched = true;
+  let matchedCount = 0;
+
+  // Check each immutable against expected values
+  for (const imm of immutables) {
+    const remoteValue = imm.remoteValue.toLowerCase().padStart(64, "0");
+
+    // Try to find a matching expected value
+    let found = false;
+    for (const expected of expectedValues) {
+      // Check if remote value matches or contains the expected value
+      if (remoteValue === expected || remoteValue.endsWith(expected.replace(/^0+/, "")) || expected.endsWith(remoteValue)) {
+        found = true;
+        matchedCount++;
+        if (verbose) {
+          details.push(`✓ Immutable at position ${imm.position}: ${imm.remoteValue} matches expected arg`);
+        }
+        break;
+      }
+    }
+
+    if (!found) {
+      allMatched = false;
+      details.push(
+        `✗ Immutable at position ${imm.position}: ${imm.remoteValue} (${imm.possibleType || "unknown type"}) - no matching constructor arg found`,
+      );
+    }
+  }
+
+  if (allMatched) {
+    return verbose
+      ? { valid: true, message: `All ${immutables.length} immutable value(s) match constructor args`, details }
+      : { valid: true, message: `All ${immutables.length} immutable value(s) match constructor args` };
+  }
+
+  return {
+    valid: false,
+    message: `${matchedCount}/${immutables.length} immutable values matched constructor args`,
+    details,
+  };
+}

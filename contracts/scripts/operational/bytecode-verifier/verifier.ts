@@ -1,0 +1,284 @@
+/**
+ * Bytecode Verifier - Core Verification Logic
+ *
+ * Main verification engine that fetches on-chain bytecode and compares
+ * against local artifact files.
+ */
+
+import { ethers } from "ethers";
+import {
+  VerifierConfig,
+  ContractConfig,
+  ChainConfig,
+  ContractVerificationResult,
+  VerificationSummary,
+  CliOptions,
+} from "./types";
+import { checkArtifactExists } from "./config";
+import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "./bytecode-utils";
+import { loadArtifact, extractSelectorsFromAbi, compareSelectors } from "./abi-utils";
+
+// EIP-1967 implementation slot
+const IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+
+/**
+ * Fetches bytecode from a chain at a given address.
+ */
+async function fetchBytecode(provider: ethers.JsonRpcProvider, address: string): Promise<string> {
+  const bytecode = await provider.getCode(address);
+  if (bytecode === "0x" || bytecode === "") {
+    throw new Error(`No bytecode found at address ${address}`);
+  }
+  return bytecode;
+}
+
+/**
+ * Checks if a contract is an EIP-1967 proxy and returns the implementation address.
+ */
+async function getImplementationAddress(provider: ethers.JsonRpcProvider, address: string): Promise<string | null> {
+  try {
+    const implementationSlot = await provider.getStorage(address, IMPLEMENTATION_SLOT);
+    // Slot contains the address padded to 32 bytes
+    const implementationAddress = ethers.getAddress("0x" + implementationSlot.slice(-40));
+
+    // Check if it's a valid address (not zero)
+    if (implementationAddress === ethers.ZeroAddress) {
+      return null;
+    }
+
+    return implementationAddress;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Creates a provider for a chain configuration.
+ */
+function createProvider(chain: ChainConfig): ethers.JsonRpcProvider {
+  return new ethers.JsonRpcProvider(chain.rpcUrl, {
+    chainId: chain.chainId,
+    name: `chain-${chain.chainId}`,
+  });
+}
+
+/**
+ * Verifies a single contract.
+ */
+async function verifyContract(
+  contract: ContractConfig,
+  chain: ChainConfig,
+  options: CliOptions,
+): Promise<ContractVerificationResult> {
+  const result: ContractVerificationResult = {
+    contract,
+    chain,
+  };
+
+  const provider = createProvider(chain);
+
+  try {
+    // Check if artifact file exists
+    if (!checkArtifactExists(contract)) {
+      result.error = `Artifact file not found: ${contract.artifactFile}`;
+      return result;
+    }
+
+    // Load artifact
+    const artifact = loadArtifact(contract.artifactFile);
+
+    // Fetch on-chain bytecode
+    let remoteBytecode = await fetchBytecode(provider, contract.address);
+    let addressUsed = contract.address;
+
+    // If marked as proxy, get implementation bytecode
+    if (contract.isProxy) {
+      const implAddress = await getImplementationAddress(provider, contract.address);
+      if (implAddress) {
+        if (options.verbose) {
+          console.log(`  Proxy detected, fetching implementation at ${implAddress}`);
+        }
+        remoteBytecode = await fetchBytecode(provider, implAddress);
+        addressUsed = implAddress;
+      }
+    }
+
+    // Bytecode comparison
+    if (!options.skipBytecode) {
+      result.bytecodeResult = compareBytecode(artifact.deployedBytecode, remoteBytecode);
+
+      // If there are immutable differences and constructor args provided, validate them
+      if (
+        result.bytecodeResult.onlyImmutablesDiffer &&
+        result.bytecodeResult.immutableDifferences &&
+        contract.constructorArgs
+      ) {
+        const validation = validateImmutablesAgainstArgs(
+          result.bytecodeResult.immutableDifferences,
+          contract.constructorArgs,
+          options.verbose,
+        );
+
+        if (options.verbose && validation.details) {
+          for (const detail of validation.details) {
+            console.log(`    ${detail}`);
+          }
+        }
+
+        // Update message with constructor arg validation result
+        if (validation.valid) {
+          result.bytecodeResult.message += ` - constructor args validated`;
+        } else {
+          result.bytecodeResult.status = "warn";
+          result.bytecodeResult.message += ` - ${validation.message}`;
+        }
+      }
+    }
+
+    // ABI comparison
+    if (!options.skipAbi) {
+      const abiSelectors = extractSelectorsFromAbi(artifact.abi);
+      const bytecodeSelectors = extractSelectorsFromBytecode(remoteBytecode);
+      result.abiResult = compareSelectors(abiSelectors, bytecodeSelectors);
+    }
+
+    // Log verbose info
+    if (options.verbose) {
+      console.log(`  Address verified: ${addressUsed}`);
+      console.log(`  Remote bytecode length: ${(remoteBytecode.length - 2) / 2} bytes`);
+      if (result.bytecodeResult?.immutableDifferences && result.bytecodeResult.immutableDifferences.length > 0) {
+        console.log(`  Immutable differences detected: ${result.bytecodeResult.immutableDifferences.length}`);
+        for (const imm of result.bytecodeResult.immutableDifferences) {
+          console.log(`    Position ${imm.position}: ${imm.possibleType || "unknown"} = 0x${imm.remoteValue}`);
+        }
+      }
+    }
+  } catch (error) {
+    result.error = error instanceof Error ? error.message : String(error);
+  }
+
+  return result;
+}
+
+/**
+ * Runs verification for all contracts in the configuration.
+ */
+export async function runVerification(config: VerifierConfig, options: CliOptions): Promise<VerificationSummary> {
+  const results: ContractVerificationResult[] = [];
+  let passed = 0;
+  let failed = 0;
+  let warnings = 0;
+  let skipped = 0;
+
+  // Filter contracts if specified
+  let contractsToVerify = config.contracts;
+  if (options.contract) {
+    contractsToVerify = contractsToVerify.filter((c) => c.name.toLowerCase() === options.contract!.toLowerCase());
+  }
+  if (options.chain) {
+    contractsToVerify = contractsToVerify.filter((c) => c.chain.toLowerCase() === options.chain!.toLowerCase());
+  }
+
+  if (contractsToVerify.length === 0) {
+    console.log("No contracts to verify matching the specified filters.");
+    return { total: 0, passed: 0, failed: 0, warnings: 0, skipped: 0, results: [] };
+  }
+
+  console.log(`\nVerifying ${contractsToVerify.length} contract(s)...\n`);
+
+  for (const contract of contractsToVerify) {
+    const chain = config.chains[contract.chain];
+    console.log(`Verifying ${contract.name} on ${contract.chain}...`);
+    console.log(`  Address: ${contract.address}`);
+
+    const result = await verifyContract(contract, chain, options);
+    results.push(result);
+
+    if (result.error) {
+      console.log(`  ERROR: ${result.error}`);
+      failed++;
+    } else {
+      // Bytecode result
+      if (result.bytecodeResult) {
+        const br = result.bytecodeResult;
+        const icon = br.status === "pass" ? "✓" : br.status === "fail" ? "✗" : br.status === "warn" ? "!" : "-";
+        console.log(`  Bytecode: ${icon} ${br.message}`);
+        if (br.status === "fail" && br.differences && options.verbose) {
+          console.log(`    First differences at positions: ${br.differences.map((d) => d.position).join(", ")}`);
+        }
+      }
+
+      // ABI result
+      if (result.abiResult) {
+        const ar = result.abiResult;
+        const icon = ar.status === "pass" ? "✓" : ar.status === "fail" ? "✗" : ar.status === "warn" ? "!" : "-";
+        console.log(`  ABI: ${icon} ${ar.message}`);
+        if (ar.status === "fail" && ar.missingSelectors && options.verbose) {
+          console.log(`    Missing selectors: ${ar.missingSelectors.slice(0, 5).join(", ")}`);
+        }
+      }
+
+      // Count results
+      const bytecodeStatus = result.bytecodeResult?.status;
+      const abiStatus = result.abiResult?.status;
+
+      if (bytecodeStatus === "fail" || abiStatus === "fail") {
+        failed++;
+      } else if (bytecodeStatus === "warn" || abiStatus === "warn") {
+        warnings++;
+      } else if (bytecodeStatus === "skip" && abiStatus === "skip") {
+        skipped++;
+      } else {
+        passed++;
+      }
+    }
+
+    console.log("");
+  }
+
+  return {
+    total: contractsToVerify.length,
+    passed,
+    failed,
+    warnings,
+    skipped,
+    results,
+  };
+}
+
+/**
+ * Prints a summary of verification results.
+ */
+export function printSummary(summary: VerificationSummary): void {
+  console.log("=".repeat(50));
+  console.log("VERIFICATION SUMMARY");
+  console.log("=".repeat(50));
+  console.log(`Total contracts: ${summary.total}`);
+  console.log(`  Passed:   ${summary.passed}`);
+  console.log(`  Failed:   ${summary.failed}`);
+  console.log(`  Warnings: ${summary.warnings}`);
+  console.log(`  Skipped:  ${summary.skipped}`);
+  console.log("=".repeat(50));
+
+  if (summary.failed > 0) {
+    console.log("\nFailed contracts:");
+    for (const result of summary.results) {
+      const hasBytecodeFailure = result.bytecodeResult?.status === "fail";
+      const hasAbiFailure = result.abiResult?.status === "fail";
+      const hasError = result.error;
+
+      if (hasBytecodeFailure || hasAbiFailure || hasError) {
+        console.log(`  - ${result.contract.name} (${result.contract.chain})`);
+        if (hasError) {
+          console.log(`    Error: ${result.error}`);
+        }
+        if (hasBytecodeFailure) {
+          console.log(`    Bytecode: ${result.bytecodeResult!.message}`);
+        }
+        if (hasAbiFailure) {
+          console.log(`    ABI: ${result.abiResult!.message}`);
+        }
+      }
+    }
+  }
+}
