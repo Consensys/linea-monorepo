@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -338,7 +338,7 @@ func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, 
 
 // GetPublicInputOfInstanceGnark returns the requested public input in a
 // gnark circuit context.
-func (rec *Recursion) GetPublicInputOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, name string, inst int) zk.WrappedVariable {
+func (rec *Recursion) GetPublicInputOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, name string, inst int) koalagnark.Element {
 	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
 	return run.GetPublicInput(api, name)
 }

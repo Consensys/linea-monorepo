@@ -88,26 +88,42 @@ func DefinePoseidonPadderPacker(comp *wizard.CompiledIOP, ppp PoseidonPadderPack
 	)
 
 	// prepare the projection query to check that the OutputData is packed correctly
-	multiaryFilter := []ifaces.Column{}
-	for i := 0; i < ppp.InterData.Size(); i += 1 {
-		multiaryFilter = append(multiaryFilter,
+	multiaryFilterIntermediary := []ifaces.Column{verifiercol.NewConstantCol(field.One(), ppp.InterData.Size(), string(ifaces.ColIDf("POSEIDON_PADDER_PACKER_FILTER_FIRST_MULTIARY_%s", name)))}
+	for i := 1; i < common.NbLimbU128; i += 1 {
+		multiaryFilterIntermediary = append(multiaryFilterIntermediary,
+			verifiercol.NewConstantCol(field.Zero(), ppp.InterData.Size(), string(ifaces.ColIDf("POSEIDON_PADDER_PACKER_SMALL_INTER_FILTER_%s_%d", name, i))),
+		)
+	}
+
+	multiaryTableIntermediary := [][]ifaces.Column{[]ifaces.Column{ppp.InterData, ppp.InterIsActive}}
+	for i := 1; i < common.NbLimbU128; i += 1 {
+		multiaryTableIntermediary = append(multiaryTableIntermediary,
+			[]ifaces.Column{
+				verifiercol.NewConstantCol(field.Zero(), ppp.InterData.Size(), string(ifaces.ColIDf("POSEIDON_PADDER_PACKER_SMALL_INTER_COLUMN_%s_%d", name, i))),
+				verifiercol.NewConstantCol(field.Zero(), ppp.InterData.Size(), string(ifaces.ColIDf("POSEIDON_PADDER_PACKER_SMALL_INTER_COLUMN_%s_%d", name, i))),
+			})
+	}
+
+	multiaryFilterOutput := []ifaces.Column{}
+	for i := 0; i < common.NbLimbU128; i += 1 {
+		multiaryFilterOutput = append(multiaryFilterOutput,
 			verifiercol.NewConstantCol(field.One(), ppp.InterData.Size()/common.NbLimbU128, string(ifaces.ColIDf("POSEIDON_PADDER_PACKER_SMALL_FILTER_%s_%d", name, i))),
 		)
 	}
 
-	multiaryTable := make([][]ifaces.Column, common.NbLimbU128)
+	multiaryTableOutput := make([][]ifaces.Column, common.NbLimbU128)
 	for i := 0; i < common.NbLimbU128; i += 1 {
-		multiaryTable[i] = []ifaces.Column{ppp.OutputData[i], ppp.OutputIsActive[i]}
+		multiaryTableOutput[i] = []ifaces.Column{ppp.OutputData[i], ppp.OutputIsActive[i]}
 	}
 
-	q := query.ProjectionMultiAryInput{
-		ColumnsA: [][]ifaces.Column{[]ifaces.Column{ppp.InterData, ppp.InterIsActive}},
-		FiltersA: []ifaces.Column{verifiercol.NewConstantCol(field.One(), ppp.InterData.Size(), string(ifaces.ColIDf("POSEIDON_PADDER_PACKER_FILTER_FIRST_MULTIARY_%s", name)))},
-		ColumnsB: multiaryTable,
-		FiltersB: multiaryFilter,
-	}
+	/*	q := query.ProjectionMultiAryInput{
+		ColumnsA: multiaryTableIntermediary,
+		FiltersA: multiaryFilterIntermediary,
+		ColumnsB: multiaryTableOutput,
+		FiltersB: multiaryFilterOutput,
+	}*/
 
-	comp.InsertProjection(ifaces.QueryIDf("%s_PROJ_POSEIDON_PADDER_PACKER", name), q)
+	//comp.InsertProjection(ifaces.QueryIDf("%s_PROJ_POSEIDON_PADDER_PACKER", name), q)
 }
 
 // AssignHasher assigns the data in the PoseidonPadderPacker using the ExtractedData fetched from the arithmetization
@@ -131,7 +147,9 @@ func AssignPoseidonPadderPacker(run *wizard.ProverRuntime, ppp PoseidonPadderPac
 			fetchedFilter.SetZero()
 		}
 		interIsActive[i].Set(&fetchedFilter)
-		interData[i].Set(&fetchedValue)
+		if fetchedFilter.IsOne() {
+			interData[i].Set(&fetchedValue)
+		}
 		outputData[i%common.NbLimbU128][i/common.NbLimbU128].Set(&fetchedValue)
 		outputIsActive[i%common.NbLimbU128][i/common.NbLimbU128].Set(&fetchedFilter)
 

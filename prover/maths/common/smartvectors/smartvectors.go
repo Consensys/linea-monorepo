@@ -7,10 +7,8 @@ import (
 	"math/rand/v2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
-
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -171,36 +169,36 @@ func IntoRegVecExt(s SmartVector) []fext.Element {
 }
 
 // IntoGnarkAssignment converts a smart-vector into a gnark assignment
-func IntoGnarkAssignment(sv SmartVector) []zk.WrappedVariable {
-	res := make([]zk.WrappedVariable, sv.Len())
+func IntoGnarkAssignment(sv SmartVector) []koalagnark.Element {
+	res := make([]koalagnark.Element, sv.Len())
 	_, err := sv.GetBase(0)
 	if err == nil {
 		for i := range res {
 			elem, _ := sv.GetBase(i)
-			res[i] = zk.ValueFromKoala(elem)
+			res[i] = koalagnark.NewElementFromKoala(elem)
 		}
 	} else {
 		for i := range res {
 			elem := sv.GetExt(i)
-			res[i] = zk.ValueOf(elem.String())
+			res[i] = koalagnark.NewElement(elem.String())
 		}
 	}
 	return res
 }
 
 // IntoGnarkAssignment converts an extension smart-vector into a gnark assignment
-func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.E4Gen {
-	res := make([]gnarkfext.E4Gen, sv.Len())
+func IntoGnarkAssignmentExt(sv SmartVector) []koalagnark.Ext {
+	res := make([]koalagnark.Ext, sv.Len())
 	_, err := sv.GetBase(0)
 	if err == nil {
 		for i := range res {
 			elem, _ := sv.GetBase(i)
-			res[i] = gnarkfext.NewE4GenFromBase(elem.String())
+			res[i] = koalagnark.NewFromBaseExt(elem.String())
 		}
 	} else {
 		for i := range res {
 			elem := sv.GetExt(i)
-			res[i] = gnarkfext.NewE4Gen(elem)
+			res[i] = koalagnark.NewExt(elem)
 		}
 	}
 	return res

@@ -7,20 +7,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
 // circuit
 type GnarkFS interface {
-	Update(vec ...zk.WrappedVariable)
-	UpdateExt(vec ...gnarkfext.E4Gen)
-	UpdateVec(mat ...[]zk.WrappedVariable)
-	RandomField() zk.Octuplet
-	RandomFieldExt() gnarkfext.E4Gen
+	Update(vec ...koalagnark.Element)
+	UpdateExt(vec ...koalagnark.Ext)
+	UpdateVec(mat ...[]koalagnark.Element)
+	RandomField() koalagnark.Octuplet
+	RandomFieldExt() koalagnark.Ext
 	RandomManyIntegers(num, upperBound int) []frontend.Variable
-	SetState(state zk.Octuplet)
-	State() zk.Octuplet
+	SetState(state koalagnark.Octuplet)
+	State() koalagnark.Octuplet
 }
 
 func NewGnarkFSKoalabear(api frontend.API) GnarkFS {

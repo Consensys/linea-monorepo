@@ -4,12 +4,12 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
 // Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
 // The leaves are poseidon2_koalabear(columns[i][j])
-func GnarkCheckColumnInclusionNoSis(api frontend.API, columns [][][]zk.WrappedVariable,
+func GnarkCheckColumnInclusionNoSis(api frontend.API, columns [][][]koalagnark.Element,
 	merkleProofs [][]smt_koalabear.GnarkProof, roots []poseidon2_koalabear.Octuplet) error {
 
 	for i := 0; i < len(roots); i++ {
@@ -25,7 +25,7 @@ func GnarkCheckColumnInclusionNoSis(api frontend.API, columns [][][]zk.WrappedVa
 			// Poseidon2 on koalabear is never emulated, so we can unwrap the variables
 			currentColumnsUnwrapped := make([]frontend.Variable, len(columns[i][j]))
 			for k := 0; k < len(columns[i][j]); k++ {
-				currentColumnsUnwrapped[k] = columns[i][j][k].AsNative()
+				currentColumnsUnwrapped[k] = columns[i][j][k].Native()
 			}
 			h.Write(currentColumnsUnwrapped...)
 			leaf := h.Sum()

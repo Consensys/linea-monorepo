@@ -10,14 +10,14 @@ import (
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
 func Copy[T any](dst []frontend.Variable, src []T) (n int) {
 	n = min(len(dst), len(src))
 
 	for i := 0; i < n; i++ {
-		dst[i] = zk.ValueOf(src[i])
+		dst[i] = koalagnark.NewElement(src[i])
 	}
 
 	return

@@ -7,28 +7,27 @@ import (
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 /*
 Allocate a slice of field element
 */
-// func AllocateSlice(n int) []zk.WrappedVariable {
-// 	return make([]zk.WrappedVariable, n)
+// func AllocateSlice(n int) []koalagnark.Var {
+// 	return make([]koalagnark.Var, n)
 // }
 
 /*
 AllocateSliceExt allocates a slice of field extension elements
 */
-func AllocateSliceExt(n int) []gnarkfext.E4Gen {
-	return make([]gnarkfext.E4Gen, n)
+func AllocateSliceExt(n int) []koalagnark.Ext {
+	return make([]koalagnark.Ext, n)
 }
 
 // WitnessFromWrappedBls converts a slice of field elements to a slice of witness variables
 // of the same length with only public inputs.
-func WitnessFromWrappedBls(v ...zk.WrappedVariable) witness.Witness {
+func WitnessFromWrappedBls(v ...koalagnark.Element) witness.Witness {
 
 	var (
 		wit, _  = witness.New(ecc.BLS12_377.ScalarField())
@@ -36,7 +35,7 @@ func WitnessFromWrappedBls(v ...zk.WrappedVariable) witness.Witness {
 	)
 
 	for _, w := range v {
-		witChan <- w.AsEmulated()
+		witChan <- w.Emulated()
 	}
 
 	close(witChan)
@@ -51,7 +50,7 @@ func WitnessFromWrappedBls(v ...zk.WrappedVariable) witness.Witness {
 // WitnessFromWrappedKoala converts a slice of base field elements to a slice
 // of witness variables of the same length with only public inputs. The function
 // assumes the WrappedVariable are not emulated element.
-func WitnessFromWrappedKoala(v ...zk.WrappedVariable) witness.Witness {
+func WitnessFromWrappedKoala(v ...koalagnark.Element) witness.Witness {
 
 	var (
 		wit, _  = witness.New(koalabear.Modulus())
@@ -60,7 +59,7 @@ func WitnessFromWrappedKoala(v ...zk.WrappedVariable) witness.Witness {
 
 	go func() {
 		for _, w := range v {
-			witChan <- w.AsNative()
+			witChan <- w.Native()
 		}
 		close(witChan)
 	}()

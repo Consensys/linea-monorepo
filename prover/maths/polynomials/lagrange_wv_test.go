@@ -11,29 +11,25 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/stretchr/testify/assert"
 )
 
 type LagrangeEvaluationCircuit struct {
-	Poly   []gnarkfext.E4Gen
-	X      gnarkfext.E4Gen
-	Y      gnarkfext.E4Gen
+	Poly   []koalagnark.Ext
+	X      koalagnark.Ext
+	Y      koalagnark.Ext
 	Domain *fft.Domain
 }
 
 func (c *LagrangeEvaluationCircuit) Define(api frontend.API) error {
 
 	y := GnarkEvaluateLagrangeExt(api, c.Poly, c.X, c.Domain.Generator, c.Domain.Cardinality)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
-	apiGen.AssertIsEqual(c.Y.B0.A0, y.B0.A0)
-	apiGen.AssertIsEqual(c.Y.B0.A1, y.B0.A1)
-	apiGen.AssertIsEqual(c.Y.B1.A0, y.B1.A0)
-	apiGen.AssertIsEqual(c.Y.B1.A1, y.B1.A1)
+	koalaAPI := koalagnark.NewAPI(api)
+	koalaAPI.AssertIsEqual(c.Y.B0.A0, y.B0.A0)
+	koalaAPI.AssertIsEqual(c.Y.B0.A1, y.B0.A1)
+	koalaAPI.AssertIsEqual(c.Y.B1.A0, y.B1.A0)
+	koalaAPI.AssertIsEqual(c.Y.B1.A1, y.B1.A1)
 
 	return nil
 }
@@ -142,17 +138,17 @@ func TestLagrangeEvaluation(t *testing.T) {
 	fftextinplace(poly, d)
 
 	{
-		var circuit, witness LagrangeEvaluationCircuit
-		circuit.Poly = make([]gnarkfext.E4Gen, size)
-		circuit.Domain = d
-		witness.Poly = make([]gnarkfext.E4Gen, size)
+		var ckt, witness LagrangeEvaluationCircuit
+		ckt.Poly = make([]koalagnark.Ext, size)
+		ckt.Domain = d
+		witness.Poly = make([]koalagnark.Ext, size)
 		for i := 0; i < size; i++ {
-			witness.Poly[i] = gnarkfext.NewE4Gen(poly[i])
-			witness.X = gnarkfext.NewE4Gen(x)
-			witness.Y = gnarkfext.NewE4Gen(y)
+			witness.Poly[i] = koalagnark.NewExt(poly[i])
+			witness.X = koalagnark.NewExt(x)
+			witness.Y = koalagnark.NewExt(y)
 		}
 
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
@@ -161,17 +157,17 @@ func TestLagrangeEvaluation(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	{
-		var circuit, witness LagrangeEvaluationCircuit
-		circuit.Poly = make([]gnarkfext.E4Gen, size)
-		circuit.Domain = d
-		witness.Poly = make([]gnarkfext.E4Gen, size)
+		var ckt, witness LagrangeEvaluationCircuit
+		ckt.Poly = make([]koalagnark.Ext, size)
+		ckt.Domain = d
+		witness.Poly = make([]koalagnark.Ext, size)
 		for i := 0; i < size; i++ {
-			witness.Poly[i] = gnarkfext.NewE4Gen(poly[i])
-			witness.X = gnarkfext.NewE4Gen(x)
-			witness.Y = gnarkfext.NewE4Gen(y)
+			witness.Poly[i] = koalagnark.NewExt(poly[i])
+			witness.X = koalagnark.NewExt(x)
+			witness.Y = koalagnark.NewExt(y)
 		}
 
-		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
@@ -182,22 +178,19 @@ func TestLagrangeEvaluation(t *testing.T) {
 }
 
 type LagrangeAtZCircuit struct {
-	X  gnarkfext.E4Gen
-	Li []gnarkfext.E4Gen
+	X  koalagnark.Ext
+	Li []koalagnark.Ext
 	d  *fft.Domain
 }
 
 func (c *LagrangeAtZCircuit) Define(api frontend.API) error {
 	li := gnarkComputeLagrangeAtZ(api, c.X, c.d.Generator, c.d.Cardinality)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 	for i := 0; i < len(li); i++ {
-		apiGen.AssertIsEqual(li[i].B0.A0, c.Li[i].B0.A0)
-		apiGen.AssertIsEqual(li[i].B0.A1, c.Li[i].B0.A1)
-		apiGen.AssertIsEqual(li[i].B1.A0, c.Li[i].B1.A0)
-		apiGen.AssertIsEqual(li[i].B1.A1, c.Li[i].B1.A1)
+		koalaAPI.AssertIsEqual(li[i].B0.A0, c.Li[i].B0.A0)
+		koalaAPI.AssertIsEqual(li[i].B0.A1, c.Li[i].B0.A1)
+		koalaAPI.AssertIsEqual(li[i].B1.A0, c.Li[i].B1.A0)
+		koalaAPI.AssertIsEqual(li[i].B1.A1, c.Li[i].B1.A1)
 	}
 	return nil
 }
@@ -217,15 +210,15 @@ func TestGnarkComputeLagrangeAtZ(t *testing.T) {
 	}
 
 	{
-		var circuit, witness LagrangeAtZCircuit
-		circuit.Li = make([]gnarkfext.E4Gen, size)
-		circuit.d = d
-		witness.Li = make([]gnarkfext.E4Gen, size)
+		var ckt, witness LagrangeAtZCircuit
+		ckt.Li = make([]koalagnark.Ext, size)
+		ckt.d = d
+		witness.Li = make([]koalagnark.Ext, size)
 		for i := 0; i < size; i++ {
-			witness.Li[i] = gnarkfext.NewE4Gen(li[i])
+			witness.Li[i] = koalagnark.NewExt(li[i])
 		}
-		witness.X = gnarkfext.NewE4Gen(x)
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+		witness.X = koalagnark.NewExt(x)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
@@ -235,15 +228,15 @@ func TestGnarkComputeLagrangeAtZ(t *testing.T) {
 	}
 
 	{
-		var circuit, witness LagrangeAtZCircuit
-		circuit.Li = make([]gnarkfext.E4Gen, size)
-		circuit.d = d
-		witness.Li = make([]gnarkfext.E4Gen, size)
+		var ckt, witness LagrangeAtZCircuit
+		ckt.Li = make([]koalagnark.Ext, size)
+		ckt.d = d
+		witness.Li = make([]koalagnark.Ext, size)
 		for i := 0; i < size; i++ {
-			witness.Li[i] = gnarkfext.NewE4Gen(li[i])
+			witness.Li[i] = koalagnark.NewExt(li[i])
 		}
-		witness.X = gnarkfext.NewE4Gen(x)
-		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+		witness.X = koalagnark.NewExt(x)
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())

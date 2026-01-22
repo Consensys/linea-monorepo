@@ -11,8 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -231,11 +230,11 @@ var (
 		{B1: extensions.E2{A1: _one}},
 	}
 
-	fieldExtensionBasisGnark = [4]gnarkfext.E4Gen{
-		{B0: gnarkfext.E2Gen{A0: zk.ValueOf(_one), A1: zk.ValueOf(0)}, B1: gnarkfext.NewE2Gen(extensions.E2{})},
-		{B0: gnarkfext.E2Gen{A1: zk.ValueOf(_one), A0: zk.ValueOf(0)}, B1: gnarkfext.NewE2Gen(extensions.E2{})},
-		{B1: gnarkfext.E2Gen{A0: zk.ValueOf(_one), A1: zk.ValueOf(0)}, B0: gnarkfext.NewE2Gen(extensions.E2{})},
-		{B1: gnarkfext.E2Gen{A1: zk.ValueOf(_one), A0: zk.ValueOf(0)}, B0: gnarkfext.NewE2Gen(extensions.E2{})},
+	fieldExtensionBasisGnark = [4]koalagnark.Ext{
+		koalagnark.NewExt(fieldExtensionBasis[0]),
+		koalagnark.NewExt(fieldExtensionBasis[1]),
+		koalagnark.NewExt(fieldExtensionBasis[2]),
+		koalagnark.NewExt(fieldExtensionBasis[3]),
 	}
 )
 
@@ -303,10 +302,7 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	ctx := vctx.Ctx
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	// checks that P(x) = P_0(x) + w*P_1(x) + w**2*P_2(x) + w**3*P_3(x)
 	// where P is the polynomial to split, and the P_i are the splitted
@@ -315,11 +311,11 @@ func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		evalFextParams      = run.GetUnivariateParams(ctx.QueryFext.QueryID)
 		evalBaseFieldParams = run.GetUnivariateParams(ctx.QueryBaseField.QueryID)
 		nbPolyToSplit       = len(ctx.ToSplitPolynomials)
-		originalEvalToSplit = []gnarkfext.E4Gen{}
-		alreadyOnBase       = []gnarkfext.E4Gen{}
+		originalEvalToSplit = []koalagnark.Ext{}
+		alreadyOnBase       = []koalagnark.Ext{}
 	)
 
-	ext4.AssertIsEqual(&evalBaseFieldParams.ExtX, &evalFextParams.ExtX)
+	koalaAPI.AssertIsEqualExt(evalBaseFieldParams.ExtX, evalFextParams.ExtX)
 
 	for i := range evalFextParams.ExtYs {
 		if ctx.QueryFext.Pols[i].IsBase() {
@@ -334,17 +330,17 @@ func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	// corresponds to the already-on-base ones.
 
 	for i := 0; i < nbPolyToSplit; i++ {
-		var tmp gnarkfext.E4Gen
-		reconstructedEval := *ext4.Zero()
+		var tmp koalagnark.Ext
+		reconstructedEval := koalaAPI.ZeroExt()
 		for j := 0; j < 4; j++ {
-			tmp = *ext4.Mul(&fieldExtensionBasisGnark[j], &evalBaseFieldParams.ExtYs[4*i+j])
-			reconstructedEval = *ext4.Add(&reconstructedEval, &tmp)
+			tmp = koalaAPI.MulExt(fieldExtensionBasisGnark[j], evalBaseFieldParams.ExtYs[4*i+j])
+			reconstructedEval = koalaAPI.AddExt(reconstructedEval, tmp)
 		}
-		ext4.AssertIsEqual(&originalEvalToSplit[i], &reconstructedEval)
+		koalaAPI.AssertIsEqualExt(originalEvalToSplit[i], reconstructedEval)
 	}
 
 	for i := 0; i < len(alreadyOnBase); i++ {
-		ext4.AssertIsEqual(&alreadyOnBase[i], &evalBaseFieldParams.ExtYs[4*nbPolyToSplit+i])
+		koalaAPI.AssertIsEqualExt(alreadyOnBase[i], evalBaseFieldParams.ExtYs[4*nbPolyToSplit+i])
 	}
 }
 

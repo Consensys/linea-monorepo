@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/gnark/frontend"
@@ -41,12 +40,12 @@ func (l *FromLogDerivSumAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return params.Sum.GetExt()
 }
 
-func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
+func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (l *FromLogDerivSumAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) zk.WrappedVariable {
+func (l *FromLogDerivSumAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) koalagnark.Element {
 	//TODO implement me
 	panic("implement me")
 }
@@ -74,7 +73,7 @@ func (l *FromLogDerivSumAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
+func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLogDerivSumParams)
 	return params.Sum
 }

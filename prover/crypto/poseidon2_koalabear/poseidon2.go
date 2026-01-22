@@ -9,7 +9,7 @@ import (
 	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -129,7 +129,7 @@ func (d MDHasher) MaxBytes32() types.Bytes32 {
 
 // GnarkBlockCompression applies the MiMC permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
-func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]zk.WrappedVariable) (newState [BlockSize]zk.WrappedVariable) {
+func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]koalagnark.Element) (newState [BlockSize]koalagnark.Element) {
 	panic("unimplemented")
 }
 

@@ -2,40 +2,33 @@ package poly
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
 // EvaluateUnivariateGnarkMixed evaluate a univariate polynomial in a gnark circuit.
 // It mirrors [EvalUnivariate].
-func EvaluateUnivariateGnarkMixed(api frontend.API, pol []zk.WrappedVariable, x gnarkfext.E4Gen) gnarkfext.E4Gen {
+func EvaluateUnivariateGnarkMixed(api frontend.API, pol []koalagnark.Element, x koalagnark.Ext) koalagnark.Ext {
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
-	res := *e4Api.Zero()
+	res := koalaAPI.ZeroExt()
 	for i := len(pol) - 1; i >= 0; i-- {
-		res = *e4Api.Mul(&res, &x)
-		res = *e4Api.AddByBase(&res, pol[i])
+		res = koalaAPI.MulExt(res, x)
+		res = koalaAPI.AddByBaseExt(res, pol[i])
 	}
 	return res
 }
 
 // EvaluateUnivariateGnarkExt evaluate a univariate polynomial in a gnark circuit.
 // It mirrors [EvalUnivariate].
-func EvaluateUnivariateGnarkExt(api frontend.API, pol []gnarkfext.E4Gen, x gnarkfext.E4Gen) gnarkfext.E4Gen {
+func EvaluateUnivariateGnarkExt(api frontend.API, pol []koalagnark.Ext, x koalagnark.Ext) koalagnark.Ext {
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
-	res := *e4Api.Zero()
+	res := koalaAPI.ZeroExt()
 	for i := len(pol) - 1; i >= 0; i-- {
-		res = *e4Api.Mul(&res, &x)
-		res = *e4Api.Add(&res, &pol[i])
+		res = koalaAPI.MulExt(res, x)
+		res = koalaAPI.AddExt(res, pol[i])
 	}
 	return res
 }

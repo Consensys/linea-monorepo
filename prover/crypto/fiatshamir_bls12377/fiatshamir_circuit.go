@@ -6,15 +6,13 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
-	"github.com/consensys/linea-monorepo/prover/utils"
-
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type GnarkFS struct {
-	koalaBuf []zk.WrappedVariable
+	koalaBuf []koalagnark.Element
 	hasher   poseidon2_bls12377.GnarkMDHasher
 	// pointer to the gnark-API (also passed to the hasher but behind an
 	// interface). This is needed to perform bit-decomposition.
@@ -68,13 +66,13 @@ func (fs *GnarkFS) RandomFrElmt() frontend.Variable {
 // ------------------------------------------------------
 // List of methods to updae the FS state with koala elmts
 
-func (fs *GnarkFS) Update(vec ...zk.WrappedVariable) {
+func (fs *GnarkFS) Update(vec ...koalagnark.Element) {
 	// fs.hasher.WriteWVs(vec...)
 	fs.koalaBuf = append(fs.koalaBuf, vec...)
 }
 
-func (fs *GnarkFS) UpdateExt(vec ...gnarkfext.E4Gen) {
-	// ext4, _ := gnarkfext.NewExt4(fs.api)
+func (fs *GnarkFS) UpdateExt(vec ...koalagnark.Ext) {
+	// ext4, _ := circuit.NewAPI(fs.api)
 	for i := 0; i < len(vec); i++ {
 		fs.koalaBuf = append(fs.koalaBuf, vec[i].B0.A0)
 		fs.koalaBuf = append(fs.koalaBuf, vec[i].B0.A1)
@@ -98,23 +96,23 @@ func (fs *FS) UpdateGeneric(vec ...fext.GenericFieldElem) {
 	}
 }
 
-func (fs *GnarkFS) UpdateVec(vec ...[]zk.WrappedVariable) {
-	v := make([]zk.WrappedVariable, 0, len(vec))
+func (fs *GnarkFS) UpdateVec(vec ...[]koalagnark.Element) {
+	v := make([]koalagnark.Element, 0, len(vec))
 	for _, _v := range vec {
 		v = append(v, _v...)
 	}
 	fs.Update(v...)
 }
 
-func (fs *GnarkFS) RandomField() zk.Octuplet {
+func (fs *GnarkFS) RandomField() koalagnark.Octuplet {
 	r := fs.RandomFrElmt() // the safeguard update is called
 	res := encoding.EncodeFVTo8WVs(fs.api, r)
 	return res
 }
 
-func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
+func (fs *GnarkFS) RandomFieldExt() koalagnark.Ext {
 	r := fs.RandomField() // the safeguard update is called
-	res := gnarkfext.E4Gen{}
+	res := koalagnark.Ext{}
 	res.B0.A0 = r[0]
 	res.B0.A1 = r[1]
 	res.B1.A0 = r[2]
@@ -122,10 +120,7 @@ func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
 	return res
 }
 func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
-	apiGen, err := zk.NewGenericApi(fs.api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(fs.api)
 	n := utils.NextPowerOfTwo(upperBound)
 	nbBits := bits.TrailingZeros(uint(n))
 	i := 0
@@ -134,7 +129,7 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 		// take the remainder mod n of each limb
 		c := fs.RandomField() // already calls safeguardUpdate() once
 		for j := 0; j < 8; j++ {
-			b := apiGen.ToBinary(c[j])
+			b := koalaAPI.ToBinary(c[j])
 			res[i] = fs.api.FromBinary(b[:nbBits]...)
 			i++
 			if i >= num {
@@ -145,12 +140,12 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 	return res
 }
 
-func (fs *GnarkFS) SetState(s zk.Octuplet) {
+func (fs *GnarkFS) SetState(s koalagnark.Octuplet) {
 	state := encoding.Encode8WVsToFV(fs.api, s)
 	fs.hasher.SetState(state)
 }
 
-func (fs *GnarkFS) State() zk.Octuplet {
+func (fs *GnarkFS) State() koalagnark.Octuplet {
 	state := fs.hasher.State()
 	return encoding.EncodeFVTo8WVs(fs.api, state)
 }

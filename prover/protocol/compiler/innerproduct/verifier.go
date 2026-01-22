@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -63,7 +63,7 @@ func (v *VerifierForSize) Run(run wizard.Runtime) error {
 // RunGnark implements the [wizard.VerifierAction] interface
 func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	// ys stores the list of all the inner-product openings
-	ys := []gnarkfext.E4Gen{}
+	ys := []koalagnark.Ext{}
 	// expected stores the random linear combinations of the ys by batching
 	// coin
 	// actual stores the opening value of the last entry of Summation. The
@@ -75,7 +75,7 @@ func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		ys = append(ys, ipys.Ys...)
 	}
 
-	var expected gnarkfext.E4Gen
+	var expected koalagnark.Ext
 
 	if len(ys) > 1 {
 		batchingCoin := run.GetRandomCoinFieldExt(v.BatchOpening.Name)
@@ -86,8 +86,8 @@ func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		expected = ys[0]
 	}
 
-	ext4, _ := gnarkfext.NewExt4(api)
-	ext4.AssertIsEqual(&expected, &actual)
+	koalaAPI := koalagnark.NewAPI(api)
+	koalaAPI.AssertIsEqualExt(expected, actual)
 }
 
 func (v *VerifierForSize) Skip() {

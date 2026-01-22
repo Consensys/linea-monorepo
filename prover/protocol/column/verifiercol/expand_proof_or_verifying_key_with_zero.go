@@ -5,8 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -84,42 +83,42 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignment(run ifaces.Run
 }
 
 // GetColAssignmentGnark returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
 	assi := ex.Col.GetColAssignmentGnark(run)
-	res := make([]zk.WrappedVariable, ex.Size())
+	res := make([]koalagnark.Element, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
-			res[j+i*ex.Expansion] = zk.ValueOf(0)
+			res[j+i*ex.Expansion] = koalagnark.NewElement(0)
 		}
 	}
 	return res
 }
 
 // GetColAssignmentGnarkBase returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
 	assi, err := ex.Col.GetColAssignmentGnarkBase(run)
 	if err != nil {
 		return nil, err
 	}
-	res := make([]zk.WrappedVariable, ex.Size())
+	res := make([]koalagnark.Element, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
-			res[j+i*ex.Expansion] = zk.ValueOf(0)
+			res[j+i*ex.Expansion] = koalagnark.NewElement(0)
 		}
 	}
 	return res, nil
 }
 
 // GetColAssignmentGnarkExt returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
 	assi := ex.Col.GetColAssignmentGnarkExt(run)
-	res := make([]gnarkfext.E4Gen, ex.Size())
+	res := make([]koalagnark.Ext, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
-			res[j+i*ex.Expansion] = gnarkfext.NewE4Gen(fext.Zero())
+			res[j+i*ex.Expansion] = koalagnark.NewExt(fext.Zero())
 		}
 	}
 	return res
@@ -154,31 +153,31 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentAtExt(run iface
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	if pos%ex.Expansion == 0 {
 		return ex.Col.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
 	}
-	return zk.ValueOf(0)
+	return koalagnark.NewElement(0)
 }
 
 // GetColAssignmentAtBase returns a particular position of the column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
 	if pos%ex.Expansion == 0 {
 		r, err := ex.Col.GetColAssignmentGnarkAtBase(run, pos/ex.Expansion)
 		if err != nil {
-			return zk.ValueOf(0), err
+			return koalagnark.NewElement(0), err
 		}
 		return r, nil
 	}
-	return zk.ValueOf(0), nil
+	return koalagnark.NewElement(0), nil
 }
 
 // GetColAssignmentAtExt returns a particular position of the column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
 	if pos%ex.Expansion == 0 {
 		return ex.Col.GetColAssignmentGnarkAtExt(run, pos/ex.Expansion)
 	}
-	return gnarkfext.NewE4Gen(fext.Zero())
+	return koalagnark.NewExt(fext.Zero())
 }
 
 // IsComposite implements the [ifaces.Column] interface

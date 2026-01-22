@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
@@ -88,13 +88,13 @@ func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	ext4, _ := gnarkfext.NewExt4(api)
+	koalaAPI := koalagnark.NewAPI(api)
 
 	ys := a.Ctx.Columns.Ys.GetColAssignmentGnarkExt(run)
 	alpha := run.GetRandomCoinFieldExt(a.Ctx.Coins.Alpha.Name)
 	uAlphaX := a.InterpolateUalphaX.GetFrontendVariableExt(api, run)
 	ysAlpha := poly.EvaluateUnivariateGnarkExt(api, ys, alpha)
-	ext4.AssertIsEqual(&uAlphaX, &ysAlpha)
+	koalaAPI.AssertIsEqualExt(uAlphaX, ysAlpha)
 }
 
 // Registers the consistency check between Ys and Ualpha

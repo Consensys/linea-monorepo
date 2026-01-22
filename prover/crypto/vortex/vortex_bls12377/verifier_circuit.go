@@ -4,12 +4,12 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
 // Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
 // The leaves are poseidon2_bls12377(columns[i][j])
-func GnarkCheckColumnInclusionNoSis(api frontend.API, columns [][][]zk.WrappedVariable,
+func GnarkCheckColumnInclusionNoSis(api frontend.API, columns [][][]koalagnark.Element,
 	merkleProofs [][]smt_bls12377.GnarkProof, roots []frontend.Variable) error {
 
 	for i := 0; i < len(roots); i++ {

@@ -130,7 +130,7 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 // 		}
 
 // 		for j := range p.Nodes[0] {
-// 			var node [blockSize]zk.WrappedVariable
+// 			var node [blockSize]koalagnark.Var
 
 // 			for k := 0; k < blockSize; k++ {
 // 				node[k] = p.Nodes[k][j].GetColAssignmentGnarkAt(run, i)

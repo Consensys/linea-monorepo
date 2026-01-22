@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,8 +15,8 @@ import (
 // wrapped variables
 
 type GnarkMDHasherCircuitWV struct {
-	Inputs []zk.WrappedVariable
-	Ouput  zk.Octuplet
+	Inputs []koalagnark.Element
+	Ouput  koalagnark.Octuplet
 }
 
 func (ghc *GnarkMDHasherCircuitWV) Define(api frontend.API) error {
@@ -33,13 +33,10 @@ func (ghc *GnarkMDHasherCircuitWV) Define(api frontend.API) error {
 	res := h.Sum()
 
 	// check the result
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	for i := 0; i < 8; i++ {
-		apiGen.AssertIsEqual(ghc.Ouput[i], res[i])
+		koalaAPI.AssertIsEqual(ghc.Ouput[i], res[i])
 	}
 
 	return nil
@@ -62,13 +59,13 @@ func getGnarkMDHasherCircuitWitnessWV() (*GnarkMDHasherCircuitWV, *GnarkMDHasher
 
 	// create witness and circuit
 	var circuit, witness GnarkMDHasherCircuitWV
-	circuit.Inputs = make([]zk.WrappedVariable, nbElmts)
-	witness.Inputs = make([]zk.WrappedVariable, nbElmts)
+	circuit.Inputs = make([]koalagnark.Element, nbElmts)
+	witness.Inputs = make([]koalagnark.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		witness.Inputs[i] = zk.ValueFromKoala(vals[i])
+		witness.Inputs[i] = koalagnark.NewElementFromKoala(vals[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Ouput[i] = zk.ValueFromKoala(res[i])
+		witness.Ouput[i] = koalagnark.NewElementFromKoala(res[i])
 	}
 
 	return &circuit, &witness

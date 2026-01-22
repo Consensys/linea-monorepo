@@ -5,9 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
-
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -28,51 +26,51 @@ func NewGnarkFSWV(api frontend.API) *GnarkFSWV {
 
 // Update updates the Fiat-Shamir state with a vector of frontend.Variable
 // representing field element each.
-func (fs *GnarkFSWV) Update(vec ...zk.WrappedVariable) {
+func (fs *GnarkFSWV) Update(vec ...koalagnark.Element) {
 	_vec := wvTofv(vec)
 	fs.hasher.Write(_vec...)
 }
-func (fs *GnarkFSWV) UpdateExt(vec ...gnarkfext.E4Gen) {
+func (fs *GnarkFSWV) UpdateExt(vec ...koalagnark.Ext) {
 	for i := 0; i < len(vec); i++ {
-		fs.hasher.Write(vec[i].B0.A0.AsNative())
-		fs.hasher.Write(vec[i].B0.A1.AsNative())
-		fs.hasher.Write(vec[i].B1.A0.AsNative())
-		fs.hasher.Write(vec[i].B1.A1.AsNative())
+		fs.hasher.Write(vec[i].B0.A0.Native())
+		fs.hasher.Write(vec[i].B0.A1.Native())
+		fs.hasher.Write(vec[i].B1.A0.Native())
+		fs.hasher.Write(vec[i].B1.A1.Native())
 	}
 }
 
-func wvTofv(v []zk.WrappedVariable) []frontend.Variable {
+func wvTofv(v []koalagnark.Element) []frontend.Variable {
 	buf := make([]frontend.Variable, len(v))
 	for i := 0; i < len(v); i++ {
-		buf[i] = v[i].AsNative()
+		buf[i] = v[i].Native()
 	}
 	return buf
 }
 
-func octupletToZkoctuplet(v poseidon2_koalabear.Octuplet) zk.Octuplet {
-	var res zk.Octuplet
+func octupletToZkoctuplet(v poseidon2_koalabear.Octuplet) koalagnark.Octuplet {
+	var res koalagnark.Octuplet
 	for i := 0; i < 8; i++ {
-		res[i] = zk.WrapFrontendVariable(v[i])
+		res[i] = koalagnark.WrapFrontendVariable(v[i])
 	}
 	return res
 }
 
-func zkoctupletTooctuplet(v zk.Octuplet) poseidon2_koalabear.Octuplet {
+func zkoctupletTooctuplet(v koalagnark.Octuplet) poseidon2_koalabear.Octuplet {
 	var res poseidon2_koalabear.Octuplet
 	for i := 0; i < 8; i++ {
-		res[i] = v[i].AsNative()
+		res[i] = v[i].Native()
 	}
 	return res
 }
 
 // UpdateVec updates the Fiat-Shamir state with a matrix of field element.
-func (fs *GnarkFSWV) UpdateVec(mat ...[]zk.WrappedVariable) {
+func (fs *GnarkFSWV) UpdateVec(mat ...[]koalagnark.Element) {
 	for i := range mat {
 		fs.Update(mat[i]...)
 	}
 }
 
-func (fs *GnarkFSWV) RandomField() zk.Octuplet {
+func (fs *GnarkFSWV) RandomField() koalagnark.Octuplet {
 	res := fs.hasher.Sum()
 	defer fs.safeguardUpdate()
 	return octupletToZkoctuplet(res)
@@ -84,9 +82,9 @@ func (fs *GnarkFSWV) randomFieldNative() poseidon2_koalabear.Octuplet {
 }
 
 // RandomField returns a single valued fiat-shamir hash
-func (fs *GnarkFSWV) RandomFieldExt() gnarkfext.E4Gen {
+func (fs *GnarkFSWV) RandomFieldExt() koalagnark.Ext {
 	s := fs.RandomField() // already calls safeguardUpdate()
-	var res gnarkfext.E4Gen
+	var res koalagnark.Ext
 	res.B0.A0 = s[0]
 	res.B0.A1 = s[1]
 	res.B1.A0 = s[2]
@@ -116,7 +114,7 @@ func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []frontend.Variable
 }
 
 // SetState mutates the fiat-shamir state of
-func (fs *GnarkFSWV) SetState(state zk.Octuplet) {
+func (fs *GnarkFSWV) SetState(state koalagnark.Octuplet) {
 	fs.hasher.Reset()
 	_state := zkoctupletTooctuplet(state)
 	fs.hasher.SetState(_state)
@@ -124,7 +122,7 @@ func (fs *GnarkFSWV) SetState(state zk.Octuplet) {
 
 // State mutates returns the state of the fiat-shamir hasher. The
 // function will also updates its own state with unprocessed inputs.
-func (fs *GnarkFSWV) State() zk.Octuplet {
+func (fs *GnarkFSWV) State() koalagnark.Octuplet {
 	return octupletToZkoctuplet(fs.hasher.State())
 }
 

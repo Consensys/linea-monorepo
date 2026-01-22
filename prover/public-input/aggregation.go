@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"golang.org/x/crypto/sha3"

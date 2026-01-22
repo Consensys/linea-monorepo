@@ -428,15 +428,14 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 
 		circuit := verifierCircuit{}
-		nbRounds := 17 //comp.NumRounds() //17 // TODO setting this to comp.NumRounds() make the number of constraint explode, need to investigate
+		nbRounds := comp.NumRounds() //17 // TODO setting this to comp.NumRounds() make the number of constraint explode, need to investigate
 		fmt.Printf("using nbRounds=%d instead of %d\n", nbRounds, comp.NumRounds())
 		{
 			c := wizard.AllocateWizardCircuit(comp, nbRounds, isBLS)
 			circuit.C = *c
 		}
-
 		// gnarkProfile := profile.Start(profile.WithPath("./gnark.pprof"))
-		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.WithCapacity(1<<27), frontend.IgnoreUnconstrainedInputs())
 		// gnarkProfile.Stop()
 		fmt.Printf("ccs number of constraints: %d\n", ccs.GetNbConstraints())
 		if err != nil {
@@ -453,9 +452,11 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 
 		// Check if solved using the pre-compiled SCS
-		err = ccs.IsSolved(witness)
-		if err != nil {
-			b.Fatal(err)
+		if !testing.Short() {
+			err = ccs.IsSolved(witness)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	}
 }

@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -41,11 +40,11 @@ func (c *FromPublicColumn) GetValExt(run ifaces.Runtime) fext.Element {
 	return run.GetColumnAtExt(c.Col.ID, c.Pos)
 }
 
-func (c *FromPublicColumn) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
+func (c *FromPublicColumn) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	return circ.GetColumnAtBase(c.Col.ID, c.Pos)
 }
 
-func (c *FromPublicColumn) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
+func (c *FromPublicColumn) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	return circ.GetColumnAtExt(c.Col.ID, c.Pos)
 }
 
@@ -101,7 +100,7 @@ func (c *FromPublicColumn) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (c *FromPublicColumn) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
+func (c *FromPublicColumn) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
 	return circ.GetColumnAt(c.Col.ID, c.Pos)
 }
 

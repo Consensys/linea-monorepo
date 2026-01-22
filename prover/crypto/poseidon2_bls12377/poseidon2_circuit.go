@@ -4,7 +4,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/permutation/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
 // GnarkMDHasher Merkle Damgard implementation using poseidon2 as compression function with width 16
@@ -52,7 +52,7 @@ func (h *GnarkMDHasher) Write(data ...frontend.Variable) {
 	h.buffer = append(h.buffer, data...)
 }
 
-func (h *GnarkMDHasher) WriteWVs(data ...zk.WrappedVariable) {
+func (h *GnarkMDHasher) WriteWVs(data ...koalagnark.Element) {
 	_data := encoding.EncodeWVsToFVs(h.api, data)
 	h.buffer = append(h.buffer, _data...)
 }

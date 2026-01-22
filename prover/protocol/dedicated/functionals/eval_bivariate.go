@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
-
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -194,38 +192,32 @@ func (a *XYPow1MinNAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return res
 }
 
-func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
+func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	x, errX := a.X.GetFrontendVariableBase(api, run)
 	if errX != nil {
-		return zk.ValueOf(0), errX
+		return koalagnark.NewElement(0), errX
 	}
 	y, errY := a.Y.GetFrontendVariableBase(api, run)
 	if errY != nil {
-		return zk.ValueOf(0), errY
+		return koalagnark.NewElement(0), errY
 	}
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return zk.ValueOf(0), err
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 	res := gnarkutil.Exp(api, x, 1-a.N)
-	res = apiGen.Mul(res, y)
+	res = koalaAPI.Mul(res, y)
 	return res, nil
 }
 
-func (a *XYPow1MinNAccessor) GetFrontendVariableExt(api frontend.API, run ifaces.GnarkRuntime) gnarkfext.E4Gen {
+func (a *XYPow1MinNAccessor) GetFrontendVariableExt(api frontend.API, run ifaces.GnarkRuntime) koalagnark.Ext {
 	x := a.X.GetFrontendVariableExt(api, run)
 	y := a.Y.GetFrontendVariableExt(api, run)
 	temp := gnarkutil.ExpExt(api, x, 1-a.N)
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
-	res := e4Api.Mul(&temp, &y)
+	res := koalaAPI.MulExt(temp, y)
 	// res := temp.Mul(api, temp, y)
-	return *res
+	return res
 }
 
 func (a *XYPow1MinNAccessor) IsBase() bool {
@@ -256,15 +248,12 @@ func (a *XYPow1MinNAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements the [ifaces.Accessor] interface.
-func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.GnarkRuntime) zk.WrappedVariable {
+func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.GnarkRuntime) koalagnark.Element {
 	x := a.X.GetFrontendVariable(api, run)
 	y := a.Y.GetFrontendVariable(api, run)
 	res := gnarkutil.Exp(api, x, 1-a.N)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
-	res = apiGen.Mul(res, y)
+	koalaAPI := koalagnark.NewAPI(api)
+	res = koalaAPI.Mul(res, y)
 	return res
 }
 

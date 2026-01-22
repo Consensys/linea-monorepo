@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/sirupsen/logrus"
@@ -61,7 +61,7 @@ func compareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b reflect
 		return compareSymbolicExpressions(a, b, path)
 	case reflect.TypeFor[frontend.Variable]():
 		return true
-	case reflect.TypeFor[zk.WrappedVariable]():
+	case reflect.TypeFor[koalagnark.Element]():
 		return true
 	}
 

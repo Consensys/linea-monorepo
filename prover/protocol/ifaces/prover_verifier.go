@@ -3,8 +3,7 @@ package ifaces
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 )
 
@@ -30,17 +29,17 @@ type Runtime interface {
 // exists to prevent circular dependencies internally.
 type GnarkRuntime interface {
 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
-	GetColumn(ColID) []zk.WrappedVariable
-	GetColumnBase(ColID) ([]zk.WrappedVariable, error)
-	GetColumnExt(ColID) []gnarkfext.E4Gen
+	GetColumn(ColID) []koalagnark.Element
+	GetColumnBase(ColID) ([]koalagnark.Element, error)
+	GetColumnExt(ColID) []koalagnark.Ext
 	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
-	GetColumnAt(ColID, int) zk.WrappedVariable
-	GetColumnAtBase(ColID, int) (zk.WrappedVariable, error)
-	GetColumnAtExt(ColID, int) gnarkfext.E4Gen
+	GetColumnAt(ColID, int) koalagnark.Element
+	GetColumnAtBase(ColID, int) (koalagnark.Element, error)
+	GetColumnAtExt(ColID, int) koalagnark.Ext
 	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
-	GetRandomCoinFieldExt(name coin.Name) gnarkfext.E4Gen
+	GetRandomCoinFieldExt(name coin.Name) koalagnark.Ext
 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
-	GetRandomCoinIntegerVec(name coin.Name) []zk.WrappedVariable
+	GetRandomCoinIntegerVec(name coin.Name) []koalagnark.Element
 	// GetParams is as [Runtime.GetParams] but in a gnark circuit
 	GetParams(id QueryID) GnarkQueryParams
 }

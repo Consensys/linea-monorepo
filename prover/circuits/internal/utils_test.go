@@ -14,6 +14,7 @@ import (
 	poseidon2permutation "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	snarkTestUtils "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/stretchr/testify/assert"
@@ -36,7 +37,7 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 	assert.LessOrEqual(t, len(lengths), lengthsSliceLength)
 
 	hsh := gchash.POSEIDON2_BLS12_377.New()
-	sums := make([]zk.WrappedVariable, lengthsSliceLength)
+	sums := make([]koalagnark.Element, lengthsSliceLength)
 	start := 0
 	for i := range lengths {
 		hsh.Reset()
@@ -47,7 +48,7 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 		start = endPoints[i]
 	}
 
-	endPointsSnark := make([]zk.WrappedVariable, lengthsSliceLength)
+	endPointsSnark := make([]koalagnark.Element, lengthsSliceLength)
 	for n := utils.Copy(endPointsSnark, endPoints); n < lengthsSliceLength; n++ {
 		endPointsSnark[n] = n - len(lengths) + 1
 		sums[n] = n
