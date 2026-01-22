@@ -71,9 +71,9 @@ interface ILineaRollupBase {
    * @dev l1RollingHashMessageNumber is the calculated message number on L2 that is expected to match the existing L1 rolling hash.
    * This value will be used along with the stored last finalized L2 calculated message number in the public input.
    * @dev l2MerkleTreesDepth is the depth of all l2MerkleRoots.
-   * @dev lastFinalizedForcedTransactionNumber
-   * @dev finalForcedTransactionNumber
-   * @dev lastFinalizedForcedTransactionRollingHash
+   * @dev lastFinalizedForcedTransactionNumber is the last proven forced transaction number processed on L2.
+   * @dev finalForcedTransactionNumber is the final forced transaction being finalized.
+   * @dev lastFinalizedForcedTransactionRollingHash is the last proven forced transaction rolling hash.
    * @dev lastFinalizedBlockHash is the last finalized block hash.
    * @dev finalBlockHash is the final block hash.
    * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockNumber.
@@ -139,6 +139,23 @@ interface ILineaRollupBase {
     bytes32 indexed shnarf,
     bytes32 parentStateRootHash,
     bytes32 finalStateRootHash
+  );
+
+  /**
+   * @notice Emitted when L2 blocks have been finalized and the state is updated.
+   * @dev Message rolling hash, forced transaction rolling hash, can be retrieved by using their numbered values.
+   * @dev These fields can be used to reconstruct the values for `lastFinalizedState`.
+   * @dev The `lastFinalizedState` fields are needed for liveness recovery as well as forced transactions.
+   * @param blockNumber The indexed L2 block number indicating which block the finalization the data ends on.
+   * @param timestamp The timestamp of the last block being finalized.
+   * @param messageNumber The calculated message number on L2 that is expected to match the existing L1 rolling hash.
+   * @param forcedTransactionNumber The final forced transaction finalized.
+   */
+  event FinalizedStateUpdated(
+    uint256 indexed blockNumber,
+    uint256 timestamp,
+    uint256 messageNumber,
+    uint256 forcedTransactionNumber
   );
 
   /**

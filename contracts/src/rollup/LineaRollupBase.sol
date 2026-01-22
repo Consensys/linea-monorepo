@@ -97,7 +97,11 @@ abstract contract LineaRollupBase is
    */
   mapping(bytes32 shnarf => uint256 exists) internal _blobShnarfExists;
 
-  /// @notice Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
+  /**
+   * @notice Hash of the L2 computed message number, its rolling hash,
+   * forced transaction message number and its rolling hash,
+   * the L2 block timestamp and block hash.
+   */
   bytes32 public currentFinalizedState;
 
   /// @notice The address of the liveness recovery operator.
@@ -502,6 +506,13 @@ abstract contract LineaRollupBase is
       _finalForcedTransactionRollingHash,
       _finalizationData.finalTimestamp,
       _finalizationData.finalBlockHash
+    );
+
+    emit FinalizedStateUpdated(
+      _finalizationData.endBlockNumber,
+      _finalizationData.finalTimestamp,
+      _finalizationData.l1RollingHashMessageNumber,
+      _finalizationData.finalForcedTransactionNumber
     );
 
     unchecked {

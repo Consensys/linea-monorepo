@@ -47,15 +47,20 @@ export async function expectSuccessfulFinalize(params: SucceedFinalizeParams) {
     .connect(operator)
     .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
-  const eventArgs = [
+  await expectEvent(lineaRollup, finalizeCompressedCall, "FinalizedStateUpdated", [
+    finalizationData.endBlockNumber,
+    finalizationData.finalTimestamp,
+    finalizationData.l1RollingHashMessageNumber,
+    finalizationData.finalForcedTransactionNumber,
+  ]);
+
+  await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV3", [
     BigInt(proofData.lastFinalizedBlockNumber) + 1n,
     finalizationData.endBlockNumber,
     proofData.finalShnarf,
     finalizationData.parentStateRootHash,
     proofData.finalStateRootHash,
-  ];
-
-  await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV3", eventArgs);
+  ]);
 
   const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
     lineaRollup.stateRootHashes(finalizationData.endBlockNumber),
@@ -229,21 +234,33 @@ export async function expectSuccessfulFinalizeViaCallForwarder(params: SucceedFi
   const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
   expect(receipt).is.not.null;
 
-  const eventArgs = [
-    BigInt(proofData.lastFinalizedBlockNumber) + 1n,
-    finalizationData.endBlockNumber,
-    proofData.finalShnarf,
-    finalizationData.parentStateRootHash,
-    proofData.finalStateRootHash,
-  ];
+  const finalizedStateUpdatedLogIndex = 8;
+  const dataFinalizedLogIndex = 9;
 
-  const dataFinalizedLogIndex = 8;
+  expectEventDirectFromReceiptData(
+    upgradedContract as BaseContract,
+    receipt!,
+    "FinalizedStateUpdated",
+    [
+      finalizationData.endBlockNumber,
+      finalizationData.finalTimestamp,
+      finalizationData.l1RollingHashMessageNumber,
+      finalizationData.finalForcedTransactionNumber,
+    ],
+    finalizedStateUpdatedLogIndex,
+  );
 
   expectEventDirectFromReceiptData(
     upgradedContract as BaseContract,
     receipt!,
     "DataFinalizedV3",
-    eventArgs,
+    [
+      BigInt(proofData.lastFinalizedBlockNumber) + 1n,
+      finalizationData.endBlockNumber,
+      proofData.finalShnarf,
+      finalizationData.parentStateRootHash,
+      proofData.finalStateRootHash,
+    ],
     dataFinalizedLogIndex,
   );
 
