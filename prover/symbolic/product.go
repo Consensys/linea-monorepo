@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
-
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
@@ -117,14 +115,11 @@ func (prod Product) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [Operator] interface.
-func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
+func (prod Product) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagnark.Element {
 
-	res := zk.ValueOf(1)
+	res := koalagnark.NewElement(1)
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	if len(inputs) != len(prod.Exponents) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
@@ -132,7 +127,7 @@ func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.
 
 	for i, input := range inputs {
 		exp := prod.Exponents[i]
-		var term zk.WrappedVariable
+		var term koalagnark.Element
 
 		// Optimization: handle common exponents directly to avoid Exp overhead
 		switch exp {
@@ -142,25 +137,22 @@ func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.
 		case 1:
 			term = input
 		case 2:
-			term = apiGen.Mul(input, input)
+			term = koalaAPI.Mul(input, input)
 		default:
 			term = gnarkutil.Exp(api, input, exp)
 		}
-		res = apiGen.Mul(res, term)
+		res = koalaAPI.Mul(res, term)
 	}
 
 	return res
 }
 
 // GnarkEvalExt implements the [Operator] interface.
-func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+func (prod Product) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext) koalagnark.Ext {
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
-	res := *e4Api.One()
+	res := koalaAPI.OneExt()
 
 	if len(inputs) != len(prod.Exponents) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
@@ -168,7 +160,7 @@ func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gna
 
 	for i, input := range inputs {
 		exp := prod.Exponents[i]
-		var term gnarkfext.E4Gen
+		var term koalagnark.Ext
 
 		// Optimization: handle common exponents directly to avoid ExpExt overhead
 		switch exp {
@@ -179,11 +171,11 @@ func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gna
 			// mostly this case
 			term = input
 		case 2:
-			term = *e4Api.Square(&input)
+			term = koalaAPI.SquareExt(input)
 		default:
 			term = gnarkutil.ExpExt(api, input, exp)
 		}
-		res = *e4Api.Mul(&res, &term)
+		res = koalaAPI.MulExt(res, term)
 	}
 
 	return res

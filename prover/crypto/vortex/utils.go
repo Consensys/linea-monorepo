@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
 func init() {
@@ -25,8 +25,8 @@ var (
 	ErrNotAPowerOfTwo         = errors.New("size(inputs) should be a power of two")
 )
 
-func fftHint(t zk.VType) solver.Hint {
-	if t == zk.Native {
+func fftHint(t koalagnark.VType) solver.Hint {
+	if t == koalagnark.Native {
 		return fftExtInvHintNative
 	} else {
 		return fftExtInvHintEmulated

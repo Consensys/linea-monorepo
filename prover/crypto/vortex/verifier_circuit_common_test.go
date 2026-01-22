@@ -13,15 +13,15 @@ import (
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/stretchr/testify/assert"
 )
 
 type StatementAndCodeWordCircuit struct {
-	LinComb []gnarkfext.E4Gen
-	Ys      [][]gnarkfext.E4Gen
-	X       gnarkfext.E4Gen
-	Alpha   gnarkfext.E4Gen
+	LinComb []koalagnark.Ext
+	Ys      [][]koalagnark.Ext
+	X       koalagnark.Ext
+	Alpha   koalagnark.Ext
 	params  Params
 }
 
@@ -70,27 +70,27 @@ func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordC
 	var circuit, witness StatementAndCodeWordCircuit
 
 	// Circuit (structure only)
-	circuit.LinComb = make([]gnarkfext.E4Gen, sizeCodeWord)
-	circuit.Ys = make([][]gnarkfext.E4Gen, len(ys))
+	circuit.LinComb = make([]koalagnark.Ext, sizeCodeWord)
+	circuit.Ys = make([][]koalagnark.Ext, len(ys))
 	for i := range ys {
-		circuit.Ys[i] = make([]gnarkfext.E4Gen, len(ys[i]))
+		circuit.Ys[i] = make([]koalagnark.Ext, len(ys[i]))
 	}
 	circuit.params = Params{RsParams: rsParams}
 
 	// Witness (actual values)
-	witness.LinComb = make([]gnarkfext.E4Gen, sizeCodeWord)
+	witness.LinComb = make([]koalagnark.Ext, sizeCodeWord)
 	for i := 0; i < sizeCodeWord; i++ {
-		witness.LinComb[i] = gnarkfext.NewE4Gen(linComb[i])
+		witness.LinComb[i] = koalagnark.NewExt(linComb[i])
 	}
-	witness.Ys = make([][]gnarkfext.E4Gen, len(ys))
+	witness.Ys = make([][]koalagnark.Ext, len(ys))
 	for i := range ys {
-		witness.Ys[i] = make([]gnarkfext.E4Gen, len(ys[i]))
+		witness.Ys[i] = make([]koalagnark.Ext, len(ys[i]))
 		for j := range ys[i] {
-			witness.Ys[i][j] = gnarkfext.NewE4Gen(ys[i][j])
+			witness.Ys[i][j] = koalagnark.NewExt(ys[i][j])
 		}
 	}
-	witness.X = gnarkfext.NewE4Gen(x)
-	witness.Alpha = gnarkfext.NewE4Gen(alpha)
+	witness.X = koalagnark.NewExt(x)
+	witness.Alpha = koalagnark.NewExt(alpha)
 	witness.params = Params{RsParams: rsParams}
 
 	return &circuit, &witness

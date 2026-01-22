@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
-
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
@@ -67,8 +65,8 @@ type Operator interface {
 	// Returns the polynomial degree of the expression.
 	Degree([]int) int
 	// GnarkEval returns an evaluation of the operator in a gnark circuit.
-	GnarkEval(frontend.API, []zk.WrappedVariable) zk.WrappedVariable
-	GnarkEvalExt(frontend.API, []gnarkfext.E4Gen) gnarkfext.E4Gen
+	GnarkEval(frontend.API, []koalagnark.Element) koalagnark.Element
+	GnarkEvalExt(frontend.API, []koalagnark.Ext) koalagnark.Ext
 }
 
 type OperatorWithResult interface {

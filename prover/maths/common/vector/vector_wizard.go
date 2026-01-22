@@ -8,7 +8,7 @@ import (
 
 	fr "github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -232,12 +232,12 @@ func PowerVec(x field.Element, n int) []field.Element {
 }
 
 // IntoGnarkAssignment converts an array of field.Element into an array of
-// zk.WrappedVariable that can be used to assign a vector of zk.WrappedVariable
+// koalagnark.Var that can be used to assign a vector of koalagnark.Var
 // in a circuit or to generate a vector of constant in the circuit definition.
-func IntoGnarkAssignment(msgData []field.Element) []zk.WrappedVariable {
-	assignedMsg := []zk.WrappedVariable{}
+func IntoGnarkAssignment(msgData []field.Element) []koalagnark.Element {
+	assignedMsg := []koalagnark.Element{}
 	for _, x := range msgData {
-		assignedMsg = append(assignedMsg, zk.ValueFromKoala(x))
+		assignedMsg = append(assignedMsg, koalagnark.NewElementFromKoala(x))
 	}
 	return assignedMsg
 }

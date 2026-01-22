@@ -9,31 +9,27 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/stretchr/testify/assert"
 )
 
 type EvaluateLagrangeCircuit struct {
-	X    gnarkfext.E4Gen      // point of evaluation
-	Poly []zk.WrappedVariable // poly in Lagrange form
-	R    gnarkfext.E4Gen      // expected result
+	X    koalagnark.Ext       // point of evaluation
+	Poly []koalagnark.Element // poly in Lagrange form
+	R    koalagnark.Ext       // expected result
 }
 
 func (c *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
 	r := EvaluateLagrangeGnarkMixed(api, c.Poly, c.X)
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		return err
-	}
-	e4Api.AssertIsEqual(&c.R, &r)
+	koalaAPI := koalagnark.NewAPI(api)
+	koalaAPI.AssertIsEqualExt(c.R, r)
 
 	return nil
 }
 
-func getWitnessAndCircuit(t zk.VType) (EvaluateLagrangeCircuit, EvaluateLagrangeCircuit) {
+func getWitnessAndCircuit(t koalagnark.VType) (EvaluateLagrangeCircuit, EvaluateLagrangeCircuit) {
 
 	// sample random poly and random point
 	size := 8
@@ -45,30 +41,29 @@ func getWitnessAndCircuit(t zk.VType) (EvaluateLagrangeCircuit, EvaluateLagrange
 	x.SetRandom()
 
 	// eval lagrange
-	// r, err := vortex.EvalBasePolyLagrange(poly, x)
 	r, err := vortex.EvalBasePolyLagrange(poly, x)
 	if err != nil {
 		panic(err)
 	}
 	// test circuit
-	var witness, circuit EvaluateLagrangeCircuit
-	circuit.Poly = make([]zk.WrappedVariable, size)
-	witness.Poly = make([]zk.WrappedVariable, size)
+	var witness, ckt EvaluateLagrangeCircuit
+	ckt.Poly = make([]koalagnark.Element, size)
+	witness.Poly = make([]koalagnark.Element, size)
 	for i := 0; i < size; i++ {
-		witness.Poly[i] = zk.ValueFromKoala(poly[i])
+		witness.Poly[i] = koalagnark.NewElementFromKoala(poly[i])
 	}
-	witness.R = gnarkfext.NewE4Gen(r)
-	witness.X = gnarkfext.NewE4Gen(x)
+	witness.R = koalagnark.NewExt(r)
+	witness.X = koalagnark.NewExt(x)
 
-	return circuit, witness
+	return ckt, witness
 
 }
 
 func TestEvaluateLagrangeGnark(t *testing.T) {
 
 	{
-		circuit, witness := getWitnessAndCircuit(zk.Native)
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+		ckt, witness := getWitnessAndCircuit(koalagnark.Native)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
@@ -78,8 +73,8 @@ func TestEvaluateLagrangeGnark(t *testing.T) {
 	}
 
 	{
-		circuit, witness := getWitnessAndCircuit(zk.Emulated)
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+		ckt, witness := getWitnessAndCircuit(koalagnark.Emulated)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())

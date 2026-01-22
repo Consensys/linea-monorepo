@@ -32,7 +32,7 @@ type CircuitExecution struct {
 
 // Allocates the outer-proof circuit
 func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
-	wverifier := wizard.AllocateWizardCircuit(zkevm.WizardIOP, zkevm.WizardIOP.NumRounds())
+	wverifier := wizard.AllocateWizardCircuit(zkevm.WizardIOP, zkevm.WizardIOP.NumRounds(), true)
 
 	return CircuitExecution{
 		WizardVerifier: *wverifier,
@@ -58,7 +58,7 @@ func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits
 	logrus.Infof("Allocating the outer circuit with params: no_of_cong_wiop_rounds=%d "+
 		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs)
 
-	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds())
+	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds(), true)
 	return CircuitExecution{
 		WizardVerifier: *wverifier,
 		FuncInputs: FunctionalPublicInputSnark{
@@ -81,7 +81,7 @@ func assign(
 ) CircuitExecution {
 
 	var (
-		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds())
+		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), true)
 		res            = CircuitExecution{
 			WizardVerifier: *wizardVerifier,
 			FuncInputs: FunctionalPublicInputSnark{

@@ -3,26 +3,25 @@ package vortex
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/maths/polynomials"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 type GnarkProof struct {
-	Columns           [][][]zk.WrappedVariable
-	LinearCombination []gnarkfext.E4Gen
+	Columns           [][][]koalagnark.Element
+	LinearCombination []koalagnark.Ext
 }
 
 type GnarkVerifierInput struct {
 
 	// alpha random coin used for the linear combination
-	Alpha gnarkfext.E4Gen
+	Alpha koalagnark.Ext
 
 	// X is the univariate evaluation point
-	X gnarkfext.E4Gen
+	X koalagnark.Ext
 
 	// Ys are the alleged evaluation at point X
-	Ys [][]gnarkfext.E4Gen
+	Ys [][]koalagnark.Ext
 
 	// EntryList is the random coin representing the columns to open.
 	EntryList []frontend.Variable
@@ -43,30 +42,27 @@ func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVeri
 
 // GnarkCheckStatementAndCodeWord combines GnarkCheckStatement and GnarkCheckIsCodeWord
 // to share the Lagrange basis computation, saving approximately n multiplications.
-func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []gnarkfext.E4Gen,
-	ys [][]gnarkfext.E4Gen, x, alpha gnarkfext.E4Gen) error {
+func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []koalagnark.Ext,
+	ys [][]koalagnark.Ext, x, alpha koalagnark.Ext) error {
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		return err
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	// === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
-	fftinv := fftHint(ext4.ApiGen.Type())
+	fftinv := fftHint(koalaAPI.Type())
 	sizeFextUnpacked := len(linComb) * 4
-	inputs := make([]zk.WrappedVariable, sizeFextUnpacked)
+	inputs := make([]koalagnark.Element, sizeFextUnpacked)
 	for i := 0; i < len(linComb); i++ {
 		inputs[4*i] = linComb[i].B0.A0
 		inputs[4*i+1] = linComb[i].B0.A1
 		inputs[4*i+2] = linComb[i].B1.A0
 		inputs[4*i+3] = linComb[i].B1.A1
 	}
-	_res, err := ext4.ApiGen.NewHint(fftinv, sizeFextUnpacked, inputs...)
+	_res, err := koalaAPI.NewHint(fftinv, sizeFextUnpacked, inputs...)
 	if err != nil {
 		return err
 	}
 
-	res := make([]gnarkfext.E4Gen, len(linComb))
+	res := make([]koalagnark.Ext, len(linComb))
 	for i := 0; i < len(linComb); i++ {
 		res[i].B0.A0 = _res[4*i]
 		res[i].B0.A1 = _res[4*i+1]
@@ -78,10 +74,10 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []g
 	// Both evaluations use the same domain (Domains[1])
 	var c fext.Element
 	c.SetRandom()
-	challenge := gnarkfext.NewE4Gen(c)
+	challenge := koalagnark.NewExt(c)
 
 	// Batch evaluate linComb at both x (for statement check) and challenge (for codeword check)
-	zs := []gnarkfext.E4Gen{x, challenge}
+	zs := []koalagnark.Ext{x, challenge}
 	evals := polynomials.GnarkEvaluateLagrangeExtBatch(
 		api,
 		linComb,
@@ -93,42 +89,39 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []g
 	evalLag := evals[1] // P(challenge) for codeword check
 
 	// === Part 3: Statement check ===
-	var yjoined []gnarkfext.E4Gen
+	var yjoined []koalagnark.Ext
 	for i := 0; i < len(ys); i++ {
 		yjoined = append(yjoined, ys[i]...)
 	}
 	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
-	ext4.AssertIsEqual(&alphaY, &alphaYPrime)
+	koalaAPI.AssertIsEqualExt(alphaY, alphaYPrime)
 
 	// === Part 4: Codeword check (Schwartz-Zippel) ===
 	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
-	ext4.AssertIsEqual(&evalLag, &evalCan)
+	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
 
 	// === Part 5: Assert last entries are zeroes (RS codeword property) ===
-	zero := ext4.Zero()
+	zero := koalaAPI.ZeroExt()
 	for i := params.RsParams.NbColumns(); i < params.RsParams.NbEncodedColumns(); i++ {
-		ext4.AssertIsEqual(&res[i], zero)
+		koalaAPI.AssertIsEqualExt(res[i], zero)
 	}
 
 	return nil
 }
 
 func GnarkCheckLinComb(
-	api frontend.API, linComb []gnarkfext.E4Gen,
-	entryList []frontend.Variable, alpha gnarkfext.E4Gen,
-	columns [][][]zk.WrappedVariable) error {
+	api frontend.API, linComb []koalagnark.Ext,
+	entryList []frontend.Variable, alpha koalagnark.Ext,
+	columns [][][]koalagnark.Element) error {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	numCommitments := len(columns)
 
 	for j, selectedColID := range entryList {
 
 		// Will carry the concatenation of the columns for the same entry j
-		fullCol := []zk.WrappedVariable{}
+		fullCol := []koalagnark.Element{}
 
 		for i := range numCommitments {
 			// Entries of the selected columns #j contained in the commitment #i.
@@ -139,30 +132,30 @@ func GnarkCheckLinComb(
 		y := polynomials.GnarkEvalCanonical(api, fullCol, alpha)
 
 		// check that y := linComb[selectedColID] coords by coords
-		table := make([]zk.WrappedVariable, len(linComb))
+		table := make([]koalagnark.Element, len(linComb))
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B0.A0
 		}
-		v := apiGen.Mux(selectedColID, table...)
-		apiGen.AssertIsEqual(y.B0.A0, v)
+		v := koalaAPI.Mux(selectedColID, table...)
+		koalaAPI.AssertIsEqual(y.B0.A0, v)
 
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B0.A1
 		}
-		v = apiGen.Mux(selectedColID, table...)
-		apiGen.AssertIsEqual(y.B0.A1, v)
+		v = koalaAPI.Mux(selectedColID, table...)
+		koalaAPI.AssertIsEqual(y.B0.A1, v)
 
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B1.A0
 		}
-		v = apiGen.Mux(selectedColID, table...)
-		apiGen.AssertIsEqual(y.B1.A0, v)
+		v = koalaAPI.Mux(selectedColID, table...)
+		koalaAPI.AssertIsEqual(y.B1.A0, v)
 
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B1.A1
 		}
-		v = apiGen.Mux(selectedColID, table...)
-		apiGen.AssertIsEqual(y.B1.A1, v)
+		v = koalaAPI.Mux(selectedColID, table...)
+		koalaAPI.AssertIsEqual(y.B1.A1, v)
 	}
 
 	return nil

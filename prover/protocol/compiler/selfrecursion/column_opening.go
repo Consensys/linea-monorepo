@@ -10,8 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -256,16 +255,13 @@ func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	ualphaQEval := a.UAlphaQEval.GetFrontendVariableExt(api, run)
 	prEimageEval := a.PreImageEval.GetFrontendVariableExt(api, run)
-	ext4.AssertIsEqual(
-		&ualphaQEval,
-		&prEimageEval,
+	koalaAPI.AssertIsEqualExt(
+		ualphaQEval,
+		prEimageEval,
 	)
 }
 
@@ -522,10 +518,7 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 	edual := a.Ctx.Columns.Edual.GetColAssignmentGnarkExt(run)
 	dcollapse := a.Ctx.Columns.CollapsedSisHashQ.GetColAssignmentGnarkExt(run)
 	rfold := run.GetRandomCoinFieldExt(a.Ctx.Coins.Fold.Name)
@@ -533,18 +526,18 @@ func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRun
 	yDual := poly.EvaluateUnivariateGnarkExt(api, edual, rfold)
 	yActual := poly.EvaluateUnivariateGnarkExt(api, dcollapse, rfold)
 
-	one := ext4.One()
-	two := gnarkfext.FromBase(zk.ValueOf(2))
+	one := koalaAPI.OneExt()
+	two := koalagnark.FromBaseVar(koalagnark.NewElement(2))
 	xN := gnarkutil.ExpExt(api, rfold, a.Degree)
-	xNminus1 := ext4.Sub(&xN, one)
-	xNplus1 := ext4.Add(&xN, one)
+	xNminus1 := koalaAPI.SubExt(xN, one)
+	xNplus1 := koalaAPI.AddExt(xN, one)
 
-	left0 := ext4.Mul(xNplus1, &yDual)
-	left1 := ext4.Mul(xNminus1, &yActual)
-	left := ext4.Sub(left0, left1)
-	right := ext4.Mul(&yAlleged, &two)
+	left0 := koalaAPI.MulExt(xNplus1, yDual)
+	left1 := koalaAPI.MulExt(xNminus1, yActual)
+	left := koalaAPI.SubExt(left0, left1)
+	right := koalaAPI.MulExt(yAlleged, two)
 
-	ext4.AssertIsEqual(left, right)
+	koalaAPI.AssertIsEqualExt(left, right)
 }
 
 // Registers the final folding phase of the self-recursion

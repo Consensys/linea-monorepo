@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -16,14 +16,11 @@ import (
 // circuit
 func GnarkDeriveEvaluationPoint(
 	api frontend.API, h ifaces.Column, upstream string,
-	cachedXs collection.Mapping[string, gnarkfext.E4Gen],
-	x gnarkfext.E4Gen,
-) (xRes []gnarkfext.E4Gen) {
+	cachedXs collection.Mapping[string, koalagnark.Ext],
+	x koalagnark.Ext,
+) (xRes []koalagnark.Ext) {
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	if !h.IsComposite() {
 		// Just return x and cache it if necessary
@@ -33,13 +30,13 @@ func GnarkDeriveEvaluationPoint(
 			// Else register the result in the cache
 			cachedXs.InsertNew(newUpstream, x)
 		}
-		return []gnarkfext.E4Gen{x}
+		return []koalagnark.Ext{x}
 	}
 
 	switch inner := h.(type) {
 	case Shifted:
 		newUpstream := appendNodeToUpstream(upstream, inner)
-		var derivedX gnarkfext.E4Gen
+		var derivedX koalagnark.Ext
 		// Early return if the result is cached
 		if cachedXs.Exists(newUpstream) {
 			derivedX = cachedXs.MustGet(newUpstream)
@@ -52,7 +49,7 @@ func GnarkDeriveEvaluationPoint(
 			}
 			generator.ExpInt64(generator, int64(inner.Offset))
 			omegaN := big.NewInt(0).SetUint64(generator.Uint64())
-			derivedX = *ext4.MulConst(&x, omegaN)
+			derivedX = koalaAPI.MulConstExt(x, omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)
 		}
 		return GnarkDeriveEvaluationPoint(api, inner.Parent, newUpstream, cachedXs, derivedX)
@@ -67,9 +64,9 @@ func GnarkDeriveEvaluationPoint(
 // circuit.
 func GnarkVerifyYConsistency(
 	api frontend.API, h ifaces.Column, upstream string,
-	cachedXs collection.Mapping[string, gnarkfext.E4Gen],
-	finalYs collection.Mapping[string, gnarkfext.E4Gen],
-) (y gnarkfext.E4Gen) {
+	cachedXs collection.Mapping[string, koalagnark.Ext],
+	finalYs collection.Mapping[string, koalagnark.Ext],
+) (y koalagnark.Ext) {
 
 	if !h.IsComposite() {
 		// Get the Y from the map. An absence from this map is unexpected at

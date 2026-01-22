@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
 )
@@ -118,7 +118,7 @@ func (info *Info) Sample(fs *fiatshamir.FS, seed field.Octuplet) interface{} {
 
 // SampleGnark samples a random coin in a gnark circuit. The seed can optionally be
 // passed by the caller is used for [FieldFromSeed] coins. The function returns
-func (info *Info) SampleGnark(fs *fiatshamir.GnarkFS, seed zk.Octuplet) interface{} {
+func (info *Info) SampleGnark(fs *fiatshamir.GnarkFS, seed koalagnark.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
 		return (*fs).RandomManyIntegers(info.Size, info.UpperBound)

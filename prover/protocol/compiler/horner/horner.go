@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -355,28 +355,25 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	hornerQuery := c.Q
 	hornerParams := run.GetHornerParams(hornerQuery.ID)
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-	res := *e4Api.Zero()
+	koalaAPI := koalagnark.NewAPI(api)
+	res := koalaAPI.ZeroExt()
 
 	for i := range c.Q.Parts {
 
 		ipQuery := c.CountingInnerProducts[i]
 		ipParams := run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-		ipCount := *e4Api.Zero()
+		ipCount := koalaAPI.ZeroExt()
 
 		for k := range ipQuery.Bs {
-			ipCount = *e4Api.Add(&ipCount, &ipParams.Ys[k])
+			ipCount = koalaAPI.AddExt(ipCount, ipParams.Ys[k])
 		}
 
 		// api.AssertIsEqual(api.Add(hornerParams.Parts[i].N0, ipCount), hornerParams.Parts[i].N1)
 		// TODO @thomas fixme (ext vs base)
-		extN0 := gnarkfext.NewE4GenFromFrontedBase(hornerParams.Parts[i].N0)
-		extN0 = *e4Api.Add(&extN0, &ipCount)
-		extN1 := gnarkfext.NewE4GenFromFrontedBase(hornerParams.Parts[i].N1)
-		e4Api.AssertIsEqual(&extN0, &extN1)
+		extN0 := koalagnark.NewExtFromFrontendVar(hornerParams.Parts[i].N0)
+		extN0 = koalaAPI.AddExt(extN0, ipCount)
+		extN1 := koalagnark.NewExtFromFrontendVar(hornerParams.Parts[i].N1)
+		koalaAPI.AssertIsEqualExt(extN0, extN1)
 	}
 
 	// This loop is responsible for checking that the final result is correctly
@@ -387,16 +384,16 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		n0 := hornerParams.Parts[i].N0
 		x := hornerQuery.Parts[i].X.GetFrontendVariableExt(api, run)
 
-		xN0 := e4Api.ExpVariableExponent(api, x, n0, 64)
-		tmp = *e4Api.Mul(&tmp, &xN0)
+		xN0 := koalaAPI.ExpVariableExponentExt(x, n0, 64)
+		tmp = koalaAPI.MulExt(tmp, xN0)
 
 		if hornerQuery.Parts[i].SignNegative {
-			tmp = *e4Api.Neg(&tmp)
+			tmp = koalaAPI.NegExt(tmp)
 		}
 
-		res = *e4Api.Add(&res, &tmp)
+		res = koalaAPI.AddExt(res, tmp)
 	}
-	e4Api.AssertIsEqual(&res, &hornerParams.FinalResult)
+	koalaAPI.AssertIsEqualExt(res, hornerParams.FinalResult)
 }
 
 func (c *CheckHornerResult) Skip() {

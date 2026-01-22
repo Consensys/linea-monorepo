@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -167,13 +167,10 @@ func (c *CheckHornerQuery) Run(run wizard.Runtime) error {
 
 func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	params := run.GetHornerParams(c.Query.ID)
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
-	zero := gnarkfext.NewE4Gen(fext.Zero())
-	ext4.AssertIsEqual(&params.FinalResult, &zero)
+	zero := koalagnark.NewExt(fext.Zero())
+	koalaAPI.AssertIsEqualExt(params.FinalResult, zero)
 
 	for _, p := range params.Parts {
 		api.AssertIsEqual(p.N0, 0)

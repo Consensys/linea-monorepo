@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
 	"slices"
 
@@ -134,21 +134,18 @@ func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 
 // RunGnark implements the [wizard.VerifierAction]
 func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried
 	// in the protocol via the
-	zSum := *e4Api.Zero()
+	zSum := koalaAPI.ZeroExt()
 	for k := range f.ZOpenings {
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).ExtY
-		zSum = *e4Api.Add(&zSum, &temp)
+		zSum = koalaAPI.AddExt(zSum, temp)
 	}
 
-	e4Api.AssertIsEqual(&zSum, &claimedSum)
+	koalaAPI.AssertIsEqualExt(zSum, claimedSum)
 }
 
 func (f *FinalEvaluationCheck) Skip() {

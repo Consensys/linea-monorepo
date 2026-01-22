@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -43,12 +42,12 @@ func (l *FromGrandProductAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return run.GetParams(l.Q.ID).(query.GrandProductParams).ExtY
 }
 
-func (l *FromGrandProductAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
+func (l *FromGrandProductAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (l *FromGrandProductAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) zk.WrappedVariable {
+func (l *FromGrandProductAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) koalagnark.Element {
 	//TODO implement me
 	panic("implement me")
 }
@@ -76,7 +75,7 @@ func (l *FromGrandProductAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromGrandProductAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
+func (l *FromGrandProductAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	params := circ.GetParams(l.Q.ID).(query.GnarkGrandProductParams)
 	return params.Prod
 }

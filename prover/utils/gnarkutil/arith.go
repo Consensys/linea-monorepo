@@ -7,19 +7,18 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
-func RepeatedVariable(x zk.WrappedVariable, n int) []zk.WrappedVariable {
-	res := make([]zk.WrappedVariable, n)
+func RepeatedVariable(x koalagnark.Element, n int) []koalagnark.Element {
+	res := make([]koalagnark.Element, n)
 	for i := range res {
 		res[i] = x
 	}
 	return res
 }
-func RepeatedVariableExt(x gnarkfext.E4Gen, n int) []gnarkfext.E4Gen {
-	res := make([]gnarkfext.E4Gen, n)
+func RepeatedVariableExt(x koalagnark.Ext, n int) []koalagnark.Ext {
+	res := make([]koalagnark.Ext, n)
 	for i := range res {
 		res[i] = x
 	}
@@ -28,20 +27,17 @@ func RepeatedVariableExt(x gnarkfext.E4Gen, n int) []gnarkfext.E4Gen {
 
 // Exp in gnark circuit, using the fast exponentiation
 // Optimized for power-of-two exponents (only repeated squaring needed)
-func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
+func ExpExt(api frontend.API, x koalagnark.Ext, n int) koalagnark.Ext {
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	if n < 0 {
-		x = *e4Api.Inverse(&x)
+		x = koalaAPI.InverseExt(x)
 		n = -n
 	}
 
 	if n == 0 {
-		return *e4Api.One()
+		return koalaAPI.OneExt()
 	}
 
 	if n == 1 {
@@ -54,7 +50,7 @@ func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
 		// n = 2^k, so we just need k squarings
 		res := x
 		for n > 1 {
-			res = *e4Api.Square(&res)
+			res = koalaAPI.SquareExt(res)
 			n >>= 1
 		}
 		return res
@@ -62,14 +58,14 @@ func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
 
 	// General case: square-and-multiply
 	acc := x
-	res := *e4Api.One()
+	res := koalaAPI.OneExt()
 
 	// right-to-left
 	for n != 0 {
 		if n&1 == 1 {
-			res = *e4Api.Mul(&res, &acc)
+			res = koalaAPI.MulExt(res, acc)
 		}
-		acc = *e4Api.Square(&acc)
+		acc = koalaAPI.SquareExt(acc)
 		n >>= 1
 	}
 	return res
@@ -77,20 +73,17 @@ func ExpExt(api frontend.API, x gnarkfext.E4Gen, n int) gnarkfext.E4Gen {
 
 // Exp in gnark circuit, using the fast exponentiation
 // Optimized for power-of-two exponents (only repeated squaring needed)
-func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
+func Exp(api frontend.API, x koalagnark.Element, n int) koalagnark.Element {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	if n < 0 {
-		x = apiGen.Inverse(x)
+		x = koalaAPI.Inverse(x)
 		n = -n
 	}
 
 	if n == 0 {
-		return zk.ValueOf(1)
+		return koalagnark.NewElement(1)
 	}
 
 	if n == 1 {
@@ -101,7 +94,7 @@ func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
 	if bits.OnesCount(uint(n)) == 1 {
 		res := x
 		for n > 1 {
-			res = apiGen.Mul(res, res)
+			res = koalaAPI.Mul(res, res)
 			n >>= 1
 		}
 		return res
@@ -109,14 +102,14 @@ func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
 
 	// General case: square-and-multiply
 	acc := x
-	res := zk.ValueOf(1)
+	res := koalagnark.NewElement(1)
 
 	// right-to-left
 	for n != 0 {
 		if n&1 == 1 {
-			res = apiGen.Mul(res, acc)
+			res = koalaAPI.Mul(res, acc)
 		}
-		acc = apiGen.Mul(acc, acc)
+		acc = koalaAPI.Mul(acc, acc)
 		n >>= 1
 	}
 	return res
@@ -124,22 +117,19 @@ func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
 
 // ExpVariableExponent exponentiates x by n in a gnark circuit. Where n is not fixed.
 // n is limited to n bits (max)
-func ExpVariableExponent(api frontend.API, x zk.WrappedVariable, exp frontend.Variable, expNumBits int) zk.WrappedVariable {
+func ExpVariableExponent(api frontend.API, x koalagnark.Element, exp frontend.Variable, expNumBits int) koalagnark.Element {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	expBits := api.ToBinary(exp, expNumBits)
-	res := zk.ValueOf(1)
+	res := koalagnark.NewElement(1)
 
 	for i := len(expBits) - 1; i >= 0; i-- {
 		if i != len(expBits)-1 {
-			res = apiGen.Mul(res, res)
+			res = koalaAPI.Mul(res, res)
 		}
-		tmp := apiGen.Mul(res, x)
-		res = apiGen.Select(expBits[i], tmp, res)
+		tmp := koalaAPI.Mul(res, x)
+		res = koalaAPI.Select(expBits[i], tmp, res)
 	}
 
 	return res
