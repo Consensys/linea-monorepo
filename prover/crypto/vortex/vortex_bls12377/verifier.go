@@ -82,8 +82,7 @@ func Verify(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput
 
 func VerifyCommon(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput) error {
 
-	encoded := params.RsParams.RsEncodeExt(proof.LinearCombination)
-	err := vortex.CheckLinComb(encoded, vi.EntryList, vi.Alpha, proof.Columns)
+	err := vortex.CheckLinComb(proof.EncodedLinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}

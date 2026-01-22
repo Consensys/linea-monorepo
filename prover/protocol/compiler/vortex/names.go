@@ -16,6 +16,9 @@ func (ctx *Ctx) LinCombRandCoinName() coin.Name {
 func (ctx *Ctx) LinCombName() ifaces.ColID {
 	return ifaces.ColIDf("VORTEX_%v_ROW_LINEAR_COMBINATION", ctx.SelfRecursionCount)
 }
+func (ctx *Ctx) EncodedLinCombName() ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_%v_ROW_ENCODED_LINEAR_COMBINATION", ctx.SelfRecursionCount)
+}
 
 // return the name of the linear combination
 func (ctx *Ctx) RandColSelectionName() coin.Name {

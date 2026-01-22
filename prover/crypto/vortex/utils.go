@@ -15,7 +15,7 @@ import (
 
 func init() {
 	solver.RegisterHint(
-		fftExtInvHintEmulated, fftExtInvHintNative,
+		fftExtHintEmulated, fftExtHintNative,
 	)
 }
 
@@ -27,18 +27,18 @@ var (
 
 func fftHint(t koalagnark.VType) solver.Hint {
 	if t == koalagnark.Native {
-		return fftExtInvHintNative
+		return fftExtHintNative
 	} else {
-		return fftExtInvHintEmulated
+		return fftExtHintEmulated
 	}
 }
 
-func fftExtInvHintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
-	return emulated.UnwrapHint(inputs, output, fftExtInvHintNative)
+func fftExtHintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
+	return emulated.UnwrapHint(inputs, output, fftExtHintNative)
 }
 
 // Each chunk of 4 inputs corresponds to a E4 element.
-func fftExtInvHintNative(scalarField *big.Int, inputs, outputs []*big.Int) error {
+func fftExtHintNative(scalarField *big.Int, inputs, outputs []*big.Int) error {
 
 	if len(inputs)%4 != 0 {
 		return ErrSizeNotAMultipleOfFour
@@ -63,7 +63,7 @@ func fftExtInvHintNative(scalarField *big.Int, inputs, outputs []*big.Int) error
 		_res[i].B1.A0.SetBigInt(inputs[4*i+2])
 		_res[i].B1.A1.SetBigInt(inputs[4*i+3])
 	}
-	d.FFTInverseExt(_res, fft.DIF)
+	d.FFTExt(_res, fft.DIT)
 	utils.BitReverse(_res)
 
 	for i := 0; i < n; i++ {

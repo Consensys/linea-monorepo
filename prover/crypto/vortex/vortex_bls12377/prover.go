@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-func Prove(
+func (p *Params) Prove(
 	entryList []int,
 	polyLists [][]smartvectors.SmartVector,
 	encodedMatrices []EncodedMatrix,
@@ -22,6 +22,7 @@ func Prove(
 		_polyLists = append(_polyLists, m...)
 	}
 	vortex.LinearCombination(proof, _polyLists, alpha)
+	proof.EncodedLinearCombination = p.RsParams.RsEncodeExt(proof.LinearCombination)
 
 	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
 

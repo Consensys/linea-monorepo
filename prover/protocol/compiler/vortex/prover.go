@@ -200,7 +200,9 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
 	vortex.LinearCombination(proof, committedSV, randomCoinLC)
+	proof.EncodedLinearCombination = ctx.VortexBLSParams.RsParams.RsEncodeExt(proof.LinearCombination)
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+	pr.AssignColumn(ctx.Items.EncodedUalpha.GetColID(), proof.EncodedLinearCombination)
 
 }
 

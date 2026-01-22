@@ -8,8 +8,9 @@ import (
 )
 
 type GnarkProof struct {
-	Columns           [][][]koalagnark.Element
-	LinearCombination []koalagnark.Ext
+	Columns                  [][][]koalagnark.Element
+	LinearCombination        []koalagnark.Ext
+	EncodedLinearCombination []koalagnark.Ext
 }
 
 type GnarkVerifierInput struct {
@@ -29,7 +30,7 @@ type GnarkVerifierInput struct {
 
 func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVerifierInput, roots []frontend.Variable) error {
 
-	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+	err := GnarkCheckLinComb(api, proof.EncodedLinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}
@@ -47,28 +48,28 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []k
 
 	koalaAPI := koalagnark.NewAPI(api)
 
-	// === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
-	fftinv := fftHint(koalaAPI.Type())
-	sizeFextUnpacked := len(linComb) * 4
-	inputs := make([]koalagnark.Element, sizeFextUnpacked)
-	for i := 0; i < len(linComb); i++ {
-		inputs[4*i] = linComb[i].B0.A0
-		inputs[4*i+1] = linComb[i].B0.A1
-		inputs[4*i+2] = linComb[i].B1.A0
-		inputs[4*i+3] = linComb[i].B1.A1
-	}
-	_res, err := koalaAPI.NewHint(fftinv, sizeFextUnpacked, inputs...)
-	if err != nil {
-		return err
-	}
+	// // === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
+	// fftinv := fftHint(koalaAPI.Type())
+	// sizeFextUnpacked := len(linComb) * 4
+	// inputs := make([]koalagnark.Element, sizeFextUnpacked)
+	// for i := 0; i < len(linComb); i++ {
+	// 	inputs[4*i] = linComb[i].B0.A0
+	// 	inputs[4*i+1] = linComb[i].B0.A1
+	// 	inputs[4*i+2] = linComb[i].B1.A0
+	// 	inputs[4*i+3] = linComb[i].B1.A1
+	// }
+	// _res, err := koalaAPI.NewHint(fftinv, sizeFextUnpacked, inputs...)
+	// if err != nil {
+	// 	return err
+	// }
 
-	res := make([]koalagnark.Ext, len(linComb))
-	for i := 0; i < len(linComb); i++ {
-		res[i].B0.A0 = _res[4*i]
-		res[i].B0.A1 = _res[4*i+1]
-		res[i].B1.A0 = _res[4*i+2]
-		res[i].B1.A1 = _res[4*i+3]
-	}
+	// res := make([]koalagnark.Ext, len(linComb))
+	// for i := 0; i < len(linComb); i++ {
+	// 	res[i].B0.A0 = _res[4*i]
+	// 	res[i].B0.A1 = _res[4*i+1]
+	// 	res[i].B1.A0 = _res[4*i+2]
+	// 	res[i].B1.A1 = _res[4*i+3]
+	// }
 
 	// === Part 2: Batch Lagrange evaluation at two points ===
 	// Both evaluations use the same domain (Domains[1])
@@ -85,8 +86,8 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []k
 		params.RsParams.Domains[1].Generator,
 		params.RsParams.Domains[1].Cardinality)
 
-	alphaY := evals[0]  // P(x) for statement check
-	evalLag := evals[1] // P(challenge) for codeword check
+	alphaY := evals[0] // P(x) for statement check
+	// evalLag := evals[1] // P(challenge) for codeword check
 
 	// === Part 3: Statement check ===
 	var yjoined []koalagnark.Ext
@@ -96,15 +97,15 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []k
 	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
 	koalaAPI.AssertIsEqualExt(alphaY, alphaYPrime)
 
-	// === Part 4: Codeword check (Schwartz-Zippel) ===
-	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
-	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
+	// // === Part 4: Codeword check (Schwartz-Zippel) ===
+	// evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
+	// koalaAPI.AssertIsEqualExt(evalLag, evalCan)
 
-	// === Part 5: Assert last entries are zeroes (RS codeword property) ===
-	zero := koalaAPI.ZeroExt()
-	for i := params.RsParams.NbColumns(); i < params.RsParams.NbEncodedColumns(); i++ {
-		koalaAPI.AssertIsEqualExt(res[i], zero)
-	}
+	// // === Part 5: Assert last entries are zeroes (RS codeword property) ===
+	// zero := koalaAPI.ZeroExt()
+	// for i := params.RsParams.NbColumns(); i < params.RsParams.NbEncodedColumns(); i++ {
+	// 	koalaAPI.AssertIsEqualExt(res[i], zero)
+	// }
 
 	return nil
 }

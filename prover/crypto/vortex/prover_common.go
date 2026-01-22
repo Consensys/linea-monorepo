@@ -17,7 +17,8 @@ type OpeningProof struct {
 	Columns [][][]field.Element
 
 	// Linear combination of the Reed-Solomon encoded polynomials to open.
-	LinearCombination smartvectors.SmartVector
+	LinearCombination        smartvectors.SmartVector
+	EncodedLinearCombination smartvectors.SmartVector
 }
 
 // Let x := randomCoin

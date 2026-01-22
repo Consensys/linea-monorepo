@@ -253,7 +253,9 @@ type Ctx struct {
 		// Alpha is a random combination linear coin
 		Alpha coin.Info
 		// Linear combination of the row-encoded matrix
-		Ualpha ifaces.Column
+		Ualpha        ifaces.Column
+		EncodedUalpha ifaces.Column
+
 		// Random column selection
 		Q coin.Info
 		// Opened columns, to be used in the Vortex compilation
@@ -329,6 +331,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			}
 			Alpha               coin.Info
 			Ualpha              ifaces.Column
+			UalphaEncoded       ifaces.Column
 			Q                   coin.Info
 			OpenedColumns       []ifaces.Column
 			OpenedSISColumns    []ifaces.Column
@@ -652,6 +655,13 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	ctx.Items.Ualpha = ctx.Comp.InsertProof(
 		lastRound+1,
 		ctx.LinCombName(),
+		ctx.NumEncodedCols(),
+		false,
+	)
+
+	ctx.Items.EncodedUalpha = ctx.Comp.InsertProof(
+		lastRound+1,
+		ctx.EncodedLinCombName(),
 		ctx.NumEncodedCols(),
 		false,
 	)
