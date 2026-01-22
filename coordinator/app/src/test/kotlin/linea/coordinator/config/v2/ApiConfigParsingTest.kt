@@ -11,11 +11,15 @@ class ApiConfigParsingTest {
       """
       [api]
       observability-port = 9546
+      json-rpc-port = 9547
+      json-rpc-path = "/jsonrpc"
       """.trimIndent()
 
     val config =
       ApiConfigToml(
         observabilityPort = 9546u,
+        jsonRpcPort = 9547u,
+        jsonRpcPath = "/jsonrpc",
       )
 
     val tomlMinimal = ""
@@ -23,6 +27,8 @@ class ApiConfigParsingTest {
     val configMinimal =
       ApiConfigToml(
         observabilityPort = 9545u,
+        jsonRpcPort = 0u,
+        jsonRpcPath = "/",
       )
   }
 
