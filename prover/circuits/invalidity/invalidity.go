@@ -54,7 +54,7 @@ type AssigningInputs struct {
 	MaxRlpByteSize    int
 
 	// inputs related to zkevm-wizard
-	ZkevmWizardIOP   *wizard.CompiledIOP
+	Zkevm            *zkevm.ZkEvm
 	ZkevmWizardProof wizard.Proof
 }
 
@@ -148,7 +148,7 @@ type Config struct {
 	Depth             int
 	KeccakCompiledIOP *wizard.CompiledIOP
 	MaxRlpByteSize    int
-	zkevm             *zkevm.ZkEvm
+	Zkevm             *zkevm.ZkEvm
 }
 
 type builder struct {
