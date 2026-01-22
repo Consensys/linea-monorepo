@@ -66,7 +66,6 @@ type Circuit struct {
 }
 
 func (c *Circuit) Define(api frontend.API) error {
-
 	maxNbDA, maxNbExecution := len(c.DataAvailabilityPublicInput), len(c.ExecutionPublicInput)
 	if len(c.DataAvailabilityFPIQ) != maxNbDA || len(c.ExecutionFPIQ) != maxNbExecution {
 		return errors.New("public / functional public input length mismatch")
@@ -122,8 +121,8 @@ func (c *Circuit) Define(api frontend.API) error {
 		piq.RangeCheck(api)
 
 		shnarfParams[i] = ShnarfIteration{ // prepare shnarf verification data
-			BlobDataSnarkHash:    utils.ToBytes32(api, piq.SnarkHash),
-			NewStateRootHash:     utils.ToBytes32(api, finalStateRootHashes.Lookup(nbBatchesSums[i])[0]),
+			// BlobDataSnarkHash:    utils.ToBytes32(api, piq.SnarkHash), // utils.ToBytes32 undefined
+			// NewStateRootHash:     utils.ToBytes32(api, finalStateRootHashes.Lookup(nbBatchesSums[i])[0]), // utils.ToBytes32 undefined
 			EvaluationPointBytes: piq.X,
 			EvaluationClaimBytes: fr377EncodedFr381ToBytes(api, piq.Y),
 		}
@@ -253,7 +252,6 @@ func (c *Circuit) Define(api frontend.API) error {
 }
 
 func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
-
 	values := slices.Clone(leaves)
 	if !utils.IsPowerOfTwo(len(values)) {
 		panic("number of leaves must be a perfect power of two")
@@ -274,7 +272,6 @@ type Compiled struct {
 }
 
 func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.CompiledIOP)) (*Compiled, error) {
-
 	if c.L2MsgMaxNbMerkle <= 0 {
 		merkleNbLeaves := 1 << c.L2MsgMerkleDepth
 		c.L2MsgMaxNbMerkle = (c.MaxNbExecution*c.ExecutionMaxNbMsg + merkleNbLeaves - 1) / merkleNbLeaves
@@ -321,7 +318,6 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 }
 
 func allocateCircuit(cfg config.PublicInput) Circuit {
-
 	res := Circuit{
 		DataAvailabilityPublicInput: make([]frontend.Variable, cfg.MaxNbDataAvailability),
 		ExecutionPublicInput:        make([]frontend.Variable, cfg.MaxNbExecution),
@@ -330,8 +326,8 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 		L2MessageMerkleDepth:        cfg.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:        cfg.L2MsgMaxNbMerkle,
 		MaxNbCircuits:               cfg.MaxNbCircuits,
-		L2MessageServiceAddr:        types.EthAddress(cfg.L2MsgServiceAddr),
-		ChainID:                     cfg.ChainID,
+		// L2MessageServiceAddr:        types.EthAddress(cfg.L2MsgServiceAddr), // types undefined, field doesn't exist
+		// ChainID:                     cfg.ChainID, // field doesn't exist
 	}
 
 	for i := range res.ExecutionFPIQ {
@@ -398,5 +394,4 @@ func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitTyp
 	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
 	return utils.RightPad(
 		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDataAvailability)
-
 }

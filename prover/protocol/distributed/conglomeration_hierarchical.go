@@ -759,7 +759,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 		for i := range mProof {
 			for j := 0; j < 8; j++ {
 				wrapped := c.VerificationKeyMerkleProofs[instance][i][j].GetColAssignmentGnarkAt(run, 0)
-				mProof[i][j] = wrapped.AsNative()
+				mProof[i][j] = wrapped.Native()
 			}
 		}
 
@@ -873,7 +873,7 @@ func GetPublicInputListGnark(api frontend.API, run wizard.GnarkRuntime, name str
 	for i := 0; i < nb; i++ {
 		name := name + "_" + strconv.Itoa(i)
 		wrapped := run.GetPublicInput(api, name)
-		res = append(res, wrapped.AsNative())
+		res = append(res, wrapped.Native())
 	}
 	return res
 }
@@ -885,7 +885,7 @@ func getPublicInputListOfInstanceGnark(rec *recursion.Recursion, api frontend.AP
 	for i := 0; i < nb; i++ {
 		name := name + "_" + strconv.Itoa(i)
 		wrapped := rec.GetPublicInputOfInstanceGnark(api, run, name, instance)
-		res = append(res, wrapped.AsNative())
+		res = append(res, wrapped.Native())
 	}
 	return res
 }
@@ -1000,17 +1000,17 @@ func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, ru
 	sharedRandomness := [8]frontend.Variable{}
 	for i := 0; i < 8; i++ {
 		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, VerifyingKeyMerkleRootPublicInput+"_"+strconv.Itoa(i), instance)
-		vKeyMerkleRoot[i] = wrapped.AsNative()
+		vKeyMerkleRoot[i] = wrapped.Native()
 		wrapped = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i), instance)
-		sharedRandomness[i] = wrapped.AsNative()
+		sharedRandomness[i] = wrapped.Native()
 	}
 
 	vk := [2][8]frontend.Variable{}
 	for i := range vk[0] {
 		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", VerifyingKeyPublicInput, i), instance)
-		vk[0][i] = wrapped.AsNative()
+		vk[0][i] = wrapped.Native()
 		wrapped = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", VerifyingKey2PublicInput, i), instance)
-		vk[1][i] = wrapped.AsNative()
+		vk[1][i] = wrapped.Native()
 	}
 
 	res := LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{
@@ -1029,7 +1029,7 @@ func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, ru
 
 	for _, pi := range c.PublicInputs.Functionals {
 		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, pi.Name, instance)
-		res.Functionals = append(res.Functionals, wrapped.AsNative())
+		res.Functionals = append(res.Functionals, wrapped.Native())
 	}
 
 	return res
@@ -1045,9 +1045,9 @@ func (c ModuleConglo) collectAllPublicInputsGnark(api frontend.API, run wizard.G
 	sharedRandomness := [8]frontend.Variable{}
 	for i := 0; i < 8; i++ {
 		wrapped := run.GetPublicInput(api, VerifyingKeyMerkleRootPublicInput+"_"+strconv.Itoa(i))
-		vKeyMerkleRoot[i] = wrapped.AsNative()
+		vKeyMerkleRoot[i] = wrapped.Native()
 		wrapped = run.GetPublicInput(api, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i))
-		sharedRandomness[i] = wrapped.AsNative()
+		sharedRandomness[i] = wrapped.Native()
 	}
 	res := LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{
 		TargetNbSegments:             GetPublicInputListGnark(api, run, TargetNbSegmentPublicInputBase, c.ModuleNumber),
@@ -1064,7 +1064,7 @@ func (c ModuleConglo) collectAllPublicInputsGnark(api frontend.API, run wizard.G
 
 	for _, pi := range scanFunctionalInputs(c.Recursion.InputCompiledIOP) {
 		wrapped := run.GetPublicInput(api, pi.Name)
-		res.Functionals = append(res.Functionals, wrapped.AsNative())
+		res.Functionals = append(res.Functionals, wrapped.Native())
 	}
 
 	return res

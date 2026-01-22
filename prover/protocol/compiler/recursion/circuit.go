@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -111,9 +112,36 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 	w.Verify(api)
 
-	for i := range r.Pubs {
-		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(api, w)
-		api.AssertIsEqual(r.Pubs[i], pub.Native())
+	// Match r.Pubs with w.Spec.PublicInputs, flattening extension fields to coordinates
+	pubIdx := 0
+	for i := range w.Spec.PublicInputs {
+		acc := w.Spec.PublicInputs[i].Acc
+
+		// Check if this is an extension field accessor
+		if constAcc, ok := acc.(*accessors.FromConstAccessor); ok && !constAcc.IsBase() {
+			// Extension field: verify all 4 coordinates
+			if pubIdx+4 > len(r.Pubs) {
+				panic("mismatch between public input slots count")
+			}
+			extPub := acc.GetFrontendVariableExt(api, w)
+			// Assert each coordinate: B0.A0, B0.A1, B1.A0, B1.A1
+			api.AssertIsEqual(r.Pubs[pubIdx], extPub.B0.A0.Native())
+			api.AssertIsEqual(r.Pubs[pubIdx+1], extPub.B0.A1.Native())
+			api.AssertIsEqual(r.Pubs[pubIdx+2], extPub.B1.A0.Native())
+			api.AssertIsEqual(r.Pubs[pubIdx+3], extPub.B1.A1.Native())
+			pubIdx += 4
+		} else {
+			// Base field: verify single element
+			if pubIdx >= len(r.Pubs) {
+				panic("mismatch between public input slots count")
+			}
+			pub := acc.GetFrontendVariable(api, w)
+			api.AssertIsEqual(r.Pubs[pubIdx], pub.Native())
+			pubIdx++
+		}
+	}
+	if pubIdx != len(r.Pubs) {
+		panic("not all public input slots were matched")
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
