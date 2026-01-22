@@ -1,4 +1,4 @@
-package blobdecompression
+package dataavailability
 
 import (
 	"fmt"
