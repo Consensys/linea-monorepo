@@ -12,7 +12,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	pack "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
+	edc "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/execution_data_collector"
 	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
@@ -49,7 +51,7 @@ type PublicInput struct {
 	RootHashFetcher    *fetch.RootHashFetcher
 	RollingHashFetcher *logs.RollingSelector
 	LogHasher          logs.LogHasher
-	ExecMiMCHasher     edc.PoseidonHasher
+	ExecPoseidonHasher edc.PoseidonHasher
 	DataNbBytes        ifaces.Column
 	ChainIDFetcher     fetch.ChainIDFetcher
 	Extractor          FunctionalInputExtractor
@@ -62,9 +64,11 @@ type AuxiliaryModules struct {
 	BlockTxnMetadata                                   fetch.BlockTxnMetadata
 	TxnDataFetcher                                     fetch.TxnDataFetcher
 	RlpTxnFetcher                                      fetch.RlpTxnFetcher
-	// ExecDataCollector                                  *edc.ExecutionDataCollector
-	// ExecDataCollectorPadding                           wizard.ProverAction
-	// ExecDataCollectorPacking                           pack.Packing
+	ExecDataCollector                                  *edc.ExecutionDataCollector
+	ExecDataCollectorPadding                           wizard.ProverAction
+	ExecDataCollectorPacking                           pack.Packing
+	GenericPadderPacker                                edc.GenericPadderPacker
+	PoseidonPadderePacker                              edc.PoseidonPadderPacker
 }
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
@@ -200,55 +204,34 @@ func newPublicInput(
 	execDataCollector := edc.NewExecutionDataCollector(comp, "EXECUTION_DATA_COLLECTOR", limbColSize)
 	edc.DefineExecutionDataCollector(comp, execDataCollector, "EXECUTION_DATA_COLLECTOR", blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
 
-	// ExecutionDataCollector: Padding
-	importInp := importpad.ImportAndPadInputs{
-		Name: settings.Name,
-		Src: generic.GenericByteModule{Data: generic.GenDataModule{
-			HashNum: execDataCollector.HashNum,
-			Index:   execDataCollector.Ct,
-			ToHash:  execDataCollector.IsActive,
-			NBytes:  execDataCollector.NoBytes,
-			Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("executiondata.limbs", execDataCollector.Limbs[:]).AssertUint128(),
-		}},
-		PaddingStrategy: generic.Poseidon2UseCase,
-	}
-	padding := importpad.ImportAndPad(comp, importInp, limbColSize)
-
-	// ExecutionDataCollector: Packing
-	packingInp := pack.PackingInput{
-		MaxNumBlocks: execDataCollector.BlockID.Size(),
-		PackingParam: generic.Poseidon2UseCase,
-		Imported: pack.Importation{
-			Limb:      padding.Limbs,
-			NByte:     padding.NBytes,
-			IsNewHash: padding.IsNewHash,
-			IsActive:  padding.IsActive,
-		},
-		Name: "EXECUTION_DATA_MIMC",
-	}
-	packingMod := pack.NewPack(comp, packingInp)
-
-	ppp =
+	genericPadderPacker := edc.NewGenericPadderPacker(comp, execDataCollector.Limbs, execDataCollector.NoBytes, execDataCollector.IsActive, "GENERIC_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
+	ppp := edc.NewPoseidonPadderPacker(comp, genericPadderPacker.OutputData, genericPadderPacker.OutputIsActive, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
+	edc.DefinePoseidonPadderPacker(comp, ppp, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
 
 	// ExecutionDataCollector: Hashing
-	mimcHasher := edc.NewPoseidonHasher(comp, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
-	edc.DefinePoseidonHasher(comp, mimcHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+	poseidonHasher := edc.NewPoseidonHasher(comp, ppp.OutputData, ppp.OutputIsActive[0], "MIMC_HASHER")
+	edc.DefinePoseidonHasher(comp, poseidonHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
 	publicInput := PublicInput{
 		BlockDataFetcher:   blockDataFetcher,
 		RootHashFetcher:    rootHashFetcher,
 		RollingHashFetcher: rollingSelector,
 		LogHasher:          logHasherL2l1,
+		ExecPoseidonHasher: poseidonHasher,
+		DataNbBytes:        execDataCollector.FinalTotalBytesCounter,
 		ChainIDFetcher:     chainIDFetcher,
 		Inputs:             *inp,
 		Aux: AuxiliaryModules{
-			FetchedL2L1:        fetchedL2L1,
-			FetchedRollingMsg:  fetchedRollingMsg,
-			FetchedRollingHash: fetchedRollingHash,
-			LogSelectors:       logSelectors,
-			BlockTxnMetadata:   blockTxnMeta,
-			TxnDataFetcher:     txnDataFetcher,
-			RlpTxnFetcher:      rlpFetcher,
+			FetchedL2L1:           fetchedL2L1,
+			FetchedRollingMsg:     fetchedRollingMsg,
+			FetchedRollingHash:    fetchedRollingHash,
+			LogSelectors:          logSelectors,
+			BlockTxnMetadata:      blockTxnMeta,
+			TxnDataFetcher:        txnDataFetcher,
+			RlpTxnFetcher:         rlpFetcher,
+			ExecDataCollector:     execDataCollector,
+			GenericPadderPacker:   genericPadderPacker,
+			PoseidonPadderePacker: ppp,
 		},
 	}
 
@@ -284,6 +267,15 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	fetch.AssignChainIDFetcher(run, &pub.ChainIDFetcher, inp.BlockData)
 
 	// assign the ExecutionDataCollector
+	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.BlockDataFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
+	aux.ExecDataCollectorPadding.Run(run)
+	aux.ExecDataCollectorPacking.Run(run)
+
+	edc.AssignGenericPadderPacker(run, aux.GenericPadderPacker)
+	// assign the repacker for Poseidon hashing
+	edc.AssignPoseidonPadderPacker(run, aux.PoseidonPadderePacker)
+	// assign the hasher
+	edc.AssignPoseidonHasher(run, pub.ExecPoseidonHasher, aux.PoseidonPadderePacker.OutputData, aux.PoseidonPadderePacker.OutputIsActive[0])
 	pub.Extractor.Run(run)
 
 	// Assign the mashed up log columns that have not been assigned
@@ -324,6 +316,7 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 		NBytesChainID: createNewLocalOpening(pi.ChainIDFetcher.NBytesChainID),
 	}
 
+	createNewLocalOpenings(pi.Extractor.DataChecksum[:], pi.ExecPoseidonHasher.HashFinal[:])
 	createNewLocalOpenings(pi.Extractor.L2MessageHash[:], pi.LogHasher.HashFinal[:])
 	createNewLocalOpenings(pi.Extractor.InitialStateRootHash[:], pi.RootHashFetcher.First[:])
 	createNewLocalOpenings(pi.Extractor.FinalStateRootHash[:], pi.RootHashFetcher.Last[:])

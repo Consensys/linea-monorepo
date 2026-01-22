@@ -12,6 +12,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+// cachedKoalabearModulus caches koalabear.Modulus() to avoid repeated allocations
+var cachedKoalabearModulus = koalabear.Modulus()
+
 type VType uint
 
 const (
@@ -69,7 +72,7 @@ func (w *WrappedVariable) IsEmpty() bool {
 }
 
 func (w *WrappedVariable) Initialize(field *big.Int) {
-	if field.Cmp(koalabear.Modulus()) == 0 {
+	if field.Cmp(cachedKoalabearModulus) == 0 {
 		return
 	} else {
 		w.EV.Initialize(field)
@@ -95,8 +98,7 @@ type GenericApi struct {
 
 func NewGenericApi(api frontend.API) (GenericApi, error) {
 	ff := api.Compiler().Field()
-	kf := koalabear.Modulus()
-	if ff.Cmp(kf) == 0 {
+	if ff.Cmp(cachedKoalabearModulus) == 0 {
 		return GenericApi{NativeApi: api}, nil
 	} else {
 		f, err := emulated.NewField[emulated.KoalaBear](api)

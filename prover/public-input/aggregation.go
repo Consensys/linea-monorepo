@@ -13,6 +13,7 @@ import (
 	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"golang.org/x/crypto/sha3"
 )
@@ -139,7 +140,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			LastFinalizedRollingHash:       [32]frontend.Variable{},
 			LastFinalizedRollingHashNumber: pi.LastFinalizedRollingHashMsgNumber,
 			InitialStateRootHash:           pi.InitialStateRootHash[:],
-			NbDecompression:                pi.NbDecompression,
+			NbDataAvailability:             pi.NbDecompression,
 			ChainConfigurationFPISnark: ChainConfigurationFPISnark{
 				ChainID:                 pi.ChainID,
 				BaseFee:                 pi.BaseFee,
@@ -260,15 +261,15 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,
 		pi.FinalShnarf,
-		utils.ToBytes32(api, pi.LastFinalizedBlockTimestamp),
-		utils.ToBytes32(api, pi.FinalBlockTimestamp),
-		utils.ToBytes32(api, pi.LastFinalizedBlockNumber),
-		utils.ToBytes32(api, pi.FinalBlockNumber),
+		gnarkutil.ToBytes32(api, pi.LastFinalizedBlockTimestamp),
+		gnarkutil.ToBytes32(api, pi.FinalBlockTimestamp),
+		gnarkutil.ToBytes32(api, pi.LastFinalizedBlockNumber),
+		gnarkutil.ToBytes32(api, pi.FinalBlockNumber),
 		pi.LastFinalizedRollingHash,
 		pi.FinalRollingHash,
-		utils.ToBytes32(api, pi.LastFinalizedRollingHashNumber),
-		utils.ToBytes32(api, pi.FinalRollingHashNumber),
-		utils.ToBytes32(api, zk.ValueOf(pi.L2MsgMerkleTreeDepth)),
+		gnarkutil.ToBytes32(api, pi.LastFinalizedRollingHashNumber),
+		gnarkutil.ToBytes32(api, pi.FinalRollingHashNumber),
+		gnarkutil.ToBytes32(api, zk.ValueOf(pi.L2MsgMerkleTreeDepth)),
 		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 
 		//include a hash of the chain configuration

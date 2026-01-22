@@ -1,6 +1,7 @@
 package fastpoly
 
 import (
+	"math/big"
 	"slices"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -102,8 +103,10 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]zk.WrappedVaria
 		res = make([]gnarkfext.E4Gen, len(polys))
 	)
 	e4one := ext4.One()
+	omegaInv := big.NewInt(0)
 	for i := range innerProductTerms {
-		innerProductTerms[i] = *ext4.MulByFp(&x, powersOfOmegaInv[i])
+		omegaInv.SetUint64(powersOfOmegaInv[i])
+		innerProductTerms[i] = *ext4.MulConst(&x, omegaInv)
 		innerProductTerms[i] = *ext4.Sub(&innerProductTerms[i], e4one)
 		innerProductTerms[i] = *ext4.Inverse(&innerProductTerms[i])
 	}
@@ -213,18 +216,18 @@ func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.E4Gen, ns []int) []gna
 // powerVector returns w raised to the powers contained up to n starting from
 // 0. For instance, if n = 4, then it returns [1, w^-1, w^-2, w^-3]. Where w
 // is the inverse of the generator of the subgroup of root of unity of order 4.
-func powerVectorOfOmegaInv(n int) []zk.WrappedVariable {
+func powerVectorOfOmegaInv(n int) []uint64 {
 
 	var (
 		resField = field.One()
-		res      = make([]zk.WrappedVariable, n)
+		res      = make([]uint64, n)
 		w, _     = fft.Generator(uint64(n))
 	)
 
 	w.Inverse(&w)
 
 	for i := 0; i < n; i++ {
-		res[i] = zk.ValueFromKoala(resField)
+		res[i] = uint64(resField.Uint64())
 		resField.Mul(&resField, &w)
 	}
 

@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
@@ -143,10 +144,20 @@ func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnark
 	}
 
 	// Optimization: use MulByFp instead of full E4 Mul since coeffs are base field elements
+	c := big.NewInt(0)
 	for i, input := range inputs {
-		coeff := zk.ValueOf(lc.Coeffs[i])
-		tmp := e4Api.MulByFp(&input, coeff)
-		res = *e4Api.Add(tmp, &res)
+		switch coeff := lc.Coeffs[i]; coeff {
+		case 0:
+			// skip
+		case 1:
+			res = *e4Api.Add(&res, &input)
+		case -1:
+			res = *e4Api.Sub(&res, &input)
+		default:
+			c.SetInt64(int64(coeff))
+			tmp := e4Api.MulConst(&input, c)
+			res = *e4Api.Add(tmp, &res)
+		}
 	}
 
 	return res

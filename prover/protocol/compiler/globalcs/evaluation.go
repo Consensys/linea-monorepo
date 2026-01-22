@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -442,8 +441,8 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	}
 
 	// shiftedR.MulByFp(api, r, mulGenInv)
-	wrappedMulGenInv := zk.ValueFromKoala(mulGenInv)
-	shiftedR = *e4Api.MulByFp(&r, wrappedMulGenInv)
+	bMulGenInv := big.NewInt(0).SetUint64(mulGenInv.Uint64())
+	shiftedR = *e4Api.MulConst(&r, bMulGenInv)
 
 	var invOmegaN field.Element
 	invOmegaN.Inverse(&omegaN)
@@ -462,8 +461,8 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		providedX := params.ExtX
 		var expectedX gnarkfext.E4Gen
 		// expectedX = shiftedR * invOmegaN^i (computed incrementally)
-		wrappedAccInvOmegaN := zk.ValueFromKoala(accInvOmegaN)
-		expectedX = *e4Api.MulByFp(&shiftedR, wrappedAccInvOmegaN)
+		wrappedAccInvOmegaN := big.NewInt(0).SetUint64(accInvOmegaN.Uint64())
+		expectedX = *e4Api.MulConst(&shiftedR, wrappedAccInvOmegaN)
 		e4Api.AssertIsEqual(&providedX, &expectedX)
 
 		// Update accumulator: accInvOmegaN *= invOmegaN
@@ -502,8 +501,8 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 
 		for k := range ys {
 			// tmp stores ys[k] / ((r^m * omegaRatioInv^k) - 1)
-			wrappedAccOmegaRatioInv := zk.ValueFromKoala(accOmegaRatioInv)
-			tmp := e4Api.MulByFp(&rPowM, wrappedAccOmegaRatioInv)
+			wrappedAccOmegaRatioInv := big.NewInt(0).SetUint64(accOmegaRatioInv.Uint64())
+			tmp := e4Api.MulConst(&rPowM, wrappedAccOmegaRatioInv)
 			tmp = e4Api.Sub(tmp, &wOne)
 			tmp = e4Api.Div(&ys[k], tmp)
 			res = *e4Api.Add(&res, tmp)
@@ -514,10 +513,10 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 
 		// Optimization: outerFactor = shiftedR^n = shiftedR^(m*ratio) = (shiftedR^m)^ratio
 		// Reuse rPowM instead of computing ExpExt again
-		wrappedRatioInvField := zk.ValueFromKoala(ratioInvField)
+		wrappedRatioInvField := big.NewInt(0).SetUint64(ratioInvField.Uint64())
 		outerFactor := gnarkutil.ExpExt(api, rPowM, ratio)
 		outerFactor = *e4Api.Sub(&outerFactor, &wOne)
-		outerFactor = *e4Api.MulByFp(&outerFactor, wrappedRatioInvField)
+		outerFactor = *e4Api.MulConst(&outerFactor, wrappedRatioInvField)
 		res = *e4Api.Mul(&res, &outerFactor)
 		recombinedYs[i] = res
 	}

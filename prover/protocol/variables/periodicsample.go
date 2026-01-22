@@ -158,26 +158,26 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gna
 		if err != nil {
 			panic(err)
 		}
-		omegaN.Exp(omegaN, big.NewInt(int64(-t.Offset)))
-		wOmegaN := zk.ValueFromKoala(omegaN)
-		x = *ext4.MulByFp(&x, wOmegaN)
+		omegaN.ExpInt64(omegaN, int64(-t.Offset))
+		wOmegaN := big.NewInt(0).SetUint64(omegaN.Uint64())
+		x = *ext4.MulConst(&x, wOmegaN)
 	}
 
 	// Optimization: compute x^l and x^n efficiently
 	// x^n = (x^l)^(n/l) = (x^l)^T where T = t.T
 	xPowL := ext4.Exp(&x, big.NewInt(int64(l)))
 
-	wnField := zk.ValueFromKoala(nField)
-	wlField := zk.ValueFromKoala(lField)
+	wnField := big.NewInt(0).SetUint64(nField.Uint64())
+	wlField := big.NewInt(0).SetUint64(lField.Uint64())
 	extEOne := *ext4.One()
 
 	denominator := ext4.Sub(xPowL, &extEOne)
-	denominator = ext4.MulByFp(denominator, wnField)
+	denominator = ext4.MulConst(denominator, wnField)
 
 	// x^n = (x^l)^T - reuse xPowL instead of computing x^n from scratch
 	numerator := ext4.Exp(xPowL, big.NewInt(int64(t.T)))
 	numerator = ext4.Sub(numerator, &extEOne)
-	numerator = ext4.MulByFp(numerator, wlField)
+	numerator = ext4.MulConst(numerator, wlField)
 
 	return *ext4.Div(numerator, denominator)
 }

@@ -144,6 +144,13 @@ func (ext2 *Ext2) MulByFp(e1 *E2Gen, c zk.WrappedVariable) *E2Gen {
 	}
 }
 
+func (ext2 *Ext2) MulConst(e1 *E2Gen, c *big.Int) *E2Gen {
+	return &E2Gen{
+		A0: ext2.ApiGen.MulConst(e1.A0, c),
+		A1: ext2.ApiGen.MulConst(e1.A1, c),
+	}
+}
+
 // MulByNonResidue multiplies an fp2 elmt by the imaginary elmt
 // ext.uSquare is the square of the imaginary root
 func (ext2 *Ext2) MulByNonResidue(e1 *E2Gen) *E2Gen {
