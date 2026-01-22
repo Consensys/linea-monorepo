@@ -26,6 +26,7 @@ import {
   ImmutableReference,
   StorageSchema,
 } from "../src/types";
+import { parseMarkdownConfig } from "../src/utils/markdown-config";
 
 // ============================================================================
 // Test Utilities
@@ -393,6 +394,9 @@ async function main(): Promise<void> {
   await testStoragePathSlotComputation();
   await testErc7201BaseSlotCalculation();
 
+  // Markdown config tests
+  await testMarkdownConfigParsing();
+
   console.log("\n" + "=".repeat(50));
   console.log(`\n📊 Results: ${testsPassed} passed, ${testsFailed} failed`);
 
@@ -500,6 +504,87 @@ async function testErc7201BaseSlotCalculation(): Promise<void> {
   // Different namespaces should produce different slots
   const slot2 = calculateErc7201BaseSlot("linea.storage.Different");
   assert(slot !== slot2, "Different namespaces produce different slots");
+}
+
+// ============================================================================
+// Markdown Config Tests
+// ============================================================================
+
+async function testMarkdownConfigParsing(): Promise<void> {
+  console.log("\n🧪 Testing markdown config parsing...");
+
+  const markdown = `
+# Test Verification Config
+
+## Contract: TestContract
+
+\`\`\`verifier
+name: TestContract
+address: 0x1234567890123456789012345678901234567890
+chain: ethereum-sepolia
+artifact: ./artifacts/Test.json
+isProxy: true
+ozVersion: v4
+schema: ./schemas/test.json
+\`\`\`
+
+### State Verification
+
+| Type | Description | Check | Params | Expected |
+|------|-------------|-------|--------|----------|
+| viewCall | Get owner | \`owner\` | | \`0xabcdef1234567890abcdef1234567890abcdef12\` |
+| viewCall | Check role | \`hasRole\` | \`0x1234\`,\`0x5678\` | true |
+| slot | Initialized | \`0x0\` | uint8 | \`1\` |
+| storagePath | Config value | \`TestStorage:value\` | | \`100\` |
+
+## Contract: SecondContract
+
+\`\`\`verifier
+address: 0xabcdefabcdefabcdefabcdefabcdefabcdefabcd
+chain: ethereum-sepolia
+artifact: ./artifacts/Second.json
+isProxy: false
+\`\`\`
+`;
+
+  const config = parseMarkdownConfig(markdown, "/test/dir");
+
+  // Check contracts were parsed
+  assertEqual(config.contracts.length, 2, "Parsed 2 contracts");
+
+  // Check first contract
+  const first = config.contracts[0];
+  assertEqual(first.name, "TestContract", "First contract name");
+  assertEqual(first.address, "0x1234567890123456789012345678901234567890", "First contract address");
+  assertEqual(first.chain, "ethereum-sepolia", "First contract chain");
+  assertEqual(first.isProxy, true, "First contract isProxy");
+
+  // Check state verification
+  assert(first.stateVerification !== undefined, "First contract has state verification");
+  if (first.stateVerification) {
+    assertEqual(first.stateVerification.ozVersion, "v4", "OZ version");
+    assertEqual(first.stateVerification.viewCalls?.length, 2, "Has 2 view calls");
+    assertEqual(first.stateVerification.slots?.length, 1, "Has 1 slot check");
+    assertEqual(first.stateVerification.storagePaths?.length, 1, "Has 1 storage path");
+
+    // Check view call with params
+    const hasRoleCall = first.stateVerification.viewCalls?.find((v) => v.function === "hasRole");
+    assert(hasRoleCall !== undefined, "hasRole view call exists");
+    if (hasRoleCall) {
+      assertEqual(hasRoleCall.params?.length, 2, "hasRole has 2 params");
+      assertEqual(hasRoleCall.expected, true, "hasRole expected value");
+    }
+  }
+
+  // Check second contract
+  const second = config.contracts[1];
+  assertEqual(second.address, "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd", "Second contract address");
+  assertEqual(second.isProxy, false, "Second contract isProxy");
+  assert(second.stateVerification === undefined, "Second contract has no state verification");
+
+  // Check default chains were included
+  assert(config.chains["ethereum-sepolia"] !== undefined, "Sepolia chain exists");
+  assertEqual(config.chains["ethereum-sepolia"].chainId, 11155111, "Sepolia chain ID");
 }
 
 main().catch((error) => {

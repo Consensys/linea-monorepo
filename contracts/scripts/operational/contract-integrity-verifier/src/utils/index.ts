@@ -8,3 +8,4 @@ export * from "./abi";
 export * from "./bytecode";
 export * from "./state";
 export * from "./storage-path";
+export * from "./markdown-config";

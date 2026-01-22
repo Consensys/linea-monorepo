@@ -45,6 +45,8 @@ export {
   verifyStoragePath,
 } from "./utils/storage-path";
 
+export { parseMarkdownConfig, loadMarkdownConfig } from "./utils/markdown-config";
+
 // Type exports
 export type {
   // Config types

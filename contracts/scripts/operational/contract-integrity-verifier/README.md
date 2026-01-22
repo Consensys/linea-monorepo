@@ -50,14 +50,15 @@ contract-integrity-verifier/
 │   ├── index.ts              # Package entry point (exports public API)
 │   ├── cli.ts                # CLI entry point
 │   ├── types.ts              # TypeScript types
-│   ├── config.ts             # Config loading
+│   ├── config.ts             # Config loading (JSON + Markdown)
 │   ├── verifier.ts           # Main verification logic
 │   └── utils/                # Utility modules
 │       ├── index.ts          # Utils barrel export
 │       ├── abi.ts            # ABI parsing
 │       ├── bytecode.ts       # Bytecode comparison
 │       ├── state.ts          # State verification
-│       └── storage-path.ts   # ERC-7201 storage paths
+│       ├── storage-path.ts   # ERC-7201 storage paths
+│       └── markdown-config.ts # Markdown config parser
 ├── tools/                    # Standalone CLI tools
 │   └── generate-schema.ts    # Schema generator
 ├── tests/                    # Test files
@@ -65,7 +66,8 @@ contract-integrity-verifier/
 ├── configs/                  # Example configurations
 │   ├── chains.json
 │   ├── example.json
-│   └── sepolia-linea-rollup-v7.json
+│   ├── sepolia-linea-rollup-v7.json
+│   └── sepolia-linea-rollup-v7.config.md  # Markdown config example
 ├── schemas/                  # Example storage schemas
 │   └── linea-rollup.json
 └── README.md
@@ -73,7 +75,11 @@ contract-integrity-verifier/
 
 ## Configuration
 
-Create a JSON configuration file. See `configs/example.json` for a template.
+The verifier supports two configuration formats:
+- **JSON** (`.json`) - Traditional structured format
+- **Markdown** (`.md`) - Documentation-as-config format
+
+See `configs/example.json` or `configs/sepolia-linea-rollup-v7.config.md` for templates.
 
 ### Configuration Schema
 
@@ -160,6 +166,93 @@ Then set the environment variable:
 ```bash
 export MAINNET_RPC_URL="https://mainnet.infura.io/v3/YOUR_KEY"
 ```
+
+## Markdown Configuration Format
+
+Use markdown files as both documentation AND config. The verifier parses `verifier` code blocks and markdown tables.
+
+### Basic Structure
+
+````markdown
+# My Verification Config
+
+## Contract: MyContract-Proxy
+
+```verifier
+name: MyContract-Proxy
+address: 0x1234567890123456789012345678901234567890
+chain: ethereum-mainnet
+artifact: ./artifacts/MyContract.json
+isProxy: true
+ozVersion: v4
+schema: ./schemas/my-contract.json
+```
+
+### State Verification
+
+| Type | Description | Check | Params | Expected |
+|------|-------------|-------|--------|----------|
+| viewCall | Get owner | `owner` | | `0xabcd...` |
+| viewCall | Check role | `hasRole` | `0x1234...`,`0x5678...` | true |
+| slot | Initialized | `0x0` | uint8 | `1` |
+| storagePath | Config value | `MyStorage:value` | | `100` |
+````
+
+### Verifier Block Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | No | Contract name (auto-generated if omitted) |
+| `address` | Yes | Contract address |
+| `chain` | Yes | Chain name (uses default chains if not custom) |
+| `artifact` | Yes | Path to artifact file |
+| `isProxy` | No | `true` or `false` |
+| `ozVersion` | No | `v4`, `v5`, or `auto` |
+| `schema` | No | Path to storage schema file |
+
+### Verification Table Columns
+
+| Column | Description |
+|--------|-------------|
+| Type | `viewCall`, `slot`, or `storagePath` |
+| Description | Human-readable comment |
+| Check | Function name, slot hex, or storage path |
+| Params | Comma-separated params (for viewCall) or type (for slot) |
+| Expected | Expected value (`true`, `false`, numbers, addresses) |
+
+### Multiple Contracts
+
+Separate contracts with `---` or new `## Contract:` headers:
+
+````markdown
+## Contract: Proxy
+
+```verifier
+address: 0x1111...
+...
+```
+
+---
+
+## Contract: Implementation
+
+```verifier
+address: 0x2222...
+...
+```
+````
+
+### Default Chains
+
+Markdown configs include these default chains (no need to define):
+- `ethereum-mainnet` (chainId: 1)
+- `ethereum-sepolia` (chainId: 11155111)
+- `linea-mainnet` (chainId: 59144)
+- `linea-sepolia` (chainId: 59141)
+
+### Example File
+
+See `configs/sepolia-linea-rollup-v7.config.md` for a complete working example.
 
 ## Artifact File Format
 
