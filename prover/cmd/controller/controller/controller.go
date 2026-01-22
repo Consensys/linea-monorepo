@@ -455,15 +455,13 @@ func rmPrevDanglingFiles(cfg *config.Config, cLog *logrus.Entry) {
 			// Remove the .inprogress.<ID> suffix and append .large
 			// Example: req.json.inprogress.ID -> req.json.large
 			baseName := strings.TrimSuffix(name, suffix)
-			newName := baseName + ".large"
+			newName := baseName + "." + config.LargeSuffix
 			newPath := filepath.Join(reqDir, newName)
 
 			cLog.Warnf("Found dangling in-progress job under this controller's local-id from previous run (possibly OOM/Crash): %s. Recovering by renaming to %s", name, newName)
 			if err := os.Rename(oldPath, newPath); err != nil {
 				cLog.Errorf("Failed to recover stale job %s: %v", name, err)
 			}
-		} else {
-			cLog.Infof("No dangling in-progress jobs found from previous run under this controller's local-id")
 		}
 	}
 }
