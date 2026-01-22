@@ -284,7 +284,7 @@ func (d *DistributedWizard) Conglomerate(params CompilationParams) *DistributedW
 	}
 
 	comp := wizard.NewCompiledIOP()
-	conglo.Compile(comp, d.CompiledGLs[0].RecursionComp)
+	conglo.Compile(comp, d.CompiledGLs[0].RecursionComp, params)
 	d.CompiledConglomeration = CompileSegment(conglo, params)
 	assertCompatibleIOPs(d)
 
@@ -299,7 +299,7 @@ func (d *DistributedWizard) Conglomerate(params CompilationParams) *DistributedW
 
 // Compile compiles the conglomeration proof. The function first checks if the
 // public inputs are compatible and then compiles the conglomeration proof.
-func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.CompiledIOP) {
+func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.CompiledIOP, params CompilationParams) {
 	// We see the wizard stats just before:
 	initialWizardStats := logdata.GetWizardStats(comp)
 	logrus.Infof("[Before Conglomeration] numCellsCommitted=%v numCellsPrecomputed=%v numCellsProof=%v, totalCells=%v, numQueriesLogDerivativeSum=%v",
@@ -311,6 +311,8 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 		WithoutGkr:             true,
 		MaxNumProof:            2,
 		WithExternalHasherOpts: true,
+		FixedNbRowPlonkCircuit:      params.FixedNbRowPlonkCircuit,
+		ExternalHasherNbRows: params.FixedNbRowExternalHasher,
 	})
 
 	c.Wiop = comp

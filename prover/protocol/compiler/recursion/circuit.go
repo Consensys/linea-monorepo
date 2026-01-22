@@ -5,7 +5,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
-	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -118,7 +117,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 		acc := w.Spec.PublicInputs[i].Acc
 
 		// Check if this is an extension field accessor
-		if constAcc, ok := acc.(*accessors.FromConstAccessor); ok && !constAcc.IsBase() {
+		if !acc.IsBase() {
 			// Extension field: verify all 4 coordinates
 			if pubIdx+4 > len(r.Pubs) {
 				panic("mismatch between public input slots count")
