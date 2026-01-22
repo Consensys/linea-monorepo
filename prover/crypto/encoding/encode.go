@@ -40,17 +40,17 @@ var multipliers8 = [8]*big.Int{
 
 // EncodeKoalabearOctupletToFrElement encodes 8 Koalabear field elements into a single BLS12-377 field element.
 // Each Koalabear element is treated as a 31-bit value, packed into the 253-bit BLS12-377 field.
+// Optimized to reduce big.Int allocations by reusing variables.
 func EncodeKoalabearOctupletToFrElement(elements [8]field.Element) fr.Element {
 	var res fr.Element
-	var bres big.Int
+	var bres, bElement, bScaled big.Int
 
 	for i := 0; i < 8; i++ {
-		var bElement big.Int
 		elements[7-i].BigInt(&bElement)
 
-		// Add the value to the result, scaled by the current multiplier
-		bElement.Mul(&bElement, multipliers8[i])
-		bres.Add(&bres, &bElement)
+		// Reuse bScaled instead of allocating new big.Int for multiplication result
+		bScaled.Mul(&bElement, multipliers8[i])
+		bres.Add(&bres, &bScaled)
 	}
 
 	res.SetBigInt(&bres)
@@ -59,8 +59,15 @@ func EncodeKoalabearOctupletToFrElement(elements [8]field.Element) fr.Element {
 
 // EncodeKoalabearsToFrElement encodes a slice of Koalabear field elements into BLS12-377 field elements.
 // Elements are packed 8 at a time, with left-padding of zeros if the input length is not a multiple of 8.
+// Optimized with pre-allocated result slice to avoid repeated slice growth.
 func EncodeKoalabearsToFrElement(elements []field.Element) []fr.Element {
-	var res []fr.Element
+	if len(elements) == 0 {
+		return nil
+	}
+	// Pre-allocate result slice with exact capacity needed
+	numResults := (len(elements) + 7) / 8
+	res := make([]fr.Element, 0, numResults)
+
 	for len(elements) != 0 {
 		var buf [8]field.Element
 		// in this case we left pad by zeroes
@@ -90,19 +97,23 @@ func EncodeFrElementToOctuplet(element fr.Element) field.Octuplet {
 	return res
 }
 
+// mask30Bits is a pre-allocated big.Int for masking, used to avoid allocations
+var mask30BitsBigInt = big.NewInt(int64(Mask30Bits))
+
 // EncodeBLS12RootToKoalabear decomposes a BLS12-377 field element (Merkle root) into 9 Koalabear field elements.
 // Each chunk is 30 bits, allowing for lossless round-trip encoding.
 func EncodeBLS12RootToKoalabear(encoded fr.Element) [KoalabearChunks]field.Element {
 	var elements, res [KoalabearChunks]field.Element
 
 	bytes := encoded.Bytes()
-	value := new(big.Int).SetBytes(bytes[:])
+	var value, chunk big.Int
+	value.SetBytes(bytes[:])
 
-	// Extract each 30-bit chunk
+	// Extract each 30-bit chunk using reusable big.Int
 	for i := 0; i < KoalabearChunks; i++ {
-		chunk := new(big.Int).And(value, big.NewInt(int64(Mask30Bits)))
-		elements[i].SetBigInt(chunk)
-		value.Rsh(value, ChunkBits9)
+		chunk.And(&value, mask30BitsBigInt)
+		elements[i].SetBigInt(&chunk)
+		value.Rsh(&value, ChunkBits9)
 	}
 
 	// Reverse to match expected ordering (little-endian to big-endian)
@@ -115,14 +126,13 @@ func EncodeBLS12RootToKoalabear(encoded fr.Element) [KoalabearChunks]field.Eleme
 // DecodeKoalabearToBLS12Root reconstructs a BLS12-377 field element from 9 Koalabear field elements.
 // This is the inverse of EncodeBLS12RootToKoalabear.
 func DecodeKoalabearToBLS12Root(elements [KoalabearChunks]field.Element) fr.Element {
-	expectedResult := big.NewInt(0)
+	var expectedResult, bElement big.Int
 
-	// Process all chunks in a single loop
+	// Process all chunks in a single loop using reusable big.Int
 	for i := 0; i < KoalabearChunks; i++ {
-		var bElement big.Int
 		elements[KoalabearChunks-1-i].BigInt(&bElement)
 		bElement.Lsh(&bElement, uint(ChunkBits9*i))
-		expectedResult.Or(expectedResult, &bElement)
+		expectedResult.Or(&expectedResult, &bElement)
 	}
 
 	var res types.Bytes32
