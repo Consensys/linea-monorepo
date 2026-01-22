@@ -11,15 +11,14 @@ require (
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.7.0
 	github.com/dnlo/struct2csv v0.0.0-20190928115744-2f584471b24e
-	github.com/fxamacker/cbor/v2 v2.9.0
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/gofrs/flock v0.12.0
 	github.com/google/uuid v1.6.0
 	github.com/holiman/uint256 v1.3.2
 	github.com/icza/bitio v1.1.0
+	github.com/klauspost/compress v1.17.2
 	github.com/leanovate/gopter v0.2.11
-	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
 	github.com/rs/zerolog v1.34.0
@@ -46,6 +45,7 @@ require (
 	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/felixge/fgprof v0.9.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
@@ -94,6 +94,6 @@ require (
 	github.com/pkg/profile v1.7.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.38.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

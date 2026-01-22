@@ -80,6 +80,9 @@ func init() {
 	rootCmd.AddCommand(logStatsCmd)
 	logStatsCmd.Flags().StringVar(&logStatsArgs.Input, "in", "", "input file")
 	logStatsCmd.Flags().StringVar(&logStatsArgs.StatsFile, "stats-file", "", "stats file where to log the result")
+
+	// Limitless prover cmds
+	proveCmd.Flags().StringVar(&proverArgs.Phase, "phase", "", "phase flag can only be invoked for the execution proof in the limitless prover mode")
 }
 
 func cmdSetup(_cmd *cobra.Command, _ []string) error {

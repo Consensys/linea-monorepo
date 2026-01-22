@@ -1,7 +1,9 @@
-package serialization_test
+package serde_test
 
 import (
 	"fmt"
+	"reflect"
+	"runtime/debug"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -21,7 +23,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,6 +36,69 @@ var (
 	isTest      = true
 	isBenchmark = false
 )
+
+var (
+	z = zkevm.GetTestZkEVM()
+)
+
+// Helper function for serialization and deserialization tests
+func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast bool) {
+
+	// In case the test panics, log the error but do not let the panic
+	// interrupt the test.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Panic during serialization/deserialization of %s: %v", name, r)
+			debug.PrintStack()
+		}
+	}()
+
+	if input == nil {
+		t.Error("test input is nil")
+		return
+	}
+
+	var output = reflect.New(reflect.TypeOf(input)).Interface()
+	var b []byte
+	var err error
+
+	// Measure serialization time
+	serTime := profiling.TimeIt(func() {
+		logrus.Printf("Starting to serialize:%s \n", name)
+		b, err = serde.Serialize(input)
+		if err != nil {
+			t.Fatalf("Error during serialization of %s: %v", name, err)
+		}
+	})
+
+	// Measure deserialization time
+	desTime := profiling.TimeIt(func() {
+		logrus.Printf("Starting to deserialize:%s\n", name)
+		err = serde.Deserialize(b, output)
+		if err != nil {
+			t.Fatalf("Error during deserialization of %s: %v", name, err)
+		}
+	})
+
+	// Log results
+	t.Logf("%s serialization=%v deserialization=%v buffer-size=%v \n", name, serTime, desTime, len(b))
+
+	if isSanityCheck {
+		// Sanity check: Compare exported fields
+		t.Logf("Running sanity checks on deserialized object: Comparing if the values matched before and after serialization")
+		outputDeref := reflect.ValueOf(output).Elem().Interface()
+		if !serde.DeepCmp(input, outputDeref, failFast) {
+			t.Errorf("Mismatch in exported fields of %s during serde", name)
+		} else {
+			t.Logf("Sanity checks passed for %s", name)
+		}
+	}
+}
+
+func TestSerdeZkEVM(t *testing.T) {
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	runSerdeTest(t, z, "ZKEVM", true, false)
+}
 
 // returns a dummy column name
 func dummyColName(i int) ifaces.ColID {
@@ -406,79 +475,6 @@ func TestSerdeIOPAll(t *testing.T) {
 	}
 }
 
-// Benchmark functions
-func BenchmarkSerIOP1(b *testing.B) {
-	benchmarkScenario(b, "iop1", true) // true for serialization only
-}
-
-func BenchmarkDeserIOP1(b *testing.B) {
-	benchmarkScenario(b, "iop1", false) // false for deserialization only
-}
-
-func BenchmarkSerIOP2(b *testing.B) {
-	benchmarkScenario(b, "iop2", true)
-}
-
-func BenchmarkDeserIOP2(b *testing.B) {
-	benchmarkScenario(b, "iop2", false)
-}
-
-func BenchmarkSerIOP3(b *testing.B) {
-	benchmarkScenario(b, "iop3", true)
-}
-
-func BenchmarkDeserIOP3(b *testing.B) {
-	benchmarkScenario(b, "iop3", false)
-}
-
-func BenchmarkSerIOP4(b *testing.B) {
-	benchmarkScenario(b, "iop4", true)
-}
-
-func BenchmarkDeserIOP4(b *testing.B) {
-	benchmarkScenario(b, "iop4", false)
-}
-
-func BenchmarkSerIOP5(b *testing.B) {
-	benchmarkScenario(b, "iop5", true)
-}
-
-func BenchmarkDeserIOP5(b *testing.B) {
-	benchmarkScenario(b, "iop5", false)
-}
-
-func BenchmarkSerIOP6(b *testing.B) {
-	benchmarkScenario(b, "iop6", true)
-}
-
-func BenchmarkDeserIOP6(b *testing.B) {
-	benchmarkScenario(b, "iop6", false)
-}
-
-// Helper function to run benchmark for a specific scenario
-func benchmarkScenario(b *testing.B, scenarioName string, onlySerialize bool) {
-	// Find the scenario
-	var scenario *serdeScenario
-	for _, s := range serdeScenarios {
-		if s.name == scenarioName {
-			scenario = &s
-			break
-		}
-	}
-
-	if scenario == nil {
-		b.Fatalf("Scenario %s not found", scenarioName)
-	}
-
-	if !scenario.benchmark {
-		b.Skipf("Scenario %s is not configured for benchmarking", scenarioName)
-		return
-	}
-
-	comp := getScenarioComp(scenario)
-	runSerdeBenchmark(b, comp, scenarioName, onlySerialize)
-}
-
 // Keep original test functions for backward compatibility (optional)
 // You can remove these if you only want to use TestSerdeAll
 
@@ -582,4 +578,62 @@ func findScenario(name string) *serdeScenario {
 		}
 	}
 	return nil
+}
+
+func justserde(t *testing.B, input any, name string) {
+	// In case the test panics, log the error but do not let the panic
+	// interrupt the test.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Panic during serialization/deserialization of %s: %v", name, r)
+			debug.PrintStack()
+		}
+	}()
+
+	if input == nil {
+		t.Error("test input is nil")
+		return
+	}
+
+	var output = reflect.New(reflect.TypeOf(input)).Interface()
+	var b []byte
+	var err error
+
+	b, err = serde.Serialize(input)
+	if err != nil {
+		t.Fatalf("Error during serialization of %s: %v", name, err)
+	}
+
+	err = serde.Deserialize(b, output)
+	if err != nil {
+		t.Fatalf("Error during deserialization of %s: %v", name, err)
+	}
+}
+
+type distributeTestCase struct {
+	numRow int
+}
+
+func (d distributeTestCase) define(comp *wizard.CompiledIOP) {
+
+	// Define the first module
+	a0 := comp.InsertCommit(0, "a0", d.numRow)
+	b0 := comp.InsertCommit(0, "b0", d.numRow)
+	c0 := comp.InsertCommit(0, "c0", d.numRow)
+
+	// Importantly, the second module must be slightly different than the first
+	// one because else it will create a wierd edge case in the conglomeration:
+	// as we would have two GL modules with the same verifying key and we would
+	// not be able to infer a module from a VK.
+	//
+	// We differentiate the modules by adding a duplicate constraints for GL0
+	a1 := comp.InsertCommit(0, "a1", d.numRow)
+	b1 := comp.InsertCommit(0, "b1", d.numRow)
+	c1 := comp.InsertCommit(0, "c1", d.numRow)
+
+	comp.InsertGlobal(0, "global-0", symbolic.Sub(c0, b0, a0))
+	comp.InsertGlobal(0, "global-duplicate", symbolic.Sub(c0, b0, a0))
+	comp.InsertGlobal(0, "global-1", symbolic.Sub(c1, b1, a1))
+
+	comp.InsertInclusion(0, "inclusion-0", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
 }
