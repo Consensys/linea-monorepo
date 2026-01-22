@@ -11,7 +11,6 @@ import (
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 
-	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/sirupsen/logrus"
 
@@ -19,8 +18,8 @@ import (
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
-	v0 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0"
-	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	daconfig "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/config"
+	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/emulation"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
@@ -32,8 +31,6 @@ import (
 type SetupArgs struct {
 	Force      bool
 	Circuits   string
-	DictPath   string // to be deprecated; only used for compiling v0 blob decompression circuit
-	DictSize   int
 	AssetsDir  string
 	ConfigFile string
 }
@@ -42,8 +39,7 @@ var AllCircuits = []circuits.CircuitID{
 	circuits.ExecutionCircuitID,
 	circuits.ExecutionLargeCircuitID,
 	circuits.ExecutionLimitlessCircuitID,
-	circuits.BlobDecompressionV0CircuitID,
-	circuits.BlobDecompressionV1CircuitID,
+	circuits.DataAvailabilityV2CircuitID,
 	circuits.PublicInputInterconnectionCircuitID,
 	circuits.AggregationCircuitID,
 	circuits.EmulationCircuitID,
@@ -58,13 +54,6 @@ func Setup(ctx context.Context, args SetupArgs) error {
 	cfg, err := config.NewConfigFromFile(args.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("%s failed to read config file: %w", cmdName, err)
-	}
-
-	// Fail fast if the dictionary file is not found but was specified.
-	if args.DictPath != "" {
-		if _, err := os.Stat(args.DictPath); err != nil {
-			return fmt.Errorf("%s dictionary file not found: %w", cmdName, err)
-		}
 	}
 
 	// Parse inCircuits
@@ -84,10 +73,6 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		return fmt.Errorf("%s failed to create SRS provider: %w", cmdName, err)
 	}
 
-	// This is a temporary mechanism to make sure we phase out the practice
-	// of providing entire dictionaries for setup.
-	var foundDecompressionV0 bool
-
 	// Setup non-aggregation and non-emulation circuits first
 	// For each circuit, we start by compiling the circuit, and
 	// then we do a SHA-sum and compare against the one in the manifest.json
@@ -101,9 +86,6 @@ func Setup(ctx context.Context, args SetupArgs) error {
 
 		// Build the circuit
 		builder, extraFlags, err := createCircuitBuilder(c, cfg, args)
-		if c == circuits.BlobDecompressionV0CircuitID {
-			foundDecompressionV0 = true
-		}
 		if err != nil {
 			return fmt.Errorf("%s failed to create builder for circuit %s: %w", cmdName, c, err)
 		}
@@ -111,11 +93,6 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		if err := updateSetup(ctx, cfg, args.Force, srsProvider, c, builder, extraFlags); err != nil {
 			return err
 		}
-	}
-
-	// Validate dictionary usage
-	if !foundDecompressionV0 && args.DictPath != "" {
-		logrus.Errorf("explicit provision of a dictionary is only allowed for backwards compatibility with v0 blob decompression")
 	}
 
 	// Early exit if no aggregation or emulation circuits
@@ -262,19 +239,12 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 
 		// return execution.NewBuilderLimitless(compCong.Wiop, &limits), extraFlags, nil
 
-	case circuits.BlobDecompressionV0CircuitID:
-		dict, err := os.ReadFile(args.DictPath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to read dictionary file: %w", err)
-		}
-		extraFlags["maxUsableBytes"] = blob_v0.MaxUsableBytes
-		extraFlags["maxUncompressedBytes"] = blob_v0.MaxUncompressedBytes
-		return v0.NewBuilder(dict), extraFlags, nil
-
-	case circuits.BlobDecompressionV1CircuitID:
+	case circuits.DataAvailabilityV2CircuitID:
 		extraFlags["maxUsableBytes"] = blob_v1.MaxUsableBytes
-		extraFlags["maxUncompressedBytes"] = blob_v1.MaxUncompressedBytes
-		return v1.NewBuilder(args.DictSize), extraFlags, nil
+		extraFlags["maxUncompressedBytes"] = cfg.DataAvailability.MaxUncompressedNbBytes
+		extraFlags["dictNbBytes"] = cfg.DataAvailability.DictNbBytes
+		extraFlags["maxNbBatches"] = cfg.DataAvailability.MaxNbBatches
+		return blobdecompression.NewBuilder(daconfig.FromGlobalConfig(cfg.DataAvailability)), extraFlags, nil
 
 	case circuits.PublicInputInterconnectionCircuitID:
 		return pi_interconnection.NewBuilder(cfg.PublicInputInterconnection), extraFlags, nil
@@ -326,7 +296,7 @@ func getDummyCircuitParams(cID string) (ecc.ID, circuits.MockCircuitID, error) {
 	switch circuits.CircuitID(cID) {
 	case circuits.ExecutionDummyCircuitID:
 		return ecc.BLS12_377, circuits.MockCircuitIDExecution, nil
-	case circuits.BlobDecompressionDummyCircuitID:
+	case circuits.DataAvailabilityDummyCircuitID:
 		return ecc.BLS12_377, circuits.MockCircuitIDDecompression, nil
 	case circuits.EmulationDummyCircuitID:
 		return ecc.BN254, circuits.MockCircuitIDEmulation, nil
@@ -375,7 +345,7 @@ func setupAggregationCircuits(ctx context.Context, cfg *config.Config, force boo
 
 func isDummyCircuit(cID string) bool {
 	switch circuits.CircuitID(cID) {
-	case circuits.ExecutionDummyCircuitID, circuits.BlobDecompressionDummyCircuitID, circuits.EmulationDummyCircuitID:
+	case circuits.ExecutionDummyCircuitID, circuits.DataAvailabilityDummyCircuitID, circuits.EmulationDummyCircuitID:
 		return true
 	}
 	return false

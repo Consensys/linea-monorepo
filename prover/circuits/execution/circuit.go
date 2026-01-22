@@ -14,7 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 
-	"github.com/consensys/gnark/std/hash/mimc"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 )
 
@@ -92,11 +91,13 @@ func assign(
 					},
 				},
 			},
-			PublicInput: new(big.Int).SetBytes(funcInputs.Sum(nil)),
+			PublicInput: new(big.Int).SetBytes(funcInputs.Sum()),
 		}
 	)
 
-	res.FuncInputs.Assign(&funcInputs)
+	if err := res.FuncInputs.Assign(&funcInputs); err != nil {
+		panic(err)
+	}
 	return res
 }
 
@@ -113,8 +114,7 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 	)
 
 	// Add missing public input check
-	mimcHasher, _ := mimc.NewMiMC(api)
-	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api, &mimcHasher))
+	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))
 	return nil
 }
 

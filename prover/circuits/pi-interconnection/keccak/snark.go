@@ -9,6 +9,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrposeidon2"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
@@ -131,6 +132,8 @@ func (h *Hasher) Finalize(c *wizard.VerifierCircuit) error {
 		h.api.AssertIsEqual(h.claimedOuts[i][0], expectedHashHi[i])
 		h.api.AssertIsEqual(h.claimedOuts[i][1], expectedHashLo[i])
 	}
+
+	c.HasherFactory = gkrposeidon2.NewHasherFactory(h.api)
 
 	c.Verify(h.api)
 	return nil

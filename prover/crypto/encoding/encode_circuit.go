@@ -23,12 +23,15 @@ var multipliers9 = [KoalabearChunks]*big.Int{
 
 // Encode8WVsToFV encodes 8 Koalabear zk.WrappedVariable into a single BLS12-377 frontend.Variable.
 // Each input is treated as a 31-bit value. This is the circuit equivalent of EncodeKoalabearOctupletToFrElement.
+// Uses MulAcc for more efficient constraint generation.
 func Encode8WVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Variable {
-	var result frontend.Variable = 0
+	// Start with the first term to avoid unnecessary zero addition
+	result := api.Mul(values[7].AsNative(), multipliers8[0])
 
-	for i := 0; i < 8; i++ {
+	// Use MulAcc for remaining terms: result = result + value * multiplier
+	for i := 1; i < 8; i++ {
 		value := values[7-i].AsNative()
-		result = api.Add(result, api.Mul(value, multipliers8[i]))
+		result = api.MulAcc(result, value, multipliers8[i])
 	}
 
 	return result
@@ -80,12 +83,15 @@ func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVari
 // Encode9WVsToFV encodes 9 Koalabear zk.WrappedVariable into a single BLS12-377 frontend.Variable.
 // Each input is treated as a 30-bit value. This is the circuit equivalent of DecodeKoalabearToBLS12Root.
 // Used for Merkle root round-trip encoding in the gnark verifier.
+// Uses MulAcc for more efficient constraint generation.
 func Encode9WVsToFV(api frontend.API, values [KoalabearChunks]zk.WrappedVariable) frontend.Variable {
-	var result frontend.Variable = 0
+	// Start with the first term to avoid unnecessary zero addition
+	result := api.Mul(values[KoalabearChunks-1].AsNative(), multipliers9[0])
 
-	for i := 0; i < KoalabearChunks; i++ {
+	// Use MulAcc for remaining terms: result = result + value * multiplier
+	for i := 1; i < KoalabearChunks; i++ {
 		value := values[KoalabearChunks-1-i].AsNative()
-		result = api.Add(result, api.Mul(value, multipliers9[i]))
+		result = api.MulAcc(result, value, multipliers9[i])
 	}
 
 	return result

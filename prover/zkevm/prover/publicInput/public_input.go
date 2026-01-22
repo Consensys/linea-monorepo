@@ -49,6 +49,7 @@ type PublicInput struct {
 	RootHashFetcher    *fetch.RootHashFetcher
 	RollingHashFetcher *logs.RollingSelector
 	LogHasher          logs.LogHasher
+	ExecMiMCHasher     edc.PoseidonHasher
 	DataNbBytes        ifaces.Column
 	ChainIDFetcher     fetch.ChainIDFetcher
 	Extractor          FunctionalInputExtractor
@@ -192,6 +193,46 @@ func newPublicInput(
 	// ChainID fetcher
 	chainIDFetcher := fetch.NewChainIDFetcher(comp, "PUBLIC_INPUT_CHAIN_ID_FETCHER", inp.BlockData)
 	fetch.DefineChainIDFetcher(comp, &chainIDFetcher, "PUBLIC_INPUT_CHAIN_ID_FETCHER", inp.BlockData)
+
+	// ExecutionDataCollector
+	limbColSize := edc.GetSummarySize(inp.TxnData, inp.RlpTxn)
+	limbColSize = 4 * limbColSize // we need to artificially blow up the column size by 2, or padding will fail
+	execDataCollector := edc.NewExecutionDataCollector(comp, "EXECUTION_DATA_COLLECTOR", limbColSize)
+	edc.DefineExecutionDataCollector(comp, execDataCollector, "EXECUTION_DATA_COLLECTOR", blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
+
+	// ExecutionDataCollector: Padding
+	importInp := importpad.ImportAndPadInputs{
+		Name: settings.Name,
+		Src: generic.GenericByteModule{Data: generic.GenDataModule{
+			HashNum: execDataCollector.HashNum,
+			Index:   execDataCollector.Ct,
+			ToHash:  execDataCollector.IsActive,
+			NBytes:  execDataCollector.NoBytes,
+			Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("executiondata.limbs", execDataCollector.Limbs[:]).AssertUint128(),
+		}},
+		PaddingStrategy: generic.Poseidon2UseCase,
+	}
+	padding := importpad.ImportAndPad(comp, importInp, limbColSize)
+
+	// ExecutionDataCollector: Packing
+	packingInp := pack.PackingInput{
+		MaxNumBlocks: execDataCollector.BlockID.Size(),
+		PackingParam: generic.Poseidon2UseCase,
+		Imported: pack.Importation{
+			Limb:      padding.Limbs,
+			NByte:     padding.NBytes,
+			IsNewHash: padding.IsNewHash,
+			IsActive:  padding.IsActive,
+		},
+		Name: "EXECUTION_DATA_MIMC",
+	}
+	packingMod := pack.NewPack(comp, packingInp)
+
+	ppp =
+
+	// ExecutionDataCollector: Hashing
+	mimcHasher := edc.NewPoseidonHasher(comp, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
+	edc.DefinePoseidonHasher(comp, mimcHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
 	publicInput := PublicInput{
 		BlockDataFetcher:   blockDataFetcher,

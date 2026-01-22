@@ -2,7 +2,7 @@ package execution
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/hash/mimc"
+	gkrposeidon2 "github.com/consensys/gnark/std/hash/poseidon2/gkr-poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
@@ -36,7 +36,7 @@ func checkPublicInputs(
 		// TODO: this operation is done a second time when computing the final
 		// public input which is wasteful although not dramatic (~8000 unused
 		// constraints)
-		gnarkFuncInp.L2MessageHashes.CheckSumMiMC(api),
+		gnarkFuncInp.L2MessageHashes.CheckSumPoseidon2(api),
 	)
 
 	api.AssertIsEqual(
@@ -162,7 +162,7 @@ func execDataHash(
 	wvc *wizard.VerifierCircuit,
 ) frontend.Variable {
 
-	hsh, err := mimc.NewMiMC(api)
+	hsh, err := gkrposeidon2.New(api)
 	if err != nil {
 		panic(err)
 	}

@@ -1,7 +1,7 @@
 package aggregation
 
 import (
-	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/backend/dataavailability"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
@@ -102,6 +102,6 @@ type CollectedFields struct {
 	ProofClaims []aggregation.ProofClaimAssignment
 
 	ExecutionPI       []public_input.Execution
-	DecompressionPI   []blobdecompression.Request
+	DecompressionPI   []dataavailability.Request
 	InnerCircuitTypes []pi_interconnection.InnerCircuitType // a hint to the aggregation circuit detailing which public input correspond to which actual public input
 }

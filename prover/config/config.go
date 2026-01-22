@@ -140,7 +140,7 @@ type Config struct {
 
 	Controller                 Controller
 	Execution                  Execution
-	BlobDecompression          BlobDecompression `mapstructure:"blob_decompression"`
+	DataAvailability           DataAvailability `mapstructure:"data_availability"`
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 	Debug                      Debug       `mapstructure:"debug"`
@@ -205,9 +205,9 @@ type Controller struct {
 	RetryLocallyWithLargeCodes []int `mapstructure:"retry_locally_with_large_codes"`
 
 	// defaults to true; the controller will not pick associated jobs if false.
-	EnableExecution         bool `mapstructure:"enable_execution"`
-	EnableBlobDecompression bool `mapstructure:"enable_blob_decompression"`
-	EnableAggregation       bool `mapstructure:"enable_aggregation"`
+	EnableExecution        bool `mapstructure:"enable_execution"`
+	EnableDataAvailability bool `mapstructure:"enable_data_availability"`
+	EnableAggregation      bool `mapstructure:"enable_aggregation"`
 
 	// TODO @gbotrel the only reason we keep these is for test purposes; default value is fine,
 	// we should remove them from here for readability.
@@ -263,19 +263,23 @@ type Execution struct {
 	LimitlessWithDebug bool `mapstructure:"limitless_with_debug"`
 }
 
-type BlobDecompression struct {
+type DataAvailability struct {
 	WithRequestDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
 	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev full"`
 
-	// DictPaths is an optional parameters allowing the user to specify explicitly
-	// where to look for the compression dictionaries. If the input is not provided
-	// then the dictionary will be fetched in <assets_dir>/<version>/<circuitID>/compression_dict.bin.
-	//
-	// We stress that the feature should not be used in production and should
-	// only be used in E2E testing context. TODO @Tabaie @alexandre.belling revise this warning, seems to no longer apply
+	// MaxNbBatches is the maximum number of execution batches allowed in a single DA proof.
+	MaxNbBatches int `mapstructure:"max_nb_batches" validate:"required,number,gt=0"`
+
+	// MaxUncompressedNbBytes is the maximum number of bytes in the uncompressed blob payload.
+	MaxUncompressedNbBytes int `mapstructure:"max_uncompressed_nb_bytes" validate:"required,gt=0"`
+
+	// DictPaths points to dictionaries used for decompressing executions data stored in the DA layer.
 	DictPaths []string `mapstructure:"dict_paths"`
+
+	// DictNbBytes number of bytes in the prover dictionary
+	DictNbBytes int `mapstructure:"dict_nb_bytes" validate:"number,gt=0"`
 }
 
 type Aggregation struct {
@@ -318,12 +322,12 @@ func (cfg *WithRequestDir) DirDone() string {
 }
 
 type PublicInput struct {
-	MaxNbDecompression int `mapstructure:"max_nb_decompression" validate:"gte=0"`
-	MaxNbExecution     int `mapstructure:"max_nb_execution" validate:"gte=0"`
-	MaxNbCircuits      int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDecompression + MaxNbExecution
-	ExecutionMaxNbMsg  int `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
-	L2MsgMerkleDepth   int `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
-	L2MsgMaxNbMerkle   int `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
+	MaxNbDataAvailability int `mapstructure:"max_nb_data_availability" validate:"gte=0"`
+	MaxNbExecution        int `mapstructure:"max_nb_execution" validate:"gte=0"`
+	MaxNbCircuits         int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDA + MaxNbExecution
+	ExecutionMaxNbMsg     int `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
+	L2MsgMerkleDepth      int `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
+	L2MsgMaxNbMerkle      int `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
 
 	// not serialized
 
@@ -357,12 +361,12 @@ type PerformanceMonitor struct {
 }
 
 // BlobDecompressionDictStore returns a decompression dictionary store
-// loaded from paths specified in [BlobDecompression.DictPaths].
+// loaded from paths specified in [DataAvailability.DictPaths].
 // If no such path is provided, it loads one from the
 // prover assets path depending on the provided circuitID.
 func (cfg *Config) BlobDecompressionDictStore(circuitID string) dictionary.Store {
 
-	paths := cfg.BlobDecompression.DictPaths
+	paths := cfg.DataAvailability.DictPaths
 	if len(paths) == 0 {
 		paths = []string{filepath.Join(cfg.PathForSetup(circuitID), DefaultDictionaryFileName)}
 	}

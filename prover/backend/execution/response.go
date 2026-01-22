@@ -3,6 +3,7 @@ package execution
 import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
 	"github.com/consensys/linea-monorepo/prover/config"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -46,9 +47,8 @@ type Response struct {
 	// First block number
 	FirstBlockNumber int `json:"firstBlockNumber"`
 
-	// ExecDataChecksum stores the mimc hash of the execution data. It is also
-	// part of the public inputs of the related compression proof.
-	ExecDataChecksum types.Bls12377Fr `json:"execDataChecksum"`
+	// ExecDataChecksum checksums and fingerprints for the execution data.
+	ExecDataChecksum public_input.ExecDataChecksum `json:"execDataChecksum"`
 
 	// ChainID indicates which ChainID was used during the execution.
 	ChainID uint `json:"chainID"`

@@ -8,6 +8,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
+// qnrE2Const is the non-residue constant for E2 extension (value 3)
+// Used with MulConst to avoid unnecessary range checks
+var qnrE2Const = big.NewInt(3)
+
+// twoConst is used for doubling operations
+var twoConst = big.NewInt(2)
+
 type Ext2 struct {
 	ApiGen zk.GenericApi
 }
@@ -79,10 +86,10 @@ func (ext2 *Ext2) Add(e1, e2 *E2Gen) *E2Gen {
 
 // Double E2Gen[T zk.FType] elmt
 func (ext2 *Ext2) Double(e1 *E2Gen) *E2Gen {
-	two := zk.ValueOf(2)
+	// Use MulConst to avoid unnecessary range checks
 	return &E2Gen{
-		A0: ext2.ApiGen.Mul(e1.A0, two),
-		A1: ext2.ApiGen.Mul(e1.A1, two),
+		A0: ext2.ApiGen.MulConst(e1.A0, twoConst),
+		A1: ext2.ApiGen.MulConst(e1.A1, twoConst),
 	}
 }
 
@@ -107,8 +114,8 @@ func (ext2 *Ext2) Mul(e1, e2 *E2Gen) *E2Gen {
 
 	l31 := ext2.ApiGen.Add(ac, bd)
 
-	qnrE2 := zk.ValueFromKoala(ext.qnrE2)
-	l41 := ext2.ApiGen.Mul(bd, qnrE2)
+	// Use MulConst to multiply by the non-residue (3) - avoids range check
+	l41 := ext2.ApiGen.MulConst(bd, qnrE2Const)
 
 	return &E2Gen{
 		A0: ext2.ApiGen.Add(ac, l41),
@@ -140,9 +147,9 @@ func (ext2 *Ext2) MulByFp(e1 *E2Gen, c zk.WrappedVariable) *E2Gen {
 // MulByNonResidue multiplies an fp2 elmt by the imaginary elmt
 // ext.uSquare is the square of the imaginary root
 func (ext2 *Ext2) MulByNonResidue(e1 *E2Gen) *E2Gen {
-	qnrE2 := zk.ValueFromKoala(ext.qnrE2)
+	// Use MulConst to multiply by the non-residue (3) - avoids range check
 	return &E2Gen{
-		A0: ext2.ApiGen.Mul(e1.A1, qnrE2),
+		A0: ext2.ApiGen.MulConst(e1.A1, qnrE2Const),
 		A1: e1.A0,
 	}
 }
