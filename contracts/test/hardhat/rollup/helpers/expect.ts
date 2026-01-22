@@ -196,7 +196,7 @@ export async function expectSuccessfulFinalizeViaCallForwarder(params: SucceedFi
   ];
 
   const encodedCall = ethers.concat([
-    "0x755bc62f",
+    "0x0883deb7",
     ethers.AbiCoder.defaultAbiCoder().encode(
       [
         "bytes",
