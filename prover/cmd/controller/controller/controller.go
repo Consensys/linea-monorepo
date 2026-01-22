@@ -173,14 +173,10 @@ func runController(ctx context.Context, cfg *config.Config) {
 		}
 	}()
 
-	// -------------------------------------------------------------------------
-	// STALE JOB CLEANUP LOGIC
-	// -------------------------------------------------------------------------
-	// Before entering the main loop, check for any dangling .inprogress files
-	// belonging to this controller (LocalID). This usually happens if the pod OOMs
-	// or crashes hard without a chance to cleanup.
-	// We rename these to .large so they are picked up by a larger prover instance
-	// or retried with higher limits.
+	// Before entering the main loop, check for any previous dangling `.inprogress` files belonging to this
+	// controller (LocalID). This usually happens if the prover pod OOMs or crashes hard abruptly without a
+	// chance to cleanup. We rename these to `.large` so they are picked up by a larger prover instance or retried
+	// with higher limits.
 	rmPrevDanglingFiles(cfg, cLog)
 
 	for {
