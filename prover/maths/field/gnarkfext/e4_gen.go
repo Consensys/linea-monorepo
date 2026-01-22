@@ -202,6 +202,13 @@ func (ext4 *Ext4) MulByFp(e1 *E4Gen, c zk.WrappedVariable) *E4Gen {
 	}
 }
 
+func (ext4 *Ext4) MulConst(e1 *E4Gen, c *big.Int) *E4Gen {
+	return &E4Gen{
+		B0: *ext4.Ext2.MulConst(&e1.B0, c),
+		B1: *ext4.Ext2.MulConst(&e1.B1, c),
+	}
+}
+
 // Sum sets e = e1 + e2 + e3...
 func (ext4 *Ext4) Sum(e1 *E4Gen, e2 *E4Gen, e3 ...*E4Gen) *E4Gen {
 	e := ext4.Add(e1, e2)

@@ -1,16 +1,15 @@
 package column
 
 import (
+	"math/big"
 	"reflect"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 // GnarkDeriveEvaluationPoint mirrors [DeriveEvaluationPoint] but in a gnark
@@ -51,9 +50,9 @@ func GnarkDeriveEvaluationPoint(
 			if err != nil {
 				panic(err)
 			}
-			omegaN := zk.ValueFromKoala(generator)
-			omegaN = gnarkutil.Exp(api, omegaN, inner.Offset)
-			derivedX = *ext4.MulByFp(&x, omegaN)
+			generator.ExpInt64(generator, int64(inner.Offset))
+			omegaN := big.NewInt(0).SetUint64(generator.Uint64())
+			derivedX = *ext4.MulConst(&x, omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)
 		}
 		return GnarkDeriveEvaluationPoint(api, inner.Parent, newUpstream, cachedXs, derivedX)

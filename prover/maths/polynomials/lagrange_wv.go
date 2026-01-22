@@ -1,6 +1,7 @@
 package polynomials
 
 import (
+	"math/big"
 	"math/bits"
 
 	"github.com/consensys/gnark/frontend"
@@ -57,15 +58,16 @@ func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []gnarkfext.E4Gen, zs []g
 	var invN field.Element
 	invN.SetUint64(cardinality)
 	invN.Inverse(&invN)
+	bwi := big.NewInt(0)
 
 	for i := uint64(0); i < cardinality; i++ {
 		// wᵢ = ωⁱ/n
 		var wi field.Element
 		wi.Mul(&accOmega, &invN)
-		wWi := zk.ValueFromKoala(wi)
+		bwi.SetUint64(wi.Uint64())
 
 		// weightedP[i] = wᵢ * pᵢ
-		weightedP[i] = *ext4.MulByFp(&p[i], wWi)
+		weightedP[i] = *ext4.MulConst(&p[i], bwi)
 
 		accOmega.Mul(&accOmega, &gen)
 	}
@@ -143,10 +145,10 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Elem
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
 	var accOmega field.Element
 	accOmega.SetOne()
-	wGen := zk.ValueFromKoala(gen)
+	wGen := big.NewInt(0).SetUint64(gen.Uint64())
 	var wAccOmega zk.WrappedVariable
 	for i := uint64(1); i < cardinality; i++ {
-		res[i] = *ext4.MulByFp(&res[i-1], wGen)          // res[i] <- ω * res[i-1]
+		res[i] = *ext4.MulConst(&res[i-1], wGen)         // res[i] <- ω * res[i-1]
 		res[i] = *ext4.Mul(&res[i], &accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
 		accOmega.Mul(&accOmega, &gen)                    // accOmega <- accOmega * ω
 		wAccOmega = zk.ValueFromKoala(accOmega)
