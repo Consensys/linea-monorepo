@@ -248,6 +248,9 @@ pub fn keccak_for_code_hash(address u160, h u256) -> (dummy u1) {
     var limb u128
     var limb_size u8
 
+    var total_size u32
+    total_size = 80
+
     var address_hi u32
     var address_lo u128
     var h_lo u128
