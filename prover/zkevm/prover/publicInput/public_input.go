@@ -268,8 +268,6 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	fetch.AssignRlpTxnFetcher(run, &aux.RlpTxnFetcher, inp.RlpTxn)
 	// assign the ExecutionDataCollector
 	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.BlockDataFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
-	aux.ExecDataCollectorPadding.Run(run)
-	aux.ExecDataCollectorPacking.Run(run)
 
 	edc.AssignGenericPadderPacker(run, aux.GenericPadderPacker)
 	// assign the repacker for Poseidon hashing
