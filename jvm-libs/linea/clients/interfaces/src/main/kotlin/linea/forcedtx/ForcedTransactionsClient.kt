@@ -87,7 +87,31 @@ data class ForcedTransactionResponse(
   val ftxNumber: ULong,
   val ftxHash: ByteArray?,
   val ftxError: String?,
-)
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as ForcedTransactionResponse
+
+    if (ftxNumber != other.ftxNumber) return false
+    if (!ftxHash.contentEquals(other.ftxHash)) return false
+    if (ftxError != other.ftxError) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = ftxNumber.hashCode()
+    result = 31 * result + (ftxHash?.contentHashCode() ?: 0)
+    result = 31 * result + (ftxError?.hashCode() ?: 0)
+    return result
+  }
+
+  override fun toString(): String {
+    return "ForcedTransactionResponse(ftxNumber=$ftxNumber, ftxHash=${ftxHash?.encodeHex()}, ftxError=$ftxError)"
+  }
+}
 
 interface ForcedTransactionsClient {
   /**
