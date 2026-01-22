@@ -4,4 +4,5 @@ data class ApiConfig(
   val observabilityPort: UInt,
   val jsonRpcPort: UInt,
   val jsonRpcPath: String,
+  val numberOfVerticles: Int,
 )

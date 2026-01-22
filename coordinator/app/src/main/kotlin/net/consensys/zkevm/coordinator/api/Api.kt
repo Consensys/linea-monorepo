@@ -15,6 +15,7 @@ import net.consensys.linea.vertx.ObservabilityServer
 import net.consensys.zkevm.coordinator.api.requesthandlers.ConflationCreateProverRequestHandler
 import net.consensys.zkevm.coordinator.api.requesthandlers.ConflationGetJobStatusRequestHandler
 import net.consensys.zkevm.coordinator.app.conflationbacktesting.ConflationBacktestingService
+import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
 
 class Api(
@@ -27,11 +28,14 @@ class Api(
     val observabilityPort: UInt,
     val jsonRpcPort: UInt,
     val jsonRpcPath: String,
+    val numberOfVerticles: Int,
   )
-  private var observabilityServerId: String? = null
+  private val log = LogManager.getLogger(Api::class.java)
 
+  private var observabilityServerId: String? = null
   private var jsonRpcServerId: String? = null
   private var serverPort: Int = -1
+
   val bindedPort: Int
     get() = if (serverPort > 0) {
       serverPort
@@ -53,6 +57,11 @@ class Api(
       ObservabilityServer(ObservabilityServer.Config("coordinator", configs.observabilityPort.toInt()))
 
     var httpServer: HttpJsonRpcServer? = null
+    val numberOfVerticles = if (configs.numberOfVerticles > 0) {
+      configs.numberOfVerticles
+    } else {
+      Runtime.getRuntime().availableProcessors()
+    }
     return vertx
       .deployVerticle(
         {
@@ -61,11 +70,12 @@ class Api(
               httpServer = it
             }
         },
-        DeploymentOptions().setInstances(Runtime.getRuntime().availableProcessors()),
+        DeploymentOptions().setInstances(numberOfVerticles),
       )
       .compose { verticleId: String ->
         jsonRpcServerId = verticleId
         serverPort = httpServer!!.boundPort
+        log.info("JSON-RPC server started port={}", serverPort)
         vertx.deployVerticle(observabilityServer).onSuccess { monitorVerticleId ->
           this.observabilityServerId = monitorVerticleId
         }

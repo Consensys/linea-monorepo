@@ -58,6 +58,7 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
         observabilityPort = configs.api.observabilityPort,
         jsonRpcPort = configs.api.jsonRpcPort,
         jsonRpcPath = configs.api.jsonRpcPath,
+        numberOfVerticles = configs.api.numberOfVerticles,
       ),
       vertx = vertx,
       conflationBacktestingService = conflationBacktestingService,
@@ -168,10 +169,7 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
     requestFileCleanup.cleanup()
       .thenCompose { l1App.start() }
       .thenCompose { conflationBacktestingService.start() }
-      .thenCompose {
-        api.start().toSafeFuture()
-          .thenPeek { log.info("JSON-RPC server started on port {}", api.bindedPort) }
-      }
+      .thenCompose { api.start() }
       .get()
 
     log.info("Started :)")
@@ -181,8 +179,8 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
     return runCatching {
       SafeFuture.allOf(
         l1App.stop(),
+        api.stop(),
         conflationBacktestingService.stop(),
-        api.stop().toSafeFuture(),
       ).thenApply {
         LoadBalancingJsonRpcClient.stop()
       }.thenCompose {
