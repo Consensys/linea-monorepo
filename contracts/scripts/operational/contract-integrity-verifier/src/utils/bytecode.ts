@@ -5,7 +5,7 @@
  * Handles CBOR metadata stripping and immutable detection for accurate comparisons.
  */
 
-import { BytecodeComparisonResult, BytecodeDifference, ImmutableDifference, ImmutableReference } from "./types";
+import { BytecodeComparisonResult, BytecodeDifference, ImmutableDifference, ImmutableReference } from "../types";
 
 /**
  * Strips CBOR-encoded metadata from bytecode.

@@ -1,7 +1,7 @@
 #!/usr/bin/env ts-node
 /**
  * Contract Integrity Verifier - Test Runner
- * Run with: npx ts-node scripts/operational/contract-integrity-verifier/__tests__/run-tests.ts
+ * Run with: npx ts-node scripts/operational/contract-integrity-verifier/tests/run-tests.ts
  */
 
 import { ethers } from "ethers";
@@ -12,9 +12,10 @@ import {
   verifySlot,
   verifyNamespace,
   verifyState,
-} from "../state-utils";
-import { detectArtifactFormat, extractSelectorsFromArtifact } from "../abi-utils";
-import { compareBytecode } from "../bytecode-utils";
+} from "../src/utils/state";
+import { detectArtifactFormat, extractSelectorsFromArtifact } from "../src/utils/abi";
+import { compareBytecode } from "../src/utils/bytecode";
+import { calculateErc7201BaseSlot, parsePath, computeSlot } from "../src/utils/storage-path";
 import {
   AbiElement,
   ViewCallConfig,
@@ -23,7 +24,8 @@ import {
   StateVerificationConfig,
   NormalizedArtifact,
   ImmutableReference,
-} from "../types";
+  StorageSchema,
+} from "../src/types";
 
 // ============================================================================
 // Test Utilities
@@ -386,12 +388,118 @@ async function main(): Promise<void> {
   await testBytecodeComparisonWithKnownImmutables();
   await testBytecodeComparisonWithUnknownDifferences();
 
+  // Storage path tests
+  await testStoragePathParsing();
+  await testStoragePathSlotComputation();
+  await testErc7201BaseSlotCalculation();
+
   console.log("\n" + "=".repeat(50));
   console.log(`\n📊 Results: ${testsPassed} passed, ${testsFailed} failed`);
 
   if (testsFailed > 0) {
     process.exit(1);
   }
+}
+
+// ============================================================================
+// Storage Path Tests
+// ============================================================================
+
+async function testStoragePathParsing(): Promise<void> {
+  console.log("\n🧪 Testing storage path parsing...");
+
+  // Simple field
+  const simple = parsePath("MyStruct:myField");
+  assertEqual(simple.structName, "MyStruct", "Simple path struct name");
+  assertEqual(simple.segments.length, 1, "Simple path segment count");
+  assertEqual(simple.segments[0].type, "field", "Simple path segment type");
+  if (simple.segments[0].type === "field") {
+    assertEqual(simple.segments[0].name, "myField", "Simple path field name");
+  }
+
+  // Nested field
+  const nested = parsePath("Storage:config.value");
+  assertEqual(nested.structName, "Storage", "Nested path struct name");
+  assertEqual(nested.segments.length, 2, "Nested path segment count");
+
+  // Array index
+  const array = parsePath("Storage:items[0]");
+  assertEqual(array.segments.length, 2, "Array path segment count");
+  if (array.segments[1].type === "arrayIndex") {
+    assertEqual(array.segments[1].index, 0, "Array index value");
+  }
+
+  // Array length
+  const length = parsePath("Storage:items.length");
+  assertEqual(length.segments.length, 2, "Array length segment count");
+  assertEqual(length.segments[1].type, "arrayLength", "Array length segment type");
+
+  // Mapping key
+  const mapping = parsePath("Storage:balances[0x1234567890123456789012345678901234567890]");
+  assertEqual(mapping.segments.length, 2, "Mapping path segment count");
+  if (mapping.segments[1].type === "mappingKey") {
+    assert(mapping.segments[1].key.startsWith("0x"), "Mapping key is address");
+  }
+}
+
+async function testStoragePathSlotComputation(): Promise<void> {
+  console.log("\n🧪 Testing storage path slot computation...");
+
+  const testSchema: StorageSchema = {
+    structs: {
+      TestStorage: {
+        namespace: "test.storage.TestStorage",
+        fields: {
+          firstField: { slot: 0, type: "address" },
+          secondField: { slot: 1, type: "uint256" },
+          packedField: { slot: 2, type: "bool", byteOffset: 0 },
+        },
+      },
+    },
+  };
+
+  // First field at slot 0
+  const path1 = parsePath("TestStorage:firstField");
+  const slot1 = computeSlot(path1, testSchema);
+  assertEqual(slot1.type, "address", "First field type");
+  assertEqual(slot1.byteOffset, 0, "First field byte offset");
+
+  // Second field at slot 1
+  const path2 = parsePath("TestStorage:secondField");
+  const slot2 = computeSlot(path2, testSchema);
+  assertEqual(slot2.type, "uint256", "Second field type");
+
+  // Verify slot offset from base
+  const baseSlot = BigInt(slot1.slot);
+  const secondSlot = BigInt(slot2.slot);
+  assertEqual(secondSlot - baseSlot, 1n, "Second field is 1 slot after first");
+
+  // Packed field byte offset
+  const path3 = parsePath("TestStorage:packedField");
+  const slot3 = computeSlot(path3, testSchema);
+  assertEqual(slot3.type, "bool", "Packed field type");
+  assertEqual(slot3.byteOffset, 0, "Packed field byte offset");
+}
+
+async function testErc7201BaseSlotCalculation(): Promise<void> {
+  console.log("\n🧪 Testing ERC-7201 base slot calculation...");
+
+  // Test with known namespace - LineaRollupYieldExtension
+  // The expected slot can be verified using Solidity:
+  // bytes32 slot = keccak256(abi.encode(uint256(keccak256("linea.storage.LineaRollupYieldExtension")) - 1)) & ~bytes32(uint256(0xff));
+  const namespace = "linea.storage.LineaRollupYieldExtension";
+  const slot = calculateErc7201BaseSlot(namespace);
+
+  // Should be a valid 32-byte hex string
+  assert(slot.startsWith("0x"), "Slot starts with 0x");
+  assertEqual(slot.length, 66, "Slot is 66 chars (0x + 64 hex)");
+
+  // Last byte should be 00 (masked)
+  assert(slot.endsWith("00"), "Last byte is 00 (masked)");
+
+  // Different namespaces should produce different slots
+  const slot2 = calculateErc7201BaseSlot("linea.storage.Different");
+  assert(slot !== slot2, "Different namespaces produce different slots");
 }
 
 main().catch((error) => {

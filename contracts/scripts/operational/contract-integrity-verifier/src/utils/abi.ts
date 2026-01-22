@@ -18,7 +18,7 @@ import {
   HardhatArtifact,
   FoundryArtifact,
   ImmutableReference,
-} from "./types";
+} from "../types";
 
 // ============================================================================
 // Artifact Format Detection

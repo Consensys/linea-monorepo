@@ -38,12 +38,16 @@ export interface ContractConfig {
 export interface StateVerificationConfig {
   /** OpenZeppelin version for storage layout patterns. Default: "auto" */
   ozVersion?: "v4" | "v5" | "auto";
+  /** Path to storage schema file (for path-based verification) */
+  schemaFile?: string;
   /** View function calls to verify */
   viewCalls?: ViewCallConfig[];
   /** ERC-7201 namespaced storage verification */
   namespaces?: NamespaceConfig[];
   /** Explicit storage slot verification */
   slots?: SlotConfig[];
+  /** Storage path-based verification (requires schemaFile) */
+  storagePaths?: StoragePathConfig[];
 }
 
 export interface ViewCallConfig {
@@ -88,6 +92,74 @@ export interface SlotConfig {
   offset?: number;
 }
 
+// ============================================================================
+// Storage Path Types (ERC-7201 Schema-based)
+// ============================================================================
+
+export type SolidityType =
+  | "address"
+  | "bool"
+  | "uint8"
+  | "uint16"
+  | "uint32"
+  | "uint64"
+  | "uint96"
+  | "uint128"
+  | "uint256"
+  | "int8"
+  | "int16"
+  | "int32"
+  | "int64"
+  | "int128"
+  | "int256"
+  | "bytes32"
+  | "bytes4"
+  | `address[]`
+  | `uint256[]`
+  | `mapping(${string} => ${string})`;
+
+export interface StorageFieldDef {
+  /** Slot offset from struct base */
+  slot: number;
+  /** Solidity type */
+  type: SolidityType;
+  /** Byte offset within slot (for packed storage) */
+  byteOffset?: number;
+}
+
+export interface StorageStructDef {
+  /** ERC-7201 namespace ID (e.g., "linea.storage.YieldManagerStorage") */
+  namespace?: string;
+  /** Pre-computed base slot (optional, will calculate from namespace if not provided) */
+  baseSlot?: string;
+  /** Field definitions */
+  fields: Record<string, StorageFieldDef>;
+}
+
+export interface StorageSchema {
+  /** Schema definitions by struct name */
+  structs: Record<string, StorageStructDef>;
+}
+
+export interface StoragePathConfig {
+  /** Storage path (e.g., "YieldManagerStorage:yieldManager" or "LineaRollupStorage:yieldManager") */
+  path: string;
+  /** Expected value */
+  expected: unknown;
+  /** Comparison mode. Default: "eq" */
+  comparison?: "eq" | "gt" | "gte" | "lt" | "lte";
+}
+
+export interface StoragePathResult {
+  path: string;
+  computedSlot: string;
+  type: string;
+  expected: unknown;
+  actual: unknown;
+  status: VerificationStatus;
+  message: string;
+}
+
 export interface ViewCallResult {
   function: string;
   params: unknown[] | undefined;
@@ -119,6 +191,7 @@ export interface StateVerificationResult {
   viewCallResults: ViewCallResult[] | undefined;
   namespaceResults: NamespaceResult[] | undefined;
   slotResults: SlotResult[] | undefined;
+  storagePathResults: StoragePathResult[] | undefined;
 }
 
 export interface ImmutableReference {

@@ -16,7 +16,9 @@ import {
   NamespaceConfig,
   NamespaceResult,
   AbiElement,
-} from "./types";
+  StoragePathResult,
+} from "../types";
+import { loadStorageSchema, verifyStoragePath } from "./storage-path";
 
 // ============================================================================
 // ERC-7201 Namespace Calculation
@@ -350,10 +352,12 @@ export async function verifyState(
   address: string,
   abi: AbiElement[],
   config: StateVerificationConfig,
+  configDir?: string,
 ): Promise<StateVerificationResult> {
   const viewCallResults: ViewCallResult[] = [];
   const namespaceResults: NamespaceResult[] = [];
   const slotResults: SlotResult[] = [];
+  const storagePathResults: StoragePathResult[] = [];
 
   // 1. Execute view calls
   if (config.viewCalls && config.viewCalls.length > 0) {
@@ -379,18 +383,29 @@ export async function verifyState(
     }
   }
 
+  // 4. Verify storage paths (schema-based)
+  if (config.storagePaths && config.storagePaths.length > 0 && config.schemaFile && configDir) {
+    const schema = loadStorageSchema(config.schemaFile, configDir);
+    for (const pathConfig of config.storagePaths) {
+      const result = await verifyStoragePath(provider, address, pathConfig, schema);
+      storagePathResults.push(result);
+    }
+  }
+
   // Aggregate results
   const allViewCallsPass = viewCallResults.every((r) => r.status === "pass");
   const allNamespacesPass = namespaceResults.every((r) => r.status === "pass");
   const allSlotsPass = slotResults.every((r) => r.status === "pass");
+  const allStoragePathsPass = storagePathResults.every((r) => r.status === "pass");
 
-  const totalChecks = viewCallResults.length + namespaceResults.length + slotResults.length;
+  const totalChecks = viewCallResults.length + namespaceResults.length + slotResults.length + storagePathResults.length;
   const passedChecks =
     viewCallResults.filter((r) => r.status === "pass").length +
     namespaceResults.filter((r) => r.status === "pass").length +
-    slotResults.filter((r) => r.status === "pass").length;
+    slotResults.filter((r) => r.status === "pass").length +
+    storagePathResults.filter((r) => r.status === "pass").length;
 
-  const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass;
+  const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass;
 
   return {
     status: allPass ? "pass" : "fail",
@@ -398,5 +413,6 @@ export async function verifyState(
     viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
     namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,
     slotResults: slotResults.length > 0 ? slotResults : undefined,
+    storagePathResults: storagePathResults.length > 0 ? storagePathResults : undefined,
   };
 }

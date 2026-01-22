@@ -15,9 +15,9 @@ import {
   CliOptions,
 } from "./types";
 import { checkArtifactExists } from "./config";
-import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "./bytecode-utils";
-import { loadArtifact, extractSelectorsFromArtifact, compareSelectors } from "./abi-utils";
-import { verifyState } from "./state-utils";
+import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "./utils/bytecode";
+import { loadArtifact, extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
+import { verifyState } from "./utils/state";
 
 // EIP-1967 implementation slot
 const IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
@@ -80,6 +80,7 @@ async function verifyContract(
   contract: ContractConfig,
   chain: ChainConfig,
   options: CliOptions,
+  configDir: string,
 ): Promise<ContractVerificationResult> {
   const result: ContractVerificationResult = {
     contract,
@@ -164,7 +165,13 @@ async function verifyContract(
     if (!options.skipState && contract.stateVerification) {
       // For proxies, state verification happens on the proxy address (where storage lives)
       const stateAddress = contract.address;
-      result.stateResult = await verifyState(provider, stateAddress, artifact.abi, contract.stateVerification);
+      result.stateResult = await verifyState(
+        provider,
+        stateAddress,
+        artifact.abi,
+        contract.stateVerification,
+        configDir,
+      );
     }
 
     // Log verbose info
@@ -188,7 +195,11 @@ async function verifyContract(
 /**
  * Runs verification for all contracts in the configuration.
  */
-export async function runVerification(config: VerifierConfig, options: CliOptions): Promise<VerificationSummary> {
+export async function runVerification(
+  config: VerifierConfig,
+  options: CliOptions,
+  configDir: string,
+): Promise<VerificationSummary> {
   const results: ContractVerificationResult[] = [];
   let passed = 0;
   let failed = 0;
@@ -216,7 +227,7 @@ export async function runVerification(config: VerifierConfig, options: CliOption
     console.log(`Verifying ${contract.name} on ${contract.chain}...`);
     console.log(`  Address: ${contract.address}`);
 
-    const result = await verifyContract(contract, chain, options);
+    const result = await verifyContract(contract, chain, options, configDir);
     results.push(result);
 
     if (result.error) {
@@ -274,6 +285,14 @@ export async function runVerification(config: VerifierConfig, options: CliOption
           for (const slr of sr.slotResults) {
             const slIcon = slr.status === "pass" ? "✓" : "✗";
             console.log(`    ${slIcon} ${slr.name} (${slr.slot}): ${slr.message}`);
+          }
+        }
+
+        // Show storage path results
+        if (sr.storagePathResults && options.verbose) {
+          for (const spr of sr.storagePathResults) {
+            const sprIcon = spr.status === "pass" ? "✓" : "✗";
+            console.log(`    ${sprIcon} ${spr.path}: ${spr.message}`);
           }
         }
       }

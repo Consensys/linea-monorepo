@@ -7,7 +7,7 @@ Inspired by [diffyscan](https://github.com/lidofinance/diffyscan).
 ## Usage
 
 ```bash
-npx ts-node scripts/operational/contract-integrity-verifier/index.ts --config <config.json>
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts --config <config.json>
 ```
 
 ### Options
@@ -27,24 +27,53 @@ npx ts-node scripts/operational/contract-integrity-verifier/index.ts --config <c
 
 ```bash
 # Verify all contracts in config
-npx ts-node scripts/operational/contract-integrity-verifier/index.ts -c config.json
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts -c config.json
 
 # Verbose output
-npx ts-node scripts/operational/contract-integrity-verifier/index.ts -c config.json -v
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts -c config.json -v
 
 # Filter to specific contract
-npx ts-node scripts/operational/contract-integrity-verifier/index.ts -c config.json --contract LineaRollup
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts -c config.json --contract LineaRollup
 
 # Filter to specific chain
-npx ts-node scripts/operational/contract-integrity-verifier/index.ts -c config.json --chain mainnet
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts -c config.json --chain mainnet
 
 # Skip ABI comparison (bytecode only)
-npx ts-node scripts/operational/contract-integrity-verifier/index.ts -c config.json --skip-abi
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts -c config.json --skip-abi
+```
+
+## Project Structure
+
+```
+contract-integrity-verifier/
+├── src/                      # Source code
+│   ├── index.ts              # Package entry point (exports public API)
+│   ├── cli.ts                # CLI entry point
+│   ├── types.ts              # TypeScript types
+│   ├── config.ts             # Config loading
+│   ├── verifier.ts           # Main verification logic
+│   └── utils/                # Utility modules
+│       ├── index.ts          # Utils barrel export
+│       ├── abi.ts            # ABI parsing
+│       ├── bytecode.ts       # Bytecode comparison
+│       ├── state.ts          # State verification
+│       └── storage-path.ts   # ERC-7201 storage paths
+├── tools/                    # Standalone CLI tools
+│   └── generate-schema.ts    # Schema generator
+├── tests/                    # Test files
+│   └── run-tests.ts
+├── configs/                  # Example configurations
+│   ├── chains.json
+│   ├── example.json
+│   └── sepolia-linea-rollup-v7.json
+├── schemas/                  # Example storage schemas
+│   └── linea-rollup.json
+└── README.md
 ```
 
 ## Configuration
 
-Create a JSON configuration file. See `config.example.json` for a template.
+Create a JSON configuration file. See `configs/example.json` for a template.
 
 ### Configuration Schema
 
@@ -234,6 +263,7 @@ For upgradeable contracts, verify state set by initializers:
 | `viewCalls` | Call public view functions (with optional params) |
 | `slots` | Read explicit storage slots (OZ v4, private vars) |
 | `namespaces` | Read ERC-7201 namespaced storage (OZ v5) |
+| `storagePaths` | Schema-based storage paths with auto slot computation |
 
 #### View Calls with Parameters
 
@@ -254,10 +284,58 @@ Supported types for slots and namespaces:
 - `uint8`, `uint32`, `uint64`, `uint128`, `uint256`
 - `bytes32`
 
+#### Storage Paths (Schema-based)
+
+For complex ERC-7201 storage structures, define a schema and use human-readable paths:
+
+**Schema file** (`schemas/my-contract.json`):
+
+```json
+{
+  "structs": {
+    "MyStorage": {
+      "namespace": "my.namespace.MyStorage",
+      "fields": {
+        "yieldManager": { "slot": 0, "type": "address" },
+        "config": { "slot": 1, "type": "uint256" },
+        "isPaused": { "slot": 2, "type": "bool", "byteOffset": 0 }
+      }
+    }
+  }
+}
+```
+
+**Config usage**:
+
+```json
+{
+  "stateVerification": {
+    "schemaFile": "../schemas/my-contract.json",
+    "storagePaths": [
+      { "path": "MyStorage:yieldManager", "expected": "0x..." },
+      { "path": "MyStorage:config", "expected": "1000" }
+    ]
+  }
+}
+```
+
+**Path syntax**:
+
+| Pattern | Example | Description |
+|---------|---------|-------------|
+| `Struct:field` | `MyStorage:owner` | Simple field access |
+| `Struct:a.b` | `MyStorage:config.value` | Nested field |
+| `Struct:arr[0]` | `MyStorage:items[0]` | Array element |
+| `Struct:arr.length` | `MyStorage:items.length` | Array length |
+| `Struct:map[key]` | `MyStorage:balances[0x...]` | Mapping lookup |
+
+Storage paths auto-compute slots from ERC-7201 namespace and field offsets.
+
 #### OpenZeppelin Version Support
 
 - **v4.x**: Use explicit `slots` with known slot positions
 - **v5.x**: Use `namespaces` with ERC-7201 namespace IDs
+- **Both**: Use `storagePaths` with schema file for readable configs
 
 ## Exit Codes
 
@@ -267,6 +345,60 @@ Supported types for slots and namespaces:
 | 1 | One or more verifications failed |
 | 2 | Configuration or runtime error |
 
+## Schema Generation
+
+Generate storage schemas automatically from Solidity files containing ERC-7201 storage layouts:
+
+```bash
+npx ts-node scripts/operational/contract-integrity-verifier/tools/generate-schema.ts \
+  --input src/yield/YieldManagerStorageLayout.sol \
+  --output scripts/operational/contract-integrity-verifier/schemas/yield-manager.json \
+  --verbose
+```
+
+### Options
+
+| Option | Alias | Description |
+|--------|-------|-------------|
+| `--input` | `-i` | Path to Solidity file with storage structs |
+| `--output` | `-o` | Output path for JSON schema |
+| `--verbose` | `-v` | Show detailed field information |
+
+### What It Parses
+
+The generator extracts:
+
+1. **Struct definitions** - Field names, types, and slot positions
+2. **ERC-7201 namespaces** - From `@custom:storage-location erc7201:...` NatSpec comments
+3. **Packed storage** - Calculates `byteOffset` for fields sharing a slot
+4. **Type normalization** - Enums → `uint8`, custom types preserved
+
+### Example Output
+
+```json
+{
+  "structs": {
+    "YieldManagerStorage": {
+      "namespace": "linea.storage.YieldManagerStorage",
+      "baseSlot": "0xdc1272075efdca0b85fb2d76cbb5f26d954dc18e040d6d0b67071bd5cbd04300",
+      "fields": {
+        "minimumWithdrawalReservePercentageBps": { "slot": 0, "type": "uint16" },
+        "targetWithdrawalReservePercentageBps": { "slot": 0, "type": "uint16", "byteOffset": 2 },
+        "minimumWithdrawalReserveAmount": { "slot": 1, "type": "uint256" }
+      }
+    }
+  }
+}
+```
+
+### Post-Generation Review
+
+After generating, review the schema for:
+
+- **Mapping value types** - Complex types (e.g., `mapping(address => YieldProviderStorage)`) may need manual correction
+- **Namespace accuracy** - Verify the namespace matches the Solidity `@custom:storage-location` exactly
+- **Field names** - Ensure underscore prefixes (e.g., `_yieldManager`) are preserved
+
 ## Limitations
 
 - **Immutables (Hardhat)**: Uses heuristic detection for immutable positions. Use Foundry artifacts for precise detection.
@@ -274,6 +406,7 @@ Supported types for slots and namespaces:
 - **Constructor arguments**: Not compared (deployment bytecode vs runtime bytecode)
 - **Libraries**: Linked libraries should be embedded in the artifact bytecode.
 - **ABI heuristics**: Function selector extraction from bytecode is heuristic-based (Foundry artifacts use pre-computed `methodIdentifiers`).
+- **Schema generator**: Mapping value types and complex custom types may need manual adjustment after generation.
 
 ## Troubleshooting
 

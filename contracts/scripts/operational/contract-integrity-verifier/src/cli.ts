@@ -24,11 +24,12 @@
  *   2 - Configuration or runtime error
  */
 
+import { dirname, resolve } from "path";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { loadConfig } from "./config";
 import { runVerification, printSummary } from "./verifier";
-import { CliOptions } from "./types";
+import type { CliOptions } from "./types";
 
 async function main(): Promise<void> {
   const argv = await yargs(hideBin(process.argv))
@@ -91,6 +92,7 @@ async function main(): Promise<void> {
       console.log(`Loading configuration from: ${options.config}`);
     }
     const config = loadConfig(options.config);
+    const configDir = dirname(resolve(options.config));
 
     if (options.verbose) {
       console.log(`Chains configured: ${Object.keys(config.chains).join(", ")}`);
@@ -98,7 +100,7 @@ async function main(): Promise<void> {
     }
 
     // Run verification
-    const summary = await runVerification(config, options);
+    const summary = await runVerification(config, options, configDir);
 
     // Print summary
     printSummary(summary);
