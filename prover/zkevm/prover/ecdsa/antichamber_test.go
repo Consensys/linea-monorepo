@@ -32,7 +32,7 @@ func TestAntichamber(t *testing.T) {
 	}
 	var ac *antichamber
 	var ecSrc *ecDataSource
-	var txSrc *txnData
+	var txSrc *TxnData
 	limits := &Settings{
 		MaxNbEcRecover:     4,
 		MaxNbTx:            2,

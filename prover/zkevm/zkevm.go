@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/invalidityPI"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
@@ -65,6 +66,9 @@ type ZkEvm struct {
 	PointEval *bls.BlsPointEval `json:"pointEval"`
 	// P256Verify is responsible for P256 signature verification precompile.
 	P256Verify *p256verify.P256Verify `json:"p256Verify"`
+	// InvalidityPI is the module responsible for extracting public inputs
+	// needed for invalidity proofs (detecting illegal precompile calls).
+	InvalidityPI *invalidityPI.InvalidityPI `json:"invalidityPI"`
 	// Contains the actual wizard-IOP compiled object. This object is called to
 	// generate the inner-proof.
 	WizardIOP *wizard.CompiledIOP `json:"wizardIOP"`
@@ -133,6 +137,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		pointEval       = bls.NewPointEvalZkEvm(comp, &s.Bls)
 		p256verify      = p256verify.NewP256VerifyZkEvm(comp, &s.P256Verify)
 		publicInput     = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
+		invalidityPIMod = invalidityPI.NewInvalidityPIZkEvm(comp)
 	)
 
 	return &ZkEvm{
@@ -155,6 +160,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		PointEval:       pointEval,
 		P256Verify:      p256verify,
 		PublicInput:     &publicInput,
+		InvalidityPI:    invalidityPIMod,
 	}
 }
 
@@ -187,6 +193,7 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 		z.PointEval.Assign(run)
 		z.P256Verify.Assign(run)
 		z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList)
+		z.InvalidityPI.Assign(run)
 	}
 }
 

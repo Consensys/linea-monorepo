@@ -38,7 +38,7 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 		TxNumber:            uint64(req.ForcedTransactionNumber),
 		FromAddress:         fromAddress,
 		ExpectedBlockHeight: uint64(req.DeadlineBlockHeight),
-		StateRootHash:       req.ExecutionCtx.ZkParentStateRootHash,
+		StateRootHash:       req.ZkParentStateRootHash,
 		FtxRollingHash:      ftxRollingHash,
 	}
 	return fi

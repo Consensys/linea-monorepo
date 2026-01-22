@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -51,6 +52,10 @@ type AssigningInputs struct {
 	KeccakCompiledIOP *wizard.CompiledIOP
 	KeccakProof       wizard.Proof
 	MaxRlpByteSize    int
+
+	// inputs related to zkevm-wizard
+	ZkevmWizardIOP   *wizard.CompiledIOP
+	ZkevmWizardProof wizard.Proof
 }
 
 // Define the constraints
@@ -143,6 +148,7 @@ type Config struct {
 	Depth             int
 	KeccakCompiledIOP *wizard.CompiledIOP
 	MaxRlpByteSize    int
+	zkevm             *zkevm.ZkEvm
 }
 
 type builder struct {
@@ -174,9 +180,30 @@ func makeCS(config Config, circuit *CircuitInvalidity, comp *wizard.CompiledIOP)
 type InvalidityType uint8
 
 const (
-	BadNonce   InvalidityType = 0
-	BadBalance InvalidityType = 1
+	BadNonce          InvalidityType = 0
+	BadBalance        InvalidityType = 1
+	BadPrecompile     InvalidityType = 2
+	TooManyLogs       InvalidityType = 3
+	FilteredAddresses InvalidityType = 4
 )
+
+// String returns the string representation of the InvalidityType
+func (t InvalidityType) String() string {
+	switch t {
+	case BadNonce:
+		return "BadNonce"
+	case BadBalance:
+		return "BadBalance"
+	case BadPrecompile:
+		return "BadPrecompile"
+	case TooManyLogs:
+		return "TooManyLogs"
+	case FilteredAddresses:
+		return "FilteredAddresses"
+	default:
+		return "Unknown"
+	}
+}
 
 // UpdateFtxRollingHash updates the ftxRollingHash
 func UpdateFtxRollingHash(

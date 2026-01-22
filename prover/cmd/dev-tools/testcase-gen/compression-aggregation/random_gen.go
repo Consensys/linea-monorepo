@@ -280,12 +280,12 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 	}
 
 	return &invalidity.Request{
-		RlpEncodedTx:             rlpEncodedTx,
-		ForcedTransactionNumber:  uint64(spec.FtxNumber),
-		InvalidityTypes:          circInvalidity.BadNonce,
-		DeadlineBlockHeight:      uint64(spec.ExpectedBlockHeight),
-		PrevFtxRollingHash:       linTypes.Bytes32{}, // Will be set by caller when chaining from previous proof
-		LastFinalizedBlockNumber: uint64(spec.LastFinalizedBlockNumber),
+		RlpEncodedTx:                  rlpEncodedTx,
+		ForcedTransactionNumber:       uint64(spec.FtxNumber),
+		InvalidityType:                circInvalidity.BadNonce,
+		DeadlineBlockHeight:           uint64(spec.ExpectedBlockHeight),
+		PrevFtxRollingHash:            linTypes.Bytes32{}, // Will be set by caller when chaining from previous proof
+		SimulatedExecutionBlockNumber: uint64(spec.LastFinalizedBlockNumber) + 1,
 	}
 
 }

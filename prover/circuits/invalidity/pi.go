@@ -8,6 +8,7 @@ import (
 
 // FunctionalPublicInputsGnark represents the gnark version of [public_input.Invalidity]
 type FunctionalPublicInputsGnark struct {
+	HasBadPrecompile    frontend.Variable
 	TxHash              [2]frontend.Variable // keccak hash needs 2 field elements
 	TxNumber            frontend.Variable
 	FromAddress         frontend.Variable

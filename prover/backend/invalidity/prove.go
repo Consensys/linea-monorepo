@@ -64,7 +64,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 				Transaction:       tx,
 				AccountTrieInputs: accountTrieInputs,
 				FromAddress:       common.Address(fromAddress),
-				InvalidityType:    req.InvalidityTypes,
+				InvalidityType:    req.InvalidityType,
 				FuncInputs:        *funcInput,
 				MaxRlpByteSize:    cfg.Invalidity.MaxRlpByteSize,
 			},

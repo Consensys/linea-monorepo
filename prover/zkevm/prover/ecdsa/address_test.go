@@ -22,7 +22,7 @@ func TestAddress(t *testing.T) {
 	var addr *Addresses
 	var uaGnark *UnalignedGnarkData
 	var ecRec *EcRecover
-	var td *txnData
+	var td *TxnData
 	gbmGnark := generic.GenDataModule{}
 	m := &keccak.KeccakSingleProvider{}
 
