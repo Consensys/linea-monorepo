@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -50,11 +50,11 @@ func (a *FoldVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	ext4, _ := gnarkfext.NewExt4(api)
+	koalaAPI := koalagnark.NewAPI(api)
 
 	c := a.FoldedEvalAcc.GetFrontendVariableExt(api, wvc)
 	c_ := a.HEvalAcc.GetFrontendVariableExt(api, wvc)
-	ext4.AssertIsEqual(&c, &c_)
+	koalaAPI.AssertIsEqualExt(c, c_)
 }
 
 func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDegree int) ifaces.Column {

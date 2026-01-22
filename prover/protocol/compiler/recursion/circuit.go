@@ -2,12 +2,9 @@ package recursion
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
-	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -36,37 +33,27 @@ type RecursionCircuit struct {
 	MerkleRoots        [][blockSize]ifaces.Column `gnark:"-"`
 }
 
-// ExtFrontendVariable allows storing the extension as a 4-element array of frontend variables in Plonk public inputs (contrary to WrappedVariable/ gnarkfext.E4Gen, which takes more space).
+// ExtFrontendVariable allows storing the extension as a 4-element array of frontend variables in Plonk public inputs (contrary to WrappedVariable/ koalagnark.Ext, which takes more space).
 type ExtFrontendVariable = [4]frontend.Variable
 
-// E4Gen is a helper function for converting an ExtFrontendVariable to a gnarkfext.E4Gen
-func E4Gen(x ExtFrontendVariable) *gnarkfext.E4Gen {
-	return &gnarkfext.E4Gen{
-		B0: gnarkfext.E2Gen{
-			A0: zk.WrapFrontendVariable(x[0]),
-			A1: zk.WrapFrontendVariable(x[1]),
-		},
-		B1: gnarkfext.E2Gen{
-			A0: zk.WrapFrontendVariable(x[2]),
-			A1: zk.WrapFrontendVariable(x[3]),
-		},
-	}
+// E4Gen is a helper function for converting an ExtFrontendVariable to a koalagnark.Ext
+func E4Gen(x ExtFrontendVariable) koalagnark.Ext {
+	return koalagnark.NewExtFrom4FrontendVars(x[0], x[1], x[2], x[3])
 }
 
-// Ext4FV is a helper function for converting a gnarkfext.E4Gen to an ExtFrontendVariable
-func Ext4FV(x *gnarkfext.E4Gen) ExtFrontendVariable {
+// Ext4FV is a helper function for converting a koalagnark.Ext to an ExtFrontendVariable
+func Ext4FV(x koalagnark.Ext) ExtFrontendVariable {
 	return ExtFrontendVariable{
-		x.B0.A0.AsNative(),
-		x.B0.A1.AsNative(),
-		x.B1.A0.AsNative(),
-		x.B1.A1.AsNative(),
+		x.B0.A0.Native(),
+		x.B0.A1.Native(),
+		x.B1.A0.Native(),
+		x.B1.A1.Native(),
 	}
 }
 
 // AllocRecursionCircuit allocates a new RecursionCircuit with the
 // given parameters.
 func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExternalHasher bool) *RecursionCircuit {
-
 	var (
 		pcsCtx      = comp.PcsCtxs.(*vortex.Ctx)
 		polyQuery   = pcsCtx.Query
@@ -108,72 +95,38 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 
 // Define implements the [frontend.Circuit] interface.
 func (r *RecursionCircuit) Define(api frontend.API) error {
-	eapi, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 	w := r.WizardVerifier
 
 	// Setup HasherFactory if needed (for GKR or external hasher)
-	if !r.withoutGkr || r.withExternalHasher {
-		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(apiGen.NativeApi)
+	if r.withExternalHasher {
+		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(api)
 	}
 
 	// Initialize Fiat-Shamir with external hasher if enabled
 	// This must happen BEFORE calling Verify() which would otherwise overwrite it
 	if r.withExternalHasher {
-		w.KoalaFS = fiatshamir.NewGnarkFSKoalabearWithFactory(apiGen.NativeApi, w.HasherFactory)
+		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(api)
 	}
 
-	w.Verify(apiGen.NativeApi)
+	w.Verify(api)
 
-	// Match r.Pubs with w.Spec.PublicInputs, flattening extension fields to coordinates
-	pubIdx := 0
-	for i := range w.Spec.PublicInputs {
-		acc := w.Spec.PublicInputs[i].Acc
-
-		// Check if this is an extension field accessor
-		if !acc.IsBase() {
-			// Extension field: verify all 4 coordinates
-			if pubIdx+4 > len(r.Pubs) {
-				panic("mismatch between public input slots count")
-			}
-			extPub := acc.GetFrontendVariableExt(apiGen.NativeApi, w)
-			// Assert each coordinate: B0.A0, B0.A1, B1.A0, B1.A1
-			api.AssertIsEqual(r.Pubs[pubIdx], extPub.B0.A0.AsNative())
-			api.AssertIsEqual(r.Pubs[pubIdx+1], extPub.B0.A1.AsNative())
-			api.AssertIsEqual(r.Pubs[pubIdx+2], extPub.B1.A0.AsNative())
-			api.AssertIsEqual(r.Pubs[pubIdx+3], extPub.B1.A1.AsNative())
-			pubIdx += 4
-		} else {
-			// Base field: verify single element
-			if pubIdx >= len(r.Pubs) {
-				panic("mismatch between public input slots count")
-			}
-			pub := acc.GetFrontendVariable(apiGen.NativeApi, w)
-			api.AssertIsEqual(r.Pubs[pubIdx], pub.AsNative())
-			pubIdx++
-		}
-	}
-	if pubIdx != len(r.Pubs) {
-		panic("not all public input slots were matched")
+	for i := range r.Pubs {
+		pub := w.Spec.PublicInputs[i].Acc.GetFrontendVariable(api, w)
+		api.AssertIsEqual(r.Pubs[i], pub.Native())
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
-	eapi.AssertIsEqual(E4Gen(r.X), &polyParams.ExtX)
+	koalaAPI.AssertIsEqualExt(E4Gen(r.X), polyParams.ExtX)
 
 	for i := range polyParams.ExtYs {
-		eapi.AssertIsEqual(E4Gen(r.Ys[i]), &polyParams.ExtYs[i])
+		koalaAPI.AssertIsEqualExt(E4Gen(r.Ys[i]), polyParams.ExtYs[i])
 	}
 
 	for i := range r.Commitments {
 		for j := 0; j < blockSize; j++ {
 			mr := r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0)
-			api.AssertIsEqual(r.Commitments[i][j], mr.AsNative())
+			api.AssertIsEqual(r.Commitments[i][j], mr.Native())
 		}
 	}
 
@@ -183,55 +136,27 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 // AssignRecursionCircuit assigns a recursion based on a compiled-IOP
 // and a proof.
 func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs []field.Element, finalFsState field.Octuplet) *RecursionCircuit {
-
 	var (
 		pcsCtx         = comp.PcsCtxs.(*vortex.Ctx)
 		polyQuery      = pcsCtx.Query
 		numRound       = comp.QueriesParams.Round(polyQuery.QueryID) + 1
 		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound, false)
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
+		circuit        = &RecursionCircuit{
+			WizardVerifier: wizardVerifier,
+			X:              Ext4FV(&params.ExtX),
+			Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
+			Pubs:           make([]frontend.Variable, len(pubs)),
+			PolyQuery:      polyQuery,
+		}
 	)
 
-	// Flatten pubs: base fields as-is, extension fields as 4 coordinates
-	pubSlots := make([]frontend.Variable, 0, len(pubs)*2) // rough estimate
-	pubIdx := 0
-	for i := range comp.PublicInputs {
-		acc := comp.PublicInputs[i].Acc
-		if !acc.IsBase() {
-			// Extension field: flatten to 4 base field coordinates
-			// Get the extension field value from the wizard verifier
-			if logDerivAcc, ok := acc.(*accessors.FromLogDerivSumAccessor); ok {
-				// For log derivative sums, get the params from the wizard verifier
-				params := wizardVerifier.GetParams(logDerivAcc.Q.ID).(query.GnarkLogDerivSumParams)
-				extVal := params.Sum
-				pubSlots = append(pubSlots, extVal.B0.A0.AsNative(), extVal.B0.A1.AsNative(), extVal.B1.A0.AsNative(), extVal.B1.A1.AsNative())
-			} else if constAcc, ok := acc.(*accessors.FromConstAccessor); ok {
-				// For constant accessors, get the value directly
-				extVal := constAcc.Ext
-				pubSlots = append(pubSlots, extVal.B0.A0, extVal.B0.A1, extVal.B1.A0, extVal.B1.A1)
-			} else {
-				panic("Unsupported extension field accessor type")
-			}
-		} else {
-			// Base field element
-			if pubIdx >= len(pubs) {
-				break
-			}
-			pubSlots = append(pubSlots, pubs[pubIdx])
-			pubIdx++
-		}
-	}
-
-	circuit := &RecursionCircuit{
-		WizardVerifier: wizardVerifier,
-		X:              Ext4FV(&params.ExtX),
-		Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
-		Pubs:           pubSlots,
-		PolyQuery:      polyQuery,
+	for i := range pubs {
+		circuit.Pubs[i] = pubs[i]
 	}
 
 	for i := range params.ExtYs {
-		circuit.Ys[i] = Ext4FV(&params.ExtYs[i])
+		circuit.Ys[i] = Ext4FV(params.ExtYs[i])
 	}
 
 	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
@@ -240,7 +165,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		octuplet := [8]frontend.Variable{}
 		for j := 0; j < blockSize; j++ {
 			a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
-			octuplet[j] = a.AsNative()
+			octuplet[j] = a.Native()
 		}
 		circuit.Commitments = append(circuit.Commitments, octuplet)
 
@@ -253,7 +178,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 			octuplet := [8]frontend.Variable{}
 			for j := 0; j < blockSize; j++ {
 				a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
-				octuplet[j] = a.AsNative()
+				octuplet[j] = a.Native()
 			}
 			circuit.Commitments = append(circuit.Commitments, octuplet)
 		}
@@ -266,7 +191,6 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 // parsed arguments.
 // @azam x, ys stored as field extension (4 field elements), mRoot 8 field elements, pubs stored as field element.
 func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []T) {
-
 	var (
 		numPubSlots = 0
 		pcsCtx      = r.PcsCtx[0]

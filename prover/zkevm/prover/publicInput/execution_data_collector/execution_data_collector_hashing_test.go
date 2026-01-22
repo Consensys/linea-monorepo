@@ -2,7 +2,6 @@ package execution_data_collector
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"strings"
 	"testing"
 
@@ -13,9 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
-	pack "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
@@ -113,21 +109,17 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 	blockHashList := [1 << 10]types.FullBytes32{}
 
 	var (
-		execDataCollector *ExecutionDataCollector
-		blockTxnMeta      fetch.BlockTxnMetadata
-		blockDataFetcher  *fetch.BlockDataFetcher
-		txnDataFetcher    fetch.TxnDataFetcher
-		rlpTxnFetcher     fetch.RlpTxnFetcher
-		txnDataCols       *arith.TxnData
-		blockDataCols     *arith.BlockDataCols
-		rlpTxn            *arith.RlpTxn
-		mimcHasher        *MIMCHasher
-
-		importInp  importpad.ImportAndPadInputs
-		paddingMod wizard.ProverAction
-
-		packingInp pack.PackingInput
-		packingMod *pack.Packing
+		execDataCollector   *ExecutionDataCollector
+		blockTxnMeta        fetch.BlockTxnMetadata
+		blockDataFetcher    *fetch.BlockDataFetcher
+		txnDataFetcher      fetch.TxnDataFetcher
+		rlpTxnFetcher       fetch.RlpTxnFetcher
+		txnDataCols         *arith.TxnData
+		blockDataCols       *arith.BlockDataCols
+		rlpTxn              *arith.RlpTxn
+		ppp                 PoseidonPadderPacker
+		mimcHasher          PoseidonHasher
+		genericPadderPacker GenericPadderPacker
 	)
 
 	define := func(b *wizard.Builder) {
@@ -155,43 +147,13 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// define the ExecutionDataCollector
 		DefineExecutionDataCollector(b.CompiledIOP, execDataCollector, "EXECUTION_DATA_COLLECTOR", blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpTxnFetcher)
 
-		// create a padding module for the ExecutionDataCollector
-		importInp = importpad.ImportAndPadInputs{
-			Name: "TESTING",
-			Src: generic.GenericByteModule{Data: generic.GenDataModule{
-				HashNum: execDataCollector.HashNum,
-				Index:   execDataCollector.Ct,
-				ToHash:  execDataCollector.IsActive,
-				NBytes:  execDataCollector.NoBytes,
-				Limbs:   limbs.NewLimbsFromRawUnsafe[limbs.BigEndian]("TESTING_LIMBS", execDataCollector.Limbs[:]).AssertUint128(),
-			}},
-			PaddingStrategy: generic.KeccakUsecase,
-		}
-
-		// define the padding module. The import and pad module is first assigned
-		// a new variable because we need to access its field although the
-		// struct itself is private.
-		padding := importpad.ImportAndPad(b.CompiledIOP, importInp, limbColSize)
-		paddingMod = padding
-
-		// create an input for the packing module
-		packingInp = pack.PackingInput{
-			MaxNumBlocks: execDataCollector.BlockID.Size(),
-			PackingParam: generic.KeccakUsecase,
-			Imported: pack.Importation{
-				Limb:      padding.Limbs,
-				NByte:     padding.NBytes,
-				IsNewHash: padding.IsNewHash,
-				IsActive:  padding.IsActive,
-			},
-			Name: "TESTING",
-		}
-		// create a new packing module
-		packingMod = pack.NewPack(b.CompiledIOP, packingInp)
+		genericPadderPacker = NewGenericPadderPacker(b.CompiledIOP, execDataCollector.Limbs, execDataCollector.NoBytes, execDataCollector.IsActive, "GENERIC_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
+		ppp = NewPoseidonPadderPacker(b.CompiledIOP, genericPadderPacker.OutputData, genericPadderPacker.OutputIsActive, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
+		DefinePoseidonPadderPacker(b.CompiledIOP, ppp, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
 		// create a MiMC hasher
-		mimcHasher = NewMIMCHasher(b.CompiledIOP, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
+		mimcHasher = NewPoseidonHasher(b.CompiledIOP, ppp.OutputData, ppp.OutputIsActive[0], "MIMC_HASHER")
 		// define the hasher
-		mimcHasher.DefineHasher(b.CompiledIOP, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+		DefinePoseidonHasher(b.CompiledIOP, mimcHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
@@ -205,16 +167,15 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// assign the ExecutionDataCollector
 		AssignExecutionDataCollector(run, execDataCollector, blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpTxnFetcher, blockHashList[:])
 
-		// assign the padding module
-		paddingMod.Run(run)
-		// assign the packing module
-		packingMod.Run(run)
+		AssignGenericPadderPacker(run, genericPadderPacker)
+		// assign the repacker for Poseidon hashing
+		AssignPoseidonPadderPacker(run, ppp)
 		// assign the hasher
-		mimcHasher.AssignHasher(run)
+		AssignPoseidonHasher(run, mimcHasher, ppp.OutputData, ppp.OutputIsActive[0])
 		// compute the MiMC hash of the fixed TestData
 		//fixedHash := ComputeMiMCHashFixedTestData()
 		// assert that we are computing the hash correctly
-		//assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final HashFirst Value is Incorrect")
+		//assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final Hash Value is Incorrect")
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)

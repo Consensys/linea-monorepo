@@ -9,6 +9,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrposeidon2"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
@@ -131,6 +132,8 @@ func (h *Hasher) Finalize(c *wizard.VerifierCircuit) error {
 		h.api.AssertIsEqual(h.claimedOuts[i][0], expectedHashHi[i])
 		h.api.AssertIsEqual(h.claimedOuts[i][1], expectedHashLo[i])
 	}
+
+	c.HasherFactory = gkrposeidon2.NewHasherFactory(h.api)
 
 	c.Verify(h.api)
 	return nil
@@ -344,9 +347,9 @@ func (c *HashWizardVerifierSubCircuit) prove(ins [][]byte) wizard.Proof {
 }
 
 func (c *HashWizardVerifierSubCircuit) Compile() (*wizard.VerifierCircuit, error) {
-	return wizard.AllocateWizardCircuit(c.compiled, c.compiled.NumRounds(), false), nil
+	return wizard.AllocateWizardCircuit(c.compiled, c.compiled.NumRounds(), true), nil
 }
 
 func (c *HashWizardVerifierSubCircuit) Assign(ins [][]byte) *wizard.VerifierCircuit {
-	return wizard.AssignVerifierCircuit(c.compiled, c.prove(ins), c.compiled.NumRounds(), false)
+	return wizard.AssignVerifierCircuit(c.compiled, c.prove(ins), c.compiled.NumRounds(), true)
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -158,16 +158,13 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 
 // Test the polynomial identity in a circuit setting
 func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 	board := cs.Board()
 	metadatas := board.ListVariableMetadata()
 	/*
 		Collects the relevant datas into a slice for the evaluation
 	*/
-	inputs := make([]gnarkfext.E4Gen, len(metadatas))
+	inputs := make([]koalagnark.Ext, len(metadatas))
 	for i, metadataInterface := range metadatas {
 		switch metadata := metadataInterface.(type) {
 		case ifaces.Column:
@@ -198,8 +195,8 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 		should be equal to the length of metadata
 	*/
 	res := board.GnarkEvalExt(api, inputs)
-	zero := ext4.Zero()
-	ext4.AssertIsEqual(&res, zero)
+	zero := koalaAPI.ZeroExt()
+	koalaAPI.AssertIsEqualExt(res, zero)
 
 }
 

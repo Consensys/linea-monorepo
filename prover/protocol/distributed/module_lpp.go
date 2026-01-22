@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -410,7 +410,7 @@ func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	// 	var (
 	// 		hornerParams  = run.GetHornerParams(a.Horner.ID)
-	// 		n0HashAlleged, n1HashAlleged [8]zk.WrappedVariable
+	// 		n0HashAlleged, n1HashAlleged [8]koalagnark.Var
 	// 		n0Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 0)
 	// 		n1Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 1)
 	// 	)
@@ -447,7 +447,7 @@ func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 }
 
 func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	stateOct := zk.Octuplet{}
+	stateOct := koalagnark.Octuplet{}
 	for i, col := range a.InitialFiatShamirState {
 		state := col.GetColAssignmentGnarkAt(run, 0)
 		stateOct[i] = state

@@ -4,6 +4,8 @@ package csvtraces
 import (
 	"encoding/csv"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"io"
 	"math/big"
 	"os"
@@ -89,7 +91,7 @@ func MustOpenCsvFile(fName string) *CsvTrace {
 // FmtCsv is a utility function that can be used in order to print a set of column
 // in a csv format so that debugging and testcase generation are simpler. It can
 // take either plain [ifaces.Column] objects as input or limbs.Limbed objects.
-func FmtCsv(w io.Writer, run *wizard.ProverRuntime, objs []any, options []Option) error {
+func FmtCsv(w io.Writer, run ifaces.Runtime, objs []any, options []Option) error {
 
 	var (
 		header       = []string{}
@@ -457,4 +459,19 @@ func koalaVecToBigInt(vKoala []field.Element) []*big.Int {
 
 func isZeroBigInt(bi *big.Int) bool {
 	return bi.Cmp(big.NewInt(0)) == 0
+}
+
+func DebugProjection(p *query.Projection, run ifaces.Runtime) {
+	FmtCsv(
+		files.MustOverwrite(string(p.Name()+"-a.csv")),
+		run,
+		utils.SliceToAnys(p.Inp.ColumnsA[0]),
+		nil,
+	)
+	FmtCsv(
+		files.MustOverwrite(string(p.Name()+"-b.csv")),
+		run,
+		utils.SliceToAnys(p.Inp.ColumnsB[0]),
+		nil,
+	)
 }

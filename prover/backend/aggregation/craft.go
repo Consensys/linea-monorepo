@@ -15,13 +15,12 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	dataavailability "github.com/consensys/linea-monorepo/prover/backend/dataavailability"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
 	hashtypes "github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes_legacy"
 	smt "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_mimcbls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -52,8 +51,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
 	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs))
-
-	hshM := hasher_factory.NewMiMC()
 
 	for i, execReqFPath := range req.ExecutionProofs {
 
@@ -149,7 +146,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			}
 
 			// make sure public input and collected values match
-			if pi := po.FuncInput().Sum(hshM); !bytes.Equal(pi, po.PublicInput[:]) {
+			if pi := po.FuncInput().Sum(); !bytes.Equal(pi, po.PublicInput[:]) {
 				return nil, fmt.Errorf("execution #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, pi)
 			}
 
@@ -162,8 +159,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.DecompressionPI = make([]blobsubmission.Response, 0, len(req.DecompressionProofs))
 
 	for i, decompReqFPath := range req.DecompressionProofs {
-		dp := &blobdecompression.Response{}
-		fpath := path.Join(cfg.BlobDecompression.DirTo(), decompReqFPath)
+		dp := &dataavailability.Response{}
+		fpath := path.Join(cfg.DataAvailability.DirTo(), decompReqFPath)
 		f := files.MustRead(fpath)
 
 		if err := json.NewDecoder(f).Decode(dp); err != nil {

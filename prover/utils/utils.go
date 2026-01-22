@@ -292,6 +292,7 @@ func RangeSlice[T constraints.Integer](length int, startingPoints ...T) []T {
 	return res
 }
 
+// FillRange modifies dst into [start, start+1, ..., start+len(dst)-1]
 func FillRange[T constraints.Integer](dst []T, start T) {
 	for l := range dst {
 		dst[l] = T(l) + start
@@ -622,4 +623,13 @@ func GrowSliceSize[T any](slice []T, size int) []T {
 		slice = append(slice, t)
 	}
 	return slice
+}
+
+// SliceToAnys converts a slice into an []any
+func SliceToAnys[T any](slice []T) []any {
+	res := make([]any, len(slice))
+	for i, v := range slice {
+		res[i] = v
+	}
+	return res
 }

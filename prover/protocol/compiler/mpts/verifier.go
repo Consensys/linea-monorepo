@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -107,40 +107,37 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
 		// These values are precomputed for efficiency.
-		zetasOfR = make([]gnarkfext.E4Gen, len(va.Queries))
+		zetasOfR = make([]koalagnark.Ext, len(va.Queries))
 
 		lambda = run.GetRandomCoinFieldExt(va.LinCombCoeffLambda.Name)
 		rho    = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
 	)
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
-	e4Api.AssertIsEqual(&r, &rCoin)
+	koalaAPI.AssertIsEqualExt(r, rCoin)
 
-	lambdaPowI := *e4Api.One()
-	rhoK := *e4Api.One()
+	lambdaPowI := koalaAPI.OneExt()
+	rhoK := koalaAPI.OneExt()
 
 	// res stores the right-hand of the equality check. Namely,
 	// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-	res := *e4Api.Zero()
+	res := koalaAPI.ZeroExt()
 
 	for i, q := range va.Queries {
 
 		xi := run.GetUnivariateParams(q.Name()).ExtX
 		// zetasOfR[i].Sub(api, r, xi)
-		zetasOfR[i] = *e4Api.Sub(&r, &xi)
+		zetasOfR[i] = koalaAPI.SubExt(r, xi)
 
 		// NB: this is very sub-optimal. We should use a batch-inverse instead
 		// but the native verifier time is not very important in this context.
 		// zetasOfR[i].Inverse(api, zetasOfR[i])
 		// zetasOfR[i].Mul(api, zetasOfR[i], lambdaPowI)
 		// lambdaPowI.Mul(api, lambdaPowI, lambda)
-		zetasOfR[i] = *e4Api.Inverse(&zetasOfR[i])
-		zetasOfR[i] = *e4Api.Mul(&zetasOfR[i], &lambdaPowI)
-		lambdaPowI = *e4Api.Mul(&lambdaPowI, &lambda)
+		zetasOfR[i] = koalaAPI.InverseExt(zetasOfR[i])
+		zetasOfR[i] = koalaAPI.MulExt(zetasOfR[i], lambdaPowI)
+		lambdaPowI = koalaAPI.MulExt(lambdaPowI, lambda)
 	}
 
 	// This loop computes the value of [res]
@@ -150,18 +147,18 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
-			tmp = *e4Api.Sub(&pr, &tmp)
-			tmp = *e4Api.Mul(&tmp, &zetasOfR[i])
-			tmp = *e4Api.Mul(&tmp, &rhoK)
-			res = *e4Api.Add(&res, &tmp)
+			tmp = koalaAPI.SubExt(pr, tmp)
+			tmp = koalaAPI.MulExt(tmp, zetasOfR[i])
+			tmp = koalaAPI.MulExt(tmp, rhoK)
+			res = koalaAPI.AddExt(res, tmp)
 
 		}
 
 		// rhoK.Mul(api, rhoK, rho)
-		rhoK = *e4Api.Mul(&rhoK, &rho)
+		rhoK = koalaAPI.MulExt(rhoK, rho)
 	}
 
-	e4Api.AssertIsEqual(&res, &qr)
+	koalaAPI.AssertIsEqualExt(res, qr)
 }
 
 // cptEvaluationMap returns an evaluation map [Column] -> [Y] for all the
@@ -190,13 +187,13 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Ru
 }
 
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.E4Gen {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]koalagnark.Ext {
 
 	var (
-		evaluationMap = make(map[ifaces.ColID]gnarkfext.E4Gen)
+		evaluationMap = make(map[ifaces.ColID]koalagnark.Ext)
 		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
 		x             = univParams.ExtX
-		polys         = make([][]gnarkfext.E4Gen, 0)
+		polys         = make([][]koalagnark.Ext, 0)
 	)
 
 	for i := range ctx.NewQuery.Pols {

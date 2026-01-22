@@ -10,8 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -136,16 +135,13 @@ func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Elem
 }
 
 // Evaluate a particular position on the domain
-func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) zk.WrappedVariable {
+func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) koalagnark.Element {
 	return t.GnarkEvalNoCoset(t.T)[pos%t.T]
 }
 
-func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gnarkfext.E4Gen) gnarkfext.E4Gen {
+func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x koalagnark.Ext) koalagnark.Ext {
 
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	n := size
 	l := n / t.T
@@ -158,32 +154,38 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gna
 		if err != nil {
 			panic(err)
 		}
-		omegaN.Exp(omegaN, big.NewInt(int64(-t.Offset)))
-		wOmegaN := zk.ValueFromKoala(omegaN)
-		x = *ext4.MulByFp(&x, wOmegaN)
+		omegaN.ExpInt64(omegaN, int64(-t.Offset))
+		wOmegaN := big.NewInt(0).SetUint64(omegaN.Uint64())
+		x = koalaAPI.MulConstExt(x, wOmegaN)
 	}
 
-	denominator := ext4.Exp(&x, big.NewInt(int64(l)))
-	wnField := zk.ValueFromKoala(nField)
-	wlField := zk.ValueFromKoala(lField)
-	extEOne := *ext4.One()
-	denominator = ext4.Sub(denominator, &extEOne)
-	denominator = ext4.MulByFp(denominator, wnField)
-	numerator := ext4.Exp(&x, big.NewInt(int64(n)))
-	numerator = ext4.Sub(numerator, &extEOne)
-	numerator = ext4.MulByFp(numerator, wlField)
+	// Optimization: compute x^l and x^n efficiently
+	// x^n = (x^l)^(n/l) = (x^l)^T where T = t.T
+	xPowL := koalaAPI.ExpExt(x, big.NewInt(int64(l)))
 
-	return *ext4.Div(numerator, denominator)
+	wnField := big.NewInt(0).SetUint64(nField.Uint64())
+	wlField := big.NewInt(0).SetUint64(lField.Uint64())
+	extEOne := koalaAPI.OneExt()
+
+	denominator := koalaAPI.SubExt(xPowL, extEOne)
+	denominator = koalaAPI.MulConstExt(denominator, wnField)
+
+	// x^n = (x^l)^T - reuse xPowL instead of computing x^n from scratch
+	numerator := koalaAPI.ExpExt(xPowL, big.NewInt(int64(t.T)))
+	numerator = koalaAPI.SubExt(numerator, extEOne)
+	numerator = koalaAPI.MulConstExt(numerator, wlField)
+
+	return koalaAPI.DivExt(numerator, denominator)
 }
 
 // Returns the result in gnark form. This returns a vector of constant
-// on the form of zk.WrappedVariables.
-func (t PeriodicSample) GnarkEvalNoCoset(size int) []zk.WrappedVariable {
+// on the form of circuit.Vars.
+func (t PeriodicSample) GnarkEvalNoCoset(size int) []koalagnark.Element {
 	res_ := t.EvalCoset(size, 0, 1, false)
-	res := make([]zk.WrappedVariable, res_.Len())
+	res := make([]koalagnark.Element, res_.Len())
 	for i := range res {
 		val := res_.Get(i)
-		res[i] = zk.ValueFromKoala(val)
+		res[i] = koalagnark.NewElementFromKoala(val)
 	}
 	return res
 }

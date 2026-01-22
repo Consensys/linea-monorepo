@@ -8,28 +8,24 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/stretchr/testify/assert"
 )
 
 type EvalCanonicalCircuit struct {
-	Poly []zk.WrappedVariable
-	X    gnarkfext.E4Gen
-	Y    gnarkfext.E4Gen
+	Poly []koalagnark.Element
+	X    koalagnark.Ext
+	Y    koalagnark.Ext
 }
 
 func (c *EvalCanonicalCircuit) Define(api frontend.API) error {
 
 	y := GnarkEvalCanonical(api, c.Poly, c.X)
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
-	apiGen.AssertIsEqual(c.Y.B0.A0, y.B0.A0)
-	apiGen.AssertIsEqual(c.Y.B0.A1, y.B0.A1)
-	apiGen.AssertIsEqual(c.Y.B1.A0, y.B1.A0)
-	apiGen.AssertIsEqual(c.Y.B1.A1, y.B1.A1)
+	koalaAPI := koalagnark.NewAPI(api)
+	koalaAPI.AssertIsEqual(c.Y.B0.A0, y.B0.A0)
+	koalaAPI.AssertIsEqual(c.Y.B0.A1, y.B0.A1)
+	koalaAPI.AssertIsEqual(c.Y.B1.A0, y.B1.A0)
+	koalaAPI.AssertIsEqual(c.Y.B1.A1, y.B1.A1)
 
 	return nil
 }
@@ -46,16 +42,16 @@ func TestGnarkEvalCanonical(t *testing.T) {
 	y := eval(poly, x)
 
 	{
-		var circuit, witness EvalCanonicalCircuit
-		circuit.Poly = make([]zk.WrappedVariable, size)
-		witness.Poly = make([]zk.WrappedVariable, size)
+		var ckt, witness EvalCanonicalCircuit
+		ckt.Poly = make([]koalagnark.Element, size)
+		witness.Poly = make([]koalagnark.Element, size)
 		for i := 0; i < size; i++ {
-			witness.Poly[i] = zk.ValueFromKoala(poly[i].B0.A0)
+			witness.Poly[i] = koalagnark.NewElementFromKoala(poly[i].B0.A0)
 		}
-		witness.X = gnarkfext.NewE4Gen(x)
-		witness.Y = gnarkfext.NewE4Gen(y)
+		witness.X = koalagnark.NewExt(x)
+		witness.Y = koalagnark.NewExt(y)
 
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
@@ -64,16 +60,16 @@ func TestGnarkEvalCanonical(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	{
-		var circuit, witness EvalCanonicalCircuit
-		circuit.Poly = make([]zk.WrappedVariable, size)
-		witness.Poly = make([]zk.WrappedVariable, size)
+		var ckt, witness EvalCanonicalCircuit
+		ckt.Poly = make([]koalagnark.Element, size)
+		witness.Poly = make([]koalagnark.Element, size)
 		for i := 0; i < size; i++ {
-			witness.Poly[i] = zk.ValueFromKoala(poly[i].B0.A0)
+			witness.Poly[i] = koalagnark.NewElementFromKoala(poly[i].B0.A0)
 		}
-		witness.X = gnarkfext.NewE4Gen(x)
-		witness.Y = gnarkfext.NewE4Gen(y)
+		witness.X = koalagnark.NewExt(x)
+		witness.Y = koalagnark.NewExt(y)
 
-		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())

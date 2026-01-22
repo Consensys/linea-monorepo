@@ -4,8 +4,7 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -72,39 +71,39 @@ func (f FromAccessors) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.E
 	return f.Accessors[pos].GetValExt(run)
 }
 
-func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
+func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
 	if !f.IsBase() {
 		panic("From accessors, the column is not base")
 	} else {
 		panic("call GetColAssignmentGnarkExt instead")
-		// res := make([]zk.WrappedVariable, f.Size_)
+		// res := make([]koalagnark.Var, f.Size_)
 		// for i := range f.Accessors {
 		// 	res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
 		// }
 
 		// for i := len(f.Accessors); i < f.Size_; i++ {
 		// 	// res[i] = f.Padding
-		// 	res[i] = zk.ValueOf(f.Padding.B0.A0.String()) // @thomas fixme (should be ext)
+		// 	res[i] = circuit.NewVar(f.Padding.B0.A0.String()) // @thomas fixme (should be ext)
 		// }
 		// return res, nil
 	}
 
 }
 
-func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
-	res := make([]gnarkfext.E4Gen, f.Size_)
+func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
+	res := make([]koalagnark.Ext, f.Size_)
 	for i := range f.Accessors {
 		res[i] = f.Accessors[i].GetFrontendVariableExt(nil, run)
 	}
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
-		res[i] = gnarkfext.NewE4Gen(f.Padding)
+		res[i] = koalagnark.NewExt(f.Padding)
 	}
 
 	return res
 }
 
-func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
+func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
 	if !f.IsBase() {
 		utils.Panic("From accessors, the column is not base")
 	}
@@ -115,20 +114,20 @@ func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos 
 
 	if pos >= len(f.Accessors) {
 		// return f.Padding, nil
-		return zk.ValueFromKoala(f.Padding.B0.A0), nil
+		return koalagnark.NewElementFromKoala(f.Padding.B0.A0), nil
 
 	}
 
 	return f.Accessors[pos].GetFrontendVariable(nil, run), nil
 }
 
-func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
+func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
 	if pos >= f.Size_ {
 		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
 	}
 
 	if pos >= len(f.Accessors) {
-		return gnarkfext.NewE4Gen(f.Padding)
+		return koalagnark.NewExt(f.Padding)
 	}
 
 	return f.Accessors[pos].GetFrontendVariableExt(nil, run)
@@ -185,16 +184,16 @@ func (f FromAccessors) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment
 }
 
 // GetColAssignment returns a gnark assignment of the current column
-func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
+func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
 
-	res := make([]zk.WrappedVariable, f.Size_)
+	res := make([]koalagnark.Element, f.Size_)
 	for i := range f.Accessors {
 		res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
 	}
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
 		// res[i] = f.Padding
-		res[i] = zk.ValueFromKoala(f.Padding.B0.A0) // TODO @thomas fixme
+		res[i] = koalagnark.NewElementFromKoala(f.Padding.B0.A0) // TODO @thomas fixme
 	}
 
 	return res
@@ -206,14 +205,14 @@ func (f FromAccessors) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Ele
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
+func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	if pos >= f.Size_ {
 		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
 	}
 
 	if pos >= len(f.Accessors) {
 		// return f.Padding
-		return zk.ValueFromKoala(f.Padding.B0.A0) // TODO @thomas fixme
+		return koalagnark.NewElementFromKoala(f.Padding.B0.A0) // TODO @thomas fixme
 	}
 
 	return f.Accessors[pos].GetFrontendVariable(nil, run)

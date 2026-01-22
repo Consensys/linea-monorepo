@@ -15,7 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
@@ -641,13 +641,11 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 
 // RunGnark implements the [wizard.VerifierAction] interface.
 func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+
+	koalaAPI := koalagnark.NewAPI(api)
 
 	var (
-		collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable, gnarkfext.E4Gen]{}
+		collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{}
 		topPIs       = c.collectAllPublicInputsGnark(api, run)
 		hasher       = hasher_factory.AsConcreteHasher(run.GetHasherFactory().NewHasher())
 	)
@@ -708,18 +706,18 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 	// and horner sum of the sub-instances. The aggregation is done by multiplying/summing
 	// the values. The results are then compared the top-level public inputs.
 	var (
-		accGrandProduct = ext4.One()
-		accLogDeriv     = ext4.Zero()
-		accHornerSum    = ext4.Zero()
+		accGrandProduct = koalaAPI.OneExt()
+		accLogDeriv     = koalaAPI.ZeroExt()
+		accHornerSum    = koalaAPI.ZeroExt()
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
 
 		// This agglomerates the horner N0 hash checker, the grand product, the
 		// log derivative sum and the horner sum.
-		accGrandProduct = ext4.Mul(accGrandProduct, &collectedPIs[instance].GrandProduct)
-		accLogDeriv = ext4.Add(accLogDeriv, &collectedPIs[instance].LogDerivativeSum)
-		accHornerSum = ext4.Add(accHornerSum, &collectedPIs[instance].HornerSum)
+		accGrandProduct = koalaAPI.MulExt(accGrandProduct, collectedPIs[instance].GrandProduct)
+		accLogDeriv = koalaAPI.AddExt(accLogDeriv, collectedPIs[instance].LogDerivativeSum)
+		accHornerSum = koalaAPI.AddExt(accHornerSum, collectedPIs[instance].HornerSum)
 
 		// Check shared randomness consistency - if non-zero, must match top level
 		for i := 0; i < 8; i++ {
@@ -738,9 +736,9 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 		}
 	}
 
-	ext4.AssertIsEqual(accGrandProduct, &topPIs.GrandProduct)
-	ext4.AssertIsEqual(accLogDeriv, &topPIs.LogDerivativeSum)
-	ext4.AssertIsEqual(accHornerSum, &topPIs.HornerSum)
+	koalaAPI.AssertIsEqualExt(accGrandProduct, topPIs.GrandProduct)
+	koalaAPI.AssertIsEqualExt(accLogDeriv, topPIs.LogDerivativeSum)
+	koalaAPI.AssertIsEqualExt(accHornerSum, topPIs.HornerSum)
 
 	// This loop checks the VK membership in the tree. The merkle leaf position
 	// is deduced from the segment count public inputs in the following way;
@@ -894,7 +892,7 @@ func getPublicInputListOfInstanceGnark(rec *recursion.Recursion, api frontend.AP
 
 // getPublicInputExtOfInstanceGnark returns the extension field value of a public
 // input for the given instance. It uses the accessor's GetFrontendVariableExt method.
-func getPublicInputExtOfInstanceGnark(rec *recursion.Recursion, api frontend.API, run wizard.GnarkRuntime, name string, instance int) gnarkfext.E4Gen {
+func getPublicInputExtOfInstanceGnark(rec *recursion.Recursion, api frontend.API, run wizard.GnarkRuntime, name string, instance int) koalagnark.Ext {
 	fullName := rec.Name + "-" + strconv.Itoa(instance) + "." + name
 	acc := run.GetSpec().GetPublicInputAccessor(fullName)
 	// @azam this may make recursion complicated, alex proposed to register all the public Inputs as field element on the runtime object. while we can have functions that create extension from runtime. E.g. we can have 4 calls to the above function.
@@ -903,7 +901,7 @@ func getPublicInputExtOfInstanceGnark(rec *recursion.Recursion, api frontend.API
 
 // getPublicInputExtGnark returns the extension field value of a public input.
 // It uses the accessor's GetFrontendVariableExt method.
-func getPublicInputExtGnark(api frontend.API, run wizard.GnarkRuntime, name string) gnarkfext.E4Gen {
+func getPublicInputExtGnark(api frontend.API, run wizard.GnarkRuntime, name string) koalagnark.Ext {
 	acc := run.GetSpec().GetPublicInputAccessor(name)
 	return acc.GetFrontendVariableExt(api, run)
 }
@@ -995,7 +993,8 @@ func collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Eleme
 
 // collectAllPublicInputsOfInstanceGnark returns a structured object representing
 // the public inputs of the given instance.
-func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, instance int) LimitlessPublicInput[frontend.Variable, gnarkfext.E4Gen] {
+func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, instance int) LimitlessPublicInput[frontend.Variable, koalagnark.Ext] {
+
 	// Fetching the VKey Public input Merkle root
 	vKeyMerkleRoot := [8]frontend.Variable{}
 	sharedRandomness := [8]frontend.Variable{}
@@ -1014,7 +1013,7 @@ func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, ru
 		vk[1][i] = wrapped.AsNative()
 	}
 
-	res := LimitlessPublicInput[frontend.Variable, gnarkfext.E4Gen]{
+	res := LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{
 		TargetNbSegments:             getPublicInputListOfInstanceGnark(c.Recursion, api, run, TargetNbSegmentPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountGL:               getPublicInputListOfInstanceGnark(c.Recursion, api, run, SegmentCountGLPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountLPP:              getPublicInputListOfInstanceGnark(c.Recursion, api, run, SegmentCountLPPPublicInputBase, instance, c.ModuleNumber),
@@ -1040,7 +1039,7 @@ func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, ru
 // inputs of all the instances.
 //
 // In the returned object, the verifying key public inputs are not populated.
-func (c ModuleConglo) collectAllPublicInputsGnark(api frontend.API, run wizard.GnarkRuntime) LimitlessPublicInput[frontend.Variable, gnarkfext.E4Gen] {
+func (c ModuleConglo) collectAllPublicInputsGnark(api frontend.API, run wizard.GnarkRuntime) LimitlessPublicInput[frontend.Variable, koalagnark.Ext] {
 	// Fetching the VKey Public input Merkle root
 	vKeyMerkleRoot := [8]frontend.Variable{}
 	sharedRandomness := [8]frontend.Variable{}
@@ -1050,7 +1049,7 @@ func (c ModuleConglo) collectAllPublicInputsGnark(api frontend.API, run wizard.G
 		wrapped = run.GetPublicInput(api, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i))
 		sharedRandomness[i] = wrapped.AsNative()
 	}
-	res := LimitlessPublicInput[frontend.Variable, gnarkfext.E4Gen]{
+	res := LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{
 		TargetNbSegments:             GetPublicInputListGnark(api, run, TargetNbSegmentPublicInputBase, c.ModuleNumber),
 		SegmentCountGL:               GetPublicInputListGnark(api, run, SegmentCountGLPublicInputBase, c.ModuleNumber),
 		SegmentCountLPP:              GetPublicInputListGnark(api, run, SegmentCountLPPPublicInputBase, c.ModuleNumber),
@@ -1112,7 +1111,8 @@ func findProofTypeAndModule(instance LimitlessPublicInput[field.Element, fext.El
 	panic("unreachable")
 }
 
-func findVkPositionGnark(api frontend.API, instance LimitlessPublicInput[frontend.Variable, gnarkfext.E4Gen]) frontend.Variable {
+func findVkPositionGnark(api frontend.API, instance LimitlessPublicInput[frontend.Variable, koalagnark.Ext]) frontend.Variable {
+
 	var (
 		sumGL, sumLPP = frontend.Variable(0), frontend.Variable(0)
 		moduleIndex   = frontend.Variable(-1) // can't be -1 at the end of the "mod" loop.

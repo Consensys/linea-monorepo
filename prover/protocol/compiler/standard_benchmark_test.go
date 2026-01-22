@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -62,59 +61,59 @@ type SubModuleParameters struct {
 
 var (
 	benchCases = []StdBenchmarkCase{
-		{
-			Name: "minimal",
-			Permutations: SubModuleParameters{
-				Count:  1,
-				NumCol: 1,
-				NumRow: 1 << 10,
-			},
-			Lookup: SubModuleParameters{
-				Count:     1,
-				NumCol:    1,
-				NumRow:    1 << 10,
-				NumRowAux: 1 << 10,
-			},
-			Projection: SubModuleParameters{
-				Count:     1,
-				NumCol:    1,
-				NumRow:    1 << 10,
-				NumRowAux: 1 << 10,
-			},
-			Fibo: SubModuleParameters{
-				Count:  1,
-				NumRow: 1 << 10,
-			},
-		},
 		// {
-		// 	// run with GOGC=200 and
-		// 	// ensure THP is enabled:
-		// 	// cat /sys/kernel/mm/transparent_hugepage/enabled
-		// 	// if not:
-		// 	// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
-		// 	Name: "realistic-segment",
+		// 	Name: "minimal",
 		// 	Permutations: SubModuleParameters{
-		// 		Count:  5,
-		// 		NumCol: 3,
-		// 		NumRow: 1 << 20,
+		// 		Count:  1,
+		// 		NumCol: 1,
+		// 		NumRow: 1 << 10,
 		// 	},
 		// 	Lookup: SubModuleParameters{
-		// 		Count:     50,
-		// 		NumCol:    3,
-		// 		NumRow:    1 << 20,
-		// 		NumRowAux: 1 << 20,
+		// 		Count:     1,
+		// 		NumCol:    1,
+		// 		NumRow:    1 << 10,
+		// 		NumRowAux: 1 << 10,
 		// 	},
 		// 	Projection: SubModuleParameters{
-		// 		Count:     5,
-		// 		NumCol:    3,
-		// 		NumRow:    1 << 20,
-		// 		NumRowAux: 1 << 20,
+		// 		Count:     1,
+		// 		NumCol:    1,
+		// 		NumRow:    1 << 10,
+		// 		NumRowAux: 1 << 10,
 		// 	},
 		// 	Fibo: SubModuleParameters{
-		// 		Count:  200,
-		// 		NumRow: 1 << 20,
+		// 		Count:  1,
+		// 		NumRow: 1 << 10,
 		// 	},
 		// },
+		{
+			// run with GOGC=200 and
+			// ensure THP is enabled:
+			// cat /sys/kernel/mm/transparent_hugepage/enabled
+			// if not:
+			// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+			Name: "realistic-segment",
+			Permutations: SubModuleParameters{
+				Count:  5,
+				NumCol: 3,
+				NumRow: 1 << 20,
+			},
+			Lookup: SubModuleParameters{
+				Count:     50,
+				NumCol:    3,
+				NumRow:    1 << 20,
+				NumRowAux: 1 << 20,
+			},
+			Projection: SubModuleParameters{
+				Count:     5,
+				NumCol:    3,
+				NumRow:    1 << 20,
+				NumRowAux: 1 << 20,
+			},
+			Fibo: SubModuleParameters{
+				Count:  200,
+				NumRow: 1 << 20,
+			},
+		},
 		// {
 		// 	Name: "smaller-segment",
 		// 	Permutations: SubModuleParameters{
@@ -143,26 +142,26 @@ var (
 )
 
 var selfRecursionParametersSet = []selfRecursionParameters{
-	// {
-	// 	NbOpenedColumns: 256,
-	// 	RsInverseRate:   2,
-	// 	TargetRowSize:   1 << 8,
-	// },
-	// {
-	// 	NbOpenedColumns: 256,
-	// 	RsInverseRate:   2,
-	// 	TargetRowSize:   1 << 9,
-	// },
-	// {
-	// 	NbOpenedColumns: 256,
-	// 	RsInverseRate:   2,
-	// 	TargetRowSize:   1 << 10,
-	// },
-	// {
-	// 	NbOpenedColumns: 256,
-	// 	RsInverseRate:   2,
-	// 	TargetRowSize:   1 << 11,
-	// },
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 8,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 9,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 10,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 11,
+	},
 	// {
 	// 	NbOpenedColumns: 128,
 	// 	RsInverseRate:   4,
@@ -260,7 +259,7 @@ func BenchmarkProfileSelfRecursion(b *testing.B) {
 func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 
 	logrus.SetLevel(logrus.FatalLevel)
-	nbIteration := 6
+	nbIteration := 2
 
 	for _, params := range selfRecursionParametersSet {
 		b.Run(fmt.Sprintf("%+v", params), func(b *testing.B) {
@@ -374,35 +373,47 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 
 	isBLS := true
 	// These parameters have been found to give the best result for performances
+	// TODO: trim this params when nbIteration > 1
 	params := selfRecursionParameters{
-		NbOpenedColumns: 8,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 5,
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 9,
+	}
+
+	// RsInverseRate = 2, nbOpenedColumns=256; OR
+	// RsInverseRate = 16, nbOpenedColumns=64; BETTER, less constraints
+	lastIterationParams := selfRecursionParameters{
+		NbOpenedColumns: 8, // TODO: next step, update to 64
+		RsInverseRate:   2, // TODO: next step, update to 16
+		TargetRowSize:   1 << 11,
 	}
 
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<9),
+			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(1<<1),
 		),
+		// RsInverseRate = 2, nbOpenedColumns=256; OR
+		// RsInverseRate = 16, nbOpenedColumns=64; BETTER, less constraints
 		vortex.Compile(
-			2,
+			16,
 			false,
-			vortex.WithOptionalSISHashingThreshold(32),
-			vortex.ForceNumOpenedColumns(8),
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)
 
-	nbIteration := 1 //TODO@yao: update back to 2
+	nbIteration := 1 //TODO@yao: update back to 2, when nbConstraints < 30M
 
 	for i := 0; i < nbIteration; i++ {
-		applySelfRecursionThenArcane(comp, params)
 		if i == nbIteration-1 {
-			applyVortex(comp, params, true) // last iteration over BLS
+			applySelfRecursionThenArcane(comp, lastIterationParams)
+			applyVortex(comp, lastIterationParams, true) // last iteration over BLS
 		} else {
+			applySelfRecursionThenArcane(comp, params)
 			applyVortex(comp, params, false) // other iteration over koalabear
 		}
 	}
@@ -417,16 +428,15 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 
 		circuit := verifierCircuit{}
-		nbRounds := comp.NumRounds() //comp.NumRounds() //17 // TODO setting this to comp.NumRounds() make the number of constraint explode, need to investigate
+		nbRounds := comp.NumRounds() //17 // TODO setting this to comp.NumRounds() make the number of constraint explode, need to investigate
 		fmt.Printf("using nbRounds=%d instead of %d\n", nbRounds, comp.NumRounds())
 		{
 			c := wizard.AllocateWizardCircuit(comp, nbRounds, isBLS)
 			circuit.C = *c
 		}
-
-		gnarkProfile := profile.Start(profile.WithPath("./gnark.pprof"))
-		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-		gnarkProfile.Stop()
+		// gnarkProfile := profile.Start(profile.WithPath("./gnark.pprof"))
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.WithCapacity(1<<27), frontend.IgnoreUnconstrainedInputs())
+		// gnarkProfile.Stop()
 		fmt.Printf("ccs number of constraints: %d\n", ccs.GetNbConstraints())
 		if err != nil {
 			b.Fatal(err)
@@ -442,9 +452,11 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 
 		// Check if solved using the pre-compiled SCS
-		err = ccs.IsSolved(witness)
-		if err != nil {
-			b.Fatal(err)
+		if !testing.Short() {
+			err = ccs.IsSolved(witness)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	}
 }

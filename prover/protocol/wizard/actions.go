@@ -87,5 +87,5 @@ func (p PrintingVerifierAction) Run(run Runtime) error {
 
 // 	c := p.Column.GetColAssignmentGnark(run)
 // 	names := fmt.Sprintf("name=%v message=%v value=\n", name, p.Message)
-// 	api.Println(append([]zk.WrappedVariable{names}, c...)...)
+// 	api.Println(append([]koalagnark.Var{names}, c...)...)
 // }

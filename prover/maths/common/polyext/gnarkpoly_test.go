@@ -8,7 +8,7 @@ package polyext
 // 		def := func(api frontend.API) error {
 // 			var (
 // 				pol = vectorext.IntoGnarkAssignment(vectorext.ForTestFromQuads(1, 2, 3, 4, -1, -2))
-// 				x   = gnarkfext.E4Gen{
+// 				x   = koalagnark.Ext{
 // 					B0: gnarkfext.E2{
 // 						A0: 2,
 // 						A1: 1,
@@ -18,7 +18,7 @@ package polyext
 // 						A1: 0,
 // 					},
 // 				}
-// 				expected = gnarkfext.E4Gen{
+// 				expected = koalagnark.Ext{
 // 					B0: gnarkfext.E2{
 // 						A0: -5*fext.RootPowers[1] + 3,
 // 						A1: -2*fext.RootPowers[1] + 1,
@@ -41,7 +41,7 @@ package polyext
 // 		def := func(api frontend.API) error {
 // 			var (
 // 				pol = vectorext.IntoGnarkAssignment([]fext.Element{})
-// 				x   = gnarkfext.E4Gen{B0: gnarkfext.E2{
+// 				x   = koalagnark.Ext{B0: gnarkfext.E2{
 // 					A0: 2,
 // 					A1: 3,
 // 				},
@@ -50,7 +50,7 @@ package polyext
 // 						A1: 0,
 // 					},
 // 				}
-// 				expected gnarkfext.E4Gen
+// 				expected koalagnark.Ext
 // 				res      = EvaluateUnivariateGnark(api, pol, x)
 // 			)
 // 			expected.AssertIsEqual(api, res)
@@ -68,7 +68,7 @@ package polyext
 // 		def := func(api frontend.API) error {
 // 			var (
 // 				domain = vectorext.IntoGnarkAssignment(vectorext.ForTestFromQuads(0, 0))
-// 				x      = gnarkfext.E4Gen{B0: gnarkfext.E2{
+// 				x      = koalagnark.Ext{B0: gnarkfext.E2{
 // 					A0: 42,
 // 					A1: 0,
 // 				},
@@ -97,7 +97,7 @@ package polyext
 // 		def := func(api frontend.API) error {
 // 			var (
 // 				domain = vectorext.IntoGnarkAssignment(vectorext.ForTestFromQuads(0, 0, 1, 0))
-// 				x      = gnarkfext.E4Gen{B0: gnarkfext.E2{
+// 				x      = koalagnark.Ext{B0: gnarkfext.E2{
 // 					A0: 42,
 // 					A1: 0,
 // 				},

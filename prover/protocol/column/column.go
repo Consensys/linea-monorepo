@@ -6,8 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -181,17 +180,17 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 }
 
 // GnarkEvalExprColumn evaluates an expression in a gnark circuit setting
-func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []gnarkfext.E4Gen {
+func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []koalagnark.Ext {
 
 	var (
 		metadata = board.ListVariableMetadata()
 		length   = ExprIsOnSameLengthHandles(&board)
-		res      = make([]gnarkfext.E4Gen, length)
+		res      = make([]koalagnark.Ext, length)
 	)
 
 	for k := 0; k < length; k++ {
 
-		inputs := make([]gnarkfext.E4Gen, len(metadata))
+		inputs := make([]koalagnark.Ext, len(metadata))
 
 		for i := range inputs {
 			switch m := metadata[i].(type) {
@@ -208,7 +207,7 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 				inputs[i] = m.GetFrontendVariableExt(api, run)
 			case variables.PeriodicSample:
 				tmp := m.EvalAtOnDomain(k)
-				inputs[i] = gnarkfext.FromBase(zk.ValueFromKoala(tmp))
+				inputs[i] = koalagnark.FromBaseVar(koalagnark.NewElementFromKoala(tmp))
 			case variables.X:
 				// there is no theoritical problem with this but there are
 				// no cases known where this happens so we just don't
@@ -383,12 +382,12 @@ func GetColAssignmentOctuplet(col ifaces.Column, run ifaces.Runtime) field.Octup
 	return result
 }
 
-func GetColAssignmentGnarkOctuplet(col ifaces.Column, run ifaces.GnarkRuntime) zk.Octuplet {
+func GetColAssignmentGnarkOctuplet(col ifaces.Column, run ifaces.GnarkRuntime) koalagnark.Octuplet {
 	assignment := col.GetColAssignmentGnark(run)
 	if len(assignment) < 8 {
 		panic("column size must be at least 8 for Octuplet")
 	}
-	var result zk.Octuplet
+	var result koalagnark.Octuplet
 	for i := 0; i < 8; i++ {
 		result[i] = assignment[i]
 	}

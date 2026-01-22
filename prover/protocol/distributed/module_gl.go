@@ -685,14 +685,14 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hsh.Write(v.BaseY.AsNative())
+		hsh.Write(v.BaseY.Native())
 	}
 
 	hashSendComputed := hsh.Sum()
 	api.AssertIsEqual(len(hashSendComputed), len(sendGlobalHash))
 
 	for i := range hashSendComputed {
-		api.AssertIsEqual(hashSendComputed[i], sendGlobalHash[i].AsNative())
+		api.AssertIsEqual(hashSendComputed[i], sendGlobalHash[i].Native())
 	}
 
 	var (
@@ -704,7 +704,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 	hsh.Reset()
 
 	for i := 0; i < numReceived; i++ {
-		hsh.Write(rcvGlobalCol[i].AsNative())
+		hsh.Write(rcvGlobalCol[i].Native())
 	}
 
 	hashRcvComputed := hsh.Sum()
@@ -712,7 +712,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 	api.AssertIsEqual(len(hashRcvComputed), len(rcvGlobalHash))
 
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(hashRcvComputed[i], rcvGlobalHash[i].AsNative())
+		api.AssertIsEqual(hashRcvComputed[i], rcvGlobalHash[i].Native())
 	}
 
 	a.ModuleGL.checkGnarkMultiSetHash(api, run)
