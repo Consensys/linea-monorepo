@@ -194,7 +194,6 @@ abstract contract L1MessageService is
     ) {
       revert InvalidMerkleProof();
     }
-    
   }
 
   /**
