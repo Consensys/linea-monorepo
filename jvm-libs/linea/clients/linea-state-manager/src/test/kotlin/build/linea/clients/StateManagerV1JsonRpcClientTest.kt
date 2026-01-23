@@ -1,5 +1,7 @@
 package build.linea.clients
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.michaelbull.result.Err
@@ -13,6 +15,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.domain.BlockInterval
+import linea.domain.BlockParameter
+import linea.kotlin.ByteArrayExt
 import linea.kotlin.decodeHex
 import linea.kotlin.fromHexString
 import net.consensys.linea.async.get
@@ -191,6 +195,81 @@ class StateManagerV1JsonRpcClientTest {
       .succeedsWithin(5.seconds.toJavaDuration())
       .isEqualTo(
         Err(ErrorResponse(StateManagerErrorType.UNKNOWN, """BRA_BRA_BRA_SOME_UNKNOWN_ERROR: {xyz=1234, abc=100}""")),
+      )
+  }
+
+  @Test
+  fun getVirtualStateMerkleProof_success() {
+    // should use a virtual-state-proof.json from Shomei team when it's ready
+    val testFilePath = findPathTo("testdata")!!.resolve("type2state-manager/state-proof.json")
+    val json = jacksonObjectMapper().readTree(testFilePath.toFile())
+    val zkStateManagerVersion = json.get("zkStateManagerVersion").asText()
+    val zkStateMerkleProof = json.get("zkStateMerkleProof") as ArrayNode
+    val zkParentStateRootHash = json.get("zkParentStateRootHash").asText()
+
+    wiremockStubForPost(
+      """
+      {
+        "jsonrpc":"2.0",
+        "id":"1",
+        "result": {
+          "zkParentStateRootHash": "$zkParentStateRootHash",
+          "zkStateMerkleProof": $zkStateMerkleProof,
+          "zkStateManagerVersion": "$zkStateManagerVersion"
+        }
+      }
+    """,
+    )
+
+    assertThat(
+      stateManagerClient.rollupGetVirtualStateMerkleProofWithTypedError(
+        blockNumber = 50UL,
+        transaction = ByteArrayExt.random32(),
+      ),
+    ).succeedsWithin(5.seconds.toJavaDuration())
+      .isEqualTo(
+        Ok(
+          GetZkEVMStateMerkleProofResponse(
+            zkStateManagerVersion = zkStateManagerVersion,
+            zkStateMerkleProof = zkStateMerkleProof,
+            zkParentStateRootHash = zkParentStateRootHash.decodeHex(),
+            zkEndStateRootHash = ByteArray(0),
+          ),
+        ),
+      )
+  }
+
+  @Test
+  fun getAccountProof_success() {
+    val testFilePath = findPathTo("testdata")!!.resolve("type2state-manager/linea-get-proof-result.json")
+    val json = jacksonObjectMapper().readTree(testFilePath.toFile())
+    val accountProof = json.get("accountProof") as JsonNode
+    val storageProofs = json.get("storageProofs") as ArrayNode
+
+    wiremockStubForPost(
+      """
+      {
+        "jsonrpc":"2.0",
+        "id":"1",
+        "result": {
+          "accountProof": $accountProof,
+          "storageProofs": $storageProofs
+        }
+      }
+      """,
+    )
+
+    assertThat(
+      stateManagerClient.lineaGetAccountProof(
+        address = "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec".decodeHex(),
+        storageKeys = listOf(ByteArray(1)),
+        block = BlockParameter.fromNumber(50UL),
+      ),
+    ).succeedsWithin(5.seconds.toJavaDuration())
+      .isEqualTo(
+        LineaAccountProof(
+          accountProof = ObjectMapper().writeValueAsBytes(accountProof),
+        ),
       )
   }
 

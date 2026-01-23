@@ -24,7 +24,7 @@ data class LineaAccountProof(val accountProof: ByteArray) {
 }
 
 interface StateManagerAccountProofClient {
-  fun lineaGetProof(
+  fun lineaGetAccountProof(
     address: ByteArray,
     storageKeys: List<ByteArray>,
     block: BlockParameter,
