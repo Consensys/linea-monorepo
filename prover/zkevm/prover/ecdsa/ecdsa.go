@@ -7,7 +7,7 @@ import (
 )
 
 type EcdsaZkEvm struct {
-	Ant *antichamber
+	Ant *Antichamber
 }
 
 func NewEcdsaZkEvm(
@@ -20,7 +20,7 @@ func NewEcdsaZkEvm(
 			&antichamberInput{
 				Settings:     settings,
 				EcSource:     getEcdataArithmetization(comp),
-				TxSource:     GetTxnDataArithmetization(comp),
+				TxSource:     getTxnDataArithmetization(comp),
 				RlpTxn:       getRlpTxnArithmetization(comp),
 				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
 			},
@@ -48,7 +48,7 @@ func getEcdataArithmetization(comp *wizard.CompiledIOP) *ecDataSource {
 	}
 }
 
-func GetTxnDataArithmetization(comp *wizard.CompiledIOP) *TxnData {
+func getTxnDataArithmetization(comp *wizard.CompiledIOP) *TxnData {
 	td := &TxnData{
 		FromHi:   comp.Columns.GetHandle("txndata.hubFROM_ADDRESS_HI_xor_rlpCHAIN_ID"),
 		FromLo:   comp.Columns.GetHandle("txndata.computationARG_1_LO_xor_hubFROM_ADDRESS_LO_xor_rlpTO_ADDRESS_LO"),

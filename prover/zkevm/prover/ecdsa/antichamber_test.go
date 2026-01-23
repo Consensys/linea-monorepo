@@ -30,7 +30,7 @@ func TestAntichamber(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var ac *antichamber
+	var ac *Antichamber
 	var ecSrc *ecDataSource
 	var txSrc *TxnData
 	limits := &Settings{

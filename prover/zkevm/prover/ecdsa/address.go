@@ -71,7 +71,7 @@ type Addresses struct {
 const trimmingSize = 4
 
 // newAddress creates an Address struct, declaring native columns and the constraints among them.
-func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antichamber, td *TxnData) *Addresses {
+func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antichamber, td *TxnData) *Addresses {
 	createCol := createColFn(comp, NAME_ADDRESSES, size)
 	ecRecSize := ecRec.EcRecoverIsRes.Size()
 	// declare the native columns
@@ -214,7 +214,7 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 func (addr *Addresses) assignAddress(
 	run *wizard.ProverRuntime,
 	nbEcRecover, size int,
-	ac *antichamber,
+	ac *Antichamber,
 	ecRec *EcRecover,
 	uaGnark *UnalignedGnarkData,
 	td *TxnData,

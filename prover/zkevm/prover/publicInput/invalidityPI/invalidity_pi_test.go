@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -31,8 +32,22 @@ type mockInvalidityPIInputs struct {
 	FilterFetched ifaces.Column
 }
 
+var (
+	// Test values
+	testAddressHi     = field.NewElement(0xDEAD)
+	testAddressLo     = field.NewElement(0xBEEF)
+	testTxHashHi      = field.NewElement(0x1234)
+	testTxHashLo      = field.NewElement(0x5678)
+	testStateRootHash = field.NewElement(0x1234567890abcdef)
+	colSize           = 16          // power of 2
+	filterFetchedSize = colSize / 2 // FilterFetched can have different size
+)
+
 // createMockInputs creates mock columns for testing
 func createMockInputs(comp *wizard.CompiledIOP, size int) *mockInvalidityPIInputs {
+	// add StateRootHash to the publicInput of comp
+	comp.InsertPublicInput("StateRootHash", accessors.NewConstant(testStateRootHash))
+
 	return &mockInvalidityPIInputs{
 		BadPrecompileCol:     comp.InsertCommit(0, "hub.PROVER_ILLEGAL_TRANSACTION_DETECTED", size),
 		AddressHi:            comp.InsertCommit(0, "MOCK_ADDRESS_HI", size),
@@ -41,19 +56,38 @@ func createMockInputs(comp *wizard.CompiledIOP, size int) *mockInvalidityPIInput
 		TxHashHi:             comp.InsertCommit(0, "MOCK_TX_HASH_HI", size),
 		TxHashLo:             comp.InsertCommit(0, "MOCK_TX_HASH_LO", size),
 		IsTxHash:             comp.InsertCommit(0, "MOCK_IS_TX_HASH", size),
-		FilterFetched:        comp.InsertCommit(0, "MOCK_FILTER_FETCHED", size),
+		FilterFetched:        comp.InsertCommit(0, "MOCK_FILTER_FETCHED", filterFetchedSize),
 	}
 }
 
-// TestInvalidityPIAssign tests the Assign function of InvalidityPI
+// testCase defines a test case for InvalidityPI
+type testCase struct {
+	name                  string
+	hasBadPrecompile      bool
+	numL2Logs             int
+	expectedBadPrecompile field.Element
+}
+
+// computeExpectedAddress computes the expected FromAddress field element
+// from the test AddressHi and AddressLo values
+func computeExpectedAddress() field.Element {
+	// The address is built from:
+	// - 4 bytes from AddressHi (bytes 28-31 of the 32-byte representation)
+	// - 16 bytes from AddressLo (bytes 16-31 of the 32-byte representation)
+	hiBytes := testAddressHi.Bytes()
+	loBytes := testAddressLo.Bytes()
+	var b [20]byte
+	copy(b[:4], hiBytes[28:])
+	copy(b[4:], loBytes[16:])
+	var result field.Element
+	result.SetBytes(b[:])
+	return result
+}
+
+// TestInvalidityPIAssign tests  that public inputs are accessible and return correct values
 func TestInvalidityPIAssign(t *testing.T) {
 
-	testCases := []struct {
-		name                  string
-		hasBadPrecompile      bool
-		numL2Logs             int
-		expectedBadPrecompile field.Element
-	}{
+	testCases := []testCase{
 		{
 			name:                  "no_bad_precompile_no_logs",
 			hasBadPrecompile:      false,
@@ -82,18 +116,11 @@ func TestInvalidityPIAssign(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			const colSize = 16 // power of 2
 
 			var (
 				mockInputs *mockInvalidityPIInputs
-				pi         *testableInvalidityPI
+				pi         *InvalidityPI
 			)
-
-			// Test values
-			testAddressHi := field.NewElement(0xDEAD)
-			testAddressLo := field.NewElement(0xBEEF)
-			testTxHashHi := field.NewElement(0x1234)
-			testTxHashLo := field.NewElement(0x5678)
 
 			define := func(b *wizard.Builder) {
 				comp := b.CompiledIOP
@@ -101,71 +128,34 @@ func TestInvalidityPIAssign(t *testing.T) {
 				// Create mock input columns
 				mockInputs = createMockInputs(comp, colSize)
 
-				// Create a testable InvalidityPI that uses mock columns
-				pi = newTestableInvalidityPI(comp, mockInputs)
+				pi = NewInvalidityPIZkEvm(comp,
+					&logs.ExtractedData{FilterFetched: mockInputs.FilterFetched},
+					&ecdsa.EcdsaZkEvm{
+						Ant: &ecdsa.Antichamber{
+							TxSignature: &ecdsa.TxSignature{
+								IsTxHash: mockInputs.IsTxHash,
+								TxHashHi: mockInputs.TxHashHi,
+								TxHashLo: mockInputs.TxHashLo,
+							},
+							Addresses: &ecdsa.Addresses{
+								AddressHi:            mockInputs.AddressHi,
+								AddressLo:            mockInputs.AddressLo,
+								IsAddressFromTxnData: mockInputs.IsAddressFromTxnData,
+							},
+						},
+					},
+				)
 			}
 
 			prove := func(run *wizard.ProverRuntime) {
-				// Assign mock badPrecompile column
-				badPrecompileVec := make([]field.Element, colSize)
-				if tc.hasBadPrecompile {
-					badPrecompileVec[2] = field.One() // Set a non-zero value at index 2
-				}
-				run.AssignColumn(mockInputs.BadPrecompileCol.GetColID(), smartvectors.NewRegular(badPrecompileVec))
-
-				// Assign mock address columns
-				addressHiVec := make([]field.Element, colSize)
-				addressLoVec := make([]field.Element, colSize)
-				isAddressFromTxnDataVec := make([]field.Element, colSize)
-				addressHiVec[3] = testAddressHi
-				addressLoVec[3] = testAddressLo
-				isAddressFromTxnDataVec[3] = field.One() // Mark row 3 as having the address
-				run.AssignColumn(mockInputs.AddressHi.GetColID(), smartvectors.NewRegular(addressHiVec))
-				run.AssignColumn(mockInputs.AddressLo.GetColID(), smartvectors.NewRegular(addressLoVec))
-				run.AssignColumn(mockInputs.IsAddressFromTxnData.GetColID(), smartvectors.NewRegular(isAddressFromTxnDataVec))
-
-				// Assign mock TxSignature columns
-				txHashHiVec := make([]field.Element, colSize)
-				txHashLoVec := make([]field.Element, colSize)
-				isTxHashVec := make([]field.Element, colSize)
-				txHashHiVec[5] = testTxHashHi
-				txHashLoVec[5] = testTxHashLo
-				isTxHashVec[5] = field.One() // Mark row 5 as having the tx hash
-				run.AssignColumn(mockInputs.TxHashHi.GetColID(), smartvectors.NewRegular(txHashHiVec))
-				run.AssignColumn(mockInputs.TxHashLo.GetColID(), smartvectors.NewRegular(txHashLoVec))
-				run.AssignColumn(mockInputs.IsTxHash.GetColID(), smartvectors.NewRegular(isTxHashVec))
-
-				// Assign mock FilterFetched column (number of L2L1 logs)
-				filterFetchedVec := make([]field.Element, colSize)
-				for i := 0; i < tc.numL2Logs && i < colSize; i++ {
-					filterFetchedVec[i] = field.One()
-				}
-				run.AssignColumn(mockInputs.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetchedVec))
+				// First assign the mock input columns
+				assignMockInputs(run, mockInputs, tc)
 
 				// Run the InvalidityPI Assign
 				pi.Assign(run)
 
-				// Verify results
-				hashBadPrecompile := run.GetColumn(pi.HashBadPrecompile.GetColID()).Get(0)
-				if !hashBadPrecompile.Equal(&tc.expectedBadPrecompile) {
-					t.Errorf("HashBadPrecompile: expected %v, got %v", tc.expectedBadPrecompile.String(), hashBadPrecompile.String())
-				}
+				checkPublicInputsAreAccessible(run, pi, tc)
 
-				nbL2Logs := run.GetColumn(pi.NbL2Logs.GetColID()).Get(0)
-				expectedNbL2Logs := field.NewElement(uint64(tc.numL2Logs))
-				if !nbL2Logs.Equal(&expectedNbL2Logs) {
-					t.Errorf("NbL2Logs: expected %v, got %v", expectedNbL2Logs.String(), nbL2Logs.String())
-				}
-
-				txHashHiResult := run.GetColumn(pi.TxHashHi.GetColID()).Get(0)
-				if !txHashHiResult.Equal(&testTxHashHi) {
-					t.Errorf("TxHashHi: expected %v, got %v", testTxHashHi.String(), txHashHiResult.String())
-				}
-
-				txHashLoResult := run.GetColumn(pi.TxHashLo.GetColID()).Get(0)
-				if !txHashLoResult.Equal(&testTxHashLo) {
-					t.Errorf("TxHashLo: expected %v, got %v", testTxHashLo.String(), txHashLoResult.String())
-				}
 			}
 
 			comp := wizard.Compile(define, dummy.Compile)
@@ -179,122 +169,84 @@ func TestInvalidityPIAssign(t *testing.T) {
 	}
 }
 
-// testableInvalidityPI is a version of InvalidityPI that works with mock columns for testing
-type testableInvalidityPI struct {
-	TxHashHi          ifaces.Column
-	TxHashLo          ifaces.Column
-	FromAddress       ifaces.Column
-	HashBadPrecompile ifaces.Column
-	NbL2Logs          ifaces.Column
+func assignMockInputs(run *wizard.ProverRuntime, mockInputs *mockInvalidityPIInputs, tc testCase) {
+	// Assign mock badPrecompile column
+	badPrecompileVec := make([]field.Element, colSize)
+	if tc.hasBadPrecompile {
+		badPrecompileVec[2] = field.One() // Set a non-zero value at index 2
+	}
+	run.AssignColumn(mockInputs.BadPrecompileCol.GetColID(), smartvectors.NewRegular(badPrecompileVec))
 
-	// Mock input references
-	badPrecompileCol     ifaces.Column
-	addressHi            ifaces.Column
-	addressLo            ifaces.Column
-	isAddressFromTxnData ifaces.Column
-	txHashHi             ifaces.Column
-	txHashLo             ifaces.Column
-	isTxHash             ifaces.Column
-	filterFetched        ifaces.Column
+	// Assign mock address columns
+	addressHiVec := make([]field.Element, colSize)
+	addressLoVec := make([]field.Element, colSize)
+	isAddressFromTxnDataVec := make([]field.Element, colSize)
+	addressHiVec[3] = testAddressHi
+	addressLoVec[3] = testAddressLo
+	isAddressFromTxnDataVec[3] = field.One() // Mark row 3 as having the address
+	run.AssignColumn(mockInputs.AddressHi.GetColID(), smartvectors.NewRegular(addressHiVec))
+	run.AssignColumn(mockInputs.AddressLo.GetColID(), smartvectors.NewRegular(addressLoVec))
+	run.AssignColumn(mockInputs.IsAddressFromTxnData.GetColID(), smartvectors.NewRegular(isAddressFromTxnDataVec))
 
-	Extractor InvalidityPIExtractor
+	// Assign mock TxSignature columns
+	txHashHiVec := make([]field.Element, colSize)
+	txHashLoVec := make([]field.Element, colSize)
+	isTxHashVec := make([]field.Element, colSize)
+	txHashHiVec[5] = testTxHashHi
+	txHashLoVec[5] = testTxHashLo
+	isTxHashVec[5] = field.One() // Mark row 5 as having the tx hash
+	run.AssignColumn(mockInputs.TxHashHi.GetColID(), smartvectors.NewRegular(txHashHiVec))
+	run.AssignColumn(mockInputs.TxHashLo.GetColID(), smartvectors.NewRegular(txHashLoVec))
+	run.AssignColumn(mockInputs.IsTxHash.GetColID(), smartvectors.NewRegular(isTxHashVec))
+
+	// Assign mock FilterFetched column (number of L2L1 logs) - uses different size
+	filterFetchedVec := make([]field.Element, filterFetchedSize)
+	for i := 0; i < tc.numL2Logs && i < filterFetchedSize; i++ {
+		filterFetchedVec[i] = field.One()
+	}
+	run.AssignColumn(mockInputs.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetchedVec))
 }
 
-// newTestableInvalidityPI creates a testable InvalidityPI with mock columns
-func newTestableInvalidityPI(comp *wizard.CompiledIOP, mockInputs *mockInvalidityPIInputs) *testableInvalidityPI {
-	name := "TEST_INVALIDITY_PI"
+// checkPublicInputsAreAccessible verifies that all InvalidityPI public inputs
+// are registered in the CompiledIOP and accessible via GetPublicInput
+func checkPublicInputsAreAccessible(run *wizard.ProverRuntime, pi *InvalidityPI, tc testCase) {
 
-	pi := &testableInvalidityPI{
-		TxHashHi:          comp.InsertCommit(0, ifaces.ColIDf("%s_TX_HASH_HI", name), 1),
-		TxHashLo:          comp.InsertCommit(0, ifaces.ColIDf("%s_TX_HASH_LO", name), 1),
-		FromAddress:       comp.InsertCommit(0, ifaces.ColIDf("%s_FROM_ADDRESS", name), 1),
-		HashBadPrecompile: comp.InsertCommit(0, ifaces.ColIDf("%s_HASH_BAD_PRECOMPILE", name), 1),
-		NbL2Logs:          comp.InsertCommit(0, ifaces.ColIDf("%s_NB_L2_LOGS", name), 1),
-
-		badPrecompileCol:     mockInputs.BadPrecompileCol,
-		addressHi:            mockInputs.AddressHi,
-		addressLo:            mockInputs.AddressLo,
-		isAddressFromTxnData: mockInputs.IsAddressFromTxnData,
-		txHashHi:             mockInputs.TxHashHi,
-		txHashLo:             mockInputs.TxHashLo,
-		isTxHash:             mockInputs.IsTxHash,
-		filterFetched:        mockInputs.FilterFetched,
+	// Verify public inputs are accessible and return correct values
+	// StateRootHash
+	stateRootHash := run.GetPublicInput(StateRootHash)
+	if !stateRootHash.Equal(&testStateRootHash) {
+		panic("StateRootHash value mismatch")
 	}
 
-	return pi
+	// TxHashHi
+	txHashHi := run.GetPublicInput(TxHashHi)
+	if !txHashHi.Equal(&testTxHashHi) {
+		panic("TxHashHi value mismatch")
+	}
+
+	// TxHashLo
+	txHashLo := run.GetPublicInput(TxHashLo)
+	if !txHashLo.Equal(&testTxHashLo) {
+		panic("TxHashLo value mismatch")
+	}
+
+	// FromAddress
+	expectedAddress := computeExpectedAddress()
+	fromAddress := run.GetPublicInput(FromAddress)
+	if !fromAddress.Equal(&expectedAddress) {
+		panic("FromAddress value mismatch")
+	}
+
+	// HashBadPrecompile
+	hashBadPrecompile := run.GetPublicInput(HashBadPrecompile)
+	if !hashBadPrecompile.Equal(&tc.expectedBadPrecompile) {
+		panic("HashBadPrecompile value mismatch")
+	}
+
+	// NbL2Logs
+	expectedNbL2Logs := field.NewElement(uint64(tc.numL2Logs))
+	nbL2Logs := run.GetPublicInput(NbL2Logs)
+	if !nbL2Logs.Equal(&expectedNbL2Logs) {
+		panic("NbL2Logs value mismatch")
+	}
 }
-
-// Assign for testableInvalidityPI - mirrors the real Assign logic but uses mock columns
-func (pi *testableInvalidityPI) Assign(run *wizard.ProverRuntime) {
-	var (
-		hashBadPrecompile = field.Element{}
-		fromAddress       = field.Element{}
-		nbL2Logs          uint64
-		txHashHi          = field.Element{}
-		txHashLo          = field.Element{}
-	)
-
-	// 1. Scan the badPrecompile column to find if any value is non-zero
-	badPrecompileCol := pi.badPrecompileCol.GetColAssignment(run)
-	size := badPrecompileCol.Len()
-	for i := 0; i < size; i++ {
-		val := badPrecompileCol.Get(i)
-		if !val.IsZero() {
-			hashBadPrecompile = field.One()
-			break
-		}
-	}
-
-	// 2. Extract FromAddress from addresses module
-	isFromCol := pi.isAddressFromTxnData.GetColAssignment(run)
-	sizeEcdsa := isFromCol.Len()
-	for i := 0; i < sizeEcdsa; i++ {
-		source := isFromCol.Get(i)
-		if source.IsOne() {
-			fromAddressHi := pi.addressHi.GetColAssignmentAt(run, i)
-			fromAddressLo := pi.addressLo.GetColAssignmentAt(run, i)
-			// create fromAddress from fromAddressHi and fromAddressLo
-			hiBytes := fromAddressHi.Bytes()
-			loBytes := fromAddressLo.Bytes()
-			var b [20]byte
-			copy(b[:4], hiBytes[28:])
-			copy(b[4:], loBytes[16:])
-			fromAddress.SetBytes(b[:])
-			break
-		}
-	}
-
-	// 3. Extract TxHash
-	isTxHashCol := pi.isTxHash.GetColAssignment(run)
-	ecdsaSize := isTxHashCol.Len()
-	for i := 0; i < ecdsaSize; i++ {
-		isTxHash := isTxHashCol.Get(i)
-		if isTxHash.IsOne() {
-			txHashHi = pi.txHashHi.GetColAssignmentAt(run, i)
-			txHashLo = pi.txHashLo.GetColAssignmentAt(run, i)
-			break
-		}
-	}
-
-	// 4. Extract NbL2Logs
-	filterFetched := pi.filterFetched.GetColAssignment(run)
-	sizeFetched := filterFetched.Len()
-	for i := 0; i < sizeFetched; i++ {
-		filter := filterFetched.Get(i)
-		if filter.IsOne() {
-			nbL2Logs++
-		}
-	}
-
-	// Assign the columns
-	run.AssignColumn(pi.TxHashHi.GetColID(), smartvectors.NewConstant(txHashHi, 1))
-	run.AssignColumn(pi.TxHashLo.GetColID(), smartvectors.NewConstant(txHashLo, 1))
-	run.AssignColumn(pi.FromAddress.GetColID(), smartvectors.NewConstant(fromAddress, 1))
-	run.AssignColumn(pi.HashBadPrecompile.GetColID(), smartvectors.NewConstant(hashBadPrecompile, 1))
-	run.AssignColumn(pi.NbL2Logs.GetColID(), smartvectors.NewConstant(field.NewElement(nbL2Logs), 1))
-}
-
-// Ensure unused imports don't cause errors (they're used via type references)
-var _ = (*ecdsa.Addresses)(nil)
-var _ = (*ecdsa.TxSignature)(nil)
-var _ = (*logs.ExtractedData)(nil)

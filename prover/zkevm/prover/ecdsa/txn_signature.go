@@ -31,7 +31,7 @@ type TxSignature struct {
 
 type txSignatureInputs struct {
 	RlpTxn generic.GenDataModule
-	Ac     *antichamber
+	Ac     *Antichamber
 }
 
 func newTxSignatures(comp *wizard.CompiledIOP, inp txSignatureInputs) *TxSignature {
