@@ -5,11 +5,11 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 )
@@ -23,7 +23,7 @@ type ReadNonZeroTrace[K, V io.WriterTo] struct {
 	NextFreeNode int                 `json:"nextFreeNode"`
 	Key          K                   `json:"key"`
 	Value        V                   `json:"value"`
-	SubRoot      Bytes32             `json:"subRoot"`
+	SubRoot      KoalaOctuplet       `json:"subRoot"`
 	LeafOpening  LeafOpening         `json:"leaf"`
 	Proof        smt_koalabear.Proof `json:"proof"`
 }
@@ -65,7 +65,7 @@ func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) er
 
 	// Check that verifier's root is the same as the one in the traces
 	if v.SubTreeRoot != trace.SubRoot {
-		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot, trace.SubRoot)
+		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot.Hex(), trace.SubRoot.Hex())
 	}
 
 	tuple := KVOpeningTuple[K, V]{
@@ -79,7 +79,7 @@ func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) er
 		return errors.WithMessage(err, "read non zero verifier failed")
 	}
 
-	if smt_koalabear.Verify(&trace.Proof, types.Bytes32ToOctuplet(leaf), types.Bytes32ToOctuplet(trace.SubRoot)) != nil {
+	if smt_koalabear.Verify(&trace.Proof, field.Octuplet(leaf), field.Octuplet(trace.SubRoot)) != nil {
 		return fmt.Errorf("merkle proof verification failed")
 	}
 
@@ -102,11 +102,11 @@ func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
 	}
 
 	leaf, _ := tuple.CheckAndLeaf()
-	appendTo = append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.Proof, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leaf)})
+	appendTo = append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.Proof, Root: trace.SubRoot, Leaf: leaf})
 	return appendTo
 }
 
-func (trace ReadNonZeroTrace[K, V]) HKey() Bytes32 {
+func (trace ReadNonZeroTrace[K, V]) HKey() KoalaOctuplet {
 	return hash(trace.Key)
 }
 

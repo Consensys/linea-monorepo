@@ -11,8 +11,8 @@ import (
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"golang.org/x/crypto/sha3"
 )
@@ -138,8 +138,11 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			LastFinalizedBlockTimestamp:    pi.LastFinalizedBlockTimestamp,
 			LastFinalizedRollingHash:       [32]frontend.Variable{},
 			LastFinalizedRollingHashNumber: pi.LastFinalizedRollingHashMsgNumber,
-			InitialStateRootHash:           pi.InitialStateRootHash[:],
-			NbDecompression:                pi.NbDecompression,
+			InitialStateRootHash: [2]frontend.Variable{
+				pi.InitialStateRootHash[:16],
+				pi.InitialStateRootHash[16:],
+			},
+			NbDataAvailability: pi.NbDecompression,
 			ChainConfigurationFPISnark: ChainConfigurationFPISnark{
 				ChainID:                 pi.ChainID,
 				BaseFee:                 pi.BaseFee,
@@ -166,8 +169,8 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 
 type AggregationFPIQSnark struct {
 	ParentShnarf                   [32]frontend.Variable
-	NbDecompression                frontend.Variable
-	InitialStateRootHash           frontend.Variable
+	NbDataAvailability             frontend.Variable
+	InitialStateRootHash           [2]frontend.Variable
 	LastFinalizedBlockNumber       frontend.Variable
 	LastFinalizedBlockTimestamp    frontend.Variable
 	LastFinalizedRollingHash       [32]frontend.Variable
@@ -260,15 +263,15 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,
 		pi.FinalShnarf,
-		utils.ToBytes(api, pi.LastFinalizedBlockTimestamp),
-		utils.ToBytes(api, pi.FinalBlockTimestamp),
-		utils.ToBytes(api, pi.LastFinalizedBlockNumber),
-		utils.ToBytes(api, pi.FinalBlockNumber),
+		gnarkutil.ToBytes32(api, pi.LastFinalizedBlockTimestamp),
+		gnarkutil.ToBytes32(api, pi.FinalBlockTimestamp),
+		gnarkutil.ToBytes32(api, pi.LastFinalizedBlockNumber),
+		gnarkutil.ToBytes32(api, pi.FinalBlockNumber),
 		pi.LastFinalizedRollingHash,
 		pi.FinalRollingHash,
-		utils.ToBytes(api, pi.LastFinalizedRollingHashNumber),
-		utils.ToBytes(api, pi.FinalRollingHashNumber),
-		utils.ToBytes(api, zk.ValueOf(pi.L2MsgMerkleTreeDepth)),
+		gnarkutil.ToBytes32(api, pi.LastFinalizedRollingHashNumber),
+		gnarkutil.ToBytes32(api, pi.FinalRollingHashNumber),
+		gnarkutil.ToBytes32(api, pi.L2MsgMerkleTreeDepth),
 		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 
 		//include a hash of the chain configuration

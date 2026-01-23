@@ -111,7 +111,7 @@ func TestInsertionRootHashPoseidon2(t *testing.T) {
 		leafOpening := acc.Data.MustGet(2).LeafOpening
 		require.Equal(
 			t,
-			"LeafOpening{Prev: 0, Next: 1, HKey: 0x27b48fe33995c55d329a805f2c4acdc05c1229592579fcab0a46d23239f19498, HVal: 0x43b6adef3fc8455b573aadd56e3ab14a11084a9d667c2c8449b707c31cb32560}",
+			"LeafOpening{Prev: 0, Next: 1, HKey: 0x2a5104052407a7e1473dc2b03101215d22e5e4d5411072b33909be0129f31faa, HVal: 0x40549e906a7e4b076930ae253c51fb5f0239607b45f47349247c8e5a70a649b8}",
 			leafOpening.String(),
 		)
 
@@ -157,7 +157,7 @@ func TestInsertAndUpdateRootHashPoseidon2(t *testing.T) {
 	// root of the subtree (e.g. exluding the next free node)
 	require.Equal(
 		t,
-		"0x50b4bb9d2b4c917f48ca9465613d7efe092934a95bcdc7a004ef3a6b7900fd5b",
+		"0x2f20cbc26937b220551a344d548fccf216eec47b13b844c53ff76ade2f4c174d",
 		acc.SubTreeRoot().Hex(),
 	)
 
@@ -218,8 +218,8 @@ func TestRealKeyAndVal(t *testing.T) {
 		types.Account{
 			Nonce:          65,
 			Balance:        big.NewInt(835),
-			StorageRoot:    types.Bytes32FromHex("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
-			LineaCodeHash:  types.Bytes32FromHex("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
+			StorageRoot:    types.MustHexToKoalabearOctuplet("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
+			LineaCodeHash:  types.MustHexToKoalabearOctuplet("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
 			KeccakCodeHash: types.FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 			CodeSize:       0,
 		}
@@ -259,17 +259,15 @@ func TestProofFromReadAndProve(t *testing.T) {
 
 	require.Equal(
 		t,
-		"0x0000000000000000000000000000000000000000000000000000000000000024",
+		"0x0000002400000024000000240000002400000024000000240000002400000024",
 		key.Hex(),
 	)
 
 	require.Equal(
 		t,
-		"0x0000000000000000000000000000000000000000000000000000000000000020",
+		"0x0000002000000020000000200000002000000020000000200000002000000020",
 		val.Hex(),
 	)
-
-	fmt.Printf("Proof: %v\n", trace.Proof.String())
 
 	err := ver.ReadNonZeroVerify(trace)
 	require.NoErrorf(t, err, "check #%v - trace %++v", key, trace)
@@ -288,8 +286,8 @@ func TestProofFromInsertAndProve(t *testing.T) {
 		types.Account{
 			Nonce:          65,
 			Balance:        big.NewInt(835),
-			StorageRoot:    types.Bytes32FromHex("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
-			LineaCodeHash:  types.Bytes32FromHex("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
+			StorageRoot:    types.MustHexToKoalabearOctuplet("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
+			LineaCodeHash:  types.MustHexToKoalabearOctuplet("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
 			KeccakCodeHash: types.FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 			CodeSize:       0,
 		}
@@ -354,8 +352,8 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 		types.Account{
 			Nonce:          65,
 			Balance:        big.NewInt(835),
-			StorageRoot:    types.Bytes32FromHex("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
-			LineaCodeHash:  types.Bytes32FromHex("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
+			StorageRoot:    types.MustHexToKoalabearOctuplet("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
+			LineaCodeHash:  types.MustHexToKoalabearOctuplet("0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc"),
 			KeccakCodeHash: types.FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 			CodeSize:       0,
 		}
@@ -407,8 +405,8 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 		types.Account{
 			Nonce:          41,
 			Balance:        big.NewInt(15353),
-			StorageRoot:    types.Bytes32FromHex("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
-			LineaCodeHash:  types.Bytes32FromHex("0x000000000000000000000000000000000000000000000000000000000000004b"),
+			StorageRoot:    types.MustHexToKoalabearOctuplet("0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7"),
+			LineaCodeHash:  types.MustHexToKoalabearOctuplet("0x000000000000000000000000000000000000000000000000000000000000004b"),
 			KeccakCodeHash: types.FullBytes32FromHex("0x0f00000000000000000000000000000000000000000000000000000000000000"),
 			CodeSize:       7,
 		}
@@ -522,7 +520,7 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 
 	fmt.Printf("------------------- Trace 4: update account 2 ------------------\n")
 
-	account2.StorageRoot = types.Bytes32FromHex("0x07bd72a3216f334e18eb7cb3388a4ab4758d0b10486f08ae22e9834c7a0210d3")
+	account2.StorageRoot = types.MustHexToKoalabearOctuplet("0x07bd72a3216f334e18eb7cb3388a4ab4758d0b10486f08ae22e9834c7a0210d3")
 	encodedNewAccount2 := "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003bf907bd72a3216f334e18eb7cb3388a4ab4758d0b10486f08ae22e9834c7a0210d3000000000000000000000000000000000000000000000000000000000000004b00000f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"
 
 	trace4 := acc.UpdateAndProve(key2, account2)

@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -21,7 +20,7 @@ import (
 // compiler. It simply checks that all positions of [testCircuit.A] are consecutive.
 // Thus, [1, 2, 3] is a valid assignment and [1, 1, 0] is not.
 type testCircuit struct {
-	A [3]zk.WrappedVariable `gnark:",public"`
+	A [3]frontend.Variable `gnark:",public"`
 }
 
 // Define implements the [frontend.Circuit] interface

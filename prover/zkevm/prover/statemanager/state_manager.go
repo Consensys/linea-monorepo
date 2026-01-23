@@ -62,9 +62,8 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings, arith *arithme
 
 // Assign assignes the submodules of the state-manager. It requires the
 // arithmetization columns to be assigned first.
-func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]statemanager.DecodedTrace) {
+func (sm *StateManager) Assign(run *wizard.ProverRuntime, arith *arithmetization.Arithmetization, shomeiTraces [][]statemanager.DecodedTrace) {
 
-	assignHubAddresses(run)
 	addSkipFlags(&shomeiTraces)
 	shomeiTraces = removeSystemTransactions(shomeiTraces)
 	sm.StateSummary.Assign(run, shomeiTraces)
@@ -107,9 +106,10 @@ func addSkipFlags(shomeiTraces *[][]statemanager.DecodedTrace) {
 	// AddressAndKey is a struct used as a key in order to identify skippable traces
 	// in our maps
 	type AddressAndKey struct {
-		address    types.Bytes32
-		storageKey types.Bytes32
+		address    types.FullBytes32
+		storageKey types.FullBytes32
 	}
+
 	// iterate over all the Shomei blocks
 	for blockNo, vec := range *shomeiTraces {
 		var (
@@ -126,14 +126,14 @@ func addSkipFlags(shomeiTraces *[][]statemanager.DecodedTrace) {
 			if err != nil {
 				panic(err)
 			}
-			b32 := types.LeftPadToBytes32(curAddress[:])
+			b32 := types.LeftPadToFullBytes32(curAddress[:])
 
 			if trace.Location != statemanager.WS_LOCATION {
 				// we have a STORAGE trace
 				// prepare the search key
 				searchKey := AddressAndKey{
 					address:    b32,
-					storageKey: trace.Underlying.HKey(),
+					storageKey: trace.Underlying.HKey().ToBytes32(),
 				}
 				previousIndex, isFound := traceMap[searchKey]
 				if isFound {

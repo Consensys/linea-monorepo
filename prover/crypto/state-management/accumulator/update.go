@@ -5,11 +5,11 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 )
@@ -25,8 +25,8 @@ type UpdateTrace[K, V io.WriterTo] struct {
 	// We call it new next free node, but the value is not updated
 	// during the update.
 	NewNextFreeNode int                 `json:"newNextFreeNode"`
-	OldSubRoot      Bytes32             `json:"oldSubRoot"`
-	NewSubRoot      Bytes32             `json:"newSubRoot"`
+	OldSubRoot      KoalaOctuplet       `json:"oldSubRoot"`
+	NewSubRoot      KoalaOctuplet       `json:"newSubRoot"`
 	OldOpening      LeafOpening         `json:"priorUpdatedLeaf"`
 	Proof           smt_koalabear.Proof `json:"proof"`
 }
@@ -57,7 +57,7 @@ func (p *ProverState[K, V]) UpdateAndProve(key K, newVal V) UpdateTrace[K, V] {
 	p.Data.Update(i, tuple)
 
 	newLeaf := tuple.LeafOpening.Hash()
-	p.Tree.Update(int(i), types.Bytes32ToOctuplet(newLeaf))
+	p.Tree.Update(int(i), field.Octuplet(newLeaf))
 
 	return UpdateTrace[K, V]{
 		Location:        p.Location,
@@ -83,7 +83,7 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 
 	// Check that verifier's root is the same as the one in the traces
 	if v.SubTreeRoot != trace.OldSubRoot {
-		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot, trace.OldSubRoot)
+		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot.Hex(), trace.OldSubRoot.Hex())
 	}
 
 	tuple := KVOpeningTuple[K, V]{
@@ -97,7 +97,7 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 		return errors.WithMessage(err, "read update verifier failed")
 	}
 
-	if smt_koalabear.Verify(&trace.Proof, types.Bytes32ToOctuplet(leaf), types.Bytes32ToOctuplet(trace.OldSubRoot)) != nil {
+	if smt_koalabear.Verify(&trace.Proof, field.Octuplet(leaf), field.Octuplet(trace.OldSubRoot)) != nil {
 		return fmt.Errorf("merkle proof verification failed")
 	}
 
@@ -150,7 +150,7 @@ func (trace UpdateTrace[K, V]) DeferMerkleChecks(
 	return appendTo
 }
 
-func (trace UpdateTrace[K, V]) HKey() Bytes32 {
+func (trace UpdateTrace[K, V]) HKey() KoalaOctuplet {
 	return hash(trace.Key)
 }
 

@@ -17,18 +17,18 @@ type FunctionalInputExtractor struct {
 	DataNbBytes query.LocalOpening
 
 	// DataChecksum returns the hash of the execution data
-	DataChecksum [common.NbLimbU256]query.LocalOpening
+	DataChecksum [common.NbLimbU128]query.LocalOpening
 
 	// L2MessagesHash is the hash of the hashes of the L2 messages. Each message
 	// hash is encoded as 2 field elements, thus the hash does not need padding.
 	//
 	// NB: the corresponding field in [FunctionalPublicInputSnark] is the list
 	// the individual L2 messages hashes.
-	L2MessageHash [common.NbLimbU256]query.LocalOpening
+	L2MessageHash [common.NbLimbU128]query.LocalOpening
 
 	// InitialStateRootHash and FinalStateRootHash are resp the initial and
 	// root hash of the state for the
-	InitialStateRootHash, FinalStateRootHash                  [common.NbLimbU256]query.LocalOpening
+	InitialStateRootHash, FinalStateRootHash                  [common.NbElemPerHash]query.LocalOpening
 	InitialBlockNumber, FinalBlockNumber                      [common.NbLimbU48]query.LocalOpening
 	InitialBlockTimestamp, FinalBlockTimestamp                [common.NbLimbU128]query.LocalOpening
 	FirstRollingHashUpdate, LastRollingHashUpdate             [common.NbLimbU256]query.LocalOpening
@@ -37,8 +37,8 @@ type FunctionalInputExtractor struct {
 	ChainID              [common.NbLimbU256]query.LocalOpening
 	NBytesChainID        query.LocalOpening
 	L2MessageServiceAddr [common.NbLimbEthAddress]query.LocalOpening
-	CoinBase             [common.NbLimbU256]query.LocalOpening
-	BaseFee              [common.NbLimbU256]query.LocalOpening
+	CoinBase             [common.NbLimbEthAddress]query.LocalOpening
+	BaseFee              [common.NbLimbU128]query.LocalOpening
 }
 
 // Run assigns all the local opening queries
@@ -55,18 +55,17 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 	}
 
 	assignLO(fie.DataNbBytes)
-	assignLO(fie.NBytesChainID)
 	assignLOs(fie.L2MessageServiceAddr[:])
 	assignLOs(fie.CoinBase[:])
 	assignLOs(fie.BaseFee[:])
 	assignLOs(fie.ChainID[:])
+	assignLO(fie.NBytesChainID)
 	assignLOs(fie.L2MessageHash[:])
 	assignLOs(fie.DataChecksum[:])
 	assignLOs(fie.FirstRollingHashUpdate[:])
 	assignLOs(fie.LastRollingHashUpdate[:])
 	assignLOs(fie.InitialStateRootHash[:])
 	assignLOs(fie.FinalStateRootHash[:])
-	assignLOs(fie.L2MessageServiceAddr[:])
 	assignLOs(fie.InitialBlockNumber[:])
 	assignLOs(fie.FinalBlockNumber[:])
 	assignLOs(fie.InitialBlockTimestamp[:])

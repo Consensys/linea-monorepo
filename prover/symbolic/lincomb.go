@@ -2,15 +2,14 @@ package symbolic
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
-
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -107,46 +106,50 @@ func (lc LinComb) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [GnarkEval] interface
-func (lc LinComb) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
+func (lc LinComb) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagnark.Element {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
-	res := zk.ValueOf(0)
+	res := koalagnark.NewElement(0)
 
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
 	for i, input := range inputs {
-		coeff := zk.ValueOf(lc.Coeffs[i])
-		tmp := apiGen.Mul(coeff, input)
-		res = apiGen.Add(res, tmp)
+		coeff := koalagnark.NewElement(lc.Coeffs[i])
+		tmp := koalaAPI.Mul(coeff, input)
+		res = koalaAPI.Add(res, tmp)
 	}
 
 	return res
 }
 
 // GnarkEval implements the [GnarkEvalExt] interface
-func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext) koalagnark.Ext {
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-	res := *e4Api.Zero()
+	koalaAPI := koalagnark.NewAPI(api)
+	res := koalaAPI.ZeroExt()
 
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
-	var tmp gnarkfext.E4Gen
+	// Optimization: use MulByFp instead of full E4 Mul since coeffs are base field elements
+	c := big.NewInt(0)
 	for i, input := range inputs {
-		coeff := gnarkfext.NewE4GenFromBase(lc.Coeffs[i])
-		tmp = *e4Api.Mul(&coeff, &input)
-		res = *e4Api.Add(&tmp, &res)
+		switch coeff := lc.Coeffs[i]; coeff {
+		case 0:
+			// skip
+		case 1:
+			res = koalaAPI.AddExt(res, input)
+		case -1:
+			res = koalaAPI.SubExt(res, input)
+		default:
+			c.SetInt64(int64(coeff))
+			tmp := koalaAPI.MulConstExt(input, c)
+			res = koalaAPI.AddExt(tmp, res)
+		}
 	}
 
 	return res

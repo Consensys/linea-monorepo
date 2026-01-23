@@ -277,18 +277,18 @@ func (b *StateLogBuilder) EraseAccount() *StateLogBuilder {
 
 // Create instructs the StateFrameBuilder that a new contract was deployed to
 // the current address.
-func (b *StateLogBuilder) InitContract(codeSize int64, keccakCodeHash types.FullBytes32, mimcCodeHash types.Bytes32) *StateLogBuilder {
+func (b *StateLogBuilder) InitContract(codeSize int64, keccakCodeHash types.FullBytes32, poseidonCodeHash types.KoalaOctuplet) *StateLogBuilder {
 	state := b.currState
 	address := b.currAddress
 	state.SetCodeSize(address, codeSize)
 	state.SetCodeHash(address, keccakCodeHash)
-	state.SetPoseidon2CodeHash(address, mimcCodeHash)
+	state.SetPoseidon2CodeHash(address, poseidonCodeHash)
 	b.pushFrame(
 		StateAccessLog{
 			Block:   b.currBlock,
 			Address: b.currAddress,
 			Type:    AccountInit,
-			Value:   []any{codeSize, keccakCodeHash, mimcCodeHash},
+			Value:   []any{codeSize, keccakCodeHash, poseidonCodeHash},
 			IsWrite: true,
 		},
 	)

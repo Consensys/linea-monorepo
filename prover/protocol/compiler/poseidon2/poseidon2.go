@@ -118,26 +118,35 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 
 	for i := range ctx.CompiledQueries {
 
+		// Build stacked columns slice using a loop
+		stackedCols := make([]ifaces.Column, 0, blockSize*3)
 		for block := 0; block < blockSize; block++ {
-			comp.GenericFragmentedConditionalInclusion(
-				protocolRoundID,
-				ifaces.QueryIDf("Poseidon2_QUERY_%v_INCLUSION_SelfRecursionCount_%v_ID_%v_BLOCK_%v", i, comp.SelfRecursionCount, uniqueID(comp), block),
-				[][]ifaces.Column{
-					{
-						ctx.StackedBlocks[block],
-						ctx.StackedOldStates[block],
-						ctx.StackedNewStates[block],
-					},
-				},
-				[]ifaces.Column{
-					ctx.CompiledQueries[i].Blocks[block],
-					ctx.CompiledQueries[i].OldState[block],
-					ctx.CompiledQueries[i].NewState[block],
-				},
-				nil,
-				ctx.CompiledQueries[i].Selector,
+			stackedCols = append(stackedCols,
+				ctx.StackedBlocks[block],
+				ctx.StackedOldStates[block],
+				ctx.StackedNewStates[block],
 			)
 		}
+
+		// Build query columns slice using a loop
+		queryCols := make([]ifaces.Column, 0, blockSize*3)
+		for block := 0; block < blockSize; block++ {
+			queryCols = append(queryCols,
+				ctx.CompiledQueries[i].Blocks[block],
+				ctx.CompiledQueries[i].OldState[block],
+				ctx.CompiledQueries[i].NewState[block],
+			)
+		}
+
+		comp.GenericFragmentedConditionalInclusion(
+			protocolRoundID,
+			ifaces.QueryIDf("Poseidon2_QUERY_%v_INCLUSION_SelfRecursionCount_%v_ID_%v", i, comp.SelfRecursionCount, uniqueID(comp)),
+			[][]ifaces.Column{stackedCols},
+			queryCols,
+			nil,
+			ctx.CompiledQueries[i].Selector,
+		)
+
 	}
 
 	comp.RegisterProverAction(protocolRoundID, ctx)

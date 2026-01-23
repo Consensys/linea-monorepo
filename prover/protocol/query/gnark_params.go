@@ -4,22 +4,21 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
 // A gnark circuit version of the LocalOpeningResult
 type GnarkLocalOpeningParams struct {
-	BaseY  zk.WrappedVariable
-	ExtY   gnarkfext.E4Gen
+	BaseY  koalagnark.Element
+	ExtY   koalagnark.Ext
 	IsBase bool
 }
 
 func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
-	exty := gnarkfext.NewE4Gen(p.ExtY)
+	exty := koalagnark.NewExt(p.ExtY)
 	return GnarkLocalOpeningParams{
-		BaseY:  zk.ValueFromKoala(p.BaseY),
+		BaseY:  koalagnark.NewElementFromKoala(p.BaseY),
 		ExtY:   exty,
 		IsBase: p.IsBase,
 	}
@@ -27,12 +26,12 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
 // A gnark circuit version of LogDerivSumParams
 type GnarkLogDerivSumParams struct {
-	Sum gnarkfext.E4Gen
+	Sum koalagnark.Ext
 }
 
 // A gnark circuit version of GrandProductParams
 type GnarkGrandProductParams struct {
-	Prod gnarkfext.E4Gen
+	Prod koalagnark.Ext
 }
 
 // HornerParamsPartGnark is a [HornerParamsPart] in a gnark circuit.
@@ -48,7 +47,7 @@ type HornerParamsPartGnark struct {
 type GnarkHornerParams struct {
 	// Final result is the result of summing the Horner parts for every
 	// queries.
-	FinalResult gnarkfext.E4Gen
+	FinalResult koalagnark.Ext
 	// Parts are the parameters of the Horner parts
 	Parts []HornerParamsPartGnark
 }
@@ -56,16 +55,16 @@ type GnarkHornerParams struct {
 func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 	// return GnarkLogDerivSumParams{Sum: p.Sum}
 	tmp := p.Sum.GetExt()
-	return GnarkLogDerivSumParams{Sum: gnarkfext.NewE4Gen(tmp)} // TODO @thomas fixme (ext vs base)
+	return GnarkLogDerivSumParams{Sum: koalagnark.NewExt(tmp)} // TODO @thomas fixme (ext vs base)
 }
 
 // A gnark circuit version of InnerProductParams
 type GnarkInnerProductParams struct {
-	Ys []gnarkfext.E4Gen
+	Ys []koalagnark.Ext
 }
 
 func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: make([]gnarkfext.E4Gen, len(p.Bs))}
+	return GnarkInnerProductParams{Ys: make([]koalagnark.Ext, len(p.Bs))}
 }
 
 func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
@@ -74,14 +73,14 @@ func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
 
 // A gnark circuit version of univariate eval params
 type GnarkUnivariateEvalParams struct {
-	ExtX  gnarkfext.E4Gen
-	ExtYs []gnarkfext.E4Gen
+	ExtX  koalagnark.Ext
+	ExtYs []koalagnark.Ext
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 	// no need to preallocate the x because its size is already known
 	return GnarkUnivariateEvalParams{
-		ExtYs: make([]gnarkfext.E4Gen, len(p.Pols)),
+		ExtYs: make([]koalagnark.Ext, len(p.Pols)),
 	}
 }
 
@@ -89,7 +88,7 @@ func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
 	return GnarkUnivariateEvalParams{
 		ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
-		ExtX:  gnarkfext.NewE4Gen(p.ExtX),
+		ExtX:  koalagnark.NewExt(p.ExtX),
 	}
 
 }
@@ -107,13 +106,13 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 	parts := make([]HornerParamsPartGnark, len(p.Parts))
 	for i, part := range p.Parts {
 		parts[i] = HornerParamsPartGnark{
-			N0: zk.ValueOf(part.N0),
-			N1: zk.ValueOf(part.N1),
+			N0: koalagnark.NewElement(part.N0),
+			N1: koalagnark.NewElement(part.N1),
 		}
 	}
 
 	return GnarkHornerParams{
-		FinalResult: gnarkfext.NewE4Gen(p.FinalResult),
+		FinalResult: koalagnark.NewExt(p.FinalResult),
 		Parts:       parts,
 	}
 }
@@ -154,6 +153,6 @@ func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	(*fs).UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		(*fs).Update(zk.WrapFrontendVariable(part.N0), zk.WrapFrontendVariable(part.N1))
+		(*fs).Update(koalagnark.WrapFrontendVariable(part.N0), koalagnark.WrapFrontendVariable(part.N1))
 	}
 }

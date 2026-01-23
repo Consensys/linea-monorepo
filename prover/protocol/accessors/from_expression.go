@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -167,10 +166,10 @@ func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
+func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
 
 	metadata := e.Boarded.ListVariableMetadata()
-	inputs := make([]zk.WrappedVariable, len(metadata))
+	inputs := make([]koalagnark.Element, len(metadata))
 
 	for i, m := range metadata {
 		switch castedMetadata := m.(type) {
@@ -186,10 +185,10 @@ func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.Gna
 	return e.Boarded.GnarkEval(api, inputs)
 }
 
-func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
+func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	if e.IsBase() {
 		metadata := e.Boarded.ListVariableMetadata()
-		inputs := make([]zk.WrappedVariable, len(metadata))
+		inputs := make([]koalagnark.Element, len(metadata))
 
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {
@@ -204,17 +203,17 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 
 		return e.Boarded.GnarkEval(api, inputs), nil
 	} else {
-		return zk.ValueOf(0), fmt.Errorf("requested a base element from a col over field extensions")
+		return koalagnark.NewElement(0), fmt.Errorf("requested a base element from a col over field extensions")
 	}
 }
 
-func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
+func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	if e.IsBase() {
 		baseElem, _ := e.GetFrontendVariableBase(api, circ)
-		return gnarkfext.FromBase(baseElem)
+		return koalagnark.FromBaseVar(baseElem)
 	} else {
 		metadata := e.Boarded.ListVariableMetadata()
-		inputs := make([]gnarkfext.E4Gen, len(metadata))
+		inputs := make([]koalagnark.Ext, len(metadata))
 
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {

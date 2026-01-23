@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	hasherfactory "github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -49,7 +49,7 @@ func (pa PlonkNoCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses
 	)
 
 	if ctx.ExternalHasherOption.Enabled {
-		solver.RegisterHint(hasher_factory.Poseidon2Hintfunc)
+		solver.RegisterHint(hasherfactory.Poseidon2Hintfunc)
 	}
 
 	parallel.Execute(maxNbInstance, func(start, stop int) {

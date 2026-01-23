@@ -44,7 +44,7 @@ func (a CircAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witnes
 		// also to let the witness "know" it is complete.
 		close(witnessFiller)
 		if err := witness.Fill(nbPublic, 0, witnessFiller); err != nil {
-			utils.Panic("[witness.Fill] failed %v", err.Error())
+			utils.Panic("[witness.Fill] : %v", err.Error())
 		}
 
 		witnesses = append(witnesses, witness)

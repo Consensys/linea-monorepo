@@ -8,25 +8,22 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/stretchr/testify/assert"
 )
 
 type EvaluateLagrangeCircuit struct {
-	X    gnarkfext.E4Gen   // point of evaluation
-	Poly []gnarkfext.E4Gen // poly in Lagrange form
-	R    gnarkfext.E4Gen   // expected result
+	X    koalagnark.Ext   // point of evaluation
+	Poly []koalagnark.Ext // poly in Lagrange form
+	R    koalagnark.Ext   // expected result
 }
 
 func (c *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	r := EvaluateLagrangeGnark(api, c.Poly, c.X)
-	e4Api.AssertIsEqual(&c.R, &r)
+	koalaAPI.AssertIsEqualExt(c.R, r)
 
 	return nil
 }
@@ -43,30 +40,29 @@ func getWitnessAndCircuit(t *testing.T) (EvaluateLagrangeCircuit, EvaluateLagran
 	x.SetRandom()
 
 	// eval lagrange
-	// r, err := vortex.EvalFextPolyLagrange(poly, x)
 	r, err := vortex.EvalFextPolyLagrange(poly, x)
 	assert.NoError(t, err)
 
 	// test circuit
-	var witness, circuit EvaluateLagrangeCircuit
-	circuit.Poly = make([]gnarkfext.E4Gen, size)
-	witness.Poly = make([]gnarkfext.E4Gen, size)
+	var witness, ckt EvaluateLagrangeCircuit
+	ckt.Poly = make([]koalagnark.Ext, size)
+	witness.Poly = make([]koalagnark.Ext, size)
 	for i := 0; i < size; i++ {
-		witness.Poly[i] = gnarkfext.NewE4Gen(poly[i])
+		witness.Poly[i] = koalagnark.NewExt(poly[i])
 	}
-	witness.R = gnarkfext.NewE4Gen(r)
-	witness.X = gnarkfext.NewE4Gen(x)
+	witness.R = koalagnark.NewExt(r)
+	witness.X = koalagnark.NewExt(x)
 
-	return circuit, witness
+	return ckt, witness
 
 }
 
 func TestEvaluateLagrangeGnark(t *testing.T) {
 
 	{
-		circuit, witness := getWitnessAndCircuit(t)
+		ckt, witness := getWitnessAndCircuit(t)
 
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())

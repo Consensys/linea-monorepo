@@ -78,10 +78,10 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	}
 
 	// Use StorageHash helper which matches FullBytes32.WriteTo format (Hi first, then Lo)
-	res.ComputeOldValueHash = StorageHash(comp, res.OldValue)
+	res.ComputeOldValueHash = StorageHash(comp, res.OldValue, "STORAGE_VALUE_OLD_HASHING")
 	res.OldValueHash = res.ComputeOldValueHash.Result()
 
-	res.ComputeNewValueHash = StorageHash(comp, res.NewValue)
+	res.ComputeNewValueHash = StorageHash(comp, res.NewValue, "STORAGE_VALUE_NEW_HASHING")
 	res.NewValueHash = res.ComputeNewValueHash.Result()
 
 	for i := range dedicatedposeidon2.BlockSize {
@@ -92,7 +92,7 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 	}
 
 	// Use StorageHash helper which matches FullBytes32.WriteTo format (Hi first, then Lo)
-	res.ComputeKeyHash = StorageHash(comp, res.Key)
+	res.ComputeKeyHash = StorageHash(comp, res.Key, "STORAGE_KEY_HASHING")
 
 	res.KeyHash = res.ComputeKeyHash.Result()
 	zeroStorageHash := hashOfZeroStorage()
@@ -237,10 +237,10 @@ func hashOfZeroStorage() []field.Element {
 
 // StorageHash computes the hash of a HiLoColumns in a format consistent with
 // FullBytes32.WriteTo serialization (Hi bytes first, then Lo bytes).
-func StorageHash(comp *wizard.CompiledIOP, hilo common.HiLoColumns) *dedicatedposeidon2.HashingCtx {
+func StorageHash(comp *wizard.CompiledIOP, hilo common.HiLoColumns, name string) *dedicatedposeidon2.HashingCtx {
 	var hashInputs []ifaces.Column
 	// WriteTo serializes Hi bytes (0-15) first, then Lo bytes (16-31)
 	hashInputs = append(hashInputs, hilo.Hi[:]...)
 	hashInputs = append(hashInputs, hilo.Lo[:]...)
-	return dedicatedposeidon2.HashOf(comp, dedicatedposeidon2.SplitColumns(hashInputs))
+	return dedicatedposeidon2.HashOf(comp, hashInputs, name)
 }

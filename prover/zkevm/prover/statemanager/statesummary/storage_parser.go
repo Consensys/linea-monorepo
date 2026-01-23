@@ -15,7 +15,7 @@ to the relevant storage value we want to fetch from the arithmetization.
 This will only be used to fetch the final storage values, as it is not needed for the initial ones
 */
 type KeysAndBlock struct {
-	address    types.Bytes32
+	address    types.FullBytes32
 	storageKey types.FullBytes32
 	block      int
 }
@@ -71,7 +71,7 @@ func (sr *ArithmetizationStorageParser) Process() {
 			keyBytes = append(keyBytes, keyLOBytes...)
 			address := getLimbBytes(sr.scp.Address(), sr.run, index)
 			mapKey := KeysAndBlock{
-				address:    types.Bytes32(address),
+				address:    types.FullBytes32(address),
 				storageKey: types.FullBytes32(keyBytes),
 				block:      utils.ToInt(block),
 			}

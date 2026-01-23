@@ -34,11 +34,6 @@ func TestImportAndPad(t *testing.T) {
 			UseCase:     generic.Sha2Usecase,
 			PaddingFunc: sha2.PadStream,
 		},
-		// {
-		// 	Name:        "Poseidon2",
-		// 	ModFilePath: "testdata/mod_poseidon.csv",
-		// 	UseCase:     generic.MiMCUsecase,
-		// },
 	}
 
 	for _, uc := range testCases {

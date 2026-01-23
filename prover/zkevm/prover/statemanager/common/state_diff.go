@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -88,57 +89,57 @@ func NewStateDiffAssignmentBuilder(as StateDiff) StateDiffAssignmentBuilder {
 
 // PushReadZero pushes the relevant row when a ReadZero occurs on the
 // accumulator side.
-func (as *StateDiffAssignmentBuilder) PushReadZero(root, hkey [][]byte) {
+func (as *StateDiffAssignmentBuilder) PushReadZero(root, hkey types.KoalaOctuplet) {
 	for i := range common.NbElemPerHash {
-		as.HKey[i].PushBytes(padZerosAtBeginning(hkey[i]))
+		as.HKey[i].PushField(hkey[i])
 		as.InitialHVal[i].PushZero()
 		as.FinalHVal[i].PushZero()
-		as.InitialRoot[i].PushBytes(padZerosAtBeginning(root[i]))
-		as.FinalRoot[i].PushBytes(padZerosAtBeginning(root[i]))
+		as.InitialRoot[i].PushField(root[i])
+		as.FinalRoot[i].PushField(root[i])
 	}
 }
 
 // PushReadNonZero pushes a row onto `as` for a read-non-zero operation.
-func (as *StateDiffAssignmentBuilder) PushReadNonZero(root, hKey, hVal [][]byte) {
+func (as *StateDiffAssignmentBuilder) PushReadNonZero(root, hKey, hVal types.KoalaOctuplet) {
 	for i := range common.NbElemPerHash {
-		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
-		as.InitialHVal[i].PushBytes(padZerosAtBeginning(hVal[i]))
-		as.FinalHVal[i].PushBytes(padZerosAtBeginning(hVal[i]))
-		as.InitialRoot[i].PushBytes(padZerosAtBeginning(root[i]))
-		as.FinalRoot[i].PushBytes(padZerosAtBeginning(root[i]))
+		as.HKey[i].PushField(hKey[i])
+		as.InitialHVal[i].PushField(hVal[i])
+		as.FinalHVal[i].PushField(hVal[i])
+		as.InitialRoot[i].PushField(root[i])
+		as.FinalRoot[i].PushField(root[i])
 	}
 }
 
 // PushInsert pushes a row representing an insertion onto `as`.
-func (as *StateDiffAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal [][]byte) {
+func (as *StateDiffAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal types.KoalaOctuplet) {
 	for i := range common.NbElemPerHash {
-		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
+		as.HKey[i].PushField(hKey[i])
 		as.InitialHVal[i].PushZero()
-		as.FinalHVal[i].PushBytes(padZerosAtBeginning(newHVal[i]))
-		as.InitialRoot[i].PushBytes(padZerosAtBeginning(oldRoot[i]))
-		as.FinalRoot[i].PushBytes(padZerosAtBeginning(newRoot[i]))
+		as.FinalHVal[i].PushField(newHVal[i])
+		as.InitialRoot[i].PushField(oldRoot[i])
+		as.FinalRoot[i].PushField(newRoot[i])
 	}
 }
 
 // PushUpdate pushes a row representing an update onto `as`.
-func (as *StateDiffAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal, newHVal [][]byte) {
+func (as *StateDiffAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal, newHVal types.KoalaOctuplet) {
 	for i := range common.NbElemPerHash {
-		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
-		as.InitialHVal[i].PushBytes(padZerosAtBeginning(oldHVal[i]))
-		as.FinalHVal[i].PushBytes(padZerosAtBeginning(newHVal[i]))
-		as.InitialRoot[i].PushBytes(padZerosAtBeginning(oldRoot[i]))
-		as.FinalRoot[i].PushBytes(padZerosAtBeginning(newRoot[i]))
+		as.HKey[i].PushField(hKey[i])
+		as.InitialHVal[i].PushField(oldHVal[i])
+		as.FinalHVal[i].PushField(newHVal[i])
+		as.InitialRoot[i].PushField(oldRoot[i])
+		as.FinalRoot[i].PushField(newRoot[i])
 	}
 }
 
 // PushDelete pushes a row representing a deletion onto `as`.
-func (as *StateDiffAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal [][]byte) {
+func (as *StateDiffAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal types.KoalaOctuplet) {
 	for i := range common.NbElemPerHash {
-		as.HKey[i].PushBytes(padZerosAtBeginning(hKey[i]))
-		as.InitialHVal[i].PushBytes(padZerosAtBeginning(oldHVal[i]))
+		as.HKey[i].PushField(hKey[i])
+		as.InitialHVal[i].PushField(oldHVal[i])
 		as.FinalHVal[i].PushZero()
-		as.InitialRoot[i].PushBytes(padZerosAtBeginning(oldRoot[i]))
-		as.FinalRoot[i].PushBytes(padZerosAtBeginning(newRoot[i]))
+		as.InitialRoot[i].PushField(oldRoot[i])
+		as.FinalRoot[i].PushField(newRoot[i])
 	}
 }
 
@@ -164,14 +165,4 @@ func (builder *StateDiffAssignmentBuilder) AddRows(numRowsAccSegment int, hKey, 
 			builder.FinalRoot[j].PushField(finalRoot[j])
 		}
 	}
-}
-
-// padZerosAtBeginning pads provided array to [field.Bytes] len with zeros at the beginning.
-func padZerosAtBeginning(arr []byte) []byte {
-	if len(arr) >= field.Bytes {
-		return arr
-	}
-
-	padding := make([]byte, field.Bytes-len(arr))
-	return append(padding, arr...)
 }

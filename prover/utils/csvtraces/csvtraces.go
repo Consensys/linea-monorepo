@@ -9,6 +9,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -27,6 +30,12 @@ type cfg struct {
 }
 
 type Option func(*cfg) error
+
+// Octuplet represents an octuplet of columns that can be printed in a frienly way.
+type Octuplet struct {
+	V    [8]ifaces.Column
+	Name string
+}
 
 // WithNbRows sets the number of rows in the trace
 func WithNbRows(nbRows int) Option {
@@ -89,7 +98,7 @@ func MustOpenCsvFile(fName string) *CsvTrace {
 // FmtCsv is a utility function that can be used in order to print a set of column
 // in a csv format so that debugging and testcase generation are simpler. It can
 // take either plain [ifaces.Column] objects as input or limbs.Limbed objects.
-func FmtCsv(w io.Writer, run *wizard.ProverRuntime, objs []any, options []Option) error {
+func FmtCsv(w io.Writer, run ifaces.Runtime, objs []any, options []Option) error {
 
 	var (
 		header       = []string{}
@@ -110,6 +119,33 @@ func FmtCsv(w io.Writer, run *wizard.ProverRuntime, objs []any, options []Option
 	for i, obj := range objs {
 
 		switch obj := obj.(type) {
+
+		case Octuplet:
+			name := obj.Name
+			if cfg.renameCols != nil {
+				name = cfg.renameCols[i]
+			}
+			header = append(header, name)
+
+			vs := [8][]field.Element{}
+			for j := range vs {
+				vs[j] = obj.V[j].GetColAssignment(run).IntoRegVecSaveAlloc()
+			}
+
+			a := make([]*big.Int, 0)
+			for i := range vs[0] {
+				f := big.NewInt(0)
+				for j := range vs {
+					var s big.Int
+					vs[j][i].BigInt(&s)
+					f.Lsh(f, 32)
+					f.Add(f, &s)
+				}
+				a = append(a, f)
+			}
+
+			assignment = append(assignment, a)
+
 		case ifaces.Column:
 			name := obj.String()
 			if cfg.renameCols != nil {
@@ -161,6 +197,10 @@ func FmtCsv(w io.Writer, run *wizard.ProverRuntime, objs []any, options []Option
 
 		if !cfg.skipPrePaddingZero || !allZeroes || foundNonZero {
 			fmt.Fprintf(w, "%v\n", strings.Join(fmtVals, ","))
+		}
+
+		if cfg.nbRows > 0 && r >= cfg.nbRows {
+			break
 		}
 	}
 
@@ -352,7 +392,7 @@ func (c *CsvTrace) checkAssignment(run *wizard.ProverRuntime, obj any) {
 		vKoala := run.GetColumn(obj.GetColID()).IntoRegVecSaveAlloc()
 		csvBi, ok = c.mapped[name]
 		if !ok {
-			utils.Panic("column not found in csv, %s", name)
+			utils.Panic("column not found in csv, %s, %v", name, utils.StringKeysOfMap(c.mapped))
 		}
 		wizBi = koalaVecToBigInt(vKoala)
 
@@ -426,7 +466,7 @@ func WriteExplicitFromKoala(w io.Writer, names []string, cols [][]field.Element,
 }
 
 func fmtBigInt(inHex bool, x *big.Int) string {
-	if inHex || x.Uint64() < 1<<10 {
+	if !inHex || x.Uint64() < 1<<10 {
 		return x.String()
 	}
 	return "0x" + x.Text(16)
@@ -457,4 +497,19 @@ func koalaVecToBigInt(vKoala []field.Element) []*big.Int {
 
 func isZeroBigInt(bi *big.Int) bool {
 	return bi.Cmp(big.NewInt(0)) == 0
+}
+
+func DebugProjection(p *query.Projection, run ifaces.Runtime) {
+	FmtCsv(
+		files.MustOverwrite(string(p.Name()+"-a.csv")),
+		run,
+		utils.SliceToAnys(p.Inp.ColumnsA[0]),
+		nil,
+	)
+	FmtCsv(
+		files.MustOverwrite(string(p.Name()+"-b.csv")),
+		run,
+		utils.SliceToAnys(p.Inp.ColumnsB[0]),
+		nil,
+	)
 }

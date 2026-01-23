@@ -15,21 +15,24 @@ var ErrInvalidProof = errors.New("can't verify Merkle proof")
 // ProvedClaim is the composition of a proof with the claim it proves.
 type ProvedClaim struct {
 	Proof      Proof
-	Root, Leaf field.Octuplet
+	Root, Leaf types.KoalaOctuplet
 }
 
 // Proof represents a Merkle proof of membership for the Merkle-tree
 type Proof struct {
-	Path     int              `json:"leafIndex"` // Position of the leaf
-	Siblings []field.Octuplet `json:"siblings"`  // length 40
+	Path     int                   `json:"leafIndex"` // Position of the leaf
+	Siblings []types.KoalaOctuplet `json:"siblings"`  // length 40
 }
 
 // Prove returns a Merkle proof  of membership of the leaf at position `pos` and
 // an error if the position is out of bounds.
 func (t *Tree) Prove(pos int) (Proof, error) {
-	depth := t.Depth
-	siblings := make([]field.Octuplet, depth)
-	idx := pos
+
+	var (
+		depth    = t.Depth
+		siblings = make([]types.KoalaOctuplet, depth)
+		idx      = pos
+	)
 
 	if pos >= 1<<depth {
 		return Proof{}, fmt.Errorf("pos=%v is too high: max is %v for depth %v", pos, 1<<depth, depth)
@@ -41,7 +44,7 @@ func (t *Tree) Prove(pos int) (Proof, error) {
 
 	for level := 0; level < depth; level++ {
 		sibling := t.getNode(level, idx^1) // xor 1, switch the last bits
-		siblings[level] = sibling
+		siblings[level] = types.KoalaOctuplet(sibling)
 		idx >>= 1 // erase the last bit
 	}
 
@@ -107,9 +110,9 @@ func Verify(p *Proof, leaf, root field.Octuplet) error {
 
 // String pretty-prints a proof
 func (p *Proof) String() string {
-	siblingsBytes := make([]types.Bytes32, 0, len(p.Siblings))
+	siblingsBytes := make([]string, 0, len(p.Siblings))
 	for _, s := range p.Siblings {
-		siblingsBytes = append(siblingsBytes, types.HashToBytes32(s))
+		siblingsBytes = append(siblingsBytes, s.Hex())
 	}
 	return fmt.Sprintf("&smt.Proof{Path: %d, Siblings: %x}", p.Path, siblingsBytes)
 }

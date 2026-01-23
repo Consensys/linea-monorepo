@@ -2,12 +2,12 @@ package poseidon2_koalabear
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
-// same code as in poseidon2_circuit.go, but the variables are zk.WrappedVariable, to follow the
+// same code as in poseidon2_circuit.go, but the variables are koalagnark.Var, to follow the
 // same api as poseidon2_bls12377.GnarkMDHasher. Poseidon2 on koala is compiled only on koala, so
-// we convert the zk.WrappedVariable to frontendVariable and use GnarkMDHasher.
+// we convert the koalagnark.Var to frontendVariable and use GnarkMDHasher.
 
 // GnarkMDHasher Merkle Damgard implementation using poseidon2 as compression function with width 16
 // The hashing process goes as follow:
@@ -28,31 +28,31 @@ func (h *GnarkMDHasherWV) Reset() {
 	h.gnarkMDHasher.Reset()
 }
 
-func toOctuplet(v zk.Octuplet) Octuplet {
+func toOctuplet(v koalagnark.Octuplet) Octuplet {
 	var res Octuplet
 	for j := 0; j < 8; j++ {
-		res[j] = v[j].AsNative()
+		res[j] = v[j].Native()
 	}
 	return res
 }
 
-func toWVOctuplet(v Octuplet) zk.Octuplet {
-	var res zk.Octuplet
+func toWVOctuplet(v Octuplet) koalagnark.Octuplet {
+	var res koalagnark.Octuplet
 	for j := 0; j < 8; j++ {
-		res[j] = zk.WrapFrontendVariable(v[j])
+		res[j] = koalagnark.WrapFrontendVariable(v[j])
 	}
 	return res
 }
 
-func (h *GnarkMDHasherWV) Write(data ...zk.WrappedVariable) {
+func (h *GnarkMDHasherWV) Write(data ...koalagnark.Element) {
 	buffer := make([]frontend.Variable, len(data))
 	for i := 0; i < len(buffer); i++ {
-		buffer[i] = data[i].AsNative()
+		buffer[i] = data[i].Native()
 	}
 	h.gnarkMDHasher.Write(buffer...)
 }
 
-func (h *GnarkMDHasherWV) WriteOctuplet(data ...zk.Octuplet) {
+func (h *GnarkMDHasherWV) WriteOctuplet(data ...koalagnark.Octuplet) {
 	var buf Octuplet
 	for i := 0; i < len(data); i++ {
 		buf = toOctuplet(data[i])
@@ -60,16 +60,16 @@ func (h *GnarkMDHasherWV) WriteOctuplet(data ...zk.Octuplet) {
 	}
 }
 
-func (h *GnarkMDHasherWV) SetState(state zk.Octuplet) {
+func (h *GnarkMDHasherWV) SetState(state koalagnark.Octuplet) {
 	_state := toOctuplet(state)
 	h.gnarkMDHasher.SetState(_state)
 }
 
-func (h *GnarkMDHasherWV) State() zk.Octuplet {
+func (h *GnarkMDHasherWV) State() koalagnark.Octuplet {
 	return toWVOctuplet(h.gnarkMDHasher.State())
 }
 
-func (h *GnarkMDHasherWV) Sum() zk.Octuplet {
+func (h *GnarkMDHasherWV) Sum() koalagnark.Octuplet {
 	s := h.gnarkMDHasher.Sum()
 	return toWVOctuplet(s)
 }

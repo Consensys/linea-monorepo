@@ -122,8 +122,8 @@ func TestVectorsAccount(t *testing.T) {
 			Account: Account{
 				Nonce:          65,
 				Balance:        big.NewInt(5690),
-				StorageRoot:    Bytes32FromHex("0x0b1dfeef3db4956540da8a5f785917ef1ba432e521368da60a0a1ce430425666"),
-				LineaCodeHash:  Bytes32FromHex("0x729aac4455d43f2c69e53bb75f8430193332a4c32cafd9995312fa8346929e73"),
+				StorageRoot:    MustHexToKoalabearOctuplet("0x0b1dfeef3db4956540da8a5f785917ef1ba432e521368da60a0a1ce430425666"),
+				LineaCodeHash:  MustHexToKoalabearOctuplet("0x729aac4455d43f2c69e53bb75f8430193332a4c32cafd9995312fa8346929e73"),
 				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 				CodeSize:       0,
 			},
@@ -135,8 +135,8 @@ func TestVectorsAccount(t *testing.T) {
 			Account: Account{
 				Nonce:          65,
 				Balance:        big.NewInt(835),
-				StorageRoot:    Bytes32FromHex("0x1c41acc261451aae253f621857172d6339919d18059f35921a50aafc69eb5c39"),
-				LineaCodeHash:  Bytes32FromHex("0x7b688b215329825e5b00e4aa4e1857bc17afab503a87ecc063614b9b227106b2"),
+				StorageRoot:    MustHexToKoalabearOctuplet("0x1c41acc261451aae253f621857172d6339919d18059f35921a50aafc69eb5c39"),
+				LineaCodeHash:  MustHexToKoalabearOctuplet("0x7b688b215329825e5b00e4aa4e1857bc17afab503a87ecc063614b9b227106b2"),
 				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 				CodeSize:       0,
 			},

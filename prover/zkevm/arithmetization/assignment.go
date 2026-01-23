@@ -19,13 +19,12 @@ import (
 
 // ReadExpandedTraces parses the provided trace file, expands it and returns the
 // corset object holding the expanded traces.
-func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema[koalabear.Element], expTraces trace.Trace[koalabear.Element], limits *config.TracesLimits) {
+func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema[koalabear.Element], expTraces trace.Trace[koalabear.Element], moduleLimits *config.TracesLimits) {
 
 	// This loops checks the module assignment to see if we have created a 77
 	// error.
 	var (
 		modules           = expTraces.Modules().Collect()
-		moduleLimits      = mapModuleLimits(limits)
 		err77             error
 		maxRatio          = float64(0)
 		argMaxRatioLimit  = 0
@@ -36,7 +35,7 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema[koalabear.
 
 		var (
 			name   = module.Name().String()
-			limit  = moduleLimits[name]
+			limit  = moduleLimits.GetLimit(name)
 			height = module.Height()
 			ratio  = float64(height) / float64(limit)
 			level  = logrus.InfoLevel

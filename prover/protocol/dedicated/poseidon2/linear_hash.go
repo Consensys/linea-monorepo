@@ -97,25 +97,46 @@ func CheckLinearHash(
 
 	ctx.HashingCols()
 
+	stackedNewStateClean := make([]ifaces.Column, 0, BlockSize)
+	for block := 0; block < BlockSize; block++ {
+		stackedNewStateClean = append(stackedNewStateClean,
+			ctx.NewStateClean[block],
+		)
+	}
+
+	stackedExpectedHash := make([]ifaces.Column, 0, BlockSize)
+	for block := 0; block < BlockSize; block++ {
+		stackedExpectedHash = append(stackedExpectedHash,
+			ctx.ExpectedHash[block],
+		)
+	}
+
 	if ctx.IsFullyActive {
-		for i := 0; i < BlockSize; i++ {
-			selector.CheckSubsample(
-				comp,
-				prefixWithLinearHash(comp, name, "RES_EXTRACTION_%v", i),
-				[]ifaces.Column{ctx.NewStateClean[i]},
-				[]ifaces.Column{ctx.ExpectedHash[i]},
-				colChunks-1,
-			)
-		}
+
+		selector.CheckSubsample(
+			comp,
+			prefixWithLinearHash(comp, name, "RES_EXTRACTION"),
+			stackedNewStateClean,
+			stackedExpectedHash,
+			colChunks-1,
+		)
+
 	} else {
-		for i := 0; i < BlockSize; i++ {
-			ctx.Comp.InsertInclusion(
-				ctx.Round,
-				ifaces.QueryID(prefixWithLinearHash(comp, name, "RESULT_CHECK_%v_%v", tohash[i].GetColID(), i)),
-				[]ifaces.Column{ctx.IsEndOfHash, ctx.NewStateClean[i]},
-				[]ifaces.Column{ctx.IsActiveExpected(), ctx.ExpectedHash[i]},
-			)
-		}
+
+		stackedNewStateClean = append(stackedNewStateClean,
+			ctx.IsEndOfHash,
+		)
+
+		stackedExpectedHash = append(stackedExpectedHash,
+			ctx.IsActiveExpected(),
+		)
+
+		ctx.Comp.InsertInclusion(
+			ctx.Round,
+			ifaces.QueryID(prefixWithLinearHash(comp, name, "RESULT_CHECK")),
+			stackedNewStateClean,
+			stackedExpectedHash,
+		)
 	}
 
 }

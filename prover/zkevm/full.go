@@ -186,49 +186,49 @@ func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *co
 		},
 		Statemanager: statemanager.Settings{
 			AccSettings: accumulator.Settings{
-				MaxNumProofs:    tl.ShomeiMerkleProofs,
+				MaxNumProofs:    tl.ShomeiMerkleProofs(),
 				Name:            "SM_ACCUMULATOR",
 				MerkleTreeDepth: 40,
 			},
-			LineaCodeHashSize: tl.Rom,
+			LineaCodeHashSize: tl.GetLimit("rom"),
 		},
 		Metadata: wizard.VersionMetadata{
 			Title:   "linea/evm-execution/full",
 			Version: "beta-v1",
 		},
 		Keccak: keccak.Settings{
-			MaxNumKeccakf: tl.BlockKeccak,
+			MaxNumKeccakf: tl.BlockKeccak(),
 		},
 		Ecdsa: ecdsa.Settings{
-			MaxNbEcRecover:     tl.PrecompileEcrecoverEffectiveCalls,
-			MaxNbTx:            tl.BlockTransactions,
+			MaxNbEcRecover:     tl.PrecompileEcrecoverEffectiveCalls(),
+			MaxNbTx:            tl.BlockTransactions(),
 			NbInputInstance:    NbInputPerInstanceEcdsa,
-			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcrecoverEffectiveCalls+tl.BlockTransactions, NbInputPerInstanceEcdsa),
+			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcrecoverEffectiveCalls()+tl.BlockTransactions(), NbInputPerInstanceEcdsa),
 		},
 		Modexp: modexp.Settings{
-			MaxNbInstance256:   tl.PrecompileModexpEffectiveCalls,
-			MaxNbInstanceLarge: tl.PrecompileModexpEffectiveCalls8192,
+			MaxNbInstance256:   tl.PrecompileModexpEffectiveCalls(),
+			MaxNbInstanceLarge: tl.PrecompileModexpEffectiveCalls8192(),
 		},
 		Ecadd: ecarith.Limits{
 			// 14 was found the right number to have just under 2^19 constraints
 			// per circuit.
-			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcaddEffectiveCalls, NbInputPerInstancesEcAdd),
+			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcaddEffectiveCalls(), NbInputPerInstancesEcAdd),
 			NbInputInstances:   NbInputPerInstancesEcAdd,
 		},
 		Ecmul: ecarith.Limits{
-			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcmulEffectiveCalls, NbInputPerInstancesEcMul),
+			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcmulEffectiveCalls(), NbInputPerInstancesEcMul),
 			NbInputInstances:   NbInputPerInstancesEcMul,
 		},
 		Ecpair: ecpair.Limits{
 			NbMillerLoopInputInstances:   NbInputPerInstanceEcPairMillerLoop,
-			NbMillerLoopCircuits:         utils.DivCeil(tl.PrecompileEcpairingMillerLoops, NbInputPerInstanceEcPairMillerLoop),
+			NbMillerLoopCircuits:         utils.DivCeil(tl.PrecompileEcpairingMillerLoops(), NbInputPerInstanceEcPairMillerLoop),
 			NbFinalExpInputInstances:     NbInputPerInstanceEcPairFinalExp,
-			NbFinalExpCircuits:           utils.DivCeil(tl.PrecompileEcpairingEffectiveCalls, NbInputPerInstanceEcPairFinalExp),
+			NbFinalExpCircuits:           utils.DivCeil(tl.PrecompileEcpairingEffectiveCalls(), NbInputPerInstanceEcPairFinalExp),
 			NbG2MembershipInputInstances: NbInputPerInstanceEcPairG2Check,
-			NbG2MembershipCircuits:       utils.DivCeil(tl.PrecompileEcpairingG2MembershipCalls, NbInputPerInstanceEcPairG2Check),
+			NbG2MembershipCircuits:       utils.DivCeil(tl.PrecompileEcpairingG2MembershipCalls(), NbInputPerInstanceEcPairG2Check),
 		},
 		Sha2: sha2.Settings{
-			MaxNumSha2F:                    tl.PrecompileSha2Blocks,
+			MaxNumSha2F:                    tl.PrecompileSha2Blocks(),
 			NbInstancesPerCircuitSha2Block: NbInputPerInstanceSha2Block,
 		},
 		Bls: bls.Limits{

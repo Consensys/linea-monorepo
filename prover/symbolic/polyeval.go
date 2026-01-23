@@ -3,11 +3,9 @@ package symbolic
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
-
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -83,19 +81,16 @@ func (PolyEval) Validate(expr *Expression) error {
 
 // GnarkEval evaluates the expression in a gnark circuit
 // Does not support vector evaluation
-func (PolyEval) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
+func (PolyEval) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagnark.Element {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
 
 	for i := len(inputs) - 2; i >= 1; i-- {
-		res = apiGen.Mul(res, x)
-		res = apiGen.Add(res, inputs[i])
+		res = koalaAPI.Mul(res, x)
+		res = koalaAPI.Add(res, inputs[i])
 	}
 
 	return res
@@ -103,19 +98,16 @@ func (PolyEval) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.Wrap
 
 // EvaluateExt the expression in a gnark circuit
 // Does not support vector evaluation
-func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+func (PolyEval) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext) koalagnark.Ext {
 
-	e4Api, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
 
 	for i := len(inputs) - 2; i >= 1; i-- {
-		res = *e4Api.Mul(&res, &x)
-		res = *e4Api.Add(&res, &inputs[i])
+		res = koalaAPI.MulExt(res, x)
+		res = koalaAPI.AddExt(res, inputs[i])
 	}
 
 	return res

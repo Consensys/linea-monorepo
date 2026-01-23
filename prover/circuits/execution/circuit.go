@@ -14,7 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 
-	"github.com/consensys/gnark/std/hash/mimc"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 )
 
@@ -33,14 +32,14 @@ type CircuitExecution struct {
 
 // Allocates the outer-proof circuit
 func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
-	wverifier := wizard.AllocateWizardCircuit(zkevm.WizardIOP, zkevm.WizardIOP.NumRounds())
+	wverifier := wizard.AllocateWizardCircuit(zkevm.WizardIOP, zkevm.WizardIOP.NumRounds(), true)
 
 	return CircuitExecution{
 		WizardVerifier: *wverifier,
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]frontend.Variable, zkevm.Limits().BlockL2L1Logs),
+					Values: make([][32]frontend.Variable, zkevm.Limits().BlockL2L1Logs()),
 					Length: nil,
 				},
 			},
@@ -57,15 +56,15 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 // do for the non-limitless execution proof.
 func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits) CircuitExecution {
 	logrus.Infof("Allocating the outer circuit with params: no_of_cong_wiop_rounds=%d "+
-		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs)
+		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs())
 
-	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds())
+	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds(), true)
 	return CircuitExecution{
 		WizardVerifier: *wverifier,
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs()),
 					Length: nil,
 				},
 			},
@@ -82,32 +81,30 @@ func assign(
 ) CircuitExecution {
 
 	var (
-		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds())
+		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), true)
 		res            = CircuitExecution{
 			WizardVerifier: *wizardVerifier,
 			FuncInputs: FunctionalPublicInputSnark{
 				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 					L2MessageHashes: L2MessageHashes{
-						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs()),
 					},
 				},
 			},
-			PublicInput: new(big.Int).SetBytes(funcInputs.Sum(nil)),
+			PublicInput: new(big.Int).SetBytes(funcInputs.Sum()),
 		}
 	)
 
-	res.FuncInputs.Assign(&funcInputs)
+	if err := res.FuncInputs.Assign(&funcInputs); err != nil {
+		panic(err)
+	}
 	return res
 }
 
 // Define of the wizard circuit
 func (c *CircuitExecution) Define(api frontend.API) error {
 
-	panic("fix the [gkrmimc/gkrposeidon] package. The BlsFs should also take a hasher factory")
-
 	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
-	// c.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
-	// c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
 
 	c.WizardVerifier.Verify(api)
 	checkPublicInputs(
@@ -117,8 +114,7 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 	)
 
 	// Add missing public input check
-	mimcHasher, _ := mimc.NewMiMC(api)
-	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api, &mimcHasher))
+	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))
 	return nil
 }
 

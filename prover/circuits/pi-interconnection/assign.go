@@ -9,11 +9,9 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
-
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
-	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
@@ -23,9 +21,9 @@ import (
 )
 
 type Request struct {
-	Decompressions []blobsubmission.Response
-	Executions     []public_input.Execution
-	Aggregation    public_input.Aggregation
+	DataAvailabilities []blobsubmission.Response
+	Executions         []public_input.Execution
+	Aggregation        public_input.Aggregation
 }
 
 func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err error) {
@@ -42,15 +40,15 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	}
 	a = allocateCircuit(cfg)
 
-	if len(r.Decompressions) > cfg.MaxNbDecompression {
-		err = fmt.Errorf("failing CHECK_DECOMP_LIMIT:\n\t%d decompression proofs exceeds maximum of %d", len(r.Decompressions), cfg.MaxNbDecompression)
+	if len(r.DataAvailabilities) > cfg.MaxNbDataAvailability {
+		err = fmt.Errorf("failing CHECK_DECOMP_LIMIT:\n\t%d decompression proofs exceeds maximum of %d", len(r.DataAvailabilities), cfg.MaxNbDataAvailability)
 		return
 	}
 	if len(r.Executions) > cfg.MaxNbExecution {
 		err = fmt.Errorf("failing CHECK_EXEC_LIMIT:\n\t%d execution proofs exceeds maximum of %d", len(r.Executions), cfg.MaxNbExecution)
 		return
 	}
-	if nbC := len(r.Decompressions) + len(r.Executions); nbC > cfg.MaxNbCircuits && cfg.MaxNbCircuits > 0 {
+	if nbC := len(r.DataAvailabilities) + len(r.Executions); nbC > cfg.MaxNbCircuits && cfg.MaxNbCircuits > 0 {
 		err = fmt.Errorf("failing CHECK_CIRCUIT_LIMIT:\n\t%d circuits exceeds maximum of %d", nbC, cfg.MaxNbCircuits)
 		return
 	}
@@ -64,16 +62,15 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	}
 	utils.Copy(a.ParentShnarf[:], prevShnarf)
 
-	hshM := hasher_factory.NewMiMC()
-	// execDataChecksums is a list that we progressively fill to store the mimc
+	// execDataChecksums is a list that we progressively fill to store the Poseidon2
 	// hash of the executionData for every execution (conflation) batch. The
 	// is filled as we process the decompression proofs which store a list of
 	// the corresponding execution data hashes. These are then checked against
 	// the execution proof public inputs.
 	execDataChecksums := make([][]byte, 0, len(r.Executions))
-	shnarfs := make([][]byte, cfg.MaxNbDecompression)
+	shnarfs := make([][]byte, cfg.MaxNbDataAvailability)
 	// Decompression FPI
-	for i, p := range r.Decompressions {
+	for i, p := range r.DataAvailabilities {
 		var blobData [1024 * 128]byte
 		if b, err := base64.StdEncoding.DecodeString(p.CompressedData); err != nil {
 			return a, err
@@ -100,18 +97,20 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 
 		// TODO this recomputes much of the data in p; check consistency
 		var (
-			fpi  decompression.FunctionalPublicInput
-			sfpi decompression.FunctionalPublicInputSnark
+			fpi  blobdecompression.FunctionalPublicInput
+			sfpi blobdecompression.FunctionalPublicInputSnark
 		)
-		if fpi, _, err = decompression.AssignFPI(blobData[:], dictStore, p.Eip4844Enabled, x, y); err != nil {
+		if fpi, _, err = blobdecompression.AssignFPI(blobData[:], dictStore, p.Eip4844Enabled, x, y); err != nil {
 			return
 		}
-		execDataChecksums = append(execDataChecksums, fpi.BatchSums...) // len(execDataChecksums) = index of the first execution associated with the next blob
-		if sfpi, err = fpi.ToSnarkType(); err != nil {
+		for j := range fpi.BatchSums {
+			execDataChecksums = append(execDataChecksums, fpi.BatchSums[j].Hash[:])
+		} // len(execDataChecksums) = index of the first execution associated with the next blob
+		if sfpi, err = fpi.ToSnarkType(len(fpi.BatchSums)); err != nil {
 			return
 		}
-		a.DecompressionFPIQ[i] = sfpi.FunctionalPublicInputQSnark
-		if a.DecompressionPublicInput[i], err = fpi.Sum(decompression.WithHash(hshM)); err != nil {
+		a.DataAvailabilityFPIQ[i] = sfpi.FunctionalPublicInputQSnark
+		if a.DataAvailabilityPublicInput[i], err = fpi.Sum(); err != nil {
 			return
 		}
 
@@ -135,7 +134,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 		return
 	}
 	var zero [32]byte
-	for i := len(r.Decompressions); i < len(a.DecompressionFPIQ); i++ {
+	for i := len(r.DataAvailabilities); i < len(a.DataAvailabilityFPIQ); i++ {
 		shnarf := blobsubmission.Shnarf{
 			OldShnarf: prevShnarf,
 			SnarkHash: zero[:],
@@ -152,18 +151,18 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 		prevShnarf = shnarf.Compute()
 		shnarfs[i] = prevShnarf
 
-		fpi := decompression.FunctionalPublicInput{
+		fpi := blobdecompression.FunctionalPublicInput{
 			SnarkHash: zero[:],
 		}
 
-		if fpis, err := fpi.ToSnarkType(); err != nil {
+		if fpis, err := fpi.ToSnarkType(0); err != nil {
 			return a, nil
 		} else {
-			a.DecompressionFPIQ[i] = fpis.FunctionalPublicInputQSnark
+			a.DataAvailabilityFPIQ[i] = fpis.FunctionalPublicInputQSnark
 		}
-		utils.Copy(a.DecompressionFPIQ[i].X[:], zero[:])
+		utils.Copy(a.DataAvailabilityFPIQ[i].X[:], zero[:])
 
-		a.DecompressionPublicInput[i] = 0
+		a.DataAvailabilityPublicInput[i] = 0
 	}
 
 	// Aggregation FPI
@@ -173,17 +172,17 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	}
 
 	// TODO @Tabaie combine the following two checks.
-	if len(r.Decompressions) != 0 && !bytes.Equal(shnarfs[len(r.Decompressions)-1], aggregationFPI.FinalShnarf[:]) { // first condition is an edge case for tests
-		err = fmt.Errorf("aggregation fails CHECK_FINAL_SHNARF:\n\tcomputed %x, given %x", shnarfs[len(r.Decompressions)-1], aggregationFPI.FinalShnarf)
+	if len(r.DataAvailabilities) != 0 && !bytes.Equal(shnarfs[len(r.DataAvailabilities)-1], aggregationFPI.FinalShnarf[:]) { // first condition is an edge case for tests
+		err = fmt.Errorf("aggregation fails CHECK_FINAL_SHNARF:\n\tcomputed %x, given %x", shnarfs[len(r.DataAvailabilities)-1], aggregationFPI.FinalShnarf)
 		return
 	}
 
-	if len(r.Decompressions) == 0 || len(r.Executions) == 0 {
-		err = fmt.Errorf("aggregation fails NO EXECUTION OR NO COMPRESSION:\n\tnbDecompression %d, nbExecution %d", len(r.Decompressions), len(r.Executions))
+	if len(r.DataAvailabilities) == 0 || len(r.Executions) == 0 {
+		err = fmt.Errorf("aggregation fails NO EXECUTION OR NO COMPRESSION:\n\tnbDecompression %d, nbExecution %d", len(r.DataAvailabilities), len(r.Executions))
 		return
 	}
 
-	aggregationFPI.NbDecompression = uint64(len(r.Decompressions))
+	aggregationFPI.NbDecompression = uint64(len(r.DataAvailabilities))
 	a.AggregationFPIQSnark = aggregationFPI.ToSnarkType().AggregationFPIQSnark
 
 	merkleNbLeaves := 1 << cfg.L2MsgMerkleDepth
@@ -213,9 +212,9 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 
 		if i < len(r.Executions) {
 			executionFPI = r.Executions[i]
-			copy(executionFPI.DataChecksum[:], execDataChecksums[i])
+			copy(executionFPI.DataChecksum.Hash[:], execDataChecksums[i])
 			// compute the public input
-			a.ExecutionPublicInput[i] = executionFPI.Sum(hshM)
+			a.ExecutionPublicInput[i] = executionFPI.Sum()
 		}
 
 		if l := len(executionFPI.L2MessageHashes); l > cfg.ExecutionMaxNbMsg {
@@ -235,7 +234,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 		}
 
 		// This is asserted against a constant in the circuit. Thus we have
-		// different circuit for differents values of the msgSvcAddress and
+		// different circuit for different values of the msgSvcAddress and
 		// chainID.
 
 		if got, want := executionFPI.ChainID, r.Aggregation.ChainID; got != want {

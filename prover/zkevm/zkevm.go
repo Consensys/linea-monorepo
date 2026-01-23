@@ -170,7 +170,7 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 
 		// Assign the state-manager module
 		z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
-		z.StateManager.Assign(run, input.SMTraces)
+		z.StateManager.Assign(run, z.Arithmetization, input.SMTraces)
 		z.Keccak.Run(run)
 		z.Ecadd.Assign(run)
 		z.Ecmul.Assign(run)

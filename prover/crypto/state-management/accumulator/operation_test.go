@@ -3,7 +3,7 @@ package accumulator_test
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
@@ -17,17 +17,19 @@ import (
 const numRepetion = 255
 
 // Dummy hashable type that we can use for the accumulator
-type DummyKey = Bytes32
-type DummyVal = Bytes32
+type DummyKey = KoalaOctuplet
+type DummyVal = KoalaOctuplet
 
 const locationTesting = "0x"
 
 func dumkey(i int) DummyKey {
-	return DummyBytes32(i)
+	x := field.NewElement(uint64(i))
+	return KoalaOctuplet{x, x, x, x, x, x, x, x}
 }
 
 func dumval(i int) DummyVal {
-	return DummyBytes32(i)
+	x := field.NewElement(uint64(i))
+	return KoalaOctuplet{x, x, x, x, x, x, x, x}
 }
 
 func newTestAccumulatorPoseidon2DummyVal() *accumulator.ProverState[DummyKey, DummyVal] {
@@ -51,15 +53,15 @@ func TestInitialization(t *testing.T) {
 	tailHash := accumulator.Tail().Hash() // Updated to remove acc.Config()
 
 	// First leaf is head
-	assert.Equal(t, types.HashToBytes32(acc.Tree.MustGetLeaf(0)), accumulator.Head().Hash())
-	assert.Equal(t, types.HashToBytes32(acc.Tree.MustGetLeaf(1)), accumulator.Tail().Hash())
+	assert.Equal(t, acc.Tree.MustGetLeaf(0), accumulator.Head().Hash().ToOctuplet())
+	assert.Equal(t, acc.Tree.MustGetLeaf(1), accumulator.Tail().Hash().ToOctuplet())
 
 	// Can we prover membership of the leaf
 	proofHead := acc.Tree.MustProve(0)
-	smt_koalabear.Verify(&proofHead, types.Bytes32ToOctuplet(headHash), types.Bytes32ToOctuplet(acc.SubTreeRoot()))
+	smt_koalabear.Verify(&proofHead, headHash, acc.SubTreeRoot())
 
 	proofTail := acc.Tree.MustProve(1)
-	smt_koalabear.Verify(&proofTail, types.Bytes32ToOctuplet(tailHash), types.Bytes32ToOctuplet(acc.SubTreeRoot()))
+	smt_koalabear.Verify(&proofTail, tailHash, acc.SubTreeRoot())
 }
 
 func TestInsertion(t *testing.T) {

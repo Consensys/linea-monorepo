@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	hf "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	multsethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -225,7 +225,7 @@ func (dist *DistributedWizard) CompileSegments(params CompilationParams) *Distri
 // the LPP provers.
 func GetSharedRandomnessFromSegmentProofs(gLWitnesses []*SegmentProof) field.Octuplet {
 
-	mset := hf.MSetHash{}
+	mset := multsethashing.MSetHash{}
 
 	for i := range gLWitnesses {
 

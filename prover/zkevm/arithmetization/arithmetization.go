@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/go-corset/pkg/schema/register"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -99,7 +98,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	var (
 		errs []error
 		//
-		traceF = files.MustRead(traceFile)
+		traceF = readTraceFile(traceFile)
 		// Parse trace file and extract raw column data.
 		rawTrace, metadata, errT = ReadLtTraces(traceF)
 	)
@@ -290,7 +289,7 @@ func (a *Arithmetization) MashedColumnOf(comp *wizard.CompiledIOP, name string, 
 		return comp.Columns.GetHandle(ifaces.ColID(colName))
 	}
 
-	return expr_handle.ExprHandle(comp, colExpr, colName)
+	return expr_handle.ExprHandleWithoutProverAction(comp, colExpr, colName)
 }
 
 // LimbsOf returns the fully qualified names of the limbs for a given Corset
@@ -325,7 +324,7 @@ func (a *Arithmetization) LimbsOf(mod string, column string, nLimbs int) []strin
 	//
 	for i, lid := range limbs {
 		limb := modMap.Limb(lid)
-		names[i] = fmt.Sprintf("%s.%s", modMap.Name(), limb.Name)
+		names[i] = fmt.Sprintf("%s.%s", modMap.Name(), limb.Name())
 	}
 	//
 	return names
@@ -368,7 +367,7 @@ func (a *Arithmetization) determineRegisterId(mod string, name string) register.
 		modInfos := []string{}
 		regs := modMap.Registers()
 		for _, r := range regs {
-			info := fmt.Sprintf("%s(width=%v, kind=%v)", r.Name, r.Width, r.Kind)
+			info := fmt.Sprintf("%s(width=%v, kind=%v)", r.Name(), r.Width(), r.Kind())
 			modInfos = append(modInfos, info)
 		}
 

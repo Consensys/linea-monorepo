@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	hasherfactory "github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -27,8 +27,8 @@ type externalPoseidon2FactoryTestLinear struct {
 func (circuit *externalPoseidon2FactoryTestLinear) Define(api frontend.API) error {
 
 	var (
-		factory      = &hasher_factory.ExternalHasherFactory{Api: api}
-		factoryBasic = &hasher_factory.BasicHasherFactory{Api: api}
+		factory      = &hasherfactory.ExternalHasherFactory{Api: api}
+		factoryBasic = &hasherfactory.BasicHasherFactory{Api: api}
 		hasher       = factory.NewHasher()
 		hasherBasic  = factoryBasic.NewHasher()
 	)
@@ -46,7 +46,7 @@ func (circuit *externalPoseidon2FactoryTestLinear) Define(api frontend.API) erro
 
 func TestPoseidon2Factories(t *testing.T) {
 
-	solver.RegisterHint(hasher_factory.Poseidon2Hintfunc)
+	solver.RegisterHint(hasherfactory.Poseidon2Hintfunc)
 
 	var (
 		koalaField = koalabear.Modulus()
