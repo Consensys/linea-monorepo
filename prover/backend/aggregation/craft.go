@@ -252,10 +252,8 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		FinalBlockNumber:                        cf.FinalBlockNumber,
 		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
 		FinalShnarf:                             cf.FinalShnarf,
-		FinalBlockHash:                          cf.FinalBlockHash,
 		FinalFtxRollingHash:                     cf.FinalFtxRollingHash,
 		FinalFtxNumber:                          cf.FinalFtxNumber,
-		ParentAggregationBlockHash:              cf.ParentAggregationBlockHash,
 		ParentAggregationFtxNumber:              cf.LastFinalizedFtxNumber,
 		ParentAggregationFtxRollingHash:         cf.LastFinalizedFtxRollingHash,
 		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
@@ -294,10 +292,6 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		FinalFtxNumber:                          cf.FinalFtxNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    l2MsgMerkleTreeDepth,
-
-		// block hashes
-		ParentAggregationBlockHash: cf.ParentAggregationBlockHash,
-		FinalBlockHash:             cf.FinalBlockHash,
 
 		// dynamic chain configuration
 		ChainID:              uint64(cfg.Layer2.ChainID),

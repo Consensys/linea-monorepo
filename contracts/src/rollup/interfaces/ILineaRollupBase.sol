@@ -74,8 +74,6 @@ interface ILineaRollupBase {
    * @dev lastFinalizedForcedTransactionNumber is the last proven forced transaction number processed on L2.
    * @dev finalForcedTransactionNumber is the final forced transaction being finalized.
    * @dev lastFinalizedForcedTransactionRollingHash is the last proven forced transaction rolling hash.
-   * @dev lastFinalizedBlockHash is the last finalized block hash.
-   * @dev finalBlockHash is the final block hash.
    * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockNumber.
    * @dev filteredAddresses is an array of addresses that are filtered from forced transactions.
    * @dev l2MessagingBlocksOffsets indicates by offset from currentL2BlockNumber which L2 blocks contain MessageSent events.
@@ -94,8 +92,6 @@ interface ILineaRollupBase {
     uint256 lastFinalizedForcedTransactionNumber;
     uint256 finalForcedTransactionNumber;
     bytes32 lastFinalizedForcedTransactionRollingHash;
-    bytes32 lastFinalizedBlockHash;
-    bytes32 finalBlockHash;
     bytes32[] l2MerkleRoots;
     address[] filteredAddresses;
     bytes l2MessagingBlocksOffsets;

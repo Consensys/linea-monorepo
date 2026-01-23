@@ -16,7 +16,6 @@ library FinalizedStateHashing {
    * @param _forcedTransactionNumber Is the last processed forced transaction on L2's number.
    * @param _forcedTransactionRollingHash Is the last processed forced transaction on L2's rolling hash.
    * @param _timestamp The final timestamp in the finalization.
-   * @param _blockHash The final block hash in the finalization.
    * @return hashedFinalizationState The hashed finalization state.
    */
   function _computeLastFinalizedState(
@@ -24,8 +23,7 @@ library FinalizedStateHashing {
     bytes32 _messageRollingHash,
     uint256 _forcedTransactionNumber,
     bytes32 _forcedTransactionRollingHash,
-    uint256 _timestamp,
-    bytes32 _blockHash
+    uint256 _timestamp
   ) internal pure returns (bytes32 hashedFinalizationState) {
     assembly {
       let mPtr := mload(0x40)
@@ -34,8 +32,7 @@ library FinalizedStateHashing {
       mstore(add(mPtr, 0x40), _forcedTransactionNumber)
       mstore(add(mPtr, 0x60), _forcedTransactionRollingHash)
       mstore(add(mPtr, 0x80), _timestamp)
-      mstore(add(mPtr, 0xa0), _blockHash)
-      hashedFinalizationState := keccak256(mPtr, 0xc0)
+      hashedFinalizationState := keccak256(mPtr, 0xa0)
     }
   }
 

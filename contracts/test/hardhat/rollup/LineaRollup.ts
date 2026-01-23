@@ -924,7 +924,6 @@ describe("Linea Rollup contract", () => {
       0n,
       HASH_ZERO,
       DEFAULT_LAST_FINALIZED_TIMESTAMP,
-      HASH_ZERO,
     );
 
     it("Should revert if trying to set liveness recovery operator role before six months have passed", async () => {
@@ -932,25 +931,18 @@ describe("Linea Rollup contract", () => {
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setLivenessRecoveryOperator(
-          0n,
-          HASH_ZERO,
-          0n,
-          HASH_ZERO,
-          BigInt(initialBlock!.timestamp),
-          HASH_ZERO,
-        ),
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, 0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
         "LastFinalizationTimeNotLapsed",
       );
     });
 
     it("Should revert if the time has passed and the last finalized timestamp does not match", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
-      const actualSentState = calculateLastFinalizedState(0n, HASH_ZERO, 0n, HASH_ZERO, 123456789n, HASH_ZERO);
+      const actualSentState = calculateLastFinalizedState(0n, HASH_ZERO, 0n, HASH_ZERO, 123456789n);
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, 0n, HASH_ZERO, 123456789n, HASH_ZERO),
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, 0n, HASH_ZERO, 123456789n),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -964,19 +956,11 @@ describe("Linea Rollup contract", () => {
         0n,
         HASH_ZERO,
         DEFAULT_LAST_FINALIZED_TIMESTAMP,
-        HASH_ZERO,
       );
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setLivenessRecoveryOperator(
-          1n,
-          HASH_ZERO,
-          0n,
-          HASH_ZERO,
-          DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          HASH_ZERO,
-        ),
+        lineaRollup.setLivenessRecoveryOperator(1n, HASH_ZERO, 0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -991,19 +975,11 @@ describe("Linea Rollup contract", () => {
         0n,
         HASH_ZERO,
         DEFAULT_LAST_FINALIZED_TIMESTAMP,
-        HASH_ZERO,
       );
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setLivenessRecoveryOperator(
-          0n,
-          random32Bytes,
-          0n,
-          HASH_ZERO,
-          DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          HASH_ZERO,
-        ),
+        lineaRollup.setLivenessRecoveryOperator(0n, random32Bytes, 0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -1014,14 +990,7 @@ describe("Linea Rollup contract", () => {
 
       await expectEvent(
         lineaRollup,
-        lineaRollup.setLivenessRecoveryOperator(
-          0n,
-          HASH_ZERO,
-          0n,
-          HASH_ZERO,
-          DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          HASH_ZERO,
-        ),
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, 0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "LivenessRecoveryOperatorRoleGranted",
         [admin.address, FALLBACK_OPERATOR_ADDRESS],
       );
@@ -1034,14 +1003,7 @@ describe("Linea Rollup contract", () => {
 
       await expectEvent(
         lineaRollup,
-        lineaRollup.setLivenessRecoveryOperator(
-          0n,
-          HASH_ZERO,
-          0n,
-          HASH_ZERO,
-          DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          HASH_ZERO,
-        ),
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, 0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "LivenessRecoveryOperatorRoleGranted",
         [admin.address, FALLBACK_OPERATOR_ADDRESS],
       );
@@ -1097,14 +1059,7 @@ describe("Linea Rollup contract", () => {
 
       await expectEvent(
         upgradedContract,
-        upgradedContract.setLivenessRecoveryOperator(
-          0n,
-          HASH_ZERO,
-          0n,
-          HASH_ZERO,
-          DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          HASH_ZERO,
-        ),
+        upgradedContract.setLivenessRecoveryOperator(0n, HASH_ZERO, 0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "LivenessRecoveryOperatorRoleGranted",
         [admin.address, forwardingProxyAddress],
       );

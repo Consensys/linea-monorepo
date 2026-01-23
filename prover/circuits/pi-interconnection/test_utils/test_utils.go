@@ -88,9 +88,6 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		FinalFtxNumber:                          4,
 		LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 		FinalFtxRollingHash:                     utils.HexEncodeToString(ftxRollingHash[:]),
-		// block hashes
-		ParentAggregationBlockHash: utils.FmtIntHex32Bytes(0x1234),
-		FinalBlockHash:             utils.FmtIntHex32Bytes(0x5678),
 		// filtered addresses
 		FilteredAddresses: make([]types.EthAddress, 0),
 	}
