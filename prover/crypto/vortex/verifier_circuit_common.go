@@ -2,7 +2,6 @@ package vortex
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/maths/polynomials"
 )
@@ -41,71 +40,30 @@ func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVeri
 	return err
 }
 
-// GnarkCheckStatementAndCodeWord combines GnarkCheckStatement and GnarkCheckIsCodeWord
-// to share the Lagrange basis computation, saving approximately n multiplications.
+// GnarkCheckStatementAndCodeWord checks that the linear combination is consistent with the claimed evaluations.
+// linComb is in Lagrange basis and evaluated using Lagrange interpolation.
+// ys is in canonical (coefficient) form and evaluated using Horner's method.
 func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []koalagnark.Ext,
 	ys [][]koalagnark.Ext, x, alpha koalagnark.Ext) error {
 
 	koalaAPI := koalagnark.NewAPI(api)
 
-	// // === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
-	// fftinv := fftHint(koalaAPI.Type())
-	// sizeFextUnpacked := len(linComb) * 4
-	// inputs := make([]koalagnark.Element, sizeFextUnpacked)
-	// for i := 0; i < len(linComb); i++ {
-	// 	inputs[4*i] = linComb[i].B0.A0
-	// 	inputs[4*i+1] = linComb[i].B0.A1
-	// 	inputs[4*i+2] = linComb[i].B1.A0
-	// 	inputs[4*i+3] = linComb[i].B1.A1
-	// }
-	// _res, err := koalaAPI.NewHint(fftinv, sizeFextUnpacked, inputs...)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// res := make([]koalagnark.Ext, len(linComb))
-	// for i := 0; i < len(linComb); i++ {
-	// 	res[i].B0.A0 = _res[4*i]
-	// 	res[i].B0.A1 = _res[4*i+1]
-	// 	res[i].B1.A0 = _res[4*i+2]
-	// 	res[i].B1.A1 = _res[4*i+3]
-	// }
-
-	// === Part 2: Batch Lagrange evaluation at two points ===
-	// Both evaluations use the same domain (Domains[1])
-	var c fext.Element
-	c.SetRandom()
-	challenge := koalagnark.NewExt(c)
-
-	// Batch evaluate linComb at both x (for statement check) and challenge (for codeword check)
-	zs := []koalagnark.Ext{x, challenge}
-	evals := polynomials.GnarkEvaluateLagrangeExtBatch(
+	// Evaluate linComb at x using Lagrange interpolation (linComb is in Lagrange basis)
+	alphaY := polynomials.GnarkEvaluateLagrangeExt(
 		api,
 		linComb,
-		zs,
-		params.RsParams.Domains[1].Generator,
-		params.RsParams.Domains[1].Cardinality)
+		x,
+		params.RsParams.Domains[0].Generator,
+		params.RsParams.Domains[0].Cardinality)
 
-	alphaY := evals[0] // P(x) for statement check
-	// evalLag := evals[1] // P(challenge) for codeword check
-
-	// === Part 3: Statement check ===
+	// Join ys and evaluate at alpha using Horner's method (ys is in canonical form)
 	var yjoined []koalagnark.Ext
 	for i := 0; i < len(ys); i++ {
 		yjoined = append(yjoined, ys[i]...)
 	}
 	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
+
 	koalaAPI.AssertIsEqualExt(alphaY, alphaYPrime)
-
-	// // === Part 4: Codeword check (Schwartz-Zippel) ===
-	// evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
-	// koalaAPI.AssertIsEqualExt(evalLag, evalCan)
-
-	// // === Part 5: Assert last entries are zeroes (RS codeword property) ===
-	// zero := koalaAPI.ZeroExt()
-	// for i := params.RsParams.NbColumns(); i < params.RsParams.NbEncodedColumns(); i++ {
-	// 	koalaAPI.AssertIsEqualExt(res[i], zero)
-	// }
 
 	return nil
 }

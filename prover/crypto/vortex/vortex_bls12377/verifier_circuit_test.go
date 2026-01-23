@@ -59,6 +59,12 @@ func TestGnarkVerifier(t *testing.T) {
 		witness.Proof.LinearCombination[i] = koalagnark.NewExt(proof.LinearCombination.GetExt(i))
 	}
 
+	circuit.Proof.EncodedLinearCombination = make([]koalagnark.Ext, proof.EncodedLinearCombination.Len())
+	witness.Proof.EncodedLinearCombination = make([]koalagnark.Ext, proof.EncodedLinearCombination.Len())
+	for i := 0; i < proof.EncodedLinearCombination.Len(); i++ {
+		witness.Proof.EncodedLinearCombination[i] = koalagnark.NewExt(proof.EncodedLinearCombination.GetExt(i))
+	}
+
 	witness.Vi.Alpha = koalagnark.NewExt(vi.Alpha)
 	witness.Vi.X = koalagnark.NewExt(vi.X)
 

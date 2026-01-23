@@ -1,6 +1,7 @@
 package polynomials
 
 import (
+	"fmt"
 	"math/big"
 	"math/bits"
 
@@ -53,6 +54,8 @@ func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []koalagnark.Ext, zs []ko
 	invN.Inverse(&invN)
 	bwi := big.NewInt(0)
 
+	fmt.Printf("Precomputing barycentric weights for cardinality %d\n", cardinality)
+	fmt.Printf("polylen=%v\n", len(p))
 	for i := uint64(0); i < cardinality; i++ {
 		// wᵢ = ωⁱ/n
 		var wi field.Element

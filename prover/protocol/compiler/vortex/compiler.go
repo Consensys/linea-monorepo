@@ -331,7 +331,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			}
 			Alpha               coin.Info
 			Ualpha              ifaces.Column
-			UalphaEncoded       ifaces.Column
+			EncodedUalpha       ifaces.Column
 			Q                   coin.Info
 			OpenedColumns       []ifaces.Column
 			OpenedSISColumns    []ifaces.Column
