@@ -268,7 +268,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 		pi.FinalRollingHash,
 		gnarkutil.ToBytes32(api, pi.LastFinalizedRollingHashNumber),
 		gnarkutil.ToBytes32(api, pi.FinalRollingHashNumber),
-		gnarkutil.ToBytes32(api, zk.ValueOf(pi.L2MsgMerkleTreeDepth)),
+		gnarkutil.ToBytes32(api, pi.L2MsgMerkleTreeDepth),
 		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 
 		//include a hash of the chain configuration

@@ -9,8 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
@@ -92,12 +91,12 @@ func NewExternalRangeCheckerBuilder(addGateForRangeCheck bool) (frontend.NewBuil
 // Check implements [frontend.RangeChecker]
 func (builder *externalRangeChecker) Check(v frontend.Variable, bits int) {
 
-	// Sanity-check that we are not passing a zk.WrappedVariable or extension
+	// Sanity-check that we are not passing a koalagnark.Element or extension
 	switch v.(type) {
-	case zk.WrappedVariable:
-		panic("cannot range check zk.WrappedVariable")
-	case gnarkfext.E4Gen:
-		panic("cannot range check gnarkfext.E4Gen")
+	case koalagnark.Element:
+		panic("cannot range check koalagnark.Element")
+	case koalagnark.Ext:
+		panic("cannot range check koalagnark.Ext")
 	}
 
 	// This applies specifically for the Sha2 circuit which generates range-

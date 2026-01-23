@@ -1,4 +1,4 @@
-package hasher_factory
+package multisethashing_koalabear
 
 import (
 	"github.com/consensys/gnark/frontend"

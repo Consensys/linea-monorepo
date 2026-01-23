@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	gkrposeidon2 "github.com/consensys/gnark/std/hash/poseidon2/gkr-poseidon2"
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2/test_utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2/test_utils"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
