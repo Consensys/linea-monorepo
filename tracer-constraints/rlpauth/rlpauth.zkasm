@@ -1,6 +1,7 @@
 include "../constants/evm.zkasm"
 include "../util/padding.zkasm"
 include "../util/byte_size.zkasm"
+include "../util/max2.zkasm"
 
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
@@ -167,39 +168,62 @@ pub fn keccak_for_ecrecover(keccak_input u320, h u256) -> (dummy u1) {
     var total_size u32
     total_size = 48 ;; 3 limbs
     
-    var kekkak_input_without_first_limb u192 ;; 320 - 128
-    var kekkak_input_without_first_2_limbs u64  ;; 192 - 128
+    var keccak_input_without_first_limb u192 ;; 320 - 128
+    var keccak_input_without_first_2_limbs u64  ;; 192 - 128
 
     var h_lo u128
 
     ;; right-pad keccak_input to 320 bits
-    var kekkak_input_rpad u320
-    kekkak_input_rpad = rpad_320(keccak_input)
+    var keccak_input_rpad u320
+    keccak_input_rpad = rpad_320(keccak_input)
 
     ;; limb 
     ;; data
-    limb, kekkak_input_without_first_limb = kekkak_input_rpad
-    limb, kekkak_input_without_first_2_limbs = kekkak_input_without_first_limb
-    limb = rpad_128(kekkak_input_without_first_2_limbs)
+    limb, keccak_input_without_first_limb = keccak_input_rpad
+    limb, keccak_input_without_first_2_limbs = keccak_input_without_first_limb
+    limb = rpad_128(keccak_input_without_first_2_limbs)
 
     ;; result
     limb, h_lo = h ;; h_hi
     limb = h_lo ;; h_lo
 
     var keccak_input_byte_size u8
-    ;; TODO: implement byte size for u320
-    ;; keccak_input_byte_size = byte_size(keccak_input)
+    keccak_input_byte_size = byte_size_u512(keccak_input)
 
     ;; limb_size 
-    ;; TODO: handle cases in which keccak_input_byte_size is smaller than 32 or 16
-    ;; limb_size = 16
-    ;; limb_size = 16
-    ;; limb_size = keccak_input_byte_size - 32
+    var keccak_input_byte_size_vs_32 u8
+    keccak_input_byte_size_vs_32 = max_u8(keccak_input_byte_size, 32)
+
+    var keccak_input_byte_size_vs_16 u8
+    keccak_input_byte_size_vs_16 = max_u8(keccak_input_byte_size, 16)
+
+    if keccak_input_byte_size == keccak_input_byte_size_vs_32 goto two_full_limbs_and_one_partial
+    if keccak_input_byte_size == keccak_input_byte_size_vs_16 goto one_full_limb_and_one_partial
+    goto one_partial_limb
+
+    var b u1
+    two_full_limbs_and_one_partial:
+        limb_size = 16
+        limb_size = 16
+        b, limb_size = keccak_input_byte_size - 32
+        goto exit
+
+    one_full_limb_and_one_partial:
+        limb_size = 16
+        b, limb_size = keccak_input_byte_size - 16
+        limb_size = 0
+        goto exit
+    
+    one_partial_limb:
+        limb_size = keccak_input_byte_size
+        limb_size = 0
+        limb_size = 0
 
     ;; lookup to SHAKIRA for keccak computation
 
-    dummy = 0
-    return
+    exit:
+        dummy = 0
+        return
 }
 
 pub fn keccak_for_code_hash(address u160, h u256) -> (dummy u1) {
