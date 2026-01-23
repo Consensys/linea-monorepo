@@ -108,3 +108,44 @@ func (o Octuplet) NativeArray() [8]frontend.Variable {
 	}
 	return res
 }
+
+// ConstantValueOf returns true if the variable represent a constant value and
+// returns the non-nil value if so.
+func (api API) ConstantValueOfElement(v Element) (*field.Element, bool) {
+
+	var res field.Element
+
+	if v.V != nil {
+		f, ok := api.nativeAPI.Compiler().ConstantValue(v.V)
+		if !ok {
+			return nil, false
+		}
+		res.SetBigInt(f)
+		return &res, true
+	}
+
+	var (
+		nbLimb, nbBit = emulated.GetEffectiveFieldParams[emulated.KoalaBear](nil)
+		fBig          big.Int
+		f             field.Element
+	)
+
+	if int(nbLimb) != len(v.EV.Limbs) {
+		utils.Panic("field contains %v limbs, but the emulated API suggests it contains %v", len(v.EV.Limbs), nbLimb)
+	}
+
+	for i := range v.EV.Limbs {
+		g, ok := api.nativeAPI.Compiler().ConstantValue(v.EV.Limbs[i])
+		if !ok {
+			return nil, false
+		}
+
+		if i > 0 {
+			fBig.Lsh(&fBig, uint(nbBit))
+		}
+		fBig.Add(&fBig, g)
+	}
+
+	f.SetBigInt(&fBig)
+	return &f, true
+}

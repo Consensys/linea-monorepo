@@ -72,16 +72,16 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]koalagnark.Ext, x ko
 		return []koalagnark.Ext{}
 	}
 
-	koalaAPI := koalagnark.NewAPI(api)
-
-	sizes := listOfDifferentSizes(polys)
-	maxSize := sizes[len(sizes)-1]
-	xNs := raiseToPowersOfTwosExt(api, x, sizes)
-	powersOfOmegaInv := powerVectorOfOmegaInv(maxSize)
-	one := koalaAPI.OneExt()
-
-	innerProductTerms := make([]koalagnark.Ext, maxSize)
-	scalingTerms := make([]koalagnark.Ext, len(sizes))
+	var (
+		koalaAPI          = koalagnark.NewAPI(api)
+		sizes             = listOfDifferentSizes(polys)
+		maxSize           = sizes[len(sizes)-1]
+		xNs               = raiseToPowersOfTwosExt(api, x, sizes)
+		powersOfOmegaInv  = powerVectorOfOmegaInv(maxSize)
+		one               = koalaAPI.OneExt()
+		innerProductTerms = make([]koalagnark.Ext, maxSize)
+		scalingTerms      = make([]koalagnark.Ext, len(sizes))
+	)
 
 	// res stores the final result of the interpolation
 	res := make([]koalagnark.Ext, len(polys))
@@ -120,10 +120,18 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]koalagnark.Ext, x ko
 
 		yUnscaled := koalaAPI.ZeroExt()
 		for k := 0; k < n; k++ {
-			// TOOD @thomas restore this optim
-			// if isConstantZeroGnarkVariable(api, poly[k]) {
-			// 	continue
-			// }
+			// this saves constraints when the constant term is zero.
+			if polyKConst, isConst := koalaAPI.ConstantValueOfExt(poly[k]); isConst && polyKConst.IsZero() {
+				continue
+			}
+
+			// this saves constraints when the provided elements represent a
+			// base field column (when statically known).
+			if f, isBase := koalaAPI.BaseValueOfElement(poly[k]); isBase {
+				tmp = koalaAPI.MulByFpExt(innerProductTerms[k*maxSize/n], *f)
+				yUnscaled = koalaAPI.AddExt(tmp, yUnscaled)
+				continue
+			}
 
 			tmp = koalaAPI.MulExt(innerProductTerms[k*maxSize/n], poly[k])
 			yUnscaled = koalaAPI.AddExt(tmp, yUnscaled)
