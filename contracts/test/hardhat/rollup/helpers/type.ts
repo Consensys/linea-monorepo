@@ -29,8 +29,6 @@ export type AggregatedProofData = {
   l2MerkleRoots: string[];
   l2MerkleTreesDepth: number;
   l2MessagingBlocksOffsets: string;
-  finalBlockHash: string;
-  parentAggregationBlockHash: string;
   chainID: number;
   baseFee: number;
   coinBase: string;
