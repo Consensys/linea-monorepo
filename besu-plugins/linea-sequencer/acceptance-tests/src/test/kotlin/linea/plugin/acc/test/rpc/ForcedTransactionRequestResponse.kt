@@ -8,23 +8,19 @@
  */
 package linea.plugin.acc.test.rpc
 
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.core.JsonToken
-import com.fasterxml.jackson.databind.DeserializationContext
-import com.fasterxml.jackson.databind.JsonDeserializer
-import com.fasterxml.jackson.databind.ObjectReader
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.NodeRequests
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.Transaction
 import org.web3j.protocol.core.Request
+import org.web3j.protocol.core.Response
 import java.io.IOException
 
 /**
- * TODO: Replace with a reusable client
  * Parameters for linea_sendForcedRawTransaction RPC call.
  */
 data class ForcedTransactionParam(
+  val forcedTransactionNumber: Long,
   val transaction: String,
   val deadline: String,
 )
@@ -51,23 +47,32 @@ class SendForcedRawTransactionRequest(
 }
 
 /**
- * Response from linea_sendForcedRawTransaction RPC call.
- * Contains an array of transaction hashes.
+ * Response item from linea_sendForcedRawTransaction RPC call.
  */
-class SendForcedRawTransactionResponse : org.web3j.protocol.core.Response<List<String>>()
+data class ForcedTransactionResponseItem @JsonCreator constructor(
+  @param:JsonProperty("forcedTransactionNumber") val forcedTransactionNumber: Long,
+  @param:JsonProperty("hash") val hash: String?,
+  @param:JsonProperty("error") val error: String?,
+)
+
+/**
+ * Response from linea_sendForcedRawTransaction RPC call.
+ * Contains an array of response items with forcedTransactionNumber, hash, and optional error.
+ */
+class SendForcedRawTransactionResponse : Response<List<ForcedTransactionResponseItem>>()
 
 /**
  * Request to get forced transaction inclusion status.
  */
 class GetForcedTransactionInclusionStatusRequest(
-  private val txHash: String,
+  private val forcedTransactionNumber: Long,
 ) : Transaction<GetForcedTransactionInclusionStatusResponse> {
 
   override fun execute(nodeRequests: NodeRequests): GetForcedTransactionInclusionStatusResponse {
     return try {
       Request(
         "linea_getForcedTransactionInclusionStatus",
-        listOf(txHash),
+        listOf(forcedTransactionNumber),
         nodeRequests.web3jService,
         GetForcedTransactionInclusionStatusResponse::class.java,
       ).send()
@@ -81,39 +86,14 @@ class GetForcedTransactionInclusionStatusRequest(
  * Response from linea_getForcedTransactionInclusionStatus RPC call.
  */
 class GetForcedTransactionInclusionStatusResponse :
-  org.web3j.protocol.core.Response<GetForcedTransactionInclusionStatusResponse.InclusionStatus>() {
+  Response<GetForcedTransactionInclusionStatusResponse.InclusionStatus>() {
 
-  @Override
-  @JsonDeserialize(using = InclusionStatusDeserializer::class)
-  override fun setResult(result: InclusionStatus?) {
-    super.setResult(result)
-  }
-
-  data class InclusionStatus(
-    val blockNumber: String,
-    val blockTimestamp: String,
-    val from: String,
-    val inclusionResult: String,
-    val transactionHash: String,
+  data class InclusionStatus @JsonCreator constructor(
+    @param:JsonProperty("forcedTransactionNumber") val forcedTransactionNumber: Long,
+    @param:JsonProperty("blockNumber") val blockNumber: String,
+    @param:JsonProperty("blockTimestamp") val blockTimestamp: Long,
+    @param:JsonProperty("from") val from: String,
+    @param:JsonProperty("inclusionResult") val inclusionResult: String,
+    @param:JsonProperty("transactionHash") val transactionHash: String,
   )
-}
-
-class InclusionStatusDeserializer :
-  JsonDeserializer<GetForcedTransactionInclusionStatusResponse.InclusionStatus>() {
-
-  private val objectReader: ObjectReader = jacksonObjectMapper().reader()
-
-  override fun deserialize(
-    jsonParser: JsonParser,
-    deserializationContext: DeserializationContext,
-  ): GetForcedTransactionInclusionStatusResponse.InclusionStatus? {
-    return if (jsonParser.currentToken != JsonToken.VALUE_NULL) {
-      objectReader.readValue(
-        jsonParser,
-        GetForcedTransactionInclusionStatusResponse.InclusionStatus::class.java,
-      )
-    } else {
-      null
-    }
-  }
 }

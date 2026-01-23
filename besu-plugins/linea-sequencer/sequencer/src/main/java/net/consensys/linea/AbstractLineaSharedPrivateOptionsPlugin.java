@@ -287,7 +287,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
 
     forcedTransactionPoolService =
         new LineaForcedTransactionPool(
-            forcedTransactionConfiguration().statusCacheSize(), metricsSystem);
+            forcedTransactionConfiguration().statusCacheSize(), metricsSystem, besuEvents);
 
     invalidTransactionByLineCountCache =
         new InvalidTransactionByLineCountCache(

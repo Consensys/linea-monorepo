@@ -9,14 +9,16 @@
 package net.consensys.linea.rpc.methods;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.sequencer.forced.ForcedTransaction;
 import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonRpcParameter;
 import org.hyperledger.besu.ethereum.api.util.DomainObjectDecodeUtils;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -34,17 +36,32 @@ import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
  * {
  *   "method": "linea_sendForcedRawTransaction",
  *   "params": [
- *     {"transaction": "0x...", "deadline": "0x..."},
- *     {"transaction": "0x...", "deadline": "0x..."}
+ *     {"forcedTransactionNumber": 6, "transaction": "0x...", "deadline": "0xfce"},
+ *     {"forcedTransactionNumber": 7, "transaction": "0x...", "deadline": "0xfcf"}
  *   ]
  * }
  * </pre>
  *
- * <p>Response format:
+ * <p>Response format (all successful):
  *
  * <pre>
  * {
- *   "result": ["0xTX_HASH_1", "0xTX_HASH_2"]
+ *   "result": [
+ *     {"forcedTransactionNumber": 6, "hash": "0xTX_HASH_1"},
+ *     {"forcedTransactionNumber": 7, "hash": "0xTX_HASH_2"}
+ *   ]
+ * }
+ * </pre>
+ *
+ * <p>Response format (partial failure - e.g., 3rd transaction fails validation):
+ *
+ * <pre>
+ * {
+ *   "result": [
+ *     {"forcedTransactionNumber": 6, "hash": "0xTX_HASH_1"},
+ *     {"forcedTransactionNumber": 7, "hash": "0xTX_HASH_2"},
+ *     {"forcedTransactionNumber": 8, "error": "Error message"}
+ *   ]
  * }
  * </pre>
  */
@@ -53,6 +70,7 @@ public class LineaSendForcedRawTransaction {
   private static final AtomicInteger LOG_SEQUENCE = new AtomicInteger();
 
   private final JsonRpcParameter parameterParser = new JsonRpcParameter();
+  private final Lock requestLock = new ReentrantLock();
   private ForcedTransactionPoolService forcedTransactionPoolService;
 
   public LineaSendForcedRawTransaction init(
@@ -69,9 +87,13 @@ public class LineaSendForcedRawTransaction {
     return "sendForcedRawTransaction";
   }
 
-  public List<String> execute(final PluginRpcRequest request) {
+  public List<ForcedTransactionResponse> execute(final PluginRpcRequest request) {
     final int logId = log.isDebugEnabled() ? LOG_SEQUENCE.incrementAndGet() : -1;
 
+    if (!requestLock.tryLock()) {
+      throw new PluginRpcEndpointException(
+          new SendForcedRawTransactionError("Another request is already being processed"));
+    }
     try {
       final ForcedTransactionParam[] params = parseRequest(logId, request.getParams());
 
@@ -85,40 +107,80 @@ public class LineaSendForcedRawTransaction {
           .addArgument(params.length)
           .log();
 
+      final List<ForcedTransactionResponse> responses = new ArrayList<>(params.length);
       final List<ForcedTransaction> forcedTransactions = new ArrayList<>(params.length);
 
       for (int i = 0; i < params.length; i++) {
         final ForcedTransactionParam param = params[i];
 
-        if (param.transaction == null || param.transaction.isEmpty()) {
-          throw new IllegalArgumentException(
-              "Transaction at index " + i + " has empty transaction data");
+        if (param.forcedTransactionNumber == null) {
+          responses.add(
+              ForcedTransactionResponse.error(
+                  0L, "forcedTransactionNumber is required at index " + i));
+          break;
         }
 
-        final Transaction tx = decodeTransaction(param.transaction, i);
-        final long deadline = parseDeadline(param.deadline, i);
+        if (param.transaction == null || param.transaction.isEmpty()) {
+          responses.add(
+              ForcedTransactionResponse.error(
+                  param.forcedTransactionNumber, "Empty transaction data"));
+          break;
+        }
 
-        forcedTransactions.add(new ForcedTransaction(tx.getHash(), tx, deadline));
+        final Transaction tx;
+        try {
+          tx = decodeTransaction(param.transaction);
+        } catch (final Exception e) {
+          responses.add(
+              ForcedTransactionResponse.error(
+                  param.forcedTransactionNumber, "Failed to decode transaction: " + e.getMessage()));
+          break;
+        }
+
+        final long deadline;
+        try {
+          deadline = parseDeadline(param.deadline);
+        } catch (final Exception e) {
+          responses.add(
+              ForcedTransactionResponse.error(param.forcedTransactionNumber, e.getMessage()));
+          break;
+        }
+
+        forcedTransactions.add(
+            new ForcedTransaction(param.forcedTransactionNumber, tx.getHash(), tx, deadline));
+        responses.add(
+            ForcedTransactionResponse.success(param.forcedTransactionNumber, tx.getHash().toHexString()));
 
         log.atDebug()
-            .setMessage("action=parse_forced_tx logId={} index={} txHash={} deadline={}")
+            .setMessage("action=parse_forced_tx logId={} forcedTxNumber={} txHash={} deadline={}")
             .addArgument(logId)
-            .addArgument(i)
+            .addArgument(param.forcedTransactionNumber)
             .addArgument(tx.getHash()::toHexString)
             .addArgument(deadline)
             .log();
       }
 
-      final List<Hash> hashes =
-          forcedTransactionPoolService.addForcedTransactions(forcedTransactions);
+      if (!forcedTransactions.isEmpty()) {
+        forcedTransactionPoolService.addForcedTransactions(forcedTransactions);
+      }
 
-      log.atInfo()
-          .setMessage("action=send_forced_raw_tx_success logId={} count={}")
-          .addArgument(logId)
-          .addArgument(hashes::size)
-          .log();
+      final boolean hasError = responses.stream().anyMatch(r -> r.error != null);
+      if (hasError) {
+        log.atWarn()
+            .setMessage("action=send_forced_raw_tx_partial logId={} successCount={} totalReceived={}")
+            .addArgument(logId)
+            .addArgument(forcedTransactions.size())
+            .addArgument(params.length)
+            .log();
+      } else {
+        log.atInfo()
+            .setMessage("action=send_forced_raw_tx_success logId={} count={}")
+            .addArgument(logId)
+            .addArgument(responses::size)
+            .log();
+      }
 
-      return hashes.stream().map(Hash::toHexString).toList();
+      return responses;
 
     } catch (final IllegalArgumentException e) {
       log.atWarn()
@@ -136,6 +198,8 @@ public class LineaSendForcedRawTransaction {
           .log();
       throw new PluginRpcEndpointException(
           new SendForcedRawTransactionError("Internal error: " + e.getMessage()));
+    } finally {
+      requestLock.unlock();
     }
   }
 
@@ -153,29 +217,26 @@ public class LineaSendForcedRawTransaction {
     }
   }
 
-  private Transaction decodeTransaction(final String rawTx, final int index) {
-    try {
-      return DomainObjectDecodeUtils.decodeRawTransaction(rawTx);
-    } catch (final Exception e) {
-      throw new IllegalArgumentException(
-          "Failed to decode transaction at index " + index + ": " + e.getMessage());
-    }
+  private Transaction decodeTransaction(final String rawTx) {
+    return DomainObjectDecodeUtils.decodeRawTransaction(rawTx);
   }
 
-  private long parseDeadline(final String deadlineHex, final int index) {
+  private long parseDeadline(final String deadlineHex) {
     if (deadlineHex == null || deadlineHex.isEmpty()) {
-      throw new IllegalArgumentException("Deadline is required at index " + index);
+      throw new IllegalArgumentException("Deadline is required");
     }
     try {
       return Long.decode(deadlineHex);
     } catch (final NumberFormatException e) {
-      throw new IllegalArgumentException(
-          "Invalid deadline format at index " + index + ": " + deadlineHex);
+      throw new IllegalArgumentException("Invalid deadline format: " + deadlineHex);
     }
   }
 
   /** Parameter class for forced transaction submission. */
   public static class ForcedTransactionParam {
+    @JsonProperty("forcedTransactionNumber")
+    public Long forcedTransactionNumber;
+
     @JsonProperty("transaction")
     public String transaction;
 
@@ -184,10 +245,42 @@ public class LineaSendForcedRawTransaction {
 
     @JsonCreator
     public ForcedTransactionParam(
+        @JsonProperty("forcedTransactionNumber") final Long forcedTransactionNumber,
         @JsonProperty("transaction") final String transaction,
         @JsonProperty("deadline") final String deadline) {
+      this.forcedTransactionNumber = forcedTransactionNumber;
       this.transaction = transaction;
       this.deadline = deadline;
+    }
+  }
+
+  /** Response class for forced transaction submission. */
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public static class ForcedTransactionResponse {
+    @JsonProperty("forcedTransactionNumber")
+    public final long forcedTransactionNumber;
+
+    @JsonProperty("hash")
+    public final String hash;
+
+    @JsonProperty("error")
+    public final String error;
+
+    private ForcedTransactionResponse(
+        final long forcedTransactionNumber, final String hash, final String error) {
+      this.forcedTransactionNumber = forcedTransactionNumber;
+      this.hash = hash;
+      this.error = error;
+    }
+
+    public static ForcedTransactionResponse success(
+        final long forcedTransactionNumber, final String hash) {
+      return new ForcedTransactionResponse(forcedTransactionNumber, hash, null);
+    }
+
+    public static ForcedTransactionResponse error(
+        final long forcedTransactionNumber, final String error) {
+      return new ForcedTransactionResponse(forcedTransactionNumber, null, error);
     }
   }
 

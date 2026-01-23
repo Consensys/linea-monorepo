@@ -11,28 +11,31 @@ package net.consensys.linea.sequencer.forced;
 /** Represents the outcome of a forced transaction inclusion attempt. */
 public enum ForcedTransactionInclusionResult {
   /** Transaction was successfully included in the block. */
-  INCLUDED,
+  Included,
 
   /** Transaction failed due to nonce mismatch. */
-  BAD_NONCE,
+  BadNonce,
 
   /** Transaction failed due to insufficient balance. */
-  BAD_BALANCE,
+  BadBalance,
 
   /** Transaction failed due to precompile call failure. */
-  BAD_PRECOMPILE,
+  BadPrecompile,
 
   /** Transaction failed due to exceeding log limits. */
-  TOO_MANY_LOGS,
+  TooManyLogs,
 
   /** Transaction failed because sender or recipient is on deny list. */
-  FILTERED_ADDRESSES,
+  FilteredAddresses,
+
+  /** Transaction was rejected by Phylax filtering. */
+  Phylax,
 
   /**
    * Transaction failed for an unrecognized reason. This is a transient status - the transaction
    * will be retried in the next block rather than being finalized with this status.
    */
-  OTHER;
+  Other;
 
   /**
    * Returns true if this result is transient and the transaction should be retried.
@@ -40,6 +43,6 @@ public enum ForcedTransactionInclusionResult {
    * @return true if the transaction should be retried
    */
   public boolean shouldRetry() {
-    return this == OTHER;
+    return this == Other;
   }
 }

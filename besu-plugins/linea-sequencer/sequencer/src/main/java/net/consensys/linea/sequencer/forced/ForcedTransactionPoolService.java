@@ -10,7 +10,6 @@ package net.consensys.linea.sequencer.forced;
 
 import java.util.List;
 import java.util.Optional;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.services.BesuService;
 import org.hyperledger.besu.plugin.services.txselection.BlockTransactionSelectionService;
 
@@ -24,9 +23,8 @@ public interface ForcedTransactionPoolService extends BesuService {
    * Add forced transactions to the pool. Transactions are processed in the order they are added.
    *
    * @param transactions The forced transactions to add
-   * @return List of transaction hashes
    */
-  List<Hash> addForcedTransactions(List<ForcedTransaction> transactions);
+  void addForcedTransactions(List<ForcedTransaction> transactions);
 
   /**
    * Process forced transactions for block building. This method should be called at the start of
@@ -47,10 +45,10 @@ public interface ForcedTransactionPoolService extends BesuService {
   /**
    * Get the inclusion status of a forced transaction.
    *
-   * @param txHash The transaction hash
+   * @param forcedTransactionNumber The unique identifier of the forced transaction
    * @return The status if the transaction has reached a final outcome, empty otherwise
    */
-  Optional<ForcedTransactionStatus> getInclusionStatus(Hash txHash);
+  Optional<ForcedTransactionStatus> getInclusionStatus(long forcedTransactionNumber);
 
   /**
    * Get the number of pending forced transactions.

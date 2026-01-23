@@ -26,8 +26,9 @@ public class TestTransactionFactory {
       SignatureAlgorithmFactory.getInstance();
   private static final BigInteger DEFAULT_PRIVATE_KEY =
       new BigInteger("8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63", 16);
+  // Use a non-precompile address (precompiles are 0x01-0x0a)
   private static final Address DEFAULT_RECIPIENT =
-      Address.fromHexString("0x0000000000000000000000000000000000000001");
+      Address.fromHexString("0x000000000000000000000000000000000000dead");
   private static final BigInteger DEFAULT_CHAIN_ID = BigInteger.valueOf(59144);
   private static final long DEFAULT_GAS_LIMIT = 21000L;
   private static final Wei DEFAULT_GAS_PRICE = Wei.of(1_000_000_000);

@@ -14,6 +14,7 @@ import org.hyperledger.besu.datatypes.Hash;
 /**
  * Represents the inclusion status of a forced transaction.
  *
+ * @param forcedTransactionNumber Unique identifier for the forced transaction
  * @param transactionHash The transaction hash
  * @param from The sender address
  * @param blockNumber The block number where the transaction was tried (final outcome)
@@ -21,6 +22,7 @@ import org.hyperledger.besu.datatypes.Hash;
  * @param inclusionResult The result of the inclusion attempt
  */
 public record ForcedTransactionStatus(
+    long forcedTransactionNumber,
     Hash transactionHash,
     Address from,
     long blockNumber,

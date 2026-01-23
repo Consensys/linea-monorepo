@@ -8,27 +8,30 @@
  */
 package linea.plugin.acc.test.rpc.linea
 
+import linea.plugin.acc.test.PrecompileCallEncoder
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder
 import linea.plugin.acc.test.rpc.ForcedTransactionParam
 import linea.plugin.acc.test.rpc.GetForcedTransactionInclusionStatusRequest
 import linea.plugin.acc.test.rpc.SendForcedRawTransactionRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
+import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.web3j.crypto.Hash.sha3
 import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
+import org.web3j.tx.gas.DefaultGasProvider
 import org.web3j.utils.Numeric
 import java.math.BigInteger
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 class ForcedTransactionTest : AbstractSendBundleTest() {
+  private val forcedTxNumberGenerator = AtomicLong(1)
 
-  companion object {
-    // Deadline far in the future (block number 1 million)
-    private const val DEFAULT_DEADLINE = "0xF4240"
-  }
+  private fun nextForcedTxNumber(): Long = forcedTxNumberGenerator.getAndIncrement()
 
   override fun getTestCliOptions(): List<String> {
     return TestCommandLineOptionsBuilder()
@@ -37,6 +40,7 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
         getResourcePath("/moduleLimitsLimitless.toml"),
       )
       .set("--plugin-linea-limitless-enabled=", "true")
+      .set("--plugin-linea-deny-list-path=", getResourcePath("/defaultDenyList.txt"))
       .build()
   }
 
@@ -55,25 +59,27 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
 
     val rawTx = createSignedTransfer(sender, recipient, 0)
     val txHash = sha3(rawTx)
+    val forcedTxNumber = nextForcedTxNumber()
 
     val sendResponse = SendForcedRawTransactionRequest(
-      listOf(ForcedTransactionParam(rawTx, DEFAULT_DEADLINE)),
+      listOf(ForcedTransactionParam(forcedTxNumber, rawTx, DEFAULT_DEADLINE)),
     ).execute(minerNode.nodeRequests())
 
     assertThat(sendResponse.hasError()).isFalse()
     assertThat(sendResponse.result).hasSize(1)
-    assertThat(sendResponse.result[0]).isEqualTo(txHash)
+    assertThat(sendResponse.result[0].forcedTransactionNumber).isEqualTo(forcedTxNumber)
+    assertThat(sendResponse.result[0].hash).isEqualTo(txHash)
+    assertThat(sendResponse.result[0].error).isNull()
 
-    // Wait for mining
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(txHash))
 
-    // Verify inclusion status
-    val statusResponse = GetForcedTransactionInclusionStatusRequest(txHash)
+    val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
       .execute(minerNode.nodeRequests())
 
     assertThat(statusResponse.hasError()).isFalse()
     assertThat(statusResponse.result).isNotNull
-    assertThat(statusResponse.result!!.inclusionResult).isEqualTo("INCLUDED")
+    assertThat(statusResponse.result!!.forcedTransactionNumber).isEqualTo(forcedTxNumber)
+    assertThat(statusResponse.result!!.inclusionResult).isEqualTo("Included")
     assertThat(statusResponse.result!!.transactionHash).isEqualTo(txHash.lowercase())
   }
 
@@ -88,29 +94,30 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
     val txHash1 = sha3(rawTx1)
     val txHash2 = sha3(rawTx2)
     val txHash3 = sha3(rawTx3)
+    val forcedTxNumber1 = nextForcedTxNumber()
+    val forcedTxNumber2 = nextForcedTxNumber()
+    val forcedTxNumber3 = nextForcedTxNumber()
 
     val sendResponse = SendForcedRawTransactionRequest(
       listOf(
-        ForcedTransactionParam(rawTx1, DEFAULT_DEADLINE),
-        ForcedTransactionParam(rawTx2, DEFAULT_DEADLINE),
-        ForcedTransactionParam(rawTx3, DEFAULT_DEADLINE),
+        ForcedTransactionParam(forcedTxNumber1, rawTx1, DEFAULT_DEADLINE),
+        ForcedTransactionParam(forcedTxNumber2, rawTx2, DEFAULT_DEADLINE),
+        ForcedTransactionParam(forcedTxNumber3, rawTx3, DEFAULT_DEADLINE),
       ),
     ).execute(minerNode.nodeRequests())
 
     assertThat(sendResponse.hasError()).isFalse()
     assertThat(sendResponse.result).hasSize(3)
 
-    // Wait for all to be mined
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(txHash1))
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(txHash2))
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(txHash3))
 
-    // Verify all have INCLUDED status
-    for (txHash in listOf(txHash1, txHash2, txHash3)) {
-      val statusResponse = GetForcedTransactionInclusionStatusRequest(txHash)
+    for (forcedTxNumber in listOf(forcedTxNumber1, forcedTxNumber2, forcedTxNumber3)) {
+      val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
         .execute(minerNode.nodeRequests())
 
-      assertThat(statusResponse.result?.inclusionResult).isEqualTo("INCLUDED")
+      assertThat(statusResponse.result?.inclusionResult).isEqualTo("Included")
     }
   }
 
@@ -119,69 +126,64 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
     val sender = accounts.secondaryBenefactor
     val recipient = accounts.primaryBenefactor
 
-    // Create tx with very high nonce (will fail)
     val rawTx = createSignedTransfer(sender, recipient, 999)
-    val txHash = sha3(rawTx)
+    val forcedTxNumber = nextForcedTxNumber()
 
     val sendResponse = SendForcedRawTransactionRequest(
-      listOf(ForcedTransactionParam(rawTx, DEFAULT_DEADLINE)),
+      listOf(ForcedTransactionParam(forcedTxNumber, rawTx, DEFAULT_DEADLINE)),
     ).execute(minerNode.nodeRequests())
 
     assertThat(sendResponse.hasError()).isFalse()
     assertThat(sendResponse.result).hasSize(1)
 
-    // Wait for the status to be determined
     await()
       .atMost(30, TimeUnit.SECONDS)
       .pollInterval(1, TimeUnit.SECONDS)
       .untilAsserted {
-        val statusResponse = GetForcedTransactionInclusionStatusRequest(txHash)
+        val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
           .execute(minerNode.nodeRequests())
 
         assertThat(statusResponse.result).isNotNull
-        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("BAD_NONCE")
+        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("BadNonce")
       }
   }
 
   @Test
   fun forcedTransactionWithInsufficientBalanceIsRejected() {
-    // Create new account with minimal balance
     val poorSender = accounts.createAccount("poor")
     val recipient = accounts.primaryBenefactor
 
-    // Try to send more ETH than the account has
     val rawTx = createSignedTransferWithValue(
       poorSender,
       recipient,
       0,
       BigInteger.valueOf(1_000_000_000_000_000_000L), // 1 ETH
     )
-    val txHash = sha3(rawTx)
+    val forcedTxNumber = nextForcedTxNumber()
 
     val sendResponse = SendForcedRawTransactionRequest(
-      listOf(ForcedTransactionParam(rawTx, DEFAULT_DEADLINE)),
+      listOf(ForcedTransactionParam(forcedTxNumber, rawTx, DEFAULT_DEADLINE)),
     ).execute(minerNode.nodeRequests())
 
     assertThat(sendResponse.hasError()).isFalse()
 
-    // Wait for the status to be determined
     await()
       .atMost(30, TimeUnit.SECONDS)
       .pollInterval(1, TimeUnit.SECONDS)
       .untilAsserted {
-        val statusResponse = GetForcedTransactionInclusionStatusRequest(txHash)
+        val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
           .execute(minerNode.nodeRequests())
 
         assertThat(statusResponse.result).isNotNull
-        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("BAD_BALANCE")
+        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("BadBalance")
       }
   }
 
   @Test
   fun unknownTransactionReturnsNullStatus() {
-    val unknownHash = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+    val unknownForcedTxNumber = 999999L
 
-    val statusResponse = GetForcedTransactionInclusionStatusRequest(unknownHash)
+    val statusResponse = GetForcedTransactionInclusionStatusRequest(unknownForcedTxNumber)
       .execute(minerNode.nodeRequests())
 
     assertThat(statusResponse.hasError()).isFalse()
@@ -201,14 +203,14 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
     // Send forced transaction after
     val forcedRawTx = createSignedTransfer(forcedSender, recipient, 0)
     val forcedTxHash = sha3(forcedRawTx)
+    val forcedTxNumber = nextForcedTxNumber()
 
     val sendResponse = SendForcedRawTransactionRequest(
-      listOf(ForcedTransactionParam(forcedRawTx, DEFAULT_DEADLINE)),
+      listOf(ForcedTransactionParam(forcedTxNumber, forcedRawTx, DEFAULT_DEADLINE)),
     ).execute(minerNode.nodeRequests())
 
     assertThat(sendResponse.hasError()).isFalse()
 
-    // Wait for both to be mined
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(forcedTxHash))
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(regularTxHash.toHexString()))
 
@@ -245,42 +247,40 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
     val validRawTx = createSignedTransfer(sender, recipient, 0)
     val invalidRawTx = createSignedTransfer(sender, recipient, 999) // Bad nonce
     val validTxHash = sha3(validRawTx)
-    val invalidTxHash = sha3(invalidRawTx)
+    val validForcedTxNumber = nextForcedTxNumber()
+    val invalidForcedTxNumber = nextForcedTxNumber()
 
     val sendResponse = SendForcedRawTransactionRequest(
       listOf(
-        ForcedTransactionParam(validRawTx, DEFAULT_DEADLINE),
-        ForcedTransactionParam(invalidRawTx, DEFAULT_DEADLINE),
+        ForcedTransactionParam(validForcedTxNumber, validRawTx, DEFAULT_DEADLINE),
+        ForcedTransactionParam(invalidForcedTxNumber, invalidRawTx, DEFAULT_DEADLINE),
       ),
     ).execute(minerNode.nodeRequests())
 
     assertThat(sendResponse.hasError()).isFalse()
     assertThat(sendResponse.result).hasSize(2)
 
-    // Wait for valid tx to be mined
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(validTxHash))
 
-    // Wait for invalid tx status to be determined (may take multiple blocks)
     await()
       .atMost(60, TimeUnit.SECONDS)
       .pollInterval(1, TimeUnit.SECONDS)
       .untilAsserted {
-        val statusResponse = GetForcedTransactionInclusionStatusRequest(invalidTxHash)
+        val statusResponse = GetForcedTransactionInclusionStatusRequest(invalidForcedTxNumber)
           .execute(minerNode.nodeRequests())
 
         assertThat(statusResponse.result).isNotNull
-        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("BAD_NONCE")
+        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("BadNonce")
       }
 
-    // Get both statuses
-    val validStatus = GetForcedTransactionInclusionStatusRequest(validTxHash)
+    val validStatus = GetForcedTransactionInclusionStatusRequest(validForcedTxNumber)
       .execute(minerNode.nodeRequests())
-    val invalidStatus = GetForcedTransactionInclusionStatusRequest(invalidTxHash)
+    val invalidStatus = GetForcedTransactionInclusionStatusRequest(invalidForcedTxNumber)
       .execute(minerNode.nodeRequests())
 
     assertThat(validStatus.result).isNotNull
     assertThat(invalidStatus.result).isNotNull
-    assertThat(validStatus.result!!.inclusionResult).isEqualTo("INCLUDED")
+    assertThat(validStatus.result!!.inclusionResult).isEqualTo("Included")
 
     // The failing tx must be in a different (later) block than the successful one
     val validBlockNumber = java.lang.Long.decode(validStatus.result!!.blockNumber)
@@ -309,39 +309,37 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
     val rawTx1 = createSignedTransfer(sender, recipient, 100)
     val rawTx2 = createSignedTransfer(sender, recipient, 200)
     val rawTx3 = createSignedTransfer(sender, recipient, 300)
-    val txHash1 = sha3(rawTx1)
-    val txHash2 = sha3(rawTx2)
-    val txHash3 = sha3(rawTx3)
+    val forcedTxNumber1 = nextForcedTxNumber()
+    val forcedTxNumber2 = nextForcedTxNumber()
+    val forcedTxNumber3 = nextForcedTxNumber()
 
     val sendResponse = SendForcedRawTransactionRequest(
       listOf(
-        ForcedTransactionParam(rawTx1, DEFAULT_DEADLINE),
-        ForcedTransactionParam(rawTx2, DEFAULT_DEADLINE),
-        ForcedTransactionParam(rawTx3, DEFAULT_DEADLINE),
+        ForcedTransactionParam(forcedTxNumber1, rawTx1, DEFAULT_DEADLINE),
+        ForcedTransactionParam(forcedTxNumber2, rawTx2, DEFAULT_DEADLINE),
+        ForcedTransactionParam(forcedTxNumber3, rawTx3, DEFAULT_DEADLINE),
       ),
     ).execute(minerNode.nodeRequests())
 
     assertThat(sendResponse.hasError()).isFalse()
     assertThat(sendResponse.result).hasSize(3)
 
-    // Wait for all statuses to be determined (may take multiple blocks)
-    val txHashes = listOf(txHash1, txHash2, txHash3)
-    for (txHash in txHashes) {
+    val forcedTxNumbers = listOf(forcedTxNumber1, forcedTxNumber2, forcedTxNumber3)
+    for (forcedTxNumber in forcedTxNumbers) {
       await()
         .atMost(90, TimeUnit.SECONDS)
         .pollInterval(1, TimeUnit.SECONDS)
         .untilAsserted {
-          val statusResponse = GetForcedTransactionInclusionStatusRequest(txHash)
+          val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
             .execute(minerNode.nodeRequests())
 
           assertThat(statusResponse.result).isNotNull
-          assertThat(statusResponse.result!!.inclusionResult).isEqualTo("BAD_NONCE")
+          assertThat(statusResponse.result!!.inclusionResult).isEqualTo("BadNonce")
         }
     }
 
-    // Get all block numbers
-    val blockNumbers = txHashes.map { txHash ->
-      val status = GetForcedTransactionInclusionStatusRequest(txHash)
+    val blockNumbers = forcedTxNumbers.map { forcedTxNumber ->
+      val status = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
         .execute(minerNode.nodeRequests())
       java.lang.Long.decode(status.result!!.blockNumber)
     }
@@ -363,17 +361,116 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
       .isLessThan(blockNumbers[2])
   }
 
+  @Test
+  fun forcedTransactionCallingBlake2fIsRejected() {
+    val excludedPrecompiles = deployExcludedPrecompiles()
+    val sender = accounts.secondaryBenefactor
+
+    val callData = PrecompileCallEncoder.encodeBlake2fCall(excludedPrecompiles)
+    val rawTx = createSignedContractCall(sender, excludedPrecompiles.contractAddress, callData, 0)
+    val forcedTxNumber = nextForcedTxNumber()
+
+    val sendResponse = SendForcedRawTransactionRequest(
+      listOf(ForcedTransactionParam(forcedTxNumber, rawTx, DEFAULT_DEADLINE)),
+    ).execute(minerNode.nodeRequests())
+
+    assertThat(sendResponse.hasError()).isFalse()
+    assertThat(sendResponse.result).hasSize(1)
+
+    await()
+      .atMost(30, TimeUnit.SECONDS)
+      .pollInterval(1, TimeUnit.SECONDS)
+      .untilAsserted {
+        val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
+          .execute(minerNode.nodeRequests())
+
+        assertThat(statusResponse.result).isNotNull
+        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("BadPrecompile")
+      }
+  }
+
+  @Test
+  fun forcedTransactionToDeniedAddressIsRejected() {
+    val sender = accounts.secondaryBenefactor
+
+    val rawTx = createSignedTransferToAddress(sender, DENIED_RECIPIENT_ADDRESS, 0)
+    val forcedTxNumber = nextForcedTxNumber()
+
+    val sendResponse = SendForcedRawTransactionRequest(
+      listOf(ForcedTransactionParam(forcedTxNumber, rawTx, DEFAULT_DEADLINE)),
+    ).execute(minerNode.nodeRequests())
+
+    assertThat(sendResponse.hasError()).isFalse()
+    assertThat(sendResponse.result).hasSize(1)
+
+    await()
+      .atMost(30, TimeUnit.SECONDS)
+      .pollInterval(1, TimeUnit.SECONDS)
+      .untilAsserted {
+        val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
+          .execute(minerNode.nodeRequests())
+
+        assertThat(statusResponse.result).isNotNull
+        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("FilteredAddresses")
+      }
+  }
+
+  @Test
+  fun forcedTransactionCallingRipemd160IsRejected() {
+    val excludedPrecompiles = deployExcludedPrecompiles()
+    val sender = accounts.secondaryBenefactor
+
+    val callData = PrecompileCallEncoder.encodeRipemd160Call(excludedPrecompiles)
+    val rawTx = createSignedContractCall(sender, excludedPrecompiles.contractAddress, callData, 0)
+    val forcedTxNumber = nextForcedTxNumber()
+
+    val sendResponse = SendForcedRawTransactionRequest(
+      listOf(ForcedTransactionParam(forcedTxNumber, rawTx, DEFAULT_DEADLINE)),
+    ).execute(minerNode.nodeRequests())
+
+    assertThat(sendResponse.hasError()).isFalse()
+    assertThat(sendResponse.result).hasSize(1)
+
+    await()
+      .atMost(30, TimeUnit.SECONDS)
+      .pollInterval(1, TimeUnit.SECONDS)
+      .untilAsserted {
+        val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
+          .execute(minerNode.nodeRequests())
+
+        assertThat(statusResponse.result).isNotNull
+        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("BadPrecompile")
+      }
+  }
+
   private fun createSignedTransfer(
-    sender: org.hyperledger.besu.tests.acceptance.dsl.account.Account,
-    recipient: org.hyperledger.besu.tests.acceptance.dsl.account.Account,
+    sender: Account,
+    recipient: Account,
     nonce: Int,
   ): String {
     return createSignedTransferWithValue(sender, recipient, nonce, BigInteger.valueOf(1000))
   }
 
   private fun createSignedTransferWithValue(
-    sender: org.hyperledger.besu.tests.acceptance.dsl.account.Account,
-    recipient: org.hyperledger.besu.tests.acceptance.dsl.account.Account,
+    sender: Account,
+    recipient: Account,
+    nonce: Int,
+    value: BigInteger,
+  ): String {
+    return createSignedTransferToAddressWithValue(sender, recipient.address, nonce, value)
+  }
+
+  private fun createSignedTransferToAddress(
+    sender: Account,
+    recipientAddress: String,
+    nonce: Int,
+  ): String {
+    return createSignedTransferToAddressWithValue(sender, recipientAddress, nonce, BigInteger.valueOf(1000))
+  }
+
+  private fun createSignedTransferToAddressWithValue(
+    sender: Account,
+    recipientAddress: String,
     nonce: Int,
     value: BigInteger,
   ): String {
@@ -381,7 +478,7 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
       CHAIN_ID,
       BigInteger.valueOf(nonce.toLong()),
       TRANSFER_GAS_LIMIT,
-      recipient.address,
+      recipientAddress,
       value,
       "",
       GAS_PRICE,
@@ -391,5 +488,33 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
     return Numeric.toHexString(
       TransactionEncoder.signMessage(tx, sender.web3jCredentialsOrThrow()),
     )
+  }
+
+  private fun createSignedContractCall(
+    sender: Account,
+    contractAddress: String,
+    callData: String,
+    nonce: Int,
+  ): String {
+    val tx = RawTransaction.createTransaction(
+      CHAIN_ID,
+      BigInteger.valueOf(nonce.toLong()),
+      CONTRACT_CALL_GAS_LIMIT,
+      contractAddress,
+      BigInteger.ZERO,
+      callData,
+      GAS_PRICE,
+      GAS_PRICE.multiply(BigInteger.TEN).add(BigInteger.ONE),
+    )
+
+    return Numeric.toHexString(
+      TransactionEncoder.signMessage(tx, sender.web3jCredentialsOrThrow()),
+    )
+  }
+
+  companion object {
+    private const val DEFAULT_DEADLINE = "0xF4240" // 1000000
+    private const val DENIED_RECIPIENT_ADDRESS = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+    private val CONTRACT_CALL_GAS_LIMIT: BigInteger = DefaultGasProvider.GAS_LIMIT.divide(BigInteger.TEN)
   }
 }

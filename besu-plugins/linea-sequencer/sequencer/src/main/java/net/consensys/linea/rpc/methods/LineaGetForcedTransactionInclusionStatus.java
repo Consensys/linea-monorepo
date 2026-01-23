@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
 import net.consensys.linea.sequencer.forced.ForcedTransactionStatus;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonRpcParameter;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
@@ -22,12 +21,12 @@ import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
 /**
  * RPC method for querying the inclusion status of a forced transaction.
  *
- * <p>Request format (same as eth_getTransactionReceipt):
+ * <p>Request format:
  *
  * <pre>
  * {
  *   "method": "linea_getForcedTransactionInclusionStatus",
- *   "params": ["0xTRANSACTION_HASH"]
+ *   "params": [ 6 ]
  * }
  * </pre>
  *
@@ -36,10 +35,11 @@ import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
  * <pre>
  * {
  *   "result": {
+ *     "forcedTransactionNumber": 6,
  *     "blockNumber": "0xeff35f",
- *     "blockTimestamp": "0x65a1b2c3",
+ *     "blockTimestamp": 123123,
  *     "from": "0x6221a9c005f6e47eb398fd867784cacfdcfff4e7",
- *     "inclusionResult": "BAD_NONCE",
+ *     "inclusionResult": "BadNonce",
  *     "transactionHash": "0xTRANSACTION_HASH"
  *   }
  * }
@@ -72,24 +72,23 @@ public class LineaGetForcedTransactionInclusionStatus {
     final int logId = log.isDebugEnabled() ? LOG_SEQUENCE.incrementAndGet() : -1;
 
     try {
-      final String txHashHex = parseRequest(logId, request.getParams());
-      final Hash txHash = Hash.fromHexString(txHashHex);
+      final long forcedTransactionNumber = parseRequest(logId, request.getParams());
 
       log.atDebug()
-          .setMessage("action=get_inclusion_status logId={} txHash={}")
+          .setMessage("action=get_inclusion_status logId={} forcedTxNumber={}")
           .addArgument(logId)
-          .addArgument(txHashHex)
+          .addArgument(forcedTransactionNumber)
           .log();
 
       return forcedTransactionPoolService
-          .getInclusionStatus(txHash)
+          .getInclusionStatus(forcedTransactionNumber)
           .map(
               status -> {
                 log.atDebug()
                     .setMessage(
-                        "action=get_inclusion_status_found logId={} txHash={} blockNumber={} result={}")
+                        "action=get_inclusion_status_found logId={} forcedTxNumber={} blockNumber={} result={}")
                     .addArgument(logId)
-                    .addArgument(txHashHex)
+                    .addArgument(forcedTransactionNumber)
                     .addArgument(status::blockNumber)
                     .addArgument(status::inclusionResult)
                     .log();
@@ -98,9 +97,9 @@ public class LineaGetForcedTransactionInclusionStatus {
           .orElseGet(
               () -> {
                 log.atDebug()
-                    .setMessage("action=get_inclusion_status_not_found logId={} txHash={}")
+                    .setMessage("action=get_inclusion_status_not_found logId={} forcedTxNumber={}")
                     .addArgument(logId)
-                    .addArgument(txHashHex)
+                    .addArgument(forcedTransactionNumber)
                     .log();
                 return null;
               });
@@ -124,13 +123,13 @@ public class LineaGetForcedTransactionInclusionStatus {
     }
   }
 
-  private String parseRequest(final int logId, final Object[] params) {
+  private long parseRequest(final int logId, final Object[] params) {
     try {
-      final String txHash = parameterParser.required(params, 0, String.class);
-      if (txHash == null || txHash.isEmpty()) {
-        throw new IllegalArgumentException("Transaction hash is required");
+      final Number number = parameterParser.required(params, 0, Number.class);
+      if (number == null) {
+        throw new IllegalArgumentException("forcedTransactionNumber is required");
       }
-      return txHash;
+      return number.longValue();
     } catch (final Exception e) {
       log.atError()
           .setMessage("action=parse_request_failed logId={} error={}")
@@ -144,11 +143,14 @@ public class LineaGetForcedTransactionInclusionStatus {
 
   /** Response class for inclusion status query. */
   public static class InclusionStatusResponse {
+    @JsonProperty("forcedTransactionNumber")
+    public final long forcedTransactionNumber;
+
     @JsonProperty("blockNumber")
     public final String blockNumber;
 
     @JsonProperty("blockTimestamp")
-    public final String blockTimestamp;
+    public final long blockTimestamp;
 
     @JsonProperty("from")
     public final String from;
@@ -160,8 +162,9 @@ public class LineaGetForcedTransactionInclusionStatus {
     public final String transactionHash;
 
     public InclusionStatusResponse(final ForcedTransactionStatus status) {
+      this.forcedTransactionNumber = status.forcedTransactionNumber();
       this.blockNumber = "0x" + Long.toHexString(status.blockNumber());
-      this.blockTimestamp = "0x" + Long.toHexString(status.blockTimestamp());
+      this.blockTimestamp = status.blockTimestamp();
       this.from = status.from().toHexString();
       this.inclusionResult = status.inclusionResult().name();
       this.transactionHash = status.transactionHash().toHexString();

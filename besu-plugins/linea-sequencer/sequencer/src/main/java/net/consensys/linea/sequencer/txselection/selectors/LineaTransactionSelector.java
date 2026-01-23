@@ -28,6 +28,7 @@ import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.sequencer.txpoolvalidation.validators.DeniedAddressValidator;
 import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import org.hyperledger.besu.datatypes.Address;
@@ -59,6 +60,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
+      final AtomicReference<Set<Address>> deniedAddresses,
       final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
 
@@ -80,6 +82,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             invalidTransactionByLineCountCache,
             deniedEvents,
             deniedBundleEvents,
+            deniedAddresses,
             transactionProfitabilityCalculator);
   }
 
@@ -94,6 +97,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @param maybeProfitabilityMetrics The optional profitability metrics
    * @param deniedEvents The transaction event deny list
    * @param deniedBundleEvents The bundle transaction event deny list
+   * @param deniedAddresses The denied addresses set
    * @return A list of selectors.
    */
   private List<PluginTransactionSelector> createTransactionSelectors(
@@ -107,6 +111,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
+      final AtomicReference<Set<Address>> deniedAddresses,
       final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
 
     traceLineLimitTransactionSelector =
@@ -117,24 +122,22 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             tracerConfiguration,
             invalidTransactionByLineCountCache);
 
-    List<PluginTransactionSelector> selectors =
-        List.of(
-            new MaxBlockCallDataTransactionSelector(
-                selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()),
-            new MaxBlockGasTransactionSelector(
-                selectorsStateManager, txSelectorConfiguration.maxGasPerBlock()),
-            new ProfitableTransactionSelector(
-                blockchainService,
-                profitabilityConfiguration,
-                maybeProfitabilityMetrics,
-                transactionProfitabilityCalculator),
-            new BundleConstraintTransactionSelector(),
-            new MaxBundleGasPerBlockTransactionSelector(
-                selectorsStateManager, txSelectorConfiguration.maxBundleGasPerBlock()),
-            traceLineLimitTransactionSelector,
-            new TransactionEventSelector(deniedEvents, deniedBundleEvents));
-
-    return selectors;
+    return List.of(
+        new AllowedAddressTransactionSelector(new DeniedAddressValidator(deniedAddresses)),
+        new MaxBlockCallDataTransactionSelector(
+            selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()),
+        new MaxBlockGasTransactionSelector(
+            selectorsStateManager, txSelectorConfiguration.maxGasPerBlock()),
+        new ProfitableTransactionSelector(
+            blockchainService,
+            profitabilityConfiguration,
+            maybeProfitabilityMetrics,
+            transactionProfitabilityCalculator),
+        new BundleConstraintTransactionSelector(),
+        new MaxBundleGasPerBlockTransactionSelector(
+            selectorsStateManager, txSelectorConfiguration.maxBundleGasPerBlock()),
+        traceLineLimitTransactionSelector,
+        new TransactionEventSelector(deniedEvents, deniedBundleEvents));
   }
 
   /**
