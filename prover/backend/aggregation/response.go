@@ -80,12 +80,6 @@ type Response struct {
 	// events
 	L2MessagingBlocksOffsets string `json:"l2MessagingBlocksOffsets"`
 
-	// FinalBlockHash and ParentAggregationBlock are respectively the block hash
-	// of the final block being finalized and the block hash of the last block
-	// that was finalized before.
-	FinalBlockHash             string `json:"finalBlockHash"`
-	ParentAggregationBlockHash string `json:"parentAggregationBlockHash"`
-
 	// chain configuration
 	ChainID              uint64             `json:"chainID"`
 	BaseFee              uint64             `json:"baseFee"`
