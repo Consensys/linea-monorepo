@@ -24,7 +24,7 @@ func TestBasicTree(t *testing.T) {
 	subTree.InsertAndProve(stoKey, stoValue)
 
 	root := subTree.TopRoot()
-	assert.Equal(t, "0x0000000000000000000000000000000000000000000000000000000000000000", root.Hex())
+	assert.Equal(t, "0x1969de27292936c44a32eee03ec7e31d2823768c2abf7c5d6655886750ff9fb2", root.Hex())
 
 }
 

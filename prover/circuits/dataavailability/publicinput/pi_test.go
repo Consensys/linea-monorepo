@@ -17,9 +17,10 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/stretchr/testify/require"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr/fft"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr/iop"
@@ -88,17 +89,17 @@ func TestInterpolateLagrange(t *testing.T) {
 		evaluationInt.SetBytes(evaluationBytes[:])
 
 		{
-			scalars, err := internal.Bls12381ScalarToBls12377Scalars(evaluationPointFr)
+			scalars := types.Bls12381Fr(evaluationPointFr.Bytes())
 			assert.NoError(t, err)
-			assignment.EvaluationPoint[0] = scalars[0][:]
-			assignment.EvaluationPoint[1] = scalars[1][:]
+			assignment.EvaluationPoint[0] = scalars[:16]
+			assignment.EvaluationPoint[1] = scalars[16:]
 		}
 
 		{
-			scalars, err := internal.Bls12381ScalarToBls12377Scalars(evaluation)
+			scalars := types.Bls12377Fr(evaluation.Bytes())
 			assert.NoError(t, err)
-			assignment.Evaluation[0] = scalars[0][:]
-			assignment.Evaluation[1] = scalars[1][:]
+			assignment.Evaluation[0] = scalars[:16]
+			assignment.Evaluation[1] = scalars[16:]
 		}
 
 		return &assignment
@@ -202,10 +203,9 @@ func decodeHexHL(t *testing.T, s string) (r [2]frontend.Variable) {
 	b := decodeHex(t, s)
 	assert.Equal(t, len(b), 32)
 
-	scalars, err := internal.Bls12381ScalarToBls12377Scalars(b)
-	assert.NoError(t, err)
-	r[0] = scalars[0][:]
-	r[1] = scalars[1][:]
+	scalars := types.Bls12377Fr(b)
+	r[0] = scalars[:16]
+	r[1] = scalars[16:]
 
 	return
 }
@@ -341,16 +341,22 @@ func setZero(s []frontend.Variable) {
 }
 
 func TestFrConversions(t *testing.T) {
-	testCases := []interface{}{
-		"452312848583266388373324160190187140051835877600158453279131187530910662656", // 1 << 248
-		"2657916159713343612780529581821191720363617578274368076333190323772338857867",
-		append([]byte{64}, make([]byte, 31)...), // 2^254 or 0x40000...
+
+	testCases := [][]byte{
+		types.Bls12381FrFromHex("0x0045231284858326638837332416019018714005183587760015845327913118").Bytes(), // 1 << 248
+		types.Bls12381FrFromHex("0x0265791615971334361278052958182119172036361757827436807633319032").Bytes(),
+		append([]byte{0, 64}, make([]byte, 30)...), // 2^254 or 0x40000...
 	}
 
 	for i := 0; i < 100; i++ {
 		var b [32]byte
 		_, err := rand.Read(b[:])
 		assert.NoError(t, err)
+
+		var x fr377.Element
+		x.SetBytes(b[:])
+		b = x.Bytes()
+
 		testCases = append(testCases, b[:])
 	}
 
@@ -367,24 +373,14 @@ func TestFrConversions(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		xPartitioned, err := internal.Bls12381ScalarToBls12377Scalars(testCase)
-		assert.NoError(t, err)
 
-		var xBack, tmp fr381.Element
-		_, err = xBack.SetInterface(xPartitioned[0][:])
-		require.NoError(t, err)
-		xBack.Mul(&xBack, &twoTo128)
-		_, err = tmp.SetInterface(xPartitioned[1][:])
-		require.NoError(t, err)
-		xBack.Add(&xBack, &tmp)
+		t.Logf("test case: %x", testCase)
+		xPartitioned := types.Bls12377Fr(testCase)
+		xPartitioned.MustBeValid()
 
-		_, err = tmp.SetInterface(testCase)
-		assert.NoError(t, err)
-
-		assert.Equal(t, tmp, xBack, fmt.Sprintf("out-of-snark conversion round-trip failed on %s or 0x%s", tmp.Text(10), tmp.Text(16)))
 		var assignment testFrConversionCircuit
-		assignment.X[0] = xPartitioned[0][:]
-		assignment.X[1] = xPartitioned[1][:]
+		assignment.X[0] = xPartitioned[:16]
+		assignment.X[1] = xPartitioned[16:]
 		options = append(options, test.WithValidAssignment(&assignment))
 	}
 

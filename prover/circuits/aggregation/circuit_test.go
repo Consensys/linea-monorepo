@@ -64,7 +64,7 @@ func TestPublicInput(t *testing.T) {
 		sfpi := fpi.ToSnarkType()
 		// TODO incorporate into public input hash or decide not to
 		sfpi.NbDataAvailability = -1
-		sfpi.InitialStateRootHash = -2
+		sfpi.InitialStateRootHash = [2]frontend.Variable{0, -2}
 		sfpi.NbL2Messages = -5
 
 		var res [32]frontend.Variable

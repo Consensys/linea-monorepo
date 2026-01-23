@@ -41,8 +41,8 @@ func TestAlignment(t *testing.T) {
 		toAlign = &CircuitAlignmentInput{
 			Name:               "ALIGNMENT_TEST",
 			Circuit:            &DummyAlignmentCircuit{Instances: make([]DummyAlignmentCircuitInstance, nbInputInstances)},
-			DataToCircuit:      ct.GetCommit(build, "DATA"),
-			DataToCircuitMask:  ct.GetCommit(build, "DATA_MASK"),
+			DataToCircuit:      ct.GetCommit(build, "ALIGNMENT_TEST_DATA"),
+			DataToCircuitMask:  ct.GetCommit(build, "ALIGNMENT_TEST_DATA_MASK"),
 			NbCircuitInstances: nbCircuitInstances,
 			InputFillerKey:     inputFillerKey,
 		}
@@ -50,7 +50,7 @@ func TestAlignment(t *testing.T) {
 	}, dummy.Compile)
 	proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
 		runLeaked = run
-		ct.Assign(run, "DATA", "DATA_MASK")
+		ct.Assign(run, toAlign.DataToCircuit, toAlign.DataToCircuitMask)
 		alignment.Assign(run)
 	})
 

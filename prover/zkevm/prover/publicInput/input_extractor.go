@@ -54,15 +54,14 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 		}
 	}
 
-	// assignLO(fie.DataNbBytes)
-	// assignLO(fie.NBytesChainID)
+	assignLO(fie.DataNbBytes)
 	assignLOs(fie.L2MessageServiceAddr[:])
 	assignLOs(fie.CoinBase[:])
 	assignLOs(fie.BaseFee[:])
 	assignLOs(fie.ChainID[:])
 	assignLO(fie.NBytesChainID)
 	assignLOs(fie.L2MessageHash[:])
-	// assignLOs(fie.DataChecksum[:])
+	assignLOs(fie.DataChecksum[:])
 	assignLOs(fie.FirstRollingHashUpdate[:])
 	assignLOs(fie.LastRollingHashUpdate[:])
 	assignLOs(fie.InitialStateRootHash[:])

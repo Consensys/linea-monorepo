@@ -8,6 +8,7 @@ import (
 	"math/rand/v2"
 	"unsafe"
 
+	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -196,4 +197,16 @@ func WriteOctupletTo(w io.Writer, octuplet Octuplet) error {
 		}
 	}
 	return nil
+}
+
+func EquivalentBLS12377Fr(f Element) fr377.Element {
+
+	var (
+		x big.Int
+		y fr377.Element
+	)
+
+	f.BigInt(&x)
+	y.SetBigInt(&x)
+	return y
 }

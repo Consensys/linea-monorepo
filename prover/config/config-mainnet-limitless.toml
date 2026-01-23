@@ -7,7 +7,7 @@ log_level = 4                                  # TODO @gbotrel will be refactore
 retry_delays = [0, 1]
 
 [execution]
-prover_mode = "partial"
+prover_mode = "dev"
 conflated_traces_dir = "/Users/alexandrebelling/Workspace/20260121-prover-testdata"
 requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
 limitless_with_debug = true

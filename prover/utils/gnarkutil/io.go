@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/math/emulated"
@@ -26,11 +25,26 @@ func Copy[T any](dst []frontend.Variable, src []T) (n int) {
 // ToBytes32 decomposes x into 32 bytes.
 func ToBytes32(api frontend.API, x frontend.Variable) [32]frontend.Variable {
 	var res [32]frontend.Variable
-	d, err := ToBytes(api, []frontend.Variable{x}, fr.Bytes*8)
+	d, err := ToBytes(api, []frontend.Variable{x}, 256)
 	if err != nil {
 		panic(err)
 	}
 	slack := 32 - len(d) // should be zero
+	copy(res[slack:], d)
+	for i := range slack {
+		res[i] = 0
+	}
+	return res
+}
+
+// ToBytes16 decomposes x into 32 bytes.
+func ToBytes16(api frontend.API, x frontend.Variable) [16]frontend.Variable {
+	var res [16]frontend.Variable
+	d, err := ToBytes(api, []frontend.Variable{x}, 128)
+	if err != nil {
+		panic(err)
+	}
+	slack := 16 - len(d) // should be zero
 	copy(res[slack:], d)
 	for i := range slack {
 		res[i] = 0

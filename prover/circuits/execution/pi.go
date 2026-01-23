@@ -18,7 +18,7 @@ type FunctionalPublicInputQSnark struct {
 	DataChecksum                 DataChecksumSnark
 	L2MessageHashes              L2MessageHashes
 	InitialBlockTimestamp        frontend.Variable
-	FinalStateRootHash           frontend.Variable
+	FinalStateRootHash           [2]frontend.Variable
 	FinalBlockNumber             frontend.Variable
 	FinalBlockTimestamp          frontend.Variable
 	InitialRollingHashUpdate     [32]frontend.Variable
@@ -104,7 +104,7 @@ func (s *L2MessageHashes) CheckSumPoseidon2(api frontend.API) frontend.Variable 
 
 type FunctionalPublicInputSnark struct {
 	FunctionalPublicInputQSnark
-	InitialStateRootHash frontend.Variable
+	InitialStateRootHash [2]frontend.Variable
 	InitialBlockNumber   frontend.Variable
 	ChainID              frontend.Variable
 	BaseFee              frontend.Variable
@@ -149,13 +149,15 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API) frontend.Variable {
 	hsh.Write(
 		spi.DataChecksum.Hash,
 		l2MessagesSum,
-		spi.FinalStateRootHash,
+		spi.FinalStateRootHash[0],
+		spi.FinalStateRootHash[1],
 		spi.FinalBlockNumber,
 		spi.FinalBlockTimestamp,
 		finalRollingHash[0],
 		finalRollingHash[1],
 		spi.LastRollingHashUpdateNumber,
-		spi.InitialStateRootHash,
+		spi.InitialStateRootHash[0],
+		spi.InitialStateRootHash[1],
 		spi.InitialBlockNumber,
 		spi.InitialBlockTimestamp,
 		initialRollingHash[0],
@@ -172,7 +174,8 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API) frontend.Variable {
 
 func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error {
 
-	spi.InitialStateRootHash = pi.InitialStateRootHash[:]
+	spi.InitialStateRootHash[0] = pi.InitialStateRootHash[:16]
+	spi.InitialStateRootHash[1] = pi.InitialStateRootHash[16:]
 	spi.InitialBlockNumber = pi.InitialBlockNumber
 	spi.ChainID = pi.ChainID
 	spi.BaseFee = pi.BaseFee
@@ -185,7 +188,8 @@ func (spiq *FunctionalPublicInputQSnark) Assign(pi *public_input.Execution) erro
 
 	spiq.DataChecksum.Assign(&pi.DataChecksum)
 	spiq.InitialBlockTimestamp = pi.InitialBlockTimestamp
-	spiq.FinalStateRootHash = pi.FinalStateRootHash[:]
+	spiq.FinalStateRootHash[0] = pi.FinalStateRootHash[:16]
+	spiq.FinalStateRootHash[1] = pi.FinalStateRootHash[16:]
 	spiq.FinalBlockNumber = pi.FinalBlockNumber
 	spiq.FinalBlockTimestamp = pi.FinalBlockTimestamp
 	spiq.FirstRollingHashUpdateNumber = pi.FirstRollingHashUpdateNumber

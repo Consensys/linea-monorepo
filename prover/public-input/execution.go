@@ -3,6 +3,7 @@ package public_input
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"hash"
 	"math/big"
 	"math/bits"
@@ -14,7 +15,7 @@ import (
 	"github.com/consensys/gnark/std/compress"
 	ghash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -66,51 +67,116 @@ func (pi *Execution) Sum() []byte {
 	hsh := gchash.POSEIDON2_BLS12_377.New()
 
 	for i := range pi.L2MessageHashes {
-		hsh.Write(pi.L2MessageHashes[i][:16])
-		hsh.Write(pi.L2MessageHashes[i][16:])
+		if _, err := hsh.Write(pi.L2MessageHashes[i][:16]); err != nil {
+			utils.Panic("could not hash the L2MessageHashes HI : %v", err)
+		}
+
+		if _, err := hsh.Write(pi.L2MessageHashes[i][16:]); err != nil {
+			utils.Panic("could not hash the L2MessageHashes LO : %v", err)
+		}
 	}
+
 	l2MessagesSum := hsh.Sum(nil)
 
 	hsh.Reset()
 
-	hsh.Write(pi.DataChecksum.Hash[:])
+	if _, err := hsh.Write(pi.DataChecksum.Hash[:]); err != nil {
+		utils.Panic("could not hash the DataChecksum : %v", err)
+	}
 
-	hsh.Write(l2MessagesSum)
-	hsh.Write(pi.FinalStateRootHash[:])
+	if _, err := hsh.Write(l2MessagesSum); err != nil {
+		utils.Panic("could not hash the L2MessageHashes : %v", err)
+	}
 
-	writeNum(hsh, pi.FinalBlockNumber)
-	writeNum(hsh, pi.FinalBlockTimestamp)
-	hsh.Write(pi.LastRollingHashUpdate[:16])
-	hsh.Write(pi.LastRollingHashUpdate[16:])
-	writeNum(hsh, pi.LastRollingHashUpdateNumber)
-	hsh.Write(pi.InitialStateRootHash[:])
-	writeNum(hsh, pi.InitialBlockNumber)
-	writeNum(hsh, pi.InitialBlockTimestamp)
-	hsh.Write(pi.InitialRollingHashUpdate[:16])
-	hsh.Write(pi.InitialRollingHashUpdate[16:])
-	writeNum(hsh, pi.FirstRollingHashUpdateNumber)
+	if _, err := hsh.Write(pi.FinalStateRootHash[:16]); err != nil {
+		utils.Panic("could not hash the FinalStateRootHash HI : %v", err)
+	}
+
+	if _, err := hsh.Write(pi.FinalStateRootHash[16:]); err != nil {
+		utils.Panic("could not hash the FinalStateRootHash LO : %v", err)
+	}
+
+	if _, err := writeNum(hsh, pi.FinalBlockNumber); err != nil {
+		utils.Panic("could not hash the FinalBlockNumber : %v", err)
+	}
+
+	if _, err := writeNum(hsh, pi.FinalBlockTimestamp); err != nil {
+		utils.Panic("could not hash the FinalBlockTimestamp : %v", err)
+	}
+
+	if _, err := hsh.Write(pi.LastRollingHashUpdate[:16]); err != nil {
+		utils.Panic("could not hash the LastRollingHashUpdate HI : %v", err)
+	}
+
+	if _, err := hsh.Write(pi.LastRollingHashUpdate[16:]); err != nil {
+		utils.Panic("could not hash the LastRollingHashUpdate LO : %v", err)
+	}
+
+	if _, err := writeNum(hsh, pi.LastRollingHashUpdateNumber); err != nil {
+		utils.Panic("could not hash the LastRollingHashUpdateNumber : %v", err)
+	}
+
+	if _, err := hsh.Write(pi.InitialStateRootHash[:16]); err != nil {
+		utils.Panic("could not hash the InitialStateRootHash HI: %v", err)
+	}
+
+	if _, err := hsh.Write(pi.InitialStateRootHash[16:]); err != nil {
+		utils.Panic("could not hash the InitialStateRootHash LO: %v", err)
+	}
+
+	if _, err := writeNum(hsh, pi.InitialBlockNumber); err != nil {
+		utils.Panic("could not hash the InitialBlockNumber : %v", err)
+	}
+
+	if _, err := writeNum(hsh, pi.InitialBlockTimestamp); err != nil {
+		utils.Panic("could not hash the InitialBlockTimestamp : %v", err)
+	}
+
+	if _, err := hsh.Write(pi.InitialRollingHashUpdate[:16]); err != nil {
+		utils.Panic("could not hash the InitialRollingHashUpdate HI : %v", err)
+	}
+
+	if _, err := hsh.Write(pi.InitialRollingHashUpdate[16:]); err != nil {
+		utils.Panic("could not hash the InitialRollingHashUpdate LO : %v", err)
+	}
+
+	if _, err := writeNum(hsh, pi.FirstRollingHashUpdateNumber); err != nil {
+		utils.Panic("could not hash the FirstRollingHashUpdateNumber : %v", err)
+	}
+
 	// dynamic chain configuration
-	writeNum(hsh, pi.ChainID)
-	writeNum(hsh, pi.BaseFee)
-	hsh.Write(pi.CoinBase[:])
-	hsh.Write(pi.L2MessageServiceAddr[:])
+	if _, err := writeNum(hsh, pi.ChainID); err != nil {
+		utils.Panic("could not hash the ChainID : %v", err)
+	}
+
+	if _, err := writeNum(hsh, pi.BaseFee); err != nil {
+		utils.Panic("could not hash the baseFee : %v", err)
+	}
+
+	if _, err := hsh.Write(pi.CoinBase[:]); err != nil {
+		utils.Panic("could not hash the coinbase : %v", err)
+	}
+
+	if _, err := hsh.Write(pi.L2MessageServiceAddr[:]); err != nil {
+		utils.Panic("could not hash the L2MessageServiceAddr : %v", err)
+	}
 
 	return hsh.Sum(nil)
-
 }
 
-func (pi *Execution) SumAsField() field.Element {
-
+func (pi *Execution) SumAsField() fr377.Element {
 	sumBytes := pi.Sum()
-	sum := new(field.Element).SetBytes(sumBytes)
-
+	sum := new(fr377.Element).SetBytes(sumBytes)
 	return *sum
 }
 
-func writeNum(hsh hash.Hash, n uint64) {
+func writeNum(hsh hash.Hash, n uint64) (_ int, err error) {
 	var b [8]byte
 	binary.BigEndian.PutUint64(b[:], n)
-	hsh.Write(b[:])
+	if _, err := hsh.Write(b[:]); err != nil {
+		return 0, fmt.Errorf("could not write number : %v", err)
+	}
+	return 8, nil
 }
 
 // compressionChain range-extends a compressor into a non-MerkleDamgard semi-hasher.

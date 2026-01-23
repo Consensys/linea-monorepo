@@ -47,7 +47,7 @@ func TestContractDeployUpdate(t *testing.T) {
 		blockNumber       = 1002
 		codeSize          = int64(100)
 		codeHash          = types.FullBytes32FromHex("0xaaaaaa") // This will do the padding if necessary
-		poseidon2CodeHash = types.MustHexToKoalabearOctuplet("0xbbbb")
+		poseidon2CodeHash = types.MustHexToKoalabearOctuplet("0x000000000000000000000000000000000000000000000000000000000000bbbb")
 		stoKey            = types.FullBytes32FromHex("0xcccccc")
 		stoVal            = types.FullBytes32FromHex("0xdddddd")
 	)

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,13 +61,13 @@ func LoadTestBlocks(testDataDir string) (testBlocks [][]byte, err error) {
 		}
 		var proverInput execution.Request
 		if err = json.Unmarshal(jsonString, &proverInput); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not decode json prover input: %v", err)
 		}
 
 		for _, block := range proverInput.Blocks() {
 			var bb bytes.Buffer
 			if err = block.EncodeRLP(&bb); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("could not encode rlp block: %v", err)
 			}
 			testBlocks = append(testBlocks, bb.Bytes())
 		}
