@@ -109,8 +109,7 @@ class LineaGetForcedTransactionInclusionStatusTest {
 
   @Test
   void execute_returnsFilteredAddressesStatus() {
-    final ForcedTransaction ftx =
-        addAndProcessTransaction(DENIED_LOG_TOPIC, 100L);
+    final ForcedTransaction ftx = addAndProcessTransaction(DENIED_LOG_TOPIC, 100L);
 
     final var result = method.execute(request(ftx.forcedTransactionNumber()));
 
@@ -137,8 +136,7 @@ class LineaGetForcedTransactionInclusionStatusTest {
     pool.processForBlock(blockNumber, TEST_TIMESTAMP, bts);
 
     // Simulate block added to finalize the status
-    final List<ForcedTransaction> includedTxs =
-        result.selected() ? List.of(ftx) : List.of();
+    final List<ForcedTransaction> includedTxs = result.selected() ? List.of(ftx) : List.of();
     pool.onBlockAdded(createBlockContext(blockNumber, TEST_TIMESTAMP, includedTxs));
 
     return ftx;

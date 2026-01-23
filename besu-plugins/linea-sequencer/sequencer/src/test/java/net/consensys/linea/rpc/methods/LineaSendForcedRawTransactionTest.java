@@ -202,7 +202,8 @@ class LineaSendForcedRawTransactionTest {
             request(
                 new ForcedTxParam(6L, TestTransactionFactory.encodeTransaction(tx1), "0x1000"),
                 new ForcedTxParam(7L, TestTransactionFactory.encodeTransaction(tx2), "0x2000"),
-                new ForcedTxParam(8L, TestTransactionFactory.encodeTransaction(tx3), "bad-deadline"),
+                new ForcedTxParam(
+                    8L, TestTransactionFactory.encodeTransaction(tx3), "bad-deadline"),
                 new ForcedTxParam(9L, TestTransactionFactory.encodeTransaction(tx4), "0x4000")));
 
     // Should return 3 elements: 2 success + 1 error (tx4 is not included)

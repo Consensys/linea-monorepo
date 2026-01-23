@@ -133,7 +133,8 @@ public class LineaSendForcedRawTransaction {
         } catch (final Exception e) {
           responses.add(
               ForcedTransactionResponse.error(
-                  param.forcedTransactionNumber, "Failed to decode transaction: " + e.getMessage()));
+                  param.forcedTransactionNumber,
+                  "Failed to decode transaction: " + e.getMessage()));
           break;
         }
 
@@ -149,7 +150,8 @@ public class LineaSendForcedRawTransaction {
         forcedTransactions.add(
             new ForcedTransaction(param.forcedTransactionNumber, tx.getHash(), tx, deadline));
         responses.add(
-            ForcedTransactionResponse.success(param.forcedTransactionNumber, tx.getHash().toHexString()));
+            ForcedTransactionResponse.success(
+                param.forcedTransactionNumber, tx.getHash().toHexString()));
 
         log.atDebug()
             .setMessage("action=parse_forced_tx logId={} forcedTxNumber={} txHash={} deadline={}")
@@ -167,7 +169,8 @@ public class LineaSendForcedRawTransaction {
       final boolean hasError = responses.stream().anyMatch(r -> r.error != null);
       if (hasError) {
         log.atWarn()
-            .setMessage("action=send_forced_raw_tx_partial logId={} successCount={} totalReceived={}")
+            .setMessage(
+                "action=send_forced_raw_tx_partial logId={} successCount={} totalReceived={}")
             .addArgument(logId)
             .addArgument(forcedTransactions.size())
             .addArgument(params.length)

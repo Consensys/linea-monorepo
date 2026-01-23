@@ -17,7 +17,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.web3j.crypto.Hash.sha3
 import org.web3j.crypto.RawTransaction

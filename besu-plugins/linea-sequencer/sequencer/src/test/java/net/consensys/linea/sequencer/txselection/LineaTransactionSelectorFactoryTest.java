@@ -16,7 +16,6 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -200,7 +199,8 @@ class LineaTransactionSelectorFactoryTest {
   }
 
   @Test
-  void testSelectPendingTransactions_WhenLivenessTransactionSelected_ForcedTransactionsNotProcessed() {
+  void
+      testSelectPendingTransactions_WhenLivenessTransactionSelected_ForcedTransactionsNotProcessed() {
     LivenessService mockLivenessService = mock(LivenessService.class);
     TransactionBundle livenessBundle =
         createBundle(Hash.wrap(Bytes32.random()), BLOCK_NUMBER, Optional.empty());
@@ -218,7 +218,8 @@ class LineaTransactionSelectorFactoryTest {
 
     factory.selectPendingTransactions(mockBts, mockPendingBlockHeader, Collections.emptyList());
 
-    verify(mockLivenessService).checkBlockTimestampAndBuildBundle(anyLong(), anyLong(), eq(BLOCK_NUMBER));
+    verify(mockLivenessService)
+        .checkBlockTimestampAndBuildBundle(anyLong(), anyLong(), eq(BLOCK_NUMBER));
     verify(mockLivenessService).updateUptimeMetrics(true, BLOCK_TIMESTAMP);
 
     verify(mockForcedTransactionPoolService, never()).processForBlock(anyLong(), anyLong(), any());
@@ -239,7 +240,8 @@ class LineaTransactionSelectorFactoryTest {
 
     factory.selectPendingTransactions(mockBts, mockPendingBlockHeader, Collections.emptyList());
 
-    verify(mockLivenessService).checkBlockTimestampAndBuildBundle(anyLong(), anyLong(), eq(BLOCK_NUMBER));
+    verify(mockLivenessService)
+        .checkBlockTimestampAndBuildBundle(anyLong(), anyLong(), eq(BLOCK_NUMBER));
 
     verify(mockForcedTransactionPoolService)
         .processForBlock(eq(BLOCK_NUMBER), eq(BLOCK_TIMESTAMP), any());

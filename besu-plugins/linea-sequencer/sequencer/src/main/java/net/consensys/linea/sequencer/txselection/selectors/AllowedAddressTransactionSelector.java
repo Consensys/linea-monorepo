@@ -23,7 +23,9 @@ import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolVal
 
 /**
  * Transaction selector that rejects transactions based on sender or recipient address validation.
- * Delegates to {@link net.consensys.linea.sequencer.txpoolvalidation.validators.DeniedAddressValidator} for the actual validation logic.
+ * Delegates to {@link
+ * net.consensys.linea.sequencer.txpoolvalidation.validators.DeniedAddressValidator} for the actual
+ * validation logic.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -37,7 +39,7 @@ public class AllowedAddressTransactionSelector implements PluginTransactionSelec
     final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
 
     final Optional<String> validationError =
-      denylistValidator.validateTransaction(transaction, false, false);
+        denylistValidator.validateTransaction(transaction, false, false);
     if (validationError.isPresent()) {
       log.atTrace()
           .setMessage("action=reject_filtered_address txHash={} reason={}")

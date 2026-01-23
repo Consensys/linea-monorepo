@@ -165,8 +165,10 @@ class LineaForcedTransactionPoolTest {
     assertThat(pool.pendingCount()).isEqualTo(2); // tx2 and tx3 still pending
     assertInclusionStatus(
         ftxs.get(0).forcedTransactionNumber(), 100L, ForcedTransactionInclusionResult.Included);
-    assertThat(pool.getInclusionStatus(ftxs.get(1).forcedTransactionNumber())).isEmpty(); // Will retry
-    assertThat(pool.getInclusionStatus(ftxs.get(2).forcedTransactionNumber())).isEmpty(); // Not tried yet
+    assertThat(pool.getInclusionStatus(ftxs.get(1).forcedTransactionNumber()))
+        .isEmpty(); // Will retry
+    assertThat(pool.getInclusionStatus(ftxs.get(2).forcedTransactionNumber()))
+        .isEmpty(); // Not tried yet
 
     pool.processForBlock(101L, TEST_TIMESTAMP, alwaysReject("NONCE"));
     pool.onBlockAdded(createBlockContext(101L, TEST_TIMESTAMP, List.of()));
@@ -174,14 +176,17 @@ class LineaForcedTransactionPoolTest {
     assertThat(pool.pendingCount()).isEqualTo(1); // tx3 still pending
     assertInclusionStatus(
         ftxs.get(1).forcedTransactionNumber(), 101L, ForcedTransactionInclusionResult.BadNonce);
-    assertThat(pool.getInclusionStatus(ftxs.get(2).forcedTransactionNumber())).isEmpty(); // Not tried yet
+    assertThat(pool.getInclusionStatus(ftxs.get(2).forcedTransactionNumber()))
+        .isEmpty(); // Not tried yet
 
     pool.processForBlock(102L, TEST_TIMESTAMP, alwaysReject("TX_MODULE_LINE_COUNT_OVERFLOW"));
     pool.onBlockAdded(createBlockContext(102L, TEST_TIMESTAMP, List.of()));
 
     assertThat(pool.pendingCount()).isEqualTo(0);
     assertInclusionStatus(
-        ftxs.get(2).forcedTransactionNumber(), 102L, ForcedTransactionInclusionResult.BadPrecompile);
+        ftxs.get(2).forcedTransactionNumber(),
+        102L,
+        ForcedTransactionInclusionResult.BadPrecompile);
   }
 
   @Test
@@ -261,7 +266,9 @@ class LineaForcedTransactionPoolTest {
 
     assertThat(pool.pendingCount()).isZero();
     assertInclusionStatus(
-        ftxs.get(2).forcedTransactionNumber(), 102L, ForcedTransactionInclusionResult.BadPrecompile);
+        ftxs.get(2).forcedTransactionNumber(),
+        102L,
+        ForcedTransactionInclusionResult.BadPrecompile);
   }
 
   @Test
@@ -309,7 +316,8 @@ class LineaForcedTransactionPoolTest {
     pool.processForBlock(100L, TEST_TIMESTAMP, alwaysReject("SOME_UNKNOWN_REASON"));
 
     assertThat(pool.pendingCount()).isEqualTo(1); // Still pending
-    assertThat(pool.getInclusionStatus(ftx.forcedTransactionNumber())).isEmpty(); // No status recorded
+    assertThat(pool.getInclusionStatus(ftx.forcedTransactionNumber()))
+        .isEmpty(); // No status recorded
 
     // Second block: same unknown reason at index 0 - still retry
     pool.processForBlock(101L, TEST_TIMESTAMP, alwaysReject("ANOTHER_UNKNOWN_REASON"));

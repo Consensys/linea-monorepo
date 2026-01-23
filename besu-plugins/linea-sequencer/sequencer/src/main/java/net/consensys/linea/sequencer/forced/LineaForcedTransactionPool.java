@@ -86,9 +86,7 @@ public class LineaForcedTransactionPool
   }
 
   public LineaForcedTransactionPool(
-      final int statusCacheSize,
-      final MetricsSystem metricsSystem,
-      final BesuEvents besuEvents) {
+      final int statusCacheSize, final MetricsSystem metricsSystem, final BesuEvents besuEvents) {
     this.statusCache = Caffeine.newBuilder().maximumSize(statusCacheSize).build();
 
     for (ForcedTransactionInclusionResult result : ForcedTransactionInclusionResult.values()) {
@@ -193,8 +191,7 @@ public class LineaForcedTransactionPool
 
       if (result.selected()) {
         tentativeOutcomes.put(
-            ftx.forcedTransactionNumber(),
-            new TentativeOutcome(blockNumber, ftx, Included));
+            ftx.forcedTransactionNumber(), new TentativeOutcome(blockNumber, ftx, Included));
         log.atInfo()
             .setMessage(
                 "action=forced_tx_tentatively_selected forcedTxNumber={} txHash={} blockNumber={} index={}")
@@ -273,7 +270,8 @@ public class LineaForcedTransactionPool
 
       if (outcome.isSelection()) {
         if (!blockTxHashes.contains(ftx.txHash())) {
-          break; // Selection not in block, meaning that tentativeOutcomes don't match the actually selected block
+          break; // Selection not in block, meaning that tentativeOutcomes don't match the actually
+          // selected block
         }
         iterator.remove();
         recordStatus(ftx, blockNumber, blockTimestamp, Included);
