@@ -133,7 +133,7 @@ class LineaGetForcedTransactionInclusionStatusTest {
 
     final BlockTransactionSelectionService bts = mock(BlockTransactionSelectionService.class);
     when(bts.evaluatePendingTransaction(any())).thenReturn(result);
-    pool.processForBlock(blockNumber, TEST_TIMESTAMP, bts);
+    pool.processForBlock(blockNumber, bts);
 
     // Simulate block added to finalize the status
     final List<ForcedTransaction> includedTxs = result.selected() ? List.of(ftx) : List.of();

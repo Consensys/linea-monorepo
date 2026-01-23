@@ -222,7 +222,7 @@ class LineaTransactionSelectorFactoryTest {
         .checkBlockTimestampAndBuildBundle(anyLong(), anyLong(), eq(BLOCK_NUMBER));
     verify(mockLivenessService).updateUptimeMetrics(true, BLOCK_TIMESTAMP);
 
-    verify(mockForcedTransactionPoolService, never()).processForBlock(anyLong(), anyLong(), any());
+    verify(mockForcedTransactionPoolService, never()).processForBlock(anyLong(), any());
   }
 
   @Test
@@ -243,8 +243,7 @@ class LineaTransactionSelectorFactoryTest {
     verify(mockLivenessService)
         .checkBlockTimestampAndBuildBundle(anyLong(), anyLong(), eq(BLOCK_NUMBER));
 
-    verify(mockForcedTransactionPoolService)
-        .processForBlock(eq(BLOCK_NUMBER), eq(BLOCK_TIMESTAMP), any());
+    verify(mockForcedTransactionPoolService).processForBlock(eq(BLOCK_NUMBER), any());
   }
 
   private TransactionBundle createBundle(

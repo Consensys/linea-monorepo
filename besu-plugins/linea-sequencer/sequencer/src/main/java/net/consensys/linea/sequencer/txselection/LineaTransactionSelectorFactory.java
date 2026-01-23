@@ -135,8 +135,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
           checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
 
       if (!livenessTransactionSelected) {
-        forcedTransactionPoolService.processForBlock(
-            pendingBlockHeader.getNumber(), pendingBlockHeader.getTimestamp(), bts);
+        forcedTransactionPoolService.processForBlock(pendingBlockHeader.getNumber(), bts);
       }
 
       final var bundlesByBlockNumber =

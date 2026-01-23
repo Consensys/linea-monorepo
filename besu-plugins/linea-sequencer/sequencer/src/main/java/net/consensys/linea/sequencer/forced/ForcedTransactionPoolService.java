@@ -34,13 +34,10 @@ public interface ForcedTransactionPoolService extends BesuService {
    * block.
    *
    * @param blockNumber The pending block number
-   * @param blockTimestamp The pending block timestamp (seconds since epoch)
    * @param blockTransactionSelectionService The block transaction selection service
    */
   void processForBlock(
-      long blockNumber,
-      long blockTimestamp,
-      BlockTransactionSelectionService blockTransactionSelectionService);
+      long blockNumber, BlockTransactionSelectionService blockTransactionSelectionService);
 
   /**
    * Get the inclusion status of a forced transaction.

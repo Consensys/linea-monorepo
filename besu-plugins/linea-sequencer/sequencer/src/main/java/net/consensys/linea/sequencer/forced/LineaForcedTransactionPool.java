@@ -149,7 +149,6 @@ public class LineaForcedTransactionPool
   @Override
   public void processForBlock(
       final long blockNumber,
-      final long blockTimestamp,
       final BlockTransactionSelectionService blockTransactionSelectionService) {
 
     if (pendingQueue.isEmpty()) {
