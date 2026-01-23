@@ -267,6 +267,7 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	fetch.AssignBlockTxnMetadata(run, aux.BlockTxnMetadata, inp.TxnData)
 	fetch.AssignTxnDataFetcher(run, aux.TxnDataFetcher, inp.TxnData)
 	fetch.AssignRlpTxnFetcher(run, &aux.RlpTxnFetcher, inp.RlpTxn)
+	fetch.AssignChainIDFetcher(run, &aux.chainIDFetcher, inp.BlockData)
 	// assign the ExecutionDataCollector
 	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.BlockDataFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
 
