@@ -11,10 +11,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/invalidityPI"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidityPI"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
@@ -137,7 +137,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		pointEval       = bls.NewPointEvalZkEvm(comp, &s.Bls)
 		p256verify      = p256verify.NewP256VerifyZkEvm(comp, &s.P256Verify)
 		publicInput     = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
-		invalidityPIMod = invalidityPI.NewInvalidityPIZkEvm(comp)
+		invalidityPIMod = invalidityPI.NewInvalidityPIZkEvm(comp, &publicInput.Aux.FetchedL2L1, ecdsa)
 	)
 
 	return &ZkEvm{
