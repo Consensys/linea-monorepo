@@ -312,7 +312,7 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 	}
 
 	pi.Extractor = FunctionalInputExtractor{
-		// DataNbBytes:   createNewLocalOpening(pi.DataNbBytes),
+		DataNbBytes:   createNewLocalOpening(pi.DataNbBytes),
 		NBytesChainID: createNewLocalOpening(pi.ChainIDFetcher.NBytesChainID),
 	}
 
@@ -333,7 +333,7 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 	createNewLocalOpenings(pi.Extractor.CoinBase[:], pi.BlockDataFetcher.CoinBase[:])
 	createNewLocalOpenings(pi.Extractor.BaseFee[:], pi.BlockDataFetcher.BaseFee[:])
 
-	// addPublicInputs(DataNbBytes, pi.Extractor.DataNbBytes)
+	addPublicInputs(DataNbBytes, pi.Extractor.DataNbBytes)
 	addPublicInputs(NBytesChainID, pi.Extractor.NBytesChainID)
 	addPublicInputs(L2MessageHash, pi.Extractor.L2MessageHash[:]...)
 	addPublicInputs(InitialStateRootHash, pi.Extractor.InitialStateRootHash[:]...)

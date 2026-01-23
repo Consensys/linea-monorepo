@@ -30,7 +30,7 @@ func GnarkEvaluateLagrangeExt(api frontend.API, p []koalagnark.Ext, z koalagnark
 //
 // For k evaluation points, this saves approximately (k-1)*n multiplications
 // compared to k separate calls to GnarkEvaluateLagrangeExt.
-func GnarkEvaluateLagrangeExtBatchOld(api frontend.API, p []koalagnark.Ext, zs []koalagnark.Ext, gen field.Element, cardinality uint64) []koalagnark.Ext {
+func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []koalagnark.Ext, zs []koalagnark.Ext, gen field.Element, cardinality uint64) []koalagnark.Ext {
 	if len(zs) == 0 {
 		return nil
 	}
@@ -102,10 +102,6 @@ func GnarkEvaluateLagrangeExtBatchOld(api frontend.API, p []koalagnark.Ext, zs [
 	}
 
 	return results
-}
-
-func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []koalagnark.Ext, zs []koalagnark.Ext, gen field.Element, cardinality uint64) []koalagnark.Ext {
-	return GnarkEvaluateLagrangeExtBatchOld(api, p, zs, gen, cardinality)
 }
 
 // computeLagrange returns Lᵢ(ζ) for i=1..n

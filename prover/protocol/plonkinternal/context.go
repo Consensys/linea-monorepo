@@ -179,7 +179,6 @@ func createCtx(
 
 	switch {
 	case ctx.RangeCheckOption.Enabled:
-		fmt.Printf("range-check option was provided\n")
 		var rcGetter func() [][2]int
 		ccs, rcGetter, compileErr = CompileCircuitWithRangeCheck(ctx.Plonk.Circuit, ctx.RangeCheckOption.AddGateForRangeCheck)
 		ctx.Plonk.rcGetter = rcGetter
@@ -188,7 +187,6 @@ func createCtx(
 		ccs, hshGetter, compileErr = CompileCircuitWithExternalHasher(ctx.Plonk.Circuit, true)
 		ctx.Plonk.hashedGetter = hshGetter
 	case !ctx.ExternalHasherOption.Enabled && !ctx.RangeCheckOption.Enabled:
-		fmt.Printf("range-check option was not provided\n")
 		ccs, compileErr = CompileCircuitDefault(ctx.Plonk.Circuit)
 	}
 
