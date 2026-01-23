@@ -42,6 +42,7 @@ class BlockCreationMonitor(
     val startingBlockWaitTimeout: Duration = 14.days,
     val lastL2BlockNumberToProcessInclusive: ULong? = null,
     val lastL2BlockTimestampToProcessInclusive: Instant? = null,
+    val skipGapCheck: Boolean = false,
   )
 
   private val _nexBlockNumberToFetch: AtomicLong = AtomicLong(startingBlockNumberExclusive + 1)
@@ -103,7 +104,7 @@ class BlockCreationMonitor(
     log.trace("tick start: nexBlockNumberToFetch={}", nexBlockNumberToFetch)
     return lastProvenBlockNumberProviderAsync.getLastProvenBlockNumber()
       .thenCompose { lastProvenBlockNumber ->
-        if (!nextBlockNumberWithinLimit(lastProvenBlockNumber)) {
+        if (!config.skipGapCheck && !nextBlockNumberWithinLimit(lastProvenBlockNumber)) {
           log.warn(
             "Gap between highest consecutive proven block and L2 block is too big: lastProvenBlock={} " +
               "nextBlockToFetch={} gapOverflow={} gapLimit={}",

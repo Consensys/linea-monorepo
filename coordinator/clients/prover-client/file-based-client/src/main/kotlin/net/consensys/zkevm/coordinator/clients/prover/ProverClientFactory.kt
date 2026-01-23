@@ -9,6 +9,7 @@ import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.coordinator.clients.ProverClient
+import org.apache.logging.log4j.Logger
 
 class ProverClientFactory(
   private val vertx: Vertx,
@@ -41,44 +42,76 @@ class ProverClientFactory(
     )
   }
 
-  fun executionProverClient(tracesVersion: String, stateManagerVersion: String): ExecutionProverClientV2 {
+  fun executionProverClient(
+    tracesVersion: String,
+    stateManagerVersion: String,
+    log: Logger? = null,
+  ): ExecutionProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.execution,
       proverBConfig = config.proverB?.execution,
       switchBlockNumberInclusive = config.switchBlockNumberInclusive,
     ) { proverConfig ->
-      FileBasedExecutionProverClientV2(
-        config = proverConfig,
-        vertx = vertx,
-        tracesVersion = tracesVersion,
-        stateManagerVersion = stateManagerVersion,
-      ).also { executionWaitingResponsesMetric.addReporter(it) }
+      if (log == null) {
+        FileBasedExecutionProverClientV2(
+          config = proverConfig,
+          vertx = vertx,
+          tracesVersion = tracesVersion,
+          stateManagerVersion = stateManagerVersion,
+        )
+      } else {
+        FileBasedExecutionProverClientV2(
+          config = proverConfig,
+          vertx = vertx,
+          tracesVersion = tracesVersion,
+          stateManagerVersion = stateManagerVersion,
+          log = log,
+        )
+      }.also { executionWaitingResponsesMetric.addReporter(it) }
     }
   }
 
-  fun blobCompressionProverClient(): BlobCompressionProverClientV2 {
+  fun blobCompressionProverClient(log: Logger? = null): BlobCompressionProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.blobCompression,
       proverBConfig = config.proverB?.blobCompression,
       switchBlockNumberInclusive = config.switchBlockNumberInclusive,
     ) { proverConfig ->
-      FileBasedBlobCompressionProverClientV2(
-        config = proverConfig,
-        vertx = vertx,
-      ).also { blobWaitingResponsesMetric.addReporter(it) }
+      if (log == null) {
+        FileBasedBlobCompressionProverClientV2(
+          config = proverConfig,
+          vertx = vertx,
+        )
+      } else {
+        FileBasedBlobCompressionProverClientV2(
+          config = proverConfig,
+          vertx = vertx,
+          log = log,
+        )
+      }
+        .also { blobWaitingResponsesMetric.addReporter(it) }
     }
   }
 
-  fun proofAggregationProverClient(): ProofAggregationProverClientV2 {
+  fun proofAggregationProverClient(log: Logger? = null): ProofAggregationProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.proofAggregation,
       proverBConfig = config.proverB?.proofAggregation,
       switchBlockNumberInclusive = config.switchBlockNumberInclusive,
     ) { proverConfig ->
-      FileBasedProofAggregationClientV2(
-        config = proverConfig,
-        vertx = vertx,
-      ).also { aggregationWaitingResponsesMetric.addReporter(it) }
+      if (log == null) {
+        FileBasedProofAggregationClientV2(
+          config = proverConfig,
+          vertx = vertx,
+        )
+      } else {
+        FileBasedProofAggregationClientV2(
+          config = proverConfig,
+          vertx = vertx,
+          log = log,
+        )
+      }
+        .also { aggregationWaitingResponsesMetric.addReporter(it) }
     }
   }
 
