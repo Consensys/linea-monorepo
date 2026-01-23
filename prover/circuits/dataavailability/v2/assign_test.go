@@ -58,7 +58,7 @@ func prepare(t require.TestingT, blobBytes []byte) (c, a *v2.Circuit) {
 	}
 
 	blobBytes = append(blobBytes, make([]byte, blobcompressorv2.MaxUsableBytes-len(blobBytes))...)
-	_a, _, snarkHash, err := blobdecompression.Assign(circuitSizes, blobBytes, dictStore, true, x, y)
+	_a, _, snarkHash, err := dataavailability.Assign(circuitSizes, blobBytes, dictStore, true, x, y)
 	assert.NoError(t, err)
 
 	a, ok := _a.(*v2.Circuit)

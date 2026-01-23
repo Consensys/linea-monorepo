@@ -17,7 +17,7 @@ type FunctionalInputExtractor struct {
 	DataNbBytes query.LocalOpening
 
 	// DataChecksum returns the hash of the execution data
-	DataChecksum [common.NbLimbU256]query.LocalOpening
+	DataChecksum [common.NbLimbU128]query.LocalOpening
 
 	// L2MessagesHash is the hash of the hashes of the L2 messages. Each message
 	// hash is encoded as 2 field elements, thus the hash does not need padding.

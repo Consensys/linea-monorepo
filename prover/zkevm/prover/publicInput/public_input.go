@@ -69,6 +69,7 @@ type AuxiliaryModules struct {
 	ExecDataCollectorPacking                           pack.Packing
 	GenericPadderPacker                                edc.GenericPadderPacker
 	PoseidonPadderePacker                              edc.PoseidonPadderPacker
+	chainIDFetcher                                     fetch.ChainIDFetcher
 }
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
@@ -232,6 +233,7 @@ func newPublicInput(
 			ExecDataCollector:     execDataCollector,
 			GenericPadderPacker:   genericPadderPacker,
 			PoseidonPadderePacker: ppp,
+			chainIDFetcher:        chainIDFetcher,
 		},
 	}
 
@@ -268,8 +270,6 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 
 	// assign the ExecutionDataCollector
 	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.BlockDataFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
-	aux.ExecDataCollectorPadding.Run(run)
-	aux.ExecDataCollectorPacking.Run(run)
 
 	edc.AssignGenericPadderPacker(run, aux.GenericPadderPacker)
 	// assign the repacker for Poseidon hashing

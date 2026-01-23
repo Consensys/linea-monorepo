@@ -61,6 +61,8 @@ func AssignGenericPadderPacker(run *wizard.ProverRuntime, ppp GenericPadderPacke
 					bytesVectpr[counterNoBytes] = limbBytes[b]
 					counterNoBytes++
 				}
+				// if it is less than 4, this will become negative and we are done with this limb
+				// always fetch 4 bytes except for the last index.
 				remainingNBytes -= 4
 			}
 		}

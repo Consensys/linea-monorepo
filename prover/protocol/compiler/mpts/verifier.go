@@ -95,70 +95,150 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	// Formula: qr = Σᵢ ζᵢ * [Σₖ∈polys(i) ρᵏ * (Pₖ(r) - yₖᵢ)]
+	// where ζᵢ = λⁱ / (r - xᵢ)  (Point-specific weight)
+	//
+	// 	Optimizations:
+	//  1. Factorization: We group evaluations by point (i) rather than polynomial (k) to
+	//  	precompute the complex barycentric weights (ζᵢ) once per query point.
+	//  2. Recursive Horner's Method: Given N polynomials, instead of a naive sum which requires N MulExts
+	//  to compute powers of ρ and another N MulExts to scale the differences, we use
+	//  Horner's method in reverse.
+	//
+	//  Logical Transformation:
+	//  - Naive:  ρ⁰d₀ + ρ¹d₁ + ρ²d₂ + ... + ρⁿdₙ  (~2N MulExt)
+	//  - Horner: d₀ + ρ(d₁ + ρ(d₂ + ... ρ(dₙ₋₁ + ρ dₙ)...)) (~N MulExt)
+	//
+
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
-		// polyOfRs stores the values of P_k(r) as returned in the query.
-		// The last value of the slice is the value of Q(r) where q
-		// is the quotient polynomial.
-		qr       = queryParams.ExtYs[len(va.NewQuery.Pols)-1]
-		polysAtR = va.cptEvaluationMapGnarkExt(api, run)
-		r        = queryParams.ExtX
-		rCoin    = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
-
-		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
-		// These values are precomputed for efficiency.
-		zetasOfR = make([]koalagnark.Ext, len(va.Queries))
-
-		lambda = run.GetRandomCoinFieldExt(va.LinCombCoeffLambda.Name)
-		rho    = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
+		qr          = queryParams.ExtYs[len(va.NewQuery.Pols)-1]
+		polysAtR    = va.cptEvaluationMapGnarkExt(api, run)
+		r           = queryParams.ExtX
+		rCoin       = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
+		lambda      = run.GetRandomCoinFieldExt(va.LinCombCoeffLambda.Name)
+		rho         = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
+		numQueries  = len(va.Queries)
 	)
 
 	koalaAPI := koalagnark.NewAPI(api)
-
 	koalaAPI.AssertIsEqualExt(r, rCoin)
 
-	lambdaPowI := koalaAPI.OneExt()
-	rhoK := koalaAPI.OneExt()
-
-	// res stores the right-hand of the equality check. Namely,
-	// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-	res := koalaAPI.ZeroExt()
-
-	for i, q := range va.Queries {
-
-		xi := run.GetUnivariateParams(q.Name()).ExtX
-		// zetasOfR[i].Sub(api, r, xi)
-		zetasOfR[i] = koalaAPI.SubExt(r, xi)
-
-		// NB: this is very sub-optimal. We should use a batch-inverse instead
-		// but the native verifier time is not very important in this context.
-		// zetasOfR[i].Inverse(api, zetasOfR[i])
-		// zetasOfR[i].Mul(api, zetasOfR[i], lambdaPowI)
-		// lambdaPowI.Mul(api, lambdaPowI, lambda)
-		zetasOfR[i] = koalaAPI.InverseExt(zetasOfR[i])
-		zetasOfR[i] = koalaAPI.MulExt(zetasOfR[i], lambdaPowI)
-		lambdaPowI = koalaAPI.MulExt(lambdaPowI, lambda)
+	// Step 1: Compute zeta[i] = λⁱ / (r - xᵢ) for each evaluation point
+	// Cost: n DivExt + (n-1) MulExt
+	lambdaPowers := make([]koalagnark.Ext, numQueries)
+	lambdaPowers[0] = koalaAPI.OneExt()
+	for i := 1; i < numQueries; i++ {
+		lambdaPowers[i] = koalaAPI.MulExt(lambdaPowers[i-1], lambda)
 	}
 
-	// This loop computes the value of [res]
-	for k, p := range va.Polys {
-		pr := polysAtR[p.GetColID()]
-		for _, i := range va.EvalPointOfPolys[k] {
-			// This sets tmp with the value of yik
-			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
-			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
-			tmp = koalaAPI.SubExt(pr, tmp)
-			tmp = koalaAPI.MulExt(tmp, zetasOfR[i])
-			tmp = koalaAPI.MulExt(tmp, rhoK)
-			res = koalaAPI.AddExt(res, tmp)
+	zetasOfR := make([]koalagnark.Ext, numQueries)
+	for i, q := range va.Queries {
+		xi := run.GetUnivariateParams(q.Name()).ExtX
+		rMinusXi := koalaAPI.SubExt(r, xi)
+		zetasOfR[i] = koalaAPI.DivExt(lambdaPowers[i], rMinusXi)
+	}
 
+	// Step 2: For each evaluation point, compute contribution using Horner's method
+	// This avoids precomputing all ρ^k powers!
+	//
+	// For point i with polys [k₀, k₁, k₂, ...] (sorted ascending):
+	// Σₖ ρᵏ(Pₖ(r) - yₖᵢ) = ρ^k₀ * (d₀ + ρ^(k₁-k₀)(d₁ + ρ^(k₂-k₁)(d₂ + ...)))
+	//
+	// Using Horner in reverse: start from last poly, accumulate backwards
+
+	res := koalaAPI.ZeroExt()
+
+	// Precompute small powers of rho for common gaps (1, 2, 3, ...)
+	// This avoids repeated square-and-multiply for common cases
+	const maxCachedGap = 8
+	rhoCache := make([]koalagnark.Ext, maxCachedGap+1)
+	rhoCache[0] = koalaAPI.OneExt()
+	rhoCache[1] = rho
+	for g := 2; g <= maxCachedGap; g++ {
+		rhoCache[g] = koalaAPI.MulExt(rhoCache[g-1], rho)
+	}
+
+	for i := 0; i < numQueries; i++ {
+		polyIndices := va.PolysOfEvalPoint[i]
+		if len(polyIndices) == 0 {
+			continue
 		}
 
-		// rhoK.Mul(api, rhoK, rho)
-		rhoK = koalaAPI.MulExt(rhoK, rho)
+		n := len(polyIndices)
+
+		// Start from last polynomial (highest index)
+		lastIdx := n - 1
+		lastK := polyIndices[lastIdx]
+		lastP := va.Polys[lastK]
+		lastPr := polysAtR[lastP.GetColID()]
+		posOfY := va.PolyPositionInQuery[i][lastIdx]
+		lastY := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfY]
+		pointSum := koalaAPI.SubExt(lastPr, lastY)
+
+		// Process remaining polynomials in reverse order using Horner's method
+		for j := n - 2; j >= 0; j-- {
+			k := polyIndices[j]
+			nextK := polyIndices[j+1]
+			gap := nextK - k
+
+			// pointSum = ρ^gap * pointSum + (Pₖ(r) - yₖᵢ)
+			var rhoGap koalagnark.Ext
+			if gap <= maxCachedGap {
+				rhoGap = rhoCache[gap]
+			} else {
+				rhoGap = computeRhoPower(koalaAPI, rho, gap, rhoCache)
+			}
+			pointSum = koalaAPI.MulExt(pointSum, rhoGap)
+
+			p := va.Polys[k]
+			pr := polysAtR[p.GetColID()]
+			posOfY = va.PolyPositionInQuery[i][j]
+			yik := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfY]
+			diff := koalaAPI.SubExt(pr, yik)
+			pointSum = koalaAPI.AddExt(pointSum, diff)
+		}
+
+		// Multiply by ρ^(first_k) to get correct weighting
+		firstK := polyIndices[0]
+		if firstK > 0 {
+			var rhoFirst koalagnark.Ext
+			if firstK <= maxCachedGap {
+				rhoFirst = rhoCache[firstK]
+			} else {
+				rhoFirst = computeRhoPower(koalaAPI, rho, firstK, rhoCache)
+			}
+			pointSum = koalaAPI.MulExt(pointSum, rhoFirst)
+		}
+
+		// Multiply by zeta[i] and add to result
+		contribution := koalaAPI.MulExt(pointSum, zetasOfR[i])
+		res = koalaAPI.AddExt(res, contribution)
 	}
 
 	koalaAPI.AssertIsEqualExt(res, qr)
+}
+
+// computeRhoPower computes rho^n using square-and-multiply with cache
+func computeRhoPower(koalaAPI *koalagnark.API, rho koalagnark.Ext, n int, cache []koalagnark.Ext) koalagnark.Ext {
+	if n < len(cache) {
+		return cache[n]
+	}
+
+	// Square-and-multiply
+	result := koalaAPI.OneExt()
+	base := rho
+
+	for n > 0 {
+		if n&1 == 1 {
+			result = koalaAPI.MulExt(result, base)
+		}
+		n >>= 1
+		if n > 0 {
+			base = koalaAPI.MulExt(base, base)
+		}
+	}
+	return result
 }
 
 // cptEvaluationMap returns an evaluation map [Column] -> [Y] for all the

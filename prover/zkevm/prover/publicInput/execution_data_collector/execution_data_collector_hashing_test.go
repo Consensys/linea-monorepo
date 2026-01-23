@@ -118,8 +118,9 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		blockDataCols       *arith.BlockDataCols
 		rlpTxn              *arith.RlpTxn
 		ppp                 PoseidonPadderPacker
-		mimcHasher          PoseidonHasher
+		poseidonHasher      PoseidonHasher
 		genericPadderPacker GenericPadderPacker
+		chainIDFetcher      fetch.ChainIDFetcher
 	)
 
 	define := func(b *wizard.Builder) {
@@ -138,6 +139,8 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		rlpTxnFetcher = fetch.NewRlpTxnFetcher(b.CompiledIOP, "RLP_TXN_FETCHER_FROM_ARITH", rlpTxn)
 		// constrain the fetcher
 		fetch.DefineRlpTxnFetcher(b.CompiledIOP, &rlpTxnFetcher, "RLP_TXN_FETCHER_FROM_ARITH", rlpTxn)
+		chainIDFetcher = fetch.NewChainIDFetcher(b.CompiledIOP, "PUBLIC_INPUT_CHAIN_ID_FETCHER", blockDataCols)
+		fetch.DefineChainIDFetcher(b.CompiledIOP, &chainIDFetcher, "PUBLIC_INPUT_CHAIN_ID_FETCHER", blockDataCols)
 
 		limbColSize := GetSummarySize(txnDataCols, rlpTxn)
 		// we need to artificially blow up the column size by 2, or padding will fail
@@ -151,9 +154,9 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		ppp = NewPoseidonPadderPacker(b.CompiledIOP, genericPadderPacker.OutputData, genericPadderPacker.OutputIsActive, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
 		DefinePoseidonPadderPacker(b.CompiledIOP, ppp, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
 		// create a MiMC hasher
-		mimcHasher = NewPoseidonHasher(b.CompiledIOP, ppp.OutputData, ppp.OutputIsActive[0], "MIMC_HASHER")
+		poseidonHasher = NewPoseidonHasher(b.CompiledIOP, ppp.OutputData, ppp.OutputIsActive[0], "MIMC_HASHER")
 		// define the hasher
-		DefinePoseidonHasher(b.CompiledIOP, mimcHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+		DefinePoseidonHasher(b.CompiledIOP, poseidonHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
@@ -164,6 +167,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		fetch.AssignBlockTxnMetadata(run, blockTxnMeta, txnDataCols)
 		fetch.AssignTxnDataFetcher(run, txnDataFetcher, txnDataCols)
 		fetch.AssignRlpTxnFetcher(run, &rlpTxnFetcher, rlpTxn)
+		fetch.AssignChainIDFetcher(run, &chainIDFetcher, blockDataCols)
 		// assign the ExecutionDataCollector
 		AssignExecutionDataCollector(run, execDataCollector, blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpTxnFetcher, blockHashList[:])
 
@@ -171,11 +175,15 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// assign the repacker for Poseidon hashing
 		AssignPoseidonPadderPacker(run, ppp)
 		// assign the hasher
-		AssignPoseidonHasher(run, mimcHasher, ppp.OutputData, ppp.OutputIsActive[0])
+		AssignPoseidonHasher(run, poseidonHasher, ppp.OutputData, ppp.OutputIsActive[0])
+		for i := range poseidonHasher.HashFinal {
+			fmt.Println("Computed Execution Data Hash:", poseidonHasher.HashFinal[i].GetColAssignment(run).Pretty())
+		}
+
 		// compute the MiMC hash of the fixed TestData
 		//fixedHash := ComputeMiMCHashFixedTestData()
 		// assert that we are computing the hash correctly
-		//assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final Hash Value is Incorrect")
+		//assert.Equal(t, fixedHash, poseidonHasher.HashFinal.GetColAssignmentAt(run, 0), "Final Hash Value is Incorrect")
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)
