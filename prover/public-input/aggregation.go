@@ -138,8 +138,11 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			LastFinalizedBlockTimestamp:    pi.LastFinalizedBlockTimestamp,
 			LastFinalizedRollingHash:       [32]frontend.Variable{},
 			LastFinalizedRollingHashNumber: pi.LastFinalizedRollingHashMsgNumber,
-			InitialStateRootHash:           pi.InitialStateRootHash[:],
-			NbDataAvailability:             pi.NbDecompression,
+			InitialStateRootHash: [2]frontend.Variable{
+				pi.InitialStateRootHash[:16],
+				pi.InitialStateRootHash[16:],
+			},
+			NbDataAvailability: pi.NbDecompression,
 			ChainConfigurationFPISnark: ChainConfigurationFPISnark{
 				ChainID:                 pi.ChainID,
 				BaseFee:                 pi.BaseFee,
@@ -167,7 +170,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 type AggregationFPIQSnark struct {
 	ParentShnarf                   [32]frontend.Variable
 	NbDataAvailability             frontend.Variable
-	InitialStateRootHash           frontend.Variable
+	InitialStateRootHash           [2]frontend.Variable
 	LastFinalizedBlockNumber       frontend.Variable
 	LastFinalizedBlockTimestamp    frontend.Variable
 	LastFinalizedRollingHash       [32]frontend.Variable

@@ -4,12 +4,13 @@ package csvtraces
 import (
 	"encoding/csv"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/backend/files"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"io"
 	"math/big"
 	"os"
 	"strings"
+
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -391,7 +392,7 @@ func (c *CsvTrace) checkAssignment(run *wizard.ProverRuntime, obj any) {
 		vKoala := run.GetColumn(obj.GetColID()).IntoRegVecSaveAlloc()
 		csvBi, ok = c.mapped[name]
 		if !ok {
-			utils.Panic("column not found in csv, %s", name)
+			utils.Panic("column not found in csv, %s, %v", name, utils.StringKeysOfMap(c.mapped))
 		}
 		wizBi = koalaVecToBigInt(vKoala)
 

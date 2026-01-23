@@ -99,10 +99,14 @@ func (c *Circuit) Define(api frontend.API) error {
 		batchHashes[i] = pi.DataChecksum.Hash
 	}
 
-	finalStateRootHashes := logderivlookup.New(api)
-	finalStateRootHashes.Insert(c.InitialStateRootHash)
+	finalStateRootHashesLo := logderivlookup.New(api)
+	finalStateRootHashesHi := logderivlookup.New(api)
+	finalStateRootHashesLo.Insert(c.InitialStateRootHash[1])
+	finalStateRootHashesHi.Insert(c.InitialStateRootHash[0])
+
 	for _, pi := range c.ExecutionFPIQ {
-		finalStateRootHashes.Insert(pi.FinalStateRootHash)
+		finalStateRootHashesLo.Insert(pi.FinalStateRootHash[1])
+		finalStateRootHashesHi.Insert(pi.FinalStateRootHash[0])
 	}
 
 	compressor, err := gkrposeidon2compressor.NewCompressor(api)
@@ -122,9 +126,15 @@ func (c *Circuit) Define(api frontend.API) error {
 	for i, piq := range c.DataAvailabilityFPIQ {
 		piq.RangeCheck(api)
 
+		var (
+			newStateRootHi = gnarkutil.ToBytes16(api, finalStateRootHashesHi.Lookup(nbBatchesSums[i])[0])
+			newStateRootLo = gnarkutil.ToBytes16(api, finalStateRootHashesLo.Lookup(nbBatchesSums[i])[0])
+			newStateRoot   = [32]frontend.Variable(append(newStateRootHi[:], newStateRootLo[:]...))
+		)
+
 		shnarfParams[i] = ShnarfIteration{ // prepare shnarf verification data
 			BlobDataSnarkHash:    gnarkutil.ToBytes32(api, piq.SnarkHash),
-			NewStateRootHash:     gnarkutil.ToBytes32(api, finalStateRootHashes.Lookup(nbBatchesSums[i])[0]),
+			NewStateRootHash:     newStateRoot,
 			EvaluationPointBytes: piq.X,
 			EvaluationClaimBytes: fr377EncodedFr381ToBytes(api, piq.Y),
 		}
@@ -398,4 +408,14 @@ func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitTyp
 	return utils.RightPad(
 		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDataAvailability)
 
+}
+
+// mashStateRoot returns a mashedStateRoot by mashing the two limbs of the state
+// root into one.
+func mashStateRoot(api frontend.API, stateRoot [2]frontend.Variable) frontend.Variable {
+	twoPow128, _ := new(big.Int).SetString("100000000000000000000000000000000", 16)
+	return api.Add(
+		api.Mul(twoPow128, stateRoot[0]),
+		stateRoot[1],
+	)
 }

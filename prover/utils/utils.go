@@ -439,6 +439,13 @@ func SortedKeysOf[K comparable, V any](m map[K]V, less func(K, K) bool) []K {
 	return keys
 }
 
+// StringKeysOfMap returns a sorted list of the keys of the map
+func StringKeysOfMap[K ~string, V any](m map[K]V) []K {
+	return SortedKeysOf(m, func(a, b K) bool {
+		return a < b
+	})
+}
+
 // MapFunc maps f to every entries of the slice and return an array with the
 // result.
 func MapFunc[T, U any](slice []T, f func(T) U) []U {

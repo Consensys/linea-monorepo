@@ -53,8 +53,8 @@ func TestInitialization(t *testing.T) {
 	tailHash := accumulator.Tail().Hash() // Updated to remove acc.Config()
 
 	// First leaf is head
-	assert.Equal(t, acc.Tree.MustGetLeaf(0), accumulator.Head().Hash())
-	assert.Equal(t, acc.Tree.MustGetLeaf(1), accumulator.Tail().Hash())
+	assert.Equal(t, acc.Tree.MustGetLeaf(0), accumulator.Head().Hash().ToOctuplet())
+	assert.Equal(t, acc.Tree.MustGetLeaf(1), accumulator.Tail().Hash().ToOctuplet())
 
 	// Can we prover membership of the leaf
 	proofHead := acc.Tree.MustProve(0)

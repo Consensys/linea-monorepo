@@ -44,7 +44,7 @@ func TestHashZeroAccountMiMC(t *testing.T) {
 
 	assert.Equal(
 		t,
-		"0x0f170eaef9275fd6098a06790c63a141e206e0520738a4cf5cf5081d495e8682",
+		"0x0be39dd910329801041c54896705cb664779584732a232276e59ce2e7ca1b5a7",
 		Hash(emptyAccount).Hex(),
 	)
 }
@@ -53,7 +53,7 @@ func TestHashZeroAccountMiMC(t *testing.T) {
 - Test the empty storage trie hash
 */
 func TestEmptyStorageTrieHash(t *testing.T) {
-	assert.Equal(t, "0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5", eth.ZKHASH_EMPTY_STORAGE.Hex())
+	assert.Equal(t, "0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7", eth.ZKHASH_EMPTY_STORAGE.Hex())
 }
 
 /*
@@ -62,7 +62,7 @@ func TestEmptyStorageTrieHash(t *testing.T) {
 func TestEmptyWorldStateMiMC(t *testing.T) {
 	worldstate := eth.NewWorldState()
 	// should be the top root of an empty accumulator
-	assert.Equal(t, "0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5", worldstate.AccountTrie.TopRoot().Hex())
+	assert.Equal(t, "0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7", worldstate.AccountTrie.TopRoot().Hex())
 }
 
 /*
@@ -79,12 +79,12 @@ func TestWorldStateWithAnAccountMiMC(t *testing.T) {
 	worldstate.AccountTrie.InsertAndProve(address, account)
 
 	// check that the hash of the inserted account matches
-	assert.Equal(t, "0x11314cf80cdd63a376e468ea9e6c672109bcfe516f0349382df82e1a876ca8b2", Hash(account).Hex(), "inserted EOA hash")
+	assert.Equal(t, "0x495340db00ecc17b5cb435d5731f8d6635e6b3ef42507a8303a068d178a95d22", Hash(account).Hex(), "inserted EOA hash")
 	// check that the hash of the address matches
-	assert.Equal(t, "0x0b9887ed089160e457c4078941214f313dacfb71a8ed1818da3468ef1fdbe282", Hash(address).Hex(), "hash of address")
+	assert.Equal(t, "0x279326f6312018a0650c885c019a8ce35d9cb0a526599870628957d84a3655b3", Hash(address).Hex(), "hash of address")
 
 	// finally check the root hash after insertion
-	assert.Equal(t, "0x04c3c6de7195a187bc89fb4f8b68e93c7d675f1eed585b00d0e1e6241a321f86", worldstate.AccountTrie.TopRoot().Hex(), "root hash after insertion")
+	assert.Equal(t, "0x6b5d2e111a55e55826396df03ac3d0055dc4a88671edbcc8274db3f0117e0f97", worldstate.AccountTrie.TopRoot().Hex(), "root hash after insertion")
 }
 
 /*
@@ -106,7 +106,7 @@ func TestWorldStateWithTwoAccountMiMC(t *testing.T) {
 	worldstate.AccountTrie.InsertAndProve(addressB, accountB)
 
 	// finally check the root hash after insertion
-	assert.Equal(t, "0x020e2a836e973eebd3c6367ef432ff21bb35102bc2ae3258b385e8cfbf4d46d4", worldstate.AccountTrie.TopRoot().Hex())
+	assert.Equal(t, "0x7bcc50ea4546465f153f5c0a35e3cddb59f492f4183438ed52733bc92823fbb7", worldstate.AccountTrie.TopRoot().Hex())
 }
 
 /*
@@ -141,8 +141,8 @@ func TestWorldStateEoaAndContractMiMC(t *testing.T) {
 
 	// finally check the root hash after insertion
 	{
-		// Cgeck the root hash after inserting A and B
-		assert.Equal(t, "0x0bc47df364adaecf61a5024f2b39603341077be453d88d21e627aee59ef7a6db", worldstate.AccountTrie.TopRoot().Hex(), "after insertion of B")
+		// Check the root hash after inserting A and B
+		assert.Equal(t, "0x14b74e4f2fa3edaf180c7a3c74417a5662ef843809717b014116863c256ee66d", worldstate.AccountTrie.TopRoot().Hex(), "after insertion of B")
 	}
 
 	// Write something in the storage of B
@@ -153,13 +153,13 @@ func TestWorldStateEoaAndContractMiMC(t *testing.T) {
 		worldstate.AccountTrie.UpdateAndProve(addressB, newAccountB)
 
 		// finally check the root hash after insertion
-		assert.Equal(t, "0x069b45f6f789581a3402103cd35168bf8d1de77eb5db9f79390ad29472e0846d", worldstate.AccountTrie.TopRoot().Hex(), "after inserting a slot in the storage of B")
+		assert.Equal(t, "0x480d862e3f395c2f1bb80a0504fa083701440727747a75562203eff125fbc57f", worldstate.AccountTrie.TopRoot().Hex(), "after inserting a slot in the storage of B")
 	}
 
 	// Delete the account A
 	{
 		worldstate.AccountTrie.DeleteAndProve(addressA)
-		assert.Equal(t, "0x0b6a3290b85cf230ce33cec4438aa907373c8a471c47346ad32fc170b8644ec3", worldstate.AccountTrie.TopRoot().Hex())
+		assert.Equal(t, "0x27aa6c982bd6ec5c52225e46410806a52377632e76a1715343e2e33d2b569de1", worldstate.AccountTrie.TopRoot().Hex())
 	}
 
 	// Remove what we wrote into B
@@ -168,7 +168,7 @@ func TestWorldStateEoaAndContractMiMC(t *testing.T) {
 		newAccountB := accountB
 		newAccountB.StorageRoot = storageB.TopRoot()
 		worldstate.AccountTrie.UpdateAndProve(addressB, newAccountB)
-		assert.Equal(t, "0x0f11405ba708b9aeb8de0a341d80682b3a59c628e0694af97e357e86bb9567cf", worldstate.AccountTrie.TopRoot().Hex())
+		assert.Equal(t, "0x0664e56b4fb256025fc4ebf6100ca8566a39394746b5f5b50e0c289b399aa19e", worldstate.AccountTrie.TopRoot().Hex())
 	}
 
 	// Write again, somewhere else
@@ -177,7 +177,7 @@ func TestWorldStateEoaAndContractMiMC(t *testing.T) {
 		newAccountB := accountB
 		newAccountB.StorageRoot = storageB.TopRoot()
 		worldstate.AccountTrie.UpdateAndProve(addressB, newAccountB)
-		assert.Equal(t, "0x06825644ff9ddf7d87b8a6f5d813254d535eae9d1bc2d2336b27211b1006f58c", worldstate.AccountTrie.TopRoot().Hex())
+		assert.Equal(t, "0x532f7e8577d8f445505ecfbd053340cd007e742309d6fdf5286dcf0420463fe3", worldstate.AccountTrie.TopRoot().Hex())
 	}
 }
 
@@ -207,5 +207,5 @@ func TestAddAaddBdelAaddCMiMC(t *testing.T) {
 	worldstate.AccountTrie.DeleteAndProve(addressA)
 	worldstate.AccountTrie.InsertAndProve(addressC, accountC)
 
-	assert.Equal(t, "0x00b43fd65348b5a492ebcbd7ce3933fc963809ca4897d4fcd00d8661e45d9d55", worldstate.AccountTrie.TopRoot().Hex())
+	assert.Equal(t, "0x1d32f4e20bff17297318716a798a05a039dff3fa29fbc956320499370be459e9", worldstate.AccountTrie.TopRoot().Hex())
 }

@@ -11,7 +11,7 @@ func TestKoalaOctupletFromHex(t *testing.T) {
 
 	inputs := []string{
 		"0x3a00a8e34a16f8a1225fee734816edb326f783bd6678d793345a28f046586ba6",
-		"0x4e823a281ec61ac1d32fcc5437fc33fdef126226288e1c806fa557f1e1808af4",
+		"0x4e823a281ec61ac1032fcc5437fc33fd0f126226288e1c806fa557f101808af4",
 	}
 
 	for i := range inputs {

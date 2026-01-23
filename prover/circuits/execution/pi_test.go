@@ -12,6 +12,7 @@ import (
 )
 
 func TestPIConsistency(t *testing.T) {
+
 	pi := public_input.Execution{
 		L2MessageHashes:              make([][32]byte, 2),
 		FinalBlockNumber:             4,

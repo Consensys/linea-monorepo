@@ -1,8 +1,6 @@
 package statemanager
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -32,8 +30,6 @@ func FormatContractBytecodeForHashing(contractCode []byte) []byte {
 		dst := 4 * limb
 		res[dst] = 0x0
 		res[dst+1] = 0x0
-
-		fmt.Printf("oddLen=%v limb=%v limbCount=%v src=%v dst=%v\n", hasOddLen, limb, limbCount, src, dst)
 
 		if hasOddLen && limb%numLimbPerBlock == 0 && limbCount-limb <= numLimbPerBlock {
 			offset = 1

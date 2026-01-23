@@ -111,7 +111,7 @@ func TestInsertionRootHashPoseidon2(t *testing.T) {
 		leafOpening := acc.Data.MustGet(2).LeafOpening
 		require.Equal(
 			t,
-			"LeafOpening{Prev: 0, Next: 1, HKey: 0x27b48fe33995c55d329a805f2c4acdc05c1229592579fcab0a46d23239f19498, HVal: 0x43b6adef3fc8455b573aadd56e3ab14a11084a9d667c2c8449b707c31cb32560}",
+			"LeafOpening{Prev: 0, Next: 1, HKey: 0x2a5104052407a7e1473dc2b03101215d22e5e4d5411072b33909be0129f31faa, HVal: 0x40549e906a7e4b076930ae253c51fb5f0239607b45f47349247c8e5a70a649b8}",
 			leafOpening.String(),
 		)
 
@@ -157,7 +157,7 @@ func TestInsertAndUpdateRootHashPoseidon2(t *testing.T) {
 	// root of the subtree (e.g. exluding the next free node)
 	require.Equal(
 		t,
-		"0x50b4bb9d2b4c917f48ca9465613d7efe092934a95bcdc7a004ef3a6b7900fd5b",
+		"0x2f20cbc26937b220551a344d548fccf216eec47b13b844c53ff76ade2f4c174d",
 		acc.SubTreeRoot().Hex(),
 	)
 
@@ -259,17 +259,15 @@ func TestProofFromReadAndProve(t *testing.T) {
 
 	require.Equal(
 		t,
-		"0x0000000000000000000000000000000000000000000000000000000000000024",
+		"0x0000002400000024000000240000002400000024000000240000002400000024",
 		key.Hex(),
 	)
 
 	require.Equal(
 		t,
-		"0x0000000000000000000000000000000000000000000000000000000000000020",
+		"0x0000002000000020000000200000002000000020000000200000002000000020",
 		val.Hex(),
 	)
-
-	fmt.Printf("Proof: %v\n", trace.Proof.String())
 
 	err := ver.ReadNonZeroVerify(trace)
 	require.NoErrorf(t, err, "check #%v - trace %++v", key, trace)
