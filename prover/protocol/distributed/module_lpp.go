@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	hf "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -534,12 +534,12 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 		TargetNbSegments:    declareListOfPiColumns(modLPP.Wiop, 0, TargetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:      declareListOfConstantPi(modLPP.Wiop, SegmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:     declareListOfConstantPi(modLPP.Wiop, SegmentCountLPPPublicInputBase, segmentCountLpp),
-		GeneralMultiSetHash: declareListOfPiColumns(modLPP.Wiop, 1, GeneralMultiSetPublicInputBase, hf.MSetHashSize),
+		GeneralMultiSetHash: declareListOfPiColumns(modLPP.Wiop, 1, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize),
 
 		SharedRandomnessMultiSetHash: declareListOfConstantPi(
 			modLPP.Wiop,
 			SharedRandomnessMultiSetPublicInputBase,
-			make([]field.Element, hf.MSetHashSize),
+			make([]field.Element, multisethashing.MSetHashSize),
 		),
 
 		SharedRandomness: sharedRandomness,
@@ -627,7 +627,7 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
-		mset                   = hf.MSetHash{}
+		mset                   = multisethashing.MSetHash{}
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
 		segmentIndexInt        = segmentIndex.Uint64()
@@ -673,12 +673,12 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
-		targetMSet             = GetPublicInputList(run, GeneralMultiSetPublicInputBase, hf.MSetHashSize)
+		targetMSet             = GetPublicInputList(run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		lppCommitments         = field.Octuplet{}
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
-		mset                   = hf.MSetHash{}
+		mset                   = multisethashing.MSetHash{}
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
 		segmentIndexInt        = segmentIndex.Uint64()
@@ -732,13 +732,13 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
 
 	var (
-		targetMSetGeneral      = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, hf.MSetHashSize)
+		targetMSetGeneral      = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		lppCommitments         = run.GetPublicInput(api, lppMerkleRootPublicInput+"_0")
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
-		hasher                 = hf.AsConcreteHasher(run.GetHasherFactory().NewHasher())
-		multiSetGeneral        = hf.EmptyMSetHashGnark(hasher)
+		hasher                 = run.GetHasherFactory().NewHasher()
+		multiSetGeneral        = multisethashing.EmptyMSetHashGnark(&hasher)
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
 		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
@@ -758,8 +758,8 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 			n1HashS = append(n1HashS, n1Hash)
 		}
 
-		n1HashSingletonMsetHash := hf.MsetOfSingletonGnark(api, hasher, append([]frontend.Variable{moduleIndex, segmentIndex, typeOfProof}, n1HashS...)...)
-		for i := 0; i < hf.MSetHashSize; i++ {
+		n1HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(api, &hasher, append([]frontend.Variable{moduleIndex, segmentIndex, typeOfProof}, n1HashS...)...)
+		for i := 0; i < multisethashing.MSetHashSize; i++ {
 			n1HashSingletonMsetHash.Inner[i] = api.Mul(n1HashSingletonMsetHash.Inner[i], api.Sub(1, isLast))
 			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], n1HashSingletonMsetHash.Inner[i])
 		}
@@ -772,8 +772,8 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 			n0HashS = append(n0HashS, n0Hash)
 		}
 
-		n0HashSingletonMsetHash := hf.MsetOfSingletonGnark(api, hasher, append([]frontend.Variable{moduleIndex, api.Sub(segmentIndex, 1), typeOfProof}, n0HashS...)...)
-		for i := 0; i < hf.MSetHashSize; i++ {
+		n0HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(api, &hasher, append([]frontend.Variable{moduleIndex, api.Sub(segmentIndex, 1), typeOfProof}, n0HashS...)...)
+		for i := 0; i < multisethashing.MSetHashSize; i++ {
 			n0HashSingletonMsetHash.Inner[i] = api.Mul(n0HashSingletonMsetHash.Inner[i], api.Sub(1, isFirst))
 			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], n0HashSingletonMsetHash.Inner[i])
 		}

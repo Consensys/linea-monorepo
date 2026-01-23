@@ -65,7 +65,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 	logrus.Info("reading dictionaries")
 
-	dictStore := cfg.dataavailabilityDictStore(string(circuitID))
+	dictStore := cfg.BlobDecompressionDictStore(string(circuitID))
 
 	// This computes the assignment
 

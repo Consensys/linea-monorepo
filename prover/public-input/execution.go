@@ -31,11 +31,11 @@ type ExecDataChecksum struct {
 	// The last element is padded with less significant zeros as needed.
 	// This sum is not collision resistant. To become so it needs the data length
 	// incorporated into it as well.
-	PartialHash types.Bytes32
+	PartialHash types.Bls12377Fr
 
 	// Hash is a modified Poseidon2 hash of the execution data over
 	// the BLS12-377 scalar field. It is computed as H(PartialHash, Length).
-	Hash types.Bytes32
+	Hash types.Bls12377Fr
 }
 
 // @gusiri

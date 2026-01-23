@@ -12,7 +12,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
-	hash_factory "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	hasherfactory "github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -251,7 +251,7 @@ func CompileCircuitWithRangeCheck(circ frontend.Circuit, addGates bool) (*cs.Spa
 // constraints system.
 func CompileCircuitWithExternalHasher(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func() [][3][2]int, error) {
 
-	gnarkBuilder, hshGetter := hash_factory.NewExternalHasherBuilder(addGates)
+	gnarkBuilder, hshGetter := hasherfactory.NewExternalHasherBuilder(addGates)
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkBuilder, circ)
 	if err != nil {
 		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)

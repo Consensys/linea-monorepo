@@ -39,7 +39,7 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]frontend.Variable, zkevm.Limits().BlockL2L1Logs),
+					Values: make([][32]frontend.Variable, zkevm.Limits().BlockL2L1Logs()),
 					Length: nil,
 				},
 			},
@@ -56,7 +56,7 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 // do for the non-limitless execution proof.
 func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits) CircuitExecution {
 	logrus.Infof("Allocating the outer circuit with params: no_of_cong_wiop_rounds=%d "+
-		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs)
+		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs())
 
 	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds(), true)
 	return CircuitExecution{
@@ -64,7 +64,7 @@ func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs()),
 					Length: nil,
 				},
 			},
@@ -87,7 +87,7 @@ func assign(
 			FuncInputs: FunctionalPublicInputSnark{
 				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 					L2MessageHashes: L2MessageHashes{
-						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs()),
 					},
 				},
 			},
@@ -104,11 +104,7 @@ func assign(
 // Define of the wizard circuit
 func (c *CircuitExecution) Define(api frontend.API) error {
 
-	panic("fix the [gkrmimc/gkrposeidon] package. The BlsFs should also take a hasher factory")
-
 	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
-	// c.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
-	// c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFiatShamir(api, c.WizardVerifier.HasherFactory)
 
 	c.WizardVerifier.Verify(api)
 	checkPublicInputs(

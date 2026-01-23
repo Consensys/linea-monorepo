@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	hasherfactory "github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -32,7 +32,7 @@ type GnarkRuntime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
 	Fs() *fiatshamir.GnarkFS
-	GetHasherFactory() hasher_factory.HasherFactory
+	GetHasherFactory() hasherfactory.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -132,11 +132,11 @@ type VerifierCircuit struct {
 	// works.
 	Coins collection.Mapping[coin.Name, interface{}] `gnark:"-"`
 
-	// HasherFactory is a custom hasher that we use for all the MiMC hashing
+	// HasherFactory is a custom hasher that we use for all the Poseidon2 hashing
 	// in the circuit. It is used for efficiently computing the Fiat-Shamir
-	// hashes but also the MiMC Vortex column hashes that we use for the
+	// hashes but also the Poseidon2 Vortex column hashes that we use for the
 	// last round of the self-recursion.
-	HasherFactory hasher_factory.HasherFactory `gnark:"-"`
+	HasherFactory hasherfactory.HasherFactory `gnark:"-"`
 
 	// State is a generic-purpose data store that the verifier steps can use to
 	// communicate with each other across rounds.
@@ -889,12 +889,12 @@ func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFS {
 
 // GetHasherFactory returns the hasher factory of the verifier circuit; nil
 // if none is set.
-func (c *VerifierCircuit) GetHasherFactory() hasher_factory.HasherFactory {
+func (c *VerifierCircuit) GetHasherFactory() hasherfactory.HasherFactory {
 	return c.HasherFactory
 }
 
 // SetHasherFactory sets the hasher factory of the verifier circuit
-func (c *VerifierCircuit) SetHasherFactory(hf hasher_factory.HasherFactory) {
+func (c *VerifierCircuit) SetHasherFactory(hf hasherfactory.HasherFactory) {
 	c.HasherFactory = hf
 }
 

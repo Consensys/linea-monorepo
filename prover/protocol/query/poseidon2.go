@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/google/uuid"
 )
 
@@ -121,8 +122,13 @@ func (p Poseidon2) Check(run ifaces.Runtime) error {
 		recomputed := vortex.CompressPoseidon2(oldState, block)
 		if recomputed != newState {
 			return fmt.Errorf(
-				"Poseidon2 compression check failed for row #%v : block %v, oldState %v, newState %v, recomputed%v\n",
-				i, block, oldState, newState, recomputed,
+				"Poseidon2 compression [%v] check failed for row #%v : block=%v, oldState=%v, newState=%v, recomputed=%v\n",
+				p.ID,
+				i,
+				types.KoalaOctuplet(block).Hex(),
+				types.KoalaOctuplet(oldState).Hex(),
+				types.KoalaOctuplet(newState).Hex(),
+				types.KoalaOctuplet(recomputed).Hex(),
 			)
 		}
 	}

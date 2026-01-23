@@ -5,7 +5,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
-	v2 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
+	v2 "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )

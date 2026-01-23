@@ -7,8 +7,8 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression"
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/config"
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability"
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -17,7 +17,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
+	v2 "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	blobcompressorv2 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2"
 	blobtestutils "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2/test_utils"
 	"github.com/stretchr/testify/assert"
@@ -58,7 +58,7 @@ func prepare(t require.TestingT, blobBytes []byte) (c, a *v2.Circuit) {
 	}
 
 	blobBytes = append(blobBytes, make([]byte, blobcompressorv2.MaxUsableBytes-len(blobBytes))...)
-	_a, _, snarkHash, err := blobdecompression.Assign(circuitSizes, blobBytes, dictStore, true, x, y)
+	_a, _, snarkHash, err := dataavailability.Assign(circuitSizes, blobBytes, dictStore, true, x, y)
 	assert.NoError(t, err)
 
 	a, ok := _a.(*v2.Circuit)

@@ -138,7 +138,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			LastFinalizedRollingHash:       [32]frontend.Variable{},
 			LastFinalizedRollingHashNumber: pi.LastFinalizedRollingHashMsgNumber,
 			InitialStateRootHash:           pi.InitialStateRootHash[:],
-			// NbDecompression:                pi.NbDecompression, // Field removed from struct
+			NbDataAvailability:             pi.NbDecompression,
 			ChainConfigurationFPISnark: ChainConfigurationFPISnark{
 				ChainID:                 pi.ChainID,
 				BaseFee:                 pi.BaseFee,

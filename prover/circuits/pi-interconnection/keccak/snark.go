@@ -10,8 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
 
-	// "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory/gkrposeidon2" // Package does not exist
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/rangecheck"
@@ -132,8 +130,6 @@ func (h *Hasher) Finalize(c *wizard.VerifierCircuit) error {
 		h.api.AssertIsEqual(h.claimedOuts[i][0], expectedHashHi[i])
 		h.api.AssertIsEqual(h.claimedOuts[i][1], expectedHashLo[i])
 	}
-
-	// c.HasherFactory = gkrposeidon2.NewHasherFactory(h.api) // Package does not exist
 
 	c.Verify(h.api)
 	return nil

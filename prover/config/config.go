@@ -105,6 +105,9 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	// Pass IsAllowedCircuitID from aggregation config to PI circuit
 	cfg.PublicInputInterconnection.IsAllowedCircuitID = cfg.Aggregation.IsAllowedCircuitID
 
+	cfg.TracesLimits.normalizeToLowercase()
+	cfg.TracesLimits.sortReverseAlphabetical()
+
 	return &cfg, nil
 }
 
@@ -161,8 +164,7 @@ type Config struct {
 		CoinBase    common.Address `mapstructure:"-"`
 	}
 
-	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
-	TracesLimitsLarge TracesLimits `mapstructure:"traces_limits_large" validate:"required"`
+	TracesLimits TracesLimits `mapstructure:"traces_limits" validate:"required"`
 }
 
 func (cfg *Config) Logger() *logrus.Logger {

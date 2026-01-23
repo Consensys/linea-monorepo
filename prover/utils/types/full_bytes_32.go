@@ -10,7 +10,7 @@ import (
 // Full bytes32 is a wrapper around bytes32 used to specifically represent
 // a bytes32 that may not fit on a single field element and require 2 words
 // to be hashed with MiMC.
-type FullBytes32 Bytes32
+type FullBytes32 [32]byte
 
 func (f FullBytes32) WriteTo(w io.Writer) (n int64, err error) {
 	padded := LeftPadded(f[:])
@@ -19,7 +19,8 @@ func (f FullBytes32) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (f FullBytes32) Write1Word(w io.Writer) (n int64, err error) {
-	return Bytes32(f).WriteTo(w)
+	n_, err := w.Write(f[:])
+	return int64(n_), err
 }
 
 func (f *FullBytes32) ReadFrom(r io.Reader) (n int64, err error) {
@@ -35,11 +36,11 @@ func (f *FullBytes32) ReadPacked(r io.Reader) (n int64, err error) {
 }
 
 func (f FullBytes32) Hex() string {
-	return Bytes32(f).Hex()
+	return utils.HexEncodeToString(f[:])
 }
 
 func AsFullBytes32(b []byte) FullBytes32 {
-	return FullBytes32(AsBytes32(b))
+	return FullBytes32([32]byte(b))
 }
 
 // Creates a bytes32 from an hexstring. Panic if it fails. Mostly useful for
@@ -95,4 +96,14 @@ func AsByteArrSlice[T ~[32]byte](s []T) [][32]byte {
 		res[i] = [32]byte(s[i])
 	}
 	return res
+}
+
+// LeftPadToFullBytes32 pads a bytes32 element into a Bytes32 by adding zeroes to
+// the left until the slice has 32 bytes
+func LeftPadToFullBytes32(b []byte) FullBytes32 {
+	if len(b) > 32 {
+		utils.Panic("Passed a string of %v element but the max is 32", len(b))
+	}
+	c := append(make([]byte, 32-len(b)), b...)
+	return FullBytes32(c)
 }

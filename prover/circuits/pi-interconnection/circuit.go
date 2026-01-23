@@ -14,12 +14,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/cmp"
-	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
+	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
@@ -121,8 +122,8 @@ func (c *Circuit) Define(api frontend.API) error {
 		piq.RangeCheck(api)
 
 		shnarfParams[i] = ShnarfIteration{ // prepare shnarf verification data
-			// BlobDataSnarkHash:    utils.ToBytes32(api, piq.SnarkHash), // utils.ToBytes32 undefined
-			// NewStateRootHash:     utils.ToBytes32(api, finalStateRootHashes.Lookup(nbBatchesSums[i])[0]), // utils.ToBytes32 undefined
+			BlobDataSnarkHash:    gnarkutil.ToBytes32(api, piq.SnarkHash),
+			NewStateRootHash:     gnarkutil.ToBytes32(api, finalStateRootHashes.Lookup(nbBatchesSums[i])[0]),
 			EvaluationPointBytes: piq.X,
 			EvaluationClaimBytes: fr377EncodedFr381ToBytes(api, piq.Y),
 		}
@@ -326,8 +327,6 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 		L2MessageMerkleDepth:        cfg.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:        cfg.L2MsgMaxNbMerkle,
 		MaxNbCircuits:               cfg.MaxNbCircuits,
-		// L2MessageServiceAddr:        types.EthAddress(cfg.L2MsgServiceAddr), // types undefined, field doesn't exist
-		// ChainID:                     cfg.ChainID, // field doesn't exist
 	}
 
 	for i := range res.ExecutionFPIQ {

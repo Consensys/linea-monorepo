@@ -37,7 +37,7 @@ func TestOneLeafRootHashMiMC(t *testing.T) {
 	tree := smt.NewEmptyTree(config)
 
 	// Insert leaf `0x1` in position zero
-	leaf := Bytes32{}
+	leaf := Bls12377Fr{}
 	leaf[31] = 1
 	tree.Update(0, leaf)
 
@@ -77,7 +77,7 @@ func TestMerkleProofAfterUpdateMiMC(t *testing.T) {
 
 	// Insert 0x0 at position 0, 0x1 at position 1 and so on
 	for i := 0; i < 1024; i++ {
-		leaf := Bytes32{}
+		leaf := Bls12377Fr{}
 		leaf[31] = byte(i & 0xff)
 		leaf[30] = byte(i & 0xff00)
 		tree.Update(i, leaf)

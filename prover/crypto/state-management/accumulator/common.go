@@ -11,11 +11,15 @@ import (
 )
 
 // Generic hashing for object satisfying the io.WriterTo interface
-func hash[T io.WriterTo](m T) Bytes32 {
+func hash[T io.WriterTo](m T) KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
 	m.WriteTo(hasher)
-	Bytes32 := hasher.Sum(nil)
-	return AsBytes32(Bytes32)
+	digest := hasher.Sum(nil)
+	var d KoalaOctuplet
+	if err := d.SetBytes(digest); err != nil {
+		panic(err)
+	}
+	return d
 }
 
 // Trace is an interface shared by all the "traces" types. Used to
@@ -25,7 +29,7 @@ type Trace interface {
 	// verification into a slice of smt.ProvedClaim
 	DeferMerkleChecks(appendTo []smt_koalabear.ProvedClaim) []smt_koalabear.ProvedClaim
 	// HKey returns the HKey of the trace
-	HKey() Bytes32
+	HKey() KoalaOctuplet
 	// RWInt returns 0 is the trace is a read-only operation and 1 if it is a
 	// read-write operation.
 	RWInt() int

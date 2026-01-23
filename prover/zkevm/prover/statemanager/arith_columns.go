@@ -1,12 +1,10 @@
 package statemanager
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -158,43 +156,4 @@ func scp(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) state
 	}
 
 	return res
-}
-
-/*
-assignHubAddresses is a function that combines addressHI and addressLO from
-the arithmetization columns into a single column.
-*/
-func assignHubAddresses(run *wizard.ProverRuntime) {
-	assignHubAddressesSubdomain := func(domainName string) {
-		addressHI := run.GetColumn(ifaces.ColID(fmt.Sprintf("hub.%s_ADDRESS_HI", domainName)))
-		addressLO := run.GetColumn(ifaces.ColID(fmt.Sprintf("hub.%s_ADDRESS_LO", domainName)))
-
-		size := addressHI.Len()
-		newVect := make([]field.Element, size)
-		for i := range newVect {
-			elemHi := addressHI.Get(i)
-			bytesHi := elemHi.Bytes()
-
-			elemLo := addressLO.Get(i)
-			bytesLo := elemLo.Bytes()
-			newBytes := make([]byte, field.Bytes)
-			// set the high part
-			for j := 0; j < 4; j++ {
-				newBytes[12+j] = bytesHi[32-(4-j)]
-			}
-			// set the low part
-			for j := 4; j < 20; j++ {
-				newBytes[12+j] = bytesLo[16+(j-4)]
-			}
-			newVect[i].SetBytes(newBytes)
-		}
-		run.AssignColumn(
-			ifaces.ColID(fmt.Sprintf("HUB_%s_PROVER_SIDE_ADDRESS_IDENTIFIER", domainName)),
-			smartvectors.NewRegular(newVect),
-			wizard.DisableAssignmentSizeReduction,
-		)
-	}
-	// assign the addresses column in each of the submodules
-	assignHubAddressesSubdomain(ACP)
-	assignHubAddressesSubdomain(SCP)
 }

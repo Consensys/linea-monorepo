@@ -1,4 +1,4 @@
-package hasher_factory_test
+package multisethashing_koalabear_test
 
 import (
 	"testing"
@@ -6,17 +6,17 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	hf "github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	mset "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 type MsetOfSingletonGnarkTestCircuit struct {
 	X [24]frontend.Variable
-	R [hf.MSetHashSize]frontend.Variable
+	R [mset.MSetHashSize]frontend.Variable
 }
 
 func (circuit *MsetOfSingletonGnarkTestCircuit) Define(api frontend.API) error {
-	r := hf.MsetOfSingletonGnark(api, nil, circuit.X[:]...)
+	r := mset.MsetOfSingletonGnark(api, nil, circuit.X[:]...)
 	r.AssertEqualRaw(api, circuit.R[:])
 	return nil
 }
@@ -32,7 +32,7 @@ func TestMSetHash(t *testing.T) {
 			17, 18, 19, 20, 21, 22, 23, 24,
 		}
 		msgField = []field.Element{}
-		mset     = hf.MSetHash{}
+		mset     = mset.MSetHash{}
 	)
 
 	for i := range msg {

@@ -19,10 +19,8 @@ import (
 	types2 "github.com/ethereum/go-ethereum/core/types"
 )
 
-func initEmptyCodeHash() [poseidon2.BlockSize][]byte {
-	emptyCodeHashBytes := statemanager.EmptyCodeHash()
-	res := poseidon2.ParsToBlocks(emptyCodeHashBytes)
-	return res
+func initEmptyCodeHash() types.KoalaOctuplet {
+	return statemanager.EmptyCodeHash()
 }
 
 var (
@@ -107,10 +105,10 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 		accPeek.Address[i] = createCol(fmt.Sprintf("ACCOUNT_%v", i))
 	}
 
-	accPeek.ComputeHashInitial = accPeek.Initial.AccountHash(comp)
+	accPeek.ComputeHashInitial = accPeek.Initial.AccountHash(comp, "OLD")
 	accPeek.HashInitial = accPeek.ComputeHashInitial.Result()
 
-	accPeek.ComputeHashFinal = accPeek.Final.AccountHash(comp)
+	accPeek.ComputeHashFinal = accPeek.Final.AccountHash(comp, "NEW")
 	accPeek.HashFinal = accPeek.ComputeHashFinal.Result()
 
 	for i := range poseidon2.BlockSize {
@@ -122,7 +120,8 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 
 	accPeek.ComputeAddressHash = poseidon2.HashOf(
 		comp,
-		poseidon2.SplitColumns(accPeek.Address[:]),
+		accPeek.Address[:],
+		"ACCOUNT_ADDRESS_HASHING",
 	)
 
 	accPeek.AddressHash = accPeek.ComputeAddressHash.Result()
@@ -238,7 +237,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 			sym.Mul(
 				acc.Exists,
 				sym.Mul(hasEmptyCodeHashExpressions...),
-				sym.Sub(acc.LineaCodeHash[i], *new(field.Element).SetBytes(emptyCodeHash[i][:])),
+				sym.Sub(acc.LineaCodeHash[i], emptyCodeHash[i]),
 			),
 		)
 	}
@@ -308,6 +307,7 @@ func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
 
 // pushAll stacks the value of a [types.Account] as a new row on the receiver.
 func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
+
 	// accountExists is telling whether the intent is to push an empty account
 	accountExists := acc.Balance != nil
 
@@ -354,18 +354,12 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 		ss.codeSize[i].PushBytes(codesizeBytes[i])
 	}
 
-	lineaCodeHashLimbs := poseidon2.ParsToBlocks(acc.LineaCodeHash)
-	for i := range poseidon2.BlockSize {
-		var f field.Element
-		f.SetBytes(lineaCodeHashLimbs[i])
-		ss.lineaCodeHash[i].PushField(f)
+	for i := range acc.LineaCodeHash {
+		ss.lineaCodeHash[i].PushField(acc.LineaCodeHash[i])
 	}
 
-	storageRootLimbs := poseidon2.ParsToBlocks(acc.StorageRoot)
-	for i := range poseidon2.BlockSize {
-		var f field.Element
-		f.SetBytes(storageRootLimbs[i])
-		ss.storageRoot[i].PushField(f)
+	for i := range acc.StorageRoot {
+		ss.storageRoot[i].PushField(acc.StorageRoot[i])
 	}
 
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
@@ -375,69 +369,11 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 // the caller to override the StorageRoot field with the provided one.
 func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	acc types.Account,
-	storageRoot types.Bytes32,
+	storageRoot types.KoalaOctuplet,
 ) {
-	// accountExists is telling whether the intent is to push an empty account
-	accountExists := acc.Balance != nil
-
-	nonceBytes := int64ToByteLimbs(acc.Nonce)
-	for i := range common.NbLimbU64 {
-		ss.nonce[i].PushBytes(nonceBytes[i])
-	}
-
-	// This is telling us whether the intent is to push an empty account
-	if accountExists {
-		balanceBytes := acc.Balance.Bytes()
-		balancePadBytes := make([]byte, common.NbLimbU256*common.LimbBytes-len(balanceBytes))
-		balancePaddedBytes := append(balancePadBytes, balanceBytes...)
-
-		balanceLimbs := common.SplitBytes(balancePaddedBytes)
-		for i := range common.NbLimbU256 {
-			limbBytes := common.LeftPadToFrBytes(balanceLimbs[i])
-			ss.balance[i].PushBytes(limbBytes)
-		}
-
-		ss.exists.PushOne()
-
-		var keccakCodeHashLimbs [common.NbLimbU256][]byte
-		copy(keccakCodeHashLimbs[:], common.SplitBytes(acc.KeccakCodeHash[:]))
-
-		ss.keccakCodeHash.Push(keccakCodeHashLimbs)
-		// if account exists push the same codehash
-		ss.expectedHubCodeHash.Push(keccakCodeHashLimbs)
-	} else {
-		for i := range common.NbLimbU256 {
-			ss.balance[i].PushZero()
-		}
-
-		ss.exists.PushZero()
-		ss.keccakCodeHash.PushZeroes()
-		// if account does not exist push empty codehash
-		var emptyCodeHashLimbs [common.NbLimbU256][]byte
-		copy(emptyCodeHashLimbs[:], common.SplitBytes(types2.EmptyCodeHash[:]))
-		ss.expectedHubCodeHash.Push(emptyCodeHashLimbs)
-	}
-
-	codesizeBytes := int64ToByteLimbs(acc.CodeSize)
-	for i := range common.NbLimbU64 {
-		ss.codeSize[i].PushBytes(codesizeBytes[i])
-	}
-
-	lineaCodeHashLimbs := poseidon2.ParsToBlocks(acc.LineaCodeHash)
-	for i := range poseidon2.BlockSize {
-		var f field.Element
-		f.SetBytes(lineaCodeHashLimbs[i])
-		ss.lineaCodeHash[i].PushField(f)
-	}
-
-	storageRootLimbs := poseidon2.ParsToBlocks(storageRoot)
-	for i := range poseidon2.BlockSize {
-		var f field.Element
-		f.SetBytes(storageRootLimbs[i])
-		ss.storageRoot[i].PushField(f)
-	}
-
-	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
+	newAcc := acc
+	newAcc.StorageRoot = storageRoot
+	ss.pushAll(newAcc)
 }
 
 // PadAndAssign terminates the receiver by padding all the columns representing
@@ -483,7 +419,7 @@ func int64ToByteLimbs(num int64) [][]byte {
 
 	return res
 }
-func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
+func (ac Account) AccountHash(comp *wizard.CompiledIOP, name string) *poseidon2.HashingCtx {
 	var (
 		hashInputs []ifaces.Column
 		size       = ac.Nonce[0].Size()
@@ -496,7 +432,7 @@ func (ac Account) AccountHash(comp *wizard.CompiledIOP) *poseidon2.HashingCtx {
 	hashInputs = append(hashInputs, ac.KeccakCodeHash.Hi[:]...)
 	hashInputs = append(hashInputs, ac.KeccakCodeHash.Lo[:]...)
 	hashInputs = append(hashInputs, padd(ac.CodeSize[:], 16, zeroColumn)...)
-	res := poseidon2.HashOf(comp, poseidon2.SplitColumns(hashInputs))
+	res := poseidon2.HashOf(comp, hashInputs, "ACCOUNT_HASH_"+name)
 	return res
 }
 

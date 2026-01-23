@@ -32,7 +32,7 @@ func CraftProverOutput(
 			BaseFee:              cfg.Layer2.BaseFee,
 			CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
 			L2BridgeAddress:      types.EthAddress(cfg.Layer2.MsgSvcContract),
-			MaxNbL2MessageHashes: cfg.TracesLimits.BlockL2L1Logs,
+			MaxNbL2MessageHashes: cfg.TracesLimits.BlockL2L1Logs(),
 		}
 	)
 
@@ -95,7 +95,7 @@ func CraftProverOutput(
 
 	// Set the public input as part of the response immediately so that we can
 	// easily debug issues during the proving.
-	rsp.PublicInput = types.Bytes32(rsp.FuncInput().Sum())
+	rsp.PublicInput = types.Bls12377Fr(rsp.FuncInput().Sum())
 
 	return rsp
 }
@@ -144,7 +144,7 @@ func inspectStateManagerTraces(
 
 	}
 
-	resp.ParentStateRootHash = firstParent.Hex()
+	resp.ParentStateRootHash = firstParent
 }
 
 func (req *Request) collectSignatures() ([]ethereum.Signature, [][32]byte) {
@@ -194,8 +194,8 @@ func (rsp *Response) FuncInput() *public_input.Execution {
 			InitialBlockNumber:    uint64(rsp.FirstBlockNumber),
 			DataChecksum:          rsp.ExecDataChecksum,
 			L2MessageHashes:       types.AsByteArrSlice(rsp.AllL2L1MessageHashes),
-			InitialStateRootHash:  types.Bytes32FromHex(rsp.ParentStateRootHash),
-			FinalStateRootHash:    lastBlock.RootHash,
+			InitialStateRootHash:  rsp.ParentStateRootHash.ToBytes32(),
+			FinalStateRootHash:    lastBlock.RootHash.ToBytes32(),
 		}
 	)
 

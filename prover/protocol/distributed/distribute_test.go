@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -137,7 +137,7 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 		allGrandProduct     = fext.One()
 		allLogDerivativeSum = fext.Element{}
 		allHornerSum        = fext.Element{}
-		generalMSet         = hasher_factory.MSetHash{}
+		generalMSet         = multisethashing.MSetHash{}
 	)
 
 	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
@@ -174,8 +174,8 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 			proverRunGL         = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]), false)
 			proofGL             = proverRunGL.ExtractProof()
 			verRun, verGLErr    = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL, false)
-			generalMSetFromGLFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, hasher_factory.MSetHashSize)
-			generalMSetFromGL   = hasher_factory.MSetHash(generalMSetFromGLFr)
+			generalMSetFromGLFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+			generalMSetFromGL   = multisethashing.MSetHash(generalMSetFromGLFr)
 		)
 
 		if verGLErr != nil {
@@ -211,8 +211,8 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP), false)
 			proofLPP             = proverRunLPP.ExtractProof()
 			verRun, verLPPErr    = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP, false)
-			generalMSetFromLPPFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, hasher_factory.MSetHashSize)
-			generalMSetFromLPP   = hasher_factory.MSetHash(generalMSetFromLPPFr)
+			generalMSetFromLPPFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+			generalMSetFromLPP   = multisethashing.MSetHash(generalMSetFromLPPFr)
 		)
 
 		if verLPPErr != nil {

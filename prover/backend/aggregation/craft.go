@@ -200,7 +200,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.L2MsgRootHashes = PackInMiniTrees(allL2MessageHashes)
 
 	return cf, nil
-
 }
 
 // Prepare the response without running the actual proof
@@ -214,7 +213,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	resp = &Response{
 		DataHashes:                              cf.DataHashes,
 		DataParentHash:                          cf.DataParentHash,
-		ParentStateRootHash:                     cf.ParentStateRootHash,
+		ParentStateRootHash:                     cf.ParentStateRootHash.Hex(),
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
 		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
@@ -239,7 +238,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	pubInputParts := public_input.Aggregation{
 		FinalShnarf:                             cf.FinalShnarf,
 		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
-		ParentStateRootHash:                     cf.ParentStateRootHash,
+		ParentStateRootHash:                     cf.ParentStateRootHash.Hex(),
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
 		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
@@ -285,7 +284,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 func validate(cf *CollectedFields) (err error) {
 
 	utils.ValidateHexString(&err, cf.FinalShnarf, "FinalizedShnarf : %w", 32)
-	utils.ValidateHexString(&err, cf.ParentStateRootHash, "ParentStateRootHash : %w", 32)
+	utils.ValidateHexString(&err, cf.ParentStateRootHash.Hex(), "ParentStateRootHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L1RollingHash, "L1RollingHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L2MessagingBlocksOffsets, "L2MessagingBlocksOffsets : %w", -1)
 	utils.ValidateTimestamps(&err, cf.ParentAggregationLastBlockTimestamp, cf.FinalTimestamp)
@@ -335,7 +334,7 @@ func PackInMiniTrees(l2MsgHashes []string) []string {
 
 	for i := 0; i < paddedLen; i += l2MsgMerkleTreeMaxLeaves {
 
-		digests := make([]types.Bytes32, l2MsgMerkleTreeMaxLeaves)
+		digests := make([]types.Bls12377Fr, l2MsgMerkleTreeMaxLeaves)
 
 		// Convert the leaves into digests that can be processed by the smt
 		// package.

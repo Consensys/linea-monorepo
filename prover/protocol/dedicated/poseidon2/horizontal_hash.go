@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -25,6 +26,8 @@ type HashingCtx struct {
 	InputCols [][BlockSize]ifaces.Column
 	// IntermediateHashes stores the intermediate values of the hasher.
 	IntermediateHashes [][BlockSize]ifaces.Column
+	// Name is the name of the current context.
+	Name string
 }
 
 // MaxOctRound round of declaration for a list of commitment
@@ -58,17 +61,20 @@ func AssertOctSameLength(list ...[BlockSize]ifaces.Column) int {
 // columns and a [wizard.ProverAction] object responsible for assigning all
 // the column taking part in justifying the returned column as well as the
 // returned column itself.
-func HashOf(comp *wizard.CompiledIOP, inputCols [][BlockSize]ifaces.Column) *HashingCtx {
+func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column, name string) *HashingCtx {
 
 	var (
+		inputBlocks = splitColumns(inputCols)
+		round       = column.MaxRound(inputCols...)
+		ctxID       = len(comp.ListCommitments())
+		numRows     = ifaces.AssertSameLength(inputCols...)
+
 		ctx = &HashingCtx{
-			InputCols:          inputCols,
-			IntermediateHashes: make([][BlockSize]ifaces.Column, len(inputCols)),
+			Name:               name,
+			InputCols:          inputBlocks,
+			IntermediateHashes: make([][BlockSize]ifaces.Column, len(inputBlocks)),
 		}
 
-		round     = MaxOctRound(inputCols...)
-		ctxID     = len(comp.ListCommitments())
-		numRows   = AssertOctSameLength(inputCols...)
 		prevState [BlockSize]ifaces.Column
 	)
 
@@ -77,10 +83,16 @@ func HashOf(comp *wizard.CompiledIOP, inputCols [][BlockSize]ifaces.Column) *Has
 	}
 
 	for i := range ctx.IntermediateHashes {
+
+		subName := ifaces.ColIDf("HASHING_%v_%v", ctxID, i)
+		if i == len(ctx.IntermediateHashes)-1 {
+			subName = ifaces.ColIDf("%v_%v", name, i)
+		}
+
 		for j := 0; j < BlockSize; j++ {
 			ctx.IntermediateHashes[i][j] = comp.InsertCommit(
 				round,
-				ifaces.ColIDf("HASHING_%v_%v_%v", ctxID, i, j),
+				ifaces.ColIDf("%v_%v", subName, j),
 				numRows,
 				true,
 			)
@@ -88,8 +100,8 @@ func HashOf(comp *wizard.CompiledIOP, inputCols [][BlockSize]ifaces.Column) *Has
 
 		comp.InsertPoseidon2(
 			round,
-			ifaces.QueryIDf("HASHING_%v_%v", ctxID, i),
-			inputCols[i], prevState, ctx.IntermediateHashes[i],
+			ifaces.QueryIDf("%v_%v", subName, i),
+			ctx.InputCols[i], prevState, ctx.IntermediateHashes[i],
 			nil,
 		)
 
@@ -110,21 +122,17 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 	var (
 		numRow = ctx.InputCols[0][0].Size()
 		numCol = len(ctx.InputCols)
-		inputs [BlockSize][]smartvectors.SmartVector
+		inputs = make([][BlockSize]smartvectors.SmartVector, len(ctx.InputCols))
 		interm = make([][]field.Octuplet, numCol)
 	)
 
-	for i := 0; i < BlockSize; i++ {
-		inputs[i] = make([]smartvectors.SmartVector, numCol)
-	}
-
-	for i := range interm {
-		for j := 0; j < BlockSize; j++ {
-			inputs[j][i] = ctx.InputCols[i][j].GetColAssignment(run)
+	for i := range inputs {
+		for j := range inputs[i] {
+			inputs[i][j] = ctx.InputCols[i][j].GetColAssignment(run)
 		}
 	}
 
-	rangeStart, rangeStop := smartvectors.CoCompactRange(inputs[0]...)
+	rangeStart, rangeStop := smartvectors.CoCompactRange(flattenBlocks(inputs)...)
 
 	for i := range interm {
 		interm[i] = make([]field.Octuplet, rangeStop-rangeStart)
@@ -142,7 +150,7 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 			for k := start; k < stop; k++ {
 				var block [BlockSize]field.Element
 				for j := 0; j < BlockSize; j++ {
-					block[j] = inputs[j][i].Get(k)
+					block[j] = inputs[i][j].Get(k)
 				}
 				interm[i][k] = vortex.CompressPoseidon2(prevState[k-start], block)
 			}
@@ -164,40 +172,39 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-// SplitColumns splits the input slice into subarrays of size poseidon2.BlockSize. If the input is not divisible by the size, it appends constant verifier columns to the input to make it divisible by the size.
-func SplitColumns(input []ifaces.Column) [][poseidon2_koalabear.BlockSize]ifaces.Column {
-
-	var (
-		n = len(input) % poseidon2_koalabear.BlockSize
-	)
-
-	if n != 0 {
-
-		verifCol := verifiercol.NewConstantCol(field.Zero(), input[0].Size(), "CONSTANT_COLUMN")
-
-		// append constant verifier columns to the input to make it divisible by size
-		for i := 0; i < poseidon2_koalabear.BlockSize-n; i++ {
-			input = append(input, verifCol)
-		}
+// flattenBlocks flattens the input slice of blocks into a single slice of columns.
+func flattenBlocks[T any](blocks [][poseidon2_koalabear.BlockSize]T) []T {
+	var res []T
+	for _, block := range blocks {
+		res = append(res, block[:]...)
 	}
-	m := len(input) / poseidon2_koalabear.BlockSize
-
-	result := make([][poseidon2_koalabear.BlockSize]ifaces.Column, m)
-	for i := 0; i < m; i++ {
-		for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
-			result[i][j] = input[i*poseidon2_koalabear.BlockSize+j]
-		}
-	}
-	return result
+	return res
 }
 
-// ParsToBlocks parses the input bytes into subarrays of size BlockSize.
-func ParsToBlocks(data [32]byte) (res [BlockSize][]byte) {
+// splitColumns splits the input slice into subarrays of size poseidon2.BlockSize. If the input is not divisible by the size, it appends constant verifier columns to the input to make it divisible by the size.
+func splitColumns(input []ifaces.Column) [][poseidon2_koalabear.BlockSize]ifaces.Column {
 
-	n := len(data) / BlockSize
+	var (
+		blockSize = poseidon2_koalabear.BlockSize
+		constCol  = verifiercol.NewConstantCol(field.Zero(), input[0].Size(), "CONSTANT_COLUMN")
+		res       = [][poseidon2_koalabear.BlockSize]ifaces.Column{}
+	)
 
-	for i := range res {
-		res[i] = data[i*n : (i+1)*n]
+	for len(input) > 0 {
+		var buf [poseidon2_koalabear.BlockSize]ifaces.Column
+		if len(input) > len(buf) {
+			copy(buf[:], input[:blockSize])
+			input = input[blockSize:]
+		} else {
+			// left padding with zeroes
+			for j := 0; j < len(buf)-len(input); j++ {
+				buf[j] = constCol
+			}
+			copy(buf[len(buf)-len(input):], input)
+			input = input[:0]
+		}
+		res = append(res, buf)
 	}
+
 	return res
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Request collects all the fields used to perform an aggregation request.
@@ -51,7 +52,7 @@ type CollectedFields struct {
 
 	// Parent zk root hash of the state over which we want to finalize. In 0x
 	// prefixed hexstring.
-	ParentStateRootHash string
+	ParentStateRootHash types.KoalaOctuplet
 
 	// Timestamp of the last already finalized L2 block
 	ParentAggregationLastBlockTimestamp uint

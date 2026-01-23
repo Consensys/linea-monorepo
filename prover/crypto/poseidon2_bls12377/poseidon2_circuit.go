@@ -2,7 +2,9 @@ package poseidon2_bls12377
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/permutation/poseidon2"
+	"github.com/consensys/gnark/std/hash"
+	_ "github.com/consensys/gnark/std/hash/poseidon2"
+	gkr_poseidon2 "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
@@ -19,7 +21,7 @@ type GnarkMDHasher struct {
 	// data to hash
 	buffer []frontend.Variable
 
-	compressor *poseidon2.Permutation
+	compressor hash.Compressor
 
 	verbose bool
 }
@@ -36,7 +38,10 @@ func NewGnarkMDHasher(api frontend.API, verbose ...bool) (GnarkMDHasher, error) 
 	}
 
 	// default parameters
-	res.compressor, err = poseidon2.NewPoseidon2FromParameters(api, 2, 6, 26)
+	// note; when we do more than 16k hashes, we should use the gkr poseidon compressor
+	// less than that the plain poseidon2 compressor is faster.
+	// plain --> poseidon2.NewPoseidon2FromParameters(api, 2, 6, 26)
+	res.compressor, err = gkr_poseidon2.NewCompressor(api)
 	if err != nil {
 		return res, err
 	}

@@ -199,7 +199,6 @@ func init() {
 	RegisterImplementation(spaghettifier.Spaghettification{})
 
 	RegisterImplementation(importpad.Sha2Padder{})
-	// RegisterImplementation(importpad.MimcPadder{}) // TODO: MimcPadder not yet implemented
 	RegisterImplementation(importpad.KeccakPadder{})
 	RegisterImplementation(importpad.Importation{})
 	RegisterImplementation(importpad.Importation{})

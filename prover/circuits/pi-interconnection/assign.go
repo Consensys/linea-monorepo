@@ -11,7 +11,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
-	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
+	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"

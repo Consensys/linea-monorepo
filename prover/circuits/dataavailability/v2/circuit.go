@@ -7,8 +7,8 @@ import (
 	"github.com/consensys/gnark/std/compress/lzss"
 	gkrposeidon2 "github.com/consensys/gnark/std/hash/poseidon2/gkr-poseidon2"
 	poseidon2permutation "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/config"
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/publicinput"
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/publicinput"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
@@ -86,12 +86,12 @@ type FunctionalPublicInputSnark struct {
 }
 
 type FunctionalPublicInput struct {
-	X              types.Bytes32
-	Y              [2][16]byte
+	X              types.Bls12381Fr
+	Y              types.Bls12381Fr
 	SnarkHash      []byte
 	Eip4844Enabled bool
 	BatchSums      []public_input.ExecDataChecksum
-	AllBatchesSum  types.Bytes32
+	AllBatchesSum  types.Bls12377Fr
 }
 
 // Check well-formedness, including range checks.
@@ -137,7 +137,7 @@ func (i *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 func (i *FunctionalPublicInput) ToSnarkType(maxNbBatches int) (FunctionalPublicInputSnark, error) {
 	res := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-			Y:              [2]frontend.Variable{i.Y[0][:], i.Y[1][:]},
+			Y:              [2]frontend.Variable{i.Y[:16], i.Y[16:]},
 			SnarkHash:      i.SnarkHash,
 			Eip4844Enabled: utils.Ite(i.Eip4844Enabled, 1, 0),
 			NbBatches:      len(i.BatchSums),
@@ -188,13 +188,13 @@ func (i *FunctionalPublicInput) Sum() ([]byte, error) {
 
 	hsh.Write(i.X[:16])
 	hsh.Write(i.X[16:])
-	hsh.Write(i.Y[0][:])
+	hsh.Write(i.Y[:16])
 
 	// To eliminate a hash permutation, incorporate Eip4844Enabled flag into Y[1], which
 	// is never full
-	var buf [len(i.Y[1]) + 1]byte
-	copy(buf[:], i.Y[1][:])
-	buf[len(i.Y[1])] = utils.Ite(i.Eip4844Enabled, byte(1), 0)
+	var buf [17]byte
+	copy(buf[:], i.Y[16:])
+	buf[16] = utils.Ite(i.Eip4844Enabled, byte(1), 0)
 	hsh.Write(buf[:])
 
 	hsh.Write(i.SnarkHash)
@@ -365,11 +365,8 @@ func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool
 	copy(fpi.AllBatchesSum[:], hsh.Sum(nil))
 
 	fpi.X = x
-
-	fpi.Y, err = internal.Bls12381ScalarToBls12377Scalars(y)
-	if err != nil {
-		return
-	}
+	yBytes := y.Bytes()
+	fpi.Y = types.AsBls12381Fr(yBytes[:])
 
 	fpi.Eip4844Enabled = eip4844Enabled
 

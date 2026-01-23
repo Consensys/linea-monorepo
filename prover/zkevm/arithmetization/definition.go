@@ -3,9 +3,7 @@ package arithmetization
 import (
 	"fmt"
 	"math/big"
-	"reflect"
 	"sort"
-	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 
@@ -30,7 +28,7 @@ const DefaultLimit = 1 << 17
 // schemaScanner is a transient scanner structure whose goal is to port the
 // content of an [air.Schema] inside of a pre-initialized [wizard.CompiledIOP]
 type schemaScanner struct {
-	LimitMap           map[string]int
+	LimitMap           *config.TracesLimits
 	Comp               *wizard.CompiledIOP
 	Schema             *air.Schema[koalabear.Element]
 	Modules            []schema.Module[koalabear.Element]
@@ -48,7 +46,7 @@ func Define(comp *wizard.CompiledIOP, schema *air.Schema[koalabear.Element], lim
 	})
 
 	scanner := &schemaScanner{
-		LimitMap:           mapModuleLimits(limits),
+		LimitMap:           limits,
 		Comp:               comp,
 		Schema:             schema,
 		Modules:            modules,
@@ -78,31 +76,28 @@ func (s *schemaScanner) scanColumns() {
 
 		// Identify limits for this module
 		var (
-			// TODO: DJP
-			moduleLimit, moduleLimitFound = s.LimitMap[modDecl.Name().Name]
-			mult                          = modDecl.Name().Multiplier
-			size                          = int(mult) * moduleLimit
+			moduleLimit = uint(s.LimitMap.GetLimit(modDecl.Name().Name))
+			mult        = modDecl.Name().Multiplier
+			size        = int(mult * moduleLimit)
 		)
-
-		if !moduleLimitFound {
-			size = DefaultLimit
-		}
 
 		// Adjust the size for interleaved columns and their permuted versions.
 		// Since these are the only columns from corset with a non-power-of-two size.
 		if !utils.IsPowerOfTwo(size) {
-			newSize := utils.NextPowerOfTwo(int(mult) * moduleLimit)
+			newSize := utils.NextPowerOfTwo(size)
 			logrus.Debug("Adjusting size for module: ", modDecl.Name(), " from ", size, " to ", newSize)
 			size = newSize
 		}
+
 		// #nosec G115 -- this bound will not overflow
 		if size == 0 && modDecl.Name().String() != "" {
 			utils.Panic("Module %s has size 0", modDecl.Name())
 		}
+
 		// Iterate each register (i.e. column) in that module
 		for _, colDecl := range modDecl.Registers() {
 			// Construct corresponding register name
-			var name = wizardName(modDecl.Name().String(), colDecl.Name)
+			var name = wizardName(modDecl.Name().String(), colDecl.Name())
 			//
 			col := s.Comp.InsertCommit(0, ifaces.ColID(name), size, true)
 			pragmas.MarkLeftPadded(col)
@@ -157,7 +152,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 			col = s.Schema.Register(targetRef)
 		)
 		// Construct wizard name of target column
-		wName := wizardName(s.Schema.Module(ic.TargetContext).Name().String(), col.Name)
+		wName := wizardName(s.Schema.Module(ic.TargetContext).Name().String(), col.Name())
 		// Record interleaving constraint
 		s.InterleavedColumns[wName] = cs
 
@@ -349,35 +344,8 @@ func (s *schemaScanner) compColumnByCorsetID(modId schema.ModuleId, regId regist
 		// identify module name
 		modName = s.Schema.Module(modId).Name().String()
 		// convert name to prover column id
-		cName = ifaces.ColID(wizardName(modName, cCol.Name))
+		cName = ifaces.ColID(wizardName(modName, cCol.Name()))
 		wCol  = s.Comp.Columns.GetHandle(cName)
 	)
 	return wCol
-}
-
-// mapModuleLimits returns a map of the module by limit in lower-case.
-func mapModuleLimits(limit *config.TracesLimits) map[string]int {
-
-	var (
-		res       = make(map[string]int, 100)
-		limitVal  = reflect.ValueOf(limit).Elem() // since we pass a pointer, we dereference it then
-		limitType = limitVal.Type()
-		numField  = limitType.NumField()
-	)
-
-	for i := 0; i < numField; i++ {
-
-		var (
-			corsetTag = limitType.Field(i).Tag.Get("corset")
-			limit     = limitVal.Field(i).Interface().(int)
-		)
-
-		if len(corsetTag) == 0 {
-			corsetTag = strings.ToLower(limitType.Field(i).Name)
-		}
-
-		res[corsetTag] = limit
-	}
-
-	return res
 }

@@ -135,7 +135,7 @@ func DecodeKoalabearToBLS12Root(elements [KoalabearChunks]field.Element) fr.Elem
 		expectedResult.Or(&expectedResult, &bElement)
 	}
 
-	var res types.Bytes32
+	var res types.Bls12377Fr
 	expectedBytes := expectedResult.Bytes()
 	copy(res[32-len(expectedBytes):], expectedBytes) // left pad with zeroes to 32 bytes
 
