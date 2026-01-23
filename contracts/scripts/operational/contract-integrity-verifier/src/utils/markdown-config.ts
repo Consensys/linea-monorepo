@@ -58,11 +58,12 @@ function parseMarkdownTable(tableText: string): string[][] {
   const rows: string[][] = [];
 
   for (const line of lines) {
-    // Skip separator lines (|---|---|)
-    if (line.includes("---")) continue;
-
     // Skip empty lines
     if (!line.trim()) continue;
+
+    // Skip separator lines (e.g., |---|---|---| or | --- | --- |)
+    // A separator line consists only of |, -, :, and whitespace
+    if (/^\s*\|[\s|:-]+\|\s*$/.test(line) && line.includes("---")) continue;
 
     // Parse cells - split by | and trim each cell
     // Remove first and last elements if empty (from leading/trailing |)
