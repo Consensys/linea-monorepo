@@ -62,6 +62,11 @@ func (d Bls12381Fr) Hex() string {
 	return fmt.Sprintf("0x%x", [32]byte(d))
 }
 
+// Bytes returns the bytes representation of the Bls12381Fr
+func (d Bls12381Fr) Bytes() []byte {
+	return d[:]
+}
+
 // Constructs a dummy Bls12381Fr from an integer
 func DummyBls12381Fr(i int) (d Bls12381Fr) {
 	d[31] = byte(i)
@@ -96,10 +101,10 @@ func AsBls12381Fr(b []byte) (d Bls12381Fr) {
 func Bls12381FrFromHex(s string) Bls12381Fr {
 	b, err := utils.HexDecodeString(s)
 	if err != nil {
-		utils.Panic("not an hexadecimal %v", s)
+		utils.Panic("can't decode hex=%v, err: %v", s, err)
 	}
 	if len(b) > 32 {
-		utils.Panic("String passed should have even length <= 32 bytes")
+		utils.Panic("String passed should have even length <= 32 bytes; len(b)=%v", len(b))
 	}
 
 	var res Bls12381Fr

@@ -114,6 +114,14 @@ func Bls12377FrFromHex(s string) Bls12377Fr {
 	return res
 }
 
+// MustBeValid checks that the bytes32 is a valid field element
+func (b Bls12377Fr) MustBeValid() {
+	var f fr.Element
+	if err := f.SetBytesCanonical(b[:]); err != nil {
+		utils.Panic("Invalid field element %v", err.Error())
+	}
+}
+
 // Bls12381ScalarToBls12377Scalars interprets its input as a BLS12-381 scalar, with a modular reduction if necessary, returning two BLS12-377 scalars
 // r[1] is the lower 16 bytes and r[0] is the higher ones.
 // useful in circuit "assign" functions
