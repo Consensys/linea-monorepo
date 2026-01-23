@@ -132,6 +132,7 @@ func TestInvalidityPIAssign(t *testing.T) {
 					&logs.ExtractedData{FilterFetched: mockInputs.FilterFetched},
 					&ecdsa.EcdsaZkEvm{
 						Ant: &ecdsa.Antichamber{
+							Size: colSize, // Must set Size for column creation
 							TxSignature: &ecdsa.TxSignature{
 								IsTxHash: mockInputs.IsTxHash,
 								TxHashHi: mockInputs.TxHashHi,
@@ -238,7 +239,7 @@ func checkPublicInputsAreAccessible(run *wizard.ProverRuntime, pi *InvalidityPI,
 	}
 
 	// HashBadPrecompile
-	hashBadPrecompile := run.GetPublicInput(HashBadPrecompile)
+	hashBadPrecompile := run.GetPublicInput(HasBadPrecompile)
 	if !hashBadPrecompile.Equal(&tc.expectedBadPrecompile) {
 		panic("HashBadPrecompile value mismatch")
 	}
