@@ -2,7 +2,6 @@ package publicInput
 
 import (
 	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
@@ -70,6 +69,7 @@ type AuxiliaryModules struct {
 	ExecDataCollectorPacking                           pack.Packing
 	GenericPadderPacker                                edc.GenericPadderPacker
 	PoseidonPadderePacker                              edc.PoseidonPadderPacker
+	chainIDFetcher                                     fetch.ChainIDFetcher
 }
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
@@ -234,6 +234,7 @@ func newPublicInput(
 			ExecDataCollector:     execDataCollector,
 			GenericPadderPacker:   genericPadderPacker,
 			PoseidonPadderePacker: ppp,
+			chainIDFetcher:        chainIDFetcher,
 		},
 	}
 
@@ -280,9 +281,6 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 // GetExtractor returns [FunctionalInputExtractor] giving access to the totality
 // of the public inputs recovered by the public input module.
 func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
-
-	return
-
 	createNewLocalOpening := func(col ifaces.Column) query.LocalOpening {
 		return comp.InsertLocalOpening(0, ifaces.QueryIDf("%s_%s", "PUBLIC_INPUT_LOCAL_OPENING", col.GetColID()), col)
 	}
