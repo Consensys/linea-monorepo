@@ -9,18 +9,57 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
+// GnarkEvaluateLagrangeExt evaluates a polynomial in Lagrange basis at point z.
+// Uses the barycentric formula: P(z) = (zⁿ - 1) * Σᵢ [ (ωⁱ/n * pᵢ) / (z - ωⁱ) ]
+// This requires only one MulExt for the final (zⁿ - 1) * sum multiplication.
 func GnarkEvaluateLagrangeExt(api frontend.API, p []koalagnark.Ext, z koalagnark.Ext, gen field.Element, cardinality uint64) koalagnark.Ext {
 
 	koalaAPI := koalagnark.NewAPI(api)
-	res := koalaAPI.ZeroExt()
-	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
 
+	// Precompute barycentric weights: wᵢ = ωⁱ/n
+	// and weighted coefficients: wᵢ * pᵢ
+	var accOmega field.Element
+	accOmega.SetOne()
+
+	// Precompute 1/n as a constant
+	var invN field.Element
+	invN.SetUint64(cardinality)
+	invN.Inverse(&invN)
+	bwi := big.NewInt(0)
+
+	// Compute zⁿ - 1
+	tb := bits.TrailingZeros(uint(cardinality))
+	zPowN := z
+	for i := 0; i < tb; i++ {
+		zPowN = koalaAPI.SquareExt(zPowN)
+	}
+	zPowNMinusOne := koalaAPI.SubExt(zPowN, koalaAPI.OneExt())
+
+	// Compute Σᵢ [ (ωⁱ/n * pᵢ) / (z - ωⁱ) ]
+	sum := koalaAPI.ZeroExt()
 	for i := uint64(0); i < cardinality; i++ {
-		tmp := koalaAPI.MulExt(lagranges[i], p[i])
-		res = koalaAPI.AddExt(res, tmp)
+		// wᵢ = ωⁱ/n
+		var wi field.Element
+		wi.Mul(&accOmega, &invN)
+		bwi.SetUint64(wi.Uint64())
+
+		// weightedP = wᵢ * pᵢ
+		weightedP := koalaAPI.MulConstExt(p[i], bwi)
+
+		// z - ωⁱ
+		wOmegai := koalagnark.NewElementFromKoala(accOmega)
+		omegaiExt := koalagnark.FromBaseVar(wOmegai)
+		zMinusOmegai := koalaAPI.SubExt(z, omegaiExt)
+
+		// weightedP / (z - ωⁱ)
+		term := koalaAPI.DivExt(weightedP, zMinusOmegai)
+		sum = koalaAPI.AddExt(sum, term)
+
+		accOmega.Mul(&accOmega, &gen)
 	}
 
-	return res
+	// P(z) = (zⁿ - 1) * sum
+	return koalaAPI.MulExt(zPowNMinusOne, sum)
 }
 
 // GnarkEvaluateLagrangeExtBatch evaluates the same polynomial p at multiple points zs

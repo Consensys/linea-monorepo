@@ -70,41 +70,37 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []k
 		res[i].B1.A1 = _res[4*i+3]
 	}
 
-	// === Part 2: Batch Lagrange evaluation at two points ===
-	// Both evaluations use the same domain (Domains[1])
 	var c fext.Element
 	c.SetRandom()
 	challenge := koalagnark.NewExt(c)
 
-	// Batch evaluate linComb at both x (for statement check) and challenge (for codeword check)
-	zs := []koalagnark.Ext{x, challenge}
-	evals := polynomials.GnarkEvaluateLagrangeExtBatch(
+	// === Part 2: Codeword check (Schwartz-Zippel) ===
+	// Evaluate linComb at challenge (for codeword check)
+	evalLag := polynomials.GnarkEvaluateLagrangeExt(
 		api,
 		linComb,
-		zs,
+		challenge,
 		params.RsParams.Domains[1].Generator,
 		params.RsParams.Domains[1].Cardinality)
 
-	alphaY := evals[0]  // P(x) for statement check
-	evalLag := evals[1] // P(challenge) for codeword check
+	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
+	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
 
-	// === Part 3: Statement check ===
+	// === Part 3: Assert last entries are zeroes (RS codeword property) ===
+	zero := koalaAPI.ZeroExt()
+	for i := params.RsParams.NbColumns(); i < params.RsParams.NbEncodedColumns(); i++ {
+		koalaAPI.AssertIsEqualExt(res[i], zero)
+	}
+
+	// === Part 4: Statement check ===
+	alphaY := polynomials.GnarkEvalCanonicalExt(api, res, x)
+
 	var yjoined []koalagnark.Ext
 	for i := 0; i < len(ys); i++ {
 		yjoined = append(yjoined, ys[i]...)
 	}
 	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
 	koalaAPI.AssertIsEqualExt(alphaY, alphaYPrime)
-
-	// === Part 4: Codeword check (Schwartz-Zippel) ===
-	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
-	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
-
-	// === Part 5: Assert last entries are zeroes (RS codeword property) ===
-	zero := koalaAPI.ZeroExt()
-	for i := params.RsParams.NbColumns(); i < params.RsParams.NbEncodedColumns(); i++ {
-		koalaAPI.AssertIsEqualExt(res[i], zero)
-	}
 
 	return nil
 }
