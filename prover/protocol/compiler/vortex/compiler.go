@@ -655,7 +655,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	ctx.Items.Ualpha = ctx.Comp.InsertProof(
 		lastRound+1,
 		ctx.LinCombName(),
-		ctx.NumEncodedCols(),
+		utils.NextPowerOfTwo(ctx.NumCols),
 		false,
 	)
 

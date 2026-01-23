@@ -161,10 +161,18 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	)
 	// Add the precomputed columns
 	if ctx.IsNonEmptyPrecomputed() {
-		var precomputedSV = []smartvectors.SmartVector{}
-		precomputedSV = append(precomputedSV, ctx.Items.Precomputeds.CommittedMatrix...)
+		// Fetch the precomputed polynomials (not the RS-encoded CommittedMatrix)
+		precomputeds := ctx.Items.Precomputeds.PrecomputedColums
+		precomputedSV := make([]smartvectors.SmartVector, len(precomputeds))
+		for i, precomputed := range precomputeds {
+			if _, ok := ctx.ShadowCols[precomputed.GetColID()]; ok {
+				precomputedSV[i] = smartvectors.NewConstant(field.Zero(), ctx.NumCols)
+				continue
+			}
+			precomputedSV[i] = ctx.Comp.Precomputed.MustGet(precomputed.GetColID())
+		}
 
-		// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
+		// Add the precomputed columns to committedSVSIS or committedSVNoSIS
 		if ctx.IsSISAppliedToPrecomputed() {
 			committedSVSIS = append(committedSVSIS, precomputedSV...)
 		} else {
@@ -180,14 +188,15 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 			continue
 		}
 
-		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
+		// Fetch the original polynomials (not the RS-encoded committedMatrix)
+		pols := ctx.getPols(pr, round)
 
 		// Push pols to the right stack
 		if ctx.RoundStatus[round] == IsNoSis {
-			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
+			committedSVNoSIS = append(committedSVNoSIS, pols...)
 
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedSVSIS = append(committedSVSIS, committedMatrix...)
+			committedSVSIS = append(committedSVSIS, pols...)
 		}
 	}
 	// Construct committedSV by stacking the No SIS round
@@ -200,7 +209,13 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
 	vortex.LinearCombination(proof, committedSV, randomCoinLC)
-	proof.EncodedLinearCombination = ctx.VortexBLSParams.RsParams.RsEncodeExt(proof.LinearCombination)
+	if ctx.IsBLS {
+		proof.EncodedLinearCombination = ctx.VortexBLSParams.RsParams.RsEncodeExt(proof.LinearCombination)
+
+	} else {
+		proof.EncodedLinearCombination = ctx.VortexKoalaParams.RsParams.RsEncodeExt(proof.LinearCombination)
+
+	}
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 	pr.AssignColumn(ctx.Items.EncodedUalpha.GetColID(), proof.EncodedLinearCombination)
 
