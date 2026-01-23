@@ -111,28 +111,13 @@ export default defineConfig({
   // mocha: {
   //   timeout: 20000,
   // },
-  // etherscan - removed for now (verify plugin may need updates for V3)
-  // etherscan: {
-  //   apiKey: process.env.ETHERSCAN_API_KEY ?? "",
-  //   customChains: [
-  //     {
-  //       network: "linea_sepolia",
-  //       chainId: SupportedChainIds.LINEA_SEPOLIA,
-  //       urls: {
-  //         apiURL: `https://api.etherscan.io/v2/api?chainid=${SupportedChainIds.LINEA_SEPOLIA}`,
-  //         browserURL: "https://sepolia.lineascan.build/",
-  //       },
-  //     },
-  //     {
-  //       network: "linea_mainnet",
-  //       chainId: SupportedChainIds.LINEA,
-  //       urls: {
-  //         apiURL: `https://api.etherscan.io/v2/api?chainid=${SupportedChainIds.LINEA}`,
-  //         browserURL: "https://lineascan.build/",
-  //       },
-  //     },
-  //   ],
-  // },
+  verify: {
+    etherscan: {
+      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
+    },
+  },
+  // solidity-docgen not compatible with Hardhat V3 - https://github.com/OpenZeppelin/solidity-docgen/issues/471
+  // TODO LATER - Trial forge doc as alternative docgen
   // docgen - commented out (solidity-docgen specific, not available in V3)
   // docgen: {
   //   exclude: [
