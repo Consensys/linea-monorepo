@@ -167,29 +167,36 @@ pub fn keccak_for_ecrecover(keccak_input u320, h u256) -> (dummy u1) {
     var total_size u32
     total_size = 48 ;; 3 limbs
     
-    var kekkak_input_2 u192 ;; 320 - 128
-    var kekkak_input_3 u64  ;; 192 - 128
+    var kekkak_input_without_first_limb u192 ;; 320 - 128
+    var kekkak_input_without_first_2_limbs u64  ;; 192 - 128
 
     var h_lo u128
-      
-    ;; TODO: this needs to be done starting from the first non-zero byte of kekkak_input
+
+    ;; right-pad keccak_input to 320 bits
+    var kekkak_input_rpad u320
+    kekkak_input_rpad = rpad_320(keccak_input)
 
     ;; limb 
     ;; data
-    limb, kekkak_input_2 = keccak_input
-    limb, kekkak_input_3 = kekkak_input_2
-    limb = rpad_128(kekkak_input_3)
+    limb, kekkak_input_without_first_limb = kekkak_input_rpad
+    limb, kekkak_input_without_first_2_limbs = kekkak_input_without_first_limb
+    limb = rpad_128(kekkak_input_without_first_2_limbs)
 
     ;; result
     limb, h_lo = h ;; h_hi
     limb = h_lo ;; h_lo
 
-    ;; limb_size 
-    limb_size = 16
-    limb_size = 16
-    limb_size = byte_size(kekkak_input_3)
+    var keccak_input_byte_size u8
+    ;; TODO: implement byte size for u320
+    ;; keccak_input_byte_size = byte_size(keccak_input)
 
-    ;; TODO: lookup to SHAKIRA for keccak computation
+    ;; limb_size 
+    ;; TODO: handle cases in which keccak_input_byte_size is smaller than 32 or 16
+    ;; limb_size = 16
+    ;; limb_size = 16
+    ;; limb_size = keccak_input_byte_size - 32
+
+    ;; lookup to SHAKIRA for keccak computation
 
     dummy = 0
     return
@@ -222,6 +229,8 @@ pub fn keccak_for_code_hash(address u160, h u256) -> (dummy u1) {
     limb_size = 16 
     limb_size = 16 
     limb_size = 7 
+
+    ;; lookup to SHAKIRA for keccak computation
 
     dummy = 0
     return
@@ -259,7 +268,7 @@ pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit 
     var is_result u1
     var index u4
 
-    ;; TODO: lookup to ECDATA for ecrecover computation
+    ;; lookup to ECDATA for ecrecover computation
   
     dummy = 0
     return
