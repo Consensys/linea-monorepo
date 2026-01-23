@@ -118,7 +118,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		blockDataCols       *arith.BlockDataCols
 		rlpTxn              *arith.RlpTxn
 		ppp                 PoseidonPadderPacker
-		mimcHasher          PoseidonHasher
+		poseidonHasher      PoseidonHasher
 		genericPadderPacker GenericPadderPacker
 		chainIDFetcher      fetch.ChainIDFetcher
 	)
@@ -154,9 +154,9 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		ppp = NewPoseidonPadderPacker(b.CompiledIOP, genericPadderPacker.OutputData, genericPadderPacker.OutputIsActive, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
 		DefinePoseidonPadderPacker(b.CompiledIOP, ppp, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
 		// create a MiMC hasher
-		mimcHasher = NewPoseidonHasher(b.CompiledIOP, ppp.OutputData, ppp.OutputIsActive[0], "MIMC_HASHER")
+		poseidonHasher = NewPoseidonHasher(b.CompiledIOP, ppp.OutputData, ppp.OutputIsActive[0], "MIMC_HASHER")
 		// define the hasher
-		DefinePoseidonHasher(b.CompiledIOP, mimcHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+		DefinePoseidonHasher(b.CompiledIOP, poseidonHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
@@ -175,15 +175,15 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// assign the repacker for Poseidon hashing
 		AssignPoseidonPadderPacker(run, ppp)
 		// assign the hasher
-		AssignPoseidonHasher(run, mimcHasher, ppp.OutputData, ppp.OutputIsActive[0])
-		for i := range mimcHasher.HashFinal {
-			fmt.Println("Computed Execution Data Hash:", mimcHasher.HashFinal[i].GetColAssignment(run).Pretty())
+		AssignPoseidonHasher(run, poseidonHasher, ppp.OutputData, ppp.OutputIsActive[0])
+		for i := range poseidonHasher.HashFinal {
+			fmt.Println("Computed Execution Data Hash:", poseidonHasher.HashFinal[i].GetColAssignment(run).Pretty())
 		}
 
 		// compute the MiMC hash of the fixed TestData
 		//fixedHash := ComputeMiMCHashFixedTestData()
 		// assert that we are computing the hash correctly
-		//assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final Hash Value is Incorrect")
+		//assert.Equal(t, fixedHash, poseidonHasher.HashFinal.GetColAssignmentAt(run, 0), "Final Hash Value is Incorrect")
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)
