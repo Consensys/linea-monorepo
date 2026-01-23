@@ -262,7 +262,7 @@ class StateManagerV1JsonRpcClientTest {
     assertThat(
       stateManagerClient.lineaGetAccountProof(
         address = "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec".decodeHex(),
-        storageKeys = listOf(ByteArray(1)),
+        storageKeys = listOf(),
         block = BlockParameter.fromNumber(50UL),
       ),
     ).succeedsWithin(5.seconds.toJavaDuration())
