@@ -43,7 +43,6 @@ type Aggregation struct {
 }
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
-
 	// @gusiri
 	// TODO: Make sure the dynamic chain configuration is hashed correctly
 
@@ -214,7 +213,6 @@ type AggregationFPISnark struct {
 
 // NewAggregationFPI does NOT set all fields, only the ones covered in public_input.Aggregation
 func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
-
 	// @gusiri
 	// TODO: make sure the construction is still correct
 	s = &AggregationFPI{
@@ -271,8 +269,8 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 		gnarkutil.ToBytes32(api, pi.L2MsgMerkleTreeDepth),
 		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 
-		//include a hash of the chain configuration
-		utils.ToBytes(api, pi.ChainConfigurationFPISnark.Sum(api)),
+		// include a hash of the chain configuration
+		gnarkutil.ToBytes32(api, pi.ChainConfigurationFPISnark.Sum(api)),
 	)
 
 	// turn the hash into a bn254 element
@@ -282,7 +280,6 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 }
 
 func (pi *AggregationFPIQSnark) RangeCheck(api frontend.API) {
-
 	rc := rangecheck.New(api)
 	for _, v := range append(slices.Clone(pi.LastFinalizedRollingHash[:]), pi.ParentShnarf[:]...) {
 		rc.Check(v, 8)

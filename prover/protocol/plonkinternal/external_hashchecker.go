@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // addHashConstraint adds the constraints the hashes of the tagged witness.
@@ -18,14 +19,31 @@ import (
 // hash.
 func (ctx *CompilationCtx) addHashConstraint() {
 
+	// Get the hash claims once and cache them (hashedGetter reads from a channel)
+	hashClaims := ctx.Plonk.hashedGetter()
+
+	// Return if there are no hash claims
+	if hashClaims == nil || len(hashClaims) == 0 {
+		return
+	}
+
+	logrus.Infof("[external-hash-checker] starting addHashConstraint for %v instances with %v hash claims", ctx.MaxNbInstances, len(hashClaims))
+
 	var (
 		numRowLRO = ctx.DomainSize()
 		round     = ctx.Columns.L[0].Round()
 		eho       = &ctx.ExternalHasherOption
 
 		// Records the positions of the hash claims in the Plonk rows.
-		posOsSv, posBlSv, posNsSv = ctx.getHashCheckedPositionSV()
-		chunkSize                 = posOsSv[0].Len()
+		_ = "breakpoint" // for debugging
+	)
+
+	logrus.Infof("[external-hash-checker] calling getHashCheckedPositionSV...")
+	posOsSv, posBlSv, posNsSv := ctx.getHashCheckedPositionSV(hashClaims)
+	chunkSize := posOsSv[0].Len()
+	logrus.Infof("[external-hash-checker] chunkSize=%v, numRowLRO=%v", chunkSize, numRowLRO)
+
+	var (
 
 		// Declare the L, R, O position columns. These will be cached and
 		// reused by the fixed permutation compiler.
@@ -35,6 +53,9 @@ func (ctx *CompilationCtx) addHashConstraint() {
 	)
 
 	for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
+		if j == 0 {
+			logrus.Infof("[external-hash-checker] inserting %v position precomputed columns...", poseidon2_koalabear.BlockSize)
+		}
 		eho.PosOldState[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionOS_%v", j), posOsSv[j])
 		eho.PosBlock[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionBL_%v", j), posBlSv[j])
 		eho.PosNewState[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionNS_%v", j), posNsSv[j])
@@ -43,7 +64,12 @@ func (ctx *CompilationCtx) addHashConstraint() {
 	eho.Blocks = make([][poseidon2_koalabear.BlockSize]ifaces.Column, ctx.MaxNbInstances)
 	eho.NewStates = make([][poseidon2_koalabear.BlockSize]ifaces.Column, ctx.MaxNbInstances)
 
+	logrus.Infof("[external-hash-checker] starting loop for %v instances, this will create 3*8*%v=%v lookup queries", ctx.MaxNbInstances, ctx.MaxNbInstances, 3*8*ctx.MaxNbInstances)
+
 	for i := 0; i < ctx.MaxNbInstances; i++ {
+		if i%10 == 0 || i < 5 {
+			logrus.Infof("[external-hash-checker] processing instance %v/%v", i, ctx.MaxNbInstances)
+		}
 
 		var (
 			selector = verifiercol.NewRepeatedAccessor(
@@ -121,10 +147,14 @@ func (ctx *CompilationCtx) addHashConstraint() {
 			selector,
 		)
 	}
+
+	logrus.Infof("[external-hash-checker] completed addHashConstraint, created %v total lookup queries", 3*8*ctx.MaxNbInstances)
 }
 
 // assignHashColumns assigns the hash c olumns.
 func (ctx *GenericPlonkProverAction) assignHashColumns(run *wizard.ProverRuntime) {
+
+	logrus.Infof("[external-hash-checker-prover] starting assignHashColumns for %v instances", ctx.MaxNbInstances)
 
 	var (
 		eho   = &ctx.ExternalHasherOption
@@ -140,8 +170,12 @@ func (ctx *GenericPlonkProverAction) assignHashColumns(run *wizard.ProverRuntime
 	}
 	chunkSize := len(posOs[0])
 	sizeHashing := chunkSize * poseidon2_koalabear.BlockSize
+	logrus.Infof("[external-hash-checker-prover] chunkSize=%v, sizeHashing=%v", chunkSize, sizeHashing)
 
 	for i := 0; i < ctx.MaxNbInstances; i++ {
+		if i%10 == 0 || i < 5 {
+			logrus.Infof("[external-hash-checker-prover] assigning instance %v/%v", i, ctx.MaxNbInstances)
+		}
 
 		var (
 			src = []smartvectors.SmartVector{
@@ -191,17 +225,19 @@ func (ctx *GenericPlonkProverAction) assignHashColumns(run *wizard.ProverRuntime
 		}
 
 	}
+
+	logrus.Infof("[external-hash-checker-prover] completed assignHashColumns")
 }
 
 // getHashCheckedPositionSV returns the smartvectors containing the position
 // of the hash claims in the LRO columns.
-func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS [poseidon2_koalabear.BlockSize]smartvectors.SmartVector) {
+func (ctx *CompilationCtx) getHashCheckedPositionSV(sls [][3][2]int) (posOS, posBl, posNS [poseidon2_koalabear.BlockSize]smartvectors.SmartVector) {
 
 	var (
-		sls         = ctx.Plonk.hashedGetter()
 		size        = utils.NextPowerOfTwo(len(sls))
 		numRowPlonk = ctx.DomainSize()
 	)
+	logrus.Infof("[external-hash-checker] getHashCheckedPositionSV: found %v hash claims, nextPowerOfTwo=%v, numRowPlonk=%v", len(sls), size, numRowPlonk)
 	if len(sls) == 0 {
 		panic("no hash claims found")
 	}
@@ -211,9 +247,11 @@ func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS [pose
 		if fixedNbRow < size {
 			utils.Panic("the fixed number of rows %v is smaller than the number of hash claims %v", fixedNbRow, len(sls))
 		}
+		logrus.Infof("[external-hash-checker] using FixedNbRows=%v (was calculated as %v)", fixedNbRow, size)
 		size = ctx.ExternalHasherOption.FixedNbRows
 	}
 	chunkSize := size / poseidon2_koalabear.BlockSize
+	logrus.Infof("[external-hash-checker] final size=%v, chunkSize=%v, will pad from %v claims", size, chunkSize, len(sls))
 
 	var (
 		ost = make([]field.Element, size)
@@ -252,5 +290,6 @@ func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS [pose
 		posNS[i] = smartvectors.NewRegular(nstOct[i])
 	}
 
+	logrus.Infof("[external-hash-checker] getHashCheckedPositionSV completed")
 	return posOS, posBl, posNS
 }

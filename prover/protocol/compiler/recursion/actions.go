@@ -98,7 +98,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		Proof:             run.ExtractProof(),
 		CommittedMatrices: committedMatrices,
 		SisHashes:         sisHashes,
-		MimcHashes:        mimcHashes,
+		Poseidon2Hashes:   mimcHashes,
 		Trees:             trees,
 		FinalFS:           (*run.KoalaFS).State(),
 		Pub:               pubs,
@@ -196,20 +196,20 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			pcsMRoot                     = pcsCtx.Items.MerkleRoots
 		)
 
-		api.AssertIsEqual(circX[0], params.ExtX.B0.A0)
-		api.AssertIsEqual(circX[1], params.ExtX.B0.A1)
-		api.AssertIsEqual(circX[2], params.ExtX.B1.A0)
-		api.AssertIsEqual(circX[3], params.ExtX.B1.A1)
+		api.AssertIsEqual(circX[0].Native(), params.ExtX.B0.A0.Native())
+		api.AssertIsEqual(circX[1].Native(), params.ExtX.B0.A1.Native())
+		api.AssertIsEqual(circX[2].Native(), params.ExtX.B1.A0.Native())
+		api.AssertIsEqual(circX[3].Native(), params.ExtX.B1.A1.Native())
 
 		if len(circYs) != 4*len(params.ExtYs) {
 			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.ExtYs))
 		}
 
 		for j := range params.ExtYs {
-			api.AssertIsEqual(circYs[4*j], params.ExtYs[j].B0.A0)
-			api.AssertIsEqual(circYs[4*j+1], params.ExtYs[j].B0.A1)
-			api.AssertIsEqual(circYs[4*j+2], params.ExtYs[j].B1.A0)
-			api.AssertIsEqual(circYs[4*j+3], params.ExtYs[j].B1.A1)
+			api.AssertIsEqual(circYs[4*j].Native(), params.ExtYs[j].B0.A0.Native())
+			api.AssertIsEqual(circYs[4*j+1].Native(), params.ExtYs[j].B0.A1.Native())
+			api.AssertIsEqual(circYs[4*j+2].Native(), params.ExtYs[j].B1.A0.Native())
+			api.AssertIsEqual(circYs[4*j+3].Native(), params.ExtYs[j].B1.A1.Native())
 		}
 
 		if pcsCtx.IsNonEmptyPrecomputed() {
@@ -226,7 +226,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 				mRootName := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColID()
 				if cc.Ctx.InputCompiledIOP.Precomputed.Exists(mRootName) {
 					com := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColAssignmentGnarkAt(run, 0)
-					api.AssertIsEqual(com, circMRoots[0])
+					api.AssertIsEqual(com.Native(), circMRoots[0].Native())
 				}
 
 				circMRoots = circMRoots[1:]
@@ -242,7 +242,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 				}
 
 				com := pcsMRoot[j][k].GetColAssignmentGnarkAt(run, 0)
-				api.AssertIsEqual(com, circMRoots[nonEmptyCount])
+				api.AssertIsEqual(com.Native(), circMRoots[nonEmptyCount].Native())
 				nonEmptyCount++
 			}
 		}

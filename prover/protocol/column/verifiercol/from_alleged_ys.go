@@ -63,8 +63,7 @@ func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark
 		if y, found := yMap[name]; found {
 			res[i] = y
 		} else {
-			// Set it to zero explicitly
-			res[i] = koalagnark.Ext{}
+			res[i] = koalagnark.NewFromBaseExt(0)
 		}
 	}
 

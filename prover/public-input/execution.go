@@ -22,7 +22,6 @@ import (
 // ExecDataChecksum consists of information enabling the computation
 // of a checksum for execution data.
 type ExecDataChecksum struct {
-
 	// Length of the execution data in bytes
 	Length uint64
 
@@ -96,11 +95,9 @@ func (pi *Execution) Sum() []byte {
 	hsh.Write(pi.L2MessageServiceAddr[:])
 
 	return hsh.Sum(nil)
-
 }
 
 func (pi *Execution) SumAsField() field.Element {
-
 	sumBytes := pi.Sum()
 	sum := new(field.Element).SetBytes(sumBytes)
 
@@ -141,7 +138,6 @@ func (c *compressionChain) Write(in []byte) (n int, err error) {
 	c.buffer.Write(in)
 	n += len(in)
 	return
-
 }
 
 func NewExecDataChecksum(data []byte) (sums ExecDataChecksum, err error) {
@@ -166,7 +162,6 @@ func NewExecDataChecksum(data []byte) (sums ExecDataChecksum, err error) {
 // Caller must ensure that all data values past nbBytes are zero, or the result will be incorrect.
 // Each element of data is meant to contain wordNbBits many bits. This claim is not guaranteed to be checked by this function.
 func ChecksumExecDataSnark(api frontend.API, data []frontend.Variable, wordNbBits int, nbBytes frontend.Variable, compressor ghash.Compressor) (frontend.Variable, error) {
-
 	if len(data) == 0 {
 		return 0, nil
 	}

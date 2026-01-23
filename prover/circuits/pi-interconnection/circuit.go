@@ -67,7 +67,6 @@ type Circuit struct {
 }
 
 func (c *Circuit) Define(api frontend.API) error {
-
 	maxNbDA, maxNbExecution := len(c.DataAvailabilityPublicInput), len(c.ExecutionPublicInput)
 	if len(c.DataAvailabilityFPIQ) != maxNbDA || len(c.ExecutionFPIQ) != maxNbExecution {
 		return errors.New("public / functional public input length mismatch")
@@ -254,7 +253,6 @@ func (c *Circuit) Define(api frontend.API) error {
 }
 
 func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
-
 	values := slices.Clone(leaves)
 	if !utils.IsPowerOfTwo(len(values)) {
 		panic("number of leaves must be a perfect power of two")
@@ -275,7 +273,6 @@ type Compiled struct {
 }
 
 func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.CompiledIOP)) (*Compiled, error) {
-
 	if c.L2MsgMaxNbMerkle <= 0 {
 		merkleNbLeaves := 1 << c.L2MsgMerkleDepth
 		c.L2MsgMaxNbMerkle = (c.MaxNbExecution*c.ExecutionMaxNbMsg + merkleNbLeaves - 1) / merkleNbLeaves
@@ -322,7 +319,6 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 }
 
 func allocateCircuit(cfg config.PublicInput) Circuit {
-
 	res := Circuit{
 		DataAvailabilityPublicInput: make([]frontend.Variable, cfg.MaxNbDataAvailability),
 		ExecutionPublicInput:        make([]frontend.Variable, cfg.MaxNbExecution),
@@ -397,5 +393,4 @@ func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitTyp
 	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
 	return utils.RightPad(
 		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDataAvailability)
-
 }

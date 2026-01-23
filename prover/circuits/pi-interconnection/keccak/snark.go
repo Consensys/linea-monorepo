@@ -54,7 +54,6 @@ func NewHasher(api frontend.API, maxNbKeccakF int) *Hasher {
 // bytes are not range-checked. Caller must ensure that bytess[i][j] < 256
 // the output are 32 bytes
 func (h *Hasher) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [32]frontend.Variable {
-
 	hintIn := make([]frontend.Variable, 1+32*len(bytess))
 	radix := big.NewInt(256)
 	unpaddedLanes := make([]frontend.Variable, 4*len(bytess))
@@ -199,7 +198,6 @@ func (h *Hasher) createColumns() (lanes, isLaneActive, isFirstLaneOfNewHash []fr
 // input are bytes
 // output are 2-byte lanes
 func keccakHint(_ *big.Int, ins, outs []*big.Int) error {
-
 	inLen := ins[0].Uint64() * 32
 	if !ins[0].IsUint64() || inLen > uint64(len(ins))-1 {
 		return errors.New("input length too large")
@@ -273,7 +271,7 @@ func pad(api frontend.API, inputLanes []frontend.Variable, length frontend.Varia
 		}
 	}
 
-	//inInputRange := frontend.Variable(1)
+	// inInputRange := frontend.Variable(1)
 	inputRange := internal.NewRange(api, length, len(lanes))
 	for i := range lanes {
 		lanes[i] = api.Add(api.Mul(lanes[i], inputRange.InRange[i]), api.Mul(dstLane, inputRange.IsFirstBeyond[i])) // first padding byte contribution
@@ -285,7 +283,6 @@ func pad(api frontend.API, inputLanes []frontend.Variable, length frontend.Varia
 	}
 
 	return
-
 }
 
 func divByLanesPerBlock(api frontend.API, x frontend.Variable) (q, r frontend.Variable, err error) {

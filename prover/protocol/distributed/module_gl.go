@@ -27,7 +27,6 @@ import (
 // ModuleGL is a compilation structure holding the central informations
 // of the GL part of a module.
 type ModuleGL struct {
-
 	// ModuleTranslator is the translator for the GL part of the module
 	// it also has the ownership of the [wizard.Compiled] IOP built for
 	// this module.
@@ -125,7 +124,6 @@ type ModuleGLAssignGL struct {
 // The function works by creating a define function that will call [NewModuleGL]
 // / and then it calls [wizard.Compile] without passing compilers.
 func BuildModuleGL(moduleInput *FilteredModuleInputs) *ModuleGL {
-
 	var (
 		moduleGL   *ModuleGL
 		defineFunc = func(b *wizard.Builder) {
@@ -144,7 +142,6 @@ func BuildModuleGL(moduleInput *FilteredModuleInputs) *ModuleGL {
 // declarations to build the GL part of the module and returns the constructed
 // module.
 func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *ModuleGL {
-
 	moduleGL := &ModuleGL{
 		ModuleTranslator: ModuleTranslator{
 			Wiop: builder.CompiledIOP,
@@ -249,14 +246,11 @@ func (m *ModuleGL) GetMainProverStep(witness *ModuleWitnessGL) wizard.MainProver
 // The function depopulates the [ModuleWitness] from its columns assignment
 // as the columns are assigned in the runtime.
 func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
-
-	var (
-		// columns stores the list of columns to assign. Though, it
-		// stores the columns as in the origin CompiledIOP so we cannot
-		// directly use them to refer to columns of the current IOP.
-		// Yet, the column share the same names.
-		columns = m.DefinitionInput.Columns
-	)
+	// columns stores the list of columns to assign. Though, it
+	// stores the columns as in the origin CompiledIOP so we cannot
+	// directly use them to refer to columns of the current IOP.
+	// Yet, the column share the same names.
+	columns := m.DefinitionInput.Columns
 
 	run.State.InsertNew(moduleWitnessKey, witness)
 
@@ -315,7 +309,6 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 // need to be "sent" and/or "received". However, it does not perform the
 // filling of the missing rows of the global-constraint.
 func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint {
-
 	if q.Name() == "CYCLIC_COUNTER_4514_24_COUNTER_IS_ZERO_WHEN_INACTIVE" {
 		board := q.Expression.Board()
 		meta := board.ListVariableMetadata()
@@ -373,7 +366,6 @@ func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint
 // If the local constraint affects both the beginning and the end of a column,
 // the function will panic.
 func (m *ModuleGL) InsertLocal(q query.LocalConstraint) query.LocalConstraint {
-
 	var (
 		newExpr      = m.TranslateExpression(q.Expression)
 		newExprRound = wizardutils.LastRoundToEval(newExpr)
@@ -408,7 +400,6 @@ func (m *ModuleGL) InsertLocal(q query.LocalConstraint) query.LocalConstraint {
 // involving the [ReceivedValueGlobal]. The function expects the new
 // translated global constraints and not the original one.
 func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
-
 	var (
 		newExpr            = newGlobal.Expression
 		newExprRound       = wizardutils.LastRoundToEval(newExpr)
@@ -425,7 +416,6 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 		localExpr := newExpr.ReconstructBottomUp(
 
 			func(e *sym.Expression, children []*sym.Expression) (new *sym.Expression) {
-
 				v, isVar := e.Operator.(sym.Variable)
 				if !isVar {
 					return e.SameWithNewChildren(children)
@@ -469,7 +459,6 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 			localExpr,
 		)
 	}
-
 }
 
 // sendValueGlobal inserts a local-opening in the target compiled IOP and
@@ -477,7 +466,6 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 // registered, the function is a no-op and returns the already registered
 // value. The function returns the resulting local-opening query.
 func (m *ModuleGL) sendValueGlobal(col ifaces.Column, pos int) query.LocalOpening {
-
 	name := string(col.GetColID()) + "/" + strconv.Itoa(pos)
 
 	if pos, ok := m.SentValuesGlobalMap[name]; ok {
@@ -528,7 +516,6 @@ func (m *ModuleGL) getReceivedValueGlobal(col ifaces.Column, pos int) ifaces.Acc
 // [ReceivedValuesGlobalAccs]. The function additionally records the prover
 // and verifier action needed to assign these columns.
 func (m *ModuleGL) processSendAndReceiveGlobal() {
-
 	if len(m.ReceivedValuesGlobalMap) == 0 {
 		return
 	}
@@ -573,7 +560,6 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 //
 // The function also assigns the [SentValueGlobal] local openings.
 func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
-
 	if len(a.ReceivedValuesGlobalMap) > 0 {
 
 		vslice := []field.Element{}
@@ -619,7 +605,6 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 // checks the values of [ModuleGL.SentValuesGlobalHash] and
 // [ModuleGL.ReceivedValuesGlobalHash].
 func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
-
 	if len(a.ReceivedValuesGlobalMap) == 0 {
 		return nil
 	}
@@ -673,14 +658,13 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 // checks the values of [ModuleGL.SentValuesGlobalHash] and
 // [ModuleGL.ReceivedValuesGlobalHash].
 func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
 	if len(a.ReceivedValuesGlobalMap) == 0 {
 		return
 	}
 
 	var (
 		sendGlobalHash = column.GetColAssignmentGnarkOctuplet(a.SentValuesGlobalHash, run)
-		hsh            = run.GetHasherFactory().NewHasher()
+		hsh            = multisethashing.AsConcreteHasher(run.GetHasherFactory().NewHasher())
 	)
 
 	for i := range a.SentValuesGlobal {
@@ -727,7 +711,6 @@ func (a *ModuleGLCheckSendReceiveGlobal) IsSkipped() bool {
 }
 
 func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
-
 	var (
 		witness = run.State.MustGet(moduleWitnessKey).(*ModuleWitnessGL)
 		// columns stores the list of columns to assign. Though, it
@@ -775,7 +758,6 @@ func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 }
 
 func (modGl *ModuleGL) declarePublicInput() {
-
 	var (
 		nbModules = len(modGl.DefinitionInput.Disc.Modules)
 		// segmenCountGL is an array of zero with a one at the position
@@ -843,11 +825,9 @@ func (modGl *ModuleGL) declarePublicInput() {
 		GrandProductPublicInput,
 		accessors.NewConstantExt(fext.One()),
 	)
-
 }
 
 func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
-
 	// This assigns the segment module index proof column
 	run.AssignColumn(
 		modGL.SegmentModuleIndex.GetColID(),
@@ -868,12 +848,10 @@ func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *Mod
 // run as part of a prover action. It also adds the "sent" and "received" values
 // to the MSet.
 func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
-
 	var lppCommitments field.Octuplet
 
 	for i := range lppCommitments {
 		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
-
 	}
 
 	var (
@@ -920,7 +898,6 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 // assigned. It is meant to be run as part of a verifier action. The function
 // also checks that isFirst and isLast are correctly assigned.
 func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
-
 	var (
 		lppCommitments             = field.Octuplet{}
 		targetMSetGeneral          = GetPublicInputList(run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
@@ -999,7 +976,6 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 // checkGnarkMultiSetHash checks that the LPP commitment MSet is correctly
 // assigned. It is meant to be run as part of a verifier action.
 func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
-
 	var (
 		targetMSetGeneral          = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		targetMSetSharedRandomness = GetPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, multisethashing.MSetHashSize)
@@ -1008,8 +984,9 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
 		hasSentOrReceive           = len(modGL.ReceivedValuesGlobalMap) > 0
 		hasher                     = run.GetHasherFactory().NewHasher()
-		multiSetGeneral            = multisethashing.EmptyMSetHashGnark(&hasher)
-		multiSetSharedRandomness   = multisethashing.EmptyMSetHashGnark(&hasher)
+		concreteHasher             = multisethashing.AsConcreteHasher(hasher)
+		multiSetGeneral            = multisethashing.EmptyMSetHashGnark(hasher)
+		multiSetSharedRandomness   = multisethashing.EmptyMSetHashGnark(hasher)
 		defInp                     = modGL.DefinitionInput
 		moduleIndex                = frontend.Variable(defInp.ModuleIndex)
 		numSegmentOfCurrModule     = modGL.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
@@ -1032,7 +1009,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	// in the multiset.
 	if hasSentOrReceive {
 		globalSentHash := modGL.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		mSetOfSentGlobal := multisethashing.MsetOfSingletonGnark(api, &hasher, moduleIndex, segmentIndex, typeOfProof, globalSentHash)
+		mSetOfSentGlobal := multisethashing.MsetOfSingletonGnark(api, concreteHasher, moduleIndex, segmentIndex, typeOfProof, globalSentHash)
 		for i := range mSetOfSentGlobal.Inner {
 			mSetOfSentGlobal.Inner[i] = api.Mul(mSetOfSentGlobal.Inner[i], api.Sub(1, isLast))
 			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], mSetOfSentGlobal.Inner[i])
@@ -1042,7 +1019,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		// value in the multiset. If the segment index is zero, the singleton hash
 		// will be zero-ed out by the "1 - isFirst" term
 		globalRcvdHash := modGL.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		mSetOfReceivedGlobal := multisethashing.MsetOfSingletonGnark(api, &hasher, moduleIndex, api.Sub(segmentIndex, 1), typeOfProof, globalRcvdHash)
+		mSetOfReceivedGlobal := multisethashing.MsetOfSingletonGnark(api, concreteHasher, moduleIndex, api.Sub(segmentIndex, 1), typeOfProof, globalRcvdHash)
 		for i := range mSetOfReceivedGlobal.Inner {
 			mSetOfReceivedGlobal.Inner[i] = api.Mul(mSetOfReceivedGlobal.Inner[i], api.Sub(1, isFirst))
 			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], mSetOfReceivedGlobal.Inner[i])

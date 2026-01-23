@@ -199,13 +199,15 @@ func createCtx(
 	}
 
 	ctx.Plonk.SPR = ccs
-	fftDomain := fft.NewDomain(uint64(ctx.DomainSize()), fft.WithCache())
+	fftDomain := fft.Domain{
+		Cardinality: uint64(ctx.DomainSize()),
+	} // fft.NewDomain(uint64(ctx.DomainSize()), fft.WithCache())
 
 	if ctx.FixedNbRowsOption.Enabled && ctx.FixedNbRowsOption.NbRow < ctx.DomainSizePlonk() {
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v nb-constraints=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk(), ccs.NbConstraints)
 	}
 
-	ctx.Plonk.trace = plonkKoalabear.NewTrace(ctx.Plonk.SPR, fftDomain)
+	ctx.Plonk.trace = plonkKoalabear.NewTrace(ctx.Plonk.SPR, &fftDomain)
 
 	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.trace) // no part of BuildTrace
 

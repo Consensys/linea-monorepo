@@ -9,8 +9,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+// Poseidon2Hasher is an interface for Poseidon2 hash implementations in circuits.
+// Both *GnarkMDHasher and *ExternalHasher implement this interface.
+type Poseidon2Hasher interface {
+	Write(data ...frontend.Variable)
+	Sum() poseidon2_koalabear.Octuplet
+	Reset()
+	SetState(newState poseidon2_koalabear.Octuplet)
+	State() poseidon2_koalabear.Octuplet
+}
+
 type GnarkFSWV struct {
-	hasher poseidon2_koalabear.GnarkMDHasher
+	hasher Poseidon2Hasher
 	// pointer to the gnark-API (also passed to the hasher but behind an
 	// interface). This is needed to perform bit-decomposition.
 	api frontend.API
@@ -19,7 +29,22 @@ type GnarkFSWV struct {
 func NewGnarkFSWV(api frontend.API) *GnarkFSWV {
 	hasher, _ := poseidon2_koalabear.NewGnarkMDHasher(api)
 	return &GnarkFSWV{
-		hasher: hasher,
+		hasher: &hasher,
+		api:    api,
+	}
+}
+
+// NewGnarkFSWVWithHasher creates a new Fiat-Shamir instance using the provided hasher.
+// This allows using external hashers (e.g., ExternalHasher) for constraint optimization.
+// The hasher parameter must satisfy the Poseidon2Hasher interface.
+func NewGnarkFSWVWithHasher(api frontend.API, hasher interface{}) *GnarkFSWV {
+	// Type assert to ensure it implements our interface
+	h, ok := hasher.(Poseidon2Hasher)
+	if !ok {
+		panic("hasher does not implement Poseidon2Hasher interface")
+	}
+	return &GnarkFSWV{
+		hasher: h,
 		api:    api,
 	}
 }
@@ -123,7 +148,8 @@ func (fs *GnarkFSWV) SetState(state koalagnark.Octuplet) {
 // State mutates returns the state of the fiat-shamir hasher. The
 // function will also updates its own state with unprocessed inputs.
 func (fs *GnarkFSWV) State() koalagnark.Octuplet {
-	return octupletToZkoctuplet(fs.hasher.State())
+	state := fs.hasher.State()
+	return octupletToZkoctuplet(state)
 }
 
 // safeguardUpdate updates the state as a safeguard by appending a field element

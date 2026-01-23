@@ -120,11 +120,19 @@ func (info *Info) Sample(fs *fiatshamir.FS, seed field.Octuplet) interface{} {
 // passed by the caller is used for [FieldFromSeed] coins. The function returns
 func (info *Info) SampleGnark(fs *fiatshamir.GnarkFS, seed koalagnark.Octuplet) interface{} {
 	switch info.Type {
+	case Field:
+		return (*fs).RandomField()
+
 	case IntegerVec:
 		return (*fs).RandomManyIntegers(info.Size, info.UpperBound)
 
 	case FieldExt:
 		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
+		return (*fs).RandomFieldExt()
+
+	case FieldFromSeed:
+		// FieldFromSeed behaves like FieldExt in gnark circuits
+		// GnarkFS doesn't support RandomFieldFromSeed, so we use RandomFieldExt instead
 		return (*fs).RandomFieldExt()
 
 	}
