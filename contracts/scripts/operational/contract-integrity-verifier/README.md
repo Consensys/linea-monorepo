@@ -494,6 +494,18 @@ npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts \
 ## Limitations
 
 - **Immutables (Hardhat)**: Heuristic detection. Use Foundry for precision.
-- **Constructor args**: Not compared (deployment vs runtime bytecode).
 - **Libraries**: Must be embedded in artifact bytecode.
 - **Schema generator**: Complex mapping types may need manual adjustment.
+
+### Runtime vs Deployment Bytecode
+
+The verifier compares **runtime bytecode only** (what's stored on-chain), not deployment bytecode:
+
+```
+Deployment tx:  [Constructor code | Runtime bytecode | Constructor args]
+                                          │
+                                          ▼ (stored on-chain)
+Comparison:     artifact.deployedBytecode ←→ eth_getCode(address)
+```
+
+Constructor args are consumed during deployment and discarded. The `constructorArgs` config field validates that immutable value differences match expected args—it does not compare the original constructor calldata.
