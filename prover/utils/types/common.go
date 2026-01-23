@@ -89,6 +89,8 @@ func Remove48Padding(b []byte) []byte {
 	return data
 }
 
+// WriteInt64On64Bytes writes an int64 in big-endian form on 64 bytes using the
+// koalabear formatting.
 func WriteInt64On64Bytes(w io.Writer, x int64) (int64, error) {
 	xBytes := [8]byte{}
 
@@ -105,11 +107,31 @@ func WriteInt64On64Bytes(w io.Writer, x int64) (int64, error) {
 	return int64(n), nil
 }
 
+// / WriteInt64On32Bytes writes an int64 in big-endian form on 32 bytes using the
+// koalabear formatting.
+func WriteInt64On32Bytes(w io.Writer, x int64) (int64, error) {
+	xBytes := [8]byte{}
+	// Convert the int64 to its 8-byte representation
+	binary.BigEndian.PutUint64(xBytes[:], uint64(x))
+
+	w.Write(make([]byte, 32-len(xBytes)))
+
+	n, err := w.Write(xBytes[:])
+	if err != nil {
+		return int64(n), fmt.Errorf("could not write 32 bytes into Writer : %w", err)
+	}
+	return int64(n), nil
+}
+
 func ReadInt64On64Bytes(r io.Reader) (x, n_ int64, err error) {
 	var buf [64]byte
 	n, err := r.Read(buf[:])
 	if err != nil {
 		return 0, int64(n), fmt.Errorf("could not read 64 bytes: %w", err)
+	}
+
+	if n != 64 {
+		return 0, int64(n), fmt.Errorf("could not read 64 bytes: read %v", n)
 	}
 
 	// De-interleave the data from the 64-byte buffer into an 8-byte buffer
@@ -125,14 +147,49 @@ func ReadInt64On64Bytes(r io.Reader) (x, n_ int64, err error) {
 	return int64(xU64), 64, err // #nosec G115 -- above line precludes overflowing
 }
 
+func ReadInt64On32Bytes(r io.Reader) (x, n_ int64, err error) {
+	var buf [32]byte
+	n, err := r.Read(buf[:])
+	if err != nil {
+		return 0, int64(n), fmt.Errorf("could not read 32 bytes: %w", err)
+	}
+
+	var bi big.Int
+	bi.SetBytes(buf[:])
+
+	if !bi.IsInt64() {
+		return 0, int64(n), fmt.Errorf("could not read 32 bytes, had %v: %w", bi, err)
+	}
+
+	return bi.Int64(), 32, nil
+}
+
 // Big int are assumed to fit on 64 bytes and are written as a single
 // block of 64 bytes in bigendian form (i.e, zero-padded on the left)
 func WriteBigIntOn64Bytes(w io.Writer, b *big.Int) (int64, error) {
-
 	balanceBig := b.FillBytes(make([]byte, 32))
 	balanceBigPadded := LeftPadded(balanceBig)
 	n, err := w.Write(balanceBigPadded)
 	return int64(n), err
+}
+
+// WriteBigIntOn32Bytes writes a big-integer in normal big-endian form and fits
+// it on 32 bytes.
+func WriteBigIntOn32Bytes(w io.Writer, b *big.Int) (int64, error) {
+	balanceBig := b.FillBytes(make([]byte, 32))
+	n, err := w.Write(balanceBig)
+	return int64(n), err
+}
+
+// ReadBigIntOn32Bytes reads a big-integer in normal big-endian form and fits
+// it on 32 bytes.
+func ReadBigIntOn32Bytes(r io.Reader) (*big.Int, error) {
+	buf := [32]byte{}
+	_, err := r.Read(buf[:])
+	if err != nil {
+		return nil, fmt.Errorf("reading big int, could not 32 bytes from reader: %v", err)
+	}
+	return new(big.Int).SetBytes(buf[:]), nil
 }
 
 // Read a bigint from a reader assuming it takes 64 bytes

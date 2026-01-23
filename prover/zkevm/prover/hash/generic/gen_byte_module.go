@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -50,7 +51,7 @@ func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 
 	var (
 		numRow      = gdm.Limbs.NumRow()
-		index       = gdm.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
+		index       = expr_handle.GetExprHandleAssignment(run, gdm.Index).IntoRegVecSaveAlloc()
 		toHash      = gdm.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 		hashNum     = gdm.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
 		nByte       = gdm.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()

@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	smCommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/common"
 )
@@ -143,7 +144,7 @@ func newAccumulatorStatementAssignmentBuilder(as *AccumulatorStatement) Accumula
 
 // PushReadZero pushes the relevant row when a ReadZero occurs on the
 // accumulator side.
-func (as *AccumulatorStatementAssignmentBuilder) PushReadZero(root, hkey [][]byte) {
+func (as *AccumulatorStatementAssignmentBuilder) PushReadZero(root, hkey types.KoalaOctuplet) {
 	as.IsReadZero.PushOne()
 	as.IsReadNonZero.PushZero()
 	as.IsInsert.PushZero()
@@ -153,7 +154,7 @@ func (as *AccumulatorStatementAssignmentBuilder) PushReadZero(root, hkey [][]byt
 }
 
 // PushReadNonZero pushes a row onto `as` for a read-non-zero operation.
-func (as *AccumulatorStatementAssignmentBuilder) PushReadNonZero(root, hKey, hVal [][]byte) {
+func (as *AccumulatorStatementAssignmentBuilder) PushReadNonZero(root, hKey, hVal types.KoalaOctuplet) {
 	as.IsReadZero.PushZero()
 	as.IsReadNonZero.PushOne()
 	as.IsInsert.PushZero()
@@ -163,7 +164,7 @@ func (as *AccumulatorStatementAssignmentBuilder) PushReadNonZero(root, hKey, hVa
 }
 
 // PushInsert pushes a row representing an insertion onto `as`.
-func (as *AccumulatorStatementAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal [][]byte) {
+func (as *AccumulatorStatementAssignmentBuilder) PushInsert(oldRoot, newRoot, hKey, newHVal types.KoalaOctuplet) {
 	as.IsReadZero.PushZero()
 	as.IsReadNonZero.PushZero()
 	as.IsInsert.PushOne()
@@ -173,7 +174,7 @@ func (as *AccumulatorStatementAssignmentBuilder) PushInsert(oldRoot, newRoot, hK
 }
 
 // PushUpdate pushes a row representing an update onto `as`.
-func (as *AccumulatorStatementAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal, newHVal [][]byte) {
+func (as *AccumulatorStatementAssignmentBuilder) PushUpdate(oldRoot, newRoot, hKey, oldHVal, newHVal types.KoalaOctuplet) {
 	as.IsReadZero.PushZero()
 	as.IsReadNonZero.PushZero()
 	as.IsInsert.PushZero()
@@ -183,7 +184,7 @@ func (as *AccumulatorStatementAssignmentBuilder) PushUpdate(oldRoot, newRoot, hK
 }
 
 // PushDelete pushes a row representing a deletion onto `as`.
-func (as *AccumulatorStatementAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal [][]byte) {
+func (as *AccumulatorStatementAssignmentBuilder) PushDelete(oldRoot, newRoot, hKey, oldHVal types.KoalaOctuplet) {
 	as.IsReadZero.PushZero()
 	as.IsReadNonZero.PushZero()
 	as.IsInsert.PushZero()
@@ -201,6 +202,3 @@ func (as *AccumulatorStatementAssignmentBuilder) PadAndAssign(run *wizard.Prover
 	as.IsDelete.PadAndAssign(run)
 	as.SummaryBuilder.PadAndAssign(run)
 }
-
-// Type returns a code to identify the type of trace as a symbolic expression
-//

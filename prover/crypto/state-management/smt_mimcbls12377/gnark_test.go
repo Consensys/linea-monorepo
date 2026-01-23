@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getMerkleProof(t *testing.T) ([]Proof, []Bytes32, Bytes32) {
+func getMerkleProof(t *testing.T) ([]Proof, []Bls12377Fr, Bls12377Fr) {
 
 	config := &Config{
 		HashFunc: hashtypes.MiMC,
@@ -25,7 +25,7 @@ func getMerkleProof(t *testing.T) ([]Proof, []Bytes32, Bytes32) {
 	// Only contains empty leaves
 	nbProofs := 1
 	proofs := make([]Proof, nbProofs)
-	leafs := make([]Bytes32, nbProofs)
+	leafs := make([]Bls12377Fr, nbProofs)
 	for pos := 0; pos < nbProofs; pos++ {
 
 		// Make a valid Bytes32

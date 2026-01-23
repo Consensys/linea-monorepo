@@ -119,7 +119,8 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 			Selector:             packing.Repacked.IsLaneActive,
 			IsFirstLaneOfNewHash: packing.Repacked.IsBeginningOfNewHash,
 		}
-		cSha2 = newSha2BlockModule(comp, cSha2Inp).WithCircuit(comp)
+		cSha2 = newSha2BlockModule(comp, cSha2Inp)
+		// WithCircuit(comp, query.PlonkRangeCheckOption(16, 1, true))
 	)
 
 	comp.InsertProjection("SHA2_RES_HI",

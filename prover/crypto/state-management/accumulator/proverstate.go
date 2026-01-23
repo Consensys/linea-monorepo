@@ -5,9 +5,9 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -33,8 +33,8 @@ func InitializeProverState[K, V io.WriterTo](location string) *ProverState[K, V]
 
 	// Insert the head and the tail in the tree
 	head, tail := Head(), Tail()
-	tree.Update(0, types.Bytes32ToOctuplet(head.Hash()))
-	tree.Update(1, types.Bytes32ToOctuplet(tail.Hash()))
+	tree.Update(0, field.Octuplet(head.Hash()))
+	tree.Update(1, field.Octuplet(tail.Hash()))
 
 	data := collection.NewMapping[int64, KVOpeningTuple[K, V]]()
 	data.InsertNew(0, KVOpeningTuple[K, V]{LeafOpening: head})
@@ -49,8 +49,8 @@ func InitializeProverState[K, V io.WriterTo](location string) *ProverState[K, V]
 }
 
 // SubTreeRoot returns the root of the tree
-func (s *ProverState[K, V]) SubTreeRoot() Bytes32 {
-	return types.HashToBytes32(s.Tree.Root)
+func (s *ProverState[K, V]) SubTreeRoot() KoalaOctuplet {
+	return s.Tree.Root
 }
 
 // FindKey finds the position of a key in the accumulator. If the key is absent,
@@ -73,11 +73,11 @@ func (s *ProverState[K, V]) FindKey(k K) (int64, bool) {
 func (s *ProverState[K, V]) ListAllKeys() []K {
 	var containedKeys []K
 	// We compute the two keys that are used as bounds, to be able to ignore them later
-	lowerBound := Bytes32{}
-	upperBound := poseidon2_koalabear.NewMDHasher().MaxBytes32()
+	lowerBound := KoalaOctuplet{}
+	upperBound := MaxKoalaOctuplet()
 	for _, i := range s.Data.ListAllKeys() {
 		tuple := s.Data.MustGet(i)
-		if !(Bytes32Cmp(tuple.LeafOpening.HKey, lowerBound) == 0 || Bytes32Cmp(tuple.LeafOpening.HKey, upperBound) == 0) {
+		if !(tuple.LeafOpening.HKey.Cmp(lowerBound) == 0 || tuple.LeafOpening.HKey.Cmp(upperBound) == 0) {
 			containedKeys = append(containedKeys, tuple.Key)
 		}
 	}
@@ -89,8 +89,8 @@ func (s *ProverState[K, V]) ListAllKeys() []K {
 func (s *ProverState[K, V]) findSandwich(k K) (int64, int64) {
 	// We do so with a linear scanning to simplify (since it is only for testing)
 	hkey := hash(k)
-	hminus, iminus := Bytes32{}, int64(0)                                    // corresponds to head
-	hplus, iplus := poseidon2_koalabear.NewMDHasher().MaxBytes32(), int64(1) // corresponds to tail
+	hminus, iminus := KoalaOctuplet{}, int64(0)  // corresponds to head
+	hplus, iplus := MaxKoalaOctuplet(), int64(1) // corresponds to tail
 
 	// Technically, we should be able to skip the two first entries
 	// The traversal of the data is in non-deterministic order
@@ -99,18 +99,18 @@ func (s *ProverState[K, V]) findSandwich(k K) (int64, int64) {
 		leafOpening := s.Data.MustGet(i).LeafOpening
 		curHkey := leafOpening.HKey
 
-		switch Bytes32Cmp(curHkey, hkey) {
+		switch curHkey.Cmp(hkey) {
 		case 0:
 			// We should not have found a match
 			utils.Panic("Found a perfect match for %+v", k)
 		case 1:
 			// curHKey is larger : so we should look for an update of hmax
-			if Bytes32Cmp(curHkey, hplus) == -1 {
+			if curHkey.Cmp(hplus) == -1 {
 				hplus, iplus = curHkey, i
 			}
 		case -1:
 			// curHKey is smaller : so we should look for an update of hmin
-			if Bytes32Cmp(curHkey, hminus) == 1 {
+			if curHkey.Cmp(hminus) == 1 {
 				hminus, iminus = curHkey, i
 			}
 		}
@@ -169,7 +169,7 @@ func (s *ProverState[K, V]) upsertTuple(i int64, tuple KVOpeningTuple[K, V]) smt
 
 	// Perform the update
 	s.Data.Update(i, tuple)
-	s.Tree.Update(int(i), types.Bytes32ToOctuplet(leaf))
+	s.Tree.Update(int(i), field.Octuplet(leaf))
 	newRoot := s.SubTreeRoot()
 
 	logrus.Tracef("upsert pos %v, leaf %x, root=%x -> %x", i, leaf, oldRoot, newRoot)
@@ -192,12 +192,15 @@ func (s *ProverState[K, V]) rmTuple(i int64) smt_koalabear.Proof {
 
 // TopRoot returns the top-root hash which includes `NextFreeNode` and the
 // `SubTreeRoot`
-func (s *ProverState[K, V]) TopRoot() Bytes32 {
+func (s *ProverState[K, V]) TopRoot() KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
-
 	WriteInt64On64Bytes(hasher, s.NextFreeNode)
 	subTreeRoot := s.SubTreeRoot()
 	subTreeRoot.WriteTo(hasher)
-	Bytes32 := hasher.Sum(nil)
-	return AsBytes32(Bytes32)
+	bytes32 := hasher.Sum(nil)
+	r, err := BytesToKoalaOctuplet(bytes32)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }

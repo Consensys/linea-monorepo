@@ -25,14 +25,13 @@ func DummyFullByte(i int) (f eth.FullBytes32) {
 
 // Returns a dummy digest
 func DummyDigest(i int) (d eth.Digest) {
-	d[31] = byte(i) // on the last one to not create overflows
-	return d
+	return types.DummyKoalaOctuplet(i)
 }
 
-func Hash(t io.WriterTo) types.Bytes32 {
+func Hash(t io.WriterTo) types.KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
 	t.WriteTo(hasher)
-	return types.AsBytes32(hasher.Sum(nil))
+	return types.MustBytesToKoalaOctuplet(hasher.Sum(nil))
 }
 
 /*
@@ -54,7 +53,7 @@ func TestHashZeroAccountMiMC(t *testing.T) {
 - Test the empty storage trie hash
 */
 func TestEmptyStorageTrieHash(t *testing.T) {
-	assert.Equal(t, "0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5", eth.MIMC_EMPTY_STORAGE.Hex())
+	assert.Equal(t, "0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5", eth.ZKHASH_EMPTY_STORAGE.Hex())
 }
 
 /*

@@ -5,7 +5,7 @@ import (
 
 	gchash "github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/config"
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -15,14 +15,14 @@ import (
 
 func TestFPIConsistency(t *testing.T) {
 	fpi := FunctionalPublicInput{
-		Y:              [2][16]byte{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}},
+		Y:              types.Bls12381FrFromHex("0x0000000000000000000000000000000300000000000000000000000000000004"),
 		SnarkHash:      []byte{6},
 		Eip4844Enabled: true,
 		BatchSums:      make([]public_input.ExecDataChecksum, 3),
 	}
 
 	var (
-		data types.Bytes32
+		data types.FullBytes32
 		err  error
 	)
 	hsh := gchash.POSEIDON2_BLS12_377.New()

@@ -23,7 +23,7 @@ import (
 // not use all the witness variables in gates and assumes that the missing gates
 // are added.
 type testRangeCheckingCircuitIncomplete struct {
-	A [10]koalagnark.Element `gnark:",public"`
+	A [10]frontend.Variable `gnark:",public"`
 }
 
 func (r *testRangeCheckingCircuitIncomplete) Define(api frontend.API) error {
@@ -39,7 +39,7 @@ func (r *testRangeCheckingCircuitIncomplete) Define(api frontend.API) error {
 // so it triggers the external range-checker of the Wizard. This circuit uses
 // all the inputs in gates so there should exist a gate for each input.
 type testRangeCheckingCircuitComplete struct {
-	A [10]koalagnark.Element `gnark:",public"`
+	A [10]frontend.Variable `gnark:",public"`
 }
 
 func (r *testRangeCheckingCircuitComplete) Define(api frontend.API) error {
@@ -60,7 +60,7 @@ func (r *testRangeCheckingCircuitComplete) Define(api frontend.API) error {
 // not use all the internal variables in gates and automatic gate addition
 // should error.
 type testRangeCheckingCircuitIncompleteInternal struct {
-	A [10]koalagnark.Element
+	A [10]frontend.Variable
 }
 
 func (r *testRangeCheckingCircuitIncompleteInternal) Define(api frontend.API) error {

@@ -9,8 +9,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/config"
-	v2 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
+	v2 "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
 )
 

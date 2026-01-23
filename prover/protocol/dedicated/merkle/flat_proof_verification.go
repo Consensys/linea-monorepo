@@ -70,8 +70,10 @@ func CheckFlatMerkleProofs(comp *wizard.CompiledIOP, inputs FlatProofVerificatio
 			leftResult[j] = left[j].Result
 			rightResult[j] = right[j].Result
 		}
-		var (
-			node = poseidon2.HashOf(comp, [][blockSize]ifaces.Column{leftResult, rightResult})
+
+		node := poseidon2.HashOf(comp,
+			append(leftResult[:], rightResult[:]...),
+			fmt.Sprintf("FLAT_MERKLE_NODE_HASHING_%v", i),
 		)
 
 		prevNode = node.Result()

@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"slices"
 
-	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark-crypto/hash"
 	hint "github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
@@ -532,23 +531,6 @@ func CombineBytesIntoElements(api frontend.API, b [32]frontend.Variable) [2]fron
 		compress.ReadNum(api, b[:16], r),
 		compress.ReadNum(api, b[16:], r),
 	}
-}
-
-// Bls12381ScalarToBls12377Scalars interprets its input as a BLS12-381 scalar, with a modular reduction if necessary, returning two BLS12-377 scalars
-// r[1] is the lower 16 bytes and r[0] is the higher ones.
-// useful in circuit "assign" functions
-func Bls12381ScalarToBls12377Scalars(v interface{}) (r [2][16]byte, err error) {
-	var x fr381.Element
-	if _, err = x.SetInterface(v); err != nil {
-		return
-	}
-
-	b := x.Bytes()
-
-	copy(r[0][:], b[:fr381.Bytes/2])
-	copy(r[1][:], b[fr381.Bytes/2:])
-
-	return
 }
 
 // PartialSums returns s[0], s[0]+s[1], ..., s[0]+s[1]+...+s[len(s)-1]

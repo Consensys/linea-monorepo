@@ -1,4 +1,4 @@
-package hasher_factory
+package hasherfactory_koalabear
 
 import (
 	"errors"

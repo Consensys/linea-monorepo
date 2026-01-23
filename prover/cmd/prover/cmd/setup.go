@@ -18,8 +18,8 @@ import (
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
-	daconfig "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/config"
-	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v2"
+	daconfig "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
+	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/emulation"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
@@ -207,7 +207,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 	case circuits.ExecutionCircuitID, circuits.ExecutionLargeCircuitID:
 		limits := cfg.TracesLimits
 		if c == circuits.ExecutionLargeCircuitID {
-			limits = cfg.TracesLimitsLarge
+			limits.SetLargeMode()
 		}
 		extraFlags["cfg_checksum"] = limits.Checksum()
 		zkEvm := zkevm.FullZkEvm(&limits, cfg)

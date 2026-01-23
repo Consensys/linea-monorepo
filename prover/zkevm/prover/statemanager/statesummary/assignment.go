@@ -4,7 +4,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
@@ -196,7 +195,8 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 				}
 
 				for j := range common.NbLimbEthAddress {
-					ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
+					bb := common.LeftPadToFrBytes(accountAddressLimbs[j])
+					ss.account.address[j].PushBytes(bb)
 				}
 
 				ss.isInitialDeployment.PushBoolean(segID == 0)
@@ -211,13 +211,9 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 				ss.account.initial.pushAll(initialAccount)
 				ss.account.final.pushOverrideStorageRoot(finalAccount, newRoot)
 
-				initWsRootBlocks := hashToBlocks(initWsRoot)
-				for j := range poseidon2.BlockSize {
-					ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(initWsRootBlocks[j]))
+				for j := range initWsRoot {
+					ss.worldStateRoot[j].PushField(initWsRoot[j])
 				}
-
-				oldRootLimbs := hashToBlocks(oldRoot)
-				newRootLimbs := hashToBlocks(newRoot)
 
 				switch t := stoTrace.(type) {
 				case statemanager.ReadZeroTraceST:
@@ -233,24 +229,19 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 						addressBytes := make([]byte, 32)
 						copy(addressBytes[32-len(accountAddress):], accountAddress[:])
 						keysAndBlock := KeysAndBlock{
-							address:    types.AsBytes32(addressBytes[:]),
+							address:    types.AsFullBytes32(addressBytes[:]),
 							storageKey: t.Key,
 							block:      batchNumber,
 						}
 						arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
-
 						ss.storage.push(t.Key, types.FullBytes32{}, arithStorage)
-
 						keyH := hash(t.Key)
-						keyHashBytesLimbs := hashToBlocks(keyH)
-
-						ss.accumulatorStatement.PushReadZero(oldRootLimbs, keyHashBytesLimbs)
+						ss.accumulatorStatement.PushReadZero(oldRoot, keyH)
 					} else {
 						keyH := hash(t.Key)
-						keyHashBytesLimbs := hashToBlocks(keyH)
 
 						ss.storage.pushOnlyKey(t.Key)
-						ss.accumulatorStatement.PushReadZero(oldRootLimbs, keyHashBytesLimbs)
+						ss.accumulatorStatement.PushReadZero(oldRoot, keyH)
 					}
 				case statemanager.ReadNonZeroTraceST:
 					if isDeleteSegment {
@@ -262,64 +253,43 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 						copy(addressBytes[32-len(accountAddress):], accountAddress[:])
 
 						keysAndBlock := KeysAndBlock{
-							address:    types.AsBytes32(addressBytes[:]),
+							address:    types.AsFullBytes32(addressBytes[:]),
 							storageKey: t.Key,
 							block:      batchNumber,
 						}
+
 						arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
-
 						keyH := hash(t.Key)
-						keyHashBytesLimbs := hashToBlocks(keyH)
-
 						valueH := hash(t.Value)
-						valueHashBytesLimbs := hashToBlocks(valueH)
-
 						ss.storage.push(t.Key, t.Value, arithStorage)
-						ss.accumulatorStatement.PushReadNonZero(oldRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
+						ss.accumulatorStatement.PushReadNonZero(oldRoot, keyH, valueH)
 
 					} else {
 						keyH := hash(t.Key)
-						keyHashBytesLimbs := hashToBlocks(keyH)
-
 						valueH := hash(t.Value)
-						valueHashBytesLimbs := hashToBlocks(valueH)
-
 						ss.storage.push(t.Key, t.Value, t.Value)
-						ss.accumulatorStatement.PushReadNonZero(oldRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
+						ss.accumulatorStatement.PushReadNonZero(oldRoot, keyH, valueH)
 					}
 
 				case statemanager.InsertionTraceST:
 					keyH := hash(t.Key)
-					keyHashBytesLimbs := hashToBlocks(keyH)
-
 					valueH := hash(t.Val)
-					valueHashBytesLimbs := hashToBlocks(valueH)
-
 					ss.storage.pushOnlyNew(t.Key, t.Val)
-					ss.accumulatorStatement.PushInsert(oldRootLimbs, newRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
+					ss.accumulatorStatement.PushInsert(oldRoot, newRoot, keyH, valueH)
 
 				case statemanager.UpdateTraceST:
 					keyH := hash(t.Key)
-					keyHashBytesLimbs := hashToBlocks(keyH)
-
 					oldValueH := hash(t.OldValue)
-					oldValueHashBytesLimbs := hashToBlocks(oldValueH)
-
 					newValueH := hash(t.NewValue)
-					newValueHashBytesLimbs := hashToBlocks(newValueH)
-
 					ss.storage.push(t.Key, t.OldValue, t.NewValue)
-					ss.accumulatorStatement.PushUpdate(oldRootLimbs, newRootLimbs, keyHashBytesLimbs, oldValueHashBytesLimbs, newValueHashBytesLimbs)
+					ss.accumulatorStatement.PushUpdate(oldRoot, newRoot, keyH, oldValueH, newValueH)
 
 				case statemanager.DeletionTraceST:
 					keyH := hash(t.Key)
-					keyHashBytesLimbs := hashToBlocks(keyH)
-
 					delValueH := hash(t.DeletedValue)
-					delValueHashBytesLimbs := hashToBlocks(delValueH)
-
 					ss.storage.pushOnlyOld(t.Key, t.DeletedValue)
-					ss.accumulatorStatement.PushDelete(oldRootLimbs, newRootLimbs, keyHashBytesLimbs, delValueHashBytesLimbs)
+					ss.accumulatorStatement.PushDelete(oldRoot, newRoot, keyH, delValueH)
+
 				default:
 					panic("unknown trace type")
 				}
@@ -336,7 +306,8 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 		}
 
 		for j := range common.NbLimbEthAddress {
-			ss.account.address[j].PushBytes(common.LeftPadToFrBytes(accountAddressLimbs[j]))
+			bb := common.LeftPadToFrBytes(accountAddressLimbs[j])
+			ss.account.address[j].PushBytes(bb)
 		}
 
 		ss.isInitialDeployment.PushBoolean(segID == 0)
@@ -349,57 +320,38 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 		ss.account.initial.pushAll(initialAccount)
 		ss.account.final.pushAll(finalAccount)
 
-		finalWsRootBlocks := hashToBlocks(finalWsRoot)
-		for j := range poseidon2.BlockSize {
-			ss.worldStateRoot[j].PushBytes(common.LeftPadToFrBytes(finalWsRootBlocks[j]))
+		for j := range finalWsRoot {
+			ss.worldStateRoot[j].PushField(finalWsRoot[j])
 		}
 
 		ss.storage.pushAllZeroes()
 
-		initWsRootLimbs := hashToBlocks(initWsRoot)
-		finalWsRootLimbs := hashToBlocks(finalWsRoot)
-
 		switch t := seg.worldStateTrace.Underlying.(type) {
 		case statemanager.ReadZeroTraceWS:
 			keyH := hash(t.Key)
-			keyHashBytesLimbs := hashToBlocks(keyH)
+			ss.accumulatorStatement.PushReadZero(initWsRoot, keyH)
 
-			ss.accumulatorStatement.PushReadZero(initWsRootLimbs, keyHashBytesLimbs)
 		case statemanager.ReadNonZeroTraceWS:
 			keyH := hash(t.Key)
-			keyHashBytesLimbs := hashToBlocks(keyH)
-
 			valueH := hash(t.Value)
-			valueHashBytesLimbs := hashToBlocks(valueH)
+			ss.accumulatorStatement.PushReadNonZero(initWsRoot, keyH, valueH)
 
-			ss.accumulatorStatement.PushReadNonZero(initWsRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 		case statemanager.InsertionTraceWS:
 			keyH := hash(t.Key)
-			keyHashBytesLimbs := hashToBlocks(keyH)
-
 			valueH := hash(t.Val)
-			valueHashBytesLimbs := hashToBlocks(valueH)
+			ss.accumulatorStatement.PushInsert(initWsRoot, finalWsRoot, keyH, valueH)
 
-			ss.accumulatorStatement.PushInsert(initWsRootLimbs, finalWsRootLimbs, keyHashBytesLimbs, valueHashBytesLimbs)
 		case statemanager.UpdateTraceWS:
 			keyH := hash(t.Key)
-			keyHashBytesLimbs := hashToBlocks(keyH)
-
 			oldValueH := hash(t.OldValue)
-			oldValueHashBytesLimbs := hashToBlocks(oldValueH)
-
 			newValueH := hash(t.NewValue)
-			newValueHashBytesLimbs := hashToBlocks(newValueH)
+			ss.accumulatorStatement.PushUpdate(initWsRoot, finalWsRoot, keyH, oldValueH, newValueH)
 
-			ss.accumulatorStatement.PushUpdate(initWsRootLimbs, finalWsRootLimbs, keyHashBytesLimbs, oldValueHashBytesLimbs, newValueHashBytesLimbs)
 		case statemanager.DeletionTraceWS:
 			keyH := hash(t.Key)
-			keyHashBytesLimbs := hashToBlocks(keyH)
-
 			deletedValueH := hash(t.DeletedValue)
-			deletedValueHashBytesLimbs := hashToBlocks(deletedValueH)
+			ss.accumulatorStatement.PushDelete(initWsRoot, finalWsRoot, keyH, deletedValueH)
 
-			ss.accumulatorStatement.PushDelete(initWsRootLimbs, finalWsRootLimbs, keyHashBytesLimbs, deletedValueHashBytesLimbs)
 		default:
 			panic("unknown trace type")
 		}
@@ -496,12 +448,6 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 		ss.StateSummary.AccumulatorStatement.ComputeInitialAndFinalHValEqual[:],
 		ss.StateSummary.AccumulatorStatement.ComputeFinalHValIsZero[:]...,
 	))
-
-	//for i := range common.NbLimbU256 {
-	//	v := ss.StateSummary.Account.HashFinal[i].GetColAssignmentAt(run, 0)
-	//	print(v.Text(16), "")
-	//}
-	//println()
 }
 
 // getOldAndNewAccount traces a world-state trace and return the old and the
@@ -509,15 +455,15 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 func getOldAndNewAccount(trace any) (old, new types.Account) {
 	switch wst := trace.(type) {
 	case statemanager.ReadNonZeroTraceWS:
-		return wst.Value, wst.Value
+		return wst.Value.Account, wst.Value.Account
 	case statemanager.ReadZeroTraceWS:
 		return types.Account{}, types.Account{}
 	case statemanager.InsertionTraceWS:
-		return types.Account{}, wst.Val
+		return types.Account{}, wst.Val.Account
 	case statemanager.UpdateTraceWS:
-		return wst.OldValue, wst.NewValue
+		return wst.OldValue.Account, wst.NewValue.Account
 	case statemanager.DeletionTraceWS:
-		return wst.DeletedValue, types.Account{}
+		return wst.DeletedValue.Account, types.Account{}
 	default:
 		panic("unknown trace")
 	}
@@ -525,14 +471,14 @@ func getOldAndNewAccount(trace any) (old, new types.Account) {
 
 // getOldAndNewTopRoot returns the accumulator root transition for a shomei
 // trace.
-func getOldAndNewTopRoot(trace any) (old, new types.Bytes32) {
+func getOldAndNewTopRoot(trace any) (old, new types.KoalaOctuplet) {
 
-	getTopRoot := func(subRoot types.Bytes32, nextFreeNode int64) types.Bytes32 {
+	getTopRoot := func(subRoot types.KoalaOctuplet, nextFreeNode int64) types.KoalaOctuplet {
 		hasher := poseidon2kb.NewMDHasher()
 		types.WriteInt64On64Bytes(hasher, nextFreeNode)
 		subRoot.WriteTo(hasher)
 		b32 := hasher.Sum(nil)
-		return types.AsBytes32(b32)
+		return types.MustBytesToKoalaOctuplet(b32)
 	}
 
 	switch wst := trace.(type) {
@@ -589,20 +535,13 @@ func getOldAndNewTopRoot(trace any) (old, new types.Bytes32) {
 	}
 }
 
-func hash(x io.WriterTo) types.Bytes32 {
+func hash(x io.WriterTo) types.KoalaOctuplet {
 	hasher := poseidon2kb.NewMDHasher()
-	x.WriteTo(hasher)
-	return types.AsBytes32(hasher.Sum(nil))
-}
-
-// hashToBlocks converts a Bytes32 hash to [poseidon2.BlockSize][]byte using ParsToBlocks
-func hashToBlocks(h types.Bytes32) [][]byte {
-	blocks := poseidon2.ParsToBlocks(h)
-	result := make([][]byte, poseidon2.BlockSize)
-	for i := range poseidon2.BlockSize {
-		result[i] = blocks[i]
+	if _, err := x.WriteTo(hasher); err != nil {
+		panic(err)
 	}
-	return result
+	res := types.MustBytesToKoalaOctuplet(hasher.Sum(nil))
+	return res
 }
 
 // actualUnskippedLength computes the actual number of traces that form the segments

@@ -584,9 +584,51 @@ func mulExtHintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error 
 	return emulated.UnwrapHint(inputs, output, mulExtHintNative)
 }
 
-func (a *API) mulExtHint() solver.Hint {
-	if a.IsNative() {
-		return mulExtHintNative
+// ConstantValueOf returns true if the variable represents a constant value.
+func (api API) ConstantValueOfExt(e Ext) (*fext.Element, bool) {
+
+	var (
+		b0a0, b0a0IsConst = api.ConstantValueOfElement(e.B0.A0)
+		b1a0, b1a0IsConst = api.ConstantValueOfElement(e.B1.A0)
+		b0a1, b0a1IsConst = api.ConstantValueOfElement(e.B0.A1)
+		b1a1, b1a1IsConst = api.ConstantValueOfElement(e.B1.A1)
+	)
+
+	if !b0a0IsConst || !b1a0IsConst || !b0a1IsConst || !b1a1IsConst {
+		return nil, false
 	}
-	return mulExtHintEmulated
+
+	return &fext.Element{
+		B0: extensions.E2{
+			A0: *b0a0,
+			A1: *b0a1,
+		},
+		B1: extensions.E2{
+			A0: *b1a0,
+			A1: *b1a1,
+		},
+	}, true
+}
+
+// BaseValueOfElement returns true if the Ext element actually represents a
+// a base field element and returns it as an [Element]. Namely, the function
+// checks if the non-constant terms of the extension element are zero constants
+// and returns the constant term if so.
+func (api API) BaseValueOfElement(e Ext) (*Element, bool) {
+
+	var (
+		b1a0, b1a0IsConst = api.ConstantValueOfElement(e.B1.A0)
+		b0a1, b0a1IsConst = api.ConstantValueOfElement(e.B0.A1)
+		b1a1, b1a1IsConst = api.ConstantValueOfElement(e.B1.A1)
+	)
+
+	if !b1a0IsConst || !b0a1IsConst || !b1a1IsConst {
+		return nil, false
+	}
+
+	if !b1a0.IsZero() || !b0a1.IsZero() || !b1a1.IsZero() {
+		return nil, false
+	}
+
+	return &e.B0.A0, true
 }

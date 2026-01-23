@@ -3,7 +3,7 @@ package recursion
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	hasherfactory "github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -91,12 +91,12 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	w := r.WizardVerifier
 
 	if !r.withoutGkr {
-		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(api)
+		w.HasherFactory = hasherfactory.NewKoalaBearHasherFactory(api)
 		w.KoalaFS = fiatshamir.NewGnarkFSKoalabear(api)
 	}
 
 	if r.withExternalHasher {
-		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(api)
+		w.HasherFactory = hasherfactory.NewKoalaBearHasherFactory(api)
 	}
 
 	w.Verify(api)

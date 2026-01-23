@@ -2,6 +2,7 @@ package ecdsa
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -99,7 +100,7 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 		nbInstances       = src.nbActualInstances(run)
 		currRow           = int(0)
 		sourceCsEcRecover = run.GetColumn(src.CsEcrecover.GetColID())
-		sourceID          = run.GetColumn(src.ID.GetColID())
+		sourceID          = expr_handle.GetExprHandleAssignment(run, src.ID)
 		sourceSuccessBit  = run.GetColumn(src.SuccessBit.GetColID())
 		sourceIndex       = run.GetColumn(src.Index.GetColID())
 		sourceIsData      = run.GetColumn(src.IsData.GetColID())

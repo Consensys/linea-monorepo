@@ -17,6 +17,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const exprHandlePragma = "expr_handle"
+
 type ExprHandleProverAction struct {
 	Expr       *symbolic.Expression
 	HandleName ifaces.ColID
@@ -96,22 +98,63 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.HandleName, resWitness)
 }
 
-// Create a handle from an expression.
+// Create a handle from an expression. Auto-registers the corresponding prover
+// action.
 func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, handleName string) ifaces.Column {
+	res, proverAction := makeExprHandleCol(comp, expr, handleName)
+	maxRound := proverAction.(*ExprHandleProverAction).MaxRound
+	comp.RegisterProverAction(maxRound, proverAction)
+	return res
+}
+
+// ExprHandleWithoutProverAction creates a handle from a global constraint but
+// does not register the assignment prover action. The prover action is instead
+// written in the pragmas of the column.
+func ExprHandleWithoutProverAction(comp *wizard.CompiledIOP, expr *symbolic.Expression, handleName string) ifaces.Column {
+	res, _ := makeExprHandleCol(comp, expr, handleName)
+	return res
+}
+
+// GetExprHandleAssignment returns the assignment of a column assigned via
+// ExprHandle. If the column has not been assigned it will attempt using the
+// expr_handle pragma.
+func GetExprHandleAssignment(run *wizard.ProverRuntime, colI ifaces.Column) sv.SmartVector {
+
+	if r, ok := run.Columns.TryGet(colI.GetColID()); ok {
+		return r
+	}
+
+	// This is asserted to succeed. The column must also have the pragma
+	// attached.
+	col := colI.(column.Natural)
+
+	if proverAction, ok := col.GetPragma(exprHandlePragma); ok {
+		proverAction.(*ExprHandleProverAction).Run(run)
+		return col.GetColAssignment(run)
+	}
+
+	utils.Panic("failed to get assignment for %v", col.String())
+	return nil
+}
+
+func makeExprHandleCol(comp *wizard.CompiledIOP, expr *symbolic.Expression, handleName string) (ifaces.Column, wizard.ProverAction) {
 
 	var (
 		boarded  = expr.Board()
 		maxRound = wizardutils.LastRoundToEval(expr)
 		length   = column.ExprIsOnSameLengthHandles(&boarded)
+		res      = comp.InsertCommit(maxRound, ifaces.ColID(handleName), length, expr.IsBase).(column.Natural)
 	)
 
-	res := comp.InsertCommit(maxRound, ifaces.ColID(handleName), length, expr.IsBase)
 	comp.InsertGlobal(maxRound, ifaces.QueryID(handleName), expr.Sub(ifaces.ColumnAsVariable(res)))
 
-	comp.RegisterProverAction(maxRound, &ExprHandleProverAction{
+	proverAction := &ExprHandleProverAction{
 		Expr:       expr,
 		HandleName: ifaces.ColID(handleName),
 		MaxRound:   maxRound,
-	})
-	return res
+	}
+
+	res.SetPragma(exprHandlePragma, proverAction)
+
+	return res, proverAction
 }

@@ -2,6 +2,7 @@ package vortex
 
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
@@ -543,7 +544,7 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 			// initialize the proof that we are parsing
 			proof := smt_koalabear.Proof{
 				Path:     entryList[j],
-				Siblings: make([]field.Octuplet, depth),
+				Siblings: make([]types.KoalaOctuplet, depth),
 			}
 
 			// parse the siblings accounting for the fact that we

@@ -28,7 +28,7 @@ type FunctionalInputExtractor struct {
 
 	// InitialStateRootHash and FinalStateRootHash are resp the initial and
 	// root hash of the state for the
-	InitialStateRootHash, FinalStateRootHash                  [common.NbLimbU128]query.LocalOpening
+	InitialStateRootHash, FinalStateRootHash                  [common.NbElemPerHash]query.LocalOpening
 	InitialBlockNumber, FinalBlockNumber                      [common.NbLimbU48]query.LocalOpening
 	InitialBlockTimestamp, FinalBlockTimestamp                [common.NbLimbU128]query.LocalOpening
 	FirstRollingHashUpdate, LastRollingHashUpdate             [common.NbLimbU256]query.LocalOpening
@@ -54,14 +54,15 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 		}
 	}
 
-	assignLO(fie.DataNbBytes)
-	assignLO(fie.NBytesChainID)
+	// assignLO(fie.DataNbBytes)
+	// assignLO(fie.NBytesChainID)
 	assignLOs(fie.L2MessageServiceAddr[:])
 	assignLOs(fie.CoinBase[:])
 	assignLOs(fie.BaseFee[:])
 	assignLOs(fie.ChainID[:])
+	assignLO(fie.NBytesChainID)
 	assignLOs(fie.L2MessageHash[:])
-	assignLOs(fie.DataChecksum[:])
+	// assignLOs(fie.DataChecksum[:])
 	assignLOs(fie.FirstRollingHashUpdate[:])
 	assignLOs(fie.LastRollingHashUpdate[:])
 	assignLOs(fie.InitialStateRootHash[:])
