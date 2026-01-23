@@ -1,14 +1,13 @@
 module github.com/consensys/linea-monorepo/prover
 
-go 1.24.6
+go 1.24.9
 
 toolchain go1.24.10
 
 require (
-	github.com/bits-and-blooms/bitset v1.24.0
-	github.com/consensys/compress v0.2.5
-	github.com/consensys/gnark v0.14.1-0.20251210113322-60b2a82ddfdd
-	github.com/consensys/gnark-crypto v0.19.3-0.20251218031800-affd349cb6ea
+	github.com/consensys/compress v0.3.0
+	github.com/consensys/gnark v0.14.1-0.20260123101959-61a90e108d89
+	github.com/consensys/gnark-crypto v0.19.3-0.20260105204507-a918ce1daf68
 	github.com/consensys/go-corset v1.2.0-rc3
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
@@ -36,6 +35,7 @@ require (
 require (
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/crate-crypto/go-ipa v0.0.0-20240223125850-b1e8a79f509c // indirect
@@ -50,7 +50,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gofrs/flock v0.12.0 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
-	github.com/google/pprof v0.0.0-20250820193118-f64d9cf942d6 // indirect
+	github.com/google/pprof v0.0.0-20251213031049-b05bdaca462f // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.3.1 // indirect
@@ -92,7 +92,7 @@ require (
 	github.com/ethereum/go-ethereum v1.14.13
 	github.com/pkg/profile v1.7.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
+	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93
 	golang.org/x/sys v0.39.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
