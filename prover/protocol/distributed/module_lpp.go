@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	hasherfactory "github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -395,25 +396,25 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 }
 
 func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	// if a.Horner != nil {
+	if a.Horner != nil {
 
-	// 	var (
-	// 		hornerParams  = run.GetHornerParams(a.Horner.ID)
-	// 		n0HashAlleged, n1HashAlleged [8]koalagnark.Var
-	// 		n0Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 0)
-	// 		n1Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 1)
-	// 	)
+		var (
+			hornerParams                 = run.GetHornerParams(a.Horner.ID)
+			n0HashAlleged, n1HashAlleged poseidon2_koalabear.Octuplet
+			n0Hash                       = hashNxsGnark(run.GetHasherFactory(), hornerParams, 0)
+			n1Hash                       = hashNxsGnark(run.GetHasherFactory(), hornerParams, 1)
+		)
 
-	// 	for i := 1; i < 8; i++ {
-	// 		n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(run, i)
-	// 		n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(run, i)
-	// 	}
+		for i := 0; i < 8; i++ {
+			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(run, 0)
+			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(run, 0)
+		}
 
-	// 	api.AssertIsEqual(n0Hash, n0HashAlleged)
-	// 	api.AssertIsEqual(n1Hash, n1HashAlleged)
-	// }
+		api.AssertIsEqual(n0Hash, n0HashAlleged)
+		api.AssertIsEqual(n1Hash, n1HashAlleged)
+	}
 
-	// a.checkGnarkMultiSetHash(api, run)
+	a.checkGnarkMultiSetHash(api, run)
 }
 
 func (a *CheckNxHash) Skip() {
@@ -476,25 +477,24 @@ func hashNxs(params query.HornerParams, x int) field.Octuplet {
 }
 
 // hashNxsGnark is as [hashNxs] but in a gnark circuit
-// func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x int) frontend.Variable {
+func hashNxsGnark(factory hasherfactory.HasherFactory, params query.GnarkHornerParams, x int) poseidon2_koalabear.Octuplet {
+	hsh := factory.NewHasher()
 
-// 	hsh := factory.NewHasher()
+	for _, part := range params.Parts {
 
-// 	for _, part := range params.Parts {
+		var nx frontend.Variable
 
-// 		var nx frontend.Variable
+		if x == 0 {
+			nx = part.N0
+		} else {
+			nx = part.N1
+		}
 
-// 		if x == 0 {
-// 			nx = part.N0
-// 		} else {
-// 			nx = part.N1
-// 		}
+		hsh.Write(nx)
+	}
 
-// 		hsh.Write(nx)
-// 	}
-
-// 	return hsh.Sum()
-// }
+	return hsh.Sum()
+}
 
 func (modLPP *ModuleLPP) declarePublicInput() {
 	var (
@@ -716,21 +716,31 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
 	var (
 		targetMSetGeneral      = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
-		lppCommitments         = run.GetPublicInput(api, lppMerkleRootPublicInput+"_0")
+		lppCommitments         koalagnark.Octuplet
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
 		hasher                 = run.GetHasherFactory().NewHasher()
-		concreteHasher         = multisethashing.AsConcreteHasher(hasher)
 		multiSetGeneral        = multisethashing.EmptyMSetHashGnark(hasher)
 		defInp                 = modLPP.DefinitionInput
-		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
+		moduleIndex            = frontend.Variable(defInp.ModuleIndex)
 		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
-		isFirst                = api.IsZero(segmentIndex)
-		isLast                 = api.IsZero(api.Sub(numSegmentOfCurrModule, segmentIndex, 1))
+		isFirst                = api.IsZero(segmentIndex.Native())
+		isLast                 = api.IsZero(api.Sub(numSegmentOfCurrModule.Native(), segmentIndex.Native(), 1))
 	)
 
-	multiSetGeneral.Remove(api, moduleIndex, segmentIndex, lppCommitments)
+	// Build lppCommitments octuplet from individual public inputs
+	for i := range lppCommitments {
+		wrapped := run.GetPublicInput(api, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
+		lppCommitments[i] = wrapped
+	}
+
+	// Extract frontend.Variables from the octuplet for multiset operations
+	lppCommitmentsVars := []frontend.Variable{moduleIndex, segmentIndex.Native()}
+	for i := range lppCommitments {
+		lppCommitmentsVars = append(lppCommitmentsVars, lppCommitments[i].V)
+	}
+	multiSetGeneral.Remove(api, lppCommitmentsVars...)
 
 	if hasHorner {
 
@@ -742,10 +752,13 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 			n1HashS = append(n1HashS, n1Hash)
 		}
 
-		n1HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(api, concreteHasher, append([]frontend.Variable{moduleIndex, segmentIndex, typeOfProof}, n1HashS...)...)
+		// Hash the singleton directly using the hasher
+		hasher.Reset()
+		hasher.Write(append([]frontend.Variable{moduleIndex, segmentIndex, typeOfProof}, n1HashS...)...)
+		n1HashSingletonMsetHash := hasher.Sum()
 		for i := 0; i < multisethashing.MSetHashSize; i++ {
-			n1HashSingletonMsetHash.Inner[i] = api.Mul(n1HashSingletonMsetHash.Inner[i], api.Sub(1, isLast))
-			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], n1HashSingletonMsetHash.Inner[i])
+			n1HashSingletonMsetHash[i] = api.Mul(n1HashSingletonMsetHash[i], api.Sub(1, isLast))
+			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], n1HashSingletonMsetHash[i])
 		}
 
 		// If the segment is not the first one, we can remove the "n0 hash" from the
@@ -756,10 +769,13 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 			n0HashS = append(n0HashS, n0Hash)
 		}
 
-		n0HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(api, concreteHasher, append([]frontend.Variable{moduleIndex, api.Sub(segmentIndex, 1), typeOfProof}, n0HashS...)...)
+		// Hash the singleton directly using the hasher
+		hasher.Reset()
+		hasher.Write(append([]frontend.Variable{moduleIndex, api.Sub(segmentIndex, 1), typeOfProof}, n0HashS...)...)
+		n0HashSingletonMsetHash := hasher.Sum()
 		for i := 0; i < multisethashing.MSetHashSize; i++ {
-			n0HashSingletonMsetHash.Inner[i] = api.Mul(n0HashSingletonMsetHash.Inner[i], api.Sub(1, isFirst))
-			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], n0HashSingletonMsetHash.Inner[i])
+			n0HashSingletonMsetHash[i] = api.Mul(n0HashSingletonMsetHash[i], api.Sub(1, isFirst))
+			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], n0HashSingletonMsetHash[i])
 		}
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -664,7 +665,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 
 	var (
 		sendGlobalHash = column.GetColAssignmentGnarkOctuplet(a.SentValuesGlobalHash, run)
-		hsh            = multisethashing.AsConcreteHasher(run.GetHasherFactory().NewHasher())
+		hsh            = run.GetHasherFactory().NewHasher()
 	)
 
 	for i := range a.SentValuesGlobal {
@@ -979,12 +980,11 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	var (
 		targetMSetGeneral          = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		targetMSetSharedRandomness = GetPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, multisethashing.MSetHashSize)
-		lppCommitments             = run.GetPublicInput(api, lppMerkleRootPublicInput+"_0")
+		lppCommitments             koalagnark.Octuplet
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
 		hasSentOrReceive           = len(modGL.ReceivedValuesGlobalMap) > 0
 		hasher                     = run.GetHasherFactory().NewHasher()
-		concreteHasher             = multisethashing.AsConcreteHasher(hasher)
 		multiSetGeneral            = multisethashing.EmptyMSetHashGnark(hasher)
 		multiSetSharedRandomness   = multisethashing.EmptyMSetHashGnark(hasher)
 		defInp                     = modGL.DefinitionInput
@@ -994,7 +994,18 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		isLast                     = modGL.IsLast.GetColAssignmentGnarkAt(run, 0)
 	)
 
-	multiSetSharedRandomness.Insert(api, moduleIndex, segmentIndex, lppCommitments)
+	// Build lppCommitments octuplet from individual public inputs
+	for i := range lppCommitments {
+		wrapped := run.GetPublicInput(api, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
+		lppCommitments[i] = koalagnark.NewElement(wrapped.Native())
+	}
+
+	// Extract frontend.Variables from the octuplet for multiset operations
+	lppCommitmentsVars := []frontend.Variable{moduleIndex, segmentIndex}
+	for i := range lppCommitments {
+		lppCommitmentsVars = append(lppCommitmentsVars, lppCommitments[i].V)
+	}
+	multiSetSharedRandomness.Insert(api, lppCommitmentsVars...)
 	multiSetGeneral.Add(api, multiSetSharedRandomness)
 
 	api.AssertIsBoolean(isFirst)
@@ -1008,21 +1019,32 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
 	if hasSentOrReceive {
-		globalSentHash := modGL.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		mSetOfSentGlobal := multisethashing.MsetOfSingletonGnark(api, concreteHasher, moduleIndex, segmentIndex, typeOfProof, globalSentHash)
-		for i := range mSetOfSentGlobal.Inner {
-			mSetOfSentGlobal.Inner[i] = api.Mul(mSetOfSentGlobal.Inner[i], api.Sub(1, isLast))
-			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], mSetOfSentGlobal.Inner[i])
+		globalSentHash := column.GetColAssignmentGnarkOctuplet(modGL.SentValuesGlobalHash, run)
+		// Hash the singleton directly using the hasher
+		hasher.Reset()
+		hasher.Write(moduleIndex, segmentIndex, typeOfProof)
+		for i := range globalSentHash {
+			hasher.Write(globalSentHash[i].Native())
+		}
+		mSetOfSentGlobal := hasher.Sum()
+		for i := range mSetOfSentGlobal {
+			mSetOfSentGlobal[i] = api.Mul(mSetOfSentGlobal[i], api.Sub(1, isLast))
+			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], mSetOfSentGlobal[i])
 		}
 
 		// If the segment is not the first one of its module, we add the received
 		// value in the multiset. If the segment index is zero, the singleton hash
 		// will be zero-ed out by the "1 - isFirst" term
-		globalRcvdHash := modGL.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		mSetOfReceivedGlobal := multisethashing.MsetOfSingletonGnark(api, concreteHasher, moduleIndex, api.Sub(segmentIndex, 1), typeOfProof, globalRcvdHash)
-		for i := range mSetOfReceivedGlobal.Inner {
-			mSetOfReceivedGlobal.Inner[i] = api.Mul(mSetOfReceivedGlobal.Inner[i], api.Sub(1, isFirst))
-			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], mSetOfReceivedGlobal.Inner[i])
+		globalRcvdHash := column.GetColAssignmentGnarkOctuplet(modGL.ReceivedValuesGlobalHash, run)
+		hasher.Reset()
+		hasher.Write(moduleIndex, api.Sub(segmentIndex, 1), typeOfProof)
+		for i := range globalRcvdHash {
+			hasher.Write(globalRcvdHash[i].Native())
+		}
+		mSetOfReceivedGlobal := hasher.Sum()
+		for i := range mSetOfReceivedGlobal {
+			mSetOfReceivedGlobal[i] = api.Mul(mSetOfReceivedGlobal[i], api.Sub(1, isFirst))
+			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], mSetOfReceivedGlobal[i])
 		}
 	}
 

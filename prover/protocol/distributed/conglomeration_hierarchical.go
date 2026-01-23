@@ -649,7 +649,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 	var (
 		collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{}
 		topPIs       = c.collectAllPublicInputsGnark(api, run)
-		hasher       = multisethashing.AsConcreteHasher(run.GetHasherFactory().NewHasher())
+		hasher       = run.GetHasherFactory().NewHasher()
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
