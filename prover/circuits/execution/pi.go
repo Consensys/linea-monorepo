@@ -162,6 +162,8 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API) frontend.Variable {
 		initialRollingHash[1],
 		spi.FirstRollingHashUpdateNumber,
 		spi.ChainID,
+		spi.BaseFee,
+		spi.CoinBase,
 		spi.L2MessageServiceAddr,
 	)
 
