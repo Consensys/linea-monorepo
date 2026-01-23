@@ -649,7 +649,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 	var (
 		collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{}
 		topPIs       = c.collectAllPublicInputsGnark(api, run)
-		hasher       = hasher_factory.AsConcreteHasher(run.GetHasherFactory().NewHasher())
+		hasher       = multisethashing.AsConcreteHasher(run.GetHasherFactory().NewHasher())
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
@@ -692,8 +692,8 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 
 	// This agglomerates the multiset hashes
 	var (
-		generalSum = multisethashing.EmptyMSetHashGnark(&hasher)
-		sharedSum  = multisethashing.EmptyMSetHashGnark(&hasher)
+		generalSum = multisethashing.EmptyMSetHashGnark(hasher)
+		sharedSum  = multisethashing.EmptyMSetHashGnark(hasher)
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {

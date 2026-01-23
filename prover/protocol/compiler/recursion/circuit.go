@@ -98,11 +98,6 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	koalaAPI := koalagnark.NewAPI(api)
 	w := r.WizardVerifier
 
-	// Setup HasherFactory if needed (for GKR or external hasher)
-	if r.withExternalHasher {
-		w.HasherFactory = hasher_factory.NewKoalaBearHasherFactory(api)
-	}
-
 	// Initialize Fiat-Shamir with external hasher if enabled
 	// This must happen BEFORE calling Verify() which would otherwise overwrite it
 	if r.withExternalHasher {

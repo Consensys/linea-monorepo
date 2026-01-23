@@ -4,7 +4,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasher_factory"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -29,7 +29,7 @@ func NewGnarkFSKoalabear(api frontend.API) GnarkFS {
 
 // NewGnarkFSKoalabearWithFactory creates a Fiat-Shamir instance using the provided
 // HasherFactory. This enables external hasher optimization when configured.
-func NewGnarkFSKoalabearWithFactory(api frontend.API, factory hasher_factory.HasherFactory) GnarkFS {
+func NewGnarkFSKoalabearWithFactory(api frontend.API, factory hasherfactory_koalabear.HasherFactory) GnarkFS {
 	hasher := factory.NewHasher()
 	return fiatshamir_koalabear.NewGnarkFSWVWithHasher(api, hasher)
 }

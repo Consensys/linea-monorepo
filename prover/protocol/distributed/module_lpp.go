@@ -23,7 +23,6 @@ import (
 // ModuleLPP is a compilation structure holding the central informations
 // of the LPP part of a module.
 type ModuleLPP struct {
-
 	// ModuleTranslator is the translator for the GL part of the module
 	// it also has the ownership of the [wizard.Compiled] IOP built for
 	// this module.
@@ -92,7 +91,6 @@ type LppWitnessAssignment struct {
 // The function works by creating a define function that will call [NewModuleLPP]
 // / and then it calls [wizard.Compile] without passing compilers.
 func BuildModuleLPP(moduleInput FilteredModuleInputs) *ModuleLPP {
-
 	var (
 		moduleLPP  *ModuleLPP
 		defineFunc = func(b *wizard.Builder) {
@@ -111,7 +109,6 @@ func BuildModuleLPP(moduleInput FilteredModuleInputs) *ModuleLPP {
 // declarations to build the LPP part of the module and returns the constructed
 // module.
 func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *ModuleLPP {
-
 	initialFiatShamirState := [8]ifaces.Column{}
 	for i := 0; i < 8; i++ {
 		initialFiatShamirState[i] = builder.InsertProof(0, ifaces.ColIDf("INITIAL_FIATSHAMIR_STATE_%d", i), 1, true)
@@ -227,7 +224,6 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP)
 }
 
 func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
-
 	var (
 		witness         = run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
 		m               = a.ModuleLPP
@@ -286,13 +282,11 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 // addCoinFromExpression scans the metadata of the expression looking
 // for coins and adds them to the [ModuleLPP] as [coin.FieldFromSeed].
 func (m *ModuleLPP) addCoinFromExpression(exprs ...*symbolic.Expression) {
-
 	for _, expr := range exprs {
 		board := expr.Board()
 		metadata := board.ListVariableMetadata()
 
 		for i := range metadata {
-
 			switch meta := metadata[i].(type) {
 
 			case coin.Info:
@@ -310,7 +304,6 @@ func (m *ModuleLPP) addCoinFromExpression(exprs ...*symbolic.Expression) {
 }
 
 func (m *ModuleLPP) addCoinFromAccessor(acce ifaces.Accessor) {
-
 	switch a := acce.(type) {
 
 	case *accessors.FromExprAccessor:
@@ -326,7 +319,6 @@ func (m *ModuleLPP) addCoinFromAccessor(acce ifaces.Accessor) {
 }
 
 func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
-
 	moduleWitness := run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
 	run.State.Del(moduleWitnessKey)
 
@@ -362,7 +354,6 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 }
 
 func (m ModuleLPP) getHornerParams(run *wizard.ProverRuntime, n0Values []int) query.HornerParams {
-
 	hornerParams := query.HornerParams{}
 	for i := range n0Values {
 		hornerParams.Parts = append(hornerParams.Parts, query.HornerParamsPart{
@@ -375,7 +366,6 @@ func (m ModuleLPP) getHornerParams(run *wizard.ProverRuntime, n0Values []int) qu
 }
 
 func (a *CheckNxHash) Run(run wizard.Runtime) error {
-
 	if a.Horner != nil {
 
 		var (
@@ -405,7 +395,6 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 }
 
 func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
 	// if a.Horner != nil {
 
 	// 	var (
@@ -467,7 +456,6 @@ func (a *SetInitialFSHash) IsSkipped() bool {
 // hashNxs scans params and hash either the N0s or the N1s value all together
 // (pass x=0, to compute the hash of the N0s and x=1 for the N1s).
 func hashNxs(params query.HornerParams, x int) field.Octuplet {
-
 	nxs := make([]field.Element, len(params.Parts))
 
 	for _, part := range params.Parts {
@@ -509,7 +497,6 @@ func hashNxs(params query.HornerParams, x int) field.Octuplet {
 // }
 
 func (modLPP *ModuleLPP) declarePublicInput() {
-
 	var (
 		nbModules = len(modLPP.DefinitionInput.Disc.Modules)
 		// segmentCountGl is an array of zero.
@@ -597,7 +584,6 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 }
 
 func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *ModuleWitnessLPP) {
-
 	// This assigns the segment module index proof column
 	run.AssignColumn(
 		modLPP.SegmentModuleIndex.GetColID(),
@@ -617,7 +603,6 @@ func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *M
 // assignLPPCommitmentMSetGL assigns the LPP commitment MSet. It is meant to be
 // run as part of a prover action.
 func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
-
 	var lppCommitments field.Octuplet
 	for i := range lppCommitments {
 		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
@@ -671,7 +656,6 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 // checkLPPCommitmentMSetGL checks that the LPP commitment MSet is correctly
 // assigned. It is meant to be run as part of a verifier action.
 func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
-
 	var (
 		targetMSet             = GetPublicInputList(run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		lppCommitments         = field.Octuplet{}
@@ -730,7 +714,6 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 // checkGnarkMultiSetHash checks that the commitment MSet and the randomness MSet
 // are correctly set. It is meant to be run as part of a verifier action..
 func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
-
 	var (
 		targetMSetGeneral      = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		lppCommitments         = run.GetPublicInput(api, lppMerkleRootPublicInput+"_0")
@@ -738,7 +721,8 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
 		hasher                 = run.GetHasherFactory().NewHasher()
-		multiSetGeneral        = multisethashing.EmptyMSetHashGnark(&hasher)
+		concreteHasher         = multisethashing.AsConcreteHasher(hasher)
+		multiSetGeneral        = multisethashing.EmptyMSetHashGnark(hasher)
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
 		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
@@ -758,7 +742,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 			n1HashS = append(n1HashS, n1Hash)
 		}
 
-		n1HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(api, &hasher, append([]frontend.Variable{moduleIndex, segmentIndex, typeOfProof}, n1HashS...)...)
+		n1HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(api, concreteHasher, append([]frontend.Variable{moduleIndex, segmentIndex, typeOfProof}, n1HashS...)...)
 		for i := 0; i < multisethashing.MSetHashSize; i++ {
 			n1HashSingletonMsetHash.Inner[i] = api.Mul(n1HashSingletonMsetHash.Inner[i], api.Sub(1, isLast))
 			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], n1HashSingletonMsetHash.Inner[i])
@@ -772,7 +756,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 			n0HashS = append(n0HashS, n0Hash)
 		}
 
-		n0HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(api, &hasher, append([]frontend.Variable{moduleIndex, api.Sub(segmentIndex, 1), typeOfProof}, n0HashS...)...)
+		n0HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(api, concreteHasher, append([]frontend.Variable{moduleIndex, api.Sub(segmentIndex, 1), typeOfProof}, n0HashS...)...)
 		for i := 0; i < multisethashing.MSetHashSize; i++ {
 			n0HashSingletonMsetHash.Inner[i] = api.Mul(n0HashSingletonMsetHash.Inner[i], api.Sub(1, isFirst))
 			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], n0HashSingletonMsetHash.Inner[i])

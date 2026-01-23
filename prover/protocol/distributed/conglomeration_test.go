@@ -30,7 +30,7 @@ func TestConglomerationBasic(t *testing.T) {
 
 		// Custom compilation params for this test
 		testCompilationParams = distributed.CompilationParams{
-			FixedNbRowPlonkCircuit:       1 << 27,
+			FixedNbRowPlonkCircuit:       1 << 24,
 			FixedNbRowExternalHasher:     1 << 18, // Increased from 1<<22 to handle hash claims
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 18,
@@ -40,7 +40,7 @@ func TestConglomerationBasic(t *testing.T) {
 		}
 
 		testCompilationParamsConglo = distributed.CompilationParams{
-			FixedNbRowPlonkCircuit:       1 << 27,
+			FixedNbRowPlonkCircuit:       1 << 24,
 			FixedNbRowExternalHasher:     1 << 18, // Increased from 1<<22 to handle hash claims
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 21,
