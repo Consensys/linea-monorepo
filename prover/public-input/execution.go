@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/gnark/std/compress"
 	ghash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -165,11 +164,9 @@ func (pi *Execution) Sum() []byte {
 	return hsh.Sum(nil)
 }
 
-func (pi *Execution) SumAsField() field.Element {
-
+func (pi *Execution) SumAsField() fr377.Element {
 	sumBytes := pi.Sum()
-	sum := new(field.Element).SetBytes(sumBytes)
-
+	sum := new(fr377.Element).SetBytes(sumBytes)
 	return *sum
 }
 
