@@ -25,7 +25,7 @@ This configuration verifies the LineaRollup V7 upgrade deployed on Sepolia.
 name: LineaRollup-Proxy
 address: 0x2A5CDCfc38856e2590E9Bd32F54Fa348e5De5f48
 chain: ethereum-sepolia
-artifact: ../../../../deployments/bytecode/2026-01-14/LineaRollup.json
+artifact: ../../../../../deployments/bytecode/2026-01-14/LineaRollup.json
 isProxy: true
 ozVersion: v4
 schema: ../schemas/linea-rollup.json
@@ -63,7 +63,7 @@ The following checks verify the state after `reinitializeLineaRollupV7()` execut
 name: LineaRollup-Implementation
 address: 0xCaAa421FfCF701bEFd676a2F5d0A161CCFA5a07E
 chain: ethereum-sepolia
-artifact: ../../../../deployments/bytecode/2026-01-14/LineaRollup.json
+artifact: ../../../../../deployments/bytecode/2026-01-14/LineaRollup.json
 isProxy: false
 ```
 
@@ -80,7 +80,7 @@ export ETHEREUM_SEPOLIA_RPC_URL="https://sepolia.infura.io/v3/YOUR_KEY"
 # Run verification using this markdown file directly
 cd contracts
 npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts \
-  -c scripts/operational/contract-integrity-verifier/configs/sepolia-linea-rollup-v7.config.md \
+  -c scripts/operational/contract-integrity-verifier/examples/configs/sepolia-linea-rollup-v7.config.md \
   -v
 ```
 

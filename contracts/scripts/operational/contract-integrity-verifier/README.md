@@ -1,16 +1,56 @@
 # Contract Integrity Verifier
 
-A TypeScript tool to verify deployed smart contract integrity (bytecode, ABI, and state) against local artifact files. Supports multiple chains via configuration.
+A TypeScript tool to verify deployed smart contract integrity against local artifacts. Validates bytecode, ABI, and on-chain state.
 
 Inspired by [diffyscan](https://github.com/lidofinance/diffyscan).
 
-## Usage
+## Quick Start
 
 ```bash
-npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts --config <config.json>
+# From contracts/ directory
+cd contracts
+
+# Set RPC URL
+export ETHEREUM_SEPOLIA_RPC_URL="https://sepolia.infura.io/v3/YOUR_KEY"
+
+# Run verification
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts \
+  -c scripts/operational/contract-integrity-verifier/examples/configs/example.json \
+  -v
 ```
 
-### Options
+## Project Structure
+
+```
+contract-integrity-verifier/
+├── src/                       # Source code
+│   ├── cli.ts                 # CLI entry point
+│   ├── config.ts              # Config loading (JSON + Markdown)
+│   ├── verifier.ts            # Main verification logic
+│   ├── types.ts               # TypeScript types
+│   ├── index.ts               # Package exports
+│   └── utils/                 # Utility modules
+│       ├── abi.ts             # ABI verification
+│       ├── bytecode.ts        # Bytecode comparison
+│       ├── state.ts           # State verification orchestration
+│       ├── storage-path.ts    # ERC-7201 storage path resolution
+│       └── markdown-config.ts # Markdown config parser
+├── tools/                     # CLI tools
+│   └── generate-schema.ts     # Storage schema generator
+├── tests/
+│   └── run-tests.ts
+├── examples/                  # Example configs and schemas
+│   ├── configs/
+│   │   ├── example.json
+│   │   ├── sepolia-linea-rollup-v7.config.json
+│   │   └── sepolia-linea-rollup-v7.config.md
+│   └── schemas/
+│       ├── linea-rollup.json
+│       └── yield-manager.json
+└── README.md
+```
+
+## CLI Options
 
 | Option | Alias | Description |
 |--------|-------|-------------|
@@ -21,392 +61,160 @@ npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts --config 
 | `--skip-bytecode` | | Skip bytecode comparison |
 | `--skip-abi` | | Skip ABI comparison |
 | `--skip-state` | | Skip state verification |
-| `--help` | `-h` | Show help |
-
-### Examples
-
-```bash
-# Verify all contracts in config
-npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts -c config.json
-
-# Verbose output
-npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts -c config.json -v
-
-# Filter to specific contract
-npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts -c config.json --contract LineaRollup
-
-# Filter to specific chain
-npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts -c config.json --chain mainnet
-
-# Skip ABI comparison (bytecode only)
-npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts -c config.json --skip-abi
-```
-
-## Project Structure
-
-```
-contract-integrity-verifier/
-├── src/                      # Source code
-│   ├── index.ts              # Package entry point (exports public API)
-│   ├── cli.ts                # CLI entry point
-│   ├── types.ts              # TypeScript types
-│   ├── config.ts             # Config loading (JSON + Markdown)
-│   ├── verifier.ts           # Main verification logic
-│   └── utils/                # Utility modules
-│       ├── index.ts          # Utils barrel export
-│       ├── abi.ts            # ABI parsing
-│       ├── bytecode.ts       # Bytecode comparison
-│       ├── state.ts          # State verification
-│       ├── storage-path.ts   # ERC-7201 storage paths
-│       └── markdown-config.ts # Markdown config parser
-├── tools/                    # Standalone CLI tools
-│   └── generate-schema.ts    # Schema generator
-├── tests/                    # Test files
-│   └── run-tests.ts
-├── configs/                  # Example configurations
-│   ├── chains.json
-│   ├── example.json
-│   ├── sepolia-linea-rollup-v7.json
-│   └── sepolia-linea-rollup-v7.config.md  # Markdown config example
-├── schemas/                  # Example storage schemas
-│   └── linea-rollup.json
-└── README.md
-```
 
 ## Configuration
 
-The verifier supports two configuration formats:
-- **JSON** (`.json`) - Traditional structured format
-- **Markdown** (`.md`) - Documentation-as-config format
+Supports two formats: **JSON** and **Markdown**.
 
-See `configs/example.json` or `configs/sepolia-linea-rollup-v7.config.md` for templates.
-
-### Configuration Schema
+### JSON Configuration
 
 ```json
 {
   "chains": {
-    "<chain-name>": {
-      "chainId": 1,
-      "rpcUrl": "${ENV_VAR_NAME}",
-      "explorerUrl": "https://etherscan.io"
+    "ethereum-sepolia": {
+      "chainId": 11155111,
+      "rpcUrl": "${ETHEREUM_SEPOLIA_RPC_URL}",
+      "explorerUrl": "https://sepolia.etherscan.io"
     }
   },
   "contracts": [
     {
-      "name": "ContractName",
-      "chain": "<chain-name>",
-      "address": "0x...",
-      "artifactFile": "path/to/artifact.json",
-      "isProxy": true
+      "name": "MyContract-Proxy",
+      "chain": "ethereum-sepolia",
+      "address": "0x1234567890123456789012345678901234567890",
+      "artifactFile": "../path/to/MyContract.json",
+      "isProxy": true,
+      "constructorArgs": ["0xMessageServiceAddress"],
+      "stateVerification": { ... }
     }
   ]
 }
 ```
 
-### Configuration Fields
-
-#### Chains
+### Contract Fields
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `chainId` | Yes | Chain ID (e.g., 1 for mainnet) |
-| `rpcUrl` | Yes | RPC endpoint URL. Supports `${ENV_VAR}` syntax |
-| `explorerUrl` | No | Block explorer URL for reference |
+| `name` | Yes | Display name |
+| `chain` | Yes | Chain key from `chains` |
+| `address` | Yes | Deployed address |
+| `artifactFile` | Yes | Path to Hardhat/Foundry artifact |
+| `isProxy` | No | If `true`, fetches implementation via EIP-1967 |
+| `constructorArgs` | No | Constructor args for immutable validation |
+| `stateVerification` | No | State checks (see below) |
 
-#### Contracts
+### Markdown Configuration
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | Yes | Contract name for display |
-| `chain` | Yes | Chain name (must match a key in `chains`) |
-| `address` | Yes | Deployed contract address (proxy or implementation) |
-| `artifactFile` | Yes | Path to Hardhat artifact `.json` file |
-| `isProxy` | No | If `true`, fetches implementation bytecode via EIP-1967 |
-| `constructorArgs` | No | Constructor arguments for immutable validation (see below) |
-
-### Constructor Arguments
-
-For contracts with immutable values set via constructor, provide `constructorArgs` to validate that bytecode differences are only due to these values:
-
-```json
-{
-  "name": "MyContract",
-  "chain": "mainnet",
-  "address": "0x...",
-  "artifactFile": "path/to/artifact.json",
-  "constructorArgs": ["0x1234...5678", 1000000, true]
-}
-```
-
-Supported argument formats:
-- **Addresses**: `"0x1234567890123456789012345678901234567890"`
-- **Numbers**: `1000000` or `"1000000000000000000"` (for large numbers as strings)
-- **Booleans**: `true` or `false`
-- **Pre-encoded hex**: `"0x000000000000000000000000..."` (full 32-byte encoded)
-
-The tool will:
-1. Compare bytecode and identify difference regions
-2. Determine if differences are at immutable positions (32-byte aligned)
-3. Validate that immutable values match provided constructor args
-4. Report pass/fail with details
-
-### Environment Variables
-
-RPC URLs often contain API keys. Use `${ENV_VAR}` syntax in the config:
-
-```json
-{
-  "rpcUrl": "${MAINNET_RPC_URL}"
-}
-```
-
-Then set the environment variable:
-
-```bash
-export MAINNET_RPC_URL="https://mainnet.infura.io/v3/YOUR_KEY"
-```
-
-## Markdown Configuration Format
-
-Use markdown files as both documentation AND config. The verifier parses `verifier` code blocks and markdown tables.
-
-### Basic Structure
+Use markdown as both documentation AND config:
 
 ````markdown
-# My Verification Config
-
 ## Contract: MyContract-Proxy
 
 ```verifier
 name: MyContract-Proxy
 address: 0x1234567890123456789012345678901234567890
-chain: ethereum-mainnet
-artifact: ./artifacts/MyContract.json
+chain: ethereum-sepolia
+artifact: ../path/to/MyContract.json
 isProxy: true
 ozVersion: v4
-schema: ./schemas/my-contract.json
+schema: ../schemas/my-schema.json
 ```
 
 ### State Verification
 
 | Type | Description | Check | Params | Expected |
 |------|-------------|-------|--------|----------|
-| viewCall | Get owner | `owner` | | `0xabcd...` |
-| viewCall | Check role | `hasRole` | `0x1234...`,`0x5678...` | true |
+| viewCall | Get owner | `owner` | | `0xOwnerAddress` |
 | slot | Initialized | `0x0` | uint8 | `1` |
-| storagePath | Config value | `MyStorage:value` | | `100` |
+| storagePath | Config | `MyStorage:config` | | `100` |
 ````
 
-### Verifier Block Fields
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | No | Contract name (auto-generated if omitted) |
-| `address` | Yes | Contract address |
-| `chain` | Yes | Chain name (uses default chains if not custom) |
-| `artifact` | Yes | Path to artifact file |
-| `isProxy` | No | `true` or `false` |
-| `ozVersion` | No | `v4`, `v5`, or `auto` |
-| `schema` | No | Path to storage schema file |
-
-### Verification Table Columns
-
-| Column | Description |
-|--------|-------------|
-| Type | `viewCall`, `slot`, or `storagePath` |
-| Description | Human-readable comment |
-| Check | Function name, slot hex, or storage path |
-| Params | Comma-separated params (for viewCall) or type (for slot) |
-| Expected | Expected value (`true`, `false`, numbers, addresses) |
-
-### Multiple Contracts
-
-Separate contracts with `---` or new `## Contract:` headers:
-
-````markdown
-## Contract: Proxy
-
-```verifier
-address: 0x1111...
-...
-```
+Default chains are included automatically: `ethereum-mainnet`, `ethereum-sepolia`, `linea-mainnet`, `linea-sepolia`.
 
 ---
 
-## Contract: Implementation
+## State Verification
 
-```verifier
-address: 0x2222...
-...
-```
-````
+State verification is **optional** and validates on-chain state after deployment/upgrade. Three methods are available:
 
-### Default Chains
+### 1. View Calls (`viewCalls`)
 
-Markdown configs include these default chains (no need to define):
-- `ethereum-mainnet` (chainId: 1)
-- `ethereum-sepolia` (chainId: 11155111)
-- `linea-mainnet` (chainId: 59144)
-- `linea-sepolia` (chainId: 59141)
-
-### Example File
-
-See `configs/sepolia-linea-rollup-v7.config.md` for a complete working example.
-
-## Artifact File Format
-
-Supports both **Hardhat** and **Foundry** artifact formats. The tool auto-detects the format.
-
-### Hardhat Artifacts
-
-Standard Hardhat format with `abi`, `bytecode`, and `deployedBytecode` as strings:
+Call public view/pure functions and check return values.
 
 ```json
 {
-  "_format": "hh-sol-artifact-1",
-  "contractName": "MyContract",
-  "abi": [...],
-  "bytecode": "0x...",
-  "deployedBytecode": "0x..."
-}
-```
-
-### Foundry Artifacts
-
-Foundry (`forge build`) format with bytecode as objects:
-
-```json
-{
-  "abi": [...],
-  "bytecode": { "object": "0x..." },
-  "deployedBytecode": {
-    "object": "0x...",
-    "immutableReferences": {
-      "123": [{ "start": 456, "length": 32 }]
-    }
-  },
-  "methodIdentifiers": {
-    "owner()": "8da5cb5b"
-  }
-}
-```
-
-### Foundry Benefits
-
-When using Foundry artifacts, the tool leverages:
-
-| Feature | Benefit |
-|---------|---------|
-| `immutableReferences` | Precise immutable position detection (no heuristics) |
-| `methodIdentifiers` | Pre-computed selectors (faster ABI comparison) |
-
-Example location: `out/MyContract.sol/MyContract.json`
-
-## How Verification Works
-
-### Bytecode Comparison
-
-1. Fetches bytecode from the chain at the specified address
-2. For proxy contracts (`isProxy: true`), reads the EIP-1967 implementation slot and fetches that bytecode
-3. Strips CBOR metadata from both local and remote bytecode (metadata hash varies between compilations)
-4. Compares the core bytecode
-
-### ABI Comparison
-
-1. Extracts function selectors from the ABI (4-byte keccak256 of function signature)
-2. Scans the deployed bytecode for PUSH4 opcodes (function dispatcher pattern)
-3. Reports any ABI selectors not found in the bytecode
-
-### State Verification (Optional)
-
-For upgradeable contracts, verify state set by initializers:
-
-```json
-{
-  "name": "MyContract-Proxy",
-  "address": "0x...",
-  "artifactFile": "...",
-  "isProxy": true,
   "stateVerification": {
-    "ozVersion": "v5",
     "viewCalls": [
-      { "function": "owner", "expected": "0x..." },
-      { "function": "hasRole", "params": ["0x00...00", "0x..."], "expected": true }
-    ],
-    "slots": [
-      { "slot": "0x0", "type": "uint8", "name": "_initialized", "expected": "6" }
-    ],
-    "namespaces": [
       {
-        "id": "linea.storage.YieldManager",
-        "variables": [
-          { "offset": 0, "type": "address", "name": "messageService", "expected": "0x..." }
-        ]
+        "function": "owner",
+        "expected": "0xOwnerAddress"
+      },
+      {
+        "function": "hasRole",
+        "params": ["0xRoleHash", "0xAccountAddress"],
+        "expected": true
+      },
+      {
+        "function": "balanceOf",
+        "params": ["0xUserAddress"],
+        "expected": "1000000000000000000"
       }
     ]
   }
 }
 ```
 
-#### State Verification Methods
+**When to use**: Public getters, role checks, balance queries, any `view`/`pure` function.
 
-| Method | Use Case |
-|--------|----------|
-| `viewCalls` | Call public view functions (with optional params) |
-| `slots` | Read explicit storage slots (OZ v4, private vars) |
-| `namespaces` | Read ERC-7201 namespaced storage (OZ v5) |
-| `storagePaths` | Schema-based storage paths with auto slot computation |
+### 2. Explicit Slots (`slots`)
 
-#### View Calls with Parameters
+Read raw storage slots directly via `eth_getStorageAt`.
 
 ```json
 {
-  "viewCalls": [
-    { "function": "owner", "expected": "0x..." },
-    { "function": "hasRole", "params": ["0x00...00", "0xAdminAddress"], "expected": true },
-    { "function": "balanceOf", "params": ["0xUserAddress"], "expected": "1000000000000000000" }
-  ]
-}
-```
-
-#### Storage Types
-
-Supported types for slots and namespaces:
-- `address`, `bool`
-- `uint8`, `uint32`, `uint64`, `uint128`, `uint256`
-- `bytes32`
-
-#### Storage Paths (Schema-based)
-
-For complex ERC-7201 storage structures, define a schema and use human-readable paths:
-
-**Schema file** (`schemas/my-contract.json`):
-
-```json
-{
-  "structs": {
-    "MyStorage": {
-      "namespace": "my.namespace.MyStorage",
-      "fields": {
-        "yieldManager": { "slot": 0, "type": "address" },
-        "config": { "slot": 1, "type": "uint256" },
-        "isPaused": { "slot": 2, "type": "bool", "byteOffset": 0 }
+  "stateVerification": {
+    "slots": [
+      {
+        "slot": "0x0",
+        "type": "uint8",
+        "name": "_initialized",
+        "expected": "7"
+      },
+      {
+        "slot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+        "type": "address",
+        "name": "implementation",
+        "expected": "0xImplementationAddress"
       }
-    }
+    ]
   }
 }
 ```
 
-**Config usage**:
+**Supported types**: `address`, `bool`, `uint8`, `uint16`, `uint32`, `uint64`, `uint128`, `uint256`, `bytes32`
+
+**When to use**:
+- OpenZeppelin v4.x `_initialized` (slot 0)
+- Known slot positions (e.g., EIP-1967 slots)
+- Private variables with known slots
+
+### 3. Storage Paths (`storagePaths`)
+
+Human-readable paths for ERC-7201 namespaced storage. Requires a **schema file**.
 
 ```json
 {
   "stateVerification": {
     "schemaFile": "../schemas/my-contract.json",
     "storagePaths": [
-      { "path": "MyStorage:yieldManager", "expected": "0x..." },
-      { "path": "MyStorage:config", "expected": "1000" }
+      {
+        "path": "MyStorage:owner",
+        "expected": "0xOwnerAddress"
+      },
+      {
+        "path": "MyStorage:config.maxAmount",
+        "expected": "1000000"
+      }
     ]
   }
 }
@@ -416,19 +224,240 @@ For complex ERC-7201 storage structures, define a schema and use human-readable 
 
 | Pattern | Example | Description |
 |---------|---------|-------------|
-| `Struct:field` | `MyStorage:owner` | Simple field access |
+| `Struct:field` | `MyStorage:owner` | Simple field |
 | `Struct:a.b` | `MyStorage:config.value` | Nested field |
 | `Struct:arr[0]` | `MyStorage:items[0]` | Array element |
-| `Struct:arr.length` | `MyStorage:items.length` | Array length |
 | `Struct:map[key]` | `MyStorage:balances[0x...]` | Mapping lookup |
 
-Storage paths auto-compute slots from ERC-7201 namespace and field offsets.
+**When to use**: ERC-7201 namespaced storage (OpenZeppelin v5.x pattern), complex storage layouts.
 
-#### OpenZeppelin Version Support
+---
 
-- **v4.x**: Use explicit `slots` with known slot positions
-- **v5.x**: Use `namespaces` with ERC-7201 namespace IDs
-- **Both**: Use `storagePaths` with schema file for readable configs
+## Storage Schemas
+
+Schemas define the storage layout for `storagePaths` verification.
+
+### Schema Structure
+
+```json
+{
+  "structs": {
+    "MyStorage": {
+      "namespace": "my.namespace.MyStorage",
+      "baseSlot": "0x...",
+      "fields": {
+        "owner": {
+          "slot": 0,
+          "type": "address"
+        },
+        "config": {
+          "slot": 1,
+          "type": "uint256"
+        },
+        "isPaused": {
+          "slot": 2,
+          "type": "bool",
+          "byteOffset": 0
+        },
+        "version": {
+          "slot": 2,
+          "type": "uint8",
+          "byteOffset": 1
+        }
+      }
+    }
+  }
+}
+```
+
+### Field Properties
+
+| Property | Required | Description |
+|----------|----------|-------------|
+| `slot` | Yes | Offset from struct base slot |
+| `type` | Yes | Solidity type |
+| `byteOffset` | No | Byte offset for packed storage (0-31) |
+
+### Generating Schemas
+
+Auto-generate from Solidity files:
+
+```bash
+npx ts-node scripts/operational/contract-integrity-verifier/tools/generate-schema.ts \
+  --input src/storage/MyStorageLayout.sol \
+  --output scripts/operational/contract-integrity-verifier/examples/schemas/my-storage.json \
+  --verbose
+```
+
+The generator extracts:
+- Struct definitions and field types
+- ERC-7201 namespaces from `@custom:storage-location` NatSpec
+- Packed storage byte offsets
+- Base slot constants
+
+**Post-generation review**: Verify mapping value types and namespace strings match your Solidity code.
+
+---
+
+## OpenZeppelin Version Support
+
+| Version | Recommended Method | Notes |
+|---------|-------------------|-------|
+| v4.x | `slots` | `_initialized` at slot 0 |
+| v5.x | `storagePaths` + schema | ERC-7201 namespaced storage |
+| Both | `viewCalls` | Public getters work everywhere |
+
+### Example: OZ v4 Contract
+
+```json
+{
+  "stateVerification": {
+    "ozVersion": "v4",
+    "viewCalls": [
+      { "function": "owner", "expected": "0x..." }
+    ],
+    "slots": [
+      { "slot": "0x0", "type": "uint8", "name": "_initialized", "expected": "1" }
+    ]
+  }
+}
+```
+
+### Example: OZ v5 Contract with ERC-7201
+
+```json
+{
+  "stateVerification": {
+    "ozVersion": "v5",
+    "schemaFile": "../schemas/my-contract.json",
+    "viewCalls": [
+      { "function": "owner", "expected": "0x..." }
+    ],
+    "storagePaths": [
+      { "path": "MyStorage:config", "expected": "100" }
+    ]
+  }
+}
+```
+
+---
+
+## Bytecode Verification
+
+### How It Works
+
+1. Fetches deployed bytecode from chain
+2. For proxies (`isProxy: true`), reads EIP-1967 implementation slot
+3. Strips CBOR metadata (varies between compilations)
+4. Compares against local artifact
+
+### Immutable Values
+
+Contracts with immutables will have bytecode differences at deployment positions. The verifier:
+
+1. Detects immutable positions (Foundry: precise, Hardhat: heuristic)
+2. Reports positions and extracted values
+3. If `constructorArgs` provided, validates they match
+
+```json
+{
+  "constructorArgs": ["0xMessageServiceAddress", 1000000]
+}
+```
+
+Output:
+```
+Immutable differences detected: 2
+  Position 1234: address = 0xMessageServiceAddress
+  Position 5678: uint256 = 1000000
+Bytecode: ✓ Matches (2 immutable value(s) differ as expected)
+```
+
+---
+
+## Artifact Formats
+
+### Hardhat
+
+```json
+{
+  "_format": "hh-sol-artifact-1",
+  "abi": [...],
+  "bytecode": "0x...",
+  "deployedBytecode": "0x..."
+}
+```
+
+### Foundry
+
+```json
+{
+  "abi": [...],
+  "bytecode": { "object": "0x..." },
+  "deployedBytecode": {
+    "object": "0x...",
+    "immutableReferences": { ... }
+  },
+  "methodIdentifiers": { "owner()": "8da5cb5b" }
+}
+```
+
+**Foundry benefits**: Precise immutable detection via `immutableReferences`, pre-computed selectors.
+
+---
+
+## Environment Variables
+
+Use `${VAR_NAME}` syntax for sensitive values:
+
+```json
+{
+  "rpcUrl": "${ETHEREUM_MAINNET_RPC_URL}"
+}
+```
+
+```bash
+export ETHEREUM_MAINNET_RPC_URL="https://mainnet.infura.io/v3/YOUR_KEY"
+```
+
+---
+
+## Examples
+
+### Verify a Proxy Contract
+
+```bash
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts \
+  -c scripts/operational/contract-integrity-verifier/examples/configs/sepolia-linea-rollup-v7.config.json \
+  -v
+```
+
+### Verify Specific Contract Only
+
+```bash
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts \
+  -c examples/configs/example.json \
+  --contract "MyContract-Proxy" \
+  -v
+```
+
+### Skip State Verification
+
+```bash
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts \
+  -c config.json \
+  --skip-state
+```
+
+### Using Markdown Config
+
+```bash
+npx ts-node scripts/operational/contract-integrity-verifier/src/cli.ts \
+  -c scripts/operational/contract-integrity-verifier/examples/configs/sepolia-linea-rollup-v7.config.md \
+  -v
+```
+
+---
 
 ## Exit Codes
 
@@ -438,83 +467,33 @@ Storage paths auto-compute slots from ERC-7201 namespace and field offsets.
 | 1 | One or more verifications failed |
 | 2 | Configuration or runtime error |
 
-## Schema Generation
-
-Generate storage schemas automatically from Solidity files containing ERC-7201 storage layouts:
-
-```bash
-npx ts-node scripts/operational/contract-integrity-verifier/tools/generate-schema.ts \
-  --input src/yield/YieldManagerStorageLayout.sol \
-  --output scripts/operational/contract-integrity-verifier/schemas/yield-manager.json \
-  --verbose
-```
-
-### Options
-
-| Option | Alias | Description |
-|--------|-------|-------------|
-| `--input` | `-i` | Path to Solidity file with storage structs |
-| `--output` | `-o` | Output path for JSON schema |
-| `--verbose` | `-v` | Show detailed field information |
-
-### What It Parses
-
-The generator extracts:
-
-1. **Struct definitions** - Field names, types, and slot positions
-2. **ERC-7201 namespaces** - From `@custom:storage-location erc7201:...` NatSpec comments
-3. **Packed storage** - Calculates `byteOffset` for fields sharing a slot
-4. **Type normalization** - Enums → `uint8`, custom types preserved
-
-### Example Output
-
-```json
-{
-  "structs": {
-    "YieldManagerStorage": {
-      "namespace": "linea.storage.YieldManagerStorage",
-      "baseSlot": "0xdc1272075efdca0b85fb2d76cbb5f26d954dc18e040d6d0b67071bd5cbd04300",
-      "fields": {
-        "minimumWithdrawalReservePercentageBps": { "slot": 0, "type": "uint16" },
-        "targetWithdrawalReservePercentageBps": { "slot": 0, "type": "uint16", "byteOffset": 2 },
-        "minimumWithdrawalReserveAmount": { "slot": 1, "type": "uint256" }
-      }
-    }
-  }
-}
-```
-
-### Post-Generation Review
-
-After generating, review the schema for:
-
-- **Mapping value types** - Complex types (e.g., `mapping(address => YieldProviderStorage)`) may need manual correction
-- **Namespace accuracy** - Verify the namespace matches the Solidity `@custom:storage-location` exactly
-- **Field names** - Ensure underscore prefixes (e.g., `_yieldManager`) are preserved
-
-## Limitations
-
-- **Immutables (Hardhat)**: Uses heuristic detection for immutable positions. Use Foundry artifacts for precise detection.
-- **Immutables (Foundry)**: Exact positions from `immutableReferences` - no heuristics needed.
-- **Constructor arguments**: Not compared (deployment bytecode vs runtime bytecode)
-- **Libraries**: Linked libraries should be embedded in the artifact bytecode.
-- **ABI heuristics**: Function selector extraction from bytecode is heuristic-based (Foundry artifacts use pre-computed `methodIdentifiers`).
-- **Schema generator**: Mapping value types and complex custom types may need manual adjustment after generation.
+---
 
 ## Troubleshooting
 
 ### "No bytecode found at address"
-
-- Verify the contract is deployed on the specified chain
-- Check that the RPC endpoint is correct and accessible
+- Verify contract is deployed on the specified chain
+- Check RPC endpoint is accessible
 
 ### "Environment variable not set"
-
-- Set the required environment variable before running
-- Check for typos in the `${VAR_NAME}` syntax
+- Set the required env var: `export VAR_NAME="value"`
+- Check for typos in `${VAR_NAME}` syntax
 
 ### Bytecode mismatch with high match percentage
-
-- May be due to immutable variables
+- May be immutable values - add `constructorArgs` to config
 - Check compiler settings (optimizer, EVM version)
-- Verify you're comparing the correct version
+- Verify correct artifact version
+
+### Storage path not found
+- Verify schema file path is correct
+- Check struct and field names match schema exactly
+- Ensure namespace in schema matches Solidity `@custom:storage-location`
+
+---
+
+## Limitations
+
+- **Immutables (Hardhat)**: Heuristic detection. Use Foundry for precision.
+- **Constructor args**: Not compared (deployment vs runtime bytecode).
+- **Libraries**: Must be embedded in artifact bytecode.
+- **Schema generator**: Complex mapping types may need manual adjustment.
