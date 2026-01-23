@@ -397,6 +397,13 @@ async function main(): Promise<void> {
   // Markdown config tests
   await testMarkdownConfigParsing();
 
+  // Complex ERC-7201 schema tests
+  await testComplexErc7201Schema();
+  await testPackedStorageDecoding();
+  await testMappingToStructSlotComputation();
+  await testArraySlotComputation();
+  await testNestedStructAccess();
+
   console.log("\n" + "=".repeat(50));
   console.log(`\n📊 Results: ${testsPassed} passed, ${testsFailed} failed`);
 
@@ -585,6 +592,233 @@ isProxy: false
   // Check default chains were included
   assert(config.chains["ethereum-sepolia"] !== undefined, "Sepolia chain exists");
   assertEqual(config.chains["ethereum-sepolia"].chainId, 11155111, "Sepolia chain ID");
+}
+
+// ============================================================================
+// Complex ERC-7201 Schema Tests
+// ============================================================================
+
+/**
+ * Complex schema based on YieldManagerStorageLayout.sol
+ */
+const YIELD_MANAGER_SCHEMA: StorageSchema = {
+  structs: {
+    YieldManagerStorage: {
+      namespace: "linea.storage.YieldManagerStorage",
+      baseSlot: "0xdc1272075efdca0b85fb2d76cbb5f26d954dc18e040d6d0b67071bd5cbd04300",
+      fields: {
+        minimumWithdrawalReservePercentageBps: { slot: 0, type: "uint16", byteOffset: 0 },
+        targetWithdrawalReservePercentageBps: { slot: 0, type: "uint16", byteOffset: 2 },
+        minimumWithdrawalReserveAmount: { slot: 1, type: "uint256" },
+        targetWithdrawalReserveAmount: { slot: 2, type: "uint256" },
+        userFundsInYieldProvidersTotal: { slot: 3, type: "uint256" },
+        pendingPermissionlessUnstake: { slot: 4, type: "uint256" },
+        yieldProviders: { slot: 5, type: "address[]" },
+        isL2YieldRecipientKnown: { slot: 6, type: "mapping(address => bool)" },
+        yieldProviderStorage: { slot: 7, type: "mapping(address => YieldProviderStorage)" },
+        lastProvenSlot: { slot: 8, type: "mapping(uint64 => uint64)" },
+      },
+    },
+    YieldProviderStorage: {
+      // No namespace - accessed through mapping
+      fields: {
+        yieldProviderVendor: { slot: 0, type: "uint8", byteOffset: 0 },
+        isStakingPaused: { slot: 0, type: "bool", byteOffset: 1 },
+        isOssificationInitiated: { slot: 0, type: "bool", byteOffset: 2 },
+        isOssified: { slot: 0, type: "bool", byteOffset: 3 },
+        primaryEntrypoint: { slot: 0, type: "address", byteOffset: 4 },
+        ossifiedEntrypoint: { slot: 1, type: "address", byteOffset: 0 },
+        yieldProviderIndex: { slot: 1, type: "uint96", byteOffset: 20 },
+        userFunds: { slot: 2, type: "uint256" },
+        yieldReportedCumulative: { slot: 3, type: "uint256" },
+        lstLiabilityPrincipal: { slot: 4, type: "uint256" },
+        lastReportedNegativeYield: { slot: 5, type: "uint256" },
+      },
+    },
+  },
+};
+
+async function testComplexErc7201Schema(): Promise<void> {
+  console.log("\n🧪 Testing complex ERC-7201 schema (YieldManager)...");
+
+  // Verify schema loads correctly
+  assert(YIELD_MANAGER_SCHEMA.structs.YieldManagerStorage !== undefined, "YieldManagerStorage struct exists");
+  assert(YIELD_MANAGER_SCHEMA.structs.YieldProviderStorage !== undefined, "YieldProviderStorage struct exists");
+
+  // Verify base slot matches the Solidity constant
+  const expectedBaseSlot = "0xdc1272075efdca0b85fb2d76cbb5f26d954dc18e040d6d0b67071bd5cbd04300";
+  assertEqual(
+    YIELD_MANAGER_SCHEMA.structs.YieldManagerStorage.baseSlot,
+    expectedBaseSlot,
+    "Base slot matches Solidity constant",
+  );
+
+  // Verify computed base slot from namespace matches
+  const computedBaseSlot = calculateErc7201BaseSlot("linea.storage.YieldManagerStorage");
+  assertEqual(computedBaseSlot, expectedBaseSlot, "Computed base slot matches explicit base slot");
+
+  // Simple field access
+  const path1 = parsePath("YieldManagerStorage:minimumWithdrawalReserveAmount");
+  const slot1 = computeSlot(path1, YIELD_MANAGER_SCHEMA);
+  assertEqual(slot1.type, "uint256", "minimumWithdrawalReserveAmount type");
+
+  // Verify slot offset
+  const baseSlotBigInt = BigInt(expectedBaseSlot);
+  const slot1BigInt = BigInt(slot1.slot);
+  assertEqual(slot1BigInt - baseSlotBigInt, 1n, "minimumWithdrawalReserveAmount is at slot offset 1");
+}
+
+async function testPackedStorageDecoding(): Promise<void> {
+  console.log("\n🧪 Testing packed storage field access...");
+
+  // Test packed uint16 fields in slot 0
+  const path1 = parsePath("YieldManagerStorage:minimumWithdrawalReservePercentageBps");
+  const slot1 = computeSlot(path1, YIELD_MANAGER_SCHEMA);
+  assertEqual(slot1.type, "uint16", "First packed field type");
+  assertEqual(slot1.byteOffset, 0, "First packed field byte offset");
+
+  const path2 = parsePath("YieldManagerStorage:targetWithdrawalReservePercentageBps");
+  const slot2 = computeSlot(path2, YIELD_MANAGER_SCHEMA);
+  assertEqual(slot2.type, "uint16", "Second packed field type");
+  assertEqual(slot2.byteOffset, 2, "Second packed field byte offset");
+
+  // Verify both are in the same slot
+  assertEqual(slot1.slot, slot2.slot, "Packed fields share same slot");
+
+  // Test decoding packed values
+  // Storage layout (right-aligned): ... | targetBps (bytes 29-30) | minimumBps (bytes 30-31) |
+  // Let's say minimum=1000 (0x03E8) and target=2000 (0x07D0)
+  // Raw storage: 0x...0000000007D003E8 (last 4 bytes)
+  const packedValue = "0x" + "0".repeat(56) + "07d003e8";
+
+  // Decode minimum (bytes 30-31, offset 0)
+  const minimumHex = packedValue.slice(2 + 60, 2 + 64); // Last 2 bytes
+  assertEqual(minimumHex, "03e8", "Minimum value hex extraction");
+
+  // Decode target (bytes 28-29, offset 2)
+  const targetHex = packedValue.slice(2 + 56, 2 + 60); // Bytes 28-29
+  assertEqual(targetHex, "07d0", "Target value hex extraction");
+}
+
+async function testMappingToStructSlotComputation(): Promise<void> {
+  console.log("\n🧪 Testing mapping to struct slot computation...");
+
+  const yieldProviderAddress = "0x1234567890123456789012345678901234567890";
+
+  // Access yieldProviderStorage[address].userFunds
+  const path = parsePath(`YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].userFunds`);
+
+  assertEqual(path.structName, "YieldManagerStorage", "Struct name parsed");
+  assertEqual(path.segments.length, 3, "Three segments parsed");
+
+  assert(path.segments[0].type === "field", "First segment is field");
+  if (path.segments[0].type === "field") {
+    assertEqual(path.segments[0].name, "yieldProviderStorage", "First segment name");
+  }
+
+  assert(path.segments[1].type === "mappingKey", "Second segment is mapping key");
+  if (path.segments[1].type === "mappingKey") {
+    assertEqual(path.segments[1].key, yieldProviderAddress, "Mapping key value");
+  }
+
+  assert(path.segments[2].type === "field", "Third segment is field");
+  if (path.segments[2].type === "field") {
+    assertEqual(path.segments[2].name, "userFunds", "Third segment name");
+  }
+
+  // Compute the slot
+  const computed = computeSlot(path, YIELD_MANAGER_SCHEMA);
+  assertEqual(computed.type, "uint256", "userFunds type");
+  assert(computed.slot.startsWith("0x"), "Computed slot is hex string");
+  assertEqual(computed.slot.length, 66, "Computed slot is 32 bytes");
+}
+
+async function testArraySlotComputation(): Promise<void> {
+  console.log("\n🧪 Testing array slot computation...");
+
+  // Test array length
+  const lengthPath = parsePath("YieldManagerStorage:yieldProviders.length");
+  const lengthSlot = computeSlot(lengthPath, YIELD_MANAGER_SCHEMA);
+  assertEqual(lengthSlot.type, "uint256", "Array length type");
+
+  // Verify length slot is at base + 5
+  const baseSlot = BigInt(YIELD_MANAGER_SCHEMA.structs.YieldManagerStorage.baseSlot!);
+  const lengthSlotBigInt = BigInt(lengthSlot.slot);
+  assertEqual(lengthSlotBigInt - baseSlot, 5n, "yieldProviders is at slot offset 5");
+
+  // Test array element access
+  const element0Path = parsePath("YieldManagerStorage:yieldProviders[0]");
+  const element0Slot = computeSlot(element0Path, YIELD_MANAGER_SCHEMA);
+  assertEqual(element0Slot.type, "address", "Array element type");
+
+  // Array data starts at keccak256(slot)
+  const expectedDataSlot = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [lengthSlotBigInt]));
+  assertEqual(element0Slot.slot, expectedDataSlot, "Array element 0 slot is keccak256(length_slot)");
+
+  // Element 1 should be at dataSlot + 1
+  const element1Path = parsePath("YieldManagerStorage:yieldProviders[1]");
+  const element1Slot = computeSlot(element1Path, YIELD_MANAGER_SCHEMA);
+  const element1SlotBigInt = BigInt(element1Slot.slot);
+  const element0SlotBigInt = BigInt(element0Slot.slot);
+  assertEqual(element1SlotBigInt - element0SlotBigInt, 1n, "Array element 1 is at element 0 + 1");
+}
+
+async function testNestedStructAccess(): Promise<void> {
+  console.log("\n🧪 Testing nested struct field access through mapping...");
+
+  const yieldProviderAddress = "0xabcdef1234567890abcdef1234567890abcdef12";
+
+  // Access packed fields in YieldProviderStorage through mapping
+  // yieldProviderStorage[address].isStakingPaused
+  const pausedPath = parsePath(`YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].isStakingPaused`);
+  const pausedSlot = computeSlot(pausedPath, YIELD_MANAGER_SCHEMA);
+
+  assertEqual(pausedSlot.type, "bool", "isStakingPaused type");
+  assertEqual(pausedSlot.byteOffset, 1, "isStakingPaused byte offset");
+
+  // Access primaryEntrypoint (address at offset 4 in slot 0)
+  const entrypointPath = parsePath(
+    `YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].primaryEntrypoint`,
+  );
+  const entrypointSlot = computeSlot(entrypointPath, YIELD_MANAGER_SCHEMA);
+
+  assertEqual(entrypointSlot.type, "address", "primaryEntrypoint type");
+  assertEqual(entrypointSlot.byteOffset, 4, "primaryEntrypoint byte offset");
+
+  // Verify both are in the same slot (slot 0 of YieldProviderStorage)
+  assertEqual(pausedSlot.slot, entrypointSlot.slot, "Packed fields in same slot");
+
+  // Access field in slot 1 (ossifiedEntrypoint)
+  const ossifiedPath = parsePath(
+    `YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].ossifiedEntrypoint`,
+  );
+  const ossifiedSlot = computeSlot(ossifiedPath, YIELD_MANAGER_SCHEMA);
+
+  assertEqual(ossifiedSlot.type, "address", "ossifiedEntrypoint type");
+  assertEqual(ossifiedSlot.byteOffset, 0, "ossifiedEntrypoint byte offset");
+
+  // Verify slot 1 is different from slot 0
+  const slot0BigInt = BigInt(pausedSlot.slot);
+  const slot1BigInt = BigInt(ossifiedSlot.slot);
+  assertEqual(slot1BigInt - slot0BigInt, 1n, "ossifiedEntrypoint is 1 slot after slot 0");
+
+  // Access yieldProviderIndex (uint96 at offset 20 in slot 1)
+  const indexPath = parsePath(`YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].yieldProviderIndex`);
+  const indexSlot = computeSlot(indexPath, YIELD_MANAGER_SCHEMA);
+
+  assertEqual(indexSlot.type, "uint96", "yieldProviderIndex type");
+  assertEqual(indexSlot.byteOffset, 20, "yieldProviderIndex byte offset");
+  assertEqual(indexSlot.slot, ossifiedSlot.slot, "yieldProviderIndex in same slot as ossifiedEntrypoint");
+
+  // Access uint256 field in slot 2
+  const userFundsPath = parsePath(`YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].userFunds`);
+  const userFundsSlot = computeSlot(userFundsPath, YIELD_MANAGER_SCHEMA);
+
+  assertEqual(userFundsSlot.type, "uint256", "userFunds type");
+  assertEqual(userFundsSlot.byteOffset, 0, "userFunds byte offset");
+
+  const slot2BigInt = BigInt(userFundsSlot.slot);
+  assertEqual(slot2BigInt - slot0BigInt, 2n, "userFunds is 2 slots after slot 0");
 }
 
 main().catch((error) => {
