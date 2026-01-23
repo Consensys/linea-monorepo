@@ -8,7 +8,6 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import io.vertx.core.json.JsonObject
 import linea.domain.BlockInterval
-import linea.domain.BlockParameter
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import linea.kotlin.fromHexString
@@ -181,12 +180,12 @@ class StateManagerV1JsonRpcClient(
   override fun lineaGetAccountProof(
     address: ByteArray,
     storageKeys: List<ByteArray>,
-    block: BlockParameter,
+    blockNumber: ULong,
   ): SafeFuture<LineaAccountProof> {
     val params = listOf(
       address.encodeHex(),
       storageKeys.map { it.encodeHex() },
-      block.getNumber(),
+      blockNumber,
     )
 
     return rpcClient

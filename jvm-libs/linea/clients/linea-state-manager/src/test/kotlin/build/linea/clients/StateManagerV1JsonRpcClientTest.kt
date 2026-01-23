@@ -15,7 +15,6 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.domain.BlockInterval
-import linea.domain.BlockParameter
 import linea.kotlin.ByteArrayExt
 import linea.kotlin.decodeHex
 import linea.kotlin.fromHexString
@@ -263,7 +262,7 @@ class StateManagerV1JsonRpcClientTest {
       stateManagerClient.lineaGetAccountProof(
         address = "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec".decodeHex(),
         storageKeys = listOf(),
-        block = BlockParameter.fromNumber(50UL),
+        blockNumber = 50UL,
       ),
     ).succeedsWithin(5.seconds.toJavaDuration())
       .isEqualTo(
