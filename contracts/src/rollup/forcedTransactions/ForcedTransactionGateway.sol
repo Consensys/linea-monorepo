@@ -110,8 +110,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
         _lastFinalizedState.messageRollingHash,
         _lastFinalizedState.forcedTransactionNumber,
         _lastFinalizedState.forcedTransactionRollingHash,
-        _lastFinalizedState.timestamp,
-        _lastFinalizedState.blockHash
+        _lastFinalizedState.timestamp
       )
     ) {
       revert FinalizationStateIncorrect(
@@ -121,8 +120,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
           _lastFinalizedState.messageRollingHash,
           _lastFinalizedState.forcedTransactionNumber,
           _lastFinalizedState.forcedTransactionRollingHash,
-          _lastFinalizedState.timestamp,
-          _lastFinalizedState.blockHash
+          _lastFinalizedState.timestamp
         )
       );
     }

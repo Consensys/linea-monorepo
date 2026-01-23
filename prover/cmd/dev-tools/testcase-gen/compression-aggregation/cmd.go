@@ -421,7 +421,6 @@ func ProcessAggregationSpec(
 	runningSpec.LastFinalizedL1RollingHash = resp.L1RollingHash
 	runningSpec.LastFinalizedL1RollingHashMessageNumber = resp.L1RollingHashMessageNumber
 
-	runningSpec.ParentAggregationBlockHash = resp.FinalBlockHash
 	runningSpec.ParentAggregationFtxRollingHash = resp.FinalFtxRollingHash
 	runningSpec.ParentAggregationFtxNumber = int(resp.FinalFtxNumber)
 

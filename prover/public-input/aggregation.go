@@ -41,9 +41,6 @@ type Aggregation struct {
 	L2MsgRootHashes                         []string
 	L2MsgMerkleTreeDepth                    int
 
-	FinalBlockHash             string
-	ParentAggregationBlockHash string
-
 	// dynamic chain configuration
 	ChainID              uint64
 	BaseFee              uint64
@@ -112,8 +109,6 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 	writeHex(p.FinalFtxRollingHash)
 	writeUint(p.LastFinalizedFtxNumber)
 	writeUint(p.FinalFtxNumber)
-	writeHex(p.ParentAggregationBlockHash)
-	writeHex(p.FinalBlockHash)
 	writeInt(p.L2MsgMerkleTreeDepth)
 	hsh.Write(l2Msgs)
 	// Add the chain configuration hash - exactly 32 bytes
@@ -146,17 +141,15 @@ type AggregationFPI struct {
 	LastFinalizedFtxRollingHash       types.Bytes32
 	LastFinalizedFtxNumber            uint64
 
-	L2MsgMerkleTreeRoots       [][32]byte
-	FinalBlockNumber           uint64
-	FinalBlockTimestamp        uint64
-	FinalRollingHash           [32]byte
-	FinalRollingHashNumber     uint64
-	FinalFtxRollingHash        types.Bytes32
-	FinalFtxNumber             uint64
-	ParentAggregationBlockHash [32]byte
-	FinalBlockHash             [32]byte
-	FinalShnarf                [32]byte
-	L2MsgMerkleTreeDepth       int
+	L2MsgMerkleTreeRoots   [][32]byte
+	FinalBlockNumber       uint64
+	FinalBlockTimestamp    uint64
+	FinalRollingHash       [32]byte
+	FinalRollingHashNumber uint64
+	FinalFtxRollingHash    types.Bytes32
+	FinalFtxNumber         uint64
+	FinalShnarf            [32]byte
+	L2MsgMerkleTreeDepth   int
 
 	// dynamic chain configuration
 	ChainID              uint64
@@ -206,8 +199,6 @@ func (pi *AggregationFPI) ToSnarkType(maxNbFilteredAddresses int) AggregationFPI
 
 	utils.Copy(s.ParentShnarf[:], pi.ParentShnarf[:])
 	utils.Copy(s.FinalShnarf[:], pi.FinalShnarf[:])
-	utils.Copy(s.ParentAggregationBlockHash[:], pi.ParentAggregationBlockHash[:])
-	utils.Copy(s.FinalBlockHash[:], pi.FinalBlockHash[:])
 	for i := range s.L2MsgMerkleTreeRoots {
 		utils.Copy(s.L2MsgMerkleTreeRoots[i][:], pi.L2MsgMerkleTreeRoots[i][:])
 	}
@@ -315,12 +306,7 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 	if err = copyFromHex(s.FinalShnarf[:], fpi.FinalShnarf); err != nil {
 		return
 	}
-	if err = copyFromHex(s.ParentAggregationBlockHash[:], fpi.ParentAggregationBlockHash); err != nil {
-		return
-	}
-	if err = copyFromHex(s.FinalBlockHash[:], fpi.FinalBlockHash); err != nil {
-		return
-	}
+
 	for i := range s.L2MsgMerkleTreeRoots {
 		if err = copyFromHex(s.L2MsgMerkleTreeRoots[i][:], fpi.L2MsgRootHashes[i]); err != nil {
 			return

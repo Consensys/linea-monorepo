@@ -43,8 +43,6 @@ export async function generateFinalizationData(overrides?: Partial<FinalizationD
     lastFinalizedForcedTransactionNumber: 0n,
     finalForcedTransactionNumber: 0n,
     lastFinalizedForcedTransactionRollingHash: HASH_ZERO,
-    lastFinalizedBlockHash: HASH_ZERO,
-    finalBlockHash: HASH_ZERO,
     ...overrides,
   };
 }

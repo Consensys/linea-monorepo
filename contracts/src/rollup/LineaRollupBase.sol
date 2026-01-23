@@ -100,7 +100,7 @@ abstract contract LineaRollupBase is
   /**
    * @notice Hash of the L2 computed message number, its rolling hash,
    * forced transaction message number and its rolling hash,
-   * the L2 block timestamp and block hash.
+   * and the L2 block timestamp.
    */
   bytes32 public currentFinalizedState;
 
@@ -182,8 +182,7 @@ abstract contract LineaRollupBase is
       EMPTY_HASH,
       0,
       EMPTY_HASH,
-      _initializationData.genesisTimestamp,
-      EMPTY_HASH
+      _initializationData.genesisTimestamp
     );
 
     nextForcedTransactionNumber = 1;
@@ -425,19 +424,18 @@ abstract contract LineaRollupBase is
 
     bytes32 lastFinalizedState = currentFinalizedState;
 
-    /// @dev Post upgrade the most common case will be the 6 fields post first finalization.
+    /// @dev Post upgrade the most common case will be the 5 fields post first finalization.
     if (
       FinalizedStateHashing._computeLastFinalizedState(
         _finalizationData.lastFinalizedL1RollingHashMessageNumber,
         _finalizationData.lastFinalizedL1RollingHash,
         _finalizationData.lastFinalizedForcedTransactionNumber,
         _finalizationData.lastFinalizedForcedTransactionRollingHash,
-        _finalizationData.lastFinalizedTimestamp,
-        _finalizationData.lastFinalizedBlockHash
+        _finalizationData.lastFinalizedTimestamp
       ) != lastFinalizedState
     ) {
       /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.
-      /// @dev Note: if this clause fails after first finalization post upgrade, the 6 fields are actually what is expected in the lastFinalizedState.
+      /// @dev Note: if this clause fails after first finalization post upgrade, the 5 fields are actually what is expected in the lastFinalizedState.
       if (
         FinalizedStateHashing._computeLastFinalizedState(
           _finalizationData.lastFinalizedL1RollingHashMessageNumber,
@@ -504,8 +502,7 @@ abstract contract LineaRollupBase is
       _finalizationData.l1RollingHash,
       _finalizationData.finalForcedTransactionNumber,
       _finalForcedTransactionRollingHash,
-      _finalizationData.finalTimestamp,
-      _finalizationData.finalBlockHash
+      _finalizationData.finalTimestamp
     );
 
     emit FinalizedStateUpdated(
@@ -610,10 +607,8 @@ abstract contract LineaRollupBase is
    * 0x1c0   lastFinalizedForcedTransactionNumber
    * 0x1e0   finalForcedTransactionNumber
    * 0x200   lastFinalizedForcedTransactionRollingHash
-   * 0x220   lastFinalizedBlockHash
-   * 0x240   finalBlockHash
-   * 0x260   l2MerkleRootsLengthLocation
-   * 0x280   l2MessagingBlocksOffsetsLengthLocation
+   * 0x220   l2MerkleRootsLengthLocation
+   * 0x240   l2MessagingBlocksOffsetsLengthLocation
    * Dynamic l2MerkleRootsLength
    * Dynamic l2MerkleRoots
    * Dynamic filteredAddressesLength
@@ -678,35 +673,32 @@ abstract contract LineaRollupBase is
       /**
        * _finalizationData.lastFinalizedForcedTransactionNumber
        * _finalizationData.finalForcedTransactionNumber
-       * _finalizationData.lastFinalizedBlockHash
-       * _finalizationData.finalBlockHash
        */
       calldatacopy(add(mPtr, 0x180), add(_finalizationData, 0x1c0), 0x40)
 
-      calldatacopy(add(mPtr, 0x1c0), add(_finalizationData, 0x220), 0x40)
       /**
-       * -> 1a0, 1c0, 1e0, 200,
+       * -> 1a0, 1c0
        * _finalizationData.l2MerkleTreesDepth
        */
-      calldatacopy(add(mPtr, 0x200), add(_finalizationData, 0x1a0), 0x20)
+      calldatacopy(add(mPtr, 0x1c0), add(_finalizationData, 0x1a0), 0x20)
 
       /**
        * @dev Note the following in hashing the _finalizationData.l2MerkleRoots array:
        * The second memory pointer and free pointer are offset by 0x20 to temporarily hash the array outside the scope of working memory,
-       * as we need the space left for the array hash to be stored at 0x220.
+       * as we need the space left for the array hash to be stored at 0x1e0.
        */
 
-      let mPtrMerkleRoot := add(mPtr, 0x240)
-      let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x260)))
+      let mPtrMerkleRoot := add(mPtr, 0x200)
+      let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x220)))
       let merkleRootsLen := calldataload(merkleRootsLengthLocation)
       calldatacopy(mPtrMerkleRoot, add(merkleRootsLengthLocation, 0x20), mul(merkleRootsLen, 0x20))
       let l2MerkleRootsHash := keccak256(mPtrMerkleRoot, mul(merkleRootsLen, 0x20))
 
-      mstore(add(mPtr, 0x220), l2MerkleRootsHash)
-      mstore(add(mPtr, 0x240), _verifierChainConfiguration)
-      mstore(add(mPtr, 0x260), hashedFilteredAddresses)
+      mstore(add(mPtr, 0x1e0), l2MerkleRootsHash)
+      mstore(add(mPtr, 0x200), _verifierChainConfiguration)
+      mstore(add(mPtr, 0x220), hashedFilteredAddresses)
 
-      publicInput := mod(keccak256(mPtr, 0x280), MODULO_R)
+      publicInput := mod(keccak256(mPtr, 0x240), MODULO_R)
     }
   }
 

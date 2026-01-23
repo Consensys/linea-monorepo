@@ -43,6 +43,7 @@ import {
   FORCED_TRANSACTION_FEE_SETTER_ROLE,
   PRECOMPILES_ADDRESSES,
 } from "contracts/common/constants";
+import { LastFinalizedState } from "../../common/types";
 
 describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
@@ -54,13 +55,12 @@ describe("Linea Rollup contract: Forced Transactions", () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
-  let defaultFinalizedState = {
+  let defaultFinalizedState: LastFinalizedState = {
     messageNumber: 0n,
     messageRollingHash: HASH_ZERO,
     forcedTransactionNumber: 0n,
     forcedTransactionRollingHash: HASH_ZERO,
     timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-    blockHash: HASH_ZERO,
   };
 
   before(async () => {
@@ -90,7 +90,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       forcedTransactionNumber: 0n,
       forcedTransactionRollingHash: HASH_ZERO,
       timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-      blockHash: HASH_ZERO,
     };
   });
 
@@ -439,7 +438,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         defaultFinalizedState.forcedTransactionNumber,
         defaultFinalizedState.forcedTransactionRollingHash,
         defaultFinalizedState.timestamp,
-        defaultFinalizedState.blockHash,
       );
 
       const corruptedFinalizedStateStruct = {
@@ -453,7 +451,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         corruptedFinalizedStateStruct.forcedTransactionNumber,
         corruptedFinalizedStateStruct.forcedTransactionRollingHash,
         corruptedFinalizedStateStruct.timestamp,
-        corruptedFinalizedStateStruct.blockHash,
       );
 
       await expectRevertWithCustomError(

@@ -295,10 +295,6 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    l2MsgMerkleTreeDepth,
 
-		// block hashes
-		ParentAggregationBlockHash: cf.ParentAggregationBlockHash,
-		FinalBlockHash:             cf.FinalBlockHash,
-
 		// dynamic chain configuration
 		ChainID:              uint64(cfg.Layer2.ChainID),
 		BaseFee:              uint64(cfg.Layer2.BaseFee),
