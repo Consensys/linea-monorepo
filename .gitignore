@@ -154,4 +154,3 @@ __pycache__/
 !prover/zkevm/prover/bls/testdata/*.go
 
 contracts/types
-.cursor/skills/migrate-to-hardhat-v3/references
